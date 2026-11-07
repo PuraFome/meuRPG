@@ -305,6 +305,20 @@
                     <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
                   </div>
                 }
+                @if (ownReroll()) {
+                  <div class="mr-notice mr-notice--warning notice" data-testid="reroll-pending">
+                    <mat-icon aria-hidden="true">casino</mat-icon>
+                    <p>A sua rolagem espera a sua resposta: tirou {{ ownRerollFace() }}, rolar de novo?</p>
+                    <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                  </div>
+                }
+                @if (ownStroke()) {
+                  <div class="mr-notice mr-notice--warning notice" data-testid="stroke-pending">
+                    <mat-icon aria-hidden="true">casino</mat-icon>
+                    <p>A sua rolagem espera a sua resposta: usar o Golpe de Sorte?</p>
+                    <button matButton type="button" class="notice__ok" (click)="openHeldRoll()">Responder</button>
+                  </div>
+                }
                 @if (ownDieAsked()) {
                   <div class="mr-notice mr-notice--warning notice" data-testid="inspiration-pending">
                     <mat-icon aria-hidden="true">music_note</mat-icon>

@@ -33,10 +33,13 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
         </ul>
       </section>
     }
-    @if (read().text.length > 0) {
+    @if (read().text.length > 0 || (read().effects?.length ?? 0) > 0) {
       <section [class.mr-panel]="!plain()" [class.sec]="plain()" aria-label="Texto">
         @for (p of read().text; track $index) {
           <p class="text">{{ p }}</p>
+        }
+        @for (i of read().effects ?? []; track $index) {
+          <p class="text"><strong>{{ i.title }}:</strong> {{ i.text }}</p>
         }
       </section>
     }

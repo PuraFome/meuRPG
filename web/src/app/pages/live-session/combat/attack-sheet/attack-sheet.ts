@@ -28,6 +28,7 @@ import { isTheatre } from '../../../../core/combat/theatre';
 import { initialPicks } from '../../../../core/combat/damage-parts';
 import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import { heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
+import { HeldVanishWatch } from '../../../../core/held-rolls/held-vanish';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { metersText } from '../../../../core/units';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -110,6 +111,8 @@ export class AttackSheet {
     busy: this.s.busy,
     error: this.s.error,
   });
+  /** Tells the roller that the master answered the question for them: the question goes and this line takes its place. */
+  protected readonly vanish = new HeldVanishWatch();
   /** The mode the player asks the master for (`ModeRequests`): the pick, why, and the request as the combat shows it. */
   protected readonly modes: ModeRequests = new ModeRequests({
     api: this.api,
@@ -232,6 +235,20 @@ export class AttackSheet {
   constructor() {
     const { s } = this;
     this.question.ask(this.data.held?.offer);
+    // The master answers the question for the roller: the sheet drops it (or shows the next one), so it never offers an answer that is no longer open.
+    effect(() => {
+      const me = this.data.state.encounter()?.combatants.find((c) => c.id === this.data.attackerId);
+      if (!me) {
+        return;
+      }
+      const offer = heldOfferOf(me);
+      untracked(() => {
+        this.vanish.observe(offer);
+        if (this.vanish.notice()) {
+          this.question.ask(offer);
+        }
+      });
+    });
     // After a result the focus goes to the one next action, as soon as it is drawn.
     effect(() => this.back()?.nativeElement.focus());
     // The extras that come marked are the starting choice of each damage.

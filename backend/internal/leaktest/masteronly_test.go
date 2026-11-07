@@ -145,6 +145,7 @@ var masterOnly = []masterOnlyField{
 	{"meurpg.play.v1.Combatant", "initiative_face", "only the master and the combatant's player", own},
 	{"meurpg.play.v1.Combatant", "initiative_treated_as", "what the initiative d20 counted as goes with the face: only the master and the combatant's player", own},
 	{"meurpg.play.v1.Combatant", "initiative_treated_as_source", "the feature that raised the initiative d20 goes with the face: only the master and the combatant's player", own},
+	{"meurpg.play.v1.Combatant", "initiative_treated_as_source_name", "the name of that feature goes with its key: only the master and the combatant's player; a retired entry has none (RN-23)", own},
 	{"meurpg.play.v1.Combatant", "death_successes", "the table keeps the death saves to the owner and the master (RN-24)", own},
 	{"meurpg.play.v1.PendingDamage", "steps", "an NPC's resistances are the master's; a player's character's go to its owner", func(w *world, _ *person, m protoreflect.Message) bool { return targetsPlayer(w, m) }},
 	{"meurpg.play.v1.PendingDamage", "amount_after_steps", "the damage after an NPC's resistances is the master's", func(w *world, _ *person, m protoreflect.Message) bool { return targetsPlayer(w, m) }},

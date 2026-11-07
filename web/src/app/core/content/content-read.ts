@@ -21,6 +21,7 @@ import {
   names,
 } from './content-read-parts';
 import { bonusText } from './feature-draft';
+import { entryEffectsPart } from './content-read-rolls';
 import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
 import { prerequisiteParts } from './feat-text';
@@ -101,7 +102,7 @@ function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
       });
     }
   }
-  return { rows, sections: [], text: f.descPt };
+  return { rows, sections: [], text: f.descPt, ...entryEffectsPart(f.effects, nameOf) };
 }
 
 function readOption(o: TableOption, nameOf: NameOf): EntryRead {
@@ -110,7 +111,7 @@ function readOption(o: TableOption, nameOf: NameOf): EntryRead {
     { label: 'Conjunto', value: optionSetName(o.set) },
     { label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' },
   ];
-  return { rows, sections: [], text: o.descPt };
+  return { rows, sections: [], text: o.descPt, ...entryEffectsPart(o.effects, nameOf) };
 }
 
 function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
@@ -122,7 +123,7 @@ function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
       value: f.replacesFeatureKey === '' ? 'Nada' : featureKeyName(f.replacesFeatureKey, nameOf),
     },
   ];
-  return { rows, sections: [], text: f.descPt };
+  return { rows, sections: [], text: f.descPt, ...entryEffectsPart(f.effects, nameOf) };
 }
 
 function readSpell(s: TableSpell, nameOf: NameOf): EntryRead {

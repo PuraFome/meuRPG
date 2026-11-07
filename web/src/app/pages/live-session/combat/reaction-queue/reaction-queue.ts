@@ -71,6 +71,7 @@ import {
   rebukeModifier,
   rebukeText,
   rebukeTitle,
+  heldWaitText,
   sayAnswer,
 } from './reaction-queue-text';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
@@ -117,6 +118,17 @@ export class ReactionQueue {
   protected readonly skipAsked = signal('');
   /** What the last answer did, for the live region. */
   protected readonly said = signal('');
+  /** The roll the master made for a player waits for the roller's question (a reroll rule): where it is and when he may answer. */
+  private readonly heldAsked = signal<{ readonly window: string; readonly text: string } | null>(
+    null,
+  );
+  /** The note stays while the window the roll was made for is still open: the roller's answer resolves it and the note goes. */
+  protected readonly heldNote = computed(() => {
+    const asked = this.heldAsked();
+    return asked !== null && this.encounter().reactionWindows.some((w) => w.id === asked.window)
+      ? asked.text
+      : '';
+  });
   protected readonly ofTheLabel = (label: string): string => ofThe([label]);
   /** The slot the master picked for an NPC's Counterspell, by window. */
   private readonly picks = signal<Readonly<Record<string, SlotOption>>>({});
@@ -244,6 +256,7 @@ export class ReactionQueue {
       how.kind === 'typed' && extra.length > 0 ? { ...how, extra } : how;
     this.busy.set(true);
     this.error.set('');
+    this.heldAsked.set(null);
     try {
       const res = await this.api.attacks.resolveConcentrationSave(
         this.campaignId(),
@@ -253,6 +266,11 @@ export class ReactionQueue {
         this.keys.keyFor({ window: w.id, how: sent }),
       );
       this.state().apply(res.encounter);
+      if (res.held) {
+        // The roller's reroll question waits: nothing was written, and the question is in the roller's row.
+        this.heldAsked.set({ window: w.id, text: heldWaitText(res.held) });
+        return;
+      }
       const r = res.result;
       this.play(() => showOfConcentration(r));
       this.said.set(concentrationSaid(w, how, r));
@@ -280,6 +298,7 @@ export class ReactionQueue {
     const sent: EffectSaveAnswer = how.kind === 'typed' ? { ...how, extra } : how;
     this.busy.set(true);
     this.error.set('');
+    this.heldAsked.set(null);
     try {
       const res = await this.effects.rollEffectSave(
         this.campaignId(),
@@ -289,6 +308,10 @@ export class ReactionQueue {
         this.keys.keyFor({ window: w.id, how: sent }),
       );
       this.state().apply(res.encounter);
+      if (res.held) {
+        this.heldAsked.set({ window: w.id, text: heldWaitText(res.held) });
+        return;
+      }
       this.play(() =>
         showOfEffectSave(`Teste de resistência de ${effectSaveAbility(w)}`, res.result),
       );

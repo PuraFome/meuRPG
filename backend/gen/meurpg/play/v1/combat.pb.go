@@ -5073,8 +5073,11 @@ type CombatLogHitRider struct {
 	// one), and the feature that did it as a content key. Set where the d20 is.
 	TreatedAs       *int32 `protobuf:"varint,21,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
 	TreatedAsSource string `protobuf:"bytes,22,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+	// an entry the master retired or switched off (RN-23).
+	TreatedAsSourceName string `protobuf:"bytes,23,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *CombatLogHitRider) Reset() {
@@ -5257,6 +5260,13 @@ func (x *CombatLogHitRider) GetTreatedAs() int32 {
 func (x *CombatLogHitRider) GetTreatedAsSource() string {
 	if x != nil {
 		return x.TreatedAsSource
+	}
+	return ""
+}
+
+func (x *CombatLogHitRider) GetTreatedAsSourceName() string {
+	if x != nil {
+		return x.TreatedAsSourceName
 	}
 	return ""
 }
@@ -6080,8 +6090,11 @@ type Combatant struct {
 	// counted as it came up. Same audience as `initiative_face`.
 	InitiativeTreatedAs       *int32 `protobuf:"varint,109,opt,name=initiative_treated_as,json=initiativeTreatedAs,proto3,oneof" json:"initiative_treated_as,omitempty"`
 	InitiativeTreatedAsSource string `protobuf:"bytes,110,opt,name=initiative_treated_as_source,json=initiativeTreatedAsSource,proto3" json:"initiative_treated_as_source,omitempty"`
-	unknownFields             protoimpl.UnknownFields
-	sizeCache                 protoimpl.SizeCache
+	// The name of the feature in `initiative_treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+	// an entry the master retired or switched off (RN-23).
+	InitiativeTreatedAsSourceName string `protobuf:"bytes,111,opt,name=initiative_treated_as_source_name,json=initiativeTreatedAsSourceName,proto3" json:"initiative_treated_as_source_name,omitempty"`
+	unknownFields                 protoimpl.UnknownFields
+	sizeCache                     protoimpl.SizeCache
 }
 
 func (x *Combatant) Reset() {
@@ -6658,6 +6671,13 @@ func (x *Combatant) GetInitiativeTreatedAs() int32 {
 func (x *Combatant) GetInitiativeTreatedAsSource() string {
 	if x != nil {
 		return x.InitiativeTreatedAsSource
+	}
+	return ""
+}
+
+func (x *Combatant) GetInitiativeTreatedAsSourceName() string {
+	if x != nil {
+		return x.InitiativeTreatedAsSourceName
 	}
 	return ""
 }
@@ -10140,6 +10160,9 @@ type DiceRoll struct {
 	// The feature that did it, as a content key ("feature:reliable-talent"); its
 	// Portuguese name is in the content's names. Empty when `treated_as` is unset.
 	TreatedAsSource string `protobuf:"bytes,8,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
+	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+	// an entry the master retired or switched off (RN-23).
+	TreatedAsSourceName string `protobuf:"bytes,101,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
 	// A d20 rolled with advantage or disadvantage has two faces: the index of the one
 	// that counts (the higher with advantage, the lower with disadvantage). 0 for any
 	// other roll.
@@ -10244,6 +10267,13 @@ func (x *DiceRoll) GetTreatedAs() int32 {
 func (x *DiceRoll) GetTreatedAsSource() string {
 	if x != nil {
 		return x.TreatedAsSource
+	}
+	return ""
+}
+
+func (x *DiceRoll) GetTreatedAsSourceName() string {
+	if x != nil {
+		return x.TreatedAsSourceName
 	}
 	return ""
 }
@@ -12467,7 +12497,12 @@ type RerollQuestion struct {
 	// How many uses of `resource` the reroll spends (0 when it costs nothing).
 	Cost int32 `protobuf:"varint,4,opt,name=cost,proto3" json:"cost,omitempty"`
 	// The feature that gives the reroll, as a content key: the `source_key` of the Reroll the result lists.
-	SourceKey     string `protobuf:"bytes,5,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	SourceKey string `protobuf:"bytes,5,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	// The name of that feature (see `Reroll.source_name`): the roller's player and the master read it, nobody else reads the
+	// question.
+	SourceName string `protobuf:"bytes,6,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
+	// The faces of the die being asked about (20): the prompt draws a d20 from it.
+	Sides         int32 `protobuf:"varint,7,opt,name=sides,proto3" json:"sides,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12535,6 +12570,20 @@ func (x *RerollQuestion) GetSourceKey() string {
 		return x.SourceKey
 	}
 	return ""
+}
+
+func (x *RerollQuestion) GetSourceName() string {
+	if x != nil {
+		return x.SourceName
+	}
+	return ""
+}
+
+func (x *RerollQuestion) GetSides() int32 {
+	if x != nil {
+		return x.Sides
+	}
+	return 0
 }
 
 // HeldRollOffer is the question a roll that waits asks, whichever roll it is: the d20 was rolled and
@@ -13976,8 +14025,11 @@ type ChannelDivinityTurn struct {
 	// one), and the feature that did it as a content key. Unset, and empty, when the d20 counted as it came up.
 	TreatedAs       *int32 `protobuf:"varint,7,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
 	TreatedAsSource string `protobuf:"bytes,8,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+	// an entry the master retired or switched off (RN-23).
+	TreatedAsSourceName string `protobuf:"bytes,9,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ChannelDivinityTurn) Reset() {
@@ -14062,6 +14114,13 @@ func (x *ChannelDivinityTurn) GetTreatedAs() int32 {
 func (x *ChannelDivinityTurn) GetTreatedAsSource() string {
 	if x != nil {
 		return x.TreatedAsSource
+	}
+	return ""
+}
+
+func (x *ChannelDivinityTurn) GetTreatedAsSourceName() string {
+	if x != nil {
+		return x.TreatedAsSourceName
 	}
 	return ""
 }
@@ -19398,8 +19457,11 @@ type CombatLogEffect struct {
 	// (`d20` is what came up, `total` uses this one), and the feature that did it as a content key.
 	TreatedAs       *int32 `protobuf:"varint,18,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
 	TreatedAsSource string `protobuf:"bytes,19,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+	// an entry the master retired or switched off (RN-23).
+	TreatedAsSourceName string `protobuf:"bytes,20,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *CombatLogEffect) Reset() {
@@ -19561,6 +19623,13 @@ func (x *CombatLogEffect) GetTreatedAs() int32 {
 func (x *CombatLogEffect) GetTreatedAsSource() string {
 	if x != nil {
 		return x.TreatedAsSource
+	}
+	return ""
+}
+
+func (x *CombatLogEffect) GetTreatedAsSourceName() string {
+	if x != nil {
+		return x.TreatedAsSourceName
 	}
 	return ""
 }
@@ -22959,8 +23028,11 @@ type LegendaryResistanceOffer struct {
 	// one), and the feature that did it as a content key.
 	TreatedAs       *int32 `protobuf:"varint,8,opt,name=treated_as,json=treatedAs,proto3,oneof" json:"treated_as,omitempty"`
 	TreatedAsSource string `protobuf:"bytes,9,opt,name=treated_as_source,json=treatedAsSource,proto3" json:"treated_as_source,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+	// an entry the master retired or switched off (RN-23).
+	TreatedAsSourceName string `protobuf:"bytes,10,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *LegendaryResistanceOffer) Reset() {
@@ -23052,6 +23124,13 @@ func (x *LegendaryResistanceOffer) GetTreatedAs() int32 {
 func (x *LegendaryResistanceOffer) GetTreatedAsSource() string {
 	if x != nil {
 		return x.TreatedAsSource
+	}
+	return ""
+}
+
+func (x *LegendaryResistanceOffer) GetTreatedAsSourceName() string {
+	if x != nil {
+		return x.TreatedAsSourceName
 	}
 	return ""
 }
@@ -26421,7 +26500,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rduration_text\x18\a \x01(\tR\fdurationText\x12\x1f\n" +
 	"\vrepeat_save\x18\b \x01(\bR\n" +
 	"repeatSave\x12\x12\n" +
-	"\x04text\x18\t \x01(\tR\x04text\"\xd7\x06\n" +
+	"\x04text\x18\t \x01(\tR\x04text\"\x8c\a\n" +
 	"\x11CombatLogHitRider\x126\n" +
 	"\x06choice\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.HitRiderChoiceR\x06choice\x129\n" +
 	"\x06result\x18\x02 \x01(\x0e2!.meurpg.play.v1.HitRiderLogResultR\x06result\x12\x10\n" +
@@ -26449,7 +26528,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rresisted_left\x18\x14 \x01(\x05R\fresistedLeft\x12\"\n" +
 	"\n" +
 	"treated_as\x18\x15 \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
-	"\x11treated_as_source\x18\x16 \x01(\tR\x0ftreatedAsSourceB\r\n" +
+	"\x11treated_as_source\x18\x16 \x01(\tR\x0ftreatedAsSource\x123\n" +
+	"\x16treated_as_source_name\x18\x17 \x01(\tR\x13treatedAsSourceNameB\r\n" +
 	"\v_treated_as\"\xb4\x01\n" +
 	"\x14HiddenRevealQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
@@ -26497,7 +26577,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12%\n" +
 	"\x0eattacker_label\x18\x06 \x01(\tR\rattackerLabel\x12$\n" +
 	"\x0eattack_name_pt\x18\a \x01(\tR\fattackNamePt\x12\"\n" +
-	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xfe\x1d\n" +
+	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xc8\x1e\n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x121\n" +
@@ -26590,7 +26670,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rreaction_kind\x18k \x01(\x0e2\x1c.meurpg.play.v1.ReactionKindR\freactionKind\x12%\n" +
 	"\x0ereaction_round\x18l \x01(\x05R\rreactionRound\x127\n" +
 	"\x15initiative_treated_as\x18m \x01(\x05H\tR\x13initiativeTreatedAs\x88\x01\x01\x12?\n" +
-	"\x1cinitiative_treated_as_source\x18n \x01(\tR\x19initiativeTreatedAsSourceB\r\n" +
+	"\x1cinitiative_treated_as_source\x18n \x01(\tR\x19initiativeTreatedAsSource\x12H\n" +
+	"!initiative_treated_as_source_name\x18o \x01(\tR\x1dinitiativeTreatedAsSourceNameB\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +
 	"\x10_initiative_faceB\x15\n" +
@@ -26863,7 +26944,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\fencounter_id\x18\x02 \x01(\tR\vencounterId\x12'\n" +
 	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\"O\n" +
 	"\x14EndEncounterResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xdc\x03\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x91\x04\n" +
 	"\bDiceRoll\x12\x1d\n" +
 	"\n" +
 	"dice_count\x18\x01 \x01(\x05R\tdiceCount\x12\x1d\n" +
@@ -26875,7 +26956,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\bphysical\x18\x06 \x01(\bR\bphysical\x12\"\n" +
 	"\n" +
 	"treated_as\x18\a \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
-	"\x11treated_as_source\x18\b \x01(\tR\x0ftreatedAsSource\x12#\n" +
+	"\x11treated_as_source\x18\b \x01(\tR\x0ftreatedAsSource\x123\n" +
+	"\x16treated_as_source_name\x18e \x01(\tR\x13treatedAsSourceName\x12#\n" +
 	"\rcounted_index\x18\t \x01(\x05R\fcountedIndex\x122\n" +
 	"\brerolled\x18\n" +
 	" \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\x12=\n" +
@@ -27083,14 +27165,17 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x13IndomitableQuestion\x12\x16\n" +
 	"\x06failed\x18\x01 \x01(\bR\x06failed\".\n" +
 	"\x14StrokeOfLuckQuestion\x12\x16\n" +
-	"\x06failed\x18\x01 \x01(\bR\x06failed\"\x9b\x01\n" +
+	"\x06failed\x18\x01 \x01(\bR\x06failed\"\xd2\x01\n" +
 	"\x0eRerollQuestion\x12!\n" +
 	"\freroll_index\x18\x01 \x01(\x05R\vrerollIndex\x12\x17\n" +
 	"\aat_most\x18\x02 \x01(\x05R\x06atMost\x12\x1a\n" +
 	"\bresource\x18\x03 \x01(\tR\bresource\x12\x12\n" +
 	"\x04cost\x18\x04 \x01(\x05R\x04cost\x12\x1d\n" +
 	"\n" +
-	"source_key\x18\x05 \x01(\tR\tsourceKey\"\xab\x05\n" +
+	"source_key\x18\x05 \x01(\tR\tsourceKey\x12\x1f\n" +
+	"\vsource_name\x18\x06 \x01(\tR\n" +
+	"sourceName\x12\x14\n" +
+	"\x05sides\x18\a \x01(\x05R\x05sides\"\xab\x05\n" +
 	"\rHeldRollOffer\x12\x17\n" +
 	"\ahold_id\x18\x01 \x01(\tR\x06holdId\x120\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1c.meurpg.play.v1.HeldRollKindR\x04kind\x12!\n" +
@@ -27207,7 +27292,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x14\n" +
 	"\x05asked\x18\x03 \x01(\x05R\x05asked\x12\x16\n" +
 	"\x06healed\x18\x04 \x01(\x05R\x06healed\x12(\n" +
-	"\x10hit_points_after\x18\x05 \x01(\x05R\x0ehitPointsAfter\"\x89\x02\n" +
+	"\x10hit_points_after\x18\x05 \x01(\x05R\x0ehitPointsAfter\"\xbe\x02\n" +
 	"\x13ChannelDivinityTurn\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x10\n" +
@@ -27217,7 +27302,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06turned\x18\x06 \x01(\bR\x06turned\x12\"\n" +
 	"\n" +
 	"treated_as\x18\a \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
-	"\x11treated_as_source\x18\b \x01(\tR\x0ftreatedAsSourceB\r\n" +
+	"\x11treated_as_source\x18\b \x01(\tR\x0ftreatedAsSource\x123\n" +
+	"\x16treated_as_source_name\x18\t \x01(\tR\x13treatedAsSourceNameB\r\n" +
 	"\v_treated_as\"\xdc\x02\n" +
 	"\x1fAdjustCombatantHitPointsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
@@ -27679,7 +27765,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10expires_at_round\x18\n" +
 	" \x01(\x05R\x0eexpiresAtRoundB\t\n" +
 	"\a_healedB\x11\n" +
-	"\x0f_nothing_reason\"\xde\x05\n" +
+	"\x0f_nothing_reason\"\x93\x06\n" +
 	"\x0fCombatLogEffect\x12\x1d\n" +
 	"\n" +
 	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +
@@ -27702,7 +27788,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rresisted_left\x18\x11 \x01(\x05R\fresistedLeft\x12\"\n" +
 	"\n" +
 	"treated_as\x18\x12 \x01(\x05H\x03R\ttreatedAs\x88\x01\x01\x12*\n" +
-	"\x11treated_as_source\x18\x13 \x01(\tR\x0ftreatedAsSourceB\x06\n" +
+	"\x11treated_as_source\x18\x13 \x01(\tR\x0ftreatedAsSource\x123\n" +
+	"\x16treated_as_source_name\x18\x14 \x01(\tR\x13treatedAsSourceNameB\x06\n" +
 	"\x04_d20B\b\n" +
 	"\x06_totalB\x05\n" +
 	"\x03_dcB\r\n" +
@@ -28024,7 +28111,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\bac_bonus\x18\x04 \x01(\x05R\aacBonus\x123\n" +
 	"\x16armor_class_with_parry\x18\x05 \x01(\x05R\x13armorClassWithParry\"]\n" +
 	"\x19LegendaryResistancePrompt\x12@\n" +
-	"\x06offers\x18\x01 \x03(\v2(.meurpg.play.v1.LegendaryResistanceOfferR\x06offers\"\xa9\x02\n" +
+	"\x06offers\x18\x01 \x03(\v2(.meurpg.play.v1.LegendaryResistanceOfferR\x06offers\"\xde\x02\n" +
 	"\x18LegendaryResistanceOffer\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x12\x10\n" +
@@ -28036,7 +28123,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"usesPerDay\x12\"\n" +
 	"\n" +
 	"treated_as\x18\b \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
-	"\x11treated_as_source\x18\t \x01(\tR\x0ftreatedAsSourceB\r\n" +
+	"\x11treated_as_source\x18\t \x01(\tR\x0ftreatedAsSource\x123\n" +
+	"\x16treated_as_source_name\x18\n" +
+	" \x01(\tR\x13treatedAsSourceNameB\r\n" +
 	"\v_treated_as\"\x9a\x01\n" +
 	"\x14ManeuverReduceOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +

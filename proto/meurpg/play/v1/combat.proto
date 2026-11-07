@@ -2498,6 +2498,9 @@ message CombatLogHitRider {
   // one), and the feature that did it as a content key. Set where the d20 is.
   optional int32 treated_as = 21;
   string treated_as_source = 22;
+  // The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+  // an entry the master retired or switched off (RN-23).
+  string treated_as_source_name = 23;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -2883,6 +2886,9 @@ message Combatant {
   // counted as it came up. Same audience as `initiative_face`.
   optional int32 initiative_treated_as = 109;
   string initiative_treated_as_source = 110;
+  // The name of the feature in `initiative_treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+  // an entry the master retired or switched off (RN-23).
+  string initiative_treated_as_source_name = 111;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -3480,6 +3486,9 @@ message DiceRoll {
   // The feature that did it, as a content key ("feature:reliable-talent"); its
   // Portuguese name is in the content's names. Empty when `treated_as` is unset.
   string treated_as_source = 8;
+  // The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+  // an entry the master retired or switched off (RN-23).
+  string treated_as_source_name = 101;
   // A d20 rolled with advantage or disadvantage has two faces: the index of the one
   // that counts (the higher with advantage, the lower with disadvantage). 0 for any
   // other roll.
@@ -4121,6 +4130,11 @@ message RerollQuestion {
   int32 cost = 4;
   // The feature that gives the reroll, as a content key: the `source_key` of the Reroll the result lists.
   string source_key = 5;
+  // The name of that feature (see `Reroll.source_name`): the roller's player and the master read it, nobody else reads the
+  // question.
+  string source_name = 6;
+  // The faces of the die being asked about (20): the prompt draws a d20 from it.
+  int32 sides = 7;
 }
 
 // HeldRollOffer is the question a roll that waits asks, whichever roll it is: the d20 was rolled and
@@ -4402,6 +4416,9 @@ message ChannelDivinityTurn {
   // one), and the feature that did it as a content key. Unset, and empty, when the d20 counted as it came up.
   optional int32 treated_as = 7;
   string treated_as_source = 8;
+  // The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+  // an entry the master retired or switched off (RN-23).
+  string treated_as_source_name = 9;
 }
 
 // AdjustCombatantHitPointsRequest is the master's correction of an NPC.
@@ -5681,6 +5698,9 @@ message CombatLogEffect {
   // (`d20` is what came up, `total` uses this one), and the feature that did it as a content key.
   optional int32 treated_as = 18;
   string treated_as_source = 19;
+  // The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+  // an entry the master retired or switched off (RN-23).
+  string treated_as_source_name = 20;
 }
 
 // CombatLogEffectChange is what an effect did.
@@ -6419,6 +6439,9 @@ message LegendaryResistanceOffer {
   // one), and the feature that did it as a content key.
   optional int32 treated_as = 8;
   string treated_as_source = 9;
+  // The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
+  // an entry the master retired or switched off (RN-23).
+  string treated_as_source_name = 10;
 }
 
 message ManeuverReduceOption {

@@ -8,6 +8,7 @@ import { tight } from '../format/text';
 import { feetToMeters, formatMeters } from '../units';
 import type { CatalogAbility } from './catalog';
 import { ABILITY_FIELDS, type Bonuses, noBonuses } from './feature-draft';
+import { rollEffectItem } from './content-read-rolls';
 
 /**
  * What a player reads of an entry (MR-025, question 83: "every option that is on, in full, with the numbers and the
@@ -36,6 +37,8 @@ export interface EntryRead {
   readonly sections: readonly ReadSection[];
   /** Text of the entry itself (a spell's description, a subclass's). */
   readonly text: readonly string[];
+  /** The effects that change a roll, a lead and a sentence each, under the text. */
+  readonly effects?: readonly ReadItem[];
 }
 
 const RECHARGE_WORDS: Readonly<Record<string, string>> = {
@@ -66,6 +69,10 @@ export function ensureStop(text: string): string {
 
 /** One effect in a line, for the ones the player can read without the master's menu; '' for the others (their text carries them). */
 export function effectLine(e: TableEffect, nameOf: NameOf): string {
+  const roll = rollEffectItem(e, nameOf);
+  if (roll) {
+    return `${roll.title}: ${roll.text}`;
+  }
   switch (e.type) {
     case 'proficiency': {
       const what =

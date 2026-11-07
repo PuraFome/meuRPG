@@ -14,6 +14,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -29,7 +30,6 @@ import { TableContentClient, contentErrorText } from '../../../core/content/cont
 import { type ContentContext, loadContext } from '../../../core/content/content-context';
 import { readEntry } from '../../../core/content/content-read';
 import {
-  KIND_WORDS,
   type ContentNavKind,
   entryState,
   navOfKind,
@@ -80,9 +80,9 @@ type PageState =
 /**
  * One entry of the table's content (MR-025, RN-23; E10-01 states 4 to 9): the master's editor for a spell, a race, a subrace
  * and a background on a laptop, and the read view for everything else (a player; the master on a phone, where it reads and
- * archives only; the master's classes and subclasses until 10.12). The header carries the state in words, "Arquivar" and
- * its question in place (a bottom sheet on a phone), and, after a write, what changed for the sheets that use the entry.
- * Nothing is ever deleted: an archived entry says so, offers "Desarquivar", and can still be edited.
+ * archives only; the master's classes and subclasses until 10.12). The header carries the state in words, "Arquivar" (behind
+ * the "⋮" on a phone) and its question in place (a bottom sheet on a phone), and, after a write, what changed for the sheets
+ * that use the entry. Nothing is ever deleted: an archived entry says so, offers "Desarquivar", and can still be edited.
  */
 @Component({
   selector: 'app-content-entry',
@@ -96,6 +96,7 @@ type PageState =
     ClassFeatureEditor,
     MatButtonModule,
     MatIconModule,
+    MatMenuModule,
     MatProgressSpinnerModule,
     RaceEditor,
     RouterLink,
@@ -118,7 +119,6 @@ export class ContentEntry {
   private readonly title = viewChild<ElementRef<HTMLElement>>('title');
 
   protected readonly Kind = TableContentKind;
-  protected readonly kindWords = KIND_WORDS;
   protected readonly phone = mediaQuery(PHONE_QUERY);
 
   protected readonly campaignId = signal('');

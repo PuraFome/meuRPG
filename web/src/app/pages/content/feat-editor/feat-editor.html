@@ -51,8 +51,6 @@
         <p class="inline-issue" role="note">{{ m }}</p>
       }
     </section>
-
-    <app-editor-bar saveLabel="Salvar talento" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
   </div>
 
   <aside class="editor__side" aria-label="Como os jogadores veem">
@@ -69,3 +67,4 @@
     }
   </aside>
 </div>
+<app-editor-bar [sticky]="true" saveLabel="Salvar talento" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />

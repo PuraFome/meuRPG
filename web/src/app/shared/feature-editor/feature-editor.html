@@ -40,6 +40,7 @@
         [allowTextOnly]="true"
         [featEditor]="featEditor()"
         [spellOptions]="spellOptions()"
+        [siblings]="feature().effects"
         (effectChange)="patch({ effects: [$event] })"
       />
     } @else {
@@ -51,6 +52,7 @@
         [allowTextOnly]="true"
         [featEditor]="featEditor()"
         [spellOptions]="spellOptions()"
+        [siblings]="feature().effects"
         (effectChange)="setEffect(0, $event)"
       />
     }
@@ -74,6 +76,7 @@
           [basePath]="path('effects[' + e.index + ']')"
           [issuesOf]="issuesOf()"
           [spellOptions]="spellOptions()"
+          [siblings]="feature().effects"
           label="Outro efeito"
           [featEditor]="featEditor()"
           (effectChange)="setEffect(e.index, $event)"

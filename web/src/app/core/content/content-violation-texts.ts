@@ -3,6 +3,17 @@
 const DICE_TEXT = 'Escreva o dado assim: 2d8 (de 1 a 20 dados).';
 export const FORMULA_TEXT =
   'Esta fórmula não funciona. Use só as funções da lista e confira os parênteses.';
+/** What a refusal of an effect's field says when nothing more specific is known: the picker puts the words of the effect's type in
+ * their place (`EFFECT_REFUSAL_TEXTS`). */
+export const BAD_EFFECT_VALUE = 'Este valor não serve para este efeito.';
+export const DANGLING_TEXT = 'Isto aponta para algo que não existe mais. Escolha de novo.';
+export const FEAT_VALUE_TEXT =
+  'Este valor não serve para este efeito (um aumento de habilidade soma +1 ou +2 a cada habilidade).';
+export const GENERIC_EFFECT_TEXTS: ReadonlySet<string> = new Set([
+  BAD_EFFECT_VALUE,
+  DANGLING_TEXT,
+  FEAT_VALUE_TEXT,
+]);
 export const LONG_TEXT = 'Este texto é longo demais. Encurte o parágrafo.';
 
 /** What the server's reason at a field says in Portuguese, from the shape of the path (the indexes are `[]`). A row with no
@@ -226,8 +237,11 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
   {
     shape: /^table_feat\.effects\[\]\.value$/,
     reason: 'bad_value',
-    text: 'Este valor não serve para este efeito (um aumento de habilidade soma +1 ou +2 a cada habilidade).',
+    text: FEAT_VALUE_TEXT,
   },
+  // reroll and roll_minimum (rolleffects.go): their own fields.
+  { shape: /\.effects\[\]\.rolls$/, text: 'Marque ao menos uma jogada.' },
+  { shape: /\.effects\[\]\.at_most$/, text: 'A face vai de 1 a 20.' },
   // A table option for an SRD option set (MR-025): the paths and reasons of backend/internal/rules/overlay_option.go.
   {
     shape: /^table_option\.set$/,

@@ -63,7 +63,8 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
-import { archiveEntryRPC, costsRaceBody, createEntryRPC, entryRoute, raceBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, costsRaceBody, createEntryRPC, criticalFeatureBody, entryRoute, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody } from './classes-support';
@@ -6020,6 +6021,113 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema cla
   await scanTableContent(browser, 'light', 320);
 });
 
+/**
+ * The master's effect editor for the rolls (MR-025, RN-23): "Rolar de novo" empty and with its resource, "Valor mínimo no
+ * dado" with the damage type that goes away when another roll is checked, a refusal on the rolls, the critical range with its lock and
+ * the scope cards, and what the master reads on a phone and a player reads. The entries come through the API.
+ */
+async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(240_000);
+  const mContext = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  const pContext = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport: { width, height: 900 },
+  });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade rolagens ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const reroll = await createEntryRPC(m, campaignId, 'tableFeat', rerollFeatBody());
+    const minimum = await createEntryRPC(m, campaignId, 'tableFeat', minimumFeatBody());
+    const critical = await createEntryRPC(m, campaignId, 'tableClassFeature', criticalFeatureBody());
+
+    if (width >= 768) {
+      // Just chosen: no roll checked, and "Gasta usos de" a text (the entry defines no resource; the class's and the SRD's are taken too).
+      await open(m, `/campaigns/${campaignId}/content/new/feat`);
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Rolar de novo' });
+      await expect(m.getByRole('group', { name: 'Vale nas jogadas' })).toBeVisible();
+      await expect(m.getByLabel('Gasta usos de', { exact: true })).toBeEnabled();
+      await expectScreenPasses(m, `Editor de talento, "Rolar de novo" vazio e sem recurso na entrada ${where}`);
+      // Refused: nothing checked and no face; the messages sit on their fields and the typed name stays.
+      await m.getByLabel('Nome do talento').fill('Sorte Vazia');
+      await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByText('Nada foi salvo; o que você digitou continua aqui.')).toBeVisible();
+      await expect(m.getByText('Marque ao menos uma jogada.')).toBeVisible();
+      await expect(m.getByRole('checkbox', { name: 'Jogada de ataque (o d20)' })).toBeFocused();
+      await expect(m.getByLabel('Nome do talento')).toHaveValue('Sorte Vazia');
+      await expectScreenPasses(m, `Editor de talento, "Rolar de novo" recusado nas jogadas e na face ${where}`);
+      // With its resource: the pool the same feat defines is on the list, and its cost shows.
+      await open(m, entryRoute(campaignId, reroll));
+      await expect(m.getByLabel('Nome do talento')).toHaveValue('Sorte Teimosa');
+      await expect(m.getByRole('checkbox', { name: 'Jogada de ataque (o d20)' })).toBeChecked();
+      await expect(m.getByLabel('Rola de novo se tirar até', { exact: true })).toHaveValue('2');
+      await expect(m.getByLabel('Gasta usos de', { exact: true })).toHaveValue('sorte_teimosa');
+      await expect(m.getByLabel('Custo (usos)', { exact: true })).toHaveValue('1');
+      await expect(m.getByText('Rolar de novo:').first()).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, "Rolar de novo" com o recurso da entrada ${where}`);
+      // The pool is taken out (the feat has a second effect) and the save is tried: the server refuses the resource the reroll spent.
+      await m.getByRole('button', { name: /Remover o efeito 2/ }).click();
+      await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByText('Nada foi salvo; o que você digitou continua aqui.')).toBeVisible();
+      await expect(m.getByText('Esta entrada não define mais este recurso. Escolha outro, ou deixe vazio.')).toBeVisible();
+      await expect(m.getByLabel('Gasta usos de', { exact: true })).toBeFocused();
+      await expectScreenPasses(m, `Editor de talento, o recurso que não existe mais, recusado ao salvar ${where}`);
+      // The minimum: the damage type is there with damage alone and goes away when another roll is checked.
+      await open(m, entryRoute(campaignId, minimum));
+      await expect(m.getByLabel('Valor mínimo', { exact: true })).toHaveValue('2');
+      await expect(m.getByLabel('Tipo de dano', { exact: true })).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, "Valor mínimo no dado" com o tipo de dano ${where}`);
+      await m.locator('app-check-row', { hasText: 'Jogada de ataque (o d20)' }).click();
+      await expect(m.getByLabel('Tipo de dano', { exact: true })).toHaveCount(0);
+      await expectScreenPasses(m, `Editor de talento, o tipo de dano some com outra jogada marcada ${where}`);
+      // The critical range: "Como muda" locked on Definir, the value and the three scope cards.
+      await open(m, entryRoute(campaignId, critical));
+      await expect(m.getByLabel('Nome da característica')).toHaveValue('Olho Treinado');
+      await expect(m.getByLabel('Como muda', { exact: true })).toBeDisabled();
+      await expect(m.getByText('A margem de crítico só aceita Definir.')).toBeVisible();
+      await expect(m.getByLabel('Crítico a partir do d20', { exact: true })).toHaveValue('19');
+      await expect(m.getByRole('radio', { name: /Armas e magias/ })).toBeChecked();
+      await expectScreenPasses(m, `Editor de característica de classe, a margem de crítico com o "Vale para" ${where}`);
+    } else {
+      await open(m, entryRoute(campaignId, reroll));
+      await expect(m.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.')).toBeVisible();
+      await expect(m.getByText('jogada de ataque e teste de resistência, com 2 ou menos; gasta 1 uso.')).toBeVisible();
+      await expectScreenPasses(m, `Talento com "Rolar de novo", lido pelo mestre no celular ${where}`);
+    }
+
+    await open(p, entryRoute(campaignId, reroll));
+    await expect(p.getByText('jogada de ataque e teste de resistência, com 2 ou menos; gasta 1 uso.')).toBeVisible();
+    await expectScreenPasses(p, `Talento com "Rolar de novo", visto por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, minimum));
+    await expect(p.getByText('dado de dano de fogo, no mínimo 2.')).toBeVisible();
+    await expectScreenPasses(p, `Talento com valor mínimo, visto por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, critical));
+    await expect(p.getByText('19 a 20, em armas e magias.')).toBeVisible();
+    await expectScreenPasses(p, `Característica com margem de crítico, vista por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('as rolagens no editor de efeitos passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanRollEffects(browser, 'light', 1280);
+});
+
+test('as rolagens no editor de efeitos passam no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  await scanRollEffects(browser, 'dark', 1024);
+});
+
+test('as rolagens lidas pelo mestre e pelo jogador passam no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanRollEffects(browser, 'light', 390);
+});
+
 // Generated images (slice 10.16, MR-039, RN-28, RN-10; E10-07): the "Gerar imagem" dialog from a map (the top and the end of its body, the
 // textured map, the wait, the result with its adjustment, "Usar como imagem do mapa" asked in place, a refusal in words) and from the gallery
 // (with the chain of an adjustment), and on a phone the same as a sheet with a fixed footer. The fake generator makes the pictures.
@@ -7481,6 +7589,122 @@ test('o painel de perguntas pendentes fora do combate passa no axe e nas confer�
   await scanHeldPanelScreens(browser, 'dark', 390);
 });
 
+/** The question of a table feature's reroll (R6, R7, R9): the player's "Tirou 2: rolar de novo?" and the answer on its way, and the
+ * master's card while the roller answers first, when it is the master's turn to answer, and once the roller did. */
+async function scanRerollQuestionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done, swing } = await rerollTable(browser, `Acessibilidade rolar de novo ${Date.now()}`, {
+    colorScheme,
+    playerWidth: width,
+    masterWidth: width,
+  });
+  try {
+    await swing(2);
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    const asked = p.getByRole('heading', { name: 'Tirou 2: rolar de novo?' });
+    await expect(asked).toBeVisible();
+    await expect(p.getByText(/Sorte Teimosa: você rola este d20 de novo/)).toBeVisible();
+    await expectScreenPasses(p, `Pergunta de rolar de novo, a do jogador ${where}`);
+    // A reloaded page asks again with its own notice, never the Bardic Inspiration one.
+    await p.reload();
+    await expect(p.getByTestId('reroll-pending')).toContainText('A sua rolagem espera a sua resposta: tirou 2, rolar de novo?');
+    await expect(p.getByTestId('inspiration-pending')).toHaveCount(0);
+    await expectScreenPasses(p, `Pergunta de rolar de novo, a página recarregada ${where}`);
+
+    // The master's card: while the roller answers first his buttons are disabled; then they are his.
+    const question = m.getByRole('region', { name: /Tirou 2: rolar de novo\?/ });
+    const keep = question.getByRole('button', { name: 'Ficar com o 2' });
+    await expect(question.getByRole('button', { name: 'Rolar de novo' })).toBeDisabled();
+    await expect(keep).toBeDisabled();
+    await expectScreenPasses(m, `Pergunta de rolar de novo, o mestre espera o jogador ${where}`);
+    await expect(keep).toBeEnabled({ timeout: 30_000 });
+    await expect(question.getByText('O app rola o novo d20; não há resultado para digitar.')).toBeVisible();
+    await expectScreenPasses(m, `Pergunta de rolar de novo, o mestre pode responder ${where}`);
+
+    // The player's answer on its way: the spinner says the d20 is being rolled.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await p.route('**/meurpg.play.v1.ResourceService/AnswerHeldRoll', async (route) => {
+      await held;
+      await route.continue();
+    });
+    await p.getByRole('button', { name: 'Rolar de novo' }).click();
+    await expect(p.getByText('Rolando o d20 de novo…')).toBeVisible();
+    await expectScreenPasses(p, `Pergunta de rolar de novo, rolando o d20 ${where}`);
+    release();
+    await expect(asked).toBeHidden();
+    await p.unroute('**/meurpg.play.v1.ResourceService/AnswerHeldRoll');
+    await expect(m.getByText('Essa pergunta não vale mais.')).toBeVisible();
+    await expectScreenPasses(m, `Pergunta de rolar de novo, a pergunta saiu da fila ${where}`);
+    // The log tells the new d20 with the feature's name, to the roller and to the master.
+    const rerolled = /Sorte Teimosa: 2 → \d+ · 1d20 \(\d+\) \+ \d+ = \d+/;
+    // The attack sheet is a modal and hides the log behind it, at a hit (damage still to roll) and at a miss alike.
+    const attackSheet = p.getByRole('dialog', { name: /^Atacar com/ });
+    await attackSheet.getByRole('button', { name: 'Fechar' }).click();
+    await expect(attackSheet).toBeHidden();
+    await openCombatLog(p);
+    await expect(p.getByText(rerolled).first()).toBeVisible();
+    await expectScreenPasses(p, `Registro do combate, o d20 rolado de novo, visto por quem rolou ${where}`);
+    await openCombatPanel(m, 'Registro');
+    await expect(m.getByText(rerolled).first()).toBeVisible();
+    await expectScreenPasses(m, `Registro do combate, o d20 rolado de novo, visto pelo mestre ${where}`);
+  } finally {
+    await done();
+  }
+}
+
+/** The other way round: the roller does not answer and the master does, so the player reads that the master answered for them. */
+async function scanRerollMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const { m, p, campaignId, done, swing } = await rerollTable(browser, `Acessibilidade rolar de novo mestre ${Date.now()}`, {
+    colorScheme,
+    playerWidth: width,
+    masterWidth: width,
+  });
+  try {
+    await swing(2);
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await expect(p.getByRole('heading', { name: 'Tirou 2: rolar de novo?' })).toBeVisible();
+    const keep = m.getByRole('region', { name: /Tirou 2: rolar de novo\?/ }).getByRole('button', { name: 'Ficar com o 2' });
+    await expect(keep).toBeDisabled();
+    await expect(keep).toBeEnabled({ timeout: 30_000 });
+    await keep.click();
+    await expect(m.getByText('Você respondeu por Vex: ficou com o 2.')).toBeVisible();
+    await expectScreenPasses(m, `Pergunta de rolar de novo, o mestre respondeu ${where}`);
+    await expect(p.getByTestId('held-vanished')).toContainText('O mestre respondeu por você.');
+    // The attack sheet says it too, and offers no answer: the question is no longer open.
+    const attackSheet = p.getByRole('dialog', { name: /^Atacar com/ });
+    await expect(attackSheet.getByTestId('sheet-held-vanished')).toContainText('O mestre respondeu por você.');
+    await expect(attackSheet.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
+    await expect(attackSheet.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
+    await expectScreenPasses(p, `Pergunta de rolar de novo, o mestre respondeu pelo jogador ${where}`);
+  } finally {
+    await done();
+  }
+}
+
+test('a pergunta de rolar de novo passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRerollQuestionScreens(browser, 'light', 390);
+});
+
+test('a pergunta de rolar de novo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRerollQuestionScreens(browser, 'dark', 390);
+});
+
+test('a pergunta de rolar de novo passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRerollQuestionScreens(browser, 'light', 1280);
+});
+
+test('a pergunta de rolar de novo respondida pelo mestre passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanRerollMasterAnswers(browser, 'light', 390);
+});
+
 /** The rage (PM-07): the chip on the order and the sheet, the damage with its resistance step on the
  * master's card, and the question when the rage is about to end. */
 async function scanRageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
@@ -7512,7 +7736,19 @@ async function scanRageScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await p.getByRole('button', { name: /^Encerrar/ }).last().click();
     const question = p.getByRole('alertdialog', { name: /A sua fúria vai acabar/ });
     await expect(question).toBeVisible();
-    await expect(question.getByRole('button', { name: 'Voltar e atacar' })).toBeFocused();
+    // The state is named in the message because a failure inside a full shard did not reproduce in isolation.
+    const back = question.getByRole('button', { name: 'Voltar e atacar' });
+    try {
+      await expect(back).toBeFocused();
+    } catch (error) {
+      const active = await p.evaluate(() => {
+        const el = document.activeElement;
+        return el
+          ? `${el.tagName.toLowerCase()} "${el.getAttribute('aria-label') ?? el.textContent?.trim() ?? ''}" ${el.outerHTML.slice(0, 120)}`
+          : 'nothing';
+      });
+      throw new Error(`"Voltar e atacar" was not focused (disabled: ${await back.isDisabled()}); the focus was on ${active}`, { cause: error });
+    }
     await expectScreenPasses(p, `A fúria vai acabar? ${where}`);
     await question.getByRole('button', { name: 'Voltar e atacar' }).click();
 

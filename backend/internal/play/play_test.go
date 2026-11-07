@@ -715,6 +715,10 @@ func (noRoster) ContentNames(context.Context, pgx.Tx, string) (func(string) stri
 	return func(string) string { return "" }, nil
 }
 
+func (noRoster) SourceNames(context.Context, pgx.Tx, string) (func(string) string, error) {
+	return func(string) string { return "" }, nil
+}
+
 func (noRoster) CharacterCreatures(context.Context, pgx.Tx, string, []string) ([]link.Creature, error) {
 	return nil, errors.New("not in this test")
 }

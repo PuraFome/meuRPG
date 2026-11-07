@@ -249,9 +249,11 @@ describe('ContentEntry', () => {
     expect(el.querySelector('app-class-editor')).toBeNull();
     expect(classDefaultsCall).not.toHaveBeenCalled();
     expect(text(el)).toContain('Testes de resistência');
+    // On a phone "Arquivar" is behind the "⋮" (R5), not a button of the header.
     expect(
       Array.from(el.querySelectorAll('button')).some((b) => text(b).includes('Arquivar')),
-    ).toBe(true);
+    ).toBe(false);
+    expect(el.querySelector('button[aria-label="Mais ações"]')).not.toBeNull();
   });
 
   it('says when the defaults of the class table did not come, with "Tentar de novo"', async () => {
@@ -557,13 +559,20 @@ describe('ContentEntry', () => {
         Array.from(
           document.querySelectorAll<HTMLButtonElement>('app-archive-sheet app-pair-foot button'),
         ).find((b) => text(b).includes(label))!;
-      click(el, 'Arquivar');
-      await settle(fixture, 4);
+      const archiveFromMenu = async () => {
+        (el.querySelector('button[aria-label="Mais ações"]') as HTMLButtonElement).click();
+        await settle(fixture, 4);
+        const item = Array.from(
+          document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-item'),
+        ).find((b) => text(b).includes('Arquivar'))!;
+        item.click();
+        await settle(fixture, 4);
+      };
+      await archiveFromMenu();
       sheetButton('Voltar').click();
       await settle(fixture, 4);
       expect(archive).not.toHaveBeenCalled();
-      click(el, 'Arquivar');
-      await settle(fixture, 4);
+      await archiveFromMenu();
       sheetButton('Arquivar').click();
       await settle(fixture, 4);
       expect(archive).toHaveBeenCalledWith('camp-1', 'class:guardi-o-do-vale@mesa');
