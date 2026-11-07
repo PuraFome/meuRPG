@@ -45,6 +45,34 @@ export function withoutFields(placement: Placement, paths: readonly string[]): P
   return { byField, top: placement.top, fields, count: fields.length + placement.top.length };
 }
 
+/** Where a path goes after row `index` of `list` is removed: `null` for a path inside that row, the next index down for the rows after it. */
+export function pathAfterRowRemoved(path: string, list: string, index: number): string | null {
+  const head = `${list}[`;
+  if (!path.startsWith(head)) {
+    return path;
+  }
+  const close = path.indexOf(']', head.length);
+  const at = Number(path.slice(head.length, close));
+  if (close < 0 || Number.isNaN(at) || at < index) {
+    return path;
+  }
+  return at === index ? null : `${head}${at - 1}${path.slice(close)}`;
+}
+
+/** The placement after row `index` of `list` is removed: its messages go, the rows below keep theirs at their new place, the rest stays. */
+export function withoutRow(placement: Placement, list: string, index: number): Placement {
+  const move = (path: string) => pathAfterRowRemoved(path, list, index);
+  const byField = new Map<string, readonly PlacedViolation[]>();
+  for (const [path, found] of placement.byField) {
+    const to = move(path);
+    if (to !== null) {
+      byField.set(to, found);
+    }
+  }
+  const fields = placement.fields.flatMap((path) => move(path) ?? []);
+  return { byField, top: placement.top, fields, count: fields.length + placement.top.length };
+}
+
 /** "table_race.traits[1].effects[0].value" without its indexes: "table_race.traits[].effects[].value". */
 export function shapeOf(path: string): string {
   return path.replace(/\[\d+\]/g, '[]');
@@ -105,12 +133,15 @@ function entryText(r: string): string {
 }
 
 /** The reasons about a name, or `undefined` when the reason says nothing special about one. */
-function nameText(r: string, ctx: ViolationContext): string | undefined {
+function nameText(r: string, ctx: ViolationContext, shape: string): string | undefined {
   if (r === 'duplicate_name') {
     return `Já existe ${ctx.aOne} da mesa com este nome. Escolha outro.`;
   }
   if (r === 'bad_name' || r === 'bad_text') {
-    return `O nome tem de 1 a ${NAME_MAX} letras.`;
+    // a table creature's name allows 80 letters, like its traits and attacks
+    return shape.startsWith('table_creature.')
+      ? 'O nome tem de 1 a 80 letras.'
+      : `O nome tem de 1 a ${NAME_MAX} letras.`;
   }
   if (r === 'bad_key' || r === 'reserved_key' || r === 'duplicate_key') {
     return 'Este nome não pode ser usado. Escolha outro.';
@@ -194,7 +225,11 @@ export function violationText(
     return entryText(v.reason);
   }
   const leaf = shape.slice(shape.lastIndexOf('.') + 1);
-  const named = leaf === 'name_pt' ? nameText(v.reason, ctx) : undefined;
+  // A trait's or an attack's name has one reason for every way it is wrong: its own row says them all.
+  const named =
+    leaf === 'name_pt' && !/^table_creature\.(traits|attacks)\[\]\./.test(shape)
+      ? nameText(v.reason, ctx, shape)
+      : undefined;
   // Two options of one feature with one name is about the options, not the name's length.
   const optionName = shape.endsWith('.options[].name_pt')
     ? rowText(shape, v.reason, ctx)

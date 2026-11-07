@@ -126,8 +126,7 @@ The creature resolves wherever an SRD one does, so `GiveCreature`, the list, the
   The NPC is keyed by the numbers the entry makes (`monsterNpcKeyOf`).
   An edit that changes them makes another NPC, and the monsters already in a fight keep reading the old one.
   An edit that changes only the name finds the NPC it had.
-- **Other limits.** The web app has no editor for creatures: they are created through the API or a content pack.
-  The master switches them on and off through the API only, because the options screen has no creature group.
+- **Other limits.** The master makes, edits and switches table creatures in the creature editor of "Conteúdo da mesa" on a laptop; a content pack carries them too.
   A package battle encounter that names a table creature is refused on import as unknown content.
   `characters_using` counts 0 for a held creature, since it is not part of a sheet.
 
