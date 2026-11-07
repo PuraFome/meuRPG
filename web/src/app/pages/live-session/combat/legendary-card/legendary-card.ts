@@ -26,7 +26,7 @@ export interface LegendaryFailure {
 }
 
 /**
- * The master's card of one legendary creature's actions (#557, board 07): crown and "Ações lendárias", the badge
+ * The master's card of one legendary creature's actions: crown and "Ações lendárias", the badge
  * ("Opcional", "Depois"), the creature, what is left of the round and one row per option of its stat block. Folding it
  * ("Agora não") is the screen's own business and sends nothing. The card only draws what the model says and reports the
  * taps: the host (`LegendaryOffers`) sends the calls. Master only; no player component draws it.

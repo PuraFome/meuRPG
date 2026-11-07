@@ -1,4 +1,4 @@
-// The legendary offers on the master's screen (#557): the card in the turn column, the line under "Próximo turno", the
+// The legendary offers on the master's screen: the card in the turn column, the line under "Próximo turno", the
 // attack sheet of the creature, the log in Portuguese and the Parry switch. A player never gets any of it.
 import { create } from '@bufbuild/protobuf';
 
@@ -101,7 +101,7 @@ const running = (over: object = {}) =>
 
 const LAPTOP = ['(min-width: 1024px)'];
 
-describe("CombatView, the master's legendary offers (#557)", () => {
+describe("CombatView, the master's legendary offers", () => {
   it('draws the card of the legendary creature off turn in the turn column, under the queue', async () => {
     const { fixture, el } = mountCombatView({ enc: running(), master: true, matches: LAPTOP });
     await settle(fixture);

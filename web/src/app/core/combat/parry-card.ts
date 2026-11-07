@@ -19,7 +19,6 @@ export interface ParryCard {
   readonly text: string;
   /** Parry would turn the hit into a miss. */
   readonly stops: boolean | null;
-  /** First. */
   readonly passLabel: string;
   /** "Aparar (+2 CA)". */
   readonly useLabel: string;

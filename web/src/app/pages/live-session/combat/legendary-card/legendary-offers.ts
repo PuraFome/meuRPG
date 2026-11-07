@@ -35,7 +35,7 @@ export interface LegendaryPick {
 }
 
 /**
- * The legendary actions of the master's screen (#557): one card for each legendary creature that is not on turn, under
+ * The legendary actions of the master's screen: one card for each legendary creature that is not on turn, under
  * the windows the master answers (the queue projects this into its "rest" part). It owns what belongs to the screen and
  * is never sent: which card is folded (kept per creature, for the turn it was folded on, so an encounter update does not
  * open it again), and the answers in the air. "Usar" spends the option's cost with `SpendLegendaryAction`, under a key

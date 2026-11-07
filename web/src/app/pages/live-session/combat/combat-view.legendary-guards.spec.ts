@@ -1,4 +1,4 @@
-// The legendary offers keep to one answer at a time (#557): the attack row while its sheet opens, the armed move while its
+// The legendary offers keep to one answer at a time: the attack row while its sheet opens, the armed move while its
 // drop is in the air, the cards while a spend is sent, and the focus when a card folds.
 import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -78,7 +78,7 @@ const rowButton = (el: HTMLElement, card: number, label: string) =>
     el.querySelectorAll('[data-testid="legendary-card"]')[card].querySelectorAll('button'),
   ).find((b) => plain(b).startsWith(label)) as HTMLButtonElement;
 
-describe('Legendary offers: one answer at a time (#557)', () => {
+describe('Legendary offers: one answer at a time', () => {
   describe('"Atacar"', () => {
     const mount = (turnOptions: () => Promise<unknown>) =>
       mountCombatView({ enc, master: true, matches: LAPTOP, api: { turnOptions } });
@@ -246,6 +246,18 @@ describe('Legendary offers: one answer at a time (#557)', () => {
       expect(plain(phone.el.querySelector('[data-testid="legendary-armed"]'))).toContain(
         'Abra a aba Mapa',
       );
+    });
+  });
+
+  describe('the count of a card', () => {
+    it('is one element of its own, so a test can read it alone', async () => {
+      const { fixture, el } = mountCombatView({ enc, master: true, matches: LAPTOP });
+      await settle(fixture);
+      const counts = el.querySelectorAll(
+        '[data-testid="legendary-card"] [data-testid="legendary-counts"]',
+      );
+      expect(counts).toHaveLength(2);
+      expect(plain(counts[0])).toBe('3 de 3');
     });
   });
 

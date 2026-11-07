@@ -80,7 +80,7 @@ function dragon(over: object = {}) {
 const affordable = options.map((o) => ({ ...o, affordable: true }));
 const tor = combatant({ id: 't', label: 'Tor', kind: CombatantKind.PLAYER });
 
-describe("the master's legendary cards (#557)", () => {
+describe("the master's legendary cards", () => {
   const api = { spendLegendaryAction: vi.fn(), undo: vi.fn() };
   const applied = encounter({ id: 'enc', revision: 9 } as never);
 
@@ -288,7 +288,7 @@ describe("the master's legendary cards (#557)", () => {
     });
   });
 
-  describe('the states of the board', () => {
+  describe('the states of the card', () => {
     it('a window that holds the table makes the card "Depois", with no rows and the reason', () => {
       const { el } = setup(
         {},

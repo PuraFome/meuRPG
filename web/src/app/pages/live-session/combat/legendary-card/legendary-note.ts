@@ -13,7 +13,7 @@ function pieces(line: string): readonly (readonly [string, boolean])[] {
 }
 
 /**
- * What the master's card of a legendary creature says on the creature's own turn (#557, board 07 state 3): the actions
+ * What the master's card of a legendary creature says on the creature's own turn: the actions
  * came back and the legendary card is gone, so the card of the NPC tells what it has and that legendary actions are
  * spent on another creature's turn, never on its own. Nothing for a creature without legendary actions or off turn.
  */

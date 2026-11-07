@@ -9163,7 +9163,7 @@ test('as ações de criatura do mestre passam no axe e nas conferências de layo
   await scanCreatureActions(browser, 'dark', 390);
 });
 
-/** The master's legendary offers and the Parry switch (#557): the Legendary Resistance window of a stunned dragon, its legendary-actions
+/** The master's legendary offers and the Parry switch: the Legendary Resistance window of a stunned dragon, its legendary-actions
  * card (open, folded, spent), the master-only log line, the "Aparar" menu entry and window, and the player's neutral "Esperando o mestre".
  * Each screen is judged at 390, 768 and 1280 px; E2E_SHOTS_DIR, when set, also saves the screenshots (legendary-support.ts). */
 async function scanLegendaryScreens(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {

@@ -1,4 +1,4 @@
-// What a player reads while something that is the master's holds the table or the player's own attack (RN-10, #557):
+// What a player reads while something that is the master's holds the table or the player's own attack (RN-10):
 // the same neutral card, whichever window it is. The server writes the words (`Encounter.reaction_wait`: it names no
 // reaction, no creature and no number, and the leak tests of the backend hold it to that); the screen draws them in
 // the card and never adds a thing it knows.

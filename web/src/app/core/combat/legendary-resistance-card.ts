@@ -2,7 +2,7 @@ import { type ReactionWindow } from '../../../gen/meurpg/play/v1/combat_pb';
 import { ofThe } from './move-plan';
 
 /**
- * Legendary Resistance in words (#557): the master's window that offers to turn failed saving throws into successes, and
+ * Legendary Resistance in words: the master's window that offers to turn failed saving throws into successes, and
  * the "Se falhar, usar Resistência Lendária" box of a save the master rolls. The server decides which failures are offered
  * and spends one use per creature named; this phrases the offer. Nothing starts ticked. Pure functions, no DOM.
  */
@@ -56,8 +56,10 @@ function sourceLine(w: ReactionWindow, actorIsPlayer: boolean, dcs: readonly num
   if (!t?.actionNamePt) {
     return `${save[0].toUpperCase()}${save.slice(1)}. A ação ${wait}`;
   }
+  // Only a spell cast carries the spell's key; a rider's save (Golpe Atordoante) is an action, not a magic.
+  const what = t.spellKey ? 'A magia' : 'A ação';
   const by = t.actorLabel ? ` ${actorIsPlayer ? `de ${t.actorLabel}` : ofThe([t.actorLabel])}` : '';
-  return `${t.actionNamePt}${by} · ${save}. A magia ${wait}`;
+  return `${t.actionNamePt}${by} · ${save}. ${what} ${wait}`;
 }
 
 /** The card of a window of kind LEGENDARY_RESISTANCE, or `null` for a window without its prompt. `actorIsPlayer`: the
@@ -93,7 +95,7 @@ export function legendaryResistanceCard(
     })),
     declineLabel: 'Deixar como rolou',
     confirmLabel: one ? 'Usar Resistência Lendária' : 'Usar nas marcadas',
-    footer: 'Os jogadores veem “Esperando o mestre” e, depois, um teste que passou.',
+    footer: 'Os jogadores veem “Esperando o mestre” e, depois, o resultado do teste.',
   };
 }
 

@@ -1,4 +1,4 @@
-// The master's own offers (#557): Parry and Legendary Resistance. One card each; the first is "Agora", the others "Depois".
+// The master's own offers: Parry and Legendary Resistance. One card each; the first is "Agora", the others "Depois".
 :host {
   display: block;
 }
@@ -109,7 +109,7 @@
 }
 
 // Decline first, then the primary: side by side when each column fits "Usar Resistência Lendária" on one line, else one
-// under the other (the 1280 px side panel is about 298 px wide inside its card, board 557-03). A label that still wraps
+// under the other (the 1280 px side panel is about 298 px wide inside its card). A label that still wraps
 // grows its button, which is at least 48 px high (44 px from 768 px).
 .offer__btns {
   display: grid;

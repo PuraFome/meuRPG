@@ -32,7 +32,7 @@ function merged(known: LegendaryNames, next: LegendaryNames): LegendaryNames {
 }
 
 /**
- * What the page does for the legendary cards (#557): the options' names the log reads, the legendary attack (the attack
+ * What the page does for the legendary cards: the options' names the log reads, the legendary attack (the attack
  * sheet of the creature off its turn, with the option) and the legendary move (the drag of its token, armed with the
  * option). The spend itself, the fold and the undo live in `LegendaryOffers`. Build it in an injection context: it keeps
  * an effect.

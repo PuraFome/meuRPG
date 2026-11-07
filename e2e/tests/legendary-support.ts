@@ -9,7 +9,7 @@ import { waitForEncounterRevision } from './revision-support';
 import { callRPC, openCombatLog } from './support';
 import { setTableRulesRPC } from './table-rules-support';
 
-// Setup and checks for the master's legendary offers and the Parry switch (#557), through the API: the master's turn column
+// Setup and checks for the master's legendary offers and the Parry switch, through the API: the master's turn column
 // with the adult red dragon's Legendary Resistance window and its legendary-actions card, the Parry window of a Capitão
 // bandido the master asked to be asked about, and what the player reads while any of it waits. The table is Pensantus
 // (player, first in the order, with a dagger and Mãos Flamejantes), the Capitão Goblin and two Goblins, the dragon and the
@@ -210,9 +210,9 @@ async function legendarySpendScreens(l: Look): Promise<void> {
   const card = m.getByTestId('legendary-card');
   const detect = card.getByRole('button', { name: 'Usar: Detectar' });
   await detect.click();
-  await expect(card.getByText('2 de 3')).toBeVisible();
+  await expect(card.getByTestId('legendary-counts')).toHaveText('2 de 3');
   await detect.click();
-  await expect(card.getByText('1 de 3')).toBeVisible();
+  await expect(card.getByTestId('legendary-counts')).toHaveText('1 de 3');
   await expect(card.getByTestId('legendary-spent')).toContainText(`${DRAGON} gastou 1 ação lendária: Detectar`);
   await expect(card.getByTestId('legendary-spent')).toContainText('Só você vê');
   const wings = card.getByRole('button', { name: 'Usar: Ataque de asas' });
@@ -276,28 +276,28 @@ async function resistanceScreens(l: Look, fight: LegendaryFight): Promise<Legend
   return setConditions(m, [m, p], await refreshed(m, stunned), DRAGON, []);
 }
 
-/** The entry "Aparar: …" of the order's "Mais" menu: only for an NPC with Parry, "decidir sozinho" until the master switches it. */
+/** The checkbox "Aparar: perguntar a cada golpe" of the order's "Mais" menu: only for an NPC with Parry, unchecked until the master switches it. */
 async function parryMenuScreens(l: Look): Promise<void> {
   const { m, p } = l;
   const menuOf = (label: string) => m.getByRole('button', { name: `Mais ações para ${label}` });
   await atEachWidth([m, p], async (width) => {
     await openOrderRow(m, BANDIT);
     await menuOf(BANDIT).click();
-    await expect(m.getByRole('menuitem', { name: 'Aparar: decidir sozinho' })).toBeVisible();
+    await expect(m.getByRole('menuitemcheckbox', { name: 'Aparar: perguntar a cada golpe', checked: false })).toBeVisible();
     await look(l, m, 'menu-aparar', width);
     await m.keyboard.press('Escape');
     await expect(m.getByRole('menu')).toHaveCount(0);
   });
   await openOrderRow(m, 'Goblin 1');
   await menuOf('Goblin 1').click();
-  await expect(m.getByRole('menuitem', { name: /^Aparar/ })).toHaveCount(0);
+  await expect(m.getByRole('menuitemcheckbox', { name: /^Aparar/ })).toHaveCount(0);
   await m.keyboard.press('Escape');
   await expectNeutralPlayer(p);
   await openOrderRow(m, BANDIT);
   await menuOf(BANDIT).click();
-  await m.getByRole('menuitem', { name: 'Aparar: decidir sozinho' }).click();
+  await m.getByRole('menuitemcheckbox', { name: 'Aparar: perguntar a cada golpe' }).click();
   await menuOf(BANDIT).click();
-  await expect(m.getByRole('menuitem', { name: 'Aparar: perguntar a cada golpe' })).toBeVisible();
+  await expect(m.getByRole('menuitemcheckbox', { name: 'Aparar: perguntar a cada golpe', checked: true })).toBeVisible();
   await m.keyboard.press('Escape');
   await openTurn(m);
 }

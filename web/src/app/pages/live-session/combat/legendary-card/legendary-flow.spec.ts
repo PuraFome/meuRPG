@@ -53,7 +53,7 @@ const combat = (over: object = {}) =>
     ...over,
   } as never);
 
-describe('the page side of the legendary cards (#557)', () => {
+describe('the page side of the legendary cards', () => {
   const turnOptions = vi.fn();
   const attacks: AttackOpen[] = [];
 

@@ -22,7 +22,12 @@ function window(offers: object[]) {
   return reactionWindow({
     id: 'lr',
     kind: ReactionKind.LEGENDARY_RESISTANCE,
-    trigger: { actorId: 'pen', actorLabel: 'Pensantus', actionNamePt: 'Relâmpago' } as never,
+    trigger: {
+      actorId: 'pen',
+      actorLabel: 'Pensantus',
+      actionNamePt: 'Relâmpago',
+      spellKey: 'lightning-bolt',
+    } as never,
     prompt: { case: 'legendaryResistance', value: { offers } },
   } as never);
 }
@@ -52,7 +57,7 @@ describe('the Legendary Resistance window', () => {
     expect(two?.declineLabel).toBe('Deixar como rolou');
     expect(two?.confirmLabel).toBe('Usar nas marcadas');
     expect(two?.footer).toBe(
-      'Os jogadores veem “Esperando o mestre” e, depois, um teste que passou.',
+      'Os jogadores veem “Esperando o mestre” e, depois, o resultado do teste.',
     );
     if (!two) {
       throw new Error('no card');
@@ -131,11 +136,39 @@ describe('"Se falhar, usar Resistência Lendária" on the master\'s own save', (
     const w = reactionWindow({
       id: 'n2',
       kind: ReactionKind.LEGENDARY_RESISTANCE,
-      trigger: { actorId: 'm', actorLabel: 'Mago 1', actionNamePt: 'Relâmpago' } as never,
+      trigger: {
+        actorId: 'm',
+        actorLabel: 'Mago 1',
+        actionNamePt: 'Relâmpago',
+        spellKey: 'lightning-bolt',
+      } as never,
       prompt: { case: 'legendaryResistance', value: { offers: [offer('d', 'A', 4, 10)] } },
     } as never);
     expect(legendaryResistanceCard(w, false)?.source.replace(/\u00a0/g, ' ')).toContain(
       'Relâmpago do Mago 1 ·',
     );
+  });
+
+  it('says the action, not the magic, for a rider save (no spell key), and the magic for a cast', () => {
+    const mk = (trigger: object) =>
+      legendaryResistanceCard(
+        reactionWindow({
+          id: 'r',
+          kind: ReactionKind.LEGENDARY_RESISTANCE,
+          trigger: trigger as never,
+          prompt: { case: 'legendaryResistance', value: { offers: [offer('d', 'A', 4, 10)] } },
+        } as never),
+      )?.source;
+    expect(mk({ actorId: 'm', actorLabel: 'Tor', actionNamePt: 'Golpe Atordoante' })).toContain(
+      'A ação espera a sua resposta',
+    );
+    expect(
+      mk({
+        actorId: 'm',
+        actorLabel: 'Tor',
+        actionNamePt: 'Relâmpago',
+        spellKey: 'lightning-bolt',
+      }),
+    ).toContain('A magia espera a sua resposta');
   });
 });

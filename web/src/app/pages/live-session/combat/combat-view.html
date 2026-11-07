@@ -719,7 +719,7 @@
   @if (encounter(); as e) {
     <!-- The reaction windows the master answers (PM-04): below the card, in the order the server answers them. -->
     <app-reaction-queue [encounter]="e" [campaignId]="campaignId()" [state]="state()" [autoLeft]="autoLeft()" part="rest">
-      <!-- The legendary creatures' cards (#557): after the windows the master answers; "Opcional" when nothing holds the table. -->
+      <!-- The legendary creatures' cards: after the windows the master answers; "Opcional" when nothing holds the table. -->
       <app-legendary-offers
         [encounter]="e"
         [campaignId]="campaignId()"

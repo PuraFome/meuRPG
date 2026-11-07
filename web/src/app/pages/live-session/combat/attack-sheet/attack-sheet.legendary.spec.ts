@@ -30,7 +30,7 @@ const brisa = combatant({
   side: CombatantSide.PARTY,
 });
 
-describe("AttackSheet: the master's legendary attack (#557)", () => {
+describe("AttackSheet: the master's legendary attack", () => {
   const rollAttack = vi.fn();
 
   function open(legendary?: AttackSheetData['legendary']) {

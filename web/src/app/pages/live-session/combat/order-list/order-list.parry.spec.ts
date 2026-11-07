@@ -1,4 +1,4 @@
-// The master's "Aparar: perguntar a cada golpe" switch in the row menu (#557): only an NPC with a Parry has it.
+// The master's "Aparar: perguntar a cada golpe" switch in the row menu: only an NPC with a Parry has it.
 import { TestBed } from '@angular/core/testing';
 
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
@@ -39,18 +39,22 @@ describe('the Parry switch in the row menu', () => {
     fixture.detectChanges();
   };
 
-  it('says "perguntar a cada golpe" while it asks, with a check, and turns it off', () => {
+  it('is a checkbox of the menu that is checked while it asks, and turns it off', () => {
     const { fixture, sent } = mount(captain(true));
     const item = menuOf(fixture, 'Capitão bandido').find((i) => flat(i)?.includes('Aparar'))!;
     expect(flat(item)).toBe('check_boxAparar: perguntar a cada golpe');
+    expect(item.getAttribute('role')).toBe('menuitemcheckbox');
+    expect(item.getAttribute('aria-checked')).toBe('true');
     item.click();
     expect(sent).toEqual([{ id: 'cap', ask: false }]);
   });
 
-  it('says "decidir sozinho" while the server decides, with an empty box, and turns it on', () => {
+  it('names the same setting, unchecked, while the server decides, and turns it on', () => {
     const { fixture, sent } = mount(captain(false));
     const item = menuOf(fixture, 'Capitão bandido').find((i) => flat(i)?.includes('Aparar'))!;
-    expect(flat(item)).toBe('check_box_outline_blankAparar: decidir sozinho');
+    expect(flat(item)).toBe('check_box_outline_blankAparar: perguntar a cada golpe');
+    expect(item.getAttribute('role')).toBe('menuitemcheckbox');
+    expect(item.getAttribute('aria-checked')).toBe('false');
     item.click();
     expect(sent).toEqual([{ id: 'cap', ask: true }]);
   });

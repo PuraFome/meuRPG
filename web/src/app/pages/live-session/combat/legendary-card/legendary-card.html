@@ -31,7 +31,7 @@
     <h3 class="offer__title">{{ card().title }}</h3>
     <p class="lcard__count">
       <app-count-pips [left]="card().left" [total]="card().total" />
-      <b>{{ card().counts }}</b>
+      <b data-testid="legendary-counts">{{ card().counts }}</b>
       <span class="lcard__recovery">· {{ card().recovery }}</span>
     </p>
     <p class="lcard__hint">{{ card().hint }}</p>

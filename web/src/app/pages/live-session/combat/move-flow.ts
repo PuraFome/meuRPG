@@ -73,7 +73,7 @@ export class MoveFlow {
   private overDrag: { readonly combatantId: string; readonly drop: Square } | null = null;
   /** The "Saltar" page's "Distância" is on: the options are the long jump's (and its warning), not the walk's. */
   readonly jump = signal<{ readonly runningStart: boolean } | null>(null);
-  /** A legendary move the master armed (#557): the next drag of this creature's token on the map walks it with that option, at
+  /** A legendary move the master armed: the next drag of this creature's token on the map walks it with that option, at
    * its cost in legendary actions. It goes off once the move worked, or with "Cancelar". */
   readonly legendaryMove = signal<{
     readonly combatantId: string;

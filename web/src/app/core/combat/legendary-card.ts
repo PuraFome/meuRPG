@@ -5,10 +5,11 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 
 /**
- * The master's card of a legendary creature's actions (#557): what is left of the round, the options of its stat block
+ * The master's card of a legendary creature's actions: what is left of the round, the options of its stat block
  * with their cost, and why one is off. The server decides what a spend costs and when it is allowed
  * (`LegendaryState.usable_now`, `LegendaryOption.affordable`); this only phrases it. An option's name is always the
- * Portuguese one (`name_pt`): `name` and `text` are the SRD's English and never reach the screen. Folding the card is the
+ * Portuguese one (`name_pt`): the English `name` and `text` are never shown in the cards. Only a log line falls back to
+ * the English name, when the creature is unknown after a reload. Folding the card is the
  * screen's own business and never calls the server. Pure functions, tested without a DOM.
  */
 

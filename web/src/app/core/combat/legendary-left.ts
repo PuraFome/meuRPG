@@ -7,7 +7,7 @@ import {
 import { type LegendaryNames, legendaryOptionName } from './legendary-card';
 
 /**
- * What the master's turn column says about legendary actions outside the card (#557): the line under "Próximo turno" with
+ * What the master's turn column says about legendary actions outside the card: the line under "Próximo turno" with
  * what is left to spend, and the line of the last spend that the card's undo stands under. The server decides what a
  * creature may spend (`LegendaryState.usable_now`, `actions_left`); this only phrases it. A pronoun is never guessed
  * from a name: the creature is named as its label. Pure functions, tested without a DOM.

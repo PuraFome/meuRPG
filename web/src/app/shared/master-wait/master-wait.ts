@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
- * "Esperando o mestre" (RN-10, #557): the card a player reads while something that is the master's holds the table or
+ * "Esperando o mestre" (RN-10): the card a player reads while something that is the master's holds the table or
  * the player's own attack, whatever it is: an NPC's reaction, a check he rolls, an ask-mode Parry, Legendary
  * Resistance. It says only what the server wrote for the caller (`Encounter.reaction_wait`, "O resultado do seu ataque
  * sai quando ele responder."): never the reaction, the creature that has it or a number, so the same words come for a
