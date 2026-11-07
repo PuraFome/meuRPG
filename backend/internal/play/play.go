@@ -316,10 +316,6 @@ type CombatRoster interface {
 	// Conditions lists the SRD's conditions (RN-22), with their Portuguese
 	// names, sorted by key.
 	Conditions() []link.Named
-	// RestoreEquipped puts a piece of gear back as the master's undo of a swap found it before: equipped or carried,
-	// inside tx, with the sheet's revision and the gear told to play as a change of the gear is. `failed_precondition`
-	// when the sheet no longer lists the piece or no longer allows it. It returns what to call after the commit, or nil.
-	RestoreEquipped(ctx context.Context, tx pgx.Tx, campaignID, characterID, key string, equip bool) (afterCommit func(ctx context.Context), err error)
 	// ContentNames returns the campaign's naming function: the Portuguese name of a
 	// content key ("spell:shield" is "Escudo Arcano"), or "" for an unknown key. The
 	// content is read once, when it is asked for, not on every name.

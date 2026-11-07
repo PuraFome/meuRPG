@@ -370,9 +370,6 @@ Cascades with the session or the character; the index is by session.
 - A `recharge_rolled` event (the d6 the server rolls for a creature's Recharge action at its turn start) is always `secret` and fogged for everybody, and its row names no user and no character.
   It holds the creature's combatant id, the round, the action's key and name, `recharge_face` and `recharged`.
   Its log line is the master's and the creature's controller's; every other player reads nothing of it in the log, the stream or any count.
-- A `gear_swapped` event (a weapon, shield or armor drawn or stowed in a combat, the armor only by the master, written in the transaction of `SetEquipped`) is always `secret`.
-  It holds the combatant id, the round, the piece's key, kind (`weapon`, `shield` or `armor`) and Portuguese name, `equipped_before`, the six economy flags from before the swap and the `cost` it paid (`free`, `action`, `extra_action`, empty for the master).
-  Its log line is the master's and the owner's; the event is its own payload type (`gearSwapEvent`), so no other event's stored shape moved.
   No player's map revision counts it.
   An attack or an action that spent a limited action keeps `limit_key` on its ordinary event, the key for the undo.
 - A `free_roll_rolled` event is read by everyone when `secret` is false; a secret one is the master's alone, on every path: the list, the stream, the summary and any count (RN-10).
