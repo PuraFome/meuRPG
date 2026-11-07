@@ -14,6 +14,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
@@ -44,6 +45,7 @@ import { EntryRead } from '../entry-read/entry-read';
 import { FeatEditor } from '../feat-editor/feat-editor';
 import { ClassFeatureEditor } from '../class-feature-editor/class-feature-editor';
 import { CreatureEditor } from '../creature-editor/creature-editor';
+import { CreatureRead } from '../creature-read/creature-read';
 import { OptionEditor } from '../option-editor/option-editor';
 import { RaceEditor } from '../race-editor/race-editor';
 import { type EditorSaved, SpellEditor } from '../spell-editor/spell-editor';
@@ -96,8 +98,10 @@ type PageState =
     OptionEditor,
     ClassFeatureEditor,
     CreatureEditor,
+    CreatureRead,
     MatButtonModule,
     MatIconModule,
+    MatMenuModule,
     MatProgressSpinnerModule,
     RaceEditor,
     RouterLink,
@@ -142,7 +146,6 @@ export class ContentEntry {
   protected readonly savedLine = signal('');
   protected readonly affected = signal<readonly AffectedCharacter[]>([]);
   protected readonly actionError = signal('');
-  protected readonly loadingExtras = signal(false);
   /** The catalog or the effect menu did not come: the page says so, with "Tentar de novo". */
   /** Moves with each read of the entries: of two that overlap, only the newest lands. */
   private reads = 0;
@@ -186,7 +189,6 @@ export class ContentEntry {
     const k = this.kind();
     return this.isMaster() && !this.phone() && k !== null && EDITABLE.has(k);
   });
-  protected readonly readOnly = computed(() => !this.editing());
   protected readonly isNew = computed(() => this.entry() === null && this.newKind() !== null);
   protected readonly missing = computed(
     () => this.ctx() !== null && this.entry() === null && this.newKind() === null,
@@ -318,7 +320,6 @@ export class ContentEntry {
     if (!ctx) {
       return;
     }
-    this.loadingExtras.set(true);
     this.catalogError.set('');
     this.menuError.set('');
     this.defaultsError.set('');
@@ -338,7 +339,6 @@ export class ContentEntry {
       this.defaultsError.set(errors.defaults);
       this.catalogError.set(errors.catalog);
       this.menuError.set(errors.menu);
-      this.loadingExtras.set(false);
     });
   }
 

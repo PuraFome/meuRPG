@@ -65,7 +65,16 @@
             }
           </div>
         </div>
-        @if (isMaster() && entry() && !entry()!.archived && !asking()) {
+        @if (isMaster() && entry() && phone()) {
+          <button matButton="outlined" type="button" class="head__more" aria-label="Mais ações" [matMenuTriggerFor]="more" [disabled]="archiving()"><mat-icon aria-hidden="true">more_vert</mat-icon></button>
+          <mat-menu #more="matMenu">
+            @if (entry()!.archived) {
+              <button mat-menu-item type="button" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
+            } @else {
+              <button mat-menu-item type="button" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
+            }
+          </mat-menu>
+        } @else if (isMaster() && entry() && !entry()!.archived && !asking()) {
           <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
         }
       </header>
@@ -132,7 +141,9 @@
               A entrada só deixa de aparecer para fichas novas.
             </p>
           </div>
-          <button matButton="outlined" type="button" class="unarchive" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
+          @if (!phone()) {
+            <button matButton="outlined" type="button" class="unarchive" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
+          }
         </div>
       }
 
@@ -199,7 +210,11 @@
           </div>
           <button matButton="outlined" type="button" class="retry" (click)="loadExtras()">Tentar de novo</button>
         } @else if (catalog()) {
-          <app-entry-read [read]="r" />
+          @if (isMaster() && kind() === Kind.CREATURE) {
+            <app-creature-read [campaignId]="campaignId()" [entry]="entry()!" [entries]="entries()" [catalog]="catalog()!" />
+          } @else {
+            <app-entry-read [read]="r" />
+          }
         } @else {
           <p class="page-status" role="status">
             <mat-spinner diameter="24" aria-label="Carregando" />

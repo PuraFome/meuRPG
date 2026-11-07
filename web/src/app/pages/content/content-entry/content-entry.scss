@@ -93,13 +93,11 @@
   min-height: 44px;
 }
 
-@media (max-width: 767.98px) {
-  .head {
-    flex-direction: column;
-  }
-
-  .head__action {
-    align-self: stretch;
-    min-height: 48px;
-  }
+// The phone's "⋮" (Arquivar / Desarquivar): a 44px square at the right of the title.
+.head__more {
+  flex: none;
+  min-width: 44px;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
 }
