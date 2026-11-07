@@ -5,19 +5,24 @@ import {
   type FeatChoice,
   defaultChoiceName,
   formulaInsertions,
+  referenceProblem,
 } from '../../core/content/effect-draft';
 import {
   type ReadingPart,
   formulaReading,
   pointsAtChoice,
 } from '../../core/content/formula-reading';
-import type { SelectOption } from '../form-fields/select-field';
+import type { SelectGroup, SelectOption } from '../form-fields/select-field';
 import {
+  CHOICE_GROUPS,
   CHOICE_GROUP_NOTE,
+  LOCKED_GROUPS,
+  MISSING_TEXTS,
   OPTION_NOTE,
   type RefOption,
   choiceSide,
   fixedGroup,
+  lockedRow,
   pickedRef,
   refKind,
   refOptions,
@@ -30,6 +35,7 @@ export interface FeatChoiceHost {
   readonly choices: () => readonly FeatChoice[] | null;
   readonly effectIndex: () => number;
   readonly featOption: () => boolean;
+  readonly sourceInCards: () => boolean;
   readonly siblings: () => readonly EffectDraft[];
 }
 
@@ -58,10 +64,65 @@ export class FeatChoiceView {
     return from.map((key) => this.host.menu().nameOf('damage_types', key).toLowerCase());
   }
 
-  /** The group of choices above the fixed values; the values alone when the field has no choice to offer. */
+  /** The first choice of the field's kind that comes below this effect: it exists, but the field cannot use it from here. */
+  private laterOf(f: EffectMenuField): FeatChoice | undefined {
+    const kind = refKind(f.name);
+    const all = this.host.choices();
+    if (!kind || all === null || this.host.featOption()) {
+      return undefined;
+    }
+    return all.find((c) => c.kind === kind && c.index > this.host.effectIndex());
+  }
+
+  /** The group of choices above the fixed values; with only a later choice, the group locked, saying where it is. */
   withChoices<T extends SelectOption>(f: EffectMenuField, list: readonly T[]): SelectOption[] {
     const refs = this.refsOf(f);
-    return refs.length === 0 ? [...list] : [...refs, ...fixedGroup(list)];
+    if (refs.length > 0) {
+      return [...refs, ...fixedGroup(list)];
+    }
+    const later = this.laterOf(f);
+    return later ? [lockedRow(later), ...fixedGroup(list)] : [...list];
+  }
+
+  /** How the group's header looks: the lock when the group says only that the choice is below. */
+  groups(f: EffectMenuField): Readonly<Record<string, SelectGroup>> {
+    return this.refsOf(f).length === 0 && this.laterOf(f) ? LOCKED_GROUPS : CHOICE_GROUPS;
+  }
+
+  /** Why the pick a field holds cannot be read now; null when it reads or the field holds none. */
+  problem(f: EffectMenuField): 'removed' | 'later' | null {
+    const all = this.host.choices();
+    if (all === null || this.host.featOption()) {
+      return null;
+    }
+    return referenceProblem(this.host.effect(), f.name, all, this.host.effectIndex());
+  }
+
+  /** A field the feat editor's cards hold: the set, and the marked options while a set is offered (a refusal of them still shows). */
+  inCards(f: EffectMenuField, refused: boolean): boolean {
+    if (!this.host.sourceInCards()) {
+      return false;
+    }
+    const e = this.host.effect();
+    return (
+      f.name === 'set' || (f.name === 'from' && e.choice === 'feature' && e.set !== '' && !refused)
+    );
+  }
+
+  /** The texts of a field's refusal, then the editor's own for a pick it cannot read, each once. */
+  withProblems(name: string, type: string, texts: readonly string[]): readonly string[] {
+    const field = this.host
+      .menu()
+      .fieldsOf(type)
+      .find((f) => f.name === name);
+    const own = field ? this.problemTexts(field) : [];
+    return own.length === 0 ? texts : [...new Set([...texts, ...own])];
+  }
+
+  /** The refusal the editor writes by itself for a pick it cannot read, so nothing is re-pointed behind the master's back. */
+  problemTexts(f: EffectMenuField): string[] {
+    const why = this.problem(f);
+    return why ? [MISSING_TEXTS[why]] : [];
   }
 
   /** The line a field's value has beside it when it is one of the group's entries. */

@@ -16,15 +16,18 @@ export type { EffectDraft, EffectInit } from './effect-draft.types';
 export { onlyProficientApplies, rangeFeet, splitTags } from './effect-writers';
 export {
   type ChoiceKind,
+  type ChoiceUse,
   type FeatChoice,
   type FormulaInsertion,
   type MissingChoice,
   choiceRef,
+  choiceUses,
   choicesBefore,
   defaultChoiceName,
   featChoices,
   formulaInsertions,
   missingChoices,
+  referenceProblem,
 } from './effect-choices';
 
 /**
@@ -304,6 +307,8 @@ export class EffectMenuVm {
         return this.list('languages');
       case 'tool':
         return this.list('tools');
+      case 'damage_type':
+        return this.list('damage_types');
       case 'cantrip':
       case 'spell':
         return this.classIndexes.map((i) => ({

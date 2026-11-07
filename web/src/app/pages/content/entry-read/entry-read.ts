@@ -56,6 +56,13 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
         }
       </section>
     }
+    @if ((read().options?.length ?? 0) > 0) {
+      <ul class="items items--nested" aria-label="Opções">
+        @for (o of read().options ?? []; track $index) {
+          <li><strong>{{ o.title }}.</strong> {{ o.text }}</li>
+        }
+      </ul>
+    }
   `,
   styles: `
     :host {

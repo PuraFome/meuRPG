@@ -14,6 +14,7 @@ import {
 import { GENERIC_EFFECT_TEXTS } from '../../core/content/content-violation-texts';
 import { CRITICAL_RANGE_TARGET, isScoreTarget } from '../../core/content/effect-visible';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { capitalized } from '../../core/creatures/bestiary-format';
 import type { SelectOption } from '../form-fields/select-field';
 
 /**
@@ -208,4 +209,33 @@ export function fieldView(type: string, f: EffectMenuField, ownResources: boolea
     return 'uses';
   }
   return f.name === 'applies' && type === 'modifier' ? 'cards' : f.kind;
+}
+
+/** The options of a closed list the menu names, each with the menu's one-line explanation; the damage types in sentence case. */
+export function listOptions(
+  menu: EffectMenuVm,
+  effect: EffectDraft,
+  f: EffectMenuField,
+  spells: readonly SelectOption[],
+): (SelectOption & { hint: string })[] {
+  if (f.name === 'spell') {
+    return spells.map((o) => ({ ...o, hint: '' }));
+  }
+  const swap = f.name === 'from' && f.list === '';
+  const list = swap
+    ? effect.type === 'spell_modifier'
+      ? menu.list('damage_types')
+      : menu.fromOptions(effect.choice)
+    : f.name === 'spells'
+      ? []
+      : menu.list(f.list);
+  // The server writes a damage type in lower case ("fogo"); a list of them reads in sentence case, as every label does.
+  const damage =
+    f.list === 'damage_types' ||
+    (swap && (effect.type === 'spell_modifier' || effect.choice === 'damage_type'));
+  return list.map((o) => ({
+    value: o.key,
+    label: damage ? capitalized(o.namePt) : o.namePt,
+    hint: o.hintPt,
+  }));
 }

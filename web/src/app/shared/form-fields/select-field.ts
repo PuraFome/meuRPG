@@ -24,6 +24,8 @@ export interface SelectOption<T extends string | number = string> {
   readonly group?: string;
   /** A line at the option's right edge ("do efeito 1"); a browser that draws only text reads it after the label. */
   readonly side?: string;
+  /** A line of explanation that cannot be picked: it wraps, and is drawn smaller and muted. */
+  readonly note?: boolean;
 }
 
 /** How the header of a group looks: an icon before its name, in the accent. */
@@ -57,7 +59,7 @@ export interface SelectGroup {
         (change)="pick($any($event.target).selectedIndex)"
       >
         @if (placeholder()) {
-          <option value="" [selected]="value() === ''" [disabled]="true">{{ placeholder() }}</option>
+          <option class="placeholder" value="" [selected]="value() === ''" [disabled]="true">{{ placeholder() }}</option>
         }
         @for (seg of segments(); track $index) {
           @if (seg.group) {
@@ -85,10 +87,12 @@ export interface SelectGroup {
       @for (o of items; track o.value) {
         <option
           [value]="o.value"
-          [label]="o.side ? o.label + ' · ' + o.side : o.label"
+          [attr.label]="rich() || !o.side ? null : o.label + ' · ' + o.side"
+          [attr.data-side]="o.side || null"
           [selected]="o.value === value()"
           [disabled]="o.disabled ?? false"
-        >@if (o.side) {<span class="opt__label">{{ o.label }}</span><span class="opt__side">{{ o.side }}</span>} @else {{{ o.label }}}</option>
+          [class.note]="o.note ?? false"
+        >{{ o.label }}</option>
       }
     </ng-template>
     <app-field-note [id]="noteId" [issues]="issues()" [hint]="hint()" />
@@ -138,15 +142,31 @@ export interface SelectGroup {
         gap: var(--mr-space-3);
         min-height: 44px;
         padding: 0 var(--mr-space-4);
+        color: var(--mr-ink);
         font-size: var(--mr-font-16);
 
         &:checked {
           background: var(--mr-accent-soft);
+          color: var(--mr-ink);
           font-weight: 700;
         }
 
         &::checkmark {
           display: none;
+        }
+
+        &.placeholder {
+          display: none;
+        }
+
+        &.note {
+          display: block;
+          min-height: 0;
+          padding-block: var(--mr-space-2) var(--mr-space-3);
+          border-bottom: 1px solid var(--mr-line);
+          color: var(--mr-ink-muted);
+          font-size: var(--mr-font-14);
+          line-height: 18px;
         }
 
         &.footer {
@@ -158,7 +178,8 @@ export interface SelectGroup {
         }
       }
 
-      select.rich .opt__side {
+      select.rich option[data-side]::after {
+        content: attr(data-side);
         margin-left: auto;
         color: var(--mr-ink-muted);
         font-size: var(--mr-font-14);
@@ -259,7 +280,7 @@ export class SelectField<T extends string | number = string> {
   protected pick(index: number): void {
     const offset = this.placeholder() ? 1 : 0;
     const option = this.options()[index - offset];
-    if (option) {
+    if (option && !option.note) {
       this.valueChange.emit(option.value);
     }
   }

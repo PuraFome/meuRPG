@@ -17,7 +17,13 @@ import type { TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_p
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
-import type { EffectDraft, EffectMenuVm } from '../../../core/content/effect-draft';
+import {
+  type EffectDraft,
+  type EffectMenuVm,
+  choiceUses,
+  featChoices,
+  missingChoices,
+} from '../../../core/content/effect-draft';
 import { FEAT_OPTION_SETS, optionChoiceIndex } from '../../../core/content/feat-options';
 import {
   type FeatDraft,
@@ -51,6 +57,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { TextField } from '../../../shared/form-fields/text-field';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import { EntryRead } from '../entry-read/entry-read';
+import { FeatChoices } from './feat-choices/feat-choices';
 import { FeatOptions } from './feat-options/feat-options';
 import { OptionSource } from './option-source/option-source';
 import { PlayersSwitch } from '../players-switch/players-switch';
@@ -78,6 +85,7 @@ const FEAT_SIZES: SelectOption[] = [{ value: '', label: 'Qualquer' }, ...SIZE_OP
     EditorAlerts,
     EditorBar,
     EntryRead,
+    FeatChoices,
     FeatOptions,
     FeatureEditor,
     MatIconModule,
@@ -128,6 +136,22 @@ export class FeatEditor {
   protected readonly choice = computed<EffectDraft | null>(
     () => this.draft().feature.effects[this.choiceAt()] ?? null,
   );
+  /** The feat's named choices: the fields of the effects after one may point at it. */
+  protected readonly choices = computed(() => featChoices(this.draft().feature.effects));
+  protected readonly uses = computed(() => choiceUses(this.draft().feature.effects));
+  /** The fields that point at a choice that was removed or moved below them: nothing is re-pointed, and the save waits. */
+  private readonly missing = computed(() =>
+    missingChoices(this.draft().feature.effects, this.menu()),
+  );
+  /** Why "Salvar talento" waits: the page's reason, else a field whose choice is gone. */
+  protected readonly blockReason = computed(() => {
+    const n = this.missing().length;
+    if (this.saveBlocked() || n === 0) {
+      return this.saveBlocked();
+    }
+    const who = n === 1 ? 'Um campo usava' : `${n} campos usavam`;
+    return `${who} uma escolha que foi removida ou ficou abaixo dele. Escolha outro valor.`;
+  });
   /** The set the choice offers whole, by its name, or empty. */
   protected readonly setName = computed(() => {
     const set = this.choice()?.set ?? '';
@@ -253,7 +277,7 @@ export class FeatEditor {
     featPaths(this.draft(), this.menu()).includes(path);
 
   protected async save(): Promise<void> {
-    if (this.saver.saving() || this.saveBlocked()) {
+    if (this.saver.saving() || this.blockReason()) {
       return;
     }
     if (

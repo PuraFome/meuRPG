@@ -16,9 +16,34 @@ export const CHOICE_GROUP_NOTE = 'A escolha do talento aparece nos efeitos que v
 /** The line under the list of a field in an option of the feat, where no choice is offered. */
 export const OPTION_NOTE = 'As opções do talento não usam as escolhas dele: só valores fixos.';
 
+/** What the editor says of a field whose pick it cannot read: the choice is gone, or it is below the field. */
+export const MISSING_TEXTS = {
+  removed: 'A escolha que este campo usava foi removida. Escolha outro valor.',
+  later: 'A escolha vem depois deste efeito. Suba a escolha ou desça este efeito.',
+} as const;
+
 export const CHOICE_GROUPS: Readonly<Record<string, SelectGroup>> = {
   [CHOICE_GROUP]: { icon: CHOICE_GROUP_ICON, accent: true },
 };
+
+/** The same group with the lock, for a field whose only choice is below it. */
+export const LOCKED_GROUPS: Readonly<Record<string, SelectGroup>> = {
+  [CHOICE_GROUP]: { icon: 'lock' },
+};
+
+/** The value of the row that says the choice is below; no option has it, and the row cannot be picked. */
+const LOCKED_VALUE = '__choice_below__';
+
+/** The row of the locked group: where the choice is, and what to do, in a line that cannot be picked. */
+export function lockedRow(choice: FeatChoice): SelectOption {
+  return {
+    value: LOCKED_VALUE,
+    label: `“${choice.label}” está no efeito ${choice.index + 1}, abaixo deste. Suba a escolha para usá-la aqui.`,
+    group: CHOICE_GROUP,
+    disabled: true,
+    note: true,
+  };
+}
 
 /** One way a field writes a choice: the text before `@name`, how the entry starts, and the line beside the field once it is picked. */
 interface RefForm {

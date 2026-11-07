@@ -13,7 +13,9 @@ import {
   choicesBefore,
   featChoices,
   formulaInsertions,
+  choiceUses,
   missingChoices,
+  referenceProblem,
   missingRequired,
   rangeFeet,
   unreadableRange,
@@ -189,6 +191,7 @@ describe("an effect from the server's menu (ADR-0018, section 4)", () => {
 
   it('offers what a choice may list, by the kind of choice', () => {
     expect(m.fromOptions('skill').map((o) => o.key)).toEqual(['skill:arcana', 'skill:perception']);
+    expect(m.fromOptions('damage_type')).toEqual(m.list('damage_types'));
     expect(m.fromOptions('language').map((o) => o.namePt)).toEqual(['Comum', 'Primordial']);
     expect(m.fromOptions('feature').map((o) => o.namePt)).toEqual([
       'Estilo de luta',
@@ -716,6 +719,39 @@ describe('the named choices of a feat', () => {
       { index: 3, path: 'table_feat.effects[3].damage_types', name: 'later' },
     ]);
     expect(missingChoices([pick('ability', 'a'), mod({ value: 'score("@a")' })])).toEqual([]);
+  });
+
+  it('says why a field cannot read its pick: the choice is gone, or it comes below the field', () => {
+    const effects = [
+      mod({ proficiency: 'save.@a' }),
+      pick('ability', 'a'),
+      mod({ proficiency: 'save.@a', target: 'score.@gone' }),
+      mod({ proficiency: 'save.@a' }),
+      mod({ value: '5' }),
+    ];
+    const choices = featChoices(effects);
+    expect(referenceProblem(effects[0], 'proficiency', choices, 0)).toBe('later');
+    expect(referenceProblem(effects[2], 'proficiency', choices, 2)).toBeNull();
+    expect(referenceProblem(effects[2], 'target', choices, 2)).toBe('removed');
+    expect(referenceProblem(effects[3], 'proficiency', choices, 3)).toBeNull();
+    expect(referenceProblem(effects[4], 'value', choices, 4)).toBeNull();
+    expect(referenceProblem(effects[4], 'nonsense', choices, 4)).toBeNull();
+  });
+
+  it('counts the effects after a choice that point at it, each effect once', () => {
+    const effects = [
+      pick('ability', 'a'),
+      mod({ target: 'score.@a', value: 'mod("@a")' }),
+      mod({ proficiency: 'save.@a' }),
+      mod({ value: '1' }),
+      pick('damage_type', 't'),
+    ];
+    expect(choiceUses(effects).map((u) => [u.choice.name, u.effects])).toEqual([
+      ['a', 2],
+      ['t', 0],
+    ]);
+    expect(choiceUses([mod({ proficiency: 'save.@a' }), pick('ability', 'a')])[0].effects).toBe(0);
+    expect(choiceUses([mod({})])).toEqual([]);
   });
 
   it('ignores a field the effect type does not read when the menu is given', () => {

@@ -140,8 +140,8 @@ describe('EffectPicker: the named choices of a feat', () => {
   const entries = (select: HTMLElement) =>
     Array.from(select.querySelectorAll('optgroup')[0].querySelectorAll('option')).map((o) => ({
       value: o.value,
-      label: text(o.querySelector('.opt__label')!),
-      side: text(o.querySelector('.opt__side')!),
+      label: text(o),
+      side: o.dataset['side'] ?? '',
     }));
   const footer = (select: HTMLElement) =>
     select.querySelector('option.footer')?.textContent?.trim();
@@ -231,7 +231,60 @@ describe('EffectPicker: the named choices of a feat', () => {
         'save.@habilidade',
       ]);
       setup(effects[2], { effects, index: 0 });
-      expect(groups(field('target') as HTMLElement)).toEqual([]);
+      const values = Array.from((field('target') as HTMLSelectElement).options).map((o) => o.value);
+      expect(values).not.toContain('score.@habilidade');
+    });
+
+    it('locks the group when the only choice of the kind comes below, and says where it is', () => {
+      const mod = { ...emptyEffect('modifier'), target: '' };
+      const effects = [mod, named('ability', 'depois'), mod, named('ability', 'ainda_depois')];
+      setup(mod, { effects, index: 0 });
+      const target = field('target') as HTMLSelectElement;
+      expect(groups(target)).toEqual(['A escolha do talento', 'Valores fixos']);
+      const row = target.querySelector<HTMLOptionElement>('optgroup option')!;
+      expect(row.disabled).toBe(true);
+      expect(text(row)).toBe(
+        '“Habilidade (1ª)” está no efeito 2, abaixo deste. Suba a escolha para usá-la aqui.',
+      );
+      expect(target.querySelector('optgroup.accent')).toBeNull();
+      target.selectedIndex = Array.from(target.options).indexOf(row);
+      target.dispatchEvent(new Event('change'));
+      expect(emitted).toEqual([]);
+    });
+
+    it('lets the master list the damage types a choice of a damage type offers, in sentence case', () => {
+      setup({ ...named('damage_type', 'tipo'), from: ['damage-type:fire'] }, { index: 2 });
+      const list = field('from')!.closest('app-pick-list')!;
+      expect(text(list)).toContain('Fogo');
+      const add = Array.from(list.querySelectorAll('option')).map((o) => o.value);
+      expect(add).toEqual(['', 'damage-type:psychic']);
+    });
+
+    it('shows "Escolha…" and the refusal for a field whose choice is gone, and keeps its text', () => {
+      const gone = { ...emptyEffect('modifier'), target: 'score.@sumiu' };
+      setup(gone);
+      const target = field('target') as HTMLSelectElement;
+      expect(target.selectedOptions[0].text).toBe('Escolha…');
+      expect(target.getAttribute('aria-invalid')).toBe('true');
+      expect(text(target.closest('app-select-field')!)).toContain(
+        'A escolha que este campo usava foi removida. Escolha outro valor.',
+      );
+      expect(emitted).toEqual([]);
+    });
+
+    it('says the same of a list that holds a pick whose choice is gone, once', () => {
+      const gone = { ...emptyEffect('resistance'), damageTypes: ['damage-type:@sumiu'] };
+      setup(gone);
+      const list = field('damage_types')!;
+      expect(text(list.closest('app-pick-list')!).split('foi removida')).toHaveLength(2);
+    });
+
+    it('says nothing of a field whose pick reads, or of a feature that has no choices', () => {
+      const ok = { ...emptyEffect('modifier'), target: 'score.@habilidade' };
+      setup(ok);
+      expect(text(el)).not.toContain('foi removida');
+      setup({ ...ok, target: 'score.@sumiu' }, { choices: null });
+      expect(text(el)).not.toContain('foi removida');
     });
 
     it('is absent without the choices input, and the list is the fixed values as before', () => {

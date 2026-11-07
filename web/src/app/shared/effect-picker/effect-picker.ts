@@ -2,6 +2,7 @@ import {
   Component,
   ElementRef,
   Injector,
+  TemplateRef,
   afterNextRender,
   computed,
   inject,
@@ -9,6 +10,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -29,7 +31,6 @@ import {
   unreadableNumber,
 } from '../../core/content/effect-draft';
 import { readWhole, wholeText } from '../../core/content/whole-number';
-import { capitalized } from '../../core/creatures/bestiary-format';
 import { neverFolded, visibleFields } from '../../core/content/effect-visible';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckGroup, type CheckOption } from '../form-fields/check-group';
@@ -39,7 +40,7 @@ import { PickList } from '../form-fields/pick-list';
 import { RadioCards, type RadioCard } from '../form-fields/radio-cards';
 import { SelectField, type SelectOption } from '../form-fields/select-field';
 import { TextField } from '../form-fields/text-field';
-import { CHOICE_GROUPS, CHOICE_GROUP_ICON, insertAt } from './effect-picker-choices';
+import { CHOICE_GROUP_ICON, insertAt } from './effect-picker-choices';
 import { FeatChoiceView } from './feat-choice-view';
 import {
   afterTarget,
@@ -47,6 +48,7 @@ import {
   fieldView,
   fixedHint,
   fixedMode,
+  listOptions,
   modeLockNote,
   refHint,
   refusalTexts,
@@ -75,6 +77,7 @@ import {
     FieldNote,
     MatButtonModule,
     MatIconModule,
+    NgTemplateOutlet,
     PickList,
     RadioCards,
     SelectField,
@@ -109,6 +112,13 @@ export class EffectPicker {
   readonly effectIndex = input(0);
   /** The effect is in an option of a feat: its fields offer fixed values only, and say so. */
   readonly featOption = input(false);
+  /**
+   * The feat editor draws where a choice of options comes from in its own cards (`afterFields`), so the picker leaves out the
+   * "Conjunto" field and, once a set is offered, the list of marked options.
+   */
+  readonly sourceInCards = input(false);
+  /** A block drawn under the fields and above "Mais opções": the feat editor's cards. */
+  readonly afterFields = input<TemplateRef<unknown> | null>(null);
 
   /** The feat's choices as this effect sees them. */
   protected readonly feat = new FeatChoiceView({
@@ -117,6 +127,7 @@ export class EffectPicker {
     choices: this.choices,
     effectIndex: this.effectIndex,
     featOption: this.featOption,
+    sourceInCards: this.sourceInCards,
     siblings: this.siblings,
   });
 
@@ -137,7 +148,9 @@ export class EffectPicker {
   protected readonly allFields = computed(() =>
     visibleFields(this.menu().fieldsOf(this.effect().type), this.effect()).filter(
       // The feat editor names a choice by itself ("habilidade"), so the field is not asked.
-      (f) => !(f.name === 'name' && this.featEditor()),
+      (f) =>
+        !(f.name === 'name' && this.featEditor()) &&
+        !this.feat.inCards(f, this.issuesOf()(this.path(f.name)).length > 0),
     ),
   );
   /** "Mais opções": the optional fields stay folded until they hold something, a refusal points at them, or the person opens them;
@@ -175,7 +188,17 @@ export class EffectPicker {
   }
 
   protected issues(field: string): readonly string[] {
-    return refusalTexts(this.effect(), field, this.issuesOf()(this.path(field)));
+    const texts = refusalTexts(this.effect(), field, this.issuesOf()(this.path(field)));
+    return this.feat.withProblems(field, this.effect().type, texts);
+  }
+
+  /** The select of a field whose pick cannot be read shows "Escolha…": the draft keeps the text until the master picks another. */
+  protected unreadable(f: EffectMenuField): boolean {
+    return this.feat.problem(f) !== null;
+  }
+
+  protected selected(f: EffectMenuField): string {
+    return this.unreadable(f) ? '' : this.read(f.name);
   }
 
   /** How a field is drawn when the menu's kind is not the whole story: the rolls as check rows, a reroll's resource from the entry's
@@ -280,37 +303,19 @@ export class EffectPicker {
 
   /** The options of a closed list, with the menu's one-line explanation of each. */
   protected optionsOf(f: EffectMenuField): (SelectOption & { hint: string })[] {
-    if (f.name === 'spell') {
-      return this.spellOptions().map((o) => ({ ...o, hint: '' }));
-    }
-    const menu = this.menu();
-    const list =
-      f.name === 'from' && f.list === ''
-        ? this.effect().type === 'spell_modifier'
-          ? menu.list('damage_types')
-          : menu.fromOptions(this.effect().choice)
-        : f.name === 'spells'
-          ? []
-          : menu.list(f.list);
-    // The server writes a damage type in lower case ("fogo"); a list of them reads in sentence case, as every label does.
-    const damage =
-      f.list === 'damage_types' ||
-      (f.name === 'from' && f.list === '' && this.effect().type === 'spell_modifier');
-    return list.map((o) => ({
-      value: o.key,
-      label: damage ? capitalized(o.namePt) : o.namePt,
-      hint: o.hintPt,
-    }));
+    return listOptions(this.menu(), this.effect(), f, this.spellOptions());
   }
 
   /** A choice with a placeholder when it is required, and a real "Padrão" (the field left empty) when it is not. */
   protected choiceOptions(f: EffectMenuField): SelectOption[] {
     const list = this.feat.withChoices(f, this.optionsOf(f));
     const empty = this.effect().type === 'roll_minimum' ? 'Qualquer tipo' : 'Padrão';
-    return f.required ? list : [{ value: '', label: empty }, ...list];
+    return f.required || this.unreadable(f) ? list : [{ value: '', label: empty }, ...list];
   }
 
-  protected readonly choiceGroups = CHOICE_GROUPS;
+  protected groupsOf(f: EffectMenuField) {
+    return this.feat.groups(f);
+  }
 
   protected footerOf(f: EffectMenuField): string {
     return this.feat.footer(f);

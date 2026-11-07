@@ -43,6 +43,8 @@
         [choices]="choices()"
         [featOption]="featOption()"
         [effectIndex]="0"
+        [sourceInCards]="sourceInCards()"
+        [afterFields]="afterFieldsAt() === 0 ? afterFields() : null"
         [spellOptions]="spellOptions()"
         [siblings]="feature().effects"
         (effectChange)="patch({ effects: [$event] })"
@@ -58,6 +60,8 @@
         [choices]="choices()"
         [featOption]="featOption()"
         [effectIndex]="0"
+        [sourceInCards]="sourceInCards()"
+        [afterFields]="afterFieldsAt() === 0 ? afterFields() : null"
         [spellOptions]="spellOptions()"
         [siblings]="feature().effects"
         (effectChange)="setEffect(0, $event)"
@@ -92,6 +96,8 @@
           [choices]="choices()"
           [featOption]="featOption()"
           [effectIndex]="e.index"
+          [sourceInCards]="sourceInCards()"
+          [afterFields]="afterFieldsAt() === e.index ? afterFields() : null"
           (effectChange)="setEffect(e.index, $event)"
         />
         <app-field-note class="grid__wide" [id]="path('effects[' + e.index + ']') + '-note'" [issues]="issuesOf()(path('effects[' + e.index + ']'))" />

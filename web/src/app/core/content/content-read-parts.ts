@@ -43,6 +43,8 @@ export interface EntryRead {
   readonly text: readonly string[];
   /** The effects that change a roll, a lead and a sentence each, under the text. */
   readonly effects?: readonly ReadItem[];
+  /** The options a feat lists for its choice, under the text. */
+  readonly options?: readonly ReadItem[];
 }
 
 const RECHARGE_WORDS: Readonly<Record<string, string>> = {

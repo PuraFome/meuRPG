@@ -178,3 +178,51 @@ export function missingChoices(
   });
   return out;
 }
+
+/** The fields of an effect that point at a name, by the proto name, with the draft's key. */
+function referencesOfField(e: EffectDraft, field: string): string[] {
+  const own = REFERENCE_FIELDS.find((f) => f.name === field);
+  return own ? [...new Set(textsOf(e, own.key).flatMap(referencesIn))] : [];
+}
+
+/**
+ * Why a field's pick cannot be read: `removed` when no effect of the feat declares the name any more, `later` when the choice
+ * is declared at this effect or below it. Null when every name it holds is a choice of an earlier effect (or it holds none).
+ */
+export function referenceProblem(
+  e: EffectDraft,
+  field: string,
+  choices: readonly FeatChoice[],
+  index: number,
+): 'removed' | 'later' | null {
+  let later = false;
+  for (const name of referencesOfField(e, field)) {
+    const known = choices.filter((c) => c.name === name);
+    if (known.some((c) => c.index < index)) {
+      continue;
+    }
+    if (known.length === 0) {
+      return 'removed';
+    }
+    later = true;
+  }
+  return later ? 'later' : null;
+}
+
+export interface ChoiceUse {
+  choice: FeatChoice;
+  /** How many later effects have a field that points at the choice. */
+  effects: number;
+}
+
+/** Each named choice of the feat with the number of effects that use it, in the order of the feat's effects. */
+export function choiceUses(effects: readonly EffectDraft[]): ChoiceUse[] {
+  return featChoices(effects).map((choice) => {
+    const used = effects.filter(
+      (e, index) =>
+        index > choice.index &&
+        REFERENCE_FIELDS.some((f) => referencesOfField(e, f.name).includes(choice.name)),
+    );
+    return { choice, effects: used.length };
+  });
+}

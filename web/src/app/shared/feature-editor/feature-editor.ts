@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, TemplateRef, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -48,6 +48,11 @@ export class FeatureEditor {
   readonly choices = input<readonly FeatChoice[] | null>(null);
   /** The feature is an option of a feat: its fields offer fixed values only, and say so. */
   readonly featOption = input(false);
+  /** The feat editor holds where a choice of options comes from in its own cards: the picker leaves those fields out. */
+  readonly sourceInCards = input(false);
+  /** A block drawn inside the picker of the effect at `afterFieldsAt`, under its fields and above "Mais opções". */
+  readonly afterFields = input<TemplateRef<unknown> | null>(null);
+  readonly afterFieldsAt = input(-1);
   /** A narrow field projected between the name and the effect (`<… lead>`): the class editor's "Nível". */
   readonly withLead = input(false);
   /**

@@ -24,6 +24,7 @@ import { bonusText } from './feature-draft';
 import { entryEffectsPart } from './content-read-rolls';
 import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
+import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
 import { type OfferedByName, optionPrerequisiteParts, optionSetName } from './option-text';
@@ -127,7 +128,15 @@ function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
       });
     }
   }
-  return { rows, sections: [], text: f.descPt, ...entryEffectsPart(f.effects, nameOf) };
+  rows.push(...featChoiceRows(f));
+  const options = featOptionItems(f, nameOf);
+  return {
+    rows,
+    sections: [],
+    text: f.descPt,
+    ...entryEffectsPart(f.effects, nameOf),
+    ...(options.length > 0 ? { options } : {}),
+  };
 }
 
 function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName): EntryRead {

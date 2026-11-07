@@ -146,9 +146,10 @@ describe('form fields', () => {
     expect(group.classList.contains('accent')).toBe(true);
     expect(group.querySelector('legend mat-icon')?.textContent?.trim()).toBe('alt_route');
     const first = group.querySelector('option')!;
-    expect(first.querySelector('.opt__side')?.textContent).toBe('do efeito 1');
-    // Where the list is plain, the label carries the side text.
-    expect(first.label).toBe('Valor · Habilidade · do efeito 1');
+    // The customizable list draws the side text after the label (CSS); the selected value shows the label alone.
+    expect(first.dataset['side']).toBe('do efeito 1');
+    expect(first.textContent).toBe('Valor · Habilidade');
+    expect(first.hasAttribute('label')).toBe(false);
     const note = select.querySelector<HTMLOptionElement>('option.footer')!;
     expect(note.disabled).toBe(true);
     expect(note.textContent).toBe('Aparece nos efeitos de baixo.');

@@ -18,13 +18,13 @@
             <app-select-field
               [label]="labelOf(f)"
               [options]="choiceOptions(f)"
-              [value]="read(f.name)"
-              [placeholder]="f.required ? 'Escolha…' : ''"
+              [value]="selected(f)"
+              [placeholder]="f.required || unreadable(f) ? 'Escolha…' : ''"
               [path]="path(f.name)"
               [issues]="issues(f.name)"
               [disabled]="locked(f)"
               [describedBy]="locked(f) ? lockId(f) : ''"
-              [groups]="choiceGroups"
+              [groups]="groupsOf(f)"
               [footer]="footerOf(f)"
               (valueChange)="setChoice(f, $event)"
             />
@@ -165,6 +165,9 @@
         <p class="frow__hint">{{ hint }}</p>
       }
     </div>
+  }
+  @if (afterFields(); as cards) {
+    <ng-container *ngTemplateOutlet="cards" />
   }
   @if (feat.own(); as own) {
     <p class="choice-banner">
