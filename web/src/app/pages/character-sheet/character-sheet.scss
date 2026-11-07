@@ -154,9 +154,9 @@ app-revive-blocked {
     grid-template-columns: 124px 300px repeat(2, minmax(0, 1fr));
     grid-template-rows: auto auto 1fr;
     grid-template-areas:
-      'abilities proficiencies combat equipment'
-      'abilities proficiencies combat traits'
-      'abilities proficiencies notes traits';
+      'abilities proficiencies combat column4'
+      'abilities proficiencies combat column4'
+      'abilities proficiencies notes column4';
     gap: var(--mr-space-4) var(--mr-space-6);
   }
 }
@@ -173,9 +173,28 @@ app-revive-blocked {
   grid-area: combat;
 }
 
-// "Equipamento" follows the combat numbers; from 1200px it is the fourth column's first panel, beside "Ataques".
+// "Equipamento" follows the combat numbers; from 1200px it is in the fourth column, under the player's notes (which
+// stay its first block), beside "Ataques".
 .sheet__equipment {
   grid-area: equipment;
+}
+
+// The fourth column from 1200px: a column of "Anotações", "Equipamento" and the traits. Under 1200px the wrapper
+// and the traits' wrapper dissolve: each part is a cell of the sheet's grid, as before.
+.sheet__col4 {
+  display: contents;
+
+  @media (min-width: 1200px) {
+    grid-area: column4;
+    display: flex;
+    flex-direction: column;
+    gap: var(--mr-space-4);
+    min-width: 0;
+
+    .sheet__traits {
+      display: contents;
+    }
+  }
 }
 
 .sheet__notes {

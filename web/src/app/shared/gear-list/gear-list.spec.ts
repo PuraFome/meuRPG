@@ -33,6 +33,48 @@ describe('GearList', () => {
     ]);
   });
 
+  it('shows the armor class a two-handed weapon would give, on its button and in its label', () => {
+    const bow: GearVm = {
+      ...sword,
+      key: 'equipment:longbow',
+      namePt: 'Arco longo',
+      equipped: false,
+      twoHanded: true,
+      armorClassIfToggled: 16,
+    };
+    const fixture = setup([bow]);
+    fixture.componentRef.setInput('armorClass', 18);
+    fixture.detectChanges();
+    const button = (fixture.nativeElement as HTMLElement).querySelector('button')!;
+    expect(button.textContent).toContain('CA 16');
+    expect(button.getAttribute('aria-label')).toBe('Equipar CA 16 Arco longo');
+  });
+
+  it('starts every accessible name with the text the button shows (axe label-content-name-mismatch)', () => {
+    const armor: GearVm = {
+      ...sword,
+      key: 'equipment:chain-mail',
+      namePt: 'Cota de malha',
+      kind: 'armor',
+      armorClassIfToggled: 16,
+    };
+    for (const combat of [false, true]) {
+      const fixture = setup([armor, sword]);
+      fixture.componentRef.setInput('armorClass', 18);
+      fixture.componentRef.setInput('combat', combat);
+      fixture.componentRef.setInput('cost', (g: GearVm) => (g.kind === 'armor' ? '' : 'grátis'));
+      fixture.detectChanges();
+      for (const b of Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button'),
+      )) {
+        const copy = b.cloneNode(true) as HTMLElement;
+        copy.querySelectorAll('mat-icon').forEach((i) => i.remove());
+        const visible = copy.textContent!.replace(/\s+/g, ' ').trim();
+        expect(b.getAttribute('aria-label')!.startsWith(visible)).toBe(true);
+      }
+    }
+  });
+
   it('labels each button with the action and the piece, and waits while a change is saved', () => {
     const fixture = setup([sword]);
     const el = fixture.nativeElement as HTMLElement;

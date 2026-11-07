@@ -742,8 +742,8 @@ describe('CharacterSheetPage', () => {
     const el = await render();
     const headings = Array.from(el.querySelectorAll('h2')).map((h) => h.textContent?.trim());
     // Document order is the order of a phone, which is the order of use: the
-    // medallions, then the numbers used in play (combat, spells and equipment),
-    // then saves and skills, the features and the player's notes, and the story.
+    // medallions, then the numbers used in play (combat and spells),
+    // then saves and skills, the equipment, the features and the player's notes, and the story.
     // From 1200px the grid puts the four columns in the paper sheet's order.
     // "Habilidades" and "Combate" are for screen readers only; the
     // medallions and the shield are their visible titles. No "Ataques"
@@ -752,9 +752,11 @@ describe('CharacterSheetPage', () => {
       'Habilidades',
       'Combate',
       'Magias de mago',
-      'Equipamento',
       'Testes de resistência',
       'Perícias',
+      // "Equipamento" is the first block of the fourth column, with the features and the notes: the grid shows it right
+      // after the combat numbers on a phone and a tablet, and under the player's notes from 1200px.
+      'Equipamento',
       'Características e traços',
       // The player's own notes: after the game numbers and the features; the first block of the fourth column from 1200px (E8-07).
       'Anotações',
@@ -1398,6 +1400,47 @@ describe('CharacterSheetPage', () => {
       const section = sectionTitled(el, 'Equipamento');
       expect(section.querySelector('[role="status"]')!.textContent).toBe('');
       expect(section.querySelector('[role="alert"]')!.textContent).toContain('não deu para ler');
+    });
+
+    it('offers "Tentar de novo" after a change whose sheet could not be read, and clears the error when it comes back', async () => {
+      configure();
+      let reads = 0;
+      fake.getCharacterSheetFn = () =>
+        reads++ === 1 ? Promise.reject(new Error('x')) : Promise.resolve(withGear(true, 12));
+
+      const el = await render();
+      button(el, 'Guardar Espada longa').click();
+      await nextTurn();
+      await Promise.resolve();
+      await nextTurn();
+      const section = sectionTitled(el, 'Equipamento');
+      const retry = Array.from(section.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Tentar de novo'),
+      )!;
+      expect(retry).toBeTruthy();
+
+      retry.click();
+      await nextTurn();
+      await Promise.resolve();
+      await nextTurn();
+      expect(section.querySelector('[role="alert"]')).toBeNull();
+    });
+
+    it('reads the sheet again when the tab is shown, so a change from another tab does not linger', async () => {
+      configure();
+      let stowed = false;
+      fake.getCharacterSheetFn = () => Promise.resolve(withGear(!stowed, stowed ? 10 : 12));
+
+      const el = await render();
+      expect(sectionTitled(el, 'Equipamento').textContent).toContain('Classe de armadura 12');
+      stowed = true; // the sword was stowed from another tab
+      document.dispatchEvent(new Event('visibilitychange'));
+      await nextTurn();
+      await Promise.resolve();
+      await nextTurn();
+
+      expect(sectionTitled(el, 'Equipamento').textContent).toContain('Classe de armadura 10');
+      expect(button(el, 'Equipar Espada longa')).toBeTruthy();
     });
 
     it('has no buttons on a dead character’s sheet (the lock of the sheet does not matter: gear is played)', async () => {

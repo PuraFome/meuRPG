@@ -34,6 +34,15 @@ export function toGearVm(g: GearEntry): GearVm {
   };
 }
 
+/** What a read of a character's gear holds: the list, the armor class now, whether the shield counts for nothing (a
+ * two-handed weapon is equipped) and the sheet's revision. */
+export interface GearRead {
+  readonly gear: GearVm[];
+  readonly armorClass: number;
+  readonly shieldIdle: boolean;
+  readonly revision: number;
+}
+
 /** The gear of a character and the change of it (`SetEquipped`), for the screens that are not the sheet page (the
  * combat). `providedIn: 'root'`, imported only by lazy code; tests replace it with `{ provide: GearClient, useValue }`. */
 @Injectable({ providedIn: 'root' })
@@ -41,13 +50,15 @@ export class GearClient {
   private readonly client = createClient(CharacterService, inject(CONNECT_TRANSPORT));
 
   /** The gear and the armor class now, as the server derives them. */
-  async read(
-    campaignId: string,
-    characterId: string,
-  ): Promise<{ gear: GearVm[]; armorClass: number }> {
+  async read(campaignId: string, characterId: string): Promise<GearRead> {
     const res = await this.client.getCharacter({ campaignId, characterId });
     const derived = res.character?.derived;
-    return { gear: (derived?.gear ?? []).map(toGearVm), armorClass: derived?.armorClass ?? 0 };
+    return {
+      gear: (derived?.gear ?? []).map(toGearVm),
+      armorClass: derived?.armorClass ?? 0,
+      shieldIdle: derived?.shieldIdle ?? false,
+      revision: res.character?.revision ?? 0,
+    };
   }
 
   async set(

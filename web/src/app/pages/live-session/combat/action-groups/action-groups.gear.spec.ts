@@ -35,7 +35,14 @@ const armor: GearVm = {
 
 describe('ActionGroups: "Sacar ou guardar" (#562)', () => {
   async function setup(
-    over: { used?: boolean; master?: boolean; locked?: string; gear?: GearVm[] } = {},
+    over: {
+      used?: boolean;
+      actionUsed?: boolean;
+      locked?: string;
+      gear?: GearVm[];
+      idle?: boolean;
+      failRead?: boolean;
+    } = {},
   ) {
     const fixture = TestBed.createComponent(ActionGroups);
     const asked: { key: string; equipped: boolean }[] = [];
@@ -44,7 +51,14 @@ describe('ActionGroups: "Sacar ou guardar" (#562)', () => {
         new GearFlow({
           client: {
             read: () =>
-              Promise.resolve({ gear: over.gear ?? [sword, mace, shield, armor], armorClass: 16 }),
+              over.failRead
+                ? Promise.reject(new Error('x'))
+                : Promise.resolve({
+                    gear: over.gear ?? [sword, mace, shield, armor],
+                    armorClass: 16,
+                    shieldIdle: over.idle ?? false,
+                    revision: 1,
+                  }),
             set: (_c, _ch, key, equipped) => {
               asked.push({ key, equipped });
               return Promise.resolve();
@@ -52,6 +66,7 @@ describe('ActionGroups: "Sacar ou guardar" (#562)', () => {
           },
           campaignId: () => 'c1',
           characterId: () => 'ch1',
+          revision: () => 1,
         }),
     );
     await flow.load();
@@ -62,66 +77,77 @@ describe('ActionGroups: "Sacar ou guardar" (#562)', () => {
         movementLeftFt: 30,
         speedFt: 30,
         objectInteractionUsed: over.used ?? false,
+        actionUsed: over.actionUsed ?? false,
       }),
     );
     fixture.componentRef.setInput('gearFlow', flow);
-    fixture.componentRef.setInput('gearMaster', over.master ?? false);
     fixture.componentRef.setInput('locked', over.locked ?? '');
     fixture.detectChanges();
-    const head = Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>(
-        'button[aria-expanded]',
-      ),
-    ).find((b) => b.textContent?.includes('Sacar ou guardar'));
-    head?.click();
     fixture.detectChanges();
     return { fixture, el: fixture.nativeElement as HTMLElement, asked };
   }
 
-  const costs = (el: HTMLElement) =>
+  const buttonText = (b: HTMLElement | null): string => {
+    const copy = b?.cloneNode(true) as HTMLElement | undefined;
+    copy?.querySelectorAll('mat-icon').forEach((i) => i.remove());
+    return copy?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+  };
+  const rows = (el: HTMLElement) =>
     Array.from(el.querySelectorAll('.gear-row')).map((r) => ({
       name: r.querySelector('.gear-row__name')!.textContent!.trim(),
-      cost: r.querySelector('.gear-row__cost')?.textContent?.trim() ?? '',
-      blocked: r.querySelector('.gear-row__blocked')?.textContent?.trim() ?? '',
+      button: buttonText(r.querySelector('button')),
+      disabled: r.querySelector('button')?.getAttribute('aria-disabled') === 'true',
+      why: r.querySelector('.gear-row__line')?.textContent?.trim() ?? '',
     }));
 
-  it('puts the list in a fold named "Sacar ou guardar"', async () => {
+  it('is a fold named "Sacar ou guardar" under the attacks, with the armor class in its header and the rule line', async () => {
     const { el } = await setup();
-    expect(el.textContent).toContain('Sacar ou guardar');
+    const attacks = el.querySelector('[role="tabpanel"]')!;
+    expect(attacks.textContent).toContain('Sacar ou guardar');
+    expect(attacks.textContent).toContain('CA 16');
+    expect(attacks.textContent).toContain(
+      '1ª arma do turno: grátis; depois, a ação. Escudo: ação. Armadura: só fora do combate.',
+    );
   });
 
-  it('says the first weapon uses the turn’s free interaction, a shield the action, and armor not at all', async () => {
+  it('has the cost inside the button: "Guardar · grátis" for the first weapon, "Sacar · ação" for the shield', async () => {
     const { el } = await setup();
-    const rows = costs(el);
-    expect(rows.find((r) => r.name === 'Espada longa')!.cost).toBe(
-      'Usa a interação gratuita do turno.',
-    );
-    expect(rows.find((r) => r.name === 'Escudo')!.cost).toBe('Usa a sua ação.');
-    expect(rows.find((r) => r.name === 'Cota de malha')!.blocked).toContain(
-      'não dá em pleno combate',
-    );
-    expect(el.querySelector('[data-gear-key="equipment:chain-mail"]')).toBeNull();
+    const r = rows(el);
+    expect(r.find((x) => x.name === 'Espada longa')!.button).toBe('Guardar grátis');
+    expect(r.find((x) => x.name === 'Maça')!.button).toBe('Sacar grátis');
+    expect(r.find((x) => x.name === 'Escudo')!.button).toContain('Sacar');
+    expect(r.find((x) => x.name === 'Escudo')!.button).toContain('ação');
+  });
+
+  it('lists no armor: the rule line covers it', async () => {
+    const { el } = await setup();
+    expect(rows(el).map((x) => x.name)).not.toContain('Cota de malha');
+    expect(el.querySelector('.gear-row__kind')).toBeNull();
+    expect(el.querySelector('.gear-row__cost.mr-muted')).toBeNull();
   });
 
   it('says a second weapon uses the action once the free interaction is spent', async () => {
     const { el } = await setup({ used: true });
-    expect(costs(el).find((r) => r.name === 'Maça')!.cost).toBe('Usa a sua ação.');
+    expect(rows(el).find((x) => x.name === 'Maça')!.button).toBe('Sacar ação');
   });
 
-  it('tells the master it costs nothing, and leaves armor to them', async () => {
-    const { el } = await setup({ master: true });
-    const rows = costs(el);
-    expect(
-      rows.every((r) => (r.name === 'Cota de malha' ? true : r.cost.startsWith('Sem custo'))),
-    ).toBe(true);
-    expect(el.querySelector('[data-gear-key="equipment:chain-mail"]')).not.toBeNull();
+  it('disables the button with the reason in words when the free interaction and the action are spent', async () => {
+    const { el, asked } = await setup({ used: true, actionUsed: true });
+    const mace = rows(el).find((x) => x.name === 'Maça')!;
+    expect(mace.disabled).toBe(true);
+    expect(mace.why).toBe('Você já usou a ação deste turno.');
+    el.querySelector<HTMLButtonElement>('[data-gear-key="equipment:mace"]')!.click();
+    expect(asked).toEqual([]);
   });
 
-  it('asks for the opposite state of the piece and shows the server’s armor class on the shield', async () => {
+  it('keeps the button when a free interaction is left though the action is spent', async () => {
+    const { el } = await setup({ actionUsed: true });
+    expect(rows(el).find((x) => x.name === 'Maça')!.disabled).toBe(false);
+  });
+
+  it('asks for the opposite state of the piece', async () => {
     const { el, asked } = await setup();
-    const button = el.querySelector<HTMLButtonElement>('[data-gear-key="equipment:shield"]')!;
-    expect(button.textContent).toContain('CA 17');
-    button.click();
+    el.querySelector<HTMLButtonElement>('[data-gear-key="equipment:shield"]')!.click();
     expect(asked).toEqual([{ key: 'equipment:shield', equipped: true }]);
   });
 
@@ -133,5 +159,59 @@ describe('ActionGroups: "Sacar ou guardar" (#562)', () => {
   it('shows no fold without gear', async () => {
     const { el } = await setup({ gear: [] });
     expect(el.textContent).not.toContain('Sacar ou guardar');
+  });
+
+  it('shows the error with "Tentar de novo" when the first read failed', async () => {
+    const { el } = await setup({ failRead: true });
+    expect(el.querySelector('[role="alert"]')!.textContent).toContain(
+      'Não deu para ler o equipamento.',
+    );
+    expect(el.textContent).toContain('Tentar de novo');
+  });
+
+  describe('with a two-handed weapon in the pack and the shield in hand', () => {
+    const hand: GearVm = { ...shield, equipped: true };
+    const bow: GearVm = {
+      ...sword,
+      key: 'equipment:longbow',
+      namePt: 'Arco longo',
+      equipped: false,
+      twoHanded: true,
+      armorClassIfToggled: 14,
+    };
+
+    it('warns before the drawing, marks the bow’s row and says the change in its label', async () => {
+      const { el } = await setup({ gear: [hand, sword, bow] });
+      expect(el.textContent).toContain(
+        'Sacar Arco longo (duas mãos) deixa o escudo de lado: CA 16 → 14.',
+      );
+      const row = Array.from(el.querySelectorAll('.gear-row')).find((r) =>
+        r.textContent?.includes('Arco longo'),
+      )!;
+      expect(row.querySelector('.gear-row__warn')).not.toBeNull();
+      expect(row.querySelector('button')!.getAttribute('aria-label')).toContain(
+        'A classe de armadura vai de 16 para 14',
+      );
+    });
+
+    it('marks the shield "Parado" and the header "CA 18 → 16" once the bow is drawn', async () => {
+      const drawn: GearVm = { ...bow, equipped: true, armorClassIfToggled: 18 };
+      const { el } = await setup({ gear: [hand, drawn], idle: true });
+      const row = Array.from(el.querySelectorAll('.gear-row')).find((r) =>
+        r.textContent?.includes('Escudo'),
+      )!;
+      expect(row.textContent).toContain('Parado');
+      expect(el.textContent).toContain('CA 18 → 16');
+    });
+  });
+
+  it('folds "Carregados (n)" when many weapons are carried', async () => {
+    const many = Array.from({ length: 6 }, (_, i) => ({
+      ...mace,
+      key: `equipment:w${i}`,
+      namePt: `Arma ${i}`,
+    }));
+    const { el } = await setup({ gear: [sword, ...many] });
+    expect(el.textContent).toContain('Carregados (6)');
   });
 });

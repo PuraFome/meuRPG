@@ -839,7 +839,6 @@ enum BreathShape {
   BREATH_SHAPE_CONE = 2;
 }
 
-// Resistance is a damage type the character resists, and what gives it.
 // GearEntry is one piece of the gear a sheet lists, equipped or carried.
 message GearEntry {
   // Content key: the sheet's armor_key, a weapon key, or "equipment:shield".
@@ -864,6 +863,7 @@ enum GearKind {
   GEAR_KIND_WEAPON = 3;
 }
 
+// Resistance is a damage type the character resists, and what gives it.
 message Resistance {
   // The damage type key ("damage-type:poison") and its Portuguese name.
   string damage_type = 1;

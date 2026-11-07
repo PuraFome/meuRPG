@@ -26,8 +26,30 @@ export class SheetEquip {
   readonly busyKey = signal<string | null>(null);
   readonly notice = signal('');
   readonly error = signal('');
+  /** The sheet could not be read after a change: "Tentar de novo" asks again. */
+  readonly readFailed = signal(false);
 
   constructor(private readonly host: SheetEquipHost) {}
+
+  /** The tab is shown again: the sheet is read again, so a change made from another tab or by the master is not left
+   * on screen. Returns what stops the listening. */
+  refreshWhenShown(doc: Document): () => void {
+    const onShown = () => {
+      if (doc.visibilityState === 'visible' && this.busyKey() === null && this.host.characterId()) {
+        void this.host.reload();
+      }
+    };
+    doc.addEventListener('visibilitychange', onShown);
+    return () => doc.removeEventListener('visibilitychange', onShown);
+  }
+
+  /** "Tentar de novo": reads the sheet again after a change whose list could not be read. */
+  async retry(): Promise<void> {
+    if (await this.host.reload()) {
+      this.readFailed.set(false);
+      this.error.set('');
+    }
+  }
 
   async toggle(change: GearToggle): Promise<void> {
     const campaignId = this.host.campaignId();
@@ -37,6 +59,7 @@ export class SheetEquip {
     }
     this.busyKey.set(change.key);
     this.error.set('');
+    this.readFailed.set(false);
     try {
       await this.host.source.setEquipped(campaignId, characterId, change.key, change.equipped);
       const fresh = await this.host.reload();
@@ -44,9 +67,8 @@ export class SheetEquip {
         return;
       }
       if (!fresh) {
-        this.error.set(
-          'A troca foi feita, mas não deu para ler a ficha de novo. Recarregue a página.',
-        );
+        this.readFailed.set(true);
+        this.error.set('A troca foi feita, mas não deu para ler a ficha de novo.');
         return;
       }
       const full = this.host.sheet();
