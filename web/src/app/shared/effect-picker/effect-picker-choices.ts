@@ -1,5 +1,6 @@
-import type { ChoiceKind, FeatChoice } from '../../core/content/effect-choices';
-import { choiceRef } from '../../core/content/effect-choices';
+import { LATER_TEXT } from '../../core/content/content-violation-texts-feat';
+import type { ChoiceKind, FeatChoice, RefFormId } from '../../core/content/effect-choices';
+import { choiceRef, pickSpec } from '../../core/content/effect-choices';
 import type { SelectGroup, SelectOption } from '../form-fields/select-field';
 
 /**
@@ -18,8 +19,9 @@ export const OPTION_NOTE = 'As opções do talento não usam as escolhas dele: s
 
 /** What the editor says of a field whose pick it cannot read: the choice is gone, or it is below the field. */
 export const MISSING_TEXTS = {
-  removed: 'A escolha que este campo usava foi removida. Escolha outro valor.',
-  later: 'A escolha vem depois deste efeito. Suba a escolha ou desça este efeito.',
+  removed: (name: string) =>
+    `A escolha “${name}” que este campo usava foi removida. Escolha outro valor.`,
+  later: () => LATER_TEXT,
 } as const;
 
 export const CHOICE_GROUPS: Readonly<Record<string, SelectGroup>> = {
@@ -78,27 +80,21 @@ const DAMAGE: RefForm = {
   hint: (n) => `O tipo de dano escolhido no efeito ${n}.`,
 };
 
-const PROFICIENCY: RefForm = {
-  ...SAVE,
-  hint: (n) => `Proficiência na resistência da habilidade escolhida no efeito ${n}.`,
-};
-
-/** The fields that take a choice (the formulas take `mod("@name")` and `score("@name")`, see `formulaInsertions`), by the proto name. */
-const REF_FIELDS: Readonly<Record<string, { kind: ChoiceKind; forms: readonly RefForm[] }>> = {
-  proficiency: { kind: 'ability', forms: [PROFICIENCY] },
-  target: { kind: 'ability', forms: [SCORE, SAVE] },
-  targets: { kind: 'ability', forms: [CHECK, SAVE] },
-  ability: { kind: 'ability', forms: [ABILITY] },
-  attack_ability: { kind: 'ability', forms: [ABILITY] },
-  damage_ability: { kind: 'ability', forms: [ABILITY] },
-  damage_type: { kind: 'damage_type', forms: [DAMAGE] },
-  damage_types: { kind: 'damage_type', forms: [DAMAGE] },
-  except: { kind: 'damage_type', forms: [DAMAGE] },
+const FORMS: Readonly<Record<RefFormId, RefForm>> = {
+  proficiency: {
+    ...SAVE,
+    hint: (n) => `Proficiência na resistência da habilidade escolhida no efeito ${n}.`,
+  },
+  save: SAVE,
+  score: SCORE,
+  check: CHECK,
+  ability: ABILITY,
+  damage: DAMAGE,
 };
 
 /** The kind of choice a field may point at, or null when the field takes none. */
 export function refKind(field: string): ChoiceKind | null {
-  return REF_FIELDS[field]?.kind ?? null;
+  return pickSpec(field)?.kind ?? null;
 }
 
 /** What the field writes for a form and a choice: "save.@habilidade". */
@@ -117,17 +113,17 @@ export function refOptions(
   choices: readonly FeatChoice[],
   sideOf: (choice: FeatChoice) => string,
 ): RefOption[] {
-  const own = REF_FIELDS[field];
+  const own = pickSpec(field);
   if (!own) {
     return [];
   }
-  return own.forms.flatMap((form) =>
+  return own.forms.flatMap((id) =>
     choices.map((c) => ({
-      value: refValue(form, c),
-      label: `${form.stem} · ${c.label}`,
+      value: refValue(FORMS[id], c),
+      label: `${FORMS[id].stem} · ${c.label}`,
       side: sideOf(c),
       group: CHOICE_GROUP,
-      hint: form.hint(c.index + 1),
+      hint: FORMS[id].hint(c.index + 1),
     })),
   );
 }

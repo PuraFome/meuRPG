@@ -138,7 +138,7 @@ export class FeatEditor {
   );
   /** The feat's named choices: the fields of the effects after one may point at it. */
   protected readonly choices = computed(() => featChoices(this.draft().feature.effects));
-  protected readonly uses = computed(() => choiceUses(this.draft().feature.effects));
+  protected readonly uses = computed(() => choiceUses(this.draft().feature.effects, this.menu()));
   /** The fields that point at a choice that was removed or moved below them: nothing is re-pointed, and the save waits. */
   private readonly missing = computed(() =>
     missingChoices(this.draft().feature.effects, this.menu()),

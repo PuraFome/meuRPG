@@ -9768,16 +9768,17 @@ test('a lista de talentos do subir de nível com o que não cumpre passa no axe 
   await scanFeatList(browser, 'dark', 390);
 });
 
-// The feat editor's options and named choices (MR-025, RN-23; #788): the list of options, a whole set offered, a named ability choice
+// The feat editor's options and named choices (MR-025, RN-23): the list of options, the most it takes, a whole set offered, a named ability choice
 // with its group open, a named damage type choice, the refusals and the choice that was removed, and the formula that reads a choice.
 // Each row is judged in the light and the dark theme at 390 (the master reads: the editor is read-only below 768), 768 and 1280 px;
 // E2E_SHOTS_DIR, when set, also saves the viewport screenshots (feat-options-support.ts).
 
-type FeatOptionsScreen = 'options' | 'set' | 'choice' | 'damage' | 'refusals' | 'formula';
+type FeatOptionsScreen = 'options' | 'limit' | 'set' | 'choice' | 'damage' | 'refusals' | 'formula';
 
 /** What the master reads on a phone, by the feat: the row of what the player picks, and one line of what it lists. */
 const featRead: Record<FeatOptionsScreen, { key: keyof FeatOptionsTable; name: string; picks: string; sees: string }> = {
   options: { key: 'veteran', name: 'Estilo do Veterano', picks: '1 de 4 opções', sees: 'Guarda Alta.' },
+  limit: { key: 'limit', name: 'Livro de Estilos', picks: '1 de 60 opções', sees: 'Um livro de estilos de luta' },
   set: { key: 'school', name: 'Escola de Armas', picks: '1 estilo de luta', sees: 'Escolha um estilo de luta ao pegar o talento.' },
   choice: { key: 'resilient', name: 'Resiliente', picks: '1 habilidade', sees: 'Escolha uma habilidade' },
   damage: { key: 'affinity', name: 'Afinidade Elemental', picks: '1 tipo de dano', sees: 'Escolha um elemento.' },
@@ -9811,6 +9812,16 @@ async function featStates(m: Page, screen: FeatOptionsScreen, table: FeatOptions
       await m.getByRole('button', { name: /Opção 2 · Mão Firme/ }).click();
       await expect(panel.getByLabel('Nome da opção').nth(1)).toBeVisible();
       await judge('a lista de opções com uma aberta', 'opcoes');
+      break;
+    }
+    case 'limit': {
+      await route(table.limit);
+      await expect(panel).toContainText('60 de 60 opções');
+      const add = panel.getByRole('button', { name: 'Adicionar uma opção' });
+      await expect(add).toHaveAttribute('aria-disabled', 'true');
+      await expect(panel.getByText('No máximo 60 opções. Remova uma para pôr outra.')).toBeVisible();
+      await add.scrollIntoViewIfNeeded();
+      await judge('a lista no limite de 60 opções', 'limite');
       break;
     }
     case 'set': {
@@ -9859,7 +9870,7 @@ async function featStates(m: Page, screen: FeatOptionsScreen, table: FeatOptions
       await route(table.resilient);
       await m.locator('[data-field="table_feat.effects[0].type"]').selectOption({ label: 'Só texto' });
       const proficiency = m.locator('[data-field="table_feat.effects[1].proficiency"]');
-      await expect(m.getByText('A escolha que este campo usava foi removida. Escolha outro valor.').first()).toBeVisible();
+      await expect(m.getByText('A escolha “habilidade” que este campo usava foi removida. Escolha outro valor.').first()).toBeVisible();
       await expect(proficiency.locator('option:checked')).toHaveText('Escolha…');
       const save = m.getByRole('button', { name: 'Salvar talento' });
       await expect(save).toHaveAttribute('aria-disabled', 'true');
@@ -9910,6 +9921,7 @@ async function scanFeatOptionsScreen(browser: Browser, screen: FeatOptionsScreen
 
 const featRows: [FeatOptionsScreen, string][] = [
   ['options', 'a lista de opções do talento'],
+  ['limit', 'a lista no limite de 60 opções'],
   ['set', 'o conjunto inteiro oferecido pela escolha'],
   ['choice', 'a escolha nomeada de uma habilidade com o grupo aberto'],
   ['damage', 'a escolha nomeada de um tipo de dano'],

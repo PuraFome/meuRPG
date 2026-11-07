@@ -267,7 +267,7 @@ describe('EffectPicker: the named choices of a feat', () => {
       expect(target.selectedOptions[0].text).toBe('Escolha…');
       expect(target.getAttribute('aria-invalid')).toBe('true');
       expect(text(target.closest('app-select-field')!)).toContain(
-        'A escolha que este campo usava foi removida. Escolha outro valor.',
+        'A escolha “sumiu” que este campo usava foi removida. Escolha outro valor.',
       );
       expect(emitted).toEqual([]);
     });
@@ -277,6 +277,35 @@ describe('EffectPicker: the named choices of a feat', () => {
       setup(gone);
       const list = field('damage_types')!;
       expect(text(list.closest('app-pick-list')!).split('foi removida')).toHaveLength(2);
+    });
+
+    it('names the choice a list pick lost, on its chip and on the button that takes it off', () => {
+      const cases: [EffectDraft, string][] = [
+        [{ ...emptyEffect('resistance'), damageTypes: ['damage-type:@sumiu'] }, 'damage_types'],
+        [{ ...emptyEffect('roll_mode'), targets: ['check.@sumiu'] }, 'targets'],
+      ];
+      for (const [gone, key] of cases) {
+        setup(gone);
+        const list = field(key)!.closest('app-pick-list')!;
+        const chip = list.querySelector('.chip')!;
+        expect(text(chip)).toContain('Escolha removida (sumiu)');
+        expect(text(chip)).not.toContain('@');
+        expect(chip.querySelector('button')!.getAttribute('aria-label')).toBe(
+          'Tirar a escolha removida sumiu',
+        );
+        expect(text(list)).toContain('A escolha “sumiu” que este campo usava foi removida.');
+      }
+    });
+
+    it('says a list pick sits below its choice, naming it, when the choice exists after the effect', () => {
+      const mod = { ...emptyEffect('resistance'), damageTypes: ['damage-type:@tipo'] };
+      const effects = [mod, named('damage_type', 'tipo')];
+      setup(mod, { effects, index: 0 });
+      const chip = field('damage_types')!.closest('app-pick-list')!.querySelector('.chip')!;
+      expect(text(chip)).toContain('Escolha abaixo (tipo)');
+      expect(chip.querySelector('button')!.getAttribute('aria-label')).toBe(
+        'Tirar a escolha abaixo tipo',
+      );
     });
 
     it('says nothing of a field whose pick reads, or of a feature that has no choices', () => {

@@ -9,6 +9,12 @@ import type { SelectOption } from './select-field';
 
 let nextId = 0;
 
+/** The words of a chip whose key is not among the options: its label, and what its button says. */
+export interface ChipName {
+  readonly label: string;
+  readonly remove: string;
+}
+
 /**
  * "Idiomas", "Ferramentas", "Magias": several values of a closed list, as chips that can be taken off, with a select to add
  * one more (the list without what is already chosen). Each chip is a 44 px target; the order is the order they were added.
@@ -21,7 +27,7 @@ let nextId = 0;
       @for (key of values(); track key) {
         <span class="chip">
           {{ nameOf(key) }}
-          <button type="button" class="chip__x" [attr.aria-label]="'Tirar ' + nameOf(key)" [disabled]="disabled()" (click)="removed.emit(key)">
+          <button type="button" class="chip__x" [attr.aria-label]="removeLabel(key)" [disabled]="disabled()" (click)="removed.emit(key)">
             <mat-icon aria-hidden="true">close</mat-icon>
           </button>
         </span>
@@ -128,6 +134,8 @@ export class PickList {
   readonly max = input(0);
   /** Nothing can be added or taken off; the hint says why. */
   readonly disabled = input(false);
+  /** Words for the keys the options do not hold (a pick of a choice that is gone), by key. */
+  readonly names = input<Readonly<Record<string, ChipName>>>({});
   /** A line at the end of the add list that cannot be picked. */
   readonly footer = input('');
   readonly added = output<string>();
@@ -158,7 +166,11 @@ export class PickList {
   }
 
   protected nameOf(key: string): string {
-    return this.options().find((o) => o.value === key)?.label ?? key;
+    return this.options().find((o) => o.value === key)?.label ?? this.names()[key]?.label ?? key;
+  }
+
+  protected removeLabel(key: string): string {
+    return this.names()[key]?.remove ?? `Tirar ${this.nameOf(key)}`;
   }
 
   protected add(event: Event): void {

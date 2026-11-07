@@ -1,4 +1,5 @@
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import type { ReferenceProblem } from '../../core/content/effect-choices';
 import {
   type EffectDraft,
   type EffectMenuVm,
@@ -12,6 +13,7 @@ import {
   formulaReading,
   pointsAtChoice,
 } from '../../core/content/formula-reading';
+import type { ChipName } from '../form-fields/pick-list';
 import type { SelectGroup, SelectOption } from '../form-fields/select-field';
 import {
   CHOICE_GROUPS,
@@ -47,14 +49,19 @@ export interface FeatChoiceHost {
 export class FeatChoiceView {
   constructor(private readonly host: FeatChoiceHost) {}
 
-  /** The earlier choices of the feat a field may point at: only its own kind, only from the effects before this one. */
-  private refsOf(f: EffectMenuField): RefOption[] {
+  /** The feat's choices of the kind a field may point at; none when the field takes none, the effect has no choices or is an option of the feat. */
+  private ofKind(f: EffectMenuField): readonly FeatChoice[] {
     const kind = refKind(f.name);
     const all = this.host.choices();
     if (!kind || all === null || this.host.featOption()) {
       return [];
     }
-    const before = all.filter((c) => c.kind === kind && c.index < this.host.effectIndex());
+    return all.filter((c) => c.kind === kind);
+  }
+
+  /** The earlier choices of the feat a field may point at: only its own kind, only from the effects before this one. */
+  private refsOf(f: EffectMenuField): RefOption[] {
+    const before = this.ofKind(f).filter((c) => c.index < this.host.effectIndex());
     return refOptions(f.name, before, (c) => choiceSide(c, this.damageTypesOf(c)));
   }
 
@@ -66,12 +73,7 @@ export class FeatChoiceView {
 
   /** The first choice of the field's kind that comes below this effect: it exists, but the field cannot use it from here. */
   private laterOf(f: EffectMenuField): FeatChoice | undefined {
-    const kind = refKind(f.name);
-    const all = this.host.choices();
-    if (!kind || all === null || this.host.featOption()) {
-      return undefined;
-    }
-    return all.find((c) => c.kind === kind && c.index > this.host.effectIndex());
+    return this.ofKind(f).find((c) => c.index > this.host.effectIndex());
   }
 
   /** The group of choices above the fixed values; with only a later choice, the group locked, saying where it is. */
@@ -90,7 +92,7 @@ export class FeatChoiceView {
   }
 
   /** Why the pick a field holds cannot be read now; null when it reads or the field holds none. */
-  problem(f: EffectMenuField): 'removed' | 'later' | null {
+  problem(f: EffectMenuField): ReferenceProblem | null {
     const all = this.host.choices();
     if (all === null || this.host.featOption()) {
       return null;
@@ -121,8 +123,24 @@ export class FeatChoiceView {
 
   /** The refusal the editor writes by itself for a pick it cannot read, so nothing is re-pointed behind the master's back. */
   problemTexts(f: EffectMenuField): string[] {
-    const why = this.problem(f);
-    return why ? [MISSING_TEXTS[why]] : [];
+    const p = this.problem(f);
+    return p ? [p.why === 'removed' ? MISSING_TEXTS.removed(p.name) : MISSING_TEXTS.later()] : [];
+  }
+
+  /** The chips of a list field whose pick is not among its entries: a choice that was removed or sits below this effect, named. */
+  chipNames(f: EffectMenuField, values: readonly string[]): Readonly<Record<string, ChipName>> {
+    const out: Record<string, ChipName> = {};
+    for (const key of values) {
+      const name = /@([a-z0-9_]+)/.exec(key)?.[1];
+      if (name === undefined || name === 'mesa' || this.refsOf(f).some((o) => o.value === key)) {
+        continue;
+      }
+      const below = this.ofKind(f).some((c) => c.name === name);
+      out[key] = below
+        ? { label: `Escolha abaixo (${name})`, remove: `Tirar a escolha abaixo ${name}` }
+        : { label: `Escolha removida (${name})`, remove: `Tirar a escolha removida ${name}` };
+    }
+    return out;
   }
 
   /** The line a field's value has beside it when it is one of the group's entries. */

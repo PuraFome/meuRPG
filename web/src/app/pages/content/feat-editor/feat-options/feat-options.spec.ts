@@ -131,7 +131,7 @@ describe('FeatOptions: the "Opções do talento" panel', () => {
     expect(add.getAttribute('aria-disabled')).toBe('true');
     expect(add.classList.contains('mr-button--off')).toBe(true);
     expect(text(el.querySelector('#feat-options-lock')!)).toBe(
-      'Máximo 60 opções. Remova uma para pôr outra.',
+      'No máximo 60 opções. Remova uma para pôr outra.',
     );
     expect(add.getAttribute('aria-describedby')).toBe('feat-options-lock');
     add.click();

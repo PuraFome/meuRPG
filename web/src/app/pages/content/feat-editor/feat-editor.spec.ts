@@ -620,7 +620,7 @@ describe('FeatEditor (MR-025)', () => {
         expect(select.selectedOptions[0].text).toBe('Escolha…');
         expect(select.getAttribute('aria-invalid')).toBe('true');
         expect(text(select.closest('app-select-field')!)).toContain(
-          'A escolha que este campo usava foi removida. Escolha outro valor.',
+          'A escolha “habilidade” que este campo usava foi removida. Escolha outro valor.',
         );
       });
 

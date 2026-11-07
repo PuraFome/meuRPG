@@ -1,6 +1,12 @@
+import { REFERENCE_FIELDS } from './effect-choices';
+
 /** The fields of an effect that may hold a pick of the feat's named choice (`pickFields` of the server). */
-const PICK_FIELDS =
-  'proficiency|targets?|ability|attack_ability|damage_ability|damage_types?|except';
+const PICK_FIELDS = REFERENCE_FIELDS.filter((f) => f.pick)
+  .map((f) => f.name)
+  .join('|');
+
+/** What the server's refusal of a pick that points below its field says; the editor says it too, before the server is asked. */
+export const LATER_TEXT = 'A escolha vem depois deste efeito. Suba a escolha ou desça este efeito.';
 /**
  * What the server's reasons say at a feat's option list and at its choice of options.
  * The paths and reasons are those of `rules/overlay_features.go` and `rules/picks.go`.
@@ -25,6 +31,6 @@ export const FEAT_OPTION_TEXTS: readonly { shape: RegExp; reason?: string; text:
   {
     shape: new RegExp(`^table_feat\\.effects\\[\\]\\.(${PICK_FIELDS})$`),
     reason: 'dangling_reference',
-    text: 'A escolha vem depois deste efeito. Suba a escolha ou desça este efeito.',
+    text: LATER_TEXT,
   },
 ];

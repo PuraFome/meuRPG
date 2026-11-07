@@ -337,6 +337,10 @@ export class EffectPicker {
       : this.feat.withChoices(f, this.optionsOf(f));
   }
 
+  protected chipNames(f: EffectMenuField) {
+    return this.feat.chipNames(f, this.list(f.name));
+  }
+
   protected pickHint(f: EffectMenuField): string {
     if (f.name === 'from' && this.effect().choice === 'feature' && this.list('from').length === 0) {
       return 'Sem lista: oferece as opções da própria característica ("Opções para escolher").';

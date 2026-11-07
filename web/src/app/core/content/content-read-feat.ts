@@ -1,12 +1,7 @@
 import type { TableEffect, TableFeat } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { type NameOf, type ReadItem, type ReadRow, featureItem } from './content-read-parts';
+import { CHOICE_KINDS, choiceKindOf } from './effect-choices';
 import { optionSetName } from './option-text';
-
-/** What the player's pick is called after its count, by the kind of the choice ("1 habilidade", "2 tipos de dano"). */
-const KIND_WORDS: Readonly<Record<string, readonly [string, string]>> = {
-  ability: ['habilidade', 'habilidades'],
-  damage_type: ['tipo de dano', 'tipos de dano'],
-};
 
 /** How much a choice of options asks: "1 de 4 opções" for the feat's own or marked ones, "1 estilo de luta" for a whole set. */
 function optionsAsked(e: TableEffect, own: number): string {
@@ -23,9 +18,9 @@ export function featChoiceRows(f: TableFeat): ReadRow[] {
     if (e.type !== 'choice') {
       return [];
     }
-    const words = KIND_WORDS[e.choice];
-    const value = words
-      ? `${e.count} ${e.count === 1 ? words[0] : words[1]}`
+    const kind = choiceKindOf(e.choice);
+    const value = kind
+      ? `${e.count} ${CHOICE_KINDS[kind].words[e.count === 1 ? 0 : 1]}`
       : e.choice === 'feature'
         ? optionsAsked(e, f.options.length)
         : '';

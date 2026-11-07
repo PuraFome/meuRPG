@@ -16,6 +16,11 @@ import { FieldNote } from './field-note';
 
 let nextId = 0;
 
+/** Whether the browser draws a select's list from our markup and styles (`appearance: base-select`). */
+function supportsBaseSelect(): boolean {
+  return typeof CSS !== 'undefined' && CSS.supports('appearance', 'base-select');
+}
+
 export interface SelectOption<T extends string | number = string> {
   readonly value: T;
   readonly label: string;
@@ -39,8 +44,9 @@ export interface SelectGroup {
  * It is a real `<select>`, so the phone's own picker opens, with the refusal of the server under it.
  * Options with a `group` sit in an `<optgroup>`; `disabled` turns the whole select off.
  * A group with an icon, an option with a `side` text, or a `footer` make the list rich where the browser has a customizable select
- * (`appearance: base-select`): the header carries its icon, the side text sits at the right and the footer is the list's last line.
- * Elsewhere the same select is a plain list: the group is its label, the side text follows the label and the footer is a line that cannot be picked.
+ * (`appearance: base-select`, asked of `CSS.supports`): the header carries its icon, the side text sits at the right and the footer is the list's last line.
+ * Elsewhere the same select is a plain list that draws only text: the group is its label with no icon, the option reads "label · side"
+ * and the footer is a line that cannot be picked.
  * Values are strings or numbers; `valueChange` gives back the option's own value, not its text.
  */
 @Component({
@@ -138,7 +144,7 @@ export interface SelectGroup {
 
       select.rich option {
         display: flex;
-        align-items: baseline;
+        align-items: center;
         gap: var(--mr-space-3);
         min-height: 44px;
         padding: 0 var(--mr-space-4);
@@ -257,12 +263,15 @@ export class SelectField<T extends string | number = string> {
     return out;
   });
 
-  /** Whether the list is drawn by us where the browser lets us: a group with an icon, a side text or a footer. */
+  private readonly customizable = supportsBaseSelect();
+
+  /** Whether the list is drawn by us: the browser has a customizable select and there is a group icon, a side text or a footer. */
   protected readonly rich = computed(
     () =>
-      this.footer() !== '' ||
-      Object.values(this.groups()).some((g) => g.icon) ||
-      this.options().some((o) => o.side),
+      this.customizable &&
+      (this.footer() !== '' ||
+        Object.values(this.groups()).some((g) => g.icon) ||
+        this.options().some((o) => o.side)),
   );
 
   private readonly control = viewChild<ElementRef<HTMLSelectElement>>('control');

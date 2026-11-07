@@ -63,7 +63,7 @@ export class FeatOptions {
     if (this.offersSet()) {
       return 'A escolha oferece um conjunto: um talento oferece as opções dele ou um conjunto, não os dois.';
     }
-    return this.full() ? `Máximo ${MAX_FEAT_OPTIONS} opções. Remova uma para pôr outra.` : '';
+    return this.full() ? `No máximo ${MAX_FEAT_OPTIONS} opções. Remova uma para pôr outra.` : '';
   });
   protected readonly rows = computed<Row[]>(() =>
     this.options().map((option, index) => ({

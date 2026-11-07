@@ -730,9 +730,15 @@ describe('the named choices of a feat', () => {
       mod({ value: '5' }),
     ];
     const choices = featChoices(effects);
-    expect(referenceProblem(effects[0], 'proficiency', choices, 0)).toBe('later');
+    expect(referenceProblem(effects[0], 'proficiency', choices, 0)).toEqual({
+      why: 'later',
+      name: 'a',
+    });
     expect(referenceProblem(effects[2], 'proficiency', choices, 2)).toBeNull();
-    expect(referenceProblem(effects[2], 'target', choices, 2)).toBe('removed');
+    expect(referenceProblem(effects[2], 'target', choices, 2)).toEqual({
+      why: 'removed',
+      name: 'gone',
+    });
     expect(referenceProblem(effects[3], 'proficiency', choices, 3)).toBeNull();
     expect(referenceProblem(effects[4], 'value', choices, 4)).toBeNull();
     expect(referenceProblem(effects[4], 'nonsense', choices, 4)).toBeNull();

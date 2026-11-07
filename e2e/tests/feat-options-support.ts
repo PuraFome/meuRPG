@@ -5,7 +5,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { createEntryRPC } from './content-support';
 import { setTableRulesRPC } from './table-rules-support';
 
-// Setup for the a11y rows of the feat editor's options and named choices (MR-025, RN-23; #788): feats with a list of options, a whole
+// Setup for the a11y rows of the feat editor's options and named choices (MR-025, RN-23): feats with a list of options, a whole
 // SRD set offered, a named ability choice and a named damage type choice, and the formula that reads a choice. Everything comes
 // through the API, so a row proves its screen and not the editor's writes; invented names, as the other content specs have.
 
@@ -29,6 +29,20 @@ export function veteranFeatBody(): Record<string, unknown> {
       },
       { namePt: 'Vigia do Acampamento', descPt: ['Nada se move sem que você note.'], effects: [{ type: 'proficiency', proficiency: 'skill:perception' }] },
     ],
+  };
+}
+
+/** "Livro de Estilos": a choice of one of 60 options, the most a feat lists, so "Adicionar uma opção" waits. */
+export function limitFeatBody(): Record<string, unknown> {
+  return {
+    namePt: 'Livro de Estilos',
+    descPt: ['Um livro de estilos de luta, um para cada gosto. Escolha um ao pegar o talento.'],
+    effects: [{ type: 'choice', choice: 'feature', count: 1 }],
+    options: Array.from({ length: 60 }, (_, i) => ({
+      namePt: `Estilo ${i + 1}`,
+      descPt: [`O estilo ${i + 1} do livro.`],
+      effects: [{ type: 'modifier', target: 'ac', mode: 'add', value: '1' }],
+    })),
   };
 }
 
@@ -81,17 +95,19 @@ export function commandFeatBody(): Record<string, unknown> {
 
 export interface FeatOptionsTable {
   veteran: string;
+  limit: string;
   school: string;
   resilient: string;
   affinity: string;
   command: string;
 }
 
-/** The five feats in a campaign with "Talentos" on. */
+/** The six feats in a campaign with "Talentos" on. */
 export async function createFeatOptionsRPC(master: Page, campaignId: string): Promise<FeatOptionsTable> {
   await setTableRulesRPC(master, campaignId, { featsAllowed: true });
   return {
     veteran: await createEntryRPC(master, campaignId, 'tableFeat', veteranFeatBody()),
+    limit: await createEntryRPC(master, campaignId, 'tableFeat', limitFeatBody()),
     school: await createEntryRPC(master, campaignId, 'tableFeat', schoolFeatBody()),
     resilient: await createEntryRPC(master, campaignId, 'tableFeat', resilientFeatBody()),
     affinity: await createEntryRPC(master, campaignId, 'tableFeat', affinityFeatBody()),
