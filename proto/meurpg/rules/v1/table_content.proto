@@ -428,7 +428,7 @@ message TableEffect {
   // weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as adamantine.
   bool adamantine = 84;
   // granted_spell: the grant's material components are not needed (display only), and the
-  // uses each cast spends. 85 is the `flag` field of another change.
+  // uses each cast spends.
   bool no_material_components = 86;
   int32 uses_cost = 87;
 }

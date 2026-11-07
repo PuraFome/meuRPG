@@ -903,7 +903,7 @@ export type TableEffect = Message<"meurpg.rules.v1.TableEffect"> & {
 
   /**
    * granted_spell: the grant's material components are not needed (display only), and the
-   * uses each cast spends. 85 is the `flag` field of another change.
+   * uses each cast spends.
    *
    * @generated from field: bool no_material_components = 86;
    */

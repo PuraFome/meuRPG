@@ -52,7 +52,7 @@ test(
       await sheet.getByRole('button', { name: 'Detalhes de Bênção' }).click();
       const details = p.getByRole('dialog', { name: /Bênção/ }).last();
       await expect(details.getByText('Componentes')).toBeVisible();
-      await expect(details.getByText('V, S', { exact: true })).toBeVisible();
+      await expect(details.getByText('V, S · sem material (Graça de teste)', { exact: true })).toBeVisible();
       await expect(details.getByText('V, S, M')).toHaveCount(0);
     } finally {
       await endOpenSessionRPC(m, campaignId);

@@ -301,7 +301,7 @@ export class CastSheet {
           const vm = spellDetailsFromGen(details);
           // A grant that waives the material takes the "M" off the component line (the text goes with it).
           return this.ch.viaGrant() && this.ch.grant?.noMaterialComponents
-            ? withoutMaterial(vm)
+            ? withoutMaterial(vm, this.ch.grant.sourceNamePt)
             : vm;
         },
       },

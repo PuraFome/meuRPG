@@ -1608,7 +1608,7 @@ type TableEffect struct {
 	// weapon_rule only: the weapon lines the filter chooses (the unarmed strike too) count as adamantine.
 	Adamantine bool `protobuf:"varint,84,opt,name=adamantine,proto3" json:"adamantine,omitempty"`
 	// granted_spell: the grant's material components are not needed (display only), and the
-	// uses each cast spends. 85 is the `flag` field of another change.
+	// uses each cast spends.
 	NoMaterialComponents bool  `protobuf:"varint,86,opt,name=no_material_components,json=noMaterialComponents,proto3" json:"no_material_components,omitempty"`
 	UsesCost             int32 `protobuf:"varint,87,opt,name=uses_cost,json=usesCost,proto3" json:"uses_cost,omitempty"`
 	unknownFields        protoimpl.UnknownFields

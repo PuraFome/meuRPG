@@ -96,8 +96,10 @@ describe('a grant that waives the material', () => {
     const c = { verbal: true, somatic: true, material: true, materialText: 'a pinch of salt' };
     expect(formatComponents(c)).toEqual({ text: 'V, S, M', english: '(a pinch of salt)' });
     expect(
-      formatComponents(withoutMaterial({ components: c } as SpellDetailsVm).components),
-    ).toEqual({ text: 'V, S' });
+      formatComponents(
+        withoutMaterial({ components: c } as SpellDetailsVm, 'Graça de teste').components,
+      ),
+    ).toEqual({ text: 'V, S · sem material (Graça de teste)' });
   });
 });
 

@@ -82,6 +82,9 @@ func (x effectCompiler) grantedSpell() error {
 	if e.UsesCost < 0 {
 		return x.fail("uses_cost: at least 1 use")
 	}
+	if e.UsesCost > MaxGrantUsesCost {
+		return x.fail("uses_cost: at most %d uses", MaxGrantUsesCost)
+	}
 	if e.UsesCost != 0 && (e.Uses == "" || e.Uses == GrantedAtWill) {
 		return x.fail("uses_cost: a resource in uses is needed")
 	}

@@ -200,6 +200,7 @@ func TestGrantedSpellRefusalsNameTheirField(t *testing.T) {
 		{"a resource with a bad name", []Effect{res, grant("spell:light", "wis", func(e *Effect) { e.Uses = "Sem Espaço" })}, ".uses"},
 		{"a cost with no resource", []Effect{grant("spell:light", "wis", func(e *Effect) { e.UsesCost = 2 })}, ".uses_cost"},
 		{"a cost with an at-will grant", []Effect{grant("spell:light", "wis", func(e *Effect) { e.Uses, e.UsesCost = GrantedAtWill, 2 })}, ".uses_cost"},
+		{"a cost over the bound", []Effect{res, grant("spell:light", "wis", func(e *Effect) { e.Uses, e.UsesCost = graceResrce, MaxGrantUsesCost+1 })}, ".uses_cost"},
 		{"a negative cost", []Effect{res, grant("spell:light", "wis", func(e *Effect) { e.Uses, e.UsesCost = graceResrce, -1 })}, ".uses_cost"},
 		{"a level formula that fails", []Effect{grant("spell:light", "wis", func(e *Effect) { e.FromLevel = "nope()" })}, ".from_level"},
 	}
