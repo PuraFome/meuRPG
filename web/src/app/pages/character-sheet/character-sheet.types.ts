@@ -170,8 +170,6 @@ export interface HintVm {
   readonly text: string;
 }
 
-export type { GearVm, MarksVm };
-
 /** The marks of one carried weapon (`FullSheet.weapon_marks`). */
 export interface WeaponMarkVm extends MarksVm {
   readonly weaponKey: string;

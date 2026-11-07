@@ -31,6 +31,8 @@ export interface GearVm {
   readonly armorClassIfToggled: number;
   /** A weapon's marks; absent for armor and shield. */
   readonly marks?: MarksVm;
+  /** How many copies the sheet lists: weapons with one key are one row, their state kept by key. */
+  readonly count: number;
 }
 
 const KINDS: Record<number, GearVm['kind']> = {
@@ -47,6 +49,7 @@ export function toGearVm(g: GearEntry): GearVm {
     equipped: g.equipped,
     twoHanded: g.twoHanded,
     armorClassIfToggled: g.armorClassIfToggled,
+    count: Math.max(1, g.count),
   };
 }
 
