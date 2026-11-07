@@ -6041,6 +6041,8 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('switch', { name: 'Invoca criaturas' }).click();
       await m.getByRole('combobox', { name: 'Criaturas' }).fill('Lobo do Vale');
       await m.getByRole('option').filter({ has: m.locator('.pick__pt', { hasText: /^Lobo do Vale$/ }) }).click();
+      // The chip first: the next field patches from the block's rendered summon, so a fill before the render would drop the pick.
+      await expect(m.getByRole('group', { name: /^Criaturas que a/ }).getByText('Lobo do Vale', { exact: true })).toBeVisible();
       await m.getByLabel('Quantas vêm').fill('1');
       await expect(m.getByLabel('Gasta 1 uso de')).toBeVisible();
       await expectScreenPasses(m, `Característica de classe, a invocação ligada ${where}`);
