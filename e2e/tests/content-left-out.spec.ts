@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { test } from './diagnostics';
 
 import { createEntryRPC, entryRoute, listEntriesJSON, raceBody, spellBody } from './content-support';
-import { refuseEntries } from './left-out-support';
+import { refuseEntries, targetLeftTheMenu } from './left-out-support';
 import { campaignWithEmptyPlayer } from './table-rules-support';
 import { boxOf, gotoCampaignTab, newSignedInContext } from './support';
 
@@ -30,7 +30,7 @@ async function table(browser: import('@playwright/test').Browser) {
     { key: race, field: 'table_race.traits[0].effects[0].target', reason: 'bad_value' },
   ], {
     // The target the rules no longer have: the stored code is not in the menu.
-    [race]: (e) => (e.tableRace.traits[0].effects[0].target = 'alvo_antigo'),
+    [race]: (e) => targetLeftTheMenu(e),
   });
   return { master, player, m, p, campaignId, spell, race, done };
 }

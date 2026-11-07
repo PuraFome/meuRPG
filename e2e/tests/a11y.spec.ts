@@ -61,7 +61,7 @@ import {
 } from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginLegendaryFight, legendaryScreens, shotScale } from './legendary-support';
-import { LEFT_OUT_VIEWPORTS, leftOutShotScale, refuseEntries, shootLeftOut } from './left-out-support';
+import { LEFT_OUT_VIEWPORTS, leftOutShotScale, refuseEntries, shootLeftOut, targetLeftTheMenu } from './left-out-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
@@ -6087,7 +6087,7 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
         { key: spell, field: 'table_spell.damage[0].dice', reason: 'bad_formula' },
         { key: race, field: 'table_race.traits[0].effects[0].target', reason: 'bad_value' },
       ],
-      { [race]: (e) => (e.tableRace.traits[0].effects[0].target = 'alvo_antigo') },
+      { [race]: (e) => targetLeftTheMenu(e) },
     );
     for (const width of Object.keys(LEFT_OUT_VIEWPORTS).map(Number)) {
       const where = `(${colorScheme}, ${width}px)`;

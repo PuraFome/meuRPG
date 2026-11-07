@@ -15,13 +15,27 @@ export interface FakeViolation {
   message?: string;
 }
 
+/** An entry as the API lists it: the few fields the helper reads, and the rest of the body as it comes. */
+export interface StoredEntry {
+  key: string;
+  revision: number;
+  archived?: boolean;
+  [field: string]: unknown;
+}
+
+/** Sets the first trait's first effect target of a stored table race: the code the rules no longer have. */
+export function targetLeftTheMenu(entry: StoredEntry, target = 'alvo_antigo'): void {
+  const race = entry.tableRace as { traits: { effects: { target: string }[] }[] };
+  race.traits[0].effects[0].target = target;
+}
+
 /** From now on this page's ListTableEntries says these entries are refused, until the entry is archived or fixed (saved). It returns
  * the end of it: a test calls it before it closes the page, so a read the page started is answered first. */
 export async function refuseEntries(
   page: Page,
   violations: readonly FakeViolation[],
   /** What the stored entry says, by key: the data that the engine refuses (a target that left the menu), as the API gives it. */
-  stored: Readonly<Record<string, (entry: Record<string, any>) => void>> = {},
+  stored: Readonly<Record<string, (entry: StoredEntry) => void>> = {},
 ): Promise<() => Promise<void>> {
   // The revision each entry had when it was first listed: a save moves it, and the server would read the entry again (and,
   // fixed, leave it in), so the refusal lifts with it.
@@ -29,12 +43,12 @@ export async function refuseEntries(
   await page.route('**/meurpg.rules.v1.TableContentService/ListTableEntries', async (route: Route) => {
     const real = await route.fetch();
     const body = (await real.json()) as Record<string, unknown>;
-    const entries = (body.entries ?? []) as Record<string, any>[];
+    const entries = (body.entries ?? []) as StoredEntry[];
     for (const e of entries) {
-      seen.set(e.key, seen.get(e.key) ?? (e.revision as number));
+      seen.set(e.key, seen.get(e.key) ?? e.revision);
     }
-    const archived = new Set(entries.filter((e) => e.archived).map((e) => e.key as string));
-    const fixed = new Set(entries.filter((e) => e.revision !== seen.get(e.key)).map((e) => e.key as string));
+    const archived = new Set(entries.filter((e) => e.archived).map((e) => e.key));
+    const fixed = new Set(entries.filter((e) => e.revision !== seen.get(e.key)).map((e) => e.key));
     const live = violations.filter((v) => !archived.has(v.key) && !fixed.has(v.key));
     const headers = { ...real.headers() };
     delete headers['content-length'];
