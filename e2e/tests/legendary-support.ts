@@ -6,7 +6,7 @@ import { type Encounter, attackCombatSquares, beginAttackCombatRPC, combatRPC, g
 import { openCombatPanel, openOrderRow, openTurn } from './combat-layout';
 import { expectLoaded } from './loaded';
 import { waitForEncounterRevision } from './revision-support';
-import { callRPC, openCombatLog } from './support';
+import { callRPC, openCombatLog, viaTargetList } from './support';
 import { setTableRulesRPC } from './table-rules-support';
 
 // Setup and checks for the master's legendary offers and the Parry switch, through the API: the master's turn column
@@ -82,13 +82,19 @@ export async function castBurningHands(player: Page, fight: LegendaryFight): Pro
   expect(res.ok(), await res.text()).toBeTruthy();
 }
 
-/** Pensantus's dagger at `target`, with the face that makes the total exactly the target's armor class: a hit that a Parry (+2) turns into a miss. */
-export async function daggerAtArmorClass(player: Page, fight: LegendaryFight, target: string, armorClass: number): Promise<void> {
+/** Pensantus's dagger attack bonus, as the server's turn options give it. */
+async function daggerBonus(player: Page, fight: LegendaryFight): Promise<number> {
   const options = await callRPC(player, 'meurpg.play.v1.CombatService/GetTurnOptions', { campaignId: fight.campaignId, encounterId: fight.enc.id, combatantId: fight.id('Pensantus') });
   expect(options.ok(), await options.text()).toBeTruthy();
   const attacks = ((await options.json()).options?.attacks ?? []) as { attack: { key: string; attackBonus?: number } }[];
   const dagger = attacks.find((a) => a.attack.key === 'equipment:dagger')?.attack;
   expect(dagger, 'Pensantus has a dagger').toBeTruthy();
+  return dagger?.attackBonus ?? 0;
+}
+
+/** Pensantus's dagger at `target`, with the face that makes the total exactly the target's armor class: a hit that a Parry (+2) turns into a miss. */
+export async function daggerAtArmorClass(player: Page, fight: LegendaryFight, target: string, armorClass: number): Promise<void> {
+  const bonus = await daggerBonus(player, fight);
   const res = await callRPC(player, 'meurpg.play.v1.CombatService/RollAttack', {
     campaignId: fight.campaignId,
     encounterId: fight.enc.id,
@@ -96,7 +102,7 @@ export async function daggerAtArmorClass(player: Page, fight: LegendaryFight, ta
     attackKey: 'equipment:dagger',
     targetId: fight.id(target),
     idempotencyKey: crypto.randomUUID(),
-    d20Face: armorClass - (dagger?.attackBonus ?? 0),
+    d20Face: armorClass - bonus,
   });
   expect(res.ok(), await res.text()).toBeTruthy();
 }
@@ -107,24 +113,38 @@ const shotsDir = process.env.E2E_SHOTS_DIR;
 /** The device scale of a context that takes screenshots: 2 when they are asked for, else the browser's own. */
 export const shotScale = shotsDir ? { deviceScaleFactor: 2 } : {};
 
-/** Saves the page as `557-<screen>-<width>-<claro|escuro>.png` when `E2E_SHOTS_DIR` is set; a normal run writes nothing. */
-export async function shoot(page: Page, screen: string, width: number, colorScheme: 'light' | 'dark'): Promise<void> {
+/** The viewport of each width, a phone, a tablet and a laptop: the screens are judged at the fold a person sees, never full page. */
+const HEIGHTS: Record<number, number> = { 390: 844, 768: 1024, 1280: 800 };
+
+function viewportOf(width: number): { width: number; height: number } {
+  return { width, height: HEIGHTS[width] ?? 800 };
+}
+
+/**
+ * Saves the viewport as `557-<screen>-<width>-<claro|escuro>.png` when `E2E_SHOTS_DIR` is set; a normal run writes nothing.
+ * The page is scrolled to the state first: to `at` (centered, or at the top when taller than the screen) or, with none, to the top.
+ */
+export async function shoot(page: Page, screen: string, width: number, colorScheme: 'light' | 'dark', at?: Locator): Promise<void> {
   if (!shotsDir) {
     return;
   }
   mkdirSync(shotsDir, { recursive: true });
-  // A tall viewport instead of a full-page capture: the phone's fixed bottom bar then sits at the foot of the page, not over the cards.
-  const tall = await page.evaluate(() => document.documentElement.scrollHeight);
-  await page.setViewportSize({ width, height: tall });
+  await page.setViewportSize(viewportOf(width));
+  if (at) {
+    await at.evaluate((el) => {
+      el.scrollIntoView({ block: el.getBoundingClientRect().height < innerHeight * 0.8 ? 'center' : 'start' });
+    });
+  } else {
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
   await page.screenshot({ path: join(shotsDir, `557-${screen}-${width}-${colorScheme === 'light' ? 'claro' : 'escuro'}.png`) });
-  await page.setViewportSize({ width, height: 1100 });
 }
 
 /** Runs `check` at each width of `WIDTHS` on the pages: the pages are resized first, so the same screen is judged at all three. */
 export async function atEachWidth(pages: Page[], check: (width: number) => Promise<void>): Promise<void> {
   for (const width of WIDTHS) {
     for (const page of pages) {
-      await page.setViewportSize({ width, height: 1100 });
+      await page.setViewportSize(viewportOf(width));
     }
     await check(width);
   }
@@ -140,18 +160,11 @@ interface Look {
   scan: Scan;
 }
 
-/** Scans `page` (a screen named `screen` at `width`) and, when screenshots are asked for, saves `shot` (the page when not given). */
-async function look(l: Look, page: Page, screen: string, width: number, shot?: Locator): Promise<void> {
+/** Scans `page` (a screen named `screen` at `width`) and, when screenshots are asked for, saves the viewport scrolled to `at` (the top when not given). */
+async function look(l: Look, page: Page, screen: string, width: number, at?: Locator): Promise<void> {
   await expectLoaded(page);
   await l.scan(page, `${screen} (${l.scheme}, ${width}px)`);
-  if (!shot) {
-    await shoot(page, screen, width, l.scheme);
-    return;
-  }
-  if (shotsDir) {
-    mkdirSync(shotsDir, { recursive: true });
-    await shot.screenshot({ path: join(shotsDir, `557-${screen}-${width}-${l.scheme === 'light' ? 'claro' : 'escuro'}.png`) });
-  }
+  await shoot(page, screen, width, l.scheme, at);
 }
 
 /** The text of the player's "Esperando o mestre" card: the same words whatever the master is deciding. */
@@ -213,8 +226,9 @@ async function legendarySpendScreens(l: Look): Promise<void> {
   await expect(card.getByTestId('legendary-counts')).toHaveText('2 de 3');
   await detect.click();
   await expect(card.getByTestId('legendary-counts')).toHaveText('1 de 3');
-  await expect(card.getByTestId('legendary-spent')).toContainText(`${DRAGON} gastou 1 ação lendária: Detectar`);
-  await expect(card.getByTestId('legendary-spent')).toContainText('Só você vê');
+  // One short line: the undo is the log's, never a second control on the card, and the card is the master's anyway.
+  await expect(card.getByTestId('legendary-spent')).toContainText('Gastou 1: Detectar.');
+  await expect(card.getByRole('button', { name: /Desfazer/ })).toHaveCount(0);
   const wings = card.getByRole('button', { name: 'Usar: Ataque de asas' });
   await expect(wings).toBeDisabled();
   await expect(wings).toHaveAccessibleDescription('Custa 2; restam 1.');
@@ -232,6 +246,7 @@ async function legendarySpendScreens(l: Look): Promise<void> {
     const lines = log.getByRole('listitem').filter({ hasText: 'gastou 1 ação lendária: Detectar' });
     await expect(lines).toHaveCount(2);
     await expect(lines.filter({ hasText: 'Só o mestre vê' })).toHaveCount(2);
+    await expect(m.getByRole('button', { name: 'Desfazer última ação' }).first()).toBeVisible();
     await look(l, m, 'registro-lendario-mestre', width);
     const own = await openCombatLog(p);
     await expect(own.getByText(/ação lendária|ações lendárias/)).toHaveCount(0);
@@ -306,7 +321,7 @@ async function parryMenuScreens(l: Look): Promise<void> {
     await openOrderRow(m, BANDIT);
     await menuOf(BANDIT).click();
     await expect(m.getByRole('menuitemcheckbox', { name: 'Aparar: perguntar a cada golpe', checked: false })).toBeVisible();
-    await look(l, m, 'menu-aparar', width);
+    await look(l, m, 'menu-aparar', width, m.getByRole('menu'));
     await m.keyboard.press('Escape');
     await expect(m.getByRole('menu')).toHaveCount(0);
   });
@@ -324,30 +339,65 @@ async function parryMenuScreens(l: Look): Promise<void> {
   await openTurn(m);
 }
 
-/** A hit on the Capitão bandido that its Parry (+2) would turn into a miss: the master's window, and the player's neutral wait. */
-async function parryWindowScreens(l: Look, fight: LegendaryFight): Promise<string> {
+/** Pensantus's dagger through his own sheet (what a player does): the d20 he types makes the total the armor class; the sheet stays open on the result. */
+async function daggerSheetAtArmorClass(p: Page, fight: LegendaryFight, target: string, armorClass: number): Promise<Locator> {
+  const bonus = await daggerBonus(p, fight);
+  await p.getByRole('button', { name: 'Atacar com Adaga' }).click();
+  const sheet = p.getByRole('dialog', { name: 'Atacar com Adaga' });
+  await viaTargetList(p, sheet);
+  await sheet.locator('label', { hasText: target }).click();
+  await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+  const face = armorClass - bonus;
+  await p.getByLabel(/Role 1d20 para Adaga/).fill(String(face));
+  await p.getByRole('button', { name: `Confirmar ${face}` }).click();
+  return sheet;
+}
+
+/**
+ * A hit on the Capitão bandido that its Parry (+2) would turn into a miss: the master's window above his card, and the player's neutral
+ * wait inside the attack sheet he rolled it in (open, with the result and no damage to roll yet). Each width is its own attack, on a new turn.
+ */
+async function parryWindowScreens(l: Look, first: LegendaryFight, next: (fight: LegendaryFight) => Promise<LegendaryFight>): Promise<{ text: string; fight: LegendaryFight }> {
   const { m, p } = l;
-  await daggerAtArmorClass(p, fight, BANDIT, 15);
-  const offer = m.getByTestId('parry-offer');
-  await expect(offer).toBeVisible();
-  await expect(offer.getByRole('heading', { name: 'Aparar o golpe de Pensantus?' })).toBeVisible();
-  await expect(offer).toContainText('15 contra CA 15. Aparar soma 2: contra CA 17, vira erro.');
-  const pass = offer.getByRole('button', { name: 'Deixar passar' });
-  const parry = offer.getByRole('button', { name: 'Aparar (+2 CA)' });
-  await expectTabGoes(m, pass, parry);
-  await expect(m.getByTestId('legendary-card').getByTestId('legendary-badge')).toHaveText('Depois');
-  const text = await waitText(p);
-  expect(text).toContain('Esperando o mestre');
-  await expectNeutralPlayer(p);
-  await atEachWidth([m, p], async (width) => {
+  let fight = first;
+  let text = '';
+  for (const [i, width] of WIDTHS.entries()) {
+    if (i > 0) {
+      fight = await next(fight);
+    }
+    for (const page of [m, p]) {
+      await page.setViewportSize(viewportOf(width));
+    }
     await openTurn(m);
+    const sheet = await daggerSheetAtArmorClass(p, fight, BANDIT, 15);
+    const offer = m.getByTestId('parry-offer');
+    await expect(offer).toBeVisible();
+    await expect(offer.getByRole('heading', { name: 'Aparar o golpe de Pensantus?' })).toBeVisible();
+    await expect(offer).toContainText('15 contra CA 15. Aparar soma 2: contra CA 17, vira erro.');
+    const pass = offer.getByRole('button', { name: 'Deixar passar' });
+    const parry = offer.getByRole('button', { name: 'Aparar (+2 CA)' });
+    // The answer is on the first screen: the window stands above the turn card, so it is in view without scrolling.
+    await expect(parry).toBeInViewport();
+    await expectTabGoes(m, pass, parry);
+    await expect(m.getByTestId('legendary-card').getByTestId('legendary-badge')).toHaveText('Depois');
+    // The sheet stays open on the roll and the plain wait where the damage would be: the same words as for any hit that waits for the master.
+    await expect(sheet).toContainText('Acertou');
+    await expect(sheet.getByText('Esperando o mestre.')).toBeVisible();
+    text = await waitText(p);
+    expect(text).toContain('Esperando o mestre');
+    await expectNeutralPlayer(p);
+    // The card of the turn below the window keeps its title beside the avatar, on a laptop too.
+    await expect(m.locator('#npc-title')).not.toHaveClass(/mr-visually-hidden/);
+    await expect(m.locator('#npc-title')).toContainText('Pensantus');
     await look(l, m, 'aparar-mestre', width);
     await look(l, p, 'esperando-o-mestre-ataque-jogador', width);
-  });
-  await pass.click();
-  await expect(offer).toHaveCount(0);
-  await expect(p.getByTestId('master-wait')).toHaveCount(0);
-  return text;
+    await pass.click();
+    await expect(offer).toHaveCount(0);
+    await expect(p.getByTestId('master-wait')).toHaveCount(0);
+    await p.keyboard.press('Escape');
+    await expect(sheet).toHaveCount(0);
+  }
+  return { text, fight };
 }
 
 /** The table rule "Sempre": a hit on a Goblin, which has no reaction, waits for the master and the player reads the very same words. */
@@ -358,6 +408,11 @@ async function noTellScreens(l: Look, fight: LegendaryFight, parryText: string):
   await expect(m.getByRole('button', { name: 'Sem reação' })).toBeVisible();
   expect(await waitText(p)).toBe(parryText);
   await expectNeutralPlayer(p);
+  // The wait is said once, by the turn card: what it holds off points to that card instead of repeating it.
+  await expect(p.getByText(/Esperando o mestre/)).toHaveCount(1);
+  await expect(p.getByRole('button', { name: /^Agarrar/ })).toHaveAccessibleDescription(/Esperando o mestre/);
+  await expect(p.getByRole('button', { name: /^Empurrar/ })).toHaveAccessibleDescription(/Esperando o mestre/);
+  await expect(p.getByRole('button', { name: /^Encerrar turno/ })).toHaveAccessibleDescription(/Esperando o mestre/);
   await atEachWidth([m, p], async (width) => {
     await look(l, p, 'esperando-o-mestre-sem-reacao-jogador', width);
   });
@@ -385,7 +440,7 @@ export async function legendaryScreens(m: Page, p: Page, scheme: 'light' | 'dark
   now = await automaticParry(l, now, () => nextTurnOfPensantus(m, [m, p], now));
   now = await nextTurnOfPensantus(m, [m, p], now);
   await parryMenuScreens(l);
-  const parryText = await parryWindowScreens(l, now);
-  now = await nextTurnOfPensantus(m, [m, p], now);
-  await noTellScreens(l, now, parryText);
+  const parry = await parryWindowScreens(l, now, (f) => nextTurnOfPensantus(m, [m, p], f));
+  now = await nextTurnOfPensantus(m, [m, p], parry.fight);
+  await noTellScreens(l, now, parry.text);
 }

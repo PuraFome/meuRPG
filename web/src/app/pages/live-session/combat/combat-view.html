@@ -582,6 +582,10 @@
 <ng-template #turnBlock>
   @if (encounter(); as e) {
     <ng-container *ngTemplateOutlet="masterWaiting" />
+    @if (queueFirst()) {
+      <!-- A window that blocks the table is answered from the first screen: it stands above the card. -->
+      <ng-container *ngTemplateOutlet="masterAfter" />
+    }
     @if (acting(); as who) {
       <ng-container *ngTemplateOutlet="actingBody; context: { who: who }" />
     } @else {
@@ -597,7 +601,9 @@
         <ng-container *ngTemplateOutlet="npcCardTpl" />
       }
     }
-    <ng-container *ngTemplateOutlet="masterAfter" />
+    @if (!queueFirst()) {
+      <ng-container *ngTemplateOutlet="masterAfter" />
+    }
     <app-zones-panel
       [zones]="zoneFlow.views()"
       [master]="true"

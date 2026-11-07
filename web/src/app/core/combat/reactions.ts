@@ -90,6 +90,9 @@ export function reactionWait(e: Encounter): { title: string; detail: string } | 
  * ask-mode Parry, Legendary Resistance): the server writes the same words for all of them (`Encounter.reaction_wait`). */
 export const MASTER_WAIT_TITLE = 'Esperando o mestre';
 
+/** The id of the card that says the wait once, on the turn card: what a row held by the master's wait points to (`aria-describedby`) instead of saying it again. */
+export const MASTER_WAIT_NOTE_ID = 'master-wait-note';
+
 /** Whether a wait is the master's: the neutral card is for it, while a player's own reaction is named as the server says. */
 export function isMasterWait(title: string): boolean {
   return title.startsWith(MASTER_WAIT_TITLE);

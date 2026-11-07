@@ -53,7 +53,7 @@ export function legendaryLeftLine(e: Encounter): string {
 }
 
 /**
- * "Dragão vermelho adulto gastou 2 ações lendárias: Ataque de asas": the master's last spend, from the log's undoable
+ * "Gastou 2: Ataque de asas.": the master's last spend, from the log's undoable
  * entry, or `''` when that entry is not a spend of legendary actions. The option reads in Portuguese when it is known.
  */
 export function legendarySpentLine(
@@ -65,5 +65,5 @@ export function legendarySpentLine(
     return '';
   }
   const option = legendaryOptionName(names, entry.actorId, spent.optionName) ?? spent.optionName;
-  return `${entry.actorLabel} gastou ${spent.cost} ${actionsWord(spent.cost)}: ${option}`;
+  return `Gastou ${spent.cost}: ${option}.`;
 }

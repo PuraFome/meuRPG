@@ -45,13 +45,10 @@ export class LegendaryCard {
   /** The key of the option whose answer is in the air, or `''`. */
   readonly sending = input('');
   readonly failure = input<LegendaryFailure | null>(null);
-  /** "Dragão vermelho adulto gastou 2 ações lendárias: Ataque de asas" while the last spend can be undone, else `''`. */
+  /** "Gastou 2: Ataque de asas." while the last spend is the log's last action, else `''`. The undo is the log's. */
   readonly spentLine = input('');
-  /** The log event of that spend: the one "Desfazer última ação" takes back, as it was when the line was drawn. */
-  readonly spentId = input('');
   /** Any answer of any card is in the air (a spend, or an attack sheet being opened): no row of any card can be tapped. */
   readonly busy = input(false);
-  readonly undoing = input(false);
   /** The key of the move option that waits for the token to be dragged on the map, or `''`. */
   readonly armed = input('');
   /** On a phone the map is another tab: the armed line says where to drag. */
@@ -63,7 +60,6 @@ export class LegendaryCard {
   readonly unfold = output<void>();
   readonly use = output<LegendaryRow>();
   readonly retry = output<void>();
-  readonly undo = output<string>();
   readonly cancelMove = output<void>();
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -71,11 +67,11 @@ export class LegendaryCard {
 
   protected readonly foldedText = (): string => legendaryFolded(this.card());
 
-  /** The spend line with the creature's label apart, to be set in bold (`['', line]` when it does not start with it). */
+  /** The spend line in two: "Gastou 2: Ataque de asas." in bold up to the colon-and-name, the rest as it comes. */
   protected readonly spentParts = computed<readonly [string, string]>(() => {
     const line = this.spentLine();
-    const title = this.card().title;
-    return line.startsWith(title) ? [title, line.slice(title.length)] : ['', line];
+    const end = line.indexOf('.');
+    return end < 0 ? [line, ''] : [line.slice(0, end + 1), line.slice(end + 1)];
   });
 
   /** "Agora não" and "Abrir": the card redraws as the other state, so the focus goes to the button that undoes it. */

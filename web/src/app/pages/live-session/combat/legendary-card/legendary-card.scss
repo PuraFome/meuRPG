@@ -58,17 +58,16 @@
   line-height: 20px;
 }
 
+// What the master just spent: one line with a check, the log has the undo.
 .lcard__spent {
   display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-3);
-}
-
-.lcard__spentline {
-  display: flex;
-  flex-wrap: wrap;
   align-items: flex-start;
   gap: var(--mr-space-2);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
   font-size: var(--mr-font-15);
   line-height: 20px;
 
@@ -79,32 +78,10 @@
     font-size: var(--mr-font-18);
   }
 
-  > span:first-of-type {
+  > span {
     flex: 1 1 0;
     min-width: 0;
     overflow-wrap: anywhere;
-  }
-}
-
-// "Só você vê": the line is the master's alone.
-.lcard__only {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 4px;
-  min-height: 22px;
-  box-sizing: border-box;
-  padding: 0 8px;
-  border: 1px solid var(--mr-line);
-  border-radius: var(--mr-radius-pill);
-  background: var(--mr-ground);
-  font-size: var(--mr-font-12);
-  font-weight: 700;
-
-  .mat-icon {
-    width: 14px;
-    height: 14px;
-    font-size: var(--mr-font-14);
   }
 }
 

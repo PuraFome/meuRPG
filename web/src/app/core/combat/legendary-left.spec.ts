@@ -78,10 +78,8 @@ describe('the line of the last spend', () => {
     legendarySpent: { optionName: 'Wing Attack', cost: 2 },
   } as never;
 
-  it('names the creature, the cost and the option', () => {
-    expect(legendarySpentLine(spend, undefined)).toBe(
-      'Dragão vermelho adulto gastou 2 ações lendárias: Wing Attack',
-    );
+  it('says the cost and the option, the card above it names the creature', () => {
+    expect(legendarySpentLine(spend, undefined)).toBe('Gastou 2: Wing Attack.');
   });
 
   it('reads the option in Portuguese when it is known, and the cost in the singular', () => {
@@ -90,9 +88,7 @@ describe('the line of the last spend', () => {
       legendarySpent: { optionName: 'Detect', cost: 1 },
     } as never;
     const names = new Map([['d', new Map([['Detect', 'Detectar']])]]);
-    expect(legendarySpentLine(one, names)).toBe(
-      'Dragão vermelho adulto gastou 1 ação lendária: Detectar',
-    );
+    expect(legendarySpentLine(one, names)).toBe('Gastou 1: Detectar.');
   });
 
   it('is empty for another entry or none', () => {

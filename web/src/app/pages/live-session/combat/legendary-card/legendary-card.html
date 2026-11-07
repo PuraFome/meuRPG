@@ -36,16 +36,10 @@
     </p>
     <p class="lcard__hint">{{ card().hint }}</p>
     @if (spentLine()) {
-      <div class="lcard__spent" role="status" data-testid="legendary-spent">
-        <p class="lcard__spentline">
-          <mat-icon aria-hidden="true">crown</mat-icon>
-          <span>@if (spentParts()[0]) {<b>{{ spentParts()[0] }}</b>}{{ spentParts()[1] }}</span>
-          <span class="lcard__only"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</span>
-        </p>
-        <button matButton="outlined" type="button" class="btn" [disabled]="undoing()" (click)="undo.emit(spentId())">
-          <mat-icon aria-hidden="true">undo</mat-icon>Desfazer última ação
-        </button>
-      </div>
+      <p class="lcard__spent" role="status" data-testid="legendary-spent">
+        <mat-icon aria-hidden="true">check</mat-icon>
+        <span><b>{{ spentParts()[0] }}</b>{{ spentParts()[1] }}</span>
+      </p>
     }
     @if (card().waiting) {
       <p class="offer__wait" data-testid="legendary-waiting"><mat-icon aria-hidden="true">block</mat-icon>{{ card().waiting }}</p>

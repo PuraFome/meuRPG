@@ -11,10 +11,8 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
-import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatLogState } from '../../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../../core/combat/combat-state';
-import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { type LegendaryNames, type LegendaryRow } from '../../../../core/combat/legendary-card';
 import { legendarySpentLine } from '../../../../core/combat/legendary-left';
 import { masterQueue } from '../../../../core/combat/reaction-queue';
@@ -40,7 +38,7 @@ export interface LegendaryPick {
  * is never sent: which card is folded (kept per creature, for the turn it was folded on, so an encounter update does not
  * open it again), and the answers in the air. "Usar" spends the option's cost with `SpendLegendaryAction`, under a key
  * kept across a retry; "Atacar" and a move hand the pick to the page (the attack sheet and the drag of the token); the
- * undo is the log's own (`UndoLastAction` of the log's undoable event). Master only: the page never draws it for a player.
+ * undo is the log's alone, never this card's. Master only: the page never draws it for a player.
  */
 @Component({
   selector: 'app-legendary-offers',
@@ -54,9 +52,7 @@ export interface LegendaryPick {
         [sending]="sendingKey(card.combatantId)"
         [busy]="busy()"
         [failure]="failures()[card.combatantId] ?? null"
-        [spentLine]="spentOf(card.combatantId).line"
-        [spentId]="spentOf(card.combatantId).id"
-        [undoing]="undoing()"
+        [spentLine]="spentOf(card.combatantId)"
         [armed]="armed()?.combatantId === card.combatantId ? armed()!.optionKey : ''"
         [mapElsewhere]="mapElsewhere()"
         [theatre]="theatre()"
@@ -64,7 +60,6 @@ export interface LegendaryPick {
         (unfold)="setFolded(card.combatantId, false)"
         (use)="pick(card.combatantId, $event)"
         (retry)="retry(card.combatantId)"
-        (undo)="undo(card.combatantId, $event)"
         (cancelMove)="cancelMove.emit()"
       />
     }
@@ -83,14 +78,13 @@ export interface LegendaryPick {
 })
 export class LegendaryOffers {
   private readonly api = inject(CombatClient);
-  private readonly undone = inject(CombatUndone);
   /** A key for each (creature, option): a retry of that spend keeps it, whatever was spent in between. */
   private readonly keys = new Map<string, ActionKey>();
 
   readonly encounter = input.required<Encounter>();
   readonly campaignId = input.required<string>();
   readonly state = input.required<CombatState>();
-  readonly log = input.required<Pick<CombatLogState, 'undoable' | 'undoableId'>>();
+  readonly log = input.required<Pick<CombatLogState, 'undoable'>>();
   /** The options' Portuguese names of the creatures seen so far (`legendaryNames`), for the line of a spend. */
   readonly names = input<LegendaryNames | undefined>(undefined);
   readonly theatre = input(false);
@@ -109,7 +103,6 @@ export class LegendaryOffers {
   protected readonly cards = computed(() => masterQueue(this.encounter()).legendary);
   protected readonly sending = signal<{ combatantId: string; key: string } | null>(null);
   protected readonly failures = signal<Readonly<Record<string, LegendaryFailure | undefined>>>({});
-  protected readonly undoing = signal(false);
   /** One answer at a time on the whole screen: a spend, or an attack sheet being opened. */
   protected readonly busy = computed(() => !!this.sending() || !!this.opening());
   /** The turn the cards were folded on, and which ones: a new turn opens them all again. */
@@ -147,12 +140,10 @@ export class LegendaryOffers {
     return s?.combatantId === id ? s.key : '';
   }
 
-  /** The line of the last spend, under the card of the creature that made it, while the log says it can be undone, and the
-   * log event it is: the undo takes back that one, whatever the log says by the time it is tapped. */
-  protected spentOf(id: string): { line: string; id: string } {
+  /** The line of the last spend, under the card of the creature that made it, while the log says it can be undone. */
+  protected spentOf(id: string): string {
     const entry = this.log().undoable();
-    const line = entry?.actorId === id ? legendarySpentLine(entry, this.names()) : '';
-    return { line, id: line && entry ? entry.id : '' };
+    return entry?.actorId === id ? legendarySpentLine(entry, this.names()) : '';
   }
 
   private keyOf(combatantId: string, option: string): ActionKey {
@@ -216,28 +207,6 @@ export class LegendaryOffers {
       }
     } finally {
       this.sending.set(null);
-    }
-  }
-
-  /** "Desfazer última ação": the log's own undo, so the cost goes back with the line. */
-  protected async undo(combatantId: string, eventId: string): Promise<void> {
-    const id = eventId || this.log().undoableId();
-    if (!id || this.undoing()) {
-      return;
-    }
-    this.undoing.set(true);
-    try {
-      this.state().apply(await this.api.turn.undo(this.campaignId(), this.encounter().id, id));
-      this.undone.mark();
-    } catch (err) {
-      this.setFailure(
-        combatantId,
-        ConnectError.from(err).code === Code.Aborted
-          ? { text: 'Outra ação aconteceu antes: confira o registro.', connection: false }
-          : { text: combatErrorMessage(err, 'desfazer a ação'), connection: false },
-      );
-    } finally {
-      this.undoing.set(false);
     }
   }
 

@@ -81,12 +81,11 @@ const affordable = options.map((o) => ({ ...o, affordable: true }));
 const tor = combatant({ id: 't', label: 'Tor', kind: CombatantKind.PLAYER });
 
 describe("the master's legendary cards", () => {
-  const api = { spendLegendaryAction: vi.fn(), undo: vi.fn() };
+  const api = { spendLegendaryAction: vi.fn() };
   const applied = encounter({ id: 'enc', revision: 9 } as never);
 
   function setup(dragonOver: object = {}, extra: object = {}, log: object = {}) {
     api.spendLegendaryAction.mockReset().mockResolvedValue(applied);
-    api.undo.mockReset().mockResolvedValue(applied);
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       providers: [{ provide: CombatClient, useValue: fakeCombatClient(api) }],
@@ -102,7 +101,7 @@ describe("the master's legendary cards", () => {
     fixture.componentRef.setInput('encounter', e);
     fixture.componentRef.setInput('campaignId', 'camp');
     fixture.componentRef.setInput('state', state);
-    fixture.componentRef.setInput('log', { undoable: () => null, undoableId: () => '', ...log });
+    fixture.componentRef.setInput('log', { undoable: () => null, ...log });
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     return { fixture, el, e, state };
@@ -167,7 +166,6 @@ describe("the master's legendary cards", () => {
       fixture.detectChanges();
       expect(rows(el)).toHaveLength(3);
       expect(api.spendLegendaryAction).not.toHaveBeenCalled();
-      expect(api.undo).not.toHaveBeenCalled();
     });
 
     it('stays folded through an update of the combat, and opens again on the next turn', () => {
@@ -337,9 +335,9 @@ describe("the master's legendary cards", () => {
       actorLabel: 'Dragão vermelho adulto',
       legendarySpent: { optionName: 'Wing Attack', cost: 2 },
     };
-    const log = { undoable: () => spent, undoableId: () => 'ev1' };
+    const log = { undoable: () => spent };
 
-    it('says what was spent, in Portuguese, for the master alone, and offers the undo', () => {
+    it('says what was spent in one line, in Portuguese, with no undo of its own (the log has it)', () => {
       const { el, fixture } = setup({}, {}, log);
       fixture.componentRef.setInput(
         'names',
@@ -347,52 +345,13 @@ describe("the master's legendary cards", () => {
       );
       fixture.detectChanges();
       const box = el.querySelector('[data-testid="legendary-spent"]');
-      expect(plain(box)).toContain(
-        'Dragão vermelho adulto gastou 2 ações lendárias: Ataque de asas',
-      );
-      expect(plain(box)).toContain('Só você vê');
-      expect(plain(box)).toContain('Desfazer última ação');
+      expect(plain(box)).toBe('Gastou 2: Ataque de asas.');
+      expect(box?.querySelector('button')).toBeNull();
+      expect(plain(el)).not.toContain('Só você vê');
+      expect(plain(el)).not.toContain('Desfazer última ação');
     });
 
-    it("undoes with the log's undoable event and marks the undo", async () => {
-      const { el, fixture, state } = setup({}, {}, log);
-      const apply = vi.spyOn(state, 'apply');
-      button(el, 'Desfazer última ação').click();
-      await settle(fixture);
-      expect(api.undo).toHaveBeenCalledWith('camp', 'enc', 'ev1');
-      expect(apply).toHaveBeenCalledWith(applied);
-    });
-
-    it('says another action came first when the undo is aborted', async () => {
-      const { el, fixture } = setup({}, {}, log);
-      api.undo.mockRejectedValueOnce(new ConnectError('late', Code.Aborted));
-      button(el, 'Desfazer última ação').click();
-      await settle(fixture);
-      expect(plain(el.querySelector('[data-testid="legendary-error"]'))).toBe(
-        'Outra ação aconteceu antes: confira o registro.',
-      );
-    });
-
-    it('takes back the spend that was shown, and puts a failure on its card even when the log has moved on', async () => {
-      let entry: object | null = { ...spent, id: 'ev-shown' };
-      const { el, fixture } = setup(
-        {},
-        {},
-        { undoable: () => entry, undoableId: () => 'ev-other' },
-      );
-      api.undo.mockImplementationOnce(() => {
-        entry = null;
-        return Promise.reject(new ConnectError('late', Code.Aborted));
-      });
-      button(el, 'Desfazer última ação').click();
-      await settle(fixture);
-      expect(api.undo).toHaveBeenCalledWith('camp', 'enc', 'ev-shown');
-      expect(
-        plain(el.querySelector('[data-testid="legendary-card"] [data-testid="legendary-error"]')),
-      ).toContain('Outra ação aconteceu antes');
-    });
-
-    it('shows no undo when the last undoable entry is another one', () => {
+    it('shows no line when the last undoable entry is another one', () => {
       const { el } = setup(
         {},
         {},

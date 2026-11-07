@@ -133,7 +133,7 @@
       <!-- Off turn, the wait is the same sentence the player on turn reads (a reaction, a concentration save, a wait for
            the master, never why: RN-10), once, above whose turn comes next. -->
       @if (masterWait(w)) {
-        <app-master-wait class="turn__notice" data-testid="reaction-wait" [title]="w.title" [detail]="w.detail" />
+        <app-master-wait id="master-wait-note" class="turn__notice" data-testid="reaction-wait" [title]="w.title" [detail]="w.detail" />
       } @else {
         <div class="mr-notice mr-notice--warning turn__notice" role="status" data-testid="reaction-wait">
           <mat-icon aria-hidden="true">hourglass_top</mat-icon>
@@ -200,7 +200,7 @@
   }
   @if (waiting(); as w) {
     @if (masterWait(w)) {
-      <app-master-wait class="turn__notice" [title]="w.title" [detail]="w.detail" />
+      <app-master-wait id="master-wait-note" class="turn__notice" [title]="w.title" [detail]="w.detail" />
     } @else {
       <div class="mr-notice mr-notice--warning turn__notice" role="status">
         <mat-icon aria-hidden="true">hourglass_top</mat-icon>

@@ -113,6 +113,9 @@ describe("CombatView, the master's legendary offers", () => {
       'Dragão vermelho adulto',
     );
     expect(plain(queue.querySelector('[data-testid="legendary-badge"]'))).toBe('Opcional');
+    // Nothing holds the table: the card of the turn stays first, the optional card follows it.
+    const turn = el.querySelector('app-act-as-card, app-npc-card')!;
+    expect(turn.compareDocumentPosition(queue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('draws it on a phone too, once, with no "Esperando você" title when nothing holds the table', async () => {
@@ -150,6 +153,9 @@ describe("CombatView, the master's legendary offers", () => {
     const kids = Array.from(queue.children).map((c) => c.tagName.toLowerCase());
     expect(kids.indexOf('app-legendary-offers')).toBeGreaterThan(kids.indexOf('app-parry-offer'));
     expect(plain(queue.querySelector('[data-testid="legendary-badge"]'))).toBe('Depois');
+    // A window that holds the table stands above the card of the turn: its answer is on the first screen.
+    const turn = el.querySelector('app-act-as-card, app-npc-card')!;
+    expect(turn.compareDocumentPosition(queue) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
   });
 
   it("on the creature's own turn the card is gone and the NPC's card says what came back", async () => {
@@ -312,10 +318,10 @@ describe("CombatView, the master's legendary offers", () => {
       const log = plain(el.querySelector('app-combat-log-panel'));
       expect(log).toContain('gastou 2 ações lendárias: Ataque de asas');
       expect(log).not.toContain('Wing Attack');
-      // The same spend is the line of the card, with its undo.
-      expect(plain(el.querySelector('[data-testid="legendary-spent"]'))).toContain(
-        'Dragão vermelho adulto gastou 2 ações lendárias: Ataque de asas',
-      );
+      // The same spend is the line of the card; the undo is the log's, so the card has no button for it.
+      const card = el.querySelector('[data-testid="legendary-spent"]');
+      expect(plain(card)).toContain('Gastou 2: Ataque de asas.');
+      expect(card?.querySelector('button')).toBeNull();
     });
   });
 
