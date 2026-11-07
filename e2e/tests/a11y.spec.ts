@@ -9171,11 +9171,15 @@ async function scanRechargeScreens(browser: Browser, colorScheme: 'light' | 'dar
   try {
     const fight = await beginVrockFight(m, p, 'Acessibilidade recarga');
     const acts = fight.card.locator('app-creature-actions');
-    const everyWidth = async (page: Page, screen: string, what: string, at?: () => Locator, order = false) => {
+    const everyWidth = async (page: Page, screen: string, what: string, at?: () => Locator, order = false, turn = true) => {
       for (const width of WIDTHS) {
         await page.setViewportSize(viewportOf(width));
         // The order is its own tab on a phone: its screen opens the row there, every other screen is the turn's.
-        await (order ? openOrderRow(page, fight.label) : openTurn(page));
+        if (order) {
+          await openOrderRow(page, fight.label);
+        } else if (turn) {
+          await openTurn(page);
+        }
         await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
         await shoot(page, screen, width, colorScheme, at?.());
       }
@@ -9244,6 +9248,23 @@ async function scanRechargeScreens(browser: Browser, colorScheme: 'light' | 'dar
     await m.unroute('**/meurpg.rules.v1.ContentService/GetCreature');
     await fight.card.getByRole('button', { name: 'Tentar de novo' }).click();
     await expect(fight.card.getByRole('button', { name: /^Usar Esporos/ })).toBeVisible();
+
+    // The long rest's card names the NPCs of the campaign that get their kept uses back. The table has no NPC of its own that kept any,
+    // so the answer of the preview is the server's with one name added: what the server sends is held by the leak rows (leaktest).
+    await m.route('**/meurpg.play.v1.ResourceService/GetRestPreview', async (route) => {
+      const res = await route.fetch();
+      const body = (await res.json()) as Record<string, unknown>;
+      await route.fulfill({ response: res, json: { ...body, npcsBack: [{ characterId: 'bartolo', name: 'Bartolo' }] } });
+    });
+    await combatRPC(m, 'EndEncounter', { campaignId: fight.campaignId, encounterId: (await getEncounterRPC(m, fight.campaignId)).id });
+    await openSessionPage(m, fight.campaignId, 'grupo');
+    await m.getByRole('button', { name: 'Voltar à sessão' }).click();
+    const rest = m.getByRole('region', { name: 'Descanso' });
+    await rest.getByRole('button', { name: 'Descanso longo' }).click();
+    const question = rest.getByRole('alertdialog', { name: 'Começar o descanso longo?' });
+    await expect(question).toContainText('NPCs da campanha recuperam os usos: Bartolo.');
+    await everyWidth(m, 'descanso-longo-npcs', 'Recarga: o descanso longo devolve os usos dos NPCs', () => question, false, false);
+    await m.unroute('**/meurpg.play.v1.ResourceService/GetRestPreview');
   } finally {
     await close();
   }

@@ -200,6 +200,9 @@ func (s *Service) GetRestPreview(
 		if res.Characters, err = s.vitals.PreviewRest(ctx, tx, m.CampaignID, req.Msg.GetKind()); err != nil {
 			return err
 		}
+		if res.NpcsBack, err = restNPCsBack(ctx, q, m.CampaignID, req.Msg.GetKind()); err != nil {
+			return err
+		}
 		if req.Msg.GetKind() == playv1.RestKind_REST_KIND_LONG {
 			if res.LongRestAlreadyTaken, err = q.HasLongRestInSession(ctx, session.ID); err != nil {
 				return fmt.Errorf("find the long rest of the session: %w", err)
@@ -211,6 +214,19 @@ func (s *Service) GetRestPreview(
 		return nil, s.dbError(ctx, "preview a rest", err)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// restNPCsBack names the NPCs of the campaign that this rest gives their kept uses back to (the master's preview).
+func restNPCsBack(ctx context.Context, q *playdb.Queries, campaignID string, kind playv1.RestKind) ([]*playv1.RestNPCBack, error) {
+	rows, err := q.ListNPCsGivingBackToRest(ctx, playdb.ListNPCsGivingBackToRestParams{CampaignID: &campaignID, LongRest: kind == playv1.RestKind_REST_KIND_LONG})
+	if err != nil {
+		return nil, fmt.Errorf("find the NPCs the rest gives uses back to: %w", err)
+	}
+	out := make([]*playv1.RestNPCBack, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, &playv1.RestNPCBack{CharacterId: r.ID, Name: r.Name})
+	}
+	return out, nil
 }
 
 // eventByKey finds the event a change with this key wrote and checks that the key

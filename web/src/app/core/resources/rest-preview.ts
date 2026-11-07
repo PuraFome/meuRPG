@@ -172,6 +172,15 @@ export function restSummary(
 
   lines.push(...hookLines(characters, long));
 
+  // The NPCs of the campaign that kept what they spent (the master's preview alone): a long rest gives back their uses a day and
+  // Legendary Resistance, a short rest their rest actions.
+  if (preview.npcsBack.length > 0) {
+    lines.push([
+      bold('NPCs da campanha'),
+      plain(` recuperam os usos: ${listWords(preview.npcsBack.map((n) => n.name))}.`),
+    ]);
+  }
+
   return {
     title: `Começar o ${long ? 'descanso longo' : 'descanso curto'}?`,
     intro: `${long ? 'Pelo menos 8 horas' : 'Pelo menos 1 hora'}. Volta, para quem estiver na campanha:`,

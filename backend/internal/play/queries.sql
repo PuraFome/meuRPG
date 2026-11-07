@@ -1607,6 +1607,18 @@ FROM characters ch
 WHERE ch.id = npc.character_id AND ch.campaign_id = $1
   AND EXISTS (SELECT 1 FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%');
 
+-- name: ListNPCsGivingBackToRest :many
+-- The hand-made NPCs of the campaign that this rest gives something back to, by name: after a long rest every NPC that
+-- kept a spell slot, a use a day, a rest action or Legendary Resistance (what ResetNPCSpellUseOfCampaign clears); after a
+-- short rest every NPC that kept a rest action (what ResetNPCRestUsesOfCampaign clears). The master's rest preview.
+SELECT ch.id, ch.name
+FROM npc_spell_use npc
+JOIN characters ch ON ch.id = npc.character_id
+WHERE ch.campaign_id = $1
+  AND ((sqlc.arg(long_rest)::bool AND (npc.slots_used <> '{}'::jsonb OR npc.creature_spent <> '{}'::jsonb))
+    OR EXISTS (SELECT 1 FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%'))
+ORDER BY ch.name, ch.id;
+
 -- name: DeleteEmptyNPCSpellUseOfCampaign :exec
 -- A row of the campaign with nothing spent left goes.
 DELETE FROM npc_spell_use
