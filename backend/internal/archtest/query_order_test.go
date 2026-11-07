@@ -126,7 +126,7 @@ func stripCommentsAndStrings(sql string) string {
 func depthZero(sql string) string {
 	var b strings.Builder
 	depth := 0
-	for i := 0; i < len(sql); i++ {
+	for i := range len(sql) {
 		switch c := sql[i]; {
 		case c == '(':
 			depth++

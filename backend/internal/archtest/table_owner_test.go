@@ -37,12 +37,10 @@ var (
 var fromInsideFunction = []string{"extract", "trim", "substring", "overlay", "position"}
 
 // endsTableList are the words that end a FROM/USING list of tables.
-var endsTableList = []string{"where", "group", "order", "limit", "offset", "returning", "set", "union",
-	"intersect", "except", "having", "window", "for", "fetch", "select", "values"}
-
-// notAnAlias are the words that can follow a table name without being its alias.
-var notAnAlias = append([]string{"join", "left", "right", "inner", "full", "cross", "natural", "on", "using",
-	"as", "lateral", "only"}, endsTableList...)
+var endsTableList = []string{
+	"where", "group", "order", "limit", "offset", "returning", "set", "union",
+	"intersect", "except", "having", "window", "for", "fetch", "select", "values",
+}
 
 // TestQueriesTouchOnlyOwnTables fails when a query names a table that another module owns.
 // It reads the query files that sqlc.yaml lists.
@@ -199,7 +197,7 @@ func tablesOf(body string) []string {
 		if i := strings.LastIndex(name, "."); i >= 0 {
 			name = name[i+1:]
 		}
-		if name == "" || !(name[0] == '_' || name[0] >= 'a' && name[0] <= 'z') || ctes[name] ||
+		if name == "" || !isIdentStart(name[0]) || ctes[name] ||
 			slices.Contains([]string{"set", "of", "skip", "nowait", "select", "values"}, name) || slices.Contains(out, name) {
 			return
 		}
@@ -216,7 +214,7 @@ func tablesOf(body string) []string {
 			return i
 		}
 		name := toks[i]
-		if !(name[0] == '_' || name[0] >= 'a' && name[0] <= 'z') {
+		if !isIdentStart(name[0]) {
 			return i // a subselect or a parameter
 		}
 		if i+1 < len(toks) && toks[i+1] == "(" && !intoOrUpdate {
@@ -333,4 +331,9 @@ func TestParseTableOwnersRefusesTwoOwners(t *testing.T) {
 	if _, err := parseTableOwners(md); err == nil || !strings.Contains(err.Error(), "shared") {
 		t.Errorf("err = %v, want a refusal naming shared", err)
 	}
+}
+
+// isIdentStart reports whether c can start a lower-case SQL identifier.
+func isIdentStart(c byte) bool {
+	return c == '_' || c >= 'a' && c <= 'z'
 }
