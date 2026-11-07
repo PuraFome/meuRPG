@@ -208,8 +208,7 @@ message TvScene {
   string name = 1;
   // The scene's description as the players read it.
   string description = 2;
-  // Where the TV fetches the scene's image; empty when it has none.
-  string image_url = 3;
+  reserved 3;
   // The NPCs the table sees on the stage. A hidden NPC is absent (RN-10, RN-20).
   repeated TvStageNpc stage = 4;
 }

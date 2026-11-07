@@ -11,3 +11,8 @@ import "github.com/PuraFome/meuRPG/backend/internal/authz"
 func tvViewer(campaignID string) authz.Membership {
 	return authz.Membership{CampaignID: campaignID, Role: authz.RolePlayer, UserID: ""}
 }
+
+// tvReader is the reader of free rolls for the TV: not the master, no user.
+func tvReader(tv authz.Membership) viewer {
+	return viewer{master: tv.Role == authz.RoleMaster, userID: tv.UserID}
+}

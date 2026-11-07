@@ -147,7 +147,7 @@ func requireInScene(ctx context.Context, q *playdb.Queries, session playdb.GameS
 
 // outsideOpenScene says whether a scene open to only some players is open and the user is not in it. An
 // empty userID is nobody in particular, who is in no list of players: outside a scene that is not open to the
-// whole table. The table screen reads as that user.
+// whole table. The image route asks it for the table screen; the table screen's own scene read checks the flag.
 func outsideOpenScene(ctx context.Context, q *playdb.Queries, session playdb.GameSession, userID string) (bool, error) {
 	if !partialScene(session) {
 		return false, nil

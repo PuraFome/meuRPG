@@ -66,11 +66,15 @@ func (s *Service) GetTableScreen(
 	if err := s.projectStageBody(ctx, session, stage); err != nil {
 		return nil, err
 	}
+	notice := pick.Notice
+	if stage.Kind != pick.Kind && notice == playv1.TableScreenNotice_TABLE_SCREEN_NOTICE_UNSPECIFIED && !choice.Mirror {
+		notice = playv1.TableScreenNotice_TABLE_SCREEN_NOTICE_PIN_ENDED // the pinned item ended since the facts were read
+	}
 	return connect.NewResponse(&playv1.GetTableScreenResponse{
 		ChoiceRevision: session.TvChoiceRevision,
 		Choice:         &playv1.TableScreenChoice{Mirror: choice.Mirror, Pin: choice.Pin},
 		Stage:          stage,
-		Notice:         pick.Notice,
+		Notice:         notice,
 		CampaignName:   name,
 		SessionNumber:  session.SessionNumber,
 		Party:          party,

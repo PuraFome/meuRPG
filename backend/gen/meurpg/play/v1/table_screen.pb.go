@@ -845,8 +845,6 @@ type TvScene struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// The scene's description as the players read it.
 	Description string `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
-	// Where the TV fetches the scene's image; empty when it has none.
-	ImageUrl string `protobuf:"bytes,3,opt,name=image_url,json=imageUrl,proto3" json:"image_url,omitempty"`
 	// The NPCs the table sees on the stage. A hidden NPC is absent (RN-10, RN-20).
 	Stage         []*TvStageNpc `protobuf:"bytes,4,rep,name=stage,proto3" json:"stage,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -893,13 +891,6 @@ func (x *TvScene) GetName() string {
 func (x *TvScene) GetDescription() string {
 	if x != nil {
 		return x.Description
-	}
-	return ""
-}
-
-func (x *TvScene) GetImageUrl() string {
-	if x != nil {
-		return x.ImageUrl
 	}
 	return ""
 }
@@ -1761,12 +1752,11 @@ const file_meurpg_play_v1_table_screen_proto_rawDesc = "" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x10\n" +
 	"\x03url\x18\x02 \x01(\tR\x03url\x12\x14\n" +
 	"\x05width\x18\x03 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x04 \x01(\x05R\x06height\"\x8e\x01\n" +
+	"\x06height\x18\x04 \x01(\x05R\x06height\"w\n" +
 	"\aTvScene\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
-	"\vdescription\x18\x02 \x01(\tR\vdescription\x12\x1b\n" +
-	"\timage_url\x18\x03 \x01(\tR\bimageUrl\x120\n" +
-	"\x05stage\x18\x04 \x03(\v2\x1a.meurpg.play.v1.TvStageNpcR\x05stage\"<\n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\x120\n" +
+	"\x05stage\x18\x04 \x03(\v2\x1a.meurpg.play.v1.TvStageNpcR\x05stageJ\x04\b\x03\x10\x04\"<\n" +
 	"\n" +
 	"TvStageNpc\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +

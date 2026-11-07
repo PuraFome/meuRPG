@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -52,11 +51,10 @@ func (s *Service) projectStageBody(ctx context.Context, session playdb.GameSessi
 		stage.Kind, stage.Body = playv1.TableScreenKind_TABLE_SCREEN_KIND_IDLE, &playv1.TableScreenStage_Idle{Idle: &playv1.TvIdle{}}
 		return nil
 	}
-	return s.projectRolls(ctx, session, stage)
+	return s.projectRolls(ctx, tv, session, stage)
 }
 
-// projectMap is the seam of the map projector: it sets the stage's TvMap (and, for a combat, TvCombat.map)
-// from the maps module's reader for the TV viewer. The map stage has no body until it is written.
+// projectMap sets nothing: the map stage has no body and TvCombat.map is unset.
 func (s *Service) projectMap(context.Context, authz.Membership, playdb.GameSession, *playv1.TableScreenStage) error {
 	return nil
 }
@@ -101,7 +99,7 @@ func (s *Service) projectScene(ctx context.Context, tv authz.Membership, session
 }
 
 // projectCombat copies the combat the table sees: the combatants the table sees, the round, whose turn it is
-// and the lines every player reads. The map, when the combat has one, is set by the map projector (task 3).
+// and the lines every player reads. It sets no map.
 func (s *Service) projectCombat(ctx context.Context, tv authz.Membership, session playdb.GameSession, stage *playv1.TableScreenStage) error {
 	var d *encounterData
 	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -134,17 +132,9 @@ func (s *Service) projectCombat(ctx context.Context, tv authz.Membership, sessio
 	for _, id := range enc.GetTurnGroupIds() {
 		onTurn[id] = true
 	}
-	states, err := s.tvPlayerStates(ctx, tv.CampaignID, d)
-	if err != nil {
-		return err
-	}
 	for _, c := range enc.GetCombatants() {
-		state := tvStateOf(c.GetState())
-		if state == playv1.TvState_TV_STATE_UNSPECIFIED {
-			state = states[c.GetId()] // a player character holds its hit points on the sheet
-		}
 		out.Order = append(out.Order, &playv1.TvCombatant{
-			Name: c.GetLabel(), Initial: initialOf(c.GetLabel()), State: state,
+			Name: c.GetLabel(), Initial: initialOf(c.GetLabel()), State: tvStateOf(c.GetState()),
 			OnTurn: onTurn[c.GetId()], IsPlayer: c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER,
 		})
 	}
@@ -153,41 +143,6 @@ func (s *Service) projectCombat(ctx context.Context, tv authz.Membership, sessio
 	}
 	stage.Body = &playv1.TableScreenStage_Combat{Combat: out}
 	return nil
-}
-
-// tvPlayerStates are the words for the player characters of the combat, by combatant: their hit points are
-// the sheet's, and only the word (RN-20) is kept, the same thresholds as for an NPC.
-func (s *Service) tvPlayerStates(ctx context.Context, campaignID string, d *encounterData) (map[string]playv1.TvState, error) {
-	out := map[string]playv1.TvState{}
-	if !slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer }) {
-		return out, nil
-	}
-	all, err := s.vitals.ListVitals(ctx, campaignID)
-	if err != nil {
-		return nil, s.dbError(ctx, "list vitals", err)
-	}
-	byCharacter := make(map[string]*playv1.CharacterVitals, len(all))
-	for _, v := range all {
-		byCharacter[v.GetCharacterId()] = v
-	}
-	for _, c := range d.cs {
-		v := byCharacter[c.CharacterID]
-		if c.Kind != kindPlayer || v == nil || v.GetHitPointsMax() <= 0 {
-			continue
-		}
-		cur, top := v.GetHitPointsCurrent(), v.GetHitPointsMax()
-		switch {
-		case cur <= 0:
-			out[c.ID] = playv1.TvState_TV_STATE_FALLEN
-		case cur*2 <= top:
-			out[c.ID] = playv1.TvState_TV_STATE_VERY_HURT
-		case cur < top:
-			out[c.ID] = playv1.TvState_TV_STATE_HURT
-		default:
-			out[c.ID] = playv1.TvState_TV_STATE_UNHURT
-		}
-	}
-	return out, nil
 }
 
 // initialOf is the first letter of a name, upper case.
@@ -199,7 +154,8 @@ func initialOf(name string) string {
 	return string(unicode.ToUpper(r))
 }
 
-// tvStateOf is the word a player reads of a combatant's hit points (RN-20).
+// tvStateOf is the word a player reads of a combatant (RN-20). A player character has a word only when it is
+// down, stable or dead; an up one has none, as in the player's own read.
 func tvStateOf(state playv1.CombatantState) playv1.TvState {
 	switch state {
 	case playv1.CombatantState_COMBATANT_STATE_UNHURT:
@@ -216,10 +172,9 @@ func tvStateOf(state playv1.CombatantState) playv1.TvState {
 	return playv1.TvState_TV_STATE_UNSPECIFIED
 }
 
-// tvLog are the lines of the combat's log that every player reads, newest first, at most tvMaxLogLines. The
-// entries are the ones the log answers to a player with no character (ListCombatLog's own filter: nothing
-// master-only, secret, fogged away or with a hidden combatant), and each becomes a plain sentence of
-// whitelisted fields; a kind with no sentence here is not on the TV.
+// tvLog are the lines of the combat's log that every player reads, newest first, at most tvMaxLogLines.
+// The entries are the ones the log answers to a player with no character.
+// Each becomes a plain sentence; a kind with no sentence is not on the TV.
 func (s *Service) tvLog(ctx context.Context, tv authz.Membership, encounterID string) ([]string, error) {
 	snap, err := s.readLogSnapshot(ctx, tv, encounterID)
 	if err != nil {
@@ -246,7 +201,9 @@ func (s *Service) tvLog(ctx context.Context, tv authz.Membership, encounterID st
 func tvLogLine(e *playv1.CombatLogEntry) (string, bool) {
 	actor, target := e.GetActorLabel(), e.GetTargetLabel()
 	what := ""
-	if e.GetKeyNamePt() != "" && !rules.IsTableKey(e.GetKey()) {
+	// A key with "@mesa" anywhere is table content (a spell, or an action of a table feature), which the master may
+	// have hidden. A stat-block action of an NPC has its key blanked by shownKey, so its name never gets here.
+	if e.GetKeyNamePt() != "" && !rules.IsTableKeyAnywhere(e.GetKey()) {
 		what = e.GetKeyNamePt()
 	}
 	switch e.GetKind() {
@@ -279,7 +236,7 @@ func tvLogLine(e *playv1.CombatLogEntry) (string, bool) {
 	return "", false
 }
 
-// attackLine is "Toren atacou Goblin: acertou".
+// tvAttackLine is "Toren atacou Goblin: acertou".
 func tvAttackLine(e *playv1.CombatLogEntry, actor, target, what string) (string, bool) {
 	if target == "" {
 		return "", false
@@ -302,7 +259,7 @@ func tvAttackLine(e *playv1.CombatLogEntry, actor, target, what string) (string,
 // projectRolls sets the free rolls for the whole table of the stage: newest first, at most tvMaxRolls. A
 // roll only its roller reads ("Só eu") is not on the list the TV reads from: the SQL leaves it out for any
 // reader that is not the master, and the shaping checks it again (freeRollViews).
-func (s *Service) projectRolls(ctx context.Context, session playdb.GameSession, stage *playv1.TableScreenStage) error {
+func (s *Service) projectRolls(ctx context.Context, tv authz.Membership, session playdb.GameSession, stage *playv1.TableScreenStage) error {
 	switch stage.GetBody().(type) {
 	case *playv1.TableScreenStage_Scene, *playv1.TableScreenStage_Combat, *playv1.TableScreenStage_Map:
 	default:
@@ -318,7 +275,7 @@ func (s *Service) projectRolls(ctx context.Context, session playdb.GameSession, 
 			ids = append(ids, *r.ActorUserID)
 		}
 	}
-	rolls, err := freeRollViews(rows, s.freeRollNames(ctx, ids), viewer{master: false, userID: ""})
+	rolls, err := freeRollViews(rows, s.freeRollNames(ctx, ids), tvReader(tv))
 	if err != nil {
 		return err
 	}

@@ -2,6 +2,7 @@ package play
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// The projector of the table screen (issue #648, task 2). Each test reads the same thing as the master, as the
+// The projector of the table screen. Each test reads the same thing as the master, as the
 // positive control, and as the TV, which must not carry what only the master reads. These tests need the
 // database (MEURPG_TEST_DATABASE_URL).
 
@@ -203,11 +204,15 @@ func TestTableScreenCombatShowsOnlyWhatTheTableSees(t *testing.T) {
 		t.Error("masters_turn = false, want true: the turn is the hidden ogre's")
 	}
 	for _, c := range combat.GetOrder() {
+		wantState := playv1.TvState_TV_STATE_UNSPECIFIED // an up player character has no word
+		if c.GetName() == "Goblin" {
+			wantState = playv1.TvState_TV_STATE_UNHURT
+		}
+		if c.GetState() != wantState {
+			t.Errorf("%s state = %v, want %v", c.GetName(), c.GetState(), wantState)
+		}
 		if c.GetOnTurn() {
 			t.Errorf("%s is on turn, want nobody the table sees", c.GetName())
-		}
-		if c.GetState() != playv1.TvState_TV_STATE_UNHURT {
-			t.Errorf("%s state = %v, want unhurt", c.GetName(), c.GetState())
 		}
 		if c.GetIsPlayer() != (c.GetName() != "Goblin") || c.GetInitial() != c.GetName()[:1] {
 			t.Errorf("%s: is_player %v, initial %q", c.GetName(), c.GetIsPlayer(), c.GetInitial())
@@ -222,14 +227,21 @@ func TestTableScreenCombatShowsOnlyWhatTheTableSees(t *testing.T) {
 	if _, err := a.adjustHP(t, e, "Goblin", damageHP(4)); err != nil { // 7 -> 3
 		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 	}
-	a.hurt(t, a.bri, 1) // Brisa has fewer than half of her hit points
+	a.hurt(t, a.bri, 1) // fewer than half: a player character has no word while it is up
 	a.hurt(t, a.pens, 0)
 	state := map[string]playv1.TvState{}
 	for _, c := range a.mustGetScreen(t).GetStage().GetCombat().GetOrder() {
 		state[c.GetName()] = c.GetState()
 	}
-	if state["Goblin"] != playv1.TvState_TV_STATE_VERY_HURT || state["Brisa"] != playv1.TvState_TV_STATE_VERY_HURT || state["Pensantus"] != playv1.TvState_TV_STATE_FALLEN || state["Toren"] != playv1.TvState_TV_STATE_UNHURT {
-		t.Errorf("states = %v, want Goblin and Brisa very hurt, Pensantus fallen, Toren unhurt", state)
+	if state["Goblin"] != playv1.TvState_TV_STATE_VERY_HURT || state["Brisa"] != playv1.TvState_TV_STATE_UNSPECIFIED || state["Pensantus"] != playv1.TvState_TV_STATE_FALLEN || state["Toren"] != playv1.TvState_TV_STATE_UNSPECIFIED {
+		t.Errorf("states = %v, want Goblin very hurt, Pensantus fallen, Brisa and Toren with no word", state)
+	}
+	// A confirmed death is "defeated".
+	deadToren(true)(t, a, e)
+	for _, c := range a.mustGetScreen(t).GetStage().GetCombat().GetOrder() {
+		if c.GetName() == "Toren" && c.GetState() != playv1.TvState_TV_STATE_DEFEATED {
+			t.Errorf("dead Toren state = %v, want defeated", c.GetState())
+		}
 	}
 }
 
@@ -252,8 +264,8 @@ func TestTableScreenCombatLogIsWhatEveryPlayerReads(t *testing.T) {
 	if len(lines) == 0 || len(lines) > tvMaxLogLines {
 		t.Fatalf("log = %q, want 1 to %d lines", lines, tvMaxLogLines)
 	}
-	if !strings.HasPrefix(lines[0], "Toren atacou Goblin") {
-		t.Errorf("log[0] = %q, want Toren's attack, the newest", lines[0])
+	if len(lines) != 2 || !strings.HasPrefix(lines[0], "Toren atacou Goblin") || !strings.HasPrefix(lines[1], "O combate começou") {
+		t.Errorf("log = %q, want Toren's attack and then the start of the combat", lines)
 	}
 	all := strings.Join(lines, "\n")
 	mustNotContain(t, "the TV's log", all, "Ogro", "pontos de vida", "4321")
@@ -325,6 +337,7 @@ func TestTvLogLineNamesNoTableContent(t *testing.T) {
 	}{
 		{cast("spell:fire-bolt", "Raio de Fogo"), "Pensantus conjurou Raio de Fogo", true},
 		{cast("spell:raio-de-nanquim@mesa", "Raio de Nanquim"), "Pensantus conjurou uma magia", true},
+		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION, ActorLabel: "Toren", Key: "feature:x@mesa:disengage", KeyNamePt: "Passo de Bruma"}, "Toren agiu", true},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED, TargetLabel: "Goblin"}, "", false},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT, ActorLabel: "Dragão"}, "", false},
 		{&playv1.CombatLogEntry{Kind: playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK, ActorLabel: "Toren"}, "", false},
@@ -346,7 +359,6 @@ var tvFields = map[string]string{
 	"TvImage.height":        "the shown image's size",
 	"TvScene.name":          "the name of a scene open to the whole table, as every player reads it",
 	"TvScene.description":   "the description of a scene open to the whole table, as every player reads it",
-	"TvScene.image_url":     "never set: a player reads no image of the scene; the shown image is the TvImage",
 	"TvScene.stage":         "only the NPCs the table sees (the shown stage)",
 	"TvStageNpc.name":       "the name of an NPC shown on the stage",
 	"TvStageNpc.speaking":   "whether that NPC speaks",
@@ -363,7 +375,7 @@ var tvFields = map[string]string{
 	"TvRoll.expression":     "the formula of a free roll for the table",
 	"TvRoll.total":          "the total of a free roll for the table",
 	"TvRoll.faces":          "the faces kept of a free roll for the table",
-	// TvCombat.map and the TvMap message are filled by the map projector, whose own test lists them.
+	// TvCombat.map and the TvMap message are not filled by this projector.
 }
 
 // TestTvProjectorFields walks the messages the projector fills and fails for a field that has no reason in
@@ -383,7 +395,7 @@ func TestTvProjectorFields(t *testing.T) {
 			f := fields.Get(i)
 			key := string(md.Name()) + "." + string(f.Name())
 			if key == "TvCombat.map" {
-				continue // task 3
+				continue // not filled by this projector
 			}
 			seen[key] = true
 			if tvFields[key] == "" {
@@ -471,5 +483,80 @@ func TestImageOnStageForNobodyInParticular(t *testing.T) {
 	}
 	if !on("") || !on(a.caio.id) {
 		t.Error("scene for everyone: the portrait is on the stage for nobody in particular and for Caio")
+	}
+}
+
+// An image left with the scene's players or with chosen players is not the TV's.
+func TestTableScreenImageForTheScenesPlayersIsNotOnTheTV(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	point, _ := a.h.newScene(a.mapID, "A clareira", false, 1)
+	a.openFor(t, point, a.ana)
+	image := a.galleryImageNamed("Mapa da clareira")
+	a.showImage(t, image, &playv1.ImageAudience{Kind: playv1.ImageAudienceKind_IMAGE_AUDIENCE_KIND_SCENE_PLAYERS})
+	if live := a.master.liveSession(t, a.campaignID); live.GetShownImage().GetName() != "Mapa da clareira" {
+		t.Fatalf("the master reads %v, want the image", live.GetShownImage())
+	}
+	if _, err := a.setScreen(a.master, 0, false, kImage); err != nil {
+		t.Fatalf("SetTableScreen() error = %v", err)
+	}
+	got := a.mustGetScreen(t)
+	if got.GetStage().GetKind() != kIdle || got.GetNotice() != nPinEnded || got.GetStage().GetImage() != nil {
+		t.Errorf("stage = %v/%v, want idle/PIN_ENDED", got.GetStage().GetKind(), got.GetNotice())
+	}
+	mustNotContain(t, "the table screen", text(got), "Mapa da clareira", image)
+}
+
+// A stage whose item went away after the facts were read becomes the idle screen.
+func TestProjectStageBodyFallsToIdleWhenTheItemIsGone(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	session, err := a.h.svc.queries.GetOpenGameSession(t.Context(), a.campaignID)
+	if err != nil {
+		t.Fatalf("GetOpenGameSession() error = %v", err)
+	}
+	for _, kind := range []playv1.TableScreenKind{kImage, kScene, kCombat} {
+		stage := &playv1.TableScreenStage{Kind: kind}
+		if err := a.h.svc.projectStageBody(t.Context(), session, stage); err != nil {
+			t.Fatalf("projectStageBody(%v) error = %v", kind, err)
+		}
+		if stage.GetKind() != kIdle || stage.GetIdle() == nil || len(stage.GetRolls()) != 0 {
+			t.Errorf("%v with nothing to show = %v, want the idle screen", kind, stage)
+		}
+	}
+}
+
+// With the fog on and "Visão do grupo" on, the TV sees the NPCs the group sees and no others; a line from when
+// a player's character saw an NPC is not a line of the TV.
+func TestTableScreenCombatOnAFogMapShowsOnlyNPCsTheGroupSees(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	e := f.fight(t)
+	f.stage(t)
+	f.groupVision(t, true)
+	f.mustMove(t, f.master, "Goblin 2", 7, 7)
+	if _, err := f.attack(t, f.caio, e, "Toren", battleaxe, "Goblin 2", d20(15)); err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	f.mustMove(t, f.master, "Goblin 2", 8, 8)
+	wantNPCs(t, "the master", f.get(t, f.master), allNPCs...)
+	hidden := []string{"Goblin 1", "Goblin 3", "Ogro"}
+	got := f.mustGetScreen(t)
+	var npcs []string
+	for _, c := range got.GetStage().GetCombat().GetOrder() {
+		if !c.GetIsPlayer() {
+			npcs = append(npcs, c.GetName())
+		}
+	}
+	slices.Sort(npcs)
+	if want := []string{"Capitão Goblin", "Escudeiro", "Goblin 2"}; !slices.Equal(npcs, want) {
+		t.Errorf("NPCs on the TV = %v, want the ones the group sees %v", npcs, want)
+	}
+	f.noLeak(t, "the table screen", asJSON(t, got), hidden...)
+	if lines := got.GetStage().GetCombat().GetLog(); len(lines) != 1 || lines[0] != "O combate começou" {
+		t.Errorf("log = %q, want only the line that was not fogged", lines)
+	}
+	if !strings.Contains(asJSON(t, f.log(t, f.master, f.get(t, f.master))), "Goblin 2") {
+		t.Error("the master's log does not carry the attack on Goblin 2")
 	}
 }
