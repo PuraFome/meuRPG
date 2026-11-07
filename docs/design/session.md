@@ -96,7 +96,8 @@ It is made to be read from a sofa, so its type is large: from 1600 px every size
   A map with the fog on is drawn from the group's tiles, black where the group does not see.
 - **"Ordem"** has one row per combatant the table sees: the token, the name and one word (RN-20), "Vez" for whoever has the turn (a larger token), and "Vez do mestre" with an eye-off icon when the turn is one the table does not see; the round is in the title.
   When the list is longer than the room, the last rows are replaced by "+N".
-- **The fog card** (`app-tv-fog-card`): a map icon, "O mapa fica na tela de cada um." and "A névoa está ligada e cada jogador vê só o que o próprio personagem vê.", in a panel that takes the room of the map.
+- **The fog card** (`app-tv-fog-card`): a map icon, "O mapa fica na tela de cada um." and "A névoa está ligada e cada jogador vê só o que o próprio personagem vê.", in a panel in the place of the map, only in a combat whose map the fog hides (the order, the rolls and the log stay).
+  A mirrored or pinned map the fog hides is not drawn at all: the waiting screen shows, with the notice line "O mapa tem névoa e a Visão do grupo está desligada, então a TV não o mostra."
 - **The refusals and the end** are one card each, centred, with a large icon: "Só o mestre abre a Tela da mesa." (a lock), "Entre para abrir a Tela da mesa." (the page then sends the viewer to sign in and back), "Não deu para abrir a Tela da mesa." (it tries again in 10 s), "Carregando a mesa…", and "A sessão 3 terminou às 23:40." with "Até a próxima sessão de Mirathel." and "O mestre pode fechar esta aba." under the header chip "Encerrada às 23:40".
 - **At 390 px** the TV page is the phone layout above: one column, every panel whole, the page scrolls, and the fit hides nothing.
 
@@ -107,7 +108,8 @@ It fits one screen in its longest state, at 390 x 844 and at 1280 x 800: the fra
 
 - **Title bar:** the TV icon, "Tela da mesa" and a tag at the right: "Aberta" (success look with a check), "Fechada" (neutral), "Abrindo…" after "Abrir a Tela da mesa" until a TV connects, and "Sem conexão" (pending look with a warning icon).
 - **States of the body:**
-  - Reading: "Lendo a Tela da mesa…". A failed first read is a danger notice "Não deu para ler a Tela da mesa." with "Tentar de novo".
+  - Reading: "Lendo a Tela da mesa…".
+    A failed first read is a danger notice "Não deu para ler a Tela da mesa." with "Tentar de novo".
   - No TV open: one line, "Abra a Tela da mesa na TV; depois escolha o que ela mostra.", and no rows.
   - Lost: a warning notice "Sem conexão desde 21:14. Depois de 1 minuto a TV esconde o que mostra; volta sozinha quando a conexão voltar."
   - A choice that did not go through: a danger notice "Não deu para mudar a Tela da mesa. A TV continua como estava." with "Tentar de novo"; it replaces the rows, so it is never out of sight.

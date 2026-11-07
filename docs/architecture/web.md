@@ -176,7 +176,7 @@ The page never shows an e-mail or a rule id ([Campaigns](campaigns.md#claim-link
 `TABLE_SCREEN_ROUTES` is loaded with `loadChildren` and provides its own `TableScreenWatcher`, so the page owns one stream and one read loop and the eager routes import nothing of the generated client behind it.
 
 - **No shell.** `app.html` draws the bar, the footer, the live-session notice and the dice overlay only when `isTableScreenPage(url)` (`core/play/open-sessions.ts`) is false, so the tab shows the page alone.
-- **Nothing else is called.** The shell calls `OpenSessions.suspend(true)` on this route, which stops the open-sessions poll (`ListOpenGameSessions`), and the page injects only `TableScreenWatcher` and `AuthService`.
+- **Nothing else is called.** The shell calls `OpenSessions.suspend(true)` on this route, which stops the open-sessions poll (`ListOpenGameSessions`), and the page's only data services are `TableScreenWatcher` and `AuthService`.
   The tab's calls are `GetMe` (the guard), `GetTableScreen`, `WatchTableScreen` and the map tiles `?as=tv`; `table-screen.spec.ts` in `e2e/` records them ([Testing](../testing.md#end-to-end-tests-playwright)).
 - **The watcher** (`core/play/table-screen-watcher.ts`) opens `WatchTableScreen` through `LiveStream` (backoff, dead-stream check, pause while the tab is hidden) and reads `GetTableScreen` after every `ready` and, gathered over 300 ms, after every `changed`.
   Reads never overlap: a `changed` that comes during a read makes exactly one more read after it.
