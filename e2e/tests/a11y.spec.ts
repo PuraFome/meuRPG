@@ -9915,8 +9915,19 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
       // A player reads nothing of it: no state, no uses, no roll, no "Outras ações".
       await p.reload();
       await openSessionPage(p, fight.campaignId);
-      for (const word of ['Outras ações', 'Pronta', 'Gasta', 'no d6', 'de 1', 'Recarga']) {
-        await expect(p.locator('body')).not.toContainText(word);
+      // Searched where the master's card writes them, never in the whole page: its session bar reads "desde 14:03" (a "de 1" in the
+      // afternoon) and the player's own hit points read "24 de 24". The Vrock's row of the order and the combat view are the
+      // places; the uses are the master's "N de M" (the same shape) in the Vrock's row and the elements that carry them.
+      const area = p.locator('app-combat-view');
+      const vrockRow = p.locator('li.row').filter({ hasText: fight.label });
+      await expect(vrockRow).toBeVisible();
+      await expect(area).toContainText(fight.label); // the area is the combat the player reads, so its silence on the limits means something
+      for (const word of ['Outras ações', 'Pronta', 'Gasta', 'no d6', 'Recarga', 'Esporos', 'Guincho']) {
+        await expect(area).not.toContainText(word);
+      }
+      await expect(vrockRow).not.toContainText(/\d+ de \d+/);
+      for (const mine of ['app-creature-actions', '[data-testid="order-limit"]', '[data-testid="recharge-rolled"]', '.act__uses']) {
+        await expect(p.locator(mine)).toHaveCount(0);
       }
       await everyWidth(p, 'jogador-sem-limites', 'Recarga: a jogadora não lê os limites', undefined, 'stay');
     });
