@@ -883,6 +883,12 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
     As características têm um nível e um efeito do menu, com o contador "N de 60".
   - A subclasse: características por nível, "Esta subclasse conjura", magias sempre preparadas por nível de classe e, quando tem magias, "As magias da subclasse entram na lista da classe, para escolher".
   - O talento: "Novo talento", "Dados do talento", "O que o talento pede", "Salvar talento"; "Aumento de habilidade" é oferecido só ali.
+    Um talento que pede uma escolha ao jogador mostra "Opções do talento": a contagem "N de 60 opções", uma linha dobrada para cada opção e "Adicionar uma opção", que espera nas 60.
+    As opções da escolha vêm de uma de três fontes: a lista do próprio talento, um conjunto inteiro do SRD ("Conjunto") ou opções do SRD marcadas à mão; um talento oferece a lista ou um conjunto, nunca os dois.
+    Uma escolha do tipo "Uma habilidade" ou "Um tipo de dano" ganha um nome sozinha ("habilidade", "habilidade_2"), e o cartão "Escolhas deste talento" lista cada uma com o efeito dela e em quantos efeitos é usada.
+    Um efeito seguinte do mesmo talento aponta para a escolha pelo grupo "A escolha do talento", acima de "Valores fixos", nos campos que a aceitam, e uma fórmula a lê com os botões "Modificador" e "Valor".
+    Um campo que aponta para uma escolha removida, ou que está abaixo dele, diz qual ("A escolha “habilidade” que este campo usava foi removida"), e "Salvar talento" espera até o mestre escolher outro valor.
+    No celular o mestre lê o talento com o título "Opções" e uma linha para cada opção, com o nome à esquerda e o que ela faz em poucas palavras à direita ("Classe de Armadura +1"); o jogador lê as opções com os textos delas.
 - **Recusas:** cada violação volta no campo que ela nomeia, em português, também numa célula da tabela e numa característica recolhida, que se abre.
   Um resumo no alto diz quantos campos precisam de ajuste, e o que o mestre digitou fica.
   "Esta entrada mudou enquanto você editava" oferece "Recarregar".

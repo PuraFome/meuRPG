@@ -65,6 +65,7 @@ import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
+import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
 import { archiveEntryRPC, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
@@ -9951,6 +9952,176 @@ test('a lista de talentos do subir de nível com o que não cumpre passa no axe 
   test.setTimeout(180_000);
   await scanFeatList(browser, 'dark', 390);
 });
+
+// The feat editor's options and named choices (MR-025, RN-23): the list of options, the most it takes, a whole set offered, a named ability choice
+// with its group open, a named damage type choice, the refusals and the choice that was removed, and the formula that reads a choice.
+// Each row is judged in the light and the dark theme at 390 (the master reads: the editor is read-only below 768), 768 and 1280 px;
+// E2E_SHOTS_DIR, when set, also saves the viewport screenshots (feat-options-support.ts).
+
+type FeatOptionsScreen = 'options' | 'limit' | 'set' | 'choice' | 'damage' | 'refusals' | 'formula';
+
+/** What the master reads on a phone, by the feat: the row of what the player picks, and one line of what it lists. */
+const featRead: Record<FeatOptionsScreen, { key: keyof FeatOptionsTable; name: string; picks: string; sees: string }> = {
+  options: { key: 'veteran', name: 'Estilo do Veterano', picks: '1 de 4 opções', sees: 'Classe de Armadura +1' },
+  limit: { key: 'limit', name: 'Livro de Estilos', picks: '1 de 60 opções', sees: 'Um livro de estilos de luta' },
+  set: { key: 'school', name: 'Escola de Armas', picks: '1 estilo de luta', sees: 'Escolha um estilo de luta ao pegar o talento.' },
+  choice: { key: 'resilient', name: 'Resiliente', picks: '1 habilidade', sees: 'Escolha uma habilidade' },
+  damage: { key: 'affinity', name: 'Afinidade Elemental', picks: '1 tipo de dano', sees: 'Escolha um elemento.' },
+  refusals: { key: 'veteran', name: 'Estilo do Veterano', picks: '1 de 4 opções', sees: 'Dano de arma corpo a corpo +1' },
+  formula: { key: 'command', name: 'Voz de Comando', picks: '1 habilidade', sees: 'Sua voz faz o grupo se firmar.' },
+};
+
+/** The screen as the master reads it on a phone: the heading, what the player picks, and what the feat says. */
+async function expectFeatRead(m: Page, screen: FeatOptionsScreen): Promise<void> {
+  const read = featRead[screen];
+  await expect(m.getByRole('heading', { level: 1, name: read.name })).toBeVisible();
+  await expect(m.getByLabel('Nome do talento')).toHaveCount(0);
+  await expect(m.getByRole('definition').filter({ hasText: read.picks })).toBeVisible();
+  await expect(m.getByText(read.sees).first()).toBeVisible();
+}
+
+/** The states of a screen from a tablet up, each judged and saved: opens the route, brings the state up and returns its name. */
+async function featStates(m: Page, screen: FeatOptionsScreen, table: FeatOptionsTable, campaignId: string, width: number, scheme: 'light' | 'dark'): Promise<void> {
+  const where = `(${scheme}, ${width}px)`;
+  const judge = async (state: string, name: string, fullPage = false) => {
+    await expectScreenPasses(m, `Editor de talento, ${state} ${where}`);
+    await shootFeat(m, name, width, scheme, fullPage);
+  };
+  const route = (key: string) => open(m, entryRoute(campaignId, key));
+  const panel = m.getByRole('region', { name: 'Opções do talento' });
+  switch (screen) {
+    case 'options': {
+      await route(table.veteran);
+      await expect(m.getByLabel('Nome do talento').first()).toHaveValue('Estilo do Veterano');
+      await expect(panel).toContainText('4 de 60 opções');
+      await m.getByRole('button', { name: /Opção 2 · Mão Firme/ }).click();
+      await expect(panel.getByLabel('Nome da opção').nth(1)).toBeVisible();
+      await judge('a lista de opções com uma aberta', 'opcoes');
+      break;
+    }
+    case 'limit': {
+      await route(table.limit);
+      await expect(panel).toContainText('60 de 60 opções');
+      const add = panel.getByRole('button', { name: 'Adicionar uma opção' });
+      await expect(add).toHaveAttribute('aria-disabled', 'true');
+      await expect(panel.getByText('No máximo 60 opções. Remova uma para pôr outra.')).toBeVisible();
+      await add.scrollIntoViewIfNeeded();
+      await judge('a lista no limite de 60 opções', 'limite');
+      break;
+    }
+    case 'set': {
+      await route(table.school);
+      await expect(panel).toContainText('Este talento oferece o conjunto Estilo de luta.');
+      const set = m.getByRole('combobox', { name: 'Conjunto' });
+      await expect(set).toHaveValue('fighting_style');
+      await judge('o conjunto inteiro oferecido', 'conjunto');
+      await openSelect(set);
+      await judge('o conjunto aberto', 'conjunto-aberto');
+      await set.press('Escape');
+      break;
+    }
+    case 'choice': {
+      await route(table.resilient);
+      const side = m.getByRole('region', { name: 'Escolhas deste talento' });
+      await expect(side).toContainText('Habilidade · efeito 1');
+      await expect(side).toContainText('usada em 2 efeitos');
+      await judge('a escolha nomeada e o cartão "Escolhas deste talento"', 'resiliente');
+      const proficiency = m.locator('[data-field="table_feat.effects[2].proficiency"]');
+      await expect(proficiency).toHaveValue('save.@habilidade');
+      await openSelect(proficiency);
+      await expect(proficiency.locator('optgroup legend').first()).toContainText('A escolha do talento');
+      await expectInViewport(m, proficiency.locator('option.footer'));
+      await judge('o grupo "A escolha do talento" aberto', 'resiliente-grupo-aberto');
+      await proficiency.press('Escape');
+      break;
+    }
+    case 'damage': {
+      await route(table.affinity);
+      const type = m.locator('[data-field="table_feat.effects[1].damage_type"]');
+      await expect(type).toHaveValue('damage-type:@tipo_de_dano');
+      await judge('a escolha de um tipo de dano', 'afinidade');
+      await openSelect(type);
+      await judge('o tipo de dano aberto', 'afinidade-aberto');
+      await type.press('Escape');
+      break;
+    }
+    case 'refusals': {
+      await route(table.veteran);
+      await pickRadio(m, /Um conjunto inteiro/);
+      await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByRole('alert').filter({ hasText: 'Não foi possível salvar o talento.' })).toBeVisible();
+      await expect(m.getByText('Este talento tem opções próprias: a escolha oferece elas ou um conjunto, não os dois.')).toBeVisible();
+      await judge('a recusa do servidor no campo', 'recusas');
+      // The choice that was removed: the feat's first effect becomes text only, and what pointed at it has nothing to point at.
+      await route(table.resilient);
+      await m.locator('[data-field="table_feat.effects[0].type"]').selectOption({ label: 'Só texto' });
+      const proficiency = m.locator('[data-field="table_feat.effects[1].proficiency"]');
+      await expect(m.getByText('A escolha “habilidade” que este campo usava foi removida. Escolha outro valor.').first()).toBeVisible();
+      await expect(proficiency.locator('option:checked')).toHaveText('Escolha…');
+      const save = m.getByRole('button', { name: 'Salvar talento' });
+      await expect(save).toHaveAttribute('aria-disabled', 'true');
+      await expect(m.locator('#bar-reason')).toContainText('Escolha outro valor.');
+      await judge('a escolha removida, com o salvar travado', 'escolha-removida');
+      break;
+    }
+    case 'formula': {
+      await route(table.command);
+      const formula = m.locator('[data-field="table_feat.effects[1].value"]');
+      await expect(formula).toHaveValue('8 + prof() + mod("@habilidade")');
+      await expect(m.getByText('Lê-se:').first()).toBeVisible();
+      await judge('a fórmula com os botões da escolha', 'formula');
+      await formula.focus();
+      await m.getByRole('button', { name: 'Valor · Habilidade' }).click();
+      await expect(formula).toHaveValue('8 + prof() + mod("@habilidade") + score("@habilidade")');
+      await expect(m.locator('.reading', { hasText: 'Lê-se: 8' })).toContainText('modificador da escolha Habilidade + valor da escolha Habilidade');
+      await judge('a fórmula depois de pôr a escolha', 'formula-inserida');
+      break;
+    }
+  }
+}
+
+async function scanFeatOptionsScreen(browser: Browser, screen: FeatOptionsScreen): Promise<void> {
+  const context = await browser.newContext({ storageState: authStatePath('Mestre Teste'), viewport: featViewport(1280), ...featShotScale });
+  const m = await context.newPage();
+  try {
+    await m.goto('/');
+    const campaignId = await masterCampaign(m, `Acessibilidade opções do talento ${Date.now()}`);
+    const table = await createFeatOptionsRPC(m, campaignId);
+    for (const scheme of ['light', 'dark'] as const) {
+      await m.emulateMedia({ colorScheme: scheme });
+      for (const width of [390, 768, 1280]) {
+        await m.setViewportSize(featViewport(width));
+        if (width === 390) {
+          await open(m, entryRoute(campaignId, table[featRead[screen].key]));
+          await expectFeatRead(m, screen);
+          await expectScreenPasses(m, `Talento lido pelo mestre no celular, ${featRead[screen].name} (${scheme}, 390px)`);
+          await shootFeat(m, `leitura-${screen}`, width, scheme);
+        } else {
+          await featStates(m, screen, table, campaignId, width, scheme);
+        }
+      }
+    }
+  } finally {
+    await context.close();
+  }
+}
+
+const featRows: [FeatOptionsScreen, string][] = [
+  ['options', 'a lista de opções do talento'],
+  ['limit', 'a lista no limite de 60 opções'],
+  ['set', 'o conjunto inteiro oferecido pela escolha'],
+  ['choice', 'a escolha nomeada de uma habilidade com o grupo aberto'],
+  ['damage', 'a escolha nomeada de um tipo de dano'],
+  ['refusals', 'as recusas do servidor e a escolha removida'],
+  ['formula', 'a fórmula com os botões da escolha'],
+];
+
+for (const [screen, name] of featRows) {
+  test(`${name} do editor de talento passa no axe e nas conferências de layout nos dois temas, em 390, 768 e 1280`, { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanFeatOptionsScreen(browser, screen);
+  });
+}
 
 /** The master's legendary offers and the Parry switch: the Legendary Resistance window of a stunned dragon, its legendary-actions
  * card (open, folded, spent), the master-only log line, the "Aparar" menu entry and window, and the player's neutral "Esperando o mestre".
