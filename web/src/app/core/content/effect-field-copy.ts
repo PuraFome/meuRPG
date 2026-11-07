@@ -70,6 +70,7 @@ export const EFFECT_FIELD_LABELS: Readonly<Record<string, string>> = {
   spell_change: 'O que muda na magia',
   rolls: 'Vale nas jogadas',
   at_most: 'Rola de novo se tirar até',
+  cap: 'Limite',
 };
 
 /** One line under a field, where the name alone does not say. This is screen copy; the formula functions and the tag

@@ -1,4 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,7 +15,7 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-pick-list',
-  imports: [FieldNote, MatFormFieldModule, MatInputModule, MatIconModule],
+  imports: [FieldNote, MatFormFieldModule, MatInputModule, MatIconModule, NgTemplateOutlet],
   template: `
     <div class="pick" role="group" [attr.aria-label]="label()" [attr.data-field]="path() || null">
       @for (key of values(); track key) {
@@ -30,11 +31,25 @@ let nextId = 0;
           <mat-label>{{ addLabel() }}</mat-label>
           <select matNativeControl [disabled]="disabled()" [attr.aria-describedby]="describedBy()" (change)="add($event)">
             <option value=""></option>
-            @for (o of available(); track o.value) {
-              <option [value]="o.value">{{ o.label }}</option>
+            @for (seg of segments(); track $index) {
+              @if (seg.group) {
+                <optgroup [label]="seg.group">
+                  <ng-container *ngTemplateOutlet="items; context: { $implicit: seg.items }" />
+                </optgroup>
+              } @else {
+                <ng-container *ngTemplateOutlet="items; context: { $implicit: seg.items }" />
+              }
+            }
+            @if (footer()) {
+              <option value="" [disabled]="true">{{ footer() }}</option>
             }
           </select>
         </mat-form-field>
+        <ng-template #items let-items>
+          @for (o of items; track o.value) {
+            <option [value]="o.value">{{ o.side ? o.label + ' · ' + o.side : o.label }}</option>
+          }
+        </ng-template>
       }
     </div>
     <app-field-note [id]="noteId" [issues]="issues()" [hint]="hint()" />
@@ -113,6 +128,8 @@ export class PickList {
   readonly max = input(0);
   /** Nothing can be added or taken off; the hint says why. */
   readonly disabled = input(false);
+  /** A line at the end of the add list that cannot be picked. */
+  readonly footer = input('');
   readonly added = output<string>();
   readonly removed = output<string>();
 
@@ -120,6 +137,21 @@ export class PickList {
   protected readonly available = computed(() =>
     this.options().filter((o) => !this.values().includes(o.value)),
   );
+
+  /** The values still free in runs of the same group, in order (an option with no group is drawn outside any `<optgroup>`). */
+  protected readonly segments = computed(() => {
+    const out: { group: string; items: SelectOption[] }[] = [];
+    for (const o of this.available()) {
+      const group = o.group ?? '';
+      const last = out.at(-1);
+      if (last && last.group === group) {
+        last.items.push(o);
+      } else {
+        out.push({ group, items: [o] });
+      }
+    }
+    return out;
+  });
 
   protected describedBy(): string | null {
     return this.issues().length > 0 || this.hint() !== '' ? this.noteId : null;

@@ -21,6 +21,7 @@ export {
   type MissingChoice,
   choiceRef,
   choicesBefore,
+  defaultChoiceName,
   featChoices,
   formulaInsertions,
   missingChoices,

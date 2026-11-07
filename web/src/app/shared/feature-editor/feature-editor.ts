@@ -2,7 +2,7 @@ import { Component, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { EffectDraft, EffectMenuVm } from '../../core/content/effect-draft';
+import type { EffectDraft, EffectMenuVm, FeatChoice } from '../../core/content/effect-draft';
 import { emptyEffect } from '../../core/content/effect-draft';
 import { emptyFeature, type FeatureDraft, NAME_MAX } from '../../core/content/feature-draft';
 import { EffectPicker } from '../effect-picker/effect-picker';
@@ -41,6 +41,13 @@ export class FeatureEditor {
   readonly flat = input(false);
   /** The feat editor: its effects may be the types only a feat has. */
   readonly featEditor = input(false);
+  /**
+   * The named choices of the feat these effects belong to (`featChoices` of its effects), set by the feat's own editor: a field
+   * offers the ones before its effect. With none (null), no field offers a choice.
+   */
+  readonly choices = input<readonly FeatChoice[] | null>(null);
+  /** The feature is an option of a feat: its fields offer fixed values only, and say so. */
+  readonly featOption = input(false);
   /** A narrow field projected between the name and the effect (`<… lead>`): the class editor's "Nível". */
   readonly withLead = input(false);
   /**

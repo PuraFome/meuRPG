@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
 import { FieldNote } from './field-note';
@@ -21,23 +22,35 @@ export interface SelectOption<T extends string | number = string> {
   readonly disabled?: boolean;
   /** The group the option sits in (an `<optgroup>`); adjacent options with the same group sit in one `<optgroup>`. */
   readonly group?: string;
+  /** A line at the option's right edge ("do efeito 1"); a browser that draws only text reads it after the label. */
+  readonly side?: string;
+}
+
+/** How the header of a group looks: an icon before its name, in the accent. */
+export interface SelectGroup {
+  readonly icon?: string;
+  readonly accent?: boolean;
 }
 
 /**
  * A native select in the app's outlined field (the same pattern as the trap panel).
  * It is a real `<select>`, so the phone's own picker opens, with the refusal of the server under it.
  * Options with a `group` sit in an `<optgroup>`; `disabled` turns the whole select off.
+ * A group with an icon, an option with a `side` text, or a `footer` make the list rich where the browser has a customizable select
+ * (`appearance: base-select`): the header carries its icon, the side text sits at the right and the footer is the list's last line.
+ * Elsewhere the same select is a plain list: the group is its label, the side text follows the label and the footer is a line that cannot be picked.
  * Values are strings or numbers; `valueChange` gives back the option's own value, not its text.
  */
 @Component({
   selector: 'app-select-field',
-  imports: [FieldNote, MatFormFieldModule, MatInputModule, NgTemplateOutlet],
+  imports: [FieldNote, MatFormFieldModule, MatIconModule, MatInputModule, NgTemplateOutlet],
   template: `
     <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.invalid]="invalid()">
       <mat-label>{{ label() }}</mat-label>
       <select
         #control
         matNativeControl
+        [class.rich]="rich()"
         [attr.data-field]="path() || null"
         [disabled]="disabled()"
         [attr.aria-describedby]="described()"
@@ -48,18 +61,34 @@ export interface SelectOption<T extends string | number = string> {
         }
         @for (seg of segments(); track $index) {
           @if (seg.group) {
-            <optgroup [label]="seg.group">
+            <optgroup [label]="seg.group" [class.accent]="groups()[seg.group]?.accent">
+              @if (rich()) {
+                <legend>
+                  @if (groups()[seg.group]?.icon; as icon) {
+                    <mat-icon aria-hidden="true">{{ icon }}</mat-icon>
+                  }
+                  {{ seg.group }}
+                </legend>
+              }
               <ng-container *ngTemplateOutlet="items; context: { $implicit: seg.items }" />
             </optgroup>
           } @else {
             <ng-container *ngTemplateOutlet="items; context: { $implicit: seg.items }" />
           }
         }
+        @if (footer()) {
+          <option class="footer" value="" [disabled]="true">{{ footer() }}</option>
+        }
       </select>
     </mat-form-field>
     <ng-template #items let-items>
       @for (o of items; track o.value) {
-        <option [value]="o.value" [selected]="o.value === value()" [disabled]="o.disabled ?? false">{{ o.label }}</option>
+        <option
+          [value]="o.value"
+          [label]="o.side ? o.label + ' · ' + o.side : o.label"
+          [selected]="o.value === value()"
+          [disabled]="o.disabled ?? false"
+        >@if (o.side) {<span class="opt__label">{{ o.label }}</span><span class="opt__side">{{ o.side }}</span>} @else {{{ o.label }}}</option>
       }
     </ng-template>
     <app-field-note [id]="noteId" [issues]="issues()" [hint]="hint()" />
@@ -72,6 +101,89 @@ export interface SelectOption<T extends string | number = string> {
 
     mat-form-field {
       width: 100%;
+    }
+
+    // The customizable select (Chromium 135 and up): the list is ours to draw. Anywhere else the rules below do not apply.
+    @supports (appearance: base-select) {
+      select.rich,
+      select.rich::picker(select) {
+        appearance: base-select;
+      }
+
+      select.rich {
+        width: 100%;
+        border: 0;
+        padding: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+
+        &::picker-icon {
+          display: none;
+        }
+      }
+
+      select.rich::picker(select) {
+        margin-top: var(--mr-space-1);
+        padding: 0;
+        border: 1px solid var(--mr-line);
+        border-radius: var(--mr-radius-md);
+        background: var(--mr-surface);
+        color: var(--mr-ink);
+      }
+
+      select.rich option {
+        display: flex;
+        align-items: baseline;
+        gap: var(--mr-space-3);
+        min-height: 44px;
+        padding: 0 var(--mr-space-4);
+        font-size: var(--mr-font-16);
+
+        &:checked {
+          background: var(--mr-accent-soft);
+          font-weight: 700;
+        }
+
+        &::checkmark {
+          display: none;
+        }
+
+        &.footer {
+          min-height: 0;
+          padding-block: var(--mr-space-2);
+          border-top: 1px solid var(--mr-line);
+          color: var(--mr-ink-muted);
+          font-size: var(--mr-font-14);
+        }
+      }
+
+      select.rich .opt__side {
+        margin-left: auto;
+        color: var(--mr-ink-muted);
+        font-size: var(--mr-font-14);
+        font-weight: 400;
+      }
+
+      select.rich optgroup legend {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: var(--mr-space-2) var(--mr-space-4);
+        color: var(--mr-ink-muted);
+        font-size: var(--mr-font-14);
+        font-weight: 700;
+
+        .mat-icon {
+          width: 18px;
+          height: 18px;
+          font-size: var(--mr-font-18);
+        }
+      }
+
+      select.rich optgroup.accent legend {
+        color: var(--mr-accent-text);
+      }
     }
 
     .invalid {
@@ -96,6 +208,10 @@ export class SelectField<T extends string | number = string> {
   readonly disabled = input(false);
   /** The id of another element that describes the field (the lock note beside a locked one), read after the note under it. */
   readonly describedBy = input('');
+  /** How a group's header looks, by the group's name. */
+  readonly groups = input<Readonly<Record<string, SelectGroup>>>({});
+  /** A line at the end of the list that cannot be picked ("A escolha do talento aparece nos efeitos que vêm depois dela."). */
+  readonly footer = input('');
   readonly valueChange = output<T>();
 
   protected readonly noteId = `fn-s${nextId++}`;
@@ -119,6 +235,14 @@ export class SelectField<T extends string | number = string> {
     }
     return out;
   });
+
+  /** Whether the list is drawn by us where the browser lets us: a group with an icon, a side text or a footer. */
+  protected readonly rich = computed(
+    () =>
+      this.footer() !== '' ||
+      Object.values(this.groups()).some((g) => g.icon) ||
+      this.options().some((o) => o.side),
+  );
 
   private readonly control = viewChild<ElementRef<HTMLSelectElement>>('control');
 

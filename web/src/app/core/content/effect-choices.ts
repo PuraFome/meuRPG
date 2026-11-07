@@ -75,6 +75,24 @@ export function choicesBefore(
   return featChoices(effects).filter((c) => c.kind === kind && c.index < index);
 }
 
+const DEFAULT_NAME: Readonly<Record<ChoiceKind, string>> = {
+  ability: 'habilidade',
+  damage_type: 'tipo_de_dano',
+};
+
+/** The name the editor gives a new choice of `kind` ("habilidade", then "habilidade_2"), so the master never types one; '' for a kind that has no name. */
+export function defaultChoiceName(kind: string, taken: readonly string[]): string {
+  const base = DEFAULT_NAME[kind as ChoiceKind];
+  if (!base) {
+    return '';
+  }
+  let name = base;
+  for (let n = 2; taken.includes(name); n++) {
+    name = `${base}_${n}`;
+  }
+  return name;
+}
+
 /** What a field writes to point at a choice. */
 export function choiceRef(choice: Pick<FeatChoice, 'name'>): string {
   return `@${choice.name}`;
