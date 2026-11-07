@@ -42,6 +42,8 @@ export class TableScreenPanel {
   /** The last choice was refused because the choice had moved; the panel shows what is there now. */
   readonly stale = signal(false);
 
+  /** A TV tab was connected and none is now. */
+  readonly lost = computed(() => !this.presence().open && this.presence().lostAt !== null);
   readonly options = computed(() => this.data()?.options ?? []);
   readonly mirror = computed(() => this.data()?.choice?.mirror ?? true);
   readonly pin = computed(() => this.data()?.choice?.pin ?? TableScreenKind.UNSPECIFIED);

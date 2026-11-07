@@ -21,6 +21,15 @@ describe('TableScreenPanel', () => {
     panel = new TableScreenPanel({ get, set } as never, () => 'c1');
   });
 
+  it('is lost only when a TV tab was open and none is now', async () => {
+    expect(panel.lost()).toBe(false);
+    get.mockResolvedValue(screenResponse({ presence: { open: false, lostAt: LOST } }));
+    await panel.load();
+    expect(panel.lost()).toBe(true);
+    panel.heard({ presenceKnown: true, open: true, lostAt: null, choiceRevision: 0 });
+    expect(panel.lost()).toBe(false);
+  });
+
   it('loads the choice, the options and the presence', async () => {
     get.mockResolvedValue(
       screenResponse({

@@ -61,9 +61,6 @@ export class LiveSessionEvents {
         void parts.trapBoard.refresh();
         // The first `ready` reads the conversation; a reconnection reads the lines that came meanwhile.
         void parts.conversation.sync();
-        if (state.isMaster()) {
-          void parts.tableScreen.load();
-        }
         void loader.readSnapshot(campaignId, generation, () => ({
           map: this.mapEvents,
           image: this.imageEvents,
