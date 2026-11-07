@@ -15,15 +15,19 @@ const (
 	// FlagIgnoreHostileNearby says a ranged weapon attack made with a hostile creature within 5 feet gets no
 	// disadvantage for it (a spell attack still does).
 	FlagIgnoreHostileNearby = "ignore_hostile_nearby"
+	// FlagIgnoreDifficultTerrain says difficult terrain painted on the map costs the character no extra movement. The
+	// difficult terrain a spell makes still does.
+	FlagIgnoreDifficultTerrain = "ignore_difficult_terrain"
 )
 
 // effectFlags are the flags a flag effect may name, in the order of the menu.
-var effectFlags = []string{FlagNeverSurprised, FlagIgnoreHostileNearby}
+var effectFlags = []string{FlagNeverSurprised, FlagIgnoreHostileNearby, FlagIgnoreDifficultTerrain}
 
 // effectFlagNames are the Portuguese names and hints of the flags.
 var effectFlagNames = map[string][2]string{
-	FlagNeverSurprised:      {"Nunca é surpreendido", "O personagem não pode ser surpreendido: o mestre não consegue marcá-lo como surpreso."},
-	FlagIgnoreHostileNearby: {"Ignora hostil por perto", "Um ataque à distância com arma não sofre desvantagem por haver um inimigo a até 1,5 m. Ataques de magia continuam sofrendo."},
+	FlagNeverSurprised:         {"Nunca é surpreendido", "O personagem não pode ser surpreendido: o mestre não consegue marcá-lo como surpreso."},
+	FlagIgnoreHostileNearby:    {"Ignora hostil por perto", "Um ataque à distância com arma não sofre desvantagem por haver um inimigo a até 1,5 m. Ataques de magia continuam sofrendo."},
+	FlagIgnoreDifficultTerrain: {"Ignora terreno difícil do mapa", "O terreno difícil pintado no mapa não custa movimento extra. O terreno difícil criado por magias (Crescer Espinhos, Teia) continua custando."},
 }
 
 // effectFlagValues are the flags of the menu, with their names and hints.
