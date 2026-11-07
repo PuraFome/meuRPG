@@ -515,14 +515,14 @@ func TestWallSideIsStoredAndReadBack(t *testing.T) {
 	}
 }
 
-func TestWallOfFireIsUnavailableInTheTurnOptions(t *testing.T) {
+func TestWallOfFireIsAvailableInTheTurnOptions(t *testing.T) {
 	t.Parallel()
 	c := wallCave(t)
 	e := c.zoneFight(t)
 	e = c.passTo(t, e, "Pensantus")
 	opt := spellOption(c.mustOptions(t, c.ana, e, "Pensantus"), wallOfFireKey)
-	if opt == nil || opt.GetEnabled() || opt.GetReason().GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED {
-		t.Fatalf("Wall of Fire option = %v, want disabled with WALL_PLACEMENT_REQUIRED", opt)
+	if opt == nil || !opt.GetEnabled() {
+		t.Fatalf("Wall of Fire option = %v, want enabled: the cast sheet sends the wall", opt)
 	}
 	if o := spellOption(c.mustOptions(t, c.ana, e, "Pensantus"), cloudkillKey); o == nil || !o.GetEnabled() {
 		t.Errorf("Cloudkill option = %v, want enabled", o)

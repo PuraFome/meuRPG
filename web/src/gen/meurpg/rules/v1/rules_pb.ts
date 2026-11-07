@@ -7989,8 +7989,8 @@ export enum DisabledReasonCode {
   ARMOR_NOT_PROFICIENT = 112,
 
   /**
-   * A spell that lays a wall (Wall of Fire) on a map with a grid: the cast needs the wall's shape,
-   * size and damaging side (CastSpellRequest.wall), which the screen does not send.
+   * No longer sent: the cast sheet sends the wall (CastSpellRequest.wall) that a spell like Wall of Fire needs, so
+   * the spell is no longer listed as unavailable. The value stays on the wire.
    *
    * @generated from enum value: DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED = 113;
    */

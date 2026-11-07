@@ -5,7 +5,6 @@ import (
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -75,18 +74,6 @@ func wallFor(sp link.Spell, w *playv1.SpellWall, origin *playv1.SpellOrigin) (*w
 func errWallPlacementRequired() error {
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED,
 		"this spell lays a wall: set wall with its shape, size and damaging side")
-}
-
-// refuseWallSpells lists the spells that lay a wall as unavailable on a map.
-// The cast needs the wall's shape and side (CastSpellRequest.wall), which the casting panel does not send.
-// A spell that is off for another reason keeps that reason.
-func refuseWallSpells(o *rulesv1.TurnOptions) {
-	for _, sp := range o.GetSpells() {
-		if d, ok := zoneDefOf(sp.GetSpell().GetKey()); ok && d.kind == zoneWall && sp.GetEnabled() {
-			sp.Enabled = false
-			sp.Reason = &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED}
-		}
-	}
 }
 
 // readWall checks a wall the request sends and fills in its full size.

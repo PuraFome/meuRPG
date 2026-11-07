@@ -163,7 +163,8 @@ The caster says the wall in `CastSpellRequest.wall` and `PreviewSpellAreaRequest
   A defeated creature is not hit.
 - **Sight and movement.** The wall is a cloud (`sightCloud`): its squares block sight as Fog Cloud's do (see above).
   It does not block movement.
-- **The turn options.** The casting panel sends no `wall`, so `GetTurnOptions` lists the spell unavailable with `DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED` (`refuseWallSpells`).
+- **The turn options.** The spell is listed like any other: the cast sheet's "Onde fica" step sends `wall`.
+  `DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED` is no longer sent.
 - **The burning side.** `SpellZone.wall_side` and `burning_squares` tell it: the squares the damage reaches that are not the wall's own (`burning`).
   The master reads all of them and a player the ones they see now.
   `PreviewSpellAreaResponse.burning_squares` and `length_ft` tell the caster the same for the wall they are laying.
