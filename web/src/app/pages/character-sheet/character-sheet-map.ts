@@ -19,7 +19,7 @@ import {
   DerivedSheet as GenDerivedSheet,
   ProficiencyLevel as GenProficiencyLevel,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { gearWithMarks, marksOf, weaponMarksOf } from './character-sheet-marks';
+import { marksOf, sheetGear, weaponMarksOf } from './character-sheet-marks';
 import { speedExtrasOf } from './character-sheet-speeds';
 import { KIND_FROM_GEN } from '../../core/characters/character-kind-gen';
 import { ABILITY_FROM_GEN } from '../../core/characters/ability-gen';
@@ -275,7 +275,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     wearsArmor: full.armorKey !== '',
     hasShield: full.shield,
     shieldIdle: derived.shieldIdle,
-    gear: gearWithMarks(derived, full),
+    gear: sheetGear(derived, full),
     weaponMarks: weaponMarksOf(full),
     hitPointsMax: derived.hitPointsMax,
     hitDice: hitDiceWords(derived.hitDice),
