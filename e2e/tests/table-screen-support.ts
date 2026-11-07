@@ -3,7 +3,10 @@ import { expect, type BrowserContext, type Locator, type Page } from '@playwrigh
 import { openSessionMenu, startSessionRPC, tableWithPensantus } from './live-session-support';
 import { canvasPng, createMapRPC, createPointRPC, revealMapRPC, setCurrentMapRPC, uploadImageRPC } from './maps-support';
 import { openSceneRPC } from './scene-support';
+import { createMiraRPC, putOnStageRPC } from './stage-support';
 import { callRPC } from './support';
+import { combatRPC, startEncounterRPC, type CombatTable } from './combat-support';
+import { type FogTable } from './fog-support';
 
 // Setup and helpers for the Tela da mesa specs (#648): the master's control in the live session, the TV tab it opens and what that
 // tab asks of the server. Data goes through the API; the control and the TV tab are what is under test.
@@ -165,4 +168,89 @@ export function pageOverflow(tv: Page): Promise<{ height: number; width: number 
       width: Math.max(root.scrollWidth - window.innerWidth, host ? host.scrollWidth - host.clientWidth : 0),
     };
   });
+}
+
+/** Two story NPCs on the stage of the open scene, the first one speaking. */
+export async function twoOnStageRPC(master: Page, campaignId: string): Promise<void> {
+  const mira = await createMiraRPC(master, campaignId, '', 'Mira');
+  const borin = await createMiraRPC(master, campaignId, '', 'Borin');
+  await putOnStageRPC(master, campaignId, mira);
+  await putOnStageRPC(master, campaignId, borin);
+  const res = await callRPC(master, 'meurpg.play.v1.PlayService/SetSpeaker', { campaignId, characterId: mira });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/** What the TV's "Ordem" card drew, measured in the page. */
+export interface OrderFit {
+  /** The rows drawn (not `display: none`). */
+  drawn: number;
+  /** The last drawn row's bottom edge is inside the card. */
+  lastInsideCard: boolean;
+  /** The text of the "+N" slot. */
+  more: string;
+  /** Rows hidden while the "+N" slot is empty: none are allowed. */
+  hiddenWhileEmpty: number;
+  /** Showing the first hidden row again puts it past the list's bottom edge (true when nothing is hidden): the "+N" counts rows that cannot be drawn. */
+  hiddenOneDoesNotFit: boolean;
+}
+
+/** Measures the order card and, for a moment, un-hides its first hidden row; the row is hidden again before the call returns. */
+export function inspectOrder(tv: Page): Promise<OrderFit> {
+  return tv.evaluate(() => {
+    const card = document.querySelector('.tv-order') as HTMLElement;
+    const list = card.querySelector('.tv-order__list') as HTMLElement;
+    const rows = [...list.querySelectorAll('.tv-order__row')] as HTMLElement[];
+    const hidden = rows.filter((row) => getComputedStyle(row).display === 'none');
+    const drawn = rows.filter((row) => !hidden.includes(row));
+    const more = (card.querySelector('[data-testid="tv-order-more"]')?.textContent ?? '').trim();
+    const last = drawn[drawn.length - 1];
+    let hiddenOneDoesNotFit = true;
+    const first = hidden[0];
+    if (first) {
+      const was = first.style.display;
+      first.style.removeProperty('display');
+      hiddenOneDoesNotFit = first.getBoundingClientRect().bottom > list.getBoundingClientRect().bottom + 2;
+      first.style.display = was;
+    }
+    return {
+      drawn: drawn.length,
+      lastInsideCard: last.getBoundingClientRect().bottom <= card.getBoundingClientRect().bottom + 0.5,
+      more,
+      hiddenWhileEmpty: more === '' ? hidden.length : 0,
+      hiddenOneDoesNotFit,
+    };
+  });
+}
+
+/** The scene card's and the stage column's boxes on the TV. */
+export function sceneBoxes(tv: Page): Promise<{ whole: number; text: number }> {
+  return tv.evaluate(() => {
+    const scene = document.querySelector('.tv-scene') as HTMLElement;
+    const style = getComputedStyle(scene);
+    return {
+      // The room inside the scene's own padding.
+      whole: scene.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+      text: (document.querySelector('.tv-scene__text') as HTMLElement).getBoundingClientRect().width,
+    };
+  });
+}
+
+/** A combat of the party and the Capitão with `goblins` Goblin 1 copies on the fog map: more rows than a short TV can draw. */
+export async function beginCrowdedCombat(master: Page, table: FogTable, goblins: number): Promise<void> {
+  const combatTable = { campaignId: table.campaignId, captainId: table.captainId, goblinId: table.goblin1Id } as unknown as CombatTable;
+  let enc = await startEncounterRPC(master, combatTable, [
+    { characterId: table.captainId, count: 1, hidden: false },
+    { characterId: table.goblin1Id, count: goblins, hidden: false },
+  ]);
+  for (const c of enc.combatants) {
+    const face = c.label === 'Pensantus' ? 20 : c.label === 'Toren' ? 15 : 2;
+    enc = await combatRPC(master, 'SubmitInitiative', { campaignId: table.campaignId, encounterId: enc.id, combatantId: c.id, d20Face: face });
+  }
+  const goblinRows = enc.combatants.filter((c) => c.label.startsWith('Goblin'));
+  const at: [string, number, number][] = [['Capitão Goblin', 21, 3], ...goblinRows.map((c, i): [string, number, number] => [c.label, 17 + (i % 5), 4 + Math.floor(i / 5)])];
+  for (const [label, col, row] of at) {
+    const id = enc.combatants.find((c) => c.label === label)!.id;
+    enc = await combatRPC(master, 'MoveCombatant', { campaignId: table.campaignId, encounterId: enc.id, combatantId: id, col, row });
+  }
+  await combatRPC(master, 'BeginCombat', { campaignId: table.campaignId, encounterId: enc.id });
 }

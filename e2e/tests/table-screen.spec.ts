@@ -5,8 +5,12 @@ import { beginFogCombat, tableForFog } from './fog-support';
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import {
   addTvContent,
+  beginCrowdedCombat,
   chooseRow,
   closeTvPanel,
+  inspectOrder,
+  sceneBoxes,
+  twoOnStageRPC,
   expectPanelFits,
   pageOverflow,
   openTvPanel,
@@ -265,6 +269,7 @@ test(
 for (const size of [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
+  { width: 1280, height: 720 },
 ]) {
   test(
     `o painel da Tela da mesa cabe numa tela sem rolar, em ${size.width}x${size.height}: fixo com linha tracejada e aviso, ⓘ aberto, falha e sem conexão`,
@@ -338,6 +343,7 @@ for (const size of [
 for (const size of [
   // `down` is how far the page may scroll down: nowhere on a TV, as far as it likes on a phone.
   { width: 1280, height: 800, down: 0 },
+  { width: 1280, height: 720, down: 0 },
   { width: 1600, height: 900, down: 0 },
   { width: 390, height: 844, down: Number.POSITIVE_INFINITY },
 ]) {
@@ -406,3 +412,118 @@ for (const size of [
     },
   );
 }
+
+for (const size of [
+  { width: 390, height: 844 },
+  { width: 1280, height: 720 },
+]) {
+  test(`o painel da Tela da mesa cabe numa tela com o combate fixo, em ${size.width}x${size.height}`, { tag: '@RN-10' }, async ({ browser }) => {
+    const masterContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: size });
+    const pensantusContext = await newSignedInContext(browser, 'Jogador Teste');
+    const torenContext = await newSignedInContext(browser, 'E-mail Não Verificado');
+    let campaignId = '';
+    const master = await masterContext.newPage();
+    try {
+      const pensantusPage = await pensantusContext.newPage();
+      const torenPage = await torenContext.newPage();
+      await Promise.all([master.goto('/'), pensantusPage.goto('/'), torenPage.goto('/')]);
+      const table = await tableForFog(master, pensantusPage, torenPage, `Painel combate ${Date.now()}`);
+      campaignId = table.campaignId;
+      await beginFogCombat(master, table);
+      await openSessionPage(master, campaignId);
+      const tv = await masterContext.newPage();
+      await tv.goto(tvRoute(campaignId));
+      await expect(tv.getByRole('heading', { level: 2, name: 'Ordem' })).toBeVisible();
+      const panel = await openTvPanel(master);
+      await expect(panel.getByTestId('tv-state')).toContainText('Aberta');
+      await chooseRow(panel, 'tv-pin-combat');
+      await expect(panel.getByTestId('tv-now')).toContainText('O combate, fixo: a ordem.');
+      await expectPanelFits(panel, 'com o combate fixo');
+    } finally {
+      await endOpenSessionRPC(master, campaignId);
+      await masterContext.close();
+      await pensantusContext.close();
+      await torenContext.close();
+    }
+  });
+}
+
+test('a TV em 1280x720 com a barra de atraso: a ordem só esconde as linhas que não cabem, e o "+N" conta só essas', { tag: '@RN-10' }, async ({ browser }) => {
+  const masterContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 720 } });
+  const pensantusContext = await newSignedInContext(browser, 'Jogador Teste');
+  const torenContext = await newSignedInContext(browser, 'E-mail Não Verificado');
+  let campaignId = '';
+  const master = await masterContext.newPage();
+  try {
+    const pensantusPage = await pensantusContext.newPage();
+    const torenPage = await torenContext.newPage();
+    await Promise.all([master.goto('/'), pensantusPage.goto('/'), torenPage.goto('/')]);
+    const table = await tableForFog(master, pensantusPage, torenPage, `TV ordem ${Date.now()}`, { noFog: true });
+    campaignId = table.campaignId;
+    await beginCrowdedCombat(master, table, 6);
+    const tv = await masterContext.newPage();
+    await tv.goto(tvRoute(campaignId));
+    await expect(tv.getByRole('heading', { level: 2, name: 'Ordem' })).toBeVisible();
+
+    // The late bar takes room from the stage: a read that fails, then a change that asks for one.
+    await tv.route('**/*TableScreenService/GetTableScreen', (route) => route.abort());
+    await rollForTableRPC(master, campaignId);
+    await expect(tv.getByTestId('tv-late')).toBeVisible();
+
+    const fit = await inspectOrder(tv);
+    expect(fit.drawn, 'the order drew fewer than 2 rows').toBeGreaterThanOrEqual(2);
+    expect(fit.lastInsideCard, 'the last drawn row goes past the bottom of the Ordem card').toBe(true);
+    expect(fit.more, 'the table has 10 combatants and the room is short: the "+N" is expected').toMatch(/^\+\d+$/);
+    expect(fit.hiddenWhileEmpty, 'rows are hidden while "+N" says nothing is left out').toBe(0);
+    expect(fit.hiddenOneDoesNotFit, 'the first hidden row would have fit: the "+N" counts a row that could be drawn').toBe(true);
+  } finally {
+    await endOpenSessionRPC(master, campaignId);
+    await masterContext.close();
+    await pensantusContext.close();
+    await torenContext.close();
+  }
+});
+
+test('uma cena com dois NPCs em cena na TV: "Em cena" mostra os dois e "Fala agora" só no que fala; sem NPC o cartão do texto ocupa a largura toda', { tag: '@RN-10' }, async ({ browser }) => {
+  const masterContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 720 } });
+  const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+  let campaignId = '';
+  const master = await masterContext.newPage();
+  try {
+    const player = await playerContext.newPage();
+    await Promise.all([master.goto('/'), player.goto('/')]);
+    const table = await tableForTv(master, player, `TV cena ${Date.now()}`);
+    campaignId = table.campaignId;
+    const content = await addTvContent(master, campaignId);
+    await putMapOnTable(master, campaignId, content.mapId);
+    const tv = await masterContext.newPage();
+    await tv.goto(tvRoute(campaignId));
+    await expect(tvTitle(tv)).toHaveText('Estrada do Vale');
+
+    // No one on the stage: the text card has the whole width.
+    await putSceneOnTable(master, campaignId, content.sceneId);
+    await expect(tvTitle(tv)).toHaveText('A carroça tombada');
+    await expect(tv.getByRole('heading', { level: 2, name: 'Em cena' })).toHaveCount(0);
+    const alone = await sceneBoxes(tv);
+    expect(alone.text, 'the text card is narrower than the scene with nobody on the stage').toBeGreaterThanOrEqual(alone.whole - 1);
+
+    // Two on the stage, Mira speaking.
+    await twoOnStageRPC(master, campaignId);
+    const npcs = tv.locator('.tv-scene__npc');
+    await expect(npcs).toHaveCount(2);
+    await expect(npcs.nth(0)).toContainText('Mira');
+    await expect(npcs.nth(1)).toContainText('Borin');
+    await expect(tv.locator('.tv-scene__npc--speaking')).toHaveCount(1);
+    await expect(tv.locator('.tv-scene__npc--speaking')).toContainText('Mira');
+    await expect(tv.locator('.tv-scene__speaking')).toHaveCount(1);
+    await expect(tv.locator('.tv-scene__speaking')).toHaveText(/Fala agora/);
+    await expect(npcs.filter({ hasText: 'Borin' }).locator('.tv-scene__speaking')).toHaveCount(0);
+    await expect(npcs.filter({ hasText: 'Mira' }).locator('.tv-scene__speaking')).toHaveCount(1);
+    const shared = await sceneBoxes(tv);
+    expect(shared.text, 'the text card still has the whole width with two NPCs beside it').toBeLessThan(shared.whole - 100);
+  } finally {
+    await endOpenSessionRPC(master, campaignId);
+    await masterContext.close();
+    await playerContext.close();
+  }
+});
