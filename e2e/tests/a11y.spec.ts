@@ -7770,6 +7770,158 @@ test('o painel de perguntas pendentes fora do combate passa no axe e nas confer�
   await scanHeldPanelScreens(browser, 'dark', 390);
 });
 
+/** The master answers a halfling's question for them while the roll sheet is open: the scene check's sheet and the group check's sheet
+ * swap the question for "O mestre respondeu por você.", with no answer left to give. */
+async function scanSheetMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade mestre respondeu ${Date.now()}`, true, { raceKey: 'race:halfling', subraceKey: 'subrace:lightfoot-halfling' });
+    campaignId = table.campaignId;
+    await openSceneRPC(m, campaignId, table.cartId);
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    const panel = m.getByRole('region', { name: 'Perguntas pendentes' });
+    const answerForThem = async (): Promise<void> => {
+      const keep = panel.getByRole('button', { name: 'Ficar com o 1' });
+      await expect(keep).toBeEnabled({ timeout: 30_000 });
+      await keep.click();
+    };
+
+    // The scene check: the sheet is open at the question when the master keeps the 1.
+    await p.getByRole('region', { name: 'Cena: A carroça tombada' }).getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
+    const sceneSheet = p.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
+    await typeD20(sceneSheet, 1);
+    await expect(sceneSheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeVisible();
+    await answerForThem();
+    await expect(sceneSheet.getByTestId('sheet-held-vanished')).toContainText('O mestre respondeu por você.');
+    await expect(sceneSheet.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
+    await expect(sceneSheet.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
+    await expectScreenPasses(p, `O teste de cena, o mestre respondeu pelo jogador ${where}`);
+    await closeSheet(sceneSheet);
+
+    // The group check: the same, on its own sheet.
+    await m.getByRole('button', { name: 'Pedir teste em grupo' }).click();
+    const ask = m.getByTestId('group-ask');
+    await ask.getByLabel('Teste', { exact: true }).selectOption({ label: 'Furtividade' });
+    await ask.getByLabel(/^CD \(/).fill('13');
+    await ask.getByRole('button', { name: 'Pedir o teste' }).click();
+    const groupSheet = p.getByRole('dialog');
+    await typeD20(groupSheet, 1);
+    await expect(groupSheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeVisible();
+    await answerForThem();
+    await expect(groupSheet.getByTestId('sheet-held-vanished')).toContainText('O mestre respondeu por você.');
+    await expect(groupSheet.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
+    await expect(groupSheet.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
+    await expectScreenPasses(p, `O teste em grupo, o mestre respondeu pelo jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a folha que perdeu a pergunta, o mestre respondeu, passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSheetMasterAnswers(browser, 'light', 390);
+});
+
+test('a folha que perdeu a pergunta, o mestre respondeu, passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSheetMasterAnswers(browser, 'dark', 1280);
+});
+
+/** The saving throw of the end of the turn, held for a reroll rule's question: the master keeps the d20 and the sheet the player has
+ * open swaps the question for "O mestre respondeu por você.", with no answer left to give. */
+async function scanEffectSaveMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade salvaguarda mestre ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    // The feat that rolls a d20 of 2 or lower again is given after the combat began, as the master may change a sheet.
+    const feat = await createEntryRPC(m, campaignId, 'tableFeat', rerollFeatBody());
+    const got = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(got.ok(), await got.text()).toBeTruthy();
+    const character = (await got.json()).character as { id: string; name: string; revision: number; sheet: { full: Record<string, unknown> } };
+    const gave = await callRPC(m, 'meurpg.characters.v1.CharacterService/UpdateCharacter', {
+      campaignId,
+      characterId: character.id,
+      revision: character.revision,
+      name: character.name,
+      sheet: { full: { ...character.sheet.full, featKeys: [...((character.sheet.full.featKeys as string[] | undefined) ?? []), feat] } },
+    });
+    expect(gave.ok(), await gave.text()).toBeTruthy();
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const me = enc.combatants.find((c) => c.label === 'Pensantus')!.id;
+    const captain = enc.combatants.find((c) => c.label === 'Capitão Goblin')!.id;
+    const added = await callRPC(m, 'meurpg.play.v1.LastingEffectService/AddLastingEffect', {
+      campaignId,
+      encounterId: enc.id,
+      idempotencyKey: crypto.randomUUID(),
+      targetIds: [me],
+      catalogKey: 'spell:hold-person',
+      casterId: captain,
+      duration: { kind: 'EFFECT_DURATION_KIND_ROUNDS', rounds: 10 },
+      playerVisible: true,
+      audience: 'EFFECT_AUDIENCE_ALL',
+    });
+    expect(added.ok(), await added.text()).toBeTruthy();
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    const save = p.getByRole('dialog', { name: /^(Teste de resistência do fim do turno|Fim do seu turno)$/ });
+    await save.getByRole('button', { name: 'Digitar o resultado' }).click();
+    // A gnome saves against a spell with advantage: two d20, and the best of them (2) is the one the rule covers.
+    await save.getByLabel('Primeiro d20').fill('1');
+    await save.getByLabel('Segundo d20').fill('2');
+    await save.getByRole('button', { name: /Confirmar/ }).click();
+    await expect(save.getByRole('heading', { name: 'Tirou 2: rolar de novo?' })).toBeVisible();
+    await openSessionPage(m, campaignId);
+    const keep = m.getByRole('region', { name: /Tirou 2: rolar de novo\?/ }).getByRole('button', { name: 'Ficar com o 2' });
+    await expect(keep).toBeEnabled({ timeout: 30_000 });
+    await keep.click();
+    // The window is settled with the answer, so the sheet says so where it says that the test no longer waits.
+    await expect(save.getByText('O mestre respondeu por você.')).toBeVisible();
+    await expect(save.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
+    await expect(save.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
+    await expect(save.getByRole('button', { name: 'Rolar no app' })).toHaveCount(0);
+    await expectScreenPasses(p, `O teste de resistência do fim do turno, o mestre respondeu pelo jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a resistência do fim do turno que perdeu a pergunta, o mestre respondeu, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-35', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectSaveMasterAnswers(browser, 'light', 1280);
+});
+
+test('a resistência do fim do turno que perdeu a pergunta, o mestre respondeu, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectSaveMasterAnswers(browser, 'dark', 390);
+});
+
 /** The question of a table feature's reroll (R6, R7, R9): the player's "Tirou 2: rolar de novo?" and the answer on its way, and the
  * master's card while the roller answers first, when it is the master's turn to answer, and once the roller did. */
 async function scanRerollQuestionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
