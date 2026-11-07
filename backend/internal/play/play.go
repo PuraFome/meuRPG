@@ -198,6 +198,10 @@ type MapKeeper interface {
 	// MapGrid returns the battle grid of the campaign's map, the zero Grid
 	// when it has none, or a `not_found` Connect error (MR-013).
 	MapGrid(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.Grid, error)
+	// MapFog returns whether the campaign's map has the fog of war on and "Visão do grupo" on, or a
+	// `not_found` Connect error when mapID is not a map of the campaign. It changes nothing and reads
+	// inside tx when the caller has one (nil: the pool).
+	MapFog(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.MapFog, error)
 	// BattlePoint returns a battle point of the campaign, or a `not_found`
 	// Connect error for any other point. It reads inside tx when the caller has one
 	// (nil: the pool).
@@ -692,7 +696,7 @@ type Sessions interface {
 	authz.SessionRechecker
 }
 
-// Mount registers PlayService, CombatService, ContestService, PuzzleService and EncounterService on a mux. handle is usually
+// Mount registers PlayService, CombatService, ContestService, PuzzleService, EncounterService and TableScreenService on a mux. handle is usually
 // httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production), and
@@ -717,6 +721,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 	handle(playv1connect.NewLastingEffectServiceHandler(s, opts...))
 	handle(playv1connect.NewRevivifyServiceHandler(s, opts...))
+	handle(playv1connect.NewTableScreenServiceHandler(s, opts...))
 	s.mountVoice(handle, sessions, members)
 }
 

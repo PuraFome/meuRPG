@@ -621,6 +621,10 @@ func (noMaps) MapGrid(context.Context, pgx.Tx, string, string) (link.Grid, error
 	return link.Grid{}, errors.New("not in this test")
 }
 
+func (noMaps) MapFog(context.Context, pgx.Tx, string, string) (link.MapFog, error) {
+	return link.MapFog{}, errors.New("not in this test")
+}
+
 func (noMaps) BattlePoint(context.Context, pgx.Tx, string, string) (link.BattlePoint, error) {
 	return link.BattlePoint{}, errors.New("not in this test")
 }

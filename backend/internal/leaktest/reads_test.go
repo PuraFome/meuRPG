@@ -495,6 +495,12 @@ var reads = []read{
 		},
 	},
 
+	// ===== TableScreenService
+	{
+		procedure: playv1connect.TableScreenServiceGetTableScreenProcedure, allow: masterOnlyRead, why: "the TV's screen is opened by the master alone; what it carries is what a player with no character reads",
+		req: func(w *world) proto.Message { return &playv1.GetTableScreenRequest{CampaignId: w.campaign} },
+	},
+
 	// ===== RevivifyService
 	{
 		procedure: playv1connect.RevivifyServiceListRevivifyRequestsProcedure, allow: members, why: "a player reads the casts of their own characters; the fixture has none",

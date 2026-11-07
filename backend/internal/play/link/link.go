@@ -104,6 +104,13 @@ type Grid struct {
 // OK says whether the map has a grid.
 func (g Grid) OK() bool { return g.Columns > 0 && g.Rows > 0 }
 
+// MapFog is what the table screen needs to know of a map's fog of war: whether the fog is on and
+// whether "Visão do grupo" is on. Fog is true only for a map with a grid, as for the players' own reads.
+type MapFog struct {
+	Fog         bool
+	GroupVision bool
+}
+
 // BattlePoint is a battle point of a map: where its fight happens.
 type BattlePoint struct {
 	// MapID is the map the point is on.

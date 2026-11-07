@@ -276,6 +276,7 @@ type user struct {
 	casting    playv1connect.CastingServiceClient
 	encounters playv1connect.EncounterServiceClient
 	revivify   playv1connect.RevivifyServiceClient
+	screen     playv1connect.TableScreenServiceClient
 	content    rulesv1connect.ContentServiceClient
 	table      rulesv1connect.TableContentServiceClient
 }
@@ -311,6 +312,7 @@ func (h *harness) clients(userID string) *user {
 		casting:    playv1connect.NewCastingServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
 		revivify:   playv1connect.NewRevivifyServiceClient(c, url),
+		screen:     playv1connect.NewTableScreenServiceClient(c, url),
 		content:    rulesv1connect.NewContentServiceClient(c, url),
 		table:      rulesv1connect.NewTableContentServiceClient(c, url),
 	}
