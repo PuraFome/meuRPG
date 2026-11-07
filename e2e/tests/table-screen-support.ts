@@ -140,3 +140,22 @@ export function storageOf(page: Page): Promise<string> {
     return JSON.stringify({ local: dump(localStorage), session: dump(sessionStorage) });
   });
 }
+
+/** The numbers of an element's scroll: how far its content reaches past its box. */
+export function overflowOf(locator: Locator): Promise<{ height: number; width: number }> {
+  return locator.evaluate((el) => ({ height: el.scrollHeight - el.clientHeight, width: el.scrollWidth - el.clientWidth }));
+}
+
+/** The panel's scrolling body fits its box: nothing to scroll, either way. */
+export async function expectPanelFits(panel: Locator, where: string): Promise<void> {
+  const over = await overflowOf(panel.locator('.frame__body'));
+  expect(over, `the panel scrolls ${where}`).toEqual({ height: 0, width: 0 });
+}
+
+/** The TV page's own scroll: how far the document reaches past the window (`height` only counts where the TV must fit one screen). */
+export function pageOverflow(tv: Page): Promise<{ height: number; width: number }> {
+  return tv.evaluate(() => ({
+    height: document.documentElement.scrollHeight - window.innerHeight,
+    width: document.documentElement.scrollWidth - window.innerWidth,
+  }));
+}

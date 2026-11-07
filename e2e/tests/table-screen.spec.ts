@@ -7,6 +7,8 @@ import {
   addTvContent,
   chooseRow,
   closeTvPanel,
+  expectPanelFits,
+  pageOverflow,
   openTvPanel,
   openTvTab,
   putMapOnTable,
@@ -259,3 +261,148 @@ test(
     }
   },
 );
+
+for (const size of [
+  { width: 390, height: 844 },
+  { width: 1280, height: 800 },
+]) {
+  test(
+    `o painel da Tela da mesa cabe numa tela sem rolar, em ${size.width}x${size.height}: fixo com linha tracejada e aviso, ⓘ aberto, falha e sem conexão`,
+    { tag: '@RN-10' },
+    async ({ browser }) => {
+      const masterContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: size });
+      const playerContext = await newSignedInContext(browser, 'Jogador Teste');
+      let campaignId = '';
+      const master = await masterContext.newPage();
+      try {
+        const player = await playerContext.newPage();
+        await Promise.all([master.goto('/'), player.goto('/')]);
+        const table = await tableForTv(master, player, `Tela da mesa cabe ${Date.now()}`);
+        campaignId = table.campaignId;
+        const content = await addTvContent(master, campaignId);
+        await putMapOnTable(master, campaignId, content.mapId);
+        await openSessionPage(master, campaignId);
+        const tv = await masterContext.newPage();
+        await tv.goto(tvRoute(campaignId));
+        await expect(tvTitle(tv)).toHaveText('Estrada do Vale');
+
+        // Espelhar, with the dashed rows and their reasons.
+        let panel = await openTvPanel(master);
+        await expect(panel.getByTestId('tv-state')).toContainText('Aberta');
+        await expect(panel.getByTestId('tv-pin-combat')).toContainText('Nenhum combate agora.');
+        await expectPanelFits(panel, 'espelhando');
+
+        // The longest: pinned to an image that has ended, so the notice stands over the rows.
+        await showImageRPC(master, campaignId, content.imageId);
+        await closeTvPanel(master);
+        panel = await openTvPanel(master);
+        await chooseRow(panel, 'tv-pin-image');
+        await showImageRPC(master, campaignId, '');
+        await expect(tv.getByTestId('tv-notice')).toContainText('A imagem saiu da mesa.');
+        await closeTvPanel(master);
+        panel = await openTvPanel(master);
+        await expect(panel.getByTestId('tv-notice')).toContainText('A imagem saiu da mesa.');
+        await expect(panel.getByTestId('tv-pin-image')).toContainText('Nenhuma imagem à mostra.');
+        await expectPanelFits(panel, 'fixo, com o aviso e as linhas tracejadas');
+
+        // The ⓘ of "Espelhar": the order of the mirror takes the rows' place.
+        await panel.getByRole('button', { name: 'Como o Espelhar escolhe' }).click();
+        await expect(panel.getByTestId('tv-order')).toBeVisible();
+        await expectPanelFits(panel, 'com o ⓘ aberto');
+        await panel.getByRole('button', { name: 'Como o Espelhar escolhe' }).click();
+
+        // A choice that is not stored: the notice and "Tentar de novo".
+        await master.route('**/*TableScreenService/SetTableScreen', (route) => route.abort());
+        await panel.getByTestId('tv-mirror').locator('label').click();
+        await expect(panel.getByTestId('tv-not-saved')).toBeVisible();
+        await expectPanelFits(panel, 'com a escolha que não foi gravada');
+        await master.unroute('**/*TableScreenService/SetTableScreen');
+        await panel.locator('.js-retry').click();
+        await expect(panel.getByTestId('tv-not-saved')).toHaveCount(0);
+
+        // The TV tab goes away: "Sem conexão desde".
+        await closeTvPanel(master);
+        await tv.close();
+        panel = await openTvPanel(master);
+        await expect(panel.getByTestId('tv-lost')).toBeVisible();
+        await expectPanelFits(panel, 'sem conexão');
+      } finally {
+        await endOpenSessionRPC(master, campaignId);
+        await masterContext.close();
+        await playerContext.close();
+      }
+    },
+  );
+}
+
+for (const size of [
+  // `down` is how far the page may scroll down: nowhere on a TV, as far as it likes on a phone.
+  { width: 1280, height: 800, down: 0 },
+  { width: 1600, height: 900, down: 0 },
+  { width: 390, height: 844, down: Number.POSITIVE_INFINITY },
+]) {
+  test(
+    `a TV cabe numa tela em ${size.width}x${size.height}: espera, mapa com rolagem e combate no mapa (no celular só sem rolagem lateral)`,
+    { tag: '@RN-10' },
+    async ({ browser }) => {
+      const masterContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: size });
+      const pensantusContext = await newSignedInContext(browser, 'Jogador Teste');
+      const torenContext = await newSignedInContext(browser, 'E-mail Não Verificado');
+      let campaignId = '';
+      const master = await masterContext.newPage();
+      try {
+        const pensantusPage = await pensantusContext.newPage();
+        const torenPage = await torenContext.newPage();
+        await Promise.all([master.goto('/'), pensantusPage.goto('/'), torenPage.goto('/')]);
+        const table = await tableForFog(master, pensantusPage, torenPage, `TV cabe ${Date.now()}`);
+        campaignId = table.campaignId;
+        const fog = await callRPC(master, 'meurpg.maps.v1.MapService/SetMapFog', { campaignId, mapId: table.mapId, groupVision: true });
+        expect(fog.ok(), await fog.text()).toBeTruthy();
+        const tv = await masterContext.newPage();
+        await tv.goto(tvRoute(campaignId));
+        const tiles = tv.locator('app-fog-map img[src$="as=tv"]');
+        const fits = async (screen: string): Promise<void> => {
+          const over = await pageOverflow(tv);
+          expect(over.width, `the TV scrolls sideways on ${screen} at ${size.width}x${size.height}`).toBeLessThanOrEqual(0);
+          expect(over.height, `the TV scrolls down on ${screen} at ${size.width}x${size.height}`).toBeLessThanOrEqual(size.down);
+        };
+
+        // The waiting screen, pinned through the same call the panel makes.
+        const read = await callRPC(master, 'meurpg.play.v1.TableScreenService/GetTableScreen', { campaignId });
+        const revision = (await read.json()).choiceRevision ?? 0;
+        const pinned = await callRPC(master, 'meurpg.play.v1.TableScreenService/SetTableScreen', {
+          campaignId,
+          choiceRevision: revision,
+          choice: { mirror: false, pin: 'TABLE_SCREEN_KIND_IDLE' },
+        });
+        expect(pinned.ok(), await pinned.text()).toBeTruthy();
+        await expect(tv.getByRole('heading', { level: 2, name: 'Nada à mostra ainda' })).toBeVisible();
+        await fits('a espera');
+
+        // The map with the rolls beside it.
+        const mirrored = await callRPC(master, 'meurpg.play.v1.TableScreenService/SetTableScreen', {
+          campaignId,
+          choiceRevision: revision + 1,
+          choice: { mirror: true, pin: 'TABLE_SCREEN_KIND_UNSPECIFIED' },
+        });
+        expect(mirrored.ok(), await mirrored.text()).toBeTruthy();
+        await rollForTableRPC(master, campaignId);
+        await rollForTableRPC(master, campaignId);
+        await expect(tiles.first()).toBeVisible();
+        await expect(tv.getByTestId('tv-roll-last')).toBeVisible();
+        await fits('o mapa com a rolagem');
+
+        // The combat on the map.
+        await beginFogCombat(master, table);
+        await expect(tv.getByRole('heading', { level: 2, name: 'Ordem' })).toBeVisible();
+        await expect(tiles.first()).toBeVisible();
+        await fits('o combate no mapa');
+      } finally {
+        await endOpenSessionRPC(master, campaignId);
+        await masterContext.close();
+        await pensantusContext.close();
+        await torenContext.close();
+      }
+    },
+  );
+}
