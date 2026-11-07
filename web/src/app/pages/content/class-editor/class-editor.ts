@@ -231,7 +231,8 @@ export class ClassEditor {
     this.openFeature.set('');
     this.question.set(null);
     this.saver.clear();
-    this.seedLeftOut();
+    // The rules refuse a field of this entry, so the campaign is built without it: the field says why, opened and focused.
+    this.saver.seedLeftOut(this.leftOut(), this.known, (path) => this.reveal(path));
   }
 
   private groupOptions(keys: readonly string[]): SelectOption[] {
@@ -240,14 +241,6 @@ export class ClassEditor {
       value: k,
       label: list.find((p) => p.key === k)?.namePt ?? this.catalog().nameOf(k),
     }));
-  }
-
-  /** The rules refuse a field of this entry, so the campaign is built without it: the field says why, opened and focused. */
-  private seedLeftOut(): void {
-    const first = this.saver.seedLeftOut(this.leftOut(), this.known);
-    if (first) {
-      this.reveal(first);
-    }
   }
 
   protected patch(p: Partial<ClassDraft>): void {
@@ -482,14 +475,9 @@ export class ClassEditor {
 
   /** Opens the feature that holds the path, so its input exists, and focuses the input. */
   private reveal(path: string): void {
-    const feature = featureIdOfPath(
-      this.draft().features,
-      (k) => classFeatureBase(this.draft().features, k),
-      path,
+    this.openFeature.update(
+      (open) => featureIdOfPath(this.draft().features, this.featureBase, path) || open,
     );
-    if (feature) {
-      this.openFeature.set(feature);
-    }
     focusAfterRender(this.host.nativeElement, this.injector, path);
   }
 }

@@ -37,8 +37,11 @@ import { SelectField, type SelectOption } from '../form-fields/select-field';
 import { TextField } from '../form-fields/text-field';
 import {
   afterTarget,
+  choiceHint,
+  choiceList,
   fixedMode,
   isCriticalRange,
+  leftTheMenuValue,
   refusalTexts,
   resourcePick,
 } from './effect-picker-parts';
@@ -262,10 +265,7 @@ export class EffectPicker {
     if (f.kind === 'choice') {
       const list = this.optionsOf(f);
       const picked = list.find((o) => o.value === this.read(f.name));
-      const kept = this.leftTheMenu(f);
-      return (
-        picked?.hint || (kept ? `O valor guardado (${kept}) não existe nas regras novas.` : own)
-      );
+      return choiceHint(picked?.hint, this.leftTheMenu(f), own);
     }
     return own;
   }
@@ -317,29 +317,13 @@ export class EffectPicker {
     }));
   }
 
-  /** A choice with a placeholder when it is required, and a real "Padrão" (the field left empty) when it is not. */
   protected choiceOptions(f: EffectMenuField): SelectOption[] {
-    const list = this.optionsOf(f);
-    const empty = this.effect().type === 'roll_minimum' ? 'Qualquer tipo' : 'Padrão';
-    const kept = this.leftTheMenu(f);
-    // A value the menu no longer has stays on the select, said in words, so the field does not show another one in its place.
-    const gone: SelectOption[] = kept
-      ? [
-          {
-            value: kept,
-            label: f.name === 'target' ? 'Um alvo que saiu do menu' : 'Um valor que saiu do menu',
-          },
-        ]
-      : [];
-    return f.required ? [...gone, ...list] : [{ value: '', label: empty }, ...gone, ...list];
+    return choiceList(this.optionsOf(f), this.leftTheMenu(f), f, this.effect().type);
   }
 
-  /** The value the entry holds for a closed list that the menu no longer lists (an engine that dropped it), or `''`. */
+  /** The value the entry holds for a closed list that the menu no longer lists, or `''`. */
   private leftTheMenu(f: EffectMenuField): string {
-    const value = this.read(f.name);
-    return f.kind === 'choice' && value !== '' && !this.optionsOf(f).some((o) => o.value === value)
-      ? value
-      : '';
+    return f.kind === 'choice' ? leftTheMenuValue(this.read(f.name), this.optionsOf(f)) : '';
   }
 
   /** The cards of a short closed list (a resistance's kind), with the menu's line under each. */

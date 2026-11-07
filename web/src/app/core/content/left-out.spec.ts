@@ -359,7 +359,7 @@ describe('the note of a left-out entry and the line after a fix (K2, K4)', () =>
 
   it('says on a phone to fix it on the laptop, naming the field, or the entry when it has no field', () => {
     expect(leftOutNote(classe(), model(), false)!.text).toBe(
-      'As regras não aceitam mais um campo dela, o campo O que muda. Para corrigir, abra a entrada no computador.',
+      'As regras não aceitam mais um campo dela, o campo “O que muda”. Para corrigir, abra a entrada no computador.',
     );
     const wholly = buildLeftOut([guardiao(1)], [v('class:guardiao@mesa', '', 'overlay')]);
     expect(leftOutNote(guardiao(1), wholly, false)!.text).toBe(

@@ -85,42 +85,63 @@ function nameOfNode(node: unknown, fallback: string): string {
  * level and the feature, so the path needs no table per editor; a path it cannot read gives what it could.
  */
 export function placeOfPath(entry: TableEntry, field: string): PathPlace {
-  const tokens = field.split('.').slice(1);
   let cursor = asRecord(entry.body.value);
   const parts: string[] = [];
   let inEffect = false;
   let label = '';
-  for (const raw of tokens) {
+  for (const raw of field.split('.').slice(1)) {
     const m = TOKEN.exec(raw);
     if (!m) {
       continue;
     }
-    const name = m[1];
     const index = m[2] === undefined ? undefined : Number(m[2]);
-    const list = cursor?.[camel(name)];
+    const list = cursor?.[camel(m[1])];
     const node =
       index === undefined ? list : Array.isArray(list) ? (list as unknown[])[index] : undefined;
-    const own = (inEffect ? EFFECT_FIELD_LABELS[name] : undefined) ?? FIELD_LABELS[name];
-    if (index !== undefined && name === 'levels') {
-      const level = asRecord(node)?.['level'];
-      parts.push(`Nível ${typeof level === 'number' && level > 0 ? level : index + 1}`);
-    } else if (index !== undefined && (name === 'features' || name === 'traits')) {
-      parts.push(
-        nameOfNode(node, `${name === 'traits' ? 'traço' : 'característica'} ${index + 1}`),
-      );
-    } else if (name === 'feature') {
-      parts.push(nameOfNode(node, 'característica'));
-    } else if (index !== undefined && name === 'options') {
-      parts.push(`opção ${nameOfNode(node, String(index + 1))}`);
-    } else if (index !== undefined && name === 'effects') {
-      parts.push(`efeito ${index + 1}`);
-      inEffect = true;
-    } else if (own) {
-      label = own;
+    const step = stepOf(m[1], index, node, inEffect);
+    if (step.part) {
+      parts.push(step.part);
     }
+    inEffect = inEffect || step.effect;
+    label = step.label ?? label;
     cursor = asRecord(node);
   }
   return { parts, field: label };
+}
+
+/** What one token of a path says: a place to name, whether it enters an effect, and the label of a field. */
+function stepOf(
+  name: string,
+  index: number | undefined,
+  node: unknown,
+  inEffect: boolean,
+): { part?: string; effect: boolean; label?: string } {
+  const part = index === undefined ? singlePart(name, node) : listedPart(name, index, node);
+  if (part !== undefined) {
+    return { part, effect: name === 'effects' };
+  }
+  return {
+    effect: false,
+    label: (inEffect ? EFFECT_FIELD_LABELS[name] : undefined) ?? FIELD_LABELS[name],
+  };
+}
+
+/** The place a token without an index names: the feature of a background or a subrace. */
+function singlePart(name: string, node: unknown): string | undefined {
+  return name === 'feature' ? nameOfNode(node, 'característica') : undefined;
+}
+
+/** The place a token with an index names: "Nível 3", the feature, "efeito 2", "opção Dragão". */
+function listedPart(name: string, index: number, node: unknown): string | undefined {
+  const level = asRecord(node)?.['level'];
+  const places: Record<string, () => string> = {
+    levels: () => `Nível ${typeof level === 'number' && level > 0 ? level : index + 1}`,
+    features: () => nameOfNode(node, `característica ${index + 1}`),
+    traits: () => nameOfNode(node, `traço ${index + 1}`),
+    options: () => `opção ${nameOfNode(node, String(index + 1))}`,
+    effects: () => `efeito ${index + 1}`,
+  };
+  return places[name]?.();
 }
 
 /** The sentence of a violation with its first letter small, to follow "O que muda:". */
@@ -344,7 +365,7 @@ export function leftOutNote(
     };
   }
   const what = row.violation.field
-    ? `As regras não aceitam mais um campo ${hers}, ${editing ? 'marcado abaixo' : row.place.field ? `o campo ${row.place.field}` : 'marcado na entrada'}.`
+    ? `As regras não aceitam mais um campo ${hers}, ${editing ? 'marcado abaixo' : row.place.field ? `o campo “${row.place.field}”` : 'marcado na entrada'}.`
     : `As regras não aceitam mais ${this_} ${noun}: ${row.text}`;
   const together =
     row.dependents.length > 0
