@@ -125,7 +125,9 @@ export function placeOfPath(entry: TableEntry, field: string): PathPlace {
 
 /** The sentence of a violation with its first letter small, to follow "O que muda:". */
 function lowered(text: string): string {
-  return /^[A-ZÀ-Ý][a-zà-ÿ]/.test(text) ? text.charAt(0).toLowerCase() + text.slice(1) : text;
+  return /^[A-ZÀ-Ý](?=[a-zà-ÿ]| [a-zà-ÿ])/.test(text)
+    ? text.charAt(0).toLowerCase() + text.slice(1)
+    : text;
 }
 
 /** An entry that is out only because the class or race it belongs to is out. */
@@ -143,6 +145,8 @@ export interface LeftOutRow {
   readonly place: PathPlace;
   /** The Portuguese sentence of the violation, first letter small when it follows a place. */
   readonly text: string;
+  /** The same sentence with its first letter as the server's words give it, for a line that starts with it. */
+  readonly sentence: string;
   /** "Nível 1 · Vigília · efeito 1", or `''`. */
   readonly placeLine: string;
   /** The place for a phone, where there is no room for the level: "Vigília, efeito 1". */
@@ -232,11 +236,13 @@ export function buildLeftOut(
     }
     const place = placeOfPath(entry, violation.field);
     const ctx = { aOne: navOfKind(entry.kind)?.aOne ?? 'uma entrada' };
+    const sentence = violationText(violation, ctx);
     rows.push({
       entry,
       violation,
       place,
-      text: lowered(violationText(violation, ctx)),
+      sentence,
+      text: lowered(sentence),
       placeLine: place.parts.join(' · '),
       shortPlace: place.parts.filter((p) => !p.startsWith('Nível')).join(', '),
       kindWord: KIND_WORDS[entry.kind] ?? 'Entrada',
@@ -274,4 +280,115 @@ export function violationOfEntry(
   key: string,
 ): TableContentViolation | undefined {
   return leftOut.find((v) => v.key === key);
+}
+
+/** What the page of a left-out entry says above its editor (K2). */
+export interface LeftOutNote {
+  /** "Esta classe está fora da campanha." (bold). */
+  readonly lead: string;
+  /** The rest: what is wrong and what to do. */
+  readonly text: string;
+  /** "1 ficha usa esta classe e está com aviso lá.", or `''`. */
+  readonly using: string;
+  /** The class or race this entry is out for, when it is out only because of it. */
+  readonly parent: { readonly key: string; readonly name: string } | null;
+}
+
+function agree(entry: TableEntry): { this_: string; she: string; hers: string } {
+  const male = KIND_NOUNS[entry.kind]?.article === 'O';
+  return { this_: male ? 'este' : 'esta', she: male ? 'ele' : 'ela', hers: male ? 'dele' : 'dela' };
+}
+
+function usingNote(entry: TableEntry): string {
+  const n = entry.charactersUsing;
+  if (n <= 0) {
+    return '';
+  }
+  const noun = KIND_NOUNS[entry.kind]?.noun ?? 'entrada';
+  const { this_ } = agree(entry);
+  return n === 1
+    ? `1 ficha usa ${this_} ${noun} e está com aviso lá.`
+    : `${n} fichas usam ${this_} ${noun} e estão com aviso lá.`;
+}
+
+function names(list: readonly string[]): string {
+  return new Intl.ListFormat('pt-BR', { type: 'conjunction' }).format(list);
+}
+
+/** The note above the editor of an entry that is left out, or `null` for one that is not. `editing` is whether the person can fix it here. */
+export function leftOutNote(
+  entry: TableEntry,
+  model: LeftOutModel,
+  editing: boolean,
+): LeftOutNote | null {
+  if (!model.keys.has(entry.key)) {
+    return null;
+  }
+  const noun = KIND_NOUNS[entry.kind]?.noun ?? 'entrada';
+  const { this_, she, hers } = agree(entry);
+  const lead = `${this_.charAt(0).toUpperCase()}${this_.slice(1)} ${noun} está fora da campanha.`;
+  const using = usingNote(entry);
+  const row = model.rows.find((r) => r.entry.key === entry.key);
+  if (!row) {
+    const parent = model.rows.find((r) =>
+      r.dependents.some((d) => d.entry.key === entry.key),
+    )?.entry;
+    const word = parentWord(entry);
+    return {
+      lead,
+      text: parent
+        ? `Saiu porque a ${word} ${hers}, ${parent.namePt}, está fora. ${editing ? `Corrija a ${word}: ${she} volta sozinha.` : `Volta sozinha quando a ${word} voltar.`}`
+        : `Saiu porque a ${word} ${hers} está fora.`,
+      using,
+      parent: parent ? { key: parent.key, name: parent.namePt } : null,
+    };
+  }
+  const what = row.violation.field
+    ? `As regras não aceitam mais um campo ${hers}, ${editing ? 'marcado abaixo' : row.place.field ? `o campo ${row.place.field}` : 'marcado na entrada'}.`
+    : `As regras não aceitam mais ${this_} ${noun}: ${row.text}`;
+  const together =
+    row.dependents.length > 0
+      ? `, e ${names(row.dependents.map((d) => d.entry.namePt))} volta${row.dependents.length > 1 ? 'm' : ''} junto`
+      : '';
+  return {
+    lead,
+    text: editing
+      ? `${what} Corrija e salve: ${she} volta${together}.`
+      : `${what} Para corrigir, abra a entrada no computador.`,
+    using,
+    parent: null,
+  };
+}
+
+/** "Guardião do Vale voltou para a campanha. Juramento da Névoa voltou junto, e a ficha que usa a classe não tem mais o aviso."
+ * After a save: `''` when the entry was not out before or is still out. */
+export function backInSentence(
+  before: LeftOutModel,
+  after: LeftOutModel,
+  entry: TableEntry,
+  entries: readonly TableEntry[],
+): string {
+  if (!before.keys.has(entry.key) || after.keys.has(entry.key)) {
+    return '';
+  }
+  const noun = KIND_NOUNS[entry.kind]?.noun ?? 'entrada';
+  const { this_ } = agree(entry);
+  const back = entries
+    .filter((e) => e.key !== entry.key && before.keys.has(e.key) && !after.keys.has(e.key))
+    .map((e) => e.namePt);
+  const clauses: string[] = [];
+  if (back.length > 0) {
+    clauses.push(`${names(back)} ${back.length > 1 ? 'voltaram' : 'voltou'} junto`);
+  }
+  if (entry.charactersUsing > 0) {
+    clauses.push(
+      `${entry.charactersUsing === 1 ? 'a ficha que usa' : 'as fichas que usam'} ${this_} ${noun} ${entry.charactersUsing === 1 ? 'não tem' : 'não têm'} mais o aviso`,
+    );
+  }
+  const first = `${entry.namePt} voltou para a campanha.`;
+  if (clauses.length === 0) {
+    return first;
+  }
+  const rest = clauses.join(', e ');
+  return `${first} ${rest.charAt(0).toUpperCase()}${rest.slice(1)}.`;
 }

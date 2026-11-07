@@ -14,7 +14,9 @@ import {
 import { entry, feature } from './content-testing';
 import {
   NO_LEFT_OUT,
+  backInSentence,
   buildLeftOut,
+  leftOutNote,
   leftOutTitle,
   parentKeyOf,
   placeOfPath,
@@ -189,7 +191,8 @@ describe('the entries left out', () => {
     );
     expect(model.rows).toHaveLength(1);
     expect(model.rows[0].dependents).toEqual([]);
-    expect(model.rows[0].text).toBe('A classe desta subclasse não existe mais.');
+    expect(model.rows[0].text).toBe('a classe desta subclasse não existe mais.');
+    expect(model.rows[0].sentence).toBe('A classe desta subclasse não existe mais.');
   });
 
   it('keeps a subclass that is out for a reason of its own as a row, even under a class that is out', () => {
@@ -259,5 +262,154 @@ describe('the entries left out', () => {
     const list = [v('a', 'x', 'bad_value'), v('b', 'y', 'bad_value')];
     expect(violationOfEntry(list, 'b')?.field).toBe('y');
     expect(violationOfEntry(list, 'c')).toBeUndefined();
+  });
+});
+
+describe('the note of a left-out entry and the line after a fix (K2, K4)', () => {
+  const classe = () => guardiao(2);
+  const sub = entry(TableContentKind.SUBCLASS, 'Juramento da Névoa', {
+    key: 'subclass:juramento@mesa',
+    body: {
+      case: 'tableSubclass',
+      value: create(TableSubclassSchema, {
+        namePt: 'Juramento da Névoa',
+        classKey: 'class:guardiao@mesa',
+      }),
+    },
+  });
+  const model = (...extra: TableContentViolation[]) =>
+    buildLeftOut(
+      [classe(), sub, entry(TableContentKind.FEAT, 'Chama Insistente', { key: 'feat:chama@mesa' })],
+      [
+        v('class:guardiao@mesa', TARGET, 'bad_value'),
+        v('subclass:juramento@mesa', '', 'dangling_reference'),
+        ...extra,
+      ],
+    );
+
+  it('has no note for an entry that is not out', () => {
+    expect(leftOutNote(entry(TableContentKind.RACE, 'Corujeiro'), model(), true)).toBeNull();
+  });
+
+  it('says what is wrong, what to do and what comes back with it, and how many sheets are warned', () => {
+    const note = leftOutNote(classe(), model(), true)!;
+    expect(note.lead).toBe('Esta classe está fora da campanha.');
+    expect(note.text).toBe(
+      'As regras não aceitam mais um campo dela, marcado abaixo. Corrija e salve: ela volta, e Juramento da Névoa volta junto.',
+    );
+    expect(note.using).toBe('2 fichas usam esta classe e estão com aviso lá.');
+    expect(note.parent).toBeNull();
+  });
+
+  it('agrees with a masculine kind, says "voltam junto" for two dependents, and has no line for no sheet', () => {
+    const feat = entry(TableContentKind.FEAT, 'Chama Insistente', {
+      key: 'feat:chama@mesa',
+      charactersUsing: 1,
+    });
+    const m = buildLeftOut(
+      [feat],
+      [v('feat:chama@mesa', 'table_feat.effects[0].damage_type', 'bad_value')],
+    );
+    const note = leftOutNote(feat, m, true)!;
+    expect(note.lead).toBe('Este talento está fora da campanha.');
+    expect(note.text).toContain('um campo dele');
+    expect(note.text).toContain('Corrija e salve: ele volta.');
+    expect(note.using).toBe('1 ficha usa este talento e está com aviso lá.');
+    const sub2 = entry(TableContentKind.SUBCLASS, 'Outro', {
+      key: 'subclass:outro@mesa',
+      body: sub.body,
+    });
+    const two = buildLeftOut(
+      [classe(), sub, sub2],
+      [
+        v('class:guardiao@mesa', TARGET, 'bad_value'),
+        v('subclass:juramento@mesa', '', 'dangling_reference'),
+        v('subclass:outro@mesa', '', 'dangling_reference'),
+      ],
+    );
+    expect(leftOutNote(classe(), two, true)!.text).toContain(
+      'Juramento da Névoa e Outro voltam junto',
+    );
+    expect(leftOutNote(guardiao(0), two, true)!.using).toBe('');
+  });
+
+  it('says the dependent is out because of its class, with a way to the class, or only that it comes back on a phone', () => {
+    const note = leftOutNote(sub, model(), true)!;
+    expect(note.text).toBe(
+      'Saiu porque a classe dela, Guardião do Vale, está fora. Corrija a classe: ela volta sozinha.',
+    );
+    expect(note.parent).toEqual({ key: 'class:guardiao@mesa', name: 'Guardião do Vale' });
+    expect(leftOutNote(sub, model(), false)!.text).toBe(
+      'Saiu porque a classe dela, Guardião do Vale, está fora. Volta sozinha quando a classe voltar.',
+    );
+  });
+
+  it('says it for a dependent whose class is not named, without a link', () => {
+    const only = buildLeftOut([sub], [v('subclass:juramento@mesa', '', 'dangling_reference')]);
+    // Its class is not out: it is a row of its own, with its own reason.
+    expect(leftOutNote(sub, only, true)!.text).toContain(
+      'As regras não aceitam mais esta subclasse',
+    );
+    const orphan = { rows: [], count: 1, keys: new Set(['subclass:juramento@mesa']) };
+    expect(leftOutNote(sub, orphan, true)).toMatchObject({
+      text: 'Saiu porque a classe dela está fora.',
+      parent: null,
+    });
+  });
+
+  it('says on a phone to fix it on the laptop, naming the field, or the entry when it has no field', () => {
+    expect(leftOutNote(classe(), model(), false)!.text).toBe(
+      'As regras não aceitam mais um campo dela, o campo O que muda. Para corrigir, abra a entrada no computador.',
+    );
+    const wholly = buildLeftOut([guardiao(1)], [v('class:guardiao@mesa', '', 'overlay')]);
+    expect(leftOutNote(guardiao(1), wholly, false)!.text).toBe(
+      'As regras não aceitam mais esta classe: o conteúdo da mesa não fecha com esta entrada. Confira o que ela usa. Para corrigir, abra a entrada no computador.',
+    );
+    const noLabel = buildLeftOut(
+      [guardiao(1)],
+      [v('class:guardiao@mesa', 'table_class.nope', 'bad_value')],
+    );
+    expect(leftOutNote(guardiao(1), noLabel, false)!.text).toContain('marcado na entrada');
+  });
+
+  it('says the entry came back, with what came back with it and the sheets that lose the warning', () => {
+    const before = model();
+    const entries = [classe(), sub];
+    expect(backInSentence(before, NO_LEFT_OUT, classe(), entries)).toBe(
+      'Guardião do Vale voltou para a campanha. Juramento da Névoa voltou junto, e as fichas que usam esta classe não têm mais o aviso.',
+    );
+    expect(backInSentence(before, NO_LEFT_OUT, guardiao(1), entries)).toContain(
+      'e a ficha que usa esta classe não tem mais o aviso.',
+    );
+    expect(backInSentence(before, NO_LEFT_OUT, guardiao(0), [guardiao(0)])).toBe(
+      'Guardião do Vale voltou para a campanha.',
+    );
+    expect(backInSentence(before, NO_LEFT_OUT, guardiao(1), [guardiao(1)])).toBe(
+      'Guardião do Vale voltou para a campanha. A ficha que usa esta classe não tem mais o aviso.',
+    );
+  });
+
+  it('says nothing for an entry that was not out or is still out', () => {
+    const feat = entry(TableContentKind.FEAT, 'Chama Insistente', { key: 'feat:chama@mesa' });
+    expect(backInSentence(NO_LEFT_OUT, NO_LEFT_OUT, feat, [feat])).toBe('');
+    expect(backInSentence(model(), model(), classe(), [classe()])).toBe('');
+  });
+
+  it('says two returned entries came back "voltaram junto"', () => {
+    const sub2 = entry(TableContentKind.SUBCLASS, 'Outro', {
+      key: 'subclass:outro@mesa',
+      body: sub.body,
+    });
+    const before = buildLeftOut(
+      [classe(), sub, sub2],
+      [
+        v('class:guardiao@mesa', TARGET, 'bad_value'),
+        v('subclass:juramento@mesa', '', 'dangling_reference'),
+        v('subclass:outro@mesa', '', 'dangling_reference'),
+      ],
+    );
+    expect(backInSentence(before, NO_LEFT_OUT, guardiao(0), [guardiao(0), sub, sub2])).toBe(
+      'Guardião do Vale voltou para a campanha. Juramento da Névoa e Outro voltaram junto.',
+    );
   });
 });

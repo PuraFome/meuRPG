@@ -96,7 +96,7 @@
                       @if (row.place.field) {
                         <strong>{{ row.place.field }}:</strong>
                       }
-                      {{ row.text }}
+                      {{ row.placeLine || row.place.field ? row.text : row.sentence }}
                     </p>
                   }
                   @if (row.dependents.length > 0 || row.usingLine) {

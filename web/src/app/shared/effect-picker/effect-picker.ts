@@ -262,7 +262,10 @@ export class EffectPicker {
     if (f.kind === 'choice') {
       const list = this.optionsOf(f);
       const picked = list.find((o) => o.value === this.read(f.name));
-      return picked?.hint || own;
+      const kept = this.leftTheMenu(f);
+      return (
+        picked?.hint || (kept ? `O valor guardado (${kept}) não existe nas regras novas.` : own)
+      );
     }
     return own;
   }
@@ -318,7 +321,25 @@ export class EffectPicker {
   protected choiceOptions(f: EffectMenuField): SelectOption[] {
     const list = this.optionsOf(f);
     const empty = this.effect().type === 'roll_minimum' ? 'Qualquer tipo' : 'Padrão';
-    return f.required ? list : [{ value: '', label: empty }, ...list];
+    const kept = this.leftTheMenu(f);
+    // A value the menu no longer has stays on the select, said in words, so the field does not show another one in its place.
+    const gone: SelectOption[] = kept
+      ? [
+          {
+            value: kept,
+            label: f.name === 'target' ? 'Um alvo que saiu do menu' : 'Um valor que saiu do menu',
+          },
+        ]
+      : [];
+    return f.required ? [...gone, ...list] : [{ value: '', label: empty }, ...gone, ...list];
+  }
+
+  /** The value the entry holds for a closed list that the menu no longer lists (an engine that dropped it), or `''`. */
+  private leftTheMenu(f: EffectMenuField): string {
+    const value = this.read(f.name);
+    return f.kind === 'choice' && value !== '' && !this.optionsOf(f).some((o) => o.value === value)
+      ? value
+      : '';
   }
 
   /** The cards of a short closed list (a resistance's kind), with the menu's line under each. */

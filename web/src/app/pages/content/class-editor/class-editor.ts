@@ -17,6 +17,7 @@ import { RouterLink } from '@angular/router';
 import { Ability } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { PlayersSwitch } from '../players-switch/players-switch';
 import type {
+  TableContentViolation,
   GetClassTableDefaultsResponse,
   TableEntry,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
@@ -137,6 +138,8 @@ export class ClassEditor {
   readonly defaults = input.required<GetClassTableDefaultsResponse>();
   readonly entries = input<readonly TableEntry[]>([]);
   readonly saveBlocked = input('');
+  /** The rules refuse this entry on read (it is left out of the campaign): the violation, to put on its field. */
+  readonly leftOut = input<TableContentViolation | null>(null);
 
   readonly saved = output<EditorSaved>();
   /** The entry's switch "Disponível para os jogadores" was turned (it saves at once, apart from the form). */
@@ -228,6 +231,7 @@ export class ClassEditor {
     this.openFeature.set('');
     this.question.set(null);
     this.saver.clear();
+    this.seedLeftOut();
   }
 
   private groupOptions(keys: readonly string[]): SelectOption[] {
@@ -236,6 +240,14 @@ export class ClassEditor {
       value: k,
       label: list.find((p) => p.key === k)?.namePt ?? this.catalog().nameOf(k),
     }));
+  }
+
+  /** The rules refuse a field of this entry, so the campaign is built without it: the field says why, opened and focused. */
+  private seedLeftOut(): void {
+    const first = this.saver.seedLeftOut(this.leftOut(), this.known);
+    if (first) {
+      this.reveal(first);
+    }
   }
 
   protected patch(p: Partial<ClassDraft>): void {

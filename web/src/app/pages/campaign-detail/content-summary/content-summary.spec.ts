@@ -34,7 +34,12 @@ describe('"Conteúdo da mesa" on the "Regras" tab', () => {
           provide: TableContentClient,
           useValue: {
             list: () =>
-              Promise.resolve({ entries: [entry(TableContentKind.CLASS)], tableRevision: 1 }),
+              Promise.resolve({
+                entries: [entry(TableContentKind.CLASS)],
+                tableRevision: 1,
+                contentVersion: '',
+                leftOut: [],
+              }),
           },
         },
       ],

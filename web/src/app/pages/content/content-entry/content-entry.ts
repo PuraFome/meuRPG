@@ -34,6 +34,13 @@ import {
   navOfKind,
   savedSentence,
 } from '../../../core/content/content-kinds';
+import {
+  NO_LEFT_OUT,
+  backInSentence,
+  buildLeftOut,
+  leftOutNote,
+  violationOfEntry,
+} from '../../../core/content/left-out';
 import { ContentWatcher } from '../../../core/content/content-watcher';
 import { EffectMenuVm } from '../../../core/content/effect-draft';
 import { LiveSessionSourceLive } from '../../../core/play/live-session-source.live';
@@ -200,6 +207,24 @@ export class ContentEntry {
     const e = this.entry();
     return e ? entryState(e, this.isMaster()) : null;
   });
+  /** The entries the rules refuse (the master's only): this one may be among them. */
+  private readonly leftOutModel = computed(() => {
+    const ctx = this.ctx();
+    return ctx?.isMaster ? buildLeftOut(ctx.entries, ctx.leftOut) : NO_LEFT_OUT;
+  });
+  /** The violation to put on the editor's field, when this entry is left out for a field of its own. */
+  protected readonly leftOutViolation = computed(() => {
+    const ctx = this.ctx();
+    const key = this.key();
+    return ctx?.isMaster && this.leftOutModel().rows.some((r) => r.entry.key === key)
+      ? (violationOfEntry(ctx.leftOut, key) ?? null)
+      : null;
+  });
+  /** "Esta classe está fora da campanha." and what to do, above the editor. */
+  protected readonly leftOutNote = computed(() => {
+    const e = this.entry();
+    return e ? leftOutNote(e, this.leftOutModel(), this.editing()) : null;
+  });
   protected readonly updated = computed(() => updatedLine(this.entry()));
   protected readonly archivedOn = computed(() => archivedDay(this.entry()));
   protected readonly using = computed(() => usageOf(this.entry()));
@@ -343,7 +368,11 @@ export class ContentEntry {
   }
 
   protected entryLink(e: TableEntry): string[] {
-    return ['/campaigns', this.campaignId(), 'content', 'entries', e.key];
+    return this.keyLink(e.key);
+  }
+
+  protected keyLink(key: string): string[] {
+    return ['/campaigns', this.campaignId(), 'content', 'entries', key];
   }
 
   protected goBack(): void {
@@ -356,6 +385,7 @@ export class ContentEntry {
       return;
     }
     const entries = entriesAfterSave(s.ctx.entries, res.entry);
+    const before = this.leftOutModel();
     this.state.set({
       status: 'ready',
       ctx: { ...s.ctx, entries, tableRevision: res.entry.revision },
@@ -363,6 +393,9 @@ export class ContentEntry {
     this.affected.set(res.affected);
     const saved = savedSentence(res.entry.kind, res.entry.namePt);
     this.savedLine.set(saved);
+    if (before.count > 0) {
+      await this.readLeftOut(res.entry, before);
+    }
     if (!this.key()) {
       // A new entry has its key now: its page is the entry's own.
       await this.router.navigate([...this.backLink(), 'entries', res.entry.key], {
@@ -371,6 +404,30 @@ export class ContentEntry {
       });
     }
     window.scrollTo({ top: 0 });
+  }
+
+  /** After a write on a page with entries left out: the server says again which are out, and a fix says the entry came back. */
+  private async readLeftOut(
+    saved: TableEntry,
+    before: ReturnType<typeof buildLeftOut>,
+  ): Promise<void> {
+    try {
+      const res = await loadContext(this.campaigns, this.client, this.campaignId());
+      const now = this.state();
+      if (res.status !== 'ok' || now.status !== 'ready') {
+        return;
+      }
+      this.state.set({
+        status: 'ready',
+        ctx: { ...now.ctx, leftOut: res.ctx.leftOut, contentVersion: res.ctx.contentVersion },
+      });
+      const back = backInSentence(before, this.leftOutModel(), saved, now.ctx.entries);
+      if (back) {
+        this.savedLine.set(back);
+      }
+    } catch {
+      // Keep what is on screen: the next change reads again.
+    }
   }
 
   /** "Arquivar": in place on a laptop, a bottom sheet on a phone. */
