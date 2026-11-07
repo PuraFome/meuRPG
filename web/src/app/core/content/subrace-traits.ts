@@ -3,8 +3,9 @@ import type { MenuOption } from './effect-draft';
 import { type NameOf, type ParentView, effectLine } from './content-read-parts';
 
 /**
- * The parent race's traits a subrace can replace (MR-025, RN-23): the checklist of the subrace editor and the words the master
- * and the player read. The parent's traits come from the table's race entry, or from the effect menu's `race_traits` for an SRD race.
+ * The parent race's traits a subrace can replace (MR-025, RN-23).
+ * They feed the checklist of the subrace editor and the lines the master and the player read.
+ * A table race gives them from its entry; an SRD race gives them through the effect menu's `race_traits`.
  */
 
 export interface ParentTrait {
@@ -16,7 +17,7 @@ export interface ParentTrait {
 
 export interface TraitRow extends ParentTrait {
   readonly checked: boolean;
-  /** A marked key that is no longer a trait of the parent (a pack changed it): the row stays until it is unmarked. */
+  /** The marked key is not a trait of the parent; the row stays until it is unmarked. */
   readonly stale: boolean;
 }
 
@@ -74,12 +75,12 @@ export function withReplaced(keys: readonly string[], key: string, on: boolean):
   return on ? [...rest, key] : rest;
 }
 
-/** The names of the replaced traits that the reader can see in the parent's list; a key it cannot name says nothing (RN-23). */
+/** The names of the replaced traits found in the parent's list; any other key is left out (RN-23). */
 export function replacedNames(parent: readonly ParentTrait[], marked: readonly string[]): string[] {
   return parent.filter((t) => marked.includes(t.key)).map((t) => t.name);
 }
 
-/** "Olhos de caçador e os bônus de Corujeiro": what a subrace replaces, as the master's note says it. '' when nothing. */
+/** What a subrace replaces, as the master's note writes it: "Olhos de caçador e os bônus de Corujeiro"; '' when nothing. */
 export function replacesLine(names: readonly string[], bonusesOf: string): string {
   const parts = [...names, ...(bonusesOf ? [`os bônus de ${bonusesOf}`] : [])];
   return parts.length <= 1

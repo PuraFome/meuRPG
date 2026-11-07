@@ -97,6 +97,11 @@ describe('what a player reads of an entry (E10-01 state 9)', () => {
       expect(read.sections[0].items.map((i) => i.title)).toEqual(['Pele de geada']);
     });
 
+    it("says the race's bonuses do not count when the subrace has none of its own and replaces them", () => {
+      const read = readEntry(sub({ abilityBonuses: {} }), names);
+      expect(read.rows[1].value).toBe('Nenhum; os da raça não valem');
+    });
+
     it('keeps the bonuses plain when the subrace adds them to the race', () => {
       const read = readEntry(sub({ replacesAbilityBonuses: false }), names);
       expect(flat(read.rows[1].value)).toBe('Constituição +2, Sabedoria +1');

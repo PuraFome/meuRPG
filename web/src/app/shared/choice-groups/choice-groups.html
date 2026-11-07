@@ -13,14 +13,15 @@
     [attr.data-pending]="isDone(section) ? null : ''"
     [attr.data-advisory]="section.choices[0].advisory ? '' : null"
     [attr.aria-labelledby]="titleId(section.choices[0])"
+    [attr.aria-describedby]="titleId(section.choices[0]) + '-status'"
   >
     <header class="choice__head">
       <div class="choice__bar">
         <h3 class="choice__title" [id]="titleId(section.choices[0])" tabindex="-1">{{ sectionTitle(section) }}</h3>
         @if (isDone(section)) {
-          <span class="mr-tag mr-tag--success"><mat-icon aria-hidden="true">check</mat-icon>Feito</span>
+          <span class="mr-tag mr-tag--success" [id]="titleId(section.choices[0]) + '-status'"><mat-icon aria-hidden="true">check</mat-icon>Feito</span>
         } @else {
-          <span class="mr-tag mr-tag--pending">Falta escolher</span>
+          <span class="mr-tag mr-tag--pending" [id]="titleId(section.choices[0]) + '-status'">Falta escolher</span>
         }
       </div>
       <p class="choice__origin">

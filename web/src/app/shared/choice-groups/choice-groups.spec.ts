@@ -442,6 +442,16 @@ describe('ChoiceGroups', () => {
       expect(cards()[0].textContent).toContain('Visão no escuro 36 m.');
     });
 
+    it('names the status as the description of the card', () => {
+      const { el, fixture, cards } = setup(traitGroup());
+      const section = el.querySelector('section.choice')!;
+      const status = () => el.querySelector(`#${section.getAttribute('aria-describedby')}`);
+      expect(status()?.textContent).toContain('Falta escolher');
+      cards()[0].click();
+      fixture.detectChanges();
+      expect(status()?.textContent).toContain('Feito');
+    });
+
     it('turns the tag into "Feito" once an option is picked', () => {
       const { el, fixture, cards } = setup(traitGroup());
       cards()[1].click();

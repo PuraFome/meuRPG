@@ -235,7 +235,7 @@ export interface SubraceDraft {
   raceKey: string;
   bonuses: Bonuses;
   traits: FeatureDraft[];
-  /** The keys of the parent race's traits this subrace replaces, in the order stored (a key that is no longer a parent trait stays until unmarked). */
+  /** The keys of the parent race's traits this subrace replaces, in stored order. */
   replacesTraitKeys: string[];
   /** "Substituiu os bônus da raça": the subrace's bonuses stand alone instead of adding to the race's. */
   replacesBonuses: boolean;

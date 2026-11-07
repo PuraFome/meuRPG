@@ -19,6 +19,7 @@ let nextId = 0;
         [class.switch--on]="checked()"
         [attr.aria-checked]="checked()"
         [disabled]="disabled()"
+        [attr.aria-describedby]="describedby() || null"
         [attr.aria-labelledby]="labelId"
         [attr.data-field]="path() || null"
         (click)="toggled.emit(!checked())"
@@ -145,6 +146,8 @@ export class SwitchField {
   readonly path = input('');
   /** The switch cannot be turned (what it needs is not chosen yet). */
   readonly disabled = input(false);
+  /** The id of the element that explains the switch (why it is disabled). */
+  readonly describedby = input('');
   /** The words beside the label: "Ligado"/"Desligado", or "Ligada"/"Desligada" where the noun is feminine. */
   readonly onWord = input('Ligado');
   readonly offWord = input('Desligado');

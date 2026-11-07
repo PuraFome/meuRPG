@@ -125,7 +125,7 @@ export class RaceEditor {
     {
       aOne: 'uma raça',
       nameOf: (key) => this.entries().find((e) => e.key === key)?.namePt ?? '',
-      // A "Escolha" effect on a trait with options is refused at the effect; the screen says it under the effect's select.
+      // The refusal of a "Escolha" effect on a trait with options shows under the effect's select.
       redirect: (field, reason) =>
         reason === 'bad_value' && /\.traits\[\d+\]\.effects\[\d+\]\.choice$/.test(field)
           ? field.replace(/\.choice$/, '.type')
@@ -312,7 +312,7 @@ export class RaceEditor {
   }
 
   protected setParent(raceKey: string): void {
-    // Another race has other traits: what was marked on the last one goes.
+    // The marks belong to the race they were made on.
     this.sub.update((d) => ({ ...d, raceKey, replacesTraitKeys: [] }));
   }
 

@@ -11,7 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
   imports: [MatIconModule],
   template: `
     <label class="row" [class.row--invalid]="invalid()">
-      <input type="checkbox" class="mr-visually-hidden" [checked]="checked()" [disabled]="disabled()" [attr.data-field]="path() || null" (change)="toggled.emit(!checked())" />
+      <input type="checkbox" class="mr-visually-hidden" [checked]="checked()" [disabled]="disabled()" [attr.aria-invalid]="ariaInvalid() || null" [attr.aria-describedby]="describedby() || null" [attr.data-field]="path() || null" (change)="toggled.emit(!checked())" />
       <span class="box" aria-hidden="true"><mat-icon>check</mat-icon></span>
       <span class="text">
         <span class="label" [class.label--strong]="sub() !== ''">{{ label() }}</span>
@@ -70,7 +70,7 @@ import { MatIconModule } from '@angular/material/icon';
       display: flex;
       flex-direction: column;
       min-width: 0;
-      padding: 4px 0;
+      padding: var(--mr-space-1) 0;
     }
 
     .label {
@@ -86,7 +86,7 @@ import { MatIconModule } from '@angular/material/icon';
       color: var(--mr-ink-muted);
     }
 
-    // A row that cannot stay as it is (a marked trait that no longer exists): the words and the box in the danger colour.
+    // An invalid row has its words and box in the danger colour.
     .row--invalid {
       .label {
         color: var(--mr-danger-ink);
@@ -111,6 +111,10 @@ export class CheckRow {
   readonly sub = input('');
   /** The row is in error: its words and box take the danger colour. */
   readonly invalid = input(false);
+  /** Tells assistive technology the checkbox is in error. */
+  readonly ariaInvalid = input(false);
+  /** The id of the element that explains the row. */
+  readonly describedby = input('');
   readonly path = input('');
   readonly toggled = output<boolean>();
 }

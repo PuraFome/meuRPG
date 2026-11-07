@@ -16,7 +16,7 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Um traço com opções já é a escolha: troque este efeito por “Só texto” ou outro.',
   },
   {
-    shape: /^table_(race|subrace|background)\.(traits\[\]|feature)\.options\[\]\.name_pt$/,
+    shape: /^table_(race|subrace)\.traits\[\]\.options\[\]\.name_pt$/,
     reason: 'bad_name',
     text: 'Duas opções deste traço têm o mesmo nome. Mude uma delas.',
   },

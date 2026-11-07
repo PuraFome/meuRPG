@@ -5,9 +5,11 @@ import type { TraitRow } from '../../../core/content/subrace-traits';
 import { CheckRow } from '../../../shared/form-fields/check-row';
 
 /**
- * "Traços de Corujeiro" on the subrace editor (MR-025, RN-23): the parent race's traits as a checklist, the marked ones replaced
- * by the subrace. With no race chosen yet it is locked, saying why. A marked key that is no longer a trait of the race (a pack
- * changed it) stays as a red row that says so, until it is unmarked. The page owns the keys; this draws them.
+ * "Traços de Corujeiro" on the subrace editor (MR-025, RN-23).
+ * It lists the parent race's traits as a checklist; the marked ones are replaced by the subrace.
+ * With no race chosen it is locked and says why.
+ * A marked key that is not a trait of the race is a red row until it is unmarked.
+ * The page owns the keys; this draws them.
  */
 @Component({
   selector: 'app-replaced-traits',
@@ -31,6 +33,8 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
                 [sub]="r.stale ? 'Veio marcado num pacote' : r.summary"
                 [checked]="r.checked"
                 [invalid]="r.stale"
+                [ariaInvalid]="r.stale"
+                [describedby]="r.stale ? 'replaced-issue-' + $index : ''"
                 [path]="pathOf(r.key)"
                 (toggled)="toggled.emit({ key: r.key, on: $event })"
               >
@@ -39,7 +43,7 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
                 }
               </app-check-row>
               @if (r.stale) {
-                <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>Este traço não é de {{ raceName() }}. Desmarque para salvar.</p>
+                <p class="inline-issue" role="note" [id]="'replaced-issue-' + $index"><mat-icon aria-hidden="true">warning</mat-icon>Este traço não é de {{ raceName() }}. Desmarque para salvar.</p>
               }
             </li>
           }
@@ -66,7 +70,7 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
     .hint {
       display: flex;
       align-items: flex-start;
-      gap: 6px;
+      gap: var(--mr-space-2);
       margin: 0;
       font-size: var(--mr-font-15);
       line-height: 20px;
@@ -74,8 +78,8 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
 
       .mat-icon {
         flex: none;
-        width: 18px;
-        height: 18px;
+        width: var(--mr-font-18);
+        height: var(--mr-font-18);
         font-size: var(--mr-font-18);
         margin-top: 1px;
       }
@@ -88,7 +92,7 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
     }
 
     .rows__item {
-      padding: 4px 0;
+      padding: var(--mr-space-1) 0;
       border-top: 1px solid var(--mr-rule);
 
       &:first-child {
@@ -103,15 +107,15 @@ import { CheckRow } from '../../../shared/form-fields/check-row';
     .inline-issue {
       display: flex;
       align-items: flex-start;
-      gap: 6px;
-      margin: 0 0 var(--mr-space-2) 36px;
+      gap: var(--mr-space-2);
+      margin: 0 0 var(--mr-space-2) calc(var(--mr-space-6) + var(--mr-space-3));
       font-size: var(--mr-font-15);
       color: var(--mr-danger-ink);
 
       .mat-icon {
         flex: none;
-        width: 18px;
-        height: 18px;
+        width: var(--mr-font-18);
+        height: var(--mr-font-18);
         font-size: var(--mr-font-18);
       }
     }

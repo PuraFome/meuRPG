@@ -188,7 +188,7 @@ describe('form fields', () => {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CheckRow, SwitchField],
   template: `
-    <app-check-row label="Olhos de caçador" sub="Proficiência em Percepção" [checked]="true" [invalid]="bad()" />
+    <app-check-row label="Olhos de caçador" sub="Proficiência em Percepção" [checked]="true" [invalid]="bad()" [ariaInvalid]="bad()" [describedby]="bad() ? 'why' : ''" />
     <app-check-row label="Planar" [checked]="false" />
     <app-switch-field label="Substitui" [checked]="false" [disabled]="true" (toggled)="toggled.set(true)" />
   `,
@@ -213,6 +213,10 @@ describe('form fields: a line under a check row, a row in error, a switch that c
     fixture.componentInstance.bad.set(true);
     fixture.detectChanges();
     expect(rows[0].querySelector('.row--invalid')).not.toBeNull();
+    const box = rows[0].querySelector('input')!;
+    expect(box.getAttribute('aria-invalid')).toBe('true');
+    expect(box.getAttribute('aria-describedby')).toBe('why');
+    expect(rows[1].querySelector('input')!.hasAttribute('aria-invalid')).toBe(false);
   });
 
   it('keeps a disabled switch off its toggle and dims it', () => {

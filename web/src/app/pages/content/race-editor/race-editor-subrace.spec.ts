@@ -155,6 +155,9 @@ describe('RaceEditor, a subrace that replaces traits of its race (T2, T6)', () =
     )!;
     expect(sw.disabled).toBe(true);
     expect(text(sw.closest('app-switch-field')!)).toContain('Substitui os bônus da raça');
+    expect(text(el.querySelector(`#${sw.getAttribute('aria-describedby')}`)!)).toContain(
+      'Escolha a raça da sub-raça para poder ligar.',
+    );
     const select = el.querySelector<HTMLSelectElement>('[data-field="table_subrace.race_key"]')!;
     select.value = 'race:human';
     select.dispatchEvent(new Event('change'));
@@ -206,6 +209,10 @@ describe('RaceEditor, a subrace that replaces traits of its race (T2, T6)', () =
     expect(text(stale)).toContain('Um traço que não é de Corujeiro');
     expect(text(stale)).toContain('Este traço não é de Corujeiro. Desmarque para salvar.');
     expect(box(stale).checked).toBe(true);
+    expect(box(stale).getAttribute('aria-invalid')).toBe('true');
+    const issue = stale.querySelector('.inline-issue')!;
+    expect(box(stale).getAttribute('aria-describedby')).toBe(issue.id);
+    expect(box(rows(el)[0]).hasAttribute('aria-invalid')).toBe(false);
     expect(stale.querySelector('app-check-row .row--invalid')).not.toBeNull();
     expect(text(stale)).not.toContain('Substituído');
     box(stale).click();
@@ -272,5 +279,33 @@ describe('RaceEditor, a subrace that replaces traits of its race (T2, T6)', () =
       'Um traço com opções já é a escolha: troque este efeito por “Só texto” ou outro.',
     );
     expect(text(el.querySelector('[role="alert"]')!)).toContain('2 campos precisam de ajuste');
+  });
+
+  it('outlines and focuses the stale row a refusal of its own index names', async () => {
+    const { fixture, el } = setup({
+      entry: sub({ replacesTraitKeys: [olhos.key, 'trait:sumiu@mesa'] }),
+    });
+    save.mockRejectedValue(
+      new ConnectError('refused', Code.InvalidArgument, undefined, [
+        {
+          desc: TableContentRefusalSchema,
+          value: create(TableContentRefusalSchema, {
+            violations: [
+              create(TableContentViolationSchema, {
+                field: 'table_subrace.replaces_trait_keys[1]',
+                reason: 'dangling_reference',
+              }),
+            ],
+          }),
+        },
+      ]),
+    );
+    click(el, 'Salvar sub-raça');
+    await settle(fixture, 3);
+    const stale = rows(el).at(-1)!;
+    expect(box(stale).getAttribute('data-field')).toBe('table_subrace.replaces_trait_keys[1]');
+    expect(document.activeElement).toBe(box(stale));
+    expect(stale.querySelector('.row--invalid')).not.toBeNull();
+    expect(text(el.querySelector('[role="alert"]')!)).toContain('1 campo precisa de ajuste');
   });
 });

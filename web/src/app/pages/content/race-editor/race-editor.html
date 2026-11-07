@@ -40,8 +40,8 @@
       }
       @if (!isRace()) {
         <div class="choose">
-          <app-switch-field [label]="sub().raceKey === '' ? 'Substitui os bônus da raça' : 'Substituiu os bônus de ' + parentName()" [checked]="sub().replacesBonuses" [disabled]="sub().raceKey === ''" path="table_subrace.replaces_ability_bonuses" (toggled)="sub.update(d => ({ ...d, replacesBonuses: $event }))" />
-          <p class="hint">Ligado: só valem os bônus de cima, não os da raça nem os à escolha dela. Desligado: os de cima se somam aos da raça.</p>
+          <app-switch-field [label]="sub().raceKey === '' ? 'Substitui os bônus da raça' : 'Substituiu os bônus de ' + parentName()" [checked]="sub().replacesBonuses" [disabled]="sub().raceKey === ''" describedby="bonus-replace-hint" path="table_subrace.replaces_ability_bonuses" (toggled)="sub.update(d => ({ ...d, replacesBonuses: $event }))" />
+          <p class="hint" id="bonus-replace-hint">{{ sub().raceKey === '' ? 'Escolha a raça da sub-raça para poder ligar.' : 'Ligado: só valem os bônus de cima, não os da raça nem os à escolha dela. Desligado: os de cima se somam aos da raça.' }}</p>
         </div>
       }
       @if (isRace()) {

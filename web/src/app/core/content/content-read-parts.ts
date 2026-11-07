@@ -60,10 +60,11 @@ const SENSE_WORDS: Readonly<Record<string, string>> = {
   'devils-sight': 'Visão do diabo',
 };
 
-/** What a subrace's reader knows of its race: the race's traits that reader can see (none when the race is the SRD's or hidden). */
+/** What a subrace's reader knows of its race. */
 export interface ParentView {
+  /** The race's traits the reader can see; none when the reader has no trait list. */
   readonly traits: readonly TableFeature[];
-  /** The editor's preview: the race's traits and the subrace's in two parts, and no "Substitui" row (the master's note says it). */
+  /** The editor's preview: two parts, and no "Substitui" row. */
   readonly split?: boolean;
 }
 

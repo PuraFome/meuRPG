@@ -261,7 +261,7 @@ export class ChoiceGroups {
   protected progress(section: ChoiceSection): string {
     const picks = section.choices.reduce((n, c) => n + c.picks, 0);
     const done = section.choices.reduce((n, c) => n + this.count(c), 0);
-    // A trait's choice says "0 de 1" too: it is made once and the card shows it was.
+    // A trait's choice shows its progress even with one pick.
     return picks > 1 || isTraitChoice(section.group, section.choices[0])
       ? `${done} de ${picks}`
       : '';

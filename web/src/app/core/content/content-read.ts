@@ -88,9 +88,13 @@ function readSubrace(s: TableSubrace, nameOf: NameOf, parent: ParentView): Entry
   const bonuses = bonusText(bonusesOf(s.abilityBonuses), abilitiesOf(nameOf));
   rows.push({
     label: 'Habilidades',
-    value: s.replacesAbilityBonuses ? `${bonuses}, no lugar da raça` : bonuses,
+    value: !s.replacesAbilityBonuses
+      ? bonuses
+      : bonuses === 'Nenhum'
+        ? 'Nenhum; os da raça não valem'
+        : `${bonuses}, no lugar da raça`,
   });
-  // Only a trait the reader can name: a key it cannot see says nothing (RN-23).
+  // Only a trait the reader can name is listed (RN-23).
   const replaced = replacedNames(parentTraitsOf(parent.traits, nameOf), s.replacesTraitKeys);
   if (!parent.split && replaced.length > 0) {
     rows.push({ label: 'Substitui', value: replaced.join(', ') });
