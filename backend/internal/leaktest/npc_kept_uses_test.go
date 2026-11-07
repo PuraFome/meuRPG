@@ -3,6 +3,7 @@ package leaktest
 import (
 	"testing"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -90,4 +91,37 @@ func TestAPersistentNPCsKeptUsesAreTheMastersAlone(t *testing.T) {
 		}
 	}
 	w.checkNoStatBlock(t, []reply{use}, nil, needles[0], needles[1], w.canaryNamed("creature-action-key"))
+}
+
+// A creature a player controls (a deva given to Caio's paladin) never keeps what it spent: its use a day ends with the combat, so
+// Caio, who controls it, reads the action with its uses left and kept = false, as the master does; the other player reads no limited
+// action on it at all (RN-29). Kept belongs only to a persistent NPC, and only the master reads that (the test above).
+func TestTheControllerOfACreatureReadsItsUsesNeverKeptAndNoOtherPlayerReadsThem(t *testing.T) {
+	rt := newRollsTableFog(t, true, func(rt *rollsTable) {
+		w := rt.world
+		must(w.master.characters.GiveCreature(t.Context(), rq(&charactersv1.GiveCreatureRequest{
+			CampaignId: w.campaign, CharacterId: w.toren.GetId(), MonsterKey: "monster:deva", Name: "Devo",
+		})))
+	})
+	w := rt.world
+	w.encounter = rt.encounter
+	const key = "monster:deva#healing-touch"
+	devo := rt.combatantOf(w.master, "Devo")
+	// A controlled creature's stat-block actions are not used through the API (only an NPC uses them), so the use is spent in the
+	// creature's state, as the Web is in the roll tests.
+	if _, err := w.pool.Exec(t.Context(), `UPDATE combatants SET creature_spent = jsonb_build_object($2::text, 1) WHERE id = $1`, devo.GetId(), "use:"+key); err != nil {
+		t.Fatalf("spend a use: %v", err)
+	}
+	for _, p := range []*person{w.master, w.caio} {
+		if l := w.limitedOf(p, devo, key); l == nil || l.GetUsesLeft() != 2 {
+			t.Errorf("%s reads %v on the creature, want 2 uses left", p.name, l)
+		} else if l.GetKept() {
+			t.Errorf("%s reads kept on a controlled creature, which never keeps its uses", p.name)
+		}
+	}
+	for _, c := range w.ana.currentEncounter(w).GetCombatants() {
+		if len(c.GetLimitedActions()) != 0 {
+			t.Errorf("Ana reads %v on %s", c.GetLimitedActions(), c.GetLabel())
+		}
+	}
 }

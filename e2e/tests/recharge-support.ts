@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -105,4 +106,19 @@ export async function pagesFor(browser: Browser, colorScheme: 'light' | 'dark', 
   await m.goto('/');
   await p.goto('/');
   return { m, p, close: async () => { await master.close(); await player.close(); } };
+}
+
+/** The master uses an action of the Vrock through the API: `spores` or `stunning-screech`, on Vex in the theatre. */
+export async function useCreatureActionRPC(master: Page, fight: VrockFight, action: 'spores' | 'stunning-screech'): Promise<void> {
+  const enc = await getEncounterRPC(master, fight.campaignId);
+  const vex = enc.combatants.find((c) => c.label === 'Vex')!;
+  const res = await callRPC(master, 'meurpg.play.v1.CombatService/UseCreatureAction', {
+    campaignId: fight.campaignId,
+    encounterId: enc.id,
+    combatantId: fight.vrock,
+    actionKey: `monster:vrock#${action}`,
+    targetIds: [vex.id],
+    idempotencyKey: randomUUID(),
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
 }

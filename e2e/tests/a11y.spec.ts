@@ -86,7 +86,7 @@ import {
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { WIDTHS, beginVrockFight, pagesFor, shoot, viewportOf } from './recharge-support';
+import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -9803,120 +9803,181 @@ test('as ofertas lendárias e o Aparar passam no axe e nas conferências de layo
 test('as ofertas lendárias e o Aparar passam no axe e nas conferências de layout no tema escuro, em 390, 768 e 1280', { tag: ['@a11y', '@PM-04', '@RN-10'] }, async ({ browser }) => {
   test.setTimeout(400_000);
   await scanLegendaryScreens(browser, 'dark');
+});
 
-/** The master's Recharge and uses-per-day screens (#556): the card of a Vrock's turn with Esporos (Recharge 6) and Guincho atordoante (1/day), ready,
- * spent, the d6 at the start of the turn, the uses gone, the opened row of the order, the stat block that is slow and the one that cannot be read; and
- * the player, who reads none of it (RN-20, RN-29). Each state is checked and saved at 390, 768 and 1280 px (E2E_SHOTS_DIR). */
-async function scanRechargeScreens(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+/** The master's Recharge and uses-per-day screens (#556): one test per screen and theme, each on its own Vrock fight (Esporos, Recharge 6;
+ * Guincho atordoante, 1/day), the state reached through the API, then checked (axe and layout) and saved at 390, 768 and 1280 px
+ * (E2E_SHOTS_DIR). */
+async function rechargeScreen(browser: Browser, colorScheme: 'light' | 'dark', screen: (s: RechargeScreen) => Promise<void>): Promise<void> {
   const { m, p, close } = await pagesFor(browser, colorScheme, 1280);
   try {
     const fight = await beginVrockFight(m, p, 'Acessibilidade recarga');
     const acts = fight.card.locator('app-creature-actions');
-    const everyWidth = async (page: Page, screen: string, what: string, at?: () => Locator, order = false, turn = true) => {
+    const everyWidth = async (page: Page, name: string, what: string, at?: () => Locator, where: 'turn' | 'order' | 'stay' = 'turn') => {
       for (const width of WIDTHS) {
         await page.setViewportSize(viewportOf(width));
         // The order is its own tab on a phone: its screen opens the row there, every other screen is the turn's.
-        if (order) {
+        if (where === 'order') {
           await openOrderRow(page, fight.label);
-        } else if (turn) {
+        } else if (where === 'turn') {
           await openTurn(page);
         }
         await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
-        await shoot(page, screen, width, colorScheme, at?.());
+        await shoot(page, name, width, colorScheme, at?.());
       }
     };
-
-    // Both actions ready: Esporos "Pronta", Guincho atordoante with its use.
-    await expect(acts.getByText('Pronta')).toBeVisible();
-    await expect(acts.getByText('1 de 1')).toBeVisible();
-    await everyWidth(m, 'recarga-pronta', 'Recarga: as ações prontas', () => acts);
-
-    // The master uses Esporos: spent, and "Usar" is dashed with the reason of the turn.
-    await acts.getByRole('button', { name: /^Usar Esporos/ }).click();
-    await expect(m.getByTestId('creature-action-result')).toBeVisible();
-    await expect(acts.getByText('Gasta')).toBeVisible();
-    await expect(acts.getByText('A ação deste turno já foi usada.').first()).toBeVisible();
-    await everyWidth(m, 'recarga-gasta', 'Recarga: Esporos gasta no turno', () => acts);
-
-    // The turn comes back: the server rolled the d6 at its start, and the card says what it said.
-    await fight.nextTurn();
-    const rolled = m.getByTestId('recharge-rolled');
-    await expect(rolled).toContainText(/rolou \d no d6\./);
-    if (/não recarregou/.test((await rolled.textContent()) ?? '')) {
-      await expect(acts.getByText(/Volta com 6 no d6 que o app rola no começo de cada turno do/)).toBeVisible();
-    }
-    await everyWidth(m, 'recarga-comeco-do-turno', 'Recarga: a rolagem no começo do turno', () => rolled);
-
-    // Guincho atordoante (1/day): used, and gone for the combat.
-    await acts.getByRole('button', { name: /^Usar Guincho atordoante/ }).click();
-    await expect(m.getByTestId('creature-action-result')).toBeVisible();
-    await expect(acts.getByText('0 de 1')).toBeVisible();
-    await fight.nextTurn();
-    await expect(acts.getByText(`Sem usos hoje. O ${fight.label} tem de novo no próximo combate.`)).toBeVisible();
-    await everyWidth(m, 'usos-por-dia-sem-usos', 'Usos por dia: sem usos hoje', () => acts);
-
-    // The opened row of the order lists the limits, one line each.
-    await openOrderRow(m, fight.label);
-    const lines = m.getByTestId('order-limit');
-    await expect(lines).toHaveCount(2);
-    await expect(lines.filter({ hasText: /^\s*(autorenew)?\s*Esporos · Recarga 6 · (pronta|gasta)/ })).toHaveCount(1);
-    await expect(lines.filter({ hasText: 'Guincho atordoante · 1/dia · 0 de 1' })).toHaveCount(1);
-    await everyWidth(m, 'ordem-limites', 'Recarga: os limites na linha da ordem', () => lines.first(), true);
-
-    // A player reads nothing of it: no state, no uses, no roll, no "Outras ações".
-    await openSessionPage(p, fight.campaignId);
-    await p.reload();
-    await openSessionPage(p, fight.campaignId);
-    for (const word of ['Outras ações', 'Pronta', 'Gasta', 'no d6', 'de 1', 'Recarga']) {
-      await expect(p.locator('body')).not.toContainText(word);
-    }
-    await everyWidth(p, 'jogador-sem-limites', 'Recarga: a jogadora não lê os limites', undefined);
-
-    // The stat block is slow to read, then cannot be read; "Tentar de novo" reads it.
-    let release: () => void = () => undefined;
-    const held = new Promise<void>((resolve) => (release = resolve));
-    await m.route('**/meurpg.rules.v1.ContentService/GetCreature', async (route) => {
-      await held;
-      await route.abort();
-    });
-    await m.reload();
-    await openSessionPage(m, fight.campaignId);
-    await expect(fight.card.getByText('Lendo a ficha da criatura…')).toBeVisible();
-    await everyWidth(m, 'ficha-lendo', 'Recarga: lendo a ficha da criatura', () => fight.card.locator('app-creature-actions'));
-    release();
-    await expect(fight.card.getByRole('alert')).toContainText('Não deu para ler as outras ações da criatura.');
-    await everyWidth(m, 'ficha-erro', 'Recarga: a ficha não pôde ser lida', () => fight.card.locator('app-creature-actions'));
-    await m.unroute('**/meurpg.rules.v1.ContentService/GetCreature');
-    await fight.card.getByRole('button', { name: 'Tentar de novo' }).click();
-    await expect(fight.card.getByRole('button', { name: /^Usar Esporos/ })).toBeVisible();
-
-    // The long rest's card names the NPCs of the campaign that get their kept uses back. The table has no NPC of its own that kept any,
-    // so the answer of the preview is the server's with one name added: what the server sends is held by the leak rows (leaktest).
-    await m.route('**/meurpg.play.v1.ResourceService/GetRestPreview', async (route) => {
-      const res = await route.fetch();
-      const body = (await res.json()) as Record<string, unknown>;
-      await route.fulfill({ response: res, json: { ...body, npcsBack: [{ characterId: 'bartolo', name: 'Bartolo' }] } });
-    });
-    await combatRPC(m, 'EndEncounter', { campaignId: fight.campaignId, encounterId: (await getEncounterRPC(m, fight.campaignId)).id });
-    await openSessionPage(m, fight.campaignId, 'grupo');
-    await m.getByRole('button', { name: 'Voltar à sessão' }).click();
-    const rest = m.getByRole('region', { name: 'Descanso' });
-    await rest.getByRole('button', { name: 'Descanso longo' }).click();
-    const question = rest.getByRole('alertdialog', { name: 'Começar o descanso longo?' });
-    await expect(question).toContainText('NPCs da campanha recuperam os usos: Bartolo.');
-    await everyWidth(m, 'descanso-longo-npcs', 'Recarga: o descanso longo devolve os usos dos NPCs', () => question, false, false);
-    await m.unroute('**/meurpg.play.v1.ResourceService/GetRestPreview');
+    await screen({ m, p, fight, acts, everyWidth });
   } finally {
     await close();
   }
 }
 
-test('a recarga e os usos por dia passam no axe e nas conferências de layout no tema claro, a 390, 768 e 1280 px', { tag: ['@a11y', '@MR-012', '@RN-20', '@RN-29'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanRechargeScreens(browser, 'light');
-});
+type RechargeScreen = {
+  m: Page;
+  p: Page;
+  fight: Awaited<ReturnType<typeof beginVrockFight>>;
+  acts: Locator;
+  everyWidth: (page: Page, name: string, what: string, at?: () => Locator, where?: 'turn' | 'order' | 'stay') => Promise<void>;
+};
 
-test('a recarga e os usos por dia passam no axe e nas conferências de layout no tema escuro, a 390, 768 e 1280 px', { tag: ['@a11y', '@MR-012', '@RN-20', '@RN-29'] }, async ({ browser }) => {
-  test.setTimeout(600_000);
-  await scanRechargeScreens(browser, 'dark');
-});
+const rechargeScreens: { name: string; run: (s: RechargeScreen) => Promise<void> }[] = [
+  {
+    name: 'as ações prontas',
+    run: async ({ m, fight, acts, everyWidth }) => {
+      await expect(acts.getByText('Pronta')).toBeVisible();
+      await expect(acts.getByText('1 de 1')).toBeVisible();
+      await everyWidth(m, 'recarga-pronta', 'Recarga: as ações prontas', () => acts);
+      expect(fight.label).toBeTruthy();
+    },
+  },
+  {
+    name: 'Esporos gasta no turno, com o "Usar" tracejado e o motivo',
+    run: async ({ m, fight, acts, everyWidth }) => {
+      await useCreatureActionRPC(m, fight, 'spores');
+      await m.reload();
+      await openSessionPage(m, fight.campaignId);
+      const spores = acts.locator('li.act').filter({ hasText: 'Esporos' });
+      await expect(spores.getByText('Gasta')).toBeVisible();
+      await expect(spores.getByText('A ação deste turno já foi usada.')).toBeVisible();
+      await expect(spores.getByRole('button', { name: /^Usar Esporos/ })).toHaveAttribute('aria-disabled', 'true');
+      await everyWidth(m, 'recarga-gasta', 'Recarga: Esporos gasta no turno', () => spores);
+    },
+  },
+  {
+    name: 'a rolagem do d6 no começo do turno',
+    run: async ({ m, fight, acts, everyWidth }) => {
+      await useCreatureActionRPC(m, fight, 'spores');
+      await fight.nextTurn();
+      const rolled = m.getByTestId('recharge-rolled');
+      await expect(rolled).toContainText(/rolou \d no d6\./);
+      const spores = acts.locator('li.act').filter({ hasText: 'Esporos' });
+      // The d6 is the server's and random: both results are checked in full, the card says what the roll said.
+      if (/não recarregou/.test((await rolled.textContent()) ?? '')) {
+        await expect(rolled).toContainText('precisa de 6');
+        await expect(rolled).toHaveClass(/mr-notice--neutral/);
+        await expect(spores.getByText('Gasta')).toBeVisible();
+        await expect(spores.getByText(/Volta com 6 no d6 que o app rola no começo de cada turno do/)).toBeVisible();
+        await expect(spores.getByRole('button', { name: /^Usar Esporos/ })).toHaveAttribute('aria-disabled', 'true');
+      } else {
+        await expect(rolled).toHaveClass(/mr-notice--success/);
+        await expect(spores.getByText('Pronta')).toBeVisible();
+        await expect(spores.getByRole('button', { name: /^Usar Esporos/ })).not.toHaveAttribute('aria-disabled', 'true');
+      }
+      // The notice sits under the action chips and above the attacks, in view with the chips.
+      const chips = fight.card.getByRole('list', { name: 'O que ele já usou neste turno' });
+      const above = await Promise.all([chips.boundingBox(), rolled.boundingBox(), acts.boundingBox()]);
+      expect(above[1]!.y).toBeGreaterThan(above[0]!.y);
+      expect(above[1]!.y).toBeLessThan(above[2]!.y);
+      await everyWidth(m, 'recarga-comeco-do-turno', 'Recarga: a rolagem no começo do turno', () => rolled);
+    },
+  },
+  {
+    name: 'Guincho atordoante sem usos hoje',
+    run: async ({ m, fight, acts, everyWidth }) => {
+      await useCreatureActionRPC(m, fight, 'stunning-screech');
+      await fight.nextTurn();
+      const screech = acts.locator('li.act').filter({ hasText: 'Guincho atordoante' });
+      await expect(screech.getByText('0 de 1')).toBeVisible();
+      await expect(screech.getByText(`Sem usos hoje. O ${fight.label} tem de novo no próximo combate.`)).toBeVisible();
+      // Scrolled to the state it is named for: the whole row, its uses and its reason, in view.
+      await everyWidth(m, 'usos-por-dia-sem-usos', 'Usos por dia: sem usos hoje', () => screech);
+    },
+  },
+  {
+    name: 'os limites na linha da ordem e a jogadora que não os lê',
+    run: async ({ m, p, fight, everyWidth }) => {
+      await useCreatureActionRPC(m, fight, 'spores');
+      await fight.nextTurn();
+      await useCreatureActionRPC(m, fight, 'stunning-screech');
+      await openOrderRow(m, fight.label);
+      const lines = m.getByTestId('order-limit');
+      await expect(lines).toHaveCount(2);
+      await expect(lines.filter({ hasText: /Esporos · Recarga 6 · (pronta|gasta)/ })).toHaveCount(1);
+      await expect(lines.filter({ hasText: 'Guincho atordoante · 1/dia · 0 de 1' })).toHaveCount(1);
+      await everyWidth(m, 'ordem-limites', 'Recarga: os limites na linha da ordem', () => lines.first(), 'order');
+      // A player reads nothing of it: no state, no uses, no roll, no "Outras ações".
+      await p.reload();
+      await openSessionPage(p, fight.campaignId);
+      for (const word of ['Outras ações', 'Pronta', 'Gasta', 'no d6', 'de 1', 'Recarga']) {
+        await expect(p.locator('body')).not.toContainText(word);
+      }
+      await everyWidth(p, 'jogador-sem-limites', 'Recarga: a jogadora não lê os limites', undefined, 'stay');
+    },
+  },
+  {
+    name: 'a ficha da criatura lenta e a que não pôde ser lida',
+    run: async ({ m, fight, everyWidth }) => {
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await m.route('**/meurpg.rules.v1.ContentService/GetCreature', async (route) => {
+        await held;
+        await route.abort();
+      });
+      await m.reload();
+      await openSessionPage(m, fight.campaignId);
+      const acts = () => fight.card.locator('app-creature-actions');
+      await expect(fight.card.getByText('Lendo a ficha da criatura…')).toBeVisible();
+      await everyWidth(m, 'ficha-lendo', 'Recarga: lendo a ficha da criatura', acts);
+      release();
+      await expect(fight.card.locator('.acts__live')).toContainText('Não deu para ler as outras ações da criatura.');
+      await everyWidth(m, 'ficha-erro', 'Recarga: a ficha não pôde ser lida', acts);
+      await m.unroute('**/meurpg.rules.v1.ContentService/GetCreature');
+      const retry = fight.card.getByRole('button', { name: 'Tentar de novo' });
+      await retry.focus();
+      await retry.click();
+      // The focus stays in the section (its heading) while the card reads again, never on the page's body.
+      await expect(fight.card.getByRole('button', { name: /^Usar Esporos/ })).toBeVisible();
+      await expect(m.locator('body')).not.toBeFocused();
+    },
+  },
+  {
+    name: 'o descanso longo devolve os usos dos NPCs',
+    run: async ({ m, fight, everyWidth }) => {
+      // The table has no NPC of its own that kept any use, so the preview's answer is the server's with one name added: what the
+      // server sends is held by the leak rows (leaktest).
+      await m.route('**/meurpg.play.v1.ResourceService/GetRestPreview', async (route) => {
+        const res = await route.fetch();
+        const body = (await res.json()) as Record<string, unknown>;
+        await route.fulfill({ response: res, json: { ...body, npcsBack: [{ characterId: 'bartolo', name: 'Bartolo' }] } });
+      });
+      await combatRPC(m, 'EndEncounter', { campaignId: fight.campaignId, encounterId: (await getEncounterRPC(m, fight.campaignId)).id });
+      await openSessionPage(m, fight.campaignId, 'grupo');
+      await m.getByRole('button', { name: 'Voltar à sessão' }).click();
+      const rest = m.getByRole('region', { name: 'Descanso' });
+      await rest.getByRole('button', { name: 'Descanso longo' }).click();
+      const question = rest.getByRole('alertdialog', { name: 'Começar o descanso longo?' });
+      await expect(question).toContainText('NPCs da campanha recuperam os usos: Bartolo.');
+      await everyWidth(m, 'descanso-longo-npcs', 'Recarga: o descanso longo devolve os usos dos NPCs', () => question, 'stay');
+      await m.unroute('**/meurpg.play.v1.ResourceService/GetRestPreview');
+    },
+  },
+];
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  for (const { name, run } of rechargeScreens) {
+    test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: ${name}, a 390, 768 e 1280 px`, { tag: ['@a11y', '@MR-012', '@RN-20', '@RN-29'] }, async ({ browser }) => {
+      test.setTimeout(240_000);
+      await rechargeScreen(browser, colorScheme, run);
+    });
+  }
+}
