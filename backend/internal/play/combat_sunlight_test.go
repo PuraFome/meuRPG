@@ -351,3 +351,45 @@ func TestSunlightLit(t *testing.T) {
 		}
 	}
 }
+
+// The notes of a check a creature in the sun rolls in a contest, a held check or a passive Perception are the same pure
+// rules as the attack's: the Drow (Sensitivity) is spoiled on Perception alone, and the note a player could read
+// says "Outra fonte" and nothing of the sun.
+func TestSunlight_AChecksNoteNamesNoSun(t *testing.T) {
+	t.Parallel()
+	a, e := drowFight(t)
+	ctx := t.Context()
+	notes := func(skill string) []rollNote {
+		t.Helper()
+		enc, err := a.h.svc.queries.GetEncounterByID(ctx, e.GetId())
+		if err != nil {
+			t.Fatalf("GetEncounterByID() error = %v", err)
+		}
+		cs, err := a.h.svc.queries.ListCombatants(ctx, e.GetId())
+		if err != nil {
+			t.Fatalf("ListCombatants() error = %v", err)
+		}
+		who := a.id(t, drow)
+		for _, c := range cs {
+			if c.ID == who {
+				out, err := a.h.svc.checkSourcesRead(ctx, a.campaignID, enc, c, skill, cs)
+				if err != nil {
+					t.Fatalf("checkSourcesRead(%s) error = %v", skill, err)
+				}
+				return out
+			}
+		}
+		t.Fatal("the Drow is not a combatant")
+		return nil
+	}
+	if got := notes(skillPercept); len(got) != 0 {
+		t.Fatalf("Perception with the sun off: notes %v, want none", got)
+	}
+	a.mustSunlight(t, e, onSun)
+	if got := notes(skillPercept); len(got) != 1 || got[0].Kind != "other" || got[0].Label != "Outra fonte" || got[0].Adv {
+		t.Errorf("Perception in the sun: notes %v, want one disadvantage note, \"Outra fonte\"", got)
+	}
+	if got := notes(skillAthletics); len(got) != 0 {
+		t.Errorf("Athletics in the sun for a Sensitivity creature: notes %v, want none", got)
+	}
+}

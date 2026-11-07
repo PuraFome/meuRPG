@@ -55,13 +55,13 @@ describe('SunlightLayer', () => {
     ]);
   });
 
-  it('erases only the lit squares of the stroke', () => {
+  it('sends the whole erase stroke, for the answer in the air may be older than it', () => {
     const { pad, changes } = mount({ painting: true, tool: 'erase', squares: [sq(1, 0)] });
     pad()!.setPointerCapture = () => undefined;
     pad()!.dispatchEvent(pointer('pointerdown', 5, 5));
     pad()!.dispatchEvent(pointer('pointermove', 15, 5));
     pad()!.dispatchEvent(pointer('pointerup', 15, 5));
-    expect(changes).toEqual([{ addSquares: [], removeSquares: [sq(1, 0)] }]);
+    expect(changes).toEqual([{ addSquares: [], removeSquares: [sq(0, 0), sq(1, 0)] }]);
   });
 
   it('sends nothing for a cancelled stroke', () => {

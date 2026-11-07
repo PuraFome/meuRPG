@@ -169,7 +169,9 @@ export class SunlightLayer {
   }
 
   private send(touched: readonly Square[]): void {
-    const change = strokeChange(this.squares(), this.tool(), touched);
+    // The server's squares may be older than a stroke still in the air (a square painted and erased within one round trip), so
+    // the stroke is sent whole, each square once; the server ignores what is already so.
+    const change = strokeChange(this.tool() === 'erase' ? touched : [], this.tool(), touched);
     if (change.addSquares.length + change.removeSquares.length > 0) {
       this.paint.emit(change);
     }

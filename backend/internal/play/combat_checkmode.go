@@ -200,11 +200,11 @@ func (s *Service) spendCheckHelps(ctx context.Context, c *combatTx, ids []string
 func notesOfSources(sources []combat.Source, hide func(combat.Source) bool) []rollNote {
 	var out []rollNote
 	for _, src := range sources {
-		label := textContext{self: true, names: func(k string) string { return k }}.sentence(src)
+		label, kind := textContext{self: true, names: func(k string) string { return k }}.sentence(src), src.Kind
 		if hide != nil && hide(src) {
-			label = "Outra fonte" // an effect the master hides (RN-22)
+			label, kind = "Outra fonte", "other" // an effect the master hides (RN-22), or the sun (RN-20): the kind says no more than the label
 		}
-		out = append(out, rollNote{Kind: src.Kind, Label: label, Adv: src.Effect == combat.ModeAdvantage})
+		out = append(out, rollNote{Kind: kind, Label: label, Adv: src.Effect == combat.ModeAdvantage})
 	}
 	return out
 }

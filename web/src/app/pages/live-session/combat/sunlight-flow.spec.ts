@@ -9,7 +9,7 @@ describe('SunlightFlow', () => {
     const busy = signal(busyFirst);
     const setSunlight = vi.fn(async () => encounter());
     const run = vi.fn(async (call: (e: ReturnType<typeof encounter>) => Promise<unknown>) => {
-      await call(encounter({ id: 'e1' }));
+      await call(encounter({ id: 'e1', sunlightOn: true }));
       return true;
     });
     const flow = new SunlightFlow({

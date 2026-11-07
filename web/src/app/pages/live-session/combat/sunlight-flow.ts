@@ -45,7 +45,10 @@ export class SunlightFlow {
       await new Promise((resolve) => setTimeout(resolve, WAIT_MS));
     }
     return this.ctx.calls.run((e: Encounter) =>
-      this.ctx.api.combatants.setSunlight(this.ctx.campaignId(), e.id, { on: true, ...change }),
+      this.ctx.api.combatants.setSunlight(this.ctx.campaignId(), e.id, {
+        on: e.sunlightOn,
+        ...change,
+      }),
     );
   }
 }
