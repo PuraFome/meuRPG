@@ -6780,6 +6780,38 @@ func (q *Queries) ListLastingEffects(ctx context.Context, encounterID string) ([
 	return items, nil
 }
 
+const listNPCsGivingBackToRest = `-- name: ListNPCsGivingBackToRest :many
+SELECT npc.character_id
+FROM npc_spell_use npc
+WHERE ($1::bool AND (npc.slots_used <> '{}'::jsonb OR npc.creature_spent <> '{}'::jsonb))
+   OR EXISTS (SELECT 1 FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%')
+ORDER BY npc.character_id
+`
+
+// The hand-made NPCs (of any campaign: the caller keeps its campaign's, by name, through the roster) that this rest gives something
+// back to: after a long rest every NPC that kept a spell slot, a use a day, a rest action or Legendary Resistance (what
+// ResetNPCSpellUseOfCampaign clears); after a short rest every NPC that kept a rest action (what ResetNPCRestUsesOfCampaign
+// clears). The master's rest preview.
+func (q *Queries) ListNPCsGivingBackToRest(ctx context.Context, longRest bool) ([]string, error) {
+	rows, err := q.db.Query(ctx, listNPCsGivingBackToRest, longRest)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var character_id string
+		if err := rows.Scan(&character_id); err != nil {
+			return nil, err
+		}
+		items = append(items, character_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenAttackHolds = `-- name: ListOpenAttackHolds :many
 SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL ORDER BY created_at, id
 `

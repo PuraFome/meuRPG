@@ -23,7 +23,9 @@ import {
   type GetTurnOptionsResponse,
   type TargetInReach,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { type Attack, type Creature } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { type Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { RechargeNotice } from './recharge-notice';
+import { StatBlockLoad } from './stat-block-load';
 import { CreaturesClient } from '../../../../core/creatures/creatures-client';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -43,6 +45,7 @@ import {
   roundLabel,
 } from '../../../../core/combat/combat-view';
 import { joinDots } from '../../../../core/format/text';
+import type { RechargeRoll } from '../../../../core/combat/combat-derived';
 import { defaultTarget, isHostile } from '../../../../core/combat/attack-flow';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -99,6 +102,7 @@ import { PendingDamages } from './pending-damages';
     PendingDamages,
     Portrait,
     RageStatus,
+    RechargeNotice,
     MultiRoll,
     RollModePicker,
     RollPicker,
@@ -123,6 +127,8 @@ export class NpcCard {
   readonly framed = input(true);
   /** The newest attack of this one was stopped by the target's Escudo (from the log). */
   readonly reactionStopped = input(false);
+  /** The d6 the server rolled for this creature at the start of its turn (a Recharge action it had spent), from the log. */
+  readonly rechargeRolls = input<readonly RechargeRoll[]>([]);
   /** The page's own call (the turn passing) is in flight. */
   readonly turnBusy = input(false);
   /** The combat is played without a map (RN-25): movement is a number and the opportunity attack is the master's offer. */
@@ -156,7 +162,9 @@ export class NpcCard {
   protected readonly last = signal<LastRoll | null>(null);
   private key = newKey();
   /** The creature's stat block, read once per kind (the client keeps it): its Multiattack routines. `null` until read, and when it cannot be. */
-  protected readonly block = signal<Creature | null>(null);
+  protected readonly statBlock = new StatBlockLoad();
+  protected readonly blockState = this.statBlock.state;
+  protected readonly block = this.statBlock.block;
   protected readonly creatureDamageIds = signal<readonly string[]>([]);
   /** The routine the master picked, when the creature has a choice between several. */
   protected readonly routineIdx = signal(0);
@@ -311,19 +319,13 @@ export class NpcCard {
       const key = this.subject().bestiaryCreatureKey ?? '';
       const campaignId = this.campaignId();
       untracked(() => {
-        this.block.set(null);
+        this.statBlock.reset(!!key);
         this.routineIdx.set(0);
-        if (!key) {
-          return;
+        if (key) {
+          this.statBlock.read(this.creatures, campaignId, key, () =>
+            untracked(() => this.subject().bestiaryCreatureKey ?? ''),
+          );
         }
-        this.creatures.statBlock(campaignId, key).then(
-          (block) => {
-            if (untracked(() => this.subject().bestiaryCreatureKey) === key) {
-              this.block.set(block);
-            }
-          },
-          () => undefined, // no routine to show: the card is as it was
-        );
       });
     });
     // A new turn (no attack counted) starts the routine again.
