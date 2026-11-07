@@ -62,12 +62,13 @@ import {
 } from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginLegendaryFight, legendaryScreens, shotScale } from './legendary-support';
+import { LEFT_OUT_VIEWPORTS, leftOutShotScale, refuseEntries, shootLeftOut, targetLeftTheMenu } from './left-out-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
-import { archiveEntryRPC, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, giveFeatRPC, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -6065,6 +6066,108 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema cla
 });
 
 /**
+ * The entries the rules refuse (#736): the master's list with the left-out panel, the "⋮" menu and the question to remove, the
+ * editor of an entry with the marked field and the target that left the menu, the notice on the campaign's "Regras" tab, and
+ * the player's list that says nothing of it. Each screen is judged at 390, 768 and 1280 px; E2E_SHOTS_DIR, when set, also
+ * saves the screenshots (left-out-support.ts).
+ */
+async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = { width: 1280, height: 800 };
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...leftOutShotScale });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...leftOutShotScale });
+  let doneRefusing = async (): Promise<void> => undefined;
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade fora ${Date.now()}`);
+    const spell = await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Lâmina de Nanquim'));
+    const race = await createEntryRPC(m, campaignId, 'tableRace', {
+      ...raceBody('Corujeiro'),
+      traits: [{ namePt: 'Olhos de caçador', descPt: ['Enxergam longe.'], effects: [{ type: 'modifier', target: 'critical_range', mode: 'set', value: '19', applies: 'both' }] }],
+    });
+    doneRefusing = await refuseEntries(
+      m,
+      [
+        { key: spell, field: 'table_spell.damage[0].dice', reason: 'bad_formula' },
+        { key: race, field: 'table_race.traits[0].effects[0].target', reason: 'bad_value' },
+      ],
+      { [race]: (e) => targetLeftTheMenu(e) },
+    );
+    for (const width of Object.keys(LEFT_OUT_VIEWPORTS).map(Number)) {
+      const where = `(${colorScheme}, ${width}px)`;
+      for (const page of [m, p]) {
+        await page.setViewportSize({ width, height: LEFT_OUT_VIEWPORTS[width] });
+      }
+      await open(m, `/campaigns/${campaignId}/content`);
+      const panel = m.getByRole('region', { name: '2 entradas fora da campanha' });
+      await expect(panel).toBeVisible();
+      await expectScreenPasses(m, `Conteúdo da mesa, fora da campanha ${where}`);
+      await shootLeftOut(m, 'lista', width, colorScheme);
+      if (width !== 768) {
+        // K1's row of the entry itself, with its tag, in the list of its kind.
+        await open(m, `/campaigns/${campaignId}/content?kind=spells`);
+        const tag = m.locator('.mr-tag--danger', { hasText: 'Fora da campanha' }).first();
+        await expect(tag).toBeVisible();
+        await expectScreenPasses(m, `Conteúdo da mesa, a linha fora da campanha ${where}`);
+        await shootLeftOut(m, 'linha', width, colorScheme, tag);
+        await open(m, `/campaigns/${campaignId}/content`);
+        await expect(panel).toBeVisible();
+      }
+
+      await m.getByRole('button', { name: 'Mais ações de Lâmina de Nanquim' }).click();
+      await expect(m.getByRole('menuitem', { name: 'Remover' })).toBeVisible();
+      await expectScreenPasses(m, `Conteúdo da mesa, fora da campanha, o menu ${where}`);
+      await shootLeftOut(m, 'menu', width, colorScheme);
+      await m.getByRole('menuitem', { name: 'Remover' }).click();
+      await expect(m.getByRole('dialog')).toBeVisible();
+      await expectScreenPasses(m, `Conteúdo da mesa, fora da campanha, a pergunta para remover ${where}`);
+      await shootLeftOut(m, 'remover', width, colorScheme);
+      await m.getByRole('dialog').getByRole('button', { name: 'Voltar' }).click();
+      await expect(m.getByRole('dialog')).toHaveCount(0);
+
+      await open(m, entryRoute(campaignId, race));
+      // The phone reads and archives only (K3): the note says why and sends to the computer; the field is on the wider screens.
+      await expect(m.getByText('Esta raça está fora da campanha.')).toBeVisible();
+      await shootLeftOut(m, 'editor-nota', width, colorScheme);
+      if (width >= 768) {
+        const target = m.getByLabel('O que muda');
+        await expect(target).toHaveValue('alvo_antigo');
+        await expectScreenPasses(m, `Conteúdo da mesa, a raça fora da campanha ${where}`);
+        await shootLeftOut(m, 'editor', width, colorScheme, m.getByRole('heading', { level: 1 }));
+      } else {
+        await expectScreenPasses(m, `Conteúdo da mesa, a raça fora da campanha ${where}`);
+        await shootLeftOut(m, 'editor', width, colorScheme);
+      }
+
+      await open(m, `/campaigns/${campaignId}/setup`);
+      const content = m.getByRole('region', { name: 'Conteúdo da mesa' });
+      await expect(content).toContainText('estão fora da campanha');
+      await expectScreenPasses(m, `A campanha, o aviso do conteúdo fora ${where}`);
+      await shootLeftOut(m, 'campanha', width, colorScheme, content);
+
+      await open(p, `/campaigns/${campaignId}/content`);
+      await expect(p.getByRole('heading', { level: 1, name: 'Conteúdo da mesa' })).toBeVisible();
+      await expectScreenPasses(p, `Conteúdo da mesa, o jogador não vê o que ficou fora ${where}`);
+      await shootLeftOut(p, 'jogador', width, colorScheme);
+    }
+  } finally {
+    await doneRefusing(); // a read the page started is answered before the page closes
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('as entradas fora da campanha passam no axe e nas conferências de layout no tema claro, em 390, 768 e 1280', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLeftOut(browser, 'light');
+});
+
+test('as entradas fora da campanha passam no axe e nas conferências de layout no tema escuro, em 390, 768 e 1280', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanLeftOut(browser, 'dark');
+});
+
+/**
  * The master's effect editor for the rolls (MR-025, RN-23): "Rolar de novo" empty and with its resource, "Valor mínimo no
  * dado" with the damage type that goes away when another roll is checked, a refusal on the rolls, the critical range with its lock and
  * the scope cards, and what the master reads on a phone and a player reads. The entries come through the API.
@@ -6157,6 +6260,113 @@ async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', 
   } finally {
     await Promise.all([mContext.close(), pContext.close()]);
   }
+}
+
+/**
+ * A table feat raises a d20 of a check (#757, MR-025): the player types a 3 on a scene check and reads "3 → 12 (feat) + 6 = 18"
+ * before sending, then "O d20 de 3 contou como 12: feat." in the result. The feat is on Pensantus's sheet through the API.
+ */
+async function scanRollMinimumSceneCheck(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(240_000);
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForScenes(m, p, `Acessibilidade mínimo cena ${Date.now()}`);
+    campaignId = table.campaignId;
+    const feat = 'Pé de Vento';
+    await giveFeatRPC(m, campaignId, table.characterId, await createEntryRPC(m, campaignId, 'tableFeat', checkMinimumFeatBody(feat)));
+    await openSceneRPC(m, campaignId, table.cartId);
+    await openSessionPage(p, campaignId);
+    await p.getByRole('region', { name: 'Cena: A carroça tombada' }).getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20 para Investigação/).fill('3');
+    await expect(sheet.getByRole('status')).toContainText(`3 → 12 (${feat}) + 6 = 18`);
+    await p.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
+    await expectScreenPasses(p, `Cena, o d20 digitado com o mínimo da mesa, antes de enviar ${where}`);
+    await sheet.getByRole('button', { name: 'Confirmar 3', exact: true }).click();
+    await expect(sheet.getByText('Seu total em Investigação')).toBeVisible();
+    await expect(sheet.getByText(`d20: 3 → 12 (${feat}) + 6 = 18`)).toBeVisible();
+    await expect(sheet.getByText(`O d20 de 3 contou como 12: ${feat}.`)).toBeVisible();
+    await expectScreenPasses(p, `Cena, o resultado com o d20 que contou como 12 ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+/**
+ * The same feat raises the initiative d20 (a Dexterity check): the master types Pensantus's 3 and reads the total
+ * "1d20 (12) + 3 = 15" on the initiative row (Dexterity 16) with "d20: 3 → 12 (feat)" under it. The feat's name is
+ * as long as a name may be in the long rows: neither line may run past its row or the screen, and the total stays visible.
+ */
+async function scanRollMinimumInitiative(browser: Browser, colorScheme: 'light' | 'dark', width: number, feat = 'Pé de Vento'): Promise<void> {
+  test.setTimeout(240_000);
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade mínimo iniciativa ${Date.now()}`, false);
+    campaignId = table.campaignId;
+    await giveFeatRPC(m, campaignId, table.characterId, await createEntryRPC(m, campaignId, 'tableFeat', checkMinimumFeatBody(feat)));
+    await m.goto(`/campaigns/${campaignId}/session`);
+    await expectStartCombatOffered(m);
+    await clickStartCombat(m);
+    await expect(m.getByRole('dialog', { name: 'Iniciar combate' })).toBeVisible();
+    await m.getByRole('dialog').getByRole('button', { name: 'Iniciar combate' }).click();
+    await expect(m.getByText('Os NPCs rolaram sozinhos.')).toBeVisible();
+    await m.getByRole('button', { name: 'Digitar pelo jogador' }).click();
+    await m.getByLabel(/Resultado do d20 de Pensantus/).fill('3');
+    await m.getByRole('button', { name: 'Salvar', exact: true }).click();
+    const row = m.locator('li.row', { has: m.locator('[data-testid="raised-note"]') });
+    const total = row.getByText('1d20 (12) + 3 = 15', { exact: true });
+    const note = row.locator('[data-testid="raised-note"]');
+    await expect(total).toBeVisible();
+    await expect(total).toContainText('= 15');
+    await expect(note).toHaveText(`d20: 3 → 12 (${feat})`);
+    // Neither line runs past its row or the screen (a long feature name wraps under the total; it never cuts the total).
+    const rowBox = (await row.boundingBox())!;
+    for (const [what, line] of [['o total', total], ['a nota', note]] as const) {
+      const box = (await line.boundingBox())!;
+      expect(box.x + box.width, `${what} passa da borda direita da linha ${where}`).toBeLessThanOrEqual(rowBox.x + rowBox.width + 0.5);
+      expect(box.x + box.width, `${what} passa da borda da tela ${where}`).toBeLessThanOrEqual(width);
+      expect(box.x, `${what} sai pela esquerda ${where}`).toBeGreaterThanOrEqual(0);
+    }
+    await expectScreenPasses(m, `Iniciativa do mestre, o d20 que contou como 12 ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 390], ['dark', 768], ['light', 1280], ['dark', 1280], ['dark', 390], ['light', 768]] as const) {
+  const theme = scheme === 'light' ? 'claro' : 'escuro';
+  test(`o d20 de um teste que o mínimo da mesa levantou passa no axe e nas conferências de layout no tema ${theme}, em ${width}px`, { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+    await scanRollMinimumSceneCheck(browser, scheme, width);
+  });
+  test(`a iniciativa que o mínimo da mesa levantou passa no axe e nas conferências de layout no tema ${theme}, em ${width}px`, { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+    await scanRollMinimumInitiative(browser, scheme, width);
+  });
+  test(`a iniciativa que o mínimo da mesa levantou, com o nome da característica de 32 letras, cabe na linha no tema ${theme}, em ${width}px`, { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+    await scanRollMinimumInitiative(browser, scheme, width, 'Pé de Vento Muito Mais Que Longo');
+  });
 }
 
 /**
