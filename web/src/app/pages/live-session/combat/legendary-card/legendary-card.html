@@ -1,7 +1,7 @@
 @if (folded()) {
   <section class="offer offer--fold" [attr.aria-label]="'Ações lendárias: ' + card().title" data-testid="legendary-folded">
     <span class="offer__over"><mat-icon aria-hidden="true">crown</mat-icon>{{ foldedText() }}</span>
-    <button matButton="outlined" type="button" class="toggleFold_btn" data-initial [attr.aria-label]="'Abrir as ações lendárias de ' + card().title" (click)="toggleFold(false)">
+    <button matButton="outlined" type="button" class="fold__btn" data-initial [attr.aria-label]="'Abrir as ações lendárias de ' + card().title" (click)="toggleFold(false)">
       <mat-icon aria-hidden="true">keyboard_arrow_down</mat-icon>Abrir
     </button>
   </section>
