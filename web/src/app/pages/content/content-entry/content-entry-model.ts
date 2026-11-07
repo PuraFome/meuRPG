@@ -17,6 +17,8 @@ import {
 } from '../../../core/content/content-kinds';
 import { readEntry } from '../../../core/content/content-read';
 import type { EntryRead, NameOf } from '../../../core/content/content-read-parts';
+import { optionSummary } from '../../../core/content/feat-options';
+import { featureToDraft } from '../../../core/content/feature-draft';
 import { parentViewOf } from '../../../core/content/subrace-traits';
 import type { EffectMenuVm } from '../../../core/content/effect-draft';
 import { openSheet } from '../../../shared/sheet/sheet-host';
@@ -33,6 +35,7 @@ export const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
   feat: TableContentKind.FEAT,
   option: TableContentKind.OPTION,
   classfeature: TableContentKind.CLASS_FEATURE,
+  creature: TableContentKind.CREATURE,
 };
 
 export const NEW_TITLES: Readonly<Record<number, string>> = {
@@ -45,6 +48,7 @@ export const NEW_TITLES: Readonly<Record<number, string>> = {
   [TableContentKind.FEAT]: 'Novo talento',
   [TableContentKind.OPTION]: 'Nova opção',
   [TableContentKind.CLASS_FEATURE]: 'Nova característica de classe',
+  [TableContentKind.CREATURE]: 'Nova criatura',
 };
 
 /** The table's own feats a "feat" choice may list (the catalog has no feats; the SRD's are not offered by name). */
@@ -66,6 +70,7 @@ export const EDITABLE = new Set<TableContentKind>([
   TableContentKind.FEAT,
   TableContentKind.OPTION,
   TableContentKind.CLASS_FEATURE,
+  TableContentKind.CREATURE,
 ]);
 
 /** The entries a read-again brings, with the one being edited kept as it is typed: when another write changed its body and
@@ -196,16 +201,20 @@ export function confirmArchiveInSheet(
   );
 }
 
-/** What blocks the editor: the catalog always, the menu for every editor but the spell's (which does not use it), the defaults
- * for the class and the subclass. */
+/** The editors that do not use the effect menu: the spell's and the creature's. */
+export function usesNoMenu(kind: TableContentKind | null): boolean {
+  return kind === TableContentKind.SPELL || kind === TableContentKind.CREATURE;
+}
+
+/** What blocks the editor: the catalog always, the menu for every editor that uses it, the defaults for the class and the subclass. */
 export function extrasErrorOf(e: {
   catalog: string;
   menu: string;
   defaults: string;
-  spell: boolean;
+  noMenu: boolean;
   needsDefaults: boolean;
 }): string {
-  return e.catalog || (e.spell ? '' : e.menu) || (e.needsDefaults ? e.defaults : '');
+  return e.catalog || (e.noMenu ? '' : e.menu) || (e.needsDefaults ? e.defaults : '');
 }
 
 /** "Voltar para Raças" for the master; the player's list is the whole table's content. */
@@ -249,6 +258,7 @@ export function readOfEntry(
   nameOf: NameOf,
   catalog: CatalogVm | null,
   entries: readonly TableEntry[],
+  menu: EffectMenuVm | null = null,
 ): EntryRead | null {
   return entry
     ? readEntry(
@@ -256,7 +266,8 @@ export function readOfEntry(
         nameOf,
         (key) => catalog?.subclassLevelOf(key) ?? 0,
         parentViewOf(entries),
-        catalog?.offeredByName,
+        catalog?.offeredByRead,
+        menu ? (o) => optionSummary(featureToDraft(o), menu, true) : undefined,
       )
     : null;
 }

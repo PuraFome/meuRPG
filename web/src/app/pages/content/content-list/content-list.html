@@ -173,10 +173,10 @@
           </div>
           @if (counts().get(current().slug) === 0) {
             <div class="empty">
-              <mat-icon aria-hidden="true">menu_book</mat-icon>
+              <mat-icon aria-hidden="true">{{ current().empty?.icon ?? 'menu_book' }}</mat-icon>
               <div>
-                <p class="empty__title">Nada cadastrado ainda.</p>
-                <p class="muted">O que você cadastrar aqui vale só em {{ s.ctx.campaignName }}.</p>
+                <p class="empty__title">{{ current().empty?.title ?? 'Nada cadastrado ainda.' }}</p>
+                <p class="muted">{{ current().empty?.text ?? 'O que você cadastrar aqui vale só em ' + s.ctx.campaignName + '.' }}</p>
               </div>
             </div>
             @if (current().editable) {

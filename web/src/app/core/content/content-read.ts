@@ -3,6 +3,7 @@ import type {
   TableClassFeature,
   TableEntry,
   TableFeat,
+  TableFeature,
   TableOption,
   TableRace,
   TableSpell,
@@ -24,8 +25,10 @@ import { bonusText } from './feature-draft';
 import { entryEffectsPart } from './content-read-rolls';
 import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
+import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
+import { readCreature } from './content-read-creature';
 import { type OfferedByName, optionPrerequisiteParts, optionSetName } from './option-text';
 import { parentTraitsOf, replacedNames } from './subrace-traits';
 
@@ -115,7 +118,11 @@ function readBackground(b: TableBackground, nameOf: NameOf): EntryRead {
   return { rows, sections, text: [] };
 }
 
-function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
+function readFeat(
+  f: TableFeat,
+  nameOf: NameOf,
+  optionSide?: (o: TableFeature) => string,
+): EntryRead {
   const asks = prerequisiteSupport(f.prerequisite, nameOf);
   const rows: ReadRow[] = [{ label: 'Pré-requisito', value: asks || 'Nenhum' }];
   for (const e of f.effects) {
@@ -127,7 +134,15 @@ function readFeat(f: TableFeat, nameOf: NameOf): EntryRead {
       });
     }
   }
-  return { rows, sections: [], text: f.descPt, ...entryEffectsPart(f.effects, nameOf) };
+  rows.push(...featChoiceRows(f));
+  const options = featOptionItems(f, nameOf, optionSide);
+  return {
+    rows,
+    sections: [],
+    text: f.descPt,
+    ...entryEffectsPart(f.effects, nameOf),
+    ...(options.length > 0 ? { options } : {}),
+  };
 }
 
 function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName): EntryRead {
@@ -165,6 +180,7 @@ export function readEntry(
   subclassLevelOf: (classKey: string) => number = () => 0,
   parentOf: (raceKey: string) => ParentView = () => ({ traits: [] }),
   offeredByName: OfferedByName = (key) => featureKeyName(key, nameOf),
+  optionSide?: (o: TableFeature) => string,
 ): EntryRead {
   const body = entry.body;
   switch (body.case) {
@@ -175,13 +191,15 @@ export function readEntry(
     case 'tableBackground':
       return readBackground(body.value, nameOf);
     case 'tableFeat':
-      return readFeat(body.value, nameOf);
+      return readFeat(body.value, nameOf, optionSide);
     case 'tableOption':
       return readOption(body.value, nameOf, offeredByName);
     case 'tableClassFeature':
       return readClassFeature(body.value, nameOf);
     case 'tableSpell':
       return readSpell(body.value, nameOf);
+    case 'tableCreature':
+      return readCreature(body.value, nameOf);
     case 'tableClass':
       return readClass(body.value, nameOf);
     case 'tableSubclass':

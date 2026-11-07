@@ -127,6 +127,8 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
     calls: this.calls,
     campaignId: () => this.campaignId(),
     encounter: () => this.encounter(),
+    theatre: () => this.theatre(),
+    options: () => this.options(),
     toAnswer: () => this.toAnswer(),
     info: () => this.info(),
     attack: (offer, key, options) =>

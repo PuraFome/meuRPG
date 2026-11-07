@@ -1,6 +1,9 @@
+import { FEAT_OPTION_TEXTS } from './content-violation-texts-feat';
 import { RACE_FIELD_TEXTS } from './content-violation-texts-race';
 
 /** What the server's reason at a field says in Portuguese: the table `violationText` looks a violation up in (the rest of its words are there). */
+
+import { CREATURE_FIELD_TEXTS } from './content-violation-texts-creature';
 
 const DICE_TEXT = 'Escreva o dado assim: 2d8 (de 1 a 20 dados).';
 export const FORMULA_TEXT =
@@ -333,6 +336,7 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     shape: /^table_class_feature\.effects(\[\])?$/,
     text: 'Esta característica tem efeitos demais. Tire alguns.',
   },
+  ...CREATURE_FIELD_TEXTS,
   { shape: /\.level$/, text: 'Escolha um nível de magia de 0 (truque) a 9.' },
   { shape: /\.school_key$/, text: 'Escolha a escola da magia.' },
   {
@@ -396,5 +400,6 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Esta classe não existe mais. Tire-a da lista.',
   },
   { shape: /\.class_keys\[\]$/, text: 'Esta classe está na lista duas vezes.' },
+  ...FEAT_OPTION_TEXTS,
   ...RACE_FIELD_TEXTS,
 ];

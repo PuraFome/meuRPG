@@ -1,4 +1,5 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import type { EntryRead as Read } from '../../../core/content/content-read-parts';
 
@@ -10,6 +11,7 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
  */
 @Component({
   selector: 'app-entry-read',
+  imports: [MatIconModule],
   template: `
     @if (read().rows.length > 0) {
       <section [class.mr-panel]="!plain()" aria-label="Dados">
@@ -21,11 +23,16 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
             </div>
           }
         </dl>
+        @if (read().rowsNote) {
+          <p class="note"><mat-icon aria-hidden="true">info</mat-icon>{{ read().rowsNote }}</p>
+        }
       </section>
     }
     @for (s of read().sections; track s.title) {
-      <section [class.mr-panel]="!plain()" [class.sec]="plain()" [attr.aria-labelledby]="'sec-' + $index">
-        <h2 [class.mr-panel__title]="!plain()" [class.sec__title]="plain()" [id]="'sec-' + $index">{{ s.title }}</h2>
+      <section [class.mr-panel]="!plain()" [class.sec]="plain()" [attr.aria-labelledby]="s.title ? 'sec-' + $index : null" [attr.aria-label]="s.title ? null : s.label">
+        @if (s.title) {
+          <h2 [class.mr-panel__title]="!plain()" [class.sec__title]="plain()" [id]="'sec-' + $index">{{ s.title }}</h2>
+        }
         <ul class="items">
           @for (i of s.items; track $index) {
             <li>
@@ -44,9 +51,12 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
             </li>
           }
         </ul>
+        @if (s.note) {
+          <p class="note note--plain">{{ s.note }}</p>
+        }
       </section>
     }
-    @if (read().text.length > 0 || (read().effects?.length ?? 0) > 0) {
+    @if (read().text.length > 0 || (read().effects?.length ?? 0) > 0 || rows()) {
       <section [class.mr-panel]="!plain()" [class.sec]="plain()" aria-label="Texto">
         @for (p of read().text; track $index) {
           <p class="text">{{ p }}</p>
@@ -54,7 +64,25 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
         @for (i of read().effects ?? []; track $index) {
           <p class="text"><strong>{{ i.title }}:</strong> {{ i.text }}</p>
         }
+        @if (rows()) {
+          <h2 class="opts__title" id="opts-title">Opções</h2>
+          <ul class="opts" aria-labelledby="opts-title">
+            @for (o of read().options ?? []; track $index) {
+              <li>
+                <strong>{{ o.title }}</strong>
+                <span class="opts__side">{{ o.side }}</span>
+              </li>
+            }
+          </ul>
+        }
       </section>
+    }
+    @if (!rows() && (read().options?.length ?? 0) > 0) {
+      <ul class="items items--nested" aria-label="Opções">
+        @for (o of read().options ?? []; track $index) {
+          <li><strong>{{ o.title }}.</strong> {{ o.text }}</li>
+        }
+      </ul>
     }
   `,
   styles: `
@@ -115,6 +143,27 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
       overflow-wrap: anywhere;
     }
 
+    .note {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--mr-space-2);
+      margin: var(--mr-space-3) 0 0;
+      font-size: var(--mr-font-15);
+      color: var(--mr-ink-muted);
+
+      .mat-icon {
+        flex: none;
+        width: 20px;
+        height: 20px;
+        font-size: var(--mr-font-20);
+      }
+
+      &--plain {
+        display: block;
+        margin-top: var(--mr-space-3);
+      }
+    }
+
     // "(de Corujeiro)": where a trait of the race comes from, smaller and muted.
     .tag {
       font-size: var(--mr-font-14);
@@ -129,6 +178,40 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
       border-left: 2px solid var(--mr-rule);
     }
 
+    // A feat's options in the page: the name at the left, what it does at the right, one row each.
+    .opts__title {
+      margin: var(--mr-space-3) 0 var(--mr-space-2);
+      font-family: var(--mr-font-display);
+      font-size: var(--mr-font-19);
+      font-weight: 700;
+    }
+
+    .opts {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+
+      li {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: var(--mr-space-4);
+        padding: var(--mr-space-3) 0;
+        border-top: 1px solid var(--mr-rule);
+        overflow-wrap: anywhere;
+
+        &:first-child {
+          border-top: 0;
+        }
+      }
+    }
+
+    .opts__side {
+      color: var(--mr-ink-muted);
+      font-size: var(--mr-font-14);
+      text-align: right;
+    }
+
     .text {
       margin: 0 0 var(--mr-space-3);
       overflow-wrap: anywhere;
@@ -141,6 +224,13 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
 })
 export class EntryRead {
   readonly read = input.required<Read>();
+  /** The options as rows (name and what it does) when the page has a few words for each; the preview keeps the full texts. */
+  protected readonly rows = computed(
+    () =>
+      !this.plain() &&
+      (this.read().options?.length ?? 0) > 0 &&
+      (this.read().options ?? []).every((o) => (o.side ?? '') !== ''),
+  );
   /** No panels: the rows and parts one under another (an editor's preview). */
   readonly plain = input(false);
 }
