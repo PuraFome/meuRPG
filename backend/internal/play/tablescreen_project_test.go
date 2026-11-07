@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The projector of the table screen. Each test reads the same thing as the master, as the
@@ -576,5 +577,23 @@ func TestTheTableScreenReadsTheWholeKeyOfAnNPCsAction(t *testing.T) {
 	}
 	if got := shownKey(combatViewer{wholeKeys: true}, npc, key); got != key {
 		t.Errorf("the table screen's key = %q, want it whole", got)
+	}
+}
+
+// The log is read for the TV with whole keys: the way the TV's log reader is built is what keeps a table monster's
+// action ("monster:x@mesa#claws") from being named.
+func TestTheTVsLogViewerKeepsTheKeysWhole(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	v, err := a.h.svc.tvLogViewer(t.Context(), tvViewer(a.campaignID))
+	if err != nil {
+		t.Fatalf("tvLogViewer() error = %v", err)
+	}
+	const key = "monster:garra-torta@mesa#claws"
+	if v.master {
+		t.Fatal("the TV's log viewer is the master")
+	}
+	if got := shownKey(v, playdb.Combatant{Kind: kindNPC}, key); got != key || !rules.IsTableKeyAnywhere(got) {
+		t.Errorf("the TV's key = %q, want %q whole", got, key)
 	}
 }
