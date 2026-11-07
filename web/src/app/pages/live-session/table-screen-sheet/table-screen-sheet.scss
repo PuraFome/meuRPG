@@ -69,6 +69,11 @@
   padding: 6px 12px;
   font-size: var(--mr-font-14);
   line-height: 20px;
+
+  // The notice's 1 px nudge is for its 22 px line; this one has 20 px.
+  > .mat-icon {
+    margin-top: 0;
+  }
 }
 
 // The ⓘ at the right of "Espelhar": a 44 px target inside the row's 52 px.
