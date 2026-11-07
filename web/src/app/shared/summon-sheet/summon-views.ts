@@ -10,7 +10,12 @@ import { effectivePreference } from '../../core/campaigns/dice-labels';
 import { type SlotRow, freeText } from '../../core/combat/cast-flow';
 import { circleLabel } from '../../core/combat/combat-grid';
 import { groupFeminine, pluralName } from '../../core/combat/creature-names';
-import { beastAttacks, beastLine, formSubtitle } from '../../core/creatures/creature-format';
+import {
+  beastAttacks,
+  beastLine,
+  formSubtitle,
+  isTableCreature,
+} from '../../core/creatures/creature-format';
 import { creaturesText, replacesText } from '../../core/creatures/summon-labels';
 import { tight } from '../../core/format/text';
 import { metersText } from '../../core/units';
@@ -164,6 +169,7 @@ export function rowsOf(i: RowsInput): readonly ChoiceRow[] {
         title: b.namePt,
         subtitle: beastLine(b, block),
         attacks: block ? beastAttacks(block) : undefined,
+        table: isTableCreature(b.key),
       };
     });
   }
@@ -171,7 +177,12 @@ export function rowsOf(i: RowsInput): readonly ChoiceRow[] {
   return o.forms
     .map((f) => {
       const block = blocks.get(f.monsterKey);
-      return { key: f.monsterKey, title: f.namePt, subtitle: block ? formSubtitle(block) : '' };
+      return {
+        key: f.monsterKey,
+        title: f.namePt,
+        subtitle: block ? formSubtitle(block) : '',
+        table: isTableCreature(f.monsterKey),
+      };
     })
     .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
 }

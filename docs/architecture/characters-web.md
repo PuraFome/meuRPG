@@ -149,6 +149,10 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   "Salvar magia" stops and lands on the first of them.
   A refusal at `table_spell.summon.*` sits under its own field (`SPELL_SUMMON_TEXTS`).
   The preview and the read view add "Invoca: Lobo do Vale, Lobo." from `summonLine`.
+- **A table creature on the player's side** is known by the `@mesa` end of its key (`isTableCreature` in `core/creatures/creature-format`), because the server sends no flag for it.
+  The summon sheet's list (`rowsOf`, `ChoiceRow.table`) tags the row "Da mesa" (`app-table-mark`) and writes "Os números vêm da sua ficha quando ele chega." in place of the line of numbers.
+  The creature's page tags it "Da mesa" beside its origin and ends with "Os números vêm da ficha de <dono> quando ele chegou" (`tableCreatureNote`), with "do dono" when the sheet has no name.
+  The list names only the creatures `GetSummonOptions` returns, which leave out the archived and the switched-off ones.
 - **The master's phone read of a creature** (`pages/content/creature-read`, `core/content/creature-phone-read`) is what `content-entry` shows instead of the editor on a phone.
   It reads the base's stat block, as the editor's side panel does, and builds the text from the same preview.
   The rows are the base (`typeAndSizeInWords`), PV, CA, the damage bonus, the attack bonus and the damage lines, each marked "da mesa" or "da base".

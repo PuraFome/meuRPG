@@ -243,6 +243,28 @@ describe('summon views: the list, the keys and the dice', () => {
     ).toEqual([['monster:bat', 'Morcego', undefined]]);
   });
 
+  it('marks the table creatures by the "@mesa" suffix, in the forms and in the beasts', () => {
+    const none = { option: null, beasts: null, beastBlocks: new Map(), forms: null };
+    const forms = create(SummonOptionSchema, {
+      forms: [
+        { monsterKey: 'creature:lobo-do-vale@mesa', namePt: 'Lobo do Vale' },
+        { monsterKey: 'monster:wolf', namePt: 'Lobo' },
+      ],
+    });
+    expect(rowsOf({ ...none, option: forms }).map((r) => [r.title, r.table])).toEqual([
+      ['Lobo', false],
+      ['Lobo do Vale', true],
+    ]);
+    const beasts = create(SummonOptionSchema, { type: 'beast', maxCr: '1' });
+    expect(
+      rowsOf({
+        ...none,
+        option: beasts,
+        beasts: [{ key: 'creature:x@mesa', namePt: 'X' } as never],
+      }).map((r) => r.table),
+    ).toEqual([true]);
+  });
+
   it('repeats each kind as many times as it was chosen, in the list order', () => {
     const rows = [choice('a', 'A'), choice('b', 'B'), choice('c', 'C')];
     expect(creatureKeysOf(rows, { c: 1, a: 2 })).toEqual(['a', 'a', 'c']);

@@ -3872,6 +3872,32 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     try {
       await p.goto(`/campaigns/${druidCampaign}/characters/${druid.characterId}`);
       const dpanel = p.locator('app-creatures-panel');
+      // A feature of the table that summons a table creature (#578): the list with "Da mesa" and the note on its numbers, then the
+      // creature's page with the tag and the note.
+      const wolf = await createEntryRPC(m, druidCampaign, 'tableCreature', creatureBody());
+      await createEntryRPC(m, druidCampaign, 'tableClassFeature', {
+        namePt: 'Companheiro do Vale',
+        descPt: ['Um lobo do vale atende ao seu chamado.'],
+        classKey: 'class:druid',
+        level: 1,
+        effects: [{ type: 'resource', resource: 'chamados', max: '2', recharge: 'long_rest' }],
+        summon: { creatureKeys: [wolf, 'monster:wolf'], count: '1', maxLive: 2, resourceKey: 'chamados', turnMode: 'TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE', replaces: 'TABLE_SUMMON_REPLACES_NONE' },
+      });
+      await p.reload();
+      await dpanel.getByRole('button', { name: 'Companheiro do Vale' }).click();
+      const feature = p.getByRole('dialog', { name: 'Companheiro do Vale' }).or(p.locator('mat-bottom-sheet-container'));
+      const tableRow = feature.locator('app-creature-choice-list label.row', { hasText: 'Lobo do Vale' });
+      await expect(tableRow.locator('app-table-mark')).toHaveText(/Da mesa/);
+      await expect(tableRow).toContainText('Os números vêm da sua ficha quando ele chega.');
+      await expectScreenPasses(p, `A característica que invoca, a lista com a criatura da mesa ${where}`);
+      await tableRow.click();
+      await feature.getByRole('button', { name: 'Conjurar Companheiro do Vale', exact: true }).click();
+      await expect(dpanel.getByText(/chegou\./)).toBeVisible();
+      await dpanel.getByRole('link', { name: /^Ver a ficha de / }).click();
+      await expect(p.locator('.table-note')).toHaveText('Os números vêm da ficha de Sálvia quando ele chegou');
+      await expectScreenPasses(p, `A ficha da criatura da mesa ${where}`);
+      await p.goBack();
+      await expect(dpanel.getByRole('button', { name: 'Conjurar Animais' })).toBeVisible();
       await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
       const cast = p.getByRole('dialog', { name: 'Conjurar Animais' }).or(p.locator('mat-bottom-sheet-container'));
       await expect(cast.getByText('Quantas criaturas')).toBeVisible();
@@ -5994,6 +6020,30 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByLabel('Texto do traço')).toBeVisible();
       await expect(m.getByLabel('Nome do ataque')).toBeVisible();
       await expectScreenPasses(m, `Editor de criatura, o traço e o ataque abertos ${where}`);
+      // The feature that summons (#578): the switch off, then on with the creatures and the resource it spends; a spell with "Invocar".
+      await open(m, `/campaigns/${campaignId}/content/new/classfeature`);
+      await m.getByLabel('Classe', { exact: true }).selectOption({ label: 'Druida' });
+      await m.getByLabel('Nível na classe (1 a 20)').fill('1');
+      await m.getByLabel('Nome da característica').fill('Companheiro do Vale');
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Recurso' });
+      await m.getByLabel('Nome do recurso').fill('chamados');
+      await m.getByLabel('Usos (máximo)').fill('2');
+      await m.getByLabel('Volta em').selectOption({ label: 'Descanso longo' });
+      await expectScreenPasses(m, `Característica de classe, a invocação desligada ${where}`);
+      await m.getByRole('switch', { name: 'Invoca criaturas' }).click();
+      await m.getByRole('combobox', { name: 'Criaturas' }).fill('Lobo do Vale');
+      await m.getByRole('option').filter({ has: m.locator('.pick__pt', { hasText: /^Lobo do Vale$/ }) }).click();
+      await m.getByLabel('Quantas vêm').fill('1');
+      await expect(m.getByLabel('Gasta 1 uso de')).toBeVisible();
+      await expectScreenPasses(m, `Característica de classe, a invocação ligada ${where}`);
+      await m.getByRole('button', { name: 'Salvar característica' }).click();
+      await expect(m.getByText('A característica de classe Companheiro do Vale foi salva.')).toBeVisible();
+      await expectScreenPasses(m, `Característica de classe, depois de salvar a invocação ${where}`);
+      await open(m, `/campaigns/${campaignId}/content/new/spell`);
+      await m.getByLabel('Nome', { exact: true }).fill('Chamado do Vale');
+      await m.locator('[aria-label="Mecânica"] label', { hasText: 'Invocar' }).click();
+      await expect(m.getByText('Sem recurso, tempo nem duração: a magia tem os seus.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, Invocar ${where}`);
       const undead = await createEntryRPC(m, campaignId, 'tableCreature', damageCreatureBody());
       await open(m, entryRoute(campaignId, undead));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Defunto do Vale');

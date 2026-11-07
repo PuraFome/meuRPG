@@ -790,6 +790,10 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Escolher a mecânica seleciona o alvo "Só quem conjura" e devolve o alvo e o alcance antigos se eu a deixar com o alvo ainda em quem conjura.
   Antes de salvar, o editor diz no próprio campo o que o servidor recusa: um truque, um alvo que não seja quem conjura, um ritual, uma duração instantânea com efeito guardado, uma zona guardada, ou um efeito guardado para quem falha no teste ou é atingido.
   "Salvar magia" para e vai ao primeiro deles, e a magia deve ser de 1º círculo ou mais.
+- **Dado** um jogador que conjura uma invocação de uma magia ou de uma habilidade que oferece uma criatura da mesa, **quando** a lista de criaturas abre, **então** a criatura da mesa leva "Da mesa" e a linha "Os números vêm da sua ficha quando ele chega." no lugar dos números, e uma criatura do SRD mantém a sua própria linha.
+  Depois da conjuração, a página da criatura leva "Da mesa" e a linha "Os números vêm da ficha de <dono> quando ele chegou", sem nível nem proficiência, porque os números não mudam quando edito a entrada depois.
+  O app reconhece uma criatura da mesa pelo fim "@mesa" da chave, e o servidor não envia marca para isso.
+  (`content-summons.spec.ts`)
 - **Dado** uma criatura dada com fórmulas, **quando** edito a entrada para não ter fórmula alguma, **então** a classe de armadura dela na lista e no combate continua a com que foi dada.
 - **Dado** uma criatura com fórmulas que ponho no combate com "Pôr no combate" ou da qual faço um NPC, **então** ela tem os números fixos da entrada, porque não tem dono.
 - **Dado** uma entrada de criatura, **então** um jogador a acha na lista de criaturas e lê a ficha dela só enquanto um personagem dele a tem.
