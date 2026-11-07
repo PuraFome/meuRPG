@@ -206,3 +206,34 @@ func TestAZoneHalfInSightReadsLikeOneWhollyInSight(t *testing.T) {
 		}
 	}
 }
+
+// The length of a wall and the side that burns are not the unseen part's to tell: a player who sees the end of a wall reads a
+// wall as long as the squares they read, and no side until they see a burning square (RN-10).
+func TestAWallSeenByItsEndTellsNeitherItsLengthNorItsSide(t *testing.T) {
+	t.Parallel()
+	w := &wallSpec{Dir: grid.Direction{Dx: 1}, LengthFt: 60, Side: playv1.WallSide_WALL_SIDE_RIGHT}
+	wall := w.squares(grid.Square{Col: 5, Row: 5})
+	d := sightData(t, zoneRowOf(t, wallOfFireKey, wall, w))
+
+	zs := d.zonesView(playerSeeing(grid.Square{Col: 4, Row: 5}), nil) // sees the end: only (5,5)
+	if len(zs) != 1 {
+		t.Fatalf("zones = %d, want the wall", len(zs))
+	}
+	if got := zs[0].GetSizeFt(); got != grid.FeetPerSquare {
+		t.Errorf("size_ft = %d, want %d: the length of the squares read, not the wall's 60", got, grid.FeetPerSquare)
+	}
+	if zs[0].GetWallSide() != playv1.WallSide_WALL_SIDE_UNSPECIFIED || len(zs[0].GetBurningSquares()) != 0 {
+		t.Errorf("wall_side = %v, burning = %v, want none: no burning square is in sight", zs[0].GetWallSide(), zs[0].GetBurningSquares())
+	}
+
+	south := grid.Square{Col: 6, Row: 6} // a burning square the player sees
+	seen := d.zonesView(playerSeeing(grid.Square{Col: 4, Row: 5}, south), nil)
+	if len(seen[0].GetBurningSquares()) == 0 || seen[0].GetWallSide() != playv1.WallSide_WALL_SIDE_RIGHT {
+		t.Errorf("a player who sees a burning square reads %v with side %v, want both", seen[0].GetBurningSquares(), seen[0].GetWallSide())
+	}
+
+	whole := d.zonesView(playerSeeing(append(slices.Clone(wall), grid.Square{Col: 4, Row: 5})...), nil)
+	if got := whole[0].GetSizeFt(); got != 60 {
+		t.Errorf("size_ft = %d, want 60: the player reads the whole wall", got)
+	}
+}

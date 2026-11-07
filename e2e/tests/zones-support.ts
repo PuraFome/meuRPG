@@ -343,8 +343,9 @@ export async function tapWallSquare(map: Locator, col: number, row: number): Pro
   await map.click({ position: { x: ((col + 0.5) * size.width) / 20, y: ((row + 0.5) * size.height) / 14 } });
 }
 
-/** The server's preview of the wall has come: "Calculando onde a muralha fica…" is gone. */
+/** The server's preview of the wall has come: its squares are drawn and "Calculando onde a muralha fica…" is gone. */
 export async function expectWallCalculated(sheet: Locator): Promise<void> {
+  await expect(sheet.locator('.zl__zone').first()).toBeVisible();
   await expect(sheet.getByRole('status').filter({ hasText: 'Calculando onde a muralha fica…' })).toHaveCount(0);
 }
 

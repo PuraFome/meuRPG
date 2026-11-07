@@ -66,7 +66,7 @@ The undo of a move, of a push or of a shove puts the creature back and re-evalua
 5. One event, `spell_zone_triggered`, with a `lastingEvent` (change `saved` or `failed`, reason `zone_enter`, `zone_start`, `zone_cast`, `zone_end` or `zone_move`, the roll, the DC and the damage).
 
 The events a zone leaves (`spell_zone_triggered`, `spell_zone_moved`, and the `lasting_effect_ended` of a zone that timed out) are held on the change (`combatTx.zoneOut`) and written by `record` right after the change's own event, so the log reads the move and then what it brought.
-They are registered as effect lines in `logHandlers` and `effectLogKinds`; `COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED` is the one new change.
+They are registered as effect lines in `logHandlers` and `effectLogKinds`; `COMBAT_LOG_EFFECT_CHANGE_ZONE_MOVED` is the change of a zone that moved.
 None of the three is undoable (`undoableKinds`), so a move that caught someone cannot be undone as a move: the damage is a pending damage, discarded and undone as one.
 
 ## Moving a zone
@@ -164,11 +164,11 @@ The caster says the wall in `CastSpellRequest.wall` and `PreviewSpellAreaRequest
 - **Sight and movement.** The wall is a cloud (`sightCloud`): its squares block sight as Fog Cloud's do (see above).
   It does not block movement.
 - **The turn options.** The spell is listed like any other: the cast sheet's "Onde fica" step sends `wall`.
-  `DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED` is no longer sent.
+  The server never sends `DISABLED_REASON_CODE_WALL_PLACEMENT_REQUIRED`; the value stays on the wire.
 - **The burning side.** `SpellZone.wall_side` and `burning_squares` tell it: the squares the damage reaches that are not the wall's own (`burning`).
   The master reads all of them and a player the ones they see now.
   `PreviewSpellAreaResponse.burning_squares` and `length_ft` tell the caster the same for the wall they are laying.
-- **Privacy.** A hidden caster's wall follows the rule of the clouds: the zone and the caster are the master's, and the players read only the squares their view hides.
+- **Privacy.** A hidden caster's wall is the master's alone: no player reads its squares.
   The pending damage of a hit names the caster only to the master and the caster's own player.
 
 ### The web: "Onde fica"
@@ -228,11 +228,12 @@ The event of a catch is `Secret` for a hidden caster or a hidden creature, and i
 A player gets the numbers (`save_*`, damage, `notes`, `moves_per_turn_ft`, `rounds_left`) only for a zone of their own character; for another they get `details_hidden` and the name, shape, squares, concentration and the occupants they see. On a fog map a player reads the squares of a zone only where they see now (`onlySeen`, `zones_view.go`), never the squares they remember: a zone with none left is not sent, and the origin is one of the squares they read.
 A zone that blocks sight has no square the fog counts as seen, so its face counts: a square of it that touches a square the player sees now (`faces`).
 The answer of a zone half in sight is the same as a zone whose squares are all the ones they see: no flag and no count says there is more.
+A straight wall seen by its end tells the length of the squares read, and no side until a burning square is in sight.
 The caster's own player and the master read the whole zone, and a map without the fog sends it whole.
 
 ## Tests
 
-`zones_silence_test.go` (Silence: the gate, the immunity, the deafened state, the overlap and the hidden caster), `zones_grease_test.go` (Grease: the shape, the cast, entering, the end of the turn, the end of the zone and the undo; Entangle: the shape, the cast only, the end with the concentration and the undo) and `zones_test.go` (Spirit Guardians, Moonbeam, Cloudkill, Web, the push, the forced move, the undo, the player's character, the permissions and the retry) and `zones_hidden_test.go` (the viewer matrix for a hidden caster, a revealed one and a hidden creature, and the stream hint), `zones_spikes_test.go` (Spike Growth: the area, the damage for every square, what counts as movement) and `zones_wall_test.go` (Wall of Fire: the geometry, the request, the cast, the later hits, the fog and the refusal); `internal/leaktest` classifies `MoveSpellZone`.
+`zones_silence_test.go` (Silence: the gate, the immunity, the deafened state, the overlap and the hidden caster), `zones_grease_test.go` (Grease: the shape, the cast, entering, the end of the turn, the end of the zone and the undo; Entangle: the shape, the cast only, the end with the concentration and the undo) and `zones_test.go` (Spirit Guardians, Moonbeam, Cloudkill, Web, the push, the forced move, the undo, the player's character, the permissions and the retry) and `zones_hidden_test.go` (the viewer matrix for a hidden caster, a revealed one and a hidden creature, and the stream hint), `zones_spikes_test.go` (Spike Growth: the area, the damage for every square, what counts as movement) and `zones_wall_test.go` (Wall of Fire: the geometry, the request, the cast, the later hits, the fog, the placement in the turn options and the refusal of a cast without a wall); `internal/leaktest` classifies `MoveSpellZone`.
 `internal/leaktest` reads the map as a player (`mapzones_test.go`): a Darkness takes a creature off a darkvision player's map while a Devil's Sight player and the master keep it, a hidden caster's Fog Cloud or Wall of Fire reaches no player but the unseen squares, a revealed caster's wall reaches a player only where they see (the master reads the burning side behind it), the damage a hidden caster's wall leaves names no caster to a player, a hidden caster's Silence deafens in the view of the master and the creature's own player alone, and a cloud that ends leaves nothing new in the streams.
 The grid cube is in `rules/grid/area_test.go`.
 
@@ -250,8 +251,8 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast`, `zo
   It draws each `ZoneView.squares` with `cellsPath` and `outlinePath`.
   A wall's `ZoneView.burningSquares` (the server's `burning_squares`, already limited to what the viewer may read) is a layer of its own.
   `core/combat/zone-pattern.ts` gives every catalog spell a look of its own.
-  A look is a drawing class (lines, dots, waves, triangles, rings, asterisks, squares, crosses, light dots, bricks), a tint of the map's tokens and a veil.
-  The veil says what the zone does to sight: 38% white for the first six and for Silence and Spike Growth, 72% white for the clouds, 80% ink for Darkness, 72% garnet for the wall.
+  A look is a drawing class (vertical, horizontal and diagonal lines, dots, waves, triangles, rings, asterisks, squares, crosses, light dots, bricks, arrows), a tint of the map's tokens and a veil.
+  The veil says what the zone does to sight: 38% white for the first six and for Silence and Spike Growth, 72% white for Fog Cloud and Stinking Cloud, 80% ink for Darkness, 72% garnet for the wall.
   The burning side is its own layer: garnet arrows, dashed outline.
   `arrowTurn` turns the arrows from the server's `wall_side`.
   A straight wall runs from its origin to its farthest square, and the arrows point to its left or right, snapped to eight directions.
@@ -259,7 +260,7 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast`, `zo
   On a ring the dashed edge and the legend's "Lado que queima" carry the side.
   A wall whose way is unknown (one visible square, or only the origin) gets the dashed edge and no arrows.
   Only a spell the table defined, or one the app does not know, takes a hash of its key.
-  The hash lands only on the looks flagged `hashable`, the first six, so it never gives a spell a veil that hides sight.
+  The hash lands only on the looks flagged `hashable`, so it never gives a spell a veil that hides sight.
   The map's tokens do not follow the theme, so a look reads the same in both.
   Where zones lie over each other, each shared square is cut on its diagonal (`zone-overlap.ts`).
   The older zone's pattern fills the upper left triangle, the newer one's the lower right, and both outlines stay.
@@ -268,7 +269,7 @@ The log lines for `ZONE_MOVED`, the `zone_enter`, `zone_start`, `zone_cast`, `zo
   No name floats on the map: each zone carries its letter in a white corner diamond (`ZoneView.letter`).
   The letters follow the viewer's list in the server's order, oldest first, so when a zone ends the later ones move up.
   The master's list also holds the zones of hidden casters, so a zone's letter can differ between the master and a player.
-  The live region says which zones took a new letter.
+  The live region says which zones took another letter.
   The burning side takes the wall's letter and has no badge of its own.
   `zone-badge.ts` places each badge in a corner of its zone's box (inside the corner square only when a square is at least as wide as the badge), then along the edges when the corners are taken, and keeps every badge inside the map, and apart where there is room.
   The badge's size, inset and border come from constants in `zone-badge.ts` that the layer and the legend's diamond both read as CSS variables.

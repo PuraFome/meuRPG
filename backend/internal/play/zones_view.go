@@ -58,6 +58,12 @@ func (z *zone) onlySeen(view *playv1.SpellZone, v combatViewer) bool {
 		view.Origin = originProto(kept[0]) // a square the viewer reads, so the answer holds nothing of the unseen ones
 	}
 	view.BurningSquares = squaresProto(slices.DeleteFunc(z.burning(), func(sq grid.Square) bool { return !seen(sq) }))
+	if z.wall != nil && len(view.BurningSquares) == 0 {
+		view.WallSide = playv1.WallSide_WALL_SIDE_UNSPECIFIED // no side is told before a burning square is in sight
+	}
+	if z.wall != nil && !z.wall.Ring && len(kept) < len(z.squares) {
+		view.SizeFt = clamp32(grid.RangeFt(kept[0], kept[len(kept)-1])+grid.FeetPerSquare, 0, math.MaxInt32) // the length read, not the wall's
+	}
 	return true
 }
 
