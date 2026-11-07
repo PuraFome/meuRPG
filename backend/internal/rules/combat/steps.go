@@ -80,7 +80,7 @@ type Origin struct {
 // Covers says the modifier applies to a damage of this type from this origin.
 func (m Modifier) Covers(damageType string, from Origin) bool {
 	if m.Kind == StepReduction {
-		return from.Attack && from.Weapon && (m.Qualifier == "" || (m.Qualifier == QualifierNonmagical && !from.Magical))
+		return m.coversReduction(from)
 	}
 	if !slices.Contains(m.DamageTypes, damageType) && !slices.Contains(m.DamageTypes, rules.DamageTypeAll) {
 		return false
@@ -96,6 +96,15 @@ func (m Modifier) Covers(damageType string, from Origin) bool {
 		return from.Attack && !from.Magical && !from.Adamantine
 	}
 	return false
+}
+
+// coversReduction says a StepReduction applies to this origin: it covers every damage type of a
+// weapon attack (only one that is not magical, with QualifierNonmagical).
+func (m Modifier) coversReduction(from Origin) bool {
+	if !from.Attack || !from.Weapon {
+		return false
+	}
+	return m.Qualifier == "" || (m.Qualifier == QualifierNonmagical && !from.Magical)
 }
 
 // Step is one change to a damage: what it was before, and after, and where it came from.
@@ -138,12 +147,9 @@ func Adjust(amount int, damageType string, mods []Modifier, ignored []string, fr
 		}
 		return sources, qualifier
 	}
-	var steps []Step
-	if step, ok := reduction(amount, damageType, mods, ignored, from); ok {
-		steps = append(steps, step)
-		if amount = step.After; amount == 0 {
-			return 0, steps
-		}
+	amount, steps, spent := reduceFirst(amount, damageType, mods, ignored, from)
+	if spent {
+		return 0, steps
 	}
 	if src, q := covering(StepImmunity); len(src) > 0 {
 		return 0, append(steps, Step{Kind: StepImmunity, Sources: src, DamageType: damageType, Before: amount, After: 0, Qualifier: q})
@@ -159,6 +165,16 @@ func Adjust(amount int, damageType string, mods []Modifier, ignored []string, fr
 		amount = after
 	}
 	return amount, steps
+}
+
+// reduceFirst takes the flat reductions off the damage before every other adjustment. It returns
+// the damage left, the step (none when nothing is taken) and whether the damage is spent (0).
+func reduceFirst(amount int, damageType string, mods []Modifier, ignored []string, from Origin) (int, []Step, bool) {
+	step, ok := reduction(amount, damageType, mods, ignored, from)
+	if !ok {
+		return amount, nil, false
+	}
+	return step.After, []Step{step}, step.After == 0
 }
 
 // reduction is the step of the flat reductions on the damage of one type.

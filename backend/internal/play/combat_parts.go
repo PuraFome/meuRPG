@@ -519,6 +519,19 @@ func partRollProto(r partRoll, damageTypePT func(string) string) *playv1.DamageP
 	return pr
 }
 
+// groupSteps works out the steps of one stored group: the single reduction step of an Allot group,
+// the adjustment steps of a damage type otherwise.
+func groupSteps(g stepGroup, ignored []string) []combat.Step {
+	if g.Allot == nil {
+		_, steps := combat.Adjust(int(g.Before), g.DamageType, g.Mods, ignored, g.From)
+		return steps
+	}
+	if st, _, ok := combat.Reduce(g.Allot, g.Mods, ignored, g.From); ok {
+		return []combat.Step{st}
+	}
+	return nil
+}
+
 // stepsProto writes the steps the modifiers take the damage through, in Portuguese.
 func stepsProto(groups []stepGroup, ignored []string, names func(string) string, damageTypePT func(string) string, master bool) []*playv1.DamageStep {
 	var out []*playv1.DamageStep
@@ -527,15 +540,7 @@ func stepsProto(groups []stepGroup, ignored []string, names func(string) string,
 		if !master { // an effect the master hides is "Outra fonte" to a player (RN-10)
 			gnames = hidingNames(names, g.Mods)
 		}
-		var steps []combat.Step
-		if g.Allot != nil {
-			if st, _, ok := combat.Reduce(g.Allot, g.Mods, ignored, g.From); ok {
-				steps = append(steps, st)
-			}
-		} else {
-			_, steps = combat.Adjust(int(g.Before), g.DamageType, g.Mods, ignored, g.From)
-		}
-		for _, st := range steps {
+		for _, st := range groupSteps(g, ignored) {
 			out = append(out, &playv1.DamageStep{
 				Kind: stepKindProto(st.Kind), SourceKeys: shownSourceKeys(st.Sources, g.Mods, master), LabelPt: stepLabel(st, gnames, damageTypePT),
 				Before: clamp32(st.Before, 0, math.MaxInt32), After: clamp32(st.After, 0, math.MaxInt32), DamageTypeKey: st.DamageType,
@@ -1280,13 +1285,7 @@ func settleSteps(byType map[string]int, mods []combat.Modifier, ignored []string
 	var out landing
 	amounts := byType
 	if _, after, ok := combat.Reduce(byType, mods, ignored, from); ok {
-		group := stepGroup{Before: clamp32(sumOf(byType), 0, math.MaxInt32), From: from, Allot: maps.Clone(byType)}
-		for _, m := range mods {
-			if m.Kind == combat.StepReduction && m.Covers("", from) {
-				group.Mods = append(group.Mods, m)
-			}
-		}
-		out.groups, out.changed, amounts = append(out.groups, group), true, after
+		out.groups, out.changed, amounts = append(out.groups, reductionGroup(byType, mods, from)), true, after
 	}
 	others := slices.DeleteFunc(slices.Clone(mods), func(m combat.Modifier) bool { return m.Kind == combat.StepReduction })
 	for _, t := range slices.Sorted(maps.Keys(amounts)) {
@@ -1304,6 +1303,17 @@ func settleSteps(byType map[string]int, mods []combat.Modifier, ignored []string
 		out.amount += clamp32(final, 0, math.MaxInt32)
 	}
 	return out
+}
+
+// reductionGroup is the stored group of the flat reductions taken once from the whole attack.
+func reductionGroup(byType map[string]int, mods []combat.Modifier, from combat.Origin) stepGroup {
+	group := stepGroup{Before: clamp32(sumOf(byType), 0, math.MaxInt32), From: from, Allot: maps.Clone(byType)}
+	for _, m := range mods {
+		if m.Kind == combat.StepReduction && m.Covers("", from) {
+			group.Mods = append(group.Mods, m)
+		}
+	}
+	return group
 }
 
 func sumOf(byType map[string]int) int {

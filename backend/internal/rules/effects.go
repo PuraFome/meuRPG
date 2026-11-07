@@ -521,21 +521,14 @@ func (x effectCompiler) compileGated(src string) (*formula.Program, error) {
 
 // strayFields refuses the fields of one type on an effect of another.
 func (x effectCompiler) strayFields() error {
-	e := x.e
 	if err := x.strayShapeAndSlots(); err != nil {
 		return err
 	}
 	if err := x.strayRollFields(); err != nil {
 		return err
 	}
-	if e.Type != "song_of_rest" && e.Sides != 0 {
-		return x.fail("sides belongs to song_of_rest")
-	}
-	if e.Type != "replaces" && e.Replaces != "" {
-		return x.fail("replaces belongs to the replaces effect")
-	}
-	if e.Type != "choice" && (e.Name != "" || e.Set != "") {
-		return x.fail("name and set belong to choice")
+	if err := x.straySidesReplacesChoice(); err != nil {
+		return err
 	}
 	if err := x.strayOwnFields(); err != nil {
 		return err
@@ -556,6 +549,22 @@ func (x effectCompiler) strayFields() error {
 		return err
 	}
 	return x.straySpellAndRangeFields()
+}
+
+// straySidesReplacesChoice refuses the fields of song_of_rest, replaces and choice on an effect
+// of another type.
+func (x effectCompiler) straySidesReplacesChoice() error {
+	e := x.e
+	if e.Type != "song_of_rest" && e.Sides != 0 {
+		return x.fail("sides belongs to song_of_rest")
+	}
+	if e.Type != "replaces" && e.Replaces != "" {
+		return x.fail("replaces belongs to the replaces effect")
+	}
+	if e.Type != "choice" && (e.Name != "" || e.Set != "") {
+		return x.fail("name and set belong to choice")
+	}
+	return nil
 }
 
 // strayShapeAndSlots refuses the fields of wild_shape, of the slots of grant_action
