@@ -151,6 +151,7 @@
   },
   "slot_counted": true,
   "grant_use": "x",
+  "grant_cost": 1,
   "resource": "x",
   "hits": [
     {

@@ -279,6 +279,7 @@ The vitals keeper has `GiveSpellSlot`, `SpendSpellSlot` and their undos; a slot 
 ## Rerolls, minimums and the critical range
 
 `tableEffectsOf` maps the proto fields `rolls` and `at_most` of `TableEffect` to the effect, and `damage_type` and `value` to a `roll_minimum`; `resource`, `cost`, `when` and `text_pt` are the fields the other effects already use.
+A `granted_spell` also maps `uses_cost` and `no_material_components` (`tableEffectsOf`), and `GrantedSpell`, `CastingGrant` and `SpellGrantOption` carry both (`uses_cost`, 0 for an at-will grant, and `no_material_components`) from `rules.GrantedSpell.Cost` and `NoMaterialComponents`: the sheet words the cost ("Gasta 2 usos de ...") and the "Sem material" tag, and the cast sheet shows "gasta 2" in the grant line and drops the "M" of the component line behind its "?". Both are display: the server spends the cost and enforces no component.
 A `modifier` on `critical_range` uses `target`, `mode` (`set`), `value` and `applies` (the scope: `weapon`, `spell` or `both`).
 All three are on the effect menu ([reroll](rules-table-content.md#reroll), [roll minimum](rules-table-content.md#roll-minimum), [critical range](rules-table-content.md#critical-range)).
 `GetEffectMenu` returns the entries of `reroll` and `roll_minimum` with their fields and the list `roll_applies`, the field `applies` of `modifier` with the list `critical_scopes`, and the target `critical_range` among the modifier targets.

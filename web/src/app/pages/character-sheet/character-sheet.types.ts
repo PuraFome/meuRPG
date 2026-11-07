@@ -114,6 +114,9 @@ export interface GrantedSpellVm {
   readonly alsoWithSlot: boolean;
   readonly ritualOnly: boolean;
   readonly countsAsKnown: boolean;
+  /** The grant waives the material components, and each cast spends this many uses of the resource (1 or more; 0 at will). */
+  readonly noMaterialComponents: boolean;
+  readonly usesCost: number;
   /** The casting ability; `null` while the player has not picked it (`abilityPending`). */
   readonly ability: AbilityKey | null;
   readonly abilityPending: boolean;

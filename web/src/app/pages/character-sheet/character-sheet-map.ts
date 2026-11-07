@@ -227,6 +227,8 @@ function grantedSpellVm(g: GenDerivedSheet['grantedSpells'][number], derived: Ge
     alsoWithSlot: g.alsoWithSlot,
     ritualOnly: g.ritualOnly,
     countsAsKnown: g.countsAsKnown,
+    noMaterialComponents: g.noMaterialComponents,
+    usesCost: g.usesCost,
     ability: g.abilityPending || g.ability === '' ? null : (g.ability as AbilityKey),
     abilityPending: g.abilityPending,
     saveDc: g.saveDc,

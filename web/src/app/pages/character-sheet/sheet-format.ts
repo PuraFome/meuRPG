@@ -295,7 +295,8 @@ export function spellStateSummary(groups: readonly SpellGroup[]): string {
 
 /** How a granted spell is cast, in tags: "À vontade" or the resource it spends, then the switches of the grant. */
 export function grantedSpellTags(g: GrantedSpellVm): string[] {
-  const tags = [g.atWill ? 'À vontade' : `Gasta um uso de ${g.resourceNamePt}`];
+  const spent = g.usesCost > 1 ? `Gasta ${g.usesCost} usos de` : 'Gasta um uso de';
+  const tags = [g.atWill ? 'À vontade' : `${spent} ${g.resourceNamePt}`];
   if (g.alsoWithSlot) {
     tags.push('Também com espaço');
   }
@@ -304,6 +305,9 @@ export function grantedSpellTags(g: GrantedSpellVm): string[] {
   }
   if (g.countsAsKnown) {
     tags.push('Conhecida');
+  }
+  if (g.noMaterialComponents) {
+    tags.push('Sem material');
   }
   return tags;
 }
