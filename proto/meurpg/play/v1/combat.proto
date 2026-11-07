@@ -2935,6 +2935,12 @@ message Combatant {
   // Your Turn"): the next change of gear costs the action. The owner's and the master's; never another player's.
   bool object_interaction_used = 113;
 
+  // The other speeds in feet, 0 for none (a table's speed.swim, speed.climb and speed.burrow modifiers, a creature's
+  // stat block, a Wild Shape form). The grid does not spend them yet. Same audience as `speed_fly_ft`.
+  int32 speed_swim_ft = 114;
+  int32 speed_climb_ft = 115;
+  int32 speed_burrow_ft = 116;
+
   // Only the master (RN-20, RN-29): the combatant stands in sunlight now. It is the fact the rolls read: the switch is on,
   // and the combatant is in the whole map's sun or in a sunlit square, and not in magical Darkness. A player's copy has
   // the zero value.

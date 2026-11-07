@@ -63,6 +63,8 @@ type Character struct {
 	Size string
 	// SpeedFlyFt is the fly speed in feet, 0 for none.
 	SpeedFlyFt int
+	// SpeedSwimFt, SpeedClimbFt and SpeedBurrowFt are the other speeds in feet, 0 for none.
+	SpeedSwimFt, SpeedClimbFt, SpeedBurrowFt int
 	// JumpLongDFt and JumpHighDFt are the long and high jump with a running start,
 	// in tenths of a foot (rules/combat.JumpLimits); 0 for a sheet with no
 	// Strength. Standing, each is half.
@@ -897,10 +899,12 @@ type Creature struct {
 	// "gargantuan"); JumpLongDFt and JumpHighDFt its jump limits with a running
 	// start, in tenths of a foot (rules/combat.JumpLimits of its Strength). What a
 	// combatant copies when it joins, as a character's.
-	SpeedFlyFt  int
-	Size        string
-	JumpLongDFt int
-	JumpHighDFt int
+	SpeedFlyFt int
+	// SpeedSwimFt, SpeedClimbFt and SpeedBurrowFt are its other speeds, 0 for none.
+	SpeedSwimFt, SpeedClimbFt, SpeedBurrowFt int
+	Size                                     string
+	JumpLongDFt                              int
+	JumpHighDFt                              int
 }
 
 // CreatureSpec is one creature a casting makes: the SRD creature, the name the

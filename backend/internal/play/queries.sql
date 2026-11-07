@@ -177,11 +177,13 @@ ORDER BY order_index, created_at, id;
 INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at, xp_value,
-    side, size, speed_fly_ft, jump_long_dft, jump_high_dft, jump_long_bonus_dft
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft, jump_long_bonus_dft,
+    speed_swim_ft, speed_climb_ft, speed_burrow_ft
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9,
     $10, $11, $12, $13, $14, $15, $16, $17, $18,
-    $19, $20, $21, $22, $23, $24
+    $19, $20, $21, $22, $23, $24,
+    $25, $26, $27
 )
 RETURNING *;
 
@@ -289,7 +291,8 @@ WHERE id = $1;
 -- the beast's speed, fly speed, size and jumps while it lasts, the character's own
 -- again when it ends.
 UPDATE combatants
-SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6, jump_long_bonus_dft = $7
+SET speed_ft = $2, speed_fly_ft = $3, size = $4, jump_long_dft = $5, jump_high_dft = $6, jump_long_bonus_dft = $7,
+    speed_swim_ft = $8, speed_climb_ft = $9, speed_burrow_ft = $10
 WHERE id = $1;
 
 -- name: SetCombatantBodyOfCharacter :exec
@@ -299,7 +302,8 @@ WHERE id = $1;
 UPDATE combatants
 SET speed_ft = sqlc.arg(speed_ft), speed_fly_ft = sqlc.arg(speed_fly_ft), size = sqlc.arg(size),
     jump_long_dft = sqlc.arg(jump_long_dft), jump_high_dft = sqlc.arg(jump_high_dft),
-    jump_long_bonus_dft = sqlc.arg(jump_long_bonus_dft)
+    jump_long_bonus_dft = sqlc.arg(jump_long_bonus_dft),
+    speed_swim_ft = sqlc.arg(speed_swim_ft), speed_climb_ft = sqlc.arg(speed_climb_ft), speed_burrow_ft = sqlc.arg(speed_burrow_ft)
 WHERE character_id = sqlc.arg(character_id) AND kind = 'player'
   AND encounter_id IN (SELECT e.id FROM encounters AS e WHERE e.game_session_id = sqlc.arg(game_session_id) AND e.status <> 'ended');
 
@@ -808,12 +812,14 @@ INSERT INTO combatants (
     encounter_id, character_id, user_id, label, kind, hidden, initiative, initiative_bonus, initiative_face,
     order_index, grid_col, grid_row, speed_ft, hp_current, hp_max, hp_temp, created_at,
     creature_id, monster_key, summon_attack, summon_group_id,
-    side, size, speed_fly_ft, jump_long_dft, jump_high_dft
+    side, size, speed_fly_ft, jump_long_dft, jump_high_dft,
+    speed_swim_ft, speed_climb_ft, speed_burrow_ft
 ) VALUES (
     $1, $2, $3, $4, 'creature', false, $5, $6, $7,
     $8, $9, $10, $11, $12, $13, 0, $14,
     $15, $16, $17, $18,
-    'party', $19, $20, $21, $22
+    'party', $19, $20, $21, $22,
+    $23, $24, $25
 )
 RETURNING *;
 

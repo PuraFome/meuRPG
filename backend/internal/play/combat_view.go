@@ -643,6 +643,7 @@ func shareEconomy(out *playv1.Combatant, c playdb.Combatant) {
 	// down, for the web that is already shipped (RN-21).
 	out.SpeedFt = c.SpeedFt
 	out.SpeedFlyFt = c.SpeedFlyFt
+	out.SpeedSwimFt, out.SpeedClimbFt, out.SpeedBurrowFt = c.SpeedSwimFt, c.SpeedClimbFt, c.SpeedBurrowFt
 	out.SpeedDft = clamp32(speedDFt(c), 0, math.MaxInt32)
 	out.MovementUsedFt = c.MovementUsedDft / 10
 	out.MovementUsedDft = c.MovementUsedDft

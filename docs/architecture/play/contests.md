@@ -50,6 +50,12 @@ The group check is also how the master asks one, some or all living player chara
   The `group_check_changed` hint stays content-free for everyone (RN-10, RN-20).
 - The master's `RollForPlayer` waits for no one.
 
+## The bonuses of a check
+
+Both sides of a contest, and a Hide, add the flat bonuses of their lasting effects that apply to ability checks (`roll_bonus` of checks, `check_bonus` of the skill): `prepareCheck` and the answer options go through `withCheckBonus`, which reads them with `checkBonusesOf`, the reader the other checks use.
+A bonus to saves or to attacks never enters a contest.
+Each bonus is a note of the roll (`effect_bonus`, "Marca de Nanquim +3"; it says nothing of advantage, `notesMode` skips it); an effect the master hides reads "Outra fonte +3" to the player and by name to the master alone (RN-10), decided when the roll is read (`rollNote.proto(master)`), not when it is kept.
+
 ## The floor of a check
 
 The d20 of a group check (`memberRollOf`), of either side of a contest and of a Hide counts the floor of its kind as the scene check does.
