@@ -375,7 +375,12 @@ var tvFields = map[string]string{
 	"TvRoll.expression":     "the formula of a free roll for the table",
 	"TvRoll.total":          "the total of a free roll for the table",
 	"TvRoll.faces":          "the faces kept of a free roll for the table",
-	// TvCombat.map and the TvMap message are not filled by this projector.
+	"TvCombat.map":          "the combat's map, under the rules of TvMap",
+	"TvMap.name":            "the map's name, as every player reads it; unset when hidden by the fog",
+	"TvMap.hidden_by_fog":   "true when the fog is on and group vision is off (RN-10); then nothing else is set",
+	"TvMap.map":             "the map, its points and its tokens from the player's GetMap code, for the TV's viewer",
+	"TvMap.vision":          "the squares the group sees or remembers, from the player's GetMapVision code",
+	"TvMap.revision":        "a hash of what the TV reads of the map; never the map's own revision",
 }
 
 // TestTvProjectorFields walks the messages the projector fills and fails for a field that has no reason in
@@ -386,7 +391,7 @@ func TestTvProjectorFields(t *testing.T) {
 		(&playv1.TvIdle{}).ProtoReflect().Descriptor(), (&playv1.TvImage{}).ProtoReflect().Descriptor(),
 		(&playv1.TvScene{}).ProtoReflect().Descriptor(), (&playv1.TvStageNpc{}).ProtoReflect().Descriptor(),
 		(&playv1.TvCombat{}).ProtoReflect().Descriptor(), (&playv1.TvCombatant{}).ProtoReflect().Descriptor(),
-		(&playv1.TvRoll{}).ProtoReflect().Descriptor(),
+		(&playv1.TvRoll{}).ProtoReflect().Descriptor(), (&playv1.TvMap{}).ProtoReflect().Descriptor(),
 	}
 	seen := map[string]bool{"TvIdle": true}
 	for _, md := range messages {
@@ -394,9 +399,6 @@ func TestTvProjectorFields(t *testing.T) {
 		for i := range fields.Len() {
 			f := fields.Get(i)
 			key := string(md.Name()) + "." + string(f.Name())
-			if key == "TvCombat.map" {
-				continue // not filled by this projector
-			}
 			seen[key] = true
 			if tvFields[key] == "" {
 				t.Errorf("%s is a field the TV carries and has no reason in tvFields: decide it and add its leak row", key)

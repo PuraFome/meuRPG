@@ -38,9 +38,19 @@ func (s *Service) GetMap(
 	if err != nil {
 		return nil, err
 	}
-	snap, err := s.readMapSnapshot(ctx, m.CampaignID, mapID, v)
+	res, _, err := s.mapFor(ctx, m.CampaignID, mapID, v)
 	if err != nil {
-		return nil, s.dbError(ctx, "get a map", err)
+		return nil, err
+	}
+	return connect.NewResponse(res), nil
+}
+
+// mapFor is the map, its points and its tokens as the viewer reads them: the one code path of GetMap and of
+// the table screen's map. It also returns the snapshot it read.
+func (s *Service) mapFor(ctx context.Context, campaignID, mapID string, v viewer) (*mapsv1.GetMapResponse, mapSnapshot, error) {
+	snap, err := s.readMapSnapshot(ctx, campaignID, mapID, v)
+	if err != nil {
+		return nil, snap, s.dbError(ctx, "get a map", err)
 	}
 	if !v.master {
 		v.parentKnows = s.parentKnows(ctx, snap.cm, v)
@@ -48,15 +58,15 @@ func (s *Service) GetMap(
 	res := &mapsv1.GetMapResponse{Map: snap.cm.mapToProto(snap.row, v)}
 	pv, err := s.mapFogView(ctx, snap, v)
 	if err != nil {
-		return nil, err
+		return nil, snap, err
 	}
-	if err := s.fillMapPoints(ctx, m.CampaignID, mapID, res, snap, v, pv); err != nil {
-		return nil, err
+	if err := s.fillMapPoints(ctx, campaignID, mapID, res, snap, v, pv); err != nil {
+		return nil, snap, err
 	}
-	if res.Tokens, err = s.mapTokensFor(ctx, m.CampaignID, mapID, snap, v, pv); err != nil {
-		return nil, err
+	if res.Tokens, err = s.mapTokensFor(ctx, campaignID, mapID, snap, v, pv); err != nil {
+		return nil, snap, err
 	}
-	return connect.NewResponse(res), nil
+	return res, snap, nil
 }
 
 // mapSnapshot is what GetMap reads in one transaction. The map's rows, its points

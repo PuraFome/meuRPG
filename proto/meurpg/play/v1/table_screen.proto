@@ -228,12 +228,15 @@ message TvMap {
   // True when the map has the fog of war on and "Visão do grupo" off: the TV shows no map and
   // every other field of this message is unset (RN-10).
   bool hidden_by_fog = 2;
-  // The player form of the map, from the maps module's projector for a viewer with no character:
-  // revealed points, visible tokens, nothing the master hides.
-  meurpg.maps.v1.Map map = 3;
+  // The map, its points and its tokens as a player with no character reads them, from the same code
+  // as the player's GetMap: revealed points, visible tokens, nothing the master hides.
+  // With the fog on, the map carries no image (image_withheld): the page draws the tiles in `vision`.
+  meurpg.maps.v1.GetMapResponse map = 3;
   // What the group sees and remembers of the map; the fog of war's cells.
   meurpg.maps.v1.GetMapVisionResponse vision = 4;
-  // The TV's own revision: one number per change of what the TV shows. Never a master's revision.
+  // The TV's own revision: a hash of what the TV reads of the map (the map, its points and tokens, and
+  // the vision), so it moves when that moves and not for a change only the master sees. Never a master's
+  // revision.
   int32 revision = 5;
 }
 

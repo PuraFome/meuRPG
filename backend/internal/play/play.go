@@ -202,6 +202,12 @@ type MapKeeper interface {
 	// `not_found` Connect error when mapID is not a map of the campaign. It changes nothing and reads
 	// inside tx when the caller has one (nil: the pool).
 	MapFog(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.MapFog, error)
+	// TableScreenMap returns the map as the table screen reads it: what a player with no character reads
+	// of the map, its points and tokens, and of the squares the group sees. may decides, from the map's fog
+	// and "Visão do grupo", whether the map goes to the TV at all; when it does not the answer is Hidden and
+	// nothing of the map is read. It returns a `not_found` Connect error for a map that is not the
+	// campaign's or that no player sees now.
+	TableScreenMap(ctx context.Context, campaignID, mapID string, may link.MapGate) (link.TableScreenMap, error)
 	// BattlePoint returns a battle point of the campaign, or a `not_found`
 	// Connect error for any other point. It reads inside tx when the caller has one
 	// (nil: the pool).

@@ -41,12 +41,17 @@ func (a *armed) setScreen(u *user, revision int32, mirror bool, pin playv1.Table
 
 func TestGetTableScreenReadsTheDefaultChoice(t *testing.T) {
 	a := newArmed(t)
+	msvc, _ := a.h.mapsService(t)
+	a.h.vision.SetService(msvc)
 	got := a.mustGetScreen(t)
 	if got.GetChoiceRevision() != 0 || !got.GetChoice().GetMirror() {
 		t.Errorf("choice = %v at revision %d, want mirror at 0", got.GetChoice(), got.GetChoiceRevision())
 	}
 	if got.GetStage().GetKind() != kMap || got.GetNotice() != nNone {
 		t.Errorf("stage = %v/%v, want the current map", got.GetStage().GetKind(), got.GetNotice())
+	}
+	if m := got.GetStage().GetMap(); m.GetHiddenByFog() || m.GetMap().GetMap().GetId() != a.mapID || m.GetName() != "Emboscada" || m.GetVision() == nil {
+		t.Errorf("map body = %v, want the current map with its vision", m)
 	}
 	if got.GetCampaignName() != "Mirathel" || got.GetSessionNumber() != 1 {
 		t.Errorf("header = %q, session %d, want Mirathel, 1", got.GetCampaignName(), got.GetSessionNumber())

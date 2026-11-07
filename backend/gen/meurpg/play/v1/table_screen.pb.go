@@ -965,12 +965,15 @@ type TvMap struct {
 	// True when the map has the fog of war on and "Visão do grupo" off: the TV shows no map and
 	// every other field of this message is unset (RN-10).
 	HiddenByFog bool `protobuf:"varint,2,opt,name=hidden_by_fog,json=hiddenByFog,proto3" json:"hidden_by_fog,omitempty"`
-	// The player form of the map, from the maps module's projector for a viewer with no character:
-	// revealed points, visible tokens, nothing the master hides.
-	Map *v1.Map `protobuf:"bytes,3,opt,name=map,proto3" json:"map,omitempty"`
+	// The map, its points and its tokens as a player with no character reads them, from the same code
+	// as the player's GetMap: revealed points, visible tokens, nothing the master hides.
+	// With the fog on, the map carries no image (image_withheld): the page draws the tiles in `vision`.
+	Map *v1.GetMapResponse `protobuf:"bytes,3,opt,name=map,proto3" json:"map,omitempty"`
 	// What the group sees and remembers of the map; the fog of war's cells.
 	Vision *v1.GetMapVisionResponse `protobuf:"bytes,4,opt,name=vision,proto3" json:"vision,omitempty"`
-	// The TV's own revision: one number per change of what the TV shows. Never a master's revision.
+	// The TV's own revision: a hash of what the TV reads of the map (the map, its points and tokens, and
+	// the vision), so it moves when that moves and not for a change only the master sees. Never a master's
+	// revision.
 	Revision      int32 `protobuf:"varint,5,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1020,7 +1023,7 @@ func (x *TvMap) GetHiddenByFog() bool {
 	return false
 }
 
-func (x *TvMap) GetMap() *v1.Map {
+func (x *TvMap) GetMap() *v1.GetMapResponse {
 	if x != nil {
 		return x.Map
 	}
@@ -1760,11 +1763,11 @@ const file_meurpg_play_v1_table_screen_proto_rawDesc = "" +
 	"\n" +
 	"TvStageNpc\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1a\n" +
-	"\bspeaking\x18\x02 \x01(\bR\bspeaking\"\xc0\x01\n" +
+	"\bspeaking\x18\x02 \x01(\bR\bspeaking\"\xcb\x01\n" +
 	"\x05TvMap\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\"\n" +
-	"\rhidden_by_fog\x18\x02 \x01(\bR\vhiddenByFog\x12%\n" +
-	"\x03map\x18\x03 \x01(\v2\x13.meurpg.maps.v1.MapR\x03map\x12<\n" +
+	"\rhidden_by_fog\x18\x02 \x01(\bR\vhiddenByFog\x120\n" +
+	"\x03map\x18\x03 \x01(\v2\x1e.meurpg.maps.v1.GetMapResponseR\x03map\x12<\n" +
 	"\x06vision\x18\x04 \x01(\v2$.meurpg.maps.v1.GetMapVisionResponseR\x06vision\x12\x1a\n" +
 	"\brevision\x18\x05 \x01(\x05R\brevision\"\xb1\x01\n" +
 	"\bTvCombat\x12\x14\n" +
@@ -1880,7 +1883,7 @@ var file_meurpg_play_v1_table_screen_proto_goTypes = []any{
 	(*WatchTableScreenResponse_Heartbeat)(nil),    // 22: meurpg.play.v1.WatchTableScreenResponse.Heartbeat
 	(*WatchTableScreenResponse_Changed)(nil),      // 23: meurpg.play.v1.WatchTableScreenResponse.Changed
 	(*WatchTableScreenResponse_SessionEnded)(nil), // 24: meurpg.play.v1.WatchTableScreenResponse.SessionEnded
-	(*v1.Map)(nil),                                // 25: meurpg.maps.v1.Map
+	(*v1.GetMapResponse)(nil),                     // 25: meurpg.maps.v1.GetMapResponse
 	(*v1.GetMapVisionResponse)(nil),               // 26: meurpg.maps.v1.GetMapVisionResponse
 }
 var file_meurpg_play_v1_table_screen_proto_depIdxs = []int32{
@@ -1899,7 +1902,7 @@ var file_meurpg_play_v1_table_screen_proto_depIdxs = []int32{
 	14, // 12: meurpg.play.v1.TableScreenStage.combat:type_name -> meurpg.play.v1.TvCombat
 	16, // 13: meurpg.play.v1.TableScreenStage.rolls:type_name -> meurpg.play.v1.TvRoll
 	12, // 14: meurpg.play.v1.TvScene.stage:type_name -> meurpg.play.v1.TvStageNpc
-	25, // 15: meurpg.play.v1.TvMap.map:type_name -> meurpg.maps.v1.Map
+	25, // 15: meurpg.play.v1.TvMap.map:type_name -> meurpg.maps.v1.GetMapResponse
 	26, // 16: meurpg.play.v1.TvMap.vision:type_name -> meurpg.maps.v1.GetMapVisionResponse
 	15, // 17: meurpg.play.v1.TvCombat.order:type_name -> meurpg.play.v1.TvCombatant
 	13, // 18: meurpg.play.v1.TvCombat.map:type_name -> meurpg.play.v1.TvMap

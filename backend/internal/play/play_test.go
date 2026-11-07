@@ -621,6 +621,10 @@ func (noMaps) MapGrid(context.Context, pgx.Tx, string, string) (link.Grid, error
 	return link.Grid{}, errors.New("not in this test")
 }
 
+func (noMaps) TableScreenMap(context.Context, string, string, link.MapGate) (link.TableScreenMap, error) {
+	return link.TableScreenMap{}, errors.New("not in this test")
+}
+
 func (noMaps) MapFog(context.Context, pgx.Tx, string, string) (link.MapFog, error) {
 	return link.MapFog{}, errors.New("not in this test")
 }

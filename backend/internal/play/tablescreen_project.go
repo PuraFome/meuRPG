@@ -28,7 +28,7 @@ const (
 )
 
 // projectStageBody sets the content of the stage the kind asks for. When the item has gone since the
-// facts were read (the shown image was taken down, the combat ended), the stage becomes the idle screen.
+// facts were read (the shown image was taken down, the combat ended, the map is gone), the stage becomes the idle screen.
 func (s *Service) projectStageBody(ctx context.Context, session playdb.GameSession, stage *playv1.TableScreenStage) error {
 	tv := tvViewer(session.CampaignID)
 	var err error
@@ -47,16 +47,41 @@ func (s *Service) projectStageBody(ctx context.Context, session playdb.GameSessi
 	if err != nil {
 		return err
 	}
-	if stage.GetBody() == nil && stage.GetKind() != playv1.TableScreenKind_TABLE_SCREEN_KIND_MAP {
+	if stage.GetBody() == nil {
 		stage.Kind, stage.Body = playv1.TableScreenKind_TABLE_SCREEN_KIND_IDLE, &playv1.TableScreenStage_Idle{Idle: &playv1.TvIdle{}}
 		return nil
 	}
 	return s.projectRolls(ctx, tv, session, stage)
 }
 
-// projectMap sets nothing: the map stage has no body and TvCombat.map is unset.
-func (s *Service) projectMap(context.Context, authz.Membership, playdb.GameSession, *playv1.TableScreenStage) error {
+// projectMap copies the session's current map, as a player with no character reads it. A map that is gone,
+// or that no player sees, has no body: the stage falls to the idle screen.
+func (s *Service) projectMap(ctx context.Context, tv authz.Membership, session playdb.GameSession, stage *playv1.TableScreenStage) error {
+	if session.CurrentMapID == nil {
+		return nil
+	}
+	m, err := s.tvMap(ctx, tv, *session.CurrentMapID)
+	if err != nil || m == nil {
+		return err
+	}
+	stage.Body = &playv1.TableScreenStage_Map{Map: m}
 	return nil
+}
+
+// tvMap is the TV's form of a map: hidden_by_fog and nothing else when mapOnTV refuses it, otherwise what the
+// maps module answers for the TV's viewer. Nil when the map is gone or no player sees it now.
+func (s *Service) tvMap(ctx context.Context, tv authz.Membership, mapID string) (*playv1.TvMap, error) {
+	m, err := s.maps.TableScreenMap(ctx, tv.CampaignID, mapID, mapOnTV)
+	if connect.CodeOf(err) == connect.CodeNotFound {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "read the map for the table screen", err)
+	}
+	if m.Hidden {
+		return &playv1.TvMap{HiddenByFog: true}, nil
+	}
+	return &playv1.TvMap{Name: m.Map.GetMap().GetName(), Map: m.Map, Vision: m.Vision, Revision: m.Revision}, nil
 }
 
 // projectImage copies the image shown to the whole table.
@@ -98,7 +123,7 @@ func (s *Service) projectScene(ctx context.Context, tv authz.Membership, session
 }
 
 // projectCombat copies the combat the table sees: the combatants the table sees, the round, whose turn it is
-// and the lines every player reads. It sets no map.
+// and the lines every player reads, and the combat's map when it has one.
 func (s *Service) projectCombat(ctx context.Context, tv authz.Membership, session playdb.GameSession, stage *playv1.TableScreenStage) error {
 	var d *encounterData
 	err := db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
@@ -139,6 +164,11 @@ func (s *Service) projectCombat(ctx context.Context, tv authz.Membership, sessio
 	}
 	if out.Log, err = s.tvLog(ctx, tv, d.enc.ID); err != nil {
 		return err
+	}
+	if d.enc.MapID != nil {
+		if out.Map, err = s.tvMap(ctx, tv, *d.enc.MapID); err != nil {
+			return err
+		}
 	}
 	stage.Body = &playv1.TableScreenStage_Combat{Combat: out}
 	return nil

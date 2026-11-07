@@ -14,6 +14,8 @@ import (
 	"errors"
 	"slices"
 	"time"
+
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 )
 
 // What a Wild Shape change refuses with (MR-037): the characters module returns
@@ -1006,4 +1008,23 @@ type DeadCharacter struct {
 type ZoneRule struct {
 	Trigger       string
 	FollowsCaster bool
+}
+
+// MapGate decides whether a map's content may go to the table screen, from the map's fog of war and
+// "Visão do grupo". The play module owns the rule; the maps module asks it before it reads anything.
+type MapGate func(fogged, groupVision bool) bool
+
+// TableScreenMap is a map as the table screen reads it: what a player with no character reads, with the
+// fog's squares as the group sees and remembers them.
+type TableScreenMap struct {
+	// Hidden says the gate refused the map: every other field is empty.
+	Hidden bool
+	// Fogged and GroupVision are the map's, as the gate saw them.
+	Fogged, GroupVision bool
+	// Map is the map, its points and its tokens, from the code of the player's GetMap.
+	Map *mapsv1.GetMapResponse
+	// Vision is the view of the squares, from the code of the player's GetMapVision. Nil for a map with no grid.
+	Vision *mapsv1.GetMapVisionResponse
+	// Revision is the table screen's own number for what Map and Vision hold.
+	Revision int32
 }
