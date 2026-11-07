@@ -57,7 +57,7 @@
       </g>
     }
   </svg>
-  @for (z of drawn(); track z.id) {
+  @for (z of badges() ? drawn() : []; track z.id) {
     <span
       class="zl__badge"
       [class.zl__badge--dashed]="z.dashed"

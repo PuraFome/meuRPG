@@ -75,6 +75,8 @@ export class ZoneLayer {
   readonly columns = input.required<number>();
   readonly rows = input.required<number>();
   readonly zones = input.required<readonly ZoneView[]>();
+  /** The corner letters tie each zone to the legend and the list; a zone drawn alone (the wall being laid) has none. */
+  readonly badges = input(true);
 
   protected readonly uid = `zl-${nextId++}`;
   protected readonly patterns = ZONE_PATTERNS;

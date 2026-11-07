@@ -171,6 +171,24 @@ The caster says the wall in `CastSpellRequest.wall` and `PreviewSpellAreaRequest
 - **Privacy.** A hidden caster's wall follows the rule of the clouds: the zone and the caster are the master's, and the players read only the squares their view hides.
   The pending damage of a hit names the caster only to the master and the caster's own player.
 
+### The web: "Onde fica"
+
+The web knows a spell lays a wall by its catalog key, `spell:wall-of-fire`, named once in `WALL_SPELL_KEY` (`core/combat/spell-wall.ts`); the turn options give it only `AreaPlacement.POINT`, as for Moonbeam.
+`AreaFlow` takes that flag and keeps the wall as a signal (`wall`, a `WallChoice`: shape, direction, length in feet, side), a line to the east at 60 feet with its right side burning to begin with.
+Every change of the wall, and every placed start, asks `PreviewSpellArea` again with the wall; only the answer of the latest ask counts.
+The cast sends the same wall in `CastExtras.wall`, and the cast's key follows it.
+The cast sheet and the master's dialog show the step "Onde fica" (`app-wall-controls`, `shared/area-picker/wall-controls.ts`):
+- The shape is a group of two radios, "Linha reta" and "Anel", above the map.
+- A line has a direction pad of eight labelled buttons ("Para o nordeste") beside the drag on the map; a ring has no direction.
+- The length (a ring's diameter) is a stepper of 1,5 m, one square or 5 feet: a line goes from 1,5 m to 18 m and a ring from 3 m to 6 m.
+- The side is a group of two radios: "À esquerda" and "À direita" for a line, "Por dentro" and "Por fora" for a ring.
+- The note of the side names the dice of the slot (`damageDice`).
+
+The map (`app-area-map` with `wall`) draws only what the server answered: `squares` as bricks and `burningSquares` as arrows with a dashed edge, through the same zone layer and looks as a laid zone.
+The first square of a line, or the centre of a ring, is a square outlined in the accent colour, named "Começo" or "Centro" in the legend.
+A press on a square and a release on another sets the start and the direction (`WallDrag`); a tap only sets the start.
+The footer says "Próximo: quem está na área", and the list step follows as for any area.
+
 ## What a zone does not change in an attack
 
 A cloud or darkness changes what a viewer sees on the map.

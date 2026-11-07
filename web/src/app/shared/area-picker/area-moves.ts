@@ -1,6 +1,6 @@
 import type { AreaPick } from '../../core/combat/area-flow';
 import { type Square, squareAt, squareCenter } from '../../core/combat/combat-grid';
-import { rangeFt, rotate } from '../../core/combat/spell-area';
+import { type AreaShape, areaSquares, rangeFt, rotate } from '../../core/combat/spell-area';
 import { metersFixed } from '../../core/units';
 
 /** Half a square: from a square's corner to its center, or to its side. */
@@ -135,4 +135,22 @@ export function listMove(
     default:
       return null;
   }
+}
+
+/** The browser's outline of an area at a pick (before the server answers): a point's sphere or cylinder, or what a direction
+ * cuts out from the caster. Nothing without a pick, or a direction without the caster on the map. */
+export function outlineOf(
+  pick: AreaPick | null,
+  caster: Square | null,
+  area: AreaShape,
+  columns: number,
+  rows: number,
+): Square[] {
+  if (!pick) {
+    return [];
+  }
+  if (pick.kind === 'point') {
+    return areaSquares(area, { origin: pick.square }, columns, rows);
+  }
+  return caster ? areaSquares(area, { caster, direction: pick.direction }, columns, rows) : [];
 }

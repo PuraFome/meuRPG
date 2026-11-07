@@ -29,6 +29,7 @@ import { AreaList } from '../../../../shared/area-picker/area-list';
 import { AreaNotice } from '../../../../shared/area-picker/area-notice';
 import { AreaMap } from '../../../../shared/area-picker/area-map';
 import { AreaStep } from '../../../../shared/area-picker/area-step';
+import { WallControls } from '../../../../shared/area-picker/wall-controls';
 import { TeleportMap } from '../../../../shared/area-picker/teleport-map';
 import { HeldFollow } from '../../../../core/held-rolls/held-follow';
 import { heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
@@ -86,6 +87,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
     AreaNotice,
     AreaMap,
     AreaStep,
+    WallControls,
     CastResult,
     CastSlots,
     CastTargets,

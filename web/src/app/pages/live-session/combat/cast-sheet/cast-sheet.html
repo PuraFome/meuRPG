@@ -63,6 +63,9 @@
         <!-- An area placed on the map (PM-02a, PM-02b): step 1 places it, step 2 says who is inside. -->
         @if (f.step() === 'place' && ar.placement !== Placement.CASTER) {
           <app-area-step [n]="1" [title]="ar.stepOne" />
+          @if (f.wall(); as w) {
+            <app-wall-controls part="shape" [wall]="w" (changed)="f.setWall($event)" />
+          }
           @if (data.map; as m) {
             <app-area-map
               [image]="m.image"
@@ -80,11 +83,16 @@
               [placed]="f.placed()"
               [preview]="f.preview()"
               [seen]="data.targets?.targets ?? []"
+              [wall]="f.wall()"
               [autofocus]="true"
               (place)="f.place($event)"
+              (aimed)="f.placeWall($event.square, $event.direction)"
               (confirm)="confirmArea()"
               (dismiss)="close()"
             />
+          }
+          @if (f.wall(); as w) {
+            <app-wall-controls part="size" [wall]="w" [dice]="ar.dice()" (changed)="f.setWall($event)" />
           }
           @if (f.preview()?.moved) {
             <div class="mr-notice mr-notice--neutral" role="status">
@@ -110,6 +118,7 @@
               [rangeFt]="0"
               [placed]="f.placed()"
               [preview]="f.preview()"
+              [wall]="f.wall()"
               [readOnly]="true"
             />
           }

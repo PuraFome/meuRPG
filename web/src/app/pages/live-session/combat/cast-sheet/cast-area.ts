@@ -2,7 +2,7 @@ import { computed } from '@angular/core';
 
 import { AreaPlacement, type Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { ActionEconomy, SpellAreaShape } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { saveAbility } from '../../../../core/combat/cast-flow';
+import { damageDice, saveAbility } from '../../../../core/combat/cast-flow';
 import { AreaFlow } from '../../../../core/combat/area-flow';
 import {
   allyWarning,
@@ -14,7 +14,9 @@ import {
   stepOneTitle,
 } from '../../../../core/combat/area-text';
 import type { CombatClient } from '../../../../core/combat/combat-client';
+import type { CastExtras } from '../../../../core/combat/combat-client-types';
 import type { AreaShape } from '../../../../core/combat/spell-area';
+import { laysWall } from '../../../../core/combat/spell-wall';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import type { CastState } from './cast-state';
 import { coverNoteOf } from './cast-sheet-view';
@@ -56,6 +58,10 @@ export class CastArea {
       this.s.data.economy === ActionEconomy.BONUS_ACTION,
     ),
   );
+  /** The dice of the burning side at the slot ("5d8"), for the wall's note. */
+  readonly dice = computed(() =>
+    damageDice(this.s.details(), this.s.data.level > 0 ? this.s.slotLevel() : 0),
+  );
   readonly coverNote = computed(() => coverNoteOf(this.flow?.preview(), this.s.data.name));
   /** The area waits for the caster's "Conjurar mesmo assim" (nobody in it) before the cast can be sent. */
   readonly asks = computed(() => !!this.flow && this.flow.nobody() && !this.flow.nobodyAccepted());
@@ -69,28 +75,42 @@ export class CastArea {
     this.flow =
       this.placement === AreaPlacement.UNSPECIFIED
         ? null
-        : new AreaFlow(this.placement, (area) =>
-            api.casts.previewSpellArea(
-              data.campaignId,
-              data.encounterId,
-              data.casterId,
-              data.spellKey,
-              this.slotRef(),
-              area,
-              ...(data.grant ? [data.grant.sourceKey] : []),
-            ),
+        : new AreaFlow(
+            this.placement,
+            (area, wall) =>
+              api.casts.previewSpellArea(
+                data.campaignId,
+                data.encounterId,
+                data.casterId,
+                data.spellKey,
+                this.slotRef(),
+                area,
+                ...(data.grant || wall ? [data.grant?.sourceKey ?? ''] : []),
+                ...(wall ? [wall] : []),
+              ),
+            laysWall(data.spellKey),
           );
     this.shape = {
       shape: data.targets?.areaShape ?? SpellAreaShape.UNSPECIFIED,
       sizeFt: data.targets?.areaSizeFt ?? 0,
       widthFt: data.targets?.areaWidthFt ?? 0,
     };
-    this.stepOne = stepOneTitle(this.placement);
-    this.confirmText =
-      this.placement === AreaPlacement.CASTER
+    const wall = !!this.flow?.wall();
+    this.stepOne = wall ? 'Onde fica' : stepOneTitle(this.placement);
+    this.confirmText = wall
+      ? 'Próximo: quem está na área'
+      : this.placement === AreaPlacement.CASTER
         ? 'Ver quem está na área'
         : confirmLabel(this.placement);
-    this.notPlaced = notPlacedReason(this.placement);
+    this.notPlaced = wall
+      ? 'Toque no mapa para marcar onde a muralha fica.'
+      : notPlacedReason(this.placement);
+  }
+
+  /** What the cast carries for a placed area: the area, and the wall of a spell that lays one. */
+  extras(): CastExtras {
+    const wall = this.flow?.wall();
+    return this.flow ? { area: this.flow.choice(), ...(wall ? { wall } : {}) } : {};
   }
 
   /** The slot of the cast, as the requests take it. */
