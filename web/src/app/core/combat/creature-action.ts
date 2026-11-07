@@ -331,3 +331,23 @@ export function limitView(limited: LimitedAction | undefined, creature: string):
   }
   return NO_LIMIT;
 }
+
+/** One line of the opened order row for a limited action: "Esporos · Recarga 6 · gasta", "Guincho atordoante · 1/dia · 1 de 1". */
+export interface LimitLine {
+  readonly key: string;
+  readonly text: string;
+  /** Material icon beside the words: a Recharge or rest action, or uses a day. */
+  readonly icon: 'autorenew' | 'looks_one';
+}
+
+export function limitLines(limited: readonly LimitedAction[]): LimitLine[] {
+  return limited.map((l) => {
+    const state = limitView(l, '');
+    const status = state.uses ? state.usesText : state.tag === 'Pronta' ? 'pronta' : 'gasta';
+    return {
+      key: l.actionKey,
+      text: `${l.namePt || l.name} · ${usageText(l.usage)} · ${status}`,
+      icon: l.kind === 'per_day' ? 'looks_one' : 'autorenew',
+    };
+  });
+}
