@@ -1,4 +1,3 @@
-import { type CheckFloor } from '../combat/combat-dice';
 import { Injectable, inject } from '@angular/core';
 import { timestampDate } from '@bufbuild/protobuf/wkt';
 import { createClient } from '@connectrpc/connect';
@@ -17,6 +16,7 @@ import {
   type DerivedSkill,
   ProficiencyLevel,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
+import type { CheckFloor } from '../combat/combat-dice';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 import { REVIVIFY_KEY } from '../revivify/revivify-flow';
 import type { OtherSkill, SearchSkills } from '../traps/trap-search';
@@ -66,7 +66,7 @@ export function checkFloorOfSheet(derived: DerivedSheet): CheckFloor | null {
   let best: CheckFloor | null = null;
   for (const m of derived.rollMinimums) {
     if (m.applies.includes('check') && (best === null || m.value > best.value)) {
-      best = { value: m.value, source: m.sourceKey, name: m.sourceName };
+      best = { value: m.value, source: m.featureKey, name: m.featureName };
     }
   }
   return best;

@@ -95,6 +95,26 @@ export function initiativeFormula(c: Combatant): string | null {
   return `${d20} ${sign} ${Math.abs(bonus)}${die ? ` + ${die} (dado)` : ''} = ${c.initiative}`;
 }
 
+/**
+ * The same initiative in two lines, for a column too narrow to hold a feature's name: `line` keeps the total in
+ * its place (`1d20 (12) + 3 = 15`, with the d20 that counted) and `note` explains the d20 a table minimum raised
+ * (`d20: 3 → 12 (Pé de Vento)`); `note` is `null` when nothing raised it, and then `line` is `initiativeFormula`
+ * unchanged. `null` until it is rolled.
+ */
+export function initiativeFormulaParts(c: Combatant): { line: string; note: string | null } | null {
+  const whole = initiativeFormula(c);
+  const raised = c.initiativeTreatedAs;
+  if (whole === null || c.initiativeFace === undefined || raised === undefined) {
+    return whole === null ? null : { line: whole, note: null };
+  }
+  const bonus = c.initiativeBonus ?? 0;
+  const die = initiativeDie(c);
+  return {
+    line: `1d20 (${raised}) ${bonus < 0 ? '−' : '+'} ${Math.abs(bonus)}${die ? ` + ${die} (dado)` : ''} = ${c.initiative}`,
+    note: `d20: ${c.initiativeFace} → ${raised} (${treatedSourceName(c.initiativeTreatedAsSource, c.initiativeTreatedAsSourceName)})`,
+  };
+}
+
 /** What a Bardic Inspiration die added to the initiative: the total less the d20 and the bonus, 0 when none was used. */
 export function initiativeDie(c: Combatant): number {
   if (c.initiative === undefined || c.initiativeFace === undefined) {

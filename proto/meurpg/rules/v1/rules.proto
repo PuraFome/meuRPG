@@ -788,10 +788,11 @@ message RollMinimum {
   repeated string applies = 1;
   // The lowest a die counts as.
   int32 value = 2;
-  // The key of the feature that gives it, one of `DerivedSheet.features`.
-  string source_key = 3;
+  // The key of the feature that gives it, one of `DerivedSheet.features`. The sheet names it from its own feature list,
+  // not from the name filling of the play answers, so these are not a source_key/source_name pair.
+  string feature_key = 3;
   // The Portuguese name of that feature.
-  string source_name = 4;
+  string feature_name = 4;
 }
 
 // DerivedState is a temporary state a feature defines: a stance, a form.

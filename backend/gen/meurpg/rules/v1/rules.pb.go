@@ -4244,10 +4244,11 @@ type RollMinimum struct {
 	Applies []string `protobuf:"bytes,1,rep,name=applies,proto3" json:"applies,omitempty"`
 	// The lowest a die counts as.
 	Value int32 `protobuf:"varint,2,opt,name=value,proto3" json:"value,omitempty"`
-	// The key of the feature that gives it, one of `DerivedSheet.features`.
-	SourceKey string `protobuf:"bytes,3,opt,name=source_key,json=sourceKey,proto3" json:"source_key,omitempty"`
+	// The key of the feature that gives it, one of `DerivedSheet.features`. The sheet names it from its own feature list,
+	// not from the name filling of the play answers, so these are not a source_key/source_name pair.
+	FeatureKey string `protobuf:"bytes,3,opt,name=feature_key,json=featureKey,proto3" json:"feature_key,omitempty"`
 	// The Portuguese name of that feature.
-	SourceName    string `protobuf:"bytes,4,opt,name=source_name,json=sourceName,proto3" json:"source_name,omitempty"`
+	FeatureName   string `protobuf:"bytes,4,opt,name=feature_name,json=featureName,proto3" json:"feature_name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4296,16 +4297,16 @@ func (x *RollMinimum) GetValue() int32 {
 	return 0
 }
 
-func (x *RollMinimum) GetSourceKey() string {
+func (x *RollMinimum) GetFeatureKey() string {
 	if x != nil {
-		return x.SourceKey
+		return x.FeatureKey
 	}
 	return ""
 }
 
-func (x *RollMinimum) GetSourceName() string {
+func (x *RollMinimum) GetFeatureName() string {
 	if x != nil {
-		return x.SourceName
+		return x.FeatureName
 	}
 	return ""
 }
@@ -12928,14 +12929,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\troll_dice\x181 \x03(\v2\x18.meurpg.rules.v1.RollDieR\brollDice\x12\x12\n" +
 	"\x04size\x182 \x01(\tR\x04size\x125\n" +
 	"\x06states\x183 \x03(\v2\x1d.meurpg.rules.v1.DerivedStateR\x06states\x12A\n" +
-	"\rroll_minimums\x185 \x03(\v2\x1c.meurpg.rules.v1.RollMinimumR\frollMinimums\"}\n" +
+	"\rroll_minimums\x185 \x03(\v2\x1c.meurpg.rules.v1.RollMinimumR\frollMinimums\"\x81\x01\n" +
 	"\vRollMinimum\x12\x18\n" +
 	"\aapplies\x18\x01 \x03(\tR\aapplies\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\x05R\x05value\x12\x1d\n" +
-	"\n" +
-	"source_key\x18\x03 \x01(\tR\tsourceKey\x12\x1f\n" +
-	"\vsource_name\x18\x04 \x01(\tR\n" +
-	"sourceName\"\xbc\x02\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value\x12\x1f\n" +
+	"\vfeature_key\x18\x03 \x01(\tR\n" +
+	"featureKey\x12!\n" +
+	"\ffeature_name\x18\x04 \x01(\tR\vfeatureName\"\xbc\x02\n" +
 	"\fDerivedState\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

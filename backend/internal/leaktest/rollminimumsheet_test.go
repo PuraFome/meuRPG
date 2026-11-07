@@ -68,7 +68,7 @@ func TestRollMinimumsOnTheSheetReachOnlyWhoMayReadTheFeature(t *testing.T) {
 	// shown says that every minimum of the sheet has its feature in the feature list of the same answer.
 	shown := func(who string, d *rulesv1.DerivedSheet) {
 		for _, rm := range d.GetRollMinimums() {
-			if !slices.ContainsFunc(d.GetFeatures(), func(f *rulesv1.Feature) bool { return f.GetKey() == rm.GetSourceKey() }) {
+			if !slices.ContainsFunc(d.GetFeatures(), func(f *rulesv1.Feature) bool { return f.GetKey() == rm.GetFeatureKey() }) {
 				t.Errorf("%s reads the minimum %v of a feature that is not in their feature list", who, rm)
 			}
 		}
@@ -78,7 +78,7 @@ func TestRollMinimumsOnTheSheetReachOnlyWhoMayReadTheFeature(t *testing.T) {
 	for who, p := range map[string]*person{"the master": m, "Caio": caio} {
 		d := sheetOf(p, w.toren.GetId()).GetDerived()
 		got := d.GetRollMinimums()
-		if len(got) != 1 || got[0].GetSourceKey() != torenFeat || got[0].GetSourceName() != toreFeatName || got[0].GetValue() != 12 || !slices.Equal(got[0].GetApplies(), []string{"attack"}) {
+		if len(got) != 1 || got[0].GetFeatureKey() != torenFeat || got[0].GetFeatureName() != toreFeatName || got[0].GetValue() != 12 || !slices.Equal(got[0].GetApplies(), []string{"attack"}) {
 			t.Errorf("%s reads Toren's minimums %v, want the attack 12 of the feat (the positive control)", who, got)
 		}
 		shown(who, d)
@@ -86,7 +86,7 @@ func TestRollMinimumsOnTheSheetReachOnlyWhoMayReadTheFeature(t *testing.T) {
 	for who, p := range map[string]*person{"the master": m, "Ana": ana} {
 		d := sheetOf(p, w.pens.GetId()).GetDerived()
 		got := d.GetRollMinimums()
-		if len(got) != 1 || got[0].GetSourceKey() != pensFeat || got[0].GetSourceName() != pensFeatName || got[0].GetValue() != 9 {
+		if len(got) != 1 || got[0].GetFeatureKey() != pensFeat || got[0].GetFeatureName() != pensFeatName || got[0].GetValue() != 9 {
 			t.Errorf("%s reads Pensantus's minimums %v, want the check 9 of the feat (the positive control)", who, got)
 		}
 		shown(who, d)

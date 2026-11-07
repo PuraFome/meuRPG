@@ -664,8 +664,8 @@ describe('LiveSessionSourceLive.getPlayerSheet (the skills a search and a check 
 });
 
 describe('checkFloorOfSheet', () => {
-  const min = (applies: string[], value: number, sourceKey: string, sourceName: string) =>
-    ({ applies, value, sourceKey, sourceName }) as DerivedSheet['rollMinimums'][number];
+  const min = (applies: string[], value: number, featureKey: string, featureName: string) =>
+    ({ applies, value, featureKey, featureName }) as DerivedSheet['rollMinimums'][number];
 
   it('takes the highest minimum that covers checks, with the feature that gives it', () => {
     const derived = {

@@ -90,7 +90,7 @@ func rollMinimumsToProto(mins []rules.RollMinimum, features []rules.Feature) []*
 			continue
 		}
 		out = append(out, &rulesv1.RollMinimum{
-			Applies: slices.Clone(m.Applies), Value: i32(m.Value), SourceKey: m.Source, SourceName: features[i].NamePT,
+			Applies: slices.Clone(m.Applies), Value: i32(m.Value), FeatureKey: m.Source, FeatureName: features[i].NamePT,
 		})
 	}
 	return out
