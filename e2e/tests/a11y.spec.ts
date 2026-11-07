@@ -60,6 +60,7 @@ import {
   trapPointRPC,
 } from './puzzles-support';
 import { createInkBladeRPC, tableForSpells } from './spells-support';
+import { beginLegendaryFight, legendaryScreens, shotScale } from './legendary-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
@@ -9160,4 +9161,41 @@ test('as ações de criatura do mestre passam no axe e nas conferências de layo
 test('as ações de criatura do mestre passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-012'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanCreatureActions(browser, 'dark', 390);
+});
+
+/** The master's legendary offers and the Parry switch (#557): the Legendary Resistance window of a stunned dragon, its legendary-actions
+ * card (open, folded, spent), the master-only log line, the "Aparar" menu entry and window, and the player's neutral "Esperando o mestre".
+ * Each screen is judged at 390, 768 and 1280 px; E2E_SHOTS_DIR, when set, also saves the screenshots (legendary-support.ts). */
+async function scanLegendaryScreens(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = { width: 1280, height: 1100 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...shotScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...shotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const fight = await beginLegendaryFight(m, p, `Acessibilidade lendárias ${Date.now()}`);
+    campaignId = fight.campaignId;
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await legendaryScreens(m, p, colorScheme, expectScreenPasses, fight);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as ofertas lendárias e o Aparar passam no axe e nas conferências de layout no tema claro, em 390, 768 e 1280', { tag: ['@a11y', '@PM-04', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanLegendaryScreens(browser, 'light');
+});
+
+test('as ofertas lendárias e o Aparar passam no axe e nas conferências de layout no tema escuro, em 390, 768 e 1280', { tag: ['@a11y', '@PM-04', '@RN-10'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanLegendaryScreens(browser, 'dark');
 });
