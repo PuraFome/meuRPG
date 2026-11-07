@@ -127,6 +127,9 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceArmorUntrained:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT,
 	combat.SourceProtection:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION,
 	combat.SourceMagicResistance:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_MAGIC_RESISTANCE,
+	combat.SourceSunlightAttack:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_ATTACK,
+	combat.SourceSunlightPerception: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION,
+	combat.SourceSunlightSave:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE,
 }
 
 // statesOf groups the states of a combat by the combatant that has them.
@@ -155,9 +158,11 @@ func creatureFacts(c playdb.Combatant, states map[string][]playdb.CombatantState
 		Reckless:        hasState(states, c.ID, stateReckless),
 		PackTactics:     traits.PackTactics,
 		MagicResistance: traits.MagicResistance,
-		Evasion:         traits.Evasion,
-		DangerSense:     traits.DangerSense,
-		Raging:          hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
+		// The sun itself (Sunlit) is the combat's fact, set where the combat is read; the traits are the sheet's.
+		SunlightSensitivity: traits.SunlightSensitivity, SunlightWeakness: traits.SunlightWeakness,
+		Evasion:     traits.Evasion,
+		DangerSense: traits.DangerSense,
+		Raging:      hasState(states, c.ID, stateRage) && !traits.HeavyArmor,
 		// The effects that last (RN-22): exhaustion, Faerie Fire's outline, the advantage on saving
 		// throws an effect gives and the disadvantage one gives the creature's attack rolls.
 		Exhaustion: int(c.ExhaustionLevel), Outlined: hasEffect(states, c.ID, "spell:faerie-fire"), SaveAdvantage: effectSaveAdvantage(states, c.ID), CheckAdvantage: effectCheckAdvantage(states, c.ID),
@@ -545,6 +550,10 @@ var staticSentences = map[string]string{
 	combat.SourceStealthArmor:     "Armadura: desvantagem em Furtividade",
 	combat.SourceArmorUntrained:   labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza",
 	combat.SourceOutlinedTarget:   "Alvo delineado: vantagem se o atacante o vê",
+	// The sunlight's sources are the master's: sourceProto turns each into "Outra fonte" for a player.
+	combat.SourceSunlightAttack:     "Sob a luz do sol: desvantagem nas jogadas de ataque",
+	combat.SourceSunlightPerception: "Sob a luz do sol: desvantagem no teste",
+	combat.SourceSunlightSave:       "Sob a luz do sol: desvantagem nos testes de resistência",
 }
 
 // otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an

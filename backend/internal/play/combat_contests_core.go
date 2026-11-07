@@ -412,7 +412,7 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 	}
 	scene := combat.SaveScene{
 		Creature: creatureFacts(who, statesOf(states), sheet.Traits), Ability: checkAbilityOf(skill), Check: true,
-		StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage,
+		StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage, Perception: skill == skillPercept,
 	}
 	var out []rollNote
 	for _, src := range combat.SaveMode(scene) {

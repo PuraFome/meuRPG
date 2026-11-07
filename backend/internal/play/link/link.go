@@ -293,6 +293,9 @@ type Traits struct {
 	PackTactics bool
 	// MagicResistance is a monster's trait.
 	MagicResistance bool
+	// SunlightSensitivity and SunlightWeakness are a monster's traits: in sunlight its attack rolls (both), the checks
+	// the sun spoils and, for the Weakness, its saving throws have disadvantage (combat.Creature).
+	SunlightSensitivity, SunlightWeakness bool
 	// Evasion says the sheet has Evasion: the monk's, the rogue's, the ranger's Superior
 	// Hunter's Defense choice, or a stat block's trait (combat.HalfSaveShare).
 	Evasion bool

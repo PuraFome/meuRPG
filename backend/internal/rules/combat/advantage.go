@@ -78,6 +78,13 @@ const (
 	SourcePoisonedCheck   = "poisoned_check"
 	SourceFrightenedCheck = "frightened_check"
 	SourcePerceptionDim   = "perception_dim"
+	// Sunlight Sensitivity and Sunlight Weakness (SRD 5.1, Monsters): a creature in sunlight has
+	// disadvantage on its attack rolls (both traits), on the checks the sunlight spoils (the
+	// Sensitivity's Wisdom (Perception) checks that rely on sight; every ability check for the
+	// Weakness) and, for the Weakness, on saving throws.
+	SourceSunlightAttack     = "sunlight_attack"
+	SourceSunlightPerception = "sunlight_perception"
+	SourceSunlightSave       = "sunlight_save"
 	// A racial advantage on saving throws against one kind of source (Brave, Fey Ancestry, Gnome Cunning,
 	// Dwarven Resilience); Source.Condition is the key of the trait.
 	SourceTaggedSave = "tagged_save"
@@ -224,6 +231,11 @@ type Creature struct {
 	PackTactics bool
 	// MagicResistance says the creature has the Magic Resistance trait.
 	MagicResistance bool
+	// Sunlit says the creature is in sunlight now (the combat's switch is on, and the creature is in a sunlit
+	// square when the sun is only where the master painted it, and not in magical Darkness: the play module
+	// works that out). SunlightSensitivity and SunlightWeakness say it has the trait of that name: they
+	// change a roll only while it is Sunlit.
+	Sunlit, SunlightSensitivity, SunlightWeakness bool
 	// DangerSense says it has the barbarian's Danger Sense.
 	DangerSense bool
 	// Evasion says it has the feature of that name (monk or rogue level 7, or a
@@ -263,6 +275,11 @@ type Creature struct {
 	// is the creature that AttackDisadvantage does not cover (a goad's source), "" for none.
 	ID                       string
 	AttackDisadvantageSpares string
+}
+
+// sunlightSpoils says the creature is in sunlight and has a trait that spoils its attack rolls there.
+func (c Creature) sunlightSpoils() bool {
+	return c.Sunlit && (c.SunlightSensitivity || c.SunlightWeakness)
 }
 
 // Has says whether it carries a condition.
@@ -489,6 +506,7 @@ func sceneRules(s AttackScene) []sourceRule {
 		{s.AttackerUnseen && !s.Attacker.Has(conditionInvisible), SourceUnseenAttacker, ModeAdvantage, ""},
 		{s.TargetUnseen && !s.Target.Has(conditionInvisible), SourceUnseenTarget, ModeDisadvantage, ""},
 		{s.Helped, SourceHelp, ModeAdvantage, ""},
+		{s.Attacker.sunlightSpoils(), SourceSunlightAttack, ModeDisadvantage, ""},
 		{s.Attacker.ArmorUntrained && s.StrengthOrDexterityWeapon, SourceArmorUntrained, ModeDisadvantage, ""},
 	}
 }
@@ -536,6 +554,9 @@ type SaveScene struct {
 	// StealthArmor says the check is Dexterity (Stealth) in armor that gives disadvantage
 	// on it (SRD 5.1, "Armor").
 	StealthArmor bool
+	// Perception says the check is Wisdom (Perception): the Sunlight Sensitivity's check. The app has no
+	// per-check sense, so every Perception check counts as one that relies on sight.
+	Perception bool
 	// Against lists what the saving throw is against (an Against* constant for each kind its source is), when the
 	// app knows it: the racial advantages on saves against a kind of source apply only then.
 	Against []string
@@ -585,6 +606,7 @@ func saveRules(s SaveScene) []sourceRule {
 		{slices.Contains(c.SaveAdvantage, s.Ability), SourceEffectSave, ModeAdvantage, ""},
 		{slices.Contains(c.SaveDisadvantage, s.Ability), SourceEffectSave, ModeDisadvantage, ""},
 		{c.Exhaustion >= exhaustionAttackLevel, SourceExhaustionSave, ModeDisadvantage, ""},
+		{c.Sunlit && c.SunlightWeakness, SourceSunlightSave, ModeDisadvantage, ""},
 	}
 }
 
@@ -628,6 +650,7 @@ func checkRules(s SaveScene) []sourceRule {
 		{s.StealthArmor && s.Ability == dexterityAbility, SourceStealthArmor, ModeDisadvantage, ""},
 		{c.Has(conditionPoisoned), SourcePoisonedCheck, ModeDisadvantage, conditionPoisoned},
 		{c.Has(conditionFrightened), SourceFrightenedCheck, ModeDisadvantage, conditionFrightened},
+		{c.Sunlit && (c.SunlightWeakness || c.SunlightSensitivity && s.Perception), SourceSunlightPerception, ModeDisadvantage, ""},
 	}
 }
 

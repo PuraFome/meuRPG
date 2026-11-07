@@ -24,6 +24,13 @@ var greatWeaponFighting = []string{
 // ("monster:wolf#pack-tactics").
 const packTacticsSuffix = "#pack-tactics"
 
+// sunlightSensitivitySuffix and sunlightWeaknessSuffix end the keys of a monster's Sunlight Sensitivity and
+// Sunlight Weakness traits ("monster:drow#sunlight-sensitivity", "monster:shadow#sunlight-weakness").
+const (
+	sunlightSensitivitySuffix = "#sunlight-sensitivity"
+	sunlightWeaknessSuffix    = "#sunlight-weakness"
+)
+
 // magicResistanceSuffix ends the key of a monster's Magic Resistance trait.
 const magicResistanceSuffix = "#magic-resistance"
 
@@ -148,6 +155,8 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.GreatWeaponFighting = slices.ContainsFunc(greatWeaponFighting, func(k string) bool { return rules.HasFeature(d, k) })
 	t.PackTactics = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, packTacticsSuffix) })
 	t.MagicResistance = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, magicResistanceSuffix) })
+	t.SunlightSensitivity = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, sunlightSensitivitySuffix) })
+	t.SunlightWeakness = slices.ContainsFunc(d.Features, func(f rules.Feature) bool { return strings.HasSuffix(f.Key, sunlightWeaknessSuffix) })
 	// The halfling's Lucky is a race trait, so every halfling has it, whichever its subrace.
 	t.Lucky = rules.HasFeature(d, link.LuckyTrait)
 	for _, f := range d.Features {
