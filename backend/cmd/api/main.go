@@ -646,7 +646,7 @@ func wireModules(
 		Roster:     charactersService,           // who can fight, with which numbers (MR-013)
 		Dice:       diceModes{campaignsService}, // where a player rolls (RN-18)
 		Roller:     dice.Crypto{},               // production rolls with the operating system's random source
-		D20Rerolls: true,                        // a d20 a table feature's reroll covers waits for "rolar de novo?" (#573); the web has its screens
+		D20Rerolls: true,                        // a d20 a table feature's reroll covers waits for "rolar de novo?"
 		Defaults:   campaignsService,            // the mode of a combat started without one (RN-24, RN-25)
 		Messages: play.MessagesConfig{
 			Profiles:        users, // the name shown on an out-of-character line

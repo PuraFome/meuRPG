@@ -10,7 +10,12 @@ import {
 import { GetOutsideInspirationResponseSchema } from '../../../../gen/meurpg/play/v1/resources_pb';
 import { RollSceneCheckResponseSchema } from '../../../../gen/meurpg/play/v1/scene_pb';
 import { LUCKY_TRAIT } from '../../../core/combat/lucky';
-import { heldAnswer, heldDie, heldReroll } from '../../../core/held-rolls/held-roll-testing';
+import {
+  heldAnswer,
+  heldDie,
+  heldIndomitable,
+  heldReroll,
+} from '../../../core/held-rolls/held-roll-testing';
 import { luckyOffer, sceneRoll } from '../../../core/play/scene-testing';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { BardicBlock, luckyAnswerText, minutesText } from './bardic-block';
@@ -175,6 +180,15 @@ describe('BardicBlock', () => {
     ]);
     await settle();
     expect(el.textContent?.trim()).toBe('');
+  });
+
+  it('keeps an Indomitable question out of the die section, since it has no die', async () => {
+    const { el, settle } = setup({}, [
+      heldIndomitable(5, 0, true, { kind: HeldRollKind.SCENE_CHECK }),
+    ]);
+    await settle();
+    expect(el.textContent).not.toContain('Inspiração de Bardo');
+    expect(el.querySelector('h2')).toBeNull();
   });
 
   it('answers the reroll question with the server rolling, and says what it came to', async () => {

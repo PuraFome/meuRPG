@@ -406,7 +406,7 @@ Se não deixa, todos usam o tipo que o mestre define.
 - Com um dado físico o jogador digita a soma dos dados sem o modificador (a face do d20, de 1 a 20), e o app soma o modificador. A soma precisa caber entre o mínimo e o máximo dos dados.
 - A regra cobre a iniciativa, as rolagens de ataque e de dano, os ataques de magia, o dano e a cura de magias, o Retomar o Fôlego, os testes contra a morte, o d20 de uma ação de cena de RP, a busca por armadilhas, as dicas de quebra-cabeça, o teste em grupo, os dois lados de uma disputa, o Esconder-se, o teste de habilidade da Contramágica e os valores de habilidade em 4d6 de uma ficha nova. Um modo que o mestre forçou recusa o outro jeito com "A campanha mudou a forma de rolar os dados. Recarregue a página.".
 - O teste de resistência de um alvo de magia é sempre rolado pelo app com o bônus da ficha.
-- O "rolar de novo?" de uma característica da mesa (RN-23) é rolado pelo app mesmo quando o mestre força os dados físicos: é o único d20 que o jogador não pode digitar. *A confirmar com o dono do produto.*
+- O "rolar de novo?" de uma característica da mesa (RN-23) é rolado pelo app mesmo quando o mestre força os dados físicos: é o único d20 que o jogador não pode digitar.
 - Os PV rolados quando um personagem é criado não fazem parte desta regra.
 - Telas: o painel "Dados" do mestre, o "Como você rola os dados" do jogador, e as folhas de rolagem, que mostram "Rolar no app" e "Digitar o resultado" na ordem da preferência, ou só o jeito que um modo forçado permite.
 
@@ -625,7 +625,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Forma Selvagem.** Uma subclasse ou característica da mesa muda a Forma Selvagem do druida (MR-037): o maior nível de desafio das feras (um fixo, ou tirado do nível, como o nível dividido por 3), quantos usos da Forma Selvagem cada mudança de forma gasta (nenhum, para uma mudança grátis) e se os ataques da fera contam como mágicos. O personagem vale-se do mais permissivo do que tem: o maior nível de desafio, o menor custo e ataques mágicos se alguma característica der. A lista de formas e a escolha concordam.
 - **A margem de acerto crítico.**
   Um modificador da mesa "Margem de acerto crítico" define o menor d20 natural que é acerto crítico, de 15 a 20.
-  Só o modo "Definir" é aceito, o servidor recusa os outros, e uma fórmula fica entre 15 e 20.
+  Só o modo "Definir" é aceito: o editor o trava e o servidor recusa os outros, e uma fórmula fica entre 15 e 20.
   O campo "Vale para" diz quais ataques: os ataques com arma (o padrão, como o Crítico Aprimorado), as jogadas de ataque de magia, ou os dois.
   Uma jogada de ataque de magia é crítica num 20, a menos que um modificador do escopo de magia o baixe; o Crítico Aprimorado e o Crítico Superior nunca o baixam.
   Para ataques com arma, vale o menor entre o valor da mesa e a margem das características de classe (Crítico Aprimorado, Crítico Superior).
@@ -670,7 +670,6 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   - **Dados físicos.** O app rola o novo d20 e os novos dados de dano sozinho, mesmo numa mesa de dados físicos, então esse dado não é digitado pelo jogador (a RN-18 não vale para ele).
   - **O nome da característica.** O jogador que rola e o mestre leem, junto da jogada, o nome da entrada que a mudou (um "Rolar de novo" ou um mínimo).
     Outro jogador nunca o lê, e ninguém lê o nome de uma entrada que o mestre aposentou ou desligou.
-  - **Não coberto.** A margem de crítico se escolhe no editor como um modificador, e o servidor recusa qualquer modo que não seja "Definir".
 - **Espaços de magia.** Uma característica da mesa pode transformar usos do seu recurso num espaço de magia livre de um nível, até o próximo descanso longo; gastar um espaço de magia do nível que o jogador escolhe para curar mais dados a cada nível; ou, depois de um descanso curto, recuperar espaços gastos até um nível e um nível combinado, uma vez por uso do seu recurso (o formato da Recuperação Arcana). Cada gasto passa pelos números do personagem como qualquer outro, aparece no registro do combate com o nível do espaço, e o desfazer do mestre o devolve; a recuperação, como a Recuperação Arcana, não se desfaz, o mestre ajusta os espaços à mão.
 - **O antecedente "Outro"** segue a regra do SRD 5.1 "Customizing a Background".
 - **Criaturas.**

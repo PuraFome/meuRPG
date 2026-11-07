@@ -5,7 +5,7 @@ import { getEncounterRPC } from './combat-support';
 import { createEntryRPC, rerollFeatBody } from './content-support';
 import { callRPC } from './support';
 
-// The table of the reroll question (#573): Vex, whose table feat "Sorte Teimosa" rolls a d20 of 2 or lower again for one use
+// The table of the reroll question: Vex, whose table feat "Sorte Teimosa" rolls a d20 of 2 or lower again for one use
 // (the pool the same feat defines). The feat is made and given after the combat began, as the master may change a sheet.
 
 export interface RerollTable extends RollsTable {
