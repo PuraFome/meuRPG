@@ -59,4 +59,30 @@ export const CREATURE_FIELD_TEXTS: readonly { shape: RegExp; reason?: string; te
     shape: /^table_creature\.attacks\[\]\.damage_type$/,
     text: 'Escolha um tipo de dano da lista.',
   },
+  {
+    shape: /^table_creature\.damage_mods$/,
+    reason: 'limit',
+    text: 'No máximo 12 linhas de resistência, imunidade ou vulnerabilidade. Remova uma para pôr outra.',
+  },
+  {
+    shape: /^table_creature\.damage_mods\[\]\.kind$/,
+    text: 'Escolha resistência, imunidade ou vulnerabilidade.',
+  },
+  {
+    shape: /^table_creature\.damage_mods\[\]\.damage_types$/,
+    text: 'Escolha ao menos um tipo de dano.',
+  },
+  {
+    shape: /^table_creature\.damage_mods\[\]\.damage_types\[\]$/,
+    reason: 'dangling_reference',
+    text: 'Este tipo de dano não está no SRD. Tire-o da linha.',
+  },
+  {
+    shape: /^table_creature\.damage_mods\[\]\.damage_types\[\]$/,
+    text: 'Há um tipo de dano repetido nesta linha. Tire o repetido.',
+  },
+  {
+    shape: /^table_creature\.damage_mods\[\]\.qualifier$/,
+    text: 'Só resistência ou imunidade a concussão, perfurante e cortante pode ter esse "Vale contra". Escolha "Todo dano desses tipos" ou mude a linha.',
+  },
 ];

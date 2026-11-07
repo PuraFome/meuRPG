@@ -219,6 +219,14 @@ const CASES: Record<string, () => unknown> = {
           { namePt: 'Investida', melee: true, diceCount: 2, diceSides: 6 },
           { namePt: 'Uivo', diceCount: 1, diceSides: 8, toHit: 'prof()' },
         ],
+        damageMods: [
+          {
+            kind: 'resist',
+            damageTypes: ['damage-type:bludgeoning', 'damage-type:slashing'],
+            qualifier: 'nonmagical_unless_silvered',
+          },
+          { kind: 'vulnerable', damageTypes: ['damage-type:fire'] },
+        ],
       }),
       nameOf,
     ),
@@ -488,6 +496,16 @@ const EXPECTED: Record<string, unknown> = {
       },
     ],
     sections: [
+      {
+        title: 'Resistências, imunidades e vulnerabilidades',
+        items: [
+          {
+            title: 'Resistência a damage-type:bludgeoning e damage-type:slashing',
+            text: 'de ataque não mágico nem prateado.',
+          },
+          { title: 'Vulnerabilidade a fogo', text: 'Todo dano desse tipo.' },
+        ],
+      },
       { title: 'Traços', items: [{ title: 'Elo', text: 'Entende o dono.' }] },
       {
         title: 'Ataques',

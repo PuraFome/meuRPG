@@ -4,6 +4,7 @@ import {
   TableCreatureDamageModSchema,
   TableCreatureSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { emptyDamageMod } from './creature-damage-mods';
 import {
   DICE_SIDES,
   MAX_ATTACKS,
@@ -108,18 +109,39 @@ describe('the creature form (#578)', () => {
     ]);
   });
 
-  it('keeps the resistances, immunities and vulnerabilities as the entry has them, with no row for them', () => {
+  it('turns the resistances, immunities and vulnerabilities into rows and back, as the entry has them', () => {
     const draft = creatureToDraft(stored());
-    expect(draft.kept?.damageMods).toHaveLength(1);
-    const init = draftToCreature({ ...draft, name: 'Outro nome', hitPoints: '41' });
-    expect(init.damageMods).toHaveLength(1);
-    expect(init.damageMods?.[0]).toMatchObject({
+    expect(draft.damageMods).toHaveLength(1);
+    expect(draft.damageMods[0]).toMatchObject({
       kind: 'resist',
-      damageTypes: ['damage-type:slashing'],
+      types: ['damage-type:slashing'],
       qualifier: 'nonmagical',
     });
-    // A new creature has none.
+    const init = draftToCreature({ ...draft, name: 'Outro nome', hitPoints: '41' });
+    expect(init.damageMods).toEqual([
+      { kind: 'resist', damageTypes: ['damage-type:slashing'], qualifier: 'nonmagical' },
+    ]);
+    // A row the master edits is what goes out, and a new creature has none.
+    draft.damageMods[0].types.push('damage-type:piercing');
+    draft.damageMods.push({ ...emptyDamageMod(), kind: 'vulnerable', types: ['damage-type:fire'] });
+    expect(draftToCreature(draft).damageMods).toHaveLength(2);
+    expect(draftToCreature(draft).damageMods?.[0]).toMatchObject({
+      damageTypes: ['damage-type:slashing', 'damage-type:piercing'],
+    });
     expect(draftToCreature(emptyCreature()).damageMods).toEqual([]);
+  });
+
+  it('lists the paths of the rows of resistances', () => {
+    const paths = creaturePaths(creatureToDraft(stored()));
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        'table_creature.damage_mods',
+        'table_creature.damage_mods[0].kind',
+        'table_creature.damage_mods[0].damage_types',
+        'table_creature.damage_mods[0].qualifier',
+      ]),
+    );
+    expect(paths).not.toContain('table_creature.damage_mods[1].kind');
   });
 
   it('sends empty numbers as 0 (the base keeps its own) and trims names, texts and formulas', () => {

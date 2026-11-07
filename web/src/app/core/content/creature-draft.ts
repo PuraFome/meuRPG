@@ -4,9 +4,9 @@ import {
   type TableCreature,
   type TableCreatureAttack,
   type TableCreatureAttackSchema,
-  type TableCreatureDamageMod,
   type TableCreatureSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { type DamageModDraft, modToDraft } from './creature-damage-mods';
 import { newRowId, rangeFeet, rangeMeters, unreadableRange } from './effect-draft';
 import { readWhole, wholeText } from './whole-number';
 
@@ -15,8 +15,7 @@ import { readWhole, wholeText } from './whole-number';
  * fixed value and a formula of the owner's sheet, traits (name and text) and attacks. Every number is kept as typed so a
  * half-typed one is never rewritten: an empty fixed number is the base's (the damage bonus: nothing), an empty formula keeps the
  * fixed number. Distances are metres in the form and feet in the entry. The resistances, immunities and vulnerabilities
- * (`damage_mods`) have no rows yet: they go through `kept` as the entry has them, like the spell's summon, so a save never
- * loses them.
+ * (`damage_mods`) are rows of their own, kinds and damage types and the "Vale contra" qualifier (`creature-damage-mods`).
  */
 
 export type CreatureInit = MessageInitShape<typeof TableCreatureSchema>;
@@ -69,8 +68,8 @@ export interface CreatureDraft {
   attackBonusFormula: string;
   traits: CreatureTraitDraft[];
   attacks: CreatureAttackDraft[];
-  /** What the form has no rows for yet, sent back as the entry has it (the resistances, immunities and vulnerabilities). */
-  kept?: { damageMods: readonly TableCreatureDamageMod[] };
+  /** The resistances, immunities and vulnerabilities the table adds to the base's. */
+  damageMods: DamageModDraft[];
 }
 
 export function emptyCreature(): CreatureDraft {
@@ -86,6 +85,7 @@ export function emptyCreature(): CreatureDraft {
     attackBonusFormula: '',
     traits: [],
     attacks: [],
+    damageMods: [],
   };
 }
 
@@ -138,7 +138,7 @@ export function creatureToDraft(c: TableCreature): CreatureDraft {
     attackBonusFormula: c.attackBonusFormula,
     traits: c.traits.map((t) => ({ id: newRowId(), name: t.namePt, text: t.textPt })),
     attacks: c.attacks.map(attackToDraft),
-    kept: { damageMods: c.damageMods },
+    damageMods: c.damageMods.map(modToDraft),
   };
 }
 
@@ -171,7 +171,11 @@ export function draftToCreature(d: CreatureDraft): CreatureInit {
     damageBonusFormula: d.damageBonusFormula.trim(),
     attackBonusFormula: d.attackBonusFormula.trim(),
     attacks: d.attacks.map(draftToAttack),
-    damageMods: [...(d.kept?.damageMods ?? [])],
+    damageMods: d.damageMods.map((m) => ({
+      kind: m.kind,
+      damageTypes: [...m.types],
+      qualifier: m.qualifier,
+    })),
   };
 }
 
@@ -191,7 +195,12 @@ export function creaturePaths(d: CreatureDraft): string[] {
     `${P}.attack_bonus_formula`,
     `${P}.traits`,
     `${P}.attacks`,
+    `${P}.damage_mods`,
   ];
+  d.damageMods.forEach((_, k) => {
+    const at = `${P}.damage_mods[${k}]`;
+    out.push(`${at}.kind`, `${at}.damage_types`, `${at}.qualifier`);
+  });
   d.traits.forEach((_, k) => {
     out.push(`${P}.traits[${k}].name_pt`, `${P}.traits[${k}].text_pt`);
   });

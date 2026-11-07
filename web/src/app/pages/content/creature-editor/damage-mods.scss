@@ -1,0 +1,77 @@
+.block {
+  gap: var(--mr-space-3);
+}
+
+.mods__base {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}
+
+.add__count {
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+}
+
+// "Tipo": three choices side by side from 520 px, the chosen one outlined and marked by its check as well as by the colour.
+.seg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  &__legend {
+    font-size: var(--mr-font-14);
+    color: var(--mr-ink-muted);
+  }
+
+  &__opts {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--mr-space-2);
+
+    @media (min-width: 520px) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  &__opt {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--mr-space-2);
+    box-sizing: border-box;
+    min-height: 44px;
+    padding: 0 var(--mr-space-3);
+    border: 1px solid var(--mr-control-line);
+    border-radius: var(--mr-radius-md);
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    font-weight: 700;
+    cursor: pointer;
+
+    &--on {
+      border: 2px solid var(--mr-accent);
+      background: var(--mr-accent-soft);
+      color: var(--mr-accent-text);
+    }
+
+    &:has(:focus-visible) {
+      outline: 2px solid var(--mr-focus);
+      outline-offset: 2px;
+    }
+
+    .mat-icon {
+      flex: none;
+      width: 20px;
+      height: 20px;
+      font-size: var(--mr-font-20);
+    }
+  }
+}

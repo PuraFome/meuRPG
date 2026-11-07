@@ -37,6 +37,7 @@ import {
   emptyTrait,
   unreadableCreaturePaths,
 } from '../../../core/content/creature-draft';
+import { baseModsText } from '../../../core/content/creature-damage-mods';
 import { carrierIcon, carriersOf, type Carrier } from '../../../core/content/creature-carriers';
 import { creaturePreview } from '../../../core/content/creature-preview';
 import { RANGES, attackSummary, formulaEcho, traitLine } from '../../../core/content/creature-text';
@@ -50,6 +51,7 @@ import { TextField } from '../../../shared/form-fields/text-field';
 import { TableMark } from '../../../shared/table-mark/table-mark';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import { PlayersSwitch } from '../players-switch/players-switch';
+import { CreatureDamageMods } from './damage-mods';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
 const P = 'table_creature';
@@ -106,6 +108,7 @@ const NUMBER_ROWS: readonly NumberRow[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-creature-editor',
   imports: [
+    CreatureDamageMods,
     CreaturePick,
     EditorAlerts,
     EditorBar,
@@ -119,7 +122,7 @@ const NUMBER_ROWS: readonly NumberRow[] = [
     TextField,
   ],
   templateUrl: './creature-editor.html',
-  styleUrls: ['../editor.scss', './creature-editor.scss'],
+  styleUrls: ['../editor.scss', './creature-rows.scss', './creature-editor.scss'],
 })
 export class CreatureEditor {
   private readonly client = inject(TableContentClient);
@@ -189,6 +192,8 @@ export class CreatureEditor {
   protected readonly preview = computed(() =>
     creaturePreview(this.draft(), this.base(), this.baseName(), (k) => this.catalog().nameOf(k)),
   );
+  protected readonly baseMods = computed(() => baseModsText(this.base()));
+  protected readonly nameOf = (key: string): string => this.catalog().nameOf(key);
   protected readonly carriers = computed(() => carriersOf(this.entries(), this.entry()?.key ?? ''));
   protected readonly attacksFull = computed(() => this.draft().attacks.length >= MAX_ATTACKS);
   protected readonly traitsFull = computed(() => this.draft().traits.length >= MAX_TRAITS);
@@ -283,9 +288,9 @@ export class CreatureEditor {
     this.patch({ baseKey: '' });
   }
 
-  private hasIssue(prefix: string): boolean {
+  protected readonly hasIssue = (prefix: string): boolean => {
     return this.saver.placement().fields.some((f) => f === prefix || f.startsWith(`${prefix}.`));
-  }
+  };
 
   protected isOpen(id: string, path: string): boolean {
     return this.open().has(id) || this.hasIssue(path);
@@ -381,10 +386,10 @@ export class CreatureEditor {
   protected readonly unreadable = signal<ReadonlyMap<string, string>>(new Map());
 
   /** The messages of one field: the client's own first, then the server's. */
-  protected messages(path: string): readonly string[] {
+  protected readonly messages = (path: string): readonly string[] => {
     const own = this.unreadable().get(path);
     return own ? [own] : this.saver.issues(path);
-  }
+  };
 
   private readonly shapeOfPath = (path: string): string => {
     if (/\.(reach_ft|range_ft|long_range_ft)$/.test(path)) {

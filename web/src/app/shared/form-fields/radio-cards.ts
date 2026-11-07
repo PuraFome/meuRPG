@@ -9,6 +9,8 @@ export interface RadioCard {
   readonly value: string;
   readonly label: string;
   readonly hint?: string;
+  /** Off (dashed): it cannot be chosen now, and the group's `hint` says why. */
+  readonly disabled?: boolean;
 }
 
 /**
@@ -26,13 +28,14 @@ export interface RadioCard {
       <span class="legend" aria-hidden="true">{{ label() }}</span>
       <div class="cards">
         @for (o of options(); track o.value; let first = $first) {
-          <label class="card">
+          <label class="card" [class.card--off]="o.disabled">
             <input
               type="radio"
               class="mr-visually-hidden"
               [name]="name"
               [value]="o.value"
               [checked]="value() === o.value"
+              [disabled]="o.disabled"
               [attr.data-field]="first ? path() || null : null"
               (change)="valueChange.emit(o.value)"
             />
@@ -47,7 +50,7 @@ export interface RadioCard {
         }
       </div>
     </div>
-    <app-field-note [id]="noteId" [issues]="issues()" />
+    <app-field-note [id]="noteId" [issues]="issues()" [hint]="hint()" />
   `,
   styles: `
     :host {
@@ -95,6 +98,13 @@ export interface RadioCard {
         padding: 9px 13px;
         border: 2px solid var(--mr-accent);
         background: var(--mr-accent-soft);
+      }
+
+      &--off {
+        border-style: dashed;
+        color: var(--mr-ink-muted);
+        background: transparent;
+        cursor: not-allowed;
       }
 
       &:has(:focus-visible) {
@@ -153,6 +163,8 @@ export class RadioCards {
   readonly value = input.required<string>();
   readonly path = input('');
   readonly issues = input<readonly string[]>([]);
+  /** One line under the group: why a card is off. */
+  readonly hint = input('');
   readonly valueChange = output<string>();
 
   /** The group's name for the native radios, and the id the group's description points at. */

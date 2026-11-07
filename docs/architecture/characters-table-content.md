@@ -249,7 +249,7 @@ Nothing is deleted: the way out of an entry is the archive mark or the switch.
   A package without the creature of an NPC's link is refused as unknown content.
   A package battle encounter that names a table creature is refused as unknown content.
 - **The web app.** The creature editor of "Conteúdo da mesa" makes and edits a creature from an SRD base, which never changes after the first save.
-  It edits the name, the fixed numbers and formulas, the traits and the attacks, and keeps the resistances, immunities and vulnerabilities as the entry has them.
+  It edits the name, the fixed numbers and formulas, the traits, the attacks and up to 12 rows of resistance, immunity or vulnerability, each with its damage types and a "Vale contra" (off for a vulnerability and for a type that is not bludgeoning, piercing or slashing).
   The master switches the creature in the editor.
 
 ## Wild Shape and spell slots

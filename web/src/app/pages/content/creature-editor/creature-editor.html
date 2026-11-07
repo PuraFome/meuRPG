@@ -69,7 +69,7 @@
         </p>
       </section>
 
-      <!-- Resistências, imunidades e vulnerabilidades: as linhas entram aqui (T3). O rascunho já guarda o que a entrada tem (`kept`). -->
+      <app-creature-damage-mods [mods]="d.damageMods" [damageTypes]="catalog().damageTypes" [nameOf]="nameOf" [baseText]="baseMods()" [baseName]="baseName()" [issues]="messages" [refused]="hasIssue" (modsChange)="patch({ damageMods: $event })" />
 
       <section class="mr-panel block" aria-labelledby="cr-traits-t" data-field="table_creature.traits">
         <h2 class="mr-panel__title" id="cr-traits-t">Traços</h2>
@@ -207,6 +207,15 @@
             <div class="preview__row"><dt>{{ r.label }}</dt><dd>{{ r.value }}</dd></div>
           }
         </dl>
+        @if (p.mods.length > 0) {
+          <h3 class="preview__sub">Resistências e imunidades</h3>
+          <div class="preview__mods">
+            @for (l of p.mods; track l.kind) {
+              <p><strong>{{ l.kind }}</strong>&ngsp;@for (part of l.parts; track $index; let last = $last) {{{ part.text }} <span class="preview__origin">({{ part.origin }})</span>@if (!last) { e }}.</p>
+            }
+            <p class="preview__note preview__private"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você lê estas linhas. Nem quem traz a criatura as vê.</p>
+          </div>
+        }
         @if (p.actions.length > 0) {
           <h3 class="preview__sub">Ações sem dono</h3>
           <ul class="preview__actions">

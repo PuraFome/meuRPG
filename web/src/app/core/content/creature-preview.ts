@@ -2,6 +2,7 @@ import type { Creature } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { signed, speedsText } from '../creatures/creature-format';
 import { typeAndSize } from '../creatures/bestiary-format';
 import { joinDots, tieNumbers } from '../format/text';
+import { type ModLine, previewMods } from './creature-damage-mods';
 import { type CreatureDraft } from './creature-draft';
 import { hasFormula, numberValue, signedBonus, withOwner } from './creature-text';
 import { readWhole } from './whole-number';
@@ -52,6 +53,8 @@ export interface CreaturePreview {
   readonly rows: readonly PreviewRow[];
   /** The attacks without an owner, the base's then the table's own. */
   readonly actions: readonly PreviewAction[];
+  /** "Resistências e imunidades": the table's lines and the base's, one line for each kind. */
+  readonly mods: readonly ModLine[];
   readonly traits: readonly string[];
   /** Said when a formula makes the numbers of an owner differ from these. */
   readonly ownerNote: string;
@@ -146,6 +149,7 @@ export function creaturePreview(
     ]),
     rows: previewRows(d, base, fixedBonus),
     actions: [...baseActions(base, fixedBonus), ...tableActions(d, fixedBonus, nameOf)],
+    mods: previewMods(d.damageMods, base, nameOf),
     traits: d.traits.map((t) => t.name.trim()).filter((n) => n !== ''),
     ownerNote: hasOwnerFormula(d) ? 'Com dono, o acerto e o dano seguem as fórmulas.' : '',
   };
