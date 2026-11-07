@@ -182,27 +182,35 @@ func (s *Service) trapTargetsOf(ctx context.Context, tx pgx.Tx, campaignID strin
 		}
 	}
 	for i, c := range caught {
-		out[i].id = c.ID
-		if err := s.trapModesOf(ctx, tx, campaignID, trap, c, sun, states, ability, trapSaveAgainst(effect), &out[i]); err != nil {
+		if err := s.trapTargetOf(ctx, tx, campaignID, trap, effect, c, sun, states, ability, &out[i]); err != nil {
 			return nil, err
-		}
-		if trapNeedsAC(effect) {
-			sheet, err := s.sheetOf(ctx, tx, campaignID, c)
-			if err != nil {
-				return nil, err
-			}
-			out[i].armorClass = sheet.ArmorClass + int(c.AcBonus) + int(c.EffectAcBonus)
-		}
-		if ability != "" {
-			save, err := s.saveOf(ctx, tx, campaignID, c, ability)
-			if err != nil {
-				return nil, err
-			}
-			save = withRollBonus(save, states, c.ID, rules.RollAppliesSave)
-			out[i].save, out[i].saveKnown = save.Bonus, save.Known
 		}
 	}
 	return out, nil
+}
+
+// trapTargetOf is what the trap's roll needs of one caught combatant: its modes, its armor class and its save.
+func (s *Service) trapTargetOf(ctx context.Context, tx pgx.Tx, campaignID string, trap maplink.Trap, effect *rulesv1.TrapEffect, c playdb.Combatant, sun sunlight, states map[string][]playdb.CombatantState, ability string, out *trapTarget) error {
+	out.id = c.ID
+	if err := s.trapModesOf(ctx, tx, campaignID, trap, c, sun, states, ability, trapSaveAgainst(effect), out); err != nil {
+		return err
+	}
+	if trapNeedsAC(effect) {
+		sheet, err := s.sheetOf(ctx, tx, campaignID, c)
+		if err != nil {
+			return err
+		}
+		out.armorClass = sheet.ArmorClass + int(c.AcBonus) + int(c.EffectAcBonus)
+	}
+	if ability != "" {
+		save, err := s.saveOf(ctx, tx, campaignID, c, ability)
+		if err != nil {
+			return err
+		}
+		save = withRollBonus(save, states, c.ID, rules.RollAppliesSave)
+		out.save, out.saveKnown = save.Bonus, save.Known
+	}
+	return nil
 }
 
 // fireInCombat fires the trap on the combatants it caught, inside the change's

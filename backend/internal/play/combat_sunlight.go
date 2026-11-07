@@ -62,47 +62,63 @@ func sunlightWrite(ctx context.Context, c *combatTx, req *playv1.SetSunlightRequ
 
 // nextSunlight is the scope and the sorted squares the combat keeps after the request, or the refusal.
 func nextSunlight(enc playdb.Encounter, req *playv1.SetSunlightRequest) (string, []grid.Square, error) {
-	invalid := func(msg string) error { return connect.NewError(connect.CodeInvalidArgument, errors.New(msg)) }
-	scope := enc.SunlightScope
-	switch req.GetScope() {
-	case playv1.SunlightScope_SUNLIGHT_SCOPE_UNSPECIFIED:
-	case playv1.SunlightScope_SUNLIGHT_SCOPE_MAP:
-		scope = sunScopeMap
-	case playv1.SunlightScope_SUNLIGHT_SCOPE_SQUARES:
-		scope = sunScopeSquares
-	default:
-		return "", nil, invalid("unknown sunlight scope")
+	scope, err := sunScopeOf(enc, req.GetScope())
+	if err != nil {
+		return "", nil, err
 	}
 	adds, removes := req.GetAddSquares(), req.GetRemoveSquares()
 	if len(adds) > maxSunSquares || len(removes) > maxSunSquares {
-		return "", nil, invalid("too many squares")
+		return "", nil, sunInvalid("too many squares")
 	}
 	if isTheatre(enc) || enc.MapID == nil { // no squares to light: the sun reaches the whole combat
 		if scope == sunScopeSquares && req.GetScope() != playv1.SunlightScope_SUNLIGHT_SCOPE_UNSPECIFIED {
-			return "", nil, invalid("a combat with no map has no squares: the sunlight reaches all of it")
+			return "", nil, sunInvalid("a combat with no map has no squares: the sunlight reaches all of it")
 		}
 		if len(adds)+len(removes) > 0 {
-			return "", nil, invalid("a combat with no map has no squares")
+			return "", nil, sunInvalid("a combat with no map has no squares")
 		}
 		return sunScopeMap, nil, nil
 	}
+	out, err := editedSunSquares(enc, adds, removes)
+	return scope, out, err
+}
+
+func sunInvalid(msg string) error {
+	return connect.NewError(connect.CodeInvalidArgument, errors.New(msg))
+}
+
+// sunScopeOf is the scope the request asks for; an unspecified one keeps the combat's.
+func sunScopeOf(enc playdb.Encounter, ask playv1.SunlightScope) (string, error) {
+	switch ask {
+	case playv1.SunlightScope_SUNLIGHT_SCOPE_UNSPECIFIED:
+		return enc.SunlightScope, nil
+	case playv1.SunlightScope_SUNLIGHT_SCOPE_MAP:
+		return sunScopeMap, nil
+	case playv1.SunlightScope_SUNLIGHT_SCOPE_SQUARES:
+		return sunScopeSquares, nil
+	}
+	return "", sunInvalid("unknown sunlight scope")
+}
+
+// editedSunSquares is the combat's sunlit squares with the removals and then the additions applied, sorted by row then column.
+func editedSunSquares(enc playdb.Encounter, adds, removes []*playv1.SunlightSquare) ([]grid.Square, error) {
 	set := squareSet(squaresOfJSON(enc.SunlightSquares))
 	for _, sq := range removes {
 		g, err := sunSquareOf(enc, sq)
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 		delete(set, g)
 	}
 	for _, sq := range adds {
 		g, err := sunSquareOf(enc, sq)
 		if err != nil {
-			return "", nil, err
+			return nil, err
 		}
 		set[g] = true
 	}
 	if len(set) > maxSunSquares {
-		return "", nil, invalid("the sunlit squares pass the limit")
+		return nil, sunInvalid("the sunlit squares pass the limit")
 	}
 	out := make([]grid.Square, 0, len(set))
 	for sq := range set {
@@ -114,7 +130,7 @@ func nextSunlight(enc playdb.Encounter, req *playv1.SetSunlightRequest) (string,
 		}
 		return a.Col - b.Col
 	})
-	return scope, out, nil
+	return out, nil
 }
 
 // sunSquareOf checks the square is inside the combat's grid.
