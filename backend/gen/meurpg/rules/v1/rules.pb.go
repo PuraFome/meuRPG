@@ -11529,7 +11529,11 @@ type GetCreatureRequest struct {
 	// The campaign, for access.
 	CampaignId string `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	// Content key of the creature, such as "monster:wolf".
-	Key           string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
+	// Optional. A character's creature (a UUID) of that key: a table creature with formulas then answers with the numbers
+	// worked out for its owner when it arrived (armor class, attack bonuses, damage), as its combat uses them, not the
+	// entry's static ones. Only the master and the owner's player may ask; for anyone else, or another key, it is `not_found`.
+	CreatureId    string `protobuf:"bytes,3,opt,name=creature_id,json=creatureId,proto3" json:"creature_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11574,6 +11578,13 @@ func (x *GetCreatureRequest) GetCampaignId() string {
 func (x *GetCreatureRequest) GetKey() string {
 	if x != nil {
 		return x.Key
+	}
+	return ""
+}
+
+func (x *GetCreatureRequest) GetCreatureId() string {
+	if x != nil {
+		return x.CreatureId
 	}
 	return ""
 }
@@ -13761,11 +13772,13 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\varmor_class\x18\r \x01(\x05R\n" +
 	"armorClass\x12\x1d\n" +
 	"\n" +
-	"hit_points\x18\x0e \x01(\x05R\thitPoints\"G\n" +
+	"hit_points\x18\x0e \x01(\x05R\thitPoints\"h\n" +
 	"\x12GetCreatureRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x10\n" +
-	"\x03key\x18\x02 \x01(\tR\x03key\"L\n" +
+	"\x03key\x18\x02 \x01(\tR\x03key\x12\x1f\n" +
+	"\vcreature_id\x18\x03 \x01(\tR\n" +
+	"creatureId\"L\n" +
 	"\x13GetCreatureResponse\x125\n" +
 	"\bcreature\x18\x01 \x01(\v2\x19.meurpg.rules.v1.CreatureR\bcreature\"\xe1\v\n" +
 	"\bCreature\x12:\n" +

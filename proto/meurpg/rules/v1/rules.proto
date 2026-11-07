@@ -2510,6 +2510,10 @@ message GetCreatureRequest {
   string campaign_id = 1;
   // Content key of the creature, such as "monster:wolf".
   string key = 2;
+  // Optional. A character's creature (a UUID) of that key: a table creature with formulas then answers with the numbers
+  // worked out for its owner when it arrived (armor class, attack bonuses, damage), as its combat uses them, not the
+  // entry's static ones. Only the master and the owner's player may ask; for anyone else, or another key, it is `not_found`.
+  string creature_id = 3;
 }
 
 // GetCreatureResponse returns one stat block.

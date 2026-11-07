@@ -786,6 +786,19 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   As criaturas de uma magia ou de uma habilidade que lutam num combate mostram a todo jogador o nome e a chave, e só a quem as convocou e a mim os números, a ficha e a entrada; um NPC escondido ao lado de quem convocou continua sem nome.
   As entradas de quem convocou listam uma criatura só enquanto um personagem dela a tem viva, então uma dispensa, uma substituição ou um desfazer a tiram de novo.
   A invocação só é conjurada pela habilidade: uma Contramágica não a responde e ela não é uma das magias conhecidas do personagem.
+- **Dado** que edito uma classe, subclasse, raça, antecedente ou característica de classe no notebook, **quando** ligo "Invoca criaturas" numa característica, **então** escolho de 1 a 8 criaturas (as da mesa e as do SRD), o número como fórmula, o máximo ao mesmo tempo, o recurso que cada uso gasta, o turno, o que uma nova conjuração faz com as criaturas antigas, o tempo e a duração.
+  O recurso é um dos efeitos `resource` da própria característica; sem nenhum, o bloco diz isso e o "Salvar" espera.
+  A concentração fica desligada enquanto a duração não for por tempo.
+  Desligar o interruptor não envia invocação, e ele volta ligado quando abro uma entrada que tem uma.
+  Uma opção e um talento não têm esse interruptor.
+  O servidor recusa cada campo errado no próprio campo, e "Como os jogadores veem" acrescenta "Invoca: Lobo.".
+  Salvar uma característica no editor mantém uma invocação escrita pela API.
+- **Dado** que edito uma magia no notebook, **quando** escolho a mecânica "Invocar", **então** escolho de 1 a 8 criaturas.
+  Defino quantas vêm (uma fórmula que pode usar o círculo do espaço), quantas a mais por círculo acima, o máximo ao mesmo tempo, o turno e o que uma nova conjuração faz com as criaturas antigas.
+  Escolher a mecânica seleciona o alvo "Só quem conjura" e devolve o alvo e o alcance antigos se eu a deixar com o alvo ainda em quem conjura.
+  Antes de salvar, o editor diz no próprio campo o que o servidor recusa: um truque, um alvo que não seja quem conjura, um ritual, uma duração instantânea com efeito guardado, uma zona guardada, ou um efeito guardado para quem falha no teste ou é atingido.
+  "Salvar magia" para e vai ao primeiro deles.
+  A magia deve ser de 1º círculo ou mais.
 - **Dado** uma criatura dada com fórmulas, **quando** edito a entrada para não ter fórmula alguma, **então** a classe de armadura dela na lista e no combate continua a com que foi dada.
 - **Dado** uma criatura com fórmulas que ponho no combate com "Pôr no combate" ou da qual faço um NPC, **então** ela tem os números fixos da entrada, porque não tem dono.
 - **Dado** uma entrada de criatura, **então** um jogador a acha na lista de criaturas e lê a ficha dela só enquanto um personagem dele a tem.
@@ -1249,6 +1262,11 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** que a concentração da conjuração termina, **quando** ela termina, **então** as criaturas dessa conjuração são dispensadas (RN-22); o desfazer do mestre as traz de volta.
 - **Dado** que o mestre põe o token da criatura de um personagem num mapa, **quando** o grupo olha, **então** todos o veem (um token de grupo, nunca escondido, nem na névoa).
 - **Dado** um jogador que não pode ter criatura, **quando** ele olha a ficha de outro personagem, **então** o painel "Criaturas" não existe para ele (RN-20).
+- **Dado** um jogador que conjura uma invocação de uma magia ou de uma habilidade que oferece uma criatura da mesa, **quando** a lista de criaturas abre, **então** a criatura da mesa leva "Da mesa" e a linha "Os números vêm da sua ficha quando ele chega." no lugar dos números, e uma criatura do SRD mantém a sua própria linha.
+  A lista põe a criatura da mesa primeiro, e o cabeçalho diz a classe e o nível da habilidade e o uso que ela gasta.
+  Depois da conjuração, a página da criatura leva "Da mesa" e a linha "Os números vêm da ficha de <dono> quando ele chegou", sem nível nem proficiência, porque os números não mudam quando edito a entrada depois.
+  A página mostra os números, os ataques e o dano calculados para a minha ficha quando a criatura chegou.
+  O app reconhece uma criatura da mesa pelo fim "@mesa" da chave, e o servidor não envia marca para isso.
 
 #### No app
 - **Ficha.** O painel "Criaturas" tem um cartão por criatura ("Corvo · Miúdo · Familiar de Pensantus", CA, PV, deslocamento em metros), "Ver a ficha do Nanquim", "Renomear", "Dispensar" (pergunta no lugar) e, para o mestre, "Corrigir PV" fora do combate. Convocar só é possível durante uma sessão ("Agora não há sessão aberta."). O mestre dá criaturas na lista de personagens da campanha com "Dar uma criatura".

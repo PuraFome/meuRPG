@@ -622,8 +622,22 @@ Members read the campaign's content, except creatures (below); only the master w
 - **The switches.** On "Opções para os jogadores" the master turns each class, subclass, race, subrace, background, spell, feat, option and class feature on or off, SRD and table alike (one switch per option, how many sheets use it, "Ligar todas" and "Desligar todas" per kind, saved at once). Everything is on by default. What is off never reaches a player in any read; sheets that already use it keep working; a switched-off class hides its subclasses, features and options, and a switched-off race its subraces and traits, except on a sheet that already has the parent (a sheet keeps what its own race, class or subclass gives). A player's new choice of a switched-off option is refused (on create, edit and level up), an unrelated edit never is, and the master is never refused. A player's sheet keeps, when edited or leveled up, what the master archived or switched off afterwards.
   The master switches creatures on and off in the "Criaturas" group of this screen.
   The creature editor has the same switch.
-- **A table spell can summon creatures.** They are the table's or the SRD's, and they follow the rules of the SRD's summoning spells: the slot, concentration, replacement, dismissal and undo. The number of creatures may depend on the caster and on the slot used. Players read the creatures as for any summon. The caster is offered the names of the creatures (no numbers) when choosing which to bring.
-- **A table feature can summon creatures.** A class, subclass, race trait or background feature, or a feature the master adds to a class as its own entry, may bring creatures of the table or of the SRD. They follow the same rules as a summoning spell: concentration, replacement, dismissal and undo. The feature says how many creatures come, which resource it spends (one use per casting), how the uses come back on a rest, and how long and how fast it casts. It spends no slot, so a higher slot changes nothing. The undo gives the use back. A player reads the creatures as for any summon, and a player who holds none does not read the creatures of the feature.
+- **A table spell can summon creatures.** They are the table's or the SRD's.
+  They follow the rules of the SRD's summoning spells: the slot, concentration, replacement, dismissal and undo.
+  The number of creatures may depend on the caster and on the slot used.
+  Players read the creatures as for any summon.
+  The caster is offered the names of the creatures (no numbers) when choosing which to bring.
+- **A table feature can summon creatures.** A class, subclass, race trait or background feature, or a feature the master adds to a class as its own entry, may bring creatures of the table or of the SRD.
+  They follow the same rules as a summoning spell: concentration, replacement, dismissal and undo.
+  The feature says how many creatures come, how many at a time, the turn and what a new casting does to the old ones.
+  It also says how fast it casts and how long it lasts.
+  Each casting spends one use of a resource of the feature (or of its class).
+  The uses come back through the resource's own recharge.
+  The feature spends no slot, so a higher slot changes nothing and `slot()` is 0 in its count.
+  The undo gives the use back.
+  A player reads the creatures as for any summon.
+  A player who holds none does not read the creatures of the feature in the table's list or on a creature's page.
+  A player who holds the feature reads the names of its creatures (no numbers) when choosing which to bring.
 - **Open screens follow.** When the master changes content or a switch, the players' open screens read the lists again, each with the role of its reader.
 - **An entry the rules refuse is left out, and the master sees which and why.**
   The rest of the campaign keeps working.
@@ -635,7 +649,10 @@ Members read the campaign's content, except creatures (below); only the master w
   On a phone the master reads and removes, and the fix is on the notebook.
   A player never receives which entries are out, how many or why.
 - **A sheet that uses table content does not move to another campaign.** That check waits for copy character and reuse NPCs ([MR-021](stories.md#mr-021-copy-a-character), [MR-022](stories.md#mr-022-reuse-npcs)). Copying content to another campaign is [MR-026](stories.md#mr-026-propose-a-new-race-or-class), after the MVP.
-- **The target of a spell.** One creature, several (one more per level above, if the master wants), an area (cone, cube, cylinder, line or sphere, in steps of 1.5 m) or only the caster. The mechanics are optional: an attack or a saving throw, damage (more dice per level above or per cantrip tier) and healing. In combat a table spell goes through the same casting as an SRD spell.
+- **The target of a spell.** One creature, several (one more per level above, if the master wants), an area (cone, cube, cylinder, line or sphere, in steps of 1.5 m) or only the caster.
+  The mechanics are optional: an attack or a saving throw, damage (more dice per level above or per cantrip tier) and healing.
+  In combat a table spell goes through the same casting as an SRD spell.
+  A spell can instead summon creatures (the mechanic "Invocar"): a spell of the 1st circle or more on only the caster, not a ritual and with no attack, saving throw, damage, healing or area, paid with its slot.
 - **An area the spell keeps on the map.** A leveled table spell may keep its area while it lasts, as Moonbeam and Spirit Guardians do (RN-37): the master picks when it catches a creature (at the start of its turn, on its first entry, or both) and whether it follows the caster. The area is the spell's own target (a sphere, a cylinder or a cube), the damage and the saving throw are the spell's (a spell with no saving throw just deals the damage, to be rolled), and the time is its duration. It needs exactly one damage type, no attack and no healing, a timed duration or concentration, a distance (or the range Self if it follows the caster). Each field that is wrong is refused at its own field, one sentence each.
 - **A spell may leave a lasting effect.**
   A table spell may put an effect on its targets while it lasts.

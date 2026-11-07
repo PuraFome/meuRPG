@@ -787,6 +787,19 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The summoner's entries list a creature only while a character of hers holds it live, so a dismissal, a replacement or an undo takes it out again (`TestASummonedTableCreatureLeavesTheEntriesWhenNoneIsHeld`).
   The summon is cast only through the feature: a Counterspell does not answer it and it is not one of the character's known spells.
   (`TestATableFeatureSummonsThroughTheSpellChecks`, `TestATableFeatureSummonIsRefusedAtTheFieldThatIsWrong`, `TestMR578_ATableFeatureSummonsItsCreaturesOutsideACombatForAUse`, `TestMR578_ATableFeatureSummonsInACombatAndTheUndoGivesTheUseBack`)
+- **Given** I edit a class, subclass, race, background or class feature on a laptop, **when** I turn on "Invoca criaturas" on a feature, **then** I pick 1 to 8 creatures (the table's and the SRD's), the count as a formula, the most at a time, the resource a use spends, the turn, what a new casting does to the old creatures, the time and the duration.
+  The resource is one of the feature's own `resource` effects; with none, the block says so and "Salvar" waits.
+  Concentration is off while the duration is not by time.
+  Turning the switch off sends no summon, and the switch is on again when I open an entry that has one.
+  An option and a feat have no such switch.
+  The server refuses each field wrong under the field itself, and "Como os jogadores veem" adds "Invoca: Lobo.".
+  Saving a feature in the editor keeps a summon written through the API.
+- **Given** I edit a spell on a laptop, **when** I choose the mechanic "Invocar", **then** I pick 1 to 8 creatures.
+  I set how many come (a formula that may use the circle of the slot), how many more for each circle above, the most at a time, the turn and what a new casting does to the old creatures.
+  Choosing it selects the target "Só quem conjura" and gives the old target and range back if I leave it with the caster still chosen.
+  Before I save, the editor says on its own field what the server refuses: a cantrip, a target other than the caster, a ritual, an instantaneous duration with a stored effect, a stored zone, or a stored effect for those who fail a save or are hit.
+  "Salvar magia" stops and lands on the first of them.
+  The spell must be of the 1st circle or more.
 - **Given** a creature given with formulas, **when** I edit its entry to have no formula at all, **then** its armor class in the list and in the combat are still the ones it was given.
 - **Given** a creature with formulas that I put in a combat with "Pôr no combate" or make an NPC from, **then** it has the entry's static numbers, because it has no owner.
 - **Given** a creature entry, **then** a player finds it in the creature list and reads its sheet only while one of their characters holds it.
@@ -1250,6 +1263,11 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** the concentration on the casting ends, **when** it ends, **then** the creatures of that casting are dismissed (RN-22); the master's undo brings them back.
 - **Given** the master places a character's creature token on a map, **when** the group looks, **then** everyone sees it (a group token, never hidden, even in fog).
 - **Given** a player who cannot have a creature, **when** they look at another character's sheet, **then** the "Criaturas" panel does not exist for them (RN-20).
+- **Given** a player who casts a summon of a spell or a feature that offers a table creature, **when** the list of creatures opens, **then** the table creature carries "Da mesa" and the line "Os números vêm da sua ficha quando ele chega." in place of numbers, and an SRD creature keeps its own line.
+  The list puts the table creature first, and the header says the class and level of the feature and the use it spends.
+  After the cast, the creature's page carries "Da mesa" and the line "Os números vêm da ficha de <dono> quando ele chegou", with no level or proficiency, because the numbers do not change when I edit the entry later.
+  The page shows the numbers, attacks and damage worked out for my sheet when the creature arrived.
+  The app knows a table creature by the "@mesa" end of its key, and the server sends no flag for it.
 
 #### In the app
 - **Sheet.** The "Criaturas" panel has one card per creature ("Corvo · Miúdo · Familiar de Pensantus", AC, HP, speed in metres), "Ver a ficha do Nanquim", "Renomear", "Dispensar" (asks in place) and, for the master, "Corrigir PV" outside combat. Summoning is only during a session ("Agora não há sessão aberta."). The master gives creatures in the campaign's character list with "Dar uma criatura".

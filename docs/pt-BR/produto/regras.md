@@ -622,8 +622,22 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Os interruptores.** Em "Opções para os jogadores", o mestre liga ou desliga cada classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção e característica de classe, do SRD e da mesa por igual (um interruptor por opção, quantas fichas a usam, "Ligar todas" e "Desligar todas" por tipo, salvo na hora). Tudo vem ligado por padrão. O que está desligado nunca chega a um jogador em nenhuma leitura; as fichas que já o usam continuam funcionando; uma classe desligada esconde suas subclasses, características e opções, e uma raça desligada suas sub-raças e traços, exceto numa ficha que já tem a original (a ficha mantém o que sua própria raça, classe ou subclasse dá). Uma nova escolha de um jogador por uma opção desligada é recusada (na criação, na edição e na subida de nível), uma edição sem relação nunca é, e o mestre nunca é recusado. A ficha de um jogador mantém, ao ser editada ou subir de nível, o que o mestre arquivou ou desligou depois.
   O mestre liga e desliga criaturas no grupo "Criaturas" desta tela.
   O editor de criatura tem o mesmo interruptor.
-- **Uma magia da mesa pode invocar criaturas.** Elas são da mesa ou do SRD e seguem as regras das magias de invocação do SRD: o espaço de magia, a concentração, a substituição, a dispensa e o desfazer. O número de criaturas pode depender de quem conjura e do espaço usado. Os jogadores leem as criaturas como em qualquer invocação. Quem conjura recebe os nomes das criaturas (sem números) ao escolher quais trazer.
-- **Uma habilidade da mesa pode invocar criaturas.** Uma habilidade de classe, subclasse, traço de raça ou antecedente, ou uma habilidade que o mestre adiciona a uma classe como entrada própria, pode trazer criaturas da mesa ou do SRD. Elas seguem as mesmas regras de uma magia de invocação: concentração, substituição, dispensa e desfazer. A habilidade diz quantas criaturas vêm, qual recurso gasta (um uso por conjuração), como os usos voltam num descanso e quanto tempo leva e dura. Ela não gasta espaço de magia, então um espaço maior não muda nada. O desfazer devolve o uso. O jogador lê as criaturas como em qualquer invocação, e o jogador que não tem nenhuma não lê as criaturas da habilidade.
+- **Uma magia da mesa pode invocar criaturas.** Elas são da mesa ou do SRD.
+  Seguem as regras das magias de invocação do SRD: o espaço de magia, a concentração, a substituição, a dispensa e o desfazer.
+  O número de criaturas pode depender de quem conjura e do espaço usado.
+  Os jogadores leem as criaturas como em qualquer invocação.
+  Quem conjura recebe os nomes das criaturas (sem números) ao escolher quais trazer.
+- **Uma habilidade da mesa pode invocar criaturas.** Uma habilidade de classe, subclasse, traço de raça ou antecedente, ou uma habilidade que o mestre adiciona a uma classe como entrada própria, pode trazer criaturas da mesa ou do SRD.
+  Elas seguem as mesmas regras de uma magia de invocação: concentração, substituição, dispensa e desfazer.
+  A habilidade diz quantas criaturas vêm, quantas ao mesmo tempo, o turno e o que uma nova conjuração faz com as antigas.
+  Diz também em quanto tempo conjura e quanto dura.
+  Cada conjuração gasta um uso de um recurso da habilidade (ou da classe).
+  Os usos voltam pela recarga do próprio recurso.
+  A habilidade não gasta espaço de magia, então um espaço maior não muda nada e `slot()` vale 0 na contagem.
+  O desfazer devolve o uso.
+  O jogador lê as criaturas como em qualquer invocação.
+  O jogador que não tem nenhuma não lê as criaturas da habilidade na lista da mesa nem na página de uma criatura.
+  Quem tem a habilidade lê os nomes das criaturas (sem números) ao escolher quais trazer.
 - **As telas abertas acompanham.** Quando o mestre muda o conteúdo ou um interruptor, as telas abertas dos jogadores leem as listas de novo, cada uma com o papel de quem a lê.
 - **Uma entrada que as regras recusam fica de fora, e o mestre vê qual e por quê.**
   O resto da campanha continua funcionando.
@@ -635,7 +649,10 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   No celular o mestre lê e remove, e a correção fica no notebook.
   O jogador nunca recebe quais entradas estão fora, quantas são nem por quê.
 - **Uma ficha que usa conteúdo da mesa não passa para outra campanha.** Essa verificação espera por copiar personagem e reutilizar NPCs ([MR-021](historias.md#mr-021-copiar-personagem), [MR-022](historias.md#mr-022-reutilizar-npcs)). Copiar conteúdo para outra campanha é [MR-026](historias.md#mr-026-propor-uma-raça-ou-classe-nova), depois do MVP.
-- **O alvo de uma magia.** Uma criatura, várias (uma a mais por nível acima, se o mestre quiser), uma área (cone, cubo, cilindro, linha ou esfera, em passos de 1,5 m) ou só quem conjura. As mecânicas são opcionais: um ataque ou um teste de resistência, dano (mais dados por nível acima ou por faixa do truque) e cura. Em combate, uma magia da mesa passa pela mesma conjuração de uma magia do SRD.
+- **O alvo de uma magia.** Uma criatura, várias (uma a mais por nível acima, se o mestre quiser), uma área (cone, cubo, cilindro, linha ou esfera, em passos de 1,5 m) ou só quem conjura.
+  As mecânicas são opcionais: um ataque ou um teste de resistência, dano (mais dados por nível acima ou por faixa do truque) e cura.
+  Em combate, uma magia da mesa passa pela mesma conjuração de uma magia do SRD.
+  Uma magia também pode invocar criaturas (a mecânica "Invocar"): uma magia de 1º círculo ou mais só em quem conjura, sem ritual e sem ataque, teste de resistência, dano, cura ou área, paga com o seu espaço de magia.
 - **Uma área que a magia mantém no mapa.** Uma magia da mesa com nível pode manter a área enquanto dura, como Raio Lunar e Espíritos Guardiões (RN-37): o mestre escolhe quando ela pega uma criatura (no começo do turno, na primeira entrada, ou os dois) e se ela segue quem conjura. A área é o alvo da própria magia (esfera, cilindro ou cubo), o dano e o teste de resistência são os da magia (uma magia sem teste só causa o dano, que se rola), e o tempo é a duração. Pede exatamente um tipo de dano, nenhum ataque e nenhuma cura, duração com tempo ou concentração, um alcance (ou Pessoal se segue quem conjura). Cada campo errado é recusado no próprio campo, uma frase para cada.
 - **Uma magia pode deixar um efeito duradouro.**
   Uma magia da mesa pode pôr um efeito nos alvos enquanto dura.
