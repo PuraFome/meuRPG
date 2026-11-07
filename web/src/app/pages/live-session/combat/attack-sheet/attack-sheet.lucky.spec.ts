@@ -318,7 +318,9 @@ describe('AttackSheet: the halfling’s Lucky question, "Tirou 1: rolar de novo?
   });
 
   it('does not say the master answered when the player answered here', async () => {
-    const { el, state, settle, button } = open({ held: { offer: masterHold, targetLabel: 'Goblin' } });
+    const { el, state, settle, button } = open({
+      held: { offer: masterHold, targetLabel: 'Goblin' },
+    });
     state.apply(
       encounter({
         currentCombatantId: 'p',
