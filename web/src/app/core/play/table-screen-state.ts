@@ -37,12 +37,24 @@ export type TvPhase =
       /** The warning of a connection lost less than a minute ago; `null` while connected. */
       readonly late: string | null;
     }
-  | { readonly kind: 'stale'; readonly title: string; readonly detail: string }
+  | {
+      readonly kind: 'stale';
+      readonly title: string;
+      readonly detail: string;
+      /** The names of the last good read, for the header; empty when nothing was read. */
+      readonly campaignName: string;
+      readonly sessionLabel: string;
+    }
   | {
       readonly kind: 'ended';
       readonly title: string;
       readonly farewell: string;
       readonly hint: string;
+      /** The names of the last good read, for the header; empty when nothing was read. */
+      readonly campaignName: string;
+      readonly sessionLabel: string;
+      /** The hour the end was heard, "23:40"; empty when unknown. */
+      readonly endedAt: string;
     }
   | { readonly kind: 'no-access'; readonly title: string; readonly detail: string }
   /** The sign-in is gone: the page sends the viewer to the login. */
@@ -139,6 +151,8 @@ export class TvScreenState {
         kind: 'stale',
         title: `Sem conexão desde ${clockText(lostAt)}`,
         detail: 'Esta tela escondeu o que mostrava. Ela volta sozinha quando a conexão voltar.',
+        campaignName: screen?.campaignName ?? '',
+        sessionLabel: screen?.sessionLabel ?? '',
       };
     }
     if (screen) {
@@ -170,6 +184,9 @@ export class TvScreenState {
         : 'Não há sessão aberta.',
       farewell: screen ? `Até a próxima sessão de ${screen.campaignName}.` : '',
       hint: 'O mestre pode fechar esta aba.',
+      campaignName: screen?.campaignName ?? '',
+      sessionLabel: screen?.sessionLabel ?? '',
+      endedAt: at ? clockText(at) : '',
     };
   }
 

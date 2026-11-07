@@ -111,6 +111,9 @@ export class App {
   );
 
   constructor() {
+    // The TV tab calls only its own service: the poll of open sessions (and so the notice and the "Ao vivo" link) is off there.
+    this.openSessions.suspend(this.tv());
+    effect(() => this.openSessions.suspend(this.tv()));
     // The phone's slot is the first (beside the menu button), the wide one the second
     // (before the account); the template says which it is drawn in.
     effect(() => {

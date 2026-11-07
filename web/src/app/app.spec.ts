@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 
 import { AuthState, AuthService } from './core/auth/auth.service';
-import { OpenSessions } from './core/play/open-sessions';
+import { OPEN_SESSIONS_FETCHER, OpenSessions } from './core/play/open-sessions';
 import type { OpenSessionVm } from './core/play/open-sessions.types';
 import { SessionNotes } from './shell/session-notes/session-notes';
 import { App } from './app';
@@ -66,6 +66,7 @@ describe('App', () => {
         sessions: sessions.asReadonly(),
         dismissed: signal(new Set<string>()).asReadonly(),
         dismiss: () => undefined,
+        suspend: () => undefined,
       },
     });
     const fixture = TestBed.createComponent(App);
@@ -233,6 +234,47 @@ describe('App on the table screen (the TV tab)', () => {
     expect(el.querySelector('app-footer')).toBeNull();
     expect(el.querySelector('app-roll-overlay')).toBeNull();
     expect(el.querySelector('main.app-content--tv')).not.toBeNull();
+    fixture.destroy();
+  });
+
+  it('asks for no open sessions on the TV tab: its only calls are its own', async () => {
+    const fetch = vi.fn(() => Promise.resolve([]));
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [App],
+      providers: [
+        provideRouter([
+          { path: 'campaigns/:id/table-screen', component: Tv },
+          { path: 'campaigns/:id', component: Other },
+        ]),
+        {
+          provide: AuthService,
+          useValue: {
+            state: signal<AuthState>({
+              status: 'signed-in',
+              user: { id: 'u1', displayName: null },
+              sessionExpiresAt: null,
+            }).asReadonly(),
+            refresh: () => Promise.resolve(),
+          },
+        },
+        { provide: OPEN_SESSIONS_FETCHER, useValue: () => Promise.resolve(fetch) },
+      ],
+    }).compileComponents();
+    // The tab opens on the TV's address, as a reload of it does.
+    await TestBed.inject(Router).navigateByUrl('/campaigns/c1/table-screen');
+    const fixture = TestBed.createComponent(App);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fetch).not.toHaveBeenCalled();
+    // Leaving the TV tab for another page starts the poll.
+    await TestBed.inject(Router).navigateByUrl('/campaigns/c1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fetch).toHaveBeenCalledTimes(1);
     fixture.destroy();
   });
 

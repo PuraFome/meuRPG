@@ -101,6 +101,8 @@ describe('TvScreenState', () => {
       kind: 'stale',
       title: 'Sem conexão desde 21:10',
       detail: 'Esta tela escondeu o que mostrava. Ela volta sozinha quando a conexão voltar.',
+      campaignName: 'Mirathel',
+      sessionLabel: 'Sessão 3',
     });
     state.connection(true);
     expect(state.phase()).toEqual({ kind: 'ready', screen: SCREEN, late: null });
@@ -136,6 +138,9 @@ describe('TvScreenState', () => {
       title: 'A sessão 3 terminou às 21:11.',
       farewell: 'Até a próxima sessão de Mirathel.',
       hint: 'O mestre pode fechar esta aba.',
+      campaignName: 'Mirathel',
+      sessionLabel: 'Sessão 3',
+      endedAt: '21:11',
     });
   });
 
@@ -145,6 +150,9 @@ describe('TvScreenState', () => {
       kind: 'ended',
       title: 'Não há sessão aberta.',
       farewell: '',
+      campaignName: '',
+      sessionLabel: '',
+      endedAt: expect.any(String),
     });
   });
 

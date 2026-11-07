@@ -2,9 +2,11 @@ import type { GetMapResponse, GetMapVisionResponse } from '../../../gen/meurpg/m
 import {
   type GetTableScreenResponse,
   TableScreenKind,
+  TableScreenNotice,
   type TvMap,
   TvState,
 } from '../../../gen/meurpg/play/v1/table_screen_pb';
+import { noticeText } from './table-screen-labels';
 
 /** What the TV draws of a map: the page feeds `map` and `vision` to the map views, or says the fog hides it. */
 export interface TvMapVm {
@@ -65,6 +67,8 @@ export interface TvScreenVm {
   readonly sessionLabel: string;
   readonly party: readonly string[];
   readonly stage: TvStageVm;
+  /** Why the stage is not what the master asked for ("O combate acabou. A TV foi para a tela de espera."); empty without one. */
+  readonly notice: string;
   /** The free rolls of the table, newest first. */
   readonly rolls: readonly TvRollVm[];
 }
@@ -128,14 +132,27 @@ function toStageVm(res: GetTableScreenResponse): TvStageVm {
   }
 }
 
+/** The line under the header. The fog's own card already says why a map is not drawn, so that notice is not said twice. */
+function noticeLine(res: GetTableScreenResponse, stage: TvStageVm): string {
+  const mapHidden =
+    (stage.kind === 'map' && stage.map.hiddenByFog) ||
+    (stage.kind === 'combat' && stage.map?.hiddenByFog === true);
+  if (res.notice === TableScreenNotice.MAP_NEEDS_GROUP_VISION && mapHidden) {
+    return '';
+  }
+  return noticeText(res.notice, res.choice?.pin ?? TableScreenKind.UNSPECIFIED);
+}
+
 /** What the TV renders for one `GetTableScreen`. */
 export function toTvScreen(res: GetTableScreenResponse): TvScreenVm {
+  const stage = toStageVm(res);
   return {
     campaignName: res.campaignName,
     sessionNumber: res.sessionNumber,
     sessionLabel: `Sessão ${res.sessionNumber}`,
     party: [...res.party],
-    stage: toStageVm(res),
+    stage,
+    notice: noticeLine(res, stage),
     rolls: (res.stage?.rolls ?? []).map((r) => ({
       who: r.who,
       expression: r.expression,

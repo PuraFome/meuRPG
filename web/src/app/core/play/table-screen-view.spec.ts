@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import {
   TableScreenKind,
+  TableScreenNotice,
   TableScreenStageSchema,
   TvState,
 } from '../../../gen/meurpg/play/v1/table_screen_pb';
@@ -129,6 +130,54 @@ describe('toTvScreen', () => {
     expect(toTvScreen(screenResponse({ stage })).rolls).toEqual([
       { who: 'Brisa', expression: '2d6+3', total: 11, faces: [4, 4] },
     ]);
+  });
+
+  describe('the notice', () => {
+    const idle = { kind: TableScreenKind.IDLE, body: { case: 'idle', value: {} } };
+
+    it('is empty without one', () => {
+      expect(toTvScreen(screenResponse()).notice).toBe('');
+    });
+
+    it('says why a pinned item is gone, with the pinned kind', () => {
+      const vm = toTvScreen(
+        screenResponse({
+          stage: idle,
+          notice: TableScreenNotice.PIN_ENDED,
+          choice: { mirror: false, pin: TableScreenKind.COMBAT },
+        }),
+      );
+      expect(vm.notice).toBe('O combate acabou. A TV foi para a tela de espera.');
+    });
+
+    it('says a scene meant for some players is not on the TV', () => {
+      const vm = toTvScreen(screenResponse({ notice: TableScreenNotice.SCENE_NOT_FOR_ALL }));
+      expect(vm.notice).toBe(
+        'A cena está aberta só para alguns jogadores, então a TV não a mostra.',
+      );
+    });
+
+    it('leaves out the fog notice when the fog card already says it, in a map or a combat', () => {
+      const hidden = stageOf(TableScreenKind.MAP, {
+        case: 'map',
+        value: { hiddenByFog: true },
+      });
+      const combat = stageOf(TableScreenKind.COMBAT, {
+        case: 'combat',
+        value: { round: 1, map: { hiddenByFog: true } },
+      });
+      for (const stage of [hidden, combat]) {
+        const vm = toTvScreen(
+          screenResponse({ stage, notice: TableScreenNotice.MAP_NEEDS_GROUP_VISION }),
+        );
+        expect(vm.notice).toBe('');
+      }
+    });
+
+    it('keeps the fog notice when no card says it', () => {
+      const vm = toTvScreen(screenResponse({ notice: TableScreenNotice.MAP_NEEDS_GROUP_VISION }));
+      expect(vm.notice).toContain('O mapa tem névoa');
+    });
   });
 
   it('falls to the waiting screen for a body it does not know', () => {

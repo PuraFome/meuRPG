@@ -90,6 +90,28 @@ describe('OpenSessions (the RN-06 poll)', () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it('asks nothing while suspended (the TV tab), and asks again when it is let go', async () => {
+    service.suspend(true);
+    await signIn();
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 3);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(service.sessions()).toEqual([]);
+
+    service.suspend(false);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops a running poll when it is suspended', async () => {
+    await signIn();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    service.suspend(true);
+    TestBed.tick();
+    await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS * 3);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
   it('stops while the tab is hidden, and asks at once when it is visible again', async () => {
     await signIn();
     expect(fetch).toHaveBeenCalledTimes(1);
