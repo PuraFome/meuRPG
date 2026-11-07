@@ -190,6 +190,22 @@ It is idempotent by state: asking for the state the piece has changes nothing.
 The answer is the carried keys and the revision, not the sheet: a screen reads the sheet again. `DerivedSheet.gear` lists every piece (equipped or carried) with its Portuguese name, whether it is two-handed and the armor class the sheet would have with that piece's state flipped (`armor_class_if_toggled`, derived by the server with the flipped state; 0 when it is not previewed, as for Mage Armor); the browser never computes an armor class. A carried piece therefore never leaves the list.
 Inside the transaction and before the write it asks play (`ReviewHost.EquipInCombat`) what a running combat charges ([Combat](play/combat.md#equipping-and-stowing-gear)).
 
+## Attunement
+
+`FullSheet.magic_items` lists the magic items of the sheet (`SheetMagicItem`: key, `attuned`, and, filled by the server on a read, `requires_attunement`, `attunement_by_pt` and `restriction_met`).
+At most 20 items, each a catalog item that exists.
+A save never changes `attuned`: `keepAttunement` takes the stored state for a key already on the sheet, and a new key starts unattuned; only `SetAttunement` changes it.
+The sheet lock holds `magic_items` (the list), not the state.
+`SetAttunement` locks the character row, then reads and spends the window in the same transaction, so two requests on one window cannot both pass.
+The window is `character_vitals.attunement_open` (`CharacterVitals.attunement_open`): a short or a long rest sets it (`TakeRest`, no revision moves), and the owner's attune or end clears it.
+The master needs no window.
+The limit is three attuned items, for the owner and the master alike (`ATTUNEMENT_LIMIT`).
+The restrictions of the SRD catalog are a closed table in `rules/attunement.go` (classes, spellcaster, dwarf, good or evil alignment, outdoors at night), checked when the catalog loads so that every restriction has a matcher.
+A restriction the sheet does not meet, or that the table does not know, is for the master only (`ATTUNEMENT_RESTRICTED`); the master's override is logged (`character.attuned`) with who attuned.
+A character that is dead keeps its attunements until the master ends them.
+Another player never reaches the character: `not_found`, as for `SetEquipped`.
+The app leaves out the automatic end of an attunement (distance, another attuner, death): the master ends it by hand.
+
 ## Class and race choices
 
 The questions and their rules are `rules`' (see [Class and race choices](rules.md#class-and-race-choices)); `choices.go` checks who may ask, turns the answer into messages and writes the picks of a sheet that is locked for the player.

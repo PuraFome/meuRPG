@@ -60,4 +60,7 @@ export type CharacterBlockedReason =
   | 'creature_in_combat'
   | 'creature_limit'
   | 'hit_points_average_only'
-  | 'table_content_stays';
+  | 'table_content_stays'
+  | 'attunement_limit'
+  | 'attunement_restricted'
+  | 'attunement_needs_rest';

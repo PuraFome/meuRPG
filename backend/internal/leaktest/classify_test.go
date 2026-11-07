@@ -91,6 +91,7 @@ var notReads = map[string]classified{
 	charactersv1connect.CharacterServiceRevokeClaimLinkProcedure:                {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceRollAbilityScoresProcedure:              {playerAction, "a player rolls the scores of their next character"},
 	charactersv1connect.CharacterServiceRollLevelUpHitPointsProcedure:           {playerAction, "a player rolls their own level-up hit die"},
+	charactersv1connect.CharacterServiceSetAttunementProcedure:                  {playerAction, "a player attunes and ends the attunement of their own magic items"},
 	charactersv1connect.CharacterServiceSetEquippedProcedure:                    {playerAction, "a player equips and stows their own gear"},
 	charactersv1connect.CharacterServiceSetStoryEditingProcedure:                {masterWrite, masterOnlyWhy},
 	charactersv1connect.CharacterServiceUpdateCharacterProcedure:                {playerAction, "a player edits their own sheet"},

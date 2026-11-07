@@ -81,6 +81,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     carriedKeys: ['equipment:dagger'],
     weaponMarks: [],
     itemBonuses: [],
+    magicItems: [],
     cantripKeys: ['spell:fire-bolt', 'spell:ray-of-frost', 'spell:minor-illusion'],
     knownSpellKeys: [
       'spell:magic-missile',
@@ -167,6 +168,26 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     expect(mergeFullSheetInit(loaded, lighter).itemBonuses).toEqual([]);
   });
 
+  it('keeps the magic items of the loaded sheet, attuned or not, whatever the form changes', () => {
+    const loaded = {
+      ...fullyPopulatedFullSheet(),
+      magicItems: [
+        {
+          $typeName: 'meurpg.characters.v1.SheetMagicItem' as const,
+          key: 'item:ring-of-protection',
+          attuned: true,
+          requiresAttunement: true,
+          attunementByPt: '',
+          restrictionMet: true,
+        },
+      ],
+    };
+    const form = { ...toFormFullSheet('Pensantus', loaded), armor: '', weapons: [] as string[] };
+    expect(mergeFullSheetInit(loaded, form).magicItems?.map((m) => [m.key, m.attuned])).toEqual([
+      ['item:ring-of-protection', true],
+    ]);
+  });
+
   it('a fully populated FullSheet survives toFormFullSheet → mergeFullSheetInit, coins and feature_choice_keys included', () => {
     const loaded = fullyPopulatedFullSheet();
 
@@ -209,6 +230,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       weaponKeys: loaded.weaponKeys,
       carriedKeys: loaded.carriedKeys,
       weaponMarks: loaded.weaponMarks,
+      magicItems: loaded.magicItems,
       itemBonuses: loaded.itemBonuses,
       cantripKeys: loaded.cantripKeys,
       knownSpellKeys: loaded.knownSpellKeys,

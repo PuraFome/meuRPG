@@ -37,6 +37,9 @@ func errBlocked(reason charactersv1.CharacterBlockedReason, characterID string) 
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_NOT_PENDING:             "the character does not wait for approval: once approved, it stays in the campaign",
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_AWAITING_APPROVAL:       "the character waits for your approval: approve or reject it instead",
 		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_HIT_POINTS_AVERAGE_ONLY: "the table gives everybody the average hit points: there is no roll",
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ATTUNEMENT_LIMIT:        "the character is already attuned to three items: end one first",
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ATTUNEMENT_RESTRICTED:   "the item asks for something the character is not: only the master may attune it",
+		charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ATTUNEMENT_NEEDS_REST:   "attuning takes a rest: the owner attunes once after a short or long rest",
 	}[reason]
 	err := connect.NewError(connect.CodeFailedPrecondition, errors.New(msg))
 	if detail, detailErr := connect.NewErrorDetail(&charactersv1.CharacterBlocked{Reason: reason, CharacterId: characterID}); detailErr == nil {

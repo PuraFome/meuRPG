@@ -391,12 +391,21 @@ func (s *Service) restEveryone(ctx context.Context, tx pgx.Tx, kind string, rows
 		if err != nil {
 			return nil, nil, err
 		}
+		// A short or a long rest opens the window to attune a magic item. The window is not a number of
+		// the vitals: opening it moves no revision and does not make the rest "change" the character.
+		opened := !r.view.GetAttunementOpen()
+		if opened {
+			if err := q.SetAttunementOpen(ctx, charactersdb.SetAttunementOpenParams{CharacterID: r.row.ID, Open: true, Now: s.now()}); err != nil {
+				return nil, nil, wrap("open the window to attune", err)
+			}
+		}
 		if proto.Equal(plan.after, r.view) {
 			continue
 		}
 		if err := s.writeRestPlan(ctx, q, r, plan, kind == rules.RestLong); err != nil {
 			return nil, nil, err
 		}
+		plan.after.AttunementOpen = true
 		before, after = append(before, r.view), append(after, plan.after)
 	}
 	return before, after, nil

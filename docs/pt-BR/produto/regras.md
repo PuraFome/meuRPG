@@ -122,6 +122,15 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma peça que pede sintonização não soma nada até o personagem se sintonizar com ela.
   A ficha lista cada bônus com a origem e diz por que um não soma nada.
   Duas armas com a mesma chave são uma linha e dividem o bônus.
+- **Sintonização.**
+  Um personagem fica sintonizado com no máximo três itens mágicos ao mesmo tempo, e só um item que a ficha lista como um que pede sintonização pode ser sintonizado.
+  Um descanso curto ou longo abre uma janela para cada personagem que ele cobre, e nessa janela o dono sintoniza um item ou encerra uma sintonização; o mestre faz qualquer um dos dois a qualquer hora.
+  Alguns itens pedem algo do personagem (uma classe, uma raça, um alinhamento, ser conjurador).
+  O app confere as restrições dos itens do SRD; quando a ficha não cumpre uma, ou o app não consegue decidir, só o mestre sintoniza, e o registro do servidor diz quem fez.
+  Salvar a ficha nunca muda quem está sintonizado: um item mágico novo começa sem sintonia.
+  A trava da ficha não prende a sintonização, ela prende a lista de itens e o tipo.
+  Um personagem que morre continua sintonizado até o mestre encerrar.
+  O app não encerra uma sintonização sozinho (distância, outro sintonizado, morte): o mestre encerra à mão.
 - **Integridade Corporal do monge da Mão Aberta (nível 6).**
   A ação do próprio monge cura três vezes o nível de monge em pontos de vida, até o máximo.
   Não tem rolagem nem dados para digitar.

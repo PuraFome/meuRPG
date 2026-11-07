@@ -346,6 +346,15 @@ service CharacterService {
   //     reason CHARACTER_DEAD), or play refused the change in the combat.
   rpc SetEquipped(SetEquippedRequest) returns (SetEquippedResponse);
 
+  // SetAttunement attunes the character to a magic item, or ends it (SRD 5.1, attunement).
+  // The owner needs the window a short or long rest opens (one attunement or ending for each
+  // window); the master needs none and may attune past a restriction. At most three items.
+  // Errors: `not_found` (the character is not the caller's to see), `invalid_argument` (the
+  // key is not an item that asks for attunement on the sheet), `aborted` (stale revision),
+  // `failed_precondition` with CharacterBlocked: ATTUNEMENT_LIMIT, ATTUNEMENT_RESTRICTED,
+  // ATTUNEMENT_NEEDS_REST or CHARACTER_DEAD (only the master changes a dead character's).
+  rpc SetAttunement(SetAttunementRequest) returns (SetAttunementResponse);
+
   // MarkCharacterDead records that a player character died (RN-03). Only
   // the campaign's master may call it.
   //
@@ -1321,6 +1330,14 @@ enum CharacterBlockedReason {
   CHARACTER_BLOCKED_REASON_NO_CHANGES_REQUESTED = 22;
   // ReviveCharacter on a character that is not dead.
   CHARACTER_BLOCKED_REASON_NOT_DEAD = 23;
+  // SetAttunement to a fourth item: a character is attuned to at most three.
+  CHARACTER_BLOCKED_REASON_ATTUNEMENT_LIMIT = 24;
+  // SetAttunement to an item whose restriction the character does not meet, or one the
+  // server cannot decide: only the master may attune it then.
+  CHARACTER_BLOCKED_REASON_ATTUNEMENT_RESTRICTED = 25;
+  // The owner's SetAttunement without an open window: the master's short or long rest opens
+  // one for each character, and one attunement or ending spends it.
+  CHARACTER_BLOCKED_REASON_ATTUNEMENT_NEEDS_REST = 26;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -1577,6 +1594,31 @@ message FullSheet {
   // The bonus of a weapon key applies to every copy of that key.
   // A client that removes a piece from the sheet must remove its bonus in the same request, or the save is refused.
   repeated ItemBonus item_bonuses = 43;
+  // The magic items the character carries that are not weapons, armor or a shield with a +N
+  // (a ring, a cloak): at most 20, each `key` an `item:*` key of the catalog that is not a
+  // family, no key twice. An entry starts unattuned: a save keeps the stored `attuned` of a
+  // key already on the sheet and never sets it; only SetAttunement does. Adding and removing
+  // entries follows the sheet's lock, like the marks.
+  repeated SheetMagicItem magic_items = 44;
+}
+
+// SheetMagicItem is a magic item of the sheet that is not a +N weapon, armor or shield.
+// Rule: `key` is an `item:*` key of the catalog and not a family.
+message SheetMagicItem {
+  // The catalog key, such as "item:ring-of-protection".
+  string key = 1;
+  // The character is attuned to the item. Only SetAttunement changes it; a save never does.
+  bool attuned = 2;
+  // The item asks for attunement. Filled by the server from the catalog on every read; a save
+  // ignores it.
+  bool requires_attunement = 3;
+  // The restriction of the attunement in Portuguese ("por um paladino"), or empty. Filled by
+  // the server on every read; a save ignores it.
+  string attunement_by_pt = 4;
+  // The character meets the restriction. Always true when there is none, and for a
+  // restriction the server does not check ("outdoors at night"). Filled by the server on every
+  // read; a save ignores it.
+  bool restriction_met = 5;
 }
 
 // ItemBonus is the magic bonus of one piece of the sheet's gear. Rule: `key` is the
@@ -2170,6 +2212,24 @@ message SetEquippedResponse {
   repeated string carried_keys = 1;
   // The character's revision after the call.
   int32 revision = 2;
+}
+
+// SetAttunementRequest attunes the character to an item, or ends the attunement.
+message SetAttunementRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  // The item: an `item:*` key of the sheet's magic_items, or a weapon, armor or shield key that
+  // has an ItemBonus (the shield key "equipment:shield" included).
+  string key = 3;
+  // true attunes, false ends it.
+  bool attuned = 4;
+  // The revision the caller holds; a stale one is refused with `aborted`.
+  int32 revision = 5;
+}
+
+// SetAttunementResponse returns the character as it stands.
+message SetAttunementResponse {
+  Character character = 1;
 }
 
 // MarkCharacterDeadRequest names the character that died.

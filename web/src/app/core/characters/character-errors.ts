@@ -87,6 +87,12 @@ const BLOCKED_MESSAGES: Partial<Record<CharacterBlockedReason, string>> = {
   hit_points_average_only: 'A mesa usa a média nos pontos de vida: o dado não é rolado.',
   table_content_stays:
     'Essa ficha usa opções próprias desta mesa e não pode ir para outra campanha.',
+  attunement_limit:
+    'Você já está sintonizado com 3 itens. Encerre uma sintonização antes de sintonizar outro.',
+  attunement_restricted:
+    'Esse item pede algo que o personagem não é. Só o mestre pode sintonizá-lo.',
+  attunement_needs_rest:
+    'A sintonização acontece depois de um descanso curto ou longo, uma por descanso.',
 };
 
 export function characterBlockedMessage(
@@ -173,6 +179,9 @@ const BLOCKED_FROM_GEN: Partial<Record<GenCharacterBlockedReason, CharacterBlock
   [GenCharacterBlockedReason.CREATURE_LIMIT]: 'creature_limit',
   [GenCharacterBlockedReason.HIT_POINTS_AVERAGE_ONLY]: 'hit_points_average_only',
   [GenCharacterBlockedReason.TABLE_CONTENT_STAYS]: 'table_content_stays',
+  [GenCharacterBlockedReason.ATTUNEMENT_LIMIT]: 'attunement_limit',
+  [GenCharacterBlockedReason.ATTUNEMENT_RESTRICTED]: 'attunement_restricted',
+  [GenCharacterBlockedReason.ATTUNEMENT_NEEDS_REST]: 'attunement_needs_rest',
 };
 
 /** Maps the wire `CharacterBlockedReason` enum (characters.proto) onto the
