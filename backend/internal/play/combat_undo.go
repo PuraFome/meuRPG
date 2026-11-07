@@ -36,6 +36,12 @@ var undoableKinds = []string{
 	eventLegendarySpent,
 }
 
+// leavesHPAlone are the undoable kinds whose undo never writes hit points: they keep no holds.
+var leavesHPAlone = []string{
+	eventAttackRolled, eventDamageDiscarded, eventReactionDeclined, eventConditionsSet,
+	eventCombatantMoved, eventFamiliarSight, eventHideResolved, eventLegendarySpent,
+}
+
 // recentEvents is how many of the session's latest events the search for the
 // last action reads: each undo leaves two rows behind, so this allows dozens.
 const recentEvents = 100
@@ -435,6 +441,10 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err != nil {
 		return nil, err
 	}
+	// Before anything is written: the hit points the action left must still be there.
+	if err := s.checkHolds(ctx, c, ev); err != nil {
+		return nil, err
+	}
 	run.unpushed = pushesOf(ev.Hits)
 	if id := creatureToPutBack(ev); id != "" {
 		if err := run.noteSnapBack(ctx, c, id); err != nil {
@@ -654,7 +664,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	if !ok {
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)
 	}
-	u := &undoer{s: s, c: c, cs: cs}
+	u := &undoer{s: s, c: c, cs: cs, holds: ev.Holds, kept: ev.HPKept}
 	if err := u.undoWithTemp(ctx, kind, undo, ev); err != nil {
 		return nil, err
 	}

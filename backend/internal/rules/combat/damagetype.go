@@ -12,6 +12,12 @@ type TypeModifiers struct {
 	// nonmagical attacks"). AdjustForType, which adjusts a damage that is no attack,
 	// does not read them; Adjust does.
 	ResistantNonmagical, ImmuneNonmagical []string
+	// The ones with Unless are the types the creature resists or is immune to only when the
+	// damage is that of a nonmagical attack whose weapon is not silvered (or not adamantine):
+	// the SRD's "from nonmagical weapons that aren't silvered". AdjustForType does not read
+	// them either.
+	ResistantUnlessSilvered, ImmuneUnlessSilvered     []string
+	ResistantUnlessAdamantine, ImmuneUnlessAdamantine []string
 	// Source is the key of the stat block they come from ("monster:skeleton"), "" when
 	// it is not known.
 	Source string

@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/PuraFome/meuRPG/backend/internal/rules/encounter"
@@ -164,7 +165,10 @@ type content struct {
 	// spells, raceChoice the ability bonuses a table race lets the player
 	// place, and bgEquipment a table background's equipment text.
 	// programs memoizes compiled formulas by text while a table layer is added.
-	programs      map[programKey]*formula.Program
+	programs map[programKey]*formula.Program
+	// pickPrograms memoizes the formulas a pick resolved (Derive, Resistances) by text:
+	// it is read by concurrent Derive calls, so it is a sync.Map made when the compiler is.
+	pickPrograms  *sync.Map
 	table         bool
 	tableRevision int
 	listFrom      map[string]string
@@ -176,6 +180,9 @@ type content struct {
 	spellTargets map[string]SpellTarget
 	// spellZones are the areas the table's spells keep on the map while they last.
 	spellZones map[string]SpellZoneRule
+	// tableSpellEffects are the lasting effects of the table's spells; the SRD's are in combatEffects, which
+	// is shared with the SRD content and never written by a table layer.
+	tableSpellEffects map[string]*EffectDef
 	// srdTargets are the hand-written targets of some SRD spells
 	// (effects/spell_targets.json), by spell key.
 	srdTargets map[string]SpellTarget
@@ -235,6 +242,7 @@ func load(fsys fs.FS) (*content, error) {
 		return nil, err
 	}
 	c.compiler = formula.NewCompiler(c.classIndexes())
+	c.pickPrograms = &sync.Map{}
 	if err := c.loadEffectFiles(fsys); err != nil {
 		return nil, err
 	}

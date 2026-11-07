@@ -141,6 +141,14 @@ function damageToDraft(s: TableSpell): Partial<SpellDraft> {
   return out;
 }
 
+/** The effect, the zone and the summon of a stored spell: no control shows them, so the draft carries them through. */
+function keptToDraft(s: TableSpell): Partial<SpellDraft> {
+  if (!s.effect && !s.zone && !s.summon) {
+    return {};
+  }
+  return { kept: { effect: s.effect, zone: s.zone, summon: s.summon } };
+}
+
 /** A stored spell, as a form. */
 export function spellToDraft(s: TableSpell): SpellDraft {
   return {
@@ -161,6 +169,7 @@ export function spellToDraft(s: TableSpell): SpellDraft {
     ...targetToDraft(s),
     ...mechanicToDraft(s),
     ...damageToDraft(s),
+    ...keptToDraft(s),
   };
 }
 
@@ -280,6 +289,9 @@ export function draftToSpell(d: SpellDraft): SpellInit {
     target: targetInit(d),
     damage: damageInit(d),
     ...mechanicInit(d),
+    ...(d.kept?.effect ? { effect: d.kept.effect } : {}),
+    ...(d.kept?.zone ? { zone: d.kept.zone } : {}),
+    ...(d.kept?.summon ? { summon: d.kept.summon } : {}),
   };
 }
 

@@ -360,7 +360,7 @@ func (w *world) streamScript() {
 	})))
 
 	// -- vitals, XP, the creature of Caio, the table's content
-	must(m.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(3)})))
+	must(m.play.AdjustCharacterVitals(ctx, rq(&playv1.AdjustCharacterVitalsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), IdempotencyKey: newKey(), ExpectedRevision: m.revisionOf(w, w.toren.GetId()), HitPointsCurrent: proto.Int32(3)})))
 	must(m.xp.MarkMilestoneReached(ctx, rq(&progressionv1.MarkMilestoneReachedRequest{CampaignId: w.campaign, MilestoneId: w.milestoneStream, CharacterIds: []string{w.pens.GetId()}, IdempotencyKey: newKey()})))
 	w.allow("milestone-stream", w.ana, w.caio)
 	w.secrets.allowNeedle(w.milestoneStream, w.ana, w.caio)

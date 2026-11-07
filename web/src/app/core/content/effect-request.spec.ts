@@ -1,4 +1,12 @@
-import { EffectMenuVm, draftToEffect, emptyEffect, missingRequired } from './effect-draft';
+import { create } from '@bufbuild/protobuf';
+import { TableEffectSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import {
+  EffectMenuVm,
+  draftToEffect,
+  effectToDraft,
+  emptyEffect,
+  missingRequired,
+} from './effect-draft';
 import type { EffectDraft } from './effect-draft';
 import { menuResponse } from './content-testing-menu';
 import { stateMenu } from './content-testing-states';
@@ -218,6 +226,33 @@ describe('the state and weapon effects of the menu', () => {
     expect(e.damageBonus).toBe(1);
     expect(e.reachFt).toBe(10);
     expect(e.while).toBe('postura');
+  });
+
+  it('keeps the marks of a stored weapon rule through a draft round trip, and sends only the ones that are on', () => {
+    const stored = create(TableEffectSchema, {
+      type: 'weapon_rule',
+      weapon: 'any',
+      silvered: true,
+      adamantine: true,
+    });
+    const draft = effectToDraft(stored);
+    expect(draft).toMatchObject({ silvered: true, adamantine: true, magical: false });
+    expect(draftToEffect(draft, stateMenu())).toEqual({
+      type: 'weapon_rule',
+      weapon: 'any',
+      silvered: true,
+      adamantine: true,
+    });
+  });
+
+  it('never sends a weapon mark on another type', () => {
+    const d: EffectDraft = {
+      ...emptyEffect('state'),
+      stateName: 'postura',
+      economy: 'bonus_action',
+      silvered: true,
+    };
+    expect(draftToEffect(d, stateMenu())).not.toHaveProperty('silvered');
   });
 
   it('asks for the name of a state before the server does', () => {

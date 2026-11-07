@@ -206,10 +206,28 @@ func cleanFullSheet(f *charactersv1.FullSheet) error {
 	if err := cleanEquipment(f); err != nil {
 		return err
 	}
+	dropStaleCarried(f)
 	if err := checkCoins(f.GetCoins()); err != nil {
 		return err
 	}
 	return cleanFullSheetTexts(f)
+}
+
+// dropStaleCarried takes out of carried_keys the keys the sheet does not list as gear
+// (the editor removed the weapon, the armor or the shield), so a stowed piece that goes
+// away takes its mark with it. SetEquipped refuses such a key instead.
+func dropStaleCarried(f *charactersv1.FullSheet) {
+	f.CarriedKeys = slices.DeleteFunc(f.CarriedKeys, func(k string) bool {
+		switch k {
+		case "":
+			return true
+		case rules.ShieldKey:
+			return !f.GetShield()
+		case f.GetArmorKey():
+			return false
+		}
+		return !slices.Contains(f.GetWeaponKeys(), k)
+	})
 }
 
 // checkFeatListSizes applies the request size limits to the feats of a full
@@ -554,6 +572,7 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		Armor:               f.GetArmorKey(),
 		Shield:              f.GetShield(),
 		Weapons:             f.GetWeaponKeys(),
+		Carried:             f.GetCarriedKeys(),
 		Cantrips:            f.GetCantripKeys(),
 		SpellsKnown:         f.GetKnownSpellKeys(),
 		SpellsPrepared:      f.GetPreparedSpellKeys(),
@@ -563,6 +582,11 @@ func buildOf(f *charactersv1.FullSheet) rules.Build {
 		Languages:           f.GetLanguages(),
 		Feats:               f.GetFeatKeys(),
 		FeatSlots:           f.GetFeatSlots(),
+	}
+	for _, m := range f.GetWeaponMarks() {
+		b.WeaponMarks = append(b.WeaponMarks, rules.WeaponMark{
+			Weapon: m.GetWeaponKey(), Silvered: m.GetSilvered(), Adamantine: m.GetAdamantine(), Magical: m.GetMagical(),
+		})
 	}
 	for _, c := range f.GetClasses() {
 		b.Classes = append(b.Classes, rules.ClassLevel{

@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 	"unicode/utf8"
@@ -348,6 +349,8 @@ type TableSpell struct {
 	Zone *TableSpellZone
 	// Summon says the spell brings the table's creatures to the caster, or is nil (see TableSummon).
 	Summon *TableSummon
+	// Effect is what the spell leaves on its targets while it lasts, or nil (see TableSpellEffect).
+	Effect *TableSpellEffect
 }
 
 // The triggers of a table spell's zone: when it catches a creature.
@@ -366,6 +369,18 @@ const (
 type TableSpellZone struct {
 	Trigger       string
 	FollowsCaster bool
+}
+
+// TableSpellEffect is the closed effect a table spell leaves on its targets, in the shapes the SRD's lasting
+// effects have (see EffectDef). It lasts as the spell does. Applies is "all" (the default), "failed_save" (the
+// spell's Save) or "hit" (its Attack); Conditions are SRD condition keys; Visibility is "public" or "owner"
+// (the default); PlayerLabelPT is the short label the other players read.
+type TableSpellEffect struct {
+	Applies       string
+	Conditions    []string
+	Modifiers     []EffectModifier
+	PlayerLabelPT string
+	Visibility    string
 }
 
 // SpellZoneRule is the zone a table spell keeps, as the combat reads it.
@@ -631,8 +646,9 @@ func (c *content) sheetHolds(b Build, key string) bool {
 		slices.ContainsFunc(b.FeatureChoices, func(k string) bool { _, v, ok := SplitScopedChoice(k); return ok && v == key })
 }
 
-// Owners are the entries (races, subraces, classes, subclasses and backgrounds) a
+// Owners are the entries (races, subraces, classes, subclasses, backgrounds and feats) a
 // trait, feature, background feature or option belongs to; none for any other key.
+// The owner of an option of a feat is the feat.
 func (c *Content) Owners(key string) []string { return c.c.entryOwners(key, 0) }
 
 func (c *content) hidden(key string) bool {
@@ -687,13 +703,21 @@ func (c *content) entryOwners(key string, depth int) []string {
 		}
 	case strings.HasPrefix(key, "background-feature:"):
 		return c.backgroundsOf(key)
+	case depth > 0 && c.feats[key] != nil:
+		// The feat that offers an option is its owner: the option is hidden with the feat.
+		return []string{key}
 	}
 	if p := c.optionParents[key]; p != "" {
 		parents = append(parents, p)
 	}
+	return c.ownersOfAll(parents, depth+1)
+}
+
+// ownersOfAll are the owners of every key in parents, each once.
+func (c *content) ownersOfAll(parents []string, depth int) []string {
 	var out []string
 	for _, p := range parents {
-		for _, o := range c.entryOwners(p, depth+1) {
+		for _, o := range c.entryOwners(p, depth) {
 			if !slices.Contains(out, o) {
 				out = append(out, o)
 			}
@@ -1128,6 +1152,7 @@ func (b *overlayBuilder) build(o Overlay) error {
 	if err := b.checkFeatLacks(); err != nil {
 		return err
 	}
+	b.offerFeatSets()
 	if err := b.compileEffects(); err != nil {
 		return err
 	}
@@ -1182,6 +1207,7 @@ func (b *overlayBuilder) startClone(o *Overlay) *content {
 	slices.Sort(classIndexes)
 	n.compiler = formula.NewCompiler(classIndexes)
 	n.programs = map[programKey]*formula.Program{}
+	n.pickPrograms = &sync.Map{}
 	return n
 }
 
@@ -1425,6 +1451,7 @@ func (c *content) cloneForOverlay() *content {
 	n.entryChangedAt = map[string]time.Time{}
 	n.spellTargets = map[string]SpellTarget{}
 	n.spellZones = map[string]SpellZoneRule{}
+	n.tableSpellEffects = map[string]*EffectDef{}
 	n.summons = maps.Clone(c.summons)
 	if n.summons == nil {
 		n.summons = map[string]*summonDef{}

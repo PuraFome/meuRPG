@@ -82,7 +82,7 @@ func effectCases() map[string]string {
 	add("bad: score modifier without a cap", `{"type":"modifier","target":"score.str","mode":"add","value":"4"}`)
 	add("bad: cap on another target", `{"type":"modifier","target":"ac","mode":"add","value":"1","cap":24}`)
 	add("bad: score modifier that is not an add", `{"type":"modifier","target":"score.str","mode":"set","value":"4","cap":24}`)
-	add("bad: score modifier with a cap of 20", `{"type":"modifier","target":"score.str","mode":"add","value":"4","cap":20}`)
+	add("bad: score modifier with a cap of 19", `{"type":"modifier","target":"score.str","mode":"add","value":"4","cap":19}`)
 	add("bad: score modifier with a cap of 31", `{"type":"modifier","target":"score.str","mode":"add","value":"4","cap":31}`)
 	add("bad: modifier target before mode", `{"type":"modifier","target":"x","mode":"x"}`)
 	add("bad: modifier mode before value", `{"type":"modifier","target":"ac","mode":"x"}`)

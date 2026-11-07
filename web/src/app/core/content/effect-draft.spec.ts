@@ -20,6 +20,47 @@ import { visibleFields } from './effect-visible';
 describe("an effect from the server's menu (ADR-0018, section 4)", () => {
   const m = menu();
 
+  it('carries the name and the set of a choice and the cap of a score modifier back unchanged', () => {
+    const choice = create(TableEffectSchema, {
+      type: 'choice',
+      choice: 'ability',
+      count: 1,
+      name: 'habilidade',
+    });
+    expect(draftToEffect(effectToDraft(choice), m)).toEqual({
+      type: 'choice',
+      choice: 'ability',
+      count: 1,
+      name: 'habilidade',
+    });
+    const set = create(TableEffectSchema, {
+      type: 'choice',
+      choice: 'feature',
+      count: 1,
+      set: 'fighting_style',
+    });
+    expect(draftToEffect(effectToDraft(set), m)).toEqual({
+      type: 'choice',
+      choice: 'feature',
+      count: 1,
+      set: 'fighting_style',
+    });
+    const score = create(TableEffectSchema, {
+      type: 'modifier',
+      target: 'score.str',
+      mode: 'add',
+      value: '1',
+      cap: 20,
+    });
+    expect(draftToEffect(effectToDraft(score), m)).toEqual({
+      type: 'modifier',
+      target: 'score.str',
+      mode: 'add',
+      value: '1',
+      cap: 20,
+    });
+  });
+
   it('sends a maneuver die with where it goes and what it spends, and asks for both', () => {
     const d = {
       ...emptyEffect('superiority_die'),

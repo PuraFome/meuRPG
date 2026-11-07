@@ -597,6 +597,7 @@ func (f *attackFlow) rollD20(ctx context.Context) error {
 		return err
 	}
 	f.strokeSpec(ctx)
+	f.attack.ToHit += bonusTotal(rollBonusesOf(modeIn.states, f.attacker.ID, rules.RollAppliesAttack))
 	f.rolled, err = f.s.rollHeldAttack(ctx, f.c, f.v, f.req, f.spec, f.attacker, f.target, f.attackKey, f.truth.Mode, f.call.in, f.attack.ToHit)
 	if err != nil || f.rolled.Held != nil {
 		return err

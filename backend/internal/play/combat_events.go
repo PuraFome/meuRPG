@@ -121,6 +121,12 @@ type saveRoll struct {
 	ResistedLeft int32 `json:"resisted_left,omitempty"`
 }
 
+// claimBack is an effect row and the modifiers it had before another effect took its temporary hit points over.
+type claimBack struct {
+	ID   string          `json:"id"`
+	Mods json.RawMessage `json:"mods"`
+}
+
 // castHit is what a cast did to one target.
 type castHit struct {
 	Target string `json:"target_id"`
@@ -212,6 +218,9 @@ type castHit struct {
 	// changed them (a heal, a death, Estabilizar), the conditions when it
 	// changed them.
 	Restore *hpState `json:"restore,omitempty"`
+	// Claims are the effect rows of the target whose temp_hp claim the cast took over: the undo writes
+	// their modifiers back.
+	Claims []claimBack `json:"claims,omitempty"`
 	// MaxBefore is the maximum hit points an NPC had before a spell raised them
 	// (Ajuda), for the undo.
 	MaxBefore   *int32      `json:"max_before,omitempty"`
@@ -369,6 +378,12 @@ type actionEvent struct {
 	// master's hand.
 	Before *hpState `json:"before,omitempty"`
 	After  *hpState `json:"after,omitempty"`
+	// Holds is the hit points each combatant had when the action ended, for those whose hit points it
+	// changed (combatant ID to state): an undo checks them before it writes the "before" back
+	// (combat_undo_holds.go). HPKept says the event kept them, so that its undo writes the hit points of
+	// those it holds and no other. Events without holds are not checked.
+	Holds  map[string]hpState `json:"holds,omitempty"`
+	HPKept bool               `json:"hp_kept,omitempty"`
 
 	// EffectEnd is the effect a combat_effect_ended event is about.
 	EffectEnd *effectEnd `json:"effect_end,omitempty"`

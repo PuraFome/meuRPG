@@ -124,6 +124,18 @@
       "hp": 1
     }
   },
+  "holds": {
+    "x": {
+      "hp": 1,
+      "temp": 1,
+      "defeated": true,
+      "shape": {
+        "beast": "x",
+        "hp": 1
+      }
+    }
+  },
+  "hp_kept": true,
   "effect_end": {
     "effect": "x",
     "hp_before": 1,
@@ -263,6 +275,12 @@
           "hp": 1
         }
       },
+      "claims": [
+        {
+          "id": "x",
+          "mods": {}
+        }
+      ],
       "max_before": 1,
       "death_before": {
         "successes": 1,
@@ -822,12 +840,15 @@
           "DamageTypes": [
             "x"
           ],
-          "Qualifier": "x"
+          "Qualifier": "x",
+          "hidden": true
         }
       ],
       "origin": {
         "attack": true,
-        "magical": true
+        "magical": true,
+        "silvered": true,
+        "adamantine": true
       }
     }
   ],

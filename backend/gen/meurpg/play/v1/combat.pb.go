@@ -981,6 +981,15 @@ const (
 	// CastSpell, on a map with a grid: the spell lays a wall (Wall of Fire) and the cast came without `wall`.
 	// Nothing is spent.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED EncounterBlockedReason = 125
+	// UndoLastAction: a combatant's hit points, temporary hit points, Wild Shape pool or defeat are not the
+	// ones the action left, because something else changed them after it (a rest or a level
+	// change, which leave no event). The undo would write the "before" over that change and lose it, so
+	// nothing is undone. `combatant_ids` names the combatants that changed; the numbers are never sent.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED EncounterBlockedReason = 126
+	// CharacterService.SetEquipped, by a player in a running combat: the body armor
+	// cannot be donned or doffed in a fight (SRD 5.1: it takes 1 to 10 minutes). Only the
+	// master may change it. Nothing is changed.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT EncounterBlockedReason = 127
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1092,6 +1101,8 @@ var (
 		123: "ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING",
 		124: "ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT",
 		125: "ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED",
+		126: "ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED",
+		127: "ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                      0,
@@ -1200,6 +1211,8 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING":       123,
 		"ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT":     124,
 		"ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED":          125,
+		"ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED":              126,
+		"ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT":                  127,
 	}
 )
 
@@ -3380,6 +3393,7 @@ type EncounterBlocked struct {
 	// MAP_HAS_NO_GRID: the map that needs a grid (a UUID).
 	MapId string `protobuf:"bytes,3,opt,name=map_id,json=mapId,proto3" json:"map_id,omitempty"`
 	// INITIATIVE_MISSING: the combatants that have no initiative (UUIDs).
+	// UNDO_TARGET_CHANGED: the combatants whose hit points changed since the action (UUIDs).
 	CombatantIds []string `protobuf:"bytes,4,rep,name=combatant_ids,json=combatantIds,proto3" json:"combatant_ids,omitempty"`
 	// NO_SLOT: the lowest slot level that would do.
 	MinLevel int32 `protobuf:"varint,5,opt,name=min_level,json=minLevel,proto3" json:"min_level,omitempty"`
@@ -28513,7 +28527,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xc0(\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xa0)\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -28621,7 +28635,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"9ENCOUNTER_BLOCKED_REASON_LEGENDARY_RESISTANCE_UNAVAILABLE\x10z\x127\n" +
 	"3ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_RECHARGING\x10{\x129\n" +
 	"5ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT\x10|\x124\n" +
-	"0ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED\x10}*\x91\x03\n" +
+	"0ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED\x10}\x120\n" +
+	",ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED\x10~\x12,\n" +
+	"(ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT\x10\x7f*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

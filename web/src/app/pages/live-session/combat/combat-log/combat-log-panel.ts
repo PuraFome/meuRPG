@@ -17,11 +17,15 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  EncounterBlockedReason,
+  type Encounter,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
 import type { LegendaryNames } from '../../../../core/combat/legendary-card';
 import { CombatClient } from '../../../../core/combat/combat-client';
-import { combatErrorMessage } from '../../../../core/combat/combat-errors';
+import { combatErrorMessage, encounterBlocked } from '../../../../core/combat/combat-errors';
+import { undoChangedText } from '../../../../core/combat/combat-errors-limits';
 import type { CombatLogState } from '../../../../core/combat/combat-log-state';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import {
@@ -140,6 +144,18 @@ export class CombatLogPanel {
     afterNextRender(() => this.safe()?.nativeElement.focus(), { injector: this.injector });
   }
 
+  /** What the refusal of "Desfazer" says: another action came first, or someone's hit points changed since (and who). */
+  private undoRefusal(err: unknown): string {
+    const blocked = encounterBlocked(err);
+    if (blocked?.reason === EncounterBlockedReason.UNDO_TARGET_CHANGED) {
+      const combatants = this.encounter().combatants;
+      return undoChangedText(blocked, (id) => combatants.find((c) => c.id === id)?.label);
+    }
+    return ConnectError.from(err).code === Code.Aborted
+      ? 'Outra ação aconteceu antes: confira o registro.'
+      : combatErrorMessage(err, 'desfazer a ação');
+  }
+
   protected async undo(): Promise<void> {
     const id = this.log().undoableId();
     if (!id || this.busy()) {
@@ -152,11 +168,7 @@ export class CombatLogPanel {
       this.confirming.set(false);
     } catch (err) {
       this.confirming.set(false);
-      this.error.set(
-        ConnectError.from(err).code === Code.Aborted
-          ? 'Outra ação aconteceu antes: confira o registro.'
-          : combatErrorMessage(err, 'desfazer a ação'),
-      );
+      this.error.set(this.undoRefusal(err));
       // The log may have moved on: read it again.
       this.state().touchLog();
     } finally {

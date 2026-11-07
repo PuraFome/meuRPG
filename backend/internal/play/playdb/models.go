@@ -222,6 +222,7 @@ type Combatant struct {
 	ReactionRound           *int32
 	InitiativeCountedAs     *int32
 	InitiativeCountedBy     string
+	ObjectInteractionUsed   bool
 }
 
 type CombatantState struct {

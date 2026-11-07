@@ -404,8 +404,16 @@ type Creature struct {
 
 // QualifierNonmagical is the qualifier of a CreatureDamageMod limited to attacks
 // that are not magical (the SRD's "from nonmagical weapons"). The ones limited by a
-// material too (silvered, adamantine) have their own values in srd51.
+// material too have their own constants below.
 const QualifierNonmagical = srd51.QualifierNonmagical
+
+// QualifierNonmagicalUnlessSilvered and QualifierNonmagicalUnlessAdamantine are the
+// qualifiers of a CreatureDamageMod limited to nonmagical attacks whose weapon is not
+// silvered (or adamantine).
+const (
+	QualifierNonmagicalUnlessSilvered   = srd51.QualifierNonmagicalUnlessSilvered
+	QualifierNonmagicalUnlessAdamantine = srd51.QualifierNonmagicalUnlessAdamantine
+)
 
 // CreatureDamageMod is a vulnerability, resistance or immunity entry.
 type CreatureDamageMod struct {
