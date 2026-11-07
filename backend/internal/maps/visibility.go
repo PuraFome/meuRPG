@@ -351,14 +351,14 @@ func (s *Service) publish(campaignID string, players bool, ev *playv1.WatchGameS
 // publishMapChanged tells the watching members that a map changed: the
 // master, and the players when players is true.
 func (s *Service) publishMapChanged(campaignID, mapID string, players bool) {
-	s.live.Publish(campaignID, players, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_MapChanged_{
+	s.publish(campaignID, players, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_MapChanged_{
 		MapChanged: &playv1.WatchGameSessionResponse_MapChanged{MapId: mapID},
 	}})
 }
 
 // publishTokenMoved tells the watching members that a token moved.
 func (s *Service) publishTokenMoved(campaignID string, t mapsdb.MapToken, players bool) {
-	s.live.Publish(campaignID, players, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TokenMoved_{
+	s.publish(campaignID, players, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TokenMoved_{
 		TokenMoved: &playv1.WatchGameSessionResponse_TokenMoved{MapId: t.MapID, CharacterId: t.CharacterID, XBp: t.XBp, YBp: t.YBp},
 	}})
 }
@@ -366,7 +366,7 @@ func (s *Service) publishTokenMoved(campaignID string, t mapsdb.MapToken, player
 // publishCurrentMapCleared tells everyone that the session has no current
 // map anymore: its map was deleted.
 func (s *Service) publishCurrentMapCleared(campaignID string) {
-	s.live.Publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
+	s.publish(campaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
 		CurrentMapChanged: &playv1.WatchGameSessionResponse_CurrentMapChanged{},
 	}})
 }
