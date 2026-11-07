@@ -181,8 +181,11 @@ func (s *Service) ListCombatLog(
 	}
 
 	res := &playv1.ListCombatLogResponse{}
-	since := sinceSeqOf(req.Msg.GetSinceSeq(), snap.events)
-	res.Full, res.LastSeq = since == 0, lastSeqOf(snap.events)
+	since := sinceSeqOf(req.Msg.GetSinceSeq(), v.master, snap.events)
+	res.Full = since == 0
+	if v.master {
+		res.LastSeq = lastSeqOf(snap.events)
+	}
 	stampSeqs(entries, snap.events)
 	var lastID string
 	if v.master {
@@ -197,36 +200,86 @@ func (s *Service) ListCombatLog(
 	for _, c := range snap.cs {
 		byID[c.ID] = c
 	}
-	// Latest first, in groups by round.
-	for _, e := range slices.Backward(entries) {
-		if since > 0 && e.seq <= since && !slices.Contains(e.hosts, lastID) {
-			continue // the app holds this line as it is (the master's undoable line is always sent: its flag moves with the log's end)
-		}
-		out, ok := e.view(ctx, v, byID, names, lastID)
-		if !ok {
-			continue
-		}
-		out.Seq = e.seq
-		res.Rounds = appendToRound(res.Rounds, out)
-	}
+	cut := logCut{since: since, lastID: lastID}
+	res.Rounds, res.LastSeq = cut.rounds(ctx, entries, v, byID, names, res.LastSeq)
 	return connect.NewResponse(res), nil
 }
 
-// sinceSeqOf is the number the log is filtered by. An undo adds an event that takes older ones back, so a log with an undo after
-// sinceSeq has lines the app holds that are gone: the answer is then the whole log (0).
-func sinceSeqOf(sinceSeq int64, events []playdb.ListEncounterEventsRow) int64 {
+// logCut is the part of the log an answer holds: the entries above since (0: all of them), and the master's undoable one.
+type logCut struct {
+	since  int64
+	lastID string
+}
+
+// rounds turns the entries, latest first, into the rounds the viewer reads, leaving out the entries the app holds. It returns them and
+// the answer's last_seq: for the master the number it was given, for a player the highest number among the entries they read.
+func (c logCut) rounds(ctx context.Context, entries []*logEntry, v combatViewer, byID map[string]playdb.Combatant, names *keyNames, lastSeq int64) ([]*playv1.CombatLogRound, int64) {
+	var rounds []*playv1.CombatLogRound
+	for _, e := range slices.Backward(entries) {
+		if v.master && c.since > 0 && e.seq <= c.since && !slices.Contains(e.hosts, c.lastID) {
+			continue // the app holds this line as it is (the master's undoable line is always sent: its flag moves with the log's end)
+		}
+		out, ok := e.view(ctx, v, byID, names, c.lastID)
+		if !ok {
+			continue
+		}
+		if !v.master {
+			lastSeq = max(lastSeq, e.seq)
+			if c.since > 0 && e.seq <= c.since {
+				continue
+			}
+		}
+		out.Seq = e.seq
+		rounds = appendToRound(rounds, out)
+	}
+	return rounds, lastSeq
+}
+
+// deltaSafeKinds are the events that only add a line to the log or join the entry they belong to (and name it in hosts): after
+// the app holds the log up to a number, they change nothing the app already holds, so ListCombatLog may answer with the new and the
+// changed entries alone. Any other event after the app's number (a combatant hidden or shown, an answer to a roll request, a creature
+// summoned or dismissed, an undo, a kind this list does not know) can change how an entry the app holds is seen without a new
+// event on that entry, so the answer is the whole log. When in doubt a kind stays off the list.
+var deltaSafeKinds = map[string]bool{
+	eventEncounterStarted: true, eventInitiativeSubmitted: true, eventInitiativeOrderSet: true, eventCombatBegun: true,
+	eventTurnEnded: true, eventTurnPartEnded: true, eventCombatantMoved: true, eventEncounterEnded: true,
+	eventAttackRolled: true, eventDamageRolled: true, eventDamageApplied: true, eventDamageDiscarded: true,
+	eventActionTaken: true, eventHitPointsAdjusted: true, eventDeathSaveRolled: true, eventDeathConfirmed: true,
+	eventConditionsSet: true, eventSpellCast: true, eventReactionUsed: true, eventReactionDeclined: true,
+	eventLegendarySpent: true, eventRechargeRolled: true,
+}
+
+// sinceSeqOf is the number the log is filtered by: sinceSeq, or 0 (the whole log) when an event after it may have changed an
+// entry the app holds. An undo takes lines back; the kinds off deltaSafeKinds change how entries are seen. For a player only what
+// the player may see counts, as for last_seq: an undo of a secret action takes back lines the player never held.
+func sinceSeqOf(sinceSeq int64, master bool, events []playdb.ListEncounterEventsRow) int64 {
 	if sinceSeq <= 0 {
 		return 0
 	}
 	for _, e := range events {
-		if e.Kind == eventActionUndone && int64(e.Seq) > sinceSeq {
+		if int64(e.Seq) <= sinceSeq {
+			continue
+		}
+		switch {
+		case e.Kind == eventActionUndone:
+			if master || !secretEvent(e) {
+				return 0
+			}
+		case !deltaSafeKinds[e.Kind]:
 			return 0
 		}
 	}
 	return sinceSeq
 }
 
-// lastSeqOf is the highest event number the combat's events reach.
+// secretEvent says the event was written as one the players do not hear of.
+func secretEvent(e playdb.ListEncounterEventsRow) bool {
+	ev, err := readEvent(e.Payload)
+	return err != nil || ev.Secret
+}
+
+// lastSeqOf is the highest event number the combat's events reach, for the master. A player's is the highest entry number among the
+// entries the player reads (see ListCombatLog), so it does not move on a write the player may not see.
 func lastSeqOf(events []playdb.ListEncounterEventsRow) int64 {
 	var last int64
 	for _, e := range events {

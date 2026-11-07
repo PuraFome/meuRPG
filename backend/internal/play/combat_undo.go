@@ -579,8 +579,9 @@ func (s *Service) takeBackOlder(ctx context.Context, c *combatTx, run *undoRun, 
 // fog around the combatants that went back, the vitals put back and the trap armed again.
 func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *encounterData, ev actionEvent, run *undoRun) {
 	s.publishUndone(ctx, campaignID, d, ev)
-	s.publishLogChange(ctx, campaignID, d.enc.ID, !ev.Secret, true) // the undo rewrote the log
-	if run.undoneMove != nil {                                      // the combatant is back where it was: the fog follows it
+	// The undo rewrote the log: full.
+	s.publishLogChange(ctx, campaignID, d.enc.ID, !ev.Secret, true)
+	if run.undoneMove != nil { // the combatant is back where it was: the fog follows it
 		s.followToSquare(ctx, campaignID, d, run.undoneMove.Actor, &grid.Square{Col: int(run.undoneMove.Col), Row: int(run.undoneMove.Row)})
 	}
 	if run.snapped != "" { // the mover is back where it was: the fog follows it

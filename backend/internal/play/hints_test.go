@@ -101,19 +101,27 @@ func TestTxResetsTheCollectorOnEveryAttempt(t *testing.T) {
 	w := newHintTable(t)
 	ctx := t.Context()
 	attempts := 0
+	var first, second live.Event
 	err := w.h.svc.tx(ctx, w.sessionID, func(tx pgx.Tx, h *hints) error {
 		attempts++
 		if err := w.write(ctx, tx, 1); err != nil {
 			return err
 		}
 		if attempts == 1 {
-			h.tell(w.campaignID, w.event("first-attempt", true))
+			first = w.event("first-attempt", true)
+			h.tell(w.campaignID, first)
 			h.touch()
 			return &pgconn.PgError{Code: "40001", Message: "restart transaction"}
 		}
-		h.tell(w.campaignID, w.event("second-attempt", true))
+		second = w.event("second-attempt", true)
+		h.tell(w.campaignID, second)
 		return nil
 	})
+	defer func() {
+		if first.Message.GetSessionSeq() != 0 || second.Message.GetSessionSeq() != 1 {
+			t.Errorf("stamps: first attempt's event %d, second's %d; want 0 and 1", first.Message.GetSessionSeq(), second.Message.GetSessionSeq())
+		}
+	}()
 	if err != nil {
 		t.Fatalf("tx() error = %v", err)
 	}

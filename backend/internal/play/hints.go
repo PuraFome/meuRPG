@@ -45,7 +45,10 @@ type told struct {
 	event      live.Event
 }
 
-// tell collects ev for the streams of campaignID. It is sent, through send, after the transaction commits, and never if the
+// tell collects ev for the streams of campaignID. ev.Message must be a message made for this call, never a shared one: tx writes the
+// session's number into it (WatchGameSessionResponse.session_seq) before it sends it to several streams. Those numbers are not ordered
+// from one event to the next on a stream (a write that commits later may send first), so nobody may dedupe or look for gaps on them;
+// only the numbers of Ready and Heartbeat are the session's. It is sent, through send, after the transaction commits, and never if the
 // transaction fails. The closure may call it as often as it likes: the session's number moves by one however many it tells.
 func (h *hints) tell(campaignID string, ev live.Event) {
 	h.events = append(h.events, told{campaignID: campaignID, event: ev})

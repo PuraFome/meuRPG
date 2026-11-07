@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
@@ -114,16 +115,22 @@ func TestListCombatLogSinceSeq(t *testing.T) {
 	}
 
 	// Nothing new: no entries, the same number, not full. (The entry the master can undo is always sent.)
-	again := since(a.caio, first.GetLastSeq())
-	if len(entries(again)) != 0 || again.GetFull() || again.GetLastSeq() != first.GetLastSeq() {
-		t.Errorf("nothing new, as a player: %d entries, full = %v, last_seq = %d; want 0, false, %d", len(entries(again)), again.GetFull(), again.GetLastSeq(), first.GetLastSeq())
+	playerFirst := a.log(t, a.caio, e)
+	again := since(a.caio, playerFirst.GetLastSeq())
+	if len(entries(again)) != 0 || again.GetFull() || again.GetLastSeq() != playerFirst.GetLastSeq() || playerFirst.GetLastSeq() == 0 {
+		t.Errorf("nothing new, as a player: %d entries, full = %v, last_seq = %d; want 0, false, %d (not 0)", len(entries(again)), again.GetFull(), again.GetLastSeq(), playerFirst.GetLastSeq())
+	}
+	// As the master, the undoable entry is always sent: its flag moves with the log's end.
+	masterAgain := since(a.master, first.GetLastSeq())
+	if got := entries(masterAgain); len(got) != 1 || !got[0].GetUndoable() || masterAgain.GetFull() {
+		t.Errorf("nothing new, as the master: entries = %v, full = %v; want only the undoable entry", got, masterAgain.GetFull())
 	}
 
 	// The damage joins the attack's entry: it comes again with a higher number, alone.
 	a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), inAppDamage)
-	delta := since(a.caio, first.GetLastSeq())
+	delta := since(a.caio, playerFirst.GetLastSeq())
 	got := entries(delta)
-	if delta.GetFull() || len(got) != 1 || got[0].GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK || got[0].GetSeq() <= first.GetLastSeq() || delta.GetLastSeq() < got[0].GetSeq() {
+	if delta.GetFull() || len(got) != 1 || got[0].GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK || got[0].GetSeq() <= playerFirst.GetLastSeq() || delta.GetLastSeq() < got[0].GetSeq() {
 		t.Fatalf("after the damage: full = %v, entries = %v, last_seq = %d; want only the attack's entry, with a higher seq", delta.GetFull(), got, delta.GetLastSeq())
 	}
 	if all := a.log(t, a.caio, e); len(entries(all)) < 2 {
@@ -169,5 +176,109 @@ func TestCombatLogChangedIsFullAfterAnUndo(t *testing.T) {
 	}
 	if c := logChange(); !c.GetFull() {
 		t.Error("an undo did not tell the streams the log was rewritten")
+	}
+}
+
+// Writes that change how the entries the app holds are seen, without a new event on those entries, make the answer the whole log.
+func TestListCombatLogSinceSeqIsFullWhenTheViewMayHaveChanged(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	a.h.roller.queue(15, 3)
+	a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", inAppRoll)
+	player := func() *playv1.ListCombatLogResponse { return a.log(t, a.caio, e) }
+	sinceAfter := func(base *playv1.ListCombatLogResponse, write func()) *playv1.ListCombatLogResponse {
+		t.Helper()
+		write()
+		res, err := a.caio.combat.ListCombatLog(t.Context(), connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), SinceSeq: base.GetLastSeq()}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+	cases := []struct {
+		name  string
+		write func()
+		full  bool
+	}{
+		{"a master-only hit point correction adds no change to old lines", func() {
+			if _, err := a.adjustHP(t, e, "Goblin", damageHP(1)); err != nil {
+				t.Fatal(err)
+			}
+		}, false},
+		{"the Goblin is hidden", func() { hideAgain(t, a, e, "Goblin") }, true},
+		{"the Goblin is shown", func() { showNPC(t, a, e, "Goblin") }, true},
+		{"a roll mode request is answered", func() {
+			req, err := a.rmRequestRaw(t, a.caio, e, func(r *playv1.RequestRollModeRequest) { r.AttackKey = battleaxe })
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := a.answerMode(t, a.master, e, req.GetRequest().GetId(), playv1.RollMode_ROLL_MODE_ADVANTAGE); err != nil {
+				t.Fatal(err)
+			}
+		}, true},
+	}
+	for _, tc := range cases {
+		base := player()
+		got := sinceAfter(base, tc.write)
+		if got.GetFull() != tc.full {
+			t.Errorf("%s: full = %v, want %v", tc.name, got.GetFull(), tc.full)
+		}
+	}
+}
+
+// What a player cannot see does not move the player's answer: a master-only write, or an undo of one, leaves the answer to
+// the same since_seq as it was (entries, last_seq, full).
+func TestListCombatLogSinceSeqOfAPlayerIgnoresWhatTheyCannotSee(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	a.h.roller.queue(15, 3)
+	a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", inAppRoll)
+	base := a.log(t, a.caio, e)
+	ask := func() *playv1.ListCombatLogResponse {
+		res, err := a.caio.combat.ListCombatLog(t.Context(), connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), SinceSeq: base.GetLastSeq()}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+	before := ask()
+	if _, err := a.adjustHP(t, e, "Goblin", damageHP(1)); err != nil { // the master's own line
+		t.Fatal(err)
+	}
+	if after := ask(); !proto.Equal(before, after) {
+		t.Errorf("a master-only write changed the player's answer:\n before %v\n after  %v", before, after)
+	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil { // and its undo
+		t.Fatal(err)
+	}
+	if after := ask(); !proto.Equal(before, after) {
+		t.Errorf("a master-only undo changed the player's answer:\n before %v\n after  %v", before, after)
+	}
+}
+
+// A retry of an undo (the same key) tells the streams the log was rewritten, as the first call did.
+func TestCombatLogChangedIsFullOnARetriedUndo(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	a.h.roller.queue(15, 3)
+	a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", inAppRoll)
+	stream := a.master.watch(t, a.campaignID)
+	stream.ready(t)
+	req := &playv1.UndoLastActionRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), ExpectedEventId: a.log(t, a.master, e).GetUndoableEventId(), IdempotencyKey: newKey()}
+	for i := range 2 {
+		if _, err := a.master.combat.UndoLastAction(t.Context(), connect.NewRequest(req)); err != nil {
+			t.Fatalf("UndoLastAction(call %d) error = %v", i+1, err)
+		}
+		for {
+			if c := stream.next(t).GetCombatLogChanged(); c != nil {
+				if !c.GetFull() {
+					t.Errorf("call %d: combat_log_changed.full = false, want true", i+1)
+				}
+				break
+			}
+		}
 	}
 }

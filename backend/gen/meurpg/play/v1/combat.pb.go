@@ -18395,7 +18395,9 @@ type ListCombatLogRequest struct {
 	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	EncounterId string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
 	// The highest `last_seq` the app holds. Only the entries that changed after it come back (CombatLogEntry.seq above it);
-	// 0 (the default) asks for the whole log.
+	// 0 (the default) asks for the whole log. The server answers with the whole log (`full`) whenever a write after it may have
+	// changed how an entry the app holds is seen without a new event on that entry (a combatant shown or hidden, an answer to a roll
+	// request, an undo, a kind of event it does not know to be safe), so an app that gets `full` replaces everything it holds.
 	SinceSeq      int64 `protobuf:"varint,3,opt,name=since_seq,json=sinceSeq,proto3" json:"since_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -18461,10 +18463,12 @@ type ListCombatLogResponse struct {
 	// The event UndoLastAction would take back now (a UUID), if any. Only the
 	// master gets it; the entry it belongs to has `undoable` set.
 	UndoableEventId string `protobuf:"bytes,2,opt,name=undoable_event_id,json=undoableEventId,proto3" json:"undoable_event_id,omitempty"`
-	// The highest event number (session_events.seq) of the combat the server read: the app sends it back as since_seq.
+	// The highest event number (session_events.seq) among the entries the caller reads (the master's: among all the combat's events):
+	// the app sends it back as since_seq. It does not move on a write the caller may not see. It is unrelated to
+	// WatchGameSessionResponse.session_seq: two counters, never compared with each other.
 	LastSeq int64 `protobuf:"varint,3,opt,name=last_seq,json=lastSeq,proto3" json:"last_seq,omitempty"`
-	// True when the rounds are the whole log and replace what the app holds: since_seq was 0, or an undo rewrote the log
-	// after it. False when the rounds hold only the entries that are new or changed, which the app puts in place by id.
+	// True when the rounds are the whole log and replace what the app holds: since_seq was 0, or a write after it may have changed
+	// how the entries it holds are seen (an undo the caller may see; see ListCombatLogRequest.since_seq). False when the rounds hold only the entries that are new or changed, which the app puts in place by id.
 	Full          bool `protobuf:"varint,4,opt,name=full,proto3" json:"full,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -18971,7 +18975,8 @@ type CombatLogEntry struct {
 	// RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
 	Recharge *CombatLogRecharge `protobuf:"bytes,115,opt,name=recharge,proto3" json:"recharge,omitempty"`
 	// The highest event number (session_events.seq) among the events the entry shows. A later event that joins the entry
-	// (the damage of an attack) raises it, so the entry comes again after a since_seq and the app replaces it by id.
+	// (the damage of an attack) raises it, so the entry comes again after a since_seq and the app replaces it by id. In an answer that
+	// is not full, the master's `undoable` flag is only right on the entry of `undoable_event_id`; the app derives the flag from it.
 	Seq           int64 `protobuf:"varint,116,opt,name=seq,proto3" json:"seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

@@ -1730,6 +1730,11 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
    * nothing of what changed. On an event it is 0 when the event did not come from a write that counted (typing, presence,
    * and every change not yet counted): 0 means "no number", never compare it. Ready and Heartbeat always carry the
    * current number. Only a member who may watch the stream reads it.
+   * The numbers on events are not ordered: two writes can commit in one order and send in the other, so an app must not
+   * drop an event for an old number, nor look for gaps in them. Only the numbers of Ready and Heartbeat are the session's
+   * own: an app that sees a heartbeat ahead of the highest number it applied reads the session again.
+   * It is unrelated to the event numbers of the combat log (ListCombatLogResponse.last_seq, CombatLogEntry.seq): two counters,
+   * never compared with each other.
    *
    * @generated from field: int64 session_seq = 48;
    */
