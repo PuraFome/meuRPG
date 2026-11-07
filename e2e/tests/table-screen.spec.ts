@@ -9,6 +9,7 @@ import {
   chooseRow,
   closeTvPanel,
   inspectOrder,
+  ringRoom,
   sceneBoxes,
   twoOnStageRPC,
   expectPanelFits,
@@ -519,6 +520,9 @@ test('uma cena com dois NPCs em cena na TV: "Em cena" mostra os dois e "Fala ago
     await expect(tv.locator('.tv-scene__speaking')).toHaveText(/Fala agora/);
     await expect(npcs.filter({ hasText: 'Borin' }).locator('.tv-scene__speaking')).toHaveCount(0);
     await expect(npcs.filter({ hasText: 'Mira' }).locator('.tv-scene__speaking')).toHaveCount(1);
+    // The ring of the one speaking is whole: the list that clips has room for it on every side.
+    const room = await ringRoom(tv);
+    expect(Math.min(room.left, room.top, room.right, room.bottom), `the speaking ring is cut by the list: ${JSON.stringify(room)}`).toBeGreaterThanOrEqual(0);
     const shared = await sceneBoxes(tv);
     expect(shared.text, 'the text card still has the whole width with two NPCs beside it').toBeLessThan(shared.whole - 100);
   } finally {

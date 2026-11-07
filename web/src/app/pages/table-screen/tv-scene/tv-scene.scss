@@ -76,9 +76,12 @@
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
-  margin: 0;
-  padding: 0;
+  // The list clips (a TV never scrolls), and the ring of the one speaking is drawn 5 px outside its token: the room for it is
+  // padding the margin takes back, so the rows stay where they were and the ring is never cut.
+  margin: calc(var(--tv-ring) * -1);
+  padding: var(--tv-ring);
   list-style: none;
+  --tv-ring: 6px;
 }
 
 .tv-scene__npc {

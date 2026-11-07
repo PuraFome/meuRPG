@@ -254,3 +254,21 @@ export async function beginCrowdedCombat(master: Page, table: FogTable, goblins:
   }
   await combatRPC(master, 'BeginCombat', { campaignId: table.campaignId, encounterId: enc.id });
 }
+
+/**
+ * The room around the speaking NPC's token inside the list that clips it, on each side, after the 3 px ring and its 2 px offset
+ * (`combatant-token.scss`): a side under 0 is a ring cut by the list.
+ */
+export function ringRoom(tv: Page): Promise<{ left: number; top: number; right: number; bottom: number }> {
+  return tv.evaluate(() => {
+    const ring = 5;
+    const list = (document.querySelector('.tv-scene__list') as HTMLElement).getBoundingClientRect();
+    const token = (document.querySelector('.tv-scene__npc--speaking app-combatant-token') as HTMLElement).getBoundingClientRect();
+    return {
+      left: token.left - ring - list.left,
+      top: token.top - ring - list.top,
+      right: list.right - (token.right + ring),
+      bottom: list.bottom - (token.bottom + ring),
+    };
+  });
+}
