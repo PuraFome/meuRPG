@@ -97,6 +97,8 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
 
 - **Routes** (`pages/content/content.routes.ts`, `loadChildren`, so the editors and the client stay out of the initial bundle): `''` is the list (`content-list`), `options` is "Opções para os jogadores", `import` the pack import, and `new/:kind` and `entries/:key` are the same entry page (`content-entry`), which picks the editor (spell, race, subrace, background, feat, class, subclass) when the caller is the master on a notebook and the read view (`entry-read`) otherwise: the player, and the master on the phone.
   The entry's key (`race:corujeiro@mesa`) is a single encoded segment.
+  On the phone the master gets a "⋮" menu at the right of the title, for every kind, with "Arquivar" or "Desarquivar".
+  The menu stays enabled while a call runs, so the focus stays on it.
 - **The client** (`core/content/content-client.ts`, `TableContentClient`): the list, the writes (`save` creates or swaps the body with the revision the editor read), archive and unarchive, the effect menu, the class defaults and the campaign catalogue.
   Failures are read through the typed detail (`TableContentRefusal`, `TableContentBlocked`), never the message.
   Each violation arrives at the field's exact path, all of an entry's at once.
@@ -119,6 +121,12 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The qualifier is off for a vulnerability and for a non-physical type, with the reason under it.
   Changing a kind or a type that takes the qualifier away clears it, so the save is not refused for it.
   The preview adds "Resistências e imunidades" with the table's lines and the base's, and the read view lists the rows.
+- **The master's phone read of a creature** (`pages/content/creature-read`, `core/content/creature-phone-read`) is what `content-entry` shows instead of the editor on a phone.
+  It reads the base's stat block, as the editor's side panel does, and builds the text from the same preview.
+  The rows are the base (`typeAndSizeInWords`), PV, CA, the damage bonus, the attack bonus and the damage lines, each marked "da mesa" or "da base".
+  One note says that only the master changes the damage lines and that whoever holds the creature reads them on its sheet.
+  One card holds the traits and the attacks, the base's first, and ends with who brings the creature (`carriersOf`).
+  A player gets the generic `entry-read` instead, with no damage lines and no carriers.
 - **The damage warning** (`core/content/spell-warnings.ts`, `unappliedDamage`): the spell editor shows "O app não sabe aplicar este dano" under the combat mechanics when a saved spell has damage and no attack, no saving throw, no area and a target other than the caster alone.
   It is a client-side note beside the form, with no code from the server; it never blocks "Salvar magia", and it goes away when the master picks an attack or a saving throw, or an area target.
   Dice typed under "Só texto" are not sent, so only a saved body raises it.

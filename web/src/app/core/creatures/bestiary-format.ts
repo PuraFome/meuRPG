@@ -11,6 +11,48 @@ export function typeAndSize(s: Pick<CreatureSummary, 'typePt' | 'sizePt'>): stri
   return joinDots([capitalized(s.typePt), s.sizePt].filter((p) => p !== ''));
 }
 
+const FEMININE_TYPES = new Set([
+  'fera',
+  'besta',
+  'criatura',
+  'monstruosidade',
+  'aberração',
+  'planta',
+  'fada',
+]);
+const MASCULINE_TYPES = new Set([
+  'morto-vivo',
+  'humanoide',
+  'dragão',
+  'gigante',
+  'limo',
+  'constructo',
+  'planar',
+  'celestial',
+  'corruptor',
+  'elemental',
+]);
+const FEMININE_SIZES: Readonly<Record<string, string>> = {
+  miúdo: 'miúda',
+  pequeno: 'pequena',
+  médio: 'média',
+  grande: 'grande',
+  enorme: 'enorme',
+  imenso: 'imensa',
+};
+
+/** "fera média", "morto-vivo médio": the type and the size in running text, the size agreeing with the type's gender.
+ * A type or a size this build does not know falls back to the joined form of a list row ("Fera · Médio"). */
+export function typeAndSizeInWords(s: Pick<CreatureSummary, 'typePt' | 'sizePt'>): string {
+  const type = s.typePt.toLocaleLowerCase('pt-BR');
+  const size = s.sizePt.toLocaleLowerCase('pt-BR');
+  const feminine = FEMININE_TYPES.has(type);
+  if (size === '' || (!feminine && !MASCULINE_TYPES.has(type)) || !(size in FEMININE_SIZES)) {
+    return typeAndSize(s);
+  }
+  return `${type} ${feminine ? FEMININE_SIZES[size] : size}`;
+}
+
 /** "CA 13 · PV 11": the armor class and the average hit points of a row. */
 export function acAndHp(s: Pick<CreatureSummary, 'armorClass' | 'hitPoints'>): string {
   return joinDots([tieNumbers(`CA ${s.armorClass}`), tieNumbers(`PV ${s.hitPoints}`)]);
