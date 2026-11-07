@@ -52,8 +52,8 @@ func (s *Service) publishGearLog(ctx context.Context, campaignID, encounterID, o
 	msg := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
 		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID},
 	}}
-	s.hub.Publish(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
+	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
 	if ownerUserID != "" {
-		s.hub.Publish(campaignID, live.Event{Audience: live.Audience{UserID: ownerUserID}, Message: msg})
+		s.send(campaignID, live.Event{Audience: live.Audience{UserID: ownerUserID}, Message: msg})
 	}
 }
