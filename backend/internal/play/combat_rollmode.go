@@ -159,7 +159,7 @@ func (s *Service) readModeInputs(ctx context.Context, c *combatTx, cs []playdb.C
 	if err != nil {
 		return attackModeInputs{}, err
 	}
-	surprised, err := s.surprisedFacts(ctx, c.q, c.enc, cs)
+	surprised, err := s.surprisedFacts(ctx, c.tx, c.session.CampaignID, c.q, c.enc, cs)
 	if err != nil {
 		return attackModeInputs{}, err
 	}

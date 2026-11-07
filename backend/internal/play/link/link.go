@@ -315,6 +315,8 @@ type Traits struct {
 	ArmorUntrained bool
 	// Resistances are the damage resistances, immunities and vulnerabilities the features and traits give.
 	Resistances []Resistance
+	// DamageReductions are the flat amounts the features take off each weapon attack that hits the sheet.
+	DamageReductions []DamageReduction
 	// ConditionImmunities are the conditions the features and traits make the sheet immune to.
 	ConditionImmunities []ConditionImmunity `json:",omitempty"`
 	// Maneuvers are the dice the table's options add to a roll (superiority_die effects).
@@ -325,6 +327,9 @@ type Traits struct {
 	RerollRules []RerollRule `json:",omitempty"`
 	// RollMinimums are the lowest values a die counts as that the table's features give (roll_minimum effects).
 	RollMinimums []RollMinimum `json:",omitempty"`
+	// Flags are the closed rules of the game the table's features switch on (flag effects), sorted. The play reads them
+	// only through HasFlag.
+	Flags []string `json:",omitempty"`
 	// SpellCriticalRange is the lowest natural d20 that is a critical hit on a spell attack roll when a table
 	// feature lowers it (critical_range with the spell or both scope, 15 at the least); 0 is 20. The weapon
 	// range is Sheet.CriticalRange.
@@ -348,6 +353,9 @@ type Traits struct {
 	UnactedAdvantage, SurprisedCritical string
 }
 
+// HasFlag says a flag effect of the table's features switches the flag on for the character (rules.FlagNeverSurprised...).
+func (t Traits) HasFlag(name string) bool { return slices.Contains(t.Flags, name) }
+
 // Resistance is a damage resistance of a feature or trait: its key and name, the
 // damage types it halves ("damage-type:fire") and when ("" always, "rage").
 type Resistance struct {
@@ -358,6 +366,14 @@ type Resistance struct {
 	// limits it to the damage of attacks that are not magical.
 	Kind       string `json:",omitempty"`
 	Nonmagical bool   `json:",omitempty"`
+}
+
+// DamageReduction is the flat reduction of weapon damage one feature gives: the feature's key, the amount, and
+// whether it covers only the attacks that are not magical.
+type DamageReduction struct {
+	Source     string
+	Amount     int
+	Nonmagical bool `json:",omitempty"`
 }
 
 // ConditionImmunity is a condition the sheet takes none of, with the trait that says so.

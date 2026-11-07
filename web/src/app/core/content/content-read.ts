@@ -22,6 +22,7 @@ import {
   names,
 } from './content-read-parts';
 import { bonusText } from './feature-draft';
+import { summonLine } from './summon-names';
 import { entryEffectsPart } from './content-read-rolls';
 import { spellToDraft } from './spell-draft';
 import { previewRows } from './spell-preview';
@@ -164,14 +165,25 @@ function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
       value: f.replacesFeatureKey === '' ? 'Nada' : featureKeyName(f.replacesFeatureKey, nameOf),
     },
   ];
-  return { rows, sections: [], text: f.descPt, ...entryEffectsPart(f.effects, nameOf) };
+  const summon = summonLine(f.summon, nameOf);
+  return {
+    rows,
+    sections: [],
+    text: summon ? [...f.descPt, summon] : f.descPt,
+    ...entryEffectsPart(f.effects, nameOf),
+  };
 }
 
 function readSpell(s: TableSpell, nameOf: NameOf): EntryRead {
   const rows: ReadRow[] = [...previewRows(spellToDraft(s), nameOf)];
   const classes = names(s.classKeys, nameOf);
   if (classes) rows.push({ label: 'Classes', value: classes });
-  return { rows, sections: [], text: [...s.descPt, ...s.higherLevelPt] };
+  const summon = summonLine(s.summon, nameOf);
+  return {
+    rows,
+    sections: [],
+    text: [...s.descPt, ...s.higherLevelPt, ...(summon ? [summon] : [])],
+  };
 }
 
 export function readEntry(

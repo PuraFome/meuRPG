@@ -151,6 +151,7 @@
   },
   "slot_counted": true,
   "grant_use": "x",
+  "grant_cost": 1,
   "resource": "x",
   "hits": [
     {
@@ -844,14 +845,19 @@
             "x"
           ],
           "Qualifier": "x",
-          "hidden": true
+          "hidden": true,
+          "Amount": 1
         }
       ],
       "origin": {
         "attack": true,
+        "weapon": true,
         "magical": true,
         "silvered": true,
         "adamantine": true
+      },
+      "allot": {
+        "x": 1
       }
     }
   ],

@@ -316,10 +316,7 @@
         <li><span class="sw-diamond" aria-hidden="true"></span>Ponto de origem</li>
       }
       @for (item of zoneLegend(); track item.key) {
-        <li class="legend__zone">
-          <app-zone-swatch [pattern]="item.pattern" [dashed]="item.masterOnly" />{{ item.name
-          }}{{ item.masterOnly ? ' só você vê' : '' }}
-        </li>
+        <li class="legend__zone">@for (l of item.letters; track $index) {<app-zone-letter [letter]="l" />@if (!$last) {<span class="mr-visually-hidden">, </span>}}<span class="mr-visually-hidden">: </span><app-zone-swatch [pattern]="item.pattern" [dashed]="item.masterOnly" /><span class="legend__name">{{ item.name }}{{ item.masterOnly ? ' só você vê' : '' }}</span></li>
       }
       @if (sunWhole() || sunSquares()) {
         <li class="legend__sun">

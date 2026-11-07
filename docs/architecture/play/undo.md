@@ -32,6 +32,11 @@ Some events are written just before the change's own event and never close the c
 - the puzzle events and the clue a solve gave;
 - what the traps did that is not this combat's (a trap noticed, a firing or search outside a combat or in another);
 - a Wild Shape that ended by itself (the beast fell, the druid fell, the master).
+- a swap of gear in the combat (`gear_swapped`): drawing or stowing a weapon, the shield or, by the master alone, the armor (a player's armor swap is refused in a combat). The event keeps the turn's economy from before the swap (`action_before`, `bonus_before`, `reaction_before`, `dashed_before`, `object_interaction_before`, `extra_action_before`) and whether the piece was equipped (`equipped_before`).
+  The undo of the last action takes the swap first: it gives the economy back and asks the characters module (`CombatRoster.RestoreEquipped`, the same write as `SetEquipped`'s, inside the undo's transaction) to put the piece back in or out of `carried_keys`, so the armor class and the attacks come back with it.
+  An undo of an earlier event is refused while the swap stands, so it never gives back what the swap spent.
+  The undo is refused (`failed_precondition`) and writes nothing when the sheet no longer lists the piece or no longer allows the gear since the swap. A player's combatant cannot leave a running combat, so the chain is never closed that way; the undo still answers `nothing to undo` if the combatant is gone.
+  The undo locks the session first and the character second, `SetEquipped` the character and then the session: when the two cross, the database aborts one of them (40P01 on PostgreSQL, 40001 on CockroachDB; either can be the one) and `db.InTx` runs it again, so neither error reaches the user. `TestUndoOfASwapCrossingASetEquippedTakesTurns` runs the real calls at the same moment, many times, on a pool of two connections, and checks that `SetEquipped` always succeeds and the undo either applied once or was refused as stale.
 
 A held action's event closes the chain, because nothing of it happened yet.
 

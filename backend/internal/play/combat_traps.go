@@ -734,6 +734,31 @@ func markTrapOnRoute(r *playv1.ReachableSquare, ahead []maplink.Trap, from grid.
 	}
 }
 
+// hiddenFrom says the players' line of the firing leaves the creature out for the viewer, as the event kept it: the master
+// had hidden it when the trap fired, or, on a fog map, the viewer was not among the ones who saw it then. (The log also leaves
+// out a creature the master has hidden since: that one is read from the combatant, not from the event.)
+func (cc trapCaughtEvent) hiddenFrom(v combatViewer) bool {
+	return cc.Hidden || (cc.Fogged && !slices.Contains(cc.SeenBy, v.userID))
+}
+
+// addsNothingFor says the firing only adds creatures to an earlier firing (ExtendsID), and none of them is one the viewer is
+// given: the event changes nothing the viewer reads, so it must not move any number or hint of theirs. A viewer with no id (the
+// hint to the players as a whole) is given a creature only when no one is kept from it.
+func (t *trapFireEvent) addsNothingFor(v combatViewer) bool {
+	if t == nil || t.ExtendsID == "" || len(t.Caught) == 0 {
+		return false
+	}
+	return !slices.ContainsFunc(t.Caught, func(cc trapCaughtEvent) bool { return !cc.hiddenFrom(v) })
+}
+
+// addsNothingForAnyPlayer is addsNothingFor for the players as a whole: no creature the firing adds is given to any of them.
+func (t *trapFireEvent) addsNothingForAnyPlayer() bool {
+	if t == nil || t.ExtendsID == "" || len(t.Caught) == 0 {
+		return false
+	}
+	return !slices.ContainsFunc(t.Caught, func(cc trapCaughtEvent) bool { return !cc.Hidden && (!cc.Fogged || len(cc.SeenBy) > 0) })
+}
+
 // ---- what a trap's firing says, for the master and for the log ----
 
 // trapView says what a viewer of a firing gets (RN-10, RN-20): the master all of

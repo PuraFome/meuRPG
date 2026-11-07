@@ -99,6 +99,11 @@ let nextId = 0;
         outline: 2px solid var(--mr-focus);
         outline-offset: 2px;
       }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     }
 
     .switch__handle {

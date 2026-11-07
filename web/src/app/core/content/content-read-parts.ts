@@ -8,6 +8,7 @@ import { tight } from '../format/text';
 import { feetToMeters, formatMeters } from '../units';
 import type { CatalogAbility } from './catalog';
 import { ABILITY_FIELDS, type Bonuses, noBonuses } from './feature-draft';
+import { summonLine } from './summon-names';
 import { rollEffectItem } from './content-read-rolls';
 
 /**
@@ -129,7 +130,10 @@ export function featureItem(f: TableFeature, nameOf: NameOf, prefix = ''): ReadI
   const lines = f.effects
     .map((e) => effectLine(e, nameOf))
     .filter((l) => l !== '' && !said.includes(l.toLowerCase()));
-  const text = [...f.descPt, ...lines].map(ensureStop).join(' ');
+  const text = [...f.descPt, ...lines, summonLine(f.summon, nameOf)]
+    .filter((l) => l !== '')
+    .map(ensureStop)
+    .join(' ');
   const item = { title: `${prefix}${f.namePt}`, text };
   return f.options.length > 0
     ? { ...item, options: f.options.map((o) => featureItem(o, nameOf)) }

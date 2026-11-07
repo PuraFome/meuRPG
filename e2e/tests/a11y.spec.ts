@@ -68,14 +68,14 @@ import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support'
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
-import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, giveFeatRPC, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody, listEntries } from './classes-support';
 import { setSwitchesRPC } from './content-options-support';
 import { effectRow, effectsTable, openPanel, setExhaustionRPC } from './effects-support';
-import { castZoneRPC, enterZoneRPC, moreZonesTable, zoneCard, zoneLayer, zoneOf, zoneTable, zonesPanel } from './zones-support';
+import { castZoneRPC, enterZoneRPC, expectOnMap, expectWallCalculated, moreZonesTable, nextStep, openWallSheet, openZoneMenu, tapWallSquare, WALL_SPELL, wallTable, zoneAction, zoneBadges, zoneCard, zoneLayer, zoneOf, zoneTable, zonesPanel } from './zones-support';
 import {
   changeGuardianSkillsRPC,
   createGuardianRPC,
@@ -3886,6 +3886,38 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
     try {
       await p.goto(`/campaigns/${druidCampaign}/characters/${druid.characterId}`);
       const dpanel = p.locator('app-creatures-panel');
+      // A feature of the table that summons a table creature (#578): the list with "Da mesa" and the note on its numbers, then the
+      // creature's page with the tag and the note.
+      const wolf = await createEntryRPC(m, druidCampaign, 'tableCreature', creatureBody());
+      await createEntryRPC(m, druidCampaign, 'tableClassFeature', {
+        namePt: 'Companheiro do Vale',
+        descPt: ['Um lobo do vale atende ao seu chamado.'],
+        classKey: 'class:druid',
+        level: 1,
+        effects: [{ type: 'resource', resource: 'chamados', max: '2', recharge: 'long_rest' }],
+        summon: { creatureKeys: [wolf, 'monster:wolf'], count: '1', maxLive: 2, resourceKey: 'chamados', turnMode: 'TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE', replaces: 'TABLE_SUMMON_REPLACES_NONE' },
+      });
+      await p.reload();
+      await dpanel.getByRole('button', { name: 'Companheiro do Vale' }).click();
+      const feature = p.getByRole('dialog', { name: 'Companheiro do Vale' }).or(p.locator('mat-bottom-sheet-container'));
+      const tableRow = feature.locator('app-creature-choice-list label.row', { hasText: 'Lobo do Vale' });
+      await expect(tableRow.locator('app-table-mark')).toHaveText(/Da mesa/);
+      await expect(tableRow).toContainText('Os números vêm da sua ficha quando ele chega.');
+      await expectScreenPasses(p, `A característica que invoca, a lista com a criatura da mesa ${where}`);
+      await tableRow.click();
+      await feature.getByRole('button', { name: 'Conjurar Companheiro do Vale', exact: true }).click();
+      await expect(dpanel.getByRole('status')).toContainText('A criatura chegou.');
+      await dpanel.getByRole('link', { name: /^Ver a ficha de / }).click();
+      await expect(p.locator('.table-note')).toHaveText('Os números vêm da ficha de Sálvia quando ele chegou');
+      // The page is compact (the numbers worked out for the owner, the creature's own attacks and traits), so the note that ends it is on the first screen.
+      await expect(p.locator('.tiles')).toContainText(/CA\s*\d+/);
+      await expect(p.locator('.attacks')).toContainText('Mordida Sombria');
+      await expect(p.locator('.block').last()).toContainText('Faro do Vale');
+      await expect(p.locator('.abilities')).toHaveCount(0);
+      await expect(p.locator('.table-note')).toBeVisible();
+      await expectScreenPasses(p, `A ficha da criatura da mesa ${where}`);
+      await p.goBack();
+      await expect(dpanel.getByRole('button', { name: 'Conjurar Animais' })).toBeVisible();
       await dpanel.getByRole('button', { name: 'Conjurar Animais' }).click();
       const cast = p.getByRole('dialog', { name: 'Conjurar Animais' }).or(p.locator('mat-bottom-sheet-container'));
       await expect(cast.getByText('Quantas criaturas')).toBeVisible();
@@ -6009,6 +6041,32 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByLabel('Texto do traço')).toBeVisible();
       await expect(m.getByLabel('Nome do ataque')).toBeVisible();
       await expectScreenPasses(m, `Editor de criatura, o traço e o ataque abertos ${where}`);
+      // The feature that summons (#578): the switch off, then on with the creatures and the resource it spends; a spell with "Invocar".
+      await open(m, `/campaigns/${campaignId}/content/new/classfeature`);
+      await m.getByLabel('Classe', { exact: true }).selectOption({ label: 'Druida' });
+      await m.getByLabel('Nível na classe (1 a 20)').fill('1');
+      await m.getByLabel('Nome da característica').fill('Companheiro do Vale');
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Recurso' });
+      await m.getByLabel('Nome do recurso').fill('chamados');
+      await m.getByLabel('Usos (máximo)').fill('2');
+      await m.getByLabel('Volta em').selectOption({ label: 'Descanso longo' });
+      await expectScreenPasses(m, `Característica de classe, a invocação desligada ${where}`);
+      await m.getByRole('switch', { name: 'Invoca criaturas' }).click();
+      await m.getByRole('combobox', { name: 'Criaturas' }).fill('Lobo do Vale');
+      await m.getByRole('option').filter({ has: m.locator('.pick__pt', { hasText: /^Lobo do Vale$/ }) }).click();
+      await m.getByLabel('Quantas vêm').fill('1');
+      await expect(m.getByLabel('Gasta 1 uso de')).toBeVisible();
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Característica de classe, a invocação ligada ${where}`);
+      await m.getByRole('button', { name: 'Salvar característica' }).click();
+      await expect(m.getByText('A característica de classe Companheiro do Vale foi salva.')).toBeVisible();
+      await expectScreenPasses(m, `Característica de classe, depois de salvar a invocação ${where}`);
+      await open(m, `/campaigns/${campaignId}/content/new/spell`);
+      await m.getByLabel('Nome', { exact: true }).fill('Chamado do Vale');
+      await m.locator('[aria-label="Mecânica"] label', { hasText: 'Invocar' }).click();
+      await expect(m.getByText('Sem recurso, tempo nem duração: a magia tem os seus.')).toBeVisible();
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Editor de magia, Invocar ${where}`);
       const undead = await createEntryRPC(m, campaignId, 'tableCreature', damageCreatureBody());
       await open(m, entryRoute(campaignId, undead));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Defunto do Vale');
@@ -8202,6 +8260,91 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
   await scanGearScreens(browser, 'dark', 390);
 });
 
+/** The weapon marks (#585): the chips on the gear and attacks, the weapon's "⋮" menu for the owner and the master, never for another player. */
+async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  let outsider: Awaited<ReturnType<typeof secondPlayer>> | undefined;
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const marked = {
+      weaponKeys: ['equipment:longsword', 'equipment:mace'],
+      armorKey: 'equipment:chain-mail',
+      shield: true,
+      carriedKeys: ['equipment:mace'],
+      weaponMarks: [{ weaponKey: 'equipment:longsword', silvered: true, magical: true }, { weaponKey: 'equipment:mace', adamantine: true }],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade marcas das armas ${Date.now()}`, true, true, { build: toren, sheet: marked });
+    campaignId = table.campaignId;
+
+    // The owner: the tags in words on both groups of the gear, and the grid.
+    await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const equipment = p.getByRole('region', { name: 'Equipamento' });
+    await expect(equipment.getByRole('list', { name: 'Marcas da arma' })).toHaveCount(2);
+    await expect(equipment.getByText('Prateada')).toBeVisible();
+    await expect(equipment.getByText('Adamantina')).toBeVisible();
+    await expectScreenPasses(p, `Ficha, marcas nas armas ${where}`);
+    // The table is in play, so the owner's sheet is locked: no "⋮" for the owner, and a line says who marks.
+    await expect(equipment.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(equipment.getByText('Marcas das armas: depois da trava, só o mestre muda.')).toBeVisible();
+
+    // The master edits at any time: the weapon's "⋮" opens its marks, then a saved mark.
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const masterEquipment = m.getByRole('region', { name: 'Equipamento' });
+    await masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' }).click();
+    const sheet = m.getByRole('dialog', { name: 'Marcas da Espada longa' });
+    await expect(sheet.getByRole('checkbox', { name: /^Prateada/ })).toBeChecked();
+    await expect(sheet.getByRole('checkbox', { name: /^Adamantina/ })).not.toBeChecked();
+    await expectScreenPasses(m, `Ficha do mestre, Marcas da arma ${where}`);
+    await sheet.getByRole('checkbox', { name: /^Adamantina/ }).check();
+    await sheet.getByRole('button', { name: 'Salvar marcas' }).click();
+    await expect(sheet).toHaveCount(0);
+    await expect(masterEquipment.getByRole('status').filter({ hasText: 'Marcas salvas.' })).toBeVisible();
+    await expect(masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' })).toBeFocused();
+
+    // Another player never sees the grid, nor the marks.
+    outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
+    await openLive(outsider.page, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    await expect(outsider.page.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(outsider.page.getByRole('dialog', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(outsider.page.getByText('Prateada')).toHaveCount(0);
+    await expectScreenPasses(outsider.page, `Ficha de outro jogador, sem as marcas ${where}`);
+
+    // The combat: the tags on the gear row of the fold.
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    const tab = await openActionTab(p, 'Ataques');
+    await expect(tab.getByRole('button', { name: 'Sacar ou guardar' })).toBeVisible();
+    await expect(tab.getByRole('list', { name: 'Marcas da arma' }).first()).toBeVisible();
+    await expectScreenPasses(p, `Combate, marcas das armas ${where}`);
+  } finally {
+    if (outsider) {
+      await outsider.close();
+    }
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('as marcas das armas passam no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@585'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanWeaponMarksScreens(browser, 'light', 1280);
+});
+
+test('as marcas das armas passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@585'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanWeaponMarksScreens(browser, 'dark', 390);
+});
+
 /** The question of a table feature's reroll (R6, R7, R9): the player's "Tirou 2: rolar de novo?" and the answer on its way, and the
  * master's card while the roller answers first, when it is the master's turn to answer, and once the roller did. */
 async function scanRerollQuestionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
@@ -9724,7 +9867,7 @@ async function scanZoneScreens(browser: Browser, colorScheme: 'light' | 'dark', 
 
     const masterTitle = zonesPanel(m).getByRole('heading', { level: 2 });
     await expect(masterTitle).toHaveText('Zonas ativas (3)');
-    await expect(zoneLayer(m)).toContainText('Teia · Pensantus');
+    await expectOnMap(m, 'Teia · Pensantus');
     await expect(zoneCard(m, 'Raio Lunar · Sombra')).toContainText('Só você vê');
     await expectScreenPasses(m, `Zonas no mapa e a lista, o mestre ${where}`);
 
@@ -9734,9 +9877,17 @@ async function scanZoneScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expect(zoneCard(p, 'Raio Lunar · Druida')).not.toContainText('Constituição');
     await expectScreenPasses(p, `Zonas no mapa e a lista, o jogador com detalhes ocultos ${where}`);
 
+    // The "Mais ações" menu of a zone that moves, open: "Mover" and "Encerrar zona".
+    const menu = await openZoneMenu(m, 'Raio Lunar · Druida');
+    await expect(menu.getByRole('menuitem', { name: 'Mover', exact: true })).toBeVisible();
+    await expect(menu.getByRole('menuitem', { name: 'Encerrar zona', exact: true })).toBeVisible();
+    await expectScreenPasses(m, `Mais ações da zona, o menu aberto ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(menu).toHaveCount(0);
+
     // The end: the question in place, under the zone's card.
     const web = zoneCard(m, 'Teia · Pensantus');
-    await web.getByRole('button', { name: 'Encerrar zona' }).click();
+    await zoneAction(m, 'Teia · Pensantus', 'Encerrar zona');
     const ask = web.getByRole('group', { name: 'Encerrar a zona?' });
     await expect(ask).toBeVisible();
     await expectScreenPasses(m, `Encerrar a zona, a pergunta no lugar ${where}`);
@@ -9744,7 +9895,7 @@ async function scanZoneScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     await expect(ask).toHaveCount(0);
 
     // The move sheet: the map picker with a square picked and its preview.
-    await zoneCard(m, 'Raio Lunar · Druida').getByRole('button', { name: 'Mover', exact: true }).click();
+    await zoneAction(m, 'Raio Lunar · Druida', 'Mover');
     const sheet = m.getByRole('dialog', { name: 'Mover o Raio Lunar' });
     await expect(sheet).toBeVisible();
     const map = sheet.getByRole('group', { name: /Mapa de batalha/ });
@@ -9830,7 +9981,7 @@ async function scanMoreZoneScreens(browser: Browser, colorScheme: 'light' | 'dar
     await expect(zoneCard(m, 'Escuridão · Mago')).toContainText('Você decide');
     await expectScreenPasses(m, `Mais zonas no mapa e a lista, o mestre ${where}`);
     await expect(zonesPanel(p).getByRole('heading', { level: 2 })).toHaveText('Zonas ativas (4)');
-    await expect(zoneLayer(p)).toContainText('Escuridão · Mago');
+    await expectOnMap(p, 'Escuridão · Mago');
     await expect(zonesPanel(p)).not.toContainText('Você decide');
     await expectScreenPasses(p, `Mais zonas no mapa e a lista, o jogador ${where}`);
 
@@ -9874,6 +10025,120 @@ test('mais zonas de magia passam no axe e nas conferências de layout no tema cl
 test('mais zonas de magia passam no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
   test.setTimeout(500_000);
   await scanMoreZoneScreens(browser, 'dark', 390);
+});
+
+/**
+ * Wall of Fire's cast sheet (RN-37, #640), the step "Onde fica": a line before anything is placed, a line placed with its
+ * side not picked and then picked, a ring the same way, and the step that follows. Each scan waits for the state it judges: the
+ * server's preview ("Calculando onde a muralha fica…" gone) and the words of the missing side.
+ */
+async function scanWallSheetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const t = await wallTable(browser, `Acessibilidade muralha ${Date.now()}`, { width, colorScheme });
+  const { p } = t;
+  try {
+    await openSessionPage(p, t.campaignId);
+    const { sheet, map } = await openWallSheet(p);
+    await expect(sheet.getByText('Toque no mapa para marcar onde a muralha fica.')).toBeVisible();
+    await expectScreenPasses(p, `Onde fica, a linha, nada colocado ${where}`);
+
+    // A line from (11, 3) to the south: the side is not picked, and "Próximo" says why it waits.
+    await tapWallSquare(map, 11, 3);
+    await sheet.getByRole('button', { name: 'Para o sul' }).click();
+    await expectWallCalculated(sheet);
+    await expect(sheet.getByText('Escolha o lado que queima.')).toBeVisible();
+    await expect(nextStep(sheet)).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Onde fica, a linha, sem lado ${where}`);
+    await pickRadio(sheet, 'À direita');
+    await expect(nextStep(sheet)).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Onde fica, a linha com o lado ${where}`);
+
+    // The ring: the centre at (11, 5), a diameter, "Dentro" or "Fora".
+    await pickRadio(sheet, 'Anel');
+    await expect(sheet.getByRole('group', { name: 'Diâmetro' })).toBeVisible();
+    await tapWallSquare(map, 11, 5);
+    await expectWallCalculated(sheet);
+    await expect(sheet.getByRole('radio', { name: 'Dentro' })).not.toBeChecked();
+    await expect(nextStep(sheet)).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Onde fica, o anel, sem lado ${where}`);
+    await pickRadio(sheet, 'Dentro');
+    await expect(nextStep(sheet)).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Onde fica, o anel com o lado ${where}`);
+
+    // "Próximo": the list step, nobody in the area.
+    await nextStep(sheet).click();
+    await expect(sheet.getByRole('heading', { name: 'Quem está nela' })).toBeVisible();
+    await expect(sheet.getByText('Ninguém que você vê está na área.')).toBeVisible();
+    await expectScreenPasses(p, `Onde fica, quem está nela ${where}`);
+  } finally {
+    await t.done();
+  }
+}
+
+test('a muralha de fogo na folha de conjurar passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallSheetScreens(browser, 'light', 1280);
+});
+
+test('a muralha de fogo na folha de conjurar passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallSheetScreens(browser, 'dark', 1280);
+});
+
+test('a muralha de fogo na folha de conjurar passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallSheetScreens(browser, 'light', 390);
+});
+
+test('a muralha de fogo na folha de conjurar passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallSheetScreens(browser, 'dark', 390);
+});
+
+/**
+ * The master's map tab on a phone with the layers of a fog map: a Fog Cloud and a Wall of Fire with its burning side, each a
+ * corner letter on the map and a name in the legend (RN-37, #640). The scan waits for the two badges and the burning layer.
+ */
+async function scanWallMapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const t = await moreZonesTable(
+    browser,
+    `Acessibilidade mapa muralha ${Date.now()}`,
+    [
+      { label: 'Druida', at: [3, 2], face: 20 },
+      { label: 'Mago', at: [8, 5], face: 19, wizard: [WALL_SPELL] },
+    ],
+    { width, colorScheme, fog: true },
+  );
+  const { m, campaignId } = t;
+  try {
+    await passTurnsTo(m, campaignId, 'Druida');
+    await castZoneRPC(m, t, t.id('Druida'), 'spell:fog-cloud', { col: 16, row: 10 }, 1);
+    await passTurnsTo(m, campaignId, 'Mago');
+    await castZoneRPC(m, t, t.id('Mago'), WALL_SPELL, { col: 11, row: 3 }, 4, { direction: { dx: 0, dy: 1 }, side: 'WALL_SIDE_LEFT', lengthFt: 30 });
+    await openSessionPage(m, campaignId);
+    await m.getByRole('tab', { name: /^Mapa/ }).click();
+    const panel = m.getByRole('tabpanel', { name: /^Mapa/ });
+    await expect(panel.getByRole('group', { name: /^Mapa/ })).toBeVisible();
+    await expect(zoneBadges(m)).toHaveCount(2);
+    await expect(zoneLayer(m).locator('.zl__burn')).toHaveCount(1);
+    // The map names nothing: the legend beside it ties each letter to a name.
+    await expect(panel.locator('li.legend__zone').filter({ hasText: 'Muralha de Fogo' })).toBeVisible();
+    await expect(panel.locator('li.legend__zone').filter({ hasText: 'Névoa Obscurecente' })).toBeVisible();
+    await expectScreenPasses(m, `Mapa com a névoa e a muralha de fogo, o mestre ${where}`);
+  } finally {
+    await t.done();
+  }
+}
+
+test('o mapa com a névoa e a muralha de fogo passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallMapScreens(browser, 'light', 390);
+});
+
+test('o mapa com a névoa e a muralha de fogo passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-37'] }, async ({ browser }) => {
+  test.setTimeout(400_000);
+  await scanWallMapScreens(browser, 'dark', 390);
 });
 
 /**

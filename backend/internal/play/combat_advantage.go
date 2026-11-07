@@ -332,9 +332,15 @@ func (f modeFacts) scene(attacker, target playdb.Combatant, traits link.Traits, 
 	s.AttackerUnseen = f.unseen(target, attacker)
 	s.TargetUnseen = f.unseen(attacker, target)
 	s.AllyNearTarget = known && traits.PackTactics && f.allyNear(attacker, target, view)
-	s.HostileNearAttacker = known && ranged && f.hostileNear(attacker, view)
+	s.HostileNearAttacker = known && ranged && !ignoresHostileNearby(shape, traits) && f.hostileNear(attacker, view)
 	f.ambush(&s, target, traits)
 	return s
+}
+
+// ignoresHostileNearby says a table feature's ignore_hostile_nearby flag lifts the disadvantage of
+// a ranged weapon attack (not a spell's).
+func ignoresHostileNearby(shape attackShape, traits link.Traits) bool {
+	return shape.Weapon && traits.HasFlag(rules.FlagIgnoreHostileNearby)
 }
 
 // ambush fills what the attacker's ambush effects ask of the target: that it has not had its
@@ -793,7 +799,7 @@ func (s *Service) turnModes(ctx context.Context, campaignID string, d *encounter
 	if err != nil {
 		return turnModes{}, err
 	}
-	surprised, err := s.surprisedFacts(ctx, s.queries, d.enc, d.cs)
+	surprised, err := s.surprisedFacts(ctx, nil, campaignID, s.queries, d.enc, d.cs)
 	if err != nil {
 		return turnModes{}, err
 	}

@@ -719,6 +719,10 @@ func (noRoster) SetRevivifyBlocked(context.Context, pgx.Tx, string, string, bool
 
 func (noRoster) Conditions() []link.Named { return nil }
 
+func (noRoster) RestoreEquipped(context.Context, pgx.Tx, string, string, string, bool) (func(context.Context), error) {
+	return nil, errors.New("not in this test")
+}
+
 func (noRoster) ContentNames(context.Context, pgx.Tx, string) (func(string) string, error) {
 	return func(string) string { return "" }, nil
 }

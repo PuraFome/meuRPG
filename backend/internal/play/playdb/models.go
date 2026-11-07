@@ -301,6 +301,7 @@ type GameSession struct {
 	TvMirror            bool
 	TvPin               int16
 	TvChoiceRevision    int32
+	HintSeq             int64
 }
 
 type GroupCheck struct {

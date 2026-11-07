@@ -23,6 +23,7 @@ import {
 } from '../../../../shared/combat-map/combat-map';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { ZoneLayer } from '../../../../shared/combat-map/zone-layer/zone-layer';
+import { ZoneLetter } from '../../../../shared/combat-map/zone-layer/zone-letter';
 import { ZoneSwatch } from '../../../../shared/combat-map/zone-layer/zone-swatch';
 import { SunlightLayer } from '../../../../shared/combat-map/sunlight-layer/sunlight-layer';
 import { isTheatre } from '../../../../core/combat/theatre';
@@ -70,6 +71,7 @@ const CROP_MAX_SHARE = 0.6;
     SunlightControls,
     SunlightLayer,
     ZoneLayer,
+    ZoneLetter,
     ZoneSwatch,
   ],
   templateUrl: './combat-map-card.html',
