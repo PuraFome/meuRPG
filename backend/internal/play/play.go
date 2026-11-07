@@ -198,6 +198,16 @@ type MapKeeper interface {
 	// MapGrid returns the battle grid of the campaign's map, the zero Grid
 	// when it has none, or a `not_found` Connect error (MR-013).
 	MapGrid(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.Grid, error)
+	// MapFog returns whether the campaign's map has the fog of war on and "Visão do grupo" on, or a
+	// `not_found` Connect error when mapID is not a map of the campaign. It changes nothing and reads
+	// inside tx when the caller has one (nil: the pool).
+	MapFog(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (link.MapFog, error)
+	// TableScreenMap returns the map as the table screen reads it: what a player with no character reads
+	// of the map, its points and tokens, and of the squares the group sees. may decides, from the map's fog
+	// and "Visão do grupo", whether the map goes to the TV at all; when it does not the answer is Hidden and
+	// nothing of the map is read. It returns a `not_found` Connect error for a map that is not the
+	// campaign's or that no player sees now.
+	TableScreenMap(ctx context.Context, campaignID, mapID string, may link.MapGate) (link.TableScreenMap, error)
 	// BattlePoint returns a battle point of the campaign, or a `not_found`
 	// Connect error for any other point. It reads inside tx when the caller has one
 	// (nil: the pool).
@@ -310,6 +320,9 @@ type CombatRoster interface {
 	// content key ("spell:shield" is "Escudo Arcano"), or "" for an unknown key. The
 	// content is read once, when it is asked for, not on every name.
 	ContentNames(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error)
+	// SourceNames is ContentNames for the feature a roll names (RN-23): "" also for an entry the master retired or
+	// switched off, which is never named to anyone, the roller included.
+	SourceNames(ctx context.Context, tx pgx.Tx, campaignID string) (func(key string) string, error)
 
 	// The character's creatures (MR-037). The ones that write take the
 	// change's transaction.
@@ -443,6 +456,8 @@ type CampaignDirectory interface {
 	// ActiveCampaigns returns the campaigns userID is an active member of
 	// (never a pending one), with their name and the user's role (my_role).
 	ActiveCampaigns(ctx context.Context, userID string) ([]*campaignsv1.Campaign, error)
+	// CampaignName returns the campaign's name, read in tx (nil: the pool).
+	CampaignName(ctx context.Context, tx pgx.Tx, campaignID string) (string, error)
 }
 
 // The live stream's timing (docs/operations/README.md). Tests shorten them through
@@ -452,6 +467,8 @@ const (
 	// often, so the app can tell a dead stream, and proxies and Cloud Run
 	// don't take it for an idle one.
 	DefaultHeartbeat = 25 * time.Second
+	// DefaultScreenInterval: a TV stream sends at most one `changed` in this time.
+	DefaultScreenInterval = 250 * time.Millisecond
 	// DefaultRecheck: how often a stream reads the login session and the
 	// membership again (ADR-0005).
 	DefaultRecheck = 60 * time.Second
@@ -482,6 +499,32 @@ type LiveConfig struct {
 	// tests, which use it to know when no trailing hint is still waiting; the
 	// server never sets it.
 	HintAfter func(d time.Duration, f func())
+	// ScreenInterval is the least time between two `changed` events of a TV stream
+	// (DefaultScreenInterval).
+	ScreenInterval time.Duration
+	// ScreenAfter returns a channel that delivers after d, for the TV stream's pause between two
+	// `changed` events. Nil is time.After. It exists for tests, which fire it by hand; the server never
+	// sets it.
+	ScreenAfter func(d time.Duration) <-chan time.Time
+}
+
+// setDefaults fills the timing that was left zero.
+func (c *LiveConfig) setDefaults() {
+	if c.Heartbeat <= 0 {
+		c.Heartbeat = DefaultHeartbeat
+	}
+	if c.ScreenInterval <= 0 {
+		c.ScreenInterval = DefaultScreenInterval
+	}
+	if c.ScreenAfter == nil {
+		c.ScreenAfter = time.After
+	}
+	if c.Recheck <= 0 {
+		c.Recheck = DefaultRecheck
+	}
+	if c.MaxLifetime <= 0 {
+		c.MaxLifetime = DefaultMaxLifetime
+	}
 }
 
 // Config holds what the play service needs.
@@ -523,10 +566,9 @@ type Config struct {
 	Logger *slog.Logger
 	// Now returns the current time. Nil means time.Now.
 	Now func() time.Time
-	// D20Rerolls lets a d20 be held for "rolar de novo?" when a reroll rule covers it (held_reroll.go). False by default
-	// and not set by cmd/api: the web client has no screen for the question (an unknown case of the offer renders the
-	// die's prompt with zero sides, held-roll-prompt.ts and held-text.ts), so the server must not hold a roll for it.
-	// With it off the roll settles as if the player declined: nothing is held, nothing is spent.
+	// D20Rerolls lets a d20 be held for "rolar de novo?" when a reroll rule covers it (held_reroll.go). cmd/api turns it
+	// on: the web answers the question (held-roll-prompt, held-question). False in a Config that does not set it, so a
+	// test can turn it off: the roll then settles as if the player declined, with nothing held or spent.
 	D20Rerolls bool
 }
 
@@ -565,6 +607,8 @@ type Service struct {
 	// server instance only (docs/operations/README.md).
 	hub  *live.Hub
 	live LiveConfig
+	// screens counts the TV streams of each campaign on this instance (tablescreen_watch.go).
+	screens tvPresence
 	// free is the free dice roller's rate limit (free_roll_rpc.go).
 	free freeRollDeps
 	// nudges remembers when each character was last nudged (nudge.go), in memory.
@@ -663,15 +707,7 @@ func New(cfg Config) (*Service, error) {
 	s.free = freeRollDeps{limit: cfg.FreeRolls, hit: ratelimit.NewNotifier(s.logger, "free dice rolls by user")}
 	s.puzzles.hints.logger = s.logger
 	s.puzzles.hints.after = cfg.Live.HintAfter
-	if s.live.Heartbeat <= 0 {
-		s.live.Heartbeat = DefaultHeartbeat
-	}
-	if s.live.Recheck <= 0 {
-		s.live.Recheck = DefaultRecheck
-	}
-	if s.live.MaxLifetime <= 0 {
-		s.live.MaxLifetime = DefaultMaxLifetime
-	}
+	s.live.setDefaults()
 	return s, nil
 }
 
@@ -692,7 +728,7 @@ type Sessions interface {
 	authz.SessionRechecker
 }
 
-// Mount registers PlayService, CombatService, ContestService, PuzzleService and EncounterService on a mux. handle is usually
+// Mount registers PlayService, CombatService, ContestService, PuzzleService, EncounterService and TableScreenService on a mux. handle is usually
 // httpserver.Server.Handle or http.ServeMux.Handle.
 //
 // sessions tells who is calling (the identity service in production), and
@@ -707,6 +743,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 		sessions.Interceptor(),                         // who is calling
 		authz.Interceptor(sessions, members, s.logger), // what they may do, memoized per request
 		heldHintInterceptor(s),                         // a roll that asks tells the master and its roller
+		sourceNameInterceptor(s),                       // a roll that names its feature, where it already carries the key
 	))
 	handle(playv1connect.NewPlayServiceHandler(s, opts...))
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
@@ -717,6 +754,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 	handle(playv1connect.NewLastingEffectServiceHandler(s, opts...))
 	handle(playv1connect.NewRevivifyServiceHandler(s, opts...))
+	handle(playv1connect.NewTableScreenServiceHandler(s, opts...))
 	s.mountVoice(handle, sessions, members)
 }
 

@@ -2,7 +2,7 @@
 
 # Histórias e critérios de aceite
 
-O MVP tem 45 histórias: 43 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
+O MVP tem 46 histórias: 44 histórias mais 2 pré-requisitos (o convite, MR-002, que leva à MR-003, e os NPCs, MR-005, que são os inimigos do combate).
 Outras dez histórias ficam para depois do MVP.
 
 Uma história está pronta quando todos os critérios dela passam.
@@ -68,6 +68,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-053](#mr-053-o-mestre-age-pelo-personagem-de-um-jogador) | Combate | MVP |
 | [MR-054](#mr-054-usar-a-ação-de-uma-criatura-no-turno-dela) | Combate | MVP |
 | [MR-055](#mr-055-responder-ao-efeito-extra-de-uma-criatura) | Combate | MVP |
+| [MR-056](#mr-056-mostrar-a-mesa-em-uma-tela) | Sessão | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -377,7 +378,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 - **Dado** um personagem morto, **quando** o mestre do jogo toca em "Reviver", **então** ele volta com 1 PV, sem estar inconsciente e com os testes contra a morte zerados, no combate mantém o lugar na ordem e age no próximo turno dele **e** o app recusa, nomeando o outro personagem, enquanto o jogador tem outro vivo (RN-03).
 
 **Reações, condições e morte**
-- **Dado** uma reação que um jogador pode tomar (Escudo Arcano, Esquiva Sobrenatural, Repreensão Infernal, Contramágica, Palavras Cortantes, Desviar Projéteis, Queda Suave, Queda Lenta, o ataque de oportunidade) ou um teste de concentração, **quando** a janela abre, **então** o turno espera e o jogador responde num diálogo ("Você foi atingido: usar Escudo Arcano?", "Concentração em risco…") com "Deixar passar" e o botão de uso; Escape passa e nunca decide um teste de concentração. Uma reação respondida no assento do próprio jogador entra no registro como do jogador, mesmo com "Usar pelo jogador" e "Deixar passar pelo jogador" à mostra; "(respondido pelo mestre)" aparece só quando o mestre respondeu. O jogador da reação de um NPC lê "Esperando o mestre" (RN-31). A fila do mestre fica sob o cartão do NPC, e "Próximo turno" fica bloqueado com o motivo escrito. O teste de concentração diz o modo dele em palavras e, com dados físicos, pede os dois d20 quando o modo tem dois. O ataque de oportunidade é a ação de texto sob "Sua reação" e gasta a reação.
+- **Dado** uma reação que um jogador pode tomar (Escudo Arcano, Esquiva Sobrenatural, Repreensão Infernal, Contramágica, Palavras Cortantes, Desviar Projéteis, Queda Suave, Queda Lenta, o ataque de oportunidade) ou um teste de concentração, **quando** a janela abre, **então** o turno espera e o jogador responde num diálogo ("Você foi atingido: usar Escudo Arcano?", "Concentração em risco…") com "Deixar passar" e o botão de uso; Escape passa e nunca decide um teste de concentração. Uma reação respondida no assento do próprio jogador entra no registro como do jogador, mesmo com "Usar pelo jogador" e "Deixar passar pelo jogador" à mostra; "(respondido pelo mestre)" aparece só quando o mestre respondeu. O jogador da reação de um NPC lê "Esperando o mestre" (RN-31). A fila do mestre fica acima do cartão da vez enquanto uma janela segura a mesa, então a resposta está na primeira tela, e "Próximo turno" fica bloqueado com o motivo escrito. O teste de concentração diz o modo dele em palavras e, com dados físicos, pede os dois d20 quando o modo tem dois. O ataque de oportunidade é a ação de texto sob "Sua reação" e gasta a reação.
 - **Dado** disputas (agarrar, empurrar, escapar, Esconder-se, Ajudar, testes em grupo), **quando** o jogador as usa, **então** elas seguem o SRD: agarrar e empurrar substituem um ataque e são decididos por Força (Atletismo) contra Força (Atletismo) ou Destreza (Acrobacia); escapar é uma ação contra quem agarra ou uma CD fixa; quem agarra arrasta à metade da velocidade; Esconder-se compara o total de Furtividade com a Percepção passiva de cada criatura (um empate mantém o escondido notado); Ajudar dá vantagem a um teste ou a um ataque; um teste em grupo passa quando pelo menos metade dos pedidos passa. Uma disputa espera numa janela de reação ("Esperando o mestre" ou "Esperando <nome>"). Um jogador nunca lê os números de um NPC, a CD de escapar nem quem notou um escondido.
 - **Dado** que o mestre pede a um, alguns ou todos os personagens um teste de perícia, um teste de habilidade ou um teste de resistência fora de um combate, **quando** ele o envia, **então** cada rolagem é julgada sozinha, a menos que ele escolha um teste em grupo, só os personagens pedidos leem o pedido, e o mestre marca quem está surpreso.
 - **Dado** alguém com 0 PV, **quando** o jogador olha o turno, **então** vê "Brisa está caída", as marcas e "Rolar teste contra a morte"; na terceira falha o personagem morre só quando o mestre confirma ("Confirmar a morte" / "Ainda não") (RN-03).
@@ -667,8 +668,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** uma característica com o efeito "Valor mínimo no dado" em dano com o valor 6, **quando** o dono rola o dano de uma arma e um d4 mostra 1, **então** o dado conta como 4 (o seu maior valor) e a linha de dano mostra o 1 e como ele conta; **e** um d8 que mostra 3 conta como 6 sob o mesmo mínimo.
   Outro jogador não lê nem a face nem o número.
 - **Dado** uma característica com o efeito "Rolar de novo" em jogadas de ataque, no máximo 2, gastando 1 uso de um recurso da característica, **quando** o d20 do dono mostra 2 ou menos e sobra um uso, **então** o jogador recebe "rolar de novo?" antes de a jogada ser dita bem-sucedida ou falha; "sim" gasta o uso e o novo d20 vale, "não" não gasta nada.
-  O app não tem tela para a pergunta, então o servidor não retém a jogada; o teste da API cobre o critério.
-  O efeito se escreve pela API: o editor o lista, mas não consegue salvá-lo.
+  O app faz a pergunta na tela do jogador, e o mestre a lê na linha de quem rolou.
 - **Dado** uma característica com o efeito "Rolar de novo" em dano, no máximo 2, gastando 1 uso, **quando** o dono rola o dano de uma arma e um dado mostra 1 ou 2, **então** o app rola esse dado de novo sem perguntar, a parte do dano o lista e o uso é gasto; **quando** o mestre desfaz o dano, **então** o uso volta.
   Uma característica sem recurso rola de novo de graça; um custo que o recurso nunca paga deixa o efeito fora da ficha.
 
@@ -746,7 +746,12 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 
 - **Dado** que sou o mestre de "Mirathel", **quando** cadastro uma criatura própria a partir de uma criatura do SRD (um lobo com 40 pontos de vida, classe de armadura 17, +2 no dano de cada ataque e um traço de texto), **então** ela vale onde vale uma criatura do SRD: eu a dou a um personagem de jogador, ela entra nos combates com esses números, e posso criar um NPC a partir dela.
   A criatura do SRD em si nunca muda, e a base da entrada não pode ser trocada por outra depois.
-  O app web não tem editor de criaturas: elas são criadas pela API ou por um pacote de conteúdo.
+  O mestre cria e edita criaturas da mesa no app web, no editor de criaturas do "Conteúdo da mesa" no notebook; um pacote de conteúdo também as traz.
+- **Dado** que edito uma criatura da mesa no editor de criaturas, **quando** adiciono uma linha de resistência, imunidade ou vulnerabilidade com os tipos de dano e um "Vale contra", **então** ela se soma às listas da base e nunca tira nenhuma.
+  São até 12 linhas.
+  O "Vale contra" é todo dano, só ataque não mágico, só ataque não mágico nem prateado, ou só ataque não mágico nem adamantino.
+  O "Vale contra" fica desligado para uma vulnerabilidade e para um tipo de dano que não é concussão, perfurante nem cortante, e a linha sob as linhas diz por quê.
+  Quem tem a criatura lê as linhas na ficha dela; só eu as edito.
 - **Dado** que salvo uma criatura com uma base que o SRD não tem, pontos de vida fora de 1 a 9.999, classe de armadura fora de 1 a 40, bônus de dano fora de -10 a 30, ou mais de 10 traços, **então** o servidor recusa cada um no próprio campo, e um traço com o nome de um traço ou de uma ação da base, ou "Magic Weapons", "Spellcasting" ou "Innate Spellcasting", é recusado.
 - **Dado** uma criatura sem fórmula já dada a um personagem, **quando** edito os pontos de vida e a classe de armadura da entrada, **então** a criatura mantém os pontos de vida com que foi dada **e** a classe de armadura e os ataques dela acompanham a entrada.
 - **Dado** uma criatura cujos pontos de vida são `5 * level()` e cuja classe de armadura é `10 + prof() + mod("dex")`, **quando** a dou a uma maga de nível 3 e a um guerreiro de nível 5, **então** cada um tem os pontos de vida, a classe de armadura e os números de ataque do seu próprio dono.
@@ -788,7 +793,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   A ficha de estatísticas, os pontos de vida e a classe de armadura ficam escondidos de quem não é o dono.
   Isso vale mesmo com a entrada arquivada ou desligada.
 - **Dado** uma entrada de criatura arquivada, **quando** a dou a um personagem, **então** ela é dada.
-- **Dado** uma entrada de criatura, **quando** a ligo ou desligo, **então** faço isso pela API, porque a tela "Opções para os jogadores" não tem grupo de criaturas.
+- **Dado** uma entrada de criatura, **quando** a ligo ou desligo, **então** faço isso no grupo "Criaturas" da tela "Opções para os jogadores", ou no interruptor do editor de criatura.
 - **Dado** as magias de invocação, a Forma Selvagem e as ferramentas de encontro (gerador, avaliador e trocas), **então** elas oferecem só criaturas do SRD, porque uma criatura da mesa não mantém o nível de desafio da base.
 
 **Trocar uma escolha.**
@@ -1385,7 +1390,8 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** um monstro cujos Ataques múltiplos têm várias rotinas ou uma escolha entre elas, **quando** abro o cartão de ataque, **então** escolho a rotina a fazer; uma criatura sem Ataques múltiplos mantém o cartão e o turno como antes.
 - **Dado** uma criatura com Resistência Lendária (3/dia) cujo teste de resistência eu rolo como mestre (o de um efeito ou o de concentração) e a rolagem falha, **quando** peço a Resistência Lendária junto com a rolagem, **então** o teste de resistência vira sucesso e um uso é gasto, o registro me diz a rolagem e a escolha ("restam 2"), e os jogadores leem só que ela teve sucesso; uma rolagem que tem sucesso não gasta nada, e uma criatura sem a característica ou sem usos é recusada sem nada mudar.
 - **Dado** que um jogador lança uma magia com teste de resistência numa criatura com Resistência Lendária e um uso sobrando, **quando** o lançamento espera por mim (o teste de resistência dela passando ou falhando), **então** vejo a rolagem que falhou e "Usar Resistência Lendária (restam K)" para cada falha, e nada a oferecer quando todos passaram; as que escolho viram sucessos com os mesmos dados e gastam um uso cada, as outras ficam como estão, e os jogadores esperam em "Esperando o mestre" e depois leem o resultado comum do teste de resistência, o mesmo tenha ele passado ou falhado; nenhuma janela abre para uma criatura sem a característica ou sem usos, e "Desfazer última ação" no lançamento devolve os usos.
-- **Dado** que o ataque corpo a corpo com arma de um jogador acerta uma criatura cuja ficha tem Aparar (Cavaleiro, Capitão Bandido...) e ela não usou a reação na rodada, **quando** o acerto espera por mim, **então** vejo "Aparar (+N CA)" com a rolagem e a classe de armadura; se uso, a rolagem guardada é comparada com a classe de armadura mais N e um acerto que fica abaixo vira erro, se deixo passar o acerto vale, e os jogadores esperam em "Esperando o mestre" e depois leem um acerto ou erro comum, sem nunca saber da reação, do bônus nem da classe de armadura; a reação volta no turno da criatura, um segundo acerto na rodada não abre janela, e "Desfazer última ação" no Aparar devolve a reação.
+- **Dado** que o ataque corpo a corpo com arma de um jogador acerta uma criatura cuja ficha tem Aparar (Cavaleiro, Capitão Bandido...) e ela não usou a reação na rodada, **quando** o bônus do Aparar transforma o acerto em erro, **então** é um erro na hora, sem janela e sem espera, o registro do mestre diz "<nome> aparou (+N CA)" com o total e a classe de armadura, e os jogadores de quem o mestre não escondeu nem a criatura nem o atacante leem um erro mais a linha "<nome> aparou o ataque.", sem número; quando o bônus não transformaria o acerto, nada acontece, nada espera e ninguém lê uma linha; a reação volta no turno da criatura, um segundo acerto na rodada não é aparado, e "Desfazer última ação" no ataque devolve a reação.
+- **Dado** que pus uma criatura com Aparar em "Perguntar", **quando** um ataque corpo a corpo com arma a acerta, **então** vejo "Aparar (+N CA)" com a rolagem e a classe de armadura; se uso, a rolagem guardada é comparada com a classe de armadura mais N e um acerto que fica abaixo vira erro, se deixo passar o acerto vale, e os jogadores esperam em "Esperando o mestre" e depois leem um acerto ou erro comum, sem nunca saber da reação, do bônus, da classe de armadura nem do modo.
 - **Dado** uma criatura cuja reação o app não resolve (Dividir, Grito, Pegar Pedra...), **quando** leio a ficha dela, **então** leio a reação como texto e nenhuma janela abre para ela.
 - **Dado** uma criatura com ações lendárias (um dragão vermelho adulto: Detect, Tail Attack, Wing Attack), **quando** outra criatura tem o turno e gasto uma, **então** o custo sai das 3 que ela tem na rodada e os jogadores leem só a linha comum de ataque ou de movimento; não posso gastar no turno dela, enquanto está incapacitada, além do que resta ou enquanto uma reação espera resposta, as ações voltam no turno dela, uma opção que o app não resolve é oferecida como texto e conta do mesmo jeito, e "Desfazer última ação" devolve o custo.
 - **Dado** que sou jogador, **quando** procuro o bestiário, **então** não acho nenhuma entrada, e nunca descubro qual criatura é um monstro, o ND dela nem os PV rolados.
@@ -1659,6 +1665,10 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 - **Dado** uma ação de Recarga gasta, **quando** o turno da criatura começa, **então** o servidor rola um d6 para ela, na ordem da ficha, e uma face dentro do intervalo a deixa disponível de novo; leio o d6 e o resultado no registro, como mestre e como o jogador que controla a criatura (nenhum outro jogador os lê), uma criatura derrotada não rola, e uma ação com usos por dia ou depois de um descanso não volta no combate.
 - **Dado** que desfaço o uso de uma ação com limite, **então** ela fica disponível de novo ou recupera o uso; a rolagem no começo de um turno não se desfaz.
 - **Dado** um NPC feito a partir de uma criatura que gastou usos de uma ação com usos por dia ou da Resistência Lendária, **quando** um combate novo começa com ele, **então** leio os usos que lhe restam, até o descanso longo da mesa devolvê-los; uma ação que recarrega depois de um descanso curto ou longo volta com qualquer um dos dois; um monstro do bestiário começa todo combate com todos os usos, e uma ação de Recarga gasta fica disponível de novo.
+- **Dado** um cartão de NPC com ações com limite, **então** cada uma mostra o estado ao lado do nome: "Pronta" ou "Gasta" para uma ação com Recarga e para uma que espera um descanso, pontos e "N de M" para usos por dia; uma ação gasta tem um "Usar" tracejado e diz por quê ("Volta com 5 ou 6 no d6 que o app rola no começo de cada turno do <criatura>.", "Sem usos hoje.", "A ação deste turno já foi usada."); a linha aberta da ordem lista os limites ("Esporos · Recarga 6 · gasta", "Guincho atordoante · 1/dia · 1 de 1"), e nem o cartão nem a linha passam de uma tela a 390 px e a 1280×800.
+- **Dado** que começa a vez de uma criatura que tinha uma ação com Recarga gasta, **então** o cartão diz "Recarga no começo do turno: rolou N no d6. <ação> recarregou." (verde) ou "não recarregou (precisa de 5 ou 6)." (neutro), a partir da linha do registro que só o mestre e o jogador que controla leem; o cartão de um NPC persistente diz "<nome> guarda o que gastou."; uma ficha que não pôde ser lida diz isso com "Tentar de novo" e o resto do cartão funciona.
+- **Dado** uma ação do cartão cujo texto do SRD o app não calcula, **então** o texto em inglês fica recolhido atrás do pequeno ícone de documento ao lado do nome (abre e fecha com o ícone, que diz "Texto do SRD de <ação>"), e o aviso do começo do turno só fica verde quando todas as ações roladas recarregaram; quando só algumas recarregaram ele é neutro e diz o resultado de cada uma.
+- **Dado** que sou o mestre e peço um descanso, **quando** um NPC da campanha guardou o que gastou (usos por dia, Resistência Lendária e espaços depois de um descanso longo, uma ação que recarrega depois de um descanso, depois de qualquer um), **então** a pergunta diz "NPCs da campanha recuperam os usos: <nomes>"; um jogador nunca lê essa lista.
 - **Dado** que sou um jogador que não controla a criatura, **então** não leio nada do que ela gastou, da rolagem nem da recusa, e um turno com rolagem parece o mesmo que um sem ela (RN-20).
 - **Dado** que sou o jogador que controla a criatura, **então** leio o que resta de cada ação com limite, o d6 no registro e o motivo da recusa de uma ação gasta.
 - **Dado** que sou jogador, **então** não encontro "Outras ações", leio a linha do registro com o nome da ação e, para os alvos que vejo, se cada um passou ou falhou e o dano que tomo, e nunca a ficha, a CD nem qual criatura é (RN-20).
@@ -1690,6 +1700,38 @@ Ver [Arquitetura](../../architecture/campaign-package.md).
 
 #### Relacionadas
 - [MR-054](#mr-054-usar-a-ação-de-uma-criatura-no-turno-dela), [RN-40](regras.md#rn-40-efeito-extra-no-acerto-de-uma-criatura).
+
+### MR-056: Mostrar a mesa em uma tela
+
+**Como** mestre, **quero** abrir a mesa em uma tela que a mesa toda olha (uma TV) e escolher o que ela mostra, **para que** todos acompanhem o mapa, o combate, a cena ou a imagem sem se debruçar sobre um celular.
+
+- Prioridade: MVP
+- Regras: RN-10, RN-20, RN-36
+- Módulos: play, maps
+
+#### Critérios de aceitação
+- **Dado** uma sessão aberta, **quando** o mestre aperta "Abrir a Tela da mesa", **então** a tela abre em uma aba nova do navegador do mestre, para arrastar até a TV; **dado** que nada está na mesa, **então** ela diz "Nada à mostra ainda" com os nomes dos personagens da mesa.
+- **Dado** a aba da TV, **então** ela mostra só o que todo jogador pode ler (RN-10): o mapa como o grupo o vê, a ordem com uma palavra de estado no lugar dos pontos de vida (RN-20), as linhas do registro que todo jogador lê, as rolagens livres feitas para a mesa, a cena e a imagem mostradas à mesa toda. Ela nunca mostra pontos de vida, classe de armadura, um NPC escondido, as notas do mestre, ganchos, pistas e CDs, uma rolagem "Só eu" nem a conversa (RN-36).
+- **Dado** que "Espelhar o que eu mostro" está escolhido (é o padrão), **então** a TV mostra o primeiro que houver: uma imagem mostrada à mesa toda, o combate, uma cena aberta a todos, o mapa, a tela de espera; e acompanha cada mudança do mestre, sem recarregar.
+- **Dado** que o mestre escolhe uma linha de "Fixar" (o mapa, uma imagem, a cena, o combate ou a tela de espera), **então** a TV mostra esse item, seja o que for que esteja na mesa, e o painel diz "Na TV agora" com o nome dele e "fixa".
+- **Dado** que a mesa não tem combate, imagem, cena aberta a todos ou mapa que a TV possa mostrar, **então** a linha de "Fixar" correspondente fica tracejada, não pode ser escolhida e diz por quê ("Nenhum combate agora.", "Nenhuma imagem à mostra.", "Nenhuma cena aberta.", "A cena está aberta só para alguns.", "Nenhum mapa agora.", "Precisa da Visão do grupo (editor do mapa).").
+- **Dado** um item fixo que acaba (o combate termina, a cena fecha, a imagem ou o mapa sai da mesa), **então** a TV vai para a tela de espera com uma linha que diz isso ("O combate acabou. A TV foi para a tela de espera."); **quando** um item desse tipo volta, **então** o fixo o mostra de novo.
+- **Dado** um mapa com a névoa ligada e a "Visão do grupo" desligada, **então** a TV mostra a tela de espera com a linha "O mapa tem névoa e a Visão do grupo está desligada, então a TV não o mostra."; **dado** um combate nesse mapa, **então** o lugar do mapa diz "O mapa fica na tela de cada um." e a ordem, as rolagens e o registro continuam; **dado** a "Visão do grupo" ligada, **então** a TV mostra os quadrados que o grupo vê ou lembra, e nunca a imagem inteira do mapa.
+- **Dado** uma cena aberta só para alguns jogadores, **então** a TV não a mostra e o painel diz isso; o mesmo vale para uma imagem para jogadores escolhidos.
+- **Dado** um jogador, um membro pendente ou um estranho, **quando** abre o endereço da TV ou o pede ao servidor, **então** lê o cartão "Só o mestre abre a Tela da mesa." e não recebe nada da campanha; o servidor responde a um estranho como a uma campanha que não existe.
+- **Dado** que o mestre aperta "Copiar o link", **então** o que se copia é o endereço da aba e nada mais: sem consulta, sem chave, sem token. A aba entra como o mestre, e o servidor decide o que ela mostra a cada leitura.
+- **Dado** que a TV perde a conexão, **então** depois de poucos segundos ela diz "Reconectando…" e que pode estar atrasada, e depois de um minuto esconde o que mostrava e diz "Sem conexão desde 21:14"; **quando** a conexão volta, **então** ela volta sozinha. O painel do mestre também diz "Sem conexão desde 21:14.".
+- **Dado** que a sessão termina, **então** a TV diz "A sessão 3 terminou às 23:40." e que o mestre pode fechar a aba; **dado** que não há sessão aberta, ela diz "Não há sessão aberta.".
+- **Dado** uma TV a partir de 900 px de largura, **então** a tela cabe na janela sem rolagem de página e desenha só as linhas que cabem, com "+N" para as que ficaram de fora; **dado** um celular, **então** ela é uma coluna que rola.
+- **Dado** a tela de sessão do mestre, **então** o painel "Tela da mesa" abre por um botão na barra (a partir de 1024 px) ou por uma linha do menu "Sessão" (abaixo disso), diz se a TV está "Aberta", "Fechada" ou "Sem conexão", e cabe em uma tela num celular de 390 x 844 e num notebook de 1280 x 800.
+
+#### No app
+- A aba da TV é uma página própria, sem a barra de cima nem o rodapé do app, que não pede nada dos dados da sessão: ela lê um só serviço, que responde apenas o que a TV pode mostrar. Ver [Design](../../design/session.md#the-table-screen-tela-da-mesa) e [A tela da mesa](../../architecture/play/table-screen.md).
+- O painel não guarda nada no navegador; a escolha fica guardada com a sessão, então recarregar a TV ou a página do mestre a mantém.
+- Uma tela para o aparelho do próprio jogador, para ver a mesa de casa, não faz parte desta história ([#764](https://github.com/PuraFome/meuRPG/issues/764)).
+
+#### Relacionadas
+- [MR-012](#mr-012-acompanhar-a-sessão), [MR-028](#mr-028-mostrar-uma-imagem-aos-jogadores), [MR-036](#mr-036-névoa-de-guerra-pela-visão), [RN-10](regras.md#rn-10-mapa-sem-spoiler).
 
 ## Prioridade: MVP (pré-requisito)
 

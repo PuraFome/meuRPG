@@ -1,8 +1,9 @@
 import { TableContentKind, type TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { joinDots, tight } from '../format/text';
-import { prerequisiteSupport } from './feat-text';
+import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { classFeatureSupport } from './class-feature-text';
-import { optionSupport } from './option-text';
+import { creatureSupport } from './creature-text';
+import { type OfferedByName, optionSupport } from './option-text';
 import { metersText } from '../units';
 
 /**
@@ -24,7 +25,8 @@ export interface ContentNavKind {
     | 'spells'
     | 'feats'
     | 'options'
-    | 'classfeatures';
+    | 'classfeatures'
+    | 'creatures';
   /** Plural, the nav item and the panel title. */
   readonly plural: string;
   /** Singular with its article, for "Nova raça" and "Voltar para Raças". */
@@ -39,6 +41,8 @@ export interface ContentNavKind {
   readonly editable: boolean;
   /** The master's way in: the page of "Nova …" (empty when there is no editor yet). */
   readonly createSegment: string;
+  /** What the empty list says when it needs more than "Nada cadastrado ainda." (the creatures'). */
+  readonly empty?: { readonly icon: string; readonly title: string; readonly text: string };
 }
 
 export const CONTENT_NAV: readonly ContentNavKind[] = [
@@ -121,6 +125,21 @@ export const CONTENT_NAV: readonly ContentNavKind[] = [
     aOne: 'uma característica de classe',
     editable: true,
     createSegment: 'classfeature',
+  },
+  {
+    slug: 'creatures',
+    plural: 'Criaturas',
+    singular: 'criatura',
+    kinds: [TableContentKind.CREATURE],
+    newLabel: 'Nova criatura',
+    aOne: 'uma criatura',
+    editable: true,
+    createSegment: 'creature',
+    empty: {
+      icon: 'pets',
+      title: 'Nenhuma criatura da mesa ainda.',
+      text: 'Uma criatura da mesa parte de uma do SRD, com os seus números e ataques; uma característica ou magia da mesa pode trazê-la.',
+    },
   },
 ];
 
@@ -362,14 +381,16 @@ export function entrySupport(
   e: TableEntry,
   nameOf: NameOf,
   subclassLevelOf: (classKey: string) => number = () => 0,
+  offeredByName?: OfferedByName,
 ): string {
-  return joinDots(supportParts(e.body, nameOf, subclassLevelOf));
+  return joinDots(supportParts(e.body, nameOf, subclassLevelOf, offeredByName));
 }
 
 function supportParts(
   body: TableEntry['body'],
   nameOf: NameOf,
   subclassLevelOf: (classKey: string) => number,
+  offeredByName?: OfferedByName,
 ): string[] {
   switch (body.case) {
     case 'tableClass':
@@ -389,7 +410,13 @@ function supportParts(
     case 'tableFeat':
       return featSupport(body.value, nameOf);
     case 'tableOption':
-      return optionSupport(body.value.set, body.value.prerequisite, nameOf);
+      return optionSupport(
+        body.value.set,
+        body.value.prerequisite,
+        nameOf,
+        body.value.offeredBy,
+        offeredByName,
+      );
     case 'tableClassFeature':
       return classFeatureSupport(
         body.value.classKey,
@@ -397,17 +424,12 @@ function supportParts(
         body.value.replacesFeatureKey,
         nameOf,
       );
+    case 'tableCreature':
+      return [creatureSupport(body.value, nameOf)];
     default:
       return [];
   }
 }
-
-export const SIZE_WORDS: Readonly<Record<string, string>> = {
-  Tiny: 'Miúdo',
-  Small: 'Pequeno',
-  Medium: 'Médio',
-  Large: 'Grande',
-};
 
 export const CASTING_WORDS: Readonly<Record<string, string>> = {
   full: 'completa',

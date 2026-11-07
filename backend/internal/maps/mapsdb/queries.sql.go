@@ -1461,7 +1461,7 @@ func (q *Queries) GetMapPointInCampaign(ctx context.Context, arg GetMapPointInCa
 }
 
 const getMapTileInfo = `-- name: GetMapTileInfo :one
-SELECT m.id, m.campaign_id, m.image_id, m.revealed_at, m.grid_columns, m.grid_factor, m.fog_enabled,
+SELECT m.id, m.campaign_id, m.image_id, m.revealed_at, m.grid_columns, m.grid_factor, m.fog_enabled, m.group_vision,
        g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type
 FROM maps AS m
 JOIN gallery_images AS g ON g.id = m.image_id
@@ -1476,6 +1476,7 @@ type GetMapTileInfoRow struct {
 	GridColumns      *int32
 	GridFactor       int32
 	FogEnabled       bool
+	GroupVision      bool
 	ImageWidth       int32
 	ImageHeight      int32
 	ImageContentType string
@@ -1494,6 +1495,7 @@ func (q *Queries) GetMapTileInfo(ctx context.Context, id string) (GetMapTileInfo
 		&i.GridColumns,
 		&i.GridFactor,
 		&i.FogEnabled,
+		&i.GroupVision,
 		&i.ImageWidth,
 		&i.ImageHeight,
 		&i.ImageContentType,
@@ -3031,7 +3033,7 @@ func (q *Queries) ListImageChain(ctx context.Context, arg ListImageChainParams) 
 }
 
 const listLeftImageAudiences = `-- name: ListLeftImageAudiences :many
-SELECT image_id, audience_everyone FROM campaign_left_images WHERE campaign_id = $1
+SELECT image_id, audience_everyone FROM campaign_left_images WHERE campaign_id = $1 ORDER BY image_id
 `
 
 type ListLeftImageAudiencesRow struct {
@@ -3151,6 +3153,7 @@ func (q *Queries) ListLeftImages(ctx context.Context, arg ListLeftImagesParams) 
 const listMapCreatureTokens = `-- name: ListMapCreatureTokens :many
 SELECT map_id, creature_id, x_bp, y_bp, updated_at FROM map_creature_tokens
 WHERE map_id = $1
+ORDER BY creature_id
 `
 
 // The creatures' tokens on the map (MR-037). The handler lists only the live
@@ -3367,10 +3370,11 @@ func (q *Queries) ListMapPoints(ctx context.Context, mapID string) ([]MapPoint, 
 const listMapTokens = `-- name: ListMapTokens :many
 SELECT map_id, character_id, x_bp, y_bp, hidden, updated_at, carried_light FROM map_tokens
 WHERE map_id = $1
+ORDER BY character_id
 `
 
-// The map's tokens. The handler orders them by character and filters them
-// for a player.
+// The map's tokens, by character.
+// The handler filters them for a player.
 func (q *Queries) ListMapTokens(ctx context.Context, mapID string) ([]MapToken, error) {
 	rows, err := q.db.Query(ctx, listMapTokens, mapID)
 	if err != nil {
@@ -3402,6 +3406,7 @@ func (q *Queries) ListMapTokens(ctx context.Context, mapID string) ([]MapToken, 
 const listMapVisionMemory = `-- name: ListMapVisionMemory :many
 SELECT user_id, seen, epoch FROM map_vision_memory
 WHERE map_id = $1
+ORDER BY user_id
 `
 
 type ListMapVisionMemoryRow struct {
@@ -3613,6 +3618,7 @@ const listPointRevealCharacters = `-- name: ListPointRevealCharacters :many
 SELECT r.point_id, r.character_id FROM map_point_reveals AS r
 JOIN map_points AS p ON p.id = r.point_id
 WHERE p.map_id = $1
+ORDER BY r.point_id, r.character_id
 `
 
 type ListPointRevealCharactersRow struct {
@@ -3649,6 +3655,7 @@ FROM map_point_reveals AS r
 JOIN map_points AS p ON p.id = r.point_id
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1
+ORDER BY r.point_id, r.character_id
 `
 
 type ListPointRevealsOfCampaignRow struct {
@@ -3722,6 +3729,7 @@ func (q *Queries) ListPointRevealsOfMap(ctx context.Context, mapID string) ([]Ma
 const listPointRevealsOfPoint = `-- name: ListPointRevealsOfPoint :many
 SELECT point_id, character_id, how, at FROM map_point_reveals
 WHERE point_id = $1
+ORDER BY character_id
 `
 
 // Who knows one trap: the players to tell when it changes or goes away.
@@ -4002,6 +4010,7 @@ const listTrapNamesInCampaign = `-- name: ListTrapNamesInCampaign :many
 SELECT p.id, p.name FROM map_points AS p
 JOIN maps AS m ON m.id = p.map_id
 WHERE m.campaign_id = $1 AND p.kind = 'trap' AND p.id = ANY($2::uuid[])
+ORDER BY p.id
 `
 
 type ListTrapNamesInCampaignParams struct {
@@ -4040,6 +4049,7 @@ const listTreasureFindersOfMap = `-- name: ListTreasureFindersOfMap :many
 SELECT f.point_id, f.character_id FROM map_treasure_finders AS f
 JOIN map_points AS p ON p.id = f.point_id
 WHERE p.map_id = $1
+ORDER BY f.point_id, f.character_id
 `
 
 // Who found each treasure of a map.

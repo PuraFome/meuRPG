@@ -621,6 +621,14 @@ func (noMaps) MapGrid(context.Context, pgx.Tx, string, string) (link.Grid, error
 	return link.Grid{}, errors.New("not in this test")
 }
 
+func (noMaps) TableScreenMap(context.Context, string, string, link.MapGate) (link.TableScreenMap, error) {
+	return link.TableScreenMap{}, errors.New("not in this test")
+}
+
+func (noMaps) MapFog(context.Context, pgx.Tx, string, string) (link.MapFog, error) {
+	return link.MapFog{}, errors.New("not in this test")
+}
+
 func (noMaps) BattlePoint(context.Context, pgx.Tx, string, string) (link.BattlePoint, error) {
 	return link.BattlePoint{}, errors.New("not in this test")
 }
@@ -715,6 +723,10 @@ func (noRoster) ContentNames(context.Context, pgx.Tx, string) (func(string) stri
 	return func(string) string { return "" }, nil
 }
 
+func (noRoster) SourceNames(context.Context, pgx.Tx, string) (func(string) string, error) {
+	return func(string) string { return "" }, nil
+}
+
 func (noRoster) CharacterCreatures(context.Context, pgx.Tx, string, []string) ([]link.Creature, error) {
 	return nil, errors.New("not in this test")
 }
@@ -798,6 +810,10 @@ func (noDice) ForcedDice(context.Context, pgx.Tx, string, string) (DiceForce, er
 }
 
 type noCampaigns struct{}
+
+func (noCampaigns) CampaignName(context.Context, pgx.Tx, string) (string, error) {
+	return "", errors.New("not in this test")
+}
 
 func (noCampaigns) ActiveCampaigns(context.Context, string) ([]*campaignsv1.Campaign, error) {
 	return nil, errors.New("not in this test")
@@ -928,6 +944,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["GetMoveOptions"] = cc.GetMoveOptions(ctx, connect.NewRequest(&playv1.GetMoveOptionsRequest{CampaignId: id}))
 	_, combat["SetCombatantSide"] = cc.SetCombatantSide(ctx, connect.NewRequest(&playv1.SetCombatantSideRequest{CampaignId: id}))
 	_, combat["SetCombatantCover"] = cc.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: id}))
+	_, combat["SetMonsterReactionMode"] = cc.SetMonsterReactionMode(ctx, connect.NewRequest(&playv1.SetMonsterReactionModeRequest{CampaignId: id}))
 	_, combat["SetCombatantHidden"] = cc.SetCombatantHidden(ctx, connect.NewRequest(&playv1.SetCombatantHiddenRequest{CampaignId: id}))
 	_, combat["AddCombatants"] = cc.AddCombatants(ctx, connect.NewRequest(&playv1.AddCombatantsRequest{CampaignId: id}))
 	_, combat["AddMonsters"] = cc.AddMonsters(ctx, connect.NewRequest(&playv1.AddMonstersRequest{CampaignId: id}))

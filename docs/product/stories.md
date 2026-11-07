@@ -2,7 +2,7 @@
 
 # Stories and acceptance criteria
 
-The MVP has 45 stories: 43 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
+The MVP has 46 stories: 44 stories plus 2 prerequisites (the invite, MR-002, which leads to MR-003, and the NPCs, MR-005, who are the combat enemies).
 Ten more stories are planned for after the MVP.
 
 A story is done when all its criteria pass.
@@ -68,6 +68,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-053](#mr-053-the-master-acts-for-a-players-character) | Combat | MVP |
 | [MR-054](#mr-054-use-a-creatures-action-from-its-turn) | Combat | MVP |
 | [MR-055](#mr-055-answer-a-creatures-rider) | Combat | MVP |
+| [MR-056](#mr-056-show-the-table-on-a-screen) | Session | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -377,7 +378,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 - **Given** a dead character, **when** the game master taps "Reviver", **then** it returns with 1 HP, not unconscious and with the death saves cleared, in the combat it keeps its place in the order and acts on its next turn **and** the app refuses, naming the other character, while the player has another living one (RN-03).
 
 **Reactions, conditions and death**
-- **Given** a reaction a player may take (Shield, Uncanny Dodge, Hellish Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall, Slow Fall, the opportunity attack) or a concentration save, **when** the window opens, **then** the turn waits and the player answers in a dialog ("Você foi atingido: usar Escudo Arcano?", "Concentração em risco…") with "Deixar passar" and the use button; Escape passes and never decides a concentration save. A reaction answered in the player's own seat is logged as the player's, even while the master's "Usar pelo jogador" and "Deixar passar pelo jogador" are showing; "(respondido pelo mestre)" appears only when the master answered. The player of an NPC's reaction reads "Esperando o mestre" (RN-31). The master's queue is under the NPC card, and "Próximo turno" is blocked with the reason written. The concentration save says its mode in words and, with physical dice, asks for both d20 when the mode has two. The opportunity attack is the text action under "Sua reação" and spends the reaction.
+- **Given** a reaction a player may take (Shield, Uncanny Dodge, Hellish Rebuke, Counterspell, Cutting Words, Deflect Missiles, Feather Fall, Slow Fall, the opportunity attack) or a concentration save, **when** the window opens, **then** the turn waits and the player answers in a dialog ("Você foi atingido: usar Escudo Arcano?", "Concentração em risco…") with "Deixar passar" and the use button; Escape passes and never decides a concentration save. A reaction answered in the player's own seat is logged as the player's, even while the master's "Usar pelo jogador" and "Deixar passar pelo jogador" are showing; "(respondido pelo mestre)" appears only when the master answered. The player of an NPC's reaction reads "Esperando o mestre" (RN-31). The master's queue stands above the card of the turn while a window holds the table, so its answer is on the first screen, and "Próximo turno" is blocked with the reason written. The concentration save says its mode in words and, with physical dice, asks for both d20 when the mode has two. The opportunity attack is the text action under "Sua reação" and spends the reaction.
 - **Given** contests (grapple, shove, escape, Hide, Help, group checks), **when** the player uses them, **then** they follow the SRD: grapple and shove replace one attack and are decided by Strength (Athletics) against Strength (Athletics) or Dexterity (Acrobatics); escape is an action against the grappler or a fixed DC; a grappler drags at half speed; Hide compares the Stealth total with each creature's passive Perception (a tie keeps the hider noticed); Help gives advantage to a check or an attack; a group check passes when at least half of those asked pass. A contest waits in a reaction window ("Esperando o mestre" or "Esperando <nome>"). A player never reads an NPC's numbers, the escape DC or who noticed a hider.
 - **Given** the master asks one, some or all characters for a skill check, an ability check or a saving throw outside a combat, **when** they send it, **then** each roll is judged alone unless they choose a group check, only the characters asked read the request, and the master marks who is surprised.
 - **Given** someone at 0 HP, **when** the player looks at the turn, **then** they see "Brisa está caída", the marks and "Rolar teste contra a morte"; on the third failure the character dies only when the master confirms ("Confirmar a morte" / "Ainda não") (RN-03).
@@ -667,8 +668,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a feature with the effect "Valor mínimo no dado" on damage with the value 6, **when** its owner rolls a weapon's damage and a d4 shows 1, **then** the die counts as 4 (its highest face) and the damage line shows the 1 and what it counts as; **and** a d8 that shows 3 counts as 6 under the same minimum.
   Another player reads neither the face nor the number.
 - **Given** a feature with the effect "Rolar de novo" on attack rolls, at most 2, spending 1 use of a resource of the feature, **when** its owner's d20 shows 2 or lower and a use is left, **then** the player is asked "rolar de novo?" before the roll is said to succeed or fail; "sim" spends the use and the new d20 stands, "não" spends nothing.
-  The app has no screen for the question, so the server does not hold the roll; the API test covers the criterion.
-  The effect is written through the API: the editor lists it but cannot save it.
+  The app asks the question on the player's screen, and the master reads it in the roller's row.
 - **Given** a feature with the effect "Rolar de novo" on damage, at most 2, spending 1 use, **when** its owner rolls a weapon's damage and a die shows 1 or 2, **then** the app rolls that die again without asking, the part of the damage lists it, and the use is spent; **when** the master undoes the damage, **then** the use comes back.
   A feature with no resource rerolls for free; a cost the resource can never pay leaves the effect out of the sheet.
 
@@ -746,7 +746,12 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 
 - **Given** I am the game master of "Mirathel", **when** I register a creature of my own from an SRD creature (a wolf with 40 hit points, armor class 17, +2 on each attack's damage and a trait of text), **then** it resolves where an SRD creature does: I give it to a player's character, it joins the combats with those numbers, and I can make an NPC from it.
   The SRD creature itself never changes, and the entry's base cannot be swapped for another one later.
-  The web app has no editor for creatures: they are created through the API or a content pack.
+  The master makes and edits table creatures in the web app, in the creature editor of "Conteúdo da mesa" on a laptop; a content pack carries them too.
+- **Given** I edit a table creature in the creature editor, **when** I add a line of resistance, immunity or vulnerability with its damage types and a "Vale contra", **then** it adds to the base's lists and never takes one away.
+  There are up to 12 lines.
+  "Vale contra" is all damage, only nonmagical attacks, only nonmagical attacks that are not silvered, or only nonmagical attacks that are not adamantine.
+  "Vale contra" is off for a vulnerability and for a damage type that is not bludgeoning, piercing or slashing, and the line under the rows says why.
+  Whoever holds the creature reads the lines on its sheet; only I edit them.
 - **Given** I save a creature with a base the SRD does not have, hit points outside 1 to 9,999, armor class outside 1 to 40, a damage bonus outside -10 to 30, or more than 10 traits, **then** the server refuses each at its field, and a trait named like one of the base's traits or actions, or "Magic Weapons", "Spellcasting" or "Innate Spellcasting", is refused.
 - **Given** a creature with no formula already given to a character, **when** I edit the entry's hit points and armor class, **then** the creature keeps the hit points it was given **and** its armor class and its attacks follow the entry.
 - **Given** a creature whose hit points are `5 * level()` and whose armor class is `10 + prof() + mod("dex")`, **when** I give it to a level 3 wizard and to a level 5 fighter, **then** each has the hit points, armor class and attack numbers of its own owner.
@@ -789,7 +794,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   Its stat block, hit points and armor class stay hidden from a player who does not own it.
   This holds even when the entry is archived or switched off.
 - **Given** an archived creature entry, **when** I give it to a character, **then** it is given.
-- **Given** a creature entry, **when** I switch it on or off, **then** I do it through the API, because the "Opções para os jogadores" screen has no creature group.
+- **Given** a creature entry, **when** I switch it on or off, **then** I do it in the "Criaturas" group of the "Opções para os jogadores" screen, or with the switch in the creature editor.
 - **Given** the summoning spells, Wild Shape and the encounter tools (generator, evaluator and swaps), **then** they offer SRD creatures only, because a table creature does not keep its base's challenge rating.
 
 **Swapping a pick.**
@@ -1386,7 +1391,8 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** a monster whose Multiattack has several routines or a choice between them, **when** I open its attack card, **then** I pick the routine to make; a creature without Multiattack keeps the card and the turn as before.
 - **Given** a creature with Legendary Resistance (3/Day) whose saving throw I roll as the GM (an effect's, or the concentration's) and the roll fails, **when** I ask for Legendary Resistance with the roll, **then** the save becomes a success and one use is spent, the log tells me the roll and the choice ("restam 2"), and the players read only that it succeeded; a roll that succeeds spends nothing, and a creature without the trait or with no use left is refused with nothing changed.
 - **Given** a player casts a spell with a saving throw at a creature with Legendary Resistance and it has a use left, **when** the cast waits for me (whether its save passed or failed), **then** I see the roll that failed and "Usar Resistência Lendária (restam K)" for each failure, and nothing to offer when every save passed; the ones I choose become successes with the same dice and spend one use each, the others stand, and the players wait on "Esperando o mestre", then read the ordinary result of the save, the same whether it passed or failed; no window opens for a creature without the trait or without uses, and "Desfazer última ação" on the cast gives the uses back.
-- **Given** a player's melee weapon attack hits a creature whose stat block has Parry (Knight, Bandit Captain...) and it has not used its reaction this round, **when** the hit waits for me, **then** I see "Aparar (+N CA)" with the roll and the armor class; if I use it the kept roll is compared with the armor class plus N and a hit that falls short is a miss, if I let it pass the hit lands, and the players wait on "Esperando o mestre", then read an ordinary hit or miss and never the reaction, the bonus or the armor class; the reaction is back at the creature's turn, a second hit in the round opens no window, and "Desfazer última ação" on the Parry gives the reaction back.
+- **Given** a player's melee weapon attack hits a creature whose stat block has Parry (Knight, Bandit Captain...) and it has not used its reaction this round, **when** the Parry's bonus turns the hit into a miss, **then** it is a miss at once with no window and no wait, the master's log says "<name> aparou (+N CA)" with the total and the armor class, and the players from whom the master has hidden neither the creature nor the attacker read a miss plus the line "<name> aparou o ataque.", with no number; when the bonus would not turn the hit nothing happens, nothing waits and no one reads a line; the reaction is back at the creature's turn, a second hit in the round is not parried, and "Desfazer última ação" on the attack gives the reaction back.
+- **Given** I switched a creature with Parry to "Perguntar", **when** a melee weapon attack hits it, **then** I see "Aparar (+N CA)" with the roll and the armor class; if I use it the kept roll is compared with the armor class plus N and a hit that falls short is a miss, if I let it pass the hit lands, and the players wait on "Esperando o mestre", then read an ordinary hit or miss and never the reaction, the bonus, the armor class or the mode.
 - **Given** a creature whose reaction the app cannot resolve (Split, Shriek, Rock Catching...), **when** I read its sheet, **then** I read the reaction as text and no window opens for it.
 - **Given** a creature with legendary actions (an adult red dragon: Detect, Tail Attack, Wing Attack), **when** another creature has the turn and I spend one, **then** the cost comes off the 3 it has that round and the players read only the ordinary attack or movement line; I cannot spend on its own turn, while it is incapacitated, beyond what is left or while a reaction waits for an answer, the actions come back at its turn, an option the app cannot resolve is offered as text and still counts, and "Desfazer última ação" gives the cost back.
 - **Given** I am a player, **when** I look for the bestiary, **then** I find no entry point, and I never learn which creature a monster is, its CR or its rolled HP.
@@ -1660,6 +1666,10 @@ See [Architecture](../architecture/campaign-package.md).
 - **Given** a spent Recharge action, **when** its creature's turn starts, **then** the server rolls a d6 for it, in the stat block's order, and a face in its range makes it available again; I read the d6 and the result in the log, as the master and as the player who controls the creature (no other player reads them), a defeated creature does not roll, and an action with uses a day or after a rest does not come back in the combat.
 - **Given** I undo the use of a limited action, **then** it is available again or has the use back; the roll at a turn start cannot be undone.
 - **Given** an NPC made from a creature spent uses of an action with uses a day or of Legendary Resistance, **when** a new combat starts with it, **then** I read the uses it has left, until the table's long rest gives them back; an action that recharges after a short or long rest is back after either rest; a monster of the bestiary starts every combat with all its uses, and a spent Recharge action is available again.
+- **Given** an NPC card with limited actions, **then** each shows its state beside its name: "Pronta" or "Gasta" for a Recharge action and one that waits for a rest, dots and "N de M" for uses a day; a spent action has a dashed "Usar" and says why ("Volta com 5 ou 6 no d6 que o app rola no começo de cada turno do <criatura>.", "Sem usos hoje.", "A ação deste turno já foi usada."); the opened row of the order lists the limits ("Esporos · Recarga 6 · gasta", "Guincho atordoante · 1/dia · 1 de 1"), and neither the card nor the row grows past one screen at 390 px and at 1280×800.
+- **Given** the turn of a creature that had a spent Recharge action starts, **then** the card says "Recarga no começo do turno: rolou N no d6. <ação> recarregou." (green) or "não recarregou (precisa de 5 ou 6)." (neutral), from the log line only the master and the controlling player read; a persistent NPC's card says "<nome> guarda o que gastou."; a stat block that cannot be read says so with "Tentar de novo" and the rest of the card works.
+- **Given** an action of the card whose SRD text the app does not calculate, **then** the English text stays folded behind the small document icon beside its name (opened and closed with the icon, which says "Texto do SRD de <ação>"), and the notice of the start of the turn is green only when every rolled action recharged; when only some did it is neutral and names each result.
+- **Given** I am the master and I ask for a rest, **when** an NPC of the campaign kept what it spent (uses a day, Legendary Resistance and slots after a long rest, an action that recharges after a rest after either), **then** the question says "NPCs da campanha recuperam os usos: <names>"; a player never reads that list.
 - **Given** I am a player who does not control the creature, **then** I read nothing of what it spent, of the roll or of the refusal, and a turn with a roll looks the same as one without (RN-20).
 - **Given** I am the player who controls the creature, **then** I read what each limited action has left, the d6 in the log and the reason a spent action is refused.
 - **Given** I am a player, **then** I find no "Outras ações", I read the log line with the action's name and, for the targets I see, whether each passed or failed and the damage I take, and never the stat block, the DC or which creature it is (RN-20).
@@ -1691,6 +1701,38 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### Related
 - [MR-054](#mr-054-use-a-creatures-action-from-its-turn), [RN-40](rules.md#rn-40-a-rider-on-a-creatures-hit).
+
+### MR-056: Show the table on a screen
+
+**As a** game master, **I want** to open the table on a screen the whole table looks at (a TV), and choose what it shows, **so that** everyone follows the map, the combat, the scene or the image without leaning over a phone.
+
+- Priority: MVP
+- Rules: RN-10, RN-20, RN-36
+- Modules: play, maps
+
+#### Acceptance criteria
+- **Given** an open session, **when** the master taps "Abrir a Tela da mesa", **then** the screen opens in a new tab of the master's browser, to drag to the TV; **given** nothing is on the table, **then** it reads "Nada à mostra ainda" with the names of the characters at the table.
+- **Given** the TV tab, **then** it shows only what every player may read (RN-10): the map as the group sees it, the order with a word of state instead of hit points (RN-20), the lines of the log every player reads, the free rolls made for the table, the scene and the image shown to the whole table. It never shows hit points, armor class, a hidden NPC, the master's notes, hooks, clues and DCs, a roll "Só eu", or the conversation (RN-36).
+- **Given** "Espelhar o que eu mostro" is chosen (it is the default), **then** the TV shows the first that exists: an image shown to the whole table, the combat, a scene open to the whole table, the map, the waiting screen; and it follows each change the master makes, without a reload.
+- **Given** the master picks one row of "Fixar" (the map, an image, the scene, the combat or the waiting screen), **then** the TV shows that item whatever else is on the table, and the panel says "Na TV agora" with its name and "fixa".
+- **Given** the table has no combat, no image, no scene open to all or no map the TV can show, **then** the row of "Fixar" for it is dashed, cannot be picked and says why ("Nenhum combate agora.", "Nenhuma imagem à mostra.", "Nenhuma cena aberta.", "A cena está aberta só para alguns.", "Nenhum mapa agora.", "Precisa da Visão do grupo (editor do mapa).").
+- **Given** a pinned item that ends (the combat is over, the scene closes, the image or the map leaves the table), **then** the TV goes to the waiting screen with a line that says so ("O combate acabou. A TV foi para a tela de espera."); **when** an item of that kind comes back, **then** the pin shows it again.
+- **Given** a map with the fog on and "Visão do grupo" off, **then** the TV shows the waiting screen with the line "O mapa tem névoa e a Visão do grupo está desligada, então a TV não o mostra."; **given** a combat on that map, **then** the place of the map reads "O mapa fica na tela de cada um." and the order, the rolls and the log stay; **given** "Visão do grupo" on, **then** the TV shows the squares the group sees or remembers, and never the map's whole picture.
+- **Given** a scene open only to some players, **then** the TV does not show it and the panel says so; the same for an image meant for chosen players.
+- **Given** a player, a pending member or a stranger, **when** they open the address of the TV or ask the server for it, **then** the player reads the card "Só o mestre abre a Tela da mesa." and nobody receives anything of the campaign; the server answers a stranger as it does for a campaign that does not exist.
+- **Given** the master taps "Copiar o link", **then** what is copied is the address of the tab and nothing else: no query, no key, no token. The tab signs in as the master, and the server decides what it shows on every read.
+- **Given** the TV loses its connection, **then** after a few seconds it says "Reconectando…" and that it may be late, and after a minute it hides what it showed and says "Sem conexão desde 21:14"; **when** the connection returns, **then** it comes back by itself. The master's panel says "Sem conexão desde 21:14." too.
+- **Given** the session ends, **then** the TV says "A sessão 3 terminou às 23:40." and that the master may close the tab; **given** no session is open, it says "Não há sessão aberta.".
+- **Given** a TV from 900 px wide, **then** the screen fits the window with no page scroll, and draws only the rows that fit, with "+N" for the ones left out; **given** a phone, **then** it is one column that scrolls.
+- **Given** the master's session screen, **then** the panel "Tela da mesa" opens from a button in the bar (from 1024 px) or from a line of the "Sessão" menu (below it), shows whether a TV is "Aberta", "Fechada" or "Sem conexão", and fits one screen on a phone of 390 x 844 and on a laptop of 1280 x 800.
+
+#### In the app
+- A TV tab is a page of its own, without the app's top bar and footer, that asks nothing of the session's data: it reads one service, which answers only what the TV may show. See [Design](../design/session.md#the-table-screen-tela-da-mesa) and [The table screen](../architecture/play/table-screen.md).
+- The panel stores nothing in the browser; the choice is stored with the session, so a reload of the TV or of the master's page keeps it.
+- A screen for a player's own device, to watch the table from home, is not part of this story ([#764](https://github.com/PuraFome/meuRPG/issues/764)).
+
+#### Related
+- [MR-012](#mr-012-follow-the-session), [MR-028](#mr-028-show-an-image-to-the-players), [MR-036](#mr-036-fog-of-war-by-sight), [RN-10](rules.md#rn-10-map-without-spoilers).
 
 ## Priority: MVP (prerequisite)
 

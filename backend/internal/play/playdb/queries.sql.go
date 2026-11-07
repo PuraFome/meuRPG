@@ -11,9 +11,12 @@ import (
 )
 
 const advanceCharacterEffects = `-- name: AdvanceCharacterEffects :many
-UPDATE character_effects SET seconds_left = GREATEST(seconds_left - $2::INT4, 0)
-WHERE campaign_id = $1 AND seconds_left IS NOT NULL
-RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+WITH changed AS (
+    UPDATE character_effects SET seconds_left = GREATEST(seconds_left - $2::INT4, 0)
+    WHERE campaign_id = $1 AND seconds_left IS NOT NULL
+    RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+)
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM changed ORDER BY created_at, id
 `
 
 type AdvanceCharacterEffectsParams struct {
@@ -21,17 +24,45 @@ type AdvanceCharacterEffectsParams struct {
 	Column2    int32
 }
 
+type AdvanceCharacterEffectsRow struct {
+	ID                 string
+	CampaignID         string
+	CharacterID        string
+	SourceCharacterID  *string
+	GroupID            string
+	SourceKey          string
+	SourceKind         string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	SecondsLeft        *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	CreatedAt          time.Time
+}
+
 // The master moves game time on: what has a clock loses the seconds, and what has none left
-// is returned to be ended.
-func (q *Queries) AdvanceCharacterEffects(ctx context.Context, arg AdvanceCharacterEffectsParams) ([]CharacterEffect, error) {
+// is returned to be ended. Oldest first.
+func (q *Queries) AdvanceCharacterEffects(ctx context.Context, arg AdvanceCharacterEffectsParams) ([]AdvanceCharacterEffectsRow, error) {
 	rows, err := q.db.Query(ctx, advanceCharacterEffects, arg.CampaignID, arg.Column2)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CharacterEffect
+	var items []AdvanceCharacterEffectsRow
 	for rows.Next() {
-		var i CharacterEffect
+		var i AdvanceCharacterEffectsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CampaignID,
@@ -727,10 +758,13 @@ func (q *Queries) CloseRollModeRequest(ctx context.Context, arg CloseRollModeReq
 }
 
 const closeRollModeRequestsOf = `-- name: CloseRollModeRequestsOf :many
-UPDATE roll_mode_requests
-SET status = 'closed', answered_at = COALESCE(answered_at, $2)
-WHERE combatant_id = $1 AND status IN ('pending', 'answered')
-RETURNING id
+WITH changed AS (
+    UPDATE roll_mode_requests
+    SET status = 'closed', answered_at = COALESCE(answered_at, $2)
+    WHERE combatant_id = $1 AND status IN ('pending', 'answered')
+    RETURNING id
+)
+SELECT id FROM changed ORDER BY id
 `
 
 type CloseRollModeRequestsOfParams struct {
@@ -739,7 +773,7 @@ type CloseRollModeRequestsOfParams struct {
 }
 
 // A new request, a used one, the end of the turn or of the combat: the open requests
-// of the combatant are closed. The IDs come back for the event.
+// of the combatant are closed. The IDs come back for the event, in ID order.
 func (q *Queries) CloseRollModeRequestsOf(ctx context.Context, arg CloseRollModeRequestsOfParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, closeRollModeRequestsOf, arg.CombatantID, arg.AnsweredAt)
 	if err != nil {
@@ -787,6 +821,7 @@ SELECT character_id, COALESCE(payload->>'action_id', '')::TEXT AS action_id, cou
 FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_check_rolled' AND seq > $2
 GROUP BY character_id, 2
+ORDER BY character_id, action_id
 `
 
 type CountSceneRollsParams struct {
@@ -840,6 +875,7 @@ const countWrongPuzzleMoves = `-- name: CountWrongPuzzleMoves :many
 SELECT user_id, count(*)::int4 AS wrong FROM puzzle_moves
 WHERE run_id = $1 AND seq > $2 AND wrong AND user_id IS NOT NULL
 GROUP BY user_id
+ORDER BY user_id
 `
 
 type CountWrongPuzzleMovesParams struct {
@@ -912,7 +948,10 @@ func (q *Queries) DeleteCharacterEffectsOfCharacter(ctx context.Context, charact
 }
 
 const deleteCharacterEffectsOfGroup = `-- name: DeleteCharacterEffectsOfGroup :many
-DELETE FROM character_effects WHERE campaign_id = $1 AND group_id = $2 RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+WITH changed AS (
+    DELETE FROM character_effects WHERE campaign_id = $1 AND group_id = $2 RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+)
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM changed ORDER BY created_at, id
 `
 
 type DeleteCharacterEffectsOfGroupParams struct {
@@ -920,16 +959,44 @@ type DeleteCharacterEffectsOfGroupParams struct {
 	GroupID    string
 }
 
-// The effects of a casting end together.
-func (q *Queries) DeleteCharacterEffectsOfGroup(ctx context.Context, arg DeleteCharacterEffectsOfGroupParams) ([]CharacterEffect, error) {
+type DeleteCharacterEffectsOfGroupRow struct {
+	ID                 string
+	CampaignID         string
+	CharacterID        string
+	SourceCharacterID  *string
+	GroupID            string
+	SourceKey          string
+	SourceKind         string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	SecondsLeft        *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	CreatedAt          time.Time
+}
+
+// The effects of a casting end together. Oldest first.
+func (q *Queries) DeleteCharacterEffectsOfGroup(ctx context.Context, arg DeleteCharacterEffectsOfGroupParams) ([]DeleteCharacterEffectsOfGroupRow, error) {
 	rows, err := q.db.Query(ctx, deleteCharacterEffectsOfGroup, arg.CampaignID, arg.GroupID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CharacterEffect
+	var items []DeleteCharacterEffectsOfGroupRow
 	for rows.Next() {
-		var i CharacterEffect
+		var i DeleteCharacterEffectsOfGroupRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CampaignID,
@@ -968,7 +1035,10 @@ func (q *Queries) DeleteCharacterEffectsOfGroup(ctx context.Context, arg DeleteC
 }
 
 const deleteCharacterEffectsOfSpell = `-- name: DeleteCharacterEffectsOfSpell :many
-DELETE FROM character_effects WHERE character_id = $1 AND source_key = $2 AND group_id <> $3 RETURNING id
+WITH changed AS (
+    DELETE FROM character_effects WHERE character_id = $1 AND source_key = $2 AND group_id <> $3 RETURNING id
+)
+SELECT id FROM changed ORDER BY id
 `
 
 type DeleteCharacterEffectsOfSpellParams struct {
@@ -979,6 +1049,7 @@ type DeleteCharacterEffectsOfSpellParams struct {
 
 // The same spell cast again on a character replaces the first (SRD 5.1, Combining Magical
 // Effects): the effects of the other castings go.
+// Returns their IDs.
 func (q *Queries) DeleteCharacterEffectsOfSpell(ctx context.Context, arg DeleteCharacterEffectsOfSpellParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, deleteCharacterEffectsOfSpell, arg.CharacterID, arg.SourceKey, arg.GroupID)
 	if err != nil {
@@ -1041,9 +1112,12 @@ func (q *Queries) DeleteCombatantState(ctx context.Context, id string) error {
 }
 
 const deleteCombatantStatesBySource = `-- name: DeleteCombatantStatesBySource :many
-DELETE FROM combatant_states
-WHERE source_id = $1 AND kind = $2
-RETURNING id, combatant_id, started_round, created_at
+WITH changed AS (
+    DELETE FROM combatant_states
+    WHERE source_id = $1 AND kind = $2
+    RETURNING id, combatant_id, started_round, created_at
+)
+SELECT id, combatant_id, started_round, created_at FROM changed ORDER BY created_at, id
 `
 
 type DeleteCombatantStatesBySourceParams struct {
@@ -1060,6 +1134,7 @@ type DeleteCombatantStatesBySourceRow struct {
 
 // The states a source gave (the marks of a ranger who stopped concentrating), with what
 // the undo of a cast that moved a mark needs to put it back (RestoreHuntersMark).
+// Oldest first.
 func (q *Queries) DeleteCombatantStatesBySource(ctx context.Context, arg DeleteCombatantStatesBySourceParams) ([]DeleteCombatantStatesBySourceRow, error) {
 	rows, err := q.db.Query(ctx, deleteCombatantStatesBySource, arg.SourceID, arg.Kind)
 	if err != nil {
@@ -1086,9 +1161,12 @@ func (q *Queries) DeleteCombatantStatesBySource(ctx context.Context, arg DeleteC
 }
 
 const deleteCombatantStatesOfKind = `-- name: DeleteCombatantStatesOfKind :many
-DELETE FROM combatant_states
-WHERE combatant_id = $1 AND kind = $2
-RETURNING id
+WITH changed AS (
+    DELETE FROM combatant_states
+    WHERE combatant_id = $1 AND kind = $2
+    RETURNING id
+)
+SELECT id FROM changed ORDER BY id
 `
 
 type DeleteCombatantStatesOfKindParams struct {
@@ -1096,7 +1174,7 @@ type DeleteCombatantStatesOfKindParams struct {
 	Kind        string
 }
 
-// The states of a kind a combatant has (a rage, a dodge), the IDs back for the event.
+// The states of a kind a combatant has (a rage, a dodge), the IDs back for the event, in ID order.
 func (q *Queries) DeleteCombatantStatesOfKind(ctx context.Context, arg DeleteCombatantStatesOfKindParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, deleteCombatantStatesOfKind, arg.CombatantID, arg.Kind)
 	if err != nil {
@@ -1131,9 +1209,12 @@ func (q *Queries) DeleteEmptyNPCSpellUseOfCampaign(ctx context.Context, campaign
 }
 
 const deleteEndedCombatantStates = `-- name: DeleteEndedCombatantStates :many
-DELETE FROM combatant_states
-WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn' AND kind <> 'effect'
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+WITH changed AS (
+    DELETE FROM combatant_states
+    WHERE encounter_id = $1 AND ends_combatant_id = $2 AND ends_phase = 'end_of_turn' AND kind <> 'effect'
+    RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+)
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at FROM changed ORDER BY created_at, id
 `
 
 type DeleteEndedCombatantStatesParams struct {
@@ -1141,16 +1222,50 @@ type DeleteEndedCombatantStatesParams struct {
 	EndsCombatantID *string
 }
 
-// The states that end at the end of this combatant's turn.
-func (q *Queries) DeleteEndedCombatantStates(ctx context.Context, arg DeleteEndedCombatantStatesParams) ([]CombatantState, error) {
+type DeleteEndedCombatantStatesRow struct {
+	ID                 string
+	EncounterID        string
+	CombatantID        string
+	Kind               string
+	SourceID           *string
+	EndsCombatantID    *string
+	EndsPhase          *string
+	EndsRound          *int32
+	StartedRound       int32
+	Amount             int32
+	CreatedAt          time.Time
+	GroupID            *string
+	SourceKey          *string
+	SourceKind         *string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       *string
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	SpentAt            *time.Time
+}
+
+// The states that end at the end of this combatant's turn, oldest first.
+func (q *Queries) DeleteEndedCombatantStates(ctx context.Context, arg DeleteEndedCombatantStatesParams) ([]DeleteEndedCombatantStatesRow, error) {
 	rows, err := q.db.Query(ctx, deleteEndedCombatantStates, arg.EncounterID, arg.EndsCombatantID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CombatantState
+	var items []DeleteEndedCombatantStatesRow
 	for rows.Next() {
-		var i CombatantState
+		var i DeleteEndedCombatantStatesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.EncounterID,
@@ -1209,14 +1324,17 @@ func (q *Queries) DeleteExpiredCharacterInspiration(ctx context.Context, arg Del
 }
 
 const deleteExpiredCombatantStates = `-- name: DeleteExpiredCombatantStates :many
-DELETE FROM combatant_states
-WHERE encounter_id = $1
-  AND (
-    (combatant_id = ANY($2::UUID[]) AND kind IN ('dodging', 'reckless'))
-    OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn' AND kind <> 'effect')
-    OR (kind = 'rage' AND ends_round IS NOT NULL AND ends_round <= $3)
-  )
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+WITH changed AS (
+    DELETE FROM combatant_states
+    WHERE encounter_id = $1
+      AND (
+        (combatant_id = ANY($2::UUID[]) AND kind IN ('dodging', 'reckless'))
+        OR (ends_combatant_id = ANY($2::UUID[]) AND ends_phase = 'start_of_turn' AND kind <> 'effect')
+        OR (kind = 'rage' AND ends_round IS NOT NULL AND ends_round <= $3)
+      )
+    RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+)
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at FROM changed ORDER BY created_at, id
 `
 
 type DeleteExpiredCombatantStatesParams struct {
@@ -1225,17 +1343,51 @@ type DeleteExpiredCombatantStatesParams struct {
 	EndsRound   *int32
 }
 
+type DeleteExpiredCombatantStatesRow struct {
+	ID                 string
+	EncounterID        string
+	CombatantID        string
+	Kind               string
+	SourceID           *string
+	EndsCombatantID    *string
+	EndsPhase          *string
+	EndsRound          *int32
+	StartedRound       int32
+	Amount             int32
+	CreatedAt          time.Time
+	GroupID            *string
+	SourceKey          *string
+	SourceKind         *string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       *string
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	SpentAt            *time.Time
+}
+
 // The states that end at the start of a turn of one of these combatants, a dodge or a
-// reckless attack of their own, and the rages whose minute is over.
-func (q *Queries) DeleteExpiredCombatantStates(ctx context.Context, arg DeleteExpiredCombatantStatesParams) ([]CombatantState, error) {
+// reckless attack of their own, and the rages whose minute is over. Oldest first.
+func (q *Queries) DeleteExpiredCombatantStates(ctx context.Context, arg DeleteExpiredCombatantStatesParams) ([]DeleteExpiredCombatantStatesRow, error) {
 	rows, err := q.db.Query(ctx, deleteExpiredCombatantStates, arg.EncounterID, arg.Column2, arg.EndsRound)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CombatantState
+	var items []DeleteExpiredCombatantStatesRow
 	for rows.Next() {
-		var i CombatantState
+		var i DeleteExpiredCombatantStatesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.EncounterID,
@@ -1346,19 +1498,51 @@ func (q *Queries) DeleteLastingEffect(ctx context.Context, id string) error {
 }
 
 const deleteLongRestEffectsOfCampaign = `-- name: DeleteLongRestEffectsOfCampaign :many
-DELETE FROM character_effects WHERE campaign_id = $1 AND duration_kind = 'long_rest' RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+WITH changed AS (
+    DELETE FROM character_effects WHERE campaign_id = $1 AND duration_kind = 'long_rest' RETURNING id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at
+)
+SELECT id, campaign_id, character_id, source_character_id, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, seconds_left, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, created_at FROM changed ORDER BY created_at, id
 `
 
+type DeleteLongRestEffectsOfCampaignRow struct {
+	ID                 string
+	CampaignID         string
+	CharacterID        string
+	SourceCharacterID  *string
+	GroupID            string
+	SourceKey          string
+	SourceKind         string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       string
+	SecondsLeft        *int32
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	CreatedAt          time.Time
+}
+
 // A long rest ends what lasts until one (SRD 5.1, "Resting"): every character of the table rests.
-func (q *Queries) DeleteLongRestEffectsOfCampaign(ctx context.Context, campaignID string) ([]CharacterEffect, error) {
+// Oldest first.
+func (q *Queries) DeleteLongRestEffectsOfCampaign(ctx context.Context, campaignID string) ([]DeleteLongRestEffectsOfCampaignRow, error) {
 	rows, err := q.db.Query(ctx, deleteLongRestEffectsOfCampaign, campaignID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CharacterEffect
+	var items []DeleteLongRestEffectsOfCampaignRow
 	for rows.Next() {
-		var i CharacterEffect
+		var i DeleteLongRestEffectsOfCampaignRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CampaignID,
@@ -1495,9 +1679,12 @@ func (q *Queries) DeleteStageNPC(ctx context.Context, arg DeleteStageNPCParams) 
 }
 
 const deleteStatesOfCombatant = `-- name: DeleteStatesOfCombatant :many
-DELETE FROM combatant_states
-WHERE combatant_id = $1 AND kind = $2
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+WITH changed AS (
+    DELETE FROM combatant_states
+    WHERE combatant_id = $1 AND kind = $2
+    RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+)
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at FROM changed ORDER BY created_at, id
 `
 
 type DeleteStatesOfCombatantParams struct {
@@ -1505,15 +1692,50 @@ type DeleteStatesOfCombatantParams struct {
 	Kind        string
 }
 
-func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesOfCombatantParams) ([]CombatantState, error) {
+type DeleteStatesOfCombatantRow struct {
+	ID                 string
+	EncounterID        string
+	CombatantID        string
+	Kind               string
+	SourceID           *string
+	EndsCombatantID    *string
+	EndsPhase          *string
+	EndsRound          *int32
+	StartedRound       int32
+	Amount             int32
+	CreatedAt          time.Time
+	GroupID            *string
+	SourceKey          *string
+	SourceKind         *string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       *string
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	SpentAt            *time.Time
+}
+
+// The states of a kind a combatant has, oldest first.
+func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesOfCombatantParams) ([]DeleteStatesOfCombatantRow, error) {
 	rows, err := q.db.Query(ctx, deleteStatesOfCombatant, arg.CombatantID, arg.Kind)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CombatantState
+	var items []DeleteStatesOfCombatantRow
 	for rows.Next() {
-		var i CombatantState
+		var i DeleteStatesOfCombatantRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.EncounterID,
@@ -1574,7 +1796,7 @@ const endGameSession = `-- name: EndGameSession :one
 UPDATE game_sessions
 SET ended_at = COALESCE(ended_at, GREATEST($3::TIMESTAMPTZ, started_at))
 WHERE campaign_id = $1 AND id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision
 `
 
 type EndGameSessionParams struct {
@@ -1604,6 +1826,9 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -1881,7 +2106,7 @@ func (q *Queries) GetEncounterInSession(ctx context.Context, arg GetEncounterInS
 }
 
 const getGameSessionByCreateKey = `-- name: GetGameSessionByCreateKey :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions WHERE create_key = $1
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision FROM game_sessions WHERE create_key = $1
 `
 
 // The session a StartGameSession with this idempotency key started, if any (the key carries the
@@ -1904,12 +2129,15 @@ func (q *Queries) GetGameSessionByCreateKey(ctx context.Context, createKey *stri
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
 
 const getGameSessionForUpdate = `-- name: GetGameSessionForUpdate :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE
 `
@@ -1938,13 +2166,16 @@ func (q *Queries) GetGameSessionForUpdate(ctx context.Context, arg GetGameSessio
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
 
 const getGameSessionInCampaign = `-- name: GetGameSessionInCampaign :one
 
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
 `
 
@@ -1974,6 +2205,9 @@ func (q *Queries) GetGameSessionInCampaign(ctx context.Context, arg GetGameSessi
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -2317,7 +2551,7 @@ func (q *Queries) GetOpenEncounter(ctx context.Context, gameSessionID string) (E
 }
 
 const getOpenGameSession = `-- name: GetOpenGameSession :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
 `
 
@@ -2341,12 +2575,15 @@ func (q *Queries) GetOpenGameSession(ctx context.Context, campaignID string) (Ga
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
 
 const getOpenGameSessionForUpdate = `-- name: GetOpenGameSessionForUpdate :one
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision FROM game_sessions
 WHERE campaign_id = $1 AND ended_at IS NULL
 FOR UPDATE
 `
@@ -2373,6 +2610,9 @@ func (q *Queries) GetOpenGameSessionForUpdate(ctx context.Context, campaignID st
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -3902,7 +4142,7 @@ const insertGameSession = `-- name: InsertGameSession :one
 INSERT INTO game_sessions (campaign_id, session_number, started_at, create_key, create_hash)
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (create_key) WHERE create_key IS NOT NULL DO NOTHING
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision
 `
 
 type InsertGameSessionParams struct {
@@ -3940,6 +4180,9 @@ func (q *Queries) InsertGameSession(ctx context.Context, arg InsertGameSessionPa
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -5292,6 +5535,7 @@ const listCampaignEncounterNames = `-- name: ListCampaignEncounterNames :many
 SELECT e.id, e.name FROM encounters AS e
 JOIN game_sessions AS gs ON gs.id = e.game_session_id
 WHERE gs.campaign_id = $1::UUID AND e.id = ANY($2::UUID[])
+ORDER BY e.id
 `
 
 type ListCampaignEncounterNamesParams struct {
@@ -5574,7 +5818,7 @@ func (q *Queries) ListCharacterEffectsOfCampaign(ctx context.Context, campaignID
 }
 
 const listCharacterInspirationOfCampaign = `-- name: ListCharacterInspirationOfCampaign :many
-SELECT character_id, campaign_id, source_character_id, sides, seconds_left, created_at FROM character_inspiration WHERE campaign_id = $1
+SELECT character_id, campaign_id, source_character_id, sides, seconds_left, created_at FROM character_inspiration WHERE campaign_id = $1 ORDER BY character_id
 `
 
 func (q *Queries) ListCharacterInspirationOfCampaign(ctx context.Context, campaignID string) ([]CharacterInspiration, error) {
@@ -5703,6 +5947,7 @@ func (q *Queries) ListCombatEffectsOfGroup(ctx context.Context, groupID *string)
 const listCombatReasons = `-- name: ListCombatReasons :many
 SELECT id, encounter_id, kind, reason, created_at FROM combat_reasons
 WHERE encounter_id = $1 AND id = ANY($2::UUID[])
+ORDER BY id
 `
 
 type ListCombatReasonsParams struct {
@@ -6358,7 +6603,7 @@ func (q *Queries) ListFreeRollEvents(ctx context.Context, arg ListFreeRollEvents
 }
 
 const listGameSessions = `-- name: ListGameSessions :many
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision FROM game_sessions
 WHERE campaign_id = $1
 ORDER BY session_number DESC
 `
@@ -6388,6 +6633,9 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 			&i.OpenSceneEveryone,
 			&i.ShownImageAudience,
 			&i.ScenePlayersMayJoin,
+			&i.TvMirror,
+			&i.TvPin,
+			&i.TvChoiceRevision,
 		); err != nil {
 			return nil, err
 		}
@@ -6400,7 +6648,7 @@ func (q *Queries) ListGameSessions(ctx context.Context, campaignID string) ([]Ga
 }
 
 const listHeldReactionHolds = `-- name: ListHeldReactionHolds :many
-SELECT id, encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, state, created_at FROM reaction_holds WHERE encounter_id = $1 AND state = 'held'
+SELECT id, encounter_id, group_id, kind, actor_id, actor_user_id, actor_is_master, request, data, state, created_at FROM reaction_holds WHERE encounter_id = $1 AND state = 'held' ORDER BY created_at, id
 `
 
 func (q *Queries) ListHeldReactionHolds(ctx context.Context, encounterID string) ([]ReactionHold, error) {
@@ -6556,8 +6804,40 @@ func (q *Queries) ListLastingEffects(ctx context.Context, encounterID string) ([
 	return items, nil
 }
 
+const listNPCsGivingBackToRest = `-- name: ListNPCsGivingBackToRest :many
+SELECT npc.character_id
+FROM npc_spell_use npc
+WHERE ($1::bool AND (npc.slots_used <> '{}'::jsonb OR npc.creature_spent <> '{}'::jsonb))
+   OR EXISTS (SELECT 1 FROM jsonb_object_keys(npc.creature_spent) k WHERE k LIKE 'rest:%')
+ORDER BY npc.character_id
+`
+
+// The hand-made NPCs (of any campaign: the caller keeps its campaign's, by name, through the roster) that this rest gives something
+// back to: after a long rest every NPC that kept a spell slot, a use a day, a rest action or Legendary Resistance (what
+// ResetNPCSpellUseOfCampaign clears); after a short rest every NPC that kept a rest action (what ResetNPCRestUsesOfCampaign
+// clears). The master's rest preview.
+func (q *Queries) ListNPCsGivingBackToRest(ctx context.Context, longRest bool) ([]string, error) {
+	rows, err := q.db.Query(ctx, listNPCsGivingBackToRest, longRest)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var character_id string
+		if err := rows.Scan(&character_id); err != nil {
+			return nil, err
+		}
+		items = append(items, character_id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOpenAttackHolds = `-- name: ListOpenAttackHolds :many
-SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL ORDER BY created_at, id
 `
 
 // The weapon attacks of the combat that wait for an answer and are kept in inspiration_holds, for
@@ -6753,7 +7033,7 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 }
 
 const listOpenGameSessions = `-- name: ListOpenGameSessions :many
-SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join FROM game_sessions
+SELECT id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision FROM game_sessions
 WHERE campaign_id = ANY($1::UUID[]) AND ended_at IS NULL
 ORDER BY started_at DESC, id
 `
@@ -6784,6 +7064,9 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 			&i.OpenSceneEveryone,
 			&i.ShownImageAudience,
 			&i.ScenePlayersMayJoin,
+			&i.TvMirror,
+			&i.TvPin,
+			&i.TvChoiceRevision,
 		); err != nil {
 			return nil, err
 		}
@@ -7331,6 +7614,7 @@ func (q *Queries) ListPendingOpportunityOffers(ctx context.Context, encounterID 
 const listPuzzleRuns = `-- name: ListPuzzleRuns :many
 SELECT id, game_session_id, puzzle_id, seed, start, state, released_hints, shown_at, closed_at, solved_at, solved_by_character_id, solve_outcome, last_mover_character_id, last_move, last_moved_at, moves_made, revision, created_at, updated_at, solve_message, plays, play_started_at, round_start_seq, round_started_at FROM puzzle_runs
 WHERE game_session_id = $1
+ORDER BY id
 `
 
 func (q *Queries) ListPuzzleRuns(ctx context.Context, gameSessionID string) ([]PuzzleRun, error) {
@@ -7661,6 +7945,7 @@ func (q *Queries) ListRollModeRequests(ctx context.Context, encounterID string) 
 const listSceneAttemptGrantEvents = `-- name: ListSceneAttemptGrantEvents :many
 SELECT character_id, payload FROM session_events
 WHERE game_session_id = $1 AND kind = 'scene_attempt_granted' AND seq > $2
+ORDER BY seq
 `
 
 type ListSceneAttemptGrantEventsParams struct {
@@ -7674,7 +7959,7 @@ type ListSceneAttemptGrantEventsRow struct {
 }
 
 // The attempts the master granted since the opening (seq): which character, at
-// which action (the payload's action_id).
+// which action (the payload's action_id), in the order they were granted.
 func (q *Queries) ListSceneAttemptGrantEvents(ctx context.Context, arg ListSceneAttemptGrantEventsParams) ([]ListSceneAttemptGrantEventsRow, error) {
 	rows, err := q.db.Query(ctx, listSceneAttemptGrantEvents, arg.GameSessionID, arg.Seq)
 	if err != nil {
@@ -7822,6 +8107,7 @@ const listShownPuzzleIDs = `-- name: ListShownPuzzleIDs :many
 SELECT DISTINCT r.puzzle_id FROM puzzle_runs AS r
 JOIN puzzles AS p ON p.id = r.puzzle_id
 WHERE p.campaign_id = $1 AND r.shown_at IS NOT NULL
+ORDER BY r.puzzle_id
 `
 
 // The campaign's puzzles that were shown in any session: they can no longer be edited.
@@ -8008,6 +8294,7 @@ func (q *Queries) ListStage(ctx context.Context, gameSessionID string) ([]StageN
 const listTrapDamageStatuses = `-- name: ListTrapDamageStatuses :many
 SELECT id, status, applied_amount FROM trap_damages
 WHERE id = ANY($1::uuid[])
+ORDER BY id
 `
 
 type ListTrapDamageStatusesRow struct {
@@ -9318,15 +9605,18 @@ func (q *Queries) SetCombatantTableOnceTurns(ctx context.Context, arg SetCombata
 }
 
 const setCreatureCombatantLabel = `-- name: SetCreatureCombatantLabel :many
-UPDATE combatants
-SET label = $1
-WHERE creature_id = $2::UUID
-  AND encounter_id IN (
-      SELECT e.id FROM encounters AS e
-      JOIN game_sessions AS gs ON gs.id = e.game_session_id
-      WHERE gs.campaign_id = $3::UUID AND e.status <> 'ended'
-  )
-RETURNING encounter_id
+WITH changed AS (
+    UPDATE combatants
+    SET label = $1
+    WHERE creature_id = $2::UUID
+      AND encounter_id IN (
+          SELECT e.id FROM encounters AS e
+          JOIN game_sessions AS gs ON gs.id = e.game_session_id
+          WHERE gs.campaign_id = $3::UUID AND e.status <> 'ended'
+      )
+    RETURNING encounter_id
+)
+SELECT encounter_id FROM changed ORDER BY encounter_id
 `
 
 type SetCreatureCombatantLabelParams struct {
@@ -9336,6 +9626,7 @@ type SetCreatureCombatantLabelParams struct {
 }
 
 // A creature's new name on its combatant, in the combat that is not ended.
+// Returns the combats, by ID.
 func (q *Queries) SetCreatureCombatantLabel(ctx context.Context, arg SetCreatureCombatantLabelParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, setCreatureCombatantLabel, arg.Label, arg.CreatureID, arg.CampaignID)
 	if err != nil {
@@ -9357,10 +9648,13 @@ func (q *Queries) SetCreatureCombatantLabel(ctx context.Context, arg SetCreature
 }
 
 const setCreatureCombatantsDismissed = `-- name: SetCreatureCombatantsDismissed :many
-UPDATE combatants
-SET dismissed = $1, turn_state = 'idle'
-WHERE encounter_id = $2 AND creature_id = ANY($3::UUID[])
-RETURNING id
+WITH changed AS (
+    UPDATE combatants
+    SET dismissed = $1, turn_state = 'idle'
+    WHERE encounter_id = $2 AND creature_id = ANY($3::UUID[])
+    RETURNING id
+)
+SELECT id FROM changed ORDER BY id
 `
 
 type SetCreatureCombatantsDismissedParams struct {
@@ -9370,7 +9664,7 @@ type SetCreatureCombatantsDismissedParams struct {
 }
 
 // Hides (or brings back) the combatants of the creatures in the combat. A
-// dismissed one is out of the turn.
+// dismissed one is out of the turn. Returns their IDs.
 func (q *Queries) SetCreatureCombatantsDismissed(ctx context.Context, arg SetCreatureCombatantsDismissedParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, setCreatureCombatantsDismissed, arg.Dismissed, arg.EncounterID, arg.CreatureIds)
 	if err != nil {
@@ -9395,7 +9689,7 @@ const setCurrentMap = `-- name: SetCurrentMap :one
 UPDATE game_sessions
 SET current_map_id = $1
 WHERE id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision
 `
 
 type SetCurrentMapParams struct {
@@ -9422,6 +9716,9 @@ func (q *Queries) SetCurrentMap(ctx context.Context, arg SetCurrentMapParams) (G
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -9663,7 +9960,7 @@ const setOpenScene = `-- name: SetOpenScene :one
 UPDATE game_sessions
 SET open_scene_point_id = $1
 WHERE id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision
 `
 
 type SetOpenSceneParams struct {
@@ -9691,6 +9988,9 @@ func (q *Queries) SetOpenScene(ctx context.Context, arg SetOpenSceneParams) (Gam
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -9699,7 +9999,7 @@ const setOpenSceneEveryone = `-- name: SetOpenSceneEveryone :one
 UPDATE game_sessions
 SET open_scene_everyone = $1
 WHERE id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision
 `
 
 type SetOpenSceneEveryoneParams struct {
@@ -9727,6 +10027,9 @@ func (q *Queries) SetOpenSceneEveryone(ctx context.Context, arg SetOpenSceneEver
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -10178,7 +10481,7 @@ func (q *Queries) SetReactionWindowStep(ctx context.Context, arg SetReactionWind
 
 const setScenePlayersMayJoin = `-- name: SetScenePlayersMayJoin :one
 UPDATE game_sessions SET scene_players_may_join = $1 WHERE id = $2
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision
 `
 
 type SetScenePlayersMayJoinParams struct {
@@ -10204,6 +10507,9 @@ func (q *Queries) SetScenePlayersMayJoin(ctx context.Context, arg SetScenePlayer
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -10212,7 +10518,7 @@ const setShownImage = `-- name: SetShownImage :one
 UPDATE game_sessions
 SET shown_image_id = $1, shown_image_keep = $2
 WHERE id = $3
-RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision
 `
 
 type SetShownImageParams struct {
@@ -10240,6 +10546,9 @@ func (q *Queries) SetShownImage(ctx context.Context, arg SetShownImageParams) (G
 		&i.OpenSceneEveryone,
 		&i.ShownImageAudience,
 		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
 	)
 	return i, err
 }
@@ -10296,6 +10605,46 @@ func (q *Queries) SetStageSpeaker(ctx context.Context, arg SetStageSpeakerParams
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const setTableScreenChoice = `-- name: SetTableScreenChoice :one
+UPDATE game_sessions
+SET tv_mirror = $1, tv_pin = $2, tv_choice_revision = tv_choice_revision + 1
+WHERE id = $3
+RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision
+`
+
+type SetTableScreenChoiceParams struct {
+	TvMirror bool
+	TvPin    int16
+	ID       string
+}
+
+// The master's choice for the TV; the caller holds the session's lock and has checked the
+// revision. It writes these three columns and nothing else.
+func (q *Queries) SetTableScreenChoice(ctx context.Context, arg SetTableScreenChoiceParams) (GameSession, error) {
+	row := q.db.QueryRow(ctx, setTableScreenChoice, arg.TvMirror, arg.TvPin, arg.ID)
+	var i GameSession
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.SessionNumber,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.CurrentMapID,
+		&i.ShownImageID,
+		&i.ShownImageKeep,
+		&i.OpenScenePointID,
+		&i.CreateKey,
+		&i.CreateHash,
+		&i.OpenSceneEveryone,
+		&i.ShownImageAudience,
+		&i.ScenePlayersMayJoin,
+		&i.TvMirror,
+		&i.TvPin,
+		&i.TvChoiceRevision,
+	)
+	return i, err
 }
 
 const setTrapDamageStatus = `-- name: SetTrapDamageStatus :one
@@ -10511,6 +10860,7 @@ WHERE game_session_id = $1 AND kind = 'scene_check_rolled'
   AND payload->>'dc_shown' = 'true' AND payload ? 'passed'
   AND ($2::BOOL OR NOT (payload ? 'audience') OR (payload->'audience') ? $3::TEXT)
 GROUP BY character_id
+ORDER BY character_id
 `
 
 type TallySessionSceneChecksParams struct {

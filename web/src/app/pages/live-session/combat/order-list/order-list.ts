@@ -1,4 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
+import { type LimitLine, limitLines } from '../../../../core/combat/creature-action';
 import {
   Component,
   DestroyRef,
@@ -148,6 +149,8 @@ export class OrderList {
   readonly cover = output<{ id: string; cover: CoverDegree }>();
   /** In a combat without a map the menu's "Marcar cobertura…" opens the theatre cover editor (the fallback for a joint or master turn). */
   readonly coverEdit = output<string>();
+  /** The master's "Aparar: perguntar a cada golpe" switch of an NPC with a Parry: `ask` is the mode it is switched to. */
+  readonly parryAsk = output<{ id: string; ask: boolean }>();
   /** The characters whose "Confirmar a morte" question the master put away. */
   readonly deathDismissed = input<ReadonlySet<string>>(new Set());
   /** "Confirmar a morte": the question again. */
@@ -279,6 +282,11 @@ export class OrderList {
         rowDetail(c, this.encounter(), this.info().get(c.characterId), this.shield(c) > 0),
       ].filter(Boolean),
     );
+  }
+
+  /** The limits of a creature's actions, one line each in the opened row (the server sends them to the master and the controller only). */
+  protected limits(c: Combatant): readonly LimitLine[] | null {
+    return c.limitedActions.length ? limitLines(c.limitedActions) : null;
   }
 
   protected facts(c: Combatant): string {
