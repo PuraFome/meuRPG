@@ -129,6 +129,7 @@ export class AttackRolls {
             extraDieFaces: extra,
             useExtraAction: data.useExtraAction ?? false,
             ...(maneuverKey ? { maneuverKey } : {}),
+            legendaryOption: data.legendary?.option ?? '',
           },
         );
         data.state.apply(res.encounter);

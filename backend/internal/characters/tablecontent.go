@@ -182,8 +182,14 @@ func bodyOf(r bodyFields) (tableBody, rulesv1.TableContentKind) {
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
 
-// bodyField is the name of the body's field in a request, for violations.
-func bodyField(kind rulesv1.TableContentKind) string { return "table_" + kindPrefix(kind) }
+// bodyField is the name of the body's field in a request, for violations: "table_" and the kind's prefix, except
+// for a class feature, whose key prefix ("classfeature") is not the field's name ("table_class_feature").
+func bodyField(kind rulesv1.TableContentKind) string {
+	if kind == rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE {
+		return "table_class_feature"
+	}
+	return "table_" + kindPrefix(kind)
+}
 
 // entryRow is a stored entry with its body decoded.
 type entryRow struct {
@@ -253,7 +259,7 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableClassFeature:
 			o.ClassFeatures = append(o.ClassFeatures, rules.TableClassFeature{
 				TableEntry: te, DescPT: b.GetDescPt(), Class: b.GetClassKey(), Level: int(b.GetLevel()),
-				Replaces: b.GetReplacesFeatureKey(), Effects: tableEffectsOf(b.GetEffects()),
+				Replaces: b.GetReplacesFeatureKey(), Effects: tableEffectsOf(b.GetEffects()), Summon: tableSummonOf(b.GetSummon()),
 			})
 			idx["class_features"] = append(idx["class_features"], e)
 		case *rulesv1.TableCreature:
@@ -760,7 +766,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 		return v
 	}
 	e := list[n]
-	v.Field = "table_" + kindPrefix(e.kind) + m[3]
+	v.Field = bodyField(e.kind) + m[3]
 	if e.row.ContentKey != entry {
 		v.Key = e.row.ContentKey
 	}
@@ -1166,6 +1172,8 @@ func summons(body tableBody) bool {
 		return hasSummon(b.GetTraits())
 	case *rulesv1.TableBackground:
 		return b.GetFeature().GetSummon() != nil
+	case *rulesv1.TableClassFeature:
+		return b.GetSummon() != nil
 	}
 	return false
 }
@@ -1201,7 +1209,7 @@ func (v playerView) strip(body tableBody) {
 	case *rulesv1.TableOption:
 		v.stripOption(b)
 	case *rulesv1.TableClassFeature:
-		v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
+		v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects(), Summon: b.GetSummon()}})
 		if v.hidden(b.GetReplacesFeatureKey()) {
 			b.ReplacesFeatureKey = "" // a feature the players do not see is not named to them
 		}
@@ -1240,8 +1248,11 @@ func (v playerView) stripSummon(m *rulesv1.TableSummon) {
 // playerSummonFields are the fields of a TableSummon a player reads: stripSummon copies these and no other.
 var playerSummonFields = map[string]bool{"creature_keys": true}
 
-// stripOption takes the hidden keys out of an option: its effects and what it requires.
+// stripOption takes the hidden keys out of an option: its effects, what it requires and the feature that offers it.
 func (v playerView) stripOption(b *rulesv1.TableOption) {
+	if v.hidden(b.GetOfferedBy()) {
+		b.OfferedBy = "" // a feature the players do not see is not named to them
+	}
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
 	if p := b.GetPrerequisite(); p != nil {
 		p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)
@@ -1275,16 +1286,35 @@ func (v playerView) stripSubclass(b *rulesv1.TableSubclass) {
 	}
 }
 
+// clearReadMarks zeroes what only a read sets (the marks and the name of the lacked feature), so a
+// round trip never stores it.
+func clearReadMarks(body tableBody) {
+	if feat, ok := body.(*rulesv1.TableFeat); ok && feat.GetPrerequisite() != nil {
+		p := feat.Prerequisite
+		p.LacksHidden, p.LacksFeatureNamePt, p.RacesHidden = false, "", false
+	}
+}
+
+// nameLackedFeature fills, on a read, the Portuguese name of the feature a feat asks not to have.
+func nameLackedFeature(body tableBody, c *rules.Content) {
+	if feat, ok := body.(*rulesv1.TableFeat); ok && feat.GetPrerequisite().GetLacksFeatureKey() != "" {
+		feat.Prerequisite.LacksFeatureNamePt = c.NamePT(feat.Prerequisite.LacksFeatureKey)
+	}
+}
+
 // stripFeat takes the hidden keys out of a feat: its effects and the race it asks for.
 func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects(), Options: b.GetOptions()}})
 	if p := b.GetPrerequisite(); p != nil {
+		asked := len(p.Races) > 0 || p.GetRaceKey() != ""
 		if v.hidden(p.GetRaceKey()) {
 			p.RaceKey = "" // a race or subrace the players do not see is not named to them
 		}
 		p.Races = v.visible(p.Races)
+		p.RacesHidden = asked && p.GetRaceKey() == "" && len(p.Races) == 0
 		if v.hidden(p.GetLacksFeatureKey()) {
 			p.LacksFeatureKey = "" // nor a feature the players do not see
+			p.LacksHidden = true
 		}
 	}
 }

@@ -65,7 +65,16 @@
             }
           </div>
         </div>
-        @if (isMaster() && entry() && !entry()!.archived && !asking()) {
+        @if (isMaster() && entry() && phone()) {
+          <button type="button" class="head__more" [attr.aria-label]="'Mais ações de ' + heading()" [matMenuTriggerFor]="more"><mat-icon aria-hidden="true">more_vert</mat-icon></button>
+          <mat-menu #more="matMenu">
+            @if (entry()!.archived) {
+              <button mat-menu-item type="button" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
+            } @else {
+              <button mat-menu-item type="button" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
+            }
+          </mat-menu>
+        } @else if (isMaster() && entry() && !entry()!.archived && !asking()) {
           <button matButton="outlined" type="button" class="head__action" (click)="askArchive()"><mat-icon aria-hidden="true">archive</mat-icon>Arquivar</button>
         }
       </header>
@@ -132,7 +141,9 @@
               A entrada só deixa de aparecer para fichas novas.
             </p>
           </div>
-          <button matButton="outlined" type="button" class="unarchive" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
+          @if (!phone()) {
+            <button matButton="outlined" type="button" class="unarchive" [disabled]="archiving()" (click)="unarchive()"><mat-icon aria-hidden="true">unarchive</mat-icon>Desarquivar</button>
+          }
         </div>
       }
 
@@ -152,7 +163,7 @@
             <p>{{ extrasError() }}</p>
           </div>
           <button matButton="outlined" type="button" class="retry" (click)="loadExtras()">Tentar de novo</button>
-        } @else if (catalog() && (menu() || kind() === Kind.SPELL) && (!needsDefaults() || defaults())) {
+        } @else if (catalog() && (menu() || kind() === Kind.SPELL || kind() === Kind.CREATURE) && (!needsDefaults() || defaults())) {
           @switch (kind()) {
             @case (Kind.SPELL) {
               <app-spell-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
@@ -178,6 +189,9 @@
             @case (Kind.CLASS_FEATURE) {
               <app-class-feature-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
+            @case (Kind.CREATURE) {
+              <app-creature-editor [campaignId]="campaignId()" [entry]="entry()" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
+            }
             @case (Kind.BACKGROUND) {
               <app-background-editor [campaignId]="campaignId()" [entry]="entry()" [menu]="menu()!" [catalog]="catalog()!" [entries]="entries()" [saveBlocked]="saveBlocked()" (saved)="onSaved($event)" (switched)="replace($event)" (reload)="load()" (cancelled)="goBack()" />
             }
@@ -196,7 +210,11 @@
           </div>
           <button matButton="outlined" type="button" class="retry" (click)="loadExtras()">Tentar de novo</button>
         } @else if (catalog()) {
-          <app-entry-read [read]="r" />
+          @if (isMaster() && kind() === Kind.CREATURE) {
+            <app-creature-read [campaignId]="campaignId()" [entry]="entry()!" [entries]="entries()" [catalog]="catalog()!" />
+          } @else {
+            <app-entry-read [read]="r" />
+          }
         } @else {
           <p class="page-status" role="status">
             <mat-spinner diameter="24" aria-label="Carregando" />

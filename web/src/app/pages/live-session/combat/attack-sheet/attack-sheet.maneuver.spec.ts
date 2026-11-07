@@ -201,6 +201,7 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
     expect(lastArgs().extras).toEqual({
       extraDieFaces: [],
       useExtraAction: false,
+      legendaryOption: '',
       maneuverKey: 'golpe',
     });
     TestBed.resetTestingModule();
@@ -211,6 +212,7 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
     expect(lastArgs().extras).toEqual({
       extraDieFaces: [],
       useExtraAction: false,
+      legendaryOption: '',
     });
   });
 
@@ -231,7 +233,12 @@ describe('AttackSheet: the table die of a weapon attack (Golpe Certeiro)', () =>
     await settle();
     const args = api.rollAttack.mock.calls[0];
     expect(args[5]).toEqual({ face: 12 });
-    expect(args[11]).toEqual({ extraDieFaces: [5], useExtraAction: false, maneuverKey: 'golpe' });
+    expect(args[11]).toEqual({
+      extraDieFaces: [5],
+      useExtraAction: false,
+      legendaryOption: '',
+      maneuverKey: 'golpe',
+    });
     box().click();
     fixture.detectChanges();
     expect(plain(el.textContent)).not.toContain('Resultado do d8');
