@@ -134,6 +134,25 @@ describe('what a feat asks, in Portuguese', () => {
     expect(prerequisiteSupport(p, nameOf)).toBe('uma condição que a mesa não mostra');
   });
 
+  it("names the feature to lack with the server's name, never the key", () => {
+    const p = create(FeatPrerequisiteSchema, {
+      lacksFeatureKey: 'feat:grappler',
+      lacksFeatureNamePt: 'Agarrador',
+    });
+    expect(prerequisiteSupport(p, (k) => k)).toBe('não ter Agarrador');
+    const bare = create(FeatPrerequisiteSchema, { lacksFeatureKey: 'feat:grappler' });
+    expect(prerequisiteSupport(bare, () => 'Agarrador')).toBe('não ter Agarrador');
+  });
+
+  it('reads races_hidden as the hidden condition, said once with a hidden lacked feature', () => {
+    const races = create(FeatPrerequisiteSchema, { racesHidden: true, level: 4 });
+    expect(prerequisiteSupport(races, nameOf)).toBe(
+      'uma condição que a mesa não mostra e nível 4 ou mais',
+    );
+    const both = create(FeatPrerequisiteSchema, { racesHidden: true, lacksHidden: true });
+    expect(prerequisiteSupport(both, nameOf)).toBe('uma condição que a mesa não mostra');
+  });
+
   it("writes the whole prerequisite of the master's board in one line", () => {
     const p = create(FeatPrerequisiteSchema, {
       minimums: { dexterity: 13 },

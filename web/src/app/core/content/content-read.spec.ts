@@ -395,6 +395,21 @@ describe('what a player reads of a feat (MR-025)', () => {
     noRawKeys(read.rows.map((r) => r.value));
   });
 
+  it('names an SRD feature to lack by the name the server sends, for the master and the player', () => {
+    const e = entry(TableContentKind.FEAT, 'Sem agarrar', {
+      body: {
+        case: 'tableFeat',
+        value: create(TableFeatSchema, {
+          namePt: 'Sem agarrar',
+          prerequisite: { lacksFeatureKey: 'feat:grappler', lacksFeatureNamePt: 'Agarrador' },
+        }),
+      },
+    });
+    const read = readEntry(e, (k) => k);
+    expect(flat(read.rows[0].value)).toBe('não ter Agarrador');
+    noRawKeys(read.rows.map((r) => r.value));
+  });
+
   it('reads a hidden "lacks" condition as words, never a key', () => {
     const e = entry(TableContentKind.FEAT, 'Sem a pele', {
       body: {

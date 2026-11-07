@@ -3134,7 +3134,13 @@ type FeatPrerequisite struct {
 	LacksFeatureKey string `protobuf:"bytes,9,opt,name=lacks_feature_key,json=lacksFeatureKey,proto3" json:"lacks_feature_key,omitempty"`
 	// True when the condition names a feature the player may not read; the key is then empty.
 	// Set by the server on a player's read. Ignored on write.
-	LacksHidden   bool `protobuf:"varint,10,opt,name=lacks_hidden,json=lacksHidden,proto3" json:"lacks_hidden,omitempty"`
+	LacksHidden bool `protobuf:"varint,10,opt,name=lacks_hidden,json=lacksHidden,proto3" json:"lacks_hidden,omitempty"`
+	// The Portuguese name of lacks_feature_key, filled by the server on read. Empty when the key
+	// is empty or hidden. Ignored on write.
+	LacksFeatureNamePt string `protobuf:"bytes,11,opt,name=lacks_feature_name_pt,json=lacksFeatureNamePt,proto3" json:"lacks_feature_name_pt,omitempty"`
+	// True when the feat asks for races and none is left visible after the player's filter. Set by
+	// the server on a player's read; never for the master. Ignored on write.
+	RacesHidden   bool `protobuf:"varint,12,opt,name=races_hidden,json=racesHidden,proto3" json:"races_hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3235,6 +3241,20 @@ func (x *FeatPrerequisite) GetLacksFeatureKey() string {
 func (x *FeatPrerequisite) GetLacksHidden() bool {
 	if x != nil {
 		return x.LacksHidden
+	}
+	return false
+}
+
+func (x *FeatPrerequisite) GetLacksFeatureNamePt() string {
+	if x != nil {
+		return x.LacksFeatureNamePt
+	}
+	return ""
+}
+
+func (x *FeatPrerequisite) GetRacesHidden() bool {
+	if x != nil {
+		return x.RacesHidden
 	}
 	return false
 }
@@ -12711,7 +12731,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fconstitution\x18\x03 \x01(\x05R\fconstitution\x12\"\n" +
 	"\fintelligence\x18\x04 \x01(\x05R\fintelligence\x12\x16\n" +
 	"\x06wisdom\x18\x05 \x01(\x05R\x06wisdom\x12\x1a\n" +
-	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\xfc\x02\n" +
+	"\bcharisma\x18\x06 \x01(\x05R\bcharisma\"\xd2\x03\n" +
 	"\x10FeatPrerequisite\x12:\n" +
 	"\bminimums\x18\x01 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\bminimums\x125\n" +
 	"\x06any_of\x18\x02 \x01(\v2\x1e.meurpg.rules.v1.AbilityScoresR\x05anyOf\x12'\n" +
@@ -12723,7 +12743,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04size\x18\b \x01(\tR\x04size\x12*\n" +
 	"\x11lacks_feature_key\x18\t \x01(\tR\x0flacksFeatureKey\x12!\n" +
 	"\flacks_hidden\x18\n" +
-	" \x01(\bR\vlacksHidden\"h\n" +
+	" \x01(\bR\vlacksHidden\x121\n" +
+	"\x15lacks_feature_name_pt\x18\v \x01(\tR\x12lacksFeatureNamePt\x12!\n" +
+	"\fraces_hidden\x18\f \x01(\bR\vracesHidden\"h\n" +
 	"\fFeatIncrease\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\x12,\n" +
 	"\x04from\x18\x02 \x03(\x0e2\x18.meurpg.rules.v1.AbilityR\x04from\x12\x14\n" +

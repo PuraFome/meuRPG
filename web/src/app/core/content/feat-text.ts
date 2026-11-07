@@ -88,14 +88,16 @@ function whoParts(p: FeatPrerequisite, nameOf: KeyName, lacks?: LacksView): stri
   const races = askedRaces(p.raceKey, p.races);
   if (races.length > 0) {
     parts.push(`ser ${listWith(races.map(nameOf), 'ou')}`);
+  } else if (p.racesHidden) {
+    parts.push(HIDDEN_ASK);
   }
   if (p.size) {
     parts.push(`ter tamanho ${sizeName(p.size)}`);
   }
-  if (lacks?.hidden || p.lacksHidden) {
+  if ((lacks?.hidden || p.lacksHidden) && !parts.includes(HIDDEN_ASK)) {
     parts.push(HIDDEN_ASK);
-  } else if (p.lacksFeatureKey) {
-    parts.push(`não ter ${lacks?.name || nameOf(p.lacksFeatureKey)}`);
+  } else if (p.lacksFeatureKey && !lacks?.hidden && !p.lacksHidden) {
+    parts.push(`não ter ${lacks?.name || p.lacksFeatureNamePt || nameOf(p.lacksFeatureKey)}`);
   }
   return parts;
 }

@@ -468,6 +468,12 @@ message FeatPrerequisite {
   // True when the condition names a feature the player may not read; the key is then empty.
   // Set by the server on a player's read. Ignored on write.
   bool lacks_hidden = 10;
+  // The Portuguese name of lacks_feature_key, filled by the server on read. Empty when the key
+  // is empty or hidden. Ignored on write.
+  string lacks_feature_name_pt = 11;
+  // True when the feat asks for races and none is left visible after the player's filter. Set by
+  // the server on a player's read; never for the master. Ignored on write.
+  bool races_hidden = 12;
 }
 
 // FeatIncrease is the ability increase a feat gives (its ability_increase effect):

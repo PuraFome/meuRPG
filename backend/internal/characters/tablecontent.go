@@ -1275,21 +1275,32 @@ func (v playerView) stripSubclass(b *rulesv1.TableSubclass) {
 	}
 }
 
-// stripFeat takes the hidden keys out of a feat: its effects and the race it asks for.
-// clearReadMarks zeroes what only a player's read sets, so a master's round trip never stores it.
+// clearReadMarks zeroes what only a read sets (the marks and the name of the lacked feature), so a
+// round trip never stores it.
 func clearReadMarks(body tableBody) {
 	if feat, ok := body.(*rulesv1.TableFeat); ok && feat.GetPrerequisite() != nil {
-		feat.Prerequisite.LacksHidden = false
+		p := feat.Prerequisite
+		p.LacksHidden, p.LacksFeatureNamePt, p.RacesHidden = false, "", false
 	}
 }
 
+// nameLackedFeature fills, on a read, the Portuguese name of the feature a feat asks not to have.
+func nameLackedFeature(body tableBody, c *rules.Content) {
+	if feat, ok := body.(*rulesv1.TableFeat); ok && feat.GetPrerequisite().GetLacksFeatureKey() != "" {
+		feat.Prerequisite.LacksFeatureNamePt = c.NamePT(feat.Prerequisite.LacksFeatureKey)
+	}
+}
+
+// stripFeat takes the hidden keys out of a feat: its effects and the race it asks for.
 func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects(), Options: b.GetOptions()}})
 	if p := b.GetPrerequisite(); p != nil {
+		asked := len(p.Races) > 0 || p.GetRaceKey() != ""
 		if v.hidden(p.GetRaceKey()) {
 			p.RaceKey = "" // a race or subrace the players do not see is not named to them
 		}
 		p.Races = v.visible(p.Races)
+		p.RacesHidden = asked && p.GetRaceKey() == "" && len(p.Races) == 0
 		if v.hidden(p.GetLacksFeatureKey()) {
 			p.LacksFeatureKey = "" // nor a feature the players do not see
 			p.LacksHidden = true

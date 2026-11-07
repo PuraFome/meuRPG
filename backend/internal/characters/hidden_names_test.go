@@ -158,6 +158,15 @@ func TestAPlayersCopyOfAFeatNamesNoHiddenEntry(t *testing.T) {
 			t.Errorf("the master's condition of %s = %v, want the key, not hidden", key, p)
 		}
 	}
+	// The name of a lacked feature the player reads comes from the server, never a key; the master reads it too.
+	for _, key := range []string{tb.lacksTrait, tb.lacksFeat, tb.mixed} {
+		if p := lacks(player, key); p.GetLacksFeatureNamePt() != "" || p.GetRacesHidden() {
+			t.Errorf("the player's condition of %s names the hidden feature or marks races: %v", key, p)
+		}
+		if p := lacks(master, key); p.GetLacksFeatureNamePt() == "" || p.GetRacesHidden() {
+			t.Errorf("the master's condition of %s = %v, want the name and no races mark", key, p)
+		}
+	}
 	if p := lacks(player, tb.open); p.GetLacksHidden() {
 		t.Errorf("a feat with no condition reads as hidden: %v", p)
 	}
@@ -255,5 +264,57 @@ func TestASwitchedOffOptionIsNotNamedToAFighterWhoNeverPickedIt(t *testing.T) {
 	wantNames(t, "the fighter's options", player, false, name, stem)
 	if optionOf(player, feat) == nil {
 		t.Error("the fighter is not offered the feat that asks to lack the option")
+	}
+}
+
+// A feature the player may read is named in Portuguese on the feat's read, for the master and the player alike.
+func TestAFeatNamesAVisibleLackedFeatureOnRead(t *testing.T) {
+	t.Parallel()
+	tb := newHiddenNamesTable(t)
+	key := tb.master.addEntry(t, tb.campaign, &rulesv1.TableFeat{
+		NamePt: "Sem agarrar", DescPt: []string{"Texto."},
+		Prerequisite: &rulesv1.FeatPrerequisite{LacksFeatureKey: "feat:grappler", LacksFeatureNamePt: "Gravado"},
+	}).GetKey()
+	for who, u := range map[string]*user{"master": tb.master, "player": tb.owner} {
+		p := u.entries(t, tb.campaign)[key].GetTableFeat().GetPrerequisite()
+		if p.GetLacksFeatureKey() != "feat:grappler" || p.GetLacksFeatureNamePt() == "" || p.GetLacksFeatureNamePt() == "Gravado" || p.GetLacksHidden() {
+			t.Errorf("the %s's condition = %v, want the key and the server's name", who, p)
+		}
+	}
+	// The name is a read-only field: what the master sent is not stored.
+	if got := tb.master.entries(t, tb.campaign)[key].GetTableFeat().GetPrerequisite().GetLacksFeatureNamePt(); got == "Gravado" {
+		t.Errorf("the stored name leaked back: %q", got)
+	}
+}
+
+// races_hidden is the player's mark: set when no asked race is left after the filter, never for the one shown.
+func TestStripFeatMarksRacesHiddenOnlyWhenNoneIsLeft(t *testing.T) {
+	t.Parallel()
+	hidden := func(k string) bool { return k == "race:oculta@mesa" || k == "race:outra@mesa" }
+	for name, tc := range map[string]struct {
+		in   *rulesv1.FeatPrerequisite
+		want bool
+	}{
+		"the single race hidden":                     {&rulesv1.FeatPrerequisite{RaceKey: "race:oculta@mesa"}, true},
+		"every listed race hidden":                   {&rulesv1.FeatPrerequisite{Races: []string{"race:oculta@mesa", "race:outra@mesa"}}, true},
+		"one listed race shown":                      {&rulesv1.FeatPrerequisite{Races: []string{"race:oculta@mesa", "race:elf"}}, false},
+		"no race asked":                              {&rulesv1.FeatPrerequisite{Level: 3}, false},
+		"the single race hidden, a shown one listed": {&rulesv1.FeatPrerequisite{RaceKey: "race:oculta@mesa", Races: []string{"race:elf"}}, false},
+	} {
+		feat := &rulesv1.TableFeat{NamePt: "T", Prerequisite: tc.in}
+		playerView{hidden: hidden}.stripFeat(feat)
+		if got := feat.GetPrerequisite().GetRacesHidden(); got != tc.want {
+			t.Errorf("%s: races_hidden = %v, want %v", name, got, tc.want)
+		}
+	}
+}
+
+// What only a read sets is zeroed on a write and on a pack's import.
+func TestReadMarksAreZeroedOnWrite(t *testing.T) {
+	t.Parallel()
+	feat := &rulesv1.TableFeat{Prerequisite: &rulesv1.FeatPrerequisite{LacksHidden: true, RacesHidden: true, LacksFeatureNamePt: "X", Level: 2}}
+	clearReadMarks(feat)
+	if p := feat.GetPrerequisite(); p.GetLacksHidden() || p.GetRacesHidden() || p.GetLacksFeatureNamePt() != "" || p.GetLevel() != 2 {
+		t.Errorf("after clearReadMarks: %v", p)
 	}
 }
