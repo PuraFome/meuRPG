@@ -364,8 +364,9 @@ type GetTableScreenResponse struct {
 	// Every item the master can pick, with whether it can be picked now.
 	Options []*TableScreenOption `protobuf:"bytes,8,rep,name=options,proto3" json:"options,omitempty"`
 	// Whether a TV tab is connected, for the master's panel. Counted in memory by this server instance, like
-	// the live streams: with more than one instance it is the share this instance holds. Only the master
-	// reads it. The panel keeps it current with WatchGameSession's table_screen_changed.
+	// the live streams: with more than one instance it is the share this instance holds. A connection
+	// that died stays counted until the next failed heartbeat or recheck of its stream (up to about 25
+	// seconds). Only the master reads it. The panel keeps it current with WatchGameSession's table_screen_changed.
 	Presence      *TableScreenPresence `protobuf:"bytes,9,opt,name=presence,proto3" json:"presence,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -470,7 +471,7 @@ type TableScreenPresence struct {
 	// True while at least one TV tab holds a stream ("Aberta").
 	Open bool `protobuf:"varint,1,opt,name=open,proto3" json:"open,omitempty"`
 	// When the last TV tab lost its stream ("Sem conexão desde 21:14"). Set only when a TV tab was
-	// connected since this instance started and none is now; unset otherwise.
+	// connected to the open session on this instance and none is now; unset otherwise.
 	LostAt        *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=lost_at,json=lostAt,proto3" json:"lost_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

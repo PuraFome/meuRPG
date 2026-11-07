@@ -147,8 +147,9 @@ message GetTableScreenResponse {
   // Every item the master can pick, with whether it can be picked now.
   repeated TableScreenOption options = 8;
   // Whether a TV tab is connected, for the master's panel. Counted in memory by this server instance, like
-  // the live streams: with more than one instance it is the share this instance holds. Only the master
-  // reads it. The panel keeps it current with WatchGameSession's table_screen_changed.
+  // the live streams: with more than one instance it is the share this instance holds. A connection
+  // that died stays counted until the next failed heartbeat or recheck of its stream (up to about 25
+  // seconds). Only the master reads it. The panel keeps it current with WatchGameSession's table_screen_changed.
   TableScreenPresence presence = 9;
 }
 
@@ -157,7 +158,7 @@ message TableScreenPresence {
   // True while at least one TV tab holds a stream ("Aberta").
   bool open = 1;
   // When the last TV tab lost its stream ("Sem conexão desde 21:14"). Set only when a TV tab was
-  // connected since this instance started and none is now; unset otherwise.
+  // connected to the open session on this instance and none is now; unset otherwise.
   google.protobuf.Timestamp lost_at = 2;
 }
 

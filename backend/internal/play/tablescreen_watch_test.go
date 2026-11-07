@@ -14,6 +14,8 @@ import (
 
 // The TV tab's stream. The tests that open a stream need the database (MEURPG_TEST_DATABASE_URL).
 
+// Tests that use harness.screenLeft run one stream rig each and never share it.
+
 // screenClock stands in for the pause between two `changed` events: a test fires it by hand.
 type screenClock struct{ waits chan chan time.Time }
 
@@ -184,10 +186,18 @@ func TestWatchTableScreenCoalescesABurst(t *testing.T) {
 	tv.ready(t)
 	const burst = 12
 	for range burst {
-		a.h.svc.hub.Publish(a.campaignID, live.Event{Audience: live.Audience{Master: true}, Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_Heartbeat_{Heartbeat: &playv1.WatchGameSessionResponse_Heartbeat{}}}})
+		a.publishMasterEvent()
 	}
-	// Nothing is sent until the wait ends.
-	first := <-clock.waits
+	var first chan time.Time
+	select {
+	case first = <-clock.waits:
+	case <-time.After(waitLimit):
+		t.Fatal("no wait started for the burst")
+	}
+	// While that wait is open, no event starts another, and nothing is sent.
+	if n := len(clock.waits); n != 0 {
+		t.Errorf("waits started by a burst of %d events = %d more, want none", burst, n)
+	}
 	select {
 	case ev := <-tv.events:
 		t.Fatalf("event %v before the wait ended", ev)
@@ -195,13 +205,12 @@ func TestWatchTableScreenCoalescesABurst(t *testing.T) {
 	}
 	first <- time.Now()
 	tv.changed(t)
-	// The last event is followed by a `changed`.
+	// The trailing edge (an event after a send is followed by its own `changed`) is TestChangedGateWaitsOncePerBurst's.
+}
+
+// publishMasterEvent publishes an event of the master's audience that carries nothing the TV may read.
+func (a *armed) publishMasterEvent() {
 	a.h.svc.hub.Publish(a.campaignID, live.Event{Audience: live.Audience{Master: true}, Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_Heartbeat_{Heartbeat: &playv1.WatchGameSessionResponse_Heartbeat{}}}})
-	clock.fire(t)
-	tv.changed(t)
-	if got := len(clock.waits); got >= burst {
-		t.Errorf("%d waits left after a burst of %d events, want fewer", got, burst)
-	}
 }
 
 func TestChangedGateWaitsOncePerBurst(t *testing.T) {
@@ -287,21 +296,53 @@ func TestWatchTableScreenPresenceReachesTheMastersStreamAlone(t *testing.T) {
 	}
 }
 
-// The TV tab's own coming and going does not start a `changed`.
-func TestWatchTableScreenPresenceDoesNotLoopBack(t *testing.T) {
+// The presence messages skip the TV streams: a stream's own coming and going would otherwise start a
+// `changed`. Delivery to the hub is synchronous, so the TV stream's queue is read right after.
+func TestPresenceDoesNotReachTVStreams(t *testing.T) {
 	t.Parallel()
-	a, clock := armedWithClock(t)
+	a := newArmed(t)
+	svc, id := a.h.svc, a.master.liveSession(t, a.campaignID).GetGameSession().GetId()
+	screen, err := svc.hub.Subscribe(a.campaignID, live.Subscriber{UserID: "tv:probe", Master: true, Screen: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := svc.hub.Subscribe(a.campaignID, live.Subscriber{UserID: "probe", Master: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc.screenJoined(a.campaignID, id, 0) // 0 -> 1
+	svc.screenJoined(a.campaignID, id, 0) // 1 -> 2: publishes nothing
+	svc.screenLeft(t.Context(), a.campaignID, id, 0)
+	svc.screenLeft(t.Context(), a.campaignID, id, 0) // 1 -> 0
+	if got := len(screen.Events()); got != 0 {
+		t.Errorf("the TV stream was sent %d presence messages, want none", got)
+	}
+	if got := len(session.Events()); got != 2 {
+		t.Errorf("the master's session stream was sent %d presence messages, want 2 (opened, lost)", got)
+	}
+}
+
+// A session that ends leaves nothing lost, and the next session starts with no TV and no loss.
+func TestWatchTableScreenForgetsAnEndedSession(t *testing.T) {
+	t.Parallel()
+	a, _ := armedWithClock(t)
 	tv := a.watchScreen(t, a.master)
 	tv.ready(t)
-	other := a.watchScreen(t, a.master)
-	other.ready(t)
-	other.leave(t)
-	// A message of the master's own that follows starts the one wait; none started before it.
-	a.h.svc.hub.Publish(a.campaignID, live.Event{Audience: live.Audience{Master: true}, Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_Heartbeat_{Heartbeat: &playv1.WatchGameSessionResponse_Heartbeat{}}}})
-	clock.fire(t)
-	tv.changed(t)
-	if n := len(clock.waits); n != 0 {
-		t.Errorf("waits after a tab connected, left and one event = %d, want only the event's", n)
+	session := a.master.liveSession(t, a.campaignID).GetGameSession()
+	a.master.end(t, session)
+	if err := tv.end(t); err != nil {
+		t.Fatalf("stream after the session ended: error = %v", err)
+	}
+	tv.wasUncounted(t)
+	a.h.svc.screens.mu.Lock()
+	kept := len(a.h.svc.screens.by)
+	a.h.svc.screens.mu.Unlock()
+	if kept != 0 {
+		t.Errorf("counts kept for an ended session = %d, want none", kept)
+	}
+	a.master.start(t, a.campaignID)
+	if p := a.mustGetScreen(t).GetPresence(); p.GetOpen() || p.GetLostAt() != nil {
+		t.Errorf("presence of the new session = %v, want closed and no loss", p)
 	}
 }
 

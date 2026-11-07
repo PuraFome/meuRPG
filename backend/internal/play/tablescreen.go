@@ -79,7 +79,7 @@ func (s *Service) GetTableScreen(
 		SessionNumber:  session.SessionNumber,
 		Party:          party,
 		Options:        tvOptions(facts),
-		Presence:       s.screens.snapshot(m.CampaignID),
+		Presence:       s.screens.snapshot(m.CampaignID, session.ID),
 	}), nil
 }
 

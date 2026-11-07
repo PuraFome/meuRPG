@@ -2,10 +2,12 @@ package play
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -41,8 +43,8 @@ func (s *Service) WatchTableScreen(
 	if err != nil {
 		return err
 	}
-	defer s.screenLeft(m.CampaignID, session.TvChoiceRevision)
-	s.screenJoined(m.CampaignID, session.TvChoiceRevision)
+	defer s.screenLeft(ctx, m.CampaignID, session.ID, session.TvChoiceRevision)
+	s.screenJoined(m.CampaignID, session.ID, session.TvChoiceRevision)
 	if stream.Send(&playv1.WatchTableScreenResponse{Event: &playv1.WatchTableScreenResponse_Ready_{Ready: &playv1.WatchTableScreenResponse_Ready{}}}) != nil {
 		return nil // the tab went away
 	}
@@ -109,7 +111,8 @@ func screenHubEvent(sub *live.Subscription, ev live.Event, ok bool, sessionID st
 
 // endsSession says whether ev is the end of the session the stream watches.
 func endsSession(ev live.Event, sessionID string) bool {
-	return ev.Message.GetSessionEnded().GetGameSession().GetId() == sessionID && ev.Message.GetSessionEnded() != nil
+	ended := ev.Message.GetSessionEnded()
+	return ended != nil && ended.GetGameSession().GetId() == sessionID
 }
 
 // changedGate coalesces the events of a TV stream into at most one `changed` per interval. The first
@@ -132,9 +135,10 @@ func (g *changedGate) hit() {
 // sent records that the `changed` was sent, so the next event starts a new wait.
 func (g *changedGate) sent() { g.due = nil }
 
-// tvPresence counts the TV streams of each campaign on this instance. A connection is not data: the
-// count is in memory, like the hub, so with more than one instance a campaign's count is the share
-// that this instance holds.
+// tvPresence counts the TV streams of each campaign on this instance.
+// A connection is not data: the count is in memory, like the hub.
+// With more than one instance, a campaign's count is the share this instance holds.
+// A dead connection stays counted until the next failed heartbeat send or the recheck.
 type tvPresence struct {
 	// mu orders the count and the message it causes: both happen under it, so the messages of two
 	// changes reach the hub in the order the changes were made.
@@ -144,18 +148,19 @@ type tvPresence struct {
 	afterLeft func()
 }
 
-// tvCount is one campaign's TV streams, and when the last one left.
+// tvCount is one campaign's TV streams of one session, and when the last one left.
 type tvCount struct {
-	open   int
-	lostAt time.Time // zero until a TV was connected and no longer is
+	sessionID string
+	open      int
+	lostAt    time.Time // zero until a TV was connected and no longer is
 }
 
-// snapshot is the presence the master's panel loads with GetTableScreen.
-func (p *tvPresence) snapshot(campaignID string) *playv1.TableScreenPresence {
+// snapshot is the presence of the open session the master's panel loads with GetTableScreen.
+func (p *tvPresence) snapshot(campaignID, sessionID string) *playv1.TableScreenPresence {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	c := p.by[campaignID]
-	if c == nil {
+	if c == nil || c.sessionID != sessionID {
 		return &playv1.TableScreenPresence{}
 	}
 	res := &playv1.TableScreenPresence{Open: c.open > 0}
@@ -165,52 +170,62 @@ func (p *tvPresence) snapshot(campaignID string) *playv1.TableScreenPresence {
 	return res
 }
 
-// screenJoined counts a TV stream; the first one tells the master's streams.
-func (s *Service) screenJoined(campaignID string, revision int32) {
+// screenJoined counts a TV stream of the session; the first one tells the master's streams. A stream of
+// another session than the one counted starts a new count: what was lost with the old session is forgotten.
+func (s *Service) screenJoined(campaignID, sessionID string, revision int32) {
 	p := &s.screens
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	c := p.count(campaignID)
+	if p.by == nil {
+		p.by = map[string]*tvCount{}
+	}
+	c := p.by[campaignID]
+	if c == nil || c.sessionID != sessionID {
+		c = &tvCount{sessionID: sessionID}
+		p.by[campaignID] = c
+	}
 	c.open++
 	if c.open == 1 {
 		s.publishPresence(campaignID, revision, &playv1.WatchGameSessionResponse_TableScreenChanged{Open: true})
 	}
 }
 
-// screenLeft uncounts a TV stream; the last one tells the master's streams when it was lost. The
-// revision is the stored one, read again (the stream's own ctx may be over); known is the one the stream
-// started with, for when the row cannot be read.
-func (s *Service) screenLeft(campaignID string, known int32) {
-	revision := known
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+// screenLeft uncounts a TV stream of the session. The last one tells the master's streams when it was
+// lost, unless the session is over: then nothing was lost and the count is dropped.
+// The stored revision is read again, with the stream's ctx kept for its logger but not its cancellation;
+// known is the one the stream started with, for when the row cannot be read.
+// A SetTableScreen between that read and the message can leave the message's choice_revision one behind;
+// the panel then reads the newer one from the choice's own event.
+func (s *Service) screenLeft(ctx context.Context, campaignID, sessionID string, known int32) {
+	revision, over := known, false
+	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Second)
 	defer cancel()
-	if session, err := s.queries.GetOpenGameSession(ctx, campaignID); err == nil {
-		revision = session.TvChoiceRevision
+	current, err := s.queries.GetOpenGameSession(rctx, campaignID)
+	switch {
+	case err == nil:
+		revision, over = current.TvChoiceRevision, current.ID != sessionID
+	case errors.Is(err, pgx.ErrNoRows):
+		over = true
+	default:
+		s.logger.WarnContext(ctx, "play: cannot read the choice revision for the table screen presence", "error", err)
 	}
 	p := &s.screens
 	p.mu.Lock()
-	c := p.count(campaignID)
-	c.open--
-	if c.open == 0 {
-		c.lostAt = s.now()
-		s.publishPresence(campaignID, revision, &playv1.WatchGameSessionResponse_TableScreenChanged{LostAt: timestamppb.New(c.lostAt)})
+	if c := p.by[campaignID]; c != nil && c.sessionID == sessionID {
+		c.open--
+		switch {
+		case c.open > 0:
+		case over:
+			delete(p.by, campaignID)
+		default:
+			c.lostAt = s.now()
+			s.publishPresence(campaignID, revision, &playv1.WatchGameSessionResponse_TableScreenChanged{LostAt: timestamppb.New(c.lostAt)})
+		}
 	}
 	p.mu.Unlock()
 	if p.afterLeft != nil {
 		p.afterLeft()
 	}
-}
-
-func (p *tvPresence) count(campaignID string) *tvCount {
-	if p.by == nil {
-		p.by = map[string]*tvCount{}
-	}
-	c := p.by[campaignID]
-	if c == nil {
-		c = &tvCount{}
-		p.by[campaignID] = c
-	}
-	return c
 }
 
 // publishPresence tells the master's session streams that a TV tab connected or left. The TV streams
