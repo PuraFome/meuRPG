@@ -113,6 +113,14 @@ function legendaryOf(c: Combatant) {
   return l && l.options.length > 0 ? l : null;
 }
 
+/** Under the name: the attack's numbers as the server wrote them, or that the master settles a text option himself. */
+function detailOf(action: LegendaryAction, attackDetail: string): string {
+  if (action === 'attack') {
+    return attackDetail;
+  }
+  return action === 'spend' ? 'Você resolve: o app só conta o gasto.' : '';
+}
+
 function rowOf(
   o: NonNullable<Combatant['legendary']>['options'][number],
   left: number,
@@ -129,7 +137,7 @@ function rowOf(
     buttonLabel: action === 'attack' ? 'Atacar' : 'Usar',
     action,
     attackKey: action === 'attack' ? o.attackKey : '',
-    detail: action === 'spend' ? 'Você resolve: o app só conta o gasto.' : '',
+    detail: detailOf(action, o.attackDetailPt),
     // The server says whether the cost fits (`affordable`); the cost is only spelled out when it is the reason.
     disabled: unusable !== '' || !o.affordable,
     reason:

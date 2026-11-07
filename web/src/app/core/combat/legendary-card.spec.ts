@@ -36,6 +36,7 @@ const options = [
     text: 'x',
     affordable: true,
     attackKey: 'm#tail',
+    attackDetailPt: 'Cauda: +14 · 2d8 + 8 de concussão · alcance 4,5 m',
   },
   {
     key: 'wing',
@@ -98,6 +99,9 @@ describe("the master's legendary actions card", () => {
     ]);
     expect(rows[1].attackKey).toBe('m#tail');
     expect(rows[0].detail).toBe('Você resolve: o app só conta o gasto.');
+    // An attack row wears the server's numbers; a move row says nothing under its name.
+    expect(rows[1].detail).toBe('Cauda: +14 · 2d8 + 8 de concussão · alcance 4,5 m');
+    expect(rows[2].detail).toBe('');
   });
 
   it('turns off the option that costs more than what is left, and says so', () => {
