@@ -303,3 +303,56 @@ func TestStartEncounterTellsTheCurrentMapOnceAndStampsTheNumber(t *testing.T) {
 		t.Errorf("the master heard the current map %d times, want 1", maps)
 	}
 }
+
+// RED before the replay of the forced moves: a Thunderwave pushed Goblin 1 and the first call's sends were lost; the repeat of
+// its key tells the push again, to the master, from the hits the stored event keeps.
+func TestCastReplayTellsTheForcedMoveAgain(t *testing.T) {
+	t.Parallel()
+	c := newAreaCave(t)
+	c.waveFight(t, [2]int32{17, 7}, [2]int32{18, 7})
+	key := newKey()
+	cast := func() {
+		t.Helper()
+		c.mustCastArea(t, c.ana, "Pensantus", thunderwave, slotOfLevel(1), nil, toward(1, 0), func(r *playv1.CastSpellRequest) { r.IdempotencyKey = key })
+	}
+	cast() // nobody listens: the first call's sends are lost
+	master := listen(t, c.h, c.campaignID, c.master.id, true)
+	ana := listen(t, c.h, c.campaignID, c.ana.id, false)
+	cast()
+
+	goblin := c.id(t, "Goblin 1")
+	for name, s := range map[string]heardBy{"master": master, "Pensantus's player": ana} {
+		var moved []string
+		for _, ev := range s.heard(t, c.h) {
+			if m := ev.GetCombatantMoved(); m != nil {
+				moved = append(moved, fmt.Sprintf("%s@%d,%d", m.GetCombatantId(), m.GetCol(), m.GetRow()))
+			}
+		}
+		if want := []string{fmt.Sprintf("%s@20,7", goblin)}; !slices.Equal(moved, want) {
+			t.Errorf("%s heard the moves %v on the repeat, want %v", name, moved, want)
+		}
+	}
+}
+
+// On a repeat, a player who owns nothing in it hears no master-only cast change and nobody else's vitals.
+func TestWriteReplayKeepsTheMasterOnlyHintsFromOtherPlayers(t *testing.T) {
+	t.Parallel()
+	x := newCoreFixture(t)
+	key := newKey()
+	if _, err := x.writeThatTells(t, key); err != nil {
+		t.Fatalf("write() error = %v", err)
+	}
+	// Bia's player owns Brisa; the change the first call made was about Toren.
+	bia := listen(t, x.h, x.campaignID, x.bia.id, false)
+	if _, err := x.writeThatTells(t, key); err != nil {
+		t.Fatalf("repeated write() error = %v", err)
+	}
+	for _, ev := range bia.heard(t, x.h) {
+		switch {
+		case ev.GetSpellCastsChanged() != nil:
+			t.Error("a player heard the master-only cast change on a repeat")
+		case ev.GetVitalsChanged() != nil && ev.GetVitalsChanged().GetVitals().GetCharacterId() != x.bri.GetId():
+			t.Errorf("a player heard the vitals of %s on a repeat", ev.GetVitalsChanged().GetVitals().GetCharacterId())
+		}
+	}
+}

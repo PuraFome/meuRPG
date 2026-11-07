@@ -884,11 +884,18 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 
 // publishRetried is what a retry of a committed change tells the streams: the
 // combat changed and its log did, to the players only when the first call's
-// event was not one a hidden combatant is in.
+// event was not one a hidden combatant is in. It tells the forced moves the stored event made again.
 func (s *Service) publishRetried(ctx context.Context, campaignID string, res combatResult, d *encounterData) {
 	ev, err := readEvent(res.payload)
 	s.publishEncounterChanged(ctx, campaignID, d.enc)
 	s.publishLogChange(ctx, campaignID, d.enc.ID, err == nil && !ev.Secret, err == nil && ev.Undone != "") // a retried undo rewrote the log too
+	if err == nil {                                                                                        // the forced moves the stored event made: the first call may have died before it told them
+		moves := pushesOf(ev.Hits)
+		if ev.Rider != nil {
+			moves = append(moves, ev.Rider.Pushed)
+		}
+		s.publishPushed(ctx, campaignID, d, moves)
+	}
 }
 
 // changed is the usual publish: a hint that the combat changed.
