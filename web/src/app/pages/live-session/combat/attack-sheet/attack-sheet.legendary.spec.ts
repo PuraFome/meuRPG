@@ -66,6 +66,8 @@ describe("AttackSheet: the master's legendary attack (#557)", () => {
     option: 'tail',
     title: 'Cauda · ação lendária',
     subtitle: 'Dragão vermelho adulto · custa 1 de 2 restantes',
+    cost: 1,
+    label: 'Dragão vermelho adulto',
   };
 
   it('wears the option\'s title and what it costs instead of "Atacar com"', () => {
@@ -101,5 +103,29 @@ describe("AttackSheet: the master's legendary attack (#557)", () => {
     sheet.s.targetId.set('b');
     await sheet.rollAttack({ inApp: true });
     expect(rollAttack.mock.calls[0][11]).toMatchObject({ legendaryOption: '' });
+  });
+
+  it('says what the attack cost when it is done, not that the action was used', () => {
+    const spent = (l: AttackSheetData['legendary']) =>
+      (open(l).componentInstance as unknown as { spent(): string }).spent();
+    expect(spent(legendary)).toBe(
+      'Custou 1 ação lendária; a vez de Dragão vermelho adulto não foi gasta.',
+    );
+    expect(spent({ ...legendary, cost: 2 })).toBe(
+      'Custou 2 ações lendárias; a vez de Dragão vermelho adulto não foi gasta.',
+    );
+    expect(spent(undefined)).toBe('Sua ação foi usada.');
+  });
+
+  it('shows that note on the done stage of the sheet', () => {
+    const fixture = open(legendary);
+    const sheet = fixture.componentInstance as unknown as {
+      s: { stage: { set(v: unknown): void } };
+    };
+    sheet.s.stage.set('done');
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Custou 1 ação lendária');
+    expect(text).not.toContain('Sua ação foi usada');
   });
 });

@@ -223,10 +223,17 @@ export class MoveFlow {
     this.overAsk.set(null);
     this.overDrag = null;
     // The box is for this drag only; a refusal gives it back. "Mover mesmo assim" forces this one drag too.
-    const forced = forceNow || this.forcedMove();
+    // A legendary move is a walk, never a forced one: the armed option is taken now (a second drop before the answer finds
+    // nothing armed and cannot charge it twice) and given back if the server refuses; the "Movimento forçado" box waits.
     const armed = this.legendaryMove();
-    const legendary = armed?.combatantId === c.id ? armed.optionKey : '';
-    this.forcedMove.set(false);
+    const legendary = !forceNow && armed?.combatantId === c.id ? armed.optionKey : '';
+    if (legendary) {
+      this.legendaryMove.set(null);
+    }
+    const forced = !legendary && (forceNow || this.forcedMove());
+    if (!legendary) {
+      this.forcedMove.set(false);
+    }
     this.forcedNote.set('');
     this.ctx
       .state()
@@ -252,9 +259,6 @@ export class MoveFlow {
             legendary,
           );
           this.ctx.state().apply(res.encounter);
-          if (legendary) {
-            this.legendaryMove.set(null);
-          }
           if (forced) {
             this.forcedNote.set(
               `${c.label} foi mov${article(c.label) === 'a' ? 'ida' : 'ido'} à força. Ninguém recebeu oferta de ataque de oportunidade.`,
@@ -263,6 +267,9 @@ export class MoveFlow {
           this.sayStopped(res);
         },
         failed: (saved, err) => {
+          if (legendary) {
+            this.legendaryMove.set({ combatantId: c.id, optionKey: legendary });
+          }
           if (forced && !forceNow) {
             this.forcedMove.set(true);
           }
@@ -272,7 +279,7 @@ export class MoveFlow {
             col: saved.xBp,
             row: saved.yBp,
           });
-          if (!forced && this.askAboutDistance(c, drop, err)) {
+          if (!forced && !legendary && this.askAboutDistance(c, drop, err)) {
             return;
           }
           calls.error.set(combatErrorMessage(err, 'mover o token'));

@@ -51,17 +51,20 @@ export interface LegendaryPick {
       <app-legendary-card
         [card]="card"
         [folded]="isFolded(card.combatantId)"
-        [sending]="sending()?.combatantId === card.combatantId ? sending()!.key : ''"
+        [sending]="sendingKey(card.combatantId)"
+        [busy]="busy()"
         [failure]="failures()[card.combatantId] ?? null"
-        [spentLine]="spentLine(card.combatantId)"
+        [spentLine]="spentOf(card.combatantId).line"
+        [spentId]="spentOf(card.combatantId).id"
         [undoing]="undoing()"
         [armed]="armed()?.combatantId === card.combatantId ? armed()!.optionKey : ''"
+        [mapElsewhere]="mapElsewhere()"
         [theatre]="theatre()"
         (fold)="setFolded(card.combatantId, true)"
         (unfold)="setFolded(card.combatantId, false)"
         (use)="pick(card.combatantId, $event)"
         (retry)="retry(card.combatantId)"
-        (undo)="undo()"
+        (undo)="undo(card.combatantId, $event)"
         (cancelMove)="cancelMove.emit()"
       />
     }
@@ -81,7 +84,8 @@ export interface LegendaryPick {
 export class LegendaryOffers {
   private readonly api = inject(CombatClient);
   private readonly undone = inject(CombatUndone);
-  private readonly keys = new ActionKey();
+  /** A key for each (creature, option): a retry of that spend keeps it, whatever was spent in between. */
+  private readonly keys = new Map<string, ActionKey>();
 
   readonly encounter = input.required<Encounter>();
   readonly campaignId = input.required<string>();
@@ -91,6 +95,10 @@ export class LegendaryOffers {
   readonly names = input<LegendaryNames | undefined>(undefined);
   readonly theatre = input(false);
   readonly armed = input<ArmedMove | null>(null);
+  /** The attack sheet of a creature's option is being opened (`GetTurnOptions` in the air): the rows wait for it. */
+  readonly opening = input<{ combatantId: string; key: string } | null>(null);
+  /** On a phone the map is another tab than this card's: the armed move says where to drag. */
+  readonly mapElsewhere = input(false);
 
   /** "Atacar": the page opens the attack sheet of the creature with the option. */
   readonly attack = output<LegendaryPick>();
@@ -102,6 +110,8 @@ export class LegendaryOffers {
   protected readonly sending = signal<{ combatantId: string; key: string } | null>(null);
   protected readonly failures = signal<Readonly<Record<string, LegendaryFailure | undefined>>>({});
   protected readonly undoing = signal(false);
+  /** One answer at a time on the whole screen: a spend, or an attack sheet being opened. */
+  protected readonly busy = computed(() => !!this.sending() || !!this.opening());
   /** The turn the cards were folded on, and which ones: a new turn opens them all again. */
   private readonly foldedOn = signal<{ turn: string; ids: ReadonlySet<string> }>({
     turn: '',
@@ -131,13 +141,34 @@ export class LegendaryOffers {
     this.foldedOn.set({ turn: this.turn(), ids });
   }
 
-  /** The line of the last spend, under the card of the creature that made it, while the log says it can be undone. */
-  protected spentLine(id: string): string {
+  /** The row in the air on this card (a spend, or the attack sheet opening), by its key, or `''`. */
+  protected sendingKey(id: string): string {
+    const s = this.sending() ?? this.opening();
+    return s?.combatantId === id ? s.key : '';
+  }
+
+  /** The line of the last spend, under the card of the creature that made it, while the log says it can be undone, and the
+   * log event it is: the undo takes back that one, whatever the log says by the time it is tapped. */
+  protected spentOf(id: string): { line: string; id: string } {
     const entry = this.log().undoable();
-    return entry?.actorId === id ? legendarySpentLine(entry, this.names()) : '';
+    const line = entry?.actorId === id ? legendarySpentLine(entry, this.names()) : '';
+    return { line, id: line && entry ? entry.id : '' };
+  }
+
+  private keyOf(combatantId: string, option: string): ActionKey {
+    const id = `${this.encounter().id}/${combatantId}/${option}`;
+    let key = this.keys.get(id);
+    if (!key) {
+      key = new ActionKey();
+      this.keys.set(id, key);
+    }
+    return key;
   }
 
   protected pick(combatantId: string, row: LegendaryRow): Promise<void> {
+    if (this.busy()) {
+      return Promise.resolve();
+    }
     this.setFailure(combatantId, null);
     if (row.action === 'attack') {
       this.attack.emit({ combatantId, row });
@@ -158,10 +189,11 @@ export class LegendaryOffers {
 
   /** The same option again after a lost answer is a retry: it keeps its key, so the cost is not charged twice. */
   private async spend(combatantId: string, row: LegendaryRow): Promise<void> {
-    if (this.sending()) {
+    if (this.busy()) {
       return;
     }
     const e = this.encounter();
+    const key = this.keyOf(combatantId, row.key);
     this.sending.set({ combatantId, key: row.key });
     this.setFailure(combatantId, null);
     try {
@@ -170,20 +202,26 @@ export class LegendaryOffers {
         e.id,
         combatantId,
         row.key,
-        this.keys.keyFor({ encounter: e.id, combatantId, option: row.key }),
+        key.keyFor({ encounter: e.id, combatantId, option: row.key }),
       );
-      this.keys.renew();
+      key.renew();
       this.state().apply(next);
     } catch (err) {
-      this.setFailure(combatantId, offerFailure(err, 'usar a ação lendária'));
+      const failure = offerFailure(err, 'usar a ação lendária');
+      this.setFailure(combatantId, failure);
+      if (!failure.connection) {
+        // A refusal is an answer: the next try is a new spend, and the card may be stale.
+        key.renew();
+        await this.refresh(err);
+      }
     } finally {
       this.sending.set(null);
     }
   }
 
   /** "Desfazer última ação": the log's own undo, so the cost goes back with the line. */
-  protected async undo(): Promise<void> {
-    const id = this.log().undoableId();
+  protected async undo(combatantId: string, eventId: string): Promise<void> {
+    const id = eventId || this.log().undoableId();
     if (!id || this.undoing()) {
       return;
     }
@@ -192,15 +230,29 @@ export class LegendaryOffers {
       this.state().apply(await this.api.turn.undo(this.campaignId(), this.encounter().id, id));
       this.undone.mark();
     } catch (err) {
-      const who = this.log().undoable()?.actorId ?? '';
       this.setFailure(
-        who,
+        combatantId,
         ConnectError.from(err).code === Code.Aborted
           ? { text: 'Outra ação aconteceu antes: confira o registro.', connection: false }
           : { text: combatErrorMessage(err, 'desfazer a ação'), connection: false },
       );
     } finally {
       this.undoing.set(false);
+    }
+  }
+
+  /** After a refusal the card may be out of date (the creature was defeated, the round moved on): the combat is read again. */
+  private async refresh(err: unknown): Promise<void> {
+    const code = ConnectError.from(err).code;
+    if (code !== Code.Aborted && code !== Code.FailedPrecondition && code !== Code.NotFound) {
+      return;
+    }
+    const state = this.state();
+    const ticket = state.beginRead();
+    try {
+      state.applyRead(ticket, await this.api.turn.get(this.campaignId()));
+    } catch {
+      // The stream's next `ready` reads it again.
     }
   }
 

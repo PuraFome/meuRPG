@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  Injector,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -8,6 +17,7 @@ import {
   legendaryFolded,
 } from '../../../../core/combat/legendary-card';
 import { CountPips } from '../../../../shared/count-pips/count-pips';
+import { focusInitial } from '../reaction-queue/offer-answer';
 
 /** What went wrong with the last answer of a card: no connection (the same answer is sent again) or a refusal. */
 export interface LegendaryFailure {
@@ -37,9 +47,15 @@ export class LegendaryCard {
   readonly failure = input<LegendaryFailure | null>(null);
   /** "Dragão vermelho adulto gastou 2 ações lendárias: Ataque de asas" while the last spend can be undone, else `''`. */
   readonly spentLine = input('');
+  /** The log event of that spend: the one "Desfazer última ação" takes back, as it was when the line was drawn. */
+  readonly spentId = input('');
+  /** Any answer of any card is in the air (a spend, or an attack sheet being opened): no row of any card can be tapped. */
+  readonly busy = input(false);
   readonly undoing = input(false);
   /** The key of the move option that waits for the token to be dragged on the map, or `''`. */
   readonly armed = input('');
+  /** On a phone the map is another tab: the armed line says where to drag. */
+  readonly mapElsewhere = input(false);
   /** The combat has no map: a legendary move needs squares, so a move row is off. */
   readonly theatre = input(false);
 
@@ -47,10 +63,26 @@ export class LegendaryCard {
   readonly unfold = output<void>();
   readonly use = output<LegendaryRow>();
   readonly retry = output<void>();
-  readonly undo = output<void>();
+  readonly undo = output<string>();
   readonly cancelMove = output<void>();
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
+
   protected readonly foldedText = (): string => legendaryFolded(this.card());
+
+  /** The spend line with the creature's label apart, to be set in bold (`['', line]` when it does not start with it). */
+  protected readonly spentParts = computed<readonly [string, string]>(() => {
+    const line = this.spentLine();
+    const title = this.card().title;
+    return line.startsWith(title) ? [title, line.slice(title.length)] : ['', line];
+  });
+
+  /** "Agora não" and "Abrir": the card redraws as the other state, so the focus goes to the button that undoes it. */
+  protected toggleFold(on: boolean): void {
+    (on ? this.fold : this.unfold).emit();
+    focusInitial(this.host.nativeElement, this.injector);
+  }
 
   /** A move without a map is off: there is no square to walk to. */
   protected reasonOf(row: LegendaryRow): string {

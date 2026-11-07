@@ -1,7 +1,7 @@
 @if (folded()) {
   <section class="offer offer--fold" [attr.aria-label]="'Ações lendárias: ' + card().title" data-testid="legendary-folded">
     <span class="offer__over"><mat-icon aria-hidden="true">crown</mat-icon>{{ foldedText() }}</span>
-    <button matButton="outlined" type="button" class="fold__btn" [attr.aria-label]="'Abrir as ações lendárias de ' + card().title" (click)="unfold.emit()">
+    <button matButton="outlined" type="button" class="toggleFold_btn" data-initial [attr.aria-label]="'Abrir as ações lendárias de ' + card().title" (click)="toggleFold(false)">
       <mat-icon aria-hidden="true">keyboard_arrow_down</mat-icon>Abrir
     </button>
   </section>
@@ -20,8 +20,9 @@
           matIconButton
           type="button"
           class="lcard__fold"
+          data-initial
           [attr.aria-label]="'Agora não: dobrar as ações lendárias de ' + card().title + ' até o próximo turno'"
-          (click)="fold.emit()"
+          (click)="toggleFold(true)"
         >
           <mat-icon aria-hidden="true">keyboard_arrow_up</mat-icon>
         </button>
@@ -38,10 +39,10 @@
       <div class="lcard__spent" role="status" data-testid="legendary-spent">
         <p class="lcard__spentline">
           <mat-icon aria-hidden="true">crown</mat-icon>
-          <span>{{ spentLine() }}</span>
+          <span>@if (spentParts()[0]) {<b>{{ spentParts()[0] }}</b>}{{ spentParts()[1] }}</span>
           <span class="lcard__only"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</span>
         </p>
-        <button matButton="outlined" type="button" class="btn" [disabled]="undoing()" (click)="undo.emit()">
+        <button matButton="outlined" type="button" class="btn" [disabled]="undoing()" (click)="undo.emit(spentId())">
           <mat-icon aria-hidden="true">undo</mat-icon>Desfazer última ação
         </button>
       </div>
@@ -69,12 +70,12 @@
               matButton="outlined"
               type="button"
               class="btn lrow__btn"
-              [class.btn--off]="offOf(row) || !!sending()"
-              [disabled]="offOf(row) || !!sending()"
+              [class.btn--off]="offOf(row) || busy()"
+              [disabled]="offOf(row) || busy()"
               disabledInteractive
               [attr.aria-describedby]="reasonOf(row) ? 'why-' + card().combatantId + '-' + row.key : null"
               [attr.aria-label]="labelOf(row) + ': ' + row.name"
-              (click)="!offOf(row) && !sending() && use.emit(row)"
+              (click)="!offOf(row) && !busy() && use.emit(row)"
             >
               <mat-icon aria-hidden="true">{{ iconOf(row) }}</mat-icon>{{ labelOf(row) }}
             </button>
@@ -82,10 +83,12 @@
         }
       </ul>
     }
-    @if (armed()) {
+    @if (armed() && !card().waiting && !card().unusable) {
       <p class="lcard__armed" role="status" data-testid="legendary-armed">
         <mat-icon aria-hidden="true">swipe</mat-icon>
-        <span>Arraste a ficha de {{ card().title }} no mapa para andar.</span>
+        <span>
+          @if (mapElsewhere()) {Abra a aba Mapa e arraste a ficha de {{ card().title }} para andar.} @else {Arraste a ficha de {{ card().title }} no mapa para andar.}
+        </span>
         <button matButton type="button" (click)="cancelMove.emit()">Cancelar</button>
       </p>
     }

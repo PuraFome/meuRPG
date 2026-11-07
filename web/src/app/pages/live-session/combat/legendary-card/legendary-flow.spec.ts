@@ -98,6 +98,8 @@ describe('the page side of the legendary cards (#557)', () => {
       option: 'tail',
       title: 'Ataque de cauda · ação lendária',
       subtitle: 'Dragão vermelho adulto · custa 1 de 2 restantes',
+      cost: 1,
+      label: 'Dragão vermelho adulto',
     });
     expect(attacks[0].asReaction).toBeUndefined();
   });
@@ -116,6 +118,24 @@ describe('the page side of the legendary cards (#557)', () => {
     await flow.attack(pick('tail'));
     expect(attacks).toHaveLength(0);
     expect(error()).not.toBe('');
+  });
+
+  it('keeps the same names object while nothing about them changes', () => {
+    const { flow, encounterSignal } = setup();
+    const before = flow.names();
+    encounterSignal.set(combat({ revision: 9 }));
+    TestBed.tick();
+    expect(flow.names()).toBe(before);
+  });
+
+  it('takes one tap at a time on an attack while its options are read', async () => {
+    const { flow, pick } = setup();
+    const first = flow.attack(pick('tail'));
+    expect(flow.opening()).toEqual({ combatantId: 'd', key: 'tail' });
+    await flow.attack(pick('tail'));
+    await first;
+    expect(turnOptions).toHaveBeenCalledTimes(1);
+    expect(flow.opening()).toBeNull();
   });
 
   it('arms the move of an option, and the next turn takes it back', () => {

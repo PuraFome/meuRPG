@@ -49,6 +49,7 @@ import {
   heldWait,
   outcomeOf,
   signedBonus,
+  legendarySpentText,
   spentText,
   withAllies,
 } from './attack-sheet-view';
@@ -203,17 +204,19 @@ export class AttackSheet {
   /** What the attack spent: the reaction, one of Extra Attack's attacks (the
    * action stays open for the rest) or the action. */
   protected readonly spent = computed(() =>
-    spentText({
-      byMaster: !!this.data.opportunity?.byMaster,
-      asReaction: !!this.data.asReaction,
-      bonusRule: this.data.bonusRule,
-      bonusAttacksLeft: this.data.bonusAttacksLeft,
-      cantrip: this.cantrip,
-      name: this.name,
-      beamsLeft: this.data.beamsLeft,
-      attacksLeft: this.data.attacksLeft,
-      attacksPerAction: this.data.attacksPerAction,
-    }),
+    this.data.legendary
+      ? legendarySpentText(this.data.legendary)
+      : spentText({
+          byMaster: !!this.data.opportunity?.byMaster,
+          asReaction: !!this.data.asReaction,
+          bonusRule: this.data.bonusRule,
+          bonusAttacksLeft: this.data.bonusAttacksLeft,
+          cantrip: this.cantrip,
+          name: this.name,
+          beamsLeft: this.data.beamsLeft,
+          attacksLeft: this.data.attacksLeft,
+          attacksPerAction: this.data.attacksPerAction,
+        }),
   );
   protected readonly title = computed(() =>
     this.s.typing()

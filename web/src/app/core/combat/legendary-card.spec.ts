@@ -149,13 +149,24 @@ describe("the master's legendary actions card", () => {
   });
 
   it('has no card for a creature without options or on its own turn, and says what came back instead', () => {
-    const e = encounter({ combatants: [dragon(), tor], currentCombatantId: 'd' });
+    const e = encounter({ combatants: [dragon({ actionsLeft: 3 }), tor], currentCombatantId: 'd' });
     expect(legendaryCards(e)).toEqual([]);
     const note = legendaryRecovered(e, e.combatants[0]);
     expect(note?.actions).toBe('Ações lendárias: 3 de 3, renovadas agora');
     expect(note?.resistance).toBe('Resistência Lendária: 2 de 3 hoje');
     expect(note?.note).toBe('Ações lendárias se usam no turno de outra criatura, nunca no dele.');
     expect(legendaryRecovered(e, tor)).toBeNull();
+    // What the server says is left, not the round's whole: a creature that could not renew says so, and a fallen one has no note.
+    const short = encounter({
+      combatants: [dragon({ actionsLeft: 1 }), tor],
+      currentCombatantId: 'd',
+    });
+    expect(legendaryRecovered(short, short.combatants[0])?.actions).toBe('Ações lendárias: 1 de 3');
+    const down = encounter({
+      combatants: [{ ...dragon({ actionsLeft: 3 }), defeated: true } as never, tor],
+      currentCombatantId: 'd',
+    });
+    expect(legendaryRecovered(down, down.combatants[0])).toBeNull();
     const plain = encounter({ combatants: [tor], currentCombatantId: 'x' });
     expect(legendaryCards(plain)).toEqual([]);
   });

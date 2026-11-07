@@ -45,6 +45,9 @@ export interface AttackSheetData {
     readonly option: string;
     readonly title: string;
     readonly subtitle: string;
+    /** What the option costs, in legendary actions, and who it is spent for: the done note says it. */
+    readonly cost: number;
+    readonly label: string;
   };
   /** The creature the player tapped on the map (C7-04): the sheet opens at the roll, with it named and "Trocar" to go back to the list. */
   readonly target?: string;

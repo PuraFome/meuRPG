@@ -154,7 +154,10 @@ describe("CombatView, the master's legendary offers (#557)", () => {
 
   it("on the creature's own turn the card is gone and the NPC's card says what came back", async () => {
     const { fixture, el } = mountCombatView({
-      enc: running({ currentCombatantId: 'd' }),
+      enc: running({
+        currentCombatantId: 'd',
+        combatants: [dragon(3), captain, brisa, tor],
+      }),
       master: true,
       matches: LAPTOP,
     });
@@ -236,6 +239,8 @@ describe("CombatView, the master's legendary offers (#557)", () => {
         option: 'tail',
         title: 'Ataque de cauda · ação lendária',
         subtitle: 'Dragão vermelho adulto · custa 1 de 2 restantes',
+        cost: 1,
+        label: 'Dragão vermelho adulto',
       });
       expect(callsOf('spendLegendaryAction')).toHaveLength(0);
     });

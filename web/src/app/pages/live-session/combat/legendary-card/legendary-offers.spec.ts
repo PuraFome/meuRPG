@@ -258,11 +258,13 @@ describe("the master's legendary cards (#557)", () => {
       expect(api.spendLegendaryAction).not.toHaveBeenCalled();
     });
 
-    it('hands a move row to the page and says the token is dragged next, until "Cancelar"', () => {
+    it('hands a move row to the page and says the token is dragged next, until "Cancelar"', async () => {
       const { el, fixture } = setup({ actionsLeft: 3, options: affordable });
       const moves: LegendaryPick[] = [];
       fixture.componentInstance.move.subscribe((p) => moves.push(p));
       button(el, 'Usar').click();
+      await fixture.whenStable();
+      fixture.detectChanges();
       expect(moves).toHaveLength(0);
       rows(el)[2].querySelector('button')!.click();
       expect(moves.map((m) => m.row.key)).toEqual(['wing']);
@@ -369,6 +371,25 @@ describe("the master's legendary cards (#557)", () => {
       expect(plain(el.querySelector('[data-testid="legendary-error"]'))).toBe(
         'Outra ação aconteceu antes: confira o registro.',
       );
+    });
+
+    it('takes back the spend that was shown, and puts a failure on its card even when the log has moved on', async () => {
+      let entry: object | null = { ...spent, id: 'ev-shown' };
+      const { el, fixture } = setup(
+        {},
+        {},
+        { undoable: () => entry, undoableId: () => 'ev-other' },
+      );
+      api.undo.mockImplementationOnce(() => {
+        entry = null;
+        return Promise.reject(new ConnectError('late', Code.Aborted));
+      });
+      button(el, 'Desfazer última ação').click();
+      await settle(fixture);
+      expect(api.undo).toHaveBeenCalledWith('camp', 'enc', 'ev-shown');
+      expect(
+        plain(el.querySelector('[data-testid="legendary-card"] [data-testid="legendary-error"]')),
+      ).toContain('Outra ação aconteceu antes');
     });
 
     it('shows no undo when the last undoable entry is another one', () => {

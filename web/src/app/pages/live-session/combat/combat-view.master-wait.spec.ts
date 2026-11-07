@@ -2,8 +2,8 @@
 // the same neutral card, whichever window it is. The server writes the words (`Encounter.reaction_wait`: it names no
 // reaction, no creature and no number, and the leak tests of the backend hold it to that); the screen draws them in
 // the card and never adds a thing it knows.
-import { CombatantKind } from '../../../../gen/meurpg/play/v1/combat_pb';
-import { combatant, encounter } from '../../../core/combat/combat-testing';
+import { CombatantKind, ReactionKind } from '../../../../gen/meurpg/play/v1/combat_pb';
+import { combatant, encounter, reactionWindow } from '../../../core/combat/combat-testing';
 import { settle } from '../../../../test-settle';
 import { mountCombatView } from './combat-view-testing';
 
@@ -21,16 +21,40 @@ const toren = combatant({
 const captain = combatant({ id: 'c', label: 'Capitão bandido', placed: false });
 const dragon = combatant({ id: 'd', label: 'Dragão vermelho adulto', placed: false });
 
-/** The windows that are the master's, as the server holds them while the player waits (the player is given none of them). */
-const WINDOWS: readonly string[] = [
-  "an NPC's reaction (Escudo Arcano)",
-  "the master's check",
-  'an ask-mode Parry',
-  'Legendary Resistance on a spell save',
-  "an NPC's concentration save",
-];
+/** What the card must not carry from the table: a name, a reaction, a number. */
+const NAMED = /Aparar|Parry|Resistência|Escudo|Capitão|Dragão|Brisa|Toren|lendári|\d/;
 
-const NAMED = /Aparar|Parry|Resistência Lendária|Escudo|Capitão|Dragão|lendári|\d/;
+/** Three tables that differ in who the NPCs are and which window holds it (the player is given none of them). */
+const TABLES = [
+  {
+    name: 'an NPC with a Parry in ask mode',
+    npcs: [
+      combatant({ id: 'c', label: 'Capitão bandido', placed: false, parryAsk: true } as never),
+    ],
+    window: { kind: ReactionKind.SHIELD, reactorId: 'c', reactorLabel: 'Capitão bandido' },
+    detail: 'O turno continua quando ele responder.',
+  },
+  {
+    name: 'an NPC without a Parry',
+    npcs: [combatant({ id: 'c', label: 'Dragão vermelho adulto', placed: false })],
+    window: { kind: ReactionKind.CONCENTRATION_SAVE, reactorId: 'c', reactorLabel: 'Dragão' },
+    detail: 'A sua conjuração se resolve quando ele responder.',
+  },
+  {
+    name: "a player's own ask-mode window",
+    npcs: [
+      combatant({ id: 'c', label: 'Capitão bandido', placed: false }),
+      combatant({ id: 'b', label: 'Brisa', kind: CombatantKind.PLAYER, characterId: 'bc' }),
+    ],
+    window: {
+      kind: ReactionKind.MASTER_CHECK,
+      reactorId: 'b',
+      reactorLabel: 'Brisa',
+      reactorIsPlayer: true,
+    },
+    detail: 'O resultado do seu ataque sai quando ele responder.',
+  },
+];
 
 describe('CombatView, the player waits for the master', () => {
   function player(current: string, detailPt: string) {
@@ -43,18 +67,24 @@ describe('CombatView, the player waits for the master', () => {
     return mountCombatView({ enc, matches: ['(min-width: 1024px)'] });
   }
 
-  for (const name of WINDOWS) {
-    it(`reads the neutral card in the turn of someone else while ${name} holds the table`, async () => {
-      const { fixture, el } = player('c', 'O turno continua quando ele responder.');
-      // The window itself is not in the player's list: only the wait is.
+  for (const t of TABLES) {
+    it(`reads the server's title and detail verbatim, and nothing of the table, while ${t.name} holds it`, async () => {
+      const enc = encounter({
+        combatants: [toren, ...t.npcs],
+        currentCombatantId: 'c',
+        reactionWait: { titlePt: 'Esperando o mestre', detailPt: t.detail },
+        reactionWindows: [
+          reactionWindow({ id: 'w', forYou: false, answerNow: false, ...t.window }),
+        ],
+      } as never);
+      const { fixture, el } = mountCombatView({ enc, matches: ['(min-width: 1024px)'] });
       await settle(fixture);
       const card = el.querySelector('[data-testid="reaction-wait"]')!;
       expect(card.tagName.toLowerCase()).toBe('app-master-wait');
       expect(card.getAttribute('role')).toBe('status');
-      expect(plain(card.textContent)).toBe(
-        'hourglass_topEsperando o mestre. O turno continua quando ele responder.',
-      );
-      expect(plain(card.textContent).replace('hourglass_top', '')).not.toMatch(NAMED);
+      const text = plain(card.textContent).replace('hourglass_top', '');
+      expect(text).toBe(`Esperando o mestre. ${t.detail}`);
+      expect(text).not.toMatch(NAMED);
     });
   }
 

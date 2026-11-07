@@ -38,7 +38,7 @@ const lines = (el: HTMLElement) =>
 
 describe("the legendary creature's own turn on the master's card (#557)", () => {
   it('says the actions came back, what is left of the Resistance and that they are spent on another turn', () => {
-    const el = render('d');
+    const el = render('d', dragon({ actionsLeft: 3 }));
     expect(lines(el)).toEqual([
       'Ações lendárias: 3 de 3 , renovadas agora',
       'Resistência Lendária: 2 de 3 hoje',

@@ -728,6 +728,8 @@
         [names]="legendary.names()"
         [theatre]="theatre()"
         [armed]="moves.legendaryMove()"
+        [opening]="legendary.opening()"
+        [mapElsewhere]="!laptop() && layout.shownPhoneTab() !== 'map'"
         (attack)="legendary.attack($event)"
         (move)="legendary.move($event)"
         (cancelMove)="moves.legendaryMove.set(null)"

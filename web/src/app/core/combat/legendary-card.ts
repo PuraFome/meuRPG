@@ -191,13 +191,15 @@ export function legendaryFolded(card: LegendaryCard): string {
 /** The note of the dragon's own turn (the actions came back, the card is gone), or `null` when the creature is not on turn. */
 export function legendaryRecovered(e: Encounter, c: Combatant): LegendaryRecovered | null {
   const l = legendaryOf(c);
-  if (!l || c.id !== e.currentCombatantId) {
+  if (!l || c.defeated || c.id !== e.currentCombatantId) {
     return null;
   }
+  // What the server says is left now: renewed at the start of its turn, so it is the whole round unless it could not renew.
+  const left = Math.max(0, Math.min(l.actionsLeft, l.actionsPerRound));
   return {
     combatantId: c.id,
     title: c.label,
-    actions: `Ações lendárias: ${l.actionsPerRound} de ${l.actionsPerRound}, renovadas agora`,
+    actions: `Ações lendárias: ${left} de ${l.actionsPerRound}${left === l.actionsPerRound ? ', renovadas agora' : ''}`,
     resistance:
       l.resistancePerDay > 0
         ? `Resistência Lendária: ${l.resistanceLeft} de ${l.resistancePerDay} hoje`
