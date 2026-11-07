@@ -398,7 +398,7 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
-	{Type: "flag", NamePT: "Sinalizador", HintPT: "Liga uma regra do jogo para o personagem, entre as da lista: não ser surpreendido, ou atirar com arma à distância sem desvantagem por inimigo perto.", Fields: []MenuField{
+	{Type: "flag", NamePT: "Sinalizador", HintPT: "Liga uma regra do jogo para o personagem, entre as da lista: não ser surpreendido, atirar com arma à distância sem desvantagem por inimigo perto, ou ignorar o terreno difícil do mapa (o das magias continua custando).", Fields: []MenuField{
 		{Name: "flag", Required: true, Kind: "cards", List: ListEffectFlags},
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},

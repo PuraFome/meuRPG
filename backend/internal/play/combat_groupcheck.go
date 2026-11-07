@@ -915,7 +915,7 @@ func groupMemberViewOf(check playdb.GroupCheck, mb playdb.GroupCheckMember, roll
 	if roll == nil {
 		return view
 	}
-	view.Roll = roll.proto()
+	view.Roll = roll.proto(master)
 	if !master {
 		view.Roll.BonusKnown = true
 	}
