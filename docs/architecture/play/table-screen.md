@@ -47,7 +47,9 @@ Its user id is empty: it owns nothing, has nothing of its own, and reads a scene
 The TV has no filter of its own.
 The reads of a player run as that viewer (`viewFor`, `shownImageFor`, `stageOf`, the combat log, the free rolls).
 The projector copies a whitelist of fields from what they answer into the narrow `Tv*` messages (`tablescreen_project.go`).
-A field added to `Encounter`, `OpenSceneInfo` or `Map` never reaches the TV; a new TV field is a new line in the projector.
+A field added to `Encounter` or `OpenSceneInfo` never reaches the TV; a new TV field is a new line in the projector.
+`TvMap.map` and `TvMap.vision` embed the player form of the `mapsv1` messages, so they are the exception.
+A new field there reaches the TV under the maps module's `masterOnly` rules, not under a `Tv*` row.
 `TestTvProjectorFields` lists every field of the projected messages and fails for one that has no reason.
 
 | Stage | What the TV receives |
