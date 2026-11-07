@@ -135,28 +135,149 @@ func TestAContestNamesAHiddenEffectToTheMasterAlone(t *testing.T) {
 	}
 }
 
+func skillBonusOf(n int32, skill string) *tableMod {
+	return &tableMod{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_BONUS, Value: n, Skill: skill}
+}
+
+// markedEscape marks Brisa, whom the Hobgoblin grapples with an escape DC of 25, and plays her escape with the skill
+// (a d20 of 8); it gives her roll as she and as the master read it.
+func markedEscape(t *testing.T, skill playv1.ContestSkill, hide bool, mod *tableMod) contestRolls {
+	t.Helper()
+	a := newMarkCasters(t, mod)
+	c := a.arena(t, arenaPlan{toren: 10, brisa: 11, pens: 20, at: map[string][2]int32{"Brisa": {5, 3}}})
+	a.mustCast(t, a.ana, c.e, "Pensantus", tableMark, slotOfLevel(1), a.at(t, "Brisa"), noCastRoll)
+	if hide {
+		hideEffect(t, a, c.refresh(t), "Brisa")
+	}
+	c.grappledByAttack(t, "Brisa", 25)
+	c.advance(t, "Brisa")
+	c.h.roller.queue(8)
+	esc := c.mustStart(t, a.bia, func(r *playv1.StartContestRequest) {
+		r.InitiatorId, r.Purpose, r.Skill = c.id(t, "Brisa"), purposeEscapeP, skill
+	}).GetContest()
+	var out contestRolls
+	out.player = esc.GetInitiatorRoll()
+	for _, v := range c.state(t, a.master).GetContests() {
+		if v.GetId() == esc.GetId() {
+			out.master = v.GetInitiatorRoll()
+		}
+	}
+	if out.master == nil {
+		out.master = out.player
+	}
+	return out
+}
+
+// An escape is a check of its own initiator: it adds the check bonus too (the grappled side is the one that rolls).
+func TestAnEscapeAddsTheCheckBonusOfAnEffect(t *testing.T) {
+	t.Parallel()
+	acro, athl := playv1.ContestSkill_CONTEST_SKILL_ACROBATICS, playv1.ContestSkill_CONTEST_SKILL_ATHLETICS
+	base := markedEscape(t, acro, false, saveBonus3)
+	with := markedEscape(t, acro, false, checkBonus3)
+	if got, want := with.player.GetModifier(), base.player.GetModifier()+3; got != want {
+		t.Errorf("escape modifier = %d, want %d: the base and the effect's +3", got, want)
+	}
+	if txt := noteTexts(with.player); !strings.Contains(txt, "Marca de Nanquim +3") {
+		t.Errorf("notes = %q, want the effect and its bonus named", txt)
+	}
+	hidden := markedEscape(t, acro, true, checkBonus3)
+	if txt := noteTexts(hidden.player); !strings.Contains(txt, "Outra fonte +3") || strings.Contains(txt, "Marca") {
+		t.Errorf("the player reads notes %q, want %q and no name", txt, "Outra fonte +3")
+	}
+
+	// A bonus of one skill is for that skill alone: Acrobatics' +3 raises no Athletics escape.
+	plain := markedEscape(t, athl, false, saveBonus3)
+	other := markedEscape(t, athl, false, skillBonusOf(3, "skill:acrobatics"))
+	if other.player.GetModifier() != plain.player.GetModifier() {
+		t.Errorf("Athletics escape modifier = %d with an Acrobatics bonus, want %d", other.player.GetModifier(), plain.player.GetModifier())
+	}
+	if txt := noteTexts(other.player); strings.Contains(txt, "+3") {
+		t.Errorf("notes = %q, want no note: the bonus is for another skill", txt)
+	}
+	same := markedEscape(t, acro, false, skillBonusOf(3, "skill:acrobatics"))
+	if got, want := same.player.GetModifier(), base.player.GetModifier()+3; got != want {
+		t.Errorf("Acrobatics escape modifier = %d with an Acrobatics bonus, want %d", got, want)
+	}
+}
+
+// A Hide is a Stealth check: the bonus of its effects counts, with its note.
+func TestAHideAddsTheCheckBonusOfAnEffect(t *testing.T) {
+	t.Parallel()
+	hide := func(mod *tableMod) *playv1.CheckRoll {
+		a := newMarkCasters(t, mod)
+		c := a.arena(t, arenaPlan{toren: 10, brisa: 11, pens: 20})
+		a.mustCast(t, a.ana, c.e, "Pensantus", tableMark, slotOfLevel(1), a.at(t, "Toren"), noCastRoll)
+		c.advance(t, "Toren")
+		return c.mustHide(t, a.caio, "Toren", actionHide, 10).GetRoll()
+	}
+	base, with := hide(saveBonus3), hide(skillBonusOf(3, "skill:stealth"))
+	if got, want := with.GetModifier(), base.GetModifier()+3; got != want {
+		t.Errorf("Stealth modifier = %d, want %d: the base and the effect's +3", got, want)
+	}
+	if got := with.GetTotal(); got != 10+with.GetModifier() {
+		t.Errorf("total = %d, want the d20 and the modifier", got)
+	}
+	if txt := noteTexts(with); !strings.Contains(txt, "Marca de Nanquim +3") {
+		t.Errorf("notes = %q, want the effect and its bonus named", txt)
+	}
+	if txt := noteTexts(base); strings.Contains(txt, "+3") {
+		t.Errorf("notes = %q, want none: a save bonus does not count", txt)
+	}
+}
+
 // The answer a player is offered says what it would roll before the roll: the same bonus, with the same names.
 func TestTheAnswerOptionsOfAContestCountTheCheckBonus(t *testing.T) {
 	t.Parallel()
-	a := newMarkCasters(t, checkBonus3)
-	c := a.arena(t, arenaPlan{toren: 10, brisa: 11, pens: 20})
-	a.mustCast(t, a.ana, c.e, "Pensantus", tableMark, slotOfLevel(1), a.at(t, "Brisa"), noCastRoll)
-	c.advance(t, c.hob)
-	c.h.roller.queue(17)
-	started := c.mustStart(t, a.master, func(r *playv1.StartContestRequest) {
-		r.InitiatorId, r.TargetId, r.Purpose = c.id(t, c.hob), c.id(t, "Brisa"), purposeGrappleP
-	})
-	opts := c.answerContestOf(t, started.GetContest().GetId()).GetAnswerOptions()
-	if len(opts) == 0 {
-		t.Fatal("Brisa has no answer options")
+	options := func(mod *tableMod, hide bool, reader func(*armed) *user) []*playv1.ContestSkillOption {
+		a := newMarkCasters(t, mod)
+		c := a.arena(t, arenaPlan{toren: 10, brisa: 11, pens: 20})
+		a.mustCast(t, a.ana, c.e, "Pensantus", tableMark, slotOfLevel(1), a.at(t, "Brisa"), noCastRoll)
+		if hide {
+			hideEffect(t, a, c.refresh(t), "Brisa")
+		}
+		c.advance(t, c.hob)
+		c.h.roller.queue(17)
+		started := c.mustStart(t, a.master, func(r *playv1.StartContestRequest) {
+			r.InitiatorId, r.TargetId, r.Purpose = c.id(t, c.hob), c.id(t, "Brisa"), purposeGrappleP
+		})
+		for _, v := range c.state(t, reader(a)).GetContests() {
+			if v.GetId() == started.GetContest().GetId() {
+				return v.GetAnswerOptions()
+			}
+		}
+		t.Fatal("the reader sees no contest")
+		return nil
 	}
-	for _, o := range opts {
+	notes := func(o *playv1.ContestSkillOption) string {
 		var texts []string
 		for _, n := range o.GetNotes() {
 			texts = append(texts, n.GetLabelPt())
 		}
-		if got := strings.Join(texts, " | "); !strings.Contains(got, "Marca de Nanquim +3") {
+		return strings.Join(texts, " | ")
+	}
+	master := func(a *armed) *user { return a.master }
+	player := func(a *armed) *user { return a.bia }
+	base := options(saveBonus3, false, master)
+	with := options(checkBonus3, false, master)
+	if len(with) == 0 || len(with) != len(base) {
+		t.Fatalf("Brisa has %d answer options with the bonus and %d without, want the same non-zero number", len(with), len(base))
+	}
+	for i, o := range with {
+		if got := notes(o); !strings.Contains(got, "Marca de Nanquim +3") {
 			t.Errorf("option %v has notes %q, want the effect's name and bonus", o.GetSkill(), got)
+		}
+		if got, want := o.GetModifier(), base[i].GetModifier()+3; got != want {
+			t.Errorf("option %v modifier = %d, want %d: the base and the effect's +3", o.GetSkill(), got, want)
+		}
+	}
+	for _, o := range options(checkBonus3, true, player) {
+		if got := notes(o); !strings.Contains(got, "Outra fonte +3") || strings.Contains(got, "Marca") {
+			t.Errorf("the player's option %v has notes %q, want %q and no name", o.GetSkill(), got, "Outra fonte +3")
+		}
+	}
+	for _, o := range options(checkBonus3, true, master) {
+		if got := notes(o); !strings.Contains(got, "Marca de Nanquim +3") {
+			t.Errorf("the master's option %v has notes %q, want the effect's name", o.GetSkill(), got)
 		}
 	}
 }
