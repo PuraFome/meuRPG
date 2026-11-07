@@ -122,6 +122,7 @@
               [waitWhy]="waitWhy()"
               [theatre]="theatre()"
               [actingFor]="acting()?.label ?? ''"
+              [quiet]="offers.offering()"
               (next)="nextTurn($event)"
               (end)="endCombat()"
             />
@@ -690,6 +691,7 @@
         [turnBusy]="busy()"
         [theatre]="theatre()"
         [offerWhy]="offers.why()"
+        [offerOpen]="offers.offering()"
         (castArea)="sheets.masterArea($event)"
         (creatureArea)="sheets.creatureArea($event)"
         (offer)="offers.open()"
@@ -818,6 +820,7 @@
           [label]="acting() ? 'Encerrar o turno de ' + acting()!.label : 'Próximo turno'"
           [idle]="acting() ? '' : idleOnTurn()"
           [joint]="!!joint()"
+          [quiet]="offers.offering()"
           (next)="nextTurn($event)"
         />
       }

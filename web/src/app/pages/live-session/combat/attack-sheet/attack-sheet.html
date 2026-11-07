@@ -86,6 +86,8 @@
         </span>
         @if (!data.opportunity) {
           <button type="button" class="link" (click)="change()">Trocar</button>
+        } @else {
+          <span class="mr-tag">Ataque de oportunidade</span>
         }
       </div>
       @if (mode.hasMode()) {

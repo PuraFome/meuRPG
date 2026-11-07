@@ -26,8 +26,8 @@ let nextId = 0;
  * "Oferecer ataque de oportunidade" (RN-25, E10-04 state 3), in a combat without a map and on a grid: without a map the server never finds out
  * that someone left a reach, so the master says it; on a grid the server only sees what it measures, so the master adds the rest (the
  * distances here are the map's, only to help, and the candidates are ringed on it). The mover is the one on turn; here he picks whose reach it left ("Saiu do alcance de"), and the player of that
- * character gets the question on their phone (the master answers for an NPC). The two buttons are outlined and the same size, because
- * "Próximo turno" is the one filled button of the page. The server has the last word on who can react (`NO_OPPORTUNITY`, `REACTION_USED`); the
+ * character gets the question on their phone (the master answers for an NPC). The two buttons are the same size; "Oferecer a ..." is the
+ * filled one while the panel is open, and "Próximo turno" goes outlined. The server has the last word on who can react (`NO_OPPORTUNITY`, `REACTION_USED`); the
  * list only leaves out whoever is on the mover's side or already out.
  */
 @Component({
@@ -71,7 +71,7 @@ let nextId = 0;
       }
       <div class="actions">
         <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="cancel.emit()">Não oferecer</button>
-        <button matButton="outlined" type="button" class="btn" [disabled]="!picked() || busy()" disabledInteractive (click)="send()">
+        <button matButton="filled" type="button" class="btn btn--main" [disabled]="!picked() || busy()" disabledInteractive (click)="send()">
           {{ picked() ? 'Oferecer ' + toName() : 'Oferecer' }}
         </button>
       </div>

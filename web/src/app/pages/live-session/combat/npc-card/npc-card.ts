@@ -128,6 +128,8 @@ export class NpcCard {
   readonly theatre = input(false);
   /** Why "Oferecer ataque de oportunidade" cannot be used now ("Ninguém pode reagir agora."), or `''`. */
   readonly offerWhy = input('');
+  /** The offer panel is open under the stats: the chips of what was used leave, so its buttons stay in view. */
+  readonly offerOpen = input(false);
   /** "Oferecer ataque de oportunidade": the page opens the form. */
   readonly offer = output<void>();
   /** "Conjurar" on an NPC's area spell placed on the map: the page opens the master's picker (PM-02d state 11). */

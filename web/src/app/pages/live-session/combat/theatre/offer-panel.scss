@@ -5,9 +5,9 @@
 .offer {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   box-sizing: border-box;
-  padding: 18px 20px;
+  padding: 14px 16px;
   border: 1px solid var(--mr-line);
   border-radius: var(--mr-radius-lg);
   background: var(--mr-surface);
@@ -16,9 +16,9 @@
 .offer__title {
   margin: 0;
   font-family: var(--mr-font-display);
-  font-size: var(--mr-font-22);
+  font-size: var(--mr-font-20);
   font-weight: 700;
-  line-height: 28px;
+  line-height: 26px;
 }
 
 .offer__text {
@@ -53,7 +53,7 @@
 .rows {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .row {
@@ -61,8 +61,8 @@
   align-items: center;
   gap: 10px;
   box-sizing: border-box;
-  min-height: 48px;
-  padding: 8px 12px;
+  min-height: 44px;
+  padding: 6px 12px;
   border: 1px solid var(--mr-control-line);
   border-radius: var(--mr-radius-sm);
   cursor: pointer;
@@ -74,7 +74,7 @@
 }
 
 .row--on {
-  padding: 7px 11px;
+  padding: 5px 11px;
   border: 2px solid var(--mr-accent);
   background: var(--mr-accent-soft);
 }
@@ -114,8 +114,9 @@
 
 .row__name {
   font-family: var(--mr-font-display);
-  font-size: var(--mr-font-18);
+  font-size: var(--mr-font-16);
   font-weight: 700;
+  line-height: 20px;
   overflow-wrap: anywhere;
 }
 
@@ -131,7 +132,15 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 4px;
+  margin-top: 2px;
+
+  // On a laptop the buttons stay at the bottom of the window while the panel is taller than it.
+  @media (min-width: 1024px) {
+    position: sticky;
+    bottom: 0;
+    padding: 8px 0 2px;
+    background: var(--mr-surface);
+  }
 
   // Two buttons of one size, from a phone to a desktop.
   @media (min-width: 768px) {
@@ -141,11 +150,13 @@
 
 .btn {
   --mat-button-outlined-container-height: 48px;
+  --mat-button-filled-container-height: 48px;
   --mat-button-outlined-label-text-color: var(--mr-ink);
   min-width: 0;
   white-space: nowrap;
 
   @media (min-width: 768px) {
     --mat-button-outlined-container-height: 44px;
+    --mat-button-filled-container-height: 44px;
   }
 }

@@ -302,13 +302,11 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
     // The one that can react is picked, and the offer names it.
     const go = button(el, 'Oferecer a Toren');
     expect(go).toBeTruthy();
-    // Both are outlined, at the same width: the page's one filled button is "Próximo turno".
+    // The two are the same size; "Oferecer a ..." is the page's one filled button while the panel is open.
     const no = button(el, 'Não oferecer');
-    expect(
-      [go, no].every(
-        (b) => b.classList.contains('mat-mdc-outlined-button') && b.classList.contains('btn'),
-      ),
-    ).toBe(true);
+    expect([go, no].every((b) => b.classList.contains('btn'))).toBe(true);
+    expect(go.classList.contains('mat-mdc-unelevated-button')).toBe(true);
+    expect(no.classList.contains('mat-mdc-outlined-button')).toBe(true);
     go.click();
     expect(offered).toEqual(['t']);
   });

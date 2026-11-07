@@ -263,13 +263,23 @@ export class AttackSheet {
     }),
   );
   protected readonly title = computed(() =>
-    this.s.typing() ? 'Digite o resultado do dado' : `Atacar com ${this.name}`,
-  );
-  protected readonly subtitle = computed(() =>
     this.s.typing()
-      ? `${this.name} contra ${this.targetLabel()} · Rodada ${this.data.round}`
-      : this.detail,
+      ? 'Digite o resultado do dado'
+      : this.data.opportunity
+        ? `Ataque de oportunidade · ${this.name}`
+        : `Atacar com ${this.name}`,
   );
+  /** An opportunity attack names who attacks and what it costs; the numbers of the weapon are on the list. */
+  protected readonly subtitle = computed(() => {
+    if (this.s.typing()) {
+      return `${this.name} contra ${this.targetLabel()} · Rodada ${this.data.round}`;
+    }
+    if (this.data.opportunity) {
+      const who = this.data.state.encounter()?.combatants.find((c) => c.id === this.data.attackerId)?.label;
+      return who ? `${who} · gasta a sua reação` : 'Gasta a sua reação';
+    }
+    return this.detail;
+  });
   protected readonly rollLabel = computed(
     () => `Role 1d20 para ${this.name} (${signedBonus(this.attack.attackBonus)})`,
   );

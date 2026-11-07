@@ -48,7 +48,7 @@
       </div>
     </div>
 
-    <ul class="chips" aria-label="O que ele já usou neste turno">
+    <ul class="chips" [class.mr-visually-hidden]="offerOpen() && isNpc()" aria-label="O que ele já usou neste turno">
       <li class="chip" [class.chip--used]="actionChip().used">
         Ação <span class="chip__word">{{ actionChip().word }}</span>
       </li>
