@@ -280,6 +280,13 @@ All three are on the effect menu ([reroll](rules-table-content.md#reroll), [roll
 `menuValues` copies them from `rules.MenuValue` unchanged.
 `rerollRulesOf` copies `Derived.Rerolls` into `link.Traits.RerollRules` for combat.
 
+### Flags, damage reduction and carrying capacity
+
+`tableEffectsOf` copies `TableEffect.flag` to `Effect.Flag`; the other fields of `natural_attack` (`attack_name`, `damage_dice`, `damage_type`, `ability`, `reach_ft`) are the ones `pseudo_weapon` already uses.
+`traitsOf` (`combattraits.go`) copies `Derived.Flags` into `link.Traits.Flags` and `Derived.DamageReductions` into `link.Traits.DamageReductions` (source, amount, nonmagical), which combat reads through `Traits.HasFlag` and the reduction step.
+`derivedToProto` puts `Derived.CarryCapacityLb` in `DerivedSheet.carry_capacity_lb`.
+The natural attack lines are in `Derived.Attacks` like any other, so they reach the sheet and the combat with no copy of their own.
+
 ## Spell targets and the "Magias" page
 
 Every spell, SRD or table, says who it catches, and the players' "Magias" page (MR-045) reads that, the search and the filters from the server.
