@@ -34,6 +34,10 @@ describe('the d20 of a save that carries only its face and total', () => {
   it('writes the bonus with its sign, and none for 0', () => {
     expect(d20TotalText(2, 4)).toBe('1d20 (2) + 2 = 4');
     expect(d20TotalText(4, 3)).toBe('1d20 (4) − 1 = 3');
+    // The total counts the raised number: 2 raised to 8, plus 2.
+    expect(d20TotalText(2, 10, { as: 8, source: 'content:feat-keen', name: 'Olho Aguçado' })).toBe(
+      'd20: 2 → 8 (Olho Aguçado) + 2 = 10',
+    );
     expect(d20TotalText(14, 14)).toBe('1d20 (14) = 14');
   });
 });

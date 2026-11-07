@@ -96,6 +96,16 @@ describe('combat view helpers', () => {
     expect(initiativeFormula(low)).toBe('1d20 (15) − 1 = 14');
     const waiting = combatant({ id: 'c', label: 'Toren', initiativeBonus: 2 });
     expect(initiativeFormula(waiting)).toBeNull();
+    const raised = {
+      ...c,
+      initiativeFace: 3,
+      initiativeTreatedAs: 12,
+      initiativeTreatedAsSource: 'content:feat-keen',
+      initiativeTreatedAsSourceName: 'Olho Aguçado',
+      initiativeBonus: 4,
+      initiative: 16,
+    } as typeof c;
+    expect(initiativeFormula(raised)).toBe('d20: 3 → 12 (Olho Aguçado) + 4 = 16');
     const inspired = combatant({
       id: 'd',
       label: 'Toren',

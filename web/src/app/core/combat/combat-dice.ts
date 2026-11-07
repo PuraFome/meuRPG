@@ -145,9 +145,22 @@ export function rollText(roll: DiceRoll): string {
   return roll.modifier === 0 ? `${roll.total} · dado físico` : `${rollFormula(roll)} · dado físico`;
 }
 
-/** A d20 whose bonus is not carried, only its face and total: `1d20 (2) + 2 = 4`, `1d20 (4) − 1 = 3`. */
-export function d20TotalText(face: number, total: number): string {
-  return `1d20 (${face})${modifierText(total - face)} = ${total}`;
+/** The d20 a table feature's floor raised, as the server sends it beside a roll that has no DiceRoll: the number it counted
+ * as, and the feature (its content key and its name, which only the roller and the master get). */
+export interface TreatedD20 {
+  readonly as: number;
+  readonly source: string;
+  readonly name: string;
+}
+
+/** A d20 whose bonus is not carried, only its face and total: `1d20 (2) + 2 = 4`, `1d20 (4) − 1 = 3`. When a feature raised
+ * the die the total counts the raised number, so the line says so: `d20: 2 → 8 (Olho Aguçado) + 2 = 10`. */
+export function d20TotalText(face: number, total: number, treated?: TreatedD20): string {
+  if (treated === undefined) {
+    return `1d20 (${face})${modifierText(total - face)} = ${total}`;
+  }
+  const name = treatedSourceName(treated.source, treated.name);
+  return `d20: ${face} → ${treated.as} (${name})${modifierText(total - treated.as)} = ${total}`;
 }
 
 /** The typed d20 and its bonus, before it is sent: `16 + 5 = 21`. */

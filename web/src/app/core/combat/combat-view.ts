@@ -6,6 +6,7 @@ import {
   type Encounter,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from './combat-log';
+import { treatedSourceName } from './combat-dice';
 import { creatureTurnTitle, isCreature } from './creature-names';
 import { afterTurn, jointTurn, listNames, type JointTurn, npcPlural } from './joint-turn';
 
@@ -86,7 +87,12 @@ export function initiativeFormula(c: Combatant): string | null {
   const bonus = c.initiativeBonus ?? 0;
   const sign = bonus < 0 ? '−' : '+';
   const die = initiativeDie(c);
-  return `1d20 (${c.initiativeFace}) ${sign} ${Math.abs(bonus)}${die ? ` + ${die} (dado)` : ''} = ${c.initiative}`;
+  const raised = c.initiativeTreatedAs;
+  const d20 =
+    raised === undefined
+      ? `1d20 (${c.initiativeFace})`
+      : `d20: ${c.initiativeFace} → ${raised} (${treatedSourceName(c.initiativeTreatedAsSource, c.initiativeTreatedAsSourceName)})`;
+  return `${d20} ${sign} ${Math.abs(bonus)}${die ? ` + ${die} (dado)` : ''} = ${c.initiative}`;
 }
 
 /** What a Bardic Inspiration die added to the initiative: the total less the d20 and the bonus, 0 when none was used. */
@@ -94,7 +100,10 @@ export function initiativeDie(c: Combatant): number {
   if (c.initiative === undefined || c.initiativeFace === undefined) {
     return 0;
   }
-  return Math.max(0, c.initiative - c.initiativeFace - (c.initiativeBonus ?? 0));
+  return Math.max(
+    0,
+    c.initiative - (c.initiativeTreatedAs ?? c.initiativeFace) - (c.initiativeBonus ?? 0),
+  );
 }
 
 /** The roll still to come: `1d20 + 2 = —`. */
