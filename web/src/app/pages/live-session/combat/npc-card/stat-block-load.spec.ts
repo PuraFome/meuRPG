@@ -2,9 +2,10 @@ import { create } from '@bufbuild/protobuf';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CreatureSchema } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { nextTurn } from '../../../../../test-settle';
 import { StatBlockLoad } from './stat-block-load';
 
-const flush = () => new Promise((resolve) => setTimeout(resolve));
+const flush = nextTurn;
 
 describe('StatBlockLoad', () => {
   it('loads, then holds the stat block', async () => {
