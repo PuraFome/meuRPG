@@ -1,4 +1,4 @@
-<app-sheet-frame title="Tela da mesa" icon="tv" titleId="tv-sheet-t" [phone]="inSheet" (closed)="close()">
+<app-sheet-frame title="Tela da mesa" icon="tv" titleId="tv-sheet-t" [small]="true" [phone]="inSheet" (closed)="close()">
   <span head-action class="mr-tag head-tag" [class.mr-tag--success]="badge().tone === 'success'" [class.mr-tag--pending]="badge().tone === 'pending'" data-testid="tv-state">
     @switch (badge().tone) {
       @case ('success') {
@@ -22,7 +22,7 @@
       <button matButton="outlined" type="button" class="again js-read-again" (click)="read()">
         <mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo
       </button>
-    } @else if (lostAt()) {
+    } @else if (panel.lost()) {
       <div class="mr-notice mr-notice--warning" data-testid="tv-lost">
         <mat-icon aria-hidden="true">wifi_off</mat-icon>
         <p>
@@ -31,25 +31,34 @@
         </p>
       </div>
     } @else if (!open()) {
-      <p class="line line--plain" data-testid="tv-closed">
-        Nenhuma Tela da mesa aberta agora. O que você escolher vale assim que abrir uma.
-      </p>
+      <p class="line line--plain" data-testid="tv-closed">Abra a Tela da mesa na TV; depois escolha o que ela mostra.</p>
+    } @else if (notSaved()) {
+      <!-- A save that did not go through: the notice and the retry are all the panel says, so they are never out of sight. -->
+      <div class="mr-notice mr-notice--danger" role="alert" data-testid="tv-not-saved">
+        <mat-icon aria-hidden="true">error</mat-icon>
+        <p><strong>Não deu para mudar a Tela da mesa.</strong> A TV continua como estava.</p>
+      </div>
+      <button matButton="outlined" type="button" class="again js-retry" (click)="retry()">
+        <mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo
+      </button>
     } @else {
-      @if (!panel.notice() && now(); as n) {
-        <p class="cap" id="tv-now-t">Na TV agora</p>
-        <p class="line now" aria-labelledby="tv-now-t tv-now" data-testid="tv-now">
-          <mat-icon aria-hidden="true">{{ n.icon }}</mat-icon>
-          <span id="tv-now">{{ n.before }}@if (n.name) {<b>{{ n.name }}</b>}{{ n.after }}</span>
-        </p>
-      }
-      @if (panel.notice()) {
-        <p class="mr-notice mr-notice--neutral note" data-testid="tv-notice">
-          <mat-icon aria-hidden="true">info</mat-icon>
-          <span>{{ panel.notice() }}</span>
-        </p>
+      @if (!helpOpen()) {
+        @if (!panel.notice() && now(); as n) {
+          <p class="cap" id="tv-now-t">Na TV agora</p>
+          <p class="line now" aria-labelledby="tv-now-t tv-now" data-testid="tv-now">
+            <mat-icon aria-hidden="true">{{ n.icon }}</mat-icon>
+            <span id="tv-now">{{ n.before }}@if (n.name) {<b>{{ n.name }}</b>}{{ n.after }}</span>
+          </p>
+        }
+        @if (panel.notice()) {
+          <p class="mr-notice mr-notice--neutral note" data-testid="tv-notice">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <span>{{ panel.notice() }}</span>
+          </p>
+        }
       }
       <p class="cap" id="tv-what-t">O que a TV mostra</p>
-      <div class="rows" role="radiogroup" aria-labelledby="tv-what-t" [attr.aria-describedby]="notSaved() ? 'tv-not-saved' : null">
+      <div class="rows" role="radiogroup" aria-labelledby="tv-what-t">
         <app-tv-choice-row
           [group]="group"
           icon="cast"
@@ -72,6 +81,7 @@
           </button>
         </app-tv-choice-row>
         @if (helpOpen()) {
+          <!-- Open, the order is all there is under "Espelhar" (the board): the pins come back when it closes. -->
           <div id="tv-order" class="order" data-testid="tv-order">
             <p><b>A TV mostra o primeiro que houver:</b></p>
             <ol>
@@ -80,42 +90,25 @@
               }
             </ol>
           </div>
-        }
-        <p class="cap cap--pin">Fixar</p>
-        @for (row of rows(); track row.kind) {
-          <app-tv-choice-row
-            [group]="group"
-            [icon]="row.icon"
-            [title]="row.title"
-            [sub]="row.sub"
-            [available]="row.available"
-            [selected]="isPinned(row.kind)"
-            [busy]="panel.saving()"
-            [attr.data-testid]="'tv-pin-' + row.key"
-            (picked)="pickPin(row.kind)"
-          />
+        } @else {
+          <p class="cap cap--pin">Fixar</p>
+          @for (row of rows(); track row.kind) {
+            <app-tv-choice-row
+              [group]="group"
+              [icon]="row.icon"
+              [title]="row.title"
+              [sub]="row.sub"
+              [available]="row.available"
+              [selected]="isPinned(row.kind)"
+              [busy]="panel.saving()"
+              [attr.data-testid]="'tv-pin-' + row.key"
+              (picked)="pickPin(row.kind)"
+            />
+          }
         }
       </div>
     }
 
-    @if (notSaved()) {
-      <div class="mr-notice mr-notice--danger" role="alert" id="tv-not-saved" data-testid="tv-not-saved">
-        <mat-icon aria-hidden="true">error</mat-icon>
-        <p><strong>Não deu para mudar a Tela da mesa.</strong> A TV continua como estava.</p>
-      </div>
-      <button matButton="outlined" type="button" class="again js-retry" (click)="retry()">
-        <mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo
-      </button>
-    }
-    @if (inSheet && !helpOpen() && !panel.notice()) {
-      <p class="mr-notice mr-notice--neutral note" data-testid="tv-how">
-        <mat-icon aria-hidden="true">info</mat-icon>
-        <span>
-          Para a TV: no computador ligado a ela, abra esta sessão e use <b>Tela da mesa</b> na barra (numa tela estreita,
-          ⋮ › <b>Tela da mesa…</b>).
-        </span>
-      </p>
-    }
     <p class="mr-visually-hidden" role="status">{{ announce() }}</p>
   </div>
 

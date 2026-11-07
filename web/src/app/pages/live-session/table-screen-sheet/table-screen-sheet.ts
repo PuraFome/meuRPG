@@ -27,14 +27,7 @@ import { COPIED_FOR_MS, copyText } from '../../../shared/session-link/session-li
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 import { tableScreenLink } from './table-screen-link';
-import {
-  MIRROR_ORDER,
-  NOT_SAVED_TEXT,
-  type TvNames,
-  type TvPinRow,
-  nowLine,
-  pinRows,
-} from './table-screen-rows';
+import { MIRROR_ORDER, type TvNames, type TvPinRow, nowLine, pinRows } from './table-screen-rows';
 import { TvChoiceRow } from './tv-choice-row';
 
 /** What the page hands the Tela da mesa panel. */
@@ -79,12 +72,12 @@ const MIRROR_PICK: TableScreenPick = { mirror: true, pin: TableScreenKind.UNSPEC
 export class TableScreenSheet implements OnDestroy {
   private readonly sheet = injectSheet<TableScreenSheetData, void>();
   private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly data = this.sheet.data;
   protected readonly panel = this.data.panel;
   protected readonly inSheet = this.sheet.inSheet;
   protected readonly group = 'tv-choice';
   protected readonly mirrorOrder = MIRROR_ORDER;
-  protected readonly notSavedText = NOT_SAVED_TEXT;
   protected readonly link = tableScreenLink(this.data.campaignId);
 
   /** The first read is on its way. */
@@ -99,12 +92,13 @@ export class TableScreenSheet implements OnDestroy {
   protected readonly announce = signal('');
 
   protected readonly open = computed(() => this.panel.presence().open);
+  /** "21:14", the moment the last TV tab was lost; empty while none was. */
   protected readonly lostAt = computed(() => {
-    const { open, lostAt } = this.panel.presence();
-    return open || !lostAt ? '' : clockText(lostAt);
+    const lostAt = this.panel.presence().lostAt;
+    return this.panel.lost() && lostAt ? clockText(lostAt) : '';
   });
   protected readonly badge = computed<Badge>(() => {
-    if (this.lostAt()) {
+    if (this.panel.lost()) {
       return { text: 'Sem conexão', tone: 'pending' };
     }
     if (this.open()) {
@@ -124,7 +118,8 @@ export class TableScreenSheet implements OnDestroy {
   protected readonly unread = computed(() => !this.loading() && this.panel.data() === null);
 
   private readonly field = viewChild<ElementRef<HTMLInputElement>>('linkField');
-  private lastPick: TableScreenPick = MIRROR_PICK;
+  /** The last choice, for "Tentar de novo"; none until the master picks. */
+  private lastPick: TableScreenPick | null = null;
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** A TV that connects ends the "Abrindo…". */
@@ -167,14 +162,26 @@ export class TableScreenSheet implements OnDestroy {
   }
 
   protected retry(): void {
-    void this.pick(this.lastPick);
+    if (this.lastPick) {
+      void this.pick(this.lastPick);
+    }
   }
 
   private async pick(pick: TableScreenPick): Promise<void> {
     this.lastPick = pick;
     this.announce.set('Mudando a Tela da mesa…');
     const result = await this.panel.choose(pick);
-    this.announce.set(result === 'ok' ? 'A Tela da mesa mudou.' : NOT_SAVED_TEXT);
+    // A refusal is the alert's to say, once: the region stays silent for it.
+    this.announce.set(result === 'ok' ? 'A Tela da mesa mudou.' : '');
+    if (result !== 'ok') {
+      // The rows give way to the notice: the focus goes to "Tentar de novo", not to nothing.
+      afterNextRender(
+        () => this.host.nativeElement.querySelector<HTMLElement>('.js-retry')?.focus(),
+        {
+          injector: this.injector,
+        },
+      );
+    }
   }
 
   protected async copyLink(): Promise<void> {

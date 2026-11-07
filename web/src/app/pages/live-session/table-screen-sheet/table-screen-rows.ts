@@ -112,6 +112,3 @@ export const MIRROR_ORDER: readonly string[] = [
   'o mapa;',
   'a tela de espera.',
 ];
-
-/** The text of a save that did not go through (`failed` or `stale`), what the board says. */
-export const NOT_SAVED_TEXT = 'Não deu para mudar a Tela da mesa. A TV continua como estava.';

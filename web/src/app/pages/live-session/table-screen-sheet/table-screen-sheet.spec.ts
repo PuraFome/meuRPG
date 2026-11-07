@@ -122,7 +122,9 @@ describe('TableScreenSheet', () => {
     const h = await mount({ options: OPTIONS, presence: { open: false } });
     expect(radios(h.el)).toHaveLength(0);
     expect(text(byId(h.el, 'tv-state'))).toBe('Fechada');
-    expect(text(byId(h.el, 'tv-closed'))).toContain('Nenhuma Tela da mesa aberta agora.');
+    expect(text(byId(h.el, 'tv-closed'))).toBe(
+      'Abra a Tela da mesa na TV; depois escolha o que ela mostra.',
+    );
   });
 
   it('says when the connection was lost, with the time', async () => {
@@ -182,6 +184,11 @@ describe('TableScreenSheet', () => {
     const alert = byId(h.el, 'tv-not-saved')!;
     expect(alert.getAttribute('role')).toBe('alert');
     expect(text(alert)).toBe('Não deu para mudar a Tela da mesa. A TV continua como estava.');
+    // The notice and the retry are all there is: the rows give way, and the focus goes to the retry.
+    expect(radios(h.el)).toHaveLength(0);
+    expect(document.activeElement).toBe(h.el.querySelector('.js-retry'));
+    // Said once: the status region is silent for a refusal.
+    expect(text(h.el.querySelector('p.mr-visually-hidden[role="status"]'))).toBe('');
     h.el.querySelector<HTMLButtonElement>('.js-retry')!.click();
     await h.flush();
     expect(h.set).toHaveBeenCalledTimes(2);
@@ -195,6 +202,7 @@ describe('TableScreenSheet', () => {
     byId(h.el, 'tv-pin-map')!.querySelector('input')!.dispatchEvent(new Event('change'));
     await h.flush();
     expect(text(byId(h.el, 'tv-not-saved'))).toContain('A TV continua como estava.');
+    expect(radios(h.el)).toHaveLength(0);
     expect(h.get).toHaveBeenCalledTimes(2);
   });
 
@@ -206,6 +214,9 @@ describe('TableScreenSheet', () => {
     info.click();
     h.fixture.detectChanges();
     expect(info.getAttribute('aria-expanded')).toBe('true');
+    // The order is all there is under "Espelhar" while it is open; the pins come back when it closes.
+    expect(radios(h.el)).toHaveLength(1);
+    expect(byId(h.el, 'tv-now')).toBeNull();
     const items = Array.from(byId(h.el, 'tv-order')!.querySelectorAll('li')).map(text);
     expect(items).toEqual([
       'uma imagem mostrada a toda a mesa;',
@@ -214,6 +225,10 @@ describe('TableScreenSheet', () => {
       'o mapa;',
       'a tela de espera.',
     ]);
+    info.click();
+    h.fixture.detectChanges();
+    expect(byId(h.el, 'tv-order')).toBeNull();
+    expect(radios(h.el)).toHaveLength(6);
   });
 
   it('says why the stage is not what was asked for', async () => {

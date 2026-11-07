@@ -108,6 +108,9 @@
 
 .again {
   align-self: flex-start;
+  // Material's 48 px touch target hangs 2 px past the 44 px button: the body would scroll for it.
+  margin-block: 2px;
+  --mat-button-outlined-container-height: 44px;
 }
 
 .privacy {
