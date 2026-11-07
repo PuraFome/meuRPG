@@ -2049,9 +2049,14 @@ UPDATE combatants SET creature_spent = $2 WHERE id = $1;
 -- transaction so two spends in one change add up.
 SELECT creature_spent FROM combatants WHERE id = $1;
 
+-- name: LockSessionForHints :one
+-- The first statement of Service.tx: it takes the session's row lock until the transaction ends, so the writes of one
+-- session take turns in the same order (GetOpenGameSessionForUpdate takes the same lock).
+SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE;
+
 -- name: BumpHintSeq :one
 -- A write that told the live streams something adds 1 to the session's number, in the same transaction as the write
--- (Service.tx). It takes the session row's lock until the commit.
+-- (Service.tx), which holds the row's lock already (LockSessionForHints).
 UPDATE game_sessions SET hint_seq = hint_seq + 1 WHERE id = $1 RETURNING hint_seq;
 
 -- name: GetHintSeq :one

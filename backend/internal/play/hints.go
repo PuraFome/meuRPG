@@ -64,11 +64,14 @@ func (h *hints) moves() bool { return h.touched || len(h.events) > 0 }
 // tx runs fn in a transaction (db.InTx, so with its retries and its rules for fn) on the session sessionID and tells the
 // streams what fn collected, after the commit.
 //
+// The first statement of every attempt takes the session's row lock (FOR UPDATE), before fn reads anything: all the writes of
+// one session take turns in that order, so they do not collide at the bump, and none can deadlock on it. fn must not lock
+// the row again in another order; a closure that locks it itself (GetOpenGameSessionForUpdate) finds it already held.
 // fn calls h.tell for each hint its write sends and h.touch for a write that sends none but must still move the screens.
 // The collector is empty at the start of every attempt, whatever the last attempt collected.
 // When fn returns nil having told or touched, tx adds 1 to game_sessions.hint_seq of sessionID in the same transaction
-// (once, however many events were told), so the number is saved with the write or not at all; it needs the session's row to
-// exist. A transaction that told nothing and touched nothing never reads or writes the row.
+// (once, however many events were told), so the number is saved with the write or not at all; the session's row must exist.
+// A transaction that told nothing and touched nothing takes the lock and writes nothing: the number stays as it was.
 // When InTx returns nil, tx sends the collected events, in the order they were told. On any error, nothing is sent.
 //
 // A hint that goes with no write (typing, presence, the table screen's "changed") does not go through tx: it calls send.
@@ -76,13 +79,17 @@ func (s *Service) tx(ctx context.Context, sessionID string, fn func(pgx.Tx, *hin
 	var h hints
 	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		h.reset()
+		q := s.queries.WithTx(tx)
+		if _, err := q.LockSessionForHints(ctx, sessionID); err != nil {
+			return fmt.Errorf("lock the session: %w", err)
+		}
 		if err := fn(tx, &h); err != nil {
 			return err
 		}
 		if !h.moves() {
 			return nil
 		}
-		seq, err := s.queries.WithTx(tx).BumpHintSeq(ctx, sessionID)
+		seq, err := q.BumpHintSeq(ctx, sessionID)
 		if err != nil {
 			return fmt.Errorf("bump the session's hint number: %w", err)
 		}

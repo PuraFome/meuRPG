@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -95,18 +96,6 @@ func (w *hintTable) write(ctx context.Context, tx pgx.Tx, id int) error {
 	return err
 }
 
-func equalNames(got, want []string) bool {
-	if len(got) != len(want) {
-		return false
-	}
-	for i := range got {
-		if got[i] != want[i] {
-			return false
-		}
-	}
-	return true
-}
-
 func TestTxResetsTheCollectorOnEveryAttempt(t *testing.T) {
 	w := newHintTable(t)
 	ctx := t.Context()
@@ -130,7 +119,7 @@ func TestTxResetsTheCollectorOnEveryAttempt(t *testing.T) {
 	if attempts != 2 {
 		t.Fatalf("fn ran %d times, want 2 (one retry)", attempts)
 	}
-	if got := w.heard(); !equalNames(got, []string{"second-attempt"}) {
+	if got := w.heard(); !slices.Equal(got, []string{"second-attempt"}) {
 		t.Errorf("the streams heard %q, want only the second attempt's event, once", got)
 	}
 	if got := w.seq(t); got != 1 {
@@ -189,9 +178,10 @@ func TestTxTheNumberAndTheWriteAreSavedTogether(t *testing.T) {
 	}
 }
 
-func TestTxWithoutHintsDoesNotTouchTheRow(t *testing.T) {
+// Every tx takes the session row's lock before its closure runs, so the writes of one session take turns; a tx that told
+// nothing takes it too but writes nothing.
+func TestTxTakesTheSessionLockFirstAndWritesNothingWithoutHints(t *testing.T) {
 	w := newHintTable(t)
-	// Another transaction holds the session row's lock: a write of the row would wait for it until the deadline.
 	conn, err := pgx.ConnectConfig(t.Context(), w.h.pool.Config().ConnConfig)
 	if err != nil {
 		t.Fatal(err)
@@ -205,11 +195,30 @@ func TestTxWithoutHintsDoesNotTouchTheRow(t *testing.T) {
 	if _, err := holder.Exec(t.Context(), `SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE`, w.sessionID); err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
-	err = w.h.svc.tx(ctx, w.sessionID, func(tx pgx.Tx, h *hints) error { return w.write(ctx, tx, 1) })
-	if err != nil {
-		t.Fatalf("tx() of a write that told nothing, with the session row locked elsewhere: %v", err)
+	var released atomic.Bool
+	ran := make(chan bool, 1)
+	done := make(chan error, 1)
+	go func() {
+		done <- w.h.svc.tx(t.Context(), w.sessionID, func(tx pgx.Tx, _ *hints) error {
+			ran <- released.Load() // true only if the closure started after the holder let go
+			return w.write(t.Context(), tx, 1)
+		})
+	}()
+	// The one wait of the test: the closure must NOT have started while the lock is held elsewhere.
+	select {
+	case <-ran:
+		t.Fatal("the closure ran while another transaction held the session row's lock")
+	case <-time.After(300 * time.Millisecond):
+	}
+	released.Store(true)
+	if err := holder.Commit(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("tx() after the lock was released: %v", err)
+	}
+	if !<-ran {
+		t.Error("the closure started before the lock was released")
 	}
 	if got := w.probe(t, 1); got != 1 {
 		t.Errorf("the write did not happen (n = %d)", got)
@@ -217,18 +226,15 @@ func TestTxWithoutHintsDoesNotTouchTheRow(t *testing.T) {
 	if got := w.heard(); len(got) != 0 {
 		t.Errorf("the streams heard %q", got)
 	}
-	if err := holder.Commit(t.Context()); err != nil {
-		t.Fatal(err)
-	}
 	if got := w.seq(t); got != 0 {
-		t.Errorf("hint_seq = %d, want 0", got)
+		t.Errorf("hint_seq = %d after a tx that told nothing, want 0", got)
 	}
 }
 
 func TestTxTouchBumpsOnceAndSendsNothing(t *testing.T) {
 	w := newHintTable(t)
 	ctx := t.Context()
-	err := w.h.svc.tx(ctx, w.sessionID, func(tx pgx.Tx, h *hints) error {
+	err := w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error {
 		h.touch()
 		h.touch()
 		return nil
@@ -249,7 +255,7 @@ func TestTxBumpsOncePerTransactionWhateverItTold(t *testing.T) {
 	w := newHintTable(t)
 	ctx := t.Context()
 	var h2 *hints
-	err := w.h.svc.tx(ctx, w.sessionID, func(tx pgx.Tx, h *hints) error {
+	err := w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error {
 		h2 = h
 		h.tell(w.campaignID, w.event("public", true))
 		h.tell(w.campaignID, w.event("master-only", false))
@@ -258,7 +264,7 @@ func TestTxBumpsOncePerTransactionWhateverItTold(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tx() error = %v", err)
 	}
-	if got := w.heard(); !equalNames(got, []string{"public", "master-only"}) {
+	if got := w.heard(); !slices.Equal(got, []string{"public", "master-only"}) {
 		t.Errorf("the streams heard %q, want both events in the order told", got)
 	}
 	if got := w.seq(t); got != 1 {
@@ -268,7 +274,7 @@ func TestTxBumpsOncePerTransactionWhateverItTold(t *testing.T) {
 		t.Errorf("the collector holds number %d, want 1", h2.seq)
 	}
 	// One master-only event bumps the same as one public event.
-	err = w.h.svc.tx(ctx, w.sessionID, func(tx pgx.Tx, h *hints) error {
+	err = w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error {
 		h.tell(w.campaignID, w.event("secret", false))
 		return nil
 	})
@@ -283,7 +289,10 @@ func TestTxBumpsOncePerTransactionWhateverItTold(t *testing.T) {
 // Four players and the master write one session at the same instant, each its own row, each telling an event, so every
 // write adds 1 to the session's number. It measures the cost of that row: the attempts of the closure beyond one per
 // write are the retries CockroachDB asked for. The control does the same writes telling nothing. The second pair reads
-// the session row before it writes, as a handler that resolves the open session does. Read with
+// the session row before it writes, as a handler that resolves the open session does. Service.tx takes the row's lock
+// first in every row, so the control still locks it; what it leaves out is the bump. The last row does the first one's
+// writes from a single writer, for the time of one write alone. The log gives the median and the 95th percentile of one
+// write (the whole of tx, retries included). Read with
 // go test -run TestHintSeqContention -v -count=N.
 func TestHintSeqContentionOnCockroachDB(t *testing.T) {
 	w := newHintTable(t)
@@ -293,24 +302,27 @@ func TestHintSeqContentionOnCockroachDB(t *testing.T) {
 	if err := w.h.pool.QueryRow(ctx, `SHOW CLUSTER SETTING version`).Scan(&version); err != nil {
 		t.Fatalf("this test measures CockroachDB: %v", err)
 	}
-	const writers, perWriter = 5, 100
+	const perWriter = 100
 	// The test pool has one connection, which would make the writers take turns: a pool of their own over the same database.
 	cfg := w.h.pool.Config().Copy()
-	cfg.MaxConns = writers + 1
+	cfg.MaxConns = 6
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer pool.Close()
 	svc := &Service{pool: pool, queries: playdb.New(pool), hub: w.h.svc.hub}
-	run := func(name string, tell, readsSession bool) {
+	run := func(name string, writers int, tell, readsSession bool) {
 		var attempts atomic.Int64
 		var failures atomic.Int64
 		var wg sync.WaitGroup
+		var mu sync.Mutex
+		var took []time.Duration
 		before := w.seq(t)
 		for id := range writers {
 			wg.Go(func() {
 				for range perWriter {
+					start := time.Now()
 					err := svc.tx(ctx, w.sessionID, func(tx pgx.Tx, h *hints) error {
 						attempts.Add(1)
 						if readsSession { // most handlers read the open session first
@@ -326,6 +338,9 @@ func TestHintSeqContentionOnCockroachDB(t *testing.T) {
 						}
 						return nil
 					})
+					mu.Lock()
+					took = append(took, time.Since(start))
+					mu.Unlock()
 					if err != nil {
 						failures.Add(1)
 						t.Errorf("%s: writer %d: a write failed after its retries: %v", name, id, err)
@@ -343,11 +358,14 @@ func TestHintSeqContentionOnCockroachDB(t *testing.T) {
 		if got := w.seq(t); got != want {
 			t.Errorf("%s: hint_seq = %d, want %d", name, got, want)
 		}
-		t.Logf("%s: %d writes, %d failed, %d retries = %.1f per hundred writes", name, writes, failures.Load(), retries, float64(retries)*100/float64(writes))
+		slices.Sort(took)
+		t.Logf("%s: %d writers, %d writes, %d failed, %d retries = %.1f per hundred writes, one write: median %.1f ms, p95 %.1f ms", name, writers, writes, failures.Load(), retries, float64(retries)*100/float64(writes),
+			float64(took[len(took)/2].Microseconds())/1000, float64(took[len(took)*95/100].Microseconds())/1000)
 		w.heard()
 	}
-	run("with the bump", true, false)
-	run("control, no bump", false, false)
-	run("with the bump, session row read first", true, true)
-	run("control, no bump, session row read first", false, true)
+	run("with the bump", 5, true, false)
+	run("control, no bump", 5, false, false)
+	run("with the bump, session row read first", 5, true, true)
+	run("control, no bump, session row read first", 5, false, true)
+	run("one writer, with the bump", 1, true, false)
 }

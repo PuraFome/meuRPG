@@ -484,7 +484,7 @@ UPDATE game_sessions SET hint_seq = hint_seq + 1 WHERE id = $1 RETURNING hint_se
 `
 
 // A write that told the live streams something adds 1 to the session's number, in the same transaction as the write
-// (Service.tx). It takes the session row's lock until the commit.
+// (Service.tx), which holds the row's lock already (LockSessionForHints).
 func (q *Queries) BumpHintSeq(ctx context.Context, id string) (int64, error) {
 	row := q.db.QueryRow(ctx, bumpHintSeq, id)
 	var hint_seq int64
@@ -8431,6 +8431,19 @@ func (q *Queries) ListWaitingOpportunityOffers(ctx context.Context, encounterID 
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockSessionForHints = `-- name: LockSessionForHints :one
+SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE
+`
+
+// The first statement of Service.tx: it takes the session's row lock until the transaction ends, so the writes of one
+// session take turns in the same order (GetOpenGameSessionForUpdate takes the same lock).
+func (q *Queries) LockSessionForHints(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, lockSessionForHints, id)
+	var id_2 string
+	err := row.Scan(&id_2)
+	return id_2, err
 }
 
 const markCombatantDashed = `-- name: MarkCombatantDashed :exec

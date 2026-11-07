@@ -14,6 +14,7 @@ erDiagram
         uuid open_scene_point_id FK
         bool open_scene_everyone
         text shown_image_audience
+        bigint hint_seq
     }
     game_session_scene_players {
         uuid game_session_id PK,FK
