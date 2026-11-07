@@ -126,6 +126,16 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The preview line also carries CA, PV and speed.
   It adds "Resistências e imunidades" with the table's lines and the base's.
   The read view lists the rows.
+- **The summon block** (`shared/summon-block`, `core/content/summon-draft`, `summon-options`, `summon-names`) is "Invoca criaturas" on a feature's card.
+  `app-feature-editor` draws it behind `allowSummon`, which is on for a class, subclass, race, subrace, background and class-feature entry, and off for an option and a feat.
+  The draft keeps the formula and the most at a time as typed and the stored message in `base`, so the role, the cost, the count per slot level and a field this build does not know go back as loaded.
+  The creatures are chips with a search (`app-creature-pick`): "Da mesa" for a table creature and "· SRD" for the SRD's.
+  The cost is one of the feature's own `resource` effects, and with none the block says so and `summonBlockedPaths` stops the save.
+  Time and duration are selects of presets, and a stored value they do not list is one more option.
+  Concentration is off until the duration is by time.
+  Turning the switch off sends no summon.
+  A refusal at `<feature>.summon.*` sits under its own field (`content-violation-texts-summon.ts`), and one at `count_per_slot_level` or `role` lands on the switch.
+  The preview and the read view add "Invoca: Lobo." from `summonLine`, with SRD names remembered from the bestiary (`summon-names.ts`).
 - **The master's phone read of a creature** (`pages/content/creature-read`, `core/content/creature-phone-read`) is what `content-entry` shows instead of the editor on a phone.
   It reads the base's stat block, as the editor's side panel does, and builds the text from the same preview.
   The rows are the base (`typeAndSizeInWords`), PV, CA, the damage bonus, the attack bonus and the damage lines, each marked "da mesa" or "da base".
