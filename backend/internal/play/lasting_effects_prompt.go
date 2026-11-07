@@ -89,7 +89,7 @@ func (wv *windowView) reactorSave(p *playv1.EffectSavePrompt, reactor playdb.Com
 		sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
 	}
 	p.Mode = modeKey(combat.Resolve(sources))
-	for _, src := range shownSources(sources, wv.names) {
+	for _, src := range shownSources(sources, wv.names, wv.v.master) {
 		p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
 	}
 	p.AutoFail = combat.AutoFailsSave(creature, ability)

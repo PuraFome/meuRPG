@@ -7,6 +7,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
@@ -392,5 +393,44 @@ func TestSunlight_AChecksNoteNamesNoSun(t *testing.T) {
 	}
 	if got := notes(skillAthletics); len(got) != 0 {
 		t.Errorf("Athletics in the sun for a Sensitivity creature: notes %v, want none", got)
+	}
+}
+
+// A combat whose map was deleted keeps its grid (migration 00043 unsets the map and the fight goes on): the master can
+// still paint and erase squares, and the scope stays.
+func TestSunlight_AGridWhoseMapWasDeletedStillTakesSquares(t *testing.T) {
+	t.Parallel()
+	a, e := drowFight(t)
+	a.mustSunlight(t, e, func(r *playv1.SetSunlightRequest) {
+		r.On, r.Scope, r.AddSquares = true, playv1.SunlightScope_SUNLIGHT_SCOPE_SQUARES, []*playv1.SunlightSquare{sunSq(1, 1)}
+	})
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE encounters SET map_id = NULL WHERE id = $1`, e.GetId()); err != nil {
+		t.Fatalf("unset the map: %v", err)
+	}
+	got := a.mustSunlight(t, e, func(r *playv1.SetSunlightRequest) {
+		r.AddSquares, r.RemoveSquares = []*playv1.SunlightSquare{sunSq(2, 2)}, []*playv1.SunlightSquare{sunSq(1, 1)}
+	})
+	if got.GetSunlightScope() != playv1.SunlightScope_SUNLIGHT_SCOPE_SQUARES || len(got.GetSunlightSquares()) != 1 || got.GetSunlightSquares()[0].GetCol() != 2 || got.GetSunlightSquares()[0].GetRow() != 2 {
+		t.Errorf("after the map was deleted: scope %v squares %v, want squares with (2,2) alone", got.GetSunlightScope(), got.GetSunlightSquares())
+	}
+}
+
+// The prompts and the trap saves that write a save's sources (the concentration and the lasting-effect prompts, a trap's
+// save and attack, the trap search) read the sun as itself to the master and as "Outra fonte" to a player.
+func TestSunlight_ThePromptsNameTheSunToTheMasterAlone(t *testing.T) {
+	t.Parallel()
+	names := func(k string) string { return k }
+	sources := []combat.Source{{Kind: combat.SourceSunlightSave, Effect: combat.ModeDisadvantage, Condition: combat.TraitSunlightWeakness}}
+	const sun = "Luz do sol (Fraqueza à Luz do Sol)"
+	for what, shown := range map[string]func(master bool) []*playv1.AdvantageSource{
+		"shownSources": func(m bool) []*playv1.AdvantageSource { return shownSources(sources, names, m) },
+		"shownRecs":    func(m bool) []*playv1.AdvantageSource { return shownRecs(sourceRecs(sources), names, m) },
+	} {
+		if got := shown(true); len(got) != 1 || got[0].GetTextPt() != sun {
+			t.Errorf("%s for the master = %v, want %q", what, got, sun)
+		}
+		if got := shown(false); len(got) != 1 || got[0].GetTextPt() != otherSourceTx+": desvantagem" || got[0].GetKind() == playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE {
+			t.Errorf("%s for a player = %v, want %q with no sun kind", what, got, otherSourceTx+": desvantagem")
+		}
 	}
 }

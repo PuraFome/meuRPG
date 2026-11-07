@@ -900,9 +900,10 @@ func (s *Service) spellModes(ctx context.Context, c *combatTx, m authz.Membershi
 	}, nil
 }
 
-// shownSources writes the sources of a saving throw or an ability check.
-func shownSources(sources []combat.Source, names func(string) string) []*playv1.AdvantageSource {
-	return shownSourcesHiding(sources, names, hidesSunlight)
+// shownSources writes the sources of a saving throw or an ability check. The master reads the sun as itself; a player reads
+// "Outra fonte" for it.
+func shownSources(sources []combat.Source, names func(string) string, master bool) []*playv1.AdvantageSource {
+	return shownSourcesHiding(sources, names, hideUnlessMaster(master))
 }
 
 // shownSourcesHiding is shownSources with the sources of an effect the master hides turned

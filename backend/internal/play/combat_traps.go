@@ -129,12 +129,12 @@ func sourceRecs(sources []combat.Source) []sourceRec {
 }
 
 // shownRecs writes the circumstances for the viewer who may read them.
-func shownRecs(recs []sourceRec, names func(string) string) []*playv1.AdvantageSource {
+func shownRecs(recs []sourceRec, names func(string) string, master bool) []*playv1.AdvantageSource {
 	var sources []combat.Source
 	for _, r := range recs {
 		sources = append(sources, combat.Source{Kind: r.Kind, Effect: combat.RollMode(r.Effect), Condition: r.Condition})
 	}
-	return shownSources(sources, names)
+	return shownSources(sources, names, master)
 }
 
 // trapDamageEvent is one damage part rolled for a creature: the roll, and what it
@@ -812,7 +812,7 @@ func (v trapView) attackProto(a trapAttackEvent, mine bool) *playv1.TrapAttackRo
 	r := &playv1.TrapAttackRoll{Outcome: outcomeToProto[a.Outcome]}
 	if mine {
 		r.Roll = trapD20Roll(a.D20, a.D20B, a.Counted, a.Modifier, a.Total)
-		r.Mode, r.Sources = modeToProto[modeOfKey(a.Mode)], shownRecs(a.Sources, v.names)
+		r.Mode, r.Sources = modeToProto[modeOfKey(a.Mode)], shownRecs(a.Sources, v.names, v.master)
 	}
 	if v.master {
 		r.TargetArmorClass = a.TargetAC
@@ -833,7 +833,7 @@ func (v trapView) saveProto(sv saveRoll, sources []sourceRec, mine bool) *playv1
 			r.Roll.Rerolled = sv.Lucky.proto() // "Sortudo: 1 → 14": the d20 the app rolled again, with the dice
 			sv.mark(r.Roll)
 		}
-		r.Mode, r.AutoFailed, r.Sources = modeToProto[modeOfKey(sv.RollMode)], sv.Auto, shownRecs(sources, v.names)
+		r.Mode, r.AutoFailed, r.Sources = modeToProto[modeOfKey(sv.RollMode)], sv.Auto, shownRecs(sources, v.names, v.master)
 		r.Sources = append(r.Sources, effectDieSources(sv.Extra, v.names, v.master)...)
 	}
 	if v.master {

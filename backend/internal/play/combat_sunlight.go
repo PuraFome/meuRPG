@@ -70,12 +70,12 @@ func nextSunlight(enc playdb.Encounter, req *playv1.SetSunlightRequest) (string,
 	if len(adds) > maxSunSquares || len(removes) > maxSunSquares {
 		return "", nil, sunInvalid("too many squares")
 	}
-	if isTheatre(enc) || enc.MapID == nil { // no squares to light: the sun reaches the whole combat
+	if isTheatre(enc) || enc.GridColumns <= 0 || enc.GridRows <= 0 { // no grid, no squares to light: the sun reaches the whole combat (a grid whose map was deleted keeps its squares)
 		if scope == sunScopeSquares && req.GetScope() != playv1.SunlightScope_SUNLIGHT_SCOPE_UNSPECIFIED {
-			return "", nil, sunInvalid("a combat with no map has no squares: the sunlight reaches all of it")
+			return "", nil, sunInvalid("a combat with no grid has no squares: the sunlight reaches all of it")
 		}
 		if len(adds)+len(removes) > 0 {
-			return "", nil, sunInvalid("a combat with no map has no squares")
+			return "", nil, sunInvalid("a combat with no grid has no squares")
 		}
 		return sunScopeMap, nil, nil
 	}

@@ -25,7 +25,7 @@ func TestTheSunlightIsTheMastersAloneOnAFoggedMap(t *testing.T) {
 	z.enc = e
 	z.forceMove(drow.GetId(), casterCol, casterRow)
 
-	needles := []string{"Luz do sol", "Sensibilidade à Luz do Sol", "Fraqueza à Luz do Sol", "SUNLIGHT_TRAIT_SENSITIVITY", "SUNLIGHT_ATTACK", "sunlightOn", "sunlightSquares", "inSunlight", "sunlightTrait", "sunlight_set"}
+	needles := []string{"Luz do sol", "Sensibilidade à Luz do Sol", "Fraqueza à Luz do Sol", "SUNLIGHT_TRAIT_SENSITIVITY", "SUNLIGHT_ATTACK", "sunlight_attack", "sunlight_perception", "sunlight_save", "sunlightOn", "sunlightSquares", "inSunlight", "sunlightTrait", "sunlight_set"}
 	watchers := z.streamsOf()
 
 	set := func(on bool, scope playv1.SunlightScope, add ...*playv1.SunlightSquare) {

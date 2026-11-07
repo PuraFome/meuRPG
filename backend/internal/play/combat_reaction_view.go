@@ -528,7 +528,7 @@ func (wv *windowView) concentrationMode(reactor *playdb.Combatant, p *playv1.Con
 	}
 	sources := concentrationSources(sun.facts(creatureFacts(*reactor, statesOf(wv.d.states), sheet.Traits), *reactor))
 	p.Mode = modeKey(combat.Resolve(sources))
-	for _, src := range shownSources(sources, wv.names) {
+	for _, src := range shownSources(sources, wv.names, wv.v.master) {
 		p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
 	}
 	return nil
