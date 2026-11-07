@@ -403,6 +403,10 @@ func TestSinceSeqOfForAPlayerHearsOnlyWhatTheyMaySee(t *testing.T) {
 		{"a dismissal of a creature in no held line", []playdb.ListEncounterEventsRow{row("d1", 7, eventCreatureDismissed, `{"creature_ids":["cr-1"]}`)}, []*logEntry{held(4, "c-toren")}, false, 5},
 		{"a dismissal of a creature in a held line", []playdb.ListEncounterEventsRow{row("d1", 7, eventCreatureDismissed, `{"creature_ids":["cr-1"]}`)}, []*logEntry{held(4, "c-gob")}, false, 0},
 		{"a toggle of a combatant in a master-only line", []playdb.ListEncounterEventsRow{row("h1", 7, eventCombatantHiddenSet, `{"combatant_id":"c-gob"}`)}, []*logEntry{{seq: 4, masterOnly: true, ev: actionEvent{Actor: "c-gob"}}}, false, 5},
+		{"a firing that only adds a hidden NPC to an earlier one", []playdb.ListEncounterEventsRow{row("t1", 7, eventTrapTriggered, `{"trap":{"extends_id":"f","caught":[{"target_id":"c-h","hidden":true}]}}`)}, nil, false, 5},
+		{"that addition, for the master", []playdb.ListEncounterEventsRow{row("t1", 7, eventTrapTriggered, `{"trap":{"extends_id":"f","caught":[{"target_id":"c-h","hidden":true}]}}`)}, nil, true, 0},
+		{"an addition with a creature the player is given", []playdb.ListEncounterEventsRow{row("t1", 7, eventTrapTriggered, `{"trap":{"extends_id":"f","caught":[{"target_id":"c-h","hidden":true},{"target_id":"c-p"}]}}`)}, nil, false, 0},
+		{"a toggle of a creature a held firing caught", []playdb.ListEncounterEventsRow{row("h1", 7, eventCombatantHiddenSet, `{"combatant_id":"c-gob"}`)}, []*logEntry{{seq: 4, ev: actionEvent{Trap: &trapFireEvent{Caught: []trapCaughtEvent{{Target: "c-gob"}}}}}}, false, 0},
 		{"a secret roll mode answer", []playdb.ListEncounterEventsRow{row("r1", 7, eventRollModeAnswered, `{"secret":true}`)}, nil, false, 5},
 		{"a roll mode answer the player may see", []playdb.ListEncounterEventsRow{row("r1", 7, eventRollModeAnswered, `{}`)}, nil, false, 0},
 		{"an event no one can read", []playdb.ListEncounterEventsRow{row("x1", 7, eventRollModeAnswered, `not json`)}, nil, false, 5},
@@ -413,6 +417,58 @@ func TestSinceSeqOfForAPlayerHearsOnlyWhatTheyMaySee(t *testing.T) {
 		v.master = c.master
 		if got := sinceSeqOf(5, v, events(c.extra...), c.entries, cs); got != c.want {
 			t.Errorf("%s: since = %d, want %d", c.name, got, c.want)
+		}
+	}
+}
+
+// An entry's number is the highest among the events it shows, and a player's counts the events they hear of: a Secret event or a
+// fogged one they did not see that joins a line they hold moves nothing they read (a legendary resistance spent on a save they see).
+// The entry's own event always counts (a reactor's player is given the line of a reaction the table is not). The master counts all.
+func TestStampSeqsOfAPlayerCountsOnlyTheEventsTheyHearOf(t *testing.T) {
+	t.Parallel()
+	row := func(id string, seq int32, payload string) playdb.ListEncounterEventsRow {
+		return playdb.ListEncounterEventsRow{ID: id, Seq: seq, Kind: eventAttackRolled, Payload: []byte(payload)}
+	}
+	events := []playdb.ListEncounterEventsRow{
+		row("own", 10, `{"combatant_id":"c-a"}`),
+		row("secret", 11, `{"combatant_id":"c-a","secret":true}`),
+		row("fogged", 12, `{"combatant_id":"c-a","fogged":true,"seen_by":["bia"]}`),
+		row("seen-fog", 13, `{"combatant_id":"c-a","fogged":true,"seen_by":["ana"]}`),
+		row("later", 14, `{"combatant_id":"c-a"}`),
+		row("unreadable", 15, `not json`),
+		row("secret-own", 20, `{"combatant_id":"c-b","secret":true}`),
+		// firings that add creatures to an earlier one: of a hidden NPC alone, of an NPC the fog showed to bia alone, of a visible one
+		row("add-hidden", 30, `{"trap":{"extends_id":"f","caught":[{"target_id":"c-h","hidden":true}]}}`),
+		row("add-fogged", 31, `{"trap":{"extends_id":"f","caught":[{"target_id":"c-f","fogged":true,"seen_by":["bia"]}]}}`),
+		row("add-mixed", 32, `{"trap":{"extends_id":"f","caught":[{"target_id":"c-h","hidden":true},{"target_id":"c-p"}]}}`),
+		row("fire-hidden", 33, `{"trap":{"caught":[{"target_id":"c-h","hidden":true}]}}`),
+	}
+	cases := []struct {
+		name         string
+		hosts        []string
+		player, boss int64
+	}{
+		{"a secret host and a fogged-unseen host are not counted", []string{"own", "secret", "fogged"}, 10, 12},
+		{"a visible later host counts, past the hidden ones", []string{"own", "secret", "fogged", "later"}, 14, 14},
+		{"a fogged host the player saw counts", []string{"own", "secret", "seen-fog"}, 13, 13},
+		{"a host that cannot be read is not counted", []string{"own", "unreadable"}, 10, 15},
+		{"the entry's own event counts even when it is secret", []string{"secret-own", "secret"}, 20, 20},
+		{"a host that is no event is not counted", []string{"own", "gone"}, 10, 10},
+		{"creatures only the master is given, added to a firing, are not counted", []string{"own", "add-hidden", "add-fogged"}, 10, 31},
+		{"an addition with a creature the player is given is counted", []string{"own", "add-hidden", "add-mixed"}, 32, 32},
+		{"a firing of a hidden NPC alone is not an addition: it counts", []string{"own", "fire-hidden"}, 33, 33},
+	}
+	for _, c := range cases {
+		for who, v := range map[string]combatViewer{"player": {userID: "ana"}, "master": {userID: "m", master: true}} {
+			entries := []*logEntry{{hosts: c.hosts}}
+			stampSeqs(entries, events, v)
+			want := c.player
+			if who == "master" {
+				want = c.boss
+			}
+			if entries[0].seq != want {
+				t.Errorf("%s, for the %s: seq = %d, want %d", c.name, who, entries[0].seq, want)
+			}
 		}
 	}
 }

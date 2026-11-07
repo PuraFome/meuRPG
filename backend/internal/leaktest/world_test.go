@@ -927,3 +927,19 @@ func initiativeOrder(e *playv1.Encounter) string {
 // dragonKey is the legendary creature of the combat: an SRD adult red dragon (3 legendary
 // actions, Legendary Resistance 3/day).
 const dragonKey = "monster:adult-red-dragon"
+
+// placement is where a combatant is put.
+type placement struct {
+	id       string
+	col, row int32
+}
+
+// placeForced moves the combatants to their squares, one after the other in the order given: each move is an event of the
+// combat with a number of its own, so an order that changes from one world to the next (a range over a map) would change the
+// numbers of the lines the moves make and the tests that compare two worlds by them.
+func (w *world) placeForced(by *person, encounterID string, moves ...placement) {
+	w.t.Helper()
+	for _, mv := range moves {
+		must(by.combat.MoveCombatant(w.t.Context(), rq(&playv1.MoveCombatantRequest{CampaignId: w.campaign, EncounterId: encounterID, CombatantId: mv.id, IdempotencyKey: newKey(), Col: mv.col, Row: mv.row, Forced: true})))
+	}
+}

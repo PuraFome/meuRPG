@@ -60,9 +60,12 @@ The app sends `since_seq`, the `last_seq` of its last answer; 0 asks for the who
 The answer carries `last_seq` (the number to send next time) and `full` (the rounds replace everything the app holds).
 A delta holds the entries whose newest event is above `since_seq`, and the app puts each in place by id, in the round and the place it already has.
 An entry that a later event joins (the damage of an attack) takes that event's number, so it comes again and replaces its old copy.
+For a player, only an event the player hears of joins the number: one that is secret, that the fog keeps from them, or that adds only creatures they are not given (the master adding a hidden NPC to a firing the table saw) leaves the entry's number where it was, because it changes nothing they read.
+The entry's own first event always counts: it is the line, and a player who is given a line the table is not (a reactor's own player) is given its number.
 
 `last_seq` is a number of `session_events.seq`; so is `CombatLogEntry.seq`, which only the master reads.
 A player's entries carry `seq` 0: the numbers of the entries a player reads would have gaps where an event they may not see sits.
+The number of a player's answer is built from the same rule as the entries: the highest number among the entries they read (each one counting only the events the player hears of, see above) and the events that would have asked for the whole log; no event they do not hear of reaches it, whether it sits on a line of its own or joins one they read.
 They are unrelated to the live stream's `session_seq`, the hint number ([Live session](live-session.md#the-hint-number)): two counters, never compared.
 
 ### When the answer is the whole log
@@ -79,11 +82,12 @@ When in doubt a kind stays off the list.
 
 Because a player's answer ignores what they cannot see, it tells them nothing a hidden write did.
 A player's `last_seq` is the highest entry number among the entries they read, raised to the highest event that would have asked for the whole log, so the next read does not meet the same event again and ask for everything once more.
-It does not move on a write they may not see.
+It does not move on a write they may not see, whether that write makes a line of its own (the master's alone, secret, out of their sight) or only joins a line they hold (a legendary resistance spent on a save they see, a hidden NPC added to a firing).
 The master's `last_seq` is the highest event number of the combat.
 In a delta, the master's `undoable_event_id` entry is always sent, so the app can derive the `undoable` flag: it is right only on the entry of that id.
 
 `TestAPlayersSinceSeqAnswerIgnoresWhatTheyCannotSee` (`backend/internal/leaktest/seq_test.go`) checks the player's answer against the worlds where the hidden write was not made.
+The row "a hidden NPC added to a firing the table saw" of `TestAHiddenWriteMovesThePlayersNumberAndNothingElse` does the same for a hidden event that joins a line the player reads, and `TestStampSeqsOfAPlayerCountsOnlyTheEventsTheyHearOf` (package `play`) pins the rule of the entry numbers.
 
 ### In the app
 

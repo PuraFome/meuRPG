@@ -228,12 +228,15 @@ type hiddenWrite struct {
 	// roster is true for the writes that change who is in the combat (AddCombatants, RemoveCombatant): they have always told every
 	// player "encounter_changed", an event of an id and a mode, even when the combatant is hidden. That hint is older than the
 	// hint number and is not what this test pins; it is the one event allowed, once, for these writes, and reported apart.
-	roster  bool
+	roster bool
+	// before is made in every world, the one without the write too, before anything is read or watched: a write the table sees
+	// that the hidden one then joins (a firing the master adds a creature to). It leaves what prepare needs in w.notes.
+	before  func(w *world)
 	prepare func(w *world, variant int) func()
 }
 
 var hiddenWrites = []hiddenWrite{
-	{"a hidden monster added", false, false, func(w *world, variant int) func() {
+	{"a hidden monster added", false, false, nil, func(w *world, variant int) func() {
 		kind := "sq-m" // a combatant's name holds 30 characters at most: LEAKCANARY-, the kind and its number
 		if variant == 1 {
 			kind = "sq-monster-longer"
@@ -247,7 +250,7 @@ var hiddenWrites = []hiddenWrite{
 			w.requireOwnTotal(added.GetCombatantIds()[0])
 		}
 	}},
-	{"a hit point correction of a hidden NPC", true, false, func(w *world, variant int) func() {
+	{"a hit point correction of a hidden NPC", true, false, nil, func(w *world, variant int) func() {
 		damage := w.secrets.number("seq-hidden-damage", []int64{4111, 4213}[variant])
 		return func() {
 			must(w.master.combat.AdjustCombatantHitPoints(w.t.Context(), rq(&playv1.AdjustCombatantHitPointsRequest{
@@ -256,7 +259,7 @@ var hiddenWrites = []hiddenWrite{
 			})))
 		}
 	}},
-	{"a hidden NPC added as a reinforcement", false, true, func(w *world, variant int) func() {
+	{"a hidden NPC added as a reinforcement", false, true, nil, func(w *world, variant int) func() {
 		npc, _ := w.npc("sq-reinforce-"+[]string{"a", "bcdefgh"}[variant], &charactersv1.BasicSheet{HitPointsMax: int32(4400 + variant), ArmorClass: 12, SpeedFt: 30})
 		w.secrets.id("sq-reinforce", npc.GetId())
 		return func() {
@@ -267,7 +270,7 @@ var hiddenWrites = []hiddenWrite{
 			})))
 		}
 	}},
-	{"a hidden combatant removed", false, true, func(w *world, variant int) func() {
+	{"a hidden combatant removed", false, true, nil, func(w *world, variant int) func() {
 		who := []*charactersv1.Character{w.hiddenNPC, w.bandit}[variant]
 		return func() {
 			must(w.master.combat.RemoveCombatant(w.t.Context(), rq(&playv1.RemoveCombatantRequest{
@@ -275,7 +278,29 @@ var hiddenWrites = []hiddenWrite{
 			})))
 		}
 	}},
-	{"a cover mark on a hidden NPC", false, false, func(w *world, variant int) func() {
+	{
+		name:       "a hidden NPC added to a firing the table saw",
+		masterLine: true,
+		before: func(w *world) { // the master fires the trap at the boss: a line the players hold, whose firing the hidden NPC joins
+			fired := must(w.master.play.FireTrap(w.t.Context(), rq(&playv1.FireTrapRequest{
+				CampaignId: w.campaign, MapId: w.fogMap, PointId: w.pts["trap-guardroom"].GetId(), IdempotencyKey: newKey(),
+				TargetIds: []string{w.combatantOf(w.encounter, w.boss.GetId()).GetId()},
+			})))
+			w.notes["firing"] = fired.GetFiring().GetId()
+			firedTrapIsPublic(w) // the firing is the table's: its name and point are no secret from now on
+		},
+		prepare: func(w *world, variant int) func() {
+			face := []int{17, 2}[variant]
+			return func() { // the master adds the hidden NPC to that firing: an event only he hears joins the line
+				w.scriptD20(face)
+				must(w.master.play.FireTrap(w.t.Context(), rq(&playv1.FireTrapRequest{
+					CampaignId: w.campaign, MapId: w.fogMap, PointId: w.pts["trap-guardroom"].GetId(), IdempotencyKey: newKey(), ExtendFiringId: w.notes["firing"],
+					TargetIds: []string{w.combatantOf(w.encounter, w.hiddenNPC.GetId()).GetId()},
+				})))
+			}
+		},
+	},
+	{"a cover mark on a hidden NPC", false, false, nil, func(w *world, variant int) func() {
 		cover := []playv1.CoverDegree{playv1.CoverDegree_COVER_DEGREE_HALF, playv1.CoverDegree_COVER_DEGREE_THREE_QUARTERS}[variant]
 		return func() {
 			must(w.master.combat.SetCombatantCover(w.t.Context(), rq(&playv1.SetCombatantCoverRequest{
@@ -283,7 +308,7 @@ var hiddenWrites = []hiddenWrite{
 			})))
 		}
 	}},
-	{"a condition of a hidden NPC", false, false, func(w *world, variant int) func() {
+	{"a condition of a hidden NPC", false, false, nil, func(w *world, variant int) func() {
 		key := []string{"condition:poisoned", "condition:frightened"}[variant]
 		return func() {
 			must(w.master.combat.SetCombatantConditions(w.t.Context(), rq(&playv1.SetCombatantConditionsRequest{
@@ -322,10 +347,17 @@ func normalized(s string) string {
 // Inside the world it also proves the rules that need no other world: the players heard no event, the heartbeat holds the
 // number and nothing else, nothing a canary holds is in any answer, and every log answer, plain and from since_seq, is
 // what it was before the write.
-func hiddenWriteWorld(t *testing.T, write *hiddenWrite, variant int) seqSnapshot {
+func hiddenWriteWorld(t *testing.T, row *hiddenWrite, variant int, made bool) seqSnapshot {
 	t.Helper()
+	write := row
+	if !made {
+		write = nil
+	}
 	w := newWorld(t)
 	players := []*person{w.ana, w.caio}
+	if row.before != nil {
+		row.before(w)
+	}
 	// The world's setup ends with writes whose hints go out on a timer: let them go first, or they pass for the write's.
 	w.hints.Settle(w.t)
 	watchers := map[*person]*streamWatcher{w.master: w.watchStream(w.master), w.ana: w.watchStream(w.ana), w.caio: w.watchStream(w.caio)}
@@ -464,9 +496,9 @@ func (w *world) seqLog(p *person, since int64) *playv1.ListCombatLogResponse {
 func TestAHiddenWriteMovesThePlayersNumberAndNothingElse(t *testing.T) {
 	for _, hw := range hiddenWrites {
 		t.Run(hw.name, func(t *testing.T) {
-			a := hiddenWriteWorld(t, &hw, 0)
-			b := hiddenWriteWorld(t, &hw, 1)
-			none := hiddenWriteWorld(t, nil, 0)
+			a := hiddenWriteWorld(t, &hw, 0, true)
+			b := hiddenWriteWorld(t, &hw, 1, true)
+			none := hiddenWriteWorld(t, &hw, 0, false)
 			if a.start != b.start || a.start != none.start {
 				t.Errorf("the worlds opened at numbers %d, %d and %d: they are built the same way", a.start, b.start, none.start)
 			}
@@ -485,6 +517,135 @@ func TestAHiddenWriteMovesThePlayersNumberAndNothingElse(t *testing.T) {
 				t.Errorf("the master read the same log in worlds that differ in what he wrote: the control is gone")
 			}
 		})
+	}
+}
+
+// ===== A hidden event that joins a line the player holds.
+
+// joinedRead is what two players read of a world where the master answered the window of a held cast, and the master's own number.
+type joinedRead struct {
+	start, end int64             // the hint number before the master's answer and after it
+	players    map[string]string // each player's plain log, answer from the number they held before, and answer from the one they hold now
+	lastSeq    map[string]int64  // each player's last_seq
+	master     string            // the master's whole log, as text
+}
+
+// joinedHostWorld plays Ana's Sacred Flame at a dragon with three uses of Legendary Resistance in a world of its own. The dragon's
+// save rolls face; the master passes the window, or spends a use (the use is a Secret event that joins the line of the cast, the
+// roll of the save is Secret too). It reads what both players read before the answer and after it.
+func joinedHostWorld(t *testing.T, face int, answer heldAnswer) joinedRead {
+	t.Helper()
+	w := newWorld(t)
+	ctx := t.Context()
+	pens, dragon := w.sacredFlameFight()
+	w.scriptD20(face)
+	cast := w.ana.call(playv1connect.CombatServiceCastSpellProcedure, &playv1.CastSpellRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CasterId: pens.GetId(), SpellKey: "spell:sacred-flame", IdempotencyKey: newKey(),
+		Targets: []*playv1.SpellTarget{{CombatantId: dragon.GetId()}},
+	})
+	if !cast.ok() {
+		t.Fatalf("Ana's cast: status %d %s", cast.status, cast.body)
+	}
+	w.hints.Settle(w.t)
+	players := []*person{w.ana, w.caio}
+	watchers := map[*person]*streamWatcher{w.master: w.watchStream(w.master), w.ana: w.watchStream(w.ana), w.caio: w.watchStream(w.caio)}
+	out := joinedRead{start: watchers[w.ana].number(), players: map[string]string{}, lastSeq: map[string]int64{}}
+	held := map[*person]int64{}
+	for _, p := range players {
+		held[p] = w.seqLog(p, 0).GetLastSeq() // the cast waits: the number a player holds before the answer
+		w.reads(p)                            // the table reads the combat while it waits, as the rows of legendary_test.go do
+	}
+	var window *playv1.ReactionWindow
+	for _, rw := range must(w.master.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter().GetReactionWindows() {
+		if rw.GetKind() == playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE {
+			window = rw
+		}
+	}
+	if window == nil {
+		t.Fatal("the master reads no Legendary Resistance window: the control is gone")
+	}
+	req := &playv1.AnswerReactionRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: window.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_PASS, IdempotencyKey: newKey()}
+	switch answer {
+	case removeDragon:
+		must(w.master.combat.RemoveCombatant(ctx, rq(&playv1.RemoveCombatantRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: dragon.GetId(), IdempotencyKey: newKey()})))
+	default:
+		if answer == useTrait {
+			req.Answer, req.CreatureIds = playv1.ReactionChoice_REACTION_CHOICE_USE, []string{dragon.GetId()}
+		}
+		if resp := w.master.call(playv1connect.CombatServiceAnswerReactionProcedure, req); !resp.ok() {
+			t.Fatalf("the master's answer: status %d %s", resp.status, resp.body)
+		}
+	}
+	out.end = watchers[w.ana].beatAfter(t, 1, func(got int64) bool { return got == out.start+1 })
+	for _, p := range players {
+		plain := w.seqLog(p, 0)
+		fromHeld := w.seqLog(p, held[p])
+		fromNow := w.seqLog(p, plain.GetLastSeq())
+		for _, l := range []*playv1.ListCombatLogResponse{plain, fromHeld, fromNow} {
+			requireNoEntrySeq(t, p.name, l)
+			// The dragon is in sight of the table (the cast is at it): its name is no canary here. What the players never read is
+			// the trait: the words of the use and of the window.
+			for _, word := range []string{"legendary", "resistance", "resisted", "usesLeft", window.GetId()} {
+				if contains(asReply(l).body, word) {
+					t.Errorf("%s: the combat log holds %q, which is the master's alone", p.name, word)
+				}
+			}
+		}
+		out.players[p.name] = normalized(jsonOf(plain) + "\n" + jsonOf(fromHeld) + "\n" + jsonOf(fromNow))
+		out.lastSeq[p.name] = plain.GetLastSeq()
+		if fromHeld.GetLastSeq() != plain.GetLastSeq() || fromNow.GetLastSeq() != plain.GetLastSeq() {
+			t.Errorf("%s: last_seq of the three answers is %d, %d and %d, want one number", p.name, plain.GetLastSeq(), fromHeld.GetLastSeq(), fromNow.GetLastSeq())
+		}
+		if len(fromNow.GetRounds()) != 0 || fromNow.GetFull() {
+			t.Errorf("%s: asking from the number held now answers %s, want nothing new", p.name, jsonOf(fromNow))
+		}
+	}
+	out.master = jsonOf(w.seqLog(w.master, 0))
+	return out
+}
+
+// TestTheMastersAnswerToAHeldCastReadsTheSameToThePlayersWhateverItWas: the master answers the window of a held cast at a dragon, in worlds
+// that differ only in what he does and in what the dragon rolled. A Secret event joins the line of the cast when he spends a use of
+// Legendary Resistance (with the roll as its content) and when he passes; the line the players read is the same cast either way.
+//   - he answers: a use spent after a roll of 1, a use spent after a roll of 2, the save passed;
+//   - he takes the dragon out of the combat while the cast waits: after a roll of 1 (a use to offer), after a roll of 20 (none).
+//
+// In each set each player's whole log, the answer from the number they held and last_seq are the same, and no answer holds a word
+// of the trait. The hint number moves by one in each world (one write). The master's log tells the worlds apart (the control).
+func TestTheMastersAnswerToAHeldCastReadsTheSameToThePlayersWhateverItWas(t *testing.T) {
+	runs := []struct {
+		name   string
+		face   int
+		answer heldAnswer
+	}{
+		{"a use spent after a roll of 1", 1, useTrait},
+		{"a use spent after a roll of 2", 2, useTrait},
+		{"the save passed", 20, passWindow},
+		{"the dragon removed after a roll of 1", 1, removeDragon},
+		{"the dragon removed after a roll of 20", 20, removeDragon},
+	}
+	reads := make([]joinedRead, len(runs))
+	for i, r := range runs {
+		t.Run(r.name, func(t *testing.T) { reads[i] = joinedHostWorld(t, r.face, r.answer) })
+		if reads[i].end != reads[i].start+1 || reads[i].start != reads[0].start {
+			t.Errorf("%s: the number moved from %d to %d (the first world opened at %d), want one bump for the answer", r.name, reads[i].start, reads[i].end, reads[0].start)
+		}
+	}
+	for _, set := range [][]int{{0, 1, 2}, {3, 4}} {
+		first := reads[set[0]]
+		for _, i := range set[1:] {
+			for name := range first.players {
+				if first.players[name] != reads[i].players[name] {
+					t.Errorf("%s reads other things after %q and after %q:\n %s\n %s", name, runs[set[0]].name, runs[i].name, shorten([]byte(first.players[name])), shorten([]byte(reads[i].players[name])))
+				}
+				if first.lastSeq[name] != reads[i].lastSeq[name] {
+					t.Errorf("%s's last_seq is %d after %q and %d after %q: an event they do not hear of moved their number", name, first.lastSeq[name], runs[set[0]].name, reads[i].lastSeq[name], runs[i].name)
+				}
+			}
+		}
+	}
+	if !contains([]byte(reads[0].master), `"resisted":true`) || contains([]byte(reads[2].master), `"resisted":true`) {
+		t.Error("the master's log does not tell the use spent from the save passed: the control is gone")
 	}
 }
 

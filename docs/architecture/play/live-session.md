@@ -237,8 +237,8 @@ It is never derived from content, and a kind-specific signal (a hint that says "
 
 - every field that carries the number or a combat log counter has a row;
 - only a member who may watch the stream is told the number;
-- three worlds that differ only in a hidden write give a player the same number of bumps and the same stream;
-- a player's `ListCombatLog` with `since_seq` ignores a write they cannot see ([Combat log](combat-log.md#reading-the-log-again)).
+- three worlds that differ only in a hidden write give a player the same number of bumps and the same stream; one of the writes is a hidden event that joins a line the player reads (the master adds a hidden NPC to a firing), which moves neither their `last_seq` nor their stream;
+- a player's `ListCombatLog` with `since_seq` ignores a write they cannot see, and the `last_seq` they read is built only from events they hear of ([Combat log](combat-log.md#reading-the-log-again)).
 
 ## The hub
 

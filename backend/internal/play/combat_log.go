@@ -176,7 +176,7 @@ func (s *Service) ListCombatLog(
 	}
 	entries := s.logEntries(ctx, m, &snap)
 	res := &playv1.ListCombatLogResponse{}
-	stampSeqs(entries, snap.events)
+	stampSeqs(entries, snap.events, v)
 	since := sinceSeqOf(req.Msg.GetSinceSeq(), v, snap.events, entries, snap.cs)
 	res.Full = since == 0
 	if !v.master {
@@ -338,7 +338,7 @@ func changesHeldView(e playdb.ListEncounterEventsRow, sinceSeq int64, v combatVi
 	switch {
 	case e.Kind == eventActionUndone:
 		return undoneMaySeen(ev, v, events)
-	case ev.Secret || !ev.seenByViewer(v):
+	case !ev.heardBy(v):
 		return false
 	case e.Kind == eventCombatantsAdded && addedAllHidden(ev, e.Payload):
 		return false // every combatant added was hidden: no player has a view to change
@@ -374,7 +374,7 @@ func undoneMaySeen(undo actionEvent, v combatViewer, events []playdb.ListEncount
 		if !slices.Contains(ids, e.ID) {
 			continue
 		}
-		if ev, err := readEvent(e.Payload); err == nil && !ev.Secret && ev.seenByViewer(v) {
+		if ev, err := readEvent(e.Payload); err == nil && ev.heardBy(v) {
 			return true
 		}
 	}
@@ -405,11 +405,21 @@ func heldLineHas(ids []string, sinceSeq int64, v combatViewer, entries []*logEnt
 	return false
 }
 
+// heardBy says the viewer hears of the event: the master of all of them; a player of the ones that are not Secret, that the fog
+// shows them, and that give them something to read (a firing that only adds creatures the player is not given changes no line of
+// theirs).
+func (ev actionEvent) heardBy(v combatViewer) bool {
+	return v.master || (!ev.Secret && ev.seenByViewer(v) && !ev.Trap.addsNothingFor(v))
+}
+
 // names says the entry has the combatant as its actor, its target or one of its hits. These are the only fields the visibility rules
 // read today; a rule that reads another combatant of the line (an area's caught list, a rider's target) must extend it.
 func (e *logEntry) names(id string) bool {
 	if e.ev.Actor == id || e.ev.Target == id {
 		return true
+	}
+	if e.ev.Trap != nil && slices.ContainsFunc(e.ev.Trap.Caught, func(cc trapCaughtEvent) bool { return cc.Target == id }) {
+		return true // a creature a firing caught: its being shown or hidden changes the line
 	}
 	return slices.ContainsFunc(e.ev.Hits, func(h castHit) bool { return h.Target == id })
 }
@@ -424,15 +434,30 @@ func lastSeqOf(events []playdb.ListEncounterEventsRow) int64 {
 	return last
 }
 
-// stampSeqs sets each entry's seq: the highest number among the events it shows.
-func stampSeqs(entries []*logEntry, events []playdb.ListEncounterEventsRow) {
-	seqOf := make(map[string]int64, len(events))
+// stampSeqs sets each entry's seq: the highest number among the events it shows. A player's counts the entry's own event (the line
+// is theirs or it is not shown at all: a reactor's own player gets the line of a reaction the fog or Secret hides from the table) and,
+// of the events that join it, only the ones the player hears of (not Secret, seen): an event that joins a line the player holds
+// without being told to them (a legendary resistance spent on a save they see) moves nothing they read, so it cannot move the number
+// of that line, and the number of their answer, either.
+func stampSeqs(entries []*logEntry, events []playdb.ListEncounterEventsRow, v combatViewer) {
+	type host struct {
+		seq   int64
+		heard bool
+	}
+	byID := make(map[string]host, len(events))
 	for _, e := range events {
-		seqOf[e.ID] = int64(e.Seq)
+		heard := v.master
+		if !heard {
+			ev, err := readEvent(e.Payload)
+			heard = err == nil && ev.heardBy(v)
+		}
+		byID[e.ID] = host{seq: int64(e.Seq), heard: heard}
 	}
 	for _, entry := range entries {
-		for _, id := range entry.hosts {
-			entry.seq = max(entry.seq, seqOf[id])
+		for i, id := range entry.hosts {
+			if h := byID[id]; h.heard || i == 0 {
+				entry.seq = max(entry.seq, h.seq)
+			}
 		}
 	}
 }
@@ -1635,8 +1660,7 @@ func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[strin
 			}
 			// Hidden when it fired stays hidden; on a fog map an NPC the firing caught is
 			// the line of the players who saw it then.
-			cc := e.ev.Trap.Caught[i]
-			return cc.Hidden || (cc.Fogged && !slices.Contains(cc.SeenBy, v.userID))
+			return e.ev.Trap.Caught[i].hiddenFrom(v)
 		},
 		label: func(id string) string { return byID[id].Label },
 		names: func(key string) string { return names.contentName(ctx, key) },
