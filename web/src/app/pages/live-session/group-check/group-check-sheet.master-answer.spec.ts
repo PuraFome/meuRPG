@@ -10,7 +10,12 @@ import {
   GroupCheckMemberViewSchema,
 } from '../../../../gen/meurpg/play/v1/contest_types_pb';
 import { ContestClient } from '../../../core/combat/contest-client';
-import { FakeContestClient, checkRoll, groupCheck, textOf } from '../../../core/combat/contest-testing';
+import {
+  FakeContestClient,
+  checkRoll,
+  groupCheck,
+  textOf,
+} from '../../../core/combat/contest-testing';
 import { GroupCheckState } from '../../../core/combat/group-check-state';
 import { heldLucky } from '../../../core/held-rolls/held-roll-testing';
 import { ResourceClient } from '../../../core/resources/resources-client';
@@ -105,7 +110,13 @@ describe('GroupCheckSheet: the master answers the question for the roller', () =
             characterId: 'p',
             name: 'Pipo',
             answered: true,
-            roll: checkRoll({ skill: 0, skillKey: 'skill:stealth', faces: [1], modifier: 7, total: 8 }),
+            roll: checkRoll({
+              skill: 0,
+              skillKey: 'skill:stealth',
+              faces: [1],
+              modifier: 7,
+              total: 8,
+            }),
           }),
         ],
       }),
@@ -117,6 +128,8 @@ describe('GroupCheckSheet: the master answers the question for the roller', () =
       'O mestre respondeu por você.',
     );
     expect(textOf(el)).toContain('Esperando o mestre');
-    expect(buttons().filter((b) => b.startsWith('Rolar de novo') || b.startsWith('Ficar com o'))).toEqual([]);
+    expect(
+      buttons().filter((b) => b.startsWith('Rolar de novo') || b.startsWith('Ficar com o')),
+    ).toEqual([]);
   });
 });

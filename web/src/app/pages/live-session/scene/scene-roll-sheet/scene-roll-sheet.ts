@@ -230,7 +230,9 @@ export class SceneRollSheet {
     effect(() => {
       this.data.heldTick?.();
       this.held.offer();
-      untracked(() => void this.follow.seeList(() => this.resources.listHeldRolls(this.data.campaignId)));
+      untracked(
+        () => void this.follow.seeList(() => this.resources.listHeldRolls(this.data.campaignId)),
+      );
     });
     // After the result the focus goes to its one action, as soon as it is drawn.
     effect(() => this.back()?.nativeElement.focus());

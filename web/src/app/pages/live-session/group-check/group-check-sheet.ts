@@ -173,7 +173,9 @@ export class GroupCheckSheet {
     effect(() => {
       this.data.heldTick?.();
       this.held.offer();
-      untracked(() => void this.follow.seeList(() => this.resources.listHeldRolls(this.data.campaignId)));
+      untracked(
+        () => void this.follow.seeList(() => this.resources.listHeldRolls(this.data.campaignId)),
+      );
     });
     effect(() => this.sheet.lock(this.busy()));
     effect(() => {
