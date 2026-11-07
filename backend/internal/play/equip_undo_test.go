@@ -1,16 +1,13 @@
 package play
 
 import (
-	"context"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"slices"
 	"testing"
-	"time"
 
 	"connectrpc.com/connect"
-	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // Undoing a swap of gear in a combat: the swap is an event of its own, so the master's
@@ -197,107 +194,70 @@ func TestUndoTheSwapBumpsTheEncounterRevision(t *testing.T) {
 	}
 }
 
-// The undo of a swap and SetEquipped lock the open session first and the character second, as every combat
-// write does, so none of them holds the character while it waits for the session. Each test holds the
-// session as a writer that is ahead, shows the other one waiting for it while the character is free (a
-// side connection locks the character without waiting), and finishes after the commit: no abort, no retry.
-// They read no PostgreSQL view, so they run on CockroachDB too.
-
-// sessionHeld opens a side transaction that holds the campaign's open session, and returns it.
-func sessionHeld(t *testing.T, ctx context.Context, a *armed) pgx.Tx {
-	t.Helper()
-	held, err := dbtest.SideConnection(t, a.h.pool).Begin(ctx)
-	if err != nil {
-		t.Fatalf("Begin() error = %v", err)
-	}
-	t.Cleanup(func() { _ = held.Rollback(context.Background()) }) // rolled back unless committed
-	if _, err := held.Exec(ctx, `SELECT id FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL FOR UPDATE`, a.campaignID); err != nil {
-		t.Fatalf("lock the session: %v", err)
-	}
-	return held
-}
-
-// waitsForTheSession waits until a statement that locks the session is waiting behind the held one, and
-// checks the character is free meanwhile: the waiting call has not taken it.
-func waitsForTheSession(t *testing.T, ctx context.Context, a *armed, held pgx.Tx, what string) {
-	t.Helper()
-	observer := dbtest.SideConnection(t, a.h.pool)
-	start := time.Now()
-	for {
-		n, err := dbtest.WaitingStatements(ctx, observer, `%FROM game_sessions%FOR UPDATE%`)
-		if err != nil {
-			t.Fatalf("look for waiting statements: %v", err)
-		}
-		if n > 0 {
-			break
-		}
-		if ctx.Err() != nil || time.Since(start) > 15*time.Second {
-			t.Fatalf("%s never waited for the session", what)
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-	if _, err := held.Exec(ctx, `SELECT id FROM characters WHERE id = $1 FOR UPDATE NOWAIT`, a.pens.GetId()); err != nil {
-		t.Fatalf("%s holds the character while it waits for the session: %v", what, err)
-	}
-}
-
-func TestUndoOfASwapTakesTheSessionBeforeTheCharacter(t *testing.T) {
+// The undo of a swap and a SetEquipped of the same character cross in the database: the undo takes the
+// session and then the character (RestoreEquipped), SetEquipped the character and then the session. Whichever
+// the database aborts (40P01 on PostgreSQL, 40001 on CockroachDB), db.InTx runs it again, so nothing reaches the
+// caller. Both are the real calls, run at the same moment many times; after each pair the result is one of the two
+// serial orders and no other: SetEquipped always succeeds, and the undo either ran first (it applied once: the
+// dagger is back, and the master's change came after it) or came second and was refused for what it is, a stale
+// "last action" (aborted, nothing written). Nothing reads a PostgreSQL view, so it runs on CockroachDB too.
+func TestUndoOfASwapCrossingASetEquippedTakesTurns(t *testing.T) {
 	t.Parallel()
+	dbtest.PoolSize(t, 2) // one connection would run the two calls one after the other and prove nothing
 	a, e := equipFight(t)
 	e = a.passTo(t, e, "Reator")
-	a.mustSwap(t, a.ana, a.pens, daggerKey, false)
-	id := a.lastEventID(t, e)
-	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
-	defer cancel()
-	held := sessionHeld(t, ctx, a)
-	undone := make(chan error, 1)
-	go func() { undone <- a.undo(t, a.master, e, id) }()
-	waitsForTheSession(t, ctx, a, held, "the undo")
-	select {
-	case err := <-undone:
-		t.Fatalf("UndoLastAction() returned while the session was held: %v", err)
-	default:
+	// A piece is put to the other state by asking for the state it is not in.
+	toggle := func(key string) error {
+		_, err := a.swap(a.master, a.pens, key, a.hasCarried(t, key))
+		return err
 	}
-	if err := held.Commit(ctx); err != nil {
-		t.Fatalf("commit the holder: %v", err)
+	undone, refused := 0, 0
+	for round := range 60 {
+		daggerBefore, swordBefore := a.hasCarried(t, daggerKey), a.hasCarried(t, longswordKey)
+		if err := toggle(daggerKey); err != nil {
+			t.Fatalf("round %d: the swap error = %v", round, err)
+		}
+		id := a.lastEventID(t, e)
+		start := dbtest.NewBarrier(2)
+		undoErr, equipErr := make(chan error, 1), make(chan error, 1)
+		go func() { start.Wait(); undoErr <- a.undo(t, a.master, e, id) }()
+		go func() { start.Wait(); equipErr <- toggle(longswordKey) }()
+		uerr, eerr := <-undoErr, <-equipErr
+		if eerr != nil {
+			t.Fatalf("round %d: SetEquipped error = %v, want none", round, eerr)
+		}
+		daggerAfter, swordAfter := a.hasCarried(t, daggerKey), a.hasCarried(t, longswordKey)
+		switch {
+		case uerr == nil:
+			undone++
+			if daggerAfter != daggerBefore {
+				t.Fatalf("round %d: the undo succeeded and the dagger is not back (carried %v, was %v)", round, daggerAfter, daggerBefore)
+			}
+		case connect.CodeOf(uerr) == connect.CodeAborted:
+			refused++
+			if daggerAfter == daggerBefore {
+				t.Fatalf("round %d: the undo was refused and the swap is gone (carried %v)", round, daggerAfter)
+			}
+		default:
+			t.Fatalf("round %d: UndoLastAction() error = %v, want it applied or refused as stale", round, uerr)
+		}
+		if swordAfter == swordBefore {
+			t.Fatalf("round %d: the master's change to the longsword was lost (carried %v)", round, swordAfter)
+		}
+		a.wantTurn(t, "after the pair", false, false)
+		// Back to where the round began: the next one starts from the same sheet.
+		if swordAfter != swordBefore {
+			if err := toggle(longswordKey); err != nil {
+				t.Fatalf("round %d: put the longsword back: %v", round, err)
+			}
+		}
+		if daggerAfter != daggerBefore {
+			if err := toggle(daggerKey); err != nil {
+				t.Fatalf("round %d: put the dagger back: %v", round, err)
+			}
+		}
 	}
-	if err := <-undone; err != nil {
-		t.Fatalf("UndoLastAction() error = %v", err)
-	}
-	if a.hasCarried(t, daggerKey) {
-		t.Error("the dagger is still stowed after the undo")
-	}
-	a.wantTurn(t, "after the undo", false, false)
-}
-
-func TestSetEquippedTakesTheSessionBeforeTheCharacter(t *testing.T) {
-	t.Parallel()
-	a, e := equipFight(t)
-	a.passTo(t, e, "Reator")
-	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
-	defer cancel()
-	held := sessionHeld(t, ctx, a)
-	swapped := make(chan error, 1)
-	go func() {
-		_, err := a.swap(a.ana, a.pens, daggerKey, false)
-		swapped <- err
-	}()
-	waitsForTheSession(t, ctx, a, held, "SetEquipped")
-	select {
-	case err := <-swapped:
-		t.Fatalf("SetEquipped() returned while the session was held: %v", err)
-	default:
-	}
-	if err := held.Commit(ctx); err != nil {
-		t.Fatalf("commit the holder: %v", err)
-	}
-	if err := <-swapped; err != nil {
-		t.Fatalf("SetEquipped() error = %v", err)
-	}
-	if !a.hasCarried(t, daggerKey) {
-		t.Error("the swap did not change the dagger's state")
-	}
-	a.wantTurn(t, "after the swap", true, false)
+	t.Logf("%d undos applied, %d refused as stale", undone, refused)
 }
 
 func gearLine(res *playv1.ListCombatLogResponse) *playv1.CombatLogEntry {

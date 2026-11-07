@@ -35,7 +35,7 @@ Some events are written just before the change's own event and never close the c
   The undo of the last action takes the swap first: it gives the economy back and asks the characters module (`CombatRoster.RestoreEquipped`, the same write as `SetEquipped`'s, inside the undo's transaction) to put the piece back in or out of `carried_keys`, so the armor class and the attacks come back with it.
   An undo of an earlier event is refused while the swap stands, so it never gives back what the swap spent.
   The undo is refused (`failed_precondition`) and writes nothing when the sheet no longer lists the piece or no longer allows the gear since the swap. A player's combatant cannot leave a running combat, so the chain is never closed that way; the undo still answers `nothing to undo` if the combatant is gone.
-  The undo, `SetEquipped` and every combat write lock the session first and the character second, so they wait for one another and never deadlock, on either database (`TestUndoOfASwapTakesTheSessionBeforeTheCharacter`, `TestSetEquippedTakesTheSessionBeforeTheCharacter`).
+  The undo locks the session first and the character second, `SetEquipped` the character and then the session: when the two cross, the database aborts one of them (40P01 on PostgreSQL, 40001 on CockroachDB; either can be the one) and `db.InTx` runs it again, so neither error reaches the user. `TestUndoOfASwapCrossingASetEquippedTakesTurns` runs the real calls at the same moment, many times, on a pool of two connections, and checks that `SetEquipped` always succeeds and the undo either applied once or was refused as stale.
 
 A held action's event closes the chain, because nothing of it happened yet.
 
