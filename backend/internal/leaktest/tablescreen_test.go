@@ -219,6 +219,21 @@ func checkTableScreen(t *testing.T, w *world, got *answers) {
 		t.Errorf("the combat's map = %v, want hidden_by_fog and nothing else: the fog is on and \"Visão do grupo\" off", m)
 	}
 	noMasterRoll("the combat", s)
+	// The positive control of the combat: the order holds the two player characters, Pensantus down at 0 hit points
+	// (the word FALLEN) and Toren, both as players; and no master's NPC (a hidden one, nor the bandit unseen on the fog map).
+	seen := map[string]*playv1.TvCombatant{}
+	for _, o := range c.GetOrder() {
+		seen[o.GetName()] = o
+		if !o.GetIsPlayer() && (o.GetName() == w.hiddenNPC.GetName() || o.GetName() == w.bandit.GetName()) {
+			t.Errorf("the TV's order holds %q, an NPC the table does not see", o.GetName())
+		}
+	}
+	if o := seen[w.pens.GetName()]; o == nil || !o.GetIsPlayer() || o.GetState() != playv1.TvState_TV_STATE_FALLEN {
+		t.Errorf("the TV's order holds Pensantus as %v, want a player character FALLEN (0 hit points): %v", o, c.GetOrder())
+	}
+	if o := seen[w.toren.GetName()]; o == nil || !o.GetIsPlayer() {
+		t.Errorf("the TV's order holds Toren as %v, want a player character: %v", o, c.GetOrder())
+	}
 
 	// A fog map with "Visão do grupo" off is not the TV's: the pin falls to the idle screen and says why.
 	s = pin("the map", mapKd)
@@ -290,14 +305,14 @@ var tvFieldRows = map[protoreflect.FullName]string{
 	"meurpg.play.v1.TvMap.name":                             "the current map's name, only when the map is the TV's (mapOnTV); control: fog-map-name (TestRN10_TheTVOfAFogMapReadsOnlyWhatTheGroupSees)",
 	"meurpg.play.v1.TvMap.hidden_by_fog":                    "true when the fog is on and \"Visão do grupo\" off, and then nothing else is set (checkTableScreen, the combat's map)",
 	"meurpg.play.v1.TvMap.map":                              "the player form of the map from the maps module: the masterOnly rules of maps (hidden point, trap, treasure, light, hidden token) and the canaries of the fog map; control: the master's GetMap",
-	"meurpg.play.v1.TvMap.vision":                           "the squares the group sees or remembers; a fogged cell has no tile (images_test.go and TestRN10_TheTVOfAFogMapReadsOnlyWhatTheGroupSees); control: the master's GetMapVision",
+	"meurpg.play.v1.TvMap.vision":                           "the squares the group sees or remembers; a fogged cell has no tile (images_test.go and TestRN10_TheTVOfAFogMapReadsOnlyWhatTheGroupSees); control: the same test, with group vision on, reads the map and fetches a tile",
 	"meurpg.play.v1.TvMap.revision":                         "a hash of what the TV reads, never the map's revision; a number no canary has",
 	"meurpg.play.v1.TvCombat.round":                         "the round, a small number",
 	"meurpg.play.v1.TvCombat.order":                         "TvCombatant",
 	"meurpg.play.v1.TvCombat.masters_turn":                  "a bool: the hidden combatant's name is not told on its turn",
-	"meurpg.play.v1.TvCombat.log":                           "the lines every player reads: no master-only line, no hidden combatant, no NPC dice, no table content the master hid (RN-23: the log of package play's tests, and the rows asTV of the worlds with a combat); control: the master's ListCombatLog",
+	"meurpg.play.v1.TvCombat.log":                           "the lines every player reads: no master-only line, no hidden combatant, no NPC dice, no table content the master hid (RN-23: proved in package play, and by the rows asTV of the worlds with a combat); control: the TV reads the combat in the worlds of table creatures and summons",
 	"meurpg.play.v1.TvCombat.map":                           "TvMap",
-	"meurpg.play.v1.TvCombatant.name":                       "only the combatants the table sees: not a hidden NPC, not one unseen on a fog map (mon-group, dragon-name, bandit-name); control: the master's GetEncounter",
+	"meurpg.play.v1.TvCombatant.name":                       "only the combatants the table sees: not a hidden NPC, not one unseen on a fog map (mon-group, dragon-name, bandit-name); control: checkTableScreen (Pensantus FALLEN, Toren) and the creature world (fight-creature-name in the order)",
 	"meurpg.play.v1.TvCombatant.initial":                    "the first letter of the name above",
 	"meurpg.play.v1.TvCombatant.state":                      "an enum, the RN-20 word: never the hit points, the armor class or the initiative (4,321 hit points; secret numbers are searched in every numeric field)",
 	"meurpg.play.v1.TvCombatant.on_turn":                    "a bool",
