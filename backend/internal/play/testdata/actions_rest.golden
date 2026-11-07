@@ -1,125 +1,125 @@
 == adjust a damage ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":4,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 4}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 4}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "holds": {"Goblin": {"hp": 4}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 4 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a damage absorbed by temporary hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":7,"hitPointsMax":7,"hitPointsTemporary":1,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_UNHURT"}
-event hit_points_adjusted {"after": {"hp": 7, "temp": 1}, "amount": 3, "before": {"hp": 7, "temp": 4}, "combatant_id": "Goblin", "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 7, "temp": 1}, "amount": 3, "before": {"hp": 7, "temp": 4}, "combatant_id": "Goblin", "holds": {"Goblin": {"hp": 7, "temp": 1}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 1 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a damage of 0 ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":7,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_UNHURT"}
-event hit_points_adjusted {"after": {"hp": 7}, "before": {"hp": 7}, "combatant_id": "Goblin", "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 7}, "before": {"hp": 7}, "combatant_id": "Goblin", "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a damage on a defeated goblin ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","defeated":true,"hitPointsCurrent":0,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_DEFEATED"}
-event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "amount": 2, "before": {"defeated": true, "hp": 0}, "combatant_id": "Goblin", "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "amount": 2, "before": {"defeated": true, "hp": 0}, "combatant_id": "Goblin", "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 0 | 0 | true | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a damage over the hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","defeated":true,"hitPointsCurrent":0,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_DEFEATED"}
-event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "amount": 100, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -7, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "amount": 100, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -7, "holds": {"Goblin": {"defeated": true, "hp": 0}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 0 | 0 | true | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a damage that defeats the goblin ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","defeated":true,"hitPointsCurrent":0,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_DEFEATED"}
-event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "amount": 7, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -7, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "amount": 7, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -7, "holds": {"Goblin": {"defeated": true, "hp": 0}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 0 | 0 | true | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a damage that goes through temporary hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":5,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 5}, "amount": 6, "before": {"hp": 7, "temp": 4}, "combatant_id": "Goblin", "delta": -2, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 5}, "amount": 6, "before": {"hp": 7, "temp": 4}, "combatant_id": "Goblin", "delta": -2, "holds": {"Goblin": {"hp": 5}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 5 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a damage with new temporary hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":5,"hitPointsMax":7,"hitPointsTemporary":5,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 5, "temp": 5}, "amount": 2, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -2, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 5, "temp": 5}, "amount": 2, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -2, "holds": {"Goblin": {"hp": 5, "temp": 5}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 5 | 5 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a goblin in a combat without a map ==
 ok {"armorClass":12,"characterId":"?","coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":4,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 4}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 4}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "holds": {"Goblin": {"hp": 4}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | <nil> | <nil> | false | false | false
 combatant Goblin | 4 | 0 | false | 0 | 0 | - | false | false | <nil> | <nil> | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | <nil> | <nil> | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | <nil> | <nil> | false | false | false
 == adjust a goblin that concentrates ==
 ok {"armorClass":12,"characterId":"?","col":4,"concentrationSpell":"spell:web","concentrationSpellNamePt":"Teia","coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":4,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 4}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 4}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "holds": {"Goblin": {"hp": 4}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 4 | 0 | false | 0 | 0 | spell:web | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a heal ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":5,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 5}, "amount": 3, "before": {"hp": 2}, "combatant_id": "Goblin", "delta": 3, "mode": "heal", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 5}, "amount": 3, "before": {"hp": 2}, "combatant_id": "Goblin", "delta": 3, "holds": {"Goblin": {"hp": 5}}, "hp_kept": true, "mode": "heal", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 5 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a heal at full hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":7,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_UNHURT"}
-event hit_points_adjusted {"after": {"hp": 7}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "mode": "heal", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 7}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "hp_kept": true, "mode": "heal", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a heal of 0 ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":2,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_BADLY_HURT"}
-event hit_points_adjusted {"after": {"hp": 2}, "before": {"hp": 2}, "combatant_id": "Goblin", "mode": "heal", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 2}, "before": {"hp": 2}, "combatant_id": "Goblin", "hp_kept": true, "mode": "heal", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 2 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a heal over the maximum ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":7,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_UNHURT"}
-event hit_points_adjusted {"after": {"hp": 7}, "amount": 50, "before": {"hp": 2}, "combatant_id": "Goblin", "delta": 5, "mode": "heal", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 7}, "amount": 50, "before": {"hp": 2}, "combatant_id": "Goblin", "delta": 5, "holds": {"Goblin": {"hp": 7}}, "hp_kept": true, "mode": "heal", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a heal that revives a defeated goblin ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":2,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_BADLY_HURT"}
-event hit_points_adjusted {"after": {"hp": 2}, "amount": 2, "before": {"defeated": true, "hp": 0}, "combatant_id": "Goblin", "delta": 2, "mode": "heal", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 2}, "amount": 2, "before": {"defeated": true, "hp": 0}, "combatant_id": "Goblin", "delta": 2, "holds": {"Goblin": {"hp": 2}}, "hp_kept": true, "mode": "heal", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 2 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a heal with temporary hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":4,"hitPointsMax":7,"hitPointsTemporary":3,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 4, "temp": 3}, "amount": 2, "before": {"hp": 2}, "combatant_id": "Goblin", "delta": 2, "mode": "heal", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 4, "temp": 3}, "amount": 2, "before": {"hp": 2}, "combatant_id": "Goblin", "delta": 2, "holds": {"Goblin": {"hp": 4, "temp": 3}}, "hp_kept": true, "mode": "heal", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 4 | 3 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust a hidden goblin ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hidden":true,"hitPointsCurrent":4,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 4}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 4}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "holds": {"Goblin": {"hp": 4}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 4 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | true | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust only the temporary hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":7,"hitPointsMax":7,"hitPointsTemporary":5,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_UNHURT"}
-event hit_points_adjusted {"after": {"hp": 7, "temp": 5}, "before": {"hp": 7}, "combatant_id": "Goblin", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 7, "temp": 5}, "before": {"hp": 7}, "combatant_id": "Goblin", "holds": {"Goblin": {"hp": 7, "temp": 5}}, "hp_kept": true, "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 5 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -141,7 +141,7 @@ refused permission_denied: only the campaign's master can do this
 state unchanged
 == adjust the Capitão in a fight of casters ==
 ok {"armorClass":18,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":17,"hitPointsMax":27,"hitPointsTemporary":0,"id":"Capitão Goblin","initiative":1,"initiativeBonus":0,"initiativeFace":1,"kind":"COMBATANT_KIND_NPC","label":"Capitão Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":4,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT","tieUnresolved":true}
-event hit_points_adjusted {"after": {"hp": 17}, "amount": 10, "before": {"hp": 27}, "combatant_id": "Capitão Goblin", "delta": -10, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 17}, "amount": 10, "before": {"hp": 27}, "combatant_id": "Capitão Goblin", "delta": -10, "holds": {"Capitão Goblin": {"hp": 17}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 17 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -149,7 +149,7 @@ combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 5 
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 6 | 5 | false | false | false
 == adjust the Capitão's hit points in a fight of casters ==
 ok {"armorClass":18,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":1,"hitPointsMax":27,"hitPointsTemporary":0,"id":"Capitão Goblin","initiative":1,"initiativeBonus":0,"initiativeFace":1,"kind":"COMBATANT_KIND_NPC","label":"Capitão Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":4,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_BADLY_HURT","tieUnresolved":true}
-event hit_points_adjusted {"after": {"hp": 1}, "amount": 1, "before": {"hp": 27}, "combatant_id": "Capitão Goblin", "delta": -26, "mode": "set", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 1}, "amount": 1, "before": {"hp": 27}, "combatant_id": "Capitão Goblin", "delta": -26, "holds": {"Capitão Goblin": {"hp": 1}}, "hp_kept": true, "mode": "set", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 1 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -157,49 +157,49 @@ combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 5 
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 6 | 5 | false | false | false
 == adjust the hit points down ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":4,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 4}, "amount": 4, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "mode": "set", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 4}, "amount": 4, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -3, "holds": {"Goblin": {"hp": 4}}, "hp_kept": true, "mode": "set", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 4 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust the hit points of a defeated goblin ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":5,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_HURT"}
-event hit_points_adjusted {"after": {"hp": 5}, "amount": 5, "before": {"defeated": true, "hp": 0}, "combatant_id": "Goblin", "delta": 5, "mode": "set", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 5}, "amount": 5, "before": {"defeated": true, "hp": 0}, "combatant_id": "Goblin", "delta": 5, "holds": {"Goblin": {"hp": 5}}, "hp_kept": true, "mode": "set", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 5 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust the hit points to 0 ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","defeated":true,"hitPointsCurrent":0,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_DEFEATED"}
-event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -7, "mode": "set", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -7, "holds": {"Goblin": {"defeated": true, "hp": 0}}, "hp_kept": true, "mode": "set", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 0 | 0 | true | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust the hit points to the maximum ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":7,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_UNHURT"}
-event hit_points_adjusted {"after": {"hp": 7}, "amount": 7, "before": {"hp": 2}, "combatant_id": "Goblin", "delta": 5, "mode": "set", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 7}, "amount": 7, "before": {"hp": 2}, "combatant_id": "Goblin", "delta": 5, "holds": {"Goblin": {"hp": 7}}, "hp_kept": true, "mode": "set", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust the hit points with temporary hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":3,"hitPointsMax":7,"hitPointsTemporary":2,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_BADLY_HURT"}
-event hit_points_adjusted {"after": {"hp": 3, "temp": 2}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -4, "mode": "set", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 3, "temp": 2}, "amount": 3, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -4, "holds": {"Goblin": {"hp": 3, "temp": 2}}, "hp_kept": true, "mode": "set", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 3 | 2 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust the largest damage ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","defeated":true,"hitPointsCurrent":0,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_DEFEATED"}
-event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "amount": 9999, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -7, "mode": "damage", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"defeated": true, "hp": 0}, "amount": 9999, "before": {"hp": 7}, "combatant_id": "Goblin", "delta": -7, "holds": {"Goblin": {"defeated": true, "hp": 0}}, "hp_kept": true, "mode": "damage", "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 0 | 0 | true | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust the largest temporary hit points ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":7,"hitPointsMax":7,"hitPointsTemporary":999,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_UNHURT"}
-event hit_points_adjusted {"after": {"hp": 7, "temp": 999}, "before": {"hp": 7}, "combatant_id": "Goblin", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 7, "temp": 999}, "before": {"hp": 7}, "combatant_id": "Goblin", "holds": {"Goblin": {"hp": 7, "temp": 999}}, "hp_kept": true, "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 999 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -212,14 +212,14 @@ combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == adjust the temporary hit points to 0 ==
 ok {"armorClass":12,"characterId":"?","col":4,"coverMark":"COVER_DEGREE_NONE","hitPointsCurrent":7,"hitPointsMax":7,"hitPointsTemporary":0,"id":"Goblin","initiative":3,"initiativeBonus":0,"initiativeFace":3,"kind":"COMBATANT_KIND_NPC","label":"Goblin","movementLeftDft":300,"movementLeftFt":30,"placed":true,"row":3,"side":"COMBATANT_SIDE_ENEMY","size":"CREATURE_SIZE_MEDIUM","speedDft":300,"speedFt":30,"state":"COMBATANT_STATE_UNHURT"}
-event hit_points_adjusted {"after": {"hp": 7}, "before": {"hp": 7, "temp": 4}, "combatant_id": "Goblin", "round": 1, "secret": true}
+event hit_points_adjusted {"after": {"hp": 7}, "before": {"hp": 7, "temp": 4}, "combatant_id": "Goblin", "holds": {"Goblin": {"hp": 7}}, "hp_kept": true, "round": 1, "secret": true}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
 combatant Toren | <nil> | <nil> | false | 0 | 0 | - | false | false | 3 | 3 | false | false | false
 == apply a critical hit ==
 pending {"amount":8,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":2,"diceSides":6,"roll":{"diceCount":2,"diceSides":6,"modifier":2,"physical":true,"total":8},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 12}, "amount": 8, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 8, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 12}, "amount": 8, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 12}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 8, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -228,7 +228,7 @@ vitals Toren | active | 12 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | true | damage-type:slashing | 8 | -1 | false | -1 | [] | -1 | true | false
 == apply a critical hit on Toren at 0 hit points ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","deathFailuresAdded":2,"diceCount":2,"diceSides":6,"roll":{"diceCount":2,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 2}, "death_before": {}, "failures_added": 2, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 2}, "death_before": {}, "failures_added": 2, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -237,7 +237,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | true | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a critical hit on Toren at 0 hit points with 2 failures ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","deathFailuresAdded":2,"diceCount":2,"diceSides":6,"roll":{"diceCount":2,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 3, "successes": 1}, "death_before": {"failures": 2, "successes": 1}, "failures_added": 2, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 3, "successes": 1}, "death_before": {"failures": 2, "successes": 1}, "failures_added": 2, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -247,7 +247,7 @@ damage basic:0 | applied | true | damage-type:slashing | 6 | -1 | false | -1 | [
 == apply a critical hit that carries over from the beast ==
 pending {"amount":14,"appliedAmount":15,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":2,"diceSides":6,"roll":{"diceCount":2,"diceSides":6,"modifier":2,"physical":true,"total":14},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Sálvia"}
 event wild_shape_ended {"beast": "monster:wolf", "carried_damage": 4, "character_id": "?", "combatant_id": "Sálvia", "encounter_id": "?", "reason": "damage", "round": 1}
-event damage_applied {"after": {"hp": 34}, "amount": 15, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "carried_damage": 4, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 14, "round": 1, "target_id": "Sálvia"}
+event damage_applied {"after": {"hp": 34}, "amount": 15, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "carried_damage": 4, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Sálvia": {"hp": 34}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 14, "round": 1, "target_id": "Sálvia"}
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 5 | 5 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 6 | 6 | false | false | false
 combatant Irmã | <nil> | <nil> | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -261,7 +261,7 @@ refused failed_precondition: a reaction waits for its answer [ENCOUNTER_BLOCKED_
 state unchanged
 == apply a half-orc's hit that drops it to 0 ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Ragna"}
-event damage_applied {"after": {"hp": 1}, "amount": 6, "before": {"hp": 5}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "relentless": true, "rolled": 6, "round": 1, "target_id": "Ragna"}
+event damage_applied {"after": {"hp": 1}, "amount": 6, "before": {"hp": 5}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Ragna": {"hp": 1}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "relentless": true, "rolled": 6, "round": 1, "target_id": "Ragna"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -270,7 +270,7 @@ vitals Ragna | active | 1 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"relentless_endurance
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a half-orc's hit that drops it to 0 with the endurance spent ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Ragna"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 5}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Ragna"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 5}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Ragna": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Ragna"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -279,7 +279,7 @@ vitals Ragna | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"relentless_endurance
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a half-orc's hit that leaves it standing ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Ragna"}
-event damage_applied {"after": {"hp": 6}, "amount": 6, "before": {"hp": 12}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Ragna"}
+event damage_applied {"after": {"hp": 6}, "amount": 6, "before": {"hp": 12}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Ragna": {"hp": 6}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Ragna"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -288,7 +288,7 @@ vitals Ragna | active | 6 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a half-orc's massive damage ==
 pending {"amount":6,"appliedAmount":9999,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Ragna"}
-event damage_applied {"after": {"hp": 0}, "amount": 9999, "before": {"hp": 5}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Ragna"}
+event damage_applied {"after": {"hp": 0}, "amount": 9999, "before": {"hp": 5}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Ragna": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Ragna"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -297,7 +297,7 @@ vitals Ragna | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 9999 | false | -1 | [] | -1 | true | false
 == apply a hit of a hidden goblin ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "secret": true, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 14}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "secret": true, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | true | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -306,7 +306,7 @@ vitals Toren | active | 14 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit on Toren at 0 hit points ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","deathFailuresAdded":1,"diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 1}, "death_before": {}, "failures_added": 1, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 1}, "death_before": {}, "failures_added": 1, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -315,7 +315,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit on Toren at 0 hit points and the amount 0 ==
 pending {"amount":6,"appliedAmount":0,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {}, "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {}, "death_before": {}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -325,7 +325,7 @@ damage basic:0 | applied | false | damage-type:slashing | 6 | 0 | false | -1 | [
 == apply a hit on Toren at 0 hit points who concentrates ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","deathFailuresAdded":1,"diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
 event conditions_set {"combatant_id": "Toren", "conc_before": "spell:web", "conc_ended": "spell:web", "reaction": {"group": "?", "kind": "concentration_end"}, "round": 1}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 1}, "death_before": {}, "failures_added": 1, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 1}, "death_before": {}, "failures_added": 1, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -334,7 +334,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit on Toren at 0 hit points with 2 failures ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","deathFailuresAdded":1,"diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 3, "successes": 1}, "death_before": {"failures": 2, "successes": 1}, "failures_added": 1, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 3, "successes": 1}, "death_before": {"failures": 2, "successes": 1}, "failures_added": 1, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -343,7 +343,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit on Toren at 0 hit points with the death saves hidden ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","deathFailuresAdded":1,"diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 2, "successes": 1}, "death_before": {"failures": 1, "successes": 1}, "death_hidden": true, "failures_added": 1, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 2, "successes": 1}, "death_before": {"failures": 1, "successes": 1}, "death_hidden": true, "failures_added": 1, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -352,7 +352,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit on Toren who concentrates ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"concentrationDc":10,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin", "concentration_dc": 10, "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin", "concentration_dc": 10, "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 14}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -363,7 +363,7 @@ window concentration_save | open | - | 1 | {"actor": "Goblin", "key": "basic:0",
 == apply a hit on Toren who concentrates and falls to 0 ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"concentrationDc":10,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
 event conditions_set {"combatant_id": "Toren", "conc_before": "spell:web", "conc_ended": "spell:web", "reaction": {"group": "?", "kind": "concentration_end"}, "round": 1}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 6}, "combatant_id": "Goblin", "concentration_dc": 10, "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 6}, "combatant_id": "Goblin", "concentration_dc": 10, "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -372,7 +372,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit on Toren who concentrates and takes nothing ==
 pending {"amount":6,"appliedAmount":0,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 20}, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 20}, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -381,7 +381,7 @@ vitals Toren | active | 20 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 0 | false | -1 | [] | -1 | true | false
 == apply a hit on Toren whose temporary hit points absorb it, who concentrates ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 20, "temp": 4}, "amount": 6, "before": {"hp": 20, "temp": 10}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 20, "temp": 4}, "amount": 6, "before": {"hp": 20, "temp": 10}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 20, "temp": 4}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -391,7 +391,7 @@ damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | 
 == apply a hit on a druid at 1 hit point under the beast ==
 pending {"amount":6,"appliedAmount":40,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Sálvia"}
 event wild_shape_ended {"beast": "monster:wolf", "carried_damage": 29, "character_id": "?", "combatant_id": "Sálvia", "encounter_id": "?", "reason": "damage", "round": 1}
-event damage_applied {"after": {"hp": 0}, "amount": 40, "before": {"hp": 1, "shape": {"beast": "monster:wolf", "hp": 11}}, "carried_damage": 29, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
+event damage_applied {"after": {"hp": 0}, "amount": 40, "before": {"hp": 1, "shape": {"beast": "monster:wolf", "hp": 11}}, "carried_damage": 29, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Sálvia": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 5 | 5 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 6 | 6 | false | false | false
 combatant Irmã | <nil> | <nil> | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -402,7 +402,7 @@ vitals Sálvia | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"wild_shape": 1}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 40 | false | -1 | [] | -1 | true | false
 == apply a hit on a druid in a beast form ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Sálvia"}
-event damage_applied {"after": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 5}}, "amount": 6, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
+event damage_applied {"after": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 5}}, "amount": 6, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Sálvia": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 5}}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 5 | 5 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 6 | 6 | false | false | false
 combatant Irmã | <nil> | <nil> | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -414,7 +414,7 @@ shape Sálvia | monster:wolf | 5
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit on a druid in a beast form who concentrates ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"concentrationDc":10,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Sálvia"}
-event damage_applied {"after": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 5}}, "amount": 6, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "combatant_id": "Goblin", "concentration_dc": 10, "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
+event damage_applied {"after": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 5}}, "amount": 6, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "combatant_id": "Goblin", "concentration_dc": 10, "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Sálvia": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 5}}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 5 | 5 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 6 | 6 | false | false | false
 combatant Irmã | <nil> | <nil> | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -427,7 +427,7 @@ damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | 
 window concentration_save | open | - | 1 | {"actor": "Goblin", "key": "basic:0", "pending": "?", "spell": "spell:web", "taken": 6, "target": "Sálvia"} | -
 == apply a hit on the wizard ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Pensantus"}
-event damage_applied {"after": {"hp": 1}, "amount": 6, "before": {"hp": 7}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Pensantus"}
+event damage_applied {"after": {"hp": 1}, "amount": 6, "before": {"hp": 7}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Pensantus": {"hp": 1}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Pensantus"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -436,7 +436,7 @@ vitals Pensantus | active | 1 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit that Toren survives with 1 hit point ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 1}, "amount": 6, "before": {"hp": 7}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 1}, "amount": 6, "before": {"hp": 7}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 1}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -445,7 +445,7 @@ vitals Toren | active | 1 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit that drops Toren from 1 to 0 ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 1}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 1}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -454,7 +454,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit that drops Toren to 0 ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 6}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 6}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -464,7 +464,7 @@ damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | 
 == apply a hit that drops the beast and some of the druid ==
 pending {"amount":6,"appliedAmount":20,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Sálvia"}
 event wild_shape_ended {"beast": "monster:wolf", "carried_damage": 9, "character_id": "?", "combatant_id": "Sálvia", "encounter_id": "?", "reason": "damage", "round": 1}
-event damage_applied {"after": {"hp": 29}, "amount": 20, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "carried_damage": 9, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
+event damage_applied {"after": {"hp": 29}, "amount": 20, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "carried_damage": 9, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Sálvia": {"hp": 29}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 5 | 5 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 6 | 6 | false | false | false
 combatant Irmã | <nil> | <nil> | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -476,7 +476,7 @@ damage basic:0 | applied | false | damage-type:slashing | 6 | 20 | false | -1 | 
 == apply a hit that drops the beast and the druid ==
 pending {"amount":6,"appliedAmount":200,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Sálvia"}
 event wild_shape_ended {"beast": "monster:wolf", "carried_damage": 189, "character_id": "?", "combatant_id": "Sálvia", "encounter_id": "?", "reason": "damage", "round": 1}
-event damage_applied {"after": {"hp": 0}, "amount": 200, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "carried_damage": 189, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
+event damage_applied {"after": {"hp": 0}, "amount": 200, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "carried_damage": 189, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Sálvia": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 5 | 5 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 6 | 6 | false | false | false
 combatant Irmã | <nil> | <nil> | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -488,7 +488,7 @@ damage basic:0 | applied | false | damage-type:slashing | 6 | 200 | false | -1 |
 == apply a hit that drops the beast exactly ==
 pending {"amount":6,"appliedAmount":11,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Sálvia"}
 event wild_shape_ended {"beast": "monster:wolf", "character_id": "?", "combatant_id": "Sálvia", "encounter_id": "?", "reason": "damage", "round": 1}
-event damage_applied {"after": {"hp": 38}, "amount": 11, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
+event damage_applied {"after": {"hp": 38}, "amount": 11, "before": {"hp": 38, "shape": {"beast": "monster:wolf", "hp": 11}}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Sálvia": {"hp": 38}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Sálvia"}
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 5 | 5 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 6 | 6 | false | false | false
 combatant Irmã | <nil> | <nil> | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -499,7 +499,7 @@ vitals Sálvia | active | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"wild_shape": 1
 damage basic:0 | applied | false | damage-type:slashing | 6 | 11 | false | -1 | [] | -1 | true | false
 == apply a hit that goes through the temporary hit points ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 17}, "amount": 6, "before": {"hp": 20, "temp": 3}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 17}, "amount": 6, "before": {"hp": 20, "temp": 3}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 17}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -508,7 +508,7 @@ vitals Toren | active | 17 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit that temporary hit points absorb ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 20, "temp": 4}, "amount": 6, "before": {"hp": 20, "temp": 10}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 20, "temp": 4}, "amount": 6, "before": {"hp": 20, "temp": 10}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 20, "temp": 4}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -517,7 +517,7 @@ vitals Toren | active | 20 | 4 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a hit that the temporary hit points and the last point take ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 2}, "amount": 6, "before": {"hp": 5, "temp": 3}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 2}, "amount": 6, "before": {"hp": 5, "temp": 3}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 2}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -526,7 +526,7 @@ vitals Toren | active | 2 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a massive damage ==
 pending {"amount":6,"appliedAmount":9999,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 9999, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 9999, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -535,7 +535,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 9999 | false | -1 | [] | -1 | true | false
 == apply a massive damage on a critical hit at 0 ==
 pending {"amount":6,"appliedAmount":9999,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","deathFailuresAdded":2,"diceCount":2,"diceSides":6,"roll":{"diceCount":2,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 9999, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 2}, "death_before": {}, "failures_added": 2, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 9999, "before": {"hp": 0}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death": {"failures": 2}, "death_before": {}, "failures_added": 2, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -544,7 +544,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | true | damage-type:slashing | 6 | 9999 | false | -1 | [] | -1 | true | false
 == apply a plain hit ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 14}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -553,7 +553,7 @@ vitals Toren | active | 14 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply a raging barbarian's hit leaving out another source ==
 pending {"amount":6,"amountAfterSteps":3,"appliedAmount":3,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","steps":[{"after":3,"before":6,"damageTypeKey":"damage-type:slashing","kind":"DAMAGE_STEP_KIND_RESISTANCE","labelPt":"Resistência a cortante (fúria)","sourceKeys":["feature:rage"]}],"targetId":"Brisa"}
-event damage_applied {"after": {"hp": 29}, "amount": 3, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "ignored": ["feature:other"], "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
+event damage_applied {"after": {"hp": 29}, "amount": 3, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Brisa": {"hp": 29}}, "hp_kept": true, "ignored": ["feature:other"], "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | true | false | 3 | 3 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 12 | 3 | false | false | false
@@ -562,7 +562,7 @@ vitals Brisa | active | 29 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 3 | false | -1 | [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}] | 3 | true | false
 == apply a raging barbarian's hit leaving out the rage ==
 pending {"amount":6,"amountAfterSteps":3,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","steps":[{"after":3,"before":6,"damageTypeKey":"damage-type:slashing","kind":"DAMAGE_STEP_KIND_RESISTANCE","labelPt":"Resistência a cortante (fúria)","sourceKeys":["feature:rage"]}],"targetId":"Brisa"}
-event damage_applied {"after": {"hp": 26}, "amount": 6, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "ignored": ["feature:rage"], "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
+event damage_applied {"after": {"hp": 26}, "amount": 6, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Brisa": {"hp": 26}}, "hp_kept": true, "ignored": ["feature:rage"], "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | true | false | 3 | 3 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 12 | 3 | false | false | false
@@ -571,7 +571,7 @@ vitals Brisa | active | 26 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}] | 3 | true | false
 == apply a raging barbarian's hit leaving out the rage and the master's amount ==
 pending {"amount":6,"amountAfterSteps":3,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","steps":[{"after":3,"before":6,"damageTypeKey":"damage-type:slashing","kind":"DAMAGE_STEP_KIND_RESISTANCE","labelPt":"Resistência a cortante (fúria)","sourceKeys":["feature:rage"]}],"targetId":"Brisa"}
-event damage_applied {"after": {"hp": 26}, "amount": 6, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "ignored": ["feature:rage"], "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
+event damage_applied {"after": {"hp": 26}, "amount": 6, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Brisa": {"hp": 26}}, "hp_kept": true, "ignored": ["feature:rage"], "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | true | false | 3 | 3 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 12 | 3 | false | false | false
@@ -580,7 +580,7 @@ vitals Brisa | active | 26 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}] | 3 | true | false
 == apply a raging barbarian's hit with the master's amount ==
 pending {"amount":6,"amountAfterSteps":3,"appliedAmount":9,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","steps":[{"after":3,"before":6,"damageTypeKey":"damage-type:slashing","kind":"DAMAGE_STEP_KIND_RESISTANCE","labelPt":"Resistência a cortante (fúria)","sourceKeys":["feature:rage"]}],"targetId":"Brisa"}
-event damage_applied {"after": {"hp": 23}, "amount": 9, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
+event damage_applied {"after": {"hp": 23}, "amount": 9, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Brisa": {"hp": 23}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | true | false | 3 | 3 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 12 | 3 | false | false | false
@@ -589,7 +589,7 @@ vitals Brisa | active | 23 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 9 | false | -1 | [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}] | 3 | true | false
 == apply a raging barbarian's hit with the master's amount equal to the steps ==
 pending {"amount":6,"amountAfterSteps":3,"appliedAmount":3,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","steps":[{"after":3,"before":6,"damageTypeKey":"damage-type:slashing","kind":"DAMAGE_STEP_KIND_RESISTANCE","labelPt":"Resistência a cortante (fúria)","sourceKeys":["feature:rage"]}],"targetId":"Brisa"}
-event damage_applied {"after": {"hp": 29}, "amount": 3, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
+event damage_applied {"after": {"hp": 29}, "amount": 3, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Brisa": {"hp": 29}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | true | false | 3 | 3 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 12 | 3 | false | false | false
@@ -598,7 +598,7 @@ vitals Brisa | active | 29 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 3 | false | -1 | [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}] | 3 | true | false
 == apply a raging barbarian's resistance ==
 pending {"amount":6,"amountAfterSteps":3,"appliedAmount":3,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","steps":[{"after":3,"before":6,"damageTypeKey":"damage-type:slashing","kind":"DAMAGE_STEP_KIND_RESISTANCE","labelPt":"Resistência a cortante (fúria)","sourceKeys":["feature:rage"]}],"targetId":"Brisa"}
-event damage_applied {"after": {"hp": 29}, "amount": 3, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
+event damage_applied {"after": {"hp": 29}, "amount": 3, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Brisa": {"hp": 29}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "steps": [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | true | false | 3 | 3 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 12 | 3 | false | false | false
@@ -607,7 +607,7 @@ vitals Brisa | active | 29 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 3 | false | -1 | [{"before": 6, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}] | 3 | true | false
 == apply a raging barbarian's resistance on a critical hit ==
 pending {"amount":9,"amountAfterSteps":4,"appliedAmount":4,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"critical":true,"criticalRule":"CRITICAL_DAMAGE_RULE_DOUBLED_DICE","damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":2,"diceSides":6,"roll":{"diceCount":2,"diceSides":6,"modifier":2,"physical":true,"total":9},"status":"PENDING_DAMAGE_STATUS_APPLIED","steps":[{"after":4,"before":9,"damageTypeKey":"damage-type:slashing","kind":"DAMAGE_STEP_KIND_RESISTANCE","labelPt":"Resistência a cortante (fúria)","sourceKeys":["feature:rage"]}],"targetId":"Brisa"}
-event damage_applied {"after": {"hp": 28}, "amount": 4, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 9, "round": 1, "steps": [{"before": 9, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
+event damage_applied {"after": {"hp": 28}, "amount": 4, "before": {"hp": 32}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Brisa": {"hp": 28}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 9, "round": 1, "steps": [{"before": 9, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}], "target_id": "Brisa"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | true | false | 3 | 3 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 12 | 3 | false | false | false
@@ -616,7 +616,7 @@ vitals Brisa | active | 28 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 damage basic:0 | applied | true | damage-type:slashing | 9 | 4 | false | -1 | [{"before": 9, "damage_type": "damage-type:slashing", "mods": [{"DamageTypes": ["damage-type:slashing"], "Kind": "resistance", "Source": "feature:rage"}], "origin": {"attack": true}}] | 4 | true | false
 == apply accepted the largest amount ==
 pending {"amount":6,"appliedAmount":9999,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 9999, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 9999, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -625,7 +625,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 9999 | false | -1 | [] | -1 | true | false
 == apply an opportunity attack that finds the square taken ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin 1","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 6}, "combatant_id": "Goblin 1", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "return_blocked": true, "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 6}, "combatant_id": "Goblin 1", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "return_blocked": true, "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 4 | 7 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 12 | 13 | false | false | false
 combatant Escudeiro | 11 | 0 | false | 0 | 0 | - | false | false | 3 | 8 | false | false | false
@@ -639,7 +639,7 @@ vitals Toren | active | 0 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply an opportunity attack that leaves the mover standing ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin 1","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin 1", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin 1", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 14}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 4 | 7 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 12 | 13 | false | false | false
 combatant Escudeiro | 11 | 0 | false | 0 | 0 | - | false | false | 3 | 8 | false | false | false
@@ -653,7 +653,7 @@ vitals Toren | active | 14 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply an opportunity attack that sends the mover back ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin 1","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 6}, "combatant_id": "Goblin 1", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "returned_from": {"col": 4, "cover": "none", "last_dft": 112, "placed": true, "row": 6, "used_dft": 112}, "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 6, "before": {"hp": 6}, "combatant_id": "Goblin 1", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 0}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "returned_from": {"col": 4, "cover": "none", "last_dft": 112, "placed": true, "row": 6, "used_dft": 112}, "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 4 | 7 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 12 | 13 | false | false | false
 combatant Escudeiro | 11 | 0 | false | 0 | 0 | - | false | false | 3 | 8 | false | false | false
@@ -694,7 +694,7 @@ refused permission_denied: only the campaign's master can do this
 state unchanged
 == apply the fire of Flame Strike on Toren ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 40}, "amount": 4, "before": {"hp": 44}, "combatant_id": "Brisa", "damage_type": "damage-type:fire", "death_before": {}, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 40}, "amount": 4, "before": {"hp": 44}, "combatant_id": "Brisa", "damage_type": "damage-type:fire", "death_before": {}, "holds": {"Toren": {"hp": 40}}, "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -706,7 +706,7 @@ damage spell:flame-strike | applied | false | damage-type:fire | 4 | -1 | false 
 damage spell:flame-strike | awaiting_roll | false | damage-type:radiant | -1 | -1 | false | -1 | [] | -1 | false | true
 == apply the fire of Flame Strike on Toren who concentrates ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:fire","damageTypePt":"fogo","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 40}, "amount": 4, "before": {"hp": 44}, "combatant_id": "Brisa", "damage_type": "damage-type:fire", "death_before": {}, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 40}, "amount": 4, "before": {"hp": 44}, "combatant_id": "Brisa", "damage_type": "damage-type:fire", "death_before": {}, "holds": {"Toren": {"hp": 40}}, "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -718,7 +718,7 @@ damage spell:flame-strike | applied | false | damage-type:fire | 4 | -1 | false 
 damage spell:flame-strike | awaiting_roll | false | damage-type:radiant | -1 | -1 | false | -1 | [] | -1 | false | true
 == apply the master's amount equal to the roll ==
 pending {"amount":6,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 14}, "amount": 6, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 14}}, "hp_kept": true, "key": "basic:0", "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -727,7 +727,7 @@ vitals Toren | active | 14 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | -1 | false | -1 | [] | -1 | true | false
 == apply the master's amount of 0 ==
 pending {"amount":6,"appliedAmount":0,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 20}, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 20}, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -736,7 +736,7 @@ vitals Toren | active | 20 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 0 | false | -1 | [] | -1 | true | false
 == apply the master's higher amount ==
 pending {"amount":6,"appliedAmount":11,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 9}, "amount": 11, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 9}, "amount": 11, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 9}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -745,7 +745,7 @@ vitals Toren | active | 9 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 11 | false | -1 | [] | -1 | true | false
 == apply the master's lower amount ==
 pending {"amount":6,"appliedAmount":2,"attackKey":"basic:0","attackerId":"Goblin","bonus":2,"damageTypeKey":"damage-type:slashing","damageTypePt":"cortante","diceCount":1,"diceSides":6,"roll":{"diceCount":1,"diceSides":6,"modifier":2,"physical":true,"total":6},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 18}, "amount": 2, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 18}, "amount": 2, "before": {"hp": 20}, "combatant_id": "Goblin", "damage_type": "damage-type:slashing", "death_before": {}, "holds": {"Toren": {"hp": 18}}, "hp_kept": true, "key": "basic:0", "overridden": true, "pending_id": "?", "rolled": 6, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 8 | 8 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 4 | 3 | false | false | false
 combatant Pensantus | <nil> | <nil> | false | 0 | 0 | - | false | false | 10 | 3 | false | false | false
@@ -754,7 +754,7 @@ vitals Toren | active | 18 | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {}
 damage basic:0 | applied | false | damage-type:slashing | 6 | 2 | false | -1 | [] | -1 | true | false
 == apply the radiant of Flame Strike on Toren after the fire ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 30}, "amount": 4, "before": {"hp": 34}, "combatant_id": "Brisa", "damage_type": "damage-type:radiant", "death_before": {}, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 30}, "amount": 4, "before": {"hp": 34}, "combatant_id": "Brisa", "damage_type": "damage-type:radiant", "death_before": {}, "holds": {"Toren": {"hp": 30}}, "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -766,7 +766,7 @@ damage spell:flame-strike | applied | false | damage-type:fire | 10 | -1 | false
 damage spell:flame-strike | applied | false | damage-type:radiant | 4 | -1 | false | 4 | [] | -1 | true | true
 == apply the radiant of Flame Strike on Toren at 0 hit points after the fire ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","deathFailuresAdded":1,"diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 0}, "amount": 4, "before": {"hp": 0}, "combatant_id": "Brisa", "damage_type": "damage-type:radiant", "death": {"failures": 1}, "death_before": {}, "failures_added": 1, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 0}, "amount": 4, "before": {"hp": 0}, "combatant_id": "Brisa", "damage_type": "damage-type:radiant", "death": {"failures": 1}, "death_before": {}, "failures_added": 1, "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -778,7 +778,7 @@ damage spell:flame-strike | applied | false | damage-type:fire | 10 | -1 | false
 damage spell:flame-strike | applied | false | damage-type:radiant | 4 | -1 | false | 0 | [] | -1 | true | true
 == apply the radiant of Flame Strike on Toren who concentrates after the fire ==
 pending {"amount":4,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","concentrationDc":10,"damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 30}, "amount": 4, "before": {"hp": 34}, "combatant_id": "Brisa", "concentration_dc": 10, "damage_type": "damage-type:radiant", "death_before": {}, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 30}, "amount": 4, "before": {"hp": 34}, "combatant_id": "Brisa", "concentration_dc": 10, "damage_type": "damage-type:radiant", "death_before": {}, "holds": {"Toren": {"hp": 30}}, "hp_kept": true, "key": "spell:flame-strike", "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false
@@ -791,7 +791,7 @@ damage spell:flame-strike | applied | false | damage-type:radiant | 4 | -1 | fal
 window concentration_save | open | - | 1 | {"actor": "Brisa", "key": "spell:flame-strike", "pending": "?", "spell": "spell:web", "taken": 14, "target": "Toren"} | -
 == apply the radiant of Flame Strike on Toren with no damage ==
 pending {"amount":4,"appliedAmount":0,"attackKey":"spell:flame-strike","attackerId":"Brisa","castId":"?","concentrationDc":10,"damageTypeKey":"damage-type:radiant","damageTypePt":"radiante","diceCount":4,"diceSides":6,"roll":{"diceCount":4,"diceSides":6,"physical":true,"total":4},"status":"PENDING_DAMAGE_STATUS_APPLIED","targetId":"Toren"}
-event damage_applied {"after": {"hp": 34}, "before": {"hp": 34}, "combatant_id": "Brisa", "concentration_dc": 10, "damage_type": "damage-type:radiant", "death_before": {}, "key": "spell:flame-strike", "overridden": true, "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
+event damage_applied {"after": {"hp": 34}, "before": {"hp": 34}, "combatant_id": "Brisa", "concentration_dc": 10, "damage_type": "damage-type:radiant", "death_before": {}, "hp_kept": true, "key": "spell:flame-strike", "overridden": true, "pending_id": "?", "rolled": 4, "round": 1, "target_id": "Toren"}
 combatant Brisa | <nil> | <nil> | false | 0 | 0 | - | false | false | 5 | 6 | false | false | false
 combatant Capitão Goblin | 27 | 0 | false | 0 | 0 | - | false | false | 4 | 4 | false | false | false
 combatant Goblin | 7 | 0 | false | 0 | 0 | - | false | false | 7 | 5 | false | false | false

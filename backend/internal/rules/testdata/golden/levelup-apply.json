@@ -45,6 +45,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -104,6 +105,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -171,6 +173,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -236,6 +239,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -301,6 +305,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -366,6 +371,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -441,6 +447,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -506,6 +513,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -569,6 +577,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -629,6 +638,7 @@
     "Shield": false,
     "MageArmor": false,
     "Weapons": null,
+    "WeaponMarks": null,
     "Cantrips": [
       "spell:chill-touch",
       "spell:eldritch-blast",
@@ -700,6 +710,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -767,6 +778,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -829,6 +841,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -901,6 +914,7 @@
     "Weapons": [
       "equipment:quarterstaff"
     ],
+    "WeaponMarks": null,
     "Cantrips": [
       "spell:fire-bolt",
       "spell:ray-of-frost",
@@ -980,6 +994,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,
@@ -1046,6 +1061,7 @@
     "Weapons": [
       "equipment:longsword"
     ],
+    "WeaponMarks": null,
     "Cantrips": null,
     "SpellsKnown": null,
     "SpellsPrepared": null,

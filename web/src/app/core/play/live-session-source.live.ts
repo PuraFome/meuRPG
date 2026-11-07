@@ -147,11 +147,13 @@ export class LiveSessionSourceLive implements LiveSessionSource {
     characterId: string,
     idempotencyKey: string,
     change: VitalsChange,
+    expectedRevision: number,
   ): Promise<VitalsVm> {
     const res = await this.play.adjustCharacterVitals({
       campaignId,
       characterId,
       idempotencyKey,
+      expectedRevision,
       hitPointsCurrent: change.hitPointsCurrent,
       hitPointsTemporary: change.hitPointsTemporary,
       spellSlotsUsed: (change.spellSlotsUsed ?? []).map((s) => ({ level: s.level, used: s.used })),

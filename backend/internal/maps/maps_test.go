@@ -1090,3 +1090,20 @@ func TestMR013_SetMapGrid(t *testing.T) {
 		t.Errorf("parent maps of the battle's map = %v, want none", parents)
 	}
 }
+
+// revisionOf is the revision of a character's vitals as u reads them in the live session: what the
+// caller of AdjustCharacterVitals has to send as expected_revision.
+func (u *user) revisionOf(campaignID, characterID string) *int32 {
+	u.h.t.Helper()
+	res, err := u.play.GetLiveSession(u.h.t.Context(), connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: campaignID}))
+	if err != nil {
+		u.h.t.Fatalf("GetLiveSession() error = %v", err)
+	}
+	for _, v := range res.Msg.GetVitals() {
+		if v.GetCharacterId() == characterID {
+			return proto.Int32(v.GetRevision())
+		}
+	}
+	u.h.t.Fatalf("no vitals for character %s", characterID)
+	return nil
+}

@@ -120,13 +120,28 @@ The damage of each type goes through the target's modifiers (`combat.Adjust`, SR
 - a creature's or an NPC's with a `monster_key` (what "Pôr no combate" and "Criar NPC" make, and a character's creature) from its SRD stat block, through `CombatRoster.DamageModifiers`;
 - a player character's from its race and features (`effects/damage_resistances.json`: the tiefling's fire, the dwarf's poison, the draconic lineages) and the Rage's, which holds only while the state lasts and no heavy armor is worn.
 
-A stat block entry counts when it has no condition, or when its only condition is "from nonmagical attacks" (the snapshot's `qualifier: "nonmagical"`, set by `cmd/srdimport` from the SRD's words and carried by `rules.CreatureDamageMod.Qualifier`): `characters.typeModifiersOf` keeps those apart (`TypeModifiers.ResistantNonmagical`, `ImmuneNonmagical`) and `statBlockModifiers` turns them into `combat.Modifier`s with `Qualifier: combat.QualifierNonmagical`.
-An entry limited by a material ("... that aren't silvered", "... that aren't adamantine", qualifiers `nonmagical-unless-silvered` and `nonmagical-unless-adamantine`) is not applied: no attack carries a material, so the master corrects an NPC's HP by hand (`AdjustCombatantHitPoints`).
-A modifier with the nonmagical qualifier covers a damage only when `combat.Origin` says it is an attack and not a magical one. `damageFlow.originOf` answers it for a pending damage: the damage of a cast is a magical attack; an attack of the attacker's sheet or stat block is magical when `link.Attack.Magical` is (a cantrip or spell attack; a creature's attack when its stat block has the trait "Magic Weapons"; the sheet can mark any attack, an unarmed strike included, through `rules.Attack.Magical`); a weapon of a character and the unarmed strike are not magical unless marked, and `rules.unarmedStrike` marks the unarmed strike of a sheet that has `feature:ki-empowered-strikes` (monk 6, multiclass included; read from `Derived.Features`, not an effect), never a weapon line. A damage with no attack behind it (a trap, a zone, an ongoing effect, a reaction's own damage) is no attack: `AdjustForType` does not read the nonmagical lists, so the clause does not reduce it.
-The step is the usual resistance or immunity step with `combat.Step.Qualifier` set, and its label says so ("Resistência a perfurante de ataque não mágico (Grick)"). `stepGroup.From` keeps the origin so the steps are worked out the same when the master leaves a source out.
+A stat block entry counts when it has no condition, or when its only condition is a limit to nonmagical attacks.
+The snapshot's `qualifier` says which: `nonmagical` ("from nonmagical attacks"), `nonmagical-unless-silvered` ("from nonmagical weapons that aren't silvered") or `nonmagical-unless-adamantine` ("... that aren't adamantine").
+`cmd/srdimport` sets it from the SRD's words and `rules.CreatureDamageMod.Qualifier` carries it.
+`characters.typeModifiersOf` keeps the plain entries and each qualifier apart (`TypeModifiers.ResistantNonmagical`, `ResistantUnlessSilvered`, `ResistantUnlessAdamantine` and the `Immune` twins).
+`statBlockModifiers` turns them into `combat.Modifier`s with `Qualifier: combat.QualifierNonmagical`, `QualifierNonmagicalUnlessSilvered` or `QualifierNonmagicalUnlessAdamantine`.
+An entry with any other condition ("damage from spells") is not applied, and the master corrects an NPC's HP by hand (`AdjustCombatantHitPoints`).
+A modifier with the nonmagical qualifier covers a damage only when `combat.Origin` says it is an attack and not a magical one.
+The silvered qualifier also needs `Origin.Silvered` to be false, and the adamantine qualifier needs `Origin.Adamantine` to be false.
+`damageFlow.originOf` answers it for a pending damage: the damage of a cast is a magical attack.
+An attack of the attacker's sheet or stat block is magical when `link.Attack.Magical` is, and it carries `link.Attack.Silvered` and `link.Attack.Adamantine` (from `rules.Attack`) into the origin as the weapon's material.
+A spell or cantrip attack is magical.
+A creature's attack is magical when its stat block has the trait "Magic Weapons", and it is never silvered or adamantine.
+A weapon of a character is marked by the sheet (`full.weapon_marks`) or by a `weapon_rule`; `rules.deriver.weaponMarks` is the one place that merges them.
+The unarmed strike has no sheet mark: `rules.unarmedStrike` calls `weaponMarks` too, so a `weapon_rule` marks it.
+Ki-Empowered Strikes (`feature:ki-empowered-strikes` in `Derived.Features`, monk 6, multiclass included, not an effect) makes it magical on its own, and the `magic` filter reads that.
+A `pseudo_weapon` line is never marked by a `weapon_rule`.
+A damage with no attack behind it (a trap, a zone, an ongoing effect, a reaction's own damage) is no attack: `AdjustForType` does not read the nonmagical lists, so no nonmagical clause reduces it.
+The step is the usual resistance or immunity step with `combat.Step.Qualifier` set, and its label says so ("Resistência a perfurante de ataque não mágico (Grick)", "... de ataque não mágico nem prateado", "... de ataque não mágico nem adamantino"). `stepGroup.From` keeps the origin so the steps are worked out the same when the master leaves a source out.
 The steps are kept per type with their sources (`pending_damages.steps`) and shown to the master and the target's player as `DamageStep[]`.
 The master may leave a source out when applying (`ignore_modifiers`, at most `maxIgnoredSources`).
 An NPC's resistances reach the master alone (RN-20).
+`leaktest.TestAMaterialResistanceIsTheMastersAlone` proves it for a wight hit by a plain and a silvered weapon: the step, its label and the amounts are the master's, and no player reads the qualifier words in the roll, the combat, the log or the stream.
 The conditions a stat block is immune to do not go through these modifiers: they ride on the traits and `immuneToCondition` reads them when a condition is given (see [Creatures](creatures.md#what-the-combat-does-with-a-creature)).
 A trap's damage on an NPC or creature goes through the same adjustment.
 

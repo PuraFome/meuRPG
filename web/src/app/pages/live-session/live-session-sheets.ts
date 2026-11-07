@@ -134,6 +134,7 @@ export class LiveSessionSheets {
       vitals,
       sub: partyRowSub(info),
       playerName: info?.playerName ?? null,
+      onStale: () => void this.loader.rereadVitals(),
     };
     const onPhone =
       services.document.defaultView?.matchMedia('(max-width: 767.98px)').matches ?? false;

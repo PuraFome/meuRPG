@@ -832,7 +832,7 @@ func TestRN02_DamageToAPlayerWaitsForTheMaster(t *testing.T) {
 	// At 0 hit points a character is down: everyone sees the word, nobody
 	// acts for them, and the numbers stay the master's.
 	if _, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: a.campaignID, CharacterId: a.pens.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(3),
+		CampaignId: a.campaignID, CharacterId: a.pens.GetId(), IdempotencyKey: newKey(), ExpectedRevision: a.master.revisionOf(t, a.campaignID, a.pens.GetId()), HitPointsCurrent: proto.Int32(3),
 	})); err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}
@@ -1272,7 +1272,7 @@ func TestCombatUndoRestoresTheLastAction(t *testing.T) {
 	}
 	step(toren.GetHitPointsCurrent(), playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED) // the discard is taken back
 	if _, err := a.master.play.AdjustCharacterVitals(t.Context(), connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
-		CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(), HitPointsCurrent: proto.Int32(1),
+		CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey(), ExpectedRevision: a.master.revisionOf(t, a.campaignID, a.toren.GetId()), HitPointsCurrent: proto.Int32(1),
 	})); err != nil {
 		t.Fatalf("AdjustCharacterVitals() error = %v", err)
 	}

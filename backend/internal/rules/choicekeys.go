@@ -95,6 +95,8 @@ func (c *content) choiceValueKnown(value string) bool {
 	case strings.HasPrefix(value, abilityPrefix):
 		_, ok := ability(strings.TrimPrefix(value, abilityPrefix))
 		return ok
+	case strings.HasPrefix(value, "damage-type:"):
+		return c.isLiveDamageType(value)
 	case strings.HasPrefix(value, "creature-type:"):
 		return c.hasCreatureType(value)
 	case strings.HasPrefix(value, "terrain:"):

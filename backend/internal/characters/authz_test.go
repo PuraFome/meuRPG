@@ -491,6 +491,12 @@ func TestAuthorizationMatrix(t *testing.T) {
 			}))
 			return err
 		}, [6]connect.Code{connect.CodeAborted, connect.CodeAborted, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+		// Stowing a weapon: the master and the owner may (the second call finds it stowed already);
+		// another player, a stranger and a pending member are told the character is not there.
+		{"SetEquipped", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.api.SetEquipped(ctx, connect.NewRequest(&charactersv1.SetEquippedRequest{CampaignId: campaign, CharacterId: pc.GetId(), Key: "equipment:quarterstaff"}))
+			return err
+		}, [6]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		// Reserved characters and claim links (MR-049): only the master makes, revokes and gives
 		// back; every other member is refused with the master's answer (permission_denied), and
 		// whoever is no member, or only pending, cannot tell the campaign from one that does not exist.

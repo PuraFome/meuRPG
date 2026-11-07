@@ -160,12 +160,22 @@ func withCheckHelps(sources []combat.Source, helps []playdb.CombatHelp, who play
 	return sources, ids
 }
 
-// checkBonusesOf are the fixed bonuses the combatant's effects add to a check.
+// checkBonusesOf are the fixed bonuses the combatant's effects add to a check or a saving throw:
+// the skill's, and the flat bonus of the roll's kind.
 func checkBonusesOf(states map[string][]playdb.CombatantState, combatantID, skillKey string, check bool) []effectBonus {
+	applies := rules.RollAppliesSave
+	if check {
+		applies = rules.RollAppliesCheck
+	}
 	var bonuses []effectBonus
 	for _, st := range effectsOn(states, combatantID) {
-		if n := combat.CheckBonus(effectModifiers(st), skillKey); n != 0 && check {
-			bonuses = append(bonuses, effectBonus{Key: conv.OrZero(st.SourceKey), Value: n, Hidden: !st.PlayerVisible})
+		mods := effectModifiers(st)
+		n := combat.RollBonus(mods, applies)
+		if check {
+			n += combat.CheckBonus(mods, skillKey)
+		}
+		if n != 0 {
+			bonuses = append(bonuses, effectBonus{Key: conv.OrZero(st.SourceKey), Value: n, Hidden: !st.PlayerVisible, OwnerOnly: st.Audience == audienceOwner})
 		}
 	}
 	return bonuses

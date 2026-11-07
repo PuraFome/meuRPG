@@ -8,8 +8,26 @@ import {
   combatErrorMessage,
   pendingQuestionReasonText,
 } from './combat-errors';
+import { undoChangedText } from './combat-errors-limits';
 
 describe('combat errors', () => {
+  it('says an undo was refused because hit points changed, names who, and says nothing was undone', () => {
+    const blocked = {
+      reason: EncounterBlockedReason.UNDO_TARGET_CHANGED,
+      combatantIds: ['a', 'b'],
+    } as never;
+    const names = new Map([
+      ['a', 'Toren'],
+      ['b', 'Goblin 2'],
+    ]);
+    expect(undoChangedText(blocked, (id) => names.get(id))).toMatch(
+      /Toren, Goblin 2 mudaram.*Nada foi desfeito/,
+    );
+    // Without a name on screen the general sentence stands.
+    expect(undoChangedText(blocked, () => undefined)).toMatch(/Nada foi desfeito/);
+    expect(blockedMessage(blocked)).toMatch(/Nada foi desfeito/);
+  });
+
   it('says every refusal of the legendary actions in words, and that nothing was spent', () => {
     for (const reason of [
       EncounterBlockedReason.LEGENDARY_OWN_TURN,

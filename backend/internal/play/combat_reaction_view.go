@@ -11,6 +11,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
@@ -498,6 +499,7 @@ func (wv *windowView) concentrationPrompt(w playdb.ReactionWindow, reactor *play
 		if err != nil {
 			return wv.s.dbError(wv.ctx, "read a saving throw", err)
 		}
+		save = withRollBonus(save, statesOf(wv.d.states), reactor.ID, rules.RollAppliesSave)
 		p.SaveBonus, p.BonusKnown = conv.Int32(save.Bonus), save.Known
 		sheet, err := wv.s.sheetOf(wv.ctx, nil, wv.m.CampaignID, *reactor)
 		if err != nil {

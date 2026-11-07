@@ -589,7 +589,9 @@ func (s *Service) spellSave(ctx context.Context, c *combatTx, m authz.Membership
 		return err
 	}
 	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: sp.SaveAbility, EffectVisible: true, Against: against})
-	modes.save[target.ID] = shownSources(sources, modes.names)
+	bonuses := rollBonusesOf(modes.in.states, target.ID, rules.RollAppliesSave)
+	save.Bonus += bonusTotal(bonuses)
+	modes.save[target.ID] = append(shownSources(sources, modes.names), bonusSources(bonuses, modes.names, modes.v.master, modes.v.owns(target))...)
 	// Cover adds to a Dexterity save (SRD): half +2, three-quarters +5. The bonus
 	// the save shows already has it.
 	if sp.SaveAbility == "dex" && !cover.total() && !sp.IgnoresCover { // Chama Sagrada: no benefit from cover (SRD)

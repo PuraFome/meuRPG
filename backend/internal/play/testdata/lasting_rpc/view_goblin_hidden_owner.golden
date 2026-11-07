@@ -86,6 +86,9 @@
     "id": "\u003cfx:spell:guidance@Toren\u003e",
     "modifiers": [
      {
+      "appliesTo": [
+       "EFFECT_ROLL_KIND_CHECK"
+      ],
       "die": 4,
       "kind": "EFFECT_MODIFIER_KIND_ROLL_DIE",
       "sign": 1

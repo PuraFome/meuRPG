@@ -948,12 +948,18 @@ type CombatServiceClient interface {
 	// can be undone: any later event (a turn passing, a move, a correction of
 	// the vitals) leaves nothing to undo (NOTHING_TO_UNDO).
 	//
+	// An undo writes back the hit points, temporary hit points, Wild Shape pool and defeat the
+	// action changed only if each of them still holds what the action left. If something
+	// else changed one since, the whole undo is refused and nothing is written. It writes
+	// none of these for a combatant the action did not change.
+	//
 	// Errors:
 	//   - `not_found`: the combat is not this campaign's.
 	//   - `permission_denied`: the caller is a player.
 	//   - `aborted`: expected_event_id is not the last action.
-	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED or
-	//     NOTHING_TO_UNDO.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+	//     NOTHING_TO_UNDO or UNDO_TARGET_CHANGED (combatant_ids names who changed,
+	//     never the numbers).
 	UndoLastAction(context.Context, *connect.Request[v1.UndoLastActionRequest]) (*connect.Response[v1.UndoLastActionResponse], error)
 	// CastSpell casts a spell (MR-014, RN-02): the caster's player may cast for
 	// their own character on its turn, and the master for any combatant on turn
@@ -2979,12 +2985,18 @@ type CombatServiceHandler interface {
 	// can be undone: any later event (a turn passing, a move, a correction of
 	// the vitals) leaves nothing to undo (NOTHING_TO_UNDO).
 	//
+	// An undo writes back the hit points, temporary hit points, Wild Shape pool and defeat the
+	// action changed only if each of them still holds what the action left. If something
+	// else changed one since, the whole undo is refused and nothing is written. It writes
+	// none of these for a combatant the action did not change.
+	//
 	// Errors:
 	//   - `not_found`: the combat is not this campaign's.
 	//   - `permission_denied`: the caller is a player.
 	//   - `aborted`: expected_event_id is not the last action.
-	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED or
-	//     NOTHING_TO_UNDO.
+	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
+	//     NOTHING_TO_UNDO or UNDO_TARGET_CHANGED (combatant_ids names who changed,
+	//     never the numbers).
 	UndoLastAction(context.Context, *connect.Request[v1.UndoLastActionRequest]) (*connect.Response[v1.UndoLastActionResponse], error)
 	// CastSpell casts a spell (MR-014, RN-02): the caster's player may cast for
 	// their own character on its turn, and the master for any combatant on turn

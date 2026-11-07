@@ -92,8 +92,16 @@ export interface EffectDraft {
   attackBonus: number;
   damageBonus: number;
   reachM: string;
+  /** weapon_rule: the weapon lines it chooses count as magical, silvered or adamantine (for the resistances to nonmagical attacks). */
+  magical: boolean;
+  silvered: boolean;
+  adamantine: boolean;
   attackName: string;
   damageDice: string;
+  /** choice (in a feat): the name later effects refer to as @name, the option set it offers, and for a score modifier the highest score it may lift. */
+  name: string;
+  set: string;
+  cap: number;
 }
 
 /** The fields a request carries for one effect: the type, and only what that type reads. */

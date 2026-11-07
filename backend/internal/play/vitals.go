@@ -99,6 +99,40 @@ func (s *Service) AdjustCharacterVitals(
 	return connect.NewResponse(&playv1.AdjustCharacterVitalsResponse{Vitals: run.after, ConcentrationDc: run.check.dc, ConcentrationCastId: run.check.castID}), nil
 }
 
+// checkExpectedRevision refuses a correction written over vitals that changed since the caller read
+// them (a combat, a rest or another correction), and one that does not say which it read: every
+// value of a correction replaces the current one, so a change in between would be lost without a word.
+// It runs in the transaction of the write; a writer under another lock (combat, a rest) is kept out by
+// the database's serializable isolation, which aborts one of two transactions that read and write the row.
+func (s *Service) checkExpectedRevision(ctx context.Context, tx pgx.Tx, call adjustCall) error {
+	if call.msg.ExpectedRevision == nil {
+		return errStaleVitals()
+	}
+	now, err := s.vitals.GetVitalsTx(ctx, tx, call.m.CampaignID, call.charText)
+	if err != nil {
+		return err
+	}
+	if now.GetRevision() != call.msg.GetExpectedRevision() {
+		return errStaleVitals()
+	}
+	return nil
+}
+
+// errStaleVitals is the answer to a correction over vitals that are not the ones the caller read.
+func errStaleVitals() error {
+	return connect.NewError(connect.CodeAborted, errors.New("the character's numbers changed since you read them: read them again and try again"))
+}
+
+// retryOfCorrection answers a key that was already used: the same character's correction is a
+// retry, another character's is a mistake.
+func retryOfCorrection(done playdb.GetSessionEventByIdempotencyKeyRow, call adjustCall, run *adjustRun) error {
+	if done.CharacterID == nil || *done.CharacterID != call.charText {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
+	}
+	run.repeated = true // a retry of a correction already made
+	return nil
+}
+
 // adjustWrite is the transaction of AdjustCharacterVitals: lock, retry, the change, the
 // event, the beast form that ended, the combat that shows it, the concentration.
 func (s *Service) adjustWrite(ctx context.Context, tx pgx.Tx, call adjustCall, run *adjustRun) error {
@@ -112,11 +146,10 @@ func (s *Service) adjustWrite(ctx context.Context, tx pgx.Tx, call adjustCall, r
 		return err
 	}
 	if again {
-		if done.CharacterID == nil || *done.CharacterID != call.charText {
-			return connect.NewError(connect.CodeInvalidArgument, errors.New("idempotency_key was already used for another change"))
-		}
-		run.repeated = true // a retry of a correction already made
-		return nil
+		return retryOfCorrection(done, call, run)
+	}
+	if err := s.checkExpectedRevision(ctx, tx, call); err != nil {
+		return err
 	}
 	// Healing from 0 also resets the death saves of the character's combatant
 	// in the session's combat (RN-03).

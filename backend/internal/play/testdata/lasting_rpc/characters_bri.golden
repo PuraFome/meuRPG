@@ -44,10 +44,7 @@
    "id": "\u003ccfx:spell:mage-armor@pens\u003e",
    "secondsLeft": 28800,
    "sourceKey": "spell:mage-armor",
-   "sourceNamePt": "Armadura Arcana",
-   "tagsPt": [
-    "CA base 13 + Destreza, sem armadura"
-   ]
+   "sourceNamePt": "Armadura Arcana"
   }
  ]
 }

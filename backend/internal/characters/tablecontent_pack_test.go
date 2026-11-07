@@ -774,3 +774,31 @@ func TestMR025_APackKeepsASubraceReplacementsAndATraitsOptions(t *testing.T) {
 		t.Errorf("importing the same pack again: totals %v, want two unchanged", again.GetTotals())
 	}
 }
+
+// TestAFeatWithOptionsSurvivesAPackRoundTrip: the option keys, the names and the caps of a feat go through the
+// export, the file and the import of another campaign unchanged.
+func TestAFeatWithOptionsSurvivesAPackRoundTrip(t *testing.T) {
+	t.Parallel()
+	pt := newPackTable(t)
+	made := pt.master.addEntry(t, pt.from, resilientFeat())
+	pack := pt.export(t, pt.from)
+	file, err := storeJSON.Marshal(pack)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded := &rulesv1.TableContentPack{}
+	if err := loadJSON.Unmarshal(file, loaded); err != nil {
+		t.Fatal(err)
+	}
+	pt.apply(t, pt.to, loaded, "feat-options")
+	in := pt.entries(t, pt.to)[made.GetKey()]
+	if in == nil {
+		t.Fatalf("the feat %s is not in the second campaign", made.GetKey())
+	}
+	if !proto.Equal(bodyMessage(in), bodyMessage(made)) {
+		t.Errorf("the feat differs after the round trip: %v, want %v", bodyMessage(in), bodyMessage(made))
+	}
+	if len(in.GetTableFeat().GetOptions()) != 2 || in.GetTableFeat().GetOptions()[1].GetKey() != made.GetTableFeat().GetOptions()[1].GetKey() {
+		t.Errorf("the option keys changed: %v", in.GetTableFeat().GetOptions())
+	}
+}

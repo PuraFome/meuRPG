@@ -87,6 +87,8 @@ func TestAuthorizationMatrix(t *testing.T) {
 		{"AdjustCharacterVitals", func(ctx context.Context, c client) error {
 			_, err := c.AdjustCharacterVitals(ctx, connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{
 				CampaignId: campaign, CharacterId: pc.GetId(), IdempotencyKey: newKey(), HitPointsTemporary: proto.Int32(1),
+				// The revision the master read: the role check comes first, so the others never get to it.
+				ExpectedRevision: master.revisionOf(t, campaign, pc.GetId()),
 			}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
