@@ -58,7 +58,7 @@ O jogador edita a própria ficha até o início da primeira sessão da campanha.
 Depois disso, só o mestre e o sistema a alteram.
 Um personagem criado depois (o substituto de um morto, ou o de quem entrou tarde) continua editável até o início da próxima sessão.
 Os números que o sistema calcula nunca são editáveis.
-As marcas de uma arma (mágica, prateada, adamantina) seguem a mesma regra das armas que a ficha leva: o dono as define enquanto a ficha é editável, o mestre sempre, e o dono não pode depois da trava.
+As marcas de uma arma (mágica, prateada, adamantina) e os bônus mágicos (+1 a +3) da armadura, do escudo e das armas seguem a mesma regra do equipamento que a ficha leva: o dono as define enquanto a ficha é editável, o mestre sempre, e o dono não pode depois da trava.
 
 - **A história.** A história do personagem (personalidade, aparência, passado, aliados) tem a própria trava: depois que a ficha trava, o jogador só a edita quando o mestre a libera, personagem por personagem, até o início da próxima sessão ou até o mestre travá-la de novo.
 - **O que o mestre vê primeiro.** Antes de iniciar uma sessão, o mestre é avisado de quais fichas ainda têm perícias ou magias a escolher, e confirma. A trava não espera por elas.
@@ -102,10 +102,10 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   - Num NPC, num monstro ou numa criatura de um personagem, o dano vale na hora, depois das resistências, vulnerabilidades e imunidades da criatura do SRD dele (imunidade zera, resistência divide por dois arredondando para baixo, vulnerabilidade dobra).
     Uma resistência ou imunidade "a ataques não mágicos" vale para um ataque que não é mágico.
     Ela não vale para uma magia, para o ataque de uma criatura cujas armas são mágicas, nem para dano que não é ataque (uma armadilha, uma zona, um efeito de queimadura).
-    A arma de um personagem não é mágica, a menos que a ficha ou uma regra de arma a marque como mágica, prateada ou adamantina.
+    A arma de um personagem não é mágica, a menos que a ficha ou uma regra de arma a marque como mágica, prateada ou adamantina, ou que tenha um bônus mágico que vale.
     Os três qualificadores de um bloco de estatísticas (não mágico, exceto prateado, exceto adamantino) são aplicados pelo material da arma.
-    Só o golpe desarmado dos Golpes de Chi (monge a partir do nível 6, também como monge multiclasse) é mágico sem marca.
-    Essa magia vale para essas resistências e imunidades e para mais nada: sem bônus de acerto ou de dano, e não vale para uma arma de monge.
+    Além de uma arma com bônus mágico que vale, só o golpe desarmado dos Golpes de Chi (monge a partir do nível 6, também como monge multiclasse) é mágico sem marca.
+    A magia dos Golpes de Chi vale para essas resistências e imunidades e para mais nada: sem bônus de acerto ou de dano, e não vale para uma arma de monge.
     As marcas são escritas pela API da ficha e pelo efeito de regra de arma de uma característica da mesa, que marca as armas que o filtro escolhe e o golpe desarmado.
     As marcas são definidas pela API da ficha e pelas regras de arma; o formulário da ficha não as edita.
     O registro do mestre diz o motivo ("Resistência a perfurante de ataque não mágico nem prateado"). O jogador vê só o dano.
@@ -114,6 +114,14 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   - Uma ficha imune a uma condição não recebe nenhum dos efeitos que a dão (de uma magia, de um adicional, de uma armadilha, uma agarrada ou um empurrão que derruba); a mudança das condições feita pelo próprio mestre não é bloqueada.
   - A criatura de um personagem tem PV próprios. O dano dela vale na hora, e em 0 ela é dispensada.
   - O dano de uma armadilha segue o mesmo caminho. Fora de um combate, o que espera o mestre sobrevive até ele aplicar ou descartar.
+- **Bônus mágico do equipamento.**
+  Uma arma com bônus mágico (+1 a +3) soma o bônus à jogada de ataque e ao dano da sua própria linha, e essa linha é mágica.
+  Uma armadura ou um escudo com bônus mágico soma o bônus à classe de armadura.
+  O bônus é separado da proficiência e do modificador de habilidade, e fica quando o dano é o da mão secundária, que perde o modificador de habilidade.
+  Só vale para uma peça equipada: uma peça guardada não soma nada.
+  Um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma peça que pede sintonização não soma nada até o personagem se sintonizar com ela.
+  A ficha lista cada bônus com a origem e diz por que um não soma nada.
+  Duas armas com a mesma chave são uma linha e dividem o bônus.
 - **Integridade Corporal do monge da Mão Aberta (nível 6).**
   A ação do próprio monge cura três vezes o nível de monge em pontos de vida, até o máximo.
   Não tem rolagem nem dados para digitar.
@@ -1088,7 +1096,7 @@ As escolhas cobrem as seções do SRD 5.1 Fighting Style, Draconic Ancestry e Br
 - **Opções que ainda não podem ser tomadas** (uma invocação que pede nível 5, ou uma magia que a ficha não tem) são listadas, pontilhadas, com o motivo. Duas opções que dão a mesma coisa (a mesma resistência duas vezes) são recusadas.
 - **Uma ficha travada** cuja classe ganhou uma escolha continua jogável. O dono e o mestre leem "N escolhas pendentes", e o jogador completa só as escolhas que faltam, sem mudar mais nada na ficha (RN-01). O mestre também lê "N escolhas em aberto" na página da campanha; um jogador nunca vê as de outro.
 - **A subida de nível** também pede as escolhas deixadas para trás ("Escolhas que ficaram para trás") e as novas do nível, e recusa uma invocação cujo pré-requisito não foi cumprido.
-- **Um escudo e uma arma de duas mãos.** Um escudo soma +2 à classe de armadura só enquanto há uma mão livre para ele. A ficha lista as armas carregadas e não tem mãos, então uma arma de duas mãos na ficha tira o bônus do escudo, na ficha e no combate; a ficha diz por quê ("O escudo não soma na CA…") e o jogador recupera o bônus tirando uma das duas da ficha. Uma arma versátil conta como de uma mão, porque a ficha não diz como ela é empunhada. O estilo de luta Proteção (RN-31) precisa que o escudo conte.
+- **Um escudo e uma arma de duas mãos.** Um escudo soma +2 à classe de armadura só enquanto há uma mão livre para ele. A ficha lista as armas carregadas e não tem mãos, então uma arma de duas mãos equipada tira o bônus do escudo, na ficha e no combate, e uma carregada não tira; a ficha diz por quê ("O escudo não soma na CA…") e o jogador recupera o bônus guardando uma das duas. Uma arma versátil conta como de uma mão, porque a ficha não diz como ela é empunhada. O estilo de luta Proteção (RN-31) precisa que o escudo conte.
 - **O que uma escolha dá** (sopro, resistência, magias do Corruptor, os +1) aparece na ficha.
 
 Como é construído: [Arquitetura](../../architecture/rules-level-up.md) e [personagens](../../architecture/characters.md).

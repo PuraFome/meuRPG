@@ -786,6 +786,10 @@ message DerivedSheet {
   // The load the character can carry, in pounds: 15 times the Strength score (SRD 5.1, "Carrying Capacity"), then the
   // `carry.capacity` modifiers of the table's features. Never below 0.
   int32 carry_capacity_lb = 54;
+  // The magic bonuses of the gear (FullSheet.item_bonuses) and where each comes from, in the order of the bonuses.
+  // It lists the ones that count and the ones that add nothing now.
+  // armor_class and the attacks already include the counting ones.
+  repeated ItemModifier item_modifiers = 55;
 }
 
 // RollMinimum is a roll minimum a feature gives: a die of the covered rolls that
@@ -800,6 +804,22 @@ message RollMinimum {
   string feature_key = 3;
   // The Portuguese name of that feature.
   string feature_name = 4;
+}
+
+// ItemModifier is one magic bonus of the gear on one number of the sheet.
+message ItemModifier {
+  // "ac", "attack:<weapon key>" or "damage:<weapon key>".
+  string target = 1;
+  // The bonus, 1 to 3.
+  int32 value = 2;
+  // Content key of the piece it comes from.
+  string source_key = 3;
+  // The piece's name in Portuguese.
+  string source_name_pt = 4;
+  // The bonus is in the numbers of the sheet.
+  bool counts = 5;
+  // Why it adds nothing now, in Portuguese; empty when it counts.
+  string reason_pt = 6;
 }
 
 // DerivedState is a temporary state a feature defines: a stance, a form.
