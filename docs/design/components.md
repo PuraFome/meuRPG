@@ -10,6 +10,7 @@ Defined in `web/src/styles/_ui.scss`.
 | Class | Use |
 | --- | --- |
 | `.mr-page-title`, `.mr-page-lead` | The page's `h1` and the line under it |
+| `.mr-wide-only` | Words shown from 768px up; a phone hides them with `display: none` |
 | `.mr-panel`, `.mr-panel__title` | One section of a page: surface, 1 px `line` border, 12 px corners, `h2` title |
 | `.mr-list`, `.mr-list__row`, `__text`, `__name`, `__sub` | Rows in a panel (characters, NPCs, invites): at least 56 px high, a rule between rows; `<a class="mr-list__row">` highlights the name on hover |
 | `.mr-tag` (`--pending`, `--success`, `--danger`) | A state in one word, a pill with a border in its colour; a `mat-icon` inside is 14 px (Travada takes `lock`) |

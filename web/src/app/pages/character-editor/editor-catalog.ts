@@ -31,7 +31,6 @@ import {
   actionsNoteOf,
   cancelLinkOf,
   createLabelOf,
-  leadOf,
   leadPartsOf,
   pageTitleOf,
   phoneNoteOf,
@@ -291,9 +290,7 @@ export class EditorCatalog {
     );
   });
 
-  /** The line under the title: what this form is for, and that the sheet's numbers come from the server. */
-  readonly lead = computed(() => leadOf(this.host.state()));
-  /** The same line in two parts: a phone shows the first only. */
+  /** The line under the title in two parts: a phone shows the first only. */
   readonly leadParts = computed(() => leadPartsOf(this.host.state()));
   readonly pageTitle = computed(() => pageTitleOf(this.host.state()));
   /** The label of the create button: "Salvar como reservado" for a character made for a player to claim. */

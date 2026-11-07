@@ -220,7 +220,7 @@
   margin-top: var(--mr-space-5);
 
   // On a phone, the primary takes the row and "Cancelar" sits beside it; the note goes under, in one line.
-  @media (max-width: 599px) {
+  @media (max-width: 599.98px) {
     .editor__primary {
       flex: 1 1 0;
     }

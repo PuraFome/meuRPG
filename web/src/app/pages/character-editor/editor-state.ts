@@ -187,7 +187,8 @@ export function actionsNoteOf(s: PageState): string {
     : 'Cancelar volta para a ficha sem salvar.';
 }
 
-/** What the buttons do on a phone, in one line: the sheet's numbers come from the server, the rest is on the buttons. */
+/** What the buttons do on a phone, in one line.
+ * The sheet's numbers come from the server, so the note says when they are calculated. */
 export function phoneNoteOf(s: PageState): string {
   if (s.status !== 'ready' || !isFullSheetKind(s.kind)) {
     return actionsNoteOf(s);
@@ -197,7 +198,8 @@ export function phoneNoteOf(s: PageState): string {
     : 'Salva todos os passos; CA e PV são recalculados.';
 }
 
-/** The line under the title in two parts: the first is all a phone shows, the second a wide screen adds. */
+/** The line under the title: what this form is for, and that the sheet's numbers come from the server.
+ * The first part is all a phone shows. The second a wide screen adds. */
 export function leadPartsOf(s: PageState): { first: string; more: string } {
   if (s.status !== 'ready') {
     return { first: '', more: '' };
@@ -229,12 +231,6 @@ export function leadPartsOf(s: PageState): { first: string; more: string } {
       : `${kind}: ficha curta, só com o que se usa na mesa. Só você vê os NPCs da campanha.`,
     more: '',
   };
-}
-
-/** The line under the title: what this form is for, and that the sheet's numbers come from the server. */
-export function leadOf(s: PageState): string {
-  const { first, more } = leadPartsOf(s);
-  return more === '' ? first : `${first} ${more}`;
 }
 
 /** The hit points method the table leaves a new sheet, when it leaves only one: both ways stay open for the player
