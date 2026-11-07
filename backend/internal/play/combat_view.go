@@ -511,6 +511,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 			out.ReactionKind, out.ReactionRound = reactionKindOf(c.ReactionKind), conv.OrZero(c.ReactionRound)
 		}
 		out.ArmorClassBonus = c.AcBonus + c.EffectAcBonus
+		out.ObjectInteractionUsed = c.ObjectInteractionUsed
 		out.DeathSaveDue = onTurn && deathSaveDue(c, vitals)
 	}
 	characterFormsFor(out, c, vitals, detail)

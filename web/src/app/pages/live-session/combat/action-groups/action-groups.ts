@@ -63,6 +63,8 @@ import { castRefOf } from '../../../../core/combat/cast-ref';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
 import { type ListedDie, maneuverLine } from '../../../../core/effects/roll-die';
+import type { GearFlow } from '../../../../core/combat/gear-flow';
+import { GearFold } from './gear-fold';
 import { Fold } from '../../../../shared/fold/fold';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
@@ -96,6 +98,7 @@ import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-g
   imports: [
     ActionRow,
     Fold,
+    GearFold,
     GroupState,
     MatButtonModule,
     MatIconModule,
@@ -108,6 +111,9 @@ import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-g
 })
 export class ActionGroups {
   readonly options = input.required<TurnOptions>();
+  /** The player's gear in the combat (`GearFlow`), for "Sacar ou guardar" under the attacks; none outside the player's own turn screen. */
+  readonly gearFlow = input<GearFlow | null>(null);
+
   /** The key of the action whose target the player is choosing on the map (C7-05): its row says "Escolhendo o alvo". */
   readonly choosing = input('');
   /** The player's own combatant: its economy and movement. */
