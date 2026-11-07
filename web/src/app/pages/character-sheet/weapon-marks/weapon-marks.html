@@ -1,0 +1,31 @@
+<form class="marks" (submit)="$event.preventDefault(); save()" aria-labelledby="marks-title">
+  <h3 id="marks-title" class="marks__title">Marcar as armas</h3>
+  <p class="marks__help mr-muted">
+    Quem resiste a ataques não mágicos só sofre o dano inteiro de uma arma que tenha a marca certa. Uma arma sem marca é
+    de aço comum.
+  </p>
+  @for (w of weapons(); track w.key) {
+    <fieldset class="marks__weapon">
+      <legend class="marks__name">{{ w.namePt }}</legend>
+      @for (o of options; track o.name) {
+        <label class="marks__option">
+          <input
+            type="checkbox"
+            [checked]="isOn(w.key, o.name)"
+            [disabled]="saving()"
+            (change)="toggle(w.key, o.name, $any($event.target).checked)"
+          />
+          <span class="marks__word">{{ o.word }}</span>
+          <span class="marks__against mr-muted">{{ o.against }}</span>
+        </label>
+      }
+    </fieldset>
+  }
+  @if (error()) {
+    <p class="marks__error" role="alert">{{ error() }}</p>
+  }
+  <div class="marks__actions">
+    <button matButton="filled" type="submit" [disabled]="saving()">Salvar marcas</button>
+    <button matButton="outlined" type="button" [disabled]="saving()" (click)="cancelled.emit()">Cancelar</button>
+  </div>
+</form>

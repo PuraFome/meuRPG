@@ -349,6 +349,11 @@ export class CharacterSheetPage {
       const st = this.state();
       return st.status === 'ready' && st.vm.sheet.kind === 'full' ? st.vm.sheet : null;
     },
+    vm: () => {
+      const st = this.state();
+      return st.status === 'ready' ? st.vm : null;
+    },
+    apply: (characterId, vm) => this.applyWrite(characterId, vm),
   });
 
   /** Reads the character again without the loading state, so the page does not blink; `true` when the new sheet is on screen. */

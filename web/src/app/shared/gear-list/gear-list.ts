@@ -15,6 +15,7 @@ import {
 } from '@angular/core';
 
 import type { GearVm } from '../../core/characters/gear';
+import { WeaponTags } from '../weapon-tags/weapon-tags';
 
 /** What a tap on a row's button asks: this piece, equipped or stowed. */
 export interface GearToggle {
@@ -32,7 +33,7 @@ export interface GearToggle {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-gear-list',
-  imports: [MatButtonModule, NgTemplateOutlet],
+  imports: [MatButtonModule, NgTemplateOutlet, WeaponTags],
   templateUrl: './gear-list.html',
   styleUrl: './gear-list.scss',
 })

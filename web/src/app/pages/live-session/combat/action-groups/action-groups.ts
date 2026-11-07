@@ -63,6 +63,7 @@ import { castRefOf } from '../../../../core/combat/cast-ref';
 import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
 import type { GearFlow } from '../../../../core/combat/gear-flow';
+import { markWords } from '../../../../core/characters/gear';
 import { GearFold } from './gear-fold';
 import { Fold } from '../../../../shared/fold/fold';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
@@ -435,7 +436,10 @@ export class ActionGroups {
 
   /** The tags under an attack's name: "Truque" for a cantrip (its economy has its own mark). */
   protected attackTags(o: AttackOption): string[] {
-    return o.attack && isCantrip(o.attack) ? ['Truque'] : [];
+    if (o.attack && isCantrip(o.attack)) {
+      return ['Truque'];
+    }
+    return o.attack?.kind === AttackKind.WEAPON ? markWords(o.attack) : [];
   }
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;

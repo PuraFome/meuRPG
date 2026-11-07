@@ -316,6 +316,14 @@
           [equipBusyKey]="gear.busyKey()"
           [equipNotice]="gear.notice()"
           [equipError]="gear.error()"
+          [canMark]="vm.canEdit && vm.state !== 'dead'"
+          [marking]="gear.marking()"
+          [marksSaving]="gear.marksSaving()"
+          [marksError]="gear.marksError()"
+          [marksNotice]="gear.marksNotice()"
+          (marksOpened)="gear.openMarks()"
+          (marksSaved)="gear.saveMarks($event)"
+          (marksClosed)="gear.closeMarks()"
           (gearToggled)="gear.toggle($event)"
         />
         <app-proficiency-column class="sheet__proficiencies" [sheet]="full" />

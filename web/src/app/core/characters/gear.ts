@@ -5,6 +5,20 @@ import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_p
 import { type GearEntry, GearKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
+/** What a weapon is made of or enchanted with, for the resistances and immunities to nonmagical attacks. */
+export interface MarksVm {
+  readonly silvered: boolean;
+  readonly adamantine: boolean;
+  readonly magical: boolean;
+}
+
+/** The marks that are set, as the words a tag or a row shows, in the order of the grid. */
+export function markWords(m: MarksVm | null | undefined): string[] {
+  return [m?.silvered && 'Prateada', m?.adamantine && 'Adamantina', m?.magical && 'Mágica'].filter(
+    (w): w is string => !!w,
+  );
+}
+
 /** One piece of gear a sheet lists, equipped or carried (`DerivedSheet.gear`): the names and the armor class come from
  * the server, never from the browser. */
 export interface GearVm {
@@ -15,6 +29,8 @@ export interface GearVm {
   readonly twoHanded: boolean;
   /** The armor class with this piece's state flipped (0: the server does not preview it, e.g. an armor spell). */
   readonly armorClassIfToggled: number;
+  /** A weapon's marks; absent for armor and shield. */
+  readonly marks?: MarksVm;
 }
 
 const KINDS: Record<number, GearVm['kind']> = {

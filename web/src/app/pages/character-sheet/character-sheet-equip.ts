@@ -3,7 +3,12 @@ import { signal } from '@angular/core';
 import { describeCharacterError } from '../../core/characters/character-errors';
 import { combatErrorMessage, encounterBlocked } from '../../core/combat/combat-errors';
 import type { GearToggle } from '../../shared/gear-list/gear-list';
-import type { CharacterSheetSource, FullSheetVm } from './character-sheet.types';
+import type {
+  CharacterSheetSource,
+  CharacterSheetVm,
+  FullSheetVm,
+  WeaponMarkVm,
+} from './character-sheet.types';
 
 /** What the equipping needs of the page that owns it. */
 export interface SheetEquipHost {
@@ -15,6 +20,10 @@ export interface SheetEquipHost {
   readonly reload: () => Promise<boolean>;
   /** The sheet on screen, when it is a full one. */
   readonly sheet: () => FullSheetVm | null;
+  /** The character as the page holds it: its stored full sheet and revision are what a change of the marks is saved over. */
+  readonly vm: () => CharacterSheetVm | null;
+  /** Shows the answer of a write as the newest word on its character; `false` when the page left it. */
+  readonly apply: (characterId: string, vm: CharacterSheetVm) => boolean;
 }
 
 /**
@@ -27,7 +36,53 @@ export class SheetEquip {
   readonly notice = signal('');
   readonly error = signal('');
 
+  /** "Marcar as armas" is open in place of the button. */
+  readonly marking = signal(false);
+  readonly marksSaving = signal(false);
+  readonly marksError = signal('');
+  readonly marksNotice = signal('');
+
   constructor(private readonly host: SheetEquipHost) {}
+
+  /** Saves the marks over the whole stored sheet, at the revision the page holds. */
+  async saveMarks(marks: readonly WeaponMarkVm[]): Promise<void> {
+    const vm = this.host.vm();
+    const campaignId = this.host.campaignId();
+    if (!vm?.fullSheet || !campaignId || this.marksSaving()) {
+      return;
+    }
+    this.marksSaving.set(true);
+    this.marksError.set('');
+    try {
+      const saved = await this.host.source.setWeaponMarks(
+        campaignId,
+        vm.id,
+        vm.revision,
+        vm.name,
+        vm.fullSheet,
+        marks,
+      );
+      if (this.host.apply(vm.id, saved)) {
+        this.marking.set(false);
+        this.marksNotice.set('Marcas salvas.');
+      }
+    } catch (err) {
+      this.marksError.set(describeCharacterError(err));
+    } finally {
+      this.marksSaving.set(false);
+    }
+  }
+
+  openMarks(): void {
+    this.marksNotice.set('');
+    this.marksError.set('');
+    this.marking.set(true);
+  }
+
+  closeMarks(): void {
+    this.marking.set(false);
+    this.marksError.set('');
+  }
 
   async toggle(change: GearToggle): Promise<void> {
     const campaignId = this.host.campaignId();

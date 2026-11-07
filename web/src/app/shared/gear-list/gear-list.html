@@ -32,6 +32,7 @@
     <span class="gear-row__text">
       <span class="gear-row__name">{{ g.namePt }}</span>
       <span class="gear-row__kind mr-muted">{{ kindLabel(g) }}</span>
+      <app-weapon-tags [marks]="g.marks" />
     </span>
     @if (canChange() && !blocked()(g)) {
       <button

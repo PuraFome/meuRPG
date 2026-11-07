@@ -16,6 +16,23 @@
   @if (equipError()) {
     <p class="gear__error" role="alert">{{ equipError() }}</p>
   }
+  @if (canMark() && weapons().length) {
+    @if (marking()) {
+      <app-weapon-marks
+        [weapons]="weapons()"
+        [marks]="s.weaponMarks"
+        [saving]="marksSaving()"
+        [error]="marksError()"
+        (saved)="marksSaved.emit($event)"
+        (cancelled)="marksClosed.emit()"
+      />
+    } @else {
+      <button matButton="outlined" type="button" class="gear__marks" data-marks-open (click)="marksOpened.emit()">
+        Marcar as armas
+      </button>
+    }
+  }
+  <p class="gear__notice" role="status">{{ marksNotice() }}</p>
   <ul class="gear">
     @for (item of s.equipment; track $index) {
       <li>
