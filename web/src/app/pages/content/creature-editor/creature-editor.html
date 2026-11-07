@@ -50,7 +50,7 @@
                 (valueChange)="setNumber(r.fixed, $event)"
               />
             } @else {
-              <p class="num__fixed num__only">Só com o dono; sem dono, o da base.</p>
+              <p class="num__fixed num__only">Só com o dono.</p>
             }
             <app-text-field
               class="num__formula"
@@ -186,7 +186,6 @@
         </div>
       </section>
 
-      <app-editor-bar saveLabel="Salvar criatura" hint="Quem já tem a criatura fica com os números que recebeu." [sticky]="true" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
     }
   </div>
 
@@ -245,3 +244,7 @@
     </aside>
   }
 </div>
+
+@if (d.baseKey !== '') {
+  <app-editor-bar saveLabel="Salvar criatura" hint="Quem já tem a criatura fica com os números que recebeu." [sticky]="true" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+}
