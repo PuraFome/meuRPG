@@ -7,6 +7,7 @@ import type { EffectDraft, EffectMenuVm, FeatChoice } from '../../core/content/e
 import { emptyEffect } from '../../core/content/effect-draft';
 import { emptyFeature, type FeatureDraft, NAME_MAX } from '../../core/content/feature-draft';
 import { followResource, resourcesOf, type SummonDraft } from '../../core/content/summon-draft';
+import { latestInput } from '../latest-input';
 import { EffectPicker } from '../effect-picker/effect-picker';
 import { FieldNote } from '../form-fields/field-note';
 import { TextField } from '../form-fields/text-field';
@@ -94,6 +95,7 @@ export class FeatureEditor {
   });
 
   readonly featureChange = output<FeatureDraft>();
+  private readonly latest = latestInput(this.feature);
   readonly removed = output<void>();
   readonly moved = output<-1 | 1>();
 
@@ -125,7 +127,10 @@ export class FeatureEditor {
   protected readonly resources = computed(() => resourcesOf(this.feature()));
 
   protected patch(p: Partial<FeatureDraft>): void {
-    this.featureChange.emit(followResource(this.feature(), { ...this.feature(), ...p }));
+    const was = this.latest.current();
+    const next = followResource(was, { ...was, ...p });
+    this.latest.sent(next);
+    this.featureChange.emit(next);
   }
 
   protected setSummon(summon: SummonDraft | null): void {
@@ -133,7 +138,7 @@ export class FeatureEditor {
   }
 
   protected setEffect(i: number, e: EffectDraft): void {
-    const effects = [...this.feature().effects];
+    const effects = [...this.latest.current().effects];
     if (e.type === '') {
       // "Só texto" takes this effect away; the others stay.
       this.patch({ effects: effects.filter((_, k) => k !== i) });
@@ -144,24 +149,24 @@ export class FeatureEditor {
   }
 
   protected addEffect(): void {
-    this.patch({ effects: [...this.feature().effects, emptyEffect('note')] });
+    this.patch({ effects: [...this.latest.current().effects, emptyEffect('note')] });
   }
 
   protected setOption(i: number, o: FeatureDraft): void {
-    const options = [...this.feature().options];
+    const options = [...this.latest.current().options];
     options[i] = o;
     this.patch({ options });
   }
 
   protected addOption(): void {
-    this.patch({ options: [...this.feature().options, emptyFeature()] });
+    this.patch({ options: [...this.latest.current().options, emptyFeature()] });
   }
 
   protected removeOption(i: number): void {
-    this.patch({ options: this.feature().options.filter((_, k) => k !== i) });
+    this.patch({ options: this.latest.current().options.filter((_, k) => k !== i) });
   }
 
   protected removeEffect(i: number): void {
-    this.patch({ effects: this.feature().effects.filter((_, k) => k !== i) });
+    this.patch({ effects: this.latest.current().effects.filter((_, k) => k !== i) });
   }
 }

@@ -630,6 +630,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Uma habilidade da mesa pode invocar criaturas.** Uma habilidade de classe, subclasse, traço de raça ou antecedente, ou uma habilidade que o mestre adiciona a uma classe como entrada própria, pode trazer criaturas da mesa ou do SRD.
   Elas seguem as mesmas regras de uma magia de invocação: concentração, substituição, dispensa e desfazer.
   A habilidade diz quantas criaturas vêm, quantas ao mesmo tempo, o turno e o que uma nova conjuração faz com as antigas.
+  Diz também em quanto tempo conjura e quanto dura.
   Cada conjuração gasta um uso de um recurso da habilidade (ou da classe).
   Os usos voltam pela recarga do próprio recurso.
   A habilidade não gasta espaço de magia, então um espaço maior não muda nada e `slot()` vale 0 na contagem.

@@ -630,6 +630,7 @@ Members read the campaign's content, except creatures (below); only the master w
 - **A table feature can summon creatures.** A class, subclass, race trait or background feature, or a feature the master adds to a class as its own entry, may bring creatures of the table or of the SRD.
   They follow the same rules as a summoning spell: concentration, replacement, dismissal and undo.
   The feature says how many creatures come, how many at a time, the turn and what a new casting does to the old ones.
+  It also says how fast it casts and how long it lasts.
   Each casting spends one use of a resource of the feature (or of its class).
   The uses come back through the resource's own recharge.
   The feature spends no slot, so a higher slot changes nothing and `slot()` is 0 in its count.

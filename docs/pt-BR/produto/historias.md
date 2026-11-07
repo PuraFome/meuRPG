@@ -1255,7 +1255,9 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** que o mestre põe o token da criatura de um personagem num mapa, **quando** o grupo olha, **então** todos o veem (um token de grupo, nunca escondido, nem na névoa).
 - **Dado** um jogador que não pode ter criatura, **quando** ele olha a ficha de outro personagem, **então** o painel "Criaturas" não existe para ele (RN-20).
 - **Dado** um jogador que conjura uma invocação de uma magia ou de uma habilidade que oferece uma criatura da mesa, **quando** a lista de criaturas abre, **então** a criatura da mesa leva "Da mesa" e a linha "Os números vêm da sua ficha quando ele chega." no lugar dos números, e uma criatura do SRD mantém a sua própria linha.
+  A lista põe a criatura da mesa primeiro, e o cabeçalho diz a classe e o nível da habilidade e o uso que ela gasta.
   Depois da conjuração, a página da criatura leva "Da mesa" e a linha "Os números vêm da ficha de <dono> quando ele chegou", sem nível nem proficiência, porque os números não mudam quando edito a entrada depois.
+  A página mostra os números, os ataques e o dano calculados para a minha ficha quando a criatura chegou.
   O app reconhece uma criatura da mesa pelo fim "@mesa" da chave, e o servidor não envia marca para isso.
 
 #### No app

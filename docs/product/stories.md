@@ -1256,7 +1256,9 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** the master places a character's creature token on a map, **when** the group looks, **then** everyone sees it (a group token, never hidden, even in fog).
 - **Given** a player who cannot have a creature, **when** they look at another character's sheet, **then** the "Criaturas" panel does not exist for them (RN-20).
 - **Given** a player who casts a summon of a spell or a feature that offers a table creature, **when** the list of creatures opens, **then** the table creature carries "Da mesa" and the line "Os números vêm da sua ficha quando ele chega." in place of numbers, and an SRD creature keeps its own line.
+  The list puts the table creature first, and the header says the class and level of the feature and the use it spends.
   After the cast, the creature's page carries "Da mesa" and the line "Os números vêm da ficha de <dono> quando ele chegou", with no level or proficiency, because the numbers do not change when I edit the entry later.
+  The page shows the numbers, attacks and damage worked out for my sheet when the creature arrived.
   The app knows a table creature by the "@mesa" end of its key, and the server sends no flag for it.
 
 #### In the app

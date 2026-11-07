@@ -67,7 +67,7 @@ import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support'
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
-import { archiveEntryRPC, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -3907,6 +3907,12 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
       await expect(dpanel.getByRole('status')).toContainText('A criatura chegou.');
       await dpanel.getByRole('link', { name: /^Ver a ficha de / }).click();
       await expect(p.locator('.table-note')).toHaveText('Os números vêm da ficha de Sálvia quando ele chegou');
+      // The page is compact (the numbers worked out for the owner, the creature's own attacks and traits), so the note that ends it is on the first screen.
+      await expect(p.locator('.tiles')).toContainText(/CA\s*\d+/);
+      await expect(p.locator('.attacks')).toContainText('Mordida Sombria');
+      await expect(p.locator('.block').last()).toContainText('Faro do Vale');
+      await expect(p.locator('.abilities')).toHaveCount(0);
+      await expect(p.locator('.table-note')).toBeVisible();
       await expectScreenPasses(p, `A ficha da criatura da mesa ${where}`);
       await p.goBack();
       await expect(dpanel.getByRole('button', { name: 'Conjurar Animais' })).toBeVisible();
@@ -6046,10 +6052,9 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('switch', { name: 'Invoca criaturas' }).click();
       await m.getByRole('combobox', { name: 'Criaturas' }).fill('Lobo do Vale');
       await m.getByRole('option').filter({ has: m.locator('.pick__pt', { hasText: /^Lobo do Vale$/ }) }).click();
-      // The chip first: the next field patches from the block's rendered summon, so a fill before the render would drop the pick.
-      await expect(m.getByRole('group', { name: /^Criaturas que a/ }).getByText('Lobo do Vale', { exact: true })).toBeVisible();
       await m.getByLabel('Quantas vêm').fill('1');
       await expect(m.getByLabel('Gasta 1 uso de')).toBeVisible();
+      await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Característica de classe, a invocação ligada ${where}`);
       await m.getByRole('button', { name: 'Salvar característica' }).click();
       await expect(m.getByText('A característica de classe Companheiro do Vale foi salva.')).toBeVisible();
@@ -6058,6 +6063,7 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByLabel('Nome', { exact: true }).fill('Chamado do Vale');
       await m.locator('[aria-label="Mecânica"] label', { hasText: 'Invocar' }).click();
       await expect(m.getByText('Sem recurso, tempo nem duração: a magia tem os seus.')).toBeVisible();
+      await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Editor de magia, Invocar ${where}`);
       const undead = await createEntryRPC(m, campaignId, 'tableCreature', damageCreatureBody());
       await open(m, entryRoute(campaignId, undead));
