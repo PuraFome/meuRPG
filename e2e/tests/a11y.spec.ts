@@ -6039,6 +6039,7 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
   const viewport = { width: 1280, height: 800 };
   const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...leftOutShotScale });
   const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...leftOutShotScale });
+  let doneRefusing = async (): Promise<void> => undefined;
   try {
     const m = await mContext.newPage();
     const p = await pContext.newPage();
@@ -6049,7 +6050,7 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
       ...raceBody('Corujeiro'),
       traits: [{ namePt: 'Olhos de caçador', descPt: ['Enxergam longe.'], effects: [{ type: 'modifier', target: 'critical_range', mode: 'set', value: '19', applies: 'both' }] }],
     });
-    await refuseEntries(
+    doneRefusing = await refuseEntries(
       m,
       [
         { key: spell, field: 'table_spell.damage[0].dice', reason: 'bad_formula' },
@@ -6105,6 +6106,7 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
       await shootLeftOut(p, 'jogador', width, colorScheme);
     }
   } finally {
+    await doneRefusing(); // a read the page started is answered before the page closes
     await Promise.all([mContext.close(), pContext.close()]);
   }
 }

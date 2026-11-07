@@ -25,21 +25,21 @@ async function table(browser: import('@playwright/test').Browser) {
   const campaignId = await campaignWithEmptyPlayer(m, p, `Mesa dos recusados ${Date.now()}`);
   const spell = await createEntryRPC(m, campaignId, 'tableSpell', spellBody('Lâmina de Nanquim'));
   const race = await createEntryRPC(m, campaignId, 'tableRace', modifierRace());
-  await refuseEntries(m, [
+  const done = await refuseEntries(m, [
     { key: spell, field: 'table_spell.damage[0].dice', reason: 'bad_formula' },
     { key: race, field: 'table_race.traits[0].effects[0].target', reason: 'bad_value' },
   ], {
     // The target the rules no longer have: the stored code is not in the menu.
     [race]: (e) => (e.tableRace.traits[0].effects[0].target = 'alvo_antigo'),
   });
-  return { master, player, m, p, campaignId, spell, race };
+  return { master, player, m, p, campaignId, spell, race, done };
 }
 
 test(
   'o mestre vê as entradas fora da campanha, corrige uma e remove a outra @MR-025',
   { tag: ['@MR-025', '@RN-23'] },
   async ({ browser }) => {
-    const { master, player, m, campaignId, race, spell } = await table(browser);
+    const { master, player, m, campaignId, race, spell, done } = await table(browser);
     try {
       await m.goto(`/campaigns/${campaignId}/content`);
       const panel = m.getByRole('region', { name: '2 entradas fora da campanha' });
@@ -73,6 +73,7 @@ test(
       await expect(m.getByRole('region', { name: /entrada.* fora da campanha/ })).toHaveCount(0);
       expect((await listEntriesJSON(m, campaignId)).entries!.find((e) => e.key === race)?.archived).toBe(true);
     } finally {
+      await done(); // a read the page started is answered before the page closes
       await master.close();
       await player.close();
     }
@@ -83,7 +84,7 @@ test(
   'o mestre corrige o alvo, salva, e a raça volta para a campanha @MR-025',
   { tag: ['@MR-025', '@RN-23'] },
   async ({ browser }) => {
-    const { master, player, m, campaignId, race } = await table(browser);
+    const { master, player, m, campaignId, race, done } = await table(browser);
     try {
       await m.goto(entryRoute(campaignId, race));
       const target = m.getByLabel('O que muda');
@@ -97,6 +98,7 @@ test(
       await m.goto(`/campaigns/${campaignId}/content`);
       await expect(m.getByRole('region', { name: '1 entrada fora da campanha' })).toBeVisible();
     } finally {
+      await done(); // a read the page started is answered before the page closes
       await master.close();
       await player.close();
     }
@@ -107,7 +109,7 @@ test(
   'a campanha mostra o aviso ao mestre e a página do jogador não tem o painel nem o aviso @MR-025',
   { tag: ['@MR-025', '@RN-23'] },
   async ({ browser }) => {
-    const { master, player, m, p, campaignId } = await table(browser);
+    const { master, player, m, p, campaignId, done } = await table(browser);
     try {
       await gotoCampaignTab(m, campaignId, 'Regras');
       const content = m.getByRole('region', { name: 'Conteúdo da mesa' });
@@ -122,6 +124,7 @@ test(
       await expect(p.getByRole('heading', { level: 1, name: 'Conteúdo da mesa' })).toBeVisible();
       await expect(p.getByText('fora da campanha')).toHaveCount(0);
     } finally {
+      await done(); // a read the page started is answered before the page closes
       await master.close();
       await player.close();
     }
@@ -132,7 +135,7 @@ test(
   'no celular a lista fora da campanha cabe numa tela e remove sem o editor @MR-025',
   { tag: ['@MR-025', '@RN-23'] },
   async ({ browser }) => {
-    const { master, player, m, campaignId, spell } = await table(browser);
+    const { master, player, m, campaignId, spell, done } = await table(browser);
     try {
       await m.setViewportSize({ width: 390, height: 844 });
       await m.goto(`/campaigns/${campaignId}/content`);
@@ -151,6 +154,7 @@ test(
       await expect(m.getByRole('region', { name: '1 entrada fora da campanha' })).toBeVisible();
       expect((await listEntriesJSON(m, campaignId)).entries!.find((e) => e.key === spell)?.archived).toBe(true);
     } finally {
+      await done(); // a read the page started is answered before the page closes
       await master.close();
       await player.close();
     }

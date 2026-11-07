@@ -5,9 +5,8 @@ import { type Locator, type Page, type Route } from '@playwright/test';
 
 // Setup for the "left out" specs (issue #736): the engine refuses an entry only when the data changes under it (a newer
 // rule set), and the API refuses to save one it would refuse, so no call can make a refused entry. The test says it the
-// way the server does: the answer of ListTableEntries gets the `left_out` it would have (field 4 of the response, a
-// TableContentViolation each), for the entries the master has not yet archived, which is what the server does too.
-// Protobuf allows a repeated field to follow the rest of the message, so the real answer is kept and the fields are added.
+// way the server does: the answer of ListTableEntries gets the `leftOut` it would have (a TableContentViolation each), for
+// the entries the master has not yet archived, which is what the server does too. The rest of the real answer is kept.
 
 export interface FakeViolation {
   key: string;
@@ -16,26 +15,18 @@ export interface FakeViolation {
   message?: string;
 }
 
-/** From now on this page's ListTableEntries says these entries are refused, until the entry is archived. */
+/** From now on this page's ListTableEntries says these entries are refused, until the entry is archived or fixed (saved). It returns
+ * the end of it: a test calls it before it closes the page, so a read the page started is answered first. */
 export async function refuseEntries(
   page: Page,
   violations: readonly FakeViolation[],
   /** What the stored entry says, by key: the data that the engine refuses (a target that left the menu), as the API gives it. */
   stored: Readonly<Record<string, (entry: Record<string, any>) => void>> = {},
-): Promise<void> {
+): Promise<() => Promise<void>> {
   // The revision each entry had when it was first listed: a save moves it, and the server would read the entry again (and,
   // fixed, leave it in), so the refusal lifts with it.
   const seen = new Map<string, number>();
-  await page.route('**/meurpg.rules.v1.TableContentService/ListTableEntries', async (route) => {
-    try {
-      await answer(route);
-    } catch {
-      // The test ended (the page closed) while the answer was being read: nobody is waiting for it.
-      await route.abort().catch(() => undefined);
-    }
-  });
-
-  async function answer(route: Route): Promise<void> {
+  await page.route('**/meurpg.rules.v1.TableContentService/ListTableEntries', async (route: Route) => {
     const real = await route.fetch();
     const body = (await real.json()) as Record<string, unknown>;
     const entries = (body.entries ?? []) as Record<string, any>[];
@@ -54,7 +45,8 @@ export async function refuseEntries(
       }
     }
     await route.fulfill({ status: real.status(), headers, body: JSON.stringify({ ...body, leftOut: live.map((v) => ({ ...v, message: v.message ?? '' })) }) });
-  }
+  });
+  return () => page.unrouteAll({ behavior: 'wait' });
 }
 
 /** The folder the screenshots go to when `E2E_SHOTS_DIR` names one; otherwise nothing is written. */
