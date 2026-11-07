@@ -1,8 +1,9 @@
-import { SpellZoneVisibility } from '../../../gen/meurpg/play/v1/combat_pb';
+import { SpellZoneVisibility, WallSide } from '../../../gen/meurpg/play/v1/combat_pb';
 import { spellZone } from './combat-testing';
 import { arrowTurn, BURNING_PATTERN, ZONE_PATTERNS, zoneLegend, zonePattern } from './zone-pattern';
 import { zoneView, type ZoneViewer } from './zones';
 
+const at = { squares: [{ col: 0, row: 0 }] };
 const master: ZoneViewer = { master: true, combatants: [] };
 
 describe('the pattern of a zone', () => {
@@ -76,30 +77,60 @@ describe('the pattern of a zone', () => {
 
   it('never hashes a table spell onto a look that veils', () => {
     for (const k of ['table:abc-123', 'table:x', 'spell:unknown', 'spell:fireball']) {
-      expect(zonePattern(k)).toBeLessThan(6);
+      expect(ZONE_PATTERNS[zonePattern(k)].hashable).toBe(true);
     }
   });
 
-  it('turns the arrows from the wall to its burning side', () => {
-    const wall = [
-      { col: 4, row: 3 },
-      { col: 5, row: 3 },
-    ];
-    expect(
-      arrowTurn(wall, [
-        { col: 4, row: 4 },
-        { col: 5, row: 4 },
-      ]),
-    ).toBe(90);
-    expect(
-      arrowTurn(wall, [
-        { col: 4, row: 2 },
-        { col: 5, row: 2 },
-      ]),
-    ).toBe(270);
-    expect(arrowTurn([{ col: 4, row: 3 }], [{ col: 5, row: 3 }])).toBe(0);
-    expect(arrowTurn([{ col: 4, row: 3 }], [{ col: 3, row: 3 }])).toBe(180);
-    expect(arrowTurn(wall, [])).toBe(0);
+  it('only ever hashes a table spell onto the looks flagged hashable, none of which veils more than the first six did', () => {
+    const hashable = ZONE_PATTERNS.map((t, i) => [t, i] as const).filter(([t]) => t.hashable);
+    expect(hashable.length).toBeGreaterThan(0);
+    for (const [t] of hashable) {
+      expect(t.veil).toEqual({ tone: 'surface', pct: 38 });
+      expect(t.dashed).toBe(false);
+    }
+    // the six spells the app began with are the hashable ones: a reorder of the table fails here
+    const first = ['moonbeam', 'web', 'spirit-guardians', 'cloudkill', 'grease', 'entangle'];
+    expect(new Set(first.map((k) => zonePattern(`spell:${k}`)))).toEqual(
+      new Set(hashable.map(([, i]) => i)),
+    );
+  });
+
+  describe('the turn of the arrows of a wall', () => {
+    const run = (cols: number[], rows: number[]) => cols.map((c, i) => ({ col: c, row: rows[i] }));
+    const east = run([2, 3, 4, 5, 6], [3, 3, 3, 3, 3]);
+
+    it('points to the left or the right of the way the wall runs from its origin', () => {
+      expect(arrowTurn(WallSide.LEFT, east, { col: 2, row: 3 })).toBe(270);
+      expect(arrowTurn(WallSide.RIGHT, east, { col: 2, row: 3 })).toBe(90);
+    });
+
+    it('follows the way from the origin, not the order of the squares', () => {
+      expect(arrowTurn(WallSide.LEFT, east, { col: 6, row: 3 })).toBe(90);
+      expect(arrowTurn(WallSide.RIGHT, east, { col: 6, row: 3 })).toBe(270);
+    });
+
+    it('turns by 45 degrees for a diagonal wall', () => {
+      const diagonal = run([2, 3, 4], [2, 3, 4]);
+      expect(arrowTurn(WallSide.LEFT, diagonal, { col: 2, row: 2 })).toBe(315);
+      expect(arrowTurn(WallSide.RIGHT, diagonal, { col: 2, row: 2 })).toBe(135);
+    });
+
+    it('still turns for a wall the fog cut to its far end', () => {
+      expect(arrowTurn(WallSide.LEFT, run([5, 6], [3, 3]), { col: 5, row: 3 })).toBe(270);
+    });
+
+    it('does not guess for a wall of one square, or without an origin', () => {
+      expect(arrowTurn(WallSide.LEFT, [{ col: 2, row: 3 }], { col: 2, row: 3 })).toBe(0);
+      expect(arrowTurn(WallSide.LEFT, east, null)).toBe(0);
+      expect(arrowTurn(WallSide.UNSPECIFIED, east, { col: 2, row: 3 })).toBe(0);
+    });
+
+    it("points a ring's arrows to its center (inner) or away from it (outer)", () => {
+      const ring = run([8, 8, 8], [4, 5, 6]);
+      const center = { col: 5, row: 5 };
+      expect(arrowTurn(WallSide.OUTER, ring, center)).toBe(0);
+      expect(arrowTurn(WallSide.INNER, ring, center)).toBe(180);
+    });
   });
 
   it('gives a table spell a pattern inside the palette', () => {
@@ -113,15 +144,16 @@ describe('the pattern of a zone', () => {
 describe('the legend of the zones on the map', () => {
   it('lists each spell once, in the order they were cast', () => {
     const views = [
-      zoneView(spellZone({ id: 'a' }), master),
-      zoneView(spellZone({ id: 'b', spellKey: 'spell:web', spellNamePt: 'Teia' }), master),
-      zoneView(spellZone({ id: 'c' }), master),
+      zoneView(spellZone({ ...at, id: 'a' }), master),
+      zoneView(spellZone({ ...at, id: 'b', spellKey: 'spell:web', spellNamePt: 'Teia' }), master),
+      zoneView(spellZone({ ...at, id: 'c' }), master),
     ];
     expect(zoneLegend(views).map((i) => i.name)).toEqual(['Raio Lunar', 'Teia']);
   });
 
   it('says "só você vê" for a spell whose every zone is the master\'s alone', () => {
     const hidden = spellZone({
+      ...at,
       id: 'a',
       spellKey: 'spell:cloudkill',
       spellNamePt: 'Nuvem Mortal',
@@ -138,21 +170,40 @@ describe('the legend of the zones on the map', () => {
 
   it("carries the letters of a spell's zones and adds the burning side of a wall under the wall's letter", () => {
     const wall = spellZone({
+      ...at,
       id: 'w',
       spellKey: 'spell:wall-of-fire',
       spellNamePt: 'Muralha de Fogo',
       burningSquares: [{ col: 1, row: 1 }],
     });
     const views = [
-      zoneView(spellZone({ id: 'a' }), master, 0),
+      zoneView(spellZone({ ...at, id: 'a' }), master, 0),
       zoneView(wall, master, 1),
-      zoneView(spellZone({ id: 'c' }), master, 2),
+      zoneView(spellZone({ ...at, id: 'c' }), master, 2),
     ];
     const legend = zoneLegend(views);
     expect(legend.map((i) => [i.name, i.letters])).toEqual([
       ['Raio Lunar', ['A', 'C']],
       ['Muralha de Fogo', ['B']],
       ['Lado que queima', ['B']],
+    ]);
+  });
+
+  it('marks the burning side master-only like its wall, and skips a zone with no square on the map', () => {
+    const hiddenWall = spellZone({
+      ...at,
+      id: 'w',
+      spellKey: 'spell:wall-of-fire',
+      spellNamePt: 'Muralha de Fogo',
+      visibility: SpellZoneVisibility.MASTER_ONLY,
+      squares: [{ col: 0, row: 0 }],
+      burningSquares: [{ col: 1, row: 1 }],
+    });
+    const ghost = spellZone({ ...at, id: 'g', squares: [] });
+    const legend = zoneLegend([zoneView(ghost, master, 0), zoneView(hiddenWall, master, 1)]);
+    expect(legend.map((i) => [i.name, i.letters, i.masterOnly])).toEqual([
+      ['Muralha de Fogo', ['B'], true],
+      ['Lado que queima', ['B'], true],
     ]);
   });
 

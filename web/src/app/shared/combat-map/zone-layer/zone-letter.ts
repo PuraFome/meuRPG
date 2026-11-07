@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 
+import { ZONE_BADGE_INSET_PX, ZONE_BADGE_PX } from '../../../core/combat/zone-badge';
+
 /**
  * A zone's letter in a white diamond, for the legend and the zones list: the same mark as the map's corner badge, so a letter
  * on the map finds its name beside it. It is a diamond, never a square: a square reads as an NPC token on the map.
@@ -8,6 +10,10 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 @Component({
   selector: 'app-zone-letter',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[style.--zl-badge]': "badgePx + 'px'",
+    '[style.--zl-badge-inset]': "badgeInsetPx + 'px'",
+  },
   template: `<span class="zlt" role="img" [attr.aria-label]="'Zona ' + letter()"><span class="zlt__l" aria-hidden="true">{{ letter() }}</span></span>`,
   styles: `
     :host {
@@ -19,13 +25,13 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
+      width: var(--zl-badge);
+      height: var(--zl-badge);
     }
     .zlt::before {
       content: '';
       position: absolute;
-      inset: 4px;
+      inset: var(--zl-badge-inset);
       border: 1.5px solid var(--mr-map-token-ink);
       background: var(--mr-map-token-surface);
       transform: rotate(45deg);
@@ -41,4 +47,6 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 })
 export class ZoneLetter {
   readonly letter = input.required<string>();
+  protected readonly badgePx = ZONE_BADGE_PX;
+  protected readonly badgeInsetPx = ZONE_BADGE_INSET_PX;
 }

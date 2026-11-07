@@ -332,6 +332,10 @@ describe('CombatMapCard: the zones the spells keep', () => {
       ),
     );
     expect(letters).toEqual([['Zona A', 'Zona C'], ['Zona B']]);
+    // a screen reader hears "Zona A, Zona C: Raio Lunar"
+    const first = el.querySelector('.legend__zone')!;
+    const hidden = [...first.querySelectorAll('.mr-visually-hidden')].map((n) => n.textContent);
+    expect(hidden).toEqual([', ', ': ']);
   });
 
   it("lists the burning side of a wall in the legend under the wall's letter", () => {

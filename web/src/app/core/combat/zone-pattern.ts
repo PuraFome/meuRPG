@@ -1,3 +1,4 @@
+import { WallSide } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { Square } from './combat-grid';
 import type { ZoneView } from './zones';
 
@@ -29,11 +30,16 @@ export interface ZonePatternTile {
   readonly veil: ZoneVeil;
   /** The outline is dashed whatever the caster. */
   readonly dashed: boolean;
+  /** A spell the table defined, or one the app does not know, may take this look: only the lightest ones, which hide nothing. */
+  readonly hashable: boolean;
 }
 
 export const ZONE_TILE = 0.2;
 
-const THIN = 0.045;
+/** Stroke widths of the patterns, in grid squares. */
+const STROKE_THIN = 0.045;
+const STROKE_DOT = 0.05;
+const STROKE_FINE = 0.03;
 const LIGHT: ZoneVeil = { tone: 'surface', pct: 38 };
 const CLOUD: ZoneVeil = { tone: 'surface', pct: 72 };
 
@@ -43,7 +49,7 @@ function tile(
   d: string,
   tint: ZonePatternTile['tint'],
   veil: ZoneVeil = LIGHT,
-  more: Partial<Pick<ZonePatternTile, 'edge' | 'dashed' | 'stroke'>> = {},
+  more: Partial<Pick<ZonePatternTile, 'edge' | 'dashed' | 'stroke' | 'hashable'>> = {},
 ): ZonePatternTile {
   const edge = more.edge ?? (tint === 'accent' ? 'accent' : 'ink');
   return {
@@ -53,24 +59,29 @@ function tile(
     tint,
     veil,
     edge,
-    stroke: more.stroke ?? THIN,
+    stroke: more.stroke ?? STROKE_THIN,
     dashed: more.dashed ?? false,
+    hashable: more.hashable ?? false,
   };
 }
 
+/** One of the six looks the app began with: the lightest, which the hash may give a spell the app does not know. */
+const legacy = (name: string, cls: string, d: string, tint: ZonePatternTile['tint']) =>
+  tile(name, cls, d, tint, LIGHT, { hashable: true });
+
 /** The look of every layer the map draws: the six the app began with, then one for each of the other spells, then the wall's burning side. */
 export const ZONE_PATTERNS: readonly ZonePatternTile[] = [
-  tile('linhas verticais', 'vlines', 'M0.1 0V0.2', 'ink'),
-  tile('pontos', 'dots', 'M0.1 0.1h0.001', 'ink'),
-  tile(
+  legacy('linhas verticais', 'vlines', 'M0.1 0V0.2', 'ink'),
+  legacy('pontos', 'dots', 'M0.1 0.1h0.001', 'ink'),
+  legacy(
     'linhas diagonais',
     'diagonals',
     'M0 0.2L0.2 0M-0.05 0.05L0.05 -0.05M0.15 0.25L0.25 0.15',
     'accent',
   ),
-  tile('ondas', 'waves', 'M0 0.1Q0.05 0 0.1 0.1T0.2 0.1', 'ink'),
-  tile('triângulos', 'triangles', 'M0.04 0.15L0.1 0.04L0.16 0.15Z', 'accent'),
-  tile('linhas horizontais', 'hlines', 'M0 0.1H0.2', 'accent'),
+  legacy('ondas', 'waves', 'M0 0.1Q0.05 0 0.1 0.1T0.2 0.1', 'ink'),
+  legacy('triângulos', 'triangles', 'M0.04 0.15L0.1 0.04L0.16 0.15Z', 'accent'),
+  legacy('linhas horizontais', 'hlines', 'M0 0.1H0.2', 'accent'),
   tile('anéis', 'rings', 'M0.05 0.1a0.05 0.05 0 1 0 0.1 0a0.05 0.05 0 1 0 -0.1 0', 'ink'),
   tile(
     'asteriscos',
@@ -86,7 +97,7 @@ export const ZONE_PATTERNS: readonly ZonePatternTile[] = [
     'M0.05 0.05h0.001M0.15 0.15h0.001',
     'light',
     { tone: 'ink', pct: 80 },
-    { edge: 'ink', stroke: 0.05 },
+    { edge: 'ink', stroke: STROKE_DOT },
   ),
   tile(
     'tijolos',
@@ -97,7 +108,7 @@ export const ZONE_PATTERNS: readonly ZonePatternTile[] = [
       tone: 'accent',
       pct: 72,
     },
-    { edge: 'accent', stroke: 0.03 },
+    { edge: 'accent', stroke: STROKE_FINE },
   ),
   tile('setas para o lado', 'arrows', 'M0.06 0.04L0.14 0.1L0.06 0.16', 'accent', LIGHT, {
     dashed: true,
@@ -124,8 +135,8 @@ const KNOWN: Readonly<Record<string, number>> = {
 };
 
 const HASH_BASE = 31;
-/** A spell the table defined, or one the app does not know, takes one of the first six looks: none of them hides sight. */
-const HASHED = 6;
+/** The looks a spell the table defined, or one the app does not know, may take. */
+const HASHABLE = ZONE_PATTERNS.flatMap((t, i) => (t.hashable ? [i] : []));
 
 /** The pattern of a spell's zone: fixed for each spell of the catalog, a hash of the key for the others. */
 export function zonePattern(spellKey: string): number {
@@ -137,25 +148,46 @@ export function zonePattern(spellKey: string): number {
   for (const ch of spellKey) {
     h = (h * HASH_BASE + ch.charCodeAt(0)) >>> 0;
   }
-  return h % HASHED;
+  return HASHABLE[h % HASHABLE.length];
 }
 
+const EIGHTH_TURN = 45;
 const QUARTER_TURN = 90;
 const HALF_TURN = 180;
-const THREE_QUARTER_TURN = 270;
+const FULL_TURN = 360;
 
-/** How far the arrows turn (0, 90, 180 or 270 degrees; 0 points right) so they run from the wall to its burning side. */
-export function arrowTurn(wall: readonly Square[], burning: readonly Square[]): number {
-  if (wall.length === 0 || burning.length === 0) {
+const degrees = (dx: number, dy: number) => (Math.atan2(dy, dx) * HALF_TURN) / Math.PI;
+
+/** An angle in degrees, snapped to the nearest of the eight directions and held in [0, 360). */
+function snap(deg: number): number {
+  return (((Math.round(deg / EIGHTH_TURN) * EIGHTH_TURN) % FULL_TURN) + FULL_TURN) % FULL_TURN;
+}
+
+/**
+ * How far the arrows of a wall's burning side turn (degrees clockwise on the map, 0 points right), from the side the server sent.
+ * A straight wall runs from its origin (its first square) toward its farthest square: LEFT of that way is the arrows' way minus a
+ * quarter turn, RIGHT a quarter turn more. A ring's arrows point to its center (INNER) or away from it (OUTER), taken from the
+ * middle of the squares it has; a pattern turns as a whole, so a ring shows one way. With no way to read, the arrows point right.
+ */
+export function arrowTurn(side: WallSide, wall: readonly Square[], origin: Square | null): number {
+  if (origin === null || wall.length === 0) {
     return 0;
   }
-  const mean = (xs: readonly number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
-  const dx = mean(burning.map((s) => s.col)) - mean(wall.map((s) => s.col));
-  const dy = mean(burning.map((s) => s.row)) - mean(wall.map((s) => s.row));
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return dx >= 0 ? 0 : HALF_TURN;
+  if (side === WallSide.INNER || side === WallSide.OUTER) {
+    const mid = (f: (s: Square) => number) => wall.reduce((a, s) => a + f(s), 0) / wall.length;
+    const out = degrees(mid((s) => s.col) - origin.col, mid((s) => s.row) - origin.row);
+    return snap(side === WallSide.OUTER ? out : out + HALF_TURN);
   }
-  return dy >= 0 ? QUARTER_TURN : THREE_QUARTER_TURN;
+  if (side !== WallSide.LEFT && side !== WallSide.RIGHT) {
+    return 0;
+  }
+  const dist = (s: Square) => Math.max(Math.abs(s.col - origin.col), Math.abs(s.row - origin.row));
+  const far = wall.reduce((a, s) => (dist(s) > dist(a) ? s : a));
+  if (dist(far) === 0) {
+    return 0;
+  }
+  const run = snap(degrees(far.col - origin.col, far.row - origin.row));
+  return snap(side === WallSide.LEFT ? run - QUARTER_TURN : run + QUARTER_TURN);
 }
 
 export interface ZoneLegendItem {
@@ -171,19 +203,18 @@ export interface ZoneLegendItem {
 /** One legend entry per spell that has a zone on the map, in the order they were cast, then the burning side of a wall. */
 export function zoneLegend(views: readonly ZoneView[]): ZoneLegendItem[] {
   const items = new Map<string, ZoneLegendItem>();
-  const burning: string[] = [];
-  for (const v of views) {
+  const burning: ZoneView[] = [];
+  for (const v of views.filter((x) => x.squares.length > 0)) {
     const seen = items.get(v.spellKey);
-    const hidden = v.masterOnly !== '';
     items.set(v.spellKey, {
       key: v.spellKey,
       name: v.spellName,
       pattern: zonePattern(v.spellKey),
       letters: [...(seen?.letters ?? []), v.letter],
-      masterOnly: seen ? seen.masterOnly && hidden : hidden,
+      masterOnly: (seen?.masterOnly ?? true) && v.masterOnly !== '',
     });
     if (v.burningSquares.length > 0) {
-      burning.push(v.letter);
+      burning.push(v);
     }
   }
   const list = [...items.values()];
@@ -192,8 +223,8 @@ export function zoneLegend(views: readonly ZoneView[]): ZoneLegendItem[] {
       key: 'burning',
       name: 'Lado que queima',
       pattern: BURNING_PATTERN,
-      letters: burning,
-      masterOnly: false,
+      letters: burning.map((v) => v.letter),
+      masterOnly: burning.every((v) => v.masterOnly !== ''),
     });
   }
   return list;

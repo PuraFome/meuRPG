@@ -51,8 +51,10 @@ describe('ZonesPanel', () => {
   it('gives each card its letter, in the diamond and for a screen reader', () => {
     const { el } = mount([spellZone({ id: 'a' }), spellZone({ id: 'b', spellNamePt: 'Teia' })]);
     const cards = el.querySelectorAll('.zp__card');
-    expect(plain(cards[0].querySelector('.zp__letter')?.textContent)).toContain('A');
-    expect(plain(cards[1].querySelector('.zp__letter')?.textContent)).toContain('B');
+    const names = [...cards].map((c) =>
+      c.querySelector('.zp__letter [role="img"]')?.getAttribute('aria-label'),
+    );
+    expect(names).toEqual(['Zona A', 'Zona B']);
     const named = cards[1].querySelector('.zp__letter [role="img"]');
     expect(named?.getAttribute('aria-label')).toBe('Zona B');
   });
@@ -120,8 +122,10 @@ describe('ZonesPanel', () => {
       ],
       { master: false },
     );
-    const card = plain(el.querySelector('li')!.textContent);
-    expect(card).toBe('A Raio Lunar · Bartolo Cilindro de 1,5 m de raio');
+    const card = el.querySelector('li')!;
+    expect(card.querySelector('[role="img"]')?.getAttribute('aria-label')).toBe('Zona A');
+    expect(plain(card.querySelector('.zp__name')?.textContent)).toBe('Raio Lunar · Bartolo');
+    expect(plain(card.querySelector('.zp__detail')?.textContent)).toBe('Cilindro de 1,5 m de raio');
     expect(el.querySelector('button')).toBeNull();
   });
 
@@ -209,7 +213,7 @@ describe('ZonesPanel', () => {
     setZones([spellZone({ id: 'a' }), spellZone({ id: 'b', spellNamePt: 'Teia' })]);
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(plain(live.textContent)).toBe('Zona criada: Teia · Bartolo.');
+    expect(plain(live.textContent)).toBe('Zona criada: B, Teia · Bartolo.');
     setZones([]);
     await fixture.whenStable();
     fixture.detectChanges();
@@ -222,6 +226,6 @@ describe('ZonesPanel', () => {
     setZones([spellZone({ id: 'a' })]);
     await fixture.whenStable();
     fixture.detectChanges();
-    expect(plain(live.textContent)).toBe('Zona criada: Raio Lunar · Bartolo.');
+    expect(plain(live.textContent)).toBe('Zona criada: A, Raio Lunar · Bartolo.');
   });
 });

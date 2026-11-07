@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 
-import { SpellZoneVisibility } from '../../../../gen/meurpg/play/v1/combat_pb';
+import { SpellZoneVisibility, WallSide } from '../../../../gen/meurpg/play/v1/combat_pb';
 import { spellZone } from '../../../core/combat/combat-testing';
 import { zoneView, type ZoneView } from '../../../core/combat/zones';
 import { ZoneLayer } from './zone-layer';
@@ -43,7 +43,7 @@ describe('ZoneLayer', () => {
     const first = zones[0];
     expect(first.querySelector('.zl__veil')?.getAttribute('d')).toMatch(/^M/);
     expect(first.querySelector('.zl__pat')?.getAttribute('fill')).toMatch(/^url\(#.+\)$/);
-    expect(first.querySelector('.zl__edge')?.getAttribute('d')).toMatch(/^M/);
+    expect(el.querySelector('.zl__outline .zl__edge')?.getAttribute('d')).toMatch(/^M/);
     // two spells, two patterns
     expect(zones[1].querySelector('.zl__pat')?.getAttribute('fill')).not.toBe(
       first.querySelector('.zl__pat')?.getAttribute('fill'),
@@ -62,15 +62,17 @@ describe('ZoneLayer', () => {
 
   it('draws the zone of a hidden caster dashed, with its badge dashed too', () => {
     const el = mount([view({ id: 'a', visibility: SpellZoneVisibility.MASTER_ONLY })]);
-    expect(el.querySelector('g.zl__zone--dashed')).not.toBeNull();
+    expect(el.querySelector('g.zl__outline.zl__zone--dashed')).not.toBeNull();
     expect(el.querySelector('.zl__badge--dashed')).not.toBeNull();
   });
 
   it('puts the badge at the footprint corner, clamped to the map box', () => {
     const badge = mount([view({ id: 'a' })]).querySelector<HTMLElement>('.zl__badge')!;
     expect(badge.style.left).toContain('clamp(');
-    expect(badge.style.left).toContain('20%'); // column 4 over 20
-    expect(badge.style.top).toContain('30%'); // row 3 over 10
+    expect(badge.style.left).toMatch(/^clamp\(.+, [\d.]+%, calc\(100% - .+\)\)$/);
+    // inside the corner square (4,3), not centred on the corner: right of 4 and below 3 on a 20 x 10 map
+    expect(Number(/([\d.]+)%/.exec(badge.style.left)?.[1])).toBeGreaterThan(20);
+    expect(Number(/([\d.]+)%/.exec(badge.style.top)?.[1])).toBeGreaterThan(30);
   });
 
   it('keeps every badge inside the map for a zone at each corner and for a single square at (0,0)', () => {
@@ -136,6 +138,38 @@ describe('ZoneLayer', () => {
     expect(burn.querySelector('.zl__pat')?.getAttribute('fill')).toMatch(/^url\(#.+\)$/);
     // the burning side carries the wall's letter, not a badge of its own
     expect(el.querySelectorAll('.zl__badge').length).toBe(1);
+  });
+
+  it('turns the arrows with the wall side the server sent', () => {
+    const el = mount([
+      view({
+        id: 'w',
+        spellKey: 'spell:wall-of-fire',
+        squares: [square(2, 3), square(3, 3), square(4, 3)],
+        origin: square(2, 3),
+        wallSide: WallSide.LEFT,
+        burningSquares: [square(2, 2)],
+      }),
+    ]);
+    const pattern = el.querySelector('pattern[id$="-b-w"]')!;
+    expect(pattern.getAttribute('patternTransform')).toBe('rotate(270)');
+  });
+
+  it('draws both patterns, split on the diagonal, where two zones lie over each other, and keeps both outlines', () => {
+    const el = mount([
+      view({ id: 'a', squares: [square(1, 1), square(2, 1)] }),
+      view({ id: 'b', spellKey: 'spell:web', squares: [square(2, 1), square(3, 1)] }),
+    ]);
+    const overlap = el.querySelector('g.zl__overlap')!;
+    expect(overlap.querySelectorAll('.zl__pat').length).toBe(2);
+    const fills = [...overlap.querySelectorAll('.zl__pat')].map((p) => p.getAttribute('fill'));
+    expect(new Set(fills).size).toBe(2);
+    expect(overlap.querySelector('.zl__pat')?.getAttribute('d')).toBe('M2 1H3L2 2Z');
+    expect(el.querySelectorAll('g.zl__outline .zl__edge').length).toBe(2);
+  });
+
+  it('draws no overlap layer for zones that do not touch', () => {
+    expect(mount([view({ id: 'a' })]).querySelector('g.zl__overlap')).toBeNull();
   });
 
   it('draws no burning layer for a zone that is no wall', () => {

@@ -62,7 +62,7 @@ export class ZonesPanel {
 
   constructor() {
     effect(() => {
-      const now = this.zones().map((z) => ({ id: z.id, label: z.label }));
+      const now = this.zones().map((z) => ({ id: z.id, label: z.label, letter: z.letter }));
       untracked(() => {
         const text = zoneNotice(this.known, now);
         this.known = now;
