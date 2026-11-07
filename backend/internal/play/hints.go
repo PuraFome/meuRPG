@@ -35,7 +35,7 @@ type hints struct {
 	events  []told
 	touched bool
 	// seq is the session's hint_seq as this transaction left it: set by Service.tx after it bumped the number, 0 while it did not.
-	// It is the number the events will carry.
+	// The next task stamps the events with it before they are sent; until then only tests read it.
 	seq int64
 }
 
@@ -76,8 +76,13 @@ func (h *hints) moves() bool { return h.touched || len(h.events) > 0 }
 //
 // A hint that goes with no write (typing, presence, the table screen's "changed") does not go through tx: it calls send.
 func (s *Service) tx(ctx context.Context, sessionID string, fn func(pgx.Tx, *hints) error) error {
+	return s.txOn(ctx, s.pool, sessionID, fn)
+}
+
+// txOn is tx on any transaction starter: a test passes one whose COMMIT fails.
+func (s *Service) txOn(ctx context.Context, starter db.TxStarter, sessionID string, fn func(pgx.Tx, *hints) error) error {
 	var h hints
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := db.InTx(ctx, starter, func(tx pgx.Tx) error {
 		h.reset()
 		q := s.queries.WithTx(tx)
 		if _, err := q.LockSessionForHints(ctx, sessionID); err != nil {

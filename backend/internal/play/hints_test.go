@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -153,33 +154,82 @@ func TestTxAnErrorSendsNothingAndKeepsTheNumber(t *testing.T) {
 	}
 }
 
-// The number is saved with the write: a bump that cannot be made (the session is gone) rolls the write back and sends nothing.
+// The number is saved with the write: when the bump finds no row (the closure deleted the session after writing), the
+// write is rolled back with it and nothing is sent.
 func TestTxTheNumberAndTheWriteAreSavedTogether(t *testing.T) {
 	w := newHintTable(t)
 	ctx := t.Context()
-	err := w.h.svc.tx(ctx, "00000000-0000-4000-8000-000000000000", func(tx pgx.Tx, h *hints) error {
+	ran := false
+	err := w.h.svc.tx(ctx, w.sessionID, func(tx pgx.Tx, h *hints) error {
+		ran = true
 		if err := w.write(ctx, tx, 1); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `DELETE FROM game_sessions WHERE id = $1`, w.sessionID); err != nil {
 			return err
 		}
 		h.tell(w.campaignID, w.event("lost", true))
 		return nil
 	})
-	if err == nil {
-		t.Fatal("tx() on a session that does not exist returned nil")
+	if !ran {
+		t.Fatal("the closure did not run")
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		t.Fatalf("tx() error = %v, want the bump's no rows", err)
 	}
 	if got := w.probe(t, 1); got != -1 {
 		t.Errorf("the write stayed (n = %d) although its number could not be bumped", got)
 	}
+	var sessions int
+	if err := w.h.pool.QueryRow(ctx, `SELECT count(*) FROM game_sessions WHERE id = $1`, w.sessionID).Scan(&sessions); err != nil || sessions != 1 {
+		t.Errorf("the deleted session is back? count = %d, err = %v; want 1 (rolled back)", sessions, err)
+	}
 	if got := w.heard(); len(got) != 0 {
 		t.Errorf("the streams heard %q", got)
 	}
-	if got := w.seq(t); got != 0 {
-		t.Errorf("hint_seq = %d, want 0", got)
+}
+
+// failingCommit begins real transactions whose COMMIT fails without an answer from the database, as a broken connection does.
+type failingCommit struct {
+	db.TxStarter
+	begun int
+}
+
+func (f *failingCommit) BeginTx(ctx context.Context, o pgx.TxOptions) (pgx.Tx, error) {
+	tx, err := f.TxStarter.BeginTx(ctx, o)
+	f.begun++
+	return lostCommit{tx}, err
+}
+
+type lostCommit struct{ pgx.Tx }
+
+func (l lostCommit) Commit(ctx context.Context) error {
+	_ = l.Rollback(ctx)
+	return errors.New("connection reset by peer")
+}
+
+// A COMMIT whose outcome is unknown is not retried and tells nothing: the hints would be about a write that may not exist.
+func TestTxAnAmbiguousCommitIsNotRetriedAndSendsNothing(t *testing.T) {
+	w := newHintTable(t)
+	ctx := t.Context()
+	starter := &failingCommit{TxStarter: w.h.pool}
+	attempts := 0
+	err := w.h.svc.txOn(ctx, starter, w.sessionID, func(tx pgx.Tx, h *hints) error {
+		attempts++
+		h.tell(w.campaignID, w.event("unsure", true))
+		return w.write(ctx, tx, 1)
+	})
+	if _, ok := errors.AsType[*db.AmbiguousCommitError](err); !ok {
+		t.Fatalf("tx() error = %v, want *db.AmbiguousCommitError", err)
+	}
+	if attempts != 1 || starter.begun != 1 {
+		t.Errorf("fn ran %d times in %d transactions, want 1 and 1 (no retry)", attempts, starter.begun)
+	}
+	if got := w.heard(); len(got) != 0 {
+		t.Errorf("the streams heard %q after a commit of unknown outcome", got)
 	}
 }
 
-// Every tx takes the session row's lock before its closure runs, so the writes of one session take turns; a tx that told
-// nothing takes it too but writes nothing.
 func TestTxTakesTheSessionLockFirstAndWritesNothingWithoutHints(t *testing.T) {
 	w := newHintTable(t)
 	conn, err := pgx.ConnectConfig(t.Context(), w.h.pool.Config().ConnConfig)
@@ -254,9 +304,9 @@ func TestTxTouchBumpsOnceAndSendsNothing(t *testing.T) {
 func TestTxBumpsOncePerTransactionWhateverItTold(t *testing.T) {
 	w := newHintTable(t)
 	ctx := t.Context()
-	var h2 *hints
+	var got *hints
 	err := w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error {
-		h2 = h
+		got = h
 		h.tell(w.campaignID, w.event("public", true))
 		h.tell(w.campaignID, w.event("master-only", false))
 		return nil
@@ -270,8 +320,8 @@ func TestTxBumpsOncePerTransactionWhateverItTold(t *testing.T) {
 	if got := w.seq(t); got != 1 {
 		t.Errorf("hint_seq = %d after two events in one tx, want 1", got)
 	}
-	if h2.seq != 1 {
-		t.Errorf("the collector holds number %d, want 1", h2.seq)
+	if got.seq != 1 {
+		t.Errorf("the collector holds number %d, want 1", got.seq)
 	}
 	// One master-only event bumps the same as one public event.
 	err = w.h.svc.tx(ctx, w.sessionID, func(_ pgx.Tx, h *hints) error {

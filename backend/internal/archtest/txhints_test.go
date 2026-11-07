@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -20,12 +21,18 @@ import (
 var hintTxExceptions string
 
 // bumpFunnel is the one function that may write game_sessions.hint_seq: Service.tx takes the bump in the transaction of the write.
-const bumpFunnel = "internal/play/hints.go:(*Service).tx"
+const bumpFunnel = "internal/play/hints.go:(*Service).txOn"
 
 // TestHintsAreNotSentInsideATransaction fails for a call of send or tellMembers inside a function literal that is an argument
 // of Service.tx or db.InTx in a non-test file of internal/play: it would tell the streams before the commit, and again on a
 // retry. A closure collects with h.tell and h.touch; Service.tx sends after the commit.
-// BumpHintSeq may be called only by Service.tx.
+// BumpHintSeq may be called only by Service.txOn (the body of Service.tx), and no string literal of a non-test file may name hint_seq (a raw
+// UPDATE would move the number outside the funnel; the queries live in queries.sql and the generated playdb package).
+//
+// Limits, by name and by file, as the other rules here: a closure given by a literal or by an identifier assigned a literal in
+// the same function is read; a closure that is a method value, a parameter or a package-level function is not. A helper that the
+// closure calls and that itself calls send is not seen (only the closure's own calls are). Only the files directly in
+// internal/play are read.
 func TestHintsAreNotSentInsideATransaction(t *testing.T) {
 	root := os.DirFS(backendRoot)
 	const dir = "internal/play"
@@ -80,7 +87,13 @@ func txHintKeys(p string, src []byte) (inTx, bump []string, err error) {
 		}
 	}
 	scan := func(n ast.Node, name string) {
+		lits := funcLiterals(n)
 		ast.Inspect(n, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.BasicLit); ok && lit.Kind == token.STRING && strings.Contains(lit.Value, "hint_seq") {
+				if p+":"+name != bumpFunnel {
+					add(&bump, name)
+				}
+			}
 			call, ok := n.(*ast.CallExpr)
 			if !ok {
 				return true
@@ -94,6 +107,9 @@ func txHintKeys(p string, src []byte) (inTx, bump []string, err error) {
 				return true
 			}
 			for _, arg := range call.Args {
+				if id, ok := arg.(*ast.Ident); ok && lits[id.Name] != nil {
+					arg = lits[id.Name]
+				}
 				if lit, ok := arg.(*ast.FuncLit); ok && callsTell(lit) {
 					add(&inTx, name)
 				}
@@ -120,14 +136,44 @@ func txHintKeys(p string, src []byte) (inTx, bump []string, err error) {
 	return inTx, bump, nil
 }
 
+// funcLiterals maps the names assigned a function literal anywhere in n (name := func..., name = func..., var name = func...)
+// to the literal. A name assigned twice keeps the last literal.
+func funcLiterals(n ast.Node) map[string]*ast.FuncLit {
+	out := map[string]*ast.FuncLit{}
+	ast.Inspect(n, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.AssignStmt:
+			if len(n.Lhs) == len(n.Rhs) {
+				for i, l := range n.Lhs {
+					if id, ok := l.(*ast.Ident); ok {
+						if lit, ok := n.Rhs[i].(*ast.FuncLit); ok {
+							out[id.Name] = lit
+						}
+					}
+				}
+			}
+		case *ast.ValueSpec:
+			if len(n.Names) == len(n.Values) {
+				for i, id := range n.Names {
+					if lit, ok := n.Values[i].(*ast.FuncLit); ok {
+						out[id.Name] = lit
+					}
+				}
+			}
+		}
+		return true
+	})
+	return out
+}
+
 func isSelector(e ast.Expr, name string) bool {
 	sel, ok := e.(*ast.SelectorExpr)
 	return ok && sel.Sel.Name == name
 }
 
-// isTxCall reports whether call is x.tx(...) or db.InTx(...).
+// isTxCall reports whether call is x.tx(...), x.txOn(...) or db.InTx(...).
 func isTxCall(call *ast.CallExpr) bool {
-	if isSelector(call.Fun, "tx") {
+	if isSelector(call.Fun, "tx") || isSelector(call.Fun, "txOn") {
 		return true
 	}
 	sel, ok := call.Fun.(*ast.SelectorExpr)
@@ -164,8 +210,15 @@ func TestTxHintKeys(t *testing.T) {
 		{"another InTx", "internal/play/a.go", "package play\nfunc F(s S) { other.InTx(c, p, func(tx T) error { s.send(c, e); return nil }) }", nil, nil},
 		{"package-level literal", "internal/play/a.go", "package play\nvar run = func(s S) { s.tx(c, id, func(tx T, h *H) error { s.send(c, e); return nil }) }", []string{"internal/play/a.go:run"}, nil},
 		{"one key per function", "internal/play/a.go", "package play\nfunc F(s S) { s.tx(c, id, func(tx T, h *H) error { s.send(c, e); s.send(c, e); return nil }) }", []string{"internal/play/a.go:F"}, nil},
+		{"named closure", "internal/play/a.go", "package play\nfunc F(s S) { run := func(tx T, h *H) error { s.send(c, e); return nil }; s.tx(c, id, run) }", []string{"internal/play/a.go:F"}, nil},
+		{"named closure that only collects", "internal/play/a.go", "package play\nfunc F(s S) { run := func(tx T, h *H) error { h.tell(c, e); return nil }; s.tx(c, id, run) }", nil, nil},
+		{"named closure declared with var", "internal/play/a.go", "package play\nfunc F(s S) { var run = func(tx T) error { s.tellMembers(c, true, m); return nil }; db.InTx(c, p, run) }", []string{"internal/play/a.go:F"}, nil},
+		{"a closure that is a parameter is not read", "internal/play/a.go", "package play\nfunc F(s S, run func(T, *H) error) { s.tx(c, id, run) }", nil, nil},
+		{"a helper that sends is not seen", "internal/play/a.go", "package play\nfunc F(s S) { s.tx(c, id, func(tx T, h *H) error { return s.helper() }) }\nfunc (s S) helper() error { s.send(c, e); return nil }", nil, nil},
+		{"raw SQL naming hint_seq", "internal/play/a.go", "package play\nfunc F(tx T) { tx.Exec(c, `UPDATE game_sessions SET hint_seq = 5`) }", nil, []string{"internal/play/a.go:F"}},
+		{"hint_seq in a comment is fine", "internal/play/a.go", "package play\n// hint_seq\nfunc F() {}", nil, nil},
 		{"BumpHintSeq elsewhere", "internal/play/a.go", "package play\nfunc F(q Q) { q.BumpHintSeq(c, id) }", nil, []string{"internal/play/a.go:F"}},
-		{"BumpHintSeq in the funnel", "internal/play/hints.go", "package play\nfunc (s *Service) tx() { q.BumpHintSeq(c, id) }", nil, nil},
+		{"BumpHintSeq in the funnel", "internal/play/hints.go", "package play\nfunc (s *Service) txOn() { q.BumpHintSeq(c, id) }", nil, nil},
 		{"BumpHintSeq elsewhere in the funnel file", "internal/play/hints.go", "package play\nfunc (s *Service) other() { q.BumpHintSeq(c, id) }", nil, []string{"internal/play/hints.go:(*Service).other"}},
 	}
 	for _, c := range cases {
