@@ -927,8 +927,13 @@ func linesSeenBy(lines []actionEvent) (seers []string, scoped bool) {
 // only to those players (actionEvent.SeenBy), so a player does not even hear that
 // something happened out of their sight.
 func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID string, players bool) {
+	s.publishLogChange(ctx, campaignID, encounterID, players, false)
+}
+
+// publishLogChange is publishLogChanged with full: the write rewrote the log (an undo), so the app reads all of it again.
+func (s *Service) publishLogChange(ctx context.Context, campaignID, encounterID string, players, full bool) {
 	msg := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
-		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID},
+		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID, Full: full},
 	}}
 	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
 	if !players {

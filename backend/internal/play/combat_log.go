@@ -72,6 +72,8 @@ type logEntry struct {
 	masterOnly bool
 	// shapeStarted: a Wild Shape line is the druid becoming the beast, not leaving it.
 	shapeStarted bool
+	// seq is the highest session_events.seq among the events in hosts: a later event that joins the entry raises it.
+	seq int64
 	// hosts are the events the entry shows: an attack's own and the ones of its
 	// damage, so the entry of the last action is the one to undo.
 	hosts []string
@@ -179,6 +181,9 @@ func (s *Service) ListCombatLog(
 	}
 
 	res := &playv1.ListCombatLogResponse{}
+	since := sinceSeqOf(req.Msg.GetSinceSeq(), snap.events)
+	res.Full, res.LastSeq = since == 0, lastSeqOf(snap.events)
+	stampSeqs(entries, snap.events)
 	var lastID string
 	if v.master {
 		if last, ok := lastAction(snap.recent, snap.enc.ID); ok {
@@ -194,13 +199,53 @@ func (s *Service) ListCombatLog(
 	}
 	// Latest first, in groups by round.
 	for _, e := range slices.Backward(entries) {
+		if since > 0 && e.seq <= since && !slices.Contains(e.hosts, lastID) {
+			continue // the app holds this line as it is (the master's undoable line is always sent: its flag moves with the log's end)
+		}
 		out, ok := e.view(ctx, v, byID, names, lastID)
 		if !ok {
 			continue
 		}
+		out.Seq = e.seq
 		res.Rounds = appendToRound(res.Rounds, out)
 	}
 	return connect.NewResponse(res), nil
+}
+
+// sinceSeqOf is the number the log is filtered by. An undo adds an event that takes older ones back, so a log with an undo after
+// sinceSeq has lines the app holds that are gone: the answer is then the whole log (0).
+func sinceSeqOf(sinceSeq int64, events []playdb.ListEncounterEventsRow) int64 {
+	if sinceSeq <= 0 {
+		return 0
+	}
+	for _, e := range events {
+		if e.Kind == eventActionUndone && int64(e.Seq) > sinceSeq {
+			return 0
+		}
+	}
+	return sinceSeq
+}
+
+// lastSeqOf is the highest event number the combat's events reach.
+func lastSeqOf(events []playdb.ListEncounterEventsRow) int64 {
+	var last int64
+	for _, e := range events {
+		last = max(last, int64(e.Seq))
+	}
+	return last
+}
+
+// stampSeqs sets each entry's seq: the highest number among the events it shows.
+func stampSeqs(entries []*logEntry, events []playdb.ListEncounterEventsRow) {
+	seqOf := make(map[string]int64, len(events))
+	for _, e := range events {
+		seqOf[e.ID] = int64(e.Seq)
+	}
+	for _, entry := range entries {
+		for _, id := range entry.hosts {
+			entry.seq = max(entry.seq, seqOf[id])
+		}
+	}
 }
 
 // logViewer is who reads the log: the member, and for a player the table's rule on the

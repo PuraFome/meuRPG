@@ -1624,6 +1624,14 @@ message WatchGameSessionResponse {
     AttackHit attack_hit = 46;
   }
 
+  // The session's hint number as the write that sent this event left it (game_sessions.hint_seq): it grows by one for every
+  // write that told the streams something, however many events it told. A stream that sees a number ahead of the ones it
+  // has applied (on a heartbeat, above all) knows it missed a hint and reads the session again. It is a counter and says
+  // nothing of what changed. On an event it is 0 when the event did not come from a write that counted (typing, presence,
+  // and every change not yet counted): 0 means "no number", never compare it. Ready and Heartbeat always carry the
+  // current number. Only a member who may watch the stream reads it.
+  int64 session_seq = 48;
+
   // AttackHit is the attack damage that landed on a player's character, as that player reads it: who hit (empty when the
   // attacker is hidden: the app says "Alguém"), how much and of what type. `id` is the pending damage, so a hit is said once.
   // It says nothing of the hit points: those come with VitalsChanged.
@@ -1779,10 +1787,17 @@ message WatchGameSessionResponse {
   message Ready {
     // The session being watched.
     GameSession game_session = 1;
+    // The session's hint number now (see WatchGameSessionResponse.session_seq): events at or below it are in the snapshot.
+    int64 session_seq = 2;
   }
 
-  // Heartbeat carries nothing.
-  message Heartbeat {}
+  // Heartbeat shows the stream is alive and carries the session's hint number.
+  message Heartbeat {
+    // The session's hint number when the heartbeat was sent, read from the database (see
+    // WatchGameSessionResponse.session_seq); 0 when the server could not read it. A number ahead of the last one the app
+    // applied means it missed a hint.
+    int64 session_seq = 1;
+  }
 
   // VitalsChanged carries a character's new vitals. Only the master and the
   // character's player get it. Apply it only if its revision is larger
@@ -1902,6 +1917,9 @@ message WatchGameSessionResponse {
   message CombatLogChanged {
     // The combat (a UUID).
     string encounter_id = 1;
+    // The log was rewritten, not just added to (the master undid an action): the app drops what it holds and reads the
+    // whole log again (ListCombatLog with since_seq 0).
+    bool full = 2;
   }
 
   // XpChanged says the campaign's XP or levels changed: an award was given, the

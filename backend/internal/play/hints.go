@@ -35,7 +35,7 @@ type hints struct {
 	events  []told
 	touched bool
 	// seq is the session's hint_seq as this transaction left it: set by Service.tx after it bumped the number, 0 while it did not.
-	// The next task stamps the events with it before they are sent; until then only tests read it.
+	// txOn stamps the events with it (WatchGameSessionResponse.session_seq) just before it sends them.
 	seq int64
 }
 
@@ -72,7 +72,7 @@ func (h *hints) moves() bool { return h.touched || len(h.events) > 0 }
 // When fn returns nil having told or touched, tx adds 1 to game_sessions.hint_seq of sessionID in the same transaction
 // (once, however many events were told), so the number is saved with the write or not at all; the session's row must exist.
 // A transaction that told nothing and touched nothing takes the lock and writes nothing: the number stays as it was.
-// When InTx returns nil, tx sends the collected events, in the order they were told. On any error, nothing is sent.
+// When InTx returns nil, tx stamps each collected event with the new number and sends them, in the order they were told. On any error, nothing is sent.
 //
 // A hint that goes with no write (typing, presence, the table screen's "changed") does not go through tx: it calls send.
 func (s *Service) tx(ctx context.Context, sessionID string, fn func(pgx.Tx, *hints) error) error {
@@ -105,6 +105,9 @@ func (s *Service) txOn(ctx context.Context, starter db.TxStarter, sessionID stri
 		return err
 	}
 	for _, t := range h.events {
+		if h.seq > 0 && t.event.Message != nil {
+			t.event.Message.SessionSeq = h.seq // not shared with a stream yet: send is next
+		}
 		s.send(t.campaignID, t.event)
 	}
 	return nil

@@ -2518,7 +2518,14 @@ type WatchGameSessionResponse struct {
 	//	*WatchGameSessionResponse_MasterTyping_
 	//	*WatchGameSessionResponse_FreeRollRolled_
 	//	*WatchGameSessionResponse_AttackHit_
-	Event         isWatchGameSessionResponse_Event `protobuf_oneof:"event"`
+	Event isWatchGameSessionResponse_Event `protobuf_oneof:"event"`
+	// The session's hint number as the write that sent this event left it (game_sessions.hint_seq): it grows by one for every
+	// write that told the streams something, however many events it told. A stream that sees a number ahead of the ones it
+	// has applied (on a heartbeat, above all) knows it missed a hint and reads the session again. It is a counter and says
+	// nothing of what changed. On an event it is 0 when the event did not come from a write that counted (typing, presence,
+	// and every change not yet counted): 0 means "no number", never compare it. Ready and Heartbeat always carry the
+	// current number. Only a member who may watch the stream reads it.
+	SessionSeq    int64 `protobuf:"varint,48,opt,name=session_seq,json=sessionSeq,proto3" json:"session_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2900,6 +2907,13 @@ func (x *WatchGameSessionResponse) GetAttackHit() *WatchGameSessionResponse_Atta
 		}
 	}
 	return nil
+}
+
+func (x *WatchGameSessionResponse) GetSessionSeq() int64 {
+	if x != nil {
+		return x.SessionSeq
+	}
+	return 0
 }
 
 type isWatchGameSessionResponse_Event interface {
@@ -5306,7 +5320,9 @@ func (x *WatchGameSessionResponse_SceneCheckRolled) GetActionId() string {
 type WatchGameSessionResponse_Ready struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The session being watched.
-	GameSession   *GameSession `protobuf:"bytes,1,opt,name=game_session,json=gameSession,proto3" json:"game_session,omitempty"`
+	GameSession *GameSession `protobuf:"bytes,1,opt,name=game_session,json=gameSession,proto3" json:"game_session,omitempty"`
+	// The session's hint number now (see WatchGameSessionResponse.session_seq): events at or below it are in the snapshot.
+	SessionSeq    int64 `protobuf:"varint,2,opt,name=session_seq,json=sessionSeq,proto3" json:"session_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5348,9 +5364,20 @@ func (x *WatchGameSessionResponse_Ready) GetGameSession() *GameSession {
 	return nil
 }
 
-// Heartbeat carries nothing.
+func (x *WatchGameSessionResponse_Ready) GetSessionSeq() int64 {
+	if x != nil {
+		return x.SessionSeq
+	}
+	return 0
+}
+
+// Heartbeat shows the stream is alive and carries the session's hint number.
 type WatchGameSessionResponse_Heartbeat struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The session's hint number when the heartbeat was sent, read from the database (see
+	// WatchGameSessionResponse.session_seq); 0 when the server could not read it. A number ahead of the last one the app
+	// applied means it missed a hint.
+	SessionSeq    int64 `protobuf:"varint,1,opt,name=session_seq,json=sessionSeq,proto3" json:"session_seq,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5383,6 +5410,13 @@ func (x *WatchGameSessionResponse_Heartbeat) ProtoReflect() protoreflect.Message
 // Deprecated: Use WatchGameSessionResponse_Heartbeat.ProtoReflect.Descriptor instead.
 func (*WatchGameSessionResponse_Heartbeat) Descriptor() ([]byte, []int) {
 	return file_meurpg_play_v1_play_proto_rawDescGZIP(), []int{33, 25}
+}
+
+func (x *WatchGameSessionResponse_Heartbeat) GetSessionSeq() int64 {
+	if x != nil {
+		return x.SessionSeq
+	}
+	return 0
 }
 
 // VitalsChanged carries a character's new vitals. Only the master and the
@@ -5921,7 +5955,10 @@ func (x *WatchGameSessionResponse_CombatantMoved) GetRow() int32 {
 type WatchGameSessionResponse_CombatLogChanged struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The combat (a UUID).
-	EncounterId   string `protobuf:"bytes,1,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
+	EncounterId string `protobuf:"bytes,1,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
+	// The log was rewritten, not just added to (the master undid an action): the app drops what it holds and reads the
+	// whole log again (ListCombatLog with since_seq 0).
+	Full          bool `protobuf:"varint,2,opt,name=full,proto3" json:"full,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5961,6 +5998,13 @@ func (x *WatchGameSessionResponse_CombatLogChanged) GetEncounterId() string {
 		return x.EncounterId
 	}
 	return ""
+}
+
+func (x *WatchGameSessionResponse_CombatLogChanged) GetFull() bool {
+	if x != nil {
+		return x.Full
+	}
+	return false
 }
 
 // XpChanged says the campaign's XP or levels changed: an award was given, the
@@ -6262,7 +6306,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x04used\x18\x03 \x01(\x05R\x04used\":\n" +
 	"\x17WatchGameSessionRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
-	"campaignId\"\xfe/\n" +
+	"campaignId\"\xf50\n" +
 	"\x18WatchGameSessionResponse\x12F\n" +
 	"\x05ready\x18\x01 \x01(\v2..meurpg.play.v1.WatchGameSessionResponse.ReadyH\x00R\x05ready\x12R\n" +
 	"\theartbeat\x18\x02 \x01(\v22.meurpg.play.v1.WatchGameSessionResponse.HeartbeatH\x00R\theartbeat\x12_\n" +
@@ -6307,7 +6351,9 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\rmaster_typing\x18, \x01(\v25.meurpg.play.v1.WatchGameSessionResponse.MasterTypingH\x00R\fmasterTyping\x12c\n" +
 	"\x10free_roll_rolled\x18- \x01(\v27.meurpg.play.v1.WatchGameSessionResponse.FreeRollRolledH\x00R\x0efreeRollRolled\x12S\n" +
 	"\n" +
-	"attack_hit\x18. \x01(\v22.meurpg.play.v1.WatchGameSessionResponse.AttackHitH\x00R\tattackHit\x1az\n" +
+	"attack_hit\x18. \x01(\v22.meurpg.play.v1.WatchGameSessionResponse.AttackHitH\x00R\tattackHit\x12\x1f\n" +
+	"\vsession_seq\x180 \x01(\x03R\n" +
+	"sessionSeq\x1az\n" +
 	"\tAttackHit\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vactor_label\x18\x02 \x01(\tR\n" +
@@ -6356,10 +6402,14 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\fNotesChanged\x1a\x0e\n" +
 	"\fSceneChanged\x1a/\n" +
 	"\x10SceneCheckRolled\x12\x1b\n" +
-	"\taction_id\x18\x01 \x01(\tR\bactionId\x1aG\n" +
+	"\taction_id\x18\x01 \x01(\tR\bactionId\x1ah\n" +
 	"\x05Ready\x12>\n" +
-	"\fgame_session\x18\x01 \x01(\v2\x1b.meurpg.play.v1.GameSessionR\vgameSession\x1a\v\n" +
-	"\tHeartbeat\x1aH\n" +
+	"\fgame_session\x18\x01 \x01(\v2\x1b.meurpg.play.v1.GameSessionR\vgameSession\x12\x1f\n" +
+	"\vsession_seq\x18\x02 \x01(\x03R\n" +
+	"sessionSeq\x1a,\n" +
+	"\tHeartbeat\x12\x1f\n" +
+	"\vsession_seq\x18\x01 \x01(\x03R\n" +
+	"sessionSeq\x1aH\n" +
 	"\rVitalsChanged\x127\n" +
 	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x1aN\n" +
 	"\fSessionEnded\x12>\n" +
@@ -6387,9 +6437,10 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12!\n" +
 	"\fcombatant_id\x18\x02 \x01(\tR\vcombatantId\x12\x10\n" +
 	"\x03col\x18\x03 \x01(\x05R\x03col\x12\x10\n" +
-	"\x03row\x18\x04 \x01(\x05R\x03row\x1a5\n" +
+	"\x03row\x18\x04 \x01(\x05R\x03row\x1aI\n" +
 	"\x10CombatLogChanged\x12!\n" +
-	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x1a\v\n" +
+	"\fencounter_id\x18\x01 \x01(\tR\vencounterId\x12\x12\n" +
+	"\x04full\x18\x02 \x01(\bR\x04full\x1a\v\n" +
 	"\tXpChanged\x1al\n" +
 	"\n" +
 	"TokenMoved\x12\x15\n" +

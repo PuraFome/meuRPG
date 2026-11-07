@@ -5333,6 +5333,9 @@ message EndCombatEffectResponse {
 message ListCombatLogRequest {
   string campaign_id = 1;
   string encounter_id = 2;
+  // The highest `last_seq` the app holds. Only the entries that changed after it come back (CombatLogEntry.seq above it);
+  // 0 (the default) asks for the whole log.
+  int64 since_seq = 3;
 }
 
 // ListCombatLogResponse is the combat log.
@@ -5343,6 +5346,11 @@ message ListCombatLogResponse {
   // The event UndoLastAction would take back now (a UUID), if any. Only the
   // master gets it; the entry it belongs to has `undoable` set.
   string undoable_event_id = 2;
+  // The highest event number (session_events.seq) of the combat the server read: the app sends it back as since_seq.
+  int64 last_seq = 3;
+  // True when the rounds are the whole log and replace what the app holds: since_seq was 0, or an undo rewrote the log
+  // after it. False when the rounds hold only the entries that are new or changed, which the app puts in place by id.
+  bool full = 4;
 }
 
 // CombatLogRound is the entries of one round, the latest first.
@@ -5654,6 +5662,9 @@ message CombatLogEntry {
   CombatLogLegendarySpent legendary_spent = 114;
   // RECHARGE_ROLLED: the action, the face and the result. The master's and the creature's controller's.
   CombatLogRecharge recharge = 115;
+  // The highest event number (session_events.seq) among the events the entry shows. A later event that joins the entry
+  // (the damage of an attack) raises it, so the entry comes again after a since_seq and the app replaces it by id.
+  int64 seq = 116;
 }
 
 // CombatLogEffectEnd is an effect that ended, in the combat log.

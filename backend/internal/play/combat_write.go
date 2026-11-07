@@ -781,7 +781,7 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 func (s *Service) publishRetried(ctx context.Context, campaignID string, res combatResult, d *encounterData) {
 	ev, err := readEvent(res.payload)
 	s.publishEncounterChanged(ctx, campaignID, d.enc)
-	s.publishLogChanged(ctx, campaignID, d.enc.ID, err == nil && !ev.Secret)
+	s.publishLogChange(ctx, campaignID, d.enc.ID, err == nil && !ev.Secret, err == nil && ev.Undone != "") // a retried undo rewrote the log too
 }
 
 // changed is the usual publish: a hint that the combat changed.

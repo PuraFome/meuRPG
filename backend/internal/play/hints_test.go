@@ -230,6 +230,8 @@ func TestTxAnAmbiguousCommitIsNotRetriedAndSendsNothing(t *testing.T) {
 	}
 }
 
+// Every tx takes the session row's lock before its closure runs, so the writes of one session take turns; a tx that told
+// nothing takes it too but writes nothing.
 func TestTxTakesTheSessionLockFirstAndWritesNothingWithoutHints(t *testing.T) {
 	w := newHintTable(t)
 	conn, err := pgx.ConnectConfig(t.Context(), w.h.pool.Config().ConnConfig)
