@@ -749,6 +749,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O mestre cria e edita criaturas da mesa no app web, no editor de criaturas do "Conteúdo da mesa" no notebook; um pacote de conteúdo também as traz.
 - **Dado** que edito uma criatura da mesa no editor de criaturas, **quando** adiciono uma linha de resistência, imunidade ou vulnerabilidade com os tipos de dano e um "Vale contra", **então** ela se soma às listas da base e nunca tira nenhuma.
   São até 12 linhas.
+  O "Vale contra" é todo dano, só ataque não mágico, só ataque não mágico nem prateado, ou só ataque não mágico nem adamantino.
   O "Vale contra" fica desligado para uma vulnerabilidade e para um tipo de dano que não é concussão, perfurante nem cortante, e a linha sob as linhas diz por quê.
   Quem tem a criatura lê as linhas na ficha dela; só eu as edito.
 - **Dado** que salvo uma criatura com uma base que o SRD não tem, pontos de vida fora de 1 a 9.999, classe de armadura fora de 1 a 40, bônus de dano fora de -10 a 30, ou mais de 10 traços, **então** o servidor recusa cada um no próprio campo, e um traço com o nome de um traço ou de uma ação da base, ou "Magic Weapons", "Spellcasting" ou "Innate Spellcasting", é recusado.
@@ -792,7 +793,7 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   A ficha de estatísticas, os pontos de vida e a classe de armadura ficam escondidos de quem não é o dono.
   Isso vale mesmo com a entrada arquivada ou desligada.
 - **Dado** uma entrada de criatura arquivada, **quando** a dou a um personagem, **então** ela é dada.
-- **Dado** uma entrada de criatura, **quando** a ligo ou desligo, **então** faço isso pela API, porque a tela "Opções para os jogadores" não tem grupo de criaturas.
+- **Dado** uma entrada de criatura, **quando** a ligo ou desligo, **então** faço isso no grupo "Criaturas" da tela "Opções para os jogadores", ou no interruptor do editor de criatura.
 - **Dado** as magias de invocação, a Forma Selvagem e as ferramentas de encontro (gerador, avaliador e trocas), **então** elas oferecem só criaturas do SRD, porque uma criatura da mesa não mantém o nível de desafio da base.
 
 **Trocar uma escolha.**
