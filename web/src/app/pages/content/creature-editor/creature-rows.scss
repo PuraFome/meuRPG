@@ -1,0 +1,119 @@
+// The traits and the attacks: a row is one line with the control at the right; it opens in place.
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+
+  &__head {
+    display: flex;
+    align-items: center;
+  }
+
+  &__toggle {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-2);
+    min-width: 0;
+    min-height: 52px;
+    padding: 4px var(--mr-space-3);
+    border: 0;
+    background: none;
+    font: inherit;
+    text-align: left;
+    color: var(--mr-ink);
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--mr-focus);
+      outline-offset: -2px;
+    }
+
+    .mat-icon {
+      flex: none;
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__name {
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
+  &__sub {
+    font-size: var(--mr-font-14);
+    line-height: 18px;
+    color: var(--mr-ink-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__more {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin-right: var(--mr-space-1);
+    padding: 0;
+    border: 0;
+    border-radius: var(--mr-radius-sm);
+    background: none;
+    color: var(--mr-ink-muted);
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--mr-focus);
+      outline-offset: 2px;
+    }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mr-space-3);
+    padding: 0 var(--mr-space-3) var(--mr-space-3);
+  }
+}
+
+.add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2) var(--mr-space-3);
+
+  button {
+    min-height: 44px;
+  }
+
+  &__why {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    font-size: var(--mr-font-14);
+    color: var(--mr-ink-muted);
+
+    .mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: var(--mr-font-16);
+    }
+  }
+}

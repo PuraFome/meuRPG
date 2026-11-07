@@ -280,9 +280,9 @@ Where each roll counts it is in [Held rolls](play/held-rolls.md#a-d20-that-count
 
 ### Critical range
 
-`modifier` with the target `critical_range` (menu name "Margem de acerto crítico (o menor d20 que é crítico)") sets the lowest natural d20 that is a critical hit.
+`modifier` with the target `critical_range` (menu name "Margem de acerto crítico") sets the lowest natural d20 that is a critical hit.
 The mode is `set` (an empty mode is read as `set`; any other is refused at `.mode`), and a literal `value` is 15 to 20 (`.value`); a formula is clamped to 15..20 when it is worked out.
-The menu entry carries `only_modes`, `min` and `max`; the editor does not read them, and the server refuses a mode or a value outside them.
+The menu entry carries `only_modes`, `min` and `max`; the editor reads `only_modes` and locks the mode to "Definir", and the server refuses a mode or a value outside them.
 `applies` is the scope: `weapon` (the default, as the SRD's Improved Critical), `spell` or `both`.
 The list `critical_scopes` carries the three words; any other word is refused at `.applies`, and `applies` on any other target is refused at `.applies`.
 `Derive` lowers `Derived.CriticalRange` (the weapon attacks) to the lowest of the range the SRD features give and the value of each `weapon` or `both` modifier whose `when` holds.
@@ -317,7 +317,12 @@ The SRD's rows are shared, so a row is copied before it changes.
 `Replaces` is a feature of the class (an SRD one or another table class feature) that leaves the rows from the entry's level on, as the `replaces` effect hides lower tiers; the entry is refused if the class has no such feature at that level or later, or if it came earlier ("a character never loses what it already had"), and a feature replaced twice is refused at the second entry (in key order).
 A switched-off entry is skipped entirely: the class reads as it did without it, and the replaced feature stays.
 An archived entry still applies to the sheets that have the class.
-Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt` and `.effects`.
+Checked at its fields: `.class_key` (a class of the content), `.level` (1 to 20), `.replaces_feature_key`, `.desc_pt`, `.effects` and `.summon`.
+A class feature may carry a `summon` (`TableClassFeature.summon`).
+It brings creatures to every character that has the feature at its level.
+It is checked and cast as a [table feature's summon](#table-feature-summons).
+Its `resource_key` is a resource the entry's own `resource` effects define, or one of its class or the SRD.
+A player reads only its `creature_keys`.
 
 ## Table creatures
 
@@ -471,6 +476,9 @@ A player never reads the name of a hidden race, feat or feature, in a key or in 
 That holds for the player's copy of a feat, the level-up options and the texts of the feat-choice cards.
 A feat that asks only for hidden races is not offered to a player and is not in their copy, because without the races its prerequisite would read as none.
 A feat that asks for some visible races and some hidden ones names the visible ones only.
+A condition on something the player may not read comes with `hidden` (`FeatUnmet.hidden`, `FeatOption.lacks_feature_hidden`) set and the key and name empty, so the app shows a neutral condition, never a name.
+The `race` kind is hidden only when every asked race is.
+The master's view is never hidden.
 What a sheet has is named to it: the race, subrace, feat or feature it holds, and the traits, features and options of the entries it keeps.
 That holds in the level-up options, the cards and the player's copies of the entries.
 A condition on a hidden feature the sheet does not have reads as a text that names nothing, never as no condition.
@@ -496,7 +504,8 @@ Combat uses `Spellcasting.SpellList`, the list the caster reads: the class's or,
 ## Switches and hidden keys
 
 The master switches classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures on or off per campaign, SRD and table alike; everything is on by default.
-The options screen has no creature group, so creatures are switched through the API only.
+The master switches creatures on the options screen, in its "Criaturas" group.
+The creature editor has the same switch.
 `Overlay.Off` carries the switched-off keys to `With`, which stores them on a copy and ignores a key that is not switchable (`Content.Switchable`).
 
 - `Content.Off(key)` is the key's own switch.
@@ -541,7 +550,11 @@ Two reads give the class editor everything it needs, so the browser computes not
   Each row is a `TableClassLevel` ready to be the class's `levels` (features empty): bonus, cantrips known, spells known and the nine slot counts.
   The numbers are read from the SRD itself, never from the campaign's content: full and third use the Wizard/Cleric's, half the Paladin's (starts at level 2), pact the Warlock's, "knows" the cantrips and spells known of the Sorcerer (full), the Ranger (half) and the Warlock; "prepares" has no spells known.
   The third caster, which SRD 5.1 lacks, is our default: the full table at a third of the level, rounded up, 2 cantrips (3 from level 10) and, for one that knows spells, 3 at levels 3 and 4 and one more every two levels; the master changes whatever they want.
-- **`EffectMenu`** returns the effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, `events`, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_damage_types`, `resistance_kinds`, `resistance_conditions`, `conditions`, `granted_spell_abilities`, `state_ends`, `state_economies`, `weapon_filters`, `weapon_kinds`, skills, languages, tools and tag prefixes.
+- **`EffectMenu`** returns the effect types of the menu with their Portuguese names and sentences, each one's fields (required or not, the field's kind and list, a number's limits, `always_shown` for an optional field the editor never folds away), and every closed list with Portuguese names: modifier targets, modes, proficiency targets, levels, advantage modes and targets, senses, recharges, `events`, action economies, choice kinds, `ranged_attack_applies`, `damage_types`, `resistance_damage_types`, `resistance_kinds`, `resistance_conditions`, `conditions`, `granted_spell_abilities`, `state_ends`, `state_economies`, `weapon_filters`, `weapon_kinds`, `lackable_features`, `race_traits`, skills, languages, tools and tag prefixes.
+  `lackable_features` is the SRD features, traits, background features and feats a feat's `lacks_feature_key` may name (each passes the same key check the server uses; the keys of options are not listed), with where it comes from in `hint_pt` ("Monge, nível 5", "traço do SRD", "talento do SRD"); the table's own entries are not in it, because the editor already holds them.
+  `race_traits` is every trait of every SRD race, the keys a subrace of an SRD parent may name in `replaces_trait_keys`, with the Portuguese name, the race in `group` and the first sentence of the trait's Portuguese text in `hint_pt` (empty when it has none).
+  The table's own races and traits are not in it, because the editor already holds them.
+  Only the master reads the menu.
   It also carries the SRD option lists a "one option from a list" choice can offer, the formula functions with a sentence each, the class indexes `classLevel` accepts (SRD and table) and the limits.
   A test puts each value of each list in an effect and checks that `With` accepts it, so the menu never offers what the server refuses; it offers a subset of what the engine understands.
 
@@ -637,7 +650,9 @@ Tests: `TestATableSpellSummonsThroughTheSRDChecks`, `TestATableSummonIsRefusedAt
 
 ## Table feature summons
 
-A `TableFeature` of a class, a subclass, a race trait or a background may carry a `summon` (`TableFeature.Summon`, a `TableSummon`): the same creatures, count and limits as a spell's summon, spent with a use of a resource instead of a slot.
+A `TableFeature` of a class, a subclass, a race trait or a background, and a `TableClassFeature` entry, may carry a `summon` (`TableFeature.Summon` or `TableClassFeature.summon`, a `TableSummon`).
+It has the same creatures, count and limits as a spell's summon.
+It is spent with a use of a resource instead of a slot.
 An option carries none (`value` at `.summon`).
 The holder casts it through the same options, checks, concentration, replacement, dismissal and undo.
 It is not a spell of the holder's list: a sheet cannot list it.

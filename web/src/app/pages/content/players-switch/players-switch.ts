@@ -72,6 +72,8 @@ export class PlayersSwitch {
 
   readonly campaignId = input.required<string>();
   readonly entry = input.required<TableEntry>();
+  /** A line of its own for the kind, in place of the generic one (the creatures'). */
+  readonly noteText = input('');
   /** The entry with its new switch, after the server said yes. */
   readonly switched = output<TableEntry>();
 
@@ -80,6 +82,9 @@ export class PlayersSwitch {
   protected readonly saved = signal('');
 
   protected note(): string {
+    if (this.noteText()) {
+      return this.noteText();
+    }
     const e = this.entry();
     const n = e.charactersUsing;
     const masculine = KIND_NOUNS[e.kind]?.article === 'O';
