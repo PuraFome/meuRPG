@@ -6097,9 +6097,12 @@ type Combatant struct {
 	// (a reaction window opens for each melee hit), false when the server
 	// decides it on its own (the default). Only the master gets it, and only for an NPC whose stat block has a
 	// Parry; a player's copy never has the field, not even empty (RN-10, RN-20, RN-31).
-	ParryAsk      *bool `protobuf:"varint,112,opt,name=parry_ask,json=parryAsk,proto3,oneof" json:"parry_ask,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ParryAsk *bool `protobuf:"varint,112,opt,name=parry_ask,json=parryAsk,proto3,oneof" json:"parry_ask,omitempty"`
+	// The turn's free object interaction is spent (the first weapon drawn or stowed in the turn; SRD 5.1, "Other Activity on
+	// Your Turn"): the next change of gear costs the action. The owner's and the master's; never another player's.
+	ObjectInteractionUsed bool `protobuf:"varint,113,opt,name=object_interaction_used,json=objectInteractionUsed,proto3" json:"object_interaction_used,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *Combatant) Reset() {
@@ -6690,6 +6693,13 @@ func (x *Combatant) GetInitiativeTreatedAsSourceName() string {
 func (x *Combatant) GetParryAsk() bool {
 	if x != nil && x.ParryAsk != nil {
 		return *x.ParryAsk
+	}
+	return false
+}
+
+func (x *Combatant) GetObjectInteractionUsed() bool {
+	if x != nil {
+		return x.ObjectInteractionUsed
 	}
 	return false
 }
@@ -26744,7 +26754,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12%\n" +
 	"\x0eattacker_label\x18\x06 \x01(\tR\rattackerLabel\x12$\n" +
 	"\x0eattack_name_pt\x18\a \x01(\tR\fattackNamePt\x12\"\n" +
-	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xf8\x1e\n" +
+	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xb0\x1f\n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x121\n" +
@@ -26840,7 +26850,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1cinitiative_treated_as_source\x18n \x01(\tR\x19initiativeTreatedAsSource\x12H\n" +
 	"!initiative_treated_as_source_name\x18o \x01(\tR\x1dinitiativeTreatedAsSourceName\x12 \n" +
 	"\tparry_ask\x18p \x01(\bH\n" +
-	"R\bparryAsk\x88\x01\x01B\r\n" +
+	"R\bparryAsk\x88\x01\x01\x126\n" +
+	"\x17object_interaction_used\x18q \x01(\bR\x15objectInteractionUsedB\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +
 	"\x10_initiative_faceB\x15\n" +

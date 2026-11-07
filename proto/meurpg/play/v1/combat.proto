@@ -2908,6 +2908,10 @@ message Combatant {
   // decides it on its own (the default). Only the master gets it, and only for an NPC whose stat block has a
   // Parry; a player's copy never has the field, not even empty (RN-10, RN-20, RN-31).
   optional bool parry_ask = 112;
+
+  // The turn's free object interaction is spent (the first weapon drawn or stowed in the turn; SRD 5.1, "Other Activity on
+  // Your Turn"): the next change of gear costs the action. The owner's and the master's; never another player's.
+  bool object_interaction_used = 113;
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
