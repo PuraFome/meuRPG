@@ -292,3 +292,55 @@ func TestUndoOfASwapCrossingASetEquippedTakesTurns(t *testing.T) {
 		t.Errorf("deadlocks %d -> %d, want the database to have counted the 40P01", before, got)
 	}
 }
+
+func gearLine(res *playv1.ListCombatLogResponse) *playv1.CombatLogEntry {
+	for _, r := range res.GetRounds() {
+		for _, en := range r.GetEntries() {
+			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED {
+				return en
+			}
+		}
+	}
+	return nil
+}
+
+// The line of a swap in the combat log: the master and the owner read the piece, the way it went and
+// what it cost; a player who does not own the character reads nothing. A master's swap costs nothing
+// and the line says the master made it.
+func TestTheLogHasTheSwapForTheMasterAndTheOwnerAlone(t *testing.T) {
+	t.Parallel()
+	a, e := equipFight(t)
+	e = a.passTo(t, e, "Reator")
+	a.mustSwap(t, a.ana, a.pens, longswordKey, false)
+	a.mustSwap(t, a.ana, a.pens, daggerKey, false)
+	for i, u := range []*user{a.master, a.ana} {
+		line := gearLine(a.log(t, u, e))
+		if line == nil {
+			t.Fatalf("a gear line is missing from the log of reader %d", i)
+		}
+		g := line.GetGearSwapped()
+		if g.GetNamePt() == "" || g.GetKind() != "weapon" || g.GetEquipped() || g.GetCost() != "action" {
+			t.Errorf("reader %d reads %v, want the dagger stowed for the action", i, g)
+		}
+	}
+	if line := gearLine(a.log(t, a.bia, e)); line != nil {
+		t.Errorf("another player reads %v", line)
+	}
+	a.mustUndo(t, e)
+	for i, u := range []*user{a.master, a.ana} {
+		line := gearLine(a.log(t, u, e))
+		if line == nil || line.GetGearSwapped().GetCost() != "free" {
+			t.Errorf("reader %d reads %v after undoing the second, want the first (free)", i, line)
+		}
+	}
+	a.mustUndo(t, e)
+	if line := gearLine(a.log(t, a.master, e)); line != nil {
+		t.Errorf("the master reads %v after undoing both", line)
+	}
+
+	a.mustSwap(t, a.master, a.pens, shieldItem, false)
+	line := gearLine(a.log(t, a.ana, e))
+	if line == nil || line.GetGearSwapped().GetCost() != "" || !line.GetByMaster() {
+		t.Errorf("the owner reads %v for the master's swap, want a free line by the master", line)
+	}
+}
