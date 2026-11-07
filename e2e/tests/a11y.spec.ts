@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Browser, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { test } from './diagnostics';
 
 import { canvasJpeg, newCampaign, uploadThroughPicker } from './gallery-support';
@@ -86,6 +86,8 @@ import {
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
+import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
+import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -7770,6 +7772,158 @@ test('o painel de perguntas pendentes fora do combate passa no axe e nas confer�
   await scanHeldPanelScreens(browser, 'dark', 390);
 });
 
+/** The master answers a halfling's question for them while the roll sheet is open: the scene check's sheet and the group check's sheet
+ * swap the question for "O mestre respondeu por você.", with no answer left to give. */
+async function scanSheetMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const viewport = sizeOf(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForScenes(m, p, `Acessibilidade mestre respondeu ${Date.now()}`, true, { raceKey: 'race:halfling', subraceKey: 'subrace:lightfoot-halfling' });
+    campaignId = table.campaignId;
+    await openSceneRPC(m, campaignId, table.cartId);
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    const panel = m.getByRole('region', { name: 'Perguntas pendentes' });
+    const answerForThem = async (): Promise<void> => {
+      const keep = panel.getByRole('button', { name: 'Ficar com o 1' });
+      await expect(keep).toBeEnabled({ timeout: 30_000 });
+      await keep.click();
+    };
+
+    // The scene check: the sheet is open at the question when the master keeps the 1.
+    await p.getByRole('region', { name: 'Cena: A carroça tombada' }).getByRole('button', { name: 'Rolar Procurar pistas na carroça' }).click();
+    const sceneSheet = p.getByRole('dialog', { name: 'Rolar Procurar pistas na carroça' });
+    await typeD20(sceneSheet, 1);
+    await expect(sceneSheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeVisible();
+    await answerForThem();
+    await expect(sceneSheet.getByTestId('sheet-held-vanished')).toContainText('O mestre respondeu por você.');
+    await expect(sceneSheet.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
+    await expect(sceneSheet.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
+    await expectScreenPasses(p, `O teste de cena, o mestre respondeu pelo jogador ${where}`);
+    await closeSheet(sceneSheet);
+
+    // The group check: the same, on its own sheet.
+    await m.getByRole('button', { name: 'Pedir teste em grupo' }).click();
+    const ask = m.getByTestId('group-ask');
+    await ask.getByLabel('Teste', { exact: true }).selectOption({ label: 'Furtividade' });
+    await ask.getByLabel(/^CD \(/).fill('13');
+    await ask.getByRole('button', { name: 'Pedir o teste' }).click();
+    const groupSheet = p.getByRole('dialog');
+    await typeD20(groupSheet, 1);
+    await expect(groupSheet.getByRole('heading', { name: 'Tirou 1: rolar de novo?' })).toBeVisible();
+    await answerForThem();
+    await expect(groupSheet.getByTestId('sheet-held-vanished')).toContainText('O mestre respondeu por você.');
+    await expect(groupSheet.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
+    await expect(groupSheet.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
+    await expectScreenPasses(p, `O teste em grupo, o mestre respondeu pelo jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a folha que perdeu a pergunta, o mestre respondeu, passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSheetMasterAnswers(browser, 'light', 390);
+});
+
+test('a folha que perdeu a pergunta, o mestre respondeu, passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-35'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanSheetMasterAnswers(browser, 'dark', 1280);
+});
+
+/** The saving throw of the end of the turn, held for a reroll rule's question: the master keeps the d20 and the sheet the player has
+ * open swaps the question for "O mestre respondeu por você.", with no answer left to give. */
+async function scanEffectSaveMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade salvaguarda mestre ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    // The feat that rolls a d20 of 2 or lower again is given after the combat began, as the master may change a sheet.
+    const feat = await createEntryRPC(m, campaignId, 'tableFeat', rerollFeatBody());
+    const got = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(got.ok(), await got.text()).toBeTruthy();
+    const character = (await got.json()).character as { id: string; name: string; revision: number; sheet: { full: Record<string, unknown> } };
+    const gave = await callRPC(m, 'meurpg.characters.v1.CharacterService/UpdateCharacter', {
+      campaignId,
+      characterId: character.id,
+      revision: character.revision,
+      name: character.name,
+      sheet: { full: { ...character.sheet.full, featKeys: [...((character.sheet.full.featKeys as string[] | undefined) ?? []), feat] } },
+    });
+    expect(gave.ok(), await gave.text()).toBeTruthy();
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const me = enc.combatants.find((c) => c.label === 'Pensantus')!.id;
+    const captain = enc.combatants.find((c) => c.label === 'Capitão Goblin')!.id;
+    const added = await callRPC(m, 'meurpg.play.v1.LastingEffectService/AddLastingEffect', {
+      campaignId,
+      encounterId: enc.id,
+      idempotencyKey: crypto.randomUUID(),
+      targetIds: [me],
+      catalogKey: 'spell:hold-person',
+      casterId: captain,
+      duration: { kind: 'EFFECT_DURATION_KIND_ROUNDS', rounds: 10 },
+      playerVisible: true,
+      audience: 'EFFECT_AUDIENCE_ALL',
+    });
+    expect(added.ok(), await added.text()).toBeTruthy();
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await p.getByRole('button', { name: 'Encerrar turno' }).click();
+    const save = p.getByRole('dialog', { name: /^(Teste de resistência do fim do turno|Fim do seu turno)$/ });
+    await save.getByRole('button', { name: 'Digitar o resultado' }).click();
+    // A gnome saves against a spell with advantage: two d20, and the best of them (2) is the one the rule covers.
+    await save.getByLabel('Primeiro d20').fill('1');
+    await save.getByLabel('Segundo d20').fill('2');
+    await save.getByRole('button', { name: /Confirmar/ }).click();
+    await expect(save.getByRole('heading', { name: 'Tirou 2: rolar de novo?' })).toBeVisible();
+    await openSessionPage(m, campaignId);
+    const keep = m.getByRole('region', { name: /Tirou 2: rolar de novo\?/ }).getByRole('button', { name: 'Ficar com o 2' });
+    await expect(keep).toBeEnabled({ timeout: 30_000 });
+    await keep.click();
+    // The window is settled with the answer, so the sheet says so where it says that the test no longer waits.
+    await expect(save.getByText('O mestre respondeu por você.')).toBeVisible();
+    await expect(save.getByRole('button', { name: 'Rolar de novo' })).toHaveCount(0);
+    await expect(save.getByRole('button', { name: /^Ficar com o/ })).toHaveCount(0);
+    await expect(save.getByRole('button', { name: 'Rolar no app' })).toHaveCount(0);
+    await expectScreenPasses(p, `O teste de resistência do fim do turno, o mestre respondeu pelo jogador ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a resistência do fim do turno que perdeu a pergunta, o mestre respondeu, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-014', '@RN-35', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectSaveMasterAnswers(browser, 'light', 1280);
+});
+
+test('a resistência do fim do turno que perdeu a pergunta, o mestre respondeu, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-014', '@RN-35', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanEffectSaveMasterAnswers(browser, 'dark', 390);
+});
+
 /** The question of a table feature's reroll (R6, R7, R9): the player's "Tirou 2: rolar de novo?" and the answer on its way, and the
  * master's card while the roller answers first, when it is the master's turn to answer, and once the roller did. */
 async function scanRerollQuestionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
@@ -9833,4 +9987,249 @@ test('as ofertas lendárias e o Aparar passam no axe e nas conferências de layo
 test('as ofertas lendárias e o Aparar passam no axe e nas conferências de layout no tema escuro, em 390, 768 e 1280', { tag: ['@a11y', '@PM-04', '@RN-10'] }, async ({ browser }) => {
   test.setTimeout(400_000);
   await scanLegendaryScreens(browser, 'dark');
+});
+
+/** The master's Recharge and uses-per-day screens (#556): one test per screen and theme, each on its own Vrock fight (Esporos, Recharge 6;
+ * Guincho atordoante, 1/day), the state reached through the API, then checked (axe and layout) and saved at 390, 768 and 1280 px
+ * (E2E_SHOTS_DIR). */
+async function rechargeScreen(browser: Browser, colorScheme: 'light' | 'dark', screen: (s: RechargeScreen) => Promise<void>): Promise<void> {
+  const { m, p, close } = await pagesFor(browser, colorScheme, 1280);
+  try {
+    const fight = await beginVrockFight(m, p, 'Acessibilidade recarga');
+    const acts = fight.card.locator('app-creature-actions');
+    const everyWidth = async (page: Page, name: string, what: string, at?: () => Locator, where: 'turn' | 'order' | 'stay' = 'turn') => {
+      for (const width of WIDTHS) {
+        await page.setViewportSize(viewportOf(width));
+        // The order is its own tab on a phone: its screen opens the row there, every other screen is the turn's.
+        if (where === 'order') {
+          await openOrderRow(page, fight.label);
+        } else if (where === 'turn') {
+          await openTurn(page);
+        }
+        await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+        await shoot(page, name, width, colorScheme, at?.());
+      }
+    };
+    await screen({ m, p, fight, acts, everyWidth });
+  } finally {
+    await close();
+  }
+}
+
+type RechargeScreen = {
+  m: Page;
+  p: Page;
+  fight: Awaited<ReturnType<typeof beginVrockFight>>;
+  acts: Locator;
+  everyWidth: (page: Page, name: string, what: string, at?: () => Locator, where?: 'turn' | 'order' | 'stay') => Promise<void>;
+};
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  const tags = { tag: ['@a11y', '@MR-012', '@RN-20', '@RN-29'] };
+  test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: as ações prontas, a 390, 768 e 1280 px`, tags, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await rechargeScreen(browser, colorScheme, async ({ m, fight, acts, everyWidth }) => {
+      await expect(acts.getByText('Pronta')).toBeVisible();
+      await expect(acts.getByText('1 de 1')).toBeVisible();
+      await everyWidth(m, 'recarga-pronta', 'Recarga: as ações prontas', () => acts);
+      expect(fight.label).toBeTruthy();
+    });
+  });
+  test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: Esporos gasta no turno, com o "Usar" tracejado e o motivo, a 390, 768 e 1280 px`, tags, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await rechargeScreen(browser, colorScheme, async ({ m, fight, acts, everyWidth }) => {
+      await useCreatureActionRPC(m, fight, 'spores');
+      await m.reload();
+      await openSessionPage(m, fight.campaignId);
+      const spores = acts.locator('li.act').filter({ hasText: 'Esporos' });
+      await expect(spores.getByText('Gasta')).toBeVisible();
+      await expect(spores.getByText('A ação deste turno já foi usada.')).toBeVisible();
+      await expect(spores.getByRole('button', { name: /^Usar Esporos/ })).toHaveAttribute('aria-disabled', 'true');
+      await everyWidth(m, 'recarga-gasta', 'Recarga: Esporos gasta no turno', () => spores);
+    });
+  });
+  test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: a rolagem do d6 no começo do turno, a 390, 768 e 1280 px`, tags, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await rechargeScreen(browser, colorScheme, async ({ m, fight, acts, everyWidth }) => {
+      await useCreatureActionRPC(m, fight, 'spores');
+      await fight.nextTurn();
+      const rolled = m.getByTestId('recharge-rolled');
+      await expect(rolled).toContainText(/rolou \d no d6\./);
+      const spores = acts.locator('li.act').filter({ hasText: 'Esporos' });
+      // The d6 is the server's and random: whichever face came, the whole state is asserted, the same lines for both results.
+      const recharged = !/não recarregou/.test((await rolled.textContent()) ?? '');
+      await expect(rolled).toHaveClass(recharged ? /mr-notice--success/ : /mr-notice--neutral/);
+      await expect(rolled).toContainText(recharged ? /Esporos recarregou\./ : /Esporos não recarregou \(precisa de 6\)\./);
+      await expect(spores.getByText(recharged ? 'Pronta' : 'Gasta')).toBeVisible();
+      await expect(spores.getByText(recharged ? 'Gasta' : 'Pronta')).toHaveCount(0);
+      await expect(spores.getByText(/Volta com 6 no d6 que o app rola no começo de cada turno do/)).toHaveCount(recharged ? 0 : 1);
+      expect((await spores.getByRole('button', { name: /^Usar Esporos/ }).getAttribute('aria-disabled')) === 'true').toBe(!recharged);
+      // The notice sits under the action chips and above the attacks, in view with the chips.
+      const chips = fight.card.getByRole('list', { name: 'O que ele já usou neste turno' });
+      const above = await Promise.all([chips.boundingBox(), rolled.boundingBox(), acts.boundingBox()]);
+      expect(above[1]!.y).toBeGreaterThan(above[0]!.y);
+      expect(above[1]!.y).toBeLessThan(above[2]!.y);
+      await everyWidth(m, 'recarga-comeco-do-turno', 'Recarga: a rolagem no começo do turno', () => rolled);
+    });
+  });
+  test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: Guincho atordoante sem usos hoje, a 390, 768 e 1280 px`, tags, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await rechargeScreen(browser, colorScheme, async ({ m, fight, acts, everyWidth }) => {
+      await useCreatureActionRPC(m, fight, 'stunning-screech');
+      await fight.nextTurn();
+      const screech = acts.locator('li.act').filter({ hasText: 'Guincho atordoante' });
+      await expect(screech.getByText('0 de 1')).toBeVisible();
+      await expect(screech.getByText(`Sem usos hoje. O ${fight.label} tem de novo no próximo combate.`)).toBeVisible();
+      // Scrolled to the state it is named for: the list from the card's first header to the whole row, its uses and its reason.
+      await everyWidth(m, 'usos-por-dia-sem-usos', 'Usos por dia: sem usos hoje', () => acts.locator('.acts__list'));
+    });
+  });
+  test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: os limites na linha da ordem e a jogadora que não os lê, a 390, 768 e 1280 px`, tags, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await rechargeScreen(browser, colorScheme, async ({ m, p, fight, everyWidth }) => {
+      await useCreatureActionRPC(m, fight, 'spores');
+      await fight.nextTurn();
+      await useCreatureActionRPC(m, fight, 'stunning-screech');
+      await openOrderRow(m, fight.label);
+      const lines = m.getByTestId('order-limit');
+      await expect(lines).toHaveCount(2);
+      await expect(lines.filter({ hasText: /Esporos · Recarga 6 · (pronta|gasta)/ })).toHaveCount(1);
+      await expect(lines.filter({ hasText: 'Guincho atordoante · 1/dia · 0 de 1' })).toHaveCount(1);
+      await everyWidth(m, 'ordem-limites', 'Recarga: os limites na linha da ordem', () => lines.first(), 'order');
+      // A player reads nothing of it: no state, no uses, no roll, no "Outras ações".
+      await p.reload();
+      await openSessionPage(p, fight.campaignId);
+      // Searched where the master's card writes them, never in the whole page: its session bar reads "desde 14:03" (a "de 1" in the
+      // afternoon) and the player's own hit points read "24 de 24". The Vrock's row of the order and the combat view are the
+      // places; the uses are the master's "N de M" (the same shape) in the Vrock's row and the elements that carry them.
+      const area = p.locator('app-combat-view');
+      const vrockRow = p.locator('li.row').filter({ hasText: fight.label });
+      await expect(vrockRow).toBeVisible();
+      await expect(area).toContainText(fight.label); // the area is the combat the player reads, so its silence on the limits means something
+      for (const word of ['Outras ações', 'Pronta', 'Gasta', 'no d6', 'Recarga', 'Esporos', 'Guincho']) {
+        await expect(area).not.toContainText(word);
+      }
+      await expect(vrockRow).not.toContainText(/\d+ de \d+/);
+      for (const mine of ['app-creature-actions', '[data-testid="order-limit"]', '[data-testid="recharge-rolled"]', '.act__uses']) {
+        await expect(p.locator(mine)).toHaveCount(0);
+      }
+      await everyWidth(p, 'jogador-sem-limites', 'Recarga: a jogadora não lê os limites', undefined, 'stay');
+    });
+  });
+  test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: a ficha da criatura lenta e a que não pôde ser lida, a 390, 768 e 1280 px`, tags, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await rechargeScreen(browser, colorScheme, async ({ m, fight, everyWidth }) => {
+      let release: () => void = () => undefined;
+      const held = new Promise<void>((resolve) => (release = resolve));
+      await m.route('**/meurpg.rules.v1.ContentService/GetCreature', async (route) => {
+        await held;
+        await route.abort();
+      });
+      await m.reload();
+      await openSessionPage(m, fight.campaignId);
+      const acts = () => fight.card.locator('app-creature-actions');
+      await expect(fight.card.getByText('Lendo a ficha da criatura…')).toBeVisible();
+      await everyWidth(m, 'ficha-lendo', 'Recarga: lendo a ficha da criatura', acts);
+      release();
+      await expect(fight.card.locator('.acts__live')).toContainText('Não deu para ler as outras ações da criatura.');
+      await everyWidth(m, 'ficha-erro', 'Recarga: a ficha não pôde ser lida', acts);
+      await m.unroute('**/meurpg.rules.v1.ContentService/GetCreature');
+      const retry = fight.card.getByRole('button', { name: 'Tentar de novo' });
+      await retry.focus();
+      await retry.click();
+      // The focus stays in the section (its heading) while the card reads again, never on the page's body.
+      await expect(fight.card.getByRole('button', { name: /^Usar Esporos/ })).toBeVisible();
+      await expect(m.locator('body')).not.toBeFocused();
+    });
+  });
+  test(`a recarga e os usos por dia passam no axe e nas conferências de layout no tema ${theme}: o descanso longo devolve os usos dos NPCs, a 390, 768 e 1280 px`, tags, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await rechargeScreen(browser, colorScheme, async ({ m, fight, everyWidth }) => {
+      // The table has no NPC of its own that kept any use, so the preview's answer is the server's with one name added: what the
+      // server sends is held by the leak rows (leaktest).
+      await m.route('**/meurpg.play.v1.ResourceService/GetRestPreview', async (route) => {
+        const res = await route.fetch();
+        const body = (await res.json()) as Record<string, unknown>;
+        await route.fulfill({ response: res, json: { ...body, npcsBack: [{ characterId: 'bartolo', name: 'Bartolo' }] } });
+      });
+      await combatRPC(m, 'EndEncounter', { campaignId: fight.campaignId, encounterId: (await getEncounterRPC(m, fight.campaignId)).id });
+      await openSessionPage(m, fight.campaignId, 'grupo');
+      await m.getByRole('button', { name: 'Voltar à sessão' }).click();
+      const rest = m.getByRole('region', { name: 'Descanso' });
+      await rest.getByRole('button', { name: 'Descanso longo' }).click();
+      const question = rest.getByRole('alertdialog', { name: 'Começar o descanso longo?' });
+      await expect(question).toContainText('NPCs da campanha recuperam os usos: Bartolo.');
+      await everyWidth(m, 'descanso-longo-npcs', 'Recarga: o descanso longo devolve os usos dos NPCs', () => question, 'stay');
+      await m.unroute('**/meurpg.play.v1.ResourceService/GetRestPreview');
+    });
+  });
+}
+
+/** The Tela da mesa (#648): the master's panel in the live session (open, then with a pin that has a dashed row beside it) and the TV tab it opens
+ * (the waiting screen, the map with a roll, the combat on the map), in one table with the fog on. The TV tab is a page of the master's own context. */
+async function scanTableScreen(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const pensantusPlayer = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const torenPlayer = await browser.newContext({ storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
+  const m = await master.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    const ap = await pensantusPlayer.newPage();
+    const bp = await torenPlayer.newPage();
+    await Promise.all([m.goto('/'), ap.goto('/'), bp.goto('/')]);
+    const table = await tableForFog(m, ap, bp, `Acessibilidade tela da mesa ${Date.now()}`);
+    campaignId = table.campaignId;
+    const fog = await callRPC(m, 'meurpg.maps.v1.MapService/SetMapFog', { campaignId, mapId: table.mapId, groupVision: true });
+    expect(fog.ok(), await fog.text()).toBeTruthy();
+    await openSessionPage(m, campaignId);
+
+    const tv = await master.newPage();
+    await tv.goto(tvRoute(campaignId));
+    await expect(tv.locator('app-fog-map img[src$="as=tv"]').first()).toBeVisible();
+
+    // The panel with the TV open and following the table.
+    const panel = await openTvPanel(m);
+    await expect(panel.getByTestId('tv-state')).toContainText('Aberta');
+    await expect(panel.getByTestId('tv-pin-combat').getByRole('radio')).toBeDisabled();
+    await expectScreenPasses(m, `Tela da mesa, o painel aberto ${where}`);
+
+    // Pinned to the waiting screen: the combat row stays dashed, with its reason.
+    await chooseRow(panel, 'tv-pin-idle');
+    await expect(panel.getByTestId('tv-now')).toContainText('A tela de espera, fixa.');
+    await expectScreenPasses(m, `Tela da mesa, a TV fixa na espera e a linha tracejada ${where}`);
+    await expect(tv.getByRole('heading', { level: 2, name: 'Nada à mostra ainda' })).toBeVisible();
+    await expectLoaded(tv);
+    await expectScreenPasses(tv, `A TV, a tela de espera ${where}`);
+
+    // Following the table again: the map the group sees, with a roll beside it.
+    await chooseRow(panel, 'tv-mirror');
+    await rollForTableRPC(m, campaignId);
+    await expect(tv.locator('app-fog-map img[src$="as=tv"]').first()).toBeVisible();
+    await expect(tv.getByTestId('tv-roll-last')).toBeVisible();
+    await expectLoaded(tv);
+    await expectScreenPasses(tv, `A TV, o mapa e a rolagem ${where}`);
+
+    // The combat, drawn on the map.
+    await beginFogCombat(m, table);
+    await expect(tv.getByRole('heading', { level: 2, name: 'Ordem' })).toBeVisible();
+    await expectLoaded(tv);
+    await expectScreenPasses(tv, `A TV, o combate no mapa ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await pensantusPlayer.close();
+    await torenPlayer.close();
+  }
+}
+
+test('a Tela da mesa, o painel do mestre e a TV, passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@RN-10'] }, async ({ browser }) => {
+  await scanTableScreen(browser, 'light', 1280);
+});
+
+test('a Tela da mesa, o painel do mestre e a TV, passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@RN-10'] }, async ({ browser }) => {
+  await scanTableScreen(browser, 'dark', 390);
 });
