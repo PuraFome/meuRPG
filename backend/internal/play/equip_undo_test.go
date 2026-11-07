@@ -2,10 +2,9 @@ package play
 
 import (
 	"context"
-	"time"
-
 	"slices"
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -248,7 +247,7 @@ func TestUndoOfASwapCrossingASetEquippedTakesTurns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Begin() error = %v", err)
 	}
-	defer owner.Rollback(ctx) //nolint:errcheck // rolled back unless committed
+	defer func() { _ = owner.Rollback(ctx) }() // rolled back unless committed
 	if _, err := owner.Exec(ctx, `SELECT id FROM characters WHERE id = $1 FOR UPDATE`, a.pens.GetId()); err != nil {
 		t.Fatalf("lock the character: %v", err)
 	}
