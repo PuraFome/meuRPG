@@ -14,8 +14,8 @@ export interface PickMark {
   readonly note: string;
   /** The marks it has: the chosen target is 1, a missile's darts are as many as it took. */
   readonly count: number;
-  /** What the marks are: the one target ("Alvo") or darts ("×2"). */
-  readonly mode: 'target' | 'darts';
+  /** What the marks are: the one target ("Alvo"), darts ("×2"), or the master's candidates for an opportunity offer (a dashed ring, the chosen one solid). */
+  readonly mode: 'target' | 'darts' | 'offer';
 }
 
 /** The chip over the map that says why a creature cannot be the target. */

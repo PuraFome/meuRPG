@@ -98,9 +98,21 @@
   border: 6px solid var(--mr-accent);
 }
 
-.row__name {
+.row__text {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
+}
+
+.offer__note {
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
+
+.row__name {
   font-family: var(--mr-font-display);
   font-size: var(--mr-font-18);
   font-weight: 700;
@@ -110,7 +122,6 @@
 .row__sub {
   font-size: var(--mr-font-14);
   color: var(--mr-ink-muted);
-  text-align: right;
 }
 
 .actions {

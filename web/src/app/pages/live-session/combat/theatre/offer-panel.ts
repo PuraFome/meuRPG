@@ -6,16 +6,15 @@ import {
   computed,
   inject,
   input,
+  model,
   output,
-  signal,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { article } from '../../../../core/combat/combat-log';
 import { combatantInitial } from '../../../../core/combat/combat-view';
 import { type ReactorRow } from '../../../../core/combat/theatre';
-import { tieNumbers, upFirst } from '../../../../core/format/text';
+import { tieNumbers } from '../../../../core/format/text';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 
 let nextId = 0;
@@ -34,7 +33,7 @@ let nextId = 0;
     <section class="offer" [attr.aria-labelledby]="id + '-t'">
       <h3 class="offer__title" [id]="id + '-t'">Oferecer ataque de oportunidade</h3>
       <p class="offer__text">
-        {{ mover() }} saiu do alcance de alguém? Escolha quem. O jogador recebe a pergunta no celular e decide; atacar gasta a reação dele.
+        {{ grid() ? 'Os candidatos têm um anel no mapa.' : 'O jogador decide no celular; atacar gasta a reação dele.' }}
       </p>
       @if (error()) {
         <p class="offer__error" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ error() }}</p>
@@ -54,13 +53,18 @@ let nextId = 0;
             />
             <span class="row__dot" aria-hidden="true"></span>
             <app-combatant-token [initial]="initial(r.label)" [npc]="!r.player" [size]="30" />
-            <span class="row__name">{{ r.label }}</span>
-            <span class="row__sub">{{ r.spent ? 'Reação usada' : r.offered ? 'Oferta feita' : r.sub }}</span>
+            <span class="row__text">
+              <span class="row__name">{{ r.label }}</span>
+              <span class="row__sub">{{ subOf(r) }}</span>
+            </span>
           </label>
         } @empty {
           <p class="offer__text">Não há ninguém do outro lado que possa reagir.</p>
         }
       </div>
+      @if (grid()) {
+        <p class="offer__note">A distância é do mapa, só para ajudar: quem decide é você.</p>
+      }
       <div class="actions">
         <button matButton="outlined" type="button" class="btn" [disabled]="busy()" (click)="cancel.emit()">Não oferecer</button>
         <button matButton="outlined" type="button" class="btn" [disabled]="!picked() || busy()" disabledInteractive (click)="send()">
@@ -80,14 +84,16 @@ export class OfferPanel {
   readonly rows = input.required<readonly ReactorRow[]>();
   readonly busy = input(false);
   readonly error = input('');
+  /** The combat has a map: the candidates are ringed on it and each row says how far it is now (`hints`). */
+  readonly grid = input(false);
+  /** By candidate: "agora a 3 m", from the mover's own attacks; none for a theatre or an unknown distance. */
+  readonly hints = input<ReadonlyMap<string, string>>(new Map());
   readonly offer = output<string>();
   readonly cancel = output<void>();
 
   protected readonly id = `offer-${nextId++}`;
-  protected readonly picked = signal('');
-  protected readonly mover = computed(() =>
-    tieNumbers(`${upFirst(article(this.moverLabel()))} ${this.moverLabel()}`),
-  );
+  /** The candidate chosen: the page reads it to ring the map and writes it when a ring is tapped. */
+  readonly picked = model('');
   protected readonly toName = computed(() => {
     const r = this.rows().find((x) => x.id === this.picked());
     return r ? tieNumbers(`a ${r.label}`) : '';
@@ -98,7 +104,8 @@ export class OfferPanel {
     afterNextRender(
       () => {
         const first = this.rows().find((r) => !r.spent && !r.offered);
-        if (first) {
+        const kept = this.rows().some((r) => r.id === this.picked() && !r.spent && !r.offered);
+        if (first && !kept) {
           this.picked.set(first.id);
         }
         queueMicrotask(() =>
@@ -107,6 +114,14 @@ export class OfferPanel {
       },
       { injector: this.injector },
     );
+  }
+
+  /** The line under a name: why it cannot receive the offer, or what it is and how far it stands now. */
+  protected subOf(r: ReactorRow): string {
+    if (r.spent || r.offered) {
+      return r.spent ? 'Reação usada' : 'Oferta feita';
+    }
+    return [r.sub, this.hints().get(r.id)].filter(Boolean).join(' · ');
   }
 
   protected initial(label: string): string {

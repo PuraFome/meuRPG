@@ -212,6 +212,11 @@ export class CombatMapCard {
     );
   }
 
+  /** The ringed ones are the master's candidates for an opportunity offer: the legend names the ring. */
+  protected readonly offerRing = computed(() =>
+    (this.pick() ?? []).some((m) => m.mode === 'offer'),
+  );
+
   protected readonly preview = computed(
     () => this.cropOnPhone() && this.isMaster() && this.phone() && !this.pick(),
   );

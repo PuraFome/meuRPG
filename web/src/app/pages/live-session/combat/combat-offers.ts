@@ -10,6 +10,8 @@ import { newKey } from '../../../core/connect/idempotency';
 import { currentCombatant } from '../../../core/combat/combat-view';
 import { type ReactorAttack, reactorAttacks } from '../../../core/combat/opportunity';
 import { reactorRows } from '../../../core/combat/theatre';
+import { metersText } from '../../../core/units';
+import type { PickMark } from '../../../shared/combat-map/combat-map';
 import type { CombatantInfo } from './combat-info';
 import { type MasterAnswer } from './opportunity/opportunity-card';
 
@@ -19,6 +21,10 @@ export interface CombatOffersContext {
   readonly calls: Pick<CombatCalls, 'run' | 'error'>;
   readonly campaignId: () => string;
   readonly encounter: () => Encounter | null;
+  /** The combat is played without a map: no distance, no rings. */
+  readonly theatre: () => boolean;
+  /** The mover's own turn options (the distances of its attacks' targets). */
+  readonly options: () => GetTurnOptionsResponse | null;
   /** The offers the caller answers. */
   readonly toAnswer: () => readonly OpportunityOffer[];
   readonly info: () => ReadonlyMap<string, CombatantInfo>;
@@ -50,6 +56,41 @@ export class CombatOffers {
             '',
         )
       : [];
+  });
+  /** The candidate the master picked (the panel's choice, or a tap on its ring on the map); `''` until the panel preselects one. */
+  readonly picked = signal('');
+  /** On a map: how far each candidate is now, as the mover's own attacks measure it ("agora a 3 m"). Absent for a theatre or an unknown distance. */
+  readonly hints = computed<ReadonlyMap<string, string>>(() => {
+    const near = new Map<string, number>();
+    if (this.ctx.theatre()) {
+      return new Map();
+    }
+    for (const a of this.ctx.options()?.attackTargets ?? []) {
+      for (const t of a.targets) {
+        if (t.distanceFt !== undefined) {
+          near.set(t.combatantId, Math.min(near.get(t.combatantId) ?? t.distanceFt, t.distanceFt));
+        }
+      }
+    }
+    return new Map([...near].map(([id, ft]) => [id, `agora a ${metersText(ft)}`]));
+  });
+  /** The candidates ringed on the map while the panel is open: whoever can still receive the offer. Null in a theatre or with the panel closed. */
+  readonly marks = computed<readonly PickMark[] | null>(() => {
+    if (!this.offering() || this.ctx.theatre()) {
+      return null;
+    }
+    const open = this.rows().filter((r) => !r.spent && !r.offered);
+    if (!open.length) {
+      return null;
+    }
+    return open.map((r) => ({
+      id: r.id,
+      label: r.label,
+      reason: '',
+      note: '',
+      count: this.picked() === r.id ? 1 : 0,
+      mode: 'offer' as const,
+    }));
   });
   /** Why the offer cannot be made now (nobody on the other side can react), or `''`. */
   readonly why = computed(() => {
@@ -165,11 +206,19 @@ export class CombatOffers {
     }
   }
 
+  /** A tap on a ringed candidate of the map picks it in the panel. */
+  tap(id: string): void {
+    if (this.marks()?.some((m) => m.id === id)) {
+      this.picked.set(id);
+    }
+  }
+
   /** "Oferecer ataque de oportunidade": opens the form under its button (a new form, new keys), or closes it. */
   toggle(): void {
     if (!this.offering()) {
       this.keys = new Map();
       this.error.set('');
+      this.picked.set('');
     }
     this.offering.set(!this.offering());
   }

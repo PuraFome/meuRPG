@@ -11,8 +11,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { RouterLink } from '@angular/router';
-import { creatureSlug } from '../../../../core/creatures/bestiary-format';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
@@ -69,6 +67,7 @@ import {
   statsOf,
 } from './npc-card-view';
 import { attacksMade, routinesOf } from './multiattack';
+import { NpcCardMenu } from './npc-card-menu';
 import { PendingDamages } from './pending-damages';
 
 /**
@@ -96,13 +95,13 @@ import { PendingDamages } from './pending-damages';
     MatFormFieldModule,
     MatIconModule,
     MatSelectModule,
+    NpcCardMenu,
     PendingDamages,
     Portrait,
     RageStatus,
     MultiRoll,
     RollModePicker,
     RollPicker,
-    RouterLink,
   ],
   templateUrl: './npc-card.html',
   styleUrl: './npc-card.scss',
@@ -169,10 +168,6 @@ export class NpcCard {
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly initial = computed(() => combatantInitial(this.subject().label));
   protected readonly isCreatureSubject = computed(() => isCreature(this.subject()));
-  /** The creature's route segment when the subject is a monster of the bestiary ("bandit"); the key only reaches the master (RN-29). */
-  protected readonly creatureSlug = computed(() =>
-    creatureSlug(this.subject().bestiaryCreatureKey ?? ''),
-  );
   /** "Goblin · ND 1/4": what it is, under the title; empty for a character or a creature of a player. */
   protected readonly identity = computed(() => {
     const c = this.subject();

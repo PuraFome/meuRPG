@@ -293,8 +293,10 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
     fixture.detectChanges();
     const text = plain(el.textContent);
     expect(text).toContain('Oferecer ataque de oportunidade');
-    expect(text).toContain('O Goblin 1 saiu do alcance de alguém?');
-    expect(text).toContain('atacar gasta a reação dele');
+    expect(text).toContain('O jogador decide no celular; atacar gasta a reação dele.');
+    expect(text).not.toContain('Os candidatos têm um anel no mapa.');
+    expect(text).not.toContain('A distância é do mapa');
+    expect(text).not.toContain('agora a ');
     expect(text).toContain('Saiu do alcance de');
     expect(text).toContain('Toren');
     expect(text).toContain('Guerreiro 4');
@@ -336,6 +338,50 @@ describe('OfferPanel, "Oferecer ataque de oportunidade" (E10-04 state 3)', () =>
     const { el } = setup(rows);
     expect(plain(el.textContent)).toContain('Oferta feita');
     expect((el.querySelector('input[type="radio"]') as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it('on a map: one line for the rings, the distance of each candidate, the footer, and the first available one picked', async () => {
+    const rows = reactorRows(
+      theatre({
+        currentCombatantId: 'g1',
+        combatants: [toren, { ...toren, id: 't2', label: 'Brisa', reactionUsed: true }, goblin],
+      }),
+      (c) => (c.id === 't' ? 'Guerreiro 5' : ''),
+    );
+    const { fixture, el } = setup(rows);
+    fixture.componentRef.setInput('grid', true);
+    fixture.componentRef.setInput('hints', new Map([['t', 'agora a 3 m']]));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const text = plain(el.textContent);
+    expect(text).toContain('Os candidatos têm um anel no mapa.');
+    expect(text).toContain('Guerreiro 5 · agora a 3 m');
+    expect(text).toContain('A distância é do mapa, só para ajudar: quem decide é você.');
+    expect(fixture.componentInstance.picked()).toBe('t');
+    expect(button(el, 'Oferecer a Toren')).toBeTruthy();
+    // The one with the reaction spent keeps only its state, never a distance.
+    expect(text).toContain('Reação usada');
+    const radios = [...el.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+    expect(radios.map((r) => r.disabled)).toEqual([false, true]);
+  });
+
+  it('keeps a candidate the page picked (a tap on its ring) instead of preselecting the first', async () => {
+    const rows = reactorRows(
+      theatre({
+        currentCombatantId: 'g1',
+        combatants: [toren, { ...toren, id: 't2', label: 'Brisa' }, goblin],
+      }),
+      () => '',
+    );
+    const fixture = TestBed.createComponent(OfferPanel);
+    fixture.componentRef.setInput('moverLabel', 'Goblin 1');
+    fixture.componentRef.setInput('rows', rows);
+    fixture.componentRef.setInput('picked', 't2');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.picked()).toBe('t2');
+    expect(button(fixture.nativeElement, 'Oferecer a Brisa')).toBeTruthy();
   });
 
   it('cancels with "Não oferecer"', () => {

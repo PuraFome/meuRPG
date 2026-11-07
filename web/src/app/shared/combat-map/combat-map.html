@@ -179,6 +179,7 @@
             class="cm__pick"
             [class.cm__pick--off]="!!m.reason"
             [class.cm__pick--on]="m.count > 0"
+            [class.cm__pick--offer]="m.mode === 'offer'"
             [attr.data-pick]="c.id"
             [attr.aria-disabled]="m.reason ? 'true' : null"
             [attr.aria-label]="layer.name(m)"
@@ -195,7 +196,7 @@
                   @if (m.mode === 'darts') {
                     ×{{ m.count }}
                   } @else {
-                    <mat-icon>check</mat-icon>Alvo
+                    <mat-icon>check</mat-icon>{{ m.mode === 'offer' ? 'Oferta' : 'Alvo' }}
                   }
                 </span>
               }
