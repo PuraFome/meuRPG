@@ -1,7 +1,7 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import { FakeClock, noOpenSession, screenResponse } from './table-screen-testing';
-import { TV_RETRY_MS, TV_STALE_MS, TvScreenState } from './table-screen-state';
+import { TV_LATE_GRACE_MS, TV_RETRY_MS, TV_STALE_MS, TvScreenState } from './table-screen-state';
 import { toTvScreen } from './table-screen-view';
 
 const START = new Date(2026, 0, 5, 21, 10);
@@ -42,23 +42,59 @@ describe('TvScreenState', () => {
     expect(clock.pending).toBe(0);
   });
 
-  it('keeps the screen when a later read fails', () => {
+  it('marks a shown screen late when a later read fails, reads again every 10 s, and hides it after a minute', () => {
     state.loaded(SCREEN);
     state.readFailed(new ConnectError('down', Code.Unavailable));
-    expect(state.phase().kind).toBe('ready');
+    clock.advance(TV_LATE_GRACE_MS);
+    expect(state.phase()).toMatchObject({ kind: 'ready', screen: SCREEN });
+    expect((state.phase() as { late: string }).late).toContain('atrasada desde 21:10');
+    clock.advance(TV_RETRY_MS - TV_LATE_GRACE_MS);
+    expect(reads).toBe(1);
+    state.readFailed(new ConnectError('down', Code.Unavailable));
+    clock.advance(TV_RETRY_MS);
+    expect(reads).toBe(2);
+    clock.advance(TV_STALE_MS);
+    expect(state.phase().kind).toBe('stale');
+  });
+
+  it('is on time again once a read works', () => {
+    state.loaded(SCREEN);
+    state.readFailed(new ConnectError('down', Code.Unavailable));
+    clock.advance(TV_RETRY_MS);
+    state.loaded(SCREEN);
+    expect(state.phase()).toEqual({ kind: 'ready', screen: SCREEN, late: null });
     expect(clock.pending).toBe(0);
+  });
+
+  it('does not flash the warning for a reconnection that takes a second', () => {
+    state.loaded(SCREEN);
+    state.connection(false);
+    clock.advance(1000);
+    expect(state.phase()).toEqual({ kind: 'ready', screen: SCREEN, late: null });
+    state.connection(true);
+    clock.advance(TV_STALE_MS);
+    expect(state.phase().kind).toBe('ready');
+  });
+
+  it('shows a lost sign-in, and never retries the read', () => {
+    state.readFailed(new ConnectError('who', Code.Unauthenticated));
+    expect(state.phase()).toMatchObject({ kind: 'signed-out' });
+    expect(clock.pending).toBe(0);
+    clock.advance(TV_RETRY_MS * 3);
+    expect(reads).toBe(0);
   });
 
   it('warns with the hour a connection was lost, then hides the screen after a minute, then comes back', () => {
     state.loaded(SCREEN);
     clock.advance(1000);
     state.connection(false);
+    clock.advance(TV_LATE_GRACE_MS);
     expect(state.phase()).toEqual({
       kind: 'ready',
       screen: SCREEN,
       late: 'Esta tela pode estar atrasada desde 21:10. Ela continua assim por até 1 minuto.',
     });
-    clock.advance(TV_STALE_MS - 1);
+    clock.advance(TV_STALE_MS - TV_LATE_GRACE_MS - 1);
     expect(state.phase().kind).toBe('ready');
     clock.advance(1);
     expect(state.phase()).toEqual({

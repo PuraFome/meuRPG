@@ -77,13 +77,15 @@ describe('TableScreenPanel', () => {
       screenResponse({ choiceRevision: 9, choice: { mirror: false, pin: K.IMAGE } }),
     );
     expect(await panel.choose({ mirror: true, pin: K.UNSPECIFIED })).toBe('stale');
-    expect(panel.failed()).toBe(true);
+    expect(panel.stale()).toBe(true);
+    expect(panel.failed()).toBe(false);
     expect(panel.pin()).toBe(K.IMAGE);
     // Trying again sends the new revision and clears the failure.
     set.mockResolvedValue({});
     expect(await panel.choose({ mirror: true, pin: K.UNSPECIFIED })).toBe('ok');
     expect(set).toHaveBeenLastCalledWith('c1', 9, { mirror: true, pin: K.UNSPECIFIED });
     expect(panel.failed()).toBe(false);
+    expect(panel.stale()).toBe(false);
   });
 
   it('says "failed" for any other error and keeps the panel as it was', async () => {

@@ -98,7 +98,7 @@ export class TableScreenWatcher {
         onVitals: () => undefined,
         onContentChanged: () => this.hint(),
         onEnded: () => this.state.ended(),
-        onFatal: () => this.state.refuse(),
+        onFatal: (kind) => (kind === 'signed-out' ? this.state.signedOut() : this.state.refuse()),
       },
     });
     this.stream.set(stream);
@@ -155,7 +155,7 @@ export class TableScreenWatcher {
     this.state.readFailed(err);
     const phase = this.state.phase().kind;
     // A refusal or the end closes the stream too: there is nothing more to watch.
-    if (phase === 'no-access' || phase === 'ended') {
+    if (phase === 'no-access' || phase === 'ended' || phase === 'signed-out') {
       this.stream()?.stop();
     }
   }

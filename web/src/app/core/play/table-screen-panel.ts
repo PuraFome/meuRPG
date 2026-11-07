@@ -39,6 +39,8 @@ export class TableScreenPanel {
   readonly saving = signal(false);
   /** The last choice was not stored ("Não deu para mudar a Tela da mesa. A TV continua como estava."). */
   readonly failed = signal(false);
+  /** The last choice was refused because the choice had moved; the panel shows what is there now. */
+  readonly stale = signal(false);
 
   readonly options = computed(() => this.data()?.options ?? []);
   readonly mirror = computed(() => this.data()?.choice?.mirror ?? true);
@@ -101,16 +103,18 @@ export class TableScreenPanel {
     }
     this.saving.set(true);
     this.failed.set(false);
+    this.stale.set(false);
     try {
       await this.client.set(campaignId, current.choiceRevision, pick);
     } catch (err) {
       this.saving.set(false);
-      this.failed.set(true);
       // A choice that moved since it was read: show what is there now, and let the master choose again.
       if (tableScreenErrorKind(err) === 'stale') {
+        this.stale.set(true);
         await this.load();
         return 'stale';
       }
+      this.failed.set(true);
       return 'failed';
     }
     this.saving.set(false);

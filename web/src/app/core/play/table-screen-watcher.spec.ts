@@ -4,7 +4,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import { nextTurn } from '../../../test-settle';
 import { TableScreenClient } from './table-screen-client';
 import { TV_DEBOUNCE_MS, TV_CLOCK, TableScreenWatcher, tvEvents } from './table-screen-watcher';
-import { TV_RETRY_MS, TV_STALE_MS } from './table-screen-state';
+import { TV_LATE_GRACE_MS, TV_RETRY_MS, TV_STALE_MS } from './table-screen-state';
 import {
   FakeClock,
   FakeWatchCall,
@@ -125,6 +125,8 @@ describe('TableScreenWatcher', () => {
     await settleAll();
     last().fail(new ConnectError('down', Code.Unavailable));
     await settleAll();
+    expect(watcher.state.phase()).toMatchObject({ kind: 'ready', late: null });
+    clock.advance(TV_LATE_GRACE_MS);
     const phase = watcher.state.phase();
     expect(phase.kind === 'ready' && phase.late).toContain('atrasada desde 21:10');
     clock.advance(TV_STALE_MS);
@@ -149,6 +151,49 @@ describe('TableScreenWatcher', () => {
     await settleAll();
     expect(gets).toHaveBeenCalledTimes(2);
     expect(watcher.state.phase().kind).toBe('ready');
+  });
+
+  it('marks the screen late when a read fails after one worked, and reads again in 10 s', async () => {
+    watcher.start('c1');
+    await settleAll();
+    last().push('ready');
+    await settleAll();
+    gets.mockRejectedValueOnce(new ConnectError('down', Code.Unavailable));
+    last().push('changed');
+    await settleAll();
+    clock.advance(TV_DEBOUNCE_MS);
+    await settleAll();
+    expect(watcher.state.phase().kind).toBe('ready');
+    clock.advance(TV_LATE_GRACE_MS);
+    const phase = watcher.state.phase();
+    expect(phase.kind === 'ready' && phase.late).toContain('atrasada');
+    clock.advance(TV_RETRY_MS);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(3);
+    expect(watcher.state.phase()).toMatchObject({ kind: 'ready', late: null });
+  });
+
+  it('shows a lost sign-in, not the refusal, and stops', async () => {
+    watcher.start('c1');
+    await settleAll();
+    last().fail(new ConnectError('who', Code.Unauthenticated));
+    await settleAll();
+    expect(watcher.state.phase().kind).toBe('signed-out');
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(calls).toHaveLength(1);
+  });
+
+  it('stops reading when a read says the sign-in is gone', async () => {
+    gets.mockRejectedValueOnce(new ConnectError('who', Code.Unauthenticated));
+    watcher.start('c1');
+    await settleAll();
+    last().push('ready');
+    await settleAll();
+    expect(watcher.state.phase().kind).toBe('signed-out');
+    expect(last().aborted).toBe(true);
+    clock.advance(TV_RETRY_MS * 3);
+    await settleAll();
+    expect(gets).toHaveBeenCalledTimes(1);
   });
 
   it('ends on `session_ended` and stops the stream', async () => {

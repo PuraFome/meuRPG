@@ -24,6 +24,9 @@ export const TV_RETRY_MS = 10_000;
 /** A screen that lost its connection keeps showing the last good read this long, with a warning. */
 export const TV_STALE_MS = 60_000;
 
+/** A connection that just dropped is not shown as late for this long: the stream's own 10-minute cap reconnects in about a second. */
+export const TV_LATE_GRACE_MS = 3000;
+
 /** What the TV page draws: one case per state of the board. */
 export type TvPhase =
   | { readonly kind: 'loading'; readonly text: string }
@@ -41,7 +44,47 @@ export type TvPhase =
       readonly farewell: string;
       readonly hint: string;
     }
-  | { readonly kind: 'no-access'; readonly title: string; readonly detail: string };
+  | { readonly kind: 'no-access'; readonly title: string; readonly detail: string }
+  /** The sign-in is gone: the page sends the viewer to the login. */
+  | { readonly kind: 'signed-out'; readonly title: string; readonly detail: string };
+
+/** One way the screen can be behind (the stream down, or reads failing): when it began, whether it is worth a warning
+ * yet, and whether it lasted a minute. */
+class Outage {
+  readonly since = signal<Date | null>(null);
+  readonly late = signal(false);
+  readonly stale = signal(false);
+  private cancels: (() => void)[] = [];
+
+  constructor(private readonly clock: TvClock) {}
+
+  begin(): void {
+    if (this.since() !== null) {
+      return;
+    }
+    this.since.set(this.clock.now());
+    this.cancels = [
+      this.clock.after(TV_LATE_GRACE_MS, () => this.late.set(true)),
+      this.clock.after(TV_STALE_MS, () => {
+        this.late.set(true);
+        this.stale.set(true);
+      }),
+    ];
+  }
+
+  end(): void {
+    this.drop();
+    this.since.set(null);
+    this.late.set(false);
+    this.stale.set(false);
+  }
+
+  /** Cancels the timers, leaving the state as it is. */
+  drop(): void {
+    this.cancels.forEach((cancel) => cancel());
+    this.cancels = [];
+  }
+}
 
 /**
  * The TV's lifecycle as signals: loading, the screen with an optional "late" warning, the hidden screen after a
@@ -52,23 +95,32 @@ export type TvPhase =
 export class TvScreenState {
   private readonly screen = signal<TvScreenVm | null>(null);
   private readonly readFailing = signal(false);
-  private readonly lostAt = signal<Date | null>(null);
-  private readonly stale = signal(false);
+  private readonly connectionOutage: Outage;
+  private readonly readOutage: Outage;
+  private readonly signedOutNow = signal(false);
   private readonly endedAt = signal<Date | null>(null);
   private readonly ending = signal(false);
   private readonly refused = signal(false);
   private cancelRetry: (() => void) | null = null;
-  private cancelStale: (() => void) | null = null;
 
   /** `readAgain` is asked after a failed first read, once `TV_RETRY_MS` has passed. */
   constructor(
     private readonly clock: TvClock,
     private readonly readAgain: () => void,
-  ) {}
+  ) {
+    this.connectionOutage = new Outage(clock);
+    this.readOutage = new Outage(clock);
+  }
 
   readonly phase = computed<TvPhase>(() => {
     const screen = this.screen();
-    const lostAt = this.lostAt();
+    if (this.signedOutNow()) {
+      return {
+        kind: 'signed-out',
+        title: 'Entre para abrir a Tela da mesa.',
+        detail: 'Sua entrada expirou. Entre de novo para ver a tela.',
+      };
+    }
     if (this.refused()) {
       return {
         kind: 'no-access',
@@ -79,7 +131,10 @@ export class TvScreenState {
     if (this.ending()) {
       return this.endedPhase(screen);
     }
-    if (lostAt && this.stale()) {
+    const outages = [this.connectionOutage, this.readOutage];
+    const lostAt = earliest(outages.filter((o) => o.stale()).map((o) => o.since()));
+    const lateAt = earliest(outages.filter((o) => o.late()).map((o) => o.since()));
+    if (lostAt) {
       return {
         kind: 'stale',
         title: `Sem conexão desde ${clockText(lostAt)}`,
@@ -90,8 +145,8 @@ export class TvScreenState {
       return {
         kind: 'ready',
         screen,
-        late: lostAt
-          ? `Esta tela pode estar atrasada desde ${clockText(lostAt)}. Ela continua assim por até 1 minuto.`
+        late: lateAt
+          ? `Esta tela pode estar atrasada desde ${clockText(lateAt)}. Ela continua assim por até 1 minuto.`
           : null,
       };
     }
@@ -122,19 +177,26 @@ export class TvScreenState {
   loaded(screen: TvScreenVm): void {
     this.screen.set(screen);
     this.readFailing.set(false);
+    this.readOutage.end();
     this.dropRetry();
   }
 
-  /** A failed read. With a screen already shown it stays (the connection state speaks); without one, the board's
-   * error and a new read in `TV_RETRY_MS`. Refusals and the end are final. */
+  /** A failed read. A shown screen stays, marked late (and hidden after a minute); without one, the board's error.
+   * Either way a new read comes in `TV_RETRY_MS`. Refusals, a lost sign-in and the end are final. */
   readFailed(err: unknown): void {
     const kind = tableScreenErrorKind(err);
     if (kind === 'no-access') {
       this.refuse();
+    } else if (kind === 'signed-out') {
+      this.signedOut();
     } else if (kind === 'no-session') {
       this.ended();
-    } else if (!this.screen()) {
-      this.readFailing.set(true);
+    } else {
+      if (this.screen()) {
+        this.readOutage.begin();
+      } else {
+        this.readFailing.set(true);
+      }
       this.dropRetry();
       this.cancelRetry = this.clock.after(TV_RETRY_MS, () => {
         this.cancelRetry = null;
@@ -146,26 +208,22 @@ export class TvScreenState {
   /** The stream is connected or not. A minute without it hides the screen. */
   connection(connected: boolean): void {
     if (connected) {
-      this.cancelStale?.();
-      this.cancelStale = null;
-      this.lostAt.set(null);
-      this.stale.set(false);
-      return;
+      this.connectionOutage.end();
+    } else {
+      this.connectionOutage.begin();
     }
-    if (this.lostAt() !== null) {
-      return;
-    }
-    this.lostAt.set(this.clock.now());
-    this.cancelStale = this.clock.after(TV_STALE_MS, () => {
-      this.cancelStale = null;
-      this.stale.set(true);
-    });
   }
 
   /** The session is over. */
   ended(): void {
     this.endedAt.set(this.clock.now());
     this.ending.set(true);
+    this.settle();
+  }
+
+  /** The sign-in is gone. */
+  signedOut(): void {
+    this.signedOutNow.set(true);
     this.settle();
   }
 
@@ -182,12 +240,16 @@ export class TvScreenState {
 
   private settle(): void {
     this.dropRetry();
-    this.cancelStale?.();
-    this.cancelStale = null;
+    this.connectionOutage.drop();
+    this.readOutage.drop();
   }
 
   private dropRetry(): void {
     this.cancelRetry?.();
     this.cancelRetry = null;
   }
+}
+
+function earliest(dates: readonly (Date | null)[]): Date | null {
+  return dates.reduce<Date | null>((a, b) => (a && b ? (a < b ? a : b) : (a ?? b)), null);
 }
