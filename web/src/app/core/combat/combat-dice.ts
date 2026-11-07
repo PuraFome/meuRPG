@@ -50,8 +50,11 @@ export function rollFormula(roll: DiceRoll): string {
 export const TREATED_FLOOR = 10;
 
 /** The Portuguese name of the feature that changed a d20 (`DiceRoll.treated_as_source`, a content key). */
+/** The content key of Talento Confiável, the one floor with a rule of its own (a skill the character is proficient in). */
+const RELIABLE_TALENT = 'feature:reliable-talent';
+
 const TREATED_SOURCE_NAMES: Readonly<Record<string, string>> = {
-  'feature:reliable-talent': 'Talento Confiável',
+  [RELIABLE_TALENT]: 'Talento Confiável',
 };
 
 /** The name a roll's `treated_as_source` goes by on the screens: the server's `treated_as_source_name` (sent only to the
@@ -88,12 +91,17 @@ export function treatedFormula(roll: DiceRoll, bonusNote = ''): string | null {
   return `d20: ${face} → ${roll.treatedAs} (${treatedSourceName(roll.treatedAsSource, roll.treatedAsSourceName)})${modifierText(roll.modifier)}${note} = ${roll.total}`;
 }
 
-/** "O d20 de 6 contou como 10: perícia com proficiência.": the sentence under the result, or `null` when nothing changed. */
+/** "O d20 de 6 contou como 10: Talento Confiável (perícia com proficiência).": the sentence under the result, or `null`
+ * when nothing changed. It names the feature that did it: a table feature's own name, or Talento Confiável with the rule it
+ * follows. */
 export function treatedSentence(roll: DiceRoll): string | null {
   const face = treatedFace(roll);
-  return face === null || roll.treatedAs === undefined
-    ? null
-    : `O d20 de ${face} contou como ${roll.treatedAs}: perícia com proficiência.`;
+  if (face === null || roll.treatedAs === undefined) {
+    return null;
+  }
+  const name = treatedSourceName(roll.treatedAsSource, roll.treatedAsSourceName);
+  const why = roll.treatedAsSource === RELIABLE_TALENT ? ' (perícia com proficiência)' : '';
+  return `O d20 de ${face} contou como ${roll.treatedAs}: ${name}${why}.`;
 }
 
 /** What a screen reader says for the same roll: "d20: 6, contou 10 por Talento Confiável, mais 9, total 19". */

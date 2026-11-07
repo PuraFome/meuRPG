@@ -199,8 +199,26 @@ describe('a d20 that Talento Confiável raised (PM-03b)', () => {
   });
 
   it('says it in a sentence and for a screen reader', () => {
-    expect(treatedSentence(raised)).toBe('O d20 de 6 contou como 10: perícia com proficiência.');
+    expect(treatedSentence(raised)).toBe(
+      'O d20 de 6 contou como 10: Talento Confiável (perícia com proficiência).',
+    );
     expect(treatedSpeech(raised)).toBe('d20: 6, contou 10 por Talento Confiável, mais 9, total 19');
+  });
+
+  it('names a table feature that raised the die, without the rule of Talento Confiável', () => {
+    const table = roll({
+      ...raised,
+      faces: [3],
+      treatedAs: 12,
+      treatedAsSource: 'content:feat-keen',
+      treatedAsSourceName: 'Olho Aguçado',
+    });
+    expect(treatedSentence(table)).toBe('O d20 de 3 contou como 12: Olho Aguçado.');
+    const unnamed = roll({ ...table, treatedAsSourceName: '' });
+    expect(treatedSentence(unnamed)).toBe('O d20 de 3 contou como 12: uma característica.');
+  });
+
+  it('says nothing for a roll no feature changed', () => {
     expect(treatedSentence(roll({ faces: [14], modifier: 9, total: 23 }))).toBeNull();
     expect(treatedSpeech(roll({ faces: [14], modifier: 9, total: 23 }))).toBeNull();
   });

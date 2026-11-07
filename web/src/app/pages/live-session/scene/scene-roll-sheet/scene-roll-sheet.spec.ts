@@ -141,7 +141,9 @@ describe('SceneRollSheet', () => {
       'd20: 6 → 10 (Talento Confiável) + 9 = 19',
     );
     const cap = Array.from(el.querySelectorAll('.res__cap')).map((n) => n.textContent?.trim());
-    expect(cap).toContain('O d20 de 6 contou como 10: perícia com proficiência.');
+    expect(cap).toContain(
+      'O d20 de 6 contou como 10: Talento Confiável (perícia com proficiência).',
+    );
     expect(el.querySelector('.res .mr-visually-hidden')?.textContent).toBe(
       'd20: 6, contou 10 por Talento Confiável, mais 9, total 19',
     );
