@@ -1,3 +1,4 @@
+import type { ManeuverDieOption } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { RollDie } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { ExtraDieField } from './effects';
 
@@ -98,15 +99,14 @@ export function attackDieCost(die: RollDie, uses: DieUses): string {
   return `d${die.sides} somado ao ataque · gasta 1 de ${uses.resourceNamePt} · restam ${uses.left}`;
 }
 
-/** What a weapon-attack die listing needs: the die and its pool (`ManeuverDieOption`). */
-export interface ListedDie {
-  readonly die?: RollDie;
-  readonly resourceNamePt: string;
-  readonly usesLeft: number;
-}
+/** What a weapon-attack die listing needs: the die and its pool. */
+export type ListedDie = Pick<ManeuverDieOption, 'die' | 'resourceNamePt' | 'usesLeft'>;
 
 function usesWord(left: number): string {
-  return left > 0 ? `restam ${left}` : 'sem usos';
+  if (left <= 0) {
+    return 'sem usos';
+  }
+  return left === 1 ? 'resta 1' : `restam ${left}`;
 }
 
 /**
@@ -132,8 +132,9 @@ export function maneuverLine(dice: readonly ListedDie[], where: 'list' | 'attack
   const lead = `${who} entrar ${where === 'list' ? 'num ataque com arma' : 'neste ataque'}: você marca ao rolar.`;
   if (where === 'attack' && pools.size === 1) {
     const left = [...pools.values()][0];
-    return `${lead} ${left > 0 ? `Restam ${left}.` : 'Sem usos.'}`;
+    const word = usesWord(left);
+    return `${lead} ${word[0].toUpperCase()}${word.slice(1)}.`;
   }
-  const tail = [...pools].map(([pool, left]) => `${pool}: ${usesWord(left)}.`).join(' ');
+  const tail = [...pools].map(([pool, left]) => `${pool ? `${pool}: ` : ''}${usesWord(left)}.`).join(' ');
   return `${lead} ${tail}`;
 }

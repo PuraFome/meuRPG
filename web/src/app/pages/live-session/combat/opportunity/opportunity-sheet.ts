@@ -196,7 +196,7 @@ export class OpportunitySheet {
     try {
       const { attacks, options } = await this.data.load();
       this.options = options;
-      this.dieLine.set(maneuverLine(options.maneuverDice ?? [], 'attack'));
+      this.dieLine.set(maneuverLine(options.maneuverDice, 'attack'));
       // The numbers after the name: "+5 · 1d8 + 3 cortante".
       this.attacks.set(attacks.map((a) => ({ ...a, numbers: a.detail.replace(`${a.name} `, '') })));
     } catch {
