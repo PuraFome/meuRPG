@@ -229,9 +229,10 @@ export function isCantrip(attack: Attack): boolean {
   return attack.kind === AttackKind.SPELL;
 }
 
-/** Where a granted spell comes from and what it costs: "Graça · À vontade", "Graça · 1 uso". */
+/** Where a granted spell comes from and what it costs: "Graça · À vontade", "Graça · 1 uso", "Graça · gasta 2 · 3 usos". */
 export function grantLine(g: SpellGrantOption): string {
-  const uses = g.atWill ? 'À vontade' : g.usesLeft === 1 ? '1 uso' : `${g.usesLeft} usos`;
+  const left = g.usesLeft === 1 ? '1 uso' : `${g.usesLeft} usos`;
+  const uses = g.atWill ? 'À vontade' : g.usesCost > 1 ? `gasta ${g.usesCost} · ${left}` : left;
   return `${g.sourceNamePt} · ${uses}`;
 }
 

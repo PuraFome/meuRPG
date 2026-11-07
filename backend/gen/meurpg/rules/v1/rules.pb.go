@@ -6141,9 +6141,13 @@ type GrantedSpell struct {
 	AttackBonus int32 `protobuf:"varint,11,opt,name=attack_bonus,json=attackBonus,proto3" json:"attack_bonus,omitempty"`
 	SaveDc      int32 `protobuf:"varint,12,opt,name=save_dc,json=saveDc,proto3" json:"save_dc,omitempty"`
 	// The level the grant starts at (the class level for a class or subclass feature).
-	FromLevel     int32 `protobuf:"varint,13,opt,name=from_level,json=fromLevel,proto3" json:"from_level,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	FromLevel int32 `protobuf:"varint,13,opt,name=from_level,json=fromLevel,proto3" json:"from_level,omitempty"`
+	// The material components are waived (the cast sheet drops "M"), and the uses a cast spends
+	// (1 or more; 0 for an at-will grant).
+	NoMaterialComponents bool  `protobuf:"varint,14,opt,name=no_material_components,json=noMaterialComponents,proto3" json:"no_material_components,omitempty"`
+	UsesCost             int32 `protobuf:"varint,15,opt,name=uses_cost,json=usesCost,proto3" json:"uses_cost,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *GrantedSpell) Reset() {
@@ -6263,6 +6267,20 @@ func (x *GrantedSpell) GetSaveDc() int32 {
 func (x *GrantedSpell) GetFromLevel() int32 {
 	if x != nil {
 		return x.FromLevel
+	}
+	return 0
+}
+
+func (x *GrantedSpell) GetNoMaterialComponents() bool {
+	if x != nil {
+		return x.NoMaterialComponents
+	}
+	return false
+}
+
+func (x *GrantedSpell) GetUsesCost() int32 {
+	if x != nil {
+		return x.UsesCost
 	}
 	return 0
 }
@@ -10557,11 +10575,15 @@ type SpellGrantOption struct {
 	// A spell slot casts it too.
 	AlsoWithSlot bool `protobuf:"varint,6,opt,name=also_with_slot,json=alsoWithSlot,proto3" json:"also_with_slot,omitempty"`
 	// The casting ability of the grant and the spell attack bonus and save DC it gives.
-	Ability       string `protobuf:"bytes,7,opt,name=ability,proto3" json:"ability,omitempty"`
-	AttackBonus   int32  `protobuf:"varint,8,opt,name=attack_bonus,json=attackBonus,proto3" json:"attack_bonus,omitempty"`
-	SaveDc        int32  `protobuf:"varint,9,opt,name=save_dc,json=saveDc,proto3" json:"save_dc,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Ability     string `protobuf:"bytes,7,opt,name=ability,proto3" json:"ability,omitempty"`
+	AttackBonus int32  `protobuf:"varint,8,opt,name=attack_bonus,json=attackBonus,proto3" json:"attack_bonus,omitempty"`
+	SaveDc      int32  `protobuf:"varint,9,opt,name=save_dc,json=saveDc,proto3" json:"save_dc,omitempty"`
+	// The material components are waived, and the uses a cast spends of `resource` (1 or more;
+	// 0 for an at-will grant). A cast works only while `uses_left` covers it.
+	NoMaterialComponents bool  `protobuf:"varint,10,opt,name=no_material_components,json=noMaterialComponents,proto3" json:"no_material_components,omitempty"`
+	UsesCost             int32 `protobuf:"varint,11,opt,name=uses_cost,json=usesCost,proto3" json:"uses_cost,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *SpellGrantOption) Reset() {
@@ -10653,6 +10675,20 @@ func (x *SpellGrantOption) GetAttackBonus() int32 {
 func (x *SpellGrantOption) GetSaveDc() int32 {
 	if x != nil {
 		return x.SaveDc
+	}
+	return 0
+}
+
+func (x *SpellGrantOption) GetNoMaterialComponents() bool {
+	if x != nil {
+		return x.NoMaterialComponents
+	}
+	return false
+}
+
+func (x *SpellGrantOption) GetUsesCost() int32 {
+	if x != nil {
+		return x.UsesCost
 	}
 	return 0
 }
@@ -13162,7 +13198,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x05count\x18\x02 \x01(\x05R\x05count\"Z\n" +
 	"\x0eCharacterSpell\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12\x1a\n" +
-	"\bprepared\x18\x02 \x01(\bR\bprepared\"\xc3\x03\n" +
+	"\bprepared\x18\x02 \x01(\bR\bprepared\"\x96\x04\n" +
 	"\fGrantedSpell\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x12\x1d\n" +
 	"\n" +
@@ -13180,7 +13216,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\fattack_bonus\x18\v \x01(\x05R\vattackBonus\x12\x17\n" +
 	"\asave_dc\x18\f \x01(\x05R\x06saveDc\x12\x1d\n" +
 	"\n" +
-	"from_level\x18\r \x01(\x05R\tfromLevel\"\xf4\x05\n" +
+	"from_level\x18\r \x01(\x05R\tfromLevel\x124\n" +
+	"\x16no_material_components\x18\x0e \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
+	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\xf4\x05\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -13551,7 +13589,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x11metamagic_options\x18\x1e \x03(\v2 .meurpg.rules.v1.MetamagicOptionR\x10metamagicOptions\x12#\n" +
 	"\rsculpt_spells\x18\x1f \x01(\bR\fsculptSpells\x127\n" +
 	"\x05grant\x18  \x01(\v2!.meurpg.rules.v1.SpellGrantOptionR\x05grant\x12F\n" +
-	"\rtable_options\x18! \x03(\v2!.meurpg.rules.v1.SpellTableOptionR\ftableOptions\"\xa5\x02\n" +
+	"\rtable_options\x18! \x03(\v2!.meurpg.rules.v1.SpellTableOptionR\ftableOptions\"\xf8\x02\n" +
 	"\x10SpellGrantOption\x12\x1d\n" +
 	"\n" +
 	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +
@@ -13562,7 +13600,10 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0ealso_with_slot\x18\x06 \x01(\bR\falsoWithSlot\x12\x18\n" +
 	"\aability\x18\a \x01(\tR\aability\x12!\n" +
 	"\fattack_bonus\x18\b \x01(\x05R\vattackBonus\x12\x17\n" +
-	"\asave_dc\x18\t \x01(\x05R\x06saveDc\"\xd0\x02\n" +
+	"\asave_dc\x18\t \x01(\x05R\x06saveDc\x124\n" +
+	"\x16no_material_components\x18\n" +
+	" \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
+	"\tuses_cost\x18\v \x01(\x05R\busesCost\"\xd0\x02\n" +
 	"\x10SpellTableOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1d\n" +

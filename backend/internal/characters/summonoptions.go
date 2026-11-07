@@ -184,7 +184,7 @@ func (s *Service) featureSummonOptions(ctx context.Context, q *charactersdb.Quer
 		SpellKey: key, NamePt: content.NamePT(key), Level: i32(det.Spell.Level), CastingTimePt: castingTimePT(own.CastingTime),
 		Concentration: own.Concentration, GrantedBy: rule.Feature, ResourceKey: grant.Resource, UsesLeft: i32(grant.UsesLeft),
 	}
-	if grant.UsesLeft > 0 {
+	if grant.UsesLeft >= max(grant.Cost, 1) {
 		if sc, ok := summonCircleOptions(content, key, det.Spell.Level, b); ok {
 			out.Circles = append(out.Circles, sc)
 		}

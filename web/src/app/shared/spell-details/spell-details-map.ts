@@ -137,6 +137,11 @@ function identityOf(row: GenSpellDetails['spell']) {
   };
 }
 
+/** The details of a spell cast through a grant that waives the material: the component line drops the "M" and its text. */
+export function withoutMaterial(vm: SpellDetailsVm): SpellDetailsVm {
+  return { ...vm, components: { ...vm.components, material: false } };
+}
+
 export function spellDetailsFromGen(d: GenSpellDetails): SpellDetailsVm {
   return {
     ...identityOf(d.spell),

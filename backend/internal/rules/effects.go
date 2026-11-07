@@ -289,6 +289,11 @@ type Effect struct {
 	AlsoWithSlot  bool   `json:"also_with_slot,omitempty"`
 	RitualOnly    bool   `json:"ritual_only,omitempty"`
 	CountsAsKnown bool   `json:"counts_as_known,omitempty"`
+	// NoMaterialComponents waives the spell's material components on the sheet and the cast sheet
+	// (the server never enforces components). UsesCost is how many uses of the Uses resource each
+	// cast spends: 0 and 1 are one; it needs a resource.
+	NoMaterialComponents bool `json:"no_material_components,omitempty"`
+	UsesCost             int  `json:"uses_cost,omitempty"`
 
 	// Spells are spells the effect grants, which then count as on the
 	// character's list (Infernal Legacy's thaumaturgy).
@@ -568,8 +573,8 @@ func (x effectCompiler) strayShapeAndSlots() error {
 // ranged_attack on an effect of another type.
 func (x effectCompiler) straySpellAndRangeFields() error {
 	e := x.e
-	if e.Type != "granted_spell" && (e.Spell != "" || e.FromLevel != "" || e.Uses != "" || e.AlsoWithSlot || e.RitualOnly || e.CountsAsKnown) {
-		return x.fail("spell, from_level, uses, also_with_slot, ritual_only and counts_as_known belong to granted_spell")
+	if e.Type != "granted_spell" && (e.Spell != "" || e.FromLevel != "" || e.Uses != "" || e.AlsoWithSlot || e.RitualOnly || e.CountsAsKnown || e.NoMaterialComponents || e.UsesCost != 0) {
+		return x.fail("spell, from_level, uses, also_with_slot, ritual_only, counts_as_known, no_material_components and uses_cost belong to granted_spell")
 	}
 	if e.Type != "ranged_attack" && (e.IgnoreCover || e.RangeMultiplier != 0 || e.NoLongRangeDisadvantage) {
 		return x.fail("ignore_cover, range_multiplier and no_long_range_disadvantage belong to ranged_attack")

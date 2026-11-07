@@ -395,7 +395,7 @@ func (s *Service) spendGrantUse(ctx context.Context, c *combatTx, plan castPlan)
 	if g == nil || g.AtWill || !plan.g.caster.Player {
 		return nil, nil
 	}
-	v, err := s.spendResource(ctx, c, plan.g.caster.ID, g.Resource, 1)
+	v, err := s.spendResource(ctx, c, plan.g.caster.ID, g.Resource, max(int32(g.Cost), 1))
 	if err != nil {
 		return nil, grantUseError(err)
 	}

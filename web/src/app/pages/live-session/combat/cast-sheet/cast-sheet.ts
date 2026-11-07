@@ -39,7 +39,10 @@ import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet } from '../../../../shared/sheet/sheet-host';
 import { SlotPicker } from '../../../../shared/slot-picker/slot-picker';
 import { openSpellDetails } from '../../../../shared/spell-details/open-spell-details';
-import { spellDetailsFromGen } from '../../../../shared/spell-details/spell-details-map';
+import {
+  spellDetailsFromGen,
+  withoutMaterial,
+} from '../../../../shared/spell-details/spell-details-map';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
 import { AbilityPicker } from '../../effects/ability-picker/ability-picker';
 import { CheckRow } from '../../../../shared/form-fields/check-row';
@@ -295,7 +298,11 @@ export class CastSheet {
           if (!details) {
             throw new Error('spell details unavailable');
           }
-          return spellDetailsFromGen(details);
+          const vm = spellDetailsFromGen(details);
+          // A grant that waives the material takes the "M" off the component line (the text goes with it).
+          return this.ch.viaGrant() && this.ch.grant?.noMaterialComponents
+            ? withoutMaterial(vm)
+            : vm;
         },
       },
       true,

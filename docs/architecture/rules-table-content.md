@@ -197,18 +197,21 @@ The attack card offers it after a hit as a choosable part ([Attacks and damage](
 | `spell` | An SRD key or a spell of the same table (`bad_reference` at `.spell`). |
 | `ability` | `int`, `wis`, `cha`, or `choice`: the player picks one of the three once for the entry, as a pick of the choice engine (`<entry>#grant-ability=ability:int`, in `feature_choice_keys`; until it is made the grant has no numbers and the sheet asks for it). It gives the spell attack bonus (proficiency + modifier) and the save DC (8 + the same) of the grant, whatever the classes cast with. |
 | `from_level` | An Int formula, 1 when empty: the class level for a feature of a class or subclass, the character level for anything else. Below it the effect is not there. |
-| `uses` | Empty or `at_will` for no limit; otherwise the name of a `resource` effect of the same entry (or its class, or an SRD resource): `bad_reference` at `.uses` when nothing defines it. Every cast spends one use. A feat's own `resource` effects count. |
+| `uses` | Empty or `at_will` for no limit; otherwise the name of a `resource` effect of the same entry (or its class, or an SRD resource): `bad_reference` at `.uses` when nothing defines it. Every cast spends `uses_cost` uses (one when that is empty). A feat's own `resource` effects count. |
+| `uses_cost` | 1 or more (`0`/empty is one): how many uses of `uses` each cast spends. It needs a resource in `uses` (`invalid_value` at `.uses_cost` for an at-will grant, a grant with no `uses`, or a negative number). The grant is castable only while the resource has at least that many uses left, and the undo gives all of them back (`actionEvent.GrantCost`, kept only when more than one). |
 | `also_with_slot` | The grant may also be cast with a spell slot, which spends no use. |
 | `ritual_only` | The grant casts the spell as a ritual only (no slot, 10 minutes more); the spell needs the ritual tag, and the switch excludes `also_with_slot`. |
 | `counts_as_known` | The spell is also listed among the known ones, without using any pick of the class. |
+| `no_material_components` | The grant waives the material components, on the sheet and on the cast sheet only: the component line of the grant's spell drops the "M" and its text. The server never enforces components, so nothing else changes, and the spell's own description stays as it is. |
 
 `when` gates the grant like any effect. Without `counts_as_known` the grant leaves the sheet's known spells, cantrips and prepared numbers as they are.
-A spell above a cantrip cast through a grant is cast at its own level; it cannot be cast at a higher level for free, and the material components are not waived.
+A spell above a cantrip cast through a grant is cast at its own level; it cannot be cast at a higher level for free. The material components are waived only with `no_material_components`.
+The old format keeps working: a `note` effect with `spells` still lists a cantrip (or, when the feature has a `resource`, a once-per-rest spell) on the sheet without counting in the class numbers, beside any `granted_spell` of the same entry.
 A cantrip scales with the character level.
 The effect fills `Derived.GrantedSpells`; `combat.Options` lists each one as a turn option with a `Grant` (no slots unless `also_with_slot`, disabled with `NO_USES` when the resource is spent), and `combat.OutsideSpells` as one more way to cast the spell. The players' catalog drops a hidden `spell` from the effect like it does for `spells`.
 
 `CastSpell` and `CastSpellOutsideCombat` take `granted_by`, the grant's source key.
-With it, `GrantedCombatSpell` reads the spell with the grant's numbers (`rules.GrantedSpell`), no slot is spent, and a limited grant spends one use of its resource (`NO_USES` when none is left); the combat's undo gives the use back (`actionEvent.GrantUse`).
+With it, `GrantedCombatSpell` reads the spell with the grant's numbers (`rules.GrantedSpell`), no slot is spent, and a limited grant spends `uses_cost` uses of its resource (`NO_USES` when fewer are left); the combat's undo gives the use back (`actionEvent.GrantUse`).
 Outside a combat a use is spent when the casting starts, so a long casting through a grant has spent it before it ends; a ritual-only grant casts with `as_ritual`.
 A summoning spell is cast with the classes, not through a grant.
 

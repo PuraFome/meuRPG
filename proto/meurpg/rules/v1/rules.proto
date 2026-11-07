@@ -1207,6 +1207,10 @@ message GrantedSpell {
   int32 save_dc = 12;
   // The level the grant starts at (the class level for a class or subclass feature).
   int32 from_level = 13;
+  // The material components are waived (the cast sheet drops "M"), and the uses a cast spends
+  // (1 or more; 0 for an at-will grant).
+  bool no_material_components = 14;
+  int32 uses_cost = 15;
 }
 
 // Attack is an attack with a weapon on the sheet.
@@ -2334,6 +2338,10 @@ message SpellGrantOption {
   string ability = 7;
   int32 attack_bonus = 8;
   int32 save_dc = 9;
+  // The material components are waived, and the uses a cast spends of `resource` (1 or more;
+  // 0 for an at-will grant). A cast works only while `uses_left` covers it.
+  bool no_material_components = 10;
+  int32 uses_cost = 11;
 }
 
 // SpellTableOption is a cast option a table feature offers for a spell (a spell_modifier).

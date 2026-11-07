@@ -673,7 +673,7 @@ var ownFields = map[string][]string{
 	// breathes_water has no field of its own: only the when that gates it.
 	"breathes_water": {},
 	// A granted_spell names the spell, from which level, what it spends, and the switches.
-	"granted_spell": {"spell", "from_level", "uses", "ability", "also_with_slot", "ritual_only", "counts_as_known"},
+	"granted_spell": {"spell", "from_level", "uses", "ability", "also_with_slot", "ritual_only", "counts_as_known", "no_material_components", "uses_cost"},
 }
 
 // effectField is a field of an Effect a type may not read: its name in the
@@ -754,6 +754,8 @@ var effectFields = []effectField{
 	{"also_with_slot", func(e *Effect) bool { return e.AlsoWithSlot }, func(e *Effect) { e.AlsoWithSlot = false }},
 	{"ritual_only", func(e *Effect) bool { return e.RitualOnly }, func(e *Effect) { e.RitualOnly = false }},
 	{"counts_as_known", func(e *Effect) bool { return e.CountsAsKnown }, func(e *Effect) { e.CountsAsKnown = false }},
+	{"no_material_components", func(e *Effect) bool { return e.NoMaterialComponents }, func(e *Effect) { e.NoMaterialComponents = false }},
+	{"uses_cost", func(e *Effect) bool { return e.UsesCost != 0 }, func(e *Effect) { e.UsesCost = 0 }},
 	{"no_fly", func(e *Effect) bool { return e.NoFly }, func(e *Effect) { e.NoFly = false }},
 	{"no_swim", func(e *Effect) bool { return e.NoSwim }, func(e *Effect) { e.NoSwim = false }},
 	{"state_name", func(e *Effect) bool { return e.StateName != "" }, func(e *Effect) { e.StateName = "" }},
@@ -927,6 +929,7 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"recover_max_level is a spell level"}, fieldAttr(".recover_max_level"), ReasonValue},
 	{[]string{"recover_levels must be"}, fieldAttr(".recover_levels"), ReasonValue},
 	{[]string{"ability must be"}, fieldAttr(".ability"), ReasonValue},
+	{[]string{"uses_cost"}, fieldAttr(".uses_cost"), ReasonValue},
 	{[]string{"ritual_only needs"}, fieldAttr(".ritual_only"), ReasonValue},
 	{[]string{"ritual_only and also_with_slot"}, fieldAttr(".also_with_slot"), ReasonValue},
 	{[]string{"speedwalk() belongs"}, func(e *Effect, _ func(...string) bool) string {
