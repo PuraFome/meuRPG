@@ -164,12 +164,14 @@ export function rowsOf(i: RowsInput): readonly ChoiceRow[] {
   if (o.forms.length === 0) {
     return (i.beasts ?? []).map((b) => {
       const block = i.beastBlocks.get(b.key);
+      const table = isTableCreature(b.key);
       return {
         key: b.key,
         title: b.namePt,
         subtitle: beastLine(b, block),
-        attacks: block ? beastAttacks(block) : undefined,
-        table: isTableCreature(b.key),
+        // A table creature's numbers are the owner's (the row says so): the base's attacks would contradict that note.
+        attacks: block && !table ? beastAttacks(block) : undefined,
+        table,
       };
     });
   }

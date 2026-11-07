@@ -789,11 +789,8 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   I set how many come (a formula that may use the circle of the slot), how many more for each circle above, the most at a time, the turn and what a new casting does to the old creatures.
   Choosing it selects the target "Só quem conjura" and gives the old target and range back if I leave it with the caster still chosen.
   Before I save, the editor says on its own field what the server refuses: a cantrip, a target other than the caster, a ritual, an instantaneous duration with a stored effect, a stored zone, or a stored effect for those who fail a save or are hit.
-  "Salvar magia" stops and lands on the first of them, and the spell must be of the 1st circle or more.
-- **Given** a player who casts a summon of a spell or a feature that offers a table creature, **when** the list of creatures opens, **then** the table creature carries "Da mesa" and the line "Os números vêm da sua ficha quando ele chega." in place of numbers, and an SRD creature keeps its own line.
-  After the cast, the creature's page carries "Da mesa" and the line "Os números vêm da ficha de <dono> quando ele chegou", with no level or proficiency, because the numbers do not change when I edit the entry later.
-  The app knows a table creature by the "@mesa" end of its key, and the server sends no flag for it.
-  (`content-summons.spec.ts`)
+  "Salvar magia" stops and lands on the first of them.
+  The spell must be of the 1st circle or more.
 - **Given** a creature given with formulas, **when** I edit its entry to have no formula at all, **then** its armor class in the list and in the combat are still the ones it was given.
 - **Given** a creature with formulas that I put in a combat with "Pôr no combate" or make an NPC from, **then** it has the entry's static numbers, because it has no owner.
 - **Given** a creature entry, **then** a player finds it in the creature list and reads its sheet only while one of their characters holds it.
@@ -1251,6 +1248,9 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 - **Given** the concentration on the casting ends, **when** it ends, **then** the creatures of that casting are dismissed (RN-22); the master's undo brings them back.
 - **Given** the master places a character's creature token on a map, **when** the group looks, **then** everyone sees it (a group token, never hidden, even in fog).
 - **Given** a player who cannot have a creature, **when** they look at another character's sheet, **then** the "Criaturas" panel does not exist for them (RN-20).
+- **Given** a player who casts a summon of a spell or a feature that offers a table creature, **when** the list of creatures opens, **then** the table creature carries "Da mesa" and the line "Os números vêm da sua ficha quando ele chega." in place of numbers, and an SRD creature keeps its own line.
+  After the cast, the creature's page carries "Da mesa" and the line "Os números vêm da ficha de <dono> quando ele chegou", with no level or proficiency, because the numbers do not change when I edit the entry later.
+  The app knows a table creature by the "@mesa" end of its key, and the server sends no flag for it.
 
 #### In the app
 - **Sheet.** The "Criaturas" panel has one card per creature ("Corvo · Miúdo · Familiar de Pensantus", AC, HP, speed in metres), "Ver a ficha do Nanquim", "Renomear", "Dispensar" (asks in place) and, for the master, "Corrigir PV" outside combat. Summoning is only during a session ("Agora não há sessão aberta."). The master gives creatures in the campaign's character list with "Dar uma criatura".

@@ -16,7 +16,7 @@ test.describe.configure({ timeout: 180_000 });
 async function addCreature(m: Page, scope: Locator, name: string): Promise<void> {
   await scope.getByRole('combobox', { name: 'Criaturas' }).fill(name);
   await m.getByRole('option').filter({ has: m.locator('.pick__pt', { hasText: new RegExp(`^${name}$`) }) }).click();
-  await expect(scope.getByRole('list', { name: /^Criaturas que a/ }).getByText(name, { exact: true })).toBeVisible();
+  await expect(scope.getByRole('group', { name: /^Criaturas que a/ }).getByText(name, { exact: true })).toBeVisible();
 }
 
 test(
@@ -134,12 +134,14 @@ test(
       const tableRow = rows.filter({ hasText: 'Lobo do Vale' });
       await expect(tableRow.locator('app-table-mark')).toHaveText(/Da mesa/);
       await expect(tableRow).toContainText('Os números vêm da sua ficha quando ele chega.');
-      const bookRow = rows.filter({ hasNotText: 'Lobo do Vale' });
-      await expect(bookRow.locator('app-table-mark')).toHaveCount(0);
+      // The row without the mark is the book's: exactly one, and the table's note is not on it.
+      const bookRow = rows.filter({ hasNot: p.locator('app-table-mark') });
+      await expect(bookRow).toHaveCount(1);
+      await expect(bookRow.locator('.row__title')).toHaveText('Lobo');
       await expect(bookRow).not.toContainText('Os números vêm da sua ficha');
       await tableRow.click();
       await sheet.getByRole('button', { name: 'Conjurar Companheiro do Vale', exact: true }).click();
-      await expect(panel.getByText(/chegou\./)).toBeVisible();
+      await expect(panel.getByRole('status')).toContainText('A criatura chegou.');
 
       // C5: the creature's page tells where it came from and whose sheet gives its numbers.
       const created = await listCreaturesRPC(p, campaignId, table.characterId);

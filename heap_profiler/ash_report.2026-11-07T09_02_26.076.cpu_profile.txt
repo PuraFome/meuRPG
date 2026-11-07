@@ -1,0 +1,6 @@
+ASH Aggregated Report
+Generated: 2026-11-07T09:02:26.076573326Z
+Lookback:  10m0s
+Samples:   0
+
+No samples in window.

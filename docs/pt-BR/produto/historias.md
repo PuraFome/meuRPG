@@ -788,11 +788,8 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   Defino quantas vêm (uma fórmula que pode usar o círculo do espaço), quantas a mais por círculo acima, o máximo ao mesmo tempo, o turno e o que uma nova conjuração faz com as criaturas antigas.
   Escolher a mecânica seleciona o alvo "Só quem conjura" e devolve o alvo e o alcance antigos se eu a deixar com o alvo ainda em quem conjura.
   Antes de salvar, o editor diz no próprio campo o que o servidor recusa: um truque, um alvo que não seja quem conjura, um ritual, uma duração instantânea com efeito guardado, uma zona guardada, ou um efeito guardado para quem falha no teste ou é atingido.
-  "Salvar magia" para e vai ao primeiro deles, e a magia deve ser de 1º círculo ou mais.
-- **Dado** um jogador que conjura uma invocação de uma magia ou de uma habilidade que oferece uma criatura da mesa, **quando** a lista de criaturas abre, **então** a criatura da mesa leva "Da mesa" e a linha "Os números vêm da sua ficha quando ele chega." no lugar dos números, e uma criatura do SRD mantém a sua própria linha.
-  Depois da conjuração, a página da criatura leva "Da mesa" e a linha "Os números vêm da ficha de <dono> quando ele chegou", sem nível nem proficiência, porque os números não mudam quando edito a entrada depois.
-  O app reconhece uma criatura da mesa pelo fim "@mesa" da chave, e o servidor não envia marca para isso.
-  (`content-summons.spec.ts`)
+  "Salvar magia" para e vai ao primeiro deles.
+  A magia deve ser de 1º círculo ou mais.
 - **Dado** uma criatura dada com fórmulas, **quando** edito a entrada para não ter fórmula alguma, **então** a classe de armadura dela na lista e no combate continua a com que foi dada.
 - **Dado** uma criatura com fórmulas que ponho no combate com "Pôr no combate" ou da qual faço um NPC, **então** ela tem os números fixos da entrada, porque não tem dono.
 - **Dado** uma entrada de criatura, **então** um jogador a acha na lista de criaturas e lê a ficha dela só enquanto um personagem dele a tem.
@@ -1250,6 +1247,9 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
 - **Dado** que a concentração da conjuração termina, **quando** ela termina, **então** as criaturas dessa conjuração são dispensadas (RN-22); o desfazer do mestre as traz de volta.
 - **Dado** que o mestre põe o token da criatura de um personagem num mapa, **quando** o grupo olha, **então** todos o veem (um token de grupo, nunca escondido, nem na névoa).
 - **Dado** um jogador que não pode ter criatura, **quando** ele olha a ficha de outro personagem, **então** o painel "Criaturas" não existe para ele (RN-20).
+- **Dado** um jogador que conjura uma invocação de uma magia ou de uma habilidade que oferece uma criatura da mesa, **quando** a lista de criaturas abre, **então** a criatura da mesa leva "Da mesa" e a linha "Os números vêm da sua ficha quando ele chega." no lugar dos números, e uma criatura do SRD mantém a sua própria linha.
+  Depois da conjuração, a página da criatura leva "Da mesa" e a linha "Os números vêm da ficha de <dono> quando ele chegou", sem nível nem proficiência, porque os números não mudam quando edito a entrada depois.
+  O app reconhece uma criatura da mesa pelo fim "@mesa" da chave, e o servidor não envia marca para isso.
 
 #### No app
 - **Ficha.** O painel "Criaturas" tem um cartão por criatura ("Corvo · Miúdo · Familiar de Pensantus", CA, PV, deslocamento em metros), "Ver a ficha do Nanquim", "Renomear", "Dispensar" (pergunta no lugar) e, para o mestre, "Corrigir PV" fora do combate. Convocar só é possível durante uma sessão ("Agora não há sessão aberta."). O mestre dá criaturas na lista de personagens da campanha com "Dar uma criatura".

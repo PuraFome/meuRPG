@@ -133,6 +133,8 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The cost is one of the feature's own `resource` effects, and with none the block says so and `summonBlockedPaths` stops the save only while no resource key is chosen (a key the feature does not define is the class's, shown as "(da classe)" and left to the server).
   Time and duration are selects of presets, and a stored value they do not list is one more option.
   Concentration is off until the duration is by time.
+  The summon follows the feature's resource by the row id of its effect (`followResource`), so a rename, a name cleared and typed again, or a second resource does not lose it.
+  Switching the block off and on again re-reads the resources (`restoredSummon`).
   Turning the switch off sends no summon.
   A refusal at `<feature>.summon.*` sits under its own field (`content-violation-texts-summon.ts`), and one at `count_per_slot_level` or `role` lands on the switch.
   The preview and the read view add "Invoca: Lobo." from `summonLine`, with SRD names remembered from the bestiary (`summon-names.ts`).

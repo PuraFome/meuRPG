@@ -265,6 +265,27 @@ describe('summon views: the list, the keys and the dice', () => {
     ).toEqual([true]);
   });
 
+  it("gives a table creature no attacks of the base's block: its numbers are the owner's, and the row says so", () => {
+    const block = { actions: [{ hasAttack: true, namePt: 'Mordida', damage: [] }] } as never;
+    const option = create(SummonOptionSchema, { type: 'beast', maxCr: '1' });
+    const rows = rowsOf({
+      option,
+      forms: null,
+      beasts: [
+        { key: 'creature:x@mesa', namePt: 'X' },
+        { key: 'monster:bat', namePt: 'Morcego' },
+      ] as never,
+      beastBlocks: new Map([
+        ['creature:x@mesa', block],
+        ['monster:bat', block],
+      ]),
+    });
+    expect(rows.map((r) => [r.key, r.attacks === undefined])).toEqual([
+      ['creature:x@mesa', true],
+      ['monster:bat', false],
+    ]);
+  });
+
   it('repeats each kind as many times as it was chosen, in the list order', () => {
     const rows = [choice('a', 'A'), choice('b', 'B'), choice('c', 'C')];
     expect(creatureKeysOf(rows, { c: 1, a: 2 })).toEqual(['a', 'a', 'c']);

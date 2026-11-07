@@ -1,0 +1,70 @@
+root 31 MiB (256 MiB / 0 B)
+    sql 25 MiB
+        session root 520 KiB (21 KiB / 84 KiB)
+            session 520 KiB
+                session prepared statements 492 KiB
+        session root 140 KiB (21 KiB / 84 KiB)
+            session 140 KiB
+                session prepared statements 111 KiB
+        session root 490 KiB (21 KiB / 84 KiB)
+            session 490 KiB
+                session prepared statements 461 KiB
+        session root 680 KiB (21 KiB / 84 KiB)
+            session 660 KiB
+                session prepared statements 631 KiB
+        session root 530 KiB (21 KiB / 84 KiB)
+            session 530 KiB
+                session prepared statements 505 KiB
+        session root 630 KiB (21 KiB / 84 KiB)
+            session 620 KiB
+                session prepared statements 595 KiB
+        session root 310 KiB (21 KiB / 84 KiB)
+            session 310 KiB
+                session prepared statements 286 KiB
+        session root 770 KiB (21 KiB / 84 KiB)
+            session 770 KiB
+                session prepared statements 745 KiB
+        session root 1.4 MiB (21 KiB / 84 KiB)
+            session 1.4 MiB
+                session prepared statements 1.4 MiB
+        session root 1.5 MiB (21 KiB / 84 KiB)
+            session 1.5 MiB
+                session prepared statements 1.5 MiB
+        session root 1.6 MiB (21 KiB / 84 KiB)
+            session 1.6 MiB
+                session prepared statements 1.5 MiB
+        session root 1.5 MiB (21 KiB / 84 KiB)
+            session 1.5 MiB
+                session prepared statements 1.5 MiB
+        session root 1.6 MiB (21 KiB / 84 KiB)
+            session 1.6 MiB
+                session prepared statements 1.6 MiB
+        session root 1.1 MiB (21 KiB / 84 KiB)
+            session 1.1 MiB
+                session prepared statements 1.1 MiB
+        session root 1.6 MiB (21 KiB / 84 KiB)
+            session 1.6 MiB
+                session prepared statements 1.5 MiB
+        session root 1.2 MiB (21 KiB / 84 KiB)
+            session 1.2 MiB
+                session prepared statements 1.2 MiB
+        session root 1.6 MiB (21 KiB / 84 KiB)
+            session 1.6 MiB
+                session prepared statements 1.6 MiB
+        session root 10 KiB (21 KiB / 84 KiB)
+            session 10 KiB
+        conn 1.8 MiB
+        internal SQL executor 110 KiB
+            session root 110 KiB
+                session 110 KiB
+                    session prepared statements 95 KiB
+        SQLStats 370 KiB
+        SQLStats 5.2 MiB
+    server-cache-mon 3.2 MiB
+        table-statistics-cache 3.1 MiB
+    bulk-mon 30 KiB
+    leased-descriptors 1.1 MiB
+    closed-session-cache 833 KiB
+    kv-mem 40 KiB
+        rangefeed-monitor 40 KiB
+        rangefeed-system-monitor 80 KiB (128 MiB / 0 B)

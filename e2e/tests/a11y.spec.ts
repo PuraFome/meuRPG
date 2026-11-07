@@ -3900,7 +3900,7 @@ async function scanCreatureScreens(browser: Browser, colorScheme: 'light' | 'dar
       await expectScreenPasses(p, `A característica que invoca, a lista com a criatura da mesa ${where}`);
       await tableRow.click();
       await feature.getByRole('button', { name: 'Conjurar Companheiro do Vale', exact: true }).click();
-      await expect(dpanel.getByText(/chegou\./)).toBeVisible();
+      await expect(dpanel.getByRole('status')).toContainText('A criatura chegou.');
       await dpanel.getByRole('link', { name: /^Ver a ficha de / }).click();
       await expect(p.locator('.table-note')).toHaveText('Os números vêm da ficha de Sálvia quando ele chegou');
       await expectScreenPasses(p, `A ficha da criatura da mesa ${where}`);

@@ -21,7 +21,6 @@ let nextId = 0;
         [disabled]="disabled()"
         [attr.aria-describedby]="describedby() || null"
         [attr.aria-labelledby]="labelId"
-        [attr.aria-invalid]="invalid() ? 'true' : null"
         [attr.data-field]="path() || null"
         (click)="toggled.emit(!checked())"
       >
@@ -154,7 +153,6 @@ export class SwitchField {
   /** The words beside the label: "Ligado"/"Desligado", or "Ligada"/"Desligada" where the noun is feminine. */
   readonly onWord = input('Ligado');
   readonly offWord = input('Desligado');
-  readonly invalid = input(false);
   readonly toggled = output<boolean>();
   protected readonly labelId = `sw-${nextId++}`;
 }
