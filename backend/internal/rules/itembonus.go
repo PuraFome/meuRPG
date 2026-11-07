@@ -45,9 +45,22 @@ func (x *deriver) weaponItemBonus(key string) int {
 	return ib.Bonus
 }
 
+// listsBonus says the piece of the bonus has a number to change: the armor and the shield do, and a weapon only when the
+// content knows it, because a weapon of the content has no attack line.
+func (x *deriver) listsBonus(key string) bool {
+	if key == shieldKey || key == x.sheetArmor {
+		return true
+	}
+	eq, ok := x.c.equipment[key]
+	return ok && eq.Weapon != nil
+}
+
 // itemModifiers fills Derived.ItemModifiers.
 func (x *deriver) itemModifiers() {
 	for _, ib := range x.b.ItemBonuses {
+		if !x.listsBonus(ib.Key) {
+			continue
+		}
 		name := x.c.namePT(ib.Key)
 		if name == "" {
 			name = ib.Key

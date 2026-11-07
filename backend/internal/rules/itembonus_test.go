@@ -111,6 +111,17 @@ func TestAttunementGatesTheBonus(t *testing.T) {
 	}
 }
 
+func TestABonusOnAWeaponTheContentDoesNotKnowListsNothing(t *testing.T) {
+	t.Parallel()
+	d := derivedWith(t, func(b *Build) {
+		b.Weapons = []string{"equipment:no-such-blade"}
+		b.ItemBonuses = []ItemBonus{{Key: "equipment:no-such-blade", Bonus: 1}}
+	})
+	if len(d.ItemModifiers) != 0 {
+		t.Errorf("modifiers %+v, want none: the weapon has no attack line", d.ItemModifiers)
+	}
+}
+
 func TestItemBonusesAreValidated(t *testing.T) {
 	t.Parallel()
 	c := loadForTest(t)
@@ -133,10 +144,12 @@ func TestItemBonusesAreValidated(t *testing.T) {
 func TestItemBonusGolden(t *testing.T) {
 	t.Parallel()
 	type line struct {
-		Key     string
-		Attack  int
-		Damage  string
-		Magical bool
+		Key    string
+		Attack int
+		Damage string
+		// Versatile is the two-handed damage line.
+		Versatile string
+		Magical   bool
 	}
 	type view struct {
 		ArmorClass    int
@@ -161,6 +174,10 @@ func TestItemBonusGolden(t *testing.T) {
 			b.Shield, b.Weapons = true, []string{"equipment:greatsword"}
 			b.ItemBonuses = []ItemBonus{plus(ShieldKey, 2), plus("equipment:greatsword", 1)}
 		},
+		"versatile longsword": func(b *Build) {
+			b.Weapons = []string{"equipment:longsword"}
+			b.ItemBonuses = []ItemBonus{plus("equipment:longsword", 2)}
+		},
 		"awaiting attunement": func(b *Build) {
 			b.Armor, b.Weapons = mail, []string{rapier}
 			b.ItemBonuses = []ItemBonus{{Key: mail, Bonus: 2, RequiresAttunement: true}, {Key: rapier, Bonus: 1, RequiresAttunement: true, Attuned: true}}
@@ -171,7 +188,7 @@ func TestItemBonusGolden(t *testing.T) {
 		d := derivedWith(t, mut)
 		v := view{ArmorClass: d.ArmorClass, Description: d.ArmorClassDescription, ItemModifiers: d.ItemModifiers}
 		for _, a := range d.Attacks {
-			v.Attacks = append(v.Attacks, line{a.Key, a.AttackBonus, a.Damage, a.Magical})
+			v.Attacks = append(v.Attacks, line{a.Key, a.AttackBonus, a.Damage, a.VersatileDamage, a.Magical})
 		}
 		got[name] = v
 	}

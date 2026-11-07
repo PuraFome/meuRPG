@@ -7,6 +7,7 @@
         "Key": "attack:unarmed-strike",
         "Attack": 5,
         "Damage": "4",
+        "Versatile": "",
         "Magical": false
       }
     ],
@@ -53,12 +54,14 @@
         "Key": "equipment:rapier",
         "Attack": 8,
         "Damage": "1d8+6",
+        "Versatile": "",
         "Magical": true
       },
       {
         "Key": "attack:unarmed-strike",
         "Attack": 5,
         "Damage": "4",
+        "Versatile": "",
         "Magical": false
       }
     ],
@@ -105,12 +108,14 @@
         "Key": "equipment:rapier",
         "Attack": 6,
         "Damage": "1d8+4",
+        "Versatile": "",
         "Magical": true
       },
       {
         "Key": "attack:unarmed-strike",
         "Attack": 5,
         "Damage": "4",
+        "Versatile": "",
         "Magical": false
       }
     ],
@@ -149,12 +154,14 @@
         "Key": "equipment:rapier",
         "Attack": 5,
         "Damage": "1d8+3",
+        "Versatile": "",
         "Magical": false
       },
       {
         "Key": "attack:unarmed-strike",
         "Attack": 5,
         "Damage": "4",
+        "Versatile": "",
         "Magical": false
       }
     ],
@@ -168,12 +175,14 @@
         "Key": "equipment:greatsword",
         "Attack": 6,
         "Damage": "2d6+4",
+        "Versatile": "",
         "Magical": true
       },
       {
         "Key": "attack:unarmed-strike",
         "Attack": 5,
         "Damage": "4",
+        "Versatile": "",
         "Magical": false
       }
     ],
@@ -199,6 +208,44 @@
         "Value": 1,
         "SourceKey": "equipment:greatsword",
         "SourceNamePT": "Espada grande",
+        "Counts": true,
+        "ReasonPT": ""
+      }
+    ]
+  },
+  "versatile longsword": {
+    "ArmorClass": 12,
+    "Description": "Sem armadura",
+    "Attacks": [
+      {
+        "Key": "equipment:longsword",
+        "Attack": 7,
+        "Damage": "1d8+5",
+        "Versatile": "1d10+5",
+        "Magical": true
+      },
+      {
+        "Key": "attack:unarmed-strike",
+        "Attack": 5,
+        "Damage": "4",
+        "Versatile": "",
+        "Magical": false
+      }
+    ],
+    "ItemModifiers": [
+      {
+        "Target": "attack:equipment:longsword",
+        "Value": 2,
+        "SourceKey": "equipment:longsword",
+        "SourceNamePT": "Espada longa",
+        "Counts": true,
+        "ReasonPT": ""
+      },
+      {
+        "Target": "damage:equipment:longsword",
+        "Value": 2,
+        "SourceKey": "equipment:longsword",
+        "SourceNamePT": "Espada longa",
         "Counts": true,
         "ReasonPT": ""
       }

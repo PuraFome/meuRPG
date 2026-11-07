@@ -58,7 +58,7 @@ The player edits their own sheet until the first session of the campaign starts.
 After that, only the master and the system change it.
 A character created later (the replacement for a dead one, or one for someone who joined late) stays editable until the next session starts.
 The numbers the system calculates are never editable.
-The marks of a weapon (magical, silvered, adamantine) follow the same rule as the weapons the sheet carries: the owner sets them while the sheet is editable, the master always, and the owner cannot after the lock.
+The marks of a weapon (magical, silvered, adamantine) and the magic bonuses (+1 to +3) of the armor, the shield and the weapons follow the same rule as the gear the sheet carries: the owner sets them while the sheet is editable, the master always, and the owner cannot after the lock.
 
 - **The story.** The character story (personality, appearance, backstory, allies) has its own lock: after the sheet locks, the player edits it only when the master releases it, character by character, until the next session starts or the master locks it again.
 - **What the master sees first.** Before starting a session, the master is told which sheets still have skills or spells to choose, and confirms. The lock does not wait for them.
@@ -102,10 +102,10 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   - On an NPC, a monster or a character's creature the damage lands at once, after resistances, vulnerabilities and immunities of its SRD creature (immunity makes it 0, resistance halves it rounded down, vulnerability doubles it).
     A resistance or immunity "from nonmagical attacks" applies to an attack that is not magical.
     It does not apply to a spell, to an attack of a creature whose weapon attacks are magical, or to damage that is no attack (a trap, a zone, a burning effect).
-    A character's weapon is nonmagical unless the sheet or a weapon rule marks it magical, silvered or adamantine.
+    A character's weapon is nonmagical unless the sheet or a weapon rule marks it magical, silvered or adamantine, or it has a magic bonus that counts.
     The three qualifiers of a stat block (nonmagical, except silvered, except adamantine) are applied by the weapon's material.
-    Only the Ki-Empowered unarmed strike (monk from level 6, also as a multiclass monk) is magical without a mark.
-    That magic counts for these resistances and immunities and for nothing else: no bonus to hit or damage, and not for a monk weapon.
+    Besides a weapon with a counting magic bonus, only the Ki-Empowered unarmed strike (monk from level 6, also as a multiclass monk) is magical without a mark.
+    The magic of the Ki-Empowered strike counts for these resistances and immunities and for nothing else: no bonus to hit or damage, and not for a monk weapon.
     The marks are written through the sheet API and by the weapon rule effect of a table feature, which marks the weapons its filter picks and the unarmed strike.
     The marks are set through the sheet API and weapon rules; the sheet form does not edit them.
     The master's log names the reason ("Resistência a perfurante de ataque não mágico nem prateado"). The player sees only the damage.
@@ -114,6 +114,14 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   - A sheet that is immune to a condition takes none of the effects that give it (a spell's, a rider's, a trap's, a grapple or a shove that knocks prone); the master's own change of the conditions is not blocked.
   - A character's creature has its own hit points. Its damage lands at once, and at 0 it is dismissed.
   - A trap's damage follows the same path. Outside a combat, what waits for the master survives until they apply or discard it.
+- **Magic bonus of gear.**
+  A weapon with a magic bonus (+1 to +3) adds it to the attack roll and to the damage of its own line, and that line is magical.
+  An armor or a shield with a magic bonus adds it to the armor class.
+  The bonus is separate from proficiency and from the ability modifier, and it stays when the damage is the off-hand's, which loses the ability modifier.
+  It counts only for a piece that is equipped: a carried piece adds nothing.
+  A shield adds nothing while a two-handed weapon is on the sheet, and a piece that needs attunement adds nothing until the character is attuned to it.
+  The sheet lists each bonus with its source and says why one adds nothing.
+  Two weapons with one key are one row and share the bonus.
 - **Wholeness of Body of the Open Hand monk (level 6).**
   The monk's own action heals three times the monk level in hit points, up to the maximum.
   It has no roll and no dice to type.
