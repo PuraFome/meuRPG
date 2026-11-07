@@ -14,7 +14,12 @@
   }
   <p class="gear__notice" role="status">{{ equipNotice() }}</p>
   @if (equipError()) {
-    <p class="gear__error" role="alert">{{ equipError() }}</p>
+    <p class="gear__error" role="alert">
+      {{ equipError() }}
+      @if (equipRetry()) {
+        <button matButton="outlined" type="button" (click)="equipRetried.emit()">Tentar de novo</button>
+      }
+    </p>
   }
   @if (canMark() && weapons().length) {
     @if (marking()) {

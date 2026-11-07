@@ -110,10 +110,8 @@ import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-g
 })
 export class ActionGroups {
   readonly options = input.required<TurnOptions>();
-  /** The player's gear in the combat (`GearFlow`), for "Sacar ou guardar"; none outside the player's own turn screen. */
+  /** The player's gear in the combat (`GearFlow`), for "Sacar ou guardar" under the attacks; none outside the player's own turn screen. */
   readonly gearFlow = input<GearFlow | null>(null);
-  /** The master changes gear without cost or turn. */
-  readonly gearMaster = input(false);
 
   /** The key of the action whose target the player is choosing on the map (C7-05): its row says "Escolhendo o alvo". */
   readonly choosing = input('');

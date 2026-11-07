@@ -7755,32 +7755,33 @@ async function scanGearScreens(browser: Browser, colorScheme: 'light' | 'dark', 
     const table = await tableForCombat(m, p, `Acessibilidade trocas de arma ${Date.now()}`, true, true, { build: toren, sheet: gear });
     campaignId = table.campaignId;
 
-    // The sheet: the two groups, then a weapon stowed (the notice and the focus on the moved row).
+    // The sheet: the two groups, then a shield stowed (the notice and the focus on the moved row).
     await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
     const equipment = p.getByRole('region', { name: 'Equipamento' });
     await expect(equipment.getByRole('heading', { name: 'Equipado', level: 3 })).toBeVisible();
     await expect(equipment.getByRole('heading', { name: 'Carregado', level: 3 })).toBeVisible();
     await expectScreenPasses(p, `Ficha, Equipamento ${where}`);
-    await equipment.getByRole('button', { name: 'Guardar Escudo' }).click();
+    await equipment.getByRole('button', { name: /^Guardar .*Escudo$/ }).click();
     await expect(equipment.getByRole('status')).toContainText('Guardado: Escudo.');
-    await expect(equipment.getByRole('button', { name: 'Equipar Escudo' })).toBeFocused();
+    await expect(equipment.getByRole('button', { name: /^Equipar .*Escudo$/ })).toBeFocused();
     await expectScreenPasses(p, `Ficha, Equipamento depois de guardar o escudo ${where}`);
-    await equipment.getByRole('button', { name: 'Equipar Escudo' }).click();
-    await expect(equipment.getByRole('button', { name: 'Guardar Escudo' })).toBeFocused();
+    await equipment.getByRole('button', { name: /^Equipar .*Escudo$/ }).click();
+    await expect(equipment.getByRole('button', { name: /^Guardar .*Escudo$/ })).toBeFocused();
 
-    // The combat: the fold on the player's turn, with what each change costs.
+    // The combat: the fold under the attacks on the player's turn, with what each change costs inside its button.
     await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
     await openSessionPage(p, campaignId);
-    const tab = await openActionTab(p, 'Outras');
-    await tab.getByRole('button', { name: 'Sacar ou guardar' }).click();
-    await expect(tab.getByText('Usa a interação gratuita do turno.').first()).toBeVisible();
-    await expect(tab.getByText('Vestir ou tirar armadura leva minutos')).toBeVisible();
+    const tab = await openActionTab(p, 'Ataques');
+    await expect(tab.getByRole('button', { name: 'Sacar ou guardar' })).toBeVisible();
+    await expect(tab.getByText('1ª arma do turno: grátis; depois, a ação. Escudo: ação. Armadura: só fora do combate.')).toBeVisible();
+    await expect(tab.getByRole('button', { name: /^Guardar grátis Espada longa$/ })).toBeVisible();
+    await expect(tab.getByRole('button', { name: /Cota de malha/ })).toHaveCount(0);
     await expectScreenPasses(p, `Combate, Sacar ou guardar ${where}`);
-    await tab.getByRole('button', { name: 'Guardar Espada longa' }).click();
-    await expect(tab.getByRole('status')).toContainText('Guardado: Espada longa.');
-    await expect(tab.getByRole('button', { name: 'Equipar Espada longa' })).toBeFocused();
+    await tab.getByRole('button', { name: /^Guardar grátis Espada longa$/ }).click();
+    await expect(tab.getByRole('status').filter({ hasText: 'Guardado: Espada longa.' })).toBeVisible();
+    await expect(tab.getByRole('button', { name: /^Sacar .* Espada longa$/ })).toBeFocused();
     // The free interaction is spent: the next change costs the action.
-    await expect(tab.getByText('Usa a sua ação.').first()).toBeVisible();
+    await expect(tab.getByRole('button', { name: /^Sacar ação Maça$/ })).toBeVisible();
     await expectScreenPasses(p, `Combate, Sacar ou guardar, depois da interação gratuita ${where}`);
   } finally {
     if (campaignId) {

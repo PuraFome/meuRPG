@@ -4544,7 +4544,6 @@ func (x *BreathWeapon) GetTextPt() string {
 	return ""
 }
 
-// Resistance is a damage type the character resists, and what gives it.
 // GearEntry is one piece of the gear a sheet lists, equipped or carried.
 type GearEntry struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -4636,6 +4635,7 @@ func (x *GearEntry) GetArmorClassIfToggled() int32 {
 	return 0
 }
 
+// Resistance is a damage type the character resists, and what gives it.
 type Resistance struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The damage type key ("damage-type:poison") and its Portuguese name.

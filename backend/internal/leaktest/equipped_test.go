@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1/charactersv1connect"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -62,5 +63,50 @@ func TestAPlayersSpentObjectInteractionIsTheOwnersAndTheMastersAlone(t *testing.
 	}
 	if !found {
 		t.Error("the master's reads do not hold the field: the canary is unreachable")
+	}
+}
+
+// The gear a sheet lists (DerivedSheet.gear) and the armor class a change would give (armor_class_if_toggled) are the
+// owner's and the master's, as the sheet is. Another player and a pending member read no word of it: the field names
+// of the list are the needles, and the owner's and the master's reads are the positive controls.
+func TestAPlayersGearListIsTheOwnersAndTheMastersAlone(t *testing.T) {
+	w := newWorld(t)
+	ctx := t.Context()
+	m := w.master
+	sheet := w.fullSheet("class:fighter", "race:human", 3)
+	// Body armor, a shield and a two-handed bow in hand: the bow's stowing would give the shield back, so the list holds
+	// an armor_class_if_toggled that is not zero.
+	sheet.GetFull().ArmorKey, sheet.GetFull().Shield = "equipment:chain-mail", true
+	sheet.GetFull().WeaponKeys = []string{"equipment:dagger", "equipment:longbow"}
+	must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
+		CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: sheet,
+	})))
+
+	reads := func(p *person) []reply {
+		return append(w.reads(p),
+			p.call(charactersv1connect.CharacterServiceGetCharacterProcedure, &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}),
+			p.call(charactersv1connect.CharacterServiceListCharactersProcedure, &charactersv1.ListCharactersRequest{CampaignId: w.campaign}))
+	}
+	holds := func(r reply) bool {
+		return contains(r.body, `"armorClassIfToggled"`) && contains(r.body, `"equipment:longbow"`)
+	}
+	for _, p := range []*person{w.caio, m} {
+		found := false
+		for _, r := range reads(p) {
+			found = found || holds(r)
+		}
+		if !found {
+			t.Errorf("%s: the gear list is not in any read: the canary is unreachable", p.name)
+		}
+	}
+	for _, p := range []*person{w.ana, w.pending} {
+		for _, r := range reads(p) {
+			if contains(r.body, `"armorClassIfToggled"`) || contains(r.body, `"equipment:longbow"`) || contains(r.body, `"twoHanded"`) {
+				t.Errorf("%s reads Toren's gear", p.name)
+			}
+			for _, f := range w.inspect(p, r, nil) {
+				t.Errorf("%s: %s", p.name, f)
+			}
+		}
 	}
 }

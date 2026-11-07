@@ -107,6 +107,10 @@
       @if (hiddenNote()) {
         <p class="group__why group__why--plain" data-testid="hidden-note">{{ hiddenNote() }}</p>
       }
+
+      @if (gearFlow(); as flow) {
+        <app-gear-fold [flow]="flow" [own]="own()" [extra]="extraAction()" [locked]="locked()" />
+      }
     </div>
 
     @if (hasSpells()) {
@@ -188,10 +192,6 @@
         </app-fold>
       } @else {
         <ng-container *ngTemplateOutlet="otherActions" />
-      }
-
-      @if (gearFlow(); as flow) {
-        <app-gear-fold [flow]="flow" [own]="own()" [master]="gearMaster()" [locked]="locked()" />
       }
 
       @if (extraAction(); as extra) {

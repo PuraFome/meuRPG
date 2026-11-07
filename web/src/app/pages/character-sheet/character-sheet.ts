@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   Component,
   DestroyRef,
@@ -221,6 +222,7 @@ export class CharacterSheetPage {
   }
 
   constructor() {
+    this.destroyRef.onDestroy(this.gear.refreshWhenShown(inject(DOCUMENT)));
     // The tab's title carries the character's name once the sheet is loaded.
     setPageSubject(() => {
       const s = this.state();

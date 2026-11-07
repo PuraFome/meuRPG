@@ -6,8 +6,8 @@
 .gear {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  line-height: 22px;
+  gap: var(--mr-space-1);
+  line-height: 1.4;
 }
 
 .gear__ac {
@@ -17,7 +17,7 @@
 .gear__note {
   margin: var(--mr-space-2) 0 0;
   font-size: var(--mr-font-14);
-  line-height: 20px;
+  line-height: 1.35;
 }
 
 .gear__notice:empty {
@@ -36,7 +36,7 @@
 
 .gear__background {
   margin: var(--mr-space-2) 0 0;
-  line-height: 22px;
+  line-height: 1.4;
   white-space: pre-line;
 }
 

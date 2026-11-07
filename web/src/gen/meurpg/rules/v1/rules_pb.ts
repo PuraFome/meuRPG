@@ -1629,7 +1629,6 @@ export const BreathWeaponSchema: GenMessage<BreathWeapon> = /*@__PURE__*/
   messageDesc(file_meurpg_rules_v1_rules, 22);
 
 /**
- * Resistance is a damage type the character resists, and what gives it.
  * GearEntry is one piece of the gear a sheet lists, equipped or carried.
  *
  * @generated from message meurpg.rules.v1.GearEntry
@@ -1685,6 +1684,8 @@ export const GearEntrySchema: GenMessage<GearEntry> = /*@__PURE__*/
   messageDesc(file_meurpg_rules_v1_rules, 23);
 
 /**
+ * Resistance is a damage type the character resists, and what gives it.
+ *
  * @generated from message meurpg.rules.v1.Resistance
  */
 export type Resistance = Message<"meurpg.rules.v1.Resistance"> & {
