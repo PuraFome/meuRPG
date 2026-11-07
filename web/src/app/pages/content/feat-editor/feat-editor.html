@@ -16,7 +16,21 @@
         textLabel="Texto do talento"
         (featureChange)="setFeature($event)"
       />
+      @if (choice(); as c) {
+        <app-option-source [effect]="c" [menu]="menu()" [basePath]="'table_feat.effects[' + choiceAt() + ']'" [ownCount]="d.options.length" [issuesOf]="issuesOf" (effectChange)="setChoice($event)" />
+      }
     </section>
+
+    <app-feat-options
+      [options]="d.options"
+      [menu]="menu()"
+      [issuesOf]="issuesOf"
+      [spellOptions]="spellOptions()"
+      [choiceNumber]="choiceAt() + 1"
+      [setName]="setName()"
+      [refused]="refused()"
+      (optionsChange)="setOptions($event)"
+    />
 
     <section class="mr-panel block" aria-labelledby="feat-asks-t">
       <h2 class="mr-panel__title" id="feat-asks-t">O que o talento pede</h2>

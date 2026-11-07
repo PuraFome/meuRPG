@@ -180,6 +180,7 @@ export function featPaths(d: FeatDraft, menu: EffectMenuVm): string[] {
     `${p}.prerequisite.level`,
     `${p}.prerequisite.spellcasting`,
     `${p}.effects`,
+    `${p}.options`,
   ];
   for (const a of ABILITY_FIELDS) {
     out.push(`${p}.prerequisite.minimums.${a}`, `${p}.prerequisite.any_of.${a}`);

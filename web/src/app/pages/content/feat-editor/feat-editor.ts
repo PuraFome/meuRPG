@@ -17,7 +17,8 @@ import type { TableEntry } from '../../../../gen/meurpg/rules/v1/table_content_p
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
-import type { EffectMenuVm } from '../../../core/content/effect-draft';
+import type { EffectDraft, EffectMenuVm } from '../../../core/content/effect-draft';
+import { FEAT_OPTION_SETS, optionChoiceIndex } from '../../../core/content/feat-options';
 import {
   type FeatDraft,
   type Scores,
@@ -50,6 +51,8 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { TextField } from '../../../shared/form-fields/text-field';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import { EntryRead } from '../entry-read/entry-read';
+import { FeatOptions } from './feat-options/feat-options';
+import { OptionSource } from './option-source/option-source';
 import { PlayersSwitch } from '../players-switch/players-switch';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
@@ -63,6 +66,7 @@ const FEAT_SIZES: SelectOption[] = [{ value: '', label: 'Qualquer' }, ...SIZE_OP
  * The feat editor: a name, a text, what the feat asks of a character, and its effects.
  * The prerequisite has ability scores, a proficiency, spellcasting, races, a size, a feature to lack and a level.
  * The effects come from the server's menu, with the types only a feat has.
+ * A feat's choice of options takes them from the feat's own option panel, a whole SRD set or a list of SRD options.
  * "Salvar talento" sends the whole entry.
  * Whether a character meets the prerequisite is the server's to say.
  */
@@ -74,8 +78,10 @@ const FEAT_SIZES: SelectOption[] = [{ value: '', label: 'Qualquer' }, ...SIZE_OP
     EditorAlerts,
     EditorBar,
     EntryRead,
+    FeatOptions,
     FeatureEditor,
     MatIconModule,
+    OptionSource,
     PlayersSwitch,
     SearchPick,
     SelectField,
@@ -117,6 +123,18 @@ export class FeatEditor {
     ...this.catalog().proficiencies,
   ]);
   protected readonly sizes = FEAT_SIZES;
+  /** The place of the feat's choice of options among its effects, or -1. */
+  protected readonly choiceAt = computed(() => optionChoiceIndex(this.draft().feature.effects));
+  protected readonly choice = computed<EffectDraft | null>(
+    () => this.draft().feature.effects[this.choiceAt()] ?? null,
+  );
+  /** The set the choice offers whole, by its name, or empty. */
+  protected readonly setName = computed(() => {
+    const set = this.choice()?.set ?? '';
+    return set === '' ? '' : this.menu().nameOf(FEAT_OPTION_SETS, set);
+  });
+  /** The paths the last refusal landed on: a folded option with one inside opens. */
+  protected readonly refused = computed(() => this.saver.placement().fields);
   protected readonly lackGroups = LACK_GROUPS;
   private readonly lackAll = computed(() =>
     lackOptions(this.menu().list('lackable_features'), this.entries(), this.catalog().nameOf),
@@ -199,6 +217,17 @@ export class FeatEditor {
 
   protected setFeature(feature: FeatureDraft): void {
     this.patch({ feature });
+  }
+
+  protected setOptions(options: FeatureDraft[]): void {
+    this.patch({ options });
+  }
+
+  /** The feat's choice of options after the cards changed it. */
+  protected setChoice(effect: EffectDraft): void {
+    const feature = this.draft().feature;
+    const effects = feature.effects.map((e, i) => (i === this.choiceAt() ? effect : e));
+    this.patch({ feature: { ...feature, effects } });
   }
 
   /** A race is added to the list; a feat's single race_key moves into it, so the server never gets both. */

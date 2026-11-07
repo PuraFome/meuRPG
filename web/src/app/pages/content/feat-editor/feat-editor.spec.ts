@@ -397,4 +397,110 @@ describe('FeatEditor (MR-025)', () => {
     expect(lack.getAttribute('aria-invalid')).toBe('true');
     expect(lack.closest('app-search-pick')!.querySelector('.chip--invalid')).not.toBeNull();
   });
+
+  describe('the option panel and the cards "De onde vêm as opções"', () => {
+    const veteran = (patch: Record<string, unknown> = {}) =>
+      entry(TableContentKind.FEAT, 'Estilo do Veterano', {
+        body: {
+          case: 'tableFeat',
+          value: create(TableFeatSchema, {
+            namePt: 'Estilo do Veterano',
+            effects: [{ type: 'choice', choice: 'feature', count: 1 }],
+            options: [
+              {
+                namePt: 'Guarda Alta',
+                effects: [{ type: 'modifier', target: 'ac', mode: 'add', value: '1' }],
+              },
+              { namePt: 'Mão Firme', descPt: ['Seu golpe cai sempre no mesmo ponto.'] },
+            ],
+            ...patch,
+          }),
+        },
+      });
+    const panel = (el: HTMLElement) => el.querySelector('app-feat-options')!;
+    const cards = (el: HTMLElement) =>
+      Array.from(el.querySelectorAll<HTMLInputElement>('app-option-source input[type="radio"]'));
+
+    it('lists the options of the feat in their panel and counts them on the first card', () => {
+      const { el } = setup(veteran());
+      expect(text(panel(el).querySelector('.count')!)).toBe('2 de 60 opções');
+      expect(Array.from(panel(el).querySelectorAll('.row__title')).map((t) => text(t))).toEqual([
+        'Opção 1 · Guarda Alta',
+        'Opção 2 · Mão Firme',
+      ]);
+      expect(text(panel(el))).toContain('no efeito 1;');
+      expect(text(el.querySelector('app-option-source .desc')!)).toBe('As 2 do painel abaixo.');
+      expect(cards(el).findIndex((c) => c.checked)).toBe(0);
+    });
+
+    it('draws no cards for a feat with no choice of options, and tells the panel to ask for one', () => {
+      const { el } = setup(false);
+      expect(el.querySelector('app-option-source')).toBeNull();
+      expect(text(panel(el))).toContain('Nenhuma opção ainda.');
+    });
+
+    it('sends the options in order, the named ones only, with the choice untouched', async () => {
+      const { fixture, el } = setup(veteran());
+      save.mockResolvedValue({ entry: veteran(), affected: [] });
+      click(panel(el) as HTMLElement, 'Adicionar uma opção');
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('button[aria-label="Descer Opção 1"]')!.click();
+      fixture.detectChanges();
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      const sent = save.mock.calls[0][2].value;
+      expect(sent.options.map((o: { namePt: string }) => o.namePt)).toEqual([
+        'Mão Firme',
+        'Guarda Alta',
+      ]);
+      expect(sent.effects).toEqual([{ type: 'choice', choice: 'feature', count: 1 }]);
+    });
+
+    it('offers a whole set: the card, the select and the empty-panel note, and sends the set with no list', async () => {
+      const { fixture, el } = setup(veteran({ options: [] }));
+      save.mockResolvedValue({ entry: veteran(), affected: [] });
+      cards(el)[1].click();
+      fixture.detectChanges();
+      expect((el.querySelector('app-option-source select') as HTMLSelectElement).value).toBe(
+        'invocation',
+      );
+      expect(text(panel(el))).toContain('Este talento oferece o conjunto Invocação mística.');
+      expect(
+        panel(el)
+          .querySelector<HTMLElement>('[data-field="table_feat.options"]')!
+          .getAttribute('aria-disabled'),
+      ).toBe('true');
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      expect(save.mock.calls[0][2].value.effects[0]).toMatchObject({
+        type: 'choice',
+        choice: 'feature',
+        set: 'invocation',
+      });
+      expect(save.mock.calls[0][2].value.options).toBeUndefined();
+    });
+
+    it('puts each refusal on the field it names: the list, the cards and an option', async () => {
+      const { fixture, el } = setup(veteran());
+      save.mockRejectedValue(
+        refusal(
+          ['table_feat.options', 'limit'],
+          ['table_feat.effects[0].set', 'bad_value'],
+          ['table_feat.options[1].effects[0].target', 'bad_value'],
+        ),
+      );
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      expect(text(panel(el).querySelector('.add')!)).toContain(
+        'O talento passou de 60 opções. Remova uma.',
+      );
+      expect(text(el.querySelector('app-option-source')!)).toContain(
+        'Este talento tem opções próprias: a escolha oferece elas ou um conjunto, não os dois.',
+      );
+      const rows = panel(el).querySelectorAll('.row');
+      expect(rows[0].classList.contains('row--open')).toBe(false);
+      expect(rows[1].classList.contains('row--open')).toBe(true);
+      expect(text(el.querySelector('[role="alert"]')!)).toContain('3 campos precisam de ajuste');
+    });
+  });
 });

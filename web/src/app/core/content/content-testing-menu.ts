@@ -190,6 +190,17 @@ export function menuResponse(): GetEffectMenuResponse {
         ],
       },
       {
+        name: 'feat_option_sets',
+        values: [
+          { key: 'invocation', namePt: 'Invocação mística' },
+          {
+            key: 'fighting_style',
+            namePt: 'Estilo de luta',
+            hintPt: 'Os estilos de luta do guerreiro, do paladino e do patrulheiro.',
+          },
+        ],
+      },
+      {
         name: 'option_set_names',
         values: [
           {
