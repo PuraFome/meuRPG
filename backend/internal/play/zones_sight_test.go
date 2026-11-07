@@ -26,7 +26,7 @@ func zoneRowOf(t *testing.T, key string, squares []grid.Square, wall *wallSpec) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	row := playdb.SpellZone{ID: "zone-1", OwnerID: "caster", SpellKey: key, OriginCol: int32(squares[0].Col), OriginRow: int32(squares[0].Row), Squares: b}
+	row := playdb.SpellZone{ID: "zone-1", OwnerID: "caster", SpellKey: key, OriginCol: clamp32(squares[0].Col, 0, 1000), OriginRow: clamp32(squares[0].Row, 0, 1000), Squares: b}
 	if w := storedWall(wall); wall != nil {
 		row.WallSide, row.WallDx, row.WallDy, row.WallLengthFt = w.side, w.dx, w.dy, w.lengthFt
 	}
@@ -184,7 +184,7 @@ func TestAZoneHalfInSightReadsLikeOneWhollyInSight(t *testing.T) {
 	viewer := playerSeeing(seen...)
 	read := func(squares []grid.Square, origin grid.Square) *playv1.SpellZone {
 		row := zoneRowOf(t, moonbeamKey, squares, nil)
-		row.OriginCol, row.OriginRow = int32(origin.Col), int32(origin.Row)
+		row.OriginCol, row.OriginRow = clamp32(origin.Col, 0, 1000), clamp32(origin.Row, 0, 1000)
 		zs := sightData(t, row).zonesView(viewer, nil)
 		if len(zs) != 1 {
 			t.Fatalf("zones = %d, want 1", len(zs))
