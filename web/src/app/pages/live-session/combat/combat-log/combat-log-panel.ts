@@ -19,6 +19,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import type { Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
+import type { LegendaryNames } from '../../../../core/combat/legendary-card';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatLogState } from '../../../../core/combat/combat-log-state';
@@ -73,6 +74,8 @@ export class CombatLogPanel {
   readonly inTab = input(false);
   /** The table hides the death saves (RN-24) and this is not their owner's screen: the log says why a character's rolls are not in it. */
   readonly deathNote = input(false);
+  /** The Portuguese names of the legendary options (`legendaryNames`), for the master's line of a spend. */
+  readonly legendaryNames = input<LegendaryNames | undefined>(undefined);
 
   protected readonly open = signal(false);
   protected readonly confirming = signal(false);
@@ -92,6 +95,7 @@ export class CombatLogPanel {
           .map((c) => c.label),
       ),
       theatre: isTheatre(this.encounter()),
+      legendaryNames: this.legendaryNames(),
     }),
   );
   protected readonly shown = computed(() =>

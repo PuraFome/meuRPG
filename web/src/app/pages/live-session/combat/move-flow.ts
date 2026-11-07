@@ -73,6 +73,12 @@ export class MoveFlow {
   private overDrag: { readonly combatantId: string; readonly drop: Square } | null = null;
   /** The "Saltar" page's "Distância" is on: the options are the long jump's (and its warning), not the walk's. */
   readonly jump = signal<{ readonly runningStart: boolean } | null>(null);
+  /** A legendary move the master armed (#557): the next drag of this creature's token on the map walks it with that option, at
+   * its cost in legendary actions. It goes off once the move worked, or with "Cancelar". */
+  readonly legendaryMove = signal<{
+    readonly combatantId: string;
+    readonly optionKey: string;
+  } | null>(null);
   /** The master's "Mostrar o alcance": the reach of whoever is on turn, drawn on the map. */
   readonly reachOn = signal(false);
   /** Where the combatant of the move page can go (`GetMoveOptions`): the player's own, or whoever the master's reach is on for. */
@@ -218,6 +224,8 @@ export class MoveFlow {
     this.overDrag = null;
     // The box is for this drag only; a refusal gives it back. "Mover mesmo assim" forces this one drag too.
     const forced = forceNow || this.forcedMove();
+    const armed = this.legendaryMove();
+    const legendary = armed?.combatantId === c.id ? armed.optionKey : '';
     this.forcedMove.set(false);
     this.forcedNote.set('');
     this.ctx
@@ -241,8 +249,12 @@ export class MoveFlow {
             undefined,
             undefined,
             forced,
+            legendary,
           );
           this.ctx.state().apply(res.encounter);
+          if (legendary) {
+            this.legendaryMove.set(null);
+          }
           if (forced) {
             this.forcedNote.set(
               `${c.label} foi mov${article(c.label) === 'a' ? 'ida' : 'ido'} à força. Ninguém recebeu oferta de ataque de oportunidade.`,

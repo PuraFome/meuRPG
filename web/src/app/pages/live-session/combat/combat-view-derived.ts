@@ -31,6 +31,7 @@ import {
   unactedPlayerOnTurn,
 } from '../../../core/combat/combat-derived';
 import { reactionWait } from '../../../core/combat/reactions';
+import { legendaryLeftLine } from '../../../core/combat/legendary-left';
 import type { CombatantInfo } from './combat-info';
 import { heldWait, revealWhy } from '../../../core/combat/hidden-reveal';
 import { CombatDeaths } from './combat-deaths';
@@ -242,6 +243,11 @@ export abstract class CombatViewDerivedDirective extends CombatViewStateDirectiv
     return (
       reactionWait(e) ?? waitingText(e, offersHolding(e, own.id)) ?? heldWait(e, this.myTurn())
     );
+  });
+  /** "Restam 2 ações lendárias: ...": under "Próximo turno" while a legendary creature has points to spend now. */
+  protected readonly legendaryLeft = computed(() => {
+    const e = this.encounter();
+    return e && this.isMaster() ? legendaryLeftLine(e) : '';
   });
   /** Why "Próximo turno" waits while questions about hidden creatures are open ("Responda ao pedido abaixo para seguir."). */
   protected readonly waitWhy = computed(() => {

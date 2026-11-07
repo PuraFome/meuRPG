@@ -15,6 +15,7 @@ function fake() {
   const client = TestBed.inject(CombatClient);
   (client as unknown as { base: { client: unknown } }).base.client = {
     spendLegendaryAction: answer('spend'),
+    setMonsterReactionMode: answer('mode'),
     rollAttack: answer('attack'),
     moveCombatant: answer('move'),
     answerReaction: answer('answer'),
@@ -100,5 +101,27 @@ describe('CombatClient, the legendary calls', () => {
     );
     await client.attacks.resolveConcentrationSave('c', 'e', 'w', { kind: 'app' }, 'k');
     expect(calls['concentration'].map((r) => r['useLegendaryResistance'])).toEqual([true, false]);
+  });
+
+  it('sets the Parry switch of a creature: asking or deciding alone, with an idempotency key', async () => {
+    const { client, calls } = fake();
+    const enc = await client.combatants.setMonsterReactionMode('c', 'e', 'cap', true);
+    await client.combatants.setMonsterReactionMode('c', 'e', 'cap', false);
+    expect(enc.id).toBe('enc');
+    expect(calls['mode'][0]).toMatchObject({
+      campaignId: 'c',
+      encounterId: 'e',
+      combatantId: 'cap',
+      ask: true,
+    });
+    expect(calls['mode'][1]).toMatchObject({ ask: false });
+    expect(calls['mode'][0]['idempotencyKey']).toEqual(expect.any(String));
+  });
+
+  it('resends the same key when the caller keeps it across a retry', async () => {
+    const { client, calls } = fake();
+    await client.combatants.setMonsterReactionMode('c', 'e', 'cap', true, 'k1');
+    await client.combatants.setMonsterReactionMode('c', 'e', 'cap', true, 'k1');
+    expect(calls['mode'].map((r) => r['idempotencyKey'])).toEqual(['k1', 'k1']);
   });
 });

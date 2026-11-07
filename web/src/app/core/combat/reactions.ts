@@ -85,3 +85,12 @@ export function reactionWait(e: Encounter): { title: string; detail: string } | 
   const wait = e.reactionWait;
   return wait && wait.titlePt ? { title: wait.titlePt, detail: wait.detailPt } : null;
 }
+
+/** What a player reads while a window that is the master's holds the table (an NPC's reaction, the master's check, an
+ * ask-mode Parry, Legendary Resistance): the server writes the same words for all of them (`Encounter.reaction_wait`). */
+export const MASTER_WAIT_TITLE = 'Esperando o mestre';
+
+/** Whether a wait is the master's: the neutral card is for it, while a player's own reaction is named as the server says. */
+export function isMasterWait(title: string): boolean {
+  return title.startsWith(MASTER_WAIT_TITLE);
+}

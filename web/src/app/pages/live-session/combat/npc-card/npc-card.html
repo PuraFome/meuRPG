@@ -57,6 +57,8 @@
         Movimento <span class="chip__word">{{ stats().movement }}</span>
       </li>
     </ul>
+    <!-- On a legendary creature's own turn the card tells what came back and that its legendary actions wait for another's turn (#557). -->
+    <ng-content select="[legendary-slot]" />
 
     @if (standRow(); as su) {
       <button

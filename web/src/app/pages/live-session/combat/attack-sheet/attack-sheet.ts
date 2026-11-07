@@ -216,12 +216,14 @@ export class AttackSheet {
     }),
   );
   protected readonly title = computed(() =>
-    this.s.typing() ? 'Digite o resultado do dado' : `Atacar com ${this.name}`,
+    this.s.typing()
+      ? 'Digite o resultado do dado'
+      : (this.data.legendary?.title ?? `Atacar com ${this.name}`),
   );
   protected readonly subtitle = computed(() =>
     this.s.typing()
       ? `${this.name} contra ${this.targetLabel()} · Rodada ${this.data.round}`
-      : this.detail,
+      : (this.data.legendary?.subtitle ?? this.detail),
   );
   protected readonly rollLabel = computed(
     () => `Role 1d20 para ${this.name} (${signedBonus(this.attack.attackBonus)})`,

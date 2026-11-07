@@ -51,6 +51,8 @@ import { EndTurn } from './end-turn';
 import { type OwnHitPoints, OwnNumbers, type OwnSlots } from './own-numbers';
 import { OrderStrip } from './order-strip';
 import { ConcentrationLine, TurnReaction } from './turn-extras';
+import { MasterWait } from '../../../../shared/master-wait/master-wait';
+import { isMasterWait } from '../../../../core/combat/reactions';
 
 /**
  * What a player sees at the top of a running combat (E6-05, E6-06): whose
@@ -77,6 +79,7 @@ import { ConcentrationLine, TurnReaction } from './turn-extras';
     EndTurn,
     JointOthers,
     JointPill,
+    MasterWait,
     MatButtonModule,
     MatIconModule,
     NgTemplateOutlet,
@@ -103,6 +106,8 @@ export class TurnPanel {
   /** The melee attacks an opportunity attack can use (off turn, reaction free). */
   readonly opportunities = input<readonly { key: string; name: string }[]>([]);
   /** An opportunity attack waits for an answer: the title ("Esperando a reação do mestre") and the line under it (E9-13). */
+  /** The wait is the master's: the neutral card reads it, and a player's own reaction keeps the plain notice. */
+  protected readonly masterWait = (w: { title: string }): boolean => isMasterWait(w.title);
   readonly waiting = input<{ readonly title: string; readonly detail: string } | null>(null);
   /** What the last move said when it stopped short ("Você parou antes: algo bloqueou o caminho."). */
   readonly moveNote = input('');
