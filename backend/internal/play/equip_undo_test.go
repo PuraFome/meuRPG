@@ -12,7 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
-// Undoing a swap of gear in a combat (#787): the swap is an event of its own, so the master's
+// Undoing a swap of gear in a combat: the swap is an event of its own, so the master's
 // "undo the last action" takes it back first, with the economy and the sheet's equipped state
 // from before it, and only then the action under it.
 
@@ -342,4 +342,31 @@ func TestTheLogHasTheSwapForTheMasterAndTheOwnerAlone(t *testing.T) {
 	if line == nil || line.GetGearSwapped().GetCost() != "" || !line.GetByMaster() {
 		t.Errorf("the owner reads %v for the master's swap, want a free line by the master", line)
 	}
+}
+
+// A player's armor swap is refused in a combat; the master's is allowed and enters the undo: the undo puts the armor
+// back on the sheet and the armor class with it, and the line says "armor".
+func TestUndoTheMastersArmorSwap(t *testing.T) {
+	t.Parallel()
+	a, e := equipFight(t)
+	e = a.passTo(t, e, "Reator")
+	ac := func() int32 { return byLabel(t, a.get(t, a.master), "Reator").GetArmorClass() }
+	if got := ac(); got != 18 {
+		t.Fatalf("armor class in chain mail with the shield = %d, want 18", got)
+	}
+	a.mustSwap(t, a.master, a.pens, chainMailKey, false)
+	if got := ac(); got != 14 {
+		t.Fatalf("armor class with the armor stowed = %d, want 14", got)
+	}
+	if line := gearLine(a.log(t, a.master, e)); line == nil || line.GetGearSwapped().GetKind() != "armor" {
+		t.Errorf("the master reads %v, want a gear line of kind armor", line)
+	}
+	a.mustUndo(t, e)
+	if a.hasCarried(t, chainMailKey) {
+		t.Error("the armor is still stowed after the undo")
+	}
+	if got := ac(); got != 18 {
+		t.Errorf("armor class after the undo = %d, want 18", got)
+	}
+	a.wantTurn(t, "after the undo", false, false)
 }

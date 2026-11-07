@@ -5817,7 +5817,7 @@ message CombatLogRecharge {
 message CombatLogGearSwapped {
   // The piece's name, in Portuguese when the content has it, else the SRD's in English.
   string name_pt = 1;
-  // "weapon" or "shield".
+  // "weapon", "shield" or "armor" (armor only when the master made the swap).
   string kind = 2;
   // Whether the piece is equipped after the change (drawn) or carried (stowed).
   bool equipped = 3;

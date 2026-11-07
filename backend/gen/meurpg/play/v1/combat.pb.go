@@ -20037,7 +20037,7 @@ type CombatLogGearSwapped struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The piece's name, in Portuguese when the content has it, else the SRD's in English.
 	NamePt string `protobuf:"bytes,1,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
-	// "weapon" or "shield".
+	// "weapon", "shield" or "armor" (armor only when the master made the swap).
 	Kind string `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"`
 	// Whether the piece is equipped after the change (drawn) or carried (stowed).
 	Equipped bool `protobuf:"varint,3,opt,name=equipped,proto3" json:"equipped,omitempty"`

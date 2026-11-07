@@ -318,7 +318,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       };
     },
   ],
-  // A swap of gear in the combat (#787): the master's and the character's owner's line. The cost is what it spent.
+  // A swap of gear in the combat: the master's and the character's owner's line. The cost is what it spent.
   [
     CombatLogKind.GEAR_SWAPPED,
     ({ e, base }) => {

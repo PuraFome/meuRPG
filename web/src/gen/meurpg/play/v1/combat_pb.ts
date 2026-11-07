@@ -9980,7 +9980,7 @@ export type CombatLogGearSwapped = Message<"meurpg.play.v1.CombatLogGearSwapped"
   namePt: string;
 
   /**
-   * "weapon" or "shield".
+   * "weapon", "shield" or "armor" (armor only when the master made the swap).
    *
    * @generated from field: string kind = 2;
    */

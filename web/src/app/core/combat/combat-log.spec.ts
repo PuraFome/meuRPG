@@ -1077,7 +1077,7 @@ describe("the Recharge rolls of the creatures: a line for the master and the cre
   });
 });
 
-describe("the swaps of gear in the combat (#787): the master's and the owner's line, with what the swap cost", () => {
+describe("the swaps of gear in the combat: the master's and the owner's line, with what the swap cost", () => {
   const swap = (equipped: boolean, cost: string, byMaster = false) =>
     logLine(
       entry({

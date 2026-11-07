@@ -9,7 +9,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// A swap of gear in a combat (#787) leaves a line in the combat log with the piece and what the swap cost: the master's
+// A swap of gear in a combat leaves a line in the combat log with the piece and what the swap cost: the master's
 // and the owner's (RN-10), as the gear list is. Another player reads no word of it, in the log, the stream's hints
 // or any other read, and the line is gone for everyone once the master undoes the swap. The master's and the owner's
 // reads are the positive controls.
