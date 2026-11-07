@@ -70,13 +70,12 @@ export class WeaponMarks {
     afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>('input')?.focus());
   }
 
-  private readonly current = computed(() => {
-    const own = this.draft();
-    if (own) {
-      return own;
-    }
-    return Object.fromEntries(this.marks().map((m) => [m.weaponKey, m]));
-  });
+  /** The sheet's marks with what was touched here on top, so a sheet read again meanwhile shows through for the weapons
+   * that were not touched. */
+  private readonly current = computed(() => ({
+    ...Object.fromEntries(this.marks().map((m) => [m.weaponKey, m])),
+    ...this.draft(),
+  }));
 
   protected isOn(key: string, mark: MarkName): boolean {
     return this.current()[key]?.[mark] ?? false;
@@ -89,12 +88,15 @@ export class WeaponMarks {
 
   protected save(): void {
     const current = this.current();
+    const listed = new Set(this.weapons().map((w) => w.key));
+    // A mark of a weapon the grid has no row for (not in the gear any more) is kept: this save does not decide it.
+    const kept = this.marks().filter((m) => !listed.has(m.weaponKey));
     const out = this.weapons()
       .map((w) => ({
         weaponKey: w.key,
         ...(current[w.key] ?? { silvered: false, adamantine: false, magical: false }),
       }))
       .filter((m) => m.silvered || m.adamantine || m.magical);
-    this.saved.emit(out);
+    this.saved.emit([...kept, ...out]);
   }
 }

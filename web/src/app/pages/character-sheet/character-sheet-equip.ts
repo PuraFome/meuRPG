@@ -64,8 +64,8 @@ export class SheetEquip {
         vm.fullSheet,
         marks,
       );
+      this.marking.set(false);
       if (this.host.apply(vm.id, saved)) {
-        this.marking.set(false);
         this.marksNotice.set('Marcas salvas.');
       }
     } catch (err) {
@@ -115,6 +115,7 @@ export class SheetEquip {
     this.busyKey.set(change.key);
     this.error.set('');
     this.notice.set('');
+    this.marksNotice.set('');
     this.readFailed.set(false);
     try {
       await this.host.source.setEquipped(campaignId, characterId, change.key, change.equipped);

@@ -90,6 +90,33 @@ describe('WeaponMarks ("Marcar as armas")', () => {
     expect(saved).toEqual([[]]);
   });
 
+  it('keeps the stored mark of a weapon the grid has no row for', () => {
+    const { box, saved, submit } = setup([
+      { weaponKey: 'equipment:gone', ...none, adamantine: true },
+      { weaponKey: 'equipment:dagger', ...none, silvered: true },
+    ]);
+    box('Espada longa', 'Mágica').checked = true;
+    box('Espada longa', 'Mágica').dispatchEvent(new Event('change'));
+    submit();
+    expect(saved[0].map((m) => m.weaponKey)).toEqual([
+      'equipment:gone',
+      'equipment:dagger',
+      'equipment:longsword',
+    ]);
+  });
+
+  it('shows through the marks of a sheet read again for the weapons not touched here', () => {
+    const { fixture, box } = setup([]);
+    box('Espada longa', 'Mágica').checked = true;
+    box('Espada longa', 'Mágica').dispatchEvent(new Event('change'));
+    fixture.componentRef.setInput('marks', [
+      { weaponKey: 'equipment:dagger', ...none, silvered: true },
+    ]);
+    fixture.detectChanges();
+    expect(box('Adaga', 'Prateada').checked).toBe(true);
+    expect(box('Espada longa', 'Mágica').checked).toBe(true);
+  });
+
   it('says the error in an alert and holds the toggles while it saves', () => {
     const { el, box } = setup([], { error: 'A ficha mudou.', saving: true });
     expect(el.querySelector('[role="alert"]')!.textContent).toContain('A ficha mudou.');
