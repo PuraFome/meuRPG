@@ -1622,7 +1622,7 @@ message WatchGameSessionResponse {
     // The master applied the damage of an attack to a player's character (RN-02): to that character's player only,
     // so the sheet says whose blow it was, whether or not the attacker is hidden and its line is in the log.
     AttackHit attack_hit = 46;
-    // The table screen changed (issue #648): the master's choice, or whether a TV tab is connected.
+    // The table screen changed: the master's choice, or whether a TV tab is connected.
     // Only the master gets it; no player's stream does (RN-10). The master's app reads
     // TableScreenService.GetTableScreen again.
     TableScreenChanged table_screen_changed = 47;

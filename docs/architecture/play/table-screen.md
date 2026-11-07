@@ -60,14 +60,14 @@ A field added to `Encounter`, `OpenSceneInfo` or `Map` never reaches the TV; a n
 
 The header carries the campaign name, the session number and the names of the living player characters.
 The server sends up to 6 log lines in every combat, newest first.
-The TV draws the newest beside a map, and all of them in a combat without one.
+The app chooses how many to draw.
 A log line is a plain sentence made from the entry's kind and the labels a player reads.
 Only a few kinds have a sentence: the combat begun and ended, a door opened, a move, an attack, a spell and an action.
 Any other kind of entry is not on the TV.
 A name of table content (RN-23) is not told, because the master may have hidden the entry.
 A spell or an action of the table reads "conjurou uma magia" or "agiu"; the name of a creature's own action is told as a player reads it.
 A table creature in the combat is named in the order, as every player reads it.
-A character that is down or stable reads FALLEN, and a dead one reads DEFEATED, as the player reads it.
+The server sends the word FALLEN for a character that is down or stable, and DEFEATED for a dead one, as the player reads it.
 An up player character has no word.
 
 The TV never receives:
@@ -90,7 +90,7 @@ The map's image does not go to the TV when the fog is on.
 
 ### Tiles
 
-The TV draws a fog map from tiles, as a player does ([Fog of war](../maps/fog.md#the-route-and-the-index)).
+A fog map is drawn from tiles, as for a player ([Fog of war](../maps/fog.md#the-route-and-the-index)).
 The route takes `?as=tv` from the master and builds the tiles of the group's vision, black where the group does not see.
 A player, a pending member and a stranger asking `?as=tv` get the `404` of a tile that does not exist, byte for byte; someone with no session gets `401`.
 With "Visão do grupo" off, the master gets that `404` too.

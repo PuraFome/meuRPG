@@ -1363,7 +1363,7 @@ type SetTableScreenRequest struct {
 	CampaignId string `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	// The choice_revision the master read. A different one is `aborted`: read again.
 	ChoiceRevision int32 `protobuf:"varint,2,opt,name=choice_revision,json=choiceRevision,proto3" json:"choice_revision,omitempty"`
-	// The new choice. A pin of UNSPECIFIED or of an unknown kind is `invalid_argument` while `mirror` is off.
+	// The new choice. A pin of an unknown kind is `invalid_argument` whatever `mirror` is. UNSPECIFIED is allowed only while `mirror` is on, and then the stored pin is kept.
 	Choice        *TableScreenChoice `protobuf:"bytes,3,opt,name=choice,proto3" json:"choice,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

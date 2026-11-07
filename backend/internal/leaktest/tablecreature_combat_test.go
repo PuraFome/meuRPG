@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -200,7 +201,11 @@ func TestAnArchivedTableCreatureInTheCombatShowsAThirdPlayerItsIdentityAndNothin
 	t.Run("the TV reads the creature's name", func(t *testing.T) {
 		tv := w.tvReader()
 		for _, kind := range []string{"fight-creature-name", "fight-formula-name"} {
-			if !got.holds(tv, w.canaryOf(kind)) {
+			needles := w.needlesOf(kind)
+			if len(needles) == 0 {
+				t.Fatalf("no canary of kind %q: the check would prove nothing", kind)
+			}
+			if !slices.ContainsFunc(needles, func(n string) bool { return got.holdsNeedle(tv, n) }) {
 				t.Errorf("the TV's answers do not hold %s: the combat is not on the screen", kind)
 			}
 		}

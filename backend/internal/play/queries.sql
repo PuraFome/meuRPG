@@ -2000,7 +2000,7 @@ UPDATE combatants SET creature_spent = $2 WHERE id = $1;
 SELECT creature_spent FROM combatants WHERE id = $1;
 
 -- name: SetTableScreenChoice :one
--- The master's choice for the TV (issue #648); the caller holds the session's lock and has checked the
+-- The master's choice for the TV; the caller holds the session's lock and has checked the
 -- revision. It writes these three columns and nothing else.
 UPDATE game_sessions
 SET tv_mirror = sqlc.arg(tv_mirror), tv_pin = sqlc.arg(tv_pin), tv_choice_revision = tv_choice_revision + 1

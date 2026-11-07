@@ -43,7 +43,7 @@ func (s *Service) GetTableScreen(
 		name    string
 		party   []string
 	)
-	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error { // one snapshot for the whole response
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error { // one snapshot for the facts of the response
 		var err error
 		if session, err = openSessionWith(ctx, s.queriesIn(tx), m.CampaignID); err != nil {
 			return err

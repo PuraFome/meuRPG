@@ -21,7 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 )
 
-// The table screen (the TV at the table, issue #648, RN-10). The master asks GetTableScreen and the TV shows the
+// The table screen (the TV at the table, RN-10). The master asks GetTableScreen and the TV shows the
 // answer, so the answer is a player's: it is inspected as the TV's reader (tvReader), with the three layers of every
 // read (inspect), and the master's own reads of the same things are the positive controls.
 //
@@ -30,7 +30,7 @@ import (
 // Ana or only Caio does, a hidden thing, or a master's number. What the group sees (a map with "Visão do grupo")
 // is added by the test that turns it on.
 //
-// Which test proves which row of the plan (the leak rows, tvFieldRows below):
+// Which test proves which leak row (tvFieldRows below):
 //
 //   - TestLeakMatrix, the read GetTableScreen (reads_test.go, asTV): the answer in the state of the fixture, asked
 //     again after the stream's changes, and checkTableScreen: every pin, inspected;
@@ -277,7 +277,7 @@ var tvFieldRows = map[protoreflect.FullName]string{
 	"meurpg.play.v1.GetTableScreenResponse.campaign_name":   "the campaign's name, which every member reads",
 	"meurpg.play.v1.GetTableScreenResponse.session_number":  "the number of the open session; the numbers of the fixture are never a session's",
 	"meurpg.play.v1.GetTableScreenResponse.party":           "living player characters: not a reserved character, an NPC nor a character waiting for approval (reserved-name, review-reason, NPC names); control: the master's GetLiveSession",
-	"meurpg.play.v1.GetTableScreenResponse.options":         "the master's panel: an enum and a bool for each item; the TV's tab does not render it",
+	"meurpg.play.v1.GetTableScreenResponse.options":         "the master's panel: an enum and a bool for each item; the contract says the master's panel is its only reader",
 	"meurpg.play.v1.GetTableScreenResponse.presence":        "whether a TV tab is connected: a bool and a time",
 	"meurpg.play.v1.TableScreenPresence.open":               "a bool",
 	"meurpg.play.v1.TableScreenPresence.lost_at":            "a time",

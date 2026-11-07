@@ -1723,7 +1723,7 @@ export type WatchGameSessionResponse = Message<"meurpg.play.v1.WatchGameSessionR
     case: "attackHit";
   } | {
     /**
-     * The table screen changed (issue #648): the master's choice, or whether a TV tab is connected.
+     * The table screen changed: the master's choice, or whether a TV tab is connected.
      * Only the master gets it; no player's stream does (RN-10). The master's app reads
      * TableScreenService.GetTableScreen again.
      *

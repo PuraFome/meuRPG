@@ -194,7 +194,9 @@ func TestWatchTableScreenCoalescesABurst(t *testing.T) {
 	case <-time.After(waitLimit):
 		t.Fatal("no wait started for the burst")
 	}
-	// While that wait is open, no event starts another, and nothing is sent.
+	// While that wait is open, no event starts another, and nothing is sent. No seam tells the test that the stream took
+	// every event of the burst off its queue, so this check can pass for lack of time but never fails wrongly; the exact
+	// count of waits for a burst is proved without the stream, on the gate itself, by TestChangedGateWaitsOncePerBurst.
 	if n := len(clock.waits); n != 0 {
 		t.Errorf("waits started by a burst of %d events = %d more, want none", burst, n)
 	}

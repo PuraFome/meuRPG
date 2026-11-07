@@ -1,5 +1,5 @@
 -- +goose Up
--- The master's choice for the TV at the table (issue #648): follow what the table sees (tv_mirror) or one
+-- The master's choice for the TV at the table: follow what the table sees (tv_mirror) or one
 -- pinned item (tv_pin, a TableScreenKind: 1 idle, 2 map, 3 image, 4 scene, 5 combat). tv_choice_revision
 -- counts the master's writes of the choice, so a stale write is refused. The choice stays when its item ends.
 -- tv_mirror is true while the TV follows the table; tv_pin is read only while it is false. The pin is never

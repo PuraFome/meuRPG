@@ -3165,7 +3165,7 @@ type WatchGameSessionResponse_AttackHit_ struct {
 }
 
 type WatchGameSessionResponse_TableScreenChanged_ struct {
-	// The table screen changed (issue #648): the master's choice, or whether a TV tab is connected.
+	// The table screen changed: the master's choice, or whether a TV tab is connected.
 	// Only the master gets it; no player's stream does (RN-10). The master's app reads
 	// TableScreenService.GetTableScreen again.
 	TableScreenChanged *WatchGameSessionResponse_TableScreenChanged `protobuf:"bytes,47,opt,name=table_screen_changed,json=tableScreenChanged,proto3,oneof"`

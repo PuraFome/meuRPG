@@ -639,7 +639,7 @@ export type SetTableScreenRequest = Message<"meurpg.play.v1.SetTableScreenReques
   choiceRevision: number;
 
   /**
-   * The new choice. A pin of UNSPECIFIED or of an unknown kind is `invalid_argument` while `mirror` is off.
+   * The new choice. A pin of an unknown kind is `invalid_argument` whatever `mirror` is. UNSPECIFIED is allowed only while `mirror` is on, and then the stored pin is kept.
    *
    * @generated from field: meurpg.play.v1.TableScreenChoice choice = 3;
    */

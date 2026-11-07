@@ -10353,7 +10353,7 @@ type SetTableScreenChoiceParams struct {
 	ID       string
 }
 
-// The master's choice for the TV (issue #648); the caller holds the session's lock and has checked the
+// The master's choice for the TV; the caller holds the session's lock and has checked the
 // revision. It writes these three columns and nothing else.
 func (q *Queries) SetTableScreenChoice(ctx context.Context, arg SetTableScreenChoiceParams) (GameSession, error) {
 	row := q.db.QueryRow(ctx, setTableScreenChoice, arg.TvMirror, arg.TvPin, arg.ID)
