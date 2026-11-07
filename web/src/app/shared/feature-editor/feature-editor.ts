@@ -1,8 +1,8 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, TemplateRef, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { EffectDraft, EffectMenuVm } from '../../core/content/effect-draft';
+import type { EffectDraft, EffectMenuVm, FeatChoice } from '../../core/content/effect-draft';
 import { emptyEffect } from '../../core/content/effect-draft';
 import { emptyFeature, type FeatureDraft, NAME_MAX } from '../../core/content/feature-draft';
 import { EffectPicker } from '../effect-picker/effect-picker';
@@ -41,12 +41,24 @@ export class FeatureEditor {
   readonly flat = input(false);
   /** The feat editor: its effects may be the types only a feat has. */
   readonly featEditor = input(false);
+  /**
+   * The named choices of the feat these effects belong to (`featChoices` of its effects), set by the feat's own editor: a field
+   * offers the ones before its effect. With none (null), no field offers a choice.
+   */
+  readonly choices = input<readonly FeatChoice[] | null>(null);
+  /** The feature is an option of a feat: its fields offer fixed values only, and say so. */
+  readonly featOption = input(false);
+  /** The feat editor holds where a choice of options comes from in its own cards: the picker leaves those fields out. */
+  readonly sourceInCards = input(false);
+  /** A block drawn inside the picker of the effect at `afterFieldsAt`, under its fields and above "Mais opções". */
+  readonly afterFields = input<TemplateRef<unknown> | null>(null);
+  readonly afterFieldsAt = input(-1);
   /** A narrow field projected between the name and the effect (`<… lead>`): the class editor's "Nível". */
   readonly withLead = input(false);
   /**
    * "Opções para escolher": a class or subclass feature may carry a list of options the player picks (a table's maneuvers),
    * each edited here as a feature of its own (name, text, effects). A feature that has options needs a "Uma opção de uma
-   * lista do SRD" choice, whose empty list offers them.
+   * lista" choice, whose empty list offers them.
    */
   readonly allowOptions = input(false);
   /** The options are a race or subrace trait's one-time choice of one, picked at creation; no "Escolha" effect offers them. */
