@@ -1,0 +1,34 @@
+<div class="tv-scene" [class.tv-scene--alone]="stage().length === 0">
+  <section class="mr-panel tv-scene__text" aria-labelledby="tv-scene-text">
+    <h2 class="tv-scene__title" id="tv-scene-text">
+      <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>A cena
+    </h2>
+    @if (description()) {
+      <p class="tv-scene__description">{{ description() }}</p>
+    }
+  </section>
+
+  @if (stage().length > 0) {
+    <section class="mr-panel tv-scene__npcs" aria-labelledby="tv-scene-npcs">
+      <h2 class="tv-scene__title" id="tv-scene-npcs">
+        <mat-icon aria-hidden="true">person_outline</mat-icon>Em cena
+      </h2>
+      <ul class="tv-scene__list">
+        @for (npc of shown(); track $index) {
+          <li class="tv-scene__npc" [class.tv-scene__npc--speaking]="npc.speaking">
+            <app-combatant-token [initial]="initial(npc.name)" [npc]="true" [current]="npc.speaking" [size]="40" />
+            <span class="tv-scene__name">{{ npc.name }}</span>
+            @if (npc.speaking) {
+              <span class="tv-scene__speaking">
+                <mat-icon aria-hidden="true">chat_bubble_outline</mat-icon>Fala agora
+              </span>
+            }
+          </li>
+        }
+        @if (more() > 0) {
+          <li class="tv-scene__more">+{{ more() }}</li>
+        }
+      </ul>
+    </section>
+  }
+</div>

@@ -1,0 +1,68 @@
+// One screen: the header, the notice and the stage fill the window and never scroll. On a phone the page is one
+// column and scrolls like any other.
+:host {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  background: var(--mr-ground);
+  color: var(--mr-ink);
+
+  // Full screen: the host is the element the browser shows, so it paints the ground itself.
+  &:fullscreen {
+    height: 100dvh;
+  }
+
+  @media (max-width: 899.98px) {
+    height: auto;
+    min-height: 100dvh;
+  }
+}
+
+.tv__late {
+  &:not(:empty) {
+    flex: none;
+  }
+
+  .mr-notice {
+    border-radius: 0;
+    border-width: 0 0 1px;
+  }
+}
+
+.tv__stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  > * {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+}
+
+.tv__fill {
+  padding: var(--mr-space-4) var(--mr-gutter);
+}
+
+// A map with the table's free rolls beside it.
+.tv__split {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--mr-space-4);
+  padding: var(--mr-space-4) var(--mr-gutter);
+
+  @media (min-width: 900px) {
+    grid-template-columns: minmax(0, 1fr) clamp(260px, 26vw, 480px);
+    grid-template-rows: minmax(0, 1fr);
+    padding: var(--mr-space-5) var(--mr-space-6);
+
+    > app-tv-rolls {
+      align-self: start;
+    }
+  }
+}

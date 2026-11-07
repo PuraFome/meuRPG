@@ -32,7 +32,7 @@ import { LivePill } from './shared/live-pill/live-pill';
 import { RollOverlay } from './shared/roll-overlay/roll-overlay';
 import { LiveNotice } from './shell/live-notice/live-notice';
 import { SessionNotes } from './shell/session-notes/session-notes';
-import { OpenSessions, sessionForLiveLink } from './core/play/open-sessions';
+import { OpenSessions, isTableScreenPage, sessionForLiveLink } from './core/play/open-sessions';
 import type { OpenSessionVm } from './core/play/open-sessions.types';
 import { UserMenu } from './shell/user-menu/user-menu';
 
@@ -97,7 +97,12 @@ export class App {
 
   protected readonly menuOpen = signal(false);
   /** The current URL: the notice and the "Ao vivo" link hide on some pages. */
-  protected readonly url = signal(this.router.url);
+  protected readonly url = signal(
+    // Before the first navigation the router says `/`: the address bar knows the page, so the TV tab never flashes the shell.
+    this.router.url === '/' ? this.document.location.pathname : this.router.url,
+  );
+  /** The TV tab (the table screen): no bar, no footer, no notice, only the page. */
+  protected readonly tv = computed(() => isTableScreenPage(this.url()));
   /** A navigation is on its way (the first load included): the guard asks who is signed in and the page's code is fetched, with
    * nothing to draw meanwhile, so the shell says "Abrindo a página..." (it only shows after a short wait, in CSS). */
   protected readonly navigating = signal(true);

@@ -170,10 +170,18 @@ export class OpenSessions {
   }
 }
 
-/** A page of a campaign (`/campaigns/<id>`, `/campaigns/<id>/session`, a sheet, a map...), from a router URL. */
+/** The table screen (`/campaigns/<id>/table-screen`): the master's TV tab, which shows no shell at all. */
+export function isTableScreenPage(url: string): boolean {
+  return /^\/campaigns\/[^/]+\/table-screen\/?$/.test(url.split(/[?#]/, 1)[0]);
+}
+
+/**
+ * A page of a campaign (`/campaigns/<id>`, `/campaigns/<id>/session`, a sheet, a map...), from a router URL.
+ * `session` is true on the live session and on the table screen: both are the table, with no notice and no "Ao vivo" link.
+ */
 function campaignPage(url: string): { campaignId: string; session: boolean } | null {
   const path = url.split(/[?#]/, 1)[0];
-  const match = /^\/campaigns\/([^/]+)(\/session)?(\/.*)?$/.exec(path);
+  const match = /^\/campaigns\/([^/]+)(\/session|\/table-screen)?(\/.*)?$/.exec(path);
   return match ? { campaignId: match[1], session: match[2] !== undefined && !match[3] } : null;
 }
 
