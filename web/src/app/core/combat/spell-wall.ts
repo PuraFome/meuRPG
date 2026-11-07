@@ -8,6 +8,7 @@ import type { ZoneView } from './zones';
  * The spell that lays a wall (Wall of Fire, SRD 5.1) on the map: a straight wall or a ring, placed by a point, a direction,
  * a length and the side that burns (RN-37). The turn options mark it as a point spell (`AreaPlacement.POINT`) like Moonbeam
  * and carry nothing else that tells a wall apart, so the web names it by its catalog key, here and nowhere else.
+ * Follow-up: a flag from the server on the spell's targets (`lays_wall`) would replace this constant.
  */
 export const WALL_SPELL_KEY = 'spell:wall-of-fire';
 
@@ -19,7 +20,8 @@ export function laysWall(spellKey: string): boolean {
 /** The largest a straight wall is, and a ring's diameter, in feet: what the server takes (`wallLength`). */
 export const WALL_LINE_FT = 60;
 export const WALL_RING_FT = 20;
-/** A ring of less than 10 ft across is the same eight squares as one of 10 ft: it is not offered. */
+/** A ring is offered at two sizes only: the server rounds the radius up to 5 ft, so 5 and 10 ft are one ring (8 squares) and
+ * 15 and 20 ft are another (16 squares). */
 const RING_MIN_FT = 10;
 
 /** The wall as the caster is laying it. */
@@ -53,13 +55,20 @@ export function switchShape(wall: WallChoice, ring: boolean): WallChoice {
     return wall;
   }
   const fresh = newWall(ring);
-  const lengthFt = Math.min(maxLengthFt(ring), Math.max(minLengthFt(ring), wall.lengthFt));
+  const lengthFt = ring
+    ? wall.lengthFt > RING_MIN_FT + SQUARE_FT
+      ? WALL_RING_FT
+      : RING_MIN_FT
+    : Math.max(minLengthFt(ring), wall.lengthFt);
   return { ...fresh, lengthFt };
 }
 
-/** The length a square (5 ft, 1,5 m) more or less, kept between the shape's least and largest. */
-export function stepLength(wall: WallChoice, squares: number): WallChoice {
-  const next = wall.lengthFt + squares * SQUARE_FT;
+/** How much one step of the stepper changes the length, in feet: a square for a line, 10 ft (the next ring) for a ring. */
+export const stepFt = (ring: boolean) => (ring ? RING_MIN_FT : SQUARE_FT);
+
+/** The length a step more or less (a square, 1,5 m, for a line; the other ring size for a ring), kept inside the shape's sizes. */
+export function stepLength(wall: WallChoice, steps: number): WallChoice {
+  const next = wall.lengthFt + steps * stepFt(wall.ring);
   return {
     ...wall,
     lengthFt: Math.min(maxLengthFt(wall.ring), Math.max(minLengthFt(wall.ring), next)),
@@ -71,12 +80,12 @@ export function lengthText(wall: WallChoice): string {
   return metersText(wall.lengthFt);
 }
 
-/** "De 1,5 m a 18 m: 8 quadrados." for a line, "De 3 m a 6 m." for a ring. */
+/** "De 1,5 m a 18 m: 8 quadrados." for a line, "3 m ou 6 m de diâmetro." for a ring. */
 export function lengthNote(wall: WallChoice): string {
-  const range = `De ${metersText(minLengthFt(wall.ring))} a ${metersText(maxLengthFt(wall.ring))}`;
   if (wall.ring) {
-    return `${range}.`;
+    return `${metersText(minLengthFt(true))} ou ${metersText(maxLengthFt(true))} de diâmetro.`;
   }
+  const range = `De ${metersText(minLengthFt(false))} a ${metersText(maxLengthFt(false))}`;
   const n = reachSquares(wall.lengthFt);
   return `${range}: ${n} ${n === 1 ? 'quadrado' : 'quadrados'}.`;
 }
@@ -131,7 +140,7 @@ export function wallHint(wall: WallChoice, placed: boolean): string {
   }
   return placed
     ? 'Começo marcado. Arraste no mapa de novo ou use os botões de direção abaixo; toque no mesmo ponto para confirmar.'
-    : 'Toque no começo e arraste para onde vai, ou escolha a direção nos botões abaixo.';
+    : 'Toque no começo e arraste para onde vai. Ou use as setas abaixo.';
 }
 
 /** What the server laid for a wall, as the zone the map draws: the wall's squares, its burning side and the side that burns. */

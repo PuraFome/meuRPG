@@ -179,14 +179,17 @@ Every change of the wall, and every placed start, asks `PreviewSpellArea` again 
 The cast sends the same wall in `CastExtras.wall`, and the cast's key follows it.
 The cast sheet and the master's dialog show the step "Onde fica" (`app-wall-controls`, `shared/area-picker/wall-controls.ts`):
 - The shape is a group of two radios, "Linha reta" and "Anel", above the map.
-- A line has a direction pad of eight labelled buttons ("Para o nordeste") beside the drag on the map; a ring has no direction.
-- The length (a ring's diameter) is a stepper of 1,5 m, one square or 5 feet: a line goes from 1,5 m to 18 m and a ring from 3 m to 6 m.
+- A line has a direction pad of eight labelled buttons ("Para o nordeste") in a group named with the current way ("Direção da muralha: leste"), beside the drag on the map; a ring has no direction.
+- The length of a line is a stepper of 1,5 m (one square, 5 feet) from 1,5 m to 18 m.
+- A ring has two sizes, 3 m and 6 m across (10 and 20 feet), because the server rounds the radius up to 5 feet, so 5 and 10 feet are one ring and 15 and 20 feet another.
 - The side is a group of two radios: "À esquerda" and "À direita" for a line, "Por dentro" and "Por fora" for a ring.
 - The note of the side names the dice of the slot (`damageDice`).
 
 The map (`app-area-map` with `wall`) draws only what the server answered: `squares` as bricks and `burningSquares` as arrows with a dashed edge, through the same zone layer and looks as a laid zone.
 The first square of a line, or the centre of a ring, is a square outlined in the accent colour, named "Começo" or "Centro" in the legend.
-A press on a square and a release on another sets the start and the direction (`WallDrag`); a tap only sets the start.
+A press on a square and a release on another sets the start and the direction (`WallDrag`), and the reader of the screen hears the direction; a tap only sets the start.
+The start stays on the placed square when the mouse passes over another, and the last wall stays drawn until the next answer arrives.
+The map keeps `touch-action: none`, so a finger on the map does not scroll the sheet; the hint says "Ou use as setas abaixo" for the direction pad.
 The footer says "Próximo: quem está na área", and the list step follows as for any area.
 
 ## What a zone does not change in an attack

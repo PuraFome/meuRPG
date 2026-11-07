@@ -11,10 +11,11 @@ import {
   minLengthFt,
   sideChoices,
   sideNote,
+  stepFt,
   stepLength,
   switchShape,
 } from '../../core/combat/spell-wall';
-import { SQUARE_FT, feetToMeters } from '../../core/units';
+import { metersText } from '../../core/units';
 
 let nextId = 0;
 
@@ -74,7 +75,14 @@ export class WallControls {
     () => this.wall().lengthFt <= minLengthFt(this.wall().ring),
   );
   protected readonly atMost = computed(() => this.wall().lengthFt >= maxLengthFt(this.wall().ring));
-  protected readonly step = `${feetToMeters(SQUARE_FT)} m`.replace('.', ',');
+  protected readonly step = computed(() =>
+    metersText(stepFt(this.wall().ring)).replace(/\u00a0/g, ' '),
+  );
+  /** The group's name carries the way the wall runs now ("Direção da muralha: leste"). */
+  protected readonly padLabel = computed(() => {
+    const d = this.wall().direction;
+    return d ? `Direção da muralha: ${directionWord(d)}` : 'Direção da muralha';
+  });
 
   private cell(direction: Direction) {
     const i = DIRECTIONS.findIndex((d) => d.dx === direction.dx && d.dy === direction.dy);

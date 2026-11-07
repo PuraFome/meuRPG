@@ -178,4 +178,38 @@ describe('AreaMap: a wall', () => {
     expect(el.querySelector('app-zone-layer')).toBeNull();
     expect(plain(el.querySelector('.mr-legend')?.textContent)).toContain('Área da magia');
   });
+
+  it('keeps the start on the placed square when the mouse passes over another one', () => {
+    const { ref, el, fixture, pointer } = setup();
+    ref.setInput('placed', { kind: 'point', square: { col: 4, row: 2 } });
+    ref.setInput('preview', laid);
+    fixture.detectChanges();
+    pointer('pointermove', 9, 6);
+    const start = el.querySelector<HTMLElement>('.am__start')!;
+    expect(start.style.left).toBe('37.5%');
+    expect(el.querySelector('app-zone-layer svg')).not.toBeNull();
+  });
+
+  it('keeps the last wall drawn while the next answer is on its way, and drops it with the start', () => {
+    const { ref, el, fixture } = setup();
+    ref.setInput('placed', { kind: 'point', square: { col: 4, row: 2 } });
+    ref.setInput('preview', laid);
+    fixture.detectChanges();
+    ref.setInput('preview', null);
+    fixture.detectChanges();
+    expect(el.querySelectorAll('app-zone-layer path.zl__pat')).toHaveLength(2);
+    ref.setInput('placed', null);
+    fixture.detectChanges();
+    expect(el.querySelector('app-zone-layer svg')).toBeNull();
+  });
+
+  it('says the direction of a drag to a screen reader', () => {
+    vi.useFakeTimers();
+    const { el, fixture, pointer } = setup();
+    pointer('pointerdown', 3, 4);
+    pointer('pointerup', 7, 4);
+    vi.advanceTimersByTime(300);
+    fixture.detectChanges();
+    expect(plain(el.querySelector('p[role="status"]')?.textContent)).toContain('direção leste');
+  });
 });

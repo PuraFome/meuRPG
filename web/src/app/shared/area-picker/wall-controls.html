@@ -13,7 +13,7 @@
   @if (!wall().ring) {
     <div class="block">
       <span class="cap" [id]="id + '-dir'">Direção da muralha</span>
-      <div class="pad" role="group" aria-label="Direção da muralha">
+      <div class="pad" role="group" [attr.aria-label]="padLabel()">
         @for (c of pad; track $index) {
           @if (c; as cell) {
             <button
@@ -40,7 +40,7 @@
       <button
         type="button"
         class="stepper__btn"
-        [attr.aria-label]="'Diminuir o ' + noun() + ' em ' + step"
+        [attr.aria-label]="'Diminuir o ' + noun() + ' em ' + step()"
         [attr.aria-disabled]="atLeast() ? 'true' : null"
         [disabled]="disabled()"
         (click)="longer(-1)"
@@ -49,7 +49,7 @@
       <button
         type="button"
         class="stepper__btn"
-        [attr.aria-label]="'Aumentar o ' + noun() + ' em ' + step"
+        [attr.aria-label]="'Aumentar o ' + noun() + ' em ' + step()"
         [attr.aria-disabled]="atMost() ? 'true' : null"
         [disabled]="disabled()"
         (click)="longer(1)"
@@ -59,8 +59,8 @@
   </div>
 
   <div class="block">
-    <span class="cap">Lado que queima (na tela)</span>
-    <div class="seg" role="radiogroup" aria-label="Lado que queima (na tela)">
+    <span class="cap">Lado que queima</span>
+    <div class="seg" role="radiogroup" aria-label="Lado que queima">
       @for (s of sides(); track s.side) {
         <label class="seg__opt">
           <input type="radio" class="mr-visually-hidden" [name]="id + '-side'" [checked]="wall().side === s.side" [disabled]="disabled()" (change)="side(s.side)" />

@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
@@ -62,14 +63,16 @@ const laid = create(PreviewSpellAreaResponseSchema, {
   lengthFt: 60,
 });
 
-async function open() {
+async function open(over: { castSpell?: ReturnType<typeof vi.fn> } = {}) {
   TestBed.resetTestingModule();
   const previewSpellArea = vi.fn().mockResolvedValue(laid);
-  const castSpell = vi.fn().mockResolvedValue({
-    encounter: encounter({ combatants: [pensantus, kobold] }),
-    cast: { targets: [], pendingDamages: [], metamagicKeys: [], slot: { level: 4, pact: false } },
-    summoned: [],
-  });
+  const castSpell =
+    over.castSpell ??
+    vi.fn().mockResolvedValue({
+      encounter: encounter({ combatants: [pensantus, kobold] }),
+      cast: { targets: [], pendingDamages: [], metamagicKeys: [], slot: { level: 4, pact: false } },
+      summoned: [],
+    });
   const data = {
     campaignId: 'c',
     encounterId: 'enc',
@@ -151,11 +154,9 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     expect(plain(el.textContent)).toContain('Onde fica');
     expect(plain(el.textContent)).not.toContain('Onde ela explode');
     expect(el.querySelector('[role="radiogroup"][aria-label="Forma da muralha"]')).not.toBeNull();
-    expect(el.querySelectorAll('[aria-label="Direção da muralha"] button')).toHaveLength(8);
+    expect(el.querySelectorAll('[aria-label^="Direção da muralha"] button')).toHaveLength(8);
     expect(plain(el.querySelector('output')?.textContent)).toContain('18 m');
-    expect(
-      el.querySelector('[role="radiogroup"][aria-label="Lado que queima (na tela)"]'),
-    ).not.toBeNull();
+    expect(el.querySelector('[role="radiogroup"][aria-label="Lado que queima"]')).not.toBeNull();
     expect(plain(el.textContent)).toContain(
       'A seta no mapa mostra o lado: 5d8 de fogo para quem termina o turno ali, até 3 m.',
     );
@@ -180,7 +181,7 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     await settle();
     button('Diminuir o comprimento em 1,5 m')!.click();
     await settle();
-    radio('Lado que queima (na tela)', 'À esquerda')!.click();
+    radio('Lado que queima', 'À esquerda')!.click();
     await settle();
     expect(previewSpellArea).toHaveBeenCalledTimes(4);
     expect(previewSpellArea).toHaveBeenLastCalledWith(
@@ -199,9 +200,9 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
     const { el, radio, placeAt, settle, previewSpellArea } = await open();
     radio('Forma da muralha', 'Anel')!.click();
     await settle();
-    expect(el.querySelector('[aria-label="Direção da muralha"]')).toBeNull();
-    expect(radio('Lado que queima (na tela)', 'À esquerda')).toBeUndefined();
-    expect(radio('Lado que queima (na tela)', 'Por dentro')?.checked).toBe(true);
+    expect(el.querySelector('[aria-label^="Direção da muralha"]')).toBeNull();
+    expect(radio('Lado que queima', 'À esquerda')).toBeUndefined();
+    expect(radio('Lado que queima', 'Por dentro')?.checked).toBe(true);
     expect(plain(el.querySelector('output')?.textContent)).toContain('6 m');
     await placeAt(5, 5);
     expect((previewSpellArea.mock.calls.at(-1) as unknown[])[7]).toEqual({
@@ -215,7 +216,7 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
   it('goes to who is inside with "Próximo", and casts with the same wall and the start', async () => {
     const { el, button, radio, placeAt, settle, castSpell } = await open();
     await placeAt(4, 2);
-    radio('Lado que queima (na tela)', 'À esquerda')!.click();
+    radio('Lado que queima', 'À esquerda')!.click();
     await settle();
     button('Próximo: quem está na área')!.click();
     await settle();
@@ -234,13 +235,48 @@ describe('CastSheet: a spell that lays a wall (Muralha de Fogo)', () => {
   it('"Mudar o local" brings the controls back with the wall as it was', async () => {
     const { el, button, radio, placeAt, settle } = await open();
     await placeAt(4, 2);
-    radio('Lado que queima (na tela)', 'À esquerda')!.click();
+    radio('Lado que queima', 'À esquerda')!.click();
     await settle();
     button('Próximo: quem está na área')!.click();
     await settle();
     button('Mudar o local')!.click();
     await settle();
     expect(plain(el.textContent)).toContain('Onde fica');
-    expect(radio('Lado que queima (na tela)', 'À esquerda')?.checked).toBe(true);
+    expect(radio('Lado que queima', 'À esquerda')?.checked).toBe(true);
+  });
+
+  it('retries a lost cast with the same key, and takes a new key when the wall changed', async () => {
+    const castSpell = vi
+      .fn()
+      .mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable))
+      .mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable))
+      .mockResolvedValue({
+        encounter: encounter(),
+        cast: { targets: [], pendingDamages: [], metamagicKeys: [] },
+        summoned: [],
+      });
+    const { button, radio, placeAt, settle } = await open({ castSpell });
+    await placeAt(4, 2);
+    button('Próximo: quem está na área')!.click();
+    await settle();
+    button('Conjurar Muralha de Fogo')!.click();
+    await settle();
+    button('Conjurar Muralha de Fogo')!.click();
+    await settle();
+    expect(castSpell).toHaveBeenCalledTimes(2);
+    const calls = castSpell.mock.calls as unknown[][];
+    expect(calls[1][7]).toBe(calls[0][7]);
+    expect((calls[1][12] as { wall: unknown }).wall).toEqual(lineWall);
+    button('Mudar o local')!.click();
+    await settle();
+    radio('Lado que queima', 'À esquerda')!.click();
+    await settle();
+    button('Próximo: quem está na área')!.click();
+    await settle();
+    button('Conjurar Muralha de Fogo')!.click();
+    await settle();
+    const third = castSpell.mock.calls[2] as unknown[];
+    expect(third[7]).not.toBe(calls[0][7]);
+    expect((third[12] as { wall: { side: WallSide } }).wall.side).toBe(WallSide.LEFT);
   });
 });

@@ -32,12 +32,13 @@ import {
   outOfRangeText,
   placedHint,
 } from '../../core/combat/area-text';
-import { type Square, arrowStep } from '../../core/combat/combat-grid';
+import type { Square } from '../../core/combat/combat-grid';
 import { BURNING_PATTERN, zonePattern } from '../../core/combat/zone-pattern';
 import {
   type AreaShape,
   type Direction,
   beyondRange,
+  directionWord,
   cellsPath,
   outlinePath,
   rangeFt,
@@ -60,17 +61,14 @@ import {
   clampSquare,
   outlineOf,
   edgeMarkOf,
-  movedPoint,
   squareUnder,
-  turnedDirection,
+  arrowPick,
+  beyondReach,
 } from './area-moves';
 import { AreaPointer } from './area-pointer';
 import { CenterList } from './center-list';
 import { type CenterOption, centerOptions } from './center-options';
 import { WallDrag } from './wall-drag';
-
-/** Shift and an arrow move five squares. */
-const SHIFT_STEP = 5;
 
 let nextId = 0;
 
@@ -234,9 +232,11 @@ export class AreaMap {
   /** The wall the server laid for the placed start, as the zone the map draws (bricks and the burning side's arrows). */
   protected readonly wallZones = computed(() => {
     const wall = this.wall();
-    const p = this.preview();
+    // The last answer stays drawn while the next one is on its way, so a change does not flicker.
+    const p = this.preview() ?? this.lastWall();
     return wall && p && this.placed() ? [wallZoneView(p, wall.side)] : [];
   });
+  private readonly lastWall = signal<PreviewSpellAreaResponse | null>(null);
   protected readonly wallPattern = zonePattern('spell:wall-of-fire');
   protected readonly burningPattern = BURNING_PATTERN;
   protected readonly fillPath = computed(() => cellsPath(this.squares()));
@@ -244,12 +244,15 @@ export class AreaMap {
 
   /** The effective point of origin: the server's when it answered, else the point placed (or hovered). */
   protected readonly origin = computed<Square | null>(() => {
-    const pick = this.shown();
+    // A wall's start stays on the placed square: a hover does not move it.
+    const pick = this.wall() ? (this.placed() ?? this.shown()) : this.shown();
     if (pick?.kind !== 'point') {
       return null;
     }
     const o = this.preview()?.origin;
-    return this.filled() && o ? { col: o.col, row: o.row } : pick.square;
+    return (this.wall() ? samePick(pick, this.placed()) : this.filled()) && o
+      ? { col: o.col, row: o.row }
+      : pick.square;
   });
   /** The point tapped when a wall moved it: drawn as an ✕ beside the real origin. */
   protected readonly tapped = computed<Square | null>(() => {
@@ -312,6 +315,9 @@ export class AreaMap {
     // The count of creatures is said once the server answered for the place on the map.
     effect(() => {
       const p = this.preview();
+      if (p && this.wall()) {
+        this.lastWall.set(p);
+      }
       if (p && untracked(() => this.filled())) {
         untracked(() => this.say(this.placed()));
       }
@@ -357,16 +363,14 @@ export class AreaMap {
   /** A point beyond the range of a player's spell: says why and drops the old point. The master is not held to it. */
   private outOfRange(pick: AreaPick): boolean {
     const caster = this.caster();
-    if (
-      pick.kind !== 'point' ||
-      this.master() ||
-      !caster ||
-      this.rangeFt() <= 0 ||
-      rangeFt(caster, pick.square) <= this.rangeFt()
-    ) {
+    if (!caster || this.master() || !beyondReach(pick, caster, this.rangeFt())) {
       return false;
     }
-    const text = outOfRangeText(this.spell(), this.rangeFt(), rangeFt(caster, pick.square));
+    const text = outOfRangeText(
+      this.spell(),
+      this.rangeFt(),
+      rangeFt(caster, (pick as { square: Square }).square),
+    );
     this.refusal.set(text);
     this.hover.set(null);
     this.announcer.now(`Fora do alcance. ${text}`);
@@ -383,7 +387,10 @@ export class AreaMap {
     this.refusal.set('');
     this.hover.set(null);
     this.aimed.emit({ square, direction });
-    this.say(pick);
+    const caster = this.caster();
+    this.announcer.say(
+      `${announcement(this.placement(), caster ? rangeFt(caster, square) : 0, null, null)}, direção ${directionWord(direction)}`,
+    );
   }
 
   // ---- pointer ----
@@ -420,23 +427,16 @@ export class AreaMap {
       this.list.show();
       return;
     }
-    const step = arrowStep(event.key);
-    if (!step) {
-      return;
-    }
-    event.preventDefault();
-    const from = this.hover() ?? this.placed();
-    const next = this.isPoint()
-      ? movedPoint(
-          from,
-          this.caster(),
-          step,
-          event.shiftKey ? SHIFT_STEP : 1,
-          this.columns(),
-          this.rows(),
-        )
-      : turnedDirection(from, step.dc + step.dr);
+    const next = arrowPick(
+      event,
+      this.hover() ?? this.placed(),
+      this.caster(),
+      this.isPoint(),
+      this.columns(),
+      this.rows(),
+    );
     if (next) {
+      event.preventDefault();
       this.setHover(next, true);
       this.say(next);
     }

@@ -18,6 +18,14 @@ const answer = () =>
     lengthFt: 60,
   });
 
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
+
 function wallFlow() {
   const asked: { area: AreaChoice | null; wall: WallChoice | null }[] = [];
   const flow = new AreaFlow(
@@ -105,5 +113,35 @@ describe('AreaFlow for a wall', () => {
     expect(asked).toHaveLength(1);
     flow.back();
     expect(flow.wall()?.side).toBe(WallSide.RIGHT);
+  });
+
+  it('keeps only the answer of the latest wall: a slow older answer does not overwrite the newer', async () => {
+    const slow = deferred<ReturnType<typeof answer>>();
+    const fast = deferred<ReturnType<typeof answer>>();
+    const queue = [slow, fast];
+    const flow = new AreaFlow(AreaPlacement.POINT, () => queue.shift()!.promise, true);
+    flow.place({ kind: 'point', square: { col: 4, row: 3 } });
+    flow.setWall({ ...flow.wall()!, side: WallSide.LEFT });
+    const newer = create(PreviewSpellAreaResponseSchema, { lengthFt: 30 });
+    fast.resolve(newer);
+    await nextTurn();
+    slow.resolve(create(PreviewSpellAreaResponseSchema, { lengthFt: 60 }));
+    await nextTurn();
+    expect(flow.preview()?.lengthFt).toBe(30);
+    expect(flow.loading()).toBe(false);
+  });
+
+  it('a slow answer to the older wall cannot be confirmed over the newer one', async () => {
+    const slow = deferred<ReturnType<typeof answer>>();
+    const fast = deferred<ReturnType<typeof answer>>();
+    const queue = [slow, fast];
+    const flow = new AreaFlow(AreaPlacement.POINT, () => queue.shift()!.promise, true);
+    flow.placeWall({ col: 2, row: 2 }, { dx: 0, dy: 1 });
+    flow.setWall({ ...flow.wall()!, lengthFt: 25 });
+    const confirming = flow.confirm();
+    slow.resolve(create(PreviewSpellAreaResponseSchema, { lengthFt: 60 }));
+    fast.resolve(create(PreviewSpellAreaResponseSchema, { lengthFt: 25 }));
+    expect(await confirming).toBe(true);
+    expect(flow.preview()?.lengthFt).toBe(25);
   });
 });

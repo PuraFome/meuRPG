@@ -18,7 +18,6 @@ const plain = (t: string) => t.replace(/\u00a0/g, ' ');
 
 describe('spell-wall: what the spell lays', () => {
   it('knows the spell that lays a wall by its catalog key, and no other', () => {
-    expect(WALL_SPELL_KEY).toBe('spell:wall-of-fire');
     expect(laysWall('spell:wall-of-fire')).toBe(true);
     expect(laysWall('spell:fireball')).toBe(false);
   });
@@ -38,7 +37,7 @@ describe('spell-wall: what the spell lays', () => {
     });
   });
 
-  it('steps the length a square (5 ft, 1,5 m) at a time, within 5 to 60 ft for a line and 10 to 20 ft for a ring', () => {
+  it('steps a line a square (5 ft, 1,5 m) at a time from 5 to 60 ft, and a ring between its only two sizes, 10 and 20 ft (the server rounds 5 to 10 and 15 to 20 into one ring)', () => {
     const line = { ...newWall(false), lengthFt: 40 };
     expect(stepLength(line, -1).lengthFt).toBe(35);
     expect(stepLength(line, 1).lengthFt).toBe(45);
@@ -46,8 +45,9 @@ describe('spell-wall: what the spell lays', () => {
     expect(stepLength({ ...line, lengthFt: 60 }, 1).lengthFt).toBe(60);
     const ring = newWall(true);
     expect(stepLength(ring, 1).lengthFt).toBe(20);
-    expect(stepLength({ ...ring, lengthFt: 15 }, -1).lengthFt).toBe(10);
+    expect(stepLength(ring, -1).lengthFt).toBe(10);
     expect(stepLength({ ...ring, lengthFt: 10 }, -1).lengthFt).toBe(10);
+    expect(stepLength({ ...ring, lengthFt: 10 }, 1).lengthFt).toBe(20);
   });
 
   it('says the length in meters and how many squares it is', () => {
@@ -56,7 +56,7 @@ describe('spell-wall: what the spell lays', () => {
     expect(plain(lengthNote({ ...newWall(false), lengthFt: 40 }))).toBe(
       'De 1,5 m a 18 m: 8 quadrados.',
     );
-    expect(plain(lengthNote(newWall(true)))).toBe('De 3 m a 6 m.');
+    expect(plain(lengthNote(newWall(true)))).toBe('3 m ou 6 m de diâmetro.');
   });
 
   it('offers left and right for a line, inside and outside for a ring, never mixed', () => {
@@ -83,6 +83,9 @@ describe('spell-wall: what the spell lays', () => {
     expect(back.direction).toEqual({ dx: 1, dy: 0 });
     expect(back.side).toBe(WallSide.RIGHT);
     expect(back.lengthFt).toBe(10);
+    // A line's length that is no ring's size lands on the nearest ring size.
+    expect(switchShape({ ...line, lengthFt: 15 }, true).lengthFt).toBe(10);
+    expect(switchShape({ ...line, lengthFt: 25 }, true).lengthFt).toBe(20);
     expect(switchShape(line, false)).toBe(line);
   });
 

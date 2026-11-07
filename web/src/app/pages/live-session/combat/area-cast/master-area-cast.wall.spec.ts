@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { By } from '@angular/platform-browser';
 import { create } from '@bufbuild/protobuf';
+import { Code, ConnectError } from '@connectrpc/connect';
 
 import { HiddenAreaHitRule } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import {
@@ -33,9 +34,10 @@ const details = {
   higherLevel: [],
 };
 
-async function open() {
+async function open(over: { castSpell?: ReturnType<typeof vi.fn> } = {}) {
   TestBed.resetTestingModule();
-  const castSpell = vi.fn().mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
+  const castSpell =
+    over.castSpell ?? vi.fn().mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
   const previewSpellArea = vi.fn().mockResolvedValue(
     create(PreviewSpellAreaResponseSchema, {
       origin: { col: 6, row: 4 },
@@ -148,5 +150,42 @@ describe('MasterAreaCast: the master lays a Muralha de Fogo for an NPC', () => {
       lengthFt: 60,
       side: WallSide.RIGHT,
     });
+  });
+
+  it('retries a lost cast with the same key, and takes a new key when the wall changed', async () => {
+    const castSpell = vi
+      .fn()
+      .mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable))
+      .mockRejectedValueOnce(new ConnectError('lost', Code.Unavailable))
+      .mockResolvedValue({ encounter: encounter(), cast: { targets: [] } });
+    const { el, button, settle, map } = await open({ castSpell });
+    map.place.emit({ kind: 'point', square: { col: 6, row: 4 } });
+    await settle();
+    button('Próximo: quem está na área').click();
+    await settle();
+    button('Conjurar Muralha de Fogo').click();
+    await settle();
+    button('Conjurar Muralha de Fogo').click();
+    await settle();
+    const calls = castSpell.mock.calls as unknown[][];
+    expect(calls).toHaveLength(2);
+    expect(calls[1][7]).toBe(calls[0][7]);
+    expect((calls[1][12] as { wall: unknown }).wall).toMatchObject({ lengthFt: 60 });
+    button('Mudar o local').click();
+    await settle();
+    const left = Array.from(
+      el.querySelectorAll<HTMLInputElement>(
+        '[role="radiogroup"][aria-label="Lado que queima"] input',
+      ),
+    )[0];
+    left.click();
+    await settle();
+    button('Próximo: quem está na área').click();
+    await settle();
+    button('Conjurar Muralha de Fogo').click();
+    await settle();
+    const third = castSpell.mock.calls[2] as unknown[];
+    expect(third[7]).not.toBe(calls[0][7]);
+    expect((third[12] as { wall: { side: WallSide } }).wall.side).toBe(WallSide.LEFT);
   });
 });

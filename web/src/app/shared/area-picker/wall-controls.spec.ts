@@ -42,7 +42,7 @@ describe('WallControls: the shape', () => {
     const shape = radios('Forma da muralha');
     expect(shape.map((r) => words(r))).toEqual(['Linha reta', 'Anel']);
     expect(shape.map((r) => r.checked)).toEqual([true, false]);
-    expect(el.querySelector('[aria-label="Direção da muralha"]')).toBeNull();
+    expect(el.querySelector('[aria-label^="Direção da muralha"]')).toBeNull();
   });
 
   it('changing to Anel sends a ring at its own size, without direction', () => {
@@ -55,10 +55,26 @@ describe('WallControls: the shape', () => {
 describe('WallControls: a straight wall', () => {
   it('has eight labelled direction buttons that say which is chosen, and no more than the eight', () => {
     const { el, button } = setup(newWall(false));
-    const pad = el.querySelectorAll('[role="group"][aria-label="Direção da muralha"] button');
+    const pad = el.querySelectorAll('[role="group"][aria-label^="Direção da muralha"] button');
     expect(pad).toHaveLength(8);
     expect(button('Para o leste').getAttribute('aria-pressed')).toBe('true');
     expect(button('Para o norte').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('names the direction group with the way the wall runs now', () => {
+    const { el, button, fixture } = setup(newWall(false));
+    expect(
+      el
+        .querySelector('[role="group"][aria-label^="Direção da muralha"]')
+        ?.getAttribute('aria-label'),
+    ).toBe('Direção da muralha: leste');
+    button('Para o sul').click();
+    fixture.detectChanges();
+    expect(
+      el
+        .querySelector('[role="group"][aria-label^="Direção da muralha"]')
+        ?.getAttribute('aria-label'),
+    ).toBe('Direção da muralha: sul');
   });
 
   it('turns the wall when a direction is pressed', () => {
@@ -86,7 +102,7 @@ describe('WallControls: a straight wall', () => {
 
   it('offers left and right, with the arrow note and the dice of the slot', () => {
     const { el, radios, changes } = setup(newWall(false));
-    const side = radios('Lado que queima (na tela)');
+    const side = radios('Lado que queima');
     expect(side.map((r) => words(r))).toEqual(['À esquerda', 'À direita']);
     expect(side.map((r) => r.checked)).toEqual([false, true]);
     expect(plain(el.textContent)).toContain(
@@ -100,15 +116,12 @@ describe('WallControls: a straight wall', () => {
 describe('WallControls: a ring', () => {
   it('has the diameter and inside or outside, and no direction and no left or right', () => {
     const { el, radios, button } = setup(newWall(true));
-    expect(el.querySelector('[aria-label="Direção da muralha"]')).toBeNull();
+    expect(el.querySelector('[aria-label^="Direção da muralha"]')).toBeNull();
     expect(plain(el.textContent)).toContain('Diâmetro');
     expect(plain(el.querySelector('output')?.textContent)).toBe('6 m');
-    expect(plain(el.textContent)).toContain('De 3 m a 6 m.');
-    expect(radios('Lado que queima (na tela)').map((r) => words(r))).toEqual([
-      'Por dentro',
-      'Por fora',
-    ]);
-    expect(button('Diminuir o diâmetro em 1,5 m')).toBeTruthy();
+    expect(plain(el.textContent)).toContain('3 m ou 6 m de diâmetro.');
+    expect(radios('Lado que queima').map((r) => words(r))).toEqual(['Por dentro', 'Por fora']);
+    expect(button('Diminuir o diâmetro em 3 m')).toBeTruthy();
     expect(plain(el.textContent)).toContain('dentro do anel');
   });
 });
