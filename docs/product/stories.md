@@ -745,7 +745,12 @@ The data rules, limits and the server side are in [Table content: rules](../arch
 
 - **Given** I am the game master of "Mirathel", **when** I register a creature of my own from an SRD creature (a wolf with 40 hit points, armor class 17, +2 on each attack's damage and a trait of text), **then** it resolves where an SRD creature does: I give it to a player's character, it joins the combats with those numbers, and I can make an NPC from it.
   The SRD creature itself never changes, and the entry's base cannot be swapped for another one later.
-  The web app has no editor for creatures: they are created through the API or a content pack.
+  The master makes and edits table creatures in the web app, in the creature editor of "Conteúdo da mesa" on a laptop; a content pack carries them too.
+- **Given** I edit a table creature in the creature editor, **when** I add a line of resistance, immunity or vulnerability with its damage types and a "Vale contra", **then** it adds to the base's lists and never takes one away.
+  There are up to 12 lines.
+  "Vale contra" is all damage, only nonmagical attacks, only nonmagical attacks that are not silvered, or only nonmagical attacks that are not adamantine.
+  "Vale contra" is off for a vulnerability and for a damage type that is not bludgeoning, piercing or slashing, and the line under the rows says why.
+  Whoever holds the creature reads the lines on its sheet; only I edit them.
 - **Given** I save a creature with a base the SRD does not have, hit points outside 1 to 9,999, armor class outside 1 to 40, a damage bonus outside -10 to 30, or more than 10 traits, **then** the server refuses each at its field, and a trait named like one of the base's traits or actions, or "Magic Weapons", "Spellcasting" or "Innate Spellcasting", is refused.
 - **Given** a creature with no formula already given to a character, **when** I edit the entry's hit points and armor class, **then** the creature keeps the hit points it was given **and** its armor class and its attacks follow the entry.
 - **Given** a creature whose hit points are `5 * level()` and whose armor class is `10 + prof() + mod("dex")`, **when** I give it to a level 3 wizard and to a level 5 fighter, **then** each has the hit points, armor class and attack numbers of its own owner.
@@ -788,7 +793,7 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   Its stat block, hit points and armor class stay hidden from a player who does not own it.
   This holds even when the entry is archived or switched off.
 - **Given** an archived creature entry, **when** I give it to a character, **then** it is given.
-- **Given** a creature entry, **when** I switch it on or off, **then** I do it through the API, because the "Opções para os jogadores" screen has no creature group.
+- **Given** a creature entry, **when** I switch it on or off, **then** I do it in the "Criaturas" group of the "Opções para os jogadores" screen, or with the switch in the creature editor.
 - **Given** the summoning spells, Wild Shape and the encounter tools (generator, evaluator and swaps), **then** they offer SRD creatures only, because a table creature does not keep its base's challenge rating.
 
 **Swapping a pick.**

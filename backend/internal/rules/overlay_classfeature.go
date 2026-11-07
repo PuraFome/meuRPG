@@ -27,6 +27,8 @@ type TableClassFeature struct {
 	Level    int
 	Replaces string
 	Effects  []Effect
+	// Summon says the class feature brings the table's creatures to every character that has it (see TableSummon).
+	Summon *TableSummon
 }
 
 // addClassFeature registers a class feature: its name, its text and its effects (compiled with
@@ -48,20 +50,25 @@ func (b *overlayBuilder) addClassFeature(o *TableClassFeature, path string) erro
 	if o.Replaces != "" && (o.Replaces == key || !strings.HasPrefix(o.Replaces, featureKeyPrefix) && !strings.HasPrefix(o.Replaces, ClassFeatureKeyPrefix)) {
 		c.at(key, path, ".replaces_feature_key", ReasonReference, "%q is not a feature of a class", o.Replaces)
 	}
-	tf := &TableFeature{Key: key, NamePT: o.NamePT, DescPT: o.DescPT, Effects: o.Effects}
+	tf := &TableFeature{Key: key, NamePT: o.NamePT, DescPT: o.DescPT, Effects: o.Effects, Summon: o.Summon}
 	k := featureKind{prefix: featureKeyPrefix, owner: key, class: o.Class, level: o.Level}
 	b.know(key, k)
-	b.declareResources(k, o.Effects)
-	b.declareStates(key, key, o.Effects)
-	if len(o.Effects) > 0 {
-		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: o.Effects, path: path, strict: b.strict[key]})
-	}
 	if err := c.err(); err != nil {
 		return err
 	}
+	// A summon lowers to a granted_spell effect (and a hidden spell) of the entry, as a class feature's own does.
+	effects, summon, err := b.lowerFeatureSummon(tf, key, path, o.Effects)
+	if err != nil {
+		return err
+	}
+	b.declareResources(k, effects)
+	b.declareStates(key, key, effects)
+	if len(effects) > 0 {
+		b.pending = append(b.pending, pendingEffects{owner: key, entry: key, effects: effects, path: path, strict: b.strict[key], summon: summon})
+	}
 	b.register(o.TableEntry)
 	b.n.namesEN[key], b.n.namesPT[key] = o.NamePT, o.NamePT
-	if err := b.writeFeature(tf, k, o.Effects, path); err != nil {
+	if err := b.writeFeature(tf, k, effects, path); err != nil {
 		return err
 	}
 	b.n.classFeatureOf[key] = ClassFeatureEntry{Key: key, Class: o.Class, Level: o.Level}

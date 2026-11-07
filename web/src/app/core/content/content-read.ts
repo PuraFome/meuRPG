@@ -28,6 +28,7 @@ import { previewRows } from './spell-preview';
 import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
+import { readCreature } from './content-read-creature';
 import { type OfferedByName, optionPrerequisiteParts, optionSetName } from './option-text';
 import { parentTraitsOf, replacedNames } from './subrace-traits';
 
@@ -197,6 +198,8 @@ export function readEntry(
       return readClassFeature(body.value, nameOf);
     case 'tableSpell':
       return readSpell(body.value, nameOf);
+    case 'tableCreature':
+      return readCreature(body.value, nameOf);
     case 'tableClass':
       return readClass(body.value, nameOf);
     case 'tableSubclass':

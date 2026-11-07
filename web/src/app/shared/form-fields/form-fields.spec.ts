@@ -285,6 +285,35 @@ describe('form fields', () => {
   });
 });
 
+describe('TextField: what an empty field means', () => {
+  it('shows a placeholder with the label kept above it, and names the input for a screen reader', () => {
+    const fixture = TestBed.createComponent(TextField);
+    fixture.componentRef.setInput('label', 'Fixo');
+    fixture.componentRef.setInput('value', '');
+    fixture.componentRef.setInput('placeholder', '11, da base');
+    fixture.componentRef.setInput('ariaLabel', 'Pontos de vida, valor fixo');
+    fixture.detectChanges();
+    const input = (fixture.nativeElement as HTMLElement).querySelector('input')!;
+    expect(input.getAttribute('placeholder')).toBe('11, da base');
+    expect(input.getAttribute('aria-label')).toBe('Pontos de vida, valor fixo');
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector(
+        '.mat-mdc-form-field-label-always-float, .mdc-floating-label--float-above',
+      ),
+    ).not.toBeNull();
+  });
+
+  it('has neither attribute when they are not given', () => {
+    const fixture = TestBed.createComponent(TextField);
+    fixture.componentRef.setInput('label', 'Nome');
+    fixture.componentRef.setInput('value', '');
+    fixture.detectChanges();
+    const input = (fixture.nativeElement as HTMLElement).querySelector('input')!;
+    expect(input.hasAttribute('placeholder')).toBe(false);
+    expect(input.hasAttribute('aria-label')).toBe(false);
+  });
+});
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CheckRow, SwitchField],
