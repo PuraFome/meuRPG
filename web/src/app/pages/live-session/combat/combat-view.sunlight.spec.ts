@@ -46,4 +46,32 @@ describe('CombatView, painting the sun holds the turn', () => {
     expect(next(el).disabled).toBe(false);
     expect(next(el).getAttribute('aria-disabled')).not.toBe('true');
   });
+
+  it('puts the one sun switch in the combat header on a phone, not by "Encerrar combate"', async () => {
+    const enc = encounter({
+      combatants: [combatant({ id: 'g1', label: 'Goblin 1', initiative: 14 })],
+      currentCombatantId: 'g1',
+      round: 2,
+      sunlightOn: true,
+    });
+    const { fixture } = mountCombatView({ enc, master: true, matches: ['(max-width: 767.98px)'] });
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('[role="switch"]').length).toBe(1);
+    expect(el.querySelector('.phone__line [role="switch"]')).not.toBeNull();
+    expect(el.querySelector('.end-only [role="switch"]')).toBeNull();
+  });
+
+  it('keeps it by "Encerrar combate" on a tablet', async () => {
+    const enc = encounter({
+      combatants: [combatant({ id: 'g1', label: 'Goblin 1', initiative: 14 })],
+      currentCombatantId: 'g1',
+      round: 2,
+    });
+    const { fixture } = mountCombatView({ enc, master: true, matches: [] });
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('[role="switch"]').length).toBe(1);
+    expect(el.querySelector('.end-only [role="switch"]')).not.toBeNull();
+  });
 });

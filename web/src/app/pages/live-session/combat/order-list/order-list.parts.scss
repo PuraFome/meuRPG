@@ -2,16 +2,24 @@
   display: block;
 }
 
+// One line always. With the sun note the subline is a row: the leading part ellipsizes, "· Na luz do sol" stays whole at the end.
 .row__sub {
-  display: block;
+  display: flex;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-// The sun note ends the subline: the line wraps rather than cut it with an ellipsis.
-.row__sub:has(.row__sun) {
-  white-space: normal;
+.row__lead {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row__sun {
+  flex: none;
+  // pre, not nowrap: the leading " · " is kept at the start of the flex item.
+  white-space: pre;
 }
 
 .row__hp {

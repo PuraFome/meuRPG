@@ -1,10 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 
-import { SunlightScope } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { EncounterStatus, SunlightScope } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { encounter } from '../../../../core/combat/combat-testing';
 import { CombatBar } from './combat-bar';
 
+function onPhone() {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: query === '(max-width: 767.98px)',
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+}
+
 describe('CombatBar, the sun switch', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
   function setup(over: Parameters<typeof encounter>[0] = {}) {
     const fixture = TestBed.createComponent(CombatBar);
     fixture.componentRef.setInput('encounter', encounter(over));
@@ -74,5 +85,30 @@ describe('CombatBar, the sun switch', () => {
     const on = setup({ sunlightOn: true, sunlightScope: SunlightScope.MAP });
     expect(on.sun().querySelector('mat-icon')!.textContent).toContain('wb_sunny');
     expect(on.sun().classList).toContain('sun--on');
+  });
+
+  it('is not on the end-only bar on a phone: the combat header has the one switch', () => {
+    onPhone();
+    const fixture = TestBed.createComponent(CombatBar);
+    fixture.componentRef.setInput('encounter', encounter({ sunlightOn: true }));
+    fixture.componentRef.setInput('endOnly', true);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('[role="switch"]')).toBeNull();
+  });
+
+  it('sits in the head of the setup bar on a phone, once', () => {
+    onPhone();
+    const { el } = (() => {
+      const fixture = TestBed.createComponent(CombatBar);
+      fixture.componentRef.setInput(
+        'encounter',
+        encounter({ status: EncounterStatus.SETUP, sunlightOn: true }),
+      );
+      fixture.detectChanges();
+      return { el: fixture.nativeElement as HTMLElement };
+    })();
+    expect(el.querySelectorAll('[role="switch"]').length).toBe(1);
+    expect(el.querySelector('.bar__head [role="switch"]')).not.toBeNull();
+    expect(el.querySelector('.bar__actions [role="switch"]')).toBeNull();
   });
 });

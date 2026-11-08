@@ -91,7 +91,7 @@ import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layou
 import { waitForEncounterRevision } from './revision-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
-import { LIT, WIDTHS as SUN_WIDTHS, bar as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
+import { LIT, WIDTHS as SUN_WIDTHS, sunSpot as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
 
 // docs/design/README.md#how-a-screen-is-made: every screen passes axe with no
 // serious or critical violation of WCAG 2.1 A and AA, in the light and the
@@ -11251,7 +11251,7 @@ test('o menu "Mais ações" do NPC e a oferta de ataque de oportunidade passam n
 async function scanSunlightScreens(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
   const t = await sunlightTable(browser, 'Acessibilidade luz do sol', 1280, colorScheme);
   const { m, campaignId } = t;
-  const everyWidth = async (name: string, what: string, at: () => Locator, tab: 'Turno' | 'Mapa' | null = 'Turno') => {
+  const everyWidth = async (name: string, what: string, at: () => Locator, tab: 'Turno' | 'Ordem' | 'Mapa' | null = 'Turno', layout?: (width: number) => Promise<void>) => {
     for (const width of SUN_WIDTHS) {
       await m.setViewportSize(sunViewport(width));
       // The running combat's turn and map are tabs below 1024 px (a phone, a tablet; the setup has none: `null`); a computer shows them side by side.
@@ -11259,6 +11259,7 @@ async function scanSunlightScreens(browser: Browser, colorScheme: 'light' | 'dar
         await m.getByRole('tab', { name: new RegExp(`^${tab}`) }).click();
       }
       await expectScreenPasses(m, `${what} (${colorScheme}, ${width}px)`);
+      await layout?.(width);
       await shootSun(m, name, width, colorScheme, at());
     }
   };
@@ -11276,7 +11277,17 @@ async function scanSunlightScreens(browser: Browser, colorScheme: 'light' | 'dar
     await m.getByRole('button', { name: 'Começar o combate' }).click();
     await expect(m.getByRole('button', { name: 'Próximo turno' })).toBeVisible();
     await expect(sunSwitch(m, 'Luz do sol: todo o mapa')).toHaveAttribute('aria-checked', 'true');
-    await everyWidth('barra-ligada', 'A barra do combate, com a luz do sol ligada', () => sunBar(m));
+    // One switch in the page at every width: in the combat header on a phone (aligned right), in the bar from 768 px.
+    await everyWidth('barra-ligada', 'A barra do combate, com a luz do sol ligada', () => sunBar(m), 'Turno', async (width) => {
+      await expect(sunSwitch(m)).toHaveCount(1);
+      await expect(m.locator('.phone__line').getByRole('switch')).toHaveCount(width < 768 ? 1 : 0);
+      if (width < 768) {
+        const line = (await m.locator('.phone__line').boundingBox())!;
+        const box = (await sunSwitch(m).boundingBox())!;
+        expect(box.x + box.width, 'the switch is at the right of the header').toBeGreaterThan(line.x + line.width - 4);
+        expect(box.y, 'the switch is in the first screen').toBeLessThan(300);
+      }
+    });
     const notice = m.getByTestId('sunlight-notice');
     await expect(notice).toContainText(`${t.drow} está na luz do sol.`);
     await everyWidth('aviso-no-sol', 'O cartão do NPC, o aviso de uma criatura na luz do sol', () => notice);
@@ -11284,7 +11295,14 @@ async function scanSunlightScreens(browser: Browser, colorScheme: 'light' | 'dar
     const orderSun = m.getByTestId('order-sun');
     await expect(orderSun).toHaveCount(1);
     await expect(orderSun).toContainText('Na luz do sol');
-    await everyWidth('ordem-na-luz', 'A lista da ordem, com "Na luz do sol" ao fim da linha do Drow', () => orderSun.locator('xpath=ancestor::li[1]'));
+    await everyWidth('ordem-na-luz', 'A lista da ordem, com "Na luz do sol" ao fim da linha do Drow', () => orderSun.locator('xpath=ancestor::li[1]'), 'Ordem', async () => {
+      // One line: the subline is no taller than a row's text line, and "Na luz do sol" is whole at its end.
+      const sub = (await orderSun.locator('xpath=ancestor::*[contains(@class,"row__sub")][1]').boundingBox())!;
+      const sun = (await orderSun.boundingBox())!;
+      expect(sub.height, 'the subline is one line').toBeLessThan(26);
+      expect(sun.height, '"Na luz do sol" is one line').toBeLessThan(26);
+      expect(sun.x + sun.width, '"Na luz do sol" ends inside the subline').toBeLessThanOrEqual(sub.x + sub.width + 1);
+    });
 
     // "Onde eu pintar" with no square lit: the Drow is out of the sun, and the map card has its scope controls.
     await openMap(m);
@@ -11301,7 +11319,18 @@ async function scanSunlightScreens(browser: Browser, colorScheme: 'light' | 'dar
     await openMap(m);
     await expect(m.getByRole('radio', { name: 'Onde eu pintar' })).toHaveAttribute('aria-checked', 'true');
     await expect(m.getByRole('button', { name: 'Pintar luz do sol no mapa' })).toBeVisible();
-    await everyWidth('mapa-escopo', 'O cartão do mapa, com o escopo e o botão Pintar', () => sunMapCard(m), 'Mapa');
+    await everyWidth('mapa-escopo', 'O cartão do mapa, com o escopo e o botão Pintar', () => sunMapCard(m), 'Mapa', async (width) => {
+      // Neither label wraps, the tick sits beside the text, and from 768 px "Pintar" is on the row of the two parts.
+      for (const name of ['Todo o mapa', 'Onde eu pintar']) {
+        const part = (await m.getByRole('radio', { name }).boundingBox())!;
+        expect(part.height, `"${name}" is one line`).toBeLessThan(50);
+      }
+      const on = (await m.getByRole('radio', { name: 'Onde eu pintar' }).boundingBox())!;
+      const paint = (await m.getByRole('button', { name: 'Pintar luz do sol no mapa' }).boundingBox())!;
+      if (width >= 768) {
+        expect(Math.abs(paint.y - on.y), '"Pintar" beside the scope').toBeLessThan(8);
+      }
+    });
 
     // Paint mode: the tools, "Pronto" and the count; "Próximo turno" waits.
     await m.getByRole('button', { name: 'Pintar luz do sol no mapa' }).click();

@@ -320,17 +320,7 @@
       }
       @if (sunWhole() || sunSquares()) {
         <li class="legend__sun">
-          <svg
-            class="sw-sun"
-            viewBox="0 0 1 1"
-            width="22"
-            height="22"
-            aria-hidden="true"
-            focusable="false"
-          >
-            <rect x="0.04" y="0.04" width="0.92" height="0.92" class="sw-sun__box" />
-            <path d="M0.25 0.25L0.75 0.75M0.75 0.25L0.25 0.75" class="sw-sun__x" /></svg
-          >Luz do sol (só você vê)
+          <span class="mr-swatch mr-swatch--sun" aria-hidden="true"></span>Luz do sol (só você vê)
         </li>
       }
       @if (isMaster()) {

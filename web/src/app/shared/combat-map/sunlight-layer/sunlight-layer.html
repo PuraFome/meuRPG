@@ -22,13 +22,17 @@
         [attr.width]="tile"
         [attr.height]="tile"
       >
-        <path class="sl__cross" [attr.d]="cross" />
+        <circle class="sl__dot-halo" [attr.cx]="tile / 2" [attr.cy]="tile / 2" [attr.r]="dotHalo" />
+        <circle class="sl__dot" [attr.cx]="tile / 2" [attr.cy]="tile / 2" [attr.r]="dot" />
       </pattern>
     </defs>
     <path class="sl__fill" [attr.d]="fill()" />
     <path [attr.d]="fill()" [attr.fill]="'url(#' + uid + ')'" />
     <path class="sl__halo" [attr.d]="edge()" />
     <path class="sl__edge" [attr.d]="edge()" />
+    @if (preview(); as stroke) {
+      <path class="sl__preview" [attr.d]="stroke" />
+    }
   </svg>
 }
 @if (painting()) {

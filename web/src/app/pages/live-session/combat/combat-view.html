@@ -967,6 +967,15 @@
             }
           }
         </span>
+        @if (phone()) {
+          <!-- The master's sun switch, in the header on a phone (a tablet and up have it in the bar). -->
+          <app-sun-switch
+            class="phone__sun"
+            [encounter]="e"
+            [busy]="busy()"
+            (flip)="setSunlight($event)"
+          />
+        }
       </p>
       <app-tab-list
         label="Combate"

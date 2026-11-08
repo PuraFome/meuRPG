@@ -7,8 +7,10 @@
         <button matButton="outlined" type="button" class="end end--block" (click)="ask()">
           <mat-icon aria-hidden="true">flag</mat-icon>Encerrar combate
         </button>
-        <!-- The tabbed combat (a phone, a tablet) has no bar of its own: the sun switch sits here, by "Encerrar combate". -->
-        <ng-container *ngTemplateOutlet="sunSwitch" />
+        <!-- The tabbed combat has no bar of its own: on a tablet the sun switch sits here, by "Encerrar combate"; on a phone it is in the combat header. -->
+        @if (!phone()) {
+          <ng-container *ngTemplateOutlet="sunSwitch" />
+        }
       </div>
     }
   </section>
@@ -27,6 +29,10 @@
       <span class="bar__big">Iniciativa</span>
     } @else {
       <span class="bar__round">{{ round() }}</span>
+    }
+    @if (setup() && phone()) {
+      <!-- On a phone the setup has no room for it among the buttons: it sits at the right of the bar's head. -->
+      <span class="bar__sun"><ng-container *ngTemplateOutlet="sunSwitch" /></span>
     }
     @if (pending() > 0) {
       <span class="bar__held"><mat-icon aria-hidden="true">schedule</mat-icon>{{ pendingText() }}</span>
@@ -65,7 +71,9 @@
         Começar o combate
       </button>
       <button matButton="outlined" type="button" class="end" (click)="askCancel()">Cancelar combate</button>
-      <ng-container *ngTemplateOutlet="sunSwitch" />
+      @if (!phone()) {
+        <ng-container *ngTemplateOutlet="sunSwitch" />
+      }
     </div>
   } @else if (confirming()) {
     <ng-container *ngTemplateOutlet="endConfirm" />
@@ -137,18 +145,5 @@
 </ng-template>
 
 <ng-template #sunSwitch>
-  <button
-    type="button"
-    role="switch"
-    class="sun"
-    [class.sun--on]="sunOn()"
-    [attr.aria-checked]="sunOn()"
-    [attr.aria-label]="sunLabel()"
-    [title]="sunLabel()"
-    [disabled]="busy()"
-    (click)="sunlight.emit(!sunOn())"
-  >
-    <mat-icon aria-hidden="true">{{ sunOn() ? 'wb_sunny' : 'wb_twilight' }}</mat-icon>
-    <span class="sun__track" aria-hidden="true"><span class="sun__thumb"></span></span>
-  </button>
+  <app-sun-switch [encounter]="encounter()" [busy]="busy()" (flip)="sunlight.emit($event)" />
 </ng-template>

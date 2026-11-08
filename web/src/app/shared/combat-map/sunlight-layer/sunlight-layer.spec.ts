@@ -30,7 +30,7 @@ describe('SunlightLayer', () => {
     const none = mount();
     expect(none.el.querySelector('svg')).toBeNull();
     const some = mount({ squares: [sq(1, 1), sq(2, 1)] });
-    expect(some.el.querySelector('.sl__cross')).not.toBeNull();
+    expect(some.el.querySelector('.sl__dot')).not.toBeNull();
     expect(some.el.querySelector('.sl__edge')).not.toBeNull();
     expect(some.el.querySelector('.sl__frame')).toBeNull();
     expect(some.el.querySelector('.sl__pad')).toBeNull();
@@ -39,7 +39,7 @@ describe('SunlightLayer', () => {
   it('draws only a frame when the sun is over the whole map', () => {
     const { el } = mount({ wholeMap: true });
     expect(el.querySelector('.sl__frame')).not.toBeNull();
-    expect(el.querySelector('.sl__cross')).toBeNull();
+    expect(el.querySelector('.sl__dot')).toBeNull();
   });
 
   it('sends one change for a drag, when the pointer is released', () => {

@@ -80,7 +80,7 @@ import { type PaintTool, paintStatus } from '../../../../core/combat/sunlight-pa
     // never rests on colour alone.
     .sc__seg {
       display: flex;
-      flex: 1 1 260px;
+      flex: 1 1 auto;
       max-width: 420px;
       box-sizing: border-box;
       min-height: 44px;
@@ -90,13 +90,18 @@ import { type PaintTool, paintStatus } from '../../../../core/combat/sunlight-pa
       border-radius: var(--mr-radius-md);
       background: var(--mr-surface);
     }
+    .sc__seg--scope {
+      // Both labels stay on one line: the control is at least as wide as its two labels, and the row wraps before it shrinks.
+      flex: 0 1 auto;
+    }
     .sc__seg--tools {
       flex: 1 1 0;
       min-width: 0;
     }
     .sc__opt {
       display: inline-flex;
-      flex: 1 1 0;
+      flex: 1 1 auto;
+      white-space: nowrap;
       align-items: center;
       justify-content: center;
       gap: var(--mr-space-1);
@@ -125,6 +130,7 @@ import { type PaintTool, paintStatus } from '../../../../core/combat/sunlight-pa
     }
     .sc__btn {
       display: inline-flex;
+      white-space: nowrap;
       align-items: center;
       justify-content: center;
       gap: var(--mr-space-1);

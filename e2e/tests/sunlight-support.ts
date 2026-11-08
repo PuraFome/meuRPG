@@ -83,8 +83,14 @@ export function setSunlightRPC(
 /** The master's bar of the combat (setup or running). */
 export const bar = (page: Page): Locator => page.locator('app-combat-bar');
 
-/** The sun switch on the bar, by its name ("Luz do sol: desligada", "...: todo o mapa", "...: onde eu pintar"). */
-export const sunSwitch = (page: Page, name: string | RegExp = /^Luz do sol:/): Locator => bar(page).getByRole('switch', { name });
+/**
+ * The sun switch, by its name ("Luz do sol: desligada", "...: todo o mapa", "...: onde eu pintar"): there is one in the page, in the
+ * combat bar (setup, 768 and up) or, on a phone, in the combat header ("Rodada 2 · em seguida: ...") or the setup bar's head.
+ */
+export const sunSwitch = (page: Page, name: string | RegExp = /^Luz do sol:/): Locator => page.getByRole('switch', { name });
+
+/** What holds the sun switch at the current width: the combat header on a phone, the bar otherwise (what the screenshots frame). */
+export const sunSpot = (page: Page): Locator => page.locator('app-combat-bar, .phone__line').filter({ has: page.getByRole('switch') }).first();
 
 /** The map card with the scope controls (the combat's map, or the setup's "Posições iniciais"). */
 export const mapCard = (page: Page): Locator => page.locator('app-combat-map-card').filter({ has: page.locator('app-sunlight-controls') });

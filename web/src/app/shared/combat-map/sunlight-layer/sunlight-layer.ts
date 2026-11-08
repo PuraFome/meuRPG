@@ -26,12 +26,13 @@ import {
 
 let nextId = 0;
 
-/** The crosses of the sunlit squares: one tile of 0.2 x 0.2 squares, drawn as a stroked path (the legend's swatch uses the same). */
+/** The light dots of the sunlit squares: one dot per tile of 0.2 x 0.2 squares, a light dot over a dark halo (the legend's swatch is the same in CSS). */
 export const SUN_TILE = 0.2;
-export const SUN_CROSS = 'M0.05 0.05L0.15 0.15M0.15 0.05L0.05 0.15';
+export const SUN_DOT = 0.032;
+export const SUN_DOT_HALO = 0.045;
 
 /**
- * The sun on the master's map (#704): the squares the master painted, drawn as crosses with a dotted edge (never the line patterns
+ * The sun on the master's map (#704): the squares the master painted, drawn as light dots as a light dotted pattern with a dotted white edge (never the line patterns
  * of the spell zones), or, when the sun is over the whole map, a dotted frame around it. While `painting` it takes the pointer
  * over the map: a click or a drag adds (`paint`) or removes (`erase`) squares, the stroke is sent once, when the pointer is
  * released; the arrow keys move a cursor and Space applies the tool to its square, announced in a live region. It draws what the
@@ -64,7 +65,8 @@ export class SunlightLayer {
 
   protected readonly uid = `sl-${nextId++}`;
   protected readonly tile = SUN_TILE;
-  protected readonly cross = SUN_CROSS;
+  protected readonly dot = SUN_DOT;
+  protected readonly dotHalo = SUN_DOT_HALO;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private stroke: { pointer: number; last: Square; touched: Square[] } | null = null;
   /** Where each finger or pointer on the pad is; two or more means the map is being scrolled, not painted. */
@@ -87,6 +89,10 @@ export class SunlightLayer {
   );
   protected readonly fill = computed(() => cellsPath(this.shown()));
   protected readonly edge = computed(() => outlinePath(this.shown()));
+  /** The squares under the pointer in this stroke, marked in the accent until the server answers. */
+  protected readonly preview = computed(() =>
+    this.touched().length ? cellsPath(this.touched()) : '',
+  );
 
   constructor() {
     effect(() => {
