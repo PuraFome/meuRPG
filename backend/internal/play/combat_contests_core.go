@@ -398,6 +398,9 @@ var checkSourceNotes = map[string]rollNote{
 	combat.SourceArmorUntrained:  {Kind: "armor_untrained", Label: labelArmorUntrained},
 	combat.SourceExhaustionCheck: {Kind: "exhaustion", Label: "Exaustão"},
 	combat.SourceEffectCheck:     {Kind: "effect", Label: "Efeito ativo", Adv: true},
+	// The sun is the master's (RN-20, RN-29): the note a player could read says neither what it is nor that it is the sun.
+	combat.SourceSunlightPerception: {Kind: "other", Label: otherSourceTx},
+	combat.SourceSunlightSave:       {Kind: "other", Label: otherSourceTx},
 }
 
 // checkAbilityOf is the ability a skill's check rolls: Strength for Athletics, Wisdom for
@@ -425,9 +428,13 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 	if err != nil {
 		return nil, fmt.Errorf("list the states: %w", err)
 	}
+	sun, err := s.sunlightOf(ctx, q, enc)
+	if err != nil {
+		return nil, err
+	}
 	scene := combat.SaveScene{
-		Creature: creatureFacts(who, statesOf(states), sheet.Traits), Ability: checkAbilityOf(skill), Check: true,
-		StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage,
+		Creature: sun.facts(creatureFacts(who, statesOf(states), sheet.Traits), who), Ability: checkAbilityOf(skill), Check: true,
+		StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage, Perception: skill == skillPercept,
 	}
 	var out []rollNote
 	for _, src := range combat.SaveMode(scene) {

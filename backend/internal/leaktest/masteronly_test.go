@@ -117,6 +117,11 @@ var masterOnly = []masterOnlyField{
 	// --- play: the combat (RN-20)
 	{"meurpg.play.v1.Encounter", "map_point_id", "the battle point the master started from", nil},
 	{"meurpg.play.v1.Encounter", "pending_hidden_reveals", "the questions an area spell left the master: they name the hidden creatures it hit", nil},
+	{"meurpg.play.v1.Encounter", "sunlight_on", "whether the combat is in sunlight is the master's: a player reads only the roll's result (RN-20, RN-29)", nil},
+	{"meurpg.play.v1.Encounter", "sunlight_scope", "where the sunlight reaches is the master's (RN-20, RN-29)", nil},
+	{"meurpg.play.v1.Encounter", "sunlight_squares", "the squares the master painted as sunlit are his alone, on a fogged map too (RN-20, RN-29)", nil},
+	{"meurpg.play.v1.Combatant", "in_sunlight", "who stands in sunlight is the master's (RN-20, RN-29)", nil},
+	{"meurpg.play.v1.Combatant", "sunlight_trait", "which creature has Sunlight Sensitivity or Weakness is the master's (RN-20, RN-29)", nil},
 	{"meurpg.play.v1.CastSpellResponse", "hidden_hits", "the hidden creatures an area hit are the master's", nil},
 	{"meurpg.play.v1.CastSpellResponse", "pending_reveal_id", "a question exists only when the spell hit a hidden creature", nil},
 	{"meurpg.play.v1.AreaTarget", "hidden", "who is hidden is the master's", nil},
