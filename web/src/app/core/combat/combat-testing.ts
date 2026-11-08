@@ -23,6 +23,8 @@ import {
   type SpellZone,
   SpellZoneMovement,
   SpellZoneVisibility,
+  SunlightScope,
+  SunlightTrait,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 
 /** A combatant for specs: an NPC unless `kind` says otherwise. */
@@ -65,6 +67,8 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     disengaged: false,
     bestiaryCreatureKey: '',
     challengeRating: '',
+    inSunlight: false,
+    sunlightTrait: SunlightTrait.UNSPECIFIED,
     ...over,
   } as unknown as Combatant;
 }
@@ -90,6 +94,9 @@ export function encounter(over: Partial<Encounter> = {}): Encounter {
     deaths: [],
     zones: [],
     rollModeRequests: [],
+    sunlightOn: false,
+    sunlightScope: SunlightScope.UNSPECIFIED,
+    sunlightSquares: [],
     revision: 1,
     ...over,
   } as unknown as Encounter;

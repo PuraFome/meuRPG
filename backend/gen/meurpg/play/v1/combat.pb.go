@@ -1619,6 +1619,110 @@ func (HitRiderLogResult) EnumDescriptor() ([]byte, []int) {
 	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{16}
 }
 
+// The trait of a stat block that makes the sun count against a creature's rolls (SRD 5.1, Monsters).
+type SunlightTrait int32
+
+const (
+	SunlightTrait_SUNLIGHT_TRAIT_UNSPECIFIED SunlightTrait = 0
+	// Sunlight Sensitivity: disadvantage on attack rolls and on Wisdom (Perception) checks that rely on sight.
+	SunlightTrait_SUNLIGHT_TRAIT_SENSITIVITY SunlightTrait = 1
+	// Sunlight Weakness: disadvantage on attack rolls, ability checks and saving throws.
+	SunlightTrait_SUNLIGHT_TRAIT_WEAKNESS SunlightTrait = 2
+)
+
+// Enum value maps for SunlightTrait.
+var (
+	SunlightTrait_name = map[int32]string{
+		0: "SUNLIGHT_TRAIT_UNSPECIFIED",
+		1: "SUNLIGHT_TRAIT_SENSITIVITY",
+		2: "SUNLIGHT_TRAIT_WEAKNESS",
+	}
+	SunlightTrait_value = map[string]int32{
+		"SUNLIGHT_TRAIT_UNSPECIFIED": 0,
+		"SUNLIGHT_TRAIT_SENSITIVITY": 1,
+		"SUNLIGHT_TRAIT_WEAKNESS":    2,
+	}
+)
+
+func (x SunlightTrait) Enum() *SunlightTrait {
+	p := new(SunlightTrait)
+	*p = x
+	return p
+}
+
+func (x SunlightTrait) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SunlightTrait) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_play_v1_combat_proto_enumTypes[17].Descriptor()
+}
+
+func (SunlightTrait) Type() protoreflect.EnumType {
+	return &file_meurpg_play_v1_combat_proto_enumTypes[17]
+}
+
+func (x SunlightTrait) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SunlightTrait.Descriptor instead.
+func (SunlightTrait) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{17}
+}
+
+// SunlightScope is where the sunlight of a combat reaches.
+type SunlightScope int32
+
+const (
+	SunlightScope_SUNLIGHT_SCOPE_UNSPECIFIED SunlightScope = 0
+	// The whole map (or the whole combat, when it has no map).
+	SunlightScope_SUNLIGHT_SCOPE_MAP SunlightScope = 1
+	// Only the squares in Encounter.sunlight_squares.
+	SunlightScope_SUNLIGHT_SCOPE_SQUARES SunlightScope = 2
+)
+
+// Enum value maps for SunlightScope.
+var (
+	SunlightScope_name = map[int32]string{
+		0: "SUNLIGHT_SCOPE_UNSPECIFIED",
+		1: "SUNLIGHT_SCOPE_MAP",
+		2: "SUNLIGHT_SCOPE_SQUARES",
+	}
+	SunlightScope_value = map[string]int32{
+		"SUNLIGHT_SCOPE_UNSPECIFIED": 0,
+		"SUNLIGHT_SCOPE_MAP":         1,
+		"SUNLIGHT_SCOPE_SQUARES":     2,
+	}
+)
+
+func (x SunlightScope) Enum() *SunlightScope {
+	p := new(SunlightScope)
+	*p = x
+	return p
+}
+
+func (x SunlightScope) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SunlightScope) Descriptor() protoreflect.EnumDescriptor {
+	return file_meurpg_play_v1_combat_proto_enumTypes[18].Descriptor()
+}
+
+func (SunlightScope) Type() protoreflect.EnumType {
+	return &file_meurpg_play_v1_combat_proto_enumTypes[18]
+}
+
+func (x SunlightScope) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SunlightScope.Descriptor instead.
+func (SunlightScope) EnumDescriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{18}
+}
+
 // MonsterHitPoints is how the hit points of added monsters are chosen.
 type MonsterHitPoints int32
 
@@ -1656,11 +1760,11 @@ func (x MonsterHitPoints) String() string {
 }
 
 func (MonsterHitPoints) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[17].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[19].Descriptor()
 }
 
 func (MonsterHitPoints) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[17]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[19]
 }
 
 func (x MonsterHitPoints) Number() protoreflect.EnumNumber {
@@ -1669,7 +1773,7 @@ func (x MonsterHitPoints) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use MonsterHitPoints.Descriptor instead.
 func (MonsterHitPoints) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{17}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{19}
 }
 
 // CriticalDamageRule is what a critical hit does to the damage dice: the table's
@@ -1717,11 +1821,11 @@ func (x CriticalDamageRule) String() string {
 }
 
 func (CriticalDamageRule) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[18].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[20].Descriptor()
 }
 
 func (CriticalDamageRule) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[18]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[20]
 }
 
 func (x CriticalDamageRule) Number() protoreflect.EnumNumber {
@@ -1730,7 +1834,7 @@ func (x CriticalDamageRule) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CriticalDamageRule.Descriptor instead.
 func (CriticalDamageRule) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{18}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{20}
 }
 
 // AttackOutcome is what an attack roll did against the target's armor class.
@@ -1774,11 +1878,11 @@ func (x AttackOutcome) String() string {
 }
 
 func (AttackOutcome) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[19].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[21].Descriptor()
 }
 
 func (AttackOutcome) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[19]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[21]
 }
 
 func (x AttackOutcome) Number() protoreflect.EnumNumber {
@@ -1787,7 +1891,7 @@ func (x AttackOutcome) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AttackOutcome.Descriptor instead.
 func (AttackOutcome) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{19}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{21}
 }
 
 // PendingDamageStatus is where the damage of a hit is.
@@ -1842,11 +1946,11 @@ func (x PendingDamageStatus) String() string {
 }
 
 func (PendingDamageStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[20].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[22].Descriptor()
 }
 
 func (PendingDamageStatus) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[20]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[22]
 }
 
 func (x PendingDamageStatus) Number() protoreflect.EnumNumber {
@@ -1855,7 +1959,7 @@ func (x PendingDamageStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PendingDamageStatus.Descriptor instead.
 func (PendingDamageStatus) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{20}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{22}
 }
 
 // AreaPlacement is how a spell's area is set on a map with a grid (SRD 5.1,
@@ -1901,11 +2005,11 @@ func (x AreaPlacement) String() string {
 }
 
 func (AreaPlacement) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[21].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[23].Descriptor()
 }
 
 func (AreaPlacement) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[21]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[23]
 }
 
 func (x AreaPlacement) Number() protoreflect.EnumNumber {
@@ -1914,7 +2018,7 @@ func (x AreaPlacement) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AreaPlacement.Descriptor instead.
 func (AreaPlacement) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{21}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{23}
 }
 
 // HeldRollKind is the roll that waits for a question.
@@ -1995,11 +2099,11 @@ func (x HeldRollKind) String() string {
 }
 
 func (HeldRollKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[22].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[24].Descriptor()
 }
 
 func (HeldRollKind) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[22]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[24]
 }
 
 func (x HeldRollKind) Number() protoreflect.EnumNumber {
@@ -2008,7 +2112,7 @@ func (x HeldRollKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use HeldRollKind.Descriptor instead.
 func (HeldRollKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{22}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{24}
 }
 
 // WallSide is the side of a wall that deals damage.
@@ -2055,11 +2159,11 @@ func (x WallSide) String() string {
 }
 
 func (WallSide) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[23].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[25].Descriptor()
 }
 
 func (WallSide) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[23]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[25]
 }
 
 func (x WallSide) Number() protoreflect.EnumNumber {
@@ -2068,7 +2172,7 @@ func (x WallSide) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WallSide.Descriptor instead.
 func (WallSide) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{23}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{25}
 }
 
 // SaveOutcome is what a target's saving throw did.
@@ -2107,11 +2211,11 @@ func (x SaveOutcome) String() string {
 }
 
 func (SaveOutcome) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[24].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[26].Descriptor()
 }
 
 func (SaveOutcome) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[24]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[26]
 }
 
 func (x SaveOutcome) Number() protoreflect.EnumNumber {
@@ -2120,7 +2224,7 @@ func (x SaveOutcome) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SaveOutcome.Descriptor instead.
 func (SaveOutcome) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{24}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{26}
 }
 
 // SpellEffectKind is how a spell that reads hit points works. The same four kinds
@@ -2189,11 +2293,11 @@ func (x SpellEffectKind) String() string {
 }
 
 func (SpellEffectKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[25].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[27].Descriptor()
 }
 
 func (SpellEffectKind) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[25]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[27]
 }
 
 func (x SpellEffectKind) Number() protoreflect.EnumNumber {
@@ -2202,7 +2306,7 @@ func (x SpellEffectKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellEffectKind.Descriptor instead.
 func (SpellEffectKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{25}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{27}
 }
 
 // SpellEffectOutcome is whether a spell that reads hit points reached a target.
@@ -2244,11 +2348,11 @@ func (x SpellEffectOutcome) String() string {
 }
 
 func (SpellEffectOutcome) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[26].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[28].Descriptor()
 }
 
 func (SpellEffectOutcome) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[26]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[28]
 }
 
 func (x SpellEffectOutcome) Number() protoreflect.EnumNumber {
@@ -2257,7 +2361,7 @@ func (x SpellEffectOutcome) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellEffectOutcome.Descriptor instead.
 func (SpellEffectOutcome) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{26}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{28}
 }
 
 // SpellEffectReason is why a target was not affected. Only the master gets it.
@@ -2305,11 +2409,11 @@ func (x SpellEffectReason) String() string {
 }
 
 func (SpellEffectReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[27].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[29].Descriptor()
 }
 
 func (SpellEffectReason) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[27]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[29]
 }
 
 func (x SpellEffectReason) Number() protoreflect.EnumNumber {
@@ -2318,7 +2422,7 @@ func (x SpellEffectReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellEffectReason.Descriptor instead.
 func (SpellEffectReason) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{27}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{29}
 }
 
 // SpellEffectGain is what Aid gave one target.
@@ -2363,11 +2467,11 @@ func (x SpellEffectGain) String() string {
 }
 
 func (SpellEffectGain) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[28].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[30].Descriptor()
 }
 
 func (SpellEffectGain) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[28]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[30]
 }
 
 func (x SpellEffectGain) Number() protoreflect.EnumNumber {
@@ -2376,7 +2480,7 @@ func (x SpellEffectGain) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use SpellEffectGain.Descriptor instead.
 func (SpellEffectGain) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{28}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{30}
 }
 
 // ReactionOutcome is what Escudo did to the hit.
@@ -2415,11 +2519,11 @@ func (x ReactionOutcome) String() string {
 }
 
 func (ReactionOutcome) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[29].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[31].Descriptor()
 }
 
 func (ReactionOutcome) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[29]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[31]
 }
 
 func (x ReactionOutcome) Number() protoreflect.EnumNumber {
@@ -2428,7 +2532,7 @@ func (x ReactionOutcome) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReactionOutcome.Descriptor instead.
 func (ReactionOutcome) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{29}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{31}
 }
 
 // DeathSaveOutcome is what a death save did.
@@ -2475,11 +2579,11 @@ func (x DeathSaveOutcome) String() string {
 }
 
 func (DeathSaveOutcome) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[30].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[32].Descriptor()
 }
 
 func (DeathSaveOutcome) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[30]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[32]
 }
 
 func (x DeathSaveOutcome) Number() protoreflect.EnumNumber {
@@ -2488,7 +2592,7 @@ func (x DeathSaveOutcome) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use DeathSaveOutcome.Descriptor instead.
 func (DeathSaveOutcome) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{30}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{32}
 }
 
 // CombatLogKind is what a combat log entry tells.
@@ -2693,11 +2797,11 @@ func (x CombatLogKind) String() string {
 }
 
 func (CombatLogKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[31].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[33].Descriptor()
 }
 
 func (CombatLogKind) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[31]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[33]
 }
 
 func (x CombatLogKind) Number() protoreflect.EnumNumber {
@@ -2706,7 +2810,7 @@ func (x CombatLogKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CombatLogKind.Descriptor instead.
 func (CombatLogKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{31}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{33}
 }
 
 // WildShapeEndReason says why a druid's beast form ended.
@@ -2757,11 +2861,11 @@ func (x WildShapeEndReason) String() string {
 }
 
 func (WildShapeEndReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[32].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[34].Descriptor()
 }
 
 func (WildShapeEndReason) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[32]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[34]
 }
 
 func (x WildShapeEndReason) Number() protoreflect.EnumNumber {
@@ -2770,7 +2874,7 @@ func (x WildShapeEndReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WildShapeEndReason.Descriptor instead.
 func (WildShapeEndReason) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{32}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{34}
 }
 
 // CombatEffect is a lasting effect on a combatant that the table can end.
@@ -2809,11 +2913,11 @@ func (x CombatEffect) String() string {
 }
 
 func (CombatEffect) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[33].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[35].Descriptor()
 }
 
 func (CombatEffect) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[33]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[35]
 }
 
 func (x CombatEffect) Number() protoreflect.EnumNumber {
@@ -2822,7 +2926,7 @@ func (x CombatEffect) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CombatEffect.Descriptor instead.
 func (CombatEffect) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{33}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{35}
 }
 
 // LayOnHandsCureKind is what a Lay on Hands cure fixed.
@@ -2859,11 +2963,11 @@ func (x LayOnHandsCureKind) String() string {
 }
 
 func (LayOnHandsCureKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[34].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[36].Descriptor()
 }
 
 func (LayOnHandsCureKind) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[34]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[36]
 }
 
 func (x LayOnHandsCureKind) Number() protoreflect.EnumNumber {
@@ -2872,7 +2976,7 @@ func (x LayOnHandsCureKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use LayOnHandsCureKind.Descriptor instead.
 func (LayOnHandsCureKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{34}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{36}
 }
 
 // CombatLogEffectChange is what an effect did.
@@ -2934,11 +3038,11 @@ func (x CombatLogEffectChange) String() string {
 }
 
 func (CombatLogEffectChange) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[35].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[37].Descriptor()
 }
 
 func (CombatLogEffectChange) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[35]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[37]
 }
 
 func (x CombatLogEffectChange) Number() protoreflect.EnumNumber {
@@ -2947,7 +3051,7 @@ func (x CombatLogEffectChange) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use CombatLogEffectChange.Descriptor instead.
 func (CombatLogEffectChange) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{35}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{37}
 }
 
 // HighlightKind is a category of the combat highlights, in the order the app
@@ -3011,11 +3115,11 @@ func (x HighlightKind) String() string {
 }
 
 func (HighlightKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[36].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[38].Descriptor()
 }
 
 func (HighlightKind) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[36]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[38]
 }
 
 func (x HighlightKind) Number() protoreflect.EnumNumber {
@@ -3024,7 +3128,7 @@ func (x HighlightKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use HighlightKind.Descriptor instead.
 func (HighlightKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{36}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{38}
 }
 
 // ReactionKind is what a reaction window asks.
@@ -3152,11 +3256,11 @@ func (x ReactionKind) String() string {
 }
 
 func (ReactionKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[37].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[39].Descriptor()
 }
 
 func (ReactionKind) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[37]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[39]
 }
 
 func (x ReactionKind) Number() protoreflect.EnumNumber {
@@ -3165,7 +3269,7 @@ func (x ReactionKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReactionKind.Descriptor instead.
 func (ReactionKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{37}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{39}
 }
 
 type ReactionWindowStatus int32
@@ -3204,11 +3308,11 @@ func (x ReactionWindowStatus) String() string {
 }
 
 func (ReactionWindowStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[38].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[40].Descriptor()
 }
 
 func (ReactionWindowStatus) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[38]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[40]
 }
 
 func (x ReactionWindowStatus) Number() protoreflect.EnumNumber {
@@ -3217,7 +3321,7 @@ func (x ReactionWindowStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReactionWindowStatus.Descriptor instead.
 func (ReactionWindowStatus) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{38}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{40}
 }
 
 // ReactionClosedReason says why a window closed by itself: the server looks at
@@ -3271,11 +3375,11 @@ func (x ReactionClosedReason) String() string {
 }
 
 func (ReactionClosedReason) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[39].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[41].Descriptor()
 }
 
 func (ReactionClosedReason) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[39]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[41]
 }
 
 func (x ReactionClosedReason) Number() protoreflect.EnumNumber {
@@ -3284,7 +3388,7 @@ func (x ReactionClosedReason) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReactionClosedReason.Descriptor instead.
 func (ReactionClosedReason) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{39}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{41}
 }
 
 type ReactionChoice int32
@@ -3320,11 +3424,11 @@ func (x ReactionChoice) String() string {
 }
 
 func (ReactionChoice) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[40].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[42].Descriptor()
 }
 
 func (ReactionChoice) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[40]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[42]
 }
 
 func (x ReactionChoice) Number() protoreflect.EnumNumber {
@@ -3333,7 +3437,7 @@ func (x ReactionChoice) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReactionChoice.Descriptor instead.
 func (ReactionChoice) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{40}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{42}
 }
 
 type ReactionRollKind int32
@@ -3372,11 +3476,11 @@ func (x ReactionRollKind) String() string {
 }
 
 func (ReactionRollKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_meurpg_play_v1_combat_proto_enumTypes[41].Descriptor()
+	return file_meurpg_play_v1_combat_proto_enumTypes[43].Descriptor()
 }
 
 func (ReactionRollKind) Type() protoreflect.EnumType {
-	return &file_meurpg_play_v1_combat_proto_enumTypes[41]
+	return &file_meurpg_play_v1_combat_proto_enumTypes[43]
 }
 
 func (x ReactionRollKind) Number() protoreflect.EnumNumber {
@@ -3385,7 +3489,7 @@ func (x ReactionRollKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ReactionRollKind.Descriptor instead.
 func (ReactionRollKind) EnumDescriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{41}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{43}
 }
 
 // EncounterBlocked is the error detail of CombatService's
@@ -3643,9 +3747,16 @@ type Encounter struct {
 	// The areas that spells keep on the map (SpellZone), as the caller may see them: the
 	// master all of them (the ones of a hidden caster marked MASTER_ONLY), a player only
 	// the ones whose caster they see. Empty in THEATRE mode and when no spell keeps one.
-	Zones         []*SpellZone `protobuf:"bytes,31,rep,name=zones,proto3" json:"zones,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Zones []*SpellZone `protobuf:"bytes,31,rep,name=zones,proto3" json:"zones,omitempty"`
+	// Whether the combat is in sunlight (SetSunlight). Master only (RN-20, RN-29): a player reads none of
+	// sunlight_on, sunlight_scope and sunlight_squares, only the roll's result.
+	SunlightOn bool `protobuf:"varint,32,opt,name=sunlight_on,json=sunlightOn,proto3" json:"sunlight_on,omitempty"`
+	// Where the sunlight reaches: the whole map, or only sunlight_squares. Master only (RN-20, RN-29).
+	SunlightScope SunlightScope `protobuf:"varint,33,opt,name=sunlight_scope,json=sunlightScope,proto3,enum=meurpg.play.v1.SunlightScope" json:"sunlight_scope,omitempty"`
+	// The sunlit squares, sorted by row then column, read when the scope is SQUARES. Master only (RN-20, RN-29).
+	SunlightSquares []*SunlightSquare `protobuf:"bytes,34,rep,name=sunlight_squares,json=sunlightSquares,proto3" json:"sunlight_squares,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Encounter) Reset() {
@@ -3870,6 +3981,27 @@ func (x *Encounter) GetHitRiders() []*HitRiderOffer {
 func (x *Encounter) GetZones() []*SpellZone {
 	if x != nil {
 		return x.Zones
+	}
+	return nil
+}
+
+func (x *Encounter) GetSunlightOn() bool {
+	if x != nil {
+		return x.SunlightOn
+	}
+	return false
+}
+
+func (x *Encounter) GetSunlightScope() SunlightScope {
+	if x != nil {
+		return x.SunlightScope
+	}
+	return SunlightScope_SUNLIGHT_SCOPE_UNSPECIFIED
+}
+
+func (x *Encounter) GetSunlightSquares() []*SunlightSquare {
+	if x != nil {
+		return x.SunlightSquares
 	}
 	return nil
 }
@@ -6133,6 +6265,13 @@ type Combatant struct {
 	SpeedSwimFt   int32 `protobuf:"varint,114,opt,name=speed_swim_ft,json=speedSwimFt,proto3" json:"speed_swim_ft,omitempty"`
 	SpeedClimbFt  int32 `protobuf:"varint,115,opt,name=speed_climb_ft,json=speedClimbFt,proto3" json:"speed_climb_ft,omitempty"`
 	SpeedBurrowFt int32 `protobuf:"varint,116,opt,name=speed_burrow_ft,json=speedBurrowFt,proto3" json:"speed_burrow_ft,omitempty"`
+	// Only the master (RN-20, RN-29): the combatant stands in sunlight now. It is the fact the rolls read: the switch is on,
+	// and the combatant is in the whole map's sun or in a sunlit square, and not in magical Darkness. A player's copy has
+	// the zero value.
+	InSunlight bool `protobuf:"varint,117,opt,name=in_sunlight,json=inSunlight,proto3" json:"in_sunlight,omitempty"`
+	// Only the master: the sunlight trait its stat block has (a creature that has the trait is marked whether or not the
+	// sun is on it now; a player's character is not read). A player's copy has the zero value.
+	SunlightTrait SunlightTrait `protobuf:"varint,118,opt,name=sunlight_trait,json=sunlightTrait,proto3,enum=meurpg.play.v1.SunlightTrait" json:"sunlight_trait,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6755,6 +6894,20 @@ func (x *Combatant) GetSpeedBurrowFt() int32 {
 		return x.SpeedBurrowFt
 	}
 	return 0
+}
+
+func (x *Combatant) GetInSunlight() bool {
+	if x != nil {
+		return x.InSunlight
+	}
+	return false
+}
+
+func (x *Combatant) GetSunlightTrait() SunlightTrait {
+	if x != nil {
+		return x.SunlightTrait
+	}
+	return SunlightTrait_SUNLIGHT_TRAIT_UNSPECIFIED
 }
 
 // LimitedAction is an action of a stat block with a limit and what the creature has left of it.
@@ -9875,6 +10028,201 @@ func (x *SetMonsterReactionModeResponse) GetEncounter() *Encounter {
 	return nil
 }
 
+// SunlightSquare is one square of the grid, column and row from 0.
+type SunlightSquare struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Col           int32                  `protobuf:"varint,1,opt,name=col,proto3" json:"col,omitempty"`
+	Row           int32                  `protobuf:"varint,2,opt,name=row,proto3" json:"row,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SunlightSquare) Reset() {
+	*x = SunlightSquare{}
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SunlightSquare) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SunlightSquare) ProtoMessage() {}
+
+func (x *SunlightSquare) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SunlightSquare.ProtoReflect.Descriptor instead.
+func (*SunlightSquare) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *SunlightSquare) GetCol() int32 {
+	if x != nil {
+		return x.Col
+	}
+	return 0
+}
+
+func (x *SunlightSquare) GetRow() int32 {
+	if x != nil {
+		return x.Row
+	}
+	return 0
+}
+
+// SetSunlightRequest switches the sunlight of a combat.
+type SetSunlightRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId     string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	EncounterId    string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,3,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	// True puts the combat in sunlight; false takes it out, keeping the scope and the squares.
+	On bool `protobuf:"varint,4,opt,name=on,proto3" json:"on,omitempty"`
+	// Where the sunlight reaches. UNSPECIFIED keeps the current scope.
+	Scope SunlightScope `protobuf:"varint,5,opt,name=scope,proto3,enum=meurpg.play.v1.SunlightScope" json:"scope,omitempty"`
+	// Squares that become sunlit.
+	AddSquares []*SunlightSquare `protobuf:"bytes,6,rep,name=add_squares,json=addSquares,proto3" json:"add_squares,omitempty"`
+	// Squares that stop being sunlit.
+	RemoveSquares []*SunlightSquare `protobuf:"bytes,7,rep,name=remove_squares,json=removeSquares,proto3" json:"remove_squares,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetSunlightRequest) Reset() {
+	*x = SetSunlightRequest{}
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetSunlightRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetSunlightRequest) ProtoMessage() {}
+
+func (x *SetSunlightRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetSunlightRequest.ProtoReflect.Descriptor instead.
+func (*SetSunlightRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *SetSunlightRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *SetSunlightRequest) GetEncounterId() string {
+	if x != nil {
+		return x.EncounterId
+	}
+	return ""
+}
+
+func (x *SetSunlightRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+func (x *SetSunlightRequest) GetOn() bool {
+	if x != nil {
+		return x.On
+	}
+	return false
+}
+
+func (x *SetSunlightRequest) GetScope() SunlightScope {
+	if x != nil {
+		return x.Scope
+	}
+	return SunlightScope_SUNLIGHT_SCOPE_UNSPECIFIED
+}
+
+func (x *SetSunlightRequest) GetAddSquares() []*SunlightSquare {
+	if x != nil {
+		return x.AddSquares
+	}
+	return nil
+}
+
+func (x *SetSunlightRequest) GetRemoveSquares() []*SunlightSquare {
+	if x != nil {
+		return x.RemoveSquares
+	}
+	return nil
+}
+
+// SetSunlightResponse returns the combat after the change.
+type SetSunlightResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Encounter     *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetSunlightResponse) Reset() {
+	*x = SetSunlightResponse{}
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetSunlightResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetSunlightResponse) ProtoMessage() {}
+
+func (x *SetSunlightResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetSunlightResponse.ProtoReflect.Descriptor instead.
+func (*SetSunlightResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *SetSunlightResponse) GetEncounter() *Encounter {
+	if x != nil {
+		return x.Encounter
+	}
+	return nil
+}
+
 // AddCombatantsRequest brings reinforcements.
 type AddCombatantsRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -9888,7 +10236,7 @@ type AddCombatantsRequest struct {
 
 func (x *AddCombatantsRequest) Reset() {
 	*x = AddCombatantsRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[64]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9900,7 +10248,7 @@ func (x *AddCombatantsRequest) String() string {
 func (*AddCombatantsRequest) ProtoMessage() {}
 
 func (x *AddCombatantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[64]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9913,7 +10261,7 @@ func (x *AddCombatantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddCombatantsRequest.ProtoReflect.Descriptor instead.
 func (*AddCombatantsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{64}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *AddCombatantsRequest) GetCampaignId() string {
@@ -9954,7 +10302,7 @@ type AddCombatantsResponse struct {
 
 func (x *AddCombatantsResponse) Reset() {
 	*x = AddCombatantsResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[65]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -9966,7 +10314,7 @@ func (x *AddCombatantsResponse) String() string {
 func (*AddCombatantsResponse) ProtoMessage() {}
 
 func (x *AddCombatantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[65]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -9979,7 +10327,7 @@ func (x *AddCombatantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddCombatantsResponse.ProtoReflect.Descriptor instead.
 func (*AddCombatantsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{65}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *AddCombatantsResponse) GetEncounter() *Encounter {
@@ -10016,7 +10364,7 @@ type AddMonstersRequest struct {
 
 func (x *AddMonstersRequest) Reset() {
 	*x = AddMonstersRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[66]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10028,7 +10376,7 @@ func (x *AddMonstersRequest) String() string {
 func (*AddMonstersRequest) ProtoMessage() {}
 
 func (x *AddMonstersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[66]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10041,7 +10389,7 @@ func (x *AddMonstersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddMonstersRequest.ProtoReflect.Descriptor instead.
 func (*AddMonstersRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{66}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *AddMonstersRequest) GetCampaignId() string {
@@ -10113,7 +10461,7 @@ type AddMonstersResponse struct {
 
 func (x *AddMonstersResponse) Reset() {
 	*x = AddMonstersResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[67]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10125,7 +10473,7 @@ func (x *AddMonstersResponse) String() string {
 func (*AddMonstersResponse) ProtoMessage() {}
 
 func (x *AddMonstersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[67]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10138,7 +10486,7 @@ func (x *AddMonstersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddMonstersResponse.ProtoReflect.Descriptor instead.
 func (*AddMonstersResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{67}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *AddMonstersResponse) GetEncounter() *Encounter {
@@ -10168,7 +10516,7 @@ type RemoveCombatantRequest struct {
 
 func (x *RemoveCombatantRequest) Reset() {
 	*x = RemoveCombatantRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[68]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10180,7 +10528,7 @@ func (x *RemoveCombatantRequest) String() string {
 func (*RemoveCombatantRequest) ProtoMessage() {}
 
 func (x *RemoveCombatantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[68]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10193,7 +10541,7 @@ func (x *RemoveCombatantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveCombatantRequest.ProtoReflect.Descriptor instead.
 func (*RemoveCombatantRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{68}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *RemoveCombatantRequest) GetCampaignId() string {
@@ -10234,7 +10582,7 @@ type RemoveCombatantResponse struct {
 
 func (x *RemoveCombatantResponse) Reset() {
 	*x = RemoveCombatantResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[69]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10246,7 +10594,7 @@ func (x *RemoveCombatantResponse) String() string {
 func (*RemoveCombatantResponse) ProtoMessage() {}
 
 func (x *RemoveCombatantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[69]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10259,7 +10607,7 @@ func (x *RemoveCombatantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveCombatantResponse.ProtoReflect.Descriptor instead.
 func (*RemoveCombatantResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{69}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *RemoveCombatantResponse) GetEncounter() *Encounter {
@@ -10281,7 +10629,7 @@ type EndEncounterRequest struct {
 
 func (x *EndEncounterRequest) Reset() {
 	*x = EndEncounterRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[70]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10293,7 +10641,7 @@ func (x *EndEncounterRequest) String() string {
 func (*EndEncounterRequest) ProtoMessage() {}
 
 func (x *EndEncounterRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[70]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10306,7 +10654,7 @@ func (x *EndEncounterRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndEncounterRequest.ProtoReflect.Descriptor instead.
 func (*EndEncounterRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{70}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *EndEncounterRequest) GetCampaignId() string {
@@ -10340,7 +10688,7 @@ type EndEncounterResponse struct {
 
 func (x *EndEncounterResponse) Reset() {
 	*x = EndEncounterResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[71]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10352,7 +10700,7 @@ func (x *EndEncounterResponse) String() string {
 func (*EndEncounterResponse) ProtoMessage() {}
 
 func (x *EndEncounterResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[71]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10365,7 +10713,7 @@ func (x *EndEncounterResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndEncounterResponse.ProtoReflect.Descriptor instead.
 func (*EndEncounterResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{71}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *EndEncounterResponse) GetEncounter() *Encounter {
@@ -10429,7 +10777,7 @@ type DiceRoll struct {
 
 func (x *DiceRoll) Reset() {
 	*x = DiceRoll{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[72]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10441,7 +10789,7 @@ func (x *DiceRoll) String() string {
 func (*DiceRoll) ProtoMessage() {}
 
 func (x *DiceRoll) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[72]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10454,7 +10802,7 @@ func (x *DiceRoll) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiceRoll.ProtoReflect.Descriptor instead.
 func (*DiceRoll) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{72}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *DiceRoll) GetDiceCount() int32 {
@@ -10656,7 +11004,7 @@ type PendingDamage struct {
 
 func (x *PendingDamage) Reset() {
 	*x = PendingDamage{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[73]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10668,7 +11016,7 @@ func (x *PendingDamage) String() string {
 func (*PendingDamage) ProtoMessage() {}
 
 func (x *PendingDamage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[73]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10681,7 +11029,7 @@ func (x *PendingDamage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PendingDamage.ProtoReflect.Descriptor instead.
 func (*PendingDamage) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{73}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *PendingDamage) GetId() string {
@@ -10913,7 +11261,7 @@ type GetTurnOptionsRequest struct {
 
 func (x *GetTurnOptionsRequest) Reset() {
 	*x = GetTurnOptionsRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[74]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -10925,7 +11273,7 @@ func (x *GetTurnOptionsRequest) String() string {
 func (*GetTurnOptionsRequest) ProtoMessage() {}
 
 func (x *GetTurnOptionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[74]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -10938,7 +11286,7 @@ func (x *GetTurnOptionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTurnOptionsRequest.ProtoReflect.Descriptor instead.
 func (*GetTurnOptionsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{74}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *GetTurnOptionsRequest) GetCampaignId() string {
@@ -11009,7 +11357,7 @@ type GetTurnOptionsResponse struct {
 
 func (x *GetTurnOptionsResponse) Reset() {
 	*x = GetTurnOptionsResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[75]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11021,7 +11369,7 @@ func (x *GetTurnOptionsResponse) String() string {
 func (*GetTurnOptionsResponse) ProtoMessage() {}
 
 func (x *GetTurnOptionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[75]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11034,7 +11382,7 @@ func (x *GetTurnOptionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTurnOptionsResponse.ProtoReflect.Descriptor instead.
 func (*GetTurnOptionsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{75}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *GetTurnOptionsResponse) GetOptions() *v1.TurnOptions {
@@ -11136,7 +11484,7 @@ type ManeuverDieOption struct {
 
 func (x *ManeuverDieOption) Reset() {
 	*x = ManeuverDieOption{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[76]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11148,7 +11496,7 @@ func (x *ManeuverDieOption) String() string {
 func (*ManeuverDieOption) ProtoMessage() {}
 
 func (x *ManeuverDieOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[76]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11161,7 +11509,7 @@ func (x *ManeuverDieOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManeuverDieOption.ProtoReflect.Descriptor instead.
 func (*ManeuverDieOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{76}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *ManeuverDieOption) GetDie() *v1.RollDie {
@@ -11201,7 +11549,7 @@ type ResourceTargets struct {
 
 func (x *ResourceTargets) Reset() {
 	*x = ResourceTargets{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[77]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11213,7 +11561,7 @@ func (x *ResourceTargets) String() string {
 func (*ResourceTargets) ProtoMessage() {}
 
 func (x *ResourceTargets) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[77]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11226,7 +11574,7 @@ func (x *ResourceTargets) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceTargets.ProtoReflect.Descriptor instead.
 func (*ResourceTargets) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{77}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *ResourceTargets) GetActionKey() string {
@@ -11256,7 +11604,7 @@ type ResourceTarget struct {
 
 func (x *ResourceTarget) Reset() {
 	*x = ResourceTarget{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[78]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11268,7 +11616,7 @@ func (x *ResourceTarget) String() string {
 func (*ResourceTarget) ProtoMessage() {}
 
 func (x *ResourceTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[78]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11281,7 +11629,7 @@ func (x *ResourceTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResourceTarget.ProtoReflect.Descriptor instead.
 func (*ResourceTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{78}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *ResourceTarget) GetTarget() *TargetInReach {
@@ -11347,7 +11695,7 @@ type SpellTargets struct {
 
 func (x *SpellTargets) Reset() {
 	*x = SpellTargets{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[79]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11359,7 +11707,7 @@ func (x *SpellTargets) String() string {
 func (*SpellTargets) ProtoMessage() {}
 
 func (x *SpellTargets) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[79]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11372,7 +11720,7 @@ func (x *SpellTargets) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellTargets.ProtoReflect.Descriptor instead.
 func (*SpellTargets) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{79}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *SpellTargets) GetSpellKey() string {
@@ -11471,7 +11819,7 @@ type DartsAtSlot struct {
 
 func (x *DartsAtSlot) Reset() {
 	*x = DartsAtSlot{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[80]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11483,7 +11831,7 @@ func (x *DartsAtSlot) String() string {
 func (*DartsAtSlot) ProtoMessage() {}
 
 func (x *DartsAtSlot) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[80]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11496,7 +11844,7 @@ func (x *DartsAtSlot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DartsAtSlot.ProtoReflect.Descriptor instead.
 func (*DartsAtSlot) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{80}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *DartsAtSlot) GetSlotLevel() int32 {
@@ -11527,7 +11875,7 @@ type AttackTargets struct {
 
 func (x *AttackTargets) Reset() {
 	*x = AttackTargets{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[81]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11539,7 +11887,7 @@ func (x *AttackTargets) String() string {
 func (*AttackTargets) ProtoMessage() {}
 
 func (x *AttackTargets) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[81]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11552,7 +11900,7 @@ func (x *AttackTargets) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttackTargets.ProtoReflect.Descriptor instead.
 func (*AttackTargets) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{81}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *AttackTargets) GetAttackKey() string {
@@ -11620,7 +11968,7 @@ type TargetInReach struct {
 
 func (x *TargetInReach) Reset() {
 	*x = TargetInReach{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[82]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11632,7 +11980,7 @@ func (x *TargetInReach) String() string {
 func (*TargetInReach) ProtoMessage() {}
 
 func (x *TargetInReach) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[82]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11645,7 +11993,7 @@ func (x *TargetInReach) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TargetInReach.ProtoReflect.Descriptor instead.
 func (*TargetInReach) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{82}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *TargetInReach) GetCombatantId() string {
@@ -11816,7 +12164,7 @@ type RollAttackRequest struct {
 
 func (x *RollAttackRequest) Reset() {
 	*x = RollAttackRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[83]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -11828,7 +12176,7 @@ func (x *RollAttackRequest) String() string {
 func (*RollAttackRequest) ProtoMessage() {}
 
 func (x *RollAttackRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[83]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -11841,7 +12189,7 @@ func (x *RollAttackRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollAttackRequest.ProtoReflect.Descriptor instead.
 func (*RollAttackRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{83}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *RollAttackRequest) GetCampaignId() string {
@@ -12050,7 +12398,7 @@ type AttackRoll struct {
 
 func (x *AttackRoll) Reset() {
 	*x = AttackRoll{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[84]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12062,7 +12410,7 @@ func (x *AttackRoll) String() string {
 func (*AttackRoll) ProtoMessage() {}
 
 func (x *AttackRoll) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[84]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12075,7 +12423,7 @@ func (x *AttackRoll) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AttackRoll.ProtoReflect.Descriptor instead.
 func (*AttackRoll) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{84}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *AttackRoll) GetAttackerId() string {
@@ -12207,7 +12555,7 @@ type InspirationDie struct {
 
 func (x *InspirationDie) Reset() {
 	*x = InspirationDie{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[85]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12219,7 +12567,7 @@ func (x *InspirationDie) String() string {
 func (*InspirationDie) ProtoMessage() {}
 
 func (x *InspirationDie) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[85]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12232,7 +12580,7 @@ func (x *InspirationDie) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspirationDie.ProtoReflect.Descriptor instead.
 func (*InspirationDie) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{85}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *InspirationDie) GetSides() int32 {
@@ -12284,7 +12632,7 @@ type InspirationOffer struct {
 
 func (x *InspirationOffer) Reset() {
 	*x = InspirationOffer{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[86]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12296,7 +12644,7 @@ func (x *InspirationOffer) String() string {
 func (*InspirationOffer) ProtoMessage() {}
 
 func (x *InspirationOffer) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[86]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12309,7 +12657,7 @@ func (x *InspirationOffer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InspirationOffer.ProtoReflect.Descriptor instead.
 func (*InspirationOffer) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{86}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *InspirationOffer) GetHoldId() string {
@@ -12375,7 +12723,7 @@ type LuckyOffer struct {
 
 func (x *LuckyOffer) Reset() {
 	*x = LuckyOffer{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[87]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[90]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12387,7 +12735,7 @@ func (x *LuckyOffer) String() string {
 func (*LuckyOffer) ProtoMessage() {}
 
 func (x *LuckyOffer) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[87]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[90]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12400,7 +12748,7 @@ func (x *LuckyOffer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LuckyOffer.ProtoReflect.Descriptor instead.
 func (*LuckyOffer) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{87}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{90}
 }
 
 func (x *LuckyOffer) GetHoldId() string {
@@ -12454,7 +12802,7 @@ type BonusDie struct {
 
 func (x *BonusDie) Reset() {
 	*x = BonusDie{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[88]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[91]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12466,7 +12814,7 @@ func (x *BonusDie) String() string {
 func (*BonusDie) ProtoMessage() {}
 
 func (x *BonusDie) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[88]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[91]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12479,7 +12827,7 @@ func (x *BonusDie) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BonusDie.ProtoReflect.Descriptor instead.
 func (*BonusDie) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{88}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{91}
 }
 
 func (x *BonusDie) GetSourceKey() string {
@@ -12537,7 +12885,7 @@ type OutsideInspirationOffer struct {
 
 func (x *OutsideInspirationOffer) Reset() {
 	*x = OutsideInspirationOffer{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[89]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12549,7 +12897,7 @@ func (x *OutsideInspirationOffer) String() string {
 func (*OutsideInspirationOffer) ProtoMessage() {}
 
 func (x *OutsideInspirationOffer) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[89]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12562,7 +12910,7 @@ func (x *OutsideInspirationOffer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use OutsideInspirationOffer.ProtoReflect.Descriptor instead.
 func (*OutsideInspirationOffer) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{89}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *OutsideInspirationOffer) GetHoldId() string {
@@ -12605,7 +12953,7 @@ type LuckyQuestion struct {
 
 func (x *LuckyQuestion) Reset() {
 	*x = LuckyQuestion{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[90]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12617,7 +12965,7 @@ func (x *LuckyQuestion) String() string {
 func (*LuckyQuestion) ProtoMessage() {}
 
 func (x *LuckyQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[90]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12630,7 +12978,7 @@ func (x *LuckyQuestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LuckyQuestion.ProtoReflect.Descriptor instead.
 func (*LuckyQuestion) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{90}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *LuckyQuestion) GetLuckyIndex() int32 {
@@ -12653,7 +13001,7 @@ type DieQuestion struct {
 
 func (x *DieQuestion) Reset() {
 	*x = DieQuestion{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[91]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12665,7 +13013,7 @@ func (x *DieQuestion) String() string {
 func (*DieQuestion) ProtoMessage() {}
 
 func (x *DieQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[91]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12678,7 +13026,7 @@ func (x *DieQuestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DieQuestion.ProtoReflect.Descriptor instead.
 func (*DieQuestion) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{91}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *DieQuestion) GetSides() int32 {
@@ -12710,7 +13058,7 @@ type IndomitableQuestion struct {
 
 func (x *IndomitableQuestion) Reset() {
 	*x = IndomitableQuestion{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[92]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12722,7 +13070,7 @@ func (x *IndomitableQuestion) String() string {
 func (*IndomitableQuestion) ProtoMessage() {}
 
 func (x *IndomitableQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[92]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12735,7 +13083,7 @@ func (x *IndomitableQuestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IndomitableQuestion.ProtoReflect.Descriptor instead.
 func (*IndomitableQuestion) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{92}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *IndomitableQuestion) GetFailed() bool {
@@ -12763,7 +13111,7 @@ type StrokeOfLuckQuestion struct {
 
 func (x *StrokeOfLuckQuestion) Reset() {
 	*x = StrokeOfLuckQuestion{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[93]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12775,7 +13123,7 @@ func (x *StrokeOfLuckQuestion) String() string {
 func (*StrokeOfLuckQuestion) ProtoMessage() {}
 
 func (x *StrokeOfLuckQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[93]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12788,7 +13136,7 @@ func (x *StrokeOfLuckQuestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StrokeOfLuckQuestion.ProtoReflect.Descriptor instead.
 func (*StrokeOfLuckQuestion) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{93}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *StrokeOfLuckQuestion) GetFailed() bool {
@@ -12826,7 +13174,7 @@ type RerollQuestion struct {
 
 func (x *RerollQuestion) Reset() {
 	*x = RerollQuestion{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[94]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12838,7 +13186,7 @@ func (x *RerollQuestion) String() string {
 func (*RerollQuestion) ProtoMessage() {}
 
 func (x *RerollQuestion) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[94]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12851,7 +13199,7 @@ func (x *RerollQuestion) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RerollQuestion.ProtoReflect.Descriptor instead.
 func (*RerollQuestion) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{94}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *RerollQuestion) GetRerollIndex() int32 {
@@ -12945,7 +13293,7 @@ type HeldRollOffer struct {
 
 func (x *HeldRollOffer) Reset() {
 	*x = HeldRollOffer{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[95]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12957,7 +13305,7 @@ func (x *HeldRollOffer) String() string {
 func (*HeldRollOffer) ProtoMessage() {}
 
 func (x *HeldRollOffer) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[95]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12970,7 +13318,7 @@ func (x *HeldRollOffer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HeldRollOffer.ProtoReflect.Descriptor instead.
 func (*HeldRollOffer) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{95}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *HeldRollOffer) GetHoldId() string {
@@ -13159,7 +13507,7 @@ type RollAttackResponse struct {
 
 func (x *RollAttackResponse) Reset() {
 	*x = RollAttackResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[96]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13171,7 +13519,7 @@ func (x *RollAttackResponse) String() string {
 func (*RollAttackResponse) ProtoMessage() {}
 
 func (x *RollAttackResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[96]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13184,7 +13532,7 @@ func (x *RollAttackResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollAttackResponse.ProtoReflect.Descriptor instead.
 func (*RollAttackResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{96}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *RollAttackResponse) GetEncounter() *Encounter {
@@ -13263,7 +13611,7 @@ type RollDamageRequest struct {
 
 func (x *RollDamageRequest) Reset() {
 	*x = RollDamageRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[97]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13275,7 +13623,7 @@ func (x *RollDamageRequest) String() string {
 func (*RollDamageRequest) ProtoMessage() {}
 
 func (x *RollDamageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[97]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13288,7 +13636,7 @@ func (x *RollDamageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollDamageRequest.ProtoReflect.Descriptor instead.
 func (*RollDamageRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{97}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *RollDamageRequest) GetCampaignId() string {
@@ -13403,7 +13751,7 @@ type RollDamageResponse struct {
 
 func (x *RollDamageResponse) Reset() {
 	*x = RollDamageResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[98]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13415,7 +13763,7 @@ func (x *RollDamageResponse) String() string {
 func (*RollDamageResponse) ProtoMessage() {}
 
 func (x *RollDamageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[98]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13428,7 +13776,7 @@ func (x *RollDamageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollDamageResponse.ProtoReflect.Descriptor instead.
 func (*RollDamageResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{98}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *RollDamageResponse) GetEncounter() *Encounter {
@@ -13471,7 +13819,7 @@ type ApplyPendingDamageRequest struct {
 
 func (x *ApplyPendingDamageRequest) Reset() {
 	*x = ApplyPendingDamageRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[99]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13483,7 +13831,7 @@ func (x *ApplyPendingDamageRequest) String() string {
 func (*ApplyPendingDamageRequest) ProtoMessage() {}
 
 func (x *ApplyPendingDamageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[99]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13496,7 +13844,7 @@ func (x *ApplyPendingDamageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyPendingDamageRequest.ProtoReflect.Descriptor instead.
 func (*ApplyPendingDamageRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{99}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *ApplyPendingDamageRequest) GetCampaignId() string {
@@ -13552,7 +13900,7 @@ type ApplyPendingDamageResponse struct {
 
 func (x *ApplyPendingDamageResponse) Reset() {
 	*x = ApplyPendingDamageResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[100]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13564,7 +13912,7 @@ func (x *ApplyPendingDamageResponse) String() string {
 func (*ApplyPendingDamageResponse) ProtoMessage() {}
 
 func (x *ApplyPendingDamageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[100]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13577,7 +13925,7 @@ func (x *ApplyPendingDamageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApplyPendingDamageResponse.ProtoReflect.Descriptor instead.
 func (*ApplyPendingDamageResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{100}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *ApplyPendingDamageResponse) GetEncounter() *Encounter {
@@ -13607,7 +13955,7 @@ type DiscardPendingDamageRequest struct {
 
 func (x *DiscardPendingDamageRequest) Reset() {
 	*x = DiscardPendingDamageRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[101]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[104]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13619,7 +13967,7 @@ func (x *DiscardPendingDamageRequest) String() string {
 func (*DiscardPendingDamageRequest) ProtoMessage() {}
 
 func (x *DiscardPendingDamageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[101]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[104]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13632,7 +13980,7 @@ func (x *DiscardPendingDamageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiscardPendingDamageRequest.ProtoReflect.Descriptor instead.
 func (*DiscardPendingDamageRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{101}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{104}
 }
 
 func (x *DiscardPendingDamageRequest) GetCampaignId() string {
@@ -13674,7 +14022,7 @@ type DiscardPendingDamageResponse struct {
 
 func (x *DiscardPendingDamageResponse) Reset() {
 	*x = DiscardPendingDamageResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[102]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[105]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13686,7 +14034,7 @@ func (x *DiscardPendingDamageResponse) String() string {
 func (*DiscardPendingDamageResponse) ProtoMessage() {}
 
 func (x *DiscardPendingDamageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[102]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[105]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13699,7 +14047,7 @@ func (x *DiscardPendingDamageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiscardPendingDamageResponse.ProtoReflect.Descriptor instead.
 func (*DiscardPendingDamageResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{102}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{105}
 }
 
 func (x *DiscardPendingDamageResponse) GetEncounter() *Encounter {
@@ -13778,7 +14126,7 @@ type TakeActionRequest struct {
 
 func (x *TakeActionRequest) Reset() {
 	*x = TakeActionRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[103]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[106]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13790,7 +14138,7 @@ func (x *TakeActionRequest) String() string {
 func (*TakeActionRequest) ProtoMessage() {}
 
 func (x *TakeActionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[103]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[106]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13803,7 +14151,7 @@ func (x *TakeActionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TakeActionRequest.ProtoReflect.Descriptor instead.
 func (*TakeActionRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{103}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{106}
 }
 
 func (x *TakeActionRequest) GetCampaignId() string {
@@ -13939,7 +14287,7 @@ type PreserveLifeHeal struct {
 
 func (x *PreserveLifeHeal) Reset() {
 	*x = PreserveLifeHeal{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[104]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[107]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13951,7 +14299,7 @@ func (x *PreserveLifeHeal) String() string {
 func (*PreserveLifeHeal) ProtoMessage() {}
 
 func (x *PreserveLifeHeal) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[104]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[107]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13964,7 +14312,7 @@ func (x *PreserveLifeHeal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreserveLifeHeal.ProtoReflect.Descriptor instead.
 func (*PreserveLifeHeal) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{104}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{107}
 }
 
 func (x *PreserveLifeHeal) GetCombatantId() string {
@@ -14008,7 +14356,7 @@ type TakeActionResponse struct {
 
 func (x *TakeActionResponse) Reset() {
 	*x = TakeActionResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[105]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[108]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14020,7 +14368,7 @@ func (x *TakeActionResponse) String() string {
 func (*TakeActionResponse) ProtoMessage() {}
 
 func (x *TakeActionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[105]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[108]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14033,7 +14381,7 @@ func (x *TakeActionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TakeActionResponse.ProtoReflect.Descriptor instead.
 func (*TakeActionResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{105}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{108}
 }
 
 func (x *TakeActionResponse) GetEncounter() *Encounter {
@@ -14101,7 +14449,7 @@ type HookResult struct {
 
 func (x *HookResult) Reset() {
 	*x = HookResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[106]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[109]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14113,7 +14461,7 @@ func (x *HookResult) String() string {
 func (*HookResult) ProtoMessage() {}
 
 func (x *HookResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[106]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[109]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14126,7 +14474,7 @@ func (x *HookResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HookResult.ProtoReflect.Descriptor instead.
 func (*HookResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{106}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{109}
 }
 
 func (x *HookResult) GetSourceNamePt() string {
@@ -14200,7 +14548,7 @@ type ChannelDivinityResult struct {
 
 func (x *ChannelDivinityResult) Reset() {
 	*x = ChannelDivinityResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[107]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[110]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14212,7 +14560,7 @@ func (x *ChannelDivinityResult) String() string {
 func (*ChannelDivinityResult) ProtoMessage() {}
 
 func (x *ChannelDivinityResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[107]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[110]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14225,7 +14573,7 @@ func (x *ChannelDivinityResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelDivinityResult.ProtoReflect.Descriptor instead.
 func (*ChannelDivinityResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{107}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{110}
 }
 
 func (x *ChannelDivinityResult) GetHeals() []*ChannelDivinityHeal {
@@ -14264,7 +14612,7 @@ type ChannelDivinityHeal struct {
 
 func (x *ChannelDivinityHeal) Reset() {
 	*x = ChannelDivinityHeal{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[108]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[111]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14276,7 +14624,7 @@ func (x *ChannelDivinityHeal) String() string {
 func (*ChannelDivinityHeal) ProtoMessage() {}
 
 func (x *ChannelDivinityHeal) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[108]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[111]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14289,7 +14637,7 @@ func (x *ChannelDivinityHeal) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelDivinityHeal.ProtoReflect.Descriptor instead.
 func (*ChannelDivinityHeal) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{108}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{111}
 }
 
 func (x *ChannelDivinityHeal) GetCombatantId() string {
@@ -14351,7 +14699,7 @@ type ChannelDivinityTurn struct {
 
 func (x *ChannelDivinityTurn) Reset() {
 	*x = ChannelDivinityTurn{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[109]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[112]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14363,7 +14711,7 @@ func (x *ChannelDivinityTurn) String() string {
 func (*ChannelDivinityTurn) ProtoMessage() {}
 
 func (x *ChannelDivinityTurn) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[109]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[112]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14376,7 +14724,7 @@ func (x *ChannelDivinityTurn) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChannelDivinityTurn.ProtoReflect.Descriptor instead.
 func (*ChannelDivinityTurn) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{109}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{112}
 }
 
 func (x *ChannelDivinityTurn) GetCombatantId() string {
@@ -14466,7 +14814,7 @@ type AdjustCombatantHitPointsRequest struct {
 
 func (x *AdjustCombatantHitPointsRequest) Reset() {
 	*x = AdjustCombatantHitPointsRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[110]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[113]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14478,7 +14826,7 @@ func (x *AdjustCombatantHitPointsRequest) String() string {
 func (*AdjustCombatantHitPointsRequest) ProtoMessage() {}
 
 func (x *AdjustCombatantHitPointsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[110]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[113]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14491,7 +14839,7 @@ func (x *AdjustCombatantHitPointsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustCombatantHitPointsRequest.ProtoReflect.Descriptor instead.
 func (*AdjustCombatantHitPointsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{110}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{113}
 }
 
 func (x *AdjustCombatantHitPointsRequest) GetCampaignId() string {
@@ -14598,7 +14946,7 @@ type AdjustCombatantHitPointsResponse struct {
 
 func (x *AdjustCombatantHitPointsResponse) Reset() {
 	*x = AdjustCombatantHitPointsResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[111]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[114]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14610,7 +14958,7 @@ func (x *AdjustCombatantHitPointsResponse) String() string {
 func (*AdjustCombatantHitPointsResponse) ProtoMessage() {}
 
 func (x *AdjustCombatantHitPointsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[111]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[114]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14623,7 +14971,7 @@ func (x *AdjustCombatantHitPointsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdjustCombatantHitPointsResponse.ProtoReflect.Descriptor instead.
 func (*AdjustCombatantHitPointsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{111}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{114}
 }
 
 func (x *AdjustCombatantHitPointsResponse) GetEncounter() *Encounter {
@@ -14648,7 +14996,7 @@ type UndoLastActionRequest struct {
 
 func (x *UndoLastActionRequest) Reset() {
 	*x = UndoLastActionRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[112]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[115]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14660,7 +15008,7 @@ func (x *UndoLastActionRequest) String() string {
 func (*UndoLastActionRequest) ProtoMessage() {}
 
 func (x *UndoLastActionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[112]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[115]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14673,7 +15021,7 @@ func (x *UndoLastActionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UndoLastActionRequest.ProtoReflect.Descriptor instead.
 func (*UndoLastActionRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{112}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{115}
 }
 
 func (x *UndoLastActionRequest) GetCampaignId() string {
@@ -14714,7 +15062,7 @@ type UndoLastActionResponse struct {
 
 func (x *UndoLastActionResponse) Reset() {
 	*x = UndoLastActionResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[113]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[116]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14726,7 +15074,7 @@ func (x *UndoLastActionResponse) String() string {
 func (*UndoLastActionResponse) ProtoMessage() {}
 
 func (x *UndoLastActionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[113]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[116]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14739,7 +15087,7 @@ func (x *UndoLastActionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UndoLastActionResponse.ProtoReflect.Descriptor instead.
 func (*UndoLastActionResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{113}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{116}
 }
 
 func (x *UndoLastActionResponse) GetEncounter() *Encounter {
@@ -14766,7 +15114,7 @@ type SpellSlot struct {
 
 func (x *SpellSlot) Reset() {
 	*x = SpellSlot{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[114]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[117]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14778,7 +15126,7 @@ func (x *SpellSlot) String() string {
 func (*SpellSlot) ProtoMessage() {}
 
 func (x *SpellSlot) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[114]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[117]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14791,7 +15139,7 @@ func (x *SpellSlot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellSlot.ProtoReflect.Descriptor instead.
 func (*SpellSlot) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{114}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{117}
 }
 
 func (x *SpellSlot) GetLevel() int32 {
@@ -14837,7 +15185,7 @@ type SpellTarget struct {
 
 func (x *SpellTarget) Reset() {
 	*x = SpellTarget{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[115]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[118]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -14849,7 +15197,7 @@ func (x *SpellTarget) String() string {
 func (*SpellTarget) ProtoMessage() {}
 
 func (x *SpellTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[115]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[118]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -14862,7 +15210,7 @@ func (x *SpellTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellTarget.ProtoReflect.Descriptor instead.
 func (*SpellTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{115}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{118}
 }
 
 func (x *SpellTarget) GetCombatantId() string {
@@ -15009,7 +15357,7 @@ type CastSpellRequest struct {
 
 func (x *CastSpellRequest) Reset() {
 	*x = CastSpellRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[116]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[119]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15021,7 +15369,7 @@ func (x *CastSpellRequest) String() string {
 func (*CastSpellRequest) ProtoMessage() {}
 
 func (x *CastSpellRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[116]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[119]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15034,7 +15382,7 @@ func (x *CastSpellRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CastSpellRequest.ProtoReflect.Descriptor instead.
 func (*CastSpellRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{116}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{119}
 }
 
 func (x *CastSpellRequest) GetCampaignId() string {
@@ -15302,7 +15650,7 @@ type SpellOptionChoice struct {
 
 func (x *SpellOptionChoice) Reset() {
 	*x = SpellOptionChoice{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[117]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[120]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15314,7 +15662,7 @@ func (x *SpellOptionChoice) String() string {
 func (*SpellOptionChoice) ProtoMessage() {}
 
 func (x *SpellOptionChoice) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[117]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[120]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15327,7 +15675,7 @@ func (x *SpellOptionChoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellOptionChoice.ProtoReflect.Descriptor instead.
 func (*SpellOptionChoice) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{117}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{120}
 }
 
 func (x *SpellOptionChoice) GetKey() string {
@@ -15363,7 +15711,7 @@ type MetamagicChoice struct {
 
 func (x *MetamagicChoice) Reset() {
 	*x = MetamagicChoice{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[118]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[121]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15375,7 +15723,7 @@ func (x *MetamagicChoice) String() string {
 func (*MetamagicChoice) ProtoMessage() {}
 
 func (x *MetamagicChoice) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[118]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[121]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15388,7 +15736,7 @@ func (x *MetamagicChoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MetamagicChoice.ProtoReflect.Descriptor instead.
 func (*MetamagicChoice) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{118}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{121}
 }
 
 func (x *MetamagicChoice) GetKey() string {
@@ -15431,7 +15779,7 @@ type SpellOrigin struct {
 
 func (x *SpellOrigin) Reset() {
 	*x = SpellOrigin{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[119]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[122]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15443,7 +15791,7 @@ func (x *SpellOrigin) String() string {
 func (*SpellOrigin) ProtoMessage() {}
 
 func (x *SpellOrigin) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[119]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[122]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15456,7 +15804,7 @@ func (x *SpellOrigin) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellOrigin.ProtoReflect.Descriptor instead.
 func (*SpellOrigin) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{119}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{122}
 }
 
 func (x *SpellOrigin) GetCol() int32 {
@@ -15486,7 +15834,7 @@ type SpellDirection struct {
 
 func (x *SpellDirection) Reset() {
 	*x = SpellDirection{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[120]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[123]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15498,7 +15846,7 @@ func (x *SpellDirection) String() string {
 func (*SpellDirection) ProtoMessage() {}
 
 func (x *SpellDirection) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[120]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[123]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15511,7 +15859,7 @@ func (x *SpellDirection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellDirection.ProtoReflect.Descriptor instead.
 func (*SpellDirection) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{120}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{123}
 }
 
 func (x *SpellDirection) GetDx() int32 {
@@ -15547,7 +15895,7 @@ type SpellWall struct {
 
 func (x *SpellWall) Reset() {
 	*x = SpellWall{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[121]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[124]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15559,7 +15907,7 @@ func (x *SpellWall) String() string {
 func (*SpellWall) ProtoMessage() {}
 
 func (x *SpellWall) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[121]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[124]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15572,7 +15920,7 @@ func (x *SpellWall) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellWall.ProtoReflect.Descriptor instead.
 func (*SpellWall) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{121}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{124}
 }
 
 func (x *SpellWall) GetRing() bool {
@@ -15616,7 +15964,7 @@ type SpellArea struct {
 
 func (x *SpellArea) Reset() {
 	*x = SpellArea{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[122]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[125]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15628,7 +15976,7 @@ func (x *SpellArea) String() string {
 func (*SpellArea) ProtoMessage() {}
 
 func (x *SpellArea) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[122]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[125]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15641,7 +15989,7 @@ func (x *SpellArea) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellArea.ProtoReflect.Descriptor instead.
 func (*SpellArea) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{122}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{125}
 }
 
 func (x *SpellArea) GetOrigin() *SpellOrigin {
@@ -15675,7 +16023,7 @@ type MoveSpellZoneRequest struct {
 
 func (x *MoveSpellZoneRequest) Reset() {
 	*x = MoveSpellZoneRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[123]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[126]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15687,7 +16035,7 @@ func (x *MoveSpellZoneRequest) String() string {
 func (*MoveSpellZoneRequest) ProtoMessage() {}
 
 func (x *MoveSpellZoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[123]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[126]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15700,7 +16048,7 @@ func (x *MoveSpellZoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveSpellZoneRequest.ProtoReflect.Descriptor instead.
 func (*MoveSpellZoneRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{123}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{126}
 }
 
 func (x *MoveSpellZoneRequest) GetCampaignId() string {
@@ -15753,7 +16101,7 @@ type EndSpellZoneRequest struct {
 
 func (x *EndSpellZoneRequest) Reset() {
 	*x = EndSpellZoneRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[124]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[127]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15765,7 +16113,7 @@ func (x *EndSpellZoneRequest) String() string {
 func (*EndSpellZoneRequest) ProtoMessage() {}
 
 func (x *EndSpellZoneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[124]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[127]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15778,7 +16126,7 @@ func (x *EndSpellZoneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndSpellZoneRequest.ProtoReflect.Descriptor instead.
 func (*EndSpellZoneRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{124}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{127}
 }
 
 func (x *EndSpellZoneRequest) GetCampaignId() string {
@@ -15819,7 +16167,7 @@ type EndSpellZoneResponse struct {
 
 func (x *EndSpellZoneResponse) Reset() {
 	*x = EndSpellZoneResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[125]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[128]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15831,7 +16179,7 @@ func (x *EndSpellZoneResponse) String() string {
 func (*EndSpellZoneResponse) ProtoMessage() {}
 
 func (x *EndSpellZoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[125]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[128]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15844,7 +16192,7 @@ func (x *EndSpellZoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndSpellZoneResponse.ProtoReflect.Descriptor instead.
 func (*EndSpellZoneResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{125}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{128}
 }
 
 func (x *EndSpellZoneResponse) GetEncounter() *Encounter {
@@ -15864,7 +16212,7 @@ type MoveSpellZoneResponse struct {
 
 func (x *MoveSpellZoneResponse) Reset() {
 	*x = MoveSpellZoneResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[126]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[129]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15876,7 +16224,7 @@ func (x *MoveSpellZoneResponse) String() string {
 func (*MoveSpellZoneResponse) ProtoMessage() {}
 
 func (x *MoveSpellZoneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[126]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[129]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15889,7 +16237,7 @@ func (x *MoveSpellZoneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MoveSpellZoneResponse.ProtoReflect.Descriptor instead.
 func (*MoveSpellZoneResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{126}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{129}
 }
 
 func (x *MoveSpellZoneResponse) GetEncounter() *Encounter {
@@ -15927,7 +16275,7 @@ type PreviewSpellAreaRequest struct {
 
 func (x *PreviewSpellAreaRequest) Reset() {
 	*x = PreviewSpellAreaRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[127]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[130]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -15939,7 +16287,7 @@ func (x *PreviewSpellAreaRequest) String() string {
 func (*PreviewSpellAreaRequest) ProtoMessage() {}
 
 func (x *PreviewSpellAreaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[127]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[130]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -15952,7 +16300,7 @@ func (x *PreviewSpellAreaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewSpellAreaRequest.ProtoReflect.Descriptor instead.
 func (*PreviewSpellAreaRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{127}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{130}
 }
 
 func (x *PreviewSpellAreaRequest) GetCampaignId() string {
@@ -16080,7 +16428,7 @@ type PreviewSpellAreaResponse struct {
 
 func (x *PreviewSpellAreaResponse) Reset() {
 	*x = PreviewSpellAreaResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[128]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[131]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16092,7 +16440,7 @@ func (x *PreviewSpellAreaResponse) String() string {
 func (*PreviewSpellAreaResponse) ProtoMessage() {}
 
 func (x *PreviewSpellAreaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[128]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[131]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16105,7 +16453,7 @@ func (x *PreviewSpellAreaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PreviewSpellAreaResponse.ProtoReflect.Descriptor instead.
 func (*PreviewSpellAreaResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{128}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{131}
 }
 
 func (x *PreviewSpellAreaResponse) GetOrigin() *SpellOrigin {
@@ -16194,7 +16542,7 @@ type AreaTarget struct {
 
 func (x *AreaTarget) Reset() {
 	*x = AreaTarget{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[129]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[132]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16206,7 +16554,7 @@ func (x *AreaTarget) String() string {
 func (*AreaTarget) ProtoMessage() {}
 
 func (x *AreaTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[129]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[132]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16219,7 +16567,7 @@ func (x *AreaTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AreaTarget.ProtoReflect.Descriptor instead.
 func (*AreaTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{129}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{132}
 }
 
 func (x *AreaTarget) GetCombatantId() string {
@@ -16301,7 +16649,7 @@ type ResolveHiddenRevealRequest struct {
 
 func (x *ResolveHiddenRevealRequest) Reset() {
 	*x = ResolveHiddenRevealRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[130]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[133]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16313,7 +16661,7 @@ func (x *ResolveHiddenRevealRequest) String() string {
 func (*ResolveHiddenRevealRequest) ProtoMessage() {}
 
 func (x *ResolveHiddenRevealRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[130]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[133]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16326,7 +16674,7 @@ func (x *ResolveHiddenRevealRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveHiddenRevealRequest.ProtoReflect.Descriptor instead.
 func (*ResolveHiddenRevealRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{130}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{133}
 }
 
 func (x *ResolveHiddenRevealRequest) GetCampaignId() string {
@@ -16374,7 +16722,7 @@ type ResolveHiddenRevealResponse struct {
 
 func (x *ResolveHiddenRevealResponse) Reset() {
 	*x = ResolveHiddenRevealResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[131]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[134]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16386,7 +16734,7 @@ func (x *ResolveHiddenRevealResponse) String() string {
 func (*ResolveHiddenRevealResponse) ProtoMessage() {}
 
 func (x *ResolveHiddenRevealResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[131]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[134]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16399,7 +16747,7 @@ func (x *ResolveHiddenRevealResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveHiddenRevealResponse.ProtoReflect.Descriptor instead.
 func (*ResolveHiddenRevealResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{131}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{134}
 }
 
 func (x *ResolveHiddenRevealResponse) GetEncounter() *Encounter {
@@ -16432,7 +16780,7 @@ type SummonChoice struct {
 
 func (x *SummonChoice) Reset() {
 	*x = SummonChoice{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[132]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[135]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16444,7 +16792,7 @@ func (x *SummonChoice) String() string {
 func (*SummonChoice) ProtoMessage() {}
 
 func (x *SummonChoice) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[132]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[135]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16457,7 +16805,7 @@ func (x *SummonChoice) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SummonChoice.ProtoReflect.Descriptor instead.
 func (*SummonChoice) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{132}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{135}
 }
 
 func (x *SummonChoice) GetOption() int32 {
@@ -16519,7 +16867,7 @@ type SaveResult struct {
 
 func (x *SaveResult) Reset() {
 	*x = SaveResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[133]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[136]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16531,7 +16879,7 @@ func (x *SaveResult) String() string {
 func (*SaveResult) ProtoMessage() {}
 
 func (x *SaveResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[133]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[136]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16544,7 +16892,7 @@ func (x *SaveResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SaveResult.ProtoReflect.Descriptor instead.
 func (*SaveResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{133}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{136}
 }
 
 func (x *SaveResult) GetOutcome() SaveOutcome {
@@ -16671,7 +17019,7 @@ type SpellTargetResult struct {
 
 func (x *SpellTargetResult) Reset() {
 	*x = SpellTargetResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[134]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[137]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16683,7 +17031,7 @@ func (x *SpellTargetResult) String() string {
 func (*SpellTargetResult) ProtoMessage() {}
 
 func (x *SpellTargetResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[134]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[137]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16696,7 +17044,7 @@ func (x *SpellTargetResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellTargetResult.ProtoReflect.Descriptor instead.
 func (*SpellTargetResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{134}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{137}
 }
 
 func (x *SpellTargetResult) GetCombatantId() string {
@@ -16844,7 +17192,7 @@ type SpellEffectResult struct {
 
 func (x *SpellEffectResult) Reset() {
 	*x = SpellEffectResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[135]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[138]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -16856,7 +17204,7 @@ func (x *SpellEffectResult) String() string {
 func (*SpellEffectResult) ProtoMessage() {}
 
 func (x *SpellEffectResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[135]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[138]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -16869,7 +17217,7 @@ func (x *SpellEffectResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellEffectResult.ProtoReflect.Descriptor instead.
 func (*SpellEffectResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{135}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{138}
 }
 
 func (x *SpellEffectResult) GetOutcome() SpellEffectOutcome {
@@ -16993,7 +17341,7 @@ type CastSpellResponse struct {
 
 func (x *CastSpellResponse) Reset() {
 	*x = CastSpellResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[136]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[139]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17005,7 +17353,7 @@ func (x *CastSpellResponse) String() string {
 func (*CastSpellResponse) ProtoMessage() {}
 
 func (x *CastSpellResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[136]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[139]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17018,7 +17366,7 @@ func (x *CastSpellResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CastSpellResponse.ProtoReflect.Descriptor instead.
 func (*CastSpellResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{136}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{139}
 }
 
 func (x *CastSpellResponse) GetEncounter() *Encounter {
@@ -17126,7 +17474,7 @@ type SpellCast struct {
 
 func (x *SpellCast) Reset() {
 	*x = SpellCast{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[137]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[140]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17138,7 +17486,7 @@ func (x *SpellCast) String() string {
 func (*SpellCast) ProtoMessage() {}
 
 func (x *SpellCast) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[137]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[140]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17151,7 +17499,7 @@ func (x *SpellCast) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SpellCast.ProtoReflect.Descriptor instead.
 func (*SpellCast) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{137}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{140}
 }
 
 func (x *SpellCast) GetCastId() string {
@@ -17261,7 +17609,7 @@ type UseReactionRequest struct {
 
 func (x *UseReactionRequest) Reset() {
 	*x = UseReactionRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[138]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[141]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17273,7 +17621,7 @@ func (x *UseReactionRequest) String() string {
 func (*UseReactionRequest) ProtoMessage() {}
 
 func (x *UseReactionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[138]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[141]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17286,7 +17634,7 @@ func (x *UseReactionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseReactionRequest.ProtoReflect.Descriptor instead.
 func (*UseReactionRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{138}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{141}
 }
 
 func (x *UseReactionRequest) GetCampaignId() string {
@@ -17338,7 +17686,7 @@ type UseReactionResponse struct {
 
 func (x *UseReactionResponse) Reset() {
 	*x = UseReactionResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[139]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[142]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17350,7 +17698,7 @@ func (x *UseReactionResponse) String() string {
 func (*UseReactionResponse) ProtoMessage() {}
 
 func (x *UseReactionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[139]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[142]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17363,7 +17711,7 @@ func (x *UseReactionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UseReactionResponse.ProtoReflect.Descriptor instead.
 func (*UseReactionResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{139}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{142}
 }
 
 func (x *UseReactionResponse) GetEncounter() *Encounter {
@@ -17400,7 +17748,7 @@ type DeclineReactionRequest struct {
 
 func (x *DeclineReactionRequest) Reset() {
 	*x = DeclineReactionRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[140]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[143]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17412,7 +17760,7 @@ func (x *DeclineReactionRequest) String() string {
 func (*DeclineReactionRequest) ProtoMessage() {}
 
 func (x *DeclineReactionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[140]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[143]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17425,7 +17773,7 @@ func (x *DeclineReactionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineReactionRequest.ProtoReflect.Descriptor instead.
 func (*DeclineReactionRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{140}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{143}
 }
 
 func (x *DeclineReactionRequest) GetCampaignId() string {
@@ -17466,7 +17814,7 @@ type DeclineReactionResponse struct {
 
 func (x *DeclineReactionResponse) Reset() {
 	*x = DeclineReactionResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[141]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[144]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17478,7 +17826,7 @@ func (x *DeclineReactionResponse) String() string {
 func (*DeclineReactionResponse) ProtoMessage() {}
 
 func (x *DeclineReactionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[141]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[144]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17491,7 +17839,7 @@ func (x *DeclineReactionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineReactionResponse.ProtoReflect.Descriptor instead.
 func (*DeclineReactionResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{141}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{144}
 }
 
 func (x *DeclineReactionResponse) GetEncounter() *Encounter {
@@ -17515,7 +17863,7 @@ type DeclineOpportunityRequest struct {
 
 func (x *DeclineOpportunityRequest) Reset() {
 	*x = DeclineOpportunityRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[142]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[145]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17527,7 +17875,7 @@ func (x *DeclineOpportunityRequest) String() string {
 func (*DeclineOpportunityRequest) ProtoMessage() {}
 
 func (x *DeclineOpportunityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[142]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[145]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17540,7 +17888,7 @@ func (x *DeclineOpportunityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineOpportunityRequest.ProtoReflect.Descriptor instead.
 func (*DeclineOpportunityRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{142}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{145}
 }
 
 func (x *DeclineOpportunityRequest) GetCampaignId() string {
@@ -17581,7 +17929,7 @@ type DeclineOpportunityResponse struct {
 
 func (x *DeclineOpportunityResponse) Reset() {
 	*x = DeclineOpportunityResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[143]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[146]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17593,7 +17941,7 @@ func (x *DeclineOpportunityResponse) String() string {
 func (*DeclineOpportunityResponse) ProtoMessage() {}
 
 func (x *DeclineOpportunityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[143]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[146]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17606,7 +17954,7 @@ func (x *DeclineOpportunityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeclineOpportunityResponse.ProtoReflect.Descriptor instead.
 func (*DeclineOpportunityResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{143}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{146}
 }
 
 func (x *DeclineOpportunityResponse) GetEncounter() *Encounter {
@@ -17629,7 +17977,7 @@ type SkipOpportunityRequest struct {
 
 func (x *SkipOpportunityRequest) Reset() {
 	*x = SkipOpportunityRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[144]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[147]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17641,7 +17989,7 @@ func (x *SkipOpportunityRequest) String() string {
 func (*SkipOpportunityRequest) ProtoMessage() {}
 
 func (x *SkipOpportunityRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[144]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[147]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17654,7 +18002,7 @@ func (x *SkipOpportunityRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SkipOpportunityRequest.ProtoReflect.Descriptor instead.
 func (*SkipOpportunityRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{144}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{147}
 }
 
 func (x *SkipOpportunityRequest) GetCampaignId() string {
@@ -17695,7 +18043,7 @@ type SkipOpportunityResponse struct {
 
 func (x *SkipOpportunityResponse) Reset() {
 	*x = SkipOpportunityResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[145]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[148]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17707,7 +18055,7 @@ func (x *SkipOpportunityResponse) String() string {
 func (*SkipOpportunityResponse) ProtoMessage() {}
 
 func (x *SkipOpportunityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[145]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[148]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17720,7 +18068,7 @@ func (x *SkipOpportunityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SkipOpportunityResponse.ProtoReflect.Descriptor instead.
 func (*SkipOpportunityResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{145}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{148}
 }
 
 func (x *SkipOpportunityResponse) GetEncounter() *Encounter {
@@ -17750,7 +18098,7 @@ type RollDeathSaveRequest struct {
 
 func (x *RollDeathSaveRequest) Reset() {
 	*x = RollDeathSaveRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[146]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[149]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17762,7 +18110,7 @@ func (x *RollDeathSaveRequest) String() string {
 func (*RollDeathSaveRequest) ProtoMessage() {}
 
 func (x *RollDeathSaveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[146]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[149]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17775,7 +18123,7 @@ func (x *RollDeathSaveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollDeathSaveRequest.ProtoReflect.Descriptor instead.
 func (*RollDeathSaveRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{146}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{149}
 }
 
 func (x *RollDeathSaveRequest) GetCampaignId() string {
@@ -17877,7 +18225,7 @@ type DeathSave struct {
 
 func (x *DeathSave) Reset() {
 	*x = DeathSave{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[147]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[150]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17889,7 +18237,7 @@ func (x *DeathSave) String() string {
 func (*DeathSave) ProtoMessage() {}
 
 func (x *DeathSave) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[147]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[150]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -17902,7 +18250,7 @@ func (x *DeathSave) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeathSave.ProtoReflect.Descriptor instead.
 func (*DeathSave) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{147}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{150}
 }
 
 func (x *DeathSave) GetRoll() *DiceRoll {
@@ -17977,7 +18325,7 @@ type RollDeathSaveResponse struct {
 
 func (x *RollDeathSaveResponse) Reset() {
 	*x = RollDeathSaveResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[148]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[151]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -17989,7 +18337,7 @@ func (x *RollDeathSaveResponse) String() string {
 func (*RollDeathSaveResponse) ProtoMessage() {}
 
 func (x *RollDeathSaveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[148]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[151]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18002,7 +18350,7 @@ func (x *RollDeathSaveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RollDeathSaveResponse.ProtoReflect.Descriptor instead.
 func (*RollDeathSaveResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{148}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{151}
 }
 
 func (x *RollDeathSaveResponse) GetEncounter() *Encounter {
@@ -18039,7 +18387,7 @@ type ConfirmDeathRequest struct {
 
 func (x *ConfirmDeathRequest) Reset() {
 	*x = ConfirmDeathRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[149]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[152]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18051,7 +18399,7 @@ func (x *ConfirmDeathRequest) String() string {
 func (*ConfirmDeathRequest) ProtoMessage() {}
 
 func (x *ConfirmDeathRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[149]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[152]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18064,7 +18412,7 @@ func (x *ConfirmDeathRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmDeathRequest.ProtoReflect.Descriptor instead.
 func (*ConfirmDeathRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{149}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{152}
 }
 
 func (x *ConfirmDeathRequest) GetCampaignId() string {
@@ -18105,7 +18453,7 @@ type ConfirmDeathResponse struct {
 
 func (x *ConfirmDeathResponse) Reset() {
 	*x = ConfirmDeathResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[150]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[153]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18117,7 +18465,7 @@ func (x *ConfirmDeathResponse) String() string {
 func (*ConfirmDeathResponse) ProtoMessage() {}
 
 func (x *ConfirmDeathResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[150]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[153]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18130,7 +18478,7 @@ func (x *ConfirmDeathResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmDeathResponse.ProtoReflect.Descriptor instead.
 func (*ConfirmDeathResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{150}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{153}
 }
 
 func (x *ConfirmDeathResponse) GetEncounter() *Encounter {
@@ -18152,7 +18500,7 @@ type ConditionList struct {
 
 func (x *ConditionList) Reset() {
 	*x = ConditionList{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[151]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[154]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18164,7 +18512,7 @@ func (x *ConditionList) String() string {
 func (*ConditionList) ProtoMessage() {}
 
 func (x *ConditionList) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[151]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[154]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18177,7 +18525,7 @@ func (x *ConditionList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConditionList.ProtoReflect.Descriptor instead.
 func (*ConditionList) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{151}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{154}
 }
 
 func (x *ConditionList) GetKeys() []string {
@@ -18206,7 +18554,7 @@ type SetCombatantConditionsRequest struct {
 
 func (x *SetCombatantConditionsRequest) Reset() {
 	*x = SetCombatantConditionsRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[152]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[155]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18218,7 +18566,7 @@ func (x *SetCombatantConditionsRequest) String() string {
 func (*SetCombatantConditionsRequest) ProtoMessage() {}
 
 func (x *SetCombatantConditionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[152]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[155]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18231,7 +18579,7 @@ func (x *SetCombatantConditionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetCombatantConditionsRequest.ProtoReflect.Descriptor instead.
 func (*SetCombatantConditionsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{152}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{155}
 }
 
 func (x *SetCombatantConditionsRequest) GetCampaignId() string {
@@ -18286,7 +18634,7 @@ type SetCombatantConditionsResponse struct {
 
 func (x *SetCombatantConditionsResponse) Reset() {
 	*x = SetCombatantConditionsResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[153]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[156]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18298,7 +18646,7 @@ func (x *SetCombatantConditionsResponse) String() string {
 func (*SetCombatantConditionsResponse) ProtoMessage() {}
 
 func (x *SetCombatantConditionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[153]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[156]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18311,7 +18659,7 @@ func (x *SetCombatantConditionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetCombatantConditionsResponse.ProtoReflect.Descriptor instead.
 func (*SetCombatantConditionsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{153}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{156}
 }
 
 func (x *SetCombatantConditionsResponse) GetEncounter() *Encounter {
@@ -18335,7 +18683,7 @@ type EndConcentrationRequest struct {
 
 func (x *EndConcentrationRequest) Reset() {
 	*x = EndConcentrationRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[154]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[157]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18347,7 +18695,7 @@ func (x *EndConcentrationRequest) String() string {
 func (*EndConcentrationRequest) ProtoMessage() {}
 
 func (x *EndConcentrationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[154]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[157]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18360,7 +18708,7 @@ func (x *EndConcentrationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndConcentrationRequest.ProtoReflect.Descriptor instead.
 func (*EndConcentrationRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{154}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{157}
 }
 
 func (x *EndConcentrationRequest) GetCampaignId() string {
@@ -18401,7 +18749,7 @@ type EndConcentrationResponse struct {
 
 func (x *EndConcentrationResponse) Reset() {
 	*x = EndConcentrationResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[155]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[158]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18413,7 +18761,7 @@ func (x *EndConcentrationResponse) String() string {
 func (*EndConcentrationResponse) ProtoMessage() {}
 
 func (x *EndConcentrationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[155]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[158]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18426,7 +18774,7 @@ func (x *EndConcentrationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndConcentrationResponse.ProtoReflect.Descriptor instead.
 func (*EndConcentrationResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{155}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{158}
 }
 
 func (x *EndConcentrationResponse) GetEncounter() *Encounter {
@@ -18451,7 +18799,7 @@ type EndCombatEffectRequest struct {
 
 func (x *EndCombatEffectRequest) Reset() {
 	*x = EndCombatEffectRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[156]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[159]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18463,7 +18811,7 @@ func (x *EndCombatEffectRequest) String() string {
 func (*EndCombatEffectRequest) ProtoMessage() {}
 
 func (x *EndCombatEffectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[156]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[159]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18476,7 +18824,7 @@ func (x *EndCombatEffectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndCombatEffectRequest.ProtoReflect.Descriptor instead.
 func (*EndCombatEffectRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{156}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{159}
 }
 
 func (x *EndCombatEffectRequest) GetCampaignId() string {
@@ -18524,7 +18872,7 @@ type EndCombatEffectResponse struct {
 
 func (x *EndCombatEffectResponse) Reset() {
 	*x = EndCombatEffectResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[157]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[160]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18536,7 +18884,7 @@ func (x *EndCombatEffectResponse) String() string {
 func (*EndCombatEffectResponse) ProtoMessage() {}
 
 func (x *EndCombatEffectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[157]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[160]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18549,7 +18897,7 @@ func (x *EndCombatEffectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndCombatEffectResponse.ProtoReflect.Descriptor instead.
 func (*EndCombatEffectResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{157}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{160}
 }
 
 func (x *EndCombatEffectResponse) GetEncounter() *Encounter {
@@ -18575,7 +18923,7 @@ type ListCombatLogRequest struct {
 
 func (x *ListCombatLogRequest) Reset() {
 	*x = ListCombatLogRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[158]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[161]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18587,7 +18935,7 @@ func (x *ListCombatLogRequest) String() string {
 func (*ListCombatLogRequest) ProtoMessage() {}
 
 func (x *ListCombatLogRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[158]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[161]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18600,7 +18948,7 @@ func (x *ListCombatLogRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCombatLogRequest.ProtoReflect.Descriptor instead.
 func (*ListCombatLogRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{158}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{161}
 }
 
 func (x *ListCombatLogRequest) GetCampaignId() string {
@@ -18646,7 +18994,7 @@ type ListCombatLogResponse struct {
 
 func (x *ListCombatLogResponse) Reset() {
 	*x = ListCombatLogResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[159]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[162]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18658,7 +19006,7 @@ func (x *ListCombatLogResponse) String() string {
 func (*ListCombatLogResponse) ProtoMessage() {}
 
 func (x *ListCombatLogResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[159]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[162]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18671,7 +19019,7 @@ func (x *ListCombatLogResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCombatLogResponse.ProtoReflect.Descriptor instead.
 func (*ListCombatLogResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{159}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{162}
 }
 
 func (x *ListCombatLogResponse) GetRounds() []*CombatLogRound {
@@ -18713,7 +19061,7 @@ type CombatLogRound struct {
 
 func (x *CombatLogRound) Reset() {
 	*x = CombatLogRound{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[160]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[163]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18725,7 +19073,7 @@ func (x *CombatLogRound) String() string {
 func (*CombatLogRound) ProtoMessage() {}
 
 func (x *CombatLogRound) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[160]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[163]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18738,7 +19086,7 @@ func (x *CombatLogRound) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogRound.ProtoReflect.Descriptor instead.
 func (*CombatLogRound) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{160}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{163}
 }
 
 func (x *CombatLogRound) GetRound() int32 {
@@ -18781,7 +19129,7 @@ type CombatLogStateChange struct {
 
 func (x *CombatLogStateChange) Reset() {
 	*x = CombatLogStateChange{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[161]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[164]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18793,7 +19141,7 @@ func (x *CombatLogStateChange) String() string {
 func (*CombatLogStateChange) ProtoMessage() {}
 
 func (x *CombatLogStateChange) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[161]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[164]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18806,7 +19154,7 @@ func (x *CombatLogStateChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogStateChange.ProtoReflect.Descriptor instead.
 func (*CombatLogStateChange) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{161}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{164}
 }
 
 func (x *CombatLogStateChange) GetKind() CombatantStateKind {
@@ -18862,7 +19210,7 @@ type CombatLogModeChange struct {
 
 func (x *CombatLogModeChange) Reset() {
 	*x = CombatLogModeChange{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[162]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[165]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18874,7 +19222,7 @@ func (x *CombatLogModeChange) String() string {
 func (*CombatLogModeChange) ProtoMessage() {}
 
 func (x *CombatLogModeChange) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[162]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[165]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18887,7 +19235,7 @@ func (x *CombatLogModeChange) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogModeChange.ProtoReflect.Descriptor instead.
 func (*CombatLogModeChange) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{162}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{165}
 }
 
 func (x *CombatLogModeChange) GetSuggestedMode() RollMode {
@@ -18952,7 +19300,7 @@ type CombatLogWildShape struct {
 
 func (x *CombatLogWildShape) Reset() {
 	*x = CombatLogWildShape{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[163]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[166]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -18964,7 +19312,7 @@ func (x *CombatLogWildShape) String() string {
 func (*CombatLogWildShape) ProtoMessage() {}
 
 func (x *CombatLogWildShape) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[163]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[166]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -18977,7 +19325,7 @@ func (x *CombatLogWildShape) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogWildShape.ProtoReflect.Descriptor instead.
 func (*CombatLogWildShape) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{163}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{166}
 }
 
 func (x *CombatLogWildShape) GetBeastKey() string {
@@ -19158,7 +19506,7 @@ type CombatLogEntry struct {
 
 func (x *CombatLogEntry) Reset() {
 	*x = CombatLogEntry{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[164]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[167]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19170,7 +19518,7 @@ func (x *CombatLogEntry) String() string {
 func (*CombatLogEntry) ProtoMessage() {}
 
 func (x *CombatLogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[164]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[167]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19183,7 +19531,7 @@ func (x *CombatLogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogEntry.ProtoReflect.Descriptor instead.
 func (*CombatLogEntry) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{164}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{167}
 }
 
 func (x *CombatLogEntry) GetId() string {
@@ -19622,7 +19970,7 @@ type CombatLogEffectEnd struct {
 
 func (x *CombatLogEffectEnd) Reset() {
 	*x = CombatLogEffectEnd{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[165]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[168]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19634,7 +19982,7 @@ func (x *CombatLogEffectEnd) String() string {
 func (*CombatLogEffectEnd) ProtoMessage() {}
 
 func (x *CombatLogEffectEnd) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[165]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[168]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19647,7 +19995,7 @@ func (x *CombatLogEffectEnd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogEffectEnd.ProtoReflect.Descriptor instead.
 func (*CombatLogEffectEnd) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{165}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{168}
 }
 
 func (x *CombatLogEffectEnd) GetEffect() CombatEffect {
@@ -19715,7 +20063,7 @@ type CombatLogResource struct {
 
 func (x *CombatLogResource) Reset() {
 	*x = CombatLogResource{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[166]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[169]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19727,7 +20075,7 @@ func (x *CombatLogResource) String() string {
 func (*CombatLogResource) ProtoMessage() {}
 
 func (x *CombatLogResource) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[166]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[169]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19740,7 +20088,7 @@ func (x *CombatLogResource) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogResource.ProtoReflect.Descriptor instead.
 func (*CombatLogResource) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{166}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{169}
 }
 
 func (x *CombatLogResource) GetKey() string {
@@ -19858,7 +20206,7 @@ type CombatLogEffect struct {
 
 func (x *CombatLogEffect) Reset() {
 	*x = CombatLogEffect{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[167]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[170]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -19870,7 +20218,7 @@ func (x *CombatLogEffect) String() string {
 func (*CombatLogEffect) ProtoMessage() {}
 
 func (x *CombatLogEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[167]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[170]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -19883,7 +20231,7 @@ func (x *CombatLogEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogEffect.ProtoReflect.Descriptor instead.
 func (*CombatLogEffect) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{167}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{170}
 }
 
 func (x *CombatLogEffect) GetSourceKey() string {
@@ -20039,7 +20387,7 @@ type CombatLogLegendarySpent struct {
 
 func (x *CombatLogLegendarySpent) Reset() {
 	*x = CombatLogLegendarySpent{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[168]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[171]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20051,7 +20399,7 @@ func (x *CombatLogLegendarySpent) String() string {
 func (*CombatLogLegendarySpent) ProtoMessage() {}
 
 func (x *CombatLogLegendarySpent) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[168]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[171]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20064,7 +20412,7 @@ func (x *CombatLogLegendarySpent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogLegendarySpent.ProtoReflect.Descriptor instead.
 func (*CombatLogLegendarySpent) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{168}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{171}
 }
 
 func (x *CombatLogLegendarySpent) GetOptionName() string {
@@ -20096,7 +20444,7 @@ type CombatLogRecharge struct {
 
 func (x *CombatLogRecharge) Reset() {
 	*x = CombatLogRecharge{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[169]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[172]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20108,7 +20456,7 @@ func (x *CombatLogRecharge) String() string {
 func (*CombatLogRecharge) ProtoMessage() {}
 
 func (x *CombatLogRecharge) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[169]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[172]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20121,7 +20469,7 @@ func (x *CombatLogRecharge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogRecharge.ProtoReflect.Descriptor instead.
 func (*CombatLogRecharge) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{169}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{172}
 }
 
 func (x *CombatLogRecharge) GetActionName() string {
@@ -20163,7 +20511,7 @@ type CombatLogGearSwapped struct {
 
 func (x *CombatLogGearSwapped) Reset() {
 	*x = CombatLogGearSwapped{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[170]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[173]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20175,7 +20523,7 @@ func (x *CombatLogGearSwapped) String() string {
 func (*CombatLogGearSwapped) ProtoMessage() {}
 
 func (x *CombatLogGearSwapped) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[170]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[173]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20188,7 +20536,7 @@ func (x *CombatLogGearSwapped) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogGearSwapped.ProtoReflect.Descriptor instead.
 func (*CombatLogGearSwapped) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{170}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{173}
 }
 
 func (x *CombatLogGearSwapped) GetNamePt() string {
@@ -20238,7 +20586,7 @@ type CombatLogMonster struct {
 
 func (x *CombatLogMonster) Reset() {
 	*x = CombatLogMonster{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[171]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[174]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20250,7 +20598,7 @@ func (x *CombatLogMonster) String() string {
 func (*CombatLogMonster) ProtoMessage() {}
 
 func (x *CombatLogMonster) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[171]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[174]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20263,7 +20611,7 @@ func (x *CombatLogMonster) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogMonster.ProtoReflect.Descriptor instead.
 func (*CombatLogMonster) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{171}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{174}
 }
 
 func (x *CombatLogMonster) GetCombatantId() string {
@@ -20327,7 +20675,7 @@ type CombatLogDoor struct {
 
 func (x *CombatLogDoor) Reset() {
 	*x = CombatLogDoor{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[172]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[175]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20339,7 +20687,7 @@ func (x *CombatLogDoor) String() string {
 func (*CombatLogDoor) ProtoMessage() {}
 
 func (x *CombatLogDoor) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[172]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[175]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20352,7 +20700,7 @@ func (x *CombatLogDoor) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogDoor.ProtoReflect.Descriptor instead.
 func (*CombatLogDoor) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{172}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{175}
 }
 
 func (x *CombatLogDoor) GetCol() int32 {
@@ -20403,7 +20751,7 @@ type CombatLogSpell struct {
 
 func (x *CombatLogSpell) Reset() {
 	*x = CombatLogSpell{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[173]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[176]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20415,7 +20763,7 @@ func (x *CombatLogSpell) String() string {
 func (*CombatLogSpell) ProtoMessage() {}
 
 func (x *CombatLogSpell) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[173]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[176]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20428,7 +20776,7 @@ func (x *CombatLogSpell) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogSpell.ProtoReflect.Descriptor instead.
 func (*CombatLogSpell) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{173}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{176}
 }
 
 func (x *CombatLogSpell) GetSlot() *SpellSlot {
@@ -20560,7 +20908,7 @@ type CombatLogSpellTarget struct {
 
 func (x *CombatLogSpellTarget) Reset() {
 	*x = CombatLogSpellTarget{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[174]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[177]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20572,7 +20920,7 @@ func (x *CombatLogSpellTarget) String() string {
 func (*CombatLogSpellTarget) ProtoMessage() {}
 
 func (x *CombatLogSpellTarget) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[174]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[177]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20585,7 +20933,7 @@ func (x *CombatLogSpellTarget) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogSpellTarget.ProtoReflect.Descriptor instead.
 func (*CombatLogSpellTarget) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{174}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{177}
 }
 
 func (x *CombatLogSpellTarget) GetTargetId() string {
@@ -20733,7 +21081,7 @@ type CombatLogDeathSave struct {
 
 func (x *CombatLogDeathSave) Reset() {
 	*x = CombatLogDeathSave{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[175]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[178]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20745,7 +21093,7 @@ func (x *CombatLogDeathSave) String() string {
 func (*CombatLogDeathSave) ProtoMessage() {}
 
 func (x *CombatLogDeathSave) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[175]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[178]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20758,7 +21106,7 @@ func (x *CombatLogDeathSave) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogDeathSave.ProtoReflect.Descriptor instead.
 func (*CombatLogDeathSave) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{175}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{178}
 }
 
 func (x *CombatLogDeathSave) GetRoll() *DiceRoll {
@@ -20874,7 +21222,7 @@ type CombatLogDamage struct {
 
 func (x *CombatLogDamage) Reset() {
 	*x = CombatLogDamage{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[176]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[179]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -20886,7 +21234,7 @@ func (x *CombatLogDamage) String() string {
 func (*CombatLogDamage) ProtoMessage() {}
 
 func (x *CombatLogDamage) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[176]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[179]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -20899,7 +21247,7 @@ func (x *CombatLogDamage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CombatLogDamage.ProtoReflect.Descriptor instead.
 func (*CombatLogDamage) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{176}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{179}
 }
 
 func (x *CombatLogDamage) GetStatus() PendingDamageStatus {
@@ -21061,7 +21409,7 @@ type GetCombatHighlightsRequest struct {
 
 func (x *GetCombatHighlightsRequest) Reset() {
 	*x = GetCombatHighlightsRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[177]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[180]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21073,7 +21421,7 @@ func (x *GetCombatHighlightsRequest) String() string {
 func (*GetCombatHighlightsRequest) ProtoMessage() {}
 
 func (x *GetCombatHighlightsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[177]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[180]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21086,7 +21434,7 @@ func (x *GetCombatHighlightsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCombatHighlightsRequest.ProtoReflect.Descriptor instead.
 func (*GetCombatHighlightsRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{177}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{180}
 }
 
 func (x *GetCombatHighlightsRequest) GetCampaignId() string {
@@ -21116,7 +21464,7 @@ type HighlightWinner struct {
 
 func (x *HighlightWinner) Reset() {
 	*x = HighlightWinner{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[178]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[181]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21128,7 +21476,7 @@ func (x *HighlightWinner) String() string {
 func (*HighlightWinner) ProtoMessage() {}
 
 func (x *HighlightWinner) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[178]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[181]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21141,7 +21489,7 @@ func (x *HighlightWinner) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HighlightWinner.ProtoReflect.Descriptor instead.
 func (*HighlightWinner) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{178}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{181}
 }
 
 func (x *HighlightWinner) GetCharacterId() string {
@@ -21174,7 +21522,7 @@ type HighlightCategory struct {
 
 func (x *HighlightCategory) Reset() {
 	*x = HighlightCategory{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[179]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[182]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21186,7 +21534,7 @@ func (x *HighlightCategory) String() string {
 func (*HighlightCategory) ProtoMessage() {}
 
 func (x *HighlightCategory) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[179]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[182]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21199,7 +21547,7 @@ func (x *HighlightCategory) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HighlightCategory.ProtoReflect.Descriptor instead.
 func (*HighlightCategory) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{179}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{182}
 }
 
 func (x *HighlightCategory) GetKind() HighlightKind {
@@ -21244,7 +21592,7 @@ type CharacterHighlights struct {
 
 func (x *CharacterHighlights) Reset() {
 	*x = CharacterHighlights{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[180]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[183]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21256,7 +21604,7 @@ func (x *CharacterHighlights) String() string {
 func (*CharacterHighlights) ProtoMessage() {}
 
 func (x *CharacterHighlights) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[180]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[183]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21269,7 +21617,7 @@ func (x *CharacterHighlights) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CharacterHighlights.ProtoReflect.Descriptor instead.
 func (*CharacterHighlights) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{180}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{183}
 }
 
 func (x *CharacterHighlights) GetCharacterId() string {
@@ -21339,7 +21687,7 @@ type GetCombatHighlightsResponse struct {
 
 func (x *GetCombatHighlightsResponse) Reset() {
 	*x = GetCombatHighlightsResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[181]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[184]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21351,7 +21699,7 @@ func (x *GetCombatHighlightsResponse) String() string {
 func (*GetCombatHighlightsResponse) ProtoMessage() {}
 
 func (x *GetCombatHighlightsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[181]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[184]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21364,7 +21712,7 @@ func (x *GetCombatHighlightsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCombatHighlightsResponse.ProtoReflect.Descriptor instead.
 func (*GetCombatHighlightsResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{181}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{184}
 }
 
 func (x *GetCombatHighlightsResponse) GetCategories() []*HighlightCategory {
@@ -21400,7 +21748,7 @@ type TrapFiring struct {
 
 func (x *TrapFiring) Reset() {
 	*x = TrapFiring{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[182]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[185]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21412,7 +21760,7 @@ func (x *TrapFiring) String() string {
 func (*TrapFiring) ProtoMessage() {}
 
 func (x *TrapFiring) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[182]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[185]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21425,7 +21773,7 @@ func (x *TrapFiring) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrapFiring.ProtoReflect.Descriptor instead.
 func (*TrapFiring) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{182}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{185}
 }
 
 func (x *TrapFiring) GetPointId() string {
@@ -21487,7 +21835,7 @@ type TrapCaught struct {
 
 func (x *TrapCaught) Reset() {
 	*x = TrapCaught{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[183]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[186]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21499,7 +21847,7 @@ func (x *TrapCaught) String() string {
 func (*TrapCaught) ProtoMessage() {}
 
 func (x *TrapCaught) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[183]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[186]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21512,7 +21860,7 @@ func (x *TrapCaught) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrapCaught.ProtoReflect.Descriptor instead.
 func (*TrapCaught) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{183}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{186}
 }
 
 func (x *TrapCaught) GetTargetId() string {
@@ -21590,7 +21938,7 @@ type TrapAttackRoll struct {
 
 func (x *TrapAttackRoll) Reset() {
 	*x = TrapAttackRoll{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[184]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[187]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21602,7 +21950,7 @@ func (x *TrapAttackRoll) String() string {
 func (*TrapAttackRoll) ProtoMessage() {}
 
 func (x *TrapAttackRoll) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[184]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[187]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21615,7 +21963,7 @@ func (x *TrapAttackRoll) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrapAttackRoll.ProtoReflect.Descriptor instead.
 func (*TrapAttackRoll) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{184}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{187}
 }
 
 func (x *TrapAttackRoll) GetRoll() *DiceRoll {
@@ -21678,7 +22026,7 @@ type TrapSaveRoll struct {
 
 func (x *TrapSaveRoll) Reset() {
 	*x = TrapSaveRoll{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[185]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[188]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21690,7 +22038,7 @@ func (x *TrapSaveRoll) String() string {
 func (*TrapSaveRoll) ProtoMessage() {}
 
 func (x *TrapSaveRoll) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[185]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[188]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21703,7 +22051,7 @@ func (x *TrapSaveRoll) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrapSaveRoll.ProtoReflect.Descriptor instead.
 func (*TrapSaveRoll) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{185}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{188}
 }
 
 func (x *TrapSaveRoll) GetOutcome() SaveOutcome {
@@ -21779,7 +22127,7 @@ type TrapDamageDone struct {
 
 func (x *TrapDamageDone) Reset() {
 	*x = TrapDamageDone{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[186]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[189]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21791,7 +22139,7 @@ func (x *TrapDamageDone) String() string {
 func (*TrapDamageDone) ProtoMessage() {}
 
 func (x *TrapDamageDone) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[186]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[189]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21804,7 +22152,7 @@ func (x *TrapDamageDone) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TrapDamageDone.ProtoReflect.Descriptor instead.
 func (*TrapDamageDone) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{186}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{189}
 }
 
 func (x *TrapDamageDone) GetDamageId() string {
@@ -21889,7 +22237,7 @@ type ReactionWait struct {
 
 func (x *ReactionWait) Reset() {
 	*x = ReactionWait{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[187]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[190]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -21901,7 +22249,7 @@ func (x *ReactionWait) String() string {
 func (*ReactionWait) ProtoMessage() {}
 
 func (x *ReactionWait) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[187]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[190]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -21914,7 +22262,7 @@ func (x *ReactionWait) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReactionWait.ProtoReflect.Descriptor instead.
 func (*ReactionWait) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{187}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{190}
 }
 
 func (x *ReactionWait) GetTitlePt() string {
@@ -21999,7 +22347,7 @@ type ReactionWindow struct {
 
 func (x *ReactionWindow) Reset() {
 	*x = ReactionWindow{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[188]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[191]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22011,7 +22359,7 @@ func (x *ReactionWindow) String() string {
 func (*ReactionWindow) ProtoMessage() {}
 
 func (x *ReactionWindow) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[188]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[191]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22024,7 +22372,7 @@ func (x *ReactionWindow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReactionWindow.ProtoReflect.Descriptor instead.
 func (*ReactionWindow) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{188}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{191}
 }
 
 func (x *ReactionWindow) GetId() string {
@@ -22449,7 +22797,7 @@ type ReactionTrigger struct {
 
 func (x *ReactionTrigger) Reset() {
 	*x = ReactionTrigger{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[189]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[192]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22461,7 +22809,7 @@ func (x *ReactionTrigger) String() string {
 func (*ReactionTrigger) ProtoMessage() {}
 
 func (x *ReactionTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[189]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[192]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22474,7 +22822,7 @@ func (x *ReactionTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReactionTrigger.ProtoReflect.Descriptor instead.
 func (*ReactionTrigger) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{189}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{192}
 }
 
 func (x *ReactionTrigger) GetActorId() string {
@@ -22626,7 +22974,7 @@ type SlotEffect struct {
 
 func (x *SlotEffect) Reset() {
 	*x = SlotEffect{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[190]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[193]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22638,7 +22986,7 @@ func (x *SlotEffect) String() string {
 func (*SlotEffect) ProtoMessage() {}
 
 func (x *SlotEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[190]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[193]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22651,7 +22999,7 @@ func (x *SlotEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SlotEffect.ProtoReflect.Descriptor instead.
 func (*SlotEffect) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{190}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{193}
 }
 
 func (x *SlotEffect) GetSlot() *v1.SlotChoice {
@@ -22701,7 +23049,7 @@ type ShieldPrompt struct {
 
 func (x *ShieldPrompt) Reset() {
 	*x = ShieldPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[191]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[194]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22713,7 +23061,7 @@ func (x *ShieldPrompt) String() string {
 func (*ShieldPrompt) ProtoMessage() {}
 
 func (x *ShieldPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[191]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[194]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22726,7 +23074,7 @@ func (x *ShieldPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShieldPrompt.ProtoReflect.Descriptor instead.
 func (*ShieldPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{191}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{194}
 }
 
 func (x *ShieldPrompt) GetPendingDamageId() string {
@@ -22785,7 +23133,7 @@ type UncannyDodgePrompt struct {
 
 func (x *UncannyDodgePrompt) Reset() {
 	*x = UncannyDodgePrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[192]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[195]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22797,7 +23145,7 @@ func (x *UncannyDodgePrompt) String() string {
 func (*UncannyDodgePrompt) ProtoMessage() {}
 
 func (x *UncannyDodgePrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[192]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[195]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22810,7 +23158,7 @@ func (x *UncannyDodgePrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UncannyDodgePrompt.ProtoReflect.Descriptor instead.
 func (*UncannyDodgePrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{192}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{195}
 }
 
 func (x *UncannyDodgePrompt) GetAttackerLabel() string {
@@ -22856,7 +23204,7 @@ type HellishRebukePrompt struct {
 
 func (x *HellishRebukePrompt) Reset() {
 	*x = HellishRebukePrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[193]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[196]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22868,7 +23216,7 @@ func (x *HellishRebukePrompt) String() string {
 func (*HellishRebukePrompt) ProtoMessage() {}
 
 func (x *HellishRebukePrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[193]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[196]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22881,7 +23229,7 @@ func (x *HellishRebukePrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HellishRebukePrompt.ProtoReflect.Descriptor instead.
 func (*HellishRebukePrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{193}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{196}
 }
 
 func (x *HellishRebukePrompt) GetAggressorLabel() string {
@@ -22938,7 +23286,7 @@ type HellishRebukeOption struct {
 
 func (x *HellishRebukeOption) Reset() {
 	*x = HellishRebukeOption{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[194]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[197]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -22950,7 +23298,7 @@ func (x *HellishRebukeOption) String() string {
 func (*HellishRebukeOption) ProtoMessage() {}
 
 func (x *HellishRebukeOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[194]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[197]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -22963,7 +23311,7 @@ func (x *HellishRebukeOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HellishRebukeOption.ProtoReflect.Descriptor instead.
 func (*HellishRebukeOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{194}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{197}
 }
 
 func (x *HellishRebukeOption) GetRacial() bool {
@@ -23016,7 +23364,7 @@ type HellishRebukeSavePrompt struct {
 
 func (x *HellishRebukeSavePrompt) Reset() {
 	*x = HellishRebukeSavePrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[195]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[198]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23028,7 +23376,7 @@ func (x *HellishRebukeSavePrompt) String() string {
 func (*HellishRebukeSavePrompt) ProtoMessage() {}
 
 func (x *HellishRebukeSavePrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[195]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[198]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23041,7 +23389,7 @@ func (x *HellishRebukeSavePrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HellishRebukeSavePrompt.ProtoReflect.Descriptor instead.
 func (*HellishRebukeSavePrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{195}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{198}
 }
 
 func (x *HellishRebukeSavePrompt) GetAggressorLabel() string {
@@ -23092,7 +23440,7 @@ type CounterspellPrompt struct {
 
 func (x *CounterspellPrompt) Reset() {
 	*x = CounterspellPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[196]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[199]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23104,7 +23452,7 @@ func (x *CounterspellPrompt) String() string {
 func (*CounterspellPrompt) ProtoMessage() {}
 
 func (x *CounterspellPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[196]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[199]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23117,7 +23465,7 @@ func (x *CounterspellPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CounterspellPrompt.ProtoReflect.Descriptor instead.
 func (*CounterspellPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{196}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{199}
 }
 
 func (x *CounterspellPrompt) GetCasterLabel() string {
@@ -23156,7 +23504,7 @@ type CuttingWordsPrompt struct {
 
 func (x *CuttingWordsPrompt) Reset() {
 	*x = CuttingWordsPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[197]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[200]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23168,7 +23516,7 @@ func (x *CuttingWordsPrompt) String() string {
 func (*CuttingWordsPrompt) ProtoMessage() {}
 
 func (x *CuttingWordsPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[197]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[200]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23181,7 +23529,7 @@ func (x *CuttingWordsPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CuttingWordsPrompt.ProtoReflect.Descriptor instead.
 func (*CuttingWordsPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{197}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{200}
 }
 
 func (x *CuttingWordsPrompt) GetRollKind() ReactionRollKind {
@@ -23241,7 +23589,7 @@ type ManeuverReducePrompt struct {
 
 func (x *ManeuverReducePrompt) Reset() {
 	*x = ManeuverReducePrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[198]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[201]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23253,7 +23601,7 @@ func (x *ManeuverReducePrompt) String() string {
 func (*ManeuverReducePrompt) ProtoMessage() {}
 
 func (x *ManeuverReducePrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[198]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[201]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23266,7 +23614,7 @@ func (x *ManeuverReducePrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManeuverReducePrompt.ProtoReflect.Descriptor instead.
 func (*ManeuverReducePrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{198}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{201}
 }
 
 func (x *ManeuverReducePrompt) GetAttackerLabel() string {
@@ -23311,7 +23659,7 @@ type ProtectionPrompt struct {
 
 func (x *ProtectionPrompt) Reset() {
 	*x = ProtectionPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[199]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[202]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23323,7 +23671,7 @@ func (x *ProtectionPrompt) String() string {
 func (*ProtectionPrompt) ProtoMessage() {}
 
 func (x *ProtectionPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[199]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[202]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23336,7 +23684,7 @@ func (x *ProtectionPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProtectionPrompt.ProtoReflect.Descriptor instead.
 func (*ProtectionPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{199}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{202}
 }
 
 func (x *ProtectionPrompt) GetAttackerLabel() string {
@@ -23370,7 +23718,7 @@ type ParryPrompt struct {
 
 func (x *ParryPrompt) Reset() {
 	*x = ParryPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[200]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[203]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23382,7 +23730,7 @@ func (x *ParryPrompt) String() string {
 func (*ParryPrompt) ProtoMessage() {}
 
 func (x *ParryPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[200]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[203]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23395,7 +23743,7 @@ func (x *ParryPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParryPrompt.ProtoReflect.Descriptor instead.
 func (*ParryPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{200}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{203}
 }
 
 func (x *ParryPrompt) GetPendingDamageId() string {
@@ -23444,7 +23792,7 @@ type LegendaryResistancePrompt struct {
 
 func (x *LegendaryResistancePrompt) Reset() {
 	*x = LegendaryResistancePrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[201]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[204]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23456,7 +23804,7 @@ func (x *LegendaryResistancePrompt) String() string {
 func (*LegendaryResistancePrompt) ProtoMessage() {}
 
 func (x *LegendaryResistancePrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[201]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[204]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23469,7 +23817,7 @@ func (x *LegendaryResistancePrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LegendaryResistancePrompt.ProtoReflect.Descriptor instead.
 func (*LegendaryResistancePrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{201}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{204}
 }
 
 func (x *LegendaryResistancePrompt) GetOffers() []*LegendaryResistanceOffer {
@@ -23503,7 +23851,7 @@ type LegendaryResistanceOffer struct {
 
 func (x *LegendaryResistanceOffer) Reset() {
 	*x = LegendaryResistanceOffer{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[202]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[205]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23515,7 +23863,7 @@ func (x *LegendaryResistanceOffer) String() string {
 func (*LegendaryResistanceOffer) ProtoMessage() {}
 
 func (x *LegendaryResistanceOffer) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[202]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[205]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23528,7 +23876,7 @@ func (x *LegendaryResistanceOffer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LegendaryResistanceOffer.ProtoReflect.Descriptor instead.
 func (*LegendaryResistanceOffer) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{202}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{205}
 }
 
 func (x *LegendaryResistanceOffer) GetCombatantId() string {
@@ -23615,7 +23963,7 @@ type ManeuverReduceOption struct {
 
 func (x *ManeuverReduceOption) Reset() {
 	*x = ManeuverReduceOption{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[203]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[206]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23627,7 +23975,7 @@ func (x *ManeuverReduceOption) String() string {
 func (*ManeuverReduceOption) ProtoMessage() {}
 
 func (x *ManeuverReduceOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[203]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[206]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23640,7 +23988,7 @@ func (x *ManeuverReduceOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManeuverReduceOption.ProtoReflect.Descriptor instead.
 func (*ManeuverReduceOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{203}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{206}
 }
 
 func (x *ManeuverReduceOption) GetKey() string {
@@ -23695,7 +24043,7 @@ type DeflectMissilesPrompt struct {
 
 func (x *DeflectMissilesPrompt) Reset() {
 	*x = DeflectMissilesPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[204]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[207]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23707,7 +24055,7 @@ func (x *DeflectMissilesPrompt) String() string {
 func (*DeflectMissilesPrompt) ProtoMessage() {}
 
 func (x *DeflectMissilesPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[204]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[207]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23720,7 +24068,7 @@ func (x *DeflectMissilesPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeflectMissilesPrompt.ProtoReflect.Descriptor instead.
 func (*DeflectMissilesPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{204}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{207}
 }
 
 func (x *DeflectMissilesPrompt) GetAttackerLabel() string {
@@ -23793,7 +24141,7 @@ type DeflectMissilesThrowPrompt struct {
 
 func (x *DeflectMissilesThrowPrompt) Reset() {
 	*x = DeflectMissilesThrowPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[205]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[208]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23805,7 +24153,7 @@ func (x *DeflectMissilesThrowPrompt) String() string {
 func (*DeflectMissilesThrowPrompt) ProtoMessage() {}
 
 func (x *DeflectMissilesThrowPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[205]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[208]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23818,7 +24166,7 @@ func (x *DeflectMissilesThrowPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeflectMissilesThrowPrompt.ProtoReflect.Descriptor instead.
 func (*DeflectMissilesThrowPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{205}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{208}
 }
 
 func (x *DeflectMissilesThrowPrompt) GetKiLeft() int32 {
@@ -23868,7 +24216,7 @@ type FallingCreature struct {
 
 func (x *FallingCreature) Reset() {
 	*x = FallingCreature{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[206]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[209]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23880,7 +24228,7 @@ func (x *FallingCreature) String() string {
 func (*FallingCreature) ProtoMessage() {}
 
 func (x *FallingCreature) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[206]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[209]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23893,7 +24241,7 @@ func (x *FallingCreature) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FallingCreature.ProtoReflect.Descriptor instead.
 func (*FallingCreature) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{206}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{209}
 }
 
 func (x *FallingCreature) GetCombatantId() string {
@@ -23937,7 +24285,7 @@ type FeatherFallPrompt struct {
 
 func (x *FeatherFallPrompt) Reset() {
 	*x = FeatherFallPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[207]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[210]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -23949,7 +24297,7 @@ func (x *FeatherFallPrompt) String() string {
 func (*FeatherFallPrompt) ProtoMessage() {}
 
 func (x *FeatherFallPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[207]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[210]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -23962,7 +24310,7 @@ func (x *FeatherFallPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeatherFallPrompt.ProtoReflect.Descriptor instead.
 func (*FeatherFallPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{207}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{210}
 }
 
 func (x *FeatherFallPrompt) GetFalling() []*FallingCreature {
@@ -24006,7 +24354,7 @@ type SlowFallPrompt struct {
 
 func (x *SlowFallPrompt) Reset() {
 	*x = SlowFallPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[208]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[211]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24018,7 +24366,7 @@ func (x *SlowFallPrompt) String() string {
 func (*SlowFallPrompt) ProtoMessage() {}
 
 func (x *SlowFallPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[208]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[211]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24031,7 +24379,7 @@ func (x *SlowFallPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SlowFallPrompt.ProtoReflect.Descriptor instead.
 func (*SlowFallPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{208}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{211}
 }
 
 func (x *SlowFallPrompt) GetFallFt() int32 {
@@ -24078,7 +24426,7 @@ type ConcentrationSavePrompt struct {
 
 func (x *ConcentrationSavePrompt) Reset() {
 	*x = ConcentrationSavePrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[209]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[212]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24090,7 +24438,7 @@ func (x *ConcentrationSavePrompt) String() string {
 func (*ConcentrationSavePrompt) ProtoMessage() {}
 
 func (x *ConcentrationSavePrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[209]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[212]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24103,7 +24451,7 @@ func (x *ConcentrationSavePrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConcentrationSavePrompt.ProtoReflect.Descriptor instead.
 func (*ConcentrationSavePrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{209}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{212}
 }
 
 func (x *ConcentrationSavePrompt) GetSpellKey() string {
@@ -24187,7 +24535,7 @@ type ContestPrompt struct {
 
 func (x *ContestPrompt) Reset() {
 	*x = ContestPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[210]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[213]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24199,7 +24547,7 @@ func (x *ContestPrompt) String() string {
 func (*ContestPrompt) ProtoMessage() {}
 
 func (x *ContestPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[210]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[213]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24212,7 +24560,7 @@ func (x *ContestPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ContestPrompt.ProtoReflect.Descriptor instead.
 func (*ContestPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{210}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{213}
 }
 
 func (x *ContestPrompt) GetContestId() string {
@@ -24236,7 +24584,7 @@ type MasterCheckPrompt struct {
 
 func (x *MasterCheckPrompt) Reset() {
 	*x = MasterCheckPrompt{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[211]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[214]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24248,7 +24596,7 @@ func (x *MasterCheckPrompt) String() string {
 func (*MasterCheckPrompt) ProtoMessage() {}
 
 func (x *MasterCheckPrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[211]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[214]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24261,7 +24609,7 @@ func (x *MasterCheckPrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MasterCheckPrompt.ProtoReflect.Descriptor instead.
 func (*MasterCheckPrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{211}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{214}
 }
 
 func (x *MasterCheckPrompt) GetSummaryPt() string {
@@ -24310,7 +24658,7 @@ type AnswerReactionRequest struct {
 
 func (x *AnswerReactionRequest) Reset() {
 	*x = AnswerReactionRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[212]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[215]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24322,7 +24670,7 @@ func (x *AnswerReactionRequest) String() string {
 func (*AnswerReactionRequest) ProtoMessage() {}
 
 func (x *AnswerReactionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[212]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[215]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24335,7 +24683,7 @@ func (x *AnswerReactionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerReactionRequest.ProtoReflect.Descriptor instead.
 func (*AnswerReactionRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{212}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{215}
 }
 
 func (x *AnswerReactionRequest) GetCampaignId() string {
@@ -24454,7 +24802,7 @@ type MarkReactionRollingRequest struct {
 
 func (x *MarkReactionRollingRequest) Reset() {
 	*x = MarkReactionRollingRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[213]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[216]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24466,7 +24814,7 @@ func (x *MarkReactionRollingRequest) String() string {
 func (*MarkReactionRollingRequest) ProtoMessage() {}
 
 func (x *MarkReactionRollingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[213]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[216]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24479,7 +24827,7 @@ func (x *MarkReactionRollingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkReactionRollingRequest.ProtoReflect.Descriptor instead.
 func (*MarkReactionRollingRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{213}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{216}
 }
 
 func (x *MarkReactionRollingRequest) GetCampaignId() string {
@@ -24512,7 +24860,7 @@ type MarkReactionRollingResponse struct {
 
 func (x *MarkReactionRollingResponse) Reset() {
 	*x = MarkReactionRollingResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[214]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[217]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24524,7 +24872,7 @@ func (x *MarkReactionRollingResponse) String() string {
 func (*MarkReactionRollingResponse) ProtoMessage() {}
 
 func (x *MarkReactionRollingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[214]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[217]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24537,7 +24885,7 @@ func (x *MarkReactionRollingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MarkReactionRollingResponse.ProtoReflect.Descriptor instead.
 func (*MarkReactionRollingResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{214}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{217}
 }
 
 func (x *MarkReactionRollingResponse) GetEncounter() *Encounter {
@@ -24564,7 +24912,7 @@ type AnswerReactionResponse struct {
 
 func (x *AnswerReactionResponse) Reset() {
 	*x = AnswerReactionResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[215]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[218]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24576,7 +24924,7 @@ func (x *AnswerReactionResponse) String() string {
 func (*AnswerReactionResponse) ProtoMessage() {}
 
 func (x *AnswerReactionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[215]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[218]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24589,7 +24937,7 @@ func (x *AnswerReactionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerReactionResponse.ProtoReflect.Descriptor instead.
 func (*AnswerReactionResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{215}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{218}
 }
 
 func (x *AnswerReactionResponse) GetEncounter() *Encounter {
@@ -24645,7 +24993,7 @@ type ReactionResult struct {
 
 func (x *ReactionResult) Reset() {
 	*x = ReactionResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[216]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[219]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24657,7 +25005,7 @@ func (x *ReactionResult) String() string {
 func (*ReactionResult) ProtoMessage() {}
 
 func (x *ReactionResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[216]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[219]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24670,7 +25018,7 @@ func (x *ReactionResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReactionResult.ProtoReflect.Descriptor instead.
 func (*ReactionResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{216}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{219}
 }
 
 func (x *ReactionResult) GetKind() ReactionKind {
@@ -24906,7 +25254,7 @@ type SlowFallResult struct {
 
 func (x *SlowFallResult) Reset() {
 	*x = SlowFallResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[217]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[220]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24918,7 +25266,7 @@ func (x *SlowFallResult) String() string {
 func (*SlowFallResult) ProtoMessage() {}
 
 func (x *SlowFallResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[217]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[220]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24931,7 +25279,7 @@ func (x *SlowFallResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SlowFallResult.ProtoReflect.Descriptor instead.
 func (*SlowFallResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{217}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{220}
 }
 
 func (x *SlowFallResult) GetReduction() int32 {
@@ -24965,7 +25313,7 @@ type ParryResult struct {
 
 func (x *ParryResult) Reset() {
 	*x = ParryResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[218]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[221]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -24977,7 +25325,7 @@ func (x *ParryResult) String() string {
 func (*ParryResult) ProtoMessage() {}
 
 func (x *ParryResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[218]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[221]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -24990,7 +25338,7 @@ func (x *ParryResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParryResult.ProtoReflect.Descriptor instead.
 func (*ParryResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{218}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{221}
 }
 
 func (x *ParryResult) GetStopped() bool {
@@ -25010,7 +25358,7 @@ type ShieldResult struct {
 
 func (x *ShieldResult) Reset() {
 	*x = ShieldResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[219]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[222]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25022,7 +25370,7 @@ func (x *ShieldResult) String() string {
 func (*ShieldResult) ProtoMessage() {}
 
 func (x *ShieldResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[219]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[222]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25035,7 +25383,7 @@ func (x *ShieldResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ShieldResult.ProtoReflect.Descriptor instead.
 func (*ShieldResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{219}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{222}
 }
 
 func (x *ShieldResult) GetStopped() bool {
@@ -25055,7 +25403,7 @@ type UncannyDodgeResult struct {
 
 func (x *UncannyDodgeResult) Reset() {
 	*x = UncannyDodgeResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[220]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[223]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25067,7 +25415,7 @@ func (x *UncannyDodgeResult) String() string {
 func (*UncannyDodgeResult) ProtoMessage() {}
 
 func (x *UncannyDodgeResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[220]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[223]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25080,7 +25428,7 @@ func (x *UncannyDodgeResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UncannyDodgeResult.ProtoReflect.Descriptor instead.
 func (*UncannyDodgeResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{220}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{223}
 }
 
 func (x *UncannyDodgeResult) GetDamageBefore() int32 {
@@ -25112,7 +25460,7 @@ type HellishRebukeResult struct {
 
 func (x *HellishRebukeResult) Reset() {
 	*x = HellishRebukeResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[221]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[224]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25124,7 +25472,7 @@ func (x *HellishRebukeResult) String() string {
 func (*HellishRebukeResult) ProtoMessage() {}
 
 func (x *HellishRebukeResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[221]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[224]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25137,7 +25485,7 @@ func (x *HellishRebukeResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HellishRebukeResult.ProtoReflect.Descriptor instead.
 func (*HellishRebukeResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{221}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{224}
 }
 
 func (x *HellishRebukeResult) GetSave() *DiceRoll {
@@ -25198,7 +25546,7 @@ type CounterspellResult struct {
 
 func (x *CounterspellResult) Reset() {
 	*x = CounterspellResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[222]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[225]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25210,7 +25558,7 @@ func (x *CounterspellResult) String() string {
 func (*CounterspellResult) ProtoMessage() {}
 
 func (x *CounterspellResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[222]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[225]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25223,7 +25571,7 @@ func (x *CounterspellResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CounterspellResult.ProtoReflect.Descriptor instead.
 func (*CounterspellResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{222}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{225}
 }
 
 func (x *CounterspellResult) GetCountered() bool {
@@ -25285,7 +25633,7 @@ type CuttingWordsResult struct {
 
 func (x *CuttingWordsResult) Reset() {
 	*x = CuttingWordsResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[223]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[226]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25297,7 +25645,7 @@ func (x *CuttingWordsResult) String() string {
 func (*CuttingWordsResult) ProtoMessage() {}
 
 func (x *CuttingWordsResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[223]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[226]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25310,7 +25658,7 @@ func (x *CuttingWordsResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CuttingWordsResult.ProtoReflect.Descriptor instead.
 func (*CuttingWordsResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{223}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{226}
 }
 
 func (x *CuttingWordsResult) GetDie() *DiceRoll {
@@ -25351,7 +25699,7 @@ type ProtectionResult struct {
 
 func (x *ProtectionResult) Reset() {
 	*x = ProtectionResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[224]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[227]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25363,7 +25711,7 @@ func (x *ProtectionResult) String() string {
 func (*ProtectionResult) ProtoMessage() {}
 
 func (x *ProtectionResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[224]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[227]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25376,7 +25724,7 @@ func (x *ProtectionResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProtectionResult.ProtoReflect.Descriptor instead.
 func (*ProtectionResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{224}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{227}
 }
 
 // LegendaryResistanceResult: the creatures whose failed save the master turned into a success.
@@ -25389,7 +25737,7 @@ type LegendaryResistanceResult struct {
 
 func (x *LegendaryResistanceResult) Reset() {
 	*x = LegendaryResistanceResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[225]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[228]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25401,7 +25749,7 @@ func (x *LegendaryResistanceResult) String() string {
 func (*LegendaryResistanceResult) ProtoMessage() {}
 
 func (x *LegendaryResistanceResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[225]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[228]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25414,7 +25762,7 @@ func (x *LegendaryResistanceResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LegendaryResistanceResult.ProtoReflect.Descriptor instead.
 func (*LegendaryResistanceResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{225}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{228}
 }
 
 func (x *LegendaryResistanceResult) GetCombatantIds() []string {
@@ -25437,7 +25785,7 @@ type ManeuverReduceResult struct {
 
 func (x *ManeuverReduceResult) Reset() {
 	*x = ManeuverReduceResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[226]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[229]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25449,7 +25797,7 @@ func (x *ManeuverReduceResult) String() string {
 func (*ManeuverReduceResult) ProtoMessage() {}
 
 func (x *ManeuverReduceResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[226]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[229]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25462,7 +25810,7 @@ func (x *ManeuverReduceResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManeuverReduceResult.ProtoReflect.Descriptor instead.
 func (*ManeuverReduceResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{226}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{229}
 }
 
 func (x *ManeuverReduceResult) GetManeuverKey() string {
@@ -25513,7 +25861,7 @@ type DeflectMissilesResult struct {
 
 func (x *DeflectMissilesResult) Reset() {
 	*x = DeflectMissilesResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[227]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[230]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25525,7 +25873,7 @@ func (x *DeflectMissilesResult) String() string {
 func (*DeflectMissilesResult) ProtoMessage() {}
 
 func (x *DeflectMissilesResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[227]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[230]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25538,7 +25886,7 @@ func (x *DeflectMissilesResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeflectMissilesResult.ProtoReflect.Descriptor instead.
 func (*DeflectMissilesResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{227}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{230}
 }
 
 func (x *DeflectMissilesResult) GetReduction() *DiceRoll {
@@ -25586,7 +25934,7 @@ type FeatherFallResult struct {
 
 func (x *FeatherFallResult) Reset() {
 	*x = FeatherFallResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[228]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[231]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25598,7 +25946,7 @@ func (x *FeatherFallResult) String() string {
 func (*FeatherFallResult) ProtoMessage() {}
 
 func (x *FeatherFallResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[228]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[231]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25611,7 +25959,7 @@ func (x *FeatherFallResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeatherFallResult.ProtoReflect.Descriptor instead.
 func (*FeatherFallResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{228}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{231}
 }
 
 func (x *FeatherFallResult) GetSavedIds() []string {
@@ -25662,7 +26010,7 @@ type ResolveConcentrationSaveRequest struct {
 
 func (x *ResolveConcentrationSaveRequest) Reset() {
 	*x = ResolveConcentrationSaveRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[229]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[232]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25674,7 +26022,7 @@ func (x *ResolveConcentrationSaveRequest) String() string {
 func (*ResolveConcentrationSaveRequest) ProtoMessage() {}
 
 func (x *ResolveConcentrationSaveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[229]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[232]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25687,7 +26035,7 @@ func (x *ResolveConcentrationSaveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveConcentrationSaveRequest.ProtoReflect.Descriptor instead.
 func (*ResolveConcentrationSaveRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{229}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{232}
 }
 
 func (x *ResolveConcentrationSaveRequest) GetCampaignId() string {
@@ -25854,7 +26202,7 @@ type ResolveConcentrationSaveResponse struct {
 
 func (x *ResolveConcentrationSaveResponse) Reset() {
 	*x = ResolveConcentrationSaveResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[230]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[233]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25866,7 +26214,7 @@ func (x *ResolveConcentrationSaveResponse) String() string {
 func (*ResolveConcentrationSaveResponse) ProtoMessage() {}
 
 func (x *ResolveConcentrationSaveResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[230]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[233]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25879,7 +26227,7 @@ func (x *ResolveConcentrationSaveResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveConcentrationSaveResponse.ProtoReflect.Descriptor instead.
 func (*ResolveConcentrationSaveResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{230}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{233}
 }
 
 func (x *ResolveConcentrationSaveResponse) GetEncounter() *Encounter {
@@ -25941,7 +26289,7 @@ type ConcentrationSaveResult struct {
 
 func (x *ConcentrationSaveResult) Reset() {
 	*x = ConcentrationSaveResult{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[231]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[234]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -25953,7 +26301,7 @@ func (x *ConcentrationSaveResult) String() string {
 func (*ConcentrationSaveResult) ProtoMessage() {}
 
 func (x *ConcentrationSaveResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[231]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[234]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -25966,7 +26314,7 @@ func (x *ConcentrationSaveResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConcentrationSaveResult.ProtoReflect.Descriptor instead.
 func (*ConcentrationSaveResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{231}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{234}
 }
 
 func (x *ConcentrationSaveResult) GetSave() *DiceRoll {
@@ -26045,7 +26393,7 @@ type RequestRollModeRequest struct {
 
 func (x *RequestRollModeRequest) Reset() {
 	*x = RequestRollModeRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[232]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[235]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26057,7 +26405,7 @@ func (x *RequestRollModeRequest) String() string {
 func (*RequestRollModeRequest) ProtoMessage() {}
 
 func (x *RequestRollModeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[232]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[235]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26070,7 +26418,7 @@ func (x *RequestRollModeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestRollModeRequest.ProtoReflect.Descriptor instead.
 func (*RequestRollModeRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{232}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{235}
 }
 
 func (x *RequestRollModeRequest) GetCampaignId() string {
@@ -26140,7 +26488,7 @@ type RequestRollModeResponse struct {
 
 func (x *RequestRollModeResponse) Reset() {
 	*x = RequestRollModeResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[233]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[236]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26152,7 +26500,7 @@ func (x *RequestRollModeResponse) String() string {
 func (*RequestRollModeResponse) ProtoMessage() {}
 
 func (x *RequestRollModeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[233]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[236]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26165,7 +26513,7 @@ func (x *RequestRollModeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RequestRollModeResponse.ProtoReflect.Descriptor instead.
 func (*RequestRollModeResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{233}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{236}
 }
 
 func (x *RequestRollModeResponse) GetEncounter() *Encounter {
@@ -26198,7 +26546,7 @@ type AnswerRollModeRequestRequest struct {
 
 func (x *AnswerRollModeRequestRequest) Reset() {
 	*x = AnswerRollModeRequestRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[234]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[237]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26210,7 +26558,7 @@ func (x *AnswerRollModeRequestRequest) String() string {
 func (*AnswerRollModeRequestRequest) ProtoMessage() {}
 
 func (x *AnswerRollModeRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[234]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[237]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26223,7 +26571,7 @@ func (x *AnswerRollModeRequestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerRollModeRequestRequest.ProtoReflect.Descriptor instead.
 func (*AnswerRollModeRequestRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{234}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{237}
 }
 
 func (x *AnswerRollModeRequestRequest) GetCampaignId() string {
@@ -26271,7 +26619,7 @@ type AnswerRollModeRequestResponse struct {
 
 func (x *AnswerRollModeRequestResponse) Reset() {
 	*x = AnswerRollModeRequestResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[235]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[238]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26283,7 +26631,7 @@ func (x *AnswerRollModeRequestResponse) String() string {
 func (*AnswerRollModeRequestResponse) ProtoMessage() {}
 
 func (x *AnswerRollModeRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[235]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[238]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26296,7 +26644,7 @@ func (x *AnswerRollModeRequestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerRollModeRequestResponse.ProtoReflect.Descriptor instead.
 func (*AnswerRollModeRequestResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{235}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{238}
 }
 
 func (x *AnswerRollModeRequestResponse) GetEncounter() *Encounter {
@@ -26319,7 +26667,7 @@ type CancelRollModeRequestRequest struct {
 
 func (x *CancelRollModeRequestRequest) Reset() {
 	*x = CancelRollModeRequestRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[236]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[239]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26331,7 +26679,7 @@ func (x *CancelRollModeRequestRequest) String() string {
 func (*CancelRollModeRequestRequest) ProtoMessage() {}
 
 func (x *CancelRollModeRequestRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[236]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[239]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26344,7 +26692,7 @@ func (x *CancelRollModeRequestRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelRollModeRequestRequest.ProtoReflect.Descriptor instead.
 func (*CancelRollModeRequestRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{236}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{239}
 }
 
 func (x *CancelRollModeRequestRequest) GetCampaignId() string {
@@ -26385,7 +26733,7 @@ type CancelRollModeRequestResponse struct {
 
 func (x *CancelRollModeRequestResponse) Reset() {
 	*x = CancelRollModeRequestResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[237]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[240]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26397,7 +26745,7 @@ func (x *CancelRollModeRequestResponse) String() string {
 func (*CancelRollModeRequestResponse) ProtoMessage() {}
 
 func (x *CancelRollModeRequestResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[237]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[240]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26410,7 +26758,7 @@ func (x *CancelRollModeRequestResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelRollModeRequestResponse.ProtoReflect.Descriptor instead.
 func (*CancelRollModeRequestResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{237}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{240}
 }
 
 func (x *CancelRollModeRequestResponse) GetEncounter() *Encounter {
@@ -26437,7 +26785,7 @@ type RemoveDamagePartRequest struct {
 
 func (x *RemoveDamagePartRequest) Reset() {
 	*x = RemoveDamagePartRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[238]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[241]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26449,7 +26797,7 @@ func (x *RemoveDamagePartRequest) String() string {
 func (*RemoveDamagePartRequest) ProtoMessage() {}
 
 func (x *RemoveDamagePartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[238]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[241]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26462,7 +26810,7 @@ func (x *RemoveDamagePartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveDamagePartRequest.ProtoReflect.Descriptor instead.
 func (*RemoveDamagePartRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{238}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{241}
 }
 
 func (x *RemoveDamagePartRequest) GetCampaignId() string {
@@ -26518,7 +26866,7 @@ type RemoveDamagePartResponse struct {
 
 func (x *RemoveDamagePartResponse) Reset() {
 	*x = RemoveDamagePartResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[239]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[242]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26530,7 +26878,7 @@ func (x *RemoveDamagePartResponse) String() string {
 func (*RemoveDamagePartResponse) ProtoMessage() {}
 
 func (x *RemoveDamagePartResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[239]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[242]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26543,7 +26891,7 @@ func (x *RemoveDamagePartResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveDamagePartResponse.ProtoReflect.Descriptor instead.
 func (*RemoveDamagePartResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{239}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{242}
 }
 
 func (x *RemoveDamagePartResponse) GetEncounter() *Encounter {
@@ -26575,7 +26923,7 @@ type AnswerRageEndRequest struct {
 
 func (x *AnswerRageEndRequest) Reset() {
 	*x = AnswerRageEndRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[240]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[243]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26587,7 +26935,7 @@ func (x *AnswerRageEndRequest) String() string {
 func (*AnswerRageEndRequest) ProtoMessage() {}
 
 func (x *AnswerRageEndRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[240]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[243]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26600,7 +26948,7 @@ func (x *AnswerRageEndRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerRageEndRequest.ProtoReflect.Descriptor instead.
 func (*AnswerRageEndRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{240}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{243}
 }
 
 func (x *AnswerRageEndRequest) GetCampaignId() string {
@@ -26648,7 +26996,7 @@ type AnswerRageEndResponse struct {
 
 func (x *AnswerRageEndResponse) Reset() {
 	*x = AnswerRageEndResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[241]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[244]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26660,7 +27008,7 @@ func (x *AnswerRageEndResponse) String() string {
 func (*AnswerRageEndResponse) ProtoMessage() {}
 
 func (x *AnswerRageEndResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[241]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[244]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26673,7 +27021,7 @@ func (x *AnswerRageEndResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnswerRageEndResponse.ProtoReflect.Descriptor instead.
 func (*AnswerRageEndResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{241}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{244}
 }
 
 func (x *AnswerRageEndResponse) GetEncounter() *Encounter {
@@ -26696,7 +27044,7 @@ type EndRageRequest struct {
 
 func (x *EndRageRequest) Reset() {
 	*x = EndRageRequest{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[242]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[245]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26708,7 +27056,7 @@ func (x *EndRageRequest) String() string {
 func (*EndRageRequest) ProtoMessage() {}
 
 func (x *EndRageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[242]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[245]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26721,7 +27069,7 @@ func (x *EndRageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndRageRequest.ProtoReflect.Descriptor instead.
 func (*EndRageRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{242}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{245}
 }
 
 func (x *EndRageRequest) GetCampaignId() string {
@@ -26762,7 +27110,7 @@ type EndRageResponse struct {
 
 func (x *EndRageResponse) Reset() {
 	*x = EndRageResponse{}
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[243]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[246]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -26774,7 +27122,7 @@ func (x *EndRageResponse) String() string {
 func (*EndRageResponse) ProtoMessage() {}
 
 func (x *EndRageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_combat_proto_msgTypes[243]
+	mi := &file_meurpg_play_v1_combat_proto_msgTypes[246]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -26787,7 +27135,7 @@ func (x *EndRageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EndRageResponse.ProtoReflect.Descriptor instead.
 func (*EndRageResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{243}
+	return file_meurpg_play_v1_combat_proto_rawDescGZIP(), []int{246}
 }
 
 func (x *EndRageResponse) GetEncounter() *Encounter {
@@ -26814,8 +27162,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"missingDft\x12$\n" +
 	"\x0ejump_limit_dft\x18\b \x01(\x05R\fjumpLimitDft\x12,\n" +
 	"\x12jump_running_start\x18\t \x01(\bR\x10jumpRunningStart\x12^\n" +
-	"\x15familiar_sight_reason\x18\x14 \x01(\x0e2*.meurpg.play.v1.FamiliarSightBlockedReasonR\x13familiarSightReason\"\xff\n" +
-	"\n" +
+	"\x15familiar_sight_reason\x18\x14 \x01(\x0e2*.meurpg.play.v1.FamiliarSightBlockedReasonR\x13familiarSightReason\"\xb1\f\n" +
 	"\tEncounter\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x127\n" +
@@ -26851,7 +27198,11 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06deaths\x18\x1a \x03(\v2\x1b.meurpg.play.v1.CombatDeathR\x06deaths\x12<\n" +
 	"\n" +
 	"hit_riders\x18\x1e \x03(\v2\x1d.meurpg.play.v1.HitRiderOfferR\thitRiders\x12/\n" +
-	"\x05zones\x18\x1f \x03(\v2\x19.meurpg.play.v1.SpellZoneR\x05zones\"\xd2\b\n" +
+	"\x05zones\x18\x1f \x03(\v2\x19.meurpg.play.v1.SpellZoneR\x05zones\x12\x1f\n" +
+	"\vsunlight_on\x18  \x01(\bR\n" +
+	"sunlightOn\x12D\n" +
+	"\x0esunlight_scope\x18! \x01(\x0e2\x1d.meurpg.play.v1.SunlightScopeR\rsunlightScope\x12I\n" +
+	"\x10sunlight_squares\x18\" \x03(\v2\x1e.meurpg.play.v1.SunlightSquareR\x0fsunlightSquares\"\xd2\b\n" +
 	"\tSpellZone\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tspell_key\x18\x02 \x01(\tR\bspellKey\x12\"\n" +
@@ -27045,7 +27396,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x05slots\x18\x05 \x03(\v2\x1b.meurpg.rules.v1.SlotChoiceR\x05slots\x12%\n" +
 	"\x0eattacker_label\x18\x06 \x01(\tR\rattackerLabel\x12$\n" +
 	"\x0eattack_name_pt\x18\a \x01(\tR\fattackNamePt\x12\"\n" +
-	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\xa2 \n" +
+	"\rspell_name_pt\x18\b \x01(\tR\vspellNamePt\"\x89!\n" +
 	"\tCombatant\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05label\x18\x02 \x01(\tR\x05label\x121\n" +
@@ -27145,7 +27496,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x17object_interaction_used\x18q \x01(\bR\x15objectInteractionUsed\x12\"\n" +
 	"\rspeed_swim_ft\x18r \x01(\x05R\vspeedSwimFt\x12$\n" +
 	"\x0espeed_climb_ft\x18s \x01(\x05R\fspeedClimbFt\x12&\n" +
-	"\x0fspeed_burrow_ft\x18t \x01(\x05R\rspeedBurrowFtB\r\n" +
+	"\x0fspeed_burrow_ft\x18t \x01(\x05R\rspeedBurrowFt\x12\x1f\n" +
+	"\vin_sunlight\x18u \x01(\bR\n" +
+	"inSunlight\x12D\n" +
+	"\x0esunlight_trait\x18v \x01(\x0e2\x1d.meurpg.play.v1.SunlightTraitR\rsunlightTraitB\r\n" +
 	"\v_initiativeB\x13\n" +
 	"\x11_initiative_bonusB\x12\n" +
 	"\x10_initiative_faceB\x15\n" +
@@ -27396,6 +27750,21 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12\x10\n" +
 	"\x03ask\x18\x05 \x01(\bR\x03ask\"Y\n" +
 	"\x1eSetMonsterReactionModeResponse\x127\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"4\n" +
+	"\x0eSunlightSquare\x12\x10\n" +
+	"\x03col\x18\x01 \x01(\x05R\x03col\x12\x10\n" +
+	"\x03row\x18\x02 \x01(\x05R\x03row\"\xce\x02\n" +
+	"\x12SetSunlightRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fencounter_id\x18\x02 \x01(\tR\vencounterId\x12'\n" +
+	"\x0fidempotency_key\x18\x03 \x01(\tR\x0eidempotencyKey\x12\x0e\n" +
+	"\x02on\x18\x04 \x01(\bR\x02on\x123\n" +
+	"\x05scope\x18\x05 \x01(\x0e2\x1d.meurpg.play.v1.SunlightScopeR\x05scope\x12?\n" +
+	"\vadd_squares\x18\x06 \x03(\v2\x1e.meurpg.play.v1.SunlightSquareR\n" +
+	"addSquares\x12E\n" +
+	"\x0eremove_squares\x18\a \x03(\v2\x1e.meurpg.play.v1.SunlightSquareR\rremoveSquares\"N\n" +
+	"\x13SetSunlightResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xc4\x01\n" +
 	"\x14AddCombatantsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
@@ -29087,7 +29456,15 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aHIT_RIDER_LOG_RESULT_SAVED\x10\x01\x12\x1f\n" +
 	"\x1bHIT_RIDER_LOG_RESULT_FAILED\x10\x02\x12 \n" +
 	"\x1cHIT_RIDER_LOG_RESULT_APPLIED\x10\x03\x12!\n" +
-	"\x1dHIT_RIDER_LOG_RESULT_DECLINED\x10\x04*u\n" +
+	"\x1dHIT_RIDER_LOG_RESULT_DECLINED\x10\x04*l\n" +
+	"\rSunlightTrait\x12\x1e\n" +
+	"\x1aSUNLIGHT_TRAIT_UNSPECIFIED\x10\x00\x12\x1e\n" +
+	"\x1aSUNLIGHT_TRAIT_SENSITIVITY\x10\x01\x12\x1b\n" +
+	"\x17SUNLIGHT_TRAIT_WEAKNESS\x10\x02*c\n" +
+	"\rSunlightScope\x12\x1e\n" +
+	"\x1aSUNLIGHT_SCOPE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12SUNLIGHT_SCOPE_MAP\x10\x01\x12\x1a\n" +
+	"\x16SUNLIGHT_SCOPE_SQUARES\x10\x02*u\n" +
 	"\x10MonsterHitPoints\x12\"\n" +
 	"\x1eMONSTER_HIT_POINTS_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aMONSTER_HIT_POINTS_AVERAGE\x10\x01\x12\x1d\n" +
@@ -29284,7 +29661,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1eREACTION_ROLL_KIND_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19REACTION_ROLL_KIND_ATTACK\x10\x01\x12\x1b\n" +
 	"\x17REACTION_ROLL_KIND_TEST\x10\x02\x12\x1d\n" +
-	"\x19REACTION_ROLL_KIND_DAMAGE\x10\x032\xe9,\n" +
+	"\x19REACTION_ROLL_KIND_DAMAGE\x10\x032\xc1-\n" +
 	"\rCombatService\x12_\n" +
 	"\x0eStartEncounter\x12%.meurpg.play.v1.StartEncounterRequest\x1a&.meurpg.play.v1.StartEncounterResponse\x12_\n" +
 	"\x0eGetStartRoster\x12%.meurpg.play.v1.GetStartRosterRequest\x1a&.meurpg.play.v1.GetStartRosterResponse\x12^\n" +
@@ -29302,7 +29679,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10SetCombatantSide\x12'.meurpg.play.v1.SetCombatantSideRequest\x1a(.meurpg.play.v1.SetCombatantSideResponse\x12h\n" +
 	"\x11SetCombatantCover\x12(.meurpg.play.v1.SetCombatantCoverRequest\x1a).meurpg.play.v1.SetCombatantCoverResponse\x12k\n" +
 	"\x12SetCombatantHidden\x12).meurpg.play.v1.SetCombatantHiddenRequest\x1a*.meurpg.play.v1.SetCombatantHiddenResponse\x12w\n" +
-	"\x16SetMonsterReactionMode\x12-.meurpg.play.v1.SetMonsterReactionModeRequest\x1a..meurpg.play.v1.SetMonsterReactionModeResponse\x12\\\n" +
+	"\x16SetMonsterReactionMode\x12-.meurpg.play.v1.SetMonsterReactionModeRequest\x1a..meurpg.play.v1.SetMonsterReactionModeResponse\x12V\n" +
+	"\vSetSunlight\x12\".meurpg.play.v1.SetSunlightRequest\x1a#.meurpg.play.v1.SetSunlightResponse\x12\\\n" +
 	"\rAddCombatants\x12$.meurpg.play.v1.AddCombatantsRequest\x1a%.meurpg.play.v1.AddCombatantsResponse\x12V\n" +
 	"\vAddMonsters\x12\".meurpg.play.v1.AddMonstersRequest\x1a#.meurpg.play.v1.AddMonstersResponse\x12b\n" +
 	"\x0fRemoveCombatant\x12&.meurpg.play.v1.RemoveCombatantRequest\x1a'.meurpg.play.v1.RemoveCombatantResponse\x12Y\n" +
@@ -29360,8 +29738,8 @@ func file_meurpg_play_v1_combat_proto_rawDescGZIP() []byte {
 	return file_meurpg_play_v1_combat_proto_rawDescData
 }
 
-var file_meurpg_play_v1_combat_proto_enumTypes = make([]protoimpl.EnumInfo, 42)
-var file_meurpg_play_v1_combat_proto_msgTypes = make([]protoimpl.MessageInfo, 244)
+var file_meurpg_play_v1_combat_proto_enumTypes = make([]protoimpl.EnumInfo, 44)
+var file_meurpg_play_v1_combat_proto_msgTypes = make([]protoimpl.MessageInfo, 247)
 var file_meurpg_play_v1_combat_proto_goTypes = []any{
 	(EncounterMode)(0),                       // 0: meurpg.play.v1.EncounterMode
 	(EncounterStatus)(0),                     // 1: meurpg.play.v1.EncounterStatus
@@ -29380,833 +29758,847 @@ var file_meurpg_play_v1_combat_proto_goTypes = []any{
 	(HitRiderKind)(0),                        // 14: meurpg.play.v1.HitRiderKind
 	(HitRiderChoice)(0),                      // 15: meurpg.play.v1.HitRiderChoice
 	(HitRiderLogResult)(0),                   // 16: meurpg.play.v1.HitRiderLogResult
-	(MonsterHitPoints)(0),                    // 17: meurpg.play.v1.MonsterHitPoints
-	(CriticalDamageRule)(0),                  // 18: meurpg.play.v1.CriticalDamageRule
-	(AttackOutcome)(0),                       // 19: meurpg.play.v1.AttackOutcome
-	(PendingDamageStatus)(0),                 // 20: meurpg.play.v1.PendingDamageStatus
-	(AreaPlacement)(0),                       // 21: meurpg.play.v1.AreaPlacement
-	(HeldRollKind)(0),                        // 22: meurpg.play.v1.HeldRollKind
-	(WallSide)(0),                            // 23: meurpg.play.v1.WallSide
-	(SaveOutcome)(0),                         // 24: meurpg.play.v1.SaveOutcome
-	(SpellEffectKind)(0),                     // 25: meurpg.play.v1.SpellEffectKind
-	(SpellEffectOutcome)(0),                  // 26: meurpg.play.v1.SpellEffectOutcome
-	(SpellEffectReason)(0),                   // 27: meurpg.play.v1.SpellEffectReason
-	(SpellEffectGain)(0),                     // 28: meurpg.play.v1.SpellEffectGain
-	(ReactionOutcome)(0),                     // 29: meurpg.play.v1.ReactionOutcome
-	(DeathSaveOutcome)(0),                    // 30: meurpg.play.v1.DeathSaveOutcome
-	(CombatLogKind)(0),                       // 31: meurpg.play.v1.CombatLogKind
-	(WildShapeEndReason)(0),                  // 32: meurpg.play.v1.WildShapeEndReason
-	(CombatEffect)(0),                        // 33: meurpg.play.v1.CombatEffect
-	(LayOnHandsCureKind)(0),                  // 34: meurpg.play.v1.LayOnHandsCureKind
-	(CombatLogEffectChange)(0),               // 35: meurpg.play.v1.CombatLogEffectChange
-	(HighlightKind)(0),                       // 36: meurpg.play.v1.HighlightKind
-	(ReactionKind)(0),                        // 37: meurpg.play.v1.ReactionKind
-	(ReactionWindowStatus)(0),                // 38: meurpg.play.v1.ReactionWindowStatus
-	(ReactionClosedReason)(0),                // 39: meurpg.play.v1.ReactionClosedReason
-	(ReactionChoice)(0),                      // 40: meurpg.play.v1.ReactionChoice
-	(ReactionRollKind)(0),                    // 41: meurpg.play.v1.ReactionRollKind
-	(*EncounterBlocked)(nil),                 // 42: meurpg.play.v1.EncounterBlocked
-	(*Encounter)(nil),                        // 43: meurpg.play.v1.Encounter
-	(*SpellZone)(nil),                        // 44: meurpg.play.v1.SpellZone
-	(*HitRiderOffer)(nil),                    // 45: meurpg.play.v1.HitRiderOffer
-	(*UseHitRiderRequest)(nil),               // 46: meurpg.play.v1.UseHitRiderRequest
-	(*UseHitRiderResponse)(nil),              // 47: meurpg.play.v1.UseHitRiderResponse
-	(*UseCreatureActionRequest)(nil),         // 48: meurpg.play.v1.UseCreatureActionRequest
-	(*CreatureActionTarget)(nil),             // 49: meurpg.play.v1.CreatureActionTarget
-	(*CreatureActionResult)(nil),             // 50: meurpg.play.v1.CreatureActionResult
-	(*SpendLegendaryActionRequest)(nil),      // 51: meurpg.play.v1.SpendLegendaryActionRequest
-	(*SpendLegendaryActionResponse)(nil),     // 52: meurpg.play.v1.SpendLegendaryActionResponse
-	(*UseCreatureActionResponse)(nil),        // 53: meurpg.play.v1.UseCreatureActionResponse
-	(*CombatLogCreatureAction)(nil),          // 54: meurpg.play.v1.CombatLogCreatureAction
-	(*CombatLogHitRider)(nil),                // 55: meurpg.play.v1.CombatLogHitRider
-	(*HiddenRevealQuestion)(nil),             // 56: meurpg.play.v1.HiddenRevealQuestion
-	(*CombatDeath)(nil),                      // 57: meurpg.play.v1.CombatDeath
-	(*OpportunityOffer)(nil),                 // 58: meurpg.play.v1.OpportunityOffer
-	(*OpportunityAttack)(nil),                // 59: meurpg.play.v1.OpportunityAttack
-	(*NpcGroup)(nil),                         // 60: meurpg.play.v1.NpcGroup
-	(*ReactionPrompt)(nil),                   // 61: meurpg.play.v1.ReactionPrompt
-	(*Combatant)(nil),                        // 62: meurpg.play.v1.Combatant
-	(*LimitedAction)(nil),                    // 63: meurpg.play.v1.LimitedAction
-	(*LegendaryState)(nil),                   // 64: meurpg.play.v1.LegendaryState
-	(*LegendaryOption)(nil),                  // 65: meurpg.play.v1.LegendaryOption
-	(*Participant)(nil),                      // 66: meurpg.play.v1.Participant
-	(*StartEncounterRequest)(nil),            // 67: meurpg.play.v1.StartEncounterRequest
-	(*MonsterGroup)(nil),                     // 68: meurpg.play.v1.MonsterGroup
-	(*GetStartRosterRequest)(nil),            // 69: meurpg.play.v1.GetStartRosterRequest
-	(*StartRosterEntry)(nil),                 // 70: meurpg.play.v1.StartRosterEntry
-	(*GetStartRosterResponse)(nil),           // 71: meurpg.play.v1.GetStartRosterResponse
-	(*StartEncounterResponse)(nil),           // 72: meurpg.play.v1.StartEncounterResponse
-	(*GetEncounterRequest)(nil),              // 73: meurpg.play.v1.GetEncounterRequest
-	(*GetEncounterResponse)(nil),             // 74: meurpg.play.v1.GetEncounterResponse
-	(*SubmitInitiativeRequest)(nil),          // 75: meurpg.play.v1.SubmitInitiativeRequest
-	(*SubmitInitiativeResponse)(nil),         // 76: meurpg.play.v1.SubmitInitiativeResponse
-	(*SetInitiativeOrderRequest)(nil),        // 77: meurpg.play.v1.SetInitiativeOrderRequest
-	(*SetInitiativeOrderResponse)(nil),       // 78: meurpg.play.v1.SetInitiativeOrderResponse
-	(*BeginCombatRequest)(nil),               // 79: meurpg.play.v1.BeginCombatRequest
-	(*BeginCombatResponse)(nil),              // 80: meurpg.play.v1.BeginCombatResponse
-	(*EndTurnRequest)(nil),                   // 81: meurpg.play.v1.EndTurnRequest
-	(*EndTurnResponse)(nil),                  // 82: meurpg.play.v1.EndTurnResponse
-	(*MoveCombatantRequest)(nil),             // 83: meurpg.play.v1.MoveCombatantRequest
-	(*MoveCombatantResponse)(nil),            // 84: meurpg.play.v1.MoveCombatantResponse
-	(*SpendMovementRequest)(nil),             // 85: meurpg.play.v1.SpendMovementRequest
-	(*StandUpRequest)(nil),                   // 86: meurpg.play.v1.StandUpRequest
-	(*StandUpResponse)(nil),                  // 87: meurpg.play.v1.StandUpResponse
-	(*SpendMovementResponse)(nil),            // 88: meurpg.play.v1.SpendMovementResponse
-	(*OfferOpportunityRequest)(nil),          // 89: meurpg.play.v1.OfferOpportunityRequest
-	(*OfferOpportunityResponse)(nil),         // 90: meurpg.play.v1.OfferOpportunityResponse
-	(*WithdrawOpportunityRequest)(nil),       // 91: meurpg.play.v1.WithdrawOpportunityRequest
-	(*WithdrawOpportunityResponse)(nil),      // 92: meurpg.play.v1.WithdrawOpportunityResponse
-	(*GetMoveOptionsRequest)(nil),            // 93: meurpg.play.v1.GetMoveOptionsRequest
-	(*GetMoveOptionsResponse)(nil),           // 94: meurpg.play.v1.GetMoveOptionsResponse
-	(*DraggedSquare)(nil),                    // 95: meurpg.play.v1.DraggedSquare
-	(*ReachableSquare)(nil),                  // 96: meurpg.play.v1.ReachableSquare
-	(*RefusedSquare)(nil),                    // 97: meurpg.play.v1.RefusedSquare
-	(*SetCombatantSideRequest)(nil),          // 98: meurpg.play.v1.SetCombatantSideRequest
-	(*SetCombatantSideResponse)(nil),         // 99: meurpg.play.v1.SetCombatantSideResponse
-	(*SetCombatantCoverRequest)(nil),         // 100: meurpg.play.v1.SetCombatantCoverRequest
-	(*SetCombatantCoverResponse)(nil),        // 101: meurpg.play.v1.SetCombatantCoverResponse
-	(*SetCombatantHiddenRequest)(nil),        // 102: meurpg.play.v1.SetCombatantHiddenRequest
-	(*SetCombatantHiddenResponse)(nil),       // 103: meurpg.play.v1.SetCombatantHiddenResponse
-	(*SetMonsterReactionModeRequest)(nil),    // 104: meurpg.play.v1.SetMonsterReactionModeRequest
-	(*SetMonsterReactionModeResponse)(nil),   // 105: meurpg.play.v1.SetMonsterReactionModeResponse
-	(*AddCombatantsRequest)(nil),             // 106: meurpg.play.v1.AddCombatantsRequest
-	(*AddCombatantsResponse)(nil),            // 107: meurpg.play.v1.AddCombatantsResponse
-	(*AddMonstersRequest)(nil),               // 108: meurpg.play.v1.AddMonstersRequest
-	(*AddMonstersResponse)(nil),              // 109: meurpg.play.v1.AddMonstersResponse
-	(*RemoveCombatantRequest)(nil),           // 110: meurpg.play.v1.RemoveCombatantRequest
-	(*RemoveCombatantResponse)(nil),          // 111: meurpg.play.v1.RemoveCombatantResponse
-	(*EndEncounterRequest)(nil),              // 112: meurpg.play.v1.EndEncounterRequest
-	(*EndEncounterResponse)(nil),             // 113: meurpg.play.v1.EndEncounterResponse
-	(*DiceRoll)(nil),                         // 114: meurpg.play.v1.DiceRoll
-	(*PendingDamage)(nil),                    // 115: meurpg.play.v1.PendingDamage
-	(*GetTurnOptionsRequest)(nil),            // 116: meurpg.play.v1.GetTurnOptionsRequest
-	(*GetTurnOptionsResponse)(nil),           // 117: meurpg.play.v1.GetTurnOptionsResponse
-	(*ManeuverDieOption)(nil),                // 118: meurpg.play.v1.ManeuverDieOption
-	(*ResourceTargets)(nil),                  // 119: meurpg.play.v1.ResourceTargets
-	(*ResourceTarget)(nil),                   // 120: meurpg.play.v1.ResourceTarget
-	(*SpellTargets)(nil),                     // 121: meurpg.play.v1.SpellTargets
-	(*DartsAtSlot)(nil),                      // 122: meurpg.play.v1.DartsAtSlot
-	(*AttackTargets)(nil),                    // 123: meurpg.play.v1.AttackTargets
-	(*TargetInReach)(nil),                    // 124: meurpg.play.v1.TargetInReach
-	(*RollAttackRequest)(nil),                // 125: meurpg.play.v1.RollAttackRequest
-	(*AttackRoll)(nil),                       // 126: meurpg.play.v1.AttackRoll
-	(*InspirationDie)(nil),                   // 127: meurpg.play.v1.InspirationDie
-	(*InspirationOffer)(nil),                 // 128: meurpg.play.v1.InspirationOffer
-	(*LuckyOffer)(nil),                       // 129: meurpg.play.v1.LuckyOffer
-	(*BonusDie)(nil),                         // 130: meurpg.play.v1.BonusDie
-	(*OutsideInspirationOffer)(nil),          // 131: meurpg.play.v1.OutsideInspirationOffer
-	(*LuckyQuestion)(nil),                    // 132: meurpg.play.v1.LuckyQuestion
-	(*DieQuestion)(nil),                      // 133: meurpg.play.v1.DieQuestion
-	(*IndomitableQuestion)(nil),              // 134: meurpg.play.v1.IndomitableQuestion
-	(*StrokeOfLuckQuestion)(nil),             // 135: meurpg.play.v1.StrokeOfLuckQuestion
-	(*RerollQuestion)(nil),                   // 136: meurpg.play.v1.RerollQuestion
-	(*HeldRollOffer)(nil),                    // 137: meurpg.play.v1.HeldRollOffer
-	(*RollAttackResponse)(nil),               // 138: meurpg.play.v1.RollAttackResponse
-	(*RollDamageRequest)(nil),                // 139: meurpg.play.v1.RollDamageRequest
-	(*RollDamageResponse)(nil),               // 140: meurpg.play.v1.RollDamageResponse
-	(*ApplyPendingDamageRequest)(nil),        // 141: meurpg.play.v1.ApplyPendingDamageRequest
-	(*ApplyPendingDamageResponse)(nil),       // 142: meurpg.play.v1.ApplyPendingDamageResponse
-	(*DiscardPendingDamageRequest)(nil),      // 143: meurpg.play.v1.DiscardPendingDamageRequest
-	(*DiscardPendingDamageResponse)(nil),     // 144: meurpg.play.v1.DiscardPendingDamageResponse
-	(*TakeActionRequest)(nil),                // 145: meurpg.play.v1.TakeActionRequest
-	(*PreserveLifeHeal)(nil),                 // 146: meurpg.play.v1.PreserveLifeHeal
-	(*TakeActionResponse)(nil),               // 147: meurpg.play.v1.TakeActionResponse
-	(*HookResult)(nil),                       // 148: meurpg.play.v1.HookResult
-	(*ChannelDivinityResult)(nil),            // 149: meurpg.play.v1.ChannelDivinityResult
-	(*ChannelDivinityHeal)(nil),              // 150: meurpg.play.v1.ChannelDivinityHeal
-	(*ChannelDivinityTurn)(nil),              // 151: meurpg.play.v1.ChannelDivinityTurn
-	(*AdjustCombatantHitPointsRequest)(nil),  // 152: meurpg.play.v1.AdjustCombatantHitPointsRequest
-	(*AdjustCombatantHitPointsResponse)(nil), // 153: meurpg.play.v1.AdjustCombatantHitPointsResponse
-	(*UndoLastActionRequest)(nil),            // 154: meurpg.play.v1.UndoLastActionRequest
-	(*UndoLastActionResponse)(nil),           // 155: meurpg.play.v1.UndoLastActionResponse
-	(*SpellSlot)(nil),                        // 156: meurpg.play.v1.SpellSlot
-	(*SpellTarget)(nil),                      // 157: meurpg.play.v1.SpellTarget
-	(*CastSpellRequest)(nil),                 // 158: meurpg.play.v1.CastSpellRequest
-	(*SpellOptionChoice)(nil),                // 159: meurpg.play.v1.SpellOptionChoice
-	(*MetamagicChoice)(nil),                  // 160: meurpg.play.v1.MetamagicChoice
-	(*SpellOrigin)(nil),                      // 161: meurpg.play.v1.SpellOrigin
-	(*SpellDirection)(nil),                   // 162: meurpg.play.v1.SpellDirection
-	(*SpellWall)(nil),                        // 163: meurpg.play.v1.SpellWall
-	(*SpellArea)(nil),                        // 164: meurpg.play.v1.SpellArea
-	(*MoveSpellZoneRequest)(nil),             // 165: meurpg.play.v1.MoveSpellZoneRequest
-	(*EndSpellZoneRequest)(nil),              // 166: meurpg.play.v1.EndSpellZoneRequest
-	(*EndSpellZoneResponse)(nil),             // 167: meurpg.play.v1.EndSpellZoneResponse
-	(*MoveSpellZoneResponse)(nil),            // 168: meurpg.play.v1.MoveSpellZoneResponse
-	(*PreviewSpellAreaRequest)(nil),          // 169: meurpg.play.v1.PreviewSpellAreaRequest
-	(*PreviewSpellAreaResponse)(nil),         // 170: meurpg.play.v1.PreviewSpellAreaResponse
-	(*AreaTarget)(nil),                       // 171: meurpg.play.v1.AreaTarget
-	(*ResolveHiddenRevealRequest)(nil),       // 172: meurpg.play.v1.ResolveHiddenRevealRequest
-	(*ResolveHiddenRevealResponse)(nil),      // 173: meurpg.play.v1.ResolveHiddenRevealResponse
-	(*SummonChoice)(nil),                     // 174: meurpg.play.v1.SummonChoice
-	(*SaveResult)(nil),                       // 175: meurpg.play.v1.SaveResult
-	(*SpellTargetResult)(nil),                // 176: meurpg.play.v1.SpellTargetResult
-	(*SpellEffectResult)(nil),                // 177: meurpg.play.v1.SpellEffectResult
-	(*CastSpellResponse)(nil),                // 178: meurpg.play.v1.CastSpellResponse
-	(*SpellCast)(nil),                        // 179: meurpg.play.v1.SpellCast
-	(*UseReactionRequest)(nil),               // 180: meurpg.play.v1.UseReactionRequest
-	(*UseReactionResponse)(nil),              // 181: meurpg.play.v1.UseReactionResponse
-	(*DeclineReactionRequest)(nil),           // 182: meurpg.play.v1.DeclineReactionRequest
-	(*DeclineReactionResponse)(nil),          // 183: meurpg.play.v1.DeclineReactionResponse
-	(*DeclineOpportunityRequest)(nil),        // 184: meurpg.play.v1.DeclineOpportunityRequest
-	(*DeclineOpportunityResponse)(nil),       // 185: meurpg.play.v1.DeclineOpportunityResponse
-	(*SkipOpportunityRequest)(nil),           // 186: meurpg.play.v1.SkipOpportunityRequest
-	(*SkipOpportunityResponse)(nil),          // 187: meurpg.play.v1.SkipOpportunityResponse
-	(*RollDeathSaveRequest)(nil),             // 188: meurpg.play.v1.RollDeathSaveRequest
-	(*DeathSave)(nil),                        // 189: meurpg.play.v1.DeathSave
-	(*RollDeathSaveResponse)(nil),            // 190: meurpg.play.v1.RollDeathSaveResponse
-	(*ConfirmDeathRequest)(nil),              // 191: meurpg.play.v1.ConfirmDeathRequest
-	(*ConfirmDeathResponse)(nil),             // 192: meurpg.play.v1.ConfirmDeathResponse
-	(*ConditionList)(nil),                    // 193: meurpg.play.v1.ConditionList
-	(*SetCombatantConditionsRequest)(nil),    // 194: meurpg.play.v1.SetCombatantConditionsRequest
-	(*SetCombatantConditionsResponse)(nil),   // 195: meurpg.play.v1.SetCombatantConditionsResponse
-	(*EndConcentrationRequest)(nil),          // 196: meurpg.play.v1.EndConcentrationRequest
-	(*EndConcentrationResponse)(nil),         // 197: meurpg.play.v1.EndConcentrationResponse
-	(*EndCombatEffectRequest)(nil),           // 198: meurpg.play.v1.EndCombatEffectRequest
-	(*EndCombatEffectResponse)(nil),          // 199: meurpg.play.v1.EndCombatEffectResponse
-	(*ListCombatLogRequest)(nil),             // 200: meurpg.play.v1.ListCombatLogRequest
-	(*ListCombatLogResponse)(nil),            // 201: meurpg.play.v1.ListCombatLogResponse
-	(*CombatLogRound)(nil),                   // 202: meurpg.play.v1.CombatLogRound
-	(*CombatLogStateChange)(nil),             // 203: meurpg.play.v1.CombatLogStateChange
-	(*CombatLogModeChange)(nil),              // 204: meurpg.play.v1.CombatLogModeChange
-	(*CombatLogWildShape)(nil),               // 205: meurpg.play.v1.CombatLogWildShape
-	(*CombatLogEntry)(nil),                   // 206: meurpg.play.v1.CombatLogEntry
-	(*CombatLogEffectEnd)(nil),               // 207: meurpg.play.v1.CombatLogEffectEnd
-	(*CombatLogResource)(nil),                // 208: meurpg.play.v1.CombatLogResource
-	(*CombatLogEffect)(nil),                  // 209: meurpg.play.v1.CombatLogEffect
-	(*CombatLogLegendarySpent)(nil),          // 210: meurpg.play.v1.CombatLogLegendarySpent
-	(*CombatLogRecharge)(nil),                // 211: meurpg.play.v1.CombatLogRecharge
-	(*CombatLogGearSwapped)(nil),             // 212: meurpg.play.v1.CombatLogGearSwapped
-	(*CombatLogMonster)(nil),                 // 213: meurpg.play.v1.CombatLogMonster
-	(*CombatLogDoor)(nil),                    // 214: meurpg.play.v1.CombatLogDoor
-	(*CombatLogSpell)(nil),                   // 215: meurpg.play.v1.CombatLogSpell
-	(*CombatLogSpellTarget)(nil),             // 216: meurpg.play.v1.CombatLogSpellTarget
-	(*CombatLogDeathSave)(nil),               // 217: meurpg.play.v1.CombatLogDeathSave
-	(*CombatLogDamage)(nil),                  // 218: meurpg.play.v1.CombatLogDamage
-	(*GetCombatHighlightsRequest)(nil),       // 219: meurpg.play.v1.GetCombatHighlightsRequest
-	(*HighlightWinner)(nil),                  // 220: meurpg.play.v1.HighlightWinner
-	(*HighlightCategory)(nil),                // 221: meurpg.play.v1.HighlightCategory
-	(*CharacterHighlights)(nil),              // 222: meurpg.play.v1.CharacterHighlights
-	(*GetCombatHighlightsResponse)(nil),      // 223: meurpg.play.v1.GetCombatHighlightsResponse
-	(*TrapFiring)(nil),                       // 224: meurpg.play.v1.TrapFiring
-	(*TrapCaught)(nil),                       // 225: meurpg.play.v1.TrapCaught
-	(*TrapAttackRoll)(nil),                   // 226: meurpg.play.v1.TrapAttackRoll
-	(*TrapSaveRoll)(nil),                     // 227: meurpg.play.v1.TrapSaveRoll
-	(*TrapDamageDone)(nil),                   // 228: meurpg.play.v1.TrapDamageDone
-	(*ReactionWait)(nil),                     // 229: meurpg.play.v1.ReactionWait
-	(*ReactionWindow)(nil),                   // 230: meurpg.play.v1.ReactionWindow
-	(*ReactionTrigger)(nil),                  // 231: meurpg.play.v1.ReactionTrigger
-	(*SlotEffect)(nil),                       // 232: meurpg.play.v1.SlotEffect
-	(*ShieldPrompt)(nil),                     // 233: meurpg.play.v1.ShieldPrompt
-	(*UncannyDodgePrompt)(nil),               // 234: meurpg.play.v1.UncannyDodgePrompt
-	(*HellishRebukePrompt)(nil),              // 235: meurpg.play.v1.HellishRebukePrompt
-	(*HellishRebukeOption)(nil),              // 236: meurpg.play.v1.HellishRebukeOption
-	(*HellishRebukeSavePrompt)(nil),          // 237: meurpg.play.v1.HellishRebukeSavePrompt
-	(*CounterspellPrompt)(nil),               // 238: meurpg.play.v1.CounterspellPrompt
-	(*CuttingWordsPrompt)(nil),               // 239: meurpg.play.v1.CuttingWordsPrompt
-	(*ManeuverReducePrompt)(nil),             // 240: meurpg.play.v1.ManeuverReducePrompt
-	(*ProtectionPrompt)(nil),                 // 241: meurpg.play.v1.ProtectionPrompt
-	(*ParryPrompt)(nil),                      // 242: meurpg.play.v1.ParryPrompt
-	(*LegendaryResistancePrompt)(nil),        // 243: meurpg.play.v1.LegendaryResistancePrompt
-	(*LegendaryResistanceOffer)(nil),         // 244: meurpg.play.v1.LegendaryResistanceOffer
-	(*ManeuverReduceOption)(nil),             // 245: meurpg.play.v1.ManeuverReduceOption
-	(*DeflectMissilesPrompt)(nil),            // 246: meurpg.play.v1.DeflectMissilesPrompt
-	(*DeflectMissilesThrowPrompt)(nil),       // 247: meurpg.play.v1.DeflectMissilesThrowPrompt
-	(*FallingCreature)(nil),                  // 248: meurpg.play.v1.FallingCreature
-	(*FeatherFallPrompt)(nil),                // 249: meurpg.play.v1.FeatherFallPrompt
-	(*SlowFallPrompt)(nil),                   // 250: meurpg.play.v1.SlowFallPrompt
-	(*ConcentrationSavePrompt)(nil),          // 251: meurpg.play.v1.ConcentrationSavePrompt
-	(*ContestPrompt)(nil),                    // 252: meurpg.play.v1.ContestPrompt
-	(*MasterCheckPrompt)(nil),                // 253: meurpg.play.v1.MasterCheckPrompt
-	(*AnswerReactionRequest)(nil),            // 254: meurpg.play.v1.AnswerReactionRequest
-	(*MarkReactionRollingRequest)(nil),       // 255: meurpg.play.v1.MarkReactionRollingRequest
-	(*MarkReactionRollingResponse)(nil),      // 256: meurpg.play.v1.MarkReactionRollingResponse
-	(*AnswerReactionResponse)(nil),           // 257: meurpg.play.v1.AnswerReactionResponse
-	(*ReactionResult)(nil),                   // 258: meurpg.play.v1.ReactionResult
-	(*SlowFallResult)(nil),                   // 259: meurpg.play.v1.SlowFallResult
-	(*ParryResult)(nil),                      // 260: meurpg.play.v1.ParryResult
-	(*ShieldResult)(nil),                     // 261: meurpg.play.v1.ShieldResult
-	(*UncannyDodgeResult)(nil),               // 262: meurpg.play.v1.UncannyDodgeResult
-	(*HellishRebukeResult)(nil),              // 263: meurpg.play.v1.HellishRebukeResult
-	(*CounterspellResult)(nil),               // 264: meurpg.play.v1.CounterspellResult
-	(*CuttingWordsResult)(nil),               // 265: meurpg.play.v1.CuttingWordsResult
-	(*ProtectionResult)(nil),                 // 266: meurpg.play.v1.ProtectionResult
-	(*LegendaryResistanceResult)(nil),        // 267: meurpg.play.v1.LegendaryResistanceResult
-	(*ManeuverReduceResult)(nil),             // 268: meurpg.play.v1.ManeuverReduceResult
-	(*DeflectMissilesResult)(nil),            // 269: meurpg.play.v1.DeflectMissilesResult
-	(*FeatherFallResult)(nil),                // 270: meurpg.play.v1.FeatherFallResult
-	(*ResolveConcentrationSaveRequest)(nil),  // 271: meurpg.play.v1.ResolveConcentrationSaveRequest
-	(*ResolveConcentrationSaveResponse)(nil), // 272: meurpg.play.v1.ResolveConcentrationSaveResponse
-	(*ConcentrationSaveResult)(nil),          // 273: meurpg.play.v1.ConcentrationSaveResult
-	(*RequestRollModeRequest)(nil),           // 274: meurpg.play.v1.RequestRollModeRequest
-	(*RequestRollModeResponse)(nil),          // 275: meurpg.play.v1.RequestRollModeResponse
-	(*AnswerRollModeRequestRequest)(nil),     // 276: meurpg.play.v1.AnswerRollModeRequestRequest
-	(*AnswerRollModeRequestResponse)(nil),    // 277: meurpg.play.v1.AnswerRollModeRequestResponse
-	(*CancelRollModeRequestRequest)(nil),     // 278: meurpg.play.v1.CancelRollModeRequestRequest
-	(*CancelRollModeRequestResponse)(nil),    // 279: meurpg.play.v1.CancelRollModeRequestResponse
-	(*RemoveDamagePartRequest)(nil),          // 280: meurpg.play.v1.RemoveDamagePartRequest
-	(*RemoveDamagePartResponse)(nil),         // 281: meurpg.play.v1.RemoveDamagePartResponse
-	(*AnswerRageEndRequest)(nil),             // 282: meurpg.play.v1.AnswerRageEndRequest
-	(*AnswerRageEndResponse)(nil),            // 283: meurpg.play.v1.AnswerRageEndResponse
-	(*EndRageRequest)(nil),                   // 284: meurpg.play.v1.EndRageRequest
-	(*EndRageResponse)(nil),                  // 285: meurpg.play.v1.EndRageResponse
-	(v1.Recharge)(0),                         // 286: meurpg.rules.v1.Recharge
-	(*timestamppb.Timestamp)(nil),            // 287: google.protobuf.Timestamp
-	(*RollModeRequest)(nil),                  // 288: meurpg.play.v1.RollModeRequest
-	(v1.SpellAreaShape)(0),                   // 289: meurpg.rules.v1.SpellAreaShape
-	(*v1.SlotChoice)(nil),                    // 290: meurpg.rules.v1.SlotChoice
-	(v1.CreatureSize)(0),                     // 291: meurpg.rules.v1.CreatureSize
-	(*CombatantEffect)(nil),                  // 292: meurpg.play.v1.CombatantEffect
-	(*ConditionSource)(nil),                  // 293: meurpg.play.v1.ConditionSource
-	(*LastingEffect)(nil),                    // 294: meurpg.play.v1.LastingEffect
-	(*EffectLabel)(nil),                      // 295: meurpg.play.v1.EffectLabel
-	(*Reroll)(nil),                           // 296: meurpg.play.v1.Reroll
-	(*CountedDie)(nil),                       // 297: meurpg.play.v1.CountedDie
-	(*ExtraDie)(nil),                         // 298: meurpg.play.v1.ExtraDie
-	(*DamagePart)(nil),                       // 299: meurpg.play.v1.DamagePart
-	(*DamageStep)(nil),                       // 300: meurpg.play.v1.DamageStep
-	(*DamagePartRoll)(nil),                   // 301: meurpg.play.v1.DamagePartRoll
-	(*v1.TurnOptions)(nil),                   // 302: meurpg.rules.v1.TurnOptions
-	(*ContestAttackOption)(nil),              // 303: meurpg.play.v1.ContestAttackOption
-	(*ContestTurnState)(nil),                 // 304: meurpg.play.v1.ContestTurnState
-	(*EffectNote)(nil),                       // 305: meurpg.play.v1.EffectNote
-	(*ExtraActionOption)(nil),                // 306: meurpg.play.v1.ExtraActionOption
-	(*v1.RollDie)(nil),                       // 307: meurpg.rules.v1.RollDie
-	(RollMode)(0),                            // 308: meurpg.play.v1.RollMode
-	(*AdvantageSource)(nil),                  // 309: meurpg.play.v1.AdvantageSource
-	(*SelectedExtra)(nil),                    // 310: meurpg.play.v1.SelectedExtra
-	(*TypedPart)(nil),                        // 311: meurpg.play.v1.TypedPart
-	(LastingEffectOutcome)(0),                // 312: meurpg.play.v1.LastingEffectOutcome
-	(CombatantStateKind)(0),                  // 313: meurpg.play.v1.CombatantStateKind
-	(*CombatLogContest)(nil),                 // 314: meurpg.play.v1.CombatLogContest
-	(*EffectSavePrompt)(nil),                 // 315: meurpg.play.v1.EffectSavePrompt
+	(SunlightTrait)(0),                       // 17: meurpg.play.v1.SunlightTrait
+	(SunlightScope)(0),                       // 18: meurpg.play.v1.SunlightScope
+	(MonsterHitPoints)(0),                    // 19: meurpg.play.v1.MonsterHitPoints
+	(CriticalDamageRule)(0),                  // 20: meurpg.play.v1.CriticalDamageRule
+	(AttackOutcome)(0),                       // 21: meurpg.play.v1.AttackOutcome
+	(PendingDamageStatus)(0),                 // 22: meurpg.play.v1.PendingDamageStatus
+	(AreaPlacement)(0),                       // 23: meurpg.play.v1.AreaPlacement
+	(HeldRollKind)(0),                        // 24: meurpg.play.v1.HeldRollKind
+	(WallSide)(0),                            // 25: meurpg.play.v1.WallSide
+	(SaveOutcome)(0),                         // 26: meurpg.play.v1.SaveOutcome
+	(SpellEffectKind)(0),                     // 27: meurpg.play.v1.SpellEffectKind
+	(SpellEffectOutcome)(0),                  // 28: meurpg.play.v1.SpellEffectOutcome
+	(SpellEffectReason)(0),                   // 29: meurpg.play.v1.SpellEffectReason
+	(SpellEffectGain)(0),                     // 30: meurpg.play.v1.SpellEffectGain
+	(ReactionOutcome)(0),                     // 31: meurpg.play.v1.ReactionOutcome
+	(DeathSaveOutcome)(0),                    // 32: meurpg.play.v1.DeathSaveOutcome
+	(CombatLogKind)(0),                       // 33: meurpg.play.v1.CombatLogKind
+	(WildShapeEndReason)(0),                  // 34: meurpg.play.v1.WildShapeEndReason
+	(CombatEffect)(0),                        // 35: meurpg.play.v1.CombatEffect
+	(LayOnHandsCureKind)(0),                  // 36: meurpg.play.v1.LayOnHandsCureKind
+	(CombatLogEffectChange)(0),               // 37: meurpg.play.v1.CombatLogEffectChange
+	(HighlightKind)(0),                       // 38: meurpg.play.v1.HighlightKind
+	(ReactionKind)(0),                        // 39: meurpg.play.v1.ReactionKind
+	(ReactionWindowStatus)(0),                // 40: meurpg.play.v1.ReactionWindowStatus
+	(ReactionClosedReason)(0),                // 41: meurpg.play.v1.ReactionClosedReason
+	(ReactionChoice)(0),                      // 42: meurpg.play.v1.ReactionChoice
+	(ReactionRollKind)(0),                    // 43: meurpg.play.v1.ReactionRollKind
+	(*EncounterBlocked)(nil),                 // 44: meurpg.play.v1.EncounterBlocked
+	(*Encounter)(nil),                        // 45: meurpg.play.v1.Encounter
+	(*SpellZone)(nil),                        // 46: meurpg.play.v1.SpellZone
+	(*HitRiderOffer)(nil),                    // 47: meurpg.play.v1.HitRiderOffer
+	(*UseHitRiderRequest)(nil),               // 48: meurpg.play.v1.UseHitRiderRequest
+	(*UseHitRiderResponse)(nil),              // 49: meurpg.play.v1.UseHitRiderResponse
+	(*UseCreatureActionRequest)(nil),         // 50: meurpg.play.v1.UseCreatureActionRequest
+	(*CreatureActionTarget)(nil),             // 51: meurpg.play.v1.CreatureActionTarget
+	(*CreatureActionResult)(nil),             // 52: meurpg.play.v1.CreatureActionResult
+	(*SpendLegendaryActionRequest)(nil),      // 53: meurpg.play.v1.SpendLegendaryActionRequest
+	(*SpendLegendaryActionResponse)(nil),     // 54: meurpg.play.v1.SpendLegendaryActionResponse
+	(*UseCreatureActionResponse)(nil),        // 55: meurpg.play.v1.UseCreatureActionResponse
+	(*CombatLogCreatureAction)(nil),          // 56: meurpg.play.v1.CombatLogCreatureAction
+	(*CombatLogHitRider)(nil),                // 57: meurpg.play.v1.CombatLogHitRider
+	(*HiddenRevealQuestion)(nil),             // 58: meurpg.play.v1.HiddenRevealQuestion
+	(*CombatDeath)(nil),                      // 59: meurpg.play.v1.CombatDeath
+	(*OpportunityOffer)(nil),                 // 60: meurpg.play.v1.OpportunityOffer
+	(*OpportunityAttack)(nil),                // 61: meurpg.play.v1.OpportunityAttack
+	(*NpcGroup)(nil),                         // 62: meurpg.play.v1.NpcGroup
+	(*ReactionPrompt)(nil),                   // 63: meurpg.play.v1.ReactionPrompt
+	(*Combatant)(nil),                        // 64: meurpg.play.v1.Combatant
+	(*LimitedAction)(nil),                    // 65: meurpg.play.v1.LimitedAction
+	(*LegendaryState)(nil),                   // 66: meurpg.play.v1.LegendaryState
+	(*LegendaryOption)(nil),                  // 67: meurpg.play.v1.LegendaryOption
+	(*Participant)(nil),                      // 68: meurpg.play.v1.Participant
+	(*StartEncounterRequest)(nil),            // 69: meurpg.play.v1.StartEncounterRequest
+	(*MonsterGroup)(nil),                     // 70: meurpg.play.v1.MonsterGroup
+	(*GetStartRosterRequest)(nil),            // 71: meurpg.play.v1.GetStartRosterRequest
+	(*StartRosterEntry)(nil),                 // 72: meurpg.play.v1.StartRosterEntry
+	(*GetStartRosterResponse)(nil),           // 73: meurpg.play.v1.GetStartRosterResponse
+	(*StartEncounterResponse)(nil),           // 74: meurpg.play.v1.StartEncounterResponse
+	(*GetEncounterRequest)(nil),              // 75: meurpg.play.v1.GetEncounterRequest
+	(*GetEncounterResponse)(nil),             // 76: meurpg.play.v1.GetEncounterResponse
+	(*SubmitInitiativeRequest)(nil),          // 77: meurpg.play.v1.SubmitInitiativeRequest
+	(*SubmitInitiativeResponse)(nil),         // 78: meurpg.play.v1.SubmitInitiativeResponse
+	(*SetInitiativeOrderRequest)(nil),        // 79: meurpg.play.v1.SetInitiativeOrderRequest
+	(*SetInitiativeOrderResponse)(nil),       // 80: meurpg.play.v1.SetInitiativeOrderResponse
+	(*BeginCombatRequest)(nil),               // 81: meurpg.play.v1.BeginCombatRequest
+	(*BeginCombatResponse)(nil),              // 82: meurpg.play.v1.BeginCombatResponse
+	(*EndTurnRequest)(nil),                   // 83: meurpg.play.v1.EndTurnRequest
+	(*EndTurnResponse)(nil),                  // 84: meurpg.play.v1.EndTurnResponse
+	(*MoveCombatantRequest)(nil),             // 85: meurpg.play.v1.MoveCombatantRequest
+	(*MoveCombatantResponse)(nil),            // 86: meurpg.play.v1.MoveCombatantResponse
+	(*SpendMovementRequest)(nil),             // 87: meurpg.play.v1.SpendMovementRequest
+	(*StandUpRequest)(nil),                   // 88: meurpg.play.v1.StandUpRequest
+	(*StandUpResponse)(nil),                  // 89: meurpg.play.v1.StandUpResponse
+	(*SpendMovementResponse)(nil),            // 90: meurpg.play.v1.SpendMovementResponse
+	(*OfferOpportunityRequest)(nil),          // 91: meurpg.play.v1.OfferOpportunityRequest
+	(*OfferOpportunityResponse)(nil),         // 92: meurpg.play.v1.OfferOpportunityResponse
+	(*WithdrawOpportunityRequest)(nil),       // 93: meurpg.play.v1.WithdrawOpportunityRequest
+	(*WithdrawOpportunityResponse)(nil),      // 94: meurpg.play.v1.WithdrawOpportunityResponse
+	(*GetMoveOptionsRequest)(nil),            // 95: meurpg.play.v1.GetMoveOptionsRequest
+	(*GetMoveOptionsResponse)(nil),           // 96: meurpg.play.v1.GetMoveOptionsResponse
+	(*DraggedSquare)(nil),                    // 97: meurpg.play.v1.DraggedSquare
+	(*ReachableSquare)(nil),                  // 98: meurpg.play.v1.ReachableSquare
+	(*RefusedSquare)(nil),                    // 99: meurpg.play.v1.RefusedSquare
+	(*SetCombatantSideRequest)(nil),          // 100: meurpg.play.v1.SetCombatantSideRequest
+	(*SetCombatantSideResponse)(nil),         // 101: meurpg.play.v1.SetCombatantSideResponse
+	(*SetCombatantCoverRequest)(nil),         // 102: meurpg.play.v1.SetCombatantCoverRequest
+	(*SetCombatantCoverResponse)(nil),        // 103: meurpg.play.v1.SetCombatantCoverResponse
+	(*SetCombatantHiddenRequest)(nil),        // 104: meurpg.play.v1.SetCombatantHiddenRequest
+	(*SetCombatantHiddenResponse)(nil),       // 105: meurpg.play.v1.SetCombatantHiddenResponse
+	(*SetMonsterReactionModeRequest)(nil),    // 106: meurpg.play.v1.SetMonsterReactionModeRequest
+	(*SetMonsterReactionModeResponse)(nil),   // 107: meurpg.play.v1.SetMonsterReactionModeResponse
+	(*SunlightSquare)(nil),                   // 108: meurpg.play.v1.SunlightSquare
+	(*SetSunlightRequest)(nil),               // 109: meurpg.play.v1.SetSunlightRequest
+	(*SetSunlightResponse)(nil),              // 110: meurpg.play.v1.SetSunlightResponse
+	(*AddCombatantsRequest)(nil),             // 111: meurpg.play.v1.AddCombatantsRequest
+	(*AddCombatantsResponse)(nil),            // 112: meurpg.play.v1.AddCombatantsResponse
+	(*AddMonstersRequest)(nil),               // 113: meurpg.play.v1.AddMonstersRequest
+	(*AddMonstersResponse)(nil),              // 114: meurpg.play.v1.AddMonstersResponse
+	(*RemoveCombatantRequest)(nil),           // 115: meurpg.play.v1.RemoveCombatantRequest
+	(*RemoveCombatantResponse)(nil),          // 116: meurpg.play.v1.RemoveCombatantResponse
+	(*EndEncounterRequest)(nil),              // 117: meurpg.play.v1.EndEncounterRequest
+	(*EndEncounterResponse)(nil),             // 118: meurpg.play.v1.EndEncounterResponse
+	(*DiceRoll)(nil),                         // 119: meurpg.play.v1.DiceRoll
+	(*PendingDamage)(nil),                    // 120: meurpg.play.v1.PendingDamage
+	(*GetTurnOptionsRequest)(nil),            // 121: meurpg.play.v1.GetTurnOptionsRequest
+	(*GetTurnOptionsResponse)(nil),           // 122: meurpg.play.v1.GetTurnOptionsResponse
+	(*ManeuverDieOption)(nil),                // 123: meurpg.play.v1.ManeuverDieOption
+	(*ResourceTargets)(nil),                  // 124: meurpg.play.v1.ResourceTargets
+	(*ResourceTarget)(nil),                   // 125: meurpg.play.v1.ResourceTarget
+	(*SpellTargets)(nil),                     // 126: meurpg.play.v1.SpellTargets
+	(*DartsAtSlot)(nil),                      // 127: meurpg.play.v1.DartsAtSlot
+	(*AttackTargets)(nil),                    // 128: meurpg.play.v1.AttackTargets
+	(*TargetInReach)(nil),                    // 129: meurpg.play.v1.TargetInReach
+	(*RollAttackRequest)(nil),                // 130: meurpg.play.v1.RollAttackRequest
+	(*AttackRoll)(nil),                       // 131: meurpg.play.v1.AttackRoll
+	(*InspirationDie)(nil),                   // 132: meurpg.play.v1.InspirationDie
+	(*InspirationOffer)(nil),                 // 133: meurpg.play.v1.InspirationOffer
+	(*LuckyOffer)(nil),                       // 134: meurpg.play.v1.LuckyOffer
+	(*BonusDie)(nil),                         // 135: meurpg.play.v1.BonusDie
+	(*OutsideInspirationOffer)(nil),          // 136: meurpg.play.v1.OutsideInspirationOffer
+	(*LuckyQuestion)(nil),                    // 137: meurpg.play.v1.LuckyQuestion
+	(*DieQuestion)(nil),                      // 138: meurpg.play.v1.DieQuestion
+	(*IndomitableQuestion)(nil),              // 139: meurpg.play.v1.IndomitableQuestion
+	(*StrokeOfLuckQuestion)(nil),             // 140: meurpg.play.v1.StrokeOfLuckQuestion
+	(*RerollQuestion)(nil),                   // 141: meurpg.play.v1.RerollQuestion
+	(*HeldRollOffer)(nil),                    // 142: meurpg.play.v1.HeldRollOffer
+	(*RollAttackResponse)(nil),               // 143: meurpg.play.v1.RollAttackResponse
+	(*RollDamageRequest)(nil),                // 144: meurpg.play.v1.RollDamageRequest
+	(*RollDamageResponse)(nil),               // 145: meurpg.play.v1.RollDamageResponse
+	(*ApplyPendingDamageRequest)(nil),        // 146: meurpg.play.v1.ApplyPendingDamageRequest
+	(*ApplyPendingDamageResponse)(nil),       // 147: meurpg.play.v1.ApplyPendingDamageResponse
+	(*DiscardPendingDamageRequest)(nil),      // 148: meurpg.play.v1.DiscardPendingDamageRequest
+	(*DiscardPendingDamageResponse)(nil),     // 149: meurpg.play.v1.DiscardPendingDamageResponse
+	(*TakeActionRequest)(nil),                // 150: meurpg.play.v1.TakeActionRequest
+	(*PreserveLifeHeal)(nil),                 // 151: meurpg.play.v1.PreserveLifeHeal
+	(*TakeActionResponse)(nil),               // 152: meurpg.play.v1.TakeActionResponse
+	(*HookResult)(nil),                       // 153: meurpg.play.v1.HookResult
+	(*ChannelDivinityResult)(nil),            // 154: meurpg.play.v1.ChannelDivinityResult
+	(*ChannelDivinityHeal)(nil),              // 155: meurpg.play.v1.ChannelDivinityHeal
+	(*ChannelDivinityTurn)(nil),              // 156: meurpg.play.v1.ChannelDivinityTurn
+	(*AdjustCombatantHitPointsRequest)(nil),  // 157: meurpg.play.v1.AdjustCombatantHitPointsRequest
+	(*AdjustCombatantHitPointsResponse)(nil), // 158: meurpg.play.v1.AdjustCombatantHitPointsResponse
+	(*UndoLastActionRequest)(nil),            // 159: meurpg.play.v1.UndoLastActionRequest
+	(*UndoLastActionResponse)(nil),           // 160: meurpg.play.v1.UndoLastActionResponse
+	(*SpellSlot)(nil),                        // 161: meurpg.play.v1.SpellSlot
+	(*SpellTarget)(nil),                      // 162: meurpg.play.v1.SpellTarget
+	(*CastSpellRequest)(nil),                 // 163: meurpg.play.v1.CastSpellRequest
+	(*SpellOptionChoice)(nil),                // 164: meurpg.play.v1.SpellOptionChoice
+	(*MetamagicChoice)(nil),                  // 165: meurpg.play.v1.MetamagicChoice
+	(*SpellOrigin)(nil),                      // 166: meurpg.play.v1.SpellOrigin
+	(*SpellDirection)(nil),                   // 167: meurpg.play.v1.SpellDirection
+	(*SpellWall)(nil),                        // 168: meurpg.play.v1.SpellWall
+	(*SpellArea)(nil),                        // 169: meurpg.play.v1.SpellArea
+	(*MoveSpellZoneRequest)(nil),             // 170: meurpg.play.v1.MoveSpellZoneRequest
+	(*EndSpellZoneRequest)(nil),              // 171: meurpg.play.v1.EndSpellZoneRequest
+	(*EndSpellZoneResponse)(nil),             // 172: meurpg.play.v1.EndSpellZoneResponse
+	(*MoveSpellZoneResponse)(nil),            // 173: meurpg.play.v1.MoveSpellZoneResponse
+	(*PreviewSpellAreaRequest)(nil),          // 174: meurpg.play.v1.PreviewSpellAreaRequest
+	(*PreviewSpellAreaResponse)(nil),         // 175: meurpg.play.v1.PreviewSpellAreaResponse
+	(*AreaTarget)(nil),                       // 176: meurpg.play.v1.AreaTarget
+	(*ResolveHiddenRevealRequest)(nil),       // 177: meurpg.play.v1.ResolveHiddenRevealRequest
+	(*ResolveHiddenRevealResponse)(nil),      // 178: meurpg.play.v1.ResolveHiddenRevealResponse
+	(*SummonChoice)(nil),                     // 179: meurpg.play.v1.SummonChoice
+	(*SaveResult)(nil),                       // 180: meurpg.play.v1.SaveResult
+	(*SpellTargetResult)(nil),                // 181: meurpg.play.v1.SpellTargetResult
+	(*SpellEffectResult)(nil),                // 182: meurpg.play.v1.SpellEffectResult
+	(*CastSpellResponse)(nil),                // 183: meurpg.play.v1.CastSpellResponse
+	(*SpellCast)(nil),                        // 184: meurpg.play.v1.SpellCast
+	(*UseReactionRequest)(nil),               // 185: meurpg.play.v1.UseReactionRequest
+	(*UseReactionResponse)(nil),              // 186: meurpg.play.v1.UseReactionResponse
+	(*DeclineReactionRequest)(nil),           // 187: meurpg.play.v1.DeclineReactionRequest
+	(*DeclineReactionResponse)(nil),          // 188: meurpg.play.v1.DeclineReactionResponse
+	(*DeclineOpportunityRequest)(nil),        // 189: meurpg.play.v1.DeclineOpportunityRequest
+	(*DeclineOpportunityResponse)(nil),       // 190: meurpg.play.v1.DeclineOpportunityResponse
+	(*SkipOpportunityRequest)(nil),           // 191: meurpg.play.v1.SkipOpportunityRequest
+	(*SkipOpportunityResponse)(nil),          // 192: meurpg.play.v1.SkipOpportunityResponse
+	(*RollDeathSaveRequest)(nil),             // 193: meurpg.play.v1.RollDeathSaveRequest
+	(*DeathSave)(nil),                        // 194: meurpg.play.v1.DeathSave
+	(*RollDeathSaveResponse)(nil),            // 195: meurpg.play.v1.RollDeathSaveResponse
+	(*ConfirmDeathRequest)(nil),              // 196: meurpg.play.v1.ConfirmDeathRequest
+	(*ConfirmDeathResponse)(nil),             // 197: meurpg.play.v1.ConfirmDeathResponse
+	(*ConditionList)(nil),                    // 198: meurpg.play.v1.ConditionList
+	(*SetCombatantConditionsRequest)(nil),    // 199: meurpg.play.v1.SetCombatantConditionsRequest
+	(*SetCombatantConditionsResponse)(nil),   // 200: meurpg.play.v1.SetCombatantConditionsResponse
+	(*EndConcentrationRequest)(nil),          // 201: meurpg.play.v1.EndConcentrationRequest
+	(*EndConcentrationResponse)(nil),         // 202: meurpg.play.v1.EndConcentrationResponse
+	(*EndCombatEffectRequest)(nil),           // 203: meurpg.play.v1.EndCombatEffectRequest
+	(*EndCombatEffectResponse)(nil),          // 204: meurpg.play.v1.EndCombatEffectResponse
+	(*ListCombatLogRequest)(nil),             // 205: meurpg.play.v1.ListCombatLogRequest
+	(*ListCombatLogResponse)(nil),            // 206: meurpg.play.v1.ListCombatLogResponse
+	(*CombatLogRound)(nil),                   // 207: meurpg.play.v1.CombatLogRound
+	(*CombatLogStateChange)(nil),             // 208: meurpg.play.v1.CombatLogStateChange
+	(*CombatLogModeChange)(nil),              // 209: meurpg.play.v1.CombatLogModeChange
+	(*CombatLogWildShape)(nil),               // 210: meurpg.play.v1.CombatLogWildShape
+	(*CombatLogEntry)(nil),                   // 211: meurpg.play.v1.CombatLogEntry
+	(*CombatLogEffectEnd)(nil),               // 212: meurpg.play.v1.CombatLogEffectEnd
+	(*CombatLogResource)(nil),                // 213: meurpg.play.v1.CombatLogResource
+	(*CombatLogEffect)(nil),                  // 214: meurpg.play.v1.CombatLogEffect
+	(*CombatLogLegendarySpent)(nil),          // 215: meurpg.play.v1.CombatLogLegendarySpent
+	(*CombatLogRecharge)(nil),                // 216: meurpg.play.v1.CombatLogRecharge
+	(*CombatLogGearSwapped)(nil),             // 217: meurpg.play.v1.CombatLogGearSwapped
+	(*CombatLogMonster)(nil),                 // 218: meurpg.play.v1.CombatLogMonster
+	(*CombatLogDoor)(nil),                    // 219: meurpg.play.v1.CombatLogDoor
+	(*CombatLogSpell)(nil),                   // 220: meurpg.play.v1.CombatLogSpell
+	(*CombatLogSpellTarget)(nil),             // 221: meurpg.play.v1.CombatLogSpellTarget
+	(*CombatLogDeathSave)(nil),               // 222: meurpg.play.v1.CombatLogDeathSave
+	(*CombatLogDamage)(nil),                  // 223: meurpg.play.v1.CombatLogDamage
+	(*GetCombatHighlightsRequest)(nil),       // 224: meurpg.play.v1.GetCombatHighlightsRequest
+	(*HighlightWinner)(nil),                  // 225: meurpg.play.v1.HighlightWinner
+	(*HighlightCategory)(nil),                // 226: meurpg.play.v1.HighlightCategory
+	(*CharacterHighlights)(nil),              // 227: meurpg.play.v1.CharacterHighlights
+	(*GetCombatHighlightsResponse)(nil),      // 228: meurpg.play.v1.GetCombatHighlightsResponse
+	(*TrapFiring)(nil),                       // 229: meurpg.play.v1.TrapFiring
+	(*TrapCaught)(nil),                       // 230: meurpg.play.v1.TrapCaught
+	(*TrapAttackRoll)(nil),                   // 231: meurpg.play.v1.TrapAttackRoll
+	(*TrapSaveRoll)(nil),                     // 232: meurpg.play.v1.TrapSaveRoll
+	(*TrapDamageDone)(nil),                   // 233: meurpg.play.v1.TrapDamageDone
+	(*ReactionWait)(nil),                     // 234: meurpg.play.v1.ReactionWait
+	(*ReactionWindow)(nil),                   // 235: meurpg.play.v1.ReactionWindow
+	(*ReactionTrigger)(nil),                  // 236: meurpg.play.v1.ReactionTrigger
+	(*SlotEffect)(nil),                       // 237: meurpg.play.v1.SlotEffect
+	(*ShieldPrompt)(nil),                     // 238: meurpg.play.v1.ShieldPrompt
+	(*UncannyDodgePrompt)(nil),               // 239: meurpg.play.v1.UncannyDodgePrompt
+	(*HellishRebukePrompt)(nil),              // 240: meurpg.play.v1.HellishRebukePrompt
+	(*HellishRebukeOption)(nil),              // 241: meurpg.play.v1.HellishRebukeOption
+	(*HellishRebukeSavePrompt)(nil),          // 242: meurpg.play.v1.HellishRebukeSavePrompt
+	(*CounterspellPrompt)(nil),               // 243: meurpg.play.v1.CounterspellPrompt
+	(*CuttingWordsPrompt)(nil),               // 244: meurpg.play.v1.CuttingWordsPrompt
+	(*ManeuverReducePrompt)(nil),             // 245: meurpg.play.v1.ManeuverReducePrompt
+	(*ProtectionPrompt)(nil),                 // 246: meurpg.play.v1.ProtectionPrompt
+	(*ParryPrompt)(nil),                      // 247: meurpg.play.v1.ParryPrompt
+	(*LegendaryResistancePrompt)(nil),        // 248: meurpg.play.v1.LegendaryResistancePrompt
+	(*LegendaryResistanceOffer)(nil),         // 249: meurpg.play.v1.LegendaryResistanceOffer
+	(*ManeuverReduceOption)(nil),             // 250: meurpg.play.v1.ManeuverReduceOption
+	(*DeflectMissilesPrompt)(nil),            // 251: meurpg.play.v1.DeflectMissilesPrompt
+	(*DeflectMissilesThrowPrompt)(nil),       // 252: meurpg.play.v1.DeflectMissilesThrowPrompt
+	(*FallingCreature)(nil),                  // 253: meurpg.play.v1.FallingCreature
+	(*FeatherFallPrompt)(nil),                // 254: meurpg.play.v1.FeatherFallPrompt
+	(*SlowFallPrompt)(nil),                   // 255: meurpg.play.v1.SlowFallPrompt
+	(*ConcentrationSavePrompt)(nil),          // 256: meurpg.play.v1.ConcentrationSavePrompt
+	(*ContestPrompt)(nil),                    // 257: meurpg.play.v1.ContestPrompt
+	(*MasterCheckPrompt)(nil),                // 258: meurpg.play.v1.MasterCheckPrompt
+	(*AnswerReactionRequest)(nil),            // 259: meurpg.play.v1.AnswerReactionRequest
+	(*MarkReactionRollingRequest)(nil),       // 260: meurpg.play.v1.MarkReactionRollingRequest
+	(*MarkReactionRollingResponse)(nil),      // 261: meurpg.play.v1.MarkReactionRollingResponse
+	(*AnswerReactionResponse)(nil),           // 262: meurpg.play.v1.AnswerReactionResponse
+	(*ReactionResult)(nil),                   // 263: meurpg.play.v1.ReactionResult
+	(*SlowFallResult)(nil),                   // 264: meurpg.play.v1.SlowFallResult
+	(*ParryResult)(nil),                      // 265: meurpg.play.v1.ParryResult
+	(*ShieldResult)(nil),                     // 266: meurpg.play.v1.ShieldResult
+	(*UncannyDodgeResult)(nil),               // 267: meurpg.play.v1.UncannyDodgeResult
+	(*HellishRebukeResult)(nil),              // 268: meurpg.play.v1.HellishRebukeResult
+	(*CounterspellResult)(nil),               // 269: meurpg.play.v1.CounterspellResult
+	(*CuttingWordsResult)(nil),               // 270: meurpg.play.v1.CuttingWordsResult
+	(*ProtectionResult)(nil),                 // 271: meurpg.play.v1.ProtectionResult
+	(*LegendaryResistanceResult)(nil),        // 272: meurpg.play.v1.LegendaryResistanceResult
+	(*ManeuverReduceResult)(nil),             // 273: meurpg.play.v1.ManeuverReduceResult
+	(*DeflectMissilesResult)(nil),            // 274: meurpg.play.v1.DeflectMissilesResult
+	(*FeatherFallResult)(nil),                // 275: meurpg.play.v1.FeatherFallResult
+	(*ResolveConcentrationSaveRequest)(nil),  // 276: meurpg.play.v1.ResolveConcentrationSaveRequest
+	(*ResolveConcentrationSaveResponse)(nil), // 277: meurpg.play.v1.ResolveConcentrationSaveResponse
+	(*ConcentrationSaveResult)(nil),          // 278: meurpg.play.v1.ConcentrationSaveResult
+	(*RequestRollModeRequest)(nil),           // 279: meurpg.play.v1.RequestRollModeRequest
+	(*RequestRollModeResponse)(nil),          // 280: meurpg.play.v1.RequestRollModeResponse
+	(*AnswerRollModeRequestRequest)(nil),     // 281: meurpg.play.v1.AnswerRollModeRequestRequest
+	(*AnswerRollModeRequestResponse)(nil),    // 282: meurpg.play.v1.AnswerRollModeRequestResponse
+	(*CancelRollModeRequestRequest)(nil),     // 283: meurpg.play.v1.CancelRollModeRequestRequest
+	(*CancelRollModeRequestResponse)(nil),    // 284: meurpg.play.v1.CancelRollModeRequestResponse
+	(*RemoveDamagePartRequest)(nil),          // 285: meurpg.play.v1.RemoveDamagePartRequest
+	(*RemoveDamagePartResponse)(nil),         // 286: meurpg.play.v1.RemoveDamagePartResponse
+	(*AnswerRageEndRequest)(nil),             // 287: meurpg.play.v1.AnswerRageEndRequest
+	(*AnswerRageEndResponse)(nil),            // 288: meurpg.play.v1.AnswerRageEndResponse
+	(*EndRageRequest)(nil),                   // 289: meurpg.play.v1.EndRageRequest
+	(*EndRageResponse)(nil),                  // 290: meurpg.play.v1.EndRageResponse
+	(v1.Recharge)(0),                         // 291: meurpg.rules.v1.Recharge
+	(*timestamppb.Timestamp)(nil),            // 292: google.protobuf.Timestamp
+	(*RollModeRequest)(nil),                  // 293: meurpg.play.v1.RollModeRequest
+	(v1.SpellAreaShape)(0),                   // 294: meurpg.rules.v1.SpellAreaShape
+	(*v1.SlotChoice)(nil),                    // 295: meurpg.rules.v1.SlotChoice
+	(v1.CreatureSize)(0),                     // 296: meurpg.rules.v1.CreatureSize
+	(*CombatantEffect)(nil),                  // 297: meurpg.play.v1.CombatantEffect
+	(*ConditionSource)(nil),                  // 298: meurpg.play.v1.ConditionSource
+	(*LastingEffect)(nil),                    // 299: meurpg.play.v1.LastingEffect
+	(*EffectLabel)(nil),                      // 300: meurpg.play.v1.EffectLabel
+	(*Reroll)(nil),                           // 301: meurpg.play.v1.Reroll
+	(*CountedDie)(nil),                       // 302: meurpg.play.v1.CountedDie
+	(*ExtraDie)(nil),                         // 303: meurpg.play.v1.ExtraDie
+	(*DamagePart)(nil),                       // 304: meurpg.play.v1.DamagePart
+	(*DamageStep)(nil),                       // 305: meurpg.play.v1.DamageStep
+	(*DamagePartRoll)(nil),                   // 306: meurpg.play.v1.DamagePartRoll
+	(*v1.TurnOptions)(nil),                   // 307: meurpg.rules.v1.TurnOptions
+	(*ContestAttackOption)(nil),              // 308: meurpg.play.v1.ContestAttackOption
+	(*ContestTurnState)(nil),                 // 309: meurpg.play.v1.ContestTurnState
+	(*EffectNote)(nil),                       // 310: meurpg.play.v1.EffectNote
+	(*ExtraActionOption)(nil),                // 311: meurpg.play.v1.ExtraActionOption
+	(*v1.RollDie)(nil),                       // 312: meurpg.rules.v1.RollDie
+	(RollMode)(0),                            // 313: meurpg.play.v1.RollMode
+	(*AdvantageSource)(nil),                  // 314: meurpg.play.v1.AdvantageSource
+	(*SelectedExtra)(nil),                    // 315: meurpg.play.v1.SelectedExtra
+	(*TypedPart)(nil),                        // 316: meurpg.play.v1.TypedPart
+	(LastingEffectOutcome)(0),                // 317: meurpg.play.v1.LastingEffectOutcome
+	(CombatantStateKind)(0),                  // 318: meurpg.play.v1.CombatantStateKind
+	(*CombatLogContest)(nil),                 // 319: meurpg.play.v1.CombatLogContest
+	(*EffectSavePrompt)(nil),                 // 320: meurpg.play.v1.EffectSavePrompt
 }
 var file_meurpg_play_v1_combat_proto_depIdxs = []int32{
 	10,  // 0: meurpg.play.v1.EncounterBlocked.reason:type_name -> meurpg.play.v1.EncounterBlockedReason
-	286, // 1: meurpg.play.v1.EncounterBlocked.recharge:type_name -> meurpg.rules.v1.Recharge
+	291, // 1: meurpg.play.v1.EncounterBlocked.recharge:type_name -> meurpg.rules.v1.Recharge
 	11,  // 2: meurpg.play.v1.EncounterBlocked.familiar_sight_reason:type_name -> meurpg.play.v1.FamiliarSightBlockedReason
 	1,   // 3: meurpg.play.v1.Encounter.status:type_name -> meurpg.play.v1.EncounterStatus
-	62,  // 4: meurpg.play.v1.Encounter.combatants:type_name -> meurpg.play.v1.Combatant
-	287, // 5: meurpg.play.v1.Encounter.started_at:type_name -> google.protobuf.Timestamp
-	287, // 6: meurpg.play.v1.Encounter.ended_at:type_name -> google.protobuf.Timestamp
-	61,  // 7: meurpg.play.v1.Encounter.reaction_prompts:type_name -> meurpg.play.v1.ReactionPrompt
-	60,  // 8: meurpg.play.v1.Encounter.npc_only_groups:type_name -> meurpg.play.v1.NpcGroup
-	58,  // 9: meurpg.play.v1.Encounter.opportunity_offers:type_name -> meurpg.play.v1.OpportunityOffer
+	64,  // 4: meurpg.play.v1.Encounter.combatants:type_name -> meurpg.play.v1.Combatant
+	292, // 5: meurpg.play.v1.Encounter.started_at:type_name -> google.protobuf.Timestamp
+	292, // 6: meurpg.play.v1.Encounter.ended_at:type_name -> google.protobuf.Timestamp
+	63,  // 7: meurpg.play.v1.Encounter.reaction_prompts:type_name -> meurpg.play.v1.ReactionPrompt
+	62,  // 8: meurpg.play.v1.Encounter.npc_only_groups:type_name -> meurpg.play.v1.NpcGroup
+	60,  // 9: meurpg.play.v1.Encounter.opportunity_offers:type_name -> meurpg.play.v1.OpportunityOffer
 	0,   // 10: meurpg.play.v1.Encounter.mode:type_name -> meurpg.play.v1.EncounterMode
-	230, // 11: meurpg.play.v1.Encounter.reaction_windows:type_name -> meurpg.play.v1.ReactionWindow
-	229, // 12: meurpg.play.v1.Encounter.reaction_wait:type_name -> meurpg.play.v1.ReactionWait
-	56,  // 13: meurpg.play.v1.Encounter.pending_hidden_reveals:type_name -> meurpg.play.v1.HiddenRevealQuestion
-	288, // 14: meurpg.play.v1.Encounter.roll_mode_requests:type_name -> meurpg.play.v1.RollModeRequest
-	57,  // 15: meurpg.play.v1.Encounter.deaths:type_name -> meurpg.play.v1.CombatDeath
-	45,  // 16: meurpg.play.v1.Encounter.hit_riders:type_name -> meurpg.play.v1.HitRiderOffer
-	44,  // 17: meurpg.play.v1.Encounter.zones:type_name -> meurpg.play.v1.SpellZone
-	289, // 18: meurpg.play.v1.SpellZone.shape:type_name -> meurpg.rules.v1.SpellAreaShape
-	161, // 19: meurpg.play.v1.SpellZone.origin:type_name -> meurpg.play.v1.SpellOrigin
-	161, // 20: meurpg.play.v1.SpellZone.squares:type_name -> meurpg.play.v1.SpellOrigin
-	12,  // 21: meurpg.play.v1.SpellZone.movement:type_name -> meurpg.play.v1.SpellZoneMovement
-	13,  // 22: meurpg.play.v1.SpellZone.visibility:type_name -> meurpg.play.v1.SpellZoneVisibility
-	161, // 23: meurpg.play.v1.SpellZone.burning_squares:type_name -> meurpg.play.v1.SpellOrigin
-	23,  // 24: meurpg.play.v1.SpellZone.wall_side:type_name -> meurpg.play.v1.WallSide
-	14,  // 25: meurpg.play.v1.HitRiderOffer.kind:type_name -> meurpg.play.v1.HitRiderKind
-	15,  // 26: meurpg.play.v1.UseHitRiderRequest.choice:type_name -> meurpg.play.v1.HitRiderChoice
-	43,  // 27: meurpg.play.v1.UseHitRiderResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	161, // 28: meurpg.play.v1.UseCreatureActionRequest.origin:type_name -> meurpg.play.v1.SpellOrigin
-	162, // 29: meurpg.play.v1.UseCreatureActionRequest.direction:type_name -> meurpg.play.v1.SpellDirection
-	175, // 30: meurpg.play.v1.CreatureActionTarget.save:type_name -> meurpg.play.v1.SaveResult
-	49,  // 31: meurpg.play.v1.CreatureActionResult.targets:type_name -> meurpg.play.v1.CreatureActionTarget
-	115, // 32: meurpg.play.v1.CreatureActionResult.pending_damages:type_name -> meurpg.play.v1.PendingDamage
-	43,  // 33: meurpg.play.v1.SpendLegendaryActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 34: meurpg.play.v1.UseCreatureActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	50,  // 35: meurpg.play.v1.UseCreatureActionResponse.result:type_name -> meurpg.play.v1.CreatureActionResult
-	164, // 36: meurpg.play.v1.UseCreatureActionResponse.area:type_name -> meurpg.play.v1.SpellArea
-	15,  // 37: meurpg.play.v1.CombatLogHitRider.choice:type_name -> meurpg.play.v1.HitRiderChoice
-	16,  // 38: meurpg.play.v1.CombatLogHitRider.result:type_name -> meurpg.play.v1.HitRiderLogResult
-	218, // 39: meurpg.play.v1.CombatLogHitRider.damage:type_name -> meurpg.play.v1.CombatLogDamage
-	218, // 40: meurpg.play.v1.CombatLogHitRider.more_damages:type_name -> meurpg.play.v1.CombatLogDamage
-	164, // 41: meurpg.play.v1.HiddenRevealQuestion.area:type_name -> meurpg.play.v1.SpellArea
-	59,  // 42: meurpg.play.v1.OpportunityOffer.attacks:type_name -> meurpg.play.v1.OpportunityAttack
-	7,   // 43: meurpg.play.v1.OpportunityOffer.jump:type_name -> meurpg.play.v1.JumpKind
-	290, // 44: meurpg.play.v1.ReactionPrompt.slots:type_name -> meurpg.rules.v1.SlotChoice
-	2,   // 45: meurpg.play.v1.Combatant.kind:type_name -> meurpg.play.v1.CombatantKind
-	9,   // 46: meurpg.play.v1.Combatant.state:type_name -> meurpg.play.v1.CombatantState
-	4,   // 47: meurpg.play.v1.Combatant.side:type_name -> meurpg.play.v1.CombatantSide
-	291, // 48: meurpg.play.v1.Combatant.size:type_name -> meurpg.rules.v1.CreatureSize
-	5,   // 49: meurpg.play.v1.Combatant.cover_mark:type_name -> meurpg.play.v1.CoverDegree
-	3,   // 50: meurpg.play.v1.Combatant.creature_attack:type_name -> meurpg.play.v1.CreatureAttack
-	127, // 51: meurpg.play.v1.Combatant.inspiration_die:type_name -> meurpg.play.v1.InspirationDie
-	128, // 52: meurpg.play.v1.Combatant.inspiration_offer:type_name -> meurpg.play.v1.InspirationOffer
-	129, // 53: meurpg.play.v1.Combatant.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	292, // 54: meurpg.play.v1.Combatant.states:type_name -> meurpg.play.v1.CombatantEffect
-	293, // 55: meurpg.play.v1.Combatant.condition_sources:type_name -> meurpg.play.v1.ConditionSource
-	294, // 56: meurpg.play.v1.Combatant.effects:type_name -> meurpg.play.v1.LastingEffect
-	295, // 57: meurpg.play.v1.Combatant.effect_labels:type_name -> meurpg.play.v1.EffectLabel
-	137, // 58: meurpg.play.v1.Combatant.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
-	64,  // 59: meurpg.play.v1.Combatant.legendary:type_name -> meurpg.play.v1.LegendaryState
-	63,  // 60: meurpg.play.v1.Combatant.limited_actions:type_name -> meurpg.play.v1.LimitedAction
-	37,  // 61: meurpg.play.v1.Combatant.reaction_kind:type_name -> meurpg.play.v1.ReactionKind
-	65,  // 62: meurpg.play.v1.LegendaryState.options:type_name -> meurpg.play.v1.LegendaryOption
-	66,  // 63: meurpg.play.v1.StartEncounterRequest.participants:type_name -> meurpg.play.v1.Participant
-	0,   // 64: meurpg.play.v1.StartEncounterRequest.mode:type_name -> meurpg.play.v1.EncounterMode
-	68,  // 65: meurpg.play.v1.StartEncounterRequest.monsters:type_name -> meurpg.play.v1.MonsterGroup
-	17,  // 66: meurpg.play.v1.StartEncounterRequest.monster_hit_points:type_name -> meurpg.play.v1.MonsterHitPoints
-	70,  // 67: meurpg.play.v1.GetStartRosterResponse.party:type_name -> meurpg.play.v1.StartRosterEntry
-	43,  // 68: meurpg.play.v1.StartEncounterResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 69: meurpg.play.v1.GetEncounterResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 70: meurpg.play.v1.SubmitInitiativeResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	137, // 71: meurpg.play.v1.SubmitInitiativeResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
-	43,  // 72: meurpg.play.v1.SetInitiativeOrderResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 73: meurpg.play.v1.BeginCombatResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 74: meurpg.play.v1.EndTurnResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	7,   // 75: meurpg.play.v1.MoveCombatantRequest.jump:type_name -> meurpg.play.v1.JumpKind
-	43,  // 76: meurpg.play.v1.MoveCombatantResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 77: meurpg.play.v1.StandUpResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 78: meurpg.play.v1.SpendMovementResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 79: meurpg.play.v1.OfferOpportunityResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 80: meurpg.play.v1.WithdrawOpportunityResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	7,   // 81: meurpg.play.v1.GetMoveOptionsRequest.jump:type_name -> meurpg.play.v1.JumpKind
-	96,  // 82: meurpg.play.v1.GetMoveOptionsResponse.reachable:type_name -> meurpg.play.v1.ReachableSquare
-	97,  // 83: meurpg.play.v1.GetMoveOptionsResponse.refused:type_name -> meurpg.play.v1.RefusedSquare
-	95,  // 84: meurpg.play.v1.ReachableSquare.dragged_to:type_name -> meurpg.play.v1.DraggedSquare
-	8,   // 85: meurpg.play.v1.RefusedSquare.reason:type_name -> meurpg.play.v1.MoveRefusal
-	4,   // 86: meurpg.play.v1.SetCombatantSideRequest.side:type_name -> meurpg.play.v1.CombatantSide
-	43,  // 87: meurpg.play.v1.SetCombatantSideResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	5,   // 88: meurpg.play.v1.SetCombatantCoverRequest.cover:type_name -> meurpg.play.v1.CoverDegree
-	43,  // 89: meurpg.play.v1.SetCombatantCoverResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 90: meurpg.play.v1.SetCombatantHiddenResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 91: meurpg.play.v1.SetMonsterReactionModeResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	66,  // 92: meurpg.play.v1.AddCombatantsRequest.participants:type_name -> meurpg.play.v1.Participant
-	43,  // 93: meurpg.play.v1.AddCombatantsResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	17,  // 94: meurpg.play.v1.AddMonstersRequest.hit_points:type_name -> meurpg.play.v1.MonsterHitPoints
-	43,  // 95: meurpg.play.v1.AddMonstersResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 96: meurpg.play.v1.RemoveCombatantResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 97: meurpg.play.v1.EndEncounterResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	296, // 98: meurpg.play.v1.DiceRoll.rerolled:type_name -> meurpg.play.v1.Reroll
-	297, // 99: meurpg.play.v1.DiceRoll.counted_dice:type_name -> meurpg.play.v1.CountedDie
-	298, // 100: meurpg.play.v1.DiceRoll.extra_dice:type_name -> meurpg.play.v1.ExtraDie
-	20,  // 101: meurpg.play.v1.PendingDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
-	114, // 102: meurpg.play.v1.PendingDamage.roll:type_name -> meurpg.play.v1.DiceRoll
-	18,  // 103: meurpg.play.v1.PendingDamage.critical_rule:type_name -> meurpg.play.v1.CriticalDamageRule
-	299, // 104: meurpg.play.v1.PendingDamage.parts:type_name -> meurpg.play.v1.DamagePart
-	300, // 105: meurpg.play.v1.PendingDamage.steps:type_name -> meurpg.play.v1.DamageStep
-	301, // 106: meurpg.play.v1.PendingDamage.part_rolls:type_name -> meurpg.play.v1.DamagePartRoll
-	302, // 107: meurpg.play.v1.GetTurnOptionsResponse.options:type_name -> meurpg.rules.v1.TurnOptions
-	123, // 108: meurpg.play.v1.GetTurnOptionsResponse.attack_targets:type_name -> meurpg.play.v1.AttackTargets
-	115, // 109: meurpg.play.v1.GetTurnOptionsResponse.pending_damages:type_name -> meurpg.play.v1.PendingDamage
-	121, // 110: meurpg.play.v1.GetTurnOptionsResponse.spell_targets:type_name -> meurpg.play.v1.SpellTargets
-	18,  // 111: meurpg.play.v1.GetTurnOptionsResponse.critical_rule:type_name -> meurpg.play.v1.CriticalDamageRule
-	303, // 112: meurpg.play.v1.GetTurnOptionsResponse.contest_attack_options:type_name -> meurpg.play.v1.ContestAttackOption
-	304, // 113: meurpg.play.v1.GetTurnOptionsResponse.contest_state:type_name -> meurpg.play.v1.ContestTurnState
-	119, // 114: meurpg.play.v1.GetTurnOptionsResponse.resource_targets:type_name -> meurpg.play.v1.ResourceTargets
-	305, // 115: meurpg.play.v1.GetTurnOptionsResponse.effect_notes:type_name -> meurpg.play.v1.EffectNote
-	306, // 116: meurpg.play.v1.GetTurnOptionsResponse.extra_action:type_name -> meurpg.play.v1.ExtraActionOption
-	118, // 117: meurpg.play.v1.GetTurnOptionsResponse.maneuver_dice:type_name -> meurpg.play.v1.ManeuverDieOption
-	307, // 118: meurpg.play.v1.ManeuverDieOption.die:type_name -> meurpg.rules.v1.RollDie
-	120, // 119: meurpg.play.v1.ResourceTargets.targets:type_name -> meurpg.play.v1.ResourceTarget
-	124, // 120: meurpg.play.v1.ResourceTarget.target:type_name -> meurpg.play.v1.TargetInReach
-	124, // 121: meurpg.play.v1.SpellTargets.targets:type_name -> meurpg.play.v1.TargetInReach
-	122, // 122: meurpg.play.v1.SpellTargets.darts:type_name -> meurpg.play.v1.DartsAtSlot
-	21,  // 123: meurpg.play.v1.SpellTargets.placement:type_name -> meurpg.play.v1.AreaPlacement
-	289, // 124: meurpg.play.v1.SpellTargets.area_shape:type_name -> meurpg.rules.v1.SpellAreaShape
-	124, // 125: meurpg.play.v1.AttackTargets.targets:type_name -> meurpg.play.v1.TargetInReach
-	9,   // 126: meurpg.play.v1.TargetInReach.state:type_name -> meurpg.play.v1.CombatantState
-	5,   // 127: meurpg.play.v1.TargetInReach.cover:type_name -> meurpg.play.v1.CoverDegree
-	6,   // 128: meurpg.play.v1.TargetInReach.cover_source:type_name -> meurpg.play.v1.CoverSource
-	308, // 129: meurpg.play.v1.TargetInReach.roll_mode:type_name -> meurpg.play.v1.RollMode
-	309, // 130: meurpg.play.v1.TargetInReach.sources:type_name -> meurpg.play.v1.AdvantageSource
-	308, // 131: meurpg.play.v1.RollAttackRequest.roll_mode:type_name -> meurpg.play.v1.RollMode
-	114, // 132: meurpg.play.v1.AttackRoll.d20:type_name -> meurpg.play.v1.DiceRoll
-	19,  // 133: meurpg.play.v1.AttackRoll.outcome:type_name -> meurpg.play.v1.AttackOutcome
-	5,   // 134: meurpg.play.v1.AttackRoll.cover:type_name -> meurpg.play.v1.CoverDegree
-	6,   // 135: meurpg.play.v1.AttackRoll.cover_source:type_name -> meurpg.play.v1.CoverSource
-	18,  // 136: meurpg.play.v1.AttackRoll.critical_rule:type_name -> meurpg.play.v1.CriticalDamageRule
-	130, // 137: meurpg.play.v1.AttackRoll.bonus_dice:type_name -> meurpg.play.v1.BonusDie
-	308, // 138: meurpg.play.v1.AttackRoll.mode:type_name -> meurpg.play.v1.RollMode
-	308, // 139: meurpg.play.v1.AttackRoll.suggested_mode:type_name -> meurpg.play.v1.RollMode
-	309, // 140: meurpg.play.v1.AttackRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
-	127, // 141: meurpg.play.v1.InspirationOffer.die:type_name -> meurpg.play.v1.InspirationDie
-	114, // 142: meurpg.play.v1.InspirationOffer.d20:type_name -> meurpg.play.v1.DiceRoll
-	114, // 143: meurpg.play.v1.LuckyOffer.d20:type_name -> meurpg.play.v1.DiceRoll
-	114, // 144: meurpg.play.v1.OutsideInspirationOffer.d20:type_name -> meurpg.play.v1.DiceRoll
-	22,  // 145: meurpg.play.v1.HeldRollOffer.kind:type_name -> meurpg.play.v1.HeldRollKind
-	114, // 146: meurpg.play.v1.HeldRollOffer.d20:type_name -> meurpg.play.v1.DiceRoll
-	132, // 147: meurpg.play.v1.HeldRollOffer.lucky:type_name -> meurpg.play.v1.LuckyQuestion
-	133, // 148: meurpg.play.v1.HeldRollOffer.die:type_name -> meurpg.play.v1.DieQuestion
-	134, // 149: meurpg.play.v1.HeldRollOffer.indomitable:type_name -> meurpg.play.v1.IndomitableQuestion
-	135, // 150: meurpg.play.v1.HeldRollOffer.stroke_of_luck:type_name -> meurpg.play.v1.StrokeOfLuckQuestion
-	136, // 151: meurpg.play.v1.HeldRollOffer.reroll:type_name -> meurpg.play.v1.RerollQuestion
-	287, // 152: meurpg.play.v1.HeldRollOffer.created_at:type_name -> google.protobuf.Timestamp
-	43,  // 153: meurpg.play.v1.RollAttackResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	126, // 154: meurpg.play.v1.RollAttackResponse.roll:type_name -> meurpg.play.v1.AttackRoll
-	115, // 155: meurpg.play.v1.RollAttackResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
-	128, // 156: meurpg.play.v1.RollAttackResponse.inspiration_offer:type_name -> meurpg.play.v1.InspirationOffer
-	129, // 157: meurpg.play.v1.RollAttackResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	137, // 158: meurpg.play.v1.RollAttackResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
-	310, // 159: meurpg.play.v1.RollDamageRequest.selected_extras:type_name -> meurpg.play.v1.SelectedExtra
-	311, // 160: meurpg.play.v1.RollDamageRequest.typed_parts:type_name -> meurpg.play.v1.TypedPart
-	43,  // 161: meurpg.play.v1.RollDamageResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	115, // 162: meurpg.play.v1.RollDamageResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
-	115, // 163: meurpg.play.v1.RollDamageResponse.cast_pending_damages:type_name -> meurpg.play.v1.PendingDamage
-	43,  // 164: meurpg.play.v1.ApplyPendingDamageResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	115, // 165: meurpg.play.v1.ApplyPendingDamageResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
-	43,  // 166: meurpg.play.v1.DiscardPendingDamageResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	115, // 167: meurpg.play.v1.DiscardPendingDamageResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
-	146, // 168: meurpg.play.v1.TakeActionRequest.preserve_life:type_name -> meurpg.play.v1.PreserveLifeHeal
-	43,  // 169: meurpg.play.v1.TakeActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	114, // 170: meurpg.play.v1.TakeActionResponse.roll:type_name -> meurpg.play.v1.DiceRoll
-	149, // 171: meurpg.play.v1.TakeActionResponse.channel_divinity:type_name -> meurpg.play.v1.ChannelDivinityResult
-	150, // 172: meurpg.play.v1.ChannelDivinityResult.heals:type_name -> meurpg.play.v1.ChannelDivinityHeal
-	151, // 173: meurpg.play.v1.ChannelDivinityResult.turns:type_name -> meurpg.play.v1.ChannelDivinityTurn
-	43,  // 174: meurpg.play.v1.AdjustCombatantHitPointsResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 175: meurpg.play.v1.UndoLastActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	156, // 176: meurpg.play.v1.CastSpellRequest.slot:type_name -> meurpg.play.v1.SpellSlot
-	157, // 177: meurpg.play.v1.CastSpellRequest.targets:type_name -> meurpg.play.v1.SpellTarget
-	174, // 178: meurpg.play.v1.CastSpellRequest.summon:type_name -> meurpg.play.v1.SummonChoice
-	160, // 179: meurpg.play.v1.CastSpellRequest.metamagic:type_name -> meurpg.play.v1.MetamagicChoice
-	161, // 180: meurpg.play.v1.CastSpellRequest.origin:type_name -> meurpg.play.v1.SpellOrigin
-	162, // 181: meurpg.play.v1.CastSpellRequest.direction:type_name -> meurpg.play.v1.SpellDirection
-	308, // 182: meurpg.play.v1.CastSpellRequest.roll_mode:type_name -> meurpg.play.v1.RollMode
-	161, // 183: meurpg.play.v1.CastSpellRequest.destination:type_name -> meurpg.play.v1.SpellOrigin
-	159, // 184: meurpg.play.v1.CastSpellRequest.spell_options:type_name -> meurpg.play.v1.SpellOptionChoice
-	163, // 185: meurpg.play.v1.CastSpellRequest.wall:type_name -> meurpg.play.v1.SpellWall
-	162, // 186: meurpg.play.v1.SpellWall.direction:type_name -> meurpg.play.v1.SpellDirection
-	23,  // 187: meurpg.play.v1.SpellWall.side:type_name -> meurpg.play.v1.WallSide
-	161, // 188: meurpg.play.v1.SpellArea.origin:type_name -> meurpg.play.v1.SpellOrigin
-	161, // 189: meurpg.play.v1.SpellArea.squares:type_name -> meurpg.play.v1.SpellOrigin
-	161, // 190: meurpg.play.v1.MoveSpellZoneRequest.origin:type_name -> meurpg.play.v1.SpellOrigin
-	43,  // 191: meurpg.play.v1.EndSpellZoneResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 192: meurpg.play.v1.MoveSpellZoneResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	156, // 193: meurpg.play.v1.PreviewSpellAreaRequest.slot:type_name -> meurpg.play.v1.SpellSlot
-	161, // 194: meurpg.play.v1.PreviewSpellAreaRequest.origin:type_name -> meurpg.play.v1.SpellOrigin
-	162, // 195: meurpg.play.v1.PreviewSpellAreaRequest.direction:type_name -> meurpg.play.v1.SpellDirection
-	163, // 196: meurpg.play.v1.PreviewSpellAreaRequest.wall:type_name -> meurpg.play.v1.SpellWall
-	161, // 197: meurpg.play.v1.PreviewSpellAreaResponse.origin:type_name -> meurpg.play.v1.SpellOrigin
-	161, // 198: meurpg.play.v1.PreviewSpellAreaResponse.squares:type_name -> meurpg.play.v1.SpellOrigin
-	171, // 199: meurpg.play.v1.PreviewSpellAreaResponse.targets:type_name -> meurpg.play.v1.AreaTarget
-	161, // 200: meurpg.play.v1.PreviewSpellAreaResponse.burning_squares:type_name -> meurpg.play.v1.SpellOrigin
-	9,   // 201: meurpg.play.v1.AreaTarget.state:type_name -> meurpg.play.v1.CombatantState
-	5,   // 202: meurpg.play.v1.AreaTarget.cover:type_name -> meurpg.play.v1.CoverDegree
-	6,   // 203: meurpg.play.v1.AreaTarget.cover_source:type_name -> meurpg.play.v1.CoverSource
-	43,  // 204: meurpg.play.v1.ResolveHiddenRevealResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	24,  // 205: meurpg.play.v1.SaveResult.outcome:type_name -> meurpg.play.v1.SaveOutcome
-	114, // 206: meurpg.play.v1.SaveResult.roll:type_name -> meurpg.play.v1.DiceRoll
-	308, // 207: meurpg.play.v1.SaveResult.mode:type_name -> meurpg.play.v1.RollMode
-	309, // 208: meurpg.play.v1.SaveResult.sources:type_name -> meurpg.play.v1.AdvantageSource
-	19,  // 209: meurpg.play.v1.SpellTargetResult.outcome:type_name -> meurpg.play.v1.AttackOutcome
-	114, // 210: meurpg.play.v1.SpellTargetResult.attack_roll:type_name -> meurpg.play.v1.DiceRoll
-	175, // 211: meurpg.play.v1.SpellTargetResult.save:type_name -> meurpg.play.v1.SaveResult
-	177, // 212: meurpg.play.v1.SpellTargetResult.effect:type_name -> meurpg.play.v1.SpellEffectResult
-	5,   // 213: meurpg.play.v1.SpellTargetResult.cover:type_name -> meurpg.play.v1.CoverDegree
-	6,   // 214: meurpg.play.v1.SpellTargetResult.cover_source:type_name -> meurpg.play.v1.CoverSource
-	308, // 215: meurpg.play.v1.SpellTargetResult.attack_mode:type_name -> meurpg.play.v1.RollMode
-	309, // 216: meurpg.play.v1.SpellTargetResult.attack_sources:type_name -> meurpg.play.v1.AdvantageSource
-	312, // 217: meurpg.play.v1.SpellTargetResult.lasting_effect:type_name -> meurpg.play.v1.LastingEffectOutcome
-	130, // 218: meurpg.play.v1.SpellTargetResult.bonus_dice:type_name -> meurpg.play.v1.BonusDie
-	26,  // 219: meurpg.play.v1.SpellEffectResult.outcome:type_name -> meurpg.play.v1.SpellEffectOutcome
-	27,  // 220: meurpg.play.v1.SpellEffectResult.reason:type_name -> meurpg.play.v1.SpellEffectReason
-	28,  // 221: meurpg.play.v1.SpellEffectResult.gain:type_name -> meurpg.play.v1.SpellEffectGain
-	43,  // 222: meurpg.play.v1.CastSpellResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	179, // 223: meurpg.play.v1.CastSpellResponse.cast:type_name -> meurpg.play.v1.SpellCast
-	164, // 224: meurpg.play.v1.CastSpellResponse.area:type_name -> meurpg.play.v1.SpellArea
-	131, // 225: meurpg.play.v1.CastSpellResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
-	129, // 226: meurpg.play.v1.CastSpellResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	137, // 227: meurpg.play.v1.CastSpellResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
-	156, // 228: meurpg.play.v1.SpellCast.slot:type_name -> meurpg.play.v1.SpellSlot
-	176, // 229: meurpg.play.v1.SpellCast.targets:type_name -> meurpg.play.v1.SpellTargetResult
-	115, // 230: meurpg.play.v1.SpellCast.pending_damages:type_name -> meurpg.play.v1.PendingDamage
-	25,  // 231: meurpg.play.v1.SpellCast.effect_kind:type_name -> meurpg.play.v1.SpellEffectKind
-	114, // 232: meurpg.play.v1.SpellCast.pool_roll:type_name -> meurpg.play.v1.DiceRoll
-	156, // 233: meurpg.play.v1.UseReactionRequest.slot:type_name -> meurpg.play.v1.SpellSlot
-	43,  // 234: meurpg.play.v1.UseReactionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	29,  // 235: meurpg.play.v1.UseReactionResponse.outcome:type_name -> meurpg.play.v1.ReactionOutcome
-	115, // 236: meurpg.play.v1.UseReactionResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
-	43,  // 237: meurpg.play.v1.DeclineReactionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 238: meurpg.play.v1.DeclineOpportunityResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 239: meurpg.play.v1.SkipOpportunityResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	114, // 240: meurpg.play.v1.DeathSave.roll:type_name -> meurpg.play.v1.DiceRoll
-	30,  // 241: meurpg.play.v1.DeathSave.outcome:type_name -> meurpg.play.v1.DeathSaveOutcome
-	130, // 242: meurpg.play.v1.DeathSave.bonus_dice:type_name -> meurpg.play.v1.BonusDie
-	148, // 243: meurpg.play.v1.DeathSave.hook:type_name -> meurpg.play.v1.HookResult
-	43,  // 244: meurpg.play.v1.RollDeathSaveResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	189, // 245: meurpg.play.v1.RollDeathSaveResponse.death_save:type_name -> meurpg.play.v1.DeathSave
-	137, // 246: meurpg.play.v1.RollDeathSaveResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
-	43,  // 247: meurpg.play.v1.ConfirmDeathResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	193, // 248: meurpg.play.v1.SetCombatantConditionsRequest.conditions:type_name -> meurpg.play.v1.ConditionList
-	43,  // 249: meurpg.play.v1.SetCombatantConditionsResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 250: meurpg.play.v1.EndConcentrationResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	33,  // 251: meurpg.play.v1.EndCombatEffectRequest.effect:type_name -> meurpg.play.v1.CombatEffect
-	43,  // 252: meurpg.play.v1.EndCombatEffectResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	202, // 253: meurpg.play.v1.ListCombatLogResponse.rounds:type_name -> meurpg.play.v1.CombatLogRound
-	206, // 254: meurpg.play.v1.CombatLogRound.entries:type_name -> meurpg.play.v1.CombatLogEntry
-	313, // 255: meurpg.play.v1.CombatLogStateChange.kind:type_name -> meurpg.play.v1.CombatantStateKind
-	308, // 256: meurpg.play.v1.CombatLogModeChange.suggested_mode:type_name -> meurpg.play.v1.RollMode
-	308, // 257: meurpg.play.v1.CombatLogModeChange.mode:type_name -> meurpg.play.v1.RollMode
-	32,  // 258: meurpg.play.v1.CombatLogWildShape.end_reason:type_name -> meurpg.play.v1.WildShapeEndReason
-	31,  // 259: meurpg.play.v1.CombatLogEntry.kind:type_name -> meurpg.play.v1.CombatLogKind
-	287, // 260: meurpg.play.v1.CombatLogEntry.at:type_name -> google.protobuf.Timestamp
-	19,  // 261: meurpg.play.v1.CombatLogEntry.outcome:type_name -> meurpg.play.v1.AttackOutcome
-	114, // 262: meurpg.play.v1.CombatLogEntry.attack_roll:type_name -> meurpg.play.v1.DiceRoll
-	218, // 263: meurpg.play.v1.CombatLogEntry.damage:type_name -> meurpg.play.v1.CombatLogDamage
-	215, // 264: meurpg.play.v1.CombatLogEntry.spell:type_name -> meurpg.play.v1.CombatLogSpell
-	217, // 265: meurpg.play.v1.CombatLogEntry.death_save:type_name -> meurpg.play.v1.CombatLogDeathSave
-	5,   // 266: meurpg.play.v1.CombatLogEntry.cover:type_name -> meurpg.play.v1.CoverDegree
-	6,   // 267: meurpg.play.v1.CombatLogEntry.cover_source:type_name -> meurpg.play.v1.CoverSource
-	7,   // 268: meurpg.play.v1.CombatLogEntry.jump:type_name -> meurpg.play.v1.JumpKind
-	224, // 269: meurpg.play.v1.CombatLogEntry.trap:type_name -> meurpg.play.v1.TrapFiring
-	205, // 270: meurpg.play.v1.CombatLogEntry.wild_shape:type_name -> meurpg.play.v1.CombatLogWildShape
-	314, // 271: meurpg.play.v1.CombatLogEntry.contest:type_name -> meurpg.play.v1.CombatLogContest
-	214, // 272: meurpg.play.v1.CombatLogEntry.door:type_name -> meurpg.play.v1.CombatLogDoor
-	213, // 273: meurpg.play.v1.CombatLogEntry.monsters:type_name -> meurpg.play.v1.CombatLogMonster
-	208, // 274: meurpg.play.v1.CombatLogEntry.resource:type_name -> meurpg.play.v1.CombatLogResource
-	130, // 275: meurpg.play.v1.CombatLogEntry.bonus_dice:type_name -> meurpg.play.v1.BonusDie
-	203, // 276: meurpg.play.v1.CombatLogEntry.state:type_name -> meurpg.play.v1.CombatLogStateChange
-	204, // 277: meurpg.play.v1.CombatLogEntry.mode_change:type_name -> meurpg.play.v1.CombatLogModeChange
-	207, // 278: meurpg.play.v1.CombatLogEntry.effect_end:type_name -> meurpg.play.v1.CombatLogEffectEnd
-	209, // 279: meurpg.play.v1.CombatLogEntry.effect:type_name -> meurpg.play.v1.CombatLogEffect
-	55,  // 280: meurpg.play.v1.CombatLogEntry.hit_rider:type_name -> meurpg.play.v1.CombatLogHitRider
-	149, // 281: meurpg.play.v1.CombatLogEntry.channel_divinity:type_name -> meurpg.play.v1.ChannelDivinityResult
-	54,  // 282: meurpg.play.v1.CombatLogEntry.creature_action:type_name -> meurpg.play.v1.CombatLogCreatureAction
-	210, // 283: meurpg.play.v1.CombatLogEntry.legendary_spent:type_name -> meurpg.play.v1.CombatLogLegendarySpent
-	211, // 284: meurpg.play.v1.CombatLogEntry.recharge:type_name -> meurpg.play.v1.CombatLogRecharge
-	212, // 285: meurpg.play.v1.CombatLogEntry.gear_swapped:type_name -> meurpg.play.v1.CombatLogGearSwapped
-	33,  // 286: meurpg.play.v1.CombatLogEffectEnd.effect:type_name -> meurpg.play.v1.CombatEffect
-	34,  // 287: meurpg.play.v1.CombatLogResource.cure:type_name -> meurpg.play.v1.LayOnHandsCureKind
-	35,  // 288: meurpg.play.v1.CombatLogEffect.change:type_name -> meurpg.play.v1.CombatLogEffectChange
-	296, // 289: meurpg.play.v1.CombatLogEffect.rerolled:type_name -> meurpg.play.v1.Reroll
-	156, // 290: meurpg.play.v1.CombatLogSpell.slot:type_name -> meurpg.play.v1.SpellSlot
-	216, // 291: meurpg.play.v1.CombatLogSpell.targets:type_name -> meurpg.play.v1.CombatLogSpellTarget
-	25,  // 292: meurpg.play.v1.CombatLogSpell.effect_kind:type_name -> meurpg.play.v1.SpellEffectKind
-	114, // 293: meurpg.play.v1.CombatLogSpell.pool_roll:type_name -> meurpg.play.v1.DiceRoll
-	19,  // 294: meurpg.play.v1.CombatLogSpellTarget.outcome:type_name -> meurpg.play.v1.AttackOutcome
-	114, // 295: meurpg.play.v1.CombatLogSpellTarget.attack_roll:type_name -> meurpg.play.v1.DiceRoll
-	175, // 296: meurpg.play.v1.CombatLogSpellTarget.save:type_name -> meurpg.play.v1.SaveResult
-	218, // 297: meurpg.play.v1.CombatLogSpellTarget.damage:type_name -> meurpg.play.v1.CombatLogDamage
-	177, // 298: meurpg.play.v1.CombatLogSpellTarget.effect:type_name -> meurpg.play.v1.SpellEffectResult
-	5,   // 299: meurpg.play.v1.CombatLogSpellTarget.cover:type_name -> meurpg.play.v1.CoverDegree
-	6,   // 300: meurpg.play.v1.CombatLogSpellTarget.cover_source:type_name -> meurpg.play.v1.CoverSource
-	218, // 301: meurpg.play.v1.CombatLogSpellTarget.more_damages:type_name -> meurpg.play.v1.CombatLogDamage
-	114, // 302: meurpg.play.v1.CombatLogDeathSave.roll:type_name -> meurpg.play.v1.DiceRoll
-	30,  // 303: meurpg.play.v1.CombatLogDeathSave.outcome:type_name -> meurpg.play.v1.DeathSaveOutcome
-	148, // 304: meurpg.play.v1.CombatLogDeathSave.hook:type_name -> meurpg.play.v1.HookResult
-	20,  // 305: meurpg.play.v1.CombatLogDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
-	114, // 306: meurpg.play.v1.CombatLogDamage.roll:type_name -> meurpg.play.v1.DiceRoll
-	18,  // 307: meurpg.play.v1.CombatLogDamage.critical_rule:type_name -> meurpg.play.v1.CriticalDamageRule
-	301, // 308: meurpg.play.v1.CombatLogDamage.parts:type_name -> meurpg.play.v1.DamagePartRoll
-	300, // 309: meurpg.play.v1.CombatLogDamage.steps:type_name -> meurpg.play.v1.DamageStep
-	148, // 310: meurpg.play.v1.CombatLogDamage.hook:type_name -> meurpg.play.v1.HookResult
-	36,  // 311: meurpg.play.v1.HighlightCategory.kind:type_name -> meurpg.play.v1.HighlightKind
-	220, // 312: meurpg.play.v1.HighlightCategory.winners:type_name -> meurpg.play.v1.HighlightWinner
-	221, // 313: meurpg.play.v1.GetCombatHighlightsResponse.categories:type_name -> meurpg.play.v1.HighlightCategory
-	222, // 314: meurpg.play.v1.GetCombatHighlightsResponse.characters:type_name -> meurpg.play.v1.CharacterHighlights
-	225, // 315: meurpg.play.v1.TrapFiring.caught:type_name -> meurpg.play.v1.TrapCaught
-	226, // 316: meurpg.play.v1.TrapCaught.attacks:type_name -> meurpg.play.v1.TrapAttackRoll
-	227, // 317: meurpg.play.v1.TrapCaught.save:type_name -> meurpg.play.v1.TrapSaveRoll
-	228, // 318: meurpg.play.v1.TrapCaught.damages:type_name -> meurpg.play.v1.TrapDamageDone
-	227, // 319: meurpg.play.v1.TrapCaught.saves:type_name -> meurpg.play.v1.TrapSaveRoll
-	114, // 320: meurpg.play.v1.TrapAttackRoll.roll:type_name -> meurpg.play.v1.DiceRoll
-	19,  // 321: meurpg.play.v1.TrapAttackRoll.outcome:type_name -> meurpg.play.v1.AttackOutcome
-	308, // 322: meurpg.play.v1.TrapAttackRoll.mode:type_name -> meurpg.play.v1.RollMode
-	309, // 323: meurpg.play.v1.TrapAttackRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
-	24,  // 324: meurpg.play.v1.TrapSaveRoll.outcome:type_name -> meurpg.play.v1.SaveOutcome
-	114, // 325: meurpg.play.v1.TrapSaveRoll.roll:type_name -> meurpg.play.v1.DiceRoll
-	308, // 326: meurpg.play.v1.TrapSaveRoll.mode:type_name -> meurpg.play.v1.RollMode
-	309, // 327: meurpg.play.v1.TrapSaveRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
-	20,  // 328: meurpg.play.v1.TrapDamageDone.status:type_name -> meurpg.play.v1.PendingDamageStatus
-	114, // 329: meurpg.play.v1.TrapDamageDone.roll:type_name -> meurpg.play.v1.DiceRoll
-	37,  // 330: meurpg.play.v1.ReactionWindow.kind:type_name -> meurpg.play.v1.ReactionKind
-	38,  // 331: meurpg.play.v1.ReactionWindow.status:type_name -> meurpg.play.v1.ReactionWindowStatus
-	39,  // 332: meurpg.play.v1.ReactionWindow.closed_reason:type_name -> meurpg.play.v1.ReactionClosedReason
-	231, // 333: meurpg.play.v1.ReactionWindow.trigger:type_name -> meurpg.play.v1.ReactionTrigger
-	233, // 334: meurpg.play.v1.ReactionWindow.shield:type_name -> meurpg.play.v1.ShieldPrompt
-	234, // 335: meurpg.play.v1.ReactionWindow.uncanny_dodge:type_name -> meurpg.play.v1.UncannyDodgePrompt
-	235, // 336: meurpg.play.v1.ReactionWindow.hellish_rebuke:type_name -> meurpg.play.v1.HellishRebukePrompt
-	238, // 337: meurpg.play.v1.ReactionWindow.counterspell:type_name -> meurpg.play.v1.CounterspellPrompt
-	239, // 338: meurpg.play.v1.ReactionWindow.cutting_words:type_name -> meurpg.play.v1.CuttingWordsPrompt
-	246, // 339: meurpg.play.v1.ReactionWindow.deflect_missiles:type_name -> meurpg.play.v1.DeflectMissilesPrompt
-	249, // 340: meurpg.play.v1.ReactionWindow.feather_fall:type_name -> meurpg.play.v1.FeatherFallPrompt
-	251, // 341: meurpg.play.v1.ReactionWindow.concentration_save:type_name -> meurpg.play.v1.ConcentrationSavePrompt
-	253, // 342: meurpg.play.v1.ReactionWindow.master_check:type_name -> meurpg.play.v1.MasterCheckPrompt
-	237, // 343: meurpg.play.v1.ReactionWindow.hellish_rebuke_save:type_name -> meurpg.play.v1.HellishRebukeSavePrompt
-	247, // 344: meurpg.play.v1.ReactionWindow.deflect_throw:type_name -> meurpg.play.v1.DeflectMissilesThrowPrompt
-	252, // 345: meurpg.play.v1.ReactionWindow.contest:type_name -> meurpg.play.v1.ContestPrompt
-	240, // 346: meurpg.play.v1.ReactionWindow.maneuver_reduce:type_name -> meurpg.play.v1.ManeuverReducePrompt
-	241, // 347: meurpg.play.v1.ReactionWindow.protection:type_name -> meurpg.play.v1.ProtectionPrompt
-	243, // 348: meurpg.play.v1.ReactionWindow.legendary_resistance:type_name -> meurpg.play.v1.LegendaryResistancePrompt
-	242, // 349: meurpg.play.v1.ReactionWindow.parry:type_name -> meurpg.play.v1.ParryPrompt
-	250, // 350: meurpg.play.v1.ReactionWindow.slow_fall:type_name -> meurpg.play.v1.SlowFallPrompt
-	315, // 351: meurpg.play.v1.ReactionWindow.effect_save:type_name -> meurpg.play.v1.EffectSavePrompt
-	41,  // 352: meurpg.play.v1.ReactionTrigger.roll_kind:type_name -> meurpg.play.v1.ReactionRollKind
-	232, // 353: meurpg.play.v1.ReactionTrigger.slot_effects:type_name -> meurpg.play.v1.SlotEffect
-	290, // 354: meurpg.play.v1.SlotEffect.slot:type_name -> meurpg.rules.v1.SlotChoice
-	290, // 355: meurpg.play.v1.ShieldPrompt.slots:type_name -> meurpg.rules.v1.SlotChoice
-	236, // 356: meurpg.play.v1.HellishRebukePrompt.options:type_name -> meurpg.play.v1.HellishRebukeOption
-	290, // 357: meurpg.play.v1.HellishRebukeOption.slot:type_name -> meurpg.rules.v1.SlotChoice
-	290, // 358: meurpg.play.v1.CounterspellPrompt.slot_options:type_name -> meurpg.rules.v1.SlotChoice
-	41,  // 359: meurpg.play.v1.CuttingWordsPrompt.roll_kind:type_name -> meurpg.play.v1.ReactionRollKind
-	245, // 360: meurpg.play.v1.ManeuverReducePrompt.options:type_name -> meurpg.play.v1.ManeuverReduceOption
-	244, // 361: meurpg.play.v1.LegendaryResistancePrompt.offers:type_name -> meurpg.play.v1.LegendaryResistanceOffer
-	248, // 362: meurpg.play.v1.FeatherFallPrompt.falling:type_name -> meurpg.play.v1.FallingCreature
-	290, // 363: meurpg.play.v1.FeatherFallPrompt.slot_options:type_name -> meurpg.rules.v1.SlotChoice
-	40,  // 364: meurpg.play.v1.AnswerReactionRequest.answer:type_name -> meurpg.play.v1.ReactionChoice
-	156, // 365: meurpg.play.v1.AnswerReactionRequest.slot:type_name -> meurpg.play.v1.SpellSlot
-	43,  // 366: meurpg.play.v1.MarkReactionRollingResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 367: meurpg.play.v1.AnswerReactionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	258, // 368: meurpg.play.v1.AnswerReactionResponse.result:type_name -> meurpg.play.v1.ReactionResult
-	137, // 369: meurpg.play.v1.AnswerReactionResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
-	37,  // 370: meurpg.play.v1.ReactionResult.kind:type_name -> meurpg.play.v1.ReactionKind
-	261, // 371: meurpg.play.v1.ReactionResult.shield:type_name -> meurpg.play.v1.ShieldResult
-	262, // 372: meurpg.play.v1.ReactionResult.uncanny_dodge:type_name -> meurpg.play.v1.UncannyDodgeResult
-	263, // 373: meurpg.play.v1.ReactionResult.hellish_rebuke:type_name -> meurpg.play.v1.HellishRebukeResult
-	264, // 374: meurpg.play.v1.ReactionResult.counterspell:type_name -> meurpg.play.v1.CounterspellResult
-	265, // 375: meurpg.play.v1.ReactionResult.cutting_words:type_name -> meurpg.play.v1.CuttingWordsResult
-	269, // 376: meurpg.play.v1.ReactionResult.deflect_missiles:type_name -> meurpg.play.v1.DeflectMissilesResult
-	270, // 377: meurpg.play.v1.ReactionResult.feather_fall:type_name -> meurpg.play.v1.FeatherFallResult
-	268, // 378: meurpg.play.v1.ReactionResult.maneuver_reduce:type_name -> meurpg.play.v1.ManeuverReduceResult
-	266, // 379: meurpg.play.v1.ReactionResult.protection:type_name -> meurpg.play.v1.ProtectionResult
-	267, // 380: meurpg.play.v1.ReactionResult.legendary_resistance:type_name -> meurpg.play.v1.LegendaryResistanceResult
-	260, // 381: meurpg.play.v1.ReactionResult.parry:type_name -> meurpg.play.v1.ParryResult
-	259, // 382: meurpg.play.v1.ReactionResult.slow_fall:type_name -> meurpg.play.v1.SlowFallResult
-	114, // 383: meurpg.play.v1.HellishRebukeResult.save:type_name -> meurpg.play.v1.DiceRoll
-	114, // 384: meurpg.play.v1.CounterspellResult.check:type_name -> meurpg.play.v1.DiceRoll
-	114, // 385: meurpg.play.v1.CuttingWordsResult.die:type_name -> meurpg.play.v1.DiceRoll
-	19,  // 386: meurpg.play.v1.CuttingWordsResult.outcome:type_name -> meurpg.play.v1.AttackOutcome
-	41,  // 387: meurpg.play.v1.CuttingWordsResult.roll_kind:type_name -> meurpg.play.v1.ReactionRollKind
-	114, // 388: meurpg.play.v1.ManeuverReduceResult.reduction:type_name -> meurpg.play.v1.DiceRoll
-	114, // 389: meurpg.play.v1.DeflectMissilesResult.reduction:type_name -> meurpg.play.v1.DiceRoll
-	43,  // 390: meurpg.play.v1.ResolveConcentrationSaveResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	273, // 391: meurpg.play.v1.ResolveConcentrationSaveResponse.result:type_name -> meurpg.play.v1.ConcentrationSaveResult
-	131, // 392: meurpg.play.v1.ResolveConcentrationSaveResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
-	129, // 393: meurpg.play.v1.ResolveConcentrationSaveResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	137, // 394: meurpg.play.v1.ResolveConcentrationSaveResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
-	114, // 395: meurpg.play.v1.ConcentrationSaveResult.save:type_name -> meurpg.play.v1.DiceRoll
-	130, // 396: meurpg.play.v1.ConcentrationSaveResult.bonus_dice:type_name -> meurpg.play.v1.BonusDie
-	308, // 397: meurpg.play.v1.RequestRollModeRequest.roll_mode:type_name -> meurpg.play.v1.RollMode
-	43,  // 398: meurpg.play.v1.RequestRollModeResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	288, // 399: meurpg.play.v1.RequestRollModeResponse.request:type_name -> meurpg.play.v1.RollModeRequest
-	308, // 400: meurpg.play.v1.AnswerRollModeRequestRequest.decided_mode:type_name -> meurpg.play.v1.RollMode
-	43,  // 401: meurpg.play.v1.AnswerRollModeRequestResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 402: meurpg.play.v1.CancelRollModeRequestResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 403: meurpg.play.v1.RemoveDamagePartResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	115, // 404: meurpg.play.v1.RemoveDamagePartResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
-	43,  // 405: meurpg.play.v1.AnswerRageEndResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	43,  // 406: meurpg.play.v1.EndRageResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	67,  // 407: meurpg.play.v1.CombatService.StartEncounter:input_type -> meurpg.play.v1.StartEncounterRequest
-	69,  // 408: meurpg.play.v1.CombatService.GetStartRoster:input_type -> meurpg.play.v1.GetStartRosterRequest
-	73,  // 409: meurpg.play.v1.CombatService.GetEncounter:input_type -> meurpg.play.v1.GetEncounterRequest
-	75,  // 410: meurpg.play.v1.CombatService.SubmitInitiative:input_type -> meurpg.play.v1.SubmitInitiativeRequest
-	77,  // 411: meurpg.play.v1.CombatService.SetInitiativeOrder:input_type -> meurpg.play.v1.SetInitiativeOrderRequest
-	79,  // 412: meurpg.play.v1.CombatService.BeginCombat:input_type -> meurpg.play.v1.BeginCombatRequest
-	81,  // 413: meurpg.play.v1.CombatService.EndTurn:input_type -> meurpg.play.v1.EndTurnRequest
-	83,  // 414: meurpg.play.v1.CombatService.MoveCombatant:input_type -> meurpg.play.v1.MoveCombatantRequest
-	93,  // 415: meurpg.play.v1.CombatService.GetMoveOptions:input_type -> meurpg.play.v1.GetMoveOptionsRequest
-	85,  // 416: meurpg.play.v1.CombatService.SpendMovement:input_type -> meurpg.play.v1.SpendMovementRequest
-	86,  // 417: meurpg.play.v1.CombatService.StandUp:input_type -> meurpg.play.v1.StandUpRequest
-	89,  // 418: meurpg.play.v1.CombatService.OfferOpportunity:input_type -> meurpg.play.v1.OfferOpportunityRequest
-	91,  // 419: meurpg.play.v1.CombatService.WithdrawOpportunity:input_type -> meurpg.play.v1.WithdrawOpportunityRequest
-	98,  // 420: meurpg.play.v1.CombatService.SetCombatantSide:input_type -> meurpg.play.v1.SetCombatantSideRequest
-	100, // 421: meurpg.play.v1.CombatService.SetCombatantCover:input_type -> meurpg.play.v1.SetCombatantCoverRequest
-	102, // 422: meurpg.play.v1.CombatService.SetCombatantHidden:input_type -> meurpg.play.v1.SetCombatantHiddenRequest
-	104, // 423: meurpg.play.v1.CombatService.SetMonsterReactionMode:input_type -> meurpg.play.v1.SetMonsterReactionModeRequest
-	106, // 424: meurpg.play.v1.CombatService.AddCombatants:input_type -> meurpg.play.v1.AddCombatantsRequest
-	108, // 425: meurpg.play.v1.CombatService.AddMonsters:input_type -> meurpg.play.v1.AddMonstersRequest
-	110, // 426: meurpg.play.v1.CombatService.RemoveCombatant:input_type -> meurpg.play.v1.RemoveCombatantRequest
-	112, // 427: meurpg.play.v1.CombatService.EndEncounter:input_type -> meurpg.play.v1.EndEncounterRequest
-	116, // 428: meurpg.play.v1.CombatService.GetTurnOptions:input_type -> meurpg.play.v1.GetTurnOptionsRequest
-	125, // 429: meurpg.play.v1.CombatService.RollAttack:input_type -> meurpg.play.v1.RollAttackRequest
-	139, // 430: meurpg.play.v1.CombatService.RollDamage:input_type -> meurpg.play.v1.RollDamageRequest
-	141, // 431: meurpg.play.v1.CombatService.ApplyPendingDamage:input_type -> meurpg.play.v1.ApplyPendingDamageRequest
-	143, // 432: meurpg.play.v1.CombatService.DiscardPendingDamage:input_type -> meurpg.play.v1.DiscardPendingDamageRequest
-	145, // 433: meurpg.play.v1.CombatService.TakeAction:input_type -> meurpg.play.v1.TakeActionRequest
-	152, // 434: meurpg.play.v1.CombatService.AdjustCombatantHitPoints:input_type -> meurpg.play.v1.AdjustCombatantHitPointsRequest
-	154, // 435: meurpg.play.v1.CombatService.UndoLastAction:input_type -> meurpg.play.v1.UndoLastActionRequest
-	158, // 436: meurpg.play.v1.CombatService.CastSpell:input_type -> meurpg.play.v1.CastSpellRequest
-	169, // 437: meurpg.play.v1.CombatService.PreviewSpellArea:input_type -> meurpg.play.v1.PreviewSpellAreaRequest
-	165, // 438: meurpg.play.v1.CombatService.MoveSpellZone:input_type -> meurpg.play.v1.MoveSpellZoneRequest
-	166, // 439: meurpg.play.v1.CombatService.EndSpellZone:input_type -> meurpg.play.v1.EndSpellZoneRequest
-	172, // 440: meurpg.play.v1.CombatService.ResolveHiddenReveal:input_type -> meurpg.play.v1.ResolveHiddenRevealRequest
-	180, // 441: meurpg.play.v1.CombatService.UseReaction:input_type -> meurpg.play.v1.UseReactionRequest
-	182, // 442: meurpg.play.v1.CombatService.DeclineReaction:input_type -> meurpg.play.v1.DeclineReactionRequest
-	184, // 443: meurpg.play.v1.CombatService.DeclineOpportunity:input_type -> meurpg.play.v1.DeclineOpportunityRequest
-	186, // 444: meurpg.play.v1.CombatService.SkipOpportunity:input_type -> meurpg.play.v1.SkipOpportunityRequest
-	188, // 445: meurpg.play.v1.CombatService.RollDeathSave:input_type -> meurpg.play.v1.RollDeathSaveRequest
-	191, // 446: meurpg.play.v1.CombatService.ConfirmDeath:input_type -> meurpg.play.v1.ConfirmDeathRequest
-	194, // 447: meurpg.play.v1.CombatService.SetCombatantConditions:input_type -> meurpg.play.v1.SetCombatantConditionsRequest
-	196, // 448: meurpg.play.v1.CombatService.EndConcentration:input_type -> meurpg.play.v1.EndConcentrationRequest
-	198, // 449: meurpg.play.v1.CombatService.EndCombatEffect:input_type -> meurpg.play.v1.EndCombatEffectRequest
-	254, // 450: meurpg.play.v1.CombatService.AnswerReaction:input_type -> meurpg.play.v1.AnswerReactionRequest
-	255, // 451: meurpg.play.v1.CombatService.MarkReactionRolling:input_type -> meurpg.play.v1.MarkReactionRollingRequest
-	271, // 452: meurpg.play.v1.CombatService.ResolveConcentrationSave:input_type -> meurpg.play.v1.ResolveConcentrationSaveRequest
-	200, // 453: meurpg.play.v1.CombatService.ListCombatLog:input_type -> meurpg.play.v1.ListCombatLogRequest
-	219, // 454: meurpg.play.v1.CombatService.GetCombatHighlights:input_type -> meurpg.play.v1.GetCombatHighlightsRequest
-	274, // 455: meurpg.play.v1.CombatService.RequestRollMode:input_type -> meurpg.play.v1.RequestRollModeRequest
-	276, // 456: meurpg.play.v1.CombatService.AnswerRollModeRequest:input_type -> meurpg.play.v1.AnswerRollModeRequestRequest
-	278, // 457: meurpg.play.v1.CombatService.CancelRollModeRequest:input_type -> meurpg.play.v1.CancelRollModeRequestRequest
-	280, // 458: meurpg.play.v1.CombatService.RemoveDamagePart:input_type -> meurpg.play.v1.RemoveDamagePartRequest
-	282, // 459: meurpg.play.v1.CombatService.AnswerRageEnd:input_type -> meurpg.play.v1.AnswerRageEndRequest
-	284, // 460: meurpg.play.v1.CombatService.EndRage:input_type -> meurpg.play.v1.EndRageRequest
-	46,  // 461: meurpg.play.v1.CombatService.UseHitRider:input_type -> meurpg.play.v1.UseHitRiderRequest
-	48,  // 462: meurpg.play.v1.CombatService.UseCreatureAction:input_type -> meurpg.play.v1.UseCreatureActionRequest
-	51,  // 463: meurpg.play.v1.CombatService.SpendLegendaryAction:input_type -> meurpg.play.v1.SpendLegendaryActionRequest
-	72,  // 464: meurpg.play.v1.CombatService.StartEncounter:output_type -> meurpg.play.v1.StartEncounterResponse
-	71,  // 465: meurpg.play.v1.CombatService.GetStartRoster:output_type -> meurpg.play.v1.GetStartRosterResponse
-	74,  // 466: meurpg.play.v1.CombatService.GetEncounter:output_type -> meurpg.play.v1.GetEncounterResponse
-	76,  // 467: meurpg.play.v1.CombatService.SubmitInitiative:output_type -> meurpg.play.v1.SubmitInitiativeResponse
-	78,  // 468: meurpg.play.v1.CombatService.SetInitiativeOrder:output_type -> meurpg.play.v1.SetInitiativeOrderResponse
-	80,  // 469: meurpg.play.v1.CombatService.BeginCombat:output_type -> meurpg.play.v1.BeginCombatResponse
-	82,  // 470: meurpg.play.v1.CombatService.EndTurn:output_type -> meurpg.play.v1.EndTurnResponse
-	84,  // 471: meurpg.play.v1.CombatService.MoveCombatant:output_type -> meurpg.play.v1.MoveCombatantResponse
-	94,  // 472: meurpg.play.v1.CombatService.GetMoveOptions:output_type -> meurpg.play.v1.GetMoveOptionsResponse
-	88,  // 473: meurpg.play.v1.CombatService.SpendMovement:output_type -> meurpg.play.v1.SpendMovementResponse
-	87,  // 474: meurpg.play.v1.CombatService.StandUp:output_type -> meurpg.play.v1.StandUpResponse
-	90,  // 475: meurpg.play.v1.CombatService.OfferOpportunity:output_type -> meurpg.play.v1.OfferOpportunityResponse
-	92,  // 476: meurpg.play.v1.CombatService.WithdrawOpportunity:output_type -> meurpg.play.v1.WithdrawOpportunityResponse
-	99,  // 477: meurpg.play.v1.CombatService.SetCombatantSide:output_type -> meurpg.play.v1.SetCombatantSideResponse
-	101, // 478: meurpg.play.v1.CombatService.SetCombatantCover:output_type -> meurpg.play.v1.SetCombatantCoverResponse
-	103, // 479: meurpg.play.v1.CombatService.SetCombatantHidden:output_type -> meurpg.play.v1.SetCombatantHiddenResponse
-	105, // 480: meurpg.play.v1.CombatService.SetMonsterReactionMode:output_type -> meurpg.play.v1.SetMonsterReactionModeResponse
-	107, // 481: meurpg.play.v1.CombatService.AddCombatants:output_type -> meurpg.play.v1.AddCombatantsResponse
-	109, // 482: meurpg.play.v1.CombatService.AddMonsters:output_type -> meurpg.play.v1.AddMonstersResponse
-	111, // 483: meurpg.play.v1.CombatService.RemoveCombatant:output_type -> meurpg.play.v1.RemoveCombatantResponse
-	113, // 484: meurpg.play.v1.CombatService.EndEncounter:output_type -> meurpg.play.v1.EndEncounterResponse
-	117, // 485: meurpg.play.v1.CombatService.GetTurnOptions:output_type -> meurpg.play.v1.GetTurnOptionsResponse
-	138, // 486: meurpg.play.v1.CombatService.RollAttack:output_type -> meurpg.play.v1.RollAttackResponse
-	140, // 487: meurpg.play.v1.CombatService.RollDamage:output_type -> meurpg.play.v1.RollDamageResponse
-	142, // 488: meurpg.play.v1.CombatService.ApplyPendingDamage:output_type -> meurpg.play.v1.ApplyPendingDamageResponse
-	144, // 489: meurpg.play.v1.CombatService.DiscardPendingDamage:output_type -> meurpg.play.v1.DiscardPendingDamageResponse
-	147, // 490: meurpg.play.v1.CombatService.TakeAction:output_type -> meurpg.play.v1.TakeActionResponse
-	153, // 491: meurpg.play.v1.CombatService.AdjustCombatantHitPoints:output_type -> meurpg.play.v1.AdjustCombatantHitPointsResponse
-	155, // 492: meurpg.play.v1.CombatService.UndoLastAction:output_type -> meurpg.play.v1.UndoLastActionResponse
-	178, // 493: meurpg.play.v1.CombatService.CastSpell:output_type -> meurpg.play.v1.CastSpellResponse
-	170, // 494: meurpg.play.v1.CombatService.PreviewSpellArea:output_type -> meurpg.play.v1.PreviewSpellAreaResponse
-	168, // 495: meurpg.play.v1.CombatService.MoveSpellZone:output_type -> meurpg.play.v1.MoveSpellZoneResponse
-	167, // 496: meurpg.play.v1.CombatService.EndSpellZone:output_type -> meurpg.play.v1.EndSpellZoneResponse
-	173, // 497: meurpg.play.v1.CombatService.ResolveHiddenReveal:output_type -> meurpg.play.v1.ResolveHiddenRevealResponse
-	181, // 498: meurpg.play.v1.CombatService.UseReaction:output_type -> meurpg.play.v1.UseReactionResponse
-	183, // 499: meurpg.play.v1.CombatService.DeclineReaction:output_type -> meurpg.play.v1.DeclineReactionResponse
-	185, // 500: meurpg.play.v1.CombatService.DeclineOpportunity:output_type -> meurpg.play.v1.DeclineOpportunityResponse
-	187, // 501: meurpg.play.v1.CombatService.SkipOpportunity:output_type -> meurpg.play.v1.SkipOpportunityResponse
-	190, // 502: meurpg.play.v1.CombatService.RollDeathSave:output_type -> meurpg.play.v1.RollDeathSaveResponse
-	192, // 503: meurpg.play.v1.CombatService.ConfirmDeath:output_type -> meurpg.play.v1.ConfirmDeathResponse
-	195, // 504: meurpg.play.v1.CombatService.SetCombatantConditions:output_type -> meurpg.play.v1.SetCombatantConditionsResponse
-	197, // 505: meurpg.play.v1.CombatService.EndConcentration:output_type -> meurpg.play.v1.EndConcentrationResponse
-	199, // 506: meurpg.play.v1.CombatService.EndCombatEffect:output_type -> meurpg.play.v1.EndCombatEffectResponse
-	257, // 507: meurpg.play.v1.CombatService.AnswerReaction:output_type -> meurpg.play.v1.AnswerReactionResponse
-	256, // 508: meurpg.play.v1.CombatService.MarkReactionRolling:output_type -> meurpg.play.v1.MarkReactionRollingResponse
-	272, // 509: meurpg.play.v1.CombatService.ResolveConcentrationSave:output_type -> meurpg.play.v1.ResolveConcentrationSaveResponse
-	201, // 510: meurpg.play.v1.CombatService.ListCombatLog:output_type -> meurpg.play.v1.ListCombatLogResponse
-	223, // 511: meurpg.play.v1.CombatService.GetCombatHighlights:output_type -> meurpg.play.v1.GetCombatHighlightsResponse
-	275, // 512: meurpg.play.v1.CombatService.RequestRollMode:output_type -> meurpg.play.v1.RequestRollModeResponse
-	277, // 513: meurpg.play.v1.CombatService.AnswerRollModeRequest:output_type -> meurpg.play.v1.AnswerRollModeRequestResponse
-	279, // 514: meurpg.play.v1.CombatService.CancelRollModeRequest:output_type -> meurpg.play.v1.CancelRollModeRequestResponse
-	281, // 515: meurpg.play.v1.CombatService.RemoveDamagePart:output_type -> meurpg.play.v1.RemoveDamagePartResponse
-	283, // 516: meurpg.play.v1.CombatService.AnswerRageEnd:output_type -> meurpg.play.v1.AnswerRageEndResponse
-	285, // 517: meurpg.play.v1.CombatService.EndRage:output_type -> meurpg.play.v1.EndRageResponse
-	47,  // 518: meurpg.play.v1.CombatService.UseHitRider:output_type -> meurpg.play.v1.UseHitRiderResponse
-	53,  // 519: meurpg.play.v1.CombatService.UseCreatureAction:output_type -> meurpg.play.v1.UseCreatureActionResponse
-	52,  // 520: meurpg.play.v1.CombatService.SpendLegendaryAction:output_type -> meurpg.play.v1.SpendLegendaryActionResponse
-	464, // [464:521] is the sub-list for method output_type
-	407, // [407:464] is the sub-list for method input_type
-	407, // [407:407] is the sub-list for extension type_name
-	407, // [407:407] is the sub-list for extension extendee
-	0,   // [0:407] is the sub-list for field type_name
+	235, // 11: meurpg.play.v1.Encounter.reaction_windows:type_name -> meurpg.play.v1.ReactionWindow
+	234, // 12: meurpg.play.v1.Encounter.reaction_wait:type_name -> meurpg.play.v1.ReactionWait
+	58,  // 13: meurpg.play.v1.Encounter.pending_hidden_reveals:type_name -> meurpg.play.v1.HiddenRevealQuestion
+	293, // 14: meurpg.play.v1.Encounter.roll_mode_requests:type_name -> meurpg.play.v1.RollModeRequest
+	59,  // 15: meurpg.play.v1.Encounter.deaths:type_name -> meurpg.play.v1.CombatDeath
+	47,  // 16: meurpg.play.v1.Encounter.hit_riders:type_name -> meurpg.play.v1.HitRiderOffer
+	46,  // 17: meurpg.play.v1.Encounter.zones:type_name -> meurpg.play.v1.SpellZone
+	18,  // 18: meurpg.play.v1.Encounter.sunlight_scope:type_name -> meurpg.play.v1.SunlightScope
+	108, // 19: meurpg.play.v1.Encounter.sunlight_squares:type_name -> meurpg.play.v1.SunlightSquare
+	294, // 20: meurpg.play.v1.SpellZone.shape:type_name -> meurpg.rules.v1.SpellAreaShape
+	166, // 21: meurpg.play.v1.SpellZone.origin:type_name -> meurpg.play.v1.SpellOrigin
+	166, // 22: meurpg.play.v1.SpellZone.squares:type_name -> meurpg.play.v1.SpellOrigin
+	12,  // 23: meurpg.play.v1.SpellZone.movement:type_name -> meurpg.play.v1.SpellZoneMovement
+	13,  // 24: meurpg.play.v1.SpellZone.visibility:type_name -> meurpg.play.v1.SpellZoneVisibility
+	166, // 25: meurpg.play.v1.SpellZone.burning_squares:type_name -> meurpg.play.v1.SpellOrigin
+	25,  // 26: meurpg.play.v1.SpellZone.wall_side:type_name -> meurpg.play.v1.WallSide
+	14,  // 27: meurpg.play.v1.HitRiderOffer.kind:type_name -> meurpg.play.v1.HitRiderKind
+	15,  // 28: meurpg.play.v1.UseHitRiderRequest.choice:type_name -> meurpg.play.v1.HitRiderChoice
+	45,  // 29: meurpg.play.v1.UseHitRiderResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	166, // 30: meurpg.play.v1.UseCreatureActionRequest.origin:type_name -> meurpg.play.v1.SpellOrigin
+	167, // 31: meurpg.play.v1.UseCreatureActionRequest.direction:type_name -> meurpg.play.v1.SpellDirection
+	180, // 32: meurpg.play.v1.CreatureActionTarget.save:type_name -> meurpg.play.v1.SaveResult
+	51,  // 33: meurpg.play.v1.CreatureActionResult.targets:type_name -> meurpg.play.v1.CreatureActionTarget
+	120, // 34: meurpg.play.v1.CreatureActionResult.pending_damages:type_name -> meurpg.play.v1.PendingDamage
+	45,  // 35: meurpg.play.v1.SpendLegendaryActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 36: meurpg.play.v1.UseCreatureActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	52,  // 37: meurpg.play.v1.UseCreatureActionResponse.result:type_name -> meurpg.play.v1.CreatureActionResult
+	169, // 38: meurpg.play.v1.UseCreatureActionResponse.area:type_name -> meurpg.play.v1.SpellArea
+	15,  // 39: meurpg.play.v1.CombatLogHitRider.choice:type_name -> meurpg.play.v1.HitRiderChoice
+	16,  // 40: meurpg.play.v1.CombatLogHitRider.result:type_name -> meurpg.play.v1.HitRiderLogResult
+	223, // 41: meurpg.play.v1.CombatLogHitRider.damage:type_name -> meurpg.play.v1.CombatLogDamage
+	223, // 42: meurpg.play.v1.CombatLogHitRider.more_damages:type_name -> meurpg.play.v1.CombatLogDamage
+	169, // 43: meurpg.play.v1.HiddenRevealQuestion.area:type_name -> meurpg.play.v1.SpellArea
+	61,  // 44: meurpg.play.v1.OpportunityOffer.attacks:type_name -> meurpg.play.v1.OpportunityAttack
+	7,   // 45: meurpg.play.v1.OpportunityOffer.jump:type_name -> meurpg.play.v1.JumpKind
+	295, // 46: meurpg.play.v1.ReactionPrompt.slots:type_name -> meurpg.rules.v1.SlotChoice
+	2,   // 47: meurpg.play.v1.Combatant.kind:type_name -> meurpg.play.v1.CombatantKind
+	9,   // 48: meurpg.play.v1.Combatant.state:type_name -> meurpg.play.v1.CombatantState
+	4,   // 49: meurpg.play.v1.Combatant.side:type_name -> meurpg.play.v1.CombatantSide
+	296, // 50: meurpg.play.v1.Combatant.size:type_name -> meurpg.rules.v1.CreatureSize
+	5,   // 51: meurpg.play.v1.Combatant.cover_mark:type_name -> meurpg.play.v1.CoverDegree
+	3,   // 52: meurpg.play.v1.Combatant.creature_attack:type_name -> meurpg.play.v1.CreatureAttack
+	132, // 53: meurpg.play.v1.Combatant.inspiration_die:type_name -> meurpg.play.v1.InspirationDie
+	133, // 54: meurpg.play.v1.Combatant.inspiration_offer:type_name -> meurpg.play.v1.InspirationOffer
+	134, // 55: meurpg.play.v1.Combatant.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	297, // 56: meurpg.play.v1.Combatant.states:type_name -> meurpg.play.v1.CombatantEffect
+	298, // 57: meurpg.play.v1.Combatant.condition_sources:type_name -> meurpg.play.v1.ConditionSource
+	299, // 58: meurpg.play.v1.Combatant.effects:type_name -> meurpg.play.v1.LastingEffect
+	300, // 59: meurpg.play.v1.Combatant.effect_labels:type_name -> meurpg.play.v1.EffectLabel
+	142, // 60: meurpg.play.v1.Combatant.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	66,  // 61: meurpg.play.v1.Combatant.legendary:type_name -> meurpg.play.v1.LegendaryState
+	65,  // 62: meurpg.play.v1.Combatant.limited_actions:type_name -> meurpg.play.v1.LimitedAction
+	39,  // 63: meurpg.play.v1.Combatant.reaction_kind:type_name -> meurpg.play.v1.ReactionKind
+	17,  // 64: meurpg.play.v1.Combatant.sunlight_trait:type_name -> meurpg.play.v1.SunlightTrait
+	67,  // 65: meurpg.play.v1.LegendaryState.options:type_name -> meurpg.play.v1.LegendaryOption
+	68,  // 66: meurpg.play.v1.StartEncounterRequest.participants:type_name -> meurpg.play.v1.Participant
+	0,   // 67: meurpg.play.v1.StartEncounterRequest.mode:type_name -> meurpg.play.v1.EncounterMode
+	70,  // 68: meurpg.play.v1.StartEncounterRequest.monsters:type_name -> meurpg.play.v1.MonsterGroup
+	19,  // 69: meurpg.play.v1.StartEncounterRequest.monster_hit_points:type_name -> meurpg.play.v1.MonsterHitPoints
+	72,  // 70: meurpg.play.v1.GetStartRosterResponse.party:type_name -> meurpg.play.v1.StartRosterEntry
+	45,  // 71: meurpg.play.v1.StartEncounterResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 72: meurpg.play.v1.GetEncounterResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 73: meurpg.play.v1.SubmitInitiativeResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	142, // 74: meurpg.play.v1.SubmitInitiativeResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	45,  // 75: meurpg.play.v1.SetInitiativeOrderResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 76: meurpg.play.v1.BeginCombatResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 77: meurpg.play.v1.EndTurnResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	7,   // 78: meurpg.play.v1.MoveCombatantRequest.jump:type_name -> meurpg.play.v1.JumpKind
+	45,  // 79: meurpg.play.v1.MoveCombatantResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 80: meurpg.play.v1.StandUpResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 81: meurpg.play.v1.SpendMovementResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 82: meurpg.play.v1.OfferOpportunityResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 83: meurpg.play.v1.WithdrawOpportunityResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	7,   // 84: meurpg.play.v1.GetMoveOptionsRequest.jump:type_name -> meurpg.play.v1.JumpKind
+	98,  // 85: meurpg.play.v1.GetMoveOptionsResponse.reachable:type_name -> meurpg.play.v1.ReachableSquare
+	99,  // 86: meurpg.play.v1.GetMoveOptionsResponse.refused:type_name -> meurpg.play.v1.RefusedSquare
+	97,  // 87: meurpg.play.v1.ReachableSquare.dragged_to:type_name -> meurpg.play.v1.DraggedSquare
+	8,   // 88: meurpg.play.v1.RefusedSquare.reason:type_name -> meurpg.play.v1.MoveRefusal
+	4,   // 89: meurpg.play.v1.SetCombatantSideRequest.side:type_name -> meurpg.play.v1.CombatantSide
+	45,  // 90: meurpg.play.v1.SetCombatantSideResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	5,   // 91: meurpg.play.v1.SetCombatantCoverRequest.cover:type_name -> meurpg.play.v1.CoverDegree
+	45,  // 92: meurpg.play.v1.SetCombatantCoverResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 93: meurpg.play.v1.SetCombatantHiddenResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 94: meurpg.play.v1.SetMonsterReactionModeResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	18,  // 95: meurpg.play.v1.SetSunlightRequest.scope:type_name -> meurpg.play.v1.SunlightScope
+	108, // 96: meurpg.play.v1.SetSunlightRequest.add_squares:type_name -> meurpg.play.v1.SunlightSquare
+	108, // 97: meurpg.play.v1.SetSunlightRequest.remove_squares:type_name -> meurpg.play.v1.SunlightSquare
+	45,  // 98: meurpg.play.v1.SetSunlightResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	68,  // 99: meurpg.play.v1.AddCombatantsRequest.participants:type_name -> meurpg.play.v1.Participant
+	45,  // 100: meurpg.play.v1.AddCombatantsResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	19,  // 101: meurpg.play.v1.AddMonstersRequest.hit_points:type_name -> meurpg.play.v1.MonsterHitPoints
+	45,  // 102: meurpg.play.v1.AddMonstersResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 103: meurpg.play.v1.RemoveCombatantResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 104: meurpg.play.v1.EndEncounterResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	301, // 105: meurpg.play.v1.DiceRoll.rerolled:type_name -> meurpg.play.v1.Reroll
+	302, // 106: meurpg.play.v1.DiceRoll.counted_dice:type_name -> meurpg.play.v1.CountedDie
+	303, // 107: meurpg.play.v1.DiceRoll.extra_dice:type_name -> meurpg.play.v1.ExtraDie
+	22,  // 108: meurpg.play.v1.PendingDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
+	119, // 109: meurpg.play.v1.PendingDamage.roll:type_name -> meurpg.play.v1.DiceRoll
+	20,  // 110: meurpg.play.v1.PendingDamage.critical_rule:type_name -> meurpg.play.v1.CriticalDamageRule
+	304, // 111: meurpg.play.v1.PendingDamage.parts:type_name -> meurpg.play.v1.DamagePart
+	305, // 112: meurpg.play.v1.PendingDamage.steps:type_name -> meurpg.play.v1.DamageStep
+	306, // 113: meurpg.play.v1.PendingDamage.part_rolls:type_name -> meurpg.play.v1.DamagePartRoll
+	307, // 114: meurpg.play.v1.GetTurnOptionsResponse.options:type_name -> meurpg.rules.v1.TurnOptions
+	128, // 115: meurpg.play.v1.GetTurnOptionsResponse.attack_targets:type_name -> meurpg.play.v1.AttackTargets
+	120, // 116: meurpg.play.v1.GetTurnOptionsResponse.pending_damages:type_name -> meurpg.play.v1.PendingDamage
+	126, // 117: meurpg.play.v1.GetTurnOptionsResponse.spell_targets:type_name -> meurpg.play.v1.SpellTargets
+	20,  // 118: meurpg.play.v1.GetTurnOptionsResponse.critical_rule:type_name -> meurpg.play.v1.CriticalDamageRule
+	308, // 119: meurpg.play.v1.GetTurnOptionsResponse.contest_attack_options:type_name -> meurpg.play.v1.ContestAttackOption
+	309, // 120: meurpg.play.v1.GetTurnOptionsResponse.contest_state:type_name -> meurpg.play.v1.ContestTurnState
+	124, // 121: meurpg.play.v1.GetTurnOptionsResponse.resource_targets:type_name -> meurpg.play.v1.ResourceTargets
+	310, // 122: meurpg.play.v1.GetTurnOptionsResponse.effect_notes:type_name -> meurpg.play.v1.EffectNote
+	311, // 123: meurpg.play.v1.GetTurnOptionsResponse.extra_action:type_name -> meurpg.play.v1.ExtraActionOption
+	123, // 124: meurpg.play.v1.GetTurnOptionsResponse.maneuver_dice:type_name -> meurpg.play.v1.ManeuverDieOption
+	312, // 125: meurpg.play.v1.ManeuverDieOption.die:type_name -> meurpg.rules.v1.RollDie
+	125, // 126: meurpg.play.v1.ResourceTargets.targets:type_name -> meurpg.play.v1.ResourceTarget
+	129, // 127: meurpg.play.v1.ResourceTarget.target:type_name -> meurpg.play.v1.TargetInReach
+	129, // 128: meurpg.play.v1.SpellTargets.targets:type_name -> meurpg.play.v1.TargetInReach
+	127, // 129: meurpg.play.v1.SpellTargets.darts:type_name -> meurpg.play.v1.DartsAtSlot
+	23,  // 130: meurpg.play.v1.SpellTargets.placement:type_name -> meurpg.play.v1.AreaPlacement
+	294, // 131: meurpg.play.v1.SpellTargets.area_shape:type_name -> meurpg.rules.v1.SpellAreaShape
+	129, // 132: meurpg.play.v1.AttackTargets.targets:type_name -> meurpg.play.v1.TargetInReach
+	9,   // 133: meurpg.play.v1.TargetInReach.state:type_name -> meurpg.play.v1.CombatantState
+	5,   // 134: meurpg.play.v1.TargetInReach.cover:type_name -> meurpg.play.v1.CoverDegree
+	6,   // 135: meurpg.play.v1.TargetInReach.cover_source:type_name -> meurpg.play.v1.CoverSource
+	313, // 136: meurpg.play.v1.TargetInReach.roll_mode:type_name -> meurpg.play.v1.RollMode
+	314, // 137: meurpg.play.v1.TargetInReach.sources:type_name -> meurpg.play.v1.AdvantageSource
+	313, // 138: meurpg.play.v1.RollAttackRequest.roll_mode:type_name -> meurpg.play.v1.RollMode
+	119, // 139: meurpg.play.v1.AttackRoll.d20:type_name -> meurpg.play.v1.DiceRoll
+	21,  // 140: meurpg.play.v1.AttackRoll.outcome:type_name -> meurpg.play.v1.AttackOutcome
+	5,   // 141: meurpg.play.v1.AttackRoll.cover:type_name -> meurpg.play.v1.CoverDegree
+	6,   // 142: meurpg.play.v1.AttackRoll.cover_source:type_name -> meurpg.play.v1.CoverSource
+	20,  // 143: meurpg.play.v1.AttackRoll.critical_rule:type_name -> meurpg.play.v1.CriticalDamageRule
+	135, // 144: meurpg.play.v1.AttackRoll.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	313, // 145: meurpg.play.v1.AttackRoll.mode:type_name -> meurpg.play.v1.RollMode
+	313, // 146: meurpg.play.v1.AttackRoll.suggested_mode:type_name -> meurpg.play.v1.RollMode
+	314, // 147: meurpg.play.v1.AttackRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
+	132, // 148: meurpg.play.v1.InspirationOffer.die:type_name -> meurpg.play.v1.InspirationDie
+	119, // 149: meurpg.play.v1.InspirationOffer.d20:type_name -> meurpg.play.v1.DiceRoll
+	119, // 150: meurpg.play.v1.LuckyOffer.d20:type_name -> meurpg.play.v1.DiceRoll
+	119, // 151: meurpg.play.v1.OutsideInspirationOffer.d20:type_name -> meurpg.play.v1.DiceRoll
+	24,  // 152: meurpg.play.v1.HeldRollOffer.kind:type_name -> meurpg.play.v1.HeldRollKind
+	119, // 153: meurpg.play.v1.HeldRollOffer.d20:type_name -> meurpg.play.v1.DiceRoll
+	137, // 154: meurpg.play.v1.HeldRollOffer.lucky:type_name -> meurpg.play.v1.LuckyQuestion
+	138, // 155: meurpg.play.v1.HeldRollOffer.die:type_name -> meurpg.play.v1.DieQuestion
+	139, // 156: meurpg.play.v1.HeldRollOffer.indomitable:type_name -> meurpg.play.v1.IndomitableQuestion
+	140, // 157: meurpg.play.v1.HeldRollOffer.stroke_of_luck:type_name -> meurpg.play.v1.StrokeOfLuckQuestion
+	141, // 158: meurpg.play.v1.HeldRollOffer.reroll:type_name -> meurpg.play.v1.RerollQuestion
+	292, // 159: meurpg.play.v1.HeldRollOffer.created_at:type_name -> google.protobuf.Timestamp
+	45,  // 160: meurpg.play.v1.RollAttackResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	131, // 161: meurpg.play.v1.RollAttackResponse.roll:type_name -> meurpg.play.v1.AttackRoll
+	120, // 162: meurpg.play.v1.RollAttackResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
+	133, // 163: meurpg.play.v1.RollAttackResponse.inspiration_offer:type_name -> meurpg.play.v1.InspirationOffer
+	134, // 164: meurpg.play.v1.RollAttackResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	142, // 165: meurpg.play.v1.RollAttackResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	315, // 166: meurpg.play.v1.RollDamageRequest.selected_extras:type_name -> meurpg.play.v1.SelectedExtra
+	316, // 167: meurpg.play.v1.RollDamageRequest.typed_parts:type_name -> meurpg.play.v1.TypedPart
+	45,  // 168: meurpg.play.v1.RollDamageResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	120, // 169: meurpg.play.v1.RollDamageResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
+	120, // 170: meurpg.play.v1.RollDamageResponse.cast_pending_damages:type_name -> meurpg.play.v1.PendingDamage
+	45,  // 171: meurpg.play.v1.ApplyPendingDamageResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	120, // 172: meurpg.play.v1.ApplyPendingDamageResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
+	45,  // 173: meurpg.play.v1.DiscardPendingDamageResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	120, // 174: meurpg.play.v1.DiscardPendingDamageResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
+	151, // 175: meurpg.play.v1.TakeActionRequest.preserve_life:type_name -> meurpg.play.v1.PreserveLifeHeal
+	45,  // 176: meurpg.play.v1.TakeActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	119, // 177: meurpg.play.v1.TakeActionResponse.roll:type_name -> meurpg.play.v1.DiceRoll
+	154, // 178: meurpg.play.v1.TakeActionResponse.channel_divinity:type_name -> meurpg.play.v1.ChannelDivinityResult
+	155, // 179: meurpg.play.v1.ChannelDivinityResult.heals:type_name -> meurpg.play.v1.ChannelDivinityHeal
+	156, // 180: meurpg.play.v1.ChannelDivinityResult.turns:type_name -> meurpg.play.v1.ChannelDivinityTurn
+	45,  // 181: meurpg.play.v1.AdjustCombatantHitPointsResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 182: meurpg.play.v1.UndoLastActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	161, // 183: meurpg.play.v1.CastSpellRequest.slot:type_name -> meurpg.play.v1.SpellSlot
+	162, // 184: meurpg.play.v1.CastSpellRequest.targets:type_name -> meurpg.play.v1.SpellTarget
+	179, // 185: meurpg.play.v1.CastSpellRequest.summon:type_name -> meurpg.play.v1.SummonChoice
+	165, // 186: meurpg.play.v1.CastSpellRequest.metamagic:type_name -> meurpg.play.v1.MetamagicChoice
+	166, // 187: meurpg.play.v1.CastSpellRequest.origin:type_name -> meurpg.play.v1.SpellOrigin
+	167, // 188: meurpg.play.v1.CastSpellRequest.direction:type_name -> meurpg.play.v1.SpellDirection
+	313, // 189: meurpg.play.v1.CastSpellRequest.roll_mode:type_name -> meurpg.play.v1.RollMode
+	166, // 190: meurpg.play.v1.CastSpellRequest.destination:type_name -> meurpg.play.v1.SpellOrigin
+	164, // 191: meurpg.play.v1.CastSpellRequest.spell_options:type_name -> meurpg.play.v1.SpellOptionChoice
+	168, // 192: meurpg.play.v1.CastSpellRequest.wall:type_name -> meurpg.play.v1.SpellWall
+	167, // 193: meurpg.play.v1.SpellWall.direction:type_name -> meurpg.play.v1.SpellDirection
+	25,  // 194: meurpg.play.v1.SpellWall.side:type_name -> meurpg.play.v1.WallSide
+	166, // 195: meurpg.play.v1.SpellArea.origin:type_name -> meurpg.play.v1.SpellOrigin
+	166, // 196: meurpg.play.v1.SpellArea.squares:type_name -> meurpg.play.v1.SpellOrigin
+	166, // 197: meurpg.play.v1.MoveSpellZoneRequest.origin:type_name -> meurpg.play.v1.SpellOrigin
+	45,  // 198: meurpg.play.v1.EndSpellZoneResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 199: meurpg.play.v1.MoveSpellZoneResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	161, // 200: meurpg.play.v1.PreviewSpellAreaRequest.slot:type_name -> meurpg.play.v1.SpellSlot
+	166, // 201: meurpg.play.v1.PreviewSpellAreaRequest.origin:type_name -> meurpg.play.v1.SpellOrigin
+	167, // 202: meurpg.play.v1.PreviewSpellAreaRequest.direction:type_name -> meurpg.play.v1.SpellDirection
+	168, // 203: meurpg.play.v1.PreviewSpellAreaRequest.wall:type_name -> meurpg.play.v1.SpellWall
+	166, // 204: meurpg.play.v1.PreviewSpellAreaResponse.origin:type_name -> meurpg.play.v1.SpellOrigin
+	166, // 205: meurpg.play.v1.PreviewSpellAreaResponse.squares:type_name -> meurpg.play.v1.SpellOrigin
+	176, // 206: meurpg.play.v1.PreviewSpellAreaResponse.targets:type_name -> meurpg.play.v1.AreaTarget
+	166, // 207: meurpg.play.v1.PreviewSpellAreaResponse.burning_squares:type_name -> meurpg.play.v1.SpellOrigin
+	9,   // 208: meurpg.play.v1.AreaTarget.state:type_name -> meurpg.play.v1.CombatantState
+	5,   // 209: meurpg.play.v1.AreaTarget.cover:type_name -> meurpg.play.v1.CoverDegree
+	6,   // 210: meurpg.play.v1.AreaTarget.cover_source:type_name -> meurpg.play.v1.CoverSource
+	45,  // 211: meurpg.play.v1.ResolveHiddenRevealResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	26,  // 212: meurpg.play.v1.SaveResult.outcome:type_name -> meurpg.play.v1.SaveOutcome
+	119, // 213: meurpg.play.v1.SaveResult.roll:type_name -> meurpg.play.v1.DiceRoll
+	313, // 214: meurpg.play.v1.SaveResult.mode:type_name -> meurpg.play.v1.RollMode
+	314, // 215: meurpg.play.v1.SaveResult.sources:type_name -> meurpg.play.v1.AdvantageSource
+	21,  // 216: meurpg.play.v1.SpellTargetResult.outcome:type_name -> meurpg.play.v1.AttackOutcome
+	119, // 217: meurpg.play.v1.SpellTargetResult.attack_roll:type_name -> meurpg.play.v1.DiceRoll
+	180, // 218: meurpg.play.v1.SpellTargetResult.save:type_name -> meurpg.play.v1.SaveResult
+	182, // 219: meurpg.play.v1.SpellTargetResult.effect:type_name -> meurpg.play.v1.SpellEffectResult
+	5,   // 220: meurpg.play.v1.SpellTargetResult.cover:type_name -> meurpg.play.v1.CoverDegree
+	6,   // 221: meurpg.play.v1.SpellTargetResult.cover_source:type_name -> meurpg.play.v1.CoverSource
+	313, // 222: meurpg.play.v1.SpellTargetResult.attack_mode:type_name -> meurpg.play.v1.RollMode
+	314, // 223: meurpg.play.v1.SpellTargetResult.attack_sources:type_name -> meurpg.play.v1.AdvantageSource
+	317, // 224: meurpg.play.v1.SpellTargetResult.lasting_effect:type_name -> meurpg.play.v1.LastingEffectOutcome
+	135, // 225: meurpg.play.v1.SpellTargetResult.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	28,  // 226: meurpg.play.v1.SpellEffectResult.outcome:type_name -> meurpg.play.v1.SpellEffectOutcome
+	29,  // 227: meurpg.play.v1.SpellEffectResult.reason:type_name -> meurpg.play.v1.SpellEffectReason
+	30,  // 228: meurpg.play.v1.SpellEffectResult.gain:type_name -> meurpg.play.v1.SpellEffectGain
+	45,  // 229: meurpg.play.v1.CastSpellResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	184, // 230: meurpg.play.v1.CastSpellResponse.cast:type_name -> meurpg.play.v1.SpellCast
+	169, // 231: meurpg.play.v1.CastSpellResponse.area:type_name -> meurpg.play.v1.SpellArea
+	136, // 232: meurpg.play.v1.CastSpellResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	134, // 233: meurpg.play.v1.CastSpellResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	142, // 234: meurpg.play.v1.CastSpellResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	161, // 235: meurpg.play.v1.SpellCast.slot:type_name -> meurpg.play.v1.SpellSlot
+	181, // 236: meurpg.play.v1.SpellCast.targets:type_name -> meurpg.play.v1.SpellTargetResult
+	120, // 237: meurpg.play.v1.SpellCast.pending_damages:type_name -> meurpg.play.v1.PendingDamage
+	27,  // 238: meurpg.play.v1.SpellCast.effect_kind:type_name -> meurpg.play.v1.SpellEffectKind
+	119, // 239: meurpg.play.v1.SpellCast.pool_roll:type_name -> meurpg.play.v1.DiceRoll
+	161, // 240: meurpg.play.v1.UseReactionRequest.slot:type_name -> meurpg.play.v1.SpellSlot
+	45,  // 241: meurpg.play.v1.UseReactionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	31,  // 242: meurpg.play.v1.UseReactionResponse.outcome:type_name -> meurpg.play.v1.ReactionOutcome
+	120, // 243: meurpg.play.v1.UseReactionResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
+	45,  // 244: meurpg.play.v1.DeclineReactionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 245: meurpg.play.v1.DeclineOpportunityResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 246: meurpg.play.v1.SkipOpportunityResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	119, // 247: meurpg.play.v1.DeathSave.roll:type_name -> meurpg.play.v1.DiceRoll
+	32,  // 248: meurpg.play.v1.DeathSave.outcome:type_name -> meurpg.play.v1.DeathSaveOutcome
+	135, // 249: meurpg.play.v1.DeathSave.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	153, // 250: meurpg.play.v1.DeathSave.hook:type_name -> meurpg.play.v1.HookResult
+	45,  // 251: meurpg.play.v1.RollDeathSaveResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	194, // 252: meurpg.play.v1.RollDeathSaveResponse.death_save:type_name -> meurpg.play.v1.DeathSave
+	142, // 253: meurpg.play.v1.RollDeathSaveResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	45,  // 254: meurpg.play.v1.ConfirmDeathResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	198, // 255: meurpg.play.v1.SetCombatantConditionsRequest.conditions:type_name -> meurpg.play.v1.ConditionList
+	45,  // 256: meurpg.play.v1.SetCombatantConditionsResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 257: meurpg.play.v1.EndConcentrationResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	35,  // 258: meurpg.play.v1.EndCombatEffectRequest.effect:type_name -> meurpg.play.v1.CombatEffect
+	45,  // 259: meurpg.play.v1.EndCombatEffectResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	207, // 260: meurpg.play.v1.ListCombatLogResponse.rounds:type_name -> meurpg.play.v1.CombatLogRound
+	211, // 261: meurpg.play.v1.CombatLogRound.entries:type_name -> meurpg.play.v1.CombatLogEntry
+	318, // 262: meurpg.play.v1.CombatLogStateChange.kind:type_name -> meurpg.play.v1.CombatantStateKind
+	313, // 263: meurpg.play.v1.CombatLogModeChange.suggested_mode:type_name -> meurpg.play.v1.RollMode
+	313, // 264: meurpg.play.v1.CombatLogModeChange.mode:type_name -> meurpg.play.v1.RollMode
+	34,  // 265: meurpg.play.v1.CombatLogWildShape.end_reason:type_name -> meurpg.play.v1.WildShapeEndReason
+	33,  // 266: meurpg.play.v1.CombatLogEntry.kind:type_name -> meurpg.play.v1.CombatLogKind
+	292, // 267: meurpg.play.v1.CombatLogEntry.at:type_name -> google.protobuf.Timestamp
+	21,  // 268: meurpg.play.v1.CombatLogEntry.outcome:type_name -> meurpg.play.v1.AttackOutcome
+	119, // 269: meurpg.play.v1.CombatLogEntry.attack_roll:type_name -> meurpg.play.v1.DiceRoll
+	223, // 270: meurpg.play.v1.CombatLogEntry.damage:type_name -> meurpg.play.v1.CombatLogDamage
+	220, // 271: meurpg.play.v1.CombatLogEntry.spell:type_name -> meurpg.play.v1.CombatLogSpell
+	222, // 272: meurpg.play.v1.CombatLogEntry.death_save:type_name -> meurpg.play.v1.CombatLogDeathSave
+	5,   // 273: meurpg.play.v1.CombatLogEntry.cover:type_name -> meurpg.play.v1.CoverDegree
+	6,   // 274: meurpg.play.v1.CombatLogEntry.cover_source:type_name -> meurpg.play.v1.CoverSource
+	7,   // 275: meurpg.play.v1.CombatLogEntry.jump:type_name -> meurpg.play.v1.JumpKind
+	229, // 276: meurpg.play.v1.CombatLogEntry.trap:type_name -> meurpg.play.v1.TrapFiring
+	210, // 277: meurpg.play.v1.CombatLogEntry.wild_shape:type_name -> meurpg.play.v1.CombatLogWildShape
+	319, // 278: meurpg.play.v1.CombatLogEntry.contest:type_name -> meurpg.play.v1.CombatLogContest
+	219, // 279: meurpg.play.v1.CombatLogEntry.door:type_name -> meurpg.play.v1.CombatLogDoor
+	218, // 280: meurpg.play.v1.CombatLogEntry.monsters:type_name -> meurpg.play.v1.CombatLogMonster
+	213, // 281: meurpg.play.v1.CombatLogEntry.resource:type_name -> meurpg.play.v1.CombatLogResource
+	135, // 282: meurpg.play.v1.CombatLogEntry.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	208, // 283: meurpg.play.v1.CombatLogEntry.state:type_name -> meurpg.play.v1.CombatLogStateChange
+	209, // 284: meurpg.play.v1.CombatLogEntry.mode_change:type_name -> meurpg.play.v1.CombatLogModeChange
+	212, // 285: meurpg.play.v1.CombatLogEntry.effect_end:type_name -> meurpg.play.v1.CombatLogEffectEnd
+	214, // 286: meurpg.play.v1.CombatLogEntry.effect:type_name -> meurpg.play.v1.CombatLogEffect
+	57,  // 287: meurpg.play.v1.CombatLogEntry.hit_rider:type_name -> meurpg.play.v1.CombatLogHitRider
+	154, // 288: meurpg.play.v1.CombatLogEntry.channel_divinity:type_name -> meurpg.play.v1.ChannelDivinityResult
+	56,  // 289: meurpg.play.v1.CombatLogEntry.creature_action:type_name -> meurpg.play.v1.CombatLogCreatureAction
+	215, // 290: meurpg.play.v1.CombatLogEntry.legendary_spent:type_name -> meurpg.play.v1.CombatLogLegendarySpent
+	216, // 291: meurpg.play.v1.CombatLogEntry.recharge:type_name -> meurpg.play.v1.CombatLogRecharge
+	217, // 292: meurpg.play.v1.CombatLogEntry.gear_swapped:type_name -> meurpg.play.v1.CombatLogGearSwapped
+	35,  // 293: meurpg.play.v1.CombatLogEffectEnd.effect:type_name -> meurpg.play.v1.CombatEffect
+	36,  // 294: meurpg.play.v1.CombatLogResource.cure:type_name -> meurpg.play.v1.LayOnHandsCureKind
+	37,  // 295: meurpg.play.v1.CombatLogEffect.change:type_name -> meurpg.play.v1.CombatLogEffectChange
+	301, // 296: meurpg.play.v1.CombatLogEffect.rerolled:type_name -> meurpg.play.v1.Reroll
+	161, // 297: meurpg.play.v1.CombatLogSpell.slot:type_name -> meurpg.play.v1.SpellSlot
+	221, // 298: meurpg.play.v1.CombatLogSpell.targets:type_name -> meurpg.play.v1.CombatLogSpellTarget
+	27,  // 299: meurpg.play.v1.CombatLogSpell.effect_kind:type_name -> meurpg.play.v1.SpellEffectKind
+	119, // 300: meurpg.play.v1.CombatLogSpell.pool_roll:type_name -> meurpg.play.v1.DiceRoll
+	21,  // 301: meurpg.play.v1.CombatLogSpellTarget.outcome:type_name -> meurpg.play.v1.AttackOutcome
+	119, // 302: meurpg.play.v1.CombatLogSpellTarget.attack_roll:type_name -> meurpg.play.v1.DiceRoll
+	180, // 303: meurpg.play.v1.CombatLogSpellTarget.save:type_name -> meurpg.play.v1.SaveResult
+	223, // 304: meurpg.play.v1.CombatLogSpellTarget.damage:type_name -> meurpg.play.v1.CombatLogDamage
+	182, // 305: meurpg.play.v1.CombatLogSpellTarget.effect:type_name -> meurpg.play.v1.SpellEffectResult
+	5,   // 306: meurpg.play.v1.CombatLogSpellTarget.cover:type_name -> meurpg.play.v1.CoverDegree
+	6,   // 307: meurpg.play.v1.CombatLogSpellTarget.cover_source:type_name -> meurpg.play.v1.CoverSource
+	223, // 308: meurpg.play.v1.CombatLogSpellTarget.more_damages:type_name -> meurpg.play.v1.CombatLogDamage
+	119, // 309: meurpg.play.v1.CombatLogDeathSave.roll:type_name -> meurpg.play.v1.DiceRoll
+	32,  // 310: meurpg.play.v1.CombatLogDeathSave.outcome:type_name -> meurpg.play.v1.DeathSaveOutcome
+	153, // 311: meurpg.play.v1.CombatLogDeathSave.hook:type_name -> meurpg.play.v1.HookResult
+	22,  // 312: meurpg.play.v1.CombatLogDamage.status:type_name -> meurpg.play.v1.PendingDamageStatus
+	119, // 313: meurpg.play.v1.CombatLogDamage.roll:type_name -> meurpg.play.v1.DiceRoll
+	20,  // 314: meurpg.play.v1.CombatLogDamage.critical_rule:type_name -> meurpg.play.v1.CriticalDamageRule
+	306, // 315: meurpg.play.v1.CombatLogDamage.parts:type_name -> meurpg.play.v1.DamagePartRoll
+	305, // 316: meurpg.play.v1.CombatLogDamage.steps:type_name -> meurpg.play.v1.DamageStep
+	153, // 317: meurpg.play.v1.CombatLogDamage.hook:type_name -> meurpg.play.v1.HookResult
+	38,  // 318: meurpg.play.v1.HighlightCategory.kind:type_name -> meurpg.play.v1.HighlightKind
+	225, // 319: meurpg.play.v1.HighlightCategory.winners:type_name -> meurpg.play.v1.HighlightWinner
+	226, // 320: meurpg.play.v1.GetCombatHighlightsResponse.categories:type_name -> meurpg.play.v1.HighlightCategory
+	227, // 321: meurpg.play.v1.GetCombatHighlightsResponse.characters:type_name -> meurpg.play.v1.CharacterHighlights
+	230, // 322: meurpg.play.v1.TrapFiring.caught:type_name -> meurpg.play.v1.TrapCaught
+	231, // 323: meurpg.play.v1.TrapCaught.attacks:type_name -> meurpg.play.v1.TrapAttackRoll
+	232, // 324: meurpg.play.v1.TrapCaught.save:type_name -> meurpg.play.v1.TrapSaveRoll
+	233, // 325: meurpg.play.v1.TrapCaught.damages:type_name -> meurpg.play.v1.TrapDamageDone
+	232, // 326: meurpg.play.v1.TrapCaught.saves:type_name -> meurpg.play.v1.TrapSaveRoll
+	119, // 327: meurpg.play.v1.TrapAttackRoll.roll:type_name -> meurpg.play.v1.DiceRoll
+	21,  // 328: meurpg.play.v1.TrapAttackRoll.outcome:type_name -> meurpg.play.v1.AttackOutcome
+	313, // 329: meurpg.play.v1.TrapAttackRoll.mode:type_name -> meurpg.play.v1.RollMode
+	314, // 330: meurpg.play.v1.TrapAttackRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
+	26,  // 331: meurpg.play.v1.TrapSaveRoll.outcome:type_name -> meurpg.play.v1.SaveOutcome
+	119, // 332: meurpg.play.v1.TrapSaveRoll.roll:type_name -> meurpg.play.v1.DiceRoll
+	313, // 333: meurpg.play.v1.TrapSaveRoll.mode:type_name -> meurpg.play.v1.RollMode
+	314, // 334: meurpg.play.v1.TrapSaveRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
+	22,  // 335: meurpg.play.v1.TrapDamageDone.status:type_name -> meurpg.play.v1.PendingDamageStatus
+	119, // 336: meurpg.play.v1.TrapDamageDone.roll:type_name -> meurpg.play.v1.DiceRoll
+	39,  // 337: meurpg.play.v1.ReactionWindow.kind:type_name -> meurpg.play.v1.ReactionKind
+	40,  // 338: meurpg.play.v1.ReactionWindow.status:type_name -> meurpg.play.v1.ReactionWindowStatus
+	41,  // 339: meurpg.play.v1.ReactionWindow.closed_reason:type_name -> meurpg.play.v1.ReactionClosedReason
+	236, // 340: meurpg.play.v1.ReactionWindow.trigger:type_name -> meurpg.play.v1.ReactionTrigger
+	238, // 341: meurpg.play.v1.ReactionWindow.shield:type_name -> meurpg.play.v1.ShieldPrompt
+	239, // 342: meurpg.play.v1.ReactionWindow.uncanny_dodge:type_name -> meurpg.play.v1.UncannyDodgePrompt
+	240, // 343: meurpg.play.v1.ReactionWindow.hellish_rebuke:type_name -> meurpg.play.v1.HellishRebukePrompt
+	243, // 344: meurpg.play.v1.ReactionWindow.counterspell:type_name -> meurpg.play.v1.CounterspellPrompt
+	244, // 345: meurpg.play.v1.ReactionWindow.cutting_words:type_name -> meurpg.play.v1.CuttingWordsPrompt
+	251, // 346: meurpg.play.v1.ReactionWindow.deflect_missiles:type_name -> meurpg.play.v1.DeflectMissilesPrompt
+	254, // 347: meurpg.play.v1.ReactionWindow.feather_fall:type_name -> meurpg.play.v1.FeatherFallPrompt
+	256, // 348: meurpg.play.v1.ReactionWindow.concentration_save:type_name -> meurpg.play.v1.ConcentrationSavePrompt
+	258, // 349: meurpg.play.v1.ReactionWindow.master_check:type_name -> meurpg.play.v1.MasterCheckPrompt
+	242, // 350: meurpg.play.v1.ReactionWindow.hellish_rebuke_save:type_name -> meurpg.play.v1.HellishRebukeSavePrompt
+	252, // 351: meurpg.play.v1.ReactionWindow.deflect_throw:type_name -> meurpg.play.v1.DeflectMissilesThrowPrompt
+	257, // 352: meurpg.play.v1.ReactionWindow.contest:type_name -> meurpg.play.v1.ContestPrompt
+	245, // 353: meurpg.play.v1.ReactionWindow.maneuver_reduce:type_name -> meurpg.play.v1.ManeuverReducePrompt
+	246, // 354: meurpg.play.v1.ReactionWindow.protection:type_name -> meurpg.play.v1.ProtectionPrompt
+	248, // 355: meurpg.play.v1.ReactionWindow.legendary_resistance:type_name -> meurpg.play.v1.LegendaryResistancePrompt
+	247, // 356: meurpg.play.v1.ReactionWindow.parry:type_name -> meurpg.play.v1.ParryPrompt
+	255, // 357: meurpg.play.v1.ReactionWindow.slow_fall:type_name -> meurpg.play.v1.SlowFallPrompt
+	320, // 358: meurpg.play.v1.ReactionWindow.effect_save:type_name -> meurpg.play.v1.EffectSavePrompt
+	43,  // 359: meurpg.play.v1.ReactionTrigger.roll_kind:type_name -> meurpg.play.v1.ReactionRollKind
+	237, // 360: meurpg.play.v1.ReactionTrigger.slot_effects:type_name -> meurpg.play.v1.SlotEffect
+	295, // 361: meurpg.play.v1.SlotEffect.slot:type_name -> meurpg.rules.v1.SlotChoice
+	295, // 362: meurpg.play.v1.ShieldPrompt.slots:type_name -> meurpg.rules.v1.SlotChoice
+	241, // 363: meurpg.play.v1.HellishRebukePrompt.options:type_name -> meurpg.play.v1.HellishRebukeOption
+	295, // 364: meurpg.play.v1.HellishRebukeOption.slot:type_name -> meurpg.rules.v1.SlotChoice
+	295, // 365: meurpg.play.v1.CounterspellPrompt.slot_options:type_name -> meurpg.rules.v1.SlotChoice
+	43,  // 366: meurpg.play.v1.CuttingWordsPrompt.roll_kind:type_name -> meurpg.play.v1.ReactionRollKind
+	250, // 367: meurpg.play.v1.ManeuverReducePrompt.options:type_name -> meurpg.play.v1.ManeuverReduceOption
+	249, // 368: meurpg.play.v1.LegendaryResistancePrompt.offers:type_name -> meurpg.play.v1.LegendaryResistanceOffer
+	253, // 369: meurpg.play.v1.FeatherFallPrompt.falling:type_name -> meurpg.play.v1.FallingCreature
+	295, // 370: meurpg.play.v1.FeatherFallPrompt.slot_options:type_name -> meurpg.rules.v1.SlotChoice
+	42,  // 371: meurpg.play.v1.AnswerReactionRequest.answer:type_name -> meurpg.play.v1.ReactionChoice
+	161, // 372: meurpg.play.v1.AnswerReactionRequest.slot:type_name -> meurpg.play.v1.SpellSlot
+	45,  // 373: meurpg.play.v1.MarkReactionRollingResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 374: meurpg.play.v1.AnswerReactionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	263, // 375: meurpg.play.v1.AnswerReactionResponse.result:type_name -> meurpg.play.v1.ReactionResult
+	142, // 376: meurpg.play.v1.AnswerReactionResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	39,  // 377: meurpg.play.v1.ReactionResult.kind:type_name -> meurpg.play.v1.ReactionKind
+	266, // 378: meurpg.play.v1.ReactionResult.shield:type_name -> meurpg.play.v1.ShieldResult
+	267, // 379: meurpg.play.v1.ReactionResult.uncanny_dodge:type_name -> meurpg.play.v1.UncannyDodgeResult
+	268, // 380: meurpg.play.v1.ReactionResult.hellish_rebuke:type_name -> meurpg.play.v1.HellishRebukeResult
+	269, // 381: meurpg.play.v1.ReactionResult.counterspell:type_name -> meurpg.play.v1.CounterspellResult
+	270, // 382: meurpg.play.v1.ReactionResult.cutting_words:type_name -> meurpg.play.v1.CuttingWordsResult
+	274, // 383: meurpg.play.v1.ReactionResult.deflect_missiles:type_name -> meurpg.play.v1.DeflectMissilesResult
+	275, // 384: meurpg.play.v1.ReactionResult.feather_fall:type_name -> meurpg.play.v1.FeatherFallResult
+	273, // 385: meurpg.play.v1.ReactionResult.maneuver_reduce:type_name -> meurpg.play.v1.ManeuverReduceResult
+	271, // 386: meurpg.play.v1.ReactionResult.protection:type_name -> meurpg.play.v1.ProtectionResult
+	272, // 387: meurpg.play.v1.ReactionResult.legendary_resistance:type_name -> meurpg.play.v1.LegendaryResistanceResult
+	265, // 388: meurpg.play.v1.ReactionResult.parry:type_name -> meurpg.play.v1.ParryResult
+	264, // 389: meurpg.play.v1.ReactionResult.slow_fall:type_name -> meurpg.play.v1.SlowFallResult
+	119, // 390: meurpg.play.v1.HellishRebukeResult.save:type_name -> meurpg.play.v1.DiceRoll
+	119, // 391: meurpg.play.v1.CounterspellResult.check:type_name -> meurpg.play.v1.DiceRoll
+	119, // 392: meurpg.play.v1.CuttingWordsResult.die:type_name -> meurpg.play.v1.DiceRoll
+	21,  // 393: meurpg.play.v1.CuttingWordsResult.outcome:type_name -> meurpg.play.v1.AttackOutcome
+	43,  // 394: meurpg.play.v1.CuttingWordsResult.roll_kind:type_name -> meurpg.play.v1.ReactionRollKind
+	119, // 395: meurpg.play.v1.ManeuverReduceResult.reduction:type_name -> meurpg.play.v1.DiceRoll
+	119, // 396: meurpg.play.v1.DeflectMissilesResult.reduction:type_name -> meurpg.play.v1.DiceRoll
+	45,  // 397: meurpg.play.v1.ResolveConcentrationSaveResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	278, // 398: meurpg.play.v1.ResolveConcentrationSaveResponse.result:type_name -> meurpg.play.v1.ConcentrationSaveResult
+	136, // 399: meurpg.play.v1.ResolveConcentrationSaveResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	134, // 400: meurpg.play.v1.ResolveConcentrationSaveResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	142, // 401: meurpg.play.v1.ResolveConcentrationSaveResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	119, // 402: meurpg.play.v1.ConcentrationSaveResult.save:type_name -> meurpg.play.v1.DiceRoll
+	135, // 403: meurpg.play.v1.ConcentrationSaveResult.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	313, // 404: meurpg.play.v1.RequestRollModeRequest.roll_mode:type_name -> meurpg.play.v1.RollMode
+	45,  // 405: meurpg.play.v1.RequestRollModeResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	293, // 406: meurpg.play.v1.RequestRollModeResponse.request:type_name -> meurpg.play.v1.RollModeRequest
+	313, // 407: meurpg.play.v1.AnswerRollModeRequestRequest.decided_mode:type_name -> meurpg.play.v1.RollMode
+	45,  // 408: meurpg.play.v1.AnswerRollModeRequestResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 409: meurpg.play.v1.CancelRollModeRequestResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 410: meurpg.play.v1.RemoveDamagePartResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	120, // 411: meurpg.play.v1.RemoveDamagePartResponse.pending_damage:type_name -> meurpg.play.v1.PendingDamage
+	45,  // 412: meurpg.play.v1.AnswerRageEndResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	45,  // 413: meurpg.play.v1.EndRageResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	69,  // 414: meurpg.play.v1.CombatService.StartEncounter:input_type -> meurpg.play.v1.StartEncounterRequest
+	71,  // 415: meurpg.play.v1.CombatService.GetStartRoster:input_type -> meurpg.play.v1.GetStartRosterRequest
+	75,  // 416: meurpg.play.v1.CombatService.GetEncounter:input_type -> meurpg.play.v1.GetEncounterRequest
+	77,  // 417: meurpg.play.v1.CombatService.SubmitInitiative:input_type -> meurpg.play.v1.SubmitInitiativeRequest
+	79,  // 418: meurpg.play.v1.CombatService.SetInitiativeOrder:input_type -> meurpg.play.v1.SetInitiativeOrderRequest
+	81,  // 419: meurpg.play.v1.CombatService.BeginCombat:input_type -> meurpg.play.v1.BeginCombatRequest
+	83,  // 420: meurpg.play.v1.CombatService.EndTurn:input_type -> meurpg.play.v1.EndTurnRequest
+	85,  // 421: meurpg.play.v1.CombatService.MoveCombatant:input_type -> meurpg.play.v1.MoveCombatantRequest
+	95,  // 422: meurpg.play.v1.CombatService.GetMoveOptions:input_type -> meurpg.play.v1.GetMoveOptionsRequest
+	87,  // 423: meurpg.play.v1.CombatService.SpendMovement:input_type -> meurpg.play.v1.SpendMovementRequest
+	88,  // 424: meurpg.play.v1.CombatService.StandUp:input_type -> meurpg.play.v1.StandUpRequest
+	91,  // 425: meurpg.play.v1.CombatService.OfferOpportunity:input_type -> meurpg.play.v1.OfferOpportunityRequest
+	93,  // 426: meurpg.play.v1.CombatService.WithdrawOpportunity:input_type -> meurpg.play.v1.WithdrawOpportunityRequest
+	100, // 427: meurpg.play.v1.CombatService.SetCombatantSide:input_type -> meurpg.play.v1.SetCombatantSideRequest
+	102, // 428: meurpg.play.v1.CombatService.SetCombatantCover:input_type -> meurpg.play.v1.SetCombatantCoverRequest
+	104, // 429: meurpg.play.v1.CombatService.SetCombatantHidden:input_type -> meurpg.play.v1.SetCombatantHiddenRequest
+	106, // 430: meurpg.play.v1.CombatService.SetMonsterReactionMode:input_type -> meurpg.play.v1.SetMonsterReactionModeRequest
+	109, // 431: meurpg.play.v1.CombatService.SetSunlight:input_type -> meurpg.play.v1.SetSunlightRequest
+	111, // 432: meurpg.play.v1.CombatService.AddCombatants:input_type -> meurpg.play.v1.AddCombatantsRequest
+	113, // 433: meurpg.play.v1.CombatService.AddMonsters:input_type -> meurpg.play.v1.AddMonstersRequest
+	115, // 434: meurpg.play.v1.CombatService.RemoveCombatant:input_type -> meurpg.play.v1.RemoveCombatantRequest
+	117, // 435: meurpg.play.v1.CombatService.EndEncounter:input_type -> meurpg.play.v1.EndEncounterRequest
+	121, // 436: meurpg.play.v1.CombatService.GetTurnOptions:input_type -> meurpg.play.v1.GetTurnOptionsRequest
+	130, // 437: meurpg.play.v1.CombatService.RollAttack:input_type -> meurpg.play.v1.RollAttackRequest
+	144, // 438: meurpg.play.v1.CombatService.RollDamage:input_type -> meurpg.play.v1.RollDamageRequest
+	146, // 439: meurpg.play.v1.CombatService.ApplyPendingDamage:input_type -> meurpg.play.v1.ApplyPendingDamageRequest
+	148, // 440: meurpg.play.v1.CombatService.DiscardPendingDamage:input_type -> meurpg.play.v1.DiscardPendingDamageRequest
+	150, // 441: meurpg.play.v1.CombatService.TakeAction:input_type -> meurpg.play.v1.TakeActionRequest
+	157, // 442: meurpg.play.v1.CombatService.AdjustCombatantHitPoints:input_type -> meurpg.play.v1.AdjustCombatantHitPointsRequest
+	159, // 443: meurpg.play.v1.CombatService.UndoLastAction:input_type -> meurpg.play.v1.UndoLastActionRequest
+	163, // 444: meurpg.play.v1.CombatService.CastSpell:input_type -> meurpg.play.v1.CastSpellRequest
+	174, // 445: meurpg.play.v1.CombatService.PreviewSpellArea:input_type -> meurpg.play.v1.PreviewSpellAreaRequest
+	170, // 446: meurpg.play.v1.CombatService.MoveSpellZone:input_type -> meurpg.play.v1.MoveSpellZoneRequest
+	171, // 447: meurpg.play.v1.CombatService.EndSpellZone:input_type -> meurpg.play.v1.EndSpellZoneRequest
+	177, // 448: meurpg.play.v1.CombatService.ResolveHiddenReveal:input_type -> meurpg.play.v1.ResolveHiddenRevealRequest
+	185, // 449: meurpg.play.v1.CombatService.UseReaction:input_type -> meurpg.play.v1.UseReactionRequest
+	187, // 450: meurpg.play.v1.CombatService.DeclineReaction:input_type -> meurpg.play.v1.DeclineReactionRequest
+	189, // 451: meurpg.play.v1.CombatService.DeclineOpportunity:input_type -> meurpg.play.v1.DeclineOpportunityRequest
+	191, // 452: meurpg.play.v1.CombatService.SkipOpportunity:input_type -> meurpg.play.v1.SkipOpportunityRequest
+	193, // 453: meurpg.play.v1.CombatService.RollDeathSave:input_type -> meurpg.play.v1.RollDeathSaveRequest
+	196, // 454: meurpg.play.v1.CombatService.ConfirmDeath:input_type -> meurpg.play.v1.ConfirmDeathRequest
+	199, // 455: meurpg.play.v1.CombatService.SetCombatantConditions:input_type -> meurpg.play.v1.SetCombatantConditionsRequest
+	201, // 456: meurpg.play.v1.CombatService.EndConcentration:input_type -> meurpg.play.v1.EndConcentrationRequest
+	203, // 457: meurpg.play.v1.CombatService.EndCombatEffect:input_type -> meurpg.play.v1.EndCombatEffectRequest
+	259, // 458: meurpg.play.v1.CombatService.AnswerReaction:input_type -> meurpg.play.v1.AnswerReactionRequest
+	260, // 459: meurpg.play.v1.CombatService.MarkReactionRolling:input_type -> meurpg.play.v1.MarkReactionRollingRequest
+	276, // 460: meurpg.play.v1.CombatService.ResolveConcentrationSave:input_type -> meurpg.play.v1.ResolveConcentrationSaveRequest
+	205, // 461: meurpg.play.v1.CombatService.ListCombatLog:input_type -> meurpg.play.v1.ListCombatLogRequest
+	224, // 462: meurpg.play.v1.CombatService.GetCombatHighlights:input_type -> meurpg.play.v1.GetCombatHighlightsRequest
+	279, // 463: meurpg.play.v1.CombatService.RequestRollMode:input_type -> meurpg.play.v1.RequestRollModeRequest
+	281, // 464: meurpg.play.v1.CombatService.AnswerRollModeRequest:input_type -> meurpg.play.v1.AnswerRollModeRequestRequest
+	283, // 465: meurpg.play.v1.CombatService.CancelRollModeRequest:input_type -> meurpg.play.v1.CancelRollModeRequestRequest
+	285, // 466: meurpg.play.v1.CombatService.RemoveDamagePart:input_type -> meurpg.play.v1.RemoveDamagePartRequest
+	287, // 467: meurpg.play.v1.CombatService.AnswerRageEnd:input_type -> meurpg.play.v1.AnswerRageEndRequest
+	289, // 468: meurpg.play.v1.CombatService.EndRage:input_type -> meurpg.play.v1.EndRageRequest
+	48,  // 469: meurpg.play.v1.CombatService.UseHitRider:input_type -> meurpg.play.v1.UseHitRiderRequest
+	50,  // 470: meurpg.play.v1.CombatService.UseCreatureAction:input_type -> meurpg.play.v1.UseCreatureActionRequest
+	53,  // 471: meurpg.play.v1.CombatService.SpendLegendaryAction:input_type -> meurpg.play.v1.SpendLegendaryActionRequest
+	74,  // 472: meurpg.play.v1.CombatService.StartEncounter:output_type -> meurpg.play.v1.StartEncounterResponse
+	73,  // 473: meurpg.play.v1.CombatService.GetStartRoster:output_type -> meurpg.play.v1.GetStartRosterResponse
+	76,  // 474: meurpg.play.v1.CombatService.GetEncounter:output_type -> meurpg.play.v1.GetEncounterResponse
+	78,  // 475: meurpg.play.v1.CombatService.SubmitInitiative:output_type -> meurpg.play.v1.SubmitInitiativeResponse
+	80,  // 476: meurpg.play.v1.CombatService.SetInitiativeOrder:output_type -> meurpg.play.v1.SetInitiativeOrderResponse
+	82,  // 477: meurpg.play.v1.CombatService.BeginCombat:output_type -> meurpg.play.v1.BeginCombatResponse
+	84,  // 478: meurpg.play.v1.CombatService.EndTurn:output_type -> meurpg.play.v1.EndTurnResponse
+	86,  // 479: meurpg.play.v1.CombatService.MoveCombatant:output_type -> meurpg.play.v1.MoveCombatantResponse
+	96,  // 480: meurpg.play.v1.CombatService.GetMoveOptions:output_type -> meurpg.play.v1.GetMoveOptionsResponse
+	90,  // 481: meurpg.play.v1.CombatService.SpendMovement:output_type -> meurpg.play.v1.SpendMovementResponse
+	89,  // 482: meurpg.play.v1.CombatService.StandUp:output_type -> meurpg.play.v1.StandUpResponse
+	92,  // 483: meurpg.play.v1.CombatService.OfferOpportunity:output_type -> meurpg.play.v1.OfferOpportunityResponse
+	94,  // 484: meurpg.play.v1.CombatService.WithdrawOpportunity:output_type -> meurpg.play.v1.WithdrawOpportunityResponse
+	101, // 485: meurpg.play.v1.CombatService.SetCombatantSide:output_type -> meurpg.play.v1.SetCombatantSideResponse
+	103, // 486: meurpg.play.v1.CombatService.SetCombatantCover:output_type -> meurpg.play.v1.SetCombatantCoverResponse
+	105, // 487: meurpg.play.v1.CombatService.SetCombatantHidden:output_type -> meurpg.play.v1.SetCombatantHiddenResponse
+	107, // 488: meurpg.play.v1.CombatService.SetMonsterReactionMode:output_type -> meurpg.play.v1.SetMonsterReactionModeResponse
+	110, // 489: meurpg.play.v1.CombatService.SetSunlight:output_type -> meurpg.play.v1.SetSunlightResponse
+	112, // 490: meurpg.play.v1.CombatService.AddCombatants:output_type -> meurpg.play.v1.AddCombatantsResponse
+	114, // 491: meurpg.play.v1.CombatService.AddMonsters:output_type -> meurpg.play.v1.AddMonstersResponse
+	116, // 492: meurpg.play.v1.CombatService.RemoveCombatant:output_type -> meurpg.play.v1.RemoveCombatantResponse
+	118, // 493: meurpg.play.v1.CombatService.EndEncounter:output_type -> meurpg.play.v1.EndEncounterResponse
+	122, // 494: meurpg.play.v1.CombatService.GetTurnOptions:output_type -> meurpg.play.v1.GetTurnOptionsResponse
+	143, // 495: meurpg.play.v1.CombatService.RollAttack:output_type -> meurpg.play.v1.RollAttackResponse
+	145, // 496: meurpg.play.v1.CombatService.RollDamage:output_type -> meurpg.play.v1.RollDamageResponse
+	147, // 497: meurpg.play.v1.CombatService.ApplyPendingDamage:output_type -> meurpg.play.v1.ApplyPendingDamageResponse
+	149, // 498: meurpg.play.v1.CombatService.DiscardPendingDamage:output_type -> meurpg.play.v1.DiscardPendingDamageResponse
+	152, // 499: meurpg.play.v1.CombatService.TakeAction:output_type -> meurpg.play.v1.TakeActionResponse
+	158, // 500: meurpg.play.v1.CombatService.AdjustCombatantHitPoints:output_type -> meurpg.play.v1.AdjustCombatantHitPointsResponse
+	160, // 501: meurpg.play.v1.CombatService.UndoLastAction:output_type -> meurpg.play.v1.UndoLastActionResponse
+	183, // 502: meurpg.play.v1.CombatService.CastSpell:output_type -> meurpg.play.v1.CastSpellResponse
+	175, // 503: meurpg.play.v1.CombatService.PreviewSpellArea:output_type -> meurpg.play.v1.PreviewSpellAreaResponse
+	173, // 504: meurpg.play.v1.CombatService.MoveSpellZone:output_type -> meurpg.play.v1.MoveSpellZoneResponse
+	172, // 505: meurpg.play.v1.CombatService.EndSpellZone:output_type -> meurpg.play.v1.EndSpellZoneResponse
+	178, // 506: meurpg.play.v1.CombatService.ResolveHiddenReveal:output_type -> meurpg.play.v1.ResolveHiddenRevealResponse
+	186, // 507: meurpg.play.v1.CombatService.UseReaction:output_type -> meurpg.play.v1.UseReactionResponse
+	188, // 508: meurpg.play.v1.CombatService.DeclineReaction:output_type -> meurpg.play.v1.DeclineReactionResponse
+	190, // 509: meurpg.play.v1.CombatService.DeclineOpportunity:output_type -> meurpg.play.v1.DeclineOpportunityResponse
+	192, // 510: meurpg.play.v1.CombatService.SkipOpportunity:output_type -> meurpg.play.v1.SkipOpportunityResponse
+	195, // 511: meurpg.play.v1.CombatService.RollDeathSave:output_type -> meurpg.play.v1.RollDeathSaveResponse
+	197, // 512: meurpg.play.v1.CombatService.ConfirmDeath:output_type -> meurpg.play.v1.ConfirmDeathResponse
+	200, // 513: meurpg.play.v1.CombatService.SetCombatantConditions:output_type -> meurpg.play.v1.SetCombatantConditionsResponse
+	202, // 514: meurpg.play.v1.CombatService.EndConcentration:output_type -> meurpg.play.v1.EndConcentrationResponse
+	204, // 515: meurpg.play.v1.CombatService.EndCombatEffect:output_type -> meurpg.play.v1.EndCombatEffectResponse
+	262, // 516: meurpg.play.v1.CombatService.AnswerReaction:output_type -> meurpg.play.v1.AnswerReactionResponse
+	261, // 517: meurpg.play.v1.CombatService.MarkReactionRolling:output_type -> meurpg.play.v1.MarkReactionRollingResponse
+	277, // 518: meurpg.play.v1.CombatService.ResolveConcentrationSave:output_type -> meurpg.play.v1.ResolveConcentrationSaveResponse
+	206, // 519: meurpg.play.v1.CombatService.ListCombatLog:output_type -> meurpg.play.v1.ListCombatLogResponse
+	228, // 520: meurpg.play.v1.CombatService.GetCombatHighlights:output_type -> meurpg.play.v1.GetCombatHighlightsResponse
+	280, // 521: meurpg.play.v1.CombatService.RequestRollMode:output_type -> meurpg.play.v1.RequestRollModeResponse
+	282, // 522: meurpg.play.v1.CombatService.AnswerRollModeRequest:output_type -> meurpg.play.v1.AnswerRollModeRequestResponse
+	284, // 523: meurpg.play.v1.CombatService.CancelRollModeRequest:output_type -> meurpg.play.v1.CancelRollModeRequestResponse
+	286, // 524: meurpg.play.v1.CombatService.RemoveDamagePart:output_type -> meurpg.play.v1.RemoveDamagePartResponse
+	288, // 525: meurpg.play.v1.CombatService.AnswerRageEnd:output_type -> meurpg.play.v1.AnswerRageEndResponse
+	290, // 526: meurpg.play.v1.CombatService.EndRage:output_type -> meurpg.play.v1.EndRageResponse
+	49,  // 527: meurpg.play.v1.CombatService.UseHitRider:output_type -> meurpg.play.v1.UseHitRiderResponse
+	55,  // 528: meurpg.play.v1.CombatService.UseCreatureAction:output_type -> meurpg.play.v1.UseCreatureActionResponse
+	54,  // 529: meurpg.play.v1.CombatService.SpendLegendaryAction:output_type -> meurpg.play.v1.SpendLegendaryActionResponse
+	472, // [472:530] is the sub-list for method output_type
+	414, // [414:472] is the sub-list for method input_type
+	414, // [414:414] is the sub-list for extension type_name
+	414, // [414:414] is the sub-list for extension extendee
+	0,   // [0:414] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_combat_proto_init() }
@@ -30231,63 +30623,63 @@ func file_meurpg_play_v1_combat_proto_init() {
 		(*SubmitInitiativeRequest_RollInApp)(nil),
 		(*SubmitInitiativeRequest_D20Face)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[66].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[72].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[73].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[82].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[83].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[69].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[75].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[76].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[85].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[86].OneofWrappers = []any{
 		(*RollAttackRequest_RollInApp)(nil),
 		(*RollAttackRequest_D20Face)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[84].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[95].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[87].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[98].OneofWrappers = []any{
 		(*HeldRollOffer_Lucky)(nil),
 		(*HeldRollOffer_Die)(nil),
 		(*HeldRollOffer_Indomitable)(nil),
 		(*HeldRollOffer_StrokeOfLuck)(nil),
 		(*HeldRollOffer_Reroll)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[97].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[100].OneofWrappers = []any{
 		(*RollDamageRequest_RollInApp)(nil),
 		(*RollDamageRequest_TypedSum)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[99].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[103].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[102].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[106].OneofWrappers = []any{
 		(*TakeActionRequest_RollInApp)(nil),
 		(*TakeActionRequest_TypedSum)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[105].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[109].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[110].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[108].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[112].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[113].OneofWrappers = []any{
 		(*AdjustCombatantHitPointsRequest_Damage)(nil),
 		(*AdjustCombatantHitPointsRequest_Heal)(nil),
 		(*AdjustCombatantHitPointsRequest_HitPoints)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[116].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[119].OneofWrappers = []any{
 		(*CastSpellRequest_RollInApp)(nil),
 		(*CastSpellRequest_D20Face)(nil),
 		(*CastSpellRequest_PoolSum)(nil),
 		(*CastSpellRequest_Origin)(nil),
 		(*CastSpellRequest_Direction)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[127].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[130].OneofWrappers = []any{
 		(*PreviewSpellAreaRequest_Origin)(nil),
 		(*PreviewSpellAreaRequest_Direction)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[135].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[137].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[146].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[138].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[140].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[149].OneofWrappers = []any{
 		(*RollDeathSaveRequest_RollInApp)(nil),
 		(*RollDeathSaveRequest_D20Face)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[152].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[164].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[166].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[155].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[167].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[173].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[174].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[169].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[170].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[176].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[188].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[177].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[179].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[191].OneofWrappers = []any{
 		(*ReactionWindow_Shield)(nil),
 		(*ReactionWindow_UncannyDodge)(nil),
 		(*ReactionWindow_HellishRebuke)(nil),
@@ -30307,17 +30699,17 @@ func file_meurpg_play_v1_combat_proto_init() {
 		(*ReactionWindow_SlowFall)(nil),
 		(*ReactionWindow_EffectSave)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[189].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[193].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[192].OneofWrappers = []any{}
 	file_meurpg_play_v1_combat_proto_msgTypes[196].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[197].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[202].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[206].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[212].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[199].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[200].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[205].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[209].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[215].OneofWrappers = []any{
 		(*AnswerReactionRequest_RollInApp)(nil),
 		(*AnswerReactionRequest_Typed)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[216].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[219].OneofWrappers = []any{
 		(*ReactionResult_Shield)(nil),
 		(*ReactionResult_UncannyDodge)(nil),
 		(*ReactionResult_HellishRebuke)(nil),
@@ -30331,8 +30723,8 @@ func file_meurpg_play_v1_combat_proto_init() {
 		(*ReactionResult_Parry)(nil),
 		(*ReactionResult_SlowFall)(nil),
 	}
-	file_meurpg_play_v1_combat_proto_msgTypes[217].OneofWrappers = []any{}
-	file_meurpg_play_v1_combat_proto_msgTypes[229].OneofWrappers = []any{
+	file_meurpg_play_v1_combat_proto_msgTypes[220].OneofWrappers = []any{}
+	file_meurpg_play_v1_combat_proto_msgTypes[232].OneofWrappers = []any{
 		(*ResolveConcentrationSaveRequest_RollInApp)(nil),
 		(*ResolveConcentrationSaveRequest_D20Face)(nil),
 		(*ResolveConcentrationSaveRequest_HandToMaster)(nil),
@@ -30343,8 +30735,8 @@ func file_meurpg_play_v1_combat_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_combat_proto_rawDesc), len(file_meurpg_play_v1_combat_proto_rawDesc)),
-			NumEnums:      42,
-			NumMessages:   244,
+			NumEnums:      44,
+			NumMessages:   247,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

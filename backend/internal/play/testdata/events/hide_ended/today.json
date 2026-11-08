@@ -540,6 +540,9 @@
     "event": "x"
   },
   "parry_ask": true,
+  "sunlight_on": true,
+  "sunlight_scope": "x",
+  "sunlight_squares": 1,
   "mode": "x",
   "delta": 1,
   "col": 1,

@@ -509,6 +509,8 @@ O texto de um marco planejado que foi alcançado e depois desfeito fica no hist�
 Os PV de uma criatura são um número só para o dono e o mestre. Os outros jogadores recebem a palavra de estado na ordem, no registro e nos eventos ao vivo, e nunca a CA, as ações ou o movimento. A iniciativa, o dono, o tipo e o nome de uma criatura são públicos. O painel de criaturas de outro jogador não existe.
 Um druida em Forma Selvagem tem uma reserva separada de PV da fera, um número só para o mestre e o jogador do druida. Todos que veem o combatente sabem qual fera é. Os olhos do familiar são só do mestre e do dono, embora as condições que eles dão sejam rótulos públicos.
 
+**Luz do sol no combate** (RN-29). Se o mestre ligou o sol, onde ele alcança (o mapa todo ou os quadrados que ele pintou), qual criatura está nele e qual traço de luz do sol ela tem são só do mestre, num mapa que o jogador vê em parte ou não vê. O jogador lê, no máximo, "Outra fonte" como a fonte de uma rolagem que o sol mudou.
+
 **Monstros do bestiário** (RN-29).
 O app nunca diz ao jogador qual criatura um monstro é, além do nome que o mestre deu. A criatura, o ND e os PV rolados são do mestre.
 O mesmo vale para as ações dele (RN-38 a RN-42): a ficha, as CDs, a CD de fuga, os testes que os alvos do NPC rolam para o mestre e a chave da ação nunca chegam a um jogador. O jogador lê o nome da ação, se cada alvo que ele vê passou ou falhou e o dano que toma; a oferta de efeito extra é só do mestre.
@@ -943,6 +945,7 @@ Um monstro do bestiário ([MR-042](historias.md#mr-042-bestiário)) entra no com
 O mestre o põe com "Pôr no combate", com os pontos de vida médios ou rolados, e a iniciativa de cada um.
 O jogador lê só a palavra de estado (RN-20), nunca pontos de vida, classe de armadura nem iniciativa, e um monstro escondido não chega a ele.
 O mestre lê a ficha da criatura do SRD ("Ficha da criatura"), o nível de desafio (ND) e os pontos de vida rolados; a linha do registro sobre eles é só do mestre.
+Uma criatura com Sensibilidade à Luz do Sol (drider, drow, duergar, kobold, espectro, wight, aparição) ou Fraqueza à Luz do Sol (sombra) rola com desvantagem enquanto está na luz do sol que o mestre ligou: a Sensibilidade nos ataques e nos testes de Percepção que dependem da visão, a Fraqueza nos ataques, nos testes de atributo e nas salvaguardas. A Escuridão vence o sol. O app trata todo teste de Sabedoria (Percepção) como dependente da visão para a Sensibilidade à Luz do Sol; quando um teste depende da audição ou do olfato, o mestre concede ou tira a desvantagem à mão. A frase da rolagem nomeia o traço e é só do mestre (RN-20).
 Os ataques da criatura seguem a regra de crítico da mesa (RN-24), e o Ataque Múltiplo segue o SRD 5.1: o mestre joga a rotina da criatura, um ataque depois do outro, cada um com o próprio alvo; o servidor conta os ataques e recusa o que vem depois do último, e a ação conta como usada quando a rotina termina ou o mestre a encerra.
 O XP por inimigos soma o ND de cada monstro: 3 Bandidos, ND 1/8, dão 3 × 25 = 75 XP, 18 para cada um de quatro jogadores e 3 de sobra.
 "Criar NPC" no bestiário faz uma ficha de NPC com nome a partir de uma criatura.

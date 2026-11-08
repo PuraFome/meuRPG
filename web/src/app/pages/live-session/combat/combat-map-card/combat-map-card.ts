@@ -1,8 +1,12 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, computed, effect, input, model, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { CombatantKind, type Encounter } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import {
+  CombatantKind,
+  type Encounter,
+  SunlightScope,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { ownCombatant } from '../../../../core/combat/combat-view';
 import { metersFixed } from '../../../../core/units';
@@ -21,6 +25,10 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 import { ZoneLayer } from '../../../../shared/combat-map/zone-layer/zone-layer';
 import { ZoneLetter } from '../../../../shared/combat-map/zone-layer/zone-letter';
 import { ZoneSwatch } from '../../../../shared/combat-map/zone-layer/zone-swatch';
+import { SunlightLayer } from '../../../../shared/combat-map/sunlight-layer/sunlight-layer';
+import { isTheatre } from '../../../../core/combat/theatre';
+import type { PaintTool, SunChange } from '../../../../core/combat/sunlight-paint';
+import { SunlightControls } from './sunlight-controls';
 import { zoneLegend } from '../../../../core/combat/zone-pattern';
 import { zoneViews } from '../../../../core/combat/zones';
 import { AreaOverlay } from '../../../../shared/area-picker/area-overlay';
@@ -60,6 +68,8 @@ const CROP_MAX_SHARE = 0.6;
     MapLayersLegend,
     MatButtonModule,
     MatIconModule,
+    SunlightControls,
+    SunlightLayer,
     ZoneLayer,
     ZoneLetter,
     ZoneSwatch,
@@ -111,6 +121,14 @@ export class CombatMapCard {
 
   /** The master taps a door of the map (E10-05 10): the page opens the door's sheet. Not on the phone's cropped preview. */
   readonly doorPick = output<DoorSquare>();
+  /** Paint mode of the sun (#704): the page keeps it so the bar's "Próximo turno" waits until "Pronto". */
+  readonly painting = model(false);
+  /** The master asked for another scope, or painted or erased squares: the page sends it. */
+  readonly sunlightChange = output<{
+    scope?: SunlightScope;
+    addSquares?: readonly { col: number; row: number }[];
+    removeSquares?: readonly { col: number; row: number }[];
+  }>();
   readonly doorTaps = input(false);
   readonly tokenDrop = output<TokenDrop>();
   /** The master turned the reach on or off. */
@@ -137,6 +155,15 @@ export class CombatMapCard {
     const v = this.fog();
     return v ? visionLegend(v) : null;
   });
+  constructor() {
+    // Paint mode ends with the sun, with the scope "Todo o mapa" or when the controls go.
+    effect(() => {
+      if (this.painting() && !this.sunSquares()) {
+        this.painting.set(false);
+      }
+    });
+  }
+
   protected onFogLoading(loading: boolean): void {
     this.fogLoading.set(loading);
   }
@@ -226,8 +253,9 @@ export class CombatMapCard {
     (this.pick() ?? []).some((m) => m.mode === 'offer'),
   );
 
+  /** The phone's cropped preview; painting the sun needs the whole map, so the preview gives way while the master paints. */
   protected readonly preview = computed(
-    () => this.cropOnPhone() && this.isMaster() && this.phone() && !this.pick(),
+    () => this.cropOnPhone() && this.isMaster() && this.phone() && !this.pick() && !this.painting(),
   );
 
   /** Where the 2x map sits inside the preview frame, so that the one on turn
@@ -263,6 +291,24 @@ export class CombatMapCard {
   /** The zones the spells keep, as the server sent them for whoever looks (RN-37): drawn under the tokens and named in the legend. */
   protected readonly zones = computed(() => zoneViews(this.encounter(), this.isMaster()));
   protected readonly zoneLegend = computed(() => zoneLegend(this.zones()));
+  /** The sun controls: the sun is on, the viewer is the master and the combat has a map (on the phone's cropped preview they are there too: "Pintar" swaps the preview for the whole map). */
+  protected readonly sunControls = computed(
+    () =>
+      this.isMaster() &&
+      this.encounter().sunlightOn &&
+      !isTheatre(this.encounter()) &&
+      !this.compact(),
+  );
+  protected readonly sunSquares = computed(
+    () => this.sunControls() && this.encounter().sunlightScope === SunlightScope.SQUARES,
+  );
+  protected readonly sunWhole = computed(
+    () => this.isMaster() && this.encounter().sunlightOn && !this.sunSquares(),
+  );
+  protected readonly tool = signal<PaintTool>('paint');
+  protected paint(change: SunChange): void {
+    this.sunlightChange.emit(change);
+  }
   protected readonly emptyLayers = NO_LAYERS;
   protected readonly reachMeters = computed(() => metersFixed((this.reach()?.leftDft ?? 0) / 10));
   protected readonly hasHidden = computed(() => this.encounter().combatants.some((c) => c.hidden));

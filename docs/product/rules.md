@@ -509,6 +509,8 @@ The text of a planned milestone that was reached and then undone stays in the XP
 A creature's hit points are a number only for the owner and the master. Other players receive the state word in the order, the log and the live events, and never the AC, actions or movement. A creature's initiative, owner, type and name are public. Another player's creature panel does not exist.
 A druid in Wild Shape has a separate pool of beast hit points, a number only for the master and the druid's player. Everyone who sees the combatant learns which beast it is. The familiar's eyes are the master's and the owner's only, although the conditions they give are public labels.
 
+**Sunlight in combat** (RN-29). Whether the master turned the sun on, where it reaches (the whole map, or the squares he painted), which creature stands in it and which sunlight trait that creature has are the master's alone, on a map the player sees in part or not at all. The player reads, at most, "Outra fonte" as the source of a roll the sun changed.
+
 **Bestiary monsters** (RN-29).
 The app never tells the player which creature a monster is, beyond the name the master gave it. The creature, the CR and the rolled hit points are the master's.
 The same holds for its actions (RN-38 to RN-42): the stat block, the DCs, the escape DC, the saves the NPC's targets roll for the master and the action key never reach a player. The player reads the action's name, whether each target they see passed or failed and the damage they take; a rider offer is the master's alone.
@@ -943,6 +945,7 @@ A monster from the bestiary ([MR-042](stories.md#mr-042-bestiary)) enters combat
 The master puts it in with "Pôr no combate", with its average hit points or rolled ones, and each one's initiative.
 The player reads only the state word (RN-20), never hit points, armor class or initiative, and a hidden monster does not reach them.
 The master reads the SRD creature sheet ("Ficha da criatura"), its challenge rating (CR, ND) and the rolled hit points; the log line about them is the master's alone.
+A creature with Sunlight Sensitivity (drider, drow, duergar, kobold, specter, wight, wraith) or Sunlight Weakness (shadow) rolls with disadvantage while it stands in the sunlight the master turned on: Sensitivity on attack rolls and on Perception checks that rely on sight, Weakness on attack rolls, ability checks and saving throws. Darkness beats the sun. The app treats every Wisdom (Perception) check as relying on sight for Sunlight Sensitivity; when a check relies on hearing or smell, the master grants or removes the disadvantage by hand. The sentence on the roll names the trait; it is the master's (RN-20).
 The creature's attacks follow the table's critical rule (RN-24), and Multiattack follows SRD 5.1: the master plays the creature's routine, one attack after another, each with its own target; the server counts the attacks and refuses the one after the last, and the action counts as used when the routine is done or the master ends it.
 The XP by enemies adds each monster's CR: 3 Bandits, CR 1/8, give 3 × 25 = 75 XP, 18 to each of four players and 3 left over.
 "Criar NPC" in the bestiary makes a named NPC sheet from a creature.

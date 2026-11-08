@@ -152,6 +152,14 @@ SET revision = revision + 1
 WHERE id = $1
 RETURNING *;
 
+-- name: SetEncounterSunlight :one
+-- The master's switch of the sunlight (SetSunlight): on, where it reaches and the sunlit squares. It raises the revision.
+UPDATE encounters
+SET sunlight_on = sqlc.arg(sunlight_on), sunlight_scope = sqlc.arg(sunlight_scope), sunlight_squares = sqlc.arg(sunlight_squares),
+    revision = revision + 1
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
 -- name: ListCombatants :many
 -- The combat's combatants in turn order. A creature whose concentration ended
 -- is dismissed: it is out of the order and the map until an undo brings it back.
