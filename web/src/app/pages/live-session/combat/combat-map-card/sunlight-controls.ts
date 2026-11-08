@@ -58,6 +58,15 @@ import { type PaintTool, paintStatus } from '../../../../core/combat/sunlight-pa
   styles: `
     :host {
       display: block;
+      container-type: inline-size;
+    }
+    // A card too narrow for the label, the two equal parts and "Pintar" on one row (the map column at 1280 px) puts the label on its own
+    // line, so the parts and "Pintar" still share a row.
+    @container (max-width: 520px) {
+      .sc__row:not(.sc__row--paint) .sc__label {
+        flex: 1 0 100%;
+        min-height: 32px;
+      }
     }
     .sc__row {
       display: flex;
@@ -93,6 +102,10 @@ import { type PaintTool, paintStatus } from '../../../../core/combat/sunlight-pa
     .sc__seg--scope {
       // Both labels stay on one line: the control is at least as wide as its two labels, and the row wraps before it shrinks.
       flex: 0 1 auto;
+      // The two parts are one width, the widest label's (the check sits inside it): the columns share the group equally.
+      display: inline-grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
     }
     .sc__seg--tools {
       flex: 1 1 0;

@@ -11326,9 +11326,11 @@ async function scanSunlightScreens(browser: Browser, colorScheme: 'light' | 'dar
         expect(part.height, `"${name}" is one line`).toBeLessThan(50);
       }
       const on = (await m.getByRole('radio', { name: 'Onde eu pintar' }).boundingBox())!;
+      const whole = (await m.getByRole('radio', { name: 'Todo o mapa' }).boundingBox())!;
+      expect(Math.abs(whole.width - on.width), 'the two parts of the scope are one width').toBeLessThanOrEqual(1);
       const paint = (await m.getByRole('button', { name: 'Pintar luz do sol no mapa' }).boundingBox())!;
       if (width >= 768) {
-        expect(Math.abs(paint.y - on.y), '"Pintar" beside the scope').toBeLessThan(8);
+        expect(Math.abs(paint.y - on.y), `"Pintar" beside the scope at ${width}: on ${JSON.stringify(on)}, paint ${JSON.stringify(paint)}`).toBeLessThan(8);
       }
     });
 
