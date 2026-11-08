@@ -572,6 +572,11 @@ type actionEvent struct {
 	Parried *parryUsed `json:"parried,omitempty"`
 	// ParryAsk is the mode the master set on a monster (monster_reaction_mode_set): true asks the master for its Parry.
 	ParryAsk bool `json:"parry_ask,omitempty"`
+	// SunlightOn, SunlightScope and SunlightSquares are the sunlight the master set (sunlight_set): on or off, where
+	// it reaches and how many squares are sunlit.
+	SunlightOn      bool   `json:"sunlight_on,omitempty"`
+	SunlightScope   string `json:"sunlight_scope,omitempty"`
+	SunlightSquares int    `json:"sunlight_squares,omitempty"`
 	// Mode is how the master changed an NPC's hit points ("damage", "heal",
 	// "set"), and Delta the change.
 	Mode  string `json:"mode,omitempty"`

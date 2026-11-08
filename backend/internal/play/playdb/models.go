@@ -278,6 +278,9 @@ type Encounter struct {
 	StartedAt          *time.Time
 	EndedAt            *time.Time
 	Mode               string
+	SunlightOn         bool
+	SunlightScope      string
+	SunlightSquares    []byte
 }
 
 type GameSession struct {

@@ -2056,7 +2056,7 @@ func (q *Queries) GetCombatantCreatureSpent(ctx context.Context, id string) ([]b
 }
 
 const getEncounterByID = `-- name: GetEncounterByID :one
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters WHERE id = $1
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares FROM encounters WHERE id = $1
 `
 
 // A combat by its ID alone (the creatures' host publishes the change of the
@@ -2080,12 +2080,15 @@ func (q *Queries) GetEncounterByID(ctx context.Context, id string) (Encounter, e
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.Mode,
+		&i.SunlightOn,
+		&i.SunlightScope,
+		&i.SunlightSquares,
 	)
 	return i, err
 }
 
 const getEncounterInSession = `-- name: GetEncounterInSession :one
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares FROM encounters
 WHERE game_session_id = $1 AND id = $2
 `
 
@@ -2115,6 +2118,9 @@ func (q *Queries) GetEncounterInSession(ctx context.Context, arg GetEncounterInS
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.Mode,
+		&i.SunlightOn,
+		&i.SunlightScope,
+		&i.SunlightSquares,
 	)
 	return i, err
 }
@@ -2467,7 +2473,7 @@ func (q *Queries) GetLastingEffect(ctx context.Context, arg GetLastingEffectPara
 
 const getLatestEncounter = `-- name: GetLatestEncounter :one
 
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares FROM encounters
 WHERE game_session_id = $1
 ORDER BY (status <> 'ended') DESC, created_at DESC, id DESC
 LIMIT 1
@@ -2499,6 +2505,9 @@ func (q *Queries) GetLatestEncounter(ctx context.Context, gameSessionID string) 
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.Mode,
+		&i.SunlightOn,
+		&i.SunlightScope,
+		&i.SunlightSquares,
 	)
 	return i, err
 }
@@ -2550,7 +2559,7 @@ func (q *Queries) GetOnScreen(ctx context.Context, campaignID string) (GetOnScre
 }
 
 const getOpenEncounter = `-- name: GetOpenEncounter :one
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares FROM encounters
 WHERE game_session_id = $1 AND status <> 'ended'
 `
 
@@ -2575,6 +2584,9 @@ func (q *Queries) GetOpenEncounter(ctx context.Context, gameSessionID string) (E
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.Mode,
+		&i.SunlightOn,
+		&i.SunlightScope,
+		&i.SunlightSquares,
 	)
 	return i, err
 }
@@ -4143,7 +4155,7 @@ func (q *Queries) InsertEffectPendingDamage(ctx context.Context, arg InsertEffec
 const insertEncounter = `-- name: InsertEncounter :one
 INSERT INTO encounters (game_session_id, map_id, map_point_id, name, status, grid_columns, grid_rows, created_at, mode)
 VALUES ($1, $2, $3, $4, 'setup', $5, $6, $7, $8)
-RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares
 `
 
 type InsertEncounterParams struct {
@@ -4187,6 +4199,9 @@ func (q *Queries) InsertEncounter(ctx context.Context, arg InsertEncounterParams
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.Mode,
+		&i.SunlightOn,
+		&i.SunlightScope,
+		&i.SunlightSquares,
 	)
 	return i, err
 }
@@ -8127,7 +8142,7 @@ func (q *Queries) ListSceneRollEvents(ctx context.Context, arg ListSceneRollEven
 }
 
 const listSessionCombats = `-- name: ListSessionCombats :many
-SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode FROM encounters
+SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares FROM encounters
 WHERE game_session_id = $1 AND started_at IS NOT NULL
 ORDER BY created_at, id
 `
@@ -8160,6 +8175,9 @@ func (q *Queries) ListSessionCombats(ctx context.Context, gameSessionID string) 
 			&i.StartedAt,
 			&i.EndedAt,
 			&i.Mode,
+			&i.SunlightOn,
+			&i.SunlightScope,
+			&i.SunlightSquares,
 		); err != nil {
 			return nil, err
 		}
@@ -9824,7 +9842,7 @@ UPDATE encounters
 SET status = $1, round = $2, current_combatant_id = $3,
     started_at = $4, ended_at = $5, revision = revision + 1
 WHERE id = $6
-RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares
 `
 
 type SetEncounterStateParams struct {
@@ -9865,6 +9883,56 @@ func (q *Queries) SetEncounterState(ctx context.Context, arg SetEncounterStatePa
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.Mode,
+		&i.SunlightOn,
+		&i.SunlightScope,
+		&i.SunlightSquares,
+	)
+	return i, err
+}
+
+const setEncounterSunlight = `-- name: SetEncounterSunlight :one
+UPDATE encounters
+SET sunlight_on = $1, sunlight_scope = $2, sunlight_squares = $3,
+    revision = revision + 1
+WHERE id = $4
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares
+`
+
+type SetEncounterSunlightParams struct {
+	SunlightOn      bool
+	SunlightScope   string
+	SunlightSquares []byte
+	ID              string
+}
+
+// The master's switch of the sunlight (SetSunlight): on, where it reaches and the sunlit squares. It raises the revision.
+func (q *Queries) SetEncounterSunlight(ctx context.Context, arg SetEncounterSunlightParams) (Encounter, error) {
+	row := q.db.QueryRow(ctx, setEncounterSunlight,
+		arg.SunlightOn,
+		arg.SunlightScope,
+		arg.SunlightSquares,
+		arg.ID,
+	)
+	var i Encounter
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.MapID,
+		&i.MapPointID,
+		&i.Name,
+		&i.Status,
+		&i.Round,
+		&i.CurrentCombatantID,
+		&i.GridColumns,
+		&i.GridRows,
+		&i.Revision,
+		&i.CreatedAt,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.Mode,
+		&i.SunlightOn,
+		&i.SunlightScope,
+		&i.SunlightSquares,
 	)
 	return i, err
 }
@@ -11006,7 +11074,7 @@ const touchEncounter = `-- name: TouchEncounter :one
 UPDATE encounters
 SET revision = revision + 1
 WHERE id = $1
-RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode
+RETURNING id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares
 `
 
 func (q *Queries) TouchEncounter(ctx context.Context, id string) (Encounter, error) {
@@ -11028,6 +11096,9 @@ func (q *Queries) TouchEncounter(ctx context.Context, id string) (Encounter, err
 		&i.StartedAt,
 		&i.EndedAt,
 		&i.Mode,
+		&i.SunlightOn,
+		&i.SunlightScope,
+		&i.SunlightSquares,
 	)
 	return i, err
 }

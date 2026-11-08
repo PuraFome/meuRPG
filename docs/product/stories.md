@@ -69,6 +69,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-054](#mr-054-use-a-creatures-action-from-its-turn) | Combat | MVP |
 | [MR-055](#mr-055-answer-a-creatures-rider) | Combat | MVP |
 | [MR-056](#mr-056-show-the-table-on-a-screen) | Session | MVP |
+| [MR-057](#mr-057-turn-the-sun-on-in-a-combat) | Combat | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -1766,6 +1767,29 @@ See [Architecture](../architecture/campaign-package.md).
 
 #### Related
 - [MR-012](#mr-012-follow-the-session), [MR-028](#mr-028-show-an-image-to-the-players), [MR-036](#mr-036-fog-of-war-by-sight), [RN-10](rules.md#rn-10-map-without-spoilers).
+
+### MR-057: Turn the sun on in a combat
+
+**As a** game master, **I want** to turn the sunlight on for a combat, on the whole map or on the squares I paint, **so that** the creatures that fear the sun (a drow, a specter, a shadow) roll the way the rules say without my remembering it.
+
+- Priority: MVP
+- Rules: RN-20, RN-29
+- Modules: play, rules
+
+#### Acceptance criteria
+- **Given** I am the master of a combat, **when** I press the sun button on the combat bar ("Luz do sol"), **then** the sun is on for the whole map; **given** I choose "Onde eu pintar" and paint squares, **then** only those squares are in the sun, and "Pronto" ends the painting.
+- **Given** the sun is on and a drow stands in it, **when** I roll its attack, **then** the roll mode suggests "Desvantagem. Luz do sol (Sensibilidade à Luz do Sol)"; a creature with no such trait rolls as before.
+- **Given** a specter in the sun, **when** it makes a Perception check, **then** the check has disadvantage "nos testes que dependem da visão"; **given** a shadow (Sunlight Weakness) in the sun, **then** its attacks, checks and saving throws have it.
+- **Given** a creature stands in a Darkness zone, **then** it is not in the sun.
+- **Given** I turn the sun off, **then** the scope and the painted squares stay for the next time; **given** I undo, **then** the sun change does not close the undo.
+- **Given** I am a player, **then** I never read that the sun is on, where it reaches, who stands in it or which trait a creature has, on a map I see in part or not at all; a roll the sun changed names its source as "Outra fonte" (RN-20).
+
+#### In the app
+- The sun button sits on the combat bar (master only); the scope and "Pintar" are in the map card, only while the sun is on. See [Design](../design/combat.md).
+
+#### Related
+- [MR-042](#mr-042-bestiary), [RN-29](rules.md#rn-29-monsters-in-combat).
+
 
 ## Priority: MVP (prerequisite)
 
