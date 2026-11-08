@@ -4,7 +4,7 @@ import { test } from './diagnostics';
 import { createEntryRPC, creatureBody, expectCardsHoldTheirText, listEntriesJSON } from './content-support';
 import { tableForCaster, listCreaturesRPC } from './creatures-support';
 import { endOpenSessionRPC } from './live-session-support';
-import { afterRender, newSignedInContext } from './support';
+import { newSignedInContext, shellSettled } from './support';
 
 test.describe.configure({ timeout: 180_000 });
 
@@ -164,18 +164,22 @@ test(
       await expect(p.locator('.block').last()).toContainText('Faro do Vale');
       await expect(p.locator('.abilities')).toHaveCount(0);
       // On a phone (390x844) the whole note is on the first screen.
+      // The page is loaded at that size, not resized in place: a page resized in place can still be styled for the old width
+      // when it is measured (390 px wide with the 768 px styles), however many frames the test waits.
       await p.setViewportSize({ width: 390, height: 844 });
-      // `setViewportSize` returns before the page has been rendered at the new size: the width already reads 390 while the media queries still style the desktop layout (the shell's notice was 148 px tall with a 20 px margin, 5 lines at the 768 px styles; settled it is 52 px with a 16 px margin). Two animation frames later the phone styles apply.
-      await afterRender(p);
+      await p.reload();
+      await expect(p.locator('.table-note')).toHaveText('Os números vêm da ficha de Sálvia quando ele chegou');
+      await shellSettled(p);
       // The shell's live notice sits above the page and is dismissible; whether it shows depends on when the session's hint arrives, so the page's own content is measured below it (notice and note read at the same instant).
-      const { noteBottom, noticeHeight } = await p.evaluate(() => ({
+      const { noteBottom, noticeHeight, layout } = await p.evaluate(() => ({
         noteBottom: document.querySelector('.table-note')!.getBoundingClientRect().bottom,
         noticeHeight: [...document.querySelectorAll('app-live-notice .live-notice')].reduce(
           (sum, n) => sum + n.getBoundingClientRect().height + parseFloat(getComputedStyle(n).marginBottom),
           0,
         ),
+        layout: `${innerWidth} px wide, ${matchMedia('(min-width: 768px)').matches ? 'wide' : 'phone'} media`,
       }));
-      expect(noteBottom - noticeHeight).toBeLessThan(844);
+      expect(noteBottom - noticeHeight, `note bottom ${noteBottom}, notice ${noticeHeight}, ${layout}`).toBeLessThan(844);
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await Promise.all([master.close(), player.close()]);
