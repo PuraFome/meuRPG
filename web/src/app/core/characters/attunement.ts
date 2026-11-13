@@ -1,8 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { createClient } from '@connectrpc/connect';
+import { Code, ConnectError, createClient } from '@connectrpc/connect';
 
 import {
   AttunementRestriction,
+  CharacterBlockedReason,
+  CharacterBlockedSchema,
   CharacterService,
   type FullSheet,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -48,7 +50,10 @@ export interface AttunementVm {
 }
 
 /** The attunement of a full sheet, as the server says it on every read. */
-export function attunementOf(full: FullSheet): AttunementVm {
+export function attunementOf(
+  full: FullSheet,
+  gearName: (key: string) => string = () => '',
+): AttunementVm {
   const entries: AttunementEntryVm[] = [];
   for (const b of full.itemBonuses) {
     if (b.itemKey === '' && !b.requiresAttunement) {
@@ -57,7 +62,7 @@ export function attunementOf(full: FullSheet): AttunementVm {
     entries.push({
       id: b.id,
       key: b.itemKey || b.key,
-      namePt: b.itemNamePt,
+      namePt: b.itemNamePt || gearName(b.key),
       kind: 'piece',
       attuned: b.attuned,
       asks: b.requiresAttunement,
@@ -160,4 +165,16 @@ export class AttunementClient {
       nextPageToken: res.nextPageToken,
     };
   }
+}
+
+/** The server refused the attunement because the character does not meet what the item asks (or the sheet cannot say):
+ * the row already says it in the app's words. */
+export function isRestrictedRefusal(err: unknown): boolean {
+  const e = ConnectError.from(err, Code.Unavailable);
+  return (
+    e.code === Code.FailedPrecondition &&
+    e
+      .findDetails(CharacterBlockedSchema)
+      .some((d) => d.reason === CharacterBlockedReason.ATTUNEMENT_RESTRICTED)
+  );
 }

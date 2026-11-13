@@ -280,7 +280,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     hasShield: full.shield,
     shieldIdle: derived.shieldIdle,
     gear: sheetGear(derived, full),
-    attunement: attunementOf(full),
+    attunement: attunementOf(full, (k) => derived.gear.find((g) => g.key === k)?.namePt ?? ''),
     weaponMarks: weaponMarksOf(full),
     hitPointsMax: derived.hitPointsMax,
     hitDice: hitDiceWords(derived.hitDice),
