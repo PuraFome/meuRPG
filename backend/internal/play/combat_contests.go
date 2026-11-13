@@ -969,7 +969,7 @@ type pushPlan struct {
 // feet straight away from the shover, free when it is on the grid, not a wall or a column
 // and not held by another creature. A player is told only what they know of the map and
 // see of the creatures (RN-10): a push that really is blocked by something they do not
-// see is offered and does not move the target.
+// see is offered and does not move the target. A rider is never pushed: its mount holds its square.
 func (s *Service) pushPlanOf(terrain, plan grid.Terrain, enc playdb.Encounter, cs []playdb.Combatant, shover, target playdb.Combatant, v combatViewer) pushPlan {
 	if isTheatre(enc) || !placed(shover) || !placed(target) {
 		return pushPlan{}
@@ -977,6 +977,15 @@ func (s *Service) pushPlanOf(terrain, plan grid.Terrain, enc playdb.Encounter, c
 	col, row := combat.PushStep(int(*shover.GridCol), int(*shover.GridRow), int(*target.GridCol), int(*target.GridRow))
 	to := grid.Square{Col: col, Row: row}
 	out := pushPlan{has: true, to: to}
+	if mount := ridingOn(cs, target); mount != nil {
+		// A rider sits on its mount's square and is not pushed off it: the shove can knock it prone, not push it. A viewer who does
+		// not see the mount is offered the push, which then stays, as for any blocker they do not see (RN-10).
+		out.reallyBlocked = true
+		if v.sees(*mount) {
+			out.blocked, out.why = true, playv1.ShoveBlockedReason_SHOVE_BLOCKED_REASON_CREATURE
+		}
+		return out
+	}
 	from := squareOfCombatant(target)
 	mover := moverOf(target)
 	wallIn := func(t grid.Terrain) bool { return t.Move(from, to, grid.OccupantMap{}, mover).Blocked }
