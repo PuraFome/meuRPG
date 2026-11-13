@@ -317,5 +317,15 @@ func TestATableClassFeatureThatSummonsKeepsItsCreatureAndCountFromThoseWhoHoldNo
 	if !strings.Contains(string(optsRes.body), creatureKey) {
 		t.Errorf("Ana's options do not name the creature (the positive control): %s", shorten(optsRes.body))
 	}
+	// The spell says where it comes from in the class's own words: the class and the level of the feature.
+	label, found := "", false
+	for _, sp := range must(w.ana.characters.GetSummonOptions(ctx, rq(&charactersv1.GetSummonOptionsRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}))).GetSpells() {
+		if sp.GetGrantedBy() == feature.GetKey() {
+			label, found = sp.GetGrantedByLabelPt(), true
+		}
+	}
+	if !found || label != "Guerreiro 1" {
+		t.Errorf("the summon of the feature (found %v) says it comes from %q, want %q", found, label, "Guerreiro 1")
+	}
 	t.Run("canaries are reachable", func(t *testing.T) { checkCanariesAreReachable(t, w, got) })
 }
