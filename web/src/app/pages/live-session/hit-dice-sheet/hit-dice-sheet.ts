@@ -35,6 +35,8 @@ import {
 } from '../../../core/resources/resources-errors';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
+import { AttunementClient, type AttunementVm } from '../../../core/characters/attunement';
+import { AttunementSection } from '../../character-sheet/attunement-section/attunement-section';
 import { RollPicker } from '../../../shared/roll-picker/roll-picker';
 import { toVitalsVm } from '../../../core/play/live-session-source.live';
 import type { VitalsVm } from '../../../core/play/live-session.types';
@@ -85,12 +87,13 @@ export function openHitDice(
 @Component({
   selector: 'app-hit-dice-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatButtonModule, MatIconModule, RollPicker, SheetFrame],
+  imports: [AttunementSection, MatButtonModule, MatIconModule, RollPicker, SheetFrame],
   templateUrl: './hit-dice-sheet.html',
   styleUrl: './hit-dice-sheet.scss',
 })
 export class HitDiceSheet {
   private readonly api = inject(ResourceClient);
+  private readonly attunements = inject(AttunementClient);
   private readonly animator = inject(RollAnimator);
   private readonly sheet = injectSheet<HitDiceSheetData, boolean>();
   protected readonly data = this.sheet.data;
@@ -330,6 +333,39 @@ export class HitDiceSheet {
 
   /** What a recovery just did, for the live region. */
   protected readonly recoveryDone = signal<{ kind: string; text: string } | null>(null);
+
+  // --- Sintonização: the short rest opens the owner's window to attune (SRD 5.1); the section lives here while it is open. ---
+
+  protected readonly windowOpen = computed(() => this.vitals().attunementOpen === true);
+  /** The character's attunement and the revision a tap holds; null until read, or when the sheet has none. */
+  protected readonly attunement = signal<{
+    readonly vm: AttunementVm;
+    readonly revision: number;
+  } | null>(null);
+  /** The window was open when the sheet opened or an attunement was set here: once closed, the sheet says it was used. */
+  protected readonly attunementSeen = signal(false);
+  protected readonly attunementUsed = computed(() => this.attunementSeen() && !this.windowOpen());
+  private attunementRead = false;
+
+  protected readonly readAttunement = effect(() => {
+    if (this.windowOpen()) {
+      this.attunementSeen.set(true);
+      if (!this.attunementRead) {
+        this.attunementRead = true;
+        void this.loadAttunement();
+      }
+    }
+  });
+
+  protected async loadAttunement(): Promise<void> {
+    try {
+      const read = await this.attunements.load(this.data.campaignId, this.vitals().characterId);
+      this.attunement.set(read ? { vm: read.attunement, revision: read.revision } : null);
+    } catch {
+      // The section only shows with a read; the rest of the sheet does not depend on it.
+      this.attunement.set(null);
+    }
+  }
 
   protected close(): void {
     if (this.busy()) {

@@ -152,6 +152,21 @@ export class AttunementClient {
     await this.characters.setAttunement({ campaignId, characterId, entryId, attuned, revision });
   }
 
+  /** The attunement of the character as the server reads it now, with the revision a `set` must hold. */
+  async load(
+    campaignId: string,
+    characterId: string,
+  ): Promise<{ readonly attunement: AttunementVm; readonly revision: number } | null> {
+    const res = await this.characters.getCharacter({ campaignId, characterId });
+    const character = res.character;
+    const content = character?.sheet?.content;
+    if (!character || content?.case !== 'full') {
+      return null;
+    }
+    const gearName = (k: string) => character.derived?.gear.find((g) => g.key === k)?.namePt ?? '';
+    return { attunement: attunementOf(content.value, gearName), revision: character.revision };
+  }
+
   async listMagicItems(campaignId: string, query: string, pageToken = ''): Promise<MagicItemsPage> {
     const res = await this.content.listMagicItems({
       campaignId,
