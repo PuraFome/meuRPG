@@ -293,6 +293,8 @@ var notReads = map[string]classified{
 	playv1connect.RevivifyServicePreviewRevivifyProcedure:                       {playerAction, "a player previews who their own caster could revive; the lists it holds are the revivify tests' (RN-10)"},
 	playv1connect.RevivifyServiceRequestRevivifyProcedure:                       {playerAction, "a player casts Revivify outside a combat with their own character"},
 	playv1connect.RevivifyServiceSetRevivifyBlockedProcedure:                    {masterWrite, masterOnlyWhy},
+	playv1connect.ReadyServiceReadyActionProcedure:                              {playerAction, "a player readies an action with their own combatant; the trigger is the master's and theirs (ready_test.go)"},
+	playv1connect.ReadyServiceCancelReadiedProcedure:                            {playerAction, "a player gives up the readied action of their own combatant"},
 	progressionv1connect.ProgressionServiceAddMilestoneProcedure:                {masterWrite, masterOnlyWhy},
 	progressionv1connect.ProgressionServiceAwardXPProcedure:                     {masterWrite, masterOnlyWhy},
 	progressionv1connect.ProgressionServiceGiveMilestoneToProcedure:             {masterWrite, masterOnlyWhy},
