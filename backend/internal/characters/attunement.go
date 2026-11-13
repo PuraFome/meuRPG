@@ -165,6 +165,7 @@ func copyAttuned(entries []entry, e entry) bool {
 // catalog name.
 func fillMagicItems(content *rules.Content, f *charactersv1.FullSheet, build rules.Build, d rules.Derived) {
 	facts := attunementFactsOf(f)
+	setBonusIDs(f)
 	entries := entriesOf(f)
 	for _, e := range entries {
 		key := e.itemKey()
@@ -279,7 +280,7 @@ func (s *Service) attuneIn(ctx context.Context, tx pgx.Tx, content *rules.Conten
 	if target.bonus != nil {
 		requires = target.bonus.GetRequiresAttunement()
 	}
-	if !requires {
+	if !requires && (in.attuned || !target.attuned()) {
 		return current, false, invalidArgument(fieldErr("entry_id", "is an item that does not ask for attunement"))
 	}
 	if target.attuned() == in.attuned {

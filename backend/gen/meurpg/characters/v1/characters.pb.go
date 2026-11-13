@@ -3172,7 +3172,7 @@ type FullSheet struct {
 	ItemBonuses []*ItemBonus `protobuf:"bytes,43,rep,name=item_bonuses,json=itemBonuses,proto3" json:"item_bonuses,omitempty"`
 	// The magic items the character carries that are not weapons, armor or a shield with a +N
 	// (a ring, a cloak): at most 20, each `key` an `item:*` key of the catalog that is not a
-	// family, no key twice. An entry starts unattuned: a save keeps the stored `attuned` of a
+	// family; a key may repeat, each copy is an entry. An entry starts unattuned: a save keeps the stored `attuned` of a
 	// key already on the sheet and never sets it; only SetAttunement does. Adding and removing
 	// entries follows the sheet's lock, like the marks.
 	MagicItems    []*SheetMagicItem `protobuf:"bytes,44,rep,name=magic_items,json=magicItems,proto3" json:"magic_items,omitempty"`
@@ -6350,7 +6350,7 @@ type SetAttunementRequest struct {
 	EntryId string `protobuf:"bytes,3,opt,name=entry_id,json=entryId,proto3" json:"entry_id,omitempty"`
 	// true attunes, false ends it.
 	Attuned bool `protobuf:"varint,4,opt,name=attuned,proto3" json:"attuned,omitempty"`
-	// The revision the caller holds; a stale one is refused with `aborted`.
+	// The revision the caller holds; a stale one is refused with `aborted`. 0 skips the check.
 	Revision      int32 `protobuf:"varint,5,opt,name=revision,proto3" json:"revision,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

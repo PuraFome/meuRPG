@@ -1600,7 +1600,7 @@ message FullSheet {
   repeated ItemBonus item_bonuses = 43;
   // The magic items the character carries that are not weapons, armor or a shield with a +N
   // (a ring, a cloak): at most 20, each `key` an `item:*` key of the catalog that is not a
-  // family, no key twice. An entry starts unattuned: a save keeps the stored `attuned` of a
+  // family; a key may repeat, each copy is an entry. An entry starts unattuned: a save keeps the stored `attuned` of a
   // key already on the sheet and never sets it; only SetAttunement does. Adding and removing
   // entries follows the sheet's lock, like the marks.
   repeated SheetMagicItem magic_items = 44;
@@ -2263,7 +2263,7 @@ message SetAttunementRequest {
   string entry_id = 3;
   // true attunes, false ends it.
   bool attuned = 4;
-  // The revision the caller holds; a stale one is refused with `aborted`.
+  // The revision the caller holds; a stale one is refused with `aborted`. 0 skips the check.
   int32 revision = 5;
 }
 

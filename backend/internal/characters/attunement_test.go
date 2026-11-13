@@ -12,6 +12,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 const (
@@ -430,4 +431,14 @@ func TestListMagicItemsPagesAndRefusesAForeignToken(t *testing.T) {
 	wantEditorRefusal(t, "a long query", err, `invalid_argument: query must have at most 100 characters | InvalidField{field="query"}`)
 	_, err = list("", 401, "")
 	wantEditorRefusal(t, "a page too long", err, `invalid_argument: page_size must be 1 to 400 | InvalidField{field="page_size"}`)
+}
+
+// A +N piece stored before the entry ids reads with its id, so the owner can name it.
+func TestAReadGivesALegacyPieceItsID(t *testing.T) {
+	t.Parallel()
+	f := &charactersv1.FullSheet{ItemBonuses: []*charactersv1.ItemBonus{{Key: "equipment:longsword", Bonus: 1, RequiresAttunement: true}}}
+	fillMagicItems(nil, f, rules.Build{}, rules.Derived{})
+	if got := f.GetItemBonuses()[0].GetId(); got != "bonus:equipment:longsword" {
+		t.Errorf("id = %q", got)
+	}
 }

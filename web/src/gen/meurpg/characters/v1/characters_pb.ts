@@ -1066,7 +1066,7 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
   /**
    * The magic items the character carries that are not weapons, armor or a shield with a +N
    * (a ring, a cloak): at most 20, each `key` an `item:*` key of the catalog that is not a
-   * family, no key twice. An entry starts unattuned: a save keeps the stored `attuned` of a
+   * family; a key may repeat, each copy is an entry. An entry starts unattuned: a save keeps the stored `attuned` of a
    * key already on the sheet and never sets it; only SetAttunement does. Adding and removing
    * entries follows the sheet's lock, like the marks.
    *
@@ -2708,7 +2708,7 @@ export type SetAttunementRequest = Message<"meurpg.characters.v1.SetAttunementRe
   attuned: boolean;
 
   /**
-   * The revision the caller holds; a stale one is refused with `aborted`.
+   * The revision the caller holds; a stale one is refused with `aborted`. 0 skips the check.
    *
    * @generated from field: int32 revision = 5;
    */
