@@ -85,7 +85,7 @@
       </div>
       <div class="pair">
         <app-text-field label="A mais por nível" inputmode="numeric" [value]="h.perSlot" [path]="path('per_slot_dice')" [issues]="issues('per_slot_dice')" [hint]="'0 a ' + perSlotMax + ' por nível acima'" (valueChange)="patch({ perSlot: $event })" />
-        <app-text-field label="No máximo" suffix="dados" inputmode="numeric" [value]="h.cap" [path]="path('max_dice')" [issues]="issues('max_dice')" [hint]="'1 a ' + capMax + ' dados.'" (valueChange)="patch({ cap: $event })" />
+        <app-text-field label="No máximo" [suffix]="capSuffix()" inputmode="numeric" [value]="h.cap" [path]="path('max_dice')" [issues]="issues('max_dice')" [hint]="'1 a ' + capMax + ' dados.'" (valueChange)="patch({ cap: $event })" />
       </div>
       <app-select-field label="Tipo de dano" [options]="damageOptions()" [value]="h.damageType" [path]="path('damage_type')" [issues]="issues('damage_type')" (valueChange)="patch({ damageType: '' + $event })" />
     </fieldset>

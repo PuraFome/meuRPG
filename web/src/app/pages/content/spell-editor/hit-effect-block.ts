@@ -113,6 +113,8 @@ export class HitEffectBlock {
     })),
   );
   /** Where the effect lands, said under the switch: it is the caster's, never the targets'. */
+  /** The unit agrees with the number: "1 dado", "2 dados"; an empty field keeps the plural. */
+  protected readonly capSuffix = computed(() => (this.hit().cap.trim() === '1' ? 'dado' : 'dados'));
   protected readonly whereText = computed(() => {
     switch (this.target()) {
       case 'area':

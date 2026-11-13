@@ -22,6 +22,18 @@ const on = (over: Partial<HitDraft> = {}): HitDraft => ({
 });
 
 describe('HitEffectBlock (#577)', () => {
+  it('writes the cap unit in agreement with the number', () => {
+    const suffix = (cap: string) => {
+      const field = [...setup({ hit: on({ cap }) }).querySelectorAll('app-text-field')].find((f) =>
+        text(f).includes('No máximo'),
+      )!;
+      return text(field.querySelector('.suffix')!).trim();
+    };
+    expect(suffix('1')).toBe('dado');
+    expect(suffix('2')).toBe('dados');
+    expect(suffix('')).toBe('dados');
+  });
+
   let fixture: ComponentFixture<HitEffectBlock>;
   const changed = vi.fn();
 
