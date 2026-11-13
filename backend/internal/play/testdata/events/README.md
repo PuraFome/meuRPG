@@ -15,6 +15,7 @@ The older shapes come from the struct of the commit that first wrote the kind (`
 | --- | --- |
 | `attack_rolled`, `damage_rolled`, `damage_applied`, `damage_discarded`, `hit_points_adjusted`, `action_taken`, `action_undone`, `combatant_hidden_set`, `combatant_moved/v1-whole-feet` | `1c217360` (#61, the first `actionEvent`); the move before the tenths of a foot, jumps and `from` came with `9002d08d` (#104) |
 | `trap_triggered/v1-first-firing` | `6722da65` |
+| `damage_rolled/v2-once-before-marks` | the roll with parts before the feature state (4e33a69e6): the attacker's once-per-turn marks are `once_before`, not `feature_before`; the undo still reads them |
 | `hit_dice_spent/v1-before-song-of-rest`, `rest_taken/v1-original` | `6cd0bef0` |
 | `scene_check_rolled/v1-before-dc-shown` | `28f56579` |
 | `character_vitals_adjusted/v1-before-resources` | `724227f5` |

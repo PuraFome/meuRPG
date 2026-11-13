@@ -751,8 +751,12 @@ type actionEvent struct {
 	// CountedDice are the dice of a damage roll with no parts that a table minimum raised, next to Faces as they came up.
 	// A roll with parts keeps them in each part (damage_floor.go).
 	CountedDice []countedDie `json:"counted_dice,omitempty"`
-	OnceBefore  *onceMarks   `json:"once_before,omitempty"`
-	Steps       []stepGroup  `json:"steps,omitempty"`
+	// OnceBefore is what events written before the feature state hold (read by the undo, never written now).
+	OnceBefore *onceMarks `json:"once_before,omitempty"`
+	// FeatureBefore are the entries of the attacker's feature state before the roll, one for each key it marked (nil: no entry
+	// that held); an undo puts them back.
+	FeatureBefore map[string]*featureEntry `json:"feature_before,omitempty"`
+	Steps         []stepGroup              `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`

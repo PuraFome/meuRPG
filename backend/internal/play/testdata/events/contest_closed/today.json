@@ -833,6 +833,14 @@
     },
     "table_changed": true
   },
+  "feature_before": {
+    "x": {
+      "s": "x",
+      "at": "x",
+      "n": 1,
+      "c": "x"
+    }
+  },
   "steps": [
     {
       "damage_type": "x",

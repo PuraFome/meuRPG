@@ -1355,11 +1355,11 @@ UPDATE combatants
 SET condition_sources = $2
 WHERE id = $1;
 
--- name: SetCombatantOncePerTurn :exec
--- The turn ("<round>:<combatant on turn>") in which Sneak Attack and Colossus Slayer
--- last added their damage; NULL back after an undo.
+-- name: SetCombatantFeatureState :exec
+-- Replaces the whole feature_state document of a combatant (featurestate.go): the marks of its
+-- features that last a turn, a round or a combat. The caller writes the document it read, changed.
 UPDATE combatants
-SET sneak_attack_turn = $2, colossus_slayer_turn = $3
+SET feature_state = $2
 WHERE id = $1;
 
 -- name: SetCombatantMeleeHitTurn :exec
@@ -2057,13 +2057,6 @@ SELECT id, actor_user_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'free_roll_rolled' AND actor_user_id = $2
 ORDER BY seq DESC
 LIMIT $3;
-
--- name: SetCombatantTableOnceTurns :exec
--- The turns in which the table's once-per-turn extras last added their damage, by feature key
--- (JSON); the marks before are put back by an undo.
-UPDATE combatants
-SET table_once_turns = $2
-WHERE id = $1;
 
 -- name: SetCombatantCreatureSpent :exec
 -- What the combatant's stat block has spent: JSON {"<key>": N}.
