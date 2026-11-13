@@ -67,4 +67,18 @@ describe('OwnNumbers', () => {
       '2/2',
     ]);
   });
+
+  it("says the form's pool in a form, never the druid's own (584-02)", () => {
+    const { text } = render(
+      { armorClass: 13 },
+      {
+        wildShapeBeastKey: 'monster:wolf',
+        wildShapeHitPointsCurrent: 7,
+        wildShapeHitPointsMax: 11,
+      },
+    );
+    expect(text).toContain('PV 7 de 11');
+    expect(text).not.toContain('19 de 28');
+    expect(text).toContain('CA 13');
+  });
 });

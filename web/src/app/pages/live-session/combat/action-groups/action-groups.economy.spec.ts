@@ -3,7 +3,12 @@ import { TestBed } from '@angular/core/testing';
 
 import { CombatantSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { ContestTurnStateSchema } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
-import { TurnOptionsSchema } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  AttackKind,
+  AttackOptionSchema,
+  AttackSchema,
+  TurnOptionsSchema,
+} from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionGroups } from './action-groups';
 
 // The first row of "Ações" (584-01, 584-02): what is left of the turn, "Mover", and "Permanecer na forma" after "Voltar".
@@ -96,13 +101,13 @@ describe('ActionGroups: the economy row', () => {
 
 describe('ActionGroups: "Permanecer na forma" after "Voltar"', () => {
   const stay = {
-    detail: 'Sem magias · 12,0 m · gasta 1 uso (restam 1 de 2) e o tempo recomeça',
+    detail: 'Sem magias · 12,0 m · gasta 1 uso (restam 1 de 2) e o tempo volta a 2 h',
     reason: '',
   };
   const rows = (el: HTMLElement) => [...el.querySelectorAll('app-action-row')];
   const named = (el: HTMLElement, name: string) => rows(el).find((r) => text(r).startsWith(name))!;
 
-  it('comes second, with a bolt and "Sem custo", and presses as a stay', () => {
+  it('comes second, with a bolt and "Sem ação", and presses as a stay', () => {
     const { el, events } = setup({}, { beast: 'Lobo', stay });
     const order = rows(el)
       .map((r) => text(r.querySelector('.row__name, h4, h3, b') ?? r))
@@ -112,9 +117,9 @@ describe('ActionGroups: "Permanecer na forma" after "Voltar"', () => {
       rows(el).indexOf(named(el, 'Permanecer na forma')),
     );
     const row = named(el, 'Permanecer na forma');
-    expect(text(row)).toContain('Sem custo');
+    expect(text(row)).toContain('Sem ação');
     expect(text(row)).toContain(
-      'Sem magias · 12,0 m · gasta 1 uso (restam 1 de 2) e o tempo recomeça',
+      'Sem magias · 12,0 m · gasta 1 uso (restam 1 de 2) e o tempo volta a 2 h',
     );
     row.querySelector('button')!.click();
     expect(events).toEqual(['stay']);
@@ -144,5 +149,62 @@ describe('ActionGroups: "Permanecer na forma" after "Voltar"', () => {
     const { el } = setup({ actionUsed: true, bonusActionUsed: true }, { beast: 'Lobo', stay });
     const row = named(el, 'Permanecer na forma');
     expect(row.querySelector('button')?.getAttribute('aria-disabled')).not.toBe('true');
+  });
+});
+
+describe('ActionGroups: the tabs in a form (584-01, 584-02)', () => {
+  const stay = { detail: 'Sem magias · 12,0 m · gasta 1 uso e o tempo volta a 2 h', reason: '' };
+  const bite = create(AttackOptionSchema, {
+    enabled: true,
+    attack: create(AttackSchema, {
+      key: 'attack:bite',
+      name: 'Bite',
+      namePt: 'Mordida',
+      kind: AttackKind.WEAPON,
+      attackBonus: 4,
+      damage: '2d4 + 2',
+      damageTypePt: 'perfurante',
+    }),
+  });
+  const options = create(TurnOptionsSchema, { attacks: [bite] });
+  const tabs = (el: HTMLElement) =>
+    [...el.querySelectorAll('[role="tab"]')].map((t) => text(t).replace(/^\S+?(?=[A-ZÀ-Ú])/, ''));
+
+  it('has Ataques, the class and Outras, no Magias tab, and the notice at the foot', () => {
+    const { el } = setup({}, { beast: 'Lobo', stay, options });
+    expect(tabs(el).map((t) => t.replace(/\d+$/, '').trim())).toEqual([
+      'Ataques',
+      'Druida',
+      'Outras',
+    ]);
+    expect(el.querySelector('[id$="spells"][role="tabpanel"]')).toBeNull();
+    const notice = el.querySelector('#no-spells')!;
+    expect(text(notice)).toContain(
+      'Sem magias na forma de fera. Volte à forma normal para conjurar.',
+    );
+    expect(el.querySelector('section.groups')!.lastElementChild).toBe(notice);
+  });
+
+  it('counts in the class tab what it holds: Voltar and Permanecer', () => {
+    const { el } = setup({}, { beast: 'Lobo', stay, options });
+    expect(tabs(el)[1]).toMatch(/Druida\s*2$/);
+    TestBed.resetTestingModule();
+    const ended = setup({}, { beast: 'Lobo', stay: null, options });
+    expect(tabs(ended.el)[1]).toMatch(/Druida\s*1$/);
+  });
+
+  it("lists the beast's attacks alone: no Agarrar, no Empurrar, no drawing of weapons", () => {
+    const { el } = setup(
+      {},
+      {
+        beast: 'Lobo',
+        stay,
+        contestAttacks: [{ kind: 1 }, { kind: 2 }],
+        gearFlow: { weapons: [] },
+      },
+    );
+    expect(el.querySelector('.panel app-gear-fold')).toBeNull();
+    expect(text(el)).not.toContain('Agarrar');
+    expect(text(el)).not.toContain('Empurrar');
   });
 });

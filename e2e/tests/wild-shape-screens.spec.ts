@@ -2,6 +2,7 @@ import { type Browser, expect } from "@playwright/test";
 import { test } from "./diagnostics";
 
 import { endTurnOf, passTurnsTo } from "./combat-support";
+import { hitAndApply } from "./creatures-combat-support";
 import { openCombatPanel, openOrderRow, openTurn } from "./combat-layout";
 import {
   beginCreatureCombat,
@@ -103,13 +104,41 @@ async function wildShapeScreens(
     );
     await expect(economy).toBeVisible();
 
-    // The class tab (Habilidades in a form): "Voltar" then "Permanecer na forma", the economy row still above.
-    await openActionTab(p, "Habilidades");
+    // 584-01, 584-02: the tabs in a form are Ataques (the beast's bite), Druida (Voltar, Permanecer) and Outras, no Magias tab,
+    // and the notice at the foot. Each tab is opened and shot; the counts do not depend on when you look.
+    const tabNames = async () =>
+      (await p.getByRole("tab").allTextContents()).map((t) => t.replace(/\s+/g, " ").trim());
+    await expect(p.getByRole("tab", { name: /^Magias/ })).toHaveCount(0);
+    await expect(
+      p.getByText("Sem magias na forma de fera. Volte à forma normal para conjurar."),
+    ).toBeVisible();
+    await openActionTab(p, "Ataques");
+    // Turning into the beast took her Action, so the bite is under the folded "Ação · Usada" line; opened, it is the only row.
+    await p.getByRole("button", { name: "Ação · Usada" }).click();
+    await expect(p.locator("app-action-row:visible").first()).toContainText(/Mordida|Bite/);
+    await expect(p.locator("app-action-row:visible")).toHaveCount(1);
+    await expect(p.getByText("Agarrar")).toHaveCount(0);
+    const counts = await tabNames();
+    expect(counts.some((t) => /Ataques\s*1$/.test(t)), counts.join("|")).toBe(true);
+    expect(counts.some((t) => /Druida\s*2$/.test(t)), counts.join("|")).toBe(true);
+    for (const w of WILD_WIDTHS) {
+      await shootWild(p, "abas-ataques", w, scheme);
+    }
+    await openActionTab(p, "Outras");
+    for (const w of WILD_WIDTHS) {
+      await shootWild(p, "abas-outras", w, scheme);
+    }
+    await openActionTab(p, "Druida");
     const stay = p.locator("app-action-row", {
       hasText: "Permanecer na forma",
     });
+    await expect(stay).toContainText("Sem ação");
+    await expect(stay).not.toContainText("Sem custo");
     await expect(stay).toContainText("Sem magias");
-    await expect(stay).toContainText("o tempo recomeça");
+    await expect(stay).toContainText(/e o tempo volta a \d+ h/);
+    await expect(
+      p.locator("app-action-groups .econ").getByRole("button", { name: "Mover" }),
+    ).toBeVisible();
     const rows = await p.locator("app-action-row:visible").allTextContents();
     expect(
       rows.findIndex((r) => r.includes("Voltar à forma normal")),
@@ -118,6 +147,28 @@ async function wildShapeScreens(
       await shootWild(p, "acoes-forma", w, scheme);
     }
     await cropWild(stay, "recorte-permanecer", scheme);
+
+    // 584-02, 584-04, 584-05: the wolf takes 4 damage; the form's pool is what the order and the cards show, never the druid's.
+    await hitAndApply(m, campaignId, "Goblin 1", "Sálvia", 4);
+    const mine = p.locator("app-order-column");
+    await expect(mine).toContainText("Você · 7 de 11 PV (Lobo)");
+    await expect(mine).not.toContainText("Na forma de Lobo");
+    await expect(mine).not.toContainText("27");
+    const sheetRegion = p.getByRole("region", { name: "Sálvia", exact: true });
+    await expect(sheetRegion.getByRole("group", { name: "PV do Lobo: 7 de 11" })).toBeVisible();
+    await expect(sheetRegion).toContainText(/CA do Lobo\s*13/);
+    // The turn card of the phone: the form's PV and CA, never the druid's.
+    await p.setViewportSize({ width: 390, height: 844 });
+    const numbers = p.locator("app-own-numbers").first();
+    await expect(numbers).toContainText("PV 7 de 11");
+    await expect(numbers).toContainText("CA 13");
+    await expect(numbers).not.toContainText("38");
+    await cropWild(numbers, "recorte-turno-pv", scheme);
+    for (const w of WILD_WIDTHS) {
+      await shootWild(p, "turno-forma", w, scheme);
+    }
+    await p.setViewportSize({ width: 1280, height: 800 });
+    await cropWild(mine, "recorte-ordem-dona", scheme);
 
     // 584-02 card 2: another player reads the name of the beast, never the time.
     await t.goto(sessionRoute(campaignId));
@@ -152,28 +203,20 @@ async function wildShapeScreens(
     await m.goto(sessionRoute(campaignId));
     for (const w of WILD_WIDTHS.length ? WILD_WIDTHS : [1280]) {
       await m.setViewportSize({ width: w, height: WILD_VIEWPORTS[w] });
-      await openOrderRow(m, "Sálvia");
       const order = m.locator("app-order-list");
-      await expect(order).toContainText(
-        /Na forma de Lobo\s*·\s*hourglass_empty\s*(\d+ h|\d+ min|\d+ rodadas?)/,
-      );
-      await shootWild(
-        m,
-        "mestre-ordem",
-        w,
-        scheme,
-        order.getByRole("button", { name: /^Sálvia/ }),
-      );
+      await expect(order).toContainText("7/11");
+      await shootWild(m, "mestre-ordem-fechada", w, scheme, order);
+      await openOrderRow(m, "Sálvia");
+      await expect(order).toContainText(/CA 13\s*·\s*7 de 11 PV do Lobo\s*·\s*a Sálvia tem \d+ de \d+/);
+      await expect(order).toContainText(/Lobo\s*·\s*hourglass_empty\s*(\d+ h|\d+ min)\s*restantes/);
+      await expect(order).not.toContainText("Na forma de Lobo");
+      await shootWild(m, "mestre-ordem", w, scheme, order.getByRole("button", { name: /^Sálvia/ }));
       if (w === 1280) {
-        await cropWild(
-          order.locator("app-form-tag").first(),
-          "recorte-mestre-ordem",
-          scheme,
-        );
+        await cropWild(order.locator("li", { hasText: "Sálvia" }).first(), "recorte-mestre-ordem", scheme);
       }
       await openTurn(m);
       const offer = m.locator("app-act-as-card");
-      await expect(offer).toContainText(/Na forma de Lobo/);
+      await expect(offer).toContainText(/Pontos de vida\s*7 de 11/);
       await shootWild(m, "mestre-agir", w, scheme, offer);
       if (w === 1280) {
         await cropWild(offer, "recorte-mestre-agir", scheme);
@@ -210,7 +253,7 @@ async function wildShapeScreens(
     await expect(p.locator("app-form-chip").first()).toContainText(
       "Na forma de Lobo",
     );
-    await openActionTab(p, "Habilidades");
+    await openActionTab(p, "Druida");
     const staleStay = p.getByRole("button", { name: "Permanecer na forma" });
     await expect(staleStay).toBeVisible();
     await contexts[1].setOffline(true);

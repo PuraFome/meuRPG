@@ -93,7 +93,10 @@ export class LiveSessionState {
       : sheet;
   });
   /** The armor class of the player's own character: the sheet's, or the base an effect gives (Armadura Arcana) when better. */
-  readonly ownArmorClass = computed(() =>
-    betterArmorClass(this.playerSheet()?.armorClass ?? null, this.ownVitals()?.armorClassBase),
+  readonly ownArmorClass = computed(
+    () =>
+      // In a Wild Shape form it is the beast's (584-02).
+      this.ownVitals()?.wildShape?.armorClass ||
+      betterArmorClass(this.playerSheet()?.armorClass ?? null, this.ownVitals()?.armorClassBase),
   );
 }

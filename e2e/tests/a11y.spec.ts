@@ -4323,8 +4323,15 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
     await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).toBeVisible();
     await expectScreenPasses(p, `A faixa da vez na forma, com o tempo e a linha da vez ${where}`);
-    // As a beast the class tab is called "Habilidades".
-    await openActionTab(p, 'Habilidades');
+    // As a beast the tabs are Ataques (the beast's bite), Druida (the way back and the stay) and Outras; there is no Magias tab.
+    await expect(p.getByRole('tab', { name: /^Magias/ })).toHaveCount(0);
+    await expect(p.getByText('Sem magias na forma de fera. Volte à forma normal para conjurar.')).toBeVisible();
+    await openActionTab(p, 'Ataques');
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expectScreenPasses(p, `A aba Ataques na forma ${where}`);
+    await openActionTab(p, 'Outras');
+    await expectScreenPasses(p, `A aba Outras na forma ${where}`);
+    await openActionTab(p, 'Druida');
     await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
     await expect(p.getByText('Permanecer na forma').first()).toBeVisible();
     await expectScreenPasses(p, `A aba Druida na forma, com Permanecer na forma ${where}`);

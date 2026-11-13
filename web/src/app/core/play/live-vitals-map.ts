@@ -73,6 +73,8 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
           hitPointsCurrent: v.wildShape.hitPointsCurrent,
           hitPointsMax: v.wildShape.hitPointsMax,
           timeLeftPt: v.wildShape.timeLeftPt,
+          armorClass: v.wildShape.armorClass,
+          secondsTotal: v.wildShape.secondsTotal,
         }
       : null,
   };

@@ -17,7 +17,7 @@
               [current]="current(c)"
               [size]="36"
             />
-            @if (c.hitPointsMax !== undefined) {
+            @if (pool(c)) {
               <span class="strip__bar" aria-hidden="true"><span class="row__fill" [style.width.%]="percent(c)"></span></span>
             }
           </button>
@@ -124,12 +124,12 @@
           </span>
         </span>
         <span class="row__hp">
-          @if (c.hitPointsMax !== undefined) {
-            <span class="row__hp-n">{{ c.hitPointsCurrent }}<span class="row__hp-of">/{{ c.hitPointsMax }}</span>@if (aid(c) > 0) {<span class="row__aid">{{ aidTag(aid(c)) }}</span>}</span>
+          @if (pool(c); as hp) {
+            <span class="row__hp-n">{{ hp.current }}<span class="row__hp-of">/{{ hp.max }}</span>@if (aid(c) > 0) {<span class="row__aid">{{ aidTag(aid(c)) }}</span>}</span>
             <span
               class="row__bar"
               role="img"
-              [attr.aria-label]="c.hitPointsCurrent + ' de ' + c.hitPointsMax + ' pontos de vida'"
+              [attr.aria-label]="hp.current + ' de ' + hp.max + ' pontos de vida'"
             >
               @if (aid(c) > 0) {
                 <span class="row__fill row__fill--own" [style.width.%]="aidBar(c).solid"></span>
@@ -147,16 +147,6 @@
 
       @if (isOpen(c)) {
         <div class="row__open" [id]="'row-' + c.id">
-          @if (c.wildShapeHitPointsMax !== undefined) {
-            <!-- The beast's pool first: it is what "Dano/Cura" hits first (the master and the druid's player only). -->
-            <app-beast-pool
-              [beast]="c.wildShapeBeastNamePt"
-              [current]="c.wildShapeHitPointsCurrent ?? 0"
-              [max]="c.wildShapeHitPointsMax"
-              [attr.aria-label]="'PV d' + (article(c.wildShapeBeastNamePt) === 'a' ? 'a' : 'o') + ' ' + c.wildShapeBeastNamePt + ': ' + c.wildShapeHitPointsCurrent + ' de ' + c.wildShapeHitPointsMax"
-              role="group"
-            />
-          }
           @if (c.defeated || down(c) || c.hidden || ally(c)) {
             <span class="row__state-line">
               @if (c.defeated && player(c)) {
@@ -184,9 +174,6 @@
               <span class="row__limit" data-testid="order-limit"><mat-icon aria-hidden="true">{{ l.icon }}</mat-icon>{{ l.text }}</span>
             }
           }
-          @if (c.hitPointsMax !== undefined && formPool(c); as beast) {
-            <span class="row__pv-inline">{{ beast }}</span>
-          }
           @if (shield(c) > 0 || aid(c) > 0) {
             <span class="row__effects">
               @if (shield(c) > 0) {
@@ -199,7 +186,7 @@
           }
           <app-combatant-tags [names]="tags(c)" [label]="c.label" [states]="c.states" [sources]="c.conditionSources" [people]="rows()" />
           @if (c.wildShapeBeastKey) {
-            <app-form-tag [beast]="c.wildShapeBeastNamePt" [time]="formTimes().get(c.characterId) ?? ''" />
+            <app-form-tag [beast]="c.wildShapeBeastNamePt" [time]="formTimes().get(c.characterId) ?? ''" named />
           }
 
           @if (down(c)) {

@@ -43,6 +43,7 @@ import {
   type SpentGroups,
   actionCounts,
   actionTabs,
+  WILD_SHAPE_TAB,
   classTabName,
   featureGroup,
   featureVerb,
@@ -298,18 +299,23 @@ export class ActionGroups {
   protected readonly featureParts = computed(() =>
     partByEconomy(this.classFeatures(), featureGroup, this.spent(), this.spentWord(), this.canUse),
   );
-  protected readonly hasSpells = computed(() => this.spells().length > 0 || !!this.beast());
+  protected readonly hasSpells = computed(() => this.spells().length > 0 && !this.beast());
   protected readonly hasClassTab = computed(
     () => this.classFeatures().length > 0 || !!this.beast(),
   );
-  protected readonly tabItems = computed(() =>
-    actionTabs(
-      actionCounts(this.options(), {
-        contestAttacks: this.contestAttacks().length,
-        escape: this.grappled(),
-        standard: this.standard().length,
-      }),
-      classTabName(this.classFeatures()),
+  /** What a form's class tab holds besides the class's abilities: "Voltar à forma normal" and, while it is on, "Permanecer na forma". */
+  private readonly formRows = computed(() => (this.beast() ? 1 + (this.stay() ? 1 : 0) : 0));
+  /** In a form the attacks are the beast's own (its bite), not the character's contests, and nothing is drawn or put away. */
+  protected readonly contestRows = computed(() => (this.beast() ? [] : this.contestAttacks()));
+  protected readonly tabItems = computed(() => {
+    const counts = actionCounts(this.options(), {
+      contestAttacks: this.contestRows().length,
+      escape: this.grappled(),
+      standard: this.standard().length,
+    });
+    return actionTabs(
+      { ...counts, features: this.classFeatures().length + this.formRows() },
+      this.beast() ? WILD_SHAPE_TAB : classTabName(this.classFeatures()),
       { beast: !!this.beast() },
     ).map((t) => ({
       id: t.id,
@@ -317,8 +323,8 @@ export class ActionGroups {
       icon: TAB_ICONS[t.id],
       badge: t.badge,
       words: t.words,
-    })),
-  );
+    }));
+  });
   /** The tab shown: the person's choice while it is still there, else the first. */
   protected readonly current = computed<ActionTabId>(() => {
     const items = this.tabItems();

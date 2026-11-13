@@ -1156,7 +1156,7 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+PlayServiceGetCharacterWildShapeProcedure,
 			connect.WithSchema(playServiceMethods.ByName("GetCharacterWildShape")),
-			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
 		watchGameSession: connect.NewClient[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse](
@@ -2633,7 +2633,7 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		PlayServiceGetCharacterWildShapeProcedure,
 		svc.GetCharacterWildShape,
 		connect.WithSchema(playServiceMethods.ByName("GetCharacterWildShape")),
-		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
 	playServiceWatchGameSessionHandler := connect.NewServerStreamHandler(

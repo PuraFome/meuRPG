@@ -408,6 +408,12 @@ func TestWildShapeTimeLeftIsRead(t *testing.T) {
 	if f == nil || f.GetClockTextPt() != "52 min restantes" {
 		t.Errorf("clock card = %v, want 52 min restantes", f)
 	}
+	// The form is said once, by the beast's name: the clock's effect is no label of its own (584-02, 584-04).
+	for _, who := range []*user{s.master, s.bia, s.caio} {
+		if l := byLabel(t, s.get(t, who), "Sálvia").GetEffectLabels(); len(l) != 0 {
+			t.Errorf("the order carries the labels %v on the druid in the form, want none", l)
+		}
+	}
 	if got := byLabel(t, s.get(t, s.master), "Sálvia").GetSpeedFt(); got == 0 {
 		t.Error("the druid has no speed")
 	}
@@ -481,8 +487,8 @@ func TestWildShapeReadOutsideASession(t *testing.T) {
 	}
 	for who, u := range map[string]*user{"master": s.master, "owner": s.bia} {
 		w, err := read(u, s.bri.GetId())
-		if err != nil || w.GetBeastKey() != wolfKey || w.GetTimeLeftPt() != "1 h 52 min restantes" || w.GetSecondsLeft() != formSeconds-480 {
-			t.Errorf("%s reads %v, %v, want the wolf with 1 h 52 min restantes", who, w, err)
+		if err != nil || w.GetBeastKey() != wolfKey || w.GetTimeLeftPt() != "1 h 52 min restantes" || w.GetSecondsLeft() != formSeconds-480 || w.GetArmorClass() != 13 || w.GetSecondsTotal() != formSeconds {
+			t.Errorf("%s reads %v, %v, want the wolf (CA 13, 2 h in all) with 1 h 52 min restantes", who, w, err)
 		}
 	}
 	if w, err := read(s.master, s.irma.GetId()); err != nil || w != nil {

@@ -1,6 +1,6 @@
 import type { Combatant } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { VitalsVm } from '../../../core/play/live-session.types';
-import { joinDots, tight } from '../../../core/format/text';
+import { hoursText, joinDots, tight } from '../../../core/format/text';
 import { metersFixed } from '../../../core/units';
 
 /** The time each druid's form has left, by character (the server sends the time only to the master and the owner). */
@@ -26,10 +26,12 @@ export function stayView(
   }
   const resource = vitals?.resources?.find((r) => r.key === 'wild_shape');
   const left = resource ? resource.total - resource.used : null;
+  const total = vitals?.wildShape?.secondsTotal;
+  const back = total ? `o tempo volta a ${hoursText(total)}` : 'o tempo recomeça';
   const cost =
     resource && left !== null
-      ? `gasta 1 uso (restam ${left} de ${resource.total}) e o tempo recomeça`
-      : 'gasta 1 uso e o tempo recomeça';
+      ? `gasta 1 uso (restam ${left} de ${resource.total}) e ${back}`
+      : `gasta 1 uso e ${back}`;
   let reason = '';
   if (ended) {
     reason = 'A forma já acabou. Para virar fera de novo, use Forma Selvagem.';

@@ -178,7 +178,7 @@ service PlayService {
   //     dead one, one that is not in the campaign): the same reason for each, so
   //     no answer hints that a form exists.
   rpc GetCharacterWildShape(GetCharacterWildShapeRequest) returns (GetCharacterWildShapeResponse) {
-    option idempotency_level = NO_SIDE_EFFECTS;
+    option idempotency_level = IDEMPOTENT;
   }
 
   // WatchGameSession streams the live changes of the campaign's open game
@@ -1472,6 +1472,13 @@ message WildShapeState {
   // seconds_left as the screens write it, in Portuguese ("1 h 52 min restantes", "52 min
   // restantes"; under a minute, the rounds). Set whenever seconds_left is, for the same readers.
   optional string time_left_pt = 6;
+  // The beast's armor class ("CA 13"), which is the character's while in the form: the character's own
+  // is on the sheet. Only the master and the character's player read it, like the hit points.
+  int32 armor_class = 7;
+  // The whole duration of a form of this character, in seconds (half the druid's level in hours): what
+  // "Permanecer na forma" sets the clock back to. Unset for a character with no druid level, whose form has no
+  // clock. Same readers as seconds_left.
+  optional int32 seconds_total = 8;
 }
 
 // FamiliarSightState says a player is looking through their familiar's eyes

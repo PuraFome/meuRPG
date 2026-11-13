@@ -2208,7 +2208,14 @@ type WildShapeState struct {
 	SecondsLeft *int32 `protobuf:"varint,5,opt,name=seconds_left,json=secondsLeft,proto3,oneof" json:"seconds_left,omitempty"`
 	// seconds_left as the screens write it, in Portuguese ("1 h 52 min restantes", "52 min
 	// restantes"; under a minute, the rounds). Set whenever seconds_left is, for the same readers.
-	TimeLeftPt    *string `protobuf:"bytes,6,opt,name=time_left_pt,json=timeLeftPt,proto3,oneof" json:"time_left_pt,omitempty"`
+	TimeLeftPt *string `protobuf:"bytes,6,opt,name=time_left_pt,json=timeLeftPt,proto3,oneof" json:"time_left_pt,omitempty"`
+	// The beast's armor class ("CA 13"), which is the character's while in the form: the character's own
+	// is on the sheet. Only the master and the character's player read it, like the hit points.
+	ArmorClass int32 `protobuf:"varint,7,opt,name=armor_class,json=armorClass,proto3" json:"armor_class,omitempty"`
+	// The whole duration of a form of this character, in seconds (half the druid's level in hours): what
+	// "Permanecer na forma" sets the clock back to. Unset for a character with no druid level, whose form has no
+	// clock. Same readers as seconds_left.
+	SecondsTotal  *int32 `protobuf:"varint,8,opt,name=seconds_total,json=secondsTotal,proto3,oneof" json:"seconds_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2283,6 +2290,20 @@ func (x *WildShapeState) GetTimeLeftPt() string {
 		return *x.TimeLeftPt
 	}
 	return ""
+}
+
+func (x *WildShapeState) GetArmorClass() int32 {
+	if x != nil {
+		return x.ArmorClass
+	}
+	return 0
+}
+
+func (x *WildShapeState) GetSecondsTotal() int32 {
+	if x != nil && x.SecondsTotal != nil {
+		return *x.SecondsTotal
+	}
+	return 0
 }
 
 // FamiliarSightState says a player is looking through their familiar's eyes
@@ -6537,7 +6558,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x0fduration_rounds\x18\x04 \x01(\x05R\x0edurationRounds\x12\x1f\n" +
 	"\vrounds_left\x18\x05 \x01(\x05R\n" +
 	"roundsLeft\x12\x17\n" +
-	"\aends_on\x18\x06 \x03(\tR\x06endsOn\"\x96\x02\n" +
+	"\aends_on\x18\x06 \x03(\tR\x06endsOn\"\xf3\x02\n" +
 	"\x0eWildShapeState\x12\x1b\n" +
 	"\tbeast_key\x18\x01 \x01(\tR\bbeastKey\x12\"\n" +
 	"\rbeast_name_pt\x18\x02 \x01(\tR\vbeastNamePt\x12,\n" +
@@ -6545,9 +6566,13 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x0ehit_points_max\x18\x04 \x01(\x05R\fhitPointsMax\x12&\n" +
 	"\fseconds_left\x18\x05 \x01(\x05H\x00R\vsecondsLeft\x88\x01\x01\x12%\n" +
 	"\ftime_left_pt\x18\x06 \x01(\tH\x01R\n" +
-	"timeLeftPt\x88\x01\x01B\x0f\n" +
+	"timeLeftPt\x88\x01\x01\x12\x1f\n" +
+	"\varmor_class\x18\a \x01(\x05R\n" +
+	"armorClass\x12(\n" +
+	"\rseconds_total\x18\b \x01(\x05H\x02R\fsecondsTotal\x88\x01\x01B\x0f\n" +
 	"\r_seconds_leftB\x0f\n" +
-	"\r_time_left_pt\"}\n" +
+	"\r_time_left_ptB\x10\n" +
+	"\x0e_seconds_total\"}\n" +
 	"\x12FamiliarSightState\x12\x1f\n" +
 	"\vcreature_id\x18\x01 \x01(\tR\n" +
 	"creatureId\x12\x1b\n" +
@@ -6812,7 +6837,7 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x10ListGameSessions\x12'.meurpg.play.v1.ListGameSessionsRequest\x1a(.meurpg.play.v1.ListGameSessionsResponse\"\x03\x90\x02\x02\x12v\n" +
 	"\x14ListOpenGameSessions\x12+.meurpg.play.v1.ListOpenGameSessionsRequest\x1a,.meurpg.play.v1.ListOpenGameSessionsResponse\"\x03\x90\x02\x01\x12d\n" +
 	"\x0eGetLiveSession\x12%.meurpg.play.v1.GetLiveSessionRequest\x1a&.meurpg.play.v1.GetLiveSessionResponse\"\x03\x90\x02\x02\x12y\n" +
-	"\x15GetCharacterWildShape\x12,.meurpg.play.v1.GetCharacterWildShapeRequest\x1a-.meurpg.play.v1.GetCharacterWildShapeResponse\"\x03\x90\x02\x01\x12g\n" +
+	"\x15GetCharacterWildShape\x12,.meurpg.play.v1.GetCharacterWildShapeRequest\x1a-.meurpg.play.v1.GetCharacterWildShapeResponse\"\x03\x90\x02\x02\x12g\n" +
 	"\x10WatchGameSession\x12'.meurpg.play.v1.WatchGameSessionRequest\x1a(.meurpg.play.v1.WatchGameSessionResponse0\x01\x12t\n" +
 	"\x15AdjustCharacterVitals\x12,.meurpg.play.v1.AdjustCharacterVitalsRequest\x1a-.meurpg.play.v1.AdjustCharacterVitalsResponse\x12V\n" +
 	"\vNudgePlayer\x12\".meurpg.play.v1.NudgePlayerRequest\x1a#.meurpg.play.v1.NudgePlayerResponse\x12k\n" +

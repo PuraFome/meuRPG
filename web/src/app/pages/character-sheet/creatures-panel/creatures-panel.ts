@@ -32,7 +32,7 @@ import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { isUnlimited } from '../../../core/combat/unlimited-uses';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { CreatureCard } from './creature-card';
-import { readWild } from './wild-read';
+import { readWild, stayBeast } from './wild-read';
 import type { EditMode } from '../../../shared/creatures/creature-edit';
 import {
   SummonSheet,
@@ -140,6 +140,7 @@ export class CreaturesPanel {
   );
   protected readonly formTime = signal('');
   private readonly beastKey = signal('');
+  private readonly formTotal = signal(0);
   protected readonly wildError = signal('');
   /** "Permanecer na forma" is on its way. */
   protected readonly staying = signal(false);
@@ -147,9 +148,8 @@ export class CreaturesPanel {
   /** "Permanecer gasta 1 uso (restará 0): o Lobo fica com 7 PV e o tempo recomeça. Fora de combate, nada disso gasta ação." */
   protected readonly stayLine = computed(() => {
     const u = this.uses();
-    const hp = this.formHp();
     const uses = u && !isUnlimited(u.total) ? ` (restará ${Math.max(u.left - 1, 0)})` : '';
-    const beast = hp ? `: o ${this.form()} fica com ${hp.current} PV e o tempo recomeça` : '';
+    const beast = stayBeast(this.form(), this.formHp(), this.formTotal());
     return `Permanecer gasta 1 uso${uses}${beast}. Fora de combate, nada disso gasta ação.`;
   });
   /** No use left: "Permanecer" waits for a rest. */
@@ -199,6 +199,7 @@ export class CreaturesPanel {
       this.form.set(read.form);
       this.formTime.set(live ? read.time : '');
       this.beastKey.set(read.beastKey);
+      this.formTotal.set(read.total);
       this.formHp.set(read.hp);
     } catch {
       if (seq === this.wildSeq) {

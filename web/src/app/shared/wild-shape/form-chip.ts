@@ -20,6 +20,10 @@ import { MatIconModule } from '@angular/material/icon';
   styles: `
     :host {
       display: inline-flex;
+      // Sized to its words, also in a column that stretches its children (584-01 at 390).
+      align-self: flex-start;
+      width: fit-content;
+      max-width: 100%;
       align-items: center;
       gap: 6px;
       box-sizing: border-box;

@@ -108,8 +108,8 @@
           }
         </app-fold>
       }
-      @if (contestAttacks().length) {
-        @for (o of contestAttacks(); track o.kind) {
+      @if (contestRows().length) {
+        @for (o of contestRows(); track o.kind) {
           <app-action-row
             [name]="special(o).name"
             economy="action"
@@ -130,15 +130,14 @@
       }
 
       @if (gearFlow(); as flow) {
+        @if (!beast()) {
         <app-gear-fold [flow]="flow" [own]="own()" [extra]="extraAction()" [locked]="locked()" />
+        }
       }
     </div>
 
     @if (hasSpells()) {
       <div class="panel" role="tabpanel" [id]="panelId('spells')" [attr.aria-labelledby]="tabButtonId('spells')" [hidden]="current() !== 'spells'">
-        @if (beast()) {
-          <p class="group__why" id="no-spells"><mat-icon aria-hidden="true">block</mat-icon><span><b>Sem magias na forma de fera.</b> Volte à forma normal para conjurar.</span></p>
-        } @else {
           @if (slotRows().length) {
             <!-- One line of slots (C6-07): the one explanation of every "Sem espaço" below. -->
             <ul class="slots" aria-label="Seus espaços de magia">
@@ -161,7 +160,6 @@
               }
             </app-fold>
           }
-        }
       </div>
     }
 
@@ -275,6 +273,11 @@
         </section>
       }
     </div>
+
+    @if (beast()) {
+      <!-- A form casts nothing: said once, at the foot of the actions (584-01, 584-02). -->
+      <p class="group__why" id="no-spells"><mat-icon aria-hidden="true">block</mat-icon><span>Sem magias na forma de fera. Volte à forma normal para conjurar.</span></p>
+    }
   }
 </section>
 
