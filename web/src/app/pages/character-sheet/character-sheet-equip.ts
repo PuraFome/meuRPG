@@ -81,13 +81,15 @@ export class SheetEquip {
     const mine =
       marks.silvered || marks.adamantine || marks.magical ? [{ weaponKey, ...marks }] : [];
     try {
-      const saved = await this.host.source.setWeaponMarks(
+      const saved = await this.host.source.saveGear(
         campaignId,
         vm.id,
         vm.revision,
         vm.name,
         vm.fullSheet,
-        [...others.map((m) => ({ weaponKey: m.weaponKey, ...marksOf(m) })), ...mine],
+        {
+          marks: [...others.map((m) => ({ weaponKey: m.weaponKey, ...marksOf(m) })), ...mine],
+        },
       );
       this.host.apply(vm.id, saved);
       return '';

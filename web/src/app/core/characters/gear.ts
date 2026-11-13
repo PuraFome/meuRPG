@@ -2,7 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
 import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
-import { type GearEntry, GearKind } from '../../../gen/meurpg/rules/v1/rules_pb';
+import type { ItemBonus } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { type GearEntry, GearKind, type ItemModifier } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
 /** What a weapon is made of or enchanted with, for the resistances and immunities to nonmagical attacks. */
@@ -33,6 +34,18 @@ export interface GearVm {
   readonly marks?: MarksVm;
   /** How many copies the sheet lists: weapons with one key are one row, their state kept by key. */
   readonly count: number;
+  /** The magic bonus stored for this piece's key (1 to 3); absent when the piece has none. */
+  readonly bonus?: number;
+  /** Whether the bonus is added to the numbers now: every modifier the piece gives counts. */
+  readonly bonusCounts?: boolean;
+}
+
+/** The accessible name of the magic bonus chip; `withWords` gives the words the attack sheet shows. */
+export function bonusChipName(bonus: number, counts: boolean, withWords = false): string {
+  if (withWords) {
+    return counts ? 'Bônus mágico, já somado' : 'Bônus mágico, não conta agora';
+  }
+  return `Bônus mágico +${bonus}, ${counts ? 'já somado' : 'não conta agora'}`;
 }
 
 const KINDS: Record<number, GearVm['kind']> = {
@@ -47,8 +60,18 @@ function withMarks(
   g: GearEntry,
   attacks: readonly MarkSource[],
   marks: readonly (MarkSource & { weaponKey: string })[],
+  itemBonuses: readonly ItemBonus[] = [],
+  itemModifiers: readonly ItemModifier[] = [],
 ): GearVm {
-  const vm = toGearVm(g);
+  const base = toGearVm(g);
+  const stored = itemBonuses.find((b) => b.key === g.key)?.bonus;
+  const vm: GearVm = stored
+    ? {
+        ...base,
+        bonus: stored,
+        bonusCounts: itemModifiers.filter((m) => m.sourceKey === g.key).every((m) => m.counts),
+      }
+    : base;
   if (vm.kind !== 'weapon') {
     return vm;
   }
@@ -70,8 +93,10 @@ export function gearWithMarks(
   gear: readonly GearEntry[],
   attacks: readonly MarkSource[],
   marks: readonly (MarkSource & { weaponKey: string })[],
+  itemBonuses: readonly ItemBonus[] = [],
+  itemModifiers: readonly ItemModifier[] = [],
 ): GearVm[] {
-  return gear.map((g) => withMarks(g, attacks, marks));
+  return gear.map((g) => withMarks(g, attacks, marks, itemBonuses, itemModifiers));
 }
 
 interface MarkSource {
@@ -116,7 +141,13 @@ export class GearClient {
     const full = content?.case === 'full' ? content.value : null;
     return {
       gear: (derived?.gear ?? []).map((g) =>
-        withMarks(g, derived?.attacks ?? [], full?.weaponMarks ?? []),
+        withMarks(
+          g,
+          derived?.attacks ?? [],
+          full?.weaponMarks ?? [],
+          full?.itemBonuses,
+          derived?.itemModifiers,
+        ),
       ),
       armorClass: derived?.armorClass ?? 0,
       shieldIdle: derived?.shieldIdle ?? false,

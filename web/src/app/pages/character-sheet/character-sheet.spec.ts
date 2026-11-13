@@ -60,15 +60,15 @@ class FakeCharacterSheetSource {
     sheet: unknown,
     marks: readonly WeaponMarkVm[],
   ) => Promise<CharacterSheetVm> = () => Promise.reject(new Error('not stubbed'));
-  setWeaponMarks(
+  saveGear(
     _campaignId: string,
     _characterId: string,
     revision: number,
     name: string,
     sheet: unknown,
-    marks: readonly WeaponMarkVm[],
+    change: { readonly marks?: readonly WeaponMarkVm[] },
   ): Promise<CharacterSheetVm> {
-    return this.setWeaponMarksFn(revision, name, sheet, marks);
+    return this.setWeaponMarksFn(revision, name, sheet, change.marks ?? []);
   }
   markCharacterDeadFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> =
     () => Promise.reject(new Error('not stubbed'));

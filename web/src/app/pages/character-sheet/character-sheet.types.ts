@@ -452,6 +452,12 @@ export type CampaignXpMode = 'enemies' | 'gold' | 'milestones';
  * implementation wrapping the generated `CharacterService` client
  * (`meurpg.characters.v1`) — see this file's top comment.
  */
+/** A change of the gear saved in one request: the weapon marks, and/or the magic bonus of one piece (0 removes it). */
+export interface GearChange {
+  readonly marks?: readonly WeaponMarkVm[];
+  readonly bonus?: { readonly key: string; readonly bonus: number };
+}
+
 export abstract class CharacterSheetSource {
   /** How the campaign levels, to know whether the sheet has an XP block (a
    * milestones campaign has none) or only the "Pode subir de nível" tag. */
@@ -465,15 +471,15 @@ export abstract class CharacterSheetSource {
     key: string,
     equipped: boolean,
   ): Promise<void>;
-  /** Saves the marks of the sheet's weapons over the whole stored sheet (`UpdateCharacter`, at `revision`): the owner while
-   * the sheet is editable, the master always. The server refuses a stale revision. */
-  abstract setWeaponMarks(
+  /** Saves a change of the gear over the whole stored sheet (`UpdateCharacter`, at `revision`): the owner while the sheet
+   * is editable, the master always. The server refuses a stale revision. */
+  abstract saveGear(
     campaignId: string,
     characterId: string,
     revision: number,
     name: string,
     sheet: GenFullSheet,
-    marks: readonly WeaponMarkVm[],
+    change: GearChange,
   ): Promise<CharacterSheetVm>;
   /** Saves the sheet's magic items over the whole stored sheet (`UpdateCharacter`, at `revision`): adding or removing one is a
    * full-sheet save, and the server keeps the ids and the attunement of the entries it already has. `id` is empty for a new one. */
