@@ -781,6 +781,8 @@ type actionEvent struct {
 	StatesChanged bool       `json:"states_changed,omitempty"`
 	// Rider is an answered monk rider (hit_rider).
 	Rider *riderEvent `json:"rider,omitempty"`
+	// Feature is what a use of a feature that declares a use did (UseFeature, features.go), on a feature_used event.
+	Feature *featureUseEvent `json:"feature,omitempty"`
 	// CreatureAct is the action of a stat block an NPC used (UseCreatureAction): the event is a spell_cast whose key is
 	// the action's, so that the log, the undo and the fog read it as they read a cast.
 	CreatureAct *creatureActionEvent `json:"creature_action,omitempty"`

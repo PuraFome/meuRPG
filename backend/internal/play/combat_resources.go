@@ -117,6 +117,9 @@ func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership
 		return nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
 	}
 	action := opts.GetFeatureActions()[i]
+	if action.GetViaUseFeature() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("use UseFeature"))
+	}
 	if err := s.mustActNow(ctx, c, who); err != nil {
 		return nil, err
 	}

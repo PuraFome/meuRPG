@@ -40,6 +40,7 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventDamageApplied:     (*undoer).damageApplied,
 	eventDamageDiscarded:   (*undoer).damageDiscarded,
 	eventHideResolved:      (*undoer).hideResolved,
+	eventFeatureUsed:       (*undoer).featureUsed,
 	eventCombatantMoved:    (*undoer).combatantMoved,
 	eventTrapTriggered:     (*undoer).trapTriggered,
 	eventActionTaken:       (*undoer).actionTaken,

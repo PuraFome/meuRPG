@@ -147,6 +147,7 @@ var notReads = map[string]classified{
 	notesv1connect.NotesServiceCreateNoteProcedure:                              {playerAction, "a player writes their own note"},
 	notesv1connect.NotesServiceDeleteNoteProcedure:                              {playerAction, "a player deletes their own note"},
 	notesv1connect.NotesServiceUpdateNoteProcedure:                              {playerAction, "a player edits their own note"},
+	playv1connect.FeatureServiceUseFeatureProcedure:                             {playerAction, "a player uses a feature of their own combatant, aimed at creatures they see; the master any"},
 	playv1connect.CastingServiceAbandonCastProcedure:                            {playerAction, "a player gives up the casting of their own character; the master any"},
 	playv1connect.CastingServiceCastSpellOutsideCombatProcedure:                 {playerAction, "a player casts for their own character; only the master casts for an NPC"},
 	playv1connect.CastingServiceConfirmCastTimePassedProcedure:                  {masterWrite, masterOnlyWhy},

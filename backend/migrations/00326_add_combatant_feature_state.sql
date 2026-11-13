@@ -33,7 +33,16 @@ SET feature_state = (
 WHERE feature_state = '{}'::jsonb
   AND (table_once_turns <> '{}'::jsonb OR sneak_attack_turn IS NOT NULL OR colossus_slayer_turn IS NOT NULL);
 
+-- A character used a feature that declares a use (UseFeature, `feature_used`): the payload holds the combatant, the round, the
+-- feature's key, the choice's key, the targets, what it healed and gave, the effect rows it made and what the undo puts back
+-- (the economy, the feature state, the hit points). IDs, keys and numbers only. The row is secret when a hidden combatant is in it.
+INSERT INTO session_event_kinds (kind) VALUES
+    ('feature_used')
+ON CONFLICT (kind) DO NOTHING;
+
 -- +goose Down
+DELETE FROM session_events WHERE kind = 'feature_used';
+DELETE FROM session_event_kinds WHERE kind = 'feature_used';
 ALTER TABLE combatants DROP CONSTRAINT IF EXISTS combatants_feature_state_valid;
 ALTER TABLE combatants
     DROP COLUMN IF EXISTS feature_state;
