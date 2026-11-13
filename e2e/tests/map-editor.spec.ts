@@ -169,6 +169,40 @@ test('o mestre marca quadrados como "Não dá para passar": o servidor guarda, a
   });
 });
 
+test('o mestre pinta Água e Escalável na mesma camada: o servidor guarda, "Apagar" tira as duas, e a dica fica na barra, nunca sobre o mapa @MR-034 @RN-21', async ({ browser }) => {
+  await atMaps(browser, 'Superfície', 20, async ({ master, campaignId, mapId, map }) => {
+    await paintMode(master, campaignId, mapId);
+    await expect(master.locator('app-layers-panel')).toContainText('Superfície');
+    await tools(master).getByRole('button', { name: 'Superfície' }).click();
+    // The second row names the brushes, and the line that says how to paint is in the bar.
+    await expect(master.getByText('Superfície pintada')).toBeVisible();
+    await expect(master.locator('app-editor-bar')).toContainText('Arraste para pintar · Shift apaga');
+    await expect(master.locator('app-map-view .mv__hint')).toHaveCount(0);
+
+    await dragSquares(master, map, [5, 8], [7, 8]);
+    await expect(master.locator('app-layers-panel')).toContainText('3 quadrados de água · custam o dobro');
+    await expect(saved(master)).toBeVisible();
+    await master.getByRole('radio', { name: 'Escalável' }).click();
+    await dragSquares(master, map, [5, 9], [6, 9]);
+    await expect(master.locator('app-layers-panel')).toContainText('3 quadrados de água e 2 escaláveis · custam o dobro');
+    await expect(saved(master)).toBeVisible();
+    await expect(master.getByRole('list', { name: 'Legenda do mapa' })).toContainText('Água');
+    await expect(master.getByRole('list', { name: 'Legenda do mapa' })).toContainText('Escalável');
+    expect(await layersOf(master, campaignId, mapId)).toMatchObject({ water: 3, climb: 2, wall: 0 });
+
+    // "Apagar" takes both off a square and does not ask which; it stays after a reload.
+    await tools(master).getByRole('button', { name: 'Apagar' }).click();
+    await expect(master.locator('app-editor-bar')).toContainText('Arraste para apagar a superfície');
+    await clickSquare(master, map, 7, 8);
+    await clickSquare(master, map, 6, 9);
+    await expect(saved(master)).toBeVisible();
+    await master.reload();
+    await master.getByRole('radio', { name: 'Pintar' }).click();
+    await expect(master.locator('app-layers-panel')).toContainText('2 quadrados de água e 1 escalável · custam o dobro');
+    expect(await layersOf(master, campaignId, mapId)).toMatchObject({ water: 2, climb: 1 });
+  });
+});
+
 test('um mapa sem grade não tem o que pintar: as ferramentas dizem por quê, e "Definir a grade" as liga @MR-034 @MR-036', async ({ browser }) => {
   await atMaps(browser, 'Sem grade', 0, async ({ master, campaignId, mapId }) => {
     await paintMode(master, campaignId, mapId);

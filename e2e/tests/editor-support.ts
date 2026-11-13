@@ -66,6 +66,9 @@ export interface LayerBits {
   threeQuarters: number;
   light: number;
   noPass: number;
+  /** Squares painted "Água" and "Escalável" in the surface layer. */
+  water: number;
+  climb: number;
   columns: number;
   rows: number;
 }
@@ -100,6 +103,8 @@ export async function layersOf(page: Page, campaignId: string, mapId: string): P
     threeQuarters: crumbs(bytes('cover'), 2),
     light: crumbs(bytes('light')),
     noPass: bits(bytes('noPass')),
+    water: crumbs(bytes('surface'), 1),
+    climb: crumbs(bytes('surface'), 2),
     columns,
     rows,
   };

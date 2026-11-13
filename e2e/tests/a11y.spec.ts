@@ -20,7 +20,7 @@ import { tableWithOpenChoices } from './choices-support';
 import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
-import { paintRPC, pickRadio, tapSquare } from './move-support';
+import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginManeuverCombatRPC, maneuverTable, spendPoolRPC } from './maneuver-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
@@ -4434,6 +4434,14 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
       await expect(m.getByText('Pintar só no computador')).toBeVisible();
       await expectLoaded(m);
       await expectScreenPasses(m, `Mapa no celular, sem pintura ${where}`);
+      // Camadas, read-only, with the surface the master painted on a computer (#589).
+      const surface = await callRPC(m, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId, mapId: table.mapId, layer: 'MAP_LAYER_SURFACE', value: 1, squares: [{ col: 6, row: 9 }, { col: 7, row: 9 }] });
+      expect(surface.ok(), await surface.text()).toBeTruthy();
+      await m.goto(editorRoute(campaignId, table.mapId));
+      await expect(m.getByRole('heading', { name: 'Camadas' })).toBeVisible();
+      await expect(m.getByText(/2 quadrados de água · custam o dobro/)).toBeVisible();
+      await expectLoaded(m);
+      await expectScreenPasses(m, `Mapa no celular, Camadas com a superfície ${where}`);
       await m.getByRole('button', { name: 'Esquecer o que foi visto' }).click();
       await expect(m.getByRole('heading', { name: 'Esquecer o que foi visto?' })).toBeVisible();
       await expectScreenPasses(m, `Esquecer o que foi visto, no celular ${where}`);
@@ -4527,6 +4535,21 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await expectScreenPasses(m, `Pintar, Luz com os glifos ${where}`);
     await tools.getByRole('button', { name: 'Apagar' }).click();
     await expectScreenPasses(m, `Pintar, Apagar ${where}`);
+    // Superfície (#589): two brushes in the second row, painted into one layer; "Apagar" with it takes both off and says so in the bar.
+    await tools.getByRole('button', { name: 'Superfície' }).click();
+    await expect(m.getByText('Arraste para apagar a superfície')).toBeVisible();
+    await expectScreenPasses(m, `Pintar, Superfície, Apagar ${where}`);
+    await m.getByRole('radio', { name: 'Água' }).click();
+    await m.getByRole('radio', { name: '1×1' }).click();
+    await dragSquares(m, map, [12, 9], [14, 9]);
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+    await expect(m.getByText('Arraste para pintar · Shift apaga')).toBeVisible();
+    await expectScreenPasses(m, `Pintar, Superfície, Água ${where}`);
+    await m.getByRole('radio', { name: 'Escalável' }).click();
+    await clickSquare(m, map, 18, 12);
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+    await expect(m.locator('app-layers-panel')).toContainText('3 quadrados de água e 1 escalável · custam o dobro');
+    await expectScreenPasses(m, `Pintar, Superfície, Escalável ${where}`);
 
     // The questions in place.
     await m.getByRole('button', { name: 'Mudar a grade' }).click();
@@ -4581,6 +4604,53 @@ test('o editor do mapa passa no axe e nas conferências de layout no tema escuro
 test('o editor do mapa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-034', '@MR-036'] }, async ({ browser }) => {
   test.setTimeout(300_000);
   await scanMapEditorScreens(browser, 'light', 320);
+});
+
+// "Mover" over water and a climbable wall (#589, MR-034, RN-21): the legend names Água and Escalável and keeps the zoom beside it, and the cost line says what
+// swimming and climbing add, each with its word. Every state goes through axe and the alignment checks.
+async function scanSwimScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const { p, campaignId, done } = await movingTable(browser, `Acessibilidade nadar ${Date.now()}`, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, {
+    character: { build: toren, sheet: torenSheet },
+    viewport,
+    colorScheme,
+    paint: async (master, t) => {
+      await paintRPC(master, t, 'MAP_LAYER_SURFACE', 1, [[6, 7], [7, 7]]);
+      await paintRPC(master, t, 'MAP_LAYER_SURFACE', 2, [[5, 6]]);
+    },
+  });
+  try {
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
+    await p.getByRole('button', { name: 'Mover', exact: true }).click();
+    await expect(p.getByRole('heading', { name: 'Mover Toren' })).toBeVisible();
+    const legend = p.getByRole('list', { name: 'Legenda do mapa' });
+    await expect(legend.getByText('Água')).toBeVisible();
+    await expect(legend.getByText('Escalável')).toBeVisible();
+    await expectScreenPasses(p, `Mover, Água e Escalável na legenda ${where}`);
+    await tapSquare(p, 7, 7);
+    await expect(p.getByText('+3,0 m nadando: cada metro na água conta dobrado.')).toBeVisible();
+    await expectScreenPasses(p, `Mover, nadando ${where}`);
+    await tapSquare(p, 5, 6);
+    await expect(p.getByText('+1,5 m escalando: cada metro escalado conta dobrado.')).toBeVisible();
+    await expectScreenPasses(p, `Mover, escalando ${where}`);
+    await tapSquare(p, 19, 7);
+    await expect(p.getByRole('alert').filter({ hasText: 'Longe demais' })).toBeVisible();
+    await expectScreenPasses(p, `Mover, longe demais com água no mapa ${where}`);
+  } finally {
+    await done();
+  }
+}
+
+test('o Mover com água e escalada passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSwimScreens(browser, 'light', 1280);
+});
+
+test('o Mover com água e escalada passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSwimScreens(browser, 'dark', 390);
 });
 
 // The doors (slice 10.14a, MR-010, RN-26, RN-10; E10-05 7 to 11): the "Porta" tool in "Pintar" with its panel, its refusal and its
