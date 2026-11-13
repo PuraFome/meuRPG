@@ -594,7 +594,13 @@ func hiddenWriteWorld(t *testing.T, row *hiddenWrite, variant int, made bool) se
 	}
 	snap.masterLog = normalized(jsonOf(w.seqLog(w.master, 0)))
 
-	// The streams until the session ends: a player heard no event, the master heard the write.
+	// The streams until the session ends: a player heard no event, the master heard the write. Ending the session is a write too, and moves
+	// the number once: a heartbeat that goes out after the call reads the number of the end, so the number of the heartbeats is
+	// checked up to the event each stream had when the call was made.
+	beforeEnd := map[*person]int{}
+	for p, sw := range watchers {
+		beforeEnd[p] = sw.count()
+	}
 	must(w.master.play.EndGameSession(t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
 	for p, sw := range watchers {
 		select {
@@ -603,11 +609,11 @@ func hiddenWriteWorld(t *testing.T, row *hiddenWrite, variant int, made bool) se
 			t.Fatalf("%s's stream did not end", p.name)
 		}
 		heard := 0
-		for _, ev := range sw.since(1) {
+		for i, ev := range sw.since(1) {
 			switch c := eventCase(ev); c {
 			case "heartbeat":
 				n := ev.GetHeartbeat().GetSessionSeq()
-				if n != snap.start && n != want {
+				if i+1 < beforeEnd[p] && n != snap.start && n != want {
 					t.Errorf("%s: a heartbeat says %d, want %d or %d (one write, one bump)", p.name, n, snap.start, want)
 				}
 				if p != w.master && !proto.Equal(ev, &playv1.WatchGameSessionResponse{SessionSeq: n, Event: &playv1.WatchGameSessionResponse_Heartbeat_{Heartbeat: &playv1.WatchGameSessionResponse_Heartbeat{SessionSeq: n}}}) {
