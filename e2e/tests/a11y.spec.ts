@@ -8426,7 +8426,7 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
     const section = dice.getByRole('region', { name: 'Sintonização' });
     await expect(section).toContainText('Sintonizados: 3 de 3');
     await everyWidth(p, 'sintonia-no-descanso-limite', 'A folha do descanso curto, o dono no limite', () => section);
-    await cropAtt(section, 'linha-do-descanso', colorScheme);
+    await cropAtt(section.getByRole('listitem').filter({ hasText: 'Pérola do poder' }), 'linha-do-descanso', colorScheme);
     await dice.locator('button', { hasText: 'Fechar' }).click();
     await expect(dice).toBeHidden();
 

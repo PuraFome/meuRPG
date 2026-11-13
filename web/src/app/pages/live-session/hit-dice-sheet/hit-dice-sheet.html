@@ -168,19 +168,17 @@
 
   @if (attunement(); as att) {
     @if (windowOpen()) {
-      <section class="attunement" aria-labelledby="att-t">
-        <h3 class="recovery__title" id="att-t">Sintonização</h3>
+      <div class="attunement">
         <app-attunement-section
           [attunement]="att.vm"
           viewer="owner"
           [windowOpen]="true"
-          [bare]="true"
           [campaignId]="data.campaignId"
           [characterId]="vitals().characterId"
           [revision]="att.revision"
           (changed)="attunementChanged()"
         />
-      </section>
+      </div>
     }
   }
   @if (attunementUsed()) {

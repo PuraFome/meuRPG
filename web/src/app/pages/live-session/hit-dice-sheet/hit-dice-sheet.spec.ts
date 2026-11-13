@@ -704,7 +704,7 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
       const { el, settle } = render({}, { attunementOpen: true });
       await settle();
       expect(loadAttunement).toHaveBeenCalledWith('camp', 'pensantus');
-      expect(flat(el.querySelector('#att-t'))).toBe('Sintonização');
+      expect(flat(el.querySelector('.att__title'))).toContain('Sintonização');
       expect(flat(el.querySelector('app-attunement-section'))).toContain('Manto élfico');
     });
 
