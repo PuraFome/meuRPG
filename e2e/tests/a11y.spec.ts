@@ -6079,8 +6079,8 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expectScreenPasses(m, `Editor de magia, o efeito ligado e vazio ${where}`);
       await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
       await m.getByLabel('Tipo', { exact: true }).selectOption({ label: 'Bônus nas jogadas' });
-      await m.getByRole('radio', { name: 'Um dado' }).check();
-      await expect(m.getByText('+1d4 em ataques e resistências')).toBeVisible();
+      await m.locator('app-spell-effect label', { hasText: 'Um dado' }).click();
+      await expect(m.getByText('+1d4 em ataques e resistências', { exact: true })).toBeVisible();
       await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Editor de magia, o efeito com um dado nas jogadas ${where}`);
       await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
@@ -6092,9 +6092,9 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await m.getByRole('button', { name: 'Salvar magia' }).click();
       await expect(m.getByLabel('Quantos', { exact: true })).toHaveAttribute('aria-invalid', 'true');
       await expectScreenPasses(m, `Editor de magia, a recusa de um número fora da faixa ${where}`);
-      await m.getByRole('radio', { name: /Só o dono do alvo e você/ }).check();
+      await m.locator('app-spell-effect label', { hasText: 'Só o dono do alvo e você' }).click();
       await expectScreenPasses(m, `Editor de magia, o efeito só para o dono ${where}`);
-      await m.getByRole('radio', { name: 'Só quem conjura' }).first().check();
+      await m.locator('app-segmented label', { hasText: 'Só quem conjura' }).first().click();
       await m.getByRole('switch', { name: 'Em volta de quem conjura (aura)' }).click();
       await expect(m.getByLabel('Até onde alcança')).toHaveValue('9');
       await expectCardsHoldTheirText(m);
