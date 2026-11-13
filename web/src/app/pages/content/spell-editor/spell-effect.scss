@@ -33,7 +33,7 @@
 
 .line {
   display: flex;
-  flex-wrap: wrap;
+  // Icon and words in one row: the words wrap beside the icon, not under it (a wrapping row leaves the icon alone).
   align-items: flex-start;
   gap: var(--mr-space-2);
   margin: 0;
@@ -45,7 +45,7 @@
     flex: none;
     width: var(--mr-font-16);
     height: var(--mr-font-16);
-    margin-top: calc(var(--mr-space-1) / 2);
+    margin-top: calc((20px - var(--mr-font-16)) / 2); // centred on the first line of words
     font-size: var(--mr-font-16);
   }
 
@@ -55,6 +55,7 @@
 }
 
 .duration {
+  flex-wrap: wrap;
   align-items: center;
   padding: var(--mr-space-2) var(--mr-space-3);
   border-radius: var(--mr-radius-md);

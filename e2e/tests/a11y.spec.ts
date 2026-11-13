@@ -6144,6 +6144,10 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema cla
   await scanTableContent(browser, 'light', 1280);
 });
 
+test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanTableContent(browser, 'light', 768);
+});
+
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'dark', 1024);
 });
