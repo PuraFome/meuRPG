@@ -33,6 +33,7 @@ A swatch is `.mr-swatch` (22 px, `aria-hidden`); the words carry the meaning.
 
 - **Parede:** a dark diagonal hatch over a veil.
 - **Terreno difícil:** a lighter crossed hatch.
+- **Superfície** (#589): one layer, two marks. **Água** is the map's water blue (`--mr-map-water`) under white waves; **Escalável** is a pale veil under dark chevrons. The legend names "Água" and "Escalável" only when the map has them, after "Terreno difícil". The layer's own swatch (`.mr-swatch--surface`, the "Camadas" row) is split along the diagonal, water over climbable. A player sees them as far as their character sees or remembers (RN-10); under the fog a remembered square keeps its mark faded.
 - **Não dá para passar:** a checkerboard of the map's ink (a pit, a chasm, a column of fire). It blocks movement, not sight, and is the only mark that is neither a hatch nor a pictogram; the legend names it "Não dá para passar" only when the map has one.
 - **Cobertura:** a dotted square filled from the bottom to halfway ("Meia cobertura") or three quarters ("Três quartos"). Never an object's name.
 - **Doors** (`app-door-mark`): one mark per kind, the same on the map, legend and editor buttons; the player's layer has no padlock or secret door.
@@ -52,13 +53,13 @@ One component (`app-fog-map`) serves the player, the master's own map ("Todos") 
 
 ## The map editor (`pages/maps`)
 
-Computer only (768 px and up); on a phone the master pans and zooms and uses the lists.
+Computer only (768 px and up); on a phone the master pans and zooms and uses the lists, and "Camadas" is a read-only list of what is painted (`app-map-layers-list`: the drawing, the name and how much, "32 de água e 14 escaláveis · custam o dobro"; a layer with nothing painted is not listed) above the fog's switches.
 
-- **Bar:** "Pontos | Pintar" selector; in "Pintar" the tools (Terreno difícil, Parede, Cobertura, Luz, "Não dá para passar", Porta, "Apagar"), the brush (1×1, 3×3) and the degree row. The chosen item always looks the same: `accent-soft` and a check in a slot that already exists, so choosing never shifts neighbours. Without a grid no tool looks chosen and the reason is written in the bar.
+- **Bar:** "Pontos | Pintar" selector; in "Pintar" the tools (Terreno difícil, Superfície, Parede, Cobertura, Luz, "Não dá para passar", Porta, "Apagar"), the brush (1×1, 3×3) and the second row: the degree or kind of the tool in hand (Cobertura: Meia, Três quartos; Luz: Claro, Penumbra, Escuro; Superfície pintada: Água, Escalável; Porta: the kind) and, at its end, the line that says what a stroke does ("Arraste para pintar · Shift apaga", with a pencil). That line lives in the bar for every tool, never over the map. Superfície has one layer and two brushes: "Apagar" takes both off a square, so it does not ask which. The chosen item always looks the same: `accent-soft` and a check in a slot that already exists, so choosing never shifts neighbours. Without a grid no tool looks chosen and the reason is written in the bar.
 - **Painting:** the surface is above the markers and moves with the map; one finger paints on touch and two fingers pan; arrows move the brush cursor and Space paints.
 - **One tap, one action for doors:** the door is written before the wall disappears, and the reverse, so no player sees a gap.
 - **Questions in place** (`app-map-ask`): "Mudar a grade?", "Trocar a imagem?", "Esquecer o que foi visto?" and the leave-with-unsaved-strokes question share one shape; nothing is erased before the second click.
-- **Layers panel:** shows "Tudo salvo", "Salvando" or "Não salvou" with the reason and "Tentar de novo" only when trying again can help.
+- **Layers panel:** lists Terreno difícil, Superfície ("32 quadrados de água e 14 escaláveis · custam o dobro"), Parede and the rest, each with its switch; shows "Tudo salvo", "Salvando" or "Não salvou" with the reason and "Tentar de novo" only when trying again can help.
 - **Point panels** (Luz, Armadilha, Tesouro) follow the usual panel contract: filled "Salvar ponto", same-size "Apagar ponto" that asks in place, a field error shown after the first save attempt.
 - **Doors in session** (`door-sheet`): each door has a 44 px transparent button; the sheet applies the choice at once; "Revelar a porta secreta" asks first.
 

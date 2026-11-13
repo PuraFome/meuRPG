@@ -1,6 +1,7 @@
 import { expect, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 
 import { beginAttackCombatRPC, tableForCombat, type CombatTable } from './combat-support';
+import { featShotScale } from './feat-options-support';
 import { endOpenSessionRPC } from './live-session-support';
 import { boxOf, callRPC, newSignedInContext, type CharacterBuild } from './support';
 
@@ -18,9 +19,9 @@ export interface MoveTable {
 }
 
 /** A layer of the map's grid, as the Connect JSON names it. */
-export type Layer = 'MAP_LAYER_DIFFICULT_TERRAIN' | 'MAP_LAYER_WALL' | 'MAP_LAYER_COVER';
+export type Layer = 'MAP_LAYER_DIFFICULT_TERRAIN' | 'MAP_LAYER_WALL' | 'MAP_LAYER_COVER' | 'MAP_LAYER_SURFACE';
 
-/** Paints squares of one layer: terrain and wall take 0 or 1, cover 1 (half) or 2 (three-quarters). */
+/** Paints squares of one layer: terrain and wall take 0 or 1, cover 1 (half) or 2 (three-quarters), the surface 1 (Água) or 2 (Escalável). */
 export async function paintRPC(page: Page, table: CombatTable, layer: Layer, value: number, squares: [number, number][]): Promise<void> {
   const res = await callRPC(page, 'meurpg.maps.v1.MapService/PaintMapCells', {
     campaignId: table.campaignId,
@@ -49,10 +50,11 @@ export async function movingTable(
     character?: { build?: CharacterBuild; sheet?: Record<string, unknown> };
     paint?: (m: Page, table: CombatTable) => Promise<void>;
     viewport?: { width: number; height: number };
+    colorScheme?: 'light' | 'dark';
   } = {},
 ): Promise<MoveTable> {
   const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
-  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: options.viewport ?? { width: 1280, height: 900 } });
+  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: options.viewport ?? { width: 1280, height: 900 }, colorScheme: options.colorScheme, ...featShotScale });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');

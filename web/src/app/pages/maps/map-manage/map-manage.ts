@@ -27,6 +27,7 @@ import type { PickRow } from '../../../shared/person-pick/person-pick';
 import { type TreasureMark, MapPointsList } from '../../../shared/map-lists/map-points-list';
 import { MapTokensList } from '../../../shared/map-lists/map-tokens-list';
 import { MapLayersLegend } from '../../../shared/map-layers/map-layers-legend';
+import { MapLayersList } from '../../../shared/map-layers/map-layers-list';
 import { MapPinsLegend } from '../../../shared/map-pins/map-pins-legend';
 import { MapLegend } from '../../../shared/map-view/map-legend/map-legend';
 import { MapView } from '../../../shared/map-view/map-view';
@@ -41,7 +42,7 @@ import { FogPanel } from '../fog-panel/fog-panel';
  * caption says so), and revealing or hiding happens in the lists below it,
  * "Pontos do mapa" and "Tokens no mapa". Positions are edited on a
  * computer, and so is the painting: a fixed notice says so, the layers are drawn
- * with their legend, and the fog settings ("Névoa de guerra") are editable here.
+ * with their legend and listed read-only in "Camadas" (Superfície, Parede, ...), and the fog settings ("Névoa de guerra") are editable here.
  */
 @Component({
   selector: 'app-map-manage',
@@ -51,6 +52,7 @@ import { FogPanel } from '../fog-panel/fog-panel';
     FogPanel,
     GenerateImageButton,
     MapLayersLegend,
+    MapLayersList,
     MapLegend,
     MapPinsLegend,
     MapPointsList,

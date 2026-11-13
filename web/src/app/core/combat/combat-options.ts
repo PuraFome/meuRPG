@@ -47,6 +47,8 @@ const REASON_TEXT: Partial<Record<DisabledReasonCode, string>> = {
   [DisabledReasonCode.REACTION_ONLY]: 'Só quando o gatilho acontecer',
   [DisabledReasonCode.CASTING_TIME_TOO_LONG]: 'Demora demais para um combate',
   [DisabledReasonCode.NOT_YOUR_TURN]: 'Não é a sua vez',
+  // A feature that picks creatures has none it can pick now; the server's `text_pt` is the same sentence.
+  [DisabledReasonCode.NO_VALID_TARGET]: 'Sem alvo válido',
   [DisabledReasonCode.COMBAT_NOT_ACTIVE]: 'O combate não está em andamento',
   [DisabledReasonCode.COMBATANT_DOWN]: 'Caído: não pode agir',
   [DisabledReasonCode.COMBATANT_DEFEATED]: 'Derrotado: fora do combate',

@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import type { MapLayers } from '../../../core/maps/layers';
 import { type PaintSaveStatus } from '../../../core/maps/paint-queue';
 import { LIGHT_LABEL, type PaintTool, layerLines } from '../../../core/maps/paint-tools';
-import { DoorMark } from '../../../shared/map-layers/door-mark';
+import { LayerSwatch } from '../../../shared/map-layers/layer-swatch';
 import { RevealSwitch } from '../../../shared/reveal-switch/reveal-switch';
 
 /** Which layers the master's map shows (a view setting of his drawing: it changes nothing for anyone). */
@@ -28,7 +28,7 @@ export type LayerVisibility = Readonly<Record<PaintTool, boolean>>;
  */
 @Component({
   selector: 'app-layers-panel',
-  imports: [DoorMark, MatButtonModule, MatIconModule, RevealSwitch],
+  imports: [LayerSwatch, MatButtonModule, MatIconModule, RevealSwitch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './layers-panel.html',
   styleUrl: './layers-panel.scss',

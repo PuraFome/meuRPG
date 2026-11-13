@@ -132,6 +132,8 @@
         [class.cm__frame--refused]="f.refused"
         [style.left.%]="(f.square.col / columns()) * 100"
         [style.top.%]="(f.square.row / rows()) * 100"
+        [style.--cm-room-right]="'calc(' + (columns() - f.square.col - 0.5) + ' * var(--cm-sq))'"
+        [style.--cm-room-left]="'calc(' + (f.square.col + 0.5) + ' * var(--cm-sq))'"
       >
         <mat-icon>{{ f.refused ? 'block' : 'check' }}</mat-icon>
         @if (f.label) {
