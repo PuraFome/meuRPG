@@ -93,7 +93,7 @@ What a player may see and change is then decided from the character's row (`canS
 | `RenameCreature`, `DismissCreature` | Yes | Their own character's creatures | `not_found` | `not_found` | `unauthenticated` | `not_found` |
 | `GiveCreature`, `AdjustCreatureHitPoints` | Yes | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
 | `ContentService.ListContent`, `GetSpellDetails` | Yes | Yes | Yes | `not_found` | `unauthenticated` | Yes |
-| `ContentService.ListSpells`, `ListCreatures`, `GetCreature`, `ListTrapPresets`, `ListLightPresets` | Yes | Yes | Yes | `not_found` | `unauthenticated` | `not_found` |
+| `ContentService.ListSpells`, `ListMagicItems`, `ListCreatures`, `GetCreature`, `ListTrapPresets`, `ListLightPresets` | Yes | Yes | Yes | `not_found` | `unauthenticated` | `not_found` |
 | `TableContentService.ListTableEntries` | All entries and the counts | Only the entries a player may see, in full, never a count | Same | `not_found` | `unauthenticated` | `not_found` |
 | `TableContentService` writes, switches, packs, `GetClassTableDefaults`, `GetEffectMenu` | Yes | `permission_denied` | `permission_denied` | `not_found` | `unauthenticated` | `not_found` |
 
@@ -192,19 +192,27 @@ Inside the transaction and before the write it asks play (`ReviewHost.EquipInCom
 
 ## Attunement
 
-`FullSheet.magic_items` lists the magic items of the sheet (`SheetMagicItem`: key, `attuned`, and, filled by the server on a read, `requires_attunement`, `attunement_by_pt` and `restriction_met`).
-At most 20 items, each a catalog item that exists.
-A save never changes `attuned`: `keepAttunement` takes the stored state for a key already on the sheet, and a new key starts unattuned; only `SetAttunement` changes it.
-The sheet lock holds `magic_items` (the list), not the state.
+Two kinds of entry can be attuned: a magic item of `FullSheet.magic_items` and a +N piece of `FullSheet.item_bonuses` that names a catalog item (`ItemBonus.item_key`).
+A `SheetMagicItem` has a key, `attuned`, an `id`, and, filled by the server on every read, `requires_attunement`, `restriction_pt`, `restriction`, `same_item_attuned` and `name_pt`.
+At most 20 magic items; two copies of one item are two entries.
+The entry id is unique on the sheet: a magic item's is `m<n>`, given by the server to a new entry and kept on every save, and a +N piece's is `bonus:<key>`.
+`SetAttunement` names the entry by it.
+A save never changes `attuned`: `keepAttunement` takes the stored state for an entry whose id and key it already has, and a new entry starts unattuned; only `SetAttunement` changes it.
+A +N piece that names a catalog item takes `requires_attunement` from the catalog and ignores the client's flag; the item must be no family and its category must fit the piece.
+The sheet lock holds the list, the keys, the bonuses and the catalog item, not the state.
 `SetAttunement` locks the character row, then reads and spends the window in the same transaction, so two requests on one window cannot both pass.
 The window is `character_vitals.attunement_open` (`CharacterVitals.attunement_open`): a short or a long rest sets it (`TakeRest`, no revision moves), and the owner's attune or end clears it.
-The master needs no window.
-The limit is three attuned items, for the owner and the master alike (`ATTUNEMENT_LIMIT`).
+The master needs no window, and a dead character's owner has none.
+The checks run in this order: stale revision, the window (owner only), the limit of three (`ATTUNEMENT_LIMIT`), one copy of an item (`ATTUNEMENT_SAME_ITEM`), the restriction (owner only, `ATTUNEMENT_RESTRICTED`).
+Ending an attunement is checked for the window only.
 The restrictions of the SRD catalog are a closed table in `rules/attunement.go` (classes, spellcaster, dwarf, good or evil alignment, outdoors at night), checked when the catalog loads so that every restriction has a matcher.
-A restriction the sheet does not meet, or that the table does not know, is for the master only (`ATTUNEMENT_RESTRICTED`); the master's override is logged (`character.attuned`) with who attuned.
+The server says each restriction in Portuguese ("Só para um conjurador") and whether the character meets it (met, not met, or unknown when the sheet cannot say); the client never matches one.
+A restriction the sheet does not meet, or cannot decide, is for the master only; the master's override is logged (`character.attuned`) with who attuned.
+Removing an attuned entry from the sheet ends its attunement with it.
 A character that is dead keeps its attunements until the master ends them.
-Another player never reaches the character: `not_found`, as for `SetEquipped`.
+Another player never reaches the character: `not_found`, as for `SetEquipped`, and never reads the magic items or their state.
 The app leaves out the automatic end of an attunement (distance, another attuner, death): the master ends it by hand.
+`ContentService.ListMagicItems` lists the items the picker offers: items and families with their variants, never the +N armor and weapon families, found by name, in pages like `ListSpells`.
 
 ## Class and race choices
 

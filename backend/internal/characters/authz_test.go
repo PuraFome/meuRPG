@@ -281,6 +281,12 @@ func TestAuthorizationMatrix(t *testing.T) {
 			return err
 		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 
+		// The magic item picker is for an active member, like the spells.
+		{"ListMagicItems", "", nil, func(ctx context.Context, u *user) error {
+			_, err := u.content.ListMagicItems(ctx, connect.NewRequest(&rulesv1.ListMagicItemsRequest{CampaignId: campaign, Query: "anel"}))
+			return err
+		}, [6]connect.Code{allowed, allowed, allowed, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
+
 		// The creatures are public rules, but only for an active member: the
 		// pending member gets not_found (RN-15).
 		{"ListCreatures", "", nil, func(ctx context.Context, u *user) error {

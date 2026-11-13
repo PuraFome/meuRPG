@@ -127,6 +127,7 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um descanso curto ou longo abre uma janela para cada personagem que ele cobre, e nessa janela o dono sintoniza um item ou encerra uma sintonização; o mestre faz qualquer um dos dois a qualquer hora.
   Alguns itens pedem algo do personagem (uma classe, uma raça, um alinhamento, ser conjurador).
   O app confere as restrições dos itens do SRD; quando a ficha não cumpre uma, ou o app não consegue decidir, só o mestre sintoniza, e o registro do servidor diz quem fez.
+  Só uma cópia de um item fica sintonizada de cada vez.
   Salvar a ficha nunca muda quem está sintonizado: um item mágico novo começa sem sintonia.
   A trava da ficha não prende a sintonização, ela prende a lista de itens e o tipo.
   Um personagem que morre continua sintonizado até o mestre encerrar.

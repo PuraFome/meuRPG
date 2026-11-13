@@ -438,11 +438,13 @@ type CharacterServiceClient interface {
 	SetEquipped(context.Context, *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error)
 	// SetAttunement attunes the character to a magic item, or ends it (SRD 5.1, attunement).
 	// The owner needs the window a short or long rest opens (one attunement or ending for each
-	// window); the master needs none and may attune past a restriction. At most three items.
+	// window); the master needs none and may attune past a restriction. At most three items,
+	// and one copy of an item. The checks run in this order: stale revision, the window (owner only),
+	// the limit, the copy, the restriction (owner only). A dead character's owner has no window.
 	// Errors: `not_found` (the character is not the caller's to see), `invalid_argument` (the
 	// entry_id is not an entry of the sheet that asks for attunement), `aborted` (stale revision),
 	// `failed_precondition` with CharacterBlocked: ATTUNEMENT_LIMIT, ATTUNEMENT_RESTRICTED,
-	// ATTUNEMENT_NEEDS_REST, ATTUNEMENT_SAME_ITEM or CHARACTER_DEAD (only the master changes a dead character's).
+	// ATTUNEMENT_NEEDS_REST or ATTUNEMENT_SAME_ITEM.
 	SetAttunement(context.Context, *connect.Request[v1.SetAttunementRequest]) (*connect.Response[v1.SetAttunementResponse], error)
 	// MarkCharacterDead records that a player character died (RN-03). Only
 	// the campaign's master may call it.
@@ -1793,11 +1795,13 @@ type CharacterServiceHandler interface {
 	SetEquipped(context.Context, *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error)
 	// SetAttunement attunes the character to a magic item, or ends it (SRD 5.1, attunement).
 	// The owner needs the window a short or long rest opens (one attunement or ending for each
-	// window); the master needs none and may attune past a restriction. At most three items.
+	// window); the master needs none and may attune past a restriction. At most three items,
+	// and one copy of an item. The checks run in this order: stale revision, the window (owner only),
+	// the limit, the copy, the restriction (owner only). A dead character's owner has no window.
 	// Errors: `not_found` (the character is not the caller's to see), `invalid_argument` (the
 	// entry_id is not an entry of the sheet that asks for attunement), `aborted` (stale revision),
 	// `failed_precondition` with CharacterBlocked: ATTUNEMENT_LIMIT, ATTUNEMENT_RESTRICTED,
-	// ATTUNEMENT_NEEDS_REST, ATTUNEMENT_SAME_ITEM or CHARACTER_DEAD (only the master changes a dead character's).
+	// ATTUNEMENT_NEEDS_REST or ATTUNEMENT_SAME_ITEM.
 	SetAttunement(context.Context, *connect.Request[v1.SetAttunementRequest]) (*connect.Response[v1.SetAttunementResponse], error)
 	// MarkCharacterDead records that a player character died (RN-03). Only
 	// the campaign's master may call it.

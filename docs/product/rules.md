@@ -127,6 +127,7 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   A short or a long rest opens a window for each character it covers, and in that window the owner attunes one item or ends one attunement; the master does either at any time.
   Some items ask for something of the character (a class, a race, an alignment, being a spellcaster).
   The app checks the restrictions of the SRD items; when the sheet does not meet one, or it cannot tell, only the master attunes it, and the server log says who did.
+  Only one copy of an item is attuned at a time.
   A save of the sheet never changes who is attuned: a new magic item starts unattuned.
   The sheet lock does not hold attunement, it holds the list of items and the kind.
   A character that dies stays attuned until the master ends it.

@@ -10,6 +10,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 )
 
@@ -370,4 +371,63 @@ func TestRemovingAnAttunedItemEndsItsAttunement(t *testing.T) {
 	if len(ids) != 2 || ids[0] == ids[1] || again.GetSheet().GetFull().GetMagicItems()[1].GetAttuned() {
 		t.Errorf("ids %v, attuned %v: a client's repeated id must not give the new entry the old one's attunement", ids, attunedKeys(again))
 	}
+}
+
+// A +N piece names its catalog item: the server takes requires_attunement from the catalog and ignores the client's flag,
+// the item must fit the piece, and the piece is then one attunable entry that counts toward the three.
+func TestAPlusNPieceNamesItsCatalogItem(t *testing.T) {
+	t.Parallel()
+	et := newEditorTable(t, nil)
+	pc := et.editorStandardFighter(t)
+	with := func(ib *charactersv1.ItemBonus) *charactersv1.UpdateCharacterRequest {
+		req := editorSaveOf(pc)
+		req.Sheet = editorClone(pc.GetSheet(), func(f *charactersv1.FullSheet) {
+			f.WeaponKeys = []string{"equipment:longsword"}
+			f.ItemBonuses = []*charactersv1.ItemBonus{ib}
+		})
+		return req
+	}
+	_, err := editorUpdate(et.master, with(&charactersv1.ItemBonus{Key: "equipment:longsword", Bonus: 3, ItemKey: "item:armor-of-resistance"}))
+	wantEditorRefusal(t, "an armor item on a weapon", err, `invalid_argument: sheet.full.item_bonuses[0].item_key is not a catalog item (no family) that fits the piece: armor for the armor and the shield, a weapon for a weapon | InvalidField{field="sheet.full.item_bonuses[0].item_key"}`)
+	_, err = editorUpdate(et.master, with(&charactersv1.ItemBonus{Key: "equipment:longsword", Bonus: 3, ItemKey: "item:weapon"}))
+	wantEditorRefusal(t, "a family", err, `invalid_argument: sheet.full.item_bonuses[0].item_key is not a catalog item (no family) that fits the piece: armor for the armor and the shield, a weapon for a weapon | InvalidField{field="sheet.full.item_bonuses[0].item_key"}`)
+	saved, err := editorUpdate(et.master, with(&charactersv1.ItemBonus{Key: "equipment:longsword", Bonus: 3, ItemKey: "item:defender", RequiresAttunement: false, Attuned: true}))
+	if err != nil {
+		t.Fatalf("the Defender: %v", err)
+	}
+	ib := saved.GetSheet().GetFull().GetItemBonuses()[0]
+	if !ib.GetRequiresAttunement() || ib.GetAttuned() || ib.GetId() != "bonus:equipment:longsword" || ib.GetItemNamePt() == "" {
+		t.Errorf("the Defender's entry = %v, want it asking for attunement, unattuned, named, with the id bonus:equipment:longsword", ib)
+	}
+	if got, err := et.attuneEntry(et.master, saved, ib.GetId(), true); err != nil || !got.GetSheet().GetFull().GetItemBonuses()[0].GetAttuned() {
+		t.Errorf("attune the Defender: err %v", err)
+	}
+}
+
+// ListMagicItems pages the picker and ties a token to its search.
+func TestListMagicItemsPagesAndRefusesAForeignToken(t *testing.T) {
+	t.Parallel()
+	et := newEditorTable(t, nil)
+	ctx := context.Background()
+	list := func(q string, size int32, token string) (*rulesv1.ListMagicItemsResponse, error) {
+		res, err := et.dona.content.ListMagicItems(ctx, connect.NewRequest(&rulesv1.ListMagicItemsRequest{CampaignId: et.campaign, Query: q, PageSize: size, PageToken: token}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg, nil
+	}
+	first, err := list("", 10, "")
+	if err != nil || len(first.GetItems()) != 10 || first.GetNextPageToken() == "" || first.GetTotal() < 100 {
+		t.Fatalf("first page: %v, err %v", first, err)
+	}
+	next, err := list("", 10, first.GetNextPageToken())
+	if err != nil || next.GetItems()[0].GetKey() == first.GetItems()[0].GetKey() {
+		t.Fatalf("second page: %v, err %v", next, err)
+	}
+	_, err = list("anel", 10, first.GetNextPageToken())
+	wantEditorRefusal(t, "a token of another search", err, `invalid_argument: page_token is not a token of this list | InvalidField{field="page_token"}`)
+	_, err = list(strings.Repeat("a", 101), 10, "")
+	wantEditorRefusal(t, "a long query", err, `invalid_argument: query must have at most 100 characters | InvalidField{field="query"}`)
+	_, err = list("", 401, "")
+	wantEditorRefusal(t, "a page too long", err, `invalid_argument: page_size must be 1 to 400 | InvalidField{field="page_size"}`)
 }

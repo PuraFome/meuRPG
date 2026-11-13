@@ -121,7 +121,9 @@ func TestAPlayersMagicItemsAreTheOwnersAndTheMastersAlone(t *testing.T) {
 	ctx := t.Context()
 	m := w.master
 	sheet := w.fullSheet("class:fighter", "race:human", 3)
-	sheet.GetFull().MagicItems = []*charactersv1.SheetMagicItem{{Key: "item:ring-of-protection"}}
+	sheet.GetFull().MagicItems = []*charactersv1.SheetMagicItem{{Key: "item:ring-of-protection"}, {Key: "item:holy-avenger"}}
+	sheet.GetFull().WeaponKeys = append(sheet.GetFull().WeaponKeys, "equipment:longsword")
+	sheet.GetFull().ItemBonuses = []*charactersv1.ItemBonus{{Key: "equipment:longsword", Bonus: 3, ItemKey: "item:defender"}}
 	toren := must(m.characters.UpdateCharacter(ctx, rq(&charactersv1.UpdateCharacterRequest{
 		CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: sheet,
 	}))).GetCharacter()
@@ -130,6 +132,8 @@ func TestAPlayersMagicItemsAreTheOwnersAndTheMastersAlone(t *testing.T) {
 		CampaignId: w.campaign, CharacterId: toren.GetId(), EntryId: "m1", Attuned: true,
 	})))
 	w.secrets.add(&canary{needle: `"item:ring-of-protection"`, kind: "magic-item-key"})
+	w.secrets.add(&canary{needle: `"item:defender"`, kind: "magic-item-piece-key"})
+	w.secrets.add(&canary{needle: `Só para um paladino`, kind: "magic-item-restriction"})
 	// A rest opens the window to attune (a combat is running here, so the row is set as the rest sets it).
 	if _, err := w.pool.Exec(ctx, `INSERT INTO character_vitals (character_id, attunement_open, revision, updated_at) VALUES ($1, true, 1, now())
 		ON CONFLICT (character_id) DO UPDATE SET attunement_open = true`, toren.GetId()); err != nil {
@@ -143,21 +147,22 @@ func TestAPlayersMagicItemsAreTheOwnersAndTheMastersAlone(t *testing.T) {
 			p.call(playv1connect.PlayServiceGetLiveSessionProcedure, &playv1.GetLiveSessionRequest{CampaignId: w.campaign}))
 	}
 	for _, p := range []*person{w.caio, m} {
-		found, window := false, false
+		found, window, piece := false, false, false
 		for _, r := range reads(p) {
 			found = found || (contains(r.body, `"item:ring-of-protection"`) && contains(r.body, `"attuned":true`))
 			window = window || contains(r.body, `"attunementOpen":true`)
+			piece = piece || (contains(r.body, `"item:defender"`) && contains(r.body, `Só para um paladino`))
 		}
 		if !window {
 			t.Errorf("%s: the open window is not in any read: the canary is unreachable", p.name)
 		}
-		if !found {
-			t.Errorf("%s: the magic item is not in any read: the canary is unreachable", p.name)
+		if !found || !piece {
+			t.Errorf("%s: the magic item or the piece's catalog item is not in any read: the canary is unreachable", p.name)
 		}
 	}
 	for _, p := range []*person{w.ana, w.pending} {
 		for _, r := range reads(p) {
-			if contains(r.body, `"item:ring-of-protection"`) || contains(r.body, `"magicItems"`) || contains(r.body, `"attunementBy`) || contains(r.body, `"attunementOpen"`) {
+			if contains(r.body, `"item:ring-of-protection"`) || contains(r.body, `"magicItems"`) || contains(r.body, `"restrictionPt"`) || contains(r.body, `"restriction"`) || contains(r.body, `"sameItemAttuned"`) || contains(r.body, `"itemKey"`) || contains(r.body, `Só para um paladino`) || contains(r.body, `"attunementOpen"`) {
 				t.Errorf("%s reads Toren's magic items", p.name)
 			}
 			for _, f := range w.inspect(p, r, nil) {

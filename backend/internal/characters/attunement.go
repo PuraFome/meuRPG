@@ -202,7 +202,7 @@ func restrictionOf(by string, met rules.Restriction) charactersv1.AttunementRest
 type attunementRequest struct {
 	id, entryID string
 	attuned     bool
-	revision int32
+	revision    int32
 }
 
 // SetAttunement implements charactersv1connect.CharacterServiceHandler.

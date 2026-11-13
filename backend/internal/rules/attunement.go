@@ -214,3 +214,49 @@ func sameItemBonuses(a, b []ItemBonus) bool {
 func sameMagicItems(a, b []SheetMagicItem) bool {
 	return slices.EqualFunc(a, b, func(x, y SheetMagicItem) bool { return x.Key == y.Key })
 }
+
+// MagicItemOption is a row of the magic item picker: an item, or a family with its variants.
+type MagicItemOption struct {
+	MagicItemEntry
+	// RestrictionPT is what the item asks of the character ("Só para um conjurador"), or "".
+	RestrictionPT string
+	// Options are the variants of a family, in the SRD's order.
+	Options []MagicItemOption
+}
+
+// gearFamilies are the +N families of the sheet's armor, shield and weapons: they come from the piece's own menu, and
+// the picker leaves them out.
+var gearFamilies = map[string]bool{"item:armor": true, "item:weapon": true}
+
+// ListMagicItems lists the items the picker offers whose name, or a variant's, holds the query (ignoring case and
+// accents), sorted by Portuguese name.
+func (c *Content) ListMagicItems(query string) []MagicItemOption {
+	q := foldPT(strings.TrimSpace(query))
+	var out []MagicItemOption
+	for _, e := range c.c.magicItemEntries {
+		if e.VariantOf != "" || gearFamilies[e.Key] {
+			continue
+		}
+		o := c.magicOption(e)
+		for _, v := range e.Variants {
+			o.Options = append(o.Options, c.magicOption(c.c.magicItemEntry(c.c.magicItems[v])))
+		}
+		if q == "" || matchesName(o, q) || slices.ContainsFunc(o.Options, func(v MagicItemOption) bool { return matchesName(v, q) }) {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+func matchesName(o MagicItemOption, query string) bool {
+	return strings.Contains(foldPT(o.NamePT), query) || strings.Contains(foldPT(o.Name), query)
+}
+
+func (c *Content) magicOption(e MagicItemEntry) MagicItemOption {
+	o := MagicItemOption{MagicItemEntry: e}
+	if e.AttunementBy != "" {
+		rule, _ := parseAttunementRule(e.AttunementBy)
+		o.RestrictionPT = rule.restrictionPT(e.AttunementByPT)
+	}
+	return o
+}
