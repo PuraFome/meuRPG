@@ -53,6 +53,8 @@ type hpState struct {
 type shapeState struct {
 	Beast string `json:"beast"`
 	HP    int32  `json:"hp"`
+	// Left is the game time the form's clock had left, in seconds (0: the whole duration).
+	Left int32 `json:"left,omitempty"`
 }
 
 // hpStateOf is a player's character's hit points, and its form, in its vitals.
@@ -699,10 +701,13 @@ type actionEvent struct {
 	Carried     int32       `json:"carried_damage,omitempty"`
 	ShapeSet    bool        `json:"shape_set,omitempty"`
 	ShapeBefore *shapeState `json:"shape_before,omitempty"`
-	Creature    string      `json:"creature_id,omitempty"`
-	Sight       string      `json:"sight,omitempty"`
-	SightConds  []string    `json:"sight_conditions,omitempty"`
-	EncounterID string      `json:"encounter_id,omitempty"`
+	// Stay says a started form was the same beast again (a use spent, the clock reset, nothing
+	// else changed).
+	Stay        bool     `json:"stay,omitempty"`
+	Creature    string   `json:"creature_id,omitempty"`
+	Sight       string   `json:"sight,omitempty"`
+	SightConds  []string `json:"sight_conditions,omitempty"`
+	EncounterID string   `json:"encounter_id,omitempty"`
 	// Spent says the change spent the combatant's action or bonus action (the
 	// economy fields above are then what an undo puts back).
 	Spent bool `json:"spent,omitempty"`

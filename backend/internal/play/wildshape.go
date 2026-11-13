@@ -55,6 +55,8 @@ const (
 	// own, whatever did it (endedAtZero), or the Unconscious condition (endedAsleep).
 	endedAtZero = "zero_hp"
 	endedAsleep = "unconscious"
+	// The SRD ends the form when its time runs out (half the druid's level in hours).
+	endedExpired = "expired"
 )
 
 // endsBySelf says a wild_shape_ended reason is part of the change that caused it,
@@ -89,6 +91,9 @@ func (s *Service) shapeLine(ctx context.Context, q *playdb.Queries, sessionID, c
 func (s *Service) formEnds(ctx context.Context, q *playdb.Queries, tx pgx.Tx, sessionID, campaignID, characterID, beast, reason string, carried int32) (*playv1.CharacterVitals, error) {
 	after, body, err := s.vitals.SetWildShape(ctx, tx, campaignID, characterID, "", 0)
 	if err != nil {
+		return nil, err
+	}
+	if err := dropFormClock(ctx, q, characterID); err != nil {
 		return nil, err
 	}
 	if err := q.SetCombatantBodyOfCharacter(ctx, playdb.SetCombatantBodyOfCharacterParams{
@@ -139,6 +144,9 @@ func (s *Service) endFormIfAsleep(ctx context.Context, c *combatTx, who playdb.C
 	}
 	after, body, err := s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, who.CharacterID, "", 0)
 	if err != nil {
+		return err
+	}
+	if err := takeFormClock(ctx, c, who.CharacterID); err != nil {
 		return err
 	}
 	if err := applyBody(ctx, c, who, body); err != nil {
@@ -253,6 +261,9 @@ func (s *Service) damageBeast(ctx context.Context, c *combatTx, target playdb.Co
 	if after, body, err = s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, target.CharacterID, "", 0); err != nil {
 		return nil, nil, err
 	}
+	if err := takeFormClock(ctx, c, target.CharacterID); err != nil {
+		return nil, nil, err
+	}
 	if err := applyBody(ctx, c, target, body); err != nil {
 		return nil, nil, err
 	}
@@ -309,6 +320,9 @@ type shapeRun struct {
 	characterID string
 	beast       string
 	leave       bool
+	// stay says the call asks for the beast the druid already is: the SRD's "expend another
+	// use" to keep the form past its time. It costs the uses and no action, and changes only the clock.
+	stay bool
 
 	made   actionEvent
 	vitals *playv1.CharacterVitals
@@ -386,7 +400,7 @@ func (s *Service) shapeTx(ctx context.Context, c *combatTx, r *shapeRun) (any, e
 	if err := s.shapeCheck(ctx, c, r); err != nil {
 		return nil, err
 	}
-	if r.turns {
+	if r.turns && !r.stay {
 		// Only on its turn; the cost comes after the form is checked, so a refusal
 		// says what is wrong with the change before it says the action is used.
 		if err := s.mustActNow(ctx, c, *r.who); err != nil {
@@ -396,14 +410,14 @@ func (s *Service) shapeTx(ctx context.Context, c *combatTx, r *shapeRun) (any, e
 	if err := s.shapeApply(ctx, c, r); err != nil {
 		return nil, err
 	}
-	if r.turns && (!r.leave || !r.v.master) {
+	if r.turns && !r.stay && (!r.leave || !r.v.master) {
 		// "Voltar à forma normal" is a bonus action (the master's costs nothing).
 		if err := s.spendAction(ctx, c, r.v, *r.who, r.leave, &r.made); err != nil {
 			return nil, err
 		}
 	}
 	if !r.leave {
-		r.made.Beast, r.made.ShapeSet = r.beast, true
+		r.made.Beast, r.made.ShapeSet, r.made.Stay = r.beast, true, r.stay
 	}
 	return s.shapeSeal(ctx, c, r)
 }
@@ -415,10 +429,11 @@ func (s *Service) shapeCheck(ctx context.Context, c *combatTx, r *shapeRun) erro
 	if err != nil {
 		return err
 	}
+	r.before = now
 	if !r.leave {
+		r.stay = now.GetWildShape() != nil && now.GetWildShape().GetBeastKey() == r.beast
 		return refuseIfDown(now, r.who)
 	}
-	r.before = now
 	if now.GetWildShape() == nil {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_IN_WILD_SHAPE, "the character is in its own shape")
 	}
@@ -430,21 +445,71 @@ func (s *Service) shapeCheck(ctx context.Context, c *combatTx, r *shapeRun) erro
 func (s *Service) shapeApply(ctx context.Context, c *combatTx, r *shapeRun) error {
 	var err error
 	if r.leave {
-		if r.vitals, r.body, err = s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, r.characterID, "", 0); err != nil {
-			return err
-		}
-		w := r.before.GetWildShape()
-		r.made.Beast, r.made.ShapeSet, r.made.ShapeBefore = w.GetBeastKey(), true, &shapeState{Beast: w.GetBeastKey(), HP: w.GetHitPointsCurrent()}
-		r.made.Reason = endedByLeaving
-		return nil
+		return s.shapeLeave(ctx, c, r)
+	}
+	if r.stay {
+		return s.shapeStay(ctx, c, r)
 	}
 	if _, r.vitals, r.body, err = s.vitals.AssumeWildShape(ctx, c.tx, c.session.CampaignID, r.characterID, r.beast); err != nil {
 		return errShape(err)
 	}
+	if err := s.startFormClock(ctx, c, r.characterID, r.who, 0, r.body.WildShapeSeconds); err != nil {
+		return err
+	}
+	return s.shapePay(ctx, c, r, r.body.WildShapeCost)
+}
+
+// shapeLeave is "Voltar à forma normal": the form and its clock go, and the event keeps the
+// beast, its hit points and the time left for the undo.
+func (s *Service) shapeLeave(ctx context.Context, c *combatTx, r *shapeRun) error {
+	var err error
+	if r.vitals, r.body, err = s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, r.characterID, "", 0); err != nil {
+		return err
+	}
+	if err := takeFormClock(ctx, c, r.characterID); err != nil {
+		return err
+	}
+	w := r.before.GetWildShape()
+	r.made.Beast, r.made.ShapeSet, r.made.ShapeBefore = w.GetBeastKey(), true, &shapeState{Beast: w.GetBeastKey(), HP: w.GetHitPointsCurrent()}
+	r.made.Reason = endedByLeaving
+	return nil
+}
+
+// shapeStay is the SRD's "expend another use" to stay in the form past its time: the same
+// beast again costs the uses (not the action), keeps the beast's hit points and starts the
+// clock over. The clock it had is in the event, for the undo.
+func (s *Service) shapeStay(ctx context.Context, c *combatTx, r *shapeRun) error {
+	left, _, err := formClockLeft(ctx, c, r.characterID, r.who)
+	if err != nil {
+		return err
+	}
+	chars, err := s.roster.CombatCharacters(ctx, c.tx, c.session.CampaignID, []string{r.characterID})
+	if err != nil {
+		return err
+	}
+	if len(chars) != 1 {
+		return errCharacterNotFound()
+	}
+	if full := chars[0].WildShapeSeconds; full > 0 {
+		if found, err := s.resetFormClock(ctx, c, r.characterID, r.who, full); err != nil {
+			return err
+		} else if !found { // a form from before the clocks: it gets one now
+			if err := s.startFormClock(ctx, c, r.characterID, r.who, 0, full); err != nil {
+				return err
+			}
+		}
+	}
+	r.vitals = r.before
+	r.made.ShapeBefore = &shapeState{Beast: r.beast, HP: r.before.GetWildShape().GetHitPointsCurrent(), Left: left}
+	return s.shapePay(ctx, c, r, chars[0].WildShapeCost)
+}
+
+// shapePay spends the uses of the Forma Selvagem resource a change of form costs.
+func (s *Service) shapePay(ctx context.Context, c *combatTx, r *shapeRun, cost int32) error {
+	var err error
 	// The uses of the Forma Selvagem resource the change costs: one, unless a feature of the
 	// table makes it cheaper, even free (the character has no more when the app says "Sem
 	// usos": NO_USES, nothing is changed).
-	cost := r.body.WildShapeCost
 	if cost <= 0 {
 		return nil
 	}
@@ -461,8 +526,10 @@ func (s *Service) shapeApply(ctx context.Context, c *combatTx, r *shapeRun) erro
 func (s *Service) shapeSeal(ctx context.Context, c *combatTx, r *shapeRun) (any, error) {
 	r.made.OwnerCharacter = r.characterID
 	if r.inCombat {
-		if err := applyBody(ctx, c, *r.who, r.body); err != nil {
-			return nil, err
+		if !r.stay {
+			if err := applyBody(ctx, c, *r.who, r.body); err != nil {
+				return nil, err
+			}
 		}
 		r.made.EncounterID = c.enc.ID
 		if r.made.Actor == "" { // in SETUP no action is spent: still the combatant's
@@ -508,7 +575,23 @@ func (s *Service) shapeUndoStart(ctx context.Context, c *combatTx, ev actionEven
 		}
 		keep(v)
 	}
-	return s.shapeUndoSet(ctx, c, ev, who, ok, "", 0, keep)
+	if ev.Stay && ev.ShapeBefore != nil {
+		// The same beast again: only the clock goes back to what it was.
+		if ev.ShapeBefore.Left == 0 {
+			return nil
+		}
+		_, err := s.resetFormClock(ctx, c, ev.OwnerCharacter, whoIf(who, ok), ev.ShapeBefore.Left)
+		return err
+	}
+	return s.shapeUndoSet(ctx, c, ev, who, ok, "", 0, 0, keep)
+}
+
+// whoIf is the combatant when there is one.
+func whoIf(who playdb.Combatant, ok bool) *playdb.Combatant {
+	if !ok {
+		return nil
+	}
+	return &who
 }
 
 // shapeUndoEnd takes back a "Voltar à forma normal": the beast is back with the
@@ -517,14 +600,17 @@ func (s *Service) shapeUndoEnd(ctx context.Context, c *combatTx, ev actionEvent,
 	if ev.ShapeBefore == nil {
 		return nil
 	}
-	return s.shapeUndoSet(ctx, c, ev, who, ok, ev.ShapeBefore.Beast, ev.ShapeBefore.HP, keep)
+	return s.shapeUndoSet(ctx, c, ev, who, ok, ev.ShapeBefore.Beast, ev.ShapeBefore.HP, 0, keep)
 }
 
 // shapeUndoSet sets the form an undo puts back (none for an empty beast), tells
 // the vitals and gives the combatant, if it is still there, the numbers of that form.
-func (s *Service) shapeUndoSet(ctx context.Context, c *combatTx, ev actionEvent, who playdb.Combatant, ok bool, beast string, hp int32, keep func(*playv1.CharacterVitals)) error {
+func (s *Service) shapeUndoSet(ctx context.Context, c *combatTx, ev actionEvent, who playdb.Combatant, ok bool, beast string, hp, left int32, keep func(*playv1.CharacterVitals)) error {
 	after, body, err := s.vitals.SetWildShape(ctx, c.tx, c.session.CampaignID, ev.OwnerCharacter, beast, hp)
 	if err != nil {
+		return err
+	}
+	if err := s.restoreFormClock(ctx, c, ev.OwnerCharacter, whoIf(who, ok), beast != "", left, body); err != nil {
 		return err
 	}
 	keep(after)

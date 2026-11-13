@@ -1829,6 +1829,17 @@ WITH changed AS (
 )
 SELECT * FROM changed ORDER BY created_at, id;
 
+-- name: DeleteFormClockOfCharacter :many
+-- A druid's Wild Shape clock (one row, in a combat or out of it) goes with its form. The rows
+-- come back so a change that can be undone keeps them (RN-22).
+DELETE FROM combatant_states
+WHERE kind = 'effect' AND source_key = 'effect:wild-shape'
+  AND combatant_id IN (SELECT id FROM combatants WHERE character_id = $1)
+RETURNING *;
+
+-- name: DeleteFormClockOfCharacterOutside :exec
+DELETE FROM character_effects WHERE character_id = $1 AND source_key = 'effect:wild-shape';
+
 -- name: DeleteCharacterEffectsOfCharacter :exec
 -- A character that died keeps no old effect when it lives again.
 DELETE FROM character_effects WHERE character_id = $1;

@@ -1444,6 +1444,76 @@ func (q *Queries) DeleteExpiredCombatantStates(ctx context.Context, arg DeleteEx
 	return items, nil
 }
 
+const deleteFormClockOfCharacter = `-- name: DeleteFormClockOfCharacter :many
+DELETE FROM combatant_states
+WHERE kind = 'effect' AND source_key = 'effect:wild-shape'
+  AND combatant_id IN (SELECT id FROM combatants WHERE character_id = $1)
+RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+`
+
+// A druid's Wild Shape clock (one row, in a combat or out of it) goes with its form. The rows
+// come back so a change that can be undone keeps them (RN-22).
+func (q *Queries) DeleteFormClockOfCharacter(ctx context.Context, characterID string) ([]CombatantState, error) {
+	rows, err := q.db.Query(ctx, deleteFormClockOfCharacter, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CombatantState
+	for rows.Next() {
+		var i CombatantState
+		if err := rows.Scan(
+			&i.ID,
+			&i.EncounterID,
+			&i.CombatantID,
+			&i.Kind,
+			&i.SourceID,
+			&i.EndsCombatantID,
+			&i.EndsPhase,
+			&i.EndsRound,
+			&i.StartedRound,
+			&i.Amount,
+			&i.CreatedAt,
+			&i.GroupID,
+			&i.SourceKey,
+			&i.SourceKind,
+			&i.Concentration,
+			&i.ConditionKeys,
+			&i.Modifiers,
+			&i.DurationKind,
+			&i.EndSaveAbility,
+			&i.StartSaveAbility,
+			&i.SaveDc,
+			&i.OnFailEffect,
+			&i.FollowsKey,
+			&i.TriggerDice,
+			&i.TriggerDamageType,
+			&i.TriggerMaxTriggers,
+			&i.TriggersFired,
+			&i.PlayerVisible,
+			&i.Audience,
+			&i.PlayerLabel,
+			&i.SpentAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteFormClockOfCharacterOutside = `-- name: DeleteFormClockOfCharacterOutside :exec
+DELETE FROM character_effects WHERE character_id = $1 AND source_key = 'effect:wild-shape'
+`
+
+func (q *Queries) DeleteFormClockOfCharacterOutside(ctx context.Context, characterID string) error {
+	_, err := q.db.Exec(ctx, deleteFormClockOfCharacterOutside, characterID)
+	return err
+}
+
 const deleteHiddenReveal = `-- name: DeleteHiddenReveal :exec
 DELETE FROM hidden_reveals WHERE id = $1
 `

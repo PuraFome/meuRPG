@@ -41,6 +41,8 @@ export function formNoticeText(ended: FormEnded): string {
       return 'Você caiu a 0 PV e voltou à forma normal.';
     case WildShapeEndReason.UNCONSCIOUS:
       return 'Você ficou inconsciente e voltou à forma normal.';
+    case WildShapeEndReason.EXPIRED:
+      return 'O tempo da forma acabou e você voltou à forma normal.';
     default:
       return 'Você voltou à forma normal.';
   }

@@ -60,7 +60,11 @@ describe("the Wild Shape notice, from the combat log's line", () => {
     expect(
       formNoticeText({ beast: 'Lobo', reason: WildShapeEndReason.UNCONSCIOUS, carried: 0 }),
     ).toBe('Você ficou inconsciente e voltou à forma normal.');
+    expect(formNoticeText({ beast: 'Lobo', reason: WildShapeEndReason.EXPIRED, carried: 0 })).toBe(
+      'O tempo da forma acabou e você voltou à forma normal.',
+    );
     for (const reason of [
+      WildShapeEndReason.EXPIRED,
       WildShapeEndReason.MASTER,
       WildShapeEndReason.ZERO_HP,
       WildShapeEndReason.UNCONSCIOUS,

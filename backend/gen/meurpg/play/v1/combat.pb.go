@@ -2828,6 +2828,8 @@ const (
 	WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP WildShapeEndReason = 4
 	// The druid fell unconscious (a sleep spell, the master's hand).
 	WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS WildShapeEndReason = 5
+	// The form's time ran out: half the druid's level in hours (SRD 5.1).
+	WildShapeEndReason_WILD_SHAPE_END_REASON_EXPIRED WildShapeEndReason = 6
 )
 
 // Enum value maps for WildShapeEndReason.
@@ -2839,6 +2841,7 @@ var (
 		3: "WILD_SHAPE_END_REASON_MASTER",
 		4: "WILD_SHAPE_END_REASON_ZERO_HP",
 		5: "WILD_SHAPE_END_REASON_UNCONSCIOUS",
+		6: "WILD_SHAPE_END_REASON_EXPIRED",
 	}
 	WildShapeEndReason_value = map[string]int32{
 		"WILD_SHAPE_END_REASON_UNSPECIFIED": 0,
@@ -2847,6 +2850,7 @@ var (
 		"WILD_SHAPE_END_REASON_MASTER":      3,
 		"WILD_SHAPE_END_REASON_ZERO_HP":     4,
 		"WILD_SHAPE_END_REASON_UNCONSCIOUS": 5,
+		"WILD_SHAPE_END_REASON_EXPIRED":     6,
 	}
 )
 
@@ -29584,14 +29588,15 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1dCOMBAT_LOG_KIND_STATE_CHANGED\x10 \x12&\n" +
 	"\"COMBAT_LOG_KIND_ROLL_MODE_ANSWERED\x10!\x12%\n" +
 	"!COMBAT_LOG_KIND_CHARACTER_REVIVED\x10\"\x12\x1d\n" +
-	"\x19COMBAT_LOG_KIND_HIT_RIDER\x10(*\xe9\x01\n" +
+	"\x19COMBAT_LOG_KIND_HIT_RIDER\x10(*\x8c\x02\n" +
 	"\x12WildShapeEndReason\x12%\n" +
 	"!WILD_SHAPE_END_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aWILD_SHAPE_END_REASON_LEFT\x10\x01\x12 \n" +
 	"\x1cWILD_SHAPE_END_REASON_DAMAGE\x10\x02\x12 \n" +
 	"\x1cWILD_SHAPE_END_REASON_MASTER\x10\x03\x12!\n" +
 	"\x1dWILD_SHAPE_END_REASON_ZERO_HP\x10\x04\x12%\n" +
-	"!WILD_SHAPE_END_REASON_UNCONSCIOUS\x10\x05*^\n" +
+	"!WILD_SHAPE_END_REASON_UNCONSCIOUS\x10\x05\x12!\n" +
+	"\x1dWILD_SHAPE_END_REASON_EXPIRED\x10\x06*^\n" +
 	"\fCombatEffect\x12\x1d\n" +
 	"\x19COMBAT_EFFECT_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14COMBAT_EFFECT_SHIELD\x10\x01\x12\x15\n" +

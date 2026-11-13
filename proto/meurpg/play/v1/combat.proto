@@ -5641,6 +5641,8 @@ enum WildShapeEndReason {
   WILD_SHAPE_END_REASON_ZERO_HP = 4;
   // The druid fell unconscious (a sleep spell, the master's hand).
   WILD_SHAPE_END_REASON_UNCONSCIOUS = 5;
+  // The form's time ran out: half the druid's level in hours (SRD 5.1).
+  WILD_SHAPE_END_REASON_EXPIRED = 6;
 }
 
 // CombatLogWildShape is a druid's change of form, in the combat log.

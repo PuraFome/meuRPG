@@ -1810,6 +1810,7 @@ var wildShapeEndReasonProto = map[string]playv1.WildShapeEndReason{
 	endedByMaster:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
 	endedAtZero:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
 	endedAsleep:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+	endedExpired:   playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_EXPIRED,
 }
 
 // withoutOwnerOnly is the conditions a player who does not own the creature may read.
