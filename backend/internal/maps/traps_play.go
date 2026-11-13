@@ -283,7 +283,7 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 		return nil
 	}
 	// The reveals are one write under the session's lock; what it tells goes out once it committed.
-	err = s.recordNotices(ctx, campaignID, finds, func(ctx context.Context, told []string, noticed []noticeKey) {
+	news, err := s.recordNotices(ctx, campaignID, finds, func(ctx context.Context, told []string, noticed []noticeKey) {
 		s.tellUsers(ctx, campaignID, mapID, ts.row, told)
 		s.tellNoticers(ctx, campaignID, mapID, ts.row, noticed)
 		// The master's trap card and log have news: a hint with no content.
@@ -291,6 +291,10 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 	})
 	if err != nil {
 		return fmt.Errorf("notice a trap: %w", err)
+	}
+	if !news {
+		// A find nobody learned anew changes nothing and moves no number; the master's card still reads again, as it always did.
+		s.tellStreams(withoutOut(ctx), campaignID, sessiontell.Audience{Master: true}, mapChangedEvent(mapID))
 	}
 	return nil
 }
@@ -335,8 +339,8 @@ func (s *Service) noticesTrap(ts *trapScene, p mapsdb.MapPoint, characterID stri
 // recordNotices writes the reveals of the finds in one transaction, under the session's lock, and one event for each
 // trap and player (the actor is the one whose character noticed). Once it committed, tell gets the players told, and the
 // (trap, player) pairs that are new, in order. A find that nobody learns anew changes nothing: nothing is told and no number moves.
-func (s *Service) recordNotices(ctx context.Context, campaignID string, finds []noticeFind, tell func(ctx context.Context, told []string, noticed []noticeKey)) error {
-	return s.inSession(ctx, campaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+func (s *Service) recordNotices(ctx context.Context, campaignID string, finds []noticeFind, tell func(ctx context.Context, told []string, noticed []noticeKey)) (news bool, err error) {
+	err = s.inSession(ctx, campaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		now := s.now()
 		told, order, byKey, err := s.insertNotices(ctx, s.queries.WithTx(tx), finds, now)
 		if err != nil {
@@ -346,11 +350,12 @@ func (s *Service) recordNotices(ctx context.Context, campaignID string, finds []
 		if err != nil {
 			return err
 		}
-		if len(told) > 0 || len(noticed) > 0 {
+		if news = len(told) > 0 || len(noticed) > 0; news {
 			s.announce(t, func(ctx context.Context) { tell(ctx, told, noticed) })
 		}
 		return nil
 	})
+	return news, err
 }
 
 // insertNotices writes a "noticed" reveal for each find, and groups the new ones by trap
@@ -892,7 +897,7 @@ func (s *Service) tokenLanded(ctx context.Context, campaignID, actorUserID, mapI
 	if !isPlayerCharacter(character) {
 		return
 	}
-	ctx = context.WithoutCancel(ctx)
+	ctx = withoutOut(ctx)
 	// Only on a map the players see (revealed, or the session's current one): a token
 	// put right on a map the master is still preparing fires and notices nothing.
 	row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
@@ -926,7 +931,7 @@ func (s *Service) creatureLanded(ctx context.Context, campaignID, actorUserID, m
 	if s.firer == nil {
 		return
 	}
-	ctx = context.WithoutCancel(ctx)
+	ctx = withoutOut(ctx)
 	row, err := s.queries.GetMap(ctx, mapsdb.GetMapParams{CampaignID: campaignID, ID: mapID})
 	if err != nil {
 		return

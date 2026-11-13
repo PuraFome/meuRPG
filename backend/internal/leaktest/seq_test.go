@@ -32,6 +32,13 @@ import (
 //   - ListCombatLog with since_seq answers a player as if the write they cannot see had not been made
 //     (TestAPlayersSinceSeqAnswerIgnoresWhatTheyCannotSee).
 //
+// What the number depends on, exactly: it moves once for each write that had an effect, and not for one that changed nothing (a
+// paint of what was painted, a trap already disarmed, a clue the player had), whatever the write held. A token a player's
+// character drops near a trap it notices is two writes (the token's, then the notice's reveal), so a third player's number
+// differs by one between a world where the drop noticed a hidden trap and one where it did not. That is the same exposure as
+// play's notice after a combat move, an accepted one: the counter says that a write had an effect, never which. No row of
+// the twin worlds below can hold it (the finder hears trap_noticed, and the rows require that no player hears anything).
+//
 // The counter-per-transaction rule (one bump whatever the transaction told) is TestTxBumpsOncePerTransactionWhateverItTold
 // and TestTxBumpsOnceWhateverTheSizeOfWhatItTold, in package play.
 
@@ -403,6 +410,28 @@ var hiddenWrites = []hiddenWrite{
 		},
 	},
 	{
+		name: "a light painted on a map the players do not see",
+		before: func(w *world) {
+			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
+		},
+		prepare: func(w *world, variant int) func() {
+			return func() {
+				w.paint(w.hiddenMap, mapsv1.MapLayer_MAP_LAYER_LIGHT, int32(2+variant), [][2]int32{{int32(2 + variant), 5}, {int32(3 + variant*4), 6}})
+			}
+		},
+	},
+	{
+		name: "a locked door painted on a map the players do not see",
+		before: func(w *world) {
+			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
+		},
+		prepare: func(w *world, variant int) func() {
+			return func() {
+				w.paint(w.hiddenMap, mapsv1.MapLayer_MAP_LAYER_DOORS, 3, [][2]int32{{int32(2 + variant), 6}, {int32(3 + variant*4), 7}})
+			}
+		},
+	},
+	{
 		name: "a point created on a map the players do not see",
 		prepare: func(w *world, variant int) func() {
 			kind := []mapsv1.MapPointKind{mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE}[variant]
@@ -411,7 +440,7 @@ var hiddenWrites = []hiddenWrite{
 		},
 	},
 	{
-		name: "a hidden trap changed and revealed on a map the players do not see",
+		name: "a hidden trap renamed on a map the players do not see",
 		before: func(w *world) {
 			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
 			w.pts["seq-trap-edit"] = w.point(w.hiddenMap, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, w.secrets.marker("seq-trap-edit"), w.secrets.marker("seq-trap-edit-description"), 6, 6, func(r *mapsv1.CreateMapPointRequest) { r.Trap = w.trapSpec() })
@@ -632,8 +661,8 @@ func (w *world) seqLog(p *person, since int64) *playv1.ListCombatLogResponse {
 // TestAHiddenWriteMovesThePlayersNumberAndNothingElse: three worlds built the same way, with a write only the master sees
 // (content A in one, content B in another, in the third none). A player's view of the world with the write and of the world
 // without it differ in the number and in nothing else; the two worlds with the write read the same, down to the number, though
-// the hidden content differs (a longer name, other hit points): the number is a counter of writes, never a function of what they
-// held. Inside each world the players heard no event, a heartbeat held the number alone, and the answers of the combat log are
+// the hidden content differs (a longer name, other hit points): the number is a counter of writes that had an effect, never a function of
+// what they held. Inside each world the players heard no event, a heartbeat held the number alone, and the answers of the combat log are
 // what they were before (hiddenWriteWorld).
 func TestAHiddenWriteMovesThePlayersNumberAndNothingElse(t *testing.T) {
 	for _, hw := range hiddenWrites {

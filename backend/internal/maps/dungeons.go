@@ -401,12 +401,13 @@ func (s *Service) writeDungeonRows(ctx context.Context, q *mapsdb.Queries, mapID
 // call did).
 func (s *Service) dungeonReplay(ctx context.Context, m authz.Membership, prior mapsdb.Map) (*connect.Response[mapsv1.CreateDungeonMapResponse], error) {
 	// The first call may have died before it told: the master hears of the map again, with the number as it stands.
+	// The answer does not depend on it: a failure to tell is logged and the replay goes on.
 	if err := s.inSession(ctx, m.CampaignID, func(_ pgx.Tx, t sessiontell.Tell) error {
 		t.Replay()
 		s.announce(t, func(ctx context.Context) { s.publishMapChanged(ctx, m.CampaignID, prior.ID, false) })
 		return nil
 	}); err != nil {
-		return nil, s.dbError(ctx, "tell the dungeon of the key", err)
+		s.logger.ErrorContext(ctx, "maps: cannot tell the master again about the dungeon of the key", "error", err)
 	}
 	rec, err := s.dungeonOf(ctx, s.queries, m.CampaignID, prior.ID)
 	if err != nil {

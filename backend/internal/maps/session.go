@@ -44,3 +44,9 @@ func (s *Service) announce(t sessiontell.Tell, fn func(ctx context.Context)) {
 func withOut(ctx context.Context, out sessiontell.Out) context.Context {
 	return sessiontell.WithOut(ctx, out)
 }
+
+// withoutOut is ctx for a call that leaves this write for another one (a trap's firing by play, a notice that is a write of its own): it
+// keeps the values and drops the cancellation and the Out, so nothing the call tells carries the number of the write it came from.
+func withoutOut(ctx context.Context) context.Context {
+	return sessiontell.WithOut(context.WithoutCancel(ctx), nil)
+}

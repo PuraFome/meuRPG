@@ -7,6 +7,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
 // The writes of the maps module that change a map, its layers, its fog, its points or its fog memory run under play's funnel
@@ -115,6 +116,7 @@ func TestMapWithNoOpenSessionMovesNothing(t *testing.T) {
 func TestPaintMapCellsHints(t *testing.T) {
 	t.Parallel()
 	r, g := mapRigHints(t)
+	g.unnumbered = []string{kMapChanged} // the paint's hint goes through the gate and carries no number
 	paint := func(value int32, cols ...int32) func() error {
 		var squares []*mapsv1.MapSquare
 		for _, c := range cols {
@@ -184,6 +186,7 @@ func TestFogWritesHints(t *testing.T) {
 	t.Parallel()
 	f := newFogCave(t)
 	g := newHintRig(t, f.h, f.campaignID, f.master, map[string]*user{"Caio": f.caio, "Ana": f.ana, "Bia": f.bia})
+	g.unnumbered = []string{kMapChanged} // the paint's hint goes through the gate and carries no number
 	mc := f.mapsAs(f.master)
 	g.first(func() error {
 		_, err := mc.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: f.campaignID, MapId: f.mapID, GroupVision: proto.Bool(true)}))
@@ -203,4 +206,29 @@ func TestFogWritesHints(t *testing.T) {
 		_, err := mc.SetMapFog(t.Context(), connect.NewRequest(&mapsv1.SetMapFogRequest{CampaignId: f.campaignID, MapId: newKey(), GroupVision: proto.Bool(false)}))
 		return err
 	})
+}
+
+// Paints close together share one `map_changed` (the gate holds the later ones for the first's interval): the hint carries no
+// number, because the gate may send it for the last write while a closure kept the first's. A number the hint carried would be
+// stale or none; the writes' own bumps move the number.
+func TestPaintHintsThroughTheGateNeverCarryAStaleNumber(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	g := newHintRig(t, f.h, f.campaignID, f.master, map[string]*user{"Caio": f.caio, "Ana": f.ana, "Bia": f.bia})
+	before := g.seq()
+	for _, col := range []int32{18, 19, 20} {
+		f.paint(t, mapsv1.MapLayer_MAP_LAYER_WALL, 1, &mapsv1.MapSquare{Col: col, Row: 7})
+	}
+	f.h.hints.Settle(t)
+	final := g.seq()
+	if final != before+3 {
+		t.Fatalf("hint_seq = %d after three paints, want %d", final, before+3)
+	}
+	for name, evs := range g.drain() {
+		for _, ev := range evs {
+			if _, ok := ev.GetEvent().(*playv1.WatchGameSessionResponse_MapChanged_); ok && ev.GetSessionSeq() != 0 && ev.GetSessionSeq() != final {
+				t.Errorf("%s heard a map_changed with the stale number %d (the session is at %d)", name, ev.GetSessionSeq(), final)
+			}
+		}
+	}
 }

@@ -290,9 +290,10 @@ func storeLayers(ctx context.Context, q *mapsdb.Queries, mapID string, set layer
 }
 
 // bumpPaintRevision raises the counter a batch of paint moves and sets the revision the
-// master reads. The light is the master's alone: it has its own counter, so the number
-// players see does not tell them when the master paints it. A change the players cannot
-// see counts there too.
+// master reads. The light is the master's alone: it has its own counter, so the layers'
+// revision a player reads does not tell them when the master paints it. A change the players
+// cannot see counts there too. (The session's hint number moves with every paint that changed
+// something, whichever counter it raised: it counts writes, and says nothing of the layer.)
 func bumpPaintRevision(ctx context.Context, q *mapsdb.Queries, mapID string, done *paintDone) error {
 	if !done.playersToo {
 		light, err := q.BumpMapLightRevision(ctx, mapID)
@@ -390,6 +391,8 @@ func paintBit(l *grid.Layer, col, row int, on bool) bool {
 // changed (refreshVision); terrain and cover are theirs only on squares they
 // know, and the hint of the walls and the light covers the squares they see.
 func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow mapsdb.Map, playersToo, seeingChanged bool) {
+	// The hint goes through the gate, which may hold it for a later write's: it carries no number (the write's own bump moves it).
+	ctx = withoutOut(ctx)
 	if fogged(mapRow) && !playersToo && !seeingChanged {
 		s.layerHints.fire(mapRow.ID, s.layerHintEvery, false, func(bool) { s.publishMapChanged(ctx, campaignID, mapRow.ID, false) })
 		return // only the master's own view of the layers changed

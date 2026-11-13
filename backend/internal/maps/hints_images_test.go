@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
 )
 
@@ -40,9 +41,18 @@ func TestRenameGalleryImageMovesTheNumberOnce(t *testing.T) {
 		_, err := s.master.gallery.RenameGalleryImage(t.Context(), connect.NewRequest(&mapsv1.RenameGalleryImageRequest{CampaignId: s.campaign, ImageId: img, Name: name}))
 		return err
 	}
-	s.h.wantSeqMoves(s.campaign, 1, "a rename", func() {
+	// An image no screen shows has no caption to change: the number stays.
+	s.h.wantSeqMoves(s.campaign, 0, "a rename of an image nobody sees", func() {
 		if err := rename("Mapa novo"); err != nil {
 			t.Fatalf("RenameGalleryImage() error = %v", err)
+		}
+	})
+	if _, err := s.master.play.SetShownImage(t.Context(), connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: s.campaign, ImageId: img})); err != nil {
+		t.Fatalf("SetShownImage() error = %v", err)
+	}
+	s.h.wantSeqMoves(s.campaign, 1, "a rename of the image on screen", func() {
+		if err := rename("Mapa da tela"); err != nil {
+			t.Fatalf("RenameGalleryImage(shown) error = %v", err)
 		}
 	})
 	s.h.wantSeqMoves(s.campaign, 0, "a refused rename", func() {
@@ -98,9 +108,12 @@ func TestUseTheTexturedMapMovesTheNumberOnce(t *testing.T) {
 			t.Fatalf("UseGeneratedImageAsMapImage() error = %v", err)
 		}
 	})
+	// The repeat moves no number and tells the master again, in case the first call died before it told.
+	watch := c.master.watch(c.campaign)
 	c.h.wantSeqMoves(c.campaign, 0, "using it twice", func() {
 		if _, err := c.master.useAsMapImage(c.campaign, texture.GetId()); err != nil {
 			t.Fatalf("UseGeneratedImageAsMapImage(again) error = %v", err)
 		}
 	})
+	watch.mapChanged(c.mapID)
 }

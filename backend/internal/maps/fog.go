@@ -1222,7 +1222,7 @@ func (s *Service) refreshUser(ctx context.Context, in fogInput, sg *sight, userI
 func (s *Service) rememberFor(ctx context.Context, in fogInput, userID string, memory *grid.Layer) (bool, error) {
 	var wrote int64
 	// Under the session's lock, like every write of what a screen shows. It tells nothing and moves no number: it is the
-	// consequence of the write that asked for the refresh, whose number the `vision_changed` that follows carries.
+	// consequence of the write that asked for the refresh, whose bump covers it.
 	err := s.inSession(ctx, in.campaignID, func(tx pgx.Tx, _ sessiontell.Tell) (err error) {
 		wrote, err = s.queries.WithTx(tx).UpsertMapVisionMemory(ctx, mapsdb.UpsertMapVisionMemoryParams{
 			MapID: in.mapID, UserID: userID, Seen: memory.Encode(), Epoch: in.epoch, UpdatedAt: s.now(),

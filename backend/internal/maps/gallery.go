@@ -102,6 +102,11 @@ func (s *Service) RenameGalleryImage(
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("name %w", err))
 	}
 
+	onAScreen, err := s.imageIsOnAScreen(ctx, m.CampaignID, id.String())
+	if err != nil {
+		return nil, err
+	}
+
 	var row mapsdb.GalleryImage
 	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
@@ -114,8 +119,11 @@ func (s *Service) RenameGalleryImage(
 		if err != nil {
 			return fmt.Errorf("rename gallery image: %w", err)
 		}
-		// The name is the caption of the image on screen, if it is this one: no event says so, the screens read it again.
-		t.Touch()
+		// The name is the caption of the image on a screen: no event says so, the screens read it again. An image no screen shows
+		// moves no number.
+		if onAScreen {
+			t.Touch()
+		}
 		return nil
 	})
 	if err != nil {
@@ -126,6 +134,19 @@ func (s *Service) RenameGalleryImage(
 		return nil, s.dbError(ctx, "list the maps that use an image", err)
 	}
 	return connect.NewResponse(&mapsv1.RenameGalleryImageResponse{Image: img}), nil
+}
+
+// imageIsOnAScreen says whether a screen shows the image's name as a caption: the image on screen, and one left with the players.
+func (s *Service) imageIsOnAScreen(ctx context.Context, campaignID, imageID string) (bool, error) {
+	_, shown, err := s.live.OnScreen(ctx, campaignID)
+	if err != nil {
+		return false, s.dbError(ctx, "read the shown image", err)
+	}
+	_, leftErr := leftWith(ctx, s.queries, campaignID, imageID)
+	if leftErr != nil && connect.CodeOf(leftErr) != connect.CodeNotFound {
+		return false, s.dbError(ctx, "check whether the image is left with the players", leftErr)
+	}
+	return shown == imageID || leftErr == nil, nil
 }
 
 // DeleteGalleryImage implements mapsv1connect.GalleryServiceHandler. It

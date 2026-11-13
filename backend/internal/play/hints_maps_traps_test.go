@@ -184,3 +184,27 @@ func TestNoticeTellsTheFinderAloneWithTheNumber(t *testing.T) {
 		}
 	}
 }
+
+// A token dropped on an armed trap is two writes: the token's and the trap's firing. The master's `map_changed` the firing tells
+// (TrapChanged, called by play after its own commit) never carries the drop's number: a stale number is worse than none.
+func TestATokenDropThatFiresATrapTellsTheFiringWithoutTheDropsNumber(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	r.trap(t, "Poço de entrada", 12, 7, pit("1d6"))
+	g := newHintRig(t, r.h, r.campaignID, r.master, map[string]*user{"Caio": r.caio, "Ana": r.ana, "Bia": r.bia})
+	before := g.seq()
+	r.h.roller.queue(3)
+	r.place(t, r.toren.GetId(), 12, 7)
+	if got := g.seq(); got < before+2 {
+		t.Fatalf("hint_seq = %d, want at least %d (the token, then the firing)", got, before+2)
+	}
+	stale := 0
+	for _, ev := range g.drain()["master"] {
+		if _, ok := ev.GetEvent().(*playv1.WatchGameSessionResponse_MapChanged_); ok && ev.GetSessionSeq() == before+1 {
+			stale++
+		}
+	}
+	if stale != 1 {
+		t.Errorf("the master heard %d map_changed with the drop's number %d, want only the drop's own", stale, before+1)
+	}
+}

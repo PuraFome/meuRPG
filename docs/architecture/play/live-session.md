@@ -170,7 +170,9 @@ A stream carries it on `ready` and on every `heartbeat`, and nothing else about 
   A call that changes nothing (a paint of what was painted, a trap already disarmed, a clue the player had) moves nothing and tells nothing.
   The renaming and the dismissal of a character's creature run in the characters module's transaction: they do not bump, and the streams hear of them as `creatures_changed` and `encounter_changed`, with no number.
   The revivify switch of a dead character with no open session is a plain transaction: it does not bump and tells nothing.
-  The hooks that play calls on the maps module after its own commit (`TrapChanged`, `Told`, `MapShown`, `VisionChanged`, the fog's refresh after a combat move) send through the hub with no number: the write's own bump covers them.
+  The hooks that play calls on the maps module after its own commit (`TrapChanged`, `Told`, `MapShown`, `VisionChanged`, the fog's refresh after a combat move) send through the hub with no number: the write's own bump covers them, and the maps module never lends them the number of the write that called it (a token dropped on a trap leaves its `Out` behind before play fires the trap).
+  A notice of a trap by a token a player's character dropped is its own write with its own bump, told to the finder alone; the number of a third player therefore moves once more than for a drop that noticed nothing, as it does for play's notice after a combat move.
+  A paint's `map_changed` goes through a gate that merges close paints into one hint, and carries no number.
   The doors a move opens, the puzzle's reveals of a point or a clue and its other maps steps run in play's step after the commit and carry the move's number.
   Every other writer of the `play` package tells the streams through `send` after its own `db.InTx`: it does not bump, and its events carry no number.
   The hints a combat handler tells itself after the write (`finish`) carry none either; the write's own bump covers them.
