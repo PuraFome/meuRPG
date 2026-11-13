@@ -222,3 +222,21 @@ func TestMountedCombat_ViewOfAnOwnedSteed(t *testing.T) {
 		t.Errorf("the master reads the hidden steed's rider %q and kind %q, want rider and controlled", got.GetRiderId(), got.GetMountKind())
 	}
 }
+
+// TestMountedCombat_TurnStartClearsTheMountMove: the once-per-move mark of mounting ends with the movement counters, when the
+// rider's next turn starts.
+func TestMountedCombat_TurnStartClearsTheMountMove(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	if _, err := c.h.pool.Exec(t.Context(), `UPDATE combatants SET mount_move_used = true WHERE id = $1`, c.id(t, "Toren")); err != nil {
+		t.Fatalf("mark the move used: %v", err)
+	}
+	if !c.who(t, c.master, "Toren").GetMountMoveUsed() {
+		t.Fatalf("the positive control failed: the mark is not read before the turn ends")
+	}
+	c.nextTurnOf(t, "Toren")
+	if c.who(t, c.master, "Toren").GetMountMoveUsed() {
+		t.Errorf("mount_move_used is still set at the start of the rider's next turn")
+	}
+}
