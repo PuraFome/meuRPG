@@ -39,7 +39,7 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
   ],
   [
     EncounterBlockedReason.MOUNT_TOO_FAR,
-    'A montaria está longe: monte a até 1,5 m (um quadrado, na diagonal também). Nada foi mudado.',
+    'A montaria está longe: monte até 1,5 m (um quadrado, na diagonal também). Nada foi mudado.',
   ],
   [
     EncounterBlockedReason.MOUNT_MOVE_USED,
