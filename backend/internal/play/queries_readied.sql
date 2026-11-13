@@ -1,8 +1,8 @@
 -- The readied actions of a combat (migration 00330).
 
 -- name: InsertReadiedAction :one
-INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, move_ft, target_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, move_ft, target_id, created_at, slot_level, spell_cast_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING *;
 
 -- name: ListWaitingReadiedActions :many
@@ -35,10 +35,10 @@ DELETE FROM readied_actions WHERE id = $1;
 DELETE FROM readied_actions WHERE encounter_id = $1;
 
 -- name: ReopenReadiedAction :exec
--- The undo of a readied action's use or pass: it waits again.
+-- The undo of a readied action's use or pass, or of the change that broke a held spell's concentration: it waits again.
 UPDATE readied_actions
 SET status = 'waiting'
-WHERE id = $1 AND status IN ('fired', 'ignored');
+WHERE id = $1 AND status IN ('fired', 'ignored', 'broken');
 
 -- name: GetReadiedAction :one
 -- A readied action of a combat, whatever its status.

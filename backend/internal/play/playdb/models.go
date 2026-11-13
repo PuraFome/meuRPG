@@ -585,6 +585,7 @@ type ReadiedAction struct {
 	ActionNamePt string
 	SpellCastID  *string
 	MoveFt       int32
+	SlotLevel    int32
 	TargetID     *string
 	Status       string
 	CreatedAt    time.Time

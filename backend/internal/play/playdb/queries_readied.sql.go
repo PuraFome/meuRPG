@@ -50,7 +50,7 @@ func (q *Queries) DeleteUnansweredReadiedWindow(ctx context.Context, arg DeleteU
 }
 
 const getReadiedAction = `-- name: GetReadiedAction :one
-SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
+SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, slot_level, target_id, status, created_at FROM readied_actions
 WHERE id = $1 AND encounter_id = $2
 `
 
@@ -74,6 +74,7 @@ func (q *Queries) GetReadiedAction(ctx context.Context, arg GetReadiedActionPara
 		&i.ActionNamePt,
 		&i.SpellCastID,
 		&i.MoveFt,
+		&i.SlotLevel,
 		&i.TargetID,
 		&i.Status,
 		&i.CreatedAt,
@@ -82,7 +83,7 @@ func (q *Queries) GetReadiedAction(ctx context.Context, arg GetReadiedActionPara
 }
 
 const getWaitingReadiedAction = `-- name: GetWaitingReadiedAction :one
-SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
+SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, slot_level, target_id, status, created_at FROM readied_actions
 WHERE id = $1 AND encounter_id = $2 AND status = 'waiting'
 `
 
@@ -105,6 +106,7 @@ func (q *Queries) GetWaitingReadiedAction(ctx context.Context, arg GetWaitingRea
 		&i.ActionNamePt,
 		&i.SpellCastID,
 		&i.MoveFt,
+		&i.SlotLevel,
 		&i.TargetID,
 		&i.Status,
 		&i.CreatedAt,
@@ -113,7 +115,7 @@ func (q *Queries) GetWaitingReadiedAction(ctx context.Context, arg GetWaitingRea
 }
 
 const getWaitingReadiedOf = `-- name: GetWaitingReadiedOf :one
-SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
+SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, slot_level, target_id, status, created_at FROM readied_actions
 WHERE combatant_id = $1 AND status = 'waiting'
 `
 
@@ -132,6 +134,7 @@ func (q *Queries) GetWaitingReadiedOf(ctx context.Context, combatantID string) (
 		&i.ActionNamePt,
 		&i.SpellCastID,
 		&i.MoveFt,
+		&i.SlotLevel,
 		&i.TargetID,
 		&i.Status,
 		&i.CreatedAt,
@@ -141,9 +144,9 @@ func (q *Queries) GetWaitingReadiedOf(ctx context.Context, combatantID string) (
 
 const insertReadiedAction = `-- name: InsertReadiedAction :one
 
-INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, move_ft, target_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at
+INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, move_ft, target_id, created_at, slot_level, spell_cast_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+RETURNING id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, slot_level, target_id, status, created_at
 `
 
 type InsertReadiedActionParams struct {
@@ -157,6 +160,8 @@ type InsertReadiedActionParams struct {
 	MoveFt       int32
 	TargetID     *string
 	CreatedAt    time.Time
+	SlotLevel    int32
+	SpellCastID  *string
 }
 
 // The readied actions of a combat (migration 00330).
@@ -172,6 +177,8 @@ func (q *Queries) InsertReadiedAction(ctx context.Context, arg InsertReadiedActi
 		arg.MoveFt,
 		arg.TargetID,
 		arg.CreatedAt,
+		arg.SlotLevel,
+		arg.SpellCastID,
 	)
 	var i ReadiedAction
 	err := row.Scan(
@@ -185,6 +192,7 @@ func (q *Queries) InsertReadiedAction(ctx context.Context, arg InsertReadiedActi
 		&i.ActionNamePt,
 		&i.SpellCastID,
 		&i.MoveFt,
+		&i.SlotLevel,
 		&i.TargetID,
 		&i.Status,
 		&i.CreatedAt,
@@ -193,7 +201,7 @@ func (q *Queries) InsertReadiedAction(ctx context.Context, arg InsertReadiedActi
 }
 
 const listWaitingReadiedActions = `-- name: ListWaitingReadiedActions :many
-SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
+SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, slot_level, target_id, status, created_at FROM readied_actions
 WHERE encounter_id = $1 AND status = 'waiting'
 ORDER BY created_at, id
 `
@@ -219,6 +227,7 @@ func (q *Queries) ListWaitingReadiedActions(ctx context.Context, encounterID str
 			&i.ActionNamePt,
 			&i.SpellCastID,
 			&i.MoveFt,
+			&i.SlotLevel,
 			&i.TargetID,
 			&i.Status,
 			&i.CreatedAt,
@@ -236,10 +245,10 @@ func (q *Queries) ListWaitingReadiedActions(ctx context.Context, encounterID str
 const reopenReadiedAction = `-- name: ReopenReadiedAction :exec
 UPDATE readied_actions
 SET status = 'waiting'
-WHERE id = $1 AND status IN ('fired', 'ignored')
+WHERE id = $1 AND status IN ('fired', 'ignored', 'broken')
 `
 
-// The undo of a readied action's use or pass: it waits again.
+// The undo of a readied action's use or pass, or of the change that broke a held spell's concentration: it waits again.
 func (q *Queries) ReopenReadiedAction(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, reopenReadiedAction, id)
 	return err

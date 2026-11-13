@@ -45,7 +45,7 @@ func TestReadiedActionsMigrationRunsTwice(t *testing.T) {
 	if after != before {
 		t.Errorf("schema changed after the Down and Up of 00330.\nbefore:\n%s\nafter:\n%s", before, after)
 	}
-	for _, want := range []string{"readied_actions_one_waiting_idx", "'readied'"} {
+	for _, want := range []string{"readied_actions_one_waiting_idx", "readied_actions_slot_valid", "'readied'"} {
 		if !strings.Contains(after, want) {
 			t.Errorf("the schema has no %s", want)
 		}

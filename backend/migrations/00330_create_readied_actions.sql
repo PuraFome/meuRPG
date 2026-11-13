@@ -2,8 +2,9 @@
 -- A readied action (SRD 5.1, "Ready"): the combatant spends its action on its turn to act later, as a reaction, when
 -- a trigger it names happens. One row for each readied action:
 --   - trigger_text is the player's own words (1 to 200 characters); the master judges when it happens.
---   - kind is what is held: 'attack' (action_key is the attack's key), 'spell' (spell_cast_id names the held cast),
---     'move' (move_ft is the speed it may move) or 'other' (action_key is the standard action's key).
+--   - kind is what is held: 'attack' (action_key is the attack's key), 'spell' (action_key is the spell's key,
+--     slot_level the level of the slot spent at Ready, 0 for a cantrip, and spell_cast_id the cast's id), 'move'
+--     (move_ft is the speed it may move) or 'other' (action_key is the standard action's key).
 --   - action_name_pt is the held action's name when it was readied, so every view names it as the log line does.
 --   - target_id is the creature the player named, if any; it is forgotten when that combatant leaves.
 --   - status: 'waiting' until it ends; 'fired' (the master fired it and the reaction ran it), 'ignored' (the reactor let
@@ -23,14 +24,16 @@ CREATE TABLE IF NOT EXISTS readied_actions (
     action_name_pt TEXT NOT NULL DEFAULT '',
     spell_cast_id TEXT NULL,
     move_ft INT4 NOT NULL DEFAULT 0,
+    slot_level INT4 NOT NULL DEFAULT 0,
     target_id UUID NULL REFERENCES combatants (id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'waiting',
     created_at TIMESTAMPTZ NOT NULL,
     CONSTRAINT readied_actions_trigger_valid CHECK (char_length(trigger_text) BETWEEN 1 AND 200),
     CONSTRAINT readied_actions_kind_valid CHECK (kind IN ('attack', 'spell', 'move', 'other')),
     CONSTRAINT readied_actions_status_valid CHECK (status IN ('waiting', 'fired', 'ignored', 'lost', 'broken', 'canceled')),
-    CONSTRAINT readied_actions_action_key_valid CHECK (kind NOT IN ('attack', 'other') OR action_key IS NOT NULL),
-    CONSTRAINT readied_actions_round_move_valid CHECK (round >= 0 AND move_ft >= 0)
+    CONSTRAINT readied_actions_action_key_valid CHECK (kind NOT IN ('attack', 'spell', 'other') OR action_key IS NOT NULL),
+    CONSTRAINT readied_actions_round_move_valid CHECK (round >= 0 AND move_ft >= 0),
+    CONSTRAINT readied_actions_slot_valid CHECK (slot_level BETWEEN 0 AND 9 AND (kind = 'spell' OR slot_level = 0))
 );
 
 CREATE INDEX IF NOT EXISTS readied_actions_encounter_id_idx ON readied_actions (encounter_id);
