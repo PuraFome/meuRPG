@@ -215,6 +215,13 @@ UPDATE combatants
 SET last_move_dft = $2
 WHERE id = $1;
 
+-- name: SetCombatantMountKind :exec
+-- Whether the combatant is a willing mount and how it obeys ('', 'controlled' or 'independent'),
+-- the master's mark (SetCombatantMount).
+UPDATE combatants
+SET mount_kind = $2
+WHERE id = $1;
+
 -- name: SetCombatantSide :exec
 -- Whose side the combatant fights on ('party' or 'enemy'), the master's "Aliado".
 UPDATE combatants
