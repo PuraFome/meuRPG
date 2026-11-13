@@ -166,3 +166,35 @@ func TestMountedCombat_ARiderIsNoFoeOfItsOwnMount(t *testing.T) {
 		t.Errorf("the offers on the mount's move are from %v, want Brisa alone (Toren rides it)", reactors)
 	}
 }
+
+// TestMountedCombat_TheUndoOfTheMountsMoveGivesTheRidersCoverMarkBack: the move of the mount clears the master's cover mark of its
+// rider, who changes square with it, and the undo of the move puts both marks back.
+func TestMountedCombat_TheUndoOfTheMountsMoveGivesTheRidersCoverMarkBack(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.steed(t)
+	c.mustMount(t, c.caio, "Toren", "Ogro")
+	c.mark(t, "Toren", playv1.CoverDegree_COVER_DEGREE_HALF)
+	c.mark(t, "Ogro", playv1.CoverDegree_COVER_DEGREE_THREE_QUARTERS)
+	markOf := func(label string) string {
+		var mark string
+		if err := c.h.pool.QueryRow(t.Context(), `SELECT cover_mark FROM combatants WHERE id = $1`, c.id(t, label)).Scan(&mark); err != nil {
+			t.Fatalf("read the cover mark of %s: %v", label, err)
+		}
+		return mark
+	}
+	if _, err := c.move(t, c.caio, "Ogro", 10, 7); err != nil {
+		t.Fatalf("the mount's move = %v", err)
+	}
+	if got := markOf("Toren"); got != "none" {
+		t.Fatalf("the rider's mark after the mount's move = %q, want it cleared", got)
+	}
+	c.undoLast(t)
+	if got := markOf("Ogro"); got != "three_quarters" {
+		t.Errorf("the mount's mark after the undo = %q, want three_quarters", got)
+	}
+	if got := markOf("Toren"); got != "half" {
+		t.Errorf("the rider's mark after the undo = %q, want half", got)
+	}
+}
