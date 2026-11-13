@@ -138,6 +138,13 @@ func (s *Service) EndGameSession(
 		return nil, errSessionNotFound()
 	}
 
+	// The session is found in the caller's campaign before anything is locked: a master never takes the row of another campaign's
+	// session, and a foreign id answers as an unknown one.
+	if _, err := s.queries.GetGameSessionInCampaign(ctx, playdb.GetGameSessionInCampaignParams{CampaignID: m.CampaignID, ID: id.String()}); errors.Is(err, pgx.ErrNoRows) {
+		return nil, errSessionNotFound()
+	} else if err != nil {
+		return nil, s.dbError(ctx, "find the game session", err)
+	}
 	var out sessionEnd
 	err = s.tx(ctx, id.String(), func(tx pgx.Tx, h *hints) error {
 		out = sessionEnd{}
@@ -149,9 +156,6 @@ func (s *Service) EndGameSession(
 		}
 		return nil
 	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, errSessionNotFound() // no such session: the lock found no row
-	}
 	if err != nil {
 		return nil, s.dbError(ctx, "end a game session", err)
 	}

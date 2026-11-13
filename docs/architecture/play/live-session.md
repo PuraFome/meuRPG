@@ -226,12 +226,13 @@ What the first call told is not kept: the repeat tells a superset worked out fro
 The closure calls `h.replay()` and `tellReplayed` fills the collector from what is stored: the master's cast change, the vitals of the combat's players (each to the master and its own player), the open reaction windows, the fog of the combat's map, and for a start the current map.
 The forced moves of a cast, a creature action or a rider answer are worked out from the stored event.
 The scene's rolls and attempts, a line of the conversation, a free roll, a group check's write, a puzzle move and a hint try tell again what the stored result says, to the audiences the first call reached (a secret free roll to nobody).
+A repeat of a solving `MakePuzzleMove` tells the revealed point (as the screen stands now), the revealed clue, the opened door and, for a wrong move, the trap's firing (the encounter, log and map hints, the master's map hint), to the same audiences as the first call and numbered by the funnel.
 
 What the stored event does not keep is not recovered:
 
 - a public cast change, because the spell level is not kept;
 - a reaction window that closed, because the combat the retry reads already shows it closed.
-- the maps module's own notices of a puzzle move (a revealed point or clue, a trap a wrong move fired), which the move's stored result does not keep: a repeat of `MakePuzzleMove` tells `puzzle_changed` again, and `doors_changed` for a solving move that opened a door.
+- a trap a wrong move fired, only in part: the repeat reads the puzzle's trap point's latest stored `trap_triggered` event, which may be a later firing than the move's own, and tells nothing if that event is gone.
 
 The hints `AnswerReaction` tells from its handler after the write (`encounter_changed`, `combat_log_changed`, the answer's vitals) do not go through the collector, so they carry no number.
 A repeat of it sends the generic combat and log hints and the forced moves from the stored event (`publishRetried`), with the vitals coming from the replay's step for the combat's players.

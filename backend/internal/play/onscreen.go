@@ -70,9 +70,13 @@ func (s *Service) SetCurrentMap(
 				s.maps.MapShown(ctx, m.CampaignID, *mapID)
 			}
 		})
-		h.tell(m.CampaignID, live.Event{Audience: live.Audience{Master: true, Everyone: true}, Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
-			CurrentMapChanged: &playv1.WatchGameSessionResponse_CurrentMapChanged{MapId: current},
-		}}})
+		h.touch() // the number moves with the map, whichever steps follow
+		// After the maps module's step: the streams hear the current map once the fog knows it.
+		h.after(func(_ context.Context, say sayFn) {
+			say(m.CampaignID, live.Event{Audience: live.Audience{Master: true, Everyone: true}, Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
+				CurrentMapChanged: &playv1.WatchGameSessionResponse_CurrentMapChanged{MapId: current},
+			}}})
+		})
 		return nil
 	})
 	if err != nil {

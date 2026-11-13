@@ -74,6 +74,10 @@ type PuzzleMaps interface {
 	// currentMapID, or the map was revealed), "" otherwise; the function it returns
 	// tells the watchers after the commit.
 	PuzzleRevealPoint(ctx context.Context, tx pgx.Tx, campaignID, mapID, pointID, currentMapID string) (changed bool, name string, after func(context.Context), err error)
+	// PuzzleRevealedAgain tells the watchers again that the point was revealed, for the retry of the move that solved the puzzle.
+	PuzzleRevealedAgain(ctx context.Context, campaignID, mapID, pointID string)
+	// PuzzleClueGivenAgain tells the player again that the clue was given, for the same retry.
+	PuzzleClueGivenAgain(ctx context.Context, campaignID, clueID, userID string)
 	// PuzzleCheckClue says whether the clue is on a scene point of the campaign.
 	PuzzleCheckClue(ctx context.Context, tx pgx.Tx, campaignID, clueID string) error
 	// PuzzleRevealClue gives the clue to the character's player and says whether

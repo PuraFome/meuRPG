@@ -291,3 +291,70 @@ func TestArchivePuzzleRefusedTellsNothing(t *testing.T) {
 	g := p.puzzleHints(t)
 	g.refused(p.archiveCall(t, newKey())) // no such puzzle
 }
+
+// A solving move that revealed a point or gave a clue, and a wrong move that fired the puzzle's trap, tell what the maps module told
+// again when their key is repeated: the first call lost every send, and the repeat reads the outcome and the firing from storage.
+func TestMakePuzzleMoveThatRevealsAPointLostHints(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	x, y := sq(12, 12)
+	pt, err := p.mc(p.master).CreateMapPoint(t.Context(), connect.NewRequest(&mapsv1.CreateMapPointRequest{
+		CampaignId: p.campaignID, MapId: p.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "A câmara do selo", XBp: x, YBp: y,
+	}))
+	if err != nil {
+		t.Fatalf("CreateMapPoint() error = %v", err)
+	}
+	puz := p.oneMoveLock(t, &playv1.PuzzleOnSolve{
+		Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_POINT,
+		Target: &playv1.PuzzleOnSolve_Point{Point: &playv1.PuzzlePointTarget{MapId: p.mapID, PointId: pt.Msg.GetPoint().GetId()}},
+	})
+	g := p.puzzleHints(t)
+	g.lost(p.moveCall(t, p.caio, puz.GetId(), lockMove(0, 1), newKey()))
+	if got := g.dropped[kMapChanged]; !got {
+		t.Errorf("the reveal told no map_changed: the control is gone (dropped %v)", g.dropped)
+	}
+}
+
+func TestMakePuzzleMoveThatGivesAClueLostHints(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	x, y := sq(6, 6)
+	pt, err := p.mc(p.master).CreateMapPoint(t.Context(), connect.NewRequest(&mapsv1.CreateMapPointRequest{
+		CampaignId: p.campaignID, MapId: p.mapID, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "A cripta", XBp: x, YBp: y,
+	}))
+	if err != nil {
+		t.Fatalf("CreateMapPoint() error = %v", err)
+	}
+	clue, err := p.mc(p.master).AddSceneClue(t.Context(), connect.NewRequest(&mapsv1.AddSceneClueRequest{
+		CampaignId: p.campaignID, MapId: p.mapID, PointId: pt.Msg.GetPoint().GetId(), Text: "A chave está sob a pedra da lua.",
+	}))
+	if err != nil {
+		t.Fatalf("AddSceneClue() error = %v", err)
+	}
+	puz := p.oneMoveLock(t, &playv1.PuzzleOnSolve{
+		Action: playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_REVEAL_CLUE,
+		Target: &playv1.PuzzleOnSolve_Clue{Clue: &playv1.PuzzleClueTarget{ClueId: clue.Msg.GetClue().GetId()}},
+	})
+	g := p.puzzleHints(t)
+	g.unnumbered = append(g.unnumbered, "*playv1.WatchGameSessionResponse_NotesChanged_")
+	g.lost(p.moveCall(t, p.caio, puz.GetId(), lockMove(0, 1), newKey()))
+	if got := g.dropped["*playv1.WatchGameSessionResponse_NotesChanged_"]; !got {
+		t.Errorf("the clue told no notes_changed: the control is gone (dropped %v)", g.dropped)
+	}
+}
+
+func TestMakePuzzleMoveThatFiresATrapLostHints(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	trap := p.trapPoint(t, "Dardos envenenados", 12, 4)
+	target := &playv1.PuzzleTrapTarget{MapId: p.mapID, PointId: trap.GetId()}
+	seq := p.sequence(t, "Os sinos do Salão do trono", onWrong(onWrongTrap(target)))
+	p.show(t, seq.GetId())
+	p.playSequence(t, seq.GetId())
+	p.movableClock().advance(time.Minute)
+	g := p.puzzleHints(t)
+	g.lost(p.moveCall(t, p.ana, seq.GetId(), bellMove(3), newKey())) // the first bell is wrong
+	if p.eventCount(t, "trap_triggered") != 1 {
+		t.Errorf("%d firings, want 1", p.eventCount(t, "trap_triggered"))
+	}
+}

@@ -419,6 +419,11 @@ func (s *Service) sayFiring(ctx context.Context, say sayFn, campaignID string, f
 		return
 	}
 	s.logFiring(ctx, fired, enc.ID != "")
+	s.sayFiringHints(ctx, say, campaignID, fired, enc)
+}
+
+// sayFiringHints is sayFiring without the log line: the hints of a firing, told again for a retry.
+func (s *Service) sayFiringHints(ctx context.Context, say sayFn, campaignID string, fired *trapFireEvent, enc playdb.Encounter) {
 	s.traps.TrapChanged(ctx, campaignID, fired.MapID, fired.PointID)
 	switch {
 	case enc.ID == "":

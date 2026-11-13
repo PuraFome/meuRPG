@@ -82,32 +82,27 @@ func (v viewers) minus(o viewers) []live.Audience {
 
 // publishTo sends ev to the master (when master) and to each audience.
 func (s *Service) publishTo(campaignID string, master bool, auds []live.Audience, ev *playv1.WatchGameSessionResponse) {
-	if master {
-		s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: ev})
-	}
-	for _, a := range auds {
-		s.send(campaignID, live.Event{Audience: a, Message: ev})
-	}
+	eachAudience(master, auds, func() *playv1.WatchGameSessionResponse { return ev }, func(e live.Event) { s.send(campaignID, e) })
 }
 
 // sayTo sends a message made by mk (a new one for each event: say stamps the number into it) to the master (when master) and to each
 // audience, through say.
 func sayTo(say sayFn, campaignID string, master bool, auds []live.Audience, mk func() *playv1.WatchGameSessionResponse) {
-	if master {
-		say(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: mk()})
-	}
-	for _, a := range auds {
-		say(campaignID, live.Event{Audience: a, Message: mk()})
-	}
+	eachAudience(master, auds, mk, func(e live.Event) { say(campaignID, e) })
 }
 
 // tellTo collects what publishTo sends, for Service.tx: a message made by mk for the master (when master) and for each audience.
 func tellTo(h *hints, campaignID string, master bool, auds []live.Audience, mk func() *playv1.WatchGameSessionResponse) {
+	eachAudience(master, auds, mk, func(e live.Event) { h.tell(campaignID, e) })
+}
+
+// eachAudience hands put one event for the master (when master) and one for each audience, each with a message made by mk.
+func eachAudience(master bool, auds []live.Audience, mk func() *playv1.WatchGameSessionResponse, put func(live.Event)) {
 	if master {
-		h.tell(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: mk()})
+		put(live.Event{Audience: live.Audience{Master: true}, Message: mk()})
 	}
 	for _, a := range auds {
-		h.tell(campaignID, live.Event{Audience: a, Message: mk()})
+		put(live.Event{Audience: a, Message: mk()})
 	}
 }
 
