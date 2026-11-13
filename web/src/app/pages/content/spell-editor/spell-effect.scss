@@ -21,6 +21,16 @@
   }
 }
 
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.narrow {
+  max-width: 14rem; // as modest as "Quanto"
+}
+
 .line {
   display: flex;
   flex-wrap: wrap;

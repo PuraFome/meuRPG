@@ -36,7 +36,7 @@
   }
 
   @if (effect().aura; as aura) {
-    <div class="row row--2">
+    <div class="narrow">
       <app-text-field
         label="Até onde alcança"
         suffix="m"
@@ -47,10 +47,11 @@
         [issues]="issues('aura.radius_ft')"
         (valueChange)="patchAura({ radiusM: $event })"
       />
-      <div class="group" [attr.data-field]="path('aura.affects')">
-        <app-segmented label="Quem a aura alcança" [segments]="affectsOptions" [value]="aura.affects" (choose)="patchAura({ affects: $event })" />
-        <app-field-note [issues]="issues('aura.affects')" hint="Contado a partir de quem conjura, no momento de cada jogada." />
-      </div>
+    </div>
+    <div class="group" role="group" aria-labelledby="spell-effect-reach" [attr.data-field]="path('aura.affects')">
+      <span class="group__label" id="spell-effect-reach">Alcança</span>
+      <app-segmented label="Alcança" [segments]="affectsOptions" [value]="aura.affects" [wrap]="true" (choose)="patchAura({ affects: $event })" />
+      <app-field-note [issues]="issues('aura.affects')" hint="Contado a partir de quem conjura, no momento de cada jogada." />
     </div>
     <p class="line"><mat-icon aria-hidden="true">info</mat-icon>{{ auraRefusedLine }}</p>
     @for (m of issues('aura'); track m) {

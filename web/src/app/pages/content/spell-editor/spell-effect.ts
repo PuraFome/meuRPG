@@ -144,7 +144,7 @@ export class SpellEffect {
     { value: 'dis', label: 'Desvantagem' },
   ];
   protected readonly affectsOptions: Segment<AuraAffectsChoice>[] = [
-    { value: 'allies', label: 'Aliados de quem conjura' },
+    { value: 'allies', label: 'Aliados' },
     { value: 'enemies', label: 'Inimigos' },
     { value: 'self', label: 'Só quem conjura' },
   ];
