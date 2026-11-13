@@ -110,6 +110,20 @@ func checkSweep(t *testing.T, name string, write func(w io.Writer)) {
 	}
 }
 
+// frozenMove is a Move as it was printed before the surface cost: the sweep's movers swim, climb and crawl
+// nowhere, and the digest is the proof that nothing else moved. surface_test.go tests the new fields.
+type frozenMove struct {
+	Blocked bool
+	By      grid.StopReason
+	CostDFt int
+	Entered []grid.Square
+	Opens   []grid.Square
+}
+
+func freeze(m grid.Move) frozenMove {
+	return frozenMove{Blocked: m.Blocked, By: m.By, CostDFt: m.CostDFt, Entered: m.Entered, Opens: m.Opens}
+}
+
 type countingWriter struct {
 	h     hash.Hash
 	lines int
@@ -142,7 +156,7 @@ func TestMoveSweepCharacterization(t *testing.T) {
 			for _, to := range squares {
 				for mi, m := range sweepMovers {
 					for _, occ := range []grid.Occupants{nil, sweepOccupants} {
-						fmt.Fprintf(w, "%v>%v m%d occ=%v move=%+v jump=%+v\n", from, to, mi, occ != nil, tr.Move(from, to, occ, m), tr.Jump(from, to, occ, m))
+						fmt.Fprintf(w, "%v>%v m%d occ=%v move=%+v jump=%+v\n", from, to, mi, occ != nil, freeze(tr.Move(from, to, occ, m)), freeze(tr.Jump(from, to, occ, m)))
 						for _, left := range sweepBudgets {
 							for _, trap := range []grid.Set{nil, sweepTrap} {
 								fmt.Fprintf(w, " left=%d trap=%v until=%+v\n", left, trap != nil, tr.MoveUntil(from, to, occ, m, trap, left))

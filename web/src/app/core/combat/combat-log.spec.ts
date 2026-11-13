@@ -341,8 +341,9 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
     // Positive control: a plain walk and an old event say only the distance.
     expect(walk({ spentDft: 157 })).toBe(' anda 4,7 m');
     expect(walk({})).toBe(' anda 4,7 m');
-    // Through allies (difficult terrain, SRD 5.1): the panel's number is in the line.
-    expect(walk({ spentDft: 207 })).toBe(' anda 4,7 m, gasta 6,2 m de movimento (terreno difícil)');
+    // Through allies, rubble, water or a climb (SRD 5.1): the panel's number is in the line.
+    expect(walk({ spentDft: 207 })).toBe(' anda 4,7 m, gasta 6,2 m de movimento (terreno)');
+    expect(walk({ spentDft: 314 })).toBe(' anda 4,7 m, gasta 9,4 m de movimento (terreno)');
     expect(walk({ spentDft: 314, moveDragging: true })).toBe(
       ' anda 4,7 m, gasta 9,4 m de movimento (arrastando)',
     );
@@ -350,7 +351,7 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
       ' anda 4,7 m, gasta 9,4 m de movimento (rastejando)',
     );
     expect(walk({ spentDft: 728, moveDragging: true, moveCrawling: true })).toBe(
-      ' anda 4,7 m, gasta 21,8 m de movimento (terreno difícil, arrastando, rastejando)',
+      ' anda 4,7 m, gasta 21,8 m de movimento (terreno, arrastando, rastejando)',
     );
     // A jump keeps its own line.
     expect(walk({ spentDft: 207, jump: JumpKind.LONG })).toBe(' saltou 4,7 m');
@@ -1002,6 +1003,12 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
     );
     expect(logLine(ws({ endReason: WildShapeEndReason.UNCONSCIOUS }))?.text).toBe(
       ' voltou à forma normal, ao ficar inconsciente',
+    );
+    expect(logLine(ws({ endReason: WildShapeEndReason.EXPIRED }))?.text).toBe(
+      ' voltou à forma normal: a forma de Lobo acabou, passou o tempo',
+    );
+    expect(logLine(ws({ endReason: WildShapeEndReason.MASTER_ENDED }))?.text).toBe(
+      ' voltou à forma normal: o mestre encerrou a forma de Lobo',
     );
   });
 

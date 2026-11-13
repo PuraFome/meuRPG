@@ -160,6 +160,9 @@ type Build struct {
 	// There are at most MaxCarried, one per piece.
 	// A bonus counts only while the piece is equipped and, when it asks for attunement, attuned.
 	ItemBonuses []ItemBonus `json:",omitempty"`
+	// MagicItems are the catalog magic items of the sheet that are no +N gear (at most MaxMagicItems; a key may repeat, each copy is an entry).
+	// They change no number: the sheet shows them and counts the attuned ones toward MaxAttunements.
+	MagicItems []SheetMagicItem `json:",omitempty"`
 	// Cantrips are level-0 spells. SpellsKnown is the list of spells the
 	// character knows (the wizard's spellbook, the sorcerer's known
 	// spells). SpellsPrepared are the prepared ones, for classes that
@@ -981,6 +984,17 @@ type ItemBonus struct {
 	Bonus              int
 	RequiresAttunement bool
 	Attuned            bool
+	// ItemKey is the catalog item (an `item:*` key that is no family) the piece is, or "". With it, RequiresAttunement
+	// comes from the catalog.
+	ItemKey string
+}
+
+// SheetMagicItem is a catalog magic item the sheet holds (Build.MagicItems): Key is an `item:*` key that is
+// not a family, ID is the entry's id on the sheet and Attuned says the character is attuned to it.
+type SheetMagicItem struct {
+	Key     string
+	Attuned bool
+	ID      string
 }
 
 // ItemModifier is one line of Derived.ItemModifiers: what a magic piece adds to one number

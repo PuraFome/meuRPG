@@ -21,7 +21,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/lasting_effects.proto.
  */
 export const file_meurpg_play_v1_lasting_effects: GenFile = /*@__PURE__*/
-  fileDesc("CiRtZXVycGcvcGxheS92MS9sYXN0aW5nX2VmZmVjdHMucHJvdG8SDm1ldXJwZy5wbGF5LnYxIpcCCg5FZmZlY3RNb2RpZmllchIwCgRraW5kGAEgASgOMiIubWV1cnBnLnBsYXkudjEuRWZmZWN0TW9kaWZpZXJLaW5kEgsKA2RpZRgCIAEoBRIMCgRzaWduGAMgASgFEjIKCmFwcGxpZXNfdG8YBCADKA4yHi5tZXVycGcucGxheS52MS5FZmZlY3RSb2xsS2luZBINCgV2YWx1ZRgFIAEoBRIRCglhYmlsaXRpZXMYBiADKAkSFwoPYWxsb3dlZF9hY3Rpb25zGAcgAygJEhoKEm1heF93ZWFwb25fYXR0YWNrcxgIIAEoBRIXCg9yZXNpc3RhbmNlX2tpbmQYCSABKAkSFAoMZGFtYWdlX3R5cGVzGAogAygJIlwKCUVmZmVjdEVuZBINCgVyb3VuZBgBIAEoBRIUCgxjb21iYXRhbnRfaWQYAiABKAkSKgoFcGhhc2UYAyABKA4yGy5tZXVycGcucGxheS52MS5FZmZlY3RQaGFzZSJ6CgpFZmZlY3RTYXZlEg8KB2FiaWxpdHkYASABKAkSFwoPYWJpbGl0eV9uYW1lX3B0GAIgASgJEioKBXBoYXNlGAMgASgOMhsubWV1cnBnLnBsYXkudjEuRWZmZWN0UGhhc2USDwoCZGMYBCABKAVIAIgBAUIFCgNfZGMikAEKDUVmZmVjdFRyaWdnZXISKgoFcGhhc2UYASABKA4yGy5tZXVycGcucGxheS52MS5FZmZlY3RQaGFzZRIMCgRkaWNlGAIgASgJEhcKD2RhbWFnZV90eXBlX2tleRgDIAEoCRIWCg5kYW1hZ2VfdHlwZV9wdBgEIAEoCRIUCgxtYXhfdHJpZ2dlcnMYBSABKAUiywcKDUxhc3RpbmdFZmZlY3QSCgoCaWQYASABKAkSEAoIZ3JvdXBfaWQYAiABKAkSFAoMZW5jb3VudGVyX2lkGAMgASgJEhIKCnRhcmdldF9pZHMYBCADKAkSFQoNdGFyZ2V0X2xhYmVscxgFIAMoCRI1Cgtzb3VyY2Vfa2luZBgGIAEoDjIgLm1ldXJwZy5wbGF5LnYxLkVmZmVjdFNvdXJjZUtpbmQSEgoKc291cmNlX2tleRgHIAEoCRIWCg5zb3VyY2VfbmFtZV9wdBgIIAEoCRIRCgljYXN0ZXJfaWQYCSABKAkSEQoJb3JpZ2luX3B0GAogASgJEhUKDWNvbmNlbnRyYXRpb24YCyABKAgSFgoOY29uZGl0aW9uX2tleXMYDCADKAkSGgoSY29uZGl0aW9uX25hbWVzX3B0GA0gAygJEjEKCW1vZGlmaWVycxgOIAMoCzIeLm1ldXJwZy5wbGF5LnYxLkVmZmVjdE1vZGlmaWVyEjkKDWR1cmF0aW9uX2tpbmQYDyABKA4yIi5tZXVycGcucGxheS52MS5FZmZlY3REdXJhdGlvbktpbmQSLwoHZW5kc19hdBgQIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVmZmVjdEVuZEgAiAEBEhgKC3JvdW5kc19sZWZ0GBEgASgFSAGIAQESFQoNY2xvY2tfdGV4dF9wdBgSIAEoCRIxCghlbmRfc2F2ZRgTIAEoCzIaLm1ldXJwZy5wbGF5LnYxLkVmZmVjdFNhdmVIAogBARIzCgpzdGFydF9zYXZlGBQgASgLMhoubWV1cnBnLnBsYXkudjEuRWZmZWN0U2F2ZUgDiAEBEjgKDHR1cm5fdHJpZ2dlchgVIAEoCzIdLm1ldXJwZy5wbGF5LnYxLkVmZmVjdFRyaWdnZXJIBIgBARIPCgd0YWdzX3B0GBYgAygJEhIKCmNoYW5nZXNfcHQYFyADKAkSGgoSYnJlYWtfZnJlZV9hYmlsaXR5GBggASgJEhYKDnBsYXllcl92aXNpYmxlGBkgASgIEjAKCGF1ZGllbmNlGBogASgOMh4ubWV1cnBnLnBsYXkudjEuRWZmZWN0QXVkaWVuY2USFAoMcGxheWVyX2xhYmVsGBsgASgJEhMKC2VuZF90ZXh0X3B0GBwgASgJEhYKDnBsYXllcnNfc2VlX3B0GB0gASgJQgoKCF9lbmRzX2F0Qg4KDF9yb3VuZHNfbGVmdEILCglfZW5kX3NhdmVCDQoLX3N0YXJ0X3NhdmVCDwoNX3R1cm5fdHJpZ2dlciLqAQoNQ2F0YWxvZ0VmZmVjdBILCgNrZXkYASABKAkSDwoHbmFtZV9wdBgCIAEoCRI1Cgtzb3VyY2Vfa2luZBgDIAEoDjIgLm1ldXJwZy5wbGF5LnYxLkVmZmVjdFNvdXJjZUtpbmQSFQoNY29uY2VudHJhdGlvbhgEIAEoCBJBChVkZWZhdWx0X2R1cmF0aW9uX2tpbmQYBSABKA4yIi5tZXVycGcucGxheS52MS5FZmZlY3REdXJhdGlvbktpbmQSFgoOZGVmYXVsdF9yb3VuZHMYBiABKAUSEgoKaGFzX2Nhc3RlchgHIAEoCCKvAQoOVHVybkNsb2NrRW50cnkSDQoFcm91bmQYASABKAUSFAoMY29tYmF0YW50X2lkGAIgASgJEhcKD2NvbWJhdGFudF9sYWJlbBgDIAEoCRIqCgVwaGFzZRgEIAEoDjIbLm1ldXJwZy5wbGF5LnYxLkVmZmVjdFBoYXNlEg8KB2lzX3NhdmUYBSABKAgSEQoJZWZmZWN0X2lkGAYgASgJEg8KB3RleHRfcHQYByABKAkiewoSQ29uY2VudHJhdGlvbkVudHJ5EhEKCWNhc3Rlcl9pZBgBIAEoCRIUCgxjYXN0ZXJfbGFiZWwYAiABKAkSEQoJc3BlbGxfa2V5GAMgASgJEhUKDXNwZWxsX25hbWVfcHQYBCABKAkSEgoKZWZmZWN0X2lkcxgFIAMoCSLRAwoQRWZmZWN0U2F2ZVByb21wdBIRCgllZmZlY3RfaWQYASABKAkSFgoOc291cmNlX25hbWVfcHQYAiABKAkSDwoHYWJpbGl0eRgDIAEoCRIXCg9hYmlsaXR5X25hbWVfcHQYBCABKAkSKgoFcGhhc2UYBSABKA4yGy5tZXVycGcucGxheS52MS5FZmZlY3RQaGFzZRIPCgJkYxgGIAEoBUgAiAEBEhAKCG1vZGlmaWVyGAcgASgFEhMKC2JvbnVzX2tub3duGAggASgIEgwKBG1vZGUYCSABKAkSFwoPbW9kZV9zb3VyY2VzX3B0GAogAygJEiwKCmV4dHJhX2RpY2UYCyADKAsyGC5tZXVycGcucGxheS52MS5FeHRyYURpZRIRCglhdXRvX2ZhaWwYDCABKAgSDwoHdGV4dF9wdBgNIAEoCRIYChBoYW5kZWRfdG9fbWFzdGVyGA4gASgIEhEKCXNraXBwYWJsZRgPIAEoCBIPCgd6b25lX2lkGBAgASgJEhMKC3pvbmVfcmVhc29uGBEgASgJEhsKE2RhbWFnZV90eXBlX25hbWVfcHQYEiABKAkSFAoMaGFsZl9vbl9zYXZlGBMgASgIQgUKA19kYyJhCghFeHRyYURpZRISCgpzb3VyY2Vfa2V5GAEgASgJEhYKDnNvdXJjZV9uYW1lX3B0GAIgASgJEg0KBWZhY2VzGAMgASgFEgwKBHNpZ24YBCABKAUSDAoEZmFjZRgFIAEoBSLwAwoQRWZmZWN0U2F2ZVJlc3VsdBILCgNkMjAYASABKAUSEAoIbW9kaWZpZXIYAiABKAUSDQoFdG90YWwYAyABKAUSEQoJZDIwX2ZhY2VzGAQgAygFEhAKCHBoeXNpY2FsGAUgASgIEg0KBXNhdmVkGAYgASgIEhEKCWF1dG9fZmFpbBgHIAEoCBIsCgpleHRyYV9kaWNlGAggAygLMhgubWV1cnBnLnBsYXkudjEuRXh0cmFEaWUSDwoHc2tpcHBlZBgJIAEoCBIUCgxlZmZlY3RfZW5kZWQYCiABKAgSDwoHdGV4dF9wdBgLIAEoCRIPCgJkYxgMIAEoBUgAiAEBEhkKEWluc3BpcmF0aW9uX3NpZGVzGA0gASgFEhgKEGluc3BpcmF0aW9uX2ZhY2UYDiABKAUSKAoIcmVyb2xsZWQYDyADKAsyFi5tZXVycGcucGxheS52MS5SZXJvbGwSEAoIcmVzaXN0ZWQYECABKAgSFQoNcmVzaXN0ZWRfbGVmdBgRIAEoBRIXCgp0cmVhdGVkX2FzGBIgASgFSAGIAQESGQoRdHJlYXRlZF9hc19zb3VyY2UYEyABKAkSHgoWdHJlYXRlZF9hc19zb3VyY2VfbmFtZRgUIAEoCUIFCgNfZGNCDQoLX3RyZWF0ZWRfYXMiNQoKRWZmZWN0Tm90ZRIPCgd0ZXh0X3B0GAEgASgJEhYKDnRleHRfbWFzdGVyX3B0GAIgASgJIn0KEUV4dHJhQWN0aW9uT3B0aW9uEhEKCWF2YWlsYWJsZRgBIAEoCBIQCghsYWJlbF9wdBgCIAEoCRIXCg9hbGxvd2VkX2FjdGlvbnMYAyADKAkSFwoPYWxsb3dlZF90ZXh0X3B0GAQgASgJEhEKCXJlYXNvbl9wdBgFIAEoCSIxCgtFZmZlY3RMYWJlbBIRCgllZmZlY3RfaWQYASABKAkSDwoHdGV4dF9wdBgCIAEoCSLLAgoPQ2hhcmFjdGVyRWZmZWN0EgoKAmlkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIWCg5jaGFyYWN0ZXJfbmFtZRgDIAEoCRISCgpzb3VyY2Vfa2V5GAQgASgJEhYKDnNvdXJjZV9uYW1lX3B0GAUgASgJEhkKDHNlY29uZHNfbGVmdBgGIAEoBUgAiAEBEhgKEGR1cmF0aW9uX3RleHRfcHQYByABKAkSFQoNY29uY2VudHJhdGlvbhgIIAEoCBIPCgd0YWdzX3B0GAkgAygJEhoKEmNvbmRpdGlvbl9uYW1lc19wdBgKIAMoCRIWCg5wbGF5ZXJfdmlzaWJsZRgLIAEoCBIwCghhdWRpZW5jZRgMIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkVmZmVjdEF1ZGllbmNlQg8KDV9zZWNvbmRzX2xlZnQqtQEKEEVmZmVjdFNvdXJjZUtpbmQSIgoeRUZGRUNUX1NPVVJDRV9LSU5EX1VOU1BFQ0lGSUVEEAASHAoYRUZGRUNUX1NPVVJDRV9LSU5EX1NQRUxMEAESHgoaRUZGRUNUX1NPVVJDRV9LSU5EX0ZFQVRVUkUQAhIgChxFRkZFQ1RfU09VUkNFX0tJTkRfQ09ORElUSU9OEAMSHQoZRUZGRUNUX1NPVVJDRV9LSU5EX01BU1RFUhAEKrECChJFZmZlY3REdXJhdGlvbktpbmQSJAogRUZGRUNUX0RVUkFUSU9OX0tJTkRfVU5TUEVDSUZJRUQQABIfChtFRkZFQ1RfRFVSQVRJT05fS0lORF9ST1VORFMQARIvCitFRkZFQ1RfRFVSQVRJT05fS0lORF9VTlRJTF9TVEFSVF9PRl9UVVJOX09GEAISLQopRUZGRUNUX0RVUkFUSU9OX0tJTkRfVU5USUxfRU5EX09GX1RVUk5fT0YQAxImCiJFRkZFQ1RfRFVSQVRJT05fS0lORF9DT05DRU5UUkFUSU9OEAQSKAokRUZGRUNUX0RVUkFUSU9OX0tJTkRfVU5USUxfRElTTUlTU0VEEAUSIgoeRUZGRUNUX0RVUkFUSU9OX0tJTkRfTE9OR19SRVNUEAYq1wQKEkVmZmVjdE1vZGlmaWVyS2luZBIkCiBFRkZFQ1RfTU9ESUZJRVJfS0lORF9VTlNQRUNJRklFRBAAEiEKHUVGRkVDVF9NT0RJRklFUl9LSU5EX1JPTExfRElFEAESIQodRUZGRUNUX01PRElGSUVSX0tJTkRfQUNfQk9OVVMQAhIpCiVFRkZFQ1RfTU9ESUZJRVJfS0lORF9TUEVFRF9NVUxUSVBMSUVSEAMSJwojRUZGRUNUX01PRElGSUVSX0tJTkRfU0FWRV9BRFZBTlRBR0UQBBIlCiFFRkZFQ1RfTU9ESUZJRVJfS0lORF9FWFRSQV9BQ1RJT04QBRIgChxFRkZFQ1RfTU9ESUZJRVJfS0lORF9OT19NT1ZFEAYSIgoeRUZGRUNUX01PRElGSUVSX0tJTkRfTk9fQUNUSU9OEAcSJAogRUZGRUNUX01PRElGSUVSX0tJTkRfTk9fUkVBQ1RJT04QFBIjCh9FRkZFQ1RfTU9ESUZJRVJfS0lORF9ST0xMX0JPTlVTEBUSIAocRUZGRUNUX01PRElGSUVSX0tJTkRfVEVNUF9IUBAWEiMKH0VGRkVDVF9NT0RJRklFUl9LSU5EX1JFU0lTVEFOQ0UQFxIpCiVFRkZFQ1RfTU9ESUZJRVJfS0lORF9BVFRBQ0tfQURWQU5UQUdFEBgSKgomRUZGRUNUX01PRElGSUVSX0tJTkRfU0FWRV9ESVNBRFZBTlRBR0UQGRIrCidFRkZFQ1RfTU9ESUZJRVJfS0lORF9DSEVDS19ESVNBRFZBTlRBR0UQGiqGAQoORWZmZWN0Um9sbEtpbmQSIAocRUZGRUNUX1JPTExfS0lORF9VTlNQRUNJRklFRBAAEhsKF0VGRkVDVF9ST0xMX0tJTkRfQVRUQUNLEAESGQoVRUZGRUNUX1JPTExfS0lORF9TQVZFEAISGgoWRUZGRUNUX1JPTExfS0lORF9DSEVDSxADKmUKDkVmZmVjdEF1ZGllbmNlEh8KG0VGRkVDVF9BVURJRU5DRV9VTlNQRUNJRklFRBAAEhcKE0VGRkVDVF9BVURJRU5DRV9BTEwQARIZChVFRkZFQ1RfQVVESUVOQ0VfT1dORVIQAipZCgtFZmZlY3RQaGFzZRIcChhFRkZFQ1RfUEhBU0VfVU5TUEVDSUZJRUQQABIWChJFRkZFQ1RfUEhBU0VfU1RBUlQQARIUChBFRkZFQ1RfUEhBU0VfRU5EEAIqdwoORWZmZWN0RW5kU2NvcGUSIAocRUZGRUNUX0VORF9TQ09QRV9VTlNQRUNJRklFRBAAEhkKFUVGRkVDVF9FTkRfU0NPUEVfVEhJUxABEigKJEVGRkVDVF9FTkRfU0NPUEVfQ09OQ0VOVFJBVElPTl9HUk9VUBACKogBChRMYXN0aW5nRWZmZWN0T3V0Y29tZRImCiJMQVNUSU5HX0VGRkVDVF9PVVRDT01FX1VOU1BFQ0lGSUVEEAASIgoeTEFTVElOR19FRkZFQ1RfT1VUQ09NRV9BUFBMSUVEEAESJAogTEFTVElOR19FRkZFQ1RfT1VUQ09NRV9OT19FRkZFQ1QQAkLBAQoSY29tLm1ldXJwZy5wbGF5LnYxQhNMYXN0aW5nRWZmZWN0c1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_meurpg_play_v1_combat_rolls]);
+  fileDesc("CiRtZXVycGcvcGxheS92MS9sYXN0aW5nX2VmZmVjdHMucHJvdG8SDm1ldXJwZy5wbGF5LnYxItICCg5FZmZlY3RNb2RpZmllchIwCgRraW5kGAEgASgOMiIubWV1cnBnLnBsYXkudjEuRWZmZWN0TW9kaWZpZXJLaW5kEgsKA2RpZRgCIAEoBRIMCgRzaWduGAMgASgFEjIKCmFwcGxpZXNfdG8YBCADKA4yHi5tZXVycGcucGxheS52MS5FZmZlY3RSb2xsS2luZBINCgV2YWx1ZRgFIAEoBRIRCglhYmlsaXRpZXMYBiADKAkSFwoPYWxsb3dlZF9hY3Rpb25zGAcgAygJEhoKEm1heF93ZWFwb25fYXR0YWNrcxgIIAEoBRIXCg9yZXNpc3RhbmNlX2tpbmQYCSABKAkSFAoMZGFtYWdlX3R5cGVzGAogAygJEjEKA2hpdBgLIAEoCzIfLm1ldXJwZy5wbGF5LnYxLldlYXBvbkhpdERhbWFnZUgAiAEBQgYKBF9oaXQi9QEKD1dlYXBvbkhpdERhbWFnZRIPCgd0cmlnZ2VyGAEgASgJEgsKA2RpZRgCIAEoBRIMCgRkaWNlGAMgASgFEhUKDXBlcl9zbG90X2RpY2UYBCABKAUSEAoIbWF4X2RpY2UYBSABKAUSFwoPZGFtYWdlX3R5cGVfa2V5GAYgASgJEhYKDmRhbWFnZV90eXBlX3B0GAcgASgJEgwKBHNhdmUYCCABKAkSFgoOY29uZGl0aW9uX2tleXMYCSADKAkSGgoSY29uZGl0aW9uX25hbWVzX3B0GAogAygJEhoKEmNvbmRpdGlvbl9kdXJhdGlvbhgLIAEoCSJcCglFZmZlY3RFbmQSDQoFcm91bmQYASABKAUSFAoMY29tYmF0YW50X2lkGAIgASgJEioKBXBoYXNlGAMgASgOMhsubWV1cnBnLnBsYXkudjEuRWZmZWN0UGhhc2UiegoKRWZmZWN0U2F2ZRIPCgdhYmlsaXR5GAEgASgJEhcKD2FiaWxpdHlfbmFtZV9wdBgCIAEoCRIqCgVwaGFzZRgDIAEoDjIbLm1ldXJwZy5wbGF5LnYxLkVmZmVjdFBoYXNlEg8KAmRjGAQgASgFSACIAQFCBQoDX2RjIpABCg1FZmZlY3RUcmlnZ2VyEioKBXBoYXNlGAEgASgOMhsubWV1cnBnLnBsYXkudjEuRWZmZWN0UGhhc2USDAoEZGljZRgCIAEoCRIXCg9kYW1hZ2VfdHlwZV9rZXkYAyABKAkSFgoOZGFtYWdlX3R5cGVfcHQYBCABKAkSFAoMbWF4X3RyaWdnZXJzGAUgASgFItoHCg1MYXN0aW5nRWZmZWN0EgoKAmlkGAEgASgJEhAKCGdyb3VwX2lkGAIgASgJEhQKDGVuY291bnRlcl9pZBgDIAEoCRISCgp0YXJnZXRfaWRzGAQgAygJEhUKDXRhcmdldF9sYWJlbHMYBSADKAkSNQoLc291cmNlX2tpbmQYBiABKA4yIC5tZXVycGcucGxheS52MS5FZmZlY3RTb3VyY2VLaW5kEhIKCnNvdXJjZV9rZXkYByABKAkSFgoOc291cmNlX25hbWVfcHQYCCABKAkSEQoJY2FzdGVyX2lkGAkgASgJEhEKCW9yaWdpbl9wdBgKIAEoCRIVCg1jb25jZW50cmF0aW9uGAsgASgIEhYKDmNvbmRpdGlvbl9rZXlzGAwgAygJEhoKEmNvbmRpdGlvbl9uYW1lc19wdBgNIAMoCRIxCgltb2RpZmllcnMYDiADKAsyHi5tZXVycGcucGxheS52MS5FZmZlY3RNb2RpZmllchI5Cg1kdXJhdGlvbl9raW5kGA8gASgOMiIubWV1cnBnLnBsYXkudjEuRWZmZWN0RHVyYXRpb25LaW5kEi8KB2VuZHNfYXQYECABKAsyGS5tZXVycGcucGxheS52MS5FZmZlY3RFbmRIAIgBARIYCgtyb3VuZHNfbGVmdBgRIAEoBUgBiAEBEhUKDWNsb2NrX3RleHRfcHQYEiABKAkSMQoIZW5kX3NhdmUYEyABKAsyGi5tZXVycGcucGxheS52MS5FZmZlY3RTYXZlSAKIAQESMwoKc3RhcnRfc2F2ZRgUIAEoCzIaLm1ldXJwZy5wbGF5LnYxLkVmZmVjdFNhdmVIA4gBARI4Cgx0dXJuX3RyaWdnZXIYFSABKAsyHS5tZXVycGcucGxheS52MS5FZmZlY3RUcmlnZ2VySASIAQESDwoHdGFnc19wdBgWIAMoCRISCgpjaGFuZ2VzX3B0GBcgAygJEhoKEmJyZWFrX2ZyZWVfYWJpbGl0eRgYIAEoCRIWCg5wbGF5ZXJfdmlzaWJsZRgZIAEoCBIwCghhdWRpZW5jZRgaIAEoDjIeLm1ldXJwZy5wbGF5LnYxLkVmZmVjdEF1ZGllbmNlEhQKDHBsYXllcl9sYWJlbBgbIAEoCRITCgtlbmRfdGV4dF9wdBgcIAEoCRIWCg5wbGF5ZXJzX3NlZV9wdBgdIAEoCRINCgVzcGVudBgeIAEoCEIKCghfZW5kc19hdEIOCgxfcm91bmRzX2xlZnRCCwoJX2VuZF9zYXZlQg0KC19zdGFydF9zYXZlQg8KDV90dXJuX3RyaWdnZXIi6gEKDUNhdGFsb2dFZmZlY3QSCwoDa2V5GAEgASgJEg8KB25hbWVfcHQYAiABKAkSNQoLc291cmNlX2tpbmQYAyABKA4yIC5tZXVycGcucGxheS52MS5FZmZlY3RTb3VyY2VLaW5kEhUKDWNvbmNlbnRyYXRpb24YBCABKAgSQQoVZGVmYXVsdF9kdXJhdGlvbl9raW5kGAUgASgOMiIubWV1cnBnLnBsYXkudjEuRWZmZWN0RHVyYXRpb25LaW5kEhYKDmRlZmF1bHRfcm91bmRzGAYgASgFEhIKCmhhc19jYXN0ZXIYByABKAgirwEKDlR1cm5DbG9ja0VudHJ5Eg0KBXJvdW5kGAEgASgFEhQKDGNvbWJhdGFudF9pZBgCIAEoCRIXCg9jb21iYXRhbnRfbGFiZWwYAyABKAkSKgoFcGhhc2UYBCABKA4yGy5tZXVycGcucGxheS52MS5FZmZlY3RQaGFzZRIPCgdpc19zYXZlGAUgASgIEhEKCWVmZmVjdF9pZBgGIAEoCRIPCgd0ZXh0X3B0GAcgASgJInsKEkNvbmNlbnRyYXRpb25FbnRyeRIRCgljYXN0ZXJfaWQYASABKAkSFAoMY2FzdGVyX2xhYmVsGAIgASgJEhEKCXNwZWxsX2tleRgDIAEoCRIVCg1zcGVsbF9uYW1lX3B0GAQgASgJEhIKCmVmZmVjdF9pZHMYBSADKAki0QMKEEVmZmVjdFNhdmVQcm9tcHQSEQoJZWZmZWN0X2lkGAEgASgJEhYKDnNvdXJjZV9uYW1lX3B0GAIgASgJEg8KB2FiaWxpdHkYAyABKAkSFwoPYWJpbGl0eV9uYW1lX3B0GAQgASgJEioKBXBoYXNlGAUgASgOMhsubWV1cnBnLnBsYXkudjEuRWZmZWN0UGhhc2USDwoCZGMYBiABKAVIAIgBARIQCghtb2RpZmllchgHIAEoBRITCgtib251c19rbm93bhgIIAEoCBIMCgRtb2RlGAkgASgJEhcKD21vZGVfc291cmNlc19wdBgKIAMoCRIsCgpleHRyYV9kaWNlGAsgAygLMhgubWV1cnBnLnBsYXkudjEuRXh0cmFEaWUSEQoJYXV0b19mYWlsGAwgASgIEg8KB3RleHRfcHQYDSABKAkSGAoQaGFuZGVkX3RvX21hc3RlchgOIAEoCBIRCglza2lwcGFibGUYDyABKAgSDwoHem9uZV9pZBgQIAEoCRITCgt6b25lX3JlYXNvbhgRIAEoCRIbChNkYW1hZ2VfdHlwZV9uYW1lX3B0GBIgASgJEhQKDGhhbGZfb25fc2F2ZRgTIAEoCEIFCgNfZGMiYQoIRXh0cmFEaWUSEgoKc291cmNlX2tleRgBIAEoCRIWCg5zb3VyY2VfbmFtZV9wdBgCIAEoCRINCgVmYWNlcxgDIAEoBRIMCgRzaWduGAQgASgFEgwKBGZhY2UYBSABKAUi8AMKEEVmZmVjdFNhdmVSZXN1bHQSCwoDZDIwGAEgASgFEhAKCG1vZGlmaWVyGAIgASgFEg0KBXRvdGFsGAMgASgFEhEKCWQyMF9mYWNlcxgEIAMoBRIQCghwaHlzaWNhbBgFIAEoCBINCgVzYXZlZBgGIAEoCBIRCglhdXRvX2ZhaWwYByABKAgSLAoKZXh0cmFfZGljZRgIIAMoCzIYLm1ldXJwZy5wbGF5LnYxLkV4dHJhRGllEg8KB3NraXBwZWQYCSABKAgSFAoMZWZmZWN0X2VuZGVkGAogASgIEg8KB3RleHRfcHQYCyABKAkSDwoCZGMYDCABKAVIAIgBARIZChFpbnNwaXJhdGlvbl9zaWRlcxgNIAEoBRIYChBpbnNwaXJhdGlvbl9mYWNlGA4gASgFEigKCHJlcm9sbGVkGA8gAygLMhYubWV1cnBnLnBsYXkudjEuUmVyb2xsEhAKCHJlc2lzdGVkGBAgASgIEhUKDXJlc2lzdGVkX2xlZnQYESABKAUSFwoKdHJlYXRlZF9hcxgSIAEoBUgBiAEBEhkKEXRyZWF0ZWRfYXNfc291cmNlGBMgASgJEh4KFnRyZWF0ZWRfYXNfc291cmNlX25hbWUYFCABKAlCBQoDX2RjQg0KC190cmVhdGVkX2FzIjUKCkVmZmVjdE5vdGUSDwoHdGV4dF9wdBgBIAEoCRIWCg50ZXh0X21hc3Rlcl9wdBgCIAEoCSJ9ChFFeHRyYUFjdGlvbk9wdGlvbhIRCglhdmFpbGFibGUYASABKAgSEAoIbGFiZWxfcHQYAiABKAkSFwoPYWxsb3dlZF9hY3Rpb25zGAMgAygJEhcKD2FsbG93ZWRfdGV4dF9wdBgEIAEoCRIRCglyZWFzb25fcHQYBSABKAkiMQoLRWZmZWN0TGFiZWwSEQoJZWZmZWN0X2lkGAEgASgJEg8KB3RleHRfcHQYAiABKAkiywIKD0NoYXJhY3RlckVmZmVjdBIKCgJpZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSFgoOY2hhcmFjdGVyX25hbWUYAyABKAkSEgoKc291cmNlX2tleRgEIAEoCRIWCg5zb3VyY2VfbmFtZV9wdBgFIAEoCRIZCgxzZWNvbmRzX2xlZnQYBiABKAVIAIgBARIYChBkdXJhdGlvbl90ZXh0X3B0GAcgASgJEhUKDWNvbmNlbnRyYXRpb24YCCABKAgSDwoHdGFnc19wdBgJIAMoCRIaChJjb25kaXRpb25fbmFtZXNfcHQYCiADKAkSFgoOcGxheWVyX3Zpc2libGUYCyABKAgSMAoIYXVkaWVuY2UYDCABKA4yHi5tZXVycGcucGxheS52MS5FZmZlY3RBdWRpZW5jZUIPCg1fc2Vjb25kc19sZWZ0KrUBChBFZmZlY3RTb3VyY2VLaW5kEiIKHkVGRkVDVF9TT1VSQ0VfS0lORF9VTlNQRUNJRklFRBAAEhwKGEVGRkVDVF9TT1VSQ0VfS0lORF9TUEVMTBABEh4KGkVGRkVDVF9TT1VSQ0VfS0lORF9GRUFUVVJFEAISIAocRUZGRUNUX1NPVVJDRV9LSU5EX0NPTkRJVElPThADEh0KGUVGRkVDVF9TT1VSQ0VfS0lORF9NQVNURVIQBCqxAgoSRWZmZWN0RHVyYXRpb25LaW5kEiQKIEVGRkVDVF9EVVJBVElPTl9LSU5EX1VOU1BFQ0lGSUVEEAASHwobRUZGRUNUX0RVUkFUSU9OX0tJTkRfUk9VTkRTEAESLworRUZGRUNUX0RVUkFUSU9OX0tJTkRfVU5USUxfU1RBUlRfT0ZfVFVSTl9PRhACEi0KKUVGRkVDVF9EVVJBVElPTl9LSU5EX1VOVElMX0VORF9PRl9UVVJOX09GEAMSJgoiRUZGRUNUX0RVUkFUSU9OX0tJTkRfQ09OQ0VOVFJBVElPThAEEigKJEVGRkVDVF9EVVJBVElPTl9LSU5EX1VOVElMX0RJU01JU1NFRBAFEiIKHkVGRkVDVF9EVVJBVElPTl9LSU5EX0xPTkdfUkVTVBAGKoMFChJFZmZlY3RNb2RpZmllcktpbmQSJAogRUZGRUNUX01PRElGSUVSX0tJTkRfVU5TUEVDSUZJRUQQABIhCh1FRkZFQ1RfTU9ESUZJRVJfS0lORF9ST0xMX0RJRRABEiEKHUVGRkVDVF9NT0RJRklFUl9LSU5EX0FDX0JPTlVTEAISKQolRUZGRUNUX01PRElGSUVSX0tJTkRfU1BFRURfTVVMVElQTElFUhADEicKI0VGRkVDVF9NT0RJRklFUl9LSU5EX1NBVkVfQURWQU5UQUdFEAQSJQohRUZGRUNUX01PRElGSUVSX0tJTkRfRVhUUkFfQUNUSU9OEAUSIAocRUZGRUNUX01PRElGSUVSX0tJTkRfTk9fTU9WRRAGEiIKHkVGRkVDVF9NT0RJRklFUl9LSU5EX05PX0FDVElPThAHEiQKIEVGRkVDVF9NT0RJRklFUl9LSU5EX05PX1JFQUNUSU9OEBQSIwofRUZGRUNUX01PRElGSUVSX0tJTkRfUk9MTF9CT05VUxAVEiAKHEVGRkVDVF9NT0RJRklFUl9LSU5EX1RFTVBfSFAQFhIjCh9FRkZFQ1RfTU9ESUZJRVJfS0lORF9SRVNJU1RBTkNFEBcSKQolRUZGRUNUX01PRElGSUVSX0tJTkRfQVRUQUNLX0FEVkFOVEFHRRAYEioKJkVGRkVDVF9NT0RJRklFUl9LSU5EX1NBVkVfRElTQURWQU5UQUdFEBkSKwonRUZGRUNUX01PRElGSUVSX0tJTkRfQ0hFQ0tfRElTQURWQU5UQUdFEBoSKgomRUZGRUNUX01PRElGSUVSX0tJTkRfV0VBUE9OX0hJVF9EQU1BR0UQGyqGAQoORWZmZWN0Um9sbEtpbmQSIAocRUZGRUNUX1JPTExfS0lORF9VTlNQRUNJRklFRBAAEhsKF0VGRkVDVF9ST0xMX0tJTkRfQVRUQUNLEAESGQoVRUZGRUNUX1JPTExfS0lORF9TQVZFEAISGgoWRUZGRUNUX1JPTExfS0lORF9DSEVDSxADKmUKDkVmZmVjdEF1ZGllbmNlEh8KG0VGRkVDVF9BVURJRU5DRV9VTlNQRUNJRklFRBAAEhcKE0VGRkVDVF9BVURJRU5DRV9BTEwQARIZChVFRkZFQ1RfQVVESUVOQ0VfT1dORVIQAipZCgtFZmZlY3RQaGFzZRIcChhFRkZFQ1RfUEhBU0VfVU5TUEVDSUZJRUQQABIWChJFRkZFQ1RfUEhBU0VfU1RBUlQQARIUChBFRkZFQ1RfUEhBU0VfRU5EEAIqdwoORWZmZWN0RW5kU2NvcGUSIAocRUZGRUNUX0VORF9TQ09QRV9VTlNQRUNJRklFRBAAEhkKFUVGRkVDVF9FTkRfU0NPUEVfVEhJUxABEigKJEVGRkVDVF9FTkRfU0NPUEVfQ09OQ0VOVFJBVElPTl9HUk9VUBACKogBChRMYXN0aW5nRWZmZWN0T3V0Y29tZRImCiJMQVNUSU5HX0VGRkVDVF9PVVRDT01FX1VOU1BFQ0lGSUVEEAASIgoeTEFTVElOR19FRkZFQ1RfT1VUQ09NRV9BUFBMSUVEEAESJAogTEFTVElOR19FRkZFQ1RfT1VUQ09NRV9OT19FRkZFQ1QQAkLBAQoSY29tLm1ldXJwZy5wbGF5LnYxQhNMYXN0aW5nRWZmZWN0c1Byb3RvUAFaPGdpdGh1Yi5jb20vUHVyYUZvbWUvbWV1UlBHL2JhY2tlbmQvZ2VuL21ldXJwZy9wbGF5L3YxO3BsYXl2MaICA01QWKoCDk1ldXJwZy5QbGF5LlYxygIOTWV1cnBnXFBsYXlcVjHiAhpNZXVycGdcUGxheVxWMVxHUEJNZXRhZGF0YeoCEE1ldXJwZzo6UGxheTo6VjFiBnByb3RvMw", [file_meurpg_play_v1_combat_rolls]);
 
 /**
  * EffectModifier is one change an effect makes.
@@ -92,6 +92,15 @@ export type EffectModifier = Message<"meurpg.play.v1.EffectModifier"> & {
    * @generated from field: repeated string damage_types = 10;
    */
   damageTypes: string[];
+
+  /**
+   * WEAPON_HIT_DAMAGE: the damage a spell adds to the caster's weapon hits. Set only on the card the
+   * caster's player and the master read: a modifier is never sent to any other player (they read the
+   * label of the effect, RN-10).
+   *
+   * @generated from field: optional meurpg.play.v1.WeaponHitDamage hit = 11;
+   */
+  hit?: WeaponHitDamage | undefined;
 };
 
 /**
@@ -100,6 +109,85 @@ export type EffectModifier = Message<"meurpg.play.v1.EffectModifier"> & {
  */
 export const EffectModifierSchema: GenMessage<EffectModifier> = /*@__PURE__*/
   messageDesc(file_meurpg_play_v1_lasting_effects, 0);
+
+/**
+ * WeaponHitDamage is the pending damage a spell adds to the caster's weapon hits, as its card reads it.
+ *
+ * @generated from message meurpg.play.v1.WeaponHitDamage
+ */
+export type WeaponHitDamage = Message<"meurpg.play.v1.WeaponHitDamage"> & {
+  /**
+   * The hit it rides on: "next_hit", "next_melee_hit", "each_hit" or "marked_target".
+   *
+   * @generated from field: string trigger = 1;
+   */
+  trigger: string;
+
+  /**
+   * The die (4 to 12), and how many of them the slot of the cast gives: the number is already worked out
+   * (per_slot_dice is 0 then), up to max_dice.
+   *
+   * @generated from field: int32 die = 2;
+   */
+  die: number;
+
+  /**
+   * @generated from field: int32 dice = 3;
+   */
+  dice: number;
+
+  /**
+   * @generated from field: int32 per_slot_dice = 4;
+   */
+  perSlotDice: number;
+
+  /**
+   * @generated from field: int32 max_dice = 5;
+   */
+  maxDice: number;
+
+  /**
+   * The damage type, empty for the weapon's own.
+   *
+   * @generated from field: string damage_type_key = 6;
+   */
+  damageTypeKey: string;
+
+  /**
+   * @generated from field: string damage_type_pt = 7;
+   */
+  damageTypePt: string;
+
+  /**
+   * The saving throw of the target of a hit ("wis", empty for none), the conditions a failure gives and how
+   * long they last ("next_turn" or "spell_end").
+   *
+   * @generated from field: string save = 8;
+   */
+  save: string;
+
+  /**
+   * @generated from field: repeated string condition_keys = 9;
+   */
+  conditionKeys: string[];
+
+  /**
+   * @generated from field: repeated string condition_names_pt = 10;
+   */
+  conditionNamesPt: string[];
+
+  /**
+   * @generated from field: string condition_duration = 11;
+   */
+  conditionDuration: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.WeaponHitDamage.
+ * Use `create(WeaponHitDamageSchema)` to create a new message.
+ */
+export const WeaponHitDamageSchema: GenMessage<WeaponHitDamage> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_lasting_effects, 1);
 
 /**
  * EffectEnd is the moment an effect ends: the turn of a combatant in a round.
@@ -130,7 +218,7 @@ export type EffectEnd = Message<"meurpg.play.v1.EffectEnd"> & {
  * Use `create(EffectEndSchema)` to create a new message.
  */
 export const EffectEndSchema: GenMessage<EffectEnd> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 1);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 2);
 
 /**
  * EffectSave is a saving throw an effect asks again.
@@ -170,7 +258,7 @@ export type EffectSave = Message<"meurpg.play.v1.EffectSave"> & {
  * Use `create(EffectSaveSchema)` to create a new message.
  */
 export const EffectSaveSchema: GenMessage<EffectSave> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 2);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 3);
 
 /**
  * EffectTrigger is damage an effect deals to a creature that starts its turn under
@@ -212,7 +300,7 @@ export type EffectTrigger = Message<"meurpg.play.v1.EffectTrigger"> & {
  * Use `create(EffectTriggerSchema)` to create a new message.
  */
 export const EffectTriggerSchema: GenMessage<EffectTrigger> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 3);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 4);
 
 /**
  * LastingEffect is one effect as the caller may read it.
@@ -400,6 +488,13 @@ export type LastingEffect = Message<"meurpg.play.v1.LastingEffect"> & {
    * @generated from field: string players_see_pt = 29;
    */
   playersSeePt: string;
+
+  /**
+   * The effect was used up (a next_hit that hit): the card of the caster reads "used" instead of "pending".
+   *
+   * @generated from field: bool spent = 30;
+   */
+  spent: boolean;
 };
 
 /**
@@ -407,7 +502,7 @@ export type LastingEffect = Message<"meurpg.play.v1.LastingEffect"> & {
  * Use `create(LastingEffectSchema)` to create a new message.
  */
 export const LastingEffectSchema: GenMessage<LastingEffect> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 4);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 5);
 
 /**
  * CatalogEffect is an effect the master may add.
@@ -462,7 +557,7 @@ export type CatalogEffect = Message<"meurpg.play.v1.CatalogEffect"> & {
  * Use `create(CatalogEffectSchema)` to create a new message.
  */
 export const CatalogEffectSchema: GenMessage<CatalogEffect> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 5);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 6);
 
 /**
  * TurnClockEntry is one thing the clock does, from the turn that is running on.
@@ -519,7 +614,7 @@ export type TurnClockEntry = Message<"meurpg.play.v1.TurnClockEntry"> & {
  * Use `create(TurnClockEntrySchema)` to create a new message.
  */
 export const TurnClockEntrySchema: GenMessage<TurnClockEntry> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 6);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 7);
 
 /**
  * ConcentrationEntry is a caster that concentrates, with the effects it holds.
@@ -558,7 +653,7 @@ export type ConcentrationEntry = Message<"meurpg.play.v1.ConcentrationEntry"> & 
  * Use `create(ConcentrationEntrySchema)` to create a new message.
  */
 export const ConcentrationEntrySchema: GenMessage<ConcentrationEntry> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 7);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 8);
 
 /**
  * EffectSavePrompt is the question of a reaction window of kind EFFECT_SAVE (RN-22): the
@@ -702,7 +797,7 @@ export type EffectSavePrompt = Message<"meurpg.play.v1.EffectSavePrompt"> & {
  * Use `create(EffectSavePromptSchema)` to create a new message.
  */
 export const EffectSavePromptSchema: GenMessage<EffectSavePrompt> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 8);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 9);
 
 /**
  * ExtraDie is a die an effect adds to (sign 1) or takes from (sign -1) a roll.
@@ -746,7 +841,7 @@ export type ExtraDie = Message<"meurpg.play.v1.ExtraDie"> & {
  * Use `create(ExtraDieSchema)` to create a new message.
  */
 export const ExtraDieSchema: GenMessage<ExtraDie> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 9);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 10);
 
 /**
  * EffectSaveResult is what a saving throw of an effect did.
@@ -894,7 +989,7 @@ export type EffectSaveResult = Message<"meurpg.play.v1.EffectSaveResult"> & {
  * Use `create(EffectSaveResultSchema)` to create a new message.
  */
 export const EffectSaveResultSchema: GenMessage<EffectSaveResult> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 10);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 11);
 
 /**
  * A reason an option of the turn is unavailable because of an effect or a
@@ -923,7 +1018,7 @@ export type EffectNote = Message<"meurpg.play.v1.EffectNote"> & {
  * Use `create(EffectNoteSchema)` to create a new message.
  */
 export const EffectNoteSchema: GenMessage<EffectNote> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 11);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 12);
 
 /**
  * ExtraActionOption is the extra action an effect gives (Velocidade): one action a
@@ -970,7 +1065,7 @@ export type ExtraActionOption = Message<"meurpg.play.v1.ExtraActionOption"> & {
  * Use `create(ExtraActionOptionSchema)` to create a new message.
  */
 export const ExtraActionOptionSchema: GenMessage<ExtraActionOption> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 12);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 13);
 
 /**
  * Effects the caller reads on a combatant, for the order list and the map.
@@ -996,7 +1091,7 @@ export type EffectLabel = Message<"meurpg.play.v1.EffectLabel"> & {
  * Use `create(EffectLabelSchema)` to create a new message.
  */
 export const EffectLabelSchema: GenMessage<EffectLabel> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 13);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 14);
 
 /**
  * CharacterEffect is an effect on a character that is not in a running combat, as the caller
@@ -1081,7 +1176,7 @@ export type CharacterEffect = Message<"meurpg.play.v1.CharacterEffect"> & {
  * Use `create(CharacterEffectSchema)` to create a new message.
  */
 export const CharacterEffectSchema: GenMessage<CharacterEffect> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_lasting_effects, 14);
+  messageDesc(file_meurpg_play_v1_lasting_effects, 15);
 
 /**
  * EffectSourceKind is where an effect comes from.
@@ -1280,6 +1375,13 @@ export enum EffectModifierKind {
    * @generated from enum value: EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE = 26;
    */
   CHECK_DISADVANTAGE = 26,
+
+  /**
+   * Weapon damage added to the caster's hits (hit has the details): a card of the caster's.
+   *
+   * @generated from enum value: EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE = 27;
+   */
+  WEAPON_HIT_DAMAGE = 27,
 }
 
 /**

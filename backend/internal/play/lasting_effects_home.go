@@ -138,7 +138,7 @@ func (s *Service) endCharacterEffectsOfCast(ctx context.Context, c *combatTx, ca
 	for _, r := range gone {
 		touched = append(touched, r.CharacterID)
 	}
-	if err := s.afterCharacterEffectsGone(ctx, c, characterEffects(gone)); err != nil {
+	if err := s.afterCharacterEffectsGone(ctx, c, characterEffects(gone), ""); err != nil {
 		return err
 	}
 	// The cast ended while a fight ran: what it left in the combat goes too.
@@ -185,7 +185,7 @@ func (s *Service) advanceGameTime(ctx context.Context, c *combatTx, seconds int3
 		touched = append(touched, r.CharacterID)
 		ended = append(ended, playdb.CharacterEffect(r))
 	}
-	if err := s.afterCharacterEffectsGone(ctx, c, ended); err != nil {
+	if err := s.afterCharacterEffectsGone(ctx, c, ended, endedExpired); err != nil {
 		return err
 	}
 	return s.syncArmorBase(ctx, c, touched...)
@@ -202,7 +202,7 @@ func (s *Service) endLongRestEffects(ctx context.Context, c *combatTx) error {
 	for _, r := range gone {
 		touched = append(touched, r.CharacterID)
 	}
-	if err := s.afterCharacterEffectsGone(ctx, c, characterEffects(gone)); err != nil {
+	if err := s.afterCharacterEffectsGone(ctx, c, characterEffects(gone), ""); err != nil {
 		return err
 	}
 	if enc, err := c.q.GetOpenEncounter(ctx, c.session.ID); err == nil {
@@ -467,7 +467,10 @@ func (s *Service) raiseCharacterTempHP(ctx context.Context, c *combatTx, row pla
 // afterCharacterEffectsGone does what follows effects that ended on characters out of a combat:
 // the temporary hit points a spell gave go with it (SRD 5.1, Heroism). Those of temp_hp go only if the character
 // has no more than the effect gave.
-func (s *Service) afterCharacterEffectsGone(ctx context.Context, c *combatTx, rows []playdb.CharacterEffect) error {
+func (s *Service) afterCharacterEffectsGone(ctx context.Context, c *combatTx, rows []playdb.CharacterEffect, reason string) error {
+	if err := s.formClocksGone(ctx, c, rows, reason); err != nil {
+		return err
+	}
 	none := int32(0)
 	for _, r := range rows {
 		mods := modifiersOf(r.Modifiers)

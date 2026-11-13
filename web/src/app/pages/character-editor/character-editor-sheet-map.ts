@@ -7,6 +7,7 @@ import {
   HitPointsMethod as GenHitPointsMethod,
   Item,
   ItemBonus,
+  SheetMagicItem,
   WeaponMark,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { damageTypeFromGen, damageTypeToGen } from '../../core/characters/damage-type-gen';
@@ -187,6 +188,9 @@ export function toFullSheetInit(v: CharacterFormValue) {
     // one keeps the marks of the weapons still carried (`mergeFullSheetInit`).
     weaponMarks: [] as WeaponMark[],
     itemBonuses: [] as ItemBonus[],
+    // Nor for the magic items and their attunement: a new sheet has none, and a save of a loaded one keeps the list
+    // as it was read (`SetAttunement` is the one call that changes who is attuned).
+    magicItems: [] as SheetMagicItem[],
     cantripKeys: v.cantrips,
     knownSpellKeys: v.spellsKnown,
     preparedSpellKeys: v.spellsPrepared,
@@ -250,7 +254,7 @@ export function mergeFullSheetInit(original: GenFullSheet | undefined, v: Charac
     (key === SHIELD_KEY && init.shield === true) ||
     init.weaponKeys.includes(key);
   const itemBonuses = original.itemBonuses.filter((b) => onSheet(b.key));
-  return { ...rest, ...init, weaponMarks, itemBonuses };
+  return { ...rest, ...init, weaponMarks, itemBonuses, magicItems: original.magicItems };
 }
 
 /** Exported for `character-editor-source.live.spec.ts`. */

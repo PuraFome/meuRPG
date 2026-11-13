@@ -228,6 +228,7 @@ combatant Pensantus | false | false | false | false | false | -1 | -1 | 0 | fals
 combatant Sálvia | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 combatant Toren | false | false | false | false | false | -1 | -1 | 0 | false | {} | {} | - | false | false | false | {} | false | false
 vitals Sálvia | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0
+state Sálvia | effect | effect:wild-shape | false | {} | rounds | 0 | 0
 == a cast retried with the same key ==
 cast {"concentrating":true,"slot":{"level":2},"spellKey":"spell:hold-person","targets":[{"attackMode":"ROLL_MODE_NORMAL","combatantId":"Goblin","cover":"COVER_DEGREE_NONE","lastingEffect":"LASTING_EFFECT_OUTCOME_APPLIED","save":{"dc":14,"outcome":"SAVE_OUTCOME_FAILED"}}]}
 area 
