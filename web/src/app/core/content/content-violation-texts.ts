@@ -4,6 +4,7 @@ import { RACE_FIELD_TEXTS } from './content-violation-texts-race';
 /** What the server's reason at a field says in Portuguese: the table `violationText` looks a violation up in (the rest of its words are there). */
 
 import { CREATURE_FIELD_TEXTS } from './content-violation-texts-creature';
+import { SPELL_SUMMON_TEXTS, SUMMON_FIELD_TEXTS } from './content-violation-texts-summon';
 
 const DICE_TEXT = 'Escreva o dado assim: 2d8 (de 1 a 20 dados).';
 export const FORMULA_TEXT =
@@ -337,6 +338,8 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Esta característica tem efeitos demais. Tire alguns.',
   },
   ...CREATURE_FIELD_TEXTS,
+  ...SPELL_SUMMON_TEXTS,
+  ...SUMMON_FIELD_TEXTS,
   { shape: /\.level$/, text: 'Escolha um nível de magia de 0 (truque) a 9.' },
   { shape: /\.school_key$/, text: 'Escolha a escola da magia.' },
   {
@@ -402,4 +405,10 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
   { shape: /\.class_keys\[\]$/, text: 'Esta classe está na lista duas vezes.' },
   ...FEAT_OPTION_TEXTS,
   ...RACE_FIELD_TEXTS,
+  // The target of a modifier is a closed list of the menu; one that left it (or never was in it) is refused here. After the feat's own rows, whose option effects read a pick.
+  {
+    shape: /\.effects\[\]\.target$/,
+    reason: 'bad_value',
+    text: 'Este alvo não está mais no menu de efeitos. Escolha outro.',
+  },
 ];

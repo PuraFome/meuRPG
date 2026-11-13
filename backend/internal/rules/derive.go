@@ -892,9 +892,14 @@ func (x *deriver) value(a activeEffect) (int, bool) {
 // modifiers applies every untagged modifier for target to base, in order:
 // set replaces, max keeps the larger, add adds.
 func (x *deriver) modifiers(target string, base int) int {
+	return x.modifiersOf("", target, base)
+}
+
+// modifiersOf is modifiers limited to the effects of one owner; an empty owner is every owner.
+func (x *deriver) modifiersOf(owner, target string, base int) int {
 	for _, a := range x.active {
 		e := a.effect
-		if e.Type != "modifier" || e.Target != target || len(e.Tags) > 0 || !x.applies(a) {
+		if e.Type != "modifier" || e.Target != target || len(e.Tags) > 0 || (owner != "" && a.owner != owner) || !x.applies(a) {
 			continue
 		}
 		v, ok := x.value(a)

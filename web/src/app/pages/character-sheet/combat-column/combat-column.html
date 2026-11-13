@@ -39,6 +39,9 @@
           <tr>
             <td>
               {{ atk.namePt }}
+              @if (atk.marks) {
+                <app-weapon-tags [marks]="atk.marks" />
+              }
               @if (atk.saveDc > 0 && atk.saveAbility) {
                 <span class="attacks__save"
                   >Teste de resistência de {{ abilityLabel(atk.saveAbility) }}</span

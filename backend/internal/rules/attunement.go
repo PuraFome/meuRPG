@@ -77,21 +77,15 @@ func parseAttunementRule(by string) (attunementRule, bool) {
 	return attunementRule{kind: kindClasses, classes: classes}, true
 }
 
-// checkAttunementRules refuses a catalog whose restriction this table cannot read, or names a class the content lacks.
+// checkAttunementRules refuses a catalog whose restriction this table cannot read; the real-catalog test checks the classes.
 func (c *content) checkAttunementRules() error {
 	for _, k := range sortedKeys(c.magicItems) {
 		by := c.magicItems[k].AttunementBy
 		if by == "" {
 			continue
 		}
-		rule, ok := parseAttunementRule(by)
-		if !ok {
+		if _, ok := parseAttunementRule(by); !ok {
 			return fmt.Errorf("data/magic-items.json: %s: no matcher for the attunement restriction %q", k, by)
-		}
-		for _, class := range rule.classes {
-			if _, ok := c.classes[class]; !ok {
-				return fmt.Errorf("data/magic-items.json: %s: the restriction %q names a class the content lacks: %s", k, by, class)
-			}
 		}
 	}
 	return nil

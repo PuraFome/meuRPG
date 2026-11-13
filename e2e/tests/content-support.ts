@@ -120,6 +120,31 @@ export function minimumFeatBody(namePt = 'Chama Insistente'): Record<string, unk
   };
 }
 
+/** A feat whose minimum covers the d20 of a check (the scene check, a trap search and the initiative): a 3 counts as 12. Invented name. */
+export function checkMinimumFeatBody(namePt = 'Pé de Vento'): Record<string, unknown> {
+  return {
+    namePt,
+    descPt: ['O seu passo é seguro: num teste, um d20 abaixo de 12 conta como 12.'],
+    effects: [{ type: 'roll_minimum', rolls: ['check'], value: '12' }],
+  };
+}
+
+/** Puts a table feat on a character's sheet, as the master may (the sheet keeps all it had). */
+export async function giveFeatRPC(master: Page, campaignId: string, characterId: string, featKey: string): Promise<void> {
+  const got = await callRPC(master, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId });
+  expect(got.ok(), await got.text()).toBeTruthy();
+  const character = (await got.json()).character as { id: string; name: string; revision: number; sheet: { full: Record<string, unknown> } };
+  const featKeys = [...((character.sheet.full.featKeys as string[] | undefined) ?? []), featKey];
+  const gave = await callRPC(master, 'meurpg.characters.v1.CharacterService/UpdateCharacter', {
+    campaignId,
+    characterId: character.id,
+    revision: character.revision,
+    name: character.name,
+    sheet: { full: { ...character.sheet.full, featKeys } },
+  });
+  expect(gave.ok(), await gave.text()).toBeTruthy();
+}
+
 /** A fighter feature that widens the critical range to 19 for weapons and spells. Invented name. */
 export function criticalFeatureBody(namePt = 'Olho Treinado'): Record<string, unknown> {
   return {
@@ -159,4 +184,20 @@ export async function updateEntryRPC(master: Page, campaignId: string, key: stri
   const current = (await listEntriesJSON(master, campaignId)).entries!.find((e) => e.key === key)!;
   const res = await callRPC(master, `${service}/UpdateTableEntry`, { campaignId, key, expectedRevision: current.revision, [kind]: body });
   expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+/** No radio card's text spills out of its card (a card is as tall as its text, never a fixed height). */
+export async function expectCardsHoldTheirText(page: Page): Promise<void> {
+  const cards = page.locator('app-radio-cards .card');
+  expect(await cards.count()).toBeGreaterThan(0);
+  const spills = await cards.evaluateAll((els) =>
+    els
+      .filter((card) => {
+        const box = card.getBoundingClientRect();
+        const text = card.querySelector('.text')!.getBoundingClientRect();
+        return text.bottom > box.bottom + 0.5 || text.right > box.right + 0.5 || text.top < box.top - 0.5;
+      })
+      .map((card) => card.textContent?.trim().replace(/\s+/g, ' ')),
+  );
+  expect(spills, 'radio cards whose text spills out of the card').toEqual([]);
 }

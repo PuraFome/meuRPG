@@ -2,13 +2,17 @@ import { Component, TemplateRef, computed, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import type { TableEntry } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { EffectDraft, EffectMenuVm, FeatChoice } from '../../core/content/effect-draft';
 import { emptyEffect } from '../../core/content/effect-draft';
 import { emptyFeature, type FeatureDraft, NAME_MAX } from '../../core/content/feature-draft';
+import { followResource, resourcesOf, type SummonDraft } from '../../core/content/summon-draft';
+import { latestInput } from '../latest-input';
 import { EffectPicker } from '../effect-picker/effect-picker';
 import { FieldNote } from '../form-fields/field-note';
 import { TextField } from '../form-fields/text-field';
 import type { SelectOption } from '../form-fields/select-field';
+import { SummonBlock } from '../summon-block/summon-block';
 
 /**
  * One feature of a race, a subrace, a background (and, in 10.12, a class or a subclass): a name, a text and effects from the
@@ -18,7 +22,15 @@ import type { SelectOption } from '../form-fields/select-field';
  */
 @Component({
   selector: 'app-feature-editor',
-  imports: [EffectPicker, FieldNote, FeatureEditor, MatButtonModule, MatIconModule, TextField],
+  imports: [
+    EffectPicker,
+    FieldNote,
+    FeatureEditor,
+    MatButtonModule,
+    MatIconModule,
+    SummonBlock,
+    TextField,
+  ],
   templateUrl: './feature-editor.html',
   styleUrl: './feature-editor.scss',
 })
@@ -61,6 +73,14 @@ export class FeatureEditor {
    * lista" choice, whose empty list offers them.
    */
   readonly allowOptions = input(false);
+  /**
+   * "Invoca criaturas": a class, subclass, race or background feature (and a class-feature entry) may bring creatures to its
+   * holder; an option and a feat do not. Needs the campaign (the bestiary's search) and, to name the table's creatures, its entries.
+   */
+  readonly allowSummon = input(false);
+  readonly campaignId = input('');
+  readonly entries = input<readonly TableEntry[]>([]);
+
   /** The options are a race or subrace trait's one-time choice of one, picked at creation; no "Escolha" effect offers them. */
   readonly oneOf = input(false);
   /** The feature is one of a list of options: an option with no name is not sent. */
@@ -75,6 +95,7 @@ export class FeatureEditor {
   });
 
   readonly featureChange = output<FeatureDraft>();
+  private readonly latest = latestInput(this.feature);
   readonly removed = output<void>();
   readonly moved = output<-1 | 1>();
 
@@ -102,12 +123,22 @@ export class FeatureEditor {
     return `${this.basePath()}.${field}`;
   }
 
+  /** The resources the feature defines: what its summon can spend. */
+  protected readonly resources = computed(() => resourcesOf(this.feature()));
+
   protected patch(p: Partial<FeatureDraft>): void {
-    this.featureChange.emit({ ...this.feature(), ...p });
+    const was = this.latest.current();
+    const next = followResource(was, { ...was, ...p });
+    this.latest.sent(next);
+    this.featureChange.emit(next);
+  }
+
+  protected setSummon(summon: SummonDraft | null): void {
+    this.patch({ summon });
   }
 
   protected setEffect(i: number, e: EffectDraft): void {
-    const effects = [...this.feature().effects];
+    const effects = [...this.latest.current().effects];
     if (e.type === '') {
       // "Só texto" takes this effect away; the others stay.
       this.patch({ effects: effects.filter((_, k) => k !== i) });
@@ -118,24 +149,24 @@ export class FeatureEditor {
   }
 
   protected addEffect(): void {
-    this.patch({ effects: [...this.feature().effects, emptyEffect('note')] });
+    this.patch({ effects: [...this.latest.current().effects, emptyEffect('note')] });
   }
 
   protected setOption(i: number, o: FeatureDraft): void {
-    const options = [...this.feature().options];
+    const options = [...this.latest.current().options];
     options[i] = o;
     this.patch({ options });
   }
 
   protected addOption(): void {
-    this.patch({ options: [...this.feature().options, emptyFeature()] });
+    this.patch({ options: [...this.latest.current().options, emptyFeature()] });
   }
 
   protected removeOption(i: number): void {
-    this.patch({ options: this.feature().options.filter((_, k) => k !== i) });
+    this.patch({ options: this.latest.current().options.filter((_, k) => k !== i) });
   }
 
   protected removeEffect(i: number): void {
-    this.patch({ effects: this.feature().effects.filter((_, k) => k !== i) });
+    this.patch({ effects: this.latest.current().effects.filter((_, k) => k !== i) });
   }
 }

@@ -161,6 +161,12 @@ flowchart LR
   `link.Spell` carries `TargetCount` and `TargetPerLevel` and `maxTargetsOf` uses them before the spell's type.
   `GetTurnOptions` carries `SpellTargets.targets_per_level`.
 
+## The other speeds
+
+A table's `speed.fly`, `speed.swim`, `speed.climb` and `speed.burrow` modifiers fill `Derived.SpeedFlyFt`, `SpeedSwimFt`, `SpeedClimbFt` and `SpeedBurrowFt` (0 for none), and a `breathes_water` effect sets `Derived.BreathesWater`.
+`combatCharacter` copies the four speeds to `link.Character`, and the combatant keeps them for the master and the character's player.
+Combat reads no breath: `breathes_water` stays on the sheet.
+
 ## The sheet of a race and a subrace
 
 `Derive` merges a subrace into its race in this order:
@@ -283,12 +289,20 @@ The vitals keeper has `GiveSpellSlot`, `SpendSpellSlot` and their undos; a slot 
 ## Rerolls, minimums and the critical range
 
 `tableEffectsOf` maps the proto fields `rolls` and `at_most` of `TableEffect` to the effect, and `damage_type` and `value` to a `roll_minimum`; `resource`, `cost`, `when` and `text_pt` are the fields the other effects already use.
+A `granted_spell` also maps `uses_cost` and `no_material_components` (`tableEffectsOf`), and `GrantedSpell`, `CastingGrant` and `SpellGrantOption` carry both (`uses_cost`, 0 for an at-will grant, and `no_material_components`) from `rules.GrantedSpell.Cost` and `NoMaterialComponents`: the sheet words the cost ("Gasta 2 usos de ...") and the "Sem material" tag, and the cast sheet shows "gasta 2" in the grant line and drops the "M" of the component line behind its "?". Both are display: the server spends the cost and enforces no component.
 A `modifier` on `critical_range` uses `target`, `mode` (`set`), `value` and `applies` (the scope: `weapon`, `spell` or `both`).
 All three are on the effect menu ([reroll](rules-table-content.md#reroll), [roll minimum](rules-table-content.md#roll-minimum), [critical range](rules-table-content.md#critical-range)).
 `GetEffectMenu` returns the entries of `reroll` and `roll_minimum` with their fields and the list `roll_applies`, the field `applies` of `modifier` with the list `critical_scopes`, and the target `critical_range` among the modifier targets.
 `EffectMenuValue` carries `only_modes`, `min` and `max` for a target of a modifier: the modes it takes (empty is every mode) and the bounds of a literal value (both zero is unbounded).
 `menuValues` copies them from `rules.MenuValue` unchanged.
 `rerollRulesOf` copies `Derived.Rerolls` into `link.Traits.RerollRules` for combat.
+
+### Flags, damage reduction and carrying capacity
+
+`tableEffectsOf` copies `TableEffect.flag` to `Effect.Flag`; the other fields of `natural_attack` (`attack_name`, `damage_dice`, `damage_type`, `ability`, `reach_ft`) are the ones `pseudo_weapon` already uses.
+`traitsOf` (`combattraits.go`) copies `Derived.Flags` into `link.Traits.Flags` and `Derived.DamageReductions` into `link.Traits.DamageReductions` (source, amount, nonmagical), which combat reads through `Traits.HasFlag` and the reduction step.
+`derivedToProto` puts `Derived.CarryCapacityLb` in `DerivedSheet.carry_capacity_lb`. The sheet writes it in the app's two units, metric first (`weightWithPounds`, 1 lb = 0,5 kg): "90 kg (180 lb)".
+The natural attack lines are in `Derived.Attacks` like any other, so they reach the sheet and the combat with no copy of their own.
 
 ## Spell targets and the "Magias" page
 

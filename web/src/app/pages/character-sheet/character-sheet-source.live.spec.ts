@@ -112,6 +112,7 @@ function minimalDerivedSheet(): DerivedSheet {
     passivePerception: 10,
     passiveInvestigation: 10,
     passiveInsight: 10,
+    carryCapacityLb: 150,
     initiative: 0,
     armorClass: 10,
     armorClassDescription: '',
@@ -149,6 +150,7 @@ function minimalDerivedSheet(): DerivedSheet {
     breathesWater: false,
     grantedSpells: [],
     rollDice: [],
+    rollMinimums: [],
   };
 }
 

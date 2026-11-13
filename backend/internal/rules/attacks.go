@@ -43,6 +43,7 @@ func (x *deriver) attacks() {
 		x.cantripAttack(key)
 	}
 	x.pseudoWeapons()
+	x.naturalAttacks()
 	// Last, so the weapons and cantrips stay the first lines of the sheet.
 	x.unarmedStrike(martialArts, martialDie)
 }
