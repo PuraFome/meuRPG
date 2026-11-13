@@ -18,9 +18,9 @@ export interface MoveTable {
 }
 
 /** A layer of the map's grid, as the Connect JSON names it. */
-export type Layer = 'MAP_LAYER_DIFFICULT_TERRAIN' | 'MAP_LAYER_WALL' | 'MAP_LAYER_COVER';
+export type Layer = 'MAP_LAYER_DIFFICULT_TERRAIN' | 'MAP_LAYER_WALL' | 'MAP_LAYER_COVER' | 'MAP_LAYER_SURFACE';
 
-/** Paints squares of one layer: terrain and wall take 0 or 1, cover 1 (half) or 2 (three-quarters). */
+/** Paints squares of one layer: terrain and wall take 0 or 1, cover 1 (half) or 2 (three-quarters), surface 1 (water) or 2 (climbable). */
 export async function paintRPC(page: Page, table: CombatTable, layer: Layer, value: number, squares: [number, number][]): Promise<void> {
   const res = await callRPC(page, 'meurpg.maps.v1.MapService/PaintMapCells', {
     campaignId: table.campaignId,
@@ -46,7 +46,7 @@ export async function movingTable(
   options: {
     at?: Record<string, [number, number]>;
     hidden?: string[];
-    character?: { build?: CharacterBuild; sheet?: Record<string, unknown> };
+    character?: { build?: CharacterBuild; sheet?: Record<string, unknown>; before?: (campaignId: string, master: Page) => Promise<CharacterBuild> };
     paint?: (m: Page, table: CombatTable) => Promise<void>;
     viewport?: { width: number; height: number };
   } = {},

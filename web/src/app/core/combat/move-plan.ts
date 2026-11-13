@@ -129,7 +129,13 @@ export function costTitle(costDft: number): string {
 /** "Depois restam 6,9 m." */
 export function afterText(leftDft: number, costDft: number): string {
   // No clamp: the callers only say it for a cost the movement left pays.
-  return `Depois restam ${metersFixed((leftDft - costDft) / 10)}.`;
+  return afterLeftText(leftDft - costDft);
+}
+
+/** "Depois restam 6,9 m." from what the server says is left once on the square (`left_after_dft`: counted at the speed of the
+ * surface the square is on, so a line that goes from the floor into the water is never subtracted here). */
+export function afterLeftText(leftAfterDft: number): string {
+  return `Depois restam ${metersFixed(leftAfterDft / 10)}.`;
 }
 
 /** "Inclui 4,5 m nadando e 3,0 m rastejando.": the extra feet the server added to the cost of a square, each with its

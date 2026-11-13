@@ -97,12 +97,20 @@ describe('move page view', () => {
       extraDft: 150,
       surfaceExtra: SurfaceExtra.SWIM,
     });
+    swum.leftAfterDft = 0;
     const detail = walkSummary(origin, { kind: 'ok', square: swum }, 300, []).detail;
     expect(detail.replace(/\u00a0/g, ' ')).toBe('Inclui 4,5 m nadando. Depois restam 0,0 m.');
     const plain = create(ReachableSquareSchema, { col: 3, row: 2, costDft: 71 });
     expect(walkSummary(origin, { kind: 'ok', square: plain }, 300, []).detail).not.toContain(
       'Inclui',
     );
+  });
+
+  it('says what is left after a square as the server counted it, never the lead less the cost', () => {
+    // On the floor with 300 and a swim speed of 400: a square 150 away in water leaves 250 of the swim speed, not 300 - 150.
+    const swum = create(ReachableSquareSchema, { col: 3, row: 2, costDft: 150, leftAfterDft: 250 });
+    const detail = walkSummary(origin, { kind: 'ok', square: swum }, 300, []).detail;
+    expect(detail.replace(/\u00a0/g, ' ')).toBe('Depois restam 7,5 m.');
   });
 
   it('frames the chosen square by what the move is', () => {

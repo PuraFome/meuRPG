@@ -37,12 +37,19 @@ const goblin = combatant({ id: 'g2', label: 'Goblin 2', col: 7, row: 7 });
 const options = create(GetMoveOptionsResponseSchema, {
   movementLeftDft: 300,
   reachable: [
-    create(ReachableSquareSchema, { col: 9, row: 8, costDft: 71 }),
-    create(ReachableSquareSchema, { col: 10, row: 7, costDft: 100, provokesReactorIds: ['g2'] }),
+    create(ReachableSquareSchema, { col: 9, row: 8, costDft: 71, leftAfterDft: 229 }),
+    create(ReachableSquareSchema, {
+      col: 10,
+      row: 7,
+      costDft: 100,
+      leftAfterDft: 200,
+      provokesReactorIds: ['g2'],
+    }),
     create(ReachableSquareSchema, {
       col: 8,
       row: 9,
       costDft: 100,
+      leftAfterDft: 200,
       knownTrapName: 'Fosso escondido',
       knownTrapPointId: 'p',
     }),

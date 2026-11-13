@@ -9,6 +9,7 @@ import {
   LANDS_OUT_OF_REACH,
   type MoveIndex,
   type SquareVerdict,
+  afterLeftText,
   afterText,
   costTitle,
   extraText,
@@ -150,7 +151,7 @@ export function walkSummary(
     return {
       kind: 'ok',
       title: costTitle(v.square.costDft),
-      detail: [extraText(v.square), afterText(left, v.square.costDft)].filter(Boolean).join(' '),
+      detail: [extraText(v.square), afterLeftText(v.square.leftAfterDft)].filter(Boolean).join(' '),
       warning: names.length > 0 ? provokeWarning(names) : '',
       trap: v.square.knownTrapName,
     };

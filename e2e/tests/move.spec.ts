@@ -2,6 +2,7 @@ import { expect } from '@playwright/test';
 import { test } from './diagnostics';
 
 import { combatRPC, getEncounterRPC, torenSheet, toren, pensantusCasting } from './combat-support';
+import { raceBody, createEntryRPC } from './content-support';
 import { openSessionPage } from './live-session-support';
 import { boxOf, layoutSize, viaTargetList } from './support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
@@ -87,6 +88,50 @@ test(
       void table;
     } finally {
       await done();
+    }
+  },
+);
+
+test(
+  'quem nada mais rápido do que anda vai mais longe na água, e o que resta depois é o do deslocamento de natação @MR-034 @RN-21',
+  { tag: ['@MR-034', '@RN-21'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    // A race of the table that walks 30 ft and swims 40 ft (a modifier on speed.swim): six squares of water cost 9,0 m of the 12,0 m of swimming,
+    // where without the swim speed they would cost twice that and not be offered at all.
+    const t = await movingTable(browser, 'Nadador', torenFirst, {
+      character: {
+        build: toren,
+        before: async (campaignId, master) => {
+          const race = await createEntryRPC(master, campaignId, 'tableRace', {
+            ...raceBody('Nadador de Teste'),
+            abilityBonuses: { strength: 1 },
+            traits: [{ namePt: 'Nadador', descPt: ['Nada melhor do que anda.'], effects: [{ type: 'modifier', target: 'speed.swim', mode: 'set', value: '40' }] }],
+          });
+          return { ...toren, raceKey: race, race: 'Nadador de Teste' };
+        },
+      },
+      paint: async (master, table) => {
+        await paintRPC(master, table, 'MAP_LAYER_SURFACE', 1, [[6, 7], [7, 7], [8, 7], [9, 7], [10, 7], [11, 7]]);
+      },
+    });
+    try {
+      await openSessionPage(t.p, t.campaignId);
+      await t.p.getByRole('button', { name: 'Mover', exact: true }).click();
+      await expect(t.p.getByRole('heading', { name: 'Mover Toren' })).toBeVisible();
+      // On the floor the lead is the walking speed.
+      await expect(t.p.getByText('Restam 9,0 m de 9,0 m (6 quadrados de 1,5 m). Toque num quadrado destacado.')).toBeVisible();
+      // Six squares of water: 9,0 m of line, no extra (it swims), and what is left is the swim speed's, 12,0 m less 9,0 m.
+      await tapSquare(t.p, 11, 7);
+      await expect(t.p.getByText('Mover 9,0 m', { exact: true })).toBeVisible();
+      await expect(t.p.getByText('Depois restam 3,0 m.')).toBeVisible();
+      await expect(t.p.getByText(/nadando/)).toHaveCount(0);
+      await t.p.getByRole('button', { name: 'Mover para cá' }).click();
+      await expect(t.p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
+      // In the water the counter reads the swim speed: 3,0 m left of the 12,0 m it swims.
+      await expect(t.p.getByText('Restam 3,0 m')).toBeVisible();
+    } finally {
+      await t.done();
     }
   },
 );
