@@ -88,6 +88,8 @@ type partRecord struct {
 	Once  bool   `json:"once,omitempty"`
 	// NoCrit: a critical hit does not double this part's dice (an extra_damage that says so).
 	NoCrit bool `json:"no_crit,omitempty"`
+	// Effect is the row of the spell's effect a part of Table "hit_effect" is the damage of (combat_hit_effects.go).
+	Effect string `json:"effect,omitempty"`
 }
 
 // partRoll is what a part rolled, in the pending damage's part_rolls column and in the
@@ -295,7 +297,7 @@ func (h hitFacts) buildParts() []partRecord {
 	extras := combat.Offered(scene)
 	autos := automaticLines(scene)
 	reroll := h.sheet.Traits.GreatWeaponFighting && h.attack.Weapon && h.attack.Melee && h.attack.TwoHanded
-	maneuvers := append(h.maneuverParts(), h.extraDamageParts()...)
+	maneuvers := append(append(h.maneuverParts(), h.extraDamageParts()...), h.hitEffectParts()...)
 	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 {
 		return nil
 	}
@@ -1459,8 +1461,12 @@ func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID 
 	if err != nil {
 		return nil, err
 	}
+	parts, err := s.liveHitParts(ctx, c, readParts(p.Parts))
+	if err != nil {
+		return nil, err
+	}
 	out, err := s.rollParts(rollPartsInput{
-		p: p, parts: readParts(p.Parts), rule: ruleOfPending(p), choice: choice, in: in, typed: typed, target: tsheet.Traits,
+		p: p, parts: parts, rule: ruleOfPending(p), choice: choice, in: in, typed: typed, target: tsheet.Traits,
 		selectOK: s.selectionChecker(ctx, c, campaignID, attacker),
 	})
 	if err != nil {

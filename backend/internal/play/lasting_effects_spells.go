@@ -52,6 +52,9 @@ func (s *Service) applyLastingSpell(
 	if !ok || len(targs) == 0 || len(made.Hits) != len(targs) {
 		return nil
 	}
+	if _, hits := hitModifierOf(def.Modifiers); hits { // the damage it adds to the caster's weapon hits (lasting_effects_hit.go)
+		return s.applyHitSpell(ctx, c, cs, sp, slotLevel, caster, targs, ability, def, made)
+	}
 	taken, err := s.spellHolds(ctx, c, content, def, ability, caster, targs, made)
 	if err != nil {
 		return err
