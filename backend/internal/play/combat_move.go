@@ -1075,8 +1075,11 @@ func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encoun
 	if err != nil {
 		return who, sight, err
 	}
-	if err := v.mayAct(who); err != nil {
+	if err := v.mayMove(d.cs, who); err != nil {
 		return who, sight, err
+	}
+	if who.MountedOnID != nil { // a rider is moved by its mount, as MoveCombatant says
+		return who, sight, mountedFor(v, d.cs, who, errMoveBlocked())
 	}
 	if sight == nil && v.master { // the master's warning follows the same fog rule as the real offers
 		if sight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
@@ -1089,13 +1092,17 @@ func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encoun
 	if v.master {
 		return who, sight, nil
 	}
+	actor := who // a controlled mount moves in its rider's turn, and the rider's player is the one who acts
+	if rider := riderOf(d.cs, who.ID); rider != nil && who.MountKind == mountKindControlled {
+		actor = *rider
+	}
 	switch {
 	case enc.Status != statusActive:
 		return who, sight, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-	case !actsNow(enc, who):
+	case !actsNow(enc, actor):
 		return who, sight, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 	}
-	return who, sight, s.mustNotBeDown(ctx, nil, m.CampaignID, who)
+	return who, sight, s.mustNotBeDown(ctx, nil, m.CampaignID, actor)
 }
 
 // moveOptionsOn works out the squares the combatant on the map can go to, or land on with
