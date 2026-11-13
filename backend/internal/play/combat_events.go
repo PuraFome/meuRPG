@@ -858,6 +858,9 @@ func (ev actionEvent) linesBefore() []string {
 	if ev.Parried != nil {
 		lines = append(lines, ev.Parried.Event) // the Parry's line goes with the attack it turned into a miss
 	}
+	if ev.Readied != nil && ev.Readied.Line != "" {
+		lines = append(lines, ev.Readied.Line) // the readied action's line goes with the action its use ran
+	}
 	return lines
 }
 

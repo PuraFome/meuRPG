@@ -229,12 +229,12 @@ func (s *Service) cancelReadiedTx(ctx context.Context, c *combatTx, m authz.Memb
 		return actionEvent{}, err
 	}
 	c.characterID = &who.CharacterID
-	ev := readiedLostEvent(row, who, c.enc.Round)
+	ev := readiedRowEvent(row, who, c.enc.Round)
 	ev.Readied.Canceled = true
 	return ev, nil
 }
 
-// readiedLostEvent is the event of a readied action that ended without firing.
-func readiedLostEvent(row playdb.ReadiedAction, who playdb.Combatant, round int32) actionEvent {
+// readiedRowEvent is the event of a readied action: its row, its readier and the round.
+func readiedRowEvent(row playdb.ReadiedAction, who playdb.Combatant, round int32) actionEvent {
 	return actionEvent{Round: round, Secret: who.Hidden, Actor: who.ID, Readied: readiedEventOf(row)}
 }

@@ -98,6 +98,7 @@ var reactionNames = map[reaction.Kind]string{
 	reaction.MasterCheck:         "Verificação do mestre",
 	reaction.LegendaryResistance: "Resistência Lendária",
 	reaction.ParryKind:           "Aparar",
+	reaction.Readied:             "Ação preparada",
 }
 
 // reactionNameKeys are the content keys of the reaction names.

@@ -86,6 +86,16 @@ type readiedEvent struct {
 	// Defeated says a readied_lost came from the readier's defeat: it is written before the event of the change that
 	// defeated it, and the undo of that change goes past it (chainReadiedDefeat).
 	Defeated bool `json:"defeated,omitempty"`
+	// Dismissed says a readied_lost came from the readier leaving the order (a creature dismissed): as Defeated.
+	Dismissed bool `json:"dismissed,omitempty"`
+	// Window is the READIED window the master opened (FireReadied). Opened says the readied_fired event is the fire
+	// itself, which writes no line; Ended is how the window's answer ended the row ("fired" or "ignored").
+	Window string `json:"window,omitempty"`
+	Opened bool   `json:"opened,omitempty"`
+	Ended  string `json:"ended,omitempty"`
+	// Line is the readied_fired line a use wrote before the event of the action it ran: the undo of the action takes it
+	// back (linesBefore).
+	Line string `json:"line,omitempty"`
 }
 
 // readiedEventOf is the event's copy of a row, with the name the held action had when it was readied.

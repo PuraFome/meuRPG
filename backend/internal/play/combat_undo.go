@@ -33,13 +33,13 @@ var undoableKinds = []string{
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
 	eventCombatantMoved, eventTrapTriggered, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
 	eventHideResolved, // only the master's reveal of a hider (undoableHideResolved)
-	eventLegendarySpent, eventGearSwapped, eventActionReadied,
+	eventLegendarySpent, eventGearSwapped, eventActionReadied, eventReadiedFired,
 }
 
 // leavesHPAlone are the undoable kinds whose undo never writes hit points: they keep no holds.
 var leavesHPAlone = []string{
 	eventAttackRolled, eventDamageDiscarded, eventReactionDeclined, eventConditionsSet,
-	eventCombatantMoved, eventFamiliarSight, eventHideResolved, eventLegendarySpent, eventGearSwapped, eventActionReadied,
+	eventCombatantMoved, eventFamiliarSight, eventHideResolved, eventLegendarySpent, eventGearSwapped, eventActionReadied, eventReadiedFired,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -116,6 +116,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainCastZoneCatch,
 	chainConcentrationEnd,
 	chainReadiedDefeat,
+	chainReadied,
 	chainStateEndedByVitals,
 	chainOffer,
 	chainMoveCompanions,
@@ -690,6 +691,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	}
 	u := &undoer{s: s, c: c, cs: cs, holds: ev.Holds, kept: ev.HPKept}
 	if err := u.undoWithTemp(ctx, kind, undo, ev); err != nil {
+		return nil, err
+	}
+	if err := u.readiedUseBack(ctx, kind, ev); err != nil {
 		return nil, err
 	}
 	return u.vitals, nil

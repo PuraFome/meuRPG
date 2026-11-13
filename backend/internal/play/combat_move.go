@@ -391,6 +391,8 @@ type moveAttempt struct {
 	// lets it walk (rules.LegendaryOption.MoveSpeedPercent).
 	spent    int32
 	speedPct int
+	// readied is the readied move the mover makes off its turn while its READIED window is open (ready_answer.go).
+	readied *readiedUse
 	// made is the move's event.
 	made actionEvent
 	// what the publishers read after the commit.
@@ -469,6 +471,9 @@ func (s *Service) moveInTx(ctx context.Context, a *moveAttempt) (any, error) {
 		return nil, err
 	}
 	a.describeMove()
+	if err := s.spendReadiedMove(ctx, a); err != nil {
+		return nil, err
+	}
 	if err := s.zonesAfterMove(ctx, a); err != nil { // the areas spells keep on the map (zones_hooks.go)
 		return nil, err
 	}
@@ -495,6 +500,9 @@ func (s *Service) loadMover(ctx context.Context, a *moveAttempt) error {
 		return err
 	}
 	if err := a.v.mayAct(a.target); err != nil {
+		return err
+	}
+	if err := s.readiedMoveOf(ctx, a); err != nil {
 		return err
 	}
 	if a.dragged, a.dragging, err = s.draggedBy(ctx, a.c.q, cs, a.target); err != nil {
@@ -566,7 +574,7 @@ func (s *Service) mayMove(ctx context.Context, a *moveAttempt) error {
 	switch {
 	case a.c.enc.Status != statusActive:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-	case !a.onTurn: // not in the turn that is running, or its part ended
+	case !a.onTurn && a.readied == nil: // not in the turn that is running, or its part ended; a readied move is a reaction
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 	case !placed(a.target):
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "you are not on the map yet; ask the master")
@@ -584,7 +592,7 @@ func (s *Service) planMove(ctx context.Context, a *moveAttempt) error {
 	if err := s.startMove(ctx, a); err != nil {
 		return err
 	}
-	if !a.v.master || a.onTurn { // the turn's move waits for the master's answer; his own moves of a token off turn do not
+	if (!a.v.master || a.onTurn) && a.readied == nil { // the turn's move waits for the master's answer; his own moves of a token off turn, and a readied move (the window it answers holds the turn), do not
 		if err := s.mustNotHold(ctx, a.c); err != nil {
 			return err
 		}
@@ -596,8 +604,10 @@ func (s *Service) planMove(ctx context.Context, a *moveAttempt) error {
 		}
 		return a.planMasterWalk()
 	}
-	if err := s.mustNotWait(ctx, a.c, a.target); err != nil {
-		return err
+	if a.readied == nil {
+		if err := s.mustNotWait(ctx, a.c, a.target); err != nil {
+			return err
+		}
 	}
 	return s.planPlayerMove(ctx, a)
 }
@@ -651,7 +661,7 @@ func (s *Service) planPlayerMove(ctx context.Context, a *moveAttempt) error {
 		all:     occupantsFor(a.cs, a.target, combatViewer{master: true}),
 		mover:   a.mover,
 		origin:  squareOfCombatant(a.target),
-		leftDFt: movementLeftDFt(a.target) / a.factor, // the path that fits: a drag costs twice its length
+		leftDFt: a.movementBudgetDFt() / a.factor, // the path that fits: a drag costs twice its length
 	}
 	switch a.req.jump {
 	case playv1.JumpKind_JUMP_KIND_LONG:
@@ -762,6 +772,9 @@ func (a *moveAttempt) planHighJump(p playerPlan) error {
 // decides to force it. Out of turn, for a player's character and when forced, the master's move stays
 // free and unlimited: it puts a token right.
 func (a *moveAttempt) paysItsWay() bool {
+	if a.readied != nil { // a readied move walks its way whoever moves it
+		return true
+	}
 	return a.v.master && (a.onTurn || a.req.legendary != "") && a.req.walking() && !a.req.place && placed(a.target) && a.target.UserID == nil
 }
 
@@ -811,7 +824,7 @@ func (s *Service) writeMove(ctx context.Context, a *moveAttempt) error {
 		a.coverMark = "none"
 	}
 	a.used = int(a.target.MovementUsedDft) + a.cost*a.factor
-	if a.req.legendary != "" { // its own budget: the movement of the creature's turn is neither spent nor read
+	if a.req.legendary != "" || a.readied != nil { // its own budget: the movement of the creature's turn is neither spent nor read
 		a.used, a.last = int(a.target.MovementUsedDft), int(a.target.LastMoveDft)
 	}
 	if err := a.c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
@@ -878,7 +891,7 @@ func (a *moveAttempt) describeMove() {
 	made.Col, made.Row = a.newCol, a.newRow
 	made.CostDFt, made.CostFt = clamp32(a.cost, 0, math.MaxInt32), clamp32(a.cost/10, 0, math.MaxInt32)
 	made.DistanceDFt, made.DistanceFt = clamp32(a.length, 0, math.MaxInt32), clamp32(a.length/10, 0, math.MaxInt32)
-	if a.req.jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && a.cost > 0 && a.req.legendary == "" { // what the walk spent: the path's cost, doubled by a drag and by a crawl
+	if a.req.jump == playv1.JumpKind_JUMP_KIND_UNSPECIFIED && a.cost > 0 && a.req.legendary == "" && a.readied == nil { // what the walk spent: the path's cost, doubled by a drag and by a crawl
 		made.SpentDFt, made.Dragging, made.Crawling = clamp32(a.cost*a.factor, 0, math.MaxInt32), a.dragHalves, crawls(a.target) && !a.req.forced
 	}
 	switch a.req.jump {
@@ -890,7 +903,7 @@ func (a *moveAttempt) describeMove() {
 	case playv1.JumpKind_JUMP_KIND_HIGH:
 		made.Jump, made.HeightDFt = jumpHigh, a.req.height
 	}
-	a.logged = (a.onTurn || a.req.legendary != "") && (a.length > 0 || made.Jump == jumpHigh)
+	a.logged = (a.onTurn || a.req.legendary != "" || a.readied != nil) && (a.length > 0 || made.Jump == jumpHigh)
 	if a.v.master && a.squareChanged && !a.paid {
 		a.th.landed(a.to) // the master's move is not a walk: only where it ends counts
 	}

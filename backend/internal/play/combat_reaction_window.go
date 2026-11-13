@@ -109,6 +109,8 @@ type windowTrigger struct {
 	Held []string `json:"held,omitempty"`
 	// Bonus is what Parry adds to the armor class against the hit (ParryKind).
 	Bonus int32 `json:"bonus,omitempty"`
+	// Readied is the readied action (readied_actions.id) a READIED window was fired for.
+	Readied string `json:"readied,omitempty"`
 }
 
 // windowOutcome is what an answered window did: kept with the window, and, for the
@@ -320,6 +322,9 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 	case reaction.Contest:
 		waits, err := contestStillWaits(ctx, c, w)
 		return !waits, true, err
+	case reaction.Readied:
+		gone, err = readiedGone(ctx, c, t)
+		return gone, true, err
 	case reaction.LegendaryResistance:
 		if resistGone(t, byID) {
 			return true, true, nil

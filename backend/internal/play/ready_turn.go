@@ -33,12 +33,13 @@ func loseReadiedAtTurnStart(ctx context.Context, c *combatTx, ids []string, roun
 }
 
 // loseReadiedOfDefeated ends the readied actions of the combatants that are defeated, whatever defeated them (damage, a
-// death the master confirmed, exhaustion, the master's hand): the turns of a defeated combatant are skipped, so the start
-// of its next turn, which ends a readied action, would never come. It runs in settleChange, after every change to a
-// combat, so no path that writes `defeated` is missed; the line is written before the change's own event, and the undo of
-// that change goes past it (chainReadiedDefeat) and leaves the row lost: a revived readier does not get it back.
-// FireReadied (T2) must refuse a row whose readier is defeated all the same: this keeps none waiting, it never replaces
-// that check.
+// death the master confirmed, exhaustion, the master's hand), and of the creatures taken out of the order (dismissed):
+// their turns are skipped, so the start of the next turn, which ends a readied action, would never come. It runs in
+// settleChange, after every change to a combat, so no path that writes `defeated` or `dismissed` is missed; the line is
+// written before the change's own event, and the undo of that change goes past it (chainReadiedDefeat) and leaves the row
+// lost: a revived or returned readier does not get it back, and its Ready cannot be undone any more (chainReadied).
+// FireReadied refuses a defeated, dismissed, down or incapacitated readier all the same: this keeps none waiting, it never
+// replaces that check.
 func loseReadiedOfDefeated(ctx context.Context, c *combatTx) error {
 	if c.enc.ID == "" {
 		return nil
@@ -52,8 +53,8 @@ func loseReadiedOfDefeated(ctx context.Context, c *combatTx) error {
 		return err
 	}
 	for _, row := range rows {
-		if who, ok := combatantByID(cs, row.CombatantID); ok && who.Defeated {
-			if err := markReadiedLost(ctx, c, row, who, c.enc.Round, true); err != nil {
+		if who, ok := combatantByID(cs, row.CombatantID); ok && (who.Defeated || who.Dismissed) {
+			if err := markReadiedLost(ctx, c, row, who, c.enc.Round, who.Defeated, who.Dismissed); err != nil {
 				return err
 			}
 		}
@@ -68,26 +69,27 @@ func loseReadied(ctx context.Context, c *combatTx, row playdb.ReadiedAction, rou
 		return err
 	}
 	who, _ := combatantByID(cs, row.CombatantID)
-	return markReadiedLost(ctx, c, row, who, round, false)
+	return markReadiedLost(ctx, c, row, who, round, false, false)
 }
 
-// markReadiedLost marks the row lost and writes its readied_lost line; defeated says the readier's defeat ended it.
-func markReadiedLost(ctx context.Context, c *combatTx, row playdb.ReadiedAction, who playdb.Combatant, round int32, defeated bool) error {
+// markReadiedLost marks the row lost and writes its readied_lost line; defeated and dismissed say the readier's defeat,
+// or its leaving the order, ended it.
+func markReadiedLost(ctx context.Context, c *combatTx, row playdb.ReadiedAction, who playdb.Combatant, round int32, defeated, dismissed bool) error {
 	if err := c.q.SetReadiedActionStatus(ctx, playdb.SetReadiedActionStatusParams{ID: row.ID, Status: readiedLost}); err != nil {
 		return fmt.Errorf("lose the readied action: %w", err)
 	}
-	ev := readiedLostEvent(row, who, round)
-	ev.Readied.Defeated = defeated
+	ev := readiedRowEvent(row, who, round)
+	ev.Readied.Defeated, ev.Readied.Dismissed = defeated, dismissed
 	return insertEvent(ctx, c, eventReadiedLost, &c.actorUserID, nil, ev)
 }
 
-// chainReadiedDefeat: a readied action lost to its readier's defeat is written before the event of the change that
+// chainReadiedDefeat: a readied action lost to its readier's defeat (or dismissal) is written before the event of the change that
 // defeated it, and never closes the undo's chain: the undo acts on that change, and the row stays lost.
 func chainReadiedDefeat(c chainEvent) chainVerdict {
 	if c.row.Kind != eventReadiedLost {
 		return chainGoOn
 	}
-	if ev, ok := c.payload(); ok && ev.Readied != nil && ev.Readied.Defeated {
+	if ev, ok := c.payload(); ok && ev.Readied != nil && (ev.Readied.Defeated || ev.Readied.Dismissed) {
 		return chainSkip
 	}
 	return chainGoOn
@@ -144,7 +146,7 @@ func readiedView(rows []playdb.ReadiedAction, c playdb.Combatant, names func(key
 func readiedLine(kind playv1.CombatLogKind) logHandler {
 	return func(_ *logBuilder, _ playdb.ListEncounterEventsRow, entry *logEntry) bool {
 		entry.kind = kind
-		return entry.ev.Readied != nil
+		return entry.ev.Readied != nil && !entry.ev.Readied.Opened // the fire itself is told by the window, not the log
 	}
 }
 
@@ -162,7 +164,7 @@ func (e *logEntry) fillReadied(c *logViewing, out *playv1.CombatLogEntry) bool {
 	}
 	detail := &playv1.CombatLogReadied{
 		ReadiedId: r.ID, TriggerText: r.Trigger, Kind: readiedKindToProto[r.Kind], ActionKey: r.ActionKey, ActionNamePt: name,
-		Canceled: r.Canceled,
+		Canceled: r.Canceled, Status: readiedStatusToProto[r.Ended],
 	}
 	switch e.kind {
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED:

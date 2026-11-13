@@ -37,6 +37,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.EffectSave:          playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
 	reaction.LegendaryResistance: playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE,
 	reaction.ParryKind:           playv1.ReactionKind_REACTION_KIND_PARRY,
+	reaction.Readied:             playv1.ReactionKind_REACTION_KIND_READIED,
 }
 
 // reactionKindOf is the kind of a reaction a combatant spent, as it is recorded: a window's key or "opportunity";
@@ -353,6 +354,8 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		err = wv.resistancePrompt(w, out)
 	case reaction.ParryKind:
 		wv.parryPrompt(w, out)
+	case reaction.Readied:
+		// No prompt: the reactor and the master read the trigger and the action in the reactor's Combatant.readied.
 	default:
 		err = wv.morePrompt(kind, w, reactor, out)
 	}

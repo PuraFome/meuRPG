@@ -33,3 +33,14 @@ DELETE FROM readied_actions WHERE id = $1;
 -- name: DeleteReadiedActionsOfEncounter :exec
 -- The readied actions go with the combat that ends.
 DELETE FROM readied_actions WHERE encounter_id = $1;
+
+-- name: ReopenReadiedAction :exec
+-- The undo of a readied action's use or pass: it waits again.
+UPDATE readied_actions
+SET status = 'waiting'
+WHERE id = $1 AND status IN ('fired', 'ignored');
+
+-- name: GetReadiedAction :one
+-- A readied action of a combat, whatever its status.
+SELECT * FROM readied_actions
+WHERE id = $1 AND encounter_id = $2;

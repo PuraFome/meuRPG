@@ -30,6 +30,38 @@ func (q *Queries) DeleteReadiedActionsOfEncounter(ctx context.Context, encounter
 	return err
 }
 
+const getReadiedAction = `-- name: GetReadiedAction :one
+SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
+WHERE id = $1 AND encounter_id = $2
+`
+
+type GetReadiedActionParams struct {
+	ID          string
+	EncounterID string
+}
+
+// A readied action of a combat, whatever its status.
+func (q *Queries) GetReadiedAction(ctx context.Context, arg GetReadiedActionParams) (ReadiedAction, error) {
+	row := q.db.QueryRow(ctx, getReadiedAction, arg.ID, arg.EncounterID)
+	var i ReadiedAction
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.CombatantID,
+		&i.Round,
+		&i.TriggerText,
+		&i.Kind,
+		&i.ActionKey,
+		&i.ActionNamePt,
+		&i.SpellCastID,
+		&i.MoveFt,
+		&i.TargetID,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getWaitingReadiedAction = `-- name: GetWaitingReadiedAction :one
 SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
 WHERE id = $1 AND encounter_id = $2 AND status = 'waiting'
@@ -180,6 +212,18 @@ func (q *Queries) ListWaitingReadiedActions(ctx context.Context, encounterID str
 		return nil, err
 	}
 	return items, nil
+}
+
+const reopenReadiedAction = `-- name: ReopenReadiedAction :exec
+UPDATE readied_actions
+SET status = 'waiting'
+WHERE id = $1 AND status IN ('fired', 'ignored')
+`
+
+// The undo of a readied action's use or pass: it waits again.
+func (q *Queries) ReopenReadiedAction(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, reopenReadiedAction, id)
+	return err
 }
 
 const setReadiedActionStatus = `-- name: SetReadiedActionStatus :exec

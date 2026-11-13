@@ -199,6 +199,8 @@ type attackFlow struct {
 	// maneuver is the table die the request names (checked in prepare); maneuverSpent are the resources its roll spent.
 	maneuver      *link.Maneuver
 	maneuverSpent []string
+	// readied is the readied attack the catch window fires (ready_answer.go), nil for any other attack.
+	readied *readiedUse
 }
 
 func newAttackFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.RollAttackRequest, call attackCall, out *attackOut) *attackFlow {
@@ -383,6 +385,9 @@ func (f *attackFlow) pickAttack(ctx context.Context) error {
 
 // catchMissile adds the caught missile to the attacks: a throw back is made under its own key.
 func (f *attackFlow) catchMissile(ctx context.Context) error {
+	if readied, err := f.readiedAttackOf(ctx); readied || err != nil {
+		return err
+	}
 	thrown, w, err := f.s.deflectThrow(ctx, f.c, f.call.catchID, f.attacker, f.cs)
 	if err != nil {
 		return err
@@ -789,6 +794,9 @@ func (f *attackFlow) countAttack(ctx context.Context) error {
 func (f *attackFlow) closeThrow(ctx context.Context) error {
 	if f.call.catchID == "" {
 		return nil
+	}
+	if f.readied != nil { // a readied attack: the window, the row and the line of its use
+		return f.readied.spend(ctx, f.c, f.attacker, &f.out.made)
 	}
 	if _, err := f.s.spendResourceOf(ctx, f.c, f.attacker, resKi); err != nil {
 		return err
