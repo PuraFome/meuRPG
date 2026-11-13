@@ -202,6 +202,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
   return {
     kind: 'full',
     weaponMarks: [],
+    attunement: { entries: [], attuned: 0 },
     abilities: ABILITY_KEYS.map((key) => ({ key, score: 10, modifier: 0 })),
     proficiencyBonus: 2,
     savingThrows: [],

@@ -52,6 +52,8 @@ export interface VitalsVm {
   readonly hitDiceTotal: number;
   /** All the dice spent, of every size. */
   readonly hitDiceUsed: number;
+  /** The window to attune a magic item is open: a short or a long rest opened it and the owner has not used it yet; absent as closed. */
+  readonly attunementOpen?: boolean;
   /** Of two copies of the same character's vitals, the larger is newer. */
   readonly revision: number;
   /** The player looks through their familiar's eyes (MR-036); absent otherwise. */
