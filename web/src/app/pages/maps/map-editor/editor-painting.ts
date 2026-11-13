@@ -117,9 +117,6 @@ export class EditorPainting {
   readonly shown = computed<MapLayers>(() => {
     const l = this.painted.layers();
     const v = this.visible();
-    if (v.terrain && v.surface && v.wall && v.cover && v.light && v.nopass && v.door) {
-      return l;
-    }
     return {
       ...l,
       terrain: v.terrain ? l.terrain : [],

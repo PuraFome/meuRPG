@@ -12,6 +12,20 @@ function bitAt(bytes: Uint8Array, n: number): number {
   return (bytes[n >> BYTE_SHIFT] >> (n & BIT_MASK)) & 1;
 }
 
+/** A two-bit layer (cover, light, the surface): square n is bits 2 * (n % 4) and one more of byte n / 4. */
+const CRUMBS_PER_BYTE = 4;
+const CRUMB_MASK = 3;
+
+function crumbAt(bytes: Uint8Array, n: number): number {
+  return (bytes[Math.floor(n / CRUMBS_PER_BYTE)] >> (2 * (n % CRUMBS_PER_BYTE))) & CRUMB_MASK;
+}
+
+function setCrumb(bytes: Uint8Array, n: number, value: number): void {
+  const at = Math.floor(n / CRUMBS_PER_BYTE);
+  const shift = 2 * (n % CRUMBS_PER_BYTE);
+  bytes[at] = (bytes[at] & ~(CRUMB_MASK << shift)) | ((value & CRUMB_MASK) << shift);
+}
+
 function setBit(bytes: Uint8Array, n: number, value: number): void {
   const at = n >> BYTE_SHIFT;
   const bit = n & BIT_MASK;
@@ -54,7 +68,7 @@ export class PaintedLayers {
     this.light = fit(packed.light ?? new Uint8Array(), Math.ceil(squares / 4));
     this.doors = fit(packed.doors ?? new Uint8Array(), Math.ceil(squares / 2));
     this.noPass = fit(packed.noPass ?? new Uint8Array(), Math.ceil(squares / 8));
-    this.surface = fit(packed.surface ?? new Uint8Array(), Math.ceil(squares / 4));
+    this.surface = fit(packed.surface ?? new Uint8Array(), Math.ceil(squares / CRUMBS_PER_BYTE));
     this.publish();
   }
 
@@ -84,7 +98,7 @@ export class PaintedLayers {
       case MapLayer.NO_PASS:
         return bitAt(this.noPass, n);
       case MapLayer.SURFACE:
-        return (this.surface[n >> 2] >> (2 * (n & 3))) & 3;
+        return crumbAt(this.surface, n);
       default:
         return 0;
     }
@@ -133,8 +147,7 @@ export class PaintedLayers {
         setBit(this.noPass, n, value);
         break;
       case MapLayer.SURFACE:
-        this.surface[n >> 2] =
-          (this.surface[n >> 2] & ~(3 << (2 * (n & 3)))) | ((value & 3) << (2 * (n & 3)));
+        setCrumb(this.surface, n, value);
         break;
     }
   }

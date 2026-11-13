@@ -239,7 +239,9 @@ function surfaceLine(l: MapLayers, compact: boolean): LayerLine {
   } else if (water > 0) {
     detail = tight(`${squaresText(water)} de água · ${water === 1 ? 'custa' : 'custam'} o dobro`);
   } else if (climb > 0) {
-    detail = tight(`${squaresText(climb)} ${climbs(climb)} · ${climb === 1 ? 'custa' : 'custam'} o dobro`);
+    detail = tight(
+      `${squaresText(climb)} ${climbs(climb)} · ${climb === 1 ? 'custa' : 'custam'} o dobro`,
+    );
   }
   return { tool: 'surface', name: 'Superfície', count: water + climb, detail };
 }

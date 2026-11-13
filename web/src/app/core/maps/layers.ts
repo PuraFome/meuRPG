@@ -94,6 +94,21 @@ function crumbSquares(bytes: Uint8Array, columns: number, rows: number, value: n
   return out;
 }
 
+/** The squares of water (1) and of climbable surface (2) in the two-bit surface layer; none when the layer is empty or absent. */
+function surfaceSquares(
+  bytes: Uint8Array | undefined,
+  columns: number,
+  rows: number,
+): { water: Square[]; climb: Square[] } {
+  if (bytes === undefined || bytes.length === 0) {
+    return { water: [], climb: [] };
+  }
+  return {
+    water: crumbSquares(bytes, columns, rows, 1),
+    climb: crumbSquares(bytes, columns, rows, 2),
+  };
+}
+
 /** The doors of a four-bit layer: square n is the low nibble of byte n / 2 when n is even and the high nibble when odd.
  * The axis follows the same rule as `planDoor` (a door needs floor on both sides): floor above and below means the passage runs up and
  * down, so the bar lies left to right (`h`); otherwise floor left and right turns it (`v`). Doors of one corridor point the same way.
@@ -145,9 +160,7 @@ export function decodeLayers(packed: PackedLayers, player = false): MapLayers {
     packed.noPass !== undefined && packed.noPass.length > 0
       ? bitSquares(packed.noPass, columns, rows)
       : [];
-  const surface = packed.surface !== undefined && packed.surface.length > 0 ? packed.surface : null;
-  const water = surface ? crumbSquares(surface, columns, rows, 1) : [];
-  const climb = surface ? crumbSquares(surface, columns, rows, 2) : [];
+  const { water, climb } = surfaceSquares(packed.surface, columns, rows);
   const walls = bitSquares(packed.wall, columns, rows);
   const doors =
     packed.doors !== undefined && packed.doors.length > 0
@@ -201,7 +214,10 @@ export function doorCounts(layers: MapLayers): Readonly<Record<DoorKind, number>
 }
 
 /** How many squares are painted "Água" and "Escalável" (the "Superfície" row, the legend). */
-export function surfaceCounts(layers: MapLayers): { readonly water: number; readonly climb: number } {
+export function surfaceCounts(layers: MapLayers): {
+  readonly water: number;
+  readonly climb: number;
+} {
   return { water: layers.water?.length ?? 0, climb: layers.climb?.length ?? 0 };
 }
 

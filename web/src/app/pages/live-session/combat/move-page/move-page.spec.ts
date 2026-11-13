@@ -165,14 +165,13 @@ describe('MovePage', () => {
     expect(below.querySelector('.mr-legend')).not.toBeNull();
     expect(below.querySelector('[role="group"][aria-label="Zoom do mapa"]')).not.toBeNull();
     expect(el.querySelector('.move__map [aria-label="Zoom do mapa"]')).toBeNull();
-    const labels = Array.from(
-      below.querySelectorAll('[aria-label="Zoom do mapa"] button'),
-      (b) => b.getAttribute('aria-label'),
+    const labels = Array.from(below.querySelectorAll('[aria-label="Zoom do mapa"] button'), (b) =>
+      b.getAttribute('aria-label'),
     );
     expect(labels).toEqual(['Afastar o mapa', 'Aproximar o mapa']);
   });
 
-  it('says what swimming adds beside the cost, in the server\'s words (#589)', () => {
+  it("says what swimming adds beside the cost, in the server's words (#589)", () => {
     const swim = create(GetMoveOptionsResponseSchema, {
       movementLeftDft: 300,
       reachable: [

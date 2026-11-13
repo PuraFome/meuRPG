@@ -152,7 +152,9 @@ export function walkSummary(
     return {
       kind: 'ok',
       title: costTitle(v.square.costDft),
-      detail: [extraBreakdown(v.square), afterText(left, v.square.costDft)].filter(Boolean).join(' '),
+      detail: [extraBreakdown(v.square), afterText(left, v.square.costDft)]
+        .filter(Boolean)
+        .join(' '),
       warning: names.length > 0 ? provokeWarning(names) : '',
       trap: v.square.knownTrapName,
       ...(extra.parts.length > 0 ? { extra } : {}),

@@ -81,5 +81,7 @@ import { LayerSwatch } from './layer-swatch';
 })
 export class MapLayersList {
   readonly layers = input.required<MapLayers>();
-  protected readonly lines = computed(() => layerLines(this.layers(), true).filter((l) => l.count > 0));
+  protected readonly lines = computed(() =>
+    layerLines(this.layers(), true).filter((l) => l.count > 0),
+  );
 }

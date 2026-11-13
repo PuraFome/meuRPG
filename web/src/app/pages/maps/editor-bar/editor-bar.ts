@@ -38,7 +38,10 @@ const TOOLS: readonly { tool: PaintTool; icon: string }[] = [
   { tool: 'door', icon: 'door_front' },
 ];
 /** The brushes' glyphs while not chosen (the chosen one shows its check, never colour alone). */
-const SURFACE_ICON: Readonly<Record<SurfaceKind, string>> = { 1: 'waves', 2: 'keyboard_double_arrow_up' };
+const SURFACE_ICON: Readonly<Record<SurfaceKind, string>> = {
+  1: 'waves',
+  2: 'keyboard_double_arrow_up',
+};
 const LIGHT_ICON: Readonly<Record<LightDegree, string>> = {
   3: 'light_mode',
   2: 'contrast',

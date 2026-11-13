@@ -220,7 +220,11 @@ describe('"Superfície" (#589)', () => {
 
   it('counts the squares in the list of layers, right after "Terreno difícil"', () => {
     const lines = layerLines(NO_LAYERS);
-    expect(lines.map((l) => l.name).slice(0, 3)).toEqual(['Terreno difícil', 'Superfície', 'Parede']);
+    expect(lines.map((l) => l.name).slice(0, 3)).toEqual([
+      'Terreno difícil',
+      'Superfície',
+      'Parede',
+    ]);
     expect(lines[1]).toMatchObject({ tool: 'surface', count: 0, detail: 'nada pintado' });
     const water = [{ col: 0, row: 0 }];
     const climb = [
