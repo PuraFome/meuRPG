@@ -39,8 +39,12 @@ func TestMountedCombat_AHiddenRiderOnAVisibleMountLeaksNothing(t *testing.T) {
 		setup  func(t *testing.T, c *cave) // the hidden creature rides the Ogro, or the Ogro rides it
 		reason playv1.EncounterBlockedReason
 	}{
-		"a hidden rider on the mount": {func(t *testing.T, c *cave) { c.sitOn(t, "Goblin 1", "Ogro") }, reasonMountTaken},
+		"a hidden rider on the mount": {func(t *testing.T, c *cave) {
+			t.Helper()
+			c.sitOn(t, "Goblin 1", "Ogro")
+		}, reasonMountTaken},
 		"a mount that rides a hidden mount": {func(t *testing.T, c *cave) {
+			t.Helper()
 			c.mustMove(t, c.master, "Goblin 1", 8, 7)
 			c.sitOn(t, "Ogro", "Goblin 1")
 		}, reasonAlreadyRiding},
