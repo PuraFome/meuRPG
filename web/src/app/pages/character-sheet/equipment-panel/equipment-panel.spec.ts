@@ -1,0 +1,154 @@
+import { Component, signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+
+import type { AttunementEntryVm } from '../../../core/characters/attunement';
+import type { FullSheetVm } from '../character-sheet.types';
+import { EquipmentPanel } from './equipment-panel';
+
+const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
+
+const entry = (over: Partial<AttunementEntryVm>): AttunementEntryVm => ({
+  id: 'm1',
+  key: 'ring',
+  namePt: 'Anel de proteção',
+  kind: 'magic',
+  attuned: false,
+  asks: true,
+  restrictionPt: '',
+  restriction: 'none',
+  sameItemAttuned: false,
+  ...over,
+});
+
+function sheetWith(entries: AttunementEntryVm[]): FullSheetVm {
+  return {
+    armorClass: 14,
+    gear: [],
+    equipment: [],
+    backgroundEquipment: '',
+    coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+    shieldIdle: false,
+    attunement: { entries, attuned: entries.filter((e) => e.asks && e.attuned).length },
+  } as unknown as FullSheetVm;
+}
+
+@Component({
+  imports: [EquipmentPanel],
+  template: `
+    <app-equipment-panel
+      [sheet]="sheet()"
+      [canManageMagic]="manage()"
+      [canChangeAttunement]="change()"
+      [attunementIsClosed]="closed()"
+      [magicNotice]="notice()"
+      (attunementOpened)="opened = opened + 1"
+      (magicAdding)="adding = adding + 1"
+      (magicRemoving)="removed.push($event.id)"
+    />
+  `,
+})
+class Host {
+  readonly sheet = signal(sheetWith([]));
+  readonly manage = signal(false);
+  readonly change = signal(false);
+  readonly closed = signal(false);
+  readonly notice = signal('');
+  opened = 0;
+  adding = 0;
+  readonly removed: string[] = [];
+}
+
+function render(init: (h: Host) => void = () => undefined) {
+  const fixture = TestBed.createComponent(Host);
+  init(fixture.componentInstance);
+  fixture.detectChanges();
+  const el = fixture.nativeElement as HTMLElement;
+  return { fixture, host: fixture.componentInstance, el };
+}
+
+describe('EquipmentPanel, the magic items and the attunement', () => {
+  it('shows neither the header nor the list when nothing is magic and nobody can add', () => {
+    const { el } = render();
+    expect(el.querySelector('.att-head')).toBeNull();
+    expect(el.querySelector('.magic')).toBeNull();
+  });
+
+  it('counts what is attuned in the header and words each row as a pill', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          entry({ attuned: true }),
+          entry({ id: 'm2', key: 'cloak', namePt: 'Manto élfico' }),
+          entry({ id: 'm3', key: 'bag', namePt: 'Bolsa de carga', asks: false }),
+        ]),
+      ),
+    );
+    expect(flat(el.querySelector('.att-head'))).toContain('Sintonizados: 1 de 3');
+    expect(flat(el.querySelector('#magic-heading'))).toContain('Itens mágicos (3)');
+    const rows = Array.from(el.querySelectorAll('.magic-row'), flat);
+    expect(rows[0]).toContain('Anel de proteçãoSintonizado');
+    expect(rows[1]).toContain('Manto élficoPede sintonização');
+    expect(rows[2]).toBe('Bolsa de carga');
+  });
+
+  it('says what an unmet item asks of the character, under the row', () => {
+    const { el } = render((h) =>
+      h.sheet.set(sheetWith([entry({ restrictionPt: 'Só para um conjurador' })])),
+    );
+    expect(flat(el.querySelector('.magic-row__line'))).toContain('Só para um conjurador');
+  });
+
+  it('offers "Mudar" while the window is open, and "Muda num descanso" when it is not', () => {
+    const open = render((h) => {
+      h.sheet.set(sheetWith([entry({})]));
+      h.change.set(true);
+    });
+    const button = open.el.querySelector<HTMLButtonElement>('.att-head__button')!;
+    expect(button.getAttribute('aria-label')).toBe('Mudar sintonização');
+    button.click();
+    expect(open.host.opened).toBe(1);
+    expect(open.el.querySelector('.att-head__later')).toBeNull();
+
+    const shut = render((h) => h.sheet.set(sheetWith([entry({})])));
+    expect(flat(shut.el.querySelector('.att-head__later'))).toBe('Muda num descanso');
+    expect(shut.el.querySelector('.att-head__button')).toBeNull();
+  });
+
+  it('says neither for a dead character', () => {
+    const { el } = render((h) => {
+      h.sheet.set(sheetWith([entry({})]));
+      h.closed.set(true);
+    });
+    expect(el.querySelector('.att-head__later')).toBeNull();
+    expect(el.querySelector('.att-head__button')).toBeNull();
+  });
+
+  it('gives whoever manages the items "Adicionar item mágico" and a "Remover item" menu on each row', () => {
+    const { el, host } = render((h) => {
+      h.sheet.set(sheetWith([entry({})]));
+      h.manage.set(true);
+    });
+    el.querySelector<HTMLButtonElement>('.magic__add')!.click();
+    expect(host.adding).toBe(1);
+    const more = el.querySelector<HTMLButtonElement>('.magic-row__more')!;
+    expect(more.getAttribute('aria-label')).toBe('Remover item · Anel de proteção');
+    more.click();
+    expect(host.removed).toEqual(['m1']);
+  });
+
+  it('says "Nenhum item mágico." for a manager with an empty list, and gives the others no controls', () => {
+    const manager = render((h) => h.manage.set(true));
+    expect(flat(manager.el.querySelector('.magic'))).toContain('Nenhum item mágico.');
+    const other = render((h) => h.sheet.set(sheetWith([entry({})])));
+    expect(other.el.querySelector('.magic__add')).toBeNull();
+    expect(other.el.querySelector('.magic-row__more')).toBeNull();
+  });
+
+  it('keeps the last add or remove in a live region', () => {
+    const { el } = render((h) => {
+      h.sheet.set(sheetWith([entry({})]));
+      h.notice.set('Item mágico adicionado.');
+    });
+    expect(flat(el.querySelector('.magic [role=status]'))).toBe('Item mágico adicionado.');
+  });
+});
