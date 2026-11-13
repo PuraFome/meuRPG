@@ -3,6 +3,12 @@
 // InSession declare the host interface themselves, with this type as the argument of their closure.
 package sessiontell
 
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+)
+
 // Tell collects what a write tells the live streams once its transaction committed. The session's number moves once if the write
 // called any of them.
 type Tell interface {
@@ -16,3 +22,18 @@ type Tell interface {
 	// the start: the table's rules decide what its lines show.
 	CombatLogChangedFull()
 }
+
+// Host runs a write of another module that changes what a live session shows, under the play module's funnel: the open session's row
+// is taken first, fn writes on that transaction and tells through t, and once it committed the session's number moves once if fn told
+// and what fn told is sent with it. With no open session fn runs in a plain transaction and t tells nothing. play.Service implements it.
+type Host interface {
+	InSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t Tell) error) error
+}
+
+// None is the Tell of a write that runs with no play module: it tells nothing. A type that keeps some of the hints embeds it.
+type None struct{}
+
+func (None) Touch()                  {}
+func (None) CreaturesChanged(string) {}
+func (None) EncounterChanged(string) {}
+func (None) CombatLogChangedFull()   {}

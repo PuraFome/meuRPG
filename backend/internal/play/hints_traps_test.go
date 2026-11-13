@@ -254,3 +254,22 @@ func TestASearchReadsTheSameToTheOtherPlayersWhateverItFound(t *testing.T) {
 		}
 	}
 }
+
+// The Search action of a combat whose d20 is kept for a question (a die the combatant holds) moves the combat's revision: the session's
+// number moves once with it, and the combat's hint carries the number.
+func TestAHeldSearchInACombatMovesTheNumber(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	r.trap(t, "Fosso Dourado", 7, 7, func(s *mapsv1.TrapSpec) { s.NoticeDc = 20 })
+	e := r.fight(t)
+	r.giveCombatantDie(t, "Toren", e)
+	g := trapRigHints(t, r)
+	g.unnumbered = append(g.unnumbered, "*playv1.WatchGameSessionResponse_HeldRollsChanged_") // the held roll's own hint, sent by the held-roll store
+	g.first(func() error {
+		held, err := r.trapSearchCall(t, r.caio, trapSearchTyped(perception, 16))
+		if err == nil && held.GetHeldRollOffer().GetDie() == nil {
+			t.Errorf("SearchForTraps() = %v, want the die's question", held)
+		}
+		return err
+	}, true)
+}

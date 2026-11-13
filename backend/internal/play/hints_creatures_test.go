@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
@@ -224,4 +227,18 @@ func TestSetTableRulesWithNoOpenSessionMovesNothing(t *testing.T) {
 	if got := g.seq(); got != before {
 		t.Errorf("hint_seq = %d, want %d", got, before)
 	}
+}
+
+// A write that tells only that a combat changed still moves the number: the hint is sent after the commit, so the seam touches.
+func TestEncounterChangedAloneMovesTheNumber(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	e := a.summonersFight(t)
+	g := a.summonersHints(t)
+	g.first(func() error {
+		return a.h.svc.InSession(t.Context(), a.campaignID, func(_ pgx.Tx, tell sessiontell.Tell) error {
+			tell.EncounterChanged(e.GetId())
+			return nil
+		})
+	}, true)
 }

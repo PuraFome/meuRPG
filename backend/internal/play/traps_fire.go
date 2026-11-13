@@ -22,7 +22,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
-	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -403,7 +402,7 @@ func (s *Service) tellFiredOutside(h *hints, campaignID string, fired *trapFireE
 	h.after(func(ctx context.Context, say sayFn) {
 		s.traps.TrapChanged(ctx, campaignID, fired.MapID, fired.PointID)
 	})
-	h.tell(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: mapChangedHint(fired.MapID)})
+	h.tell(campaignID, masterMapChanged(fired.MapID))
 }
 
 // afterFiring tells the streams, after the commit, what a firing in a combat, or one a puzzle's wrong answer made, changed: the trap

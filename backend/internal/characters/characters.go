@@ -61,6 +61,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -183,7 +184,7 @@ type Service struct {
 	// (MR-037). Nil until then.
 	creatureHost CreatureHost
 	// sessionHost is package play's funnel, connected by SetSessionHost: the creature writes run under it.
-	sessionHost SessionHost
+	sessionHost sessiontell.Host
 	// reviewHost is package play, connected by SetReviewHost: the streams a review or a
 	// revival is told on, and the combat a revived character goes back to. Nil until then.
 	reviewHost ReviewHost

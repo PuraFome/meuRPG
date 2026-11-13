@@ -46,6 +46,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1/campaignsv1connect"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/campaigns/campaignsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 )
 
@@ -133,7 +134,7 @@ type Service struct {
 	// (SetCharacters).
 	characters Characters
 	// sessionHost is package play's funnel (SetSessionHost): the table rules are saved under it.
-	sessionHost SessionHost
+	sessionHost sessiontell.Host
 	// xpAwards is set once, before the service handles any call (SetXPAwards).
 	xpAwards XPAwards
 }

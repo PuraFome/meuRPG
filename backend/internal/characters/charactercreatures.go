@@ -107,26 +107,18 @@ type CreatureHost interface {
 // SetCreatureHost connects the play module.
 func (s *Service) SetCreatureHost(h CreatureHost) { s.creatureHost = h }
 
-// SessionHost runs a write that depends on the campaign's live session under the play module's funnel: the session's row is taken
-// first, fn writes on that transaction and tells through t, and once it committed the session's number moves once and what fn told is
-// sent with it. With no open session fn runs in a plain transaction and t tells nothing. play.Service implements it (SetSessionHost).
-type SessionHost interface {
-	InSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error
-}
-
 // SetSessionHost connects the play module's funnel. Without it, the creature writes run in a transaction of their own and tell the
-// streams through the CreatureHost, with no number, as before the funnel.
-func (s *Service) SetSessionHost(h SessionHost) { s.sessionHost = h }
+// streams through the CreatureHost, with no number.
+func (s *Service) SetSessionHost(h sessiontell.Host) { s.sessionHost = h }
 
 // creatureTold is the Tell of a creature write that runs without the funnel: it keeps what the write told, and publishChange sends it
 // through the CreatureHost once the transaction committed.
 type creatureTold struct {
+	sessiontell.None
 	owner, encounterID string
 	told               bool
 }
 
-func (c *creatureTold) Touch()                        {}
-func (c *creatureTold) CombatLogChangedFull()         {}
 func (c *creatureTold) CreaturesChanged(owner string) { c.owner, c.told = owner, true }
 func (c *creatureTold) EncounterChanged(id string)    { c.encounterID = id }
 

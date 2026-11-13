@@ -12,7 +12,10 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 )
 
-var _ sessiontell.Tell = (*SessionTell)(nil)
+var (
+	_ sessiontell.Tell = (*SessionTell)(nil)
+	_ sessiontell.Host = (*Service)(nil)
+)
 
 // SessionTell is what a write of another module may tell the live streams once it commits, through InSession. It offers four hints and
 // nothing else: the hub and the number stay in this package. The zero value (a write with no open session) tells nothing.
@@ -42,6 +45,7 @@ func (t *SessionTell) CreaturesChanged(ownerUserID string) {
 // the table and the fog), as they stand once the write committed. An empty id tells nothing.
 func (t *SessionTell) EncounterChanged(encounterID string) {
 	if t.h != nil && encounterID != "" {
+		t.h.touch() // the hints are sent after the commit, so the write moves the number itself
 		t.s.tellEncounterAfter(t.h, t.campaignID, encounterID)
 	}
 }
@@ -66,7 +70,7 @@ func (t *SessionTell) CombatLogChangedFull() {
 // InSession runs a write of another module that depends on the campaign's session, under the funnel: it takes the open session's row
 // first, runs fn on that transaction (fn writes its own tables and tells through t), and, once the transaction committed, moves the
 // session's number once if fn told or touched and sends what fn told, stamped with it. fn's error rolls everything back and tells
-// nothing. When the campaign has no open session there is no screen to move: fn runs in a plain transaction and t tells nothing.
+// nothing. When the campaign has no open session, fn runs in a plain transaction and t tells nothing; a session that opens between the unlocked read and the commit is not locked by that write, and its screens read the change at their next Ready or read.
 func (s *Service) InSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
 	for try := 1; ; try++ {
 		open, err := s.queries.GetOpenGameSession(ctx, campaignID)
@@ -94,7 +98,7 @@ func (s *Service) InSession(ctx context.Context, campaignID string, fn func(tx p
 	}
 }
 
-// inNoSession is the write of InSession when the campaign has no open session: a plain transaction, with nothing to move or tell.
+// inNoSession is the write of InSession when the campaign has no open session: a plain transaction, with nothing to move or tell. A session that opens between the unlocked read and the commit is not locked by it.
 func (s *Service) inNoSession(ctx context.Context, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
 	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return fn(tx, &SessionTell{}) })
 }

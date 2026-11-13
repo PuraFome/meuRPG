@@ -233,7 +233,8 @@ func (s *Service) searchInTx(ctx context.Context, tx pgx.Tx, h *hints, session p
 func (s *Service) searchRolled(ctx context.Context, h *hints, c *combatTx, ts *trapSearch, r *searchTurn) error {
 	held, err := s.prepareSearchRoll(ctx, ts, r)
 	if err != nil || held {
-		if held && ts.place.spent { // the question moved the combat's revision
+		if held && ts.place.spent { // the question moved the combat's revision: the number moves with it
+			h.touch()
 			s.tellEncounterRowAfter(h, ts.m.CampaignID, ts.place.enc)
 		}
 		return err
@@ -493,7 +494,7 @@ func (s *Service) tellSearched(h *hints, campaignID, mapID string, users []strin
 		s.tellEncounterRowAfter(h, campaignID, enc)
 		h.tell(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: combatLogChangedMessage(enc.ID, false)}) // the master's log has the search
 	}
-	h.tell(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: mapChangedHint(mapID)}) // the master's activity read has a new line: a hint with no content
+	h.tell(campaignID, masterMapChanged(mapID)) // the master's activity read has a new line: a hint with no content
 }
 
 // tellSearchAgain fills h for a retry of a search whose key was found stored (ts.ev is what it wrote), with what the first call would

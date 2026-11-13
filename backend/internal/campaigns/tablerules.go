@@ -365,31 +365,16 @@ func tableRulesParams(msg *campaignsv1.TableRules) (campaignsdb.UpsertTableRules
 	}, dice, nil
 }
 
-// SessionHost runs a write that changes what a live session shows under the play module's funnel: the open session's row is taken first,
-// fn writes on that transaction and tells through t, and once it committed the session's number moves once and what fn told is sent
-// with it. With no open session fn runs in a plain transaction and tells nothing. play.Service implements it (SetSessionHost).
-type SessionHost interface {
-	InSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error
-}
-
 // SetSessionHost connects the play module's funnel. Without it, the table rules are saved in a transaction of their own and nothing
-// is told, as before the funnel.
-func (s *Service) SetSessionHost(h SessionHost) { s.sessionHost = h }
-
-// noTell is the Tell of a write that runs with no play module: it tells nothing.
-type noTell struct{}
-
-func (noTell) Touch()                  {}
-func (noTell) CreaturesChanged(string) {}
-func (noTell) EncounterChanged(string) {}
-func (noTell) CombatLogChangedFull()   {}
+// is told.
+func (s *Service) SetSessionHost(h sessiontell.Host) { s.sessionHost = h }
 
 // inSession runs fn on a transaction of the campaign's session, through the funnel when it is connected.
 func (s *Service) inSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
 	if s.sessionHost != nil {
 		return s.sessionHost.InSession(ctx, campaignID, fn)
 	}
-	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return fn(tx, noTell{}) })
+	return db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return fn(tx, sessiontell.None{}) })
 }
 
 // SetTableRules implements campaignsv1connect.CampaignServiceHandler.
