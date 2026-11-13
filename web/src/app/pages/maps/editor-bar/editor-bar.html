@@ -103,50 +103,72 @@
         <ng-content select="[why]" />
       </p>
     }
-    @if (canPaint() && settings().tool === 'cover') {
+    @if (canPaint()) {
       <div class="bar__row">
-        <span class="bar__label" id="bar-cover">Cobertura pintada</span>
-        <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="bar-cover" (relayKeydown)="onSegKey($event)">
-          @for (c of covers; track c) {
-            <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().cover === c" [attr.aria-checked]="settings().cover === c" [tabIndex]="settings().cover === c ? 0 : -1" (click)="set({ cover: c })">
-              <mat-icon class="chk" [class.chk--hide]="settings().cover !== c" aria-hidden="true">check</mat-icon>{{ coverLabel[c] }}
+        @switch (settings().tool) {
+          @case ('cover') {
+            <span class="bar__label" id="bar-cover">Cobertura pintada</span>
+            <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="bar-cover" (relayKeydown)="onSegKey($event)">
+              @for (c of covers; track c) {
+                <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().cover === c" [attr.aria-checked]="settings().cover === c" [tabIndex]="settings().cover === c ? 0 : -1" (click)="set({ cover: c })">
+                  <mat-icon class="chk" [class.chk--hide]="settings().cover !== c" aria-hidden="true">check</mat-icon>{{ coverLabel[c] }}
+                </button>
+              }
+            </div>
+          }
+          @case ('light') {
+            <span class="bar__label" id="bar-light">Luz pintada</span>
+            <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="bar-light" (relayKeydown)="onSegKey($event)">
+              @for (l of lights; track l) {
+                <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().light === l" [attr.aria-checked]="settings().light === l" [tabIndex]="settings().light === l ? 0 : -1" (click)="set({ light: l })">
+                  @if (settings().light === l) {
+                    <mat-icon aria-hidden="true">check</mat-icon>
+                  } @else {
+                    <mat-icon aria-hidden="true">{{ lightIcon[l] }}</mat-icon>
+                  }{{ lightLabel[l] }}
+                </button>
+              }
+            </div>
+          }
+          @case ('surface') {
+            <span class="bar__label" id="bar-surface">Superfície pintada</span>
+            <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="bar-surface" (relayKeydown)="onSegKey($event)">
+              @for (k of surfaces; track k) {
+                <button type="button" role="radio" class="seg__item" [class.seg__item--on]="!settings().erase && settings().surface === k" [attr.aria-checked]="!settings().erase && settings().surface === k" [tabIndex]="settings().surface === k ? 0 : -1" (click)="set({ surface: k, erase: false })">
+                  @if (!settings().erase && settings().surface === k) {
+                    <mat-icon aria-hidden="true">check</mat-icon>
+                  } @else {
+                    <mat-icon aria-hidden="true">{{ surfaceIcon[k] }}</mat-icon>
+                  }{{ surfaceLabel[k] }}
+                </button>
+              }
+            </div>
+          }
+          @case ('door') {
+            <span class="bar__label" id="bar-door">Tipo de porta</span>
+            <div class="bar__group" role="group" aria-labelledby="bar-door">
+              @for (d of doorChoices; track d) {
+                <button matButton="outlined" type="button" class="bar__tool" [class.bar__tool--on]="!settings().erase && settings().door === d" [attr.aria-pressed]="!settings().erase && settings().door === d" (click)="set({ door: d, erase: false })">
+                  <mat-icon class="chk" [class.chk--hide]="settings().erase || settings().door !== d" aria-hidden="true">check</mat-icon>
+                  <span class="bar__door" aria-hidden="true"><app-door-mark [state]="d" /></span>{{ doorLabel[d] }}
+                </button>
+              }
+            </div>
+            <span class="bar__sep" aria-hidden="true"></span>
+            <button matButton="outlined" type="button" class="bar__tool" [class.bar__tool--on]="settings().erase" [attr.aria-pressed]="settings().erase" (click)="set({ erase: !settings().erase })">
+              <mat-icon aria-hidden="true">close</mat-icon>Tirar a porta
             </button>
           }
-        </div>
-      </div>
-    }
-    @if (canPaint() && settings().tool === 'light') {
-      <div class="bar__row">
-        <span class="bar__label" id="bar-light">Luz pintada</span>
-        <div appRelayEvents class="seg" role="radiogroup" aria-labelledby="bar-light" (relayKeydown)="onSegKey($event)">
-          @for (l of lights; track l) {
-            <button type="button" role="radio" class="seg__item" [class.seg__item--on]="settings().light === l" [attr.aria-checked]="settings().light === l" [tabIndex]="settings().light === l ? 0 : -1" (click)="set({ light: l })">
-              @if (settings().light === l) {
-                <mat-icon aria-hidden="true">check</mat-icon>
-              } @else {
-                <mat-icon aria-hidden="true">{{ lightIcon[l] }}</mat-icon>
-              }{{ lightLabel[l] }}
-            </button>
-          }
-        </div>
-        <span class="bar__hint">O que você pinta vale por quadrado, e a luz não atravessa parede. Só vale com a névoa ligada.</span>
-      </div>
-    }
-    @if (canPaint() && settings().tool === 'door') {
-      <div class="bar__row">
-        <span class="bar__label" id="bar-door">Tipo de porta</span>
-        <div class="bar__group" role="group" aria-labelledby="bar-door">
-          @for (d of doorChoices; track d) {
-            <button matButton="outlined" type="button" class="bar__tool" [class.bar__tool--on]="!settings().erase && settings().door === d" [attr.aria-pressed]="!settings().erase && settings().door === d" (click)="set({ door: d, erase: false })">
-              <mat-icon class="chk" [class.chk--hide]="settings().erase || settings().door !== d" aria-hidden="true">check</mat-icon>
-              <span class="bar__door" aria-hidden="true"><app-door-mark [state]="d" /></span>{{ doorLabel[d] }}
-            </button>
-          }
-        </div>
-        <span class="bar__sep" aria-hidden="true"></span>
-        <button matButton="outlined" type="button" class="bar__tool" [class.bar__tool--on]="settings().erase" [attr.aria-pressed]="settings().erase" (click)="set({ erase: !settings().erase })">
-          <mat-icon aria-hidden="true">close</mat-icon>Tirar a porta
-        </button>
+        }
+        @if (hint()) {
+          <p class="bar__paint-hint"><mat-icon aria-hidden="true">edit</mat-icon>{{ hint() }}</p>
+        }
+        @if (settings().tool === 'light') {
+          <span class="bar__hint">O que você pinta vale por quadrado, e a luz não atravessa parede. Só vale com a névoa ligada.</span>
+        }
+        @if (settings().tool === 'surface') {
+          <span class="bar__hint">Sem deslocamento de natação ou de escalada, cada metro ali conta dobrado. Os jogadores veem onde o personagem enxerga.</span>
+        }
       </div>
     }
   }

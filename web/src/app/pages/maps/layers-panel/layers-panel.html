@@ -26,7 +26,7 @@
       }
     </div>
   }
-  <p class="lp__lead">O que você pinta aparece só para você aqui; os jogadores veem terreno, paredes, portas e cobertura onde o personagem enxerga.</p>
+  <p class="lp__lead">O que você pinta aparece só para você aqui; os jogadores veem terreno, superfície, paredes, portas e cobertura onde o personagem enxerga.</p>
   <ul class="lp__list">
     @for (line of lines(); track line.tool) {
       <li class="lp__row">
@@ -35,6 +35,9 @@
             @switch (line.tool) {
               @case ('terrain') {
                 <span class="mr-swatch mr-swatch--terrain"></span>
+              }
+              @case ('surface') {
+                <span class="mr-swatch mr-swatch--surface"></span>
               }
               @case ('wall') {
                 <span class="mr-swatch mr-swatch--wall"></span>

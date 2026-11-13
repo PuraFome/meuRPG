@@ -7,6 +7,8 @@ import {
   brushSquares,
   layerLines,
   lineSquares,
+  SURFACE_LABEL,
+  TOOL_LABEL,
   paintHint,
   strokeOf,
 } from './paint-tools';
@@ -138,26 +140,27 @@ describe('layerLines', () => {
     const lines = layerLines(some);
     expect(lines.map((l) => l.name)).toEqual([
       'Terreno difícil',
+      'Superfície',
       'Parede',
       'Cobertura',
       'Luz',
       'Não dá para passar',
       'Portas',
     ]);
+    expect(lines[6].detail).toBe('nada pintado');
     expect(lines[5].detail).toBe('nada pintado');
-    expect(lines[4].detail).toBe('nada pintado');
     expect(plain(lines[0].detail)).toContain('2 quadrados');
     expect(plain(lines[0].detail)).toContain('custa +1,5 m por quadrado');
-    expect(plain(lines[1].detail)).toContain('1 quadrado');
-    expect(plain(lines[1].detail)).toContain('bloqueia movimento, visão e luz');
-    expect(plain(lines[2].detail)).toBe('2 quadrados de meia cobertura e 1 de três quartos');
-    expect(plain(lines[3].detail)).toBe('1 quadrado pintado');
+    expect(plain(lines[2].detail)).toContain('1 quadrado');
+    expect(plain(lines[2].detail)).toContain('bloqueia movimento, visão e luz');
+    expect(plain(lines[3].detail)).toBe('2 quadrados de meia cobertura e 1 de três quartos');
+    expect(plain(lines[4].detail)).toBe('1 quadrado pintado');
   });
 
   it('says "nada pintado" for an empty layer and never names an object for cover', () => {
     const lines = layerLines(NO_LAYERS);
     expect(lines.every((l) => l.detail === 'nada pintado')).toBe(true);
-    expect(plain(layerLines({ ...NO_LAYERS, half: [{ col: 0, row: 0 }] })[2].detail)).toBe(
+    expect(plain(layerLines({ ...NO_LAYERS, half: [{ col: 0, row: 0 }] })[3].detail)).toBe(
       '1 quadrado de meia cobertura',
     );
   });
@@ -179,8 +182,61 @@ describe('"Não dá para passar" (B2)', () => {
     expect(paintHint({ ...DEFAULT_SETTINGS, tool: 'nopass' })).toBe(
       'Não dá para passar · arraste para pintar · Shift apaga',
     );
-    const line = layerLines({ ...NO_LAYERS, noPass: [{ col: 1, row: 1 }] })[4];
+    const line = layerLines({ ...NO_LAYERS, noPass: [{ col: 1, row: 1 }] })[5];
     expect(plain(line.detail)).toBe('1 quadrado · bloqueia o movimento, não a visão');
+  });
+});
+
+describe('"Superfície" (#589)', () => {
+  it('paints 1 for Água, 2 for Escalável and 0 when erasing, all in the one layer', () => {
+    expect(DEFAULT_SETTINGS.surface).toBe(1);
+    expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'surface' })).toEqual({
+      layer: MapLayer.SURFACE,
+      value: 1,
+    });
+    expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'surface', surface: 2 })).toEqual({
+      layer: MapLayer.SURFACE,
+      value: 2,
+    });
+    expect(strokeOf({ ...DEFAULT_SETTINGS, tool: 'surface', surface: 2, erase: true })).toEqual({
+      layer: MapLayer.SURFACE,
+      value: 0,
+    });
+  });
+
+  it('is the tool after "Terreno difícil", with its two brushes named', () => {
+    expect(TOOL_LABEL.surface).toBe('Superfície');
+    expect(SURFACE_LABEL).toEqual({ 1: 'Água', 2: 'Escalável' });
+  });
+
+  it('says how to paint and how to erase, without naming the tool the row already names', () => {
+    expect(paintHint({ ...DEFAULT_SETTINGS, tool: 'surface' })).toBe(
+      'Arraste para pintar · Shift apaga',
+    );
+    expect(paintHint({ ...DEFAULT_SETTINGS, tool: 'surface', erase: true })).toBe(
+      'Arraste para apagar a superfície',
+    );
+  });
+
+  it('counts the squares in the list of layers, right after "Terreno difícil"', () => {
+    const lines = layerLines(NO_LAYERS);
+    expect(lines.map((l) => l.name).slice(0, 3)).toEqual(['Terreno difícil', 'Superfície', 'Parede']);
+    expect(lines[1]).toMatchObject({ tool: 'surface', count: 0, detail: 'nada pintado' });
+    const water = [{ col: 0, row: 0 }];
+    const climb = [
+      { col: 1, row: 0 },
+      { col: 2, row: 0 },
+    ];
+    expect(plain(layerLines({ ...NO_LAYERS, water, climb })[1].detail)).toBe(
+      '1 quadrado de água e 2 escaláveis · custam o dobro',
+    );
+    expect(layerLines({ ...NO_LAYERS, water, climb })[1].count).toBe(3);
+    expect(plain(layerLines({ ...NO_LAYERS, water })[1].detail)).toBe(
+      '1 quadrado de água · custa o dobro',
+    );
+    expect(plain(layerLines({ ...NO_LAYERS, climb })[1].detail)).toBe(
+      '2 quadrados escaláveis · custam o dobro',
+    );
   });
 });
 

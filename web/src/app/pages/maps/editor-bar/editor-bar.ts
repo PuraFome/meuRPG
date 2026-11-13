@@ -13,6 +13,8 @@ import {
   type LightDegree,
   type PaintSettings,
   type PaintTool,
+  SURFACE_LABEL,
+  type SurfaceKind,
   TOOL_LABEL,
 } from '../../../core/maps/paint-tools';
 import { DoorMark } from '../../../shared/map-layers/door-mark';
@@ -28,12 +30,15 @@ const POINT_KINDS = [MapPointKind.BATTLE, MapPointKind.SUBMAP, MapPointKind.SCEN
 const NEW_KINDS = [MapPointKind.LIGHT, MapPointKind.TRAP, MapPointKind.TREASURE] as const;
 const TOOLS: readonly { tool: PaintTool; icon: string }[] = [
   { tool: 'terrain', icon: 'landscape' },
+  { tool: 'surface', icon: 'waves' },
   { tool: 'wall', icon: 'brick' },
   { tool: 'cover', icon: 'fence' },
   { tool: 'light', icon: 'lightbulb' },
   { tool: 'nopass', icon: 'block' },
   { tool: 'door', icon: 'door_front' },
 ];
+/** The brushes' glyphs while not chosen (the chosen one shows its check, never colour alone). */
+const SURFACE_ICON: Readonly<Record<SurfaceKind, string>> = { 1: 'waves', 2: 'keyboard_double_arrow_up' };
 const LIGHT_ICON: Readonly<Record<LightDegree, string>> = {
   3: 'light_mode',
   2: 'contrast',
@@ -43,7 +48,7 @@ const LIGHT_ICON: Readonly<Record<LightDegree, string>> = {
 /**
  * The map editor's bar (E9-01, E9-02): "Pontos | Pintar", and, by mode, either "Adicionar ponto" (Batalha,
  * Submapa, Cena de RP, and the new Luz, Armadilha and Tesouro) with the token menu, or the paint tools: Terreno
- * difícil, Parede, Cobertura, Luz, "Apagar" and the brush (1×1, 3×3), with a second line for the degree of the
+ * difícil, Superfície (Água, Escalável), Parede, Cobertura, Luz, "Apagar" and the brush (1×1, 3×3), with a second line for the degree of the
  * cover (Meia, Três quartos) or of the light (Claro, Penumbra, Escuro). The zoom buttons close it. The selected
  * choice always shows its check first, never colour alone. Without a grid the paint tools stay but say they
  * cannot act (`aria-disabled`, the reason under the bar). Presentational: the editor owns the state.
@@ -67,6 +72,8 @@ export class EditorBar {
   /** Why the paint tools cannot act (no grid, the layers not read yet), written next to them. */
   readonly why = input('');
   readonly whyIcon = input('grid_on');
+  /** What a stroke does with the tool in hand ("Arraste para pintar · Shift apaga"): the second row's line, never over the map. */
+  readonly hint = input('');
 
   readonly modeChange = output<EditorMode>();
   readonly settingsChange = output<PaintSettings>();
@@ -84,6 +91,9 @@ export class EditorBar {
   protected readonly coverLabel = COVER_LABEL;
   protected readonly lightLabel = LIGHT_LABEL;
   protected readonly lightIcon = LIGHT_ICON;
+  protected readonly surfaceLabel = SURFACE_LABEL;
+  protected readonly surfaceIcon = SURFACE_ICON;
+  protected readonly surfaces: readonly SurfaceKind[] = [1, 2];
   protected readonly kindLabel = pointKindLabel;
   protected readonly kindIcon = pointKindIcon;
   protected readonly scaleText = computed(() => scaleLabel(this.scale()));

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { NO_LAYERS, decodeLayers, doorCounts, hasLayers, hasPainted, lightCount } from './layers';
+import {
+  NO_LAYERS,
+  decodeLayers,
+  doorCounts,
+  hasLayers,
+  hasPainted,
+  lightCount,
+  surfaceCounts,
+} from './layers';
 
 // The fixtures are the byte layouts rules/grid's tests pin down
 // (TestLayerEncoding, TestLightAndCoverLayerEncoding).
@@ -147,6 +155,35 @@ describe('decodeLayers: the doors (RN-26)', () => {
         noPass: new Uint8Array(),
       }).noPass,
     ).toBeUndefined();
+  });
+
+  it('reads the surface layer as two bits a square: 1 is water, 2 is climbable', () => {
+    // Squares 0..3 of the first byte hold 1, 2, 0, 1; square 4 (the next byte) holds 2.
+    const layers = decodeLayers({
+      ...empty,
+      gridColumns: 4,
+      gridRows: 2,
+      wall: new Uint8Array(),
+      surface: Uint8Array.of(0b01_00_10_01, 0b0000_0010),
+    });
+    expect(layers.water).toEqual([
+      { col: 0, row: 0 },
+      { col: 3, row: 0 },
+    ]);
+    expect(layers.climb).toEqual([
+      { col: 1, row: 0 },
+      { col: 0, row: 1 },
+    ]);
+    expect(hasLayers(layers)).toBe(true);
+    expect(surfaceCounts(layers)).toEqual({ water: 2, climb: 2 });
+  });
+
+  it('has no surface when the layer is empty or absent', () => {
+    const none = decodeLayers({ ...empty, gridColumns: 4, gridRows: 2, wall: new Uint8Array() });
+    expect(none.water).toBeUndefined();
+    expect(none.climb).toBeUndefined();
+    expect(surfaceCounts(none)).toEqual({ water: 0, climb: 0 });
+    expect(hasLayers(none)).toBe(false);
   });
 
   it('has no doors when the layer is empty, and a map with doors only still has layers to name', () => {
