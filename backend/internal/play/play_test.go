@@ -947,6 +947,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["StandUp"] = cc.StandUp(ctx, connect.NewRequest(&playv1.StandUpRequest{CampaignId: id}))
 	_, combat["GetMoveOptions"] = cc.GetMoveOptions(ctx, connect.NewRequest(&playv1.GetMoveOptionsRequest{CampaignId: id}))
 	_, combat["SetCombatantSide"] = cc.SetCombatantSide(ctx, connect.NewRequest(&playv1.SetCombatantSideRequest{CampaignId: id}))
+	_, combat["SetCombatantMount"] = cc.SetCombatantMount(ctx, connect.NewRequest(&playv1.SetCombatantMountRequest{CampaignId: id}))
 	_, combat["SetCombatantCover"] = cc.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: id}))
 	_, combat["SetMonsterReactionMode"] = cc.SetMonsterReactionMode(ctx, connect.NewRequest(&playv1.SetMonsterReactionModeRequest{CampaignId: id}))
 	_, combat["SetSunlight"] = cc.SetSunlight(ctx, connect.NewRequest(&playv1.SetSunlightRequest{CampaignId: id}))

@@ -70,6 +70,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `AddMonsters` | Master | "Pôr no combate" (see [Encounters](encounters.md)) |
 | `RemoveCombatant` | Master | Takes someone out; if it was their turn, the turn passes. Refused (`PENDING_DAMAGE`) while a damage the combatant attacked with or took is still to roll or apply. A character's effects go back to game time when it leaves in setup (`effectRowsToCharacters`; its inspiration die is not given back). A creature leaving because its owner or the master dismissed it cannot be refused: the damage waiting on it is written as dropped (`damage_discarded`, before the `combatant_removed`) |
 | `SetCombatantSide` | Master | "Aliado" or enemy for an NPC (`side_set`); passes over opportunity offers now between allies |
+| `SetCombatantMount` | Master | Marks an NPC or a creature as a willing mount (`controlled` or `independent`) or takes the mark off (`mount_kind_set`); see [Mounted combat](movement.md#mounted-combat) |
 | `SetCombatantHidden` | Master | Hides or shows an NPC |
 | `SetMonsterReactionMode` | Master | Chooses how an NPC's Parry is decided: the server on its own (default) or "Perguntar", a window for the master ([Reactions](reactions.md#parry)) |
 | `SetCombatantCover` | Master | Cover by hand (none, half, three-quarters, total); cleared when the combatant moves |

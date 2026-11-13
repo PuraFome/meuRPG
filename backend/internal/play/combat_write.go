@@ -77,6 +77,11 @@ const (
 	eventGearSwapped = "gear_swapped"
 	// A character used a feature that declares a use (UseFeature, features.go): the master's undo takes it back.
 	eventFeatureUsed = "feature_used"
+	// The master marked a combatant as a willing mount, or took the mark off (SetCombatantMount, combat_mount.go), and a rider got
+	// on a mount or off it (the mount and dismount calls). The mark is not undone, as the side is not.
+	eventMountKindSet        = "mount_kind_set"
+	eventCombatantMounted    = "combatant_mounted"
+	eventCombatantDismounted = "combatant_dismounted"
 )
 
 // The kinds of the XP awards (package progression writes them

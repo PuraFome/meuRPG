@@ -142,6 +142,20 @@ The geometry is pure and in `rules/grid/area.go` (`Area.FromPoint`, `Area.FromCa
 | Streams | After the commit `publishPushed` sends `combatant_moved` to who may see the creature and `positionChanged` to the fog, as a move does |
 | Undo | The undo of the cast puts each pushed creature back (`putPushedBack`) and the fog follows it. A rider answer is not undoable, so its push is not either |
 
+## Mounted combat
+
+A rider and its mount stay two combatants.
+The rider row names the mount it sits on (`mounted_on_id`); the mount row says whether it is a willing mount (`mount_kind`).
+A mount carries one rider, and a combatant that rides is not a mount.
+
+| Aspect | Rule |
+|---|---|
+| Kinds | `""` is not a mount, `controlled` obeys its rider, `independent` keeps its own turn. The kind is the master's: `SetCombatantMount` marks an NPC or a creature, never a player's character |
+| Refusals | `ALREADY_MOUNTED` for a rider that is marked, `MOUNT_TAKEN` for taking the mark off a mount that carries a rider. A mount that carries one may change between `controlled` and `independent` |
+| Events | `mount_kind_set` is a session event the undo does not take back, like `side_set`. `combatant_mounted` and `combatant_dismounted` are in the table of kinds and no call writes them yet |
+| Audience | The master reads every field. A player reads `mounted_on_id` and `rider_id` only when both rows are visible to them, so a hidden mount leaves its rider plain. `mount_kind` goes to the master and to the player who controls the combatant, and `mount_move_used` to whoever reads the combatant's economy |
+| Not built | The calls that put a rider on a mount and take it off, the shared square, the rider's initiative and the falls |
+
 ## On screen
 
 The browser only draws what the server sends (RN-21, RN-20).

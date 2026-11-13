@@ -453,6 +453,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 		vit = r.vitals[c.CharacterID]
 	}
 	p := combatantToProto(c, v, r.ties[c.ID], vit, r.armorClass[sheetKey(c)], r.npcs[sheetKey(c)].portrait, actsNow(e, c), r.names, r.standing[c.ID])
+	mountFor(p, c, d.cs, v)
 	if v.master {
 		r.masterView(p, c)
 	}
@@ -663,6 +664,7 @@ func shareEconomy(out *playv1.Combatant, c playdb.Combatant, standing grid.Surfa
 	out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
 	out.Disengaged = c.Disengaged
 	out.StandUpCostDft = clamp32(standUpCostDFt(c, standing), 0, math.MaxInt32)
+	out.MountMoveUsed = c.MountMoveUsed
 }
 
 // markKeyOf is the cover the master marked, as an event keeps it ("" for none).
