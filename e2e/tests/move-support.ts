@@ -1,6 +1,7 @@
 import { expect, type Browser, type BrowserContext, type Locator, type Page } from '@playwright/test';
 
 import { beginAttackCombatRPC, tableForCombat, type CombatTable } from './combat-support';
+import { featShotScale } from './feat-options-support';
 import { endOpenSessionRPC } from './live-session-support';
 import { boxOf, callRPC, newSignedInContext, type CharacterBuild } from './support';
 
@@ -53,7 +54,7 @@ export async function movingTable(
   } = {},
 ): Promise<MoveTable> {
   const master: BrowserContext = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
-  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: options.viewport ?? { width: 1280, height: 900 }, colorScheme: options.colorScheme });
+  const player: BrowserContext = await newSignedInContext(browser, 'Jogador Teste', { viewport: options.viewport ?? { width: 1280, height: 900 }, colorScheme: options.colorScheme, ...featShotScale });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');
