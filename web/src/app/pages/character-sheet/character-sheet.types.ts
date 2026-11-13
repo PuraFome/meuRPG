@@ -447,17 +447,17 @@ export interface CharacterSheetVm {
 /** How the campaign levels (RN-09), as the sheet needs it: whether it counts XP. */
 export type CampaignXpMode = 'enemies' | 'gold' | 'milestones';
 
-/**
- * The port `CharacterSheetPage` depends on. Phase 2 provides a concrete
- * implementation wrapping the generated `CharacterService` client
- * (`meurpg.characters.v1`) — see this file's top comment.
- */
 /** A change of the gear saved in one request: the weapon marks, and/or the magic bonus of one piece (0 removes it). */
 export interface GearChange {
   readonly marks?: readonly WeaponMarkVm[];
   readonly bonus?: { readonly key: string; readonly bonus: number };
 }
 
+/**
+ * The port `CharacterSheetPage` depends on. Phase 2 provides a concrete
+ * implementation wrapping the generated `CharacterService` client
+ * (`meurpg.characters.v1`) — see this file's top comment.
+ */
 export abstract class CharacterSheetSource {
   /** How the campaign levels, to know whether the sheet has an XP block (a
    * milestones campaign has none) or only the "Pode subir de nível" tag. */

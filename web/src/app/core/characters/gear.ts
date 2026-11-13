@@ -1,8 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { createClient } from '@connectrpc/connect';
 
-import { CharacterService } from '../../../gen/meurpg/characters/v1/characters_pb';
-import type { ItemBonus } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { CharacterService, type ItemBonus } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { type GearEntry, GearKind, type ItemModifier } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
 
