@@ -3,6 +3,7 @@ package leaktest
 import (
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -34,10 +35,10 @@ import (
 //
 // What the number depends on, exactly: it moves once for each write that had an effect, and not for one that changed nothing (a
 // paint of what was painted, a trap already disarmed, a clue the player had), whatever the write held. A token a player's
-// character drops near a trap it notices is two writes (the token's, then the notice's reveal), so a third player's number
-// differs by one between a world where the drop noticed a hidden trap and one where it did not. That is the same exposure as
-// play's notice after a combat move, an accepted one: the counter says that a write had an effect, never which. No row of
-// the twin worlds below can hold it (the finder hears trap_noticed, and the rows require that no player hears anything).
+// character drops on a map the players see is two writes (the token's, then the notice of what it sees from where it stands), and the
+// notice moves the number once whether or not it found a trap (TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot),
+// so a third player's number says nothing of a find. The notice after a combat move, in package play, moves it only when a player learned
+// something: the counter says that a write had an effect, never which, and that one is an accepted exposure.
 //
 // The counter-per-transaction rule (one bump whatever the transaction told) is TestTxBumpsOncePerTransactionWhateverItTold
 // and TestTxBumpsOnceWhateverTheSizeOfWhatItTold, in package play.
@@ -925,4 +926,59 @@ func TestAPlayersSinceSeqAnswerIgnoresWhatTheyCannotSee(t *testing.T) {
 		log := w.seqLog(m, 0)
 		must(m.combat.UndoLastAction(ctx, rq(&playv1.UndoLastActionRequest{CampaignId: w.campaign, EncounterId: e.GetId(), ExpectedEventId: log.GetUndoableEventId(), IdempotencyKey: newKey()})))
 	})
+}
+
+// ===== A drop that notices a trap, and one that does not.
+
+// noticeWorld builds a world, adds an armed trap on the map the players see with the given DC to notice (0: the trap is never noticed
+// by passing), has the master drop Toren (Caio's character) beside it, and reads what Ana, a third player, was told: the kinds of her
+// events (the heartbeats left out) and how far her number went. It returns what Caio heard as well.
+func noticeWorld(t *testing.T, noticeDC int32) (ana, caio []string, moved int64) {
+	t.Helper()
+	w := newWorld(t)
+	w.pts["seq-notice-trap"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, w.secrets.marker("seq-notice-trap"), w.secrets.marker("seq-notice-trap-description"), 7, 13, func(r *mapsv1.CreateMapPointRequest) {
+		r.Trap = w.trapSpec()
+		r.Trap.NoticeDc = noticeDC
+	})
+	w.secrets.id("trap", w.pts["seq-notice-trap"].GetId())
+	w.hints.Settle(w.t)
+	streams := map[*person]*streamWatcher{w.ana: w.watchStream(w.ana), w.caio: w.watchStream(w.caio)}
+	start := streams[w.ana].number()
+	w.place(w.fogMap, w.toren.GetId(), 8, 13)
+	// Both writes were made when place returned: a beat that begins after the next one reads what they left.
+	watch := streams[w.ana]
+	watch.beatAfter(t, watch.count(), func(int64) bool { return true })
+	end := watch.beatAfter(t, watch.count(), func(int64) bool { return true })
+	must(w.master.play.EndGameSession(t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
+	kinds := map[*person][]string{}
+	for p, sw := range streams {
+		<-sw.done
+		for _, ev := range sw.since(1) {
+			if c := eventCase(ev); c != "heartbeat" && c != "session_ended" {
+				kinds[p] = append(kinds[p], c)
+			}
+		}
+	}
+	return kinds[w.ana], kinds[w.caio], end - start
+}
+
+// TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot: a token dropped beside a trap is one write for the token and one for
+// its notice, the notice's number moving whether or not a trap was noticed (and whether or not the map holds one), so a player who
+// hears nothing of it reads the same number and the same events in the world where Toren noticed the trap (a DC he reaches) and in
+// the one where he could not (a trap with no DC to notice). Control: only Toren's player hears trap_noticed.
+func TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot(t *testing.T) {
+	anaA, caioA, movedA := noticeWorld(t, 1)
+	anaB, caioB, movedB := noticeWorld(t, 0)
+	if !slices.Contains(caioA, "trap_noticed") || slices.Contains(caioB, "trap_noticed") {
+		t.Fatalf("Caio heard %v where the trap was noticed and %v where it was not: the control is gone", caioA, caioB)
+	}
+	if slices.Contains(anaA, "trap_noticed") {
+		t.Errorf("Ana heard %v: the hint of a trap is its finder's alone", anaA)
+	}
+	if movedA != movedB {
+		t.Errorf("Ana's number moved by %d where the trap was noticed and by %d where it was not, want the same", movedA, movedB)
+	}
+	if !slices.Equal(anaA, anaB) {
+		t.Errorf("Ana heard %v where the trap was noticed and %v where it was not, want the same", anaA, anaB)
+	}
 }

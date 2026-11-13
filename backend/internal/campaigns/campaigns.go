@@ -345,5 +345,6 @@ func (s *Service) queriesIn(tx pgx.Tx) *campaignsdb.Queries {
 func (s *Service) CheckWired() error {
 	return wiring.Check("campaigns",
 		wiring.Dep{Setter: "SetCharacters", Missing: s.characters == nil},
-		wiring.Dep{Setter: "SetXPAwards", Missing: s.xpAwards == nil})
+		wiring.Dep{Setter: "SetXPAwards", Missing: s.xpAwards == nil},
+		wiring.Dep{Setter: "SetSessionHost", Missing: s.sessionHost == nil})
 }

@@ -12,7 +12,7 @@ import (
 // actions, an image on screen) run under play's funnel (#735): inSession takes the open session's row first, runs the write on
 // that transaction, and, once it committed, moves the session's number once if the write touched and runs the steps the write
 // collected (Tell.After), which tell the streams with the number. Without a session host (no play module connected) the write runs
-// in a transaction of its own and its steps send through the LiveSession with no number, as they did before the funnel.
+// in a transaction of its own and its steps send through the LiveSession with no number.
 //
 // The lock order is the session's row first, then the map, token and character rows. A write that another module calls from its
 // own transaction (the puzzle seam, the session's maps) is already under play's funnel and takes that transaction and tell.

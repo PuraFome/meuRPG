@@ -56,6 +56,53 @@ func heardOnly(t *testing.T, heard map[string][]string, kind string, who ...stri
 	}
 }
 
+func (a *armed) giveCall(t *testing.T, key, monster string) func() error {
+	return func() error {
+		_, err := a.master.characters.GiveCreature(t.Context(), connect.NewRequest(&charactersv1.GiveCreatureRequest{
+			CampaignId: a.campaignID, CharacterId: a.toren.GetId(), MonsterKey: monster, Name: "Presa", IdempotencyKey: key,
+		}))
+		return err
+	}
+}
+
+func TestGiveCreatureHints(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	g := a.summonersHints(t)
+	key := newKey()
+	g.keyed(a.giveCall(t, key, "monster:wolf"), a.giveCall(t, key, "monster:wolf"), a.giveCall(t, key, "monster:bear"))
+}
+
+func TestGiveCreatureHeardByTheMasterAndTheOwner(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	g := a.summonersHints(t)
+	heard := g.first(a.giveCall(t, "", "monster:wolf"), true)
+	heardOnly(t, heard, kCreaturesChanged, "Caio")
+}
+
+func TestGiveCreatureRefusedTellsNothing(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	g := a.summonersHints(t)
+	g.refused(a.giveCall(t, "", "monster:dragon-of-the-moon"))
+}
+
+func TestGiveCreatureWithNoOpenSessionMovesNothing(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	g := a.summonersHints(t)
+	a.master.end(t, a.master.liveSession(t, a.campaignID).GetGameSession())
+	before := g.seq()
+	g.drain()
+	if err := a.giveCall(t, "", "monster:wolf")(); err != nil {
+		t.Fatalf("GiveCreature(no open session) error = %v", err)
+	}
+	if got := g.seq(); got != before {
+		t.Errorf("hint_seq = %d, want %d", got, before)
+	}
+}
+
 func TestRenameCreatureHints(t *testing.T) {
 	t.Parallel()
 	a := newSummoners(t)

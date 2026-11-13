@@ -309,5 +309,6 @@ func (s *Service) CheckWired() error {
 		wiring.Dep{Setter: "SetLive", Missing: s.live == nil},
 		wiring.Dep{Setter: "SetCreatureHost", Missing: s.creatureHost == nil},
 		wiring.Dep{Setter: "SetReviewHost", Missing: s.reviewHost == nil},
-		wiring.Dep{Setter: "SetLevelUps", Missing: s.levelUps == nil})
+		wiring.Dep{Setter: "SetLevelUps", Missing: s.levelUps == nil},
+		wiring.Dep{Setter: "SetSessionHost", Missing: s.sessionHost == nil})
 }

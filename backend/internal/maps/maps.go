@@ -591,5 +591,7 @@ func errImagesOff() error {
 // CheckWired fails when a collaborator that cmd/api connects after New is
 // still nil (see platform/wiring).
 func (s *Service) CheckWired() error {
-	return wiring.Check("maps", wiring.Dep{Setter: "SetTrapFirer", Missing: s.firer == nil})
+	return wiring.Check("maps",
+		wiring.Dep{Setter: "SetTrapFirer", Missing: s.firer == nil},
+		wiring.Dep{Setter: "SetSessionHost", Missing: s.sessionHost == nil})
 }

@@ -20,8 +20,8 @@ type TxStarter interface {
 
 // defaultRetryPolicy is cockroach-go's policy type: it counts the attempts and
 // ends them with *crdb.MaxRetriesExceededError.
-// It waits 10ms, 20ms, 40ms... (capped at 500ms) between attempts.
-// It gives up after 8 retries (about 1.6s of waiting in total).
+// The delay between attempts doubles from 10ms (capped at 500ms), and each wait is jittered over the upper half of its delay.
+// It gives up after 8 retries (at most about 1.6s of waiting in total).
 // Backing off, instead of retrying immediately, gives the transaction we
 // collided with time to finish.
 var defaultRetryPolicy crdb.RetryPolicy = &crdb.ExpBackoffRetryPolicy{

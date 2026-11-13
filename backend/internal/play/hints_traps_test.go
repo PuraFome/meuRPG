@@ -255,6 +255,32 @@ func TestASearchReadsTheSameToTheOtherPlayersWhateverItFound(t *testing.T) {
 	}
 }
 
+// A combat move moves the session's number the same whether or not its passive notice found a trap, and tells the players who did not move
+// nothing of it: the bystanders' streams read the same in a world where Toren noticed the trap and in its twin where he could not.
+func TestAMoveReadsTheSameToTheOtherPlayersWhetherItNoticedATrapOrNot(t *testing.T) {
+	t.Parallel()
+	bystanders := func(noticeDC int32) (moved int64, heard map[string][]string) {
+		r := newTrapRig(t)
+		r.trap(t, "Fosso Dourado", 9, 7, func(s *mapsv1.TrapSpec) { s.NoticeDc = noticeDC })
+		r.fight(t)
+		g := trapRigHints(t, r, "Ana", "Bia")
+		before := g.seq()
+		r.mustMove(t, r.caio, "Toren", 7, 7)
+		moved = g.seq() - before
+		return moved, kindsOf(g.drain())
+	}
+	noticedMoved, noticed := bystanders(10)
+	missedMoved, missed := bystanders(0)
+	if noticedMoved != missedMoved {
+		t.Errorf("the number moved by %d (trap noticed) and %d (none), want the same", noticedMoved, missedMoved)
+	}
+	for _, who := range []string{"Ana", "Bia"} {
+		if len(noticed[who]) != len(missed[who]) {
+			t.Errorf("%s heard %v (trap noticed) and %v (none), want the same", who, noticed[who], missed[who])
+		}
+	}
+}
+
 // The Search action of a combat whose d20 is kept for a question (a die the combatant holds) moves the combat's revision: the session's
 // number moves once with it, and the combat's hint carries the number.
 func TestAHeldSearchInACombatMovesTheNumber(t *testing.T) {

@@ -167,7 +167,7 @@ func (s *Service) inNoSession(ctx context.Context, campaignID string, fn func(tx
 	}); err != nil {
 		return err
 	}
-	// No session is open, so there is no number to move; what the write collected for after the commit goes out as it always did.
+	// No session is open, so there is no number to move; what the write collected for after the commit goes out with no number.
 	if len(plain.afters) > 0 {
 		pctx, stop := afterCommit(ctx)
 		defer stop()

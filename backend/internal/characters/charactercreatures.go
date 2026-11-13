@@ -116,11 +116,14 @@ func (s *Service) SetSessionHost(h sessiontell.Host) { s.sessionHost = h }
 type creatureTold struct {
 	sessiontell.None
 	owner, encounterID string
-	told               bool
+	told, replayed     bool
 }
 
 func (c *creatureTold) CreaturesChanged(owner string) { c.owner, c.told = owner, true }
 func (c *creatureTold) EncounterChanged(id string)    { c.encounterID = id }
+
+// Replay marks the repeat of a gift: with no funnel there is no number to tell it with, so the repeat tells nothing.
+func (c *creatureTold) Replay() { c.replayed = true }
 
 // inSession runs fn on a transaction of the campaign's session, through the funnel when it is connected.
 func (s *Service) inSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
@@ -134,7 +137,7 @@ func (s *Service) inSession(ctx context.Context, campaignID string, fn func(tx p
 	}); err != nil {
 		return err
 	}
-	if told.told {
+	if told.told && !told.replayed {
 		s.publishCreatureChange(ctx, campaignID, told.owner, told.encounterID)
 	}
 	return nil
@@ -314,18 +317,23 @@ func (s *Service) GiveCreature(
 		return nil, err
 	}
 	var created charactersdb.CharacterCreature
-	var ownerUser string
-	var replayed bool
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		var err error
+	err = s.inSession(ctx, g.m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+		var (
+			ownerUser string
+			replayed  bool
+			err       error
+		)
 		created, ownerUser, replayed, err = s.giveCreatureInTx(ctx, tx, g)
+		if err == nil {
+			if replayed {
+				t.Replay() // the first call may have died before it told: the lists go out again with the number as it stands
+			}
+			t.CreaturesChanged(ownerUser)
+		}
 		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "give a creature", err)
-	}
-	if s.creatureHost != nil && !replayed {
-		s.creatureHost.PublishCreaturesChanged(g.m.CampaignID, ownerUser)
 	}
 	return connect.NewResponse(&charactersv1.GiveCreatureResponse{Creature: characterCreatureToProto(g.content, created)}), nil
 }

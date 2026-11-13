@@ -99,20 +99,31 @@ func (g *hintRig) quietHeard(phase string, heard map[string][]*playv1.WatchGameS
 // first is the write that happens: the number moves by one, and every event it tells carries it.
 func (g *hintRig) first(call func() error, wantEvents bool) map[string][]string {
 	g.t.Helper()
+	return g.firstOf(call, wantEvents, 1)
+}
+
+// firstOf is first for a call that is several writes, bumps of them in all (a token that lands is its own write and then one notice for
+// each token that landed): the number moves by bumps, and every event carries one of the numbers the writes made.
+func (g *hintRig) firstOf(call func() error, wantEvents bool, bumps int64) map[string][]string {
+	g.t.Helper()
 	before := g.seq()
 	if err := call(); err != nil {
 		g.t.Fatalf("the write: error = %v", err)
 	}
-	if got, want := g.seq(), before+1; got != want {
-		g.t.Errorf("hint_seq = %d after the write, want %d (one more)", got, want)
+	if got, want := g.seq(), before+bumps; got != want {
+		g.t.Errorf("hint_seq = %d after the write, want %d (%d more)", got, want, bumps)
 	}
 	heard := g.drain()
 	told := 0
 	for name, evs := range heard {
 		for _, ev := range evs {
 			told++
-			if !g.numbered(ev, before+1) {
-				g.t.Errorf("%s heard %T with number %d, want the stored %d", name, ev.GetEvent(), ev.GetSessionSeq(), before+1)
+			ok := false
+			for n := before + 1; n <= before+bumps && !ok; n++ {
+				ok = g.numbered(ev, n)
+			}
+			if !ok {
+				g.t.Errorf("%s heard %T with number %d, want one of the %d the write stored after %d", name, ev.GetEvent(), ev.GetSessionSeq(), bumps, before)
 			}
 		}
 	}
