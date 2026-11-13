@@ -34,8 +34,8 @@ func auraMark(st playdb.CombatantState) (rules.EffectModifier, bool) {
 
 // auraReaches says the creature is one the aura of the bearer reaches: on the side it names, in the radius. The
 // sides are the combat's (Side), as Pack Tactics reads them. Distance is the map's, from the bearer's square;
-// without a square for either (no grid, or a creature not on the map) nobody is reached but the bearer, and the
-// master judges (RN-25).
+// without a square for either (no grid, or a creature not on the map) nobody is reached but the bearer (of a self or an
+// allies aura), and the master judges (RN-25).
 func auraReaches(a rules.EffectModifier, bearer, c playdb.Combatant) bool {
 	if c.Dismissed {
 		return false
@@ -44,7 +44,11 @@ func auraReaches(a rules.EffectModifier, bearer, c playdb.Combatant) bool {
 	case rules.AuraAffectsSelf:
 		return c.ID == bearer.ID
 	case rules.AuraAffectsAllies:
-		if c.ID == bearer.ID || c.Side != bearer.Side {
+		// The bearer and the creatures on its side (SRD 5.1: "you and friendly creatures"), the bearer wherever it is.
+		if c.ID == bearer.ID {
+			return true
+		}
+		if c.Side != bearer.Side {
 			return false
 		}
 	case rules.AuraAffectsEnemies:

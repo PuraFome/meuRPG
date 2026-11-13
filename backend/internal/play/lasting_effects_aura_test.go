@@ -56,7 +56,7 @@ func (a *armed) moveTo(t *testing.T, e *playv1.Encounter, label string, col, row
 }
 
 // The bonus is read where the creature stands when it rolls: inside the radius on the bearer's side, +2; the
-// bearer is not reached by an aura of allies, and neither is a creature past the radius or on the other side.
+// bearer is reached by its own aura of allies, once, and a creature past the radius or on the other side is not.
 func TestAnAuraGivesItsBonusWhereTheCreatureStandsWhenItRolls(t *testing.T) {
 	t.Parallel()
 	a := newMarkCastersWith(t, auraShape(5, rulesv1.TableAuraAffects_TABLE_AURA_AFFECTS_ALLIES, publicAura), allBonus)
@@ -74,8 +74,8 @@ func TestAnAuraGivesItsBonusWhereTheCreatureStandsWhenItRolls(t *testing.T) {
 	if got := bonus(toren); got != 2 {
 		t.Errorf("Toren next to the bearer: check bonus = %d, want 2", got)
 	}
-	if got := bonus(pens); got != 0 {
-		t.Errorf("the bearer of an aura of allies: check bonus = %d, want 0 (an aura of allies is not on its bearer)", got)
+	if got := bonus(pens); got != 2 {
+		t.Errorf("the bearer of an aura of allies: check bonus = %d, want 2, once (SRD 5.1: \"you and friendly creatures\")", got)
 	}
 	// His attack: the battleaxe is +6, +8 with the aura.
 	a.passTo(t, e, "Toren")
@@ -103,7 +103,7 @@ func TestAnAuraGivesItsBonusWhereTheCreatureStandsWhenItRolls(t *testing.T) {
 	}
 }
 
-// The sides are the bearer's: an aura of enemies reaches the other side only, and an aura of the bearer alone,
+// The sides are the bearer's: an aura of allies reaches the bearer and its side, an aura of enemies the other side only, and an aura of the bearer alone,
 // the bearer.
 func TestAnAuraReachesTheSideItNames(t *testing.T) {
 	t.Parallel()
@@ -112,7 +112,7 @@ func TestAnAuraReachesTheSideItNames(t *testing.T) {
 		affects rulesv1.TableAuraAffects
 		want    map[string]int // the check bonus by label
 	}{
-		{"allies", rulesv1.TableAuraAffects_TABLE_AURA_AFFECTS_ALLIES, map[string]int{"Pensantus": 0, "Toren": 2, "Brisa": 2}},
+		{"allies", rulesv1.TableAuraAffects_TABLE_AURA_AFFECTS_ALLIES, map[string]int{"Pensantus": 2, "Toren": 2, "Brisa": 2}},
 		{"self", rulesv1.TableAuraAffects_TABLE_AURA_AFFECTS_SELF, map[string]int{"Pensantus": 2, "Toren": 0, "Brisa": 0}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -192,6 +192,25 @@ func TestTwoAurasOfOneSourceGiveOnce(t *testing.T) {
 	// Nothing about who is inside was written: the map that was given has what it had.
 	if got := len(checkBonusesOf(map[string][]playdb.CombatantState{"a": {mark("r1", "a", "spell:x")}}, "a", "skill:perception", true)); got != 0 {
 		t.Errorf("the bearer's own aura row gives it %d bonuses before withAuras, want 0", got)
+	}
+	// An aura of allies is on its bearer too, once and not doubled, with a square or without one (the bearer's own side
+	// is the one it names); a self aura is the bearer alone, and an aura of enemies never the bearer.
+	for _, tt := range []struct {
+		affects string
+		want    int
+	}{{rules.AuraAffectsAllies, 1}, {rules.AuraAffectsSelf, 1}, {rules.AuraAffectsEnemies, 0}} {
+		own, _ := json.Marshal([]rules.EffectModifier{
+			{Kind: rules.ModifierAura, RadiusFt: 10, Affects: tt.affects},
+			{Kind: rules.ModifierRollBonus, Value: 2, AppliesTo: []string{rules.RollAppliesCheck}},
+		})
+		source := "spell:own"
+		row := playdb.CombatantState{ID: "own", CombatantID: "a", Kind: stateEffect, SourceKey: &source, Modifiers: own, PlayerVisible: true}
+		for name, where := range map[string][]playdb.Combatant{"on the map": cs, "off the map": {{ID: "a", Side: "players"}}} {
+			got := len(checkBonusesOf(withAuras(map[string][]playdb.CombatantState{"a": {row}}, where, nil), "a", "skill:perception", true))
+			if got != tt.want {
+				t.Errorf("an aura of %s, the bearer %s has %d bonuses from it, want %d", tt.affects, name, got, tt.want)
+			}
+		}
 	}
 	// Without a grid (RN-25) nobody has a square, and nobody but the master can say who is inside.
 	unplaced := []playdb.Combatant{{ID: "a", Side: "players"}, {ID: "c", Side: "players"}}

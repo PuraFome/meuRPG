@@ -437,7 +437,7 @@ const (
 	TableAuraAffects_TABLE_AURA_AFFECTS_UNSPECIFIED TableAuraAffects = 0
 	// Only the bearer.
 	TableAuraAffects_TABLE_AURA_AFFECTS_SELF TableAuraAffects = 1
-	// The creatures on the bearer's side.
+	// The bearer and the creatures on its side (SRD 5.1: "you and friendly creatures").
 	TableAuraAffects_TABLE_AURA_AFFECTS_ALLIES TableAuraAffects = 2
 	// The creatures on the other side.
 	TableAuraAffects_TABLE_AURA_AFFECTS_ENEMIES TableAuraAffects = 3

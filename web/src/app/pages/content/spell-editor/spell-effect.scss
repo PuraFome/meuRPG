@@ -55,8 +55,9 @@
 }
 
 .duration {
+  // Top-aligned like every .line: the icon's margin centres it on the first line of words (centring it on the row
+  // put it 2px off the capitals, with its margin counted in).
   flex-wrap: wrap;
-  align-items: center;
   padding: var(--mr-space-2) var(--mr-space-3);
   border-radius: var(--mr-radius-md);
   background: var(--mr-surface-sunken, var(--mr-accent-soft));

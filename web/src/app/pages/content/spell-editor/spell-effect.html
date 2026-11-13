@@ -51,7 +51,7 @@
     <div class="group" role="group" aria-labelledby="spell-effect-reach" [attr.data-field]="path('aura.affects')">
       <span class="group__label" id="spell-effect-reach">Alcança</span>
       <app-segmented label="Alcança" [segments]="affectsOptions" [value]="aura.affects" [wrap]="true" (choose)="patchAura({ affects: $event })" />
-      <app-field-note [issues]="issues('aura.affects')" hint="Contado a partir de quem conjura, no momento de cada jogada." />
+      <app-field-note [issues]="issues('aura.affects')" hint="Contado a partir de quem conjura, no momento de cada jogada. Aliados inclui quem conjura." />
     </div>
     <p class="line"><mat-icon aria-hidden="true">info</mat-icon>{{ auraRefusedLine }}</p>
     @for (m of issues('aura'); track m) {

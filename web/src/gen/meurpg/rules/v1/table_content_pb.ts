@@ -4830,7 +4830,7 @@ export enum TableAuraAffects {
   SELF = 1,
 
   /**
-   * The creatures on the bearer's side.
+   * The bearer and the creatures on its side (SRD 5.1: "you and friendly creatures").
    *
    * @generated from enum value: TABLE_AURA_AFFECTS_ALLIES = 2;
    */

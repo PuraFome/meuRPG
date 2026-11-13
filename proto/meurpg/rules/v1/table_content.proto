@@ -1146,7 +1146,7 @@ enum TableAuraAffects {
   TABLE_AURA_AFFECTS_UNSPECIFIED = 0;
   // Only the bearer.
   TABLE_AURA_AFFECTS_SELF = 1;
-  // The creatures on the bearer's side.
+  // The bearer and the creatures on its side (SRD 5.1: "you and friendly creatures").
   TABLE_AURA_AFFECTS_ALLIES = 2;
   // The creatures on the other side.
   TABLE_AURA_AFFECTS_ENEMIES = 3;
