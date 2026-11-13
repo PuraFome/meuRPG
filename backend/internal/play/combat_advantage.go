@@ -791,7 +791,7 @@ func (s *Service) turnModes(ctx context.Context, campaignID string, d *encounter
 	if err != nil {
 		return turnModes{}, err
 	}
-	states, err := s.readStates(ctx, nil, d.enc.ID)
+	states, err := s.readStatesAt(ctx, nil, d.enc.ID, &v)
 	if err != nil {
 		return turnModes{}, err
 	}

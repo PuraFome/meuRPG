@@ -103,8 +103,11 @@ func TestAPlayersCopyOfATableSpellLeavesOutWhoSeesItsEffectAndItsLabel(t *testin
 	if p.GetVisibility() != rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_UNSPECIFIED || p.GetPlayerLabelPt() != "" {
 		t.Errorf("the player reads visibility %v and label %q, want neither", p.GetVisibility(), p.GetPlayerLabelPt())
 	}
-	if len(p.GetModifiers()) != len(m.GetModifiers()) || p.GetAura().GetRadiusFt() != 15 {
+	if len(p.GetModifiers()) != len(m.GetModifiers()) {
 		t.Errorf("the player's copy lost what the spell does: %v", p)
+	}
+	if m.GetAura().GetRadiusFt() != 15 || p.GetAura() != nil {
+		t.Errorf("the aura: master reads radius %d (want 15, the positive control), player reads %v (want none)", m.GetAura().GetRadiusFt(), p.GetAura())
 	}
 	if got := effectOf(master); got.GetVisibility() != m.GetVisibility() {
 		t.Errorf("the master's copy changed after the player read it: %v", got)

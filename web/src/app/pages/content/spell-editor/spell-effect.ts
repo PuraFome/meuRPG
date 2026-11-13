@@ -17,6 +17,7 @@ import {
   type SpellEffectDraft,
   emptyRow,
   modifierIndexOf,
+  rowFieldPath,
   rowToModifiers,
 } from '../../../core/content/spell-effect-draft';
 import { auraTag, rowTags } from '../../../core/content/spell-effect-tags';
@@ -223,6 +224,9 @@ export class SpellEffect {
   /** The messages of one field of one row: its modifier or, for a row of several modifiers, any of them. */
   protected rowIssues(i: number, field: string): readonly string[] {
     const rows = this.effect().rows;
+    if (rowToModifiers(rows[i]).length === 0 && field === 'applies_to') {
+      return this.issuesOf()(rowFieldPath(rows, i, field));
+    }
     const first = modifierIndexOf(rows, i);
     const count = Math.max(1, rowToModifiers(rows[i]).length);
     const out: string[] = [];
@@ -242,7 +246,7 @@ export class SpellEffect {
       field === 'abilities' && rows[i].kind === 'advantage' && rows[i].rolls.includes('attack')
         ? 1
         : 0;
-    return this.path(`modifiers[${modifierIndexOf(rows, i) + skip}].${field}`);
+    return rowFieldPath(rows, i, field, skip);
   }
 
   protected send(next: SpellEffectDraft): void {

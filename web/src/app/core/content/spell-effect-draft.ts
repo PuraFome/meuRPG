@@ -371,6 +371,22 @@ export function modifierIndexOf(rows: readonly EffectRow[], row: number): number
   return rows.slice(0, row).reduce((n, r) => n + rowToModifiers(r).length, 0);
 }
 
+/**
+ * The server path of a field of a row. A row that writes no modifier yet (an advantage row with no roll ticked) has none,
+ * so its own notes go under `effect.rows[i]` instead of on the path of the row that follows it.
+ */
+export function rowFieldPath(
+  rows: readonly EffectRow[],
+  row: number,
+  field: string,
+  skip = 0,
+): string {
+  const at = 'table_spell.effect';
+  return rowToModifiers(rows[row]).length === 0 && field === 'applies_to'
+    ? `${at}.rows[${row}].${field}`
+    : `${at}.modifiers[${modifierIndexOf(rows, row) + skip}].${field}`;
+}
+
 /** The row, and the field of it, a refusal at `effect.modifiers[i](.field)` is about; -1 when no row writes that modifier. */
 export function rowOfModifier(rows: readonly EffectRow[], index: number): number {
   let n = 0;

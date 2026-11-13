@@ -183,8 +183,12 @@ describe('what the form asks before the save', () => {
     expect(effectAdvice(emptyEffect())).toEqual([]);
     const none = { ...emptyRow('advantage'), rolls: [] as never[] };
     expect(effectAdvice(on({ rows: [none] })).map((a) => a.path)).toContain(
-      'table_spell.effect.modifiers[0].applies_to',
+      'table_spell.effect.rows[0].applies_to',
     );
+    const next = { ...emptyRow('temp_hp'), value: '5' };
+    expect(
+      effectAdvice(on({ rows: [none, next] })).filter((a) => a.path.includes('modifiers[0]')),
+    ).toEqual([]);
     const noAbility = {
       ...emptyRow('advantage'),
       rolls: ['attack', 'save'] as const,

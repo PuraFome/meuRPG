@@ -1169,10 +1169,10 @@ func forPlayer(e entryRow, hidden func(string) bool, held map[string]bool) entry
 }
 
 // effectKeepsItsSecrets says the body is a spell whose effect carries what a player does not read: who sees it, and
-// the label of the other players.
+// the label of the other players and the aura (the radius and the side).
 func effectKeepsItsSecrets(body tableBody) bool {
 	sp, ok := body.(*rulesv1.TableSpell)
-	return ok && (sp.GetEffect().GetVisibility() != rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_UNSPECIFIED || sp.GetEffect().GetPlayerLabelPt() != "")
+	return ok && (sp.GetEffect().GetVisibility() != rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_UNSPECIFIED || sp.GetEffect().GetPlayerLabelPt() != "" || sp.GetEffect().GetAura() != nil)
 }
 
 // summons says the body brings creatures: a spell with a summon, or an entry with a feature that has one.
@@ -1227,6 +1227,7 @@ func (v playerView) strip(body tableBody) {
 		v.stripSummon(b.GetSummon())
 		if b.GetEffect() != nil {
 			b.Effect.Visibility, b.Effect.PlayerLabelPt = rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_UNSPECIFIED, ""
+			b.Effect.Aura = nil // the radius and the side are the master's: a player reads them only on a creature they own
 		}
 	case *rulesv1.TableFeat:
 		v.stripFeat(b)

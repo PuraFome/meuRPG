@@ -32,7 +32,7 @@
     (toggled)="setAura($event)"
   />
   @if (!context().self && effect().aura === null) {
-    <p class="line lock" role="note"><mat-icon aria-hidden="true">lock</mat-icon>Uma aura pede o alvo “Só quem conjura”.</p>
+    <p class="line lock" role="note" id="spell-effect-aura-lock"><mat-icon aria-hidden="true">lock</mat-icon>Uma aura pede o alvo “Só quem conjura”.</p>
   }
 
   @if (effect().aura; as aura) {
@@ -83,7 +83,7 @@
   <div class="group">
     <p class="group__head"><span class="group__label" id="spell-effect-changes">O que muda</span><span class="count">{{ effect().rows.length }} de {{ maxItems }}</span></p>
     @for (r of effect().rows; track r.id; let i = $index) {
-      <div class="rowcard" role="group" aria-labelledby="spell-effect-changes">
+      <div class="rowcard" role="group" [attr.aria-label]="'Mudança ' + (i + 1)">
         <div class="rowcard__head">
           <app-select-field
             label="Tipo"

@@ -4,6 +4,7 @@ import {
   type EffectRow,
   type SpellEffectDraft,
   modifierIndexOf,
+  rowFieldPath,
   readWhole,
   rowToModifiers,
 } from './spell-effect-draft';
@@ -78,13 +79,13 @@ export function effectAdvice(d: SpellEffectDraft): EffectAdvice[] {
   d.rows.forEach((r, i) => {
     if ((r.kind === 'advantage' || r.kind === 'roll') && r.rolls.length === 0) {
       out.push({
-        path: `table_spell.effect.modifiers[${modifierIndexOf(d.rows, i)}].applies_to`,
+        path: rowFieldPath(d.rows, i, 'applies_to'),
         text: 'Escolha ao menos uma jogada.',
       });
     }
     if (r.kind === 'advantage' && r.rolls.some((w) => w !== 'attack') && r.abilities.length === 0) {
       out.push({
-        path: `table_spell.effect.modifiers[${modifierIndexOf(d.rows, i) + (r.rolls.includes('attack') ? 1 : 0)}].abilities`,
+        path: rowFieldPath(d.rows, i, 'abilities', r.rolls.includes('attack') ? 1 : 0),
         text: 'Escolha ao menos uma habilidade.',
       });
     }
@@ -141,6 +142,9 @@ export function effectFieldPaths(d: SpellEffectDraft): string[] {
       out.push(
         `table_spell.effect.modifiers[${at + (r.rolls.includes('attack') ? 1 : 0)}].abilities`,
       );
+    }
+    if (rowToModifiers(r).length === 0 && (r.kind === 'advantage' || r.kind === 'roll')) {
+      out.push(rowFieldPath(d.rows, d.rows.indexOf(r), 'applies_to'));
     }
     at += rowToModifiers(r).length;
   }
