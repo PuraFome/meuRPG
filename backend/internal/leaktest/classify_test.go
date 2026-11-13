@@ -295,6 +295,7 @@ var notReads = map[string]classified{
 	playv1connect.RevivifyServiceSetRevivifyBlockedProcedure:                    {masterWrite, masterOnlyWhy},
 	playv1connect.ReadyServiceReadyActionProcedure:                              {playerAction, "a player readies an action with their own combatant; the trigger is the master's and theirs (ready_test.go)"},
 	playv1connect.ReadyServiceCancelReadiedProcedure:                            {playerAction, "a player gives up the readied action of their own combatant"},
+	playv1connect.ReadyServiceFireReadiedProcedure:                              {masterWrite, masterOnlyWhy},
 	progressionv1connect.ProgressionServiceAddMilestoneProcedure:                {masterWrite, masterOnlyWhy},
 	progressionv1connect.ProgressionServiceAwardXPProcedure:                     {masterWrite, masterOnlyWhy},
 	progressionv1connect.ProgressionServiceGiveMilestoneToProcedure:             {masterWrite, masterOnlyWhy},
