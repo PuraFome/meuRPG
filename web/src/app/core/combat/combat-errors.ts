@@ -195,8 +195,6 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [EncounterBlockedReason.TELEPORT_TOO_FAR, 'Longe demais'],
   [EncounterBlockedReason.DESTINATION_UNAVAILABLE, 'Esse espaço não está disponível'],
   [EncounterBlockedReason.DESTINATION_REQUIRED, 'Escolha no mapa o espaço para onde você vai.'],
-  [EncounterBlockedReason.FEATURE_TARGET, 'O alvo saiu do alcance. Escolha outro alvo.'],
-  [EncounterBlockedReason.FEATURE_CHOICE, 'Essa opção não vale mais. Escolha outra.'],
   [
     EncounterBlockedReason.CHANNEL_DIVINITY_TARGET,
     'Esse alvo não pode receber o Canalizar Divindade: está longe demais, ou é um morto-vivo ou um constructo.',
