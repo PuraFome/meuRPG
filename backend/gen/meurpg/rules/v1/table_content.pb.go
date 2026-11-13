@@ -1649,7 +1649,7 @@ type TableEffect struct {
 	// refused for the others). `attack_ability` and `damage_ability` offer another ability
 	// for the attack roll and for the damage ("str", "dex", "con", "int", "wis", "cha"): the
 	// best of the line's own and the offered ones applies. `attack_bonus` and `damage_bonus`
-	// add, from -5 to 10. `reach_ft` makes a melee reach longer (5 to 60, in steps of 5; not
+	// add, from -5 to 10 (power_attack also reads `damage_bonus`, from 1 to 20). `reach_ft` makes a melee reach longer (5 to 60, in steps of 5; not
 	// for "ranged"). The rule must change something. pseudo_weapon: `weapon` is "melee" or
 	// "ranged" and these are the fields of the attack line the feature gives: `attack_name`
 	// (1 to 40 characters), `damage_dice` (plain dice, 1 to 10 of d4, d6, d8, d10 or d12),
@@ -1662,7 +1662,7 @@ type TableEffect struct {
 	// strike included; a rule that sets only marks counts as changing something. The "magic"
 	// filter reads only the marks of the sheet itself (FullSheet.weapon_marks) and
 	// Ki-Empowered Strikes: never those of a rule, and not the equipment. A pseudo_weapon
-	// line is never marked by a weapon_rule. Refused on any other effect.
+	// line is never marked by a weapon_rule. The other fields of this group are refused on any other effect.
 	WeaponName    string `protobuf:"bytes,59,opt,name=weapon_name,json=weaponName,proto3" json:"weapon_name,omitempty"`
 	AttackAbility string `protobuf:"bytes,60,opt,name=attack_ability,json=attackAbility,proto3" json:"attack_ability,omitempty"`
 	DamageAbility string `protobuf:"bytes,61,opt,name=damage_ability,json=damageAbility,proto3" json:"damage_ability,omitempty"`
@@ -1738,12 +1738,11 @@ type TableEffect struct {
 	// targets, a choice, what it applies). Unset keeps the action on TakeAction.
 	Use *FeatureUse `protobuf:"bytes,88,opt,name=use,proto3" json:"use,omitempty"`
 	// power_attack: a trade the player may make on a weapon attack, `attack_penalty` (1 to 10) off the
-	// attack roll for `damage_bonus` (1 to 20, the field weapon_rule shares) of flat damage on a hit, never
-	// doubled by a critical hit. Both are required. `weapon` is "any" (the default), "melee" or "ranged";
+	// attack roll for `damage_bonus` (1 to 20; weapon_rule shares the field) added to the damage of a hit.
+	// Both are required. `weapon` is "any" (the default), "melee" or "ranged";
 	// `weapon_properties` are "weapon-property:" keys of the content, each once and at most 4, that the weapon
 	// must all have (empty is no filter); `only_proficient` (also read by proficiency) asks the weapon line to be
 	// one the character is proficient with; `resource`, when set, is spent once per use. A feature has at most one.
-	// Field 90 is not used.
 	AttackPenalty    int32    `protobuf:"varint,89,opt,name=attack_penalty,json=attackPenalty,proto3" json:"attack_penalty,omitempty"`
 	WeaponProperties []string `protobuf:"bytes,91,rep,name=weapon_properties,json=weaponProperties,proto3" json:"weapon_properties,omitempty"`
 	unknownFields    protoimpl.UnknownFields
@@ -8791,7 +8790,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreatureB\x06\n" +
-	"\x04body\"\x87\x15\n" +
+	"\x04body\"\x8d\x15\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -8898,7 +8897,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\tuses_cost\x18W \x01(\x05R\busesCost\x12-\n" +
 	"\x03use\x18X \x01(\v2\x1b.meurpg.rules.v1.FeatureUseR\x03use\x12%\n" +
 	"\x0eattack_penalty\x18Y \x01(\x05R\rattackPenalty\x12+\n" +
-	"\x11weapon_properties\x18[ \x03(\tR\x10weaponProperties\"\x81\x02\n" +
+	"\x11weapon_properties\x18[ \x03(\tR\x10weaponPropertiesJ\x04\bZ\x10[\"\x81\x02\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +

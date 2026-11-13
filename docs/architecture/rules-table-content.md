@@ -222,11 +222,12 @@ The attack card offers it after a hit as a choosable part ([Attacks and damage](
 
 ### Power attack
 
-`power_attack` (menu name "Ataque poderoso"; fields `attack_penalty`, `damage_bonus`, `weapon`, `weapon_properties`, `only_proficient`, `resource`, `when`, `text_pt`; `rules/powerattack.go`) is a trade the player may make on a weapon attack: a penalty off the attack roll for flat damage on a hit.
+`power_attack` (menu name "Ataque poderoso"; fields `attack_penalty`, `damage_bonus`, `weapon`, `weapon_properties`, `only_proficient`, `resource`, `when`, `text_pt`; `rules/powerattack.go`) is a trade the player may make on a weapon attack.
+It takes a penalty off the attack roll and adds flat damage to a hit.
 Checked at its fields:
 
 - `attack_penalty` is a literal from 1 to 10, taken off the attack roll (`.attack_penalty`, `bad_value`);
-- `damage_bonus` is a literal from 1 to 20, added flat to the damage of a hit and never doubled by a critical hit (`.damage_bonus`, `bad_value`);
+- `damage_bonus` is a literal from 1 to 20, a flat number added to the damage of a hit (`.damage_bonus`, `bad_value`);
 - `weapon` is `any` (empty), `melee` or `ranged` (`.weapon`, `bad_value`);
 - `weapon_properties` lists `weapon-property:` keys of the content, each once and at most 4; the weapon must have all of them, and empty is no filter (`.weapon_properties`, `bad_reference` for an unknown key, `bad_value` for a repeat or a fifth);
 - `only_proficient` asks the weapon line to be one the character is proficient with;
@@ -236,7 +237,9 @@ Checked at its fields:
 `Derive` fills `Derived.PowerAttacks` with the fields above and the Portuguese names of the properties; a resource the character does not have at that level leaves the effect out, and `when` gates it.
 `rules.Attack.Properties` holds the property keys of a weapon line; a pseudo-weapon line, a natural attack, the unarmed strike and a spell have none.
 `PowerAttack.Allows` says whether the trade goes with an attack line, with the reason in Portuguese when it does not: the weapon kind, a property the weapon lacks, or no proficiency.
-A property filter never matches a line without properties, and a line with none of them counts as proficient as its own entry says.
+A property filter never matches a line without properties.
+`only_proficient` reads the line's `Proficient`.
+A pseudo-weapon line and a natural attack line count as proficient.
 `link.Traits.PowerAttacks` carries the same fields to the combat.
 
 ### Granted spells

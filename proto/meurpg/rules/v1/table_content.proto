@@ -349,7 +349,7 @@ message TableEffect {
   // refused for the others). `attack_ability` and `damage_ability` offer another ability
   // for the attack roll and for the damage ("str", "dex", "con", "int", "wis", "cha"): the
   // best of the line's own and the offered ones applies. `attack_bonus` and `damage_bonus`
-  // add, from -5 to 10. `reach_ft` makes a melee reach longer (5 to 60, in steps of 5; not
+  // add, from -5 to 10 (power_attack also reads `damage_bonus`, from 1 to 20). `reach_ft` makes a melee reach longer (5 to 60, in steps of 5; not
   // for "ranged"). The rule must change something. pseudo_weapon: `weapon` is "melee" or
   // "ranged" and these are the fields of the attack line the feature gives: `attack_name`
   // (1 to 40 characters), `damage_dice` (plain dice, 1 to 10 of d4, d6, d8, d10 or d12),
@@ -362,7 +362,7 @@ message TableEffect {
   // strike included; a rule that sets only marks counts as changing something. The "magic"
   // filter reads only the marks of the sheet itself (FullSheet.weapon_marks) and
   // Ki-Empowered Strikes: never those of a rule, and not the equipment. A pseudo_weapon
-  // line is never marked by a weapon_rule. Refused on any other effect.
+  // line is never marked by a weapon_rule. The other fields of this group are refused on any other effect.
   string weapon_name = 59;
   string attack_ability = 60;
   string damage_ability = 61;
@@ -438,14 +438,15 @@ message TableEffect {
   // targets, a choice, what it applies). Unset keeps the action on TakeAction.
   FeatureUse use = 88;
   // power_attack: a trade the player may make on a weapon attack, `attack_penalty` (1 to 10) off the
-  // attack roll for `damage_bonus` (1 to 20, the field weapon_rule shares) of flat damage on a hit, never
-  // doubled by a critical hit. Both are required. `weapon` is "any" (the default), "melee" or "ranged";
+  // attack roll for `damage_bonus` (1 to 20; weapon_rule shares the field) added to the damage of a hit.
+  // Both are required. `weapon` is "any" (the default), "melee" or "ranged";
   // `weapon_properties` are "weapon-property:" keys of the content, each once and at most 4, that the weapon
   // must all have (empty is no filter); `only_proficient` (also read by proficiency) asks the weapon line to be
   // one the character is proficient with; `resource`, when set, is spent once per use. A feature has at most one.
-  // Field 90 is not used.
   int32 attack_penalty = 89;
   repeated string weapon_properties = 91;
+  // Field 90 is not used.
+  reserved 90;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a

@@ -58,6 +58,7 @@ func TestPowerAttackRefusalsNameTheirField(t *testing.T) {
 		{"an unknown weapon", pa(func(e *Effect) { e.Weapon = "spell" }), at + ".weapon", ReasonValue},
 		{"a property that does not exist", pa(func(e *Effect) { e.WeaponProperties = []string{"weapon-property:fantasma"} }), at + ".weapon_properties", ReasonReference},
 		{"a key that is no weapon property", pa(func(e *Effect) { e.WeaponProperties = []string{"skill:stealth"} }), at + ".weapon_properties", ReasonReference},
+		{"an empty property key", pa(func(e *Effect) { e.WeaponProperties = []string{""} }), at + ".weapon_properties", ReasonReference},
 		{"a property twice", pa(func(e *Effect) {
 			e.WeaponProperties = []string{"weapon-property:heavy", "weapon-property:heavy"}
 		}), at + ".weapon_properties", ReasonValue},
@@ -102,6 +103,12 @@ func TestPowerAttackWithEveryFieldIsAccepted(t *testing.T) {
 	o.Strict = []string{powerSubclass}
 	if _, err := loadForTest(t).With(o); err != nil {
 		t.Fatalf("With: %v", err)
+	}
+	// Exactly four properties are the most it takes.
+	four := powerAttackOverlay(Effect{Type: "power_attack", AttackPenalty: 1, DamageBonus: 1,
+		WeaponProperties: []string{"weapon-property:ammunition", "weapon-property:finesse", "weapon-property:heavy", "weapon-property:light"}})
+	if _, err := loadForTest(t).With(four); err != nil {
+		t.Errorf("four properties: %v", err)
 	}
 	for _, tc := range []struct {
 		name           string

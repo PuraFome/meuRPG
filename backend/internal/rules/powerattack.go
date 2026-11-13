@@ -26,8 +26,8 @@ const weaponPropertyPrefix = "weapon-property:"
 type PowerAttack struct {
 	// Key is the feature that gives it, NamePT its name.
 	Key, NamePT string
-	// AttackPenalty is the number taken off the attack roll and DamageBonus the flat damage added to a hit
-	// (a critical hit does not double it).
+	// AttackPenalty is the number taken off the attack roll and DamageBonus the flat number added to the
+	// damage of a hit.
 	AttackPenalty, DamageBonus int
 	// Weapon is one of the ExtraDamage*Weapon constants, always set.
 	Weapon string

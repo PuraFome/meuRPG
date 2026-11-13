@@ -773,9 +773,9 @@ func (x effectCompiler) proficiency() error {
 
 // checkOnlyProficient says what is wrong with the only_proficient switch of a
 // proficiency effect, or "": it doubles skills, so it goes with the level
-// "expertise" and a skill (or "skill:*"). A power_attack may carry it with nothing else to check.
+// "expertise" and a skill (or "skill:*").
 func checkOnlyProficient(e *Effect) string {
-	if !e.OnlyProficient || e.Type == "power_attack" {
+	if !e.OnlyProficient {
 		return ""
 	}
 	if e.Level != "expertise" || !strings.HasPrefix(e.Proficiency, "skill:") {
