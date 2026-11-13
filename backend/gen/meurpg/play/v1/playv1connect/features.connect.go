@@ -44,12 +44,14 @@ const (
 // FeatureServiceClient is a client for the meurpg.play.v1.FeatureService service.
 type FeatureServiceClient interface {
 	// UseFeature uses a feature of the combatant: a `grant_action` of a table feature that declares `use`
-	// (rules.v1.ActionOption.via_use_feature is true). The combatant must be on turn. Its player may use their own
-	// character's features, and the master any combatant's (the master may act again with the economy used).
+	// (rules.v1.ActionOption.via_use_feature is true). The combatant must be on turn, except for a feature that spends
+	// the reaction, which may be used on any turn. Its player may use their own character's features, and the master any
+	// combatant's (the master may act again with the economy used).
 	//
-	// It checks, in the transaction of the use and in this order: the combat and the turn, that the feature is the
-	// combatant's and declares a use, the economy it spends (action, bonus action, reaction or none), the uses left in
-	// its scope and in its resource, the targets and the choice. It then writes the state, the economy, the resource,
+	// It checks, in the transaction of the use and in this order: that the combatant is the caller's to act for, that the
+	// feature is the combatant's and declares a use, the combat and the turn (and that nothing holds the turn: a
+	// question for the master, a reaction window, an opportunity offer), the economy it spends (action, bonus action,
+	// reaction or none), the uses left in its scope and in its resource, the targets and the choice. It then writes the state, the economy, the resource,
 	// what the use applies (healing, temporary hit points, a lasting effect on the targets), the combat log line and the
 	// undo. A feature that does not declare `use` is taken with TakeAction, and TakeAction refuses one that does.
 	//
@@ -59,8 +61,10 @@ type FeatureServiceClient interface {
 	//   - `permission_denied`: the caller is a player and the combatant is not their character.
 	//   - `invalid_argument`: the key is not a feature that declares a use, or a target id is not a combatant id.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED, BONUS_ACTION_USED,
-	//     REACTION_USED, NO_USES (the scope or the resource is spent), COMBATANT_DOWN, FEATURE_TARGET and
-	//     FEATURE_CHOICE.
+	//     REACTION_USED, NO_USES (the scope or the resource is spent), COMBATANT_DOWN, HIDDEN_REVEAL_PENDING,
+	//     REACTION_PENDING, OPPORTUNITY_PENDING, FEATURE_TARGET and FEATURE_CHOICE. FEATURE_TARGET lists in
+	//     `combatant_ids` the ids of the request that were refused, and none when the count or the kind of target is
+	//     wrong; a creature the caller cannot see is refused like one that does not exist.
 	UseFeature(context.Context, *connect.Request[v1.UseFeatureRequest]) (*connect.Response[v1.UseFeatureResponse], error)
 }
 
@@ -97,12 +101,14 @@ func (c *featureServiceClient) UseFeature(ctx context.Context, req *connect.Requ
 // FeatureServiceHandler is an implementation of the meurpg.play.v1.FeatureService service.
 type FeatureServiceHandler interface {
 	// UseFeature uses a feature of the combatant: a `grant_action` of a table feature that declares `use`
-	// (rules.v1.ActionOption.via_use_feature is true). The combatant must be on turn. Its player may use their own
-	// character's features, and the master any combatant's (the master may act again with the economy used).
+	// (rules.v1.ActionOption.via_use_feature is true). The combatant must be on turn, except for a feature that spends
+	// the reaction, which may be used on any turn. Its player may use their own character's features, and the master any
+	// combatant's (the master may act again with the economy used).
 	//
-	// It checks, in the transaction of the use and in this order: the combat and the turn, that the feature is the
-	// combatant's and declares a use, the economy it spends (action, bonus action, reaction or none), the uses left in
-	// its scope and in its resource, the targets and the choice. It then writes the state, the economy, the resource,
+	// It checks, in the transaction of the use and in this order: that the combatant is the caller's to act for, that the
+	// feature is the combatant's and declares a use, the combat and the turn (and that nothing holds the turn: a
+	// question for the master, a reaction window, an opportunity offer), the economy it spends (action, bonus action,
+	// reaction or none), the uses left in its scope and in its resource, the targets and the choice. It then writes the state, the economy, the resource,
 	// what the use applies (healing, temporary hit points, a lasting effect on the targets), the combat log line and the
 	// undo. A feature that does not declare `use` is taken with TakeAction, and TakeAction refuses one that does.
 	//
@@ -112,8 +118,10 @@ type FeatureServiceHandler interface {
 	//   - `permission_denied`: the caller is a player and the combatant is not their character.
 	//   - `invalid_argument`: the key is not a feature that declares a use, or a target id is not a combatant id.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED, BONUS_ACTION_USED,
-	//     REACTION_USED, NO_USES (the scope or the resource is spent), COMBATANT_DOWN, FEATURE_TARGET and
-	//     FEATURE_CHOICE.
+	//     REACTION_USED, NO_USES (the scope or the resource is spent), COMBATANT_DOWN, HIDDEN_REVEAL_PENDING,
+	//     REACTION_PENDING, OPPORTUNITY_PENDING, FEATURE_TARGET and FEATURE_CHOICE. FEATURE_TARGET lists in
+	//     `combatant_ids` the ids of the request that were refused, and none when the count or the kind of target is
+	//     wrong; a creature the caller cannot see is refused like one that does not exist.
 	UseFeature(context.Context, *connect.Request[v1.UseFeatureRequest]) (*connect.Response[v1.UseFeatureResponse], error)
 }
 
