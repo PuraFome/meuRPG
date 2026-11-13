@@ -4954,7 +4954,7 @@ export enum TableEffectModifierKind {
   /**
    * Extra weapon damage on a hit the caster makes, as `trigger` says: `die` (d4, d6, d8, d10 or d12),
    * `dice`, `per_slot_dice`, `max_dice`, `damage_type`, and optionally a `save` with the
-   * `on_fail_conditions` it puts on the target. Needs `trigger` and `die`; reads no other field. The
+   * `on_fail_conditions` it puts on the target. Needs `trigger`, `die` and `dice`; reads no other field. The
    * spell must last (not instantaneous), and EACH_HIT and MARKED_TARGET need concentration.
    *
    * @generated from enum value: TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE = 20;

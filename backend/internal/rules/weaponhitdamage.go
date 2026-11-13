@@ -9,7 +9,7 @@ import (
 const (
 	maxHitDice         = 20
 	maxHitPerSlotDice  = 10
-	maxHitConditionCnt = 8
+	maxHitConditions = 8
 )
 
 var (
@@ -60,8 +60,8 @@ func checkHitSave(m EffectModifier) error {
 		return modifierField("save", "save is an ability: str, dex, con, int, wis or cha")
 	case len(m.OnFailConditions) == 0:
 		return modifierField("on_fail_conditions", "a save needs at least one condition for a fail")
-	case len(m.OnFailConditions) > maxHitConditionCnt:
-		return modifierField("on_fail_conditions", "on_fail_conditions has at most %d conditions", maxHitConditionCnt)
+	case len(m.OnFailConditions) > maxHitConditions:
+		return modifierField("on_fail_conditions", "on_fail_conditions has at most %d conditions", maxHitConditions)
 	}
 	return nil
 }

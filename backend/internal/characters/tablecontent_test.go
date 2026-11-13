@@ -1910,6 +1910,22 @@ func TestTableSpellWeaponHitDamageIsReadFromTheMessage(t *testing.T) {
 	}
 }
 
+// Each trigger of the message reads as its own key.
+func TestTableSpellHitTriggersAreReadOneByOne(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[rulesv1.TableHitTrigger]string{
+		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_NEXT_HIT:       rules.HitTriggerNextHit,
+		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_NEXT_MELEE_HIT: rules.HitTriggerNextMeleeHit,
+		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_EACH_HIT:       rules.HitTriggerEachHit,
+		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_MARKED_TARGET:  rules.HitTriggerMarkedTarget,
+	} {
+		m := &rulesv1.TableEffectModifier{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE, Trigger: in}
+		if got := tableSpellEffectOf(&rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{m}}).Modifiers[0].Trigger; got != want {
+			t.Errorf("%v read as %q, want %q", in, got, want)
+		}
+	}
+}
+
 func weaponHitModifier() *rulesv1.TableEffectModifier {
 	return &rulesv1.TableEffectModifier{
 		Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE, Die: 6,

@@ -80,6 +80,17 @@ func TestWeaponHitDamageRefusalsNameTheirField(t *testing.T) {
 		{"a stray sign", with(func(m *EffectModifier) { m.Sign = 1 }), ".sign"},
 		{"stray damage_types", with(func(m *EffectModifier) { m.DamageTypes = []string{"damage-type:fire"} }), ".damage_types"},
 		{"stray conditions", with(func(m *EffectModifier) { m.Conditions = []string{"condition:blinded"} }), ".conditions"},
+		{"a stray skill", with(func(m *EffectModifier) { m.Skill = "skill:stealth" }), ".skill"},
+		{"stray abilities", with(func(m *EffectModifier) { m.Abilities = []string{"str"} }), ".abilities"},
+		{"a stray except_source", with(func(m *EffectModifier) { m.ExceptSource = true }), ".except_source"},
+		{"a stray once", with(func(m *EffectModifier) { m.Once = true }), ".once"},
+		{"a stray choose", with(func(m *EffectModifier) { m.Choose = true }), ".choose"},
+		{"a stray from_caster", with(func(m *EffectModifier) { m.FromCaster = true }), ".from_caster"},
+		{"stray allowed", with(func(m *EffectModifier) { m.Allowed = []string{"attack"} }), ".allowed"},
+		{"a stray max_weapon_attacks", with(func(m *EffectModifier) { m.MaxWeaponAttacks = 1 }), ".max_weapon_attacks"},
+		{"a stray resistance_kind", with(func(m *EffectModifier) { m.ResistanceKind = "resist" }), ".resistance_kind"},
+		{"a stray claim", with(func(m *EffectModifier) { m.Claim = 3 }), ".claim"},
+		{"a stray unclaimed", with(func(m *EffectModifier) { m.Unclaimed = true }), ".unclaimed"},
 		{"an instantaneous spell", func(ts *TableSpell) {
 			ts.Effect.Modifiers = []EffectModifier{hitMod(nil)}
 			ts.Concentration, ts.Duration = false, TableDuration{Kind: DurationInstantaneous}
