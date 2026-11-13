@@ -64,6 +64,7 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginLegendaryFight, legendaryScreens, shotScale } from './legendary-support';
 import { LEFT_OUT_VIEWPORTS, leftOutShotScale, refuseEntries, shootLeftOut, targetLeftTheMenu } from './left-out-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
+import { ATT_WIDTHS, attViewport, attunementScale, cropAtt, shootAtt } from './attunement-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
@@ -8322,6 +8323,159 @@ test('a sintonização passa no axe e nas conferências de layout no tema escuro
   test.setTimeout(240_000);
   await scanAttunementScreens(browser, 'dark', 390);
 });
+
+/**
+ * The attunement screens of the boards (#561), through the real stack, each judged by axe and the layout checks and
+ * saved at 390, 768 and 1280 px (`E2E_SHOTS_DIR`) with 2x crops of the chips, the lock line and the rest sheet's row.
+ */
+async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = attViewport(1280);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...attunementScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: attViewport(390), ...attunementScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let outsider: Awaited<ReturnType<typeof secondPlayer>> | undefined;
+  let campaignId = '';
+  const everyWidth = async (page: Page, name: string, what: string, at: () => Locator) => {
+    for (const width of ATT_WIDTHS) {
+      await page.setViewportSize(attViewport(width));
+      await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+      await shootAtt(page, name, width, colorScheme, at());
+    }
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = {
+      weaponKeys: ['equipment:longsword'],
+      armorKey: 'equipment:chain-mail',
+      itemBonuses: [{ key: 'equipment:longsword', bonus: 3, requiresAttunement: true }],
+      magicItems: [
+        { key: 'item:ring-of-protection' },
+        { key: 'item:cloak-of-elvenkind' },
+        { key: 'item:pearl-of-power' },
+        { key: 'item:ring-of-shooting-stars' },
+        { key: 'item:boots-of-elvenkind' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Quadros da sintonização ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    await openLive(p, route);
+    await openLive(m, route);
+    const gearOf = (page: Page) => page.getByRole('region', { name: 'Equipamento' });
+
+    // The owner, outside a rest: the list, the chips on the gear, the lock line, "Muda num descanso".
+    await expect(gearOf(p).getByText('Muda num descanso')).toBeVisible();
+    await everyWidth(p, 'ficha-dono', 'A ficha do dono, itens mágicos e sintonia', () => gearOf(p));
+    await cropAtt(gearOf(p).locator('.gear-row').first(), 'chip-peca', colorScheme);
+    await cropAtt(gearOf(p).locator('.gear__lock'), 'linha-travada', colorScheme);
+
+    // The master: the same list with the menus, and the picker (with a search that finds nothing).
+    await everyWidth(m, 'ficha-mestre', 'A ficha do mestre, itens mágicos com os menus', () => gearOf(m));
+    await gearOf(m).getByRole('button', { name: 'Adicionar item mágico' }).click();
+    const picker = m.getByRole('dialog', { name: 'Adicionar item mágico' });
+    await expect(picker.getByRole('radio').first()).toBeVisible();
+    await everyWidth(m, 'adicionar-item', 'O seletor de item mágico', () => picker);
+    await picker.getByRole('searchbox').fill('espada +2');
+    await expect(picker.getByText('Nenhum item mágico com “espada +2”.')).toBeVisible();
+    await everyWidth(m, 'adicionar-item-sem-resultado', 'O seletor, busca sem resultado', () => picker);
+    await m.keyboard.press('Escape');
+    await expect(picker).toBeHidden();
+
+    // The master's attunement sheet: the ring and the sword attuned, the pearl refused with its reason.
+    await gearOf(m).getByRole('button', { name: 'Mudar sintonização' }).click();
+    const att = m.getByRole('dialog', { name: /^Sintonização/ });
+    await expect(att).toBeVisible();
+    await everyWidth(m, 'sintonizacao-mestre', 'A sintonização do mestre', () => att);
+    await att.getByRole('button', { name: 'Sintonizar Anel de proteção' }).click();
+    await expect(att.getByRole('button', { name: 'Encerrar Anel de proteção' })).toBeVisible();
+    await att.getByRole('button', { name: /^Sintonizar Espada longa/ }).click();
+    await expect(att.getByRole('button', { name: /^Encerrar Espada longa/ })).toBeVisible();
+    await att.getByRole('button', { name: 'Sintonizar Manto élfico' }).click();
+    await expect(att.getByRole('button', { name: 'Encerrar Manto élfico' })).toBeVisible();
+    await everyWidth(m, 'sintonizacao-no-limite-mestre', 'A sintonização do mestre no limite de 3', () => att);
+    await att.getByRole('button', { name: 'Sintonizar Pérola do poder' }).click({ trial: true }).catch(() => undefined);
+    await everyWidth(m, 'sintonizacao-restricao', 'A sintonização, o item que o personagem não cumpre', () => att);
+    await m.keyboard.press('Escape');
+    await expect(att).toBeHidden();
+
+    // "Remover item": attuned (the count goes down) and not attuned.
+    await gearOf(m).getByRole('button', { name: 'Remover item · Anel de proteção' }).click();
+    const removeAttuned = m.getByRole('alertdialog', { name: 'Remover Anel de proteção?' });
+    await expect(removeAttuned).toContainText('Sintonizados 3 → 2');
+    await everyWidth(m, 'remover-item-sintonizado', 'Remover item sintonizado', () => removeAttuned);
+    await removeAttuned.getByRole('button', { name: 'Cancelar' }).click();
+    await gearOf(m).getByRole('button', { name: 'Remover item · Botas élficas' }).click();
+    const removePlain = m.getByRole('alertdialog', { name: 'Remover Botas élficas?' });
+    await everyWidth(m, 'remover-item', 'Remover item sem sintonia', () => removePlain);
+    await removePlain.getByRole('button', { name: 'Cancelar' }).click();
+
+    // A rest: the master takes it, the owner's rest sheet offers the section at the limit, then after the master ends one.
+    await m.setViewportSize(attViewport(1280));
+    await openSessionPage(m, campaignId, 'grupo');
+    const card = m.getByRole('region', { name: 'Descanso' });
+    await card.getByRole('button', { name: 'Descanso curto' }).click();
+    await card.getByRole('alertdialog', { name: 'Começar o descanso curto?' }).getByRole('button', { name: 'Descansar' }).click();
+    await expect(card.getByText('Descanso curto feito.').first()).toBeVisible();
+    await openSessionPage(p, campaignId);
+    await openSheetTab(p);
+    await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+    const dice = p.getByRole('dialog', { name: 'Gastar dados de vida' });
+    const section = dice.getByRole('region', { name: 'Sintonização' });
+    await expect(section).toContainText('Sintonizados: 3 de 3');
+    await everyWidth(p, 'sintonia-no-descanso-limite', 'A folha do descanso curto, o dono no limite', () => section);
+    await cropAtt(section, 'linha-do-descanso', colorScheme);
+    await dice.locator('button', { hasText: 'Fechar' }).click();
+    await expect(dice).toBeHidden();
+
+    // The master ends the cloak: the owner reads the rest sheet again with room, attunes, and the window is spent.
+    await openLive(m, route);
+    await gearOf(m).getByRole('button', { name: 'Mudar sintonização' }).click();
+    await m.getByRole('dialog', { name: /^Sintonização/ }).getByRole('button', { name: 'Encerrar Manto élfico' }).click();
+    await expect(m.getByRole('dialog', { name: /^Sintonização/ }).getByRole('button', { name: 'Sintonizar Manto élfico' })).toBeVisible();
+    await m.keyboard.press('Escape');
+    await p.reload();
+    await openSheetTab(p);
+    await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+    await expect(section).toContainText('Sintonizados: 2 de 3');
+    await everyWidth(p, 'sintonia-no-descanso', 'A folha do descanso curto, com uma vaga', () => section);
+    await section.getByRole('button', { name: 'Sintonizar Manto élfico' }).click();
+    await expect(dice.getByText('A sintonização deste descanso foi usada.')).toBeVisible();
+    await everyWidth(p, 'sintonia-usada', 'A folha do descanso curto, a sintonização usada', () => dice.getByText('A sintonização deste descanso foi usada.'));
+    await dice.locator('button', { hasText: 'Fechar' }).click();
+
+    // Another player reads none of it.
+    outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport: attViewport(390), ...attunementScale });
+    await openLive(outsider.page, route);
+    await expect(outsider.page.getByText('Itens mágicos')).toHaveCount(0);
+    await expect(outsider.page.getByText(/^Sintonizados:/)).toHaveCount(0);
+    await everyWidth(outsider.page, 'ficha-outro-jogador', 'A ficha de outro jogador, sem itens nem sintonia', () => outsider!.page.locator('main').first());
+
+    // A dead character: the owner has no controls, and the sheet says so.
+    const dead = await callRPC(m, 'meurpg.characters.v1.CharacterService/MarkCharacterDead', { campaignId, characterId: table.characterId });
+    expect(dead.ok(), await dead.text()).toBeTruthy();
+    await openLive(p, route);
+    await expect(gearOf(p).getByRole('button', { name: /^Remover item/ })).toHaveCount(0);
+    await everyWidth(p, 'ficha-personagem-morto', 'A ficha do personagem morto, sem controles de itens', () => gearOf(p));
+  } finally {
+    if (outsider) {
+      await outsider.close();
+    }
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  test(`as telas dos quadros da sintonização passam no axe e nas conferências de layout no tema ${theme}, em 390, 768 e 1280`, { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanAttunementBoards(browser, colorScheme);
+  });
+}
 
 /** The weapon marks (#585): the chips on the gear and attacks, the weapon's "⋮" menu for the owner and the master, never for another player. */
 async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
