@@ -111,11 +111,6 @@
       "count": 2
     }
   },
-  "tests/layout.ts": {
-    "playwright/valid-describe-callback": {
-      "count": 4
-    }
-  },
   "tests/levelup.spec.ts": {
     "playwright/no-force-option": {
       "count": 1
