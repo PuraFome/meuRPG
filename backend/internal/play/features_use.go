@@ -84,7 +84,7 @@ func (s *Service) featureSceneOf(ctx context.Context, tx pgx.Tx, campaignID stri
 
 // spent is how many uses of the feature the combatant spent in the scope that holds now.
 func (sc featureScene) spent(key string, u link.FeatureUse) int {
-	e, ok := sc.st.live(key, sc.now)
+	e, ok := sc.st.live(useStateKey(key), sc.now)
 	if !ok || e.S != u.Scope {
 		return 0
 	}

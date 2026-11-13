@@ -181,6 +181,31 @@ func (x effectCompiler) compileUse() error {
 	return err
 }
 
+// checkUseAlone refuses a use beside what only TakeAction gives a grant_action: the spell slots it spends or gives, the cost
+// the player picks and its value per point, the action's own heal and temporary hit points (the use has its own, in applies),
+// and a text that makes it one of the standard actions (Dash, Disengage, Hide). UseFeature spends the economy, the resource at
+// its cost and what the use applies, and nothing else.
+func checkUseAlone(site effectSite, e *Effect) error {
+	if e.Use == nil {
+		return nil
+	}
+	var with string
+	switch {
+	case e.SpendsSlot || e.GivesSlot != "":
+		with = "a spell slot"
+	case e.CostMax != "" || e.ValuePerPoint != "":
+		with = "a cost the player picks (cost_max, value_per_point)"
+	case e.Heal != "" || e.TempHP != "":
+		with = "the action's own heal or temporary hit points (give them in use.applies)"
+	case e.Economy == EconomyBonusAction && len(standardsNamedIn(e.TextPT)) > 0:
+		with = "a text that names a standard action (Dash, Disengage, Hide)"
+	}
+	if with == "" {
+		return nil
+	}
+	return site.fail(".use", ReasonValue, "a use cannot be combined with %s: UseFeature spends the economy, the resource and what the use applies", with)
+}
+
 // checkUse checks what a grant_action declares of its use. Every field that is wrong is reported at its path.
 func (b *overlayBuilder) checkUse(site effectSite, e *Effect) error {
 	u := e.Use

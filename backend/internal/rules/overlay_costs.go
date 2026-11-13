@@ -8,6 +8,9 @@ import (
 
 // checkGrantAction checks the resource an action spends and that it can pay the cost.
 func (b *overlayBuilder) checkGrantAction(site effectSite, e *Effect) error {
+	if err := checkUseAlone(site, e); err != nil {
+		return err
+	}
 	if e.Resource != "" && !b.resourceDefined(site.owner, e.Resource) {
 		return site.fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
 	}

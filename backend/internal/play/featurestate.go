@@ -27,6 +27,13 @@ const (
 	featureColossusSlayer = "colossus_slayer"
 )
 
+// useStatePrefix starts the key of a UseFeature entry: "use:<action key>". A table feature can have a use and an
+// extra_damage under the same key, and the two states must not meet.
+const useStatePrefix = "use:"
+
+// useStateKey is the key the uses of an action are counted under.
+func useStateKey(actionKey string) string { return useStatePrefix + actionKey }
+
 // The limits of a document; the database check holds the size too (00326).
 const (
 	featureStateMaxKeys  = 64
@@ -96,10 +103,11 @@ func (fs featureState) live(key string, now stateNow) (featureEntry, bool) {
 	return e, true
 }
 
-// used says the feature has an entry that holds at now.
+// used says the feature has an entry of the turn that holds at now: the once-per-turn mark. An entry of another scope is a
+// count of uses, not a mark.
 func (fs featureState) used(key string, now stateNow) bool {
-	_, ok := fs.live(key, now)
-	return ok
+	e, ok := fs.live(key, now)
+	return ok && e.S == scopeTurn
 }
 
 // set puts the entry of the key; the document is checked when it is written (validate).

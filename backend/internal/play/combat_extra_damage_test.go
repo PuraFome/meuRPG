@@ -286,7 +286,7 @@ func newGiantTable(t *testing.T, applies string) *giantTable {
 }
 
 // newGiantTableWith is newGiantTable with the extra_damage effect the test gives.
-func newGiantTableWith(t *testing.T, extra *rulesv1.TableEffect) *giantTable {
+func newGiantTableWith(t *testing.T, extra *rulesv1.TableEffect, more ...*rulesv1.TableEffect) *giantTable {
 	t.Helper()
 	g := &giantTable{}
 	g.armed = newArmedWith(t, func(a *armed) {
@@ -297,6 +297,7 @@ func newGiantTableWith(t *testing.T, extra *rulesv1.TableEffect) *giantTable {
 				extra,
 			},
 		}
+		feature.Effects = append(feature.Effects, more...)
 		sub := &rulesv1.TableSubclass{
 			NamePt: "Caçador de Gigantes", ClassKey: "class:fighter", DescPt: []string{"Golpes."},
 			Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{feature}}},

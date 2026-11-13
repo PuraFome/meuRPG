@@ -104,6 +104,26 @@ func TestFeatureUseShapes(t *testing.T) {
 		{"an effect of too many rounds", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Effect: goodEffect(), EffectRounds: 14401} }), ".use.applies.effect_rounds", ReasonValue},
 		{"rounds with no effect", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Heal: "1d4", EffectRounds: 5} }), ".use.applies.effect_rounds", ReasonValue},
 	}
+	// A use is not combined with what only TakeAction gives a grant_action: slots, a cost the player picks, the action's own
+	// heal and temporary hit points (use.applies has its own), or a text that makes the action a standard one.
+	plain := func(mut func(e *Effect)) []Effect {
+		e := useAction(&FeatureUse{LimitScope: UseScopeTurn, LimitUses: "1"})
+		mut(&e)
+		return []Effect{e}
+	}
+	cases = append(cases, []struct {
+		name       string
+		effects    []Effect
+		field, why string
+	}{
+		{"a use that spends a slot", plain(func(e *Effect) { e.SpendsSlot = true }), ".use", ReasonValue},
+		{"a use that gives a slot", plain(func(e *Effect) { e.GivesSlot = "1" }), ".use", ReasonValue},
+		{"a use with a cost the player picks", plain(func(e *Effect) { e.Resource, e.Cost, e.CostMax = "x", "1", "3" }), ".use", ReasonValue},
+		{"a use with a value per point", plain(func(e *Effect) { e.ValuePerPoint = "1d6" }), ".use", ReasonValue},
+		{"a use beside the action's own heal", plain(func(e *Effect) { e.Heal = "1d6" }), ".use", ReasonValue},
+		{"a use beside the action's own temporary hit points", plain(func(e *Effect) { e.TempHP = "2" }), ".use", ReasonValue},
+		{"a use whose text names a standard action", plain(func(e *Effect) { e.TextPT = "Desengajar como ação bônus." }), ".use", ReasonValue},
+	}...)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()

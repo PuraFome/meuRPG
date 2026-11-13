@@ -257,11 +257,26 @@ func (f *featureFlow) mayUse(ctx context.Context) error {
 	}
 	// The resource is read in this transaction: the options of the rules read it too, but the row of the use is the
 	// one this transaction would spend from.
-	reason := f.scene.reason(f.fa, f.row, f.v.master)
-	if reason.GetCode() == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_VALID_TARGET {
-		return nil // the targets are checked below, with the detail the refusal carries
+	return featureRefusal(f.scene.reason(f.fa, f.row, f.v.master), f.v.master)
+}
+
+// featureRefusal is the refusal of a reason the checks found, nil when there is none. It fails closed: a disabled row whose
+// code no case maps is refused all the same, never let through (the master's economy override is the one exception, and it is
+// already out of the reason: featureScene.reason skips it). NO_VALID_TARGET is left to aim, which names the targets refused.
+func featureRefusal(reason *rulesv1.DisabledReason, master bool) error {
+	code := reason.GetCode()
+	switch {
+	case reason == nil, code == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_VALID_TARGET:
+		return nil
+	case master && masterMayOverride(code):
+		return nil
+	case code == rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_SLOT:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_SLOT, "no spell slot")
 	}
-	return featureError(reason, f.v.master)
+	if err := featureError(reason, master); err != nil {
+		return err
+	}
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New("the feature cannot be used now"))
 }
 
 // aim resolves the targets: the ones the call names, each of which the caller sees and the feature may be aimed at, or the
@@ -512,7 +527,7 @@ func (f *featureFlow) remember(ctx context.Context) error {
 	if scope == "" {
 		return nil
 	}
-	key, now := f.call.actionKey, f.scene.now
+	key, now := useStateKey(f.call.actionKey), f.scene.now
 	state := readFeatureState(f.who.FeatureState)
 	var before *featureEntry
 	n := int32(1)

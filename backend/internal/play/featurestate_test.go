@@ -62,8 +62,12 @@ func TestFeatureStateEntriesExpireByTheirMark(t *testing.T) {
 		t.Error("an entry of the round is stale in the same round")
 	}
 	fs.prune(now)
-	if len(fs) != 3 || !fs.used("turn", now) || !fs.used("round", now) || !fs.used("combat", now) {
+	if len(fs) != 3 {
 		t.Errorf("after prune = %v, want the three live ones", fs)
+	}
+	// used is the once-per-turn mark: an entry of the round or the combat is a count of uses, not a mark.
+	if !fs.used("turn", now) || fs.used("round", now) || fs.used("combat", now) {
+		t.Errorf("used: turn %v round %v combat %v, want only the turn's", fs.used("turn", now), fs.used("round", now), fs.used("combat", now))
 	}
 }
 

@@ -721,3 +721,67 @@ func TestTakeActionRefusesAFeatureThatIsUsedWithUseFeature(t *testing.T) {
 		t.Error("the refused call spent the bonus action")
 	}
 }
+
+// One table entry that has both a use (two in the combat) and an extra damage once per turn, under the same feature key: the
+// two states are not one. A damage roll with the extra does not change the use count, and a use does not give the turn's
+// extra back.
+func TestUseFeatureAndOncePerTurnExtraDamageKeepTheirOwnState(t *testing.T) {
+	t.Parallel()
+	g := newGiantTableWith(t,
+		&rulesv1.TableEffect{Type: "extra_damage", Applies: "any_target", Value: "3", Frequency: "once_per_turn", TextPt: "Dano extra."},
+		&rulesv1.TableEffect{Type: "grant_action", Economy: "bonus_action", TextPt: "Brado.", Use: useOf(rulesv1.UseScope_USE_SCOPE_COMBAT, "2", nil, &rulesv1.FeatureApplies{TempHp: "2"})},
+	)
+	e := g.passTo(t, g.castersFight(t, 1), "Pensantus")
+	key := giantFeatureKey(t, g)
+	left := func() int32 {
+		t.Helper()
+		for _, f := range g.mustOptions(t, g.ana, e, "Pensantus").GetOptions().GetFeatureActions() {
+			if f.GetAction().GetKey() == key {
+				return f.GetUseLeft()
+			}
+		}
+		t.Fatal("no Brado among the options")
+		return 0
+	}
+	use := func(u *user) error {
+		_, err := u.feature.UseFeature(t.Context(), connect.NewRequest(&playv1.UseFeatureRequest{
+			CampaignId: g.campaignID, EncounterId: e.GetId(), CombatantId: g.id(t, "Pensantus"), ActionKey: key, IdempotencyKey: newKey(),
+		}))
+		return err
+	}
+	first := g.hit(t, e)
+	g.h.roller.queue(5)
+	g.mustDamage(t, g.ana, e, first.GetId(), marking(key)) // the extra damage marks the turn
+	if got := left(); got != 2 {
+		t.Fatalf("uses left after the extra damage = %d, want 2: a damage roll does not spend a use", got)
+	}
+	if err := use(g.ana); err != nil {
+		t.Fatalf("the use after the extra damage: %v", err)
+	}
+	if got := left(); got != 1 {
+		t.Errorf("uses left = %d, want 1", got)
+	}
+	second := g.hit(t, e)
+	if q := partOf(second.GetParts(), key); q == nil || q.GetAvailable() {
+		t.Errorf("the extra after a use = %v, want it still off: the use does not give the turn's extra back", q)
+	}
+	// The other way: the use first (a new turn), then the extra is not blocked by it.
+	e = g.passTo(t, g.passTo(t, g.get(t, g.master), "Toren"), "Pensantus")
+	if err := use(g.master); err != nil { // the master may use the bonus action again
+		t.Fatalf("the use: %v", err)
+	}
+	if got := left(); got != 0 {
+		t.Fatalf("uses left = %d, want 0", got)
+	}
+	third := g.hit(t, e)
+	if q := partOf(third.GetParts(), key); q == nil || !q.GetAvailable() {
+		t.Fatalf("the extra after a use in a new turn = %v, want it available", q)
+	}
+	g.h.roller.queue(5)
+	if _, err := g.damage(t, g.ana, e, third.GetId(), marking(key)); err != nil {
+		t.Errorf("the extra after a use: %v", err)
+	}
+	if got := left(); got != 0 {
+		t.Errorf("uses left after the second extra = %d, want 0", got)
+	}
+}

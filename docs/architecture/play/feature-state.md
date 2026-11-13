@@ -20,7 +20,16 @@ A test (`TestCombatantsGainNoColumnPerFeature`, `backend/internal/archtest`) ref
 | `n` | The uses since the mark, at least 1. |
 | `c` | The choice made with the use, left out when there is none. |
 
-The keys in use are `sneak_attack`, `colossus_slayer` and the feature key of each table `extra_damage` that is once per turn, all of scope `turn`.
+The keys in use are:
+
+| Key | Scope | Written by |
+| --- | --- | --- |
+| `sneak_attack`, `colossus_slayer` | `turn` | The attack roll of the SRD feature. |
+| The feature key of a table `extra_damage` that is once per turn | `turn` | The damage roll with the extra. |
+| `use:<action key>` (`useStatePrefix`) | The scope of the action's `use`: `turn`, `round` or `combat` | `UseFeature`: the uses counted in the scope. |
+
+The `use:` prefix keeps the count of a `use` apart from a mark of the same feature key: one table entry can have a `grant_action` with `use` and a once-per-turn `extra_damage`.
+`featureState.used` (the once-per-turn question) counts only an entry of scope `turn`.
 
 ### Expiry
 

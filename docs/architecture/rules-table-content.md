@@ -181,6 +181,7 @@ The action's economy, `resource` and `cost` apply as for any `grant_action`; `us
 | `applies.effect`, `applies.effect_rounds` | A lasting effect on the targets (the user when there are none), checked as the effect of a table spell ([The lasting effect of a spell](#the-lasting-effect-of-a-spell)): conditions and modifiers, label and visibility. It has no spell, so its `applies` is empty or `all`, and it lasts `effect_rounds` (1 to 14,400; each needs the other). |
 
 A `use` that declares nothing is refused at `.use`.
+A `use` stands alone: `UseFeature` spends the economy, the resource and what the use applies, so a `grant_action` with `use` and any of `spends_slot`, `gives_slot`, `cost_max`, `value_per_point`, `heal`, `temp_hp` (give them in `use.applies`) or, for a bonus action, a text that names a standard action (Dash, Disengage, Hide) is refused at `.use` with `bad_value`.
 Every refusal is at its field with `bad_value`, `limit` (more than 8 `choices`, at `.use.choices`) or `bad_formula` (a formula that does not compile): `.use.limit_scope`, `.use.limit_uses`, `.use.targets.min`, `.use.targets.max`, `.use.targets.who`, `.use.targets.range_ft`, `.use.choices[i].key`, `.use.choices[i].text_pt`, `.use.applies.heal`, `.use.applies.temp_hp`, `.use.applies.effect` (and `.effect.conditions[i]`, `.effect.modifiers[i]...`, `.effect.applies`), `.use.applies.effect_rounds`.
 
 What `Derive` gives the runtime:
