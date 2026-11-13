@@ -279,7 +279,7 @@ func featureRefusal(reason *rulesv1.DisabledReason, master bool) error {
 // aim resolves the targets: the ones the call names, each of which the caller sees and the feature may be aimed at, or the
 // user alone. A refusal is FEATURE_TARGET; the ids it lists are the ones that cannot be picked, a creature the caller does
 // not see among them with the answer of one that does not exist.
-func (f *featureFlow) aim(ctx context.Context) error {
+func (f *featureFlow) aim(_ context.Context) error {
 	t := targetRules(*f.fa.Use)
 	ids := f.call.targets
 	if !t.Allows(len(ids)) || (t.Who == rules.FeatureWhoSelf && len(ids) == 1 && ids[0] != f.who.ID) {
@@ -385,27 +385,15 @@ func (f *featureFlow) apply(ctx context.Context) error {
 			return err
 		}
 	}
-	var amount int32
-	if u.Heal != nil {
-		roll, err := dice.Roll(f.s.roller, dice.Expr{Count: u.Heal.Count, Sides: u.Heal.Sides, Modifier: u.Heal.Bonus})
-		if err != nil {
-			return fmt.Errorf("roll the heal: %w", err)
-		}
-		amount = clamp32(max(roll.Total, 0), 0, math.MaxInt32)
-		f.fe.Faces, f.fe.Total = faces32(roll.Faces), amount
+	amount, err := f.rollHeal()
+	if err != nil {
+		return err
 	}
 	f.fe.Targets = nil
 	for i, t := range f.targets {
-		got := featureTargetUse{ID: t.ID}
-		if u.Heal != nil {
-			if err := f.heal(ctx, i, t, amount, &got); err != nil {
-				return err
-			}
-		}
-		if u.TempHP > 0 {
-			if err := f.temp(ctx, i, t, u.TempHP, &got); err != nil {
-				return err
-			}
+		got, err := f.applyTo(ctx, i, t, amount)
+		if err != nil {
+			return err
 		}
 		f.fe.Healed += got.Healed
 		f.fe.TempHP += got.TempHP
@@ -419,6 +407,38 @@ func (f *featureFlow) apply(ctx context.Context) error {
 	}
 	f.made.Hits = f.hits
 	return nil
+}
+
+// rollHeal rolls the heal once for every target and writes the dice in the event; 0 for a use that heals nothing.
+func (f *featureFlow) rollHeal() (int32, error) {
+	u := f.fa.Use
+	if u.Heal == nil {
+		return 0, nil
+	}
+	roll, err := dice.Roll(f.s.roller, dice.Expr{Count: u.Heal.Count, Sides: u.Heal.Sides, Modifier: u.Heal.Bonus})
+	if err != nil {
+		return 0, fmt.Errorf("roll the heal: %w", err)
+	}
+	amount := clamp32(max(roll.Total, 0), 0, math.MaxInt32)
+	f.fe.Faces, f.fe.Total = faces32(roll.Faces), amount
+	return amount, nil
+}
+
+// applyTo gives one target the heal and the temporary hit points, and says what it got.
+func (f *featureFlow) applyTo(ctx context.Context, i int, t playdb.Combatant, amount int32) (featureTargetUse, error) {
+	u := f.fa.Use
+	got := featureTargetUse{ID: t.ID}
+	if u.Heal != nil {
+		if err := f.heal(ctx, i, t, amount, &got); err != nil {
+			return got, err
+		}
+	}
+	if u.TempHP > 0 {
+		if err := f.temp(ctx, i, t, u.TempHP, &got); err != nil {
+			return got, err
+		}
+	}
+	return got, nil
 }
 
 // heal heals one target, keeping the hit points before for the undo.

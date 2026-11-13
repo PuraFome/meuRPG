@@ -37,12 +37,21 @@ func TestUndoOfAnEventWithOnceBeforePutsTheOldMarksBack(t *testing.T) {
 		ev   onceMarks
 		want featureState
 	}{
-		{"the old marks all back", onceMarks{Colossus: turn, Table: map[string]string{"giant": turn}, TableChanged: true},
-			featureState{featureColossusSlayer: used, "giant": used}},
-		{"no table change leaves the table's marks", onceMarks{},
-			featureState{"giant": used, "ember": used}},
-		{"an empty table before takes the table's marks away", onceMarks{Sneak: turn, Table: map[string]string{}, TableChanged: true},
-			featureState{featureSneakAttack: used}},
+		{
+			"the old marks all back",
+			onceMarks{Colossus: turn, Table: map[string]string{"giant": turn}, TableChanged: true},
+			featureState{featureColossusSlayer: used, "giant": used},
+		},
+		{
+			"no table change leaves the table's marks",
+			onceMarks{},
+			featureState{"giant": used, "ember": used},
+		},
+		{
+			"an empty table before takes the table's marks away",
+			onceMarks{Sneak: turn, Table: map[string]string{}, TableChanged: true},
+			featureState{featureSneakAttack: used},
+		},
 	} {
 		a.writeFeatureState(t, "Toren", featureState{featureSneakAttack: used, "giant": used, "ember": used})
 		ev := tt.ev

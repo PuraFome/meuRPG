@@ -137,8 +137,9 @@ func (m *featureTable) use(t *testing.T, u *user, e *playv1.Encounter, who, name
 	return res.Msg, nil
 }
 
-func targets(labels ...string) func(m *featureTable, t *testing.T) func(*playv1.UseFeatureRequest) {
-	return func(m *featureTable, t *testing.T) func(*playv1.UseFeatureRequest) {
+func targets(labels ...string) func(t *testing.T, m *featureTable) func(*playv1.UseFeatureRequest) {
+	return func(t *testing.T, m *featureTable) func(*playv1.UseFeatureRequest) {
+		t.Helper()
 		return func(r *playv1.UseFeatureRequest) {
 			for _, l := range labels {
 				r.TargetIds = append(r.TargetIds, m.id(t, l))
@@ -148,7 +149,8 @@ func targets(labels ...string) func(m *featureTable, t *testing.T) func(*playv1.
 }
 
 func (m *featureTable) aim(t *testing.T, labels ...string) func(*playv1.UseFeatureRequest) {
-	return targets(labels...)(m, t)
+	t.Helper()
+	return targets(labels...)(t, m)
 }
 
 // A use that heals: the dice are the server's, the bonus action is spent (the action stays), the uses of the combat go down, the

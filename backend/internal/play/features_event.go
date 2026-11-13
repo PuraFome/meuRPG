@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"fmt"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -34,6 +35,19 @@ type featureTargetUse struct {
 	TempHP int32  `json:"temp_hp,omitempty"`
 }
 
+// featureEffectsBack takes away the effects the use put on its targets, and works the targets out again.
+func (u *undoer) featureEffectsBack(ctx context.Context, ev actionEvent) error {
+	if ev.Lasting == nil {
+		return nil
+	}
+	for _, id := range ev.Lasting.Effects {
+		if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
+			return fmt.Errorf("take the effect of the use away: %w", err)
+		}
+	}
+	return u.s.refreshCombatants(ctx, u.c, ev.Lasting.Targets...)
+}
+
 // featureUsed puts back what a use did: the economy, the feature's state, the use of the resource, the hit points of
 // each target and the effects the use put on them. The turn's other changes after it are not there: a later event closes the
 // chain (the undo takes only the last action).
@@ -48,15 +62,8 @@ func (u *undoer) featureUsed(ctx context.Context, ev actionEvent) error {
 	if err := u.setRun(ctx, who, ev.RunBefore); err != nil {
 		return err
 	}
-	if ev.Lasting != nil { // the effects the use put on its targets
-		for _, id := range ev.Lasting.Effects {
-			if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
-				return fmt.Errorf("take the effect of the use away: %w", err)
-			}
-		}
-		if err := u.s.refreshCombatants(ctx, u.c, ev.Lasting.Targets...); err != nil {
-			return err
-		}
+	if err := u.featureEffectsBack(ctx, ev); err != nil {
+		return err
 	}
 	for _, h := range ev.Hits {
 		if err := u.castHitTargetBack(ctx, h); err != nil {
@@ -69,15 +76,6 @@ func (u *undoer) featureUsed(ctx context.Context, ev actionEvent) error {
 		}
 	}
 	return u.onceMarksBack(ctx, who, ev)
-}
-
-// targetIDsOf are the combatants a use was aimed at.
-func (f featureUseEvent) targetIDs() []string {
-	ids := make([]string, len(f.Targets))
-	for i, t := range f.Targets {
-		ids[i] = t.ID
-	}
-	return ids
 }
 
 // featureUsedLine is the handler of a use of a feature: a line of the feature action's audience (the table, unless the user or

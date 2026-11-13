@@ -87,6 +87,23 @@ type resourceFlow struct {
 	made actionEvent
 }
 
+// flowActionOf is the feature action of the character the flow takes: one it has, and not one taken with UseFeature.
+func (s *Service) flowActionOf(ctx context.Context, c *combatTx, m authz.Membership, who playdb.Combatant, actionKey string) (*rulesv1.ActionOption, error) {
+	opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, who)
+	if err != nil {
+		return nil, err
+	}
+	i := slices.IndexFunc(opts.GetFeatureActions(), func(a *rulesv1.ActionOption) bool { return a.GetAction().GetKey() == actionKey })
+	if i < 0 {
+		return nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
+	}
+	action := opts.GetFeatureActions()[i]
+	if action.GetViaUseFeature() {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("use UseFeature"))
+	}
+	return action, nil
+}
+
 // startFlow does what every flow begins with inside the change: the combatant is the
 // caller's, it is its turn, the feature action is one it has and may take (the master
 // is held to nothing of the economy), and the action is spent. It returns the event
@@ -108,17 +125,9 @@ func (s *Service) startFlow(ctx context.Context, c *combatTx, m authz.Membership
 		// The resources of an NPC are not counted: the master adjusts what it did.
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("this is for a player's character; the master adjusts an NPC by hand"))
 	}
-	opts, err := s.optionsOf(ctx, c.tx, m.CampaignID, who)
+	action, err := s.flowActionOf(ctx, c, m, who, actionKey)
 	if err != nil {
 		return nil, err
-	}
-	i := slices.IndexFunc(opts.GetFeatureActions(), func(a *rulesv1.ActionOption) bool { return a.GetAction().GetKey() == actionKey })
-	if i < 0 {
-		return nil, resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the character does not have this feature")
-	}
-	action := opts.GetFeatureActions()[i]
-	if action.GetViaUseFeature() {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("use UseFeature"))
 	}
 	if err := s.mustActNow(ctx, c, who); err != nil {
 		return nil, err

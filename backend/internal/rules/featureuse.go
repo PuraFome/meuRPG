@@ -249,16 +249,26 @@ func checkUseLimit(u *FeatureUse, at useRefuse) {
 	}
 }
 
+// checkUseTargets checks what the use asks of its targets: how many, who, and how far.
 func checkUseTargets(t *FeatureTargets, at useRefuse) {
 	if t.empty() {
 		return
 	}
+	checkUseTargetCount(t, at)
+	checkUseTargetWho(t, at)
+	checkUseTargetRange(t, at)
+}
+
+func checkUseTargetCount(t *FeatureTargets, at useRefuse) {
 	switch {
 	case t.Min < 0 || t.Min > maxFeatureTargets:
 		at(".targets.min", ReasonValue, "min is 0 to %d", maxFeatureTargets)
 	case t.Max > maxFeatureTargets || t.Max < t.Min:
 		at(".targets.max", ReasonValue, "max is from min to %d", maxFeatureTargets)
 	}
+}
+
+func checkUseTargetWho(t *FeatureTargets, at useRefuse) {
 	switch {
 	case t.Who != "" && !slices.Contains(featureWhos, t.Who):
 		at(".targets.who", ReasonValue, "who is self, ally, enemy or any")
@@ -267,6 +277,9 @@ func checkUseTargets(t *FeatureTargets, at useRefuse) {
 	case t.Who == FeatureWhoSelf && t.Max > 1:
 		at(".targets.max", ReasonValue, "a use aimed at self takes at most 1 target")
 	}
+}
+
+func checkUseTargetRange(t *FeatureTargets, at useRefuse) {
 	switch {
 	case t.RangeFt < 0 || t.RangeFt > maxFeatureRangeFt:
 		at(".targets.range_ft", ReasonValue, "range_ft is 0 to %d", maxFeatureRangeFt)

@@ -38,6 +38,17 @@ type FeatureCandidate struct {
 // Refusal is why the creature cannot be picked, "" when it can. The first reason that applies wins: the side, the state,
 // then the range.
 func (t FeatureTargets) Refusal(c FeatureCandidate, heals bool) string {
+	if r := t.sideRefusal(c); r != "" {
+		return r
+	}
+	if c.Down && !heals {
+		return FeatureTargetDown
+	}
+	return t.rangeRefusal(c)
+}
+
+// sideRefusal is the refusal of the side the creature is on, "" when the use may be aimed at it.
+func (t FeatureTargets) sideRefusal(c FeatureCandidate) string {
 	switch t.Who {
 	case FeatureWhoSelf:
 		if !c.Self {
@@ -55,16 +66,19 @@ func (t FeatureTargets) Refusal(c FeatureCandidate, heals bool) string {
 			return FeatureTargetOnlyEnemies
 		}
 	}
-	if c.Down && !heals {
-		return FeatureTargetDown
+	return ""
+}
+
+// rangeRefusal is the refusal of the reach, "" when the creature is in it or the range is not checked.
+func (t FeatureTargets) rangeRefusal(c FeatureCandidate) string {
+	if t.RangeFt <= 0 || c.Self || c.IgnoreRange {
+		return ""
 	}
-	if t.RangeFt > 0 && !c.Self && !c.IgnoreRange {
-		switch {
-		case !c.OnMap:
-			return FeatureTargetNotOnMap
-		case c.Distance > t.RangeFt:
-			return FeatureTargetOutOfReach + ": até " + metersPT(t.RangeFt)
-		}
+	switch {
+	case !c.OnMap:
+		return FeatureTargetNotOnMap
+	case c.Distance > t.RangeFt:
+		return FeatureTargetOutOfReach + ": até " + metersPT(t.RangeFt)
 	}
 	return ""
 }

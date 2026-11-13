@@ -86,7 +86,7 @@ const (
 // GetTurnOptions (c made for the read) both ask it.
 func (s *Service) featureStopNow(ctx context.Context, c *combatTx, who playdb.Combatant, reaction bool) (*featureStop, error) {
 	if err := notEnded(c.enc); err != nil {
-		return &featureStop{code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE, err: err}, nil
+		return endedStop(err)
 	}
 	code, err := s.featureGateCode(ctx, c.tx, c.session.CampaignID, c.enc, who, reaction)
 	if err != nil {
@@ -105,6 +105,11 @@ func (s *Service) featureStopNow(ctx context.Context, c *combatTx, who playdb.Co
 		return s.waitStop(err, waitsForAnAnswerText)
 	}
 	return nil, nil
+}
+
+// endedStop is the stop of a combat that has ended: err is the refusal, so the stop carries it and there is no failure.
+func endedStop(err error) (*featureStop, error) {
+	return &featureStop{code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE, err: err}, nil
 }
 
 // waitStop is the stop of a wait: err is the refusal when it says so (an encounter blocked), a failure otherwise.
@@ -172,7 +177,7 @@ func targetRules(u link.FeatureUse) rules.FeatureTargets {
 
 // candidates lists the creatures the caller sees as targets of the feature, in turn order, each with the reason it cannot
 // be picked ("" when it can). A creature the caller cannot see is not listed (RN-10), and neither is one that is out of the
-// fight. The distance is the squares between the centres, 5 ft each (RN-21); the master and a combat with no grid are not
+// fight. The distance is the squares between the centers, 5 ft each (RN-21); the master and a combat with no grid are not
 // held to the reach.
 func (sc featureScene) candidates(u link.FeatureUse) []*playv1.ResourceTarget {
 	t := targetRules(u)
@@ -184,23 +189,33 @@ func (sc featureScene) candidates(u link.FeatureUse) []*playv1.ResourceTarget {
 	var out []*playv1.ResourceTarget
 	for _, c := range sc.cs {
 		self := c.ID == sc.who.ID
-		if c.Dismissed || c.Defeated || c.DeathFailures >= deathSaveCount || (!self && !sc.v.sees(c)) {
+		if sc.outOfTheFight(c) || (!self && !sc.v.sees(c)) {
 			continue
 		}
 		cand := rules.FeatureCandidate{Self: self, SameSide: c.Side == sc.who.Side, OnlyAlly: onlyAlly, Down: sc.down[c.ID], IgnoreRange: ignoreRange}
 		target := &playv1.TargetInReach{CombatantId: c.ID, Label: c.Label, State: stateOf(c)}
-		switch dist, ok := distanceFt(sc.who, c); {
-		case self:
-			cand.OnMap = true
-			target.DistanceFt = new(int32)
-		case ok:
-			cand.OnMap, cand.Distance = true, int(dist)
-			target.DistanceFt = &dist
-			target.TooFar = t.RangeFt > 0 && !ignoreRange && int(dist) > t.RangeFt
-		}
+		sc.place(c, self, t.RangeFt, ignoreRange, &cand, target)
 		out = append(out, &playv1.ResourceTarget{Target: target, DisabledReasonPt: t.Refusal(cand, heals)})
 	}
 	return out
+}
+
+// outOfTheFight says the combatant is not a candidate at all: dismissed, defeated or dead.
+func (sc featureScene) outOfTheFight(c playdb.Combatant) bool {
+	return c.Dismissed || c.Defeated || c.DeathFailures >= deathSaveCount
+}
+
+// place writes where a candidate is: on the user, or the squares to the user, and whether that is too far for the reach.
+func (sc featureScene) place(c playdb.Combatant, self bool, rangeFt int, ignoreRange bool, cand *rules.FeatureCandidate, target *playv1.TargetInReach) {
+	switch dist, ok := distanceFt(sc.who, c); {
+	case self:
+		cand.OnMap = true
+		target.DistanceFt = new(int32)
+	case ok:
+		cand.OnMap, cand.Distance = true, int(dist)
+		target.DistanceFt = &dist
+		target.TooFar = rangeFt > 0 && !ignoreRange && int(dist) > rangeFt
+	}
 }
 
 // pickable is the candidates the feature can be aimed at now.
@@ -217,7 +232,7 @@ const noValidTargetText = "Sem alvo válido."
 // The master has the last word on the economy (TakeAction lets him use an action the turn spent): with master set, a row
 // disabled only by the economy goes on to the uses and the targets, which stop him too.
 func (sc featureScene) reason(fa link.FeatureAction, row *rulesv1.ActionOption, master bool) *rulesv1.DisabledReason {
-	if !row.GetEnabled() && !(master && masterMayOverride(row.GetReason().GetCode())) {
+	if !row.GetEnabled() && (!master || !masterMayOverride(row.GetReason().GetCode())) {
 		return row.GetReason()
 	}
 	u := *fa.Use
