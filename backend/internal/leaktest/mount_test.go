@@ -70,38 +70,43 @@ func TestAHiddenMountsRideNeverReachesPlayers(t *testing.T) {
 	if _, err := w.pool.Exec(ctx, `UPDATE combatants SET size = 'large' WHERE id = $1`, mount.GetId()); err != nil {
 		t.Fatalf("make the mount Large: %v", err)
 	}
-	w.placeForced(w.master, e.GetId(), placement{mount.GetId(), 14, 9}, placement{rider.GetId(), 13, 9})
+	w.placeForced(w.master, e.GetId(), placement{mount.GetId(), 14, 8}, placement{rider.GetId(), 13, 8})
 	must(w.master.combat.SetCombatantMount(ctx, rq(&playv1.SetCombatantMountRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: mount.GetId(), IdempotencyKey: newKey(), Kind: "controlled"})))
 
+	read := func(p *person) string {
+		log := jsonOf(must(p.combat.ListCombatLog(ctx, rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: e.GetId()}))))
+		return log + jsonOf(must(p.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))))
+	}
+	// The reads happen inside the act: the helper ends the game session after it, and the combat is read in a session.
+	people := []*person{w.master, w.ana, w.caio}
+	hiding, revealed := map[string]string{}, map[string]string{}
 	got := w.hiddenOnlyEvents(func() {
 		must(w.master.combat.MountCombatant(ctx, rq(&playv1.MountCombatantRequest{CampaignId: w.campaign, EncounterId: e.GetId(), RiderId: rider.GetId(), MountId: mount.GetId(), IdempotencyKey: newKey()})))
+		for _, p := range people {
+			hiding[p.name] = read(p)
+		}
+		must(w.master.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: mount.GetId(), IdempotencyKey: newKey(), Hidden: false})))
+		for _, p := range people {
+			revealed[p.name] = read(p)
+		}
 	})
 	heard := func(name string) string { return strings.Join(got[name], "\n") }
 	if len(got[w.master.name]) == 0 {
 		t.Errorf("the positive control failed: the master heard nothing of the mount")
 	}
-	read := func(p *person) string {
-		log := jsonOf(must(p.combat.ListCombatLog(ctx, rq(&playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: e.GetId()}))))
-		return log + jsonOf(must(p.combat.GetEncounter(ctx, rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))))
-	}
-	if masterRead := read(w.master); !strings.Contains(masterRead, "COMBAT_LOG_KIND_MOUNTED") || !strings.Contains(masterRead, mount.GetLabel()) {
+	if masterRead := hiding[w.master.name]; !strings.Contains(masterRead, "COMBAT_LOG_KIND_MOUNTED") || !strings.Contains(masterRead, mount.GetLabel()) {
 		t.Fatalf("the positive control failed: the master's log has no line of the mount")
 	}
-	check := func(when string) {
-		for _, p := range []*person{w.ana, w.caio} {
-			body := read(p) + heard(p.name)
+	for _, p := range []*person{w.ana, w.caio} {
+		for when, body := range map[string]string{"while the mount is hidden": hiding[p.name] + heard(p.name), "after the mount was revealed": revealed[p.name]} {
 			for _, needle := range []string{mount.GetId(), mount.GetLabel(), "COMBAT_LOG_KIND_MOUNTED"} {
+				if when == "after the mount was revealed" && needle != "COMBAT_LOG_KIND_MOUNTED" {
+					continue // the revealed mount is on the table: its name and id are theirs; the line of the ride stays the master's
+				}
 				if strings.Contains(body, needle) {
 					t.Errorf("%s reads %q %s", p.name, needle, when)
 				}
 			}
-		}
-	}
-	check("while the mount is hidden")
-	must(w.master.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: mount.GetId(), IdempotencyKey: newKey(), Hidden: false})))
-	for _, p := range []*person{w.ana, w.caio} {
-		if strings.Contains(read(p), "COMBAT_LOG_KIND_MOUNTED") {
-			t.Errorf("%s reads the line of the mount after it was revealed", p.name)
 		}
 	}
 }

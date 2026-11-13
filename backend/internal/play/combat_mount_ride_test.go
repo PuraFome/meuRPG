@@ -213,8 +213,8 @@ func TestMountedCombat_TheCostFollowsTheSurfaceAndTheSpeed(t *testing.T) {
 		c.steed(t)
 		withSpeed("Toren", "speed_swim_ft", 40)(t, c)
 		res := c.mustMount(t, c.caio, "Toren", "Ogro")
-		if got := c.rideRowOf(t, "Toren").UsedDft; got != 200 || res.GetMovementLeftDft() != 200 {
-			t.Errorf("the mount cost %d and left %d, want 200 and 200 (half of the 40 ft swim speed, left at it)", got, res.GetMovementLeftDft())
+		if got := c.rideRowOf(t, "Toren").UsedDft; got != 200 || res.GetMovementLeftDft() != 100 {
+			t.Errorf("the mount cost %d and left %d, want 200 and 100 (half of the 40 ft swim speed; the rider now stands on the mount's floor, where 20 ft of its 30 are spent)", got, res.GetMovementLeftDft())
 		}
 	})
 	t.Run("no speed", func(t *testing.T) {
@@ -409,8 +409,8 @@ func TestMountedCombat_DismountLandsNextToTheMount(t *testing.T) {
 	wantCode(t, "a dismount of a rider that rides nothing", err, connect.CodeInvalidArgument)
 	c.mustMount(t, c.caio, "Toren", "Ogro")
 	c.nextTurnOf(t, "Toren")
-	c.mustMove(t, c.master, "Escudeiro", 8, 6)
-	for name, sq := range map[string][2]int32{"not next to the mount": {9, 7}, "a wall": {8, 8}, "a taken square": {8, 6}, "the mount's own": {7, 7}} {
+	c.mustMove(t, c.master, "Escudeiro", 6, 8)
+	for name, sq := range map[string][2]int32{"not next to the mount": {9, 7}, "a wall": {8, 8}, "a taken square": {6, 8}, "the mount's own": {7, 7}} {
 		_, err := c.dismountAs(t, c.caio, "Toren", sq[0], sq[1])
 		wantBlockedBy(t, "a dismount on "+name, err, reasonNoRoom)
 	}
@@ -463,16 +463,17 @@ func TestMountedCombat_ThePairIsOneOccupant(t *testing.T) {
 	c.fight(t)
 	c.steed(t)
 	c.mustMount(t, c.caio, "Toren", "Ogro")
-	_, err := c.move(t, c.master, "Pensantus", 7, 7, func(r *playv1.MoveCombatantRequest) { r.Forced = true })
+	c.nextTurnOf(t, "Pensantus") // the master may stack combatants, so a player walks the third one
+	_, err := c.move(t, c.ana, "Pensantus", 7, 7)
 	wantBlockedBy(t, "a combatant put on the pair's square", err, reasonOccupied)
-	opts, err := c.options(t, c.master, "Pensantus")
+	opts, err := c.options(t, c.ana, "Pensantus")
 	if err != nil {
 		t.Fatalf("GetMoveOptions(Pensantus) error = %v", err)
 	}
 	if r := reachableAt(opts, 7, 7); r != nil {
 		t.Errorf("the pair's square is on offer to a third combatant: %v", r)
 	}
-	if _, err := c.move(t, c.master, "Pensantus", 6, 7, func(r *playv1.MoveCombatantRequest) { r.Forced = true }); err != nil {
+	if _, err := c.move(t, c.ana, "Pensantus", 6, 7); err != nil {
 		t.Errorf("a combatant put on the rider's old square = %v, want it free", err)
 	}
 	// The mount's own options: its square and its neighbours are not blocked by its rider, who stands on the mount's own square.
@@ -595,9 +596,9 @@ func TestMountedCombat_AnyMoveOfTheMountCarriesTheRider(t *testing.T) {
 		c.fight(t)
 		c.steed(t)
 		c.mustMount(t, c.caio, "Toren", "Ogro")
-		c.mustMove(t, c.master, "Ogro", 12, 9)
-		if toren := c.rideRowOf(t, "Toren"); toren.Col != 12 || toren.Row != 9 {
-			t.Errorf("Toren at (%d,%d), want (12,9) with the mount", toren.Col, toren.Row)
+		c.mustMove(t, c.master, "Ogro", 11, 8)
+		if toren := c.rideRowOf(t, "Toren"); toren.Col != 11 || toren.Row != 8 {
+			t.Errorf("Toren at (%d,%d), want (11,8) with the mount", toren.Col, toren.Row)
 		}
 		c.undoLast(t)
 		if toren := c.rideRowOf(t, "Toren"); toren.Col != 7 || toren.Row != 7 {
@@ -701,8 +702,8 @@ func TestMountedCombat_TurnOptionsListTheMountsAndTheLanding(t *testing.T) {
 	}
 	c.nextTurnOf(t, "Toren")
 	mount = turn(c.caio).GetOptions().GetMount()
-	if mount.GetDismountRefusal() != 0 || len(mount.GetLanding()) != 7 { // 8 neighbours less the wall on (8,8)
-		t.Errorf("the dismount options = refusal %v and %d squares, want none and 7", mount.GetDismountRefusal(), len(mount.GetLanding()))
+	if mount.GetDismountRefusal() != 0 || len(mount.GetLanding()) != 5 { // 8 neighbours less the walls on (7,6), (8,6) and (8,8)
+		t.Errorf("the dismount options = refusal %v and %d squares, want none and 5", mount.GetDismountRefusal(), len(mount.GetLanding()))
 	}
 	for _, sq := range mount.GetLanding() {
 		if sq.GetCol() == 8 && sq.GetRow() == 8 {
