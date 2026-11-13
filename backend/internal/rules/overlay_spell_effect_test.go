@@ -203,7 +203,7 @@ func auraOf(ts *TableSpell, radius int, affects string) {
 }
 
 // An aura is the effect's first modifier, the one the combat reads to find the bearer's reach; the other
-// modifiers are what it gives, and the tags say the radius in metres and the side (the positive control of the
+// modifiers are what it gives, and the tags say the radius in meters and the side (the positive control of the
 // refusals above: the same spell with a good radius and side is accepted).
 func TestTableSpellAuraIsRegistered(t *testing.T) {
 	t.Parallel()

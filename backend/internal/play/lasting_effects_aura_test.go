@@ -229,7 +229,7 @@ func TestAnAuraOfResistanceHalvesTheDamageInsideTheRadiusOnly(t *testing.T) {
 	for _, tt := range []struct {
 		name     string
 		col, row int32 // the goblin's square; Toren stands next to it
-		want     int32  // the hit points the goblin (7) has left after 9 slashing
+		want     int32 // the hit points the goblin (7) has left after 9 slashing
 	}{
 		{"inside, 10 ft from the bearer", 7, 5, 3},
 		{"outside, 15 ft from the bearer", 8, 5, 0},

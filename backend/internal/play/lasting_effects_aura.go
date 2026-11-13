@@ -64,11 +64,30 @@ func auraReaches(a rules.EffectModifier, bearer, c playdb.Combatant) bool {
 // roll: a player does not read the name of an aura whose bearer they do not see, nor of one the master keeps from
 // the players or that is owner-only, on a creature that is not the bearer, which read "Outra fonte" (RN-10).
 func withAuras(states map[string][]playdb.CombatantState, cs []playdb.Combatant, v *combatViewer) map[string][]playdb.CombatantState {
-	type aura struct {
-		row    playdb.CombatantState
-		mark   rules.EffectModifier
-		bearer playdb.Combatant
+	auras := aurasOf(states, cs)
+	if len(auras) == 0 {
+		return states
 	}
+	out := make(map[string][]playdb.CombatantState, len(states))
+	for id, rows := range states {
+		out[id] = slices.Clone(rows)
+	}
+	reached := map[[2]string]bool{} // the creature and the source an aura of which already reached it
+	for _, a := range auras {
+		a.spread(cs, v, reached, out)
+	}
+	return out
+}
+
+// aura is an aura row on the creature that bears it, with the mark that says how far it goes and to whom.
+type aura struct {
+	row    playdb.CombatantState
+	mark   rules.EffectModifier
+	bearer playdb.Combatant
+}
+
+// aurasOf are the aura rows of the creatures still in the fight.
+func aurasOf(states map[string][]playdb.CombatantState, cs []playdb.Combatant) []aura {
 	var auras []aura
 	for _, b := range cs {
 		if b.Defeated || b.Dismissed {
@@ -80,37 +99,31 @@ func withAuras(states map[string][]playdb.CombatantState, cs []playdb.Combatant,
 			}
 		}
 	}
-	if len(auras) == 0 {
-		return states
+	return auras
+}
+
+// spread adds to out the view of the aura on each creature it reaches, unless the source reached it already.
+func (a aura) spread(cs []playdb.Combatant, v *combatViewer, reached map[[2]string]bool, out map[string][]playdb.CombatantState) {
+	given := givenByAura(a.row)
+	if len(given) == 0 {
+		return
 	}
-	out := make(map[string][]playdb.CombatantState, len(states))
-	for id, rows := range states {
-		out[id] = slices.Clone(rows)
+	source := a.row.ID
+	if a.row.SourceKey != nil {
+		source = *a.row.SourceKey
 	}
-	reached := map[[2]string]bool{} // the creature and the source an aura of which already reached it
-	for _, a := range auras {
-		given := givenByAura(a.row)
-		if len(given) == 0 {
+	for _, c := range cs {
+		if !auraReaches(a.mark, a.bearer, c) || reached[[2]string{c.ID, source}] {
 			continue
 		}
-		source := a.row.ID
-		if a.row.SourceKey != nil {
-			source = *a.row.SourceKey
+		reached[[2]string{c.ID, source}] = true
+		view := a.row
+		view.CombatantID, view.Modifiers = c.ID, given
+		if c.ID != a.bearer.ID && (a.row.Audience == audienceOwner || !seenBy(v, a.bearer)) {
+			view.PlayerVisible = false
 		}
-		for _, c := range cs {
-			if !auraReaches(a.mark, a.bearer, c) || reached[[2]string{c.ID, source}] {
-				continue
-			}
-			reached[[2]string{c.ID, source}] = true
-			view := a.row
-			view.CombatantID, view.Modifiers = c.ID, given
-			if c.ID != a.bearer.ID && (a.row.Audience == audienceOwner || !seenBy(v, a.bearer)) {
-				view.PlayerVisible = false
-			}
-			out[c.ID] = append(out[c.ID], view)
-		}
+		out[c.ID] = append(out[c.ID], view)
 	}
-	return out
 }
 
 // seenBy says the reader sees the bearer. A roll that knows no reader (v nil) reads as a player who does not see a

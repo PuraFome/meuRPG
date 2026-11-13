@@ -48,7 +48,9 @@ func TestTableContentSpellAuraRoundTripAndRefusals(t *testing.T) {
 		{"a radius of zero", func(s *rulesv1.TableSpell) { s.Effect.Aura.RadiusFt = 0 }, "table_spell.effect.aura.radius_ft"},
 		{"a radius over 120 ft", func(s *rulesv1.TableSpell) { s.Effect.Aura.RadiusFt = 125 }, "table_spell.effect.aura.radius_ft"},
 		{"a radius off the squares", func(s *rulesv1.TableSpell) { s.Effect.Aura.RadiusFt = 12 }, "table_spell.effect.aura.radius_ft"},
-		{"no side", func(s *rulesv1.TableSpell) { s.Effect.Aura.Affects = rulesv1.TableAuraAffects_TABLE_AURA_AFFECTS_UNSPECIFIED }, "table_spell.effect.aura.affects"},
+		{"no side", func(s *rulesv1.TableSpell) {
+			s.Effect.Aura.Affects = rulesv1.TableAuraAffects_TABLE_AURA_AFFECTS_UNSPECIFIED
+		}, "table_spell.effect.aura.affects"},
 		{"a side this build does not know", func(s *rulesv1.TableSpell) { s.Effect.Aura.Affects = 99 }, "table_spell.effect.aura.affects"},
 		{"an instantaneous spell", func(s *rulesv1.TableSpell) {
 			s.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_INSTANTANEOUS}
