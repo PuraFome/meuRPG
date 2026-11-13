@@ -6124,6 +6124,13 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema cla
   await scanTableContent(browser, 'light', 320);
 });
 
+/** "Como funciona" shares the row of the switch's title (it is not stranded alone on a line of its own), whatever the width. */
+async function expectHeadNotStranded(block: Locator, where: string): Promise<void> {
+  const title = await boxOf(block.getByRole('switch', { name: 'Efeito no próximo golpe' }));
+  const button = await boxOf(block.getByRole('button', { name: 'Como funciona' }));
+  expect.soft(Math.abs(button.y + button.height / 2 - (title.y + title.height / 2)), `"Como funciona" na linha do título ${where}`).toBeLessThan(6);
+}
+
 /**
  * "Efeito no próximo golpe" of a table spell (#577): the editor's block with each of the four triggers picked, the marked target's card
  * locked (a spell of the caster alone), the switch off with the reason of a spell that does not last, a refusal and a missing cap at
@@ -6148,6 +6155,7 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
       const block = m.locator('app-hit-effect-block');
       await expect(block.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
       await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe ligado, o alvo marcado travado ${where}`);
+      await expectHeadNotStranded(block, where);
       for (const card of ['Próximo golpe com arma', 'Cada golpe enquanto durar', 'Próximo golpe corpo a corpo']) {
         await pickRadio(block, card);
         await expect(block.getByRole('radio', { name: new RegExp(`^${card}`) })).toBeChecked();
@@ -6161,6 +6169,7 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Marca do Caçador');
       await expect(block.getByRole('radio', { name: /^Cada golpe no alvo marcado/ })).toBeChecked();
       await expectScreenPasses(m, `Editor de magia, o gatilho "Cada golpe no alvo marcado" ${where}`);
+      await expectHeadNotStranded(block, where);
 
       // A spell that does not last keeps no effect: the switch is off and says why.
       await open(m, `/campaigns/${campaignId}/content/new/spell`);
@@ -6198,6 +6207,10 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
 
 test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanNextHit(browser, 'light', 1280);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 768);
 });
 
 test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {

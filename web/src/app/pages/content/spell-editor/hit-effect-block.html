@@ -11,16 +11,18 @@
     (toggled)="patch({ enabled: $event })"
   />
   @if (on()) {
-    @if (showWhere()) {
-      <span class="where">{{ whereText() }}</span>
-    }
-    <span class="chips">
-      @if (durationText()) {
-        <span class="chip"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>{{ durationText() }}</span>
+    <span class="meta">
+      @if (showWhere()) {
+        <span class="where">{{ whereText() }}</span>
       }
-      @if (concentration()) {
-        <span class="chip"><mat-icon aria-hidden="true">adjust</mat-icon>Concentração · em quem conjura</span>
-      }
+      <span class="chips">
+        @if (durationText()) {
+          <span class="chip"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>{{ durationText() }}</span>
+        }
+        @if (concentration()) {
+          <span class="chip"><mat-icon aria-hidden="true">adjust</mat-icon>Concentração · em quem conjura</span>
+        }
+      </span>
     </span>
     <button type="button" class="how-button" [attr.aria-expanded]="open()" [attr.aria-controls]="howId" (click)="setOpen()">
       <mat-icon aria-hidden="true">info</mat-icon>Como funciona<mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>

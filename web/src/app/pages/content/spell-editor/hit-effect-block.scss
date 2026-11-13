@@ -1,4 +1,5 @@
 :host {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: var(--mr-space-3);
@@ -7,15 +8,49 @@
   border-top: 1px dashed var(--mr-line);
 }
 
+// The header is a grid of three named places, so nothing wraps by accident: the title with "Como funciona" on one row and the chips
+// under the title when the block is narrow (the board at 768), all on one row when it is wide (the board at 1280). Under 480 px the
+// button gets a row of its own, on purpose, instead of squeezing the title.
 .head {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'title how'
+    'meta meta';
   align-items: center;
   gap: var(--mr-space-1) var(--mr-space-3);
 
   app-switch-field {
-    flex: none;
+    grid-area: title;
+    min-width: 0;
   }
+
+  @container (min-width: 700px) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'title meta how';
+  }
+
+  @container (max-width: 479px) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'title'
+      'meta'
+      'how';
+
+    .how-button {
+      justify-self: start;
+      margin-left: calc(-1 * var(--mr-space-2));
+    }
+  }
+}
+
+.meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-3);
+  min-width: 0;
 }
 
 .where {
@@ -47,8 +82,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  grid-area: how;
+  justify-self: end;
   min-height: 44px;
-  margin-left: auto;
   padding: 0 var(--mr-space-2);
   border: 0;
   border-radius: var(--mr-radius-sm);
@@ -99,11 +135,16 @@
   line-height: 20px;
 }
 
+// The legend sits over a field whose floating label rises above the field's box: leave room, so the two never touch (layout.ts, rule 5).
 .label {
   margin: 0;
   padding: 0;
   font-size: var(--mr-font-15);
   font-weight: 700;
+}
+
+legend.label {
+  margin-bottom: var(--mr-space-3);
 }
 
 .optional {
