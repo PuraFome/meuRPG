@@ -931,6 +931,14 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.SetCombatantMount(ctx, connect.NewRequest(&playv1.SetCombatantMountRequest{CampaignId: campaign, EncounterId: enc, CombatantId: gob, IdempotencyKey: newKey(), Kind: "controlled"}))
 			return err
 		},
+		"MountCombatant": func(u *user, ctx context.Context) error {
+			_, err := u.combat.MountCombatant(ctx, connect.NewRequest(&playv1.MountCombatantRequest{CampaignId: campaign, EncounterId: enc, RiderId: pens, MountId: gob, IdempotencyKey: newKey()}))
+			return err
+		},
+		"DismountCombatant": func(u *user, ctx context.Context) error {
+			_, err := u.combat.DismountCombatant(ctx, connect.NewRequest(&playv1.DismountCombatantRequest{CampaignId: campaign, EncounterId: enc, RiderId: pens, Col: 1, Row: 1, IdempotencyKey: newKey()}))
+			return err
+		},
 		"SetCombatantCover": func(u *user, ctx context.Context) error {
 			_, err := u.combat.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: campaign, EncounterId: enc, CombatantId: gob, IdempotencyKey: newKey(), Cover: playv1.CoverDegree_COVER_DEGREE_HALF}))
 			return err
