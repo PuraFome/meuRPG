@@ -8499,11 +8499,13 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
 
     // Another player reads none of it.
     outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport: attViewport(390), ...attunementScale });
+    // Their sheet route is refused: nothing about items or attunement shows.
     await openLive(outsider.page, route);
-    await expect(outsider.page.getByRole('heading', { name: /Toren/ }).first()).toBeVisible();
+    await expect(outsider.page.getByRole('heading', { name: 'Personagem não encontrado' })).toBeVisible();
     await expect(outsider.page.getByText('Itens mágicos')).toHaveCount(0);
     await expect(outsider.page.getByText(/^Sintonizados:/)).toHaveCount(0);
-    await everyWidth(outsider.page, 'ficha-outro-jogador', 'A ficha de outro jogador, sem itens nem sintonia', () => outsider!.page.locator('main').first());
+    await expect(outsider.page.getByRole('button', { name: /sintoniz/i })).toHaveCount(0);
+    await everyWidth(outsider.page, 'ficha-outro-jogador', 'O que outro jogador vê de Toren, sem itens nem sintonia', () => outsider!.page.locator('main').first());
 
     // A dead character: the owner has no controls, and the sheet says so.
     const dead = await callRPC(m, 'meurpg.characters.v1.CharacterService/MarkCharacterDead', { campaignId, characterId: table.characterId });
