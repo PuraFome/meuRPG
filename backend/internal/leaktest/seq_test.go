@@ -16,7 +16,9 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 
+	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // The hint number (#735): game_sessions.hint_seq, which every write of a session adds 1 to, hidden or not, and which a stream
@@ -297,6 +299,28 @@ var hiddenWrites = []hiddenWrite{
 					CampaignId: w.campaign, MapId: w.fogMap, PointId: w.pts["trap-guardroom"].GetId(), IdempotencyKey: newKey(), ExtendFiringId: w.notes["firing"],
 					TargetIds: []string{w.combatantOf(w.encounter, w.hiddenNPC.GetId()).GetId()},
 				})))
+			}
+		},
+	},
+	{
+		// A trap the master fires by hand on a map no player sees (outside a combat: none runs there): the firing writes an event, so the
+		// number moves once, and what the table is told is the master's alone. A player's stream and the twin's without the firing read
+		// the same; the trap and what it did to the party are hidden whatever they are (the two variants fire two other traps).
+		name: "a hidden trap fired outside a combat on a map the players do not see",
+		before: func(w *world) {
+			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12}))) // a map with no grid has no traps
+			for i, name := range []string{"seq-fired-a", "seq-fired-bcdefgh"} {
+				w.pts[name] = w.point(w.hiddenMap, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, w.secrets.marker(name), w.secrets.marker(name+"-description"), 8+i, 8, func(r *mapsv1.CreateMapPointRequest) {
+					r.Trap = w.trapSpec()
+					r.Trap.Trigger = rulesv1.TrapTrigger_TRAP_TRIGGER_MANUAL
+				})
+				w.secrets.id("trap", w.pts[name].GetId())
+			}
+		},
+		prepare: func(w *world, variant int) func() {
+			point := w.pts[[]string{"seq-fired-a", "seq-fired-bcdefgh"}[variant]]
+			return func() {
+				must(w.master.play.FireTrap(w.t.Context(), rq(&playv1.FireTrapRequest{CampaignId: w.campaign, MapId: w.hiddenMap, PointId: point.GetId(), IdempotencyKey: newKey()})))
 			}
 		},
 	},

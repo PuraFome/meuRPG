@@ -163,7 +163,9 @@ A stream carries it on `ready` and on every `heartbeat`, and nothing else about 
 - **Hidden writes move it too.** A write only the master sees bumps the number for everyone.
   A player who was not told the event is "behind" and reads once at the next heartbeat.
   That costs one extra read per hidden write within 25 s, and it tells the player nothing about the write.
-- **Only the writers in `Service.tx` count.** They are the combat write path (`write`, `changeInTx`, `StartEncounter`), the master's correction of vitals, the rests, the hit dice, the slot recoveries, Bardic Inspiration out of a combat and Revivify's requests, answers and switch (`play/hints.go`).
+- **Only the writers in `Service.tx` count.** They are the combat write path (`write`, `changeInTx`, `StartEncounter`), the master's correction of vitals, the rests, the hit dice, the slot recoveries, Bardic Inspiration out of a combat, Revivify's requests, answers and switch, the lasting effects on characters outside a combat (giving one, ending one) and the game clock, and the traps outside a combat (the master's firing, a token or a creature dropped on a trap, a search, and applying or discarding a trap's damage) (`play/hints.go`).
+  A trap's damage settled with no open session is written, tells nothing and moves no number.
+  The renaming and the dismissal of a character's creature run in the characters module's transaction: they do not bump, and the streams hear of them as `creatures_changed` and `encounter_changed`, with no number.
   The revivify switch of a dead character with no open session is a plain transaction: it does not bump and tells nothing.
   Every other writer of the `play` package tells the streams through `send` after its own `db.InTx`: it does not bump, and its events carry no number.
   The hints a combat handler tells itself after the write (`finish`) carry none either; the write's own bump covers them.

@@ -28,6 +28,9 @@ type hintRig struct {
 	listeners map[string]heardBy
 	// quiet are the people whose streams must hear nothing of the write: it is none of their business.
 	quiet []string
+	// unnumbered are the kinds of event that another module sends itself, after the commit (the maps module's map_changed and
+	// trap_noticed): they carry no number of the session, which is the maps module's to give (4d maps).
+	unnumbered []string
 	// dropping loses every event the service sends, as a send lost to a crash after the commit is; dropped keeps their kinds.
 	dropping atomic.Bool
 	mu       sync.Mutex
@@ -57,6 +60,11 @@ func newHintRig(t *testing.T, h *harness, campaignID string, master *user, playe
 	h.hints.Settle(t)
 	g.drain() // what the fixture's own writes sent
 	return g
+}
+
+// numbered says the event carries the number want, or none when it is of a kind another module sends by itself.
+func (g *hintRig) numbered(ev *playv1.WatchGameSessionResponse, want int64) bool {
+	return ev.GetSessionSeq() == want || (ev.GetSessionSeq() == 0 && slices.Contains(g.unnumbered, fmt.Sprintf("%T", ev.GetEvent())))
 }
 
 func (g *hintRig) seq() int64 { return g.h.hintSeq(g.t, g.session) }
@@ -103,7 +111,7 @@ func (g *hintRig) first(call func() error, wantEvents bool) map[string][]string 
 	for name, evs := range heard {
 		for _, ev := range evs {
 			told++
-			if ev.GetSessionSeq() != before+1 {
+			if !g.numbered(ev, before+1) {
 				g.t.Errorf("%s heard %T with number %d, want the stored %d", name, ev.GetEvent(), ev.GetSessionSeq(), before+1)
 			}
 		}
@@ -129,7 +137,7 @@ func (g *hintRig) replay(call func() error, first map[string][]string) map[strin
 	heard := g.drain()
 	for name, evs := range heard {
 		for _, ev := range evs {
-			if ev.GetSessionSeq() != stored {
+			if !g.numbered(ev, stored) {
 				g.t.Errorf("%s heard %T on the repeat with number %d, want the stored %d", name, ev.GetEvent(), ev.GetSessionSeq(), stored)
 			}
 		}
@@ -182,7 +190,7 @@ func (g *hintRig) lost(call func() error) {
 	for name, evs := range heard {
 		for _, ev := range evs {
 			union = append(union, fmt.Sprintf("%T", ev.GetEvent()))
-			if ev.GetSessionSeq() != stored {
+			if !g.numbered(ev, stored) {
 				g.t.Errorf("%s heard %T on the repeat with number %d, want the stored %d", name, ev.GetEvent(), ev.GetSessionSeq(), stored)
 			}
 		}

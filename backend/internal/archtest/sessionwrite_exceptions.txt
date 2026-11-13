@@ -63,17 +63,14 @@ maps traps_play.go (*Service).recordNotices # 4d maps: map, token, fog or point 
 maps treasure.go (*Service).PlaceTreasure # 4d maps: map, token, fog or point row the live session shows
 maps upload.go (*Service).storeImage # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 play combat_groupcheck.go (*Service).groupWrite # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play creature_host.go (*Service).CreatureRenamed # 4c: traps, lasting effects, creatures
-play creature_host.go (*Service).CreaturesLeaving # 4c: traps, lasting effects, creatures
+play creature_host.go (*Service).CreatureRenamed # characters host: called by characters with its transaction and the session row locked (LockSession), then the creature rows (task B, lock order); 4c converts nothing here
+play creature_host.go (*Service).CreaturesLeaving # characters host: called by characters with its transaction and the session row locked (LockSession), then the creature rows (task B, lock order); 4c converts nothing here
 play encounters.go (*Service).ClearBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
 play encounters.go (*Service).keepBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
 play equip_combat.go (*Service).EquipInCombat # characters host: called by characters with its transaction (task B, lock order)
 play free_roll_rpc.go (*Service).RollFreeDice # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play lasting_effects_armor.go (*Service).ArmorWorn # characters host: called by characters with its transaction (task B, lock order)
 play lasting_effects_armor.go (*Service).GearChanged # characters host: called by characters with its transaction (task B, lock order)
-play lasting_effects_charadd.go (*Service).AddCharacterEffect # 4c: traps, lasting effects, creatures
-play lasting_effects_chars.go (*Service).endCharacterEffect # 4c: traps, lasting effects, creatures
-play lasting_effects_time.go (*Service).AdvanceGameTime # 4c: traps, lasting effects, creatures
 play messages_send.go (*Service).SendSessionMessage # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play onscreen.go (*Service).SetCurrentMap # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play onscreen.go (*Service).swapShownImage # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
@@ -97,7 +94,4 @@ play scene_audience.go (*Service).SetSceneAudience # 4d: scene, stage, puzzles, 
 play scene_audience.go (*Service).SetScenePlayersMayJoin # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play stage.go (*Service).changeStage # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play tablescreen.go (*Service).SetTableScreen # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play traps_damage.go (*Service).settleTrapDamage # 4c: traps, lasting effects, creatures
-play traps_fire.go (*Service).fireOutsideCombat # 4c: traps, lasting effects, creatures
-play traps_search.go (*Service).SearchForTraps # 4c: traps, lasting effects, creatures
 play xp.go (*Service).AppendEvent # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen

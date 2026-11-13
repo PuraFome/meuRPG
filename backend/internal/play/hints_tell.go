@@ -70,3 +70,34 @@ func revivifyChangedEvent(casterUserID string) live.Event {
 		}},
 	}
 }
+
+// tellEffects collects what a write of the lasting effects on characters outside a combat changed: the casts, for the master and the
+// players, and the vitals the write changed, each to the master and the character's player.
+func tellEffects(h *hints, campaignID string, vitals []*playv1.CharacterVitals) {
+	h.tell(campaignID, castsChangedEvent(false))
+	for _, v := range vitals {
+		if v != nil {
+			h.tell(campaignID, vitalsHint(v))
+		}
+	}
+}
+
+// tellEffectsAgain fills h for a retry of such a write whose key was found stored, with what the first call would have told: the casts
+// and, once the transaction committed, the vitals of the characters it may have changed, as they stand, each to the master and its
+// player. A write that kept who it changed passes them; one that did not (no id) tells every character's. Nothing was written, so h
+// only replays.
+func (s *Service) tellEffectsAgain(h *hints, campaignID string, characterIDs ...string) {
+	h.replay()
+	h.tell(campaignID, castsChangedEvent(false))
+	if len(characterIDs) > 0 {
+		s.tellVitalsAfter(h, campaignID, characterIDs...)
+		return
+	}
+	h.after(func(ctx context.Context, say sayFn) {
+		if all, err := s.vitals.ListVitals(ctx, campaignID); err == nil {
+			for _, v := range all {
+				say(campaignID, vitalsHint(v))
+			}
+		}
+	})
+}

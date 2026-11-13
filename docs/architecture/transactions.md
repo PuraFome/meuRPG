@@ -41,9 +41,10 @@ A cancelled call returns its connection to the pool after about 100 ms, the time
 
 ## Hints sent after the commit
 
-The combat write path of the `play` module (`write`, `changeInTx`, `StartEncounter`) and the writers of vitals, resources, rests and Revivify (`AdjustCharacterVitals`, `TakeRest`, `SpendHitDice`, the slot recoveries, `GiveBardicInspirationOutside`, `RequestRevivify`, `ConfirmRevivifyTime`, `SetRevivifyBlocked`) run in `Service.tx(ctx, sessionID, fn)`, which wraps `db.InTx` and sends after the commit.
+The combat write path of the `play` module (`write`, `changeInTx`, `StartEncounter`), the writers of vitals, resources, rests and Revivify (`AdjustCharacterVitals`, `TakeRest`, `SpendHitDice`, the slot recoveries, `GiveBardicInspirationOutside`, `RequestRevivify`, `ConfirmRevivifyTime`, `SetRevivifyBlocked`), the lasting effects on characters outside a combat and game time (`AddCharacterEffect`, `EndLastingEffect` with no combat, `AdvanceGameTime`) and the traps (`FireTrap` outside a combat, a token or a creature dropped on a trap, `SearchForTraps`, `ApplyTrapDamage`, `DiscardTrapDamage`) run in `Service.tx(ctx, sessionID, fn)`, which wraps `db.InTx` and sends after the commit.
 A writer that has only the campaign goes through `txOpen`: it reads the open session without a lock, and the closure checks that it is still the open one.
-`ReviveInCombat` runs in the transaction of the characters module (`ReviveCharacter`), which has locked the session and then the character; it does not bump, and the characters module tells the streams after its commit.
+`ReviveInCombat`, `CreatureRenamed` and `CreaturesLeaving` run in the transaction of the characters module, which has locked the session (`LockSession`) and then the character or creature rows; they do not bump, and the characters module tells the streams after its commit.
+A trap damage settled with no open session locks the session the damage was made in, tells nothing and moves no number.
 Other writers of the module call `db.InTx` and then `send`; they do not bump the hint number.
 `txOn` is the same on any transaction starter; a test passes one whose `COMMIT` fails.
 

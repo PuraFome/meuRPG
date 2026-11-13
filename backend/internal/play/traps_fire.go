@@ -22,6 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -230,7 +231,7 @@ func (s *Service) fireByHandOutsideCombat(ctx context.Context, m authz.Membershi
 		return nil, s.dbError(ctx, "fire a trap", err)
 	}
 	if !repeated {
-		s.afterFiring(ctx, m.CampaignID, fired, playdb.Encounter{})
+		s.logFiring(ctx, fired, false) // the streams were told in the transaction
 	} else if fired, err = s.firingWithParts(ctx, sessionID, firingID, fired); err != nil {
 		return nil, s.dbError(ctx, "read the firing", err) // the answer of the first call listed every creature, whatever the events it took
 	}
@@ -381,15 +382,38 @@ func (s *Service) firingWithParts(ctx context.Context, sessionID, hostID string,
 	return &whole, nil
 }
 
-// afterFiring tells the streams, after the commit, what a firing changed: the trap
+// logFiring logs a firing that was just made.
+func (s *Service) logFiring(ctx context.Context, fired *trapFireEvent, inCombat bool) {
+	if fired == nil {
+		return
+	}
+	logging.Event(ctx, s.logger, "trap.triggered", slog.String("map_id", fired.MapID), slog.String("point_id", fired.PointID),
+		slog.Int("caught", len(fired.Caught)), slog.Bool("in_combat", inCombat))
+}
+
+// tellFiredOutside collects what a firing outside a combat changed, for the streams once it is committed: the trap is public now
+// (the maps module tells whoever sees the map), and the master's trap card has new damage to apply. The firing wrote an event, so
+// the session's number moves. Nothing here names who the firing caught: a creature only the master hears of changes nothing a
+// player is told.
+func (s *Service) tellFiredOutside(h *hints, campaignID string, fired *trapFireEvent) {
+	h.touch()
+	if fired == nil {
+		return
+	}
+	h.after(func(ctx context.Context, say sayFn) {
+		s.traps.TrapChanged(ctx, campaignID, fired.MapID, fired.PointID)
+	})
+	h.tell(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: mapChangedHint(fired.MapID)})
+}
+
+// afterFiring tells the streams, after the commit, what a firing in a combat, or one a puzzle's wrong answer made, changed: the trap
 // is public now (everyone who sees the map), the combat and its log changed, and
 // the master's trap card has new damage to apply.
 func (s *Service) afterFiring(ctx context.Context, campaignID string, fired *trapFireEvent, enc playdb.Encounter) {
 	if fired == nil {
 		return
 	}
-	logging.Event(ctx, s.logger, "trap.triggered", slog.String("map_id", fired.MapID), slog.String("point_id", fired.PointID),
-		slog.Int("caught", len(fired.Caught)), slog.Bool("in_combat", enc.ID != ""))
+	s.logFiring(ctx, fired, enc.ID != "")
 	s.traps.TrapChanged(ctx, campaignID, fired.MapID, fired.PointID)
 	switch {
 	case enc.ID == "":
@@ -521,7 +545,8 @@ type outsideFiring struct {
 }
 
 // fireOutsideCombat fires the trap while no combat runs on its map, in a
-// transaction of its own, and returns the firing and whether it was a retry. key
+// transaction of the open session (Service.tx), which tells the streams once it is saved,
+// and returns the firing and whether it was a retry. key
 // is "" for a firing nobody retries (a token landing); targetIDs are characters
 // with tokens on the map, nil for every character in the area (an empty, non-nil
 // list catches none: a creature's token dropped into a trap that picks its targets by
@@ -535,7 +560,9 @@ func (s *Service) fireOutsideCombat(ctx context.Context, campaignID, actorUserID
 		s.afterTrapRead() // a test starts a combat here
 	}
 	f := &outsideFiring{campaignID: campaignID, actorUserID: actorUserID, key: key, hash: hash, trap: trap, caught: caught, creatures: creatures, manual: manual, extend: extend}
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error { return s.fireOutsideTx(ctx, tx, f) })
+	err = s.txOpen(ctx, campaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
+		return s.fireOutsideTx(ctx, tx, h, session, f)
+	})
 	if errors.Is(err, maplink.ErrTrapNotArmed) {
 		return nil, "", false, errTrapNotArmed()
 	}
@@ -587,16 +614,16 @@ func charactersCaught(living []link.Character, at map[string]grid.Square, trap m
 	return caught
 }
 
-// fireOutsideTx is a firing outside a combat inside its transaction: a retry answers with the
-// firing it made, else the trap fires and its event is written.
-func (s *Service) fireOutsideTx(ctx context.Context, tx pgx.Tx, f *outsideFiring) error {
+// fireOutsideTx is a firing outside a combat inside its transaction (the session is locked): a retry answers with the
+// firing it made and tells it again, else the trap fires, its event is written and the streams are told.
+func (s *Service) fireOutsideTx(ctx context.Context, tx pgx.Tx, h *hints, session playdb.GameSession, f *outsideFiring) error {
 	q := s.queries.WithTx(tx)
 	f.fired, f.firingID, f.repeated = nil, "", false
-	session, err := lockOpenSessionOrNone(ctx, q, f.campaignID)
-	if err != nil {
-		return err
-	}
 	if done, err := f.replay(ctx, q, session.ID); err != nil || done {
+		if done && err == nil {
+			h.replay() // the first call may have died before it told the streams
+			s.tellFiredOutside(h, f.campaignID, f.fired)
+		}
 		return err
 	}
 	if err := refuseFiringBesideCombat(ctx, q, session.ID, f.trap.MapID); err != nil {
@@ -613,8 +640,11 @@ func (s *Service) fireOutsideTx(ctx context.Context, tx pgx.Tx, f *outsideFiring
 	if f.key != "" {
 		keyPtr = &f.key
 	}
-	f.firingID, err = insertSceneEvent(ctx, c, eventTrapTriggered, &f.actorUserID, keyPtr, actionEvent{Trap: f.fired})
-	return err
+	if f.firingID, err = insertSceneEvent(ctx, c, eventTrapTriggered, &f.actorUserID, keyPtr, actionEvent{Trap: f.fired}); err != nil {
+		return err
+	}
+	s.tellFiredOutside(h, f.campaignID, f.fired)
+	return nil
 }
 
 // replay finds the firing the key made already, and answers with it: the same firing asked the same way.
@@ -933,6 +963,6 @@ func (s *Service) fireDropped(ctx context.Context, campaignID, actorUserID strin
 	if err != nil {
 		return err
 	}
-	s.afterFiring(ctx, campaignID, fired, playdb.Encounter{})
+	s.logFiring(ctx, fired, false) // the streams were told in the transaction
 	return nil
 }
