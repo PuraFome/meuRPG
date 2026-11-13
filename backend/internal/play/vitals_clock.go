@@ -31,9 +31,9 @@ func withClock(ctx context.Context, db playdb.DBTX, vs ...*playv1.CharacterVital
 		if err != nil {
 			return fmt.Errorf("read the form's clock: %w", err)
 		}
-		v.WildShape.SecondsLeft = nil
+		v.WildShape.SecondsLeft, v.WildShape.TimeLeftPt = nil, nil
 		if left >= 0 {
-			v.WildShape.SecondsLeft = &left
+			v.WildShape.SecondsLeft, v.WildShape.TimeLeftPt = &left, new(formTimeText(left))
 		}
 	}
 	return nil

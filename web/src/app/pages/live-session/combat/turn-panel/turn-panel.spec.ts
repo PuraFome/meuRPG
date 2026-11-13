@@ -79,17 +79,15 @@ describe('TurnPanel', () => {
     expect(el.textContent).not.toContain('Você é o próximo');
   });
 
-  it("is the card of the player's own turn: whose it is, who is next, the shapes of what is left, no movement tile", () => {
+  it("is the card of the player's own turn: whose it is, who is next, no shapes and no movement tile (they are the first row of 'Ações')", () => {
     const el = text({ currentCombatantId: 'pen' });
     expect(el.querySelector('h2')?.textContent).toBe('Sua vez, Pensantus');
-    expect(el.textContent).toContain('depois de você: Brisa');
+    expect(el.textContent).toContain('em seguida: Brisa');
     // The movement is the row under the map, and "Mover" is not in the card (a phone has it in that row).
     const buttons = Array.from(el.querySelectorAll('button'), (b) => b.textContent?.trim());
     expect(buttons.some((b) => b?.endsWith('Mover'))).toBe(false);
     expect(buttons.some((b) => b?.endsWith('Encerrar turno'))).toBe(true);
-    expect(
-      Array.from(el.querySelectorAll('.eco > li'), (li) => li.getAttribute('aria-label')),
-    ).toEqual(['Ação disponível', 'Ação bônus disponível', 'Reação disponível']);
+    expect(el.querySelector('.eco')).toBeNull();
   });
 
   it('keeps the order strip in the card, unless the page draws it under the actions on the own turn', () => {
@@ -104,8 +102,6 @@ describe('TurnPanel', () => {
     fixture.componentRef.setInput('orderBelow', true);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-order-strip')).toBeNull();
-    // The three shapes are still there, one row of them.
-    expect(fixture.nativeElement.querySelectorAll('.eco > li')).toHaveLength(3);
 
     // Off turn there are no actions under the card, so the strip stays in it.
     fixture.componentRef.setInput(
@@ -179,10 +175,10 @@ describe('TurnPanel as a beast (MR-037, E9-11 state 3)', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const flatText = (n: Element | null) => n?.textContent?.replace(/\s+/g, ' ').trim();
-    expect(flatText(el.querySelector('app-wild-band'))).toContain('Na forma de Lobo');
-    expect(flatText(el.querySelector('app-wild-band'))).toContain('Sem magias · 12,0');
-    // One armor class on the page, and it is the vitals card's: not in the band.
-    expect(flatText(el.querySelector('app-wild-band'))).not.toContain('CA');
+    expect(flatText(el.querySelector('app-form-chip'))).toContain('Na forma de Lobo');
+    // The details ("Sem magias · 12,0 m") moved to the form's row in "Ações"; one armor class on the page, the vitals card's.
+    expect(el.querySelector('app-wild-band')).toBeNull();
+    expect(flatText(el.querySelector('app-form-chip'))).not.toContain('CA');
     expect(el.querySelector('app-wild-pools')).toBeNull();
   });
 });

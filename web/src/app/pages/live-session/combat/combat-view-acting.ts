@@ -1,6 +1,7 @@
 import { computed, Directive } from '@angular/core';
 
 import { isDead, isDown, isPlayer, soloTitle } from '../../../core/combat/combat-view';
+import { vitalsPool } from '../../../core/combat/form-pool';
 import { moveLine } from '../../../core/combat/move-line';
 import { economyShapes } from '../../../shared/economy-shapes/economy-shapes';
 import { CombatViewDerivedDirective } from './combat-view-derived';
@@ -41,7 +42,7 @@ export abstract class CombatViewActingDirective extends CombatViewDerivedDirecti
   protected readonly actCardHitPoints = computed(() => {
     const c = this.actCard();
     const v = c ? this.vitals().find((x) => x.characterId === c.characterId) : undefined;
-    return v ? { current: v.hitPointsCurrent, max: v.hitPointsMax } : null;
+    return v ? vitalsPool(v) : null;
   });
   /** The shapes of the character the master acts for, with the walker while there is a move to make. */
   protected readonly actingShapes = computed(() => {

@@ -16,6 +16,6 @@ export const CLASS_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = n
   ],
   [
     EncounterBlockedReason.WILD_SHAPE_ENDED,
-    'A forma já acabou. Assuma uma forma nova, se ainda tiver usos.',
+    'A forma já acabou. Para virar fera de novo, use Forma Selvagem.',
   ],
 ]);

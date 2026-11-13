@@ -1287,9 +1287,9 @@ async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
 
-    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row in the card; the attack is on the first screen.
-    const shapes = p.getByRole('list', { name: 'O que tem neste turno' }).getByRole('listitem');
-    await expect(shapes).toHaveCount(3);
+    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row, the first of "Ações" (board 584-01); the attack is on the first screen.
+    const shapes = p.getByRole('list', { name: 'O que resta da vez' }).getByRole('listitem');
+    await expect(shapes).toHaveCount(4); // the Ação, the Bônus, the Reação and the walker (board 584-01)
     const row = await Promise.all((await shapes.all()).map((t) => boxOf(t)));
     expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
     expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
@@ -4319,6 +4319,36 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
     await expectScreenPasses(p, `A vez como Lobo ${where}`);
 
+    // The turn band of the form (584-01, 584-02): the chip with the time, the economy row above the tabs, and "Permanecer na forma".
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).toBeVisible();
+    await expectScreenPasses(p, `A faixa da vez na forma, com o tempo e a linha da vez ${where}`);
+    // As a beast the tabs are Ataques (the beast's bite), Druida (the way back and the stay) and Outras; there is no Magias tab.
+    await expect(p.getByRole('tab', { name: /^Magias/ })).toHaveCount(0);
+    await expect(p.getByText('Sem magias na forma de fera. Volte à forma normal para conjurar.')).toBeVisible();
+    await openActionTab(p, 'Ataques');
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expectScreenPasses(p, `A aba Ataques na forma ${where}`);
+    await openActionTab(p, 'Outras');
+    await expectScreenPasses(p, `A aba Outras na forma ${where}`);
+    await openActionTab(p, 'Druida');
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expect(p.getByText('Permanecer na forma').first()).toBeVisible();
+    await expectScreenPasses(p, `A aba Druida na forma, com Permanecer na forma ${where}`);
+    await tapAboveBar(p.getByRole('button', { name: 'Permanecer na forma' }));
+    // The answer is in when its outcome is on the screen: the use is spent, so the row of "Permanecer" says there is none left (the
+    // vitals arrive after the call returns, and the options reload with the revision). Then the buttons that waited for it are on
+    // again; the scan reads the settled screen, never a frame in between.
+    await expect(p.locator('app-action-row', { hasText: 'Permanecer na forma' })).toContainText('Sem usos de Forma Selvagem');
+    await expect(p.getByRole('button', { name: 'Voltar à forma normal' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(p, `Depois de permanecer na forma ${where}`);
+    // Another player reads the name of the beast, never the time (RN-20).
+    await t.goto(sessionRoute(campaignId));
+    await expect(t.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(t, `A forma da Sálvia, vista por outro jogador ${where}`);
+
     // The beast falls: the notice that stays.
     await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);
     await expect(p.getByTestId('form-ended')).toBeVisible();
@@ -4398,6 +4428,55 @@ test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferênci
 test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
   test.setTimeout(360_000);
   await scanCreatureCombatScreens(browser, 'light', 320);
+});
+
+// The sheet of a druid in a Wild Shape form with no session open (584-06 card 9): the form with its pool and no time, both buttons off
+// and the line that says why. The form is taken in a combat; the session ends, and the sheet reads it from its own small read.
+async function scanWildShapeSheetWithoutSession(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const where = `(${colorScheme === 'dark' ? 'dark' : 'light'}, ${width}px)`;
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) => browser.newContext({ storageState: authStatePath(user), colorScheme, viewport })),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForCreatureCombat(m, p, t, `Acessibilidade forma sem sessão ${Date.now()}`);
+    campaignId = table.campaignId;
+    await beginCreatureCombat(m, table, { Sálvia: p, Toren: t }, { Toren: 20, Sálvia: 13, 'Capitão Goblin': 5, 'Goblin 1': 4, 'Goblin 2': 4 });
+    await passTurnsTo(m, campaignId, 'Sálvia');
+    await p.goto(sessionRoute(campaignId));
+    await openActionTab(p, 'Druida');
+    await tapAboveBar(p.getByRole('button', { name: 'Transformar: Forma Selvagem' }));
+    const wild = p.getByRole('dialog', { name: 'Forma Selvagem' });
+    await wild.getByLabel('Buscar fera').fill('lobo');
+    await wild.locator('label', { hasText: '(Wolf)' }).click();
+    await wild.getByRole('button', { name: 'Virar Lobo' }).click();
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await endOpenSessionRPC(m, campaignId);
+    await p.goto(`/campaigns/${campaignId}/characters/${table.heroId}`);
+    const block = p.locator('app-creatures-panel .form');
+    await expect(block).toContainText('Na forma de Lobo');
+    await expect(block).toContainText('Só durante um combate ou uma sessão.');
+    await expect(block).not.toContainText(/restantes|rodadas?/);
+    await expectScreenPasses(p, `A ficha da forma sem sessão aberta ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId).catch(() => undefined);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('a ficha da Forma Selvagem sem sessão aberta passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWildShapeSheetWithoutSession(browser, 'light', 1280);
+});
+
+test('a ficha da Forma Selvagem sem sessão aberta passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWildShapeSheetWithoutSession(browser, 'dark', 390);
 });
 
 // The map editor (slice 9.12, MR-034, MR-035, MR-036, MR-041, E9-01 and E9-02): painting with each tool, the in-place questions, the

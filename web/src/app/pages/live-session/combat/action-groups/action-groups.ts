@@ -21,9 +21,7 @@ import {
   type SpellOption,
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { metersFixed, reachSquares, squaresText } from '../../../../core/units';
 import { article } from '../../../../core/combat/combat-log';
-import { tight } from '../../../../core/format/text';
 import {
   attackDetail,
   attackName,
@@ -45,6 +43,7 @@ import {
   type SpentGroups,
   actionCounts,
   actionTabs,
+  WILD_SHAPE_TAB,
   classTabName,
   featureGroup,
   featureVerb,
@@ -57,8 +56,8 @@ import {
   GRAPPLE_DETAIL,
   hiddenAttackNote,
   SHOVE_DETAIL,
+  SHOVE_ATTACK_NOTE,
   SPECIAL_ATTACKS_NOTE,
-  grappledWord,
   hiddenWord,
 } from '../../../../core/combat/contest-view';
 import { castRefOf } from '../../../../core/combat/cast-ref';
@@ -68,6 +67,8 @@ import { type ListedDie, maneuverLine } from '../../../../core/effects/roll-die'
 import type { GearFlow } from '../../../../core/combat/gear-flow';
 import { GearFold } from './gear-fold';
 import { Fold } from '../../../../shared/fold/fold';
+import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
+import { movementOf, turnLineOf } from './turn-line';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
@@ -98,6 +99,7 @@ import { offersWeaponAttack } from './weapon-offer';
 @Component({
   selector: 'app-action-groups',
   imports: [
+    EconomyShapes,
     ActionRow,
     Fold,
     GearFold,
@@ -162,6 +164,10 @@ export class ActionGroups {
     readonly detail: string;
     readonly reason: string;
   } | null>(null);
+  /** The master acts for the character: "Mover" is in the map's header (C8-01), so the economy row does not repeat it. */
+  readonly moveAside = input(false);
+  /** "Permanecer na forma": what it costs and why it cannot be pressed ('' when it can); `null` outside a form. */
+  readonly stay = input<{ readonly detail: string; readonly reason: string } | null>(null);
   /** The beast the character is in ("Lobo"): no spells, and "Voltar à forma normal" is a bonus action. */
   readonly beast = input('');
   /** The combat is played without a map (RN-25): Movimento says so and its button is "Gastar movimento". */
@@ -219,6 +225,8 @@ export class ActionGroups {
   readonly transform = output<void>();
   /** "Voltar" (to the normal shape), a bonus action. */
   readonly leaveForm = output<void>();
+  /** "Permanecer na forma": one more use, no action, the time starts over. */
+  readonly stayForm = output<void>();
 
   /** The ids of the tab buttons and of their panels start with this. */
   protected readonly prefix = 'acts';
@@ -230,7 +238,9 @@ export class ActionGroups {
   protected readonly hiddenNote = computed(() =>
     this.contest()?.hidden ? hiddenAttackNote(hiddenWord(this.own().label)) : '',
   );
-  protected readonly specialNote = SPECIAL_ATTACKS_NOTE;
+  protected readonly specialNote = computed(() =>
+    this.beast() ? SHOVE_ATTACK_NOTE : SPECIAL_ATTACKS_NOTE,
+  );
   /** The four groups of a surprised character's turn, each unavailable for the same reason (SRD 5.1, Surprise). */
   protected readonly surpriseRows: readonly { readonly name: string; readonly why: string }[] = [
     { name: 'Atacar', why: 'Surpresa.' },
@@ -292,18 +302,30 @@ export class ActionGroups {
   protected readonly featureParts = computed(() =>
     partByEconomy(this.classFeatures(), featureGroup, this.spent(), this.spentWord(), this.canUse),
   );
-  protected readonly hasSpells = computed(() => this.spells().length > 0 || !!this.beast());
+  protected readonly hasSpells = computed(() => this.spells().length > 0 && !this.beast());
   protected readonly hasClassTab = computed(
     () => this.classFeatures().length > 0 || !!this.beast(),
   );
-  protected readonly tabItems = computed(() =>
-    actionTabs(
-      actionCounts(this.options(), {
-        contestAttacks: this.contestAttacks().length,
-        escape: this.grappled(),
-        standard: this.standard().length,
-      }),
-      classTabName(this.classFeatures()),
+  /** What a form's class tab holds besides the class's abilities: "Voltar à forma normal" and, while it is on, "Permanecer na forma". */
+  private readonly formRows = computed(() => (this.beast() ? 1 + (this.stay() ? 1 : 0) : 0));
+  /**
+   * In a form the attacks are the beast's own (its bite), plus the shove: any creature shoves with the Attack action (SRD 5.1), but a
+   * grapple needs a free hand and a beast has none. Nothing is drawn or put away.
+   */
+  protected readonly contestRows = computed(() =>
+    this.beast()
+      ? this.contestAttacks().filter((c) => c.kind !== ContestAttackOptionKind.GRAPPLE)
+      : this.contestAttacks(),
+  );
+  protected readonly tabItems = computed(() => {
+    const counts = actionCounts(this.options(), {
+      contestAttacks: this.contestRows().length,
+      escape: this.grappled(),
+      standard: this.standard().length,
+    });
+    return actionTabs(
+      { ...counts, features: this.classFeatures().length + this.formRows() },
+      this.beast() ? WILD_SHAPE_TAB : classTabName(this.classFeatures()),
       { beast: !!this.beast() },
     ).map((t) => ({
       id: t.id,
@@ -311,8 +333,8 @@ export class ActionGroups {
       icon: TAB_ICONS[t.id],
       badge: t.badge,
       words: t.words,
-    })),
-  );
+    }));
+  });
   /** The tab shown: the person's choice while it is still there, else the first. */
   protected readonly current = computed<ActionTabId>(() => {
     const items = this.tabItems();
@@ -372,35 +394,16 @@ export class ActionGroups {
     const first = this.standard().find((a) => !a.enabled);
     return first ? reasonText(first.reason) : '';
   });
-  protected readonly movement = computed(() => {
-    const own = this.own();
-    const left = own.movementLeftFt;
-    if (this.grappled()) {
-      // Grappled: the speed is 0 (SRD 5.1, Conditions), and the line says why.
-      return {
-        left: 0,
-        pill: 'Sem movimento',
-        text: `Indisponível: ${grappledWord(own.label)}.`,
-      };
-    }
-    // Tenths of a foot, metres with one decimal ("Restam 6,9 m").
-    const leftM = metersFixed(own.movementLeftDft / 10);
-    const sentence = `${leftM} (${squaresText(reachSquares(left))})`;
-    return {
-      left,
-      pill: left > 0 ? tight(`Restam ${leftM}`) : 'Sem movimento',
-      text:
-        left > 0 && own.disengaged
-          ? tight(`Dá para andar até ${sentence} sem provocar.`)
-          : left > 0
-            ? tight(
-                own.movementUsedDft > 0
-                  ? `Você já andou ${metersFixed(own.movementUsedDft / 10)}. Dá para andar mais ${sentence}.`
-                  : `Você ainda não andou. Dá para andar até ${sentence}.`,
-              )
-            : 'Você já usou todo o movimento deste turno.',
-    };
-  });
+  /** The first row of the panel: what is left of the turn (Ação, Bônus, Reação and the walker with the metres), and "Mover". */
+  protected readonly turnLine = computed(() =>
+    turnLineOf(this.own(), {
+      grappled: this.grappled(),
+      blocked: this.theatre() || this.surprised() || this.moveAside(),
+      attacksLeft: this.attacksLeft(),
+      attacksPerAction: this.attacksPerAction(),
+    }),
+  );
+  protected readonly movement = computed(() => movementOf(this.own(), this.grappled()));
 
   /** The word on the Ação header: with Extra Attack, once the first attack
    * spent the action, "1 ataque restante" (an open circle: it is not over). */

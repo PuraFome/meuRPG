@@ -15,28 +15,18 @@ describe('TurnBar', () => {
   }
   const text = (el: Element | null) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-  it('says what the turn still has with its shapes, and "Encerrar turno"', () => {
+  it('holds only the one filled "Encerrar turno": the economy is the first row of "Ações", not the bar\'s (584-01)', () => {
     const el = setup({ movementLeftFt: 30, movementLeftDft: 300, bonusActionUsed: true });
     const row = el.querySelector('.row');
-    expect(text(row)).toContain('Ainda tem');
-    expect(
-      [...el.querySelectorAll('li')].map((li) =>
-        li.getAttribute('aria-label')?.replace(/\u00a0/g, ' '),
-      ),
-    ).toEqual(['Ação disponível', 'Reação disponível', 'Movimento: 9,0 m']);
-    expect(text(row)).toContain('Encerrar turno');
+    expect(text(row)).toBe('flagEncerrar turno');
+    expect(text(el)).not.toContain('Ainda tem');
+    expect(el.querySelector('li')).toBeNull();
     expect(text(el)).not.toContain('Mover');
+    expect(el.querySelector('button.end--filled')).not.toBeNull();
+    expect(el.querySelector('button.end--block')).not.toBeNull();
   });
 
-  it('leaves the walker out when there is no movement left, and keeps it with no map (the count of the metres)', () => {
-    const still = setup({ movementLeftFt: 0, movementLeftDft: 0 });
-    expect(still.querySelector('.shape__icon .walker')).toBeNull();
-    expect([...still.querySelectorAll('li')]).toHaveLength(3);
-    const theatre = setup({ movementLeftFt: 25, movementLeftDft: 250 }, { theatre: true });
-    expect([...theatre.querySelectorAll('li')]).toHaveLength(4);
-  });
-
-  it('says there is nothing more when everything is spent', () => {
+  it('is the same bar with everything spent: nothing but the button', () => {
     const el = setup({
       actionUsed: true,
       bonusActionUsed: true,
@@ -45,7 +35,7 @@ describe('TurnBar', () => {
       movementLeftDft: 0,
     });
     expect(el.querySelector('ul')).toBeNull();
-    expect(text(el.querySelector('.left'))).toContain('Nada mais neste turno');
+    expect(text(el.querySelector('.row'))).toBe('flagEncerrar turno');
   });
 
   it('says why the turn cannot end while an opportunity attack waits', () => {
@@ -59,7 +49,7 @@ describe('TurnBar', () => {
   it("leaves the master's wait to the turn card: the bar shows what is left, and the button stays off", () => {
     const el = setup({}, { waiting: 'Esperando o mestre' });
     expect(text(el)).not.toContain('Esperando o mestre');
-    expect(text(el.querySelector('.row'))).toContain('Ainda tem');
+    expect(text(el.querySelector('.row'))).toBe('flagEncerrar turno');
     expect(el.querySelector<HTMLButtonElement>('.end')?.getAttribute('aria-disabled')).toBe('true');
   });
 
