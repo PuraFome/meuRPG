@@ -230,7 +230,7 @@ func refuseSheetChanges(content *rules.Content, m authz.Membership, current char
 	carryFlags(content, stored.GetFull(), sheet.GetFull())
 	// Attunement is the server's: only SetAttunement changes it.
 	if sheet.GetFull() != nil {
-		keepAttunement(stored.GetFull(), sheet.GetFull())
+		keepAttunement(content, stored.GetFull(), sheet.GetFull())
 	}
 	return nil
 }

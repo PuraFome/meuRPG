@@ -2,6 +2,7 @@ package characters
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 
@@ -44,9 +45,25 @@ func (et *editorTable) openWindow(t *testing.T, id string, open bool) {
 	}
 }
 
+// attune asks for the entry that holds key: the first one not yet in the state asked, or the key itself as the entry id
+// when the sheet has none.
 func (et *editorTable) attune(u *user, c *charactersv1.Character, key string, attuned bool) (*charactersv1.Character, error) {
+	id := key
+	for _, it := range c.GetSheet().GetFull().GetMagicItems() {
+		if it.GetKey() == key && it.GetAttuned() != attuned {
+			id = it.GetId()
+			break
+		}
+		if it.GetKey() == key {
+			id = it.GetId()
+		}
+	}
+	return et.attuneEntry(u, c, id, attuned)
+}
+
+func (et *editorTable) attuneEntry(u *user, c *charactersv1.Character, id string, attuned bool) (*charactersv1.Character, error) {
 	res, err := u.api.SetAttunement(context.Background(), connect.NewRequest(&charactersv1.SetAttunementRequest{
-		CampaignId: et.campaign, CharacterId: c.GetId(), Key: key, Attuned: attuned,
+		CampaignId: et.campaign, CharacterId: c.GetId(), EntryId: id, Attuned: attuned,
 	}))
 	if err != nil {
 		return nil, err
@@ -66,7 +83,8 @@ func attunedKeys(c *charactersv1.Character) []string {
 
 const (
 	needsRest  = `failed_precondition: attuning takes a rest: the owner attunes once after a short or long rest | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_ATTUNEMENT_NEEDS_REST character_id="`
-	limit      = `failed_precondition: the character is already attuned to three items: end one first | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_ATTUNEMENT_LIMIT character_id="`
+	limit      = `failed_precondition: three items are already attuned: end one before attuning another | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_ATTUNEMENT_LIMIT character_id="`
+	sameItem   = `failed_precondition: already attuned to another copy of the same item | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_ATTUNEMENT_SAME_ITEM character_id="`
 	restricted = `failed_precondition: the item asks for something the character is not: only the master may attune it | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_ATTUNEMENT_RESTRICTED character_id="`
 )
 
@@ -129,13 +147,15 @@ func TestSetAttunementRestrictionAndTheMastersOverride(t *testing.T) {
 	}
 	read := et.dona.get(t, et.campaign, pc.GetId())
 	for _, it := range read.GetSheet().GetFull().GetMagicItems() {
-		if !it.GetRequiresAttunement() || it.GetAttunementByPt() == "" || it.GetRestrictionMet() {
-			t.Errorf("%s: requires %v, by %q, met %v; the read says what the item asks and that the character does not meet it", it.GetKey(), it.GetRequiresAttunement(), it.GetAttunementByPt(), it.GetRestrictionMet())
+		unmet := it.GetRestriction() == charactersv1.AttunementRestriction_ATTUNEMENT_RESTRICTION_NOT_MET || it.GetRestriction() == charactersv1.AttunementRestriction_ATTUNEMENT_RESTRICTION_UNKNOWN
+		if !it.GetRequiresAttunement() || !strings.HasPrefix(it.GetRestrictionPt(), "Só ") || !unmet {
+			t.Errorf("%s: requires %v, restriction %q (%v); the read says what the item asks and that the character does not meet it", it.GetKey(), it.GetRequiresAttunement(), it.GetRestrictionPt(), it.GetRestriction())
 		}
 	}
 }
 
-// Another player never reaches the character; a dead character's owner is refused and the master still changes it.
+// Another player never reaches the character; a dead character's owner gets the window refusal, even with the window
+// open, and the master still changes it.
 func TestSetAttunementWhoMayAsk(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t, ringA)
@@ -146,7 +166,7 @@ func TestSetAttunementWhoMayAsk(t *testing.T) {
 		t.Fatalf("MarkCharacterDead: %v", err)
 	}
 	_, err = et.attune(et.dona, pc, ringA, true)
-	wantEditorRefusal(t, "the dead character's owner", err, `failed_precondition: the character is dead, so only the master edits its sheet | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_CHARACTER_DEAD character_id="`+pc.GetId()+`"}`)
+	wantEditorRefusal(t, "the dead character's owner", err, needsRest+pc.GetId()+`"}`)
 	if _, err = et.attune(et.master, pc, ringA, true); err != nil {
 		t.Errorf("the master on a dead character: %v", err)
 	}
@@ -158,9 +178,9 @@ func TestSetAttunementKeyAndNoOp(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t, ringA, "item:bag-of-holding")
 	_, err := et.attune(et.master, pc, "item:ring-of-nothing", true)
-	wantEditorRefusal(t, "an item not on the sheet", err, `invalid_argument: key is not an item of the sheet that asks for attunement | InvalidField{field="key"}`)
+	wantEditorRefusal(t, "an item not on the sheet", err, `invalid_argument: entry_id is not an entry of the sheet | InvalidField{field="entry_id"}`)
 	_, err = et.attune(et.master, pc, "item:bag-of-holding", true)
-	wantEditorRefusal(t, "an item that asks for none", err, `invalid_argument: key is not an item of the sheet that asks for attunement | InvalidField{field="key"}`)
+	wantEditorRefusal(t, "an item that asks for none", err, `invalid_argument: entry_id is an item that does not ask for attunement | InvalidField{field="entry_id"}`)
 	et.openWindow(t, pc.GetId(), true)
 	if _, err = et.attune(et.dona, pc, ringA, false); err != nil {
 		t.Fatalf("ending what is not attuned: %v", err)
@@ -211,7 +231,7 @@ func TestSaveNeverChangesAttunement(t *testing.T) {
 	req := editorSaveOf(pc)
 	req.Sheet = editorClone(pc.GetSheet(), func(f *charactersv1.FullSheet) {
 		f.MagicItems[0].Attuned = false // the client says it ended
-		f.MagicItems = append(f.MagicItems, &charactersv1.SheetMagicItem{Key: ringB, Attuned: true, RestrictionMet: true})
+		f.MagicItems = append(f.MagicItems, &charactersv1.SheetMagicItem{Id: "m1", Key: ringB, Attuned: true, Restriction: charactersv1.AttunementRestriction_ATTUNEMENT_RESTRICTION_MET})
 	})
 	saved, err := editorUpdate(et.master, req)
 	if err != nil {
@@ -249,5 +269,105 @@ func TestAttunementIsNotBoundToTheSheetLock(t *testing.T) {
 		`failed_precondition: the sheet is locked: a game session has started, so only the master edits it | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_SHEET_LOCKED character_id="`+pc.GetId()+`"}`)
 	if _, err := editorUpdate(et.master, req); err != nil {
 		t.Errorf("the master adds an item: %v", err)
+	}
+}
+
+func entryIDs(c *charactersv1.Character) []string {
+	var out []string
+	for _, it := range c.GetSheet().GetFull().GetMagicItems() {
+		out = append(out, it.GetId())
+	}
+	return out
+}
+
+// Two identical rings are two entries with their own ids; only one copy is attuned at a time, and the blocked copy is
+// marked on the sheet.
+func TestSetAttunementOnlyOneCopyOfAnItem(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t, ringA, ringA)
+	ids := entryIDs(pc)
+	if len(ids) != 2 || ids[0] == "" || ids[0] == ids[1] {
+		t.Fatalf("entry ids %v, want two distinct non-empty ids", ids)
+	}
+	pc, err := et.attuneEntry(et.master, pc, ids[0], true)
+	if err != nil {
+		t.Fatalf("the first copy: %v", err)
+	}
+	_, err = et.attuneEntry(et.master, pc, ids[1], true)
+	wantEditorRefusal(t, "the second copy", err, sameItem+pc.GetId()+`"}`)
+	items := pc.GetSheet().GetFull().GetMagicItems()
+	if items[0].GetSameItemAttuned() || !items[1].GetSameItemAttuned() {
+		t.Errorf("same_item_attuned = %v, %v; want false (the attuned copy) and true (the blocked one)", items[0].GetSameItemAttuned(), items[1].GetSameItemAttuned())
+	}
+	if pc, err = et.attuneEntry(et.master, pc, ids[0], false); err != nil {
+		t.Fatalf("ending the first copy: %v", err)
+	}
+	if _, err = et.attuneEntry(et.master, pc, ids[1], true); err != nil {
+		t.Errorf("the second copy after the first ended: %v", err)
+	}
+}
+
+// The checks run in the order stale revision, window, limit, one copy, restriction: the owner who lost the race to the
+// master gets the limit, and the one who lost the window to their own other device gets the window.
+func TestSetAttunementRefusalOrder(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t, ringA, ringB, ringC, ringD, ringA)
+	for _, k := range []string{ringA, ringB, ringC} {
+		var err error
+		if pc, err = et.attune(et.master, pc, k, true); err != nil {
+			t.Fatalf("attune %s: %v", k, err)
+		}
+	}
+	ids := entryIDs(pc)
+	// A fourth that is also a second copy and has a restriction: the limit is the first refusal after the window.
+	_, err := et.attuneEntry(et.dona, pc, ids[4], true)
+	wantEditorRefusal(t, "no window comes before the limit", err, needsRest+pc.GetId()+`"}`)
+	et.openWindow(t, pc.GetId(), true)
+	_, err = et.attuneEntry(et.dona, pc, ids[4], true)
+	wantEditorRefusal(t, "the owner lost the race to the master", err, limit+pc.GetId()+`"}`)
+	if pc, err = et.attune(et.master, pc, ringC, false); err != nil {
+		t.Fatalf("ending one: %v", err)
+	}
+	_, err = et.attuneEntry(et.dona, pc, ids[4], true)
+	wantEditorRefusal(t, "the copy comes before the restriction", err, sameItem+pc.GetId()+`"}`)
+	// The owner's own other device spent the window first.
+	if _, err = et.attuneEntry(et.dona, pc, ids[3], true); err != nil {
+		t.Fatalf("the owner's first attunement: %v", err)
+	}
+	_, err = et.attuneEntry(et.dona, pc, ids[2], true)
+	wantEditorRefusal(t, "the owner lost the window to their other device", err, needsRest+pc.GetId()+`"}`)
+}
+
+// An attuned item can be removed from the sheet: the attunement ends with it and the counter drops.
+func TestRemovingAnAttunedItemEndsItsAttunement(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t, ringA, ringB)
+	for _, k := range []string{ringA, ringB} {
+		var err error
+		if pc, err = et.attune(et.master, pc, k, true); err != nil {
+			t.Fatalf("attune %s: %v", k, err)
+		}
+	}
+	req := editorSaveOf(pc)
+	req.Sheet = editorClone(pc.GetSheet(), func(f *charactersv1.FullSheet) { f.MagicItems = f.MagicItems[1:] })
+	saved, err := editorUpdate(et.master, req)
+	if err != nil {
+		t.Fatalf("remove an attuned item: %v", err)
+	}
+	if k := attunedKeys(saved); len(k) != 1 || k[0] != ringB {
+		t.Errorf("attuned %v, want only %s", k, ringB)
+	}
+	// A new entry takes a new id, never the removed one.
+	req = editorSaveOf(saved)
+	req.Sheet = editorClone(saved.GetSheet(), func(f *charactersv1.FullSheet) {
+		f.MagicItems = append(f.MagicItems, &charactersv1.SheetMagicItem{Key: ringC, Id: pc.GetSheet().GetFull().GetMagicItems()[1].GetId()})
+	})
+	again, err := editorUpdate(et.master, req)
+	if err != nil {
+		t.Fatalf("add an item: %v", err)
+	}
+	ids := entryIDs(again)
+	if len(ids) != 2 || ids[0] == ids[1] || again.GetSheet().GetFull().GetMagicItems()[1].GetAttuned() {
+		t.Errorf("ids %v, attuned %v: a client's repeated id must not give the new entry the old one's attunement", ids, attunedKeys(again))
 	}
 }

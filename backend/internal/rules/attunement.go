@@ -119,10 +119,24 @@ func verdict(met bool) Restriction {
 	return RestrictionNotMet
 }
 
+// restrictionPT is what the item asks of the character in Portuguese, in the app's one pattern ("Só para um
+// conjurador", "Só ao ar livre, à noite"): byPT is the catalog's label ("por um conjurador").
+func (r attunementRule) restrictionPT(byPT string) string {
+	switch r.kind {
+	case kindGood:
+		return "Só para criatura de alinhamento bom"
+	case kindEvil:
+		return "Só para criatura de alinhamento mau"
+	case kindCircumstance:
+		return "Só " + byPT
+	}
+	return "Só para " + strings.TrimPrefix(byPT, "por ")
+}
+
 // AttunementOf says what attuning to the catalog item key asks: whether it asks for attunement, the restriction in
-// Portuguese, and whether the character of b, derived as d, meets it. ok is false for a key that is no item of the
+// Portuguese ("Só para um conjurador"), and whether the character of b, derived as d, meets it. ok is false for a key that is no item of the
 // catalog, or is a family (its variants stand for it).
-func (c *Content) AttunementOf(key string, b Build, d Derived, f AttunementFacts) (requires bool, byPT string, met Restriction, ok bool) {
+func (c *Content) AttunementOf(key string, b Build, d Derived, f AttunementFacts) (requires bool, restrictionPT string, met Restriction, ok bool) {
 	m, found := c.c.magicItems[key]
 	if !found || len(m.Variants) > 0 && !m.Standalone {
 		return false, "", RestrictionMet, false
@@ -134,29 +148,39 @@ func (c *Content) AttunementOf(key string, b Build, d Derived, f AttunementFacts
 		return true, "", RestrictionMet, true
 	}
 	rule, _ := parseAttunementRule(m.AttunementBy)
-	return true, c.c.attunementPT(m.AttunementBy), rule.meets(b, d, f), true
+	return true, rule.restrictionPT(c.c.attunementPT(m.AttunementBy)), rule.meets(b, d, f), true
+}
+
+// AttunementAsked says the catalog item key asks for attunement (false for a key that is no item, or is a family).
+func (c *Content) AttunementAsked(key string) bool {
+	requires, _, _, ok := c.AttunementOf(key, Build{}, Derived{}, AttunementFacts{})
+	return ok && requires
+}
+
+// MagicItemNamePT is the Portuguese name of the catalog item key, or "".
+func (c *Content) MagicItemNamePT(key string) string {
+	if _, ok := c.c.magicItems[key]; ok {
+		return c.c.namePT(key)
+	}
+	return ""
 }
 
 // MaxMagicItems is the most catalog magic items a sheet holds besides its +N gear.
 const MaxMagicItems = 20
 
 // checkMagicItems checks the sheet's magic items: at most MaxMagicItems, each an item of the catalog that is no
-// family, none twice.
+// family (two copies of one item are two entries).
 func checkMagicItems(b *Build, c *content) error {
 	if len(b.MagicItems) > MaxMagicItems {
 		return invalid("full.magic_items", "must have at most %d entries", MaxMagicItems)
 	}
-	seen := make(map[string]bool, len(b.MagicItems))
 	for i, it := range b.MagicItems {
 		f := fmt.Sprintf("full.magic_items[%d].key", i)
 		m, ok := c.magicItems[it.Key]
 		switch {
 		case !ok || len(m.Variants) > 0 && !m.Standalone:
 			return invalid(f, "is not a magic item of the catalog, or is a family: pick one of its variants")
-		case seen[it.Key]:
-			return invalid(f, "repeats an entry")
 		}
-		seen[it.Key] = true
 	}
 	return nil
 }
@@ -182,7 +206,7 @@ func AttunedCount(b Build) int {
 // attunement itself moves during play (SetAttunement) and is not part of the sheet's lock.
 func sameItemBonuses(a, b []ItemBonus) bool {
 	return slices.EqualFunc(a, b, func(x, y ItemBonus) bool {
-		return x.Key == y.Key && x.Bonus == y.Bonus && x.RequiresAttunement == y.RequiresAttunement
+		return x.Key == y.Key && x.Bonus == y.Bonus && x.RequiresAttunement == y.RequiresAttunement && x.ItemKey == y.ItemKey
 	})
 }
 

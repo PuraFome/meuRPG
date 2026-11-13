@@ -63,4 +63,5 @@ export type CharacterBlockedReason =
   | 'table_content_stays'
   | 'attunement_limit'
   | 'attunement_restricted'
-  | 'attunement_needs_rest';
+  | 'attunement_needs_rest'
+  | 'attunement_same_item';

@@ -500,7 +500,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 		// Attuning an item: the master and the owner reach the rule (the key is no item of the sheet, so both
 		// are told so); another player, a stranger and a pending member are told the character is not there.
 		{"SetAttunement", "", nil, func(ctx context.Context, u *user) error {
-			_, err := u.api.SetAttunement(ctx, connect.NewRequest(&charactersv1.SetAttunementRequest{CampaignId: campaign, CharacterId: pc.GetId(), Key: "item:ring-of-nothing", Attuned: true}))
+			_, err := u.api.SetAttunement(ctx, connect.NewRequest(&charactersv1.SetAttunementRequest{CampaignId: campaign, CharacterId: pc.GetId(), EntryId: "m99", Attuned: true}))
 			return err
 		}, [6]connect.Code{connect.CodeInvalidArgument, connect.CodeInvalidArgument, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated, connect.CodeNotFound}},
 		// Reserved characters and claim links (MR-049): only the master makes, revokes and gives

@@ -350,9 +350,9 @@ service CharacterService {
   // The owner needs the window a short or long rest opens (one attunement or ending for each
   // window); the master needs none and may attune past a restriction. At most three items.
   // Errors: `not_found` (the character is not the caller's to see), `invalid_argument` (the
-  // key is not an item that asks for attunement on the sheet), `aborted` (stale revision),
+  // entry_id is not an entry of the sheet that asks for attunement), `aborted` (stale revision),
   // `failed_precondition` with CharacterBlocked: ATTUNEMENT_LIMIT, ATTUNEMENT_RESTRICTED,
-  // ATTUNEMENT_NEEDS_REST or CHARACTER_DEAD (only the master changes a dead character's).
+  // ATTUNEMENT_NEEDS_REST, ATTUNEMENT_SAME_ITEM or CHARACTER_DEAD (only the master changes a dead character's).
   rpc SetAttunement(SetAttunementRequest) returns (SetAttunementResponse);
 
   // MarkCharacterDead records that a player character died (RN-03). Only
@@ -1338,6 +1338,8 @@ enum CharacterBlockedReason {
   // The owner's SetAttunement without an open window: the master's short or long rest opens
   // one for each character, and one attunement or ending spends it.
   CHARACTER_BLOCKED_REASON_ATTUNEMENT_NEEDS_REST = 26;
+  // The character is already attuned to another copy of the same item (only one copy at a time).
+  CHARACTER_BLOCKED_REASON_ATTUNEMENT_SAME_ITEM = 27;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -1612,13 +1614,33 @@ message SheetMagicItem {
   // The item asks for attunement. Filled by the server from the catalog on every read; a save
   // ignores it.
   bool requires_attunement = 3;
-  // The restriction of the attunement in Portuguese ("por um paladino"), or empty. Filled by
-  // the server on every read; a save ignores it.
-  string attunement_by_pt = 4;
-  // The character meets the restriction. Always true when there is none, and for a
-  // restriction the server does not check ("outdoors at night"). Filled by the server on every
-  // read; a save ignores it.
-  bool restriction_met = 5;
+  // What the item asks of the character, in Portuguese ("Só para um conjurador"), or empty.
+  // Filled by the server on every read; a save ignores it.
+  string restriction_pt = 4;
+  // Whether the character meets that restriction. Filled by the server on every read; a save
+  // ignores it.
+  AttunementRestriction restriction = 5;
+  // The entry's id, unique on the sheet (also against the ids of item_bonuses). The server
+  // gives one to every new entry on a save and keeps the ones it gave: a client sends an empty
+  // id for a new entry and the id it read for the others. SetAttunement names the entry by it.
+  string id = 6;
+  // Another copy of the same item is attuned, so the character cannot attune this one (only one
+  // copy of an item at a time). Filled by the server on every read; a save ignores it.
+  bool same_item_attuned = 7;
+  // The item's Portuguese name from the catalog. Filled by the server on every read.
+  string name_pt = 8;
+}
+
+// AttunementRestriction says whether a character meets what an item asks for to be attuned.
+enum AttunementRestriction {
+  // The item asks for nothing.
+  ATTUNEMENT_RESTRICTION_UNSPECIFIED = 0;
+  // The character meets it, or it is a circumstance the server does not check ("outdoors, at night").
+  ATTUNEMENT_RESTRICTION_MET = 1;
+  // The character does not meet it. Only the master attunes the item.
+  ATTUNEMENT_RESTRICTION_NOT_MET = 2;
+  // The sheet cannot say (an alignment left unset). Only the master attunes the item.
+  ATTUNEMENT_RESTRICTION_UNKNOWN = 3;
 }
 
 // ItemBonus is the magic bonus of one piece of the sheet's gear. Rule: `key` is the
@@ -1634,6 +1656,22 @@ message ItemBonus {
   bool requires_attunement = 3;
   // The character is attuned to the piece.
   bool attuned = 4;
+  // What the piece asks of the character, in Portuguese ("Só para um conjurador"), or empty.
+  // Filled by the server on every read; a save ignores it.
+  string restriction_pt = 5;
+  // Whether the character meets that restriction. Filled by the server on every read.
+  AttunementRestriction restriction = 6;
+  // The catalog item (an `item:*` key that is not a family) this piece is, such as the Defender.
+  // With it the server takes `requires_attunement` from the catalog and ignores the client's; the
+  // item's category must fit the piece (armor or shield: "armor", a weapon: "weapon").
+  // A new piece without it keeps `requires_attunement` false.
+  string item_key = 7;
+  // The entry's id, "bonus:<key>", filled by the server. SetAttunement names the entry by it.
+  string id = 8;
+  // Another copy of the same catalog item is attuned. Filled by the server on every read.
+  bool same_item_attuned = 9;
+  // The catalog item's Portuguese name ("Defensora"), or empty without `item_key`. Filled by the server.
+  string item_name_pt = 10;
 }
 
 // WeaponMark says what a carried weapon is made of or enchanted with. Rule: set at
@@ -2218,9 +2256,9 @@ message SetEquippedResponse {
 message SetAttunementRequest {
   string campaign_id = 1;
   string character_id = 2;
-  // The item: an `item:*` key of the sheet's magic_items, or a weapon, armor or shield key that
-  // has an ItemBonus (the shield key "equipment:shield" included).
-  string key = 3;
+  // The entry: the `id` of one of the sheet's magic_items or item_bonuses. Two copies of one
+  // item are two entries, so a key would be ambiguous.
+  string entry_id = 3;
   // true attunes, false ends it.
   bool attuned = 4;
   // The revision the caller holds; a stale one is refused with `aborted`.

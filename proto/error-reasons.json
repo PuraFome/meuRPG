@@ -34,7 +34,8 @@
             "NOT_DEAD",
             "ATTUNEMENT_LIMIT",
             "ATTUNEMENT_RESTRICTED",
-            "ATTUNEMENT_NEEDS_REST"
+            "ATTUNEMENT_NEEDS_REST",
+            "ATTUNEMENT_SAME_ITEM"
           ],
           "unsent": []
         }

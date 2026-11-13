@@ -440,9 +440,9 @@ type CharacterServiceClient interface {
 	// The owner needs the window a short or long rest opens (one attunement or ending for each
 	// window); the master needs none and may attune past a restriction. At most three items.
 	// Errors: `not_found` (the character is not the caller's to see), `invalid_argument` (the
-	// key is not an item that asks for attunement on the sheet), `aborted` (stale revision),
+	// entry_id is not an entry of the sheet that asks for attunement), `aborted` (stale revision),
 	// `failed_precondition` with CharacterBlocked: ATTUNEMENT_LIMIT, ATTUNEMENT_RESTRICTED,
-	// ATTUNEMENT_NEEDS_REST or CHARACTER_DEAD (only the master changes a dead character's).
+	// ATTUNEMENT_NEEDS_REST, ATTUNEMENT_SAME_ITEM or CHARACTER_DEAD (only the master changes a dead character's).
 	SetAttunement(context.Context, *connect.Request[v1.SetAttunementRequest]) (*connect.Response[v1.SetAttunementResponse], error)
 	// MarkCharacterDead records that a player character died (RN-03). Only
 	// the campaign's master may call it.
@@ -1795,9 +1795,9 @@ type CharacterServiceHandler interface {
 	// The owner needs the window a short or long rest opens (one attunement or ending for each
 	// window); the master needs none and may attune past a restriction. At most three items.
 	// Errors: `not_found` (the character is not the caller's to see), `invalid_argument` (the
-	// key is not an item that asks for attunement on the sheet), `aborted` (stale revision),
+	// entry_id is not an entry of the sheet that asks for attunement), `aborted` (stale revision),
 	// `failed_precondition` with CharacterBlocked: ATTUNEMENT_LIMIT, ATTUNEMENT_RESTRICTED,
-	// ATTUNEMENT_NEEDS_REST or CHARACTER_DEAD (only the master changes a dead character's).
+	// ATTUNEMENT_NEEDS_REST, ATTUNEMENT_SAME_ITEM or CHARACTER_DEAD (only the master changes a dead character's).
 	SetAttunement(context.Context, *connect.Request[v1.SetAttunementRequest]) (*connect.Response[v1.SetAttunementResponse], error)
 	// MarkCharacterDead records that a player character died (RN-03). Only
 	// the campaign's master may call it.

@@ -88,11 +88,12 @@ const BLOCKED_MESSAGES: Partial<Record<CharacterBlockedReason, string>> = {
   table_content_stays:
     'Essa ficha usa opções próprias desta mesa e não pode ir para outra campanha.',
   attunement_limit:
-    'Você já está sintonizado com 3 itens. Encerre uma sintonização antes de sintonizar outro.',
+    'Já há 3 itens sintonizados: encerre um antes de sintonizar outro.',
   attunement_restricted:
-    'Esse item pede algo que o personagem não é. Só o mestre pode sintonizá-lo.',
+    'Esse item pede algo que o personagem não é: só o mestre sintoniza.',
   attunement_needs_rest:
-    'A sintonização acontece depois de um descanso curto ou longo, uma por descanso.',
+    'Descanse antes de sintonizar: cada descanso, curto ou longo, abre uma sintonização.',
+  attunement_same_item: 'Já sintonizado a outro igual.',
 };
 
 export function characterBlockedMessage(
@@ -182,6 +183,7 @@ const BLOCKED_FROM_GEN: Partial<Record<GenCharacterBlockedReason, CharacterBlock
   [GenCharacterBlockedReason.ATTUNEMENT_LIMIT]: 'attunement_limit',
   [GenCharacterBlockedReason.ATTUNEMENT_RESTRICTED]: 'attunement_restricted',
   [GenCharacterBlockedReason.ATTUNEMENT_NEEDS_REST]: 'attunement_needs_rest',
+  [GenCharacterBlockedReason.ATTUNEMENT_SAME_ITEM]: 'attunement_same_item',
 };
 
 /** Maps the wire `CharacterBlockedReason` enum (characters.proto) onto the

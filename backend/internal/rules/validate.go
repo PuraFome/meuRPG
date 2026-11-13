@@ -210,7 +210,7 @@ func validateGear(b *Build, c *content) error {
 	if err := checkWeaponMarks(b); err != nil {
 		return err
 	}
-	if err := checkItemBonuses(b); err != nil {
+	if err := checkItemBonuses(b, c); err != nil {
 		return err
 	}
 	return checkMagicItems(b, c)

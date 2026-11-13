@@ -127,7 +127,7 @@ func TestAPlayersMagicItemsAreTheOwnersAndTheMastersAlone(t *testing.T) {
 	}))).GetCharacter()
 	// Toren's owner attunes the ring: the sheet says so from now on.
 	must(m.characters.SetAttunement(ctx, rq(&charactersv1.SetAttunementRequest{
-		CampaignId: w.campaign, CharacterId: toren.GetId(), Key: "item:ring-of-protection", Attuned: true,
+		CampaignId: w.campaign, CharacterId: toren.GetId(), EntryId: "m1", Attuned: true,
 	})))
 	w.secrets.add(&canary{needle: `"item:ring-of-protection"`, kind: "magic-item-key"})
 	// A rest opens the window to attune (a combat is running here, so the row is set as the rest sets it).
