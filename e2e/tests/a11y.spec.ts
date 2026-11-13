@@ -1287,9 +1287,9 @@ async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
 
-    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row in the card; the attack is on the first screen.
-    const shapes = p.getByRole('list', { name: 'O que tem neste turno' }).getByRole('listitem');
-    await expect(shapes).toHaveCount(3);
+    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row, the first of "Ações" (board 584-01); the attack is on the first screen.
+    const shapes = p.getByRole('list', { name: 'O que resta da vez' }).getByRole('listitem');
+    await expect(shapes).toHaveCount(4); // the Ação, the Bônus, the Reação and the walker (board 584-01)
     const row = await Promise.all((await shapes.all()).map((t) => boxOf(t)));
     expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
     expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
@@ -4323,7 +4323,8 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
     await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).toBeVisible();
     await expectScreenPasses(p, `A faixa da vez na forma, com o tempo e a linha da vez ${where}`);
-    await openActionTab(p, 'Druida');
+    // As a beast the class tab is called "Habilidades".
+    await openActionTab(p, 'Habilidades');
     await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
     await expect(p.getByText('Permanecer na forma').first()).toBeVisible();
     await expectScreenPasses(p, `A aba Druida na forma, com Permanecer na forma ${where}`);

@@ -162,6 +162,8 @@ export class ActionGroups {
     readonly detail: string;
     readonly reason: string;
   } | null>(null);
+  /** The master acts for the character: "Mover" is in the map's header (C8-01), so the economy row does not repeat it. */
+  readonly moveAside = input(false);
   /** "Permanecer na forma": what it costs and why it cannot be pressed ('' when it can); `null` outside a form. */
   readonly stay = input<{ readonly detail: string; readonly reason: string } | null>(null);
   /** The beast the character is in ("Lobo"): no spells, and "Voltar à forma normal" is a bonus action. */
@@ -380,7 +382,7 @@ export class ActionGroups {
   protected readonly turnLine = computed(() =>
     turnLineOf(this.own(), {
       grappled: this.grappled(),
-      blocked: this.theatre() || this.surprised(),
+      blocked: this.theatre() || this.surprised() || this.moveAside(),
       attacksLeft: this.attacksLeft(),
       attacksPerAction: this.attacksPerAction(),
     }),

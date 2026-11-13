@@ -74,6 +74,12 @@ describe('ActionGroups: the economy row', () => {
     expect([...still.el.querySelectorAll('.econ li')]).toHaveLength(3);
   });
 
+  it('leaves "Mover" to the map header while the master acts for the character', () => {
+    const acting = setup({}, { moveAside: true });
+    expect(acting.el.querySelector('.econ button')).toBeNull();
+    expect([...acting.el.querySelectorAll('.econ li')]).toHaveLength(4);
+  });
+
   it('leaves "Mover" out for a grappled or a surprised character, and for a combat without a map', () => {
     const grappled = setup({}, { contest: create(ContestTurnStateSchema, { grappled: true }) });
     expect(grappled.el.querySelector('.econ button')).toBeNull();
