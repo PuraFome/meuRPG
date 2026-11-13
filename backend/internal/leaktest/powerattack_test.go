@@ -257,6 +257,11 @@ func hasPowerPart(parts []*playv1.DamagePartRoll, name string, flat int32) bool 
 
 // checkOthersRead proves the parts and the rolls of the power attack that the combat shows another player name the source as
 // they may read it and carry no number and no key.
+//
+// No read of another player carries the parts of a hit on an NPC (the combat lists none, the turn options of Caio's combatant
+// are refused to Ana, and only the attacker and the master are answered with the damage), so these loops guard the routes that
+// may come to carry them; the part and the roll as another player reads them are proved, with their positive controls, by
+// TestThePowerAttackPartForEachReader and TestThePowerAttackRollForEachReader.
 func (rt *rollsTable) checkOthersRead(t *testing.T, p *person, name string) {
 	t.Helper()
 	parts, rolls := powerPartsOf(rt.encounterOf(p))

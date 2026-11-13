@@ -90,7 +90,8 @@ type partRecord struct {
 	NoCrit bool `json:"no_crit,omitempty"`
 	// Effect is the row of the spell's effect a part of Table "hit_effect" is the damage of (combat_hit_effects.go).
 	Effect string `json:"effect,omitempty"`
-	// Hide says the effect of that row is not the other players' to read (the master hides it, or it is the owner's).
+	// Hide says the source is not the other players' to read: a spell's effect the master hides or that is the owner's, or the
+	// feature of a power attack the master retired or switched off (they read "Outra fonte").
 	Hide bool `json:"hide,omitempty"`
 }
 
@@ -118,7 +119,8 @@ type partRoll struct {
 	Resource string `json:"resource,omitempty"`
 	Rider    string `json:"rider,omitempty"`
 	// Effect (the effect row's id) and Hide are those of the part of a spell's hit effect (partRecord): the others read
-	// neither its dice nor, when it is hidden, its name or key.
+	// neither its dice nor, when it is hidden, its name or key. Hide is also a power attack's: the others read "Outra fonte"
+	// and no number.
 	Effect string `json:"effect,omitempty"`
 	Hide   bool   `json:"hide,omitempty"`
 }

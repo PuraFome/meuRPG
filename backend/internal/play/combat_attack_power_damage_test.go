@@ -16,18 +16,23 @@ import (
 
 const slashing = "damage-type:slashing"
 
-// powerPartOf is the part the trade added to a damage, nil when there is none.
-func powerPartOf(parts []*playv1.DamagePart) *playv1.DamagePart {
-	var found *playv1.DamagePart
+// powerPartsOf lists the parts the trade added to a damage: one for a hit that made the trade, none for any other.
+func powerPartsOf(parts []*playv1.DamagePart) []*playv1.DamagePart {
+	var found []*playv1.DamagePart
 	for _, p := range parts {
 		if p.GetKey() == partPowerAttack {
-			if found != nil {
-				return &playv1.DamagePart{Key: "twice"}
-			}
-			found = p
+			found = append(found, p)
 		}
 	}
 	return found
+}
+
+// powerPartOf is the part the trade added to a damage, nil when there is none or when there are several.
+func powerPartOf(parts []*playv1.DamagePart) *playv1.DamagePart {
+	if found := powerPartsOf(parts); len(found) == 1 {
+		return found[0]
+	}
+	return nil
 }
 
 func powerRollOf(rolls []*playv1.DamagePartRoll) *playv1.DamagePartRoll {
@@ -48,13 +53,11 @@ func (g *powerTable) rolled(t *testing.T, e *playv1.Encounter, pendingID string,
 // wantPowerPart fails unless the pending damage lists the trade's part once, with the number.
 func wantPowerPart(t *testing.T, what string, parts []*playv1.DamagePart, name, source string, flat int32) {
 	t.Helper()
-	p := powerPartOf(parts)
-	if p == nil {
-		t.Fatalf("%s: parts = %v, want the power attack's part", what, parts)
-	}
-	if p.GetKey() == "twice" {
+	found := powerPartsOf(parts)
+	if len(found) != 1 {
 		t.Fatalf("%s: parts = %v, want the power attack's part once", what, parts)
 	}
+	p := found[0]
 	if p.GetLabelPt() != name || p.GetSourceKey() != source || p.GetFlat() != flat || p.GetDiceCount() != 0 || !p.GetAuto() || p.GetChoosable() ||
 		p.GetDamageTypeKey() != slashing || !p.GetAvailable() || p.GetDoubled() {
 		t.Errorf("%s: part = %v, want %q from %s, flat %d of slashing, automatic, never chosen, not doubled", what, p, name, source, flat)
@@ -149,6 +152,30 @@ func TestACriticalHitDoublesTheDiceAndTheTradeIsAddedOnce(t *testing.T) {
 	rolled := g.mustDamage(t, g.caio, e, opened.GetId(), inAppDamage).GetPendingDamage()
 	if want := int32(6 + 5 + 4 + 3 + 3 + heavyDamage); rolled.GetAmount() != want {
 		t.Errorf("the damage = %d, want %d: the 4 dice, the modifier once and the trade once", rolled.GetAmount(), want)
+	}
+	if r := powerRollOf(rolled.GetPartRolls()); r == nil || r.GetFlat() != heavyDamage || r.GetDiceCount() != 0 || len(r.GetFaces()) != 0 {
+		t.Errorf("the roll of the part = %v, want the flat %d and no dice", r, heavyDamage)
+	}
+	wantPowerPart(t, "the critical damage as rolled", rolled.GetParts(), powerHeavyName, g.heavyKey, heavyDamage)
+}
+
+// Under "maximum plus a roll" a critical hit adds the weapon dice's maximum once and rolls them once: the trade's flat number is
+// still added once and the part has no dice: 12 (the maximum of 2d6), 4 and 3, the 3 of Strength and the 10.
+func TestACriticalHitUnderMaximumPlusARollAddsTheTradeOnce(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	g.setRules(t, criticalIs(maxRoll))
+	e := g.fight(t)
+	hit, err := g.swing(t, e, g.heavyKey, 20)
+	if err != nil || hit.GetPendingDamage() == nil || hit.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_CRITICAL_HIT {
+		t.Fatalf("RollAttack() = %v, %v; want a critical hit", hit, err)
+	}
+	opened := hit.GetPendingDamage()
+	wantPowerPart(t, "the critical damage the hit opened", opened.GetParts(), powerHeavyName, g.heavyKey, heavyDamage)
+	g.h.roller.queue(4, 3)
+	rolled := g.mustDamage(t, g.caio, e, opened.GetId(), inAppDamage).GetPendingDamage()
+	if want := int32(12 + 4 + 3 + 3 + heavyDamage); rolled.GetAmount() != want {
+		t.Errorf("the damage = %d, want %d: the maximum, the 2 dice, the modifier once and the trade once", rolled.GetAmount(), want)
 	}
 	if r := powerRollOf(rolled.GetPartRolls()); r == nil || r.GetFlat() != heavyDamage || r.GetDiceCount() != 0 || len(r.GetFaces()) != 0 {
 		t.Errorf("the roll of the part = %v, want the flat %d and no dice", r, heavyDamage)

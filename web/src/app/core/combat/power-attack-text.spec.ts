@@ -18,10 +18,10 @@ describe('powerAttackWords', () => {
     );
   });
 
-  it('says "Outra fonte" for a feature the master hid', () => {
-    expect(powerAttackWords(marker({ key: '', namePt: 'Outra fonte', hidden: true }))).toBe(
-      'Outra fonte',
-    );
+  it('says the same to another player when the master hid the feature, and never "Outra fonte"', () => {
+    const words = powerAttackWords(marker({ key: '', namePt: 'Outra fonte', hidden: true }));
+    expect(words).toBe('usou um ataque poderoso');
+    expect(words).not.toContain('Outra fonte');
   });
 
   it('says nothing of an attack that made no trade', () => {
@@ -37,7 +37,7 @@ describe('powerAttackNote', () => {
     );
     expect(powerAttackNote(marker({ key: '', namePt: 'Golpe' }))).toBe(', usou um ataque poderoso');
     expect(powerAttackNote(marker({ key: '', namePt: 'Outra fonte', hidden: true }))).toBe(
-      ', Outra fonte',
+      ', usou um ataque poderoso',
     );
   });
 });

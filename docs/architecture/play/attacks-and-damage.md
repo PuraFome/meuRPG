@@ -199,12 +199,15 @@ A critical hit never doubles it.
 A held roll's replay writes it once, and undoing the attack or the damage removes it with the rest.
 The master's `RemoveDamagePart` does not take it out.
 The attack's event keeps `hidden` when the feature was retired or switched off when the attack was made.
-What each viewer reads (RN-10):
+What each viewer reads (RN-10; `TestAPowerAttackIsTheAttackersAndTheMastersAlone`):
 
-- the master and the attacker's player read the feature's name, its flat number and the penalty;
-- another player reads the feature's name, and no number or key, when the feature is not hidden;
-- another player reads "Outra fonte" for the name, in the part, in its roll and in the log, when the feature is hidden;
-- the damage a player reads on an NPC stays as rolled, so its total includes the bonus.
+- the master and the attacker's player read the feature's name, key, flat number and the penalty;
+- another player reads the part's label (the feature's name, or "Outra fonte" when the feature is hidden) and never its flat number, key or reason, nor those of its roll;
+- the damage total another player reads is the damage as rolled, so it includes the bonus, like the hit effect of a spell.
+
+The attack's line in the log tells another player only "usou um ataque poderoso", hidden feature or not.
+The name another player reads lives in the damage part's label alone.
+The feature is hidden from the moment of the attack, so a later change by the master does not alter what the attack's damage and log say.
 
 Sneak Attack and Colossus Slayer are once per turn (the keys `sneak_attack` and `colossus_slayer` of `combatants.feature_state`); Hunter's Mark follows the caster's concentration (`combatant_states`).
 Great Weapon Fighting rerolls 1s and 2s once, shown on the part.

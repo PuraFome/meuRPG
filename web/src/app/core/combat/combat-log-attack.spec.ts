@@ -46,6 +46,14 @@ describe('attackText with a power attack', () => {
     expect(text).not.toMatch(/\d/);
   });
 
+  it('tells another player the same when the master hid the feature', () => {
+    const text = attackText(
+      entry({ key: '', namePt: 'Outra fonte', penalty: 0, damageBonus: 0, hidden: true }),
+    );
+    expect(text).toContain(': errou, usou um ataque poderoso');
+    expect(text).not.toContain('Outra fonte');
+  });
+
   it('adds nothing to an attack that made no trade', () => {
     expect(attackText(entry(undefined))).toMatch(/errou$/);
   });
