@@ -234,6 +234,24 @@ test('a barra de ferramentas marca só a ferramenta escolhida, com o visto e o f
       expect(others.size, `the others share one fill at ${width}px`).toBe(1);
       expect(others.has(chosen[0].fill), `the chosen tool has its own fill at ${width}px`).toBe(false);
 
+      // A divider never starts or ends a line: each one visible has a control on its row to the left and another to the right, and the first
+      // tool starts level with "Pontos" (the row is not pushed by a divider that wrapped to its start).
+      const dividers = await master.locator('app-editor-bar').evaluate((bar) => {
+        const controls = Array.from(bar.querySelectorAll('button, .bar__label')).map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0);
+        return Array.from(bar.querySelectorAll('.bar__sep'))
+          .map((d) => d.getBoundingClientRect())
+          .filter((r) => r.width > 0)
+          .map((d) => {
+            const row = controls.filter((c) => c.top <= d.top + d.height / 2 && c.bottom >= d.top + d.height / 2);
+            return { left: row.some((c) => c.right <= d.left), right: row.some((c) => c.left >= d.right) };
+          });
+      });
+      for (const d of dividers) {
+        expect(d, `a divider at a line's start or end at ${width}px`).toEqual({ left: true, right: true });
+      }
+      const pontos = await boxOf(master.getByRole('radio', { name: 'Pontos' }));
+      const first = await boxOf(buttons.first());
+      expect(Math.abs(first.x - pontos.x), `the first tool level with "Pontos" at ${width}px`).toBeLessThanOrEqual(1);
       // "Pincel" and its group are on one line, whatever the row does around them.
       const label = await boxOf(master.getByText('Pincel', { exact: true }));
       const group = await boxOf(master.getByRole('radiogroup', { name: 'Pincel' }));
