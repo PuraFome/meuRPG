@@ -156,8 +156,8 @@ func TestAJumpOverWaterCostsItsLength(t *testing.T) {
 	}
 }
 
-// A creature with no walking and no flying speed moves on its best swimming or climbing speed; one that walks keeps the
-// walking speed, and the swim speed only lifts the extra (the known limit of movement.md).
+// A creature with no walking and no flying speed moves on its best swimming or climbing speed; one that walks reads its
+// walking speed where it stands on the floor, and its swim speed only in the water (#819).
 func TestThePoolOfASwimmerAndAWalker(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)

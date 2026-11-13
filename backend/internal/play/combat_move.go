@@ -37,6 +37,13 @@ type TerrainSource interface {
 	Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (grid.Terrain, error)
 }
 
+// SurfaceSource is the map's surface layer alone, for what a view says of a combatant that stands in water or on a climbable
+// surface (#819). A TerrainSource that also implements it (maps.Service does) is used; one that does not leaves every combatant on the
+// floor in the view. It is one indexed read of one column, once per view.
+type SurfaceSource interface {
+	Surface(ctx context.Context, tx pgx.Tx, mapID string, g grid.Grid) (*grid.SurfaceLayer, error)
+}
+
 // DoorKeeper opens the doors a move walks into (MR-010, RN-26). The maps module
 // implements it too (maps.Service.OpenDoors and DoorsChanged), and SetTerrain
 // picks it up from the same value, so there is nothing more to wire.
@@ -166,11 +173,9 @@ var noSpeed = []string{
 	"condition:grappled", "condition:restrained", "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious",
 }
 
-// speedFtOf is the speed the turn's movement is counted on, in feet: the better of walking and flying, and for a
-// creature with neither (a shark, a spider on its web) the better of swimming and climbing. A swim or climb speed
-// otherwise only lifts the extra cost of the water and the climb (SRD 5.1, "Climbing, Swimming, and Crawling");
-// that a swimmer faster than it walks does not spend its swim speed beyond the walking one is a known limit
-// (docs/architecture/play/movement.md).
+// speedFtOf is the floor's speed, in feet: the better of walking and flying, and for a creature with neither (a shark, a
+// spider on its web) the better of swimming and climbing. A swim or climb speed is the speed of its own surface (speedsOf,
+// SRD 5.1 "Using Different Speeds") and lifts the extra cost of the water and the climb (SRD 5.1, "Climbing, Swimming, and Crawling").
 func speedFtOf(c playdb.Combatant) int32 {
 	if speed := max(c.SpeedFt, c.SpeedFlyFt); speed > 0 {
 		return speed
@@ -666,12 +671,16 @@ func (s *Service) planPlayerMove(ctx context.Context, a *moveAttempt) error {
 // know of is in the way or the path costs more than they have, and cut short by
 // what they do not know of.
 func (a *moveAttempt) planWalk(p playerPlan) error {
+	if a.req.legendary == "" { // a legendary move has its own budget: a share of a fresh speed
+		p.mover = withSpeeds(p.mover, a.target, a.factor)
+		p.leftDFt = mostLeftDFt(*p.mover.Speeds) // the circle; the speed of each surface is checked step by step
+	}
 	mv := p.terrain.Move(p.origin, a.to, p.seen, p.mover)
 	if mv.Blocked {
 		return moveStop(mv, p.seen, a.to)
 	}
-	if mv.CostDFt > p.leftDFt {
-		return tooFar(mv.CostDFt - p.leftDFt)
+	if missing := missingOf(mv, p); missing > 0 {
+		return tooFar(missing)
 	}
 	st := a.terrain.MoveUntil(p.origin, a.to, p.all, p.mover, a.th.stops(), p.leftDFt)
 	a.made.StoppedEarly = st.Reason != grid.StopNone && (st.Reason != grid.StopMarked || st.Reached != a.to) // a trap's area is not "in the way" when it is where the mover went
@@ -684,6 +693,15 @@ func (a *moveAttempt) planWalk(p playerPlan) error {
 	a.length = grid.LengthDFt(p.origin, a.to)
 	a.last = runAfterWalk(a.last, a.length, p.mover.Flier)
 	return nil
+}
+
+// missingOf is how much a line costs past what the mover has: past the speed of the surface it is on when it has speeds, and past
+// what is left otherwise.
+func missingOf(mv grid.Move, p playerPlan) int {
+	if p.mover.Speeds != nil {
+		return mv.OverDFt
+	}
+	return max(mv.CostDFt-p.leftDFt, 0)
 }
 
 // noteLock tells a locked door the player knows of from a creature in the way.
@@ -1169,22 +1187,28 @@ func jumpOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ gri
 // squares it reaches with what is left of its movement and the squares inside
 // that circle that it cannot go to, with the reason. occ is who the mover plans
 // around (with the fog of war: the ones it sees).
-func moveOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ grid.OccupantMap) *playv1.GetMoveOptionsResponse {
-	left, from := movementLeftDFt(who), squareOfCombatant(who)
+func moveOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ grid.OccupantMap, div int) *playv1.GetMoveOptionsResponse {
+	from := squareOfCombatant(who)
+	mover = withSpeeds(mover, who, div)
+	// The lead is what is left at the speed of the surface the mover stands on (on what the viewer knows of it); the circle is the
+	// most it has left on any surface, and each square says what is left once it is there.
+	left := mover.Speeds.LeftAt(t.Surface.Get(from.Col, from.Row))
+	most := mostLeftDFt(*mover.Speeds)
 	out := &playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(left, 0, math.MaxInt32), Flier: mover.Flier}
-	reach := t.Reach(from, left, occ, mover)
+	reach := t.Reach(from, most, occ, mover)
 	reachable := make(map[grid.Square]bool, len(reach))
 	for _, r := range reach {
 		reachable[r.Square] = true
 		out.Reachable = append(out.Reachable, &playv1.ReachableSquare{
 			Col: clamp32(r.Square.Col, 0, math.MaxInt32), Row: clamp32(r.Square.Row, 0, math.MaxInt32), CostDft: clamp32(r.CostDFt, 0, math.MaxInt32),
 			ExtraDft: clamp32(r.SurfaceDFt, 0, math.MaxInt32), SurfaceExtra: surfaceExtraOf(r.Surface), CrawlExtraDft: clamp32(r.CrawlDFt, 0, math.MaxInt32),
+			LeftAfterDft: clamp32(r.LeftAfterDFt, 0, math.MaxInt32),
 		})
 	}
-	if left <= 0 {
+	if most <= 0 {
 		return out
 	}
-	out.Refused = refusedSquares(t, from, left, reachable, occ, mover)
+	out.Refused = refusedSquares(t, from, most, reachable, occ, mover)
 	return out
 }
 

@@ -1461,6 +1461,19 @@ func (q *Queries) GetMapPointInCampaign(ctx context.Context, arg GetMapPointInCa
 	return i, err
 }
 
+const getMapSurface = `-- name: GetMapSurface :one
+SELECT surface FROM map_layers
+WHERE map_id = $1
+`
+
+// The map's surface layer alone (water, climbable), for a count of what a combatant stands on: one indexed read of one column.
+func (q *Queries) GetMapSurface(ctx context.Context, mapID string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getMapSurface, mapID)
+	var surface []byte
+	err := row.Scan(&surface)
+	return surface, err
+}
+
 const getMapTileInfo = `-- name: GetMapTileInfo :one
 SELECT m.id, m.campaign_id, m.image_id, m.revealed_at, m.grid_columns, m.grid_factor, m.fog_enabled, m.group_vision,
        g.width AS image_width, g.height AS image_height, g.content_type AS image_content_type
