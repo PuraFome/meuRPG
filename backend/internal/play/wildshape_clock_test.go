@@ -7,6 +7,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -14,6 +16,27 @@ import (
 // lasting effects' clock, in a combat and out of one. Sálvia is a level 5 druid: 2 hours, 7200
 // seconds, 1200 rounds. Tests that need the end of the time move the clock in the database
 // rather than play 1200 rounds.
+
+// stay calls AssumeWildShape as a stay in the form (the same beast, one more use).
+func (a *armed) stay(t *testing.T, u *user, c *charactersv1.Character, beast string) (*playv1.AssumeWildShapeResponse, error) {
+	t.Helper()
+	res, err := u.play.AssumeWildShape(t.Context(), connect.NewRequest(&playv1.AssumeWildShapeRequest{
+		CampaignId: a.campaignID, CharacterId: c.GetId(), BeastKey: beast, IdempotencyKey: newKey(), Stay: true,
+	}))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+func (a *armed) mustStay(t *testing.T, u *user, c *charactersv1.Character, beast string) *playv1.AssumeWildShapeResponse {
+	t.Helper()
+	res, err := a.stay(t, u, c, beast)
+	if err != nil {
+		t.Fatalf("AssumeWildShape(stay %s) error = %v", beast, err)
+	}
+	return res
+}
 
 const (
 	formSeconds = 7200
@@ -262,8 +285,14 @@ func TestWildShapeStayInTheForm(t *testing.T) {
 	if before.GetActionUsed() {
 		t.Fatal("the new round left the action used")
 	}
-	res := s.mustAssume(t, s.bia, s.bri, wolfKey)
+	// The same beast without "stay" is still a refusal: nothing is a stay unless the call says so.
+	_, err := s.assume(t, s.bia, s.bri, wolfKey)
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_IN_WILD_SHAPE)
+	res := s.mustStay(t, s.bia, s.bri, wolfKey)
 	w := res.GetVitals().GetWildShape()
+	if w.GetSecondsLeft() != formSeconds {
+		t.Errorf("seconds left after the stay = %d, want the whole %d", w.GetSecondsLeft(), formSeconds)
+	}
 	if w.GetBeastKey() != wolfKey || w.GetHitPointsCurrent() != 6 || used(res.GetVitals(), wildShapeResource) != 2 {
 		t.Errorf("vitals after the stay = %v, want the same wolf at 6 and two uses spent", res.GetVitals())
 	}
@@ -274,7 +303,7 @@ func TestWildShapeStayInTheForm(t *testing.T) {
 		t.Errorf("clock ends in round %d, want %d (the whole duration from round 2)", round, 2+formRounds)
 	}
 	// A third time has no use to spend; the form and the clock stay as they were.
-	_, err := s.assume(t, s.bia, s.bri, wolfKey)
+	_, err = s.stay(t, s.bia, s.bri, wolfKey)
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES)
 
 	s.undoLast(t, s.get(t, s.master))
@@ -284,6 +313,102 @@ func TestWildShapeStayInTheForm(t *testing.T) {
 	}
 	if round, _ := s.formClocks(t); round != 5 {
 		t.Errorf("clock after the undo = round %d, want the 5 it had", round)
+	}
+}
+
+// TestWildShapeStayAfterTheFormEnded: a stay with no form is refused, never a new form: nothing
+// is spent, no action either, and a stay of another beast is the swap's refusal.
+func TestWildShapeStayAfterTheFormEnded(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	s.fight(t)
+	_, err := s.stay(t, s.bia, s.bri, wolfKey)
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED)
+	s.mustAssume(t, s.bia, s.bri, wolfKey)
+	s.mustLeave(t, s.bia, s.bri)
+	s.aRound(t)
+	_, err = s.stay(t, s.bia, s.bri, wolfKey)
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED)
+	if v := s.vitals(t, s.bri); v.GetWildShape() != nil || used(v, wildShapeResource) != 1 {
+		t.Errorf("vitals after the refused stay = %v, want no form and the one use of the first form", v)
+	}
+	if c := byLabel(t, s.get(t, s.master), "Sálvia"); c.GetActionUsed() {
+		t.Error("a refused stay spent the action")
+	}
+	// In a form, a stay of another beast is the swap's refusal.
+	s.mustAssume(t, s.bia, s.bri, wolfKey)
+	_, err = s.stay(t, s.bia, s.bri, mastiffKey)
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_IN_WILD_SHAPE)
+}
+
+// TestWildShapeTimeLeftIsRead: the master and the owner read the seconds left in the vitals and in
+// the effect card, in hours and minutes ("1 h 52 min restantes"), under a minute in rounds.
+func TestWildShapeTimeLeftIsRead(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	res := s.mustAssume(t, s.bia, s.bri, wolfKey)
+	if got := res.GetVitals().GetWildShape().GetSecondsLeft(); got != formSeconds {
+		t.Errorf("seconds left in the answer = %d, want %d", got, formSeconds)
+	}
+	s.advanceGameTime(t, 480) // 8 minutes
+	if got := s.vitals(t, s.bri).GetWildShape().GetSecondsLeft(); got != formSeconds-480 {
+		t.Errorf("seconds left in the vitals = %d, want %d", got, formSeconds-480)
+	}
+	text := func() string {
+		r, err := s.bia.lasting.ListCharacterEffects(t.Context(), connect.NewRequest(&playv1.ListCharacterEffectsRequest{CampaignId: s.campaignID}))
+		if err != nil {
+			t.Fatalf("ListCharacterEffects() error = %v", err)
+		}
+		for _, f := range r.Msg.GetEffects() {
+			if f.GetSourceKey() == wildShapeEffect {
+				return f.GetDurationTextPt()
+			}
+		}
+		return ""
+	}
+	if got := text(); got != "1 h 52 min restantes" {
+		t.Errorf("effect text = %q, want %q", got, "1 h 52 min restantes")
+	}
+	s.advanceGameTime(t, 3600)
+	if got := text(); got != "52 min restantes" {
+		t.Errorf("effect text = %q, want %q", got, "52 min restantes")
+	}
+	for in, want := range map[int32]string{7200: "2 h restantes", 3660: "1 h 1 min restantes", 600: "10 min restantes", 54: "Restam 9 rodadas", 6: "Resta 1 rodada"} {
+		if got := formTimeText(in); got != want {
+			t.Errorf("formTimeText(%d) = %q, want %q", in, got, want)
+		}
+	}
+	// In a combat the card of the clock says the same, never "1200 rodadas".
+	s.fight(t)
+	f := cardOf(t, byLabel(t, s.get(t, s.master), "Sálvia"), wildShapeEffect)
+	if f == nil || f.GetClockTextPt() != "52 min restantes" {
+		t.Errorf("clock card = %v, want 52 min restantes", f)
+	}
+	if got := byLabel(t, s.get(t, s.master), "Sálvia").GetSpeedFt(); got == 0 {
+		t.Error("the druid has no speed")
+	}
+}
+
+// TestWildShapeMasterEndsTheClock: the master ending the effect of the form ends it without a
+// beast falling: the reason is master_ended, in a combat and out of one.
+func TestWildShapeMasterEndsTheClock(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	s.mustAssume(t, s.bia, s.bri, wolfKey)
+	r, err := s.master.lasting.ListCharacterEffects(t.Context(), connect.NewRequest(&playv1.ListCharacterEffectsRequest{CampaignId: s.campaignID}))
+	if err != nil || len(r.Msg.GetEffects()) != 1 {
+		t.Fatalf("ListCharacterEffects() = %v, %v, want the clock", r.Msg.GetEffects(), err)
+	}
+	if _, err := s.master.lasting.EndLastingEffect(t.Context(), connect.NewRequest(&playv1.EndLastingEffectRequest{
+		CampaignId: s.campaignID, EffectId: r.Msg.GetEffects()[0].GetId(), IdempotencyKey: newKey(), Scope: playv1.EffectEndScope_EFFECT_END_SCOPE_THIS,
+	})); err != nil {
+		t.Fatalf("EndLastingEffect() error = %v", err)
+	}
+	if s.vitals(t, s.bri).GetWildShape() != nil {
+		t.Error("the form stays after the master ended its clock")
+	}
+	if ended := s.lastPayload(t, eventWildShapeEnded); ended["reason"] != endedMasterEnded {
+		t.Errorf("wild_shape_ended = %v, want the reason %q", ended, endedMasterEnded)
 	}
 }
 

@@ -69,7 +69,7 @@ func vitalsGoldenRichRow() vitalsRow {
 		SpellSlotsUsed: []int32{2, 1, 0}, SpellSlotsCreated: []int32{1, 0, 0},
 		PactSlotsUsed: new(int32(1)), HitDiceUsedByDie: []byte(`{"10":1}`),
 		ResourcesUsed:  []byte(`{"second_wind":1,"arcane_recovery":1}`),
-		WildShapeBeast: new("monster:wolf"), WildShapeHp: new(int32(8)),
+		WildShapeBeast: new("monster:wolf"), WildShapeHp: new(int32(8)), WildShapeSecondsLeft: -1,
 		Revision: new(int32(4)),
 	}
 }

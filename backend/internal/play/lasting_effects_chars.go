@@ -103,6 +103,9 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 	}
 	if r.SecondsLeft != nil {
 		e.SecondsLeft = r.SecondsLeft
+		if r.SourceKey == wildShapeEffect {
+			e.DurationTextPt = formTimeText(*r.SecondsLeft)
+		}
 	}
 	for _, k := range r.ConditionKeys {
 		if !master && !own && slices.Contains(ownerOnlyConditions, k) {
@@ -244,7 +247,7 @@ func (s *Service) endCharacterCasting(ctx context.Context, c *combatTx, row play
 		return 0, fmt.Errorf("end the casting: %w", err)
 	}
 	ended := int32(len(gone)) //nolint:gosec // a handful of effects
-	if err := s.afterCharacterEffectsGone(ctx, c, characterEffects(gone), endedByMaster); err != nil {
+	if err := s.afterCharacterEffectsGone(ctx, c, characterEffects(gone), endedMasterEnded); err != nil {
 		return 0, err
 	}
 	var touched []string
@@ -267,7 +270,7 @@ func (s *Service) endOneCharacterEffect(ctx context.Context, c *combatTx, row pl
 	if err := c.q.DeleteCharacterEffect(ctx, row.ID); err != nil {
 		return 0, fmt.Errorf("end the effect: %w", err)
 	}
-	if err := s.afterCharacterEffectsGone(ctx, c, []playdb.CharacterEffect{row}, endedByMaster); err != nil {
+	if err := s.afterCharacterEffectsGone(ctx, c, []playdb.CharacterEffect{row}, endedMasterEnded); err != nil {
 		return 0, err
 	}
 	if err := s.syncArmorBase(ctx, c, row.CharacterID); err != nil {

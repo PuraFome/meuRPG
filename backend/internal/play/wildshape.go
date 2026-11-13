@@ -57,12 +57,14 @@ const (
 	endedAsleep = "unconscious"
 	// The SRD ends the form when its time runs out (half the druid's level in hours).
 	endedExpired = "expired"
+	// The master ended the form's clock by hand, no damage involved (the end of its effect).
+	endedMasterEnded = "master_ended"
 )
 
 // endsBySelf says a wild_shape_ended reason is part of the change that caused it,
 // written before that change's event: it is no action for an undo to take back.
 func endsBySelf(reason string) bool {
-	return reason == endedByDamage || reason == endedAtZero || reason == endedAsleep || reason == endedByMaster
+	return reason == endedByDamage || reason == endedAtZero || reason == endedAsleep || reason == endedByMaster || reason == endedExpired || reason == endedMasterEnded
 }
 
 // shapeLine says where a form's end belongs in the combat log: the session's combat that is
@@ -293,7 +295,7 @@ func (s *Service) AssumeWildShape(
 	if beast == "" || len(beast) > 100 {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("beast_key must name an SRD beast"))
 	}
-	vitals, enc, err := s.shapeChange(ctx, req.Msg.GetCampaignId(), req.Msg.GetCharacterId(), req.Msg.GetIdempotencyKey(), beast, false)
+	vitals, enc, err := s.shapeChange(ctx, req.Msg.GetCampaignId(), req.Msg.GetCharacterId(), req.Msg.GetIdempotencyKey(), beast, false, req.Msg.GetStay())
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +307,7 @@ func (s *Service) LeaveWildShape(
 	ctx context.Context,
 	req *connect.Request[playv1.LeaveWildShapeRequest],
 ) (*connect.Response[playv1.LeaveWildShapeResponse], error) {
-	vitals, enc, err := s.shapeChange(ctx, req.Msg.GetCampaignId(), req.Msg.GetCharacterId(), req.Msg.GetIdempotencyKey(), "", true)
+	vitals, enc, err := s.shapeChange(ctx, req.Msg.GetCampaignId(), req.Msg.GetCharacterId(), req.Msg.GetIdempotencyKey(), "", true, false)
 	if err != nil {
 		return nil, err
 	}
@@ -320,9 +322,10 @@ type shapeRun struct {
 	characterID string
 	beast       string
 	leave       bool
-	// stay says the call asks for the beast the druid already is: the SRD's "expend another
-	// use" to keep the form past its time. It costs the uses and no action, and changes only the clock.
-	stay bool
+	// wantStay is what the call asked (AssumeWildShapeRequest.stay); stay is it, checked: the
+	// SRD's "expend another use" to keep the form past its time, for the beast the druid is. It
+	// costs the uses and no action, and changes only the clock.
+	wantStay, stay bool
 
 	made   actionEvent
 	vitals *playv1.CharacterVitals
@@ -342,7 +345,7 @@ type shapeRun struct {
 // one transaction locks the session, spends what the change costs, changes the
 // form and writes the event. It returns the character's vitals after and the combat
 // as the caller sees it, when the character is in one.
-func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, rawKey, beast string, leave bool) (*playv1.CharacterVitals, *playv1.Encounter, error) {
+func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, rawKey, beast string, leave, stay bool) (*playv1.CharacterVitals, *playv1.Encounter, error) {
 	m, err := authz.RequireCampaignMember(ctx, campaignID)
 	if err != nil {
 		return nil, nil, err
@@ -359,8 +362,8 @@ func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, raw
 	if leave {
 		kind = eventWildShapeEnded
 	}
-	r := &shapeRun{m: m, v: viewerOf(m), characterID: characterID, beast: beast, leave: leave}
-	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: requestHash(campaignID, rawCharacter, beast, strconv.FormatBool(leave)), kind: kind}, func(c *combatTx) (any, error) {
+	r := &shapeRun{m: m, v: viewerOf(m), characterID: characterID, beast: beast, leave: leave, wantStay: stay}
+	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: requestHash(campaignID, rawCharacter, beast, strconv.FormatBool(leave), strconv.FormatBool(stay)), kind: kind}, func(c *combatTx) (any, error) {
 		return s.shapeTx(ctx, c, r)
 	})
 	if err != nil {
@@ -418,6 +421,9 @@ func (s *Service) shapeTx(ctx context.Context, c *combatTx, r *shapeRun) (any, e
 	}
 	if !r.leave {
 		r.made.Beast, r.made.ShapeSet, r.made.Stay = r.beast, true, r.stay
+		if err := s.shapeRead(ctx, c, r); err != nil {
+			return nil, err
+		}
 	}
 	return s.shapeSeal(ctx, c, r)
 }
@@ -431,7 +437,16 @@ func (s *Service) shapeCheck(ctx context.Context, c *combatTx, r *shapeRun) erro
 	}
 	r.before = now
 	if !r.leave {
-		r.stay = now.GetWildShape() != nil && now.GetWildShape().GetBeastKey() == r.beast
+		if r.wantStay {
+			// A stay keeps the form there is; with none (it ended) it is never a new form.
+			if now.GetWildShape() == nil {
+				return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED, "the character's form has ended: nothing to stay in")
+			}
+			if now.GetWildShape().GetBeastKey() != r.beast {
+				return errShape(link.ErrAlreadyInWildShape)
+			}
+			r.stay = true
+		}
 		return refuseIfDown(now, r.who)
 	}
 	if now.GetWildShape() == nil {
@@ -457,6 +472,14 @@ func (s *Service) shapeApply(ctx context.Context, c *combatTx, r *shapeRun) erro
 		return err
 	}
 	return s.shapePay(ctx, c, r, r.body.WildShapeCost)
+}
+
+// shapeRead reads the vitals again once the form and its clock are set, so the answer has the
+// time left.
+func (s *Service) shapeRead(ctx context.Context, c *combatTx, r *shapeRun) error {
+	var err error
+	r.vitals, err = s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, r.characterID)
+	return err
 }
 
 // shapeLeave is "Voltar à forma normal": the form and its clock go, and the event keeps the
@@ -500,7 +523,7 @@ func (s *Service) shapeStay(ctx context.Context, c *combatTx, r *shapeRun) error
 		}
 	}
 	r.vitals = r.before
-	r.made.ShapeBefore = &shapeState{Beast: r.beast, HP: r.before.GetWildShape().GetHitPointsCurrent(), Left: left}
+	r.made.StayLeft = left
 	return s.shapePay(ctx, c, r, chars[0].WildShapeCost)
 }
 
@@ -575,12 +598,12 @@ func (s *Service) shapeUndoStart(ctx context.Context, c *combatTx, ev actionEven
 		}
 		keep(v)
 	}
-	if ev.Stay && ev.ShapeBefore != nil {
+	if ev.Stay {
 		// The same beast again: only the clock goes back to what it was.
-		if ev.ShapeBefore.Left == 0 {
+		if ev.StayLeft == 0 {
 			return nil
 		}
-		_, err := s.resetFormClock(ctx, c, ev.OwnerCharacter, whoIf(who, ok), ev.ShapeBefore.Left)
+		_, err := s.resetFormClock(ctx, c, ev.OwnerCharacter, whoIf(who, ok), ev.StayLeft)
 		return err
 	}
 	return s.shapeUndoSet(ctx, c, ev, who, ok, "", 0, 0, keep)

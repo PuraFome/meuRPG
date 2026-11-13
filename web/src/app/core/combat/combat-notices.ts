@@ -42,7 +42,9 @@ export function formNoticeText(ended: FormEnded): string {
     case WildShapeEndReason.UNCONSCIOUS:
       return 'Você ficou inconsciente e voltou à forma normal.';
     case WildShapeEndReason.EXPIRED:
-      return 'O tempo da forma acabou e você voltou à forma normal.';
+      return `A forma de ${ended.beast} acabou: passou o tempo.`;
+    case WildShapeEndReason.MASTER_ENDED:
+      return `O mestre encerrou a forma de ${ended.beast}.`;
     default:
       return 'Você voltou à forma normal.';
   }

@@ -239,6 +239,9 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 		v.WildShape = &playv1.WildShapeState{
 			BeastKey: m.beast, BeastNamePt: m.beastNamePT, HitPointsCurrent: min(max(*row.WildShapeHp, 1), i32(m.beastMax)), HitPointsMax: i32(m.beastMax),
 		}
+		if row.WildShapeSecondsLeft >= 0 { // the form's clock (a lasting effect of play); -1: a form with none
+			v.WildShape.SecondsLeft = &row.WildShapeSecondsLeft
+		}
 	}
 	v.ActiveStates = activeStatesProto(parseStoredStates(row.ActiveStates), m.states)
 	if row.FamiliarSightCreatureID != nil {

@@ -163,7 +163,7 @@ func (s *Service) formClockEnded(ctx context.Context, c *combatTx, cs []playdb.C
 	switch reason {
 	case endDuration:
 	case endByMaster:
-		ended = endedByMaster
+		ended = endedMasterEnded
 	default:
 		return nil
 	}
@@ -227,4 +227,21 @@ func (s *Service) restoreFormClock(ctx context.Context, c *combatTx, characterID
 		return err // the undo of the change that ended it already put its row back
 	}
 	return s.startFormClock(ctx, c, characterID, who, left, body.WildShapeSeconds)
+}
+
+// formTimeText is the time a Wild Shape form has left as a card reads it: hours and minutes
+// ("1 h 52 min restantes", "52 min restantes", never hundreds of rounds); under a minute, rounds
+// ("Restam 4 rodadas").
+func formTimeText(seconds int32) string {
+	switch {
+	case seconds >= 3600:
+		h, m := seconds/3600, seconds%3600/60
+		if m == 0 {
+			return fmt.Sprintf("%d h restantes", h)
+		}
+		return fmt.Sprintf("%d h %d min restantes", h, m)
+	case seconds >= 60:
+		return fmt.Sprintf("%d min restantes", seconds/60)
+	}
+	return roundsLeftText(int(seconds / rules.SecondsPerRound))
 }

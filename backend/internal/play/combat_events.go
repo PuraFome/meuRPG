@@ -53,8 +53,6 @@ type hpState struct {
 type shapeState struct {
 	Beast string `json:"beast"`
 	HP    int32  `json:"hp"`
-	// Left is the game time the form's clock had left, in seconds (0: the whole duration).
-	Left int32 `json:"left,omitempty"`
 }
 
 // hpStateOf is a player's character's hit points, and its form, in its vitals.
@@ -702,8 +700,9 @@ type actionEvent struct {
 	ShapeSet    bool        `json:"shape_set,omitempty"`
 	ShapeBefore *shapeState `json:"shape_before,omitempty"`
 	// Stay says a started form was the same beast again (a use spent, the clock reset, nothing
-	// else changed).
+	// else changed), with the game time the clock had left, in seconds, for the undo.
 	Stay        bool     `json:"stay,omitempty"`
+	StayLeft    int32    `json:"stay_left,omitempty"`
 	Creature    string   `json:"creature_id,omitempty"`
 	Sight       string   `json:"sight,omitempty"`
 	SightConds  []string `json:"sight_conditions,omitempty"`
