@@ -48,9 +48,9 @@ func loseReadiedOfDefeated(ctx context.Context, c *combatTx) error {
 	if err != nil || len(rows) == 0 {
 		return err
 	}
-	cs, err := listCombatants(ctx, c)
+	cs, err := c.q.ListCombatantsWithDismissed(ctx, c.enc.ID) // listCombatants leaves the dismissed out
 	if err != nil {
-		return err
+		return fmt.Errorf("list the combatants: %w", err)
 	}
 	for _, row := range rows {
 		if who, ok := combatantByID(cs, row.CombatantID); ok && (who.Defeated || who.Dismissed) {

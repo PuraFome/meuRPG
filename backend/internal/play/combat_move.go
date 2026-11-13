@@ -770,7 +770,8 @@ func (a *moveAttempt) planHighJump(p playerPlan) error {
 // It then costs what the line costs, spends the NPC's movement and stops for the same walls, creatures
 // and squares marked "Não dá para passar"; a move past what is left is refused (TOO_FAR) and the master
 // decides to force it. Out of turn, for a player's character and when forced, the master's move stays
-// free and unlimited: it puts a token right.
+// free and unlimited: it puts a token right. A readied move (ready_answer.go) pays its way whoever moves
+// it, a player's character too, within the move it readied.
 func (a *moveAttempt) paysItsWay() bool {
 	if a.readied != nil { // a readied move walks its way whoever moves it
 		return true
