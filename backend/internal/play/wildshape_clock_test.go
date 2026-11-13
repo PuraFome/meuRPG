@@ -354,6 +354,30 @@ func TestWildShapeTimeLeftIsRead(t *testing.T) {
 	if got := s.vitals(t, s.bri).GetWildShape().GetSecondsLeft(); got != formSeconds-480 {
 		t.Errorf("seconds left in the vitals = %d, want %d", got, formSeconds-480)
 	}
+	// The vitals carry the words too (the band, the sheet's panel and the order read them): 2 h less 8 min.
+	if got := s.vitals(t, s.bri).GetWildShape().GetTimeLeftPt(); got != "1 h 52 min restantes" {
+		t.Errorf("time left in the vitals = %q, want %q", got, "1 h 52 min restantes")
+	}
+	// RN-20, the leak row: the master and the owner read both fields in the live session (the positive controls);
+	// another player is given no vitals of hers at all, so neither the seconds nor the words reach them.
+	readers := map[string]*user{"master": s.master, "owner": s.bia, "other player": s.caio}
+	for who, u := range readers {
+		var w *playv1.WildShapeState
+		for _, v := range u.liveSession(t, s.campaignID).GetVitals() {
+			if v.GetCharacterId() == s.bri.GetId() {
+				w = v.GetWildShape()
+			}
+		}
+		if who == "other player" {
+			if w != nil {
+				t.Errorf("%s reads the form %v, want none of it", who, w)
+			}
+			continue
+		}
+		if w.GetTimeLeftPt() != "1 h 52 min restantes" || w.SecondsLeft == nil || w.GetSecondsLeft() != formSeconds-480 {
+			t.Errorf("%s reads %v, want 1 h 52 min restantes and %d seconds", who, w, formSeconds-480)
+		}
+	}
 	text := func() string {
 		r, err := s.bia.lasting.ListCharacterEffects(t.Context(), connect.NewRequest(&playv1.ListCharacterEffectsRequest{CampaignId: s.campaignID}))
 		if err != nil {

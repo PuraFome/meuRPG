@@ -1441,6 +1441,9 @@ message WildShapeState {
   // hit points. Unset for a form with no clock (a character with no druid level, or
   // a form taken before the clocks existed).
   optional int32 seconds_left = 5;
+  // seconds_left as the screens write it, in Portuguese ("1 h 52 min restantes", "52 min
+  // restantes"; under a minute, the rounds). Set whenever seconds_left is, for the same readers.
+  optional string time_left_pt = 6;
 }
 
 // FamiliarSightState says a player is looking through their familiar's eyes

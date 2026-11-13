@@ -2107,7 +2107,10 @@ type WildShapeState struct {
 	// at the start). Only the master and the character's player read it, like the
 	// hit points. Unset for a form with no clock (a character with no druid level, or
 	// a form taken before the clocks existed).
-	SecondsLeft   *int32 `protobuf:"varint,5,opt,name=seconds_left,json=secondsLeft,proto3,oneof" json:"seconds_left,omitempty"`
+	SecondsLeft *int32 `protobuf:"varint,5,opt,name=seconds_left,json=secondsLeft,proto3,oneof" json:"seconds_left,omitempty"`
+	// seconds_left as the screens write it, in Portuguese ("1 h 52 min restantes", "52 min
+	// restantes"; under a minute, the rounds). Set whenever seconds_left is, for the same readers.
+	TimeLeftPt    *string `protobuf:"bytes,6,opt,name=time_left_pt,json=timeLeftPt,proto3,oneof" json:"time_left_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2175,6 +2178,13 @@ func (x *WildShapeState) GetSecondsLeft() int32 {
 		return *x.SecondsLeft
 	}
 	return 0
+}
+
+func (x *WildShapeState) GetTimeLeftPt() string {
+	if x != nil && x.TimeLeftPt != nil {
+		return *x.TimeLeftPt
+	}
+	return ""
 }
 
 // FamiliarSightState says a player is looking through their familiar's eyes
@@ -6422,14 +6432,17 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x0fduration_rounds\x18\x04 \x01(\x05R\x0edurationRounds\x12\x1f\n" +
 	"\vrounds_left\x18\x05 \x01(\x05R\n" +
 	"roundsLeft\x12\x17\n" +
-	"\aends_on\x18\x06 \x03(\tR\x06endsOn\"\xde\x01\n" +
+	"\aends_on\x18\x06 \x03(\tR\x06endsOn\"\x96\x02\n" +
 	"\x0eWildShapeState\x12\x1b\n" +
 	"\tbeast_key\x18\x01 \x01(\tR\bbeastKey\x12\"\n" +
 	"\rbeast_name_pt\x18\x02 \x01(\tR\vbeastNamePt\x12,\n" +
 	"\x12hit_points_current\x18\x03 \x01(\x05R\x10hitPointsCurrent\x12$\n" +
 	"\x0ehit_points_max\x18\x04 \x01(\x05R\fhitPointsMax\x12&\n" +
-	"\fseconds_left\x18\x05 \x01(\x05H\x00R\vsecondsLeft\x88\x01\x01B\x0f\n" +
-	"\r_seconds_left\"}\n" +
+	"\fseconds_left\x18\x05 \x01(\x05H\x00R\vsecondsLeft\x88\x01\x01\x12%\n" +
+	"\ftime_left_pt\x18\x06 \x01(\tH\x01R\n" +
+	"timeLeftPt\x88\x01\x01B\x0f\n" +
+	"\r_seconds_leftB\x0f\n" +
+	"\r_time_left_pt\"}\n" +
 	"\x12FamiliarSightState\x12\x1f\n" +
 	"\vcreature_id\x18\x01 \x01(\tR\n" +
 	"creatureId\x12\x1b\n" +
