@@ -472,6 +472,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 		p.AttackedHostileSinceLastTurn, p.TookDamageSinceLastTurn = c.AttackedHostile, c.TookDamage
 		p.Readied = readiedView(d.readied, c, r.names)
 	}
+	heldSpellView(p, p.GetReadied(), c)
 	return p
 }
 

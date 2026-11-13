@@ -130,6 +130,9 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 		return out, true, err
 	case readiedMove:
 		return nil, true, connect.NewError(connect.CodeInvalidArgument, errors.New("a readied move is made with MoveCombatant while its window is open"))
+	case readiedSpell:
+		out, err := s.useReadiedSpell(ctx, m, in, msg, row)
+		return out, true, err
 	}
 	return nil, true, connect.NewError(connect.CodeInvalidArgument, errors.New("this readied action cannot be used here"))
 }
@@ -205,6 +208,13 @@ func (s *Service) passReadiedTx(ctx context.Context, c *combatTx, m authz.Member
 	c.characterID = &reactor.CharacterID
 	ev := readiedRowEvent(row, reactor, c.enc.Round)
 	ev.Readied.Window, ev.Readied.Ended = w.ID, readiedIgnored
+	if row.Kind == readiedSpell { // a spell let pass is lost, with its slot (settleReadiedSpells ends its concentration)
+		lost := readiedRowEvent(row, reactor, c.enc.Round)
+		lost.Readied.Window, lost.Readied.Ended = w.ID, readiedIgnored
+		if ev.Readied.Line, err = insertEventID(ctx, c, eventReadiedLost, &c.actorUserID, nil, lost); err != nil {
+			return actionEvent{}, err
+		}
+	}
 	return ev, nil
 }
 
@@ -315,26 +325,33 @@ func (f *attackFlow) readiedAttackOf(ctx context.Context) (bool, error) {
 	return true, nil
 }
 
-// mustNotBeHeld refuses an answer to a READIED window whose attack's roll is held for the windows any attack roll opens
-// (holdAttackRoll): the roll is the use, once they are answered. It is the refusal of any action while a window waits.
+// mustNotBeHeld refuses an answer to a READIED window whose use is held for other windows: an attack's roll held for the
+// windows any attack roll opens (holdAttackRoll), a spell's cast held for a Counterspell (holdCast). The held action is
+// the use, once they are answered. It is the refusal of any action while a window waits.
 func mustNotBeHeld(ctx context.Context, q *playdb.Queries, encID, windowID string) error {
 	held, err := readiedHeld(ctx, q, encID, windowID)
 	if err != nil {
 		return err
 	}
 	if held {
-		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "the readied attack's roll waits for other reactions")
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "the readied action waits for other reactions")
 	}
 	return nil
 }
 
-// readiedHeld says a held attack (reaction_holds, still held) names the READIED window in its catch_window_id.
+// readiedHeld says a held action (reaction_holds, still held) is the use of the READIED window: an attack that names it
+// in its catch_window_id, or the cast of the readied spell by its readier (heldRelease).
 func readiedHeld(ctx context.Context, q *playdb.Queries, encID, windowID string) (bool, error) {
 	holds, err := q.ListHeldReactionHolds(ctx, encID)
 	if err != nil {
 		return false, fmt.Errorf("list the held actions: %w", err)
 	}
 	for _, h := range holds {
+		if h.Kind == "cast" {
+			if held, err := heldRelease(ctx, q, encID, windowID, h.Request); held || err != nil {
+				return held, err
+			}
+		}
 		if h.Kind != "attack" {
 			continue
 		}
@@ -402,10 +419,13 @@ func (a *moveAttempt) readiedMoveDFt() int {
 // open again, and the reaction a move spent is free (the attack's and the action's undo give theirs back).
 func (u *undoer) readiedUseBack(ctx context.Context, kind string, ev actionEvent) error {
 	r := ev.Readied
-	if r == nil || r.Line == "" || (kind != eventAttackRolled && kind != eventCombatantMoved && kind != eventActionTaken) {
+	if r == nil || r.Line == "" || (kind != eventAttackRolled && kind != eventCombatantMoved && kind != eventActionTaken && kind != eventSpellCast) {
 		return nil
 	}
 	if err := u.readiedWaitsAgain(ctx, r); err != nil {
+		return err
+	}
+	if err := u.holdAgain(ctx, r, ev.Actor); err != nil { // a released spell is held again
 		return err
 	}
 	if who, ok := u.find(ev.Actor); ok && kind == eventCombatantMoved {
@@ -429,7 +449,10 @@ func (u *undoer) readiedFiredBack(ctx context.Context, ev actionEvent) error {
 			return nil
 		}
 	case r != nil && r.Ended == readiedIgnored:
-		return u.readiedWaitsAgain(ctx, r)
+		if err := u.readiedWaitsAgain(ctx, r); err != nil {
+			return err
+		}
+		return u.holdAgain(ctx, r, ev.Actor) // a spell let pass is held again
 	}
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO, "this readied action cannot be undone")
 }

@@ -27,6 +27,9 @@ type readyCall struct {
 	kind    string // "" for a kind the request did not name
 	key     string
 	target  string
+	// spellKey and slotLevel are the spell a SPELL holds and the level of the slot it is cast with (0 for a cantrip).
+	spellKey  string
+	slotLevel int32
 }
 
 // readReadyCall reads the ids of the request; the trigger and the action are checked in the transaction, after the turn.
@@ -34,6 +37,7 @@ func readReadyCall(req *playv1.ReadyActionRequest, key, encID string) (readyCall
 	call := readyCall{
 		take:    takeActionCall{key: key, encounterID: encID, actionKey: actionReady},
 		trigger: req.GetTriggerText(), kind: readiedKinds[req.GetKind()], key: req.GetActionKey(),
+		spellKey: req.GetSpellKey(), slotLevel: req.GetSlotLevel(),
 	}
 	var err error
 	if call.take.combatantID, err = parseCombatID(req.GetCombatantId(), "combatant"); err != nil {
@@ -53,6 +57,10 @@ type readyFlow struct {
 	call readyCall
 	// name is the held action's name, kept in the row and the event.
 	name string
+	// spell is the cast a SPELL holds (ready_spell.go): its checks, its slot and its concentration.
+	spell *castFlow
+	// vitals are the player's vitals the slot of a SPELL changed.
+	vitals []*playv1.CharacterVitals
 }
 
 func newReadyFlow(s *Service, c *combatTx, m authz.Membership, call readyCall) *readyFlow {
@@ -79,6 +87,9 @@ func (f *readyFlow) run(ctx context.Context) (actionEvent, error) {
 		return actionEvent{}, err
 	}
 	if err := t.spend(ctx); err != nil {
+		return actionEvent{}, err
+	}
+	if err := f.holdSpell(ctx); err != nil {
 		return actionEvent{}, err
 	}
 	row, err := f.insert(ctx)
@@ -113,7 +124,10 @@ func (f *readyFlow) check(ctx context.Context) error {
 	if err := f.checkTarget(ctx); err != nil {
 		return err
 	}
-	return f.notReadied(ctx)
+	if err := f.notReadied(ctx); err != nil {
+		return err
+	}
+	return f.checkSpell(ctx)
 }
 
 // checkAction finds the held action among the combatant's options and keeps its name.
@@ -134,10 +148,12 @@ func (f *readyFlow) checkAction() error {
 		f.name = opts.GetStandardActions()[i].GetAction().GetNamePt()
 	case readiedMove:
 		f.call.key = ""
+	case readiedSpell:
+		if f.call.spellKey == "" || len(f.call.spellKey) > maxSpellKeyLen {
+			return errReadyAction("a readied spell names one of the caster's spells")
+		}
+		f.call.key = f.call.spellKey // the spell's checks are CastSpell's (checkSpell)
 	default:
-		// A spell (READIED_KIND_SPELL) is not offered until its hold and release are written: the casting time gate
-		// (READY_SPELL_TIME), the slot and the concentration go here. Until then it is refused like any action that
-		// cannot be readied.
 		return errReadyAction("this kind of action cannot be readied")
 	}
 	return nil
@@ -180,6 +196,9 @@ func (f *readyFlow) insert(ctx context.Context) (playdb.ReadiedAction, error) {
 	p := playdb.InsertReadiedActionParams{
 		EncounterID: f.take.c.enc.ID, CombatantID: who.ID, Round: f.take.c.enc.Round, TriggerText: f.call.trigger,
 		Kind: f.call.kind, ActionKey: nilIfEmpty(f.call.key), ActionNamePt: f.name, TargetID: nilIfEmpty(f.call.target), CreatedAt: f.take.c.now,
+	}
+	if f.spell != nil {
+		p.SlotLevel, p.SpellCastID = clamp32(f.spell.slotLevel, 0, maxSlotLevel), &f.spell.out.made.CastID
 	}
 	if f.call.kind == readiedMove {
 		p.MoveFt = readyMoveFt(who)

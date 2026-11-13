@@ -863,7 +863,7 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 			return err
 		}
 	}
-	if ev.Slot == nil {
+	if ev.Slot == nil || ev.Readied.released() { // the slot of a readied spell's release was spent at Ready: its undo keeps it spent
 		return nil
 	}
 	if who.Kind == kindPlayer {

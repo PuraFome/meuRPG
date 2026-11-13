@@ -478,6 +478,9 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	if err := s.takeBackCompanions(ctx, c, run, recent, last, ev); err != nil {
 		return nil, err
 	}
+	if err := s.brokenReadiedBack(ctx, c, run, recent, last); err != nil { // a held spell the action broke waits again
+		return nil, err
+	}
 	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
@@ -545,6 +548,9 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 func (s *Service) takeBackEndedConcentration(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, group string) error {
 	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
 	for _, older := range recent[at+1:] {
+		if older.Kind == eventReadiedLost { // the readied actions the change ended are written after it (settleChange)
+			continue
+		}
 		pe, ok := concentrationEndOf(older, group)
 		if !ok {
 			break

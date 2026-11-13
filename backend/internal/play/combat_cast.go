@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"slices"
-	"uuid"
 
 	"connectrpc.com/connect"
 
@@ -214,6 +213,8 @@ type castFlow struct {
 	landed *playdb.Combatant
 	// resist is the savepoint of a cast that a creature's Legendary Resistance may hold; nil for any other.
 	resist *resistScope
+	// readied is the readied spell the cast releases (ready_spell.go): its READIED window is open; nil for any other cast.
+	readied *readiedUse
 }
 
 func newCastFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.CastSpellRequest, call castCall, out *castOut) *castFlow {
@@ -284,7 +285,7 @@ func (f *castFlow) prepare(ctx context.Context) error {
 // writeCast is what the cast does once it is spent: the concentration, the creatures it summons, what it
 // does to each target and the event's last marks.
 func (f *castFlow) writeCast(ctx context.Context) error {
-	for _, phase := range []func(context.Context) error{f.concentrate, f.markHunters, f.bringSummons, f.affect, f.teleport, f.seal} {
+	for _, phase := range []func(context.Context) error{f.concentrate, f.releaseHold, f.markHunters, f.bringSummons, f.affect, f.teleport, f.seal, f.spendReadied} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -309,7 +310,7 @@ func (f *castFlow) findCaster(ctx context.Context) error {
 		return err
 	}
 	f.sees = f.c.actorSight(f.v, cs, f.caster)
-	if err := f.s.mustActNow(ctx, f.c, f.caster); err != nil {
+	if err := f.mayCastNow(ctx); err != nil { // on its turn, or the release of its readied spell (ready_spell.go)
 		return err
 	}
 	if err := f.s.refuseInShape(ctx, f.c, f.caster); err != nil { // no spells in a beast form (MR-037)
@@ -358,7 +359,7 @@ func (f *castFlow) pickSpell(ctx context.Context) error {
 
 // checkEnabled refuses a spell the caster may not cast now. The master has the last word on the economy only.
 func (f *castFlow) checkEnabled(ctx context.Context) error {
-	if f.cast.enabled {
+	if f.cast.enabled || f.readied != nil { // a readied spell was checked when it was cast, at Ready
 		return nil
 	}
 	// A summoning spell that takes too long is refused with a reason the screen can say ("Leva 1 hora:
@@ -376,7 +377,7 @@ func (f *castFlow) checkEnabled(ctx context.Context) error {
 // and the ability the caster picked.
 func (f *castFlow) pickSlot(ctx context.Context) error {
 	var err error
-	if f.slot, err = slotOf(f.req.GetSlot(), f.cast); err != nil {
+	if f.slot, err = f.chosenSlot(); err != nil {
 		return err
 	}
 	f.slotLevel = int(f.cast.level)
@@ -631,7 +632,7 @@ func (f *castFlow) spend(ctx context.Context) error {
 		return err
 	}
 	f.out.made = actionEvent{
-		RunBefore: run, Round: f.c.enc.Round, Actor: f.caster.ID, Key: f.call.spellKey, CastID: uuid.New().String(), Slot: f.slot,
+		RunBefore: run, Round: f.c.enc.Round, Actor: f.caster.ID, Key: f.call.spellKey, CastID: f.castID(), Slot: f.slot,
 		ActionBefore: f.caster.ActionUsed, BonusBefore: f.caster.BonusActionUsed, ReactionBefore: f.caster.ReactionUsed, DashedBefore: f.caster.Dashed,
 		SpellCastBefore: f.caster.SpellCast, BonusSpellBefore: f.caster.BonusSpellCast,
 	}
@@ -645,7 +646,7 @@ func (f *castFlow) spend(ctx context.Context) error {
 
 // spendCastSlot spends the slot of the caster.
 func (f *castFlow) spendCastSlot(ctx context.Context) error {
-	if f.slot == nil {
+	if f.slot == nil || f.readied != nil { // a readied spell's slot was spent at Ready
 		return nil
 	}
 	// A player's slot is spent from its vitals, an NPC's is counted on the combatant (one rule for both).
@@ -697,8 +698,10 @@ func (f *castFlow) spendPoints(ctx context.Context) error {
 // spendEconomy spends the bonus action of a bonus action spell, the action of the others.
 func (f *castFlow) spendEconomy(ctx context.Context) error {
 	after := f.caster
-	switch f.sp.Economy {
-	case rules.EconomyBonusAction:
+	switch {
+	case f.readied != nil: // the release of a readied spell is the reaction (SRD 5.1, "Ready")
+		after.ReactionUsed = true
+	case f.sp.Economy == rules.EconomyBonusAction:
 		after.BonusActionUsed = true
 	default:
 		after.ActionUsed = true
@@ -715,7 +718,7 @@ func (f *castFlow) spendEconomy(ctx context.Context) error {
 // the turn's spells as they were.
 func (f *castFlow) noteSpellCast(ctx context.Context) error {
 	sp, caster := f.sp, f.caster
-	if sp.FeatureSummon || combat.IsFreeCantrip(sp.Economy, sp.Level) {
+	if sp.FeatureSummon || combat.IsFreeCantrip(sp.Economy, sp.Level) || f.readied != nil { // a readied spell was noted at Ready
 		return nil
 	}
 	spellCast, bonusSpellCast := caster.SpellCast || sp.Economy != rules.EconomyBonusAction, caster.BonusSpellCast || sp.Economy == rules.EconomyBonusAction
@@ -731,6 +734,9 @@ func (f *castFlow) settleCountered(ctx context.Context) (any, error) {
 	made := &f.out.made
 	made.Secret = f.caster.Hidden
 	made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: f.call.spellKey, Level: int32(f.slotLevel)} //nolint:gosec // a slot level, 0 to 9
+	if err := f.spendReadied(ctx); err != nil { // a countered readied spell is spent: its slot is gone and its row fired
+		return nil, err
+	}
 	if err := touch(ctx, f.c); err != nil {
 		return nil, err
 	}
@@ -744,9 +750,18 @@ func (f *castFlow) concentrate(ctx context.Context) error {
 	if !f.sp.Concentration {
 		return nil
 	}
+	return f.concentrateOn(ctx, f.call.spellKey)
+}
+
+// concentrateOn makes key the caster's concentration, ending the one it had. The release of a readied spell ends
+// nothing: the concentration it held was the spell's own.
+func (f *castFlow) concentrateOn(ctx context.Context, key string) error {
 	made := &f.out.made
 	made.Concentrate, made.ConcBefore = true, conv.OrZero(f.caster.ConcentrationSpell)
 	made.ConcEnded = made.ConcBefore
+	if f.readied != nil {
+		made.ConcEnded = ""
+	}
 	var err error
 	if made.Dismissed, err = f.s.endSummons(ctx, f.c, f.caster); err != nil {
 		return err
@@ -757,7 +772,7 @@ func (f *castFlow) concentrate(ctx context.Context) error {
 	if err := f.s.endConcentrationEffects(ctx, f.c, f.caster, endConcentration); err != nil { // its effects end with it (RN-22)
 		return err
 	}
-	if err := f.c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: f.caster.ID, ConcentrationSpell: &f.call.spellKey}); err != nil {
+	if err := f.c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: f.caster.ID, ConcentrationSpell: &key}); err != nil {
 		return fmt.Errorf("set the concentration: %w", err)
 	}
 	return nil

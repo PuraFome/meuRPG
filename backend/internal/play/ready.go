@@ -124,10 +124,11 @@ func (s *Service) ReadyAction(
 		return nil, err
 	}
 	var made actionEvent
+	var vitals []*playv1.CharacterVitals
 	res, err := s.write(ctx, combatWrite{m: m, key: key, hash: idem.Hash(req.Msg), kind: eventActionReadied, encounterID: encID}, func(c *combatTx) (any, error) {
 		f := newReadyFlow(s, c, m, call)
 		ev, err := f.run(ctx)
-		made = ev
+		made, vitals = ev, f.vitals
 		return ev, err
 	})
 	if err != nil {
@@ -136,6 +137,9 @@ func (s *Service) ReadyAction(
 	enc, err := s.readiedAnswer(ctx, m, res, made)
 	if err != nil {
 		return nil, err
+	}
+	for _, v := range vitals { // the slot a readied spell spent
+		s.publishVitals(m.CampaignID, v)
 	}
 	return connect.NewResponse(&playv1.ReadyActionResponse{Encounter: enc}), nil
 }

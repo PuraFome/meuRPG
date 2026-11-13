@@ -311,6 +311,9 @@ func (s *Service) endConcentrationOfDownCharacter(ctx context.Context, tx pgx.Tx
 	if err := s.endConcentrationAtZero(ctx, c, cs[i], ""); err != nil {
 		return false, err
 	}
+	if err := settleReadiedSpells(ctx, c); err != nil { // a correction is no combat change: its held spell breaks here
+		return false, err
+	}
 	return c.zonesMoved, nil // the fog is told after the commit (publishAdjusted)
 }
 

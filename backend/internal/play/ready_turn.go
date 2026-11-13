@@ -89,7 +89,7 @@ func chainReadiedDefeat(c chainEvent) chainVerdict {
 	if c.row.Kind != eventReadiedLost {
 		return chainGoOn
 	}
-	if ev, ok := c.payload(); ok && ev.Readied != nil && (ev.Readied.Defeated || ev.Readied.Dismissed) {
+	if ev, ok := c.payload(); ok && ev.Readied != nil && (ev.Readied.Defeated || ev.Readied.Dismissed || ev.Readied.Ended == readiedBroken) {
 		return chainSkip
 	}
 	return chainGoOn
@@ -110,6 +110,9 @@ func (u *undoer) readiedBack(ctx context.Context, ev actionEvent) error {
 	}
 	if ev.Readied == nil {
 		return nil
+	}
+	if err := u.readiedSpellBack(ctx, ev); err != nil {
+		return err
 	}
 	if err := u.c.q.DeleteReadiedAction(ctx, ev.Readied.ID); err != nil {
 		return fmt.Errorf("take the readied action back: %w", err)
@@ -153,9 +156,13 @@ func readiedLine(kind playv1.CombatLogKind) logHandler {
 // fillReadied writes the readied action of the line for the master and the readier's player; any other player reads the
 // kind and the actor alone (RN-10).
 func (e *logEntry) fillReadied(c *logViewing, out *playv1.CombatLogEntry) bool {
+	out.ConcentrationEndedKey = e.ev.ConcEnded // the concentration a readied spell ended, as a cast's line says it
 	if !c.v.master && !c.v.owns(c.actor) {
 		out.Key = ""
 		return true
+	}
+	if e.ev.Readied.holdsSpell() && e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED { // the slot it spent
+		out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, c.v, c.actor), Concentrating: true, ConcentrationEndedKey: e.ev.ConcEnded}
 	}
 	r := e.ev.Readied
 	name := r.Name

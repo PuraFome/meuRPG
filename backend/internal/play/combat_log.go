@@ -1481,11 +1481,11 @@ func (e *logEntry) fillConditions(c *logViewing, out *playv1.CombatLogEntry) boo
 	out.Conditions = e.ev.Conditions
 	if !c.v.master && !c.v.owns(c.actor) { // a condition with no outward sign is the owner's and the master's (RN-10)
 		out.Conditions = withoutOwnerOnly(e.ev.Conditions)
-		if e.ev.ConcEnded == "" && slices.Equal(out.Conditions, withoutOwnerOnly(e.ev.CondBefore)) {
+		if concentrationEndedFor(e.ev.ConcEnded, c.v, c.actor) == "" && slices.Equal(out.Conditions, withoutOwnerOnly(e.ev.CondBefore)) {
 			return false // nothing a player may read changed
 		}
 	}
-	out.ConcentrationEndedKey = e.ev.ConcEnded
+	out.ConcentrationEndedKey = concentrationEndedFor(e.ev.ConcEnded, c.v, c.actor)
 	return true
 }
 
@@ -1507,7 +1507,7 @@ func (e *logEntry) fillEffectEnd(c *logViewing, out *playv1.CombatLogEntry) bool
 // target's own player's; the caster's d20 the master's and the caster's.
 func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *playv1.CombatLogSpell {
 	caster := byID[e.ev.Actor]
-	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, v, caster), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
+	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, v, caster), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: concentrationEndedFor(e.ev.ConcEnded, v, caster)}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
 	out.MaterialSpent = e.ev.Material && (v.master || v.owns(caster)) // the diamonds are the caster's and the master's line
 	if e.ev.Res != nil && e.ev.Res.Kind == resMetamagic {

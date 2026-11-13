@@ -126,6 +126,9 @@ func (e *logEntry) reactionFacts(ctx context.Context, re *reactionEvent, v comba
 }
 
 func (f *reactionFacts) spellName(key string) string {
+	if key == concentrationReadied {
+		return "a magia preparada"
+	}
 	if n := f.names.contentName(f.ctx, key); n != "" {
 		return n
 	}
@@ -319,7 +322,7 @@ func (f *reactionFacts) featherFall() (string, bool) {
 func (f *reactionFacts) concentration() (string, bool) {
 	re := f.re
 	spell := f.spellName(re.Spell)
-	if !f.seesReactor {
+	if !f.seesReactor || (re.Spell == concentrationReadied && !f.v.master && !f.v.owns(f.reactor)) { // a held spell is the readier's secret (RN-10)
 		return "", false
 	}
 	if f.e.ev.Resisted {
