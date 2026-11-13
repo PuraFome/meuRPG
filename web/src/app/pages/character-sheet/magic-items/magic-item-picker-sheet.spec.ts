@@ -82,9 +82,9 @@ describe('MagicItemPickerSheet', () => {
     const { el } = await render();
     expect(listMagicItems).toHaveBeenCalledWith('camp', '');
     const cards = Array.from(el.querySelectorAll('.card'), flat);
-    expect(cards[0]).toBe('Manto élfico Item maravilhoso · incomum Pede sintonização');
+    expect(cards[0]).toBe('Manto élfico Item maravilhoso · incomum linkPede sintonização');
     expect(cards[1]).toBe(
-      'Armadura de resistência Armadura · raro · 2 variantes Pede sintonização · Só para um conjurador',
+      'Armadura de resistência Armadura · raro · 2 variantes linkPede sintonização · Só para um conjurador',
     );
   });
 

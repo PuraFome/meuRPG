@@ -8372,79 +8372,130 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
     await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos de sintonização' }), 'legenda-selos', colorScheme);
     await cropAtt(gearOf(p).locator('.gear__lock'), 'linha-travada', colorScheme);
 
-    // The master: the same list with the menus, and the picker (with a search that finds nothing).
+    // The master: the same list with the menus.
     await everyWidth(m, 'ficha-mestre', 'A ficha do mestre, itens mágicos com os menus', () => gearOf(m));
-    await gearOf(m).getByRole('button', { name: 'Adicionar item mágico' }).click();
-    const picker = m.getByRole('dialog', { name: 'Adicionar item mágico' });
-    await expect(picker.getByRole('radio').first()).toBeVisible();
-    await everyWidth(m, 'adicionar-item', 'O seletor de item mágico', () => picker);
-    await picker.getByRole('searchbox').fill('espada +2');
-    await expect(picker.getByText('Nenhum item mágico com “espada +2”.')).toBeVisible();
-    await everyWidth(m, 'adicionar-item-sem-resultado', 'O seletor, busca sem resultado', () => picker);
-    await m.keyboard.press('Escape');
-    await expect(picker).toBeHidden();
 
-    // The master's attunement sheet: the ring and the sword attuned, the pearl refused with its reason.
-    await gearOf(m).getByRole('button', { name: 'Mudar sintonização' }).click();
+    // Each sheet is opened at the width it is judged at (a phone gets the bottom sheet, a tablet and up the dialog).
+    const sheetShots = async (page: Page, name: string, what: string, open: () => Promise<Locator>, close: () => Promise<void>) => {
+      for (const width of ATT_WIDTHS) {
+        await page.setViewportSize(attViewport(width));
+        const at = await open();
+        await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+        await shootAtt(page, name, width, colorScheme, at);
+        await close();
+      }
+    };
+    const picker = m.getByRole('dialog', { name: 'Adicionar item mágico' });
+    const openPicker = async () => {
+      await gearOf(m).getByRole('button', { name: 'Adicionar item mágico' }).click();
+      await expect(picker.getByRole('radio').first()).toBeVisible();
+      return picker;
+    };
+    const closeByEscape = async (page: Page, sheet: Locator) => {
+      await page.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+    };
+    await sheetShots(m, 'adicionar-item', 'O seletor de item mágico', openPicker, () => closeByEscape(m, picker));
+    await sheetShots(
+      m,
+      'adicionar-item-sem-resultado',
+      'O seletor, busca sem resultado',
+      async () => {
+        await openPicker();
+        await picker.getByRole('searchbox').fill('espada +2');
+        await expect(picker.getByText('Nenhum item mágico com “espada +2”.')).toBeVisible();
+        return picker;
+      },
+      () => closeByEscape(m, picker),
+    );
+
+    // The master's attunement sheet: first nothing attuned, then the sword, the ring and the cloak (the limit), the pearl refused.
     const att = m.getByRole('dialog', { name: /^Sintonização/ });
-    await expect(att).toBeVisible();
-    await everyWidth(m, 'sintonizacao-mestre', 'A sintonização do mestre', () => att);
-    await att.getByRole('button', { name: 'Sintonizar Anel de proteção' }).click();
-    await expect(att.getByRole('button', { name: 'Encerrar Anel de proteção' })).toBeVisible();
-    await att.getByRole('button', { name: /^Sintonizar Espada longa/ }).click();
-    await expect(att.getByRole('button', { name: /^Encerrar Espada longa/ })).toBeVisible();
-    await att.getByRole('button', { name: 'Sintonizar Manto élfico' }).click();
-    await expect(att.getByRole('button', { name: 'Encerrar Manto élfico' })).toBeVisible();
-    await everyWidth(m, 'sintonizacao-no-limite-mestre', 'A sintonização do mestre no limite de 3', () => att);
-    await att.getByRole('button', { name: 'Sintonizar Pérola do poder' }).click({ trial: true }).catch(() => undefined);
-    await everyWidth(m, 'sintonizacao-restricao', 'A sintonização, o item que o personagem não cumpre', () => att);
-    await m.keyboard.press('Escape');
-    await expect(att).toBeHidden();
+    const openAtt = async () => {
+      await gearOf(m).getByRole('button', { name: 'Mudar sintonização' }).click();
+      await expect(att).toBeVisible();
+      return att;
+    };
+    await sheetShots(m, 'sintonizacao-mestre', 'A sintonização do mestre', openAtt, () => closeByEscape(m, att));
+    await m.setViewportSize(attViewport(1280));
+    await openAtt();
+    for (const [verb, name] of [['Sintonizar', 'Anel de proteção'], ['Sintonizar', 'Espada longa'], ['Sintonizar', 'Manto élfico']]) {
+      await att.getByRole('button', { name: new RegExp(`^${verb} ${name}`) }).click();
+      await expect(att.getByRole('button', { name: new RegExp(`^Encerrar ${name}`) })).toBeVisible();
+    }
+    await closeByEscape(m, att);
+    await sheetShots(m, 'sintonizacao-no-limite-mestre', 'A sintonização do mestre no limite de 3, com o item que o personagem não cumpre', openAtt, () => closeByEscape(m, att));
 
     // "Remover item": attuned (the count goes down) and not attuned.
-    await gearOf(m).getByRole('button', { name: 'Remover item · Anel de proteção' }).click();
-    const removeAttuned = m.getByRole('alertdialog', { name: 'Remover Anel de proteção?' });
-    await expect(removeAttuned).toContainText('Sintonizados 3 → 2');
-    await everyWidth(m, 'remover-item-sintonizado', 'Remover item sintonizado', () => removeAttuned);
-    await removeAttuned.getByRole('button', { name: 'Cancelar' }).click();
-    await gearOf(m).getByRole('button', { name: 'Remover item · Botas élficas' }).click();
-    const removePlain = m.getByRole('alertdialog', { name: 'Remover Botas élficas?' });
-    await everyWidth(m, 'remover-item', 'Remover item sem sintonia', () => removePlain);
-    await removePlain.getByRole('button', { name: 'Cancelar' }).click();
+    const removeShots = async (name: string, screen: string, what: string, words?: string) => {
+      const dialog = m.getByRole('alertdialog', { name: `Remover ${name}?` });
+      await sheetShots(
+        m,
+        screen,
+        what,
+        async () => {
+          await gearOf(m).getByRole('button', { name: `Remover item · ${name}` }).click();
+          if (words) {
+            await expect(dialog).toContainText(words);
+          }
+          return dialog;
+        },
+        async () => {
+          await dialog.getByRole('button', { name: 'Cancelar' }).click();
+          await expect(dialog).toBeHidden();
+        },
+      );
+    };
+    await removeShots('Anel de proteção', 'remover-item-sintonizado', 'Remover item sintonizado', 'Sintonizados 3 → 2');
+    await removeShots('Botas élficas', 'remover-item', 'Remover item sem sintonia');
 
-    // A rest: the master takes it, the owner's rest sheet offers the section at the limit, then after the master ends one.
-    await m.setViewportSize(attViewport(1280));
-    await openSessionPage(m, campaignId, 'grupo');
-    const card = m.getByRole('region', { name: 'Descanso' });
-    await card.getByRole('button', { name: 'Descanso curto' }).click();
-    await card.getByRole('alertdialog', { name: 'Começar o descanso curto?' }).getByRole('button', { name: 'Descansar' }).click();
-    await expect(card.getByText('Descanso curto feito.').first()).toBeVisible();
-    await openSessionPage(p, campaignId);
-    await openSheetTab(p);
-    await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
-    const dice = p.getByRole('dialog', { name: 'Gastar dados de vida' });
-    const section = dice.getByRole('region', { name: 'Sintonização' });
-    await expect(section).toContainText('Sintonizados: 3 de 3');
-    await everyWidth(p, 'sintonia-no-descanso-limite', 'A folha do descanso curto, o dono no limite', () => section);
-    await cropAtt(section.getByRole('listitem').filter({ hasText: 'Pérola do poder' }), 'linha-do-descanso', colorScheme);
-    await dice.locator('button', { hasText: 'Fechar' }).click();
-    await expect(dice).toBeHidden();
+    // The rests: at each width the owner reads the section at the limit, then with a free place after the master ends the
+    // cloak, then attunes (the window is spent), and the master's next rest opens another.
+    const restSheet = p.getByRole('dialog', { name: 'Gastar dados de vida' });
+    const section = restSheet.getByRole('region', { name: 'Sintonização' });
+    for (const width of ATT_WIDTHS) {
+      await m.setViewportSize(attViewport(1280));
+      await openSessionPage(m, campaignId, 'grupo');
+      const card = m.getByRole('region', { name: 'Descanso' });
+      await card.getByRole('button', { name: 'Descanso curto' }).click();
+      await card.getByRole('alertdialog', { name: 'Começar o descanso curto?' }).getByRole('button', { name: 'Descansar' }).click();
+      await expect(card.getByText('Descanso curto feito.').first()).toBeVisible();
+      const openRest = async () => {
+        await p.setViewportSize(attViewport(width));
+        await openSessionPage(p, campaignId);
+        await openSheetTab(p);
+        await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+        await expect(restSheet).toBeVisible();
+      };
+      await openRest();
+      await expect(section).toContainText('Sintonizados: 3 de 3');
+      await expectScreenPasses(p, `A folha do descanso curto, o dono no limite (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-no-descanso-limite', width, colorScheme, section);
+      await restSheet.locator('button', { hasText: 'Fechar' }).click();
+      await expect(restSheet).toBeHidden();
 
-    // The master ends the cloak: the owner reads the rest sheet again with room, attunes, and the window is spent.
-    await openLive(m, route);
-    await gearOf(m).getByRole('button', { name: 'Mudar sintonização' }).click();
-    await m.getByRole('dialog', { name: /^Sintonização/ }).getByRole('button', { name: 'Encerrar Manto élfico' }).click();
-    await expect(m.getByRole('dialog', { name: /^Sintonização/ }).getByRole('button', { name: 'Sintonizar Manto élfico' })).toBeVisible();
-    await m.keyboard.press('Escape');
-    await p.reload();
-    await openSheetTab(p);
-    await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
-    await expect(section).toContainText('Sintonizados: 2 de 3');
-    await everyWidth(p, 'sintonia-no-descanso', 'A folha do descanso curto, com uma vaga', () => section);
-    await section.getByRole('button', { name: 'Sintonizar Manto élfico' }).click();
-    await expect(dice.getByText('A sintonização deste descanso foi usada.')).toBeVisible();
-    await everyWidth(p, 'sintonia-usada', 'A folha do descanso curto, a sintonização usada', () => dice.getByText('A sintonização deste descanso foi usada.'));
-    await dice.locator('button', { hasText: 'Fechar' }).click();
+      // The master ends the cloak: the owner has a free place.
+      await m.setViewportSize(attViewport(1280));
+      await openLive(m, route);
+      await openAtt();
+      await att.getByRole('button', { name: 'Encerrar Manto élfico' }).click();
+      await expect(att.getByRole('button', { name: 'Sintonizar Manto élfico' })).toBeVisible();
+      await closeByEscape(m, att);
+      await openRest();
+      await expect(section).toContainText('Sintonizados: 2 de 3');
+      await expectScreenPasses(p, `A folha do descanso curto, com uma vaga (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-no-descanso', width, colorScheme, section);
+      if (width === 390) {
+        await cropAtt(section.getByRole('listitem').filter({ hasText: 'Pérola do poder' }), 'linha-do-descanso', colorScheme);
+      }
+      await section.getByRole('button', { name: 'Sintonizar Manto élfico' }).click();
+      const used = restSheet.getByText('A sintonização deste descanso foi usada.');
+      await expect(used).toBeVisible();
+      await expectScreenPasses(p, `A folha do descanso curto, a sintonização usada (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-usada', width, colorScheme, used);
+      await restSheet.locator('button', { hasText: 'Fechar' }).click();
+      await expect(restSheet).toBeHidden();
+    }
 
     // Another player reads none of it.
     outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport: attViewport(390), ...attunementScale });

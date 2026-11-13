@@ -14,6 +14,15 @@
   border-radius: var(--mr-radius-2, 8px);
 }
 
+.picker__search:focus-within {
+  border-color: var(--mr-accent);
+  box-shadow: inset 0 0 0 1px var(--mr-accent);
+}
+
+.picker__input:focus {
+  outline: none;
+}
+
 .picker__input,
 .picker__select {
   flex: 1;
@@ -41,7 +50,10 @@
 
 .card {
   display: grid;
-  gap: var(--mr-space-1);
+  grid-template-columns: 24px 1fr;
+  column-gap: var(--mr-space-3);
+  row-gap: var(--mr-space-1);
+  align-items: center;
   padding: var(--mr-space-3);
   border: 1px solid var(--mr-rule);
   border-radius: var(--mr-radius-2, 8px);
@@ -63,8 +75,45 @@
   outline-offset: 2px;
 }
 
+.card__dot {
+  grid-row: 1 / span 3;
+  align-self: start;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--mr-control-line, var(--mr-rule));
+  border-radius: 50%;
+}
+
+.card--on .card__dot {
+  border: 6px solid var(--mr-accent, currentColor);
+}
+
+.card__name,
+.card__line,
+.card__tag {
+  grid-column: 2;
+}
+
 .card__name {
   font-weight: 600;
+}
+
+.card__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-1);
+  justify-self: start;
+  padding: 2px var(--mr-space-2);
+  border: 1px solid var(--mr-rule);
+  border-radius: 999px;
+  font-weight: 600;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
 }
 
 .card__line,
@@ -79,5 +128,6 @@
 
 .foot > button {
   flex: 1;
+  white-space: nowrap;
   min-height: 48px;
 }

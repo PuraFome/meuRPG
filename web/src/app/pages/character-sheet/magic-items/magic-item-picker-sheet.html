@@ -1,4 +1,10 @@
-<app-sheet-frame title="Adicionar item mágico" titleId="sheet-t" [phone]="inSheet" (closed)="cancel()">
+<app-sheet-frame
+  title="Adicionar item mágico"
+  titleId="sheet-t"
+  subtitle="Do jogo: anéis, mantos, cajados e outros. Armas e armaduras +1, +2 e +3 vêm pelo “⋮” da peça."
+  [phone]="inSheet"
+  (closed)="cancel()"
+>
   @if (error()) {
     <p class="mr-notice mr-notice--danger" role="alert">
       <mat-icon aria-hidden="true">error</mat-icon>
@@ -41,6 +47,7 @@
             [disabled]="busy()"
             (change)="choose(i.key)"
           />
+          <span class="card__dot" aria-hidden="true"></span>
           <span class="card__name">{{ i.namePt }}</span>
           <span class="card__line mr-muted">
             {{ words(i) }}
@@ -49,7 +56,7 @@
             }
           </span>
           @if (asks(i)) {
-            <span class="card__tag">{{ asksLine(i) }}</span>
+            <span class="card__tag"><mat-icon aria-hidden="true">link</mat-icon>{{ asksLine(i) }}</span>
           }
         </label>
       }
