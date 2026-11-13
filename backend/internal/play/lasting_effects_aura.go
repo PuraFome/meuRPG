@@ -126,11 +126,12 @@ func (a aura) spread(cs []playdb.Combatant, v *combatViewer, reached map[[2]stri
 	}
 }
 
-// seenBy says the reader sees the bearer. A roll that knows no reader (v nil) reads as a player who does not see a
-// bearer the master hides.
+// seenBy says the reader sees the bearer. A roll that knows no reader (v nil) reads as a player who sees no NPC: one
+// the master hides, or one in the fog (which player sees it is not for the roll to say), and only a player's
+// character or creature is seen.
 func seenBy(v *combatViewer, bearer playdb.Combatant) bool {
 	if v == nil {
-		return !bearer.Hidden
+		return !bearer.Hidden && bearer.Kind != kindNPC
 	}
 	return v.sees(bearer)
 }

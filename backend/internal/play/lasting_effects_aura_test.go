@@ -342,3 +342,41 @@ func TestAnAuraEndsWithItsRow(t *testing.T) {
 		t.Errorf("after it ends: check bonus = %d, want 0", got)
 	}
 }
+
+// A roll that knows no reader reads an NPC bearer's aura as a player who may not see it: an NPC in the fog is no
+// player's to name, and the roll cannot tell which player sees it. The bearer's own side (a character) and the master's
+// view are the positive controls.
+func TestAnAuraOfAnNPCReadsOtherSourceWhenTheRollKnowsNoReader(t *testing.T) {
+	t.Parallel()
+	at := func(id, side, kind string, col int32) playdb.Combatant {
+		row := int32(1)
+		return playdb.Combatant{ID: id, Side: side, Kind: kind, GridCol: &col, GridRow: &row}
+	}
+	mark := func(owner string) playdb.CombatantState {
+		source := "spell:dread"
+		mods, _ := json.Marshal([]rules.EffectModifier{
+			{Kind: rules.ModifierAura, RadiusFt: 10, Affects: rules.AuraAffectsEnemies},
+			{Kind: rules.ModifierRollBonus, Value: -2, AppliesTo: []string{rules.RollAppliesCheck}},
+		})
+		return playdb.CombatantState{ID: "row-" + owner, CombatantID: owner, Kind: stateEffect, SourceKey: &source, Modifiers: mods, PlayerVisible: true}
+	}
+	visibleOn := func(states map[string][]playdb.CombatantState, id string) bool {
+		for _, st := range states[id] {
+			if st.SourceKey != nil && st.PlayerVisible {
+				return true
+			}
+		}
+		return false
+	}
+	npc := []playdb.Combatant{at("pc", "players", kindPlayer, 1), at("boss", "npcs", kindNPC, 2)}
+	if visibleOn(withAuras(map[string][]playdb.CombatantState{"boss": {mark("boss")}}, npc, nil), "pc") {
+		t.Error("an NPC's aura reads by name on a player's roll that knows no reader: want \"Outra fonte\"")
+	}
+	if !visibleOn(withAuras(map[string][]playdb.CombatantState{"boss": {mark("boss")}}, npc, &combatViewer{master: true}), "pc") {
+		t.Error("the master does not read the NPC's aura by name (the positive control)")
+	}
+	pcBearer := []playdb.Combatant{at("hero", "players", kindPlayer, 1), at("foe", "npcs", kindNPC, 2)}
+	if !visibleOn(withAuras(map[string][]playdb.CombatantState{"hero": {mark("hero")}}, pcBearer, nil), "foe") {
+		t.Error("a character's public aura reads \"Outra fonte\" on a roll that knows no reader (the positive control)")
+	}
+}
