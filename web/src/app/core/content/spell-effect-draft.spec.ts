@@ -102,6 +102,32 @@ describe('the stored effect as a draft and back', () => {
     expect(draftToEffect(d)!.modifiers[0].kind).toBe(9);
   });
 
+  it('keeps a modifier the block does not edit (the next-hit weapon damage of #577) in place and whole while its neighbours change', () => {
+    const next = create(TableEffectModifierSchema, {
+      kind: 77 as K,
+      value: 4,
+      die: 6,
+      appliesTo: [3],
+    });
+    const d = effectToDraft(
+      create(TableSpellEffectSchema, {
+        modifiers: [
+          create(TableEffectModifierSchema, { kind: K.AC_BONUS, value: 1 }),
+          next,
+          create(TableEffectModifierSchema, { kind: K.TEMP_HP, value: 5 }),
+        ],
+      }),
+    );
+    const edited = {
+      ...d,
+      rows: d.rows.map((r) => (r.kind === 'ac_bonus' ? { ...r, value: '2' } : r)),
+    };
+    const back = draftToEffect(edited)!.modifiers;
+    expect(back.map((m) => m.kind)).toEqual([K.AC_BONUS, 77, K.TEMP_HP]);
+    expect(back[0].value).toBe(2);
+    expect(back[1]).toMatchObject({ value: 4, die: 6, appliesTo: [3] });
+  });
+
   it('writes one advantage row as a modifier for each roll, and reads them back as one row', () => {
     const r = emptyRow('advantage');
     const rows = {
