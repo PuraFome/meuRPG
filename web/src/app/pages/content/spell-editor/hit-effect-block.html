@@ -11,7 +11,9 @@
     (toggled)="patch({ enabled: $event })"
   />
   @if (on()) {
-    <span class="where">{{ whereText() }}</span>
+    @if (showWhere()) {
+      <span class="where">{{ whereText() }}</span>
+    }
     <span class="chips">
       @if (durationText()) {
         <span class="chip"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>{{ durationText() }}</span>

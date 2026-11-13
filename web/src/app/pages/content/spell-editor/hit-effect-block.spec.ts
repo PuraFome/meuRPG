@@ -157,6 +157,9 @@ describe('HitEffectBlock (#577)', () => {
     expect(text(el.querySelector('.where')!)).toBe('em quem conjura, não na área');
     el = setup({ concentration: false });
     expect(text(el.querySelector('.chips')!)).not.toContain('Concentração');
+    expect(text(el.querySelector('.where')!)).toBe('em quem conjura');
+    el = setup({});
+    expect(el.querySelector('.where')).toBeNull(); // the chip already says "em quem conjura"
   });
 
   it.each([['marked_target'], ['each_hit']])(

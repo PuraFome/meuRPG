@@ -27,6 +27,8 @@ import { latestInput } from '../../../shared/latest-input';
 
 let nextId = 0;
 
+const CASTER_PT = 'em quem conjura';
+
 interface TriggerCard {
   readonly value: HitTriggerKey;
   readonly label: string;
@@ -118,9 +120,13 @@ export class HitEffectBlock {
       case 'creatures':
         return 'em quem conjura, não nos alvos';
       default:
-        return 'em quem conjura';
+        return CASTER_PT;
     }
   });
+  /** The plain "em quem conjura" is said once: the concentration chip already says it. */
+  protected readonly showWhere = computed(
+    () => !this.concentration() || this.whereText() !== CASTER_PT,
+  );
   protected readonly needsConcentration = computed(
     () => needsConcentration(this.hit().trigger) && !this.concentration(),
   );
