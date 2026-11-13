@@ -1,14 +1,14 @@
 @let s = section();
-<section class="att" [attr.aria-labelledby]="headingId">
-  <header class="att__head">
-    @if (bare()) {
-      <span class="att__title" [id]="headingId"><mat-icon aria-hidden="true">link</mat-icon></span>
-    } @else {
+<section class="att" [attr.aria-label]="bare() ? 'Sintonização' : null" [attr.aria-labelledby]="bare() ? null : headingId">
+  @if (bare()) {
+    <p class="att__lead mr-muted" [id]="headingId">{{ s.count }} · {{ lowerFirst(s.lead) }}</p>
+  } @else {
+    <header class="att__head">
       <h3 class="att__title" [id]="headingId"><mat-icon aria-hidden="true">link</mat-icon>{{ s.title }}</h3>
-    }
-    <span class="att__count">{{ s.count }}</span>
-  </header>
-  <p class="att__lead mr-muted">{{ s.lead }}</p>
+      <span class="att__count">{{ s.count }}</span>
+    </header>
+    <p class="att__lead mr-muted">{{ s.lead }}</p>
+  }
   <p class="att__status" role="status">{{ status() }}</p>
   @if (error()) {
     <p class="att__error" role="alert">

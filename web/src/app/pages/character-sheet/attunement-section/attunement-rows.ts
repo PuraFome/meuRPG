@@ -54,7 +54,13 @@ function reasonOf(
   }
   if (e.restriction === 'notMet') {
     const who = c.viewer === 'owner' ? 'você não cumpre' : `${c.name} não cumpre`;
-    return { reason: `${by}: ${who}.`, reasonIcon: 'block' };
+    return {
+      reason:
+        c.viewer === 'owner'
+          ? `${by}: ${who}.`
+          : `${by}: ${who}. Como mestre, você pode sintonizar mesmo assim.`,
+      reasonIcon: c.viewer === 'owner' ? 'block' : 'info',
+    };
   }
   if (e.restriction === 'unknown') {
     return c.viewer === 'owner'
@@ -92,7 +98,7 @@ function leadOf(c: AttunementContext, atLimit: boolean): string {
   if (c.viewer === 'master') {
     return c.dead
       ? 'Morto: as sintonizações ficam como estavam até você encerrar.'
-      : 'Você sintoniza ou encerra a qualquer hora, mesmo sem descanso.';
+      : 'Você é o mestre: sintoniza e encerra a qualquer hora, sem descanso.';
   }
   if (c.dead) {
     return 'Morto: os itens e as sintonizações ficam como estavam.';

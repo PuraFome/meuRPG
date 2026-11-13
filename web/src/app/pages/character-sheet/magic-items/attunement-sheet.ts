@@ -3,6 +3,7 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 
 import type { AttunementVm } from '../../../core/characters/attunement';
+import { MatIconModule } from '@angular/material/icon';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 import { AttunementSection } from '../attunement-section/attunement-section';
@@ -44,7 +45,15 @@ export function openAttunementSheet(
 @Component({
   selector: 'app-attunement-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [SheetFrame, AttunementSection],
+  imports: [MatIconModule, SheetFrame, AttunementSection],
+  styles: `
+    .note {
+      display: flex;
+      gap: var(--mr-space-2);
+      margin: var(--mr-space-3) 0 0;
+      font-size: var(--mr-font-14);
+    }
+  `,
   template: `
     <app-sheet-frame
       [title]="data.isMaster ? 'Sintonização · ' + data.characterName : 'Sintonização'"
@@ -64,6 +73,11 @@ export function openAttunementSheet(
         [bare]="true"
         (changed)="data.changed()"
       />
+      @if (data.isMaster) {
+        <p class="mr-muted note">
+          <mat-icon aria-hidden="true">info</mat-icon>Cada toque vale na hora. {{ data.characterName }} lê a mudança na ficha; os números já trazem o que conta.
+        </p>
+      }
     </app-sheet-frame>
   `,
 })

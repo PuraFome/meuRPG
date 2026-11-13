@@ -70,6 +70,10 @@ export class AttunementSection {
     }),
   );
 
+  protected lowerFirst(text: string): string {
+    return text.charAt(0).toLowerCase() + text.slice(1);
+  }
+
   /** What follows "Limite de 3 itens." in the limit line. */
   protected readonly limitRest = computed(
     () => ` ${this.section().limitLine.replace('Limite de 3 itens. ', '')}`,

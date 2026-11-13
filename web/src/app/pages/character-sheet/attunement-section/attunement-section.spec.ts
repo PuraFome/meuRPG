@@ -84,6 +84,18 @@ describe('AttunementSection', () => {
     expect(button(f, 'm1')).toBeTruthy();
   });
 
+  it('under a title of its own, says the count and the lead in one line and has no heading', () => {
+    const f = setup(vi.fn(), [entry({ id: 'm1' })], 'master');
+    f.componentRef.setInput('bare', true);
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('.att__title')).toBeNull();
+    expect(el.querySelector('.att__lead')?.textContent).toBe(
+      'Sintonizados: 0 de 3 · você é o mestre: sintoniza e encerra a qualquer hora, sem descanso.',
+    );
+    expect(el.querySelector('section')?.getAttribute('aria-label')).toBe('Sintonização');
+  });
+
   it('puts the master in the dialog title with the name', () => {
     const f = setup(vi.fn(), [], 'master');
     expect(text(f)).toContain('Sintonização · Tor');

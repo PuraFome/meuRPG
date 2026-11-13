@@ -33,7 +33,11 @@ describe('sectionOf', () => {
       reason: 'Só para um conjurador: você não cumpre.',
     });
     const m = sectionOf(a, master).asking[0];
-    expect(m).toMatchObject({ button: 'on', reason: 'Só para um conjurador: Tor não cumpre.' });
+    expect(m).toMatchObject({
+      button: 'on',
+      reason:
+        'Só para um conjurador: Tor não cumpre. Como mestre, você pode sintonizar mesmo assim.',
+    });
   });
 
   it('leaves an alignment the sheet does not say to the master, and a circumstance as plain text', () => {
