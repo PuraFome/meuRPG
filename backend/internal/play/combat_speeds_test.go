@@ -1,10 +1,10 @@
 package play
 
 import (
-	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"testing"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
