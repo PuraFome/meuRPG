@@ -198,7 +198,13 @@
   bottom: calc(100% + 4px);
 }
 
+// A pill under or over the chosen square is centred on it and shifts inward where the map's edge is nearer than half the pill (it never leaves the
+// map): -50% of its own width, less what the right edge is short of, plus what the left edge is short of.
 .cm__frame {
+  --cm-pill-shift: calc(
+    -50% - max(0px, 50% + 4px - var(--cm-room-right, 100vw)) +
+      max(0px, 50% + 4px - var(--cm-room-left, 100vw))
+  );
   z-index: 2;
   display: flex;
   align-items: center;
@@ -233,7 +239,7 @@
   font-weight: 700;
   line-height: 19px;
   white-space: nowrap;
-  transform: translateX(-50%);
+  transform: translateX(var(--cm-pill-shift));
 }
 
 .cm__cost--above {
@@ -259,7 +265,7 @@
   font-weight: 700;
   line-height: 19px;
   white-space: nowrap;
-  transform: translateX(-50%);
+  transform: translateX(var(--cm-pill-shift));
 }
 
 // A refused square: dashed, and clear, so the wall hatch under it stays in sight.

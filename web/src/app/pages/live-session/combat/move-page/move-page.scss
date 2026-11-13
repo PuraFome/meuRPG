@@ -126,15 +126,24 @@
   }
 }
 
-// The zoom stays at the corner of the visible map while the map scrolls under it.
-.move__zoom {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 6;
+// The legend and the zoom share a row under the map: the legend takes what it needs and wraps, the zoom keeps to the end of the row.
+.move__below {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.move__legend {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.move__zoom {
+  display: flex;
+  flex: none;
   gap: 6px;
+  margin-top: var(--mr-space-3);
 
   button {
     display: flex;
@@ -196,20 +205,42 @@
 // Under the map, where the thumb is; on a phone it stays at the foot of the screen
 // while the rest scrolls (E9-05, 320 x 568).
 .move__foot {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
-  margin: var(--mr-space-3) calc(var(--mr-gutter) * -1) 0;
-  padding: var(--mr-space-3) var(--mr-gutter);
-  border-top: 1px solid var(--mr-line);
-  background: var(--mr-ground);
+  margin: var(--mr-space-3) 0 0;
+}
 
-  @media (min-width: 1024px) {
-    position: static;
-    margin: var(--mr-space-3) 0 0;
-    padding: 0;
-    border-top: 0;
-    background: none;
+// On a phone the cost card and the buttons are one dock at the foot of the screen, above the pinned tabs (`--mr-session-nav`, 0 where there are
+// none): the cost is read from the first moment and "Cancelar" is never behind the tabs. From 1024px the dock disappears into the grid.
+.move__dock {
+  display: contents;
+}
+
+@media (max-width: 1023.98px) {
+  .move__dock--live {
+    position: sticky;
+    bottom: var(--mr-session-nav, 0);
+    z-index: 5;
+    display: block;
+    margin: var(--mr-space-3) calc(var(--mr-gutter) * -1) 0;
+    padding: var(--mr-space-3) var(--mr-gutter);
+    border-top: 1px solid var(--mr-line);
+    background: var(--mr-ground);
+  }
+
+  // Where the screen is short the two buttons share a row, so the dock leaves the map room.
+  @media (max-height: 700px) {
+    .move__buttons {
+      flex-direction: row;
+    }
+
+    .move__buttons > .move__go {
+      flex: 1 1 auto;
+      width: auto;
+    }
+
+    .move__buttons > .move__cancel {
+      flex: none;
+      width: auto;
+    }
   }
 }
 

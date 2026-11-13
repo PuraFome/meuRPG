@@ -2,10 +2,10 @@ import { MapLayer } from '../../../gen/meurpg/maps/v1/maps_pb';
 import type { Square } from '../combat/combat-grid';
 import { tight } from '../format/text';
 import { squaresText } from '../units';
-import { type DoorKind, type MapLayers, doorCounts, lightCount } from './layers';
+import { type DoorKind, type MapLayers, doorCounts, lightCount, surfaceCounts } from './layers';
 
 /** The tools of "Pintar" (E9-01, "Porta", "Não dá para passar" of B2). */
-export type PaintTool = 'terrain' | 'wall' | 'cover' | 'light' | 'nopass' | 'door';
+export type PaintTool = 'terrain' | 'surface' | 'wall' | 'cover' | 'light' | 'nopass' | 'door';
 
 /** How much cover a stroke paints: the layer's own values (1 half, 2 three-quarters). */
 export type CoverDegree = 1 | 2;
@@ -13,12 +13,17 @@ export type CoverDegree = 1 | 2;
 /** How lit a stroke paints: `LightLevel` (1 Escuro, 2 Penumbra, 3 Claro). */
 export type LightDegree = 1 | 2 | 3;
 
+/** What a "Superfície" stroke paints: the layer's own values (1 Água, 2 Escalável). */
+export type SurfaceKind = 1 | 2;
+
 export interface PaintSettings {
   /** The tool in hand, or `null` while none was chosen: a stroke paints nothing until the master picks one. */
   readonly tool: PaintTool | null;
   readonly cover: CoverDegree;
   /** The light a stroke paints: the map's base light is the starting point (`Claro`, `Penumbra`, `Escuro`). */
   readonly light: LightDegree;
+  /** The surface a stroke paints: Água or Escalável, one layer with two brushes. */
+  readonly surface: SurfaceKind;
   /** The door a tap paints (`DoorState`): the door tool puts one square at a time, whatever the brush. */
   readonly door: DoorKind;
   readonly brush: 1 | 3;
@@ -29,6 +34,7 @@ export const DEFAULT_SETTINGS: PaintSettings = {
   tool: null,
   cover: 1,
   light: 2,
+  surface: 1,
   door: 2,
   brush: 1,
   erase: false,
@@ -36,6 +42,7 @@ export const DEFAULT_SETTINGS: PaintSettings = {
 
 export const TOOL_LABEL: Readonly<Record<PaintTool, string>> = {
   terrain: 'Terreno difícil',
+  surface: 'Superfície',
   wall: 'Parede',
   cover: 'Cobertura',
   light: 'Luz',
@@ -54,6 +61,9 @@ export const DOOR_LABEL: Readonly<Record<DoorKind, string>> = {
   5: 'Secreta',
 };
 
+/** The brushes of "Superfície" (the second row). */
+export const SURFACE_LABEL: Readonly<Record<SurfaceKind, string>> = { 1: 'Água', 2: 'Escalável' };
+
 export const COVER_LABEL: Readonly<Record<CoverDegree, string>> = { 1: 'Meia', 2: 'Três quartos' };
 export const LIGHT_LABEL: Readonly<Record<LightDegree, string>> = {
   3: 'Claro',
@@ -63,6 +73,7 @@ export const LIGHT_LABEL: Readonly<Record<LightDegree, string>> = {
 
 const LAYER: Readonly<Record<PaintTool, MapLayer>> = {
   terrain: MapLayer.DIFFICULT_TERRAIN,
+  surface: MapLayer.SURFACE,
   wall: MapLayer.WALL,
   cover: MapLayer.COVER,
   light: MapLayer.LIGHT,
@@ -84,6 +95,8 @@ export function strokeOf(s: PaintSettings): { layer: MapLayer; value: number } |
       return { layer, value: s.cover };
     case 'light':
       return { layer, value: s.light };
+    case 'surface':
+      return { layer, value: s.surface };
     case 'door':
       return { layer, value: s.door };
     default:
@@ -132,7 +145,7 @@ export function lineSquares(from: Square, to: Square): Square[] {
   }
 }
 
-/** "Terreno difícil · arraste para pintar · Shift apaga": the line over the map's corner. */
+/** "Terreno difícil · arraste para pintar · Shift apaga": the line in the toolbar's second row. */
 export function paintHint(s: PaintSettings): string {
   if (s.tool === null) {
     return 'Escolha uma ferramenta para pintar';
@@ -141,6 +154,10 @@ export function paintHint(s: PaintSettings): string {
     return s.erase
       ? 'Porta · toque numa porta para tirá-la'
       : `Porta · ${DOOR_LABEL[s.door]} · toque para pôr · Shift tira`;
+  }
+  if (s.tool === 'surface') {
+    // The row above already says "Superfície pintada" and which brush is in hand.
+    return s.erase ? 'Arraste para apagar a superfície' : 'Arraste para pintar · Shift apaga';
   }
   const what =
     s.tool === 'cover'
@@ -161,7 +178,8 @@ export interface LayerLine {
   readonly count: number;
 }
 
-export function layerLines(l: MapLayers): readonly LayerLine[] {
+/** `compact`: the master's phone, where a row has less room ("32 de água e 14 escaláveis"). */
+export function layerLines(l: MapLayers, compact = false): readonly LayerLine[] {
   const cover = l.half.length + l.threeQuarters.length;
   const light = lightCount(l);
   const doors = l.doors?.length ?? 0;
@@ -185,6 +203,7 @@ export function layerLines(l: MapLayers): readonly LayerLine[] {
           ? tight(`${squaresText(l.terrain.length)} · custa +1,5 m por quadrado`)
           : 'nada pintado',
     },
+    surfaceLine(l, compact),
     {
       tool: 'wall',
       name: 'Parede',
@@ -207,6 +226,24 @@ export function layerLines(l: MapLayers): readonly LayerLine[] {
     noPassLine(l),
     { tool: 'door', name: 'Portas', count: doors, detail: doorsText(l) },
   ];
+}
+
+/** "Superfície": the squares of water and of climbable surface, and that they cost double (the server does the arithmetic). */
+function surfaceLine(l: MapLayers, compact: boolean): LayerLine {
+  const { water, climb } = surfaceCounts(l);
+  const climbs = (n: number) => (n === 1 ? 'escalável' : 'escaláveis');
+  let detail = 'nada pintado';
+  if (water > 0 && climb > 0) {
+    const first = compact ? String(water) : squaresText(water);
+    detail = tight(`${first} de água e ${climb} ${climbs(climb)} · custam o dobro`);
+  } else if (water > 0) {
+    detail = tight(`${squaresText(water)} de água · ${water === 1 ? 'custa' : 'custam'} o dobro`);
+  } else if (climb > 0) {
+    detail = tight(
+      `${squaresText(climb)} ${climbs(climb)} · ${climb === 1 ? 'custa' : 'custam'} o dobro`,
+    );
+  }
+  return { tool: 'surface', name: 'Superfície', count: water + climb, detail };
 }
 
 /** "Não dá para passar": nobody walks into a marked square, but sight and light pass. */
