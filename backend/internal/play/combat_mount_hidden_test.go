@@ -146,3 +146,23 @@ func TestMountedCombat_MoveOptionsAgreeWithTheMove(t *testing.T) {
 	_, err = c.options(t, c.caio, "Toren")
 	wantBlockedBy(t, "the options of a rider on a hidden mount", err, reasonMoveBlocked)
 }
+
+// TestMountedCombat_ARiderIsNoFoeOfItsOwnMount: the master seats Toren, of the party, on an Ogro of the enemy side; when the Ogro
+// leaves a reach, Toren, who rides it, is not offered an attack on it, while Brisa, of the party and next to it, is.
+func TestMountedCombat_ARiderIsNoFoeOfItsOwnMount(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.mustMove(t, c.master, "Ogro", 7, 7)
+	c.mustMove(t, c.master, "Brisa", 6, 8)
+	c.mustMount(t, c.master, "Toren", "Ogro")
+	c.passTo(t, c.get(t, c.master), "Ogro")
+	c.moveOffering(t, "Ogro", 10, 7)
+	var reactors []string
+	for _, o := range c.offersOf(t, c.master) {
+		reactors = append(reactors, o.GetReactorLabel())
+	}
+	if len(reactors) != 1 || reactors[0] != "Brisa" {
+		t.Errorf("the offers on the mount's move are from %v, want Brisa alone (Toren rides it)", reactors)
+	}
+}
