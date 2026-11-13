@@ -1,9 +1,13 @@
-import { type Signal, computed, signal } from '@angular/core';
+import { type Signal, computed, effect, inject, signal } from '@angular/core';
 import type { MatBottomSheet } from '@angular/material/bottom-sheet';
 import type { MatDialog } from '@angular/material/dialog';
 import type { Observable } from 'rxjs';
 
-import type { AttunementEntryVm, AttunementVm } from '../../../core/characters/attunement';
+import {
+  type AttunementEntryVm,
+  type AttunementVm,
+  MagicCategories,
+} from '../../../core/characters/attunement';
 import { describeCharacterError } from '../../../core/characters/character-errors';
 import type { VitalsVm } from '../../../core/play/live-session.types';
 import type { SheetEquipHost } from '../character-sheet-equip';
@@ -36,11 +40,6 @@ export class SheetMagicItems {
   readonly notice = signal('');
 
   constructor(private readonly host: SheetMagicItemsHost) {}
-
-  /** The sheet lists a magic item. */
-  hasItems(): boolean {
-    return this.host.attunement().entries.some((e) => e.kind === 'magic');
-  }
 
   /** The owner's window, for the "Mudar" button. */
   windowOpen(): boolean {
@@ -147,6 +146,18 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
   // The server closes the owner's window when the owner attunes and tells no stream: the page closes it until the
   // vitals change (the next rest opens another).
   const spentAt = signal<number | null>(null);
+  // The icons of the magic items' rows come from the catalog's categories: read once the sheet lists one.
+  const categories = inject(MagicCategories);
+  const attunement = computed(() => {
+    const vm = ready();
+    return vm?.sheet.kind === 'full' ? vm.sheet.attunement : { entries: [], attuned: 0 };
+  });
+  effect(() => {
+    const campaignId = d.campaignId();
+    if (campaignId && attunement().entries.some((e) => e.kind === 'magic')) {
+      void categories.load(campaignId);
+    }
+  });
   return new SheetMagicItems({
     source: d.source,
     campaignId: d.campaignId,
@@ -159,10 +170,7 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
     },
     apply: d.apply,
     vm: ready,
-    attunement: computed(() => {
-      const vm = ready();
-      return vm?.sheet.kind === 'full' ? vm.sheet.attunement : { entries: [], attuned: 0 };
-    }),
+    attunement,
     revision: computed(() => ready()?.revision ?? 0),
     windowOpen: computed(
       () => d.vitals()?.attunementOpen === true && spentAt() !== d.vitals()?.revision,

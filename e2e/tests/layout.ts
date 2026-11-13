@@ -50,7 +50,7 @@ function auditLayout(): LayoutIssue[] {
     const cs = getComputedStyle(el);
     return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) !== 0;
   };
-  const describe = (el: Element): string => {
+  const describeEl = (el: Element): string => {
     const name = (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim();
     return `<${el.tagName.toLowerCase()}> "${name.slice(0, 50)}"`;
   };
@@ -113,7 +113,7 @@ function auditLayout(): LayoutIssue[] {
     if (Math.abs(d) > 1) {
       issues.push({
         kind: 'icon-text',
-        where: describe(row),
+        where: describeEl(row),
         detail: `the icon's middle is ${Math.abs(d).toFixed(1)}px ${d > 0 ? 'below' : 'above'} the middle of the capitals`,
       });
     }
@@ -140,7 +140,7 @@ function auditLayout(): LayoutIssue[] {
     if (Math.abs(d) > 2) {
       issues.push({
         kind: 'off-centre',
-        where: describe(c),
+        where: describeEl(c),
         detail: `the content is ${Math.abs(d).toFixed(1)}px ${d > 0 ? 'below' : 'above'} the middle`,
       });
     }
@@ -161,7 +161,7 @@ function auditLayout(): LayoutIssue[] {
         if (x > 2 && y > 2) {
           issues.push({
             kind: 'overlap',
-            where: describe(scope),
+            where: describeEl(scope),
             detail: `"${n.textContent!.trim().slice(0, 30)}" runs ${x.toFixed(0)}px over the icon "${icon.textContent!.trim()}"`,
           });
         }
@@ -186,7 +186,7 @@ function auditLayout(): LayoutIssue[] {
     if (top < 6 || bottom < 6) {
       issues.push({
         kind: 'tile',
-        where: describe(tile),
+        where: describeEl(tile),
         detail: `the words are ${top.toFixed(0)}px from the top edge and ${bottom.toFixed(0)}px from the bottom one (at least 6px each)`,
       });
     }
@@ -235,7 +235,7 @@ function auditLayout(): LayoutIssue[] {
     if (middle > last.bottom + 1 || middle < last.top - 1) {
       issues.push({
         kind: 'chip-alone',
-        where: describe(chip.closest('.gear-row') ?? chip),
+        where: describeEl(chip.closest('.gear-row') ?? chip),
         detail: `the chip's middle is at ${middle.toFixed(0)}px and the words before it end on a line from ${last.top.toFixed(0)}px to ${last.bottom.toFixed(0)}px: it sits on a line of its own`,
       });
     }
@@ -257,7 +257,7 @@ function auditLayout(): LayoutIssue[] {
     if (a !== null && b !== null && Math.abs(a - b) > 1) {
       issues.push({
         kind: 'head-baseline',
-        where: describe(head),
+        where: describeEl(head),
         detail: `the heading's baseline is at ${a.toFixed(1)}px and the count's at ${b.toFixed(1)}px (within 1px)`,
       });
     }
