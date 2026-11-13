@@ -125,14 +125,8 @@ export function costTitle(costDft: number): string {
   return `Mover ${metersFixed(costDft / 10)}`;
 }
 
-/** "Depois restam 6,9 m." */
-export function afterText(leftDft: number, costDft: number): string {
-  // No clamp: the callers only say it for a cost the movement left pays.
-  return afterLeftText(leftDft - costDft);
-}
-
-/** "Depois restam 6,9 m." from what the server says is left once on the square (`left_after_dft`: counted at the speed of the
- * surface the square is on, so a line that goes from the floor into the water is never subtracted here). */
+/** "Depois restam 6,9 m." from what the server says is left (`left_after_dft` of a square, counted at the speed of the surface
+ * it is on, or the counter of where the creature stands): the app never works it out across a switch of surface. */
 export function afterLeftText(leftAfterDft: number): string {
   return `Depois restam ${metersFixed(leftAfterDft / 10)}.`;
 }
@@ -221,14 +215,18 @@ export function provokeWarning(
 /** The note on the jump's card: where it lands and what is left, with the trap the character knows when the landing square is
  * inside one ("Cai do outro lado do Fosso. Depois restam 1,5 m. O Fosso só dispara onde você cai."), and no word about a trap
  * the character does not know (RN-10). */
-export function jumpCardText(costDft: number, leftDft: number, knownTrapName = ''): string {
-  const after = afterText(leftDft, costDft);
+export function jumpCardText(
+  costDft: number,
+  leftAfterDft: number | null,
+  knownTrapName = '',
+): string {
+  const after = leftAfterDft === null ? '' : afterLeftText(leftAfterDft); // the server's number for the landing square
   if (knownTrapName) {
     const the = `${article(knownTrapName) === 'a' ? 'a' : 'o'} ${knownTrapName}`;
     const The = `${article(knownTrapName) === 'a' ? 'A' : 'O'} ${knownTrapName}`;
-    return `Cai do outro lado d${the}. ${after} ${The} só dispara onde você cai.`;
+    return `Cai do outro lado d${the}. ${after ? `${after} ` : ''}${The} só dispara onde você cai.`;
   }
-  return `Cai ${metersFixed(costDft / 10)} adiante. ${after}`;
+  return `Cai ${metersFixed(costDft / 10)} adiante.${after ? ` ${after}` : ''}`;
 }
 
 /** The label under the chosen square of a jump that leaves an enemy's reach. */

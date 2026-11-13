@@ -29,6 +29,7 @@ describe('move page view', () => {
   const scene = (over: Partial<JumpScene> = {}): JumpScene => ({
     kind: 'long',
     left: 300,
+    leftHere: 300,
     height: 0,
     chosen: { col: 4, row: 2 },
     origin,
@@ -44,6 +45,26 @@ describe('move page view', () => {
   it('words the high jump, and refuses it when not a step fits', () => {
     expect(jumpSummary(scene({ kind: 'high', height: 60 })).title).toBe('Saltar 1,8\u00a0m');
     expect(jumpSummary(scene({ kind: 'high', height: 0 })).title).toBe('Sem salto em altura');
+  });
+
+  it('says what is left after a high jump from the counter of where the jumper stands, not from the floor', () => {
+    // In water with a swim speed: the floor's lead (300) pays for the jump, the counter there (400) is what it is taken from.
+    const detail = jumpSummary(scene({ kind: 'high', height: 60, leftHere: 400 })).detail;
+    expect(detail.replace(/\u00a0/g, ' ')).toContain('Depois restam 10,2 m.');
+  });
+
+  it('says what is left after a long jump as the server counted it at the landing surface', () => {
+    // The floor's lead is 300 and the jump costs 150, but it lands in water with a swim speed of 400: 250 are left.
+    const square = create(ReachableSquareSchema, {
+      col: 4,
+      row: 2,
+      costDft: 150,
+      leftAfterDft: 250,
+    });
+    const detail = jumpSummary(
+      scene({ cost: 150, cap: 160, verdict: { kind: 'ok', square } }),
+    ).detail;
+    expect(detail.replace(/\u00a0/g, ' ')).toContain('Depois restam 7,5 m.');
   });
 
   it('is idle until a landing is chosen, and refuses the square of the jumper', () => {

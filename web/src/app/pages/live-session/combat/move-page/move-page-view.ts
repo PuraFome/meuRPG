@@ -10,7 +10,6 @@ import {
   type MoveIndex,
   type SquareVerdict,
   afterLeftText,
-  afterText,
   costTitle,
   extraBreakdown,
   extrasOf,
@@ -49,8 +48,11 @@ const refused = (title: string, detail: string): MoveSummary => ({
 /** What the page knows about the jump that is picked. */
 export interface JumpScene {
   readonly kind: JumpMode;
-  /** The movement left, in decifeet. */
+  /** The movement left that pays for a jump (the floor's), in decifeet. */
   readonly left: number;
+  /** The counter where the jumper stands: the server's, at the speed of its surface; a high jump moves nobody, so what is left
+   * after it is this less the height (no switch of surface to cross). */
+  readonly leftHere: number;
   /** The high jump's height. */
   readonly height: number;
   readonly chosen: Square | null;
@@ -76,7 +78,7 @@ function highJumpSummary(scene: JumpScene): MoveSummary {
   return {
     kind: 'ok',
     title: `Saltar ${metersFixed(h / DFT_PER_FT)}`,
-    detail: `Você sobe sem mudar de quadrado, para agarrar uma borda. ${afterText(scene.left, h)}`,
+    detail: `Você sobe sem mudar de quadrado, para agarrar uma borda. ${afterLeftText(Math.max(scene.leftHere - h, 0))}`,
     warning: '',
     trap: '',
   };
@@ -126,7 +128,11 @@ function longJumpSummary(scene: JumpScene): MoveSummary {
   return {
     kind: 'ok',
     title: `Saltar ${metersFixed(scene.cost / DFT_PER_FT)}`,
-    detail: jumpCardText(scene.cost, scene.left, scene.trapName),
+    detail: jumpCardText(
+      scene.cost,
+      read?.kind === 'ok' ? read.square.leftAfterDft : null,
+      scene.trapName,
+    ),
     warning: names.length > 0 ? provokeWarning(names, 'salto') : '',
     trap: scene.trapName,
   };

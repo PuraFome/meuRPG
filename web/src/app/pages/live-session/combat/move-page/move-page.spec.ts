@@ -339,7 +339,14 @@ describe('MovePage', () => {
     });
 
     it('jumps to the chosen square, costing the length of the line', () => {
-      const { fixture, el, choose, press, jumped } = setup({ jumps });
+      // The server's options for the jump: the square says what is left once the jumper lands on it.
+      const landing = create(GetMoveOptionsResponseSchema, {
+        movementLeftDft: 300,
+        reachable: [
+          create(ReachableSquareSchema, { col: 11, row: 7, costDft: 150, leftAfterDft: 150 }),
+        ],
+      });
+      const { fixture, el, choose, press, jumped } = setup({ jumps, options: landing });
       const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
       radios[1].click();
       radios[1].dispatchEvent(new Event('change'));
