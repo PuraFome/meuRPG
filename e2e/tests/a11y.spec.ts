@@ -8260,6 +8260,68 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
   await scanGearScreens(browser, 'dark', 390);
 });
 
+/** The attunement (#561): the sheet's "Itens mágicos" and "Sintonização" for the owner (window closed) and the master (open), the picker and "Remover item". */
+async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', magicItems: [{ key: 'item:ring-of-protection' }, { key: 'item:bag-of-holding' }] };
+    const table = await tableForCombat(m, p, `Acessibilidade sintonização ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+
+    // The owner outside a rest: the list, the pills and "Muda num descanso".
+    await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const equipment = p.getByRole('region', { name: 'Equipamento' });
+    await expect(equipment.getByRole('heading', { name: /^Itens mágicos/, level: 3 })).toBeVisible();
+    await expect(equipment.getByText('Muda num descanso')).toBeVisible();
+    await expectScreenPasses(p, `Ficha, Itens mágicos ${where}`);
+
+    // The picker and the removal, from the owner's menu.
+    await equipment.getByRole('button', { name: 'Adicionar item mágico' }).click();
+    const picker = p.getByRole('dialog', { name: 'Adicionar item mágico' });
+    await expect(picker.getByRole('button', { name: 'Adicionar item' })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Adicionar item mágico ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(picker).toBeHidden();
+    await equipment.getByRole('button', { name: /^Remover item · / }).first().click();
+    const removal = p.getByRole('dialog', { name: /^Remover .*\?$/ });
+    await expect(removal).toBeVisible();
+    await expectScreenPasses(p, `Remover item ${where}`);
+    await p.keyboard.press('Escape');
+    await expect(removal).toBeHidden();
+
+    // The master attunes at any time.
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    await m.getByRole('button', { name: 'Mudar sintonização' }).click();
+    const att = m.getByRole('dialog', { name: /^Sintonização/ });
+    await expect(att).toBeVisible();
+    await expectScreenPasses(m, `Sintonização, o mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a sintonização passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAttunementScreens(browser, 'light', 1280);
+});
+
+test('a sintonização passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAttunementScreens(browser, 'dark', 390);
+});
+
 /** The weapon marks (#585): the chips on the gear and attacks, the weapon's "⋮" menu for the owner and the master, never for another player. */
 async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
