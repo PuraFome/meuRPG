@@ -1692,6 +1692,8 @@ const (
 	// Flurry of Blows: it comes right after the Attack action, taken with a weapon
 	// or an unarmed strike, and that action has not been taken yet this turn.
 	DisabledReasonCode_DISABLED_REASON_CODE_ATTACK_ACTION_FIRST DisabledReasonCode = 16
+	// A feature action that picks creatures has none it can pick now (out of reach, on the wrong side, down).
+	DisabledReasonCode_DISABLED_REASON_CODE_NO_VALID_TARGET DisabledReasonCode = 17
 	// CombatService.GetTurnOptions: the combatant is surprised (SRD 5.1, "Surprise"): it
 	// does not move, act or react until its first turn ends.
 	DisabledReasonCode_DISABLED_REASON_CODE_SURPRISED DisabledReasonCode = 110
@@ -1734,6 +1736,7 @@ var (
 		14:  "DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN",
 		15:  "DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT",
 		16:  "DISABLED_REASON_CODE_ATTACK_ACTION_FIRST",
+		17:  "DISABLED_REASON_CODE_NO_VALID_TARGET",
 		110: "DISABLED_REASON_CODE_SURPRISED",
 		111: "DISABLED_REASON_CODE_GRAPPLED",
 		100: "DISABLED_REASON_CODE_INCAPACITATED",
@@ -1760,6 +1763,7 @@ var (
 		"DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN":   14,
 		"DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT": 15,
 		"DISABLED_REASON_CODE_ATTACK_ACTION_FIRST":      16,
+		"DISABLED_REASON_CODE_NO_VALID_TARGET":          17,
 		"DISABLED_REASON_CODE_SURPRISED":                110,
 		"DISABLED_REASON_CODE_GRAPPLED":                 111,
 		"DISABLED_REASON_CODE_INCAPACITATED":            100,
@@ -11371,7 +11375,14 @@ type ActionOption struct {
 	TargetWho     FeatureTargetWho `protobuf:"varint,10,opt,name=target_who,json=targetWho,proto3,enum=meurpg.rules.v1.FeatureTargetWho" json:"target_who,omitempty"`
 	TargetRangeFt int32            `protobuf:"varint,11,opt,name=target_range_ft,json=targetRangeFt,proto3" json:"target_range_ft,omitempty"`
 	// The options a player picks one of (at most 8); empty takes no choice.
-	Choices       []*FeatureChoice `protobuf:"bytes,12,rep,name=choices,proto3" json:"choices,omitempty"`
+	Choices []*FeatureChoice `protobuf:"bytes,12,rep,name=choices,proto3" json:"choices,omitempty"`
+	// For a feature action with a limit in a scope (`use_scope`): the uses the scope allows and the uses left in it
+	// ("2 por combate · restam 1"). 0 and 0 when the action has no such limit. `uses_left` stays the uses left of the
+	// action's rest resource.
+	UseTotal int32 `protobuf:"varint,13,opt,name=use_total,json=useTotal,proto3" json:"use_total,omitempty"`
+	UseLeft  int32 `protobuf:"varint,14,opt,name=use_left,json=useLeft,proto3" json:"use_left,omitempty"`
+	// The total of the action's rest resource (`uses_left` is what is left of it); 0 when it has none.
+	ResourceTotal int32 `protobuf:"varint,15,opt,name=resource_total,json=resourceTotal,proto3" json:"resource_total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11488,6 +11499,27 @@ func (x *ActionOption) GetChoices() []*FeatureChoice {
 		return x.Choices
 	}
 	return nil
+}
+
+func (x *ActionOption) GetUseTotal() int32 {
+	if x != nil {
+		return x.UseTotal
+	}
+	return 0
+}
+
+func (x *ActionOption) GetUseLeft() int32 {
+	if x != nil {
+		return x.UseLeft
+	}
+	return 0
+}
+
+func (x *ActionOption) GetResourceTotal() int32 {
+	if x != nil {
+		return x.ResourceTotal
+	}
+	return 0
 }
 
 // FeatureChoice is one option of a feature's use: a key the server checks and the label the player reads.
@@ -14124,7 +14156,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x12\n" +
 	"\x04free\x18\x03 \x01(\x05R\x04free\x12\x14\n" +
 	"\x05total\x18\x04 \x01(\x05R\x05total\x12\x1a\n" +
-	"\bresource\x18\x05 \x01(\tR\bresource\"\x96\x04\n" +
+	"\bresource\x18\x05 \x01(\tR\bresource\"\xf5\x04\n" +
 	"\fActionOption\x12/\n" +
 	"\x06action\x18\x01 \x01(\v2\x17.meurpg.rules.v1.ActionR\x06action\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
@@ -14141,7 +14173,10 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"target_who\x18\n" +
 	" \x01(\x0e2!.meurpg.rules.v1.FeatureTargetWhoR\ttargetWho\x12&\n" +
 	"\x0ftarget_range_ft\x18\v \x01(\x05R\rtargetRangeFt\x128\n" +
-	"\achoices\x18\f \x03(\v2\x1e.meurpg.rules.v1.FeatureChoiceR\achoices\":\n" +
+	"\achoices\x18\f \x03(\v2\x1e.meurpg.rules.v1.FeatureChoiceR\achoices\x12\x1b\n" +
+	"\tuse_total\x18\r \x01(\x05R\buseTotal\x12\x19\n" +
+	"\buse_left\x18\x0e \x01(\x05R\auseLeft\x12%\n" +
+	"\x0eresource_total\x18\x0f \x01(\x05R\rresourceTotal\":\n" +
 	"\rFeatureChoice\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\atext_pt\x18\x02 \x01(\tR\x06textPt\"\xae\x02\n" +
@@ -14465,7 +14500,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x14CREATURE_SIZE_MEDIUM\x10\x03\x12\x17\n" +
 	"\x13CREATURE_SIZE_LARGE\x10\x04\x12\x16\n" +
 	"\x12CREATURE_SIZE_HUGE\x10\x05\x12\x1c\n" +
-	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\x83\b\n" +
+	"\x18CREATURE_SIZE_GARGANTUAN\x10\x06*\xad\b\n" +
 	"\x12DisabledReasonCode\x12$\n" +
 	" DISABLED_REASON_CODE_UNSPECIFIED\x10\x00\x12$\n" +
 	" DISABLED_REASON_CODE_ACTION_USED\x10\x01\x12*\n" +
@@ -14484,7 +14519,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"!DISABLED_REASON_CODE_ATTACKS_USED\x10\r\x12/\n" +
 	"+DISABLED_REASON_CODE_ALREADY_USED_THIS_TURN\x10\x0e\x121\n" +
 	"-DISABLED_REASON_CODE_BONUS_ACTION_SPELL_LIMIT\x10\x0f\x12,\n" +
-	"(DISABLED_REASON_CODE_ATTACK_ACTION_FIRST\x10\x10\x12\"\n" +
+	"(DISABLED_REASON_CODE_ATTACK_ACTION_FIRST\x10\x10\x12(\n" +
+	"$DISABLED_REASON_CODE_NO_VALID_TARGET\x10\x11\x12\"\n" +
 	"\x1eDISABLED_REASON_CODE_SURPRISED\x10n\x12!\n" +
 	"\x1dDISABLED_REASON_CODE_GRAPPLED\x10o\x12&\n" +
 	"\"DISABLED_REASON_CODE_INCAPACITATED\x10d\x12(\n" +

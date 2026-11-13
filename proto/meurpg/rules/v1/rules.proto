@@ -2271,6 +2271,8 @@ enum DisabledReasonCode {
   // Flurry of Blows: it comes right after the Attack action, taken with a weapon
   // or an unarmed strike, and that action has not been taken yet this turn.
   DISABLED_REASON_CODE_ATTACK_ACTION_FIRST = 16;
+  // A feature action that picks creatures has none it can pick now (out of reach, on the wrong side, down).
+  DISABLED_REASON_CODE_NO_VALID_TARGET = 17;
   // CombatService.GetTurnOptions: the combatant is surprised (SRD 5.1, "Surprise"): it
   // does not move, act or react until its first turn ends.
   DISABLED_REASON_CODE_SURPRISED = 110;
@@ -2475,6 +2477,13 @@ message ActionOption {
   int32 target_range_ft = 11;
   // The options a player picks one of (at most 8); empty takes no choice.
   repeated FeatureChoice choices = 12;
+  // For a feature action with a limit in a scope (`use_scope`): the uses the scope allows and the uses left in it
+  // ("2 por combate · restam 1"). 0 and 0 when the action has no such limit. `uses_left` stays the uses left of the
+  // action's rest resource.
+  int32 use_total = 13;
+  int32 use_left = 14;
+  // The total of the action's rest resource (`uses_left` is what is left of it); 0 when it has none.
+  int32 resource_total = 15;
 }
 
 // UseScope is how long a use of a feature counts against its limit.

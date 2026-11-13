@@ -3854,6 +3854,11 @@ message GetTurnOptionsResponse {
   // character, which RollAttack takes as `maneuver_key`, each with the uses left of its
   // resource pool. Empty for an NPC and for a combatant with no such die.
   repeated ManeuverDieOption maneuver_dice = 102;
+  // For each feature action of options.feature_actions with via_use_feature, who it can pick: every creature the caller
+  // sees, each with the reason it cannot be picked (`disabled_reason_pt`: out of reach, wrong side, down). A creature a
+  // player cannot see is never listed (RN-10); the master gets all. No entry can be picked: the action carries
+  // DISABLED_REASON_CODE_NO_VALID_TARGET.
+  repeated ResourceTargets feature_targets = 103;
 }
 
 // ManeuverDieOption is a weapon-attack table die the combatant can add to an attack roll.
