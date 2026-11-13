@@ -391,7 +391,12 @@ func (s *Service) afterFiring(ctx context.Context, campaignID string, fired *tra
 	logging.Event(ctx, s.logger, "trap.triggered", slog.String("map_id", fired.MapID), slog.String("point_id", fired.PointID),
 		slog.Int("caught", len(fired.Caught)), slog.Bool("in_combat", enc.ID != ""))
 	s.traps.TrapChanged(ctx, campaignID, fired.MapID, fired.PointID)
-	if enc.ID != "" {
+	switch {
+	case enc.ID == "":
+	case fired.addsNothingForAnyPlayer(): // creatures only the master is given: the players cannot count his additions to a firing
+		s.publishEncounterChangedToMaster(campaignID, enc)
+		s.publishLogChanged(ctx, campaignID, enc.ID, false)
+	default:
 		s.publishEncounterChanged(ctx, campaignID, enc)
 		s.publishLogChanged(ctx, campaignID, enc.ID, true)
 	}

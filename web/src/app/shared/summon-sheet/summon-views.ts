@@ -10,7 +10,12 @@ import { effectivePreference } from '../../core/campaigns/dice-labels';
 import { type SlotRow, freeText } from '../../core/combat/cast-flow';
 import { circleLabel } from '../../core/combat/combat-grid';
 import { groupFeminine, pluralName } from '../../core/combat/creature-names';
-import { beastAttacks, beastLine, formSubtitle } from '../../core/creatures/creature-format';
+import {
+  beastAttacks,
+  beastLine,
+  formSubtitle,
+  isTableCreature,
+} from '../../core/creatures/creature-format';
 import { creaturesText, replacesText } from '../../core/creatures/summon-labels';
 import { tight } from '../../core/format/text';
 import { metersText } from '../../core/units';
@@ -88,8 +93,14 @@ export function subtitleOf(i: SubtitleInput): string {
     );
   }
   if (s.grantedBy) {
+    // "Druida 3 · 1 ação · gasta 1 uso (resta 1)": where the summon comes from, how long it takes and what it spends.
     return tight(
-      `Habilidade · ${s.castingTimePt}${i.inCombat && s.concentration ? ' · concentração' : ''}`,
+      joinDotsOf([
+        s.grantedByLabelPt || 'Habilidade',
+        s.castingTimePt,
+        i.inCombat && s.concentration ? 'concentração' : '',
+        `gasta 1 uso (${s.usesLeft === 1 ? 'resta' : 'restam'} ${s.usesLeft})`,
+      ]),
     );
   }
   return tight(
@@ -148,6 +159,8 @@ export interface RowsInput {
   readonly beasts: readonly CreatureSummary[] | null;
   readonly beastBlocks: ReadonlyMap<string, Creature>;
   readonly forms: readonly Creature[] | null;
+  /** The list is the creatures a table's feature or spell brings: a row says what a beast's row does (ND, CA, PV, speed, attacks), the table's first. */
+  readonly bring?: boolean;
 }
 
 /** The list of the sheet: the beasts the search found, or the forms the option offers, by name. */
@@ -159,21 +172,43 @@ export function rowsOf(i: RowsInput): readonly ChoiceRow[] {
   if (o.forms.length === 0) {
     return (i.beasts ?? []).map((b) => {
       const block = i.beastBlocks.get(b.key);
+      const table = isTableCreature(b.key);
       return {
         key: b.key,
         title: b.namePt,
         subtitle: beastLine(b, block),
-        attacks: block ? beastAttacks(block) : undefined,
+        // A table creature's numbers are the owner's (the row says so): the base's attacks would contradict that note.
+        attacks: block && !table ? beastAttacks(block) : undefined,
+        table,
       };
     });
   }
   const blocks = new Map((i.forms ?? []).map((c) => [c.summary?.key ?? '', c]));
-  return o.forms
-    .map((f) => {
-      const block = blocks.get(f.monsterKey);
-      return { key: f.monsterKey, title: f.namePt, subtitle: block ? formSubtitle(block) : '' };
-    })
-    .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
+  const rows = o.forms.map((f): ChoiceRow => {
+    const block = blocks.get(f.monsterKey);
+    const table = isTableCreature(f.monsterKey);
+    if (!i.bring || !block?.summary) {
+      return {
+        key: f.monsterKey,
+        title: f.namePt,
+        subtitle: block ? formSubtitle(block) : '',
+        table,
+      };
+    }
+    return {
+      key: f.monsterKey,
+      title: f.namePt,
+      subtitle: beastLine(block.summary, block),
+      // A table creature's numbers are the owner's (the row says so): the base's attacks would contradict that note.
+      attacks: table ? undefined : beastAttacks(block),
+      table,
+    };
+  });
+  // The table's creatures first (in a list to bring), then the book's, each by name.
+  return rows.sort(
+    (a, b) =>
+      (i.bring ? Number(b.table) - Number(a.table) : 0) || a.title.localeCompare(b.title, 'pt-BR'),
+  );
 }
 
 export function listLabelOf(
@@ -246,8 +281,8 @@ export function costLineOf(
     return tight(`Conjurar como ritual · ${s.castingTimePt} · sem gastar espaço`);
   }
   if (s.grantedBy) {
-    const made = count > 1 ? `${creaturesText(count)} · ` : '';
-    return tight(`${made}${s.castingTimePt} · gasta um uso · restam ${s.usesLeft}`);
+    // The subtitle says the time and the use; the line is left for what it adds, how many come.
+    return count > 1 ? tight(creaturesText(count)) : '';
   }
   const spend = slot
     ? `gasta um espaço de ${circleLabel(slot.level)}${slot.pact ? ' (pacto)' : ''}`

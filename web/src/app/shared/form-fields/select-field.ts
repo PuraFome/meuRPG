@@ -113,6 +113,11 @@ export interface SelectGroup {
       width: 100%;
     }
 
+    // A value wider than the field ends in an ellipsis, never cut under the arrow.
+    select {
+      text-overflow: ellipsis;
+    }
+
     // The customizable select (Chromium 135 and up): the list is ours to draw. Anywhere else the rules below do not apply.
     @supports (appearance: base-select) {
       select.rich,

@@ -71,6 +71,8 @@ type logEntry struct {
 	actorUser *string
 	// masterOnly is a line only the master gets, whatever the combatants.
 	masterOnly bool
+	// gear is the swap of a GEAR_SWAPPED line: its payload is its own type (equip_event.go).
+	gear gearSwapEvent
 	// shapeStarted: a Wild Shape line is the druid becoming the beast, not leaving it.
 	shapeStarted bool
 	// seq is the highest session_events.seq among the events in hosts: a later event that joins the entry raises it.
@@ -176,7 +178,7 @@ func (s *Service) ListCombatLog(
 	}
 	entries := s.logEntries(ctx, m, &snap)
 	res := &playv1.ListCombatLogResponse{}
-	stampSeqs(entries, snap.events)
+	stampSeqs(entries, snap.events, v)
 	since := sinceSeqOf(req.Msg.GetSinceSeq(), v, snap.events, entries, snap.cs)
 	res.Full = since == 0
 	if !v.master {
@@ -338,7 +340,7 @@ func changesHeldView(e playdb.ListEncounterEventsRow, sinceSeq int64, v combatVi
 	switch {
 	case e.Kind == eventActionUndone:
 		return undoneMaySeen(ev, v, events)
-	case ev.Secret || !ev.seenByViewer(v):
+	case !ev.heardBy(v):
 		return false
 	case e.Kind == eventCombatantsAdded && addedAllHidden(ev, e.Payload):
 		return false // every combatant added was hidden: no player has a view to change
@@ -374,7 +376,7 @@ func undoneMaySeen(undo actionEvent, v combatViewer, events []playdb.ListEncount
 		if !slices.Contains(ids, e.ID) {
 			continue
 		}
-		if ev, err := readEvent(e.Payload); err == nil && !ev.Secret && ev.seenByViewer(v) {
+		if ev, err := readEvent(e.Payload); err == nil && ev.heardBy(v) {
 			return true
 		}
 	}
@@ -398,17 +400,29 @@ func heldLineHas(ids []string, sinceSeq int64, v combatViewer, entries []*logEnt
 		if e.seq > sinceSeq || e.masterOnly || e.ev.Secret || !e.ev.seenByViewer(v) {
 			continue
 		}
-		if slices.ContainsFunc(ids, func(id string) bool { return e.names(id) }) {
+		if slices.ContainsFunc(ids, func(id string) bool { return e.names(id, v) }) {
 			return true
 		}
 	}
 	return false
 }
 
-// names says the entry has the combatant as its actor, its target or one of its hits. These are the only fields the visibility rules
+// heardBy says the viewer hears of the event: the master of all of them; a player of the ones that are not Secret, that the fog
+// shows them, and that give them something to read (a firing that only adds creatures the player is not given changes no line of
+// theirs).
+func (ev actionEvent) heardBy(v combatViewer) bool {
+	return v.master || (!ev.Secret && ev.seenByViewer(v) && !ev.Trap.addsNothingFor(v))
+}
+
+// names says the entry has the combatant as its actor, its target or one of its hits, or as a creature of a firing the viewer is given. These are the only fields the visibility rules
 // read today; a rule that reads another combatant of the line (an area's caught list, a rider's target) must extend it.
-func (e *logEntry) names(id string) bool {
+func (e *logEntry) names(id string, v combatViewer) bool {
 	if e.ev.Actor == id || e.ev.Target == id {
+		return true
+	}
+	// A creature a firing caught: its being shown or hidden changes the line, but only for a viewer the line gives it to. One hidden
+	// when the trap fired, or that this viewer did not see, is not in their line, and a toggle of it must tell them nothing.
+	if e.ev.Trap != nil && slices.ContainsFunc(e.ev.Trap.Caught, func(cc trapCaughtEvent) bool { return cc.Target == id && !cc.hiddenFrom(v) }) {
 		return true
 	}
 	return slices.ContainsFunc(e.ev.Hits, func(h castHit) bool { return h.Target == id })
@@ -424,17 +438,47 @@ func lastSeqOf(events []playdb.ListEncounterEventsRow) int64 {
 	return last
 }
 
-// stampSeqs sets each entry's seq: the highest number among the events it shows.
-func stampSeqs(entries []*logEntry, events []playdb.ListEncounterEventsRow) {
+// stampSeqs sets each entry's seq: the highest number among the events it shows. A player's counts the entry's own event (the line
+// is theirs or it is not shown at all: a reactor's own player gets the line of a reaction the fog or Secret hides from the table) and,
+// of the events that join it, only the ones the player hears of (not Secret, seen, not an addition of creatures they are not given):
+// an event that joins a line the player holds without being told to them (the damage a master applies to a hidden target of a cast
+// they see, a hidden NPC added to a firing they saw) moves nothing they read, so it cannot move the number of that line, nor the
+// number of their answer.
+func stampSeqs(entries []*logEntry, events []playdb.ListEncounterEventsRow, v combatViewer) {
+	heard := heardJoined(entries, events, v)
 	seqOf := make(map[string]int64, len(events))
 	for _, e := range events {
 		seqOf[e.ID] = int64(e.Seq)
 	}
 	for _, entry := range entries {
-		for _, id := range entry.hosts {
-			entry.seq = max(entry.seq, seqOf[id])
+		for i, id := range entry.hosts {
+			if i == 0 || v.master || heard[id] {
+				entry.seq = max(entry.seq, seqOf[id])
+			}
 		}
 	}
+}
+
+// heardJoined are the events that join an entry (not its first) which the player hears of. Only those payloads are read, and none
+// for the master, who hears of all.
+func heardJoined(entries []*logEntry, events []playdb.ListEncounterEventsRow, v combatViewer) map[string]bool {
+	heard := map[string]bool{}
+	if v.master {
+		return heard
+	}
+	joined := map[string]bool{}
+	for _, entry := range entries {
+		for _, id := range entry.hosts[min(1, len(entry.hosts)):] {
+			joined[id] = true
+		}
+	}
+	for _, e := range events {
+		if joined[e.ID] {
+			ev, err := readEvent(e.Payload)
+			heard[e.ID] = err == nil && ev.heardBy(v)
+		}
+	}
+	return heard
 }
 
 // logViewer is who reads the log: the member, and for a player the table's rule on the
@@ -525,6 +569,7 @@ var logHandlers = map[string]logHandler{
 	eventCombatantsAdded:         (*logBuilder).monstersAdded,
 	eventLegendarySpent:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT),
 	eventRechargeRolled:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED),
+	eventGearSwapped:             gearSwappedLine,
 	eventCombatantHiddenSet:      (*logBuilder).hiddenSet,
 	eventActionTaken:             (*logBuilder).actionTaken,
 	eventHitPointsAdjusted:       masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED),
@@ -607,6 +652,17 @@ func masterLine(kind playv1.CombatLogKind) logHandler {
 		entry.kind, entry.masterOnly = kind, true
 		return true
 	}
+}
+
+// gearSwappedLine is the handler of a gear swap: a line of the master's and of the character's owner (visibility), with the
+// swap read from the event's own payload.
+func gearSwappedLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry) bool {
+	gear, err := readGearSwap(e.Payload)
+	if err != nil {
+		return false
+	}
+	entry.kind, entry.masterOnly, entry.gear = playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED, true, gear
+	return true
 }
 
 // effectLine is the handler of the events of the effects that last.
@@ -988,7 +1044,7 @@ func (e *logEntry) visibility(v combatViewer, byID map[string]playdb.Combatant, 
 	}
 	// The roll of a Recharge is the line of the master and of the player who controls the creature (RN-29), on
 	// any map: the row is secret and fogged for everybody else.
-	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED && v.owns(actor) {
+	if (e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED || e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED) && v.owns(actor) {
 		return true, true
 	}
 	return visible && e.hitsVisible(byID), seen
@@ -1054,6 +1110,7 @@ var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:      true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:           true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:          true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:    true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:        true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:      true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED: true,
@@ -1101,6 +1158,7 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:      (*logEntry).fillMonsters,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:     (*logEntry).fillLegendarySpent,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:     (*logEntry).fillRechargeRolled,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:        (*logEntry).fillGearSwapped,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:           (*logEntry).fillHitRider,
@@ -1158,6 +1216,12 @@ func (e *logEntry) fillLegendarySpent(_ *logViewing, out *playv1.CombatLogEntry)
 // fillRechargeRolled is the line of a Recharge roll, the master's and the creature's controller's: the action, the face and whether it recharged.
 func (e *logEntry) fillRechargeRolled(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	out.Recharge = &playv1.CombatLogRecharge{ActionName: e.ev.RechargeName, Face: e.ev.RechargeFace, Recharged: e.ev.Recharged}
+	return true
+}
+
+// fillGearSwapped is the line of a swap of gear, the master's and the owner's: the piece, whether it is equipped now and what it cost.
+func (e *logEntry) fillGearSwapped(_ *logViewing, out *playv1.CombatLogEntry) bool {
+	out.GearSwapped = &playv1.CombatLogGearSwapped{NamePt: e.gear.Name, Kind: e.gear.Kind, Equipped: !e.gear.EquippedBefore, Cost: e.gear.Cost}
 	return true
 }
 
@@ -1635,8 +1699,7 @@ func (e *logEntry) trapEntry(ctx context.Context, v combatViewer, byID map[strin
 			}
 			// Hidden when it fired stays hidden; on a fog map an NPC the firing caught is
 			// the line of the players who saw it then.
-			cc := e.ev.Trap.Caught[i]
-			return cc.Hidden || (cc.Fogged && !slices.Contains(cc.SeenBy, v.userID))
+			return e.ev.Trap.Caught[i].hiddenFrom(v)
 		},
 		label: func(id string) string { return byID[id].Label },
 		names: func(key string) string { return names.contentName(ctx, key) },
