@@ -23,7 +23,7 @@ func (p *puzzleTable) puzzleHints(t *testing.T, quiet ...string) *hintRig {
 	p.h.svc.puzzles.hintEvery = time.Nanosecond
 	p.h.svc.puzzles.hints.after = p.h.hints.After
 	g := newHintRig(t, p.h, p.campaignID, p.master, map[string]*user{"Ana": p.ana, "Caio": p.caio, "Bia": p.bia}, quiet...)
-	g.unnumbered = []string{kMapChanged}
+	g.unnumbered = []string{kMapChanged, "*playv1.WatchGameSessionResponse_PuzzleChanged_"}
 	return g
 }
 

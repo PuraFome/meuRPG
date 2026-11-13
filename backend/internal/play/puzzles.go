@@ -563,15 +563,17 @@ func (s *Service) clueCheck(ctx context.Context, tx pgx.Tx, campaignID string, o
 // is not queued twice. The write moves the session's number whether or not the gate lets the hint out at once.
 func (s *Service) tellPuzzleChanged(h *hints, campaignID, puzzleID string, later ...time.Duration) {
 	h.touch()
-	h.after(func(_ context.Context, say sayFn) {
+	// The gate holds a hint back and sends it later, when the session's number has moved on: it goes without a number, which the
+	// write's own touch already moved.
+	h.after(func(_ context.Context, _ sayFn) {
 		every := s.puzzles.hintEvery
 		if every <= 0 {
 			every = defaultHintEvery
 		}
-		s.puzzles.hints.fire(puzzleID, every, func() { sayPuzzleChanged(say, campaignID, puzzleID) })
+		s.puzzles.hints.fire(puzzleID, every, func() { sayPuzzleChanged(s.sayNow, campaignID, puzzleID) })
 		for _, after := range later { // the apps read the run again at each moment the change asked for
 			if after > 0 {
-				s.puzzles.hints.schedule(after, func() { sayPuzzleChanged(say, campaignID, puzzleID) })
+				s.puzzles.hints.schedule(after, func() { sayPuzzleChanged(s.sayNow, campaignID, puzzleID) })
 			}
 		}
 	})
