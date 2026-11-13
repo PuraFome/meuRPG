@@ -2,10 +2,10 @@ import { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { MessageInitShape } from '@bufbuild/protobuf';
 
 import type {
-  TableSpellEffect,
   TableSpellSchema,
   TableSpellZone,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { emptyEffect, type SpellEffectDraft } from './spell-effect-draft';
 import type { SummonDraft } from './summon-draft';
 
 /**
@@ -73,13 +73,14 @@ export interface SpellDraft {
   summon: SummonDraft | null;
   /** The target and the range "Invocar" replaced with the caster's: given back when the mechanic is left and they are still the caster's. */
   beforeSummon?: { target: TargetChoice; range: RangeChoice };
-  /** What the form has no control for: the stored effect and zone go back as they were loaded. */
+  /** What "Deixa um efeito nos alvos" edits (#579): sent only while it is on. */
+  effect: SpellEffectDraft;
+  /** What the form has no control for: the stored zone goes back as it was loaded. */
   kept?: KeptSpellFields;
 }
 
 /** The parts of a spell the editor cannot show yet; saving sends them untouched. */
 export interface KeptSpellFields {
-  readonly effect?: TableSpellEffect;
   readonly zone?: TableSpellZone;
 }
 
@@ -130,5 +131,6 @@ export function emptySpell(): SpellDraft {
     healModifier: true,
     otherDamage: [],
     summon: null,
+    effect: emptyEffect(),
   };
 }

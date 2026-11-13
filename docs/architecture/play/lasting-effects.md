@@ -95,6 +95,24 @@ Six modifier kinds are read by the play module for SRD and table effects alike.
   The end clears the pool only while it is no larger than the claim of the row that ends.
   Outside a combat the same holds on the vitals of each character the cast reaches (`giveCharacterTempHP`, `afterCharacterEffectsGone`).
 
+## Auras
+
+An aura is a lasting effect that is not put on its targets: a row on its bearer (kind `effect`, the caster of a table spell) whose modifiers include one of kind `aura` (`radius_ft`, `affects`: `self`, `allies` or `enemies`), kept in the row's `modifiers` JSON, so there is no column and no migration.
+The card carries `LastingEffect.radius_ft` and `affects`, read by the master and the bearer's owner only.
+Code in `lasting_effects_aura.go`.
+
+- **No position is stored.** `effectModifiers` leaves an aura row out of the bearer's own readers; `withAuras(states, cs, viewer)` builds a copy of the states for one roll in which each creature the aura reaches has a view row (the aura mark removed, the same source key and id), once for each source.
+  `creatureFacts`, `rollBonusesOf` and `bonusSources`, `modifiersOf` and `effectResistancesOf` and `checkBonusesOf` then run unchanged on the copy, and `refreshCombatants` keeps reading the real rows.
+  The sites that build a roll call it through `statesAtRoll` (attack, damage, saving throws, checks, concentration, traps, contests, the reaction view's save, the effect save).
+- **Who is reached.** The side is the bearer's (`Side`), the distance is `distanceFt` in squares of 5 feet, a creature with no place is not reached (the master judges, RN-25), `allies` leaves the bearer out and `self` is the bearer alone.
+  A defeated or dismissed bearer gives nothing, and a dismissed creature receives nothing.
+- **What it can give.** Only the kinds a roll reads (`roll_die`, `roll_bonus`, `check_bonus`, the advantages and disadvantages, `resistance`).
+  `ac_bonus`, `speed_add`, `speed_multiplier`, `temp_hp` and conditions are written on the creature when an effect lands, so an aura cannot give them (`auraRefusedKinds`, refused at `effect.modifiers[i].kind`).
+- **Who reads what.** A player reads an aura's bonus on their own roll as the source's name, or "Outra fonte" when the bearer is hidden from them or the effect is for its owner only (`PlayerVisible` false on the view row).
+  The radius is never sent to a player who does not own the aura.
+  The leak rows plant a radius and a bonus and read them as every player, with the master and the bearer's owner as positive controls.
+- **Not built.** A feature's aura (Paladin's Aura of Protection): table features have no lasting row, so an aura of a feature has nowhere to hang.
+
 Who reads what:
 
 - The master and the target's player read the card, with its tags.

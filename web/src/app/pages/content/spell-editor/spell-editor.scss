@@ -201,3 +201,9 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+// "Deixa um efeito nos alvos" (#579): a rule above it, the block draws the rest.
+.effect {
+  padding-top: var(--mr-space-4);
+  border-top: 1px dashed var(--mr-rule);
+}

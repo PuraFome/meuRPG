@@ -14,6 +14,8 @@ import {
   TableSpellTargetKind,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { rangeFeet, rangeMeters } from './effect-draft';
+import { effectUnreadable } from './spell-effect-checks';
+import { draftToEffect, effectToDraft } from './spell-effect-draft';
 import { draftToSpellSummon } from './spell-summon';
 import { emptySummon, summonToDraft } from './summon-draft';
 import {
@@ -147,12 +149,9 @@ function damageToDraft(s: TableSpell): Partial<SpellDraft> {
   return out;
 }
 
-/** The effect and the zone of a stored spell: no control shows them, so the draft carries them through. */
+/** The zone of a stored spell: no control shows it, so the draft carries it through. The effect has its own block. */
 function keptToDraft(s: TableSpell): Partial<SpellDraft> {
-  if (!s.effect && !s.zone) {
-    return {};
-  }
-  return { kept: { effect: s.effect, zone: s.zone } };
+  return { effect: effectToDraft(s.effect), ...(s.zone ? { kept: { zone: s.zone } } : {}) };
 }
 
 /** A stored spell, as a form. */
@@ -296,7 +295,7 @@ export function draftToSpell(d: SpellDraft): SpellInit {
     damage: damageInit(d),
     ...mechanicInit(d),
     ...(d.mechanic === 'summon' && d.summon ? { summon: draftToSpellSummon(d.summon) } : {}),
-    ...(d.kept?.effect ? { effect: d.kept.effect } : {}),
+    ...effectInit(d),
     ...(d.kept?.zone ? { zone: d.kept.zone } : {}),
   };
 }
@@ -333,6 +332,12 @@ export function withTarget(d: SpellDraft, target: TargetChoice): SpellDraft {
   return next;
 }
 
+/** The effect of the spell, while the block is on. */
+function effectInit(d: SpellDraft): Pick<SpellInit, 'effect'> | Record<string, never> {
+  const effect = draftToEffect(d.effect);
+  return effect ? { effect } : {};
+}
+
 /** The paths of the count fields on screen whose text is no whole number the save can send (a NaN in the draft), in the order of the form. */
 export function unreadableSpellPaths(d: SpellDraft): string[] {
   const bad = (n: number) => Number.isNaN(n);
@@ -345,6 +350,7 @@ export function unreadableSpellPaths(d: SpellDraft): string[] {
     ...(bad(d.perSlot) && d.level > 0 && (d.target === 'creatures' || d.target === 'creature')
       ? ['table_spell.target.per_slot_level']
       : []),
+    ...effectUnreadable(d.effect),
   ];
 }
 

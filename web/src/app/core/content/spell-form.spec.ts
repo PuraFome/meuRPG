@@ -938,6 +938,16 @@ const EXPECTED: Record<string, unknown> = {
   'target of a heal with no dice': 'Uma criatura',
   'damage of a heal with no dice': '',
 };
+const EFFECT_OFF = {
+  on: false,
+  applies: 'all',
+  conditions: [],
+  rows: [],
+  visibility: 'public',
+  label: '',
+  aura: null,
+};
+
 const EXPECTED_STORED: Record<string, unknown> = {
   'an empty spell': {
     d: {
@@ -979,6 +989,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      effect: EFFECT_OFF,
     },
     request: {
       namePt: '',
@@ -1037,6 +1048,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      effect: EFFECT_OFF,
     },
     request: {
       namePt: '',
@@ -1098,6 +1110,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
         { damageTypeKey: 'damage-type:necrotic', dice: '1d4', perSlotLevel: '', perTier: '' },
       ],
       summon: null,
+      effect: EFFECT_OFF,
     },
     request: {
       namePt: '',
@@ -1160,6 +1173,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      effect: EFFECT_OFF,
     },
     request: {
       namePt: '',
@@ -1219,6 +1233,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      effect: EFFECT_OFF,
     },
     request: {
       namePt: '',
@@ -1278,6 +1293,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      effect: EFFECT_OFF,
     },
     request: {
       namePt: '',

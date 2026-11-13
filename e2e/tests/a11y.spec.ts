@@ -6067,6 +6067,38 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByText('Sem recurso, tempo nem duração: a magia tem os seus.')).toBeVisible();
       await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Editor de magia, Invocar ${where}`);
+      // The effect a spell leaves (#579, boards 579-01, 579-02 and 579-04): off on a spell that does not last, on and empty, a change of each
+      // shape, the aura, and the refusals that land on the row that wrote them.
+      await open(m, `/campaigns/${campaignId}/content/new/spell`);
+      await m.getByLabel('Nome', { exact: true }).fill('Bênção da Mesa');
+      await expect(m.getByRole('switch', { name: 'Deixa um efeito nos alvos' })).toBeDisabled();
+      await expectScreenPasses(m, `Editor de magia, o efeito desligado numa magia instantânea ${where}`);
+      await m.getByLabel('Duração', { exact: true }).selectOption({ label: 'Até ser dissipada' });
+      await m.getByRole('switch', { name: 'Deixa um efeito nos alvos' }).click();
+      await expect(m.getByText('Ponha ao menos uma condição ou uma mudança. Um efeito vazio não é salvo.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, o efeito ligado e vazio ${where}`);
+      await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
+      await m.getByLabel('Tipo', { exact: true }).selectOption({ label: 'Bônus nas jogadas' });
+      await m.getByRole('radio', { name: 'Um dado' }).check();
+      await expect(m.getByText('+1d4 em ataques e resistências')).toBeVisible();
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Editor de magia, o efeito com um dado nas jogadas ${where}`);
+      await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
+      await m.getByLabel('Tipo', { exact: true }).last().selectOption({ label: 'Vantagem ou desvantagem' });
+      await expectScreenPasses(m, `Editor de magia, o efeito com vantagem ${where}`);
+      await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
+      await m.getByLabel('Tipo', { exact: true }).last().selectOption({ label: 'PV temporários' });
+      await m.getByLabel('Quantos', { exact: true }).fill('1500');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(m.getByLabel('Quantos', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Editor de magia, a recusa de um número fora da faixa ${where}`);
+      await m.getByRole('radio', { name: /Só o dono do alvo e você/ }).check();
+      await expectScreenPasses(m, `Editor de magia, o efeito só para o dono ${where}`);
+      await m.getByRole('radio', { name: 'Só quem conjura' }).first().check();
+      await m.getByRole('switch', { name: 'Em volta de quem conjura (aura)' }).click();
+      await expect(m.getByLabel('Até onde alcança')).toHaveValue('9');
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Editor de magia, a aura ${where}`);
       const undead = await createEntryRPC(m, campaignId, 'tableCreature', damageCreatureBody());
       await open(m, entryRoute(campaignId, undead));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Defunto do Vale');

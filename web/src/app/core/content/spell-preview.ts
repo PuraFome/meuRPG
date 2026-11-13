@@ -1,3 +1,4 @@
+import { effectFieldPaths } from './spell-effect-checks';
 import { feetToMeters, formatMeters } from '../units';
 import type {
   DurationKindKey,
@@ -234,5 +235,5 @@ export function spellFieldPaths(d: SpellDraft): Set<string> {
     ...targetFieldPaths(d),
     ...mechanicFieldPaths(d),
   ];
-  return new Set(paths.map((x) => `table_spell.${x}`));
+  return new Set([...paths.map((x) => `table_spell.${x}`), ...effectFieldPaths(d.effect)]);
 }

@@ -617,6 +617,12 @@ An archived or switched-off spell has no effect.
   A `visibility` that is not `public` or `owner`.
   An `applies` the spell cannot honor, at `.effect.applies`.
   The path is `spells[i].effect...`, and `table_spell.effect...` in the API.
+- **An aura.**
+  `aura` (`TableEffectAura`: `radius_ft`, 5 to 120 in steps of 5, and `affects`) makes the effect an aura around the caster instead of an effect on the targets: `checkEffectAura`, and `tableEffectDef` puts a modifier of kind `aura` first.
+  The spell must target the caster and last, `conditions` is empty, and the modifiers are only those a roll reads (`ac_bonus`, `speed_add`, `speed_multiplier` and `temp_hp` are refused at `.effect.modifiers[i].kind`).
+  Refused at `.effect.aura.radius_ft`, `.effect.aura.affects` or `.effect.aura`.
+  `EffectTagsPT` writes "Aura de 9 m: aliados".
+  How the play module reads it is in [Lasting effects](play/lasting-effects.md#auras).
 - **Tags.**
   `EffectTagsPT` writes the short Portuguese tags of the owner's card ("CA +2", "PV temporários: 5").
   `player_label_pt` is the label the other players read.

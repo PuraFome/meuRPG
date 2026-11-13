@@ -1,0 +1,183 @@
+<app-switch-field
+  label="Deixa um efeito nos alvos"
+  [checked]="effect().on"
+  [disabled]="locked()"
+  [path]="path('')"
+  [describedby]="locked() ? 'spell-effect-lock' : ''"
+  (toggled)="turnOn($event)"
+/>
+@if (locked()) {
+  <p class="line lock" id="spell-effect-lock" role="note"><mat-icon aria-hidden="true">lock</mat-icon>Uma magia instantânea não deixa efeito. Escolha uma duração em Dados da magia.</p>
+}
+@if (effect().on) {
+  <p class="line duration" role="note">
+    <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+    <span>
+      @if (context().lasts) {Dura <strong>{{ context().durationText }}</strong>} @else {Instantânea: o efeito não dura}
+      @if (context().concentration) { · <mat-icon class="inline" aria-hidden="true">center_focus_strong</mat-icon> <strong>Concentração</strong> }
+    </span>
+    <span class="line__side">Vêm da duração e da concentração da magia.</span>
+  </p>
+  @for (m of issues(''); track m) {
+    <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+  }
+
+  <app-switch-field
+    label="Em volta de quem conjura (aura)"
+    [checked]="effect().aura !== null"
+    [disabled]="!context().self && effect().aura === null"
+    [path]="path('aura')"
+    onWord="Ligado"
+    offWord="Desligado"
+    (toggled)="setAura($event)"
+  />
+  @if (!context().self && effect().aura === null) {
+    <p class="line lock" role="note"><mat-icon aria-hidden="true">lock</mat-icon>Uma aura pede o alvo “Só quem conjura”.</p>
+  }
+
+  @if (effect().aura; as aura) {
+    <div class="row row--2">
+      <app-text-field
+        label="Até onde alcança"
+        suffix="m"
+        inputmode="decimal"
+        hint="Em passos de 1,5 m, de 1,5 m a 36 m."
+        [value]="aura.radiusM"
+        [path]="path('aura.radius_ft')"
+        [issues]="issues('aura.radius_ft')"
+        (valueChange)="patchAura({ radiusM: $event })"
+      />
+      <div class="group" [attr.data-field]="path('aura.affects')">
+        <app-segmented label="Quem a aura alcança" [segments]="affectsOptions" [value]="aura.affects" (choose)="patchAura({ affects: $event })" />
+        <app-field-note [issues]="issues('aura.affects')" hint="Contado a partir de quem conjura, no momento de cada jogada." />
+      </div>
+    </div>
+    <p class="line"><mat-icon aria-hidden="true">info</mat-icon>{{ auraRefusedLine }}</p>
+    @for (m of issues('aura'); track m) {
+      <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+    }
+  } @else {
+    <app-radio-cards
+      label="Em quem fica"
+      [options]="appliesCards()"
+      [value]="effect().applies"
+      [path]="path('applies')"
+      [issues]="issues('applies')"
+      (valueChange)="applies($event)"
+    />
+    <div class="row row--2">
+      <app-search-pick
+        label="Condições"
+        placeholder="Procurar condição"
+        [options]="conditionOptions"
+        [chips]="chips()"
+        [path]="path('conditions')"
+        [issues]="issues('conditions')"
+        hint="Do SRD, no máximo 8."
+        (added)="addCondition($event)"
+        (removed)="removeCondition($event)"
+      />
+    </div>
+  }
+
+  <div class="group">
+    <p class="group__head"><span class="group__label" id="spell-effect-changes">O que muda</span><span class="count">{{ effect().rows.length }} de {{ maxItems }}</span></p>
+    @for (r of effect().rows; track r.id; let i = $index) {
+      <div class="rowcard" role="group" aria-labelledby="spell-effect-changes">
+        <div class="rowcard__head">
+          <app-select-field
+            label="Tipo"
+            [options]="kindOptions()"
+            [value]="r.kind === 'unknown' ? '' : r.kind"
+            [path]="rowPath(i, 'kind')"
+            [issues]="rowIssues(i, 'kind')"
+            [placeholder]="r.kind === 'unknown' ? 'Um tipo que não vale aqui' : 'Escolha…'"
+            (valueChange)="setKind(r.id, $event)"
+          />
+          <button type="button" class="remove" [attr.aria-label]="'Tirar a mudança ' + (i + 1)" (click)="removeRow(r.id)"><mat-icon aria-hidden="true">delete_outline</mat-icon></button>
+        </div>
+        @switch (r.kind) {
+          @case ('ac_bonus') {
+            <app-text-field label="Quantos" inputmode="numeric" hint="De 1 a 20." [value]="r.value" [path]="rowPath(i, 'value')" [issues]="rowIssues(i, 'value')" (valueChange)="patchRow(r.id, { value: $event })" />
+          }
+          @case ('temp_hp') {
+            <app-text-field label="Quantos" inputmode="numeric" hint="Chegam com o efeito; se o alvo já tem mais, fica o maior. Somem quando o efeito acaba." [value]="r.value" [path]="rowPath(i, 'value')" [issues]="rowIssues(i, 'value')" (valueChange)="patchRow(r.id, { value: $event })" />
+          }
+          @case ('check_bonus') {
+            <div class="row row--2">
+              <app-select-field label="Perícia" [options]="skills()" [value]="r.skill" [path]="rowPath(i, 'skill')" [issues]="rowIssues(i, 'skill')" (valueChange)="patchRow(r.id, { skill: $event })" />
+              <app-text-field label="Bônus" inputmode="numeric" hint="De -20 a 20." [value]="r.value" [path]="rowPath(i, 'value')" [issues]="rowIssues(i, 'value')" (valueChange)="patchRow(r.id, { value: $event })" />
+            </div>
+          }
+          @case ('roll') {
+            <div class="row row--roll">
+              <app-segmented label="Número ou dado" [segments]="fixedOrDie" [value]="r.rollMode" (choose)="patchRow(r.id, { rollMode: $event })" />
+              @if (r.rollMode === 'die') {
+                <app-select-field label="Dado" [options]="dice" [value]="r.die" [path]="rowPath(i, 'die')" [issues]="rowIssues(i, 'die')" (valueChange)="patchRow(r.id, { die: $event })" />
+                <app-select-field label="Soma ou tira" [options]="signs" [value]="'' + r.sign" [path]="rowPath(i, 'sign')" [issues]="rowIssues(i, 'sign')" (valueChange)="patchRow(r.id, { sign: +$event === -1 ? -1 : 1 })" />
+              } @else {
+                <app-text-field label="Quanto" inputmode="numeric" hint="De -20 a 20, sem o 0." [value]="r.value" [path]="rowPath(i, 'value')" [issues]="rowIssues(i, 'value')" (valueChange)="patchRow(r.id, { value: $event })" />
+              }
+            </div>
+            <app-check-group label="Nas jogadas" [options]="rollOptions" [values]="r.rolls" [path]="rowPath(i, 'applies_to')" [issues]="rowIssues(i, 'applies_to')" (valuesChange)="patchRow(r.id, { rolls: $any($event) })" />
+          }
+          @case ('resistance') {
+            <app-segmented label="O que dá" [segments]="resistances" [value]="r.resistance" (choose)="patchRow(r.id, { resistance: $event })" />
+            <app-pick-list label="Tipos de dano" addLabel="Tipo de dano" [options]="damageOptions()" [values]="r.damageTypes" [path]="rowPath(i, 'damage_types')" [issues]="rowIssues(i, 'damage_types')" (added)="patchRow(r.id, { damageTypes: [...r.damageTypes, $event] })" (removed)="patchRow(r.id, { damageTypes: r.damageTypes.filter(t => t !== $event) })" />
+          }
+          @case ('speed') {
+            <div class="row row--2">
+              <app-segmented label="Como muda" [segments]="speedModes" [value]="r.speedMode" (choose)="patchRow(r.id, { speedMode: $event })" />
+              @if (r.speedMode === 'add') {
+                <app-text-field label="Metros a mais" suffix="m" inputmode="decimal" hint="Em passos de 1,5 m, até 36 m." [value]="r.speedM" [path]="rowPath(i, 'value')" [issues]="rowIssues(i, 'value')" (valueChange)="patchRow(r.id, { speedM: $event })" />
+              } @else {
+                <app-text-field label="Porcentagem" suffix="%" inputmode="numeric" hint="De 0 a 400. 50 é a metade." [value]="r.percent" [path]="rowPath(i, 'value')" [issues]="rowIssues(i, 'value')" (valueChange)="patchRow(r.id, { percent: $event })" />
+              }
+            </div>
+          }
+          @case ('advantage') {
+            <app-segmented label="Vantagem ou desvantagem" [segments]="advantages" [value]="r.advantage" (choose)="patchRow(r.id, { advantage: $event })" />
+            <app-check-group label="Em" [options]="advRollOptions" [values]="r.rolls" [path]="rowPath(i, 'applies_to')" [issues]="rowIssues(i, 'applies_to')" (valuesChange)="patchRow(r.id, { rolls: $any($event) })" />
+            @if (r.rolls.includes('save') || r.rolls.includes('check')) {
+              <app-check-group label="Habilidades" [options]="abilityOptions()" [values]="r.abilities" [path]="rowPath(i, 'abilities')" [issues]="rowIssues(i, 'abilities')" (valuesChange)="patchRow(r.id, { abilities: $event })" />
+            }
+          }
+          @case ('unknown') {
+            <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>Este tipo não vale numa magia da mesa. Para impedir de agir, use uma condição (Incapacitado, Paralisado); ou escolha outro tipo.</p>
+          }
+        }
+        @if (tagsOf(r).length > 0) {
+          <p class="onCard">No cartão:@for (t of tagsOf(r); track $index) { <span class="chip">{{ t }}</span> }</p>
+        }
+      </div>
+    }
+    @if (effect().rows.length < maxItems) {
+      <button type="button" class="add" (click)="addRow()"><mat-icon aria-hidden="true">add</mat-icon>Adicionar o que muda</button>
+    }
+    @for (m of issues('modifiers'); track m) {
+      <p class="inline-issue" role="note"><mat-icon aria-hidden="true">warning</mat-icon>{{ m }}</p>
+    }
+  </div>
+
+  <app-radio-cards
+    label="Quem vê o efeito"
+    [options]="visibilityCards"
+    [value]="effect().visibility"
+    [path]="path('visibility')"
+    [issues]="issues('visibility')"
+    (valueChange)="patch({ visibility: $any($event) })"
+  />
+  @if (effect().visibility === 'public') {
+    <div class="row row--2">
+      <app-text-field
+        label="O que os outros jogadores leem"
+        [maxlength]="maxLabel"
+        [value]="effect().label"
+        [path]="path('player_label_pt')"
+        [issues]="issues('player_label_pt')"
+        [hint]="'Vazio: os nomes das condições que todos veem, ou nada. O dono do alvo e você leem o cartão inteiro. ' + labelCount()"
+        (valueChange)="patch({ label: $event })"
+      />
+    </div>
+  }
+}

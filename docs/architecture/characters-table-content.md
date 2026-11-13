@@ -357,6 +357,9 @@ Level-up changes none of it (`full.custom_background` is locked).
 Storage is the protojson of the entry, so there is no column and no migration.
 An enum left unset reaches the rules empty, which they read as the default (`applies`, `visibility`, `resistance_kind`) or refuse (`kind`); a number this build does not know reaches them as `unknown` and is refused at its field.
 The violation is `table_spell.effect.modifiers[1].value` and the like.
-The spell editor of the web app builds its body from its own draft (`spell-draft.ts`) and has no field for `effect`.
-Saving a spell in the editor replaces the body, so it removes an effect written through the API (it does the same to a zone and a summon).
+The spell editor of the web app has the block "Deixa um efeito nos alvos" (`spell-effect-draft.ts`, `spell-effect.ts`): seven kinds of change, "Em quem fica", the conditions, the aura, who sees it and the label.
+The editor has no call to tag a draft, so it writes the card's labels itself (`rowTags`), kept equal to `rules.EffectTagsPT` by a table of cases on each side.
+A zone is still kept as it was loaded.
+`TableSpellEffect.aura` (`TableEffectAura`) maps through `auraAffectsOf`.
+A player's copy of a spell drops `visibility` and `player_label_pt` of an owner-only effect (`forPlayer`, `effectKeepsItsSecrets`), and the aura's radius with it.
 How the rules read the effect is in [Table content: rules](rules-table-content.md#the-lasting-effect-of-a-spell).
