@@ -28,12 +28,19 @@ import { expect, type Page } from '@playwright/test';
 // 7. The heading of a section with a count beside it ("Sintonização" and "Sintonizados: 2 de 3") shares a baseline with
 //    it, within 1px (#561).
 //
+// 8. A row marked `data-one-line` is one line: none of its words wraps and every box in it shares the first box's line
+//    (a gear row ellipsizes its name before anything drops under it).
+// 9. A group marked `data-equal-width="<selector>"` has every visible element matching the selector the same width, within
+//    1px (the buttons of one list, the pair at the foot of a sheet).
+// 10. A chip marked `data-chip` sits on the middle of the capitals of the words marked `data-chip-ref` in its row
+//    (`data-chip-row`), within 2px.
+//
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch';
+  kind: 'icon-text' | 'one-line' | 'unequal-width' | 'chip-baseline' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch';
   where: string;
   detail: string;
 }
@@ -237,6 +244,66 @@ function auditLayout(): LayoutIssue[] {
         kind: 'chip-alone',
         where: describeEl(chip.closest('.gear-row') ?? chip),
         detail: `the chip's middle is at ${middle.toFixed(0)}px and the words before it end on a line from ${last.top.toFixed(0)}px to ${last.bottom.toFixed(0)}px: it sits on a line of its own`,
+      });
+    }
+  }
+
+  // 8. A row marked data-one-line is one line.
+  for (const row of document.querySelectorAll('[data-one-line]')) {
+    if (!visible(row)) continue;
+    const boxes = [...row.children].filter((c) => visible(c) && inFlow(c));
+    if (boxes.length === 0) continue;
+    const first = boxes[0].getBoundingClientRect();
+    const wraps = textNodesOf(row).filter((n) => {
+      const r = document.createRange();
+      r.selectNodeContents(n);
+      return new Set([...r.getClientRects()].filter((q) => q.width > 0 && q.height > 0).map((q) => Math.round(q.top))).size > 1;
+    });
+    const off = boxes.filter((b) => {
+      const r = b.getBoundingClientRect();
+      return r.top > first.bottom - 1 || r.bottom < first.top + 1;
+    });
+    if (wraps.length > 0 || off.length > 0) {
+      issues.push({
+        kind: 'one-line',
+        where: describeEl(row),
+        detail: wraps.length > 0 ? `the words "${wraps[0].textContent!.trim().slice(0, 30)}" wrap onto a second line` : `${describeEl(off[0])} sits on another line than ${describeEl(boxes[0])}`,
+      });
+    }
+  }
+
+  // 9. The elements a group marks have one width.
+  for (const group of document.querySelectorAll('[data-equal-width]')) {
+    if (!visible(group)) continue;
+    const widths = [...group.querySelectorAll(group.getAttribute('data-equal-width')!)]
+      .filter(visible)
+      .map((el) => ({ el, w: el.getBoundingClientRect().width }));
+    if (widths.length < 2) continue;
+    const min = widths.reduce((a, b) => (b.w < a.w ? b : a));
+    const max = widths.reduce((a, b) => (b.w > a.w ? b : a));
+    if (max.w - min.w > 1) {
+      issues.push({
+        kind: 'unequal-width',
+        where: describeEl(group),
+        detail: `${describeEl(max.el)} is ${max.w.toFixed(1)}px wide and ${describeEl(min.el)} ${min.w.toFixed(1)}px (equal within 1px)`,
+      });
+    }
+  }
+
+  // 10. A marked chip is on the middle of the capitals of its row's words.
+  for (const chip of document.querySelectorAll('[data-chip]')) {
+    if (!visible(chip)) continue;
+    const ref = chip.closest('[data-chip-row]')?.querySelector('[data-chip-ref]');
+    const node = ref && visible(ref) ? textNodesOf(ref)[0] : null;
+    const cap = node ? capitals(node) : null;
+    if (!cap) continue;
+    const c = chip.getBoundingClientRect();
+    const diff = Math.abs(c.top + c.height / 2 - (cap.top + cap.bottom) / 2);
+    if (diff > 2) {
+      issues.push({
+        kind: 'chip-baseline',
+        where: describeEl(chip),
+        detail: `the chip's middle is ${diff.toFixed(1)}px from the middle of the capitals of its row's words (within 2px)`,
       });
     }
   }
