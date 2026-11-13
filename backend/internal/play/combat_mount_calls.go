@@ -62,6 +62,8 @@ func mountVerdict(cs []playdb.Combatant, rider, mount playdb.Combatant, standing
 	switch {
 	case rider.MountedOnID != nil:
 		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_MOUNTED, rulesv1.MountRefusal_MOUNT_REFUSAL_ALREADY_MOUNTED, "the rider rides already: it gets off first", rider.ID)
+	case riderOf(cs, rider.ID) != nil: // the carry is one level: a mount that carries a rider does not ride
+		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_MOUNTED, rulesv1.MountRefusal_MOUNT_REFUSAL_ALREADY_MOUNTED, "a mount that carries a rider does not ride: the rider gets off first", rider.ID)
 	case mount.MountedOnID != nil:
 		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_MOUNTED, rulesv1.MountRefusal_MOUNT_REFUSAL_ALREADY_MOUNTED, "a combatant that rides is not a mount", mount.ID)
 	case riderOf(cs, mount.ID) != nil:
