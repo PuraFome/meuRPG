@@ -233,17 +233,21 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 	out := ev.cardHead(f, key, def)
 	ev.cardTargets(out, g, onTarget)
 	caster, casterSeen := ev.byID[conv.OrZero(f.SourceID)]
+	out.Spent = f.SpentAt != nil && ev.readsSpent(f, caster)
 	casterSeen = casterSeen && ev.v.sees(caster)
 	if casterSeen {
 		out.CasterId = caster.ID
 	}
 	out.OriginPt = ev.originOf(f, caster, casterSeen)
 	for _, m := range effectModifiers(f) {
-		out.Modifiers = append(out.Modifiers, modifierProto(m))
+		out.Modifiers = append(out.Modifiers, ev.modifierCard(m))
 	}
 	ev.cardClock(out, f, caster, casterSeen)
 	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)) || ev.v.saveDCFor(ev.byID[onTarget]))
 	ev.cardNotes(out, f, def)
+	if !ev.readsSpent(f, caster) {
+		out.TagsPt = slices.DeleteFunc(out.TagsPt, func(t string) bool { return t == spentTagPT })
+	}
 	if ev.v.master {
 		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), conv.OrZero(f.PlayerLabel)
 		out.EndTextPt = ev.endText(f, caster)
@@ -252,6 +256,12 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		}
 	}
 	return out
+}
+
+// readsSpent says the viewer may read that the effect was used up: the master, the caster's player and the player of
+// the creature that carries the row; no other player (RN-10: it tells that a hit landed with the spell).
+func (ev *effectViewer) readsSpent(f playdb.CombatantState, caster playdb.Combatant) bool {
+	return ev.v.master || ev.v.owns(caster) || ev.v.owns(ev.byID[f.CombatantID])
 }
 
 // cardHead is the card with what names the effect: the ids, the source, the conditions it gives.
@@ -340,7 +350,7 @@ func (ev *effectViewer) cardSaves(out *playv1.LastingEffect, f playdb.CombatantS
 // cardNotes puts the tags, how to break free and what the effect changes on its card.
 func (ev *effectViewer) cardNotes(out *playv1.LastingEffect, f playdb.CombatantState, def *rules.EffectDef) {
 	if def != nil {
-		out.TagsPt = append(append(append([]string{}, def.TagsPT...), modifierTagsPT(conv.OrZero(f.SourceKey), effectModifiers(f))...), spentTagsPT(f)...)
+		out.TagsPt = append(append(append([]string{}, tagsOfRow(def, effectModifiers(f))...), modifierTagsPT(conv.OrZero(f.SourceKey), effectModifiers(f))...), spentTagsPT(f)...)
 		out.BreakFreeAbility = def.BreakFree
 	}
 	for _, k := range f.ConditionKeys {
@@ -510,6 +520,7 @@ var modifierKindProto = map[string]playv1.EffectModifierKind{
 	rules.ModifierAttackAdvantage:   playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE,
 	rules.ModifierSaveDisadvantage:  playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE,
 	rules.ModifierCheckDisadvantage: playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE,
+	rules.ModifierWeaponHitDamage:   playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE,
 }
 
 // rollKindProto maps the rolls a modifier touches.

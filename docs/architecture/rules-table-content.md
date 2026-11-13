@@ -606,13 +606,15 @@ An archived or switched-off spell has no effect.
   `save_advantage`, `check_advantage`, `attack_advantage`, `attack_disadvantage`, `save_disadvantage` and `check_disadvantage` give a roll a mode.
   `resistance` takes a `resistance_kind` (`resist`, `immune` or `vulnerable`) and `damage_types` as the feature effect does.
   `temp_hp` gives temporary hit points when the effect lands.
-  `roll_bonus`, `temp_hp`, `resistance`, `attack_advantage`, `save_disadvantage` and `check_disadvantage` are kinds of the shared vocabulary: the SRD file may use them too.
+  `weapon_hit_damage` leaves extra weapon damage on a hit of the caster, not on the targets (see [The damage a spell adds to the caster's hits](#the-damage-a-spell-adds-to-the-casters-hits)).
+  `roll_bonus`, `temp_hp`, `resistance`, `attack_advantage`, `save_disadvantage`, `check_disadvantage` and `weapon_hit_damage` are kinds of the shared vocabulary: the SRD file may use them too.
   The table keeps no list of its own.
 - **Refused, each at its field.**
   `base_ac`, `extra_action`, `no_move`, `no_action`, `no_reaction`, `condition_immunity`, `turn_temp_hp`, `choose` and `from_caster`, and `once` or `except_source` on `attack_disadvantage`.
   A number out of its range, at `.value` or `.die` (`checkModifier` has the ranges).
   An unknown condition, skill or damage type, at its own field.
   A repeated condition, ability or roll.
+  A `weapon_hit_damage` with a field the other kinds use, or with a rule it breaks, at its own field (below).
   A `player_label_pt` over 30 characters.
   A `visibility` that is not `public` or `owner`.
   An `applies` the spell cannot honor, at `.effect.applies`.
@@ -623,6 +625,40 @@ An archived or switched-off spell has no effect.
 
 A feature's lasting effect is its owner's and needs no field of its own.
 A `state` effect turns on the effects gated by `when active("name")` or `while` for its duration (see [States](#states)).
+
+### The damage a spell adds to the caster's hits
+
+`weapon_hit_damage` (`rules/weaponhitdamage.go`, `checkWeaponHitDamage`) is the one modifier that lands on the caster.
+Its fields are the modifier's own:
+
+| Field | Meaning | Refused at the field when |
+| --- | --- | --- |
+| `trigger` | `next_hit`, `next_melee_hit`, `each_hit` or `marked_target` | `trigger`: unset or unknown |
+| `die` | The die: d4, d6, d8, d10 or d12 | `die`: any other number |
+| `dice` | The dice at the spell's own slot level, 1 to 10 | `dice`: out of range |
+| `per_slot_dice` | The dice added for each slot level above the spell's own, 0 to 5 | `per_slot_dice`: out of range |
+| `max_dice` | The most dice there are at any slot; required, from `dice` to 20 | `max_dice`: unset, below `dice` or above 20 |
+| `damage_type` | An SRD damage type key; unset is the weapon's | `damage_type`: not an SRD damage type |
+| `save` | The ability (`str` to `cha`) of the target's saving throw against the hit | `save`: not an ability |
+| `on_fail_conditions` | SRD condition keys a failed save gives, each once, 1 to 8 | `on_fail_conditions`: a save with none, a list without a `save`, more than 8, an unknown or repeated key (at `[i]`) |
+| `condition_duration` | `next_turn` (the default: until the end of the target's next turn) or `spell_end` | `condition_duration`: unknown, or without a `save` |
+
+- **A field of another kind is refused at that field.**
+  `weapon_hit_damage` reads no `sign`, `value`, `applies_to`, `skill`, `abilities`, `conditions`, `except_source`, `once`, `choose`, `from_caster`, `allowed`, `max_weapon_attacks`, `resistance_kind`, `damage_types`, `claim` or `unclaimed` (`checkHitStrays`).
+- **What the spell must be.**
+  The spell lasts: an instantaneous spell has no effect.
+  `each_hit` and `marked_target` need a spell that asks for concentration, refused at `trigger` (`HitTriggerNeedsConcentration`).
+  `marked_target` needs the target One creature with no extra targets per slot level, refused at `trigger` (`spellHitRefusal`); the cast also needs one target that is not the caster.
+  `condition_duration` `spell_end` needs concentration, a timed duration or until dispelled, refused at `condition_duration`.
+  A spell has one `weapon_hit_damage`: a second is refused at its `kind` ("a spell has one next-hit effect").
+- **The dice per slot.**
+  At a slot the dice are `dice` plus `per_slot_dice` for each level above the spell's own, never more than `max_dice`.
+  A critical hit doubles them, a resistance takes the damage by type, and the save is the target's against the spell's DC.
+  How the hit uses all of this is in [Attacks and damage](play/attacks-and-damage.md#a-spells-hit-effect).
+- **Tags.**
+  `weaponHitTagPT` writes the card's tag ("+1d6 no próximo golpe com arma, +1d6 por nível acima, até 4d6"; "em cada golpe no alvo marcado" for `marked_target`).
+- **Tests.**
+  `weaponhitdamage_test.go` (`TestWeaponHitDamageRefusalsNameTheirField` tries every stray field and each refusal at its field, `TestMarkedTargetNeedsOneCreature`).
 
 ## Table spell summons
 

@@ -55,9 +55,12 @@ const (
 type riderEvent struct {
 	Choice string `json:"choice"`
 	Result string `json:"result"`
-	D20    int32  `json:"d20,omitempty"`
-	Total  int32  `json:"total,omitempty"`
-	DC     int32  `json:"dc,omitempty"`
+	// OwnersOnly is the line of a spell's hit effect: its save tells that the effect has one, so only the master, the
+	// attacker's player and the target's player get it (RN-10).
+	OwnersOnly bool  `json:"owners_only,omitempty"`
+	D20        int32 `json:"d20,omitempty"`
+	Total      int32 `json:"total,omitempty"`
+	DC         int32 `json:"dc,omitempty"`
 	// countedRoll is the number the d20 counted as when a minimum raised it.
 	countedRoll
 	// Pushed is the forced move of a push that landed (combat_forced.go).
@@ -443,7 +446,7 @@ func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb
 	return nil
 }
 
-// riderEffect puts a lasting effect on the target that ends with the monk's next turn.
+// riderEffect puts a lasting effect of the catalog on the target that ends with the monk's next turn.
 func (s *Service) riderEffect(ctx context.Context, c *combatTx, cs []playdb.Combatant, attacker, target playdb.Combatant, key string) error {
 	content, err := s.contentOf(ctx, c)
 	if err != nil {
@@ -453,14 +456,23 @@ func (s *Service) riderEffect(ctx context.Context, c *combatTx, cs []playdb.Comb
 	if !ok {
 		return fmt.Errorf("the effect %s is not in the catalog", key)
 	}
-	rows, err := s.addEffects(ctx, c, cs, effectSpec{
+	_, _, err = s.putRiderEffect(ctx, c, cs, effectSpec{
 		key: key, sourceKind: "feature", def: def, caster: &attacker, targets: []playdb.Combatant{target},
 		dur: durationSpec{Kind: rules.EffectDurationUntilEndOfTurnOf, Anchor: attacker.ID},
 	})
+	return err
+}
+
+// putRiderEffect makes the effect a rider (or the save of a spell that rides on a hit) puts on its target, and
+// writes its line. The spec says what it is: a catalog's effect (riderEffect) or the conditions of a spell
+// (hitConditions). It returns the rows and the line's id, for an action whose undo takes them back.
+func (s *Service) putRiderEffect(ctx context.Context, c *combatTx, cs []playdb.Combatant, spec effectSpec) ([]playdb.CombatantState, string, error) {
+	rows, err := s.addEffects(ctx, c, cs, spec)
 	if err != nil {
-		return err
+		return nil, "", err
 	}
-	return s.addedEvent(ctx, c, cs, rows, key)
+	line, err := s.addedEventID(ctx, c, cs, rows, spec.key)
+	return rows, line, err
 }
 
 // rollRiderSave has the server roll the target's saving throw, as a spell's save is rolled.
