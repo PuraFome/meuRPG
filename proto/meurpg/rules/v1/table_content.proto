@@ -433,6 +433,9 @@ message TableEffect {
   // uses each cast spends.
   bool no_material_components = 86;
   int32 uses_cost = 87;
+  // grant_action only: how the action is used in a combat through UseFeature (limit per turn, round or combat,
+  // targets, a choice, what it applies). Unset keeps the action on TakeAction.
+  FeatureUse use = 88;
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -1981,4 +1984,42 @@ message FormulaHelper {
   string returns = 2;
   // What it is for, in Portuguese.
   string hint_pt = 3;
+}
+
+// FeatureUse is what a table feature's grant_action declares to be used through FeatureService.UseFeature. The action
+// spends the economy of its `economy` and, if it has them, the `resource` and the limit below. Refusals are at
+// `use.limit_uses`, `use.targets`, `use.choices[i]` and `use.applies...`.
+message FeatureUse {
+  // How long a use counts: with `limit_uses`, the uses allowed in that scope. Unset with a limit is TURN.
+  UseScope limit_scope = 1;
+  // Uses in the scope: an Int formula, at least 1. Empty is no limit of this kind (the resource may still limit it).
+  string limit_uses = 2 [(meurpg.options.v1.max_len) = 64];
+  // The creatures the use is aimed at. Unset takes none (the owner alone).
+  FeatureTargets targets = 3;
+  // The options the player picks one of, at most 8, keys unique. Empty takes no choice.
+  repeated FeatureChoice choices = 4 [(meurpg.options.v1.max_items) = 8];
+  // What the use does besides spending. Unset only spends and goes to the log.
+  FeatureApplies applies = 5;
+}
+
+// FeatureTargets are the creatures a feature's use is aimed at.
+message FeatureTargets {
+  // 0 to 20 creatures; max at least min.
+  int32 min = 1;
+  int32 max = 2;
+  FeatureTargetWho who = 3;
+  // The reach in feet, 0 (no limit) to 300.
+  int32 range_ft = 4;
+}
+
+// FeatureApplies is what a use does to its targets (the owner when it has none).
+message FeatureApplies {
+  // Hit points healed: dice as a grant_action's `heal`. Empty heals nothing.
+  string heal = 1 [(meurpg.options.v1.max_len) = 32];
+  // Temporary hit points: an Int formula. Empty gives none.
+  string temp_hp = 2 [(meurpg.options.v1.max_len) = 64];
+  // A lasting effect on the targets, as a table spell leaves one. `applies` of it is ignored (ALL).
+  TableSpellEffect effect = 3;
+  // How long the effect lasts, in rounds, 1 to 14,400; needed with `effect`.
+  int32 effect_rounds = 4;
 }
