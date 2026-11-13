@@ -641,7 +641,7 @@ var ownFields = map[string][]string{
 	"extra_attack": {"count"},
 	// A grant_action may cost several uses of its resource, let the player choose how many,
 	// and heal or give temporary hit points; an on_event is the owner's hook on an event.
-	"grant_action": {"economy", "resource", "cost", "cost_max", "value_per_point", "heal", "temp_hp", "ability", "gives_slot", "spends_slot"},
+	"grant_action": {"economy", "resource", "cost", "cost_max", "value_per_point", "heal", "temp_hp", "ability", "gives_slot", "spends_slot", "use"},
 	"on_event":     {"event", "resource", "cost", "restore", "value", "heal", "temp_hp", "heal_percent_max", "ability"},
 	"note":         {"value", "spells"},
 	// A superiority die is a feature option's (or a feature's) die from a resource.
@@ -681,6 +681,10 @@ var ownFields = map[string][]string{
 	// A granted_spell names the spell, from which level, what it spends, and the switches.
 	"granted_spell": {"spell", "from_level", "uses", "ability", "also_with_slot", "ritual_only", "counts_as_known", "no_material_components", "uses_cost"},
 }
+
+// packageOnlyFields are the own fields the editor's menu does not offer: a package (JSON) declares them, the
+// validator reads them (the use of a grant_action, featureuse.go).
+var packageOnlyFields = []string{"use"}
 
 // effectField is a field of an Effect a type may not read: its name in the
 // proto message, whether it is set, and how to clear it.
@@ -781,6 +785,7 @@ var effectFields = []effectField{
 	{"rolls", func(e *Effect) bool { return len(e.Rolls) > 0 }, func(e *Effect) { e.Rolls = nil }},
 	{"at_most", func(e *Effect) bool { return e.AtMost != 0 }, func(e *Effect) { e.AtMost = 0 }},
 	{"flag", func(e *Effect) bool { return e.Flag != "" }, func(e *Effect) { e.Flag = "" }},
+	{"use", func(e *Effect) bool { return e.Use != nil }, func(e *Effect) { e.Use = nil }},
 }
 
 // effectFieldClear is how to clear each of effectFields, by name.
@@ -937,6 +942,7 @@ var effectErrorRules = []effectErrorRule{
 	{[]string{"recover_levels must be"}, fieldAttr(".recover_levels"), ReasonValue},
 	{[]string{"ability must be"}, fieldAttr(".ability"), ReasonValue},
 	{[]string{"uses_cost"}, fieldAttr(".uses_cost"), ReasonValue},
+	{[]string{"use belongs to"}, fieldAttr(".use"), ReasonValue},
 	{[]string{"ritual_only needs"}, fieldAttr(".ritual_only"), ReasonValue},
 	{[]string{"ritual_only and also_with_slot"}, fieldAttr(".also_with_slot"), ReasonValue},
 	{[]string{"speedwalk() belongs"}, func(e *Effect, _ func(...string) bool) string {
@@ -970,6 +976,23 @@ func formulaAttr(e *Effect, has func(words ...string) bool) string {
 		{"max_cr_from", e.MaxCRFrom},
 		{"form_cost", e.FormCost},
 	} {
+		if f.src != "" && has("formula "+strconv.Quote(f.src)) {
+			return "." + f.name
+		}
+	}
+	return useFormulaAttr(e, has)
+}
+
+// useFormulaAttr is formulaAttr for the formulas of a grant_action's use.
+func useFormulaAttr(e *Effect, has func(words ...string) bool) string {
+	if e.Use == nil {
+		return ""
+	}
+	fields := []struct{ name, src string }{{"use.limit_uses", e.Use.LimitUses}}
+	if e.Use.Applies != nil {
+		fields = append(fields, struct{ name, src string }{"use.applies.temp_hp", e.Use.Applies.TempHP})
+	}
+	for _, f := range fields {
 		if f.src != "" && has("formula "+strconv.Quote(f.src)) {
 			return "." + f.name
 		}

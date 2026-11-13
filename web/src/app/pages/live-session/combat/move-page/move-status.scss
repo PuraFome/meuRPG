@@ -22,6 +22,25 @@
   line-height: 28px;
 }
 
+.status__extra {
+  font-size: var(--mr-font-15);
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.status__part {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: bottom;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}
+
 .status__text {
   font-size: var(--mr-font-15);
   line-height: 20px;

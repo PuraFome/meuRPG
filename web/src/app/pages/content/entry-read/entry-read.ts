@@ -1,6 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { HIT_VISIBILITY_LABEL } from '../../../core/content/hit-effect-read';
 import type { EntryRead as Read } from '../../../core/content/content-read-parts';
 
 /**
@@ -56,13 +57,49 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
         }
       </section>
     }
-    @if (read().text.length > 0 || (read().effects?.length ?? 0) > 0 || rows()) {
+    @if (read().text.length > 0 || (read().effects?.length ?? 0) > 0 || rows() || read().hit) {
       <section [class.mr-panel]="!plain()" [class.sec]="plain()" aria-label="Texto">
         @for (p of read().text; track $index) {
           <p class="text">{{ p }}</p>
         }
         @for (i of read().effects ?? []; track $index) {
           <p class="text"><strong>{{ i.title }}:</strong> {{ i.text }}</p>
+        }
+        @if (read().hit; as hit) {
+          @if (plain()) {
+            <p class="text hit-line">
+              <strong>{{ hit.lead }}</strong>{{ ' ' }}<span class="chip">{{ hit.damage }}</span><span>{{ (hit.more ? ', ' + hit.more : '') + (hit.whileLasts ? ', enquanto durar' : '') + '.' }}</span>
+              @for (p of hit.save; track $index) {
+                <span>{{ ($first ? ' ' : '') + p.text }}</span>
+              }
+            </p>
+          } @else {
+            <section class="hit" aria-labelledby="hit-title">
+              <h2 class="opts__title" id="hit-title">{{ hit.title }}</h2>
+              <p class="hit__where">{{ hit.where }}</p>
+              <p class="hit__chips">
+                <span class="chip">{{ hit.damage }}</span>
+                @if (hit.more) {
+                  <span class="chip">{{ hit.more }}</span>
+                }
+              </p>
+              @if (hit.save.length > 0) {
+                <p class="text">
+                  @for (p of hit.save; track $index) {
+                    @if (p.strong) {
+                      <strong>{{ p.text }}</strong>
+                    } @else {
+                      {{ p.text }}
+                    }
+                  }
+                </p>
+              }
+              <dl class="hit__who">
+                <dt><mat-icon aria-hidden="true">visibility_off</mat-icon>{{ visibilityLabel }}</dt>
+                <dd>{{ hit.visibility }}</dd>
+              </dl>
+            </section>
+          }
         }
         @if (rows()) {
           <h2 class="opts__title" id="opts-title">Opções</h2>
@@ -212,6 +249,53 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
       text-align: right;
     }
 
+    // "Efeito no próximo golpe": the green chips of the extra damage, and who sees the effect in a grey box.
+    .chip {
+      display: inline-block;
+      padding: 2px 10px;
+      border: 1px solid var(--mr-success-ink);
+      border-radius: 999px;
+      background: var(--mr-success-surface);
+      color: var(--mr-success-ink);
+      font-size: var(--mr-font-14);
+      font-weight: 700;
+    }
+
+    .hit__where {
+      margin: 0 0 var(--mr-space-2);
+      font-size: var(--mr-font-14);
+      color: var(--mr-ink-muted);
+    }
+
+    .hit__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--mr-space-2);
+      margin: 0 0 var(--mr-space-3);
+    }
+
+    .hit__who {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--mr-space-4);
+      margin: var(--mr-space-3) 0 0;
+      padding: var(--mr-space-3);
+      border-radius: 8px;
+      background: var(--mr-ground);
+
+      dt {
+        display: flex;
+        align-items: center;
+        gap: var(--mr-space-2);
+        color: var(--mr-ink-muted);
+      }
+
+      dd {
+        margin: 0;
+        text-align: right;
+      }
+    }
+
     .text {
       margin: 0 0 var(--mr-space-3);
       overflow-wrap: anywhere;
@@ -233,4 +317,5 @@ export class EntryRead {
   );
   /** No panels: the rows and parts one under another (an editor's preview). */
   readonly plain = input(false);
+  protected readonly visibilityLabel = HIT_VISIBILITY_LABEL;
 }

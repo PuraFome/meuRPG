@@ -173,8 +173,40 @@ type Mover struct {
 	// Crawls says the mover crawls (it is prone and on foot): 1 extra foot per foot of the line, on top of the
 	// other extras, which the SRD adds (a crawl over difficult terrain costs 3 per foot, not 4).
 	Crawls bool
+	// Speeds, when set, are the speeds the mover has on each surface and what it spent this turn (SRD 5.1, "Using Different
+	// Speeds"): a step is allowed while what was spent plus the move's cost up to it is within the speed of the surface it is on.
+	// Nil leaves the limit to the caller's own `left`.
+	Speeds *Speeds
 	Size   Size
 }
+
+// Speeds are a mover's speeds, in tenths of a foot, on the surfaces a move can enter, and what it already spent this turn. Switching
+// from one to another subtracts the spent from the new speed; a speed with nothing left cannot be used. A mover without a swimming
+// (climbing) speed has the floor speed as its limit in water (on a climbable surface) and pays the extra foot there.
+type Speeds struct {
+	// UsedDFt is the movement spent this turn, at any speed.
+	UsedDFt int
+	// FloorDFt, WaterDFt and ClimbDFt are the total speed on the floor (walking, or flying for a flier), in water (swimming) and on a
+	// climbable surface (climbing).
+	FloorDFt, WaterDFt, ClimbDFt int
+}
+
+// Limit is the total speed on a surface.
+func (s Speeds) Limit(sf Surface) int {
+	switch sf {
+	case SurfaceWater:
+		return s.WaterDFt
+	case SurfaceClimb:
+		return s.ClimbDFt
+	}
+	return s.FloorDFt
+}
+
+// LeftAt is what the mover can still move on a surface: its speed there less what was spent, never below 0.
+func (s Speeds) LeftAt(sf Surface) int { return max(s.Limit(sf)-s.UsedDFt, 0) }
+
+// over is how far a cost (counted from the start of the move) goes past the speed of the surface it ends on; 0 when it fits.
+func (s Speeds) over(cost int, sf Surface) int { return max(s.UsedDFt+cost-s.Limit(sf), 0) }
 
 // passes says whether the mover can move through an occupied square: always
 // through a creature that is not hostile, and through a hostile one only when
@@ -236,8 +268,15 @@ type Move struct {
 	// it mostly is (water when they tie).
 	SurfaceDFt int
 	Surface    Surface
+	// ClimbDFt is the part of SurfaceDFt that climbing adds; the rest of it is the swim. A line over water and then
+	// over a climbable surface pays both and says so.
+	ClimbDFt int
 	// CrawlDFt is the part of CostDFt that crawling adds.
 	CrawlDFt int
+	// OverDFt is, for a mover with Speeds, how far the line goes past the speed of the surface of its worst square (a step on
+	// the floor after the swim is held to the walking speed); 0 when every step fits. LeftAfterDFt is what the mover has left at
+	// the speed of the surface it ends on. Both are 0 without Speeds, where the caller compares CostDFt with its own left.
+	OverDFt, LeftAfterDFt int
 }
 
 // Move is the cost of a straight move from one square to another: the
@@ -271,18 +310,53 @@ func (t Terrain) walk(from, to Square, occ Occupants, m Mover, clears bool) Move
 	length := lengthDFt(from, to)
 	res := Move{CostDFt: length, Entered: make([]Square, 0, len(line))}
 	var paid surfaceCount
+	lc := lineCost{from: from}
 	for _, s := range line {
 		if by := t.walkStep(&res, s, to, occ, m, clears); by != StopNone {
 			return Move{Blocked: true, By: by}
 		}
 		paid.add(t.unpaidSurface(s.Square, m))
+		if m.Speeds != nil && !clears {
+			_, occupied := occupantAt(occ, s.Square)
+			res.OverDFt = max(res.OverDFt, lc.overAt(t, s.Square, occupied, m))
+			res.LeftAfterDFt = m.Speeds.LeftAt(t.Surface.Get(s.Square.Col, s.Square.Row)) - lc.floor
+		}
 	}
 	if !clears { // a jump clears what is on the way: no swim, no climb, no crawl
 		res.SurfaceDFt, res.Surface = paid.extraDFt(length, len(res.Entered))
+		_, res.ClimbDFt = paid.parts(length, len(res.Entered))
 		res.CrawlDFt = crawlDFt(length, m)
 		res.CostDFt += res.SurfaceDFt + res.CrawlDFt
 	}
+	res.LeftAfterDFt = max(res.LeftAfterDFt, 0)
 	return res
+}
+
+// lineCost is the cost of a straight move up to each square it enters, as it grows along the line: the length to the center of the
+// square, the extras of the difficult squares and creatures entered, the swim's and the climb's share, and the crawl. Move and MoveUntil
+// both count with it, so what is planned and what really happens cannot differ. The cost never goes down along the line.
+type lineCost struct {
+	from   Square
+	extras int
+	paid   surfaceCount
+	floor  int // the cost up to the last square entered
+	n      int
+}
+
+// enter counts the next square of the line and returns the cost of the move up to it.
+func (l *lineCost) enter(t Terrain, sq Square, occupied bool, m Mover) int {
+	l.extras += t.extraDFt(sq, occupied, m)
+	l.paid.add(t.unpaidSurface(sq, m))
+	l.n++
+	length := lengthDFt(l.from, sq)
+	surface, _ := l.paid.extraDFt(length, l.n)
+	l.floor = max(l.floor, length+l.extras+surface+crawlDFt(length, m))
+	return l.floor
+}
+
+// overAt enters a square and says how far the cost up to it goes past the speed of the surface the square is on.
+func (l *lineCost) overAt(t Terrain, sq Square, occupied bool, m Mover) int {
+	return m.Speeds.over(l.enter(t, sq, occupied, m), t.Surface.Get(sq.Col, sq.Row))
 }
 
 // surfaceCount counts the squares a move enters that make the mover swim or climb without the speed for it.
@@ -301,10 +375,7 @@ func (c *surfaceCount) add(sf Surface) {
 // foot (SRD 5.1): the length times the share of the squares entered that are swum or climbed, and the surface that
 // is most of it. A line over water from end to end costs twice its length.
 func (c surfaceCount) extraDFt(length, n int) (int, Surface) {
-	if n <= 0 {
-		return 0, SurfaceFloor
-	}
-	water, climb := (length*c.water+n/2)/n, (length*c.climb+n/2)/n
+	water, climb := c.parts(length, n)
 	switch {
 	case water == 0 && climb == 0:
 		return 0, SurfaceFloor
@@ -312,6 +383,14 @@ func (c surfaceCount) extraDFt(length, n int) (int, Surface) {
 		return water + climb, SurfaceWater
 	}
 	return water + climb, SurfaceClimb
+}
+
+// parts is the extra of swimming and of climbing apart, as extraDFt adds them.
+func (c surfaceCount) parts(length, n int) (water, climb int) {
+	if n <= 0 {
+		return 0, 0
+	}
+	return (length*c.water + n/2) / n, (length*c.climb + n/2) / n
 }
 
 // crawlDFt is the extra a crawling mover pays: 1 foot per foot of the line.
@@ -472,6 +551,7 @@ func (t Terrain) MoveUntil(from, to Square, occ Occupants, m Mover, stopAt Set, 
 	u := untilWalk{
 		t: t, from: from, to: to, occ: occ, m: m, stopAt: stopAt, left: left,
 		res:     Stopped{Reached: from},
+		cost:    lineCost{from: from},
 		entered: make([]Square, 0, len(line)),
 		costs:   make([]int, 0, len(line)),
 	}
@@ -496,9 +576,7 @@ type untilWalk struct {
 	entered  []Square
 	costs    []int // the cost of the move up to each entered square
 	reason   StopReason
-	extras   int // the extra cost of the squares entered so far
-	paid     surfaceCount
-	floor    int // the cost up to the last square entered
+	cost     lineCost // what the squares entered so far cost
 }
 
 // step enters one square of the line, or stops before it, and says whether
@@ -516,19 +594,13 @@ func (u *untilWalk) step(s Step) bool {
 		u.reason = StopOccupied
 		return true
 	}
-	extra := u.t.extraDFt(s.Square, occupied, u.m)
-	paid := u.paid
-	paid.add(u.t.unpaidSurface(s.Square, u.m))
-	length := lengthDFt(u.from, s.Square)
-	surface, _ := paid.extraDFt(length, len(u.entered)+1)
-	cost := max(u.floor, length+u.extras+extra+surface+crawlDFt(length, u.m))
-	if cost > u.left {
+	step := u.cost
+	cost := step.enter(u.t, s.Square, occupied, u.m)
+	if cost > u.left || (u.m.Speeds != nil && u.m.Speeds.over(cost, u.t.Surface.Get(s.Square.Col, s.Square.Row)) > 0) {
 		u.reason = StopMovement
 		return true
 	}
-	u.extras += extra
-	u.paid = paid
-	u.floor = cost
+	u.cost = step
 	u.entered = append(u.entered, s.Square)
 	u.costs = append(u.costs, cost)
 	return u.mark(s.Square)
@@ -590,8 +662,12 @@ type Reachable struct {
 	// SurfaceDFt is the part of the cost that swimming or climbing adds, and Surface which it is (see Move).
 	SurfaceDFt int
 	Surface    Surface
+	// ClimbDFt is the part of SurfaceDFt that climbing adds (see Move).
+	ClimbDFt int
 	// CrawlDFt is the part that crawling adds.
 	CrawlDFt int
+	// LeftAfterDFt is what the mover has left at the speed of the surface the square is on, when its Speeds are set (see Move).
+	LeftAfterDFt int
 }
 
 // Reach is every square the mover can get to from one square with movement
@@ -614,8 +690,8 @@ func (t Terrain) Reach(from Square, left int, occ Occupants, m Mover) []Reachabl
 			if sq == from || lengthDFt(from, sq) > left {
 				continue
 			}
-			if mv := t.Move(from, sq, occ, m); !mv.Blocked && mv.CostDFt <= left {
-				out = append(out, Reachable{Square: sq, CostDFt: mv.CostDFt, SurfaceDFt: mv.SurfaceDFt, Surface: mv.Surface, CrawlDFt: mv.CrawlDFt})
+			if mv := t.Move(from, sq, occ, m); !mv.Blocked && mv.CostDFt <= left && mv.OverDFt == 0 {
+				out = append(out, Reachable{Square: sq, CostDFt: mv.CostDFt, SurfaceDFt: mv.SurfaceDFt, Surface: mv.Surface, ClimbDFt: mv.ClimbDFt, CrawlDFt: mv.CrawlDFt, LeftAfterDFt: mv.LeftAfterDFt})
 			}
 		}
 	}

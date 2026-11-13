@@ -2345,6 +2345,8 @@ enum DisabledReasonCode {
   // Flurry of Blows: it comes right after the Attack action, taken with a weapon
   // or an unarmed strike, and that action has not been taken yet this turn.
   DISABLED_REASON_CODE_ATTACK_ACTION_FIRST = 16;
+  // A feature action that picks creatures has none it can pick now (out of reach, on the wrong side, down).
+  DISABLED_REASON_CODE_NO_VALID_TARGET = 17;
   // CombatService.GetTurnOptions: the combatant is surprised (SRD 5.1, "Surprise"): it
   // does not move, act or react until its first turn ends.
   DISABLED_REASON_CODE_SURPRISED = 110;
@@ -2537,6 +2539,56 @@ message ActionOption {
   // True on the Rage ("feature:rage") of a character with the Berserker's Frenzy: the player
   // may ask for a frenzy when it rages (TakeActionRequest.frenzy). False everywhere else.
   bool offers_frenzy = 5;
+  // For a feature action that has a limit in a scope: the scope `uses_left` counts in. UNSPECIFIED: it has no limit
+  // of this kind (`uses_left` is the resource's).
+  UseScope use_scope = 6;
+  // True: the action is taken with FeatureService.UseFeature, not TakeAction.
+  bool via_use_feature = 7;
+  // The targets it asks for, as FeatureTargets (all 0 and UNSPECIFIED when it takes none).
+  int32 target_min = 8;
+  int32 target_max = 9;
+  FeatureTargetWho target_who = 10;
+  int32 target_range_ft = 11;
+  // The options a player picks one of (at most 8); empty takes no choice.
+  repeated FeatureChoice choices = 12;
+  // For a feature action with a limit in a scope (`use_scope`): the uses the scope allows and the uses left in it
+  // ("2 por combate · restam 1"). 0 and 0 when the action has no such limit. `uses_left` stays the uses left of the
+  // action's rest resource.
+  int32 use_total = 13;
+  int32 use_left = 14;
+  // The total of the action's rest resource (`uses_left` is what is left of it); 0 when it has none.
+  int32 resource_total = 15;
+}
+
+// UseScope is how long a use of a feature counts against its limit.
+enum UseScope {
+  USE_SCOPE_UNSPECIFIED = 0;
+  // The turn of the combatant who uses it.
+  USE_SCOPE_TURN = 1;
+  // The round.
+  USE_SCOPE_ROUND = 2;
+  // The whole combat.
+  USE_SCOPE_COMBAT = 3;
+}
+
+// FeatureTargetWho says whom a feature's use may be aimed at.
+enum FeatureTargetWho {
+  FEATURE_TARGET_WHO_UNSPECIFIED = 0;
+  // The user alone.
+  FEATURE_TARGET_WHO_SELF = 1;
+  // A creature on the user's side, the user not counted unless it is the only one.
+  FEATURE_TARGET_WHO_ALLY = 2;
+  // A creature on the other side.
+  FEATURE_TARGET_WHO_ENEMY = 3;
+  // Any creature the user can see.
+  FEATURE_TARGET_WHO_ANY = 4;
+}
+
+// FeatureChoice is one option of a feature's use: a key the server checks and the label the player reads.
+message FeatureChoice {
+  // 1 to 40 characters of a-z, 0-9 and _.
+  string key = 1;
+  string text_pt = 2;
 }
 
 // ListCreaturesRequest names a campaign (for access) and the filters. Every

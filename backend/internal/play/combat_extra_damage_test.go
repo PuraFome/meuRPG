@@ -30,7 +30,7 @@ func giantTrait(applies, resource string) link.ExtraDamage {
 // giantFacts is a hit of a player's character of the given size on a target of the other size.
 func giantFacts(attackerSize, targetSize string, extras ...link.ExtraDamage) hitFacts {
 	return hitFacts{
-		attacker: playdb.Combatant{ID: "a", Kind: kindPlayer, Size: attackerSize, TableOnceTurns: []byte(`{}`)},
+		attacker: playdb.Combatant{ID: "a", Kind: kindPlayer, Size: attackerSize, FeatureState: []byte(`{}`)},
 		target:   playdb.Combatant{ID: "t", Size: targetSize},
 		attack:   link.Attack{Key: "e", Name: "Espada", Weapon: true, Melee: true, DamageType: "damage-type:slashing"},
 		sheet:    link.Sheet{Traits: link.Traits{ExtraDamages: extras}},
@@ -93,7 +93,7 @@ func TestExtraDamageAgainstAnyTargetIgnoresSize(t *testing.T) {
 func TestExtraDamageUsedThisTurnIsOffUntilTheNextTurn(t *testing.T) {
 	t.Parallel()
 	h := giantFacts("medium", "large", giantTrait(rules.ExtraDamageLargerTarget, ""))
-	h.attacker.TableOnceTurns = []byte(`{"` + giantFeature + `":"` + turnKey(h.enc) + `"}`)
+	h.attacker.FeatureState = turnMarkState(giantFeature, turnKey(h.enc))
 	if p, _ := partByKey(h.extraDamageParts(), giantFeature); p.Available || p.Reason == "" {
 		t.Errorf("used this turn: part = %+v, want it off with a reason", p)
 	}
@@ -232,7 +232,7 @@ func TestExtraDamageOnEveryHitIsNotRememberedByTheTurn(t *testing.T) {
 		x.Frequency = rules.ExtraDamageEachHit
 		x.Weapon = rules.ExtraDamageAnyWeapon
 	}))
-	h.attacker.TableOnceTurns = []byte(`{"` + giantFeature + `":"` + turnKey(h.enc) + `"}`)
+	h.attacker.FeatureState = turnMarkState(giantFeature, turnKey(h.enc))
 	p, _ := partByKey(h.extraDamageParts(), giantFeature)
 	if p.Once || !p.Available {
 		t.Errorf("part = %+v, want it available again this turn and not marked once", p)
@@ -272,25 +272,6 @@ func TestExtraDamageDiceAddAComponentOfTheirOwnType(t *testing.T) {
 	}
 }
 
-// Marking an extra of the table twice is refused, and one per turn is remembered by feature.
-func TestTableOnceMarksReadAndWrite(t *testing.T) {
-	t.Parallel()
-	marks := readTableOnce([]byte(`{"a":"2:x","b":"3:y"}`))
-	if marks["a"] != "2:x" || marks["b"] != "3:y" || len(marks) != 2 {
-		t.Errorf("marks = %v", marks)
-	}
-	if got := readTableOnce(nil); len(got) != 0 {
-		t.Errorf("nil marks = %v", got)
-	}
-	if got := readTableOnce([]byte(`not json`)); len(got) != 0 {
-		t.Errorf("garbage marks = %v", got)
-	}
-	marks["c"] = "4:z"
-	if again := readTableOnce(writeTableOnce(marks)); again["c"] != "4:z" || len(again) != 3 {
-		t.Errorf("round trip = %v", again)
-	}
-}
-
 // ---- end to end (these need the database, MEURPG_TEST_DATABASE_URL) ----
 
 type giantTable struct {
@@ -305,7 +286,7 @@ func newGiantTable(t *testing.T, applies string) *giantTable {
 }
 
 // newGiantTableWith is newGiantTable with the extra_damage effect the test gives.
-func newGiantTableWith(t *testing.T, extra *rulesv1.TableEffect) *giantTable {
+func newGiantTableWith(t *testing.T, extra *rulesv1.TableEffect, more ...*rulesv1.TableEffect) *giantTable {
 	t.Helper()
 	g := &giantTable{}
 	g.armed = newArmedWith(t, func(a *armed) {
@@ -316,6 +297,7 @@ func newGiantTableWith(t *testing.T, extra *rulesv1.TableEffect) *giantTable {
 				extra,
 			},
 		}
+		feature.Effects = append(feature.Effects, more...)
 		sub := &rulesv1.TableSubclass{
 			NamePt: "Caçador de Gigantes", ClassKey: "class:fighter", DescPt: []string{"Golpes."},
 			Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{feature}}},

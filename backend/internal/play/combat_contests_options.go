@@ -260,7 +260,7 @@ func (s *Service) featureHideActions(ctx context.Context, m authz.Membership, wh
 		return characterGone(err), ignoreGone(err) // a character that is gone has no feature to list
 	}
 	for _, a := range opts.GetFeatureActions() {
-		if i := slices.IndexFunc(sheet.FeatureActions, func(fa link.FeatureAction) bool { return fa.Key == a.GetAction().GetKey() }); i >= 0 && sheet.FeatureActions[i].Standard == actionHide {
+		if i := slices.IndexFunc(sheet.FeatureActions, func(fa link.FeatureAction) bool { return fa.Key == a.GetAction().GetKey() }); i >= 0 && sheet.FeatureActions[i].Standard == actionHide && !a.GetViaUseFeature() {
 			state.HideActions = append(state.HideActions, contestActionOf(a))
 		}
 	}

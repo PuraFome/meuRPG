@@ -26,6 +26,40 @@ export function spellBody(namePt: string, over: Record<string, unknown> = {}): R
   };
 }
 
+/** The modifier of "Efeito no próximo golpe" as the API's JSON: the board's Geada no Punho (2d8 frio, 1 per level up to 5d8, Força, Impedido). */
+export function hitModifier(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    kind: 'TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE',
+    trigger: 'TABLE_HIT_TRIGGER_NEXT_MELEE_HIT',
+    die: 8,
+    dice: 2,
+    perSlotDice: 1,
+    maxDice: 5,
+    damageType: 'damage-type:cold',
+    save: 'str',
+    onFailConditions: ['condition:restrained'],
+    conditionDuration: 'TABLE_HIT_CONDITION_DURATION_UNTIL_END_OF_NEXT_TURN',
+    ...over,
+  };
+}
+
+/** A spell that keeps the next-hit effect while the caster concentrates for 1 minute: no attack, no damage of its own, only the caster as target. */
+export function hitSpellBody(namePt = 'Geada no Punho', modifier: Record<string, unknown> = {}, over: Record<string, unknown> = {}): Record<string, unknown> {
+  return spellBody(namePt, {
+    level: 2,
+    castingTime: { unit: 'CASTING_TIME_UNIT_BONUS_ACTION', amount: 1 },
+    range: { kind: 'SPELL_RANGE_KIND_SELF' },
+    duration: { kind: 'SPELL_DURATION_KIND_TIMED', amount: 1, unit: 'SPELL_DURATION_UNIT_MINUTE', upTo: true },
+    concentration: true,
+    target: { kind: 'TABLE_SPELL_TARGET_KIND_SELF' },
+    attack: '',
+    damage: [],
+    descPt: ['O frio sobe pelo braço e fica preso no punho até o próximo golpe de perto.'],
+    effect: { visibility: 'TABLE_EFFECT_AUDIENCE_OWNER', modifiers: [hitModifier(modifier)] },
+    ...over,
+  });
+}
+
 /** The race Corujeiro of the artboard: darkvision, Sabedoria +2 and Destreza +1, one trait with an effect and one with a note. */
 export function raceBody(namePt = 'Corujeiro'): Record<string, unknown> {
   return {

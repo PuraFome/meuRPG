@@ -6,6 +6,7 @@ import type {
   TableSpellSchema,
   TableSpellZone,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { type HitDraft, emptyHit } from './hit-effect-draft';
 import type { SummonDraft } from './summon-draft';
 
 /**
@@ -73,6 +74,8 @@ export interface SpellDraft {
   summon: SummonDraft | null;
   /** The target and the range "Invocar" replaced with the caster's: given back when the mechanic is left and they are still the caster's. */
   beforeSummon?: { target: TargetChoice; range: RangeChoice };
+  /** "Efeito no próximo golpe" (#577): the weapon-hit modifier of the spell's effect; the rest of the effect stays in `kept`. */
+  hit: HitDraft;
   /** What the form has no control for: the stored effect and zone go back as they were loaded. */
   kept?: KeptSpellFields;
 }
@@ -130,5 +133,6 @@ export function emptySpell(): SpellDraft {
     healModifier: true,
     otherDamage: [],
     summon: null,
+    hit: emptyHit(),
   };
 }

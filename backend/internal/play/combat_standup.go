@@ -6,6 +6,8 @@ import (
 	"math"
 	"slices"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -37,15 +39,15 @@ func isProne(c playdb.Combatant) bool { return slices.Contains(c.Conditions, con
 // is better in the air than on the ground (the speed it moves on) is not crawling.
 func crawls(c playdb.Combatant) bool { return isProne(c) && !flies(c) }
 
-// standUpCostDFt is what standing up costs the combatant, in tenths of a foot: half its
-// speed, rounded down, and 0 when it is not Prone or has no speed (the call is then
+// standUpCostDFt is what standing up costs the combatant, in tenths of a foot: half the speed of the
+// surface it stands on, rounded down, and 0 when it is not Prone or has no speed (the call is then
 // refused). The Dash does not count: it adds movement, not speed (SRD 5.1, "Dash").
-func standUpCostDFt(c playdb.Combatant) int {
+func standUpCostDFt(c playdb.Combatant, standing grid.Surface) int {
 	if !isProne(c) {
 		return 0
 	}
 	c.Dashed = false
-	return speedDFt(c) / standUpSpeedDivisor
+	return speedOnDFt(c, standing) / standUpSpeedDivisor
 }
 
 // standUpSpeedDivisor: standing up costs half the speed (SRD 5.1, "Being Prone").
@@ -111,7 +113,11 @@ func (s *Service) standUpWrite(ctx context.Context, c *combatTx, call standUpCal
 	if err := s.standUpGates(ctx, c, call.m, v, target); err != nil {
 		return nil, err
 	}
-	cost, err := standUpCostOf(target)
+	standing, err := s.standingSurface(ctx, c.tx, c.enc, combatViewer{master: true}, target) // the real surface: the server decides
+	if err != nil {
+		return nil, fmt.Errorf("read the surface the combatant stands on: %w", err)
+	}
+	cost, err := standUpCostOf(target, standing)
 	if err != nil {
 		return nil, err
 	}
@@ -155,17 +161,17 @@ func (s *Service) standUpGates(ctx context.Context, c *combatTx, m authz.Members
 
 // standUpCostOf says what standing up costs the combatant, in tenths of a foot, or why it
 // cannot: it is not Prone, it has no speed, or it has not enough movement left.
-func standUpCostOf(target playdb.Combatant) (int, error) {
+func standUpCostOf(target playdb.Combatant, standing grid.Surface) (int, error) {
 	if !isProne(target) {
 		return 0, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PRONE, "the combatant is not prone")
 	}
-	cost := standUpCostDFt(target)
+	cost := standUpCostDFt(target, standing)
 	base := target
 	base.Dashed = false
-	if speedDFt(base) == 0 {
+	if speedOnDFt(base, standing) == 0 {
 		return 0, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CANNOT_STAND_UP, "the combatant cannot stand up: its speed is 0")
 	}
-	if left := movementLeftDFt(target); cost > left {
+	if left := movementLeftAtDFt(target, standing); cost > left {
 		return 0, tooFar(cost - left)
 	}
 	return cost, nil

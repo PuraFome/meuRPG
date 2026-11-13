@@ -35,6 +35,7 @@ describe('the reasons an option is disabled', () => {
       [DisabledReasonCode.REACTION_ONLY_WHEN_HIT, 'Só fora da sua vez'],
       [DisabledReasonCode.ATTACK_ACTION_FIRST, 'Só depois de atacar com a ação'],
       [DisabledReasonCode.NOT_YOUR_TURN, 'Não é a sua vez'],
+      [DisabledReasonCode.NO_VALID_TARGET, 'Sem alvo válido'],
       [DisabledReasonCode.COMBAT_NOT_ACTIVE, 'O combate não está em andamento'],
       [DisabledReasonCode.COMBATANT_DOWN, 'Caído: não pode agir'],
       [DisabledReasonCode.COMBATANT_DEFEATED, 'Derrotado: fora do combate'],

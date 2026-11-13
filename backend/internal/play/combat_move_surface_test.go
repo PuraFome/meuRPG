@@ -144,6 +144,27 @@ func TestCrawlingAddsToTheOtherExtras(t *testing.T) {
 	}
 }
 
+// A line over water and then over a climbable square pays both, and the options say how much each is, apart (the screen never subtracts).
+func TestTheOptionsSplitASwimAndAClimbOnOneLine(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.terrain.paintSurface(grid.SurfaceWater, grid.Square{Col: 7, Row: 7})
+	c.terrain.paintSurface(grid.SurfaceClimb, grid.Square{Col: 8, Row: 7})
+	c.fight(t)
+	opts, err := c.options(t, c.caio, "Toren")
+	if err != nil {
+		t.Fatalf("GetMoveOptions error = %v", err)
+	}
+	r := reachableAt(opts, 8, 7)
+	if r == nil || r.GetCostDft() != 200 || r.GetExtraDft() != 100 || r.GetSwimExtraDft() != 50 || r.GetClimbExtraDft() != 50 || r.GetPathDft() != 100 {
+		t.Fatalf("the options for a swim then a climb = %v, want cost 200 with 100 of path, 50 of swim and 50 of climb", r)
+	}
+	// A pure swim and a pure climb carry their whole extra in their own field.
+	if r := reachableAt(opts, 7, 7); r == nil || r.GetSwimExtraDft() != 50 || r.GetClimbExtraDft() != 0 {
+		t.Errorf("a swim = %v, want 50 of swim and none of climb", r)
+	}
+}
+
 // A jump clears the water: its cost is its length (5 ft: a standing jump goes 8 ft).
 func TestAJumpOverWaterCostsItsLength(t *testing.T) {
 	t.Parallel()
@@ -156,8 +177,8 @@ func TestAJumpOverWaterCostsItsLength(t *testing.T) {
 	}
 }
 
-// A creature with no walking and no flying speed moves on its best swimming or climbing speed; one that walks keeps the
-// walking speed, and the swim speed only lifts the extra (the known limit of movement.md).
+// A creature with no walking and no flying speed moves on its best swimming or climbing speed; one that walks reads its
+// walking speed where it stands on the floor, and its swim speed only in the water (#819).
 func TestThePoolOfASwimmerAndAWalker(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)

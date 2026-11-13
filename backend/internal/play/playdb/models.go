@@ -226,6 +226,7 @@ type Combatant struct {
 	SpeedSwimFt             int32
 	SpeedClimbFt            int32
 	SpeedBurrowFt           int32
+	FeatureState            []byte
 }
 
 type CombatantState struct {
