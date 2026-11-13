@@ -41,7 +41,9 @@ A cancelled call returns its connection to the pool after about 100 ms, the time
 
 ## Hints sent after the commit
 
-The combat write path of the `play` module (`write`, `changeInTx`, `StartEncounter`) runs in `Service.tx(ctx, sessionID, fn)`, which wraps `db.InTx` and sends after the commit.
+The combat write path of the `play` module (`write`, `changeInTx`, `StartEncounter`) and the writers of vitals, resources, rests and Revivify (`AdjustCharacterVitals`, `TakeRest`, `SpendHitDice`, the slot recoveries, `GiveBardicInspirationOutside`, `RequestRevivify`, `ConfirmRevivifyTime`, `SetRevivifyBlocked`) run in `Service.tx(ctx, sessionID, fn)`, which wraps `db.InTx` and sends after the commit.
+A writer that has only the campaign goes through `txOpen`: it reads the open session without a lock, and the closure checks that it is still the open one.
+`ReviveInCombat` runs in the transaction of the characters module (`ReviveCharacter`), which has locked the session and then the character; it does not bump, and the characters module tells the streams after its commit.
 Other writers of the module call `db.InTx` and then `send`; they do not bump the hint number.
 `txOn` is the same on any transaction starter; a test passes one whose `COMMIT` fails.
 

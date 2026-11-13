@@ -1,0 +1,69 @@
+package play
+
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+)
+
+// sayFn is what an after-commit step of Service.tx sends through (hints.after): it stamps the event with the session's number.
+type sayFn = func(campaignID string, ev live.Event)
+
+// sayNow sends without a number, for the callers that tell the streams outside Service.tx (the calls of other modules after
+// their own commit).
+func (s *Service) sayNow(campaignID string, ev live.Event) { s.send(campaignID, ev) }
+
+// txOpen is Service.tx on the campaign's open session: the session is read first, with no lock, so tx can take its row lock as the
+// first statement of the attempt, and fn is given it after the check that it is still the open one (stillOpen). It refuses with
+// NO_OPEN_SESSION when the campaign has none.
+func (s *Service) txOpen(ctx context.Context, campaignID string, fn func(tx pgx.Tx, h *hints, session playdb.GameSession) error) error {
+	open, err := openSessionWith(ctx, s.queries, campaignID)
+	if err != nil {
+		return err
+	}
+	return s.tx(ctx, open.ID, func(tx pgx.Tx, h *hints) error {
+		session, err := stillOpen(ctx, s.queries.WithTx(tx), campaignID, open.ID)
+		if err != nil {
+			return err
+		}
+		return fn(tx, h, session)
+	})
+}
+
+// tellVitalsAfter collects the vitals of the characters as they stand once the transaction committed, each to the master and the
+// character's player (the hint of publishVitals). A character whose vitals cannot be read is left out: the hint only says "read again".
+func (s *Service) tellVitalsAfter(h *hints, campaignID string, characterIDs ...string) {
+	h.after(func(ctx context.Context, say sayFn) {
+		for _, id := range characterIDs {
+			if v, err := s.vitals.GetVitals(ctx, campaignID, id); err == nil {
+				say(campaignID, vitalsHint(v))
+			}
+		}
+	})
+}
+
+// tellEncounterAfter collects what PublishEncounterChanged tells of a combat (the combat, its log for the master, the vitals of
+// the table and the fog), once the transaction committed.
+func (s *Service) tellEncounterAfter(h *hints, campaignID, encounterID string) {
+	h.after(func(ctx context.Context, say sayFn) { s.tellEncounterByID(ctx, say, campaignID, encounterID) })
+}
+
+// tellEncounterRowAfter collects the hint that a combat changed (publishEncounterChanged), once the transaction committed: the
+// fog is read then, so the players are told what they see of the combat as it stands.
+func (s *Service) tellEncounterRowAfter(h *hints, campaignID string, enc playdb.Encounter) {
+	h.after(func(ctx context.Context, say sayFn) { s.tellEncounterChanged(ctx, say, campaignID, enc) })
+}
+
+// revivifyChangedEvent is the hint that the casts of Revivify outside a combat changed, for the master and the caster's player.
+func revivifyChangedEvent(casterUserID string) live.Event {
+	return live.Event{
+		Audience: live.Audience{Master: true, UserID: casterUserID},
+		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_RevivifyChanged_{
+			RevivifyChanged: &playv1.WatchGameSessionResponse_RevivifyChanged{},
+		}},
+	}
+}

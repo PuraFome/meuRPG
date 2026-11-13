@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -187,17 +188,22 @@ func (s *Service) PublishCreaturesChanged(campaignID, ownerUserID string) {
 // PublishEncounterChanged tells every stream that the combat changed. Call it
 // after the commit.
 func (s *Service) PublishEncounterChanged(ctx context.Context, campaignID, encounterID string) {
+	s.tellEncounterByID(ctx, s.sayNow, campaignID, encounterID)
+}
+
+// tellEncounterByID is PublishEncounterChanged through say: an after-commit step of Service.tx tells it with the session's number.
+func (s *Service) tellEncounterByID(ctx context.Context, say sayFn, campaignID, encounterID string) {
 	enc, err := s.queries.GetEncounterByID(ctx, encounterID)
 	if err != nil {
 		return // the combat is gone: nothing to tell
 	}
-	s.publishEncounterChanged(ctx, campaignID, enc)
-	s.publishLogChanged(ctx, campaignID, enc.ID, false) // the damage waiting on it was dropped: the master's line; whether a player's was hidden is not told here
+	s.tellEncounterChanged(ctx, say, campaignID, enc)
+	say(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: combatLogChangedMessage(enc.ID, false)}) // the damage waiting on it was dropped: the master's line; whether a player's was hidden is not told here
 	// A creature that left may have passed the turn, and the new turn ends a familiar's
 	// sight (MR-036): the vitals and the fog hear of it too.
 	if all, err := s.vitals.ListVitals(ctx, campaignID); err == nil {
 		for _, v := range all {
-			s.publishVitals(campaignID, v)
+			say(campaignID, vitalsHint(v))
 		}
 	}
 	s.maps.VisionChanged(ctx, campaignID, conv.OrZero(enc.MapID))

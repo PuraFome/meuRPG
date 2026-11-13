@@ -163,7 +163,7 @@ A stream carries it on `ready` and on every `heartbeat`, and nothing else about 
 - **Hidden writes move it too.** A write only the master sees bumps the number for everyone.
   A player who was not told the event is "behind" and reads once at the next heartbeat.
   That costs one extra read per hidden write within 25 s, and it tells the player nothing about the write.
-- **Only the combat write path counts.** `write`, `changeInTx` and `StartEncounter` run in `Service.tx` (`play/hints.go`).
+- **Only the writers in `Service.tx` count.** They are the combat write path (`write`, `changeInTx`, `StartEncounter`), the master's correction of vitals, the rests, the hit dice, the slot recoveries, Bardic Inspiration out of a combat and Revivify's requests, answers and switch (`play/hints.go`).
   Every other writer of the `play` package tells the streams through `send` after its own `db.InTx`: it does not bump, and its events carry no number.
   The hints a combat handler tells itself after the write (`finish`) carry none either; the write's own bump covers them.
   A hint lost by one of those is not detected by the number.
@@ -216,8 +216,9 @@ Its exception list (`publish_exceptions.txt`) is empty and can only shrink.
 
 ### The replay rule
 
-A repeat of a combat write whose key is stored sends its hints again, with the number as it stands.
+A repeat of a write in `Service.tx` whose key is stored sends its hints again, with the number as it stands.
 The first call may have committed and died before it sent, and a hint only says "read again", so a second one is harmless.
+What the first call told is not kept: the repeat tells a superset worked out from the stored result (the vitals as they stand, the combat that holds the character), to the audiences the first call reached at most; the casts go to the master only.
 The closure calls `h.replay()` and `tellReplayed` fills the collector from what is stored: the master's cast change, the vitals of the combat's players (each to the master and its own player), the open reaction windows, the fog of the combat's map, and for a start the current map.
 The forced moves of a cast, a creature action or a rider answer are worked out from the stored event.
 
@@ -264,8 +265,8 @@ It requires `expected_revision`, the revision of the vitals the master saw (a re
 An absent or changed revision is `aborted` and nothing is written.
 The check runs in the same transaction as the write, so two corrections from one revision let one win.
 The "Ajustar" sheet also returns spent uses of resources (`resources_used`), sets the hit dice by size (`hit_dice_used_by_die`, or the older sum `hit_dice_used`, never both) and, for a druid in a beast form, the beast's hit points (`wild_shape_hit_points_current`; 0 ends the form).
-In one transaction `play` locks the session row, checks the key, asks `characters` to store and writes the `session_events` row; after `COMMIT` it publishes `vitals_changed`.
-The same key again stores and publishes nothing and answers with the HP as they are now (`TestAdjustCharacterVitalsIsIdempotent`); the same key for another character is `invalid_argument`.
+In one transaction `play` locks the session row, checks the key, asks `characters` to store and writes the `session_events` row, and moves the hint number; after `COMMIT` it publishes `vitals_changed`.
+The same key again stores nothing, tells `vitals_changed` again and answers with the HP as they are now (`TestAdjustCharacterVitalsIsIdempotent`, `TestAdjustCharacterVitalsHints`); the same key for another character is `invalid_argument`.
 Event numbers come out as 1, 2, 3 without a gap, even for simultaneous corrections (`TestSessionEventsAreOrderedPerSession`).
 A correction during a combat with that character raises the encounter's revision and publishes `encounter_changed`.
 

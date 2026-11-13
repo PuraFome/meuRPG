@@ -303,9 +303,9 @@ type CombatRoster interface {
 	// has another living character). It returns its name. `failed_precondition` for a
 	// character that is not dead.
 	ReviveDead(ctx context.Context, tx pgx.Tx, campaignID, characterID string, at time.Time) (name string, err error)
-	// SetRevivifyBlocked sets the master's switch "Revivificar não funciona nesta morte" on
+	// MarkRevivifyBlocked sets the master's switch "Revivificar não funciona nesta morte" on
 	// a dead player's character inside tx; `failed_precondition` when it is not dead.
-	SetRevivifyBlocked(ctx context.Context, tx pgx.Tx, campaignID, characterID string, blocked bool) error
+	MarkRevivifyBlocked(ctx context.Context, tx pgx.Tx, campaignID, characterID string, blocked bool) error
 	// SceneOptions returns, for each key of a scene's checks, the character's
 	// bonus and passive value (the rules engine's SceneOptions), in the order of
 	// keys. `not_found` for any other character.

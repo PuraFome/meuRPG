@@ -69,7 +69,6 @@ play encounters.go (*Service).ClearBattleEncounter # permanent: master prep data
 play encounters.go (*Service).keepBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
 play equip_combat.go (*Service).EquipInCombat # characters host: called by characters with its transaction (task B, lock order)
 play free_roll_rpc.go (*Service).RollFreeDice # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play inspiration_outside.go (*Service).giveOutsideTx # 4b: vitals, resources, rests, revivify
 play lasting_effects_armor.go (*Service).ArmorWorn # characters host: called by characters with its transaction (task B, lock order)
 play lasting_effects_armor.go (*Service).GearChanged # characters host: called by characters with its transaction (task B, lock order)
 play lasting_effects_charadd.go (*Service).AddCharacterEffect # 4c: traps, lasting effects, creatures
@@ -86,13 +85,7 @@ play puzzles_master.go (*Service).UpdatePuzzle # 4d: scene, stage, puzzles, mess
 play puzzles_master.go (*Service).setArchived # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play puzzles_play.go (*Service).MakePuzzleMove # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play puzzles_session.go (*Service).changeRun # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play resources.go (*Service).SpendHitDice # 4b: vitals, resources, rests, revivify
-play resources.go (*Service).TakeRest # 4b: vitals, resources, rests, revivify
-play resources_slot_recovery.go (*Service).useRecovery # 4b: vitals, resources, rests, revivify
-play revive.go (*Service).ReviveInCombat # 4b: vitals, resources, rests, revivify
-play revivify.go (*Service).SetRevivifyBlocked # 4b: vitals, resources, rests, revivify
-play revivify_requests.go (*Service).ConfirmRevivifyTime # 4b: vitals, resources, rests, revivify
-play revivify_requests.go (*Service).RequestRevivify # 4b: vitals, resources, rests, revivify
+play revive.go (*Service).ReviveInCombat # characters host: called by characters with its transaction and the character row locked (task B, lock order); 4b converts nothing here
 play rpc.go (*Service).EndGameSession # session lifecycle: ends the session row and the live view
 play rpc.go (*Service).StartGameSession # session lifecycle: there is no row to lock before it creates one
 play scene.go (*Service).CloseScene # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
@@ -107,5 +100,4 @@ play tablescreen.go (*Service).SetTableScreen # 4d: scene, stage, puzzles, messa
 play traps_damage.go (*Service).settleTrapDamage # 4c: traps, lasting effects, creatures
 play traps_fire.go (*Service).fireOutsideCombat # 4c: traps, lasting effects, creatures
 play traps_search.go (*Service).SearchForTraps # 4c: traps, lasting effects, creatures
-play vitals.go (*Service).AdjustCharacterVitals # 4b: vitals, resources, rests, revivify
 play xp.go (*Service).AppendEvent # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
