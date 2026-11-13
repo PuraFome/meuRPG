@@ -14,6 +14,7 @@ import {
   TableSpellTargetKind,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { rangeFeet, rangeMeters } from './effect-draft';
+import { applyHit, hitAvailable, hitFromEffect, settleHit } from './hit-effect-draft';
 import { draftToSpellSummon } from './spell-summon';
 import { emptySummon, summonToDraft } from './summon-draft';
 import {
@@ -176,6 +177,7 @@ export function spellToDraft(s: TableSpell): SpellDraft {
     ...mechanicToDraft(s),
     ...damageToDraft(s),
     ...keptToDraft(s),
+    hit: hitFromEffect(s.effect),
   };
 }
 
@@ -268,6 +270,12 @@ function mechanicInit(d: SpellDraft): Pick<SpellInit, 'attack' | 'save' | 'heal'
   }
 }
 
+/** The stored effect with the weapon-hit modifier the form says written in; nothing else of it changes. */
+function effectInit(d: SpellDraft): Pick<SpellInit, 'effect'> {
+  const effect = applyHit(d.kept?.effect, d.hit, hitAvailable(d));
+  return effect ? { effect } : {};
+}
+
 /** The body of a request, from the form. Only what the chosen mechanic uses goes: a spell of "Só texto" has no attack, no
  * saving throw, no damage and no healing; a spell that is not an area has no shape. */
 export function draftToSpell(d: SpellDraft): SpellInit {
@@ -296,7 +304,7 @@ export function draftToSpell(d: SpellDraft): SpellInit {
     damage: damageInit(d),
     ...mechanicInit(d),
     ...(d.mechanic === 'summon' && d.summon ? { summon: draftToSpellSummon(d.summon) } : {}),
-    ...(d.kept?.effect ? { effect: d.kept.effect } : {}),
+    ...effectInit(d),
     ...(d.kept?.zone ? { zone: d.kept.zone } : {}),
   };
 }
@@ -323,7 +331,7 @@ export function withMechanic(d: SpellDraft, mechanic: MechanicChoice): SpellDraf
 /** Choosing "Só quem conjura" makes the range "Pessoal" (the server asks for it); leaving it gives the distance back. */
 export function withTarget(d: SpellDraft, target: TargetChoice): SpellDraft {
   const { beforeSummon: _, ...kept } = d;
-  const next = { ...kept, target };
+  const next = settleHit({ ...kept, target });
   if (target === 'self') {
     next.range = 'self';
   } else if (d.target === 'self' && d.range === 'self' && target !== 'area') {

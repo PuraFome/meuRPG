@@ -1,0 +1,119 @@
+@let h = hit();
+<div class="head">
+  <app-switch-field
+    label="Efeito no próximo golpe"
+    [checked]="on()"
+    [disabled]="!available()"
+    [describedby]="available() ? '' : reasonId"
+    [path]="path('kind')"
+    onWord=""
+    offWord="Desligado"
+    (toggled)="patch({ enabled: $event })"
+  />
+  @if (on()) {
+    <span class="where">{{ whereText() }}</span>
+    <span class="chips">
+      @if (durationText()) {
+        <span class="chip"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>{{ durationText() }}</span>
+      }
+      @if (concentration()) {
+        <span class="chip"><mat-icon aria-hidden="true">adjust</mat-icon>Concentração · em quem conjura</span>
+      }
+    </span>
+    <button type="button" class="how-button" [attr.aria-expanded]="open()" [attr.aria-controls]="howId" (click)="setOpen()">
+      <mat-icon aria-hidden="true">info</mat-icon>Como funciona<mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>
+    </button>
+  }
+</div>
+@if (!available()) {
+  <p class="lock" [id]="reasonId" role="note"><mat-icon aria-hidden="true">lock</mat-icon>{{ instantLock }}</p>
+}
+@if (on()) {
+  @if (open()) {
+    <p class="how" [id]="howId">{{ how }}</p>
+  }
+  <div class="when" role="radiogroup" [attr.aria-labelledby]="whenId + '-label'" [attr.aria-describedby]="needsConcentration() || issues('trigger').length > 0 ? whenId + '-note' : null">
+    <p class="label" [id]="whenId + '-label'">Quando vale</p>
+    <div class="cards">
+      @for (c of cards(); track c.value; let first = $first) {
+        <label class="card" [class.card--locked]="c.locked" [class.card--on]="c.checked">
+          <input
+            type="radio"
+            class="mr-visually-hidden"
+            [name]="reasonId + '-trigger'"
+            [value]="c.value"
+            [checked]="c.checked"
+            [disabled]="c.locked"
+            [attr.aria-describedby]="c.locked ? reasonId + '-' + c.value : null"
+            [attr.data-field]="first ? path('trigger') : null"
+            (change)="patch({ trigger: c.value })"
+          />
+          <span class="dot" aria-hidden="true"></span>
+          <span class="text">
+            <span class="title">{{ c.label }}</span>
+            @if (c.locked) {
+              <span class="desc desc--lock" [id]="reasonId + '-' + c.value"><mat-icon aria-hidden="true">lock</mat-icon>{{ c.hint }}</span>
+            } @else {
+              <span class="desc">{{ c.hint }}</span>
+            }
+          </span>
+        </label>
+      }
+    </div>
+    <div [id]="whenId + '-note'">
+      @if (issues('trigger').length > 0) {
+        <app-field-note [issues]="issues('trigger')" />
+      } @else if (needsConcentration()) {
+        <p class="note" role="note"><mat-icon aria-hidden="true">info</mat-icon>{{ concentrationNote }}</p>
+      }
+    </div>
+  </div>
+
+  <div class="columns">
+    <fieldset class="col">
+      <legend class="label">Dano a mais</legend>
+      <div class="pair">
+        <app-text-field label="Dados" inputmode="numeric" [value]="h.dice" [path]="path('dice')" [issues]="issues('dice')" [hint]="'1 a ' + diceMax" (valueChange)="patch({ dice: $event })" />
+        <app-select-field label="Dado" [options]="dice" [value]="h.die" [path]="path('die')" [issues]="issues('die')" (valueChange)="patch({ die: +$event })" />
+      </div>
+      <div class="pair">
+        <app-text-field label="A mais por nível" inputmode="numeric" [value]="h.perSlot" [path]="path('per_slot_dice')" [issues]="issues('per_slot_dice')" [hint]="'0 a ' + perSlotMax + ' por nível acima'" (valueChange)="patch({ perSlot: $event })" />
+        <app-text-field label="No máximo" suffix="dados" inputmode="numeric" [value]="h.cap" [path]="path('max_dice')" [issues]="issues('max_dice')" [hint]="'1 a ' + capMax + ' dados.'" (valueChange)="patch({ cap: $event })" />
+      </div>
+      <app-select-field label="Tipo de dano" [options]="damageOptions()" [value]="h.damageType" [path]="path('damage_type')" [issues]="issues('damage_type')" (valueChange)="patch({ damageType: '' + $event })" />
+    </fieldset>
+
+    <fieldset class="col">
+      <legend class="label">Teste de resistência <span class="optional">· opcional</span></legend>
+      <app-select-field
+        label="Habilidade"
+        [options]="abilityOptions()"
+        [value]="h.saveAbility"
+        [path]="path('save')"
+        [issues]="issues('save')"
+        [hint]="hasSave() ? 'Contra a CD de magia de quem conjura.' : ''"
+        (valueChange)="setSave('' + $event)"
+      />
+      <app-select-field
+        label="Se falhar, fica"
+        [options]="conditionOptions"
+        [value]="hasSave() ? h.condition : ''"
+        [disabled]="!hasSave()"
+        [placeholder]="hasSave() ? 'Escolha a condição' : 'Pede um teste'"
+        [path]="path('on_fail_conditions')"
+        [issues]="issues('on_fail_conditions')"
+        (valueChange)="setCondition('' + $event)"
+      />
+      <app-select-field
+        label="Por quanto tempo"
+        [options]="lastsOptions"
+        [value]="hasSave() ? h.conditionLasts : ''"
+        [disabled]="!hasSave()"
+        [placeholder]="hasSave() ? '' : 'Pede um teste'"
+        [path]="path('condition_duration')"
+        [issues]="issues('condition_duration')"
+        (valueChange)="setLasts('' + $event)"
+      />
+    </fieldset>
+  </div>
+}

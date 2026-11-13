@@ -1,0 +1,252 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+  padding-top: var(--mr-space-3);
+  border-top: 1px dashed var(--mr-line);
+}
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-1) var(--mr-space-3);
+
+  app-switch-field {
+    flex: none;
+  }
+}
+
+.where {
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+}
+
+.chips {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--mr-space-2);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
+  }
+}
+
+.how-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0 var(--mr-space-2);
+  border: 0;
+  border-radius: var(--mr-radius-sm);
+  background: transparent;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.lock,
+.note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--mr-font-15);
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-16);
+    margin-top: 1px;
+  }
+}
+
+.note {
+  margin-top: var(--mr-space-1);
+  font-size: var(--mr-font-14);
+}
+
+.how {
+  margin: 0;
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+  color: var(--mr-ink);
+  font-size: var(--mr-font-15);
+  line-height: 20px;
+}
+
+.label {
+  margin: 0;
+  padding: 0;
+  font-size: var(--mr-font-15);
+  font-weight: 700;
+}
+
+.optional {
+  font-weight: 400;
+  color: var(--mr-ink-muted);
+}
+
+.when {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+// The four cards share one grid row of equal height: four across from 640 px, two by two under it.
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+
+  @container (min-width: 640px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.card {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  cursor: pointer;
+
+  &--on {
+    padding: 9px 13px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  // A trigger the spell cannot have yet: dashed and muted, with the reason in the card.
+  &--locked {
+    border-style: dashed;
+    border-color: var(--mr-line);
+    background: transparent;
+    color: var(--mr-ink-muted);
+    cursor: not-allowed;
+  }
+}
+
+.dot {
+  flex: none;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border: 2px solid var(--mr-control-line);
+  border-radius: 50%;
+  background: var(--mr-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  :checked ~ & {
+    border-color: var(--mr-ink);
+
+    &::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--mr-ink);
+    }
+  }
+
+  .card--locked & {
+    border-color: var(--mr-line);
+    background: transparent;
+  }
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  font-size: var(--mr-font-16);
+  font-weight: 700;
+}
+
+.desc {
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+
+  &--lock {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+
+    .mat-icon {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      font-size: var(--mr-font-16);
+    }
+  }
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-4);
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-3);
+  align-items: start;
+}
