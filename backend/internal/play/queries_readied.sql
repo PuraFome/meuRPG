@@ -1,8 +1,8 @@
 -- The readied actions of a combat (migration 00330).
 
 -- name: InsertReadiedAction :one
-INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, move_ft, target_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, move_ft, target_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
 -- name: ListWaitingReadiedActions :many

@@ -31,7 +31,7 @@ func (q *Queries) DeleteReadiedActionsOfEncounter(ctx context.Context, encounter
 }
 
 const getWaitingReadiedAction = `-- name: GetWaitingReadiedAction :one
-SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
+SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
 WHERE id = $1 AND encounter_id = $2 AND status = 'waiting'
 `
 
@@ -51,6 +51,7 @@ func (q *Queries) GetWaitingReadiedAction(ctx context.Context, arg GetWaitingRea
 		&i.TriggerText,
 		&i.Kind,
 		&i.ActionKey,
+		&i.ActionNamePt,
 		&i.SpellCastID,
 		&i.MoveFt,
 		&i.TargetID,
@@ -61,7 +62,7 @@ func (q *Queries) GetWaitingReadiedAction(ctx context.Context, arg GetWaitingRea
 }
 
 const getWaitingReadiedOf = `-- name: GetWaitingReadiedOf :one
-SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
+SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
 WHERE combatant_id = $1 AND status = 'waiting'
 `
 
@@ -77,6 +78,7 @@ func (q *Queries) GetWaitingReadiedOf(ctx context.Context, combatantID string) (
 		&i.TriggerText,
 		&i.Kind,
 		&i.ActionKey,
+		&i.ActionNamePt,
 		&i.SpellCastID,
 		&i.MoveFt,
 		&i.TargetID,
@@ -88,21 +90,22 @@ func (q *Queries) GetWaitingReadiedOf(ctx context.Context, combatantID string) (
 
 const insertReadiedAction = `-- name: InsertReadiedAction :one
 
-INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, move_ft, target_id, created_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-RETURNING id, encounter_id, combatant_id, round, trigger_text, kind, action_key, spell_cast_id, move_ft, target_id, status, created_at
+INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, move_ft, target_id, created_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at
 `
 
 type InsertReadiedActionParams struct {
-	EncounterID string
-	CombatantID string
-	Round       int32
-	TriggerText string
-	Kind        string
-	ActionKey   *string
-	MoveFt      int32
-	TargetID    *string
-	CreatedAt   time.Time
+	EncounterID  string
+	CombatantID  string
+	Round        int32
+	TriggerText  string
+	Kind         string
+	ActionKey    *string
+	ActionNamePt string
+	MoveFt       int32
+	TargetID     *string
+	CreatedAt    time.Time
 }
 
 // The readied actions of a combat (migration 00330).
@@ -114,6 +117,7 @@ func (q *Queries) InsertReadiedAction(ctx context.Context, arg InsertReadiedActi
 		arg.TriggerText,
 		arg.Kind,
 		arg.ActionKey,
+		arg.ActionNamePt,
 		arg.MoveFt,
 		arg.TargetID,
 		arg.CreatedAt,
@@ -127,6 +131,7 @@ func (q *Queries) InsertReadiedAction(ctx context.Context, arg InsertReadiedActi
 		&i.TriggerText,
 		&i.Kind,
 		&i.ActionKey,
+		&i.ActionNamePt,
 		&i.SpellCastID,
 		&i.MoveFt,
 		&i.TargetID,
@@ -137,7 +142,7 @@ func (q *Queries) InsertReadiedAction(ctx context.Context, arg InsertReadiedActi
 }
 
 const listWaitingReadiedActions = `-- name: ListWaitingReadiedActions :many
-SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
+SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
 WHERE encounter_id = $1 AND status = 'waiting'
 ORDER BY created_at, id
 `
@@ -160,6 +165,7 @@ func (q *Queries) ListWaitingReadiedActions(ctx context.Context, encounterID str
 			&i.TriggerText,
 			&i.Kind,
 			&i.ActionKey,
+			&i.ActionNamePt,
 			&i.SpellCastID,
 			&i.MoveFt,
 			&i.TargetID,

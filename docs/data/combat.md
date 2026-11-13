@@ -335,9 +335,10 @@ A zone is not a lasting effect: it has no single target, it carries squares, and
 `readied_actions` are the actions combatants readied (SRD 5.1, "Ready"; migration 00330).
 A row belongs to the combat (`encounter_id`) and to the readier (`combatant_id`), and goes away with either; the end of the combat deletes the rows.
 `round` is when it was readied, and `trigger_text` the player's own words, 1 to 200 characters.
-`kind` is `attack`, `spell`, `move` or `other`; `action_key` is the attack's or the standard action's key, `move_ft` the speed of a move, `spell_cast_id` the held cast of a spell.
+`kind` is `attack`, `spell`, `move` or `other`; `action_key` is the attack's or the standard action's key and `action_name_pt` its name when it was readied, `move_ft` the speed of a move, `spell_cast_id` the held cast of a spell.
 `target_id` is the creature the player named, set to `NULL` when it leaves.
 `status` is `waiting`, `fired`, `ignored`, `lost`, `broken` or `canceled`; a combatant has at most one `waiting` row (`readied_actions_one_waiting_idx`).
+A row is `lost` when the readier's next turn starts, or as soon as the readier is defeated (its turns are skipped); a revived readier does not get it back.
 The master and the readier's player read a row; no other player does (RN-10).
 
 ## Contest, hold, hide, help, surprise (RN-34)

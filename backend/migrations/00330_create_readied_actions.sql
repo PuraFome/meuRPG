@@ -4,10 +4,12 @@
 --   - trigger_text is the player's own words (1 to 200 characters); the master judges when it happens.
 --   - kind is what is held: 'attack' (action_key is the attack's key), 'spell' (spell_cast_id names the held cast),
 --     'move' (move_ft is the speed it may move) or 'other' (action_key is the standard action's key).
+--   - action_name_pt is the held action's name when it was readied, so every view names it as the log line does.
 --   - target_id is the creature the player named, if any; it is forgotten when that combatant leaves.
 --   - status: 'waiting' until it ends; 'fired' (the master fired it and the reaction ran it), 'ignored' (the reactor let
 --     it pass), 'lost' (the readier's next turn started first), 'broken' (the concentration of a held spell ended),
---     'canceled' (the owner gave it up on their own turn).
+--     'canceled' (the owner gave it up on their own turn). A readier that is defeated loses it then: its turns are
+--     skipped, so the start of its next turn would never come.
 -- A combatant has at most one waiting row. The rows go with the combat and with the combatant.
 -- Production is live: the migration only adds, and every statement may run twice.
 CREATE TABLE IF NOT EXISTS readied_actions (
@@ -18,6 +20,7 @@ CREATE TABLE IF NOT EXISTS readied_actions (
     trigger_text TEXT NOT NULL,
     kind TEXT NOT NULL,
     action_key TEXT NULL,
+    action_name_pt TEXT NOT NULL DEFAULT '',
     spell_cast_id TEXT NULL,
     move_ft INT4 NOT NULL DEFAULT 0,
     target_id UUID NULL REFERENCES combatants (id) ON DELETE SET NULL,
@@ -27,7 +30,7 @@ CREATE TABLE IF NOT EXISTS readied_actions (
     CONSTRAINT readied_actions_kind_valid CHECK (kind IN ('attack', 'spell', 'move', 'other')),
     CONSTRAINT readied_actions_status_valid CHECK (status IN ('waiting', 'fired', 'ignored', 'lost', 'broken', 'canceled')),
     CONSTRAINT readied_actions_action_key_valid CHECK (kind NOT IN ('attack', 'other') OR action_key IS NOT NULL),
-    CONSTRAINT readied_actions_round_valid CHECK (round >= 0 AND move_ft >= 0)
+    CONSTRAINT readied_actions_round_move_valid CHECK (round >= 0 AND move_ft >= 0)
 );
 
 CREATE INDEX IF NOT EXISTS readied_actions_encounter_id_idx ON readied_actions (encounter_id);
