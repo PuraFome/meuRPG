@@ -93,9 +93,12 @@ func (f *readyFlow) run(ctx context.Context) (actionEvent, error) {
 	return t.made, nil
 }
 
-// check is what Ready asks besides the turn: a speed for a move, the trigger, an action the combatant may hold, a target
+// check is what Ready asks besides the turn: a map and a speed for a move, the trigger, an action the combatant may hold, a target
 // it sees, and no other readied action waiting.
 func (f *readyFlow) check(ctx context.Context) error {
+	if f.call.kind == readiedMove && isTheatre(f.take.c.enc) {
+		return errReadyAction("a combat without a map has no square to move to")
+	}
 	if f.call.kind == readiedMove && speedDFt(f.take.who) == 0 {
 		return errReadyAction("a combatant with no speed cannot ready a move")
 	}
@@ -141,8 +144,10 @@ func (f *readyFlow) checkAction() error {
 }
 
 // unreadiable are the standard actions Ready cannot hold: the attack is readied by its key, a spell by its own kind, and
-// Ready itself holds nothing.
-var unreadiable = []string{standardAttack, standardCast, actionReady}
+// Ready itself holds nothing. Hide and Help have their own calls (ContestService), which a reaction does not run, and
+// Dash and Disengage last only for the readier's own turn, which nothing it does as a reaction reaches: each would be
+// taken for nothing.
+var unreadiable = []string{standardAttack, standardCast, actionReady, actionHide, actionHelp, actionDash, actionDisengage}
 
 // checkTarget checks that the creature the player named is one the caller sees.
 func (f *readyFlow) checkTarget(ctx context.Context) error {
