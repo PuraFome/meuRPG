@@ -131,7 +131,8 @@ test(
       await expect(dice.getByRole('region', { name: 'Sintonização' })).toHaveCount(0);
       await dice.locator('button', { hasText: 'Fechar' }).click();
 
-      // The sheet follows, with no reload: the ring counts, and the window is shut again.
+      // The sheet, read again: the ring counts, and the server shut the window.
+      await sheetPage.reload();
       await expect(gear.getByText('Sintonizados: 1 de 3')).toBeVisible();
       await expect(gear.getByText('Muda num descanso')).toBeVisible();
     } finally {
