@@ -75,6 +75,8 @@ const (
 	eventSunlightSet = "sunlight_set"
 	// A character drew or stowed a piece of gear in a running combat (equip_combat.go): the master's undo takes it back.
 	eventGearSwapped = "gear_swapped"
+	// A character used a feature that declares a use (UseFeature, features.go): the master's undo takes it back.
+	eventFeatureUsed = "feature_used"
 )
 
 // The kinds of the XP awards (package progression writes them

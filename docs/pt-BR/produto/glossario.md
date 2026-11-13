@@ -197,6 +197,9 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Parede | Wall | Um quadrado que bloqueia movimento, vista e luz. É cobertura total (RN-21, MR-036). |
 | Cobertura | Cover | Meia (+2 na CA e nos testes de Destreza), três quartos (+5) ou total (não pode ser alvo). Marcada pelo mestre e calculada em cada ataque; os graus não se somam (MR-034). |
 | Terreno difícil | Difficult terrain | Um quadrado em que cada passo custa o dobro. O espaço de uma criatura também conta (MR-034). |
+| Superfície | Surface | Uma camada do mapa que o mestre pinta com dois pincéis, Água e Escalável (#589). Nadar ou escalar ali custa 1 pé a mais por pé, a menos que a criatura tenha o deslocamento certo (RN-21). |
+| Água | Water | Um quadrado da camada Superfície em que se nada. O custo dobra para quem não tem deslocamento de natação. |
+| Escalável | Climbable | Um quadrado da camada Superfície que se escala. O custo dobra para quem não tem deslocamento de escalada. |
 | Armadilha | Trap | Um ponto escondido com as CDs para notar e para achar, um gatilho e um efeito. O jogador só vê uma armadilha que o personagem dele notou ou achou, ou que o mestre revelou, e nunca as CDs nem o efeito (MR-035). |
 | Percepção passiva | Passive Perception | 10 mais o bônus de Percepção, sem rolar. É o que nota uma armadilha de passagem, com −5 na penumbra (MR-035). |
 | Luz, luz de base | Light, base light | Uma fonte de luz posta no mapa (raios de luz clara e de penumbra em metros) e a luz padrão do mapa (Claro, Penumbra ou Escuro) onde nenhuma fonte alcança (MR-036). |
@@ -240,6 +243,8 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Letargia | Lethargy | O turno em que uma criatura que terminou Velocidade não pode se mover nem agir. |
 | Exaustão | Exhaustion | Os seis níveis da condição do SRD; um descanso longo baixa um (RN-22). |
 | Efeito | Lasting effect | Algo que uma magia ou o mestre põe numa criatura por um tempo: uma condição com fim, um bônus, uma ação extra. Contado em rodadas no combate e em tempo de jogo fora dele (RN-22). |
+| Efeito no próximo golpe | Next-hit effect | Dano de arma que uma magia deixa nos golpes de quem conjura: o próximo golpe, o próximo golpe corpo a corpo, cada golpe enquanto concentra, ou cada golpe no alvo marcado. É somado depois de um golpe de arma, e o próximo golpe o gasta (RN-23). |
+| Alvo marcado | Marked target | A criatura que um efeito no próximo golpe do tipo "Cada golpe no alvo marcado" segue. Acaba quando quem conjura deixa de se concentrar (RN-23). |
 | Tempo de jogo | Game time | O tempo na ficção; uma rodada tem 6 segundos. Fora do combate, só anda quando o mestre o anda. |
 | Janela de reação | Reaction window | A pergunta "você pode reagir?" que segura a ação que a abriu até ser respondida. O jogador lê só a própria; na de um NPC, "Esperando o mestre". |
 | Reação | Reaction | Uma ação uma vez por rodada, que volta no começo da vez do combatente: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave, Queda Lenta e o ataque de oportunidade. |

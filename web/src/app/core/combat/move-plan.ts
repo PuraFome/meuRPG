@@ -125,10 +125,53 @@ export function costTitle(costDft: number): string {
   return `Mover ${metersFixed(costDft / 10)}`;
 }
 
-/** "Depois restam 6,9 m." */
-export function afterText(leftDft: number, costDft: number): string {
-  // No clamp: the callers only say it for a cost the movement left pays.
-  return `Depois restam ${metersFixed((leftDft - costDft) / 10)}.`;
+/** "Depois restam 6,9 m." from what the server says is left (`left_after_dft` of a square, counted at the speed of the surface
+ * it is on, or the counter of where the creature stands): the app never works it out across a switch of surface. */
+export function afterLeftText(leftAfterDft: number): string {
+  return `Depois restam ${metersFixed(leftAfterDft / 10)}.`;
+}
+
+/** One extra a square costs, with its word: "+1,5 m nadando". */
+export interface ExtraPart {
+  readonly kind: 'swim' | 'climb' | 'crawl';
+  readonly text: string;
+}
+
+/** The extras of a square as the server counted them (`swimExtraDft`, `climbExtraDft`, `crawlExtraDft`), each with its word, in the order
+ * the page says them: swimming, climbing, crawling. `note` is the sentence that follows when only a swim or only a climb is paid ("cada metro
+ * na água conta dobrado"): two extras say themselves. Empty when the square pays none. The page never subtracts. */
+export function extrasOf(square: ReachableSquare): { parts: readonly ExtraPart[]; note: string } {
+  const parts: ExtraPart[] = [];
+  const add = (kind: ExtraPart['kind'], dft: number, word: string) => {
+    if (dft > 0) {
+      parts.push({ kind, text: `+${metersFixed(dft / 10)} ${word}` });
+    }
+  };
+  add('swim', square.swimExtraDft, 'nadando');
+  add('climb', square.climbExtraDft, 'escalando');
+  add('crawl', square.crawlExtraDft, 'rastejando');
+  let note = '';
+  if (parts.length === 1 && parts[0].kind === 'swim') {
+    note = ': cada metro na água conta dobrado.';
+  } else if (parts.length === 1 && parts[0].kind === 'climb') {
+    note = ': cada metro escalado conta dobrado.';
+  }
+  return { parts, note };
+}
+
+/** "1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando.": a crawl's cost in its parts, each as the server counted it (`pathDft` and the
+ * extras). Empty when the square does not crawl: the cost line says the rest. */
+export function extraBreakdown(square: ReachableSquare): string {
+  if (square.crawlExtraDft <= 0) {
+    return '';
+  }
+  const parts = [
+    `${metersFixed(square.pathDft / 10)} do caminho`,
+    ...(square.swimExtraDft > 0 ? [`${metersFixed(square.swimExtraDft / 10)} nadando`] : []),
+    ...(square.climbExtraDft > 0 ? [`${metersFixed(square.climbExtraDft / 10)} escalando`] : []),
+    `${metersFixed(square.crawlExtraDft / 10)} rastejando`,
+  ];
+  return `${parts.join(' + ')}.`;
 }
 
 /** Who a square's exit may provoke, by name: only combatants the caller sees
@@ -172,14 +215,18 @@ export function provokeWarning(
 /** The note on the jump's card: where it lands and what is left, with the trap the character knows when the landing square is
  * inside one ("Cai do outro lado do Fosso. Depois restam 1,5 m. O Fosso só dispara onde você cai."), and no word about a trap
  * the character does not know (RN-10). */
-export function jumpCardText(costDft: number, leftDft: number, knownTrapName = ''): string {
-  const after = afterText(leftDft, costDft);
+export function jumpCardText(
+  costDft: number,
+  leftAfterDft: number | null,
+  knownTrapName = '',
+): string {
+  const after = leftAfterDft === null ? '' : afterLeftText(leftAfterDft); // the server's number for the landing square
   if (knownTrapName) {
     const the = `${article(knownTrapName) === 'a' ? 'a' : 'o'} ${knownTrapName}`;
     const The = `${article(knownTrapName) === 'a' ? 'A' : 'O'} ${knownTrapName}`;
-    return `Cai do outro lado d${the}. ${after} ${The} só dispara onde você cai.`;
+    return `Cai do outro lado d${the}. ${after ? `${after} ` : ''}${The} só dispara onde você cai.`;
   }
-  return `Cai ${metersFixed(costDft / 10)} adiante. ${after}`;
+  return `Cai ${metersFixed(costDft / 10)} adiante.${after ? ` ${after}` : ''}`;
 }
 
 /** The label under the chosen square of a jump that leaves an enemy's reach. */

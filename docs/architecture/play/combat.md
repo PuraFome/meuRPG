@@ -99,6 +99,13 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 State errors are `failed_precondition` with the `EncounterBlocked` detail and a reason: `MAP_HAS_NO_GRID` (with the `map_id`), `NO_CURRENT_MAP`, `ENCOUNTER_ALREADY_OPEN`, `NOT_IN_SETUP`, `NOT_ACTIVE`, `NOT_YOUR_TURN`, `NOT_PLACED`, `TOO_FAR` (with `missing_ft`), `SQUARE_OCCUPIED`, `WALL_ON_SQUARE`, `NO_FREE_SQUARE`, `TOO_MANY_COMBATANTS`, and in actions `ACTION_USED`, `BONUS_ACTION_USED`, `REACTION_USED`, `ATTACKS_USED`, `ATTACK_ACTION_FIRST`, `NO_SLOT`, `NO_USES`, `TARGET_OUT_OF_REACH`, `TARGET_DEFEATED`, `TARGET_DEAD`, `COMBATANT_DOWN`, `PENDING_DAMAGE`, `REACTION_PENDING`, `DEATH_SAVE_DUE`, `DAMAGE_ALREADY_ROLLED`, `DAMAGE_NOT_ROLLED`, `NOTHING_TO_UNDO`, `WRONG_DICE_MODE` and more (the enum in `combat.proto` is the list).
 Callers never depend on message text; the app turns the code and detail into Portuguese (`combat-errors.ts`).
 
+### Using a feature
+
+`UseFeature` (`FeatureService`) takes a feature action that declares a use: `TakeAction` refuses its key.
+It is used on the combatant's turn, or on any turn when the feature spends the reaction (also while an opportunity offer waits for the user).
+The refusals are `NOT_YOUR_TURN`, the economy's, `NO_USES`, `COMBATANT_DOWN`, `FEATURE_TARGET` (with `combatant_ids`) and `FEATURE_CHOICE`; nothing is spent on a refusal.
+[Feature state](feature-state.md#using-a-feature) has the order of the checks and what is written.
+
 ### Equipping and stowing gear
 
 Equipping or stowing gear costs nothing outside a running combat that holds the character.

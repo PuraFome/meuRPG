@@ -203,6 +203,9 @@ func (s *Service) leaveBeastForm(ctx context.Context, tx pgx.Tx, q *playdb.Queri
 	if err != nil {
 		return nil, adjusted, err
 	}
+	if err := dropFormClock(ctx, q, call.charText); err != nil {
+		return nil, adjusted, err
+	}
 	seq, err := q.NextSessionEventSeq(ctx, sessionID)
 	if err != nil {
 		return nil, adjusted, fmt.Errorf("next event number: %w", err)

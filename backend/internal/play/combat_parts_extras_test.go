@@ -43,6 +43,19 @@ func (a *armed) setCombatantColumn(t *testing.T, label, column, value string) {
 	}
 }
 
+// setFeatureMark marks the feature of the combatant as used in the turn (an entry of scope turn in feature_state).
+func (a *armed) setFeatureMark(t *testing.T, label, key, turn string) {
+	t.Helper()
+	if _, err := a.h.pool.Exec(t.Context(), `UPDATE combatants SET feature_state = $2::jsonb WHERE id = $1`, a.id(t, label), string(turnMarkState(key, turn))); err != nil {
+		t.Fatalf("mark %s of %s: %v", key, label, err)
+	}
+}
+
+// turnMarkState is a feature_state with one entry of scope turn.
+func turnMarkState(key, turn string) []byte {
+	return featureState{key: {S: scopeTurn, At: turn, N: 1}}.bytes()
+}
+
 // extrasTurnKey is the key of the turn in progress, as the once-per-turn marks keep it.
 func extrasTurnKey(e *playv1.Encounter) string {
 	return fmt.Sprintf("%d:%s", e.GetRound(), e.GetCurrentCombatantId())
@@ -68,11 +81,11 @@ func TestRollDamageRefusesASneakAttackThatDoesNotHold(t *testing.T) {
 			e = a.passTo(t, e, "Toren")
 			a.setConditions(t, e, "Goblin", "condition:restrained")
 			if tt.markFirst {
-				a.setCombatantColumn(t, "Toren", "sneak_attack_turn", extrasTurnKey(e))
+				a.setFeatureMark(t, "Toren", "sneak_attack", extrasTurnKey(e))
 			}
 			res := a.mustAttack(t, a.caio, a.get(t, a.caio), "Toren", rapier, "Goblin", func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{5, 18} })
 			if !tt.markFirst {
-				a.setCombatantColumn(t, "Toren", "sneak_attack_turn", extrasTurnKey(e))
+				a.setFeatureMark(t, "Toren", "sneak_attack", extrasTurnKey(e))
 			}
 			_, err := a.damage(t, a.caio, e, res.GetPendingDamage().GetId(), extrasMarked(sneak, typed...))
 			wantBlockedBy(t, "RollDamage(a Sneak Attack that does not hold)", err, blockedExtraNotAvailable)
@@ -130,7 +143,7 @@ func TestRollDamageRefusesAColossusSlayerAlreadyUsed(t *testing.T) {
 		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 	}
 	res := a.mustAttack(t, a.caio, e, "Toren", rapier, "Goblin", d20(15))
-	a.setCombatantColumn(t, "Toren", "colossus_slayer_turn", extrasTurnKey(e))
+	a.setFeatureMark(t, "Toren", "colossus_slayer", extrasTurnKey(e))
 	_, err := a.damage(t, a.caio, e, res.GetPendingDamage().GetId(),
 		extrasMarked([]*playv1.SelectedExtra{{Key: "colossus-slayer"}}, &playv1.TypedPart{PartKey: extraWeaponDamage, Sum: 1}, &playv1.TypedPart{PartKey: "colossus-slayer", Sum: 2}))
 	wantBlockedBy(t, "RollDamage(a Colossus Slayer already used)", err, blockedExtraNotAvailable)
@@ -157,10 +170,10 @@ func TestSelectionCheckerHoldsTheExtrasThatDoNotNeedTheDatabase(t *testing.T) {
 	}{
 		{"a part that is not available", playdb.Combatant{}, partRecord{Key: "sneak-attack"}, false},
 		{"Sneak Attack not used this turn", playdb.Combatant{}, partRecord{Key: "sneak-attack", Available: true}, true},
-		{"Sneak Attack used this turn", playdb.Combatant{SneakAttackTurn: &mark}, partRecord{Key: "sneak-attack", Available: true}, false},
-		{"Sneak Attack used in another turn", playdb.Combatant{SneakAttackTurn: &earlier}, partRecord{Key: "sneak-attack", Available: true}, true},
+		{"Sneak Attack used this turn", playdb.Combatant{FeatureState: turnMarkState("sneak_attack", mark)}, partRecord{Key: "sneak-attack", Available: true}, false},
+		{"Sneak Attack used in another turn", playdb.Combatant{FeatureState: turnMarkState("sneak_attack", earlier)}, partRecord{Key: "sneak-attack", Available: true}, true},
 		{"Colossus Slayer not used this turn", playdb.Combatant{}, partRecord{Key: "colossus-slayer", Available: true}, true},
-		{"Colossus Slayer used this turn", playdb.Combatant{ColossusSlayerTurn: &mark}, partRecord{Key: "colossus-slayer", Available: true}, false},
+		{"Colossus Slayer used this turn", playdb.Combatant{FeatureState: turnMarkState("colossus_slayer", mark)}, partRecord{Key: "colossus-slayer", Available: true}, false},
 		{"Hunter's Mark while concentrating on it", playdb.Combatant{ConcentrationSpell: &hunters}, partRecord{Key: "hunters-mark", Available: true}, true},
 		{"Hunter's Mark with no concentration", playdb.Combatant{}, partRecord{Key: "hunters-mark", Available: true}, false},
 		{"Hunter's Mark while concentrating on another spell", playdb.Combatant{ConcentrationSpell: &other}, partRecord{Key: "hunters-mark", Available: true}, false},

@@ -1260,7 +1260,7 @@ func (q *Queries) GetMapGrid(ctx context.Context, arg GetMapGridParams) (GetMapG
 }
 
 const getMapLayers = `-- name: GetMapLayers :one
-SELECT map_id, difficult_terrain, walls, cover, light, updated_at, doors, no_pass FROM map_layers
+SELECT map_id, difficult_terrain, walls, cover, light, updated_at, doors, no_pass, surface FROM map_layers
 WHERE map_id = $1
 `
 
@@ -1277,6 +1277,7 @@ func (q *Queries) GetMapLayers(ctx context.Context, mapID string) (MapLayer, err
 		&i.UpdatedAt,
 		&i.Doors,
 		&i.NoPass,
+		&i.Surface,
 	)
 	return i, err
 }
@@ -1458,6 +1459,19 @@ func (q *Queries) GetMapPointInCampaign(ctx context.Context, arg GetMapPointInCa
 		&i.CreateHash,
 	)
 	return i, err
+}
+
+const getMapSurface = `-- name: GetMapSurface :one
+SELECT surface FROM map_layers
+WHERE map_id = $1
+`
+
+// The map's surface layer alone (water, climbable), for a count of what a combatant stands on: one indexed read of one column.
+func (q *Queries) GetMapSurface(ctx context.Context, mapID string) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getMapSurface, mapID)
+	var surface []byte
+	err := row.Scan(&surface)
+	return surface, err
 }
 
 const getMapTileInfo = `-- name: GetMapTileInfo :one
@@ -5117,11 +5131,11 @@ func (q *Queries) UpsertMapCreatureToken(ctx context.Context, arg UpsertMapCreat
 }
 
 const upsertMapLayers = `-- name: UpsertMapLayers :exec
-INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, no_pass, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, no_pass, surface, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (map_id) DO UPDATE
 SET difficult_terrain = excluded.difficult_terrain, walls = excluded.walls, cover = excluded.cover,
-    light = excluded.light, doors = excluded.doors, no_pass = excluded.no_pass, updated_at = excluded.updated_at
+    light = excluded.light, doors = excluded.doors, no_pass = excluded.no_pass, surface = excluded.surface, updated_at = excluded.updated_at
 `
 
 type UpsertMapLayersParams struct {
@@ -5132,10 +5146,11 @@ type UpsertMapLayersParams struct {
 	Light            []byte
 	Doors            []byte
 	NoPass           []byte
+	Surface          []byte
 	Now              time.Time
 }
 
-// Writes the six layers of a map (NULL for a layer with nothing painted). The
+// Writes the seven layers of a map (NULL for a layer with nothing painted). The
 // handler holds the map's row lock (GetMapForUpdate), so two batches of paint
 // take turns.
 func (q *Queries) UpsertMapLayers(ctx context.Context, arg UpsertMapLayersParams) error {
@@ -5147,6 +5162,7 @@ func (q *Queries) UpsertMapLayers(ctx context.Context, arg UpsertMapLayersParams
 		arg.Light,
 		arg.Doors,
 		arg.NoPass,
+		arg.Surface,
 		arg.Now,
 	)
 	return err

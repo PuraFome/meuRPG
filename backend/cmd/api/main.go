@@ -550,7 +550,7 @@ type modules struct {
 
 // wireOptions are the limits the modules get: zero means each module's own default.
 type wireOptions struct {
-	MonthlyImages, DailyImages int
+	MonthlyImages, DailyImages int32
 	// Voice makes the audio of the conversation's lines (nil: off); VoiceDailyLimit is the server's
 	// cap per day.
 	Voice               voice.Generator
@@ -686,8 +686,8 @@ func wireModules(
 		// conditions, skills and the SRD's magic items and treasure tables, which no
 		// table's content changes (MR-025, ADR-0018).
 		Generator:     imageGenerator,
-		MonthlyImages: int32(opts.MonthlyImages), //nolint:gosec // G115: the config caps it at 500
-		DailyImages:   int32(opts.DailyImages),   //nolint:gosec // G115: the config caps it at 10000
+		MonthlyImages: opts.MonthlyImages,
+		DailyImages:   opts.DailyImages,
 		// The per-user limits of the image routes (nil in tests: no limit).
 		DownloadLimit: opts.Policy.Download,
 		UploadLimit:   opts.Policy.Upload,

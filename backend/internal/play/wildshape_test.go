@@ -331,8 +331,9 @@ func TestMR037_WildShapeInCombat(t *testing.T) {
 		t.Errorf("3rd-circle slots spent = %d, want none", got)
 	}
 
-	// Already a wolf, and the action is used: neither a second form nor a second use.
-	_, err = s.assume(t, s.bia, s.bri, "monster:wolf")
+	// Already a wolf, and the action is used: neither a second form nor a second use. Another
+	// beast is not a swap (the SRD takes the way back first); the wolf again is the stay.
+	_, err = s.assume(t, s.bia, s.bri, "monster:mastiff")
 	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_IN_WILD_SHAPE)
 
 	// Next round the wolf bites: its attack and its damage dice are the beast's

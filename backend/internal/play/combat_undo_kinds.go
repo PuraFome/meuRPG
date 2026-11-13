@@ -40,6 +40,7 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventDamageApplied:     (*undoer).damageApplied,
 	eventDamageDiscarded:   (*undoer).damageDiscarded,
 	eventHideResolved:      (*undoer).hideResolved,
+	eventFeatureUsed:       (*undoer).featureUsed,
 	eventCombatantMoved:    (*undoer).combatantMoved,
 	eventTrapTriggered:     (*undoer).trapTriggered,
 	eventActionTaken:       (*undoer).actionTaken,
@@ -186,6 +187,10 @@ func (u *undoer) putShape(ctx context.Context, who playdb.Combatant, want *shape
 	}
 	restored, body, err := u.s.vitals.SetWildShape(ctx, u.c.tx, u.c.session.CampaignID, who.CharacterID, beast, beastHP)
 	if err != nil {
+		return nil, err
+	}
+	// A form an undo puts back starts its clock over: what was left is not in the hit points' state.
+	if err := u.s.restoreFormClock(ctx, u.c, who.CharacterID, &who, want != nil, 0, body); err != nil {
 		return nil, err
 	}
 	u.c.told = append(u.c.told, restored)
@@ -356,7 +361,23 @@ func (u *undoer) damageRolled(ctx context.Context, ev actionEvent) error {
 	if err := u.partsOfferedBack(ctx, ev); err != nil {
 		return err
 	}
+	if err := u.effectsAddedBack(ctx, ev); err != nil {
+		return err
+	}
 	return u.partsSpentBack(ctx, ev)
+}
+
+// effectsAddedBack takes away the effects the roll put on its target (the conditions of a spell's failed save).
+func (u *undoer) effectsAddedBack(ctx context.Context, ev actionEvent) error {
+	if len(ev.EffectsAdded) == 0 {
+		return nil
+	}
+	for _, id := range ev.EffectsAdded {
+		if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
+			return fmt.Errorf("take the effects of the roll away: %w", err)
+		}
+	}
+	return u.s.refreshCombatants(ctx, u.c, ev.Target)
 }
 
 // emptyJSONList is the value of the columns a roll leaves empty (part_rolls, steps).
@@ -411,7 +432,7 @@ func (u *undoer) partsSpentBack(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
-	return u.onceMarksBack(ctx, who, ev.OnceBefore)
+	return u.onceMarksBack(ctx, who, ev)
 }
 
 // damageRerollBack gives back the uses a damage reroll spent.
@@ -422,24 +443,57 @@ func (u *undoer) damageRerollBack(ctx context.Context, who playdb.Combatant, ev 
 	return u.spendResourcesBack(ctx, who, ev.DamageReroll.Resource, ev.DamageReroll.Cost)
 }
 
-// onceMarksBack puts the once-per-turn marks of the roll's attacker back: Sneak Attack's and Colossus
-// Slayer's, and the table's when the roll changed them.
-func (u *undoer) onceMarksBack(ctx context.Context, who playdb.Combatant, before *onceMarks) error {
-	if before == nil {
+// onceMarksBack puts the once-per-turn marks of the roll's attacker back: the entry each key the roll marked had before. An
+// event written before the feature state holds them as once_before (legacyFeatureBefore).
+func (u *undoer) onceMarksBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	state := readFeatureState(who.FeatureState)
+	now := stateNowOf(u.c.enc)
+	before := ev.FeatureBefore
+	if before == nil && ev.OnceBefore != nil {
+		before = legacyFeatureBefore(*ev.OnceBefore, state, now)
+	}
+	if len(before) == 0 {
 		return nil
 	}
-	if err := u.c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{
-		ID: who.ID, SneakAttackTurn: nilIfEmpty(before.Sneak), ColossusSlayerTurn: nilIfEmpty(before.Colossus),
-	}); err != nil {
+	for key, e := range before {
+		if e == nil {
+			state.del(key)
+			continue
+		}
+		state.set(key, *e)
+	}
+	if err := saveFeatureState(ctx, u.c, who.ID, state, now); err != nil {
 		return fmt.Errorf("put back the once-per-turn marks: %w", err)
 	}
-	if !before.TableChanged {
-		return nil
-	}
-	if err := u.c.q.SetCombatantTableOnceTurns(ctx, playdb.SetCombatantTableOnceTurnsParams{ID: who.ID, TableOnceTurns: writeTableOnce(before.Table)}); err != nil {
-		return fmt.Errorf("put back the table's once-per-turn marks: %w", err)
-	}
 	return nil
+}
+
+// legacyFeatureBefore translates the once_before of an event written before the feature state into the entries to put back
+// (all of scope turn): Sneak Attack's and Colossus Slayer's, always, and the table's when the roll changed them (the whole
+// table is put back: a mark of the state that is not in it goes).
+func legacyFeatureBefore(old onceMarks, state featureState, now stateNow) map[string]*featureEntry {
+	entry := func(mark string) *featureEntry {
+		if mark == "" {
+			return nil
+		}
+		return &featureEntry{S: scopeTurn, At: mark, N: 1}
+	}
+	out := map[string]*featureEntry{featureSneakAttack: entry(old.Sneak), featureColossusSlayer: entry(old.Colossus)}
+	if !old.TableChanged {
+		return out
+	}
+	for key, e := range state {
+		if _, own := out[key]; !own && e.S == scopeTurn && e.live(now) {
+			out[key] = nil
+		}
+	}
+	for key, mark := range old.Table {
+		if key == featureSneakAttack || key == featureColossusSlayer {
+			continue
+		}
+		out[key] = entry(mark)
+	}
+	return out
 }
 
 // damageApplied: the character's vitals as they were, its death saves too, and the

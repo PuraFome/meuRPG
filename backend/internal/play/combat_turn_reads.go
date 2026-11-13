@@ -4,6 +4,7 @@ import (
 	"context"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -19,6 +20,9 @@ type turnReads struct {
 	sheet    link.Sheet
 	hasSheet bool
 	vitals   *playv1.CharacterVitals
+	// features are the rows of the feature actions that are taken with UseFeature, as the rules worked them out, before the
+	// turn's gate disabled them: a feature that spends the reaction is used on any turn (annotateFeatures).
+	features []*rulesv1.ActionOption
 }
 
 func (s *Service) turnReadsOf(campaignID string, who playdb.Combatant) *turnReads {

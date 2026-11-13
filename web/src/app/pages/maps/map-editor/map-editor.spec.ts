@@ -129,6 +129,7 @@ describe('MapEditor', () => {
       doors: new Uint8Array(),
       fogWithheld: false,
       noPass: new Uint8Array(),
+      surface: new Uint8Array(),
       ...layers,
     };
     state = new MapState(async () =>
@@ -597,10 +598,50 @@ describe('MapEditor', () => {
       expect(el.querySelectorAll('app-editor-overlay .sq--wall')).toHaveLength(1);
       const wall = Array.from(
         el.querySelectorAll<HTMLElement>('app-layers-panel [role="switch"]'),
-      )[1];
+      )[2];
       wall.click();
       await settle();
       expect(el.querySelectorAll('app-editor-overlay .sq--wall')).toHaveLength(0);
+    });
+
+    it('"Superfície" paints Água and Escalável into one layer, shows them, and hides them with its switch (#589)', async () => {
+      await setup();
+      radio('Pintar').click();
+      await settle();
+      button('Superfície').click();
+      await settle();
+      // The second row names the brushes and says how to paint: in the bar, never over the map.
+      expect(text()).toContain('Superfície pintada');
+      expect(el.querySelector('app-editor-bar .bar__paint-hint')?.textContent).toContain(
+        'Arraste para pintar · Shift apaga',
+      );
+      expect(el.querySelector('app-map-view .mv__hint')).toBeNull();
+      surface()!.stroke.emit({ centers: [{ col: 0, row: 0 }], erase: false });
+      radio('Escalável').click();
+      await settle();
+      surface()!.stroke.emit({ centers: [{ col: 1, row: 0 }], erase: false });
+      button('Apagar').click();
+      await settle();
+      expect(el.querySelector('app-editor-bar .bar__paint-hint')?.textContent).toContain(
+        'Arraste para apagar a superfície',
+      );
+      surface()!.stroke.emit({ centers: [{ col: 1, row: 0 }], erase: true });
+      await frame();
+      await flush();
+      expect(api.paints.map((p) => `${p.layer}:${p.value}`)).toEqual([
+        `${MapLayer.SURFACE}:1`,
+        `${MapLayer.SURFACE}:2`,
+        `${MapLayer.SURFACE}:0`,
+      ]);
+      expect(el.querySelectorAll('app-editor-overlay .sq--water')).toHaveLength(1);
+      expect(el.querySelectorAll('app-editor-overlay .sq--climb')).toHaveLength(0);
+      expect(text()).toContain('1 quadrado de água · custa o dobro');
+      const row = Array.from(
+        el.querySelectorAll<HTMLElement>('app-layers-panel [role="switch"]'),
+      )[1];
+      row.click();
+      await settle();
+      expect(el.querySelectorAll('app-editor-overlay .sq--water')).toHaveLength(0);
     });
 
     it('leaving "Pintar" sends what waits', async () => {

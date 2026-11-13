@@ -7,8 +7,8 @@ import (
 )
 
 // The other speeds of a character (#567): a table's speed.swim, speed.climb and speed.burrow modifiers reach the
-// combatant when it joins, like the fly speed, for whoever reads that speed. The grid does not spend them: the
-// movement left stays the walking speed's.
+// combatant when it joins, like the fly speed, for whoever reads that speed. They lift the extra cost of swimming and
+// climbing (#589); the movement left stays the walking speed's.
 func TestTheOtherSpeedsOfASheetReachTheCombatant(t *testing.T) {
 	t.Parallel()
 	a := fxTable(t, fxTrait("Nadador da Mesa",
@@ -31,7 +31,7 @@ func TestTheOtherSpeedsOfASheetReachTheCombatant(t *testing.T) {
 	if other.GetSpeedFt() != 0 || other.GetSpeedFlyFt() != 0 || other.GetSpeedSwimFt() != 0 || other.GetSpeedClimbFt() != 0 || other.GetSpeedBurrowFt() != 0 {
 		t.Errorf("another player reads speeds %d/%d/%d/%d/%d, want none", other.GetSpeedFt(), other.GetSpeedFlyFt(), other.GetSpeedSwimFt(), other.GetSpeedClimbFt(), other.GetSpeedBurrowFt())
 	}
-	// Nothing spends them: the movement the turn has is the walking speed's.
+	// The movement the turn has is the walking speed's: they only lift the extra of the water and the climb.
 	if got := byLabel(t, e, "Ragna").GetSpeedDft(); got != 300 {
 		t.Errorf("speed_dft = %d, want 300 (the walking speed)", got)
 	}

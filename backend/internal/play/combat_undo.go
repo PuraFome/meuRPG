@@ -33,7 +33,7 @@ var undoableKinds = []string{
 	eventSpellCast, eventReactionUsed, eventReactionDeclined, eventDeathSaveRolled, eventConditionsSet,
 	eventCombatantMoved, eventTrapTriggered, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
 	eventHideResolved, // only the master's reveal of a hider (undoableHideResolved)
-	eventLegendarySpent, eventGearSwapped,
+	eventLegendarySpent, eventGearSwapped, eventFeatureUsed,
 }
 
 // leavesHPAlone are the undoable kinds whose undo never writes hit points: they keep no holds.

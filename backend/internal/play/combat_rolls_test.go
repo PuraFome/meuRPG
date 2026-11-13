@@ -761,7 +761,7 @@ func TestPM06b_RemovingSneakAttackGivesTheTurnsUseBack(t *testing.T) {
 	})
 	mark := func() *string {
 		var turn *string
-		if err := a.h.pool.QueryRow(t.Context(), `SELECT sneak_attack_turn FROM combatants WHERE id = $1`, a.id(t, "Toren")).Scan(&turn); err != nil {
+		if err := a.h.pool.QueryRow(t.Context(), `SELECT feature_state->'sneak_attack'->>'at' FROM combatants WHERE id = $1`, a.id(t, "Toren")).Scan(&turn); err != nil {
 			t.Fatalf("read the mark: %v", err)
 		}
 		return turn

@@ -53,3 +53,66 @@ describe('EntryRead options', () => {
     }
   });
 });
+
+describe('EntryRead next-hit effect (#577)', () => {
+  const hit: Read = {
+    rows: [],
+    sections: [],
+    text: ['O frio sobe.'],
+    hit: {
+      title: 'Efeito no próximo golpe',
+      where: 'Em quem conjura: o próximo golpe corpo a corpo, por até 1 minuto.',
+      lead: 'No próximo golpe corpo a corpo:',
+      whileLasts: false,
+      damage: '+2d8 frio',
+      more: '+1d8 por nível acima do 2º, até 5d8',
+      save: [
+        { text: 'O alvo faz um teste de resistência de Força; se falhar, fica ' },
+        { text: 'Impedido', strong: true },
+        { text: ' até o fim do próximo turno dele.' },
+      ],
+      visibility: 'Só quem conjura e você',
+    },
+  };
+
+  it('draws the section with chips, the sentence and who sees it', () => {
+    const el = render(hit);
+    expect(el.querySelector('section[aria-labelledby="hit-title"] h2')?.textContent).toBe(
+      'Efeito no próximo golpe',
+    );
+    expect(Array.from(el.querySelectorAll('.hit__chips .chip')).map((c) => c.textContent)).toEqual([
+      '+2d8 frio',
+      '+1d8 por nível acima do 2º, até 5d8',
+    ]);
+    expect(el.querySelector('.hit .text strong')?.textContent).toBe('Impedido');
+    expect(el.querySelector('.hit__who')?.textContent).toContain('Quem vê o efeito');
+    expect(el.querySelector('.hit__who dd')?.textContent).toBe('Só quem conjura e você');
+  });
+
+  it('draws one line in a preview, with the damage as a chip and no audience row', () => {
+    const el = render(hit, true);
+    expect(el.querySelector('.hit-line')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'No próximo golpe corpo a corpo: +2d8 frio, +1d8 por nível acima do 2º, até 5d8. O alvo faz um teste de resistência de Força; se falhar, fica Impedido até o fim do próximo turno dele.',
+    );
+    expect(el.querySelector('.hit-line .chip')?.textContent).toBe('+2d8 frio');
+    expect(el.querySelector('.hit__who')).toBeNull();
+  });
+
+  it('ends the preview line of the marked target with "enquanto durar", as the board says', () => {
+    const marked: Read = {
+      ...hit,
+      hit: {
+        ...hit.hit!,
+        lead: 'Em cada golpe com arma no alvo marcado:',
+        damage: '+1d6 do tipo da arma',
+        more: '',
+        save: [],
+        whileLasts: true,
+      },
+    };
+    const el = render(marked, true);
+    expect(el.querySelector('.hit-line')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Em cada golpe com arma no alvo marcado: +1d6 do tipo da arma, enquanto durar.',
+    );
+  });
+});

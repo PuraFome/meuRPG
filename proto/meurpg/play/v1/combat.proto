@@ -2035,6 +2035,14 @@ enum EncounterBlockedReason {
   // cannot be donned or doffed in a fight (SRD 5.1: it takes 1 to 10 minutes). Only the
   // master may change it. Nothing is changed.
   ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT = 127;
+  // FeatureService.UseFeature: a target is not allowed (too many or too few, the wrong side, out of reach, not in the
+  // combat or hidden from the player). `combatant_ids` names the ones refused. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_FEATURE_TARGET = 128;
+  // FeatureService.UseFeature: the choice is not one the feature offers, or one is missing. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_FEATURE_CHOICE = 129;
+  // A stay in a Wild Shape form (AssumeWildShapeRequest.stay) came after the form
+  // had ended: nothing was spent and no new form was taken.
+  ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED = 130;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2778,9 +2786,15 @@ message Combatant {
   // Its size (rules.v1.CreatureSize); everyone who sees the combatant gets it.
   meurpg.rules.v1.CreatureSize size = 39;
   // The movement in tenths of a foot, which is what the server keeps (RN-21): the
-  // speed for the turn (twice after the Dash action; a creature with a fly speed
-  // takes the better of its speeds), what was walked and what is left. The `_ft`
-  // fields above are these rounded down. Same audience as `speed_ft`.
+  // speed for the turn (twice after the Dash action), what was walked and what is
+  // left. `speed_dft` is the speed of the surface the combatant stands on, the
+  // one that applies to its next step (SRD 5.1, "Using Different Speeds"): its walking
+  // speed on the floor (its fly speed for a flier), its swim speed in water, its climb speed on
+  // a climbable surface, and the walking speed where it has no swim or climb speed.
+  // `movement_left_dft` is that speed less `movement_used_dft`, never below 0, so a swimmer
+  // that spent 20 ft on the floor reads what its swim speed leaves. A surface the viewer
+  // has not seen is floor to them (RN-10). The `_ft` fields above are these rounded
+  // down. Same audience as `speed_ft`.
   int32 speed_dft = 40;
   int32 movement_used_dft = 41;
   int32 movement_left_dft = 42;
@@ -3363,7 +3377,10 @@ message GetMoveOptionsRequest {
 
 // GetMoveOptionsResponse is where the combatant can go in one straight move.
 message GetMoveOptionsResponse {
-  // The movement left, in tenths of a foot: the circle's radius.
+  // The movement left, in tenths of a foot: the circle's radius. It is the same number
+  // `Combatant.movement_left_dft` carries for the viewer: what is left at the speed of the
+  // surface the combatant stands on. A line that goes on to other surfaces ends where
+  // `ReachableSquare.left_after_dft` says nothing is left.
   int32 movement_left_dft = 1;
   // Every square it can go to, in reading order (row by row). The start is not
   // in it.
@@ -3383,6 +3400,15 @@ message GetMoveOptionsResponse {
   bool dragging_halved = 21;
 }
 
+// SurfaceExtra is what the extra cost of a move is for (SRD 5.1, "Climbing, Swimming, and Crawling").
+enum SurfaceExtra {
+  SURFACE_EXTRA_UNSPECIFIED = 0;
+  // The line crosses water and the mover has no swimming speed.
+  SURFACE_EXTRA_SWIM = 1;
+  // The line crosses a climbable surface and the mover has no climbing speed.
+  SURFACE_EXTRA_CLIMB = 2;
+}
+
 // DraggedSquare is the square a dragged creature ends on: the one the grappler left
 // just before the last square of its path, worked out by the server.
 message DraggedSquare {
@@ -3395,7 +3421,9 @@ message ReachableSquare {
   int32 col = 1;
   int32 row = 2;
   // The cost in tenths of a foot: the length of the line plus 50 for each square
-  // of difficult terrain or holding another creature that it enters.
+  // of difficult terrain or holding another creature that it enters, plus 1 extra foot per
+  // foot for the part of the line that is swum or climbed (without the matching speed) and
+  // another for a crawl (SRD 5.1).
   int32 cost_dft = 3;
   // The combatants this move would let attack with an opportunity attack (UUIDs):
   // only ones the caller sees, never a hidden one (RN-10). Empty when the move
@@ -3417,6 +3445,31 @@ message ReachableSquare {
   // The square the dragged creature (GetMoveOptionsResponse.dragging_combatant_id)
   // ends on if the mover goes here. Unset when it drags nobody.
   DraggedSquare dragged_to = 20;
+  // The part of `cost_dft` that swimming or climbing adds, in tenths of a foot; 0 when the line
+  // crosses no water or climbable surface, or the mover has the speed for it. Crawling is not in
+  // it (`crawl_extra_dft`). The screen writes it beside the cost without any arithmetic.
+  int32 extra_dft = 21;
+  // Which extra `extra_dft` is, for the words: SWIM or CLIMB, whichever is on most of the squares
+  // of this line (SWIM when they tie). UNSPECIFIED when `extra_dft` is 0.
+  SurfaceExtra surface_extra = 22;
+  // The part of `cost_dft` that crawling adds (1 foot per foot of the line, for a prone creature on
+  // foot), in tenths of a foot; 0 when the mover does not crawl. It adds to `extra_dft`: the screen
+  // prints each with its word.
+  int32 crawl_extra_dft = 23;
+  // The two parts of `extra_dft` apart, in tenths of a foot, for a line that crosses water and a climbable
+  // surface both: `swim_extra_dft` + `climb_extra_dft` = `extra_dft`. The screen prints each with its word
+  // ("+1,5 m nadando · +1,5 m escalando") and never subtracts.
+  int32 swim_extra_dft = 24;
+  int32 climb_extra_dft = 25;
+  // The rest of `cost_dft`, in tenths of a foot: the line and its difficult terrain, without the swim, the climb
+  // or the crawl. `path_dft` + `swim_extra_dft` + `climb_extra_dft` + `crawl_extra_dft` = `cost_dft`. The screen
+  // writes "1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando" from these, and never subtracts.
+  int32 path_dft = 26;
+  // What the mover has left once it is on this square, at the speed of the surface the
+  // square is on (SRD 5.1, "Using Different Speeds": what was spent, on the way here
+  // and before, is taken from the speed of the surface it ends on), in tenths of a foot.
+  // The screen shows it as is and never subtracts across a switch of surface.
+  int32 left_after_dft = 27;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.
@@ -3849,6 +3902,11 @@ message GetTurnOptionsResponse {
   // character, which RollAttack takes as `maneuver_key`, each with the uses left of its
   // resource pool. Empty for an NPC and for a combatant with no such die.
   repeated ManeuverDieOption maneuver_dice = 102;
+  // For each feature action of options.feature_actions with via_use_feature, who it can pick: every creature the caller
+  // sees, each with the reason it cannot be picked (`disabled_reason_pt`: out of reach, wrong side, down). A creature a
+  // player cannot see is never listed (RN-10); the master gets all. No entry can be picked: the action carries
+  // DISABLED_REASON_CODE_NO_VALID_TARGET.
+  repeated ResourceTargets feature_targets = 103;
 }
 
 // ManeuverDieOption is a weapon-attack table die the combatant can add to an attack roll.
@@ -5559,6 +5617,8 @@ enum CombatLogKind {
   // actor and `gear_swapped`. Only the master and the character's owner get the line; no other player's log shows it or
   // counts it (RN-10).
   COMBAT_LOG_KIND_GEAR_SWAPPED = 102;
+  // A character used a feature of its own (FeatureService.UseFeature): the actor, the targets and `feature_used`.
+  COMBAT_LOG_KIND_FEATURE_USED = 103;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5641,6 +5701,10 @@ enum WildShapeEndReason {
   WILD_SHAPE_END_REASON_ZERO_HP = 4;
   // The druid fell unconscious (a sleep spell, the master's hand).
   WILD_SHAPE_END_REASON_UNCONSCIOUS = 5;
+  // The form's time ran out: half the druid's level in hours (SRD 5.1).
+  WILD_SHAPE_END_REASON_EXPIRED = 6;
+  // The master ended the form's time by hand (no damage involved).
+  WILD_SHAPE_END_REASON_MASTER_ENDED = 7;
 }
 
 // CombatLogWildShape is a druid's change of form, in the combat log.
@@ -5788,6 +5852,8 @@ message CombatLogEntry {
   CombatLogRecharge recharge = 115;
   // GEAR_SWAPPED: the piece and what the change cost. The master's and the owner's.
   CombatLogGearSwapped gear_swapped = 117;
+  // FEATURE_USED: the feature, the choice and what the use did. The line has the audience of a feature action.
+  CombatLogFeatureUsed feature_used = 118;
   // The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
   // A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
   // sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and
@@ -7078,4 +7144,18 @@ message EndRageRequest {
 // EndRageResponse returns the combat.
 message EndRageResponse {
   Encounter encounter = 1;
+}
+
+// CombatLogFeatureUsed is a use of a feature, in the combat log.
+message CombatLogFeatureUsed {
+  // The feature's key and its name in Portuguese.
+  string feature_key = 1;
+  string name_pt = 2;
+  // The option the player picked, as the feature labels it. Empty when there was none.
+  string choice_text_pt = 3;
+  // The hit points healed and the temporary hit points given, summed over the targets.
+  int32 healed = 4;
+  int32 temp_hp = 5;
+  // True: a lasting effect was put on the targets.
+  bool effect_applied = 6;
 }

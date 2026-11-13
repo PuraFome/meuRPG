@@ -1355,11 +1355,11 @@ UPDATE combatants
 SET condition_sources = $2
 WHERE id = $1;
 
--- name: SetCombatantOncePerTurn :exec
--- The turn ("<round>:<combatant on turn>") in which Sneak Attack and Colossus Slayer
--- last added their damage; NULL back after an undo.
+-- name: SetCombatantFeatureState :exec
+-- Replaces the whole feature_state document of a combatant (featurestate.go): the marks of its
+-- features that last a turn, a round or a combat. The caller writes the document it read, changed.
 UPDATE combatants
-SET sneak_attack_turn = $2, colossus_slayer_turn = $3
+SET feature_state = $2
 WHERE id = $1;
 
 -- name: SetCombatantMeleeHitTurn :exec
@@ -1829,6 +1829,32 @@ WITH changed AS (
 )
 SELECT * FROM changed ORDER BY created_at, id;
 
+-- name: DeleteFormClockOfCharacter :many
+-- A druid's Wild Shape clock (one row, in a combat or out of it) goes with its form. The rows
+-- come back so a change that can be undone keeps them (RN-22).
+WITH gone AS (
+    DELETE FROM combatant_states
+    WHERE kind = 'effect' AND source_key = 'effect:wild-shape'
+      AND combatant_id IN (SELECT id FROM combatants WHERE character_id = $1)
+    RETURNING *
+)
+SELECT * FROM gone ORDER BY created_at, id;
+
+-- name: FormClockSecondsLeft :one
+-- The seconds a druid's Wild Shape form has left, -1 for a form with no clock: the row outside a
+-- combat, else the row of its combatant in a combat (rounds left, 6 s each). The vitals carry it.
+SELECT COALESCE(
+    (SELECT ce.seconds_left FROM character_effects ce
+      WHERE ce.character_id = $1 AND ce.source_key = 'effect:wild-shape' AND ce.seconds_left IS NOT NULL
+      ORDER BY ce.created_at DESC, ce.id LIMIT 1),
+    (SELECT GREATEST(cs.ends_round - GREATEST(e.round, 1), 0) * 6 FROM combatant_states cs
+         JOIN combatants cb ON cb.id = cs.combatant_id JOIN encounters e ON e.id = cs.encounter_id
+      WHERE cb.character_id = $1 AND cs.kind = 'effect' AND cs.source_key = 'effect:wild-shape' AND cs.ends_round IS NOT NULL
+      ORDER BY cs.created_at DESC, cs.id LIMIT 1), -1)::INT4 AS seconds_left;
+
+-- name: DeleteFormClockOfCharacterOutside :exec
+DELETE FROM character_effects WHERE character_id = $1 AND source_key = 'effect:wild-shape';
+
 -- name: DeleteCharacterEffectsOfCharacter :exec
 -- A character that died keeps no old effect when it lives again.
 DELETE FROM character_effects WHERE character_id = $1;
@@ -2057,13 +2083,6 @@ SELECT id, actor_user_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'free_roll_rolled' AND actor_user_id = $2
 ORDER BY seq DESC
 LIMIT $3;
-
--- name: SetCombatantTableOnceTurns :exec
--- The turns in which the table's once-per-turn extras last added their damage, by feature key
--- (JSON); the marks before are put back by an undo.
-UPDATE combatants
-SET table_once_turns = $2
-WHERE id = $1;
 
 -- name: SetCombatantCreatureSpent :exec
 -- What the combatant's stat block has spent: JSON {"<key>": N}.

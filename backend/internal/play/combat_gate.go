@@ -23,12 +23,18 @@ import (
 // a player's character is down. GetTurnOptions disables every option with it,
 // and the writes refuse with the matching EncounterBlocked.
 func (s *Service) gate(ctx context.Context, tx pgx.Tx, campaignID string, e playdb.Encounter, c playdb.Combatant) (rulesv1.DisabledReasonCode, error) {
+	return s.gateFor(ctx, tx, campaignID, e, c, false)
+}
+
+// gateFor is gate for an act that may be done off turn too (offTurn: a reaction): whose turn it is does not matter, and
+// the rest holds. A feature's use (UseFeature, GetTurnOptions) asks it with offTurn for the features that spend the reaction.
+func (s *Service) gateFor(ctx context.Context, tx pgx.Tx, campaignID string, e playdb.Encounter, c playdb.Combatant, offTurn bool) (rulesv1.DisabledReasonCode, error) {
 	switch {
 	case e.Status != statusActive:
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE, nil
 	case c.Defeated:
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DEFEATED, nil
-	case !actsNow(e, c): // its group is not on turn, or its part of a joint turn ended
+	case !offTurn && !actsNow(e, c): // its group is not on turn, or its part of a joint turn ended
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NOT_YOUR_TURN, nil
 	}
 	down, err := s.isDown(ctx, tx, campaignID, c)
@@ -156,7 +162,7 @@ func turnOf(c playdb.Combatant) link.Turn {
 	return link.Turn{
 		Spent:      spentOf(c),
 		ActionUsed: c.ActionUsed, BonusActionUsed: c.BonusActionUsed, ReactionUsed: c.ReactionUsed, AttacksMade: int(c.AttacksMade), AttackKey: conv.OrZero(c.ActionAttackKey), FlurryLeft: int(c.BonusAttacksLeft), ActionSurged: c.ActionSurged, SpellCast: c.SpellCast, BonusSpellCast: c.BonusSpellCast,
-		Dashed: c.Dashed, SpeedFt: int(max(c.SpeedFt, c.SpeedFlyFt)), MovementUsedFt: int(c.MovementUsedDft) / dftPerFt,
+		Dashed: c.Dashed, SpeedFt: int(speedFtOf(c)), MovementUsedFt: int(c.MovementUsedDft) / dftPerFt,
 		MovementUsedDFt: int(c.MovementUsedDft), LastMoveDFt: int(c.LastMoveDft), Disengaged: c.Disengaged,
 		JumpLongDFt: int(c.JumpLongDft), JumpHighDFt: int(c.JumpHighDft),
 		JumpLongBonusDFt: int(c.JumpLongBonusDft), JumpDoubled: c.JumpDoubled,

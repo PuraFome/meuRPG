@@ -197,6 +197,9 @@ Where a spell level could be confused with the character's level, the text says 
 | Parede | Wall | A square that blocks movement, sight and light. It is total cover (RN-21, MR-036). |
 | Cobertura | Cover | Half (+2 AC and Dexterity checks), three-quarters (+5) or total (cannot be targeted). Marked by the master and computed on every attack; degrees do not add up (MR-034). |
 | Terreno difícil | Difficult terrain | A square where each step costs double. A creature's space also counts (MR-034). |
+| Superfície | Surface | A map layer the master paints with two brushes, Água and Escalável (#589). Swimming or climbing there costs 1 extra foot per foot unless the creature has the matching speed (RN-21). |
+| Água | Water | A square of the Superfície layer that is swum. The cost doubles for a creature with no swimming speed. |
+| Escalável | Climbable | A square of the Superfície layer that is climbed. The cost doubles for a creature with no climbing speed. |
 | Armadilha | Trap | A hidden point with the DCs to notice and to find, a trigger and an effect. A player sees only a trap their character noticed or found, or that the master revealed, and never the DCs or the effect (MR-035). |
 | Percepção passiva | Passive Perception | 10 plus the Perception bonus, without rolling. It is what notices a trap in passing, with −5 in dim light (MR-035). |
 | Luz, luz de base | Light, base light | A light source placed on the map (bright and dim radii in metres), and the map's default light (Bright, Dim or Dark) where no source reaches (MR-036). |
@@ -240,6 +243,8 @@ Where a spell level could be confused with the character's level, the text says 
 | Letargia | Lethargy | The turn in which a creature that ended Velocidade can neither move nor act. |
 | Exaustão | Exhaustion | The six levels of the SRD condition; a long rest lowers one (RN-22). |
 | Efeito | Lasting effect | Something a spell or the master puts on a creature for a while: a condition with an end, a bonus, an extra action. Counted in rounds in combat and in game time outside (RN-22). |
+| Efeito no próximo golpe | Next-hit effect | Weapon damage a spell leaves on its caster's hits: the next hit, the next melee hit, every hit while concentrating, or every hit on the marked target. It is added after a weapon hit, and a next hit spends it (RN-23). |
+| Alvo marcado | Marked target | The creature a next-hit effect of the kind "every hit on the marked target" follows ("Cada golpe no alvo marcado"). It ends when the caster stops concentrating (RN-23). |
 | Tempo de jogo | Game time | Time in the fiction; a round is 6 seconds. It moves outside combat only when the master moves it. |
 | Janela de reação | Reaction window | The question "you may react?" that holds the triggering action until answered. A player reads only their own; for an NPC's, "Esperando o mestre". |
 | Reação | Reaction | An action once per round, returning at the start of the combatant's turn: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave, Queda Lenta and the opportunity attack. |

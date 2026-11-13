@@ -27,7 +27,7 @@ var deltaDoorOpened = func() undoDelta {
 	line := func(state string) string {
 		return `db/map_layers[.cover=\x000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000004000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,` +
 			`.difficult_terrain=\x000000000000000000000000000000000000000000000000000000300000300000000000000000000000000000000000,` +
-			`.doors=\x` + strings.Repeat("0", 177) + state + strings.Repeat("0", 206) + `,.light=<nil>,.map_id=<id>,.no_pass=<nil>,` +
+			`.doors=\x` + strings.Repeat("0", 177) + state + strings.Repeat("0", 206) + `,.light=<nil>,.map_id=<id>,.no_pass=<nil>,.surface=<nil>,` +
 			`.walls=\xffffffffffffffff80ffff80ffff80ffff8081ff8000008000008081fc8081fcff3fc0ff3fc0ff3fc0ff3fc0ffffffff]={}`
 	}
 	out := undoDelta{"+ " + line("1"), "- " + line("2")}
@@ -346,7 +346,7 @@ func TestUndoKindDamageRolledSneakAttack(t *testing.T) {
 			r.SelectedExtras = []*playv1.SelectedExtra{{Key: "sneak-attack"}}
 			r.TypedParts = []*playv1.TypedPart{{PartKey: "weapon", Sum: 1}, {PartKey: "sneak-attack", Sum: 2}}
 		})
-		a.wantMark(t, "Toren", "sneak_attack_turn")
+		a.wantMark(t, "Toren", "sneak_attack")
 	})
 }
 
@@ -375,7 +375,7 @@ func TestUndoKindDamageRolledColossusSlayer(t *testing.T) {
 			r.SelectedExtras = []*playv1.SelectedExtra{{Key: "colossus-slayer"}}
 			r.TypedParts = []*playv1.TypedPart{{PartKey: "weapon", Sum: 1}, {PartKey: "colossus-slayer", Sum: 2}}
 		})
-		a.wantMark(t, "Toren", "colossus_slayer_turn")
+		a.wantMark(t, "Toren", "colossus_slayer")
 	})
 }
 
@@ -414,13 +414,13 @@ func TestUndoKindDamageRolledManeuver(t *testing.T) {
 	})
 }
 
-// wantMark requires the once-per-turn column of a combatant to be set: the roll the
+// wantMark requires the once-per-turn mark (an entry of feature_state) of a combatant to be set: the roll the
 // scenario is about must have made the mark, or its undo has nothing to put back.
-func (a *armed) wantMark(t *testing.T, label, column string) {
+func (a *armed) wantMark(t *testing.T, label, feature string) {
 	t.Helper()
 	var set bool
-	if err := a.h.pool.QueryRow(t.Context(), `SELECT `+column+` IS NOT NULL FROM combatants WHERE id = $1`, a.id(t, label)).Scan(&set); err != nil || !set {
-		t.Fatalf("%s of %s is set = %v (error %v), want the roll to have marked the turn", column, label, set, err)
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT feature_state->$2::text IS NOT NULL FROM combatants WHERE id = $1`, a.id(t, label), feature).Scan(&set); err != nil || !set {
+		t.Fatalf("%s of %s is set = %v (error %v), want the roll to have marked the turn", feature, label, set, err)
 	}
 }
 

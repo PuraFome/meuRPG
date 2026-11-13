@@ -77,6 +77,9 @@ func (s *Service) GetTurnOptions(
 	if err := s.listPendingDamage(ctx, m, res, d, v, who); err != nil {
 		return nil, err
 	}
+	if res.FeatureTargets, err = s.annotateFeatures(ctx, m, d, v, who, reads, res.GetOptions(), code); err != nil {
+		return nil, err
+	}
 	if res.ManeuverDice, err = s.listManeuverDice(ctx, who, reads); err != nil {
 		return nil, err
 	}
@@ -148,6 +151,13 @@ func (s *Service) workOutOptions(ctx context.Context, m authz.Membership, d *enc
 	if err != nil {
 		return nil, none, s.dbError(ctx, "work out the turn options", err)
 	}
+	if opts.GetEconomy() != nil { // the movement left is the number the view shows: at the speed of the surface it stands on
+		standing, err := s.standingSurface(ctx, nil, d.enc, v, who)
+		if err != nil {
+			return nil, none, s.dbError(ctx, "read the surface the combatant stands on", err)
+		}
+		opts.Economy.Movement = movementLeftOf(who, standing)
+	}
 	if err := s.attachMetamagic(ctx, reads, who, opts); err != nil {
 		return nil, none, s.dbError(ctx, "work out the Metamagic", err)
 	}
@@ -158,6 +168,7 @@ func (s *Service) workOutOptions(ctx context.Context, m authz.Membership, d *enc
 	if err != nil {
 		return nil, none, s.dbError(ctx, "check the combatant's turn", err)
 	}
+	reads.features = featureRowsOf(opts)
 	if code != none {
 		disableAll(opts, code)
 		s.explainEffectReason(d, who, v, opts, code, s.namesFor(ctx, m.CampaignID))

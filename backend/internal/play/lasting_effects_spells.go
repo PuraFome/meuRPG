@@ -52,12 +52,24 @@ func (s *Service) applyLastingSpell(
 	if !ok || len(targs) == 0 || len(made.Hits) != len(targs) {
 		return nil
 	}
-	taken, err := s.spellHolds(ctx, c, content, def, ability, caster, targs, made)
-	if err != nil {
-		return err
+	if _, hits := hitModifierOf(def.Modifiers); hits { // the damage it adds to the caster's weapon hits (lasting_effects_hit.go)
+		return s.applyHitSpell(ctx, c, cs, sp, slotLevel, caster, targs, ability, def, made)
 	}
-	if len(taken) == 0 {
-		return nil
+	_, err = s.putLastingOnTargets(ctx, c, cs, sp, slotLevel, caster, targs, ability, def, made)
+	return err
+}
+
+// putLastingOnTargets puts the effect on the targets it takes hold of, and returns the rows it made.
+func (s *Service) putLastingOnTargets(
+	ctx context.Context, c *combatTx, cs []playdb.Combatant, sp link.Spell, slotLevel int, caster playdb.Combatant, targs []playdb.Combatant, ability string, def *rules.EffectDef, made *actionEvent,
+) ([]playdb.CombatantState, error) {
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	taken, err := s.spellHolds(ctx, c, content, def, ability, caster, targs, made)
+	if err != nil || len(taken) == 0 {
+		return nil, err
 	}
 	def = defAtSlot(def, slotLevel-sp.Level)
 	dur := spellEffectDuration(content, def, sp.Key, caster)
@@ -70,15 +82,15 @@ func (s *Service) applyLastingSpell(
 	// not take hold of a creature that wears armor.
 	opts, err := s.castOptsOf(ctx, c, def, ability, caster.CharacterID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	groups, mods, err := s.spellEffectGroups(ctx, c, def, taken, opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	prior, err := s.priorTempClaims(ctx, c, sp.Key, made.CastID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	var rows []playdb.CombatantState
 	for i, g := range groups {
@@ -87,7 +99,7 @@ func (s *Service) applyLastingSpell(
 			concentration: def.Concentration, dc: dc, modifiers: mods[i],
 		})
 		if err != nil {
-			return err
+			return nil, err
 		}
 		rows = append(rows, made1...)
 	}
@@ -95,7 +107,7 @@ func (s *Service) applyLastingSpell(
 		made.Lasting.Targets = append(made.Lasting.Targets, r.CombatantID)
 		made.Lasting.Effects = append(made.Lasting.Effects, r.ID)
 	}
-	return s.giveEffectTempHP(ctx, c, cs, rows, targs, made, prior)
+	return rows, s.giveEffectTempHP(ctx, c, cs, rows, targs, made, prior)
 }
 
 // giveEffectTempHP gives the temporary hit points a temp_hp modifier of the effect gives each target it

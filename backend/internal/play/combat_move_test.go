@@ -60,6 +60,18 @@ type caveTerrain struct {
 	extra []grid.Square
 	// painted are difficult squares the master painted on the map.
 	painted []grid.Square
+	// water and climb are the squares of the surface layer the master painted (#589).
+	water, climb []grid.Square
+}
+
+func (c *caveTerrain) paintSurface(sf grid.Surface, sq ...grid.Square) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if sf == grid.SurfaceWater {
+		c.water = append(c.water, sq...)
+		return
+	}
+	c.climb = append(c.climb, sq...)
 }
 
 func (c *caveTerrain) paintDifficult(sq ...grid.Square) {
@@ -99,7 +111,20 @@ func (c *caveTerrain) Terrain(context.Context, pgx.Tx, string, string) (grid.Ter
 	for _, sq := range c.painted {
 		t.Difficult.Set(sq.Col, sq.Row, true)
 	}
+	t.Surface = grid.NewSurfaceLayer(g)
+	for _, sq := range c.water {
+		t.Surface.Set(sq.Col, sq.Row, grid.SurfaceWater)
+	}
+	for _, sq := range c.climb {
+		t.Surface.Set(sq.Col, sq.Row, grid.SurfaceClimb)
+	}
 	return t, nil
+}
+
+// Surface is the SurfaceSource of the cave: the same layer Terrain gives (#819).
+func (c *caveTerrain) Surface(ctx context.Context, tx pgx.Tx, mapID string, _ grid.Grid) (*grid.SurfaceLayer, error) {
+	t, err := c.Terrain(ctx, tx, "", mapID)
+	return t.Surface, err
 }
 
 // newMapOf is newMap for an image of width x height pixels.

@@ -60,6 +60,7 @@ func (a *armed) eventTrace(t *testing.T, e *playv1.Encounter, after int) []strin
 			}
 			return "?"
 		})
+		payload = castTimePattern.ReplaceAllString(payload, "<time>")
 		out = append(out, kind+" "+sortEmbeddedJSON(t, dbtest.SortJSONKeys(payload)))
 	}
 	return out

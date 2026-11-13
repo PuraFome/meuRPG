@@ -629,6 +629,8 @@
     "beast": "x",
     "hp": 1
   },
+  "stay": true,
+  "stay_left": 1,
   "creature_id": "x",
   "sight": "x",
   "sight_conditions": [
@@ -806,7 +808,9 @@
         }
       ],
       "resource": "x",
-      "rider": "x"
+      "rider": "x",
+      "effect": "x",
+      "hide": true
     }
   ],
   "parts_before": {},
@@ -832,6 +836,14 @@
       "x": "x"
     },
     "table_changed": true
+  },
+  "feature_before": {
+    "x": {
+      "s": "x",
+      "at": "x",
+      "n": 1,
+      "c": "x"
+    }
   },
   "steps": [
     {
@@ -883,6 +895,7 @@
   "rider": {
     "choice": "x",
     "result": "x",
+    "owners_only": true,
     "d20": 1,
     "total": 1,
     "dc": 1,
@@ -917,6 +930,24 @@
     "resisted": true,
     "resist_left": 1
   },
+  "feature": {
+    "scope": "x",
+    "choice": "x",
+    "targets": [
+      {
+        "id": "x",
+        "healed": 1,
+        "temp_hp": 1
+      }
+    ],
+    "healed": 1,
+    "temp_hp": 1,
+    "effect": true,
+    "faces": [
+      1
+    ],
+    "total": 1
+  },
   "creature_action": {
     "name": "x",
     "reminder": true,
@@ -938,6 +969,12 @@
     "x"
   ],
   "effects_spent": [
+    "x"
+  ],
+  "effects_added": [
+    "x"
+  ],
+  "effect_lines": [
     "x"
   ],
   "dragged_id": "x",

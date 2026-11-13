@@ -833,7 +833,7 @@ func (p *playerView) revision() int32 {
 		return hashOf(p.codes, p.pack())
 	}
 	f := filterLayers(*p.layers, p)
-	return layersHash([][]byte{p.codes, p.pack(), f.terrain.Encode(), f.walls.Encode(), f.cover.Encode(), f.doors.Encode()}, nilIfBlank(f.noPass.Encode()))
+	return layersHash([][]byte{p.codes, p.pack(), f.terrain.Encode(), f.walls.Encode(), f.cover.Encode(), f.doors.Encode()}, nilIfBlank(f.noPass.Encode()), nilIfBlank(f.surface.Encode()))
 }
 
 // hashOf is a 31-bit hash of bytes, for the revisions the app compares.
@@ -846,12 +846,14 @@ func hashOf(parts ...[]byte) int32 {
 	return int32(h.Sum32() >> 1)
 }
 
-// layersHash is hashOf the parts, and the can't-pass layer when something is painted on it: a map
-// with none has the revision it had before the layer existed, so a number a player holds stays
-// right.
-func layersHash(parts [][]byte, noPass []byte) int32 {
-	if len(noPass) > 0 {
-		parts = append(parts, noPass)
+// layersHash is hashOf the parts, and the layers that came later (the can't-pass layer, the surface) when
+// something is painted on them: a map with none has the revision it had before the layers existed, so a
+// number a player holds stays right.
+func layersHash(parts [][]byte, later ...[]byte) int32 {
+	for _, l := range later {
+		if len(l) > 0 {
+			parts = append(parts, l)
+		}
 	}
 	return hashOf(parts...)
 }

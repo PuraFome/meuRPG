@@ -1,0 +1,5 @@
+# Columns added to combatants after combatant_columns.txt was frozen, one per line: FieldName # reason.
+# FieldName is the field of the Combatant model (backend/internal/play/playdb/models.go), sorted.
+# The reason (at least 20 characters) says why the column is not about one feature.
+# A feature that must remember a use does not get a column: it keeps an entry in feature_state
+# (docs/architecture/play/feature-state.md).

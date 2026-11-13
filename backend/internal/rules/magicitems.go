@@ -175,7 +175,10 @@ func (c *content) loadMagicItemEffects(fsys fs.FS) error {
 	if err := c.loadConsumables(name, f); err != nil {
 		return err
 	}
-	return c.checkAttunementLabels()
+	if err := c.checkAttunementLabels(); err != nil {
+		return err
+	}
+	return c.checkAttunementRules()
 }
 
 // loadConsumables marks the items of the file's categories, then its single

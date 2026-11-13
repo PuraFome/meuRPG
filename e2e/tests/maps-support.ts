@@ -73,6 +73,8 @@ export async function tableForMaps(
   npc = false,
   sheet: Record<string, unknown> = {},
   build: CharacterBuild = pensantus,
+  /** Runs once the campaign and the invite are done and before the character is made: the table entries it needs (a race) and the build to use. */
+  before?: (campaignId: string, master: Page) => Promise<CharacterBuild>,
 ): Promise<MapsTable> {
   const created = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
     name,
@@ -92,7 +94,7 @@ export async function tableForMaps(
   });
   expect(accepted.ok()).toBeTruthy();
 
-  const body = characterRpcBody('PLAYER', build) as { sheet: { full: object } };
+  const body = characterRpcBody('PLAYER', (await before?.(campaignId, masterPage)) ?? build) as { sheet: { full: object } };
   body.sheet.full = { ...body.sheet.full, ...sheet };
   const character = await createCharacterRPC(playerPage, campaignId, body);
   expect(character.ok()).toBeTruthy();

@@ -91,7 +91,7 @@ It needs no database and runs in the `go-db` CI group `rest`.
 
 ### Conventions are tests too
 
-Five conventions of the backend each have a test in `backend/internal/archtest` and a plain-text exception list next to it.
+Six conventions of the backend each have a test in `backend/internal/archtest` and a plain-text exception list next to it.
 
 | Convention | Test | Exception list |
 | --- | --- | --- |
@@ -100,8 +100,9 @@ Five conventions of the backend each have a test in `backend/internal/archtest` 
 | `playv1` is imported only by the play module and the API wiring | `TestPlayV1StaysInPlayAndWiring` | `playv1_exceptions.txt` |
 | Identity and authz translate database errors through the helper | `TestIdentityAuthzTranslateDBErrorsViaHelper` | `pg_errors_exceptions.txt` |
 | Every `:many` query has an outermost `ORDER BY` | `TestManyQueriesHaveOrderBy` | `query_order_exceptions.txt` |
+| `combatants` gains no column for one feature (a feature keeps its marks in `feature_state`, [Feature state](play/feature-state.md)) | `TestCombatantsGainNoColumnPerFeature` | `combatant_columns.txt` (frozen), `combatant_columns_allowed.txt` (a new column, with its reason) |
 
-An exception list only shrinks: a new offender fails the test, and so does a listed entry that is no longer an offender.
+An exception list only shrinks: a new offender fails the test, and so does a listed entry that is no longer an offender. The `combatants` test has the frozen list and a list of allowed new columns, each with a reason of at least 20 characters.
 
 ### Wiring is checked at startup
 

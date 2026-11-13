@@ -14,4 +14,8 @@ export const CLASS_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = n
     EncounterBlockedReason.NO_MELEE_HIT,
     'Essa manobra pede um acerto corpo a corpo com arma neste turno, e você ainda não acertou.',
   ],
+  [
+    EncounterBlockedReason.WILD_SHAPE_ENDED,
+    'A forma já acabou. Assuma uma forma nova, se ainda tiver usos.',
+  ],
 ]);

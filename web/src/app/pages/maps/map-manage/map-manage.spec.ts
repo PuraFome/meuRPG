@@ -13,7 +13,7 @@ describe("MapManage: the master's map on a phone (E9-01 7)", () => {
   let el: HTMLElement;
   let api: FakeMapsClient;
 
-  async function setup(gridColumns: number) {
+  async function setup(gridColumns: number, surface = new Uint8Array()) {
     api = new FakeMapsClient();
     api.layersResponse = {
       $typeName: 'meurpg.maps.v1.GetMapLayersResponse',
@@ -27,6 +27,7 @@ describe("MapManage: the master's map on a phone (E9-01 7)", () => {
       light: new Uint8Array(),
       fogWithheld: false,
       noPass: new Uint8Array(),
+      surface,
     } as never;
     const state = new MapState(async () =>
       mapResponse(
@@ -79,6 +80,32 @@ describe("MapManage: the master's map on a phone (E9-01 7)", () => {
       li.textContent?.trim(),
     );
     expect(legend).toEqual(['Parede', 'Terreno difícil']);
+  });
+
+  it('lists the layers read-only in "Camadas", Superfície with its counts and Parede (#589)', async () => {
+    // 4 x 16: squares 0 and 1 are water, square 2 is climbable (two bits each, least significant first).
+    await setup(4, Uint8Array.of(0b00_10_01_01));
+    const panel = el.querySelector('app-map-layers-list section')!;
+    expect(panel).not.toBeNull();
+    expect(panel.querySelector('h2')?.textContent?.trim()).toBe('Camadas');
+    const rows = Array.from(panel.querySelectorAll('li'), (li) =>
+      (li.textContent ?? '').replace(/[\s\u00a0]+/g, ' ').trim(),
+    );
+    expect(rows).toEqual([
+      'Terreno difícil 2 quadrados · custa +1,5 m por quadrado',
+      'Superfície 2 de água e 1 escalável · custam o dobro',
+      'Parede 1 quadrado · bloqueia movimento, visão e luz',
+    ]);
+    // Read-only: nothing to switch, nothing to paint (the fog's switch is the panel below).
+    expect(panel.querySelector('[role="switch"], button')).toBeNull();
+    expect(
+      Array.from(el.querySelectorAll('app-map-layers-legend li'), (li) => li.textContent?.trim()),
+    ).toEqual(['Parede', 'Terreno difícil', 'Água', 'Escalável']);
+  });
+
+  it('shows no "Camadas" when nothing is painted', async () => {
+    await setup(0);
+    expect(el.querySelector('app-map-layers-list section')).toBeNull();
   });
 
   it('has the fog settings, editable', async () => {

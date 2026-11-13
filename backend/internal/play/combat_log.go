@@ -280,7 +280,7 @@ var deltaSafeKinds = map[string]bool{
 	eventAttackRolled: true, eventDamageRolled: true, eventDamageApplied: true, eventDamageDiscarded: true,
 	eventActionTaken: true, eventHitPointsAdjusted: true, eventDeathSaveRolled: true, eventDeathConfirmed: true,
 	eventConditionsSet: true, eventSpellCast: true, eventReactionUsed: true, eventReactionDeclined: true,
-	eventLegendarySpent: true, eventRechargeRolled: true,
+	eventLegendarySpent: true, eventRechargeRolled: true, eventFeatureUsed: true,
 }
 
 // sinceSeqOf is the number the log is filtered by: sinceSeq, or 0 (the whole log) when an event after it may have changed an
@@ -570,6 +570,7 @@ var logHandlers = map[string]logHandler{
 	eventLegendarySpent:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT),
 	eventRechargeRolled:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED),
 	eventGearSwapped:             gearSwappedLine,
+	eventFeatureUsed:             featureUsedLine,
 	eventCombatantHiddenSet:      (*logBuilder).hiddenSet,
 	eventActionTaken:             (*logBuilder).actionTaken,
 	eventHitPointsAdjusted:       masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED),
@@ -1090,15 +1091,26 @@ func (e *logEntry) viewerGets(v combatViewer, actor, target playdb.Combatant, vi
 	if _, isEffect := effectLogKinds[kindKeyOf(e.kind)]; isEffect && e.ev.Lasting != nil && !effectLineVisible(e.ev.Lasting, v, byID) {
 		return false
 	}
-	// An Escudo that ended is a line for the master and the combatant's own player: the
-	// Escudo may have answered an attack the other players do not see (a hidden attacker),
-	// and the line would tell them something happened (RN-10).
-	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield && !v.owns(actor) {
+	if e.ownersOnly(v, actor, target) {
 		return false
 	}
 	// The offer's line is for whoever gets the offer (RN-10): the reactor's player
 	// and the mover's.
 	return e.kind != playv1.CombatLogKind_COMBAT_LOG_KIND_OPPORTUNITY_OFFERED || v.owns(actor) || v.owns(target)
+}
+
+// ownersOnly says the line is for the master and the combatants' own players, and the viewer is not one. An Escudo that
+// ended is the combatant's: the Escudo may have answered an attack the other players do not see (a hidden attacker),
+// and the line would tell them something happened. The save of a spell's hit effect tells that the effect has one: the
+// attacker's player and the target's alone get it (RN-10).
+func (e *logEntry) ownersOnly(v combatViewer, actor, target playdb.Combatant) bool {
+	switch {
+	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield:
+		return !v.owns(actor)
+	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER && e.ev.Rider != nil && e.ev.Rider.OwnersOnly:
+		return !v.owns(actor) && !v.owns(target)
+	}
+	return false
 }
 
 // actedForPlayerKinds are the lines of what a character does on its turn: when the master's hand
@@ -1111,6 +1123,7 @@ var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:           true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:          true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:    true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:    true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:        true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:      true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED: true,
@@ -1159,6 +1172,7 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:     (*logEntry).fillLegendarySpent,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:     (*logEntry).fillRechargeRolled,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:        (*logEntry).fillGearSwapped,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:        (*logEntry).fillFeatureUsed,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:           (*logEntry).fillHitRider,
@@ -1773,6 +1787,22 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 	return ""
 }
 
+// choiceText is the label of the choice a feature offered, from the sheet of the combatant that used it ("" when the sheet no
+// longer has it).
+func (n *keyNames) choiceText(ctx context.Context, c playdb.Combatant, key, choice string) string {
+	if n.of(ctx, c, key) == "" || choice == "" { // reads the sheet into byCharacter
+		return ""
+	}
+	if fa, ok := featureOfKey(n.byCharacter[sheetKey(c)], key); ok && fa.Use != nil {
+		for _, ch := range fa.Use.Choices {
+			if ch.Key == choice {
+				return ch.TextPT
+			}
+		}
+	}
+	return ""
+}
+
 // sheetActionName is the name of the key among the attacks, the actions and the feature
 // actions of a sheet, in that order; found says the sheet has the key.
 func sheetActionName(sheet link.Sheet, key string) (name string, found bool) {
@@ -1805,11 +1835,13 @@ func (n *keyNames) contentName(ctx context.Context, key string) string {
 
 // wildShapeEndReasonProto reads the reason a wild_shape_ended event gives.
 var wildShapeEndReasonProto = map[string]playv1.WildShapeEndReason{
-	endedByLeaving: playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_LEFT,
-	endedByDamage:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_DAMAGE,
-	endedByMaster:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
-	endedAtZero:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
-	endedAsleep:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+	endedByLeaving:   playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_LEFT,
+	endedByDamage:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_DAMAGE,
+	endedByMaster:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
+	endedAtZero:      playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
+	endedAsleep:      playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+	endedExpired:     playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_EXPIRED,
+	endedMasterEnded: playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER_ENDED,
 }
 
 // withoutOwnerOnly is the conditions a player who does not own the creature may read.
