@@ -239,15 +239,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		out.CasterId = caster.ID
 	}
 	out.OriginPt = ev.originOf(f, caster, casterSeen)
-	for _, m := range storedModifiers(f) {
-		if m.Kind == rules.ModifierAura {
-			if bearer, ok := ev.byID[f.CombatantID]; ev.v.master || (ok && ev.v.owns(bearer)) {
-				out.RadiusFt, out.Affects = clamp32(m.RadiusFt, 0, rules.MaxAuraRadiusFt), m.Affects
-			}
-			continue
-		}
-		out.Modifiers = append(out.Modifiers, ev.modifierCard(m))
-	}
+	ev.cardModifiers(out, f)
 	ev.cardClock(out, f, caster, casterSeen)
 	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)) || ev.v.saveDCFor(ev.byID[onTarget]))
 	ev.cardNotes(out, f, def)
@@ -262,6 +254,20 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		}
 	}
 	return out
+}
+
+// cardModifiers writes what the effect changes. An aura's mark is not a modifier of the card: its radius and side go to
+// the master and the bearer's owner only (RN-10).
+func (ev *effectViewer) cardModifiers(out *playv1.LastingEffect, f playdb.CombatantState) {
+	for _, m := range storedModifiers(f) {
+		if m.Kind == rules.ModifierAura {
+			if bearer, ok := ev.byID[f.CombatantID]; ev.v.master || (ok && ev.v.owns(bearer)) {
+				out.RadiusFt, out.Affects = clamp32(m.RadiusFt, 0, rules.MaxAuraRadiusFt), m.Affects
+			}
+			continue
+		}
+		out.Modifiers = append(out.Modifiers, ev.modifierCard(m))
+	}
 }
 
 // readsSpent says the viewer may read that the effect was used up: the master, the caster's player and the player of
