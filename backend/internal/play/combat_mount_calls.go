@@ -88,7 +88,7 @@ func rideCost(rider playdb.Combatant, standing grid.Surface) *mountNo {
 	return &mountNo{reason: playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_FAR, refusal: rulesv1.MountRefusal_MOUNT_REFUSAL_NO_MOVEMENT, missing: max(cost-left, 0)}
 }
 
-// landingSquares are the squares a rider may get off onto: the neighbours of the mount that hold a creature of no kind, that a
+// landingSquares are the squares a rider may get off onto: the neighbors of the mount that hold a creature of no kind, that a
 // creature can stand on and that the rider can step to.
 func landingSquares(t grid.Terrain, mount grid.Square, occ grid.OccupantMap, rider grid.Mover) []grid.Square {
 	var out []grid.Square
@@ -222,14 +222,8 @@ func (s *Service) rideWrite(ctx context.Context, c *combatTx, call rideCall, don
 	if err := v.mayAct(rider); err != nil {
 		return nil, err
 	}
-	var mount playdb.Combatant
-	if call.dismount {
-		on := ridingOn(cs, rider)
-		if on == nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the combatant rides nothing"))
-		}
-		mount = *on
-	} else if mount, err = findCombatant(cs, call.mountID, v); err != nil {
+	mount, err := rideMountOf(cs, v, call, rider)
+	if err != nil {
 		return nil, err
 	}
 	if err := s.rideGates(ctx, c, call.m, v, rider); err != nil {
@@ -239,15 +233,9 @@ func (s *Service) rideWrite(ctx context.Context, c *combatTx, call rideCall, don
 	if err != nil {
 		return nil, fmt.Errorf("read the surface the rider stands on: %w", err)
 	}
-	var to grid.Square
-	if call.dismount {
-		if to, err = s.dismountSquare(ctx, c, call, cs, rider, mount, standing); err != nil {
-			return nil, err
-		}
-	} else if err := s.mayBeMounted(v, rider, mount, cs, standing); err != nil {
+	to, err := s.rideSquare(ctx, c, call, cs, v, rider, mount, standing)
+	if err != nil {
 		return nil, err
-	} else {
-		to = squareOfCombatant(mount)
 	}
 	cost := mountCostDFt(rider, standing)
 	after, err := rideTo(ctx, c, rider, mount, to, cost, call.dismount)
@@ -260,6 +248,29 @@ func (s *Service) rideWrite(ctx context.Context, c *combatTx, call rideCall, don
 	c.characterID = &rider.CharacterID
 	*done = rideDone{rider: after, mount: mount, from: squareOfState(moveStateOf(rider)), secret: rider.Hidden || mount.Hidden}
 	return rideEvent(c.enc, rider, mount, to, cost, done.secret), nil
+}
+
+// rideMountOf is the mount of the ride: the one the rider sits on for a dismount, the one the request names for a mount.
+func rideMountOf(cs []playdb.Combatant, v combatViewer, call rideCall, rider playdb.Combatant) (playdb.Combatant, error) {
+	if !call.dismount {
+		return findCombatant(cs, call.mountID, v)
+	}
+	on := ridingOn(cs, rider)
+	if on == nil {
+		return playdb.Combatant{}, connect.NewError(connect.CodeInvalidArgument, errors.New("the combatant rides nothing"))
+	}
+	return *on, nil
+}
+
+// rideSquare is the square the rider ends on, after the checks of the ride: the mount's for a mount, the landing for a dismount.
+func (s *Service) rideSquare(ctx context.Context, c *combatTx, call rideCall, cs []playdb.Combatant, v combatViewer, rider, mount playdb.Combatant, standing grid.Surface) (grid.Square, error) {
+	if call.dismount {
+		return s.dismountSquare(ctx, c, call, cs, rider, mount, standing)
+	}
+	if err := s.mayBeMounted(v, rider, mount, cs, standing); err != nil {
+		return grid.Square{}, err
+	}
+	return squareOfCombatant(mount), nil
 }
 
 // rideGates refuses the rider that may not act now: out of its turn, down, surprised, unable to act, or the turn waits.
@@ -352,35 +363,47 @@ func (s *Service) attachMountOptions(ctx context.Context, campaignID string, d *
 	}
 	out := &rulesv1.MountOptions{}
 	opts.Mount = out
-	if who.MountedOnID != nil {
-		mount := ridingOn(d.cs, who)
-		if mount == nil || !v.sees(*mount) { // a hidden mount is not on offer to a player (RN-10)
-			return nil
-		}
-		mover, err := s.moverWith(ctx, nil, campaignID, who)
-		if err != nil {
-			return err
-		}
-		landing := landingSquares(terrain, squareOfCombatant(*mount), occupantsFor(d.cs, who, v), mover)
-		out.MountedOnId = mount.ID
-		out.DismountCostDft = clamp32(mountCostDFt(who, standing), 0, math.MaxInt32)
-		if no := dismountVerdict(who, standing, landing, nil); no != nil {
-			out.DismountRefusal, out.MissingDft = no.refusal, clamp32(no.missing, 0, math.MaxInt32)
-		}
-		for _, sq := range landing {
-			out.Landing = append(out.Landing, &rulesv1.MountSquare{Col: clamp32(sq.Col, 0, math.MaxInt32), Row: clamp32(sq.Row, 0, math.MaxInt32)})
-		}
+	if who.MountedOnID == nil {
+		out.Mounts = mountChoices(d.cs, v, who, standing)
 		return nil
 	}
-	for _, mount := range d.cs {
-		if mount.ID == who.ID || mount.Defeated || !placed(mount) || !v.sees(mount) || !willingMount(v, mount) {
+	mount := ridingOn(d.cs, who)
+	if mount == nil || !v.sees(*mount) { // a hidden mount is not on offer to a player (RN-10)
+		return nil
+	}
+	mover, err := s.moverWith(ctx, nil, campaignID, who)
+	if err != nil {
+		return err
+	}
+	dismountOptions(out, d.cs, v, who, *mount, terrain, mover, standing)
+	return nil
+}
+
+// dismountOptions fills what a rider can do to get off: the mount, the cost, why it cannot now and the squares to land on.
+func dismountOptions(out *rulesv1.MountOptions, cs []playdb.Combatant, v combatViewer, rider, mount playdb.Combatant, terrain grid.Terrain, mover grid.Mover, standing grid.Surface) {
+	landing := landingSquares(terrain, squareOfCombatant(mount), occupantsFor(cs, rider, v), mover)
+	out.MountedOnId = mount.ID
+	out.DismountCostDft = clamp32(mountCostDFt(rider, standing), 0, math.MaxInt32)
+	if no := dismountVerdict(rider, standing, landing, nil); no != nil {
+		out.DismountRefusal, out.MissingDft = no.refusal, clamp32(no.missing, 0, math.MaxInt32)
+	}
+	for _, sq := range landing {
+		out.Landing = append(out.Landing, &rulesv1.MountSquare{Col: clamp32(sq.Col, 0, math.MaxInt32), Row: clamp32(sq.Row, 0, math.MaxInt32)})
+	}
+}
+
+// mountChoices are the mounts the viewer sees that its rider could get on, each with the cost and why not.
+func mountChoices(cs []playdb.Combatant, v combatViewer, rider playdb.Combatant, standing grid.Surface) []*rulesv1.MountChoice {
+	var out []*rulesv1.MountChoice
+	for _, mount := range cs {
+		if mount.ID == rider.ID || mount.Defeated || !placed(mount) || !v.sees(mount) || !willingMount(v, mount) {
 			continue
 		}
-		choice := &rulesv1.MountChoice{CombatantId: mount.ID, CostDft: clamp32(mountCostDFt(who, standing), 0, math.MaxInt32)}
-		if no := mountVerdict(d.cs, who, mount, standing); no != nil {
+		choice := &rulesv1.MountChoice{CombatantId: mount.ID, CostDft: clamp32(mountCostDFt(rider, standing), 0, math.MaxInt32)}
+		if no := mountVerdict(cs, rider, mount, standing); no != nil {
 			choice.Refusal, choice.MissingDft = no.refusal, clamp32(no.missing, 0, math.MaxInt32)
 		}
-		out.Mounts = append(out.Mounts, choice)
+		out = append(out, choice)
 	}
-	return nil
+	return out
 }

@@ -354,7 +354,7 @@ func TestMountedCombat_AnOwnCreatureNeedsNoMark(t *testing.T) {
 	}
 }
 
-// TestMountedCombat_TheMountIsWithinFiveFeet: a diagonal neighbour counts as 5 ft, two squares do not.
+// TestMountedCombat_TheMountIsWithinFiveFeet: a diagonal neighbor counts as 5 ft, two squares do not.
 func TestMountedCombat_TheMountIsWithinFiveFeet(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
@@ -476,7 +476,7 @@ func TestMountedCombat_ThePairIsOneOccupant(t *testing.T) {
 	if _, err := c.move(t, c.ana, "Pensantus", 6, 7); err != nil {
 		t.Errorf("a combatant put on the rider's old square = %v, want it free", err)
 	}
-	// The mount's own options: its square and its neighbours are not blocked by its rider, who stands on the mount's own square.
+	// The mount's own options: its square and its neighbors are not blocked by its rider, who stands on the mount's own square.
 	mopts, err := c.options(t, c.master, "Ogro")
 	if err != nil {
 		t.Fatalf("GetMoveOptions(Ogro) error = %v", err)
@@ -702,7 +702,7 @@ func TestMountedCombat_TurnOptionsListTheMountsAndTheLanding(t *testing.T) {
 	}
 	c.nextTurnOf(t, "Toren")
 	mount = turn(c.caio).GetOptions().GetMount()
-	if mount.GetDismountRefusal() != 0 || len(mount.GetLanding()) != 5 { // 8 neighbours less the walls on (7,6), (8,6) and (8,8)
+	if mount.GetDismountRefusal() != 0 || len(mount.GetLanding()) != 5 { // 8 neighbors less the walls on (7,6), (8,6) and (8,8)
 		t.Errorf("the dismount options = refusal %v and %d squares, want none and 5", mount.GetDismountRefusal(), len(mount.GetLanding()))
 	}
 	for _, sq := range mount.GetLanding() {
