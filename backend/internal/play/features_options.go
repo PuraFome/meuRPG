@@ -45,7 +45,10 @@ func (s *Service) annotateFeatures(ctx context.Context, m authz.Membership, d *e
 		return nil, s.dbError(ctx, "read the character's resources", err)
 	}
 	// The stop (featureStopNow) is the one UseFeature asks, read here with the viewer's own standing; one for each kind of row.
-	read := &combatTx{q: s.queries, session: playdb.GameSession{CampaignID: m.CampaignID}, enc: d.enc, master: v.master}
+	read, err := s.openTx(ctx, combatTx{q: s.queries, session: playdb.GameSession{CampaignID: m.CampaignID}, enc: d.enc, master: v.master, svc: s})
+	if err != nil {
+		return nil, s.dbError(ctx, "read the table's rules", err)
+	}
 	stops := map[bool]*featureStop{}
 	stopOf := func(reaction bool) (*featureStop, error) {
 		if st, ok := stops[reaction]; ok {
