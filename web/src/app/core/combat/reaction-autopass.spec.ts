@@ -49,6 +49,18 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(autoPasses(win('w', ReactionKind.SLOW_FALL))).toBe(true);
   });
 
+  it("passes a player's fired readied action at 30 s, never an NPC's", () => {
+    const clock = new AutoPassClock();
+    const mine = win('w1', ReactionKind.READIED);
+    const npc = win('w2', ReactionKind.READIED, { reactorIsPlayer: false });
+    expect(autoPasses(mine)).toBe(true);
+    expect(autoPasses(npc)).toBe(false);
+    clock.sync([mine, npc], Date.now());
+    vi.advanceTimersByTime(AUTO_PASS_SECONDS * MS);
+    clock.sync([mine, npc], Date.now());
+    expect(clock.due(Date.now())).toEqual(['w1']);
+  });
+
   it('passes an optional player window once, at 30 s, with the auto-pass key', () => {
     const clock = new AutoPassClock();
     const w = win('w1', ReactionKind.CUTTING_WORDS);
