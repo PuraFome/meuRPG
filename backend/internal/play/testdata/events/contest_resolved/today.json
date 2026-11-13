@@ -552,7 +552,12 @@
     "move_ft": 1,
     "target_id": "x",
     "canceled": true,
-    "defeated": true
+    "defeated": true,
+    "dismissed": true,
+    "window": "x",
+    "opened": true,
+    "ended": "x",
+    "line": "x"
   },
   "mode": "x",
   "delta": 1,
