@@ -81,6 +81,9 @@ const (
 	// CombatServiceSetCombatantSideProcedure is the fully-qualified name of the CombatService's
 	// SetCombatantSide RPC.
 	CombatServiceSetCombatantSideProcedure = "/meurpg.play.v1.CombatService/SetCombatantSide"
+	// CombatServiceSetCombatantMountProcedure is the fully-qualified name of the CombatService's
+	// SetCombatantMount RPC.
+	CombatServiceSetCombatantMountProcedure = "/meurpg.play.v1.CombatService/SetCombatantMount"
 	// CombatServiceSetCombatantCoverProcedure is the fully-qualified name of the CombatService's
 	// SetCombatantCover RPC.
 	CombatServiceSetCombatantCoverProcedure = "/meurpg.play.v1.CombatService/SetCombatantCover"
@@ -618,6 +621,22 @@ type CombatServiceClient interface {
 	//     unspecified.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error)
+	// SetCombatantMount marks an NPC or a creature as a willing mount (SRD 5.1, "Mounted Combat": a willing
+	// creature that is at least one size larger than its rider), or takes the mark off. `kind` is "controlled" (it
+	// obeys its rider: it moves on its rider's say and takes the rider's initiative while carried), "independent"
+	// (it keeps its own turn) or "" (not a mount). A player can mount only a creature of its own and a combatant the
+	// master marked on the party's side; the master can mount anything. A player's character is never a mount. The mark is the
+	// master's: the players never read `mount_kind` of a combatant that is not theirs. Only the master may call it. It is a
+	// session event, `mount_kind_set`, and, like SetCombatantSide, the undo does not take it back (the master marks it
+	// again).
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: `kind` is not "", "controlled" or "independent", or the combatant is a player's character.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED); the combatant rides something
+	//     (ALREADY_MOUNTED); the mark is taken off a mount that carries a rider (MOUNT_TAKEN).
+	SetCombatantMount(context.Context, *connect.Request[v1.SetCombatantMountRequest]) (*connect.Response[v1.SetCombatantMountResponse], error)
 	// SetCombatantCover marks the cover a combatant has that the map does not show
 	// (D4): none, half (+2 to AC and Dexterity saves), three-quarters (+5) or
 	// total (it cannot be targeted). It adds to the cover the map gives against
@@ -1678,6 +1697,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("SetCombatantSide")),
 			connect.WithClientOptions(opts...),
 		),
+		setCombatantMount: connect.NewClient[v1.SetCombatantMountRequest, v1.SetCombatantMountResponse](
+			httpClient,
+			baseURL+CombatServiceSetCombatantMountProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("SetCombatantMount")),
+			connect.WithClientOptions(opts...),
+		),
 		setCombatantCover: connect.NewClient[v1.SetCombatantCoverRequest, v1.SetCombatantCoverResponse](
 			httpClient,
 			baseURL+CombatServiceSetCombatantCoverProcedure,
@@ -1964,6 +1989,7 @@ type combatServiceClient struct {
 	offerOpportunity         *connect.Client[v1.OfferOpportunityRequest, v1.OfferOpportunityResponse]
 	withdrawOpportunity      *connect.Client[v1.WithdrawOpportunityRequest, v1.WithdrawOpportunityResponse]
 	setCombatantSide         *connect.Client[v1.SetCombatantSideRequest, v1.SetCombatantSideResponse]
+	setCombatantMount        *connect.Client[v1.SetCombatantMountRequest, v1.SetCombatantMountResponse]
 	setCombatantCover        *connect.Client[v1.SetCombatantCoverRequest, v1.SetCombatantCoverResponse]
 	setCombatantHidden       *connect.Client[v1.SetCombatantHiddenRequest, v1.SetCombatantHiddenResponse]
 	setMonsterReactionMode   *connect.Client[v1.SetMonsterReactionModeRequest, v1.SetMonsterReactionModeResponse]
@@ -2078,6 +2104,11 @@ func (c *combatServiceClient) WithdrawOpportunity(ctx context.Context, req *conn
 // SetCombatantSide calls meurpg.play.v1.CombatService.SetCombatantSide.
 func (c *combatServiceClient) SetCombatantSide(ctx context.Context, req *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error) {
 	return c.setCombatantSide.CallUnary(ctx, req)
+}
+
+// SetCombatantMount calls meurpg.play.v1.CombatService.SetCombatantMount.
+func (c *combatServiceClient) SetCombatantMount(ctx context.Context, req *connect.Request[v1.SetCombatantMountRequest]) (*connect.Response[v1.SetCombatantMountResponse], error) {
+	return c.setCombatantMount.CallUnary(ctx, req)
 }
 
 // SetCombatantCover calls meurpg.play.v1.CombatService.SetCombatantCover.
@@ -2705,6 +2736,22 @@ type CombatServiceHandler interface {
 	//     unspecified.
 	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED).
 	SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error)
+	// SetCombatantMount marks an NPC or a creature as a willing mount (SRD 5.1, "Mounted Combat": a willing
+	// creature that is at least one size larger than its rider), or takes the mark off. `kind` is "controlled" (it
+	// obeys its rider: it moves on its rider's say and takes the rider's initiative while carried), "independent"
+	// (it keeps its own turn) or "" (not a mount). A player can mount only a creature of its own and a combatant the
+	// master marked on the party's side; the master can mount anything. A player's character is never a mount. The mark is the
+	// master's: the players never read `mount_kind` of a combatant that is not theirs. Only the master may call it. It is a
+	// session event, `mount_kind_set`, and, like SetCombatantSide, the undo does not take it back (the master marks it
+	// again).
+	//
+	// Errors:
+	//   - `not_found`: the combatant is not in this combat.
+	//   - `permission_denied`: the caller is a player.
+	//   - `invalid_argument`: `kind` is not "", "controlled" or "independent", or the combatant is a player's character.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED); the combatant rides something
+	//     (ALREADY_MOUNTED); the mark is taken off a mount that carries a rider (MOUNT_TAKEN).
+	SetCombatantMount(context.Context, *connect.Request[v1.SetCombatantMountRequest]) (*connect.Response[v1.SetCombatantMountResponse], error)
 	// SetCombatantCover marks the cover a combatant has that the map does not show
 	// (D4): none, half (+2 to AC and Dexterity saves), three-quarters (+5) or
 	// total (it cannot be targeted). It adds to the cover the map gives against
@@ -3761,6 +3808,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("SetCombatantSide")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceSetCombatantMountHandler := connect.NewUnaryHandler(
+		CombatServiceSetCombatantMountProcedure,
+		svc.SetCombatantMount,
+		connect.WithSchema(combatServiceMethods.ByName("SetCombatantMount")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceSetCombatantCoverHandler := connect.NewUnaryHandler(
 		CombatServiceSetCombatantCoverProcedure,
 		svc.SetCombatantCover,
@@ -4058,6 +4111,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceWithdrawOpportunityHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantSideProcedure:
 			combatServiceSetCombatantSideHandler.ServeHTTP(w, r)
+		case CombatServiceSetCombatantMountProcedure:
+			combatServiceSetCombatantMountHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantCoverProcedure:
 			combatServiceSetCombatantCoverHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantHiddenProcedure:
@@ -4209,6 +4264,10 @@ func (UnimplementedCombatServiceHandler) WithdrawOpportunity(context.Context, *c
 
 func (UnimplementedCombatServiceHandler) SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SetCombatantSide is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) SetCombatantMount(context.Context, *connect.Request[v1.SetCombatantMountRequest]) (*connect.Response[v1.SetCombatantMountResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.SetCombatantMount is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) SetCombatantCover(context.Context, *connect.Request[v1.SetCombatantCoverRequest]) (*connect.Response[v1.SetCombatantCoverResponse], error) {

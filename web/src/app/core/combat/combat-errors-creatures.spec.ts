@@ -28,6 +28,14 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
       'A forma já acabou. Assuma uma forma nova, se ainda tiver usos.',
     ],
     [
+      EncounterBlockedReason.ALREADY_MOUNTED,
+      'Quem está montado não pode ser montaria. Desmonte antes. Nada foi mudado.',
+    ],
+    [
+      EncounterBlockedReason.MOUNT_TAKEN,
+      'Essa montaria está carregando alguém. O cavaleiro desmonta antes. Nada foi mudado.',
+    ],
+    [
       EncounterBlockedReason.TOO_MANY_COMBATANTS,
       'Não cabem mais combatentes neste combate. Nada foi gasto.',
     ],
