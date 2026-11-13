@@ -243,6 +243,18 @@ type ExtraDamage struct {
 	NoCritDoubling                         bool
 }
 
+// PowerAttack is a trade a table feature offers on a weapon attack (the engine's power_attack effect):
+// AttackPenalty off the attack roll for DamageBonus flat on the damage of a hit. Weapon ("any", "melee" or
+// "ranged"), Properties (the "weapon-property:" keys the weapon must all have, PropertyNamesPT their
+// Portuguese names in the same order) and OnlyProficient say which weapon lines it goes with, and Resource
+// the resource each use spends ("" for none). rules.PowerAttack.Allows reads them.
+type PowerAttack struct {
+	Key, NamePT, Weapon, Resource, TextPT string
+	AttackPenalty, DamageBonus            int
+	Properties, PropertyNamesPT           []string
+	OnlyProficient                        bool
+}
+
 // SpellModifier is a cast option a table feature offers (the engine's spell_modifier effect): AppliesTo
 // says which spells it fits ("damage_spell", "cantrip", a school key or a damage type key) and Change what
 // it does ("damage_type_swap", "bonus_damage" or "extra_dice_per_slot_over"). From are the types a swap is
@@ -327,6 +339,8 @@ type Traits struct {
 	Maneuvers []Maneuver
 	// ExtraDamages are the damage the table's features add to a weapon hit (extra_damage effects).
 	ExtraDamages []ExtraDamage
+	// PowerAttacks are the trades of attack roll for damage the table's features offer (power_attack effects).
+	PowerAttacks []PowerAttack `json:",omitempty"`
 	// RerollRules are the rerolls of a die the table's features give (reroll effects).
 	RerollRules []RerollRule `json:",omitempty"`
 	// RollMinimums are the lowest values a die counts as that the table's features give (roll_minimum effects).

@@ -1409,7 +1409,7 @@ func (*TableEntry_TableCreature) isTableEntry_Body() {}
 // TableEffect is one effect of a feature, from the closed menu: what the engine
 // computes with, never code. `type` is "modifier", "proficiency", "resource",
 // "sense", "roll_mode", "grant_action", "extra_attack", "ranged_attack", "choice", "ability_increase",
-// "superiority_die", "extra_damage", "ambush", "resistance", "state", "weapon_rule", "pseudo_weapon",
+// "superiority_die", "extra_damage", "power_attack", "ambush", "resistance", "state", "weapon_rule", "pseudo_weapon",
 // "breathes_water", "granted_spell", "on_event" or "note"; "ability_increase" is a feat's alone.
 // "breathes_water" has no field of its own (`when` and `text_pt` only): the character breathes underwater. Only the fields of the type are
 // read, and a field the type does not use is refused. A feature with no effects is text only and always valid. Formulas ("value",
@@ -1559,6 +1559,7 @@ type TableEffect struct {
 	// another source when the sheet is worked out (the race, the background, the
 	// sheet's picks or another feature); the effect never gives the proficiency itself.
 	// Empty or false doubles the skill whether or not the character is proficient.
+	// power_attack also reads it, with no other condition: see `attack_penalty`.
 	OnlyProficient bool `protobuf:"varint,29,opt,name=only_proficient,json=onlyProficient,proto3" json:"only_proficient,omitempty"`
 	// granted_spell: a spell the entry gives the character apart from the lists of its
 	// classes. `spell` is an SRD key or a spell of the same table; `ability` is "int",
@@ -1735,9 +1736,18 @@ type TableEffect struct {
 	UsesCost             int32 `protobuf:"varint,87,opt,name=uses_cost,json=usesCost,proto3" json:"uses_cost,omitempty"`
 	// grant_action only: how the action is used in a combat through UseFeature (limit per turn, round or combat,
 	// targets, a choice, what it applies). Unset keeps the action on TakeAction.
-	Use           *FeatureUse `protobuf:"bytes,88,opt,name=use,proto3" json:"use,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Use *FeatureUse `protobuf:"bytes,88,opt,name=use,proto3" json:"use,omitempty"`
+	// power_attack: a trade the player may make on a weapon attack, `attack_penalty` (1 to 10) off the
+	// attack roll for `damage_bonus` (1 to 20, the field weapon_rule shares) of flat damage on a hit, never
+	// doubled by a critical hit. Both are required. `weapon` is "any" (the default), "melee" or "ranged";
+	// `weapon_properties` are "weapon-property:" keys of the content, each once and at most 4, that the weapon
+	// must all have (empty is no filter); `only_proficient` (also read by proficiency) asks the weapon line to be
+	// one the character is proficient with; `resource`, when set, is spent once per use. A feature has at most one.
+	// Field 90 is not used.
+	AttackPenalty    int32    `protobuf:"varint,89,opt,name=attack_penalty,json=attackPenalty,proto3" json:"attack_penalty,omitempty"`
+	WeaponProperties []string `protobuf:"bytes,91,rep,name=weapon_properties,json=weaponProperties,proto3" json:"weapon_properties,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -2382,6 +2392,20 @@ func (x *TableEffect) GetUsesCost() int32 {
 func (x *TableEffect) GetUse() *FeatureUse {
 	if x != nil {
 		return x.Use
+	}
+	return nil
+}
+
+func (x *TableEffect) GetAttackPenalty() int32 {
+	if x != nil {
+		return x.AttackPenalty
+	}
+	return 0
+}
+
+func (x *TableEffect) GetWeaponProperties() []string {
+	if x != nil {
+		return x.WeaponProperties
 	}
 	return nil
 }
@@ -8767,7 +8791,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreatureB\x06\n" +
-	"\x04body\"\xb3\x14\n" +
+	"\x04body\"\x87\x15\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -8872,7 +8896,9 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x04flag\x18U \x01(\tB\x04\x90\xb5\x18@R\x04flag\x124\n" +
 	"\x16no_material_components\x18V \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
 	"\tuses_cost\x18W \x01(\x05R\busesCost\x12-\n" +
-	"\x03use\x18X \x01(\v2\x1b.meurpg.rules.v1.FeatureUseR\x03use\"\x81\x02\n" +
+	"\x03use\x18X \x01(\v2\x1b.meurpg.rules.v1.FeatureUseR\x03use\x12%\n" +
+	"\x0eattack_penalty\x18Y \x01(\x05R\rattackPenalty\x12+\n" +
+	"\x11weapon_properties\x18[ \x03(\tR\x10weaponProperties\"\x81\x02\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +
