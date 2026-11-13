@@ -380,9 +380,9 @@ func TestMoveCombatantFrozen_Conditions(t *testing.T) {
 	t.Parallel()
 	runCaveMoves(t, []caveMove{
 		{
-			// Crawling: every foot costs one more. The run adds the length, not the cost.
+			// Crawling: every foot costs one more, in the cost itself (200 for 100 of path). The run adds the length, not the cost.
 			name: "prone crawls at twice the cost", setup: conditioned("Toren", "condition:prone"), col: 8, row: 7,
-			want: moveWant{col: 8, row: 7, usedDft: 200, lastDft: 100, event: `{"col": 8, "combatant_id": "<Toren>", "cost_dft": 100, "cost_ft": 10, "crawling": true, "distance_dft": 100, "distance_ft": 10, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 7, "spent_dft": 200}`},
+			want: moveWant{col: 8, row: 7, usedDft: 200, lastDft: 100, event: `{"col": 8, "combatant_id": "<Toren>", "cost_dft": 200, "cost_ft": 20, "crawling": true, "distance_dft": 100, "distance_ft": 10, "from": {"col": 6, "cover": "none", "placed": true, "row": 7}, "on_turn": true, "round": 1, "row": 7, "spent_dft": 200}`},
 		},
 		{
 			name: "prone, a forced move is no crawl", setup: conditioned("Toren", "condition:prone"), as: "master", col: 8, row: 7, edit: []func(*playv1.MoveCombatantRequest){asForced},

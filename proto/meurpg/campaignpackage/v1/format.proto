@@ -168,6 +168,9 @@ message PackageLayers {
   // The squares marked "can't pass", one bit a square. Packages made before the layer
   // existed do not have it: empty.
   bytes no_pass = 6;
+  // The surfaces (water and climbable squares), two bits a square like `cover`. Packages made before
+  // the layer existed do not have it: empty.
+  bytes surface = 7;
 }
 
 // PackagePoint is a point of interest of a map: a battle point, a submap, a

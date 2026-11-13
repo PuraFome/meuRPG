@@ -592,7 +592,8 @@ type actionEvent struct {
 	DistanceFt  int32 `json:"distance_ft,omitempty"`
 	DistanceDFt int32 `json:"distance_dft,omitempty"`
 	// SpentDFt is the movement a walk really spent, in tenths of a foot: the path's
-	// cost times the factor of a drag or a crawl, which Dragging and Crawling name.
+	// cost (which already holds the extra feet of swimming, climbing and crawling) times the factor of a
+	// drag, which Dragging names; Crawling says the cost has the crawl in it.
 	// Zero when the move spent nothing (the master's free move) or was written before.
 	SpentDFt int32 `json:"spent_dft,omitempty"`
 	Dragging bool  `json:"dragging,omitempty"`

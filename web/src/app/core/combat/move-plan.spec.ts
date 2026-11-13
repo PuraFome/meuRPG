@@ -6,11 +6,13 @@ import {
   MoveRefusal,
   ReachableSquareSchema,
   RefusedSquareSchema,
+  SurfaceExtra,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant } from './combat-testing';
 import {
   afterText,
   costTitle,
+  extraText,
   indexOptions,
   leftLine,
   ofThe,
@@ -72,6 +74,27 @@ describe("the move page reads the server's options", () => {
     expect(plain(afterText(300, 71))).toBe('Depois restam 6,9 m.');
     expect(plain(afterText(300, 300))).toBe('Depois restam 0,0 m.');
     expect(plain(costTitle(258))).toBe('Mover 7,7 m');
+  });
+
+  it("says what swimming, climbing and crawling added, from the server's numbers", () => {
+    const square = (extraDft: number, surfaceExtra: SurfaceExtra, crawlExtraDft: number) =>
+      create(ReachableSquareSchema, {
+        col: 3,
+        row: 2,
+        costDft: 300,
+        extraDft,
+        surfaceExtra,
+        crawlExtraDft,
+      });
+    expect(plain(extraText(square(150, SurfaceExtra.SWIM, 0)))).toBe('Inclui 4,5 m nadando.');
+    expect(plain(extraText(square(150, SurfaceExtra.CLIMB, 0)))).toBe('Inclui 4,5 m escalando.');
+    expect(plain(extraText(square(150, SurfaceExtra.SWIM, 150)))).toBe(
+      'Inclui 4,5 m nadando e 4,5 m rastejando.',
+    );
+    expect(plain(extraText(square(0, SurfaceExtra.UNSPECIFIED, 100)))).toBe(
+      'Inclui 3,0 m rastejando.',
+    );
+    expect(extraText(square(0, SurfaceExtra.UNSPECIFIED, 0))).toBe('');
   });
 
   it('explains each refusal by its reason, never naming what is in the way', () => {

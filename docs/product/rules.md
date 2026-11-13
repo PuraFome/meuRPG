@@ -537,6 +537,8 @@ The master moves anyone anywhere, but not into a wall. The one exception is an N
 | --- | --- |
 | Speed | The speed is cut by 10 ft in heavy armor whose Strength requirement is not met (dwarves are not slowed). A condition that sets the speed to 0 or stops movement leaves none. A fly speed is used when it is the better one |
 | Difficult terrain | Each difficult square entered costs 1.5 m more, once per square. A flyer ignores it |
+| Swimming and climbing | Each metre swum in water the master painted, or climbed on a climbable surface, costs 1 extra metre, unless the creature has a swimming or climbing speed (from its sheet, a feature, an effect or a Wild Shape form). A flyer pays nothing, and a jump costs only its length. The screen says "Inclui 4,5 m nadando e 3,0 m rastejando." beside the cost, each extra with its word. A player plans on the water they have seen; water they have not seen stops the move short where the movement runs out, without saying why |
+| Crawling | A prone creature on foot pays 1 extra metre per metre. It adds to the other extras: over difficult terrain or in water it pays 3 per metre, not 4 |
 | Walls, columns, squeezed corners | Refuse the move. Half-cover squares (a low wall, crates) cost nothing |
 | Other creatures | Passing through a non-hostile creature's square costs as difficult terrain. A hostile creature's square can be crossed only if it is two sizes larger or smaller. Nobody ends a move in another creature's square (a Tiny creature may share with Tiny creatures) |
 | Range | Attack and spell range counts squares between centres, rounded down, so a 1.5 m reach holds on all eight sides. A weapon with the reach property reaches 3 m, also for the opportunity attack |

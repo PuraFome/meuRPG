@@ -132,10 +132,15 @@ func squareOfCombatant(c playdb.Combatant) grid.Square {
 func flies(c playdb.Combatant) bool { return c.SpeedFlyFt > 0 && c.SpeedFlyFt >= c.SpeedFt }
 
 // moverOf says how a combatant moves: a creature that moves on its fly speed is
-// a flier (difficult terrain costs it nothing). Swimming and climbing are out of
-// scope.
+// a flier (difficult terrain, water and climbing cost it nothing); one with a swimming or a climbing
+// speed swims or climbs for free (SRD 5.1: otherwise each foot costs 1 extra); a prone one on foot crawls
+// (1 extra foot per foot). The speeds are the combatant's own: the sheet's, the features' and effects' (what
+// combatCharacter copied when it entered), the creature's, or the Wild Shape form's.
 func moverOf(c playdb.Combatant) grid.Mover {
-	return grid.Mover{Flier: flies(c), Size: sizeToGrid[sizeKey(c.Size)]}
+	return grid.Mover{
+		Flier: flies(c), Swims: c.SpeedSwimFt > 0, Climbs: c.SpeedClimbFt > 0, Crawls: crawls(c),
+		Size: sizeToGrid[sizeKey(c.Size)],
+	}
 }
 
 // moverWith is moverOf with what the combatant's sheet adds: a table feature's flag that lifts the cost of the map's
@@ -161,6 +166,18 @@ var noSpeed = []string{
 	"condition:grappled", "condition:restrained", "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious",
 }
 
+// speedFtOf is the speed the turn's movement is counted on, in feet: the better of walking and flying, and for a
+// creature with neither (a shark, a spider on its web) the better of swimming and climbing. A swim or climb speed
+// otherwise only lifts the extra cost of the water and the climb (SRD 5.1, "Climbing, Swimming, and Crawling");
+// that a swimmer faster than it walks does not spend its swim speed beyond the walking one is a known limit
+// (docs/architecture/play/movement.md).
+func speedFtOf(c playdb.Combatant) int32 {
+	if speed := max(c.SpeedFt, c.SpeedFlyFt); speed > 0 {
+		return speed
+	}
+	return max(c.SpeedSwimFt, c.SpeedClimbFt)
+}
+
 // speedDFt is the combatant's best speed for this turn, in tenths of a foot: its
 // walking speed, or its fly speed when it has a better one, twice after the Dash
 // action (RN-21).
@@ -171,7 +188,7 @@ func speedDFt(c playdb.Combatant) int {
 	if c.EffectNoMove { // the lethargy of a Velocidade that ended (RN-22)
 		return 0
 	}
-	speed := (int(max(c.SpeedFt, c.SpeedFlyFt)) + int(c.EffectSpeedAddFt)) * 10
+	speed := (int(speedFtOf(c)) + int(c.EffectSpeedAddFt)) * 10
 	if c.Dashed {
 		speed *= 2
 	}
@@ -490,17 +507,14 @@ func (s *Service) loadMover(ctx context.Context, a *moveAttempt) error {
 	return nil
 }
 
-// setFactor works out what a foot of path costs.
+// setFactor works out what a foot of path costs: twice when the mover drags a creature at half speed.
 func (a *moveAttempt) setFactor() {
 	a.factor = 1
 	if a.dragging && a.req.walking() && combat.DragHalvesSpeed(a.target.Size, a.dragged.Size) {
 		a.factor, a.dragHalves = slowedFoot, true
 	}
-	// Crawling (SRD 5.1, "Being Prone"): every foot of movement costs 1 extra foot, so a
-	// prone creature pays twice (a drag halves the speed on top of it). See combat_standup.go.
-	if a.req.walking() && crawls(a.target) {
-		a.factor *= slowedFoot
-	}
+	// Crawling is no factor: its extra foot per foot is part of the cost (grid.Mover.Crawls), added to the
+	// difficult terrain's and the swim's, as the SRD adds them. A drag halves the speed on top of it.
 }
 
 // chooseSquare takes the square the request names, or picks one for a placement.
@@ -1162,13 +1176,27 @@ func moveOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ gri
 	reachable := make(map[grid.Square]bool, len(reach))
 	for _, r := range reach {
 		reachable[r.Square] = true
-		out.Reachable = append(out.Reachable, &playv1.ReachableSquare{Col: clamp32(r.Square.Col, 0, math.MaxInt32), Row: clamp32(r.Square.Row, 0, math.MaxInt32), CostDft: clamp32(r.CostDFt, 0, math.MaxInt32)})
+		out.Reachable = append(out.Reachable, &playv1.ReachableSquare{
+			Col: clamp32(r.Square.Col, 0, math.MaxInt32), Row: clamp32(r.Square.Row, 0, math.MaxInt32), CostDft: clamp32(r.CostDFt, 0, math.MaxInt32),
+			ExtraDft: clamp32(r.SurfaceDFt, 0, math.MaxInt32), SurfaceExtra: surfaceExtraOf(r.Surface), CrawlExtraDft: clamp32(r.CrawlDFt, 0, math.MaxInt32),
+		})
 	}
 	if left <= 0 {
 		return out
 	}
 	out.Refused = refusedSquares(t, from, left, reachable, occ, mover)
 	return out
+}
+
+// surfaceExtraOf is the word of a line's swim or climb extra.
+func surfaceExtraOf(s grid.Surface) playv1.SurfaceExtra {
+	switch s {
+	case grid.SurfaceWater:
+		return playv1.SurfaceExtra_SURFACE_EXTRA_SWIM
+	case grid.SurfaceClimb:
+		return playv1.SurfaceExtra_SURFACE_EXTRA_CLIMB
+	}
+	return playv1.SurfaceExtra_SURFACE_EXTRA_UNSPECIFIED
 }
 
 // refusedSquares lists the squares inside the circle of the movement left that are not

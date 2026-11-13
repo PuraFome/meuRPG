@@ -198,14 +198,14 @@ SELECT * FROM map_layers
 WHERE map_id = $1;
 
 -- name: UpsertMapLayers :exec
--- Writes the six layers of a map (NULL for a layer with nothing painted). The
+-- Writes the seven layers of a map (NULL for a layer with nothing painted). The
 -- handler holds the map's row lock (GetMapForUpdate), so two batches of paint
 -- take turns.
-INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, no_pass, updated_at)
-VALUES (sqlc.arg(map_id), sqlc.narg(difficult_terrain), sqlc.narg(walls), sqlc.narg(cover), sqlc.narg(light), sqlc.narg(doors), sqlc.narg(no_pass), sqlc.arg(now))
+INSERT INTO map_layers (map_id, difficult_terrain, walls, cover, light, doors, no_pass, surface, updated_at)
+VALUES (sqlc.arg(map_id), sqlc.narg(difficult_terrain), sqlc.narg(walls), sqlc.narg(cover), sqlc.narg(light), sqlc.narg(doors), sqlc.narg(no_pass), sqlc.narg(surface), sqlc.arg(now))
 ON CONFLICT (map_id) DO UPDATE
 SET difficult_terrain = excluded.difficult_terrain, walls = excluded.walls, cover = excluded.cover,
-    light = excluded.light, doors = excluded.doors, no_pass = excluded.no_pass, updated_at = excluded.updated_at;
+    light = excluded.light, doors = excluded.doors, no_pass = excluded.no_pass, surface = excluded.surface, updated_at = excluded.updated_at;
 
 -- name: SetMapPlayersMove :one
 -- Whether the players move their own tokens on the map. It touches nothing else

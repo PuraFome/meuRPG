@@ -3383,6 +3383,15 @@ message GetMoveOptionsResponse {
   bool dragging_halved = 21;
 }
 
+// SurfaceExtra is what the extra cost of a move is for (SRD 5.1, "Climbing, Swimming, and Crawling").
+enum SurfaceExtra {
+  SURFACE_EXTRA_UNSPECIFIED = 0;
+  // The line crosses water and the mover has no swimming speed.
+  SURFACE_EXTRA_SWIM = 1;
+  // The line crosses a climbable surface and the mover has no climbing speed.
+  SURFACE_EXTRA_CLIMB = 2;
+}
+
 // DraggedSquare is the square a dragged creature ends on: the one the grappler left
 // just before the last square of its path, worked out by the server.
 message DraggedSquare {
@@ -3395,7 +3404,9 @@ message ReachableSquare {
   int32 col = 1;
   int32 row = 2;
   // The cost in tenths of a foot: the length of the line plus 50 for each square
-  // of difficult terrain or holding another creature that it enters.
+  // of difficult terrain or holding another creature that it enters, plus 1 extra foot per
+  // foot for the part of the line that is swum or climbed (without the matching speed) and
+  // another for a crawl (SRD 5.1).
   int32 cost_dft = 3;
   // The combatants this move would let attack with an opportunity attack (UUIDs):
   // only ones the caller sees, never a hidden one (RN-10). Empty when the move
@@ -3417,6 +3428,17 @@ message ReachableSquare {
   // The square the dragged creature (GetMoveOptionsResponse.dragging_combatant_id)
   // ends on if the mover goes here. Unset when it drags nobody.
   DraggedSquare dragged_to = 20;
+  // The part of `cost_dft` that swimming or climbing adds, in tenths of a foot; 0 when the line
+  // crosses no water or climbable surface, or the mover has the speed for it. Crawling is not in
+  // it (`crawl_extra_dft`). The screen writes it beside the cost without any arithmetic.
+  int32 extra_dft = 21;
+  // Which extra `extra_dft` is, for the words: SWIM or CLIMB, whichever is on most of the squares
+  // of this line (SWIM when they tie). UNSPECIFIED when `extra_dft` is 0.
+  SurfaceExtra surface_extra = 22;
+  // The part of `cost_dft` that crawling adds (1 foot per foot of the line, for a prone creature on
+  // foot), in tenths of a foot; 0 when the mover does not crawl. It adds to `extra_dft`: the screen
+  // prints each with its word.
+  int32 crawl_extra_dft = 23;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.
