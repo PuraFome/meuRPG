@@ -1,7 +1,7 @@
 import { TableEffectAudience } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { conditionName } from '../combat/conditions';
 import { formatDuration } from '../../shared/spell-details/spell-details-format';
-import { hitAvailable, type HitDraft, type HitTriggerChoice } from './hit-effect-draft';
+import { hitAvailable, type HitDraft, type HitTriggerKey } from './hit-effect-draft';
 import type { SpellDraft } from './spell-types';
 
 /**
@@ -37,14 +37,14 @@ export interface ReadHit {
   readonly visibility: string;
 }
 
-const WHERE: Record<HitTriggerChoice, string> = {
+const WHERE: Record<HitTriggerKey, string> = {
   next_hit: 'o próximo golpe com arma',
   next_melee_hit: 'o próximo golpe corpo a corpo',
   each_hit: 'cada golpe com arma',
   marked_target: 'cada golpe no alvo marcado',
 };
 
-const LEAD: Record<HitTriggerChoice, string> = {
+const LEAD: Record<HitTriggerKey, string> = {
   next_hit: 'No próximo golpe com arma:',
   next_melee_hit: 'No próximo golpe corpo a corpo:',
   each_hit: 'Em cada golpe com arma:',
@@ -120,12 +120,13 @@ export function visibilityText(audience: TableEffectAudience | undefined): strin
   return audience === TableEffectAudience.PUBLIC ? VISIBILITY_PUBLIC_PT : VISIBILITY_OWNER_PT;
 }
 
-/** The hit effect of a spell as a player reads it, or `null` when the spell has none (or does not last). */
+/** The hit effect of a spell as a player reads it, or `null` when the spell has none (or does not last, or has no trigger yet). */
 export function readHit(d: SpellDraft, nameOf: (key: string) => string): ReadHit | null {
-  if (!d.hit.enabled || !hitAvailable(d)) {
+  const h = d.hit;
+  // A trigger left unset says nothing yet: the form asks for it before the save.
+  if (!h.enabled || !hitAvailable(d) || h.trigger === '') {
     return null;
   }
-  const h = d.hit;
   return {
     title: HIT_SECTION_TITLE,
     where: `Em quem conjura: ${WHERE[h.trigger]}, por ${lastsText(d)}.`,

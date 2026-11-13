@@ -91,11 +91,20 @@ describe('HitEffectBlock (#577)', () => {
       'Próximo golpe com arma|Acerta uma vez e acaba.',
       'Próximo golpe corpo a corpo|À distância não gasta.',
       'Cada golpe enquanto durar|Todo golpe com arma.',
-      'Cada golpe no alvo marcado|',
+      'Cada golpe no alvo marcado|Só no alvo da magia.',
     ]);
     const radios = Array.from(el.querySelectorAll<HTMLInputElement>('.card input'));
     expect(radios.map((r) => r.checked)).toEqual([true, false, false, false]);
     expect(radios[0].getAttribute('data-field')).toBe('table_spell.effect.modifiers[0].trigger');
+  });
+
+  it('checks no card for a trigger that is unset, and says to choose', () => {
+    const issues = (p: string) => (p.endsWith('.trigger') ? ['Escolha quando vale.'] : []);
+    const el = setup({ hit: on({ trigger: '' }), issuesOf: issues });
+    const radios = Array.from(el.querySelectorAll<HTMLInputElement>('.card input'));
+    expect(radios.map((r) => r.checked)).toEqual([false, false, false, false]);
+    expect(radios[0].getAttribute('data-field')).toBe('table_spell.effect.modifiers[0].trigger');
+    expect(text(el.querySelector('.when')!)).toContain('Escolha quando vale.');
   });
 
   it('picks another trigger', async () => {
@@ -135,6 +144,19 @@ describe('HitEffectBlock (#577)', () => {
     expect(text(el.querySelector('.chips')!)).not.toContain('Concentração');
   });
 
+  it.each([['marked_target'], ['each_hit']])(
+    'asks for concentration for %s only without it',
+    (t) => {
+      const trigger = t as HitDraft['trigger'];
+      let el = setup({ concentration: false, hit: on({ trigger }) });
+      expect(el.querySelector('.when .note')).not.toBeNull();
+      el = setup({ concentration: true, hit: on({ trigger }) });
+      expect(el.querySelector('.when .note')).toBeNull();
+      el = setup({ concentration: false, hit: on({ trigger: 'next_hit' }) });
+      expect(el.querySelector('.when .note')).toBeNull();
+    },
+  );
+
   it('warns, without blocking, that each hit asks for concentration', () => {
     const el = setup({ concentration: false, hit: on({ trigger: 'each_hit' }) });
     expect(text(el.querySelector('.note')!)).toContain('Ligue Concentração');
@@ -142,11 +164,15 @@ describe('HitEffectBlock (#577)', () => {
 
   it('opens "Como funciona" with the explanation', async () => {
     const el = setup();
-    expect(el.querySelector('.how')).toBeNull();
+    const how = el.querySelector<HTMLElement>('.how')!;
     const button = el.querySelector<HTMLButtonElement>('.how-button')!;
+    // The element the button controls is always there, hidden while closed.
+    expect(button.getAttribute('aria-controls')).toBe(how.id);
+    expect(how.hidden).toBe(true);
     expect(button.getAttribute('aria-expanded')).toBe('false');
     button.click();
     await settle(fixture, 2);
+    expect(how.hidden).toBe(false);
     expect(button.getAttribute('aria-expanded')).toBe('true');
     expect(text(el.querySelector('.how')!)).toContain('Num crítico, os dados dobram.');
   });

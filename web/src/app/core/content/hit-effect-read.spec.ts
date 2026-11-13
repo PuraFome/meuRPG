@@ -145,6 +145,10 @@ describe('what a player reads of the next-hit effect (#577)', () => {
     ).toBe('O alvo faz um teste de resistência de Destreza.');
   });
 
+  it('reads nothing for a trigger that is unset', () => {
+    expect(hitOf(spell({ trigger: TableHitTrigger.UNSPECIFIED }))).toBeNull();
+  });
+
   it('has no save sentence without a test', () => {
     expect(hitOf(spell({}))!.save).toEqual([]);
   });

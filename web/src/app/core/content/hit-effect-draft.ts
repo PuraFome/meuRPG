@@ -10,6 +10,7 @@ import {
   type TableSpellEffect,
   TableSpellEffectSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { HIT_TRIGGER_PT } from './content-violation-texts-hit';
 import { UNREADABLE_COUNT, readWhole, wholeText } from './whole-number';
 
 /**
@@ -17,10 +18,12 @@ import { UNREADABLE_COUNT, readWhole, wholeText } from './whole-number';
  * The draft edits only that one modifier. The stored effect (its conditions, the other modifiers, who sees it) is the
  * spell's `kept` effect, and `applyHit` puts the modifier back into it without touching anything else, in the place it
  * had. The rules are the server's (`rules/weaponhitdamage.go`); the form only keeps what the person typed and says early
- * what it can: the locked card, a spell that does not last, a cap that is missing, a condition with no test.
+ * what it can: a trigger left unset, the locked card, a spell that does not last, a cap that is missing, a condition with no test.
  */
 
-export type HitTriggerChoice = 'next_hit' | 'next_melee_hit' | 'each_hit' | 'marked_target';
+export type HitTriggerKey = 'next_hit' | 'next_melee_hit' | 'each_hit' | 'marked_target';
+/** A trigger of the server, or "" for one a stored modifier has that the form does not know: no card is checked until the person picks. */
+export type HitTriggerChoice = HitTriggerKey | '';
 export type HitLasts = 'next_turn' | 'spell_end';
 
 export interface HitDraft {
@@ -45,6 +48,13 @@ export interface HitDraft {
   conditionLasts: HitLasts;
 }
 
+export const HIT_NEXT: HitTriggerKey = 'next_hit';
+export const HIT_EACH: HitTriggerKey = 'each_hit';
+export const HIT_MARKED: HitTriggerKey = 'marked_target';
+/** The spell's duration that keeps no effect (`DurationChoice`), and the target the marked target needs. */
+const DURATION_INSTANT = 'instant';
+const TARGET_ONE_CREATURE = 'creature';
+
 export const HIT_DICE_MAX = 10;
 export const HIT_PER_SLOT_MAX = 5;
 export const HIT_CAP_MAX = 20;
@@ -66,7 +76,7 @@ export const HIT_CONDITION_PAIR_PT = 'Escolha a condição de quem falhar, ou ti
 export function emptyHit(): HitDraft {
   return {
     enabled: false,
-    trigger: 'next_hit',
+    trigger: HIT_NEXT,
     dice: '1',
     die: 6,
     perSlot: '',
@@ -79,12 +89,17 @@ export function emptyHit(): HitDraft {
   };
 }
 
-const TRIGGER: Record<HitTriggerChoice, TableHitTrigger> = {
+const TRIGGER: Record<HitTriggerKey, TableHitTrigger> = {
   next_hit: TableHitTrigger.NEXT_HIT,
   next_melee_hit: TableHitTrigger.NEXT_MELEE_HIT,
   each_hit: TableHitTrigger.EACH_HIT,
   marked_target: TableHitTrigger.MARKED_TARGET,
 };
+
+/** Whether the trigger lasts as long as the caster concentrates (the server's `HitTriggerNeedsConcentration`). */
+export function needsConcentration(trigger: HitTriggerChoice): boolean {
+  return trigger === HIT_EACH || trigger === HIT_MARKED;
+}
 
 const ABILITY_KEY: Readonly<Record<number, string>> = {
   [Ability.STRENGTH]: 'str',
@@ -101,10 +116,7 @@ export function hitAbilityKey(ability: Ability): string {
 }
 
 function triggerChoice(t: TableHitTrigger): HitTriggerChoice {
-  return (
-    (Object.entries(TRIGGER).find(([, v]) => v === t)?.[0] as HitTriggerChoice | undefined) ??
-    'next_hit'
-  );
+  return (Object.entries(TRIGGER).find(([, v]) => v === t)?.[0] as HitTriggerKey | undefined) ?? '';
 }
 
 const isHit = (m: TableEffectModifier): boolean =>
@@ -151,7 +163,7 @@ export function hitToModifier(h: HitDraft): TableEffectModifier {
   const conditions = h.condition ? [h.condition, ...h.extraConditions] : [];
   return create(TableEffectModifierSchema, {
     kind: TableEffectModifierKind.WEAPON_HIT_DAMAGE,
-    trigger: TRIGGER[h.trigger],
+    trigger: h.trigger === '' ? TableHitTrigger.UNSPECIFIED : TRIGGER[h.trigger],
     die: h.die,
     dice: count(h.dice),
     perSlotDice: count(h.perSlot),
@@ -170,17 +182,14 @@ export function hitToModifier(h: HitDraft): TableEffectModifier {
   });
 }
 
+/** The server refuses an effect with no condition and no modifier, and the audience and the label mean nothing without them. */
 const emptyEffect = (e: TableSpellEffect): boolean =>
-  e.modifiers.length === 0 &&
-  e.conditions.length === 0 &&
-  e.applies === 0 &&
-  e.visibility === 0 &&
-  e.playerLabelPt === '';
+  e.modifiers.length === 0 && e.conditions.length === 0;
 
 /**
  * The effect to send: the stored one with the weapon-hit modifier written in (in its own place, or last when it is new),
  * or taken out when the block is off or the spell cannot keep it. Nothing else changes: the other modifiers keep their
- * order, and the conditions, `applies`, the audience and the label go through. An effect with nothing left is `undefined`;
+ * order, and the conditions, `applies`, the audience and the label go through. An effect with no condition and no modifier left is `undefined` (the server refuses one, and its label and audience mean nothing alone);
  * a spell with no effect has one made with only this modifier.
  */
 export function applyHit(
@@ -216,12 +225,12 @@ export interface HitSpellFacts {
 
 /** An instantaneous spell has no effect to keep for the golpe. */
 export function hitAvailable(d: Pick<HitSpellFacts, 'duration'>): boolean {
-  return d.duration !== 'instant';
+  return d.duration !== DURATION_INSTANT;
 }
 
 /** Why the card of the marked target is locked, or "" when it is open: it needs one creature and no extra targets per level. */
 export function markedLock(d: Pick<HitSpellFacts, 'target' | 'perSlot'>): string {
-  if (d.target !== 'creature') {
+  if (d.target !== TARGET_ONE_CREATURE) {
     return MARKED_LOCK_PT;
   }
   return d.perSlot > 0 ? MARKED_LOCK_SLOT_PT : '';
@@ -229,8 +238,8 @@ export function markedLock(d: Pick<HitSpellFacts, 'target' | 'perSlot'>): string
 
 /** The draft with a locked trigger moved to the next hit (a marked target the spell can no longer have). */
 export function settleHit<T extends HitSpellFacts & { hit: HitDraft }>(d: T): T {
-  if (d.hit.trigger === 'marked_target' && markedLock(d) !== '') {
-    return { ...d, hit: { ...d.hit, trigger: 'next_hit' } };
+  if (d.hit.trigger === HIT_MARKED && markedLock(d) !== '') {
+    return { ...d, hit: { ...d.hit, trigger: HIT_NEXT } };
   }
   return d;
 }
@@ -279,6 +288,7 @@ export function hitRefusals(
   }
   const at = (f: string) => hitPath(effect, f);
   const out: HitRefusal[] = [];
+  if (h.trigger === '') out.push({ path: at('trigger'), text: HIT_TRIGGER_PT });
   const bad = (text: string) => Number.isNaN(readWhole(text, false));
   if (bad(h.dice)) out.push({ path: at('dice'), text: UNREADABLE_COUNT });
   if (bad(h.perSlot)) out.push({ path: at('per_slot_dice'), text: UNREADABLE_COUNT });

@@ -3,6 +3,7 @@ import { create } from '@bufbuild/protobuf';
 import { Ability } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   TableEffectApplies,
+  TableEffectAudience,
   TableEffectModifierKind,
   TableEffectModifierSchema,
   TableHitConditionDuration,
@@ -21,6 +22,7 @@ import {
   hitRefusals,
   hitToModifier,
   markedLock,
+  needsConcentration,
   settleHit,
 } from './hit-effect-draft';
 import { draftToSpell, spellToDraft, withTarget } from './spell-draft';
@@ -163,6 +165,47 @@ describe('the hit effect draft (#577)', () => {
     expect(applyHit(undefined, emptyHit(), true)).toBeUndefined();
     const other = create(TableSpellEffectSchema, { modifiers: [otherMod(1)] });
     expect(applyHit(other, emptyHit(), true)).toBe(other);
+  });
+
+  it('drops an effect with no conditions and no modifiers left, whatever else it carries', () => {
+    const effect = create(TableSpellEffectSchema, {
+      modifiers: [hitMod()],
+      visibility: TableEffectAudience.PUBLIC,
+      playerLabelPt: 'Sinal',
+    });
+    expect(applyHit(effect, { ...hitFromEffect(effect), enabled: false }, true)).toBeUndefined();
+    const kept = create(TableSpellEffectSchema, {
+      conditions: ['condition:blinded'],
+      modifiers: [hitMod()],
+      playerLabelPt: 'Sinal',
+    });
+    expect(applyHit(kept, { ...hitFromEffect(kept), enabled: false }, true)?.playerLabelPt).toBe(
+      'Sinal',
+    );
+  });
+
+  it('knows which triggers last as long as the concentration', () => {
+    expect(needsConcentration('each_hit')).toBe(true);
+    expect(needsConcentration('marked_target')).toBe(true);
+    expect(needsConcentration('next_hit')).toBe(false);
+    expect(needsConcentration('next_melee_hit')).toBe(false);
+    expect(needsConcentration('')).toBe(false);
+  });
+
+  it('keeps a stored trigger it does not know as unset, and refuses to save it', () => {
+    const effect = create(TableSpellEffectSchema, {
+      modifiers: [hitMod({ trigger: TableHitTrigger.UNSPECIFIED })],
+    });
+    const h = hitFromEffect(effect);
+    expect(h.trigger).toBe('');
+    expect(hitToModifier(h).trigger).toBe(TableHitTrigger.UNSPECIFIED);
+    const refusals = hitRefusals(effect, h, true);
+    expect(refusals).toEqual([
+      { path: 'table_spell.effect.modifiers[0].trigger', text: 'Escolha quando vale.' },
+    ]);
+    expect(hitRefusals(effect, { ...h, trigger: 'next_hit' }, true)).toEqual([]);
+    expect(hitRefusals(effect, h, false)).toEqual([]);
+    expect(settleHit({ ...emptySpell(), hit: h }).hit.trigger).toBe('');
   });
 
   it('sends no hit modifier while the spell does not last, and keeps the form on', () => {

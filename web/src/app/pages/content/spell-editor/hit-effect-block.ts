@@ -6,13 +6,16 @@ import {
   HIT_CAP_MAX,
   HIT_DICE_FACES,
   HIT_DICE_MAX,
+  HIT_MARKED,
   HIT_PER_SLOT_MAX,
   INSTANT_LOCK_PT,
   NEEDS_CONCENTRATION_PT,
   type HitDraft,
   type HitLasts,
-  type HitTriggerChoice,
+  type HitTriggerKey,
+  hitAvailable,
   markedLock,
+  needsConcentration,
 } from '../../../core/content/hit-effect-draft';
 import { FieldNote } from '../../../shared/form-fields/field-note';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
@@ -23,7 +26,7 @@ import { latestInput } from '../../../shared/latest-input';
 let nextId = 0;
 
 interface TriggerCard {
-  readonly value: HitTriggerChoice;
+  readonly value: HitTriggerKey;
   readonly label: string;
   readonly hint: string;
 }
@@ -32,7 +35,7 @@ const TRIGGER_CARDS: readonly TriggerCard[] = [
   { value: 'next_hit', label: 'Próximo golpe com arma', hint: 'Acerta uma vez e acaba.' },
   { value: 'next_melee_hit', label: 'Próximo golpe corpo a corpo', hint: 'À distância não gasta.' },
   { value: 'each_hit', label: 'Cada golpe enquanto durar', hint: 'Todo golpe com arma.' },
-  { value: 'marked_target', label: 'Cada golpe no alvo marcado', hint: '' },
+  { value: HIT_MARKED, label: 'Cada golpe no alvo marcado', hint: 'Só no alvo da magia.' },
 ];
 
 export const HIT_HOW_PT =
@@ -82,7 +85,7 @@ export class HitEffectBlock {
   protected readonly perSlotMax = HIT_PER_SLOT_MAX;
   protected readonly capMax = HIT_CAP_MAX;
 
-  protected readonly available = computed(() => this.duration() !== 'instant');
+  protected readonly available = computed(() => hitAvailable({ duration: this.duration() }));
   protected readonly on = computed(() => this.hit().enabled && this.available());
   protected readonly hasSave = computed(() => this.hit().saveAbility !== '');
   protected readonly lock = computed(() =>
@@ -92,8 +95,8 @@ export class HitEffectBlock {
     TRIGGER_CARDS.map((c) => ({
       ...c,
       checked: this.hit().trigger === c.value,
-      locked: c.value === 'marked_target' && this.lock() !== '',
-      hint: c.value === 'marked_target' && this.lock() !== '' ? this.lock() : c.hint,
+      locked: c.value === HIT_MARKED && this.lock() !== '',
+      hint: c.value === HIT_MARKED && this.lock() !== '' ? this.lock() : c.hint,
     })),
   );
   /** Where the effect lands, said under the switch: it is the caster's, never the targets'. */
@@ -108,9 +111,7 @@ export class HitEffectBlock {
     }
   });
   protected readonly needsConcentration = computed(
-    () =>
-      (this.hit().trigger === 'each_hit' || this.hit().trigger === 'marked_target') &&
-      !this.concentration(),
+    () => needsConcentration(this.hit().trigger) && !this.concentration(),
   );
   protected readonly dice: readonly SelectOption<number>[] = HIT_DICE_FACES.map((n) => ({
     value: n,

@@ -29,9 +29,7 @@
   <p class="lock" [id]="reasonId" role="note"><mat-icon aria-hidden="true">lock</mat-icon>{{ instantLock }}</p>
 }
 @if (on()) {
-  @if (open()) {
-    <p class="how" [id]="howId">{{ how }}</p>
-  }
+  <p class="how" [id]="howId" [hidden]="!open()">{{ how }}</p>
   <div class="when" role="radiogroup" [attr.aria-labelledby]="whenId + '-label'" [attr.aria-describedby]="needsConcentration() || issues('trigger').length > 0 ? whenId + '-note' : null">
     <p class="label" [id]="whenId + '-label'">Quando vale</p>
     <div class="cards">
