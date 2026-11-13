@@ -95,6 +95,9 @@ type Terrain struct {
 	// NoPass are the squares nobody walks into (the master's "can't pass" layer): they block
 	// movement like a wall, but not sight or light, and are not standable.
 	NoPass *Layer
+	// Surface is what the master painted as water (swum) or a surface climbed: a creature
+	// without the matching speed pays 1 extra foot per foot of a move over it (Mover).
+	Surface *SurfaceLayer
 }
 
 // ErrBadGrid is returned for a grid a map cannot have, or a layer sized for
@@ -109,7 +112,7 @@ func (t Terrain) Validate() error {
 	if !t.Grid.Valid() {
 		return ErrBadGrid
 	}
-	if (t.Walls != nil && t.Walls.Grid() != t.Grid) || (t.Difficult != nil && t.Difficult.Grid() != t.Grid) || (t.ZoneDifficult != nil && t.ZoneDifficult.Grid() != t.Grid) || (t.Cover != nil && t.Cover.Grid() != t.Grid) || (t.Doors != nil && t.Doors.Grid() != t.Grid) || (t.NoPass != nil && t.NoPass.Grid() != t.Grid) {
+	if (t.Walls != nil && t.Walls.Grid() != t.Grid) || (t.Difficult != nil && t.Difficult.Grid() != t.Grid) || (t.ZoneDifficult != nil && t.ZoneDifficult.Grid() != t.Grid) || (t.Cover != nil && t.Cover.Grid() != t.Grid) || (t.Doors != nil && t.Doors.Grid() != t.Grid) || (t.NoPass != nil && t.NoPass.Grid() != t.Grid) || (t.Surface != nil && t.Surface.Grid() != t.Grid) {
 		return ErrBadGrid
 	}
 	return nil
@@ -157,7 +160,14 @@ type Mover struct {
 	Flier bool
 	// IgnoresMapDifficult skips the difficult terrain painted on the map, not the one a spell makes (ZoneDifficult).
 	IgnoresMapDifficult bool
-	Size                Size
+	// Swims and Climbs say the mover has a swimming or a climbing speed (SRD 5.1, "Climbing, Swimming, and
+	// Crawling"): a creature without it pays 1 extra foot per foot over water or a climbed surface. A flier pays
+	// neither.
+	Swims, Climbs bool
+	// Crawls says the mover crawls (it is prone and on foot): 1 extra foot per foot of the line, on top of the
+	// other extras, which the SRD adds (a crawl over difficult terrain costs 3 per foot, not 4).
+	Crawls bool
+	Size   Size
 }
 
 // passes says whether the mover can move through an occupied square: always
@@ -216,6 +226,12 @@ type Move struct {
 	// them (RN-26). Planning with this move opens nothing; the caller that really
 	// moves does.
 	Opens []Square
+	// SurfaceDFt is the part of CostDFt that swimming or climbing adds , and Surface which of the two
+	// it mostly is (water when they tie).
+	SurfaceDFt int
+	Surface    Surface
+	// CrawlDFt is the part of CostDFt that crawling adds.
+	CrawlDFt int
 }
 
 // Move is the cost of a straight move from one square to another: the
@@ -246,13 +262,71 @@ func (t Terrain) walk(from, to Square, occ Occupants, m Mover, clears bool) Move
 		return Move{Blocked: true, By: StopWall}
 	}
 	line := Line(from, to)
-	res := Move{CostDFt: lengthDFt(from, to), Entered: make([]Square, 0, len(line))}
+	length := lengthDFt(from, to)
+	res := Move{CostDFt: length, Entered: make([]Square, 0, len(line))}
+	var paid surfaceCount
 	for _, s := range line {
 		if by := t.walkStep(&res, s, to, occ, m, clears); by != StopNone {
 			return Move{Blocked: true, By: by}
 		}
+		paid.add(t.unpaidSurface(s.Square, m))
+	}
+	if !clears { // a jump clears what is on the way: no swim, no climb, no crawl
+		res.SurfaceDFt, res.Surface = paid.extraDFt(length, len(res.Entered))
+		res.CrawlDFt = crawlDFt(length, m)
+		res.CostDFt += res.SurfaceDFt + res.CrawlDFt
 	}
 	return res
+}
+
+// surfaceCount counts the squares a move enters that make the mover swim or climb without the speed for it.
+type surfaceCount struct{ water, climb int }
+
+func (c *surfaceCount) add(sf Surface) {
+	switch sf {
+	case SurfaceWater:
+		c.water++
+	case SurfaceClimb:
+		c.climb++
+	}
+}
+
+// extraDFt is the extra cost of swimming and climbing for a line of length that enters n squares, 1 extra foot per
+// foot (SRD 5.1): the length times the share of the squares entered that are swum or climbed, and the surface that
+// is most of it. A line over water from end to end costs twice its length.
+func (c surfaceCount) extraDFt(length, n int) (int, Surface) {
+	if n <= 0 {
+		return 0, SurfaceFloor
+	}
+	water, climb := (length*c.water+n/2)/n, (length*c.climb+n/2)/n
+	switch {
+	case water == 0 && climb == 0:
+		return 0, SurfaceFloor
+	case water >= climb:
+		return water + climb, SurfaceWater
+	}
+	return water + climb, SurfaceClimb
+}
+
+// crawlDFt is the extra a crawling mover pays: 1 foot per foot of the line.
+func crawlDFt(length int, m Mover) int {
+	if m.Crawls && !m.Flier {
+		return length
+	}
+	return 0
+}
+
+// unpaidSurface is the surface of a square when it makes the mover swim or climb at the SRD's extra cost: water
+// for a mover with no swimming speed, a climbed surface for one with no climbing speed, never for a flier.
+func (t Terrain) unpaidSurface(sq Square, m Mover) Surface {
+	if m.Flier || t.Surface == nil {
+		return SurfaceFloor
+	}
+	switch sf := t.Surface.Get(sq.Col, sq.Row); {
+	case sf == SurfaceWater && !m.Swims, sf == SurfaceClimb && !m.Climbs:
+		return sf
+	}
+	return SurfaceFloor
 }
 
 // walkStep enters one square of a straight move or a jump into res, and says
@@ -417,6 +491,7 @@ type untilWalk struct {
 	costs    []int // the cost of the move up to each entered square
 	reason   StopReason
 	extras   int // the extra cost of the squares entered so far
+	paid     surfaceCount
 	floor    int // the cost up to the last square entered
 }
 
@@ -435,12 +510,18 @@ func (u *untilWalk) step(s Step) bool {
 		u.reason = StopOccupied
 		return true
 	}
-	u.extras += u.t.extraDFt(s.Square, occupied, u.m)
-	cost := max(u.floor, lengthDFt(u.from, s.Square)+u.extras)
+	extra := u.t.extraDFt(s.Square, occupied, u.m)
+	paid := u.paid
+	paid.add(u.t.unpaidSurface(s.Square, u.m))
+	length := lengthDFt(u.from, s.Square)
+	surface, _ := paid.extraDFt(length, len(u.entered)+1)
+	cost := max(u.floor, length+u.extras+extra+surface+crawlDFt(length, u.m))
 	if cost > u.left {
 		u.reason = StopMovement
 		return true
 	}
+	u.extras += extra
+	u.paid = paid
 	u.floor = cost
 	u.entered = append(u.entered, s.Square)
 	u.costs = append(u.costs, cost)
@@ -500,6 +581,11 @@ func (u *untilWalk) result() Stopped {
 type Reachable struct {
 	Square  Square
 	CostDFt int
+	// SurfaceDFt is the part of the cost that swimming or climbing adds, and Surface which it is (see Move).
+	SurfaceDFt int
+	Surface    Surface
+	// CrawlDFt is the part that crawling adds.
+	CrawlDFt int
 }
 
 // Reach is every square the mover can get to from one square with movement
@@ -523,7 +609,7 @@ func (t Terrain) Reach(from Square, left int, occ Occupants, m Mover) []Reachabl
 				continue
 			}
 			if mv := t.Move(from, sq, occ, m); !mv.Blocked && mv.CostDFt <= left {
-				out = append(out, Reachable{Square: sq, CostDFt: mv.CostDFt})
+				out = append(out, Reachable{Square: sq, CostDFt: mv.CostDFt, SurfaceDFt: mv.SurfaceDFt, Surface: mv.Surface, CrawlDFt: mv.CrawlDFt})
 			}
 		}
 	}

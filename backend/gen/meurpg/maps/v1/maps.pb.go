@@ -125,6 +125,12 @@ const (
 	// a chasm, a column of fire). A player of a map without fog of war receives it as
 	// the master painted it; with fog, only the squares they see now or remember.
 	MapLayer_MAP_LAYER_NO_PASS MapLayer = 6
+	// "Superfície": two bits a square (0 floor, 1 water, 2 climbable; PaintMapCellsRequest.value
+	// carries them). A creature that crosses water pays 1 extra foot per foot unless it has a
+	// swimming speed, and one that crosses a climbable surface unless it has a climbing speed
+	// (SRD 5.1; RN-21). It blocks nothing and hides nothing. A player of a map without fog of war
+	// receives it as painted; with fog, only the squares they see now or remember.
+	MapLayer_MAP_LAYER_SURFACE MapLayer = 7
 )
 
 // Enum value maps for MapLayer.
@@ -137,6 +143,7 @@ var (
 		4: "MAP_LAYER_LIGHT",
 		5: "MAP_LAYER_DOORS",
 		6: "MAP_LAYER_NO_PASS",
+		7: "MAP_LAYER_SURFACE",
 	}
 	MapLayer_value = map[string]int32{
 		"MAP_LAYER_UNSPECIFIED":       0,
@@ -146,6 +153,7 @@ var (
 		"MAP_LAYER_LIGHT":             4,
 		"MAP_LAYER_DOORS":             5,
 		"MAP_LAYER_NO_PASS":           6,
+		"MAP_LAYER_SURFACE":           7,
 	}
 )
 
@@ -5996,7 +6004,8 @@ type PaintMapCellsRequest struct {
 	// The value to paint: for DIFFICULT_TERRAIN and WALL, 0 clears and 1 sets; for
 	// COVER, 0 none, 1 half, 2 three-quarters; for LIGHT, a LightLevel (0 clears,
 	// 1 dark, 2 dim, 3 bright); for DOORS, a DoorState (0 clears, 1 to 5). The
-	// master toggles a door in play the same way: painting a square OPEN or CLOSED.
+	// master toggles a door in play the same way: painting a square OPEN or CLOSED; for SURFACE,
+	// 0 clears, 1 water, 2 climbable.
 	Value int32 `protobuf:"varint,4,opt,name=value,proto3" json:"value,omitempty"`
 	// The squares, 1 to 400, each inside the map's grid. A repeated square is
 	// painted once.
@@ -6234,7 +6243,12 @@ type GetMapLayersResponse struct {
 	// The squares marked "Não dá para passar", one bit a square. The master gets it as
 	// painted. A player of a map without fog gets it as painted too; with fog, only the
 	// squares they see now or remember, like the walls.
-	NoPass        []byte `protobuf:"bytes,10,opt,name=no_pass,json=noPass,proto3" json:"no_pass,omitempty"`
+	NoPass []byte `protobuf:"bytes,10,opt,name=no_pass,json=noPass,proto3" json:"no_pass,omitempty"`
+	// The surfaces, two bits a square (0 floor, 1 water, 2 climbable), in the layout of `cover`
+	// (square n is bits 2*(n%4) and 2*(n%4)+1 of byte n/4); ceil(squares/4) bytes, empty when
+	// nothing is painted. The master gets it as painted; a player the same, and with the fog of
+	// war only the squares they see now or remember, like the walls.
+	Surface       []byte `protobuf:"bytes,11,opt,name=surface,proto3" json:"surface,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6335,6 +6349,13 @@ func (x *GetMapLayersResponse) GetDoors() []byte {
 func (x *GetMapLayersResponse) GetNoPass() []byte {
 	if x != nil {
 		return x.NoPass
+	}
+	return nil
+}
+
+func (x *GetMapLayersResponse) GetSurface() []byte {
+	if x != nil {
+		return x.Surface
 	}
 	return nil
 }
@@ -8286,7 +8307,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
 	"\x06map_id\x18\x02 \x01(\tR\x05mapId\x12&\n" +
-	"\x0fas_character_id\x18\x03 \x01(\tR\rasCharacterId\"\xbe\x02\n" +
+	"\x0fas_character_id\x18\x03 \x01(\tR\rasCharacterId\"\xd8\x02\n" +
 	"\x14GetMapLayersResponse\x12!\n" +
 	"\fgrid_columns\x18\x01 \x01(\x05R\vgridColumns\x12\x1b\n" +
 	"\tgrid_rows\x18\x02 \x01(\x05R\bgridRows\x12'\n" +
@@ -8298,7 +8319,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\ffog_withheld\x18\b \x01(\bR\vfogWithheld\x12\x14\n" +
 	"\x05doors\x18\t \x01(\fR\x05doors\x12\x17\n" +
 	"\ano_pass\x18\n" +
-	" \x01(\fR\x06noPass\"\x88\x02\n" +
+	" \x01(\fR\x06noPass\x12\x18\n" +
+	"\asurface\x18\v \x01(\fR\asurface\"\x88\x02\n" +
 	"\x10SetMapFogRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x15\n" +
@@ -8421,7 +8443,7 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x14MAP_POINT_KIND_SCENE\x10\x03\x12\x17\n" +
 	"\x13MAP_POINT_KIND_TRAP\x10\x04\x12\x1b\n" +
 	"\x17MAP_POINT_KIND_TREASURE\x10\x05\x12\x18\n" +
-	"\x14MAP_POINT_KIND_LIGHT\x10\x06*\xb0\x01\n" +
+	"\x14MAP_POINT_KIND_LIGHT\x10\x06*\xc7\x01\n" +
 	"\bMapLayer\x12\x19\n" +
 	"\x15MAP_LAYER_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bMAP_LAYER_DIFFICULT_TERRAIN\x10\x01\x12\x12\n" +
@@ -8429,7 +8451,8 @@ const file_meurpg_maps_v1_maps_proto_rawDesc = "" +
 	"\x0fMAP_LAYER_COVER\x10\x03\x12\x13\n" +
 	"\x0fMAP_LAYER_LIGHT\x10\x04\x12\x13\n" +
 	"\x0fMAP_LAYER_DOORS\x10\x05\x12\x15\n" +
-	"\x11MAP_LAYER_NO_PASS\x10\x06*\x98\x01\n" +
+	"\x11MAP_LAYER_NO_PASS\x10\x06\x12\x15\n" +
+	"\x11MAP_LAYER_SURFACE\x10\a*\x98\x01\n" +
 	"\tDoorState\x12\x1a\n" +
 	"\x16DOOR_STATE_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fDOOR_STATE_OPEN\x10\x01\x12\x15\n" +
