@@ -28,6 +28,7 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     hitPointsTemporary: v.hitPointsTemporary,
     hitPointsMaxBonus: v.hitPointsMaxBonus,
     exhaustionLevel: v.exhaustionLevel,
+    attunementOpen: v.attunementOpen,
     armorClassBase: v.armorClassBase,
     arcaneRecoveryAllowance: v.arcaneRecoveryAllowance,
     naturalRecoveryAllowance: v.naturalRecoveryAllowance,

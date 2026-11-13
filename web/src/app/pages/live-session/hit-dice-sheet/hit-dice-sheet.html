@@ -15,20 +15,24 @@
   @if (rolls().length > 0) {
     <ol class="rolls" aria-label="Dados gastos agora">
       @for (line of rolls(); track $index) {
-        <li class="rolls__line">
-          <mat-icon aria-hidden="true">casino</mat-icon>{{ line }}
-        </li>
+        <li class="rolls__line"><mat-icon aria-hidden="true">casino</mat-icon>{{ line }}</li>
       }
     </ol>
   }
 
-  <p class="mr-visually-hidden" role="status" aria-live="polite">{{ latest() }}{{ recoveryDone()?.text }}</p>
+  <p class="mr-visually-hidden" role="status" aria-live="polite">
+    {{ latest() }}{{ recoveryDone()?.text }}
+  </p>
 
   @if (anyLeft()) {
     <fieldset class="which">
       <legend class="which__legend">Qual dado</legend>
       @for (size of sizes(); track size.faces) {
-        <label class="opt" [class.opt--on]="faces() === size.faces" [class.opt--none]="size.left === 0">
+        <label
+          class="opt"
+          [class.opt--on]="faces() === size.faces"
+          [class.opt--none]="size.left === 0"
+        >
           <input
             type="radio"
             class="mr-visually-hidden"
@@ -46,14 +50,16 @@
       }
     </fieldset>
     <p class="note">
-      <mat-icon aria-hidden="true">info</mat-icon>Cada dado cura o número rolado mais o seu modificador de
-      Constituição. Você decide, depois de cada dado, se gasta outro.
+      <mat-icon aria-hidden="true">info</mat-icon>Cada dado cura o número rolado mais o seu
+      modificador de Constituição. Você decide, depois de cada dado, se gasta outro.
     </p>
     @if (songAsk(); as ask) {
       <p class="note js-song-ask" role="status">
         <mat-icon aria-hidden="true">music_note</mat-icon>Um bardo toca a Canção de Descanso: você
         recupera também um {{ dieName(ask.sides) }}. O seu {{ chosenName() }} deu {{ ask.face }}.
-        <button matButton type="button" class="js-song-cancel" (click)="cancelSong()">Voltar</button>
+        <button matButton type="button" class="js-song-cancel" (click)="cancelSong()">
+          Voltar
+        </button>
       </p>
     }
     <app-roll-picker
@@ -84,13 +90,14 @@
       @if (rec.spent) {
         @if (recoveryDone(); as done) {
           @if (done.kind === rec.def.kind) {
-          <p class="recovery__done" role="status">
-            <mat-icon aria-hidden="true">check_circle</mat-icon>{{ done.text }}
-          </p>
+            <p class="recovery__done" role="status">
+              <mat-icon aria-hidden="true">check_circle</mat-icon>{{ done.text }}
+            </p>
           }
         }
         <p class="note">
-          <mat-icon aria-hidden="true">info</mat-icon>{{ rec.def.title }}: usada; volta no descanso longo.
+          <mat-icon aria-hidden="true">info</mat-icon>{{ rec.def.title }}: usada; volta no descanso
+          longo.
         </p>
       } @else {
         <p class="note">
@@ -98,10 +105,16 @@
         </p>
         @if (recoverySlots().length > 0) {
           @for (slot of recoverySlots(); track slot.level) {
-            <div class="step" role="group" [attr.aria-label]="'Espaços de ' + slot.level + 'º nível'">
+            <div
+              class="step"
+              role="group"
+              [attr.aria-label]="'Espaços de ' + slot.level + 'º nível'"
+            >
               <span class="step__text">
                 <b>{{ slot.level }}º nível</b>
-                <span class="opt__sub">{{ slot.expended === 1 ? '1 gasto' : slot.expended + ' gastos' }}</span>
+                <span class="opt__sub">{{
+                  slot.expended === 1 ? '1 gasto' : slot.expended + ' gastos'
+                }}</span>
               </span>
               <button
                 matIconButton
@@ -113,9 +126,11 @@
               >
                 <mat-icon aria-hidden="true">remove</mat-icon>
               </button>
-              <output class="step__count" [attr.aria-label]="recoveryCount(rec.def, slot.level) + ' a recuperar'">{{
-                recoveryCount(rec.def, slot.level)
-              }}</output>
+              <output
+                class="step__count"
+                [attr.aria-label]="recoveryCount(rec.def, slot.level) + ' a recuperar'"
+                >{{ recoveryCount(rec.def, slot.level) }}</output
+              >
               <button
                 matIconButton
                 type="button"
@@ -143,11 +158,42 @@
           </button>
         } @else {
           <p class="note">
-            <mat-icon aria-hidden="true">block</mat-icon>Você não gastou espaços de magia de 1º a 5º nível.
+            <mat-icon aria-hidden="true">block</mat-icon>Você não gastou espaços de magia de 1º a 5º
+            nível.
           </p>
         }
       }
     </section>
+  }
+
+  @if (attunement(); as att) {
+    @if (windowOpen()) {
+      <div class="attunement">
+        <app-attunement-section
+          [attunement]="att.vm"
+          viewer="owner"
+          [windowOpen]="true"
+          [campaignId]="data.campaignId"
+          [characterId]="vitals().characterId"
+          [revision]="att.revision"
+          (changed)="attunementChanged()"
+          (refused)="loadAttunement()"
+        />
+      </div>
+    }
+  }
+  @if (attunementFailed() && windowOpen()) {
+    <p class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <span>Não deu para ler a sintonização.</span>
+      <button matButton="outlined" type="button" (click)="loadAttunement()">Tentar de novo</button>
+    </p>
+  }
+  @if (attunementUsed()) {
+    <p class="note" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>A sintonização deste descanso foi usada. A próxima
+      abre no próximo descanso, curto ou longo.
+    </p>
   }
 
   <div foot>
