@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"math/rand/v2"
 	"time"
 
 	"github.com/cockroachdb/cockroach-go/v2/crdb"
@@ -127,11 +128,23 @@ func runTx(ctx context.Context, conn TxStarter, opts pgx.TxOptions, policy crdb.
 			return retryErr
 		}
 		select {
-		case <-time.After(delay):
+		case <-time.After(jittered(delay)):
 		case <-ctx.Done():
 			return errors.Join(ctx.Err(), err)
 		}
 	}
+}
+
+// jittered spreads a retry delay over its upper half, [delay/2, delay]. Transactions that collided on the same row
+// would otherwise wake at the same instant, collide again, and spend their retries in step: on PostgreSQL every waiter
+// of a row lock that another transaction updated fails at the lock, so a burst of writers on one session needs the
+// retries to arrive one at a time.
+func jittered(delay time.Duration) time.Duration {
+	half := delay / 2
+	if half <= 0 {
+		return delay
+	}
+	return half + rand.N(half+1)
 }
 
 // attempt runs fn once in a transaction of its own and commits it. A panic,
