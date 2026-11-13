@@ -214,6 +214,7 @@ Each reaction is one line (`COMBAT_LOG_KIND_REACTION_WINDOW`) with the master's 
 A used Shield keeps `reaction_used` (undoable), and so does a used Parry (the automatic one is undone with the attack).
 A spent reaction records its kind and the round in `combatants.reaction_kind` and `reaction_round`.
 The kind is the reaction window's key, `opportunity` for an opportunity attack, or the key of the feature whose action is a reaction.
+A feature that declares a use and spends the reaction is used with `UseFeature` on any turn, also while an opportunity offer waits for its user: spending the reaction passes the offer over (`pruneOffers`). Its turn options list it enabled off turn while the reaction is free and the combatant can act.
 `spendReactionAs` writes the economy and the record together; `recordReaction` (`SetCombatantReactionSpent`) writes the record where another path spends the reaction.
 The throw back of Deflect Missiles writes nothing: answering Deflect recorded it.
 The start of the combatant's turn clears the record, and so does an economy write that gives the reaction back (the undo).

@@ -197,6 +197,9 @@ Where a spell level could be confused with the character's level, the text says 
 | Parede | Wall | A square that blocks movement, sight and light. It is total cover (RN-21, MR-036). |
 | Cobertura | Cover | Half (+2 AC and Dexterity checks), three-quarters (+5) or total (cannot be targeted). Marked by the master and computed on every attack; degrees do not add up (MR-034). |
 | Terreno difícil | Difficult terrain | A square where each step costs double. A creature's space also counts (MR-034). |
+| Superfície | Surface | A map layer the master paints with two brushes, Água and Escalável (#589). Swimming or climbing there costs 1 extra foot per foot unless the creature has the matching speed (RN-21). |
+| Água | Water | A square of the Superfície layer that is swum. The cost doubles for a creature with no swimming speed. |
+| Escalável | Climbable | A square of the Superfície layer that is climbed. The cost doubles for a creature with no climbing speed. |
 | Armadilha | Trap | A hidden point with the DCs to notice and to find, a trigger and an effect. A player sees only a trap their character noticed or found, or that the master revealed, and never the DCs or the effect (MR-035). |
 | Percepção passiva | Passive Perception | 10 plus the Perception bonus, without rolling. It is what notices a trap in passing, with −5 in dim light (MR-035). |
 | Luz, luz de base | Light, base light | A light source placed on the map (bright and dim radii in metres), and the map's default light (Bright, Dim or Dark) where no source reaches (MR-036). |

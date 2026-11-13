@@ -128,6 +128,8 @@ export class FogBase {
       threeQuarters: l.threeQuarters.filter(on),
       doors: (l.doors ?? []).filter(on),
       noPass: (l.noPass ?? []).filter(on),
+      water: (l.water ?? []).filter(on),
+      climb: (l.climb ?? []).filter(on),
     };
     return hasLayers(out) ? out : null;
   });

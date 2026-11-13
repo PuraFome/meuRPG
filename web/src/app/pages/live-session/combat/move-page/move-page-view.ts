@@ -12,7 +12,8 @@ import {
   afterLeftText,
   afterText,
   costTitle,
-  extraText,
+  extraBreakdown,
+  extrasOf,
   jumpCardText,
   knownTrapAt,
   leftLine,
@@ -148,12 +149,16 @@ export function walkSummary(
   }
   if (v.kind === 'ok') {
     const names = provokedBy(v.square, combatants);
+    const extra = extrasOf(v.square);
     return {
       kind: 'ok',
       title: costTitle(v.square.costDft),
-      detail: [extraText(v.square), afterLeftText(v.square.leftAfterDft)].filter(Boolean).join(' '),
+      detail: [extraBreakdown(v.square), afterLeftText(v.square.leftAfterDft)]
+        .filter(Boolean)
+        .join(' '),
       warning: names.length > 0 ? provokeWarning(names) : '',
       trap: v.square.knownTrapName,
+      ...(extra.parts.length > 0 ? { extra } : {}),
     };
   }
   const text = refusalText(v, left);

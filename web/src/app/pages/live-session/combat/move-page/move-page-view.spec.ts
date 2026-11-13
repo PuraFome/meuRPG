@@ -3,7 +3,6 @@ import { create } from '@bufbuild/protobuf';
 import {
   GetMoveOptionsResponseSchema,
   MoveRefusal,
-  SurfaceExtra,
   ReachableSquareSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant } from '../../../../core/combat/combat-testing';
@@ -93,17 +92,33 @@ describe('move page view', () => {
     const swum = create(ReachableSquareSchema, {
       col: 3,
       row: 2,
-      costDft: 300,
-      extraDft: 150,
-      surfaceExtra: SurfaceExtra.SWIM,
+      costDft: 150,
+      extraDft: 50,
+      swimExtraDft: 50,
+      pathDft: 100,
     });
-    swum.leftAfterDft = 0;
-    const detail = walkSummary(origin, { kind: 'ok', square: swum }, 300, []).detail;
-    expect(detail.replace(/\u00a0/g, ' ')).toBe('Inclui 4,5 m nadando. Depois restam 0,0 m.');
-    const plain = create(ReachableSquareSchema, { col: 3, row: 2, costDft: 71 });
-    expect(walkSummary(origin, { kind: 'ok', square: plain }, 300, []).detail).not.toContain(
-      'Inclui',
+    const summary = walkSummary(origin, { kind: 'ok', square: swum }, 150, []);
+    expect(summary.detail.replace(/\u00a0/g, ' ')).toBe('Depois restam 0,0 m.');
+    expect(summary.extra?.parts.map((p) => p.kind)).toEqual(['swim']);
+    expect(summary.extra?.note).toBe(': cada metro na água conta dobrado.');
+    // A prone creature in water: the card says the two parts, and the detail says the sum.
+    const crawling = create(ReachableSquareSchema, {
+      col: 3,
+      row: 2,
+      costDft: 150,
+      extraDft: 50,
+      swimExtraDft: 50,
+      crawlExtraDft: 50,
+      pathDft: 50,
+      leftAfterDft: 150,
+    });
+    const both = walkSummary(origin, { kind: 'ok', square: crawling }, 300, []);
+    expect(both.extra?.parts.map((p) => p.kind)).toEqual(['swim', 'crawl']);
+    expect(both.detail.replace(/\u00a0/g, ' ')).toBe(
+      '1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando. Depois restam 4,5 m.',
     );
+    const plain = create(ReachableSquareSchema, { col: 3, row: 2, costDft: 71 });
+    expect(walkSummary(origin, { kind: 'ok', square: plain }, 300, []).extra).toBeUndefined();
   });
 
   it('says what is left after a square as the server counted it, never the lead less the cost', () => {

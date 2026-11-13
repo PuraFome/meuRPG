@@ -169,6 +169,97 @@ test('o mestre marca quadrados como "Não dá para passar": o servidor guarda, a
   });
 });
 
+test('o mestre pinta Água e Escalável na mesma camada: o servidor guarda, "Apagar" tira as duas, e a dica fica na barra, nunca sobre o mapa @MR-034 @RN-21', async ({ browser }) => {
+  await atMaps(browser, 'Superfície', 20, async ({ master, campaignId, mapId, map }) => {
+    await paintMode(master, campaignId, mapId);
+    await expect(master.locator('app-layers-panel')).toContainText('Superfície');
+    await tools(master).getByRole('button', { name: 'Superfície' }).click();
+    // The second row names the brushes, and the line that says how to paint is in the bar.
+    await expect(master.getByText('Superfície pintada')).toBeVisible();
+    await expect(master.locator('app-editor-bar')).toContainText('Arraste para pintar · Shift apaga');
+    await expect(master.locator('app-map-view .mv__hint')).toHaveCount(0);
+
+    await dragSquares(master, map, [5, 8], [7, 8]);
+    await expect(master.locator('app-layers-panel')).toContainText('3 quadrados de água · custam o dobro');
+    await expect(saved(master)).toBeVisible();
+    await master.getByRole('radio', { name: 'Escalável' }).click();
+    await dragSquares(master, map, [5, 9], [6, 9]);
+    await expect(master.locator('app-layers-panel')).toContainText('3 quadrados de água e 2 escaláveis · custam o dobro');
+    await expect(saved(master)).toBeVisible();
+    await expect(master.getByRole('list', { name: 'Legenda do mapa' })).toContainText('Água');
+    await expect(master.getByRole('list', { name: 'Legenda do mapa' })).toContainText('Escalável');
+    expect(await layersOf(master, campaignId, mapId)).toMatchObject({ water: 3, climb: 2, wall: 0 });
+
+    // "Apagar" takes both off a square and does not ask which; it stays after a reload.
+    await tools(master).getByRole('button', { name: 'Apagar' }).click();
+    await expect(master.locator('app-editor-bar')).toContainText('Arraste para apagar a superfície');
+    await clickSquare(master, map, 7, 8);
+    await clickSquare(master, map, 6, 9);
+    await expect(saved(master)).toBeVisible();
+    await master.reload();
+    await master.getByRole('radio', { name: 'Pintar' }).click();
+    await expect(master.locator('app-layers-panel')).toContainText('2 quadrados de água e 1 escalável · custam o dobro');
+    expect(await layersOf(master, campaignId, mapId)).toMatchObject({ water: 2, climb: 1 });
+  });
+});
+
+// The tool row says the chosen tool with a check and a soft fill, and no other tool has either; the brush's name and its choices wrap as one unit.
+test('a barra de ferramentas marca só a ferramenta escolhida, com o visto e o fundo, e o "Pincel" e a sua escolha ficam juntos @MR-034', async ({ browser }) => {
+  await atMaps(browser, 'Barra de ferramentas', 20, async ({ master, campaignId, mapId }) => {
+    await paintMode(master, campaignId, mapId);
+    await tools(master).getByRole('button', { name: 'Superfície' }).click();
+    // At 1280 the divider stands before the brush, as on the board.
+    await master.setViewportSize({ width: 1280, height: 1000 });
+    await expect(master.locator('app-editor-bar .bar__brush > .bar__sep')).toBeVisible();
+    for (const width of [1280, 768]) {
+      await master.setViewportSize({ width, height: 1000 });
+      const buttons = tools(master).getByRole('button');
+      await expect(buttons.first()).toBeVisible();
+      const marks = await buttons.evaluateAll((all) =>
+        all.map((b) => {
+          const chk = b.querySelector('.chk');
+          return {
+            name: ((c) => { c.querySelectorAll('.mat-icon').forEach((i) => i.remove()); return (c.textContent ?? '').trim(); })(b.cloneNode(true) as HTMLElement),
+            pressed: b.getAttribute('aria-pressed') === 'true',
+            check: chk instanceof HTMLElement && chk.getBoundingClientRect().width > 0,
+            fill: getComputedStyle(b).backgroundColor,
+          };
+        }),
+      );
+      const chosen = marks.filter((m) => m.pressed);
+      expect(chosen.map((m) => m.name), `${width}px`).toEqual(['Superfície']);
+      // Only the chosen tool has its check, and only it has the fill the others lack.
+      expect(marks.filter((m) => m.check).map((m) => m.name), `the checks at ${width}px`).toEqual(['Superfície']);
+      const others = new Set(marks.filter((m) => !m.pressed).map((m) => m.fill));
+      expect(others.size, `the others share one fill at ${width}px`).toBe(1);
+      expect(others.has(chosen[0].fill), `the chosen tool has its own fill at ${width}px`).toBe(false);
+
+      // A divider never starts or ends a line: each one visible has a control on its row to the left and another to the right, and the first
+      // tool starts level with "Pontos" (the row is not pushed by a divider that wrapped to its start).
+      const dividers = await master.locator('app-editor-bar').evaluate((bar) => {
+        const controls = Array.from(bar.querySelectorAll('button, .bar__label')).map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0);
+        return Array.from(bar.querySelectorAll('.bar__sep'))
+          .map((d) => d.getBoundingClientRect())
+          .filter((r) => r.width > 0)
+          .map((d) => {
+            const row = controls.filter((c) => c.top <= d.top + d.height / 2 && c.bottom >= d.top + d.height / 2);
+            return { left: row.some((c) => c.right <= d.left), right: row.some((c) => c.left >= d.right) };
+          });
+      });
+      for (const d of dividers) {
+        expect(d, `a divider at a line's start or end at ${width}px`).toEqual({ left: true, right: true });
+      }
+      const pontos = await boxOf(master.getByRole('radio', { name: 'Pontos' }));
+      const first = await boxOf(buttons.first());
+      expect(Math.abs(first.x - pontos.x), `the first tool level with "Pontos" at ${width}px`).toBeLessThanOrEqual(1);
+      // "Pincel" and its group are on one line, whatever the row does around them.
+      const label = await boxOf(master.getByText('Pincel', { exact: true }));
+      const group = await boxOf(master.getByRole('radiogroup', { name: 'Pincel' }));
+      expect(Math.abs(label.y + label.height / 2 - (group.y + group.height / 2)), `Pincel beside its choices at ${width}px`).toBeLessThan(group.height / 2);
+    }
+  });
+});
+
 test('um mapa sem grade não tem o que pintar: as ferramentas dizem por quê, e "Definir a grade" as liga @MR-034 @MR-036', async ({ browser }) => {
   await atMaps(browser, 'Sem grade', 0, async ({ master, campaignId, mapId }) => {
     await paintMode(master, campaignId, mapId);

@@ -6,7 +6,7 @@ import { DoorMark } from './door-mark';
 /**
  * The map's painted layers drawn over its image (docs/design/README.md),
  * the same on every map of the app: **Parede** the dark diagonal hatch,
- * **Terreno difícil** the cross hatch, **Não dá para passar** a checkerboard (it blocks movement, not sight), **Cobertura** a pictogram in the middle
+ * **Terreno difícil** the cross hatch, **Superfície** (#589) water under white waves and a pale veil under chevrons, **Não dá para passar** a checkerboard (it blocks movement, not sight), **Cobertura** a pictogram in the middle
  * of the square (a dotted square filled from the bottom to one half, "Meia
  * cobertura", or to three quarters, "Três quartos"). Each mark has a name in
  * `MapLayersLegend`: never colour alone, and never an object's name, because
@@ -42,6 +42,12 @@ export interface BrushCursor {
   template: `
     @for (s of layers().terrain; track s.row * 1000 + s.col) {
       <span class="sq sq--terrain" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"></span>
+    }
+    @for (s of layers().water ?? []; track s.row * 1000 + s.col) {
+      <span class="sq sq--water" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"></span>
+    }
+    @for (s of layers().climb ?? []; track s.row * 1000 + s.col) {
+      <span class="sq sq--climb" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"></span>
     }
     @for (s of layers().walls; track s.row * 1000 + s.col) {
       <span class="sq sq--wall" [style.left.%]="x(s.col)" [style.top.%]="y(s.row)"></span>

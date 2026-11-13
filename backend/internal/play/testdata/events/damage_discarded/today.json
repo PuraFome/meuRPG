@@ -837,6 +837,14 @@
     },
     "table_changed": true
   },
+  "feature_before": {
+    "x": {
+      "s": "x",
+      "at": "x",
+      "n": 1,
+      "c": "x"
+    }
+  },
   "steps": [
     {
       "damage_type": "x",
@@ -921,6 +929,24 @@
     ],
     "resisted": true,
     "resist_left": 1
+  },
+  "feature": {
+    "scope": "x",
+    "choice": "x",
+    "targets": [
+      {
+        "id": "x",
+        "healed": 1,
+        "temp_hp": 1
+      }
+    ],
+    "healed": 1,
+    "temp_hp": 1,
+    "effect": true,
+    "faces": [
+      1
+    ],
+    "total": 1
   },
   "creature_action": {
     "name": "x",
