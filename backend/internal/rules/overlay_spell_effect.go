@@ -87,11 +87,16 @@ func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, 
 		if err == nil {
 			err = spellHitRefusal(m, concentration, timed, target)
 		}
+		if err == nil && m.Kind == ModifierWeaponHitDamage && slices.ContainsFunc(mods[:i], isWeaponHitDamage) {
+			err = modifierField("kind", "a spell has one next-hit effect")
+		}
 		if err != nil {
 			c.at(key, path, at+modifierFieldSuffix(err), ReasonValue, "%v", err)
 		}
 	}
 }
+
+func isWeaponHitDamage(m EffectModifier) bool { return m.Kind == ModifierWeaponHitDamage }
 
 // modifierFieldSuffix is ".field" of the modifier's field a refusal is about, or "".
 func modifierFieldSuffix(err error) string {

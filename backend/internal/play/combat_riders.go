@@ -55,9 +55,12 @@ const (
 type riderEvent struct {
 	Choice string `json:"choice"`
 	Result string `json:"result"`
-	D20    int32  `json:"d20,omitempty"`
-	Total  int32  `json:"total,omitempty"`
-	DC     int32  `json:"dc,omitempty"`
+	// OwnersOnly is the line of a spell's hit effect: its save tells that the effect has one, so only the master, the
+	// attacker's player and the target's player get it (RN-10).
+	OwnersOnly bool  `json:"owners_only,omitempty"`
+	D20        int32 `json:"d20,omitempty"`
+	Total      int32 `json:"total,omitempty"`
+	DC         int32 `json:"dc,omitempty"`
 	// countedRoll is the number the d20 counted as when a minimum raised it.
 	countedRoll
 	// Pushed is the forced move of a push that landed (combat_forced.go).

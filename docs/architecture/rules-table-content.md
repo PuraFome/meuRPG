@@ -649,7 +649,8 @@ Its fields are the modifier's own:
   The spell lasts: an instantaneous spell has no effect.
   `each_hit` and `marked_target` need a spell that asks for concentration, refused at `trigger` (`HitTriggerNeedsConcentration`).
   `marked_target` needs the target One creature with no extra targets per slot level, refused at `trigger` (`spellHitRefusal`); the cast also needs one target that is not the caster.
-  `condition_duration` `spell_end` needs concentration or a timed duration, refused at `condition_duration`.
+  `condition_duration` `spell_end` needs concentration, a timed duration or until dispelled, refused at `condition_duration`.
+  A spell has one `weapon_hit_damage`: a second is refused at its `kind` ("a spell has one next-hit effect").
 - **The dice per slot.**
   At a slot the dice are `dice` plus `per_slot_dice` for each level above the spell's own, never more than `max_dice`.
   A critical hit doubles them, a resistance takes the damage by type, and the save is the target's against the spell's DC.

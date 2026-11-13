@@ -4961,7 +4961,7 @@ export enum TableEffectModifierKind {
   /**
    * Extra weapon damage on a hit the caster makes, as `trigger` says: `die` (d4, d6, d8, d10 or d12),
    * `dice`, `per_slot_dice`, `max_dice`, `damage_type`, and optionally a `save` with the
-   * `on_fail_conditions` it puts on the target. Needs `trigger`, `die` and `dice`; reads no other field. The
+   * `on_fail_conditions` it puts on the target. Needs `trigger`, `die`, `dice` and `max_dice`; reads no other field. A spell has one of these. The
    * spell must last (not instantaneous), and EACH_HIT and MARKED_TARGET need concentration.
    *
    * @generated from enum value: TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE = 20;
@@ -5042,7 +5042,7 @@ export enum TableHitConditionDuration {
   UNTIL_END_OF_NEXT_TURN = 1,
 
   /**
-   * As long as the spell lasts: needs a spell that asks for concentration or lasts a set time.
+   * As long as the spell lasts: needs a spell that asks for concentration, lasts a set time or lasts until dispelled.
    *
    * @generated from enum value: TABLE_HIT_CONDITION_DURATION_UNTIL_SPELL_END = 2;
    */

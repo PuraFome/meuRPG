@@ -2,6 +2,7 @@ package play
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -79,6 +80,30 @@ func TestAHitEffectCardSaysWhenItIsSpent(t *testing.T) {
 	for name, u := range map[string]*user{"Ana": a.ana, "the master": a.master} {
 		if card := a.hitCardOf(t, u, "Pensantus"); card == nil || !card.GetSpent() {
 			t.Errorf("%s reads the card %v after the hit, want it spent", name, card)
+		}
+	}
+}
+
+// RN-10: a spent mark is the caster's player's and the master's to read; no other player reads an effect of the combat as
+// spent, on any combatant, nor its tag.
+func TestRN10_ASpentHitEffectIsNotReadAsSpentByOtherPlayers(t *testing.T) {
+	t.Parallel()
+	a := newHitCasters(t, nil, hitMod(trigNext))
+	e := a.hitFight(t)
+	a.castMark(t, e, 1)
+	a.rollDamage(t, a.strike(t, e, battleaxe, "Goblin", d20(19)), 1, 1)
+	for name, u := range map[string]*user{"Caio": a.caio, "Bia": a.bia} {
+		for _, c := range a.get(t, u).GetCombatants() {
+			for _, ef := range c.GetEffects() {
+				if ef.GetSpent() || slices.Contains(ef.GetTagsPt(), spentTagPT) {
+					t.Errorf("%s reads %v of %s as spent", name, ef, c.GetLabel())
+				}
+			}
+		}
+	}
+	for name, u := range map[string]*user{"Ana": a.ana, "the master": a.master} {
+		if card := a.hitCardOf(t, u, "Pensantus"); card == nil || !card.GetSpent() {
+			t.Errorf("%s reads the card %v, want it spent: the control is unreachable", name, card)
 		}
 	}
 }

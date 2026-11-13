@@ -233,6 +233,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 	out := ev.cardHead(f, key, def)
 	ev.cardTargets(out, g, onTarget)
 	caster, casterSeen := ev.byID[conv.OrZero(f.SourceID)]
+	out.Spent = f.SpentAt != nil && ev.readsSpent(f, caster)
 	casterSeen = casterSeen && ev.v.sees(caster)
 	if casterSeen {
 		out.CasterId = caster.ID
@@ -244,6 +245,9 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 	ev.cardClock(out, f, caster, casterSeen)
 	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)) || ev.v.saveDCFor(ev.byID[onTarget]))
 	ev.cardNotes(out, f, def)
+	if !ev.readsSpent(f, caster) {
+		out.TagsPt = slices.DeleteFunc(out.TagsPt, func(t string) bool { return t == spentTagPT })
+	}
 	if ev.v.master {
 		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), conv.OrZero(f.PlayerLabel)
 		out.EndTextPt = ev.endText(f, caster)
@@ -252,6 +256,12 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		}
 	}
 	return out
+}
+
+// readsSpent says the viewer may read that the effect was used up: the master, the caster's player and the player of
+// the creature that carries the row; no other player (RN-10: it tells that a hit landed with the spell).
+func (ev *effectViewer) readsSpent(f playdb.CombatantState, caster playdb.Combatant) bool {
+	return ev.v.master || ev.v.owns(caster) || ev.v.owns(ev.byID[f.CombatantID])
 }
 
 // cardHead is the card with what names the effect: the ids, the source, the conditions it gives.
@@ -264,7 +274,7 @@ func (ev *effectViewer) cardHead(f playdb.CombatantState, key string, def *rules
 	}
 	out := &playv1.LastingEffect{
 		Id: f.ID, GroupId: group, EncounterId: f.EncounterID, SourceKey: key, SourceNamePt: ev.names(key),
-		Concentration: f.Concentration, ConditionKeys: f.ConditionKeys, Spent: f.SpentAt != nil,
+		Concentration: f.Concentration, ConditionKeys: f.ConditionKeys,
 	}
 	out.SourceKind = sourceKindProto(conv.OrZero(f.SourceKind), len(f.ConditionKeys) > 0 && def == nil)
 	if out.SourceNamePt == "" && len(f.ConditionKeys) > 0 {

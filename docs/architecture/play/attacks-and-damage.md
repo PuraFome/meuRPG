@@ -221,20 +221,21 @@ Its key and label are the spell's.
 - **The save.**
   With a `save` the target rolls it against the DC kept on the row (the caster's spell save DC, 10 if there was none) through the hit-riders path (`rollRiderSave`: Magic Resistance, Legendary Resistance, the held rolls), as a monk's rider does.
   On a fail the target takes the `on_fail_conditions` it is not immune to (`hitConditions`), as a lasting effect of the same casting.
-  They last until the end of the target's next turn, or, with `condition_duration` `spell_end`, as long as the spell does: the end of the concentration ends them.
-  A new failed save of the same casting replaces the old conditions on that target (`endHitConditions`).
+  They last until the end of the target's next turn, or, with `condition_duration` `spell_end`, as long as the spell does (a spell that asks for concentration, lasts a set time or lasts until dispelled): the end of the concentration ends them.
+  A new failed save of the same casting replaces the old conditions on that target (`endHitConditions`); the undo of that damage puts the replaced rows back with their ids and clocks (`Restore`, `effectsBack`).
   A pass leaves nothing.
 - **What is logged.**
   The damage line carries the part by the spell's name.
-  The save is a `hit_rider` line with the roll, the DC and the result, the master's and the target's own player's to read; a failed save adds the line of the new effect.
+  The save is a `hit_rider` line with the roll, the DC and the result, the master's, the attacker's player's and the target's own player's to read, no other player's (the line says the effect has a save: `riderEvent.OwnersOnly`, `viewerGets`); a failed save adds the line of the new effect, which follows the effect's visibility.
   The ids of the effect rows and of the lines go in the event (`EffectsAdded`, `EffectLines`).
 - **Undo.**
   The master's undo of the damage clears `spent_at` (the same `EffectsSpent` path as Vicious Mockery), deletes the conditions the save put on the target and takes the lines away (`effectsAddedBack`).
   The undo of the cast takes the caster's row and the mark away with the cast.
+  The spell's part is an automatic line, so the master's `RemoveDamagePart` refuses it (`takeOut`): the effect stays spent and the save stays made, and the master's undo of the damage is the way back.
 - **Who reads what (RN-10).**
   The master and the attacker's own player read the part whole: spell, dice, faces.
   Every other player reads the amount and never the dice (`partsProtoFor`, `hitRollForOthers`), and when the master hides the effect, or its audience is `owner`, the part reads "Outra fonte" with the row's id for a key and no source (`hitPartForOthers`).
-  The row's modifier, trigger, dice and save never reach another player, in the damage, the log or the effect lists.
+  The row's modifier, trigger, dice and save never reach another player, in the damage, the log or the effect lists, and neither does whether the row is spent (`readsSpent`).
 
 ## Roll modes
 

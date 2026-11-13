@@ -182,15 +182,15 @@ func (s *Service) useHitEffect(ctx context.Context, c *combatTx, u hitUse, st pl
 
 // hitSave has the target make the save of the spell against the DC kept on the row, as a rider's save is made
 // (rollRiderSave: Magic Resistance, Legendary Resistance, the held rolls), writes the line of the roll like a
-// monk's rider (the master and the target's own player read it) and on a failure gives it the conditions: until
-// the end of its next turn, or as long as the spell lasts. The rows and the lines are noted in the event, so that
-// the undo of the damage takes them away.
+// monk's rider (the master, the attacker's player and the target's own player read it, no other player: RN-10) and
+// on a failure gives it the conditions: until the end of its next turn, or as long as the spell lasts. The rows and
+// the lines are noted in the event, so that the undo of the damage takes them away.
 func (s *Service) hitSave(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, mod rules.EffectModifier, ev *actionEvent) error {
 	dc := defaultHitSaveDC
 	if st.SaveDc != nil {
 		dc = *st.SaveDc
 	}
-	re := riderEvent{Choice: choiceApply, Result: riderSaved, DC: dc}
+	re := riderEvent{Choice: choiceApply, Result: riderSaved, DC: dc, OwnersOnly: true}
 	saved, err := s.rollRiderSave(ctx, c, u.m, u.target, mod.Save, mod.OnFailConditions, dc, &re)
 	if err != nil {
 		return err

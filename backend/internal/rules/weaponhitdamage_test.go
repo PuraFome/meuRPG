@@ -101,6 +101,9 @@ func TestWeaponHitDamageRefusalsNameTheirField(t *testing.T) {
 		{"a stray resistance_kind", with(func(m *EffectModifier) { m.ResistanceKind = "resist" }), ".resistance_kind"},
 		{"a stray claim", with(func(m *EffectModifier) { m.Claim = 3 }), ".claim"},
 		{"a stray unclaimed", with(func(m *EffectModifier) { m.Unclaimed = true }), ".unclaimed"},
+		{"a second weapon_hit_damage", func(ts *TableSpell) {
+			ts.Effect.Modifiers = []EffectModifier{hitMod(nil), hitMod(func(m *EffectModifier) { m.Die = 8 })}
+		}, "[1].kind"},
 		{"an instantaneous spell", func(ts *TableSpell) {
 			ts.Effect.Modifiers = []EffectModifier{hitMod(nil)}
 			ts.Concentration, ts.Duration = false, TableDuration{Kind: DurationInstantaneous}
@@ -114,6 +117,9 @@ func TestWeaponHitDamageRefusalsNameTheirField(t *testing.T) {
 				t.Fatal("accepted")
 			}
 			want := "effect.modifiers[0]" + tc.field
+			if strings.HasPrefix(tc.field, "[") {
+				want = "effect.modifiers" + tc.field
+			}
 			if tc.field == ".effect" {
 				want = "effect"
 			}
@@ -132,6 +138,13 @@ func TestWeaponHitDamageConditionDurationIsAccepted(t *testing.T) {
 		}
 	}
 	_, err := withEffectSpell(t, func(ts *TableSpell) {
+		ts.Concentration, ts.Duration = false, TableDuration{Kind: DurationUntilDispelled}
+		ts.Effect.Modifiers = []EffectModifier{hitMod(func(m *EffectModifier) { m.ConditionDuration = ConditionDurationSpellEnd })}
+	})
+	if err != nil {
+		t.Errorf("spell_end of an until_dispelled spell: %v", err)
+	}
+	_, err = withEffectSpell(t, func(ts *TableSpell) {
 		ts.Concentration, ts.Duration = false, TableDuration{Kind: DurationTimed, Amount: 1, Unit: DurationMinute}
 		ts.Effect.Modifiers = []EffectModifier{hitMod(func(m *EffectModifier) { m.Trigger, m.ConditionDuration = HitTriggerNextHit, ConditionDurationSpellEnd })}
 	})

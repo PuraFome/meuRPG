@@ -576,7 +576,7 @@ const (
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE TableEffectModifierKind = 19
 	// Extra weapon damage on a hit the caster makes, as `trigger` says: `die` (d4, d6, d8, d10 or d12),
 	// `dice`, `per_slot_dice`, `max_dice`, `damage_type`, and optionally a `save` with the
-	// `on_fail_conditions` it puts on the target. Needs `trigger`, `die` and `dice`; reads no other field. The
+	// `on_fail_conditions` it puts on the target. Needs `trigger`, `die`, `dice` and `max_dice`; reads no other field. A spell has one of these. The
 	// spell must last (not instantaneous), and EACH_HIT and MARKED_TARGET need concentration.
 	TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE TableEffectModifierKind = 20
 )
@@ -716,7 +716,7 @@ const (
 	TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNSPECIFIED TableHitConditionDuration = 0
 	// Until the end of the target's next turn.
 	TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_END_OF_NEXT_TURN TableHitConditionDuration = 1
-	// As long as the spell lasts: needs a spell that asks for concentration or lasts a set time.
+	// As long as the spell lasts: needs a spell that asks for concentration, lasts a set time or lasts until dispelled.
 	TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_SPELL_END TableHitConditionDuration = 2
 )
 

@@ -253,10 +253,29 @@ func TestAHitSpellTheSaveIsInTheLogAsARiderLine(t *testing.T) {
 			t.Errorf("the line %v, want saved with d20 19 or failed with d20 4, both against DC %d", r, dc)
 		}
 	}
-	for _, r := range a.hitRiderLines(t, a.caio, e) {
-		if r.GetNumbers() || r.GetD20() != 0 || r.GetDc() != 0 {
-			t.Errorf("another player reads %v of an NPC's save, want the result alone", r)
+	// The line says the spell has a save: the master's, the attacker's player's and the target's player's alone (RN-10).
+	for name, u := range map[string]*user{"the attacker's player": a.ana} {
+		if n := len(a.hitRiderLines(t, u, e)); n != 2 {
+			t.Errorf("%s reads %d save lines of an NPC's save, want 2", name, n)
 		}
+	}
+	for name, u := range map[string]*user{"Caio": a.caio, "Bia": a.bia} {
+		if lines := a.hitRiderLines(t, u, e); len(lines) != 0 {
+			t.Errorf("%s, a player of neither side, reads %d save lines: %v", name, len(lines), lines)
+		}
+	}
+	// A save of a player's character: its own player and the attacker's read it, the third player reads nothing.
+	e = a.nextTurn(t, e)
+	hit = a.strike(t, e, battleaxe, "Toren", d20(19))
+	a.rollDamage(t, hit, 1, 1, 6)
+	for name, want := range map[string]int{"the master": 3, "the attacker's player": 3, "the target's player": 1} {
+		u := map[string]*user{"the master": a.master, "the attacker's player": a.ana, "the target's player": a.caio}[name]
+		if n := len(a.hitRiderLines(t, u, e)); n != want {
+			t.Errorf("%s reads %d save lines, want %d", name, n, want)
+		}
+	}
+	if lines := a.hitRiderLines(t, a.bia, e); len(lines) != 0 {
+		t.Errorf("Bia, a player of neither side, reads %d save lines: %v", len(lines), lines)
 	}
 }
 
@@ -443,6 +462,59 @@ func TestAHitSpellUndoAfterAFailedSaveTakesTheConditionAway(t *testing.T) {
 	a.rollDamage(t, hit, 1, 1, 19)
 	if a.conditioned(t, "Capitão Goblin", frightenedKey) {
 		t.Errorf("the target is frightened by a save that passed")
+	}
+}
+
+// A second failed save of the casting replaces the conditions of the first; the master's undo of the second damage takes
+// the new conditions away and puts the first hit's back, with their own row.
+func TestAHitSpellUndoOfASecondFailedSaveRestoresTheFirstHitsCondition(t *testing.T) {
+	t.Parallel()
+	a := newHitCasters(t, nil, hitMod(trigEach, func(m *tableMod) {
+		m.Save, m.OnFailConditions, m.ConditionDuration = "wis", []string{frightenedKey}, spellEnd
+	}))
+	e := a.hitFight(t)
+	a.castMark(t, e, 1)
+	a.rollDamage(t, a.strike(t, e, battleaxe, "Capitão Goblin", d20(19)), 1, 1, 2)
+	const conditionRow = `SELECT coalesce(string_agg(s.id::text, ','), '') FROM combatant_states s JOIN combatants c ON c.id = s.combatant_id
+		WHERE s.source_key = $1 AND c.label = 'Capitão Goblin' AND cardinality(s.condition_keys) > 0`
+	var first string
+	if err := a.h.pool.QueryRow(t.Context(), conditionRow, tableMark).Scan(&first); err != nil || first == "" || strings.Contains(first, ",") {
+		t.Fatalf("after the first failed save the condition rows are %q (%v), want one", first, err)
+	}
+	e = a.nextTurn(t, e)
+	a.rollDamage(t, a.strike(t, e, battleaxe, "Capitão Goblin", d20(19)), 1, 1, 3)
+	var second string
+	if err := a.h.pool.QueryRow(t.Context(), conditionRow, tableMark).Scan(&second); err != nil || second == "" || second == first || strings.Contains(second, ",") {
+		t.Fatalf("after the second failed save the condition rows are %q (%v), want the replacing one, not %q", second, err, first)
+	}
+	a.undoLast(t, e)
+	var after string
+	if err := a.h.pool.QueryRow(t.Context(), conditionRow, tableMark).Scan(&after); err != nil || after != first {
+		t.Errorf("after the undo of the second damage the condition rows are %q (%v), want the first hit's %q back", after, err, first)
+	}
+	if !a.conditioned(t, "Capitão Goblin", frightenedKey) {
+		t.Errorf("the target lost the first hit's condition with the undo of the second damage")
+	}
+}
+
+// The master cannot take the spell's part out of a rolled damage (it is an automatic line, not an extra): the effect
+// stays spent and the save stays made, and the way back is the undo of the damage.
+func TestAHitSpellItsPartCannotBeRemovedFromARolledDamage(t *testing.T) {
+	t.Parallel()
+	a := newHitCasters(t, nil, hitMod(trigNext, func(m *tableMod) { m.Save, m.OnFailConditions = "wis", []string{frightenedKey} }))
+	e := a.hitFight(t)
+	a.castMark(t, e, 1)
+	rolled := a.rollDamage(t, a.strike(t, e, battleaxe, "Capitão Goblin", d20(19)), 1, 1, 2)
+	_, err := a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(&playv1.RemoveDamagePartRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: rolled.GetId(), PartKey: tableMark, Reason: "motivo", IdempotencyKey: newKey(),
+	}))
+	wantBlockedBy(t, "RemoveDamagePart(the spell's part)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE)
+	if _, spent := a.rows(t); spent != 1 || !a.conditioned(t, "Capitão Goblin", frightenedKey) {
+		t.Errorf("the refused removal changed the effect: spent %d, frightened %v", spent, a.conditioned(t, "Capitão Goblin", frightenedKey))
+	}
+	a.undoLast(t, e)
+	if _, spent := a.rows(t); spent != 0 || a.conditioned(t, "Capitão Goblin", frightenedKey) {
+		t.Errorf("the undo left the effect spent (%d) or the target frightened", spent)
 	}
 }
 
