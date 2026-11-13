@@ -161,6 +161,46 @@ func carryRider(ctx context.Context, q *playdb.Queries, mountID string) error {
 	return nil
 }
 
+// unseat is a rider that a dismissal took off its mount, as the event keeps it.
+type unseat struct {
+	Rider string `json:"rider"`
+	Mount string `json:"mount"`
+}
+
+// setRiderLink writes the mount the rider sits on (nil: none) and leaves the rest of the row as it is.
+func setRiderLink(ctx context.Context, q *playdb.Queries, rider playdb.Combatant, on *string) error {
+	if err := q.SetCombatantRide(ctx, playdb.SetCombatantRideParams{
+		ID: rider.ID, MountedOnID: on, GridCol: rider.GridCol, GridRow: rider.GridRow,
+		MovementUsedFt: rider.MovementUsedFt, MovementUsedDft: rider.MovementUsedDft, MountMoveUsed: rider.MountMoveUsed, CoverMark: rider.CoverMark,
+	}); err != nil {
+		return fmt.Errorf("write the rider's link: %w", err)
+	}
+	return nil
+}
+
+// seatRiders puts the riders a dismissal took off their mounts back on them, for the mounts and riders that are in cs again and
+// where the rider still rides nothing.
+func seatRiders(ctx context.Context, q *playdb.Queries, cs []playdb.Combatant, unseated []unseat) error {
+	for _, u := range unseated {
+		var rider, mount *playdb.Combatant
+		for i := range cs {
+			switch cs[i].ID {
+			case u.Rider:
+				rider = &cs[i]
+			case u.Mount:
+				mount = &cs[i]
+			}
+		}
+		if rider == nil || mount == nil || rider.MountedOnID != nil {
+			continue
+		}
+		if err := setRiderLink(ctx, q, *rider, &mount.ID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // drives says whether the viewer's player moves the combatant for its rider: a controlled mount obeys the rider, whose player the
 // viewer is.
 func (v combatViewer) drives(cs []playdb.Combatant, c playdb.Combatant) bool {

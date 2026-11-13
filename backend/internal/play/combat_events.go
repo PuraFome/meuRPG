@@ -685,6 +685,7 @@ type actionEvent struct {
 	Created        []string   `json:"creature_ids,omitempty"`
 	MonsterKeys    []string   `json:"monster_keys,omitempty"`
 	Dismissed      []string   `json:"dismissed_ids,omitempty"`
+	Unseated       []unseat   `json:"unseated,omitempty"` // the riders a dismissal took off their mounts, for the undo to seat again
 	SummonRoll     *groupRoll `json:"summon_roll,omitempty"`
 	Source         string     `json:"source,omitempty"`
 	Ritual         bool       `json:"ritual,omitempty"`

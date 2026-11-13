@@ -349,6 +349,9 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 			if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{conv.OrZero(who.CreatureID)}, Dismissed: true}); err != nil {
 				return nil, false, fmt.Errorf("dismiss the combatant: %w", err)
 			}
+			if err := unseatRider(ctx, c, rest, who); err != nil {
+				return nil, false, err
+			}
 		} else if err := c.q.DeleteCombatant(ctx, who.ID); err != nil {
 			return nil, false, fmt.Errorf("delete the combatant: %w", err)
 		}
@@ -358,6 +361,20 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 		return nil, false, err
 	}
 	return rest, turnPassed, nil
+}
+
+// unseatRider puts the rider of a dismissed mount on foot where it stands: the link goes, and the change remembers it for the undo,
+// which seats the rider again (rejoinCreatures). A mount that is deleted needs no code: the foreign key clears the link.
+func unseatRider(ctx context.Context, c *combatTx, cs []playdb.Combatant, mount playdb.Combatant) error {
+	rider := riderOf(cs, mount.ID)
+	if rider == nil {
+		return nil
+	}
+	if err := setRiderLink(ctx, c.q, *rider, nil); err != nil {
+		return err
+	}
+	c.unseated = append(c.unseated, unseat{Rider: rider.ID, Mount: mount.ID})
+	return nil
 }
 
 // discardDamageOf drops, inside the change's transaction, the damage still to roll or to
@@ -488,7 +505,7 @@ func (s *Service) creatureEvent(ctx context.Context, c *combatTx, kind string, w
 // (the ones a concentration ended or a cast replaced): they are alive again and
 // their dismissed combatants return to the order, the same ones, with the hit
 // points, conditions and initiative they had.
-func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string) error {
+func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string, unseated []unseat) error {
 	var revived []string
 	for _, reason := range []string{"concentration", "replaced"} { // what a cast dismisses for; ids are the event's own
 		back, err := s.roster.ReviveCreatures(ctx, c.tx, c.session.CampaignID, ids, reason)
@@ -506,6 +523,9 @@ func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
+	}
+	if err := seatRiders(ctx, c.q, cs, unseated); err != nil {
+		return err
 	}
 	_, err = saveOrder(ctx, c.q, cs, orderCombatants(cs))
 	return err

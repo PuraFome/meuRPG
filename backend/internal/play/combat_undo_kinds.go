@@ -940,7 +940,7 @@ func (u *undoer) castCreaturesBack(ctx context.Context, _ playdb.Combatant, ev a
 		}
 	}
 	if len(ev.Dismissed) > 0 {
-		return u.s.rejoinCreatures(ctx, u.c, ev.Dismissed)
+		return u.s.rejoinCreatures(ctx, u.c, ev.Dismissed, ev.Unseated)
 	}
 	return nil
 }
@@ -1239,7 +1239,7 @@ func (u *undoer) endedConcentrationBack(ctx context.Context, who playdb.Combatan
 		}
 	}
 	if len(ev.Dismissed) > 0 {
-		if err := u.s.rejoinCreatures(ctx, u.c, ev.Dismissed); err != nil {
+		if err := u.s.rejoinCreatures(ctx, u.c, ev.Dismissed, ev.Unseated); err != nil {
 			return err
 		}
 	}
