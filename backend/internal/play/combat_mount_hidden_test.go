@@ -112,3 +112,37 @@ func TestMountedCombat_ADismissedMountLetsItsRiderStandOnItsOwn(t *testing.T) {
 		t.Errorf("Toren rides %v after the undo, want the wolf again", on)
 	}
 }
+
+// TestMountedCombat_MoveOptionsAgreeWithTheMove: GetMoveOptions answers as MoveCombatant does. The rider's player gets the options of
+// the controlled mount they drive and another player does not; a rider gets MOUNTED, or MOVE_BLOCKED when the mount is hidden from
+// the caller, which names nothing.
+func TestMountedCombat_MoveOptionsAgreeWithTheMove(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.steed(t)
+	c.mustMount(t, c.caio, "Toren", "Ogro")
+
+	res, err := c.options(t, c.caio, "Ogro")
+	if err != nil {
+		t.Fatalf("the rider's player asking the options of the mount they drive = %v", err)
+	}
+	if res.GetMovementLeftDft() != 300 {
+		t.Errorf("the options of the mount say %d left, want its own 300", res.GetMovementLeftDft())
+	}
+	_, err = c.options(t, c.ana, "Ogro")
+	wantCode(t, "another player asking the options of the steed", err, connect.CodePermissionDenied)
+	_, err = c.options(t, c.caio, "Toren")
+	wantBlockedBy(t, "the options of a rider", err, reasonMounted)
+	_, err = c.options(t, c.master, "Toren")
+	wantBlockedBy(t, "the master's options of a rider", err, reasonMounted)
+
+	c.nextTurnOf(t, "Pensantus") // the rider's turn is over: the mount's part of it too
+	_, err = c.options(t, c.caio, "Ogro")
+	wantBlockedBy(t, "the options of the mount out of its rider's turn", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN)
+
+	c.nextTurnOf(t, "Toren")
+	c.hide(t, "Ogro")
+	_, err = c.options(t, c.caio, "Toren")
+	wantBlockedBy(t, "the options of a rider on a hidden mount", err, reasonMoveBlocked)
+}
