@@ -180,7 +180,7 @@ func TestCheckCombatantColumns(t *testing.T) {
 		{"an allowed column with a short reason fails", columns, frozen, "Newer # too short\n", "no reason or a short one"},
 		{"an entry in both lists fails", []string{"ID", "Label"}, frozen, "ID # a reason that is long enough\n", "in combatant_columns.txt and in combatant_columns_allowed.txt"},
 		{"an allowed column that is gone fails", []string{"ID", "Label"}, frozen, long, `lists "Newer", which is not a column any more`},
-		{"a shrinking list passes", []string{"ID"}, "ID\nLabel\n", "", `lists "Label", which is not a column any more`},
+		{"a frozen list that names a column the table lost is told to drop it", []string{"ID"}, "ID\nLabel\n", "", `lists "Label", which is not a column any more`},
 		{"a frozen list that shrank with the table passes", []string{"ID"}, "ID\n", "", ""},
 		{"an unsorted frozen list fails", []string{"ID", "Label"}, "Label\nID\n", "", "not sorted"},
 	}

@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -355,6 +356,36 @@ func TestUseFeatureTargets(t *testing.T) {
 	}
 	// The master sees it: the use is his to make.
 	m.mustUse(t, m.master, e, "Pensantus", "Marca", m.aim(t, "Goblin"))
+}
+
+// A hidden creature sent together with a visible one: the refusal names only the ids that were refused, and it is the same for
+// a hidden creature and for one that does not exist, so it never says which of the two the id was.
+func TestUseFeatureHiddenTargetAmongVisibleOnes(t *testing.T) {
+	t.Parallel()
+	m := newFeatureTable(t)
+	e := m.fight(t)
+	hideAgain(t, m.armed, e, "Goblin")
+	hidden := m.id(t, "Goblin")
+	gone := newKey()
+	ask := func(id string) *playv1.EncounterBlocked {
+		t.Helper()
+		_, err := m.use(t, m.ana, e, "Pensantus", "Brado", func(r *playv1.UseFeatureRequest) { r.TargetIds = []string{m.id(t, "Toren"), id} })
+		return wantBlockedBy(t, "Toren with "+id, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_FEATURE_TARGET)
+	}
+	h, g := ask(hidden), ask(gone)
+	if got := h.GetCombatantIds(); len(got) != 1 || got[0] != hidden {
+		t.Errorf("the refusal of the hidden creature names %v, want only %s: the visible Toren was not refused", got, hidden)
+	}
+	if got := g.GetCombatantIds(); len(got) != 1 || got[0] != gone {
+		t.Errorf("the refusal of the missing creature names %v, want only %s", got, gone)
+	}
+	h.CombatantIds, g.CombatantIds = nil, nil
+	if !proto.Equal(h, g) {
+		t.Errorf("the refusals differ beyond the id: hidden %v, missing %v", h, g)
+	}
+	if got := m.get(t, m.master); byLabel(t, got, "Pensantus").GetBonusActionUsed() {
+		t.Error("a refused use spent the bonus action")
+	}
 }
 
 // A target out of reach is refused, and the options say why in words.
@@ -748,9 +779,6 @@ func TestUseFeatureLogAudienceAndNoLeak(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(string(raw), "Goblin\"") && strings.Contains(string(raw), m.id(t, "Goblin")) {
-			t.Errorf("the log of %s names the hidden creature", name)
-		}
 		if strings.Contains(string(raw), m.id(t, "Goblin")) {
 			t.Errorf("the log of %s holds the id of the hidden creature", name)
 		}
@@ -928,5 +956,39 @@ func TestUseFeatureTwiceClaimsTheTempHPOnce(t *testing.T) {
 	}
 	if _, n = claims(); n > 1 {
 		t.Errorf("%d rows claim the pool after the first ended, want at most 1", n)
+	}
+}
+
+// A use of scope round lasts the whole round, across the turns of the others, and is back when the round changes.
+func TestUseFeatureRoundScope(t *testing.T) {
+	t.Parallel()
+	m := newFeatureTable(t)
+	e := m.fight(t)
+	round := e.GetRound()
+	m.mustUse(t, m.ana, e, "Pensantus", "Reflexo", nil) // a reaction used on its own turn
+	if row := m.row(t, m.ana, e, "Pensantus", "Reflexo"); row.GetUseTotal() != 1 || row.GetUseLeft() != 0 || row.GetEnabled() {
+		t.Fatalf("Reflexo after its use = %v, want 0 of 1 left", row)
+	}
+	// Off turn, in the same round: still spent (the reaction is back with the new turn, the use of the round is not).
+	e = m.passTo(t, m.get(t, m.master), "Toren")
+	if e.GetRound() != round {
+		t.Fatalf("Toren's turn is in round %d, want %d", e.GetRound(), round)
+	}
+	_, err := m.use(t, m.master, e, "Pensantus", "Reflexo", nil)
+	wantBlockedBy(t, "Reflexo again in the same round", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES)
+	if row := m.row(t, m.ana, e, "Pensantus", "Reflexo"); row.GetEnabled() || row.GetUseLeft() != 0 {
+		t.Errorf("Reflexo off turn in the same round = %v, want it off with 0 left", row)
+	}
+	// The next round: the use is back, and spends the round's use again.
+	e = m.passTo(t, e, "Pensantus")
+	if e.GetRound() == round {
+		t.Fatalf("Pensantus's next turn is still in round %d", round)
+	}
+	if row := m.row(t, m.ana, e, "Pensantus", "Reflexo"); !row.GetEnabled() || row.GetUseLeft() != 1 {
+		t.Fatalf("Reflexo in the next round = %v, want its use back", row)
+	}
+	m.mustUse(t, m.ana, e, "Pensantus", "Reflexo", nil)
+	if row := m.row(t, m.ana, e, "Pensantus", "Reflexo"); row.GetUseLeft() != 0 {
+		t.Errorf("Reflexo after the second round's use = %v, want 0 left", row)
 	}
 }
