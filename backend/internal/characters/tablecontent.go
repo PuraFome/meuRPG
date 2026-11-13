@@ -547,6 +547,17 @@ var (
 		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE:    rules.ModifierAttackAdvantage,
 		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE:   rules.ModifierSaveDisadvantage,
 		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE:  rules.ModifierCheckDisadvantage,
+		rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE:   rules.ModifierWeaponHitDamage,
+	}
+	hitTriggerOf = map[rulesv1.TableHitTrigger]string{
+		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_NEXT_HIT:       rules.HitTriggerNextHit,
+		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_NEXT_MELEE_HIT: rules.HitTriggerNextMeleeHit,
+		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_EACH_HIT:       rules.HitTriggerEachHit,
+		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_MARKED_TARGET:  rules.HitTriggerMarkedTarget,
+	}
+	hitConditionDurationOf = map[rulesv1.TableHitConditionDuration]string{
+		rulesv1.TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_END_OF_NEXT_TURN: rules.ConditionDurationNextTurn,
+		rulesv1.TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_SPELL_END:        rules.ConditionDurationSpellEnd,
 	}
 	summonTurnOf = map[rulesv1.TableSummonTurnMode]string{
 		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE:   rules.SummonTurnOwnInitiative,
@@ -629,6 +640,9 @@ func tableSpellEffectOf(m *rulesv1.TableSpellEffect) *rules.TableSpellEffect {
 			Kind: enumOrUnknown(effectModifierKindOf, x.GetKind()), Die: int(x.GetDie()), Sign: int(x.GetSign()), Value: int(x.GetValue()),
 			Abilities: x.GetAbilities(), Conditions: x.GetConditions(), Skill: x.GetSkill(),
 			ResistanceKind: enumOrUnknown(resistanceKindOf, x.GetResistanceKind()), DamageTypes: x.GetDamageTypes(),
+			Trigger: enumOrUnknown(hitTriggerOf, x.GetTrigger()), Dice: int(x.GetDice()), PerSlotDice: int(x.GetPerSlotDice()),
+			MaxDice: int(x.GetMaxDice()), DamageType: x.GetDamageType(), Save: x.GetSave(), OnFailConditions: x.GetOnFailConditions(),
+			ConditionDuration: enumOrUnknown(hitConditionDurationOf, x.GetConditionDuration()),
 		}
 		for _, r := range x.GetAppliesTo() {
 			w := enumOrUnknown(effectRollOf, r)

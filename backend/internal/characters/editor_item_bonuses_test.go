@@ -37,11 +37,13 @@ func TestUpdateCharacterItemBonusesAreCheckedAndRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdateCharacter(valid bonus) error = %v", err)
 	}
+	// The server names the entry: "bonus:<key>".
+	stored := &charactersv1.ItemBonus{Key: "equipment:rapier", Bonus: 2, Id: "bonus:equipment:rapier"}
 	check := func(where string, got *charactersv1.Character) {
 		t.Helper()
 		bonuses := got.GetSheet().GetFull().GetItemBonuses()
-		if len(bonuses) != 1 || !proto.Equal(bonuses[0], want) {
-			t.Errorf("%s: item_bonuses = %v, want [%v]", where, bonuses, want)
+		if len(bonuses) != 1 || !proto.Equal(bonuses[0], stored) {
+			t.Errorf("%s: item_bonuses = %v, want [%v]", where, bonuses, stored)
 		}
 	}
 	check("the save's answer", saved)

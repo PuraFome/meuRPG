@@ -273,7 +273,7 @@ func (f *castFlow) prepare(ctx context.Context) error {
 		}
 	}
 	f.aimAtCaster()
-	for _, phase := range []func(context.Context) error{f.checkPool, f.readModes, f.checkSpellAttack} {
+	for _, phase := range []func(context.Context) error{f.checkHitTargets, f.checkPool, f.readModes, f.checkSpellAttack} {
 		if err := phase(ctx); err != nil {
 			return err
 		}

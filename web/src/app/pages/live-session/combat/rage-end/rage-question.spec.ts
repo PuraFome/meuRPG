@@ -49,6 +49,34 @@ describe('RageQuestion', () => {
     expect(document.activeElement).toBe(buttons(el)[0]);
   });
 
+  it('puts the focus on it once the call that raised the question lets go of the buttons', async () => {
+    // The turn's end answers with the question while its call is still in the air: the buttons are
+    // disabled then, and a disabled button takes no focus (the e2e saw the focus fall on the body).
+    const fixture = TestBed.createComponent(RageQuestion);
+    fixture.componentRef.setInput('busy', true);
+    fixture.componentRef.setInput('subject', toren);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(document.activeElement).not.toBe(buttons(el)[0]);
+    fixture.componentRef.setInput('busy', false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(buttons(el)[0]);
+  });
+
+  it('does not take the focus back on a later change of the call', async () => {
+    const { fixture, el } = setup(false);
+    await fixture.whenStable();
+    (document.activeElement as HTMLElement).blur();
+    fixture.componentRef.setInput('busy', true);
+    fixture.detectChanges();
+    fixture.componentRef.setInput('busy', false);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).not.toBe(buttons(el)[0]);
+  });
+
   it('goes back to the turn on Escape', () => {
     const { fixture, el } = setup(false);
     const back: string[] = [];

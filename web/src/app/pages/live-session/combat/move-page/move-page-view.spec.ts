@@ -3,6 +3,7 @@ import { create } from '@bufbuild/protobuf';
 import {
   GetMoveOptionsResponseSchema,
   MoveRefusal,
+  SurfaceExtra,
   ReachableSquareSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant } from '../../../../core/combat/combat-testing';
@@ -85,6 +86,22 @@ describe('move page view', () => {
     expect(walkSummary(origin, { kind: 'ok', square }, 300, []).title).toBe('Mover 2,1\u00a0m');
     expect(walkSummary(origin, { kind: 'refused', reason: MoveRefusal.WALL }, 300, []).kind).toBe(
       'refused',
+    );
+  });
+
+  it('words the swim, the climb and the crawl that the server added to the cost', () => {
+    const swum = create(ReachableSquareSchema, {
+      col: 3,
+      row: 2,
+      costDft: 300,
+      extraDft: 150,
+      surfaceExtra: SurfaceExtra.SWIM,
+    });
+    const detail = walkSummary(origin, { kind: 'ok', square: swum }, 300, []).detail;
+    expect(detail.replace(/\u00a0/g, ' ')).toBe('Inclui 4,5 m nadando. Depois restam 0,0 m.');
+    const plain = create(ReachableSquareSchema, { col: 3, row: 2, costDft: 71 });
+    expect(walkSummary(origin, { kind: 'ok', square: plain }, 300, []).detail).not.toContain(
+      'Inclui',
     );
   });
 

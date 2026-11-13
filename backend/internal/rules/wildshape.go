@@ -63,6 +63,19 @@ func (c *Content) CastsInBeastForm(d Derived) bool {
 	return false
 }
 
+// WildShapeSeconds is how long a Wild Shape form lasts (SRD 5.1): hours equal to half
+// the druid's level, rounded down, in seconds of game time. d is the character's own
+// sheet. It is 0 for a character with no druid level (a table feature that gives Wild
+// Shape to another class has no hours to speak of: the form then lasts until it is ended).
+func WildShapeSeconds(d Derived) int {
+	for _, cl := range d.Classes {
+		if cl.ClassKey == "class:druid" {
+			return cl.Level / 2 * secondsPerHour
+		}
+	}
+	return 0
+}
+
 // WildShapeAllows says whether the build's druid may take the beast now.
 func (c *Content) WildShapeAllows(b Build, beast string) bool {
 	return slices.ContainsFunc(c.WildShapeForms(b), func(e CreatureEntry) bool { return e.Key == beast })

@@ -65,6 +65,7 @@ describe('MapEditor: the light warning (B3)', () => {
       doors: new Uint8Array(),
       fogWithheld: false,
       noPass: new Uint8Array(),
+      surface: new Uint8Array(),
     };
     const state = new MapState(async () =>
       mapResponse(

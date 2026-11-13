@@ -120,6 +120,24 @@ service ContentService {
     option idempotency_level = IDEMPOTENT;
   }
 
+  // ListMagicItems lists the SRD magic items a sheet can hold besides its +N armor, shield and
+  // weapons, for the "Adicionar item mágico" picker. Each row is an item, or a family with its
+  // variants (a family is never added, one of its variants is); the +N armor and weapon families
+  // are not listed, a +N piece comes from the piece's own menu. `query` is part of the
+  // Portuguese or English name of the item or of one of its variants, ignoring case and accents.
+  // Rows are sorted by Portuguese name and come a page at a time (page_size 1 to 400, 100 by
+  // default, page_token). The items are public rules, the same for every campaign.
+  //
+  // Only an active member may ask: a pending member (RN-15) gets `not_found`, as for ListSpells.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, or the caller is not an active member of it.
+  //   - `invalid_argument`: query is longer than 100 characters, page_size is not 1 to 400, or
+  //     page_token is not one this list gave for the same query.
+  rpc ListMagicItems(ListMagicItemsRequest) returns (ListMagicItemsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
   // ListCreatures searches the creatures of a campaign (MR-037): the SRD's 334
   // creatures plus the campaign's table creatures (RN-23). It feeds the master's
   // "Dar uma criatura", the Wild Shape list and the summon choices. It filters by
@@ -1775,6 +1793,62 @@ message ListContentResponse {
   // entries in full, for the editors, are
   // TableContentService.ListTableEntries.
   int32 table_revision = 2;
+}
+
+// ListMagicItemsRequest names a campaign and the search.
+message ListMagicItemsRequest {
+  string campaign_id = 1;
+  // Part of the item's Portuguese or English name (or of a variant's), ignoring case and
+  // accents, up to 100 characters. Empty for any.
+  string query = 2;
+  // How many rows to return, 1 to 400; 0 means 100.
+  int32 page_size = 3;
+  // The next_page_token of the previous page; empty for the first.
+  string page_token = 4;
+}
+
+// ListMagicItemsResponse is one page of magic items, sorted by Portuguese name.
+message ListMagicItemsResponse {
+  repeated MagicItemOption items = 1;
+  // Pass it as page_token to read the next page. Empty on the last page.
+  string next_page_token = 2;
+  // How many rows pass the search, over all the pages.
+  int32 total = 3;
+  // The campaign's content version, as in ListContentResponse.content.content_version.
+  string content_version = 4;
+}
+
+// MagicItemOption is one row of the magic item picker: an item the sheet can hold, or a
+// family whose variants it can hold.
+message MagicItemOption {
+  // The item's catalog key. A family's key is never added to a sheet.
+  string key = 1;
+  // The item's Portuguese name.
+  string name_pt = 2;
+  // "armor", "weapon", "ammunition", "potion", "scroll", "ring", "rod", "staff", "wand" or
+  // "wondrous-item".
+  string category = 3;
+  // "common", "uncommon", "rare", "very_rare", "legendary" or "artifact"; "varies" for a family
+  // whose variants differ.
+  string rarity = 4;
+  // The item asks for attunement. False for a family: read it from the variants.
+  bool requires_attunement = 5;
+  // What the item asks of the character, in Portuguese ("Só para um conjurador"), or empty.
+  string restriction_pt = 6;
+  // The variants of a family, in the SRD's order; empty for an item that is no family, which
+  // is added as itself.
+  repeated MagicItemVariant variants = 7;
+  // A family that can also be added as itself (the plain Crystal Ball).
+  bool standalone = 8;
+}
+
+// MagicItemVariant is one variant of a family of magic items.
+message MagicItemVariant {
+  string key = 1;
+  string name_pt = 2;
+  string rarity = 3;
+  bool requires_attunement = 4;
+  string restriction_pt = 5;
 }
 
 // GetSpellDetailsRequest names a spell. The campaign is there for access
