@@ -1926,6 +1926,23 @@ func TestTableSpellHitTriggersAreReadOneByOne(t *testing.T) {
 	}
 }
 
+// Each condition duration of the message reads as its own key, an unset one as none (the rules' default) and one this
+// build does not know as "unknown".
+func TestTableSpellHitConditionDurationsAreReadOneByOne(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[rulesv1.TableHitConditionDuration]string{
+		rulesv1.TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNSPECIFIED:            "",
+		rulesv1.TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_END_OF_NEXT_TURN: rules.ConditionDurationNextTurn,
+		rulesv1.TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_SPELL_END:        rules.ConditionDurationSpellEnd,
+		99: "unknown",
+	} {
+		m := &rulesv1.TableEffectModifier{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE, ConditionDuration: in}
+		if got := tableSpellEffectOf(&rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{m}}).Modifiers[0].ConditionDuration; got != want {
+			t.Errorf("%v read as %q, want %q", in, got, want)
+		}
+	}
+}
+
 func weaponHitModifier() *rulesv1.TableEffectModifier {
 	return &rulesv1.TableEffectModifier{
 		Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE, Die: 6,

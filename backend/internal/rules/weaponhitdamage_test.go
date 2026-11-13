@@ -28,7 +28,7 @@ func TestWeaponHitDamageEveryTriggerIsAccepted(t *testing.T) {
 			}
 		}
 	}
-	bare := EffectModifier{Kind: ModifierWeaponHitDamage, Trigger: HitTriggerNextHit, Die: 8, Dice: 2}
+	bare := EffectModifier{Kind: ModifierWeaponHitDamage, Trigger: HitTriggerNextHit, Die: 8, Dice: 2, MaxDice: 2}
 	if _, err := withEffectSpell(t, oneMod(bare)); err != nil {
 		t.Errorf("a bare modifier: %v", err)
 	}
@@ -58,11 +58,21 @@ func TestWeaponHitDamageRefusalsNameTheirField(t *testing.T) {
 		{"d20", with(func(m *EffectModifier) { m.Die = 20 }), ".die"},
 		{"d2", with(func(m *EffectModifier) { m.Die = 2 }), ".die"},
 		{"zero dice", with(func(m *EffectModifier) { m.Dice = 0 }), ".dice"},
-		{"21 dice", with(func(m *EffectModifier) { m.Dice, m.MaxDice = 21, 0 }), ".dice"},
+		{"11 dice", with(func(m *EffectModifier) { m.Dice, m.MaxDice = 11, 20 }), ".dice"},
 		{"negative per slot", with(func(m *EffectModifier) { m.PerSlotDice = -1 }), ".per_slot_dice"},
-		{"11 per slot", with(func(m *EffectModifier) { m.PerSlotDice = 11 }), ".per_slot_dice"},
+		{"6 per slot", with(func(m *EffectModifier) { m.PerSlotDice = 6 }), ".per_slot_dice"},
+		{"no max", with(func(m *EffectModifier) { m.MaxDice = 0 }), ".max_dice"},
+		{"negative max", with(func(m *EffectModifier) { m.MaxDice = -1 }), ".max_dice"},
 		{"max below dice", with(func(m *EffectModifier) { m.Dice, m.MaxDice = 3, 2 }), ".max_dice"},
 		{"max over 20", with(func(m *EffectModifier) { m.MaxDice = 21 }), ".max_dice"},
+		{"duration without a save", with(func(m *EffectModifier) {
+			m.Save, m.OnFailConditions, m.ConditionDuration = "", nil, ConditionDurationSpellEnd
+		}), ".condition_duration"},
+		{"unknown duration", with(func(m *EffectModifier) { m.ConditionDuration = "forever" }), ".condition_duration"},
+		{"spell_end of a spell that does not last", func(ts *TableSpell) {
+			ts.Concentration, ts.Duration = false, TableDuration{Kind: DurationSpecial}
+			ts.Effect.Modifiers = []EffectModifier{hitMod(func(m *EffectModifier) { m.ConditionDuration = ConditionDurationSpellEnd })}
+		}, ".condition_duration"},
 		{"unknown damage type", with(func(m *EffectModifier) { m.DamageType = "damage-type:boredom" }), ".damage_type"},
 		{"a skill as damage type", with(func(m *EffectModifier) { m.DamageType = "skill:stealth" }), ".damage_type"},
 		{"save not an ability", with(func(m *EffectModifier) { m.Save = "luck" }), ".save"},
@@ -114,6 +124,22 @@ func TestWeaponHitDamageRefusalsNameTheirField(t *testing.T) {
 	}
 }
 
+func TestWeaponHitDamageConditionDurationIsAccepted(t *testing.T) {
+	t.Parallel()
+	for _, d := range []string{"", ConditionDurationNextTurn, ConditionDurationSpellEnd} {
+		if _, err := withEffectSpell(t, oneMod(hitMod(func(m *EffectModifier) { m.ConditionDuration = d }))); err != nil {
+			t.Errorf("duration %q: %v", d, err)
+		}
+	}
+	_, err := withEffectSpell(t, func(ts *TableSpell) {
+		ts.Concentration, ts.Duration = false, TableDuration{Kind: DurationTimed, Amount: 1, Unit: DurationMinute}
+		ts.Effect.Modifiers = []EffectModifier{hitMod(func(m *EffectModifier) { m.Trigger, m.ConditionDuration = HitTriggerNextHit, ConditionDurationSpellEnd })}
+	})
+	if err != nil {
+		t.Errorf("spell_end of a timed spell: %v", err)
+	}
+}
+
 func TestWeaponHitDamageNextHitNeedsNoConcentration(t *testing.T) {
 	t.Parallel()
 	for _, trig := range []string{HitTriggerNextHit, HitTriggerNextMeleeHit} {
@@ -155,5 +181,21 @@ func TestWeaponHitDamageIsAKindOfTheSharedVocabulary(t *testing.T) {
 	}
 	if err := checkModifier(hitMod(nil)); err != nil {
 		t.Errorf("the SRD shape is refused: %v", err)
+	}
+}
+
+// The tag of each trigger says what the engine does: a marked target counts every hit on it, as Hunter's Mark does.
+func TestWeaponHitDamageTagsSayWhenTheDamageRides(t *testing.T) {
+	t.Parallel()
+	for trig, want := range map[string]string{
+		HitTriggerNextHit:      "+1d8 no próximo golpe com arma",
+		HitTriggerNextMeleeHit: "+1d8 no próximo golpe corpo a corpo",
+		HitTriggerEachHit:      "+1d8 em cada golpe com arma enquanto concentra",
+		HitTriggerMarkedTarget: "+1d8 em cada golpe no alvo marcado",
+	} {
+		got := EffectTagsPT([]EffectModifier{{Kind: ModifierWeaponHitDamage, Trigger: trig, Die: 8, Dice: 1}})
+		if !slices.Equal(got, []string{want}) {
+			t.Errorf("%s: tags = %q, want %q", trig, got, want)
+		}
 	}
 }

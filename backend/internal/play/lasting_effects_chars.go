@@ -125,7 +125,7 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 	if d, ok := content.CombatEffect(r.SourceKey); ok {
 		e.TagsPt = d.TagsPT
 	} else if d, ok := content.CombatSpellEffect(r.SourceKey); ok {
-		e.TagsPt = d.TagsPT
+		e.TagsPt = tagsOfRow(d, mods)
 	}
 	e.TagsPt = append(append([]string{}, e.TagsPt...), modifierTagsPT(r.SourceKey, mods)...)
 	e.TagsPt = append(e.TagsPt, narratedNotesPT(r.SourceKey, mods)...)

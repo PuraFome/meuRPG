@@ -7,9 +7,10 @@ import (
 
 // The bounds of a weapon_hit_damage.
 const (
-	maxHitDice         = 20
-	maxHitPerSlotDice  = 10
-	maxHitConditions = 8
+	maxHitBaseDice    = 10 // the dice at the spell's own slot level
+	maxHitPerSlotDice = 5
+	maxHitDice        = 20 // the most dice there are at any slot: max_dice
+	maxHitConditions  = 8
 )
 
 var (
@@ -17,6 +18,8 @@ var (
 	hitTriggers = []string{HitTriggerNextHit, HitTriggerNextMeleeHit, HitTriggerEachHit, HitTriggerMarkedTarget}
 	// hitDice are the dice a weapon_hit_damage may roll.
 	hitDice = []int{4, 6, 8, 10, 12}
+	// conditionDurations are the values of a weapon_hit_damage's condition_duration ("" is next_turn).
+	conditionDurations = []string{ConditionDurationNextTurn, ConditionDurationSpellEnd}
 )
 
 // HitTriggerNeedsConcentration says the trigger lasts as long as the caster concentrates.
@@ -40,18 +43,22 @@ func checkWeaponHitDamage(m EffectModifier) error {
 
 func checkHitCounts(m EffectModifier) error {
 	switch {
-	case m.Dice < 1 || m.Dice > maxHitDice:
-		return modifierField("dice", "weapon_hit_damage needs dice from 1 to %d", maxHitDice)
+	case m.Dice < 1 || m.Dice > maxHitBaseDice:
+		return modifierField("dice", "weapon_hit_damage needs dice from 1 to %d", maxHitBaseDice)
 	case m.PerSlotDice < 0 || m.PerSlotDice > maxHitPerSlotDice:
 		return modifierField("per_slot_dice", "per_slot_dice is from 0 to %d", maxHitPerSlotDice)
-	case m.MaxDice < 0 || m.MaxDice > maxHitDice || (m.MaxDice != 0 && m.MaxDice < m.Dice):
-		return modifierField("max_dice", "max_dice is from dice to %d", maxHitDice)
+	case m.MaxDice < 1 || m.MaxDice > maxHitDice || m.MaxDice < m.Dice:
+		return modifierField("max_dice", "max_dice is needed: from dice (at least 1) to %d", maxHitDice)
 	}
 	return checkHitSave(m)
 }
 
 func checkHitSave(m EffectModifier) error {
 	switch {
+	case m.ConditionDuration != "" && !slices.Contains(conditionDurations, m.ConditionDuration):
+		return modifierField("condition_duration", "condition_duration is next_turn or spell_end")
+	case m.Save == "" && m.ConditionDuration != "":
+		return modifierField("condition_duration", "condition_duration needs a save")
 	case m.Save == "" && len(m.OnFailConditions) > 0:
 		return modifierField("on_fail_conditions", "on_fail_conditions needs a save")
 	case m.Save == "":
@@ -114,10 +121,15 @@ func (c *content) checkWeaponHitContent(m EffectModifier) error {
 }
 
 // spellHitRefusal refuses a weapon_hit_damage a table spell cannot keep: each_hit and marked_target last as long
-// as the concentration does.
-func spellHitRefusal(m EffectModifier, concentration bool) error {
-	if m.Kind == ModifierWeaponHitDamage && HitTriggerNeedsConcentration(m.Trigger) && !concentration {
+// as the concentration does, and a condition that lasts as the spell needs a spell that lasts (a timed duration).
+func spellHitRefusal(m EffectModifier, concentration, lasts bool) error {
+	switch {
+	case m.Kind != ModifierWeaponHitDamage:
+		return nil
+	case HitTriggerNeedsConcentration(m.Trigger) && !concentration:
 		return modifierField("trigger", "%s needs a spell that asks for concentration", m.Trigger)
+	case m.ConditionDuration == ConditionDurationSpellEnd && !concentration && !lasts:
+		return modifierField("condition_duration", "spell_end needs a spell that asks for concentration or lasts a set time")
 	}
 	return nil
 }

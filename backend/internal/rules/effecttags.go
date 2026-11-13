@@ -126,7 +126,7 @@ func joinPT(keys []string, words map[string]string) string {
 
 var hitTriggerTagsPT = map[string]string{
 	HitTriggerNextHit: "no próximo golpe com arma", HitTriggerNextMeleeHit: "no próximo golpe corpo a corpo",
-	HitTriggerEachHit: "em cada golpe com arma", HitTriggerMarkedTarget: "nos golpes contra o alvo marcado",
+	HitTriggerEachHit: "em cada golpe com arma enquanto concentra", HitTriggerMarkedTarget: "em cada golpe no alvo marcado",
 }
 
 // weaponHitTagPT is the label of a weapon_hit_damage ("+1d6 no próximo golpe com arma, +1d6 por nível acima,

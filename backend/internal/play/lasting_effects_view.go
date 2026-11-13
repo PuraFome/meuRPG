@@ -340,7 +340,7 @@ func (ev *effectViewer) cardSaves(out *playv1.LastingEffect, f playdb.CombatantS
 // cardNotes puts the tags, how to break free and what the effect changes on its card.
 func (ev *effectViewer) cardNotes(out *playv1.LastingEffect, f playdb.CombatantState, def *rules.EffectDef) {
 	if def != nil {
-		out.TagsPt = append(append(append([]string{}, def.TagsPT...), modifierTagsPT(conv.OrZero(f.SourceKey), effectModifiers(f))...), spentTagsPT(f)...)
+		out.TagsPt = append(append(append([]string{}, tagsOfRow(def, effectModifiers(f))...), modifierTagsPT(conv.OrZero(f.SourceKey), effectModifiers(f))...), spentTagsPT(f)...)
 		out.BreakFreeAbility = def.BreakFree
 	}
 	for _, k := range f.ConditionKeys {

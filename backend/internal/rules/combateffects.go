@@ -111,6 +111,13 @@ const (
 	HitTriggerMarkedTarget = "marked_target"
 )
 
+// The lengths of the conditions a weapon_hit_damage's failed save gives: until the end of the target's next turn
+// (the default, as the SRD's riders do), or as long as the spell.
+const (
+	ConditionDurationNextTurn = "next_turn"
+	ConditionDurationSpellEnd = "spell_end"
+)
+
 // EffectGoaded is the effect a failed goad puts on the target: disadvantage on its attack rolls against
 // anyone but the attacker, until the end of the attacker's next turn (effects/combat_effects.json).
 const EffectGoaded = "effect:goaded"
@@ -185,6 +192,9 @@ type EffectModifier struct {
 	DamageType       string   `json:"damage_type,omitempty"`
 	Save             string   `json:"save,omitempty"`
 	OnFailConditions []string `json:"on_fail_conditions,omitempty"`
+	// ConditionDuration is how long the conditions of a failed Save last: ConditionDurationNextTurn (also unset) or
+	// ConditionDurationSpellEnd. Only with a Save.
+	ConditionDuration string `json:"condition_duration,omitempty"`
 }
 
 // EffectDuration is how long an effect lasts.

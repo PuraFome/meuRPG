@@ -806,7 +806,9 @@
         }
       ],
       "resource": "x",
-      "rider": "x"
+      "rider": "x",
+      "effect": "x",
+      "hide": true
     }
   ],
   "parts_before": {},
@@ -938,6 +940,12 @@
     "x"
   ],
   "effects_spent": [
+    "x"
+  ],
+  "effects_added": [
+    "x"
+  ],
+  "effect_lines": [
     "x"
   ],
   "dragged_id": "x",

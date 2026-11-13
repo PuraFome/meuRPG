@@ -20,7 +20,7 @@ func (b *overlayBuilder) checkSpellEffect(c *entryErrors, key, path string, ts *
 	}
 	checkEffectHead(c, key, path, ts, target)
 	b.checkEffectConditions(c, key, path, e.Conditions)
-	b.checkEffectModifiers(c, key, path, e.Modifiers, ts.Concentration)
+	b.checkEffectModifiers(c, key, path, e.Modifiers, ts.Concentration, ts.Duration.Kind == DurationTimed || ts.Duration.Kind == DurationUntilDispelled)
 	if len(e.Conditions) == 0 && len(e.Modifiers) == 0 {
 		c.at(key, path, ".effect", ReasonValue, "an effect needs a condition or a modifier")
 	}
@@ -71,7 +71,7 @@ func (f *combatEffects) hasCondition(k string) bool {
 	return ok
 }
 
-func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, mods []EffectModifier, concentration bool) {
+func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, mods []EffectModifier, concentration, timed bool) {
 	if len(mods) > maxSpellEffectItems {
 		c.at(key, path, ".effect.modifiers", ReasonLimit, "an effect has at most %d modifiers", maxSpellEffectItems)
 	}
@@ -85,7 +85,7 @@ func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, 
 			err = spellModifierRefusal(m)
 		}
 		if err == nil {
-			err = spellHitRefusal(m, concentration)
+			err = spellHitRefusal(m, concentration, timed)
 		}
 		if err != nil {
 			c.at(key, path, at+modifierFieldSuffix(err), ReasonValue, "%v", err)

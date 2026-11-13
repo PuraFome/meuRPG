@@ -64,6 +64,9 @@ func carriesMark(onTarget []playdb.CombatantState, r playdb.CombatantState) bool
 
 // hitEffectParts are the parts the attacker's spells add to this weapon hit.
 func (h hitFacts) hitEffectParts() []partRecord {
+	if h.attack.Spell { // a spell attack is no weapon hit
+		return nil
+	}
 	var out []partRecord
 	for _, r := range hitRowsOf(h.states, h.attacker.ID) {
 		if h.hitTriggerHolds(r) {
@@ -84,17 +87,25 @@ func (h hitFacts) hitTriggerHolds(r hitRow) bool {
 	return true
 }
 
-// hitEffectPart is the damage of the row as a part. An effect the master hides is "Outra fonte" in the part.
+// hitEffectPart is the damage of the row as a part. It keeps the spell's name and its dice; Hide says the effect is
+// not the other players' to read, and the view of each viewer hides what he may not read (hitPartForOthers).
 func (h hitFacts) hitEffectPart(r hitRow) partRecord {
 	key := conv.OrZero(r.state.SourceKey)
-	label, source := h.names(key), key
-	if !r.state.PlayerVisible {
-		label, source = otherSourceTx, ""
-	}
 	return partRecord{
-		Key: key, Label: label, Kind: partAuto, Count: clamp32(r.mod.Dice, 0, 100), Sides: clamp32(r.mod.Die, 0, 100),
-		DamageType: cmp.Or(r.mod.DamageType, h.attack.DamageType), Source: source, Available: true, Table: tableHitEffect, Effect: r.state.ID,
+		Key: key, Label: h.names(key), Kind: partAuto, Count: clamp32(r.mod.Dice, 0, 100), Sides: clamp32(r.mod.Die, 0, 100),
+		DamageType: cmp.Or(r.mod.DamageType, h.attack.DamageType), Source: key, Available: true, Table: tableHitEffect, Effect: r.state.ID,
+		Hide: !r.state.PlayerVisible || r.state.Audience != audienceAll,
 	}
+}
+
+// hitPartForOthers is the key, the label and the source of a spell's hit part as a player who is neither the master
+// nor the attacker's owner reads it (RN-10): an effect the master hides, or that is the owner's, is "Outra fonte" with
+// the row's id for a key, and nothing of the spell.
+func hitPartForOthers(sp partRecord, label, source string) (string, string, string) {
+	if sp.Hide {
+		return sp.Effect, otherSourceTx, ""
+	}
+	return sp.Key, label, source
 }
 
 // liveHitParts takes out of the parts the damage of an effect that was used or ended since the hit offered it (two
@@ -147,13 +158,17 @@ func (s *Service) useHitEffects(ctx context.Context, c *combatTx, u hitUse, pr *
 	return nil
 }
 
-// useHitEffect uses one effect.
+// useHitEffect uses one effect. A next_hit that is already spent (the replay of a roll a window held, after another roll
+// used it) is not used again, and its save is not rolled again.
 func (s *Service) useHitEffect(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, ev *actionEvent) error {
 	mod, ok := hitModifierOf(effectModifiers(st))
 	if !ok {
 		return nil
 	}
-	if consumesHit(mod.Trigger) && st.SpentAt == nil {
+	if consumesHit(mod.Trigger) {
+		if st.SpentAt != nil {
+			return nil
+		}
 		if err := c.q.SetLastingEffectSpent(ctx, playdb.SetLastingEffectSpentParams{ID: st.ID, SpentAt: &c.now}); err != nil {
 			return fmt.Errorf("use the effect: %w", err)
 		}
@@ -162,34 +177,66 @@ func (s *Service) useHitEffect(ctx context.Context, c *combatTx, u hitUse, st pl
 	if mod.Save == "" {
 		return nil
 	}
-	return s.hitSave(ctx, c, u, st, mod)
+	return s.hitSave(ctx, c, u, st, mod, ev)
 }
 
 // hitSave has the target make the save of the spell against the DC kept on the row, as a rider's save is made
-// (rollRiderSave: Magic Resistance, Legendary Resistance, the held rolls), and on a failure gives it the
-// conditions for as long as the spell lasts.
-func (s *Service) hitSave(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, mod rules.EffectModifier) error {
+// (rollRiderSave: Magic Resistance, Legendary Resistance, the held rolls), writes the line of the roll like a
+// monk's rider (the master and the target's own player read it) and on a failure gives it the conditions: until
+// the end of its next turn, or as long as the spell lasts. The rows and the lines are noted in the event, so that
+// the undo of the damage takes them away.
+func (s *Service) hitSave(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, mod rules.EffectModifier, ev *actionEvent) error {
 	dc := defaultHitSaveDC
 	if st.SaveDc != nil {
 		dc = *st.SaveDc
 	}
-	var re riderEvent
+	re := riderEvent{Choice: choiceApply, Result: riderSaved, DC: dc}
 	saved, err := s.rollRiderSave(ctx, c, u.m, u.target, mod.Save, mod.OnFailConditions, dc, &re)
-	if err != nil || saved {
+	if err != nil {
 		return err
 	}
-	conds, err := s.hitConditions(ctx, c, u.target, mod.OnFailConditions)
-	if err != nil || len(conds) == 0 {
+	var conds []string
+	if !saved {
+		if conds, err = s.hitConditions(ctx, c, u.target, mod.OnFailConditions); err != nil {
+			return err
+		}
+		if len(conds) > 0 {
+			re.Result = riderFailed
+		}
+	}
+	if err := s.hitSaveLine(ctx, c, u, st, &re, ev); err != nil || len(conds) == 0 {
 		return err
 	}
-	spec, err := s.hitConditionsSpec(ctx, c, u, st, conds)
+	spec, err := s.hitConditionsSpec(ctx, c, u, st, mod, conds)
 	if err != nil {
 		return err
 	}
 	if err := s.endHitConditions(ctx, c, u.cs, u.target, st); err != nil {
 		return err
 	}
-	return s.putRiderEffect(ctx, c, u.cs, spec)
+	rows, line, err := s.putRiderEffect(ctx, c, u.cs, spec)
+	if err != nil {
+		return err
+	}
+	for _, r := range rows {
+		ev.EffectsAdded = append(ev.EffectsAdded, r.ID)
+	}
+	if line != "" {
+		ev.EffectLines = append(ev.EffectLines, line)
+	}
+	return nil
+}
+
+// hitSaveLine writes the line of the save: the target's roll, the DC and what came of it, as the line of a rider.
+func (s *Service) hitSaveLine(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, re *riderEvent, ev *actionEvent) error {
+	line, err := insertEventID(ctx, c, eventHitRider, &c.actorUserID, nil, actionEvent{
+		Round: c.enc.Round, Secret: secretOf(u.attacker, u.target) || s.effectHiddenFrom(st, []playdb.Combatant{u.target}), Actor: u.attacker.ID, Target: u.target.ID, Key: conv.OrZero(st.SourceKey), Rider: re,
+	})
+	if err != nil {
+		return err
+	}
+	ev.EffectLines = append(ev.EffectLines, line)
+	return nil
 }
 
 // hitConditions are the conditions of the list the target is not immune to.
@@ -211,23 +258,28 @@ func (s *Service) hitConditions(ctx context.Context, c *combatTx, target playdb.
 	return out, nil
 }
 
-// hitConditionsSpec is the effect a failed save puts on the target: the conditions, of the spell's casting, so that
-// the end of the caster's concentration ends it.
-func (s *Service) hitConditionsSpec(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, conds []string) (effectSpec, error) {
+// hitConditionsSpec is the effect a failed save puts on the target: the conditions, of the spell's casting. They last
+// until the end of the target's next turn, or, when the modifier says spell_end, as the spell does: the end of the
+// caster's concentration ends them.
+func (s *Service) hitConditionsSpec(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, mod rules.EffectModifier, conds []string) (effectSpec, error) {
 	key := conv.OrZero(st.SourceKey)
+	spec := effectSpec{
+		key: key, sourceKind: "spell", caster: &u.attacker, group: conv.OrZero(st.GroupID), targets: []playdb.Combatant{u.target},
+		dur: durationSpec{Kind: rules.EffectDurationUntilEndOfTurnOf}, dc: st.SaveDc, visible: &st.PlayerVisible, audience: st.Audience,
+		conditions: conds, modifiers: []rules.EffectModifier{},
+	}
+	if mod.ConditionDuration != rules.ConditionDurationSpellEnd {
+		return spec, nil
+	}
 	content, err := s.contentOf(ctx, c)
 	if err != nil {
 		return effectSpec{}, err
 	}
-	dur := durationSpec{Kind: rules.EffectDurationUntilDismissed}
+	spec.concentration, spec.dur = st.Concentration, durationSpec{Kind: rules.EffectDurationUntilDismissed}
 	if def, ok := content.CombatSpellEffect(key); ok {
-		dur = spellEffectDuration(content, def, key, u.attacker)
+		spec.dur = spellEffectDuration(content, def, key, u.attacker)
 	}
-	return effectSpec{
-		key: key, sourceKind: "spell", caster: &u.attacker, group: conv.OrZero(st.GroupID), targets: []playdb.Combatant{u.target}, dur: dur,
-		concentration: st.Concentration, dc: st.SaveDc, visible: &st.PlayerVisible, audience: st.Audience,
-		conditions: conds, modifiers: []rules.EffectModifier{},
-	}, nil
+	return spec, nil
 }
 
 // endHitConditions ends the conditions an earlier hit of the same casting left on the target: the new ones replace them.

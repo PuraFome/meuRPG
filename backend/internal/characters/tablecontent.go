@@ -555,6 +555,10 @@ var (
 		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_EACH_HIT:       rules.HitTriggerEachHit,
 		rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_MARKED_TARGET:  rules.HitTriggerMarkedTarget,
 	}
+	hitConditionDurationOf = map[rulesv1.TableHitConditionDuration]string{
+		rulesv1.TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_END_OF_NEXT_TURN: rules.ConditionDurationNextTurn,
+		rulesv1.TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_SPELL_END:        rules.ConditionDurationSpellEnd,
+	}
 	summonTurnOf = map[rulesv1.TableSummonTurnMode]string{
 		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWN_INITIATIVE:   rules.SummonTurnOwnInitiative,
 		rulesv1.TableSummonTurnMode_TABLE_SUMMON_TURN_MODE_OWNER_ROLL_GROUP: rules.SummonTurnOwnerRollGroup,
@@ -638,6 +642,7 @@ func tableSpellEffectOf(m *rulesv1.TableSpellEffect) *rules.TableSpellEffect {
 			ResistanceKind: enumOrUnknown(resistanceKindOf, x.GetResistanceKind()), DamageTypes: x.GetDamageTypes(),
 			Trigger: enumOrUnknown(hitTriggerOf, x.GetTrigger()), Dice: int(x.GetDice()), PerSlotDice: int(x.GetPerSlotDice()),
 			MaxDice: int(x.GetMaxDice()), DamageType: x.GetDamageType(), Save: x.GetSave(), OnFailConditions: x.GetOnFailConditions(),
+			ConditionDuration: enumOrUnknown(hitConditionDurationOf, x.GetConditionDuration()),
 		}
 		for _, r := range x.GetAppliesTo() {
 			w := enumOrUnknown(effectRollOf, r)

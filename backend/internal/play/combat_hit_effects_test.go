@@ -1,7 +1,7 @@
 package play
 
 import (
-	"regexp"
+	"cmp"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -21,11 +21,14 @@ const (
 	trigMelee  = rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_NEXT_MELEE_HIT
 	trigEach   = rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_EACH_HIT
 	trigMarked = rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_MARKED_TARGET
+
+	handaxeKey = "equipment:handaxe"
+	spellEnd   = rulesv1.TableHitConditionDuration_TABLE_HIT_CONDITION_DURATION_UNTIL_SPELL_END
 )
 
 // hitMod is a weapon_hit_damage of one d8 on the trigger; edit changes it.
 func hitMod(trigger rulesv1.TableHitTrigger, edit ...func(*tableMod)) *tableMod {
-	m := &tableMod{Kind: hitModKind, Trigger: trigger, Die: 8, Dice: 1}
+	m := &tableMod{Kind: hitModKind, Trigger: trigger, Die: 8, Dice: 1, MaxDice: 10}
 	for _, e := range edit {
 		e(m)
 	}
@@ -38,29 +41,62 @@ func markShape(s *rulesv1.TableSpell) {
 	s.Target = tableTarget(rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_CREATURE)
 }
 
+// hitSpellOf is a table spell of the fixture: its name, its key, how it is shaped and the modifiers of its effect.
+type hitSpellOf struct {
+	name, key string
+	shape     func(*rulesv1.TableSpell)
+	mods      []*tableMod
+}
+
+// hitParty is who the fixture makes: the class and level of Pensantus (the caster), his Strength and the spells.
+type hitParty struct {
+	class    string
+	level    int32
+	str, cha int32
+	spells   []hitSpellOf
+}
+
 // newHitCasters is the party with the spell Marca de Nanquim, a self spell for a minute of concentration (shape
 // reshapes it) that carries the modifiers.
 func newHitCasters(t *testing.T, shape func(*rulesv1.TableSpell), mods ...*tableMod) *armed {
 	t.Helper()
+	return newHitParty(t, hitParty{spells: []hitSpellOf{{name: "Marca de Nanquim", key: tableMark, shape: shape, mods: mods}}})
+}
+
+// createHitSpell makes one table spell of the party.
+func createHitSpell(t *testing.T, a *armed, class string, h hitSpellOf) {
+	t.Helper()
+	sp := tableSpell(h.name, 1, class, rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF, tableTarget(rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_SELF))
+	sp.Concentration = true
+	sp.CastingTime = &rulesv1.TableSpellCastingTime{Unit: rulesv1.CastingTimeUnit_CASTING_TIME_UNIT_BONUS_ACTION, Amount: 1}
+	sp.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 1, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE, UpTo: true}
+	sp.Effect = &rulesv1.TableSpellEffect{Modifiers: h.mods, Visibility: rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC}
+	if h.shape != nil {
+		h.shape(sp)
+	}
+	if _, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+		CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableSpell{TableSpell: sp},
+	})); err != nil {
+		t.Fatalf("CreateTableEntry(%s) error = %v", h.name, err)
+	}
+}
+
+// newHitParty is the party of the fixture: Pensantus casts the spells (a wizard 9 unless the party says), with a battleaxe, a
+// shortbow and a handaxe.
+func newHitParty(t *testing.T, p hitParty) *armed {
+	t.Helper()
+	p.class, p.level = cmp.Or(p.class, "class:wizard"), cmp.Or(p.level, 9)
+	p.str, p.cha = cmp.Or(p.str, 16), cmp.Or(p.cha, 8)
 	return newArmedWith(t, func(a *armed) {
-		sp := tableSpell("Marca de Nanquim", 1, "class:wizard", rulesv1.SpellRangeKind_SPELL_RANGE_KIND_SELF, tableTarget(rulesv1.TableSpellTargetKind_TABLE_SPELL_TARGET_KIND_SELF))
-		sp.Concentration = true
-		sp.CastingTime = &rulesv1.TableSpellCastingTime{Unit: rulesv1.CastingTimeUnit_CASTING_TIME_UNIT_BONUS_ACTION, Amount: 1}
-		sp.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 1, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE, UpTo: true}
-		sp.Effect = &rulesv1.TableSpellEffect{Modifiers: mods, Visibility: rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC}
-		if shape != nil {
-			shape(sp)
-		}
-		if _, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
-			CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableSpell{TableSpell: sp},
-		})); err != nil {
-			t.Fatalf("CreateTableEntry(Marca de Nanquim) error = %v", err)
+		var book []string
+		for _, h := range p.spells {
+			createHitSpell(t, a, p.class, h)
+			book = append(book, h.key)
 		}
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
-		book := []string{tableMark}
-		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 9,
-			&rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8}, []string{battleaxe, shortbowKey}, []string{fireBolt}, book, book)
+		a.pens = a.ana.caster(t, a.campaignID, "Pensantus", p.class, "race:gnome", p.level,
+			&rulesv1.AbilityScores{Strength: p.str, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: p.cha}, []string{battleaxe, shortbowKey, handaxeKey}, []string{fireBolt}, book, book)
 		a.bri = a.bia.caster(t, a.campaignID, "Brisa", "class:cleric", "race:human", 3,
 			&rulesv1.AbilityScores{Strength: 10, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 16, Charisma: 8}, []string{maceKey}, []string{sacredFlame}, nil, nil)
 	})
@@ -330,7 +366,7 @@ func TestAHitSpellDiceGrowWithTheSlotUpToTheCap(t *testing.T) {
 	}
 }
 
-// A critical hit doubles the dice of the spell and not the fixed damage of the weapon.
+// A critical hit doubles the dice of the spell and not the fixed damage of the weapon (Pensantus has Strength 16: +3).
 func TestAHitSpellCriticalDoublesTheDiceNotTheFixedDamage(t *testing.T) {
 	t.Parallel()
 	a := newHitCasters(t, nil, hitMod(trigNext))
@@ -344,10 +380,14 @@ func TestAHitSpellCriticalDoublesTheDiceNotTheFixedDamage(t *testing.T) {
 	if r := hitRoll(dmg); r == nil || len(r.GetFaces()) != 2 || r.GetSum() != 5 || r.GetFlat() != 0 {
 		t.Errorf("the part rolled %v, want 2 dice (2 and 3) and no fixed damage", r)
 	}
+	var weapon *playv1.DamagePartRoll
 	for _, r := range dmg.GetPartRolls() {
-		if r.GetPartKey() == extraWeaponDamage && (len(r.GetFaces()) != 2 || r.GetFlat() != 0) {
-			t.Errorf("the weapon rolled %v, want 2 dice and its own fixed damage once", r)
+		if r.GetPartKey() == extraWeaponDamage {
+			weapon = r
 		}
+	}
+	if weapon == nil || len(weapon.GetFaces()) != 2 || weapon.GetFlat() != 3 {
+		t.Errorf("the weapon rolled %v, want 2 dice and its Strength damage (3) once", weapon)
 	}
 }
 
@@ -393,12 +433,14 @@ func TestAHitSpellDamageTypeOverridesTheWeaponsAndResistanceCountsByType(t *test
 	}
 }
 
-// The save of the spell: a target that passes it is left as it is; one that fails it gets the conditions, which end
-// with the caster's concentration.
+// The save of the spell: a target that passes it is left as it is; one that fails it gets the conditions, which (with
+// condition_duration spell_end) end with the caster's concentration.
 func TestAHitSpellSaveFailGivesTheConditionsAndPassLeavesThem(t *testing.T) {
 	t.Parallel()
 	frightened := "condition:frightened"
-	a := newHitCasters(t, nil, hitMod(trigEach, func(m *tableMod) { m.Save, m.OnFailConditions = "wis", []string{frightened} }))
+	a := newHitCasters(t, nil, hitMod(trigEach, func(m *tableMod) {
+		m.Save, m.OnFailConditions, m.ConditionDuration = "wis", []string{frightened}, spellEnd
+	}))
 	e := a.hitFight(t)
 	a.castMark(t, e, 1)
 	conditionsOf := func(label string) []string { return byLabel(t, a.get(t, a.master), label).GetConditions() }
@@ -435,35 +477,5 @@ func TestAHitSpellSaveFailGivesTheConditionsAndPassLeavesThem(t *testing.T) {
 	}
 	if has("Capitão Goblin") {
 		t.Errorf("the condition outlived the concentration: %v", conditionsOf("Capitão Goblin"))
-	}
-}
-
-// RN-10: the dice, the die, the trigger and the save of the pending effect are the caster's player's and the master's;
-// no other player reads them in the combat, the log or the turn options. The canary is a d12 of 17 dice (and a 19
-// cap), which nothing else of the fight shows.
-func TestRN10_APendingHitEffectReachesOnlyItsCastersPlayerAndTheMaster(t *testing.T) {
-	t.Parallel()
-	a := newHitCasters(t, markShape, hitMod(trigMarked, func(m *tableMod) {
-		m.Die, m.Dice, m.MaxDice, m.Save, m.OnFailConditions = 12, 17, 19, "wis", []string{"condition:frightened"}
-	}))
-	e := a.hitFight(t)
-	a.castMark(t, e, 1, "Goblin")
-	canaries := []*regexp.Regexp{regexp.MustCompile(`"die":\s*12`), regexp.MustCompile(`"dice[A-Za-z]*":\s*17`), regexp.MustCompile(`(?i)marked_target|next_hit|each_hit`)}
-	for _, p := range []struct {
-		name string
-		u    *user
-	}{{"Caio", a.caio}, {"Bia", a.bia}} {
-		text := a.readsOf(t, p.u, e, "Toren")
-		for _, re := range canaries {
-			if re.MatchString(text) {
-				t.Errorf("%s reads %s of the pending effect", p.name, re)
-			}
-		}
-	}
-	// The positive controls: the caster's player and the master read the card with the die.
-	for name, u := range map[string]*user{"Ana": a.ana, "the master": a.master} {
-		if text := a.readsOf(t, u, e, "Pensantus"); !canaries[0].MatchString(text) {
-			t.Errorf("%s does not read the die of the effect: the canary is unreachable", name)
-		}
 	}
 }

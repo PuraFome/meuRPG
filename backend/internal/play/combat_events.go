@@ -788,6 +788,10 @@ type actionEvent struct {
 	// EffectsSpent are the effects whose disadvantage an attack roll used up (Zombaria Viciosa),
 	// which its undo gives back (lasting_effects_once.go).
 	EffectsSpent []string `json:"effects_spent,omitempty"`
+	// EffectsAdded are the effects a damage roll put on its target (the conditions of a spell's failed save), and EffectLines
+	// the lines it wrote about them and about the save: the undo of the roll takes them away.
+	EffectsAdded []string `json:"effects_added,omitempty"`
+	EffectLines  []string `json:"effect_lines,omitempty"`
 	// Dragged is the creature a grappler dragged along in a move, and where it stood (the
 	// move's undo puts it back).
 	Dragged     string     `json:"dragged_id,omitempty"`
@@ -843,7 +847,7 @@ type effectRef struct {
 // back with the action (UndoneAlso), so that no log keeps them and they do not stop the
 // undo chain.
 func (ev actionEvent) linesBefore() []string {
-	lines := slices.Concat(ev.EndedLines, ev.FollowUpLines, ev.RevealLines, ev.StateLines)
+	lines := slices.Concat(ev.EndedLines, ev.FollowUpLines, ev.RevealLines, ev.StateLines, ev.EffectLines)
 	if ev.Parried != nil {
 		lines = append(lines, ev.Parried.Event) // the Parry's line goes with the attack it turned into a miss
 	}
