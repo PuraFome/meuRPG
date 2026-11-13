@@ -51,7 +51,7 @@ func readReadyCall(req *playv1.ReadyActionRequest, key, encID string) (readyCall
 type readyFlow struct {
 	take *takeActionFlow
 	call readyCall
-	// name is the held action's name, for the event.
+	// name is the held action's name, kept in the row and the event.
 	name string
 }
 
@@ -85,7 +85,7 @@ func (f *readyFlow) run(ctx context.Context) (actionEvent, error) {
 	if err != nil {
 		return actionEvent{}, err
 	}
-	t.made.Readied = readiedEventOf(row, f.name)
+	t.made.Readied = readiedEventOf(row)
 	if err := touch(ctx, t.c); err != nil {
 		return actionEvent{}, err
 	}
@@ -174,7 +174,7 @@ func (f *readyFlow) insert(ctx context.Context) (playdb.ReadiedAction, error) {
 	who := f.take.who
 	p := playdb.InsertReadiedActionParams{
 		EncounterID: f.take.c.enc.ID, CombatantID: who.ID, Round: f.take.c.enc.Round, TriggerText: f.call.trigger,
-		Kind: f.call.kind, ActionKey: nilIfEmpty(f.call.key), TargetID: nilIfEmpty(f.call.target), CreatedAt: f.take.c.now,
+		Kind: f.call.kind, ActionKey: nilIfEmpty(f.call.key), ActionNamePt: f.name, TargetID: nilIfEmpty(f.call.target), CreatedAt: f.take.c.now,
 	}
 	if f.call.kind == readiedMove {
 		p.MoveFt = readyMoveFt(who)
@@ -236,5 +236,5 @@ func (s *Service) cancelReadiedTx(ctx context.Context, c *combatTx, m authz.Memb
 
 // readiedLostEvent is the event of a readied action that ended without firing.
 func readiedLostEvent(row playdb.ReadiedAction, who playdb.Combatant, round int32) actionEvent {
-	return actionEvent{Round: round, Secret: who.Hidden, Actor: who.ID, Readied: readiedEventOf(row, "")}
+	return actionEvent{Round: round, Secret: who.Hidden, Actor: who.ID, Readied: readiedEventOf(row)}
 }

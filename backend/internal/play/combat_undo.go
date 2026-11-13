@@ -115,6 +115,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainCreatures,
 	chainCastZoneCatch,
 	chainConcentrationEnd,
+	chainReadiedDefeat,
 	chainStateEndedByVitals,
 	chainOffer,
 	chainMoveCompanions,

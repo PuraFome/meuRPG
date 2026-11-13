@@ -83,10 +83,13 @@ type readiedEvent struct {
 	Target string `json:"target_id,omitempty"`
 	// Canceled says a readied_lost was the owner's CancelReadied, not the start of the next turn.
 	Canceled bool `json:"canceled,omitempty"`
+	// Defeated says a readied_lost came from the readier's defeat: it is written before the event of the change that
+	// defeated it, and the undo of that change goes past it (chainReadiedDefeat).
+	Defeated bool `json:"defeated,omitempty"`
 }
 
-// readiedEventOf is the event's copy of a row.
-func readiedEventOf(row playdb.ReadiedAction, name string) *readiedEvent {
+// readiedEventOf is the event's copy of a row, with the name the held action had when it was readied.
+func readiedEventOf(row playdb.ReadiedAction) *readiedEvent {
 	var key, target string
 	if row.ActionKey != nil {
 		key = *row.ActionKey
@@ -94,7 +97,7 @@ func readiedEventOf(row playdb.ReadiedAction, name string) *readiedEvent {
 	if row.TargetID != nil {
 		target = *row.TargetID
 	}
-	return &readiedEvent{ID: row.ID, Trigger: row.TriggerText, Kind: row.Kind, ActionKey: key, Name: name, MoveFt: row.MoveFt, Target: target}
+	return &readiedEvent{ID: row.ID, Trigger: row.TriggerText, Kind: row.Kind, ActionKey: key, Name: row.ActionNamePt, MoveFt: row.MoveFt, Target: target}
 }
 
 // ReadyAction implements playv1connect.ReadyServiceHandler.

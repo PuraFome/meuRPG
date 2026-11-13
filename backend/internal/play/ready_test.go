@@ -350,3 +350,116 @@ func TestEndOfCombatDropsTheReadiedActions(t *testing.T) {
 		t.Errorf("rows after the end = %q, want none", got)
 	}
 }
+
+// onTurnOf ends turns as the master until it is the combatant's turn.
+func (a *armed) onTurnOf(t *testing.T, e *playv1.Encounter, label string) *playv1.Encounter {
+	t.Helper()
+	for range 5 {
+		if e.GetCurrentCombatantId() == a.id(t, label) {
+			return e
+		}
+		e = a.mustEndTurn(t, a.master, e)
+	}
+	t.Fatalf("it never became %s's turn", label)
+	return nil
+}
+
+// readyGoblinAttack has the master ready the goblin's first attack on its turn; it answers the attack's name.
+func (a *armed) readyGoblinAttack(t *testing.T, e *playv1.Encounter) (*playv1.Encounter, string) {
+	t.Helper()
+	attacks := a.mustOptions(t, a.master, e, "Goblin").GetOptions().GetAttacks()
+	if len(attacks) == 0 {
+		t.Fatal("the goblin has no attack")
+	}
+	at := attacks[0].GetAttack()
+	got := a.mustReady(t, a.master, &playv1.ReadyActionRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Goblin"), IdempotencyKey: newKey(),
+		TriggerText: readyTrigger, Kind: playv1.ReadiedKind_READIED_KIND_ATTACK, ActionKey: at.GetKey(),
+	})
+	return got, at.GetNamePt()
+}
+
+// The held action is named on the combatant as the log line names it: an attack on a character's sheet and a monster's.
+func TestTheReadiedActionIsNamedAsTheLogNamesIt(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	a.mustReady(t, a.caio, a.readyAttack(t, e))
+	e = a.onTurnOf(t, e, "Goblin")
+	_, goblinAttack := a.readyGoblinAttack(t, e)
+	if goblinAttack == "" {
+		t.Fatal("the goblin's attack has no name in the options")
+	}
+	for _, c := range []struct{ label, want string }{{"Toren", ""}, {"Goblin", goblinAttack}} {
+		r := byLabel(t, a.get(t, a.master), c.label).GetReadied()
+		if r.GetActionNamePt() == "" || (c.want != "" && r.GetActionNamePt() != c.want) {
+			t.Errorf("%s's readied action is named %q, want %q", c.label, r.GetActionNamePt(), c.want)
+		}
+		var line string
+		for _, l := range a.readiedLines(t, a.master, e, playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED) {
+			if l.GetActorLabel() == c.label {
+				line = l.GetReadied().GetActionNamePt()
+			}
+		}
+		if line != r.GetActionNamePt() {
+			t.Errorf("%s's readied line names %q, the combatant %q", c.label, line, r.GetActionNamePt())
+		}
+	}
+}
+
+// A readier that is defeated loses its readied action then (its turns are skipped): the row is lost with its line, the
+// undo of the damage gives the hit points back and not the readied action, and nobody can fire or cancel it. An NPC that
+// falls to damage, and a player whose death the master confirms.
+func TestADefeatedReadierLosesTheReadiedAction(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	a.mustReady(t, a.caio, a.readyAttack(t, e))
+	e = a.onTurnOf(t, e, "Goblin")
+	a.readyGoblinAttack(t, e)
+
+	if _, err := a.adjustHP(t, e, "Goblin", damageHP(999)); err != nil {
+		t.Fatalf("damage the goblin: %v", err)
+	}
+	if _, _, defeated := a.hp(t, "Goblin"); !defeated {
+		t.Fatal("the goblin is not defeated")
+	}
+	if got := a.readiedStatus(t, "Goblin"); got != readiedLost {
+		t.Errorf("the goblin's rows after its defeat = %q, want one lost", got)
+	}
+	if r := byLabel(t, a.get(t, a.master), "Goblin").GetReadied(); r != nil {
+		t.Errorf("the master reads the defeated goblin's readied action: %v", r)
+	}
+	lost := a.readiedLines(t, a.master, e, playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST)
+	if len(lost) != 1 || lost[0].GetActorLabel() != "Goblin" || lost[0].GetReadiedLost().GetCanceled() {
+		t.Errorf("the lost lines = %v, want the goblin's", lost)
+	}
+	a.mustUndo(t, e) // the damage: the goblin stands again, the readied action stays lost
+	if _, _, defeated := a.hp(t, "Goblin"); defeated {
+		t.Error("the undo left the goblin defeated")
+	}
+	if got := a.readiedStatus(t, "Goblin"); got != readiedLost {
+		t.Errorf("the goblin's rows after the undo = %q, want one lost", got)
+	}
+
+	a.execSQL(t, `UPDATE combatants SET death_failures = 3 WHERE label = 'Toren'`)
+	if _, err := a.master.combat.ConfirmDeath(t.Context(), connect.NewRequest(&playv1.ConfirmDeathRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), CombatantId: a.id(t, "Toren"), IdempotencyKey: newKey(),
+	})); err != nil {
+		t.Fatalf("ConfirmDeath() error = %v", err)
+	}
+	if got := a.readiedStatus(t, "Toren"); got != readiedLost {
+		t.Errorf("Toren's rows after his death = %q, want one lost", got)
+	}
+	for _, u := range []*user{a.caio, a.master} {
+		var mine int
+		for _, l := range a.readiedLines(t, u, e, playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST) {
+			if l.GetActorLabel() == "Toren" && l.GetReadiedLost().GetTriggerText() == readyTrigger {
+				mine++
+			}
+		}
+		if mine != 1 {
+			t.Errorf("%s reads %d lost lines of Toren with the trigger, want 1", u.id, mine)
+		}
+	}
+}

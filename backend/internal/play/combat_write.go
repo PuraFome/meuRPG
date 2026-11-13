@@ -596,7 +596,11 @@ func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
 	}
 	// The reaction windows that stopped being valid close, and what the ones
 	// that are all answered held goes on.
-	return s.settleReactions(ctx, c)
+	if err := s.settleReactions(ctx, c); err != nil {
+		return err
+	}
+	// A readier the change defeated (or that a replayed action defeated) loses its readied action.
+	return loseReadiedOfDefeated(ctx, c)
 }
 
 // record writes the change's event and keeps in the result what the handlers and the log
