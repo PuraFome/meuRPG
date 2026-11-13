@@ -177,8 +177,7 @@ func checkMagicItems(b *Build, c *content) error {
 	for i, it := range b.MagicItems {
 		f := fmt.Sprintf("full.magic_items[%d].key", i)
 		m, ok := c.magicItems[it.Key]
-		switch {
-		case !ok || len(m.Variants) > 0 && !m.Standalone:
+		if !ok || len(m.Variants) > 0 && !m.Standalone {
 			return invalid(f, "is not a magic item of the catalog, or is a family: pick one of its variants")
 		}
 	}
