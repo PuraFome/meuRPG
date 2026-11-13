@@ -291,13 +291,21 @@ func (s *Service) mayBeMounted(v combatViewer, rider, mount playdb.Combatant, cs
 	if mount.ID == rider.ID {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("a combatant does not mount itself"))
 	}
-	if rider.MountedOnID == nil && (mount.Defeated || !willingMount(v, mount)) { // a rider that rides is refused first, whatever it asked
+	if rider.MountedOnID == nil && (mount.Defeated || !willingMount(v, mount)) || hiddenPair(cs, v, rider, mount) { // a rider that rides is refused first, whatever it asked
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_A_MOUNT, "that combatant is not a willing mount", func(b *playv1.EncounterBlocked) { b.CombatantIds = []string{mount.ID} })
 	}
 	if no := mountVerdict(cs, rider, mount, standing); no != nil {
 		return no.err()
 	}
 	return nil
+}
+
+// hiddenPair says whether the viewer is kept from a combatant it does not see in the pair of the rider or the mount: a rider that sits
+// on the mount, a mount that carries the rider or that rides another. The refusals that would name it are answered as for a combatant
+// that is no mount, and the options do not list the mount (RN-10). The master sees every row, so it is never kept from one.
+func hiddenPair(cs []playdb.Combatant, v combatViewer, rider, mount playdb.Combatant) bool {
+	unseen := func(c *playdb.Combatant) bool { return c != nil && !v.sees(*c) }
+	return unseen(riderOf(cs, mount.ID)) || unseen(riderOf(cs, rider.ID)) || unseen(ridingOn(cs, mount)) || unseen(ridingOn(cs, rider))
 }
 
 // dismountSquare is the square the rider lands on, or the refusal.
@@ -404,7 +412,7 @@ func listedMount(v combatViewer, rider, mount playdb.Combatant) bool {
 func mountChoices(cs []playdb.Combatant, v combatViewer, rider playdb.Combatant, standing grid.Surface) []*rulesv1.MountChoice {
 	var out []*rulesv1.MountChoice
 	for _, mount := range cs {
-		if mount.ID == rider.ID || mount.Defeated || !placed(mount) || !v.sees(mount) || !willingMount(v, mount) || !listedMount(v, rider, mount) {
+		if mount.ID == rider.ID || mount.Defeated || !placed(mount) || !v.sees(mount) || !willingMount(v, mount) || !listedMount(v, rider, mount) || hiddenPair(cs, v, rider, mount) {
 			continue
 		}
 		choice := &rulesv1.MountChoice{CombatantId: mount.ID, CostDft: clamp32(mountCostDFt(rider, standing), 0, math.MaxInt32)}
