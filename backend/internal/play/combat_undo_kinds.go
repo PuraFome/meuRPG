@@ -188,6 +188,10 @@ func (u *undoer) putShape(ctx context.Context, who playdb.Combatant, want *shape
 	if err != nil {
 		return nil, err
 	}
+	// A form an undo puts back starts its clock over: what was left is not in the hit points' state.
+	if err := u.s.restoreFormClock(ctx, u.c, who.CharacterID, &who, want != nil, 0, body); err != nil {
+		return nil, err
+	}
 	u.c.told = append(u.c.told, restored)
 	return restored, applyBody(ctx, u.c, who, body)
 }
@@ -356,7 +360,23 @@ func (u *undoer) damageRolled(ctx context.Context, ev actionEvent) error {
 	if err := u.partsOfferedBack(ctx, ev); err != nil {
 		return err
 	}
+	if err := u.effectsAddedBack(ctx, ev); err != nil {
+		return err
+	}
 	return u.partsSpentBack(ctx, ev)
+}
+
+// effectsAddedBack takes away the effects the roll put on its target (the conditions of a spell's failed save).
+func (u *undoer) effectsAddedBack(ctx context.Context, ev actionEvent) error {
+	if len(ev.EffectsAdded) == 0 {
+		return nil
+	}
+	for _, id := range ev.EffectsAdded {
+		if err := u.c.q.DeleteLastingEffect(ctx, id); err != nil {
+			return fmt.Errorf("take the effects of the roll away: %w", err)
+		}
+	}
+	return u.s.refreshCombatants(ctx, u.c, ev.Target)
 }
 
 // emptyJSONList is the value of the columns a roll leaves empty (part_rolls, steps).

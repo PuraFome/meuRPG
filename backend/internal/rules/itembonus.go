@@ -90,7 +90,7 @@ func (x *deriver) itemModifiers() {
 
 // checkItemBonuses checks the bonuses on the gear: at most MaxCarried, each on a piece of the sheet, none twice, each
 // from 1 to MaxItemBonus.
-func checkItemBonuses(b *Build) error {
+func checkItemBonuses(b *Build, c *content) error {
 	if len(b.ItemBonuses) > MaxCarried {
 		return invalid("full.item_bonuses", "must have at most %d entries", MaxCarried)
 	}
@@ -104,8 +104,22 @@ func checkItemBonuses(b *Build) error {
 			return invalid(f+".key", "repeats an entry")
 		case ib.Bonus < 1 || ib.Bonus > MaxItemBonus:
 			return invalid(f+".bonus", "must be from 1 to %d", MaxItemBonus)
+		case ib.ItemKey != "" && !fitsCatalogItem(b, c, ib):
+			return invalid(f+".item_key", "is not a catalog item (no family) that fits the piece: armor for the armor and the shield, a weapon for a weapon")
 		}
 		seen[ib.Key] = true
 	}
 	return nil
+}
+
+// fitsCatalogItem says the piece names a catalog item that is no family and whose category fits it.
+func fitsCatalogItem(b *Build, c *content, ib ItemBonus) bool {
+	m, ok := c.magicItems[ib.ItemKey]
+	if !ok || len(m.Variants) > 0 && !m.Standalone {
+		return false
+	}
+	if ib.Key == b.Armor || ib.Key == ShieldKey {
+		return m.Category == "armor"
+	}
+	return m.Category == "weapon"
 }

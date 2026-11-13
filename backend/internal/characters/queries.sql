@@ -307,7 +307,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states, v.attunement_open
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -322,7 +322,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states, v.attunement_open
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -337,7 +337,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states, v.attunement_open
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -396,6 +396,18 @@ ON CONFLICT (character_id) DO UPDATE SET
     revision = character_vitals.revision + 1,
     updated_at = excluded.updated_at
 RETURNING revision, updated_at;
+
+-- name: GetAttunementOpen :one
+-- Whether the window to attune a magic item is open for the character. No vitals row means closed.
+SELECT COALESCE((SELECT v.attunement_open FROM character_vitals AS v WHERE v.character_id = sqlc.arg(character_id)), false)::BOOLEAN AS open;
+
+-- name: SetAttunementOpen :exec
+-- Opens or closes the window to attune a magic item: the first call creates the vitals row, as
+-- SetVitalsArmorBase does. It leaves the revision of an existing row alone: the window is not a number of the vitals.
+INSERT INTO character_vitals
+    (character_id, attunement_open, revision, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.arg(open), 1, sqlc.arg(now))
+ON CONFLICT (character_id) DO UPDATE SET attunement_open = excluded.attunement_open;
 
 -- name: ListMapCharacters :many
 -- Those of the given characters that may stand on a map of the campaign as

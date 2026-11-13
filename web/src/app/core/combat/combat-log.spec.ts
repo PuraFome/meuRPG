@@ -1004,6 +1004,12 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
     expect(logLine(ws({ endReason: WildShapeEndReason.UNCONSCIOUS }))?.text).toBe(
       ' voltou à forma normal, ao ficar inconsciente',
     );
+    expect(logLine(ws({ endReason: WildShapeEndReason.EXPIRED }))?.text).toBe(
+      ' voltou à forma normal: a forma de Lobo acabou, passou o tempo',
+    );
+    expect(logLine(ws({ endReason: WildShapeEndReason.MASTER_ENDED }))?.text).toBe(
+      ' voltou à forma normal: o mestre encerrou a forma de Lobo',
+    );
   });
 
   it('names what an undo would take back', () => {

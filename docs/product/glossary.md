@@ -243,6 +243,8 @@ Where a spell level could be confused with the character's level, the text says 
 | Letargia | Lethargy | The turn in which a creature that ended Velocidade can neither move nor act. |
 | Exaustão | Exhaustion | The six levels of the SRD condition; a long rest lowers one (RN-22). |
 | Efeito | Lasting effect | Something a spell or the master puts on a creature for a while: a condition with an end, a bonus, an extra action. Counted in rounds in combat and in game time outside (RN-22). |
+| Efeito no próximo golpe | Next-hit effect | Weapon damage a spell leaves on its caster's hits: the next hit, the next melee hit, every hit while concentrating, or every hit on the marked target. It is added after a weapon hit, and a next hit spends it (RN-23). |
+| Alvo marcado | Marked target | The creature a next-hit effect of the kind "every hit on the marked target" follows ("Cada golpe no alvo marcado"). It ends when the caster stops concentrating (RN-23). |
 | Tempo de jogo | Game time | Time in the fiction; a round is 6 seconds. It moves outside combat only when the master moves it. |
 | Janela de reação | Reaction window | The question "you may react?" that holds the triggering action until answered. A player reads only their own; for an NPC's, "Esperando o mestre". |
 | Reação | Reaction | An action once per round, returning at the start of the combatant's turn: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave, Queda Lenta and the opportunity attack. |

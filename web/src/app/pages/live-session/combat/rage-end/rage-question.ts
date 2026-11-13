@@ -119,20 +119,27 @@ export class RageQuestion {
   });
 
   constructor() {
-    // The question opens with the focus on the safe button, and the screen scrolls to it.
-    let asked = '';
+    // The question opens with the focus on the safe button, and the screen scrolls to it. A disabled
+    // button takes no focus: the turn's end answers with the question while its call is still in the
+    // air (the buttons are held), so the focus waits for them, once for each question.
+    let focused = '';
     effect(() => {
       const id = this.subject()?.id ?? '';
-      if (id && id !== asked) {
-        afterNextRender(
-          () => {
-            this.box()?.nativeElement.scrollIntoView?.({ block: 'start' });
-            this.safe()?.nativeElement.focus({ preventScroll: true });
-          },
-          { injector: this.injector },
-        );
+      if (!id) {
+        focused = '';
+        return;
       }
-      asked = id;
+      if (id === focused || this.busy()) {
+        return;
+      }
+      focused = id;
+      afterNextRender(
+        () => {
+          this.box()?.nativeElement.scrollIntoView?.({ block: 'start' });
+          this.safe()?.nativeElement.focus({ preventScroll: true });
+        },
+        { injector: this.injector },
+      );
     });
   }
 }

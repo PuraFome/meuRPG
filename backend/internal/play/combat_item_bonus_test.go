@@ -28,6 +28,16 @@ func (u *user) plusHero(t *testing.T, campaignID, name string, bonus *characters
 	return res.Msg.GetCharacter()
 }
 
+// attuneTo attunes the character to the entry as the master does: a save never sets `attuned`, only SetAttunement.
+func (u *user) attuneTo(t *testing.T, campaignID, characterID, entryID string) {
+	t.Helper()
+	if _, err := u.characters.SetAttunement(t.Context(), connect.NewRequest(&charactersv1.SetAttunementRequest{
+		CampaignId: campaignID, CharacterId: characterID, EntryId: entryID, Attuned: true,
+	})); err != nil {
+		t.Fatalf("SetAttunement(%s) error = %v", entryID, err)
+	}
+}
+
 // A +1 rapier reaches the combat through the same derived attack line as the sheet: its blow adds 1 to the damage
 // and is magical, so a wight does not halve it (9 with the modifier, 10 with the +1, all of it); a +1 that asks for
 // attunement the character lacks adds nothing, and the wight halves the plain 9.
@@ -45,7 +55,12 @@ func TestMagicBonusOfTheSheetReachesTheCombatDamage(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			got := hitFor(t, func(a *armed) { a.toren = a.caio.plusHero(t, a.campaignID, "Toren", tt.bonus) }, "monster:wight")
+			got := hitFor(t, func(a *armed) {
+				a.toren = a.caio.plusHero(t, a.campaignID, "Toren", tt.bonus)
+				if tt.bonus.GetAttuned() {
+					a.master.attuneTo(t, a.campaignID, a.toren.GetId(), "bonus:"+rapier)
+				}
+			}, "monster:wight")
 			if got != tt.want {
 				t.Errorf("hit points after the blow = %d, want %d", got, tt.want)
 			}

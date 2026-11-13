@@ -990,6 +990,9 @@ const (
 	// cannot be donned or doffed in a fight (SRD 5.1: it takes 1 to 10 minutes). Only the
 	// master may change it. Nothing is changed.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT EncounterBlockedReason = 127
+	// A stay in a Wild Shape form (AssumeWildShapeRequest.stay) came after the form
+	// had ended: nothing was spent and no new form was taken.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED EncounterBlockedReason = 130
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1103,6 +1106,7 @@ var (
 		125: "ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED",
 		126: "ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED",
 		127: "ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT",
+		130: "ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                      0,
@@ -1213,6 +1217,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED":          125,
 		"ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED":              126,
 		"ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT":                  127,
+		"ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED":                 130,
 	}
 )
 
@@ -2880,6 +2885,10 @@ const (
 	WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP WildShapeEndReason = 4
 	// The druid fell unconscious (a sleep spell, the master's hand).
 	WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS WildShapeEndReason = 5
+	// The form's time ran out: half the druid's level in hours (SRD 5.1).
+	WildShapeEndReason_WILD_SHAPE_END_REASON_EXPIRED WildShapeEndReason = 6
+	// The master ended the form's time by hand (no damage involved).
+	WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER_ENDED WildShapeEndReason = 7
 )
 
 // Enum value maps for WildShapeEndReason.
@@ -2891,14 +2900,18 @@ var (
 		3: "WILD_SHAPE_END_REASON_MASTER",
 		4: "WILD_SHAPE_END_REASON_ZERO_HP",
 		5: "WILD_SHAPE_END_REASON_UNCONSCIOUS",
+		6: "WILD_SHAPE_END_REASON_EXPIRED",
+		7: "WILD_SHAPE_END_REASON_MASTER_ENDED",
 	}
 	WildShapeEndReason_value = map[string]int32{
-		"WILD_SHAPE_END_REASON_UNSPECIFIED": 0,
-		"WILD_SHAPE_END_REASON_LEFT":        1,
-		"WILD_SHAPE_END_REASON_DAMAGE":      2,
-		"WILD_SHAPE_END_REASON_MASTER":      3,
-		"WILD_SHAPE_END_REASON_ZERO_HP":     4,
-		"WILD_SHAPE_END_REASON_UNCONSCIOUS": 5,
+		"WILD_SHAPE_END_REASON_UNSPECIFIED":  0,
+		"WILD_SHAPE_END_REASON_LEFT":         1,
+		"WILD_SHAPE_END_REASON_DAMAGE":       2,
+		"WILD_SHAPE_END_REASON_MASTER":       3,
+		"WILD_SHAPE_END_REASON_ZERO_HP":      4,
+		"WILD_SHAPE_END_REASON_UNCONSCIOUS":  5,
+		"WILD_SHAPE_END_REASON_EXPIRED":      6,
+		"WILD_SHAPE_END_REASON_MASTER_ENDED": 7,
 	}
 )
 
@@ -29430,7 +29443,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xa0)\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xd0)\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -29540,7 +29553,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"5ENCOUNTER_BLOCKED_REASON_CREATURE_ACTION_NO_USES_LEFT\x10|\x124\n" +
 	"0ENCOUNTER_BLOCKED_REASON_WALL_PLACEMENT_REQUIRED\x10}\x120\n" +
 	",ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED\x10~\x12,\n" +
-	"(ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT\x10\x7f*\x91\x03\n" +
+	"(ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT\x10\x7f\x12.\n" +
+	")ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED\x10\x82\x01*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +
@@ -29710,14 +29724,16 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1dCOMBAT_LOG_KIND_STATE_CHANGED\x10 \x12&\n" +
 	"\"COMBAT_LOG_KIND_ROLL_MODE_ANSWERED\x10!\x12%\n" +
 	"!COMBAT_LOG_KIND_CHARACTER_REVIVED\x10\"\x12\x1d\n" +
-	"\x19COMBAT_LOG_KIND_HIT_RIDER\x10(*\xe9\x01\n" +
+	"\x19COMBAT_LOG_KIND_HIT_RIDER\x10(*\xb4\x02\n" +
 	"\x12WildShapeEndReason\x12%\n" +
 	"!WILD_SHAPE_END_REASON_UNSPECIFIED\x10\x00\x12\x1e\n" +
 	"\x1aWILD_SHAPE_END_REASON_LEFT\x10\x01\x12 \n" +
 	"\x1cWILD_SHAPE_END_REASON_DAMAGE\x10\x02\x12 \n" +
 	"\x1cWILD_SHAPE_END_REASON_MASTER\x10\x03\x12!\n" +
 	"\x1dWILD_SHAPE_END_REASON_ZERO_HP\x10\x04\x12%\n" +
-	"!WILD_SHAPE_END_REASON_UNCONSCIOUS\x10\x05*^\n" +
+	"!WILD_SHAPE_END_REASON_UNCONSCIOUS\x10\x05\x12!\n" +
+	"\x1dWILD_SHAPE_END_REASON_EXPIRED\x10\x06\x12&\n" +
+	"\"WILD_SHAPE_END_REASON_MASTER_ENDED\x10\a*^\n" +
 	"\fCombatEffect\x12\x1d\n" +
 	"\x19COMBAT_EFFECT_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14COMBAT_EFFECT_SHIELD\x10\x01\x12\x15\n" +

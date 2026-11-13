@@ -88,6 +88,10 @@ type partRecord struct {
 	Once  bool   `json:"once,omitempty"`
 	// NoCrit: a critical hit does not double this part's dice (an extra_damage that says so).
 	NoCrit bool `json:"no_crit,omitempty"`
+	// Effect is the row of the spell's effect a part of Table "hit_effect" is the damage of (combat_hit_effects.go).
+	Effect string `json:"effect,omitempty"`
+	// Hide says the effect of that row is not the other players' to read (the master hides it, or it is the owner's).
+	Hide bool `json:"hide,omitempty"`
 }
 
 // partRoll is what a part rolled, in the pending damage's part_rolls column and in the
@@ -113,6 +117,10 @@ type partRoll struct {
 	// the master reads.
 	Resource string `json:"resource,omitempty"`
 	Rider    string `json:"rider,omitempty"`
+	// Effect (the effect row's id) and Hide are those of the part of a spell's hit effect (partRecord): the others read
+	// neither its dice nor, when it is hidden, its name or key.
+	Effect string `json:"effect,omitempty"`
+	Hide   bool   `json:"hide,omitempty"`
 }
 
 type rerolled struct {
@@ -295,7 +303,7 @@ func (h hitFacts) buildParts() []partRecord {
 	extras := combat.Offered(scene)
 	autos := automaticLines(scene)
 	reroll := h.sheet.Traits.GreatWeaponFighting && h.attack.Weapon && h.attack.Melee && h.attack.TwoHanded
-	maneuvers := append(h.maneuverParts(), h.extraDamageParts()...)
+	maneuvers := append(append(h.maneuverParts(), h.extraDamageParts()...), h.hitEffectParts()...)
 	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 {
 		return nil
 	}
@@ -467,6 +475,12 @@ func (h hitFacts) fromExtra(e combat.Extra, kind string) partRecord {
 // dice as they are rolled (doubled, or once with the maximum added) and the fixed
 // numbers as they are.
 func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string) []*playv1.DamagePart {
+	return partsProtoFor(p, rule, damageTypePT, true)
+}
+
+// partsProtoFor is partsProto for a viewer: reads says it is the master or the attacker's owner, who read the parts of a
+// spell's hit effect whole.
+func partsProtoFor(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) []*playv1.DamagePart {
 	var out []*playv1.DamagePart
 	for _, sp := range readParts(p.Parts) {
 		count, fixed := partCriticalDice(sp, p.Critical, rule)
@@ -478,9 +492,14 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 			count += int(p.ExtraDice)
 			note = joinNote(note, fmt.Sprintf("inclui %dd%d do %s", p.ExtraDice, sp.Sides, extraDiceName(p.ExtraDice, p.SavageDice)))
 		}
+		key, label, source, sides := sp.Key, sp.Label, sp.Source, sp.Sides
+		if sp.Table == tableHitEffect && !reads { // the dice of a spell are its caster's and the master's (RN-10)
+			key, label, source = hitPartForOthers(sp, label, source)
+			count, fixed, sides = 0, 0, 0
+		}
 		out = append(out, &playv1.DamagePart{
-			Key: sp.Key, LabelPt: sp.Label, DiceCount: clamp32(count, 0, 200), DiceSides: sp.Sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
-			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: sp.Source,
+			Key: key, LabelPt: label, DiceCount: clamp32(count, 0, 200), DiceSides: sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
+			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: source,
 			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
 			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
 		})
@@ -491,11 +510,14 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 // partRollsProto converts what each part rolled. The extra die of Divine Smite is a line
 // like the others for a player, counted or not: only the master reads whether it counts,
 // so nothing tells a player what the target is (RN-10, RN-20).
-func partRollsProto(p playdb.PendingDamage, master bool, damageTypePT func(string) string) []*playv1.DamagePartRoll {
+func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT func(string) string) []*playv1.DamagePartRoll {
 	var out []*playv1.DamagePartRoll
 	for _, r := range readPartRolls(p.PartRolls) {
 		if r.Conditional && !master {
 			r.Counted = true // a player reads the same lines whatever the target is
+		}
+		if r.Effect != "" && !reads {
+			r = hitRollForOthers(r)
 		}
 		pr := partRollProto(r, damageTypePT)
 		if master {
@@ -504,6 +526,14 @@ func partRollsProto(p playdb.PendingDamage, master bool, damageTypePT func(strin
 		out = append(out, pr)
 	}
 	return out
+}
+
+// hitRollForOthers is what a spell's hit part rolled as the players who are not the attacker's read it: the amount,
+// never the dice, and "Outra fonte" when the effect is not theirs to read.
+func hitRollForOthers(r partRoll) partRoll {
+	r.Key, r.Label, _ = hitPartForOthers(partRecord{Key: r.Key, Effect: r.Effect, Hide: r.Hide}, r.Label, "")
+	r.Count, r.Sides, r.Faces, r.Rerolled, r.CountedDice = 0, 0, nil, nil, nil
+	return r
 }
 
 func partRollProto(r partRoll, damageTypePT func(string) string) *playv1.DamagePartRoll {
@@ -840,7 +870,7 @@ func (s *Service) rollPart(sp partRecord, r rollPartsInput, diceParts int) (part
 	pr := partRoll{
 		Key: sp.Key, Label: sp.Label, Count: clamp32(count, 0, 200), Sides: sp.Sides, Flat: sp.Flat, Fixed: clamp32(fixed, 0, 10000),
 		DamageType: sp.DamageType, Conditional: sp.Conditional, Counted: true, Physical: !r.in.inApp,
-		Resource: sp.Resource, Rider: sp.Rider,
+		Resource: sp.Resource, Rider: sp.Rider, Effect: sp.Effect, Hide: sp.Hide,
 	}
 	if count > 0 {
 		if err := s.rollPartDice(&pr, sp, r, diceParts); err != nil {
@@ -1373,15 +1403,17 @@ func dtPT(key string) string { return damageTypePT[key] }
 // damage get the steps; a creature's or an NPC's are the master's alone (RN-20).
 func (s *Service) pendingView(ctx context.Context, campaignID string, p playdb.PendingDamage, cs []playdb.Combatant, v combatViewer) *playv1.PendingDamage {
 	out := pendingProto(p, cs)
+	reads := v.master // the dice of a spell's hit part are the attacker's and the master's
 	if j := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == conv.OrZero(p.AttackerID) }); j >= 0 {
 		out.AttackKey = shownKey(v, cs[j], p.AttackKey) // a stat block action's key names the creature's type (RN-20)
+		reads = reads || v.owns(cs[j])
 	}
-	out.Parts = partsProto(p, ruleOfPending(p), dtPT)
+	out.Parts = partsProtoFor(p, ruleOfPending(p), dtPT, reads)
 	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == p.TargetID })
 	if i >= 0 && !v.master && holdsHP(cs[i]) && !v.owns(cs[i]) {
 		showAsRolled(out, p)
 	}
-	out.PartRolls = partRollsProto(p, v.master, dtPT)
+	out.PartRolls = partRollsProto(p, v.master, reads, dtPT)
 	if i >= 0 && (v.master || (cs[i].Kind == kindPlayer && v.owns(cs[i]))) {
 		if groups := readStepGroups(p.Steps); len(groups) > 0 {
 			out.Steps = stepsProto(groups, nil, s.namesFor(ctx, campaignID), dtPT, v.master)
@@ -1459,8 +1491,12 @@ func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID 
 	if err != nil {
 		return nil, err
 	}
+	parts, err := s.liveHitParts(ctx, c, readParts(p.Parts))
+	if err != nil {
+		return nil, err
+	}
 	out, err := s.rollParts(rollPartsInput{
-		p: p, parts: readParts(p.Parts), rule: ruleOfPending(p), choice: choice, in: in, typed: typed, target: tsheet.Traits,
+		p: p, parts: parts, rule: ruleOfPending(p), choice: choice, in: in, typed: typed, target: tsheet.Traits,
 		selectOK: s.selectionChecker(ctx, c, campaignID, attacker),
 	})
 	if err != nil {

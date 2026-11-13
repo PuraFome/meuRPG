@@ -3,6 +3,7 @@ import { create } from '@bufbuild/protobuf';
 import {
   GetMoveOptionsResponseSchema,
   MoveRefusal,
+  SurfaceExtra,
   ReachableSquareSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { combatant } from '../../../../core/combat/combat-testing';

@@ -309,6 +309,10 @@ export function wildShapeText(e: CombatLogEntry): string {
       return ' voltou à forma normal, ao cair a 0 PV';
     case WildShapeEndReason.UNCONSCIOUS:
       return ' voltou à forma normal, ao ficar inconsciente';
+    case WildShapeEndReason.EXPIRED:
+      return ` voltou à forma normal: a forma de ${w.beastNamePt} acabou, passou o tempo`;
+    case WildShapeEndReason.MASTER_ENDED:
+      return ` voltou à forma normal: o mestre encerrou a forma de ${w.beastNamePt}`;
     default:
       return ' voltou à forma normal';
   }

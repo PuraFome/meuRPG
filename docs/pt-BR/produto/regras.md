@@ -122,6 +122,16 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma peça que pede sintonização não soma nada até o personagem se sintonizar com ela.
   A ficha lista cada bônus com a origem e diz por que um não soma nada.
   Duas armas com a mesma chave são uma linha e dividem o bônus.
+- **Sintonização.**
+  Um personagem fica sintonizado com no máximo três itens mágicos ao mesmo tempo, e só um item que a ficha lista como um que pede sintonização pode ser sintonizado.
+  Um descanso curto ou longo abre uma janela para cada personagem que ele cobre, e nessa janela o dono sintoniza um item ou encerra uma sintonização; o mestre faz qualquer um dos dois a qualquer hora.
+  Alguns itens pedem algo do personagem (uma classe, uma raça, um alinhamento, ser conjurador).
+  O app confere as restrições dos itens do SRD; quando a ficha não cumpre uma, ou o app não consegue decidir, só o mestre sintoniza, e o registro do servidor diz quem fez.
+  Só uma cópia de um item fica sintonizada de cada vez.
+  Salvar a ficha nunca muda quem está sintonizado: um item mágico novo começa sem sintonia.
+  A trava da ficha não prende a sintonização, ela prende a lista de itens e o tipo.
+  Um personagem que morre continua sintonizado até o mestre encerrar.
+  O app não encerra uma sintonização sozinho (distância, outro sintonizado, morte): o mestre encerra à mão.
 - **Integridade Corporal do monge da Mão Aberta (nível 6).**
   A ação do próprio monge cura três vezes o nível de monge em pontos de vida, até o máximo.
   Não tem rolagem nem dados para digitar.
@@ -677,6 +687,13 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   Os outros jogadores leem só o que a criatura mostra, a condição e não o número por trás.
   Um efeito de quem os jogadores não veem não nomeia ninguém.
   O efeito duradouro de uma classe ou característica é um estado do dono.
+  Uma magia também pode escrever um efeito no próximo golpe de quem conjura: dano extra de arma no próximo golpe, no próximo golpe corpo a corpo, em cada golpe enquanto concentra, ou em cada golpe no alvo marcado pela magia.
+  O mestre escolhe o dado, a quantidade (mais por nível de espaço acima, até um teto) e o tipo de dano (o da arma, se não escolher nenhum).
+  Pode somar um teste de resistência do alvo do golpe, com as condições de uma falha, até o fim do próximo turno dele ou enquanto a magia durar.
+  Assim uma magia da mesa escreve um efeito duradouro nos alvos, um efeito no próximo golpe de quem conjura, ou os dois, e nunca código.
+  O dano é oferecido sozinho depois de um golpe de arma, dobra num golpe crítico, e um erro mantém o efeito.
+  Um ataque de magia não o usa, e ele vale só em combate.
+  O jogador de quem conjura e o mestre leem o efeito inteiro; os outros jogadores leem o dano como um valor, e um nome só quando o efeito é visível.
 - **Classes.** Uma classe da mesa traz a tabela de 20 níveis (bônus de proficiência, características, truques e magias conhecidos, espaços ou espaços de pacto), dado de vida, testes de resistência, perícias, proficiências, os níveis de aumento de habilidade (4, 8, 12, 16 e 19 por padrão) e conjuração (nenhuma, completa, metade ou pacto). O conjurador de um terço é uma subclasse que conjura. O editor de classe começa dos números do servidor. A multiclasse na criação e na subida de nível funciona com classes da mesa, com os pré-requisitos do SRD como aviso na ficha.
 - **Raças e sub-raças.** Uma sub-raça da mesa soma os bônus de habilidade e os traços dela aos da raça. Ela pode, em vez disso, substituir alguns traços da raça, ou todos os bônus de habilidade da raça, inclusive os que o jogador distribui. O personagem dessa sub-raça não tem um traço substituído, e o catálogo e a prévia do editor mostram o que ela substitui. Um traço pode oferecer uma escolha única de "um entre", pedida em "Escolhas" (RN-33). O editor de sub-raça lista os traços da raça numa lista para marcar os que ela substitui, e o editor de traço tem as opções de uma escolha "um entre". Um pacote traz os mesmos campos.
 - **Talentos.** Um talento da mesa pode pedir valores de habilidade, uma proficiência, conjuração, um nível, uma entre várias raças (uma sub-raça conta como a raça dela), um tamanho ou uma característica que o personagem não pode ter. O jogador que não cumpre é recusado na subida de nível e numa escolha de talento, e uma raça, um talento a não ter ou uma característica que o mestre escondeu nunca é nomeado a um jogador, na cópia do talento, nas opções da subida de nível nem nos cartões de talento, exceto o que a própria ficha dele tem (a raça, ou um talento ou característica que ela possui). Um talento que pede só raças escondidas não é oferecido a eles. O editor de talento tem campos para as raças, o tamanho e a característica ausente, e um pacote também os traz.
