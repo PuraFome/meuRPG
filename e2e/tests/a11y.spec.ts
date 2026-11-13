@@ -6177,6 +6177,11 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByLabel('Até onde alcança')).toHaveValue('9');
       await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Editor de magia, a aura ${where}`);
+      // The two blocks that write one effect, "Deixa um efeito nos alvos" (#579) and "Efeito no próximo golpe" (#577), on at once: the seam between them.
+      await m.getByRole('switch', { name: 'Efeito no próximo golpe' }).click();
+      await expect(m.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Editor de magia, os dois blocos de efeito ligados juntos ${where}`);
       const undead = await createEntryRPC(m, campaignId, 'tableCreature', damageCreatureBody());
       await open(m, entryRoute(campaignId, undead));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Defunto do Vale');
