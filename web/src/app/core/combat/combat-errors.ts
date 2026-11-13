@@ -316,10 +316,6 @@ const BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   ],
   [EncounterBlockedReason.ALREADY_IN_WILD_SHAPE, 'Você já está na forma de uma fera.'],
   [
-    EncounterBlockedReason.WILD_SHAPE_ENDED,
-    'A forma já acabou. Assuma uma forma nova, se ainda tiver usos.',
-  ],
-  [
     EncounterBlockedReason.NOT_IN_WILD_SHAPE,
     'Você já está na sua forma normal. A tela foi atualizada.',
   ],
