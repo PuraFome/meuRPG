@@ -153,6 +153,15 @@ A mount carries one rider, and a combatant that rides is not a mount.
 | Kinds | `""` is not a mount, `controlled` obeys its rider, `independent` keeps its own turn. The kind is the master's: `SetCombatantMount` marks an NPC or a creature, never a player's character |
 | Refusals | `ALREADY_MOUNTED` for a rider that is marked, `MOUNT_TAKEN` for taking the mark off a mount that carries a rider. A mount that carries one may change between `controlled` and `independent` |
 | Events | `mount_kind_set` is a session event the undo does not take back, like `side_set` |
+| Mounting | `MountCombatant` puts the rider on a mount within 5 ft (a diagonal square included) that is at least one size larger. `DismountCombatant` puts it on a free square next to the mount that the request names, a square the server lists in `TurnOptions.mount.landing` |
+| Who may mount | The master mounts any combatant that is not a player's character. A player mounts their own creatures and the combatants of the party that the master marked as mounts. `NOT_A_MOUNT` otherwise, `MOUNT_TOO_SMALL`, `MOUNT_TOO_FAR`, `ALREADY_MOUNTED` and `MOUNT_TAKEN` for the rest |
+| Cost | Half the rider's speed on the surface it stands on, without the Dash (`mountCostDFt`, next to `standUpCostDFt`), charged to its one `movement_used_dft`. A speed of 0 or too little movement left is `TOO_FAR` with `missing_dft` |
+| Once per move | A rider mounts or dismounts once in a move: `mount_move_used` is set by either and the start of its turn clears it (`MOUNT_MOVE_USED`) |
+| One square | The rider's square becomes the mount's, and the pair is one occupant: `samePair` keeps the two rows out of each other's way in the occupants of a move, a push, a drag, a teleport and a return to reach |
+| Moving | A rider's own `MoveCombatant` or teleport spell is refused with `MOUNTED` (`MOVE_BLOCKED` when the mount is hidden from the caller, which names nothing). The mount's move is the mount's: its own counter and its own `speedsOf`, with the rider's player acting for a `controlled` mount. `carryRider` puts the rider on the mount's square after every write that moves the mount: a move, a push, a shove, a drag, a teleport, the return to reach and the undo |
+| Undo | A mount, a dismount and the mount's move are undoable: the event keeps the rider's square, `movement_used_dft` and `mount_move_used`, and the undo writes both rows back |
+| Log | `combatant_mounted` and `combatant_dismounted` write the lines "Toren montou em Pônei" and "Toren desmontou de Pônei" (`COMBAT_LOG_KIND_MOUNTED`, `COMBAT_LOG_KIND_DISMOUNTED`). The line is the master's alone when either row is hidden |
+| Options | `GetTurnOptions` carries `mount`: the mounts the viewer sees with the cost and why not, or, when mounted, the mount, the cost of getting off, the refusal and the landing squares |
 | Audience | The master reads every field. A player reads `mounted_on_id` and `rider_id` only when both rows are visible to them, so a hidden mount leaves its rider plain. `mount_kind` goes to the master and to the player who controls the combatant, and `mount_move_used` to whoever reads the combatant's economy |
 
 ## On screen
