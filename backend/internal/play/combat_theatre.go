@@ -8,6 +8,8 @@ import (
 	"slices"
 	"uuid"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
@@ -236,7 +238,7 @@ func (s *Service) spendTheatreFeet(ctx context.Context, c *combatTx, target play
 	// Never more than the movement the turn has (speed, Dash): the same limit a
 	// move on a map has, for the master too. The path is not judged.
 	cost := int(ft) * 10
-	if left := movementLeftDFt(target); cost > left {
+	if left := movementLeftAtDFt(target, grid.SurfaceFloor); cost > left { // no map: the floor's speed
 		return nil, tooFar(cost - left)
 	}
 	used := int(target.MovementUsedDft) + cost

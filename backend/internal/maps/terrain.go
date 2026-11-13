@@ -46,3 +46,28 @@ func (s *Service) Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID stri
 	set := loadLayers(stored, g)
 	return grid.Terrain{Grid: g, Walls: set.walls, Difficult: set.terrain, Cover: set.cover, Doors: set.doors, NoPass: set.noPass, Surface: set.surface}, nil
 }
+
+// Surface is the map's surface layer alone (water, climbable), as the grid g reads it: one indexed read of one column, for the
+// counter of a combat that only needs what a combatant stands on (#819). A map with no layers row, or one whose layer does not
+// fit g, is all floor. It implements play.SurfaceSource, and like Terrain it checks nobody: play decides who sees what.
+func (s *Service) Surface(ctx context.Context, tx pgx.Tx, mapID string, g grid.Grid) (*grid.SurfaceLayer, error) {
+	id, ok := uid.Canonical(mapID)
+	if !ok {
+		return nil, errMapNotFound()
+	}
+	raw, err := queriesIn(s.queries, tx).GetMapSurface(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return grid.NewSurfaceLayer(g), nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read the surface layer: %w", err)
+	}
+	l, err := grid.DecodeSurfaceLayer(g, raw)
+	if err == nil {
+		return l, nil
+	}
+	if !errors.Is(err, grid.ErrLayerSize) {
+		return nil, fmt.Errorf("read the surface layer: %w", err)
+	}
+	return grid.NewSurfaceLayer(g), nil // bytes of another grid read as nothing painted, as loadLayers does
+}

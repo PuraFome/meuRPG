@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -35,6 +34,9 @@ type TerrainSource interface {
 	// Terrain returns the map's grid and layers, or a `not_found` Connect error
 	// when mapID is not a map of the campaign.
 	Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (grid.Terrain, error)
+	// Surface returns the map's surface layer alone (water, climbable) as the grid g reads it: one indexed read of one
+	// column, for what a combatant stands on (the counter, standing up). The layer of a map with none painted is all floor.
+	Surface(ctx context.Context, tx pgx.Tx, mapID string, g grid.Grid) (*grid.SurfaceLayer, error)
 }
 
 // DoorKeeper opens the doors a move walks into (MR-010, RN-26). The maps module
@@ -127,7 +129,7 @@ func squareOfCombatant(c playdb.Combatant) grid.Square {
 }
 
 // flies says whether the combatant moves on its fly speed: it has one and it is
-// the better of its speeds, the one speedDFt gives. A creature that walks faster
+// the better of its speeds, the one the floor's speed is. A creature that walks faster
 // than it flies (walk 60, fly 10) walks.
 func flies(c playdb.Combatant) bool { return c.SpeedFlyFt > 0 && c.SpeedFlyFt >= c.SpeedFt }
 
@@ -166,48 +168,15 @@ var noSpeed = []string{
 	"condition:grappled", "condition:restrained", "condition:paralyzed", "condition:petrified", "condition:stunned", "condition:unconscious",
 }
 
-// speedFtOf is the speed the turn's movement is counted on, in feet: the better of walking and flying, and for a
-// creature with neither (a shark, a spider on its web) the better of swimming and climbing. A swim or climb speed
-// otherwise only lifts the extra cost of the water and the climb (SRD 5.1, "Climbing, Swimming, and Crawling");
-// that a swimmer faster than it walks does not spend its swim speed beyond the walking one is a known limit
-// (docs/architecture/play/movement.md).
+// speedFtOf is the floor's speed, in feet: the better of walking and flying, and for a creature with neither (a shark, a
+// spider on its web) the better of swimming and climbing. A swim or climb speed is the speed of its own surface (speedsOf,
+// SRD 5.1 "Using Different Speeds") and lifts the extra cost of the water and the climb (SRD 5.1, "Climbing, Swimming, and Crawling").
 func speedFtOf(c playdb.Combatant) int32 {
 	if speed := max(c.SpeedFt, c.SpeedFlyFt); speed > 0 {
 		return speed
 	}
 	return max(c.SpeedSwimFt, c.SpeedClimbFt)
 }
-
-// speedDFt is the combatant's best speed for this turn, in tenths of a foot: its
-// walking speed, or its fly speed when it has a better one, twice after the Dash
-// action (RN-21).
-func speedDFt(c playdb.Combatant) int {
-	if slices.ContainsFunc(c.Conditions, func(k string) bool { return slices.Contains(noSpeed, k) }) {
-		return 0
-	}
-	if c.EffectNoMove { // the lethargy of a Velocidade that ended (RN-22)
-		return 0
-	}
-	speed := (int(speedFtOf(c)) + int(c.EffectSpeedAddFt)) * 10
-	if c.Dashed {
-		speed *= 2
-	}
-	// The speed the effects leave: doubled by Velocidade, halved or 0 by exhaustion (SRD, Conditions).
-	if c.EffectSpeedPct > 0 {
-		speed = speed * int(c.EffectSpeedPct) / 100
-	}
-	return speed
-}
-
-// movementLeftDFt is the movement the combatant has left this turn, in tenths of
-// a foot.
-func movementLeftDFt(c playdb.Combatant) int {
-	return max(speedDFt(c)-int(c.MovementUsedDft), 0)
-}
-
-// movementLeftFt is movementLeftDFt in feet, rounded down: the field the shipped
-// web reads.
-func movementLeftFt(c playdb.Combatant) int { return movementLeftDFt(c) / 10 }
 
 // placed says whether the combatant has a square on the grid.
 func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != nil }
@@ -651,7 +620,7 @@ func (s *Service) planPlayerMove(ctx context.Context, a *moveAttempt) error {
 		all:     occupantsFor(a.cs, a.target, combatViewer{master: true}),
 		mover:   a.mover,
 		origin:  squareOfCombatant(a.target),
-		leftDFt: movementLeftDFt(a.target) / a.factor, // the path that fits: a drag costs twice its length
+		leftDFt: movementLeftAtDFt(a.target, grid.SurfaceFloor) / a.factor, // the path that fits (a jump's: on foot): a drag costs twice its length
 	}
 	switch a.req.jump {
 	case playv1.JumpKind_JUMP_KIND_LONG:
@@ -666,12 +635,16 @@ func (s *Service) planPlayerMove(ctx context.Context, a *moveAttempt) error {
 // know of is in the way or the path costs more than they have, and cut short by
 // what they do not know of.
 func (a *moveAttempt) planWalk(p playerPlan) error {
+	if a.req.legendary == "" { // a legendary move has its own budget: a share of a fresh speed
+		p.mover = withSpeeds(p.mover, a.target, a.factor)
+		p.leftDFt = mostLeftDFt(*p.mover.Speeds) // the circle; the speed of each surface is checked step by step
+	}
 	mv := p.terrain.Move(p.origin, a.to, p.seen, p.mover)
 	if mv.Blocked {
 		return moveStop(mv, p.seen, a.to)
 	}
-	if mv.CostDFt > p.leftDFt {
-		return tooFar(mv.CostDFt - p.leftDFt)
+	if missing := missingOf(mv, p); missing > 0 {
+		return tooFar(missing)
 	}
 	st := a.terrain.MoveUntil(p.origin, a.to, p.all, p.mover, a.th.stops(), p.leftDFt)
 	a.made.StoppedEarly = st.Reason != grid.StopNone && (st.Reason != grid.StopMarked || st.Reached != a.to) // a trap's area is not "in the way" when it is where the mover went
@@ -684,6 +657,15 @@ func (a *moveAttempt) planWalk(p playerPlan) error {
 	a.length = grid.LengthDFt(p.origin, a.to)
 	a.last = runAfterWalk(a.last, a.length, p.mover.Flier)
 	return nil
+}
+
+// missingOf is how much a line costs past what the mover has: past the speed of the surface it is on when it has speeds, and past
+// what is left otherwise.
+func missingOf(mv grid.Move, p playerPlan) int {
+	if p.mover.Speeds != nil {
+		return mv.OverDFt
+	}
+	return max(mv.CostDFt-p.leftDFt, 0)
 }
 
 // noteLock tells a locked door the player knows of from a creature in the way.
@@ -1051,7 +1033,7 @@ func (s *Service) GetMoveOptions(
 	if isTheatre(d.enc) {
 		// Without a map there is nowhere to go: a valid, empty answer, with what
 		// SpendMovement can still spend.
-		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftDFt(who), 0, math.MaxInt32), Flier: flies(who)}), nil
+		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftAtDFt(who, grid.SurfaceFloor), 0, math.MaxInt32), Flier: flies(who)}), nil
 	}
 	jump := req.Msg.GetJump()
 	out, err := s.moveOptionsOn(ctx, m, d, v, sight, who, jump)
@@ -1144,7 +1126,8 @@ func (s *Service) moveOptionsOn(ctx context.Context, m authz.Membership, d *enco
 // just before), as MoveCombatant uses it: the preview never offers a square the move
 // would refuse. Its cost is the length of the line.
 func jumpOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ grid.OccupantMap) *playv1.GetMoveOptionsResponse {
-	left, from := movementLeftDFt(who), squareOfCombatant(who)
+	left, from := movementLeftAtDFt(who, grid.SurfaceFloor), squareOfCombatant(who) // a jump is on foot: the floor's speed pays for it
+	sp := speedsOf(who)
 	out := &playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(left, 0, math.MaxInt32), Flier: mover.Flier}
 	limit := min(longJumpDFt(who, combat.HasRunningStart(int(who.LastMoveDft))), left)
 	if limit <= 0 {
@@ -1158,7 +1141,9 @@ func jumpOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ gri
 				continue
 			}
 			if mv := t.Jump(from, sq, occ, mover); !mv.Blocked && mv.CostDFt <= left {
-				out.Reachable = append(out.Reachable, &playv1.ReachableSquare{Col: clamp32(col, 0, math.MaxInt32), Row: clamp32(row, 0, math.MaxInt32), CostDft: clamp32(mv.CostDFt, 0, math.MaxInt32)})
+				// What is left once it lands is at the speed of the surface it lands on, as the counter will read it.
+				leftAfter := sp.LeftAt(t.Surface.Get(col, row)) - mv.CostDFt
+				out.Reachable = append(out.Reachable, &playv1.ReachableSquare{Col: clamp32(col, 0, math.MaxInt32), Row: clamp32(row, 0, math.MaxInt32), CostDft: clamp32(mv.CostDFt, 0, math.MaxInt32), LeftAfterDft: clamp32(leftAfter, 0, math.MaxInt32)})
 			}
 		}
 	}
@@ -1169,22 +1154,28 @@ func jumpOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ gri
 // squares it reaches with what is left of its movement and the squares inside
 // that circle that it cannot go to, with the reason. occ is who the mover plans
 // around (with the fog of war: the ones it sees).
-func moveOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ grid.OccupantMap) *playv1.GetMoveOptionsResponse {
-	left, from := movementLeftDFt(who), squareOfCombatant(who)
+func moveOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ grid.OccupantMap, div int) *playv1.GetMoveOptionsResponse {
+	from := squareOfCombatant(who)
+	mover = withSpeeds(mover, who, div)
+	// The lead is what is left at the speed of the surface the mover stands on (on what the viewer knows of it); the circle is the
+	// most it has left on any surface, and each square says what is left once it is there.
+	left := mover.Speeds.LeftAt(t.Surface.Get(from.Col, from.Row))
+	most := mostLeftDFt(*mover.Speeds)
 	out := &playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(left, 0, math.MaxInt32), Flier: mover.Flier}
-	reach := t.Reach(from, left, occ, mover)
+	reach := t.Reach(from, most, occ, mover)
 	reachable := make(map[grid.Square]bool, len(reach))
 	for _, r := range reach {
 		reachable[r.Square] = true
 		out.Reachable = append(out.Reachable, &playv1.ReachableSquare{
 			Col: clamp32(r.Square.Col, 0, math.MaxInt32), Row: clamp32(r.Square.Row, 0, math.MaxInt32), CostDft: clamp32(r.CostDFt, 0, math.MaxInt32),
 			ExtraDft: clamp32(r.SurfaceDFt, 0, math.MaxInt32), SurfaceExtra: surfaceExtraOf(r.Surface), SwimExtraDft: clamp32(r.SurfaceDFt-r.ClimbDFt, 0, math.MaxInt32), ClimbExtraDft: clamp32(r.ClimbDFt, 0, math.MaxInt32), CrawlExtraDft: clamp32(r.CrawlDFt, 0, math.MaxInt32), PathDft: clamp32(r.CostDFt-r.SurfaceDFt-r.CrawlDFt, 0, math.MaxInt32),
+			LeftAfterDft: clamp32(r.LeftAfterDFt, 0, math.MaxInt32),
 		})
 	}
-	if left <= 0 {
+	if most <= 0 {
 		return out
 	}
-	out.Refused = refusedSquares(t, from, left, reachable, occ, mover)
+	out.Refused = refusedSquares(t, from, most, reachable, occ, mover)
 	return out
 }
 

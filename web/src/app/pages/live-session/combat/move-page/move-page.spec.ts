@@ -37,12 +37,19 @@ const goblin = combatant({ id: 'g2', label: 'Goblin 2', col: 7, row: 7 });
 const options = create(GetMoveOptionsResponseSchema, {
   movementLeftDft: 300,
   reachable: [
-    create(ReachableSquareSchema, { col: 9, row: 8, costDft: 71 }),
-    create(ReachableSquareSchema, { col: 10, row: 7, costDft: 100, provokesReactorIds: ['g2'] }),
+    create(ReachableSquareSchema, { col: 9, row: 8, costDft: 71, leftAfterDft: 229 }),
+    create(ReachableSquareSchema, {
+      col: 10,
+      row: 7,
+      costDft: 100,
+      leftAfterDft: 200,
+      provokesReactorIds: ['g2'],
+    }),
     create(ReachableSquareSchema, {
       col: 8,
       row: 9,
       costDft: 100,
+      leftAfterDft: 200,
       knownTrapName: 'Fosso escondido',
       knownTrapPointId: 'p',
     }),
@@ -332,7 +339,14 @@ describe('MovePage', () => {
     });
 
     it('jumps to the chosen square, costing the length of the line', () => {
-      const { fixture, el, choose, press, jumped } = setup({ jumps });
+      // The server's options for the jump: the square says what is left once the jumper lands on it.
+      const landing = create(GetMoveOptionsResponseSchema, {
+        movementLeftDft: 300,
+        reachable: [
+          create(ReachableSquareSchema, { col: 11, row: 7, costDft: 150, leftAfterDft: 150 }),
+        ],
+      });
+      const { fixture, el, choose, press, jumped } = setup({ jumps, options: landing });
       const radios = Array.from(el.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
       radios[1].click();
       radios[1].dispatchEvent(new Event('change'));

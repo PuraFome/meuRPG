@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -280,9 +282,9 @@ func (s *Service) spendLegendaryMove(ctx context.Context, a *moveAttempt) error 
 // turn's, or, for a legendary move, a whole speed of its own (or the half the option says).
 func (a *moveAttempt) movementBudgetDFt() int {
 	if a.req.legendary == "" {
-		return movementLeftDFt(a.target)
+		return movementLeftAtDFt(a.target, grid.SurfaceFloor)
 	}
 	fresh := a.target
 	fresh.MovementUsedDft, fresh.Dashed = 0, false
-	return movementLeftDFt(fresh) * a.speedPct / rules.FullSpeedPercent
+	return movementLeftAtDFt(fresh, grid.SurfaceFloor) * a.speedPct / rules.FullSpeedPercent
 }
