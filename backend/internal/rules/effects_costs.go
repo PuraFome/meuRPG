@@ -21,14 +21,23 @@ func (x effectCompiler) strayCosts() error {
 	e := x.e
 	action, hook := e.Type == "grant_action", e.Type == "on_event"
 	switch {
-	case !action && !hook && (e.Heal != "" || e.TempHP != "" || (e.Cost != "" && e.Type != "spell_modifier" && e.Type != "reroll")):
+	case !action && !hook && x.strayHealOrCost():
 		return x.fail("cost, heal and temp_hp belong to grant_action and on_event (cost to spell_modifier and reroll too)")
+	case !action && e.Use != nil:
+		return x.fail("use belongs to grant_action")
 	case !action && (e.CostMax != "" || e.ValuePerPoint != ""):
 		return x.fail("cost_max and value_per_point belong to grant_action")
 	case !hook && (e.Event != "" || e.Restore != "" || e.HealPercentMax != 0):
 		return x.fail("event, restore and heal_percent_max belong to on_event")
 	}
 	return nil
+}
+
+// strayHealOrCost says the effect has a heal, temp_hp or cost, which a type that is neither an action nor a hook reads only
+// for the cost of a spell_modifier and a reroll.
+func (x effectCompiler) strayHealOrCost() bool {
+	e := x.e
+	return e.Heal != "" || e.TempHP != "" || (e.Cost != "" && e.Type != "spell_modifier" && e.Type != "reroll")
 }
 
 // grantAction checks an action the character takes: its economy, what it costs and
@@ -50,7 +59,10 @@ func (x effectCompiler) grantAction() error {
 	if err := x.checkPerPoint(); err != nil {
 		return err
 	}
-	return x.checkSlotAction()
+	if err := x.checkSlotAction(); err != nil {
+		return err
+	}
+	return x.compileUse()
 }
 
 // checkCosts compiles the cost and the cost_max of an action or a hook: they name
