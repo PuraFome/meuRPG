@@ -4,7 +4,7 @@
   <p class="gear__ac">Classe de armadura <strong>{{ s.armorClass }}</strong></p>
   @if (hasAttunement()) {
     <p class="att-head">
-      <mat-icon aria-hidden="true" fontIcon="link"></mat-icon>
+      <mat-icon aria-hidden="true">link</mat-icon>
       <strong>Sintonizados: {{ s.attunement.attuned }} de 3</strong>
       @if (canChangeAttunement()) {
         <button matButton="outlined" type="button" class="att-head__button" aria-label="Mudar sintonização" (click)="attunementOpened.emit()">Mudar</button>
@@ -35,16 +35,13 @@
       }
     </p>
   }
-  @if (!canMark() && !canManageMagic() && canEquip()) {
-    <p class="gear__lock mr-muted"><mat-icon aria-hidden="true">lock</mat-icon>Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.</p>
-  }
   <p class="gear__notice" role="status">{{ marksNotice() }}</p>
   @if (magicItems().length > 0 || canManageMagic()) {
     <section class="magic" aria-labelledby="magic-heading">
       <h3 id="magic-heading" class="magic__title">
-        <mat-icon aria-hidden="true" fontIcon="diamond"></mat-icon>Itens mágicos
+        <mat-icon aria-hidden="true">diamond</mat-icon>Itens mágicos
         @if (magicItems().length > 0) {
-          <span class="magic__count">({{ magicItems().length }})</span>
+          <span class="magic__count">{{ magicItems().length }}</span>
         }
       </h3>
       @if (magicItems().length === 0) {
@@ -70,7 +67,7 @@
               }
               @if (!e.attuned && e.asks && e.restrictionPt) {
                 <span class="magic-row__line mr-muted">
-                  <mat-icon aria-hidden="true" fontIcon="block"></mat-icon>{{ e.restrictionPt }}
+                  <mat-icon aria-hidden="true">block</mat-icon>{{ e.restrictionPt }}
                 </span>
               }
             </li>
@@ -84,6 +81,15 @@
       }
       <p class="gear__notice" role="status">{{ magicNotice() }}</p>
     </section>
+  }
+  @if (showsChips()) {
+    <ul class="legend" aria-label="Legenda dos selos de sintonização">
+      <li><span class="legend__chip legend__chip--on"><mat-icon aria-hidden="true">link</mat-icon></span>Sintonizado</li>
+      <li><span class="legend__chip"><mat-icon aria-hidden="true">link</mat-icon></span>Pede sintonização</li>
+    </ul>
+  }
+  @if (!canMark() && !canManageMagic() && canEquip()) {
+    <p class="gear__lock mr-muted"><mat-icon aria-hidden="true">lock</mat-icon>Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.</p>
   }
   <ul class="gear">
     @for (item of s.equipment; track $index) {

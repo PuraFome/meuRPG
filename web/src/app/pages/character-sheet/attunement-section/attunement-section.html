@@ -2,9 +2,9 @@
 <section class="att" [attr.aria-labelledby]="headingId">
   <header class="att__head">
     @if (bare()) {
-      <span class="att__title" [id]="headingId"><mat-icon aria-hidden="true" fontIcon="link"></mat-icon></span>
+      <span class="att__title" [id]="headingId"><mat-icon aria-hidden="true">link</mat-icon></span>
     } @else {
-      <h3 class="att__title" [id]="headingId"><mat-icon aria-hidden="true" fontIcon="link"></mat-icon>{{ s.title }}</h3>
+      <h3 class="att__title" [id]="headingId"><mat-icon aria-hidden="true">link</mat-icon>{{ s.title }}</h3>
     }
     <span class="att__count">{{ s.count }}</span>
   </header>
@@ -12,7 +12,7 @@
   <p class="att__status" role="status">{{ status() }}</p>
   @if (error()) {
     <p class="att__error" role="alert">
-      <mat-icon aria-hidden="true" fontIcon="error_outline"></mat-icon>
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
       <span>{{ error() }}</span>
     </p>
   }
@@ -22,7 +22,7 @@
   @if (s.asking.length > 0) {
     <h4 class="att__group">Pedem sintonização</h4>
     @if (s.limitLine) {
-      <p class="att__limit"><mat-icon aria-hidden="true" fontIcon="block"></mat-icon><span><strong>Limite de 3 itens.</strong>{{ limitRest() }}</span></p>
+      <p class="att__limit"><mat-icon aria-hidden="true">block</mat-icon><span><strong>Limite de 3 itens.</strong>{{ limitRest() }}</span></p>
     }
     <ul class="att__rows">
       @for (r of s.asking; track r.entry.id) {
@@ -42,7 +42,7 @@
 
 <ng-template #row let-r>
   <li class="att-row">
-    <mat-icon class="att-row__icon" aria-hidden="true" [fontIcon]="icon(r.entry)"></mat-icon>
+    <mat-icon class="att-row__icon" aria-hidden="true">{{ icon(r.entry) }}</mat-icon>
     <span class="att-row__name">{{ r.entry.namePt }}</span>
     @if (r.button !== 'none') {
       @if (busyId() === r.entry.id) {
@@ -68,7 +68,7 @@
     }
     @if (r.reason) {
       <span class="att-row__reason mr-muted" [id]="reasonId(r)">
-        <mat-icon aria-hidden="true" [fontIcon]="r.reasonIcon"></mat-icon>{{ r.reason }}
+        <mat-icon aria-hidden="true">{{ r.reasonIcon }}</mat-icon>{{ r.reason }}
       </span>
     }
   </li>

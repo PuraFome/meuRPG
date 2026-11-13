@@ -96,7 +96,7 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
       ),
     );
     expect(flat(el.querySelector('.att-head'))).toContain('Sintonizados: 1 de 3');
-    expect(flat(el.querySelector('#magic-heading'))).toContain('Itens mágicos (3)');
+    expect(flat(el.querySelector('#magic-heading'))).toContain('Itens mágicos 3');
     const rows = Array.from(el.querySelectorAll('.magic-row'), flat);
     expect(rows[0]).toContain('Anel de proteçãoSintonizado');
     expect(rows[1]).toContain('Manto élficoPede sintonização');
@@ -186,9 +186,9 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
       ),
     );
     const rows = Array.from(el.querySelectorAll('.gear-row'));
-    expect(flat(rows[0].querySelector('.gear-row__att'))).toBe('Sintonizado');
+    expect(flat(rows[0].querySelector('.gear-row__att'))).toBe('linkSintonizado');
     expect(rows[0].querySelector('.gear-row__att--on')).not.toBeNull();
-    expect(flat(rows[1].querySelector('.gear-row__att'))).toBe('Pede sintonização');
+    expect(flat(rows[1].querySelector('.gear-row__att'))).toBe('linkPede sintonização');
     expect(rows[1].querySelector('.gear-row__att--on')).toBeNull();
     expect(rows[2].querySelector('.gear-row__att')).toBeNull();
   });

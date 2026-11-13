@@ -85,6 +85,12 @@ export class EquipmentPanel {
     };
   });
 
+  /** Some gear row carries an attunement chip: the legend says what the two look like. */
+  protected readonly showsChips = computed(() => {
+    const chip = this.chipOf();
+    return this.sheet().gear.some((g) => chip(g) !== '');
+  });
+
   protected pill(e: AttunementEntryVm): string {
     if (e.attuned) {
       return 'Sintonizado';

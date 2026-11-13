@@ -8368,7 +8368,8 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
     // The owner, outside a rest: the list, the chips on the gear, the lock line, "Muda num descanso".
     await expect(gearOf(p).getByText('Muda num descanso')).toBeVisible();
     await everyWidth(p, 'ficha-dono', 'A ficha do dono, itens mágicos e sintonia', () => gearOf(p));
-    await cropAtt(gearOf(p).locator('.gear-row').first(), 'chip-peca', colorScheme);
+    await cropAtt(gearOf(p).locator('.gear-row').filter({ hasText: 'Espada longa' }), 'chip-peca', colorScheme);
+    await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos de sintonização' }), 'legenda-selos', colorScheme);
     await cropAtt(gearOf(p).locator('.gear__lock'), 'linha-travada', colorScheme);
 
     // The master: the same list with the menus, and the picker (with a search that finds nothing).
