@@ -134,6 +134,7 @@ type rideDone struct {
 	rider, mount playdb.Combatant // as they stand after the change
 	from         *grid.Square     // where the rider stood
 	secret       bool
+	hook         *trapHook // the trap the ride fired, for the streams
 }
 
 // MountCombatant implements playv1connect.CombatServiceHandler.
@@ -201,6 +202,7 @@ func (s *Service) publishRide(ctx context.Context, campaignID string, d *encount
 	s.positionChanged(ctx, campaignID, d.enc, done.rider, done.from)
 	s.publishEncounterChangedFor(ctx, campaignID, d, done.rider.ID, done.mount.ID)
 	s.publishLogChanged(ctx, campaignID, d.enc.ID, !done.secret)
+	done.hook.after(ctx, campaignID, d.enc)
 }
 
 // rideWrite is the transaction of a mount or a dismount: who may, where the rider goes, what it costs, and the event the log and the
@@ -249,7 +251,37 @@ func (s *Service) rideWrite(ctx context.Context, c *combatTx, call rideCall, don
 	}
 	c.characterID = &rider.CharacterID
 	*done = rideDone{rider: after, mount: mount, from: squareOfState(moveStateOf(rider)), secret: rider.Hidden || mount.Hidden}
-	return rideEvent(c.enc, rider, mount, to, cost, done.secret), nil
+	made := rideEvent(c.enc, rider, mount, to, cost, done.secret)
+	// The rider steps onto another square of the same map as a move does: the areas spells keep on it and the traps look at it.
+	if err := s.zonesAfterSteps(ctx, c, zoneStep{who: rider.ID, from: done.from, path: []grid.Square{to}, travels: true}); err != nil {
+		return nil, err
+	}
+	return s.fireTrapOnRide(ctx, c, call, cs, rider, after, to, made, done)
+}
+
+// fireTrapOnRide fires the trap on the square the rider ended on, as a move into it does: the ride's own event is written now and
+// the firing is the change's own (so a retry finds it under the idempotency key, and an undo takes the firing back first, then the
+// ride).
+func (s *Service) fireTrapOnRide(ctx context.Context, c *combatTx, call rideCall, cs []playdb.Combatant, before, after playdb.Combatant, to grid.Square, made actionEvent, done *rideDone) (any, error) {
+	th, err := s.newTrapHook(ctx, c.tx, call.m.CampaignID, c.enc, before)
+	if err != nil {
+		return nil, err
+	}
+	th.landed(to)
+	ev, err := th.fire(ctx, c, cs, after)
+	if err != nil || ev == nil {
+		return made, err
+	}
+	kind := eventCombatantMounted
+	if call.dismount {
+		kind = eventCombatantDismounted
+	}
+	if err := insertEvent(ctx, c, kind, &c.actorUserID, nil, made); err != nil {
+		return nil, err
+	}
+	th.fired, done.hook = ev, th
+	c.kind = eventTrapTriggered
+	return actionEvent{Round: c.enc.Round, Actor: after.ID, Trap: ev, OnTurn: made.OnTurn}, nil
 }
 
 // rideMountOf is the mount of the ride: the one the rider sits on for a dismount, the one the request names for a mount.
