@@ -198,3 +198,85 @@ func TestMountedCombat_TheUndoOfTheMountsMoveGivesTheRidersCoverMarkBack(t *test
 		t.Errorf("the rider's mark after the undo = %q, want half", got)
 	}
 }
+
+// TestMountedCombat_TheReturnToReachCarriesTheRider: an opportunity attack that drops the mount to 0 hit points sends it back to the
+// square it left the reach at, and the rider it carries goes along.
+func TestMountedCombat_TheReturnToReachCarriesTheRider(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.oppFight(t)
+	c.sitOn(t, "Goblin 2", "Goblin 1")
+	c.passTo(t, c.get(t, c.master), "Goblin 1")
+	c.moveOffering(t, "Goblin 1", 5, 9)
+	offers := c.offersOf(t, c.caio)
+	if len(offers) != 1 {
+		t.Fatalf("Toren's player's offers = %v, want one", offers)
+	}
+	left := [2]int32{offers[0].GetLeftCol(), offers[0].GetLeftRow()}
+	if got := c.square(t, "Goblin 2"); got != [2]int32{5, 9} {
+		t.Fatalf("the rider stands on %v, want (5,9) with its mount", got)
+	}
+	res, err := c.offerAttack(t, c.caio, "Toren", offers[0].GetAttacks()[0].GetKey(), "Goblin 1", offers[0].GetId(), d20(15))
+	if err != nil || res.GetPendingDamage() == nil {
+		t.Fatalf("Toren's opportunity attack = (%v, %v), want a hit", res, err)
+	}
+	if _, err := c.damage(t, c.caio, c.get(t, c.master), res.GetPendingDamage().GetId(), typedDamage(8)); err != nil {
+		t.Fatalf("RollDamage() error = %v", err)
+	}
+	if mount, rider := c.square(t, "Goblin 1"), c.square(t, "Goblin 2"); mount != left || rider != left {
+		t.Errorf("the mount stands on %v and its rider on %v, want both on %v where the mount left the reach", mount, rider, left)
+	}
+	c.undoLast(t)
+	if mount, rider := c.square(t, "Goblin 1"), c.square(t, "Goblin 2"); mount != [2]int32{5, 9} || rider != mount {
+		t.Errorf("after the undo the mount stands on %v and its rider on %v, want both on (5,9)", mount, rider)
+	}
+}
+
+// TestMountedCombat_UndoTakesTheMountsMoveThenTheMount: the undo works in the order of the history: the mount's move first, the
+// mount after it.
+func TestMountedCombat_UndoTakesTheMountsMoveThenTheMount(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.steed(t)
+	c.mustMount(t, c.caio, "Toren", "Ogro")
+	if _, err := c.move(t, c.caio, "Ogro", 10, 7); err != nil {
+		t.Fatalf("the mount's move = %v", err)
+	}
+	c.undoLast(t)
+	if toren, ogro := c.rideRowOf(t, "Toren"), c.rideRowOf(t, "Ogro"); toren.Col != 7 || ogro.Col != 7 || toren.MountedOn != c.id(t, "Ogro") || ogro.UsedDft != 0 {
+		t.Fatalf("after the first undo Toren = %+v and the Ogro = %+v, want both on (7,7), Toren on it and the mount's movement back", toren, ogro)
+	}
+	c.undoLast(t)
+	if toren := c.rideRowOf(t, "Toren"); toren.Col != 6 || toren.MountedOn != "" || toren.UsedDft != 0 || toren.MoveUsed {
+		t.Errorf("after the second undo Toren = %+v, want on foot on (6,7) with the move free", toren)
+	}
+}
+
+// TestMountedCombat_ADismountReplaysByItsKey: the same key and request is the same answer and one event.
+func TestMountedCombat_ADismountReplaysByItsKey(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.steed(t)
+	c.mustMount(t, c.caio, "Toren", "Ogro")
+	c.nextTurnOf(t, "Toren")
+	req := &playv1.DismountCombatantRequest{CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), RiderId: c.id(t, "Toren"), Col: 8, Row: 7, IdempotencyKey: newKey()}
+	var answers []*playv1.DismountCombatantResponse
+	for range 2 {
+		res, err := c.caio.combat.DismountCombatant(t.Context(), connect.NewRequest(req))
+		if err != nil {
+			t.Fatalf("DismountCombatant() error = %v", err)
+		}
+		answers = append(answers, res.Msg)
+	}
+	if answers[0].GetMovementLeftDft() != answers[1].GetMovementLeftDft() {
+		t.Errorf("the replay says %d left, the first call %d", answers[1].GetMovementLeftDft(), answers[0].GetMovementLeftDft())
+	}
+	if n := c.eventsOf(t, "combatant_dismounted"); n != 1 {
+		t.Errorf("combatant_dismounted events = %d, want 1", n)
+	}
+	if got := c.rideRowOf(t, "Toren"); got.Col != 8 || got.UsedDft != 150 {
+		t.Errorf("Toren after the replay = %+v, want on (8,7) with 150 spent once", got)
+	}
+}
