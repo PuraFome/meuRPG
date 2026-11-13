@@ -551,7 +551,8 @@
     "name": "x",
     "move_ft": 1,
     "target_id": "x",
-    "canceled": true
+    "canceled": true,
+    "defeated": true
   },
   "mode": "x",
   "delta": 1,
