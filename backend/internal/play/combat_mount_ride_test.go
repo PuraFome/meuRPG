@@ -744,3 +744,25 @@ func (c *cave) reveal(t *testing.T, label string) {
 		t.Fatalf("SetCombatantHidden(%s, false) error = %v", label, err)
 	}
 }
+
+// TestMountedCombat_AMountThatCarriesARiderDoesNotMountAnother: Toren rides the Ogro, and the Ogro on its own turn cannot get on a
+// Huge mount: the carry is one level, so the chain would leave Toren behind.
+func TestMountedCombat_AMountThatCarriesARiderDoesNotMountAnother(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.steed(t)
+	c.mustMark(t, "Ogro", "independent")
+	c.mustMount(t, c.caio, "Toren", "Ogro")
+	c.mustMove(t, c.master, "Goblin 1", 8, 7)
+	c.execSQL(t, `UPDATE combatants SET size = 'huge' WHERE id = $1`, c.id(t, "Goblin 1"))
+	c.passTo(t, c.get(t, c.master), "Ogro")
+	_, err := c.mountAs(t, c.master, "Ogro", "Goblin 1")
+	b := wantBlockedBy(t, "a mount that carries a rider getting on another", err, reasonAlreadyRiding)
+	if len(b.GetCombatantIds()) != 1 || b.GetCombatantIds()[0] != c.id(t, "Ogro") {
+		t.Errorf("combatant_ids = %v, want the mount that carries the rider", b.GetCombatantIds())
+	}
+	if on := c.rideRowOf(t, "Ogro").MountedOn; on != "" {
+		t.Errorf("the Ogro rides %s, want nothing", on)
+	}
+}
