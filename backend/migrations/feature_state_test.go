@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// TestFeatureStateMigrationCopiesOldMarks: 00326 turns the once-per-turn marks of the three old columns into entries of
+// TestFeatureStateMigrationCopiesOldMarks: 00329 turns the once-per-turn marks of the three old columns into entries of
 // scope turn in feature_state, touches only the rows that have a mark, and runs again without changing anything.
 func TestFeatureStateMigrationCopiesOldMarks(t *testing.T) {
 	t.Parallel()
@@ -74,7 +74,7 @@ func TestFeatureStateMigrationCopiesOldMarks(t *testing.T) {
 	// A row that already has a state is left alone when the migration runs again.
 	exec(t, db, fmt.Sprintf(`UPDATE combatants SET feature_state = '{"x": {"s": "combat", "at": "", "n": 2}}' WHERE id = '%s'`, none))
 	want[none] = map[string]any{"x": map[string]any{"s": "combat", "at": "", "n": float64(2)}}
-	exec(t, db, "DELETE FROM goose_db_version WHERE version_id = 326")
+	exec(t, db, "DELETE FROM goose_db_version WHERE version_id = 329")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("second Up() error = %v", err)
 	}

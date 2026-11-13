@@ -34,7 +34,7 @@ const useStatePrefix = "use:"
 // useStateKey is the key the uses of an action are counted under.
 func useStateKey(actionKey string) string { return useStatePrefix + actionKey }
 
-// The limits of a document; the database check holds the size too (00326).
+// The limits of a document; the database check holds the size too (00329).
 const (
 	featureStateMaxKeys  = 64
 	featureStateMaxKey   = 80
