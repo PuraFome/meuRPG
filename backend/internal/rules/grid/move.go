@@ -112,10 +112,16 @@ func (t Terrain) Validate() error {
 	if !t.Grid.Valid() {
 		return ErrBadGrid
 	}
-	if (t.Walls != nil && t.Walls.Grid() != t.Grid) || (t.Difficult != nil && t.Difficult.Grid() != t.Grid) || (t.ZoneDifficult != nil && t.ZoneDifficult.Grid() != t.Grid) || (t.Cover != nil && t.Cover.Grid() != t.Grid) || (t.Doors != nil && t.Doors.Grid() != t.Grid) || (t.NoPass != nil && t.NoPass.Grid() != t.Grid) || (t.Surface != nil && t.Surface.Grid() != t.Grid) {
+	if t.bitLayersMismatch() || (t.Cover != nil && t.Cover.Grid() != t.Grid) || (t.Doors != nil && t.Doors.Grid() != t.Grid) || (t.Surface != nil && t.Surface.Grid() != t.Grid) {
 		return ErrBadGrid
 	}
 	return nil
+}
+
+// bitLayersMismatch says whether a one-bit layer present is sized for another grid than the terrain's.
+func (t Terrain) bitLayersMismatch() bool {
+	return (t.Walls != nil && t.Walls.Grid() != t.Grid) || (t.Difficult != nil && t.Difficult.Grid() != t.Grid) ||
+		(t.ZoneDifficult != nil && t.ZoneDifficult.Grid() != t.Grid) || (t.NoPass != nil && t.NoPass.Grid() != t.Grid)
 }
 
 // SightWalls is what stops sight and light on the terrain: the walls and the

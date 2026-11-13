@@ -359,7 +359,13 @@ func paint(set layerSet, layer mapsv1.MapLayer, col, row int, value int32) bool 
 	case mapsv1.MapLayer_MAP_LAYER_NO_PASS:
 		return paintBit(set.noPass, col, row, value == 1)
 	case mapsv1.MapLayer_MAP_LAYER_SURFACE:
-		surface := grid.Surface(value) //nolint:gosec // G115: checkPaint kept it 0 to 2
+		surface := grid.SurfaceFloor // checkPaint kept the value 0 to 2
+		switch value {
+		case int32(grid.SurfaceWater):
+			surface = grid.SurfaceWater
+		case int32(grid.SurfaceClimb):
+			surface = grid.SurfaceClimb
+		}
 		was := set.surface.Get(col, row)
 		set.surface.Set(col, row, surface)
 		return was != surface
