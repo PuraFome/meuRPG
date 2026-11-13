@@ -1126,7 +1126,8 @@ func (s *Service) moveOptionsOn(ctx context.Context, m authz.Membership, d *enco
 // just before), as MoveCombatant uses it: the preview never offers a square the move
 // would refuse. Its cost is the length of the line.
 func jumpOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ grid.OccupantMap) *playv1.GetMoveOptionsResponse {
-	left, from := movementLeftAtDFt(who, grid.SurfaceFloor), squareOfCombatant(who)
+	left, from := movementLeftAtDFt(who, grid.SurfaceFloor), squareOfCombatant(who) // a jump is on foot: the floor's speed pays for it
+	sp := speedsOf(who)
 	out := &playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(left, 0, math.MaxInt32), Flier: mover.Flier}
 	limit := min(longJumpDFt(who, combat.HasRunningStart(int(who.LastMoveDft))), left)
 	if limit <= 0 {
@@ -1140,7 +1141,9 @@ func jumpOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ gri
 				continue
 			}
 			if mv := t.Jump(from, sq, occ, mover); !mv.Blocked && mv.CostDFt <= left {
-				out.Reachable = append(out.Reachable, &playv1.ReachableSquare{Col: clamp32(col, 0, math.MaxInt32), Row: clamp32(row, 0, math.MaxInt32), CostDft: clamp32(mv.CostDFt, 0, math.MaxInt32)})
+				// What is left once it lands is at the speed of the surface it lands on, as the counter will read it.
+				leftAfter := sp.LeftAt(t.Surface.Get(col, row)) - mv.CostDFt
+				out.Reachable = append(out.Reachable, &playv1.ReachableSquare{Col: clamp32(col, 0, math.MaxInt32), Row: clamp32(row, 0, math.MaxInt32), CostDft: clamp32(mv.CostDFt, 0, math.MaxInt32), LeftAfterDft: clamp32(leftAfter, 0, math.MaxInt32)})
 			}
 		}
 	}

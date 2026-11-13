@@ -1,6 +1,7 @@
 package play
 
 import (
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"testing"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
@@ -345,5 +346,34 @@ func TestAWildShapeSwapMidTurnKeepsWhatWasSpent(t *testing.T) {
 	left := s.mustLeave(t, s.bia, s.bri)
 	if got := byLabel(t, left.GetEncounter(), "Sálvia"); got.GetSpeedDft() != 300 || got.GetMovementLeftDft() != 200 {
 		t.Errorf("back in her own shape she reads speed %d, left %d; want 300 and 200", got.GetSpeedDft(), got.GetMovementLeftDft())
+	}
+}
+
+// A long jump that lands in water says what is left at the speed of the surface it lands on, as the walk does: walk 30, swim 40 and a jump
+// of 15 ft into water leave 25 ft of the swim speed, not the floor's 15 (the lead of the jump's options stays the floor's, which pays for it).
+func TestALongJumpIntoWaterSaysWhatIsLeftAtTheSwimSpeed(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.terrain.paintSurface(grid.SurfaceWater, corridor(9)...)
+	c.fight(t)
+	withSpeed("Toren", "speed_swim_ft", 40)(t, c)
+	c.mustMove(t, c.master, "Toren", 6, 7)
+	c.execSQL(t, `UPDATE combatants SET last_move_dft = 100 WHERE id = $1`, c.id(t, "Toren"))
+	opts, err := c.jumpOptions(t, c.caio, "Toren")
+	if err != nil {
+		t.Fatalf("GetMoveOptions(jump) error = %v", err)
+	}
+	if opts.GetMovementLeftDft() != 300 {
+		t.Errorf("the jump's lead reads %d, want 300 (the floor pays for a jump)", opts.GetMovementLeftDft())
+	}
+	if r := reachableAt(opts, 9, 7); r == nil || r.GetCostDft() != 150 || r.GetLeftAfterDft() != 250 {
+		t.Errorf("the jump to (9,7) in the water = %v; want cost 150 and 250 left (400 of the swim speed)", r)
+	}
+	if r := reachableAt(opts, 8, 7); r == nil || r.GetCostDft() != 100 || r.GetLeftAfterDft() != 200 {
+		t.Errorf("the jump to (8,7) on the floor = %v; want cost 100 and 200 left (the walking speed)", r)
+	}
+	c.mustMove(t, c.caio, "Toren", 9, 7, jumpTo(playv1.JumpKind_JUMP_KIND_LONG))
+	if got := c.who(t, c.caio, "Toren").GetMovementLeftDft(); got != 250 {
+		t.Errorf("after the jump the counter reads %d, want 250 (what the options said)", got)
 	}
 }
