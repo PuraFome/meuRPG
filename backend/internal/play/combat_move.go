@@ -1178,7 +1178,7 @@ func moveOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ gri
 		reachable[r.Square] = true
 		out.Reachable = append(out.Reachable, &playv1.ReachableSquare{
 			Col: clamp32(r.Square.Col, 0, math.MaxInt32), Row: clamp32(r.Square.Row, 0, math.MaxInt32), CostDft: clamp32(r.CostDFt, 0, math.MaxInt32),
-			ExtraDft: clamp32(r.SurfaceDFt, 0, math.MaxInt32), SurfaceExtra: surfaceExtraOf(r.Surface), CrawlExtraDft: clamp32(r.CrawlDFt, 0, math.MaxInt32),
+			ExtraDft: clamp32(r.SurfaceDFt, 0, math.MaxInt32), SurfaceExtra: surfaceExtraOf(r.Surface), SwimExtraDft: clamp32(r.SurfaceDFt-r.ClimbDFt, 0, math.MaxInt32), ClimbExtraDft: clamp32(r.ClimbDFt, 0, math.MaxInt32), CrawlExtraDft: clamp32(r.CrawlDFt, 0, math.MaxInt32), PathDft: clamp32(r.CostDFt-r.SurfaceDFt-r.CrawlDFt, 0, math.MaxInt32),
 		})
 	}
 	if left <= 0 {

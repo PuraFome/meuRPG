@@ -83,7 +83,7 @@ type partRecord struct {
 	ResourceLeft int32 `json:"resource_left,omitempty"`
 	// Table names the engine's effect type that made a part of the table's content ("extra_damage"):
 	// it is not a maneuver, so the one-maneuver-per-attack limit does not count it. Once says the
-	// part is once per turn, remembered by Key in the attacker's table_once_turns.
+	// part is once per turn, remembered by Key in the attacker's feature_state.
 	Table string `json:"table,omitempty"`
 	Once  bool   `json:"once,omitempty"`
 	// NoCrit: a critical hit does not double this part's dice (an extra_damage that says so).
@@ -239,18 +239,17 @@ type hitFacts struct {
 func (h hitFacts) scene() combat.ExtraScene {
 	t := h.sheet.Traits
 	a := h.attack
-	key := turnKey(h.enc)
 	// A thrown melee weapon thrown at range (beyond its melee reach) is a ranged weapon attack: Rage and the
 	// melee extras do not apply to it; used in melee (within its melee reach) it is still a melee attack.
 	melee := a.Melee && !h.thrownAtRange()
 	return combat.ExtraScene{
 		Weapon: a.Weapon, Melee: melee, Finesse: a.Finesse, Ranged: a.Weapon && !melee, UsesStrength: a.Ability == "str",
 		WeaponName: a.Name, Mode: h.mode, WithoutMap: isTheatre(h.enc), EnemyNearTarget: h.enemyNearTarget(), DisadvantageSource: h.disadvantaged,
-		SneakAttackDice: t.SneakAttackDice, SneakUsed: conv.OrZero(h.attacker.SneakAttackTurn) == key,
+		SneakAttackDice: t.SneakAttackDice, SneakUsed: featureUsedThisTurn(h.attacker, h.enc, featureSneakAttack),
 		DivineSmite: t.DivineSmite, SmiteSlotFree: h.freeSlots, ImprovedDivineSmite: t.ImprovedDivineSmite,
 		HuntersMarkKnown: t.HuntersMark, HuntersMarkActive: conv.OrZero(h.attacker.ConcentrationSpell) == "spell:hunters-mark",
 		TargetMarked:   h.targetMarked(),
-		ColossusSlayer: t.ColossusSlayer, ColossusUsed: conv.OrZero(h.attacker.ColossusSlayerTurn) == key,
+		ColossusSlayer: t.ColossusSlayer, ColossusUsed: featureUsedThisTurn(h.attacker, h.enc, featureColossusSlayer),
 		TargetHurt: h.targetHurt, TargetState: stateWordPT(h.target), TargetLabel: h.target.Label,
 		Raging: hasState(h.states, h.attacker.ID, stateRage) && !t.HeavyArmor, BarbarianLevel: t.BarbarianLevel,
 	}
@@ -359,7 +358,7 @@ func (h hitFacts) extraDamageParts() []partRecord {
 	if h.attacker.Kind != kindPlayer || !h.attack.Weapon {
 		return nil
 	}
-	used := readTableOnce(h.attacker.TableOnceTurns)
+	used := readFeatureState(h.attacker.FeatureState)
 	var out []partRecord
 	for _, x := range h.sheet.Traits.ExtraDamages {
 		sp := partRecord{
@@ -383,10 +382,10 @@ func (h hitFacts) extraDamageParts() []partRecord {
 }
 
 // extraDamageHolds says an extra_damage can be added to this hit, and why not when it cannot.
-func (h hitFacts) extraDamageHolds(x link.ExtraDamage, sp partRecord, used map[string]string) (bool, string) {
+func (h hitFacts) extraDamageHolds(x link.ExtraDamage, sp partRecord, used featureState) (bool, string) {
 	ranged := !h.attack.Melee || h.thrownAtRange()
 	switch {
-	case sp.Once && used[x.Key] == turnKey(h.enc):
+	case sp.Once && used.used(x.Key, stateNowOf(h.enc)):
 		return false, "Já usado neste turno"
 	case x.Weapon == rules.ExtraDamageMeleeWeapon && ranged:
 		return false, "Só vale com arma corpo a corpo"
@@ -405,24 +404,6 @@ const (
 	// extraDamageMaxDice is the most dice an extra_damage rolls (rules.maxExtraDice).
 	extraDamageMaxDice = 20
 )
-
-// readTableOnce reads the once-per-turn marks of the table's extras: the turn each feature last used.
-func readTableOnce(raw []byte) map[string]string {
-	out := map[string]string{}
-	if len(raw) == 0 || json.Unmarshal(raw, &out) != nil || out == nil {
-		return map[string]string{}
-	}
-	return out
-}
-
-// writeTableOnce is the column's JSON for the marks.
-func writeTableOnce(marks map[string]string) []byte {
-	b, err := json.Marshal(marks)
-	if err != nil {
-		return []byte("{}")
-	}
-	return b
-}
 
 // partLabels are the names of the parts, in Portuguese: the game's short name.
 func (h hitFacts) label(key string) string {
@@ -1103,7 +1084,7 @@ type extraCheck struct {
 	c          *combatTx
 	campaignID string
 	attacker   playdb.Combatant
-	turn       string
+	now        stateNow
 }
 
 // errExtraNotAvailable is the refusal of an extra that does not hold now.
@@ -1116,7 +1097,7 @@ func errExtraNotAvailable() error {
 // concentration are read again), and a Divine Smite names a free slot. It also
 // remembers the slot vitals it read.
 func (s *Service) selectionChecker(ctx context.Context, c *combatTx, campaignID string, attacker playdb.Combatant) func(sp partRecord, mark *playv1.SelectedExtra) error {
-	e := extraCheck{c: c, campaignID: campaignID, attacker: attacker, turn: turnKey(c.enc)}
+	e := extraCheck{c: c, campaignID: campaignID, attacker: attacker, now: stateNowOf(c.enc)}
 	return func(sp partRecord, mark *playv1.SelectedExtra) error {
 		return s.checkExtra(ctx, e, sp, mark)
 	}
@@ -1127,7 +1108,7 @@ func (s *Service) checkExtra(ctx context.Context, e extraCheck, sp partRecord, m
 	if !sp.Available {
 		return errExtraNotAvailable()
 	}
-	if sp.Once && readTableOnce(e.attacker.TableOnceTurns)[sp.Key] == e.turn {
+	if sp.Once && readFeatureState(e.attacker.FeatureState).used(sp.Key, e.now) {
 		return errExtraNotAvailable()
 	}
 	if sp.Resource != "" {
@@ -1135,11 +1116,11 @@ func (s *Service) checkExtra(ctx context.Context, e extraCheck, sp partRecord, m
 	}
 	switch sp.Key {
 	case combat.ExtraSneakAttack:
-		if conv.OrZero(e.attacker.SneakAttackTurn) == e.turn {
+		if readFeatureState(e.attacker.FeatureState).used(featureSneakAttack, e.now) {
 			return errExtraNotAvailable()
 		}
 	case combat.ExtraColossusSlayer:
-		if conv.OrZero(e.attacker.ColossusSlayerTurn) == e.turn {
+		if readFeatureState(e.attacker.FeatureState).used(featureColossusSlayer, e.now) {
 			return errExtraNotAvailable()
 		}
 	case combat.ExtraHuntersMark:
@@ -1511,7 +1492,7 @@ func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID 
 func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.Combatant, pr *partsRoll, ev *actionEvent) (*playv1.CharacterVitals, error) {
 	ev.Parts = pr.rolls
 	var vit *playv1.CharacterVitals
-	once := onceTurn{key: turnKey(c.enc), sneak: attacker.SneakAttackTurn, colossus: attacker.ColossusSlayerTurn, table: readTableOnce(attacker.TableOnceTurns)}
+	once := onceTurn{now: stateNowOf(c.enc), state: readFeatureState(attacker.FeatureState), before: map[string]*featureEntry{}}
 	for i, r := range pr.rolls {
 		if !r.Counted && !r.Conditional {
 			continue
@@ -1535,51 +1516,49 @@ func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.
 	return vit, nil
 }
 
-// onceTurn is the once-per-turn marks of the attacker while the parts of a roll settle.
+// onceTurn is the once-per-turn marks of the attacker while the parts of a roll settle: the state read, and for each key the
+// roll marked the entry it had before (nil: none that held), for the undo.
 type onceTurn struct {
-	key             string // the turn
-	sneak, colossus *string
-	// table are the marks of the table's extras by feature key; tableChanged says a roll set one.
-	table        map[string]string
-	tableChanged bool
+	now    stateNow
+	state  featureState
+	before map[string]*featureEntry
 }
 
 // markTable notes that the table's extra of the feature key was used this turn.
 func (o *onceTurn) markTable(featureKey string) {
-	if o.table[featureKey] != o.key {
-		o.table[featureKey] = o.key
-		o.tableChanged = true
-	}
+	o.touch(featureKey)
 }
 
 // mark notes that the part of the key was used this turn.
 func (o *onceTurn) mark(partKey string) {
 	switch partKey {
 	case combat.ExtraSneakAttack:
-		o.sneak = &o.key
+		o.touch(featureSneakAttack)
 	case combat.ExtraColossusSlayer:
-		o.colossus = &o.key
+		o.touch(featureColossusSlayer)
 	}
 }
 
-// keepOnceMarks stores the once-per-turn marks the roll changed, and the ones before in the
-// event for the undo.
+// touch marks the feature used this turn, keeping the entry that held before the first time.
+func (o *onceTurn) touch(key string) {
+	if _, seen := o.before[key]; !seen {
+		if e, ok := o.state.live(key, o.now); ok {
+			o.before[key] = &e
+		} else {
+			o.before[key] = nil
+		}
+	}
+	o.state.set(key, o.now.turnEntry())
+}
+
+// keepOnceMarks stores the once-per-turn marks the roll set, and the entries before in the event for the undo.
 func (s *Service) keepOnceMarks(ctx context.Context, c *combatTx, attacker playdb.Combatant, once onceTurn, ev *actionEvent) error {
-	srdChanged := once.sneak != attacker.SneakAttackTurn || once.colossus != attacker.ColossusSlayerTurn
-	if !srdChanged && !once.tableChanged {
+	if len(once.before) == 0 {
 		return nil
 	}
-	ev.OnceBefore = &onceMarks{Sneak: conv.OrZero(attacker.SneakAttackTurn), Colossus: conv.OrZero(attacker.ColossusSlayerTurn)}
-	if srdChanged {
-		if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{ID: attacker.ID, SneakAttackTurn: once.sneak, ColossusSlayerTurn: once.colossus}); err != nil {
-			return fmt.Errorf("mark the once-per-turn damage: %w", err)
-		}
-	}
-	if once.tableChanged {
-		ev.OnceBefore.Table, ev.OnceBefore.TableChanged = readTableOnce(attacker.TableOnceTurns), true
-		if err := c.q.SetCombatantTableOnceTurns(ctx, playdb.SetCombatantTableOnceTurnsParams{ID: attacker.ID, TableOnceTurns: writeTableOnce(once.table)}); err != nil {
-			return fmt.Errorf("mark the table's once-per-turn damage: %w", err)
-		}
+	ev.FeatureBefore = once.before
+	if err := saveFeatureState(ctx, c, attacker.ID, once.state, once.now); err != nil {
+		return fmt.Errorf("mark the once-per-turn damage: %w", err)
 	}
 	return nil
 }
@@ -1605,7 +1584,8 @@ func (s *Service) spendForPart(ctx context.Context, c *combatTx, attacker playdb
 	return vit, true, nil
 }
 
-// onceMarks are the once-per-turn marks of a combatant before a damage roll, for the undo.
+// onceMarks are the once-per-turn marks of a combatant before a damage roll, as the events written before the feature state
+// (once_before) hold them; the undo of such an event still reads them (legacyFeatureBefore).
 type onceMarks struct {
 	Sneak    string `json:"sneak,omitempty"`
 	Colossus string `json:"colossus,omitempty"`

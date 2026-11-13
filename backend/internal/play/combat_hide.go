@@ -294,6 +294,9 @@ func (s *Service) hideFeature(ctx context.Context, c *combatTx, m authz.Membersh
 	if fi < 0 || sheet.FeatureActions[fi].Standard != actionHide {
 		return link.FeatureAction{}, errContest(playv1.ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_AVAILABLE, "the action is not a Hide")
 	}
+	if sheet.FeatureActions[fi].Use != nil {
+		return link.FeatureAction{}, connect.NewError(connect.CodeInvalidArgument, errors.New("use UseFeature"))
+	}
 	return sheet.FeatureActions[fi], nil
 }
 

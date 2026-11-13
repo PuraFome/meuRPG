@@ -38,7 +38,7 @@ func (a *armed) damageReport(t *testing.T, after int, res *playv1.RollDamageResp
 		lines = append(lines, "event "+l)
 	}
 	var state []string
-	for _, r := range a.rowsOf(t, `SELECT label, hp_current, hp_temp, defeated, death_successes, death_failures, COALESCE(concentration_spell, '-'), took_damage, COALESCE(sneak_attack_turn, '-'), COALESCE(colossus_slayer_turn, '-'), reaction_used, grid_col, grid_row, hidden, rage_end_pending FROM combatants ORDER BY label`) {
+	for _, r := range a.rowsOf(t, `SELECT label, hp_current, hp_temp, defeated, death_successes, death_failures, COALESCE(concentration_spell, '-'), took_damage, COALESCE(feature_state->'sneak_attack'->>'at', '-'), COALESCE(feature_state->'colossus_slayer'->>'at', '-'), reaction_used, grid_col, grid_row, hidden, rage_end_pending FROM combatants ORDER BY label`) {
 		state = append(state, "combatant "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT c.name, v.hit_points_current, v.hit_points_temporary, v.spell_slots_used::TEXT, v.pact_slots_used, v.resources_used::TEXT FROM character_vitals v JOIN characters c ON c.id = v.character_id`) {

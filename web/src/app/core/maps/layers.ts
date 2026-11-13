@@ -13,6 +13,8 @@ export interface PackedLayers {
   readonly doors?: Uint8Array;
   /** "Não dá para passar" (one bit a square): nobody walks into a marked square, but it blocks neither sight nor light. */
   readonly noPass?: Uint8Array;
+  /** The surface (two bits a square, `Surface`): 1 water, 2 climbable. Swimming and climbing cost extra there; a player gets it as far as the character knows. */
+  readonly surface?: Uint8Array;
 }
 
 /** The squares of each layer, ready to draw. */
@@ -29,6 +31,10 @@ export interface MapLayers {
   readonly doors?: readonly DoorSquare[];
   /** The squares marked "Não dá para passar" (a pit, a chasm, a column of fire): movement stops before them, sight does not. Absent when none. */
   readonly noPass?: readonly Square[];
+  /** The squares painted "Água" (swimming costs extra there). Absent when none. */
+  readonly water?: readonly Square[];
+  /** The squares painted "Escalável" (climbing costs extra there). Absent when none. */
+  readonly climb?: readonly Square[];
 }
 
 /** A door as the layer stores it (`DoorState`): 1 open, 2 closed, 3 locked, 4 barred (a grade), 5 secret. */
@@ -88,6 +94,21 @@ function crumbSquares(bytes: Uint8Array, columns: number, rows: number, value: n
   return out;
 }
 
+/** The squares of water (1) and of climbable surface (2) in the two-bit surface layer; none when the layer is empty or absent. */
+function surfaceSquares(
+  bytes: Uint8Array | undefined,
+  columns: number,
+  rows: number,
+): { water: Square[]; climb: Square[] } {
+  if (bytes === undefined || bytes.length === 0) {
+    return { water: [], climb: [] };
+  }
+  return {
+    water: crumbSquares(bytes, columns, rows, 1),
+    climb: crumbSquares(bytes, columns, rows, 2),
+  };
+}
+
 /** The doors of a four-bit layer: square n is the low nibble of byte n / 2 when n is even and the high nibble when odd.
  * The axis follows the same rule as `planDoor` (a door needs floor on both sides): floor above and below means the passage runs up and
  * down, so the bar lies left to right (`h`); otherwise floor left and right turns it (`v`). Doors of one corridor point the same way.
@@ -139,6 +160,7 @@ export function decodeLayers(packed: PackedLayers, player = false): MapLayers {
     packed.noPass !== undefined && packed.noPass.length > 0
       ? bitSquares(packed.noPass, columns, rows)
       : [];
+  const { water, climb } = surfaceSquares(packed.surface, columns, rows);
   const walls = bitSquares(packed.wall, columns, rows);
   const doors =
     packed.doors !== undefined && packed.doors.length > 0
@@ -162,6 +184,8 @@ export function decodeLayers(packed: PackedLayers, player = false): MapLayers {
       : {}),
     ...(doors.length > 0 ? { doors } : {}),
     ...(noPass.length > 0 ? { noPass } : {}),
+    ...(water.length > 0 ? { water } : {}),
+    ...(climb.length > 0 ? { climb } : {}),
   };
 }
 
@@ -173,6 +197,8 @@ export function hasLayers(layers: MapLayers): boolean {
       layers.half.length +
       layers.threeQuarters.length +
       (layers.noPass?.length ?? 0) +
+      (layers.water?.length ?? 0) +
+      (layers.climb?.length ?? 0) +
       (layers.doors?.length ?? 0) >
     0
   );
@@ -185,6 +211,14 @@ export function doorCounts(layers: MapLayers): Readonly<Record<DoorKind, number>
     counts[d.state]++;
   }
   return counts;
+}
+
+/** How many squares are painted "Água" and "Escalável" (the "Superfície" row, the legend). */
+export function surfaceCounts(layers: MapLayers): {
+  readonly water: number;
+  readonly climb: number;
+} {
+  return { water: layers.water?.length ?? 0, climb: layers.climb?.length ?? 0 };
 }
 
 /** How many squares have painted light (the editor's "Luz" row). */

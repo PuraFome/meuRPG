@@ -55,30 +55,6 @@
   }
 }
 
-.lp__sw {
-  display: flex;
-  flex: none;
-  width: 30px;
-
-  .mr-swatch {
-    width: 30px;
-    height: 30px;
-  }
-}
-
-.lp__light {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--mr-map-token-ink);
-
-  .mat-icon {
-    width: 18px;
-    height: 18px;
-    font-size: var(--mr-font-18);
-  }
-}
-
 // The names of the light's three glyphs, under its row.
 .lp__glyphs {
   display: flex;
