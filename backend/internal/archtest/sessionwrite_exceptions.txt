@@ -62,37 +62,15 @@ maps traps_play.go (*Service).TriggerTrap # 4d maps: map, token, fog or point ro
 maps traps_play.go (*Service).recordNotices # 4d maps: map, token, fog or point row the live session shows
 maps treasure.go (*Service).PlaceTreasure # 4d maps: map, token, fog or point row the live session shows
 maps upload.go (*Service).storeImage # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
-play combat_groupcheck.go (*Service).groupWrite # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play creature_host.go (*Service).CreatureRenamed # characters host: called by characters with its transaction and the session row locked (LockSession), then the creature rows (task B, lock order); 4c converts nothing here
 play creature_host.go (*Service).CreaturesLeaving # characters host: called by characters with its transaction and the session row locked (LockSession), then the creature rows (task B, lock order); 4c converts nothing here
 play encounters.go (*Service).ClearBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
 play encounters.go (*Service).keepBattleEncounter # permanent: master prep data (the battle encounter link of a session in preparation); no player view shows it
 play equip_combat.go (*Service).EquipInCombat # characters host: called by characters with its transaction (task B, lock order)
-play free_roll_rpc.go (*Service).RollFreeDice # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play lasting_effects_armor.go (*Service).ArmorWorn # characters host: called by characters with its transaction (task B, lock order)
 play lasting_effects_armor.go (*Service).GearChanged # characters host: called by characters with its transaction (task B, lock order)
-play messages_send.go (*Service).SendSessionMessage # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play onscreen.go (*Service).SetCurrentMap # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play onscreen.go (*Service).swapShownImage # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play onscreen_audience.go (*Service).SetShownImageAudience # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play package.go (*packagePart).Apply # permanent: campaign package import creates the campaign in the same transaction; assumes import never merges into an existing campaign, so no live session can show these rows
-play puzzles_hints.go (*Service).TryPuzzleHint # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play puzzles_master.go (*Service).CreatePuzzle # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play puzzles_master.go (*Service).UpdatePuzzle # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play puzzles_master.go (*Service).setArchived # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play puzzles_play.go (*Service).MakePuzzleMove # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play puzzles_session.go (*Service).changeRun # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play revive.go (*Service).ReviveInCombat # characters host: called by characters with its transaction and the character row locked (task B, lock order); 4b converts nothing here
-play rpc.go (*Service).EndGameSession # session lifecycle: ends the session row and the live view
 play rpc.go (*Service).StartGameSession # session lifecycle: there is no row to lock before it creates one
-play scene.go (*Service).CloseScene # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play scene.go (*Service).GrantSceneAttempt # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play scene.go (*Service).OpenScene # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play scene.go (*Service).RollSceneCheck # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play scene_audience.go (*Service).JoinScene # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play scene_audience.go (*Service).SetSceneAudience # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play scene_audience.go (*Service).SetScenePlayersMayJoin # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play session_seam.go (*Service).inNoSession # permanent: runs a foreign write when the campaign has no open session, so there is no number to move; a session that opens between the unlocked read and the commit is not locked by the write, and its screens read the change at their next Ready or read
-play stage.go (*Service).changeStage # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play tablescreen.go (*Service).SetTableScreen # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
-play xp.go (*Service).AppendEvent # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
+play xp.go (*Service).AppendEvent # characters host: called by progression (XP awards, milestones), characters (creatures, revives, choices) and maps (clues, traps, treasure) inside their own transactions, so play cannot make it a Service.tx writer; it takes the session row first already and the events it appends move no hint_seq (the caller's seam, task B, decides)

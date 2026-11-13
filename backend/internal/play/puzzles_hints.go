@@ -11,7 +11,6 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -65,10 +64,10 @@ func (s *Service) TryPuzzleHint(
 
 	res := &hintTryResult{}
 	var names runNames
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.txOpenOr(ctx, m.CampaignID, errNoOpenSessionForPuzzle, func(tx pgx.Tx, hs *hints, session playdb.GameSession) error {
 		*res = hintTryResult{}
 		var err error
-		names, err = s.applyHintTry(ctx, tx, m, id, key, in, req.Msg, res)
+		names, err = s.applyHintTry(ctx, tx, hs, session, m, id, key, in, req.Msg, res)
 		return err
 	})
 	if err != nil {
@@ -76,9 +75,6 @@ func (s *Service) TryPuzzleHint(
 	}
 	if res.offer != nil || res.lucky != nil { // nothing was written: the question is the whole answer
 		return connect.NewResponse(&playv1.TryPuzzleHintResponse{InspirationOffer: res.offer, LuckyOffer: res.lucky, HeldRollOffer: res.held}), nil
-	}
-	if !res.replayed {
-		s.publishPuzzleChanged(m.CampaignID, id) // the master reads the try; the revision moved
 	}
 	return s.hintTryAnswer(ctx, m, res, names)
 }
@@ -217,11 +213,11 @@ type hintTryPlan struct {
 	floor rollFloor
 }
 
-// applyHintTry is the try's transaction. The session's row is locked first and then
+// applyHintTry is the try's transaction. The session's row is locked first (Service.tx) and then
 // the run's, as every change to a run does, so a try, a move and the master's release
-// of the same hint take turns.
-func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membership, puzzleID, key string, in rollInput, raw *playv1.TryPuzzleHintRequest, res *hintTryResult) (runNames, error) {
-	h := &hintTryTx{s: s, tx: tx, q: s.queriesIn(tx), m: m, key: key, in: in, raw: raw, res: res}
+// of the same hint take turns. A new try tells the streams the puzzle changed; the retry of a key tells it again.
+func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, hs *hints, session playdb.GameSession, m authz.Membership, puzzleID, key string, in rollInput, raw *playv1.TryPuzzleHintRequest, res *hintTryResult) (runNames, error) {
+	h := &hintTryTx{s: s, tx: tx, q: s.queriesIn(tx), m: m, key: key, in: in, raw: raw, res: res, session: session}
 	if err := h.lock(ctx, puzzleID); err != nil {
 		return nil, err
 	}
@@ -232,6 +228,8 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	}
 	if replayed {
 		res.try, res.replayed = done, true
+		hs.replay()
+		s.tellPuzzleChanged(hs, m.CampaignID, puzzleID)
 		if done.BonusSides != nil && done.BonusFace != nil { // the die of the first answer
 			res.bonus = &playv1.BonusDie{SourceKey: bardicInspirationFt, Sides: *done.BonusSides, Face: *done.BonusFace, Used: true}
 		}
@@ -251,15 +249,17 @@ func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		res.offer, res.lucky, res.held = s.outsideOffers(ctx, tx, step.Held)
 		return nil, nil
 	}
-	return h.write(ctx, plan, step, now)
+	names, err := h.write(ctx, plan, step, now)
+	if err != nil {
+		return nil, err
+	}
+	s.tellPuzzleChanged(hs, m.CampaignID, puzzleID) // the master reads the try; the revision moved
+	return names, nil
 }
 
-// lock locks the session's row, reads the shown puzzle and locks its run.
+// lock reads the shown puzzle (the session's row is locked) and locks its run.
 func (h *hintTryTx) lock(ctx context.Context, puzzleID string) error {
 	var err error
-	if h.session, err = lockOpenSession(ctx, h.q, h.m.CampaignID); err != nil {
-		return err
-	}
 	if h.d, _, err = h.s.shownRun(ctx, h.q, h.session, h.m.CampaignID, puzzleID); err != nil {
 		return err
 	}

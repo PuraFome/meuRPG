@@ -2,10 +2,14 @@ package play
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -21,20 +25,59 @@ func (s *Service) sayNow(campaignID string, ev live.Event) { s.send(campaignID, 
 // first statement of the attempt, and fn is given it after the check that it is still the open one (stillOpen). It refuses with
 // NO_OPEN_SESSION when the campaign has none.
 func (s *Service) txOpen(ctx context.Context, campaignID string, fn func(tx pgx.Tx, h *hints, session playdb.GameSession) error) error {
-	open, err := openSessionWith(ctx, s.queries, campaignID)
+	return s.txOpenOr(ctx, campaignID, errNoOpenSession, fn)
+}
+
+// txOpenOr is txOpen for a call that refuses a campaign with no open session with its own error (the puzzles' own reason).
+func (s *Service) txOpenOr(ctx context.Context, campaignID string, none func() error, fn func(tx pgx.Tx, h *hints, session playdb.GameSession) error) error {
+	open, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return none()
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("find the open session: %w", err)
 	}
 	if s.afterSessionRead != nil {
 		s.afterSessionRead(campaignID) // a test changes the session here
 	}
 	return s.tx(ctx, open.ID, func(tx pgx.Tx, h *hints) error {
-		session, err := stillOpen(ctx, s.queries.WithTx(tx), campaignID, open.ID)
+		session, err := stillOpenOr(ctx, s.queries.WithTx(tx), campaignID, open.ID, none)
 		if err != nil {
 			return err
 		}
 		return fn(tx, h, session)
 	})
+}
+
+// txOrNone is the write of a call that needs no session but moves the screens of one that is open: it takes the open session's
+// row first and tells through h, like txOpen, or, when the campaign has none, runs fn in a plain transaction whose hints are
+// dropped (sessionID is "" then). A session that opens between the unlocked read and the commit is not locked by that write, and its
+// screens read the change at their next Ready or read. A session that closes in between makes the write go again.
+func (s *Service) txOrNone(ctx context.Context, campaignID string, fn func(tx pgx.Tx, h *hints, sessionID string) error) error {
+	for try := 1; ; try++ {
+		open, err := s.queries.GetOpenGameSession(ctx, campaignID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return s.inNoSession(ctx, func(tx pgx.Tx, _ sessiontell.Tell) error { return fn(tx, &hints{}, "") })
+		}
+		if err != nil {
+			return fmt.Errorf("find the open session: %w", err)
+		}
+		if s.afterSessionRead != nil {
+			s.afterSessionRead(campaignID) // a test changes the session here
+		}
+		err = s.tx(ctx, open.ID, func(tx pgx.Tx, h *hints) error {
+			if _, err := stillOpen(ctx, s.queries.WithTx(tx), campaignID, open.ID); err != nil {
+				return errSessionMoved // the lock is held: nothing was written
+			}
+			return fn(tx, h, open.ID)
+		})
+		if !errors.Is(err, errSessionMoved) {
+			return err
+		}
+		if try >= maxSessionTries {
+			return connect.NewError(connect.CodeAborted, errors.New("the session keeps changing: try again"))
+		}
+	}
 }
 
 // tellVitalsAfter collects the vitals of the characters as they stand once the transaction committed, each to the master and the

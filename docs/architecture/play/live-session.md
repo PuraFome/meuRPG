@@ -225,11 +225,13 @@ The first call may have committed and died before it sent, and a hint only says 
 What the first call told is not kept: the repeat tells a superset worked out from the stored result (the vitals as they stand, the combat that holds the character), to the audiences the first call reached at most; the casts go to the master only.
 The closure calls `h.replay()` and `tellReplayed` fills the collector from what is stored: the master's cast change, the vitals of the combat's players (each to the master and its own player), the open reaction windows, the fog of the combat's map, and for a start the current map.
 The forced moves of a cast, a creature action or a rider answer are worked out from the stored event.
+The scene's rolls and attempts, a line of the conversation, a free roll, a group check's write, a puzzle move and a hint try tell again what the stored result says, to the audiences the first call reached (a secret free roll to nobody).
 
 What the stored event does not keep is not recovered:
 
 - a public cast change, because the spell level is not kept;
 - a reaction window that closed, because the combat the retry reads already shows it closed.
+- the maps module's own notices of a puzzle move (a revealed point or clue, a trap a wrong move fired), which the move's stored result does not keep: a repeat of `MakePuzzleMove` tells `puzzle_changed` again, and `doors_changed` for a solving move that opened a door.
 
 The hints `AnswerReaction` tells from its handler after the write (`encounter_changed`, `combat_log_changed`, the answer's vitals) do not go through the collector, so they carry no number.
 A repeat of it sends the generic combat and log hints and the forced moves from the stored event (`publishRetried`), with the vitals coming from the replay's step for the combat's players.
@@ -300,7 +302,7 @@ A line the caller may not read is answered exactly like one that does not exist 
 - **The stream.** After `COMMIT`, `session_message_added` carries the line itself.
   The hub's audience names one user, so the line is published once per reader (`live.Audience{UserID}`) and once to the master; a line for everyone goes to the master and the players (`Audience{Master}` plus `Audience{Players}`), never twice to the same stream.
   `master_typing` goes to `Audience{Players}` and says nothing but how long to show it.
-  A retry with the same key stores and publishes nothing.
+  A retry with the same key stores nothing and tells the line again, to the same readers, with the session's number as it stands (it does not move it).
 - **The image.** A fog map's image is copied first (`PrepareShow`, as "mostrar imagem"), so the raw image of a fog map never leaves through a line.
   `GET /images/{id}` lets a player open an image when a line they may read carries it or an NPC with it as its portrait speaks (`LiveSession.ImageInConversation`); the fog map's own image stays refused (MR-036).
 - **The speaker** is kept with the line (`speaker_name`, `speaker_image_id`), so a renamed or deleted NPC does not change what was said. The line of an NPC hidden on the stage keeps its name and no portrait (`withoutHiddenPortrait`), so the image route never opens a hidden NPC's portrait; the stage is untouched, and only `SetSpeaker` shows the NPC.
@@ -376,7 +378,7 @@ The shown image has one audience, `game_sessions.shown_image_audience`, and the 
 
 - **The read.** `GetLiveSession.shown_image` is unset for a player outside the audience (`shownImageFor`); the master gets the image with `ShownImage.audience`.
 - **The image route.** `maps.playersSeeImage` asks `LiveSession.ImageShownTo(user, image)` (one query, `ShownImageSeenBy`), so a player taken out is `404` on their next request, also on `If-None-Match`.
-- **The stream.** `shown_image_changed` goes to the master with the audience, to the players who see the image now with the image, and to the players who saw an image and do not any more with no image (the update they already get when an image stops being shown); a player who never saw it hears nothing (`imageMove`, `publishImageMove`). The same image with the same audience, in any order of the players, sends nothing.
+- **The stream.** `shown_image_changed` goes to the master with the audience, to the players who see the image now with the image, and to the players who saw an image and do not any more with no image (the update they already get when an image stops being shown); a player who never saw it hears nothing (`imageMove`, `tellImageMove`). The same image with the same audience, in any order of the players, sends nothing.
 - **When the scene stops being the image's** (it closes, another one opens, or it opens to everyone) the image stays with the players who were in: `settleShownImage` turns `scene` into `chosen` with them, in the same transaction, and tells the master alone. The same image shown again with no audience keeps its own.
 - **Tests.** `TestImageAudience_*` (play) and `TestRN10_AShownImageReachesOnlyItsAudience` (leak test: a needle and a positive control for each audience, the narrowing and the widening, on the read, the stream and the route).
 

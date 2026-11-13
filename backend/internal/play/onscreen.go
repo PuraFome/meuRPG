@@ -13,7 +13,6 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -54,14 +53,7 @@ func (s *Service) SetCurrentMap(
 		return nil, err
 	}
 
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		q := s.queries.WithTx(tx)
-		// Lock the open session, like every change made during it: an end
-		// in progress finishes first, and this call then sees no session.
-		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
-		if err != nil {
-			return err
-		}
+	err = s.txOpen(ctx, m.CampaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
 		if mapID != nil {
 			// The players see the current map, so it is revealed with it,
 			// in the same transaction (RN-10).
@@ -69,9 +61,18 @@ func (s *Service) SetCurrentMap(
 				return err
 			}
 		}
-		if _, err := q.SetCurrentMap(ctx, playdb.SetCurrentMapParams{ID: session.ID, CurrentMapID: mapID}); err != nil {
+		if _, err := s.queries.WithTx(tx).SetCurrentMap(ctx, playdb.SetCurrentMapParams{ID: session.ID, CurrentMapID: mapID}); err != nil {
 			return fmt.Errorf("set the current map: %w", err)
 		}
+		current := conv.OrZero(mapID)
+		h.after(func(ctx context.Context, _ sayFn) {
+			if mapID != nil {
+				s.maps.MapShown(ctx, m.CampaignID, *mapID)
+			}
+		})
+		h.tell(m.CampaignID, live.Event{Audience: live.Audience{Master: true, Everyone: true}, Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
+			CurrentMapChanged: &playv1.WatchGameSessionResponse_CurrentMapChanged{MapId: current},
+		}}})
 		return nil
 	})
 	if err != nil {
@@ -79,12 +80,6 @@ func (s *Service) SetCurrentMap(
 	}
 
 	current := conv.OrZero(mapID)
-	if mapID != nil {
-		s.maps.MapShown(ctx, m.CampaignID, *mapID)
-	}
-	s.tellMembers(m.CampaignID, true, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CurrentMapChanged_{
-		CurrentMapChanged: &playv1.WatchGameSessionResponse_CurrentMapChanged{MapId: current},
-	}})
 	return connect.NewResponse(&playv1.SetCurrentMapResponse{CurrentMapId: current}), nil
 }
 
@@ -111,7 +106,7 @@ func (s *Service) SetShownImage(
 		return nil, err
 	}
 
-	out, err := s.swapShownImage(ctx, m.CampaignID, imageID, keep, ask, shownCopy)
+	out, err := s.swapShownImage(ctx, m.CampaignID, imageID, keep, ask, shown, shownCopy)
 	if shownCopy != nil && (err != nil || !out.copyCreated) {
 		shownCopy.Discard(ctx) // no gallery row: the copy's files go
 	}
@@ -128,7 +123,6 @@ func (s *Service) SetShownImage(
 	if err != nil {
 		return nil, s.dbError(ctx, "set the shown image", err)
 	}
-	s.publishShownImage(ctx, m.CampaignID, out, shown)
 	return connect.NewResponse(&playv1.SetShownImageResponse{ShownImage: withAudience(shown, out.move.audience), Keep: keep}), nil
 }
 
@@ -157,15 +151,30 @@ func (s *Service) prepareShownImage(ctx context.Context, campaignID string, imag
 	return shown, shownCopy, &shownID, nil
 }
 
-// publishShownImage tells the streams what a change of the shown image did: the master and the
-// players who see it now get the image, the ones who saw an image and do not any more get no image,
-// and the players of an image left with the players hear that the list changed. Only the switch
-// moved when the image is the same: nothing for the players, who never learn the switch.
-func (s *Service) publishShownImage(ctx context.Context, campaignID string, out shownOutcome, shown *playv1.ShownImage) {
-	out.move.shown = shown
-	s.publishImageMove(ctx, campaignID, out.move)
+// tellShownImage collects what a change of the shown image did: the master and the players who see it now get the image, the ones
+// who saw an image and do not any more get no image, and the players of an image left with the players hear that the list changed.
+// Only the switch moved when the image is the same: nothing for the players, who never learn the switch. A change of the switch
+// alone still moves the session's number. shown is the image the maps module answered with; when another show made the copy first,
+// the stream reads the image that is shown.
+func (s *Service) tellShownImage(h *hints, campaignID string, out shownOutcome, shown *playv1.ShownImage, switchMoved bool) {
+	mv := out.move
+	if shown.GetId() == out.showing {
+		mv.shown = shown
+	}
+	if mv.empty() && !out.changed && !out.moved && !switchMoved {
+		return
+	}
+	h.touch()
+	s.tellImageMove(h, campaignID, mv)
 	if out.moved {
-		s.publishLeftImagesChanged(campaignID, out.leftTo)
+		// After the image, as it was told before: the streams hear the image, then the list.
+		h.after(func(_ context.Context, say sayFn) {
+			sayTo(say, campaignID, true, out.leftTo.audiences(), func() *playv1.WatchGameSessionResponse {
+				return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+					LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
+				}}
+			})
+		})
 	}
 }
 
@@ -180,23 +189,25 @@ type shownOutcome struct {
 }
 
 // swapShownImage shows the image (nil for none) in the open session, inside one
-// transaction.
-func (s *Service) swapShownImage(ctx context.Context, campaignID string, imageID *string, keep bool, ask audienceAsk, shownCopy ShownCopy) (shownOutcome, error) {
+// transaction, and has what the streams are to hear told once it committed.
+func (s *Service) swapShownImage(ctx context.Context, campaignID string, imageID *string, keep bool, ask audienceAsk, shown *playv1.ShownImage, shownCopy ShownCopy) (shownOutcome, error) {
 	var out shownOutcome
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := s.txOpen(ctx, campaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
 		out = shownOutcome{}
-		return s.swapShownImageIn(ctx, tx, campaignID, imageID, keep, ask, shownCopy, &out)
+		switchMoved, err := s.swapShownImageIn(ctx, tx, campaignID, session, imageID, keep, ask, shownCopy, &out)
+		if err != nil {
+			return err
+		}
+		s.tellShownImage(h, campaignID, out, shown, switchMoved)
+		return nil
 	})
 	return out, err
 }
 
-// swapShownImageIn is swapShownImage's transaction.
-func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID string, imageID *string, keep bool, ask audienceAsk, shownCopy ShownCopy, out *shownOutcome) error {
+// swapShownImageIn is swapShownImage's transaction; it says whether the keep switch moved.
+func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID string, session playdb.GameSession, imageID *string, keep bool, ask audienceAsk, shownCopy ShownCopy, out *shownOutcome) (bool, error) {
 	q := s.queries.WithTx(tx)
-	session, err := lockOpenSessionOrNone(ctx, q, campaignID)
-	if err != nil {
-		return err
-	}
+	var err error
 	// An image kept leaves with the players when it stops being shown:
 	// replaced by another, or by nothing. The same image again only
 	// moves the switch.
@@ -205,7 +216,7 @@ func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID st
 		// The copy's row first: another show of the same image may have made it meanwhile.
 		id, created, err := shownCopy.Insert(ctx, tx)
 		if err != nil {
-			return err
+			return false, err
 		}
 		showID, out.copyCreated = &id, created
 	}
@@ -213,19 +224,19 @@ func (s *Service) swapShownImageIn(ctx context.Context, tx pgx.Tx, campaignID st
 	out.changed = !equal(session.ShownImageID, showID)
 	var old viewers
 	if out.move, old, err = s.shownMove(ctx, q, session, showID, ask); err != nil {
-		return err
+		return false, err
 	}
 	if session.ShownImageKeep && session.ShownImageID != nil && out.changed {
 		// It is left with the players who saw it, no others (RN-10).
 		if err := s.maps.LeaveImage(ctx, tx, campaignID, *session.ShownImageID, s.now(), leftAudience(old)); err != nil {
-			return err
+			return false, err
 		}
 		out.moved, out.leftTo = true, old
 	}
 	if _, err := q.SetShownImage(ctx, playdb.SetShownImageParams{ID: session.ID, ShownImageID: showID, ShownImageKeep: keep}); err != nil {
-		return fmt.Errorf("set the shown image: %w", err)
+		return false, fmt.Errorf("set the shown image: %w", err)
 	}
-	return nil
+	return session.ShownImageKeep != keep, nil
 }
 
 // ListLeftImages implements playv1connect.PlayServiceHandler.

@@ -16,7 +16,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -168,23 +167,28 @@ func logPuzzleMove(ctx context.Context, l *slog.Logger, puzzleID string, res *mo
 	}
 }
 
-// announceMove tells the log and the watchers of a move that was committed (a replay
-// changed nothing, so it tells nothing).
-func (s *Service) announceMove(ctx context.Context, campaignID, puzzleID string, res *moveResult) {
+// tellMove collects what a move that was made tells the watchers once it is committed: the puzzle changed, the notices the solve's
+// action asks the maps module to send, the doors it opened and the firing of the trap a wrong move fired. The retry of a move tells
+// the puzzle again (and the door the solve opened), and changes nothing.
+func (s *Service) tellMove(h *hints, campaignID, puzzleID string, res *moveResult) {
+	s.tellPuzzleChanged(h, campaignID, puzzleID)
 	if res.replayed {
-		return
+		h.replay()
+		if res.solved && res.d.onSolve.GetAction() == playv1.PuzzleSolveAction_PUZZLE_SOLVE_ACTION_OPEN_DOOR && conv.OrZero(res.run.SolveOutcome) == outcomeName(playv1.PuzzleSolveOutcome_PUZZLE_SOLVE_OUTCOME_DOOR_OPENED) {
+			res.doorMap = res.d.onSolve.GetDoor().GetMapId() // the door the first call opened: tell its watchers again
+		}
 	}
-	logPuzzleMove(ctx, s.logger, puzzleID, res)
-	s.publishPuzzleChanged(campaignID, puzzleID)
-	for _, f := range res.after {
-		f(ctx)
-	}
-	if res.doorMap != "" && s.puzzles.maps != nil {
-		s.puzzles.maps.DoorsChanged(ctx, campaignID, res.doorMap)
-	}
-	if res.fired != nil {
-		s.afterFiring(ctx, campaignID, res.fired, res.firedEnc)
-	}
+	h.after(func(ctx context.Context, say sayFn) {
+		for _, f := range res.after {
+			f(ctx)
+		}
+		if res.doorMap != "" && s.puzzles.maps != nil {
+			s.puzzles.maps.DoorsChanged(ctx, campaignID, res.doorMap)
+		}
+		if res.fired != nil {
+			s.sayFiring(ctx, say, campaignID, res.fired, res.firedEnc)
+		}
+	})
 }
 
 // MakePuzzleMove implements playv1connect.PuzzleServiceHandler.
@@ -210,18 +214,21 @@ func (s *Service) MakePuzzleMove(
 
 	var res *moveResult
 	var names runNames
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.txOpenOr(ctx, m.CampaignID, errNoOpenSessionForPuzzle, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
 		res = &moveResult{}
 		var err error
-		if names, err = s.applyMove(ctx, tx, m, id, key, req.Msg.GetMove(), res); err != nil {
+		if names, err = s.applyMove(ctx, tx, session, m, id, key, req.Msg.GetMove(), res); err != nil {
 			return err
 		}
+		s.tellMove(h, m.CampaignID, id, res)
 		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "make a puzzle move", err)
 	}
-	s.announceMove(ctx, m.CampaignID, id, res)
+	if !res.replayed {
+		logPuzzleMove(ctx, s.logger, id, res)
+	}
 	view, err := s.viewerOf(ctx, nil, m, res.d, res.run)
 	if err != nil {
 		return nil, s.dbError(ctx, "read the puzzle after a move", err)
@@ -233,17 +240,13 @@ func (s *Service) MakePuzzleMove(
 	return connect.NewResponse(&playv1.MakePuzzleMoveResponse{Run: out, Replayed: res.replayed, SolvedByThisMove: res.solved, Wrong: res.wrong}), nil
 }
 
-// applyMove is the move's transaction. The session's row is locked first (so the
+// applyMove is the move's transaction. The session's row is locked first (Service.tx: so the
 // solve's event gets its number in order, and a master's reset waits), then the
 // run's: two players' moves take turns, each applied to the state the other left,
 // which is why both count. A move is relative, so the order they take does not
 // change where the pieces end.
-func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, m authz.Membership, puzzleID, key string, mv *playv1.PuzzleMove, res *moveResult) (runNames, error) {
+func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, session playdb.GameSession, m authz.Membership, puzzleID, key string, mv *playv1.PuzzleMove, res *moveResult) (runNames, error) {
 	q := s.queriesIn(tx)
-	session, err := lockOpenSession(ctx, q, m.CampaignID)
-	if err != nil {
-		return nil, err
-	}
 	d, _, err := s.shownRun(ctx, q, session, m.CampaignID, puzzleID)
 	if err != nil {
 		return nil, err

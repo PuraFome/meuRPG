@@ -12,7 +12,6 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
@@ -89,6 +88,32 @@ func (s *Service) publishTo(campaignID string, master bool, auds []live.Audience
 	for _, a := range auds {
 		s.send(campaignID, live.Event{Audience: a, Message: ev})
 	}
+}
+
+// sayTo sends a message made by mk (a new one for each event: say stamps the number into it) to the master (when master) and to each
+// audience, through say.
+func sayTo(say sayFn, campaignID string, master bool, auds []live.Audience, mk func() *playv1.WatchGameSessionResponse) {
+	if master {
+		say(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: mk()})
+	}
+	for _, a := range auds {
+		say(campaignID, live.Event{Audience: a, Message: mk()})
+	}
+}
+
+// tellTo collects what publishTo sends, for Service.tx: a message made by mk for the master (when master) and for each audience.
+func tellTo(h *hints, campaignID string, master bool, auds []live.Audience, mk func() *playv1.WatchGameSessionResponse) {
+	if master {
+		h.tell(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: mk()})
+	}
+	for _, a := range auds {
+		h.tell(campaignID, live.Event{Audience: a, Message: mk()})
+	}
+}
+
+// tellViewers collects mk's message for the master and the players in v.
+func tellViewers(h *hints, campaignID string, v viewers, mk func() *playv1.WatchGameSessionResponse) {
+	tellTo(h, campaignID, true, v.audiences(), mk)
 }
 
 // publishToViewers sends ev to the master and to the players in v.
@@ -332,13 +357,9 @@ func (s *Service) SetSceneAudience(
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("audience is required"))
 	}
 	var ch audienceChange
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.txOpen(ctx, m.CampaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
 		ch = audienceChange{}
 		q := s.queries.WithTx(tx)
-		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
-		if err != nil {
-			return err
-		}
 		scene, err := s.openSceneIn(ctx, tx, m.CampaignID, session)
 		if err != nil {
 			return err
@@ -349,12 +370,16 @@ func (s *Service) SetSceneAudience(
 		if !ch.changed {
 			return nil
 		}
-		return s.discoverScene(ctx, tx, m.CampaignID, scene.PointID, to, s.now()) // the players now in may know it
+		if err := s.discoverScene(ctx, tx, m.CampaignID, scene.PointID, to, s.now()); err != nil { // the players now in may know it
+			return err
+		}
+		s.tellAudienceChange(h, m.CampaignID, ch)
+		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set who the scene is open to", err)
 	}
-	s.publishAudienceChange(ctx, m.CampaignID, ch)
+	s.logAudienceChange(ctx, ch)
 	info, err := s.openSceneInfo(ctx, m)
 	if err != nil {
 		return nil, err
@@ -362,15 +387,18 @@ func (s *Service) SetSceneAudience(
 	return connect.NewResponse(&playv1.SetSceneAudienceResponse{Scene: info}), nil
 }
 
-// publishAudienceChange tells the streams that who is in the scene changed: the master and every player who
-// was in or is in hear scene_changed, and the shown image follows.
-func (s *Service) publishAudienceChange(ctx context.Context, campaignID string, ch audienceChange) {
-	if !ch.changed {
-		return
+// tellAudienceChange collects what a change of who is in the scene tells: the master and every player who was in or is in hear
+// scene_changed, and the shown image follows.
+func (s *Service) tellAudienceChange(h *hints, campaignID string, ch audienceChange) {
+	tellViewers(h, campaignID, ch.notify(), sceneChangedEvent)
+	s.tellImageMove(h, campaignID, ch.image)
+}
+
+// logAudienceChange records a change of who is in the scene, once it is saved.
+func (s *Service) logAudienceChange(ctx context.Context, ch audienceChange) {
+	if ch.changed {
+		logging.Event(ctx, s.logger, "scene.audience_changed")
 	}
-	logging.Event(ctx, s.logger, "scene.audience_changed")
-	s.publishToViewers(campaignID, ch.notify(), sceneChangedEvent())
-	s.publishImageMove(ctx, campaignID, ch.image)
 }
 
 // sceneAudienceView is who is in the open scene and who is out of it, for the master.
@@ -433,32 +461,26 @@ func (s *Service) SetScenePlayersMayJoin(
 	if err != nil {
 		return nil, err
 	}
-	changed := false
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		changed = false
+	err = s.txOpen(ctx, m.CampaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
 		q := s.queries.WithTx(tx)
-		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
-		if err != nil {
-			return err
-		}
 		if _, err := s.openSceneIn(ctx, tx, m.CampaignID, session); err != nil {
 			return err
 		}
 		if !partialScene(session) {
 			return notPartialScene()
 		}
-		if changed = session.ScenePlayersMayJoin != req.Msg.GetPlayersMayJoin(); !changed {
+		if session.ScenePlayersMayJoin == req.Msg.GetPlayersMayJoin() {
 			return nil
 		}
-		_, err = q.SetScenePlayersMayJoin(ctx, playdb.SetScenePlayersMayJoinParams{ID: session.ID, ScenePlayersMayJoin: req.Msg.GetPlayersMayJoin()})
-		return err
+		if _, err := q.SetScenePlayersMayJoin(ctx, playdb.SetScenePlayersMayJoinParams{ID: session.ID, ScenePlayersMayJoin: req.Msg.GetPlayersMayJoin()}); err != nil {
+			return err
+		}
+		// Every player hears it: the ones out read the prompt appear or go.
+		tellViewers(h, m.CampaignID, allViewers(), sceneChangedEvent)
+		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set whether players may join the scene", err)
-	}
-	if changed {
-		// Every player hears it: the ones out read the prompt appear or go.
-		s.publishTo(m.CampaignID, true, allViewers().audiences(), sceneChangedEvent())
 	}
 	info, err := s.openSceneInfo(ctx, m)
 	if err != nil {
@@ -477,13 +499,9 @@ func (s *Service) JoinScene(
 		return nil, err
 	}
 	var ch audienceChange
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.txOpen(ctx, m.CampaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
 		ch = audienceChange{}
 		q := s.queries.WithTx(tx)
-		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
-		if err != nil {
-			return err
-		}
 		scene, err := s.openSceneIn(ctx, tx, m.CampaignID, session)
 		if err != nil {
 			return err
@@ -503,12 +521,16 @@ func (s *Service) JoinScene(
 			return fmt.Errorf("join the scene: %w", err)
 		}
 		ch = audienceChange{before: before, after: after, changed: true, image: sceneImageMove(session, before, after)}
-		return s.discoverScene(ctx, tx, m.CampaignID, scene.PointID, usersViewers([]string{m.UserID}), s.now()) // what they read, they read
+		if err := s.discoverScene(ctx, tx, m.CampaignID, scene.PointID, usersViewers([]string{m.UserID}), s.now()); err != nil { // what they read, they read
+			return err
+		}
+		s.tellAudienceChange(h, m.CampaignID, ch)
+		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "join the scene", err)
 	}
-	s.publishAudienceChange(ctx, m.CampaignID, ch)
+	s.logAudienceChange(ctx, ch)
 	info, err := s.openSceneInfo(ctx, m)
 	if err != nil {
 		return nil, err

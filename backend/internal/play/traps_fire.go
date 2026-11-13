@@ -22,6 +22,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -409,6 +410,11 @@ func (s *Service) tellFiredOutside(h *hints, campaignID string, fired *trapFireE
 // is public now (everyone who sees the map), the combat and its log changed, and
 // the master's trap card has new damage to apply.
 func (s *Service) afterFiring(ctx context.Context, campaignID string, fired *trapFireEvent, enc playdb.Encounter) {
+	s.sayFiring(ctx, s.sayNow, campaignID, fired, enc)
+}
+
+// sayFiring is afterFiring through say: an after-commit step of Service.tx tells it with the session's number.
+func (s *Service) sayFiring(ctx context.Context, say sayFn, campaignID string, fired *trapFireEvent, enc playdb.Encounter) {
 	if fired == nil {
 		return
 	}
@@ -417,13 +423,13 @@ func (s *Service) afterFiring(ctx context.Context, campaignID string, fired *tra
 	switch {
 	case enc.ID == "":
 	case fired.addsNothingForAnyPlayer(): // creatures only the master is given: the players cannot count his additions to a firing
-		s.publishEncounterChangedToMaster(campaignID, enc)
-		s.publishLogChanged(ctx, campaignID, enc.ID, false)
+		say(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: encounterChangedMessage(enc)})
+		s.sayLogChange(ctx, say, campaignID, enc.ID, false, false)
 	default:
-		s.publishEncounterChanged(ctx, campaignID, enc)
-		s.publishLogChanged(ctx, campaignID, enc.ID, true)
+		s.tellEncounterChanged(ctx, say, campaignID, enc)
+		s.sayLogChange(ctx, say, campaignID, enc.ID, true, false)
 	}
-	s.tellMembers(campaignID, false, mapChangedHint(fired.MapID)) // the master's trap card: damage waits there
+	say(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: mapChangedHint(fired.MapID)}) // the master's trap card: damage waits there
 }
 
 // characterLabels returns the names of the characters a firing caught.
