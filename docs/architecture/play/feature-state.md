@@ -74,7 +74,7 @@ A disabled row the call does not know how to name is refused all the same (`feat
 
 **Order.** The request is read (ids, key, targets, choice), then inside the write transaction (`s.write`, kind `feature_used`, the session row locked, the idempotency key replayed):
 
-1. Locate. The combatant must be a player's character the caller may act for (own player or master; an NPC is `invalid_argument`; a creature the player does not see is `not_found`).
+1. Locate. The combatant must be a player's character the caller may act for (own player or master; an NPC or a creature is `invalid_argument` ("this is for a player's character; the master adjusts an NPC by hand"); a creature the player does not see is `not_found`).
 2. Find the feature. Not on the sheet is `not_found`; a feature that declares no use is `invalid_argument`.
 3. The gate (`featureStopNow`). The combat has not ended. The combatant is not down, defeated, incapacitated or surprised, and the turn: a feature that spends the action, the bonus action or nothing is used on the combatant's turn; a feature that spends the reaction is used on any turn (`gateFor` with `offTurn`), by a combatant whose reaction an effect did not take away (`REACTION_USED`). Then the waits: a question for the master (`HIDDEN_REVEAL_PENDING`) holds every use, the master's too; an open reaction window and the user's own opportunity offer (`REACTION_PENDING`, `OPPORTUNITY_PENDING`; the master is not held by the offer) hold the uses that are not a reaction, since a reaction is how the user answers them.
 4. `use_extra_action` is refused (`EXTRA_ACTION_UNAVAILABLE`, as `TakeAction` does for a feature).

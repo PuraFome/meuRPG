@@ -25,7 +25,9 @@ service FeatureService {
   //   - `not_found`: the combat or the combatant is not in this campaign's open session, the caller is a player and
   //     may not see it, or the combatant does not have the feature.
   //   - `permission_denied`: the caller is a player and the combatant is not their character.
-  //   - `invalid_argument`: the key is not a feature that declares a use, or a target id is not a combatant id.
+  //   - `invalid_argument`: the key is not a feature that declares a use, a target id is not a combatant id, or the
+  //     combatant is not a player's character ("this is for a player's character; the master adjusts an NPC by hand":
+  //     an NPC or a creature).
   //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED, BONUS_ACTION_USED,
   //     REACTION_USED, NO_USES (the scope or the resource is spent), COMBATANT_DOWN, HIDDEN_REVEAL_PENDING,
   //     REACTION_PENDING, OPPORTUNITY_PENDING, FEATURE_TARGET and FEATURE_CHOICE. FEATURE_TARGET lists in
