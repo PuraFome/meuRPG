@@ -5,6 +5,7 @@ import (
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1/playv1connect"
 )
 
 // A fired readied action (FireReadied, the READIED window, RN-10): the window, its trigger and the held action are the
@@ -77,6 +78,19 @@ func TestAFiredReadiedActionIsTheReactorsAndTheMasters(t *testing.T) {
 			t.Errorf("Ana reads the windows %v and the wait %q", ana.GetReactionWindows(), ana.GetReactionWait().GetTitlePt())
 		}
 		w.inspectPlayers(t, w.ana, w.pending)
+		// Ana answering Toren's window is refused as an answer to no window, and the refusal holds nothing of it.
+		answer := func(id string) reply {
+			return w.ana.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
+				CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: id, Answer: playv1.ReactionChoice_REACTION_CHOICE_USE, IdempotencyKey: newKey(),
+			})
+		}
+		got, unknown := answer(rw.GetId()), answer(newKey())
+		if got.ok() || got.status != unknown.status || normalizeRead(string(got.body)) != normalizeRead(string(unknown.body)) {
+			t.Errorf("Ana's answer to Toren's window = %d %s, to no window = %d %s", got.status, got.body, unknown.status, unknown.body)
+		}
+		for _, f := range w.inspect(w.ana, got, nil) {
+			t.Errorf("Ana's refused answer: %s", f)
+		}
 		w.readScreen(t, "while Toren's READIED window waits", w.tvReader(), nil)
 	}
 	w.fireAndAnswer(w.caio, w.readyDodge(w.caio, toren, ignored), false, whileOpen)
