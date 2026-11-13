@@ -1789,8 +1789,11 @@ type TableEffect struct {
 	// uses each cast spends.
 	NoMaterialComponents bool  `protobuf:"varint,86,opt,name=no_material_components,json=noMaterialComponents,proto3" json:"no_material_components,omitempty"`
 	UsesCost             int32 `protobuf:"varint,87,opt,name=uses_cost,json=usesCost,proto3" json:"uses_cost,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// grant_action only: how the action is used in a combat through UseFeature (limit per turn, round or combat,
+	// targets, a choice, what it applies). Unset keeps the action on TakeAction.
+	Use           *FeatureUse `protobuf:"bytes,88,opt,name=use,proto3" json:"use,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *TableEffect) Reset() {
@@ -2430,6 +2433,13 @@ func (x *TableEffect) GetUsesCost() int32 {
 		return x.UsesCost
 	}
 	return 0
+}
+
+func (x *TableEffect) GetUse() *FeatureUse {
+	if x != nil {
+		return x.Use
+	}
+	return nil
 }
 
 // TableFeature is a class or subclass feature, a race or subrace trait, or a
@@ -8616,6 +8626,234 @@ func (x *FormulaHelper) GetHintPt() string {
 	return ""
 }
 
+// FeatureUse is what a table feature's grant_action declares to be used through FeatureService.UseFeature. The action
+// spends the economy of its `economy` and, if it has them, the `resource` and the limit below. Refusals are at
+// `use.limit_uses`, `use.targets`, `use.choices[i]` and `use.applies...`.
+type FeatureUse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// How long a use counts: with `limit_uses`, the uses allowed in that scope. Unset with a limit is TURN.
+	LimitScope UseScope `protobuf:"varint,1,opt,name=limit_scope,json=limitScope,proto3,enum=meurpg.rules.v1.UseScope" json:"limit_scope,omitempty"`
+	// Uses in the scope: an Int formula, at least 1. Empty is no limit of this kind (the resource may still limit it).
+	LimitUses string `protobuf:"bytes,2,opt,name=limit_uses,json=limitUses,proto3" json:"limit_uses,omitempty"`
+	// The creatures the use is aimed at. Unset takes none (the owner alone).
+	Targets *FeatureTargets `protobuf:"bytes,3,opt,name=targets,proto3" json:"targets,omitempty"`
+	// The options the player picks one of, at most 8, keys unique. Empty takes no choice.
+	Choices []*FeatureChoice `protobuf:"bytes,4,rep,name=choices,proto3" json:"choices,omitempty"`
+	// What the use does besides spending. Unset only spends and goes to the log.
+	Applies       *FeatureApplies `protobuf:"bytes,5,opt,name=applies,proto3" json:"applies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FeatureUse) Reset() {
+	*x = FeatureUse{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeatureUse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeatureUse) ProtoMessage() {}
+
+func (x *FeatureUse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeatureUse.ProtoReflect.Descriptor instead.
+func (*FeatureUse) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *FeatureUse) GetLimitScope() UseScope {
+	if x != nil {
+		return x.LimitScope
+	}
+	return UseScope_USE_SCOPE_UNSPECIFIED
+}
+
+func (x *FeatureUse) GetLimitUses() string {
+	if x != nil {
+		return x.LimitUses
+	}
+	return ""
+}
+
+func (x *FeatureUse) GetTargets() *FeatureTargets {
+	if x != nil {
+		return x.Targets
+	}
+	return nil
+}
+
+func (x *FeatureUse) GetChoices() []*FeatureChoice {
+	if x != nil {
+		return x.Choices
+	}
+	return nil
+}
+
+func (x *FeatureUse) GetApplies() *FeatureApplies {
+	if x != nil {
+		return x.Applies
+	}
+	return nil
+}
+
+// FeatureTargets are the creatures a feature's use is aimed at.
+type FeatureTargets struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 0 to 20 creatures; max at least min.
+	Min int32            `protobuf:"varint,1,opt,name=min,proto3" json:"min,omitempty"`
+	Max int32            `protobuf:"varint,2,opt,name=max,proto3" json:"max,omitempty"`
+	Who FeatureTargetWho `protobuf:"varint,3,opt,name=who,proto3,enum=meurpg.rules.v1.FeatureTargetWho" json:"who,omitempty"`
+	// The reach in feet, 0 (no limit) to 300.
+	RangeFt       int32 `protobuf:"varint,4,opt,name=range_ft,json=rangeFt,proto3" json:"range_ft,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FeatureTargets) Reset() {
+	*x = FeatureTargets{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[73]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeatureTargets) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeatureTargets) ProtoMessage() {}
+
+func (x *FeatureTargets) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[73]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeatureTargets.ProtoReflect.Descriptor instead.
+func (*FeatureTargets) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{73}
+}
+
+func (x *FeatureTargets) GetMin() int32 {
+	if x != nil {
+		return x.Min
+	}
+	return 0
+}
+
+func (x *FeatureTargets) GetMax() int32 {
+	if x != nil {
+		return x.Max
+	}
+	return 0
+}
+
+func (x *FeatureTargets) GetWho() FeatureTargetWho {
+	if x != nil {
+		return x.Who
+	}
+	return FeatureTargetWho_FEATURE_TARGET_WHO_UNSPECIFIED
+}
+
+func (x *FeatureTargets) GetRangeFt() int32 {
+	if x != nil {
+		return x.RangeFt
+	}
+	return 0
+}
+
+// FeatureApplies is what a use does to its targets (the owner when it has none).
+type FeatureApplies struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Hit points healed: dice as a grant_action's `heal`. Empty heals nothing.
+	Heal string `protobuf:"bytes,1,opt,name=heal,proto3" json:"heal,omitempty"`
+	// Temporary hit points: an Int formula. Empty gives none.
+	TempHp string `protobuf:"bytes,2,opt,name=temp_hp,json=tempHp,proto3" json:"temp_hp,omitempty"`
+	// A lasting effect on the targets, as a table spell leaves one. `applies` of it is ignored (ALL).
+	Effect *TableSpellEffect `protobuf:"bytes,3,opt,name=effect,proto3" json:"effect,omitempty"`
+	// How long the effect lasts, in rounds, 1 to 14,400; needed with `effect`.
+	EffectRounds  int32 `protobuf:"varint,4,opt,name=effect_rounds,json=effectRounds,proto3" json:"effect_rounds,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FeatureApplies) Reset() {
+	*x = FeatureApplies{}
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[74]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FeatureApplies) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FeatureApplies) ProtoMessage() {}
+
+func (x *FeatureApplies) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_rules_v1_table_content_proto_msgTypes[74]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FeatureApplies.ProtoReflect.Descriptor instead.
+func (*FeatureApplies) Descriptor() ([]byte, []int) {
+	return file_meurpg_rules_v1_table_content_proto_rawDescGZIP(), []int{74}
+}
+
+func (x *FeatureApplies) GetHeal() string {
+	if x != nil {
+		return x.Heal
+	}
+	return ""
+}
+
+func (x *FeatureApplies) GetTempHp() string {
+	if x != nil {
+		return x.TempHp
+	}
+	return ""
+}
+
+func (x *FeatureApplies) GetEffect() *TableSpellEffect {
+	if x != nil {
+		return x.Effect
+	}
+	return nil
+}
+
+func (x *FeatureApplies) GetEffectRounds() int32 {
+	if x != nil {
+		return x.EffectRounds
+	}
+	return 0
+}
+
 var File_meurpg_rules_v1_table_content_proto protoreflect.FileDescriptor
 
 const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
@@ -8651,7 +8889,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\ftable_option\x18\x12 \x01(\v2\x1c.meurpg.rules.v1.TableOptionH\x00R\vtableOption\x12T\n" +
 	"\x13table_class_feature\x18\x13 \x01(\v2\".meurpg.rules.v1.TableClassFeatureH\x00R\x11tableClassFeature\x12G\n" +
 	"\x0etable_creature\x18\x14 \x01(\v2\x1e.meurpg.rules.v1.TableCreatureH\x00R\rtableCreatureB\x06\n" +
-	"\x04body\"\x84\x14\n" +
+	"\x04body\"\xb3\x14\n" +
 	"\vTableEffect\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x12\x16\n" +
 	"\x06target\x18\x02 \x01(\tR\x06target\x12\x12\n" +
@@ -8755,7 +8993,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"adamantine\x12\x18\n" +
 	"\x04flag\x18U \x01(\tB\x04\x90\xb5\x18@R\x04flag\x124\n" +
 	"\x16no_material_components\x18V \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
-	"\tuses_cost\x18W \x01(\x05R\busesCost\"\x81\x02\n" +
+	"\tuses_cost\x18W \x01(\x05R\busesCost\x12-\n" +
+	"\x03use\x18X \x01(\v2\x1b.meurpg.rules.v1.FeatureUseR\x03use\"\x81\x02\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +
@@ -9255,7 +9494,26 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rFormulaHelper\x12\x12\n" +
 	"\x04call\x18\x01 \x01(\tR\x04call\x12\x18\n" +
 	"\areturns\x18\x02 \x01(\tR\areturns\x12\x17\n" +
-	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt*\xf6\x02\n" +
+	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt\"\xa3\x02\n" +
+	"\n" +
+	"FeatureUse\x12:\n" +
+	"\vlimit_scope\x18\x01 \x01(\x0e2\x19.meurpg.rules.v1.UseScopeR\n" +
+	"limitScope\x12#\n" +
+	"\n" +
+	"limit_uses\x18\x02 \x01(\tB\x04\x90\xb5\x18@R\tlimitUses\x129\n" +
+	"\atargets\x18\x03 \x01(\v2\x1f.meurpg.rules.v1.FeatureTargetsR\atargets\x12>\n" +
+	"\achoices\x18\x04 \x03(\v2\x1e.meurpg.rules.v1.FeatureChoiceB\x04\x88\xb5\x18\bR\achoices\x129\n" +
+	"\aapplies\x18\x05 \x01(\v2\x1f.meurpg.rules.v1.FeatureAppliesR\aapplies\"\x84\x01\n" +
+	"\x0eFeatureTargets\x12\x10\n" +
+	"\x03min\x18\x01 \x01(\x05R\x03min\x12\x10\n" +
+	"\x03max\x18\x02 \x01(\x05R\x03max\x123\n" +
+	"\x03who\x18\x03 \x01(\x0e2!.meurpg.rules.v1.FeatureTargetWhoR\x03who\x12\x19\n" +
+	"\brange_ft\x18\x04 \x01(\x05R\arangeFt\"\xa9\x01\n" +
+	"\x0eFeatureApplies\x12\x18\n" +
+	"\x04heal\x18\x01 \x01(\tB\x04\x90\xb5\x18 R\x04heal\x12\x1d\n" +
+	"\atemp_hp\x18\x02 \x01(\tB\x04\x90\xb5\x18@R\x06tempHp\x129\n" +
+	"\x06effect\x18\x03 \x01(\v2!.meurpg.rules.v1.TableSpellEffectR\x06effect\x12#\n" +
+	"\reffect_rounds\x18\x04 \x01(\x05R\feffectRounds*\xf6\x02\n" +
 	"\x10TableContentKind\x12\"\n" +
 	"\x1eTABLE_CONTENT_KIND_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18TABLE_CONTENT_KIND_CLASS\x10\x01\x12\x1f\n" +
@@ -9395,7 +9653,7 @@ func file_meurpg_rules_v1_table_content_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_rules_v1_table_content_proto_enumTypes = make([]protoimpl.EnumInfo, 18)
-var file_meurpg_rules_v1_table_content_proto_msgTypes = make([]protoimpl.MessageInfo, 72)
+var file_meurpg_rules_v1_table_content_proto_msgTypes = make([]protoimpl.MessageInfo, 75)
 var file_meurpg_rules_v1_table_content_proto_goTypes = []any{
 	(TableContentKind)(0),                 // 0: meurpg.rules.v1.TableContentKind
 	(TableSpellTargetKind)(0),             // 1: meurpg.rules.v1.TableSpellTargetKind
@@ -9487,22 +9745,28 @@ var file_meurpg_rules_v1_table_content_proto_goTypes = []any{
 	(*EffectMenuList)(nil),                // 87: meurpg.rules.v1.EffectMenuList
 	(*EffectOptionSet)(nil),               // 88: meurpg.rules.v1.EffectOptionSet
 	(*FormulaHelper)(nil),                 // 89: meurpg.rules.v1.FormulaHelper
-	(*timestamppb.Timestamp)(nil),         // 90: google.protobuf.Timestamp
-	(*FeatPrerequisite)(nil),              // 91: meurpg.rules.v1.FeatPrerequisite
-	(Ability)(0),                          // 92: meurpg.rules.v1.Ability
-	(*AbilityScores)(nil),                 // 93: meurpg.rules.v1.AbilityScores
-	(*BonusSet)(nil),                      // 94: meurpg.rules.v1.BonusSet
-	(CastingTimeUnit)(0),                  // 95: meurpg.rules.v1.CastingTimeUnit
-	(SpellRangeKind)(0),                   // 96: meurpg.rules.v1.SpellRangeKind
-	(SpellDurationKind)(0),                // 97: meurpg.rules.v1.SpellDurationKind
-	(SpellDurationUnit)(0),                // 98: meurpg.rules.v1.SpellDurationUnit
-	(*SpellSave)(nil),                     // 99: meurpg.rules.v1.SpellSave
+	(*FeatureUse)(nil),                    // 90: meurpg.rules.v1.FeatureUse
+	(*FeatureTargets)(nil),                // 91: meurpg.rules.v1.FeatureTargets
+	(*FeatureApplies)(nil),                // 92: meurpg.rules.v1.FeatureApplies
+	(*timestamppb.Timestamp)(nil),         // 93: google.protobuf.Timestamp
+	(*FeatPrerequisite)(nil),              // 94: meurpg.rules.v1.FeatPrerequisite
+	(Ability)(0),                          // 95: meurpg.rules.v1.Ability
+	(*AbilityScores)(nil),                 // 96: meurpg.rules.v1.AbilityScores
+	(*BonusSet)(nil),                      // 97: meurpg.rules.v1.BonusSet
+	(CastingTimeUnit)(0),                  // 98: meurpg.rules.v1.CastingTimeUnit
+	(SpellRangeKind)(0),                   // 99: meurpg.rules.v1.SpellRangeKind
+	(SpellDurationKind)(0),                // 100: meurpg.rules.v1.SpellDurationKind
+	(SpellDurationUnit)(0),                // 101: meurpg.rules.v1.SpellDurationUnit
+	(*SpellSave)(nil),                     // 102: meurpg.rules.v1.SpellSave
+	(UseScope)(0),                         // 103: meurpg.rules.v1.UseScope
+	(*FeatureChoice)(nil),                 // 104: meurpg.rules.v1.FeatureChoice
+	(FeatureTargetWho)(0),                 // 105: meurpg.rules.v1.FeatureTargetWho
 }
 var file_meurpg_rules_v1_table_content_proto_depIdxs = []int32{
 	0,   // 0: meurpg.rules.v1.TableEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
-	90,  // 1: meurpg.rules.v1.TableEntry.created_at:type_name -> google.protobuf.Timestamp
-	90,  // 2: meurpg.rules.v1.TableEntry.updated_at:type_name -> google.protobuf.Timestamp
-	90,  // 3: meurpg.rules.v1.TableEntry.archived_at:type_name -> google.protobuf.Timestamp
+	93,  // 1: meurpg.rules.v1.TableEntry.created_at:type_name -> google.protobuf.Timestamp
+	93,  // 2: meurpg.rules.v1.TableEntry.updated_at:type_name -> google.protobuf.Timestamp
+	93,  // 3: meurpg.rules.v1.TableEntry.archived_at:type_name -> google.protobuf.Timestamp
 	32,  // 4: meurpg.rules.v1.TableEntry.table_class:type_name -> meurpg.rules.v1.TableClass
 	35,  // 5: meurpg.rules.v1.TableEntry.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
 	36,  // 6: meurpg.rules.v1.TableEntry.table_race:type_name -> meurpg.rules.v1.TableRace
@@ -9513,150 +9777,157 @@ var file_meurpg_rules_v1_table_content_proto_depIdxs = []int32{
 	22,  // 11: meurpg.rules.v1.TableEntry.table_option:type_name -> meurpg.rules.v1.TableOption
 	25,  // 12: meurpg.rules.v1.TableEntry.table_class_feature:type_name -> meurpg.rules.v1.TableClassFeature
 	26,  // 13: meurpg.rules.v1.TableEntry.table_creature:type_name -> meurpg.rules.v1.TableCreature
-	19,  // 14: meurpg.rules.v1.TableFeature.effects:type_name -> meurpg.rules.v1.TableEffect
-	20,  // 15: meurpg.rules.v1.TableFeature.options:type_name -> meurpg.rules.v1.TableFeature
-	47,  // 16: meurpg.rules.v1.TableFeature.summon:type_name -> meurpg.rules.v1.TableSummon
-	91,  // 17: meurpg.rules.v1.TableFeat.prerequisite:type_name -> meurpg.rules.v1.FeatPrerequisite
-	19,  // 18: meurpg.rules.v1.TableFeat.effects:type_name -> meurpg.rules.v1.TableEffect
-	20,  // 19: meurpg.rules.v1.TableFeat.options:type_name -> meurpg.rules.v1.TableFeature
-	23,  // 20: meurpg.rules.v1.TableOption.prerequisite:type_name -> meurpg.rules.v1.OptionPrerequisite
-	19,  // 21: meurpg.rules.v1.TableOption.effects:type_name -> meurpg.rules.v1.TableEffect
-	24,  // 22: meurpg.rules.v1.OptionPrerequisite.class_level:type_name -> meurpg.rules.v1.OptionClassLevel
-	19,  // 23: meurpg.rules.v1.TableClassFeature.effects:type_name -> meurpg.rules.v1.TableEffect
-	47,  // 24: meurpg.rules.v1.TableClassFeature.summon:type_name -> meurpg.rules.v1.TableSummon
-	29,  // 25: meurpg.rules.v1.TableCreature.traits:type_name -> meurpg.rules.v1.TableCreatureTrait
-	28,  // 26: meurpg.rules.v1.TableCreature.attacks:type_name -> meurpg.rules.v1.TableCreatureAttack
-	27,  // 27: meurpg.rules.v1.TableCreature.damage_mods:type_name -> meurpg.rules.v1.TableCreatureDamageMod
-	92,  // 28: meurpg.rules.v1.TableCasting.ability:type_name -> meurpg.rules.v1.Ability
-	20,  // 29: meurpg.rules.v1.TableClassLevel.features:type_name -> meurpg.rules.v1.TableFeature
-	92,  // 30: meurpg.rules.v1.TableClass.saving_throws:type_name -> meurpg.rules.v1.Ability
-	93,  // 31: meurpg.rules.v1.TableClass.minimums:type_name -> meurpg.rules.v1.AbilityScores
-	93,  // 32: meurpg.rules.v1.TableClass.any_of:type_name -> meurpg.rules.v1.AbilityScores
-	30,  // 33: meurpg.rules.v1.TableClass.casting:type_name -> meurpg.rules.v1.TableCasting
-	31,  // 34: meurpg.rules.v1.TableClass.levels:type_name -> meurpg.rules.v1.TableClassLevel
-	20,  // 35: meurpg.rules.v1.TableSubclassLevel.features:type_name -> meurpg.rules.v1.TableFeature
-	34,  // 36: meurpg.rules.v1.TableSubclass.levels:type_name -> meurpg.rules.v1.TableSubclassLevel
-	30,  // 37: meurpg.rules.v1.TableSubclass.casting:type_name -> meurpg.rules.v1.TableCasting
-	33,  // 38: meurpg.rules.v1.TableSubclass.always_prepared:type_name -> meurpg.rules.v1.TableAlwaysPrepared
-	93,  // 39: meurpg.rules.v1.TableRace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
-	20,  // 40: meurpg.rules.v1.TableRace.traits:type_name -> meurpg.rules.v1.TableFeature
-	94,  // 41: meurpg.rules.v1.TableRace.choice_bonus_sets:type_name -> meurpg.rules.v1.BonusSet
-	93,  // 42: meurpg.rules.v1.TableSubrace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
-	20,  // 43: meurpg.rules.v1.TableSubrace.traits:type_name -> meurpg.rules.v1.TableFeature
-	20,  // 44: meurpg.rules.v1.TableBackground.feature:type_name -> meurpg.rules.v1.TableFeature
-	1,   // 45: meurpg.rules.v1.TableSpellTarget.kind:type_name -> meurpg.rules.v1.TableSpellTargetKind
-	2,   // 46: meurpg.rules.v1.TableSpellTarget.shape:type_name -> meurpg.rules.v1.TableAreaShape
-	95,  // 47: meurpg.rules.v1.TableSpellCastingTime.unit:type_name -> meurpg.rules.v1.CastingTimeUnit
-	96,  // 48: meurpg.rules.v1.TableSpellRange.kind:type_name -> meurpg.rules.v1.SpellRangeKind
-	97,  // 49: meurpg.rules.v1.TableSpellDuration.kind:type_name -> meurpg.rules.v1.SpellDurationKind
-	98,  // 50: meurpg.rules.v1.TableSpellDuration.unit:type_name -> meurpg.rules.v1.SpellDurationUnit
-	40,  // 51: meurpg.rules.v1.TableSpell.casting_time:type_name -> meurpg.rules.v1.TableSpellCastingTime
-	41,  // 52: meurpg.rules.v1.TableSpell.range:type_name -> meurpg.rules.v1.TableSpellRange
-	42,  // 53: meurpg.rules.v1.TableSpell.duration:type_name -> meurpg.rules.v1.TableSpellDuration
-	43,  // 54: meurpg.rules.v1.TableSpell.components:type_name -> meurpg.rules.v1.TableSpellComponents
-	39,  // 55: meurpg.rules.v1.TableSpell.target:type_name -> meurpg.rules.v1.TableSpellTarget
-	99,  // 56: meurpg.rules.v1.TableSpell.save:type_name -> meurpg.rules.v1.SpellSave
-	44,  // 57: meurpg.rules.v1.TableSpell.damage:type_name -> meurpg.rules.v1.TableSpellDamage
-	45,  // 58: meurpg.rules.v1.TableSpell.heal:type_name -> meurpg.rules.v1.TableSpellHeal
-	48,  // 59: meurpg.rules.v1.TableSpell.zone:type_name -> meurpg.rules.v1.TableSpellZone
-	47,  // 60: meurpg.rules.v1.TableSpell.summon:type_name -> meurpg.rules.v1.TableSummon
-	49,  // 61: meurpg.rules.v1.TableSpell.effect:type_name -> meurpg.rules.v1.TableSpellEffect
-	3,   // 62: meurpg.rules.v1.TableSummon.turn_mode:type_name -> meurpg.rules.v1.TableSummonTurnMode
-	4,   // 63: meurpg.rules.v1.TableSummon.role:type_name -> meurpg.rules.v1.TableSummonRole
-	5,   // 64: meurpg.rules.v1.TableSummon.replaces:type_name -> meurpg.rules.v1.TableSummonReplaces
-	40,  // 65: meurpg.rules.v1.TableSummon.casting_time:type_name -> meurpg.rules.v1.TableSpellCastingTime
-	42,  // 66: meurpg.rules.v1.TableSummon.duration:type_name -> meurpg.rules.v1.TableSpellDuration
-	14,  // 67: meurpg.rules.v1.TableSpellZone.trigger:type_name -> meurpg.rules.v1.TableZoneTrigger
-	7,   // 68: meurpg.rules.v1.TableSpellEffect.applies:type_name -> meurpg.rules.v1.TableEffectApplies
-	51,  // 69: meurpg.rules.v1.TableSpellEffect.modifiers:type_name -> meurpg.rules.v1.TableEffectModifier
-	8,   // 70: meurpg.rules.v1.TableSpellEffect.visibility:type_name -> meurpg.rules.v1.TableEffectAudience
-	50,  // 71: meurpg.rules.v1.TableSpellEffect.aura:type_name -> meurpg.rules.v1.TableEffectAura
-	6,   // 72: meurpg.rules.v1.TableEffectAura.affects:type_name -> meurpg.rules.v1.TableAuraAffects
-	9,   // 73: meurpg.rules.v1.TableEffectModifier.kind:type_name -> meurpg.rules.v1.TableEffectModifierKind
-	12,  // 74: meurpg.rules.v1.TableEffectModifier.applies_to:type_name -> meurpg.rules.v1.TableEffectRollKind
-	13,  // 75: meurpg.rules.v1.TableEffectModifier.resistance_kind:type_name -> meurpg.rules.v1.TableResistanceKind
-	10,  // 76: meurpg.rules.v1.TableEffectModifier.trigger:type_name -> meurpg.rules.v1.TableHitTrigger
-	11,  // 77: meurpg.rules.v1.TableEffectModifier.condition_duration:type_name -> meurpg.rules.v1.TableHitConditionDuration
-	52,  // 78: meurpg.rules.v1.TableContentRefusal.violations:type_name -> meurpg.rules.v1.TableContentViolation
-	15,  // 79: meurpg.rules.v1.TableContentBlocked.reason:type_name -> meurpg.rules.v1.TableContentBlockedReason
-	18,  // 80: meurpg.rules.v1.ListTableEntriesResponse.entries:type_name -> meurpg.rules.v1.TableEntry
-	52,  // 81: meurpg.rules.v1.ListTableEntriesResponse.left_out:type_name -> meurpg.rules.v1.TableContentViolation
-	32,  // 82: meurpg.rules.v1.CreateTableEntryRequest.table_class:type_name -> meurpg.rules.v1.TableClass
-	35,  // 83: meurpg.rules.v1.CreateTableEntryRequest.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
-	36,  // 84: meurpg.rules.v1.CreateTableEntryRequest.table_race:type_name -> meurpg.rules.v1.TableRace
-	37,  // 85: meurpg.rules.v1.CreateTableEntryRequest.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
-	38,  // 86: meurpg.rules.v1.CreateTableEntryRequest.table_background:type_name -> meurpg.rules.v1.TableBackground
-	46,  // 87: meurpg.rules.v1.CreateTableEntryRequest.table_spell:type_name -> meurpg.rules.v1.TableSpell
-	21,  // 88: meurpg.rules.v1.CreateTableEntryRequest.table_feat:type_name -> meurpg.rules.v1.TableFeat
-	22,  // 89: meurpg.rules.v1.CreateTableEntryRequest.table_option:type_name -> meurpg.rules.v1.TableOption
-	25,  // 90: meurpg.rules.v1.CreateTableEntryRequest.table_class_feature:type_name -> meurpg.rules.v1.TableClassFeature
-	26,  // 91: meurpg.rules.v1.CreateTableEntryRequest.table_creature:type_name -> meurpg.rules.v1.TableCreature
-	18,  // 92: meurpg.rules.v1.CreateTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
-	32,  // 93: meurpg.rules.v1.UpdateTableEntryRequest.table_class:type_name -> meurpg.rules.v1.TableClass
-	35,  // 94: meurpg.rules.v1.UpdateTableEntryRequest.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
-	36,  // 95: meurpg.rules.v1.UpdateTableEntryRequest.table_race:type_name -> meurpg.rules.v1.TableRace
-	37,  // 96: meurpg.rules.v1.UpdateTableEntryRequest.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
-	38,  // 97: meurpg.rules.v1.UpdateTableEntryRequest.table_background:type_name -> meurpg.rules.v1.TableBackground
-	46,  // 98: meurpg.rules.v1.UpdateTableEntryRequest.table_spell:type_name -> meurpg.rules.v1.TableSpell
-	21,  // 99: meurpg.rules.v1.UpdateTableEntryRequest.table_feat:type_name -> meurpg.rules.v1.TableFeat
-	22,  // 100: meurpg.rules.v1.UpdateTableEntryRequest.table_option:type_name -> meurpg.rules.v1.TableOption
-	25,  // 101: meurpg.rules.v1.UpdateTableEntryRequest.table_class_feature:type_name -> meurpg.rules.v1.TableClassFeature
-	26,  // 102: meurpg.rules.v1.UpdateTableEntryRequest.table_creature:type_name -> meurpg.rules.v1.TableCreature
-	18,  // 103: meurpg.rules.v1.UpdateTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
-	55,  // 104: meurpg.rules.v1.UpdateTableEntryResponse.affected_characters:type_name -> meurpg.rules.v1.AffectedCharacter
-	18,  // 105: meurpg.rules.v1.ArchiveTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
-	18,  // 106: meurpg.rules.v1.UnarchiveTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
-	18,  // 107: meurpg.rules.v1.TableContentPack.entries:type_name -> meurpg.rules.v1.TableEntry
-	66,  // 108: meurpg.rules.v1.ExportTableContentResponse.pack:type_name -> meurpg.rules.v1.TableContentPack
-	66,  // 109: meurpg.rules.v1.ImportTableContentRequest.pack:type_name -> meurpg.rules.v1.TableContentPack
-	16,  // 110: meurpg.rules.v1.ImportTableContentRequest.mode:type_name -> meurpg.rules.v1.TableImportMode
-	0,   // 111: meurpg.rules.v1.TableImportEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
-	17,  // 112: meurpg.rules.v1.TableImportEntry.status:type_name -> meurpg.rules.v1.TableImportStatus
-	52,  // 113: meurpg.rules.v1.TableImportEntry.violations:type_name -> meurpg.rules.v1.TableContentViolation
-	16,  // 114: meurpg.rules.v1.ImportTableContentResponse.mode:type_name -> meurpg.rules.v1.TableImportMode
-	70,  // 115: meurpg.rules.v1.ImportTableContentResponse.entries:type_name -> meurpg.rules.v1.TableImportEntry
-	71,  // 116: meurpg.rules.v1.ImportTableContentResponse.totals:type_name -> meurpg.rules.v1.TableImportTotals
-	55,  // 117: meurpg.rules.v1.ImportTableContentResponse.affected_characters:type_name -> meurpg.rules.v1.AffectedCharacter
-	0,   // 118: meurpg.rules.v1.OptionSwitchEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
-	75,  // 119: meurpg.rules.v1.ListOptionSwitchesResponse.options:type_name -> meurpg.rules.v1.OptionSwitchEntry
-	73,  // 120: meurpg.rules.v1.SetOptionSwitchesRequest.switches:type_name -> meurpg.rules.v1.OptionSwitch
-	75,  // 121: meurpg.rules.v1.SetOptionSwitchesResponse.options:type_name -> meurpg.rules.v1.OptionSwitchEntry
-	81,  // 122: meurpg.rules.v1.GetClassTableDefaultsResponse.tables:type_name -> meurpg.rules.v1.CastingTableDefault
-	31,  // 123: meurpg.rules.v1.CastingTableDefault.rows:type_name -> meurpg.rules.v1.TableClassLevel
-	84,  // 124: meurpg.rules.v1.GetEffectMenuResponse.types:type_name -> meurpg.rules.v1.EffectMenuType
-	87,  // 125: meurpg.rules.v1.GetEffectMenuResponse.lists:type_name -> meurpg.rules.v1.EffectMenuList
-	88,  // 126: meurpg.rules.v1.GetEffectMenuResponse.option_sets:type_name -> meurpg.rules.v1.EffectOptionSet
-	89,  // 127: meurpg.rules.v1.GetEffectMenuResponse.helpers:type_name -> meurpg.rules.v1.FormulaHelper
-	85,  // 128: meurpg.rules.v1.EffectMenuType.fields:type_name -> meurpg.rules.v1.EffectMenuField
-	86,  // 129: meurpg.rules.v1.EffectMenuList.values:type_name -> meurpg.rules.v1.EffectMenuValue
-	86,  // 130: meurpg.rules.v1.EffectOptionSet.options:type_name -> meurpg.rules.v1.EffectMenuValue
-	56,  // 131: meurpg.rules.v1.TableContentService.ListTableEntries:input_type -> meurpg.rules.v1.ListTableEntriesRequest
-	58,  // 132: meurpg.rules.v1.TableContentService.CreateTableEntry:input_type -> meurpg.rules.v1.CreateTableEntryRequest
-	60,  // 133: meurpg.rules.v1.TableContentService.UpdateTableEntry:input_type -> meurpg.rules.v1.UpdateTableEntryRequest
-	62,  // 134: meurpg.rules.v1.TableContentService.ArchiveTableEntry:input_type -> meurpg.rules.v1.ArchiveTableEntryRequest
-	64,  // 135: meurpg.rules.v1.TableContentService.UnarchiveTableEntry:input_type -> meurpg.rules.v1.UnarchiveTableEntryRequest
-	67,  // 136: meurpg.rules.v1.TableContentService.ExportTableContent:input_type -> meurpg.rules.v1.ExportTableContentRequest
-	69,  // 137: meurpg.rules.v1.TableContentService.ImportTableContent:input_type -> meurpg.rules.v1.ImportTableContentRequest
-	74,  // 138: meurpg.rules.v1.TableContentService.ListOptionSwitches:input_type -> meurpg.rules.v1.ListOptionSwitchesRequest
-	77,  // 139: meurpg.rules.v1.TableContentService.SetOptionSwitches:input_type -> meurpg.rules.v1.SetOptionSwitchesRequest
-	79,  // 140: meurpg.rules.v1.TableContentService.GetClassTableDefaults:input_type -> meurpg.rules.v1.GetClassTableDefaultsRequest
-	82,  // 141: meurpg.rules.v1.TableContentService.GetEffectMenu:input_type -> meurpg.rules.v1.GetEffectMenuRequest
-	57,  // 142: meurpg.rules.v1.TableContentService.ListTableEntries:output_type -> meurpg.rules.v1.ListTableEntriesResponse
-	59,  // 143: meurpg.rules.v1.TableContentService.CreateTableEntry:output_type -> meurpg.rules.v1.CreateTableEntryResponse
-	61,  // 144: meurpg.rules.v1.TableContentService.UpdateTableEntry:output_type -> meurpg.rules.v1.UpdateTableEntryResponse
-	63,  // 145: meurpg.rules.v1.TableContentService.ArchiveTableEntry:output_type -> meurpg.rules.v1.ArchiveTableEntryResponse
-	65,  // 146: meurpg.rules.v1.TableContentService.UnarchiveTableEntry:output_type -> meurpg.rules.v1.UnarchiveTableEntryResponse
-	68,  // 147: meurpg.rules.v1.TableContentService.ExportTableContent:output_type -> meurpg.rules.v1.ExportTableContentResponse
-	72,  // 148: meurpg.rules.v1.TableContentService.ImportTableContent:output_type -> meurpg.rules.v1.ImportTableContentResponse
-	76,  // 149: meurpg.rules.v1.TableContentService.ListOptionSwitches:output_type -> meurpg.rules.v1.ListOptionSwitchesResponse
-	78,  // 150: meurpg.rules.v1.TableContentService.SetOptionSwitches:output_type -> meurpg.rules.v1.SetOptionSwitchesResponse
-	80,  // 151: meurpg.rules.v1.TableContentService.GetClassTableDefaults:output_type -> meurpg.rules.v1.GetClassTableDefaultsResponse
-	83,  // 152: meurpg.rules.v1.TableContentService.GetEffectMenu:output_type -> meurpg.rules.v1.GetEffectMenuResponse
-	142, // [142:153] is the sub-list for method output_type
-	131, // [131:142] is the sub-list for method input_type
-	131, // [131:131] is the sub-list for extension type_name
-	131, // [131:131] is the sub-list for extension extendee
-	0,   // [0:131] is the sub-list for field type_name
+	90,  // 14: meurpg.rules.v1.TableEffect.use:type_name -> meurpg.rules.v1.FeatureUse
+	19,  // 15: meurpg.rules.v1.TableFeature.effects:type_name -> meurpg.rules.v1.TableEffect
+	20,  // 16: meurpg.rules.v1.TableFeature.options:type_name -> meurpg.rules.v1.TableFeature
+	47,  // 17: meurpg.rules.v1.TableFeature.summon:type_name -> meurpg.rules.v1.TableSummon
+	94,  // 18: meurpg.rules.v1.TableFeat.prerequisite:type_name -> meurpg.rules.v1.FeatPrerequisite
+	19,  // 19: meurpg.rules.v1.TableFeat.effects:type_name -> meurpg.rules.v1.TableEffect
+	20,  // 20: meurpg.rules.v1.TableFeat.options:type_name -> meurpg.rules.v1.TableFeature
+	23,  // 21: meurpg.rules.v1.TableOption.prerequisite:type_name -> meurpg.rules.v1.OptionPrerequisite
+	19,  // 22: meurpg.rules.v1.TableOption.effects:type_name -> meurpg.rules.v1.TableEffect
+	24,  // 23: meurpg.rules.v1.OptionPrerequisite.class_level:type_name -> meurpg.rules.v1.OptionClassLevel
+	19,  // 24: meurpg.rules.v1.TableClassFeature.effects:type_name -> meurpg.rules.v1.TableEffect
+	47,  // 25: meurpg.rules.v1.TableClassFeature.summon:type_name -> meurpg.rules.v1.TableSummon
+	29,  // 26: meurpg.rules.v1.TableCreature.traits:type_name -> meurpg.rules.v1.TableCreatureTrait
+	28,  // 27: meurpg.rules.v1.TableCreature.attacks:type_name -> meurpg.rules.v1.TableCreatureAttack
+	27,  // 28: meurpg.rules.v1.TableCreature.damage_mods:type_name -> meurpg.rules.v1.TableCreatureDamageMod
+	95,  // 29: meurpg.rules.v1.TableCasting.ability:type_name -> meurpg.rules.v1.Ability
+	20,  // 30: meurpg.rules.v1.TableClassLevel.features:type_name -> meurpg.rules.v1.TableFeature
+	95,  // 31: meurpg.rules.v1.TableClass.saving_throws:type_name -> meurpg.rules.v1.Ability
+	96,  // 32: meurpg.rules.v1.TableClass.minimums:type_name -> meurpg.rules.v1.AbilityScores
+	96,  // 33: meurpg.rules.v1.TableClass.any_of:type_name -> meurpg.rules.v1.AbilityScores
+	30,  // 34: meurpg.rules.v1.TableClass.casting:type_name -> meurpg.rules.v1.TableCasting
+	31,  // 35: meurpg.rules.v1.TableClass.levels:type_name -> meurpg.rules.v1.TableClassLevel
+	20,  // 36: meurpg.rules.v1.TableSubclassLevel.features:type_name -> meurpg.rules.v1.TableFeature
+	34,  // 37: meurpg.rules.v1.TableSubclass.levels:type_name -> meurpg.rules.v1.TableSubclassLevel
+	30,  // 38: meurpg.rules.v1.TableSubclass.casting:type_name -> meurpg.rules.v1.TableCasting
+	33,  // 39: meurpg.rules.v1.TableSubclass.always_prepared:type_name -> meurpg.rules.v1.TableAlwaysPrepared
+	96,  // 40: meurpg.rules.v1.TableRace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	20,  // 41: meurpg.rules.v1.TableRace.traits:type_name -> meurpg.rules.v1.TableFeature
+	97,  // 42: meurpg.rules.v1.TableRace.choice_bonus_sets:type_name -> meurpg.rules.v1.BonusSet
+	96,  // 43: meurpg.rules.v1.TableSubrace.ability_bonuses:type_name -> meurpg.rules.v1.AbilityScores
+	20,  // 44: meurpg.rules.v1.TableSubrace.traits:type_name -> meurpg.rules.v1.TableFeature
+	20,  // 45: meurpg.rules.v1.TableBackground.feature:type_name -> meurpg.rules.v1.TableFeature
+	1,   // 46: meurpg.rules.v1.TableSpellTarget.kind:type_name -> meurpg.rules.v1.TableSpellTargetKind
+	2,   // 47: meurpg.rules.v1.TableSpellTarget.shape:type_name -> meurpg.rules.v1.TableAreaShape
+	98,  // 48: meurpg.rules.v1.TableSpellCastingTime.unit:type_name -> meurpg.rules.v1.CastingTimeUnit
+	99,  // 49: meurpg.rules.v1.TableSpellRange.kind:type_name -> meurpg.rules.v1.SpellRangeKind
+	100, // 50: meurpg.rules.v1.TableSpellDuration.kind:type_name -> meurpg.rules.v1.SpellDurationKind
+	101, // 51: meurpg.rules.v1.TableSpellDuration.unit:type_name -> meurpg.rules.v1.SpellDurationUnit
+	40,  // 52: meurpg.rules.v1.TableSpell.casting_time:type_name -> meurpg.rules.v1.TableSpellCastingTime
+	41,  // 53: meurpg.rules.v1.TableSpell.range:type_name -> meurpg.rules.v1.TableSpellRange
+	42,  // 54: meurpg.rules.v1.TableSpell.duration:type_name -> meurpg.rules.v1.TableSpellDuration
+	43,  // 55: meurpg.rules.v1.TableSpell.components:type_name -> meurpg.rules.v1.TableSpellComponents
+	39,  // 56: meurpg.rules.v1.TableSpell.target:type_name -> meurpg.rules.v1.TableSpellTarget
+	102, // 57: meurpg.rules.v1.TableSpell.save:type_name -> meurpg.rules.v1.SpellSave
+	44,  // 58: meurpg.rules.v1.TableSpell.damage:type_name -> meurpg.rules.v1.TableSpellDamage
+	45,  // 59: meurpg.rules.v1.TableSpell.heal:type_name -> meurpg.rules.v1.TableSpellHeal
+	48,  // 60: meurpg.rules.v1.TableSpell.zone:type_name -> meurpg.rules.v1.TableSpellZone
+	47,  // 61: meurpg.rules.v1.TableSpell.summon:type_name -> meurpg.rules.v1.TableSummon
+	49,  // 62: meurpg.rules.v1.TableSpell.effect:type_name -> meurpg.rules.v1.TableSpellEffect
+	3,   // 63: meurpg.rules.v1.TableSummon.turn_mode:type_name -> meurpg.rules.v1.TableSummonTurnMode
+	4,   // 64: meurpg.rules.v1.TableSummon.role:type_name -> meurpg.rules.v1.TableSummonRole
+	5,   // 65: meurpg.rules.v1.TableSummon.replaces:type_name -> meurpg.rules.v1.TableSummonReplaces
+	40,  // 66: meurpg.rules.v1.TableSummon.casting_time:type_name -> meurpg.rules.v1.TableSpellCastingTime
+	42,  // 67: meurpg.rules.v1.TableSummon.duration:type_name -> meurpg.rules.v1.TableSpellDuration
+	14,  // 68: meurpg.rules.v1.TableSpellZone.trigger:type_name -> meurpg.rules.v1.TableZoneTrigger
+	7,   // 69: meurpg.rules.v1.TableSpellEffect.applies:type_name -> meurpg.rules.v1.TableEffectApplies
+	51,  // 70: meurpg.rules.v1.TableSpellEffect.modifiers:type_name -> meurpg.rules.v1.TableEffectModifier
+	8,   // 71: meurpg.rules.v1.TableSpellEffect.visibility:type_name -> meurpg.rules.v1.TableEffectAudience
+	50,  // 72: meurpg.rules.v1.TableSpellEffect.aura:type_name -> meurpg.rules.v1.TableEffectAura
+	6,   // 73: meurpg.rules.v1.TableEffectAura.affects:type_name -> meurpg.rules.v1.TableAuraAffects
+	9,   // 74: meurpg.rules.v1.TableEffectModifier.kind:type_name -> meurpg.rules.v1.TableEffectModifierKind
+	12,  // 75: meurpg.rules.v1.TableEffectModifier.applies_to:type_name -> meurpg.rules.v1.TableEffectRollKind
+	13,  // 76: meurpg.rules.v1.TableEffectModifier.resistance_kind:type_name -> meurpg.rules.v1.TableResistanceKind
+	10,  // 77: meurpg.rules.v1.TableEffectModifier.trigger:type_name -> meurpg.rules.v1.TableHitTrigger
+	11,  // 78: meurpg.rules.v1.TableEffectModifier.condition_duration:type_name -> meurpg.rules.v1.TableHitConditionDuration
+	52,  // 79: meurpg.rules.v1.TableContentRefusal.violations:type_name -> meurpg.rules.v1.TableContentViolation
+	15,  // 80: meurpg.rules.v1.TableContentBlocked.reason:type_name -> meurpg.rules.v1.TableContentBlockedReason
+	18,  // 81: meurpg.rules.v1.ListTableEntriesResponse.entries:type_name -> meurpg.rules.v1.TableEntry
+	52,  // 82: meurpg.rules.v1.ListTableEntriesResponse.left_out:type_name -> meurpg.rules.v1.TableContentViolation
+	32,  // 83: meurpg.rules.v1.CreateTableEntryRequest.table_class:type_name -> meurpg.rules.v1.TableClass
+	35,  // 84: meurpg.rules.v1.CreateTableEntryRequest.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
+	36,  // 85: meurpg.rules.v1.CreateTableEntryRequest.table_race:type_name -> meurpg.rules.v1.TableRace
+	37,  // 86: meurpg.rules.v1.CreateTableEntryRequest.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
+	38,  // 87: meurpg.rules.v1.CreateTableEntryRequest.table_background:type_name -> meurpg.rules.v1.TableBackground
+	46,  // 88: meurpg.rules.v1.CreateTableEntryRequest.table_spell:type_name -> meurpg.rules.v1.TableSpell
+	21,  // 89: meurpg.rules.v1.CreateTableEntryRequest.table_feat:type_name -> meurpg.rules.v1.TableFeat
+	22,  // 90: meurpg.rules.v1.CreateTableEntryRequest.table_option:type_name -> meurpg.rules.v1.TableOption
+	25,  // 91: meurpg.rules.v1.CreateTableEntryRequest.table_class_feature:type_name -> meurpg.rules.v1.TableClassFeature
+	26,  // 92: meurpg.rules.v1.CreateTableEntryRequest.table_creature:type_name -> meurpg.rules.v1.TableCreature
+	18,  // 93: meurpg.rules.v1.CreateTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
+	32,  // 94: meurpg.rules.v1.UpdateTableEntryRequest.table_class:type_name -> meurpg.rules.v1.TableClass
+	35,  // 95: meurpg.rules.v1.UpdateTableEntryRequest.table_subclass:type_name -> meurpg.rules.v1.TableSubclass
+	36,  // 96: meurpg.rules.v1.UpdateTableEntryRequest.table_race:type_name -> meurpg.rules.v1.TableRace
+	37,  // 97: meurpg.rules.v1.UpdateTableEntryRequest.table_subrace:type_name -> meurpg.rules.v1.TableSubrace
+	38,  // 98: meurpg.rules.v1.UpdateTableEntryRequest.table_background:type_name -> meurpg.rules.v1.TableBackground
+	46,  // 99: meurpg.rules.v1.UpdateTableEntryRequest.table_spell:type_name -> meurpg.rules.v1.TableSpell
+	21,  // 100: meurpg.rules.v1.UpdateTableEntryRequest.table_feat:type_name -> meurpg.rules.v1.TableFeat
+	22,  // 101: meurpg.rules.v1.UpdateTableEntryRequest.table_option:type_name -> meurpg.rules.v1.TableOption
+	25,  // 102: meurpg.rules.v1.UpdateTableEntryRequest.table_class_feature:type_name -> meurpg.rules.v1.TableClassFeature
+	26,  // 103: meurpg.rules.v1.UpdateTableEntryRequest.table_creature:type_name -> meurpg.rules.v1.TableCreature
+	18,  // 104: meurpg.rules.v1.UpdateTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
+	55,  // 105: meurpg.rules.v1.UpdateTableEntryResponse.affected_characters:type_name -> meurpg.rules.v1.AffectedCharacter
+	18,  // 106: meurpg.rules.v1.ArchiveTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
+	18,  // 107: meurpg.rules.v1.UnarchiveTableEntryResponse.entry:type_name -> meurpg.rules.v1.TableEntry
+	18,  // 108: meurpg.rules.v1.TableContentPack.entries:type_name -> meurpg.rules.v1.TableEntry
+	66,  // 109: meurpg.rules.v1.ExportTableContentResponse.pack:type_name -> meurpg.rules.v1.TableContentPack
+	66,  // 110: meurpg.rules.v1.ImportTableContentRequest.pack:type_name -> meurpg.rules.v1.TableContentPack
+	16,  // 111: meurpg.rules.v1.ImportTableContentRequest.mode:type_name -> meurpg.rules.v1.TableImportMode
+	0,   // 112: meurpg.rules.v1.TableImportEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
+	17,  // 113: meurpg.rules.v1.TableImportEntry.status:type_name -> meurpg.rules.v1.TableImportStatus
+	52,  // 114: meurpg.rules.v1.TableImportEntry.violations:type_name -> meurpg.rules.v1.TableContentViolation
+	16,  // 115: meurpg.rules.v1.ImportTableContentResponse.mode:type_name -> meurpg.rules.v1.TableImportMode
+	70,  // 116: meurpg.rules.v1.ImportTableContentResponse.entries:type_name -> meurpg.rules.v1.TableImportEntry
+	71,  // 117: meurpg.rules.v1.ImportTableContentResponse.totals:type_name -> meurpg.rules.v1.TableImportTotals
+	55,  // 118: meurpg.rules.v1.ImportTableContentResponse.affected_characters:type_name -> meurpg.rules.v1.AffectedCharacter
+	0,   // 119: meurpg.rules.v1.OptionSwitchEntry.kind:type_name -> meurpg.rules.v1.TableContentKind
+	75,  // 120: meurpg.rules.v1.ListOptionSwitchesResponse.options:type_name -> meurpg.rules.v1.OptionSwitchEntry
+	73,  // 121: meurpg.rules.v1.SetOptionSwitchesRequest.switches:type_name -> meurpg.rules.v1.OptionSwitch
+	75,  // 122: meurpg.rules.v1.SetOptionSwitchesResponse.options:type_name -> meurpg.rules.v1.OptionSwitchEntry
+	81,  // 123: meurpg.rules.v1.GetClassTableDefaultsResponse.tables:type_name -> meurpg.rules.v1.CastingTableDefault
+	31,  // 124: meurpg.rules.v1.CastingTableDefault.rows:type_name -> meurpg.rules.v1.TableClassLevel
+	84,  // 125: meurpg.rules.v1.GetEffectMenuResponse.types:type_name -> meurpg.rules.v1.EffectMenuType
+	87,  // 126: meurpg.rules.v1.GetEffectMenuResponse.lists:type_name -> meurpg.rules.v1.EffectMenuList
+	88,  // 127: meurpg.rules.v1.GetEffectMenuResponse.option_sets:type_name -> meurpg.rules.v1.EffectOptionSet
+	89,  // 128: meurpg.rules.v1.GetEffectMenuResponse.helpers:type_name -> meurpg.rules.v1.FormulaHelper
+	85,  // 129: meurpg.rules.v1.EffectMenuType.fields:type_name -> meurpg.rules.v1.EffectMenuField
+	86,  // 130: meurpg.rules.v1.EffectMenuList.values:type_name -> meurpg.rules.v1.EffectMenuValue
+	86,  // 131: meurpg.rules.v1.EffectOptionSet.options:type_name -> meurpg.rules.v1.EffectMenuValue
+	103, // 132: meurpg.rules.v1.FeatureUse.limit_scope:type_name -> meurpg.rules.v1.UseScope
+	91,  // 133: meurpg.rules.v1.FeatureUse.targets:type_name -> meurpg.rules.v1.FeatureTargets
+	104, // 134: meurpg.rules.v1.FeatureUse.choices:type_name -> meurpg.rules.v1.FeatureChoice
+	92,  // 135: meurpg.rules.v1.FeatureUse.applies:type_name -> meurpg.rules.v1.FeatureApplies
+	105, // 136: meurpg.rules.v1.FeatureTargets.who:type_name -> meurpg.rules.v1.FeatureTargetWho
+	49,  // 137: meurpg.rules.v1.FeatureApplies.effect:type_name -> meurpg.rules.v1.TableSpellEffect
+	56,  // 138: meurpg.rules.v1.TableContentService.ListTableEntries:input_type -> meurpg.rules.v1.ListTableEntriesRequest
+	58,  // 139: meurpg.rules.v1.TableContentService.CreateTableEntry:input_type -> meurpg.rules.v1.CreateTableEntryRequest
+	60,  // 140: meurpg.rules.v1.TableContentService.UpdateTableEntry:input_type -> meurpg.rules.v1.UpdateTableEntryRequest
+	62,  // 141: meurpg.rules.v1.TableContentService.ArchiveTableEntry:input_type -> meurpg.rules.v1.ArchiveTableEntryRequest
+	64,  // 142: meurpg.rules.v1.TableContentService.UnarchiveTableEntry:input_type -> meurpg.rules.v1.UnarchiveTableEntryRequest
+	67,  // 143: meurpg.rules.v1.TableContentService.ExportTableContent:input_type -> meurpg.rules.v1.ExportTableContentRequest
+	69,  // 144: meurpg.rules.v1.TableContentService.ImportTableContent:input_type -> meurpg.rules.v1.ImportTableContentRequest
+	74,  // 145: meurpg.rules.v1.TableContentService.ListOptionSwitches:input_type -> meurpg.rules.v1.ListOptionSwitchesRequest
+	77,  // 146: meurpg.rules.v1.TableContentService.SetOptionSwitches:input_type -> meurpg.rules.v1.SetOptionSwitchesRequest
+	79,  // 147: meurpg.rules.v1.TableContentService.GetClassTableDefaults:input_type -> meurpg.rules.v1.GetClassTableDefaultsRequest
+	82,  // 148: meurpg.rules.v1.TableContentService.GetEffectMenu:input_type -> meurpg.rules.v1.GetEffectMenuRequest
+	57,  // 149: meurpg.rules.v1.TableContentService.ListTableEntries:output_type -> meurpg.rules.v1.ListTableEntriesResponse
+	59,  // 150: meurpg.rules.v1.TableContentService.CreateTableEntry:output_type -> meurpg.rules.v1.CreateTableEntryResponse
+	61,  // 151: meurpg.rules.v1.TableContentService.UpdateTableEntry:output_type -> meurpg.rules.v1.UpdateTableEntryResponse
+	63,  // 152: meurpg.rules.v1.TableContentService.ArchiveTableEntry:output_type -> meurpg.rules.v1.ArchiveTableEntryResponse
+	65,  // 153: meurpg.rules.v1.TableContentService.UnarchiveTableEntry:output_type -> meurpg.rules.v1.UnarchiveTableEntryResponse
+	68,  // 154: meurpg.rules.v1.TableContentService.ExportTableContent:output_type -> meurpg.rules.v1.ExportTableContentResponse
+	72,  // 155: meurpg.rules.v1.TableContentService.ImportTableContent:output_type -> meurpg.rules.v1.ImportTableContentResponse
+	76,  // 156: meurpg.rules.v1.TableContentService.ListOptionSwitches:output_type -> meurpg.rules.v1.ListOptionSwitchesResponse
+	78,  // 157: meurpg.rules.v1.TableContentService.SetOptionSwitches:output_type -> meurpg.rules.v1.SetOptionSwitchesResponse
+	80,  // 158: meurpg.rules.v1.TableContentService.GetClassTableDefaults:output_type -> meurpg.rules.v1.GetClassTableDefaultsResponse
+	83,  // 159: meurpg.rules.v1.TableContentService.GetEffectMenu:output_type -> meurpg.rules.v1.GetEffectMenuResponse
+	149, // [149:160] is the sub-list for method output_type
+	138, // [138:149] is the sub-list for method input_type
+	138, // [138:138] is the sub-list for extension type_name
+	138, // [138:138] is the sub-list for extension extendee
+	0,   // [0:138] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_rules_v1_table_content_proto_init() }
@@ -9707,7 +9978,7 @@ func file_meurpg_rules_v1_table_content_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_rules_v1_table_content_proto_rawDesc), len(file_meurpg_rules_v1_table_content_proto_rawDesc)),
 			NumEnums:      18,
-			NumMessages:   72,
+			NumMessages:   75,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

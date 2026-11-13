@@ -477,6 +477,44 @@ a.mr-list__row:hover .mr-list__name {
       );
   }
 
+  // Superfície (#589): Água is the map's water under white waves, Escalável a pale veil under dark chevrons; the layer's own swatch splits
+  // the square along the diagonal.
+  &--water {
+    background-color: color-mix(in srgb, var(--mr-map-water) 92%, transparent);
+    background-image: var(--mr-map-water-waves);
+    background-size: 100% 100%;
+  }
+
+  &--climb {
+    background-color: color-mix(in srgb, #ffffff 38%, var(--mr-map-sample));
+    background-image: var(--mr-map-climb-chevrons);
+    background-size: 100% 100%;
+  }
+
+  &--surface {
+    overflow: hidden;
+  }
+
+  &--surface::before,
+  &--surface::after {
+    position: absolute;
+    inset: 0;
+    content: '';
+    background-size: 100% 100%;
+  }
+
+  &--surface::before {
+    background-color: color-mix(in srgb, var(--mr-map-water) 92%, transparent);
+    background-image: var(--mr-map-water-waves);
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+  }
+
+  &--surface::after {
+    background-color: color-mix(in srgb, #ffffff 38%, var(--mr-map-sample));
+    background-image: var(--mr-map-climb-chevrons);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  }
+
   // Não dá para passar: the checkerboard the map draws.
   &--nopass {
     background-image: repeating-conic-gradient(

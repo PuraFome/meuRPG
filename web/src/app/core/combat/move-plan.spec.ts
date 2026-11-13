@@ -6,13 +6,13 @@ import {
   MoveRefusal,
   ReachableSquareSchema,
   RefusedSquareSchema,
-  SurfaceExtra,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant } from './combat-testing';
 import {
   afterText,
   costTitle,
-  extraText,
+  extraBreakdown,
+  extrasOf,
   indexOptions,
   leftLine,
   ofThe,
@@ -76,25 +76,62 @@ describe("the move page reads the server's options", () => {
     expect(plain(costTitle(258))).toBe('Mover 7,7 m');
   });
 
-  it("says what swimming, climbing and crawling added, from the server's numbers", () => {
-    const square = (extraDft: number, surfaceExtra: SurfaceExtra, crawlExtraDft: number) =>
+  describe("what swimming, climbing and crawling added, from the server's numbers", () => {
+    const square = (parts: Partial<{ swim: number; climb: number; crawl: number; path: number }>) =>
       create(ReachableSquareSchema, {
         col: 3,
         row: 2,
         costDft: 300,
-        extraDft,
-        surfaceExtra,
-        crawlExtraDft,
+        swimExtraDft: parts.swim ?? 0,
+        climbExtraDft: parts.climb ?? 0,
+        crawlExtraDft: parts.crawl ?? 0,
+        pathDft: parts.path ?? 0,
+        extraDft: (parts.swim ?? 0) + (parts.climb ?? 0),
       });
-    expect(plain(extraText(square(150, SurfaceExtra.SWIM, 0)))).toBe('Inclui 4,5 m nadando.');
-    expect(plain(extraText(square(150, SurfaceExtra.CLIMB, 0)))).toBe('Inclui 4,5 m escalando.');
-    expect(plain(extraText(square(150, SurfaceExtra.SWIM, 150)))).toBe(
-      'Inclui 4,5 m nadando e 4,5 m rastejando.',
-    );
-    expect(plain(extraText(square(0, SurfaceExtra.UNSPECIFIED, 100)))).toBe(
-      'Inclui 3,0 m rastejando.',
-    );
-    expect(extraText(square(0, SurfaceExtra.UNSPECIFIED, 0))).toBe('');
+    const words = (s: ReturnType<typeof extrasOf>) => ({
+      parts: s.parts.map((p) => `${p.kind}:${plain(p.text)}`),
+      note: s.note,
+    });
+
+    it('a swim alone says that each metre in the water counts double', () => {
+      expect(words(extrasOf(square({ swim: 100 })))).toEqual({
+        parts: ['swim:+3,0 m nadando'],
+        note: ': cada metro na água conta dobrado.',
+      });
+    });
+
+    it('a climb alone says the same for climbing', () => {
+      expect(words(extrasOf(square({ climb: 50 })))).toEqual({
+        parts: ['climb:+1,5 m escalando'],
+        note: ': cada metro escalado conta dobrado.',
+      });
+    });
+
+    it('two extras are each said with its word, with no sentence after them', () => {
+      expect(words(extrasOf(square({ swim: 50, crawl: 50 })))).toEqual({
+        parts: ['swim:+1,5 m nadando', 'crawl:+1,5 m rastejando'],
+        note: '',
+      });
+      expect(words(extrasOf(square({ swim: 50, climb: 50 })))).toEqual({
+        parts: ['swim:+1,5 m nadando', 'climb:+1,5 m escalando'],
+        note: '',
+      });
+    });
+
+    it('says nothing when the square pays no extra', () => {
+      expect(extrasOf(square({}))).toEqual({ parts: [], note: '' });
+    });
+
+    it('breaks a crawl down into the path and each extra, as the server counted them', () => {
+      expect(plain(extraBreakdown(square({ swim: 50, crawl: 50, path: 50 })))).toBe(
+        '1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando.',
+      );
+      expect(plain(extraBreakdown(square({ crawl: 50, path: 50 })))).toBe(
+        '1,5 m do caminho + 1,5 m rastejando.',
+      );
+      // Without a crawl the cost line already says it all.
+      expect(extraBreakdown(square({ swim: 50, path: 50 }))).toBe('');
+    });
   });
 
   it('explains each refusal by its reason, never naming what is in the way', () => {

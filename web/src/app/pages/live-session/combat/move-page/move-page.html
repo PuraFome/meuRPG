@@ -47,16 +47,6 @@
             (confirm)="go()"
           />
         </div>
-        @if (!readOnly() && !wide()) {
-          <div class="move__zoom" role="group" aria-label="Zoom do mapa">
-            <button type="button" aria-label="Aproximar o mapa" [attr.aria-disabled]="zoom() === 3 ? 'true' : null" (click)="zoomBy(1)">
-              <mat-icon aria-hidden="true">zoom_in</mat-icon>
-            </button>
-            <button type="button" aria-label="Afastar o mapa" [attr.aria-disabled]="zoom() === 0 ? 'true' : null" (click)="zoomBy(-1)">
-              <mat-icon aria-hidden="true">zoom_out</mat-icon>
-            </button>
-          </div>
-        }
       </div>
 
       @if (readOnly()) {
@@ -69,7 +59,9 @@
           }
         </app-map-layers-legend>
       } @else {
-        <app-map-layers-legend [layers]="layers()">
+        <!-- The zoom sits beside the legend under the map, never over it. -->
+        <div class="move__below">
+        <app-map-layers-legend class="move__legend" [layers]="layers()">
           <li><span class="mr-swatch mr-swatch--reach" aria-hidden="true"></span>{{ jumping() ? 'Alcance do salto' : 'Você alcança' }}</li>
           <li><span class="mr-swatch mr-swatch--ring" aria-hidden="true"></span>Alcance de {{ jumping() ? limitText() : leftText() }}</li>
           @if (chosen()) {
@@ -79,16 +71,32 @@
             <li><span class="mr-swatch mr-swatch--dragged" aria-hidden="true"></span>{{ drag.legend() }}</li>
           }
         </app-map-layers-legend>
+        @if (!wide()) {
+          <div class="move__zoom" role="group" aria-label="Zoom do mapa">
+            <button type="button" aria-label="Afastar o mapa" [attr.aria-disabled]="zoom() === 0 ? 'true' : null" (click)="zoomBy(-1)">
+              <mat-icon aria-hidden="true">remove</mat-icon>
+            </button>
+            <button type="button" aria-label="Aproximar o mapa" [attr.aria-disabled]="zoom() === 3 ? 'true' : null" (click)="zoomBy(1)">
+              <mat-icon aria-hidden="true">add</mat-icon>
+            </button>
+          </div>
+        }
+        </div>
         @if (!jumping()) {
           <p class="move__rule">
             <mat-icon aria-hidden="true">info</mat-icon>
             Dentro do círculo, o que fica sem cor não dá para alcançar: parede, inimigo ou custo a mais.
           </p>
         }
+        @if (!wide()) {
+          <app-move-adjust (nudge)="nudge($event)" />
+        }
       }
     }
   </div>
 
+  <!-- On a phone the cost card and the buttons are one dock pinned above the tabs, so the cost is read without scrolling; from 1024px it is the side column and the foot. -->
+  <div class="move__dock" [class.move__dock--live]="!readOnly()">
   <div class="move__side">
     @if (readOnly()) {
       <button matButton="outlined" type="button" class="move__cancel" (click)="back.emit()">
@@ -135,7 +143,7 @@
             <p>Não deu para ler o alcance. Dá para tentar um quadrado: o servidor diz se vale.</p>
           </div>
         }
-        @if (!soloHeight()) {
+        @if (wide() && !soloHeight()) {
           <app-move-adjust (nudge)="nudge($event)" />
         }
       </div>
@@ -173,4 +181,5 @@
       }
     </div>
   }
+  </div>
 </div>

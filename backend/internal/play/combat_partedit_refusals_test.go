@@ -231,13 +231,13 @@ func TestRemoveDamagePartGivesTheOncePerTurnUseBack(t *testing.T) {
 	pendingID := res.GetPendingDamage().GetId()
 	a.mustDamage(t, a.caio, e, pendingID, extrasMarked([]*playv1.SelectedExtra{{Key: "colossus-slayer"}},
 		&playv1.TypedPart{PartKey: extraWeaponDamage, Sum: 1}, &playv1.TypedPart{PartKey: "colossus-slayer", Sum: 2}))
-	a.wantMark(t, "Toren", "colossus_slayer_turn")
+	a.wantMark(t, "Toren", "colossus_slayer")
 	if _, err := a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(&playv1.RemoveDamagePartRequest{
 		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: pendingID, PartKey: "colossus-slayer", Reason: "motivo", IdempotencyKey: newKey(),
 	})); err != nil {
 		t.Fatalf("RemoveDamagePart() error = %v", err)
 	}
-	if got := a.column(t, a.id(t, "Toren"), "colossus_slayer_turn"); got != nil {
+	if got := a.column(t, a.id(t, "Toren"), "feature_state->'colossus_slayer'->>'at'"); got != nil {
 		t.Errorf("the Colossus Slayer mark after the removal = %q, want none", *got)
 	}
 }

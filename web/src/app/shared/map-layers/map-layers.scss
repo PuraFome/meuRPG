@@ -41,6 +41,20 @@
     );
 }
 
+// Superfície (#589): Água is the map's water under white waves; Escalável a pale veil under dark chevrons (the marks, not the blue, carry the
+// meaning). Both sit under walls and doors.
+.sq--water {
+  background-color: color-mix(in srgb, var(--mr-map-water) 88%, transparent);
+  background-image: var(--mr-map-water-waves);
+  background-size: 100% 100%;
+}
+
+.sq--climb {
+  background-color: color-mix(in srgb, #ffffff 34%, transparent);
+  background-image: var(--mr-map-climb-chevrons);
+  background-size: 100% 100%;
+}
+
 // Não dá para passar: a checkerboard of the map's ink, so it reads apart from the hatches (a wall blocks sight too; this does not).
 .sq--nopass {
   background: repeating-conic-gradient(

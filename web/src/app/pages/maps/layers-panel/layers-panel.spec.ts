@@ -22,6 +22,7 @@ const layers: MapLayers = {
 };
 const all: LayerVisibility = {
   terrain: true,
+  surface: true,
   wall: true,
   cover: true,
   light: true,
@@ -83,7 +84,7 @@ describe('LayersPanel', () => {
   it('a switch shows or hides a layer on his own map', () => {
     setup();
     const wall = el.querySelector<HTMLElement>('button[role="switch"][aria-labelledby$="-label"]')!;
-    expect(el.querySelectorAll('[role="switch"]')).toHaveLength(6);
+    expect(el.querySelectorAll('[role="switch"]')).toHaveLength(7);
     expect(wall.getAttribute('aria-checked')).toBe('true');
     wall.click();
     expect(changes).toEqual([{ ...all, terrain: false }]);

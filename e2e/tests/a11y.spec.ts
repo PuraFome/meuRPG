@@ -20,7 +20,7 @@ import { tableWithOpenChoices } from './choices-support';
 import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
-import { paintRPC, pickRadio, tapSquare } from './move-support';
+import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginManeuverCombatRPC, maneuverTable, spendPoolRPC } from './maneuver-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
@@ -720,7 +720,7 @@ test('a impressão do mapa passa no axe e nas conferências de layout no tema cl
  * "Como você rola os dados", as a choice and locked (the master decided). */
 async function scanDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const masterPage = await master.newPage();
   const playerPage = await player.newPage();
@@ -950,7 +950,7 @@ test('as rolagens e a descrição da magia passam no axe no tema escuro, no celu
  * set through the API so the screens are the same on every run. */
 async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1069,7 +1069,7 @@ test('o combate passa no axe e nas conferências de layout no tema escuro, no ce
  * a line), no horizontal scroll, the bar's help text on a measure of its own, and the roll and the buttons inside the row. */
 async function scanMasterInitiativeSetup(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 941 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1136,7 +1136,7 @@ for (const [scheme, width] of [['light', 1440], ['dark', 1728]] as const) {
  * questions, "Desfazer última ação" and "Dano/Cura". */
 async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1322,7 +1322,7 @@ test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o
  * "Ver mapa" icon, and the groups that are spent, folded and opened. */
 async function scanCompactTurnScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1393,7 +1393,7 @@ for (const [scheme, width] of [['light', 1280], ['dark', 390], ['dark', 1280], [
  * squares are chosen with the arrows under the map, which every width has. */
 async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1528,7 +1528,7 @@ test('mover e a pergunta do ataque de oportunidade passam no axe no tema claro, 
  * failures) and the question that confirms a death. */
 async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1748,7 +1748,7 @@ test('conjurar, cair, o Escudo e as condições passam no axe e nas conferência
  * Contramágica, and the concentration save's prompt. */
 async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1826,7 +1826,7 @@ test('as reações dos NPCs passam no axe e nas conferências de layout no tema 
  * Fôlego's sheet and Surto de Ação's note. */
 async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1901,7 +1901,7 @@ test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no ax
  * ND and XP (the list open, "Usar 50 XP"). Built in one function so the sweep is one place. */
 async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2035,7 +2035,7 @@ test('as telas de XP passam no axe e nas conferências de layout no tema escuro,
  */
 async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2198,7 +2198,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
  */
 async function scanEnterSceneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2275,7 +2275,7 @@ test('as cenas de RP passam no axe e nas conferências de layout no tema claro, 
  */
 async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width <= 390 ? 700 : 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2372,7 +2372,7 @@ test('os marcos planejados passam no axe e nas conferências de layout no tema c
  */
 async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2623,7 +2623,7 @@ test('a ficha no desktop de 1280 mantém as quatro colunas, com as anotações n
  * state after the part ended, and the goblins' turn (a group of NPCs alone). */
 async function scanJointTurnScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2683,7 +2683,7 @@ test('o turno conjunto passa no axe e nas conferências de layout no celular de 
 // players' stage with its larger view, and the combat highlights.
 async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2825,7 +2825,7 @@ test('o retrato, o palco e os destaques passam no axe e nas conferências de lay
 // dialog (a sheet on a phone), "Mover Pensantus" with the pad, the amber notice of a move that stopped before a marked square, the group.
 async function scanTokenMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 1000 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const pensantus = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const toren = await browser.newContext({ storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
   const [m, a, b] = await Promise.all([master.newPage(), pensantus.newPage(), toren.newPage()]);
@@ -2895,7 +2895,7 @@ test('o mover de tokens passa no axe e nas conferências de layout no tema claro
 // move that stopped before a marked square, and the notice when the master locks it again.
 async function scanPlayerMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 1000 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2961,7 +2961,7 @@ test('o lado do jogador do mover de tokens passa no axe e nas conferências de l
 // display, and the chooser of players (a sheet on a phone, a dialog from a tablet up).
 async function scanSceneVisibilityScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3054,7 +3054,7 @@ test('o quem vê da cena passa no axe e nas conferências de layout no tema clar
  * reads, and the master's card under Sono in the log. */
 async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3149,7 +3149,7 @@ test('as magias na sessão passam no axe e nas conferências de layout no tema e
  */
 async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, hiddenInArea: boolean): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3235,7 +3235,7 @@ test('a pergunta sem escondidas e o zoom do mapa grande passam no axe e nas conf
  */
 async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3347,7 +3347,7 @@ test('as opções da cena passam no axe e nas conferências de layout no tema cl
  */
 async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3634,7 +3634,7 @@ test('as escolhas pendentes passam no axe e nas conferências de layout no tema 
  */
 async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -4160,7 +4160,7 @@ test('a névoa no combate passa no axe e nas conferências de layout no tema esc
 // sheet. Every state goes through axe and the alignment checks.
 async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -4405,7 +4405,7 @@ test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferênci
 // on a phone, the manage view with its fixed notice. Every state goes through axe and the alignment checks.
 async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const pensantus = await newSignedInContext(browser, 'Jogador Teste');
   const toren = await newSignedInContext(browser, 'E-mail Não Verificado');
   const [m, ap, bp] = [await master.newPage(), await pensantus.newPage(), await toren.newPage()];
@@ -4434,6 +4434,15 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
       await expect(m.getByText('Pintar só no computador')).toBeVisible();
       await expectLoaded(m);
       await expectScreenPasses(m, `Mapa no celular, sem pintura ${where}`);
+      // Camadas, read-only, with the surface the master painted on a computer (#589).
+      const surface = await callRPC(m, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId, mapId: table.mapId, layer: 'MAP_LAYER_SURFACE', value: 1, squares: [{ col: 6, row: 9 }, { col: 7, row: 9 }] });
+      expect(surface.ok(), await surface.text()).toBeTruthy();
+      await m.goto(editorRoute(campaignId, table.mapId));
+      await expect(m.getByRole('heading', { name: 'Camadas' })).toBeVisible();
+      await expect(m.locator('app-map-layers-list')).toContainText('2 quadrados de água · custam o dobro');
+      await expectLoaded(m);
+      await expectScreenPasses(m, `Mapa no celular, Camadas com a superfície ${where}`);
+      await shootFeat(m, '589-phone-camadas', width, colorScheme, true);
       await m.getByRole('button', { name: 'Esquecer o que foi visto' }).click();
       await expect(m.getByRole('heading', { name: 'Esquecer o que foi visto?' })).toBeVisible();
       await expectScreenPasses(m, `Esquecer o que foi visto, no celular ${where}`);
@@ -4527,6 +4536,24 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await expectScreenPasses(m, `Pintar, Luz com os glifos ${where}`);
     await tools.getByRole('button', { name: 'Apagar' }).click();
     await expectScreenPasses(m, `Pintar, Apagar ${where}`);
+    // Superfície (#589): two brushes in the second row, painted into one layer; "Apagar" with it takes both off and says so in the bar.
+    await tools.getByRole('button', { name: 'Superfície' }).click();
+    await expect(m.getByText('Arraste para apagar a superfície')).toBeVisible();
+    await expectScreenPasses(m, `Pintar, Superfície, Apagar ${where}`);
+    await shootFeat(m, '589-editor-superficie-apagar', width, colorScheme);
+    await m.getByRole('radio', { name: 'Água' }).click();
+    await m.getByRole('radio', { name: '1×1' }).click();
+    await dragSquares(m, map, [12, 9], [14, 9]);
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+    await expect(m.getByText('Arraste para pintar · Shift apaga')).toBeVisible();
+    await expectScreenPasses(m, `Pintar, Superfície, Água ${where}`);
+    await shootFeat(m, '589-editor-superficie-agua', width, colorScheme);
+    await m.getByRole('radio', { name: 'Escalável' }).click();
+    await clickSquare(m, map, 18, 12);
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+    await expect(m.locator('app-layers-panel')).toContainText('3 quadrados de água e 1 escalável · custam o dobro');
+    await expectScreenPasses(m, `Pintar, Superfície, Escalável ${where}`);
+    await shootFeat(m, '589-editor-superficie-escalavel', width, colorScheme);
 
     // The questions in place.
     await m.getByRole('button', { name: 'Mudar a grade' }).click();
@@ -4583,13 +4610,64 @@ test('o editor do mapa passa no axe e nas conferências de layout no tema claro,
   await scanMapEditorScreens(browser, 'light', 320);
 });
 
+// "Mover" over water and a climbable wall (#589, MR-034, RN-21): the legend names Água and Escalável and keeps the zoom beside it, and the cost line says what
+// swimming and climbing add, each with its word. Every state goes through axe and the alignment checks.
+async function scanSwimScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const { p, campaignId, done } = await movingTable(browser, `Acessibilidade nadar ${Date.now()}`, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, {
+    character: { build: toren, sheet: torenSheet },
+    viewport,
+    colorScheme,
+    paint: async (master, t) => {
+      await paintRPC(master, t, 'MAP_LAYER_SURFACE', 1, [[6, 7], [7, 7]]);
+      await paintRPC(master, t, 'MAP_LAYER_SURFACE', 2, [[5, 6]]);
+    },
+  });
+  try {
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
+    await p.getByRole('button', { name: 'Mover', exact: true }).click();
+    await expect(p.getByRole('heading', { name: 'Mover Toren' })).toBeVisible();
+    const legend = p.getByRole('list', { name: 'Legenda do mapa' });
+    await expect(legend.getByText('Água')).toBeVisible();
+    await expect(legend.getByText('Escalável')).toBeVisible();
+    await expectScreenPasses(p, `Mover, Água e Escalável na legenda ${where}`);
+    await shootFeat(p, '589-mover-legenda', width, colorScheme);
+    await tapSquare(p, 7, 7);
+    await expect(p.getByText('+3,0 m nadando: cada metro na água conta dobrado.')).toBeVisible();
+    await expectScreenPasses(p, `Mover, nadando ${where}`);
+    await shootFeat(p, '589-mover-nadando', width, colorScheme);
+    await tapSquare(p, 5, 6);
+    await expect(p.getByText('+1,5 m escalando: cada metro escalado conta dobrado.')).toBeVisible();
+    await expectScreenPasses(p, `Mover, escalando ${where}`);
+    await shootFeat(p, '589-mover-escalando', width, colorScheme);
+    await tapSquare(p, 19, 7);
+    await expect(p.getByRole('alert').filter({ hasText: 'Longe demais' })).toBeVisible();
+    await expectScreenPasses(p, `Mover, longe demais com água no mapa ${where}`);
+    await shootFeat(p, '589-mover-longe', width, colorScheme);
+  } finally {
+    await done();
+  }
+}
+
+test('o Mover com água e escalada passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSwimScreens(browser, 'light', 1280);
+});
+
+test('o Mover com água e escalada passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSwimScreens(browser, 'dark', 390);
+});
+
 // The doors (slice 10.14a, MR-010, RN-26, RN-10; E10-05 7 to 11): the "Porta" tool in "Pintar" with its panel, its refusal and its
 // question; the master's door sheet in the session (a door, a secret door and the question before revealing it); what a player's
 // map says (only "Porta fechada"); and the "Mover" page after a locked door stopped the move. Every state goes through axe and the
 // alignment checks. On a phone the editor is "Pintar só no computador" (the existing scans), so only the session's states run there.
 async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const pensantus = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const toren = await newSignedInContext(browser, 'E-mail Não Verificado');
   const [m, ap, bp] = [await master.newPage(), await pensantus.newPage(), await toren.newPage()];
@@ -6364,7 +6442,7 @@ async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', 
 async function scanRollMinimumSceneCheck(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(240_000);
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -6407,7 +6485,7 @@ async function scanRollMinimumSceneCheck(browser: Browser, colorScheme: 'light' 
 async function scanRollMinimumInitiative(browser: Browser, colorScheme: 'light' | 'dark', width: number, feat = 'Pé de Vento'): Promise<void> {
   test.setTimeout(240_000);
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -7634,7 +7712,7 @@ test('os reservados e os links passam no axe e nas conferências de layout no te
  */
 async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width <= 390 ? 700 : 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -7787,7 +7865,7 @@ test('reviver passa no axe e nas conferências de layout no tema escuro, no celu
 async function scanDeathsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(180_000);
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -7854,7 +7932,7 @@ test('os mortos da luta e a pergunta de Revivificar passam no axe e nas conferê
 async function scanRevivifyScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(300_000);
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8086,7 +8164,7 @@ test('o painel de perguntas pendentes fora do combate passa no axe e nas confer�
 async function scanSheetMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const where = `(${colorScheme}, ${width}px)`;
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8155,7 +8233,7 @@ test('a folha que perdeu a pergunta, o mestre respondeu, passa no axe e nas conf
  * open swaps the question for "O mestre respondeu por você.", with no answer left to give. */
 async function scanEffectSaveMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8236,7 +8314,7 @@ test('a resistência do fim do turno que perdeu a pergunta, o mestre respondeu, 
 /** The gear (#562): the sheet's "Equipamento" with "Equipar" / "Guardar", and the combat's "Sacar ou guardar" with the cost of each change. */
 async function scanGearScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8299,7 +8377,7 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
 /** The weapon marks (#585): the chips on the gear and attacks, the weapon's "⋮" menu for the owner and the master, never for another player. */
 async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8985,7 +9063,7 @@ const sizeOf = (width: number) => ({ width, height: width >= 768 ? 900 : width <
 // and the master's row with its menu and the question that ends the spell.
 async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9064,7 +9142,7 @@ test('a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e 
 // Crítico Brutal: the critical's sum before the roll, the typed sheet with its total on the button, and the log line.
 async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9121,7 +9199,7 @@ test('o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa
 // Talento Confiável on a trap search: the preview and the result, with the rule said.
 async function scanReliableTalentScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9165,7 +9243,7 @@ test('o Talento Confiável na busca por armadilhas passa no axe e nas conferênc
 
 async function scanJumpWarningScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9321,7 +9399,7 @@ test('as disputas e as ações especiais passam no axe e nas conferências de la
 // combat's setup, with the state of the one who is surprised.
 async function scanGroupCheckScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9459,7 +9537,7 @@ async function scanEffectsScreens(browser: Browser, colorScheme: 'light' | 'dark
 
 async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(390) });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9540,7 +9618,7 @@ for (const [scheme, width, words] of [
  * through the API, so every run draws the same screens. */
 async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -10184,7 +10262,7 @@ test('o mapa com a névoa e a muralha de fogo passa no axe e nas conferências d
 async function scanSessionBar(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const phone = width < 768;
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -10263,7 +10341,7 @@ test('a barra da sessão, o menu "Sessão" e a navegação fixa passam no axe e 
  * asked for the character, and the card of a downed character, whose death save leads the turn. */
 async function scanMasterActs(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -10320,7 +10398,7 @@ test('o mestre agir por um personagem passa no axe e nas conferências de layout
  * named in the mind's theatre), the result of the save action under the list, and the offer of a ghoul's claw rider after the hit. */
 async function scanCreatureActions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -10403,7 +10481,7 @@ test('as ações de criatura do mestre passam no axe e nas conferências de layo
  * die (one die: a checkbox, ticked, with the physical d8; two dice: the radio group with "Nenhum"), and the pool with no use left. */
 async function scanManeuverSheetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, dice: 1 | 2): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -11097,7 +11175,7 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
  * (the waiting screen, the map with a roll, the combat on the map), in one table with the fog on. The TV tab is a page of the master's own context. */
 async function scanTableScreen(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const pensantusPlayer = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const torenPlayer = await browser.newContext({ storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
   const m = await master.newPage();
@@ -11167,7 +11245,7 @@ test('a Tela da mesa, o painel do mestre e a TV, passa no axe e nas conferência
  * and its reason (the only one who could react spent the reaction). The menu is driven with the keyboard. */
 async function scanOfferScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 1024 ? 800 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();

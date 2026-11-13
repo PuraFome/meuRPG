@@ -50,6 +50,7 @@ interface DoorAsk {
 
 const ALL_VISIBLE: LayerVisibility = {
   terrain: true,
+  surface: true,
   wall: true,
   cover: true,
   light: true,
@@ -116,9 +117,6 @@ export class EditorPainting {
   readonly shown = computed<MapLayers>(() => {
     const l = this.painted.layers();
     const v = this.visible();
-    if (v.terrain && v.wall && v.cover && v.light && v.nopass && v.door) {
-      return l;
-    }
     return {
       ...l,
       terrain: v.terrain ? l.terrain : [],
@@ -127,6 +125,8 @@ export class EditorPainting {
       threeQuarters: v.cover ? l.threeQuarters : [],
       light: v.light ? l.light : undefined,
       noPass: v.nopass ? l.noPass : undefined,
+      water: v.surface ? l.water : undefined,
+      climb: v.surface ? l.climb : undefined,
       doors: v.door ? l.doors : undefined,
     };
   });
