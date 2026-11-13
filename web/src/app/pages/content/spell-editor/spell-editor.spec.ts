@@ -9,6 +9,9 @@ import {
   TableContentKind,
   TableContentRefusalSchema,
   TableContentViolationSchema,
+  TableEffectModifierKind,
+  TableHitConditionDuration,
+  TableHitTrigger,
   TableSpellSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { rememberCreatureName } from '../../../core/content/summon-names';
@@ -539,6 +542,186 @@ describe('SpellEditor', () => {
       expect(text(el.querySelector('app-spell-summon')!)).toContain('Confira a magia:');
       expect(field(el, 'table_spell.summon.creature_keys').contains(document.activeElement)).toBe(
         true,
+      );
+    });
+  });
+
+  describe('"Efeito no próximo golpe" (#577)', () => {
+    const hitSpell = (
+      modifier: Record<string, unknown> = {},
+      spell: Record<string, unknown> = {},
+    ) => ({
+      duration: { kind: 2, amount: 1, unit: 2 },
+      concentration: true,
+      effect: {
+        conditions: ['condition:blinded'],
+        modifiers: [
+          { kind: TableEffectModifierKind.ROLL_BONUS, value: 1 },
+          {
+            kind: TableEffectModifierKind.WEAPON_HIT_DAMAGE,
+            trigger: TableHitTrigger.EACH_HIT,
+            die: 8,
+            dice: 2,
+            perSlotDice: 1,
+            maxDice: 6,
+            damageType: 'damage-type:fire',
+            save: 'con',
+            onFailConditions: ['condition:restrained'],
+            conditionDuration: TableHitConditionDuration.UNTIL_SPELL_END,
+            ...modifier,
+          },
+        ],
+      },
+      ...spell,
+    });
+    const hitField = (el: HTMLElement, f: string, i = 1) =>
+      field(el, `table_spell.effect.modifiers[${i}].${f}`);
+    const choose = (select: HTMLSelectElement, label: string) => {
+      select.selectedIndex = Array.from(select.options).findIndex((o) => o.text.trim() === label);
+      select.dispatchEvent(new Event('change'));
+    };
+
+    it('loads a saved effect into the block and sends the edited modifier with the other parts of the effect untouched', async () => {
+      const { fixture, el } = setup(true, hitSpell());
+      const block = el.querySelector('app-hit-effect-block')!;
+      expect(block.querySelector('[role="switch"]')!.getAttribute('aria-checked')).toBe('true');
+      expect((block.querySelectorAll('.card input')[2] as HTMLInputElement).checked).toBe(true);
+      expect((hitField(el, 'dice') as HTMLInputElement).value).toBe('2');
+      expect((hitField(el, 'max_dice') as HTMLInputElement).value).toBe('6');
+      const dice = hitField(el, 'dice') as HTMLInputElement;
+      dice.value = '3';
+      dice.dispatchEvent(new Event('input'));
+      choose(hitField(el, 'die') as HTMLSelectElement, 'd10');
+      choose(hitField(el, 'save') as HTMLSelectElement, 'Sabedoria');
+      choose(hitField(el, 'on_fail_conditions') as HTMLSelectElement, 'Derrubado');
+      choose(
+        hitField(el, 'condition_duration') as HTMLSelectElement,
+        'Até o fim do próximo turno do alvo',
+      );
+      await settle(fixture, 3);
+      save.mockResolvedValue({
+        entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+        affected: [],
+      });
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      const body = save.mock.calls[0][2];
+      const mods = body.value.effect.modifiers;
+      expect(mods).toHaveLength(2);
+      expect(mods[0]).toMatchObject({ kind: TableEffectModifierKind.ROLL_BONUS, value: 1 });
+      expect(mods[1]).toMatchObject({
+        kind: TableEffectModifierKind.WEAPON_HIT_DAMAGE,
+        trigger: TableHitTrigger.EACH_HIT,
+        die: 10,
+        dice: 3,
+        perSlotDice: 1,
+        maxDice: 6,
+        damageType: 'damage-type:fire',
+        save: 'wis',
+        onFailConditions: ['condition:prone'],
+        conditionDuration: TableHitConditionDuration.UNTIL_END_OF_NEXT_TURN,
+      });
+      expect(body.value.effect.conditions).toEqual(['condition:blinded']);
+    });
+
+    it('turns on for a spell with no effect, asks for the cap, and sends an effect with only this modifier', async () => {
+      const { fixture, el } = setup(true, { duration: { kind: 2, amount: 1, unit: 2 } });
+      expect(el.querySelector('app-hit-effect-block .cards')).toBeNull();
+      el.querySelector<HTMLButtonElement>('app-hit-effect-block [role="switch"]')!.click();
+      await settle(fixture, 3);
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      expect(save).not.toHaveBeenCalled();
+      expect(text(el.querySelector('app-hit-effect-block')!)).toContain(
+        'Diga o máximo de dados, de 1 a 20.',
+      );
+      const cap = field(el, 'table_spell.effect.modifiers[0].max_dice') as HTMLInputElement;
+      cap.value = '4';
+      cap.dispatchEvent(new Event('input'));
+      await settle(fixture, 3);
+      save.mockResolvedValue({
+        entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+        affected: [],
+      });
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      const effect = save.mock.calls[0][2].value.effect;
+      expect(effect.modifiers).toHaveLength(1);
+      expect(effect.modifiers[0]).toMatchObject({
+        kind: TableEffectModifierKind.WEAPON_HIT_DAMAGE,
+        trigger: TableHitTrigger.NEXT_HIT,
+        die: 6,
+        dice: 1,
+        maxDice: 4,
+        save: '',
+      });
+    });
+
+    it('sends the effect without the modifier once the block is turned off', async () => {
+      const { fixture, el } = setup(true, hitSpell());
+      el.querySelector<HTMLButtonElement>('app-hit-effect-block [role="switch"]')!.click();
+      await settle(fixture, 3);
+      save.mockResolvedValue({
+        entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+        affected: [],
+      });
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      const effect = save.mock.calls[0][2].value.effect;
+      expect(effect.modifiers.map((m: { kind: number }) => m.kind)).toEqual([
+        TableEffectModifierKind.ROLL_BONUS,
+      ]);
+    });
+
+    it('is off with the reason on an instantaneous spell, and the duration brings it back', async () => {
+      const { fixture, el } = setup(true);
+      const sw = el.querySelector<HTMLButtonElement>('app-hit-effect-block [role="switch"]')!;
+      expect(sw.disabled).toBe(true);
+      expect(text(el.querySelector('app-hit-effect-block')!)).toContain(
+        'Uma magia instantânea não guarda efeito para o golpe.',
+      );
+      choose(field(el, 'table_spell.duration.kind') as HTMLSelectElement, 'Até ser dissipada');
+      await settle(fixture, 3);
+      expect(
+        el.querySelector<HTMLButtonElement>('app-hit-effect-block [role="switch"]')!.disabled,
+      ).toBe(false);
+    });
+
+    it('moves a marked target to the next hit when the target stops being one creature', async () => {
+      const { fixture, el } = setup(true, hitSpell({ trigger: TableHitTrigger.MARKED_TARGET }));
+      const radios = () =>
+        Array.from(el.querySelectorAll<HTMLInputElement>('app-hit-effect-block .card input'));
+      expect(radios()[3].checked).toBe(true);
+      (
+        Array.from(el.querySelectorAll('app-segmented input[type="radio"]')).find((i) =>
+          i.closest('label')?.textContent?.includes('Área'),
+        ) as HTMLInputElement
+      ).click();
+      await settle(fixture, 3);
+      expect(radios()[3].disabled).toBe(true);
+      expect(radios()[3].checked).toBe(false);
+      expect(radios()[0].checked).toBe(true);
+    });
+
+    it('puts the refusals of the modifier on its fields', async () => {
+      const { fixture, el } = setup(true, hitSpell());
+      save.mockRejectedValue(
+        refusal(
+          ['table_spell.effect.modifiers[1].dice', 'bad_value'],
+          ['table_spell.effect.modifiers[1].max_dice', 'bad_value'],
+          ['table_spell.effect.modifiers[1].on_fail_conditions', 'bad_value'],
+        ),
+      );
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      expect(text(el.querySelector('[role="alert"]')!)).toContain('3 campos precisam de ajuste');
+      expect(hitField(el, 'dice').getAttribute('aria-invalid')).toBe('true');
+      expect(text(el.querySelector('app-hit-effect-block')!)).toContain('De 1 a 10 dados.');
+      expect(text(el.querySelector('app-hit-effect-block')!)).toContain(
+        'De 1 a 20 dados, e nunca abaixo dos dados da magia.',
+      );
+      expect(text(el.querySelector('app-hit-effect-block')!)).toContain(
+        'Escolha a condição de quem falhar, ou tire o teste.',
       );
     });
   });

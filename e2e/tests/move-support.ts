@@ -47,7 +47,7 @@ export async function movingTable(
   options: {
     at?: Record<string, [number, number]>;
     hidden?: string[];
-    character?: { build?: CharacterBuild; sheet?: Record<string, unknown> };
+    character?: { build?: CharacterBuild; sheet?: Record<string, unknown>; before?: (campaignId: string, master: Page) => Promise<CharacterBuild> };
     paint?: (m: Page, table: CombatTable) => Promise<void>;
     viewport?: { width: number; height: number };
     colorScheme?: 'light' | 'dark';

@@ -2,6 +2,7 @@ import { create } from '@bufbuild/protobuf';
 
 import { TableSpellSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { catalog } from './content-testing';
+import { emptyHit } from './hit-effect-draft';
 import { draftToSpell, spellToDraft } from './spell-draft';
 import { type SpellDraft, emptySpell } from './spell-types';
 import { damageText, previewRows, spellFieldPaths, targetText } from './spell-preview';
@@ -979,6 +980,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      hit: flat(emptyHit()),
     },
     request: {
       namePt: '',
@@ -1037,6 +1039,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      hit: flat(emptyHit()),
     },
     request: {
       namePt: '',
@@ -1051,7 +1054,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       classKeys: [],
       descPt: [],
       higherLevelPt: [],
-      target: { kind: 1, perSlotLevel: 2 },
+      target: { kind: 1 },
       damage: [{ damageTypeKey: 'damage-type:fire', dice: '1d10', perTier: '1d10' }],
       attack: 'melee',
     },
@@ -1098,6 +1101,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
         { damageTypeKey: 'damage-type:necrotic', dice: '1d4', perSlotLevel: '', perTier: '' },
       ],
       summon: null,
+      hit: flat(emptyHit()),
     },
     request: {
       namePt: '',
@@ -1160,6 +1164,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      hit: flat(emptyHit()),
     },
     request: {
       namePt: '',
@@ -1219,6 +1224,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      hit: flat(emptyHit()),
     },
     request: {
       namePt: '',
@@ -1278,6 +1284,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       healModifier: true,
       otherDamage: [],
       summon: null,
+      hit: flat(emptyHit()),
     },
     request: {
       namePt: '',

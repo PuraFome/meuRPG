@@ -9,7 +9,7 @@ import {
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant } from './combat-testing';
 import {
-  afterText,
+  afterLeftText,
   costTitle,
   extraBreakdown,
   extrasOf,
@@ -71,8 +71,8 @@ describe("the move page reads the server's options", () => {
 
   it("says the cost in metres and what is left, from the server's numbers", () => {
     expect(plain(costTitle(71))).toBe('Mover 2,1 m');
-    expect(plain(afterText(300, 71))).toBe('Depois restam 6,9 m.');
-    expect(plain(afterText(300, 300))).toBe('Depois restam 0,0 m.');
+    expect(plain(afterLeftText(229))).toBe('Depois restam 6,9 m.');
+    expect(plain(afterLeftText(0))).toBe('Depois restam 0,0 m.');
     expect(plain(costTitle(258))).toBe('Mover 7,7 m');
   });
 
@@ -185,12 +185,14 @@ describe("the move page reads the server's options", () => {
   });
 
   it('writes the jump card: where it lands, and the trap only when the character knows it', () => {
-    expect(plain(jumpCardText(150, 200))).toBe('Cai 4,5 m adiante. Depois restam 1,5 m.');
-    expect(plain(jumpCardText(150, 200, 'Fosso'))).toBe(
+    expect(plain(jumpCardText(150, 50))).toBe('Cai 4,5 m adiante. Depois restam 1,5 m.');
+    expect(plain(jumpCardText(150, 50, 'Fosso'))).toBe(
       'Cai do outro lado do Fosso. Depois restam 1,5 m. O Fosso só dispara onde você cai.',
     );
+    // Without the server's number the card does not make one up.
+    expect(plain(jumpCardText(150, null))).toBe('Cai 4,5 m adiante.');
     // A trap the character does not know has no name on the card: the server sends none.
-    expect(jumpCardText(150, 200, '')).not.toMatch(/Fosso|armadilha/i);
+    expect(jumpCardText(150, 50, '')).not.toMatch(/Fosso|armadilha/i);
   });
 
   it('writes what is left of a part, and what was walked', () => {

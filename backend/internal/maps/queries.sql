@@ -192,6 +192,11 @@ SET fog_enabled = COALESCE(sqlc.narg(fog_enabled)::BOOL, fog_enabled),
 WHERE campaign_id = sqlc.arg(campaign_id) AND id = sqlc.arg(id)
 RETURNING *;
 
+-- name: GetMapSurface :one
+-- The map's surface layer alone (water, climbable), for a count of what a combatant stands on: one indexed read of one column.
+SELECT surface FROM map_layers
+WHERE map_id = $1;
+
 -- name: GetMapLayers :one
 -- The map's painted layers; no row means nothing is painted.
 SELECT * FROM map_layers

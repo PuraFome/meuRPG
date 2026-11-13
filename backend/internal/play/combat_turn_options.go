@@ -154,6 +154,13 @@ func (s *Service) workOutOptions(ctx context.Context, m authz.Membership, d *enc
 	if err != nil {
 		return nil, none, s.dbError(ctx, "work out the turn options", err)
 	}
+	if opts.GetEconomy() != nil { // the movement left is the number the view shows: at the speed of the surface it stands on
+		standing, err := s.standingSurface(ctx, nil, d.enc, v, who)
+		if err != nil {
+			return nil, none, s.dbError(ctx, "read the surface the combatant stands on", err)
+		}
+		opts.Economy.Movement = movementLeftOf(who, standing)
+	}
 	if err := s.attachMetamagic(ctx, reads, who, opts); err != nil {
 		return nil, none, s.dbError(ctx, "work out the Metamagic", err)
 	}

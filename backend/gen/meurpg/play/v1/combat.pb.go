@@ -6178,9 +6178,15 @@ type Combatant struct {
 	// Its size (rules.v1.CreatureSize); everyone who sees the combatant gets it.
 	Size v1.CreatureSize `protobuf:"varint,39,opt,name=size,proto3,enum=meurpg.rules.v1.CreatureSize" json:"size,omitempty"`
 	// The movement in tenths of a foot, which is what the server keeps (RN-21): the
-	// speed for the turn (twice after the Dash action; a creature with a fly speed
-	// takes the better of its speeds), what was walked and what is left. The `_ft`
-	// fields above are these rounded down. Same audience as `speed_ft`.
+	// speed for the turn (twice after the Dash action), what was walked and what is
+	// left. `speed_dft` is the speed of the surface the combatant stands on, the
+	// one that applies to its next step (SRD 5.1, "Using Different Speeds"): its walking
+	// speed on the floor (its fly speed for a flier), its swim speed in water, its climb speed on
+	// a climbable surface, and the walking speed where it has no swim or climb speed.
+	// `movement_left_dft` is that speed less `movement_used_dft`, never below 0, so a swimmer
+	// that spent 20 ft on the floor reads what its swim speed leaves. A surface the viewer
+	// has not seen is floor to them (RN-10). The `_ft` fields above are these rounded
+	// down. Same audience as `speed_ft`.
 	SpeedDft        int32 `protobuf:"varint,40,opt,name=speed_dft,json=speedDft,proto3" json:"speed_dft,omitempty"`
 	MovementUsedDft int32 `protobuf:"varint,41,opt,name=movement_used_dft,json=movementUsedDft,proto3" json:"movement_used_dft,omitempty"`
 	MovementLeftDft int32 `protobuf:"varint,42,opt,name=movement_left_dft,json=movementLeftDft,proto3" json:"movement_left_dft,omitempty"`
@@ -9292,7 +9298,10 @@ func (x *GetMoveOptionsRequest) GetJumpRunningStart() bool {
 // GetMoveOptionsResponse is where the combatant can go in one straight move.
 type GetMoveOptionsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// The movement left, in tenths of a foot: the circle's radius.
+	// The movement left, in tenths of a foot: the circle's radius. It is the same number
+	// `Combatant.movement_left_dft` carries for the viewer: what is left at the speed of the
+	// surface the combatant stands on. A line that goes on to other surfaces ends where
+	// `ReachableSquare.left_after_dft` says nothing is left.
 	MovementLeftDft int32 `protobuf:"varint,1,opt,name=movement_left_dft,json=movementLeftDft,proto3" json:"movement_left_dft,omitempty"`
 	// Every square it can go to, in reading order (row by row). The start is not
 	// in it.
@@ -9489,7 +9498,12 @@ type ReachableSquare struct {
 	// The rest of `cost_dft`, in tenths of a foot: the line and its difficult terrain, without the swim, the climb
 	// or the crawl. `path_dft` + `swim_extra_dft` + `climb_extra_dft` + `crawl_extra_dft` = `cost_dft`. The screen
 	// writes "1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando" from these, and never subtracts.
-	PathDft       int32 `protobuf:"varint,26,opt,name=path_dft,json=pathDft,proto3" json:"path_dft,omitempty"`
+	PathDft int32 `protobuf:"varint,26,opt,name=path_dft,json=pathDft,proto3" json:"path_dft,omitempty"`
+	// What the mover has left once it is on this square, at the speed of the surface the
+	// square is on (SRD 5.1, "Using Different Speeds": what was spent, on the way here
+	// and before, is taken from the speed of the surface it ends on), in tenths of a foot.
+	// The screen shows it as is and never subtracts across a switch of surface.
+	LeftAfterDft  int32 `protobuf:"varint,27,opt,name=left_after_dft,json=leftAfterDft,proto3" json:"left_after_dft,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9611,6 +9625,13 @@ func (x *ReachableSquare) GetClimbExtraDft() int32 {
 func (x *ReachableSquare) GetPathDft() int32 {
 	if x != nil {
 		return x.PathDft
+	}
+	return 0
+}
+
+func (x *ReachableSquare) GetLeftAfterDft() int32 {
+	if x != nil {
+		return x.LeftAfterDft
 	}
 	return 0
 }
@@ -28064,7 +28085,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fdragging_halved\x18\x15 \x01(\bR\x0edraggingHalved\"3\n" +
 	"\rDraggedSquare\x12\x10\n" +
 	"\x03col\x18\x01 \x01(\x05R\x03col\x12\x10\n" +
-	"\x03row\x18\x02 \x01(\x05R\x03row\"\x88\x04\n" +
+	"\x03row\x18\x02 \x01(\x05R\x03row\"\xae\x04\n" +
 	"\x0fReachableSquare\x12\x10\n" +
 	"\x03col\x18\x01 \x01(\x05R\x03col\x12\x10\n" +
 	"\x03row\x18\x02 \x01(\x05R\x03row\x12\x19\n" +
@@ -28079,7 +28100,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fcrawl_extra_dft\x18\x17 \x01(\x05R\rcrawlExtraDft\x12$\n" +
 	"\x0eswim_extra_dft\x18\x18 \x01(\x05R\fswimExtraDft\x12&\n" +
 	"\x0fclimb_extra_dft\x18\x19 \x01(\x05R\rclimbExtraDft\x12\x19\n" +
-	"\bpath_dft\x18\x1a \x01(\x05R\apathDft\"h\n" +
+	"\bpath_dft\x18\x1a \x01(\x05R\apathDft\x12$\n" +
+	"\x0eleft_after_dft\x18\x1b \x01(\x05R\fleftAfterDft\"h\n" +
 	"\rRefusedSquare\x12\x10\n" +
 	"\x03col\x18\x01 \x01(\x05R\x03col\x12\x10\n" +
 	"\x03row\x18\x02 \x01(\x05R\x03row\x123\n" +

@@ -243,6 +243,7 @@ export class MovePage {
   private readonly jumpScene = computed<JumpScene>(() => ({
     kind: this.kind(),
     left: this.leftDft(),
+    leftHere: this.own()?.movementLeftDft ?? 0,
     height: this.height(),
     chosen: this.chosen(),
     origin: this.origin(),
