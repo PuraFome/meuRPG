@@ -188,6 +188,10 @@ func (u *undoer) putShape(ctx context.Context, who playdb.Combatant, want *shape
 	if err != nil {
 		return nil, err
 	}
+	// A form an undo puts back starts its clock over: what was left is not in the hit points' state.
+	if err := u.s.restoreFormClock(ctx, u.c, who.CharacterID, &who, want != nil, 0, body); err != nil {
+		return nil, err
+	}
 	u.c.told = append(u.c.told, restored)
 	return restored, applyBody(ctx, u.c, who, body)
 }

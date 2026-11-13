@@ -186,6 +186,7 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 		HitPointsMax:             maxHP,
 		ExhaustionLevel:          level,
 		ArmorClassBase:           conv.OrZero(row.ArmorClassBase),
+		AttunementOpen:           conv.OrZero(row.AttunementOpen),
 		ArcaneRecoveryAllowance:  i32(m.recoveryAllowance(rules.ArcaneRecovery)),
 		NaturalRecoveryAllowance: i32(m.recoveryAllowance(rules.NaturalRecovery)),
 		HitPointsMaxBonus:        bonus,

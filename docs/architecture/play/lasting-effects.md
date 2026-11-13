@@ -54,6 +54,11 @@ A Guidance or Resistance die instead ends its effect with the roll (`spendOnceEf
 Aid's bonus to the maximum is not a `character_effects` row: it is `character_vitals.hit_points_max_bonus`, raised when the cast takes effect and lowered by `closeCast` (`takeBackMaxHP`), with the arithmetic of `casting_aid.go` shared with the combat's `raiseMaxHP` and `endAid`.
 A rider that asks a saving throw is not cast outside a combat (`castCharacterEffects` takes no such spell).
 
+## A Wild Shape form's clock
+
+A druid's Wild Shape form (half the druid level, in hours) keeps its time as a lasting effect, `effect:wild-shape`: owner audience (RN-20), no conditions and no modifiers, `source_kind` feature, in a combat a row counted in rounds and out of one a `character_effects` row with `seconds_left`.
+When the row ends by its time or by the master, the form ends with it (`formClockEnded` in a combat, `formClocksGone` out of one); see [Creatures: Wild Shape](creatures.md#wild-shape).
+
 ## What a player may read
 
 The area a spell keeps on the map (Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud, Silence, Spike Growth, Wall of Fire) is not an effect on a creature; it is a zone with its own table and hooks, and the concentration, the clock and the web's effect it shares with the effects are described in [Spell zones](spell-zones.md).

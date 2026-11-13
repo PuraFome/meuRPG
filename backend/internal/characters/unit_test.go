@@ -136,6 +136,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["UpdateCharacter"] = c.UpdateCharacter(ctx, connect.NewRequest(&charactersv1.UpdateCharacterRequest{CampaignId: id, CharacterId: id}))
 	_, calls["UpdateCharacterStory"] = c.UpdateCharacterStory(ctx, connect.NewRequest(&charactersv1.UpdateCharacterStoryRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetEquipped"] = c.SetEquipped(ctx, connect.NewRequest(&charactersv1.SetEquippedRequest{CampaignId: id, CharacterId: id}))
+	_, calls["SetAttunement"] = c.SetAttunement(ctx, connect.NewRequest(&charactersv1.SetAttunementRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SetStoryEditing"] = c.SetStoryEditing(ctx, connect.NewRequest(&charactersv1.SetStoryEditingRequest{CampaignId: id, CharacterId: id}))
 	_, calls["MarkCharacterDead"] = c.MarkCharacterDead(ctx, connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: id, CharacterId: id}))
 	_, calls["GetMasterNotes"] = c.GetMasterNotes(ctx, connect.NewRequest(&charactersv1.GetMasterNotesRequest{CampaignId: id, CharacterId: id}))
@@ -172,6 +173,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListContent"] = content.ListContent(ctx, connect.NewRequest(&rulesv1.ListContentRequest{CampaignId: id}))
 	_, calls["GetSpellDetails"] = content.GetSpellDetails(ctx, connect.NewRequest(&rulesv1.GetSpellDetailsRequest{CampaignId: id, SpellKey: "spell:fire-bolt"}))
 	_, calls["ListSpells"] = content.ListSpells(ctx, connect.NewRequest(&rulesv1.ListSpellsRequest{CampaignId: id}))
+	_, calls["ListMagicItems"] = content.ListMagicItems(ctx, connect.NewRequest(&rulesv1.ListMagicItemsRequest{CampaignId: id}))
 	_, calls["ListCreatures"] = content.ListCreatures(ctx, connect.NewRequest(&rulesv1.ListCreaturesRequest{CampaignId: id}))
 	_, calls["GetCreature"] = content.GetCreature(ctx, connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: id, Key: "monster:wolf"}))
 	_, calls["ListTrapPresets"] = content.ListTrapPresets(ctx, connect.NewRequest(&rulesv1.ListTrapPresetsRequest{CampaignId: id}))
@@ -226,8 +228,8 @@ func TestReadsWithIDsArePostOnly(t *testing.T) {
 			}
 		}
 	}
-	if len(reads) != 25 {
-		t.Errorf("found %d reads, want 25 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewChoices, PreviewClaim, GetCampaignOpenChoices, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
+	if len(reads) != 26 {
+		t.Errorf("found %d reads, want 26 (GetAbilityRolls, GetCharacter, ListCharacters, GetMasterNotes, GetLevelUpOptions, PreviewLevelUp, PreviewCharacter, PreviewChoices, PreviewClaim, GetCampaignOpenChoices, ListLevelUps, ListCharacterCreatures, GetSummonOptions, ListWildShapeForms, ListContent, GetSpellDetails, ListSpells, ListMagicItems, ListCreatures, GetCreature, ListTrapPresets, ListLightPresets, ListTableEntries, ListOptionSwitches, GetClassTableDefaults, GetEffectMenu)", len(reads))
 	}
 	for procedure, method := range reads {
 		opts, _ := method.Options().(*descriptorpb.MethodOptions)

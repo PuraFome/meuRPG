@@ -108,10 +108,11 @@ func TestStandUpIsRefusedWithoutTheMovement(t *testing.T) {
 	if !c.hasCondition(t, "Toren", condProne) {
 		t.Error("a refused stand up took the condition off")
 	}
-	// The preview of the reach is the crawl's: 10 ft left pay for 5 ft of path.
+	// The preview of the reach is the crawl's: it offers each square at the cost the move charges (twice the path),
+	// so 10 ft left pay for 5 ft of path.
 	for _, r := range c.moveOptions(t, a.caio, "Toren").GetReachable() {
-		if r.GetCostDft() > 50 {
-			t.Errorf("square (%d,%d) is offered at %d tenths, want none beyond 50 (5 ft of path)", r.GetCol(), r.GetRow(), r.GetCostDft())
+		if r.GetCostDft() > 100 {
+			t.Errorf("square (%d,%d) is offered at %d tenths, want none beyond the 100 left (5 ft of path, crawled)", r.GetCol(), r.GetRow(), r.GetCostDft())
 		}
 	}
 	// A move past what crawling allows is refused.

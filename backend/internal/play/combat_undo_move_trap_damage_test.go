@@ -27,7 +27,7 @@ var deltaDoorOpened = func() undoDelta {
 	line := func(state string) string {
 		return `db/map_layers[.cover=\x000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000004000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,` +
 			`.difficult_terrain=\x000000000000000000000000000000000000000000000000000000300000300000000000000000000000000000000000,` +
-			`.doors=\x` + strings.Repeat("0", 177) + state + strings.Repeat("0", 206) + `,.light=<nil>,.map_id=<id>,.no_pass=<nil>,` +
+			`.doors=\x` + strings.Repeat("0", 177) + state + strings.Repeat("0", 206) + `,.light=<nil>,.map_id=<id>,.no_pass=<nil>,.surface=<nil>,` +
 			`.walls=\xffffffffffffffff80ffff80ffff80ffff8081ff8000008000008081fc8081fcff3fc0ff3fc0ff3fc0ff3fc0ffffffff]={}`
 	}
 	out := undoDelta{"+ " + line("1"), "- " + line("2")}

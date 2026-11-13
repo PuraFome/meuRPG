@@ -384,6 +384,9 @@ func (ev *effectViewer) originOf(f playdb.CombatantState, caster playdb.Combatan
 func (ev *effectViewer) clockText(f playdb.CombatantState, caster playdb.Combatant, casterSeen bool) string {
 	e := endsAtOf(f)
 	round := int(max(ev.d.enc.Round, 1))
+	if conv.OrZero(f.SourceKey) == wildShapeEffect {
+		return formTimeText(clamp32(e.RoundsLeft(round)*rules.SecondsPerRound, 0, 1<<30))
+	}
 	who := func() string {
 		if a, ok := ev.byID[e.CombatantID]; ok && ev.v.sees(a) {
 			return "o turno de " + a.Label
@@ -424,6 +427,9 @@ func roundsLeftText(n int) string {
 func (ev *effectViewer) endText(f playdb.CombatantState, caster playdb.Combatant) string {
 	e := endsAtOf(f)
 	a := ev.byID[e.CombatantID]
+	if conv.OrZero(f.SourceKey) == wildShapeEffect {
+		return formTimeText(clamp32(e.RoundsLeft(int(max(ev.d.enc.Round, 1)))*rules.SecondsPerRound, 0, 1<<30))
+	}
 	switch conv.OrZero(f.DurationKind) {
 	case rules.EffectDurationRounds:
 		return fmt.Sprintf("%s: acaba no turno de %s, rodada %d.", roundsLeftText(e.RoundsLeft(int(max(ev.d.enc.Round, 1)))), a.Label, e.Round)

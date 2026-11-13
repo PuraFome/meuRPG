@@ -3,6 +3,7 @@ import {
   type GetMoveOptionsResponse,
   MoveRefusal,
   type ReachableSquare,
+  SurfaceExtra,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { tieNumbers } from '../format/text';
 import { metersFixed } from '../units';
@@ -129,6 +130,20 @@ export function costTitle(costDft: number): string {
 export function afterText(leftDft: number, costDft: number): string {
   // No clamp: the callers only say it for a cost the movement left pays.
   return `Depois restam ${metersFixed((leftDft - costDft) / 10)}.`;
+}
+
+/** "Inclui 4,5 m nadando e 3,0 m rastejando.": the extra feet the server added to the cost of a square, each with its
+ * word (`ReachableSquare.extraDft` named by `surfaceExtra`, and `crawlExtraDft`). Empty when the square pays none. */
+export function extraText(square: ReachableSquare): string {
+  const parts: string[] = [];
+  if (square.extraDft > 0) {
+    const word = square.surfaceExtra === SurfaceExtra.CLIMB ? 'escalando' : 'nadando';
+    parts.push(`${metersFixed(square.extraDft / 10)} ${word}`);
+  }
+  if (square.crawlExtraDft > 0) {
+    parts.push(`${metersFixed(square.crawlExtraDft / 10)} rastejando`);
+  }
+  return parts.length > 0 ? `Inclui ${parts.join(' e ')}.` : '';
 }
 
 /** Who a square's exit may provoke, by name: only combatants the caller sees

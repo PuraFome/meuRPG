@@ -11,6 +11,7 @@ import {
   type SquareVerdict,
   afterText,
   costTitle,
+  extraText,
   jumpCardText,
   knownTrapAt,
   leftLine,
@@ -149,7 +150,7 @@ export function walkSummary(
     return {
       kind: 'ok',
       title: costTitle(v.square.costDft),
-      detail: afterText(left, v.square.costDft),
+      detail: [extraText(v.square), afterText(left, v.square.costDft)].filter(Boolean).join(' '),
       warning: names.length > 0 ? provokeWarning(names) : '',
       trap: v.square.knownTrapName,
     };

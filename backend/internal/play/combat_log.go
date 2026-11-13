@@ -1816,11 +1816,13 @@ func (n *keyNames) contentName(ctx context.Context, key string) string {
 
 // wildShapeEndReasonProto reads the reason a wild_shape_ended event gives.
 var wildShapeEndReasonProto = map[string]playv1.WildShapeEndReason{
-	endedByLeaving: playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_LEFT,
-	endedByDamage:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_DAMAGE,
-	endedByMaster:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
-	endedAtZero:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
-	endedAsleep:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+	endedByLeaving:   playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_LEFT,
+	endedByDamage:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_DAMAGE,
+	endedByMaster:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
+	endedAtZero:      playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
+	endedAsleep:      playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+	endedExpired:     playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_EXPIRED,
+	endedMasterEnded: playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER_ENDED,
 }
 
 // withoutOwnerOnly is the conditions a player who does not own the creature may read.

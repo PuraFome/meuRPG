@@ -63,6 +63,9 @@ const (
 	// ContentServiceListSpellsProcedure is the fully-qualified name of the ContentService's ListSpells
 	// RPC.
 	ContentServiceListSpellsProcedure = "/meurpg.rules.v1.ContentService/ListSpells"
+	// ContentServiceListMagicItemsProcedure is the fully-qualified name of the ContentService's
+	// ListMagicItems RPC.
+	ContentServiceListMagicItemsProcedure = "/meurpg.rules.v1.ContentService/ListMagicItems"
 	// ContentServiceListCreaturesProcedure is the fully-qualified name of the ContentService's
 	// ListCreatures RPC.
 	ContentServiceListCreaturesProcedure = "/meurpg.rules.v1.ContentService/ListCreatures"
@@ -152,6 +155,21 @@ type ContentServiceClient interface {
 	//   - `failed_precondition`: `character_id` is a character with a basic
 	//     sheet (an NPC), which has no casting classes.
 	ListSpells(context.Context, *connect.Request[v1.ListSpellsRequest]) (*connect.Response[v1.ListSpellsResponse], error)
+	// ListMagicItems lists the SRD magic items a sheet can hold besides its +N armor, shield and
+	// weapons, for the "Adicionar item mágico" picker. Each row is an item, or a family with its
+	// variants (a family is never added, one of its variants is); the +N armor and weapon families
+	// are not listed, a +N piece comes from the piece's own menu. `query` is part of the
+	// Portuguese or English name of the item or of one of its variants, ignoring case and accents.
+	// Rows are sorted by Portuguese name and come a page at a time (page_size 1 to 400, 100 by
+	// default, page_token). The items are public rules, the same for every campaign.
+	//
+	// Only an active member may ask: a pending member (RN-15) gets `not_found`, as for ListSpells.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not an active member of it.
+	//   - `invalid_argument`: query is longer than 100 characters, page_size is not 1 to 400, or
+	//     page_token is not one this list gave for the same query.
+	ListMagicItems(context.Context, *connect.Request[v1.ListMagicItemsRequest]) (*connect.Response[v1.ListMagicItemsResponse], error)
 	// ListCreatures searches the creatures of a campaign (MR-037): the SRD's 334
 	// creatures plus the campaign's table creatures (RN-23). It feeds the master's
 	// "Dar uma criatura", the Wild Shape list and the summon choices. It filters by
@@ -245,6 +263,13 @@ func NewContentServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		listMagicItems: connect.NewClient[v1.ListMagicItemsRequest, v1.ListMagicItemsResponse](
+			httpClient,
+			baseURL+ContentServiceListMagicItemsProcedure,
+			connect.WithSchema(contentServiceMethods.ByName("ListMagicItems")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		listCreatures: connect.NewClient[v1.ListCreaturesRequest, v1.ListCreaturesResponse](
 			httpClient,
 			baseURL+ContentServiceListCreaturesProcedure,
@@ -281,6 +306,7 @@ type contentServiceClient struct {
 	listContent      *connect.Client[v1.ListContentRequest, v1.ListContentResponse]
 	getSpellDetails  *connect.Client[v1.GetSpellDetailsRequest, v1.GetSpellDetailsResponse]
 	listSpells       *connect.Client[v1.ListSpellsRequest, v1.ListSpellsResponse]
+	listMagicItems   *connect.Client[v1.ListMagicItemsRequest, v1.ListMagicItemsResponse]
 	listCreatures    *connect.Client[v1.ListCreaturesRequest, v1.ListCreaturesResponse]
 	getCreature      *connect.Client[v1.GetCreatureRequest, v1.GetCreatureResponse]
 	listTrapPresets  *connect.Client[v1.ListTrapPresetsRequest, v1.ListTrapPresetsResponse]
@@ -300,6 +326,11 @@ func (c *contentServiceClient) GetSpellDetails(ctx context.Context, req *connect
 // ListSpells calls meurpg.rules.v1.ContentService.ListSpells.
 func (c *contentServiceClient) ListSpells(ctx context.Context, req *connect.Request[v1.ListSpellsRequest]) (*connect.Response[v1.ListSpellsResponse], error) {
 	return c.listSpells.CallUnary(ctx, req)
+}
+
+// ListMagicItems calls meurpg.rules.v1.ContentService.ListMagicItems.
+func (c *contentServiceClient) ListMagicItems(ctx context.Context, req *connect.Request[v1.ListMagicItemsRequest]) (*connect.Response[v1.ListMagicItemsResponse], error) {
+	return c.listMagicItems.CallUnary(ctx, req)
 }
 
 // ListCreatures calls meurpg.rules.v1.ContentService.ListCreatures.
@@ -397,6 +428,21 @@ type ContentServiceHandler interface {
 	//   - `failed_precondition`: `character_id` is a character with a basic
 	//     sheet (an NPC), which has no casting classes.
 	ListSpells(context.Context, *connect.Request[v1.ListSpellsRequest]) (*connect.Response[v1.ListSpellsResponse], error)
+	// ListMagicItems lists the SRD magic items a sheet can hold besides its +N armor, shield and
+	// weapons, for the "Adicionar item mágico" picker. Each row is an item, or a family with its
+	// variants (a family is never added, one of its variants is); the +N armor and weapon families
+	// are not listed, a +N piece comes from the piece's own menu. `query` is part of the
+	// Portuguese or English name of the item or of one of its variants, ignoring case and accents.
+	// Rows are sorted by Portuguese name and come a page at a time (page_size 1 to 400, 100 by
+	// default, page_token). The items are public rules, the same for every campaign.
+	//
+	// Only an active member may ask: a pending member (RN-15) gets `not_found`, as for ListSpells.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, or the caller is not an active member of it.
+	//   - `invalid_argument`: query is longer than 100 characters, page_size is not 1 to 400, or
+	//     page_token is not one this list gave for the same query.
+	ListMagicItems(context.Context, *connect.Request[v1.ListMagicItemsRequest]) (*connect.Response[v1.ListMagicItemsResponse], error)
 	// ListCreatures searches the creatures of a campaign (MR-037): the SRD's 334
 	// creatures plus the campaign's table creatures (RN-23). It feeds the master's
 	// "Dar uma criatura", the Wild Shape list and the summon choices. It filters by
@@ -486,6 +532,13 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	contentServiceListMagicItemsHandler := connect.NewUnaryHandler(
+		ContentServiceListMagicItemsProcedure,
+		svc.ListMagicItems,
+		connect.WithSchema(contentServiceMethods.ByName("ListMagicItems")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	contentServiceListCreaturesHandler := connect.NewUnaryHandler(
 		ContentServiceListCreaturesProcedure,
 		svc.ListCreatures,
@@ -522,6 +575,8 @@ func NewContentServiceHandler(svc ContentServiceHandler, opts ...connect.Handler
 			contentServiceGetSpellDetailsHandler.ServeHTTP(w, r)
 		case ContentServiceListSpellsProcedure:
 			contentServiceListSpellsHandler.ServeHTTP(w, r)
+		case ContentServiceListMagicItemsProcedure:
+			contentServiceListMagicItemsHandler.ServeHTTP(w, r)
 		case ContentServiceListCreaturesProcedure:
 			contentServiceListCreaturesHandler.ServeHTTP(w, r)
 		case ContentServiceGetCreatureProcedure:
@@ -549,6 +604,10 @@ func (UnimplementedContentServiceHandler) GetSpellDetails(context.Context, *conn
 
 func (UnimplementedContentServiceHandler) ListSpells(context.Context, *connect.Request[v1.ListSpellsRequest]) (*connect.Response[v1.ListSpellsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.ListSpells is not implemented"))
+}
+
+func (UnimplementedContentServiceHandler) ListMagicItems(context.Context, *connect.Request[v1.ListMagicItemsRequest]) (*connect.Response[v1.ListMagicItemsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.rules.v1.ContentService.ListMagicItems is not implemented"))
 }
 
 func (UnimplementedContentServiceHandler) ListCreatures(context.Context, *connect.Request[v1.ListCreaturesRequest]) (*connect.Response[v1.ListCreaturesResponse], error) {

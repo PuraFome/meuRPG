@@ -112,7 +112,7 @@ func TestEffectNamesAreInPortuguese(t *testing.T) {
 			t.Errorf("%s = %+v, %v; want the name %q", key, d, ok, want)
 		}
 	}
-	if keys := c.CombatEffectKeys(); len(keys) != 9 {
+	if keys := c.CombatEffectKeys(); len(keys) != 10 {
 		t.Errorf("CombatEffectKeys = %v", keys)
 	}
 }

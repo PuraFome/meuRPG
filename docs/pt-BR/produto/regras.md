@@ -122,6 +122,16 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma peça que pede sintonização não soma nada até o personagem se sintonizar com ela.
   A ficha lista cada bônus com a origem e diz por que um não soma nada.
   Duas armas com a mesma chave são uma linha e dividem o bônus.
+- **Sintonização.**
+  Um personagem fica sintonizado com no máximo três itens mágicos ao mesmo tempo, e só um item que a ficha lista como um que pede sintonização pode ser sintonizado.
+  Um descanso curto ou longo abre uma janela para cada personagem que ele cobre, e nessa janela o dono sintoniza um item ou encerra uma sintonização; o mestre faz qualquer um dos dois a qualquer hora.
+  Alguns itens pedem algo do personagem (uma classe, uma raça, um alinhamento, ser conjurador).
+  O app confere as restrições dos itens do SRD; quando a ficha não cumpre uma, ou o app não consegue decidir, só o mestre sintoniza, e o registro do servidor diz quem fez.
+  Só uma cópia de um item fica sintonizada de cada vez.
+  Salvar a ficha nunca muda quem está sintonizado: um item mágico novo começa sem sintonia.
+  A trava da ficha não prende a sintonização, ela prende a lista de itens e o tipo.
+  Um personagem que morre continua sintonizado até o mestre encerrar.
+  O app não encerra uma sintonização sozinho (distância, outro sintonizado, morte): o mestre encerra à mão.
 - **Integridade Corporal do monge da Mão Aberta (nível 6).**
   A ação do próprio monge cura três vezes o nível de monge em pontos de vida, até o máximo.
   Não tem rolagem nem dados para digitar.
@@ -537,6 +547,8 @@ O mestre move qualquer um para qualquer lugar, mas não para dentro de uma pared
 | --- | --- |
 | Deslocamento | O deslocamento é reduzido em 3 m com armadura pesada cujo requisito de Força não é atendido (anões não são atrasados). Uma condição que zera o deslocamento ou impede o movimento não deixa nenhum. Um deslocamento de voo é usado quando é o melhor |
 | Terreno difícil | Cada quadrado difícil em que se entra custa 1,5 m a mais, uma vez por quadrado. Quem voa o ignora |
+| Nadar e escalar | Cada metro nadado em água que o mestre pintou, ou escalado numa superfície escalável, custa 1 metro a mais, a menos que a criatura tenha deslocamento de natação ou de escalada (da ficha, de uma característica, de um efeito ou de uma forma de Forma Selvagem). Quem voa não paga nada, e um salto custa só o comprimento dele. A tela diz "Inclui 4,5 m nadando e 3,0 m rastejando." ao lado do custo, cada acréscimo com a sua palavra. O jogador planeja pela água que já viu; a água que ele não viu para o movimento onde o deslocamento acaba, sem dizer o motivo |
+| Rastejar | Uma criatura caída que anda a pé paga 1 metro a mais por metro. Isso se soma aos outros acréscimos: sobre terreno difícil ou na água ela paga 3 por metro, não 4 |
 | Paredes, colunas, cantos apertados | Recusam o movimento. Quadrados de meia cobertura (um muro baixo, caixotes) não custam nada |
 | Outras criaturas | Passar pelo quadrado de uma criatura não hostil custa como terreno difícil. O quadrado de uma criatura hostil só pode ser atravessado se ela for dois tamanhos maior ou menor. Ninguém termina um movimento no quadrado de outra criatura (uma criatura Miúda pode dividir com criaturas Miúdas) |
 | Alcance | O alcance de ataques e magias conta quadrados entre os centros, arredondado para baixo, então um alcance de 1,5 m vale nos oito lados. Uma arma com a propriedade alcance chega a 3 m, também para o ataque de oportunidade |
