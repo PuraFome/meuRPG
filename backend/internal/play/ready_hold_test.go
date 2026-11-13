@@ -26,7 +26,8 @@ func rogueReadier(t *testing.T) (*armed, *playv1.Encounter) {
 		reveal:   []string{"Goblin"},
 		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Reator": {4, 4}, "Brisa": {8, 8}},
 	})
-	return a, a.onTurnOf(t, e, "Reator")
+	e = a.onTurnOf(t, e, "Reator")
+	return a, e
 }
 
 // The rogue readies a move and then Disengages with Cunning Action: Disengage covers only the turn it is taken on, so the
@@ -59,7 +60,7 @@ func TestAReadiedMoveProvokesAfterADisengageAndHoldsTheTurn(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("the master's decline: %v", err)
 	}
-	e = a.mustEndTurn(t, a.master, e)
+	a.mustEndTurn(t, a.master, e)
 	if got := a.get(t, a.master).GetOpportunityOffers(); len(got) != 0 {
 		t.Errorf("offers after the turn = %v", got)
 	}
