@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 /**
@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-form-tag',
   imports: [MatIconModule],
-  template: `<mat-icon aria-hidden="true">pets</mat-icon>Na forma de {{ beast() }}`,
+  template: `<mat-icon aria-hidden="true">pets</mat-icon>Na forma de {{ beast() }}@if (short(); as t) { · <mat-icon class="hour" aria-hidden="true">hourglass_empty</mat-icon>{{ t }} }`,
   styles: `
     :host {
       display: inline-flex;
@@ -32,6 +32,14 @@ import { MatIconModule } from '@angular/material/icon';
 export class FormTag {
   /** The beast's Portuguese name ("Lobo"). */
   readonly beast = input.required<string>();
+  /** The time left as the server writes it ("52 min restantes"): only the master and the druid's player have it. */
+  readonly time = input('');
+
+  protected readonly short = computed(() =>
+    this.time()
+      .replace(/ restantes$/, '')
+      .replace(/^Restam /, ''),
+  );
 }
 
 /** The beast's pool in the master's list: "Lobo 11 de 11", above the druid's own, in the same column (the master and the druid's player only). */

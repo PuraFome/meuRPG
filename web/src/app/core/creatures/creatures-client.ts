@@ -89,12 +89,13 @@ export class CreaturesClient {
     return this.characters.listWildShapeForms({ campaignId, characterId });
   }
 
-  /** "Virar Lobo": the action and one use (`AssumeWildShape`). The answer is the vitals with the form and, in a combat, the combat. */
+  /** "Virar Lobo": the action and one use (`AssumeWildShape`); `stay` is "Permanecer na forma": the same beast, one use, no action, the time starts over. The answer is the vitals with the form and, in a combat, the combat. */
   async assumeWildShape(
     campaignId: string,
     characterId: string,
     beastKey: string,
     idempotencyKey: string,
+    stay = false,
   ): Promise<{
     readonly vitals: CharacterVitals | undefined;
     readonly encounter: Encounter | undefined;
@@ -104,6 +105,7 @@ export class CreaturesClient {
       characterId,
       beastKey,
       idempotencyKey,
+      stay,
     });
     return { vitals: res.vitals, encounter: res.encounter };
   }

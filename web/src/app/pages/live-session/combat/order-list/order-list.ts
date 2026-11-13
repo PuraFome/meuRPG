@@ -118,6 +118,8 @@ export class OrderList {
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
   /** Whether "Dano/Cura" can open for this character (a living player). */
   readonly adjustable = input<ReadonlySet<string>>(new Set());
+  /** The time each form has left by character ("52 min restantes"): only what the viewer may read is in it. */
+  readonly formTimes = input<ReadonlyMap<string, string>>(new Map());
   readonly busy = input(false);
 
   readonly adjust = output<string>();

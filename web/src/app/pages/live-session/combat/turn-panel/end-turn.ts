@@ -49,7 +49,7 @@ let nextId = 0;
         matButton="outlined"
         type="button"
         class="end"
-        [class.end--filled]="primary()"
+        [class.end--filled]="primary() || filled()"
         [class.end--block]="block()"
         [class.end--off]="!!waiting()"
         [class.mr-button--off]="!!waiting()"
@@ -140,6 +140,8 @@ export class EndTurn {
   readonly label = input('Encerrar turno');
   /** Full width (the phone's bar). */
   readonly block = input(false);
+  /** The one filled button of the band, whatever the turn still has (584-02). */
+  readonly filled = input(false);
   /** An opportunity attack waits for an answer ("Esperando a reação do mestre"): the turn cannot end. */
   readonly waiting = input('');
   /** The wait is the master's: the turn card says it once, and the button points to it. */

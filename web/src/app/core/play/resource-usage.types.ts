@@ -28,6 +28,8 @@ export interface WildShapeVm {
   readonly beastNamePt: string;
   readonly hitPointsCurrent: number;
   readonly hitPointsMax: number;
+  /** "1 h 52 min restantes", as the server writes it; absent for a form with no clock and for whoever may not read it. */
+  readonly timeLeftPt?: string;
 }
 
 /** How many uses of a class or race resource the sheet gives and how many are spent (`ResourceUsage`). */

@@ -537,4 +537,42 @@ describe('CreaturesPanel, a druid in Wild Shape: the reads of her form', () => {
     expect(api.leaveWildShape).toHaveBeenCalledTimes(1);
     expect(el.querySelector('[role="alert"]')).toBeNull();
   });
+
+  it('shows the time left, "Voltar" before "Permanecer", and no "Nenhuma criatura" while in a form', async () => {
+    const api = new FakeCreaturesClient();
+    api.vitals = create(CharacterVitalsSchema, {
+      characterId: 'char-1',
+      wildShape: { beastNamePt: 'Lobo', timeLeftPt: '52 min restantes' },
+    });
+    const fixture = build(api);
+    fixture.detectChanges();
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    const form = flat(el.querySelector('.form'));
+    expect(form).toContain('Na forma de Lobo');
+    expect(form).toContain('52 min restantes');
+    const buttons = [...el.querySelectorAll('.form button')].map((b) => flat(b));
+    expect(buttons.findIndex((t) => t?.includes('Voltar à forma normal'))).toBe(0);
+    expect(buttons.findIndex((t) => t?.includes('Permanecer na forma'))).toBe(1);
+    expect(flat(el)).not.toContain('Nenhuma criatura');
+  });
+
+  it('stays in the form with the explicit stay call, once for a double tap, and tells it', async () => {
+    const api = new FakeCreaturesClient();
+    api.vitals = create(CharacterVitalsSchema, {
+      characterId: 'char-1',
+      wildShape: { beastNamePt: 'Lobo', beastKey: 'wolf' },
+    });
+    const fixture = build(api);
+    fixture.detectChanges();
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    const stay = el.querySelector<HTMLButtonElement>('.js-stay')!;
+    stay.click();
+    stay.click();
+    await settle(fixture);
+    expect(api.assumeWildShape).toHaveBeenCalledTimes(1);
+    expect(api.assumeWildShape.mock.calls[0][4]).toBe(true);
+    expect(flat(el)).toContain('Você continua na forma de Lobo. O tempo recomeçou.');
+  });
 });

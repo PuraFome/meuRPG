@@ -27,6 +27,22 @@
   margin-inline: 0;
 }
 
+// The economy row: 12px above and below it, its divider, and the tabs right under the divider (the column's own gap is taken back).
+.groups > .econ {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: calc(var(--mr-space-3) * -1);
+  padding-block: 12px;
+  border-bottom: 1px solid var(--mr-line);
+}
+
+.econ__move {
+  flex: none;
+  min-height: 44px;
+}
+
 .tabs {
   display: block;
 }
