@@ -4336,7 +4336,10 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByText('Permanecer na forma').first()).toBeVisible();
     await expectScreenPasses(p, `A aba Druida na forma, com Permanecer na forma ${where}`);
     await tapAboveBar(p.getByRole('button', { name: 'Permanecer na forma' }));
-    // The answer is in: the buttons that waited for it are on again (the scan reads the settled screen, not the one in flight).
+    // The answer is in when its outcome is on the screen: the use is spent, so the row of "Permanecer" says there is none left (the
+    // vitals arrive after the call returns, and the options reload with the revision). Then the buttons that waited for it are on
+    // again; the scan reads the settled screen, never a frame in between.
+    await expect(p.locator('app-action-row', { hasText: 'Permanecer na forma' })).toContainText('Sem usos de Forma Selvagem');
     await expect(p.getByRole('button', { name: 'Voltar à forma normal' })).not.toHaveAttribute('aria-disabled', 'true');
     await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).not.toHaveAttribute('aria-disabled', 'true');
     await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();

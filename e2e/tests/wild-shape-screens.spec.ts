@@ -113,17 +113,22 @@ async function wildShapeScreens(
       p.getByText("Sem magias na forma de fera. Volte à forma normal para conjurar."),
     ).toBeVisible();
     await openActionTab(p, "Ataques");
-    // Turning into the beast took her Action, so the bite is under the folded "Ação · Usada" line; opened, it is the only row.
+    // Turning into the beast took her Action, so its rows are under the folded "Ação · Usada" line; opened, they are the bite and the
+    // shove. SRD 5.1: any creature shoves with the Attack action, but a grapple needs a free hand, which a beast has not.
     await p.getByRole("button", { name: "Ação · Usada" }).click();
     await expect(p.locator("app-action-row:visible").first()).toContainText(/Mordida|Bite/);
-    await expect(p.locator("app-action-row:visible")).toHaveCount(1);
-    await expect(p.getByText("Agarrar")).toHaveCount(0);
+    await expect(p.locator("app-action-row", { hasText: "Empurrar" })).toBeVisible();
+    await expect(p.locator("app-action-row:visible")).toHaveCount(2);
+    await expect(p.locator("app-action-row", { hasText: "Agarrar" })).toHaveCount(0);
     const counts = await tabNames();
-    expect(counts.some((t) => /Ataques\s*1$/.test(t)), counts.join("|")).toBe(true);
+    expect(counts.some((t) => /Ataques\s*2$/.test(t)), counts.join("|")).toBe(true);
     expect(counts.some((t) => /Druida\s*2$/.test(t)), counts.join("|")).toBe(true);
+    const shove = p.locator("app-action-row", { hasText: "Empurrar" });
     for (const w of WILD_WIDTHS) {
       await shootWild(p, "abas-ataques", w, scheme);
+      await shootWild(p, "abas-ataques-empurrar", w, scheme, shove);
     }
+    await cropWild(p.getByRole("tabpanel", { name: /^Ataques/ }), "recorte-ataques-forma", scheme);
     await openActionTab(p, "Outras");
     for (const w of WILD_WIDTHS) {
       await shootWild(p, "abas-outras", w, scheme);

@@ -469,6 +469,9 @@ export const ESCAPE_DETAIL = 'Ação · Atletismo ou Acrobacia, contra quem agar
 /** What the attack list says of Agarrar and Empurrar. */
 export const SPECIAL_ATTACKS_NOTE =
   'Agarrar e Empurrar usam o seu ataque. Com mais de um ataque, você escolhe qual troca.';
+/** The same note of a creature in a beast's shape: only the shove is there, as a beast has no free hand to grapple. */
+export const SHOVE_ATTACK_NOTE =
+  'Empurrar usa o seu ataque. Com mais de um ataque, você escolhe qual troca.';
 
 /** The note under the attacks of a hidden combatant: the advantage, and that the attack gives the position away for everyone. */
 export function hiddenAttackNote(hidden: string): string {

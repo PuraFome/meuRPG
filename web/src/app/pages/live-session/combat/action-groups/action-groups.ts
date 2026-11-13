@@ -56,6 +56,7 @@ import {
   GRAPPLE_DETAIL,
   hiddenAttackNote,
   SHOVE_DETAIL,
+  SHOVE_ATTACK_NOTE,
   SPECIAL_ATTACKS_NOTE,
   hiddenWord,
 } from '../../../../core/combat/contest-view';
@@ -237,7 +238,9 @@ export class ActionGroups {
   protected readonly hiddenNote = computed(() =>
     this.contest()?.hidden ? hiddenAttackNote(hiddenWord(this.own().label)) : '',
   );
-  protected readonly specialNote = SPECIAL_ATTACKS_NOTE;
+  protected readonly specialNote = computed(() =>
+    this.beast() ? SHOVE_ATTACK_NOTE : SPECIAL_ATTACKS_NOTE,
+  );
   /** The four groups of a surprised character's turn, each unavailable for the same reason (SRD 5.1, Surprise). */
   protected readonly surpriseRows: readonly { readonly name: string; readonly why: string }[] = [
     { name: 'Atacar', why: 'Surpresa.' },
@@ -305,8 +308,15 @@ export class ActionGroups {
   );
   /** What a form's class tab holds besides the class's abilities: "Voltar à forma normal" and, while it is on, "Permanecer na forma". */
   private readonly formRows = computed(() => (this.beast() ? 1 + (this.stay() ? 1 : 0) : 0));
-  /** In a form the attacks are the beast's own (its bite), not the character's contests, and nothing is drawn or put away. */
-  protected readonly contestRows = computed(() => (this.beast() ? [] : this.contestAttacks()));
+  /**
+   * In a form the attacks are the beast's own (its bite), plus the shove: any creature shoves with the Attack action (SRD 5.1), but a
+   * grapple needs a free hand and a beast has none. Nothing is drawn or put away.
+   */
+  protected readonly contestRows = computed(() =>
+    this.beast()
+      ? this.contestAttacks().filter((c) => c.kind !== ContestAttackOptionKind.GRAPPLE)
+      : this.contestAttacks(),
+  );
   protected readonly tabItems = computed(() => {
     const counts = actionCounts(this.options(), {
       contestAttacks: this.contestRows().length,

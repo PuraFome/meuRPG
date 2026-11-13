@@ -2,7 +2,11 @@ import { create } from '@bufbuild/protobuf';
 import { TestBed } from '@angular/core/testing';
 
 import { CombatantSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { ContestTurnStateSchema } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
+import {
+  ContestAttackOptionKind,
+  ContestAttackOptionSchema,
+  ContestTurnStateSchema,
+} from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import {
   AttackKind,
   AttackOptionSchema,
@@ -193,18 +197,27 @@ describe('ActionGroups: the tabs in a form (584-01, 584-02)', () => {
     expect(tabs(ended.el)[1]).toMatch(/Druida\s*1$/);
   });
 
-  it("lists the beast's attacks alone: no Agarrar, no Empurrar, no drawing of weapons", () => {
+  it('keeps the shove in a form and drops the grapple: a beast has no free hand (SRD 5.1)', () => {
+    const special = (kind: ContestAttackOptionKind) =>
+      create(ContestAttackOptionSchema, { kind, replacesAttack: true, enabled: true });
+    const contestAttacks = [
+      special(ContestAttackOptionKind.GRAPPLE),
+      special(ContestAttackOptionKind.SHOVE),
+    ];
     const { el } = setup(
       {},
-      {
-        beast: 'Lobo',
-        stay,
-        contestAttacks: [{ kind: 1 }, { kind: 2 }],
-        gearFlow: { weapons: [] },
-      },
+      { beast: 'Lobo', stay, options, contestAttacks, gearFlow: { weapons: [] } },
     );
+    // No drawing or putting away of weapons in a form.
     expect(el.querySelector('.panel app-gear-fold')).toBeNull();
     expect(text(el)).not.toContain('Agarrar');
-    expect(text(el)).not.toContain('Empurrar');
+    expect(text(el)).toContain('Empurrar');
+    // The count of the tab is what it holds: the bite and the shove.
+    expect(tabs(el)[0]).toMatch(/Ataques\s*2$/);
+    TestBed.resetTestingModule();
+    // Out of a form the character keeps both.
+    const own = setup({}, { beast: '', options, contestAttacks });
+    expect(text(own.el)).toContain('Agarrar');
+    expect(text(own.el)).toContain('Empurrar');
   });
 });
