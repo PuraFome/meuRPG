@@ -337,6 +337,13 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		out.AnswerNow = answerNow
 		out.Trigger = wv.trigger(w)
 		out.Unanswered = wv.unanswered(w, reactor)
+		if kind == reaction.Readied && answerNow { // its attack's roll held for other windows: not to be answered (nor passed) now
+			held, err := readiedHeld(wv.ctx, wv.s.queries, wv.d.enc.ID, w.ID)
+			if err != nil {
+				return nil, err
+			}
+			out.AnswerNow = !held
+		}
 	}
 	var err error
 	switch kind {

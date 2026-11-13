@@ -7,7 +7,9 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -47,6 +49,11 @@ func readiedUseOf(ctx context.Context, c *combatTx, windowID string, who playdb.
 	}
 	if err := mustBeOpen(w); err != nil {
 		return nil, err
+	}
+	if c.replay == nil { // the replay of the held roll is the use the hold waited for
+		if err := mustNotBeHeld(ctx, c.q, c.enc.ID, w.ID); err != nil {
+			return nil, err
+		}
 	}
 	row, err := c.q.GetWaitingReadiedAction(ctx, playdb.GetWaitingReadiedActionParams{ID: windowTriggerOf(w).Readied, EncounterID: c.enc.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -176,6 +183,9 @@ func (s *Service) passReadiedTx(ctx context.Context, c *combatTx, m authz.Member
 	if err != nil {
 		return actionEvent{}, err
 	}
+	if err := mustNotBeHeld(ctx, c.q, c.enc.ID, w.ID); err != nil {
+		return actionEvent{}, err
+	}
 	row, err := c.q.GetWaitingReadiedAction(ctx, playdb.GetWaitingReadiedActionParams{ID: windowTriggerOf(w).Readied, EncounterID: c.enc.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return actionEvent{}, errNotYourTurnToAnswer()
@@ -280,7 +290,11 @@ func (f *takeActionFlow) chooseReadied(ctx context.Context) error {
 // readiedAttackOf is the READIED window a RollAttack's catch_window_id names, when it is one (ok false for a Deflect
 // Missiles throw back): the held attack, by its attacker, with its reaction free.
 func (f *attackFlow) readiedAttackOf(ctx context.Context) (bool, error) {
-	w, err := f.c.q.GetReactionWindow(ctx, playdb.GetReactionWindowParams{EncounterID: f.c.enc.ID, ID: f.call.catchID})
+	id, err := uuid.Parse(f.call.catchID)
+	if err != nil {
+		return true, connect.NewError(connect.CodeInvalidArgument, errors.New("catch_window_id must be a UUID"))
+	}
+	w, err := f.c.q.GetReactionWindow(ctx, playdb.GetReactionWindowParams{EncounterID: f.c.enc.ID, ID: id.String()})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil // the throw back refuses a window it does not find
 	}
@@ -299,6 +313,40 @@ func (f *attackFlow) readiedAttackOf(ctx context.Context) (bool, error) {
 	}
 	f.readied = use
 	return true, nil
+}
+
+// mustNotBeHeld refuses an answer to a READIED window whose attack's roll is held for the windows any attack roll opens
+// (holdAttackRoll): the roll is the use, once they are answered. It is the refusal of any action while a window waits.
+func mustNotBeHeld(ctx context.Context, q *playdb.Queries, encID, windowID string) error {
+	held, err := readiedHeld(ctx, q, encID, windowID)
+	if err != nil {
+		return err
+	}
+	if held {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "the readied attack's roll waits for other reactions")
+	}
+	return nil
+}
+
+// readiedHeld says a held attack (reaction_holds, still held) names the READIED window in its catch_window_id.
+func readiedHeld(ctx context.Context, q *playdb.Queries, encID, windowID string) (bool, error) {
+	holds, err := q.ListHeldReactionHolds(ctx, encID)
+	if err != nil {
+		return false, fmt.Errorf("list the held actions: %w", err)
+	}
+	for _, h := range holds {
+		if h.Kind != "attack" {
+			continue
+		}
+		var req playv1.RollAttackRequest
+		if err := proto.Unmarshal(h.Request, &req); err != nil {
+			return false, fmt.Errorf("read a held attack: %w", err)
+		}
+		if req.GetCatchWindowId() == windowID {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // readiedMoveOf is the readied move the mover makes: a walk off its turn while its READIED window of a move is open. Any

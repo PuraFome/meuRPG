@@ -61,6 +61,16 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(clock.due(Date.now())).toEqual(['w1']);
   });
 
+  it('never passes a readied attack whose roll is held for other reactions (answerNow false)', () => {
+    const clock = new AutoPassClock();
+    const held = win('w1', ReactionKind.READIED, { answerNow: false });
+    expect(autoPasses(held)).toBe(false);
+    clock.sync([held], Date.now());
+    vi.advanceTimersByTime(ROLLING_WAIT_SECONDS * MS);
+    clock.sync([held], Date.now());
+    expect(clock.due(Date.now())).toEqual([]);
+  });
+
   it('passes an optional player window once, at 30 s, with the auto-pass key', () => {
     const clock = new AutoPassClock();
     const w = win('w1', ReactionKind.CUTTING_WORDS);

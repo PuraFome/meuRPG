@@ -64,3 +64,55 @@ func TestAReadiedMoveProvokesAfterADisengageAndHoldsTheTurn(t *testing.T) {
 		t.Errorf("offers after the turn = %v", got)
 	}
 }
+
+// heldReadiedAttack is the goblin's readied attack on Toren, fired on the next turn and used by the master: its roll waits
+// for Reator's window of the kind. It returns the READIED window.
+func heldReadiedAttack(t *testing.T, a *armed, e *playv1.Encounter, kind playv1.ReactionKind) (*playv1.Encounter, *playv1.ReactionWindow, *playv1.ReactionWindow) {
+	t.Helper()
+	a.readyGoblinAttack(t, e)
+	e = a.mustEndTurn(t, a.master, e)
+	w := a.mustFire(t, e, "Goblin")
+	a.mustAnswer(t, a.master, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+		useTyped(15)(r)
+		r.CreatureIds = []string{a.id(t, "Toren")}
+	})
+	pre := a.windowOf(t, a.ana, kind)
+	if pre == nil {
+		t.Fatalf("Reator has no %v window", kind)
+	}
+	return e, w, pre
+}
+
+// While the roll of a readied attack is held, its READIED window takes no answer (a second "Usar", or "Deixar passar"):
+// both are REACTION_PENDING, and the master's screen reads it as not to be answered now, so it never passes by itself.
+func TestAHeldReadiedAttacksWindowTakesNoAnswer(t *testing.T) {
+	t.Parallel()
+	a, e := reactorFight(t, loreBard)
+	e, w, pre := heldReadiedAttack(t, a, e, playv1.ReactionKind_REACTION_KIND_CUTTING_WORDS)
+	_, err := a.answerReaction(t, a.master, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+		useTyped(15)(r)
+		r.CreatureIds = []string{a.id(t, "Toren")}
+	})
+	wantBlockedBy(t, "a second Usar while the roll is held", err, blockedReactionPending)
+	_, err = a.answerReaction(t, a.master, e, w.GetId(), passAnswer)
+	wantBlockedBy(t, "Deixar passar while the roll is held", err, blockedReactionPending)
+	if mine := a.windowOf(t, a.master, kindReadied); mine == nil || mine.GetAnswerNow() {
+		t.Errorf("the master's READIED window while the roll is held = %v, want answer_now false", mine)
+	}
+	a.mustAnswer(t, a.ana, e, pre.GetId(), passAnswer)
+	if got := a.readiedStatus(t, "Goblin"); got != readiedFired {
+		t.Errorf("rows after the roll = %q", got)
+	}
+}
+
+// catch_window_id is a UUID: anything else is invalid_argument before anything is read.
+func TestACatchWindowIDIsAUUID(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.readyThenPass(t, nil)
+	_, err := a.attack(t, a.ana, e, "Pensantus", fireBolt, "Goblin", func(r *playv1.RollAttackRequest) {
+		d20(10)(r)
+		r.CatchWindowId = "not-a-window"
+	})
+	wantCode(t, "RollAttack with a malformed catch_window_id", err, connect.CodeInvalidArgument)
+}
