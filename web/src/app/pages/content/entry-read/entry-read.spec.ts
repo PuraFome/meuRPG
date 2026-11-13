@@ -63,6 +63,7 @@ describe('EntryRead next-hit effect (#577)', () => {
       title: 'Efeito no próximo golpe',
       where: 'Em quem conjura: o próximo golpe corpo a corpo, por até 1 minuto.',
       lead: 'No próximo golpe corpo a corpo:',
+      whileLasts: false,
       damage: '+2d8 frio',
       more: '+1d8 por nível acima do 2º, até 5d8',
       save: [
@@ -95,5 +96,23 @@ describe('EntryRead next-hit effect (#577)', () => {
     );
     expect(el.querySelector('.hit-line .chip')?.textContent).toBe('+2d8 frio');
     expect(el.querySelector('.hit__who')).toBeNull();
+  });
+
+  it('ends the preview line of the marked target with "enquanto durar", as the board says', () => {
+    const marked: Read = {
+      ...hit,
+      hit: {
+        ...hit.hit!,
+        lead: 'Em cada golpe com arma no alvo marcado:',
+        damage: '+1d6 do tipo da arma',
+        more: '',
+        save: [],
+        whileLasts: true,
+      },
+    };
+    const el = render(marked, true);
+    expect(el.querySelector('.hit-line')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Em cada golpe com arma no alvo marcado: +1d6 do tipo da arma, enquanto durar.',
+    );
   });
 });

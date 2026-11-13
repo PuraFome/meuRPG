@@ -6180,7 +6180,7 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
       await block.getByLabel('No máximo').fill('5');
       await m.getByRole('button', { name: 'Salvar magia' }).click();
       await expect(block.getByLabel('Dados', { exact: true })).toHaveAttribute('aria-invalid', 'true');
-      await expect(block.getByText('De 1 a 10 dados.', { exact: true }).first()).toBeVisible();
+      await expect(block.getByLabel('Dados', { exact: true }).locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
       await expectScreenPasses(m, `Editor de magia, a recusa dos dados no campo ${where}`);
     }
 
@@ -6189,7 +6189,7 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
     await expect(p.getByText('Só quem conjura e você')).toBeVisible();
     await expectScreenPasses(p, `Magia com efeito no próximo golpe, vista por um jogador ${where}`);
     await open(p, entryRoute(campaignId, mark));
-    await expect(p.getByText('Em quem conjura: cada golpe no alvo marcado, por até 1 minuto.')).toBeVisible();
+    await expect(p.getByText('Em quem conjura: cada golpe com arma no alvo marcado, por até 1 minuto.')).toBeVisible();
     await expectScreenPasses(p, `Magia do alvo marcado, vista por um jogador ${where}`);
   } finally {
     await Promise.all([mContext.close(), pContext.close()]);

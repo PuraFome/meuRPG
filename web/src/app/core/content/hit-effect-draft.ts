@@ -220,6 +220,8 @@ export function applyHit(
 export interface HitSpellFacts {
   readonly target: string;
   readonly perSlot: number;
+  /** The spell's level: a cantrip sends no extra targets per level, so a stale count there does not lock. */
+  readonly level: number;
   readonly duration: string;
 }
 
@@ -229,11 +231,24 @@ export function hitAvailable(d: Pick<HitSpellFacts, 'duration'>): boolean {
 }
 
 /** Why the card of the marked target is locked, or "" when it is open: it needs one creature and no extra targets per level. */
-export function markedLock(d: Pick<HitSpellFacts, 'target' | 'perSlot'>): string {
+export function markedLock(
+  d: Pick<HitSpellFacts, 'target' | 'perSlot'> & { level?: number },
+): string {
   if (d.target !== TARGET_ONE_CREATURE) {
     return MARKED_LOCK_PT;
   }
-  return d.perSlot > 0 ? MARKED_LOCK_SLOT_PT : '';
+  // The same condition as the spell's request: the extra targets go only from a level above the cantrip.
+  return (d.level ?? 1) > 0 && d.perSlot > 0 ? MARKED_LOCK_SLOT_PT : '';
+}
+
+/** Whether `settleHit` moved the trigger from the marked target to the next hit. */
+export function hitMoved(before: { hit: HitDraft }, after: { hit: HitDraft }): boolean {
+  return before.hit.trigger === HIT_MARKED && after.hit.trigger === HIT_NEXT;
+}
+
+/** What the block tells, in a live region, when the lock moved the trigger: "Mudamos para “Próximo golpe com arma”: o alvo marcado pede Uma criatura." */
+export function hitMovedNote(lock: string): string {
+  return `Mudamos para “Próximo golpe com arma”: o alvo marcado ${lock.replace(/^Pede o alvo /, 'pede ')}`;
 }
 
 /** The draft with a locked trigger moved to the next hit (a marked target the spell can no longer have). */

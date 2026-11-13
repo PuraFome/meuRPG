@@ -1054,7 +1054,7 @@ const EXPECTED_STORED: Record<string, unknown> = {
       classKeys: [],
       descPt: [],
       higherLevelPt: [],
-      target: { kind: 1, perSlotLevel: 2 },
+      target: { kind: 1 },
       damage: [{ damageTypeKey: 'damage-type:fire', dice: '1d10', perTier: '1d10' }],
       attack: 'melee',
     },

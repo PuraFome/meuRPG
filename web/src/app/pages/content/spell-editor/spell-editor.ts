@@ -39,6 +39,7 @@ import {
   hitRefusals,
   hitAvailable,
   settleHit,
+  hitMoved,
 } from '../../../core/content/hit-effect-draft';
 import {
   ATTACK_OPTIONS,
@@ -230,13 +231,22 @@ export class SpellEditor {
     }
   }
 
+  /** The lock moved the trigger on the last change: the block tells it. */
+  protected readonly hitMoved = signal(false);
+
   protected patch(p: Partial<SpellDraft>): void {
-    this.draft.update((d) => settleHit({ ...d, ...p }));
+    const before = this.draft();
+    const next = settleHit({ ...before, ...p });
+    this.hitMoved.set(hitMoved(before, next));
+    this.draft.set(next);
     this.dirty.set(true);
   }
 
   protected setTarget(value: string): void {
-    this.draft.update((d) => withTarget(d, value as SpellDraft['target']));
+    const before = this.draft();
+    const next = withTarget(before, value as SpellDraft['target']);
+    this.hitMoved.set(hitMoved(before, next));
+    this.draft.set(next);
     this.dirty.set(true);
   }
 

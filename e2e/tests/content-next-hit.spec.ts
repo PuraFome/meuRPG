@@ -131,7 +131,8 @@ test('a recusa do efeito no próximo golpe volta no campo, e a magia só salva d
     await m.getByRole('button', { name: 'Salvar magia' }).click();
     const dice = block.getByLabel('Dados', { exact: true });
     await expect(dice).toHaveAttribute('aria-invalid', 'true');
-    await expect(block.getByText('De 1 a 10 dados.')).toBeVisible();
+    // Scoped to the field's own note: the refusal can also be read elsewhere on the screen.
+    await expect(dice.locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
     await expect(m.getByRole('alert').filter({ hasText: 'Não foi possível salvar a magia.' })).toContainText('1 campo precisa de ajuste');
     await expect(dice).toHaveValue('0');
 

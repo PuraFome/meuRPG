@@ -90,11 +90,18 @@ describe('what a player reads of the next-hit effect (#577)', () => {
       'No próximo golpe corpo a corpo:',
     ],
     [TableHitTrigger.EACH_HIT, 'cada golpe com arma', 'Em cada golpe com arma:'],
-    [TableHitTrigger.MARKED_TARGET, 'cada golpe no alvo marcado', 'Em cada golpe no alvo marcado:'],
+    [
+      TableHitTrigger.MARKED_TARGET,
+      'cada golpe com arma no alvo marcado',
+      'Em cada golpe com arma no alvo marcado:',
+    ],
   ])('says the trigger %s', (trigger, where, lead) => {
     const h = hitOf(spell({ trigger }))!;
     expect(h.where).toContain(`Em quem conjura: ${where},`);
     expect(h.lead).toBe(lead);
+    expect(h.whileLasts).toBe(
+      trigger === TableHitTrigger.EACH_HIT || trigger === TableHitTrigger.MARKED_TARGET,
+    );
   });
 
   it.each([
@@ -182,7 +189,7 @@ describe('what a player reads of the next-hit effect (#577)', () => {
     ).toContain('por até 1 hora.');
     expect(
       d({ duration: { kind: SpellDurationKind.UNTIL_DISPELLED }, concentration: true }),
-    ).toContain('por até a magia acabar.');
+    ).toContain('por até ser dissipada.');
   });
 
   it('says the audience the server sends: all, owner, and the owner when unset', () => {

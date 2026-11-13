@@ -22,6 +22,10 @@ import {
   hitRefusals,
   hitToModifier,
   markedLock,
+  hitMoved,
+  hitMovedNote,
+  MARKED_LOCK_PT,
+  MARKED_LOCK_SLOT_PT,
   needsConcentration,
   settleHit,
 } from './hit-effect-draft';
@@ -223,6 +227,39 @@ describe('the hit effect draft (#577)', () => {
     expect(markedLock({ target: 'creatures', perSlot: 0 })).toBe('Pede o alvo Uma criatura.');
     expect(markedLock({ target: 'self', perSlot: 0 })).toBe('Pede o alvo Uma criatura.');
     expect(markedLock({ target: 'creature', perSlot: 1 })).toContain('sem criaturas a mais');
+  });
+
+  it('counts the extra targets only on a spell with a level (a cantrip sends none)', () => {
+    expect(markedLock({ target: 'creature', perSlot: 2, level: 0 })).toBe('');
+    expect(markedLock({ target: 'creature', perSlot: 2, level: 1 })).toContain(
+      'sem criaturas a mais',
+    );
+    const d = {
+      ...emptySpell(),
+      level: 0,
+      perSlot: 2,
+      target: 'creature' as const,
+      hit: { ...emptyHit(), trigger: 'marked_target' as const },
+    };
+    expect(settleHit(d).hit.trigger).toBe('marked_target');
+    expect(settleHit({ ...d, level: 1 }).hit.trigger).toBe('next_hit');
+  });
+
+  it('says when a lock moved the trigger', () => {
+    const d = {
+      ...emptySpell(),
+      target: 'creature' as const,
+      hit: { ...emptyHit(), trigger: 'marked_target' as const },
+    };
+    expect(hitMoved(d, settleHit({ ...d, target: 'area' as const }))).toBe(true);
+    expect(hitMoved(d, settleHit(d))).toBe(false);
+    expect(hitMoved(d, settleHit({ ...d, hit: { ...d.hit, trigger: 'each_hit' } }))).toBe(false);
+    expect(hitMovedNote(MARKED_LOCK_PT)).toBe(
+      'Mudamos para “Próximo golpe com arma”: o alvo marcado pede Uma criatura.',
+    );
+    expect(hitMovedNote(MARKED_LOCK_SLOT_PT)).toBe(
+      'Mudamos para “Próximo golpe com arma”: o alvo marcado pede Uma criatura, sem criaturas a mais por nível de espaço.',
+    );
   });
 
   it('moves a locked marked target to the next hit, and leaves other triggers', () => {

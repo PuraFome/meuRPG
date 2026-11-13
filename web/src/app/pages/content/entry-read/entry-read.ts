@@ -68,7 +68,7 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
         @if (read().hit; as hit) {
           @if (plain()) {
             <p class="text hit-line">
-              <strong>{{ hit.lead }}</strong>{{ ' ' }}<span class="chip">{{ hit.damage }}</span><span>{{ (hit.more ? ', ' + hit.more : '') + '.' }}</span>
+              <strong>{{ hit.lead }}</strong>{{ ' ' }}<span class="chip">{{ hit.damage }}</span><span>{{ (hit.more ? ', ' + hit.more : '') + (hit.whileLasts ? ', enquanto durar' : '') + '.' }}</span>
               @for (p of hit.save; track $index) {
                 <span>{{ ($first ? ' ' : '') + p.text }}</span>
               }

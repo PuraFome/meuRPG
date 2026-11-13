@@ -219,8 +219,9 @@ function targetInit(d: SpellDraft): NonNullable<SpellInit['target']> {
   const target: NonNullable<SpellInit['target']> = { kind: TARGET_KIND[d.target] };
   if (d.target === 'creatures') {
     target.count = d.count;
-    target.perSlotLevel = Number.isNaN(d.perSlot) ? 0 : d.perSlot;
-  } else if (d.target === 'creature' && d.perSlot > 0) {
+    // A cantrip has no slot level to climb and the form hides the count: one left from another level is not sent.
+    target.perSlotLevel = Number.isNaN(d.perSlot) || d.level === 0 ? 0 : d.perSlot;
+  } else if (d.target === 'creature' && d.level > 0 && d.perSlot > 0) {
     target.perSlotLevel = d.perSlot;
   } else if (d.target === 'area') {
     target.shape = SHAPE_TO_ENUM[d.shape];

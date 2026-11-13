@@ -27,6 +27,8 @@ export interface ReadHit {
   readonly where: string;
   /** "No próximo golpe com arma:", the lead of the editor's preview line. */
   readonly lead: string;
+  /** "enquanto durar": each hit and the marked target go on while the spell lasts; the line of the player ends with it. */
+  readonly whileLasts: boolean;
   /** The extra damage: "+2d8 frio". */
   readonly damage: string;
   /** What it adds per level and the most: "+1d8 por nível acima do 2º, até 5d8"; empty when it adds none. */
@@ -41,14 +43,14 @@ const WHERE: Record<HitTriggerKey, string> = {
   next_hit: 'o próximo golpe com arma',
   next_melee_hit: 'o próximo golpe corpo a corpo',
   each_hit: 'cada golpe com arma',
-  marked_target: 'cada golpe no alvo marcado',
+  marked_target: 'cada golpe com arma no alvo marcado',
 };
 
 const LEAD: Record<HitTriggerKey, string> = {
   next_hit: 'No próximo golpe com arma:',
   next_melee_hit: 'No próximo golpe corpo a corpo:',
   each_hit: 'Em cada golpe com arma:',
-  marked_target: 'Em cada golpe no alvo marcado:',
+  marked_target: 'Em cada golpe com arma no alvo marcado:',
 };
 
 /** The save's wire key ("con") by the catalog's key for the ability. */
@@ -61,10 +63,10 @@ const ABILITY_CATALOG: Readonly<Record<string, string>> = {
   cha: 'ability:charisma',
 };
 
-/** How long the spell lasts, after "por": "até 1 minuto", "até 2 horas", "até a magia acabar" (a spell with no end). */
+/** How long the spell lasts, after "por": "até 1 minuto", "até 2 horas", "até ser dissipada" (a spell with no end). */
 function lastsText(d: SpellDraft): string {
   if (d.duration !== 'timed') {
-    return 'até a magia acabar';
+    return 'até ser dissipada';
   }
   const length = formatDuration({
     kind: 'timed',
@@ -74,7 +76,7 @@ function lastsText(d: SpellDraft): string {
     concentration: false,
     raw: '',
   }).text;
-  return length ? `até ${length.replace(/^até /, '')}` : 'até a magia acabar';
+  return length ? `até ${length.replace(/^até /, '')}` : 'até ser dissipada';
 }
 
 function damageChip(h: HitDraft, nameOf: (key: string) => string): string {
@@ -131,6 +133,7 @@ export function readHit(d: SpellDraft, nameOf: (key: string) => string): ReadHit
     title: HIT_SECTION_TITLE,
     where: `Em quem conjura: ${WHERE[h.trigger]}, por ${lastsText(d)}.`,
     lead: LEAD[h.trigger],
+    whileLasts: h.trigger === 'each_hit' || h.trigger === 'marked_target',
     damage: damageChip(h, nameOf),
     more: moreChip(h, d.level),
     save: saveSentence(h, nameOf),

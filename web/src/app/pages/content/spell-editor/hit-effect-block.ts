@@ -7,6 +7,7 @@ import {
   HIT_DICE_FACES,
   HIT_DICE_MAX,
   HIT_MARKED,
+  HIT_NEXT,
   HIT_PER_SLOT_MAX,
   INSTANT_LOCK_PT,
   NEEDS_CONCENTRATION_PT,
@@ -15,6 +16,7 @@ import {
   type HitTriggerKey,
   hitAvailable,
   markedLock,
+  hitMovedNote,
   needsConcentration,
 } from '../../../core/content/hit-effect-draft';
 import { FieldNote } from '../../../shared/form-fields/field-note';
@@ -59,6 +61,10 @@ export class HitEffectBlock {
   /** The spell's target ("creature", "creatures", "area", "self") and its extra targets per level: the marked target needs one creature. */
   readonly target = input.required<string>();
   readonly perSlot = input(0);
+  /** The spell's level: a cantrip sends no extra targets per level. */
+  readonly level = input(1);
+  /** The lock moved the trigger to the next hit on the last change: the block says so, politely. */
+  readonly moved = input(false);
   /** The spell lasts ("timed", "until_dispelled") or not ("instant"). */
   readonly duration = input.required<string>();
   /** The duration in words for the chip ("1 minuto"). */
@@ -89,7 +95,12 @@ export class HitEffectBlock {
   protected readonly on = computed(() => this.hit().enabled && this.available());
   protected readonly hasSave = computed(() => this.hit().saveAbility !== '');
   protected readonly lock = computed(() =>
-    markedLock({ target: this.target(), perSlot: this.perSlot() }),
+    markedLock({ target: this.target(), perSlot: this.perSlot(), level: this.level() }),
+  );
+  protected readonly movedText = computed(() =>
+    this.moved() && this.lock() !== '' && this.hit().trigger === HIT_NEXT
+      ? hitMovedNote(this.lock())
+      : '',
   );
   protected readonly cards = computed(() =>
     TRIGGER_CARDS.map((c) => ({

@@ -30,6 +30,11 @@
 }
 @if (on()) {
   <p class="how" [id]="howId" [hidden]="!open()">{{ how }}</p>
+  <div role="status">
+    @if (movedText()) {
+      <p class="note"><mat-icon aria-hidden="true">info</mat-icon>{{ movedText() }}</p>
+    }
+  </div>
   <div class="when" role="radiogroup" [attr.aria-labelledby]="whenId + '-label'" [attr.aria-describedby]="needsConcentration() || issues('trigger').length > 0 ? whenId + '-note' : null">
     <p class="label" [id]="whenId + '-label'">Quando vale</p>
     <div class="cards">
@@ -89,7 +94,7 @@
         [value]="h.saveAbility"
         [path]="path('save')"
         [issues]="issues('save')"
-        [hint]="hasSave() ? 'Contra a CD de magia de quem conjura.' : ''"
+        hint="Contra a CD de magia de quem conjura."
         (valueChange)="setSave('' + $event)"
       />
       <app-select-field

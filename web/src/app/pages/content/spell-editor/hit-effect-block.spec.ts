@@ -135,6 +135,21 @@ describe('HitEffectBlock (#577)', () => {
     expect(text(cards(el)[3])).not.toContain('Pede o alvo');
   });
 
+  it('does not lock the marked target for a stale per-level count on a cantrip', () => {
+    const el = setup({ perSlot: 2, level: 0 });
+    expect(el.querySelectorAll<HTMLInputElement>('.card input')[3].disabled).toBe(false);
+  });
+
+  it('says in a polite live region that the lock moved the trigger', () => {
+    const quiet = setup({ target: 'area', hit: on({ trigger: 'next_hit' }) });
+    expect(quiet.querySelector('[role="status"]')).not.toBeNull();
+    expect(text(quiet.querySelector('[role="status"]')!).trim()).toBe('');
+    const el = setup({ target: 'area', moved: true, hit: on({ trigger: 'next_hit' }) });
+    expect(text(el.querySelector('[role="status"]')!)).toContain(
+      'Mudamos para “Próximo golpe com arma”: o alvo marcado pede Uma criatura.',
+    );
+  });
+
   it("says in the chips how long it lasts and that it is the caster's concentration, and where it lands", () => {
     let el = setup({ target: 'area' });
     expect(text(el.querySelector('.chips')!)).toContain('1 minuto');
@@ -221,7 +236,7 @@ describe('HitEffectBlock (#577)', () => {
     expect(lasts.disabled).toBe(true);
     expect(text(cond.options[0])).toBe('Pede um teste');
     expect(text(lasts.options[0])).toBe('Pede um teste');
-    expect(text(el)).not.toContain('Contra a CD de magia de quem conjura.');
+    expect(text(el)).toContain('Contra a CD de magia de quem conjura.');
   });
 
   it('opens the condition and the duration with a save', async () => {
