@@ -392,11 +392,17 @@ func dismountOptions(out *rulesv1.MountOptions, cs []playdb.Combatant, v combatV
 	}
 }
 
+// listedMount says whether the options list the mount: a player's are the ones willingMount lets them mount; the master may mount any
+// combatant, so only the marked ones and the ones next to the rider are listed.
+func listedMount(v combatViewer, rider, mount playdb.Combatant) bool {
+	return !v.master || mount.MountKind != mountKindNone || (placed(rider) && grid.RangeFt(squareOfCombatant(rider), squareOfCombatant(mount)) <= mountReach)
+}
+
 // mountChoices are the mounts the viewer sees that its rider could get on, each with the cost and why not.
 func mountChoices(cs []playdb.Combatant, v combatViewer, rider playdb.Combatant, standing grid.Surface) []*rulesv1.MountChoice {
 	var out []*rulesv1.MountChoice
 	for _, mount := range cs {
-		if mount.ID == rider.ID || mount.Defeated || !placed(mount) || !v.sees(mount) || !willingMount(v, mount) {
+		if mount.ID == rider.ID || mount.Defeated || !placed(mount) || !v.sees(mount) || !willingMount(v, mount) || !listedMount(v, rider, mount) {
 			continue
 		}
 		choice := &rulesv1.MountChoice{CombatantId: mount.ID, CostDft: clamp32(mountCostDFt(rider, standing), 0, math.MaxInt32)}
