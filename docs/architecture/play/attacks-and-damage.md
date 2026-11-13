@@ -180,12 +180,31 @@ A hit with more than the weapon opens `PendingDamage.parts[]`:
 
 - the weapon;
 - the **offered** extras (Sneak Attack, Divine Smite with the slot to spend, Hunter's Mark, Colossus Slayer); a line that cannot be chosen is disabled and says why;
-- the **automatic** lines (Rage's bonus, only on a melee Strength weapon attack; Improved Divine Smite; Dueling; Brutal Critical through `automaticLines`; the damage a spell left on the caster's hits, [below](#a-spells-hit-effect)).
+- the **automatic** lines (Rage's bonus, only on a melee Strength weapon attack; Improved Divine Smite; Dueling; Brutal Critical through `automaticLines`; the damage a spell left on the caster's hits, [below](#a-spells-hit-effect));
+- the power attack's flat damage, when the attack made the trade ([below](#a-power-attacks-damage)).
 
 A critical doubles the dice of every part (or follows the table's "maximum plus a roll"), never the fixed numbers (SRD 5.1 "Critical Hits").
 In the app the server rolls every part; with physical dice the player types a sum for each part (`typed_parts[]`).
 Divine Smite's extra die against an undead or fiend is rolled as its own part and only counts when the target is one: the player sees "+1d8" and never why, and the damage a player reads on an NPC is the damage as rolled (`damageHit.Shown`), so the total says nothing either.
 The `extra_damage` effect of a table feature ([Rules: table content](../rules-table-content.md#extra-damage)) is one more choosable extra after a weapon hit by a player's character: a fixed damage and/or dice, of the feature's damage type or the weapon's. The dice are a part like a maneuver's die (`partRecord.Count` and `Sides`), rolled in the app or typed per part, and a critical hit doubles them (`partCriticalDice`) unless the feature keeps them (`partRecord.NoCrit`); the fixed damage never doubles. Each part lands in `byType` under its own damage type, so a resistance takes only that line. It is listed off, with its reason, when the target is not larger (the sizes are public), when the weapon is of the other kind (melee or ranged; a thrown weapon at range is ranged), when it was used this turn (only for `once_per_turn`) or when the resource has no use left; marking it spends a use and the rider is the master's alone. The once-per-turn mark is kept by feature key in `combatants.feature_state` ([Feature state](feature-state.md)), and the master's undo puts it and the use back. `each_hit` sets no mark. It is not a maneuver: the one-maneuver-per-attack limit does not count it.
+
+### A power attack's damage
+
+A hit whose attack made the trade of a `power_attack` effect writes one automatic part, `power_attack`, at the time of the hit.
+The part is flat, has no dice and cannot be chosen.
+Its label is the feature's name, its source is the feature's key and its damage type is the weapon's.
+A miss writes no part.
+The part counts in the total and in the damage of its type, so a resistance of the target takes its share.
+A critical hit never doubles it.
+A held roll's replay writes it once, and undoing the attack or the damage removes it with the rest.
+The master's `RemoveDamagePart` does not take it out.
+The attack's event keeps `hidden` when the feature was retired or switched off when the attack was made.
+What each viewer reads (RN-10):
+
+- the master and the attacker's player read the feature's name, its flat number and the penalty;
+- another player reads the feature's name, and no number or key, when the feature is not hidden;
+- another player reads "Outra fonte" for the name, in the part, in its roll and in the log, when the feature is hidden;
+- the damage a player reads on an NPC stays as rolled, so its total includes the bonus.
 
 Sneak Attack and Colossus Slayer are once per turn (the keys `sneak_attack` and `colossus_slayer` of `combatants.feature_state`); Hunter's Mark follows the caster's concentration (`combatant_states`).
 Great Weapon Fighting rerolls 1s and 2s once, shown on the part.

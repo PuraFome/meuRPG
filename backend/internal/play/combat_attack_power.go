@@ -13,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // The power attack of a table feature (the power_attack effect, rules/powerattack.go) on a weapon attack of a player's
@@ -27,7 +28,58 @@ type powerAttackEvent struct {
 	Name        string `json:"name"`
 	Penalty     int32  `json:"penalty"`
 	DamageBonus int32  `json:"damage_bonus"`
+	// Hidden says the master had retired or switched off the feature when the attack was made: another player reads
+	// "Outra fonte" for it, never its name or its numbers.
+	Hidden bool `json:"hidden,omitempty"`
 }
+
+// logView is the marker of the attack's line in the combat log, nil for an attack that made no trade. The master and the
+// attacker's player (owner) read the feature and the numbers; another player reads the feature's name, or "Outra fonte"
+// when the master had retired it, and no key or number (RN-10).
+func (p *powerAttackEvent) logView(owner bool) *playv1.CombatLogPowerAttack {
+	switch {
+	case p == nil:
+		return nil
+	case owner:
+		return &playv1.CombatLogPowerAttack{Key: p.Key, NamePt: p.Name, Penalty: p.Penalty, DamageBonus: p.DamageBonus}
+	}
+	return &playv1.CombatLogPowerAttack{NamePt: powerNameForOthers(p.Hidden, p.Key, p.Name), Hidden: p.Hidden}
+}
+
+// powerNameForOthers is the name of the trade's feature as another player reads it: "Outra fonte" when the feature is
+// hidden from the players, through the same path as every hidden source of a damage (hidingNames).
+func powerNameForOthers(hidden bool, key, name string) string {
+	return hidingNames(func(string) string { return name }, []combat.Modifier{{Source: key, Hidden: hidden}})(key)
+}
+
+// powerPart is the automatic part the trade adds to the damage of a hit: its flat number, of the weapon's damage type,
+// from the feature. It has no dice, so a critical hit never doubles it.
+func (p *powerAttackEvent) powerPart(damageType string) partRecord {
+	return partRecord{
+		Key: partPowerAttack, Label: p.Name, Kind: partAuto, Flat: clamp32(int(p.DamageBonus), 0, rules.MaxPowerAttackDamage), DamageType: damageType,
+		Source: p.Key, Selected: true, Available: true, Reason: "Ataque poderoso (automático)", Table: tablePowerAttack, Hide: p.Hidden,
+	}
+}
+
+// readPowerHidden notes whether the master has hidden the trade's feature from the players (retired or switched it off):
+// the part, the roll and the log say "Outra fonte" to another player then, whatever the master does later.
+func (f *attackFlow) readPowerHidden(ctx context.Context) error {
+	if f.power == nil {
+		return nil
+	}
+	names, err := f.s.roster.SourceNames(ctx, f.c.tx, f.m.CampaignID)
+	if err != nil {
+		return err
+	}
+	f.powerHidden = names(f.power.Key) == ""
+	return nil
+}
+
+// The part of the damage the trade adds to a hit: its key in the damage's parts and its table.
+const (
+	partPowerAttack  = "power_attack"
+	tablePowerAttack = "power_attack"
+)
 
 // powerAttackRule is the engine's view of a trade of the sheet, for its weapon filter.
 func powerAttackRule(p link.PowerAttack) rules.PowerAttack {
@@ -105,7 +157,7 @@ func (f *attackFlow) powerEvent() *powerAttackEvent {
 	if p == nil {
 		return nil
 	}
-	return &powerAttackEvent{Key: p.Key, Name: p.NamePT, Penalty: conv.Int32(p.AttackPenalty), DamageBonus: conv.Int32(p.DamageBonus)}
+	return &powerAttackEvent{Key: p.Key, Name: p.NamePT, Penalty: conv.Int32(p.AttackPenalty), DamageBonus: conv.Int32(p.DamageBonus), Hidden: f.powerHidden}
 }
 
 // listPowerAttacks lists, on each weapon attack option of a player's character, the trades its table features offer for

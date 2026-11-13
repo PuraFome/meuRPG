@@ -201,6 +201,8 @@ type attackFlow struct {
 	maneuverSpent []string
 	// power is the power attack trade the request names (checked in prepare); its penalty is off the roll's bonus.
 	power *link.PowerAttack
+	// powerHidden says the master had hidden the trade's feature from the players (readPowerHidden).
+	powerHidden bool
 }
 
 func newAttackFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.RollAttackRequest, call attackCall, out *attackOut) *attackFlow {
@@ -260,7 +262,7 @@ func (f *attackFlow) writeAttack(ctx context.Context) error {
 	// spendPowerAttack stays after resolve: rollExtraDice (in resolve) assigns maneuverSpent, and the power attack's
 	// resource is appended to what it left.
 	for _, phase := range []func(context.Context) error{
-		f.resolve, f.spendPowerAttack, f.autoParry, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
+		f.resolve, f.spendPowerAttack, f.readPowerHidden, f.autoParry, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -846,7 +848,7 @@ func (f *attackFlow) damageBonus() int {
 // writeHitParts writes the parts of the damage of a hit.
 func (f *attackFlow) writeHitParts(ctx context.Context, bonus int, pendingID string) error {
 	disadvantage := slices.ContainsFunc(f.truth.Sources, func(s combat.Source) bool { return s.Effect == combat.ModeDisadvantage })
-	return f.s.hitParts(ctx, f.c, f.m.CampaignID, f.v, f.modeIn, f.attacker, f.coverTarget, f.sheet, f.attack, bonus, f.rolled.Choice.Mode, disadvantage, f.call.opportunity(), pendingID)
+	return f.s.hitParts(ctx, f.c, f.m.CampaignID, f.v, f.modeIn, f.attacker, f.coverTarget, f.sheet, f.attack, bonus, f.rolled.Choice.Mode, disadvantage, f.call.opportunity(), pendingID, f.powerEvent())
 }
 
 // answerOffer answers the opportunity offer the attack was made on, with the damage it opened (the 0 hit

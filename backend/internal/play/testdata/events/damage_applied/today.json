@@ -43,7 +43,8 @@
     "key": "x",
     "name": "x",
     "penalty": 1,
-    "damage_bonus": 1
+    "damage_bonus": 1,
+    "hidden": true
   },
   "target_ac": 1,
   "floor": 1,

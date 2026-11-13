@@ -233,6 +233,8 @@ type hitFacts struct {
 	// planned are the damage parts of a creature's attack after its first, from the stat block's plan
 	// (plannedParts): each rolls with its own type.
 	planned []partRecord
+	// power is the trade the attack made, when it made one: the flat part of its damage.
+	power *powerAttackEvent
 }
 
 // scene is the rules' ExtraScene for the hit.
@@ -303,7 +305,7 @@ func (h hitFacts) buildParts() []partRecord {
 	autos := automaticLines(scene)
 	reroll := h.sheet.Traits.GreatWeaponFighting && h.attack.Weapon && h.attack.Melee && h.attack.TwoHanded
 	maneuvers := append(append(h.maneuverParts(), h.extraDamageParts()...), h.hitEffectParts()...)
-	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 {
+	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 && h.power == nil {
 		return nil
 	}
 	weapon := partRecord{
@@ -319,6 +321,9 @@ func (h hitFacts) buildParts() []partRecord {
 	}
 	for _, e := range autos {
 		out = append(out, h.fromExtra(e, partAuto))
+	}
+	if h.power != nil { // a miss opens no damage, so only a hit that made the trade reaches here
+		out = append(out, h.power.powerPart(h.attack.DamageType))
 	}
 	out = append(out, h.planned...)
 	return append(out, maneuvers...)
@@ -464,28 +469,36 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 func partsProtoFor(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) []*playv1.DamagePart {
 	var out []*playv1.DamagePart
 	for _, sp := range readParts(p.Parts) {
-		count, fixed := partCriticalDice(sp, p.Critical, rule)
-		if sp.Count == 0 {
-			count, fixed = 0, 0
-		}
-		note := sp.Note
-		if sp.Key == partWeapon && count > 0 && p.ExtraDice > 0 {
-			count += int(p.ExtraDice)
-			note = joinNote(note, fmt.Sprintf("inclui %dd%d do %s", p.ExtraDice, sp.Sides, extraDiceName(p.ExtraDice, p.SavageDice)))
-		}
-		key, label, source, sides := sp.Key, sp.Label, sp.Source, sp.Sides
-		if sp.Table == tableHitEffect && !reads { // the dice of a spell are its caster's and the master's (RN-10)
-			key, label, source = hitPartForOthers(sp, label, source)
-			count, fixed, sides = 0, 0, 0
-		}
-		out = append(out, &playv1.DamagePart{
-			Key: key, LabelPt: label, DiceCount: clamp32(count, 0, 200), DiceSides: sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
-			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: source,
-			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
-			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
-		})
+		out = append(out, partProtoFor(sp, p, rule, damageTypePT, reads))
 	}
 	return out
+}
+
+// partProtoFor is one stored part as the viewer reads it.
+func partProtoFor(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) *playv1.DamagePart {
+	count, fixed := partCriticalDice(sp, p.Critical, rule)
+	if sp.Count == 0 {
+		count, fixed = 0, 0
+	}
+	note := sp.Note
+	if sp.Key == partWeapon && count > 0 && p.ExtraDice > 0 {
+		count += int(p.ExtraDice)
+		note = joinNote(note, fmt.Sprintf("inclui %dd%d do %s", p.ExtraDice, sp.Sides, extraDiceName(p.ExtraDice, p.SavageDice)))
+	}
+	if sp.Table == tablePowerAttack && !reads { // the trade's feature and number are its attacker's and the master's (RN-10)
+		sp = powerPartForOthers(sp)
+	}
+	key, label, source, sides := sp.Key, sp.Label, sp.Source, sp.Sides
+	if sp.Table == tableHitEffect && !reads { // the dice of a spell are its caster's and the master's (RN-10)
+		key, label, source = hitPartForOthers(sp, label, source)
+		count, fixed, sides = 0, 0, 0
+	}
+	return &playv1.DamagePart{
+		Key: key, LabelPt: label, DiceCount: clamp32(count, 0, 200), DiceSides: sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
+		DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: source,
+		Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
+		Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
+	}
 }
 
 // partRollsProto converts what each part rolled. The extra die of Divine Smite is a line
@@ -500,6 +513,9 @@ func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT fun
 		if r.Effect != "" && !reads {
 			r = hitRollForOthers(r)
 		}
+		if r.Key == partPowerAttack && !reads {
+			r = powerRollForOthers(r)
+		}
 		pr := partRollProto(r, damageTypePT)
 		if master {
 			pr.RiderPt = r.Rider
@@ -507,6 +523,21 @@ func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT fun
 		out = append(out, pr)
 	}
 	return out
+}
+
+// powerPartForOthers is the power attack's part as a player who is neither the master nor the attacker's owner reads it:
+// the feature's name, or "Outra fonte" when the master hid it, and no key, number or reason (RN-10).
+func powerPartForOthers(sp partRecord) partRecord {
+	sp.Label, sp.Flat, sp.Reason, sp.Note = powerNameForOthers(sp.Hide, sp.Source, sp.Label), 0, "", ""
+	sp.Source = ""
+	return sp
+}
+
+// powerRollForOthers is what the power attack's part rolled as the same players read it: the name and no number.
+func powerRollForOthers(r partRoll) partRoll {
+	r.Label = powerNameForOthers(r.Hide, r.Key, r.Label)
+	r.Flat, r.Fixed, r.Sum = 0, 0, 0
+	return r
 }
 
 // hitRollForOthers is what a spell's hit part rolled as the players who are not the attacker's read it: the amount,
@@ -1013,7 +1044,7 @@ func freeSmiteSlots(v *playv1.CharacterVitals) []*playv1.SlotOption {
 // hitParts works out the parts of the hit of a weapon attack and stores them on the
 // pending damage the attack opened. A hit with no extra and no automatic line has none.
 func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, v combatViewer, in attackModeInputs, attacker, target playdb.Combatant,
-	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, disadvantaged, opportunity bool, pendingID string,
+	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, disadvantaged, opportunity bool, pendingID string, power *powerAttackEvent,
 ) error {
 	if !attack.Weapon {
 		return nil
@@ -1024,7 +1055,7 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 	}
 	h := hitFacts{
 		attacker: attacker, target: target, sheet: sheet, attack: attack, weaponBonus: weaponBonus, mode: mode, disadvantaged: disadvantaged,
-		cs: in.cs, states: in.states, enc: c.enc, viewer: v, names: names, opportunity: opportunity,
+		cs: in.cs, states: in.states, enc: c.enc, viewer: v, names: names, opportunity: opportunity, power: power,
 	}
 	if h.targetHurt, err = s.isHurt(ctx, c, campaignID, target); err != nil {
 		return err

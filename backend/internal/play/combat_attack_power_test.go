@@ -37,6 +37,8 @@ const (
 type powerTable struct {
 	*armed
 	heavyKey, freeKey string
+	// subKey is the subclass that holds both trades: archiving it hides them from the players.
+	subKey string
 }
 
 func newPowerTable(t *testing.T) *powerTable {
@@ -81,6 +83,7 @@ func newPowerTable(t *testing.T) *powerTable {
 		if err != nil {
 			t.Fatalf("CreateCharacter(Pipo) error = %v", err)
 		}
+		g.subKey = res.Msg.GetEntry().GetKey()
 		a.toren = made.Msg.GetCharacter()
 		a.pens = a.ana.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 14, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
