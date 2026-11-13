@@ -595,6 +595,9 @@ type Service struct {
 	// afterSightRead is a test hook: it runs between the moment a change reads the
 	// sight and the moment it opens its transaction.
 	afterSightRead func(encounterID string)
+	// afterSessionRead is a test hook: it runs between the moment a write reads the open session without a lock and the moment
+	// Service.tx locks it (txOpen, setBlocked).
+	afterSessionRead func(campaignID string)
 	// afterTrapRead is a test hook: it runs between the moment a firing outside a combat
 	// reads where the tokens stand and the moment it opens its transaction.
 	afterTrapRead func()

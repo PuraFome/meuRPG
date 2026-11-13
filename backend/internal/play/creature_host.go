@@ -105,6 +105,11 @@ func openCombatants(ctx context.Context, q *playdb.Queries, sessionID string) (p
 	return enc, cs, true, nil
 }
 
+// playerFightsIn says whether the character is a player's combatant among cs.
+func playerFightsIn(cs []playdb.Combatant, characterID string) bool {
+	return slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == characterID })
+}
+
 // endSights ends the sight of the players who look through a creature that leaves and
 // reads the combatants again, as their conditions changed; cs and leaving are returned as
 // they were when none looks through one.

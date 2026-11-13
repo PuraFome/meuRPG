@@ -420,7 +420,7 @@ func (s *Service) tellAnswerAgain(ctx context.Context, q *playdb.Queries, h *hin
 	if err != nil {
 		return err
 	}
-	if found && slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == row.TargetCharacterID }) {
+	if found && playerFightsIn(cs, row.TargetCharacterID) {
 		s.tellEncounterAfter(h, campaignID, enc.ID)
 	}
 	return nil

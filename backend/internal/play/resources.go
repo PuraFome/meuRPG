@@ -471,19 +471,18 @@ func (s *Service) tellRest(h *hints, campaignID string, run restRun) {
 
 // tellRestAgain fills h for a rest whose key was found stored, with what the first call would have told, worked out from the
 // stored event: the vitals of the characters it changed as they stand, the casts to the master only (a rest ends spells; whether
-// the players were told is not kept) and the combat that is open, which shows the vitals. Nothing was written, so h only replays.
+// the players were told is not kept) and the open combat when one of those characters is a player's combatant in it, which shows the vitals. Nothing was written, so h only replays.
 func (s *Service) tellRestAgain(ctx context.Context, q *playdb.Queries, h *hints, sessionID, campaignID string, characterIDs []string) error {
 	h.replay()
 	s.tellVitalsAfter(h, campaignID, characterIDs...)
 	h.tell(campaignID, castsChangedEvent(true))
-	enc, err := q.GetOpenEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
+	enc, cs, found, err := openCombatants(ctx, q, sessionID)
 	if err != nil {
-		return fmt.Errorf("find the open encounter: %w", err)
+		return err
 	}
-	s.tellEncounterRowAfter(h, campaignID, enc)
+	if found && slices.ContainsFunc(characterIDs, func(id string) bool { return playerFightsIn(cs, id) }) {
+		s.tellEncounterRowAfter(h, campaignID, enc)
+	}
 	return nil
 }
 

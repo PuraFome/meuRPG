@@ -25,6 +25,9 @@ func (s *Service) txOpen(ctx context.Context, campaignID string, fn func(tx pgx.
 	if err != nil {
 		return err
 	}
+	if s.afterSessionRead != nil {
+		s.afterSessionRead(campaignID) // a test changes the session here
+	}
 	return s.tx(ctx, open.ID, func(tx pgx.Tx, h *hints) error {
 		session, err := stillOpen(ctx, s.queries.WithTx(tx), campaignID, open.ID)
 		if err != nil {

@@ -164,6 +164,7 @@ A stream carries it on `ready` and on every `heartbeat`, and nothing else about 
   A player who was not told the event is "behind" and reads once at the next heartbeat.
   That costs one extra read per hidden write within 25 s, and it tells the player nothing about the write.
 - **Only the writers in `Service.tx` count.** They are the combat write path (`write`, `changeInTx`, `StartEncounter`), the master's correction of vitals, the rests, the hit dice, the slot recoveries, Bardic Inspiration out of a combat and Revivify's requests, answers and switch (`play/hints.go`).
+  The revivify switch of a dead character with no open session is a plain transaction: it does not bump and tells nothing.
   Every other writer of the `play` package tells the streams through `send` after its own `db.InTx`: it does not bump, and its events carry no number.
   The hints a combat handler tells itself after the write (`finish`) carry none either; the write's own bump covers them.
   A hint lost by one of those is not detected by the number.

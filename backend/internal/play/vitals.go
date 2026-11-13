@@ -261,7 +261,7 @@ func (s *Service) tellAdjustedAgain(ctx context.Context, tx pgx.Tx, h *hints, se
 	if err != nil {
 		return err
 	}
-	if found && slices.ContainsFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == call.charText }) {
+	if found && playerFightsIn(cs, call.charText) {
 		s.tellEncounterRowAfter(h, campaignID, enc)
 		visionMap = conv.OrZero(enc.MapID)
 	}
