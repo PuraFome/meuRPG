@@ -443,10 +443,29 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			Frequency: e.GetFrequency(), NoCritDoubling: e.GetNoCritDoubling(),
 			AppliesTo: e.GetAppliesTo(), SpellChange: e.GetSpellChange(),
 			DamageTypes: e.GetDamageTypes(), Kind: e.GetKind(), Conditions: e.GetConditions(), AgainstCondition: e.GetAgainstCondition(),
-			Flag: e.GetFlag(),
+			Flag: e.GetFlag(), Use: featureUseOf(e.GetUse()),
 		})
 	}
 	return out
+}
+
+// featureUseOf is the use a grant_action declares, nil for none. An unset enum is the rules' default (""), and a
+// number this build does not know is "unknown", which the rules refuse at its field.
+func featureUseOf(m *rulesv1.FeatureUse) *rules.FeatureUse {
+	if m == nil {
+		return nil
+	}
+	u := &rules.FeatureUse{LimitScope: enumOrUnknown(useScopeOf, m.GetLimitScope()), LimitUses: m.GetLimitUses()}
+	if t := m.GetTargets(); t != nil {
+		u.Targets = &rules.FeatureTargets{Min: int(t.GetMin()), Max: int(t.GetMax()), Who: enumOrUnknown(featureWhoOf, t.GetWho()), RangeFt: int(t.GetRangeFt())}
+	}
+	for _, c := range m.GetChoices() {
+		u.Choices = append(u.Choices, rules.FeatureChoice{Key: c.GetKey(), TextPT: c.GetTextPt()})
+	}
+	if a := m.GetApplies(); a != nil {
+		u.Applies = &rules.FeatureApplies{Heal: a.GetHeal(), TempHP: a.GetTempHp(), Effect: tableSpellEffectOf(a.GetEffect()), EffectRounds: int(a.GetEffectRounds())}
+	}
+	return u
 }
 
 // tableFeatOf is the engine's feat of a stored one.
@@ -517,6 +536,17 @@ var (
 		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_ALL:         "all",
 		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_FAILED_SAVE: "failed_save",
 		rulesv1.TableEffectApplies_TABLE_EFFECT_APPLIES_HIT:         "hit",
+	}
+	useScopeOf = map[rulesv1.UseScope]string{
+		rulesv1.UseScope_USE_SCOPE_TURN:   rules.UseScopeTurn,
+		rulesv1.UseScope_USE_SCOPE_ROUND:  rules.UseScopeRound,
+		rulesv1.UseScope_USE_SCOPE_COMBAT: rules.UseScopeCombat,
+	}
+	featureWhoOf = map[rulesv1.FeatureTargetWho]string{
+		rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_SELF:  rules.FeatureWhoSelf,
+		rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ALLY:  rules.FeatureWhoAlly,
+		rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ENEMY: rules.FeatureWhoEnemy,
+		rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ANY:   rules.FeatureWhoAny,
 	}
 	effectAudienceOf = map[rulesv1.TableEffectAudience]string{
 		rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC: rules.EffectVisibilityPublic,
