@@ -592,16 +592,8 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 			return err
 		}
 	}
-	// The creature the mover dragged along goes back to where it stood (combat_drag.go).
-	if ev.Dragged != "" && ev.DraggedFrom != nil && ev.DraggedFrom.Placed {
-		if err := u.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{
-			ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: coverOrNone(ev.DraggedFrom.Cover),
-		}); err != nil {
-			return fmt.Errorf("put back the dragged creature: %w", err)
-		}
-		if err := carryRiderBack(ctx, u.c.q, ev.Dragged, ev.DraggedFrom); err != nil {
-			return err
-		}
+	if err := u.draggedBack(ctx, ev); err != nil {
+		return err
 	}
 	// The offers the move made go with it. Only the move that is the last action
 	// is undone, so they are all still pending: an answer comes after it, and has
@@ -612,6 +604,19 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 		}
 	}
 	return nil
+}
+
+// draggedBack puts the creature the mover dragged along back where it stood (combat_drag.go).
+func (u *undoer) draggedBack(ctx context.Context, ev actionEvent) error {
+	if ev.Dragged == "" || ev.DraggedFrom == nil || !ev.DraggedFrom.Placed {
+		return nil
+	}
+	if err := u.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{
+		ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: coverOrNone(ev.DraggedFrom.Cover),
+	}); err != nil {
+		return fmt.Errorf("put back the dragged creature: %w", err)
+	}
+	return carryRiderBack(ctx, u.c.q, ev.Dragged, ev.DraggedFrom)
 }
 
 // moverBack puts the mover where it stood, with what it had walked and its cover mark.

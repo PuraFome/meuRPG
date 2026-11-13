@@ -978,14 +978,14 @@ func (s *Service) pushPlanOf(terrain, plan grid.Terrain, enc playdb.Encounter, c
 	to := grid.Square{Col: col, Row: row}
 	out := pushPlan{has: true, to: to}
 	if mount := ridingOn(cs, target); mount != nil {
-		// A rider sits on its mount's square and is not pushed off it: the shove can knock it prone, not push it. A viewer who does
-		// not see the mount is offered the push, which then stays, as for any blocker they do not see (RN-10).
-		out.reallyBlocked = true
-		if v.sees(*mount) {
-			out.blocked, out.why = true, playv1.ShoveBlockedReason_SHOVE_BLOCKED_REASON_CREATURE
-		}
-		return out
+		return riderPushPlan(out, v, *mount)
 	}
+	return pushBlocks(terrain, plan, cs, target, v, out)
+}
+
+// pushBlocks says what holds the square a push would send the target to, as the viewer knows the map and the creatures.
+func pushBlocks(terrain, plan grid.Terrain, cs []playdb.Combatant, target playdb.Combatant, v combatViewer, out pushPlan) pushPlan {
+	to := out.to
 	from := squareOfCombatant(target)
 	mover := moverOf(target)
 	wallIn := func(t grid.Terrain) bool { return t.Move(from, to, grid.OccupantMap{}, mover).Blocked }
@@ -1007,6 +1007,16 @@ func (s *Service) pushPlanOf(terrain, plan grid.Terrain, enc playdb.Encounter, c
 		out.blocked, out.why = true, playv1.ShoveBlockedReason_SHOVE_BLOCKED_REASON_CREATURE
 	}
 	out.reallyBlocked = out.blocked || wallIn(terrain) || creatureAt(false)
+	return out
+}
+
+// riderPushPlan is the push of a rider: it sits on its mount's square and is not pushed off it, so the shove can knock it prone and
+// not push it. A viewer who does not see the mount is offered the push, which then stays, as for any blocker they do not see (RN-10).
+func riderPushPlan(out pushPlan, v combatViewer, mount playdb.Combatant) pushPlan {
+	out.reallyBlocked = true
+	if v.sees(mount) {
+		out.blocked, out.why = true, playv1.ShoveBlockedReason_SHOVE_BLOCKED_REASON_CREATURE
+	}
 	return out
 }
 

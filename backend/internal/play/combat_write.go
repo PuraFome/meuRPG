@@ -714,14 +714,20 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 	return err
 }
 
+// keepUnseated puts the riders the change's dismissals took off their mounts on the event that names the dismissed creatures.
+func (c *combatTx) keepUnseated(ev actionEvent) actionEvent {
+	if len(ev.Dismissed) > 0 && len(ev.Unseated) == 0 && len(c.unseated) > 0 {
+		ev.Unseated, c.unseated = c.unseated, nil
+	}
+	return ev
+}
+
 // insertEventID is insertEvent that returns the event's ID (a firing written as
 // several events, the first one's), for a change whose own event names it.
 func insertEventID(ctx context.Context, c *combatTx, kind string, actor, key *string, payload any) (string, error) {
 	if ev, ok := payload.(actionEvent); ok {
 		var err error
-		if len(ev.Dismissed) > 0 && len(ev.Unseated) == 0 && len(c.unseated) > 0 {
-			ev.Unseated, c.unseated = c.unseated, nil
-		}
+		ev = c.keepUnseated(ev)
 		if kind != eventActionUndone { // an undo keeps the stamp of the action it takes back
 			if ev, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
 				return "", err

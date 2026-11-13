@@ -331,9 +331,7 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 	if err != nil {
 		return nil, false, err
 	}
-	if slices.ContainsFunc(cs, func(m playdb.Combatant) bool {
-		return m.ID != mover.ID && !samePair(m, mover) && !m.Defeated && placed(m) && *m.GridCol == *o.LeftCol && *m.GridRow == *o.LeftRow
-	}) {
+	if squareTaken(cs, mover, *o.LeftCol, *o.LeftRow) {
 		return nil, true, nil
 	}
 	before := moveStateIn(cs, mover)
@@ -347,6 +345,13 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 		return nil, false, err
 	}
 	return before, false, nil
+}
+
+// squareTaken says whether a combatant other than the mover, its rider or its mount stands on the square.
+func squareTaken(cs []playdb.Combatant, mover playdb.Combatant, col, row int32) bool {
+	return slices.ContainsFunc(cs, func(m playdb.Combatant) bool {
+		return m.ID != mover.ID && !samePair(m, mover) && !m.Defeated && placed(m) && *m.GridCol == col && *m.GridRow == row
+	})
 }
 
 // publishReturned tells the streams the mover went back, as a move.

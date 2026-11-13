@@ -346,10 +346,7 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 		}
 		turnPassed = turnPassed || passed || inTurn(c.enc, who)
 		if dismiss {
-			if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{conv.OrZero(who.CreatureID)}, Dismissed: true}); err != nil {
-				return nil, false, fmt.Errorf("dismiss the combatant: %w", err)
-			}
-			if err := unseatRider(ctx, c, rest, who); err != nil {
+			if err := dismissCombatant(ctx, c, rest, who); err != nil {
 				return nil, false, err
 			}
 		} else if err := c.q.DeleteCombatant(ctx, who.ID); err != nil {
@@ -361,6 +358,14 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 		return nil, false, err
 	}
 	return rest, turnPassed, nil
+}
+
+// dismissCombatant hides the combatant of a creature (dismissed rows stay, whole) and puts the rider it carried on foot.
+func dismissCombatant(ctx context.Context, c *combatTx, rest []playdb.Combatant, who playdb.Combatant) error {
+	if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{conv.OrZero(who.CreatureID)}, Dismissed: true}); err != nil {
+		return fmt.Errorf("dismiss the combatant: %w", err)
+	}
+	return unseatRider(ctx, c, rest, who)
 }
 
 // unseatRider puts the rider of a dismissed mount on foot where it stands: the link goes, and the change remembers it for the undo,
