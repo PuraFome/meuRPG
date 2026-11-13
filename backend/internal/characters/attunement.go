@@ -48,13 +48,10 @@ func keepAttunement(content *rules.Content, stored, saved *charactersv1.FullShee
 		old := was[ib.GetKey()]
 		ib.Id = bonusID(ib.GetKey())
 		ib.Attuned = old != nil && old.GetItemKey() == ib.GetItemKey() && old.GetAttuned()
-		switch {
-		case ib.GetItemKey() != "":
+		// The catalog decides only when the piece names an item; without one the flag is the stored one (or the
+		// save's, for a new piece), as it was before pieces could name an item.
+		if ib.GetItemKey() != "" {
 			ib.RequiresAttunement = content.AttunementAsked(ib.GetItemKey())
-		case old != nil:
-			ib.RequiresAttunement = old.GetRequiresAttunement()
-		default:
-			ib.RequiresAttunement = false
 		}
 		ib.RestrictionPt, ib.Restriction, ib.SameItemAttuned, ib.ItemNamePt = "", charactersv1.AttunementRestriction_ATTUNEMENT_RESTRICTION_UNSPECIFIED, false, ""
 	}
