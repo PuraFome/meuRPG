@@ -238,6 +238,17 @@ describe('"Superfície" (#589)', () => {
       '2 quadrados escaláveis · custam o dobro',
     );
   });
+
+  it('says it shorter on a phone, where the row has less room', () => {
+    const water = Array.from({ length: 32 }, (_, i) => ({ col: i, row: 0 }));
+    const climb = Array.from({ length: 14 }, (_, i) => ({ col: i, row: 1 }));
+    expect(plain(layerLines({ ...NO_LAYERS, water, climb }, true)[1].detail)).toBe(
+      '32 de água e 14 escaláveis · custam o dobro',
+    );
+    expect(plain(layerLines({ ...NO_LAYERS, water, climb })[1].detail)).toBe(
+      '32 quadrados de água e 14 escaláveis · custam o dobro',
+    );
+  });
 });
 
 describe('no tool in hand', () => {

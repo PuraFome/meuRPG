@@ -178,7 +178,8 @@ export interface LayerLine {
   readonly count: number;
 }
 
-export function layerLines(l: MapLayers): readonly LayerLine[] {
+/** `compact`: the master's phone, where a row has less room ("32 de água e 14 escaláveis"). */
+export function layerLines(l: MapLayers, compact = false): readonly LayerLine[] {
   const cover = l.half.length + l.threeQuarters.length;
   const light = lightCount(l);
   const doors = l.doors?.length ?? 0;
@@ -202,7 +203,7 @@ export function layerLines(l: MapLayers): readonly LayerLine[] {
           ? tight(`${squaresText(l.terrain.length)} · custa +1,5 m por quadrado`)
           : 'nada pintado',
     },
-    surfaceLine(l),
+    surfaceLine(l, compact),
     {
       tool: 'wall',
       name: 'Parede',
@@ -228,12 +229,13 @@ export function layerLines(l: MapLayers): readonly LayerLine[] {
 }
 
 /** "Superfície": the squares of water and of climbable surface, and that they cost double (the server does the arithmetic). */
-function surfaceLine(l: MapLayers): LayerLine {
+function surfaceLine(l: MapLayers, compact: boolean): LayerLine {
   const { water, climb } = surfaceCounts(l);
   const climbs = (n: number) => (n === 1 ? 'escalável' : 'escaláveis');
   let detail = 'nada pintado';
   if (water > 0 && climb > 0) {
-    detail = tight(`${squaresText(water)} de água e ${climb} ${climbs(climb)} · custam o dobro`);
+    const first = compact ? String(water) : squaresText(water);
+    detail = tight(`${first} de água e ${climb} ${climbs(climb)} · custam o dobro`);
   } else if (water > 0) {
     detail = tight(`${squaresText(water)} de água · ${water === 1 ? 'custa' : 'custam'} o dobro`);
   } else if (climb > 0) {
