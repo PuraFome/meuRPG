@@ -17,8 +17,8 @@ import {
   type AttunementVm,
   AttunementClient,
   isRestrictedRefusal,
-} from '../../../core/characters/attunement';
-import { describeCharacterError } from '../../../core/characters/character-errors';
+} from '../../core/characters/attunement';
+import { describeCharacterError } from '../../core/characters/character-errors';
 
 import { type AttunementRowVm, type AttunementViewer, sectionOf } from './attunement-rows';
 

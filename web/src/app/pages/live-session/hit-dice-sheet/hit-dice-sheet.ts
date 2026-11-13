@@ -36,7 +36,7 @@ import {
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 import { AttunementClient, type AttunementVm } from '../../../core/characters/attunement';
-import { AttunementSection } from '../../character-sheet/attunement-section/attunement-section';
+import { AttunementSection } from '../../../shared/attunement-section/attunement-section';
 import { RollPicker } from '../../../shared/roll-picker/roll-picker';
 import { toVitalsVm } from '../../../core/play/live-session-source.live';
 import type { VitalsVm } from '../../../core/play/live-session.types';

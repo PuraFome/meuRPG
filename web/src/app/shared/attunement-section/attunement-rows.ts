@@ -2,7 +2,7 @@ import {
   type AttunementEntryVm,
   type AttunementVm,
   MAX_ATTUNED,
-} from '../../../core/characters/attunement';
+} from '../../core/characters/attunement';
 
 /** Who looks at the section: the owner (inside the window a rest opens) or the master (any time, past a restriction). */
 export type AttunementViewer = 'owner' | 'master';

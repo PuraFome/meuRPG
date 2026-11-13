@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AttunementEntryVm, AttunementVm } from '../../../core/characters/attunement';
+import type { AttunementEntryVm, AttunementVm } from '../../core/characters/attunement';
 
 import { sectionOf } from './attunement-rows';
 

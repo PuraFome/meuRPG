@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { describe, expect, it, vi } from 'vitest';
 
-import { type AttunementEntryVm, AttunementClient } from '../../../core/characters/attunement';
+import { type AttunementEntryVm, AttunementClient } from '../../core/characters/attunement';
 
 import { AttunementSection } from './attunement-section';
 

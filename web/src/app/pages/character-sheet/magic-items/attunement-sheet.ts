@@ -6,7 +6,7 @@ import type { AttunementVm } from '../../../core/characters/attunement';
 import { MatIconModule } from '@angular/material/icon';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
-import { AttunementSection } from '../attunement-section/attunement-section';
+import { AttunementSection } from '../../../shared/attunement-section/attunement-section';
 
 /** What the sheet "Sintonização" needs: the signals follow the page, which reads the sheet again after each tap. */
 export interface AttunementSheetData {
