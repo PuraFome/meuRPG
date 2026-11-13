@@ -26,7 +26,7 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 | Effect save | An end-of-turn or start-of-turn save of a lasting effect, or the save a spell zone asks of a player's character or of an NPC with Legendary Resistance and a use left (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md), [Spell zones](spell-zones.md)) |
 | Master check | The table rule "Reações dos inimigos" set to "Sempre" (`MASTER_CHECK`): a one-tap check on every attack, hit, cast and damage of a player against an enemy, so the pause says nothing | The action |
 | Parry | A melee weapon hit on an NPC whose stat block has Parry: the server decides it with no window; a window only when the master asked to be asked (see [Parry](#parry)) | Nothing by default; the hit's damage roll (`AWAITING_REACTION`) in "Perguntar" |
-| Readied action | The master's `FireReadied` on a waiting `readied_actions` row (`READIED`) | Nothing: the readier answers with the held action, which runs as a reaction ("Usar"), or lets it pass. A move is walked with `MoveCombatant`. See [Readying](readying.md) |
+| Readied action | The master's `FireReadied` on a waiting `readied_actions` row (`READIED`) | Nothing: the readier answers with the held action, which runs as a reaction ("Usar"), or lets it pass. A readied attack's roll still waits for the windows any attack roll opens. A move is walked with `MoveCombatant` and offers opportunity attacks. See [Readying](readying.md) |
 | Legendary Resistance | A player's spell whose saving throw reaches a creature with the trait and a use left, or a hit rider (Stunning Strike, an Open Hand technique, a creature's rider) whose save it makes, passed or failed (`LEGENDARY_RESISTANCE`) | The cast or the rider's answer (hold kind `cast` or `hit_rider`), with the d20s and effect dice of its saves |
 
 The Legendary Resistance window has no reactor: the master alone turns the failures he picks (`creature_ids`, one use each) or passes.
@@ -183,7 +183,13 @@ Ending the combat discards every window and held action.
 ## The automatic pass (client side)
 
 An optional reaction a player does not answer passes after 30 seconds.
-The server keeps no timer: the master's screen (`core/combat/reaction-autopass.ts`, driven by `combat-view`) remembers when it first saw each open window of kind Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall or Readied action waiting for its player (`reactor_is_player`, `answer_now`), and after `AUTO_PASS_SECONDS` (30) sends the same `AnswerReaction` "Deixar passar" the master can tap, with the idempotency key `auto-pass:<window id>`, so two tabs or a retry never answer twice; a refusal because it was answered meanwhile is ignored.
+The server keeps no timer.
+The master's screen (`core/combat/reaction-autopass.ts`, driven by `combat-view`) keeps the clock.
+It remembers when it first saw each open window waiting for its player (`reactor_is_player`, `answer_now`).
+The kinds are Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall and Readied action.
+After `AUTO_PASS_SECONDS` (30) it sends the same `AnswerReaction` "Deixar passar" the master can tap.
+Its idempotency key is `auto-pass:<window id>`, so two tabs or a retry never answer twice.
+A refusal because it was answered meanwhile is ignored.
 Saving throws (`CONCENTRATION_SAVE`, `EFFECT_SAVE`, the Hellish Rebuke second step), contests and the master's check never auto-pass.
 An NPC's window never auto-passes, a READIED one included.
 A reload starts the 30 s again (in memory only).

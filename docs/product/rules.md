@@ -1083,7 +1083,19 @@ A player reads only their own windows, and the numbers of the trigger (an attack
 
 - **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
-- **Ready** (SRD 5.1, "Ready"). On its turn a creature spends its action to hold another until a trigger its player writes. The reaction is spent only when the held action is taken; until then its other reactions stay offered. A creature whose reaction is spent, or that cannot react, is not asked, and the readied action waits until it is lost. It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight; the spent action does not come back. The players who are not the readier's read only that it readied an action, and a hidden creature's readied action is the master's alone. A readied spell is not offered yet.
+- **Ready** (SRD 5.1, "Ready").
+  On its turn a creature spends its action to hold another until a trigger its player writes.
+  The held action is an attack, a move or another standard action; a spell is not offered yet.
+  Hide, Help, Dash and Disengage cannot be held: as a reaction they would do nothing.
+  A move cannot be held in a combat without a map.
+  The reaction is spent only when the held action is taken; until then the creature's other reactions stay offered.
+  A held attack still waits for the reactions that come before any attack roll (Cutting Words, Protection).
+  A held move provokes opportunity attacks as any move does.
+  A creature whose reaction is spent, or that cannot react, is not asked, and the readied action waits until it is lost.
+  It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight.
+  The spent action does not come back.
+  The players who are not the readier's read only that it readied an action.
+  A hidden creature's readied action is the master's alone.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.
 
 How it is built: [Architecture](../architecture/play/reactions.md).
