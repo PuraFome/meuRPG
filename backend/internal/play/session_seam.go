@@ -26,8 +26,17 @@ type SessionTell struct {
 	h          *hints
 	campaignID string
 	sessionID  string
-	// plain collects the steps of After for a write with no open session: they run after the commit and send with no number.
+	// plain collects the steps (After, a combat that changed) for a write with no open session: they run after the commit and send with no number.
 	plain *hints
+}
+
+// steps is where the steps that go out after the commit are collected: the session's hints, or, for a write with no open session, the
+// collector whose steps go out with no number. The zero value has none.
+func (t *SessionTell) steps() *hints {
+	if t.h != nil {
+		return t.h
+	}
+	return t.plain
 }
 
 // Touch marks a write that sends no event but changes what the screens show: the session's number moves, and a stream that missed the
@@ -48,9 +57,9 @@ func (t *SessionTell) CreaturesChanged(ownerUserID string) {
 // EncounterChanged tells the streams that a combat changed (the combat as each reader sees it, its log for the master, the vitals of
 // the table and the fog), as they stand once the write committed. An empty id tells nothing.
 func (t *SessionTell) EncounterChanged(encounterID string) {
-	if t.h != nil && encounterID != "" {
-		t.h.touch() // the hints are sent after the commit, so the write moves the number itself
-		t.s.tellEncounterAfter(t.h, t.campaignID, encounterID)
+	if h := t.steps(); h != nil && encounterID != "" {
+		h.touch() // the hints are sent after the commit, so the write moves the number itself (with no open session there is none to move)
+		t.s.tellEncounterAfter(h, t.campaignID, encounterID)
 	}
 }
 
@@ -58,11 +67,12 @@ func (t *SessionTell) EncounterChanged(encounterID string) {
 // its lines read (the table's rules decide what a line shows), so the app drops the log it holds and reads again. A player hears
 // nothing kind-specific: the write's number is all their stream shows. It touches, and tells nothing when no combat is in progress.
 func (t *SessionTell) CombatLogChangedFull() {
-	if t.h == nil {
+	h := t.steps()
+	if h == nil {
 		return
 	}
-	t.h.touch()
-	t.h.after(func(ctx context.Context, say sayFn) {
+	h.touch()
+	h.after(func(ctx context.Context, say sayFn) {
 		enc, err := t.s.queries.GetOpenEncounter(ctx, t.sessionID)
 		if err != nil {
 			return // no combat in progress: no log to read again
@@ -71,13 +81,10 @@ func (t *SessionTell) CombatLogChangedFull() {
 	})
 }
 
-// After runs fn once the transaction committed, after the events told; what fn sends through out carries the session's number. It moves
-// nothing by itself: the write touches.
+// After runs fn once the transaction committed, after the events told; what fn sends through out carries the session's number (none, with
+// no open session). It moves nothing by itself: the write touches.
 func (t *SessionTell) After(fn func(ctx context.Context, out sessiontell.Out)) {
-	h := t.h
-	if h == nil {
-		h = t.plain
-	}
+	h := t.steps()
 	if h == nil {
 		return
 	}
@@ -132,7 +139,7 @@ func (o *sessionOut) Send(ctx context.Context, to sessiontell.Audience, msg prot
 // InSession runs a write of another module that depends on the campaign's session, under the funnel: it takes the open session's row
 // first, runs fn on that transaction (fn writes its own tables and tells through t), and, once the transaction committed, moves the
 // session's number once if fn told or touched and sends what fn told, stamped with it. fn's error rolls everything back and tells
-// nothing. When the campaign has no open session, fn runs in a plain transaction and t tells nothing; a session that opens between the unlocked read and the commit is not locked by that write, and its screens read the change at their next Ready or read.
+// nothing. When the campaign has no open session, fn runs in a plain transaction, t moves no number and the steps fn collected go out after the commit with none; a session that opens between the unlocked read and the commit is not locked by that write, and its screens read the change at their next Ready or read.
 func (s *Service) InSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
 	for try := 1; ; try++ {
 		open, err := s.queries.GetOpenGameSession(ctx, campaignID)
@@ -160,7 +167,7 @@ func (s *Service) InSession(ctx context.Context, campaignID string, fn func(tx p
 	}
 }
 
-// inNoSession is the write of InSession when the campaign has no open session: a plain transaction, with nothing to move; the steps of After still go out after the commit, with no number. A session that opens between the unlocked read and the commit is not locked by it.
+// inNoSession is the write of InSession when the campaign has no open session: a plain transaction, with nothing to move; every step the write collected (After, and the hints that are steps: a combat that changed) still goes out after the commit, with no number. The hints that are events (CreaturesChanged) tell nothing: no stream is open. A session that opens between the unlocked read and the commit is not locked by it.
 func (s *Service) inNoSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
 	var plain hints
 	if err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {

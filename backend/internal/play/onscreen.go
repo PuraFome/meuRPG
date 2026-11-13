@@ -335,6 +335,19 @@ func (s *Service) ImageShown(ctx context.Context, tx pgx.Tx, campaignID, imageID
 	return conv.OrZero(row.ShownImageID) == imageID, nil
 }
 
+// CurrentMapIn returns the open session's current map, reading through tx, for a write that holds the session's lock. It implements
+// maps.LiveSession.
+func (s *Service) CurrentMapIn(ctx context.Context, tx pgx.Tx, campaignID string) (string, error) {
+	row, err := s.queries.WithTx(tx).GetOnScreen(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil // no open session
+	}
+	if err != nil {
+		return "", fmt.Errorf("read what the session shows: %w", err)
+	}
+	return conv.OrZero(row.CurrentMapID), nil
+}
+
 // Publish sends an event on the campaign's live streams: to the master's
 // always, and to the players' only when players is true. The maps module
 // decides that for its own changes, because only it knows what each change

@@ -1,13 +1,16 @@
 package maps
 
 import (
+	"context"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/images/gen"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 )
 
 // The writes of the gallery, a map's image and the dungeons that change what a live session shows run under play's funnel (#735 part 2,
@@ -116,4 +119,43 @@ func TestUseTheTexturedMapMovesTheNumberOnce(t *testing.T) {
 		}
 	})
 	watch.mapChanged(c.mapID)
+}
+
+// gapHost is the funnel with a step between the write's decision and the session's lock: what a write reads before it asks for
+// the lock is what the master may change in that gap.
+type gapHost struct {
+	sessiontell.Host
+	gap func()
+}
+
+func (g *gapHost) InSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
+	g.gap()
+	return g.Host.InSession(ctx, campaignID, fn)
+}
+
+// TestARenameDecidesAfterTheLock: the master shows the image after the rename began and before it holds the session's lock. The
+// caption on screen changed, so the rename moves the number: what decides whether a screen shows the image is read under the lock.
+func TestARenameDecidesAfterTheLock(t *testing.T) {
+	t.Parallel()
+	s := newScenes(t, true)
+	img := s.master.newImage(s.campaign)
+	shown := false
+	s.h.svc.sessionHost = &gapHost{Host: s.h.svc.sessionHost, gap: func() {
+		if shown {
+			return
+		}
+		shown = true
+		if _, err := s.master.play.SetShownImage(t.Context(), connect.NewRequest(&playv1.SetShownImageRequest{CampaignId: s.campaign, ImageId: img})); err != nil {
+			t.Errorf("SetShownImage() error = %v", err)
+		}
+	}}
+	// The show is a write of its own (one move), and the rename comes after it under the lock, so it sees the image on screen (one more).
+	s.h.wantSeqMoves(s.campaign, 2, "a rename of an image the master shows between the decision and the lock", func() {
+		if _, err := s.master.gallery.RenameGalleryImage(t.Context(), connect.NewRequest(&mapsv1.RenameGalleryImageRequest{CampaignId: s.campaign, ImageId: img, Name: "Mapa da tela"})); err != nil {
+			t.Fatalf("RenameGalleryImage() error = %v", err)
+		}
+	})
+	if !shown {
+		t.Fatal("the gap was never reached: the control is gone")
+	}
 }

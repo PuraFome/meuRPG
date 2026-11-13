@@ -152,7 +152,7 @@ func TestRevealSceneClueHints(t *testing.T) {
 	})
 }
 
-// A token dropped within reach of a trap its character notices is two writes: the token's and the notice's reveal. Each moves the
+// A token dropped within reach of a trap its character notices is one write: the token's, with the notice's reveal. It moves the
 // number once; the notice is told to the finder alone (trap_noticed, and the map's change), and the others' number moves the same.
 func TestNoticeTellsTheFinderAloneWithTheNumber(t *testing.T) {
 	t.Parallel()
@@ -161,8 +161,8 @@ func TestNoticeTellsTheFinderAloneWithTheNumber(t *testing.T) {
 	g := newHintRig(t, r.h, r.campaignID, r.master, map[string]*user{"Caio": r.caio, "Ana": r.ana, "Bia": r.bia})
 	before := g.seq()
 	r.place(t, r.toren.GetId(), 7, 7)
-	if got := g.seq(); got != before+2 {
-		t.Errorf("hint_seq = %d, want %d (the token, then the notice)", got, before+2)
+	if got := g.seq(); got != before+1 {
+		t.Errorf("hint_seq = %d, want %d (the token with its notice)", got, before+1)
 	}
 	heard := g.drain()
 	noticed := func(name string) bool {
@@ -207,5 +207,60 @@ func TestATokenDropThatFiresATrapTellsTheFiringWithoutTheDropsNumber(t *testing.
 	}
 	if stale != 1 {
 		t.Errorf("the master heard %d map_changed with the drop's number %d, want only the drop's own", stale, before+1)
+	}
+}
+
+// A token dropped on an armed "Ao entrar na área" trap that the drop does not fire (no open session, a combat of the theatre of the
+// mind) is noticed as any trap beside it: the finder knows it, and the landing is one write.
+func TestALandingOnATrapThatFiresNothingStillNotices(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		setup func(t *testing.T, r *trapRig)
+		moves int64
+	}{
+		"no open session": {setup: func(t *testing.T, r *trapRig) {
+			t.Helper()
+			r.master.end(t, r.master.liveSession(t, r.campaignID).GetGameSession())
+		}, moves: 0},
+		"theatre of the mind": {setup: func(t *testing.T, r *trapRig) {
+			t.Helper()
+			r.start(t, plan{theatre: true, npcs: []*playv1.Participant{{CharacterId: r.goblins.GetId()}}, npcRolls: []int{2}, players: map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1}})
+		}, moves: 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			r := newTrapRig(t)
+			hole := r.trap(t, "Fosso Dourado", 9, 7, func(s *mapsv1.TrapSpec) { s.NoticeDc = 10; pit("1d6")(s) })
+			if _, err := r.mc(r.master).SetMapRevealed(t.Context(), connect.NewRequest(&mapsv1.SetMapRevealedRequest{CampaignId: r.campaignID, MapId: r.mapID, Revealed: true})); err != nil {
+				t.Fatalf("SetMapRevealed() error = %v", err)
+			}
+			g := newHintRig(t, r.h, r.campaignID, r.master, map[string]*user{"Caio": r.caio, "Ana": r.ana, "Bia": r.bia})
+			tc.setup(t, r)
+			before := g.seq()
+			r.place(t, r.toren.GetId(), 9, 7)
+			if got := g.seq(); got != before+tc.moves {
+				t.Errorf("hint_seq = %d, want %d", got, before+tc.moves)
+			}
+			r.wantKnows(t, "Toren's player", r.caio, hole.GetId(), true)
+			r.wantKnows(t, "Pensantus's player", r.ana, hole.GetId(), false)
+			if got := r.stateOf(t, r.mapID, hole.GetId()); got != mapsv1.TrapState_TRAP_STATE_ARMED {
+				t.Errorf("the pit is %v, want it armed: nothing fires it", got)
+			}
+		})
+	}
+}
+
+// A token dropped on a trap that goes off with the drop is not also noticed: a trap that fires is known to all.
+func TestALandingThatFiresATrapIsNotAlsoNoticed(t *testing.T) {
+	t.Parallel()
+	r := newTrapRig(t)
+	r.trap(t, "Poço de entrada", 12, 7, func(s *mapsv1.TrapSpec) { s.NoticeDc = 10; pit("1d6")(s) })
+	r.h.roller.queue(3)
+	r.place(t, r.toren.GetId(), 12, 7)
+	if n := r.eventCount(t, "trap_triggered"); n != 1 {
+		t.Fatalf("trap_triggered events = %d, want 1", n)
+	}
+	if n := r.eventCount(t, "trap_noticed"); n != 0 {
+		t.Errorf("trap_noticed events = %d, want 0: the trap that fired was not also noticed", n)
 	}
 }

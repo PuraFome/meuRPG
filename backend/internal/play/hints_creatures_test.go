@@ -1,6 +1,7 @@
 package play
 
 import (
+	"context"
 	"slices"
 	"testing"
 
@@ -291,4 +292,43 @@ func TestEncounterChangedAloneMovesTheNumber(t *testing.T) {
 			return nil
 		})
 	}, true)
+}
+
+// With no open session InSession runs the write in a plain transaction and moves no number, and what the write collected for after the
+// commit still goes out, with no number: the steps of After and the hints that are steps (a combat that changed). A hint that is an event
+// (CreaturesChanged) has no stream to reach and goes nowhere.
+func TestInSessionWithNoOpenSessionSendsWhatItCollectedWithNoNumber(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	e := a.summonersFight(t)
+	g := a.summonersHints(t)
+	a.master.end(t, a.master.liveSession(t, a.campaignID).GetGameSession())
+	g.drain()
+	before := g.seq()
+	err := a.h.svc.InSession(t.Context(), a.campaignID, func(_ pgx.Tx, tell sessiontell.Tell) error {
+		tell.Touch()
+		tell.EncounterChanged(e.GetId())
+		tell.After(func(ctx context.Context, out sessiontell.Out) {
+			out.Send(ctx, sessiontell.Audience{Master: true}, creaturesChangedEvent("").Message)
+		})
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("InSession(no open session) error = %v", err)
+	}
+	if got := g.seq(); got != before {
+		t.Errorf("hint_seq = %d, want %d", got, before)
+	}
+	heard := g.drain()["master"]
+	if !slices.Contains(eventKinds(heard), kCreaturesChanged) {
+		t.Errorf("the master heard %v: the step of After was lost", eventKinds(heard))
+	}
+	if !slices.Contains(eventKinds(heard), "*playv1.WatchGameSessionResponse_EncounterChanged_") && !slices.Contains(eventKinds(heard), "*playv1.WatchGameSessionResponse_CombatLogChanged_") {
+		t.Errorf("the master heard %v: the combat's change was lost", eventKinds(heard))
+	}
+	for _, ev := range heard {
+		if ev.GetSessionSeq() != 0 {
+			t.Errorf("%T carries number %d with no open session", ev.GetEvent(), ev.GetSessionSeq())
+		}
+	}
 }

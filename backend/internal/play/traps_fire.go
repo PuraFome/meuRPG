@@ -890,7 +890,7 @@ func (s *Service) outsideTraits(ctx context.Context, tx pgx.Tx, campaignID strin
 // holds it fire (during a session, while no combat runs on the map; in a combat the
 // character's moves are the combat's). A failure is the maps module's to log.
 func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, characterID, actorUserID string, at grid.Square) error {
-	traps, err := s.trapsDroppedOn(ctx, campaignID, mapID, at)
+	traps, err := s.trapsDroppedOn(ctx, nil, campaignID, mapID, at)
 	if err != nil {
 		return err
 	}
@@ -906,6 +906,20 @@ func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, character
 	return nil
 }
 
+// TrapsToFire implements maps.TrapFirer, reading through tx: the ids of the traps a token dropped on the square fires, by the same rule as TokenDropped
+// (trapsDroppedOn): none when no session is open, in theatre, or while a combat runs on the map.
+func (s *Service) TrapsToFire(ctx context.Context, tx pgx.Tx, campaignID, mapID string, at grid.Square) ([]string, error) {
+	traps, err := s.trapsDroppedOn(ctx, tx, campaignID, mapID, at)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, 0, len(traps))
+	for _, t := range traps {
+		ids = append(ids, t.PointID)
+	}
+	return ids, nil
+}
+
 // CreatureDropped implements maps.TrapFirer: the master dropped a creature of a
 // player's character on a square (the maps module hands the drop to the traps), and the armed
 // "Ao entrar na área" traps whose area holds it fire, as for a character's token: the
@@ -913,7 +927,7 @@ func (s *Service) TokenDropped(ctx context.Context, campaignID, mapID, character
 // trap picks its targets by hand. The creature's part is a line only: no hit points
 // are stored for it outside a combat (as for an NPC), so nothing waits for the master.
 func (s *Service) CreatureDropped(ctx context.Context, campaignID, mapID string, creature maplink.MapCreature, actorUserID string, at grid.Square) error {
-	traps, err := s.trapsDroppedOn(ctx, campaignID, mapID, at)
+	traps, err := s.trapsDroppedOn(ctx, nil, campaignID, mapID, at)
 	if err != nil {
 		return err
 	}
@@ -933,24 +947,25 @@ func (s *Service) CreatureDropped(ctx context.Context, campaignID, mapID string,
 // creature was dropped on, when they may fire: only during a session (the vitals and the history
 // need one), and not while a combat runs on the map, where the moves are the combat's, nor in a
 // combat without a map, which has no traps (RN-25).
-func (s *Service) trapsDroppedOn(ctx context.Context, campaignID, mapID string, at grid.Square) ([]maplink.Trap, error) {
+func (s *Service) trapsDroppedOn(ctx context.Context, tx pgx.Tx, campaignID, mapID string, at grid.Square) ([]maplink.Trap, error) {
 	if s.traps == nil {
 		return nil, nil
 	}
-	session, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	q := queriesIn(s.queries, tx)
+	session, err := q.GetOpenGameSession(ctx, campaignID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("find the open session: %w", err)
 	}
-	if theatre, err := theatreRunning(ctx, s.queries, session.ID); err != nil || theatre {
+	if theatre, err := theatreRunning(ctx, q, session.ID); err != nil || theatre {
 		return nil, err
 	}
-	if _, inCombat, err := s.runningEncounterOn(ctx, session.ID, mapID); err != nil || inCombat {
+	if _, inCombat, err := runningEncounterIn(ctx, q, session.ID, mapID); err != nil || inCombat {
 		return nil, err
 	}
-	traps, err := s.traps.Traps(ctx, nil, campaignID, mapID)
+	traps, err := s.traps.Traps(ctx, tx, campaignID, mapID)
 	if err != nil {
 		return nil, err
 	}

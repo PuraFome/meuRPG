@@ -35,10 +35,10 @@ import (
 //
 // What the number depends on, exactly: it moves once for each write that had an effect, and not for one that changed nothing (a
 // paint of what was painted, a trap already disarmed, a clue the player had), whatever the write held. A token a player's
-// character drops on a map the players see is two writes (the token's, then the notice of what it sees from where it stands), and the
-// notice moves the number once whether or not it found a trap (TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot),
-// so a third player's number says nothing of a find. The notice after a combat move, in package play, moves it only when a player learned
-// something: the counter says that a write had an effect, never which, and that one is an accepted exposure.
+// character drops on a map is one write whatever the map and the token (TestALandingMovesAThirdPlayersNumberOnceWhateverTheMapAndTheToken):
+// what it sees from where it stands is part of that write, and moves the number no more whether or not it found a trap
+// (TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot), so a third player's number says nothing of a find, of the map
+// or of a hidden token. The notice after a combat move, in package play, is a write of its own that always touches, found or not.
 //
 // The counter-per-transaction rule (one bump whatever the transaction told) is TestTxBumpsOncePerTransactionWhateverItTold
 // and TestTxBumpsOnceWhateverTheSizeOfWhatItTold, in package play.
@@ -936,22 +936,72 @@ func TestAPlayersSinceSeqAnswerIgnoresWhatTheyCannotSee(t *testing.T) {
 
 // ===== A drop that notices a trap, and one that does not.
 
-// noticeWorld builds a world, adds an armed trap on the map the players see with the given DC to notice (0: the trap is never noticed
-// by passing), has the master drop Toren (Caio's character) beside it, and reads what Ana, a third player, was told: the kinds of her
-// events (the heartbeats left out) and how far her number went. It returns what Caio heard as well.
+// landing says where a landing happens and what the landing token is, in a world of landingWorld.
+type landing struct {
+	// unseenMap lands the token on a map the players do not see (neither revealed nor current), where no trap is.
+	unseenMap bool
+	// hiddenToken has the master hide Toren's token before it lands.
+	hiddenToken bool
+	// noticeDC is the DC to notice of the armed trap beside the landing square on the map the players see (0: never noticed by passing).
+	noticeDC int32
+	// how is the write that lands the token: "" is PlaceMapToken, "move" is MoveMapTokens and "party" is PutPartyOnMap. A move and a
+	// party put run with no combat on the map, as a landing that fires a trap does (the combat of the world is ended).
+	how string
+	// fires lands the token on the square of the trap, so that the landing fires it.
+	fires bool
+	// npc lands an NPC's token (which notices and fires nothing) in place of Toren's.
+	npc bool
+}
+
+// noticeWorld is landingWorld for a token that lands on the map the players see, visible, beside a trap with the given DC to notice.
 func noticeWorld(t *testing.T, noticeDC int32) (ana, caio []string, moved int64) {
+	t.Helper()
+	return landingWorld(t, landing{noticeDC: noticeDC})
+}
+
+// landingWorld builds a world, adds an armed trap on the map the players see, has the master drop Toren (Caio's character) as l says
+// (the token placed once before, so the landing is a move), and reads what Ana, a third player, was told: the kinds of her events (the
+// heartbeats left out) and how far her number went from the landing. It returns what Caio heard as well.
+func landingWorld(t *testing.T, l landing) (ana, caio []string, moved int64) {
 	t.Helper()
 	w := newWorld(t)
 	w.pts["seq-notice-trap"] = w.point(w.fogMap, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, w.secrets.marker("seq-notice-trap"), w.secrets.marker("seq-notice-trap-description"), 7, 13, func(r *mapsv1.CreateMapPointRequest) {
 		r.Trap = w.trapSpec()
-		r.Trap.NoticeDc = noticeDC
+		r.Trap.NoticeDc = l.noticeDC
 	})
 	w.secrets.id("trap", w.pts["seq-notice-trap"].GetId())
+	onMap := w.fogMap
+	if l.unseenMap {
+		onMap = w.map2
+	}
+	if l.fires || l.how != "" {
+		must(w.master.combat.EndEncounter(t.Context(), rq(&playv1.EndEncounterRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey()})))
+	}
+	who := w.toren.GetId()
+	if l.npc {
+		who = w.stage2.GetId()
+	}
+	col := 8
+	if l.fires {
+		col = 7 // the trap's own square
+	}
+	w.place(onMap, who, 20, 2) // far from the trap: the first placement notices nothing
+	if l.hiddenToken {
+		must(w.master.maps.SetMapTokenHidden(t.Context(), rq(&mapsv1.SetMapTokenHiddenRequest{CampaignId: w.campaign, MapId: onMap, CharacterId: who, Hidden: true})))
+	}
 	w.hints.Settle(w.t)
 	streams := map[*person]*streamWatcher{w.ana: w.watchStream(w.ana), w.caio: w.watchStream(w.caio)}
 	start := streams[w.ana].number()
-	w.place(w.fogMap, w.toren.GetId(), 8, 13)
-	// Both writes were made when place returned: a beat that begins after the next one reads what they left.
+	x, y := at(col, 13)
+	switch l.how {
+	case "move":
+		must(w.master.maps.MoveMapTokens(t.Context(), rq(&mapsv1.MoveMapTokensRequest{CampaignId: w.campaign, MapId: onMap, CharacterIds: []string{who}, XBp: x, YBp: y})))
+	case "party":
+		must(w.master.maps.PutPartyOnMap(t.Context(), rq(&mapsv1.PutPartyOnMapRequest{CampaignId: w.campaign, MapId: onMap, CharacterIds: []string{who}, XBp: x, YBp: y})))
+	default:
+		w.place(onMap, who, col, 13)
+	}
+	// The landing was made when place returned: a beat that begins after the next one reads what it left.
 	watch := streams[w.ana]
 	watch.beatAfter(t, watch.count(), func(int64) bool { return true })
 	end := watch.beatAfter(t, watch.count(), func(int64) bool { return true })
@@ -968,8 +1018,37 @@ func noticeWorld(t *testing.T, noticeDC int32) (ana, caio []string, moved int64)
 	return kinds[w.ana], kinds[w.caio], end - start
 }
 
-// TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot: a token dropped beside a trap is one write for the token and one for
-// its notice, the notice's number moving whether or not a trap was noticed (and whether or not the map holds one), so a player who
+// TestALandingMovesAThirdPlayersNumberOnceWhateverTheMapAndTheToken: a player's character that lands moves the session's number once,
+// whether the map is one the players see or not (twins: the map the players see with a trap Toren notices, and a map they do not see)
+// and whether the token is hidden or visible (twins: the same landing of a hidden token and of a visible one), so a third player's number
+// says nothing of where the token landed or of what the master hid. Ana, who sees none of it, is the third player.
+func TestALandingMovesAThirdPlayersNumberOnceWhateverTheMapAndTheToken(t *testing.T) {
+	_, _, seen := landingWorld(t, landing{noticeDC: 1})
+	_, _, unseen := landingWorld(t, landing{unseenMap: true, noticeDC: 1})
+	_, _, hidden := landingWorld(t, landing{hiddenToken: true})
+	_, _, visible := landingWorld(t, landing{})
+	if seen != unseen {
+		t.Errorf("Ana's number moved by %d where the map was seen and by %d where it was not, want the same", seen, unseen)
+	}
+	if hidden != visible {
+		t.Errorf("Ana's number moved by %d where the token was hidden and by %d where it was visible, want the same", hidden, visible)
+	}
+	_, _, npc := landingWorld(t, landing{npc: true, noticeDC: 1})
+	_, _, moves := landingWorld(t, landing{how: "move", noticeDC: 1})
+	_, _, party := landingWorld(t, landing{how: "party", noticeDC: 1})
+	_, _, movesUnseen := landingWorld(t, landing{how: "move", unseenMap: true, noticeDC: 1})
+	if moves != movesUnseen {
+		t.Errorf("Ana's number moved by %d for a move where the map was seen and by %d where it was not, want the same", moves, movesUnseen)
+	}
+	for name, moved := range map[string]int64{"seen": seen, "unseen": unseen, "hidden": hidden, "visible": visible, "an NPC's": npc, "a move": moves, "a party put": party, "a move on an unseen map": movesUnseen} {
+		if moved != 1 {
+			t.Errorf("Ana's number moved by %d for the landing in the %s world, want 1: a landing is one write", moved, name)
+		}
+	}
+}
+
+// TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot: a token dropped beside a trap is one write, whose number moves
+// whether or not a trap was noticed (and whether or not the map holds one), so a player who
 // hears nothing of it reads the same number and the same events in the world where Toren noticed the trap (a DC he reaches) and in
 // the one where he could not (a trap with no DC to notice). Control: only Toren's player hears trap_noticed.
 func TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot(t *testing.T) {
@@ -1070,5 +1149,19 @@ func heldSearchTwins(t *testing.T, inCombat bool) {
 	}
 	if !slices.Equal(anaH, anaN) {
 		t.Errorf("Ana heard %v where the roll was kept and %v where it was not, want the same", anaH, anaN)
+	}
+}
+
+// TestALandingThatFiresATrapMovesAThirdPlayersNumberByTheLandingAndTheFiring: a token dropped on the square of an armed trap fires it, in a write of
+// play's own, and is not also noticed, so the number moves by the landing (once) and by the firing, and the landing adds nothing for a
+// find. The same landing where the trap is never noticed by passing (no DC) moves it the same.
+func TestALandingThatFiresATrapMovesAThirdPlayersNumberByTheLandingAndTheFiring(t *testing.T) {
+	_, _, noticeable := landingWorld(t, landing{fires: true, noticeDC: 1})
+	_, _, unnoticeable := landingWorld(t, landing{fires: true, noticeDC: 0})
+	if noticeable != unnoticeable {
+		t.Errorf("Ana's number moved by %d where the trap could be noticed and by %d where it could not, want the same", noticeable, unnoticeable)
+	}
+	if noticeable != 2 {
+		t.Errorf("Ana's number moved by %d for a landing that fires, want 2: the landing, then the firing", noticeable)
 	}
 }

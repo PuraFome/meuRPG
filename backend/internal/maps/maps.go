@@ -175,6 +175,8 @@ type LiveSession interface {
 	// ImageShown reports whether the image is the one the open session shows the
 	// players. It reads through tx, for a transaction that is about to delete it.
 	ImageShown(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (bool, error)
+	// CurrentMapIn is the open session's current map ("" for none), read through tx, for a write that holds the session's lock.
+	CurrentMapIn(ctx context.Context, tx pgx.Tx, campaignID string) (string, error)
 	// PublishToUsers sends ev to the streams of those of userIDs who watch
 	// the campaign's session, and to nobody else: not the master, not the
 	// other players. Without an open session nothing happens.

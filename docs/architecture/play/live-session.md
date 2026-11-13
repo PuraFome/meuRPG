@@ -192,13 +192,16 @@ A stream carries it on `ready` and on every `heartbeat`, and nothing else about 
   The writes of the characters and campaigns modules that change what a session shows run under `Service.InSession` and bump once: giving, renaming and dismissing a character's creature, a correction of a creature's hit points and the table's rules (`SetTableRules`).
   With no play module wired in (a tool, a test) those writes run in a plain transaction and tell through the creature host with no number.
   The maps module's writes that change what a session shows (tokens and the party on a map, carried lights, a map's own rows, its layers, fog, grid, image and points, the traps and treasures the master changes, the clues, a scene's actions, the gallery and the dungeons) go through `Service.InSession` too ([Transactions](../transactions.md#hints-sent-after-the-commit)): one bump for each write, and what the write tells carries it, to the audience the maps module chose (a hidden change reaches the master alone, a trap found its finder alone).
-  A change that shows on screen and sends no event (a renamed gallery image on screen, the fog's memory cleared) touches.
+  A change that shows on screen and sends no event (a renamed gallery image on screen, the fog's memory cleared) touches; a rename reads what is on screen after it holds the session's lock, so an image the master shows meanwhile counts.
   A held roll that is kept, answered or forgotten moves it once, in the transaction of the path that holds it, and `HeldRollsChanged` carries it ([Held rolls](held-rolls.md#the-wire)).
   A call that changes nothing (a paint of what was painted, a trap already disarmed, a clue the player had) moves nothing and tells nothing.
   With no open session there is no number to move: the revivify switch of a dead character is a plain transaction that tells nothing, a trap's damage settled then tells nothing, and the writes of `InSession` run in a plain transaction.
   The hooks that play calls on the maps module after its own commit (`TrapChanged`, `Told`, `MapShown`, `VisionChanged`, the fog's refresh after a combat move) send through the hub with no number: the write's own bump covers them, and the maps module never lends them the number of the write that called it (a token dropped on a trap leaves its `Out` behind before play fires the trap).
-  The notice of what a token a player's character dropped sees from where it stands is its own write and moves the number once whether or not a trap was noticed (and whether or not the map holds one), so the number of a third player reads the same either way; only the finder hears `trap_noticed`.
-  The notice after a combat move (`noticeAfterMove`) is the same write and moves it once, found or not.
+  A token that lands (`PlaceMapToken`, `MoveMapTokens`, `PutPartyOnMap`) is one write that moves the number once, whatever the map and the token.
+  The notice of what the player characters see from where they stand is made in the same transaction, on a map the players see, so a hidden token or a map they do not see changes nothing in the number.
+  A trap that goes off with the landing (the firer says which, by the rule it fires by: a session open, no theatre, no combat on the map) is not also noticed, and any other armed trap is.
+  The firing is a write of its own and moves the number once more; only the finder hears `trap_noticed`.
+  The notice after a combat move (`noticeAfterMove`) is a write of its own and always touches, so it moves the number once, found or not.
   A paint's `map_changed` goes through a gate that merges close paints into one hint, and carries no number.
   The doors a move opens, the puzzle's reveals of a point or a clue and its other maps steps run in play's step after the commit and carry the move's number.
   Every other writer of the `play` package tells the streams through `send` after its own `db.InTx`: it does not bump, and its events carry no number.

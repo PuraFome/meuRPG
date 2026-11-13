@@ -102,15 +102,11 @@ func (s *Service) RenameGalleryImage(
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("name %w", err))
 	}
 
-	onAScreen, err := s.imageIsOnAScreen(ctx, m.CampaignID, id.String())
-	if err != nil {
-		return nil, err
-	}
-
 	var row mapsdb.GalleryImage
 	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
-		row, err = s.queries.WithTx(tx).RenameGalleryImage(ctx, mapsdb.RenameGalleryImageParams{
+		q := s.queries.WithTx(tx)
+		row, err = q.RenameGalleryImage(ctx, mapsdb.RenameGalleryImageParams{
 			CampaignID: m.CampaignID, ID: id.String(), Name: name,
 		})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -120,7 +116,11 @@ func (s *Service) RenameGalleryImage(
 			return fmt.Errorf("rename gallery image: %w", err)
 		}
 		// The name is the caption of the image on a screen: no event says so, the screens read it again. An image no screen shows
-		// moves no number.
+		// moves no number. What a screen shows is read here, under the session's lock, so a show made while the rename waited for it counts.
+		onAScreen, err := imageIsOnAScreen(ctx, tx, q, s.live, m.CampaignID, id.String())
+		if err != nil {
+			return err
+		}
 		if onAScreen {
 			t.Touch()
 		}
@@ -136,17 +136,23 @@ func (s *Service) RenameGalleryImage(
 	return connect.NewResponse(&mapsv1.RenameGalleryImageResponse{Image: img}), nil
 }
 
-// imageIsOnAScreen says whether a screen shows the image's name as a caption: the image on screen, and one left with the players.
-func (s *Service) imageIsOnAScreen(ctx context.Context, campaignID, imageID string) (bool, error) {
-	_, shown, err := s.live.OnScreen(ctx, campaignID)
+// imageIsOnAScreen says whether a screen shows the image's name as a caption: the image on screen, and one left with the players. It reads
+// through tx, so the caller holds the session's lock when it asks.
+func imageIsOnAScreen(ctx context.Context, tx pgx.Tx, q *mapsdb.Queries, live LiveSession, campaignID, imageID string) (bool, error) {
+	shown, err := live.ImageShown(ctx, tx, campaignID, imageID)
 	if err != nil {
-		return false, s.dbError(ctx, "read the shown image", err)
+		return false, fmt.Errorf("read the shown image: %w", err)
 	}
-	_, leftErr := leftWith(ctx, s.queries, campaignID, imageID)
-	if leftErr != nil && connect.CodeOf(leftErr) != connect.CodeNotFound {
-		return false, s.dbError(ctx, "check whether the image is left with the players", leftErr)
+	if shown {
+		return true, nil
 	}
-	return shown == imageID || leftErr == nil, nil
+	if _, err := leftWith(ctx, q, campaignID, imageID); err != nil {
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			return false, nil
+		}
+		return false, fmt.Errorf("check whether the image is left with the players: %w", err)
+	}
+	return true, nil
 }
 
 // DeleteGalleryImage implements mapsv1connect.GalleryServiceHandler. It

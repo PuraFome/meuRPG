@@ -73,7 +73,12 @@ func (s *Service) PutPartyOnMap(
 			return err
 		}
 		s.announce(t, func(ctx context.Context) { s.announcePut(ctx, m, mapID, current, put) })
-		return nil
+		landed := make([]landedToken, len(put.chars))
+		for i, c := range put.chars {
+			landed[i] = landedToken{token: put.tokens[i], character: c}
+		}
+		// What the characters see from where they landed is part of this write: the formation moves the number once.
+		return s.noticeLanded(ctx, tx, t, m.CampaignID, mapID, put.row, landed)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "put the party on the map", err)

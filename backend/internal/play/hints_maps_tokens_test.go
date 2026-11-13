@@ -53,10 +53,10 @@ func (g *hintRig) withNoOpenSession(call func() error) {
 func TestPlaceMapTokenHints(t *testing.T) {
 	t.Parallel()
 	r, g := mapRigHints(t)
-	// A player's character that lands is two writes: the token's and the notice of what it sees from there, which moves the number
+	// A player's character that lands is one write: the token's, with the notice of what it sees from there, which moves nothing more
 	// whether or not a trap was noticed.
-	g.firstOf(r.placeCall(t, r.toren.GetId(), 6, 7), true, 2) // a new token
-	g.firstOf(r.placeCall(t, r.toren.GetId(), 7, 7), true, 2) // a move
+	g.first(r.placeCall(t, r.toren.GetId(), 6, 7), true) // a new token
+	g.first(r.placeCall(t, r.toren.GetId(), 7, 7), true) // a move
 }
 
 // A goblin the master places is hidden: only the master hears of it, and the players' number moves the same.
@@ -149,8 +149,8 @@ func TestMoveMapTokensHints(t *testing.T) {
 			return err
 		}
 	}
-	g.refused(move(r.pens.GetId()))           // no token of Pensantus
-	g.firstOf(move(r.toren.GetId()), true, 2) // the move, then the notice of where the token landed
+	g.refused(move(r.pens.GetId()))      // no token of Pensantus
+	g.first(move(r.toren.GetId()), true) // the move, with the notice of where the token landed
 }
 
 func TestSetMapPlayersMoveHints(t *testing.T) {
@@ -184,7 +184,7 @@ func TestPutPartyOnMapHints(t *testing.T) {
 		}
 	}
 	g.refused(put(newKey(), r.toren.GetId()))
-	g.firstOf(put(r.mapID, r.toren.GetId(), r.pens.GetId(), r.bri.GetId()), true, 4) // three tokens, one write, then one notice for each token
+	g.first(put(r.mapID, r.toren.GetId(), r.pens.GetId(), r.bri.GetId()), true) // three tokens and their notice, one write
 }
 
 func TestCreatureTokenHints(t *testing.T) {

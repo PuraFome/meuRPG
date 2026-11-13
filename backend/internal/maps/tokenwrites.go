@@ -107,7 +107,8 @@ func (s *Service) placeTokenTx(ctx context.Context, m authz.Membership, mapID, c
 			return err
 		}
 		s.announce(t, func(ctx context.Context) { s.announceTokenPlaced(ctx, m, mapID, current, pl, character) })
-		return nil
+		// What the character sees from where it landed is part of this write: the landing moves the number once.
+		return s.noticeLanded(ctx, tx, t, m.CampaignID, mapID, pl.mapRow, []landedToken{{token: pl.token, character: character}})
 	})
 	return pl, err
 }

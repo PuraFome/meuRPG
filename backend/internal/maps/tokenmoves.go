@@ -159,10 +159,18 @@ func (s *Service) MoveMapTokens(
 		if out, err = s.moveTx(ctx, tx, ask, chars); err != nil {
 			return err
 		}
-		if out.changed() {
-			s.announce(t, func(ctx context.Context) { s.announceMove(ctx, ask, out) })
+		if !out.changed() {
+			return nil
 		}
-		return nil
+		s.announce(t, func(ctx context.Context) { s.announceMove(ctx, ask, out) })
+		// What the characters that changed square see from where they stand is part of this write: the move moves the number once.
+		var landed []landedToken
+		for i, c := range out.chars {
+			if out.before[i].XBp != out.after[i].XBp || out.before[i].YBp != out.after[i].YBp {
+				landed = append(landed, landedToken{token: out.after[i], character: c})
+			}
+		}
+		return s.noticeLanded(ctx, tx, t, ask.m.CampaignID, ask.id, out.row, landed)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "move tokens", err)

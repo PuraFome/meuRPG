@@ -102,8 +102,8 @@ func (g *hintRig) first(call func() error, wantEvents bool) map[string][]string 
 	return g.firstOf(call, wantEvents, 1)
 }
 
-// firstOf is first for a call that is several writes, bumps of them in all (a token that lands is its own write and then one notice for
-// each token that landed): the number moves by bumps, and every event carries one of the numbers the writes made.
+// firstOf is first for a call that is several writes, bumps of them in all: the number moves by bumps, and every event carries one of the
+// numbers the writes made.
 func (g *hintRig) firstOf(call func() error, wantEvents bool, bumps int64) map[string][]string {
 	g.t.Helper()
 	before := g.seq()
