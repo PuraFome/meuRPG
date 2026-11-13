@@ -57,7 +57,8 @@ type ReadyServiceClient interface {
 	// combatant must be on turn with its action free. Its player may ready for their own character, and the master for
 	// any combatant. The answer carries the encounter as the caller sees it; Combatant.readied holds the row.
 	//
-	// The checks, in order: the combatant, its turn, its action, a move with no speed, the trigger, the action.
+	// The checks, in order: the combatant, its turn, its action, a move without a map or with no speed, the trigger, the
+	// action.
 	//
 	// Errors:
 	//   - `not_found`: the combat or the combatant is not in this campaign's open session, or the caller is a player and
@@ -66,8 +67,9 @@ type ReadyServiceClient interface {
 	//   - `invalid_argument`: no key or a key used for another request, a malformed id.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED, COMBATANT_DOWN and the
 	//     other refusals of a turn; READY_TRIGGER (an empty trigger, or one longer than 200 characters); READY_ACTION (an
-	//     attack the combatant does not have, a standard action that cannot be held, a move with no speed, a spell, or
-	//     an action readied already). Nothing is spent.
+	//     attack the combatant does not have, a standard action that cannot be held (Attack, Cast a Spell, Ready, Hide,
+	//     Help, Dash, Disengage), a move in a combat without a map or with no speed, a spell, or an action readied
+	//     already). Nothing is spent.
 	ReadyAction(context.Context, *connect.Request[v1.ReadyActionRequest]) (*connect.Response[v1.ReadyActionResponse], error)
 	// FireReadied is the master saying the trigger happened: it opens a reaction window of kind READIED for the readier
 	// (the readier's player answers it, the master for an NPC). AnswerReaction USE spends the reaction and runs the held
@@ -75,6 +77,7 @@ type ReadyServiceClient interface {
 	//
 	// The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
 	// surprised; its reaction is free; no READIED window of it is open. A refusal leaves the readied action waiting.
+	// UndoLastAction takes the fire back while its window was not answered: the window goes and the row keeps waiting.
 	//
 	// Errors:
 	//   - `permission_denied`: the caller is not the master.
@@ -156,7 +159,8 @@ type ReadyServiceHandler interface {
 	// combatant must be on turn with its action free. Its player may ready for their own character, and the master for
 	// any combatant. The answer carries the encounter as the caller sees it; Combatant.readied holds the row.
 	//
-	// The checks, in order: the combatant, its turn, its action, a move with no speed, the trigger, the action.
+	// The checks, in order: the combatant, its turn, its action, a move without a map or with no speed, the trigger, the
+	// action.
 	//
 	// Errors:
 	//   - `not_found`: the combat or the combatant is not in this campaign's open session, or the caller is a player and
@@ -165,8 +169,9 @@ type ReadyServiceHandler interface {
 	//   - `invalid_argument`: no key or a key used for another request, a malformed id.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED, COMBATANT_DOWN and the
 	//     other refusals of a turn; READY_TRIGGER (an empty trigger, or one longer than 200 characters); READY_ACTION (an
-	//     attack the combatant does not have, a standard action that cannot be held, a move with no speed, a spell, or
-	//     an action readied already). Nothing is spent.
+	//     attack the combatant does not have, a standard action that cannot be held (Attack, Cast a Spell, Ready, Hide,
+	//     Help, Dash, Disengage), a move in a combat without a map or with no speed, a spell, or an action readied
+	//     already). Nothing is spent.
 	ReadyAction(context.Context, *connect.Request[v1.ReadyActionRequest]) (*connect.Response[v1.ReadyActionResponse], error)
 	// FireReadied is the master saying the trigger happened: it opens a reaction window of kind READIED for the readier
 	// (the readier's player answers it, the master for an NPC). AnswerReaction USE spends the reaction and runs the held
@@ -174,6 +179,7 @@ type ReadyServiceHandler interface {
 	//
 	// The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
 	// surprised; its reaction is free; no READIED window of it is open. A refusal leaves the readied action waiting.
+	// UndoLastAction takes the fire back while its window was not answered: the window goes and the row keeps waiting.
 	//
 	// Errors:
 	//   - `permission_denied`: the caller is not the master.
