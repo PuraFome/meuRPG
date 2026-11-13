@@ -363,3 +363,24 @@ A zone is still kept as it was loaded.
 `TableSpellEffect.aura` (`TableEffectAura`) maps through `auraAffectsOf`.
 A player's copy of a spell drops `visibility` and `player_label_pt` of an owner-only effect (`forPlayer`, `effectKeepsItsSecrets`), and the aura's radius with it.
 How the rules read the effect is in [Table content: rules](rules-table-content.md#the-lasting-effect-of-a-spell).
+
+**The next-hit effect.**
+`TableEffectModifierKind` has `WEAPON_HIT_DAMAGE` (20), and `TableEffectModifier` the fields only it reads (`rules/v1/table_content.proto`):
+
+| Field | Number | Type |
+| --- | --- | --- |
+| `trigger` | 11 | `TableHitTrigger`: `NEXT_HIT` (1), `NEXT_MELEE_HIT` (2), `EACH_HIT` (3), `MARKED_TARGET` (4) |
+| `dice` | 12 | `int32`, 1 to 10 |
+| `per_slot_dice` | 13 | `int32`, 0 to 5 |
+| `max_dice` | 14 | `int32`, required, `dice` to 20 |
+| `damage_type` | 15 | SRD damage type key, at most 64 characters |
+| `save` | 16 | ability key, at most 16 characters |
+| `on_fail_conditions` | 17 | SRD condition keys, each at most 64 characters |
+| `condition_duration` | 18 | `TableHitConditionDuration`: `UNTIL_END_OF_NEXT_TURN` (1), `UNTIL_SPELL_END` (2); unset reads as the first |
+
+The die is the existing `die` (field 2).
+`tableSpellEffectOf` copies them through `hitTriggerOf` and `hitConditionDurationOf`; an enum left unset reaches the rules empty (refused at `trigger`) and a number this build does not know reaches them as `unknown`.
+The API accepts the modifier on a spell that lasts and refuses it at its field, as the rules do: `table_spell.effect.modifiers[0].trigger` for a concentration trigger on a spell without concentration, or `marked_target` on a spell whose target is not One creature; `...dice`, `...max_dice` and the other numbers out of range; `...on_fail_conditions` for a save with no condition or a condition with no save; `...condition_duration` for `spell_end` on a spell that neither lasts a set time, lasts until dispelled nor asks for concentration; `...modifiers[i].kind` for a second `weapon_hit_damage` on the same spell.
+A spell with this modifier works only in a combat: casting it outside one is refused before a slot is spent.
+`TestTableSpellWeaponHitDamageIsReadFromTheMessage`, `TestTableSpellHitTriggersAreReadOneByOne` and `TestTableSpellHitConditionDurationsAreReadOneByOne` pin the copy.
+The play side is in [Lasting effects](play/lasting-effects.md#the-damage-a-spell-adds-to-the-casters-hits).

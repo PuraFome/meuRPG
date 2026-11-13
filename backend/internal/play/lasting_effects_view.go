@@ -233,6 +233,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 	out := ev.cardHead(f, key, def)
 	ev.cardTargets(out, g, onTarget)
 	caster, casterSeen := ev.byID[conv.OrZero(f.SourceID)]
+	out.Spent = f.SpentAt != nil && ev.readsSpent(f, caster)
 	casterSeen = casterSeen && ev.v.sees(caster)
 	if casterSeen {
 		out.CasterId = caster.ID
@@ -245,11 +246,14 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 			}
 			continue
 		}
-		out.Modifiers = append(out.Modifiers, modifierProto(m))
+		out.Modifiers = append(out.Modifiers, ev.modifierCard(m))
 	}
 	ev.cardClock(out, f, caster, casterSeen)
 	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)) || ev.v.saveDCFor(ev.byID[onTarget]))
 	ev.cardNotes(out, f, def)
+	if !ev.readsSpent(f, caster) {
+		out.TagsPt = slices.DeleteFunc(out.TagsPt, func(t string) bool { return t == spentTagPT })
+	}
 	if ev.v.master {
 		out.PlayerVisible, out.Audience, out.PlayerLabel = f.PlayerVisible, audienceProto(f.Audience), conv.OrZero(f.PlayerLabel)
 		out.EndTextPt = ev.endText(f, caster)
@@ -258,6 +262,12 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		}
 	}
 	return out
+}
+
+// readsSpent says the viewer may read that the effect was used up: the master, the caster's player and the player of
+// the creature that carries the row; no other player (RN-10: it tells that a hit landed with the spell).
+func (ev *effectViewer) readsSpent(f playdb.CombatantState, caster playdb.Combatant) bool {
+	return ev.v.master || ev.v.owns(caster) || ev.v.owns(ev.byID[f.CombatantID])
 }
 
 // cardHead is the card with what names the effect: the ids, the source, the conditions it gives.
@@ -346,7 +356,7 @@ func (ev *effectViewer) cardSaves(out *playv1.LastingEffect, f playdb.CombatantS
 // cardNotes puts the tags, how to break free and what the effect changes on its card.
 func (ev *effectViewer) cardNotes(out *playv1.LastingEffect, f playdb.CombatantState, def *rules.EffectDef) {
 	if def != nil {
-		out.TagsPt = append(append(append([]string{}, def.TagsPT...), modifierTagsPT(conv.OrZero(f.SourceKey), effectModifiers(f))...), spentTagsPT(f)...)
+		out.TagsPt = append(append(append([]string{}, tagsOfRow(def, effectModifiers(f))...), modifierTagsPT(conv.OrZero(f.SourceKey), effectModifiers(f))...), spentTagsPT(f)...)
 		out.BreakFreeAbility = def.BreakFree
 	}
 	for _, k := range f.ConditionKeys {
@@ -380,6 +390,9 @@ func (ev *effectViewer) originOf(f playdb.CombatantState, caster playdb.Combatan
 func (ev *effectViewer) clockText(f playdb.CombatantState, caster playdb.Combatant, casterSeen bool) string {
 	e := endsAtOf(f)
 	round := int(max(ev.d.enc.Round, 1))
+	if conv.OrZero(f.SourceKey) == wildShapeEffect {
+		return formTimeText(clamp32(e.RoundsLeft(round)*rules.SecondsPerRound, 0, 1<<30))
+	}
 	who := func() string {
 		if a, ok := ev.byID[e.CombatantID]; ok && ev.v.sees(a) {
 			return "o turno de " + a.Label
@@ -420,6 +433,9 @@ func roundsLeftText(n int) string {
 func (ev *effectViewer) endText(f playdb.CombatantState, caster playdb.Combatant) string {
 	e := endsAtOf(f)
 	a := ev.byID[e.CombatantID]
+	if conv.OrZero(f.SourceKey) == wildShapeEffect {
+		return formTimeText(clamp32(e.RoundsLeft(int(max(ev.d.enc.Round, 1)))*rules.SecondsPerRound, 0, 1<<30))
+	}
 	switch conv.OrZero(f.DurationKind) {
 	case rules.EffectDurationRounds:
 		return fmt.Sprintf("%s: acaba no turno de %s, rodada %d.", roundsLeftText(e.RoundsLeft(int(max(ev.d.enc.Round, 1)))), a.Label, e.Round)
@@ -510,6 +526,7 @@ var modifierKindProto = map[string]playv1.EffectModifierKind{
 	rules.ModifierAttackAdvantage:   playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE,
 	rules.ModifierSaveDisadvantage:  playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE,
 	rules.ModifierCheckDisadvantage: playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE,
+	rules.ModifierWeaponHitDamage:   playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE,
 }
 
 // rollKindProto maps the rolls a modifier touches.

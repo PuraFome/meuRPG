@@ -1038,6 +1038,14 @@ message AssumeWildShapeRequest {
   string beast_key = 3;
   // A UUID the app generates once for this change and sends again on a retry.
   string idempotency_key = 4;
+  // True for "Permanecer na forma": the druid spends another use to keep the form
+  // they are in past its time (SRD 5.1). beast_key must be the beast they are. It
+  // costs the uses and no action, keeps the beast's hit points and starts the
+  // clock over. A stay with no form (it ended, or it was never taken) is refused
+  // with WILD_SHAPE_ENDED, never turned into a new form; a different beast is
+  // ALREADY_IN_WILD_SHAPE. False: a new form (an action and a use), and the same
+  // beast while in the form is ALREADY_IN_WILD_SHAPE.
+  bool stay = 5;
 }
 
 // AssumeWildShapeResponse returns the character's vitals, with the form, and the
@@ -1392,6 +1400,10 @@ message CharacterVitals {
   // gives back (half the DRUID level, rounded up; SRD 5.1, Druid 2). 0: the character
   // does not have the feature. Whether the use is left is the `natural_recovery` resource.
   int32 natural_recovery_allowance = 104;
+  // The window to attune a magic item is open: the master's short or long rest opens it, and one
+  // attunement or ending by the owner spends it (SRD 5.1: attuning takes a short rest). The master
+  // needs no window. Only the master and the character's player read it.
+  bool attunement_open = 105;
 }
 
 // ActiveState is a temporary state that is on for a character. The numbers about the
@@ -1424,6 +1436,11 @@ message WildShapeState {
   int32 hit_points_current = 3;
   // The beast's maximum hit points, from its stat block.
   int32 hit_points_max = 4;
+  // The game time the form has left, in seconds (half the druid's level in hours
+  // at the start). Only the master and the character's player read it, like the
+  // hit points. Unset for a form with no clock (a character with no druid level, or
+  // a form taken before the clocks existed).
+  optional int32 seconds_left = 5;
 }
 
 // FamiliarSightState says a player is looking through their familiar's eyes

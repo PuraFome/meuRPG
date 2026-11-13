@@ -183,6 +183,8 @@ const (
 	EffectModifierKind_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE EffectModifierKind = 25
 	// Disadvantage on the ability checks of abilities.
 	EffectModifierKind_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE EffectModifierKind = 26
+	// Weapon damage added to the caster's hits (hit has the details): a card of the caster's.
+	EffectModifierKind_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE EffectModifierKind = 27
 )
 
 // Enum value maps for EffectModifierKind.
@@ -203,6 +205,7 @@ var (
 		24: "EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE",
 		25: "EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE",
 		26: "EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE",
+		27: "EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE",
 	}
 	EffectModifierKind_value = map[string]int32{
 		"EFFECT_MODIFIER_KIND_UNSPECIFIED":        0,
@@ -220,6 +223,7 @@ var (
 		"EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE":   24,
 		"EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE":  25,
 		"EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE": 26,
+		"EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE":  27,
 	}
 )
 
@@ -532,8 +536,12 @@ type EffectModifier struct {
 	// ("damage-type:fire", or "all", or "nonmagical_bps").
 	ResistanceKind string   `protobuf:"bytes,9,opt,name=resistance_kind,json=resistanceKind,proto3" json:"resistance_kind,omitempty"`
 	DamageTypes    []string `protobuf:"bytes,10,rep,name=damage_types,json=damageTypes,proto3" json:"damage_types,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// WEAPON_HIT_DAMAGE: the damage a spell adds to the caster's weapon hits. Set only on the card the
+	// caster's player and the master read: a modifier is never sent to any other player (they read the
+	// label of the effect, RN-10).
+	Hit           *WeaponHitDamage `protobuf:"bytes,11,opt,name=hit,proto3,oneof" json:"hit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EffectModifier) Reset() {
@@ -636,6 +644,144 @@ func (x *EffectModifier) GetDamageTypes() []string {
 	return nil
 }
 
+func (x *EffectModifier) GetHit() *WeaponHitDamage {
+	if x != nil {
+		return x.Hit
+	}
+	return nil
+}
+
+// WeaponHitDamage is the pending damage a spell adds to the caster's weapon hits, as its card reads it.
+type WeaponHitDamage struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The hit it rides on: "next_hit", "next_melee_hit", "each_hit" or "marked_target".
+	Trigger string `protobuf:"bytes,1,opt,name=trigger,proto3" json:"trigger,omitempty"`
+	// The die (4 to 12), and how many of them the slot of the cast gives: the number is already worked out
+	// (per_slot_dice is 0 then), up to max_dice.
+	Die         int32 `protobuf:"varint,2,opt,name=die,proto3" json:"die,omitempty"`
+	Dice        int32 `protobuf:"varint,3,opt,name=dice,proto3" json:"dice,omitempty"`
+	PerSlotDice int32 `protobuf:"varint,4,opt,name=per_slot_dice,json=perSlotDice,proto3" json:"per_slot_dice,omitempty"`
+	MaxDice     int32 `protobuf:"varint,5,opt,name=max_dice,json=maxDice,proto3" json:"max_dice,omitempty"`
+	// The damage type, empty for the weapon's own.
+	DamageTypeKey string `protobuf:"bytes,6,opt,name=damage_type_key,json=damageTypeKey,proto3" json:"damage_type_key,omitempty"`
+	DamageTypePt  string `protobuf:"bytes,7,opt,name=damage_type_pt,json=damageTypePt,proto3" json:"damage_type_pt,omitempty"`
+	// The saving throw of the target of a hit ("wis", empty for none), the conditions a failure gives and how
+	// long they last ("next_turn" or "spell_end").
+	Save              string   `protobuf:"bytes,8,opt,name=save,proto3" json:"save,omitempty"`
+	ConditionKeys     []string `protobuf:"bytes,9,rep,name=condition_keys,json=conditionKeys,proto3" json:"condition_keys,omitempty"`
+	ConditionNamesPt  []string `protobuf:"bytes,10,rep,name=condition_names_pt,json=conditionNamesPt,proto3" json:"condition_names_pt,omitempty"`
+	ConditionDuration string   `protobuf:"bytes,11,opt,name=condition_duration,json=conditionDuration,proto3" json:"condition_duration,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *WeaponHitDamage) Reset() {
+	*x = WeaponHitDamage{}
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WeaponHitDamage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WeaponHitDamage) ProtoMessage() {}
+
+func (x *WeaponHitDamage) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WeaponHitDamage.ProtoReflect.Descriptor instead.
+func (*WeaponHitDamage) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *WeaponHitDamage) GetTrigger() string {
+	if x != nil {
+		return x.Trigger
+	}
+	return ""
+}
+
+func (x *WeaponHitDamage) GetDie() int32 {
+	if x != nil {
+		return x.Die
+	}
+	return 0
+}
+
+func (x *WeaponHitDamage) GetDice() int32 {
+	if x != nil {
+		return x.Dice
+	}
+	return 0
+}
+
+func (x *WeaponHitDamage) GetPerSlotDice() int32 {
+	if x != nil {
+		return x.PerSlotDice
+	}
+	return 0
+}
+
+func (x *WeaponHitDamage) GetMaxDice() int32 {
+	if x != nil {
+		return x.MaxDice
+	}
+	return 0
+}
+
+func (x *WeaponHitDamage) GetDamageTypeKey() string {
+	if x != nil {
+		return x.DamageTypeKey
+	}
+	return ""
+}
+
+func (x *WeaponHitDamage) GetDamageTypePt() string {
+	if x != nil {
+		return x.DamageTypePt
+	}
+	return ""
+}
+
+func (x *WeaponHitDamage) GetSave() string {
+	if x != nil {
+		return x.Save
+	}
+	return ""
+}
+
+func (x *WeaponHitDamage) GetConditionKeys() []string {
+	if x != nil {
+		return x.ConditionKeys
+	}
+	return nil
+}
+
+func (x *WeaponHitDamage) GetConditionNamesPt() []string {
+	if x != nil {
+		return x.ConditionNamesPt
+	}
+	return nil
+}
+
+func (x *WeaponHitDamage) GetConditionDuration() string {
+	if x != nil {
+		return x.ConditionDuration
+	}
+	return ""
+}
+
 // EffectEnd is the moment an effect ends: the turn of a combatant in a round.
 type EffectEnd struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -649,7 +795,7 @@ type EffectEnd struct {
 
 func (x *EffectEnd) Reset() {
 	*x = EffectEnd{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[1]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -661,7 +807,7 @@ func (x *EffectEnd) String() string {
 func (*EffectEnd) ProtoMessage() {}
 
 func (x *EffectEnd) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[1]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -674,7 +820,7 @@ func (x *EffectEnd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectEnd.ProtoReflect.Descriptor instead.
 func (*EffectEnd) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{1}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *EffectEnd) GetRound() int32 {
@@ -715,7 +861,7 @@ type EffectSave struct {
 
 func (x *EffectSave) Reset() {
 	*x = EffectSave{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[2]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -727,7 +873,7 @@ func (x *EffectSave) String() string {
 func (*EffectSave) ProtoMessage() {}
 
 func (x *EffectSave) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[2]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -740,7 +886,7 @@ func (x *EffectSave) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectSave.ProtoReflect.Descriptor instead.
 func (*EffectSave) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{2}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *EffectSave) GetAbility() string {
@@ -787,7 +933,7 @@ type EffectTrigger struct {
 
 func (x *EffectTrigger) Reset() {
 	*x = EffectTrigger{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[3]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -799,7 +945,7 @@ func (x *EffectTrigger) String() string {
 func (*EffectTrigger) ProtoMessage() {}
 
 func (x *EffectTrigger) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[3]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -812,7 +958,7 @@ func (x *EffectTrigger) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectTrigger.ProtoReflect.Descriptor instead.
 func (*EffectTrigger) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *EffectTrigger) GetPhase() EffectPhase {
@@ -904,6 +1050,8 @@ type LastingEffect struct {
 	// Only the master: the label each target shows the players now ("Paralisado"), or
 	// empty when they read nothing.
 	PlayersSeePt string `protobuf:"bytes,29,opt,name=players_see_pt,json=playersSeePt,proto3" json:"players_see_pt,omitempty"`
+	// The effect was used up (a next_hit that hit): the card of the caster reads "used" instead of "pending".
+	Spent bool `protobuf:"varint,30,opt,name=spent,proto3" json:"spent,omitempty"`
 	// An aura (only the master and the bearer's player read these): how far from the bearer it reaches, in feet, and
 	// whom, from the bearer's side ("self", "allies" or "enemies"). Zero and empty for an effect that is not an aura.
 	RadiusFt      int32  `protobuf:"varint,32,opt,name=radius_ft,json=radiusFt,proto3" json:"radius_ft,omitempty"`
@@ -914,7 +1062,7 @@ type LastingEffect struct {
 
 func (x *LastingEffect) Reset() {
 	*x = LastingEffect{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[4]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -926,7 +1074,7 @@ func (x *LastingEffect) String() string {
 func (*LastingEffect) ProtoMessage() {}
 
 func (x *LastingEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[4]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -939,7 +1087,7 @@ func (x *LastingEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LastingEffect.ProtoReflect.Descriptor instead.
 func (*LastingEffect) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{4}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *LastingEffect) GetId() string {
@@ -1145,6 +1293,13 @@ func (x *LastingEffect) GetPlayersSeePt() string {
 	return ""
 }
 
+func (x *LastingEffect) GetSpent() bool {
+	if x != nil {
+		return x.Spent
+	}
+	return false
+}
+
 func (x *LastingEffect) GetRadiusFt() int32 {
 	if x != nil {
 		return x.RadiusFt
@@ -1178,7 +1333,7 @@ type CatalogEffect struct {
 
 func (x *CatalogEffect) Reset() {
 	*x = CatalogEffect{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[5]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1190,7 +1345,7 @@ func (x *CatalogEffect) String() string {
 func (*CatalogEffect) ProtoMessage() {}
 
 func (x *CatalogEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[5]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1203,7 +1358,7 @@ func (x *CatalogEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CatalogEffect.ProtoReflect.Descriptor instead.
 func (*CatalogEffect) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{5}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *CatalogEffect) GetKey() string {
@@ -1275,7 +1430,7 @@ type TurnClockEntry struct {
 
 func (x *TurnClockEntry) Reset() {
 	*x = TurnClockEntry{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1287,7 +1442,7 @@ func (x *TurnClockEntry) String() string {
 func (*TurnClockEntry) ProtoMessage() {}
 
 func (x *TurnClockEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[6]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1300,7 +1455,7 @@ func (x *TurnClockEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnClockEntry.ProtoReflect.Descriptor instead.
 func (*TurnClockEntry) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{6}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *TurnClockEntry) GetRound() int32 {
@@ -1366,7 +1521,7 @@ type ConcentrationEntry struct {
 
 func (x *ConcentrationEntry) Reset() {
 	*x = ConcentrationEntry{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1378,7 +1533,7 @@ func (x *ConcentrationEntry) String() string {
 func (*ConcentrationEntry) ProtoMessage() {}
 
 func (x *ConcentrationEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[7]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1391,7 +1546,7 @@ func (x *ConcentrationEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConcentrationEntry.ProtoReflect.Descriptor instead.
 func (*ConcentrationEntry) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{7}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ConcentrationEntry) GetCasterId() string {
@@ -1479,7 +1634,7 @@ type EffectSavePrompt struct {
 
 func (x *EffectSavePrompt) Reset() {
 	*x = EffectSavePrompt{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1491,7 +1646,7 @@ func (x *EffectSavePrompt) String() string {
 func (*EffectSavePrompt) ProtoMessage() {}
 
 func (x *EffectSavePrompt) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[8]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1504,7 +1659,7 @@ func (x *EffectSavePrompt) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectSavePrompt.ProtoReflect.Descriptor instead.
 func (*EffectSavePrompt) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{8}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *EffectSavePrompt) GetEffectId() string {
@@ -1657,7 +1812,7 @@ type ExtraDie struct {
 
 func (x *ExtraDie) Reset() {
 	*x = ExtraDie{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1669,7 +1824,7 @@ func (x *ExtraDie) String() string {
 func (*ExtraDie) ProtoMessage() {}
 
 func (x *ExtraDie) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[9]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1682,7 +1837,7 @@ func (x *ExtraDie) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtraDie.ProtoReflect.Descriptor instead.
 func (*ExtraDie) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{9}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ExtraDie) GetSourceKey() string {
@@ -1771,7 +1926,7 @@ type EffectSaveResult struct {
 
 func (x *EffectSaveResult) Reset() {
 	*x = EffectSaveResult{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1783,7 +1938,7 @@ func (x *EffectSaveResult) String() string {
 func (*EffectSaveResult) ProtoMessage() {}
 
 func (x *EffectSaveResult) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[10]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1796,7 +1951,7 @@ func (x *EffectSaveResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectSaveResult.ProtoReflect.Descriptor instead.
 func (*EffectSaveResult) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{10}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *EffectSaveResult) GetD20() int32 {
@@ -1953,7 +2108,7 @@ type EffectNote struct {
 
 func (x *EffectNote) Reset() {
 	*x = EffectNote{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1965,7 +2120,7 @@ func (x *EffectNote) String() string {
 func (*EffectNote) ProtoMessage() {}
 
 func (x *EffectNote) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[11]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1978,7 +2133,7 @@ func (x *EffectNote) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectNote.ProtoReflect.Descriptor instead.
 func (*EffectNote) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{11}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EffectNote) GetTextPt() string {
@@ -2014,7 +2169,7 @@ type ExtraActionOption struct {
 
 func (x *ExtraActionOption) Reset() {
 	*x = ExtraActionOption{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2026,7 +2181,7 @@ func (x *ExtraActionOption) String() string {
 func (*ExtraActionOption) ProtoMessage() {}
 
 func (x *ExtraActionOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[12]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2039,7 +2194,7 @@ func (x *ExtraActionOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExtraActionOption.ProtoReflect.Descriptor instead.
 func (*ExtraActionOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ExtraActionOption) GetAvailable() bool {
@@ -2089,7 +2244,7 @@ type EffectLabel struct {
 
 func (x *EffectLabel) Reset() {
 	*x = EffectLabel{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2101,7 +2256,7 @@ func (x *EffectLabel) String() string {
 func (*EffectLabel) ProtoMessage() {}
 
 func (x *EffectLabel) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[13]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2114,7 +2269,7 @@ func (x *EffectLabel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EffectLabel.ProtoReflect.Descriptor instead.
 func (*EffectLabel) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *EffectLabel) GetEffectId() string {
@@ -2159,7 +2314,7 @@ type CharacterEffect struct {
 
 func (x *CharacterEffect) Reset() {
 	*x = CharacterEffect{}
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2171,7 +2326,7 @@ func (x *CharacterEffect) String() string {
 func (*CharacterEffect) ProtoMessage() {}
 
 func (x *CharacterEffect) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[14]
+	mi := &file_meurpg_play_v1_lasting_effects_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2184,7 +2339,7 @@ func (x *CharacterEffect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CharacterEffect.ProtoReflect.Descriptor instead.
 func (*CharacterEffect) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CharacterEffect) GetId() string {
@@ -2275,7 +2430,7 @@ var File_meurpg_play_v1_lasting_effects_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\n" +
-	"$meurpg/play/v1/lasting_effects.proto\x12\x0emeurpg.play.v1\x1a!meurpg/play/v1/combat_rolls.proto\"\x84\x03\n" +
+	"$meurpg/play/v1/lasting_effects.proto\x12\x0emeurpg.play.v1\x1a!meurpg/play/v1/combat_rolls.proto\"\xc4\x03\n" +
 	"\x0eEffectModifier\x126\n" +
 	"\x04kind\x18\x01 \x01(\x0e2\".meurpg.play.v1.EffectModifierKindR\x04kind\x12\x10\n" +
 	"\x03die\x18\x02 \x01(\x05R\x03die\x12\x12\n" +
@@ -2288,7 +2443,22 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x12max_weapon_attacks\x18\b \x01(\x05R\x10maxWeaponAttacks\x12'\n" +
 	"\x0fresistance_kind\x18\t \x01(\tR\x0eresistanceKind\x12!\n" +
 	"\fdamage_types\x18\n" +
-	" \x03(\tR\vdamageTypes\"w\n" +
+	" \x03(\tR\vdamageTypes\x126\n" +
+	"\x03hit\x18\v \x01(\v2\x1f.meurpg.play.v1.WeaponHitDamageH\x00R\x03hit\x88\x01\x01B\x06\n" +
+	"\x04_hit\"\xf6\x02\n" +
+	"\x0fWeaponHitDamage\x12\x18\n" +
+	"\atrigger\x18\x01 \x01(\tR\atrigger\x12\x10\n" +
+	"\x03die\x18\x02 \x01(\x05R\x03die\x12\x12\n" +
+	"\x04dice\x18\x03 \x01(\x05R\x04dice\x12\"\n" +
+	"\rper_slot_dice\x18\x04 \x01(\x05R\vperSlotDice\x12\x19\n" +
+	"\bmax_dice\x18\x05 \x01(\x05R\amaxDice\x12&\n" +
+	"\x0fdamage_type_key\x18\x06 \x01(\tR\rdamageTypeKey\x12$\n" +
+	"\x0edamage_type_pt\x18\a \x01(\tR\fdamageTypePt\x12\x12\n" +
+	"\x04save\x18\b \x01(\tR\x04save\x12%\n" +
+	"\x0econdition_keys\x18\t \x03(\tR\rconditionKeys\x12,\n" +
+	"\x12condition_names_pt\x18\n" +
+	" \x03(\tR\x10conditionNamesPt\x12-\n" +
+	"\x12condition_duration\x18\v \x01(\tR\x11conditionDuration\"w\n" +
 	"\tEffectEnd\x12\x14\n" +
 	"\x05round\x18\x01 \x01(\x05R\x05round\x12!\n" +
 	"\fcombatant_id\x18\x02 \x01(\tR\vcombatantId\x121\n" +
@@ -2305,7 +2475,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x04dice\x18\x02 \x01(\tR\x04dice\x12&\n" +
 	"\x0fdamage_type_key\x18\x03 \x01(\tR\rdamageTypeKey\x12$\n" +
 	"\x0edamage_type_pt\x18\x04 \x01(\tR\fdamageTypePt\x12!\n" +
-	"\fmax_triggers\x18\x05 \x01(\x05R\vmaxTriggers\"\xdd\n" +
+	"\fmax_triggers\x18\x05 \x01(\x05R\vmaxTriggers\"\xf3\n" +
 	"\n" +
 	"\rLastingEffect\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
@@ -2343,7 +2513,8 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\baudience\x18\x1a \x01(\x0e2\x1e.meurpg.play.v1.EffectAudienceR\baudience\x12!\n" +
 	"\fplayer_label\x18\x1b \x01(\tR\vplayerLabel\x12\x1e\n" +
 	"\vend_text_pt\x18\x1c \x01(\tR\tendTextPt\x12$\n" +
-	"\x0eplayers_see_pt\x18\x1d \x01(\tR\fplayersSeePt\x12\x1b\n" +
+	"\x0eplayers_see_pt\x18\x1d \x01(\tR\fplayersSeePt\x12\x14\n" +
+	"\x05spent\x18\x1e \x01(\bR\x05spent\x12\x1b\n" +
 	"\tradius_ft\x18  \x01(\x05R\bradiusFt\x12\x18\n" +
 	"\aaffects\x18! \x01(\tR\aaffectsB\n" +
 	"\n" +
@@ -2478,7 +2649,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	")EFFECT_DURATION_KIND_UNTIL_END_OF_TURN_OF\x10\x03\x12&\n" +
 	"\"EFFECT_DURATION_KIND_CONCENTRATION\x10\x04\x12(\n" +
 	"$EFFECT_DURATION_KIND_UNTIL_DISMISSED\x10\x05\x12\"\n" +
-	"\x1eEFFECT_DURATION_KIND_LONG_REST\x10\x06*\xd7\x04\n" +
+	"\x1eEFFECT_DURATION_KIND_LONG_REST\x10\x06*\x83\x05\n" +
 	"\x12EffectModifierKind\x12$\n" +
 	" EFFECT_MODIFIER_KIND_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dEFFECT_MODIFIER_KIND_ROLL_DIE\x10\x01\x12!\n" +
@@ -2494,7 +2665,8 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x1fEFFECT_MODIFIER_KIND_RESISTANCE\x10\x17\x12)\n" +
 	"%EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE\x10\x18\x12*\n" +
 	"&EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE\x10\x19\x12+\n" +
-	"'EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE\x10\x1a*\x86\x01\n" +
+	"'EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE\x10\x1a\x12*\n" +
+	"&EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE\x10\x1b*\x86\x01\n" +
 	"\x0eEffectRollKind\x12 \n" +
 	"\x1cEFFECT_ROLL_KIND_UNSPECIFIED\x10\x00\x12\x1b\n" +
 	"\x17EFFECT_ROLL_KIND_ATTACK\x10\x01\x12\x19\n" +
@@ -2531,7 +2703,7 @@ func file_meurpg_play_v1_lasting_effects_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_lasting_effects_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_meurpg_play_v1_lasting_effects_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
+var file_meurpg_play_v1_lasting_effects_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_meurpg_play_v1_lasting_effects_proto_goTypes = []any{
 	(EffectSourceKind)(0),      // 0: meurpg.play.v1.EffectSourceKind
 	(EffectDurationKind)(0),    // 1: meurpg.play.v1.EffectDurationKind
@@ -2542,49 +2714,51 @@ var file_meurpg_play_v1_lasting_effects_proto_goTypes = []any{
 	(EffectEndScope)(0),        // 6: meurpg.play.v1.EffectEndScope
 	(LastingEffectOutcome)(0),  // 7: meurpg.play.v1.LastingEffectOutcome
 	(*EffectModifier)(nil),     // 8: meurpg.play.v1.EffectModifier
-	(*EffectEnd)(nil),          // 9: meurpg.play.v1.EffectEnd
-	(*EffectSave)(nil),         // 10: meurpg.play.v1.EffectSave
-	(*EffectTrigger)(nil),      // 11: meurpg.play.v1.EffectTrigger
-	(*LastingEffect)(nil),      // 12: meurpg.play.v1.LastingEffect
-	(*CatalogEffect)(nil),      // 13: meurpg.play.v1.CatalogEffect
-	(*TurnClockEntry)(nil),     // 14: meurpg.play.v1.TurnClockEntry
-	(*ConcentrationEntry)(nil), // 15: meurpg.play.v1.ConcentrationEntry
-	(*EffectSavePrompt)(nil),   // 16: meurpg.play.v1.EffectSavePrompt
-	(*ExtraDie)(nil),           // 17: meurpg.play.v1.ExtraDie
-	(*EffectSaveResult)(nil),   // 18: meurpg.play.v1.EffectSaveResult
-	(*EffectNote)(nil),         // 19: meurpg.play.v1.EffectNote
-	(*ExtraActionOption)(nil),  // 20: meurpg.play.v1.ExtraActionOption
-	(*EffectLabel)(nil),        // 21: meurpg.play.v1.EffectLabel
-	(*CharacterEffect)(nil),    // 22: meurpg.play.v1.CharacterEffect
-	(*Reroll)(nil),             // 23: meurpg.play.v1.Reroll
+	(*WeaponHitDamage)(nil),    // 9: meurpg.play.v1.WeaponHitDamage
+	(*EffectEnd)(nil),          // 10: meurpg.play.v1.EffectEnd
+	(*EffectSave)(nil),         // 11: meurpg.play.v1.EffectSave
+	(*EffectTrigger)(nil),      // 12: meurpg.play.v1.EffectTrigger
+	(*LastingEffect)(nil),      // 13: meurpg.play.v1.LastingEffect
+	(*CatalogEffect)(nil),      // 14: meurpg.play.v1.CatalogEffect
+	(*TurnClockEntry)(nil),     // 15: meurpg.play.v1.TurnClockEntry
+	(*ConcentrationEntry)(nil), // 16: meurpg.play.v1.ConcentrationEntry
+	(*EffectSavePrompt)(nil),   // 17: meurpg.play.v1.EffectSavePrompt
+	(*ExtraDie)(nil),           // 18: meurpg.play.v1.ExtraDie
+	(*EffectSaveResult)(nil),   // 19: meurpg.play.v1.EffectSaveResult
+	(*EffectNote)(nil),         // 20: meurpg.play.v1.EffectNote
+	(*ExtraActionOption)(nil),  // 21: meurpg.play.v1.ExtraActionOption
+	(*EffectLabel)(nil),        // 22: meurpg.play.v1.EffectLabel
+	(*CharacterEffect)(nil),    // 23: meurpg.play.v1.CharacterEffect
+	(*Reroll)(nil),             // 24: meurpg.play.v1.Reroll
 }
 var file_meurpg_play_v1_lasting_effects_proto_depIdxs = []int32{
 	2,  // 0: meurpg.play.v1.EffectModifier.kind:type_name -> meurpg.play.v1.EffectModifierKind
 	3,  // 1: meurpg.play.v1.EffectModifier.applies_to:type_name -> meurpg.play.v1.EffectRollKind
-	5,  // 2: meurpg.play.v1.EffectEnd.phase:type_name -> meurpg.play.v1.EffectPhase
-	5,  // 3: meurpg.play.v1.EffectSave.phase:type_name -> meurpg.play.v1.EffectPhase
-	5,  // 4: meurpg.play.v1.EffectTrigger.phase:type_name -> meurpg.play.v1.EffectPhase
-	0,  // 5: meurpg.play.v1.LastingEffect.source_kind:type_name -> meurpg.play.v1.EffectSourceKind
-	8,  // 6: meurpg.play.v1.LastingEffect.modifiers:type_name -> meurpg.play.v1.EffectModifier
-	1,  // 7: meurpg.play.v1.LastingEffect.duration_kind:type_name -> meurpg.play.v1.EffectDurationKind
-	9,  // 8: meurpg.play.v1.LastingEffect.ends_at:type_name -> meurpg.play.v1.EffectEnd
-	10, // 9: meurpg.play.v1.LastingEffect.end_save:type_name -> meurpg.play.v1.EffectSave
-	10, // 10: meurpg.play.v1.LastingEffect.start_save:type_name -> meurpg.play.v1.EffectSave
-	11, // 11: meurpg.play.v1.LastingEffect.turn_trigger:type_name -> meurpg.play.v1.EffectTrigger
-	4,  // 12: meurpg.play.v1.LastingEffect.audience:type_name -> meurpg.play.v1.EffectAudience
-	0,  // 13: meurpg.play.v1.CatalogEffect.source_kind:type_name -> meurpg.play.v1.EffectSourceKind
-	1,  // 14: meurpg.play.v1.CatalogEffect.default_duration_kind:type_name -> meurpg.play.v1.EffectDurationKind
-	5,  // 15: meurpg.play.v1.TurnClockEntry.phase:type_name -> meurpg.play.v1.EffectPhase
-	5,  // 16: meurpg.play.v1.EffectSavePrompt.phase:type_name -> meurpg.play.v1.EffectPhase
-	17, // 17: meurpg.play.v1.EffectSavePrompt.extra_dice:type_name -> meurpg.play.v1.ExtraDie
-	17, // 18: meurpg.play.v1.EffectSaveResult.extra_dice:type_name -> meurpg.play.v1.ExtraDie
-	23, // 19: meurpg.play.v1.EffectSaveResult.rerolled:type_name -> meurpg.play.v1.Reroll
-	4,  // 20: meurpg.play.v1.CharacterEffect.audience:type_name -> meurpg.play.v1.EffectAudience
-	21, // [21:21] is the sub-list for method output_type
-	21, // [21:21] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	9,  // 2: meurpg.play.v1.EffectModifier.hit:type_name -> meurpg.play.v1.WeaponHitDamage
+	5,  // 3: meurpg.play.v1.EffectEnd.phase:type_name -> meurpg.play.v1.EffectPhase
+	5,  // 4: meurpg.play.v1.EffectSave.phase:type_name -> meurpg.play.v1.EffectPhase
+	5,  // 5: meurpg.play.v1.EffectTrigger.phase:type_name -> meurpg.play.v1.EffectPhase
+	0,  // 6: meurpg.play.v1.LastingEffect.source_kind:type_name -> meurpg.play.v1.EffectSourceKind
+	8,  // 7: meurpg.play.v1.LastingEffect.modifiers:type_name -> meurpg.play.v1.EffectModifier
+	1,  // 8: meurpg.play.v1.LastingEffect.duration_kind:type_name -> meurpg.play.v1.EffectDurationKind
+	10, // 9: meurpg.play.v1.LastingEffect.ends_at:type_name -> meurpg.play.v1.EffectEnd
+	11, // 10: meurpg.play.v1.LastingEffect.end_save:type_name -> meurpg.play.v1.EffectSave
+	11, // 11: meurpg.play.v1.LastingEffect.start_save:type_name -> meurpg.play.v1.EffectSave
+	12, // 12: meurpg.play.v1.LastingEffect.turn_trigger:type_name -> meurpg.play.v1.EffectTrigger
+	4,  // 13: meurpg.play.v1.LastingEffect.audience:type_name -> meurpg.play.v1.EffectAudience
+	0,  // 14: meurpg.play.v1.CatalogEffect.source_kind:type_name -> meurpg.play.v1.EffectSourceKind
+	1,  // 15: meurpg.play.v1.CatalogEffect.default_duration_kind:type_name -> meurpg.play.v1.EffectDurationKind
+	5,  // 16: meurpg.play.v1.TurnClockEntry.phase:type_name -> meurpg.play.v1.EffectPhase
+	5,  // 17: meurpg.play.v1.EffectSavePrompt.phase:type_name -> meurpg.play.v1.EffectPhase
+	18, // 18: meurpg.play.v1.EffectSavePrompt.extra_dice:type_name -> meurpg.play.v1.ExtraDie
+	18, // 19: meurpg.play.v1.EffectSaveResult.extra_dice:type_name -> meurpg.play.v1.ExtraDie
+	24, // 20: meurpg.play.v1.EffectSaveResult.rerolled:type_name -> meurpg.play.v1.Reroll
+	4,  // 21: meurpg.play.v1.CharacterEffect.audience:type_name -> meurpg.play.v1.EffectAudience
+	22, // [22:22] is the sub-list for method output_type
+	22, // [22:22] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_lasting_effects_proto_init() }
@@ -2593,18 +2767,19 @@ func file_meurpg_play_v1_lasting_effects_proto_init() {
 		return
 	}
 	file_meurpg_play_v1_combat_rolls_proto_init()
-	file_meurpg_play_v1_lasting_effects_proto_msgTypes[2].OneofWrappers = []any{}
-	file_meurpg_play_v1_lasting_effects_proto_msgTypes[4].OneofWrappers = []any{}
-	file_meurpg_play_v1_lasting_effects_proto_msgTypes[8].OneofWrappers = []any{}
-	file_meurpg_play_v1_lasting_effects_proto_msgTypes[10].OneofWrappers = []any{}
-	file_meurpg_play_v1_lasting_effects_proto_msgTypes[14].OneofWrappers = []any{}
+	file_meurpg_play_v1_lasting_effects_proto_msgTypes[0].OneofWrappers = []any{}
+	file_meurpg_play_v1_lasting_effects_proto_msgTypes[3].OneofWrappers = []any{}
+	file_meurpg_play_v1_lasting_effects_proto_msgTypes[5].OneofWrappers = []any{}
+	file_meurpg_play_v1_lasting_effects_proto_msgTypes[9].OneofWrappers = []any{}
+	file_meurpg_play_v1_lasting_effects_proto_msgTypes[11].OneofWrappers = []any{}
+	file_meurpg_play_v1_lasting_effects_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_lasting_effects_proto_rawDesc), len(file_meurpg_play_v1_lasting_effects_proto_rawDesc)),
 			NumEnums:      8,
-			NumMessages:   15,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

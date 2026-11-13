@@ -115,6 +115,7 @@ type MapLayer struct {
 	UpdatedAt        time.Time
 	Doors            []byte
 	NoPass           []byte
+	Surface          []byte
 }
 
 type MapPoint struct {

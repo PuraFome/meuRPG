@@ -173,16 +173,25 @@ func (f *damageFlow) run(ctx context.Context) (any, error) {
 	if err := f.settlePartsOfRoll(ctx); err != nil {
 		return nil, err
 	}
-	for _, g := range f.group {
-		if err := f.land(ctx, g); err != nil {
-			return nil, err
-		}
+	if err := f.landAll(ctx); err != nil {
+		return nil, err
 	}
 	if err := touch(ctx, f.c); err != nil {
 		return nil, err
 	}
 	f.c.characterID = &f.attacker.CharacterID
 	return f.out.made, nil
+}
+
+// landAll lands the roll on every target of the group, then uses the effects of spells whose damage it counted (a
+// weapon hit's smite: the effect is spent, the target saves; combat_hit_effects.go).
+func (f *damageFlow) landAll(ctx context.Context) error {
+	for _, g := range f.group {
+		if err := f.land(ctx, g); err != nil {
+			return err
+		}
+	}
+	return f.s.useHitEffects(ctx, f.c, hitUse{m: f.m, cs: f.cs, attacker: f.attacker, target: f.target}, f.pr, &f.out.made)
 }
 
 // prepare checks that the damage may be rolled and reads what the roll needs: the pending damage, the

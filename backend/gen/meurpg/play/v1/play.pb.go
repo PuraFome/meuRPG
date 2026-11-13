@@ -164,8 +164,16 @@ type AssumeWildShapeRequest struct {
 	BeastKey string `protobuf:"bytes,3,opt,name=beast_key,json=beastKey,proto3" json:"beast_key,omitempty"`
 	// A UUID the app generates once for this change and sends again on a retry.
 	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// True for "Permanecer na forma": the druid spends another use to keep the form
+	// they are in past its time (SRD 5.1). beast_key must be the beast they are. It
+	// costs the uses and no action, keeps the beast's hit points and starts the
+	// clock over. A stay with no form (it ended, or it was never taken) is refused
+	// with WILD_SHAPE_ENDED, never turned into a new form; a different beast is
+	// ALREADY_IN_WILD_SHAPE. False: a new form (an action and a use), and the same
+	// beast while in the form is ALREADY_IN_WILD_SHAPE.
+	Stay          bool `protobuf:"varint,5,opt,name=stay,proto3" json:"stay,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AssumeWildShapeRequest) Reset() {
@@ -224,6 +232,13 @@ func (x *AssumeWildShapeRequest) GetIdempotencyKey() string {
 		return x.IdempotencyKey
 	}
 	return ""
+}
+
+func (x *AssumeWildShapeRequest) GetStay() bool {
+	if x != nil {
+		return x.Stay
+	}
+	return false
 }
 
 // AssumeWildShapeResponse returns the character's vitals, with the form, and the
@@ -1776,8 +1791,12 @@ type CharacterVitals struct {
 	// gives back (half the DRUID level, rounded up; SRD 5.1, Druid 2). 0: the character
 	// does not have the feature. Whether the use is left is the `natural_recovery` resource.
 	NaturalRecoveryAllowance int32 `protobuf:"varint,104,opt,name=natural_recovery_allowance,json=naturalRecoveryAllowance,proto3" json:"natural_recovery_allowance,omitempty"`
-	unknownFields            protoimpl.UnknownFields
-	sizeCache                protoimpl.SizeCache
+	// The window to attune a magic item is open: the master's short or long rest opens it, and one
+	// attunement or ending by the owner spends it (SRD 5.1: attuning takes a short rest). The master
+	// needs no window. Only the master and the character's player read it.
+	AttunementOpen bool `protobuf:"varint,105,opt,name=attunement_open,json=attunementOpen,proto3" json:"attunement_open,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *CharacterVitals) Reset() {
@@ -1971,6 +1990,13 @@ func (x *CharacterVitals) GetNaturalRecoveryAllowance() int32 {
 	return 0
 }
 
+func (x *CharacterVitals) GetAttunementOpen() bool {
+	if x != nil {
+		return x.AttunementOpen
+	}
+	return false
+}
+
 // ActiveState is a temporary state that is on for a character. The numbers about the
 // state itself (its name, duration and ways to end) come from the sheet's content at the
 // time of the read, so a state the content no longer defines is not listed.
@@ -2076,7 +2102,12 @@ type WildShapeState struct {
 	// The beast's current hit points, 1 to hit_points_max (at 0 the form ends).
 	HitPointsCurrent int32 `protobuf:"varint,3,opt,name=hit_points_current,json=hitPointsCurrent,proto3" json:"hit_points_current,omitempty"`
 	// The beast's maximum hit points, from its stat block.
-	HitPointsMax  int32 `protobuf:"varint,4,opt,name=hit_points_max,json=hitPointsMax,proto3" json:"hit_points_max,omitempty"`
+	HitPointsMax int32 `protobuf:"varint,4,opt,name=hit_points_max,json=hitPointsMax,proto3" json:"hit_points_max,omitempty"`
+	// The game time the form has left, in seconds (half the druid's level in hours
+	// at the start). Only the master and the character's player read it, like the
+	// hit points. Unset for a form with no clock (a character with no druid level, or
+	// a form taken before the clocks existed).
+	SecondsLeft   *int32 `protobuf:"varint,5,opt,name=seconds_left,json=secondsLeft,proto3,oneof" json:"seconds_left,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2135,6 +2166,13 @@ func (x *WildShapeState) GetHitPointsCurrent() int32 {
 func (x *WildShapeState) GetHitPointsMax() int32 {
 	if x != nil {
 		return x.HitPointsMax
+	}
+	return 0
+}
+
+func (x *WildShapeState) GetSecondsLeft() int32 {
+	if x != nil && x.SecondsLeft != nil {
+		return *x.SecondsLeft
 	}
 	return 0
 }
@@ -6236,13 +6274,14 @@ var File_meurpg_play_v1_play_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\n" +
-	"\x19meurpg/play/v1/play.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#meurpg/campaigns/v1/campaigns.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a\x1emeurpg/play/v1/free_dice.proto\x1a\x1ameurpg/play/v1/scene.proto\x1a%meurpg/play/v1/session_messages.proto\x1a\x1cmeurpg/play/v1/summary.proto\x1a\x1ameurpg/play/v1/traps.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\xa2\x01\n" +
+	"\x19meurpg/play/v1/play.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a#meurpg/campaigns/v1/campaigns.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a\x1emeurpg/play/v1/free_dice.proto\x1a\x1ameurpg/play/v1/scene.proto\x1a%meurpg/play/v1/session_messages.proto\x1a\x1cmeurpg/play/v1/summary.proto\x1a\x1ameurpg/play/v1/traps.proto\x1a\x1bmeurpg/rules/v1/rules.proto\"\xb6\x01\n" +
 	"\x16AssumeWildShapeRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\x12\x1b\n" +
 	"\tbeast_key\x18\x03 \x01(\tR\bbeastKey\x12'\n" +
-	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x8b\x01\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\x12\x12\n" +
+	"\x04stay\x18\x05 \x01(\bR\x04stay\"\x8b\x01\n" +
 	"\x17AssumeWildShapeResponse\x127\n" +
 	"\x06vitals\x18\x01 \x01(\v2\x1f.meurpg.play.v1.CharacterVitalsR\x06vitals\x127\n" +
 	"\tencounter\x18\x02 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x84\x01\n" +
@@ -6341,7 +6380,8 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\baudience\x18\a \x01(\v2\x1d.meurpg.play.v1.ImageAudienceR\baudience\"a\n" +
 	"\rImageAudience\x125\n" +
 	"\x04kind\x18\x01 \x01(\x0e2!.meurpg.play.v1.ImageAudienceKindR\x04kind\x12\x19\n" +
-	"\buser_ids\x18\x02 \x03(\tR\auserIds\"\xfe\t\n" +
+	"\buser_ids\x18\x02 \x03(\tR\auserIds\"\xa7\n" +
+	"\n" +
 	"\x0fCharacterVitals\x12!\n" +
 	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12$\n" +
@@ -6370,7 +6410,8 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x10armor_class_base\x18e \x01(\x05R\x0earmorClassBase\x12:\n" +
 	"\x19arcane_recovery_allowance\x18f \x01(\x05R\x17arcaneRecoveryAllowance\x12@\n" +
 	"\ractive_states\x18g \x03(\v2\x1b.meurpg.play.v1.ActiveStateR\factiveStates\x12<\n" +
-	"\x1anatural_recovery_allowance\x18h \x01(\x05R\x18naturalRecoveryAllowance\x1aC\n" +
+	"\x1anatural_recovery_allowance\x18h \x01(\x05R\x18naturalRecoveryAllowance\x12'\n" +
+	"\x0fattunement_open\x18i \x01(\bR\x0eattunementOpen\x1aC\n" +
 	"\x15HitDiceUsedByDieEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\x05R\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\xb4\x01\n" +
@@ -6381,12 +6422,14 @@ const file_meurpg_play_v1_play_proto_rawDesc = "" +
 	"\x0fduration_rounds\x18\x04 \x01(\x05R\x0edurationRounds\x12\x1f\n" +
 	"\vrounds_left\x18\x05 \x01(\x05R\n" +
 	"roundsLeft\x12\x17\n" +
-	"\aends_on\x18\x06 \x03(\tR\x06endsOn\"\xa5\x01\n" +
+	"\aends_on\x18\x06 \x03(\tR\x06endsOn\"\xde\x01\n" +
 	"\x0eWildShapeState\x12\x1b\n" +
 	"\tbeast_key\x18\x01 \x01(\tR\bbeastKey\x12\"\n" +
 	"\rbeast_name_pt\x18\x02 \x01(\tR\vbeastNamePt\x12,\n" +
 	"\x12hit_points_current\x18\x03 \x01(\x05R\x10hitPointsCurrent\x12$\n" +
-	"\x0ehit_points_max\x18\x04 \x01(\x05R\fhitPointsMax\"}\n" +
+	"\x0ehit_points_max\x18\x04 \x01(\x05R\fhitPointsMax\x12&\n" +
+	"\fseconds_left\x18\x05 \x01(\x05H\x00R\vsecondsLeft\x88\x01\x01B\x0f\n" +
+	"\r_seconds_left\"}\n" +
 	"\x12FamiliarSightState\x12\x1f\n" +
 	"\vcreature_id\x18\x01 \x01(\tR\n" +
 	"creatureId\x12\x1b\n" +
@@ -7054,6 +7097,7 @@ func file_meurpg_play_v1_play_proto_init() {
 	file_meurpg_play_v1_session_messages_proto_init()
 	file_meurpg_play_v1_summary_proto_init()
 	file_meurpg_play_v1_traps_proto_init()
+	file_meurpg_play_v1_play_proto_msgTypes[27].OneofWrappers = []any{}
 	file_meurpg_play_v1_play_proto_msgTypes[33].OneofWrappers = []any{
 		(*WatchGameSessionResponse_Ready_)(nil),
 		(*WatchGameSessionResponse_Heartbeat_)(nil),

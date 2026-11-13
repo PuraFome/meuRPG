@@ -80,6 +80,9 @@ const (
 	// CharacterServiceSetEquippedProcedure is the fully-qualified name of the CharacterService's
 	// SetEquipped RPC.
 	CharacterServiceSetEquippedProcedure = "/meurpg.characters.v1.CharacterService/SetEquipped"
+	// CharacterServiceSetAttunementProcedure is the fully-qualified name of the CharacterService's
+	// SetAttunement RPC.
+	CharacterServiceSetAttunementProcedure = "/meurpg.characters.v1.CharacterService/SetAttunement"
 	// CharacterServiceMarkCharacterDeadProcedure is the fully-qualified name of the CharacterService's
 	// MarkCharacterDead RPC.
 	CharacterServiceMarkCharacterDeadProcedure = "/meurpg.characters.v1.CharacterService/MarkCharacterDead"
@@ -433,6 +436,16 @@ type CharacterServiceClient interface {
 	//   - `failed_precondition`: the character is dead (CharacterBlocked with
 	//     reason CHARACTER_DEAD), or play refused the change in the combat.
 	SetEquipped(context.Context, *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error)
+	// SetAttunement attunes the character to a magic item, or ends it (SRD 5.1, attunement).
+	// The owner needs the window a short or long rest opens (one attunement or ending for each
+	// window); the master needs none and may attune past a restriction. At most three items,
+	// and one copy of an item. The checks run in this order: stale revision, the window (owner only),
+	// the limit, the copy, the restriction (owner only). A dead character's owner has no window.
+	// Errors: `not_found` (the character is not the caller's to see), `invalid_argument` (the
+	// entry_id is not an entry of the sheet that asks for attunement), `aborted` (stale revision),
+	// `failed_precondition` with CharacterBlocked: ATTUNEMENT_LIMIT, ATTUNEMENT_RESTRICTED,
+	// ATTUNEMENT_NEEDS_REST or ATTUNEMENT_SAME_ITEM.
+	SetAttunement(context.Context, *connect.Request[v1.SetAttunementRequest]) (*connect.Response[v1.SetAttunementResponse], error)
 	// MarkCharacterDead records that a player character died (RN-03). Only
 	// the campaign's master may call it.
 	//
@@ -1068,6 +1081,12 @@ func NewCharacterServiceClient(httpClient connect.HTTPClient, baseURL string, op
 			connect.WithSchema(characterServiceMethods.ByName("SetEquipped")),
 			connect.WithClientOptions(opts...),
 		),
+		setAttunement: connect.NewClient[v1.SetAttunementRequest, v1.SetAttunementResponse](
+			httpClient,
+			baseURL+CharacterServiceSetAttunementProcedure,
+			connect.WithSchema(characterServiceMethods.ByName("SetAttunement")),
+			connect.WithClientOptions(opts...),
+		),
 		markCharacterDead: connect.NewClient[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse](
 			httpClient,
 			baseURL+CharacterServiceMarkCharacterDeadProcedure,
@@ -1274,6 +1293,7 @@ type characterServiceClient struct {
 	updateCharacterStory     *connect.Client[v1.UpdateCharacterStoryRequest, v1.UpdateCharacterStoryResponse]
 	setStoryEditing          *connect.Client[v1.SetStoryEditingRequest, v1.SetStoryEditingResponse]
 	setEquipped              *connect.Client[v1.SetEquippedRequest, v1.SetEquippedResponse]
+	setAttunement            *connect.Client[v1.SetAttunementRequest, v1.SetAttunementResponse]
 	markCharacterDead        *connect.Client[v1.MarkCharacterDeadRequest, v1.MarkCharacterDeadResponse]
 	getMasterNotes           *connect.Client[v1.GetMasterNotesRequest, v1.GetMasterNotesResponse]
 	updateMasterNotes        *connect.Client[v1.UpdateMasterNotesRequest, v1.UpdateMasterNotesResponse]
@@ -1354,6 +1374,11 @@ func (c *characterServiceClient) SetStoryEditing(ctx context.Context, req *conne
 // SetEquipped calls meurpg.characters.v1.CharacterService.SetEquipped.
 func (c *characterServiceClient) SetEquipped(ctx context.Context, req *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error) {
 	return c.setEquipped.CallUnary(ctx, req)
+}
+
+// SetAttunement calls meurpg.characters.v1.CharacterService.SetAttunement.
+func (c *characterServiceClient) SetAttunement(ctx context.Context, req *connect.Request[v1.SetAttunementRequest]) (*connect.Response[v1.SetAttunementResponse], error) {
+	return c.setAttunement.CallUnary(ctx, req)
 }
 
 // MarkCharacterDead calls meurpg.characters.v1.CharacterService.MarkCharacterDead.
@@ -1768,6 +1793,16 @@ type CharacterServiceHandler interface {
 	//   - `failed_precondition`: the character is dead (CharacterBlocked with
 	//     reason CHARACTER_DEAD), or play refused the change in the combat.
 	SetEquipped(context.Context, *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error)
+	// SetAttunement attunes the character to a magic item, or ends it (SRD 5.1, attunement).
+	// The owner needs the window a short or long rest opens (one attunement or ending for each
+	// window); the master needs none and may attune past a restriction. At most three items,
+	// and one copy of an item. The checks run in this order: stale revision, the window (owner only),
+	// the limit, the copy, the restriction (owner only). A dead character's owner has no window.
+	// Errors: `not_found` (the character is not the caller's to see), `invalid_argument` (the
+	// entry_id is not an entry of the sheet that asks for attunement), `aborted` (stale revision),
+	// `failed_precondition` with CharacterBlocked: ATTUNEMENT_LIMIT, ATTUNEMENT_RESTRICTED,
+	// ATTUNEMENT_NEEDS_REST or ATTUNEMENT_SAME_ITEM.
+	SetAttunement(context.Context, *connect.Request[v1.SetAttunementRequest]) (*connect.Response[v1.SetAttunementResponse], error)
 	// MarkCharacterDead records that a player character died (RN-03). Only
 	// the campaign's master may call it.
 	//
@@ -2399,6 +2434,12 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 		connect.WithSchema(characterServiceMethods.ByName("SetEquipped")),
 		connect.WithHandlerOptions(opts...),
 	)
+	characterServiceSetAttunementHandler := connect.NewUnaryHandler(
+		CharacterServiceSetAttunementProcedure,
+		svc.SetAttunement,
+		connect.WithSchema(characterServiceMethods.ByName("SetAttunement")),
+		connect.WithHandlerOptions(opts...),
+	)
 	characterServiceMarkCharacterDeadHandler := connect.NewUnaryHandler(
 		CharacterServiceMarkCharacterDeadProcedure,
 		svc.MarkCharacterDead,
@@ -2612,6 +2653,8 @@ func NewCharacterServiceHandler(svc CharacterServiceHandler, opts ...connect.Han
 			characterServiceSetStoryEditingHandler.ServeHTTP(w, r)
 		case CharacterServiceSetEquippedProcedure:
 			characterServiceSetEquippedHandler.ServeHTTP(w, r)
+		case CharacterServiceSetAttunementProcedure:
+			characterServiceSetAttunementHandler.ServeHTTP(w, r)
 		case CharacterServiceMarkCharacterDeadProcedure:
 			characterServiceMarkCharacterDeadHandler.ServeHTTP(w, r)
 		case CharacterServiceGetMasterNotesProcedure:
@@ -2719,6 +2762,10 @@ func (UnimplementedCharacterServiceHandler) SetStoryEditing(context.Context, *co
 
 func (UnimplementedCharacterServiceHandler) SetEquipped(context.Context, *connect.Request[v1.SetEquippedRequest]) (*connect.Response[v1.SetEquippedResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.SetEquipped is not implemented"))
+}
+
+func (UnimplementedCharacterServiceHandler) SetAttunement(context.Context, *connect.Request[v1.SetAttunementRequest]) (*connect.Response[v1.SetAttunementResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.characters.v1.CharacterService.SetAttunement is not implemented"))
 }
 
 func (UnimplementedCharacterServiceHandler) MarkCharacterDead(context.Context, *connect.Request[v1.MarkCharacterDeadRequest]) (*connect.Response[v1.MarkCharacterDeadResponse], error) {

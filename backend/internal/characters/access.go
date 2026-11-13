@@ -159,6 +159,7 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 		c.Derived = derivedToProto(der)
 		c.Derived.Gear = mapToProto(rules.DeriveGear(build, content, der), gearToProto)
 		addChangedContent(c.Derived, der.Issues, content, build, full)
+		fillMagicItems(content, c.Sheet.GetFull(), build, der)
 	}
 	return c, nil
 }

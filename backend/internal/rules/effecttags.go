@@ -77,6 +77,8 @@ func modifierTagPT(m EffectModifier) string {
 		return "Imunidade a condições"
 	case ModifierCheckBonus:
 		return fmt.Sprintf("%+d em testes de perícia", m.Value)
+	case ModifierWeaponHitDamage:
+		return weaponHitTagPT(m)
 	}
 	return abilityTagPT(m)
 }
@@ -125,4 +127,22 @@ func joinPT(keys []string, words map[string]string) string {
 		return strings.Join(ws, "")
 	}
 	return strings.Join(ws[:len(ws)-1], ", ") + " e " + ws[len(ws)-1]
+}
+
+var hitTriggerTagsPT = map[string]string{
+	HitTriggerNextHit: "no próximo golpe com arma", HitTriggerNextMeleeHit: "no próximo golpe corpo a corpo",
+	HitTriggerEachHit: "em cada golpe com arma enquanto concentra", HitTriggerMarkedTarget: "em cada golpe no alvo marcado",
+}
+
+// weaponHitTagPT is the label of a weapon_hit_damage ("+1d6 no próximo golpe com arma, +1d6 por nível acima,
+// até 4d6").
+func weaponHitTagPT(m EffectModifier) string {
+	tag := fmt.Sprintf("+%dd%d %s", m.Dice, m.Die, hitTriggerTagsPT[m.Trigger])
+	if m.PerSlotDice > 0 {
+		tag += fmt.Sprintf(", +%dd%d por nível acima", m.PerSlotDice, m.Die)
+	}
+	if m.MaxDice > 0 {
+		tag += fmt.Sprintf(", até %dd%d", m.MaxDice, m.Die)
+	}
+	return tag
 }

@@ -1210,6 +1210,34 @@ enum TableEffectModifierKind {
   TABLE_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE = 18;
   // Disadvantage on the ability checks of `abilities`.
   TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE = 19;
+  // Extra weapon damage on a hit the caster makes, as `trigger` says: `die` (d4, d6, d8, d10 or d12),
+  // `dice`, `per_slot_dice`, `max_dice`, `damage_type`, and optionally a `save` with the
+  // `on_fail_conditions` it puts on the target. Needs `trigger`, `die`, `dice` and `max_dice`; reads no other field. A spell has one of these. The
+  // spell must last (not instantaneous), and EACH_HIT and MARKED_TARGET need concentration.
+  TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE = 20;
+}
+
+// TableHitTrigger is which weapon hit of the caster a WEAPON_HIT_DAMAGE modifier rides on.
+enum TableHitTrigger {
+  TABLE_HIT_TRIGGER_UNSPECIFIED = 0;
+  // The caster's next weapon hit, melee or ranged; the effect is spent with it.
+  TABLE_HIT_TRIGGER_NEXT_HIT = 1;
+  // The caster's next melee weapon hit.
+  TABLE_HIT_TRIGGER_NEXT_MELEE_HIT = 2;
+  // Every weapon hit of the caster while the spell is concentrated on.
+  TABLE_HIT_TRIGGER_EACH_HIT = 3;
+  // Every hit on the creature the spell marked, while it is concentrated on.
+  TABLE_HIT_TRIGGER_MARKED_TARGET = 4;
+}
+
+// TableHitConditionDuration is how long the conditions a failed save of a WEAPON_HIT_DAMAGE puts on the target last.
+enum TableHitConditionDuration {
+  // Reads as UNTIL_END_OF_NEXT_TURN.
+  TABLE_HIT_CONDITION_DURATION_UNSPECIFIED = 0;
+  // Until the end of the target's next turn.
+  TABLE_HIT_CONDITION_DURATION_UNTIL_END_OF_NEXT_TURN = 1;
+  // As long as the spell lasts: needs a spell that asks for concentration, lasts a set time or lasts until dispelled.
+  TABLE_HIT_CONDITION_DURATION_UNTIL_SPELL_END = 2;
 }
 
 // TableEffectRollKind is a kind of roll a modifier reaches.
@@ -1254,6 +1282,26 @@ message TableEffectModifier {
   TableResistanceKind resistance_kind = 9;
   // RESISTANCE only: SRD damage type keys, each once, or "all" or "nonmagical_bps" alone. At least one.
   repeated string damage_types = 10 [(meurpg.options.v1.max_len) = 64];
+  // WEAPON_HIT_DAMAGE only, required: which hit carries the extra damage.
+  TableHitTrigger trigger = 11;
+  // WEAPON_HIT_DAMAGE only: the dice (of `die`) at the spell's own slot level, 1 to 10.
+  int32 dice = 12;
+  // WEAPON_HIT_DAMAGE only: the extra dice for each slot level above the spell's own, 0 to 5.
+  int32 per_slot_dice = 13;
+  // WEAPON_HIT_DAMAGE only, required: the most dice the damage has, at least `dice` and at most 20.
+  int32 max_dice = 14;
+  // WEAPON_HIT_DAMAGE only: the SRD damage type key of the extra damage ("damage-type:fire"). Unset is
+  // the weapon's own type.
+  string damage_type = 15 [(meurpg.options.v1.max_len) = 64];
+  // WEAPON_HIT_DAMAGE only: the ability key ("str", "dex", "con", "int", "wis", "cha") of the saving
+  // throw the target makes against the hit. Needs `on_fail_conditions`.
+  string save = 16 [(meurpg.options.v1.max_len) = 16];
+  // WEAPON_HIT_DAMAGE only: the SRD condition keys a failed `save` puts on the target, each once, at
+  // most 8. Needs `save`.
+  repeated string on_fail_conditions = 17 [(meurpg.options.v1.max_len) = 64];
+  // WEAPON_HIT_DAMAGE only: how long the `on_fail_conditions` last. Unset is until the end of the target's
+  // next turn. Needs `save`.
+  TableHitConditionDuration condition_duration = 18;
 }
 
 // TableZoneTrigger is when a table spell's area catches a creature.

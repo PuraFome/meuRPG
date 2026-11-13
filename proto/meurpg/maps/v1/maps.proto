@@ -843,6 +843,12 @@ enum MapLayer {
   // a chasm, a column of fire). A player of a map without fog of war receives it as
   // the master painted it; with fog, only the squares they see now or remember.
   MAP_LAYER_NO_PASS = 6;
+  // "Superfície": two bits a square (0 floor, 1 water, 2 climbable; PaintMapCellsRequest.value
+  // carries them). A creature that crosses water pays 1 extra foot per foot unless it has a
+  // swimming speed, and one that crosses a climbable surface unless it has a climbing speed
+  // (SRD 5.1; RN-21). It blocks nothing and hides nothing. A player of a map without fog of war
+  // receives it as painted; with fog, only the squares they see now or remember.
+  MAP_LAYER_SURFACE = 7;
 }
 
 // DoorState is what a square of the doors layer holds (RN-26). The numbers are
@@ -1936,7 +1942,8 @@ message PaintMapCellsRequest {
   // The value to paint: for DIFFICULT_TERRAIN and WALL, 0 clears and 1 sets; for
   // COVER, 0 none, 1 half, 2 three-quarters; for LIGHT, a LightLevel (0 clears,
   // 1 dark, 2 dim, 3 bright); for DOORS, a DoorState (0 clears, 1 to 5). The
-  // master toggles a door in play the same way: painting a square OPEN or CLOSED.
+  // master toggles a door in play the same way: painting a square OPEN or CLOSED; for SURFACE,
+  // 0 clears, 1 water, 2 climbable.
   int32 value = 4;
   // The squares, 1 to 400, each inside the map's grid. A repeated square is
   // painted once.
@@ -2006,6 +2013,11 @@ message GetMapLayersResponse {
   // painted. A player of a map without fog gets it as painted too; with fog, only the
   // squares they see now or remember, like the walls.
   bytes no_pass = 10;
+  // The surfaces, two bits a square (0 floor, 1 water, 2 climbable), in the layout of `cover`
+  // (square n is bits 2*(n%4) and 2*(n%4)+1 of byte n/4); ceil(squares/4) bytes, empty when
+  // nothing is painted. The master gets it as painted; a player the same, and with the fog of
+  // war only the squares they see now or remember, like the walls.
+  bytes surface = 11;
 }
 
 // SetMapFogRequest carries the fog settings to change. Each field set replaces

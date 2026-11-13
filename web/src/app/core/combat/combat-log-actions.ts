@@ -203,9 +203,10 @@ export function movedText(e: CombatLogEntry): string {
   return ` anda ${length}${spentNote(e)}`;
 }
 
-/** What a walk spent when it is not the distance: ", gasta 6,2 m de movimento (terreno difícil)". The
- * reasons come from the SRD: another creature's space and rubble cost double, a drag halves the speed and a
- * prone creature crawls at double the cost. Nothing when the walk spent what it went (or the event is old). */
+/** What a walk spent when it is not the distance: ", gasta 6,2 m de movimento (terreno)". The reasons come from
+ * the SRD: another creature's space, rubble, water without a swim speed and a climb without a climb speed each
+ * cost extra ("terreno": the log does not tell them apart), a drag halves the speed and a prone creature crawls at
+ * double the cost. Nothing when the walk spent what it went (or the event is old). */
 function spentNote(e: CombatLogEntry): string {
   const distance = e.distanceDft > 0 ? e.distanceDft : e.distanceFt * 10;
   if (e.spentDft <= 0 || e.spentDft === distance) {
@@ -214,7 +215,7 @@ function spentNote(e: CombatLogEntry): string {
   const factor = (e.moveDragging ? 2 : 1) * (e.moveCrawling ? 2 : 1);
   const reasons: string[] = [];
   if (e.spentDft > distance * factor) {
-    reasons.push('terreno difícil');
+    reasons.push('terreno');
   }
   if (e.moveDragging) {
     reasons.push('arrastando');
@@ -308,6 +309,10 @@ export function wildShapeText(e: CombatLogEntry): string {
       return ' voltou à forma normal, ao cair a 0 PV';
     case WildShapeEndReason.UNCONSCIOUS:
       return ' voltou à forma normal, ao ficar inconsciente';
+    case WildShapeEndReason.EXPIRED:
+      return ` voltou à forma normal: a forma de ${w.beastNamePt} acabou, passou o tempo`;
+    case WildShapeEndReason.MASTER_ENDED:
+      return ` voltou à forma normal: o mestre encerrou a forma de ${w.beastNamePt}`;
     default:
       return ' voltou à forma normal';
   }
