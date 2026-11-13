@@ -6,7 +6,6 @@ import {
   MoveRefusal,
   ReachableSquareSchema,
   RefusedSquareSchema,
-  SurfaceExtra,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { combatant } from './combat-testing';
 import {

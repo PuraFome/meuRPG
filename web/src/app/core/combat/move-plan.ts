@@ -3,7 +3,6 @@ import {
   type GetMoveOptionsResponse,
   MoveRefusal,
   type ReachableSquare,
-  SurfaceExtra,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { tieNumbers } from '../format/text';
 import { metersFixed } from '../units';
