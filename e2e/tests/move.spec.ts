@@ -125,7 +125,8 @@ test(
       await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
       // The real move charged what the plan said: 6,0 m of the 9,0 m, and the token is on the last square of water.
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Toren')?.col).toBe(7);
-      await expect(p.getByText('3,0 m', { exact: true }).first()).toBeVisible();
+      // Back on the turn, its movement row says what is left: the server's new state reaches the page, whatever the page showed a moment before.
+      await expect(p.locator('app-move-row').getByRole('status')).toContainText('3,0 m');
     } finally {
       await done();
     }

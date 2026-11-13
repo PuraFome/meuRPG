@@ -208,6 +208,9 @@ test('a barra de ferramentas marca só a ferramenta escolhida, com o visto e o f
   await atMaps(browser, 'Barra de ferramentas', 20, async ({ master, campaignId, mapId }) => {
     await paintMode(master, campaignId, mapId);
     await tools(master).getByRole('button', { name: 'Superfície' }).click();
+    // At 1280 the divider stands before the brush, as on the board.
+    await master.setViewportSize({ width: 1280, height: 1000 });
+    await expect(master.locator('app-editor-bar .bar__brush > .bar__sep')).toBeVisible();
     for (const width of [1280, 768]) {
       await master.setViewportSize({ width, height: 1000 });
       const buttons = tools(master).getByRole('button');
@@ -235,10 +238,6 @@ test('a barra de ferramentas marca só a ferramenta escolhida, com o visto e o f
       const label = await boxOf(master.getByText('Pincel', { exact: true }));
       const group = await boxOf(master.getByRole('radiogroup', { name: 'Pincel' }));
       expect(Math.abs(label.y + label.height / 2 - (group.y + group.height / 2)), `Pincel beside its choices at ${width}px`).toBeLessThan(group.height / 2);
-      // At 1280 the divider stands before the brush, as on the board.
-      if (width === 1280) {
-        await expect(master.locator('app-editor-bar .bar__brush > .bar__sep')).toBeVisible();
-      }
     }
   });
 });
