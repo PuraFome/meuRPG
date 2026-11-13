@@ -55,6 +55,12 @@ func playHiddenWorld(t *testing.T) playHiddenRead {
 	for _, sw := range watchers {
 		out.end = sw.beatAfter(t, 1, func(got int64) bool { return got == want })
 	}
+	// Ending the session moves the number once too: a heartbeat after the call reads that number, so the heartbeats are checked up to
+	// the event each stream had when the call was made.
+	beforeEnd := map[*person]int{}
+	for p, sw := range watchers {
+		beforeEnd[p] = sw.count()
+	}
 	must(w.master.play.EndGameSession(ctx, rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
 	for p, sw := range watchers {
 		select {
@@ -62,12 +68,12 @@ func playHiddenWorld(t *testing.T) playHiddenRead {
 		case <-time.After(30 * time.Second):
 			t.Fatalf("%s's stream did not end", p.name)
 		}
-		for _, ev := range sw.since(1) {
+		for i, ev := range sw.since(1) {
 			c := eventCase(ev)
 			switch c {
 			case "heartbeat":
 				n := ev.GetHeartbeat().GetSessionSeq()
-				if n < out.start || n > want {
+				if i+1 < beforeEnd[p] && (n < out.start || n > want) {
 					t.Errorf("%s: a heartbeat says %d, want a number from %d to %d", p.name, n, out.start, want)
 				}
 				if p == w.caio && !proto.Equal(ev, &playv1.WatchGameSessionResponse{SessionSeq: n, Event: &playv1.WatchGameSessionResponse_Heartbeat_{Heartbeat: &playv1.WatchGameSessionResponse_Heartbeat{SessionSeq: n}}}) {
