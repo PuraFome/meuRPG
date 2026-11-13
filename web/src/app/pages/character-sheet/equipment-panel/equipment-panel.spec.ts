@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
 import type { AttunementEntryVm } from '../../../core/characters/attunement';
@@ -20,10 +20,20 @@ const entry = (over: Partial<AttunementEntryVm>): AttunementEntryVm => ({
   ...over,
 });
 
-function sheetWith(entries: AttunementEntryVm[]): FullSheetVm {
+const piece = (key: string, namePt: string, equipped = true) => ({
+  key,
+  namePt,
+  kind: 'weapon' as const,
+  equipped,
+  twoHanded: false,
+  armorClassIfToggled: 0,
+  count: 1,
+});
+
+function sheetWith(entries: AttunementEntryVm[], gear: unknown[] = []): FullSheetVm {
   return {
     armorClass: 14,
-    gear: [],
+    gear,
     equipment: [],
     backgroundEquipment: '',
     coins: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
@@ -33,10 +43,12 @@ function sheetWith(entries: AttunementEntryVm[]): FullSheetVm {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [EquipmentPanel],
   template: `
     <app-equipment-panel
       [sheet]="sheet()"
+      [canEquip]="true"
       [canManageMagic]="manage()"
       [canChangeAttunement]="change()"
       [attunementIsClosed]="closed()"
@@ -150,5 +162,46 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
       h.notice.set('Item mágico adicionado.');
     });
     expect(flat(el.querySelector('.magic [role=status]'))).toBe('Item mágico adicionado.');
+  });
+
+  it('marks a gear row with the chip of its attunement: attuned, or asking for it', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith(
+          [
+            entry({
+              id: 'bonus:equipment:rapier',
+              kind: 'piece',
+              gearKey: 'equipment:rapier',
+              attuned: true,
+            }),
+            entry({ id: 'bonus:equipment:mace', kind: 'piece', gearKey: 'equipment:mace' }),
+          ],
+          [
+            piece('equipment:rapier', 'Rapieira'),
+            piece('equipment:mace', 'Maça'),
+            piece('equipment:dagger', 'Adaga'),
+          ],
+        ),
+      ),
+    );
+    const rows = Array.from(el.querySelectorAll('.gear-row'));
+    expect(flat(rows[0].querySelector('.gear-row__att'))).toBe('Sintonizado');
+    expect(rows[0].querySelector('.gear-row__att--on')).not.toBeNull();
+    expect(flat(rows[1].querySelector('.gear-row__att'))).toBe('Pede sintonização');
+    expect(rows[1].querySelector('.gear-row__att--on')).toBeNull();
+    expect(rows[2].querySelector('.gear-row__att')).toBeNull();
+  });
+
+  it('says what the lock leaves to the owner, once nobody here can add or mark', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([entry({})])));
+    expect(flat(el.querySelector('.gear__lock'))).toContain(
+      'Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.',
+    );
+  });
+
+  it('has no lock line for whoever can manage the items', () => {
+    const { el } = render((h) => h.manage.set(true));
+    expect(el.querySelector('.gear__lock')).toBeNull();
   });
 });

@@ -19,6 +19,7 @@
     [canChange]="canEquip()"
     [canMark]="canMark()"
     [busyKey]="equipBusyKey()"
+    [attunement]="chipOf()"
     (toggled)="gearToggled.emit($event)"
     (marksOpened)="marksOpened.emit($event)"
   />
@@ -34,8 +35,8 @@
       }
     </p>
   }
-  @if (!canMark() && hasWeapons() && canEquip()) {
-    <p class="gear__lock mr-muted"><mat-icon aria-hidden="true">lock</mat-icon>Marcas das armas: depois da trava, só o mestre muda.</p>
+  @if (!canMark() && !canManageMagic() && canEquip()) {
+    <p class="gear__lock mr-muted"><mat-icon aria-hidden="true">lock</mat-icon>Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.</p>
   }
   <p class="gear__notice" role="status">{{ marksNotice() }}</p>
   @if (magicItems().length > 0 || canManageMagic()) {

@@ -8355,7 +8355,7 @@ async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | '
     await expectScreenPasses(p, `Ficha, marcas nas armas ${where}`);
     // The table is in play, so the owner's sheet is locked: no "⋮" for the owner, and a line says who marks.
     await expect(equipment.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
-    await expect(equipment.getByText('Marcas das armas: depois da trava, só o mestre muda.')).toBeVisible();
+    await expect(equipment.getByText('Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.')).toBeVisible();
 
     // The master edits at any time: the weapon's "⋮" opens its marks, then a saved mark.
     await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);

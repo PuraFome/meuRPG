@@ -56,6 +56,12 @@
         <mat-icon class="gear-row__warn" aria-hidden="true">warning</mat-icon>
       }
       <app-weapon-tags [marks]="g.marks" />
+      @if (attunement()(g); as chip) {
+        <span class="gear-row__att" [class.gear-row__att--on]="chip === 'on'">
+          <mat-icon fontIcon="link" aria-hidden="true"></mat-icon>
+          <span class="mr-visually-hidden">{{ chip === 'on' ? 'Sintonizado' : 'Pede sintonização' }}</span>
+        </span>
+      }
       @if (idle(g)) {
         <span class="gear-row__idle">Parado</span>
       }

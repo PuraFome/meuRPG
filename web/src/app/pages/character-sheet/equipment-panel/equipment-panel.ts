@@ -5,7 +5,11 @@ import { MatIconModule } from '@angular/material/icon';
 import type { AttunementEntryVm } from '../../../core/characters/attunement';
 import type { GearVm } from '../../../core/characters/gear';
 
-import { GearList, type GearToggle } from '../../../shared/gear-list/gear-list';
+import {
+  type AttunementChip,
+  GearList,
+  type GearToggle,
+} from '../../../shared/gear-list/gear-list';
 import { FullSheetVm } from '../character-sheet.types';
 import { coinEntries, keepUnitsTogether } from '../sheet-format';
 
@@ -64,6 +68,22 @@ export class EquipmentPanel {
   protected readonly hasAttunement = computed(() =>
     this.sheet().attunement.entries.some((e) => e.asks || e.attuned),
   );
+
+  /** The attunement chip of each gear row, from the entry of the piece that names it. */
+  protected readonly chipOf = computed(() => {
+    const pieces = new Map(
+      this.sheet()
+        .attunement.entries.filter((e) => e.kind === 'piece' && e.gearKey)
+        .map((e) => [e.gearKey, e] as const),
+    );
+    return (g: GearVm): AttunementChip => {
+      const e = pieces.get(g.key);
+      if (!e) {
+        return '';
+      }
+      return e.attuned ? 'on' : e.asks ? 'asks' : '';
+    };
+  });
 
   protected pill(e: AttunementEntryVm): string {
     if (e.attuned) {

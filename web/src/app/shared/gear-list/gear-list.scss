@@ -139,3 +139,29 @@
     outline-offset: 2px;
   }
 }
+
+// The attunement chip: a small round link, solid when attuned and dashed when the piece asks for it.
+.gear-row__att {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  margin-inline-start: 4px;
+  border: 1px dashed var(--mr-rule);
+  border-radius: 999px;
+  vertical-align: middle;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  &--on {
+    border-style: solid;
+    border-color: var(--mr-accent);
+    background: var(--mr-accent-soft, transparent);
+  }
+}

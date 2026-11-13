@@ -29,6 +29,8 @@ export interface AttunementEntryVm {
   /** The entry id `SetAttunement` names; two copies of one item are two entries. */
   readonly id: string;
   readonly key: string;
+  /** A piece of gear: the key the sheet's gear row carries (a magic item has none). */
+  readonly gearKey?: string;
   /** The catalog name ("Manto élfico", "Defensora"); a piece without a catalog item has no entry here. */
   readonly namePt: string;
   readonly kind: 'magic' | 'piece';
@@ -62,6 +64,7 @@ export function attunementOf(
     entries.push({
       id: b.id,
       key: b.itemKey || b.key,
+      gearKey: b.key,
       namePt: b.itemNamePt || gearName(b.key),
       kind: 'piece',
       attuned: b.attuned,
