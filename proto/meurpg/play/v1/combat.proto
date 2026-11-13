@@ -3439,6 +3439,15 @@ message ReachableSquare {
   // foot), in tenths of a foot; 0 when the mover does not crawl. It adds to `extra_dft`: the screen
   // prints each with its word.
   int32 crawl_extra_dft = 23;
+  // The two parts of `extra_dft` apart, in tenths of a foot, for a line that crosses water and a climbable
+  // surface both: `swim_extra_dft` + `climb_extra_dft` = `extra_dft`. The screen prints each with its word
+  // ("+1,5 m nadando · +1,5 m escalando") and never subtracts.
+  int32 swim_extra_dft = 24;
+  int32 climb_extra_dft = 25;
+  // The rest of `cost_dft`, in tenths of a foot: the line and its difficult terrain, without the swim, the climb
+  // or the crawl. `path_dft` + `swim_extra_dft` + `climb_extra_dft` + `crawl_extra_dft` = `cost_dft`. The screen
+  // writes "1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando" from these, and never subtracts.
+  int32 path_dft = 26;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.

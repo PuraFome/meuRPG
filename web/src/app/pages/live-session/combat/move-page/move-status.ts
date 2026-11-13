@@ -2,6 +2,8 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import type { ExtraPart } from '../../../../core/combat/move-plan';
+
 /** What the page says about the square chosen (all of it from the server's options). */
 export interface MoveSummary {
   readonly kind: 'idle' | 'ok' | 'refused';
@@ -13,6 +15,8 @@ export interface MoveSummary {
   readonly warning: string;
   /** The known trap this square is inside ("Fosso escondido"), or ''. */
   readonly trap: string;
+  /** What swimming, climbing and crawling add to the cost, each with its word, as the server counted them; absent when none. */
+  readonly extra?: { readonly parts: readonly ExtraPart[]; readonly note: string };
 }
 
 /**
@@ -31,6 +35,19 @@ export interface MoveSummary {
       @case ('ok') {
         <div class="status" role="status">
           <p class="status__title">{{ summary().title }}</p>
+          @if (summary().extra; as extra) {
+            <p class="status__extra">
+              @for (part of extra.parts; track part.kind) {
+                @if (!$first) {
+                  <span aria-hidden="true"> · </span>
+                }
+                <span class="status__part">
+                  @if (icons[part.kind]; as icon) {
+                    <mat-icon aria-hidden="true">{{ icon }}</mat-icon>
+                  }{{ part.text }}</span>
+              }{{ extra.note }}
+            </p>
+          }
           <p class="status__text">{{ summary().detail }}</p>
         </div>
       }
@@ -85,6 +102,12 @@ export interface MoveSummary {
   styleUrl: './move-status.scss',
 })
 export class MoveStatus {
+  /** The glyph before the word of a swim and of a climb (the crawl has none): the map's own marks, for Água and Escalável. */
+  protected readonly icons: Readonly<Record<ExtraPart['kind'], string>> = {
+    swim: 'waves',
+    climb: 'keyboard_double_arrow_up',
+    crawl: '',
+  };
   readonly summary = input.required<MoveSummary>();
   readonly canDisengage = input(false);
   readonly busy = input(false);

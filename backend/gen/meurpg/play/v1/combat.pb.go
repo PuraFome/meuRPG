@@ -9455,6 +9455,15 @@ type ReachableSquare struct {
 	// foot), in tenths of a foot; 0 when the mover does not crawl. It adds to `extra_dft`: the screen
 	// prints each with its word.
 	CrawlExtraDft int32 `protobuf:"varint,23,opt,name=crawl_extra_dft,json=crawlExtraDft,proto3" json:"crawl_extra_dft,omitempty"`
+	// The two parts of `extra_dft` apart, in tenths of a foot, for a line that crosses water and a climbable
+	// surface both: `swim_extra_dft` + `climb_extra_dft` = `extra_dft`. The screen prints each with its word
+	// ("+1,5 m nadando · +1,5 m escalando") and never subtracts.
+	SwimExtraDft  int32 `protobuf:"varint,24,opt,name=swim_extra_dft,json=swimExtraDft,proto3" json:"swim_extra_dft,omitempty"`
+	ClimbExtraDft int32 `protobuf:"varint,25,opt,name=climb_extra_dft,json=climbExtraDft,proto3" json:"climb_extra_dft,omitempty"`
+	// The rest of `cost_dft`, in tenths of a foot: the line and its difficult terrain, without the swim, the climb
+	// or the crawl. `path_dft` + `swim_extra_dft` + `climb_extra_dft` + `crawl_extra_dft` = `cost_dft`. The screen
+	// writes "1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando" from these, and never subtracts.
+	PathDft       int32 `protobuf:"varint,26,opt,name=path_dft,json=pathDft,proto3" json:"path_dft,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9555,6 +9564,27 @@ func (x *ReachableSquare) GetSurfaceExtra() SurfaceExtra {
 func (x *ReachableSquare) GetCrawlExtraDft() int32 {
 	if x != nil {
 		return x.CrawlExtraDft
+	}
+	return 0
+}
+
+func (x *ReachableSquare) GetSwimExtraDft() int32 {
+	if x != nil {
+		return x.SwimExtraDft
+	}
+	return 0
+}
+
+func (x *ReachableSquare) GetClimbExtraDft() int32 {
+	if x != nil {
+		return x.ClimbExtraDft
+	}
+	return 0
+}
+
+func (x *ReachableSquare) GetPathDft() int32 {
+	if x != nil {
+		return x.PathDft
 	}
 	return 0
 }
@@ -27787,7 +27817,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fdragging_halved\x18\x15 \x01(\bR\x0edraggingHalved\"3\n" +
 	"\rDraggedSquare\x12\x10\n" +
 	"\x03col\x18\x01 \x01(\x05R\x03col\x12\x10\n" +
-	"\x03row\x18\x02 \x01(\x05R\x03row\"\x9f\x03\n" +
+	"\x03row\x18\x02 \x01(\x05R\x03row\"\x88\x04\n" +
 	"\x0fReachableSquare\x12\x10\n" +
 	"\x03col\x18\x01 \x01(\x05R\x03col\x12\x10\n" +
 	"\x03row\x18\x02 \x01(\x05R\x03row\x12\x19\n" +
@@ -27799,7 +27829,10 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"dragged_to\x18\x14 \x01(\v2\x1d.meurpg.play.v1.DraggedSquareR\tdraggedTo\x12\x1b\n" +
 	"\textra_dft\x18\x15 \x01(\x05R\bextraDft\x12A\n" +
 	"\rsurface_extra\x18\x16 \x01(\x0e2\x1c.meurpg.play.v1.SurfaceExtraR\fsurfaceExtra\x12&\n" +
-	"\x0fcrawl_extra_dft\x18\x17 \x01(\x05R\rcrawlExtraDft\"h\n" +
+	"\x0fcrawl_extra_dft\x18\x17 \x01(\x05R\rcrawlExtraDft\x12$\n" +
+	"\x0eswim_extra_dft\x18\x18 \x01(\x05R\fswimExtraDft\x12&\n" +
+	"\x0fclimb_extra_dft\x18\x19 \x01(\x05R\rclimbExtraDft\x12\x19\n" +
+	"\bpath_dft\x18\x1a \x01(\x05R\apathDft\"h\n" +
 	"\rRefusedSquare\x12\x10\n" +
 	"\x03col\x18\x01 \x01(\x05R\x03col\x12\x10\n" +
 	"\x03row\x18\x02 \x01(\x05R\x03row\x123\n" +

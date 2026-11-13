@@ -126,15 +126,24 @@
   }
 }
 
-// The zoom stays at the corner of the visible map while the map scrolls under it.
-.move__zoom {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 6;
+// The legend and the zoom share a row under the map: the legend takes what it needs and wraps, the zoom keeps to the end of the row.
+.move__below {
   display: flex;
-  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.move__legend {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.move__zoom {
+  display: flex;
+  flex: none;
   gap: 6px;
+  margin-top: var(--mr-space-3);
 
   button {
     display: flex;

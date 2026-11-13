@@ -3,7 +3,6 @@ import {
   type GetMoveOptionsResponse,
   MoveRefusal,
   type ReachableSquare,
-  SurfaceExtra,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { tieNumbers } from '../format/text';
 import { metersFixed } from '../units';
@@ -132,18 +131,47 @@ export function afterText(leftDft: number, costDft: number): string {
   return `Depois restam ${metersFixed((leftDft - costDft) / 10)}.`;
 }
 
-/** "Inclui 4,5 m nadando e 3,0 m rastejando.": the extra feet the server added to the cost of a square, each with its
- * word (`ReachableSquare.extraDft` named by `surfaceExtra`, and `crawlExtraDft`). Empty when the square pays none. */
-export function extraText(square: ReachableSquare): string {
-  const parts: string[] = [];
-  if (square.extraDft > 0) {
-    const word = square.surfaceExtra === SurfaceExtra.CLIMB ? 'escalando' : 'nadando';
-    parts.push(`${metersFixed(square.extraDft / 10)} ${word}`);
+/** One extra a square costs, with its word: "+1,5 m nadando". */
+export interface ExtraPart {
+  readonly kind: 'swim' | 'climb' | 'crawl';
+  readonly text: string;
+}
+
+/** The extras of a square as the server counted them (`swimExtraDft`, `climbExtraDft`, `crawlExtraDft`), each with its word, in the order
+ * the page says them: swimming, climbing, crawling. `note` is the sentence that follows when only a swim or only a climb is paid ("cada metro
+ * na água conta dobrado"): two extras say themselves. Empty when the square pays none. The page never subtracts. */
+export function extrasOf(square: ReachableSquare): { parts: readonly ExtraPart[]; note: string } {
+  const parts: ExtraPart[] = [];
+  const add = (kind: ExtraPart['kind'], dft: number, word: string) => {
+    if (dft > 0) {
+      parts.push({ kind, text: `+${metersFixed(dft / 10)} ${word}` });
+    }
+  };
+  add('swim', square.swimExtraDft, 'nadando');
+  add('climb', square.climbExtraDft, 'escalando');
+  add('crawl', square.crawlExtraDft, 'rastejando');
+  let note = '';
+  if (parts.length === 1 && parts[0].kind === 'swim') {
+    note = ': cada metro na água conta dobrado.';
+  } else if (parts.length === 1 && parts[0].kind === 'climb') {
+    note = ': cada metro escalado conta dobrado.';
   }
-  if (square.crawlExtraDft > 0) {
-    parts.push(`${metersFixed(square.crawlExtraDft / 10)} rastejando`);
+  return { parts, note };
+}
+
+/** "1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando.": a crawl's cost in its parts, each as the server counted it (`pathDft` and the
+ * extras). Empty when the square does not crawl: the cost line says the rest. */
+export function extraBreakdown(square: ReachableSquare): string {
+  if (square.crawlExtraDft <= 0) {
+    return '';
   }
-  return parts.length > 0 ? `Inclui ${parts.join(' e ')}.` : '';
+  const parts = [
+    `${metersFixed(square.pathDft / 10)} do caminho`,
+    ...(square.swimExtraDft > 0 ? [`${metersFixed(square.swimExtraDft / 10)} nadando`] : []),
+    ...(square.climbExtraDft > 0 ? [`${metersFixed(square.climbExtraDft / 10)} escalando`] : []),
+    `${metersFixed(square.crawlExtraDft / 10)} rastejando`,
+  ];
+  return `${parts.join(' + ')}.`;
 }
 
 /** Who a square's exit may provoke, by name: only combatants the caller sees
