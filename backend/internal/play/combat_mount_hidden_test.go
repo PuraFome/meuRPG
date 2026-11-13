@@ -76,3 +76,39 @@ func TestMountedCombat_AHiddenRiderOnAVisibleMountLeaksNothing(t *testing.T) {
 		})
 	}
 }
+
+// TestMountedCombat_ADismissedMountLetsItsRiderStandOnItsOwn: the steed of a spell that ends is dismissed from the combat, and the
+// rider it carried is on foot where it stood, not stranded on a mount that is not there; the master's undo of the end seats it again.
+func TestMountedCombat_ADismissedMountLetsItsRiderStandOnItsOwn(t *testing.T) {
+	t.Parallel()
+	a := newSummoners(t)
+	e := a.toSalvia(t, a.summonersFight(t))
+	if _, err := a.summonWolves(t, a.bia, e, 11); err != nil {
+		t.Fatalf("CastSpell() error = %v", err)
+	}
+	wolf := a.id(t, "Lobo atroz 1")
+	a.execSQL(t, `UPDATE combatants SET mounted_on_id = $1, grid_col = m.grid_col, grid_row = m.grid_row FROM combatants m WHERE m.id = $1 AND combatants.id = $2`, wolf, a.id(t, "Toren"))
+	linked := func() *string {
+		var on *string
+		if err := a.h.pool.QueryRow(t.Context(), `SELECT mounted_on_id::text FROM combatants WHERE id = $1`, a.id(t, "Toren")).Scan(&on); err != nil {
+			t.Fatalf("read Toren's link: %v", err)
+		}
+		return on
+	}
+	if on := linked(); on == nil || *on != wolf {
+		t.Fatalf("the positive control failed: Toren rides %v, want the wolf", on)
+	}
+	if _, err := a.conditions(t, a.bia, e, "Sálvia", nil, false, true); err != nil {
+		t.Fatalf("SetCombatantConditions(end the concentration) error = %v", err)
+	}
+	if on := linked(); on != nil {
+		t.Errorf("Toren rides %s after the wolf was dismissed, want nothing", *on)
+	}
+	e = a.get(t, a.master)
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if on := linked(); on == nil || *on != wolf {
+		t.Errorf("Toren rides %v after the undo, want the wolf again", on)
+	}
+}
