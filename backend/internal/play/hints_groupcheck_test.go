@@ -15,6 +15,7 @@ import (
 const kGroupChanged = "*playv1.WatchGameSessionResponse_GroupCheckChanged_"
 
 func (a *armed) askGroupCall(t *testing.T, key string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := a.master.contests.RequestGroupCheck(t.Context(), connect.NewRequest(&playv1.RequestGroupCheckRequest{
 			CampaignId: a.campaignID, IdempotencyKey: key, SkillKey: stealthKey, Dc: 12,
@@ -24,6 +25,7 @@ func (a *armed) askGroupCall(t *testing.T, key string) func() error {
 }
 
 func (a *armed) rollGroupCall(t *testing.T, u *user, key, checkID string, face int) func() error {
+	t.Helper()
 	return func() error {
 		a.h.roller.queue(face)
 		_, err := u.contests.RollGroupCheck(t.Context(), connect.NewRequest(&playv1.RollGroupCheckRequest{
@@ -34,6 +36,7 @@ func (a *armed) rollGroupCall(t *testing.T, u *user, key, checkID string, face i
 }
 
 func (a *armed) rollForCall(t *testing.T, key, checkID, characterID string, face int) func() error {
+	t.Helper()
 	return func() error {
 		a.h.roller.queue(face)
 		_, err := a.master.contests.RollForPlayer(t.Context(), connect.NewRequest(&playv1.RollForPlayerRequest{
@@ -44,6 +47,7 @@ func (a *armed) rollForCall(t *testing.T, key, checkID, characterID string, face
 }
 
 func (a *armed) closeGroupCall(t *testing.T, key, checkID string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := a.master.contests.CloseGroupCheck(t.Context(), connect.NewRequest(&playv1.CloseGroupCheckRequest{
 			CampaignId: a.campaignID, IdempotencyKey: key, GroupCheckId: checkID,

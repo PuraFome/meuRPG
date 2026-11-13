@@ -400,7 +400,7 @@ func (s *Service) tellFiredOutside(h *hints, campaignID string, fired *trapFireE
 	if fired == nil {
 		return
 	}
-	h.after(func(ctx context.Context, say sayFn) {
+	h.after(func(ctx context.Context, _ sayFn) {
 		s.traps.TrapChanged(ctx, campaignID, fired.MapID, fired.PointID)
 	})
 	h.tell(campaignID, masterMapChanged(fired.MapID))

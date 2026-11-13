@@ -477,7 +477,7 @@ var hiddenWrites = []hiddenWrite{
 			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
 		},
 		prepare: func(w *world, variant int) func() {
-			seed := uint64(w.secrets.number("seq-treasure-seed", []int64{6101, 6202}[variant])) //nolint:gosec // G115: a small test number
+			seed := uint64(w.secrets.number("seq-treasure-seed", []int64{6101, 6202}[variant]))
 			name := w.secrets.marker([]string{"seq-treasure-a", "seq-treasure-bcdefgh"}[variant])
 			return func() {
 				rolled := must(w.master.treasure.GenerateTreasure(w.t.Context(), rq(&mapsv1.GenerateTreasureRequest{CampaignId: w.campaign, Mode: mapsv1.TreasureMode_TREASURE_MODE_HOARD, PartyLevel: proto.Int32(5), Seed: &seed}))).GetTreasure()

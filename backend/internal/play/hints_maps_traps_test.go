@@ -22,6 +22,7 @@ func (r *trapRig) treasureClient(u *user) mapsv1connect.TreasureServiceClient {
 }
 
 func (r *trapRig) placeTreasureCall(t *testing.T, key string, col int32) func() error {
+	t.Helper()
 	content, err := testRules()
 	if err != nil {
 		t.Fatalf("rules.LoadSRD() error = %v", err)

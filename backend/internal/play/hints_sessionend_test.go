@@ -19,6 +19,7 @@ import (
 const kSessionEnded = "*playv1.WatchGameSessionResponse_SessionEnded_"
 
 func (a *armed) endCall(t *testing.T, sessionID string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := a.master.play.EndGameSession(t.Context(), connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: a.campaignID, GameSessionId: sessionID}))
 		return err

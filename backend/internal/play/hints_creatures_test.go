@@ -25,6 +25,7 @@ func (a *armed) summonersHints(t *testing.T, quiet ...string) *hintRig {
 }
 
 func (a *armed) renameCall(t *testing.T, u *user, id, name string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := u.characters.RenameCreature(t.Context(), connect.NewRequest(&charactersv1.RenameCreatureRequest{CampaignId: a.campaignID, CreatureId: id, Name: name}))
 		return err
@@ -32,6 +33,7 @@ func (a *armed) renameCall(t *testing.T, u *user, id, name string) func() error 
 }
 
 func (a *armed) dismissCall(t *testing.T, u *user, id string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := u.characters.DismissCreature(t.Context(), connect.NewRequest(&charactersv1.DismissCreatureRequest{CampaignId: a.campaignID, CreatureId: id}))
 		return err
@@ -57,6 +59,7 @@ func heardOnly(t *testing.T, heard map[string][]string, kind string, who ...stri
 }
 
 func (a *armed) giveCall(t *testing.T, key, monster string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := a.master.characters.GiveCreature(t.Context(), connect.NewRequest(&charactersv1.GiveCreatureRequest{
 			CampaignId: a.campaignID, CharacterId: a.toren.GetId(), MonsterKey: monster, Name: "Presa", IdempotencyKey: key,

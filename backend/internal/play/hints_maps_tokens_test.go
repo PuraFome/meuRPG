@@ -21,6 +21,7 @@ func mapRigHints(t *testing.T, quiet ...string) (*trapRig, *hintRig) {
 }
 
 func (r *trapRig) placeCall(t *testing.T, characterID string, col, row int) func() error {
+	t.Helper()
 	x, y := sq(col, row)
 	return func() error {
 		_, err := r.mc(r.master).PlaceMapToken(t.Context(), connect.NewRequest(&mapsv1.PlaceMapTokenRequest{

@@ -108,7 +108,10 @@ func (o *sessionOut) Send(to sessiontell.Audience, msg proto.Message) {
 	if !ok {
 		return // only the stream's own message is told
 	}
-	mk := func() *playv1.WatchGameSessionResponse { return proto.Clone(ev).(*playv1.WatchGameSessionResponse) }
+	mk := func() *playv1.WatchGameSessionResponse {
+		m, _ := proto.Clone(ev).(*playv1.WatchGameSessionResponse)
+		return m
+	}
 	if to.Master || to.Players {
 		o.say(o.campaignID, live.Event{Audience: live.Audience{Master: to.Master, Players: to.Players}, Message: mk()})
 	}

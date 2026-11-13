@@ -18,6 +18,7 @@ const (
 )
 
 func (at *sceneTable) currentMapCall(t *testing.T, mapID string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := at.master.play.SetCurrentMap(t.Context(), connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: at.campaignID, MapId: mapID}))
 		return err

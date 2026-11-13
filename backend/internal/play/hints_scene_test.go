@@ -25,6 +25,7 @@ func (at *sceneTable) sceneHints(t *testing.T, quiet ...string) *hintRig {
 }
 
 func (at *sceneTable) openCall(t *testing.T, point string, us ...*user) func() error {
+	t.Helper()
 	return func() error {
 		req := &playv1.OpenSceneRequest{CampaignId: at.campaignID, PointId: point}
 		if len(us) > 0 {
@@ -36,20 +37,21 @@ func (at *sceneTable) openCall(t *testing.T, point string, us ...*user) func() e
 }
 
 func (at *sceneTable) closeCall(t *testing.T) func() error {
+	t.Helper()
 	return func() error {
 		_, err := at.master.play.CloseScene(t.Context(), connect.NewRequest(&playv1.CloseSceneRequest{CampaignId: at.campaignID}))
 		return err
 	}
 }
 
-func (at *sceneTable) audienceCall(t *testing.T, us ...*user) func() error {
+func (at *sceneTable) audienceCall(_ *testing.T, us ...*user) func() error {
 	return func() error {
 		_, err := at.setAudience(at.master, audienceOf(us...))
 		return err
 	}
 }
 
-func (at *sceneTable) mayJoinCall(t *testing.T, on bool) func() error {
+func (at *sceneTable) mayJoinCall(_ *testing.T, on bool) func() error {
 	return func() error {
 		_, err := at.setMayJoin(at.master, on)
 		return err
@@ -213,19 +215,19 @@ func TestJoinSceneHints(t *testing.T) {
 func TestJoinSceneRefusedTellsNothing(t *testing.T) {
 	t.Parallel()
 	at := newSceneTable(t)
-	at.openCall(t, at.point, at.ana)() // the switch is off
+	do(t, at.openCall(t, at.point, at.ana)) // the switch is off
 	g := at.sceneHints(t)
 	g.refused(func() error { _, err := at.join(at.caio); return err })
 }
 
-func (at *sceneTable) grantCall(t *testing.T, key, character string) func() error {
+func (at *sceneTable) grantCall(_ *testing.T, key, character string) func() error {
 	return func() error {
 		_, err := sceneGrant(at.armed, at.master, at.action, character, key)
 		return err
 	}
 }
 
-func (at *sceneTable) rollCall(t *testing.T, u *user, key string, face int32) func() error {
+func (at *sceneTable) rollCall(_ *testing.T, u *user, key string, face int32) func() error {
 	return func() error {
 		_, err := sceneRollWith(at.armed, u, at.campaignID, at.action, key, &playv1.RollSceneCheckRequest{Roll: &playv1.RollSceneCheckRequest_D20Face{D20Face: face}})
 		return err

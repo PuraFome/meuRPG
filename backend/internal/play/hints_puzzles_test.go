@@ -30,6 +30,7 @@ func (p *puzzleTable) puzzleHints(t *testing.T, quiet ...string) *hintRig {
 var everyoneHearsAPuzzle = map[string][]string{"master": {kPuzzleChanged}, "Ana": {kPuzzleChanged}, "Caio": {kPuzzleChanged}, "Bia": {kPuzzleChanged}}
 
 func (p *puzzleTable) showCall(t *testing.T, id string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := p.pc(p.master).ShowPuzzle(t.Context(), connect.NewRequest(&playv1.ShowPuzzleRequest{CampaignId: p.campaignID, PuzzleId: id}))
 		return err
@@ -37,6 +38,7 @@ func (p *puzzleTable) showCall(t *testing.T, id string) func() error {
 }
 
 func (p *puzzleTable) moveCall(t *testing.T, u *user, id string, mv *playv1.PuzzleMove, key string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := p.moveKey(t, u, id, mv, key)
 		return err
@@ -44,6 +46,7 @@ func (p *puzzleTable) moveCall(t *testing.T, u *user, id string, mv *playv1.Puzz
 }
 
 func (p *puzzleTable) hintCall(t *testing.T, u *user, id string, face int32, key string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := p.tryHintKey(t, u, id, face, key)
 		return err
@@ -182,6 +185,7 @@ func TestTryPuzzleHintRefusedTellsNothing(t *testing.T) {
 }
 
 func (p *puzzleTable) createCall(t *testing.T, name, key string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := p.pc(p.master).CreatePuzzle(t.Context(), connect.NewRequest(&playv1.CreatePuzzleRequest{
 			CampaignId: p.campaignID, Name: name, IdempotencyKey: key, Config: lockConfig(4, playv1.PuzzleAlphabet_PUZZLE_ALPHABET_DIGITS),
@@ -197,10 +201,9 @@ func TestCreatePuzzleHints(t *testing.T) {
 	p := newPuzzleTable(t)
 	g := p.puzzleHints(t, "Ana", "Caio", "Bia")
 	key := newKey()
-	var first map[string][]string
-	t.Run("the write moves the number once", func(_ *testing.T) { first = g.first(p.createCall(t, "Cofre", key), false) })
-	t.Run("the repeat moves nothing", func(_ *testing.T) { g.replay(p.createCall(t, "Cofre", key), first) })
-	t.Run("the key used for another request tells nothing", func(_ *testing.T) { g.refused(p.createCall(t, "Outro cofre", key)) })
+	first := g.first(p.createCall(t, "Cofre", key), false) // the write moves the number once
+	g.replay(p.createCall(t, "Cofre", key), first)         // the repeat moves nothing
+	g.refused(p.createCall(t, "Outro cofre", key))         // the key used for another request tells nothing
 }
 
 func TestCreatePuzzleWithNoOpenSessionMovesNothing(t *testing.T) {
@@ -248,6 +251,7 @@ func TestUpdatePuzzleOfAShownOneRefusedTellsNothing(t *testing.T) {
 }
 
 func (p *puzzleTable) archiveCall(t *testing.T, id string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := p.pc(p.master).ArchivePuzzle(t.Context(), connect.NewRequest(&playv1.ArchivePuzzleRequest{CampaignId: p.campaignID, PuzzleId: id}))
 		return err

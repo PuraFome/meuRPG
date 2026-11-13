@@ -15,6 +15,7 @@ import (
 const kTableScreen = "*playv1.WatchGameSessionResponse_TableScreenChanged_"
 
 func (a *armed) stageCall(t *testing.T, character string, hidden bool) func() error {
+	t.Helper()
 	return func() error {
 		_, err := a.master.play.PutOnStage(t.Context(), connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: a.campaignID, CharacterId: character, Hidden: hidden}))
 		return err
@@ -22,6 +23,7 @@ func (a *armed) stageCall(t *testing.T, character string, hidden bool) func() er
 }
 
 func (a *armed) offStageCall(t *testing.T, character string) func() error {
+	t.Helper()
 	return func() error {
 		_, err := a.master.play.TakeOffStage(t.Context(), connect.NewRequest(&playv1.TakeOffStageRequest{CampaignId: a.campaignID, CharacterId: character}))
 		return err
@@ -113,7 +115,7 @@ func TestPutOnStageWithNoOpenSessionRefusesAsBefore(t *testing.T) {
 	}
 }
 
-func (a *armed) tableScreenCall(t *testing.T, revision int32) func() error {
+func (a *armed) tableScreenCall(_ *testing.T, revision int32) func() error {
 	return func() error {
 		_, err := a.setScreen(a.master, revision, false, kMap)
 		return err
