@@ -211,7 +211,9 @@
           "row": 1,
           "used_dft": 1,
           "last_dft": 1,
-          "cover": "x"
+          "cover": "x",
+          "rider_id": "x",
+          "rider_cover": "x"
         },
         "col": 1,
         "row": 1,
@@ -565,7 +567,9 @@
     "row": 1,
     "used_dft": 1,
     "last_dft": 1,
-    "cover": "x"
+    "cover": "x",
+    "rider_id": "x",
+    "rider_cover": "x"
   },
   "stopped_early": true,
   "locked_door": true,
@@ -578,7 +582,9 @@
     "row": 1,
     "used_dft": 1,
     "last_dft": 1,
-    "cover": "x"
+    "cover": "x",
+    "rider_id": "x",
+    "rider_cover": "x"
   },
   "return_blocked": true,
   "by_hand": true,
@@ -613,6 +619,12 @@
   ],
   "dismissed_ids": [
     "x"
+  ],
+  "unseated": [
+    {
+      "rider": "x",
+      "mount": "x"
+    }
   ],
   "summon_roll": {
     "total": 1,
@@ -907,7 +919,9 @@
         "row": 1,
         "used_dft": 1,
         "last_dft": 1,
-        "cover": "x"
+        "cover": "x",
+        "rider_id": "x",
+        "rider_cover": "x"
       },
       "col": 1,
       "row": 1,
@@ -984,7 +998,9 @@
     "row": 1,
     "used_dft": 1,
     "last_dft": 1,
-    "cover": "x"
+    "cover": "x",
+    "rider_id": "x",
+    "rider_cover": "x"
   },
   "teleport": {
     "from": {
@@ -993,7 +1009,9 @@
       "row": 1,
       "used_dft": 1,
       "last_dft": 1,
-      "cover": "x"
+      "cover": "x",
+      "rider_id": "x",
+      "rider_cover": "x"
     },
     "col": 1,
     "row": 1
