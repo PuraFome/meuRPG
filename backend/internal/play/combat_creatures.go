@@ -7,6 +7,8 @@ import (
 	"math"
 	"slices"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
+
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
@@ -89,18 +91,14 @@ func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 			return nil, errCombatantNotFound()
 		}
 	}
-	// The movement left is the combatant's own (speedDFt: the conditions that
-	// leave no speed, the Dash), the same number its view shows.
-	if opts.GetEconomy() != nil {
-		opts.Economy.Movement = movementLeftOf(c)
-	}
 	return opts, nil
 }
 
 // movementLeftOf is the combatant's speed, movement used and movement left this
-// turn, in tenths of a foot and in feet rounded down (RN-21).
-func movementLeftOf(c playdb.Combatant) *rulesv1.MovementLeft {
-	speed, left := speedDFt(c), movementLeftDFt(c)
+// turn, in tenths of a foot and in feet rounded down (RN-21), at the speed of the surface it stands on:
+// the number its view shows (shareEconomy) and the Mover page leads with.
+func movementLeftOf(c playdb.Combatant, standing grid.Surface) *rulesv1.MovementLeft {
+	speed, left := speedOnDFt(c, standing), movementLeftAtDFt(c, standing)
 	return &rulesv1.MovementLeft{
 		SpeedFt: clamp32(speed/10, 0, math.MaxInt32), UsedFt: clamp32(int(c.MovementUsedDft)/10, 0, math.MaxInt32), LeftFt: clamp32(left/10, 0, math.MaxInt32),
 		SpeedDft: clamp32(speed, 0, math.MaxInt32), UsedDft: clamp32(int(c.MovementUsedDft), 0, math.MaxInt32), LeftDft: clamp32(left, 0, math.MaxInt32),

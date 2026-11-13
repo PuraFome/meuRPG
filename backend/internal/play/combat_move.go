@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"slices"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -35,12 +34,8 @@ type TerrainSource interface {
 	// Terrain returns the map's grid and layers, or a `not_found` Connect error
 	// when mapID is not a map of the campaign.
 	Terrain(ctx context.Context, tx pgx.Tx, campaignID, mapID string) (grid.Terrain, error)
-}
-
-// SurfaceSource is the map's surface layer alone, for what a view says of a combatant that stands in water or on a climbable
-// surface (#819). A TerrainSource that also implements it (maps.Service does) is used; one that does not leaves every combatant on the
-// floor in the view. It is one indexed read of one column, once per view.
-type SurfaceSource interface {
+	// Surface returns the map's surface layer alone (water, climbable) as the grid g reads it: one indexed read of one
+	// column, for what a combatant stands on (the counter, standing up). The layer of a map with none painted is all floor.
 	Surface(ctx context.Context, tx pgx.Tx, mapID string, g grid.Grid) (*grid.SurfaceLayer, error)
 }
 
@@ -134,7 +129,7 @@ func squareOfCombatant(c playdb.Combatant) grid.Square {
 }
 
 // flies says whether the combatant moves on its fly speed: it has one and it is
-// the better of its speeds, the one speedDFt gives. A creature that walks faster
+// the better of its speeds, the one the floor's speed is. A creature that walks faster
 // than it flies (walk 60, fly 10) walks.
 func flies(c playdb.Combatant) bool { return c.SpeedFlyFt > 0 && c.SpeedFlyFt >= c.SpeedFt }
 
@@ -182,37 +177,6 @@ func speedFtOf(c playdb.Combatant) int32 {
 	}
 	return max(c.SpeedSwimFt, c.SpeedClimbFt)
 }
-
-// speedDFt is the combatant's best speed for this turn, in tenths of a foot: its
-// walking speed, or its fly speed when it has a better one, twice after the Dash
-// action (RN-21).
-func speedDFt(c playdb.Combatant) int {
-	if slices.ContainsFunc(c.Conditions, func(k string) bool { return slices.Contains(noSpeed, k) }) {
-		return 0
-	}
-	if c.EffectNoMove { // the lethargy of a Velocidade that ended (RN-22)
-		return 0
-	}
-	speed := (int(speedFtOf(c)) + int(c.EffectSpeedAddFt)) * 10
-	if c.Dashed {
-		speed *= 2
-	}
-	// The speed the effects leave: doubled by Velocidade, halved or 0 by exhaustion (SRD, Conditions).
-	if c.EffectSpeedPct > 0 {
-		speed = speed * int(c.EffectSpeedPct) / 100
-	}
-	return speed
-}
-
-// movementLeftDFt is the movement the combatant has left this turn, in tenths of
-// a foot.
-func movementLeftDFt(c playdb.Combatant) int {
-	return max(speedDFt(c)-int(c.MovementUsedDft), 0)
-}
-
-// movementLeftFt is movementLeftDFt in feet, rounded down: the field the shipped
-// web reads.
-func movementLeftFt(c playdb.Combatant) int { return movementLeftDFt(c) / 10 }
 
 // placed says whether the combatant has a square on the grid.
 func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != nil }
@@ -656,7 +620,7 @@ func (s *Service) planPlayerMove(ctx context.Context, a *moveAttempt) error {
 		all:     occupantsFor(a.cs, a.target, combatViewer{master: true}),
 		mover:   a.mover,
 		origin:  squareOfCombatant(a.target),
-		leftDFt: movementLeftDFt(a.target) / a.factor, // the path that fits: a drag costs twice its length
+		leftDFt: movementLeftAtDFt(a.target, grid.SurfaceFloor) / a.factor, // the path that fits (a jump's: on foot): a drag costs twice its length
 	}
 	switch a.req.jump {
 	case playv1.JumpKind_JUMP_KIND_LONG:
@@ -1069,7 +1033,7 @@ func (s *Service) GetMoveOptions(
 	if isTheatre(d.enc) {
 		// Without a map there is nowhere to go: a valid, empty answer, with what
 		// SpendMovement can still spend.
-		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftDFt(who), 0, math.MaxInt32), Flier: flies(who)}), nil
+		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftAtDFt(who, grid.SurfaceFloor), 0, math.MaxInt32), Flier: flies(who)}), nil
 	}
 	jump := req.Msg.GetJump()
 	out, err := s.moveOptionsOn(ctx, m, d, v, sight, who, jump)
@@ -1162,7 +1126,7 @@ func (s *Service) moveOptionsOn(ctx context.Context, m authz.Membership, d *enco
 // just before), as MoveCombatant uses it: the preview never offers a square the move
 // would refuse. Its cost is the length of the line.
 func jumpOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ grid.OccupantMap) *playv1.GetMoveOptionsResponse {
-	left, from := movementLeftDFt(who), squareOfCombatant(who)
+	left, from := movementLeftAtDFt(who, grid.SurfaceFloor), squareOfCombatant(who)
 	out := &playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(left, 0, math.MaxInt32), Flier: mover.Flier}
 	limit := min(longJumpDFt(who, combat.HasRunningStart(int(who.LastMoveDft))), left)
 	if limit <= 0 {

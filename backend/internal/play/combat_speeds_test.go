@@ -195,3 +195,155 @@ func TestACreatureWithNoWalkingSpeedKeepsItsFallbackOnTheFloor(t *testing.T) {
 		t.Errorf("the options say (9,7) = %v; want 150 and 250 left (a swim speed lifts the extra)", r)
 	}
 }
+
+// One number everywhere: a swimmer in water with walk 30, swim 40 and 20 ft spent has 20 ft left, on the stream, on the Mover page's lead and in
+// the economy of GetTurnOptions. The floor's formula answered 10 on the last.
+func TestTheStreamTheMoverLeadAndTheTurnOptionsAgreeForASwimmerInWater(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.terrain.paintSurface(grid.SurfaceWater, grid.Square{Col: 6, Row: 7})
+	e := c.fight(t)
+	withSpeed("Toren", "speed_swim_ft", 40)(t, c)
+	c.execSQL(t, `UPDATE combatants SET movement_used_dft = 200, movement_used_ft = 20 WHERE id = $1`, c.id(t, "Toren"))
+	who := c.who(t, c.caio, "Toren")
+	opts, err := c.options(t, c.caio, "Toren")
+	if err != nil {
+		t.Fatalf("GetMoveOptions error = %v", err)
+	}
+	mv := c.mustOptions(t, c.caio, e, "Toren").GetOptions().GetEconomy().GetMovement()
+	if who.GetMovementLeftDft() != 200 || opts.GetMovementLeftDft() != 200 || mv.GetLeftDft() != 200 {
+		t.Errorf("left on the stream %d, on the Mover lead %d, in the turn options %d; want 200 on all three", who.GetMovementLeftDft(), opts.GetMovementLeftDft(), mv.GetLeftDft())
+	}
+	if who.GetSpeedDft() != 400 || mv.GetSpeedDft() != 400 || mv.GetLeftFt() != 20 || mv.GetUsedDft() != 200 {
+		t.Errorf("speed on the stream %d and in the turn options %d, left %d ft, used %d; want 400, 400, 20, 200", who.GetSpeedDft(), mv.GetSpeedDft(), mv.GetLeftFt(), mv.GetUsedDft())
+	}
+}
+
+// Standing up costs half the speed of the surface the creature stands on, against what is left on that surface (SRD 5.1 "Being Prone").
+func TestAPronSwimmerInWaterStandsUpOnHalfItsSwimSpeed(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.terrain.paintSurface(grid.SurfaceWater, grid.Square{Col: 6, Row: 7})
+	e := c.fight(t)
+	withSpeed("Toren", "speed_swim_ft", 40)(t, c)
+	c.setConditions(t, e, "Toren", condProne)
+	if got := c.who(t, c.caio, "Toren").GetStandUpCostDft(); got != 200 {
+		t.Fatalf("stand_up_cost_dft = %d, want 200 (half of the 40 ft swim speed)", got)
+	}
+	res, err := c.standUp(t, c.caio, e, "Toren")
+	if err != nil {
+		t.Fatalf("StandUp() error = %v", err)
+	}
+	if res.GetMovementLeftDft() != 200 || c.who(t, c.caio, "Toren").GetMovementUsedDft() != 200 {
+		t.Errorf("after standing up: left %d, spent %d; want 200 and 200", res.GetMovementLeftDft(), c.who(t, c.caio, "Toren").GetMovementUsedDft())
+	}
+}
+
+// The cost is checked against what is left on that surface: a swimmer that spent most of its swim speed cannot stand up in the water.
+func TestAPronSwimmerWithTooLittleSwimSpeedLeftCannotStandUp(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.terrain.paintSurface(grid.SurfaceWater, grid.Square{Col: 6, Row: 7})
+	e := c.fight(t)
+	withSpeed("Toren", "speed_swim_ft", 40)(t, c)
+	c.execSQL(t, `UPDATE combatants SET movement_used_dft = 250, movement_used_ft = 25 WHERE id = $1`, c.id(t, "Toren"))
+	c.setConditions(t, e, "Toren", condProne)
+	_, err := c.standUp(t, c.caio, e, "Toren")
+	b := wantEncounterBlocked(t, err, reasonTooFar)
+	if b.GetMissingDft() != 50 {
+		t.Errorf("missing = %d dft, want 50 (200 to stand against 150 left of 400)", b.GetMissingDft())
+	}
+}
+
+// After a swim the jump runs on the floor speed: what was spent comes off the walking speed (a jump is on foot).
+func TestAJumpAfterASwimIsHeldToTheWalkingSpeed(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.terrain.paintSurface(grid.SurfaceWater, corridor(7, 8, 9)...)
+	c.fight(t)
+	withSpeed("Toren", "speed_swim_ft", 40)(t, c)
+	c.mustMove(t, c.caio, "Toren", 9, 7) // 150 in water
+	c.execSQL(t, `UPDATE combatants SET last_move_dft = 100 WHERE id = $1`, c.id(t, "Toren"))
+	opts, err := c.jumpOptions(t, c.caio, "Toren")
+	if err != nil {
+		t.Fatalf("GetMoveOptions(jump) error = %v", err)
+	}
+	if opts.GetMovementLeftDft() != 150 {
+		t.Errorf("the jump's lead reads %d, want 150 (the walking speed less the 150 swum)", opts.GetMovementLeftDft())
+	}
+	if sq := reachableAt(opts, 12, 7); sq == nil || sq.GetCostDft() != 150 {
+		t.Errorf("(12,7) of the jump = %v, want it on offer at 150 (the floor's 150 left)", sq)
+	}
+	if sq := reachableAt(opts, 13, 7); sq != nil {
+		t.Errorf("(13,7) is on offer to the jump (%v); its 200 is more than the 150 left on the floor", sq)
+	}
+}
+
+// The master's stream carries the real surface: a creature in water has its swim speed there, a positive control for the RN-10 row above.
+func TestTheMastersStreamShowsTheRealSurfaceOfACreatureInTheDark(t *testing.T) {
+	t.Parallel()
+	f := newFogCave(t)
+	f.torch(t, false)
+	f.paint(t, mapsv1.MapLayer_MAP_LAYER_SURFACE, int32(grid.SurfaceWater), &mapsv1.MapSquare{Col: 18, Row: 5})
+	f.fight(t)
+	withSpeed("Goblin 1", "speed_swim_ft", 40)(t, f.cave)
+	got := byLabel(t, f.get(t, f.master), "Goblin 1")
+	if got.GetSpeedDft() != 400 || got.GetMovementLeftDft() != 400 {
+		t.Errorf("the master reads speed %d, left %d for Goblin 1 in water; want 400 and 400", got.GetSpeedDft(), got.GetMovementLeftDft())
+	}
+}
+
+// A drag divides the speeds and what was spent by its factor and keeps the whole of what is left a whole number of the line: with 1 spent
+// of 300 a drag at half speed has 149 for the line, not 150 (150 of line costs 300 against 299 left).
+func TestADragWithAnOddAmountSpentNeverPaysMoreThanIsLeft(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := dragFight(t, a, arenaPlan{})
+	c.execSQL(t, `UPDATE combatants SET movement_used_dft = 1 WHERE id = $1`, c.id(t, "Toren"))
+	opts := c.moveOptions(t, a.caio, "Toren")
+	if opts.GetMovementLeftDft() != 149 {
+		t.Errorf("movement left = %d, want 149 ((300 - 1) / 2)", opts.GetMovementLeftDft())
+	}
+	if r := reachableAt(opts, 3, 0); r != nil {
+		t.Errorf("(3,0), three squares of line at 150, is on offer with 299 left at half speed: %v", r)
+	}
+	_, err := c.moveTo(t, a.caio, "Toren", 3, 0)
+	wantEncounterBlocked(t, err, reasonTooFar)
+	if got := c.combatant(t, a.caio, "Toren").GetMovementUsedDft(); got != 1 {
+		t.Errorf("a refused drag left %d spent, want 1", got)
+	}
+}
+
+// A legendary move runs on a budget of its own, a share of the floor's speed: a swim speed does not change it.
+func TestALegendaryMoveOfASwimmerKeepsItsFloorBudget(t *testing.T) {
+	t.Parallel()
+	a, e, vamp := vampireFight(t)
+	a.execSQL(t, `UPDATE combatants SET speed_swim_ft = 60 WHERE id = $1`, a.id(t, vamp))
+	a.put(t, "Toren", 10, 6)
+	e = a.passTo(t, e, "Toren") // a legendary action is taken on another creature's turn
+	if _, err := a.legendaryMove(t, a.master, e, vamp, "move", 16, 5); err != nil {
+		t.Fatalf("a legendary move of 30 ft error = %v; want it made (the control)", err)
+	}
+	_, err := a.legendaryMove(t, a.master, e, vamp, "move", 10, 5) // back: 30 ft again is within a fresh budget
+	if err != nil {
+		t.Fatalf("a second legendary move of 30 ft error = %v", err)
+	}
+	_, err = a.legendaryMove(t, a.master, e, vamp, "move", 17, 5) // 35 ft: past the floor's 30 ft whatever its swim speed
+	wantBlockedBy(t, "a legendary move past the floor's speed", err, reasonTooFar)
+}
+
+// A Wild Shape swap mid-turn keeps what was spent: the form's speeds apply to it at once.
+func TestAWildShapeSwapMidTurnKeepsWhatWasSpent(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	s.fight(t)
+	s.execSQL(t, `UPDATE combatants SET movement_used_dft = 100, movement_used_ft = 10 WHERE id = $1`, s.id(t, "Sálvia"))
+	res := s.mustAssume(t, s.bia, s.bri, "monster:crocodile")
+	if got := byLabel(t, res.GetEncounter(), "Sálvia"); got.GetSpeedDft() != 200 || got.GetMovementUsedDft() != 100 || got.GetMovementLeftDft() != 100 {
+		t.Errorf("the crocodile form reads speed %d, spent %d, left %d; want 200, 100 and 100 (walk 20, 10 ft spent)", got.GetSpeedDft(), got.GetMovementUsedDft(), got.GetMovementLeftDft())
+	}
+	left := s.mustLeave(t, s.bia, s.bri)
+	if got := byLabel(t, left.GetEncounter(), "Sálvia"); got.GetSpeedDft() != 300 || got.GetMovementLeftDft() != 200 {
+		t.Errorf("back in her own shape she reads speed %d, left %d; want 300 and 200", got.GetSpeedDft(), got.GetMovementLeftDft())
+	}
+}

@@ -662,7 +662,7 @@ func shareEconomy(out *playv1.Combatant, c playdb.Combatant, standing grid.Surfa
 	out.MovementLeftDft = clamp32(left, 0, math.MaxInt32)
 	out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
 	out.Disengaged = c.Disengaged
-	out.StandUpCostDft = clamp32(standUpCostDFt(c), 0, math.MaxInt32)
+	out.StandUpCostDft = clamp32(standUpCostDFt(c, standing), 0, math.MaxInt32)
 }
 
 // markKeyOf is the cover the master marked, as an event keeps it ("" for none).

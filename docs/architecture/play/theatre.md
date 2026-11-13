@@ -43,7 +43,7 @@ Combat reads the mode from `Encounter.mode`, and the `encounter_changed` hint ca
 | The familiar's eyes | Refused in combat, `FAMILIAR_SIGHT_BLOCKED` with reason `NO_MAP`; stopping still works |
 | Fog, light, doors | They do not exist: with no map, `fogSightOf` is nil and no player receives anything of the map |
 | Traps (`FireTrap`, `SearchForTraps`, triggering on entry, the warning) | They do not exist: with a theatre combat open in the session, `FireTrap` and `SearchForTraps` answer `NEEDS_A_MAP`, and dropping a token or a creature triggers none. The order of errors is the usual (a trap that does not exist is `not_found` first), and the repeat of a trigger or search made before the combat receives the stored response |
-| Conditions without speed (both modes) | `speedDFt` is 0 for grappled and restrained and for paralyzed, petrified, stunned and unconscious, so the movement left is 0 in `GetMoveOptions`, the player's `MoveCombatant` and `SpendMovement`. Prone does not set the speed to 0: `StandUp` costs half of it, and a prone creature crawls |
+| Conditions without speed (both modes) | the speed (`speedsOf`) is 0 for grappled and restrained and for paralyzed, petrified, stunned and unconscious, so the movement left is 0 in `GetMoveOptions`, the player's `MoveCombatant` and `SpendMovement`. Prone does not set the speed to 0: `StandUp` costs half of it, and a prone creature crawls |
 | Death saves, highlights, the log, undo, XP | The same |
 
 - **RN-10 continues.** A hidden NPC is never in a player's target list, log, order or offers, in `theatre` as in `grid` (`TestRN25_AttacksAndCoverWithoutReach` reads the player's JSON).
