@@ -27,8 +27,8 @@ func (a *armed) readiedOpen(t *testing.T, label string) bool {
 }
 
 // A readied move is walked with MoveCombatant by the readier off its turn while its window is open: no farther than the
-// move it readied and its speed now, through Move's own refusals (a grappled readier has no speed), with no opportunity
-// offer and no action. The use spends the reaction and fires the row; its undo puts it all back and the window opens again.
+// move it readied and its speed now, through Move's own refusals (a grappled readier has no speed), and leaving a reach
+// offers the opportunity attack as any walk does; it spends no action. The use spends the reaction and fires the row; its undo puts it all back and the window opens again.
 // "Usar" on AnswerReaction is refused: it has no square.
 func TestFireReadiedMoveIsWalkedWithMoveCombatant(t *testing.T) {
 	t.Parallel()
@@ -59,8 +59,8 @@ func TestFireReadiedMoveIsWalkedWithMoveCombatant(t *testing.T) {
 	if err != nil {
 		t.Fatalf("the readied move: %v", err)
 	}
-	if res.GetProvoked() || len(a.get(t, a.master).GetOpportunityOffers()) != 0 {
-		t.Error("the readied move offered an opportunity attack")
+	if offers := a.get(t, a.master).GetOpportunityOffers(); !res.GetProvoked() || len(offers) != 1 || offers[0].GetReactorId() != a.id(t, "Goblin") {
+		t.Errorf("the readied move out of the goblin's reach: provoked %v, offers %v; want the goblin's", res.GetProvoked(), offers)
 	}
 	toren := byLabel(t, a.get(t, a.caio), "Toren")
 	if !toren.GetReactionUsed() || toren.GetReactionKind() != kindReadied || a.squareOf(t, "Toren") != [2]int32{3, 5} {

@@ -391,7 +391,8 @@ type moveAttempt struct {
 	// lets it walk (rules.LegendaryOption.MoveSpeedPercent).
 	spent    int32
 	speedPct int
-	// readied is the readied move the mover makes off its turn while its READIED window is open (ready_answer.go).
+	// readied is the readied move the mover makes off its turn while its READIED window is open (ready_answer.go): it
+	// pays its way and offers opportunity attacks as a walk on its turn does.
 	readied *readiedUse
 	// made is the move's event.
 	made actionEvent
@@ -592,7 +593,7 @@ func (s *Service) planMove(ctx context.Context, a *moveAttempt) error {
 	if err := s.startMove(ctx, a); err != nil {
 		return err
 	}
-	if (!a.v.master || a.onTurn) && a.readied == nil { // the turn's move waits for the master's answer; his own moves of a token off turn, and a readied move (the window it answers holds the turn), do not
+	if !a.v.master || a.onTurn || a.readied != nil { // the turn's move, and a readied one, wait for the master's answer; his own moves of a token off turn do not
 		if err := s.mustNotHold(ctx, a.c); err != nil {
 			return err
 		}
@@ -869,11 +870,12 @@ func (s *Service) dragAlong(ctx context.Context, a *moveAttempt) error {
 }
 
 // offerAttacks makes the opportunity attacks (D1b): a move on foot or a long jump
-// (it spends movement), on the mover's turn, that leaves an enemy's reach lands,
-// and the enemy is offered an attack. A high jump moves nobody; a placement out of
-// turn, a forced move and a move that stays put offer nothing.
+// (it spends movement), on the mover's turn or as its readied move (a reaction that
+// moves it, ready_answer.go), that leaves an enemy's reach lands, and the enemy is
+// offered an attack. A high jump moves nobody; a placement out of turn, a forced
+// move and a move that stays put offer nothing.
 func (s *Service) offerAttacks(ctx context.Context, a *moveAttempt) error {
-	if a.req.jump == playv1.JumpKind_JUMP_KIND_HIGH || a.req.forced || !a.onTurn || !placed(a.target) || !a.squareChanged {
+	if a.req.jump == playv1.JumpKind_JUMP_KIND_HIGH || a.req.forced || (!a.onTurn && a.readied == nil) || !placed(a.target) || !a.squareChanged {
 		return nil
 	}
 	moveID, offered, err := s.offerOpportunities(ctx, a.c, a.cs, a.target, squareOfCombatant(a.target), a.to, a.req.jump == playv1.JumpKind_JUMP_KIND_LONG, a.draggedID)
