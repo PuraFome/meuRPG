@@ -64,6 +64,12 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   `RollAttack` with `catch_window_id` set to the READIED window does the same.
   The roll waits for the windows any attack roll opens first: Cutting Words, Protection, the master's check of "Sempre" (`holdAttackRoll`).
   Meanwhile the READIED window stays open and the row waits; `AnswerReaction` answers `used` false.
+  While the roll is held, the window takes no answer: a second "Usar" and "Deixar passar" are `REACTION_PENDING` (`mustNotBeHeld`).
+  The master reads it with `answer_now` false, so the automatic pass leaves it alone.
+  A held roll that the attack refuses once replayed is dropped (`settleReplay`), as when the target fell meanwhile.
+  The reaction stays free, the row waits and the window takes an answer again.
+  The master reads the drop in the log (`held_dropped`); the readier's player reads only the window again.
+  A readier that falls meanwhile loses the row, and its window closes.
   The target must be one the attacker can attack now (reach, sight).
   Otherwise the attack's own refusal comes back and the window stays open.
 - **move**: `MoveCombatant` off the readier's turn, while its READIED move window is open.
@@ -72,7 +78,10 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   Move's own refusals apply: a grappled readier has no speed (`TOO_FAR`).
   A refused move spends nothing and the window stays open.
   A move that stops short (a wall, a creature in the way, a trap) is still the use, and the window ends.
-  It offers opportunity attacks as any walk does: only a forced move, a teleport or Disengage would not.
+  It offers opportunity attacks as any walk does: only a forced move or a teleport would not.
+  A Disengage does not cover it: Disengage lasts only for the turn it was taken on (SRD 5.1).
+  Its offers hold the end of the turn in progress, the master's too: `EndTurn` is `OPPORTUNITY_PENDING` until each is answered.
+  So none of them outlives that turn (`mustNotWaitForReadiedOffers`).
   It is held by a pending hidden reveal (`mustNotHold`) as a move on turn is.
   The master's walk of the readier while the window is open is the use too, as if the player made it.
   `AnswerReaction` "Usar" on a move window is `invalid_argument`: it carries no square.
@@ -104,7 +113,7 @@ A lost row gives nothing back: the action spent at Ready stays spent.
 A player who is not the reactor's reads a READIED window as one that does not exist.
 `AnswerReaction` checks the caller before it reads what the row holds (`mayAnswerReadied`).
 `RollAttack` refuses another's READIED window in `catch_window_id` as a window it does not find.
-
+A `catch_window_id` that is not a UUID is `invalid_argument`.
 
 The trigger and the held action are the master's and the readier's player's: on `Combatant.readied`, the window and the log lines.
 The window carries no prompt; the master's `ReactionTrigger` names the readier, the target and the held action.

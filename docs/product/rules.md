@@ -1086,11 +1086,14 @@ A player reads only their own windows, and the numbers of the trigger (an attack
 - **Ready** (SRD 5.1, "Ready").
   On its turn a creature spends its action to hold another until a trigger its player writes.
   The held action is an attack, a move or another standard action; a spell is not offered yet.
-  Hide, Help, Dash and Disengage cannot be held: as a reaction they would do nothing.
+  Hide and Help cannot be held: they have their own calls, which a reaction does not run.
+  Dash and Disengage cannot be held either: they last only for the creature's own turn.
   A move cannot be held in a combat without a map.
   The reaction is spent only when the held action is taken; until then the creature's other reactions stay offered.
-  A held attack still waits for the reactions that come before any attack roll (Cutting Words, Protection).
-  A held move provokes opportunity attacks as any move does.
+  A held attack still waits for the reactions that come before any attack roll (Cutting Words, Protection, the master's check).
+  Meanwhile its window takes no other answer and does not pass by itself.
+  A held move provokes opportunity attacks as any move does, even after a Disengage on the creature's own turn.
+  Those attacks hold the end of the turn in progress until they are answered.
   A creature whose reaction is spent, or that cannot react, is not asked, and the readied action waits until it is lost.
   It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight.
   The spent action does not come back.

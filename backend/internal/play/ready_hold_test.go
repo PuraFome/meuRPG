@@ -105,6 +105,59 @@ func TestAHeldReadiedAttacksWindowTakesNoAnswer(t *testing.T) {
 	}
 }
 
+// With "Sempre" a player's readied attack on an enemy waits for the master's check as any attack does.
+func TestAReadiedAttackWaitsForTheMastersCheck(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	a.setRules(t, enemyReactionsAlways)
+	e := a.readyThenPass(t, nil)
+	w := a.mustFire(t, e, "Toren")
+	if res := a.mustAnswer(t, a.caio, e, w.GetId(), useTyped(15)); res.GetResult().GetUsed() {
+		t.Errorf("the result says used while the roll waits: %v", res.GetResult())
+	}
+	check := a.windowOf(t, a.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
+	if check == nil {
+		t.Fatal("no master's check before the readied attack's roll")
+	}
+	a.mustAnswer(t, a.master, e, check.GetId(), passAnswer)
+	if got := a.readiedStatus(t, "Toren"); got != readiedFired || !byLabel(t, a.get(t, a.master), "Toren").GetReactionUsed() {
+		t.Errorf("after the check: rows %q", got)
+	}
+}
+
+// A held readied attack that can no longer happen is dropped: a target that fell meanwhile leaves the reaction free, the
+// row waiting and the READIED window open, to be used again or passed; a readier that fell loses all three.
+func TestADroppedReadiedAttack(t *testing.T) {
+	t.Parallel()
+	t.Run("the target fell", func(t *testing.T) {
+		t.Parallel()
+		a, e := protectionFight(t, protector())
+		e, w, pre := heldReadiedAttack(t, a, e, playv1.ReactionKind_REACTION_KIND_PROTECTION)
+		a.execSQL(t, `UPDATE combatants SET defeated = true WHERE label = 'Toren'`)
+		a.mustAnswer(t, a.ana, e, pre.GetId(), passAnswer)
+		goblin := byLabel(t, a.get(t, a.master), "Goblin")
+		open := a.windowOf(t, a.master, kindReadied)
+		if goblin.GetReactionUsed() || a.readiedStatus(t, "Goblin") != readiedWaiting || open == nil || open.GetId() != w.GetId() || !open.GetAnswerNow() {
+			t.Fatalf("after the drop: reaction %v, rows %q, window %v", goblin.GetReactionUsed(), a.readiedStatus(t, "Goblin"), open)
+		}
+		a.mustAnswer(t, a.master, e, w.GetId(), passAnswer)
+		if got := a.readiedStatus(t, "Goblin"); got != readiedIgnored {
+			t.Errorf("rows after the pass = %q", got)
+		}
+	})
+	t.Run("the readier fell", func(t *testing.T) {
+		t.Parallel()
+		a, e := protectionFight(t, protector())
+		e, _, _ = heldReadiedAttack(t, a, e, playv1.ReactionKind_REACTION_KIND_PROTECTION)
+		if _, err := a.adjustHP(t, e, "Goblin", damageHP(999)); err != nil {
+			t.Fatalf("damage the goblin: %v", err)
+		}
+		if a.windowOf(t, a.master, kindReadied) != nil || a.readiedStatus(t, "Goblin") != readiedLost {
+			t.Errorf("after the readier fell: window %v, rows %q", a.windowOf(t, a.master, kindReadied), a.readiedStatus(t, "Goblin"))
+		}
+	})
+}
+
 // catch_window_id is a UUID: anything else is invalid_argument before anything is read.
 func TestACatchWindowIDIsAUUID(t *testing.T) {
 	t.Parallel()
