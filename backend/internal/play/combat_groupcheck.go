@@ -87,6 +87,9 @@ func (s *Service) groupWrite(ctx context.Context, m authz.Membership, key string
 			h.replay()
 			return tell(ctx, q, h, session)
 		}
+		if gh := groupHoldOf(ctx); gh != nil {
+			gh.h = h
+		}
 		var wrote bool
 		ev, wrote, err = s.groupApply(ctx, tx, q, session, call, do)
 		if err != nil || !wrote {
@@ -127,7 +130,7 @@ func (s *Service) groupApply(ctx context.Context, tx pgx.Tx, q *playdb.Queries, 
 	}
 	payload, characterID, err := do(q, tx, session)
 	if errors.Is(err, errRollHeld) {
-		return groupCheckEvent{}, false, nil // the roll waits for the player's answer (a die, or Lucky): nothing is written yet
+		return groupCheckEvent{}, false, nil // the roll waits for the player's answer (a die, or Lucky): only the held roll is written, and the gate told it
 	}
 	if err != nil {
 		return groupCheckEvent{}, false, err
@@ -155,9 +158,11 @@ type groupHold struct {
 	offer *playv1.OutsideInspirationOffer
 	lucky *playv1.LuckyOffer
 	held  *playv1.HeldRollOffer
+	// h collects what the write tells once it is saved, for the gate (groupWrite sets it on each attempt).
+	h *hints
 }
 
-// asking says the roll was kept for one of the player's answers: nothing is written yet.
+// asking says the roll was kept for one of the player's answers: only the held roll is written.
 func (g *groupHold) asking() bool {
 	return g.offer != nil || g.lucky != nil || g.held != nil
 }
@@ -508,7 +513,7 @@ type memberRoll struct {
 }
 
 // memberRollOf makes the d20 of the member. held says the roll was kept for the player's answer
-// (a Bardic Inspiration die, or the halfling's Lucky): nothing is written then.
+// (a Bardic Inspiration die, or the halfling's Lucky): only the held roll is written then.
 //
 // A character that holds a Bardic Inspiration die has the d20 kept until the player
 // answers whether to use it, and so has a halfling's d20 that shows a 1, for the Lucky
@@ -541,7 +546,7 @@ func (s *Service) mayAskMember(ctx context.Context, tx pgx.Tx, gh *groupHold, sp
 // gatedMemberRoll puts the member's d20 through the held-roll gate. It says whether the gate
 // settled the roll (settled), or kept it for an answer (held).
 func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx.Tx, gh *groupHold, spec memberRoll) (roll contestRoll, settled, held bool, err error) {
-	step, err := s.heldGate(ctx, s.outsideGate(tx, q), rollSpec{
+	step, err := s.heldGate(ctx, s.outsideGate(tx, q, gh.h), rollSpec{
 		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
 		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Floor: spec.floor, Lucky: spec.lucky, MayAsk: true,
 		Stroke: groupStrokeRule(spec.check),

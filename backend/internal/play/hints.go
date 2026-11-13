@@ -39,6 +39,8 @@ type hints struct {
 	events  []told
 	afters  []func(ctx context.Context, say func(campaignID string, ev live.Event))
 	touched bool
+	// heldTold says the attempt already told HeldRollsChanged (heldRowChanged): one hint says it, however many rows changed.
+	heldTold bool
 	// replayed says the attempt found its write already made (a key used before): see replay.
 	replayed bool
 	// seq is the session's hint_seq as this transaction left it: set by Service.tx after it bumped the number, 0 while it did not.

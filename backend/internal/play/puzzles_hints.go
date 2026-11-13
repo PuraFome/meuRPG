@@ -73,7 +73,7 @@ func (s *Service) TryPuzzleHint(
 	if err != nil {
 		return nil, s.dbError(ctx, "try for a puzzle hint", err)
 	}
-	if res.offer != nil || res.lucky != nil { // nothing was written: the question is the whole answer
+	if res.offer != nil || res.lucky != nil { // only the held roll was written: the question is the whole answer
 		return connect.NewResponse(&playv1.TryPuzzleHintResponse{InspirationOffer: res.offer, LuckyOffer: res.lucky, HeldRollOffer: res.held}), nil
 	}
 	return s.hintTryAnswer(ctx, m, res, names)
@@ -199,6 +199,7 @@ type hintTryTx struct {
 	in      rollInput
 	raw     *playv1.TryPuzzleHintRequest
 	res     *hintTryResult
+	hs      *hints
 }
 
 // hintTryPlan is what the try works out before it rolls: who rolls, the hint they try for, what their
@@ -217,7 +218,7 @@ type hintTryPlan struct {
 // the run's, as every change to a run does, so a try, a move and the master's release
 // of the same hint take turns. A new try tells the streams the puzzle changed; the retry of a key tells it again.
 func (s *Service) applyHintTry(ctx context.Context, tx pgx.Tx, hs *hints, session playdb.GameSession, m authz.Membership, puzzleID, key string, in rollInput, raw *playv1.TryPuzzleHintRequest, res *hintTryResult) (runNames, error) {
-	h := &hintTryTx{s: s, tx: tx, q: s.queriesIn(tx), m: m, key: key, in: in, raw: raw, res: res, session: session}
+	h := &hintTryTx{s: s, tx: tx, q: s.queriesIn(tx), m: m, key: key, in: in, raw: raw, res: res, session: session, hs: hs}
 	if err := h.lock(ctx, puzzleID); err != nil {
 		return nil, err
 	}
@@ -326,7 +327,7 @@ func (h *hintTryTx) skill(ctx context.Context, plan *hintTryPlan) error {
 // before anything is spent or written, and so has a halfling's d20 that shows a 1, for the
 // Lucky question; the answer brings it back (with the die added, or rolled again).
 func (h *hintTryTx) roll(ctx context.Context, plan hintTryPlan) (gateResult, error) {
-	return h.s.heldGate(ctx, h.s.outsideGate(h.tx, h.q), rollSpec{
+	return h.s.heldGate(ctx, h.s.outsideGate(h.tx, h.q, h.hs), rollSpec{
 		Kind: heldHintTry, Key: h.key, Request: h.raw, Roller: heldRoller{CampaignID: h.m.CampaignID, CharacterID: plan.who.ID, UserID: h.m.UserID},
 		In: h.in, Modifier: plan.bonus, Mode: plan.cm.Mode, Floor: plan.floor, Lucky: plan.option.Lucky, MayAsk: true,
 	})

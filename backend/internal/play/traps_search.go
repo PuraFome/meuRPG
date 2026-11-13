@@ -70,6 +70,7 @@ type searchTurn struct {
 	floor   rollFloor // the lowest number each d20 of the search counts as
 	step    gateResult
 	dieFace int // the die the player added after rolling: it counts in every total of the search
+	h       *hints
 }
 
 // searchDice is the d20 of a search and the totals it is answered with.
@@ -94,7 +95,7 @@ func (s *Service) SearchForTraps(
 	if err != nil {
 		return nil, s.dbError(ctx, "search for traps", err)
 	}
-	if ts.offer != nil || ts.lucky != nil { // nothing was written: the question is the whole answer
+	if ts.offer != nil || ts.lucky != nil { // only the held roll was written (the search and its event wait for the answer): the question is the whole answer
 		return connect.NewResponse(&playv1.SearchForTrapsResponse{InspirationOffer: ts.offer, LuckyOffer: ts.lucky, HeldRollOffer: ts.held}), nil
 	}
 	if !ts.repeated {
@@ -225,7 +226,7 @@ func (s *Service) searchInTx(ctx context.Context, tx pgx.Tx, h *hints, session p
 	if err != nil {
 		return err
 	}
-	return s.searchRolled(ctx, h, c, ts, &searchTurn{c: c, opt: opt, floor: floor})
+	return s.searchRolled(ctx, h, c, ts, &searchTurn{c: c, opt: opt, floor: floor, h: h})
 }
 
 // searchRolled is the search from the roll on: the held question, the action a combat spends, the d20, the event and what the
@@ -233,8 +234,7 @@ func (s *Service) searchInTx(ctx context.Context, tx pgx.Tx, h *hints, session p
 func (s *Service) searchRolled(ctx context.Context, h *hints, c *combatTx, ts *trapSearch, r *searchTurn) error {
 	held, err := s.prepareSearchRoll(ctx, ts, r)
 	if err != nil || held {
-		if held && ts.place.spent { // the question moved the combat's revision: the number moves with it
-			h.touch()
+		if held && ts.place.spent { // the question moved the combat's revision: the combat's readers read it again
 			s.tellEncounterRowAfter(h, ts.m.CampaignID, ts.place.enc)
 		}
 		return err
@@ -348,9 +348,10 @@ func (s *Service) askSearchGate(ctx context.Context, ts *trapSearch, r *searchTu
 		held.typed, held.typedFaces = ts.in.typedFaces[0], nil
 	}
 	// Out of a combat the roll is the character's; in one it is its combatant's, in the round, like any other roll of a turn.
-	env, roller := s.outsideGate(r.c.tx, r.c.q), heldRoller{CampaignID: ts.m.CampaignID, CharacterID: ts.who.ID, UserID: ts.m.UserID}
+	env, roller := s.outsideGate(r.c.tx, r.c.q, r.h), heldRoller{CampaignID: ts.m.CampaignID, CharacterID: ts.who.ID, UserID: ts.m.UserID}
 	if ts.place.spent {
 		env, roller = combatGate(r.c), attackRoller(ts.m, ts.place.me, r.c.enc.Round)
+		env.h = r.h // the search's combatTx has no hints of its own: the held row is told through the search's
 	}
 	step, err := s.heldGate(ctx, env, rollSpec{
 		Kind: heldTrapSearch, Key: ts.key, Request: ts.req, Roller: roller,

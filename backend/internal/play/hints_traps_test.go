@@ -290,7 +290,6 @@ func TestAHeldSearchInACombatMovesTheNumber(t *testing.T) {
 	e := r.fight(t)
 	r.giveCombatantDie(t, "Toren", e)
 	g := trapRigHints(t, r)
-	g.unnumbered = append(g.unnumbered, "*playv1.WatchGameSessionResponse_HeldRollsChanged_") // the held roll's own hint, sent by the held-roll store
 	g.first(func() error {
 		held, err := r.trapSearchCall(t, r.caio, trapSearchTyped(perception, 16))
 		if err == nil && held.GetHeldRollOffer().GetDie() == nil {

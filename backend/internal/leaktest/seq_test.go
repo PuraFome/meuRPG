@@ -988,3 +988,87 @@ func TestADropThatNoticesATrapMovesAThirdPlayersNumberLikeOneThatDoesNot(t *test
 		t.Errorf("Ana heard %v where the trap was noticed and %v where it was not, want the same", anaA, anaB)
 	}
 }
+
+// ===== A search whose d20 is kept for a question, and one that is not.
+
+// heldSearchWorld builds a world and has Caio's character search for traps with a d20 of 20 (Investigation). With held, the character
+// holds a Bardic Inspiration die, so the roll is kept for the question about it and the search writes only the held roll; without it,
+// the search is made. It reads what Ana, a third player, was told: the kinds of her events (the heartbeats left out) and how far her
+// number went. It returns what the master and Caio heard as well.
+func heldSearchWorld(t *testing.T, held, inCombat bool) (ana, master, caio []string, moved int64) {
+	t.Helper()
+	w := newWorld(t)
+	die := `INSERT INTO character_inspiration (character_id, campaign_id, sides, seconds_left) VALUES ($1, $2, 8, 600)`
+	args := []any{w.toren.GetId(), w.campaign}
+	if inCombat {
+		die = `UPDATE combatants SET inspiration_sides = 8, inspiration_expires_round = (SELECT round FROM encounters WHERE id = combatants.encounter_id) + 50 WHERE id = $1`
+		args = []any{w.combatant(w.toren).GetId()}
+	} else {
+		must(w.master.combat.EndEncounter(t.Context(), rq(&playv1.EndEncounterRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey()})))
+		w.place(w.fogMap, w.toren.GetId(), 8, 13)
+	}
+	if held {
+		if _, err := w.pool.Exec(t.Context(), die, args...); err != nil {
+			t.Fatalf("give the die: %v", err)
+		}
+	}
+	w.hints.Settle(w.t)
+	streams := map[*person]*streamWatcher{w.master: w.watchStream(w.master), w.ana: w.watchStream(w.ana), w.caio: w.watchStream(w.caio)}
+	start := streams[w.ana].number()
+	res := must(w.caio.play.SearchForTraps(t.Context(), rq(&playv1.SearchForTrapsRequest{
+		CampaignId: w.campaign, Skill: playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_INVESTIGATION, IdempotencyKey: newKey(),
+		Roll: &playv1.SearchForTrapsRequest_D20Face{D20Face: 20},
+	})))
+	if (res.GetHeldRollOffer() != nil) != held {
+		t.Fatalf("the search = %s, want the roll held: %v", protojson.Format(res), held)
+	}
+	watch := streams[w.ana]
+	watch.beatAfter(t, watch.count(), func(int64) bool { return true })
+	end := watch.beatAfter(t, watch.count(), func(int64) bool { return true })
+	must(w.master.play.EndGameSession(t.Context(), rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
+	kinds := map[*person][]string{}
+	for p, sw := range streams {
+		<-sw.done
+		for _, ev := range sw.since(1) {
+			if c := eventCase(ev); c != "heartbeat" && c != "session_ended" {
+				kinds[p] = append(kinds[p], c)
+			}
+		}
+	}
+	return kinds[w.ana], kinds[w.master], kinds[w.caio], end - start
+}
+
+// TestAHeldSearchMovesAThirdPlayersNumberLikeOneThatIsNot: a search whose d20 waits for a die's question is one write for the held
+// roll, and one for the search that is made, each moving the number once, so a player who hears nothing of either reads the same
+// number and the same events in the world where the roll was kept and in the one where it was not. Control: only the master and
+// the searcher hear that the questions changed.
+func TestAHeldSearchMovesAThirdPlayersNumberLikeOneThatIsNot(t *testing.T) {
+	for _, inCombat := range []bool{false, true} {
+		t.Run(map[bool]string{false: "out of a combat", true: "the Search action of a combat"}[inCombat], func(t *testing.T) {
+			heldSearchTwins(t, inCombat)
+		})
+	}
+}
+
+func heldSearchTwins(t *testing.T, inCombat bool) {
+	t.Helper()
+	anaH, masterH, caioH, movedH := heldSearchWorld(t, true, inCombat)
+	anaN, masterN, caioN, movedN := heldSearchWorld(t, false, inCombat)
+	for who, got := range map[string][]string{"the master": masterH, "Caio": caioH} {
+		if !slices.Contains(got, "held_rolls_changed") {
+			t.Errorf("%s heard %v where the roll was kept: the control is gone", who, got)
+		}
+	}
+	if slices.Contains(masterN, "held_rolls_changed") || slices.Contains(caioN, "held_rolls_changed") {
+		t.Errorf("the master heard %v and Caio %v where the roll was not kept: no question changed", masterN, caioN)
+	}
+	if slices.Contains(anaH, "held_rolls_changed") {
+		t.Errorf("Ana heard %v: the hint of a question is its roller's and the master's alone", anaH)
+	}
+	if movedH != movedN {
+		t.Errorf("Ana's number moved by %d where the roll was kept and by %d where it was not, want the same", movedH, movedN)
+	}
+	if !slices.Equal(anaH, anaN) {
+		t.Errorf("Ana heard %v where the roll was kept and %v where it was not, want the same", anaH, anaN)
+	}
+}

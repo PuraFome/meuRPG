@@ -1028,7 +1028,7 @@ func (c *sceneRollCall) run(ctx context.Context, session playdb.GameSession) err
 	if err != nil {
 		return err
 	}
-	step, err := c.s.heldGate(ctx, c.s.outsideGate(c.tx, c.q), rollSpec{
+	step, err := c.s.heldGate(ctx, c.s.outsideGate(c.tx, c.q, c.h), rollSpec{
 		Kind: heldSceneCheck, Key: c.key, Request: c.req, Roller: heldRoller{CampaignID: c.m.CampaignID, CharacterID: c.out.who.ID, UserID: c.m.UserID},
 		In: c.in, Modifier: bonus, Mode: cm.Mode, Floor: floor, Lucky: opt.Lucky, MayAsk: true,
 		Stroke: checkStrokeRule(action.DC, !scene.ShowDC),
