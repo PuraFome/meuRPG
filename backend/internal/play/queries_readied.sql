@@ -44,3 +44,8 @@ WHERE id = $1 AND status IN ('fired', 'ignored');
 -- A readied action of a combat, whatever its status.
 SELECT * FROM readied_actions
 WHERE id = $1 AND encounter_id = $2;
+
+-- name: DeleteUnansweredReadiedWindow :execrows
+-- The undo of FireReadied: the READIED window it opened goes, unless it was answered (the answer is undone first).
+DELETE FROM reaction_windows
+WHERE id = sqlc.arg(id) AND encounter_id = sqlc.arg(encounter_id) AND kind = 'readied' AND status <> 'answered';

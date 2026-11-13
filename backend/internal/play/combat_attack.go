@@ -564,7 +564,7 @@ func (f *attackFlow) holdForWindow(ctx context.Context) (bool, error) {
 	if _, answering := heldReplyOf(ctx); answering {
 		return false, nil
 	}
-	ev, ok, err := f.s.holdAttackRoll(ctx, f.c, f.m, f.req, f.cs, f.attacker, f.target, f.attackKey)
+	ev, ok, err := f.s.holdAttackRoll(ctx, f.c, f.m, f.req, f.cs, f.attacker, f.target, f.attackKey, f.call.catchID != "" && f.readied == nil)
 	if err != nil || !ok {
 		return false, err
 	}

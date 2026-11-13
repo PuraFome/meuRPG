@@ -30,6 +30,25 @@ func (q *Queries) DeleteReadiedActionsOfEncounter(ctx context.Context, encounter
 	return err
 }
 
+const deleteUnansweredReadiedWindow = `-- name: DeleteUnansweredReadiedWindow :execrows
+DELETE FROM reaction_windows
+WHERE id = $1 AND encounter_id = $2 AND kind = 'readied' AND status <> 'answered'
+`
+
+type DeleteUnansweredReadiedWindowParams struct {
+	ID          string
+	EncounterID string
+}
+
+// The undo of FireReadied: the READIED window it opened goes, unless it was answered (the answer is undone first).
+func (q *Queries) DeleteUnansweredReadiedWindow(ctx context.Context, arg DeleteUnansweredReadiedWindowParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUnansweredReadiedWindow, arg.ID, arg.EncounterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getReadiedAction = `-- name: GetReadiedAction :one
 SELECT id, encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, spell_cast_id, move_ft, target_id, status, created_at FROM readied_actions
 WHERE id = $1 AND encounter_id = $2

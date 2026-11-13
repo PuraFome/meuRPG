@@ -54,7 +54,7 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventFamiliarSight:     (*undoer).familiarSight,
 	eventLegendarySpent:    (*undoer).legendaryBack,
 	eventActionReadied:     (*undoer).readiedBack,
-	eventReadiedFired:      (*undoer).readiedPassBack,
+	eventReadiedFired:      (*undoer).readiedFiredBack,
 }
 
 // find is the combatant of that ID among the ones the undo found.

@@ -21,9 +21,10 @@ import (
 // The answer to a READIED window (FireReadied, ready_fire.go). "Deixar passar" ends the row as ignored and keeps the
 // reaction. "Usar" runs the held action through its own path with the reaction's economy, and the row is fired:
 //   - an attack is RollAttack with catch_window_id naming the window (combat_attack.go): AnswerReaction USE sends it so,
-//     with the target named at Ready, or the one in creature_ids;
+//     with the target named at Ready, or the one in creature_ids; its roll waits for the windows any attack roll opens
+//     (holdAttackRoll), and the use is spent when it rolls;
 //   - a move is MoveCombatant by the readier while the window is open (combat_move.go): it needs a square, which
-//     AnswerReaction does not carry, so AnswerReaction USE refuses it;
+//     AnswerReaction does not carry, so AnswerReaction USE refuses it; it offers opportunity attacks as a walk does;
 //   - another standard action is TakeAction's, charged to the reaction (useReadiedOtherTx).
 // The use writes a readied_fired line just before the event of the action, which carries the row, the window and the
 // line: the undo of the action takes the line back, and the row waits and the window opens again (readiedUseBack).
@@ -35,11 +36,11 @@ type readiedUse struct {
 }
 
 // readiedUseOf checks that the window is the open READIED window of who, for a readied action of the kind that waits,
-// and that who's reaction is free.
+// and that who's reaction is free. A window that is not who's is refused as one that does not exist.
 func readiedUseOf(ctx context.Context, c *combatTx, windowID string, who playdb.Combatant, kind string) (*readiedUse, error) {
 	w, err := c.q.GetReactionWindowForUpdate(ctx, playdb.GetReactionWindowForUpdateParams{EncounterID: c.enc.ID, ID: windowID})
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && (reaction.Kind(w.Kind) != reaction.Readied || conv.OrZero(w.ReactorID) != who.ID)) {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the window is not a readied action of this combatant"))
+		return nil, errNotYourTurnToAnswer() // as a throw back's window that is not found: another's window is not told apart
 	}
 	if err != nil {
 		return nil, fmt.Errorf("find the readied action's window: %w", err)
@@ -99,13 +100,19 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 	if reaction.Kind(w.Kind) != reaction.Readied {
 		return nil, false, nil
 	}
+	if err := s.mayAnswerReadied(ctx, m, in.encID, w); err != nil { // before anything the row holds is told
+		return nil, true, err
+	}
 	if in.choice == playv1.ReactionChoice_REACTION_CHOICE_PASS {
 		out, err := s.answerReadiedWrite(ctx, m, in, msg, eventReadiedFired, s.passReadiedTx)
 		return out, true, err
 	}
 	row, err := s.queries.GetReadiedAction(ctx, playdb.GetReadiedActionParams{ID: windowTriggerOf(w).Readied, EncounterID: in.encID})
-	if err != nil {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, true, errNotYourTurnToAnswer()
+	}
+	if err != nil {
+		return nil, true, s.dbError(ctx, "read the readied action", err)
 	}
 	switch row.Kind {
 	case readiedAttack:
@@ -118,6 +125,23 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 		return nil, true, connect.NewError(connect.CodeInvalidArgument, errors.New("a readied move is made with MoveCombatant while its window is open"))
 	}
 	return nil, true, connect.NewError(connect.CodeInvalidArgument, errors.New("this readied action cannot be used here"))
+}
+
+// mayAnswerReadied refuses a player who does not play the window's reactor as the generic answer refuses a window it
+// does not find (RN-10): the master answers any.
+func (s *Service) mayAnswerReadied(ctx context.Context, m authz.Membership, encID string, w playdb.ReactionWindow) error {
+	if m.Role == authz.RoleMaster {
+		return nil
+	}
+	cs, err := s.queries.ListCombatants(ctx, encID)
+	if err != nil {
+		return s.dbError(ctx, "list the combatants", err)
+	}
+	reactor, ok := combatantByID(cs, conv.OrZero(w.ReactorID))
+	if !ok || reactor.UserID == nil || *reactor.UserID != m.UserID || isCreature(reactor) {
+		return errWindowDenied()
+	}
+	return nil
 }
 
 // answerReadiedWrite runs an answer of a READIED window in its own change of the kind, and answers as AnswerReaction does.
@@ -196,8 +220,11 @@ func (s *Service) useReadiedAttack(ctx context.Context, m authz.Membership, in a
 		return nil, err
 	}
 	return connect.NewResponse(&playv1.AnswerReactionResponse{
-		Encounter:     res.Msg.GetEncounter(),
-		Result:        &playv1.ReactionResult{Kind: playv1.ReactionKind_REACTION_KIND_READIED, ByMaster: m.Role == authz.RoleMaster, Used: true},
+		Encounter: res.Msg.GetEncounter(),
+		Result: &playv1.ReactionResult{
+			Kind: playv1.ReactionKind_REACTION_KIND_READIED, ByMaster: m.Role == authz.RoleMaster,
+			Used: !res.Msg.GetRoll().GetHeldForReaction(), // a roll held by a Cutting Words or a Protection is used once it rolls
+		},
 		HeldRollOffer: res.Msg.GetHeldRollOffer(),
 	}), nil
 }
@@ -339,12 +366,24 @@ func (u *undoer) readiedUseBack(ctx context.Context, kind string, ev actionEvent
 	return nil
 }
 
-// readiedPassBack is the undo of "Deixar passar": the row waits and its window is open again.
-func (u *undoer) readiedPassBack(ctx context.Context, ev actionEvent) error {
-	if ev.Readied == nil || ev.Readied.Ended != readiedIgnored {
-		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO, "this readied action cannot be undone")
+// readiedFiredBack is the undo of a readied_fired event: of the fire, the window it opened goes (unless it was answered:
+// the answer's own event comes first) and the row keeps waiting; of "Deixar passar", the row waits and its window is open
+// again.
+func (u *undoer) readiedFiredBack(ctx context.Context, ev actionEvent) error {
+	r := ev.Readied
+	switch {
+	case r != nil && r.Opened:
+		n, err := u.c.q.DeleteUnansweredReadiedWindow(ctx, playdb.DeleteUnansweredReadiedWindowParams{ID: r.Window, EncounterID: u.c.enc.ID})
+		if err != nil {
+			return fmt.Errorf("take the readied action's window back: %w", err)
+		}
+		if n == 1 {
+			return nil
+		}
+	case r != nil && r.Ended == readiedIgnored:
+		return u.readiedWaitsAgain(ctx, r)
 	}
-	return u.readiedWaitsAgain(ctx, ev.Readied)
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO, "this readied action cannot be undone")
 }
 
 // readiedWaitsAgain makes the row wait and opens its window again.
@@ -355,19 +394,14 @@ func (u *undoer) readiedWaitsAgain(ctx context.Context, r *readiedEvent) error {
 	return reopenWindows(ctx, u.c, []string{r.Window})
 }
 
-// chainReadied: the fire of a readied action is not undone (the readier, or the master, lets it pass), and a Ready whose
-// row was lost since (its readier was defeated or dismissed: that line never closes the chain) cannot be undone either:
-// the lost line and the row stay as they are.
+// chainReadied: a Ready whose row was lost since (its readier was defeated or dismissed: that line never closes the
+// chain) cannot be undone: the lost line and the row stay as they are.
 func chainReadied(c chainEvent) chainVerdict {
-	switch c.row.Kind {
-	case eventReadiedFired:
-		if ev, ok := c.payload(); ok && ev.Readied != nil && ev.Readied.Opened {
-			return chainClose
-		}
-	case eventActionReadied:
-		if ev, ok := c.payload(); ok && ev.Readied != nil && readiedLostSince(c, ev.Readied.ID) {
-			return chainClose
-		}
+	if c.row.Kind != eventActionReadied {
+		return chainGoOn
+	}
+	if ev, ok := c.payload(); ok && ev.Readied != nil && readiedLostSince(c, ev.Readied.ID) {
+		return chainClose
 	}
 	return chainGoOn
 }
