@@ -70,6 +70,9 @@ func readTakeActionCall(req *playv1.TakeActionRequest) (takeActionCall, error) {
 	if call.actionKey == standardAttack || call.actionKey == standardCast {
 		return call, connect.NewError(connect.CodeInvalidArgument, errors.New("an attack is rolled with RollAttack, and a spell is cast with CastSpell"))
 	}
+	if call.actionKey == actionReady {
+		return call, connect.NewError(connect.CodeInvalidArgument, errors.New("standard:ready is taken with ReadyService.ReadyAction, which names the trigger"))
+	}
 	if call.in, call.rolled, err = readTakeActionRoll(req); err != nil {
 		return call, err
 	}

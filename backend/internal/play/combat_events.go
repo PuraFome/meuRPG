@@ -577,6 +577,8 @@ type actionEvent struct {
 	SunlightOn      bool   `json:"sunlight_on,omitempty"`
 	SunlightScope   string `json:"sunlight_scope,omitempty"`
 	SunlightSquares int    `json:"sunlight_squares,omitempty"`
+	// Readied is the readied action of action_readied, readied_fired and readied_lost (ready.go).
+	Readied *readiedEvent `json:"readied,omitempty"`
 	// Mode is how the master changed an NPC's hit points ("damage", "heal",
 	// "set"), and Delta the change.
 	Mode  string `json:"mode,omitempty"`

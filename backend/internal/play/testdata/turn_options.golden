@@ -703,6 +703,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].enabled = true
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"
@@ -1078,6 +1079,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].enabled = true
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"
@@ -2329,6 +2331,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].enabled = true
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"
@@ -2533,6 +2536,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].reason.code = "DISABLED_REASON_CODE_NOT_YOUR_TURN"
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"
@@ -2848,6 +2852,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].enabled = true
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"
@@ -3282,6 +3287,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].enabled = true
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"
@@ -4403,6 +4409,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].enabled = true
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"
@@ -4592,6 +4599,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].enabled = true
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"
@@ -5787,6 +5795,7 @@ options
 .options.standardActions[standard:ready].action.key = "standard:ready"
 .options.standardActions[standard:ready].action.namePt = "Preparar"
 .options.standardActions[standard:ready].enabled = true
+.options.standardActions[standard:ready].viaReadyAction = true
 .options.standardActions[standard:search].action.economy = "ACTION_ECONOMY_ACTION"
 .options.standardActions[standard:search].action.key = "standard:search"
 .options.standardActions[standard:search].action.namePt = "Procurar"

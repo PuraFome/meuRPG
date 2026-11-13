@@ -543,6 +543,16 @@
   "sunlight_on": true,
   "sunlight_scope": "x",
   "sunlight_squares": 1,
+  "readied": {
+    "id": "x",
+    "trigger": "x",
+    "kind": "x",
+    "action_key": "x",
+    "name": "x",
+    "move_ft": 1,
+    "target_id": "x",
+    "canceled": true
+  },
   "mode": "x",
   "delta": 1,
   "col": 1,

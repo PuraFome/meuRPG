@@ -94,7 +94,17 @@ func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 	if opts.GetEconomy() != nil {
 		opts.Economy.Movement = movementLeftOf(c)
 	}
+	markReadyOption(opts)
 	return opts, nil
+}
+
+// markReadyOption says Ready is taken with ReadyService.ReadyAction (TakeAction refuses it).
+func markReadyOption(opts *rulesv1.TurnOptions) {
+	for _, a := range opts.GetStandardActions() {
+		if a.GetAction().GetKey() == actionReady {
+			a.ViaReadyAction = true
+		}
+	}
 }
 
 // movementLeftOf is the combatant's speed, movement used and movement left this
