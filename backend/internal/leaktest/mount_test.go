@@ -8,7 +8,7 @@ import (
 )
 
 // A rider on a mount the master hid reads as a plain combatant to the players: no id, no name of the mount in any copy they get,
-// and the mark the master put on it stays the master's. The master's copy and the copy after the reveal are the positive controls.
+// and the mark the master put on it stays the master's. The master's copy and a player's copy after the reveal are the positive controls.
 func TestHiddenMountLeavesItsRiderPlain(t *testing.T) {
 	w := newWorld(t)
 	ctx := t.Context()
@@ -38,5 +38,16 @@ func TestHiddenMountLeavesItsRiderPlain(t *testing.T) {
 				t.Errorf("%s reads %q while the mount is hidden", p.name, needle)
 			}
 		}
+	}
+	// The reveal is the second positive control: a player who sees both rows reads the link and the mount, and still not the mark.
+	must(w.master.combat.SetCombatantHidden(ctx, rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: e.GetId(), CombatantId: mount.GetId(), IdempotencyKey: newKey(), Hidden: false})))
+	got := read(w.ana)
+	for _, needle := range []string{mount.GetId(), mount.GetLabel(), "mountedOnId", "riderId"} {
+		if !strings.Contains(got, needle) {
+			t.Errorf("the positive control failed: Ana reads no %q after the mount is revealed", needle)
+		}
+	}
+	if strings.Contains(got, "mountKind") {
+		t.Errorf("Ana reads the master's mark of a mount that is not hers")
 	}
 }

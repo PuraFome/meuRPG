@@ -152,9 +152,8 @@ A mount carries one rider, and a combatant that rides is not a mount.
 |---|---|
 | Kinds | `""` is not a mount, `controlled` obeys its rider, `independent` keeps its own turn. The kind is the master's: `SetCombatantMount` marks an NPC or a creature, never a player's character |
 | Refusals | `ALREADY_MOUNTED` for a rider that is marked, `MOUNT_TAKEN` for taking the mark off a mount that carries a rider. A mount that carries one may change between `controlled` and `independent` |
-| Events | `mount_kind_set` is a session event the undo does not take back, like `side_set`. `combatant_mounted` and `combatant_dismounted` are in the table of kinds and no call writes them yet |
+| Events | `mount_kind_set` is a session event the undo does not take back, like `side_set` |
 | Audience | The master reads every field. A player reads `mounted_on_id` and `rider_id` only when both rows are visible to them, so a hidden mount leaves its rider plain. `mount_kind` goes to the master and to the player who controls the combatant, and `mount_move_used` to whoever reads the combatant's economy |
-| Not built | The calls that put a rider on a mount and take it off, the shared square, the rider's initiative and the falls |
 
 ## On screen
 

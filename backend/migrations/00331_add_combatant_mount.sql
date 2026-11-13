@@ -5,13 +5,11 @@
 -- the mount's row goes (the mount left the combat), and the partial unique index lets a mount carry one rider only. A row never
 -- rides itself.
 --
--- mount_kind is on the MOUNT: '' is not a willing mount, 'controlled' obeys its rider (it takes the rider's initiative while
--- carried) and 'independent' keeps its own turn. The master marks it (SetCombatantMount); a creature that a spell made a steed is
--- 'controlled' from the cast.
+-- mount_kind is on the MOUNT: '' is not a willing mount, 'controlled' obeys its rider and 'independent' keeps its own turn. The
+-- master marks it (SetCombatantMount).
 --
--- mount_prior_init is on a 'controlled' mount while it is carried: what it had before it took the rider's initiative, as one JSON
--- object {"initiative": <total or null>, "face": <d20 or null>, "tie": <the master ordered it>}, so the dismount puts it back. NULL
--- when nothing is kept.
+-- mount_prior_init is NULL or one JSON object {"initiative": <total or null>, "face": <d20 or null>, "tie": <the master ordered it>}:
+-- the initiative, the d20 and the master's order of a mount.
 --
 -- mount_move_used says the rider already mounted or dismounted in this move (once per move); the start of its turn clears it.
 --

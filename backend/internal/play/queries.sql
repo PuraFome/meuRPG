@@ -247,7 +247,7 @@ WHERE id = $1;
 -- combatant acts ('acting') in the turn that starts. The legendary actions it
 -- spent come back (creature_spent keeps every other key).
 UPDATE combatants
-SET creature_spent = creature_spent - 'legendary_actions', movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, object_interaction_used = false, reaction_used = false, reaction_kind = NULL, reaction_round = NULL,
+SET creature_spent = creature_spent - 'legendary_actions', movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, mount_move_used = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, object_interaction_used = false, reaction_used = false, reaction_kind = NULL, reaction_round = NULL,
     attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 

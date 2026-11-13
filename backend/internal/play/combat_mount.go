@@ -64,11 +64,7 @@ func (s *Service) mountKindIn(ctx context.Context, c *combatTx, call masterTarge
 	if err := notEnded(c.enc); err != nil {
 		return nil, err
 	}
-	cs, err := listCombatants(ctx, c)
-	if err != nil {
-		return nil, err
-	}
-	target, err := findCombatant(cs, call.combID, viewerOf(call.m))
+	target, err := s.masterTargetOf(ctx, c, call)
 	if err != nil {
 		return nil, err
 	}
@@ -79,9 +75,10 @@ func (s *Service) mountKindIn(ctx context.Context, c *combatTx, call masterTarge
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_MOUNTED, "a combatant that rides is not a mount: it gets off first",
 			func(b *playv1.EncounterBlocked) { b.CombatantIds = []string{target.ID} })
 	}
-	if kind == mountKindNone && carriesARider(cs, target.ID) {
-		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_TAKEN, "the mount carries a rider: the rider gets off first",
-			func(b *playv1.EncounterBlocked) { b.CombatantIds = []string{target.ID} })
+	if kind == mountKindNone {
+		if err := mustCarryNobody(ctx, c, target.ID); err != nil {
+			return nil, err
+		}
 	}
 	if err := c.q.SetCombatantMountKind(ctx, playdb.SetCombatantMountKindParams{ID: target.ID, MountKind: kind}); err != nil {
 		return nil, fmt.Errorf("set the mount kind: %w", err)
@@ -93,9 +90,17 @@ func (s *Service) mountKindIn(ctx context.Context, c *combatTx, call masterTarge
 	return actionEvent{Round: c.enc.Round, Secret: target.Hidden, Actor: target.ID, Key: kind}, nil
 }
 
-// carriesARider says whether a combatant of the list sits on the mount.
-func carriesARider(cs []playdb.Combatant, mountID string) bool {
-	return riderOf(cs, mountID) != nil
+// mustCarryNobody refuses with MOUNT_TAKEN when a combatant sits on the mount.
+func mustCarryNobody(ctx context.Context, c *combatTx, mountID string) error {
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	if riderOf(cs, mountID) != nil {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_TAKEN, "the mount carries a rider: the rider gets off first",
+			func(b *playv1.EncounterBlocked) { b.CombatantIds = []string{mountID} })
+	}
+	return nil
 }
 
 // riderOf is the combatant that sits on the mount, or nil.

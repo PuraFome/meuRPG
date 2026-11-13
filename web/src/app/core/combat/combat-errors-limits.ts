@@ -23,7 +23,7 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
   ],
   [
     EncounterBlockedReason.ALREADY_MOUNTED,
-    'Quem está montado não pode ser montaria. Desmonte antes. Nada foi mudado.',
+    'Quem já está montado não monta de novo nem serve de montaria. Desmonte antes. Nada foi mudado.',
   ],
   [
     EncounterBlockedReason.MOUNT_TAKEN,

@@ -29,7 +29,7 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
     ],
     [
       EncounterBlockedReason.ALREADY_MOUNTED,
-      'Quem está montado não pode ser montaria. Desmonte antes. Nada foi mudado.',
+      'Quem já está montado não monta de novo nem serve de montaria. Desmonte antes. Nada foi mudado.',
     ],
     [
       EncounterBlockedReason.MOUNT_TAKEN,

@@ -623,9 +623,7 @@ type CombatServiceClient interface {
 	SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error)
 	// SetCombatantMount marks an NPC or a creature as a willing mount (SRD 5.1, "Mounted Combat": a willing
 	// creature that is at least one size larger than its rider), or takes the mark off. `kind` is "controlled" (it
-	// obeys its rider: it moves on its rider's say and takes the rider's initiative while carried), "independent"
-	// (it keeps its own turn) or "" (not a mount). A player can mount only a creature of its own and a combatant the
-	// master marked on the party's side; the master can mount anything. A player's character is never a mount. The mark is the
+	// obeys its rider), "independent" (it keeps its own turn) or "" (not a mount). A player's character is never a mount. The mark is the
 	// master's: the players never read `mount_kind` of a combatant that is not theirs. Only the master may call it. It is a
 	// session event, `mount_kind_set`, and, like SetCombatantSide, the undo does not take it back (the master marks it
 	// again).
@@ -2738,9 +2736,7 @@ type CombatServiceHandler interface {
 	SetCombatantSide(context.Context, *connect.Request[v1.SetCombatantSideRequest]) (*connect.Response[v1.SetCombatantSideResponse], error)
 	// SetCombatantMount marks an NPC or a creature as a willing mount (SRD 5.1, "Mounted Combat": a willing
 	// creature that is at least one size larger than its rider), or takes the mark off. `kind` is "controlled" (it
-	// obeys its rider: it moves on its rider's say and takes the rider's initiative while carried), "independent"
-	// (it keeps its own turn) or "" (not a mount). A player can mount only a creature of its own and a combatant the
-	// master marked on the party's side; the master can mount anything. A player's character is never a mount. The mark is the
+	// obeys its rider), "independent" (it keeps its own turn) or "" (not a mount). A player's character is never a mount. The mark is the
 	// master's: the players never read `mount_kind` of a combatant that is not theirs. Only the master may call it. It is a
 	// session event, `mount_kind_set`, and, like SetCombatantSide, the undo does not take it back (the master marks it
 	// again).
