@@ -11578,9 +11578,12 @@ type ActionOption struct {
 	UsesLeft int32 `protobuf:"varint,4,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
 	// True on the Rage ("feature:rage") of a character with the Berserker's Frenzy: the player
 	// may ask for a frenzy when it rages (TakeActionRequest.frenzy). False everywhere else.
-	OffersFrenzy  bool `protobuf:"varint,5,opt,name=offers_frenzy,json=offersFrenzy,proto3" json:"offers_frenzy,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OffersFrenzy bool `protobuf:"varint,5,opt,name=offers_frenzy,json=offersFrenzy,proto3" json:"offers_frenzy,omitempty"`
+	// True on Ready ("standard:ready"): it is taken with ReadyService.ReadyAction (a trigger and the held action), not
+	// with TakeAction, which refuses it.
+	ViaReadyAction bool `protobuf:"varint,16,opt,name=via_ready_action,json=viaReadyAction,proto3" json:"via_ready_action,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ActionOption) Reset() {
@@ -11644,6 +11647,13 @@ func (x *ActionOption) GetUsesLeft() int32 {
 func (x *ActionOption) GetOffersFrenzy() bool {
 	if x != nil {
 		return x.OffersFrenzy
+	}
+	return false
+}
+
+func (x *ActionOption) GetViaReadyAction() bool {
+	if x != nil {
+		return x.ViaReadyAction
 	}
 	return false
 }
@@ -14257,13 +14267,14 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x12\n" +
 	"\x04free\x18\x03 \x01(\x05R\x04free\x12\x14\n" +
 	"\x05total\x18\x04 \x01(\x05R\x05total\x12\x1a\n" +
-	"\bresource\x18\x05 \x01(\tR\bresource\"\xd4\x01\n" +
+	"\bresource\x18\x05 \x01(\tR\bresource\"\xfe\x01\n" +
 	"\fActionOption\x12/\n" +
 	"\x06action\x18\x01 \x01(\v2\x17.meurpg.rules.v1.ActionR\x06action\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
 	"\x06reason\x18\x03 \x01(\v2\x1f.meurpg.rules.v1.DisabledReasonR\x06reason\x12\x1b\n" +
 	"\tuses_left\x18\x04 \x01(\x05R\busesLeft\x12#\n" +
-	"\roffers_frenzy\x18\x05 \x01(\bR\foffersFrenzy\"\xae\x02\n" +
+	"\roffers_frenzy\x18\x05 \x01(\bR\foffersFrenzy\x12(\n" +
+	"\x10via_ready_action\x18\x10 \x01(\bR\x0eviaReadyAction\"\xae\x02\n" +
 	"\x14ListCreaturesRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x14\n" +

@@ -337,7 +337,7 @@ A row belongs to the combat (`encounter_id`) and to the readier (`combatant_id`)
 `round` is when it was readied, and `trigger_text` the player's own words, 1 to 200 characters.
 `kind` is `attack`, `spell`, `move` or `other`; `action_key` is the attack's or the standard action's key, `move_ft` the speed of a move, `spell_cast_id` the held cast of a spell.
 `target_id` is the creature the player named, set to `NULL` when it leaves.
-`status` is `waiting`, `fired`, `ignored`, `lost`, `broken` or `cancelled`; a combatant has at most one `waiting` row (`readied_actions_one_waiting_idx`).
+`status` is `waiting`, `fired`, `ignored`, `lost`, `broken` or `canceled`; a combatant has at most one `waiting` row (`readied_actions_one_waiting_idx`).
 The master and the readier's player read a row; no other player does (RN-10).
 
 ## Contest, hold, hide, help, surprise (RN-34)

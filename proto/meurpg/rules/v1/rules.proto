@@ -2537,6 +2537,9 @@ message ActionOption {
   // True on the Rage ("feature:rage") of a character with the Berserker's Frenzy: the player
   // may ask for a frenzy when it rages (TakeActionRequest.frenzy). False everywhere else.
   bool offers_frenzy = 5;
+  // True on Ready ("standard:ready"): it is taken with ReadyService.ReadyAction (a trigger and the held action), not
+  // with TakeAction, which refuses it.
+  bool via_ready_action = 16;
 }
 
 // ListCreaturesRequest names a campaign (for access) and the filters. Every

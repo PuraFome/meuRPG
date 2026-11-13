@@ -7,7 +7,7 @@
 --   - target_id is the creature the player named, if any; it is forgotten when that combatant leaves.
 --   - status: 'waiting' until it ends; 'fired' (the master fired it and the reaction ran it), 'ignored' (the reactor let
 --     it pass), 'lost' (the readier's next turn started first), 'broken' (the concentration of a held spell ended),
---     'cancelled' (the owner gave it up on their own turn).
+--     'canceled' (the owner gave it up on their own turn).
 -- A combatant has at most one waiting row. The rows go with the combat and with the combatant.
 -- Production is live: the migration only adds, and every statement may run twice.
 CREATE TABLE IF NOT EXISTS readied_actions (
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS readied_actions (
     created_at TIMESTAMPTZ NOT NULL,
     CONSTRAINT readied_actions_trigger_valid CHECK (char_length(trigger_text) BETWEEN 1 AND 200),
     CONSTRAINT readied_actions_kind_valid CHECK (kind IN ('attack', 'spell', 'move', 'other')),
-    CONSTRAINT readied_actions_status_valid CHECK (status IN ('waiting', 'fired', 'ignored', 'lost', 'broken', 'cancelled')),
+    CONSTRAINT readied_actions_status_valid CHECK (status IN ('waiting', 'fired', 'ignored', 'lost', 'broken', 'canceled')),
     CONSTRAINT readied_actions_action_key_valid CHECK (kind NOT IN ('attack', 'other') OR action_key IS NOT NULL),
     CONSTRAINT readied_actions_round_valid CHECK (round >= 0 AND move_ft >= 0)
 );

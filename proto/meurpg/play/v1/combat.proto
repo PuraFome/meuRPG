@@ -832,11 +832,12 @@ service CombatService {
   rpc DiscardPendingDamage(DiscardPendingDamageRequest) returns (DiscardPendingDamageResponse);
 
   // TakeAction takes one of the standard actions that only spend the action
-  // economy: Dash, Disengage, Dodge, Help, Hide, Ready, Search and Use an
+  // economy: Dash, Disengage, Dodge, Help, Hide, Search and Use an
   // Object (the keys of rules.v1.TurnOptions.standard_actions, such as
   // "standard:dash"), or a feature action of the character's class or race
   // (rules.v1.TurnOptions.feature_actions, such as "feature:second-wind").
-  // Attack and Cast a Spell are not taken here: RollAttack and CastSpell. Dash
+  // Attack and Cast a Spell are not taken here: RollAttack and CastSpell. Ready
+  // ("standard:ready") is ReadyService.ReadyAction, which names the trigger. Dash
   // doubles the speed for the rest of the turn (RN-21). The rest only spend
   // the action and go to the log: the app reminds the table of their effects.
   //
@@ -859,8 +860,9 @@ service CombatService {
   //     open session, or the caller is a player and may not see it.
   //   - `permission_denied`: the caller is a player and the combatant is not
   //     their character.
-  //   - `invalid_argument`: the action_key is not one of those listed above,
-  //     or the roll is missing or out of range for an action that rolls.
+  //   - `invalid_argument`: the action_key is not one of those listed above
+  //     (Ready included), or the roll is missing or out of range for an action
+  //     that rolls.
   //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
   //     ACTION_USED, BONUS_ACTION_USED or REACTION_USED (a player: the economy
   //     the action costs), NO_USES (the resource is spent; recharge says when it
@@ -2038,6 +2040,13 @@ enum EncounterBlockedReason {
   // A stay in a Wild Shape form (AssumeWildShapeRequest.stay) came after the form
   // had ended: nothing was spent and no new form was taken.
   ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED = 130;
+  // ReadyService.ReadyAction: the trigger is empty, or longer than 200 characters once trimmed. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_READY_TRIGGER = 131;
+  // ReadyService.ReadyAction: the held action is not one the combatant may ready (an attack it does not have, a
+  // standard action that cannot be held, a move with no speed, a second readied action). Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_READY_ACTION = 132;
+  // ReadyService.ReadyAction: the spell's casting time is not 1 action (SRD 5.1, "Ready"). Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_READY_SPELL_TIME = 133;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -2958,6 +2967,60 @@ message Combatant {
   // Only the master: the sunlight trait its stat block has (a creature that has the trait is marked whether or not the
   // sun is on it now; a player's character is not read). A player's copy has the zero value.
   SunlightTrait sunlight_trait = 118;
+
+  // The action the combatant readied and holds now (ReadyService), while it waits for its trigger. Only the master
+  // and the combatant's own player get it; another player's copy never has it, not even empty (RN-10). A hidden
+  // combatant is the master's alone, so is its readied action.
+  ReadiedAction readied = 119;
+}
+
+// What a readied action holds (SRD 5.1, "Ready").
+enum ReadiedKind {
+  READIED_KIND_UNSPECIFIED = 0;
+  // One attack, with the key of an attack the combatant has.
+  READIED_KIND_ATTACK = 1;
+  // A spell of 1 action, cast now and released on the trigger.
+  READIED_KIND_SPELL = 2;
+  // A move up to the combatant's speed.
+  READIED_KIND_MOVE = 3;
+  // Another standard action (Dash, Disengage, Dodge, Help, Hide, Search, Use an Object).
+  READIED_KIND_OTHER = 4;
+}
+
+// Where a readied action stands.
+enum ReadiedStatus {
+  READIED_STATUS_UNSPECIFIED = 0;
+  // It waits for its trigger.
+  READIED_STATUS_WAITING = 1;
+  // The master fired it and the readier used the reaction.
+  READIED_STATUS_FIRED = 2;
+  // The master fired it and the readier let it pass.
+  READIED_STATUS_IGNORED = 3;
+  // The readier's next turn started first.
+  READIED_STATUS_LOST = 4;
+  // The concentration on a held spell ended.
+  READIED_STATUS_BROKEN = 5;
+  // The owner gave it up on their own turn (CancelReadied).
+  READIED_STATUS_CANCELED = 6;
+}
+
+// A readied action: the trigger the player named and what the combatant holds for it.
+message ReadiedAction {
+  string id = 1;
+  // The trigger, in the player's own words (1 to 200 characters).
+  string trigger_text = 2;
+  ReadiedKind kind = 3;
+  // The attack's or the standard action's key; empty for a move and a spell.
+  string action_key = 4;
+  // The name of the action in Portuguese, when the content has one.
+  string action_name_pt = 5;
+  // The creature the player named, if any.
+  string target_combatant_id = 6;
+  // A move: how far it may go, in feet (the speed when it was readied).
+  int32 move_ft = 7;
+  // The round it was readied in.
+  int32 round = 8;
+  ReadiedStatus status = 9;
 }
 
 // The trait of a stat block that makes the sun count against a creature's rolls (SRD 5.1, Monsters).
@@ -5584,6 +5647,15 @@ enum CombatLogKind {
   // actor and `gear_swapped`. Only the master and the character's owner get the line; no other player's log shows it or
   // counts it (RN-10).
   COMBAT_LOG_KIND_GEAR_SWAPPED = 102;
+  // A combatant readied an action (ReadyService.ReadyAction): the actor. The master and the owner read `readied` (the
+  // trigger and the action); every other player reads only that the actor readied an action ("Toren preparou uma
+  // ação"). A hidden combatant's line is the master's alone (RN-10).
+  COMBAT_LOG_KIND_ACTION_READIED = 104;
+  // The master fired a readied action: the actor is the readier. Same audience as ACTION_READIED, `readied_fired`.
+  COMBAT_LOG_KIND_READIED_FIRED = 105;
+  // A readied action ended without firing: the readier's next turn started, or its owner gave it up
+  // (CancelReadied). Same audience as ACTION_READIED, `readied_lost`.
+  COMBAT_LOG_KIND_READIED_LOST = 106;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5817,6 +5889,11 @@ message CombatLogEntry {
   CombatLogRecharge recharge = 115;
   // GEAR_SWAPPED: the piece and what the change cost. The master's and the owner's.
   CombatLogGearSwapped gear_swapped = 117;
+  // ACTION_READIED, READIED_FIRED and READIED_LOST: the trigger and the held action. The master's and the readier's
+  // owner's; any other player's entry has the kind and the actor only (RN-10).
+  CombatLogReadied readied = 119;
+  CombatLogReadied readied_fired = 120;
+  CombatLogReadied readied_lost = 121;
   // The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
   // A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
   // sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and
@@ -5951,6 +6028,21 @@ message CombatLogRecharge {
   int32 face = 2;
   // Whether the face made the action available again.
   bool recharged = 3;
+}
+
+// CombatLogReadied is a readied action in a line of the log, for the master and the readier's owner.
+message CombatLogReadied {
+  // The row (ReadiedAction.id).
+  string readied_id = 1;
+  // The trigger, in the player's own words.
+  string trigger_text = 2;
+  ReadiedKind kind = 3;
+  // The attack's or the standard action's key; empty for a move.
+  string action_key = 4;
+  // Its name in Portuguese, when the content has one.
+  string action_name_pt = 5;
+  // READIED_LOST only: the owner gave it up (CancelReadied), rather than the next turn starting first.
+  bool canceled = 6;
 }
 
 // CombatLogGearSwapped is the line of a piece of gear drawn or stowed in a combat, for the master and the owner.
@@ -6374,6 +6466,9 @@ enum ReactionKind {
   // falling damage by five times its monk level (SRD 5.1, Slow Fall). The fall damage waits
   // (AWAITING_REACTION) until the window is answered or closed.
   REACTION_KIND_SLOW_FALL = 18;
+  // A readied action (ReadyService): the master fired it, and its readier may use the reaction to act now, or let
+  // it pass.
+  REACTION_KIND_READIED = 19;
 }
 
 enum ReactionWindowStatus {
