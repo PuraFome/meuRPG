@@ -358,8 +358,8 @@ Level-up changes none of it (`full.custom_background` is locked).
 Storage is the protojson of the entry, so there is no column and no migration.
 An enum left unset reaches the rules empty, which they read as the default (`applies`, `visibility`, `resistance_kind`) or refuse (`kind`); a number this build does not know reaches them as `unknown` and is refused at its field.
 The violation is `table_spell.effect.modifiers[1].value` and the like.
-The spell editor of the web app builds its body from its own draft (`spell-draft.ts`) and has no field for `effect`.
-Saving a spell in the editor replaces the body, so it removes an effect written through the API (it does the same to a zone and a summon).
+The spell editor of the web app builds its body from its own draft (`spell-draft.ts`) and edits only the next-hit modifier of `effect` (`hit-effect-draft.ts`), keeping the rest of the stored effect as it was.
+Saving a spell in the editor replaces the body: the stored effect goes back as it was, and a zone written through the API is removed.
 How the rules read the effect is in [Table content: rules](rules-table-content.md#the-lasting-effect-of-a-spell).
 
 **The next-hit effect.**
@@ -381,4 +381,6 @@ The die is the existing `die` (field 2).
 The API accepts the modifier on a spell that lasts and refuses it at its field, as the rules do: `table_spell.effect.modifiers[0].trigger` for a concentration trigger on a spell without concentration, or `marked_target` on a spell whose target is not One creature; `...dice`, `...max_dice` and the other numbers out of range; `...on_fail_conditions` for a save with no condition or a condition with no save; `...condition_duration` for `spell_end` on a spell that neither lasts a set time, lasts until dispelled nor asks for concentration; `...modifiers[i].kind` for a second `weapon_hit_damage` on the same spell.
 A spell with this modifier works only in a combat: casting it outside one is refused before a slot is spent.
 `TestTableSpellWeaponHitDamageIsReadFromTheMessage`, `TestTableSpellHitTriggersAreReadOneByOne` and `TestTableSpellHitConditionDurationsAreReadOneByOne` pin the copy.
+The spell page of a player reads it through `readHit` (`core/content/hit-effect-read.ts`): the section "Efeito no próximo golpe" with the damage, the save and who sees it.
+The preview line says it as "Em cada golpe com arma no alvo marcado: +1d6 do tipo da arma, enquanto durar.".
 The play side is in [Lasting effects](play/lasting-effects.md#the-damage-a-spell-adds-to-the-casters-hits).

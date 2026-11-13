@@ -30,9 +30,9 @@ export async function tableForCombat(
   name: string,
   grid = true,
   attacks = false,
-  character: { build?: CharacterBuild; sheet?: Record<string, unknown> } = {},
+  character: { build?: CharacterBuild; sheet?: Record<string, unknown>; before?: (campaignId: string, master: Page) => Promise<CharacterBuild> } = {},
 ): Promise<CombatTable> {
-  const base = await tableForMaps(masterPage, playerPage, name, true, character.sheet ?? (attacks ? pensantusAttacks : {}), character.build);
+  const base = await tableForMaps(masterPage, playerPage, name, true, character.sheet ?? (attacks ? pensantusAttacks : {}), character.build, character.before);
   // With `attacks` the Capitão carries a scimitar and wears chain mail, so the master has something to roll.
   const captainBody = characterRpcBody('ENEMY', { ...pensantus, name: 'Capitão Goblin' }) as { sheet: { full: object } };
   if (attacks) {
