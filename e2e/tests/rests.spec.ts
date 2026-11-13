@@ -88,6 +88,61 @@ test(
 );
 
 test(
+  'o descanso curto abre a sintonização do dono: ele sintoniza o anel na folha de dados de vida e a janela se fecha',
+  { tag: ['@561'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+    const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 390, height: 844 } });
+    const m = await master.newPage();
+    const p = await player.newPage();
+    let campaignId = '';
+    try {
+      await m.goto('/');
+      await p.goto('/');
+      const sheet = { ...torenSheet, magicItems: [{ key: 'item:ring-of-protection' }] };
+      const table = await tableForLevelUp(m, p, `Sintonia no descanso ${Date.now()}`, { build: toren, sheet, milestone: false });
+      campaignId = table.campaignId;
+      await setDiceModeRPC(m, campaignId, 'DICE_MODE_PHYSICAL');
+      await spendForRestRPC(m, campaignId, table.characterId);
+
+      // Before a rest the sheet says where the attunement changes, and the dice sheet has no section.
+      const sheetPage = await player.newPage();
+      await sheetPage.goto(`/campaigns/${campaignId}/characters/${table.characterId}`);
+      const gear = sheetPage.getByRole('region', { name: 'Equipamento' });
+      await expect(gear.getByText('Sintonizados: 0 de 3')).toBeVisible();
+      await expect(gear.getByText('Muda num descanso')).toBeVisible();
+
+      await openSessionPage(p, campaignId);
+      await openSessionPage(m, campaignId, 'grupo');
+      const card = m.getByRole('region', { name: 'Descanso' });
+      await card.getByRole('button', { name: 'Descanso curto' }).click();
+      await card.getByRole('alertdialog', { name: 'Começar o descanso curto?' }).getByRole('button', { name: 'Descansar' }).click();
+      await expect(card.getByText('Descanso curto feito.').first()).toBeVisible();
+
+      // The rest opened the window: the section is in the dice sheet and one tap attunes.
+      await openSheetTab(p);
+      await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+      const dice = p.getByRole('dialog', { name: 'Gastar dados de vida' });
+      const section = dice.getByRole('region', { name: 'Sintonização' });
+      await expect(section).toContainText('Sintonizados: 0 de 3');
+      await section.getByRole('button', { name: 'Sintonizar Anel de proteção' }).click();
+      await expect(dice.getByText('A sintonização deste descanso foi usada. A próxima abre no próximo descanso, curto ou longo.')).toBeVisible();
+      await expect(dice.getByRole('region', { name: 'Sintonização' })).toHaveCount(0);
+      await dice.locator('button', { hasText: 'Fechar' }).click();
+
+      // The sheet follows, with no reload: the ring counts, and the window is shut again.
+      await expect(gear.getByText('Sintonizados: 1 de 3')).toBeVisible();
+      await expect(gear.getByText('Muda num descanso')).toBeVisible();
+    } finally {
+      await endOpenSessionRPC(m, campaignId);
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+test(
   'a paladina cura uma aliada com a Cura pelas Mãos e, num morto-vivo, só lê "Sem efeito", sem o tipo da criatura',
   { tag: ['@MR-014', '@RN-02', '@RN-10'] },
   async ({ browser }) => {
