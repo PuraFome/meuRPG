@@ -100,7 +100,7 @@
             </button>
           </div>
           <p class="cast__cost" id="wild-cost">
-            {{ noUses() ? 'Sem usos de Forma Selvagem.' : stayLine() }}
+            {{ !live() ? wildLine() : noUses() ? 'Sem usos de Forma Selvagem.' : stayLine() }}
           </p>
           @if (wildError()) {
             <p class="cast__cost" role="alert">{{ wildError() }}</p>

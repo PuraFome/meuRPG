@@ -60,6 +60,9 @@ const (
 	// PlayServiceGetLiveSessionProcedure is the fully-qualified name of the PlayService's
 	// GetLiveSession RPC.
 	PlayServiceGetLiveSessionProcedure = "/meurpg.play.v1.PlayService/GetLiveSession"
+	// PlayServiceGetCharacterWildShapeProcedure is the fully-qualified name of the PlayService's
+	// GetCharacterWildShape RPC.
+	PlayServiceGetCharacterWildShapeProcedure = "/meurpg.play.v1.PlayService/GetCharacterWildShape"
 	// PlayServiceWatchGameSessionProcedure is the fully-qualified name of the PlayService's
 	// WatchGameSession RPC.
 	PlayServiceWatchGameSessionProcedure = "/meurpg.play.v1.PlayService/WatchGameSession"
@@ -266,6 +269,20 @@ type PlayServiceClient interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	GetLiveSession(context.Context, *connect.Request[v1.GetLiveSessionRequest]) (*connect.Response[v1.GetLiveSessionResponse], error)
+	// GetCharacterWildShape reads a druid's Wild Shape form with no open session
+	// needed: it is what the character sheet reads when the table is not playing, to
+	// say "Na forma de Lobo · 7 de 11 PV" and that Voltar and Permanecer wait for a
+	// combat or a session (the sheet shows no time then). Inside a session the sheet
+	// reads the form from GetLiveSession. The audience is WildShapeState's: the
+	// master and the character's player. `wild_shape` is unset for a character that
+	// is not in a form.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a member of
+	//     it, or the character is not one the caller may read (another player's, a
+	//     dead one, one that is not in the campaign): the same reason for each, so
+	//     no answer hints that a form exists.
+	GetCharacterWildShape(context.Context, *connect.Request[v1.GetCharacterWildShapeRequest]) (*connect.Response[v1.GetCharacterWildShapeResponse], error)
 	// WatchGameSession streams the live changes of the campaign's open game
 	// session to one member (ADR-0005). Any member may call it.
 	//
@@ -1135,6 +1152,13 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithIdempotency(connect.IdempotencyIdempotent),
 			connect.WithClientOptions(opts...),
 		),
+		getCharacterWildShape: connect.NewClient[v1.GetCharacterWildShapeRequest, v1.GetCharacterWildShapeResponse](
+			httpClient,
+			baseURL+PlayServiceGetCharacterWildShapeProcedure,
+			connect.WithSchema(playServiceMethods.ByName("GetCharacterWildShape")),
+			connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+			connect.WithClientOptions(opts...),
+		),
 		watchGameSession: connect.NewClient[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse](
 			httpClient,
 			baseURL+PlayServiceWatchGameSessionProcedure,
@@ -1368,6 +1392,7 @@ type playServiceClient struct {
 	listGameSessions       *connect.Client[v1.ListGameSessionsRequest, v1.ListGameSessionsResponse]
 	listOpenGameSessions   *connect.Client[v1.ListOpenGameSessionsRequest, v1.ListOpenGameSessionsResponse]
 	getLiveSession         *connect.Client[v1.GetLiveSessionRequest, v1.GetLiveSessionResponse]
+	getCharacterWildShape  *connect.Client[v1.GetCharacterWildShapeRequest, v1.GetCharacterWildShapeResponse]
 	watchGameSession       *connect.Client[v1.WatchGameSessionRequest, v1.WatchGameSessionResponse]
 	adjustCharacterVitals  *connect.Client[v1.AdjustCharacterVitalsRequest, v1.AdjustCharacterVitalsResponse]
 	nudgePlayer            *connect.Client[v1.NudgePlayerRequest, v1.NudgePlayerResponse]
@@ -1434,6 +1459,11 @@ func (c *playServiceClient) ListOpenGameSessions(ctx context.Context, req *conne
 // GetLiveSession calls meurpg.play.v1.PlayService.GetLiveSession.
 func (c *playServiceClient) GetLiveSession(ctx context.Context, req *connect.Request[v1.GetLiveSessionRequest]) (*connect.Response[v1.GetLiveSessionResponse], error) {
 	return c.getLiveSession.CallUnary(ctx, req)
+}
+
+// GetCharacterWildShape calls meurpg.play.v1.PlayService.GetCharacterWildShape.
+func (c *playServiceClient) GetCharacterWildShape(ctx context.Context, req *connect.Request[v1.GetCharacterWildShapeRequest]) (*connect.Response[v1.GetCharacterWildShapeResponse], error) {
+	return c.getCharacterWildShape.CallUnary(ctx, req)
 }
 
 // WatchGameSession calls meurpg.play.v1.PlayService.WatchGameSession.
@@ -1720,6 +1750,20 @@ type PlayServiceHandler interface {
 	//   - `failed_precondition`: no open session (GameSessionBlocked,
 	//     NO_OPEN_SESSION).
 	GetLiveSession(context.Context, *connect.Request[v1.GetLiveSessionRequest]) (*connect.Response[v1.GetLiveSessionResponse], error)
+	// GetCharacterWildShape reads a druid's Wild Shape form with no open session
+	// needed: it is what the character sheet reads when the table is not playing, to
+	// say "Na forma de Lobo · 7 de 11 PV" and that Voltar and Permanecer wait for a
+	// combat or a session (the sheet shows no time then). Inside a session the sheet
+	// reads the form from GetLiveSession. The audience is WildShapeState's: the
+	// master and the character's player. `wild_shape` is unset for a character that
+	// is not in a form.
+	//
+	// Errors:
+	//   - `not_found`: the campaign does not exist, the caller is not a member of
+	//     it, or the character is not one the caller may read (another player's, a
+	//     dead one, one that is not in the campaign): the same reason for each, so
+	//     no answer hints that a form exists.
+	GetCharacterWildShape(context.Context, *connect.Request[v1.GetCharacterWildShapeRequest]) (*connect.Response[v1.GetCharacterWildShapeResponse], error)
 	// WatchGameSession streams the live changes of the campaign's open game
 	// session to one member (ADR-0005). Any member may call it.
 	//
@@ -2585,6 +2629,13 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithIdempotency(connect.IdempotencyIdempotent),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceGetCharacterWildShapeHandler := connect.NewUnaryHandler(
+		PlayServiceGetCharacterWildShapeProcedure,
+		svc.GetCharacterWildShape,
+		connect.WithSchema(playServiceMethods.ByName("GetCharacterWildShape")),
+		connect.WithIdempotency(connect.IdempotencyNoSideEffects),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceWatchGameSessionHandler := connect.NewServerStreamHandler(
 		PlayServiceWatchGameSessionProcedure,
 		svc.WatchGameSession,
@@ -2821,6 +2872,8 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceListOpenGameSessionsHandler.ServeHTTP(w, r)
 		case PlayServiceGetLiveSessionProcedure:
 			playServiceGetLiveSessionHandler.ServeHTTP(w, r)
+		case PlayServiceGetCharacterWildShapeProcedure:
+			playServiceGetCharacterWildShapeHandler.ServeHTTP(w, r)
 		case PlayServiceWatchGameSessionProcedure:
 			playServiceWatchGameSessionHandler.ServeHTTP(w, r)
 		case PlayServiceAdjustCharacterVitalsProcedure:
@@ -2924,6 +2977,10 @@ func (UnimplementedPlayServiceHandler) ListOpenGameSessions(context.Context, *co
 
 func (UnimplementedPlayServiceHandler) GetLiveSession(context.Context, *connect.Request[v1.GetLiveSessionRequest]) (*connect.Response[v1.GetLiveSessionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.GetLiveSession is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) GetCharacterWildShape(context.Context, *connect.Request[v1.GetCharacterWildShapeRequest]) (*connect.Response[v1.GetCharacterWildShapeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.GetCharacterWildShape is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) WatchGameSession(context.Context, *connect.Request[v1.WatchGameSessionRequest], *connect.ServerStream[v1.WatchGameSessionResponse]) error {

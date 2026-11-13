@@ -14,7 +14,7 @@ export interface WildRead {
   readonly hp: { readonly current: number; readonly max: number } | null;
 }
 
-export function readWild(v: CharacterVitals | null): WildRead {
+export function readWild(v: Pick<CharacterVitals, 'resources' | 'wildShape'> | null): WildRead {
   const r = v?.resources.find((x) => x.key === 'wild_shape');
   const shape = v?.wildShape;
   return {

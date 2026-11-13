@@ -181,19 +181,23 @@ export class CreaturesPanel {
   });
 
   private async loadWild(): Promise<void> {
-    if (!this.wildShape() || this.isMaster() || !this.live()) {
+    if (!this.wildShape() || this.isMaster()) {
       return;
     }
     const seq = ++this.wildSeq;
     try {
-      const v = await this.client.vitalsOf(this.campaignId(), this.characterId());
+      // With no session open the form comes from its own small read, and it carries no time and no uses (card 9).
+      const live = this.live();
+      const v = live
+        ? await this.client.vitalsOf(this.campaignId(), this.characterId())
+        : await this.client.wildShapeOf(this.campaignId(), this.characterId());
       if (seq !== this.wildSeq) {
         return;
       }
       const read = readWild(v);
       this.uses.set(read.uses);
       this.form.set(read.form);
-      this.formTime.set(read.time);
+      this.formTime.set(live ? read.time : '');
       this.beastKey.set(read.beastKey);
       this.formHp.set(read.hp);
     } catch {

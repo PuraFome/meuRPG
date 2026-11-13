@@ -241,6 +241,15 @@ export class CreaturesClient {
     return res.vitals.find((v) => v.characterId === characterId) ?? null;
   }
 
+  /** The druid's form with no session open (`GetCharacterWildShape`): the form alone, as the vitals carry it; `null` when it is in its own shape. */
+  async wildShapeOf(
+    campaignId: string,
+    characterId: string,
+  ): Promise<Pick<CharacterVitals, 'resources' | 'wildShape'> | null> {
+    const res = await this.play.getCharacterWildShape({ campaignId, characterId });
+    return res.wildShape ? { resources: [], wildShape: res.wildShape } : null;
+  }
+
   /** Casts Convocar Familiar, Animar Mortos or Conjurar Animais outside a combat. */
   async castSummon(
     cast: SummonCast,

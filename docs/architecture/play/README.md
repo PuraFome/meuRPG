@@ -60,6 +60,7 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `ListGameSessions` | Campaign members | none |
 | `ListOpenGameSessions` | Anyone signed in; each sees only the campaigns they are an active member of | none |
 | `GetLiveSession`, `WatchGameSession` | Campaign members | `failed_precondition` `NO_OPEN_SESSION` |
+| `GetCharacterWildShape` | The master and the character's player; no session needed | `not_found` for any other reader, and for a character that cannot be read (same answer) |
 | `AdjustCharacterVitals` | The master, session open | `NO_OPEN_SESSION`; `not_found` unless the character is a living player character of the campaign; `invalid_argument` outside 0 to the maximum. `aborted` when `expected_revision` is absent or no longer the vitals' revision. The response carries `concentration_dc` and `concentration_cast_id` when a character concentrating on a spell cast outside combat lost hit points. At 0 HP the concentration of a character in the open combat ends too |
 | `NudgePlayer` | The master, session open | `NO_OPEN_SESSION`; `not_found`; `resource_exhausted` for a second nudge to the same character within 10 s |
 | `SetCurrentMap`, `SetShownImage`, `SetShownImageAudience` | The master, session open | `NO_OPEN_SESSION`; `not_found` for a map or image of another campaign (or no image shown); `invalid_argument` for an audience that is malformed; `SceneBlocked` `SCENE_NOT_PARTIAL` for the scene's players with no scene open to only some |

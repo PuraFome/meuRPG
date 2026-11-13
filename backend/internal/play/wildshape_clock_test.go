@@ -462,3 +462,40 @@ func TestWildShapeClockEndsWithTheForm(t *testing.T) {
 		}
 	}
 }
+
+// TestWildShapeReadOutsideASession: GetCharacterWildShape answers with no session open, with the clock, to the
+// master and the owner (the positive controls); another player and a stranger to the campaign (the spectator)
+// get the not_found of a character they cannot read, the same as for a character that does not exist.
+func TestWildShapeReadOutsideASession(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	s.mustAssume(t, s.bia, s.bri, wolfKey)
+	s.advanceGameTime(t, 480)
+	s.master.end(t, s.master.liveSession(t, s.campaignID).GetGameSession())
+	read := func(u *user, id string) (*playv1.WildShapeState, error) {
+		res, err := u.play.GetCharacterWildShape(t.Context(), connect.NewRequest(&playv1.GetCharacterWildShapeRequest{CampaignId: s.campaignID, CharacterId: id}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.GetWildShape(), nil
+	}
+	for who, u := range map[string]*user{"master": s.master, "owner": s.bia} {
+		w, err := read(u, s.bri.GetId())
+		if err != nil || w.GetBeastKey() != wolfKey || w.GetTimeLeftPt() != "1 h 52 min restantes" || w.GetSecondsLeft() != formSeconds-480 {
+			t.Errorf("%s reads %v, %v, want the wolf with 1 h 52 min restantes", who, w, err)
+		}
+	}
+	if w, err := read(s.master, s.irma.GetId()); err != nil || w != nil {
+		t.Errorf("a druid in no form reads %v, %v, want no form and no error", w, err)
+	}
+	_, goneErr := read(s.caio, "00000000-0000-4000-8000-000000000000")
+	for who, u := range map[string]*user{"other player": s.caio, "spectator": s.h.newUser("De fora")} {
+		w, err := read(u, s.bri.GetId())
+		if w != nil || connect.CodeOf(err) != connect.CodeNotFound {
+			t.Errorf("%s reads %v, %v, want not_found and no form", who, w, err)
+		}
+		if who == "other player" && (err == nil || goneErr == nil || err.Error() != goneErr.Error()) {
+			t.Errorf("%s is told %v, a missing character is told %v, want the same", who, err, goneErr)
+		}
+	}
+}

@@ -164,6 +164,23 @@ service PlayService {
     option idempotency_level = IDEMPOTENT;
   }
 
+  // GetCharacterWildShape reads a druid's Wild Shape form with no open session
+  // needed: it is what the character sheet reads when the table is not playing, to
+  // say "Na forma de Lobo · 7 de 11 PV" and that Voltar and Permanecer wait for a
+  // combat or a session (the sheet shows no time then). Inside a session the sheet
+  // reads the form from GetLiveSession. The audience is WildShapeState's: the
+  // master and the character's player. `wild_shape` is unset for a character that
+  // is not in a form.
+  //
+  // Errors:
+  //   - `not_found`: the campaign does not exist, the caller is not a member of
+  //     it, or the character is not one the caller may read (another player's, a
+  //     dead one, one that is not in the campaign): the same reason for each, so
+  //     no answer hints that a form exists.
+  rpc GetCharacterWildShape(GetCharacterWildShapeRequest) returns (GetCharacterWildShapeResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+
   // WatchGameSession streams the live changes of the campaign's open game
   // session to one member (ADR-0005). Any member may call it.
   //
@@ -1235,6 +1252,17 @@ message OpenGameSession {
 // GetLiveSessionRequest names the campaign.
 message GetLiveSessionRequest {
   string campaign_id = 1;
+}
+
+message GetCharacterWildShapeRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+}
+
+// GetCharacterWildShapeResponse is a character's Wild Shape form.
+message GetCharacterWildShapeResponse {
+  // The form; unset when the character is not in one.
+  WildShapeState wild_shape = 1;
 }
 
 // GetLiveSessionResponse is the live session's snapshot.

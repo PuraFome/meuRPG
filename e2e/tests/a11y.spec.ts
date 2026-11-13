@@ -4329,6 +4329,9 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByText('Permanecer na forma').first()).toBeVisible();
     await expectScreenPasses(p, `A aba Druida na forma, com Permanecer na forma ${where}`);
     await tapAboveBar(p.getByRole('button', { name: 'Permanecer na forma' }));
+    // The answer is in: the buttons that waited for it are on again (the scan reads the settled screen, not the one in flight).
+    await expect(p.getByRole('button', { name: 'Voltar à forma normal' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).not.toHaveAttribute('aria-disabled', 'true');
     await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
     await expectScreenPasses(p, `Depois de permanecer na forma ${where}`);
     // Another player reads the name of the beast, never the time (RN-20).
@@ -4415,6 +4418,55 @@ test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferênci
 test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
   test.setTimeout(360_000);
   await scanCreatureCombatScreens(browser, 'light', 320);
+});
+
+// The sheet of a druid in a Wild Shape form with no session open (584-06 card 9): the form with its pool and no time, both buttons off
+// and the line that says why. The form is taken in a combat; the session ends, and the sheet reads it from its own small read.
+async function scanWildShapeSheetWithoutSession(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const where = `(${colorScheme === 'dark' ? 'dark' : 'light'}, ${width}px)`;
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) => browser.newContext({ storageState: authStatePath(user), colorScheme, viewport })),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForCreatureCombat(m, p, t, `Acessibilidade forma sem sessão ${Date.now()}`);
+    campaignId = table.campaignId;
+    await beginCreatureCombat(m, table, { Sálvia: p, Toren: t }, { Toren: 20, Sálvia: 13, 'Capitão Goblin': 5, 'Goblin 1': 4, 'Goblin 2': 4 });
+    await passTurnsTo(m, campaignId, 'Sálvia');
+    await p.goto(sessionRoute(campaignId));
+    await openActionTab(p, 'Druida');
+    await tapAboveBar(p.getByRole('button', { name: 'Transformar: Forma Selvagem' }));
+    const wild = p.getByRole('dialog', { name: 'Forma Selvagem' });
+    await wild.getByLabel('Buscar fera').fill('lobo');
+    await wild.locator('label', { hasText: '(Wolf)' }).click();
+    await wild.getByRole('button', { name: 'Virar Lobo' }).click();
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await endOpenSessionRPC(m, campaignId);
+    await p.goto(`/campaigns/${campaignId}/characters/${table.heroId}`);
+    const block = p.locator('app-creatures-panel .form');
+    await expect(block).toContainText('Na forma de Lobo');
+    await expect(block).toContainText('Só durante um combate ou uma sessão.');
+    await expect(block).not.toContainText(/restantes|rodadas?/);
+    await expectScreenPasses(p, `A ficha da forma sem sessão aberta ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId).catch(() => undefined);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('a ficha da Forma Selvagem sem sessão aberta passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWildShapeSheetWithoutSession(browser, 'light', 1280);
+});
+
+test('a ficha da Forma Selvagem sem sessão aberta passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWildShapeSheetWithoutSession(browser, 'dark', 390);
 });
 
 // The map editor (slice 9.12, MR-034, MR-035, MR-036, MR-041, E9-01 and E9-02): painting with each tool, the in-place questions, the

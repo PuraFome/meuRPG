@@ -7,7 +7,10 @@ import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 import { Subject, of } from 'rxjs';
 
-import { CharacterVitalsSchema } from '../../../../gen/meurpg/play/v1/play_pb';
+import {
+  CharacterVitalsSchema,
+  WildShapeStateSchema,
+} from '../../../../gen/meurpg/play/v1/play_pb';
 import { CreatureSource } from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { CreaturesClient } from '../../../core/creatures/creatures-client';
 import {
@@ -428,6 +431,7 @@ function deferred<T>() {
 
 describe('CreaturesPanel, a druid in Wild Shape: the reads of her form', () => {
   const sessions = signal<readonly { campaignId: string }[]>([{ campaignId: 'camp-1' }]);
+  beforeEach(() => sessions.set([{ campaignId: 'camp-1' }]));
 
   function vitals(beast: string) {
     return create(CharacterVitalsSchema, {
@@ -462,6 +466,33 @@ describe('CreaturesPanel, a druid in Wild Shape: the reads of her form', () => {
       f.detectChanges();
     }
   };
+
+  it('with no session open, draws the form from its own read: no time, both buttons off, and why (584-06 card 9)', async () => {
+    sessions.set([]);
+    const wildShapeOf = vi.fn(async () => ({
+      resources: [],
+      wildShape: create(WildShapeStateSchema, {
+        beastNamePt: 'Lobo',
+        hitPointsCurrent: 7,
+        hitPointsMax: 11,
+        timeLeftPt: '1 h 52 min restantes',
+      }),
+    }));
+    const api = Object.assign(new FakeCreaturesClient(), { wildShapeOf });
+    const fixture = build(api);
+    fixture.detectChanges();
+    await settle(fixture);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(api.vitalsOf).not.toHaveBeenCalled();
+    expect(wildShapeOf).toHaveBeenCalledWith('camp-1', 'char-1');
+    expect(flat(el.querySelector('.form__title'))).toBe('Na forma de Lobo');
+    expect(flat(el.querySelector('.form__line'))).toBe('7 de 11 PV');
+    expect(el.querySelector('.form__hour')).toBeNull();
+    for (const b of ['.js-wild', '.js-stay']) {
+      expect((el.querySelector(b) as HTMLButtonElement).getAttribute('aria-disabled')).toBe('true');
+    }
+    expect(flat(el.querySelector('#wild-cost'))).toBe('Só durante um combate ou uma sessão.');
+  });
 
   it('keeps the form of the newest vitals read when an older one lands after it', async () => {
     const api = new FakeCreaturesClient();
