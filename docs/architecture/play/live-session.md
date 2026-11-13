@@ -149,6 +149,31 @@ With no open session the stream ends by itself and opens again when the window r
 The map page counts as one of the person's streams in the campaign (the cap of 4).
 It adds no read a player could not already make (RN-10).
 
+### What a re-read costs
+
+Every page re-reads at the next heartbeat after any write that moves the hint number ([What moves it](#what-moves-it)), the hidden writes included.
+No tick, timer or content-free hint stands in between: a page that is behind reads everything `ready` reads, once, and `seenSeq` catches up when the read worked.
+Two pages watch the heartbeat: the session page (master and player) and the TV (`TableScreenWatcher`).
+The map page, the character page and the content and XP watchers have no `onBehind` and make no read on a heartbeat.
+
+The session page's re-read (`readAll` in `live-session-events.ts`) issues these unary calls, counted from the code with the panels of the role on screen, no combat open and a fog map current:
+
+| Role   | Calls                                                                                                                                                                                                                                                                                             | Count |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| Both   | `GetLiveSession`, `ListTrapActivity`, `ListSessionMessages` (one page; more only for a wide gap), `ListFreeRolls`, `GetEncounter`, `GetOpenScene`, `ListLeftImages`, `GetMap`, `GetMapVision`, `GetMapLayers`, `ListSpellCasts`, `GetOutsideInspiration`, `ListCharacterEffects`, `GetGroupCheck` | 14    |
+| Master | `ListTrapDamages`, `ListSessionPuzzles`, `ListCharactersInTheDark`, `ListMaps`, `GetTableScreen`, `GetCampaignExperience`, `ListCharacters`, `ListHeldRolls`, `ListRevivifyRequests`, and one `GetMapVision` per character in "Névoa e luz" (4 characters here)                                   | 9 + 4 |
+| Player | `ListShownPuzzles`, `ListNotes`, `ListNoteScenes`, `ListCharacterCreatures`, and `ListHeldRolls` when no question waits                                                                                                                                                                           | 4 + 1 |
+| TV     | `GetTableScreen`                                                                                                                                                                                                                                                                                  | 1     |
+
+So one re-read is 27 calls for the master, 19 for a player (18 with a question waiting) and 1 for the TV.
+A combat adds `ListCombatLog` and the reads its revision moves; a map with no fog drops `GetMapVision`, `GetMapLayers` and `ListCharactersInTheDark`; an open trap card adds one `GetTrapNoticers`.
+
+The bound is one re-read per page per heartbeat interval (`DefaultHeartbeat`, 25 s), however many writes land in it, because a heartbeat during a read does nothing and one that is not ahead does nothing.
+With a write in every interval a page therefore keeps its rate: master 27 / 25 s = 1.08 calls/s, player 19 / 25 s = 0.76 calls/s, TV 0.04 calls/s.
+A table of six pages (the master, four players and the TV) makes 27 + 4 x 19 + 1 = 104 calls per 25 s, 4.2 calls/s, spread over the interval because each page's heartbeat has its own phase.
+A table with no write in an interval makes none.
+The count is read from the code, not measured at run time: to recount it, list the unary calls behind `readSnapshot`, `trapBoard.refresh`, `conversation.sync` and the panels that read on `bumpTicks`.
+
 ## The hint number
 
 A hint can be lost, and the stream then shows a number ahead of what the page applied, so the page reads the session again.
