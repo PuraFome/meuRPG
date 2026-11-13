@@ -71,7 +71,7 @@ async function settle(fixture: { detectChanges: () => void; whenStable: () => Pr
   fixture.detectChanges();
 }
 
-async function open(isMaster: boolean, pending: string) {
+async function open(isMaster: boolean, pending: string, afterEnd = '') {
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: /min-width: 1024px/.test(query),
     media: query,
@@ -95,7 +95,7 @@ async function open(isMaster: boolean, pending: string) {
         : name === 'endTurn'
           ? async (...args: unknown[]) => {
               ended.push(args);
-              return enc('');
+              return enc(afterEnd);
             }
           : name === 'answerRageEnd'
             ? async (...args: unknown[]) => {
@@ -183,5 +183,21 @@ describe('CombatView: the rage question', () => {
   it('asks nobody when no rage waits', async () => {
     const { el } = await open(false, '');
     expect(el.querySelector('app-rage-question [role="alertdialog"]')).toBeNull();
+  });
+
+  it("puts the focus on 'Voltar e atacar' when the end of the turn answers with the question", async () => {
+    // The end-turn ask held the focus; it goes away with the answer, and the question that comes in its place takes it.
+    const { fixture, el } = await open(false, '', 't');
+    const bar = [...el.querySelectorAll<HTMLButtonElement>('button')].find((b) =>
+      /Encerrar turno$/.test(plain(b.textContent)),
+    )!;
+    bar.click();
+    await settle(fixture);
+    const ask = el.querySelector<HTMLButtonElement>('app-end-turn [role="alertdialog"] .ask__go')!;
+    ask.focus();
+    ask.click();
+    await settle(fixture);
+    expect(el.querySelector('app-rage-question [role="alertdialog"]')).not.toBeNull();
+    expect(document.activeElement).toBe(button(el, 'Voltar e atacar'));
   });
 });

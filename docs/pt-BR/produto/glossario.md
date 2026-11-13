@@ -240,6 +240,8 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Letargia | Lethargy | O turno em que uma criatura que terminou Velocidade não pode se mover nem agir. |
 | Exaustão | Exhaustion | Os seis níveis da condição do SRD; um descanso longo baixa um (RN-22). |
 | Efeito | Lasting effect | Algo que uma magia ou o mestre põe numa criatura por um tempo: uma condição com fim, um bônus, uma ação extra. Contado em rodadas no combate e em tempo de jogo fora dele (RN-22). |
+| Efeito no próximo golpe | Next-hit effect | Dano de arma que uma magia deixa nos golpes de quem conjura: o próximo golpe, o próximo golpe corpo a corpo, cada golpe enquanto concentra, ou cada golpe no alvo marcado. É somado depois de um golpe de arma, e o próximo golpe o gasta (RN-23). |
+| Alvo marcado | Marked target | A criatura que um efeito no próximo golpe do tipo "Cada golpe no alvo marcado" segue. Acaba quando quem conjura deixa de se concentrar (RN-23). |
 | Tempo de jogo | Game time | O tempo na ficção; uma rodada tem 6 segundos. Fora do combate, só anda quando o mestre o anda. |
 | Janela de reação | Reaction window | A pergunta "você pode reagir?" que segura a ação que a abriu até ser respondida. O jogador lê só a própria; na de um NPC, "Esperando o mestre". |
 | Reação | Reaction | Uma ação uma vez por rodada, que volta no começo da vez do combatente: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave, Queda Lenta e o ataque de oportunidade. |

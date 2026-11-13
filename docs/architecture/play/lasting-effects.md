@@ -54,6 +54,11 @@ A Guidance or Resistance die instead ends its effect with the roll (`spendOnceEf
 Aid's bonus to the maximum is not a `character_effects` row: it is `character_vitals.hit_points_max_bonus`, raised when the cast takes effect and lowered by `closeCast` (`takeBackMaxHP`), with the arithmetic of `casting_aid.go` shared with the combat's `raiseMaxHP` and `endAid`.
 A rider that asks a saving throw is not cast outside a combat (`castCharacterEffects` takes no such spell).
 
+## A Wild Shape form's clock
+
+A druid's Wild Shape form (half the druid level, in hours) keeps its time as a lasting effect, `effect:wild-shape`: owner audience (RN-20), no conditions and no modifiers, `source_kind` feature, in a combat a row counted in rounds and out of one a `character_effects` row with `seconds_left`.
+When the row ends by its time or by the master, the form ends with it (`formClockEnded` in a combat, `formClocksGone` out of one); see [Creatures: Wild Shape](creatures.md#wild-shape).
+
 ## What a player may read
 
 The area a spell keeps on the map (Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud, Silence, Spike Growth, Wall of Fire) is not an effect on a creature; it is a zone with its own table and hooks, and the concentration, the clock and the web's effect it shares with the effects are described in [Spell zones](spell-zones.md).
@@ -72,7 +77,7 @@ Tests: `TestRN10_AnOwnerOnlyConditionIsInNoReadOfAnotherPlayer`, `TestRN10_TheLa
 
 A table spell's effect ([Table content: rules](../rules-table-content.md#the-lasting-effect-of-a-spell)) is read through `Content.CombatSpellEffect`.
 The paths above apply it, end it and show it.
-Six modifier kinds are read by the play module for SRD and table effects alike.
+Seven modifier kinds are read by the play module for SRD and table effects alike.
 
 - **`roll_bonus`.**
   A flat bonus on an attack roll, a saving throw or an ability check (`lasting_effects_bonus.go`: `rollBonusesOf`, `withRollBonus`, `bonusSources`).
@@ -95,6 +100,9 @@ Six modifier kinds are read by the play module for SRD and table effects alike.
   The end clears the pool only while it is no larger than the claim of the row that ends.
   Outside a combat the same holds on the vitals of each character the cast reaches (`giveCharacterTempHP`, `afterCharacterEffectsGone`).
 
+- **`weapon_hit_damage`.**
+  Damage added to the caster's weapon hits; it has a section of its own [below](#the-damage-a-spell-adds-to-the-casters-hits).
+
 Who reads what:
 
 - The master and the target's player read the card, with its tags.
@@ -106,6 +114,37 @@ Who reads what:
 
 Tests: `lasting_effects_tablespell_test.go` and `lasting_effects_cast_test.go`.
 The leak rows plant 77 temporary hit points and a +13 bonus and read them as every player, with the master and the target's player as positive controls.
+
+## The damage a spell adds to the caster's hits
+
+A spell with a `weapon_hit_damage` modifier (`lasting_effects_hit.go`, `applyHitSpell`) leaves its effect on the caster, not on the spell's target.
+How the hit uses it is in [Attacks and damage](attacks-and-damage.md#a-spells-hit-effect).
+
+- **The pending effect is the caster's row.**
+  It carries the modifier with the dice worked out for the slot of the cast (`dice` set, `per_slot_dice` zeroed: `hitModifiersAtSlot`) and the spell's save DC.
+  The kind `weapon_hit_damage` is in the shared vocabulary (`modifierKinds`, `EffectModifierKind` 27), so an SRD effect file may use it too.
+- **Two blocks in one spell.**
+  What the effect does to the targets (conditions, the other modifiers) lands on them as a lasting effect like any other (`putLastingOnTargets`), and the hit modifier stays on the caster (`targetSideOf`, `withoutHitModifiers`).
+  A spell that only adds hit damage has no target row.
+  The rows share the cast's group, so one concentration ends all of them, and the undo of the cast takes all of them away.
+  A recast ends the old rows first.
+- **The mark.**
+  `marked_target` also writes a row on the target: no modifier, no condition, the same group, key and source as the caster's row (`markSpec`).
+  A target row the effect already has is the mark.
+  Nothing but the spell's name (or its `player_label_pt`) is read on it, and it is as visible as the effect is: hidden by the master or an `owner` audience, it is hidden.
+  The pair is found by group, key and source (`carriesMark`), so it needs no column.
+  The cast needs exactly one target and not the caster (`checkHitTargets`, `failed_precondition` before anything is spent).
+  The mark ends with the concentration.
+  When the marked creature dies the spell stays on the caster, and a recast marks a new creature.
+- **Only in a combat.**
+  A character outside a combat has no hit to spend it on: the cast is refused with `failed_precondition` before a slot is spent (`checkNotAHitSpell`).
+- **The card.**
+  `EffectModifier.hit` (`WeaponHitDamage`: `trigger`, `die`, `dice`, `per_slot_dice`, `max_dice`, `damage_type_key`, `damage_type_pt`, `save`, `condition_keys`, `condition_names_pt`, `condition_duration`) is set by `effectViewer.modifierCard`, and `LastingEffect.spent` says a `next_hit` was used.
+  The card of the caster says "pending" or "used"; its tags read the damage ("+1d6 no próximo golpe com arma, ...", `tagsOfRow`), and a row on a target reads what the spell does to that creature, never the damage.
+  Only the master and the combatant's own player are given a card at all (`decorateCard`), and a mark has no modifier, so no other player is ever given these numbers: they read the label alone.
+- **Tests.**
+  `TestAHitEffectCardTheCastersPlayerAndTheMasterReadItWhole`, `TestAHitEffectCardSaysWhenItIsSpent` and `TestAHitSpellTheMarkFollowsTheVisibilityOfTheEffect`.
+  The leak tests are `TestRN10_AHitEffectCardIsNotReadByOtherPlayers`, `TestRN10_ABothBlocksSpellKeepsTheHitCardOffTheTarget`, `TestRN10_APendingHitEffectReachesOnlyItsCastersPlayerAndTheMaster` and `TestRN10_TheCastersPlayerAndTheMasterReadThePartWhole`.
 
 ## Exhaustion
 

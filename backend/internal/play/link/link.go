@@ -82,6 +82,10 @@ type Character struct {
 	// (the cheapest of the character's wild_shape effects: 1 for the SRD druid, less or 0
 	// for a table feature that makes it cheaper).
 	WildShapeCost int32
+	// WildShapeSeconds is how long one form lasts, in seconds of game time: half the druid
+	// level in hours (rules.WildShapeSeconds); 0 when the character has no druid level, and
+	// the form then has no clock.
+	WildShapeSeconds int32
 	// ArmorUntrained says the character wears armor or a shield it is not proficient with,
 	// and so cannot cast spells (rules.ArmorUntrained).
 	ArmorUntrained bool

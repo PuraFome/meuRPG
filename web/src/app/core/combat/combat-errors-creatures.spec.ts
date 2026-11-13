@@ -24,6 +24,10 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
     ],
     [EncounterBlockedReason.ALREADY_IN_WILD_SHAPE, 'Você já está na forma de uma fera.'],
     [
+      EncounterBlockedReason.WILD_SHAPE_ENDED,
+      'A forma já acabou. Assuma uma forma nova, se ainda tiver usos.',
+    ],
+    [
       EncounterBlockedReason.TOO_MANY_COMBATANTS,
       'Não cabem mais combatentes neste combate. Nada foi gasto.',
     ],

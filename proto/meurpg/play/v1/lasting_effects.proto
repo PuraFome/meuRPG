@@ -65,6 +65,8 @@ enum EffectModifierKind {
   EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE = 25;
   // Disadvantage on the ability checks of abilities.
   EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE = 26;
+  // Weapon damage added to the caster's hits (hit has the details): a card of the caster's.
+  EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE = 27;
 }
 
 // EffectRollKind is a roll an effect's die or flat bonus (ROLL_DIE, ROLL_BONUS) touches.
@@ -121,6 +123,31 @@ message EffectModifier {
   // ("damage-type:fire", or "all", or "nonmagical_bps").
   string resistance_kind = 9;
   repeated string damage_types = 10;
+  // WEAPON_HIT_DAMAGE: the damage a spell adds to the caster's weapon hits. Set only on the card the
+  // caster's player and the master read: a modifier is never sent to any other player (they read the
+  // label of the effect, RN-10).
+  optional WeaponHitDamage hit = 11;
+}
+
+// WeaponHitDamage is the pending damage a spell adds to the caster's weapon hits, as its card reads it.
+message WeaponHitDamage {
+  // The hit it rides on: "next_hit", "next_melee_hit", "each_hit" or "marked_target".
+  string trigger = 1;
+  // The die (4 to 12), and how many of them the slot of the cast gives: the number is already worked out
+  // (per_slot_dice is 0 then), up to max_dice.
+  int32 die = 2;
+  int32 dice = 3;
+  int32 per_slot_dice = 4;
+  int32 max_dice = 5;
+  // The damage type, empty for the weapon's own.
+  string damage_type_key = 6;
+  string damage_type_pt = 7;
+  // The saving throw of the target of a hit ("wis", empty for none), the conditions a failure gives and how
+  // long they last ("next_turn" or "spell_end").
+  string save = 8;
+  repeated string condition_keys = 9;
+  repeated string condition_names_pt = 10;
+  string condition_duration = 11;
 }
 
 // EffectEnd is the moment an effect ends: the turn of a combatant in a round.
@@ -207,6 +234,8 @@ message LastingEffect {
   // Only the master: the label each target shows the players now ("Paralisado"), or
   // empty when they read nothing.
   string players_see_pt = 29;
+  // The effect was used up (a next_hit that hit): the card of the caster reads "used" instead of "pending".
+  bool spent = 30;
 }
 
 // CatalogEffect is an effect the master may add.

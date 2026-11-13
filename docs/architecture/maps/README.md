@@ -86,7 +86,7 @@ What the player does not see stays out of the response, never blank: neither the
 | Trap | All, with DCs, trigger, effect and who knows it | Only if revealed to one of their characters, triggered, or revealed to all; then only name, description, position, area and state (armed, triggered or disarmed), never the DCs, trigger, effect or preset |
 | Treasure | All, with the value and who found it | The revealed (name and position only) or the found (with description, value and finders, even if nobody revealed it) |
 | Light (point) | All | Never: they see the light, not the point |
-| Painted layers | All six | Wall, terrain, cover, doors and the "can't pass" squares of a map they see, never light; on a fogged map, only the squares the character sees or remembers |
+| Painted layers | All seven | Wall, terrain, cover, doors, the "can't pass" squares and the surface (water, climbable) of a map they see, never light; on a fogged map, only the squares the character sees or remembers |
 | Why a move stopped | The real reason | Only for their own token (a player moves one alone), and the square in the way (a wall, a locked door, a "can't pass" square) only when they see or remember it; otherwise `BLOCKED` |
 | The light a character carries | All | Their own character's; the others' arrive only through the fog (what it lights) |
 | Token | All, with the state | Only the visible ones, on a map they see; their own is marked `mine`. On a fogged map: every player character's, always; an NPC's only on a square seen now. A character creature's group token is always received |

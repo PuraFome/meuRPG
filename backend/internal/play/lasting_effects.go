@@ -593,6 +593,9 @@ func targetsOf(cs []playdb.Combatant, ids []string) []playdb.Combatant {
 // afterEffectEnded does what follows an effect that ended on its targets.
 func (s *Service) afterEffectEnded(ctx context.Context, c *combatTx, cs []playdb.Combatant, content *rules.Content, rows []playdb.CombatantState, reason string) error {
 	key := conv.OrZero(rows[0].SourceKey)
+	if key == wildShapeEffect {
+		return s.formClockEnded(ctx, c, cs, rows, reason)
+	}
 	def, ok := s.effectDef(content, key)
 	if !ok {
 		return nil

@@ -98,12 +98,9 @@ func (s *Service) moveOptionsWithDrag(ctx context.Context, plan grid.Terrain, cs
 	occ := occupantsFor(cs, who, v)
 	dragged, dragging, err := s.draggedBy(ctx, s.queries, cs, who)
 	// moveOptions reads the movement left: the path that fits is what is left divided by
-	// what the move multiplies the cost by. Crawling doubles it (combat_standup.go), and so
-	// does a drag at half speed.
+	// what the move multiplies the cost by: a drag at half speed doubles it. (A crawl is in the
+	// cost itself, grid.Mover.Crawls.)
 	div := 1
-	if crawls(who) {
-		div *= 2
-	}
 	if err != nil || !dragging {
 		return moveOptions(plan, probeWithLeftOver(who, div), mover, occ), err
 	}

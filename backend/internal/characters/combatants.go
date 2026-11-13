@@ -164,6 +164,7 @@ func combatCharacter(content *rules.Content, id, kind, name string, playerUserID
 		}
 		c.CastsInBeastForm = content.CastsInBeastForm(d)
 		c.WildShapeCost = 1
+		c.WildShapeSeconds = conv.Int32(rules.WildShapeSeconds(d))
 		if d.WildShape != nil {
 			c.WildShapeCost = conv.Int32(d.WildShape.Cost)
 		}

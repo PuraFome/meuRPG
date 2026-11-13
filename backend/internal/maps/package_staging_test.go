@@ -259,6 +259,14 @@ func layerBytes(g grid.Grid) (terrain, walls, cover, light, doors []byte) {
 	return l.Encode(), l.Encode(), c.Encode(), li.Encode(), d.Encode()
 }
 
+// surfaceBytes is the surface layer of g with a square of water and one of climbable surface.
+func surfaceBytes(g grid.Grid) []byte {
+	l := grid.NewSurfaceLayer(g)
+	l.Set(2, 2, grid.SurfaceWater)
+	l.Set(3, 2, grid.SurfaceClimb)
+	return l.Encode()
+}
+
 func stageMapGolden(t *testing.T, part *mapsPart) string {
 	t.Helper()
 	imgs := &stagedImages{byOld: map[string]*stagedImage{pkgImage1: {width: 400, height: 300}}}
@@ -268,7 +276,7 @@ func stageMapGolden(t *testing.T, part *mapsPart) string {
 		return &pkgv1.PackageMap{
 			Id: pkgMapA, Name: " Vila ", ImageId: pkgImage1, GridColumns: 20, GridFactor: 1, Revealed: true, FogEnabled: true, FogOnFirstGrid: true,
 			GroupVision: true, BaseLight: "dim",
-			Layers: &pkgv1.PackageLayers{DifficultTerrain: terrain, Walls: walls, Cover: cover, Light: light, Doors: doors},
+			Layers: &pkgv1.PackageLayers{DifficultTerrain: terrain, Walls: walls, Cover: cover, Light: light, Doors: doors, Surface: surfaceBytes(g)},
 			Points: []*pkgv1.PackagePoint{goodPoint(), {Id: pkgPoint2, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE, Name: "Emboscada", XBp: 5, YBp: 5}},
 		}
 	}
@@ -320,6 +328,12 @@ func stageMapGolden(t *testing.T, part *mapsPart) string {
 		{name: "a cover of another grid", edit: func(pm *pkgv1.PackageMap) { pm.Layers.Cover = []byte{9} }},
 		{name: "a light layer of another grid", edit: func(pm *pkgv1.PackageMap) { pm.Layers.Light = []byte{9} }},
 		{name: "a door layer of another grid", edit: func(pm *pkgv1.PackageMap) { pm.Layers.Doors = []byte{9} }},
+		{name: "a good map with a surface", edit: func(pm *pkgv1.PackageMap) { pm.Layers.Surface = surfaceBytes(g) }},
+		{name: "a surface of another grid", edit: func(pm *pkgv1.PackageMap) { pm.Layers.Surface = []byte{9} }},
+		{name: "a surface square holding 3", edit: func(pm *pkgv1.PackageMap) {
+			pm.Layers.Surface = surfaceBytes(g)
+			pm.Layers.Surface[0] |= 3
+		}},
 		{name: "a terrain layer of another grid", edit: func(pm *pkgv1.PackageMap) { pm.Layers.DifficultTerrain = []byte{9} }},
 		{name: "a bad point", edit: func(pm *pkgv1.PackageMap) { pm.Points[0].Name = "" }},
 		{name: "two bad points", edit: func(pm *pkgv1.PackageMap) { pm.Points[0].Name, pm.Points[1].XBp = "", -1 }},
@@ -546,7 +560,7 @@ func packageFixture(t *testing.T) []pkgEntry {
 	mapOne := &pkgv1.PackageMap{
 		Id: pkgMapA, Name: "Vila", ImageId: pkgImage1, GridColumns: 20, GridFactor: 1, Revealed: true, FogEnabled: true, FogOnFirstGrid: true,
 		GroupVision: true, BaseLight: "dim",
-		Layers: &pkgv1.PackageLayers{DifficultTerrain: terrain, Walls: walls, Cover: cover, Light: light, Doors: doors},
+		Layers: &pkgv1.PackageLayers{DifficultTerrain: terrain, Walls: walls, Cover: cover, Light: light, Doors: doors, Surface: surfaceBytes(g)},
 		Points: []*pkgv1.PackagePoint{
 			{
 				Id: pkgPoint1, Kind: mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, Name: "A ponte", Description: "Uma ponte.", Hooks: "ganchos", ShowDc: true, XBp: 100, YBp: 200, Revealed: true,

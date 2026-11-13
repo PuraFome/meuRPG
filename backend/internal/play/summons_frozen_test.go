@@ -341,6 +341,6 @@ func TestSummonsWildShapeRefusesEachBadRequest(t *testing.T) {
 	if got := used(a.vitals(t, s.bri), wildShapeResource); got != 1 {
 		t.Errorf("Wild Shape uses spent = %d after a retry, want 1", got)
 	}
-	err = a.shapeRaw(s.bia, true, salvia, wolfKey, newKey())
+	err = a.shapeRaw(s.bia, true, salvia, "monster:mastiff", newKey())
 	wantSummonsBlocked(t, "Assume(again)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_IN_WILD_SHAPE, "the character is in a beast form already")
 }
