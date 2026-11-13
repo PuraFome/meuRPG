@@ -54,6 +54,9 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventWildShapeEnded:    (*undoer).wildShapeEnded,
 	eventFamiliarSight:     (*undoer).familiarSight,
 	eventLegendarySpent:    (*undoer).legendaryBack,
+
+	eventCombatantMounted:    (*undoer).mountBack,
+	eventCombatantDismounted: (*undoer).dismountBack,
 }
 
 // find is the combatant of that ID among the ones the undo found.
@@ -577,6 +580,9 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 	if err := u.moverBack(ctx, who, ev); err != nil {
 		return err
 	}
+	if err := carryRider(ctx, u.c.q, who.ID); err != nil { // a mount's rider goes back with it
+		return err
+	}
 	if err := u.legendaryBack(ctx, ev); err != nil {
 		return err
 	}
@@ -592,6 +598,9 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 			ID: ev.Dragged, GridCol: &ev.DraggedFrom.Col, GridRow: &ev.DraggedFrom.Row, CoverMark: coverOrNone(ev.DraggedFrom.Cover),
 		}); err != nil {
 			return fmt.Errorf("put back the dragged creature: %w", err)
+		}
+		if err := carryRider(ctx, u.c.q, ev.Dragged); err != nil {
+			return err
 		}
 	}
 	// The offers the move made go with it. Only the move that is the last action

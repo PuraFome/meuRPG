@@ -66,6 +66,9 @@ func (s *Service) GetTurnOptions(
 	if err != nil {
 		return nil, err
 	}
+	if err := s.attachMountOptions(ctx, m.CampaignID, d, v, who, terrain, res.GetOptions()); err != nil {
+		return nil, err
+	}
 	modes, err := s.weighTurnModes(ctx, m, d, v, sight, who)
 	if err != nil {
 		return nil, err

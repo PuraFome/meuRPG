@@ -332,7 +332,7 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 		return nil, false, err
 	}
 	if slices.ContainsFunc(cs, func(m playdb.Combatant) bool {
-		return m.ID != mover.ID && !m.Defeated && placed(m) && *m.GridCol == *o.LeftCol && *m.GridRow == *o.LeftRow
+		return m.ID != mover.ID && !samePair(m, mover) && !m.Defeated && placed(m) && *m.GridCol == *o.LeftCol && *m.GridRow == *o.LeftRow
 	}) {
 		return nil, true, nil
 	}
@@ -342,6 +342,9 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 		MovementUsedFt: mover.MovementUsedFt, MovementUsedDft: mover.MovementUsedDft, LastMoveDft: mover.LastMoveDft, CoverMark: mover.CoverMark,
 	}); err != nil {
 		return nil, false, fmt.Errorf("take the mover back to where it left the reach: %w", err)
+	}
+	if err := carryRider(ctx, c.q, mover.ID); err != nil {
+		return nil, false, err
 	}
 	return before, false, nil
 }
@@ -354,6 +357,7 @@ func (s *Service) publishReturned(ctx context.Context, campaignID string, d *enc
 	if back, ok := combatantByID(d.cs, ev.Target); ok {
 		s.publishCombatantMoved(ctx, campaignID, d.enc, back, squareOfState(ev.ReturnedFrom))
 		s.positionChanged(ctx, campaignID, d.enc, back, squareOfState(ev.ReturnedFrom))
+		s.publishRideAlong(ctx, campaignID, d, back, squareOfState(ev.ReturnedFrom))
 	}
 }
 
@@ -378,7 +382,7 @@ func putBackMove(ctx context.Context, c *combatTx, id string, st *moveState) err
 	}); err != nil {
 		return fmt.Errorf("put the mover back: %w", err)
 	}
-	return nil
+	return carryRider(ctx, c.q, id)
 }
 
 func coverOrNone(c string) string {

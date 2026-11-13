@@ -47,6 +47,8 @@ func (f *castFlow) checkTeleport(context.Context) error {
 	switch {
 	case !teleports:
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("destination is for a teleport spell"))
+	case f.caster.MountedOnID != nil:
+		return mountedFor(f.v, f.cs, f.caster, errUnavailable()) // a rider does not teleport alone: it gets off first
 	case isTheatre(f.c.enc):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this combat has no map: there is no square to teleport to"))
 	case !inGrid(f.c.enc, dest.GetCol(), dest.GetRow()):
@@ -93,7 +95,7 @@ func (f *castFlow) squareFree(to grid.Square) error {
 // occupiedBy says whether a combatant other than who, standing, is on the square: a hidden one too.
 func occupiedBy(cs []playdb.Combatant, who playdb.Combatant, sq grid.Square) bool {
 	for _, o := range cs {
-		if o.ID != who.ID && !o.Defeated && placed(o) && squareOfCombatant(o) == sq {
+		if o.ID != who.ID && !samePair(o, who) && !o.Defeated && placed(o) && squareOfCombatant(o) == sq {
 			return true
 		}
 	}
@@ -108,6 +110,9 @@ func (f *castFlow) teleport(ctx context.Context) error {
 	col, row := clamp32(f.landing.Col, 0, math.MaxInt32), clamp32(f.landing.Row, 0, math.MaxInt32)
 	if err := f.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{ID: f.caster.ID, GridCol: &col, GridRow: &row, CoverMark: "none"}); err != nil {
 		return fmt.Errorf("teleport the caster: %w", err)
+	}
+	if err := carryRider(ctx, f.c.q, f.caster.ID); err != nil {
+		return err
 	}
 	f.out.made.Teleport = &teleportEvent{From: moveStateOf(f.caster), Col: col, Row: row}
 	moved := f.caster
@@ -157,7 +162,7 @@ func (u *undoer) castTeleportBack(ctx context.Context, who playdb.Combatant, ev 
 	if err := u.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{ID: who.ID, GridCol: col, GridRow: row, CoverMark: coverOrNone(from.Cover)}); err != nil {
 		return fmt.Errorf("put back the teleport: %w", err)
 	}
-	return nil
+	return carryRider(ctx, u.c.q, who.ID)
 }
 
 // publishTeleport tells the streams and the fog that the caster landed, after the commit.
@@ -174,5 +179,6 @@ func (s *Service) publishTeleport(ctx context.Context, campaignID string, d *enc
 		s.publishCoverCleared(ctx, campaignID, d.enc, moved)
 	}
 	s.positionChanged(ctx, campaignID, d.enc, moved, squareOfState(ev.Teleport.From))
+	s.publishRideAlong(ctx, campaignID, d, moved, squareOfState(ev.Teleport.From))
 	s.noticeAfterMove(ctx, campaignID, d.enc, moved) // a trap near where the caster landed may be noticed, as after a move
 }

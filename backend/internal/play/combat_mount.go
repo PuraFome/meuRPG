@@ -10,6 +10,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // Mounted combat (SRD 5.1, "Mounted Combat"). The rider and its mount stay two combatants: the rider row names the mount it sits
@@ -131,4 +132,108 @@ func mountFor(out *playv1.Combatant, c playdb.Combatant, cs []playdb.Combatant, 
 	if rider := riderOf(cs, c.ID); rider != nil && v.sees(*rider) {
 		out.RiderId = rider.ID
 	}
+}
+
+// ridingOn is the mount the combatant sits on among cs, or nil when it rides nothing.
+func ridingOn(cs []playdb.Combatant, c playdb.Combatant) *playdb.Combatant {
+	if c.MountedOnID == nil {
+		return nil
+	}
+	for i := range cs {
+		if cs[i].ID == *c.MountedOnID {
+			return &cs[i]
+		}
+	}
+	return nil
+}
+
+// samePair says whether a rides b or b rides a: the two are one occupant of their square, and neither is in the other's way.
+func samePair(a, b playdb.Combatant) bool {
+	return (a.MountedOnID != nil && *a.MountedOnID == b.ID) || (b.MountedOnID != nil && *b.MountedOnID == a.ID)
+}
+
+// carryRider puts the rider of the mount on the mount's square. Every write that changes the square of a combatant calls it for
+// that combatant, after the square is written: the pair never stands on two squares.
+func carryRider(ctx context.Context, q *playdb.Queries, mountID string) error {
+	if err := q.CarryRiders(ctx, mountID); err != nil {
+		return fmt.Errorf("carry the rider: %w", err)
+	}
+	return nil
+}
+
+// drives says whether the viewer's player moves the combatant for its rider: a controlled mount obeys the rider, whose player the
+// viewer is.
+func (v combatViewer) drives(cs []playdb.Combatant, c playdb.Combatant) bool {
+	if c.MountKind != mountKindControlled {
+		return false
+	}
+	rider := riderOf(cs, c.ID)
+	return rider != nil && v.owns(*rider)
+}
+
+// mayMove checks that the viewer may move the combatant: the master, its player, or the player of the rider of a controlled mount.
+func (v combatViewer) mayMove(cs []playdb.Combatant, c playdb.Combatant) error {
+	if v.drives(cs, c) {
+		return nil
+	}
+	return v.mayAct(c)
+}
+
+// mountedFor is the refusal of a rider's own move or teleport, as the viewer may be told: MOUNTED, unless the viewer does not see the
+// mount (it is hidden): then it is the refusal the viewer gets for something in the way, and says nothing of what the rider sits on.
+func mountedFor(v combatViewer, cs []playdb.Combatant, rider playdb.Combatant, otherwise error) error {
+	if mount := ridingOn(cs, rider); mount != nil && !v.sees(*mount) {
+		return otherwise
+	}
+	return mountedError(rider.ID)
+}
+
+// mountedError is the MOUNTED refusal: a rider is moved by its mount, not on its own.
+func mountedError(riderID string) error {
+	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNTED, "a rider moves with its mount: it gets off first",
+		func(b *playv1.EncounterBlocked) { b.CombatantIds = []string{riderID} })
+}
+
+// publishRideAlong tells the streams and the fog that the rider of a mount moved with it, after the commit: it moved from the same
+// square as its mount did.
+func (s *Service) publishRideAlong(ctx context.Context, campaignID string, d *encounterData, mount playdb.Combatant, from *grid.Square) {
+	rider := riderOf(d.cs, mount.ID)
+	if rider == nil || !placed(*rider) {
+		return
+	}
+	s.publishCombatantMoved(ctx, campaignID, d.enc, *rider, from)
+	s.positionChanged(ctx, campaignID, d.enc, *rider, from)
+}
+
+// mountBack takes a mount back: the rider is on foot where it stood, with the movement it had used, and its move is free again.
+func (u *undoer) mountBack(ctx context.Context, ev actionEvent) error {
+	return u.rideBack(ctx, ev, nil)
+}
+
+// dismountBack takes a dismount back: the rider is on its mount again, on the mount's square, with the movement it had used.
+func (u *undoer) dismountBack(ctx context.Context, ev actionEvent) error {
+	return u.rideBack(ctx, ev, &ev.Target)
+}
+
+// rideBack puts the rider's link, square, movement and cover mark back as the event kept them; on is the mount it sat on, or nil. The
+// move of the turn was free, or the ride could not have been made.
+func (u *undoer) rideBack(ctx context.Context, ev actionEvent, on *string) error {
+	who, ok := u.find(ev.Actor)
+	if ev.From == nil {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOTHING_TO_UNDO, "this ride cannot be undone")
+	}
+	if !ok {
+		return nil
+	}
+	var col, row *int32
+	if ev.From.Placed {
+		col, row = &ev.From.Col, &ev.From.Row
+	}
+	if err := u.c.q.SetCombatantRide(ctx, playdb.SetCombatantRideParams{
+		ID: who.ID, MountedOnID: on, GridCol: col, GridRow: row,
+		MovementUsedFt: ev.From.UsedDFt / undoDFtPerFt, MovementUsedDft: ev.From.UsedDFt, MountMoveUsed: false, CoverMark: coverOrNone(ev.From.Cover),
+	}); err != nil {
+		return fmt.Errorf("put back the ride: %w", err)
+	}
+	return nil
 }

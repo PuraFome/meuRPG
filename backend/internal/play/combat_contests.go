@@ -1101,6 +1101,9 @@ func shovePushes(ctx context.Context, r *shoveRun) (stored, line string, err err
 	}); err != nil {
 		return "", "", fmt.Errorf("push the target: %w", err)
 	}
+	if err := carryRider(ctx, r.c.q, r.target.ID); err != nil {
+		return "", "", err
+	}
 	from := squareOfCombatant(r.target)
 	if err := r.c.svc.zonesAfterSteps(ctx, r.c, zoneStep{who: r.target.ID, from: &from, path: []grid.Square{push.to}, travels: true}); err != nil {
 		return "", "", err

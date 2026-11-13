@@ -492,6 +492,20 @@ func (q *Queries) BumpHintSeq(ctx context.Context, id string) (int64, error) {
 	return hint_seq, err
 }
 
+const carryRiders = `-- name: CarryRiders :exec
+UPDATE combatants r
+SET cover_mark = CASE WHEN r.grid_col IS DISTINCT FROM m.grid_col OR r.grid_row IS DISTINCT FROM m.grid_row THEN 'none' ELSE r.cover_mark END,
+    grid_col = m.grid_col, grid_row = m.grid_row
+FROM combatants m
+WHERE m.id = $1 AND r.mounted_on_id = m.id
+`
+
+// The rider of a mount goes where the mount is: every mover that changes a square calls it for the mover (carryRider).
+func (q *Queries) CarryRiders(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, carryRiders, id)
+	return err
+}
+
 const clearCombatTurns = `-- name: ClearCombatTurns :exec
 UPDATE combatants
 SET turn_state = 'idle'
@@ -9816,6 +9830,40 @@ type SetCombatantRevivifyBlockedParams struct {
 // The master's switch "Revivificar não funciona nesta morte", for a dead combatant.
 func (q *Queries) SetCombatantRevivifyBlocked(ctx context.Context, arg SetCombatantRevivifyBlockedParams) error {
 	_, err := q.db.Exec(ctx, setCombatantRevivifyBlocked, arg.Blocked, arg.ID)
+	return err
+}
+
+const setCombatantRide = `-- name: SetCombatantRide :exec
+UPDATE combatants
+SET mounted_on_id = $2, grid_col = $3, grid_row = $4, movement_used_ft = $5, movement_used_dft = $6, mount_move_used = $7, cover_mark = $8
+WHERE id = $1
+`
+
+type SetCombatantRideParams struct {
+	ID              string
+	MountedOnID     *string
+	GridCol         *int32
+	GridRow         *int32
+	MovementUsedFt  int32
+	MovementUsedDft int32
+	MountMoveUsed   bool
+	CoverMark       string
+}
+
+// A rider mounts or dismounts (SRD 5.1, "Mounting and Dismounting"): the mount it sits on (NULL when it rides
+// nothing), its square, the movement it has used, whether it used its mount or dismount of the move and the master's cover mark
+// (a change of square clears it). The undo writes it back.
+func (q *Queries) SetCombatantRide(ctx context.Context, arg SetCombatantRideParams) error {
+	_, err := q.db.Exec(ctx, setCombatantRide,
+		arg.ID,
+		arg.MountedOnID,
+		arg.GridCol,
+		arg.GridRow,
+		arg.MovementUsedFt,
+		arg.MovementUsedDft,
+		arg.MountMoveUsed,
+		arg.CoverMark,
+	)
 	return err
 }
 

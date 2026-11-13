@@ -3,24 +3,384 @@ package play
 import (
 	"context"
 	"errors"
+	"fmt"
+	"math"
+	"slices"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
+
+// Mounting and dismounting (SRD 5.1, "Mounting and Dismounting"): a rider that is within 5 ft of a mount at least one size larger gets on
+// it, or off it onto a free square next to it, at the cost of half its speed. It does so once in a move, and it does not Dash.
+
+// mountReach is how far the mount may be, in feet: the rider is next to it, a diagonal square included.
+const mountReach = 5
+
+// mountNo is why a rider cannot mount or dismount now: what a write answers with, and what the turn options show.
+type mountNo struct {
+	reason  playv1.EncounterBlockedReason
+	refusal rulesv1.MountRefusal
+	msg     string
+	ids     []string
+	missing int // tenths of a foot, for the cost
+}
+
+// err is the failed_precondition of the refusal.
+func (n *mountNo) err() error {
+	name := func(b *playv1.EncounterBlocked) { b.CombatantIds = n.ids }
+	if n.reason == playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_FAR {
+		return tooFar(n.missing, name)
+	}
+	return errEncounter(n.reason, n.msg, name)
+}
+
+// willingMount says whether the viewer may mount the combatant (ruling of the mounts): the master mounts anything; a player mounts a
+// creature of their own and a combatant of the party the master marked as a mount. A player's character is nobody's mount.
+func willingMount(v combatViewer, mount playdb.Combatant) bool {
+	switch {
+	case mount.Kind == kindPlayer:
+		return false
+	case v.master:
+		return true
+	}
+	return v.owns(mount) || (mount.MountKind != mountKindNone && mount.Side == sidePartyKey)
+}
+
+// mountVerdict says why the rider cannot get on the mount now, or nil. standing is the surface the rider stands on. The order is the
+// order of the refusals.
+func mountVerdict(cs []playdb.Combatant, rider, mount playdb.Combatant, standing grid.Surface) *mountNo {
+	no := func(reason playv1.EncounterBlockedReason, refusal rulesv1.MountRefusal, msg string, ids ...string) *mountNo {
+		return &mountNo{reason: reason, refusal: refusal, msg: msg, ids: ids}
+	}
+	switch {
+	case rider.MountedOnID != nil:
+		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_MOUNTED, rulesv1.MountRefusal_MOUNT_REFUSAL_ALREADY_MOUNTED, "the rider rides already: it gets off first", rider.ID)
+	case mount.MountedOnID != nil:
+		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ALREADY_MOUNTED, rulesv1.MountRefusal_MOUNT_REFUSAL_ALREADY_MOUNTED, "a combatant that rides is not a mount", mount.ID)
+	case riderOf(cs, mount.ID) != nil:
+		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_TAKEN, rulesv1.MountRefusal_MOUNT_REFUSAL_TAKEN, "the mount carries a rider", mount.ID)
+	case sizeToGrid[sizeKey(mount.Size)] <= sizeToGrid[sizeKey(rider.Size)]:
+		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_TOO_SMALL, rulesv1.MountRefusal_MOUNT_REFUSAL_TOO_SMALL, "a mount is at least one size larger than its rider", mount.ID)
+	case !placed(rider) || !placed(mount) || grid.RangeFt(squareOfCombatant(rider), squareOfCombatant(mount)) > mountReach:
+		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_TOO_FAR, rulesv1.MountRefusal_MOUNT_REFUSAL_TOO_FAR, "the mount is not within 5 ft", mount.ID)
+	case rider.MountMoveUsed:
+		return no(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_MOVE_USED, rulesv1.MountRefusal_MOUNT_REFUSAL_MOVE_USED, "the rider mounted or dismounted in this move already", rider.ID)
+	}
+	return rideCost(rider, standing)
+}
+
+// rideCost is the refusal of a rider that cannot pay for a mount or a dismount: its speed is 0, or less movement is left than half of it.
+func rideCost(rider playdb.Combatant, standing grid.Surface) *mountNo {
+	base := rider
+	base.Dashed = false
+	cost := mountCostDFt(rider, standing)
+	left := movementLeftAtDFt(rider, standing)
+	if speedOnDFt(base, standing) > 0 && cost <= left {
+		return nil
+	}
+	return &mountNo{reason: playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TOO_FAR, refusal: rulesv1.MountRefusal_MOUNT_REFUSAL_NO_MOVEMENT, missing: max(cost-left, 0)}
+}
+
+// landingSquares are the squares a rider may get off onto: the neighbours of the mount that hold a creature of no kind, that a
+// creature can stand on and that the rider can step to.
+func landingSquares(t grid.Terrain, mount grid.Square, occ grid.OccupantMap, rider grid.Mover) []grid.Square {
+	var out []grid.Square
+	for dc := -1; dc <= 1; dc++ {
+		for dr := -1; dr <= 1; dr++ {
+			sq := grid.Square{Col: mount.Col + dc, Row: mount.Row + dr}
+			if sq == mount || !t.Standable(sq) {
+				continue
+			}
+			if _, taken := occ.At(sq); taken || t.Move(mount, sq, occ, rider).Blocked {
+				continue
+			}
+			out = append(out, sq)
+		}
+	}
+	return out
+}
+
+// dismountVerdict says why the rider cannot get off now, or nil. to is the square it asked for, or nil to ask only whether it could get off.
+func dismountVerdict(rider playdb.Combatant, standing grid.Surface, landing []grid.Square, to *grid.Square) *mountNo {
+	switch {
+	case rider.MountMoveUsed:
+		return &mountNo{reason: playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_MOVE_USED, refusal: rulesv1.MountRefusal_MOUNT_REFUSAL_MOVE_USED, msg: "the rider mounted or dismounted in this move already", ids: []string{rider.ID}}
+	case to == nil && len(landing) == 0, to != nil && !slices.Contains(landing, *to):
+		return &mountNo{reason: playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_ROOM_TO_DISMOUNT, refusal: rulesv1.MountRefusal_MOUNT_REFUSAL_NO_ROOM, msg: "there is no free square for the rider next to the mount"}
+	}
+	return rideCost(rider, standing)
+}
+
+// rideCall is what MountCombatant and DismountCombatant read from their requests, checked.
+type rideCall struct {
+	m                authz.Membership
+	key, encounterID string
+	riderID, mountID string
+	col, row         int32
+	dismount         bool
+}
+
+// rideDone is what a ride's transaction made, for the publishers after the commit.
+type rideDone struct {
+	rider, mount playdb.Combatant // as they stand after the change
+	from         *grid.Square     // where the rider stood
+	secret       bool
+}
 
 // MountCombatant implements playv1connect.CombatServiceHandler.
 func (s *Service) MountCombatant(
-	_ context.Context,
-	_ *connect.Request[playv1.MountCombatantRequest],
+	ctx context.Context,
+	req *connect.Request[playv1.MountCombatantRequest],
 ) (*connect.Response[playv1.MountCombatantResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	if err != nil {
+		return nil, err
+	}
+	call := rideCall{m: m, key: key, encounterID: encID}
+	if call.riderID, err = parseCombatID(req.Msg.GetRiderId(), "combatant"); err != nil {
+		return nil, err
+	}
+	if call.mountID, err = parseCombatID(req.Msg.GetMountId(), "combatant"); err != nil {
+		return nil, err
+	}
+	out, err := s.ride(ctx, call, idem.Hash(req.Msg), eventCombatantMounted)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.MountCombatantResponse{Encounter: out, MovementLeftDft: standUpMovementLeft(out, call.riderID)}), nil
 }
 
 // DismountCombatant implements playv1connect.CombatServiceHandler.
 func (s *Service) DismountCombatant(
-	_ context.Context,
-	_ *connect.Request[playv1.DismountCombatantRequest],
+	ctx context.Context,
+	req *connect.Request[playv1.DismountCombatantRequest],
 ) (*connect.Response[playv1.DismountCombatantResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("not implemented"))
+	m, key, encID, err := memberCall(ctx, req.Msg.GetCampaignId(), req.Msg.GetIdempotencyKey(), req.Msg.GetEncounterId())
+	if err != nil {
+		return nil, err
+	}
+	call := rideCall{m: m, key: key, encounterID: encID, dismount: true, col: req.Msg.GetCol(), row: req.Msg.GetRow()}
+	if call.riderID, err = parseCombatID(req.Msg.GetRiderId(), "combatant"); err != nil {
+		return nil, err
+	}
+	out, err := s.ride(ctx, call, idem.Hash(req.Msg), eventCombatantDismounted)
+	if err != nil {
+		return nil, err
+	}
+	return connect.NewResponse(&playv1.DismountCombatantResponse{Encounter: out, MovementLeftDft: standUpMovementLeft(out, call.riderID)}), nil
+}
+
+// ride is the write of a mount or a dismount, with the answer the viewer reads.
+func (s *Service) ride(ctx context.Context, call rideCall, hash *string, kind string) (*playv1.Encounter, error) {
+	var done rideDone
+	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: hash, kind: kind, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
+		done = rideDone{}
+		return s.rideWrite(ctx, c, call, &done)
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "mount or dismount", err)
+	}
+	return s.finish(ctx, call.m, res, func(ctx context.Context, d *encounterData) {
+		s.publishRide(ctx, call.m.CampaignID, d, &done)
+	})
+}
+
+// publishRide tells the streams that a rider mounted or dismounted: its square changed, and the log has a line unless a hidden
+// combatant is in it.
+func (s *Service) publishRide(ctx context.Context, campaignID string, d *encounterData, done *rideDone) {
+	s.publishCombatantMoved(ctx, campaignID, d.enc, done.rider, done.from)
+	s.positionChanged(ctx, campaignID, d.enc, done.rider, done.from)
+	s.publishEncounterChangedFor(ctx, campaignID, d, done.rider.ID, done.mount.ID)
+	s.publishLogChanged(ctx, campaignID, d.enc.ID, !done.secret)
+}
+
+// rideWrite is the transaction of a mount or a dismount: who may, where the rider goes, what it costs, and the event the log and the
+// undo keep.
+func (s *Service) rideWrite(ctx context.Context, c *combatTx, call rideCall, done *rideDone) (any, error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, err
+	}
+	if isTheatre(c.enc) {
+		return nil, errNeedsAMap() // no squares: nobody is next to a mount
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return nil, err
+	}
+	v := c.viewer(call.m, cs)
+	rider, err := findCombatant(cs, call.riderID, v)
+	if err != nil {
+		return nil, err
+	}
+	if err := v.mayAct(rider); err != nil {
+		return nil, err
+	}
+	var mount playdb.Combatant
+	if call.dismount {
+		on := ridingOn(cs, rider)
+		if on == nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the combatant rides nothing"))
+		}
+		mount = *on
+	} else if mount, err = findCombatant(cs, call.mountID, v); err != nil {
+		return nil, err
+	}
+	if err := s.rideGates(ctx, c, call.m, v, rider); err != nil {
+		return nil, err
+	}
+	standing, err := s.standingSurface(ctx, c.tx, c.enc, combatViewer{master: true}, rider) // the real surface: the server decides
+	if err != nil {
+		return nil, fmt.Errorf("read the surface the rider stands on: %w", err)
+	}
+	var to grid.Square
+	if call.dismount {
+		if to, err = s.dismountSquare(ctx, c, call, cs, rider, mount, standing); err != nil {
+			return nil, err
+		}
+	} else if err := s.mayBeMounted(v, rider, mount, cs, standing); err != nil {
+		return nil, err
+	} else {
+		to = squareOfCombatant(mount)
+	}
+	cost := mountCostDFt(rider, standing)
+	after, err := rideTo(ctx, c, rider, mount, to, cost, call.dismount)
+	if err != nil {
+		return nil, err
+	}
+	if err := touch(ctx, c); err != nil {
+		return nil, err
+	}
+	c.characterID = &rider.CharacterID
+	*done = rideDone{rider: after, mount: mount, from: squareOfState(moveStateOf(rider)), secret: rider.Hidden || mount.Hidden}
+	return rideEvent(c.enc, rider, mount, to, cost, done.secret), nil
+}
+
+// rideGates refuses the rider that may not act now: out of its turn, down, surprised, unable to act, or the turn waits.
+func (s *Service) rideGates(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, rider playdb.Combatant) error {
+	if err := s.standUpGates(ctx, c, m, v, rider); err != nil {
+		return err
+	}
+	if code := cannotActCode(rider); code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
+		return gateError(code)
+	}
+	return nil
+}
+
+// mayBeMounted checks the rules of the mount: the mount is one the viewer may mount, and the refusals of mountVerdict.
+func (s *Service) mayBeMounted(v combatViewer, rider, mount playdb.Combatant, cs []playdb.Combatant, standing grid.Surface) error {
+	if mount.ID == rider.ID {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("a combatant does not mount itself"))
+	}
+	if rider.MountedOnID == nil && (mount.Defeated || !willingMount(v, mount)) { // a rider that rides is refused first, whatever it asked
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_A_MOUNT, "that combatant is not a willing mount", func(b *playv1.EncounterBlocked) { b.CombatantIds = []string{mount.ID} })
+	}
+	if no := mountVerdict(cs, rider, mount, standing); no != nil {
+		return no.err()
+	}
+	return nil
+}
+
+// dismountSquare is the square the rider lands on, or the refusal.
+func (s *Service) dismountSquare(ctx context.Context, c *combatTx, call rideCall, cs []playdb.Combatant, rider, mount playdb.Combatant, standing grid.Surface) (grid.Square, error) {
+	to := grid.Square{Col: int(call.col), Row: int(call.row)}
+	terrain, err := s.terrainOf(ctx, c.tx, call.m.CampaignID, c.enc)
+	if err != nil {
+		return to, err
+	}
+	mover, err := s.moverWith(ctx, c.tx, call.m.CampaignID, rider)
+	if err != nil {
+		return to, err
+	}
+	landing := landingSquares(terrain, squareOfCombatant(mount), occupantsFor(cs, rider, combatViewer{master: true}), mover)
+	if no := dismountVerdict(rider, standing, landing, &to); no != nil {
+		return to, no.err()
+	}
+	return to, nil
+}
+
+// rideTo writes the ride: the link, the rider's square, the movement it cost and the mark of the move. It answers the rider as it stands.
+func rideTo(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, to grid.Square, cost int, dismount bool) (playdb.Combatant, error) {
+	used := int(rider.MovementUsedDft) + cost
+	col, row := clamp32(to.Col, 0, math.MaxInt32), clamp32(to.Row, 0, math.MaxInt32)
+	var on *string
+	if !dismount {
+		on = &mount.ID
+	}
+	cover := rider.CoverMark
+	if placed(rider) && to != squareOfCombatant(rider) {
+		cover = "none"
+	}
+	p := playdb.SetCombatantRideParams{
+		ID: rider.ID, MountedOnID: on, GridCol: &col, GridRow: &row,
+		MovementUsedFt: clamp32(used/10, 0, math.MaxInt32), MovementUsedDft: clamp32(used, 0, math.MaxInt32), MountMoveUsed: true, CoverMark: cover,
+	}
+	if err := c.q.SetCombatantRide(ctx, p); err != nil {
+		return rider, fmt.Errorf("write the ride: %w", err)
+	}
+	rider.MountedOnID, rider.GridCol, rider.GridRow = p.MountedOnID, p.GridCol, p.GridRow
+	rider.MovementUsedFt, rider.MovementUsedDft, rider.MountMoveUsed, rider.CoverMark = p.MovementUsedFt, p.MovementUsedDft, true, cover
+	return rider, nil
+}
+
+// rideEvent is the event of a mount or a dismount: the rider is the actor and the mount the target. The master's undo puts the rider
+// back from From, and the line of the log is a master's alone when either of them is hidden (RN-10).
+func rideEvent(enc playdb.Encounter, rider, mount playdb.Combatant, to grid.Square, cost int, secret bool) actionEvent {
+	return actionEvent{
+		Round: enc.Round, Secret: secret, Actor: rider.ID, Target: mount.ID, OnTurn: true, From: moveStateOf(rider),
+		CostDFt: clamp32(cost, 0, math.MaxInt32), CostFt: clamp32(cost/10, 0, math.MaxInt32),
+		Col: clamp32(to.Col, 0, math.MaxInt32), Row: clamp32(to.Row, 0, math.MaxInt32),
+	}
+}
+
+// attachMountOptions puts on the turn options what the combatant can do about mounts, as the viewer may know it: the mounts it sees,
+// and, when it rides, how it gets off. Nothing out of a grid combat, for a combatant with no square and for a defeated one. terrain is
+// what the viewer knows of the map, so a player is not told of a wall they have not seen.
+func (s *Service) attachMountOptions(ctx context.Context, campaignID string, d *encounterData, v combatViewer, who playdb.Combatant, terrain grid.Terrain, opts *rulesv1.TurnOptions) error {
+	if opts == nil || isTheatre(d.enc) || !placed(who) || who.Defeated {
+		return nil
+	}
+	standing, err := s.standingSurface(ctx, nil, d.enc, v, who)
+	if err != nil {
+		return s.dbError(ctx, "read the surface the combatant stands on", err)
+	}
+	out := &rulesv1.MountOptions{}
+	opts.Mount = out
+	if who.MountedOnID != nil {
+		mount := ridingOn(d.cs, who)
+		if mount == nil || !v.sees(*mount) { // a hidden mount is not on offer to a player (RN-10)
+			return nil
+		}
+		mover, err := s.moverWith(ctx, nil, campaignID, who)
+		if err != nil {
+			return err
+		}
+		landing := landingSquares(terrain, squareOfCombatant(*mount), occupantsFor(d.cs, who, v), mover)
+		out.MountedOnId = mount.ID
+		out.DismountCostDft = clamp32(mountCostDFt(who, standing), 0, math.MaxInt32)
+		if no := dismountVerdict(who, standing, landing, nil); no != nil {
+			out.DismountRefusal, out.MissingDft = no.refusal, clamp32(no.missing, 0, math.MaxInt32)
+		}
+		for _, sq := range landing {
+			out.Landing = append(out.Landing, &rulesv1.MountSquare{Col: clamp32(sq.Col, 0, math.MaxInt32), Row: clamp32(sq.Row, 0, math.MaxInt32)})
+		}
+		return nil
+	}
+	for _, mount := range d.cs {
+		if mount.ID == who.ID || mount.Defeated || !placed(mount) || !v.sees(mount) || !willingMount(v, mount) {
+			continue
+		}
+		choice := &rulesv1.MountChoice{CombatantId: mount.ID, CostDft: clamp32(mountCostDFt(who, standing), 0, math.MaxInt32)}
+		if no := mountVerdict(d.cs, who, mount, standing); no != nil {
+			choice.Refusal, choice.MissingDft = no.refusal, clamp32(no.missing, 0, math.MaxInt32)
+		}
+		out.Mounts = append(out.Mounts, choice)
+	}
+	return nil
 }

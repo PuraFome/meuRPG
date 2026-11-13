@@ -460,7 +460,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 	if v.master || v.owns(c) { // the limits of a creature: the master's and the player's who controls it (RN-29)
 		p.LimitedActions = limitedActionsView(r.npcs[sheetKey(c)].limited, c, r.npcs[sheetKey(c)].persistent && c.Kind == kindNPC)
 	}
-	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
+	if (r.shared && inParty(c) && !v.owns(c) && inTurn(e, c)) || v.drives(d.cs, c) { // a joint turn's partner, or the player who moves a controlled mount for its rider
 		shareEconomy(p, c, r.standing[c.ID])
 	}
 	p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
