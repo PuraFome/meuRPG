@@ -194,6 +194,119 @@ func (x *ReadyActionResponse) GetEncounter() *Encounter {
 	return nil
 }
 
+type FireReadiedRequest struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	EncounterId string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
+	// ReadiedAction.id.
+	ReadiedId      string `protobuf:"bytes,3,opt,name=readied_id,json=readiedId,proto3" json:"readied_id,omitempty"`
+	IdempotencyKey string `protobuf:"bytes,4,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *FireReadiedRequest) Reset() {
+	*x = FireReadiedRequest{}
+	mi := &file_meurpg_play_v1_ready_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FireReadiedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FireReadiedRequest) ProtoMessage() {}
+
+func (x *FireReadiedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_ready_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FireReadiedRequest.ProtoReflect.Descriptor instead.
+func (*FireReadiedRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_ready_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *FireReadiedRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *FireReadiedRequest) GetEncounterId() string {
+	if x != nil {
+		return x.EncounterId
+	}
+	return ""
+}
+
+func (x *FireReadiedRequest) GetReadiedId() string {
+	if x != nil {
+		return x.ReadiedId
+	}
+	return ""
+}
+
+func (x *FireReadiedRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type FireReadiedResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Encounter     *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FireReadiedResponse) Reset() {
+	*x = FireReadiedResponse{}
+	mi := &file_meurpg_play_v1_ready_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FireReadiedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FireReadiedResponse) ProtoMessage() {}
+
+func (x *FireReadiedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_ready_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FireReadiedResponse.ProtoReflect.Descriptor instead.
+func (*FireReadiedResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_ready_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *FireReadiedResponse) GetEncounter() *Encounter {
+	if x != nil {
+		return x.Encounter
+	}
+	return nil
+}
+
 type CancelReadiedRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
@@ -207,7 +320,7 @@ type CancelReadiedRequest struct {
 
 func (x *CancelReadiedRequest) Reset() {
 	*x = CancelReadiedRequest{}
-	mi := &file_meurpg_play_v1_ready_proto_msgTypes[2]
+	mi := &file_meurpg_play_v1_ready_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -219,7 +332,7 @@ func (x *CancelReadiedRequest) String() string {
 func (*CancelReadiedRequest) ProtoMessage() {}
 
 func (x *CancelReadiedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_ready_proto_msgTypes[2]
+	mi := &file_meurpg_play_v1_ready_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -232,7 +345,7 @@ func (x *CancelReadiedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelReadiedRequest.ProtoReflect.Descriptor instead.
 func (*CancelReadiedRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_ready_proto_rawDescGZIP(), []int{2}
+	return file_meurpg_play_v1_ready_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CancelReadiedRequest) GetCampaignId() string {
@@ -272,7 +385,7 @@ type CancelReadiedResponse struct {
 
 func (x *CancelReadiedResponse) Reset() {
 	*x = CancelReadiedResponse{}
-	mi := &file_meurpg_play_v1_ready_proto_msgTypes[3]
+	mi := &file_meurpg_play_v1_ready_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -284,7 +397,7 @@ func (x *CancelReadiedResponse) String() string {
 func (*CancelReadiedResponse) ProtoMessage() {}
 
 func (x *CancelReadiedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_ready_proto_msgTypes[3]
+	mi := &file_meurpg_play_v1_ready_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -297,7 +410,7 @@ func (x *CancelReadiedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelReadiedResponse.ProtoReflect.Descriptor instead.
 func (*CancelReadiedResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_ready_proto_rawDescGZIP(), []int{3}
+	return file_meurpg_play_v1_ready_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CancelReadiedResponse) GetEncounter() *Encounter {
@@ -328,6 +441,15 @@ const file_meurpg_play_v1_ready_proto_rawDesc = "" +
 	"slot_level\x18\n" +
 	" \x01(\x05R\tslotLevel\"N\n" +
 	"\x13ReadyActionResponse\x127\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xa0\x01\n" +
+	"\x12FireReadiedRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12!\n" +
+	"\fencounter_id\x18\x02 \x01(\tR\vencounterId\x12\x1d\n" +
+	"\n" +
+	"readied_id\x18\x03 \x01(\tR\treadiedId\x12'\n" +
+	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"N\n" +
+	"\x13FireReadiedResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xa2\x01\n" +
 	"\x14CancelReadiedRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
@@ -337,9 +459,10 @@ const file_meurpg_play_v1_ready_proto_rawDesc = "" +
 	"readied_id\x18\x03 \x01(\tR\treadiedId\x12'\n" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"P\n" +
 	"\x15CancelReadiedResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter2\xc4\x01\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter2\x9c\x02\n" +
 	"\fReadyService\x12V\n" +
-	"\vReadyAction\x12\".meurpg.play.v1.ReadyActionRequest\x1a#.meurpg.play.v1.ReadyActionResponse\x12\\\n" +
+	"\vReadyAction\x12\".meurpg.play.v1.ReadyActionRequest\x1a#.meurpg.play.v1.ReadyActionResponse\x12V\n" +
+	"\vFireReadied\x12\".meurpg.play.v1.FireReadiedRequest\x1a#.meurpg.play.v1.FireReadiedResponse\x12\\\n" +
 	"\rCancelReadied\x12$.meurpg.play.v1.CancelReadiedRequest\x1a%.meurpg.play.v1.CancelReadiedResponseB\xb8\x01\n" +
 	"\x12com.meurpg.play.v1B\n" +
 	"ReadyProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
@@ -356,28 +479,33 @@ func file_meurpg_play_v1_ready_proto_rawDescGZIP() []byte {
 	return file_meurpg_play_v1_ready_proto_rawDescData
 }
 
-var file_meurpg_play_v1_ready_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_meurpg_play_v1_ready_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_meurpg_play_v1_ready_proto_goTypes = []any{
 	(*ReadyActionRequest)(nil),    // 0: meurpg.play.v1.ReadyActionRequest
 	(*ReadyActionResponse)(nil),   // 1: meurpg.play.v1.ReadyActionResponse
-	(*CancelReadiedRequest)(nil),  // 2: meurpg.play.v1.CancelReadiedRequest
-	(*CancelReadiedResponse)(nil), // 3: meurpg.play.v1.CancelReadiedResponse
-	(ReadiedKind)(0),              // 4: meurpg.play.v1.ReadiedKind
-	(*Encounter)(nil),             // 5: meurpg.play.v1.Encounter
+	(*FireReadiedRequest)(nil),    // 2: meurpg.play.v1.FireReadiedRequest
+	(*FireReadiedResponse)(nil),   // 3: meurpg.play.v1.FireReadiedResponse
+	(*CancelReadiedRequest)(nil),  // 4: meurpg.play.v1.CancelReadiedRequest
+	(*CancelReadiedResponse)(nil), // 5: meurpg.play.v1.CancelReadiedResponse
+	(ReadiedKind)(0),              // 6: meurpg.play.v1.ReadiedKind
+	(*Encounter)(nil),             // 7: meurpg.play.v1.Encounter
 }
 var file_meurpg_play_v1_ready_proto_depIdxs = []int32{
-	4, // 0: meurpg.play.v1.ReadyActionRequest.kind:type_name -> meurpg.play.v1.ReadiedKind
-	5, // 1: meurpg.play.v1.ReadyActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	5, // 2: meurpg.play.v1.CancelReadiedResponse.encounter:type_name -> meurpg.play.v1.Encounter
-	0, // 3: meurpg.play.v1.ReadyService.ReadyAction:input_type -> meurpg.play.v1.ReadyActionRequest
-	2, // 4: meurpg.play.v1.ReadyService.CancelReadied:input_type -> meurpg.play.v1.CancelReadiedRequest
-	1, // 5: meurpg.play.v1.ReadyService.ReadyAction:output_type -> meurpg.play.v1.ReadyActionResponse
-	3, // 6: meurpg.play.v1.ReadyService.CancelReadied:output_type -> meurpg.play.v1.CancelReadiedResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	6, // 0: meurpg.play.v1.ReadyActionRequest.kind:type_name -> meurpg.play.v1.ReadiedKind
+	7, // 1: meurpg.play.v1.ReadyActionResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	7, // 2: meurpg.play.v1.FireReadiedResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	7, // 3: meurpg.play.v1.CancelReadiedResponse.encounter:type_name -> meurpg.play.v1.Encounter
+	0, // 4: meurpg.play.v1.ReadyService.ReadyAction:input_type -> meurpg.play.v1.ReadyActionRequest
+	2, // 5: meurpg.play.v1.ReadyService.FireReadied:input_type -> meurpg.play.v1.FireReadiedRequest
+	4, // 6: meurpg.play.v1.ReadyService.CancelReadied:input_type -> meurpg.play.v1.CancelReadiedRequest
+	1, // 7: meurpg.play.v1.ReadyService.ReadyAction:output_type -> meurpg.play.v1.ReadyActionResponse
+	3, // 8: meurpg.play.v1.ReadyService.FireReadied:output_type -> meurpg.play.v1.FireReadiedResponse
+	5, // 9: meurpg.play.v1.ReadyService.CancelReadied:output_type -> meurpg.play.v1.CancelReadiedResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_ready_proto_init() }
@@ -392,7 +520,7 @@ func file_meurpg_play_v1_ready_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_ready_proto_rawDesc), len(file_meurpg_play_v1_ready_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

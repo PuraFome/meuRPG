@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/ready.proto.
  */
 export const file_meurpg_play_v1_ready: GenFile = /*@__PURE__*/
-  fileDesc("ChptZXVycGcvcGxheS92MS9yZWFkeS5wcm90bxIObWV1cnBnLnBsYXkudjEihwIKElJlYWR5QWN0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFAoMY29tYmF0YW50X2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCRIUCgx0cmlnZ2VyX3RleHQYBSABKAkSKQoEa2luZBgGIAEoDjIbLm1ldXJwZy5wbGF5LnYxLlJlYWRpZWRLaW5kEhIKCmFjdGlvbl9rZXkYByABKAkSGwoTdGFyZ2V0X2NvbWJhdGFudF9pZBgIIAEoCRIRCglzcGVsbF9rZXkYCSABKAkSEgoKc2xvdF9sZXZlbBgKIAEoBSJDChNSZWFkeUFjdGlvblJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlciJuChRDYW5jZWxSZWFkaWVkUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSEgoKcmVhZGllZF9pZBgDIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYBCABKAkiRQoVQ2FuY2VsUmVhZGllZFJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlcjLEAQoMUmVhZHlTZXJ2aWNlElYKC1JlYWR5QWN0aW9uEiIubWV1cnBnLnBsYXkudjEuUmVhZHlBY3Rpb25SZXF1ZXN0GiMubWV1cnBnLnBsYXkudjEuUmVhZHlBY3Rpb25SZXNwb25zZRJcCg1DYW5jZWxSZWFkaWVkEiQubWV1cnBnLnBsYXkudjEuQ2FuY2VsUmVhZGllZFJlcXVlc3QaJS5tZXVycGcucGxheS52MS5DYW5jZWxSZWFkaWVkUmVzcG9uc2VCuAEKEmNvbS5tZXVycGcucGxheS52MUIKUmVhZHlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_play_v1_combat]);
+  fileDesc("ChptZXVycGcvcGxheS92MS9yZWFkeS5wcm90bxIObWV1cnBnLnBsYXkudjEihwIKElJlYWR5QWN0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxlbmNvdW50ZXJfaWQYAiABKAkSFAoMY29tYmF0YW50X2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCRIUCgx0cmlnZ2VyX3RleHQYBSABKAkSKQoEa2luZBgGIAEoDjIbLm1ldXJwZy5wbGF5LnYxLlJlYWRpZWRLaW5kEhIKCmFjdGlvbl9rZXkYByABKAkSGwoTdGFyZ2V0X2NvbWJhdGFudF9pZBgIIAEoCRIRCglzcGVsbF9rZXkYCSABKAkSEgoKc2xvdF9sZXZlbBgKIAEoBSJDChNSZWFkeUFjdGlvblJlc3BvbnNlEiwKCWVuY291bnRlchgBIAEoCzIZLm1ldXJwZy5wbGF5LnYxLkVuY291bnRlciJsChJGaXJlUmVhZGllZFJlcXVlc3QSEwoLY2FtcGFpZ25faWQYASABKAkSFAoMZW5jb3VudGVyX2lkGAIgASgJEhIKCnJlYWRpZWRfaWQYAyABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJIkMKE0ZpcmVSZWFkaWVkUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyIm4KFENhbmNlbFJlYWRpZWRSZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGVuY291bnRlcl9pZBgCIAEoCRISCgpyZWFkaWVkX2lkGAMgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgEIAEoCSJFChVDYW5jZWxSZWFkaWVkUmVzcG9uc2USLAoJZW5jb3VudGVyGAEgASgLMhkubWV1cnBnLnBsYXkudjEuRW5jb3VudGVyMpwCCgxSZWFkeVNlcnZpY2USVgoLUmVhZHlBY3Rpb24SIi5tZXVycGcucGxheS52MS5SZWFkeUFjdGlvblJlcXVlc3QaIy5tZXVycGcucGxheS52MS5SZWFkeUFjdGlvblJlc3BvbnNlElYKC0ZpcmVSZWFkaWVkEiIubWV1cnBnLnBsYXkudjEuRmlyZVJlYWRpZWRSZXF1ZXN0GiMubWV1cnBnLnBsYXkudjEuRmlyZVJlYWRpZWRSZXNwb25zZRJcCg1DYW5jZWxSZWFkaWVkEiQubWV1cnBnLnBsYXkudjEuQ2FuY2VsUmVhZGllZFJlcXVlc3QaJS5tZXVycGcucGxheS52MS5DYW5jZWxSZWFkaWVkUmVzcG9uc2VCuAEKEmNvbS5tZXVycGcucGxheS52MUIKUmVhZHlQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_play_v1_combat]);
 
 /**
  * @generated from message meurpg.play.v1.ReadyActionRequest
@@ -111,6 +111,57 @@ export const ReadyActionResponseSchema: GenMessage<ReadyActionResponse> = /*@__P
   messageDesc(file_meurpg_play_v1_ready, 1);
 
 /**
+ * @generated from message meurpg.play.v1.FireReadiedRequest
+ */
+export type FireReadiedRequest = Message<"meurpg.play.v1.FireReadiedRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string encounter_id = 2;
+   */
+  encounterId: string;
+
+  /**
+   * ReadiedAction.id.
+   *
+   * @generated from field: string readied_id = 3;
+   */
+  readiedId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 4;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.FireReadiedRequest.
+ * Use `create(FireReadiedRequestSchema)` to create a new message.
+ */
+export const FireReadiedRequestSchema: GenMessage<FireReadiedRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_ready, 2);
+
+/**
+ * @generated from message meurpg.play.v1.FireReadiedResponse
+ */
+export type FireReadiedResponse = Message<"meurpg.play.v1.FireReadiedResponse"> & {
+  /**
+   * @generated from field: meurpg.play.v1.Encounter encounter = 1;
+   */
+  encounter?: Encounter | undefined;
+};
+
+/**
+ * Describes the message meurpg.play.v1.FireReadiedResponse.
+ * Use `create(FireReadiedResponseSchema)` to create a new message.
+ */
+export const FireReadiedResponseSchema: GenMessage<FireReadiedResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_ready, 3);
+
+/**
  * @generated from message meurpg.play.v1.CancelReadiedRequest
  */
 export type CancelReadiedRequest = Message<"meurpg.play.v1.CancelReadiedRequest"> & {
@@ -142,7 +193,7 @@ export type CancelReadiedRequest = Message<"meurpg.play.v1.CancelReadiedRequest"
  * Use `create(CancelReadiedRequestSchema)` to create a new message.
  */
 export const CancelReadiedRequestSchema: GenMessage<CancelReadiedRequest> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_ready, 2);
+  messageDesc(file_meurpg_play_v1_ready, 4);
 
 /**
  * @generated from message meurpg.play.v1.CancelReadiedResponse
@@ -159,10 +210,10 @@ export type CancelReadiedResponse = Message<"meurpg.play.v1.CancelReadiedRespons
  * Use `create(CancelReadiedResponseSchema)` to create a new message.
  */
 export const CancelReadiedResponseSchema: GenMessage<CancelReadiedResponse> = /*@__PURE__*/
-  messageDesc(file_meurpg_play_v1_ready, 3);
+  messageDesc(file_meurpg_play_v1_ready, 5);
 
 /**
- * ReadyService readies an action and gives it up.
+ * ReadyService readies an action, fires it and gives it up.
  *
  * Every method needs a valid session cookie and fails with `unauthenticated` without one, and every request names the
  * campaign (as CombatService). Each change carries an idempotency_key scoped to the caller: the same key with the same
@@ -194,6 +245,30 @@ export const ReadyService: GenService<{
     methodKind: "unary";
     input: typeof ReadyActionRequestSchema;
     output: typeof ReadyActionResponseSchema;
+  },
+  /**
+   * FireReadied is the master saying the trigger happened: it opens a reaction window of kind READIED for the readier
+   * (the readier's player answers it, the master for an NPC). AnswerReaction USE spends the reaction and runs the held
+   * action; PASS lets it go and keeps the reaction. Nothing is spent here. Only the master.
+   *
+   * The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
+   * surprised; its reaction is free; no READIED window of it is open. A refusal leaves the readied action waiting.
+   *
+   * Errors:
+   *   - `permission_denied`: the caller is not the master.
+   *   - `not_found`: the combat, or a readied action that waits, is not in this campaign's open session (a defeated or
+   *     dismissed readier's was lost).
+   *   - `invalid_argument`: no key or a key used for another request, a malformed id.
+   *   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE; COMBATANT_DOWN (the readier is defeated or at 0 hit
+   *     points); CANNOT_ACT (incapacitated, or an effect takes its reactions); REACTION_USED (the reaction was spent
+   *     since); REACTION_PENDING (its READIED window is open already). Surprise is refused as a contest's SURPRISED.
+   *
+   * @generated from rpc meurpg.play.v1.ReadyService.FireReadied
+   */
+  fireReadied: {
+    methodKind: "unary";
+    input: typeof FireReadiedRequestSchema;
+    output: typeof FireReadiedResponseSchema;
   },
   /**
    * CancelReadied gives up a readied action that waits: its row ends, and the action spent to ready it does not come

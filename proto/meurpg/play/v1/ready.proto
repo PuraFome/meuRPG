@@ -11,7 +11,7 @@ package meurpg.play.v1;
 
 import "meurpg/play/v1/combat.proto";
 
-// ReadyService readies an action and gives it up.
+// ReadyService readies an action, fires it and gives it up.
 //
 // Every method needs a valid session cookie and fails with `unauthenticated` without one, and every request names the
 // campaign (as CombatService). Each change carries an idempotency_key scoped to the caller: the same key with the same
@@ -33,6 +33,23 @@ service ReadyService {
   //     attack the combatant does not have, a standard action that cannot be held, a move with no speed, a spell, or
   //     an action readied already). Nothing is spent.
   rpc ReadyAction(ReadyActionRequest) returns (ReadyActionResponse);
+
+  // FireReadied is the master saying the trigger happened: it opens a reaction window of kind READIED for the readier
+  // (the readier's player answers it, the master for an NPC). AnswerReaction USE spends the reaction and runs the held
+  // action; PASS lets it go and keeps the reaction. Nothing is spent here. Only the master.
+  //
+  // The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
+  // surprised; its reaction is free; no READIED window of it is open. A refusal leaves the readied action waiting.
+  //
+  // Errors:
+  //   - `permission_denied`: the caller is not the master.
+  //   - `not_found`: the combat, or a readied action that waits, is not in this campaign's open session (a defeated or
+  //     dismissed readier's was lost).
+  //   - `invalid_argument`: no key or a key used for another request, a malformed id.
+  //   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE; COMBATANT_DOWN (the readier is defeated or at 0 hit
+  //     points); CANNOT_ACT (incapacitated, or an effect takes its reactions); REACTION_USED (the reaction was spent
+  //     since); REACTION_PENDING (its READIED window is open already). Surprise is refused as a contest's SURPRISED.
+  rpc FireReadied(FireReadiedRequest) returns (FireReadiedResponse);
 
   // CancelReadied gives up a readied action that waits: its row ends, and the action spent to ready it does not come
   // back. Only on the readier's own turn, by its player or the master.
@@ -64,6 +81,18 @@ message ReadyActionRequest {
 }
 
 message ReadyActionResponse {
+  Encounter encounter = 1;
+}
+
+message FireReadiedRequest {
+  string campaign_id = 1;
+  string encounter_id = 2;
+  // ReadiedAction.id.
+  string readied_id = 3;
+  string idempotency_key = 4;
+}
+
+message FireReadiedResponse {
   Encounter encounter = 1;
 }
 

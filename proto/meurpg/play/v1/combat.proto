@@ -4125,6 +4125,9 @@ message RollAttackRequest {
   // Deflect Missiles' throw back: the reaction window (kind DEFLECT_MISSILES, at its
   // throw-back step) that caught the missile. It implies `as_reaction`, spends the
   // monk's ki (1 point) and is part of the same reaction, so it opens no window.
+  // A readied attack: the open READIED window of the attacker (AnswerReaction USE sends
+  // it so). It implies `as_reaction` and spends the reaction; the attack must be the
+  // readied one, at its reach and range as on a turn, never as an opportunity attack.
   string catch_window_id = 11;
   // The mode the caller wants to roll with instead of the server's suggestion, with
   // the reason (1 to 120 characters on one line, required when it differs). A
@@ -5651,7 +5654,8 @@ enum CombatLogKind {
   // trigger and the action); every other player reads only that the actor readied an action ("Toren preparou uma
   // ação"). A hidden combatant's line is the master's alone (RN-10).
   COMBAT_LOG_KIND_ACTION_READIED = 104;
-  // The master fired a readied action: the actor is the readier. Same audience as ACTION_READIED, `readied_fired`.
+  // The master fired a readied action and the readier used it or let it pass: the actor is the readier. Same audience
+  // as ACTION_READIED, `readied_fired` (its status says which). A use is followed by the line of the action itself.
   COMBAT_LOG_KIND_READIED_FIRED = 105;
   // A readied action ended without firing: the readier's next turn started, or its owner gave it up
   // (CancelReadied). Same audience as ACTION_READIED, `readied_lost`.
@@ -6043,6 +6047,8 @@ message CombatLogReadied {
   string action_name_pt = 5;
   // READIED_LOST only: the owner gave it up (CancelReadied), rather than the next turn starting first.
   bool canceled = 6;
+  // READIED_FIRED only: FIRED when the readier used it, IGNORED when it let it pass.
+  ReadiedStatus status = 7;
 }
 
 // CombatLogGearSwapped is the line of a piece of gear drawn or stowed in a combat, for the master and the owner.
@@ -6466,8 +6472,11 @@ enum ReactionKind {
   // falling damage by five times its monk level (SRD 5.1, Slow Fall). The fall damage waits
   // (AWAITING_REACTION) until the window is answered or closed.
   REACTION_KIND_SLOW_FALL = 18;
-  // A readied action (ReadyService): the master fired it, and its readier may use the reaction to act now, or let
-  // it pass.
+  // A readied action (ReadyService): the master fired it (FireReadied), and its readier may use the reaction to act
+  // now, or let it pass. The window has no prompt: the reactor and the master read the trigger and the action in the
+  // reactor's Combatant.readied; the master's trigger names the readier, the target and the action.
+  // AnswerReaction USE runs an attack (as RollAttack with catch_window_id) or another standard action; a move is
+  // made with MoveCombatant while the window is open, and AnswerReaction USE refuses it.
   REACTION_KIND_READIED = 19;
 }
 
@@ -6877,6 +6886,8 @@ message AnswerReactionRequest {
   // Hellish Rebuke paid with the Infernal Legacy.
   bool use_racial = 6;
   // Feather Fall: the falling creatures to save, at most the prompt's max_targets.
+  // READIED: the one target of a readied attack, when it is not the creature named
+  // at Ready.
   repeated string creature_ids = 7;
   // The die the answer needs, when it needs one (Counterspell's check, Cutting
   // Words' die, Deflect Missiles' die, the saving throw of Hellish Rebuke): exactly

@@ -43,6 +43,9 @@ const (
 	// ReadyServiceReadyActionProcedure is the fully-qualified name of the ReadyService's ReadyAction
 	// RPC.
 	ReadyServiceReadyActionProcedure = "/meurpg.play.v1.ReadyService/ReadyAction"
+	// ReadyServiceFireReadiedProcedure is the fully-qualified name of the ReadyService's FireReadied
+	// RPC.
+	ReadyServiceFireReadiedProcedure = "/meurpg.play.v1.ReadyService/FireReadied"
 	// ReadyServiceCancelReadiedProcedure is the fully-qualified name of the ReadyService's
 	// CancelReadied RPC.
 	ReadyServiceCancelReadiedProcedure = "/meurpg.play.v1.ReadyService/CancelReadied"
@@ -66,6 +69,22 @@ type ReadyServiceClient interface {
 	//     attack the combatant does not have, a standard action that cannot be held, a move with no speed, a spell, or
 	//     an action readied already). Nothing is spent.
 	ReadyAction(context.Context, *connect.Request[v1.ReadyActionRequest]) (*connect.Response[v1.ReadyActionResponse], error)
+	// FireReadied is the master saying the trigger happened: it opens a reaction window of kind READIED for the readier
+	// (the readier's player answers it, the master for an NPC). AnswerReaction USE spends the reaction and runs the held
+	// action; PASS lets it go and keeps the reaction. Nothing is spent here. Only the master.
+	//
+	// The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
+	// surprised; its reaction is free; no READIED window of it is open. A refusal leaves the readied action waiting.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is not the master.
+	//   - `not_found`: the combat, or a readied action that waits, is not in this campaign's open session (a defeated or
+	//     dismissed readier's was lost).
+	//   - `invalid_argument`: no key or a key used for another request, a malformed id.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE; COMBATANT_DOWN (the readier is defeated or at 0 hit
+	//     points); CANNOT_ACT (incapacitated, or an effect takes its reactions); REACTION_USED (the reaction was spent
+	//     since); REACTION_PENDING (its READIED window is open already). Surprise is refused as a contest's SURPRISED.
+	FireReadied(context.Context, *connect.Request[v1.FireReadiedRequest]) (*connect.Response[v1.FireReadiedResponse], error)
 	// CancelReadied gives up a readied action that waits: its row ends, and the action spent to ready it does not come
 	// back. Only on the readier's own turn, by its player or the master.
 	//
@@ -94,6 +113,12 @@ func NewReadyServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(readyServiceMethods.ByName("ReadyAction")),
 			connect.WithClientOptions(opts...),
 		),
+		fireReadied: connect.NewClient[v1.FireReadiedRequest, v1.FireReadiedResponse](
+			httpClient,
+			baseURL+ReadyServiceFireReadiedProcedure,
+			connect.WithSchema(readyServiceMethods.ByName("FireReadied")),
+			connect.WithClientOptions(opts...),
+		),
 		cancelReadied: connect.NewClient[v1.CancelReadiedRequest, v1.CancelReadiedResponse](
 			httpClient,
 			baseURL+ReadyServiceCancelReadiedProcedure,
@@ -106,12 +131,18 @@ func NewReadyServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // readyServiceClient implements ReadyServiceClient.
 type readyServiceClient struct {
 	readyAction   *connect.Client[v1.ReadyActionRequest, v1.ReadyActionResponse]
+	fireReadied   *connect.Client[v1.FireReadiedRequest, v1.FireReadiedResponse]
 	cancelReadied *connect.Client[v1.CancelReadiedRequest, v1.CancelReadiedResponse]
 }
 
 // ReadyAction calls meurpg.play.v1.ReadyService.ReadyAction.
 func (c *readyServiceClient) ReadyAction(ctx context.Context, req *connect.Request[v1.ReadyActionRequest]) (*connect.Response[v1.ReadyActionResponse], error) {
 	return c.readyAction.CallUnary(ctx, req)
+}
+
+// FireReadied calls meurpg.play.v1.ReadyService.FireReadied.
+func (c *readyServiceClient) FireReadied(ctx context.Context, req *connect.Request[v1.FireReadiedRequest]) (*connect.Response[v1.FireReadiedResponse], error) {
+	return c.fireReadied.CallUnary(ctx, req)
 }
 
 // CancelReadied calls meurpg.play.v1.ReadyService.CancelReadied.
@@ -137,6 +168,22 @@ type ReadyServiceHandler interface {
 	//     attack the combatant does not have, a standard action that cannot be held, a move with no speed, a spell, or
 	//     an action readied already). Nothing is spent.
 	ReadyAction(context.Context, *connect.Request[v1.ReadyActionRequest]) (*connect.Response[v1.ReadyActionResponse], error)
+	// FireReadied is the master saying the trigger happened: it opens a reaction window of kind READIED for the readier
+	// (the readier's player answers it, the master for an NPC). AnswerReaction USE spends the reaction and runs the held
+	// action; PASS lets it go and keeps the reaction. Nothing is spent here. Only the master.
+	//
+	// The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
+	// surprised; its reaction is free; no READIED window of it is open. A refusal leaves the readied action waiting.
+	//
+	// Errors:
+	//   - `permission_denied`: the caller is not the master.
+	//   - `not_found`: the combat, or a readied action that waits, is not in this campaign's open session (a defeated or
+	//     dismissed readier's was lost).
+	//   - `invalid_argument`: no key or a key used for another request, a malformed id.
+	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE; COMBATANT_DOWN (the readier is defeated or at 0 hit
+	//     points); CANNOT_ACT (incapacitated, or an effect takes its reactions); REACTION_USED (the reaction was spent
+	//     since); REACTION_PENDING (its READIED window is open already). Surprise is refused as a contest's SURPRISED.
+	FireReadied(context.Context, *connect.Request[v1.FireReadiedRequest]) (*connect.Response[v1.FireReadiedResponse], error)
 	// CancelReadied gives up a readied action that waits: its row ends, and the action spent to ready it does not come
 	// back. Only on the readier's own turn, by its player or the master.
 	//
@@ -161,6 +208,12 @@ func NewReadyServiceHandler(svc ReadyServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(readyServiceMethods.ByName("ReadyAction")),
 		connect.WithHandlerOptions(opts...),
 	)
+	readyServiceFireReadiedHandler := connect.NewUnaryHandler(
+		ReadyServiceFireReadiedProcedure,
+		svc.FireReadied,
+		connect.WithSchema(readyServiceMethods.ByName("FireReadied")),
+		connect.WithHandlerOptions(opts...),
+	)
 	readyServiceCancelReadiedHandler := connect.NewUnaryHandler(
 		ReadyServiceCancelReadiedProcedure,
 		svc.CancelReadied,
@@ -171,6 +224,8 @@ func NewReadyServiceHandler(svc ReadyServiceHandler, opts ...connect.HandlerOpti
 		switch r.URL.Path {
 		case ReadyServiceReadyActionProcedure:
 			readyServiceReadyActionHandler.ServeHTTP(w, r)
+		case ReadyServiceFireReadiedProcedure:
+			readyServiceFireReadiedHandler.ServeHTTP(w, r)
 		case ReadyServiceCancelReadiedProcedure:
 			readyServiceCancelReadiedHandler.ServeHTTP(w, r)
 		default:
@@ -184,6 +239,10 @@ type UnimplementedReadyServiceHandler struct{}
 
 func (UnimplementedReadyServiceHandler) ReadyAction(context.Context, *connect.Request[v1.ReadyActionRequest]) (*connect.Response[v1.ReadyActionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ReadyService.ReadyAction is not implemented"))
+}
+
+func (UnimplementedReadyServiceHandler) FireReadied(context.Context, *connect.Request[v1.FireReadiedRequest]) (*connect.Response[v1.FireReadiedResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ReadyService.FireReadied is not implemented"))
 }
 
 func (UnimplementedReadyServiceHandler) CancelReadied(context.Context, *connect.Request[v1.CancelReadiedRequest]) (*connect.Response[v1.CancelReadiedResponse], error) {
