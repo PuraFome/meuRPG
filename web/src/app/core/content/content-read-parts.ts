@@ -10,6 +10,7 @@ import type { CatalogAbility } from './catalog';
 import { ABILITY_FIELDS, type Bonuses, noBonuses } from './feature-draft';
 import { summonLine } from './summon-names';
 import { rollEffectItem } from './content-read-rolls';
+import type { ReadHit } from './hit-effect-read';
 
 /**
  * What a player reads of an entry (MR-025, question 83: "every option that is on, in full, with the numbers and the
@@ -52,6 +53,8 @@ export interface EntryRead {
   readonly text: readonly string[];
   /** The effects that change a roll, a lead and a sentence each, under the text. */
   readonly effects?: readonly ReadItem[];
+  /** A spell's "Efeito no próximo golpe", under the text (#577). */
+  readonly hit?: ReadHit;
   /** The options a feat lists for its choice, under the text. */
   readonly options?: readonly ReadItem[];
 }
