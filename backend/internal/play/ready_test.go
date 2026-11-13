@@ -159,10 +159,11 @@ func TestReadyActionRefusals(t *testing.T) {
 			r.Kind = playv1.ReadiedKind_READIED_KIND_OTHER
 			r.ActionKey = "feature:second-wind"
 		}), blockedReadyAction, 0},
-		{"a spell (not offered yet)", a.caio, edit(func(r *playv1.ReadyActionRequest) {
+		{"a spell Toren does not have", a.caio, edit(func(r *playv1.ReadyActionRequest) {
 			r.Kind = playv1.ReadiedKind_READIED_KIND_SPELL
 			r.SpellKey = "spell:fire-bolt"
-		}), blockedReadyAction, 0},
+		}), 0, connect.CodeInvalidArgument},
+		{"a spell with no key", a.caio, edit(func(r *playv1.ReadyActionRequest) { r.Kind = playv1.ReadiedKind_READIED_KIND_SPELL }), blockedReadyAction, 0},
 		{"no kind", a.caio, edit(func(r *playv1.ReadyActionRequest) { r.Kind = playv1.ReadiedKind_READIED_KIND_UNSPECIFIED }), blockedReadyAction, 0},
 		{"a target nobody has", a.caio, edit(func(r *playv1.ReadyActionRequest) { r.TargetCombatantId = newKey() }), 0, connect.CodeNotFound},
 	}

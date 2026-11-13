@@ -117,11 +117,14 @@ func (s *Service) brokenReadiedBack(ctx context.Context, c *combatTx, run *undoR
 		return err
 	}
 	for _, older := range olderThan(recent, last) {
+		if older.Kind != eventReadiedLost && older.Kind != eventConditionsSet {
+			return nil
+		}
 		ev, err := readEvent(older.Payload)
 		if err != nil {
 			return err
 		}
-		if older.Kind != eventReadiedLost {
+		if older.Kind == eventConditionsSet {
 			if ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd { // the 0 hit points' end of a concentration comes first
 				continue
 			}
