@@ -199,3 +199,47 @@ func TestWeaponHitDamageTagsSayWhenTheDamageRides(t *testing.T) {
 		}
 	}
 }
+
+func TestMarkedTargetNeedsOneCreature(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name   string
+		target SpellTarget
+		ok     bool
+	}{
+		{"one creature", SpellTarget{Kind: TargetCreature}, true},
+		{"self", SpellTarget{Kind: TargetSelf}, false},
+		{"an area", SpellTarget{Kind: TargetArea, Shape: ShapeSphere, SizeFt: 10}, false},
+		{"several creatures", SpellTarget{Kind: TargetCreatures, Count: 2}, false},
+		{"one creature and more per slot", SpellTarget{Kind: TargetCreature, PerSlotLevel: 1}, false},
+	}
+	for _, tc := range cases {
+		for _, trig := range []string{HitTriggerMarkedTarget, HitTriggerNextHit, HitTriggerEachHit} {
+			t.Run(tc.name+" "+trig, func(t *testing.T) {
+				t.Parallel()
+				_, err := withEffectSpell(t, func(ts *TableSpell) {
+					ts.Target = tc.target
+					if tc.target.Kind == TargetSelf {
+						ts.Range = TableRange{Kind: RangeSelf}
+					}
+					ts.Effect.Modifiers = []EffectModifier{hitMod(func(m *EffectModifier) { m.Trigger = trig })}
+				})
+				if trig != HitTriggerMarkedTarget || tc.ok {
+					if err != nil {
+						t.Fatalf("refused: %v", err)
+					}
+					return
+				}
+				if err == nil {
+					t.Fatal("accepted")
+				}
+				if !slices.ContainsFunc(refusedFields(err), func(f string) bool { return strings.HasSuffix(f, "effect.modifiers[0].trigger") }) {
+					t.Errorf("fields %q (%v)", refusedFields(err), err)
+				}
+				if !strings.Contains(err.Error(), "marked_target needs the target One creature") {
+					t.Errorf("message: %v", err)
+				}
+			})
+		}
+	}
+}

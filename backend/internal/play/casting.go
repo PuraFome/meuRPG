@@ -441,6 +441,9 @@ func (s *Service) planOutside(ctx context.Context, c *combatTx, m authz.Membersh
 // checkOutsideCast checks the targets, the reach and, for a cast that takes effect at once, what
 // the spell needs from the request.
 func (s *Service) checkOutsideCast(ctx context.Context, c *combatTx, m authz.Membership, plan castPlan) error {
+	if err := s.checkNotAHitSpell(ctx, c, plan); err != nil {
+		return err
+	}
 	long := plan.minutes > 0
 	if long && plan.pick != nil {
 		return badCast("summon goes in FinishCast for a spell that takes time")
@@ -455,6 +458,21 @@ func (s *Service) checkOutsideCast(ctx context.Context, c *combatTx, m authz.Mem
 		return nil
 	}
 	return s.checkCastInput(ctx, c, m, plan)
+}
+
+// checkNotAHitSpell refuses a spell that adds damage to the caster's weapon hits (a weapon_hit_damage): its effect
+// is spent on the hits of a combat, and a character outside one has no hit to spend it on.
+func (s *Service) checkNotAHitSpell(ctx context.Context, c *combatTx, plan castPlan) error {
+	content, err := s.contentOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	if def, ok := content.CombatSpellEffect(plan.spell); ok {
+		if _, hits := hitModifierOf(def.Modifiers); hits {
+			return connect.NewError(connect.CodeFailedPrecondition, errors.New("this spell adds damage to weapon hits and works only in a combat"))
+		}
+	}
+	return nil
 }
 
 // insertCast writes the cast's row, in the casting state.

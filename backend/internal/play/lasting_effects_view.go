@@ -239,7 +239,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 	}
 	out.OriginPt = ev.originOf(f, caster, casterSeen)
 	for _, m := range effectModifiers(f) {
-		out.Modifiers = append(out.Modifiers, modifierProto(m))
+		out.Modifiers = append(out.Modifiers, ev.modifierCard(m))
 	}
 	ev.cardClock(out, f, caster, casterSeen)
 	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)) || ev.v.saveDCFor(ev.byID[onTarget]))
@@ -264,7 +264,7 @@ func (ev *effectViewer) cardHead(f playdb.CombatantState, key string, def *rules
 	}
 	out := &playv1.LastingEffect{
 		Id: f.ID, GroupId: group, EncounterId: f.EncounterID, SourceKey: key, SourceNamePt: ev.names(key),
-		Concentration: f.Concentration, ConditionKeys: f.ConditionKeys,
+		Concentration: f.Concentration, ConditionKeys: f.ConditionKeys, Spent: f.SpentAt != nil,
 	}
 	out.SourceKind = sourceKindProto(conv.OrZero(f.SourceKind), len(f.ConditionKeys) > 0 && def == nil)
 	if out.SourceNamePt == "" && len(f.ConditionKeys) > 0 {
@@ -504,6 +504,7 @@ var modifierKindProto = map[string]playv1.EffectModifierKind{
 	rules.ModifierAttackAdvantage:   playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_ATTACK_ADVANTAGE,
 	rules.ModifierSaveDisadvantage:  playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_SAVE_DISADVANTAGE,
 	rules.ModifierCheckDisadvantage: playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE,
+	rules.ModifierWeaponHitDamage:   playv1.EffectModifierKind_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE,
 }
 
 // rollKindProto maps the rolls a modifier touches.

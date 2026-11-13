@@ -121,13 +121,16 @@ func (c *content) checkWeaponHitContent(m EffectModifier) error {
 }
 
 // spellHitRefusal refuses a weapon_hit_damage a table spell cannot keep: each_hit and marked_target last as long
-// as the concentration does, and a condition that lasts as the spell needs a spell that lasts (a timed duration).
-func spellHitRefusal(m EffectModifier, concentration, lasts bool) error {
+// as the concentration does, a condition that lasts as the spell needs a spell that lasts (a timed duration),
+// and marked_target needs the spell's target to be one creature: the one that carries the mark.
+func spellHitRefusal(m EffectModifier, concentration, lasts bool, target SpellTarget) error {
 	switch {
 	case m.Kind != ModifierWeaponHitDamage:
 		return nil
 	case HitTriggerNeedsConcentration(m.Trigger) && !concentration:
 		return modifierField("trigger", "%s needs a spell that asks for concentration", m.Trigger)
+	case m.Trigger == HitTriggerMarkedTarget && (target.Kind != TargetCreature || target.PerSlotLevel != 0):
+		return modifierField("trigger", "marked_target needs the target One creature")
 	case m.ConditionDuration == ConditionDurationSpellEnd && !concentration && !lasts:
 		return modifierField("condition_duration", "spell_end needs a spell that asks for concentration or lasts a set time")
 	}

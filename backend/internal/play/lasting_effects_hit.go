@@ -8,6 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -178,4 +179,26 @@ func tagsOfRow(def *rules.EffectDef, mods []rules.EffectModifier) []string {
 		return rules.EffectTagsPT(onlyHitModifiers(def.Modifiers))
 	}
 	return rules.EffectTagsPT(withoutHitModifiers(def.Modifiers))
+}
+
+// modifierCard is a modifier of an effect's card: the hit of a weapon_hit_damage is the details of what the caster's
+// own card reads. Only the master and the combatant's own player are given a card at all (decorateCard), and the
+// mark a marked_target leaves on its target carries no modifier, so no other player is ever given these numbers.
+func (ev *effectViewer) modifierCard(m rules.EffectModifier) *playv1.EffectModifier {
+	out := modifierProto(m)
+	if m.Kind != rules.ModifierWeaponHitDamage {
+		return out
+	}
+	out.Hit = &playv1.WeaponHitDamage{
+		Trigger: m.Trigger, Die: clamp32(m.Die, 0, 100), Dice: clamp32(m.Dice, 0, 100), PerSlotDice: clamp32(m.PerSlotDice, 0, 100),
+		MaxDice: clamp32(m.MaxDice, 0, 100), DamageTypeKey: m.DamageType, Save: m.Save, ConditionKeys: m.OnFailConditions,
+		ConditionDuration: m.ConditionDuration,
+	}
+	if m.DamageType != "" {
+		out.Hit.DamageTypePt = ev.names(m.DamageType)
+	}
+	for _, k := range m.OnFailConditions {
+		out.Hit.ConditionNamesPt = append(out.Hit.ConditionNamesPt, ev.names(k))
+	}
+	return out
 }
