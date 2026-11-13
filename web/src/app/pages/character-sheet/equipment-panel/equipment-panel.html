@@ -50,6 +50,7 @@
         <ul class="magic__rows">
           @for (e of magicItems(); track e.id) {
             <li class="magic-row">
+              <mat-icon class="magic-row__icon" aria-hidden="true">{{ iconOf(e) }}</mat-icon>
               <span class="magic-row__name">{{ e.namePt }}</span>
               @if (pill(e); as word) {
                 <span class="magic-row__pill" [class.magic-row__pill--on]="e.attuned">{{ word }}</span>
@@ -65,9 +66,9 @@
                   <mat-icon aria-hidden="true">more_vert</mat-icon>
                 </button>
               }
-              @if (!e.attuned && e.asks && e.restrictionPt) {
+              @if (reasonOfEntry(e); as why) {
                 <span class="magic-row__line mr-muted">
-                  <mat-icon aria-hidden="true">block</mat-icon>{{ e.restrictionPt }}
+                  <mat-icon aria-hidden="true">{{ why.reasonIcon }}</mat-icon>{{ why.reason }}
                 </span>
               }
             </li>

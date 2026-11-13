@@ -315,6 +315,8 @@
           <app-equipment-panel
             class="sheet__equipment"
             [sheet]="full"
+            [viewer]="vm.isMaster ? 'master' : 'owner'"
+            [characterName]="vm.name"
             [canEquip]="vm.state !== 'dead'"
             [equipBusyKey]="gear.busyKey()"
             [equipNotice]="gear.notice()"

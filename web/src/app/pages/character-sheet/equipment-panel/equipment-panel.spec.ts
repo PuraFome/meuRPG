@@ -1,7 +1,11 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import type { AttunementEntryVm } from '../../../core/characters/attunement';
+import {
+  type AttunementEntryVm,
+  MagicCategories,
+  magicCategoryIcon,
+} from '../../../core/characters/attunement';
 import type { FullSheetVm } from '../character-sheet.types';
 import { EquipmentPanel } from './equipment-panel';
 
@@ -48,6 +52,8 @@ function sheetWith(entries: AttunementEntryVm[], gear: unknown[] = []): FullShee
   template: `
     <app-equipment-panel
       [sheet]="sheet()"
+      [viewer]="viewer()"
+      characterName="Tor"
       [canEquip]="true"
       [canManageMagic]="manage()"
       [canChangeAttunement]="change()"
@@ -61,6 +67,7 @@ function sheetWith(entries: AttunementEntryVm[], gear: unknown[] = []): FullShee
 })
 class Host {
   readonly sheet = signal(sheetWith([]));
+  readonly viewer = signal<'owner' | 'master'>('owner');
   readonly manage = signal(false);
   readonly change = signal(false);
   readonly closed = signal(false);
@@ -78,7 +85,23 @@ function render(init: (h: Host) => void = () => undefined) {
   return { fixture, host: fixture.componentInstance, el };
 }
 
+const CATEGORY_OF = new Map([
+  ['ring', 'ring'],
+  ['cloak', 'wondrous-item'],
+]);
+
 describe('EquipmentPanel, the magic items and the attunement', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: MagicCategories,
+          useValue: { iconOf: (k: string) => magicCategoryIcon(CATEGORY_OF.get(k)) },
+        },
+      ],
+    }),
+  );
+
   it('shows neither the header nor the list when nothing is magic and nobody can add', () => {
     const { el } = render();
     expect(el.querySelector('.att-head')).toBeNull();
@@ -100,14 +123,47 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
     const rows = Array.from(el.querySelectorAll('.magic-row'), flat);
     expect(rows[0]).toContain('Anel de proteçãoSintonizado');
     expect(rows[1]).toContain('Manto élficoPede sintonização');
-    expect(rows[2]).toBe('Bolsa de carga');
+    expect(rows[2]).toContain('Bolsa de carga');
+    expect(rows[2]).not.toContain('sintonização');
   });
 
-  it('says what an unmet item asks of the character, under the row', () => {
-    const { el } = render((h) =>
-      h.sheet.set(sheetWith([entry({ restrictionPt: 'Só para um conjurador' })])),
+  it('says who fails what an item asks, the same words as the rest sheet', () => {
+    const unmet = entry({ restrictionPt: 'Só para um conjurador', restriction: 'notMet' });
+    const owner = render((h) => h.sheet.set(sheetWith([unmet])));
+    expect(flat(owner.el.querySelector('.magic-row__line'))).toContain(
+      'Só para um conjurador: você não cumpre.',
     );
-    expect(flat(el.querySelector('.magic-row__line'))).toContain('Só para um conjurador');
+    expect(owner.el.querySelector('.magic-row__line mat-icon')?.textContent).toBe('block');
+
+    const master = render((h) => {
+      h.viewer.set('master');
+      h.sheet.set(sheetWith([unmet]));
+    });
+    expect(flat(master.el.querySelector('.magic-row__line'))).toContain(
+      'Só para um conjurador: Tor não cumpre.',
+    );
+  });
+
+  it('draws a condition of use with the moon, not with the block that means a refusal', () => {
+    const { el } = render((h) =>
+      h.sheet.set(sheetWith([entry({ restrictionPt: 'Só ao ar livre, à noite' })])),
+    );
+    expect(flat(el.querySelector('.magic-row__line'))).toContain('Só ao ar livre, à noite.');
+    expect(el.querySelector('.magic-row__line mat-icon')?.textContent).toBe('dark_mode');
+  });
+
+  it("draws the icon of the item's category by its key", () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([
+          entry({}),
+          entry({ id: 'm2', key: 'cloak', namePt: 'Manto' }),
+          entry({ id: 'm3', key: 'unknown', namePt: 'Outro' }),
+        ]),
+      ),
+    );
+    const icons = Array.from(el.querySelectorAll('.magic-row__icon'), (i) => i.textContent);
+    expect(icons).toEqual(['radio_button_unchecked', 'diamond', 'diamond']);
   });
 
   it('offers "Mudar" while the window is open, and "Muda num descanso" when it is not', () => {

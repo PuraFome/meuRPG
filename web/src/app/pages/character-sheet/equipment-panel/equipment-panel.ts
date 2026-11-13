@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import type { AttunementEntryVm } from '../../../core/characters/attunement';
+import { type AttunementEntryVm, MagicCategories } from '../../../core/characters/attunement';
 import type { GearVm } from '../../../core/characters/gear';
 
 import {
@@ -10,6 +10,7 @@ import {
   GearList,
   type GearToggle,
 } from '../../../shared/gear-list/gear-list';
+import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
 import { FullSheetVm } from '../character-sheet.types';
 import { coinEntries, keepUnitsTogether } from '../sheet-format';
 
@@ -27,6 +28,11 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
 })
 export class EquipmentPanel {
   readonly sheet = input.required<FullSheetVm>();
+  /** Who looks: the master reads "Tor não cumpre", the owner "você não cumpre". */
+  readonly viewer = input<'owner' | 'master'>('owner');
+  /** The character's name, for what the master reads. */
+  readonly characterName = input('');
+  private readonly categories = inject(MagicCategories);
   /** Whether the gear list has its buttons: for the owner and the master alike, unless the character is dead. The
    * sheet's lock does not matter: the gear is played. */
   readonly canEquip = input(false);
@@ -90,6 +96,19 @@ export class EquipmentPanel {
     const chip = this.chipOf();
     return this.sheet().gear.some((g) => chip(g) !== '');
   });
+
+  /** The line under a magic item that asks and is not attuned, with its icon; the same words as the short-rest sheet. */
+  protected reasonOfEntry(e: AttunementEntryVm) {
+    if (e.attuned || !e.asks) {
+      return null;
+    }
+    const why = reasonOf(e, { viewer: this.viewer(), name: this.characterName() });
+    return why.reason === '' ? null : why;
+  }
+
+  protected iconOf(e: AttunementEntryVm): string {
+    return this.categories.iconOf(e.key);
+  }
 
   protected pill(e: AttunementEntryVm): string {
     if (e.attuned) {

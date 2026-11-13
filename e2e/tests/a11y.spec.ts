@@ -8547,7 +8547,14 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
     // The owner, outside a rest: the list, the chips on the gear, the lock line, "Muda num descanso".
     await expect(gearOf(p).getByText('Muda num descanso')).toBeVisible();
     await everyWidth(p, 'ficha-dono', 'A ficha do dono, itens mágicos e sintonia', () => gearOf(p));
-    await cropAtt(gearOf(p).locator('.gear-row').filter({ hasText: 'Espada longa' }), 'chip-peca', colorScheme);
+    // The chip on its row and the magic items' rows (icon, reason line), at the narrowest and the widest.
+    for (const width of [390, 1280]) {
+      for (const [page, who] of [[p, 'dono'], [m, 'mestre']] as const) {
+        await page.setViewportSize(attViewport(width));
+        await cropAtt(gearOf(page).locator('.gear-row').filter({ hasText: 'Espada longa' }), `chip-peca-${who}-${width}`, colorScheme);
+        await cropAtt(gearOf(page).locator('.magic'), `itens-magicos-${who}-${width}`, colorScheme);
+      }
+    }
     await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos de sintonização' }), 'legenda-selos', colorScheme);
     await cropAtt(gearOf(p).locator('.gear__lock'), 'linha-travada', colorScheme);
 
@@ -8666,6 +8673,8 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
       await shootAtt(p, 'sintonia-no-descanso', width, colorScheme, section);
       if (width === 390) {
         await cropAtt(section.getByRole('listitem').filter({ hasText: 'Pérola do poder' }), 'linha-do-descanso', colorScheme);
+        await cropAtt(section.locator('.att__head'), 'cabecalho-do-descanso', colorScheme);
+        await cropAtt(section.getByRole('listitem').filter({ hasText: 'Manto élfico' }), 'icone-do-descanso', colorScheme);
       }
       await section.getByRole('button', { name: 'Sintonizar Manto élfico' }).click();
       const used = restSheet.getByText('A sintonização deste descanso foi usada.');

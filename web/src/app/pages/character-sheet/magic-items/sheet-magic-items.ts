@@ -37,6 +37,11 @@ export class SheetMagicItems {
 
   constructor(private readonly host: SheetMagicItemsHost) {}
 
+  /** The sheet lists a magic item. */
+  hasItems(): boolean {
+    return this.host.attunement().entries.some((e) => e.kind === 'magic');
+  }
+
   /** The owner's window, for the "Mudar" button. */
   windowOpen(): boolean {
     return this.host.windowOpen();

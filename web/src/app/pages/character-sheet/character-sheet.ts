@@ -22,6 +22,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import type { SavingState } from '../../core/connect/saving-state';
 import { setPageSubject } from '../../core/title/page-title';
+import { MagicCategories } from '../../core/characters/attunement';
 import { formatModifier } from '../../core/characters/character-labels';
 import { describeCharacterError } from '../../core/characters/character-errors';
 import { openSpellDetails } from '../../shared/spell-details/open-spell-details';
@@ -151,6 +152,7 @@ export class CharacterSheetPage {
   private readonly xpWatcher = inject(XpWatcher);
   private readonly dialog = inject(MatDialog);
   private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly categories = inject(MagicCategories);
   /** The descriptions already asked for, by spell: a second tap opens at once. */
   private readonly spellDetails = new Map<string, Promise<SpellDetailsVm>>();
 
@@ -225,6 +227,13 @@ export class CharacterSheetPage {
 
   constructor() {
     this.destroyRef.onDestroy(this.gear.refreshWhenShown(inject(DOCUMENT)));
+    // The icons of the magic items' rows come from the catalog's categories: read once the sheet lists one.
+    effect(() => {
+      const campaignId = this.campaignId();
+      if (campaignId && this.magic.hasItems()) {
+        void this.categories.load(campaignId);
+      }
+    });
     // The tab's title carries the character's name once the sheet is loaded.
     setPageSubject(() => {
       const s = this.state();

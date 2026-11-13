@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Code, ConnectError, createClient } from '@connectrpc/connect';
 
 import {
@@ -195,4 +195,78 @@ export function isRestrictedRefusal(err: unknown): boolean {
       .findDetails(CharacterBlockedSchema)
       .some((d) => d.reason === CharacterBlockedReason.ATTUNEMENT_RESTRICTED)
   );
+}
+
+/** The material icon of a magic item's category, for its row; an item the catalog does not know gets the gem. */
+export function magicCategoryIcon(category: string | undefined): string {
+  switch (category) {
+    case 'armor':
+      return 'shield';
+    case 'weapon':
+      return 'swords';
+    case 'ammunition':
+      return 'arrow_upward';
+    case 'potion':
+      return 'science';
+    case 'scroll':
+      return 'description';
+    case 'ring':
+      return 'radio_button_unchecked';
+    case 'rod':
+    case 'staff':
+    case 'wand':
+      return 'auto_fix_high';
+    default:
+      return 'diamond';
+  }
+}
+
+/** The category of every magic item the catalog lists (a variant has its family's), read once per campaign through the
+ * picker's `ListMagicItems`: the rows of a sheet draw the icon of what they are. A failed read leaves the gem on every row
+ * and is tried again the next time. */
+@Injectable({ providedIn: 'root' })
+export class MagicCategories {
+  private readonly client = inject(AttunementClient);
+  private readonly byKey = signal<ReadonlyMap<string, string>>(new Map());
+  private loaded = '';
+  private loading: Promise<void> | null = null;
+
+  /** The icon for the item with this key. */
+  iconOf(key: string): string {
+    return magicCategoryIcon(this.byKey().get(key));
+  }
+
+  async load(campaignId: string): Promise<void> {
+    if (this.loaded === campaignId) {
+      return;
+    }
+    if (this.loading) {
+      return this.loading;
+    }
+    this.loading = this.read(campaignId).finally(() => {
+      this.loading = null;
+    });
+    return this.loading;
+  }
+
+  private async read(campaignId: string): Promise<void> {
+    const map = new Map<string, string>();
+    try {
+      let token = '';
+      do {
+        const page = await this.client.listMagicItems(campaignId, '', token);
+        for (const i of page.items) {
+          map.set(i.key, i.category);
+          for (const v of i.variants) {
+            map.set(v.key, i.category);
+          }
+        }
+        token = page.nextPageToken;
+      } while (token !== '');
+    } catch {
+      return;
+    }
+    this.byKey.set(map);
+    this.loaded = campaignId;
+  }
 }

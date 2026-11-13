@@ -41,9 +41,11 @@ export interface AttunementContext {
 
 const CIRCUMSTANCE = /noite|ar livre/i;
 
-function reasonOf(
+/** The line under an entry that asks and is not attuned, and its icon: the section and the sheet's panel word it the same
+ * way. The block is for what the character fails; a condition of use gets the moon (night) or the info mark. */
+export function reasonOf(
   e: AttunementEntryVm,
-  c: AttunementContext,
+  c: Pick<AttunementContext, 'viewer' | 'name'>,
 ): Pick<AttunementRowVm, 'reason' | 'reasonIcon'> {
   if (e.sameItemAttuned) {
     return { reason: 'Já sintonizado a outro igual.', reasonIcon: 'block' };

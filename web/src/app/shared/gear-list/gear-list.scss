@@ -44,8 +44,21 @@
   min-width: 0;
 }
 
+.gear-row__lead {
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  > * + * {
+    margin-inline-start: var(--mr-space-2);
+  }
+}
+
 .gear-row__name {
   overflow-wrap: anywhere;
+}
+
+.gear-row__glue {
+  white-space: nowrap;
 }
 
 .gear-row__kind {

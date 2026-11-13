@@ -1,4 +1,5 @@
 import { create } from '@bufbuild/protobuf';
+import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -8,7 +9,13 @@ import {
   SheetMagicItemSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 
-import { attunementOf } from './attunement';
+import {
+  AttunementClient,
+  MagicCategories,
+  type MagicItemsPage,
+  attunementOf,
+  magicCategoryIcon,
+} from './attunement';
 
 describe('attunementOf', () => {
   it('lists the pieces that name a catalog item or ask, then the magic items, and counts the attuned that ask', () => {
@@ -66,5 +73,80 @@ describe('attunementOf', () => {
       restrictionPt: 'Só para um conjurador',
     });
     expect(a.entries[3]).toMatchObject({ asks: false, restriction: 'none' });
+  });
+});
+
+describe('MagicCategories', () => {
+  const page = (items: MagicItemsPage['items'], nextPageToken = ''): MagicItemsPage => ({
+    items,
+    total: items.length,
+    nextPageToken,
+  });
+  const option = (key: string, category: string, variants: string[] = []) => ({
+    key,
+    namePt: key,
+    category,
+    rarity: 'rare',
+    asks: false,
+    restrictionPt: '',
+    standalone: true,
+    variants: variants.map((v) => ({
+      key: v,
+      namePt: v,
+      rarity: 'rare',
+      asks: false,
+      restrictionPt: '',
+    })),
+  });
+
+  it("reads every page once and gives a variant its family's icon", async () => {
+    const calls: string[] = [];
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AttunementClient,
+          useValue: {
+            listMagicItems: async (_c: string, _q: string, token: string) => {
+              calls.push(token);
+              return token === ''
+                ? page([option('item:ring', 'ring')], 'p2')
+                : page([option('item:armor', 'armor', ['item:armor-1'])]);
+            },
+          },
+        },
+      ],
+    });
+    const cats = TestBed.inject(MagicCategories);
+    await cats.load('c1');
+    await cats.load('c1');
+    expect(calls).toEqual(['', 'p2']);
+    expect(cats.iconOf('item:ring')).toBe(magicCategoryIcon('ring'));
+    expect(cats.iconOf('item:armor-1')).toBe('shield');
+    expect(cats.iconOf('item:nope')).toBe('diamond');
+  });
+
+  it('keeps the gem on every row when the read fails, and tries again next time', async () => {
+    let fail = true;
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AttunementClient,
+          useValue: {
+            listMagicItems: async () => {
+              if (fail) {
+                throw new Error('offline');
+              }
+              return page([option('item:ring', 'ring')]);
+            },
+          },
+        },
+      ],
+    });
+    const cats = TestBed.inject(MagicCategories);
+    await cats.load('c1');
+    expect(cats.iconOf('item:ring')).toBe('diamond');
+    fail = false;
+    await cats.load('c1');
+    expect(cats.iconOf('item:ring')).toBe(magicCategoryIcon('ring'));
   });
 });

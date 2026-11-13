@@ -1,5 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
+  effect,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -16,6 +17,7 @@ import {
   type AttunementEntryVm,
   type AttunementVm,
   AttunementClient,
+  MagicCategories,
   isRestrictedRefusal,
 } from '../../core/characters/attunement';
 import { describeCharacterError } from '../../core/characters/character-errors';
@@ -39,6 +41,7 @@ let nextId = 0;
 })
 export class AttunementSection {
   private readonly client = inject(AttunementClient);
+  private readonly categories = inject(MagicCategories);
 
   readonly attunement = input.required<AttunementVm>();
   readonly viewer = input.required<AttunementViewer>();
@@ -50,6 +53,10 @@ export class AttunementSection {
   /** The section sits under a title of its own (the sheet "Sintonização"): no heading of its own, the count stays. */
   readonly bare = input(false);
   readonly campaignId = input.required<string>();
+
+  constructor() {
+    effect(() => void this.categories.load(this.campaignId()));
+  }
   readonly characterId = input.required<string>();
   /** The revision of the sheet the caller holds; a stale one is refused by the server. */
   readonly revision = input.required<number>();
@@ -87,7 +94,7 @@ export class AttunementSection {
   }
 
   protected icon(e: AttunementEntryVm): string {
-    return e.kind === 'piece' ? 'swords' : 'diamond';
+    return e.kind === 'piece' ? 'swords' : this.categories.iconOf(e.key);
   }
 
   /** A tap on "Sintonizar" or "Encerrar": one call, then the status line or the alert. A button the section knows will be
