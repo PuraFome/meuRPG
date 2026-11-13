@@ -336,7 +336,7 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 	}) {
 		return nil, true, nil
 	}
-	before := moveStateOf(mover)
+	before := moveStateIn(cs, mover)
 	if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
 		ID: mover.ID, GridCol: o.LeftCol, GridRow: o.LeftRow,
 		MovementUsedFt: mover.MovementUsedFt, MovementUsedDft: mover.MovementUsedDft, LastMoveDft: mover.LastMoveDft, CoverMark: mover.CoverMark,
@@ -382,7 +382,7 @@ func putBackMove(ctx context.Context, c *combatTx, id string, st *moveState) err
 	}); err != nil {
 		return fmt.Errorf("put the mover back: %w", err)
 	}
-	return carryRider(ctx, c.q, id)
+	return carryRiderBack(ctx, c.q, id, st)
 }
 
 func coverOrNone(c string) string {

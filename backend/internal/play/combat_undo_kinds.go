@@ -580,7 +580,7 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 	if err := u.moverBack(ctx, who, ev); err != nil {
 		return err
 	}
-	if err := carryRider(ctx, u.c.q, who.ID); err != nil { // a mount's rider goes back with it
+	if err := carryRiderBack(ctx, u.c.q, who.ID, ev.From); err != nil { // a mount's rider goes back with it
 		return err
 	}
 	if err := u.legendaryBack(ctx, ev); err != nil {
@@ -599,7 +599,7 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 		}); err != nil {
 			return fmt.Errorf("put back the dragged creature: %w", err)
 		}
-		if err := carryRider(ctx, u.c.q, ev.Dragged); err != nil {
+		if err := carryRiderBack(ctx, u.c.q, ev.Dragged, ev.DraggedFrom); err != nil {
 			return err
 		}
 	}

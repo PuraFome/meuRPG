@@ -177,7 +177,7 @@ func (p *pusher) push(ctx context.Context, target playdb.Combatant) (*forcedMove
 		}
 		// A wall or a creature leaves nowhere to go: the save failed, nothing moves, and the log says the push was stopped.
 		col, row := clamp32(from.Col, 0, math.MaxInt32), clamp32(from.Row, 0, math.MaxInt32)
-		return &forcedMove{Target: target.ID, From: moveStateOf(target), Col: col, Row: row, Short: true}, nil
+		return &forcedMove{Target: target.ID, From: moveStateIn(p.cs, target), Col: col, Row: row, Short: true}, nil
 	}
 	col, row := clamp32(plan.to.Col, 0, math.MaxInt32), clamp32(plan.to.Row, 0, math.MaxInt32)
 	if err := p.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{ID: target.ID, GridCol: &col, GridRow: &row, CoverMark: "none"}); err != nil {
@@ -187,7 +187,7 @@ func (p *pusher) push(ctx context.Context, target playdb.Combatant) (*forcedMove
 		return nil, err
 	}
 	moved := forcedMove{
-		Target: target.ID, From: moveStateOf(target), Col: col, Row: row,
+		Target: target.ID, From: moveStateIn(p.cs, target), Col: col, Row: row,
 		DistanceFt: clamp32(grid.LengthDFt(from, plan.to)/10, 0, math.MaxInt32), Short: plan.short,
 	}
 	p.remember(target.ID, col, row)
@@ -274,7 +274,7 @@ func putPushedBack(ctx context.Context, c *combatTx, m *forcedMove) error {
 	if err := c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{ID: m.Target, GridCol: &m.From.Col, GridRow: &m.From.Row, CoverMark: coverOrNone(m.From.Cover)}); err != nil {
 		return fmt.Errorf("put the pushed creature back: %w", err)
 	}
-	return carryRider(ctx, c.q, m.Target)
+	return carryRiderBack(ctx, c.q, m.Target, m.From)
 }
 
 // publishPushed tells the streams and the fog that the creatures moved, after the commit.

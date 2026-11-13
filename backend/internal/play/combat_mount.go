@@ -201,6 +201,29 @@ func seatRiders(ctx context.Context, q *playdb.Queries, cs []playdb.Combatant, u
 	return nil
 }
 
+// moveStateIn is moveStateOf for a combatant among cs: a mount keeps its rider's cover mark too.
+func moveStateIn(cs []playdb.Combatant, c playdb.Combatant) *moveState {
+	st := moveStateOf(c)
+	if rider := riderOf(cs, c.ID); rider != nil {
+		st.RiderID, st.RiderCover = rider.ID, rider.CoverMark
+	}
+	return st
+}
+
+// carryRiderBack is carryRider for an undo: the rider goes back with its mount and gets its cover mark back, which the carry cleared.
+func carryRiderBack(ctx context.Context, q *playdb.Queries, mountID string, from *moveState) error {
+	if err := carryRider(ctx, q, mountID); err != nil {
+		return err
+	}
+	if from == nil || from.RiderID == "" || from.RiderCover == "" || from.RiderCover == "none" {
+		return nil
+	}
+	if err := q.SetCombatantCoverMark(ctx, playdb.SetCombatantCoverMarkParams{ID: from.RiderID, CoverMark: from.RiderCover}); err != nil {
+		return fmt.Errorf("put back the rider's cover mark: %w", err)
+	}
+	return nil
+}
+
 // drives says whether the viewer's player moves the combatant for its rider: a controlled mount obeys the rider, whose player the
 // viewer is.
 func (v combatViewer) drives(cs []playdb.Combatant, c playdb.Combatant) bool {

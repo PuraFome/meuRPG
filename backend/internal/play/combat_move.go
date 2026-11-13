@@ -241,6 +241,10 @@ type moveState struct {
 	UsedDFt int32  `json:"used_dft,omitempty"`
 	LastDFt int32  `json:"last_dft,omitempty"`
 	Cover   string `json:"cover,omitempty"`
+	// RiderID and RiderCover are the rider of a mount and the master's cover mark it had: the move clears the mark of a rider that
+	// changes square, and the undo gives it back (carryRiderBack).
+	RiderID    string `json:"rider_id,omitempty"`
+	RiderCover string `json:"rider_cover,omitempty"`
 }
 
 func moveStateOf(c playdb.Combatant) *moveState {
@@ -591,7 +595,7 @@ func (s *Service) startMove(ctx context.Context, a *moveAttempt) error {
 		return err
 	}
 	a.th = th
-	a.from = moveStateOf(a.target)
+	a.from = moveStateIn(a.cs, a.target)
 	a.made = actionEvent{Round: a.c.enc.Round, Secret: a.target.Hidden, Actor: a.target.ID, OnTurn: a.onTurn, From: a.from, SpendCost: a.spent}
 	a.to = grid.Square{Col: int(a.col), Row: int(a.row)}
 	if a.req.jump == playv1.JumpKind_JUMP_KIND_HIGH {
@@ -847,7 +851,7 @@ func (s *Service) dragAlong(ctx context.Context, a *moveAttempt) error {
 	}
 	a.draggedMoved, a.draggedFrom = &moved, &from
 	a.draggedID = a.dragged.ID
-	a.made.Dragged, a.made.DraggedFrom = a.dragged.ID, moveStateOf(a.dragged)
+	a.made.Dragged, a.made.DraggedFrom = a.dragged.ID, moveStateIn(a.cs, a.dragged)
 	return nil
 }
 

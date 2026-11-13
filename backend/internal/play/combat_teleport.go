@@ -114,7 +114,7 @@ func (f *castFlow) teleport(ctx context.Context) error {
 	if err := carryRider(ctx, f.c.q, f.caster.ID); err != nil {
 		return err
 	}
-	f.out.made.Teleport = &teleportEvent{From: moveStateOf(f.caster), Col: col, Row: row}
+	f.out.made.Teleport = &teleportEvent{From: moveStateIn(f.cs, f.caster), Col: col, Row: row}
 	moved := f.caster
 	moved.GridCol, moved.GridRow, moved.CoverMark = &col, &row, "none"
 	f.landed = &moved
@@ -162,7 +162,7 @@ func (u *undoer) castTeleportBack(ctx context.Context, who playdb.Combatant, ev 
 	if err := u.c.q.SetCombatantPlace(ctx, playdb.SetCombatantPlaceParams{ID: who.ID, GridCol: col, GridRow: row, CoverMark: coverOrNone(from.Cover)}); err != nil {
 		return fmt.Errorf("put back the teleport: %w", err)
 	}
-	return carryRider(ctx, u.c.q, who.ID)
+	return carryRiderBack(ctx, u.c.q, who.ID, from)
 }
 
 // publishTeleport tells the streams and the fog that the caster landed, after the commit.
