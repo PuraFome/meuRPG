@@ -68,7 +68,7 @@ import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support'
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
-import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -6200,6 +6200,107 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema esc
 
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 320);
+});
+
+/** "Como funciona" shares the row of the switch's title (it is not stranded alone on a line of its own), whatever the width. */
+async function expectHeadNotStranded(block: Locator, where: string): Promise<void> {
+  const title = await boxOf(block.getByRole('switch', { name: 'Efeito no próximo golpe' }));
+  const button = await boxOf(block.getByRole('button', { name: 'Como funciona' }));
+  expect.soft(Math.abs(button.y + button.height / 2 - (title.y + title.height / 2)), `"Como funciona" na linha do título ${where}`).toBeLessThan(6);
+}
+
+/**
+ * "Efeito no próximo golpe" of a table spell (#577): the editor's block with each of the four triggers picked, the marked target's card
+ * locked (a spell of the caster alone), the switch off with the reason of a spell that does not last, a refusal and a missing cap at
+ * their fields, "Como funciona" open, and what a player reads of the spell. The editor is judged from 768 px up (a phone only reads).
+ */
+async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade próximo golpe ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const fist = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Geada no Punho'));
+    const mark = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Marca do Caçador', { trigger: 'TABLE_HIT_TRIGGER_MARKED_TARGET', save: '', onFailConditions: [], conditionDuration: '' }, { target: { kind: 'TABLE_SPELL_TARGET_KIND_CREATURE' }, range: { kind: 'SPELL_RANGE_KIND_RANGED', distanceFt: 60 } }));
+
+    if (width >= 768) {
+      await open(m, entryRoute(campaignId, fist));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
+      const block = m.locator('app-hit-effect-block');
+      await expect(block.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
+      await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe ligado, o alvo marcado travado ${where}`);
+      await expectHeadNotStranded(block, where);
+      for (const card of ['Próximo golpe com arma', 'Cada golpe enquanto durar', 'Próximo golpe corpo a corpo']) {
+        await pickRadio(block, card);
+        await expect(block.getByRole('radio', { name: new RegExp(`^${card}`) })).toBeChecked();
+        await expectScreenPasses(m, `Editor de magia, o gatilho "${card}" ${where}`);
+      }
+      await block.getByRole('button', { name: 'Como funciona' }).click();
+      await expect(block.getByRole('button', { name: 'Como funciona' })).toHaveAttribute('aria-expanded', 'true');
+      await expectScreenPasses(m, `Editor de magia, "Como funciona" aberto ${where}`);
+
+      await open(m, entryRoute(campaignId, mark));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Marca do Caçador');
+      await expect(block.getByRole('radio', { name: /^Cada golpe no alvo marcado/ })).toBeChecked();
+      await expectScreenPasses(m, `Editor de magia, o gatilho "Cada golpe no alvo marcado" ${where}`);
+      await expectHeadNotStranded(block, where);
+
+      // A spell that does not last keeps no effect: the switch is off and says why.
+      await open(m, `/campaigns/${campaignId}/content/new/spell`);
+      const fresh = m.locator('app-hit-effect-block');
+      await expect(fresh.getByRole('switch', { name: 'Efeito no próximo golpe' })).toBeDisabled();
+      await expect(fresh.getByText('Uma magia instantânea não guarda efeito para o golpe.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe que a magia instantânea não guarda ${where}`);
+
+      // A cap left empty and dice at 0: the form says the cap, the server refuses the dice, each at its field.
+      await open(m, entryRoute(campaignId, fist));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
+      await block.getByLabel('Dados', { exact: true }).fill('0');
+      await block.getByLabel('No máximo').fill('');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(block.getByLabel('No máximo')).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Editor de magia, o máximo de dados que falta ${where}`);
+      await block.getByLabel('No máximo').fill('5');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(block.getByLabel('Dados', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expect(block.getByLabel('Dados', { exact: true }).locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, a recusa dos dados no campo ${where}`);
+    }
+
+    await open(p, entryRoute(campaignId, fist));
+    await expect(p.getByRole('heading', { name: 'Efeito no próximo golpe' })).toBeVisible();
+    await expect(p.getByText('Só quem conjura e você')).toBeVisible();
+    await expectScreenPasses(p, `Magia com efeito no próximo golpe, vista por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, mark));
+    await expect(p.getByText('Em quem conjura: cada golpe com arma no alvo marcado, por até 1 minuto.')).toBeVisible();
+    await expectScreenPasses(p, `Magia do alvo marcado, vista por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 1280);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 768);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'dark', 1024);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'dark', 390);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 320);
 });
 
 /**
