@@ -197,21 +197,18 @@ export function isRestrictedRefusal(err: unknown): boolean {
   );
 }
 
-/** The material icon of a magic item's category, for its row; an item the catalog does not know gets the gem. */
+/** The material icon of a magic item's category, for its row: an icon that draws the object, never one that reads as a
+ * control or a state (no hollow circle, no arrow). A ring, ammunition and what the catalog does not know get the gem. */
 export function magicCategoryIcon(category: string | undefined): string {
   switch (category) {
     case 'armor':
       return 'shield';
     case 'weapon':
       return 'swords';
-    case 'ammunition':
-      return 'arrow_upward';
     case 'potion':
       return 'science';
     case 'scroll':
       return 'description';
-    case 'ring':
-      return 'radio_button_unchecked';
     case 'rod':
     case 'staff':
     case 'wand':

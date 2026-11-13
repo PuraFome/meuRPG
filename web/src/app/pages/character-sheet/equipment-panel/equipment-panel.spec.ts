@@ -86,7 +86,7 @@ function render(init: (h: Host) => void = () => undefined) {
 }
 
 const CATEGORY_OF = new Map([
-  ['ring', 'ring'],
+  ['ring', 'armor'],
   ['cloak', 'wondrous-item'],
 ]);
 
@@ -163,7 +163,7 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
       ),
     );
     const icons = Array.from(el.querySelectorAll('.magic-row__icon'), (i) => i.textContent);
-    expect(icons).toEqual(['radio_button_unchecked', 'diamond', 'diamond']);
+    expect(icons).toEqual(['shield', 'diamond', 'diamond']);
   });
 
   it('offers "Mudar" while the window is open, and "Muda num descanso" when it is not', () => {

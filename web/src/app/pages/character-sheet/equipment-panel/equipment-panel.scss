@@ -116,7 +116,7 @@
 
 .magic-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-template-columns: var(--mr-font-18) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--mr-space-1) var(--mr-space-2);
   padding-block: var(--mr-space-1);
@@ -125,6 +125,7 @@
 
 .magic-row__icon {
   flex: none;
+  min-width: var(--mr-font-18);
   width: var(--mr-font-18);
   height: var(--mr-font-18);
   font-size: var(--mr-font-18);

@@ -99,6 +99,11 @@ describe('MagicCategories', () => {
     })),
   });
 
+  it('draws no control or state: a ring and ammunition take the gem', () => {
+    expect(magicCategoryIcon('ring')).toBe('diamond');
+    expect(magicCategoryIcon('ammunition')).toBe('diamond');
+  });
+
   it("reads every page once and gives a variant its family's icon", async () => {
     const calls: string[] = [];
     TestBed.configureTestingModule({
@@ -109,7 +114,7 @@ describe('MagicCategories', () => {
             listMagicItems: async (_c: string, _q: string, token: string) => {
               calls.push(token);
               return token === ''
-                ? page([option('item:ring', 'ring')], 'p2')
+                ? page([option('item:ring', 'armor')], 'p2')
                 : page([option('item:armor', 'armor', ['item:armor-1'])]);
             },
           },
@@ -120,7 +125,7 @@ describe('MagicCategories', () => {
     await cats.load('c1');
     await cats.load('c1');
     expect(calls).toEqual(['', 'p2']);
-    expect(cats.iconOf('item:ring')).toBe(magicCategoryIcon('ring'));
+    expect(cats.iconOf('item:ring')).toBe('shield');
     expect(cats.iconOf('item:armor-1')).toBe('shield');
     expect(cats.iconOf('item:nope')).toBe('diamond');
   });
@@ -136,7 +141,7 @@ describe('MagicCategories', () => {
               if (fail) {
                 throw new Error('offline');
               }
-              return page([option('item:ring', 'ring')]);
+              return page([option('item:ring', 'armor')]);
             },
           },
         },
@@ -147,6 +152,6 @@ describe('MagicCategories', () => {
     expect(cats.iconOf('item:ring')).toBe('diamond');
     fail = false;
     await cats.load('c1');
-    expect(cats.iconOf('item:ring')).toBe(magicCategoryIcon('ring'));
+    expect(cats.iconOf('item:ring')).toBe('shield');
   });
 });
