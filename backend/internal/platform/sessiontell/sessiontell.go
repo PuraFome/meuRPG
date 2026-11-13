@@ -63,12 +63,23 @@ type Host interface {
 // None is the Tell of a write that runs with no play module: it tells nothing. A type that keeps some of the hints embeds it.
 type None struct{}
 
-func (None) Touch()                           {}
-func (None) CreaturesChanged(string)          {}
-func (None) EncounterChanged(string)          {}
-func (None) CombatLogChangedFull()            {}
+// Touch tells nothing.
+func (None) Touch() {}
+
+// CreaturesChanged tells nothing.
+func (None) CreaturesChanged(string) {}
+
+// EncounterChanged tells nothing.
+func (None) EncounterChanged(string) {}
+
+// CombatLogChangedFull tells nothing.
+func (None) CombatLogChangedFull() {}
+
+// After drops the step.
 func (None) After(func(context.Context, Out)) {}
-func (None) Replay()                          {}
+
+// Replay does nothing: there is no number to keep.
+func (None) Replay() {}
 
 // Direct is the Host of a module that runs with no play module (a tool, a test with no session): fn runs in a plain transaction,
 // the number never moves, and what the steps of After send goes out through Out(ctx, campaignID) once the transaction committed, with no

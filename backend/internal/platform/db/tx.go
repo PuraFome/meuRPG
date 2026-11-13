@@ -2,8 +2,9 @@ package db
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
-	"math/rand/v2"
+	"math/big"
 	"time"
 
 	"github.com/cockroachdb/cockroach-go/v2/crdb"
@@ -144,7 +145,11 @@ func jittered(delay time.Duration) time.Duration {
 	if half <= 0 {
 		return delay
 	}
-	return half + rand.N(half+1)
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(half)+1))
+	if err != nil {
+		return delay
+	}
+	return half + time.Duration(n.Int64())
 }
 
 // attempt runs fn once in a transaction of its own and commits it. A panic,
