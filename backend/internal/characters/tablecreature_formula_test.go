@@ -459,3 +459,62 @@ func TestMR578_TheStatBlockOfACharactersCreatureIsTheOneWorkedOutForItsOwner(t *
 		}
 	}
 }
+
+// A creature's stat block by its id is read only for a creature that is there for the caller: not one dismissed,
+// not one of another campaign, not one a player's table key happens to share. Every refusal is the same not_found, so
+// none reveals that the creature exists; a live creature of the caller's own reads (the positive control of each row).
+func TestMR578_TheStatBlockByCreatureIdRefusesWhatIsNotThereForTheCaller(t *testing.T) {
+	t.Parallel()
+	tb := newCreatureTable(t)
+	fighter := tb.other.create(t, tb.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Toren", levelUpFighterSheet(5, 6500, ""))
+	tb.master.addEntry(t, tb.campaign, silverWolf())
+	give := func(c *charactersv1.Character) *charactersv1.CharacterCreature {
+		t.Helper()
+		got, err := tb.give(tb.master, &charactersv1.GiveCreatureRequest{CharacterId: c.GetId(), MonsterKey: silverWolfKey})
+		if err != nil {
+			t.Fatalf("GiveCreature() error = %v", err)
+		}
+		return got
+	}
+	live, dismissed, othersWolf := give(tb.pc), give(tb.pc), give(fighter)
+	if err := tb.dismiss(tb.master, dismissed.GetId()); err != nil {
+		t.Fatalf("DismissCreature() error = %v", err)
+	}
+	// Another campaign of another master, with the same entry (so the very same table key).
+	stranger := tb.h.newUser("Forasteiro")
+	elsewhere := tb.h.newCampaign(stranger, "Outra mesa")
+	stranger.addEntry(t, elsewhere, silverWolf())
+	read := func(u *user, campaign, id string) error {
+		_, err := u.content.GetCreature(t.Context(), connect.NewRequest(&rulesv1.GetCreatureRequest{CampaignId: campaign, Key: silverWolfKey, CreatureId: id}))
+		return err
+	}
+	for _, tt := range []struct {
+		name     string
+		u        *user
+		campaign string
+		id       string
+		wantErr  bool
+	}{
+		{"the owner's player, on her live wolf (the positive control)", tb.owner, tb.campaign, live.GetId(), false},
+		{"the master, on the live wolf (the positive control)", tb.master, tb.campaign, live.GetId(), false},
+		{"the player who holds the same key, on her own wolf (the positive control)", tb.other, tb.campaign, othersWolf.GetId(), false},
+		{"the owner's player, on a dismissed wolf", tb.owner, tb.campaign, dismissed.GetId(), true},
+		{"the master, on a dismissed wolf", tb.master, tb.campaign, dismissed.GetId(), true},
+		{"the player who holds the same key, on someone else's wolf", tb.other, tb.campaign, live.GetId(), true},
+		{"the master of another campaign, asking in his own campaign for a wolf of this one", stranger, elsewhere, live.GetId(), true},
+		{"the master of another campaign, asking in this campaign", stranger, tb.campaign, live.GetId(), true},
+	} {
+		err := read(tt.u, tt.campaign, tt.id)
+		switch {
+		case !tt.wantErr && err != nil:
+			t.Errorf("%s: GetCreature() error = %v", tt.name, err)
+		case tt.wantErr && connect.CodeOf(err) != connect.CodeNotFound && connect.CodeOf(err) != connect.CodePermissionDenied:
+			t.Errorf("%s: error = %v, want not_found (or permission_denied outside the campaign)", tt.name, err)
+		}
+	}
+	// Inside the campaign every refusal is the same answer: one that does not tell a dismissed wolf from none.
+	missing := read(tb.owner, tb.campaign, "00000000-0000-4000-8000-000000000000")
+	if got := read(tb.owner, tb.campaign, dismissed.GetId()); got == nil || missing == nil || got.Error() != missing.Error() {
+		t.Errorf("a dismissed wolf answers %v, an id that is none answers %v; they must be the same", got, missing)
+	}
+}
