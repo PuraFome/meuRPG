@@ -878,7 +878,11 @@ func (s *Service) offerAttacks(ctx context.Context, a *moveAttempt) error {
 	if a.req.jump == playv1.JumpKind_JUMP_KIND_HIGH || a.req.forced || (!a.onTurn && a.readied == nil) || !placed(a.target) || !a.squareChanged {
 		return nil
 	}
-	moveID, offered, err := s.offerOpportunities(ctx, a.c, a.cs, a.target, squareOfCombatant(a.target), a.to, a.req.jump == playv1.JumpKind_JUMP_KIND_LONG, a.draggedID)
+	mover := a.target
+	if a.readied != nil { // Disengage covers only the turn it was taken on (SRD 5.1): a readied move is on another's
+		mover.Disengaged = false
+	}
+	moveID, offered, err := s.offerOpportunities(ctx, a.c, a.cs, mover, squareOfCombatant(a.target), a.to, a.req.jump == playv1.JumpKind_JUMP_KIND_LONG, a.draggedID)
 	if err != nil {
 		return err
 	}
