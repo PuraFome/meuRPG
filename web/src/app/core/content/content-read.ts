@@ -26,6 +26,7 @@ import { bonusText } from './feature-draft';
 import { summonLine } from './summon-names';
 import { entryEffectsPart } from './content-read-rolls';
 import { spellToDraft } from './spell-draft';
+import { readHit } from './hit-effect-read';
 import { previewRows } from './spell-preview';
 import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
@@ -176,7 +177,9 @@ function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
 }
 
 function readSpell(s: TableSpell, nameOf: NameOf): EntryRead {
-  const rows: ReadRow[] = [...previewRows(spellToDraft(s), nameOf)];
+  const draft = spellToDraft(s);
+  const rows: ReadRow[] = [...previewRows(draft, nameOf)];
+  const hit = readHit(draft, nameOf);
   const classes = names(s.classKeys, nameOf);
   if (classes) rows.push({ label: 'Classes', value: classes });
   const summon = summonLine(s.summon, nameOf);
@@ -186,6 +189,7 @@ function readSpell(s: TableSpell, nameOf: NameOf): EntryRead {
     sections: [],
     text: [...s.descPt, ...s.higherLevelPt, ...(summon ? [summon] : [])],
     ...(effect ? { effects: [effect] } : {}),
+    ...(hit ? { hit } : {}),
   };
 }
 

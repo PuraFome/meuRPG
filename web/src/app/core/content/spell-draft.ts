@@ -10,12 +10,14 @@ import type { MessageInitShape } from '@bufbuild/protobuf';
 import {
   TableAreaShape,
   type TableSpell,
+  type TableSpellEffect,
   type TableSpellDamageSchema,
   TableSpellTargetKind,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { rangeFeet, rangeMeters } from './effect-draft';
+import { applyHit, hitAvailable, hitFromEffect, settleHit } from './hit-effect-draft';
 import { effectUnreadable } from './spell-effect-checks';
-import { draftToEffect, effectToDraft } from './spell-effect-draft';
+import { draftToEffect, effectToDraft, hitShell } from './spell-effect-draft';
 import { draftToSpellSummon } from './spell-summon';
 import { emptySummon, summonToDraft } from './summon-draft';
 import {
@@ -175,6 +177,7 @@ export function spellToDraft(s: TableSpell): SpellDraft {
     ...mechanicToDraft(s),
     ...damageToDraft(s),
     ...keptToDraft(s),
+    hit: hitFromEffect(s.effect),
   };
 }
 
@@ -216,8 +219,9 @@ function targetInit(d: SpellDraft): NonNullable<SpellInit['target']> {
   const target: NonNullable<SpellInit['target']> = { kind: TARGET_KIND[d.target] };
   if (d.target === 'creatures') {
     target.count = d.count;
-    target.perSlotLevel = Number.isNaN(d.perSlot) ? 0 : d.perSlot;
-  } else if (d.target === 'creature' && d.perSlot > 0) {
+    // A cantrip has no slot level to climb and the form hides the count: one left from another level is not sent.
+    target.perSlotLevel = Number.isNaN(d.perSlot) || d.level === 0 ? 0 : d.perSlot;
+  } else if (d.target === 'creature' && d.level > 0 && d.perSlot > 0) {
     target.perSlotLevel = d.perSlot;
   } else if (d.target === 'area') {
     target.shape = SHAPE_TO_ENUM[d.shape];
@@ -265,6 +269,22 @@ function mechanicInit(d: SpellDraft): Pick<SpellInit, 'attack' | 'save' | 'heal'
     default:
       return {};
   }
+}
+
+/**
+ * The effect of the spell: "Deixa um efeito nos alvos" while it is on, with the weapon-hit modifier of "Efeito no próximo golpe"
+ * written in last (so the paths of the first block's refusals stay right). With only the second on, the stored effect's
+ * audience and label go on carrying it.
+ */
+export function spellEffect(d: SpellDraft): TableSpellEffect | undefined {
+  const mine = draftToEffect(d.effect);
+  const hitOn = d.hit.enabled && hitAvailable(d);
+  return applyHit(mine ?? (hitOn ? hitShell(d.effect) : undefined), d.hit, hitAvailable(d));
+}
+
+function effectInit(d: SpellDraft): Pick<SpellInit, 'effect'> {
+  const effect = spellEffect(d);
+  return effect ? { effect } : {};
 }
 
 /** The body of a request, from the form. Only what the chosen mechanic uses goes: a spell of "Só texto" has no attack, no
@@ -322,7 +342,7 @@ export function withMechanic(d: SpellDraft, mechanic: MechanicChoice): SpellDraf
 /** Choosing "Só quem conjura" makes the range "Pessoal" (the server asks for it); leaving it gives the distance back. */
 export function withTarget(d: SpellDraft, target: TargetChoice): SpellDraft {
   const { beforeSummon: _, ...kept } = d;
-  const next = { ...kept, target };
+  const next = settleHit({ ...kept, target });
   if (target === 'self') {
     next.range = 'self';
   } else if (d.target === 'self' && d.range === 'self' && target !== 'area') {
@@ -330,12 +350,6 @@ export function withTarget(d: SpellDraft, target: TargetChoice): SpellDraft {
     next.range = 'ranged';
   }
   return next;
-}
-
-/** The effect of the spell, while the block is on. */
-function effectInit(d: SpellDraft): Pick<SpellInit, 'effect'> | Record<string, never> {
-  const effect = draftToEffect(d.effect);
-  return effect ? { effect } : {};
 }
 
 /** The paths of the count fields on screen whose text is no whole number the save can send (a NaN in the draft), in the order of the form. */

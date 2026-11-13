@@ -9,7 +9,7 @@ const CASES: [field: string, reason: string, text: RegExp][] = [
   ['table_spell.effect.applies', 'bad_value', /Quem falhar no teste.*pede um teste/],
   ['table_spell.effect.conditions', 'limit', /No máximo 8 condições/],
   ['table_spell.effect.conditions[2]', 'bad_key', /não é do SRD/],
-  ['table_spell.effect.modifiers', 'limit', /No máximo 8 mudanças/],
+  ['table_spell.effect.modifiers', 'limit', /no máximo 8 modificadores/],
   ['table_spell.effect.modifiers[1].kind', 'bad_value', /Incapacitado, Paralisado/],
   ['table_spell.effect.modifiers[0].value', 'bad_value', /PV temporários de 1 a 1.000/],
   ['table_spell.effect.modifiers[0].applies_to', 'bad_value', /ao menos uma jogada/],

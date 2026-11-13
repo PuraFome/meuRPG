@@ -11,6 +11,8 @@ import {
   formatRange,
 } from '../../shared/spell-details/spell-details-format';
 import { rangeFeet } from './effect-draft';
+import { draftToEffect } from './spell-effect-draft';
+import { hitAvailable, hitFieldPaths } from './hit-effect-draft';
 import { SHAPE_OPTIONS } from './spell-options';
 import { SUMMON_FIELD_PATHS } from './spell-summon';
 import type { SpellDraft } from './spell-types';
@@ -234,6 +236,7 @@ export function spellFieldPaths(d: SpellDraft): Set<string> {
     ...castFieldPaths(d),
     ...targetFieldPaths(d),
     ...mechanicFieldPaths(d),
+    ...(d.hit.enabled && hitAvailable(d) ? hitFieldPaths(draftToEffect(d.effect)) : []),
   ];
   return new Set([...paths.map((x) => `table_spell.${x}`), ...effectFieldPaths(d.effect)]);
 }

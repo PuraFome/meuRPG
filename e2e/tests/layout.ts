@@ -18,13 +18,18 @@ import { expect, type Page } from '@playwright/test';
 // 4. Inside a card (`.mr-panel`), no button or link sits outside the card's
 //    box: a row whose columns do not shrink pushed "⋮" and "Revelar aos
 //    jogadores" out of the initiative card beside the session's side panels.
+// 5. A form field's floating label keeps at least 4px (capitals to baseline)
+//    from the words just above it: the outline of the field pushes the label
+//    up over its own box, so a heading placed right over the field touched it
+//    ("Dano a mais" over "Dados", #577). The approved board leaves about
+//    13px; under 4px the two read as touching.
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'off-centre' | 'overlap' | 'tile' | 'outside-card';
+  kind: 'icon-text' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch';
   where: string;
   detail: string;
 }
@@ -227,6 +232,63 @@ function auditLayout(): LayoutIssue[] {
           detail: `sticks out of its card by ${Math.max(r.right - cb.right, cb.left - r.left).toFixed(0)}px`,
         });
       }
+    }
+  }
+
+  // 5. A floating label keeps clear of the words above it. Measured from the
+  //    baseline of those words to the top of the label's capitals (the label
+  //    is scaled down, so its band is scaled the same way). Only words that
+  //    overlap the label's columns and end above the label's capitals count
+  //    (words beside it or under it are not "above"); the field's own words,
+  //    an open menu and a bar that floats over the page are left out.
+  const MIN_LABEL_GAP = 4;
+  // Every line of words on the page, once: its columns and the baseline of its capitals.
+  let all: { node: Text; left: number; right: number; baseline: number }[] | null = null;
+  const lines = () => {
+    if (all) return all;
+    all = [];
+    for (const node of textNodesOf(document.body)) {
+      // Words in an open menu or in a bar that stays on the screen while the page scrolls lie over the form, not above a field.
+      if (node.parentElement!.closest('.cdk-overlay-container')) continue;
+      let floating = false;
+      for (let e: Element | null = node.parentElement; e && !floating; e = e.parentElement) floating = ['fixed', 'sticky'].includes(getComputedStyle(e).position);
+      if (floating) continue;
+      const cap = capitals(node);
+      if (!cap) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+      for (const r of rects) all.push({ node, left: r.left, right: r.right, baseline: r.top + (cap.bottom - rects[0].top) });
+    }
+    return all;
+  };
+  for (const label of document.querySelectorAll('.mdc-floating-label--float-above')) {
+    const field = label.closest('mat-form-field, .mat-mdc-form-field');
+    if (!field || !visible(label) || !label.textContent?.trim()) continue;
+    const lnode = textNodesOf(label)[0];
+    if (!lnode) continue;
+    const lr = document.createRange();
+    lr.selectNodeContents(lnode);
+    const lrect = [...lr.getClientRects()].find((r) => r.width > 0 && r.height > 0);
+    if (!lrect) continue;
+    const lcs = getComputedStyle(lnode.parentElement!);
+    ctx.font = `${lcs.fontStyle} ${lcs.fontWeight} ${lcs.fontSize} ${lcs.fontFamily}`;
+    const lh = ctx.measureText('H');
+    const scale = lrect.height / (lh.fontBoundingBoxAscent + lh.fontBoundingBoxDescent);
+    const capTop = lrect.top + (lh.fontBoundingBoxAscent - lh.actualBoundingBoxAscent) * scale;
+    let nearest: { baseline: number; text: string } | null = null;
+    for (const l of lines()) {
+      if (field.contains(l.node)) continue;
+      if (l.right <= lrect.left || l.left >= lrect.right) continue;
+      if (l.baseline > capTop) continue;
+      if (!nearest || l.baseline > nearest.baseline) nearest = { baseline: l.baseline, text: l.node.textContent!.trim().slice(0, 30) };
+    }
+    if (nearest && capTop - nearest.baseline < MIN_LABEL_GAP) {
+      issues.push({
+        kind: 'label-touch',
+        where: `<${field.tagName.toLowerCase()}> "${(field.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 50)}"`,
+        detail: `the label "${label.textContent!.trim()}" is ${(capTop - nearest.baseline).toFixed(1)}px under "${nearest.text}" (at least ${MIN_LABEL_GAP}px)`,
+      });
     }
   }
   return issues;

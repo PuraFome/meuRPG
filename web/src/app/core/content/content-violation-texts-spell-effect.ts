@@ -1,6 +1,9 @@
+import { HIT_FIELD_TEXTS } from './content-violation-texts-hit';
+
 /** What the server's reason at a field of a table spell's effect says in Portuguese (#579): the paths of
  * backend/internal/rules/overlay_spell_effect.go and combateffects.go, under `table_spell.effect`. The index of a modifier is
- * `[]` here. The first row that matches is the one said. */
+ * `[]` here. The first row that matches is the one said. The weapon-hit block's texts (`HIT_FIELD_TEXTS`, #577) come with them: both
+ * blocks write the one effect. */
 export const SPELL_EFFECT_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] = [
   {
     shape: /^table_spell\.effect\.player_label_pt$/,
@@ -16,7 +19,7 @@ export const SPELL_EFFECT_TEXTS: readonly { shape: RegExp; reason?: string; text
     shape: /^table_spell\.effect\.conditions\[\]$/,
     text: 'Esta condição não é do SRD. Tire-a da lista.',
   },
-  { shape: /^table_spell\.effect\.modifiers$/, text: 'No máximo 8 mudanças no efeito.' },
+  // `table_spell.effect.modifiers` (the limit of 8) is said in content-violation-texts-hit.ts: the two blocks share the list.
   {
     shape: /^table_spell\.effect\.modifiers\[\]\.kind$/,
     text: 'Este tipo não vale aqui. Numa aura só valem os que a jogada lê; para impedir de agir, use uma condição (Incapacitado, Paralisado); ou escolha outro tipo.',
@@ -61,4 +64,5 @@ export const SPELL_EFFECT_TEXTS: readonly { shape: RegExp; reason?: string; text
     shape: /^table_spell\.effect$/,
     text: 'Ponha ao menos uma condição ou uma mudança. Um efeito vazio não é salvo.',
   },
+  ...HIT_FIELD_TEXTS,
 ];

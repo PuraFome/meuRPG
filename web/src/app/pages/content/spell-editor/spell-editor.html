@@ -149,6 +149,21 @@
       @if (d.mechanic === 'save') {
         <p class="hint">Em “Teste de resistência” você escolhe a habilidade e o que acontece ao passar (metade ou nada); em “Cura”, o dado e o que soma.</p>
       }
+      <app-hit-effect-block
+        [hit]="d.hit"
+        [target]="d.target"
+        [perSlot]="d.perSlot"
+        [level]="d.level"
+        [moved]="hitMoved()"
+        [duration]="d.duration"
+        [durationText]="durationText()"
+        [concentration]="d.concentration"
+        [abilities]="hitAbilities()"
+        [damageTypes]="damageTypes()"
+        [pathOf]="hitPathOf()"
+        [issuesOf]="fieldIssues"
+        (hitChange)="setHit($event)"
+      />
     </section>
 
     <section class="mr-panel block" aria-labelledby="learn-t">

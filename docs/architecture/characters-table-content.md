@@ -358,9 +358,12 @@ Level-up changes none of it (`full.custom_background` is locked).
 Storage is the protojson of the entry, so there is no column and no migration.
 An enum left unset reaches the rules empty, which they read as the default (`applies`, `visibility`, `resistance_kind`) or refuse (`kind`); a number this build does not know reaches them as `unknown` and is refused at its field.
 The violation is `table_spell.effect.modifiers[1].value` and the like.
-The spell editor of the web app has the block "Deixa um efeito nos alvos" (`spell-effect-draft.ts`, `spell-effect.ts`): seven kinds of change, "Em quem fica", the conditions, the aura, who sees it and the label.
+The spell editor of the web app builds its body from its own draft (`spell-draft.ts`), and the effect has two blocks that write it side by side.
+"Deixa um efeito nos alvos" (`spell-effect-draft.ts`, `spell-effect.ts`) edits every modifier but the next-hit one: seven kinds of change, "Em quem fica", the conditions, the aura, who sees it and the label.
+"Efeito no próximo golpe" (`hit-effect-draft.ts`) edits only the `weapon_hit_damage` modifier, and `spellEffect` writes it last, after the first block's modifiers, so the paths of that block's refusals keep their index.
+With only the second block on, the stored effect's `applies`, audience and label go on carrying it; a modifier kind neither block offers goes back untouched.
 The editor has no call to tag a draft, so it writes the card's labels itself (`rowTags`), kept equal to `rules.EffectTagsPT` by a table of cases on each side.
-A zone is still kept as it was loaded.
+A zone is still kept as it was loaded; saving a spell in the editor replaces the body, so a zone written through the API stays only as the draft carried it.
 `TableSpellEffect.aura` (`TableEffectAura`) maps through `auraAffectsOf`.
 A player's copy of a spell drops `visibility` and `player_label_pt` of an owner-only effect (`forPlayer`, `effectKeepsItsSecrets`), and the aura's radius with it.
 How the rules read the effect is in [Table content: rules](rules-table-content.md#the-lasting-effect-of-a-spell).
@@ -384,4 +387,6 @@ The die is the existing `die` (field 2).
 The API accepts the modifier on a spell that lasts and refuses it at its field, as the rules do: `table_spell.effect.modifiers[0].trigger` for a concentration trigger on a spell without concentration, or `marked_target` on a spell whose target is not One creature; `...dice`, `...max_dice` and the other numbers out of range; `...on_fail_conditions` for a save with no condition or a condition with no save; `...condition_duration` for `spell_end` on a spell that neither lasts a set time, lasts until dispelled nor asks for concentration; `...modifiers[i].kind` for a second `weapon_hit_damage` on the same spell.
 A spell with this modifier works only in a combat: casting it outside one is refused before a slot is spent.
 `TestTableSpellWeaponHitDamageIsReadFromTheMessage`, `TestTableSpellHitTriggersAreReadOneByOne` and `TestTableSpellHitConditionDurationsAreReadOneByOne` pin the copy.
+The spell page of a player reads it through `readHit` (`core/content/hit-effect-read.ts`): the section "Efeito no próximo golpe" with the damage, the save and who sees it.
+The preview line says it as "Em cada golpe com arma no alvo marcado: +1d6 do tipo da arma, enquanto durar.".
 The play side is in [Lasting effects](play/lasting-effects.md#the-damage-a-spell-adds-to-the-casters-hits).

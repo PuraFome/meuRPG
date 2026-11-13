@@ -308,3 +308,37 @@ describe('the labels, as the server writes them for the card', () => {
     expect(effectReadItem(undefined, name)).toBeUndefined();
   });
 });
+
+describe('the two blocks of a spell effect (#579 and #577) side by side', () => {
+  const stored = create(TableSpellEffectSchema, {
+    conditions: ['condition:blinded'],
+    modifiers: [
+      create(TableEffectModifierSchema, { kind: K.AC_BONUS, value: 2 }),
+      create(TableEffectModifierSchema, {
+        kind: K.WEAPON_HIT_DAMAGE,
+        trigger: 3,
+        die: 8,
+        dice: 2,
+        maxDice: 6,
+      }),
+    ],
+  });
+
+  it('keeps the weapon hit out of the rows, and sends it last', () => {
+    const d = effectToDraft(stored);
+    expect(d.on).toBe(true);
+    expect(d.rows.map((r) => r.kind)).toEqual(['ac_bonus']);
+    const sent = draftToEffect(d)!;
+    expect(sent.modifiers.map((m) => m.kind)).toEqual([K.AC_BONUS]);
+  });
+
+  it('reads an effect with only the weapon hit as the first block off, its audience kept for the hit', () => {
+    const only = create(TableSpellEffectSchema, {
+      modifiers: [create(TableEffectModifierSchema, { kind: K.WEAPON_HIT_DAMAGE, trigger: 3 })],
+    });
+    const d = effectToDraft(only);
+    expect(d.on).toBe(false);
+    expect(draftToEffect(d)).toBeUndefined();
+    expect(d.base).toBe(only);
+  });
+});

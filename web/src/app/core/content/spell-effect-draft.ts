@@ -285,8 +285,10 @@ export function effectToDraft(e: TableSpellEffect | undefined): SpellEffectDraft
     return emptyEffect();
   }
   const aura = e.aura;
+  // The weapon-hit modifier has its own block ("Efeito no próximo golpe", #577): it is no row here.
+  const mods = e.modifiers.filter((m) => m.kind !== K.WEAPON_HIT_DAMAGE);
   return {
-    on: true,
+    on: mods.length > 0 || e.conditions.length > 0 || !!aura,
     applies:
       e.applies === TableEffectApplies.FAILED_SAVE
         ? 'failed_save'
@@ -294,7 +296,7 @@ export function effectToDraft(e: TableSpellEffect | undefined): SpellEffectDraft
           ? 'hit'
           : 'all',
     conditions: [...e.conditions],
-    rows: rowsOf(e.modifiers),
+    rows: rowsOf(mods),
     // Unset is OWNER on the server: an effect nobody said was public stays private.
     visibility: e.visibility === TableEffectAudience.PUBLIC ? 'public' : 'owner',
     label: e.playerLabelPt,
@@ -399,17 +401,35 @@ export function rowOfModifier(rows: readonly EffectRow[], index: number): number
   return -1;
 }
 
+/** What is left of a stored effect when none of this block is on: its audience, label and `applies` go on to carry the weapon hit alone. */
+export function hitShell(d: SpellEffectDraft): TableSpellEffect | undefined {
+  if (!d.base) {
+    return undefined;
+  }
+  const out = clone(TableSpellEffectSchema, d.base);
+  out.conditions = [];
+  out.modifiers = [];
+  out.aura = undefined;
+  return out;
+}
+
 /** The effect the save sends, or undefined while the block is off. An aura takes no conditions and applies to all (the server's rules for it). */
 export function draftToEffect(d: SpellEffectDraft): TableSpellEffect | undefined {
   if (!d.on) {
     return undefined;
   }
   const out = d.base ? clone(TableSpellEffectSchema, d.base) : create(TableSpellEffectSchema);
-  out.applies = APPLIES[d.applies];
+  // A stored effect that left `applies` or the audience unset keeps them unset until the person changes them.
+  const was = d.base ? effectToDraft(d.base) : undefined;
+  if (!was || was.applies !== d.applies) {
+    out.applies = APPLIES[d.applies];
+  }
   out.conditions = d.aura ? [] : [...d.conditions];
   out.modifiers = d.rows.flatMap(rowToModifiers);
-  out.visibility =
-    d.visibility === 'owner' ? TableEffectAudience.OWNER : TableEffectAudience.PUBLIC;
+  if (!was || was.visibility !== d.visibility) {
+    out.visibility =
+      d.visibility === 'owner' ? TableEffectAudience.OWNER : TableEffectAudience.PUBLIC;
+  }
   out.playerLabelPt = d.label.trim();
   out.aura = d.aura
     ? create(TableEffectAuraSchema, {
