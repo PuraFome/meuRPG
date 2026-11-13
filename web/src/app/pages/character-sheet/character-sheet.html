@@ -325,6 +325,13 @@
             [marksNotice]="gear.marksNotice()"
             (marksOpened)="gear.openMarks($event)"
             (gearToggled)="gear.toggle($event)"
+            [canManageMagic]="vm.canEdit && vm.state !== 'dead'"
+            [canChangeAttunement]="vm.isMaster || (vm.state !== 'dead' && magic.windowOpen())"
+            [attunementIsClosed]="vm.state === 'dead' && !vm.isMaster"
+            [magicNotice]="magic.notice()"
+            (attunementOpened)="magic.openAttunement()"
+            (magicAdding)="magic.openPicker()"
+            (magicRemoving)="magic.openRemove($event)"
           />
           <div class="sheet__traits">
             <app-features-panel class="sheet__features" [sheet]="full" />

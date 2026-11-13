@@ -1,0 +1,83 @@
+.picker__label {
+  display: block;
+  margin-block: var(--mr-space-3) var(--mr-space-1);
+  font-size: var(--mr-font-14);
+  font-weight: 600;
+}
+
+.picker__search {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  padding-inline: var(--mr-space-3);
+  border: 1px solid var(--mr-rule);
+  border-radius: var(--mr-radius-2, 8px);
+}
+
+.picker__input,
+.picker__select {
+  flex: 1;
+  min-height: 44px;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.picker__select {
+  width: 100%;
+  border: 1px solid var(--mr-rule);
+  border-radius: var(--mr-radius-2, 8px);
+  padding-inline: var(--mr-space-3);
+}
+
+.picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+  margin-block: var(--mr-space-3);
+}
+
+.card {
+  display: grid;
+  gap: var(--mr-space-1);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-rule);
+  border-radius: var(--mr-radius-2, 8px);
+  cursor: pointer;
+}
+
+.card--on {
+  border-color: var(--mr-accent, currentColor);
+  box-shadow: inset 0 0 0 1px var(--mr-accent, currentColor);
+}
+
+.card__radio {
+  position: absolute;
+  opacity: 0;
+}
+
+.card:has(.card__radio:focus-visible) {
+  outline: 2px solid var(--mr-focus, currentColor);
+  outline-offset: 2px;
+}
+
+.card__name {
+  font-weight: 600;
+}
+
+.card__line,
+.card__tag {
+  font-size: var(--mr-font-14);
+}
+
+.foot {
+  display: flex;
+  gap: var(--mr-space-3);
+}
+
+.foot > button {
+  flex: 1;
+  min-height: 48px;
+}

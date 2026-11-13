@@ -1,7 +1,11 @@
 @let s = section();
 <section class="att" [attr.aria-labelledby]="headingId">
   <header class="att__head">
-    <h3 class="att__title" [id]="headingId"><mat-icon aria-hidden="true" fontIcon="link"></mat-icon>{{ s.title }}</h3>
+    @if (bare()) {
+      <span class="att__title" [id]="headingId"><mat-icon aria-hidden="true" fontIcon="link"></mat-icon></span>
+    } @else {
+      <h3 class="att__title" [id]="headingId"><mat-icon aria-hidden="true" fontIcon="link"></mat-icon>{{ s.title }}</h3>
+    }
     <span class="att__count">{{ s.count }}</span>
   </header>
   <p class="att__lead mr-muted">{{ s.lead }}</p>

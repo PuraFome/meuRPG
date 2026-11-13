@@ -475,6 +475,16 @@ export abstract class CharacterSheetSource {
     sheet: GenFullSheet,
     marks: readonly WeaponMarkVm[],
   ): Promise<CharacterSheetVm>;
+  /** Saves the sheet's magic items over the whole stored sheet (`UpdateCharacter`, at `revision`): adding or removing one is a
+   * full-sheet save, and the server keeps the ids and the attunement of the entries it already has. `id` is empty for a new one. */
+  abstract setMagicItems(
+    campaignId: string,
+    characterId: string,
+    revision: number,
+    name: string,
+    sheet: GenFullSheet,
+    items: readonly { readonly id: string; readonly key: string }[],
+  ): Promise<CharacterSheetVm>;
   abstract getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm>;
   /** Called only when `isMaster` — never for a player (RN-11). */
   abstract getMasterNotes(campaignId: string, characterId: string): Promise<string>;

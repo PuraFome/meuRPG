@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input, output } from '@an
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import type { AttunementEntryVm } from '../../../core/characters/attunement';
 import type { GearVm } from '../../../core/characters/gear';
 
 import { GearList, type GearToggle } from '../../../shared/gear-list/gear-list';
@@ -43,6 +44,33 @@ export class EquipmentPanel {
   readonly marksNotice = input('');
   /** A tap on a weapon's "⋮": the page opens the sheet of its marks. */
   readonly marksOpened = output<GearVm>();
+
+  /** The owner (while the sheet is editable) and the master add and remove magic items. */
+  readonly canManageMagic = input(false);
+  /** "Mudar" opens the sheet "Sintonização": the master always, the owner while a rest's window is open. */
+  readonly canChangeAttunement = input(false);
+  /** A dead character's owner: no "Mudar" and no "Muda num descanso". */
+  readonly attunementIsClosed = input(false);
+  /** What the last add or remove said. */
+  readonly magicNotice = input('');
+  readonly attunementOpened = output<void>();
+  readonly magicAdding = output<void>();
+  readonly magicRemoving = output<AttunementEntryVm>();
+
+  protected readonly magicItems = computed(() =>
+    this.sheet().attunement.entries.filter((e) => e.kind === 'magic'),
+  );
+  /** The header "Sintonizados: N de 3" shows when anything on the sheet asks for attunement or is attuned. */
+  protected readonly hasAttunement = computed(() =>
+    this.sheet().attunement.entries.some((e) => e.asks || e.attuned),
+  );
+
+  protected pill(e: AttunementEntryVm): string {
+    if (e.attuned) {
+      return 'Sintonizado';
+    }
+    return e.asks ? 'Pede sintonização' : '';
+  }
 
   /** The sheet lists a weapon: there is something to mark. */
   protected readonly hasWeapons = computed(() =>

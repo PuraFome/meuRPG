@@ -47,6 +47,8 @@ export class AttunementSection {
   /** The owner's window is open (`CharacterVitals.attunement_open`). */
   readonly windowOpen = input(false);
   readonly dead = input(false);
+  /** The section sits under a title of its own (the sheet "Sintonização"): no heading of its own, the count stays. */
+  readonly bare = input(false);
   readonly campaignId = input.required<string>();
   readonly characterId = input.required<string>();
   /** The revision of the sheet the caller holds; a stale one is refused by the server. */

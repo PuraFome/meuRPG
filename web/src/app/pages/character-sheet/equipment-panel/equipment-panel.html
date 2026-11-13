@@ -2,6 +2,17 @@
 <section class="mr-panel" aria-labelledby="equipamento-heading">
   <h2 id="equipamento-heading" class="mr-panel__title">Equipamento</h2>
   <p class="gear__ac">Classe de armadura <strong>{{ s.armorClass }}</strong></p>
+  @if (hasAttunement()) {
+    <p class="att-head">
+      <mat-icon aria-hidden="true" fontIcon="link"></mat-icon>
+      <strong>Sintonizados: {{ s.attunement.attuned }} de 3</strong>
+      @if (canChangeAttunement()) {
+        <button matButton="outlined" type="button" class="att-head__button" aria-label="Mudar sintonização" (click)="attunementOpened.emit()">Mudar</button>
+      } @else if (!attunementIsClosed()) {
+        <span class="att-head__later mr-muted">Muda num descanso</span>
+      }
+    </p>
+  }
   <app-gear-list
     [gear]="s.gear"
     [armorClass]="s.armorClass"
@@ -27,6 +38,52 @@
     <p class="gear__lock mr-muted"><mat-icon aria-hidden="true">lock</mat-icon>Marcas das armas: depois da trava, só o mestre muda.</p>
   }
   <p class="gear__notice" role="status">{{ marksNotice() }}</p>
+  @if (magicItems().length > 0 || canManageMagic()) {
+    <section class="magic" aria-labelledby="magic-heading">
+      <h3 id="magic-heading" class="magic__title">
+        <mat-icon aria-hidden="true" fontIcon="diamond"></mat-icon>Itens mágicos
+        @if (magicItems().length > 0) {
+          <span class="magic__count">({{ magicItems().length }})</span>
+        }
+      </h3>
+      @if (magicItems().length === 0) {
+        <p class="mr-muted">Nenhum item mágico.</p>
+      } @else {
+        <ul class="magic__rows">
+          @for (e of magicItems(); track e.id) {
+            <li class="magic-row">
+              <span class="magic-row__name">{{ e.namePt }}</span>
+              @if (pill(e); as word) {
+                <span class="magic-row__pill" [class.magic-row__pill--on]="e.attuned">{{ word }}</span>
+              }
+              @if (canManageMagic()) {
+                <button
+                  type="button"
+                  class="magic-row__more"
+                  aria-haspopup="dialog"
+                  [attr.aria-label]="'Remover item · ' + e.namePt"
+                  (click)="magicRemoving.emit(e)"
+                >
+                  <mat-icon aria-hidden="true">more_vert</mat-icon>
+                </button>
+              }
+              @if (!e.attuned && e.asks && e.restrictionPt) {
+                <span class="magic-row__line mr-muted">
+                  <mat-icon aria-hidden="true" fontIcon="block"></mat-icon>{{ e.restrictionPt }}
+                </span>
+              }
+            </li>
+          }
+        </ul>
+      }
+      @if (canManageMagic()) {
+        <button matButton="outlined" type="button" class="magic__add" (click)="magicAdding.emit()">
+          <mat-icon aria-hidden="true">add</mat-icon>Adicionar item mágico
+        </button>
+      }
+      <p class="gear__notice" role="status">{{ magicNotice() }}</p>
+    </section>
+  }
   <ul class="gear">
     @for (item of s.equipment; track $index) {
       <li>
