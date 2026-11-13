@@ -211,6 +211,7 @@ A heartbeat that cannot read it carries 0, which the page ignores.
 | --- | --- |
 | `Service.send` | The one place in `play` that calls `hub.Publish`; it takes no context and waits for nobody |
 | `Service.tellMembers` | The master's streams always, the players' only when asked; the maps module's `Publish` seam |
+| `Service.InSession` | The seam of other modules' writes (the creature writes of `characters`, `SetTableRules` of `campaigns`): `Service.tx` on the open session, with a `sessiontell.Tell` of four hints in place of the hub |
 | `Service.publish` in `maps` | The one place in `maps` that calls `Publish`; it passes the event to the play module |
 
 `TestPublishOnlyThroughTheFunnel` fails for a call to `Publish` anywhere else in `internal/play` and `internal/maps`.

@@ -225,6 +225,8 @@ func newStackOf(t *testing.T, d20Rerolls bool) *stack {
 	chars.SetLive(live)
 	chars.SetCreatureHost(live)
 	chars.SetReviewHost(live)
+	chars.SetSessionHost(live)
+	camps.SetSessionHost(live)
 	msvc, err := maps.New(maps.Config{
 		Pool: pool, Blobs: blobs, Characters: chars, Live: live, Generator: &gen.Fake{}, Rules: srd, Combats: live,
 		Defaults: camps, Logger: logger, Now: clock.Now, HintAfter: s.hints.AfterTimer,

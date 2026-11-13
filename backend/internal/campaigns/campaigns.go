@@ -132,6 +132,8 @@ type Service struct {
 	// characters is set once, before the service handles any call
 	// (SetCharacters).
 	characters Characters
+	// sessionHost is package play's funnel (SetSessionHost): the table rules are saved under it.
+	sessionHost SessionHost
 	// xpAwards is set once, before the service handles any call (SetXPAwards).
 	xpAwards XPAwards
 }

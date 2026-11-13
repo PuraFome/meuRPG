@@ -182,6 +182,8 @@ type Service struct {
 	// that holds a character's creatures and the history they are written to
 	// (MR-037). Nil until then.
 	creatureHost CreatureHost
+	// sessionHost is package play's funnel, connected by SetSessionHost: the creature writes run under it.
+	sessionHost SessionHost
 	// reviewHost is package play, connected by SetReviewHost: the streams a review or a
 	// revival is told on, and the combat a revived character goes back to. Nil until then.
 	reviewHost ReviewHost

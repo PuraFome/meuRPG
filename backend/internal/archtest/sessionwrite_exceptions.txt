@@ -92,6 +92,7 @@ play scene.go (*Service).RollSceneCheck # 4d: scene, stage, puzzles, messages, X
 play scene_audience.go (*Service).JoinScene # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play scene_audience.go (*Service).SetSceneAudience # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play scene_audience.go (*Service).SetScenePlayersMayJoin # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
+play session_seam.go (*Service).inNoSession # permanent: runs a foreign write when the campaign has no open session, so no screen of a session shows it and no number can move
 play stage.go (*Service).changeStage # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play tablescreen.go (*Service).SetTableScreen # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen
 play xp.go (*Service).AppendEvent # 4d: scene, stage, puzzles, messages, XP, onscreen, free dice, table screen

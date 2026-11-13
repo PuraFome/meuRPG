@@ -324,6 +324,19 @@ var hiddenWrites = []hiddenWrite{
 			}
 		},
 	},
+	{
+		// The master changes the table's rules while a combat runs with hidden combatants: the rules decide what the log shows (the
+		// save DC, the death saves), so the master's log is read again from the start and the number moves once. A player hears
+		// nothing that names a kind: their stream reads the same whichever rule was set.
+		name: "the table's rules changed in a combat with hidden combatants",
+		prepare: func(w *world, variant int) func() {
+			return func() {
+				rules := must(w.master.campaigns.GetTableRules(w.t.Context(), rq(&campaignsv1.GetTableRulesRequest{CampaignId: w.campaign}))).GetRules()
+				rules.ShowSaveDc = variant == 1
+				must(w.master.campaigns.SetTableRules(w.t.Context(), rq(&campaignsv1.SetTableRulesRequest{CampaignId: w.campaign, Rules: rules})))
+			}
+		},
+	},
 	{"a cover mark on a hidden NPC", false, false, nil, func(w *world, variant int) func() {
 		cover := []playv1.CoverDegree{playv1.CoverDegree_COVER_DEGREE_HALF, playv1.CoverDegree_COVER_DEGREE_THREE_QUARTERS}[variant]
 		return func() {

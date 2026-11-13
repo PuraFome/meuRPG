@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -105,6 +106,47 @@ type CreatureHost interface {
 
 // SetCreatureHost connects the play module.
 func (s *Service) SetCreatureHost(h CreatureHost) { s.creatureHost = h }
+
+// SessionHost runs a write that depends on the campaign's live session under the play module's funnel: the session's row is taken
+// first, fn writes on that transaction and tells through t, and once it committed the session's number moves once and what fn told is
+// sent with it. With no open session fn runs in a plain transaction and t tells nothing. play.Service implements it (SetSessionHost).
+type SessionHost interface {
+	InSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error
+}
+
+// SetSessionHost connects the play module's funnel. Without it, the creature writes run in a transaction of their own and tell the
+// streams through the CreatureHost, with no number, as before the funnel.
+func (s *Service) SetSessionHost(h SessionHost) { s.sessionHost = h }
+
+// creatureTold is the Tell of a creature write that runs without the funnel: it keeps what the write told, and publishChange sends it
+// through the CreatureHost once the transaction committed.
+type creatureTold struct {
+	owner, encounterID string
+	told               bool
+}
+
+func (c *creatureTold) Touch()                        {}
+func (c *creatureTold) CombatLogChangedFull()         {}
+func (c *creatureTold) CreaturesChanged(owner string) { c.owner, c.told = owner, true }
+func (c *creatureTold) EncounterChanged(id string)    { c.encounterID = id }
+
+// inSession runs fn on a transaction of the campaign's session, through the funnel when it is connected.
+func (s *Service) inSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
+	if s.sessionHost != nil {
+		return s.sessionHost.InSession(ctx, campaignID, fn)
+	}
+	var told creatureTold
+	if err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+		told = creatureTold{}
+		return fn(tx, &told)
+	}); err != nil {
+		return err
+	}
+	if told.told {
+		s.publishCreatureChange(ctx, campaignID, told.owner, told.encounterID)
+	}
+	return nil
+}
 
 // creatureView is a creature row with its owner's player.
 type creatureView struct {
@@ -450,15 +492,18 @@ func (s *Service) RenameCreature(
 	}
 	var v creatureView
 	var encounterID string
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
 		v, encounterID, err = s.renameCreatureInTx(ctx, tx, m, req.Msg.GetCreatureId(), name)
+		if err == nil {
+			t.CreaturesChanged(conv.OrZero(v.ownerUserID))
+			t.EncounterChanged(encounterID)
+		}
 		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "rename a creature", err)
 	}
-	s.publishCreatureChange(ctx, m.CampaignID, conv.OrZero(v.ownerUserID), encounterID)
 	return connect.NewResponse(&charactersv1.RenameCreatureResponse{Creature: characterCreatureToProto(content, v.CharacterCreature)}), nil
 }
 
@@ -506,16 +551,17 @@ func (s *Service) DismissCreature(
 	var v creatureView
 	var encounterID string
 	gone := false
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
 		v, encounterID, gone, err = s.dismissCreatureInTx(ctx, tx, m, req.Msg.GetCreatureId(), reason)
+		if err == nil && !gone {
+			t.CreaturesChanged(conv.OrZero(v.ownerUserID))
+			t.EncounterChanged(encounterID)
+		}
 		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "dismiss a creature", err)
-	}
-	if !gone {
-		s.publishCreatureChange(ctx, m.CampaignID, conv.OrZero(v.ownerUserID), encounterID)
 	}
 	return connect.NewResponse(&charactersv1.DismissCreatureResponse{}), nil
 }
@@ -616,15 +662,17 @@ func (s *Service) AdjustCreatureHitPoints(
 	}
 	var v creatureView
 	defeated := false
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
 		v, defeated, err = s.adjustCreatureInTx(ctx, tx, m, req.Msg.GetCreatureId(), mode, amount)
+		if err == nil {
+			t.CreaturesChanged(conv.OrZero(v.ownerUserID))
+		}
 		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "adjust a creature's hit points", err)
 	}
-	s.publishCreatureChange(ctx, m.CampaignID, conv.OrZero(v.ownerUserID), "")
 	out := &charactersv1.AdjustCreatureHitPointsResponse{}
 	if !defeated {
 		out.Creature = characterCreatureToProto(content, v.CharacterCreature)
