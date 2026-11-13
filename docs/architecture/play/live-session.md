@@ -165,8 +165,13 @@ A stream carries it on `ready` and on every `heartbeat`, and nothing else about 
   That costs one extra read per hidden write within 25 s, and it tells the player nothing about the write.
 - **Only the writers in `Service.tx` count.** They are the combat write path (`write`, `changeInTx`, `StartEncounter`), the master's correction of vitals, the rests, the hit dice, the slot recoveries, Bardic Inspiration out of a combat, Revivify's requests, answers and switch, the lasting effects on characters outside a combat (giving one, ending one) and the game clock, and the traps outside a combat (the master's firing, a token or a creature dropped on a trap, a search, and applying or discarding a trap's damage) (`play/hints.go`).
   A trap's damage settled with no open session is written, tells nothing and moves no number.
+  The maps module's writes that change what a session shows (tokens and the party on a map, carried lights, a map's own rows, its layers, fog, grid, image and points, the traps and treasures the master changes, the clues, a scene's actions, the gallery and the dungeons) go through `Service.InSession` ([Transactions](../transactions.md#hints-sent-after-the-commit)): one bump for each write, and what the write tells carries it, to the audience the maps module chose (a hidden change reaches the master alone, a trap found its finder alone).
+  A change that shows on screen and sends no event (a renamed gallery image, the fog's memory cleared) touches.
+  A call that changes nothing (a paint of what was painted, a trap already disarmed, a clue the player had) moves nothing and tells nothing.
   The renaming and the dismissal of a character's creature run in the characters module's transaction: they do not bump, and the streams hear of them as `creatures_changed` and `encounter_changed`, with no number.
   The revivify switch of a dead character with no open session is a plain transaction: it does not bump and tells nothing.
+  The hooks that play calls on the maps module after its own commit (`TrapChanged`, `Told`, `MapShown`, `VisionChanged`, the fog's refresh after a combat move) send through the hub with no number: the write's own bump covers them.
+  The doors a move opens, the puzzle's reveals of a point or a clue and its other maps steps run in play's step after the commit and carry the move's number.
   Every other writer of the `play` package tells the streams through `send` after its own `db.InTx`: it does not bump, and its events carry no number.
   The hints a combat handler tells itself after the write (`finish`) carry none either; the write's own bump covers them.
   A hint lost by one of those is not detected by the number.
@@ -193,6 +198,7 @@ The rules of `Service.tx`:
 - The collector is empty at the start of every attempt: a 40001 retry keeps nothing of the attempt the database rolled back.
 - Nothing is sent before the commit.
   `h.after` queues a step that runs after the told events, for a read of committed state or another module's own sending (the fog of the maps module); it sends through the `say` it is given, which stamps the number.
+  A write of the maps module hands such a step to `Tell.After`; the step gets a `sessiontell.Out` whose `Send(audience, event)` goes through `say`, so the module's own announce code (which reads what committed and works out who hears) runs unchanged and its events carry the number.
 - An error sends nothing and leaves the number as it was.
   An ambiguous commit (`*db.AmbiguousCommitError`, never retried) sends nothing either: the next heartbeat shows the number, if the write did commit.
 - The collector rules for a closure are in [Transactions](../transactions.md#hints-sent-after-the-commit).

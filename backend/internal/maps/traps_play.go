@@ -19,7 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/vision"
 )
@@ -282,14 +282,16 @@ func (s *Service) Notice(ctx context.Context, campaignID, mapID string, who []li
 	if len(finds) == 0 {
 		return nil
 	}
-	told, noticed, err := s.recordNotices(ctx, campaignID, finds)
+	// The reveals are one write under the session's lock; what it tells goes out once it committed.
+	err = s.recordNotices(ctx, campaignID, finds, func(ctx context.Context, told []string, noticed []noticeKey) {
+		s.tellUsers(ctx, campaignID, mapID, ts.row, told)
+		s.tellNoticers(ctx, campaignID, mapID, ts.row, noticed)
+		// The master's trap card and log have news: a hint with no content.
+		s.tellStreams(ctx, campaignID, sessiontell.Audience{Master: true}, mapChangedEvent(mapID))
+	})
 	if err != nil {
 		return fmt.Errorf("notice a trap: %w", err)
 	}
-	s.tellUsers(ctx, campaignID, mapID, ts.row, told)
-	s.tellNoticers(ctx, campaignID, mapID, ts.row, noticed)
-	// The master's trap card and log have news: a hint with no content.
-	s.publish(campaignID, false, mapChangedEvent(mapID))
 	return nil
 }
 
@@ -330,25 +332,25 @@ func (s *Service) noticesTrap(ts *trapScene, p mapsdb.MapPoint, characterID stri
 	return sg.eligible && eyes.Passive+sg.penalty >= int(spec.GetNoticeDc())
 }
 
-// recordNotices writes the reveals of the finds in one transaction, and one event for each
-// trap and player (the actor is the one whose character noticed). It returns the players
-// told, and the (trap, player) pairs that are new, in order.
-func (s *Service) recordNotices(ctx context.Context, campaignID string, finds []noticeFind) ([]string, []noticeKey, error) {
-	var told []string
-	var noticed []noticeKey
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
-		told, noticed = nil, nil
+// recordNotices writes the reveals of the finds in one transaction, under the session's lock, and one event for each
+// trap and player (the actor is the one whose character noticed). Once it committed, tell gets the players told, and the
+// (trap, player) pairs that are new, in order. A find that nobody learns anew changes nothing: nothing is told and no number moves.
+func (s *Service) recordNotices(ctx context.Context, campaignID string, finds []noticeFind, tell func(ctx context.Context, told []string, noticed []noticeKey)) error {
+	return s.inSession(ctx, campaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		now := s.now()
-		var order []noticeKey
-		var byKey map[noticeKey][]string
-		var err error
-		if told, order, byKey, err = s.insertNotices(ctx, s.queries.WithTx(tx), finds, now); err != nil {
+		told, order, byKey, err := s.insertNotices(ctx, s.queries.WithTx(tx), finds, now)
+		if err != nil {
 			return err
 		}
-		noticed, err = s.appendNotices(ctx, tx, campaignID, order, byKey, now)
-		return err
+		noticed, err := s.appendNotices(ctx, tx, campaignID, order, byKey, now)
+		if err != nil {
+			return err
+		}
+		if len(told) > 0 || len(noticed) > 0 {
+			s.announce(t, func(ctx context.Context) { tell(ctx, told, noticed) })
+		}
+		return nil
 	})
-	return told, noticed, err
 }
 
 // insertNotices writes a "noticed" reveal for each find, and groups the new ones by trap
@@ -405,7 +407,7 @@ func (s *Service) tellUsers(ctx context.Context, campaignID, mapID string, row m
 		return
 	}
 	if playersSee(mapID, row.RevealedAt, current) {
-		s.live.PublishToUsers(campaignID, users, mapChangedEvent(mapID))
+		s.publishUsers(ctx, campaignID, users, mapChangedEvent(mapID))
 	}
 }
 
@@ -426,7 +428,7 @@ func (s *Service) tellNoticers(ctx context.Context, campaignID, mapID string, ro
 		return
 	}
 	for _, n := range noticed {
-		s.live.PublishToUsers(campaignID, []string{n.user}, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TrapNoticed_{
+		s.publishUsers(ctx, campaignID, []string{n.user}, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_TrapNoticed_{
 			TrapNoticed: &playv1.WatchGameSessionResponse_TrapNoticed{MapId: mapID, PointId: n.point},
 		}})
 	}
@@ -797,19 +799,21 @@ func (s *Service) DisarmTrap(
 		return nil, err
 	}
 	var res trapDisarm
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
-		res, err = s.disarmTrapTx(ctx, tx, m, mapID, pointID)
-		return err
+		if res, err = s.disarmTrapTx(ctx, tx, m, mapID, pointID); err != nil || !res.changed {
+			return err // already disarmed: nothing is told and no number moves
+		}
+		s.announce(t, func(ctx context.Context) {
+			// Everyone who sees a public trap hears of it; one that is not public reaches
+			// the players whose characters know it, and nobody else (RN-10).
+			s.publishPointsChanged(ctx, m.CampaignID, res.mapRow, everyoneSees(res.after) && playersSee(mapID, res.mapRow.RevealedAt, current), res.after)
+			s.tellTrapKnowers(ctx, m.CampaignID, mapID, res.mapRow, current, res.knowers)
+		})
+		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "disarm a trap", err)
-	}
-	if res.changed {
-		// Everyone who sees a public trap hears of it; one that is not public reaches
-		// the players whose characters know it, and nobody else (RN-10).
-		s.publishPointsChanged(ctx, m.CampaignID, res.mapRow, everyoneSees(res.after) && playersSee(mapID, res.mapRow.RevealedAt, current), res.after)
-		s.tellTrapKnowers(m.CampaignID, mapID, res.mapRow, current, res.knowers)
 	}
 	out, err := s.masterPoint(ctx, m, res.after)
 	if err != nil {

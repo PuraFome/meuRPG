@@ -20,6 +20,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/rpcerr"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
@@ -102,7 +103,7 @@ func (s *Service) RenameGalleryImage(
 	}
 
 	var row mapsdb.GalleryImage
-	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
 		row, err = s.queries.WithTx(tx).RenameGalleryImage(ctx, mapsdb.RenameGalleryImageParams{
 			CampaignID: m.CampaignID, ID: id.String(), Name: name,
@@ -113,6 +114,8 @@ func (s *Service) RenameGalleryImage(
 		if err != nil {
 			return fmt.Errorf("rename gallery image: %w", err)
 		}
+		// The name is the caption of the image on screen, if it is this one: no event says so, the screens read it again.
+		t.Touch()
 		return nil
 	})
 	if err != nil {
@@ -165,25 +168,30 @@ func (s *Service) DeleteGalleryImage(
 	if err != nil && connect.CodeOf(err) != connect.CodeNotFound {
 		return nil, s.dbError(ctx, "check whether the image is left with the players", err)
 	}
-	portraits, err := s.deleteImageRows(ctx, m.CampaignID, id.String())
+	_, err = s.deleteImageRows(ctx, m.CampaignID, id.String(), func(ctx context.Context, portraits int64) {
+		s.publishImageDeleted(ctx, m.CampaignID, imageGone{
+			shown: shown == id.String(), shownTo: shownTo, portraits: portraits > 0, left: wasLeft, leftTo: leftTo,
+		})
+	})
 	if err != nil {
 		return nil, err
 	}
 	s.deleteFiles(ctx, m.CampaignID, id.String())
-	s.publishImageDeleted(ctx, m.CampaignID, imageGone{
-		shown: shown == id.String(), shownTo: shownTo, portraits: portraits > 0, left: wasLeft, leftTo: leftTo,
-	})
 	return connect.NewResponse(&mapsv1.DeleteGalleryImageResponse{}), nil
 }
 
 // deleteImageRows deletes the image's row, unless a map uses it, and clears it
-// as the portrait of the NPCs that had it; it returns how many lost it.
-func (s *Service) deleteImageRows(ctx context.Context, campaignID, imageID string) (int64, error) {
+// as the portrait of the NPCs that had it, under the session's lock (the screen it was on loses it); it returns how many lost it.
+// Once it committed, tell runs with that number.
+func (s *Service) deleteImageRows(ctx context.Context, campaignID, imageID string, tell func(ctx context.Context, portraits int64)) (int64, error) {
 	var portraits int64 // the NPCs that lost it as their portrait
-	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
+	err := s.inSession(ctx, campaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
-		portraits, err = s.deleteImageTx(ctx, tx, campaignID, imageID)
-		return err
+		if portraits, err = s.deleteImageTx(ctx, tx, campaignID, imageID); err != nil {
+			return err
+		}
+		s.announce(t, func(ctx context.Context) { tell(ctx, portraits) })
+		return nil
 	})
 	// The check in the transaction runs in it, so a map created at the same
 	// time makes one of the two retry (SERIALIZABLE). The foreign key
@@ -241,27 +249,27 @@ func (s *Service) publishImageDeleted(ctx context.Context, campaignID string, go
 		ev := &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
 			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{},
 		}}
-		s.tellAudience(campaignID, gone.shownTo, ev)
+		s.tellAudience(ctx, campaignID, gone.shownTo, ev)
 	}
 	if gone.portraits {
 		// The NPC may have been on the stage: its portrait is gone for the scene.
-		s.live.PublishToScene(ctx, campaignID, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
+		s.publishScene(ctx, campaignID, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_StageChanged_{
 			StageChanged: &playv1.WatchGameSessionResponse_StageChanged{},
 		}})
 	}
 	if gone.left {
 		// It left the players' list too (the foreign key deleted the row).
-		s.tellAudience(campaignID, gone.leftTo, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+		s.tellAudience(ctx, campaignID, gone.leftTo, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
 			LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
 		}})
 	}
 }
 
 // tellAudience sends ev to the master and to the players of the audience, and to no other.
-func (s *Service) tellAudience(campaignID string, who link.ImageAudience, ev *playv1.WatchGameSessionResponse) {
-	s.publish(campaignID, who.Everyone, ev)
+func (s *Service) tellAudience(ctx context.Context, campaignID string, who link.ImageAudience, ev *playv1.WatchGameSessionResponse) {
+	s.tellStreams(ctx, campaignID, sessiontell.Audience{Master: true, Players: who.Everyone}, ev)
 	if !who.Everyone {
-		s.live.PublishToUsers(campaignID, who.UserIDs, ev)
+		s.publishUsers(ctx, campaignID, who.UserIDs, ev)
 	}
 }
 

@@ -240,7 +240,7 @@ func (s *Service) PuzzleClueGivenAgain(ctx context.Context, campaignID, clueID, 
 	if err != nil {
 		return
 	}
-	s.live.PublishToUsers(campaignID, []string{userID}, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_NotesChanged_{
+	s.publishUsers(ctx, campaignID, []string{userID}, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_NotesChanged_{
 		NotesChanged: &playv1.WatchGameSessionResponse_NotesChanged{},
 	}})
 	s.publishSceneChangedToMasterIf(ctx, campaignID, clue.PointID)
@@ -297,7 +297,7 @@ func (s *Service) PuzzleRevealClue(ctx context.Context, tx pgx.Tx, campaignID, c
 		return false, nil, fmt.Errorf("record the reveal: %w", err)
 	}
 	return true, func(ctx context.Context) {
-		s.live.PublishToUsers(campaignID, []string{userID}, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_NotesChanged_{
+		s.publishUsers(ctx, campaignID, []string{userID}, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_NotesChanged_{
 			NotesChanged: &playv1.WatchGameSessionResponse_NotesChanged{},
 		}})
 		s.publishSceneChangedToMasterIf(ctx, campaignID, clue.PointID)

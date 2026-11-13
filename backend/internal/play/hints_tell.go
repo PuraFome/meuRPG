@@ -57,7 +57,7 @@ func (s *Service) txOrNone(ctx context.Context, campaignID string, fn func(tx pg
 	for try := 1; ; try++ {
 		open, err := s.queries.GetOpenGameSession(ctx, campaignID)
 		if errors.Is(err, pgx.ErrNoRows) {
-			return s.inNoSession(ctx, func(tx pgx.Tx, _ sessiontell.Tell) error { return fn(tx, &hints{}, "") })
+			return s.inNoSession(ctx, campaignID, func(tx pgx.Tx, _ sessiontell.Tell) error { return fn(tx, &hints{}, "") })
 		}
 		if err != nil {
 			return fmt.Errorf("find the open session: %w", err)

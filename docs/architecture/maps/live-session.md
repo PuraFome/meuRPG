@@ -5,6 +5,8 @@ With the session open, each change to a map reaches whoever is on the session pa
 A change only to hidden things does not reach the player, not even as a `map_changed` on a map they see.
 Without an open session nobody is subscribed and nothing is published; the app reads the maps when it opens the screen.
 
+Each of these changes is one write under `play`'s funnel (`InSession`): the session's row is locked first, the number moves once, and the events below go out after the commit carrying it. A change that tells nobody (a paint of what was painted, a trap already disarmed) moves nothing. A repeat of a keyed call (`CreateMap`, a point, a treasure, a dungeon) moves nothing and tells the master again.
+
 | Event | When | Who receives it |
 | --- | --- | --- |
 | `current_map_changed{map_id}` | The master changes the current map, or deletes it (empty) | Everyone |

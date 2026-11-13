@@ -709,6 +709,7 @@ func wireModules(
 	// sees, who knows them) and maps asks play to fire one when a token lands in it
 	playService.SetTraps(mapsService)
 	mapsService.SetTrapFirer(playService)
+	mapsService.SetSessionHost(playService) // the writes that change what a session shows run under play's funnel (#735)
 	// The fog of war and the copy of an image a fog map owns need the maps
 	// service, which is made after SessionMaps (it needs play).
 	sessionMaps.SetService(mapsService)

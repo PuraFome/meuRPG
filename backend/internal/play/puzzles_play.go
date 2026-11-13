@@ -18,6 +18,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -180,11 +181,13 @@ func (s *Service) tellMove(h *hints, campaignID, userID, puzzleID string, res *m
 		s.replayRevealAfter(campaignID, userID, res)
 	}
 	h.after(func(ctx context.Context, say sayFn) {
+		// What the maps module tells from here carries the move's number.
+		mctx := sessiontell.WithOut(ctx, &sessionOut{s: s, campaignID: campaignID, ctx: ctx, say: say})
 		for _, f := range res.after {
-			f(ctx)
+			f(mctx)
 		}
 		if res.doorMap != "" && s.puzzles.maps != nil {
-			s.puzzles.maps.DoorsChanged(ctx, campaignID, res.doorMap)
+			s.puzzles.maps.DoorsChanged(mctx, campaignID, res.doorMap)
 		}
 		if res.fired != nil {
 			if res.again {

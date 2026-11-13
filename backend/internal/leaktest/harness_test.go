@@ -239,6 +239,7 @@ func newStackOf(t *testing.T, d20Rerolls bool) *stack {
 	live.SetFog(msvc)
 	live.SetTraps(msvc)
 	msvc.SetTrapFirer(live)
+	msvc.SetSessionHost(live)
 	sessionMaps.SetService(msvc)
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)

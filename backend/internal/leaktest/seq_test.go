@@ -353,6 +353,111 @@ var hiddenWrites = []hiddenWrite{
 			})))
 		}
 	}},
+	// The writes of the maps module (#735 part 2, 4d maps). Each one is made to what no player sees (a map they cannot open, or a token
+	// that is hidden): the master hears map_changed, the players hear nothing, and their number moves once, the same whatever the write held.
+	{
+		name: "a token placed on a map the players do not see",
+		before: func(w *world) {
+			for _, kind := range []string{"seq-token-a", "seq-token-bcdefgh"} {
+				npc, _ := w.npc(kind, &charactersv1.BasicSheet{HitPointsMax: 12, ArmorClass: 12, SpeedFt: 30})
+				w.notes[kind] = npc.GetId()
+			}
+		},
+		prepare: func(w *world, variant int) func() {
+			id := w.notes[[]string{"seq-token-a", "seq-token-bcdefgh"}[variant]]
+			return func() { w.place(w.hiddenMap, id, 3+variant*5, 6+variant) }
+		},
+	},
+	{
+		name: "a token moved on a map the players do not see",
+		before: func(w *world) {
+			npc, _ := w.npc("seq-token-moved", &charactersv1.BasicSheet{HitPointsMax: 12, ArmorClass: 12, SpeedFt: 30})
+			w.notes["moved"] = npc.GetId()
+			w.place(w.hiddenMap, npc.GetId(), 2, 2)
+		},
+		prepare: func(w *world, variant int) func() {
+			return func() { w.place(w.hiddenMap, w.notes["moved"], 5+variant*6, 4+variant*3) }
+		},
+	},
+	{
+		name: "the fog of a map the players do not see written",
+		before: func(w *world) {
+			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
+		},
+		prepare: func(w *world, variant int) func() {
+			light := []mapsv1.LightLevel{mapsv1.LightLevel_LIGHT_LEVEL_DIM, mapsv1.LightLevel_LIGHT_LEVEL_DARK}[variant]
+			return func() {
+				must(w.master.maps.SetMapFog(w.t.Context(), rq(&mapsv1.SetMapFogRequest{CampaignId: w.campaign, MapId: w.hiddenMap, FogEnabled: proto.Bool(true), BaseLight: &light})))
+			}
+		},
+	},
+	{
+		name: "a wall painted on a map the players do not see",
+		before: func(w *world) {
+			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
+		},
+		prepare: func(w *world, variant int) func() {
+			return func() {
+				w.paint(w.hiddenMap, mapsv1.MapLayer_MAP_LAYER_WALL, 1, [][2]int32{{int32(2 + variant), 3}, {int32(3 + variant*4), 3}})
+			}
+		},
+	},
+	{
+		name: "a point created on a map the players do not see",
+		prepare: func(w *world, variant int) func() {
+			kind := []mapsv1.MapPointKind{mapsv1.MapPointKind_MAP_POINT_KIND_SCENE, mapsv1.MapPointKind_MAP_POINT_KIND_BATTLE}[variant]
+			name := w.secrets.marker([]string{"seq-point-a", "seq-point-bcdefgh"}[variant])
+			return func() { w.point(w.hiddenMap, kind, name, name+"-description", 5, 5+variant, nil) }
+		},
+	},
+	{
+		name: "a hidden trap changed and revealed on a map the players do not see",
+		before: func(w *world) {
+			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
+			w.pts["seq-trap-edit"] = w.point(w.hiddenMap, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, w.secrets.marker("seq-trap-edit"), w.secrets.marker("seq-trap-edit-description"), 6, 6, func(r *mapsv1.CreateMapPointRequest) { r.Trap = w.trapSpec() })
+			w.secrets.id("trap", w.pts["seq-trap-edit"].GetId())
+		},
+		prepare: func(w *world, variant int) func() {
+			p := w.pts["seq-trap-edit"]
+			name := w.secrets.marker([]string{"seq-trap-renamed-a", "seq-trap-renamed-bcdefgh"}[variant])
+			return func() {
+				must(w.master.maps.UpdateMapPoint(w.t.Context(), rq(&mapsv1.UpdateMapPointRequest{CampaignId: w.campaign, MapId: w.hiddenMap, PointId: p.GetId(), Name: &name})))
+			}
+		},
+	},
+	{
+		name: "a trap disarmed on a map the players do not see",
+		before: func(w *world) {
+			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
+			for _, name := range []string{"seq-disarm-a", "seq-disarm-bcdefgh"} {
+				w.pts[name] = w.point(w.hiddenMap, mapsv1.MapPointKind_MAP_POINT_KIND_TRAP, w.secrets.marker(name), w.secrets.marker(name+"-description"), 7, 7, func(r *mapsv1.CreateMapPointRequest) { r.Trap = w.trapSpec() })
+				w.secrets.id("trap", w.pts[name].GetId())
+			}
+		},
+		prepare: func(w *world, variant int) func() {
+			p := w.pts[[]string{"seq-disarm-a", "seq-disarm-bcdefgh"}[variant]]
+			return func() {
+				must(w.master.maps.DisarmTrap(w.t.Context(), rq(&mapsv1.DisarmTrapRequest{CampaignId: w.campaign, MapId: w.hiddenMap, PointId: p.GetId()})))
+			}
+		},
+	},
+	{
+		name: "a treasure placed on a map the players do not see",
+		before: func(w *world) {
+			must(w.master.maps.SetMapGrid(w.t.Context(), rq(&mapsv1.SetMapGridRequest{CampaignId: w.campaign, MapId: w.hiddenMap, Columns: 12})))
+		},
+		prepare: func(w *world, variant int) func() {
+			seed := uint64(w.secrets.number("seq-treasure-seed", []int64{6101, 6202}[variant])) //nolint:gosec // G115: a small test number
+			name := w.secrets.marker([]string{"seq-treasure-a", "seq-treasure-bcdefgh"}[variant])
+			return func() {
+				rolled := must(w.master.treasure.GenerateTreasure(w.t.Context(), rq(&mapsv1.GenerateTreasureRequest{CampaignId: w.campaign, Mode: mapsv1.TreasureMode_TREASURE_MODE_HOARD, PartyLevel: proto.Int32(5), Seed: &seed}))).GetTreasure()
+				must(w.master.treasure.PlaceTreasure(w.t.Context(), rq(&mapsv1.PlaceTreasureRequest{
+					CampaignId: w.campaign, MapId: w.hiddenMap, Mode: mapsv1.TreasureMode_TREASURE_MODE_HOARD, PartyLevel: 5, Seed: &seed, Column: 4, Row: 4,
+					Name: &name, IdempotencyKey: newKey(), ContentVersion: rolled.GetContentVersion(),
+				})))
+			}
+		},
+	},
 }
 
 // seqSnapshot is what two members and the master read of a world after a hidden write, or without one.

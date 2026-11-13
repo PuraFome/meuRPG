@@ -1,66 +1,32 @@
 # Functions in internal/play and internal/maps (non-test) that open a transaction which writes (INSERT, UPDATE or DELETE of the package's own queries) outside the funnel (Service.tx, Service.txOn).
 # One entry per line, sorted: "package file function" ("(*T).Method" for a method). The reason after # starts with the area of the #735 plan.
 # Two sections, told apart by the reason:
-#   work queue: any reason but "permanent:". Areas: 4b, 4c, 4d (play), 4d maps, session lifecycle, characters host (task B).
+#   work queue: any reason but "permanent:". Areas: 4b, 4c, 4d (play), 4d maps, session lifecycle, characters host (task B), host (a maps writer that plays calls inside its own funnel transaction).
 #     The queue can only shrink: convert the writer to Service.tx and delete its line.
 #   permanent: "# permanent: <reason>" is accepted forever, because the function never touches what a live session shows. It is still listed,
 #     so that a new writer is noticed, and it is stale like any entry when it stops being an offender.
 # An entry sits on the callee. Converting it can need the calling module to change too (characters, progression call into play with their own transaction).
 # A line whose function is no longer an offender fails the test.
-maps carriedlight.go (*Service).SetCarriedLight # 4d maps: map, token, fog or point row the live session shows
-maps clues.go (*Service).RevealSceneClue # 4d maps: map, token, fog or point row the live session shows
-maps clues.go (*SessionMaps).DiscoverScene # 4d maps: map, token, fog or point row the live session shows
-maps clues.go (*SessionMaps).DiscoverSceneFor # 4d maps: map, token, fog or point row the live session shows
-maps creaturetokens.go (*Service).placeCreatureToken # 4d maps: map, token, fog or point row the live session shows
-maps creaturetokens.go (*Service).removeCreatureToken # 4d maps: map, token, fog or point row the live session shows
-maps doors.go (*Service).OpenDoors # 4d maps: map, token, fog or point row the live session shows
-maps dungeons.go (*Service).RedrawDungeonMap # 4d maps: redraws the image of a map the live session may show
-maps dungeons.go (*Service).insertDungeon # 4d maps: creates a map and its image rows
-maps fog.go (*Service).rememberFor # 4d maps: map, token, fog or point row the live session shows
+maps clues.go (*SessionMaps).DiscoverScene # host: runs inside play's transaction (already funnel): called by play's scene opening with play's transaction, the session row already locked (Service.tx); the discovery rows tell nothing of their own
+maps clues.go (*SessionMaps).DiscoverSceneFor # host: runs inside play's transaction (already funnel): called by play's scene opening with play's transaction, the session row already locked (Service.tx); the discovery rows tell nothing of their own
+maps doors.go (*Service).OpenDoors # host: runs inside play's transaction (already funnel): called by play's move (play.DoorKeeper) with the combat's transaction, the session row already locked (Service.tx); play tells the move and the doors
 maps fogimage.go (*Service).ownImage # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
-maps fogreads.go (*Service).ForgetMapVision # 4d maps: map, token, fog or point row the live session shows
-maps gallery.go (*Service).RenameGalleryImage # 4d maps: the name is the caption of the shown image (ShownImage.name), so a rename changes what is on screen
-maps gallery.go (*Service).deleteImageRows # 4d maps: deleting an image sets game_sessions.shown_image_id to NULL (ON DELETE SET NULL), so the screen changes; also ClearPortraits
-maps imagegen_map.go (*Service).UseGeneratedImageAsMapImage # 4d maps: the image becomes the image of a map the live session may show
 maps imagegen_read.go (*Service).CancelImageGeneration # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 maps imagegen_read.go (*Service).readGeneration # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 maps imagegen_start.go (*Service).freshStatus # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 maps imagegen_start.go (*Service).reserve # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
-maps layers.go (*Service).PaintMapCells # 4d maps: map, token, fog or point row the live session shows
-maps layers.go (*Service).writeFog # 4d maps: map, token, fog or point row the live session shows
-maps mapcrud.go (*Service).CreateMap # 4d maps: map, token, fog or point row the live session shows
-maps mapcrud.go (*Service).DeleteMap # 4d maps: map, token, fog or point row the live session shows
-maps mapcrud.go (*Service).SetMapRevealed # 4d maps: map, token, fog or point row the live session shows
-maps mapgrid.go (*Service).SetMapGrid # 4d maps: map, token, fog or point row the live session shows
-maps mapupdate.go (*Service).UpdateMap # 4d maps: map, token, fog or point row the live session shows
 maps package.go (*imagesPart).Apply # permanent: campaign package import creates the campaign in the same transaction; assumes import never merges into an existing campaign, so no live session can show these rows
 maps package.go (*mapsPart).Apply # permanent: campaign package import creates the campaign in the same transaction; assumes import never merges into an existing campaign, so no live session can show these rows
-maps pointwrites.go (*Service).changePointTx # 4d maps: map, token, fog or point row the live session shows
-maps pointwrites.go (*Service).createPointTx # 4d maps: map, token, fog or point row the live session shows
-maps pointwrites.go (*Service).deletePointTx # 4d maps: map, token, fog or point row the live session shows
-maps putparty.go (*Service).PutPartyOnMap # 4d maps: map, token, fog or point row the live session shows
-maps puzzleseam.go (*Service).PuzzleOpenDoor # 4d maps: map, token, fog or point row the live session shows
-maps puzzleseam.go (*Service).PuzzleRevealClue # 4d maps: map, token, fog or point row the live session shows
-maps puzzleseam.go (*Service).PuzzleRevealPoint # 4d maps: map, token, fog or point row the live session shows
-maps scenes.go (*Service).changeActions # 4d maps: map, token, fog or point row the live session shows
-maps sessionmaps.go (*SessionMaps).LeaveImage # 4d maps: map, token, fog or point row the live session shows
-maps sessionmaps.go (*SessionMaps).RevealMap # 4d maps: map, token, fog or point row the live session shows
-maps sessionmaps.go (*SessionMaps).SetTokenPositions # 4d maps: map, token, fog or point row the live session shows
-maps sessionmaps.go (*pendingCopy).Insert # 4d maps: map, token, fog or point row the live session shows
-maps tokenmoves.go (*Service).MoveMapTokens # 4d maps: map, token, fog or point row the live session shows
-maps tokenmoves.go (*Service).SetMapPlayersMove # 4d maps: map, token, fog or point row the live session shows
-maps tokenwrites.go (*Service).SetMapTokenHidden # 4d maps: map, token, fog or point row the live session shows
-maps tokenwrites.go (*Service).deleteTokenTx # 4d maps: map, token, fog or point row the live session shows
-maps tokenwrites.go (*Service).placeTokenTx # 4d maps: map, token, fog or point row the live session shows
-maps traps.go (*Service).MarkTreasureFound # 4d maps: map, token, fog or point row the live session shows
-maps traps.go (*Service).RevealTrap # 4d maps: map, token, fog or point row the live session shows
-maps traps.go (*Service).UnmarkTreasureFound # 4d maps: map, token, fog or point row the live session shows
-maps traps_play.go (*Service).DisarmTrap # 4d maps: map, token, fog or point row the live session shows
-maps traps_play.go (*Service).RestoreTrap # 4d maps: map, token, fog or point row the live session shows
-maps traps_play.go (*Service).SearchTraps # 4d maps: map, token, fog or point row the live session shows
-maps traps_play.go (*Service).TriggerTrap # 4d maps: map, token, fog or point row the live session shows
-maps traps_play.go (*Service).recordNotices # 4d maps: map, token, fog or point row the live session shows
-maps treasure.go (*Service).PlaceTreasure # 4d maps: map, token, fog or point row the live session shows
+maps puzzleseam.go (*Service).PuzzleOpenDoor # host: runs inside play's transaction (already funnel): called by play's puzzle move (play.PuzzleMaps) with its transaction, the session row already locked (Service.tx); play tells the door
+maps puzzleseam.go (*Service).PuzzleRevealClue # host: runs inside play's transaction (already funnel): called by play's puzzle move (play.PuzzleMaps) with its transaction, the session row already locked (Service.tx); the step it returns runs after the commit with the move's number
+maps puzzleseam.go (*Service).PuzzleRevealPoint # host: runs inside play's transaction (already funnel): called by play's puzzle move (play.PuzzleMaps) with its transaction, the session row already locked (Service.tx); the step it returns runs after the commit with the move's number
+maps sessionmaps.go (*SessionMaps).LeaveImage # host: runs inside play's transaction (already funnel): called by play's show of an image and its end of the session with their transactions, the session row already locked
+maps sessionmaps.go (*SessionMaps).RevealMap # host: runs inside play's transaction (already funnel): called by play's current map, its show of a map and its start of a combat with their transactions, the session row already locked (Service.tx)
+maps sessionmaps.go (*SessionMaps).SetTokenPositions # host: runs inside play's transaction (already funnel): called by play's end of a combat with the combat's transaction, the session row already locked (Service.tx)
+maps sessionmaps.go (*pendingCopy).Insert # host: runs inside play's transaction (already funnel): called by play's show of an image with its transaction, the session row already locked (Service.tx)
+maps traps_play.go (*Service).RestoreTrap # host: runs inside play's transaction (already funnel): called by play's undo of a firing with play's transaction, the session row already locked (Service.tx); play tells the undo
+maps traps_play.go (*Service).SearchTraps # host: runs inside play's transaction (already funnel): called by play's search with play's transaction, the session row already locked (Service.tx); play tells the search
+maps traps_play.go (*Service).TriggerTrap # host: runs inside play's transaction (already funnel): called by play's trap firing with play's transaction, the session row already locked (Service.tx); play tells the firing
 maps upload.go (*Service).storeImage # permanent: gallery_images and image_requests only; no row of game_sessions or the live view
 play creature_host.go (*Service).CreatureRenamed # characters host: called by characters with its transaction and the session row locked (LockSession), then the creature rows (task B, lock order); 4c converts nothing here
 play creature_host.go (*Service).CreaturesLeaving # characters host: called by characters with its transaction and the session row locked (LockSession), then the creature rows (task B, lock order); 4c converts nothing here

@@ -57,6 +57,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/blob"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/nostore"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/ratelimit"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tasks"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/wiring"
 	playlink "github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -303,12 +304,14 @@ type Service struct {
 	blobs      blob.Store
 	characters CharacterDirectory
 	live       LiveSession
-	checks     SceneChecks
-	rules      Rules
-	combats    CombatMaps
-	defaults   MapDefaults
-	firer      TrapFirer
-	layerHints hintGate
+	// sessionHost is play's funnel, connected by SetSessionHost (session.go).
+	sessionHost sessiontell.Host
+	checks      SceneChecks
+	rules       Rules
+	combats     CombatMaps
+	defaults    MapDefaults
+	firer       TrapFirer
+	layerHints  hintGate
 	// layerHintEvery is the gate's interval (defaultLayerHintEvery); a test sets
 	// it on its own service to see every hint at once.
 	layerHintEvery time.Duration
