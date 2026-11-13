@@ -4319,6 +4319,22 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
     await expectScreenPasses(p, `A vez como Lobo ${where}`);
 
+    // The turn band of the form (584-01, 584-02): the chip with the time, the economy row above the tabs, and "Permanecer na forma".
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).toBeVisible();
+    await expectScreenPasses(p, `A faixa da vez na forma, com o tempo e a linha da vez ${where}`);
+    await openActionTab(p, 'Druida');
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expect(p.getByText('Permanecer na forma').first()).toBeVisible();
+    await expectScreenPasses(p, `A aba Druida na forma, com Permanecer na forma ${where}`);
+    await tapAboveBar(p.getByRole('button', { name: 'Permanecer na forma' }));
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(p, `Depois de permanecer na forma ${where}`);
+    // Another player reads the name of the beast, never the time (RN-20).
+    await t.goto(sessionRoute(campaignId));
+    await expect(t.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(t, `A forma da Sálvia, vista por outro jogador ${where}`);
+
     // The beast falls: the notice that stays.
     await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);
     await expect(p.getByTestId('form-ended')).toBeVisible();
