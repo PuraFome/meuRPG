@@ -925,6 +925,24 @@
     "resisted": true,
     "resist_left": 1
   },
+  "feature": {
+    "scope": "x",
+    "choice": "x",
+    "targets": [
+      {
+        "id": "x",
+        "healed": 1,
+        "temp_hp": 1
+      }
+    ],
+    "healed": 1,
+    "temp_hp": 1,
+    "effect": true,
+    "faces": [
+      1
+    ],
+    "total": 1
+  },
   "creature_action": {
     "name": "x",
     "reminder": true,
