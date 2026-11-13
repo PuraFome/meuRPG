@@ -2035,6 +2035,11 @@ enum EncounterBlockedReason {
   // cannot be donned or doffed in a fight (SRD 5.1: it takes 1 to 10 minutes). Only the
   // master may change it. Nothing is changed.
   ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT = 127;
+  // FeatureService.UseFeature: a target is not allowed (too many or too few, the wrong side, out of reach, not in the
+  // combat or hidden from the player). `combatant_ids` names the ones refused. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_FEATURE_TARGET = 128;
+  // FeatureService.UseFeature: the choice is not one the feature offers, or one is missing. Nothing is spent.
+  ENCOUNTER_BLOCKED_REASON_FEATURE_CHOICE = 129;
   // A stay in a Wild Shape form (AssumeWildShapeRequest.stay) came after the form
   // had ended: nothing was spent and no new form was taken.
   ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED = 130;
@@ -3442,6 +3447,15 @@ message ReachableSquare {
   // foot), in tenths of a foot; 0 when the mover does not crawl. It adds to `extra_dft`: the screen
   // prints each with its word.
   int32 crawl_extra_dft = 23;
+  // The two parts of `extra_dft` apart, in tenths of a foot, for a line that crosses water and a climbable
+  // surface both: `swim_extra_dft` + `climb_extra_dft` = `extra_dft`. The screen prints each with its word
+  // ("+1,5 m nadando · +1,5 m escalando") and never subtracts.
+  int32 swim_extra_dft = 24;
+  int32 climb_extra_dft = 25;
+  // The rest of `cost_dft`, in tenths of a foot: the line and its difficult terrain, without the swim, the climb
+  // or the crawl. `path_dft` + `swim_extra_dft` + `climb_extra_dft` + `crawl_extra_dft` = `cost_dft`. The screen
+  // writes "1,5 m do caminho + 1,5 m nadando + 1,5 m rastejando" from these, and never subtracts.
+  int32 path_dft = 26;
 }
 
 // RefusedSquare is a square inside the circle that the combatant cannot go to.
@@ -3874,6 +3888,11 @@ message GetTurnOptionsResponse {
   // character, which RollAttack takes as `maneuver_key`, each with the uses left of its
   // resource pool. Empty for an NPC and for a combatant with no such die.
   repeated ManeuverDieOption maneuver_dice = 102;
+  // For each feature action of options.feature_actions with via_use_feature, who it can pick: every creature the caller
+  // sees, each with the reason it cannot be picked (`disabled_reason_pt`: out of reach, wrong side, down). A creature a
+  // player cannot see is never listed (RN-10); the master gets all. No entry can be picked: the action carries
+  // DISABLED_REASON_CODE_NO_VALID_TARGET.
+  repeated ResourceTargets feature_targets = 103;
 }
 
 // ManeuverDieOption is a weapon-attack table die the combatant can add to an attack roll.
@@ -5584,6 +5603,8 @@ enum CombatLogKind {
   // actor and `gear_swapped`. Only the master and the character's owner get the line; no other player's log shows it or
   // counts it (RN-10).
   COMBAT_LOG_KIND_GEAR_SWAPPED = 102;
+  // A character used a feature of its own (FeatureService.UseFeature): the actor, the targets and `feature_used`.
+  COMBAT_LOG_KIND_FEATURE_USED = 103;
   // A contest or a special action (SRD 5.1, "Contests", "Hide", "Help", "Surprise"): the
   // actor, the target and `contest`, which says what happened. Never a total (RN-20).
   COMBAT_LOG_KIND_CONTEST = 50;
@@ -5817,6 +5838,8 @@ message CombatLogEntry {
   CombatLogRecharge recharge = 115;
   // GEAR_SWAPPED: the piece and what the change cost. The master's and the owner's.
   CombatLogGearSwapped gear_swapped = 117;
+  // FEATURE_USED: the feature, the choice and what the use did. The line has the audience of a feature action.
+  CombatLogFeatureUsed feature_used = 118;
   // The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
   // A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
   // sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and
@@ -7107,4 +7130,18 @@ message EndRageRequest {
 // EndRageResponse returns the combat.
 message EndRageResponse {
   Encounter encounter = 1;
+}
+
+// CombatLogFeatureUsed is a use of a feature, in the combat log.
+message CombatLogFeatureUsed {
+  // The feature's key and its name in Portuguese.
+  string feature_key = 1;
+  string name_pt = 2;
+  // The option the player picked, as the feature labels it. Empty when there was none.
+  string choice_text_pt = 3;
+  // The hit points healed and the temporary hit points given, summed over the targets.
+  int32 healed = 4;
+  int32 temp_hp = 5;
+  // True: a lasting effect was put on the targets.
+  bool effect_applied = 6;
 }

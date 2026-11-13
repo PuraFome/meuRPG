@@ -15,6 +15,7 @@ function packed(
     light: Uint8Array;
     doors: Uint8Array;
     noPass: Uint8Array;
+    surface: Uint8Array;
   }> = {},
 ) {
   return {
@@ -59,6 +60,37 @@ describe('PaintedLayers', () => {
     layers.paint(MapLayer.NO_PASS, 0, [{ col: 2, row: 0 }]);
     expect(layers.layers().noPass).toEqual([{ col: 3, row: 1 }]);
     expect(layers.value(MapLayer.WALL, 3, 1)).toBe(0);
+  });
+
+  it('keeps the surface as two bits a square (1 water, 2 climbable), and paints, repaints and erases it', () => {
+    const layers = new PaintedLayers();
+    layers.load(packed(4, 2, { surface: Uint8Array.of(0b00_00_10_01) }));
+    expect(layers.value(MapLayer.SURFACE, 0, 0)).toBe(1);
+    expect(layers.value(MapLayer.SURFACE, 1, 0)).toBe(2);
+    expect(layers.layers().water).toEqual([{ col: 0, row: 0 }]);
+    expect(layers.layers().climb).toEqual([{ col: 1, row: 0 }]);
+    // The square that already holds the value is not a change; the other layers are untouched.
+    expect(
+      layers.paint(MapLayer.SURFACE, 1, [
+        { col: 0, row: 0 },
+        { col: 3, row: 1 },
+      ]),
+    ).toEqual([{ col: 3, row: 1 }]);
+    // One layer, two brushes: painting climbable over water replaces it, and erasing is value 0.
+    layers.paint(MapLayer.SURFACE, 2, [{ col: 0, row: 0 }]);
+    expect(layers.layers().water).toEqual([{ col: 3, row: 1 }]);
+    expect(layers.layers().climb).toEqual([
+      { col: 0, row: 0 },
+      { col: 1, row: 0 },
+    ]);
+    layers.paint(MapLayer.SURFACE, 0, [
+      { col: 0, row: 0 },
+      { col: 3, row: 1 },
+    ]);
+    expect(layers.layers().water).toBeUndefined();
+    expect(layers.layers().climb).toEqual([{ col: 1, row: 0 }]);
+    expect(layers.value(MapLayer.WALL, 1, 0)).toBe(0);
+    expect(layers.value(MapLayer.SURFACE, 9, 9)).toBe(0);
   });
 
   it('paints a wall at once, and says which squares changed', () => {

@@ -179,3 +179,35 @@ func TestJumpPaysNoSurface(t *testing.T) {
 		t.Fatalf("a jump over water cost %d (+%d)", mv.CostDFt, mv.SurfaceDFt)
 	}
 }
+
+// A line over water and then over a climbable square pays both, and says how much of the extra is each: the part spent climbing is
+// ClimbDFt and the rest of SurfaceDFt is the swim (Reach carries it too, and MoveUntil charges the same total).
+func TestAMixedLineSplitsTheSurfaceExtra(t *testing.T) {
+	t.Parallel()
+	g := grid.Grid{Columns: 6, Rows: 1}
+	sf := grid.NewSurfaceLayer(g)
+	sf.Set(1, 0, grid.SurfaceWater)
+	sf.Set(2, 0, grid.SurfaceClimb)
+	tr := grid.Terrain{Grid: g, Surface: sf}
+	from, to := grid.Square{Col: 0, Row: 0}, grid.Square{Col: 2, Row: 0}
+	mv := tr.Move(from, to, nil, grid.Mover{})
+	if mv.Blocked || mv.CostDFt != 200 || mv.SurfaceDFt != 100 || mv.ClimbDFt != 50 {
+		t.Fatalf("Move = cost %d, surface %d, climb %d; want 200, 100 and 50", mv.CostDFt, mv.SurfaceDFt, mv.ClimbDFt)
+	}
+	for _, r := range tr.Reach(from, 1000, nil, grid.Mover{}) {
+		if r.Square == to && (r.CostDFt != 200 || r.SurfaceDFt != 100 || r.ClimbDFt != 50) {
+			t.Errorf("Reach = cost %d, surface %d, climb %d; want 200, 100 and 50", r.CostDFt, r.SurfaceDFt, r.ClimbDFt)
+		}
+	}
+	// With a climb speed only the swim is left; with a swim speed only the climb.
+	if mv := tr.Move(from, to, nil, grid.Mover{Climbs: true}); mv.SurfaceDFt != 50 || mv.ClimbDFt != 0 {
+		t.Errorf("with a climb speed: surface %d, climb %d; want 50 and 0", mv.SurfaceDFt, mv.ClimbDFt)
+	}
+	if mv := tr.Move(from, to, nil, grid.Mover{Swims: true}); mv.SurfaceDFt != 50 || mv.ClimbDFt != 50 {
+		t.Errorf("with a swim speed: surface %d, climb %d; want 50 and 50", mv.SurfaceDFt, mv.ClimbDFt)
+	}
+	// A line that only climbs says so whole.
+	if mv := surfaceTerrain().Move(grid.Square{Col: 2, Row: 1}, grid.Square{Col: 5, Row: 1}, nil, grid.Mover{}); mv.ClimbDFt != mv.SurfaceDFt || mv.ClimbDFt == 0 {
+		t.Errorf("an all-climbed line: surface %d, climb %d", mv.SurfaceDFt, mv.ClimbDFt)
+	}
+}

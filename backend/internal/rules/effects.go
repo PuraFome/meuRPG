@@ -261,6 +261,9 @@ type Effect struct {
 	ValuePerPoint string `json:"value_per_point,omitempty"`
 	Heal          string `json:"heal,omitempty"`
 	TempHP        string `json:"temp_hp,omitempty"`
+	// Use is what a grant_action declares to be used through UseFeature (featureuse.go); nil keeps
+	// the action on TakeAction.
+	Use *FeatureUse `json:"use,omitempty"`
 
 	// on_event (hooks.go): Event is one of the Event* constants, the hook runs for the
 	// owner alone. Restore is the resource whose uses it gives back (Value, an Int
@@ -318,7 +321,7 @@ type Effect struct {
 	AtMost int      `json:"at_most,omitempty"`
 
 	// Compiled formulas, filled at load.
-	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat, maxCRFrom, formCost, givesSlot, recoverMaxLevel, recoverLevels *formula.Program
+	value, when, preparedMax, max, rechargeIf, dice, durationRounds, fromLevel, cost, costMax, tempHP, perPointFlat, maxCRFrom, formCost, givesSlot, recoverMaxLevel, recoverLevels, useLimit, useTempHP *formula.Program
 
 	// What the overlay resolves for the state gate (gate.go), on the copy of the effect
 	// that is compiled: entry is the table entry the effect belongs to; stateKey is,

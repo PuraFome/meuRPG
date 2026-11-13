@@ -12,6 +12,20 @@ function bitAt(bytes: Uint8Array, n: number): number {
   return (bytes[n >> BYTE_SHIFT] >> (n & BIT_MASK)) & 1;
 }
 
+/** A two-bit layer (cover, light, the surface): square n is bits 2 * (n % 4) and one more of byte n / 4. */
+const CRUMBS_PER_BYTE = 4;
+const CRUMB_MASK = 3;
+
+function crumbAt(bytes: Uint8Array, n: number): number {
+  return (bytes[Math.floor(n / CRUMBS_PER_BYTE)] >> (2 * (n % CRUMBS_PER_BYTE))) & CRUMB_MASK;
+}
+
+function setCrumb(bytes: Uint8Array, n: number, value: number): void {
+  const at = Math.floor(n / CRUMBS_PER_BYTE);
+  const shift = 2 * (n % CRUMBS_PER_BYTE);
+  bytes[at] = (bytes[at] & ~(CRUMB_MASK << shift)) | ((value & CRUMB_MASK) << shift);
+}
+
 function setBit(bytes: Uint8Array, n: number, value: number): void {
   const at = n >> BYTE_SHIFT;
   const bit = n & BIT_MASK;
@@ -22,7 +36,7 @@ function setBit(bytes: Uint8Array, n: number, value: number): void {
  * The master's copy of the painted layers while he paints (MR-034, E9-01): the packed bytes `GetMapLayers`
  * sent, kept as full-size arrays so a stroke changes them at once (the drawing never waits for the server) and
  * decoded again into the squares the overlay draws. Pure TypeScript, so the byte layout (`rules/grid`'s: one
- * bit a square for terrain and wall, two for cover and light, four for the doors, row-major) is tested without a DOM. It decides
+ * bit a square for terrain and wall, two for cover, light and the surface, four for the doors, row-major) is tested without a DOM. It decides
  * nothing: what a wall does is the server's.
  */
 export class PaintedLayers {
@@ -36,6 +50,7 @@ export class PaintedLayers {
   private light = new Uint8Array();
   private doors = new Uint8Array();
   private noPass = new Uint8Array();
+  private surface = new Uint8Array();
   private frame: number | null = null;
 
   /** `perFrame`: the bytes change at once but the squares the screen draws are decoded at most once an animation frame, so a drag over a
@@ -53,6 +68,7 @@ export class PaintedLayers {
     this.light = fit(packed.light ?? new Uint8Array(), Math.ceil(squares / 4));
     this.doors = fit(packed.doors ?? new Uint8Array(), Math.ceil(squares / 2));
     this.noPass = fit(packed.noPass ?? new Uint8Array(), Math.ceil(squares / 8));
+    this.surface = fit(packed.surface ?? new Uint8Array(), Math.ceil(squares / CRUMBS_PER_BYTE));
     this.publish();
   }
 
@@ -81,6 +97,8 @@ export class PaintedLayers {
         return (this.doors[n >> 1] >> (4 * (n & 1))) & 15;
       case MapLayer.NO_PASS:
         return bitAt(this.noPass, n);
+      case MapLayer.SURFACE:
+        return crumbAt(this.surface, n);
       default:
         return 0;
     }
@@ -128,6 +146,9 @@ export class PaintedLayers {
       case MapLayer.NO_PASS:
         setBit(this.noPass, n, value);
         break;
+      case MapLayer.SURFACE:
+        setCrumb(this.surface, n, value);
+        break;
     }
   }
 
@@ -162,6 +183,7 @@ export class PaintedLayers {
         light: this.light,
         doors: this.doors,
         noPass: this.noPass,
+        surface: this.surface,
       }),
     );
   }

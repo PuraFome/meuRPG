@@ -657,6 +657,7 @@ var (
 	_ playv1connect.CombatServiceHandler  = (*Service)(nil)
 	_ playv1connect.ContestServiceHandler = (*Service)(nil)
 	_ playv1connect.CastingServiceHandler = (*Service)(nil)
+	_ playv1connect.FeatureServiceHandler = (*Service)(nil)
 	_ playv1connect.PuzzleServiceHandler  = (*Service)(nil)
 )
 
@@ -756,6 +757,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewContestServiceHandler(s, opts...))
 	handle(playv1connect.NewResourceServiceHandler(s, opts...))
 	handle(playv1connect.NewCastingServiceHandler(s, opts...))
+	handle(playv1connect.NewFeatureServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))
 	handle(playv1connect.NewEncounterServiceHandler(s, opts...))
 	handle(playv1connect.NewLastingEffectServiceHandler(s, opts...))

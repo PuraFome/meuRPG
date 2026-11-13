@@ -65,6 +65,7 @@ function setup(
     jumps?: ReturnType<typeof create<typeof JumpLimitsSchema>>;
     canDisengage?: boolean;
     failed?: boolean;
+    layers?: MapLayers;
   } = {},
 ) {
   const fixture = TestBed.createComponent(MovePage);
@@ -82,7 +83,7 @@ function setup(
   ref.setInput('sessionNumber', 6);
   ref.setInput('options', over.options === undefined ? options : over.options);
   ref.setInput('optionsFailed', over.failed ?? false);
-  ref.setInput('layers', layers);
+  ref.setInput('layers', over.layers ?? layers);
   ref.setInput('jumps', over.jumps);
   ref.setInput('canDisengage', over.canDisengage ?? true);
   const confirmed: unknown[] = [];
@@ -135,6 +136,64 @@ describe('MovePage', () => {
     expect(plain(el.textContent)).toContain(
       'Dentro do círculo, o que fica sem cor não dá para alcançar: parede, inimigo ou custo a mais.',
     );
+  });
+
+  it('names Água and Escalável in the legend, draws them, and keeps the zoom beside the legend (#589)', () => {
+    const { el } = setup({
+      layers: {
+        ...layers,
+        water: [{ col: 9, row: 8 }],
+        climb: [
+          { col: 10, row: 7 },
+          { col: 11, row: 7 },
+        ],
+      },
+    });
+    expect(el.querySelectorAll('app-map-layers .sq--water').length).toBe(1);
+    expect(el.querySelectorAll('app-map-layers .sq--climb').length).toBe(2);
+    const legend = Array.from(el.querySelectorAll('.mr-legend li'), (li) => plain(li.textContent));
+    expect(legend).toEqual([
+      'Parede',
+      'Terreno difícil',
+      'Água',
+      'Escalável',
+      'Você alcança',
+      'Alcance de 9,0 m',
+    ]);
+    // The zoom buttons are under the map, on the legend's row, and not over the map.
+    const below = el.querySelector('.move__below')!;
+    expect(below.querySelector('.mr-legend')).not.toBeNull();
+    expect(below.querySelector('[role="group"][aria-label="Zoom do mapa"]')).not.toBeNull();
+    expect(el.querySelector('.move__map [aria-label="Zoom do mapa"]')).toBeNull();
+    const labels = Array.from(below.querySelectorAll('[aria-label="Zoom do mapa"] button'), (b) =>
+      b.getAttribute('aria-label'),
+    );
+    expect(labels).toEqual(['Afastar o mapa', 'Aproximar o mapa']);
+  });
+
+  it("says what swimming adds beside the cost, in the server's words (#589)", () => {
+    const swim = create(GetMoveOptionsResponseSchema, {
+      movementLeftDft: 300,
+      reachable: [
+        create(ReachableSquareSchema, {
+          col: 9,
+          row: 8,
+          costDft: 300,
+          extraDft: 150,
+          swimExtraDft: 150,
+          pathDft: 150,
+        }),
+      ],
+    });
+    const { el, choose } = setup({ options: swim });
+    choose(9, 8);
+    expect(plain(el.querySelector('.status__title')?.textContent)).toBe('Mover 9,0 m');
+    // The glyph before the word is a ligature of the icon font: it is aria-hidden and not part of the words.
+    const extra = el.querySelector('.status__extra')!.cloneNode(true) as HTMLElement;
+    extra.querySelectorAll('mat-icon').forEach((i) => i.remove());
+    expect(plain(extra.textContent)).toBe('+4,5 m nadando: cada metro na água conta dobrado.');
+    expect(el.querySelector('.status__extra mat-icon')?.getAttribute('aria-hidden')).toBe('true');
+    expect(plain(el.querySelector('.status__text')?.textContent)).toBe('Depois restam 0,0 m.');
   });
 
   it('says what is left before anything is chosen', () => {
