@@ -6,11 +6,14 @@ package rules
 
 // The reasons a creature cannot be picked, as the list writes them next to it (RN-10: none names a creature's type).
 const (
-	FeatureTargetWrongSide  = "Lado errado"
-	FeatureTargetYou        = "É você"
-	FeatureTargetOnlyYou    = "Só você"
-	FeatureTargetDown       = "Caído"
-	FeatureTargetNotOnMap   = "Fora do mapa"
+	// FeatureTargetOnlyEnemies and FeatureTargetOnlyAllies are the wrong side, with what the feature does reach.
+	FeatureTargetOnlyEnemies = "Lado errado: só pega inimigos"
+	FeatureTargetOnlyAllies  = "Lado errado: só pega aliados"
+	FeatureTargetYou         = "É você"
+	FeatureTargetOnlyYou     = "Só você"
+	FeatureTargetDown        = "Caído"
+	FeatureTargetNotOnMap    = "Fora do mapa"
+	// FeatureTargetOutOfReach is the start of the out of reach reason, which ends with the range: "Fora de alcance: até 3 m".
 	FeatureTargetOutOfReach = "Fora de alcance"
 )
 
@@ -43,13 +46,13 @@ func (t FeatureTargets) Refusal(c FeatureCandidate, heals bool) string {
 	case FeatureWhoAlly:
 		switch {
 		case !c.SameSide:
-			return FeatureTargetWrongSide
+			return FeatureTargetOnlyAllies
 		case c.Self && !c.OnlyAlly:
 			return FeatureTargetYou
 		}
 	case FeatureWhoEnemy:
 		if c.SameSide {
-			return FeatureTargetWrongSide
+			return FeatureTargetOnlyEnemies
 		}
 	}
 	if c.Down && !heals {
@@ -60,7 +63,7 @@ func (t FeatureTargets) Refusal(c FeatureCandidate, heals bool) string {
 		case !c.OnMap:
 			return FeatureTargetNotOnMap
 		case c.Distance > t.RangeFt:
-			return FeatureTargetOutOfReach
+			return FeatureTargetOutOfReach + ": até " + metersPT(t.RangeFt)
 		}
 	}
 	return ""

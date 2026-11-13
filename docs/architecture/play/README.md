@@ -47,6 +47,7 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `RevivifyService` | `revivify.proto` | Revivify requests outside combat (see [Death and revival](death-and-revival.md)) |
 | `LastingEffectService` | `lasting_effects_service.proto` | Effects that last, exhaustion |
 | `CastingService` | `casting.proto` | Spells cast outside combat |
+| `FeatureService` | `features.proto` | `UseFeature`: a table feature that declares a use (limit per turn, round or combat, targets, a choice, an effect; see [Feature state](feature-state.md#using-a-feature)) |
 | `EncounterService` | `encounters.proto` | The encounter builder and stored battle encounters |
 | `PuzzleService` | `puzzles.proto` | Puzzles |
 | `TableScreenService` | `table_screen.proto` | The master's choice for the TV at the table, what the TV shows and its stream (see [The table screen](table-screen.md)) |

@@ -58,4 +58,24 @@ An event of a damage roll written with the older `once_before` (the marks of Sne
 
 ## Using a feature
 
-(filled by the UseFeature task)
+A feature whose `grant_action` declares a `use` is taken with `FeatureService.UseFeature` (`features.go`), not `TakeAction`: `TakeAction`, the resource flows by key (`startFlow`) and the Hide calls answer `invalid_argument` ("use UseFeature") for its key.
+The checks live once (`features_use.go`, `featureScene`) and `GetTurnOptions` runs the same ones (`features_options.go`), so an option listed as enabled is a call the server accepts (for the player; the master's economy override is the one difference, below).
+
+**Order.** The request is read (ids, key, targets, choice), then inside the write transaction (`s.write`, kind `feature_used`, the session row locked, the idempotency key replayed):
+
+1. The combat and the turn. The combatant must be a player's character the caller may act for (own player or master; an NPC is `invalid_argument`; a creature the player does not see is `not_found`). A feature that spends the action, the bonus action or nothing is used on the combatant's turn (`mustActNow`); a feature that spends the reaction is used on any turn (`gateFor` with `offTurn`), by a combatant that is not down, defeated, incapacitated or surprised and whose reaction an effect did not take away (`REACTION_USED`).
+2. The feature: not on the sheet is `not_found`; a feature that declares no use is `invalid_argument`. `use_extra_action` is refused (`EXTRA_ACTION_UNAVAILABLE`, as `TakeAction` does for a feature).
+3. The economy and the feature's rest resource (the row the rules work out). The master has the last word on the economy only (`masterMayOverride`).
+4. The uses of the scope (`rules.ActionUse.Left(spent)`, the spent count read from the state) and of the rest resource: `NO_USES`, for the master too.
+5. The targets (`rules/featureuse_targets.go`): how many (`Allows`), who (self, ally, enemy, any; "ally" is another creature of the user's side, the user only when it has no other ally), down (only a heal reaches it), the range (squares of 5 ft between the centres; the master and a combat with no grid are not held to it). A creature the caller does not see, one that is not in the combat and one the feature cannot reach all give `FEATURE_TARGET` with `combatant_ids` as the ids the caller sent (RN-10).
+6. The choice: one of the feature's keys, none when it offers none, else `FEATURE_CHOICE`.
+
+**Writes** (all in the one transaction): the combatant's economy and, for a reaction, its record (`recordReaction`); the rest resource; the heal (one server roll, shared by every target, through `healCombatant`) and the temporary hit points (`giveTempHP`); the lasting effect (`addEffects`, `sourceKind` "feature", no concentration, a duration of `effect_rounds` counted from the user's turn; the same feature used again adds its rows, as two uses of a table spell by a table feature would); the `feature_state` entry (scope, mark, count, choice) with the entry it replaced kept in `FeatureBefore`; the `feature_used` event; the revision.
+
+**The event** is an `actionEvent` with `Feature` (`featureUseEvent`: scope, choice, per-target healed and temporary hit points, the dice faces and total, whether an effect was put on): ids, keys and numbers only. `Hits` keep each target's hit points before, `Lasting` the effect rows, `Resource` and `PointsSpent` the pool, `FeatureBefore` the state. Fog is stamped from the actor, the single target and the hits, so a use that touched a hidden creature is secret.
+
+**Options.** `use_total` and `use_left` are the scope's (0 and 0 without a scope), `resource_total` the rest resource's, `feature_targets` the creatures the caller sees with the reason each cannot be picked (`disabled_reason_pt`: "Lado errado: só pega inimigos", "É você", "Caído", "Fora do mapa", "Fora de alcance: até 3 m"), and a row that picks creatures with none to pick is `NO_VALID_TARGET`. A reaction row is enabled off turn: the gate that disables every option for another creature's turn is replaced for it by the reaction's own gate. `feature_state` itself is never sent.
+
+**Undo.** `feature_used` is in `undoableKinds` (it writes hit points, so it keeps holds): the economy, the resource, each target's hit points (`castHitTargetBack`), the effect rows (and the temporary hit points they gave), and the feature state are put back, and the line goes with the undo.
+
+**Log.** `COMBAT_LOG_KIND_FEATURE_USED`, the audience of an action (the table, unless the user or a target is hidden: `hitsVisible`), the numbers (`healed`, `temp_hp`) only for the master and the user's player; the choice's text and the feature's name are read from the sheet.
