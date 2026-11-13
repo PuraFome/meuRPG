@@ -685,7 +685,7 @@ func New(cfg Config) (*Service, error) {
 		pool:       cfg.Pool,
 		queries:    playdb.New(cfg.Pool),
 		sheets:     cfg.Sheets,
-		vitals:     cfg.Vitals,
+		vitals:     clockedVitalsOf(cfg.Vitals, cfg.Pool),
 		campaigns:  cfg.Campaigns,
 		maps:       cfg.Maps,
 		roster:     cfg.Roster,

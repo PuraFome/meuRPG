@@ -592,7 +592,8 @@ type actionEvent struct {
 	DistanceFt  int32 `json:"distance_ft,omitempty"`
 	DistanceDFt int32 `json:"distance_dft,omitempty"`
 	// SpentDFt is the movement a walk really spent, in tenths of a foot: the path's
-	// cost times the factor of a drag or a crawl, which Dragging and Crawling name.
+	// cost (which already holds the extra feet of swimming, climbing and crawling) times the factor of a
+	// drag, which Dragging names; Crawling says the cost has the crawl in it.
 	// Zero when the move spent nothing (the master's free move) or was written before.
 	SpentDFt int32 `json:"spent_dft,omitempty"`
 	Dragging bool  `json:"dragging,omitempty"`
@@ -699,10 +700,14 @@ type actionEvent struct {
 	Carried     int32       `json:"carried_damage,omitempty"`
 	ShapeSet    bool        `json:"shape_set,omitempty"`
 	ShapeBefore *shapeState `json:"shape_before,omitempty"`
-	Creature    string      `json:"creature_id,omitempty"`
-	Sight       string      `json:"sight,omitempty"`
-	SightConds  []string    `json:"sight_conditions,omitempty"`
-	EncounterID string      `json:"encounter_id,omitempty"`
+	// Stay says a started form was the same beast again (a use spent, the clock reset, nothing
+	// else changed), with the game time the clock had left, in seconds, for the undo.
+	Stay        bool     `json:"stay,omitempty"`
+	StayLeft    int32    `json:"stay_left,omitempty"`
+	Creature    string   `json:"creature_id,omitempty"`
+	Sight       string   `json:"sight,omitempty"`
+	SightConds  []string `json:"sight_conditions,omitempty"`
+	EncounterID string   `json:"encounter_id,omitempty"`
 	// Spent says the change spent the combatant's action or bonus action (the
 	// economy fields above are then what an undo puts back).
 	Spent bool `json:"spent,omitempty"`
@@ -794,6 +799,10 @@ type actionEvent struct {
 	// EffectsSpent are the effects whose disadvantage an attack roll used up (Zombaria Viciosa),
 	// which its undo gives back (lasting_effects_once.go).
 	EffectsSpent []string `json:"effects_spent,omitempty"`
+	// EffectsAdded are the effects a damage roll put on its target (the conditions of a spell's failed save), and EffectLines
+	// the lines it wrote about them and about the save: the undo of the roll takes them away.
+	EffectsAdded []string `json:"effects_added,omitempty"`
+	EffectLines  []string `json:"effect_lines,omitempty"`
 	// Dragged is the creature a grappler dragged along in a move, and where it stood (the
 	// move's undo puts it back).
 	Dragged     string     `json:"dragged_id,omitempty"`
@@ -849,7 +858,7 @@ type effectRef struct {
 // back with the action (UndoneAlso), so that no log keeps them and they do not stop the
 // undo chain.
 func (ev actionEvent) linesBefore() []string {
-	lines := slices.Concat(ev.EndedLines, ev.FollowUpLines, ev.RevealLines, ev.StateLines)
+	lines := slices.Concat(ev.EndedLines, ev.FollowUpLines, ev.RevealLines, ev.StateLines, ev.EffectLines)
 	if ev.Parried != nil {
 		lines = append(lines, ev.Parried.Event) // the Parry's line goes with the attack it turned into a miss
 	}

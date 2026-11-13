@@ -228,6 +228,10 @@ func refuseSheetChanges(content *rules.Content, m authz.Membership, current char
 	// A save never clears an issue that a change of the table's content flagged
 	// and that still stands.
 	carryFlags(content, stored.GetFull(), sheet.GetFull())
+	// Attunement is the server's: only SetAttunement changes it.
+	if sheet.GetFull() != nil {
+		keepAttunement(content, stored.GetFull(), sheet.GetFull())
+	}
 	return nil
 }
 

@@ -198,10 +198,11 @@ func TestMR037_TwoAssumesAtOnceOneWins(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make([]error, 2)
 	start := dbtest.NewBarrier(len(errs))
+	beasts := []string{wolfKey, "monster:mastiff"} // the same beast twice would be a stay, which is allowed
 	for i := range errs {
 		wg.Go(func() {
 			start.Wait()
-			_, errs[i] = s.assume(t, s.bia, s.bri, wolfKey)
+			_, errs[i] = s.assume(t, s.bia, s.bri, beasts[i])
 		})
 	}
 	wg.Wait()

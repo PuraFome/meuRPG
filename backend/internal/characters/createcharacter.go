@@ -102,6 +102,10 @@ func (s *Service) checkNewCharacterSheet(ctx context.Context, nc *newCharacter) 
 	if err := s.checkPortrait(ctx, nc.m.CampaignID, nc.kind, sheet); err != nil {
 		return nil, invalidArgument(err)
 	}
+	// A new sheet attunes to nothing: only SetAttunement does.
+	if sheet.GetFull() != nil {
+		keepAttunement(nc.content, nil, sheet.GetFull())
+	}
 	return sheet, nil
 }
 

@@ -464,3 +464,29 @@ func TestTakeRestWrites(t *testing.T) {
 	}
 	check("TakeRest(short, nothing to give)", out, "", before)
 }
+
+// TestARestOpensTheAttunementWindow: a short or a long rest opens the window to attune a
+// magic item for each character it covers, and does not bump the vitals revision for it.
+func TestARestOpensTheAttunementWindow(t *testing.T) {
+	t.Parallel()
+	for _, kind := range []playv1.RestKind{playv1.RestKind_REST_KIND_SHORT, playv1.RestKind_REST_KIND_LONG} {
+		tb := newVitalsDBTable(t)
+		id := tb.wizard.GetId()
+		open := func() bool {
+			v, err := tb.h.svc.queries.GetAttunementOpen(t.Context(), id)
+			if err != nil {
+				t.Fatalf("GetAttunementOpen: %v", err)
+			}
+			return v
+		}
+		if open() {
+			t.Fatalf("%v: the window is open before any rest", kind)
+		}
+		if _, err := tb.restDBTake(&playv1.TakeRestRequest{Kind: kind}); err != nil {
+			t.Fatalf("TakeRest(%v): %v", kind, err)
+		}
+		if !open() {
+			t.Errorf("%v: the rest did not open the window", kind)
+		}
+	}
+}

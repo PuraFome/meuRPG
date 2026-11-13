@@ -1091,15 +1091,26 @@ func (e *logEntry) viewerGets(v combatViewer, actor, target playdb.Combatant, vi
 	if _, isEffect := effectLogKinds[kindKeyOf(e.kind)]; isEffect && e.ev.Lasting != nil && !effectLineVisible(e.ev.Lasting, v, byID) {
 		return false
 	}
-	// An Escudo that ended is a line for the master and the combatant's own player: the
-	// Escudo may have answered an attack the other players do not see (a hidden attacker),
-	// and the line would tell them something happened (RN-10).
-	if e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield && !v.owns(actor) {
+	if e.ownersOnly(v, actor, target) {
 		return false
 	}
 	// The offer's line is for whoever gets the offer (RN-10): the reactor's player
 	// and the mover's.
 	return e.kind != playv1.CombatLogKind_COMBAT_LOG_KIND_OPPORTUNITY_OFFERED || v.owns(actor) || v.owns(target)
+}
+
+// ownersOnly says the line is for the master and the combatants' own players, and the viewer is not one. An Escudo that
+// ended is the combatant's: the Escudo may have answered an attack the other players do not see (a hidden attacker),
+// and the line would tell them something happened. The save of a spell's hit effect tells that the effect has one: the
+// attacker's player and the target's alone get it (RN-10).
+func (e *logEntry) ownersOnly(v combatViewer, actor, target playdb.Combatant) bool {
+	switch {
+	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield:
+		return !v.owns(actor)
+	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER && e.ev.Rider != nil && e.ev.Rider.OwnersOnly:
+		return !v.owns(actor) && !v.owns(target)
+	}
+	return false
 }
 
 // actedForPlayerKinds are the lines of what a character does on its turn: when the master's hand
@@ -1824,11 +1835,13 @@ func (n *keyNames) contentName(ctx context.Context, key string) string {
 
 // wildShapeEndReasonProto reads the reason a wild_shape_ended event gives.
 var wildShapeEndReasonProto = map[string]playv1.WildShapeEndReason{
-	endedByLeaving: playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_LEFT,
-	endedByDamage:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_DAMAGE,
-	endedByMaster:  playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
-	endedAtZero:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
-	endedAsleep:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+	endedByLeaving:   playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_LEFT,
+	endedByDamage:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_DAMAGE,
+	endedByMaster:    playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER,
+	endedAtZero:      playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_ZERO_HP,
+	endedAsleep:      playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_UNCONSCIOUS,
+	endedExpired:     playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_EXPIRED,
+	endedMasterEnded: playv1.WildShapeEndReason_WILD_SHAPE_END_REASON_MASTER_ENDED,
 }
 
 // withoutOwnerOnly is the conditions a player who does not own the creature may read.

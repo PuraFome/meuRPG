@@ -94,6 +94,28 @@ const (
 	ModifierSaveDisadvantage = "save_disadvantage"
 	// ModifierCheckDisadvantage gives disadvantage on the ability checks of Abilities.
 	ModifierCheckDisadvantage = "check_disadvantage"
+	// ModifierWeaponHitDamage adds weapon damage to a hit of the caster, as Trigger says: Dice of Die (more
+	// per slot level above the spell's own, up to MaxDice), of DamageType (empty: the weapon's own), and
+	// optionally a Save of the target that a fail answers with OnFailConditions. It reads no other field.
+	ModifierWeaponHitDamage = "weapon_hit_damage"
+)
+
+// The hits a ModifierWeaponHitDamage rides on.
+const (
+	// HitTriggerNextHit is the caster's next weapon hit, and HitTriggerNextMeleeHit the next melee one.
+	HitTriggerNextHit      = "next_hit"
+	HitTriggerNextMeleeHit = "next_melee_hit"
+	// HitTriggerEachHit is every weapon hit of the caster while it concentrates.
+	HitTriggerEachHit = "each_hit"
+	// HitTriggerMarkedTarget is every hit on the marked creature while the caster concentrates.
+	HitTriggerMarkedTarget = "marked_target"
+)
+
+// The lengths of the conditions a weapon_hit_damage's failed save gives: until the end of the target's next turn
+// (the default, as the SRD's riders do), or as long as the spell.
+const (
+	ConditionDurationNextTurn = "next_turn"
+	ConditionDurationSpellEnd = "spell_end"
 )
 
 // EffectGoaded is the effect a failed goad puts on the target: disadvantage on its attack rolls against
@@ -160,6 +182,19 @@ type EffectModifier struct {
 	// which claims Value.
 	Claim     int  `json:"claim,omitempty"`
 	Unclaimed bool `json:"unclaimed,omitempty"`
+	// Trigger is a HitTrigger* constant; with Die (d4 to d12), Dice, PerSlotDice, MaxDice, DamageType (an SRD
+	// damage type key, empty is the weapon's), Save (an ability key) and OnFailConditions (SRD condition keys,
+	// only with a Save) these are the fields of ModifierWeaponHitDamage.
+	Trigger          string   `json:"trigger,omitempty"`
+	Dice             int      `json:"dice,omitempty"`
+	PerSlotDice      int      `json:"per_slot_dice,omitempty"`
+	MaxDice          int      `json:"max_dice,omitempty"`
+	DamageType       string   `json:"damage_type,omitempty"`
+	Save             string   `json:"save,omitempty"`
+	OnFailConditions []string `json:"on_fail_conditions,omitempty"`
+	// ConditionDuration is how long the conditions of a failed Save last: ConditionDurationNextTurn (also unset) or
+	// ConditionDurationSpellEnd. Only with a Save.
+	ConditionDuration string `json:"condition_duration,omitempty"`
 }
 
 // EffectDuration is how long an effect lasts.
@@ -283,7 +318,7 @@ var (
 		EffectDurationRounds, EffectDurationUntilStartOfTurnOf, EffectDurationUntilEndOfTurnOf,
 		EffectDurationConcentration, EffectDurationUntilDismissed, EffectDurationLongRest,
 	}
-	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierNoReaction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP, ModifierAttackDisadvantage, ModifierRollBonus, ModifierTempHP, ModifierResistance, ModifierAttackAdvantage, ModifierSaveDisadvantage, ModifierCheckDisadvantage}
+	modifierKinds = []string{ModifierRollDie, ModifierACBonus, ModifierSpeedMultiplier, ModifierSaveAdvantage, ModifierExtraAction, ModifierNoMove, ModifierNoAction, ModifierNoReaction, ModifierCheckBonus, ModifierSpeedAdd, ModifierBaseAC, ModifierCheckAdvantage, ModifierConditionImmunity, ModifierTurnTempHP, ModifierAttackDisadvantage, ModifierRollBonus, ModifierTempHP, ModifierResistance, ModifierAttackAdvantage, ModifierSaveDisadvantage, ModifierCheckDisadvantage, ModifierWeaponHitDamage}
 	saveAbilities = []string{"str", "dex", "con", "int", "wis", "cha"}
 	// extraActions are the standard actions an extra action may be: the keys of
 	// effects/standard_actions.json.
@@ -549,6 +584,8 @@ func (c *content) checkModifierContent(m EffectModifier) error {
 		if c.skills[m.Skill] == nil {
 			return modifierField("skill", "%q is not an SRD skill", m.Skill)
 		}
+	case ModifierWeaponHitDamage:
+		return c.checkWeaponHitContent(m)
 	}
 	return nil
 }
@@ -665,6 +702,7 @@ var modifierChecks = map[string]func(m EffectModifier) error{
 	ModifierResistance:        checkResistanceModifier,
 	ModifierSaveDisadvantage:  checkAbilityDisadvantage,
 	ModifierCheckDisadvantage: checkAbilityDisadvantage,
+	ModifierWeaponHitDamage:   checkWeaponHitDamage,
 }
 
 // checkModifier checks one modifier's fields against its kind.

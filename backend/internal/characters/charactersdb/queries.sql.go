@@ -474,6 +474,18 @@ func (q *Queries) GetAbilityRolls(ctx context.Context, arg GetAbilityRollsParams
 	return i, err
 }
 
+const getAttunementOpen = `-- name: GetAttunementOpen :one
+SELECT COALESCE((SELECT v.attunement_open FROM character_vitals AS v WHERE v.character_id = $1), false)::BOOLEAN AS open
+`
+
+// Whether the window to attune a magic item is open for the character. No vitals row means closed.
+func (q *Queries) GetAttunementOpen(ctx context.Context, characterID string) (bool, error) {
+	row := q.db.QueryRow(ctx, getAttunementOpen, characterID)
+	var open bool
+	err := row.Scan(&open)
+	return open, err
+}
+
 const getCampaignContent = `-- name: GetCampaignContent :one
 SELECT campaign_id, content_key, kind, name_pt, data, revision, archived_at, created_at, updated_at, create_key, create_hash FROM campaign_content
 WHERE campaign_id = $1::UUID AND content_key = $2
@@ -929,7 +941,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states, v.attunement_open
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -966,6 +978,7 @@ type GetVitalsRow struct {
 	ExhaustionLevel         *int32
 	ArmorClassBase          *int32
 	ActiveStates            []byte
+	AttunementOpen          *bool
 }
 
 // ListVitals for one character. No row means the character is not a
@@ -997,6 +1010,7 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.ExhaustionLevel,
 		&i.ArmorClassBase,
 		&i.ActiveStates,
+		&i.AttunementOpen,
 	)
 	return i, err
 }
@@ -1006,7 +1020,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states, v.attunement_open
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -1043,6 +1057,7 @@ type GetVitalsWithDeadRow struct {
 	ExhaustionLevel         *int32
 	ArmorClassBase          *int32
 	ActiveStates            []byte
+	AttunementOpen          *bool
 }
 
 // GetVitals that also answers for a player character that died: the page of a
@@ -1075,6 +1090,7 @@ func (q *Queries) GetVitalsWithDead(ctx context.Context, arg GetVitalsWithDeadPa
 		&i.ExhaustionLevel,
 		&i.ArmorClassBase,
 		&i.ActiveStates,
+		&i.AttunementOpen,
 	)
 	return i, err
 }
@@ -2861,7 +2877,7 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp, v.familiar_sight_creature_id, v.familiar_sight_in_combat,
-       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
+       v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states, v.attunement_open
 FROM characters AS c
 LEFT JOIN character_vitals AS v ON v.character_id = c.id
 LEFT JOIN character_wild_shapes AS ws ON ws.character_id = c.id
@@ -2894,6 +2910,7 @@ type ListVitalsRow struct {
 	ExhaustionLevel         *int32
 	ArmorClassBase          *int32
 	ActiveStates            []byte
+	AttunementOpen          *bool
 }
 
 // The vitals of the campaign's living, active player characters (RN-02),
@@ -2934,6 +2951,7 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.ExhaustionLevel,
 			&i.ArmorClassBase,
 			&i.ActiveStates,
+			&i.AttunementOpen,
 		); err != nil {
 			return nil, err
 		}
@@ -3215,6 +3233,26 @@ type SetActiveStatesParams struct {
 // list, as JSON. The caller also bumps the vitals' revision (TouchVitals).
 func (q *Queries) SetActiveStates(ctx context.Context, arg SetActiveStatesParams) error {
 	_, err := q.db.Exec(ctx, setActiveStates, arg.States, arg.ID)
+	return err
+}
+
+const setAttunementOpen = `-- name: SetAttunementOpen :exec
+INSERT INTO character_vitals
+    (character_id, attunement_open, revision, updated_at)
+VALUES ($1, $2, 1, $3)
+ON CONFLICT (character_id) DO UPDATE SET attunement_open = excluded.attunement_open
+`
+
+type SetAttunementOpenParams struct {
+	CharacterID string
+	Open        bool
+	Now         time.Time
+}
+
+// Opens or closes the window to attune a magic item: the first call creates the vitals row, as
+// SetVitalsArmorBase does. It leaves the revision of an existing row alone: the window is not a number of the vitals.
+func (q *Queries) SetAttunementOpen(ctx context.Context, arg SetAttunementOpenParams) error {
+	_, err := q.db.Exec(ctx, setAttunementOpen, arg.CharacterID, arg.Open, arg.Now)
 	return err
 }
 
