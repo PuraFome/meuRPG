@@ -122,6 +122,16 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   A shield adds nothing while a two-handed weapon is equipped, and a piece that needs attunement adds nothing until the character is attuned to it.
   The sheet lists each bonus with its source and says why one adds nothing.
   Two weapons with one key are one row and share the bonus.
+- **Attunement.**
+  A character is attuned to at most three magic items at a time, and only an item the sheet lists as one that asks for it can be attuned.
+  A short or a long rest opens a window for each character it covers, and in that window the owner attunes one item or ends one attunement; the master does either at any time.
+  Some items ask for something of the character (a class, a race, an alignment, being a spellcaster).
+  The app checks the restrictions of the SRD items; when the sheet does not meet one, or it cannot tell, only the master attunes it, and the server log says who did.
+  Only one copy of an item is attuned at a time.
+  A save of the sheet never changes who is attuned: a new magic item starts unattuned.
+  The sheet lock does not hold attunement, it holds the list of items and the kind.
+  A character that dies stays attuned until the master ends it.
+  The app does not end an attunement by itself (distance, another attuner, death): the master ends it by hand.
 - **Wholeness of Body of the Open Hand monk (level 6).**
   The monk's own action heals three times the monk level in hit points, up to the maximum.
   It has no roll and no dice to type.

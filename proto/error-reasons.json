@@ -31,7 +31,11 @@
             "CLAIM_OWN_LINK",
             "RESERVED",
             "NO_CHANGES_REQUESTED",
-            "NOT_DEAD"
+            "NOT_DEAD",
+            "ATTUNEMENT_LIMIT",
+            "ATTUNEMENT_RESTRICTED",
+            "ATTUNEMENT_NEEDS_REST",
+            "ATTUNEMENT_SAME_ITEM"
           ],
           "unsent": []
         }

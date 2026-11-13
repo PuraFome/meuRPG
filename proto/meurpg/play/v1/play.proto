@@ -1392,6 +1392,10 @@ message CharacterVitals {
   // gives back (half the DRUID level, rounded up; SRD 5.1, Druid 2). 0: the character
   // does not have the feature. Whether the use is left is the `natural_recovery` resource.
   int32 natural_recovery_allowance = 104;
+  // The window to attune a magic item is open: the master's short or long rest opens it, and one
+  // attunement or ending by the owner spends it (SRD 5.1: attuning takes a short rest). The master
+  // needs no window. Only the master and the character's player read it.
+  bool attunement_open = 105;
 }
 
 // ActiveState is a temporary state that is on for a character. The numbers about the

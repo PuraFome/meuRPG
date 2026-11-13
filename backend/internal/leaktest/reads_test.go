@@ -296,6 +296,10 @@ var reads = []read{
 		},
 	},
 	{
+		procedure: rulesv1connect.ContentServiceListMagicItemsProcedure, allow: members,
+		req: func(w *world) proto.Message { return &rulesv1.ListMagicItemsRequest{CampaignId: w.campaign} },
+	},
+	{
 		procedure: rulesv1connect.ContentServiceListSpellsProcedure, allow: members,
 		req: func(w *world) proto.Message { return &rulesv1.ListSpellsRequest{CampaignId: w.campaign} },
 	},
