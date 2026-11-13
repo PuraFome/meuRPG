@@ -8283,22 +8283,23 @@ async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'd
     await expect(equipment.getByText('Muda num descanso')).toBeVisible();
     await expectScreenPasses(p, `Ficha, Itens mágicos ${where}`);
 
-    // The picker and the removal, from the owner's menu.
-    await equipment.getByRole('button', { name: 'Adicionar item mágico' }).click();
-    const picker = p.getByRole('dialog', { name: 'Adicionar item mágico' });
+    // The picker and the removal, from the master's, since the owner's sheet is locked.
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const masterGear = m.getByRole('region', { name: 'Equipamento' });
+    await masterGear.getByRole('button', { name: 'Adicionar item mágico' }).click();
+    const picker = m.getByRole('dialog', { name: 'Adicionar item mágico' });
     await expect(picker.getByRole('button', { name: 'Adicionar item' })).toHaveAttribute('aria-disabled', 'true');
-    await expectScreenPasses(p, `Adicionar item mágico ${where}`);
-    await p.keyboard.press('Escape');
+    await expectScreenPasses(m, `Adicionar item mágico ${where}`);
+    await m.keyboard.press('Escape');
     await expect(picker).toBeHidden();
-    await equipment.getByRole('button', { name: /^Remover item · / }).first().click();
-    const removal = p.getByRole('dialog', { name: /^Remover .*\?$/ });
+    await masterGear.getByRole('button', { name: /^Remover item · / }).first().click();
+    const removal = m.getByRole('alertdialog', { name: /^Remover .*\?$/ });
     await expect(removal).toBeVisible();
-    await expectScreenPasses(p, `Remover item ${where}`);
-    await p.keyboard.press('Escape');
+    await expectScreenPasses(m, `Remover item ${where}`);
+    await removal.getByRole('button', { name: 'Cancelar' }).click();
     await expect(removal).toBeHidden();
 
     // The master attunes at any time.
-    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
     await m.getByRole('button', { name: 'Mudar sintonização' }).click();
     const att = m.getByRole('dialog', { name: /^Sintonização/ });
     await expect(att).toBeVisible();
