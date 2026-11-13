@@ -11,7 +11,10 @@ func (b *overlayBuilder) checkGrantAction(site effectSite, e *Effect) error {
 	if e.Resource != "" && !b.resourceDefined(site.owner, e.Resource) {
 		return site.fail(".resource", ReasonReference, "the action spends %q, which no resource effect of this entry or its class defines", e.Resource)
 	}
-	return b.checkAffordable(site, e)
+	if err := b.checkAffordable(site, e); err != nil {
+		return err
+	}
+	return b.checkUse(site, e)
 }
 
 // checkSlotRecovery checks the resource a slot_recovery spends: the entry (or its class) defines it.

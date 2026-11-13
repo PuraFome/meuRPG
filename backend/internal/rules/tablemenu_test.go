@@ -90,7 +90,7 @@ func TestEffectMenuIsWhatTheValidatorAccepts(t *testing.T) {
 				menuList(t, m, f.List) // the list exists
 			}
 		}
-		want := slices.Clone(ownFields[mt.Type])
+		want := slices.DeleteFunc(slices.Clone(ownFields[mt.Type]), func(f string) bool { return slices.Contains(packageOnlyFields, f) })
 		slices.Sort(want)
 		slices.Sort(own)
 		if !slices.Equal(own, want) {

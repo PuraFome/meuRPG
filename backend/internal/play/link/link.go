@@ -483,7 +483,29 @@ type FeatureAction struct {
 	StateActive bool   `json:",omitempty"`
 	// StateRounds is how many rounds the state lasts once started, 0 until it ends.
 	StateRounds int `json:",omitempty"`
+	// Use is what the feature declares to be used through UseFeature; nil: the action is taken with TakeAction,
+	// and TakeAction refuses the key of one that has it.
+	Use *FeatureUse `json:",omitempty"`
 }
+
+// FeatureUse is the use a feature's action declares (rules.ActionUse), worked out for the character. Scope is
+// "turn", "round" or "combat" ("" has no limit of this kind) and Uses the uses allowed in it; the uses spent in
+// the scope are the combatant's state. TargetWho is "self", "ally", "enemy" or "any" (TargetMax 0 takes no
+// targets). Heal and TempHP are what each target gets; HasEffect says the use puts the lasting effect the content
+// keeps under the action's key (rules.Content.FeatureUseEffect) on its targets for EffectRounds rounds.
+type FeatureUse struct {
+	Scope                               string
+	Uses                                int
+	TargetMin, TargetMax, TargetRangeFt int
+	TargetWho                           string
+	Choices                             []FeatureChoice
+	Heal                                *Dice
+	TempHP, EffectRounds                int
+	HasEffect                           bool
+}
+
+// FeatureChoice is one option of a use: the key the server checks and the label the player reads.
+type FeatureChoice struct{ Key, TextPT string }
 
 // Hook is an on_event effect of the character (rules.EventHook): what the hook of an event gives,
 // and the resource it spends. Source is the key of the feature that has it and SourceNamePT its name.

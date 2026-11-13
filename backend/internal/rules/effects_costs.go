@@ -23,6 +23,8 @@ func (x effectCompiler) strayCosts() error {
 	switch {
 	case !action && !hook && (e.Heal != "" || e.TempHP != "" || (e.Cost != "" && e.Type != "spell_modifier" && e.Type != "reroll")):
 		return x.fail("cost, heal and temp_hp belong to grant_action and on_event (cost to spell_modifier and reroll too)")
+	case !action && e.Use != nil:
+		return x.fail("use belongs to grant_action")
 	case !action && (e.CostMax != "" || e.ValuePerPoint != ""):
 		return x.fail("cost_max and value_per_point belong to grant_action")
 	case !hook && (e.Event != "" || e.Restore != "" || e.HealPercentMax != 0):
@@ -50,7 +52,10 @@ func (x effectCompiler) grantAction() error {
 	if err := x.checkPerPoint(); err != nil {
 		return err
 	}
-	return x.checkSlotAction()
+	if err := x.checkSlotAction(); err != nil {
+		return err
+	}
+	return x.compileUse()
 }
 
 // checkCosts compiles the cost and the cost_max of an action or a hook: they name
