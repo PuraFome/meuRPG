@@ -182,7 +182,7 @@ func (s *Service) tellMove(h *hints, campaignID, userID, puzzleID string, res *m
 	}
 	h.after(func(ctx context.Context, say sayFn) {
 		// What the maps module tells from here carries the move's number.
-		mctx := sessiontell.WithOut(ctx, &sessionOut{s: s, campaignID: campaignID, ctx: ctx, say: say})
+		mctx := sessiontell.WithOut(ctx, &sessionOut{s: s, campaignID: campaignID, say: say})
 		for _, f := range res.after {
 			f(mctx)
 		}
@@ -242,8 +242,13 @@ func (s *Service) recallFiring(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 		return fmt.Errorf("find the firing of the puzzle's trap: %w", err)
 	}
 	var ev actionEvent
-	if err := json.Unmarshal(payload, &ev); err != nil || ev.Trap == nil {
-		return nil //nolint:nilerr // an event that cannot be read is not told again
+	if err := json.Unmarshal(payload, &ev); err != nil {
+		// An event that cannot be read is not told again.
+		s.logger.WarnContext(ctx, "the puzzle's trap firing cannot be read", "error", err)
+		return nil
+	}
+	if ev.Trap == nil {
+		return nil
 	}
 	if encID != nil {
 		enc, err := q.GetEncounterInSession(ctx, playdb.GetEncounterInSessionParams{GameSessionID: session.ID, ID: *encID})

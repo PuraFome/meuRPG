@@ -439,21 +439,20 @@ func stairsFromDB(s *string) mapsv1.StairDirection {
 // (a seam that play calls after its own commit, a write not under the funnel).
 func (s *Service) tellStreams(ctx context.Context, campaignID string, to sessiontell.Audience, ev *playv1.WatchGameSessionResponse) {
 	if out, ok := sessiontell.OutFrom(ctx); ok {
-		out.Send(to, ev)
+		out.Send(ctx, to, ev)
 		return
 	}
-	liveOut{s: s, ctx: ctx, campaignID: campaignID}.Send(to, ev)
+	liveOut{s: s, campaignID: campaignID}.Send(ctx, to, ev)
 }
 
 // liveOut is the Out over the LiveSession: no number.
 type liveOut struct {
 	s          *Service
-	ctx        context.Context //nolint:containedctx // the context of the step that sends
 	campaignID string
 }
 
 // Send tells ev to the audience through the LiveSession.
-func (o liveOut) Send(to sessiontell.Audience, msg proto.Message) {
+func (o liveOut) Send(ctx context.Context, to sessiontell.Audience, msg proto.Message) {
 	ev, ok := msg.(*playv1.WatchGameSessionResponse)
 	if !ok {
 		return
@@ -469,6 +468,6 @@ func (o liveOut) Send(to sessiontell.Audience, msg proto.Message) {
 		s.live.PublishToUsers(o.campaignID, to.Users, ev)
 	}
 	if to.Scene {
-		s.live.PublishToScene(o.ctx, o.campaignID, ev)
+		s.live.PublishToScene(ctx, o.campaignID, ev)
 	}
 }

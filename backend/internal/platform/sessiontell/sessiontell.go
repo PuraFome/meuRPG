@@ -50,7 +50,7 @@ type Audience struct {
 // Out is where the steps of After send: an event stamped with the session's number, to the audience named.
 type Out interface {
 	// Send tells ev (a play.v1 WatchGameSessionResponse) to the audience. ev is not shared: Send may stamp it.
-	Send(to Audience, ev proto.Message)
+	Send(ctx context.Context, to Audience, ev proto.Message)
 }
 
 // Host runs a write of another module that changes what a live session shows, under the play module's funnel: the open session's row

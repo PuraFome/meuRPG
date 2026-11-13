@@ -82,7 +82,7 @@ func (t *SessionTell) After(fn func(ctx context.Context, out sessiontell.Out)) {
 		return
 	}
 	h.after(func(ctx context.Context, say sayFn) {
-		fn(ctx, &sessionOut{s: t.s, campaignID: t.campaignID, ctx: ctx, say: say})
+		fn(ctx, &sessionOut{s: t.s, campaignID: t.campaignID, say: say})
 	})
 }
 
@@ -97,13 +97,12 @@ func (t *SessionTell) Replay() {
 type sessionOut struct {
 	s          *Service
 	campaignID string
-	ctx        context.Context //nolint:containedctx // the context of the after-commit step, for the scene's audience read
 	say        sayFn
 }
 
 // Send tells ev to the audience named, one message for each stream group, each made from ev so that the number is written into a
 // message no stream shares yet.
-func (o *sessionOut) Send(to sessiontell.Audience, msg proto.Message) {
+func (o *sessionOut) Send(ctx context.Context, to sessiontell.Audience, msg proto.Message) {
 	ev, ok := msg.(*playv1.WatchGameSessionResponse)
 	if !ok {
 		return // only the stream's own message is told
@@ -119,9 +118,9 @@ func (o *sessionOut) Send(to sessiontell.Audience, msg proto.Message) {
 		o.say(o.campaignID, live.Event{Audience: live.Audience{UserID: id}, Message: mk(), Coalesce: to.Coalesce})
 	}
 	if to.Scene {
-		v, open, err := o.s.sceneViewersNow(o.ctx, o.campaignID)
+		v, open, err := o.s.sceneViewersNow(ctx, o.campaignID)
 		if err != nil {
-			o.s.logger.ErrorContext(o.ctx, "play: cannot read the players of the scene", "error", err)
+			o.s.logger.ErrorContext(ctx, "play: cannot read the players of the scene", "error", err)
 			v = viewers{} // the master alone hears it
 		} else if !open {
 			return

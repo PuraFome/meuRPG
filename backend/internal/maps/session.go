@@ -25,8 +25,8 @@ func (s *Service) SetSessionHost(h sessiontell.Host) { s.sessionHost = h }
 func (s *Service) inSession(ctx context.Context, campaignID string, fn func(tx pgx.Tx, t sessiontell.Tell) error) error {
 	host := s.sessionHost
 	if host == nil {
-		host = sessiontell.Direct{Pool: s.pool, Out: func(ctx context.Context, campaignID string) sessiontell.Out {
-			return liveOut{s: s, ctx: ctx, campaignID: campaignID}
+		host = sessiontell.Direct{Pool: s.pool, Out: func(_ context.Context, campaignID string) sessiontell.Out {
+			return liveOut{s: s, campaignID: campaignID}
 		}}
 	}
 	return host.InSession(ctx, campaignID, fn)
