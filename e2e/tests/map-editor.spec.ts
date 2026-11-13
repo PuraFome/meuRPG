@@ -203,6 +203,46 @@ test('o mestre pinta Água e Escalável na mesma camada: o servidor guarda, "Apa
   });
 });
 
+// The tool row says the chosen tool with a check and a soft fill, and no other tool has either; the brush's name and its choices wrap as one unit.
+test('a barra de ferramentas marca só a ferramenta escolhida, com o visto e o fundo, e o "Pincel" e a sua escolha ficam juntos @MR-034', async ({ browser }) => {
+  await atMaps(browser, 'Barra de ferramentas', 20, async ({ master, campaignId, mapId }) => {
+    await paintMode(master, campaignId, mapId);
+    await tools(master).getByRole('button', { name: 'Superfície' }).click();
+    for (const width of [1280, 768]) {
+      await master.setViewportSize({ width, height: 1000 });
+      const buttons = tools(master).getByRole('button');
+      await expect(buttons.first()).toBeVisible();
+      const marks = await buttons.evaluateAll((all) =>
+        all.map((b) => {
+          const chk = b.querySelector('.chk');
+          return {
+            name: ((c) => { c.querySelectorAll('.mat-icon').forEach((i) => i.remove()); return (c.textContent ?? '').trim(); })(b.cloneNode(true) as HTMLElement),
+            pressed: b.getAttribute('aria-pressed') === 'true',
+            check: chk instanceof HTMLElement && chk.getBoundingClientRect().width > 0,
+            fill: getComputedStyle(b).backgroundColor,
+          };
+        }),
+      );
+      const chosen = marks.filter((m) => m.pressed);
+      expect(chosen.map((m) => m.name), `${width}px`).toEqual(['Superfície']);
+      // Only the chosen tool has its check, and only it has the fill the others lack.
+      expect(marks.filter((m) => m.check).map((m) => m.name), `the checks at ${width}px`).toEqual(['Superfície']);
+      const others = new Set(marks.filter((m) => !m.pressed).map((m) => m.fill));
+      expect(others.size, `the others share one fill at ${width}px`).toBe(1);
+      expect(others.has(chosen[0].fill), `the chosen tool has its own fill at ${width}px`).toBe(false);
+
+      // "Pincel" and its group are on one line, whatever the row does around them.
+      const label = await boxOf(master.getByText('Pincel', { exact: true }));
+      const group = await boxOf(master.getByRole('radiogroup', { name: 'Pincel' }));
+      expect(Math.abs(label.y + label.height / 2 - (group.y + group.height / 2)), `Pincel beside its choices at ${width}px`).toBeLessThan(group.height / 2);
+      // At 1280 the divider stands before the brush, as on the board.
+      if (width === 1280) {
+        await expect(master.locator('app-editor-bar .bar__brush > .bar__sep')).toBeVisible();
+      }
+    }
+  });
+});
+
 test('um mapa sem grade não tem o que pintar: as ferramentas dizem por quê, e "Definir a grade" as liga @MR-034 @MR-036', async ({ browser }) => {
   await atMaps(browser, 'Sem grade', 0, async ({ master, campaignId, mapId }) => {
     await paintMode(master, campaignId, mapId);

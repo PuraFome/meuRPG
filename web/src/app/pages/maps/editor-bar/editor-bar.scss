@@ -53,8 +53,11 @@
     flex-basis: 100%;
     height: 0;
   }
+}
 
-  .bar > .bar__sep {
+// Where the row is too narrow for the tools and the brush on one line, the brush wraps as one unit and its divider (it only divides them on one line) goes.
+@container (max-width: 1149px) {
+  .bar__sep {
     display: none;
   }
 }
@@ -76,7 +79,8 @@
 
 // The check of a chosen choice takes no room while it is hidden, so the words of the others sit in the middle of their
 // segment; each segment is wide enough for the check and its words (`.seg__item`'s `min-width`), so choosing never moves the others.
-.chk--hide {
+.chk--hide,
+.bar__tool.mat-mdc-outlined-button > .chk--hide {
   display: none;
 }
 
@@ -116,11 +120,20 @@
   min-height: 44px;
   color: var(--mr-ink);
   --mat-button-outlined-label-text-color: var(--mr-ink);
+}
 
-  &--on {
-    background: var(--mr-accent-soft);
-    font-weight: 700;
-  }
+// The chosen tool: the soft fill and the bold words, with its check (the others have none).
+.bar__tool.bar__tool--on.mat-mdc-outlined-button {
+  --mat-button-outlined-container-color: var(--mr-accent-soft);
+  background: var(--mr-accent-soft);
+  font-weight: 700;
+}
+
+// The brush's divider, its name and its choices wrap together, as one unit.
+.bar__brush {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .bar__sep {

@@ -81,6 +81,7 @@
       }
     </div>
     @if (settings().tool !== 'door') {
+    <div class="bar__brush">
     <span class="bar__sep" aria-hidden="true"></span>
     <span class="bar__label" id="bar-brush">Pincel</span>
     <div appRelayEvents class="seg seg--small" role="radiogroup" aria-labelledby="bar-brush" (relayKeydown)="onSegKey($event)" [class.seg--off]="!canPaint()">
@@ -89,6 +90,7 @@
           <mat-icon class="chk" [class.chk--hide]="!canPaint() || settings().brush !== b" aria-hidden="true">check</mat-icon>{{ b }}×{{ b }}
         </button>
       }
+    </div>
     </div>
     }
     <div class="bar__zoom" role="group" aria-label="Zoom do mapa">

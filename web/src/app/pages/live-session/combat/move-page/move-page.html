@@ -88,10 +88,15 @@
             Dentro do círculo, o que fica sem cor não dá para alcançar: parede, inimigo ou custo a mais.
           </p>
         }
+        @if (!wide()) {
+          <app-move-adjust (nudge)="nudge($event)" />
+        }
       }
     }
   </div>
 
+  <!-- On a phone the cost card and the buttons are one dock pinned above the tabs, so the cost is read without scrolling; from 1024px it is the side column and the foot. -->
+  <div class="move__dock" [class.move__dock--live]="!readOnly()">
   <div class="move__side">
     @if (readOnly()) {
       <button matButton="outlined" type="button" class="move__cancel" (click)="back.emit()">
@@ -138,7 +143,7 @@
             <p>Não deu para ler o alcance. Dá para tentar um quadrado: o servidor diz se vale.</p>
           </div>
         }
-        @if (!soloHeight()) {
+        @if (wide() && !soloHeight()) {
           <app-move-adjust (nudge)="nudge($event)" />
         }
       </div>
@@ -176,4 +181,5 @@
       }
     </div>
   }
+  </div>
 </div>

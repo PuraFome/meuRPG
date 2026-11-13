@@ -17,6 +17,71 @@ const torenFirst = { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2'
 const pensantusFirst = { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 };
 
 test(
+  'a etiqueta de um quadrado perto da borda fica dentro do mapa, e a linha do custo e os botões ficam à vista sem rolar, de 390 a 320 @MR-034 @RN-21',
+  { tag: ['@MR-034', '@RN-21'] },
+  async ({ browser }) => {
+    test.setTimeout(240_000);
+    // The edge: a refused square in the last column and one in the first, on the desktop map.
+    const wide = await movingTable(browser, 'Etiqueta na borda', torenFirst, { character: { build: toren, sheet: torenSheet } });
+    try {
+      await openSessionPage(wide.p, wide.campaignId);
+      await wide.p.getByRole('button', { name: 'Mover', exact: true }).click();
+      await expect(wide.p.getByRole('heading', { name: 'Mover Toren' })).toBeVisible();
+      for (const [col, row] of [[19, 7], [0, 13], [19, 0]]) {
+        await tapSquare(wide.p, col, row);
+        const tags = wide.p.locator('app-combat-map .cm__frame').locator('.cm__cost, .cm__note');
+        await expect(tags.first()).toBeVisible();
+        const map = await boxOf(wide.p.getByRole('group', { name: /Mapa de batalha/ }));
+        for (const box of await tags.evaluateAll((all) => all.map((t) => t.getBoundingClientRect().toJSON()))) {
+          expect(box.left, `the tag of ${col},${row} inside the map, left`).toBeGreaterThanOrEqual(map.x - 0.5);
+          expect(box.right, `the tag of ${col},${row} inside the map, right`).toBeLessThanOrEqual(map.x + map.width + 0.5);
+        }
+      }
+    } finally {
+      await wide.done();
+    }
+
+    // The phone: after choosing a swum square, the cost card and both buttons are in view with the page at its top, and nothing covers them.
+    for (const viewport of [{ width: 390, height: 844 }, { width: 375, height: 667 }, { width: 320, height: 568 }]) {
+      const t = await movingTable(browser, 'Custo à vista', torenFirst, {
+        character: { build: toren, sheet: torenSheet },
+        viewport,
+        paint: async (master, table) => {
+          await paintRPC(master, table, 'MAP_LAYER_SURFACE', 1, [[6, 7], [7, 7]]);
+        },
+      });
+      try {
+        await openSessionPage(t.p, t.campaignId);
+        await t.p.getByRole('button', { name: 'Mover', exact: true }).click();
+        await expect(t.p.getByRole('heading', { name: 'Mover Toren' })).toBeVisible();
+        await tapSquare(t.p, 7, 7);
+        await expect(t.p.getByText('+3,0 m nadando: cada metro na água conta dobrado.')).toBeVisible();
+        await t.p.evaluate(() => window.scrollTo(0, 0));
+        for (const target of [
+          t.p.getByText('Mover 6,0 m', { exact: true }),
+          t.p.getByText('+3,0 m nadando: cada metro na água conta dobrado.'),
+          t.p.getByText('Depois restam 3,0 m.'),
+          t.p.getByRole('button', { name: 'Mover para cá' }),
+          t.p.getByRole('button', { name: 'Cancelar' }),
+        ]) {
+          const where = `${viewport.width}x${viewport.height}`;
+          await expect(target, `in view at ${where}`).toBeInViewport({ ratio: 1 });
+          // Seen, not hidden behind the pinned footer or the tabs: what is at its centre is itself.
+          const covered = await target.evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return !(top && (el === top || el.contains(top) || top.contains(el)));
+          });
+          expect(covered, `covered at ${where}`).toBe(false);
+        }
+      } finally {
+        await t.done();
+      }
+    }
+  },
+);
+
+test(
   'o jogador nada e escala: cada metro na água ou na parede escalável conta dobrado, e a legenda e a linha do custo dizem qual @MR-034 @RN-21',
   { tag: ['@MR-034', '@RN-21'] },
   async ({ browser }) => {
@@ -60,7 +125,7 @@ test(
       await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
       // The real move charged what the plan said: 6,0 m of the 9,0 m, and the token is on the last square of water.
       await expect.poll(async () => (await getEncounterRPC(m, campaignId)).combatants.find((c) => c.label === 'Toren')?.col).toBe(7);
-      await expect(p.getByText(/Restam 3,0 m/).first()).toBeVisible();
+      await expect(p.getByText('3,0 m', { exact: true }).first()).toBeVisible();
     } finally {
       await done();
     }
