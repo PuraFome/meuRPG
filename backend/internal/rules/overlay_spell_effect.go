@@ -20,7 +20,7 @@ func (b *overlayBuilder) checkSpellEffect(c *entryErrors, key, path string, ts *
 	}
 	checkEffectHead(c, key, path, ts, target)
 	b.checkEffectConditions(c, key, path, e.Conditions)
-	b.checkEffectModifiers(c, key, path, e.Modifiers)
+	b.checkEffectModifiers(c, key, path, e.Modifiers, ts.Concentration)
 	if len(e.Conditions) == 0 && len(e.Modifiers) == 0 {
 		c.at(key, path, ".effect", ReasonValue, "an effect needs a condition or a modifier")
 	}
@@ -71,7 +71,7 @@ func (f *combatEffects) hasCondition(k string) bool {
 	return ok
 }
 
-func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, mods []EffectModifier) {
+func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, mods []EffectModifier, concentration bool) {
 	if len(mods) > maxSpellEffectItems {
 		c.at(key, path, ".effect.modifiers", ReasonLimit, "an effect has at most %d modifiers", maxSpellEffectItems)
 	}
@@ -83,6 +83,9 @@ func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, 
 		}
 		if err == nil {
 			err = spellModifierRefusal(m)
+		}
+		if err == nil {
+			err = spellHitRefusal(m, concentration)
 		}
 		if err != nil {
 			c.at(key, path, at+modifierFieldSuffix(err), ReasonValue, "%v", err)
@@ -130,6 +133,7 @@ func tableEffectDef(ts *TableSpell) *EffectDef {
 	for i, m := range e.Modifiers {
 		m.AppliesTo, m.Abilities = slices.Clone(m.AppliesTo), slices.Clone(m.Abilities)
 		m.Conditions, m.Allowed, m.DamageTypes = slices.Clone(m.Conditions), slices.Clone(m.Allowed), slices.Clone(m.DamageTypes)
+		m.OnFailConditions = slices.Clone(m.OnFailConditions)
 		mods[i] = m
 	}
 	d := &EffectDef{

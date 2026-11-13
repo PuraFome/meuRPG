@@ -606,7 +606,8 @@ An archived or switched-off spell has no effect.
   `save_advantage`, `check_advantage`, `attack_advantage`, `attack_disadvantage`, `save_disadvantage` and `check_disadvantage` give a roll a mode.
   `resistance` takes a `resistance_kind` (`resist`, `immune` or `vulnerable`) and `damage_types` as the feature effect does.
   `temp_hp` gives temporary hit points when the effect lands.
-  `roll_bonus`, `temp_hp`, `resistance`, `attack_advantage`, `save_disadvantage` and `check_disadvantage` are kinds of the shared vocabulary: the SRD file may use them too.
+  `weapon_hit_damage` leaves extra weapon damage on a hit of the caster: a `trigger` (`next_hit`, `next_melee_hit`, `each_hit` or `marked_target`), a `die` (d4 to d12), `dice`, `per_slot_dice`, `max_dice`, an optional `damage_type`, and an optional `save` with the `on_fail_conditions` a fail puts on the target. `each_hit` and `marked_target` need concentration.
+  `roll_bonus`, `temp_hp`, `resistance`, `attack_advantage`, `save_disadvantage`, `check_disadvantage` and `weapon_hit_damage` are kinds of the shared vocabulary: the SRD file may use them too.
   The table keeps no list of its own.
 - **Refused, each at its field.**
   `base_ac`, `extra_action`, `no_move`, `no_action`, `no_reaction`, `condition_immunity`, `turn_temp_hp`, `choose` and `from_caster`, and `once` or `except_source` on `attack_disadvantage`.

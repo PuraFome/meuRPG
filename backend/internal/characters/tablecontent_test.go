@@ -1739,6 +1739,7 @@ func effectTestEffects() []*rulesv1.TableSpellEffect {
 			{Kind: kind("CHECK_DISADVANTAGE"), Abilities: []string{"cha"}},
 			{Kind: kind("RESISTANCE"), ResistanceKind: rulesv1.TableResistanceKind_TABLE_RESISTANCE_KIND_VULNERABLE, DamageTypes: []string{"nonmagical_bps"}},
 			{Kind: kind("RESISTANCE"), DamageTypes: []string{"all"}},
+			{Kind: kind("WEAPON_HIT_DAMAGE"), Die: 8, Trigger: rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_NEXT_HIT, Dice: 1, PerSlotDice: 1, MaxDice: 3, Save: "wis", OnFailConditions: []string{"condition:frightened"}},
 		}},
 	}
 }
@@ -1889,5 +1890,30 @@ func TestTableContentSpellEffectRefusals(t *testing.T) {
 		if len(v) != 1 || v[0].GetField() != tc.field {
 			t.Errorf("%s: violations = %v, want one at %q", tc.name, v, tc.field)
 		}
+	}
+}
+
+// A weapon_hit_damage modifier is read from the message with every one of its fields, a trigger this build
+// does not know as "unknown".
+func TestTableSpellWeaponHitDamageIsReadFromTheMessage(t *testing.T) {
+	t.Parallel()
+	got := tableSpellEffectOf(&rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{
+		weaponHitModifier(), {Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE, Trigger: 99},
+	}})
+	m := got.Modifiers[0]
+	if m.Kind != rules.ModifierWeaponHitDamage || m.Trigger != rules.HitTriggerMarkedTarget || m.Die != 6 || m.Dice != 2 || m.PerSlotDice != 1 ||
+		m.MaxDice != 5 || m.DamageType != "damage-type:fire" || m.Save != "con" || !slices.Equal(m.OnFailConditions, []string{"condition:blinded"}) {
+		t.Errorf("modifier = %+v", m)
+	}
+	if got.Modifiers[1].Trigger != "unknown" {
+		t.Errorf("trigger = %q, want unknown", got.Modifiers[1].Trigger)
+	}
+}
+
+func weaponHitModifier() *rulesv1.TableEffectModifier {
+	return &rulesv1.TableEffectModifier{
+		Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE, Die: 6,
+		Trigger: rulesv1.TableHitTrigger_TABLE_HIT_TRIGGER_MARKED_TARGET, Dice: 2, PerSlotDice: 1, MaxDice: 5,
+		DamageType: "damage-type:fire", Save: "con", OnFailConditions: []string{"condition:blinded"},
 	}
 }
