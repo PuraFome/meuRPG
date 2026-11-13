@@ -374,6 +374,7 @@ func TestLoadImages(t *testing.T) {
 	for name, vars := range map[string]map[string]string{
 		"a bad limit":         {"IMAGE_MONTHLY_LIMIT": "0"},
 		"a huge limit":        {"IMAGE_MONTHLY_LIMIT": "100000"},
+		"past 32 bits":        {"IMAGE_MONTHLY_LIMIT": "4294967797"},
 		"a bad generator":     {"IMAGE_GENERATOR": "dall-e"},
 		"the fake on a cloud": {"IMAGE_GENERATOR": "fake", "K_SERVICE": "api"},
 	} {
@@ -561,6 +562,7 @@ func TestLoadLimits(t *testing.T) {
 		"a text cap":         {"MAX_CAMPAIGNS_PER_USER": "many"},
 		"a bad daily limit":  {"IMAGE_DAILY_LIMIT": "0"},
 		"a huge daily limit": {"IMAGE_DAILY_LIMIT": "999999"},
+		"daily past 32 bits": {"IMAGE_DAILY_LIMIT": "4294967306"},
 		"a name, not e-mail": {"CAMPAIGN_CREATORS": "mestre"},
 		"only separators":    {"CAMPAIGN_CREATORS": ","},
 		"only blank entries": {"CAMPAIGN_CREATORS": " , ,"},

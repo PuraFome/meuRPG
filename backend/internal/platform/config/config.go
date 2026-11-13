@@ -123,9 +123,9 @@ type Config struct {
 
 // Bounds of the abuse limits' variables: a typo must not lift a cap.
 const (
-	maxCampaignsPerUserLimit = 1000
-	maxImageDailyLimit       = 10000
-	maxRateMultiplier        = 1000
+	maxCampaignsPerUserLimit       = 1000
+	maxImageDailyLimit       int32 = 10000
+	maxRateMultiplier              = 1000
 )
 
 // Limits holds the abuse limits' settings (docs/operations/reference.md#abuse-limits).
@@ -143,7 +143,7 @@ type Limits struct {
 }
 
 // maxImageMonthlyLimit bounds IMAGE_MONTHLY_LIMIT: a typo must not lift the cap.
-const maxImageMonthlyLimit = 500
+const maxImageMonthlyLimit int32 = 500
 
 // Images holds the generated images' settings.
 type Images struct {
@@ -158,11 +158,11 @@ type Images struct {
 	Fake bool
 	// MonthlyLimit is the images per campaign per month (IMAGE_MONTHLY_LIMIT);
 	// zero means the maps module's default (maps.DefaultMonthlyImages).
-	MonthlyLimit int
+	MonthlyLimit int32
 	// DailyLimit is the images the whole server may generate per day
 	// (IMAGE_DAILY_LIMIT), on top of the campaigns' monthly limit: a ceiling
 	// on the Gemini bill. Zero means maps.DefaultDailyImages.
-	DailyLimit int
+	DailyLimit int32
 }
 
 // maxVoiceDailyLimit bounds TTS_DAILY_LIMIT: a typo must not lift the cap.
@@ -742,28 +742,36 @@ func loadImages(getenv func(string) string, cloudRun bool) (Images, []error) {
 		errs = append(errs, fmt.Errorf("IMAGE_GENERATOR must be gemini or fake, got %q", mode))
 	}
 	if raw := strings.TrimSpace(getenv("IMAGE_MONTHLY_LIMIT")); raw != "" {
-		n, err := strconv.Atoi(raw)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Errorf("IMAGE_MONTHLY_LIMIT must be a number, got %q", raw))
-		case n < 1 || n > maxImageMonthlyLimit:
-			errs = append(errs, fmt.Errorf("IMAGE_MONTHLY_LIMIT must be between 1 and %d, got %d", maxImageMonthlyLimit, n))
-		default:
+		if n, err := boundedInt32("IMAGE_MONTHLY_LIMIT", raw, maxImageMonthlyLimit); err != nil {
+			errs = append(errs, err)
+		} else {
 			img.MonthlyLimit = n
 		}
 	}
 	if raw := strings.TrimSpace(getenv("IMAGE_DAILY_LIMIT")); raw != "" {
-		n, err := strconv.Atoi(raw)
-		switch {
-		case err != nil:
-			errs = append(errs, fmt.Errorf("IMAGE_DAILY_LIMIT must be a number, got %q", raw))
-		case n < 1 || n > maxImageDailyLimit:
-			errs = append(errs, fmt.Errorf("IMAGE_DAILY_LIMIT must be between 1 and %d, got %d", maxImageDailyLimit, n))
-		default:
+		if n, err := boundedInt32("IMAGE_DAILY_LIMIT", raw, maxImageDailyLimit); err != nil {
+			errs = append(errs, err)
+		} else {
 			img.DailyLimit = n
 		}
 	}
 	return img, errs
+}
+
+// boundedInt32 reads the variable name's value raw as a whole number from 1 to maxValue.
+// It parses at 32 bits, so the result is an int32 by construction and no caller converts
+// it: the bound lives in the type, not in a comment beside a conversion.
+func boundedInt32(name, raw string, maxValue int32) (int32, error) {
+	n, err := strconv.ParseInt(raw, 10, 32)
+	switch {
+	case errors.Is(err, strconv.ErrRange):
+		return 0, fmt.Errorf("%s must be between 1 and %d, got %s", name, maxValue, raw)
+	case err != nil:
+		return 0, fmt.Errorf("%s must be a number, got %q", name, raw)
+	case n < 1 || n > int64(maxValue):
+		return 0, fmt.Errorf("%s must be between 1 and %d, got %d", name, maxValue, n)
+	}
+	return int32(n), nil
 }
 
 // loadVoice reads GEMINI_TTS_MODEL, TTS_GENERATOR and TTS_DAILY_LIMIT. None is required: without a
