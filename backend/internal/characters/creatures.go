@@ -209,19 +209,27 @@ func (s *Service) creatureAsWorkedOut(ctx context.Context, m authz.Membership, c
 	if v.MonsterKey != key {
 		return nil, connect.NewError(connect.CodeNotFound, errUnknownCreature)
 	}
-	return resolvedCreatureOf(content, v.StatBlock, v.MonsterKey), nil
+	return s.resolvedCreatureOf(ctx, content, v), nil
 }
 
 // resolvedCreatureOf reads the stored stat block of a character's creature; nil when there is none or it does
-// not read, so the page shows the entry as it is.
-func resolvedCreatureOf(content *rules.Content, stored []byte, key string) *rules.Creature {
-	var r rules.ResolvedCreature
-	if len(stored) == 0 || json.Unmarshal(stored, &r) != nil || r.Key != key {
-		return nil
+// not read, so the page shows the entry as it is. That fallback is told in the log (the creature's id and why,
+// never the block or its names), since a creature that lost its numbers would otherwise read wrong in silence.
+func (s *Service) resolvedCreatureOf(ctx context.Context, content *rules.Content, v creatureView) *rules.Creature {
+	reason := "missing"
+	if len(v.StatBlock) > 0 {
+		var r rules.ResolvedCreature
+		switch {
+		case json.Unmarshal(v.StatBlock, &r) != nil || r.Key != v.MonsterKey:
+			reason = "unreadable"
+		default:
+			if resolved, ok := content.CreatureOfResolved(r); ok {
+				return &resolved
+			}
+			reason = "not_in_content"
+		}
 	}
-	if resolved, ok := content.CreatureOfResolved(r); ok {
-		return &resolved
-	}
+	s.logger.WarnContext(ctx, "characters: the stat block of a creature is not readable, the entry is shown as it is", "creature_id", v.ID, "reason", reason)
 	return nil
 }
 

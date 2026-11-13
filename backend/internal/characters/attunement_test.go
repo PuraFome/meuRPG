@@ -442,3 +442,29 @@ func TestAReadGivesALegacyPieceItsID(t *testing.T) {
 		t.Errorf("id = %q", got)
 	}
 }
+
+// Without an item_key the stored flag is the source: a +N piece saved asking for attunement keeps asking, and adds
+// nothing until the character attunes; the catalog decides only when the piece names an item.
+func TestAPlusNPieceWithoutAnItemKeyKeepsItsFlag(t *testing.T) {
+	t.Parallel()
+	et := newEditorTable(t, nil)
+	pc := et.editorStandardFighter(t)
+	req := editorSaveOf(pc)
+	req.Sheet = editorClone(pc.GetSheet(), func(f *charactersv1.FullSheet) {
+		f.WeaponKeys = []string{"equipment:rapier"}
+		f.ItemBonuses = []*charactersv1.ItemBonus{{Key: "equipment:rapier", Bonus: 1, RequiresAttunement: true, Attuned: true}}
+	})
+	saved, err := editorUpdate(et.master, req)
+	if err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	ib := saved.GetSheet().GetFull().GetItemBonuses()[0]
+	if !ib.GetRequiresAttunement() || ib.GetAttuned() {
+		t.Errorf("requires %v attuned %v, want the flag kept and no attunement from a save", ib.GetRequiresAttunement(), ib.GetAttuned())
+	}
+	for _, m := range saved.GetDerived().GetItemModifiers() {
+		if m.GetCounts() {
+			t.Errorf("modifier %v counts while unattuned", m)
+		}
+	}
+}

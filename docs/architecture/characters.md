@@ -198,7 +198,7 @@ At most 20 magic items; two copies of one item are two entries.
 The entry id is unique on the sheet: a magic item's is `m<n>`, given by the server to a new entry and kept on every save, and a +N piece's is `bonus:<key>`.
 `SetAttunement` names the entry by it.
 A save never changes `attuned`: `keepAttunement` takes the stored state for an entry whose id and key it already has, and a new entry starts unattuned; only `SetAttunement` changes it.
-A +N piece that names a catalog item takes `requires_attunement` from the catalog and ignores the client's flag; the item must be no family and its category must fit the piece.
+A +N piece that names a catalog item takes `requires_attunement` from the catalog and ignores the client's flag; without one the flag is the stored one; the item must be no family and its category must fit the piece.
 The sheet lock holds the list, the keys, the bonuses and the catalog item, not the state.
 `SetAttunement` locks the character row, then reads and spends the window in the same transaction, so two requests on one window cannot both pass.
 The window is `character_vitals.attunement_open` (`CharacterVitals.attunement_open`): a short or a long rest sets it (`TakeRest`, no revision moves), and the owner's attune or end clears it.
