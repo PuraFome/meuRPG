@@ -70,7 +70,7 @@ func (c *Content) CastsInBeastForm(d Derived) bool {
 func WildShapeSeconds(d Derived) int {
 	for _, cl := range d.Classes {
 		if cl.ClassKey == "class:druid" {
-			return cl.Level / 2 * 3600
+			return cl.Level / 2 * secondsPerHour
 		}
 	}
 	return 0

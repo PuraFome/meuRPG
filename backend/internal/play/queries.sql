@@ -1832,10 +1832,25 @@ SELECT * FROM changed ORDER BY created_at, id;
 -- name: DeleteFormClockOfCharacter :many
 -- A druid's Wild Shape clock (one row, in a combat or out of it) goes with its form. The rows
 -- come back so a change that can be undone keeps them (RN-22).
-DELETE FROM combatant_states
-WHERE kind = 'effect' AND source_key = 'effect:wild-shape'
-  AND combatant_id IN (SELECT id FROM combatants WHERE character_id = $1)
-RETURNING *;
+WITH gone AS (
+    DELETE FROM combatant_states
+    WHERE kind = 'effect' AND source_key = 'effect:wild-shape'
+      AND combatant_id IN (SELECT id FROM combatants WHERE character_id = $1)
+    RETURNING *
+)
+SELECT * FROM gone ORDER BY created_at, id;
+
+-- name: FormClockSecondsLeft :one
+-- The seconds a druid's Wild Shape form has left, -1 for a form with no clock: the row outside a
+-- combat, else the row of its combatant in a combat (rounds left, 6 s each). The vitals carry it.
+SELECT COALESCE(
+    (SELECT ce.seconds_left FROM character_effects ce
+      WHERE ce.character_id = $1 AND ce.source_key = 'effect:wild-shape' AND ce.seconds_left IS NOT NULL
+      ORDER BY ce.created_at DESC, ce.id LIMIT 1),
+    (SELECT GREATEST(cs.ends_round - GREATEST(e.round, 1), 0) * 6 FROM combatant_states cs
+         JOIN combatants cb ON cb.id = cs.combatant_id JOIN encounters e ON e.id = cs.encounter_id
+      WHERE cb.character_id = $1 AND cs.kind = 'effect' AND cs.source_key = 'effect:wild-shape' AND cs.ends_round IS NOT NULL
+      ORDER BY cs.created_at DESC, cs.id LIMIT 1), -1)::INT4 AS seconds_left;
 
 -- name: DeleteFormClockOfCharacterOutside :exec
 DELETE FROM character_effects WHERE character_id = $1 AND source_key = 'effect:wild-shape';

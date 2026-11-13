@@ -63,9 +63,9 @@ describe("the Wild Shape notice, from the combat log's line", () => {
     expect(formNoticeText({ beast: 'Lobo', reason: WildShapeEndReason.EXPIRED, carried: 0 })).toBe(
       'A forma de Lobo acabou: passou o tempo.',
     );
-    expect(formNoticeText({ beast: 'Lobo', reason: WildShapeEndReason.MASTER_ENDED, carried: 0 })).toBe(
-      'O mestre encerrou a forma de Lobo.',
-    );
+    expect(
+      formNoticeText({ beast: 'Lobo', reason: WildShapeEndReason.MASTER_ENDED, carried: 0 }),
+    ).toBe('O mestre encerrou a forma de Lobo.');
     for (const reason of [
       WildShapeEndReason.EXPIRED,
       WildShapeEndReason.MASTER_ENDED,

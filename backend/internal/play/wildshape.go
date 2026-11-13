@@ -389,18 +389,7 @@ func (s *Service) shapeChange(ctx context.Context, campaignID, rawCharacter, raw
 // shapeTx is the Wild Shape transaction: the form is checked, the turn's cost is
 // paid, the form changes and the event gets its fields.
 func (s *Service) shapeTx(ctx context.Context, c *combatTx, r *shapeRun) (any, error) {
-	r.made, r.vitals, r.mapID = actionEvent{}, nil, conv.OrZero(c.session.CurrentMapID)
-	_, who, _, err := s.playerCharacterOf(ctx, c, r.m, r.characterID)
-	if err != nil {
-		return nil, err
-	}
-	r.who = who
-	r.inCombat = who != nil
-	r.turns = r.inCombat && c.enc.Status == statusActive // in SETUP nobody has a turn to spend
-	if r.inCombat {
-		r.mapID = conv.OrZero(c.enc.MapID)
-	}
-	if err := s.shapeCheck(ctx, c, r); err != nil {
+	if err := s.shapeOpen(ctx, c, r); err != nil {
 		return nil, err
 	}
 	if r.turns && !r.stay {
@@ -413,19 +402,41 @@ func (s *Service) shapeTx(ctx context.Context, c *combatTx, r *shapeRun) (any, e
 	if err := s.shapeApply(ctx, c, r); err != nil {
 		return nil, err
 	}
+	if err := s.shapeCost(ctx, c, r); err != nil {
+		return nil, err
+	}
+	return s.shapeSeal(ctx, c, r)
+}
+
+// shapeOpen reads who changes form and whether a turn is in play, and checks the change.
+func (s *Service) shapeOpen(ctx context.Context, c *combatTx, r *shapeRun) error {
+	r.made, r.vitals, r.mapID = actionEvent{}, nil, conv.OrZero(c.session.CurrentMapID)
+	_, who, _, err := s.playerCharacterOf(ctx, c, r.m, r.characterID)
+	if err != nil {
+		return err
+	}
+	r.who = who
+	r.inCombat = who != nil
+	r.turns = r.inCombat && c.enc.Status == statusActive // in SETUP nobody has a turn to spend
+	if r.inCombat {
+		r.mapID = conv.OrZero(c.enc.MapID)
+	}
+	return s.shapeCheck(ctx, c, r)
+}
+
+// shapeCost pays the turn's cost after the change and reads the new form back.
+func (s *Service) shapeCost(ctx context.Context, c *combatTx, r *shapeRun) error {
 	if r.turns && !r.stay && (!r.leave || !r.v.master) {
 		// "Voltar à forma normal" is a bonus action (the master's costs nothing).
 		if err := s.spendAction(ctx, c, r.v, *r.who, r.leave, &r.made); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	if !r.leave {
 		r.made.Beast, r.made.ShapeSet, r.made.Stay = r.beast, true, r.stay
-		if err := s.shapeRead(ctx, c, r); err != nil {
-			return nil, err
-		}
+		return s.shapeRead(ctx, c, r)
 	}
-	return s.shapeSeal(ctx, c, r)
+	return nil
 }
 
 // shapeCheck refuses a change the form does not allow: a druid that is down cannot

@@ -1445,23 +1445,60 @@ func (q *Queries) DeleteExpiredCombatantStates(ctx context.Context, arg DeleteEx
 }
 
 const deleteFormClockOfCharacter = `-- name: DeleteFormClockOfCharacter :many
-DELETE FROM combatant_states
-WHERE kind = 'effect' AND source_key = 'effect:wild-shape'
-  AND combatant_id IN (SELECT id FROM combatants WHERE character_id = $1)
-RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+WITH gone AS (
+    DELETE FROM combatant_states
+    WHERE kind = 'effect' AND source_key = 'effect:wild-shape'
+      AND combatant_id IN (SELECT id FROM combatants WHERE character_id = $1)
+    RETURNING id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at
+)
+SELECT id, encounter_id, combatant_id, kind, source_id, ends_combatant_id, ends_phase, ends_round, started_round, amount, created_at, group_id, source_key, source_kind, concentration, condition_keys, modifiers, duration_kind, end_save_ability, start_save_ability, save_dc, on_fail_effect, follows_key, trigger_dice, trigger_damage_type, trigger_max_triggers, triggers_fired, player_visible, audience, player_label, spent_at FROM gone ORDER BY created_at, id
 `
+
+type DeleteFormClockOfCharacterRow struct {
+	ID                 string
+	EncounterID        string
+	CombatantID        string
+	Kind               string
+	SourceID           *string
+	EndsCombatantID    *string
+	EndsPhase          *string
+	EndsRound          *int32
+	StartedRound       int32
+	Amount             int32
+	CreatedAt          time.Time
+	GroupID            *string
+	SourceKey          *string
+	SourceKind         *string
+	Concentration      bool
+	ConditionKeys      []string
+	Modifiers          []byte
+	DurationKind       *string
+	EndSaveAbility     *string
+	StartSaveAbility   *string
+	SaveDc             *int32
+	OnFailEffect       *string
+	FollowsKey         *string
+	TriggerDice        *string
+	TriggerDamageType  *string
+	TriggerMaxTriggers *int32
+	TriggersFired      int32
+	PlayerVisible      bool
+	Audience           string
+	PlayerLabel        *string
+	SpentAt            *time.Time
+}
 
 // A druid's Wild Shape clock (one row, in a combat or out of it) goes with its form. The rows
 // come back so a change that can be undone keeps them (RN-22).
-func (q *Queries) DeleteFormClockOfCharacter(ctx context.Context, characterID string) ([]CombatantState, error) {
+func (q *Queries) DeleteFormClockOfCharacter(ctx context.Context, characterID string) ([]DeleteFormClockOfCharacterRow, error) {
 	rows, err := q.db.Query(ctx, deleteFormClockOfCharacter, characterID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []CombatantState
+	var items []DeleteFormClockOfCharacterRow
 	for rows.Next() {
-		var i CombatantState
+		var i DeleteFormClockOfCharacterRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.EncounterID,
@@ -1915,6 +1952,26 @@ func (q *Queries) EndGameSession(ctx context.Context, arg EndGameSessionParams) 
 		&i.HintSeq,
 	)
 	return i, err
+}
+
+const formClockSecondsLeft = `-- name: FormClockSecondsLeft :one
+SELECT COALESCE(
+    (SELECT ce.seconds_left FROM character_effects ce
+      WHERE ce.character_id = $1 AND ce.source_key = 'effect:wild-shape' AND ce.seconds_left IS NOT NULL
+      ORDER BY ce.created_at DESC, ce.id LIMIT 1),
+    (SELECT GREATEST(cs.ends_round - GREATEST(e.round, 1), 0) * 6 FROM combatant_states cs
+         JOIN combatants cb ON cb.id = cs.combatant_id JOIN encounters e ON e.id = cs.encounter_id
+      WHERE cb.character_id = $1 AND cs.kind = 'effect' AND cs.source_key = 'effect:wild-shape' AND cs.ends_round IS NOT NULL
+      ORDER BY cs.created_at DESC, cs.id LIMIT 1), -1)::INT4 AS seconds_left
+`
+
+// The seconds a druid's Wild Shape form has left, -1 for a form with no clock: the row outside a
+// combat, else the row of its combatant in a combat (rounds left, 6 s each). The vitals carry it.
+func (q *Queries) FormClockSecondsLeft(ctx context.Context, characterID string) (int32, error) {
+	row := q.db.QueryRow(ctx, formClockSecondsLeft, characterID)
+	var seconds_left int32
+	err := row.Scan(&seconds_left)
+	return seconds_left, err
 }
 
 const getBattleEncounter = `-- name: GetBattleEncounter :one

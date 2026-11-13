@@ -124,14 +124,7 @@ func characterEffectProto(r playdb.CharacterEffect, name string, names func(stri
 		}
 		return e
 	}
-	mods := modifiersOf(r.Modifiers)
-	if d, ok := content.CombatEffect(r.SourceKey); ok {
-		e.TagsPt = d.TagsPT
-	} else if d, ok := content.CombatSpellEffect(r.SourceKey); ok {
-		e.TagsPt = d.TagsPT
-	}
-	e.TagsPt = append(append([]string{}, e.TagsPt...), modifierTagsPT(r.SourceKey, mods)...)
-	e.TagsPt = append(e.TagsPt, narratedNotesPT(r.SourceKey, mods)...)
+	e.TagsPt = effectTagsPT(r, content)
 	if master {
 		e.PlayerVisible, e.Audience = r.PlayerVisible, audienceProto(r.Audience)
 	}
@@ -277,4 +270,18 @@ func (s *Service) endOneCharacterEffect(ctx context.Context, c *combatTx, row pl
 		return 0, err
 	}
 	return 1, nil
+}
+
+// effectTagsPT are the tags the owner and the master read on an effect: the catalog's, then the
+// modifiers' and the notes.
+func effectTagsPT(r playdb.CharacterEffect, content *rules.Content) []string {
+	var tags []string
+	mods := modifiersOf(r.Modifiers)
+	if d, ok := content.CombatEffect(r.SourceKey); ok {
+		tags = d.TagsPT
+	} else if d, ok := content.CombatSpellEffect(r.SourceKey); ok {
+		tags = d.TagsPT
+	}
+	tags = append(append([]string{}, tags...), modifierTagsPT(r.SourceKey, mods)...)
+	return append(tags, narratedNotesPT(r.SourceKey, mods)...)
 }

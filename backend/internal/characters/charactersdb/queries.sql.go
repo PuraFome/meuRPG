@@ -929,12 +929,6 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp,
-       (SELECT COALESCE(
-            (SELECT ce.seconds_left FROM character_effects ce WHERE ce.character_id = c.id AND ce.source_key = 'effect:wild-shape' LIMIT 1),
-            (SELECT GREATEST(cs.ends_round - GREATEST(e.round, 1), 0) * 6 FROM combatant_states cs
-                 JOIN combatants cb ON cb.id = cs.combatant_id JOIN encounters e ON e.id = cs.encounter_id
-              WHERE cb.character_id = c.id AND cs.kind = 'effect' AND cs.source_key = 'effect:wild-shape' AND cs.ends_round IS NOT NULL
-              ORDER BY cs.created_at DESC LIMIT 1), -1))::INT4 AS wild_shape_seconds_left,
        v.familiar_sight_creature_id, v.familiar_sight_in_combat,
        v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
@@ -966,7 +960,6 @@ type GetVitalsRow struct {
 	UpdatedAt               *time.Time
 	WildShapeBeast          *string
 	WildShapeHp             *int32
-	WildShapeSecondsLeft    int32
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
@@ -998,7 +991,6 @@ func (q *Queries) GetVitals(ctx context.Context, arg GetVitalsParams) (GetVitals
 		&i.UpdatedAt,
 		&i.WildShapeBeast,
 		&i.WildShapeHp,
-		&i.WildShapeSecondsLeft,
 		&i.FamiliarSightCreatureID,
 		&i.FamiliarSightInCombat,
 		&i.FamiliarSightConditions,
@@ -1015,12 +1007,6 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp,
-       (SELECT COALESCE(
-            (SELECT ce.seconds_left FROM character_effects ce WHERE ce.character_id = c.id AND ce.source_key = 'effect:wild-shape' LIMIT 1),
-            (SELECT GREATEST(cs.ends_round - GREATEST(e.round, 1), 0) * 6 FROM combatant_states cs
-                 JOIN combatants cb ON cb.id = cs.combatant_id JOIN encounters e ON e.id = cs.encounter_id
-              WHERE cb.character_id = c.id AND cs.kind = 'effect' AND cs.source_key = 'effect:wild-shape' AND cs.ends_round IS NOT NULL
-              ORDER BY cs.created_at DESC LIMIT 1), -1))::INT4 AS wild_shape_seconds_left,
        v.familiar_sight_creature_id, v.familiar_sight_in_combat,
        v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
@@ -1052,7 +1038,6 @@ type GetVitalsWithDeadRow struct {
 	UpdatedAt               *time.Time
 	WildShapeBeast          *string
 	WildShapeHp             *int32
-	WildShapeSecondsLeft    int32
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
@@ -1085,7 +1070,6 @@ func (q *Queries) GetVitalsWithDead(ctx context.Context, arg GetVitalsWithDeadPa
 		&i.UpdatedAt,
 		&i.WildShapeBeast,
 		&i.WildShapeHp,
-		&i.WildShapeSecondsLeft,
 		&i.FamiliarSightCreatureID,
 		&i.FamiliarSightInCombat,
 		&i.FamiliarSightConditions,
@@ -2879,12 +2863,6 @@ SELECT c.id, c.name, c.player_user_id, c.sheet,
        v.hit_points_current, v.hit_points_temporary, v.spell_slots_used,
        v.pact_slots_used, v.hit_dice_used, v.hit_dice_used_by_die, v.spell_slots_created, v.resources_used, v.revision, v.updated_at,
        ws.beast AS wild_shape_beast, ws.hp AS wild_shape_hp,
-       (SELECT COALESCE(
-            (SELECT ce.seconds_left FROM character_effects ce WHERE ce.character_id = c.id AND ce.source_key = 'effect:wild-shape' LIMIT 1),
-            (SELECT GREATEST(cs.ends_round - GREATEST(e.round, 1), 0) * 6 FROM combatant_states cs
-                 JOIN combatants cb ON cb.id = cs.combatant_id JOIN encounters e ON e.id = cs.encounter_id
-              WHERE cb.character_id = c.id AND cs.kind = 'effect' AND cs.source_key = 'effect:wild-shape' AND cs.ends_round IS NOT NULL
-              ORDER BY cs.created_at DESC LIMIT 1), -1))::INT4 AS wild_shape_seconds_left,
        v.familiar_sight_creature_id, v.familiar_sight_in_combat,
        v.familiar_sight_conditions, v.hit_points_max_bonus, v.exhaustion_level, v.armor_class_base, c.active_states
 FROM characters AS c
@@ -2912,7 +2890,6 @@ type ListVitalsRow struct {
 	UpdatedAt               *time.Time
 	WildShapeBeast          *string
 	WildShapeHp             *int32
-	WildShapeSecondsLeft    int32
 	FamiliarSightCreatureID *string
 	FamiliarSightInCombat   *bool
 	FamiliarSightConditions []string
@@ -2953,7 +2930,6 @@ func (q *Queries) ListVitals(ctx context.Context, campaignID string) ([]ListVita
 			&i.UpdatedAt,
 			&i.WildShapeBeast,
 			&i.WildShapeHp,
-			&i.WildShapeSecondsLeft,
 			&i.FamiliarSightCreatureID,
 			&i.FamiliarSightInCombat,
 			&i.FamiliarSightConditions,

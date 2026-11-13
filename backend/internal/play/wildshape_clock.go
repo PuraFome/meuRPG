@@ -38,7 +38,11 @@ func dropFormClockRows(ctx context.Context, q *playdb.Queries, characterID strin
 	if err := q.DeleteFormClockOfCharacterOutside(ctx, characterID); err != nil {
 		return nil, fmt.Errorf("stop the form's clock: %w", err)
 	}
-	return rows, nil
+	out := make([]playdb.CombatantState, len(rows))
+	for i, r := range rows {
+		out[i] = playdb.CombatantState(r) // the same columns, read through the delete's CTE
+	}
+	return out, nil
 }
 
 // takeFormClock is dropFormClock inside a combat's change: the row of this combat is kept in the
@@ -172,7 +176,7 @@ func (s *Service) formClockEnded(ctx context.Context, c *combatTx, cs []playdb.C
 		if i < 0 || cs[i].Kind != kindPlayer {
 			continue
 		}
-		if err := s.formClockRan(ctx, c, cs[i].CharacterID, &cs[i], ended); err != nil {
+		if err := s.formClockRan(ctx, c, cs[i].CharacterID, ended); err != nil {
 			return err
 		}
 	}
@@ -189,7 +193,7 @@ func (s *Service) formClocksGone(ctx context.Context, c *combatTx, rows []playdb
 		if r.SourceKey != wildShapeEffect {
 			continue
 		}
-		if err := s.formClockRan(ctx, c, r.CharacterID, nil, reason); err != nil {
+		if err := s.formClockRan(ctx, c, r.CharacterID, reason); err != nil {
 			return err
 		}
 	}
@@ -200,7 +204,7 @@ func (s *Service) formClocksGone(ctx context.Context, c *combatTx, rows []playdb
 // (when there is one) has its own numbers back, and a wild_shape_ended event says why. The
 // clock runs out at the turn change (EndTurn) or game time moves, neither of which an undo takes
 // back, so there is nothing to keep for one.
-func (s *Service) formClockRan(ctx context.Context, c *combatTx, characterID string, who *playdb.Combatant, reason string) error {
+func (s *Service) formClockRan(ctx context.Context, c *combatTx, characterID, reason string) error {
 	now, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, characterID)
 	if err != nil {
 		return err
@@ -232,16 +236,19 @@ func (s *Service) restoreFormClock(ctx context.Context, c *combatTx, characterID
 // formTimeText is the time a Wild Shape form has left as a card reads it: hours and minutes
 // ("1 h 52 min restantes", "52 min restantes", never hundreds of rounds); under a minute, rounds
 // ("Restam 4 rodadas").
+// secondsPerHour is an hour of game time in seconds (secondsPerMinute is in casting_combat.go).
+const secondsPerHour = 60 * secondsPerMinute
+
 func formTimeText(seconds int32) string {
 	switch {
-	case seconds >= 3600:
-		h, m := seconds/3600, seconds%3600/60
+	case seconds >= secondsPerHour:
+		h, m := seconds/secondsPerHour, seconds%secondsPerHour/secondsPerMinute
 		if m == 0 {
 			return fmt.Sprintf("%d h restantes", h)
 		}
 		return fmt.Sprintf("%d h %d min restantes", h, m)
-	case seconds >= 60:
-		return fmt.Sprintf("%d min restantes", seconds/60)
+	case seconds >= secondsPerMinute:
+		return fmt.Sprintf("%d min restantes", seconds/secondsPerMinute)
 	}
 	return roundsLeftText(int(seconds / rules.SecondsPerRound))
 }
