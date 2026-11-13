@@ -165,7 +165,7 @@ A hit with more than the weapon opens `PendingDamage.parts[]`:
 
 - the weapon;
 - the **offered** extras (Sneak Attack, Divine Smite with the slot to spend, Hunter's Mark, Colossus Slayer); a line that cannot be chosen is disabled and says why;
-- the **automatic** lines (Rage's bonus, only on a melee Strength weapon attack; Improved Divine Smite; Dueling; Brutal Critical through `automaticLines`).
+- the **automatic** lines (Rage's bonus, only on a melee Strength weapon attack; Improved Divine Smite; Dueling; Brutal Critical through `automaticLines`; the damage a spell left on the caster's hits, [below](#a-spells-hit-effect)).
 
 A critical doubles the dice of every part (or follows the table's "maximum plus a roll"), never the fixed numbers (SRD 5.1 "Critical Hits").
 In the app the server rolls every part; with physical dice the player types a sum for each part (`typed_parts[]`).
@@ -185,6 +185,56 @@ Undoing a damage roll gives back the slot, the once-per-turn marks and the rolls
 An area spell's damage is one roll for the whole cast: it settles every pending damage of the cast still waiting for a roll with the same damage type, in the combat's order (`sortByCombatOrder`), so `settled` in the event and `cast_pending_damages` in the answer read the same way on every run.
 
 The rays of Scorching Ray are not an area: each hit opens a pending damage with no `cast_id`, so several rays at one creature are several separate rolls, listed in `cast.pending_damages` in the order of the rays (the request's target order, a target's rays together).
+
+### A spell's hit effect
+
+A table spell can leave weapon damage on its caster's hits (the `weapon_hit_damage` modifier, [Table content: rules](../rules-table-content.md#the-lasting-effect-of-a-spell)).
+The effect is a row of the caster ([Lasting effects](lasting-effects.md#the-damage-a-spell-adds-to-the-casters-hits)).
+After a weapon hit, `hitFacts.hitEffectParts` (`combat_hit_effects.go`) offers one part for each such row that is not spent and whose trigger holds.
+The part is automatic: the player never chooses it, it is the spell's rider.
+Its key and label are the spell's.
+
+| Trigger | The hit it rides on | Used up |
+| --- | --- | --- |
+| `next_hit` | The caster's next weapon hit, melee or ranged | By the damage roll of that hit |
+| `next_melee_hit` | The next melee weapon hit; a thrown weapon at range is not melee (`thrownAtRange`) | By the damage roll of that hit |
+| `each_hit` | Every weapon hit while the caster concentrates | Never; ends with the concentration |
+| `marked_target` | Every weapon hit on the creature that carries the spell's mark ("Cada golpe no alvo marcado"), while the caster concentrates | Never; ends with the concentration |
+
+- **What does not count.**
+  A spell attack offers no part: it is not a weapon hit.
+  A miss opens no damage, so it offers nothing and keeps the effect for the next hit.
+  A row of another caster is never read, and Hunter's Mark stays its own hard-coded path (an offered extra on `combatant_states`), not a `weapon_hit_damage`.
+- **The dice.**
+  The row holds the dice already worked out for the slot of the cast: `dice` plus `per_slot_dice` for each slot level above the spell's own, never more than `max_dice` (`hitDiceAt`).
+  The part rolls them like every other part, with the app's dice or the typed sum of the part.
+  A critical hit doubles them (`partCriticalDice`, as for a maneuver's die or an extra damage), never the fixed damage.
+- **The damage type.**
+  The modifier's `damage_type`, or the weapon's when it has none.
+  The part lands in `byType` under it, so a resistance takes only that line.
+- **Spend timing.**
+  The effect is used when the damage is rolled and counted, not when the hit is made (`useHitEffects`, called from `damageFlow.landAll`).
+  A `next_hit` or `next_melee_hit` row gets `combatant_states.spent_at` and its id goes in `EffectsSpent` of the damage event; the row stays until its clock ends it.
+  Two hits of one turn can both wait for their damage: the first roll uses the effect, and `liveHitParts` takes the part out of the second (it also drops a part whose concentration ended in between).
+  A replay of a held roll never spends it twice.
+  `each_hit` and `marked_target` are never spent.
+- **The save.**
+  With a `save` the target rolls it against the DC kept on the row (the caster's spell save DC, 10 if there was none) through the hit-riders path (`rollRiderSave`: Magic Resistance, Legendary Resistance, the held rolls), as a monk's rider does.
+  On a fail the target takes the `on_fail_conditions` it is not immune to (`hitConditions`), as a lasting effect of the same casting.
+  They last until the end of the target's next turn, or, with `condition_duration` `spell_end`, as long as the spell does: the end of the concentration ends them.
+  A new failed save of the same casting replaces the old conditions on that target (`endHitConditions`).
+  A pass leaves nothing.
+- **What is logged.**
+  The damage line carries the part by the spell's name.
+  The save is a `hit_rider` line with the roll, the DC and the result, the master's and the target's own player's to read; a failed save adds the line of the new effect.
+  The ids of the effect rows and of the lines go in the event (`EffectsAdded`, `EffectLines`).
+- **Undo.**
+  The master's undo of the damage clears `spent_at` (the same `EffectsSpent` path as Vicious Mockery), deletes the conditions the save put on the target and takes the lines away (`effectsAddedBack`).
+  The undo of the cast takes the caster's row and the mark away with the cast.
+- **Who reads what (RN-10).**
+  The master and the attacker's own player read the part whole: spell, dice, faces.
+  Every other player reads the amount and never the dice (`partsProtoFor`, `hitRollForOthers`), and when the master hides the effect, or its audience is `owner`, the part reads "Outra fonte" with the row's id for a key and no source (`hitPartForOthers`).
+  The row's modifier, trigger, dice and save never reach another player, in the damage, the log or the effect lists.
 
 ## Roll modes
 
