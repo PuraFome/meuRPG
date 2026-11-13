@@ -90,6 +90,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `MoveCombatant`, `GetMoveOptions`, `SpendMovement`, `StandUp` | See [Movement](movement.md) and [Theatre](theatre.md) | Movement |
 | `OfferOpportunity`, `WithdrawOpportunity`, `DeclineOpportunity`, `SkipOpportunity` | See [Movement](movement.md); the master's `OfferOpportunity` works in both modes | Opportunity attacks |
 | `AnswerReaction`, `MarkReactionRolling`, `ResolveConcentrationSave`, `UseReaction`, `DeclineReaction` | See [Reactions](reactions.md) | Reaction windows |
+| `ReadyAction`, `CancelReadied`, `FireReadied` (`ReadyService`) | The player on their own character, on its turn; `FireReadied` the master only | Ready and the fire of a readied action: see [Readying](readying.md) |
 | `RollDeathSave`, `ConfirmDeath` | See [Death and revival](death-and-revival.md) | The fallen |
 | `AdjustCombatantHitPoints` | Master | "Dano/Cura" of an NPC: damage, healing or an exact value, and temporary HP. An NPC taken to 0 HP stops concentrating, with the end a damage to 0 HP has (`endConcentrationAtZero`: the spell's effects, its creatures and the log line); the undo of the adjustment takes that end back with it |
 | `EndCombatEffect` | Master | Ends an effect such as Aid (idempotent by key, not undoable) |

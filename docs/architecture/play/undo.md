@@ -40,6 +40,15 @@ Some events are written just before the change's own event and never close the c
 
 A held action's event closes the chain, because nothing of it happened yet.
 
+A readied action ([Readying](readying.md)):
+
+- the undo of a Ready gives the action back and deletes the row, unless the row was lost since (`chainReadied` closes the chain then);
+- the fire of a readied action (`readied_fired` with `opened`) closes the chain;
+- the undo of a pass (`readied_fired`, `readiedPassBack`) makes the row wait and reopens its window;
+- the `readied_fired` line of a use is written just before the used action's event, and the undo of that action takes it along (`linesBefore`);
+- that undo also makes the row wait, reopens the window and, for a move, frees the reaction (`readiedUseBack`);
+- the `readied_lost` line of a defeat or a dismissal is written before the change's event and passed over by its undo (`chainReadiedDefeat`): the row stays lost.
+
 The walk over those events is `chainRules`, a list of rules read in order, the first that has a say deciding.
 An event that a new change writes beside its own is a new rule there.
 
