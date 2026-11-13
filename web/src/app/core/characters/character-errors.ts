@@ -87,10 +87,8 @@ const BLOCKED_MESSAGES: Partial<Record<CharacterBlockedReason, string>> = {
   hit_points_average_only: 'A mesa usa a média nos pontos de vida: o dado não é rolado.',
   table_content_stays:
     'Essa ficha usa opções próprias desta mesa e não pode ir para outra campanha.',
-  attunement_limit:
-    'Já há 3 itens sintonizados: encerre um antes de sintonizar outro.',
-  attunement_restricted:
-    'Esse item pede algo que o personagem não é: só o mestre sintoniza.',
+  attunement_limit: 'Já há 3 itens sintonizados: encerre um antes de sintonizar outro.',
+  attunement_restricted: 'Esse item pede algo que o personagem não é: só o mestre sintoniza.',
   attunement_needs_rest:
     'Descanse antes de sintonizar: cada descanso, curto ou longo, abre uma sintonização.',
   attunement_same_item: 'Já sintonizado a outro igual.',
