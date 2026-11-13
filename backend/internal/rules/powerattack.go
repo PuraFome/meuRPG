@@ -45,7 +45,7 @@ type PowerAttack struct {
 // Allows says whether the trade goes with the attack line a: its kind (a spell attack never does), melee or
 // ranged, every property the effect names and, when asked, the character's proficiency with it. When it does
 // not, whyPT is the reason in Portuguese. A pseudo-weapon or natural attack line has no properties, so a
-// property filter never matches it, and the lines count as proficient as they say.
+// property filter never matches it, and a pseudo-weapon or natural attack line has Proficient true.
 func (p PowerAttack) Allows(a Attack) (ok bool, whyPT string) {
 	switch {
 	case a.Kind != "weapon":

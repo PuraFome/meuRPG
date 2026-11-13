@@ -196,7 +196,7 @@ type attackFlow struct {
 	// parried is the Parry the server used to turn the hit into a miss (autoParry).
 	parried *parryUsed
 	extra   []effectDie
-	// maneuver is the table die the request names (checked in prepare); maneuverSpent are the resources its roll spent.
+	// maneuver is the table die the request names (checked in prepare); maneuverSpent are the resources its roll spent and the power attack's resource.
 	maneuver      *link.Maneuver
 	maneuverSpent []string
 	// power is the power attack trade the request names (checked in prepare); its penalty is off the roll's bonus.

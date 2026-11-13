@@ -32,7 +32,7 @@ A replay refused because the pool changed is dropped, and only the master reads 
 A natural 1 still misses, and a critical hit does not double the die.
 The die counts as an extra die for Stroke of Luck: the question comes blind, before the die is known.
 An opportunity attack and an attack as a reaction take the die like any other.
-`GetTurnOptionsResponse.maneuver_dice` lists those dice for a player's character, each with the name of its resource pool and the uses left. `GetTurnOptions` reads the character's sheet and vitals once (`turnReads`, `combat_turn_reads.go`) for Metamagic, the table's cast options and these dice, and the dice read neither when none fits. The web tells two pools apart by `RollDie.resource`, never by name.
+`GetTurnOptionsResponse.maneuver_dice` lists those dice for a player's character, each with the name of its resource pool and the uses left. `GetTurnOptions` reads the character's sheet and vitals once (`turnReads`, `combat_turn_reads.go`) for Metamagic, the table's cast options, the power attacks list and these dice, and the dice read neither when none fits. The web tells two pools apart by `RollDie.resource`, never by name.
 A die with no use left stays listed with `uses_left` 0.
 An NPC gets none.
 
@@ -206,7 +206,7 @@ What each viewer reads (RN-10; `TestAPowerAttackIsTheAttackersAndTheMastersAlone
 - the damage total another player reads is the damage as rolled, so it includes the bonus, like the hit effect of a spell.
 
 The attack's line in the log tells another player only "usou um ataque poderoso", hidden feature or not.
-The name another player reads lives in the damage part's label alone.
+The name another player reads (the feature's, or "Outra fonte") is in the damage part's label and in the log marker's `name_pt`, and the app prints neither in the log line.
 The feature is hidden from the moment of the attack, so a later change by the master does not alter what the attack's damage and log say.
 
 Sneak Attack and Colossus Slayer are once per turn (the keys `sneak_attack` and `colossus_slayer` of `combatants.feature_state`); Hunter's Mark follows the caster's concentration (`combatant_states`).
