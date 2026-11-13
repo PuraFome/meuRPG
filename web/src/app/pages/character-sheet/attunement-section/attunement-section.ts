@@ -55,8 +55,11 @@ export class AttunementSection {
   readonly revision = input.required<number>();
   /** The sheet changed (an attunement was set): the page reads it again. */
   readonly changed = output<void>();
+  /** The server refused: what the section holds (the revision, the entries) may be stale, so the page reads it again. */
+  readonly refused = output<void>();
 
   protected readonly headingId = `att-heading-${nextId++}`;
+  protected readonly limitId = `${this.headingId}-limit`;
   protected readonly busyId = signal<string | null>(null);
   protected readonly status = signal('');
   protected readonly error = signal('');
@@ -106,11 +109,12 @@ export class AttunementSection {
         this.revision(),
       );
       this.changed.emit();
-      const count = this.attunement().attuned + (attuned ? 1 : -1);
+      const count = this.attunement().attuned + (r.entry.asks ? (attuned ? 1 : -1) : 0);
       this.status.set(
         `${r.entry.namePt} ${attuned ? 'sintonizado' : 'desfeita a sintonização'}. Sintonizados: ${count} de 3.`,
       );
     } catch (err) {
+      this.refused.emit();
       const why = isRestrictedRefusal(err) && r.reason ? r.reason : describeCharacterError(err);
       this.error.set(
         `Não foi possível ${attuned ? 'sintonizar' : 'encerrar'} ${r.entry.namePt}. ${why}`,

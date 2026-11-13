@@ -84,6 +84,38 @@ describe('AttunementSection', () => {
     expect(button(f, 'm1')).toBeTruthy();
   });
 
+  it('tells the page about a refusal, so it reads the sheet again', async () => {
+    const set = vi.fn().mockRejectedValue(new ConnectError('stale', Code.Aborted));
+    const f = setup(set, [entry({ id: 'm1', namePt: 'Manto élfico' })]);
+    const refused = vi.fn();
+    f.componentInstance.refused.subscribe(refused);
+    button(f, 'm1').click();
+    await f.whenStable();
+    expect(refused).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the button, with its focus, while the call is in the air', async () => {
+    let release: () => void = () => undefined;
+    const set = vi.fn().mockReturnValue(new Promise<void>((r) => (release = r)));
+    const f = setup(set, [entry({ id: 'm1', namePt: 'Manto élfico' })]);
+    const before = button(f, 'm1');
+    before.click();
+    f.detectChanges();
+    expect(button(f, 'm1')).toBe(before);
+    expect(before.getAttribute('aria-busy')).toBe('true');
+    release();
+    await f.whenStable();
+  });
+
+  it('leaves the count as it was when an entry that does not ask ends', async () => {
+    const set = vi.fn().mockResolvedValue(undefined);
+    const f = setup(set, [entry({ id: 'm9', namePt: 'Botas', asks: false, attuned: true })]);
+    button(f, 'm9').click();
+    await f.whenStable();
+    f.detectChanges();
+    expect(text(f)).toContain('desfeita a sintonização. Sintonizados: 1 de 3.');
+  });
+
   it('under a title of its own, says the count and the lead in one line and has no heading', () => {
     const f = setup(vi.fn(), [entry({ id: 'm1' })], 'master');
     f.componentRef.setInput('bare', true);

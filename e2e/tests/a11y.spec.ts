@@ -8500,6 +8500,7 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
     // Another player reads none of it.
     outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport: attViewport(390), ...attunementScale });
     await openLive(outsider.page, route);
+    await expect(outsider.page.getByRole('heading', { name: /Toren/ }).first()).toBeVisible();
     await expect(outsider.page.getByText('Itens mágicos')).toHaveCount(0);
     await expect(outsider.page.getByText(/^Sintonizados:/)).toHaveCount(0);
     await everyWidth(outsider.page, 'ficha-outro-jogador', 'A ficha de outro jogador, sem itens nem sintonia', () => outsider!.page.locator('main').first());

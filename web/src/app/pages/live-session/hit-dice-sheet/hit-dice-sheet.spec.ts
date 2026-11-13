@@ -730,6 +730,51 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
       expect(flat(el)).toContain('A sintonização deste descanso foi usada.');
     });
 
+    it('tells the page the window is spent, so the sheet opened again reads it spent', async () => {
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      setAttunement.mockResolvedValue(undefined);
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.getAttribute('aria-label') === 'Sintonizar Manto élfico')!
+        .click();
+      await settle();
+      expect(apply).toHaveBeenCalledWith(
+        expect.objectContaining({ attunementOpen: false, revision: 1 }),
+      );
+    });
+
+    it('reads the sheet again after a refusal, so the next tap holds the new revision', async () => {
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      setAttunement.mockRejectedValue(new Error('stale'));
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.getAttribute('aria-label') === 'Sintonizar Manto élfico')!
+        .click();
+      await settle();
+      expect(loadAttunement).toHaveBeenCalledTimes(2);
+      expect(el.querySelector('app-attunement-section')).not.toBeNull();
+    });
+
+    it('offers to try again when the sheet cannot be read, and reads it once the window opens again', async () => {
+      loadAttunement.mockRejectedValueOnce(new Error('down'));
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      expect(flat(el.querySelector('[role=alert]'))).toContain('Não deu para ler a sintonização.');
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => flat(b) === 'Tentar de novo')!
+        .click();
+      await settle();
+      expect(el.querySelector('app-attunement-section')).not.toBeNull();
+      live.set(fighterWizard({ attunementOpen: false, revision: 2 }));
+      await settle();
+      live.set(fighterWizard({ attunementOpen: true, revision: 3 }));
+      await settle();
+      expect(loadAttunement).toHaveBeenCalledTimes(3);
+    });
+
     it('says the rest attunement was used once the window closes, and drops the section', async () => {
       loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
       const { el, settle } = render({}, { attunementOpen: true });

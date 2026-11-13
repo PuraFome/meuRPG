@@ -22,7 +22,7 @@
   @if (s.asking.length > 0) {
     <h4 class="att__group">Pedem sintonização</h4>
     @if (s.limitLine) {
-      <p class="att__limit"><mat-icon aria-hidden="true">block</mat-icon><span><strong>Limite de 3 itens.</strong>{{ limitRest() }}</span></p>
+      <p class="att__limit" [id]="limitId"><mat-icon aria-hidden="true">block</mat-icon><span><strong>Limite de 3 itens.</strong>{{ limitRest() }}</span></p>
     }
     <ul class="att__rows">
       @for (r of s.asking; track r.entry.id) {
@@ -45,26 +45,24 @@
     <mat-icon class="att-row__icon" aria-hidden="true">{{ icon(r.entry) }}</mat-icon>
     <span class="att-row__name">{{ r.entry.namePt }}</span>
     @if (r.button !== 'none') {
-      @if (busyId() === r.entry.id) {
-        <span class="att-row__busy" role="status" aria-busy="true">
-          <mat-spinner diameter="16" aria-hidden="true" />{{ r.verb }}
-        </span>
-      } @else {
-        <button
-          type="button"
-          matButton="outlined"
-          class="att-row__button"
-          [class.att-row__button--dashed]="r.button === 'dashed'"
-          [disabled]="r.button === 'dashed' || busyId() !== null"
-          [disabledInteractive]="true"
-          [attr.aria-describedby]="r.reason ? reasonId(r) : null"
-          [attr.aria-label]="r.verb + ' ' + r.entry.namePt"
-          [attr.data-entry-id]="r.entry.id"
-          (click)="tap(r)"
-        >
-          {{ r.verb }}
-        </button>
-      }
+      <button
+        type="button"
+        matButton="outlined"
+        class="att-row__button"
+        [class.att-row__button--dashed]="r.button === 'dashed'"
+        [disabled]="r.button === 'dashed' || busyId() !== null"
+        [disabledInteractive]="true"
+        [attr.aria-busy]="busyId() === r.entry.id ? 'true' : null"
+        [attr.aria-describedby]="r.reason ? reasonId(r) : r.button === 'dashed' && s.limitLine ? limitId : null"
+        [attr.aria-label]="r.verb + ' ' + r.entry.namePt"
+        [attr.data-entry-id]="r.entry.id"
+        (click)="tap(r)"
+      >
+        @if (busyId() === r.entry.id) {
+          <mat-spinner diameter="16" aria-hidden="true" />
+        }
+        {{ r.verb }}
+      </button>
     }
     @if (r.reason) {
       <span class="att-row__reason mr-muted" [id]="reasonId(r)">

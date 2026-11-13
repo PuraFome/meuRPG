@@ -131,6 +131,12 @@ test(
       await expect(dice.getByRole('region', { name: 'Sintonização' })).toHaveCount(0);
       await dice.locator('button', { hasText: 'Fechar' }).click();
 
+      // The same page, the sheet opened again: the window stays spent, with no section and no live button.
+      await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+      await expect(dice).toBeVisible();
+      await expect(dice.getByRole('region', { name: 'Sintonização' })).toHaveCount(0);
+      await dice.locator('button', { hasText: 'Fechar' }).click();
+
       // The sheet, read again: the ring counts, and the server shut the window.
       await sheetPage.reload();
       await expect(gear.getByText('Sintonizados: 1 de 3')).toBeVisible();

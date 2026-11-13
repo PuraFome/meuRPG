@@ -72,6 +72,7 @@ export function openAttunementSheet(
         [revision]="data.revision()"
         [bare]="true"
         (changed)="data.changed()"
+        (refused)="data.changed()"
       />
       @if (data.isMaster) {
         <p class="mr-muted note">

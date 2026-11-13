@@ -109,7 +109,7 @@ export class HitDiceSheet {
   protected readonly vitals = computed(() => {
     const own = this.data.vitals();
     const answer = this.answered();
-    return answer && answer.revision > own.revision ? answer : own;
+    return answer && answer.revision >= own.revision ? answer : own;
   });
 
   protected readonly sizes = computed(() =>
@@ -336,17 +336,13 @@ export class HitDiceSheet {
 
   // --- Sintonização: the short rest opens the owner's window to attune (SRD 5.1); the section lives here while it is open. ---
 
-  /** The revision of the vitals an attunement was set at: the server closes the owner's window then and says it to
-   * no stream, so the sheet closes it too until the vitals change (the next rest opens another). */
-  private readonly spentAt = signal<number | null>(null);
-  protected readonly windowOpen = computed(
-    () => this.vitals().attunementOpen === true && this.spentAt() !== this.vitals().revision,
-  );
+  protected readonly windowOpen = computed(() => this.vitals().attunementOpen === true);
   /** The character's attunement and the revision a tap holds; null until read, or when the sheet has none. */
   protected readonly attunement = signal<{
     readonly vm: AttunementVm;
     readonly revision: number;
   } | null>(null);
+  protected readonly attunementFailed = signal(false);
   /** The window was open when the sheet opened or an attunement was set here: once closed, the sheet says it was used. */
   protected readonly attunementSeen = signal(false);
   protected readonly attunementUsed = computed(() => this.attunementSeen() && !this.windowOpen());
@@ -359,21 +355,29 @@ export class HitDiceSheet {
         this.attunementRead = true;
         void this.loadAttunement();
       }
+    } else {
+      // Another rest may open another window while this sheet stays open: read the sheet again then.
+      this.attunementRead = false;
     }
   });
 
+  /** An attunement was set: the server spent the owner's window and sends no stream event for it, so the page's
+   * vitals say it (the same revision, no window), and the sheet and every later one read it spent. */
   protected attunementChanged(): void {
-    this.spentAt.set(this.vitals().revision);
+    const vitals = { ...this.vitals(), attunementOpen: false };
+    this.answered.set(vitals);
+    this.data.apply(vitals);
     void this.loadAttunement();
   }
 
   protected async loadAttunement(): Promise<void> {
+    this.attunementFailed.set(false);
     try {
       const read = await this.attunements.load(this.data.campaignId, this.vitals().characterId);
       this.attunement.set(read ? { vm: read.attunement, revision: read.revision } : null);
     } catch {
-      // The section only shows with a read; the rest of the sheet does not depend on it.
       this.attunement.set(null);
+      this.attunementFailed.set(true);
     }
   }
 

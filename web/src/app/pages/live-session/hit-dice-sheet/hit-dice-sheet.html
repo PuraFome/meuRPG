@@ -177,9 +177,17 @@
           [characterId]="vitals().characterId"
           [revision]="att.revision"
           (changed)="attunementChanged()"
+          (refused)="loadAttunement()"
         />
       </div>
     }
+  }
+  @if (attunementFailed() && windowOpen()) {
+    <p class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <span>Não deu para ler a sintonização.</span>
+      <button matButton="outlined" type="button" (click)="loadAttunement()">Tentar de novo</button>
+    </p>
   }
   @if (attunementUsed()) {
     <p class="note" role="status">
