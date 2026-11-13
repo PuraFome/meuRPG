@@ -716,6 +716,20 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
       expect(flat(el)).not.toContain('A sintonização deste descanso');
     });
 
+    it('closes the section as soon as the owner sets an attunement, with no word from the stream', async () => {
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      setAttunement.mockResolvedValue(undefined);
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.getAttribute('aria-label') === 'Sintonizar Manto élfico')!
+        .click();
+      await settle();
+      expect(setAttunement).toHaveBeenCalledWith('camp', 'pensantus', 'm1', true, 4);
+      expect(el.querySelector('app-attunement-section')).toBeNull();
+      expect(flat(el)).toContain('A sintonização deste descanso foi usada.');
+    });
+
     it('says the rest attunement was used once the window closes, and drops the section', async () => {
       loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
       const { el, settle } = render({}, { attunementOpen: true });

@@ -139,11 +139,19 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
     const st = d.state();
     return st.status === 'ready' ? (st.vm ?? null) : null;
   };
+  // The server closes the owner's window when the owner attunes and tells no stream: the page closes it until the
+  // vitals change (the next rest opens another).
+  const spentAt = signal<number | null>(null);
   return new SheetMagicItems({
     source: d.source,
     campaignId: d.campaignId,
     characterId: d.characterId,
-    reload: d.reload,
+    reload: () => {
+      if (ready()?.isMaster === false) {
+        spentAt.set(d.vitals()?.revision ?? null);
+      }
+      return d.reload();
+    },
     apply: d.apply,
     vm: ready,
     attunement: computed(() => {
@@ -151,7 +159,9 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
       return vm?.sheet.kind === 'full' ? vm.sheet.attunement : { entries: [], attuned: 0 };
     }),
     revision: computed(() => ready()?.revision ?? 0),
-    windowOpen: computed(() => d.vitals()?.attunementOpen === true),
+    windowOpen: computed(
+      () => d.vitals()?.attunementOpen === true && spentAt() !== d.vitals()?.revision,
+    ),
     openAttunement: (data) => openAttunementSheet(d.dialog, d.bottomSheet, data),
     openPicker: (data) => openMagicItemPicker(d.dialog, d.bottomSheet, data),
     openRemove: (data) => openRemoveMagicItem(d.dialog, d.bottomSheet, data),

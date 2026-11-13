@@ -336,7 +336,12 @@ export class HitDiceSheet {
 
   // --- Sintonização: the short rest opens the owner's window to attune (SRD 5.1); the section lives here while it is open. ---
 
-  protected readonly windowOpen = computed(() => this.vitals().attunementOpen === true);
+  /** The revision of the vitals an attunement was set at: the server closes the owner's window then and says it to
+   * no stream, so the sheet closes it too until the vitals change (the next rest opens another). */
+  private readonly spentAt = signal<number | null>(null);
+  protected readonly windowOpen = computed(
+    () => this.vitals().attunementOpen === true && this.spentAt() !== this.vitals().revision,
+  );
   /** The character's attunement and the revision a tap holds; null until read, or when the sheet has none. */
   protected readonly attunement = signal<{
     readonly vm: AttunementVm;
@@ -356,6 +361,11 @@ export class HitDiceSheet {
       }
     }
   });
+
+  protected attunementChanged(): void {
+    this.spentAt.set(this.vitals().revision);
+    void this.loadAttunement();
+  }
 
   protected async loadAttunement(): Promise<void> {
     try {
