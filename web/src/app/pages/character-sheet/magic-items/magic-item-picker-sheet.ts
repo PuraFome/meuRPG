@@ -35,6 +35,9 @@ export function openMagicItemPicker(
   );
 }
 
+/** The search waits for the typing to pause. */
+const SEARCH_DELAY_MS = 250;
+
 const RARITY: Record<string, string> = {
   common: 'comum',
   uncommon: 'incomum',
@@ -122,7 +125,7 @@ export class MagicItemPickerSheet {
   protected typed(text: string): void {
     this.query.set(text);
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.load(text), 250);
+    this.timer = setTimeout(() => void this.load(text), SEARCH_DELAY_MS);
   }
 
   protected choose(key: string): void {

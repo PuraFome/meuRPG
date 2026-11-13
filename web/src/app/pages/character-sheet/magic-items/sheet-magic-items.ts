@@ -1,12 +1,16 @@
-import { type Signal, signal } from '@angular/core';
+import { type Signal, computed, signal } from '@angular/core';
+import type { MatBottomSheet } from '@angular/material/bottom-sheet';
+import type { MatDialog } from '@angular/material/dialog';
 import type { Observable } from 'rxjs';
 
 import type { AttunementEntryVm, AttunementVm } from '../../../core/characters/attunement';
 import { describeCharacterError } from '../../../core/characters/character-errors';
+import type { VitalsVm } from '../../../core/play/live-session.types';
 import type { SheetEquipHost } from '../character-sheet-equip';
-import type { AttunementSheetData } from './attunement-sheet';
-import type { MagicItemPickerData } from './magic-item-picker-sheet';
-import type { RemoveMagicItemData } from './remove-magic-item-sheet';
+import type { CharacterSheetVm } from '../character-sheet.types';
+import { type AttunementSheetData, openAttunementSheet } from './attunement-sheet';
+import { type MagicItemPickerData, openMagicItemPicker } from './magic-item-picker-sheet';
+import { type RemoveMagicItemData, openRemoveMagicItem } from './remove-magic-item-sheet';
 
 /** What the magic items and the attunement need of the page that owns them. */
 export interface SheetMagicItemsHost extends Pick<
@@ -117,4 +121,39 @@ export class SheetMagicItems {
       return describeCharacterError(err);
     }
   }
+}
+
+/** What the page hands over to build its magic items: its signals and the two containers a sheet opens in. */
+export interface SheetMagicItemsDeps extends Pick<
+  SheetEquipHost,
+  'source' | 'campaignId' | 'characterId' | 'reload' | 'apply'
+> {
+  readonly dialog: MatDialog;
+  readonly bottomSheet: MatBottomSheet;
+  readonly state: Signal<{ status: string; vm?: CharacterSheetVm }>;
+  readonly vitals: Signal<VitalsVm | null>;
+}
+
+export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
+  const ready = () => {
+    const st = d.state();
+    return st.status === 'ready' ? (st.vm ?? null) : null;
+  };
+  return new SheetMagicItems({
+    source: d.source,
+    campaignId: d.campaignId,
+    characterId: d.characterId,
+    reload: d.reload,
+    apply: d.apply,
+    vm: ready,
+    attunement: computed(() => {
+      const vm = ready();
+      return vm?.sheet.kind === 'full' ? vm.sheet.attunement : { entries: [], attuned: 0 };
+    }),
+    revision: computed(() => ready()?.revision ?? 0),
+    windowOpen: computed(() => d.vitals()?.attunementOpen === true),
+    openAttunement: (data) => openAttunementSheet(d.dialog, d.bottomSheet, data),
+    openPicker: (data) => openMagicItemPicker(d.dialog, d.bottomSheet, data),
+    openRemove: (data) => openRemoveMagicItem(d.dialog, d.bottomSheet, data),
+  });
 }

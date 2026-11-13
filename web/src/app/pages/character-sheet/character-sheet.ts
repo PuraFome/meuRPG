@@ -48,10 +48,7 @@ import {
 import { CombatColumn } from './combat-column/combat-column';
 import { EquipmentPanel } from './equipment-panel/equipment-panel';
 import { SheetEquip } from './character-sheet-equip';
-import { openAttunementSheet } from './magic-items/attunement-sheet';
-import { openMagicItemPicker } from './magic-items/magic-item-picker-sheet';
-import { openRemoveMagicItem } from './magic-items/remove-magic-item-sheet';
-import { SheetMagicItems } from './magic-items/sheet-magic-items';
+import { createSheetMagicItems } from './magic-items/sheet-magic-items';
 import { openWeaponMarks } from './weapon-marks/weapon-marks-sheet';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { FeaturesPanel } from './features-panel/features-panel';
@@ -365,30 +362,16 @@ export class CharacterSheetPage {
   });
 
   /** The sheet's magic items and attunement (`SheetMagicItems`). */
-  protected readonly magic = new SheetMagicItems({
+  protected readonly magic = createSheetMagicItems({
     source: this.source,
+    dialog: this.dialog,
+    bottomSheet: this.bottomSheet,
     campaignId: () => this.campaignId(),
     characterId: () => (this.destroyed ? '' : this.characterId),
     reload: () => this.reloadQuietly(),
-    vm: () => {
-      const st = this.state();
-      return st.status === 'ready' ? st.vm : null;
-    },
+    state: this.state,
+    vitals: this.vitals,
     apply: (characterId, vm) => this.applyWrite(characterId, vm),
-    attunement: computed(() => {
-      const st = this.state();
-      return st.status === 'ready' && st.vm.sheet.kind === 'full'
-        ? st.vm.sheet.attunement
-        : { entries: [], attuned: 0 };
-    }),
-    revision: computed(() => {
-      const st = this.state();
-      return st.status === 'ready' ? st.vm.revision : 0;
-    }),
-    windowOpen: computed(() => this.vitals()?.attunementOpen === true),
-    openAttunement: (data) => openAttunementSheet(this.dialog, this.bottomSheet, data),
-    openPicker: (data) => openMagicItemPicker(this.dialog, this.bottomSheet, data),
-    openRemove: (data) => openRemoveMagicItem(this.dialog, this.bottomSheet, data),
   });
 
   /** Reads the character again without the loading state, so the page does not blink; `true` when the new sheet is on screen. */
