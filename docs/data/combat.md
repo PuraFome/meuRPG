@@ -330,6 +330,16 @@ A catch at the cast adds `:cast` to the mark and one at the end of a turn adds `
 `def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's twelve, whose definition is the code's.
 A zone is not a lasting effect: it has no single target, it carries squares, and its clock and its end are three places in the code ([Spell zones](../architecture/play/spell-zones.md)).
 
+## `readied_actions`
+
+`readied_actions` are the actions combatants readied (SRD 5.1, "Ready"; migration 00330).
+A row belongs to the combat (`encounter_id`) and to the readier (`combatant_id`), and goes away with either; the end of the combat deletes the rows.
+`round` is when it was readied, and `trigger_text` the player's own words, 1 to 200 characters.
+`kind` is `attack`, `spell`, `move` or `other`; `action_key` is the attack's or the standard action's key, `move_ft` the speed of a move, `spell_cast_id` the held cast of a spell.
+`target_id` is the creature the player named, set to `NULL` when it leaves.
+`status` is `waiting`, `fired`, `ignored`, `lost`, `broken` or `cancelled`; a combatant has at most one `waiting` row (`readied_actions_one_waiting_idx`).
+The master and the readier's player read a row; no other player does (RN-10).
+
 ## Contest, hold, hide, help, surprise (RN-34)
 
 - **`combat_contests`**: a grapple, shove or escape.

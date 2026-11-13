@@ -84,6 +84,7 @@ sql:
       - internal/play/combat_reserve.sql
       - internal/play/queries_messages.sql
       - internal/play/queries_zones.sql
+      - internal/play/queries_readied.sql
     gen:
       go:
         <<: *go-options
