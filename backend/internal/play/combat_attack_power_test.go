@@ -72,7 +72,7 @@ func newPowerTable(t *testing.T) *powerTable {
 			Languages:            []string{"Anão", "Élfico", "Gnômico"},
 			SkillProficiencyKeys: []string{"skill:athletics", "skill:perception"},
 			FeatureChoiceKeys:    []string{"feature:fighter-fighting-style-defense"},
-			WeaponKeys:           []string{greatsword, longsword, longbow},
+			WeaponKeys:           []string{greatsword, longsword, longbow, dagger, shortsword},
 			HitPoints:            &charactersv1.HitPoints{Method: charactersv1.HitPointsMethod_HIT_POINTS_METHOD_AVERAGE}, ExperiencePoints: 6500,
 		}}}
 		made, err := a.caio.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
@@ -84,8 +84,39 @@ func newPowerTable(t *testing.T) *powerTable {
 		a.toren = made.Msg.GetCharacter()
 		a.pens = a.ana.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 14, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		a.bri = a.bia.hero(t, a.campaignID, "Orla", "class:bard", "race:human", 5,
+			&rulesv1.AbilityScores{Strength: 8, Dexterity: 14, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 16}, nil, nil)
 	})
 	return g
+}
+
+// fightInspired starts the combat with Orla first, gives Pipo her Bardic Inspiration die and passes to Pipo's turn.
+func (g *powerTable) fightInspired(t *testing.T) *playv1.Encounter {
+	t.Helper()
+	e := g.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: g.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Orla": 20, "Pipo": 19, "Toren": 9},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Pipo": {4, 3}, "Goblin": {4, 4}, "Toren": {3, 4}, "Orla": {3, 3}},
+	})
+	if _, err := g.giveInspiration(t, g.bia, e, "Orla", "Pipo"); err != nil {
+		t.Fatalf("GiveBardicInspiration() error = %v", err)
+	}
+	e = g.turnOf(t, "Pipo")
+	for _, o := range g.mustOptions(t, g.caio, e, "Pipo").GetOptions().GetAttacks() {
+		if o.GetAttack().GetKey() == greatsword {
+			for _, p := range o.GetPowerAttacks() {
+				if p.GetName() == powerHeavyName {
+					g.heavyKey = p.GetKey()
+				}
+			}
+		}
+	}
+	if g.heavyKey == "" {
+		t.Fatal("the greatsword lists no heavy trade")
+	}
+	return e
 }
 
 // fight starts a combat where Pipo is first and next to the Goblin, with Toren beside them.
@@ -94,9 +125,9 @@ func (g *powerTable) fight(t *testing.T) *playv1.Encounter {
 	e := g.start(t, plan{
 		npcs:     []*playv1.Participant{{CharacterId: g.goblin.GetId()}, {CharacterId: g.capitao.GetId()}},
 		npcRolls: []int{3, 2},
-		players:  map[string]int32{"Pipo": 20, "Toren": 9},
+		players:  map[string]int32{"Pipo": 20, "Toren": 9, "Orla": 5},
 		reveal:   []string{"Goblin", "Capitão Goblin"},
-		at:       map[string][2]int32{"Pipo": {4, 3}, "Goblin": {4, 4}, "Capitão Goblin": {5, 3}, "Toren": {3, 4}},
+		at:       map[string][2]int32{"Pipo": {4, 3}, "Goblin": {4, 4}, "Capitão Goblin": {5, 3}, "Toren": {3, 4}, "Orla": {3, 3}},
 	})
 	// The keys of the trades are the ones the options list.
 	for _, o := range g.mustOptions(t, g.caio, e, "Pipo").GetOptions().GetAttacks() {
@@ -206,8 +237,11 @@ func TestThePowerAttackIsOnTheEventAndAResendIsNotAppliedTwice(t *testing.T) {
 	if again.GetRoll().GetD20().GetModifier() != first.GetRoll().GetD20().GetModifier() || again.GetRoll().GetD20().GetTotal() != first.GetRoll().GetD20().GetTotal() {
 		t.Errorf("the resend = %v, want the roll of the first", again.GetRoll().GetD20())
 	}
+	if want := int32(pipoToHit - heavyPenalty); first.GetRoll().GetD20().GetModifier() != want || again.GetRoll().GetD20().GetModifier() != want {
+		t.Errorf("the modifiers = %d and %d, want %d on both: the penalty once", first.GetRoll().GetD20().GetModifier(), again.GetRoll().GetD20().GetModifier(), want)
+	}
 	if got := g.usesLeft(t); got != 1 {
-		t.Errorf("uses left = %d after the resend, want 1", got)
+		t.Errorf("uses left = %d after the resend, want 1: one use for two sends", got)
 	}
 	if got := g.eventCount(t); got != events {
 		t.Errorf("events = %d after the resend, want %d", got, events)
@@ -320,8 +354,8 @@ func TestAPowerAttackTheSheetOrTheWeaponRefusesWritesNothing(t *testing.T) {
 	}{
 		{"a weapon without the property", longsword, g.heavyKey, "sem a propriedade Pesada"},
 		{"a ranged weapon for a melee trade", longbow, g.freeKey, "arma de outro tipo"},
-		{"a key nobody has", greatsword, "feature:inventado@mesa", ""},
-		{"a key that is not a power attack", greatsword, "feature:fighter-fighting-style-defense", ""},
+		{"a key nobody has", greatsword, "feature:inventado@mesa", "is not a power attack of the character"},
+		{"a key that is not a power attack", greatsword, "feature:fighter-fighting-style-defense", "is not a power attack of the character"},
 	} {
 		_, err := g.swingAt(t, e, tc.weapon, "Goblin", tc.key, 14)
 		if connect.CodeOf(err) != connect.CodeInvalidArgument || (tc.want != "" && !strings.Contains(err.Error(), tc.want)) {
@@ -343,8 +377,8 @@ func TestAPowerAttackTheSheetOrTheWeaponRefusesWritesNothing(t *testing.T) {
 	if _, err := g.attack(t, g.ana, e, "Toren", battleaxe, "Goblin", func(r *playv1.RollAttackRequest) {
 		d20(14)(r)
 		r.PowerAttackKey = g.heavyKey
-	}); connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Errorf("another character's key: error = %v, want invalid_argument", err)
+	}); connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "is not a power attack of the character") {
+		t.Errorf("another character's key: error = %v, want invalid_argument saying the key is not the character's", err)
 	}
 	if got := g.eventCount(t); got != events {
 		t.Errorf("events = %d, want %d: Toren's refused attack wrote one", got, events)
@@ -360,8 +394,8 @@ func TestAPowerAttackOfAnNPCAttackerIsRefused(t *testing.T) {
 		d20(14)(r)
 		r.PowerAttackKey = g.heavyKey
 	})
-	if connect.CodeOf(err) != connect.CodeInvalidArgument {
-		t.Errorf("an NPC's attack with a trade: error = %v, want invalid_argument", err)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "weapon attack of a player's character") {
+		t.Errorf("an NPC's attack with a trade: error = %v, want invalid_argument naming the player's character", err)
 	}
 }
 
@@ -387,22 +421,31 @@ func TestAPowerAttackWithNoUseLeftIsBlocked(t *testing.T) {
 	}
 }
 
-// A spell attack and an NPC attacker never take a trade, whatever the key says (as the maneuver die).
+// Each check of the attacker refuses on its own: the sheet below holds the key and the line is a weapon in every case
+// but the one the check is about, so the refusal's text is the check's (a key lookup or the filter would say another).
 func TestAPowerAttackNeverGoesOnASpellAttackOrAnNPCsAttack(t *testing.T) {
 	t.Parallel()
+	sheet := link.Sheet{Traits: link.Traits{PowerAttacks: []link.PowerAttack{{Key: "x", NamePT: "X", AttackPenalty: 1, DamageBonus: 1, Weapon: "melee"}}}}
 	player := playdb.Combatant{Kind: kindPlayer, CharacterID: "c1"}
 	for _, tc := range []struct {
 		name     string
 		attacker playdb.Combatant
 		attack   link.Attack
 	}{
-		{"a spell attack", player, link.Attack{Spell: true}},
-		{"an NPC", playdb.Combatant{Kind: kindNPC, CharacterID: "c2"}, link.Attack{Weapon: true}},
+		{"a spell attack (a weapon line otherwise)", player, link.Attack{Spell: true, Weapon: true, Melee: true}},
+		{"a line that is no weapon", player, link.Attack{Melee: true}},
+		{"an NPC", playdb.Combatant{Kind: kindNPC, CharacterID: "c2"}, link.Attack{Weapon: true, Melee: true}},
+		{"a player's combatant with no character", playdb.Combatant{Kind: kindPlayer}, link.Attack{Weapon: true, Melee: true}},
 	} {
-		f := &attackFlow{req: &playv1.RollAttackRequest{PowerAttackKey: "x"}, attacker: tc.attacker, attack: tc.attack}
+		f := &attackFlow{req: &playv1.RollAttackRequest{PowerAttackKey: "x"}, attacker: tc.attacker, attack: tc.attack, sheet: sheet}
 		if err := f.checkPowerAttack(t.Context()); connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "weapon attack of a player's character") {
 			t.Errorf("%s: %v, want invalid_argument naming the weapon attack of a player's character", tc.name, err)
 		}
+	}
+	// The positive control: the same sheet and a weapon line of a player pass the attacker checks (and the filter).
+	ok := &attackFlow{req: &playv1.RollAttackRequest{PowerAttackKey: "x"}, attacker: player, attack: link.Attack{Weapon: true, Melee: true}, sheet: sheet}
+	if err := ok.checkPowerAttack(t.Context()); err != nil || ok.power == nil {
+		t.Errorf("a weapon attack of a player with the key: %v, power %v; want it accepted", err, ok.power)
 	}
 	if err := (&attackFlow{req: &playv1.RollAttackRequest{}, attacker: playdb.Combatant{Kind: kindNPC}}).checkPowerAttack(t.Context()); err != nil {
 		t.Errorf("an attack that names no trade: %v, want none", err)
@@ -494,4 +537,204 @@ func TestAHeldRollAppliesThePowerAttackPenaltyOnce(t *testing.T) {
 	if got := g.usesLeft(t); got != 2 {
 		t.Errorf("uses left = %d after the undo, want 2", got)
 	}
+}
+
+// A Bardic Inspiration die holds the roll like Lucky does: the question's d20 already counts the penalty, and the
+// answer settles on that bonus (6 - 5 = 1), once. The penalty twice would total 8 + 3 and miss; none would total 17.
+func TestAHeldRollForBardicInspirationAppliesThePowerAttackPenaltyOnce(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	e := g.fightInspired(t)
+	held, err := g.swing(t, e, g.heavyKey, 9)
+	if err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	offer := held.GetInspirationOffer()
+	if offer == nil {
+		t.Fatalf("the roll = %v, want the die's question", held)
+	}
+	const bonus = pipoToHit - heavyPenalty
+	if d := offer.GetD20(); d.GetModifier() != bonus || d.GetTotal() != 9+bonus {
+		t.Errorf("the question = modifier %d, total %d; want %d and %d", d.GetModifier(), d.GetTotal(), bonus, 9+bonus)
+	}
+	if got := g.usesLeft(t); got != 2 {
+		t.Fatalf("uses left = %d while the roll is held, want 2", got)
+	}
+	res, err := g.answer(t, g.caio, e, offer.GetHoldId(), func(r *playv1.AnswerBardicInspirationRequest) {
+		r.Use, r.Roll = true, &playv1.AnswerBardicInspirationRequest_TypedFace{TypedFace: 3}
+	})
+	if err != nil {
+		t.Fatalf("AnswerBardicInspiration() error = %v", err)
+	}
+	roll := res.GetAttack().GetRoll()
+	// 9 + 6 - 5 + 3 = 13 against 12.
+	if d := roll.GetD20(); d.GetTotal() != 9+bonus+3 || roll.GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT {
+		t.Errorf("the answer = modifier %d, total %d, outcome %v; want total %d and a hit", d.GetModifier(), d.GetTotal(), roll.GetOutcome(), 9+bonus+3)
+	}
+	if got := g.usesLeft(t); got != 1 {
+		t.Errorf("uses left = %d after the answer, want 1", got)
+	}
+}
+
+// A reaction window (the master's check of every hit) holds the roll and the replay runs the attack again from the
+// request: the penalty is taken off the sheet's bonus once, not on top of what the first pass did.
+func TestAReplayedRollAfterAReactionWindowAppliesThePowerAttackPenaltyOnce(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	g.setRules(t, enemyReactionsAlways)
+	e := g.fight(t)
+	held, err := g.swing(t, e, g.heavyKey, 14)
+	if err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	if !held.GetRoll().GetHeldForReaction() {
+		t.Fatalf("the attack = %v, want it held for the master's check", held.GetRoll())
+	}
+	w := g.windowOf(t, g.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
+	if w == nil {
+		t.Fatal("the master has no check")
+	}
+	if got := g.usesLeft(t); got != 2 {
+		t.Fatalf("uses left = %d while the roll is held, want 2", got)
+	}
+	g.mustAnswer(t, g.master, e, w.GetId(), passAnswer)
+	if got := g.usesLeft(t); got != 1 {
+		t.Errorf("uses left = %d after the replay, want 1 (spent once)", got)
+	}
+	if w2 := g.windowOf(t, g.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK); w2 != nil { // the hit is asked once more
+		g.mustAnswer(t, g.master, e, w2.GetId(), passAnswer)
+	}
+	var payload string
+	if err := g.h.pool.QueryRow(t.Context(), `SELECT payload::TEXT FROM session_events WHERE kind = 'attack_rolled' ORDER BY seq DESC LIMIT 1`).Scan(&payload); err != nil {
+		t.Fatalf("read the attack's event: %v", err)
+	}
+	var ev struct {
+		Modifier int32 `json:"modifier"`
+		Total    int32 `json:"total"`
+	}
+	if err := json.Unmarshal([]byte(payload), &ev); err != nil {
+		t.Fatalf("read the attack's event %s: %v", payload, err)
+	}
+	if want := int32(pipoToHit - heavyPenalty); ev.Modifier != want || ev.Total != 14+want {
+		t.Errorf("the replayed attack's event = modifier %d, total %d; want %d and %d", ev.Modifier, ev.Total, want, 14+want)
+	}
+}
+
+// The checks, the resource's included, run again on the replay: a pool spent while the roll waited refuses the replay
+// and the attack is dropped, writing no attack and spending nothing more.
+func TestAHeldPowerAttackWhoseUsesRanOutBeforeTheReplayIsDropped(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	g.setRules(t, enemyReactionsAlways)
+	e := g.fight(t)
+	held, err := g.swing(t, e, g.heavyKey, 14)
+	if err != nil || !held.GetRoll().GetHeldForReaction() {
+		t.Fatalf("RollAttack() = %v, %v; want it held for the master's check", held, err)
+	}
+	w := g.windowOf(t, g.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
+	if w == nil {
+		t.Fatal("the master has no check")
+	}
+	tag, err := g.h.pool.Exec(t.Context(), `INSERT INTO character_vitals (character_id, resources_used, revision, updated_at) VALUES ($1, '{"`+powerUses+`": 2}'::JSONB, 1, now())
+		ON CONFLICT (character_id) DO UPDATE SET resources_used = character_vitals.resources_used || '{"`+powerUses+`": 2}'::JSONB`, g.toren.GetId())
+	if err != nil || tag.RowsAffected() != 1 {
+		t.Fatalf("spend the pool: %v, rows %d", err, tag.RowsAffected())
+	}
+	if got := g.usesLeft(t); got != 0 {
+		t.Fatalf("uses left = %d after the test spent the pool, want 0", got)
+	}
+	g.mustAnswer(t, g.master, e, w.GetId(), passAnswer)
+	// What the attack wrote is the held request's marker alone: no roll, so no trade.
+	var rolls int
+	if err := g.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM session_events WHERE kind = 'attack_rolled' AND (payload ? 'total' OR payload ? 'power_attack')`).Scan(&rolls); err != nil {
+		t.Fatalf("count the attacks: %v", err)
+	}
+	if rolls != 0 {
+		t.Errorf("rolled attacks = %d, want 0: the replay was refused", rolls)
+	}
+	told := false
+	for _, r := range g.log(t, g.master, e).GetRounds() {
+		for _, en := range r.GetEntries() {
+			told = told || strings.Contains(en.GetReactionTextPt(), "não pôde acontecer")
+		}
+	}
+	if !told {
+		t.Error("the master's log has no line for the dropped attack")
+	}
+	if g.pipoActionUsed(t) {
+		t.Error("the dropped attack spent the action")
+	}
+	if got := g.usesLeft(t); got != 0 {
+		t.Errorf("uses left = %d, want 0 (the pool the test spent)", got)
+	}
+}
+
+// The trade goes on every way a character attacks: as the master rolling for the player's character, an
+// opportunity attack, an attack as a reaction and a bonus action attack. Each lowers the roll and spends (or not) once.
+func TestAPowerAttackGoesOnEveryWayOfAttacking(t *testing.T) {
+	t.Parallel()
+	const want = pipoToHit - heavyPenalty
+	t.Run("the master rolling for the character", func(t *testing.T) {
+		t.Parallel()
+		g := newPowerTable(t)
+		e := g.fight(t)
+		res, err := g.attack(t, g.master, e, "Pipo", greatsword, "Goblin", func(r *playv1.RollAttackRequest) { d20(14)(r); r.PowerAttackKey = g.heavyKey })
+		if err != nil {
+			t.Fatalf("RollAttack() error = %v", err)
+		}
+		if d := res.GetRoll().GetD20(); d.GetModifier() != want || d.GetTotal() != 14+want || g.usesLeft(t) != 1 {
+			t.Errorf("the master's roll = modifier %d, total %d, uses left %d; want %d, %d and 1", d.GetModifier(), d.GetTotal(), g.usesLeft(t), want, 14+want)
+		}
+	})
+	t.Run("an opportunity attack", func(t *testing.T) {
+		t.Parallel()
+		g := newPowerTable(t)
+		e := g.fight(t)
+		g.passTo(t, e, "Goblin")
+		offerID := g.mustOffer(t, e, "Goblin", "Pipo").GetOpportunityOfferId()
+		res, err := g.attackAs(t, g.caio, e, "Pipo", greatsword, "Goblin", func(r *playv1.RollAttackRequest) {
+			d20(14)(r)
+			r.OpportunityOfferId, r.PowerAttackKey = offerID, g.heavyKey
+		}, false)
+		if err != nil {
+			t.Fatalf("RollAttack(opportunity) error = %v", err)
+		}
+		if d := res.GetRoll().GetD20(); d.GetModifier() != want || d.GetTotal() != 14+want || g.usesLeft(t) != 1 {
+			t.Errorf("the opportunity attack = modifier %d, total %d, uses left %d; want %d, %d and 1", d.GetModifier(), d.GetTotal(), g.usesLeft(t), want, 14+want)
+		}
+	})
+	t.Run("an attack as a reaction", func(t *testing.T) {
+		t.Parallel()
+		g := newPowerTable(t)
+		e := g.fight(t)
+		g.mustEndTurn(t, g.caio, e)
+		res, err := g.attackAs(t, g.caio, e, "Pipo", greatsword, "Goblin", func(r *playv1.RollAttackRequest) { d20(14)(r); r.PowerAttackKey = g.heavyKey }, true)
+		if err != nil {
+			t.Fatalf("RollAttack(as a reaction) error = %v", err)
+		}
+		if d := res.GetRoll().GetD20(); d.GetModifier() != want || d.GetTotal() != 14+want || g.usesLeft(t) != 1 {
+			t.Errorf("the reaction attack = modifier %d, total %d, uses left %d; want %d, %d and 1", d.GetModifier(), d.GetTotal(), g.usesLeft(t), want, 14+want)
+		}
+	})
+	t.Run("a bonus action attack", func(t *testing.T) {
+		t.Parallel()
+		g := newPowerTable(t)
+		e := g.fight(t)
+		for range 2 { // Extra Attack: both attacks of the Attack action, with a light weapon
+			if _, err := g.swingAt(t, e, dagger, "Goblin", "", 14); err != nil {
+				t.Fatalf("RollAttack(dagger) error = %v", err)
+			}
+		}
+		res, err := g.swingAt(t, e, shortsword, "Goblin", g.freeKey, 14)
+		if err != nil {
+			t.Fatalf("RollAttack(the off hand) error = %v", err)
+		}
+		const free = pipoToHit - freePenalty
+		if d := res.GetRoll().GetD20(); d.GetModifier() != free || d.GetTotal() != 14+free {
+			t.Errorf("the off hand = modifier %d, total %d; want %d and %d", d.GetModifier(), d.GetTotal(), free, 14+free)
+		}
+		if !byLabel(t, g.get(t, g.master), "Pipo").GetBonusActionUsed() {
+			t.Error("the attack was not the bonus action's")
+		}
+	})
 }

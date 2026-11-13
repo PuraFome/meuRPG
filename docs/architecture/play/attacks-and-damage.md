@@ -44,6 +44,7 @@ Every refusal comes before anything is written.
 The effect's attack penalty comes off the roll's bonus, so the roll's modifier, its total and a held roll's offer all count it.
 A natural 20 still hits and a natural 1 still misses.
 A held roll keeps the bonus it was made with, so the answer's replay counts the penalty once.
+The checks, the resource's included, run again on the replay of a held roll, and a replay they refuse (the pool was spent meanwhile) is dropped.
 One use of the effect's resource is spent when the attack is written, and a held roll spends it on the replay.
 The master's undo gives the use back.
 The attack's event keeps the trade (`key`, `name`, `penalty`, `damage_bonus`), so a resend finds the same and applies nothing twice.
