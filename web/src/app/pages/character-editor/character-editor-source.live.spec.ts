@@ -17,6 +17,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
+import { AttunementRestriction } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
@@ -141,6 +142,12 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
           bonus: 1,
           requiresAttunement: false,
           attuned: false,
+          restrictionPt: '',
+          restriction: AttunementRestriction.UNSPECIFIED,
+          itemKey: '',
+          id: '',
+          sameItemAttuned: false,
+          itemNamePt: '',
         },
         {
           $typeName: 'meurpg.characters.v1.ItemBonus' as const,
@@ -148,6 +155,12 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
           bonus: 2,
           requiresAttunement: false,
           attuned: false,
+          restrictionPt: '',
+          restriction: AttunementRestriction.UNSPECIFIED,
+          itemKey: '',
+          id: '',
+          sameItemAttuned: false,
+          itemNamePt: '',
         },
         {
           $typeName: 'meurpg.characters.v1.ItemBonus' as const,
@@ -155,6 +168,12 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
           bonus: 3,
           requiresAttunement: false,
           attuned: false,
+          restrictionPt: '',
+          restriction: AttunementRestriction.UNSPECIFIED,
+          itemKey: '',
+          id: '',
+          sameItemAttuned: false,
+          itemNamePt: '',
         },
       ],
     };
@@ -177,8 +196,11 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
           key: 'item:ring-of-protection',
           attuned: true,
           requiresAttunement: true,
-          attunementByPt: '',
-          restrictionMet: true,
+          restrictionPt: '',
+          restriction: AttunementRestriction.UNSPECIFIED,
+          id: 'm1',
+          sameItemAttuned: false,
+          namePt: '',
         },
       ],
     };
