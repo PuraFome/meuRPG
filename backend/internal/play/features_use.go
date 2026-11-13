@@ -2,9 +2,11 @@ package play
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"strconv"
 
+	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -56,6 +58,62 @@ func (s *Service) featureGateCode(ctx context.Context, tx pgx.Tx, campaignID str
 		return rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_REACTION_USED, nil
 	}
 	return code, nil
+}
+
+// featureStop is why the combatant cannot use a feature now, before the feature's own economy, resource, uses and targets:
+// the combat, the combatant, or a wait for someone else. UseFeature answers err; the options say reason.
+type featureStop struct {
+	code rulesv1.DisabledReasonCode
+	text string
+	err  error
+}
+
+// reason is the stop as a row's disabled reason.
+func (st *featureStop) reason() *rulesv1.DisabledReason {
+	return &rulesv1.DisabledReason{Code: st.code, TextPt: st.text}
+}
+
+// The words of a row that waits for someone else.
+const (
+	waitsForTheMasterText = "Esperando o mestre"
+	waitsForAnAnswerText  = "Esperando uma resposta"
+)
+
+// featureStopNow is the one place that says whether a combatant may use a feature now, in the order the use checks it: the
+// combat has not ended, the gate (the turn, for a feature that does not spend the reaction; the combatant), then the waits.
+// A question for the master holds every use; a reaction window and an opportunity offer of the user hold the uses that are
+// not a reaction (a reaction is how the user answers them). nil when nothing stops it. UseFeature (c from the write) and
+// GetTurnOptions (c made for the read) both ask it.
+func (s *Service) featureStopNow(ctx context.Context, c *combatTx, who playdb.Combatant, reaction bool) (*featureStop, error) {
+	if err := notEnded(c.enc); err != nil {
+		return &featureStop{code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBAT_NOT_ACTIVE, err: err}, nil
+	}
+	code, err := s.featureGateCode(ctx, c.tx, c.session.CampaignID, c.enc, who, reaction)
+	if err != nil {
+		return nil, err
+	}
+	if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
+		return &featureStop{code: code, err: featureGateError(code)}, nil
+	}
+	if err := s.mustNotHold(ctx, c); err != nil {
+		return s.waitStop(err, waitsForTheMasterText)
+	}
+	if reaction {
+		return nil, nil
+	}
+	if err := s.mustNotWait(ctx, c, who); err != nil {
+		return s.waitStop(err, waitsForAnAnswerText)
+	}
+	return nil, nil
+}
+
+// waitStop is the stop of a wait: err is the refusal when it says so (an encounter blocked), a failure otherwise.
+func (s *Service) waitStop(err error, text string) (*featureStop, error) {
+	var ce *connect.Error
+	if errors.As(err, &ce) && ce.Code() == connect.CodeFailedPrecondition {
+		return &featureStop{code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NOT_YOUR_TURN, text: text, err: err}, nil
+	}
+	return nil, err
 }
 
 // featureScene is the combat as a feature's checks read it: the combatants, who uses the feature and what it has spent.

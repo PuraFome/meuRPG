@@ -491,33 +491,97 @@ func (m *featureTable) validArgs(t *testing.T, name string) func(*playv1.UseFeat
 }
 
 // What GetTurnOptions calls enabled is what UseFeature accepts, in every state the table goes through: on turn, with the
-// economy and the uses spent, off turn, with the reaction spent.
+// economy and the uses spent, off turn, with the reaction spent, and while the turn waits (a question for the master, an
+// opportunity offer). The master has the last word on the economy and nothing else: a row his options call disabled for the
+// economy may be used, one that is disabled for another reason may not.
 func TestUseFeatureOptionsAgreeWithTheCall(t *testing.T) {
 	t.Parallel()
 	m := newFeatureTable(t)
 	e := m.fight(t)
 	names := []string{"Brado", "Postura", "Reflexo", "Marca", "Chamado"}
-	check := func(state string) {
+	check := func(state string, u *user) {
 		t.Helper()
 		for _, name := range names {
 			m.h.roller.queue(3)
-			enabled := m.row(t, m.ana, e, "Pensantus", name).GetEnabled()
-			_, err := m.use(t, m.ana, e, "Pensantus", name, m.validArgs(t, name))
-			if (err == nil) != enabled {
-				t.Errorf("%s, %s: the option says enabled = %v and the call answers %v", state, name, enabled, err)
+			row := m.row(t, u, e, "Pensantus", name)
+			_, err := m.use(t, u, e, "Pensantus", name, m.validArgs(t, name))
+			agrees := (err == nil) == row.GetEnabled()
+			if !agrees && u == m.master && err == nil && masterMayOverride(row.GetReason().GetCode()) {
+				agrees = true // the economy the master overrides
+			}
+			if !agrees {
+				t.Errorf("%s, %s: the option says enabled = %v (%v) and the call answers %v", state, name, row.GetEnabled(), row.GetReason().GetCode(), err)
 			}
 			if err != nil {
 				wantCode(t, state+", "+name, err, connect.CodeFailedPrecondition)
 			}
 		}
 	}
-	check("on turn")
-	check("with everything spent")
+	check("on turn", m.ana)
+	check("with everything spent", m.ana)
+	check("with everything spent, the master", m.master) // the economy is his to override, the uses and the targets are not
 	e = m.passTo(t, m.get(t, m.master), "Toren")
-	check("off turn")
+	check("off turn", m.ana)
 	e = m.passTo(t, e, "Pensantus")
-	check("the next turn")
-	check("the next turn, again")
+	check("the next turn", m.ana)
+	check("the next turn, again", m.ana)
+
+	// A question waits for the master: nothing is used, a reaction included, and the options say so.
+	m.execSQL(t, `INSERT INTO hidden_reveals (encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, seq, created_at)
+		SELECT encounter_id, id, 'spell:fire-bolt', ARRAY[]::TEXT[], 4, 3, 1, now() FROM combatants WHERE label = 'Pensantus'`)
+	for _, name := range names {
+		if row := m.row(t, m.ana, e, "Pensantus", name); row.GetEnabled() {
+			t.Errorf("a question waits, %s: the option is enabled", name)
+		}
+	}
+	check("a question waits", m.ana)
+	check("a question waits, the master", m.master)
+	m.execSQL(t, `DELETE FROM hidden_reveals`)
+}
+
+// The master's override with the uses spent too: Brado has two uses in the combat, and the bonus action goes with the first.
+func TestUseFeatureMasterOverridesTheEconomyNotTheUses(t *testing.T) {
+	t.Parallel()
+	m := newFeatureTable(t)
+	e := m.fight(t)
+	m.h.roller.queue(3, 3, 3)
+	m.mustUse(t, m.master, e, "Pensantus", "Brado", m.validArgs(t, "Brado"))
+	if _, err := m.use(t, m.master, e, "Pensantus", "Brado", m.validArgs(t, "Brado")); err != nil {
+		t.Fatalf("the second Brado, by the master with the bonus action spent: %v", err)
+	}
+	if row := m.row(t, m.master, e, "Pensantus", "Brado"); row.GetEnabled() {
+		t.Errorf("Brado with the economy and the uses spent = %v, want it disabled", row)
+	}
+	_, err := m.use(t, m.master, e, "Pensantus", "Brado", m.validArgs(t, "Brado"))
+	if b := encounterBlocked(t, err); b.GetReason() != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES {
+		t.Errorf("the third Brado by the master = %v, want NO_USES: the economy override does not reach the uses", err)
+	}
+}
+
+// While an opportunity offer waits for the user, a feature that is not a reaction waits too and a reaction does not (it is how
+// the user answers); while a question waits for the master, neither is used and the options say so.
+func TestUseFeatureHoldsInTheOptions(t *testing.T) {
+	t.Parallel()
+	m := newFeatureTable(t)
+	e := m.passTo(t, m.castersFight(t, 1), "Capitão Goblin")
+	m.moveTo(t, e, "Capitão Goblin", 2, 2)
+	if len(m.get(t, m.ana).GetOpportunityOffers()) != 1 {
+		t.Fatal("no offer for Pensantus")
+	}
+	m.execSQL(t, `INSERT INTO hidden_reveals (encounter_id, caster_id, spell_key, combatant_ids, origin_col, origin_row, seq, created_at)
+		SELECT encounter_id, id, 'spell:fire-bolt', ARRAY[]::TEXT[], 4, 3, 1, now() FROM combatants WHERE label = 'Pensantus'`)
+	row := m.row(t, m.ana, e, "Pensantus", "Reflexo")
+	if row.GetEnabled() || row.GetReason().GetTextPt() != waitsForTheMasterText {
+		t.Errorf("the reaction while a question waits = %v, want it off with %q", row, waitsForTheMasterText)
+	}
+	_, err := m.use(t, m.ana, e, "Pensantus", "Reflexo", nil)
+	if b := encounterBlocked(t, err); b.GetReason() != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_HIDDEN_REVEAL_PENDING {
+		t.Errorf("the reaction while a question waits = %v, want HIDDEN_REVEAL_PENDING", err)
+	}
+	m.execSQL(t, `DELETE FROM hidden_reveals`)
+	if row := m.row(t, m.ana, e, "Pensantus", "Reflexo"); !row.GetEnabled() {
+		t.Errorf("the reaction with the question answered = %v, want it enabled", row)
+	}
 }
 
 // A use is replayed with the same key: one use, one event, the same answer.

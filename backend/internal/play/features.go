@@ -216,20 +216,17 @@ func (f *featureFlow) findFeature(ctx context.Context) error {
 	return nil
 }
 
-// gate checks the combat is running and the combatant may use the feature now: its turn, for a feature that does not spend
-// the reaction; a feature that does is used on any turn by a combatant that may react.
+// gate checks the combat is running, the combatant may use the feature now and nothing holds it (featureStopNow, which the
+// options ask too).
 func (f *featureFlow) gate(ctx context.Context) error {
-	if err := notEnded(f.c.enc); err != nil {
-		return err
-	}
-	if !isReaction(f.row) {
-		return f.s.mustActNow(ctx, f.c, f.who)
-	}
-	code, err := f.s.featureGateCode(ctx, f.c.tx, f.m.CampaignID, f.c.enc, f.who, true)
+	stop, err := f.s.featureStopNow(ctx, f.c, f.who, isReaction(f.row))
 	if err != nil {
 		return err
 	}
-	return featureGateError(code)
+	if stop != nil {
+		return stop.err
+	}
+	return nil
 }
 
 // featureGateError is the refusal of a gate code of a feature that spends the reaction: gateError's, and the reaction an

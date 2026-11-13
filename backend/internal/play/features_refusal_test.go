@@ -7,6 +7,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 )
 
 // A disabled row whose code UseFeature does not map is refused all the same: nothing disabled ever succeeds (the call fails
@@ -46,5 +47,11 @@ func TestFeatureRefusalFailsClosed(t *testing.T) {
 	}
 	if featureRefusal(nil, false) != nil {
 		t.Error("an enabled feature is refused")
+	}
+	// What the options say is what the call refuses: a row the rules disabled with NO_SLOT stays disabled, with its reason.
+	noSlot := &rulesv1.ActionOption{Enabled: false, Reason: code(rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_SLOT)}
+	fa := link.FeatureAction{Use: &link.FeatureUse{}}
+	if r := (featureScene{}).reason(fa, noSlot, false); r.GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_SLOT {
+		t.Errorf("the options for a no-slot row say %v, want NO_SLOT", r)
 	}
 }

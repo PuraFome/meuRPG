@@ -24,7 +24,7 @@ func featureRowsOf(o *rulesv1.TurnOptions) []*rulesv1.ActionOption {
 }
 
 // annotateFeatures finishes the rows of the features taken with UseFeature, with the checks UseFeature makes
-// (featureScene.reason), in its order: the turn (a feature that spends the reaction is used on any turn, so the row the gate
+// (featureStopNow and featureScene.reason), in its order: the turn (a feature that spends the reaction is used on any turn, so the row the gate
 // disabled for another creature's turn is taken back from the rules' own), the economy and the resource, the uses of the
 // scope, the targets. It also gives each row the uses of its scope (use_total, use_left) and the total of its rest resource,
 // and lists who each row that picks creatures can pick. The feature state is never sent (RN-10: it is the combatant's).
@@ -44,6 +44,17 @@ func (s *Service) annotateFeatures(ctx context.Context, m authz.Membership, d *e
 	if err != nil {
 		return nil, s.dbError(ctx, "read the character's resources", err)
 	}
+	// The stop (featureStopNow) is the one UseFeature asks, read here with the viewer's own standing; one for each kind of row.
+	read := &combatTx{q: s.queries, session: playdb.GameSession{CampaignID: m.CampaignID}, enc: d.enc, master: v.master}
+	stops := map[bool]*featureStop{}
+	stopOf := func(reaction bool) (*featureStop, error) {
+		if st, ok := stops[reaction]; ok {
+			return st, nil
+		}
+		st, err := s.featureStopNow(ctx, read, who, reaction)
+		stops[reaction] = st
+		return st, err
+	}
 	var lists []*playv1.ResourceTargets
 	for _, row := range opts.GetFeatureActions() {
 		if !row.GetViaUseFeature() {
@@ -54,15 +65,17 @@ func (s *Service) annotateFeatures(ctx context.Context, m authz.Membership, d *e
 			continue
 		}
 		pristine := reads.features[slices.IndexFunc(reads.features, func(r *rulesv1.ActionOption) bool { return r.GetAction().GetKey() == fa.Key })]
-		if isReaction(pristine) {
-			code, err := s.featureGateCode(ctx, nil, m.CampaignID, d.enc, who, true)
-			if err != nil {
-				return nil, s.dbError(ctx, "check the combatant's reaction", err)
-			}
+		reaction := isReaction(pristine)
+		if reaction {
+			// The rules' own row, taken back: the gate disabled it for another creature's turn.
 			row.Enabled, row.Reason = pristine.GetEnabled(), pristine.GetReason()
-			if code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
-				row.Enabled, row.Reason = false, &rulesv1.DisabledReason{Code: code}
-			}
+		}
+		stop, err := stopOf(reaction)
+		if err != nil {
+			return nil, s.dbError(ctx, "check what holds the feature", err)
+		}
+		if stop != nil {
+			row.Enabled, row.Reason = false, stop.reason()
 		}
 		u := *fa.Use
 		if u.Scope != "" {
