@@ -12311,9 +12311,18 @@ type RollAttackRequest struct {
 	// Only the character's own weapon attack (an opportunity attack included): `invalid_argument` for an NPC
 	// attacker, a spell attack, a maneuver the character has not or one of another `applies`; a resource
 	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
-	ManeuverKey   string `protobuf:"bytes,103,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ManeuverKey string `protobuf:"bytes,103,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	// A power attack trade (a power_attack effect of a table feature) the player makes on this weapon attack: its
+	// key, one of the AttackOption.power_attacks the attack lists. The effect's attack penalty is taken off the
+	// attack roll, so the roll's modifier and total count it; a roll that waits for a Lucky or Bardic Inspiration
+	// answer keeps the modifier it was made with, so the answer settles on the same bonus. If the effect has a
+	// resource, one use is spent when the attack is written (a held roll spends it on the replay) and an undo gives it
+	// back. Only the character's own weapon attack: `invalid_argument` for an NPC attacker, a spell attack, a key the
+	// character has not or a weapon the effect does not go with (its text is the reason in Portuguese); a resource
+	// blocked reason NO_USES_LEFT when no use is left. Empty makes no trade.
+	PowerAttackKey string `protobuf:"bytes,104,opt,name=power_attack_key,json=powerAttackKey,proto3" json:"power_attack_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *RollAttackRequest) Reset() {
@@ -12486,6 +12495,13 @@ func (x *RollAttackRequest) GetLegendaryOption() string {
 func (x *RollAttackRequest) GetManeuverKey() string {
 	if x != nil {
 		return x.ManeuverKey
+	}
+	return ""
+}
+
+func (x *RollAttackRequest) GetPowerAttackKey() string {
+	if x != nil {
+		return x.PowerAttackKey
 	}
 	return ""
 }
@@ -28194,7 +28210,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	" \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12&\n" +
 	"\x0fcritical_on_hit\x18\v \x01(\bR\rcriticalOnHit\x12\x19\n" +
 	"\bnot_seen\x18\f \x01(\bR\anotSeenB\x0e\n" +
-	"\f_distance_ft\"\xe5\x05\n" +
+	"\f_distance_ft\"\x8f\x06\n" +
 	"\x11RollAttackRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -28220,7 +28236,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12(\n" +
 	"\x10use_extra_action\x18e \x01(\bR\x0euseExtraAction\x12)\n" +
 	"\x10legendary_option\x18f \x01(\tR\x0flegendaryOption\x12!\n" +
-	"\fmaneuver_key\x18g \x01(\tR\vmaneuverKeyB\x06\n" +
+	"\fmaneuver_key\x18g \x01(\tR\vmaneuverKey\x12(\n" +
+	"\x10power_attack_key\x18h \x01(\tR\x0epowerAttackKeyB\x06\n" +
 	"\x04roll\"\xac\x06\n" +
 	"\n" +
 	"AttackRoll\x12\x1f\n" +

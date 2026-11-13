@@ -325,6 +325,9 @@ type actionEvent struct {
 	// D20Reroll is the uses the d20 rolled again by a reroll rule spent on a weapon attack, a cast's spell attack or a
 	// saving throw (held_reroll.go); the undo of an attack or a cast gives them back. Nil when none were spent.
 	D20Reroll *damageRerollUse `json:"d20_reroll,omitempty"`
+	// PowerAttack is the trade of attack roll for damage the attack made (combat_attack_power.go): the roll's Modifier
+	// already holds its penalty, so a resend finds the same and the undo needs nothing more. Nil for an attack with no trade.
+	PowerAttack *powerAttackEvent `json:"power_attack,omitempty"`
 	// TargetAC is the armor class the total was compared with: only the
 	// master's answer carries it (RN-20), and a retry reads it back from here.
 	TargetAC int32 `json:"target_ac,omitempty"`

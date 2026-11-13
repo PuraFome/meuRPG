@@ -452,6 +452,11 @@ type Attack struct {
 	Ability            string
 	Finesse, TwoHanded bool
 	Weapon             bool
+	// Properties are the weapon's property keys ("weapon-property:heavy") and Proficient says the character
+	// is proficient with it: what a power_attack's weapon filter reads (rules.PowerAttack.Allows). A
+	// creature's attack line has neither.
+	Properties []string `json:",omitempty"`
+	Proficient bool     `json:",omitempty"`
 	// Magical says the attack's damage is magical (a spell; a creature's weapon attack
 	// with the trait "Magic Weapons"; any attack the sheet marks, such as an unarmed
 	// strike): the resistances and immunities to nonmagical attacks do not cover it.

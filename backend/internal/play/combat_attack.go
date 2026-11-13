@@ -199,6 +199,8 @@ type attackFlow struct {
 	// maneuver is the table die the request names (checked in prepare); maneuverSpent are the resources its roll spent.
 	maneuver      *link.Maneuver
 	maneuverSpent []string
+	// power is the power attack trade the request names (checked in prepare); its penalty is off the roll's bonus.
+	power *link.PowerAttack
 }
 
 func newAttackFlow(s *Service, c *combatTx, m authz.Membership, req *playv1.RollAttackRequest, call attackCall, out *attackOut) *attackFlow {
@@ -244,6 +246,9 @@ func (f *attackFlow) prepare(ctx context.Context) error {
 	if err := f.checkManeuver(ctx); err != nil {
 		return err
 	}
+	if err := f.checkPowerAttack(ctx); err != nil {
+		return err
+	}
 	if err := f.checkEconomy(ctx); err != nil {
 		return err
 	}
@@ -253,7 +258,7 @@ func (f *attackFlow) prepare(ctx context.Context) error {
 // writeAttack is what the settled d20 does: the event, the economy, the damage it opens and the offer it answers.
 func (f *attackFlow) writeAttack(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
-		f.resolve, f.autoParry, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
+		f.resolve, f.spendPowerAttack, f.autoParry, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -598,6 +603,7 @@ func (f *attackFlow) rollD20(ctx context.Context) error {
 	}
 	f.strokeSpec(ctx)
 	f.attack.ToHit += bonusTotal(rollBonusesOf(modeIn.states, f.attacker.ID, rules.RollAppliesAttack))
+	f.attack.ToHit -= f.powerPenalty() // a held roll's replay reads the bonus the roll was made with, so this counts once
 	f.rolled, err = f.s.rollHeldAttack(ctx, f.c, f.v, f.req, f.spec, f.attacker, f.target, f.attackKey, f.truth.Mode, f.call.in, f.attack.ToHit)
 	if err != nil || f.rolled.Held != nil {
 		return err
@@ -699,7 +705,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 	a, d20, choice, cover := f.attacker, f.rolled.D20, f.rolled.Choice, f.cp.real
 	made := actionEvent{
 		RunBefore: run, Round: f.c.enc.Round, Secret: secretOf(a, f.target), Actor: a.ID, Target: f.target.ID, Key: f.attackKey,
-		Extra: f.extra, ExtraUsed: f.call.useExtra, ManeuverSpent: f.maneuverSpent,
+		Extra: f.extra, ExtraUsed: f.call.useExtra, ManeuverSpent: f.maneuverSpent, PowerAttack: f.powerEvent(),
 		D20: clamp32(d20.Face(), 1, 20), Modifier: conv.Int32(f.attack.ToHit + f.bonusFace), Total: conv.Int32(f.result.Total),
 		Physical: d20.Physical, Outcome: outcomeMiss, AsReaction: f.call.asReaction, CriticalMaxRule: f.c.rules.CriticalMaxPlusRoll,
 		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(choice.Mode), SuggestedMode: modeKey(choice.Suggested),

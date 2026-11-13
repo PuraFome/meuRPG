@@ -36,6 +36,20 @@ An opportunity attack and an attack as a reaction take the die like any other.
 A die with no use left stays listed with `uses_left` 0.
 An NPC gets none.
 
+`RollAttackRequest.power_attack_key` makes the trade of a `power_attack` effect ([Rules: table content](../rules-table-content.md)) on a weapon attack of the player's own character.
+The server checks the key against the character's own power attacks, whatever the screen listed.
+It refuses an NPC attacker, a spell attack, a key the character has not and a weapon the effect's filter does not accept (`invalid_argument`; the filter's reason, in Portuguese, is the text).
+It refuses a trade whose resource has no use left (`NO_USES_LEFT`).
+Every refusal comes before anything is written.
+The effect's attack penalty comes off the roll's bonus, so the roll's modifier, its total and a held roll's offer all count it.
+A natural 20 still hits and a natural 1 still misses.
+A held roll keeps the bonus it was made with, so the answer's replay counts the penalty once.
+One use of the effect's resource is spent when the attack is written, and a held roll spends it on the replay.
+The master's undo gives the use back.
+The attack's event keeps the trade (`key`, `name`, `penalty`, `damage_bonus`), so a resend finds the same and applies nothing twice.
+`AttackOption.power_attacks` lists, on each weapon line of a player's character, the trades whose filter accepts that line (`key`, `name`, `penalty`, `damage_bonus`).
+A spell line, a line the filter refuses and an NPC list none.
+
 `RollDamage` rolls the damage dice (on a critical as the table rule says; the modifier once; the attack's type) or validates the typed sum (`dice.Physical`, from N to N × faces).
 
 ```mermaid
