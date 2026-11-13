@@ -629,6 +629,8 @@
     "beast": "x",
     "hp": 1
   },
+  "stay": true,
+  "stay_left": 1,
   "creature_id": "x",
   "sight": "x",
   "sight_conditions": [

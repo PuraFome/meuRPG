@@ -203,6 +203,13 @@
       "player_label_pt": "Provocado",
       "tags_pt": ["Desvantagem nos ataques contra quem não o provocou, até o fim do próximo turno de quem o provocou"]
     },
+    "effect:wild-shape": {
+      "kind": "feature",
+      "duration": {"kind": "rounds", "rounds": 600},
+      "visibility": "owner",
+      "player_label_pt": "Forma Selvagem",
+      "tags_pt": ["Volta à forma normal quando o tempo acaba, a menos que você gaste outro uso de Forma Selvagem"]
+    },
     "effect:turned": {
       "kind": "feature",
       "duration": {"kind": "rounds", "rounds": 10},

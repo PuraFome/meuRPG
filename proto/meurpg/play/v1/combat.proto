@@ -2035,6 +2035,9 @@ enum EncounterBlockedReason {
   // cannot be donned or doffed in a fight (SRD 5.1: it takes 1 to 10 minutes). Only the
   // master may change it. Nothing is changed.
   ENCOUNTER_BLOCKED_REASON_ARMOR_IN_COMBAT = 127;
+  // A stay in a Wild Shape form (AssumeWildShapeRequest.stay) came after the form
+  // had ended: nothing was spent and no new form was taken.
+  ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED = 130;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused
@@ -5663,6 +5666,10 @@ enum WildShapeEndReason {
   WILD_SHAPE_END_REASON_ZERO_HP = 4;
   // The druid fell unconscious (a sleep spell, the master's hand).
   WILD_SHAPE_END_REASON_UNCONSCIOUS = 5;
+  // The form's time ran out: half the druid's level in hours (SRD 5.1).
+  WILD_SHAPE_END_REASON_EXPIRED = 6;
+  // The master ended the form's time by hand (no damage involved).
+  WILD_SHAPE_END_REASON_MASTER_ENDED = 7;
 }
 
 // CombatLogWildShape is a druid's change of form, in the combat log.

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"slices"
 	"testing"
+
+	"github.com/PuraFome/meuRPG/backend/internal/rules/srd51"
 )
 
 // salvia is the designs' druid: Half-elf, Druid 5 (Circle of the Land),
@@ -418,4 +420,126 @@ func TestBeastFormDropsDevilsSight(t *testing.T) {
 	if got := beastSenses([]Sense{{Key: "devils-sight", RangeFt: 120}}, []Sense{{Key: "darkvision", RangeFt: 30}}); got[0].RangeFt != 30 {
 		t.Errorf("Devil's Sight raised the beast's darkvision to %d, want 30", got[0].RangeFt)
 	}
+}
+
+// TestWildShapeSeconds: a form lasts half the druid's level in hours, rounded down (SRD 5.1).
+func TestWildShapeSeconds(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for level, hours := range map[int]int{1: 0, 2: 1, 3: 1, 4: 2, 5: 2, 8: 4, 17: 8, 19: 9, 20: 10} {
+		if got := WildShapeSeconds(Derive(salvia(level), c)); got != hours*3600 {
+			t.Errorf("druid %d: %d seconds, want %d hours", level, got, hours)
+		}
+	}
+	// Only the druid's own levels count: a fighter has no clock.
+	if got := WildShapeSeconds(Derive(standard("class:fighter", 8), c)); got != 0 {
+		t.Errorf("fighter 8: %d seconds, want none", got)
+	}
+	// A druid 4 with 6 levels of another class lasts for 2 hours, not 5.
+	multi := salvia(4)
+	multi.Classes = append(multi.Classes, ClassLevel{Class: "class:fighter", Level: 6})
+	if got := WildShapeSeconds(Derive(multi, c)); got != 2*3600 {
+		t.Errorf("druid 4 / fighter 6: %d seconds, want 2 hours", got)
+	}
+}
+
+// TestWildShapeKeepsWhatTheSRDKeeps pins the SRD's text: the druid keeps the skill and saving
+// throw proficiencies and Intelligence, Wisdom and Charisma, takes the beast's Strength,
+// Dexterity and Constitution, and gains the beast's proficiencies; where both have one, the
+// higher bonus is used.
+func TestWildShapeKeepsWhatTheSRDKeeps(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	c := beastWithSaves(srd)
+	own := Derive(salvia(5), srd)
+	wolf := c.c.monsters["monster:wolf"]
+	if wolf.Skills["skill:perception"] != 3 || wolf.Skills["skill:stealth"] != 4 {
+		t.Fatalf("the wolf's skills = %v, want Perception +3 and Stealth +4", wolf.Skills)
+	}
+	form, err := c.WildShapeDerived(own, "monster:wolf")
+	if err != nil {
+		t.Fatalf("WildShapeDerived() error = %v", err)
+	}
+	skill := func(d Derived, key string) Skill {
+		for _, s := range d.Skills {
+			if s.Key == key {
+				return s
+			}
+		}
+		t.Fatalf("no skill %s", key)
+		return Skill{}
+	}
+	save := func(d Derived, a Ability) SavingThrow {
+		for _, s := range d.SavingThrows {
+			if s.Ability == a {
+				return s
+			}
+		}
+		t.Fatalf("no save %v", a)
+		return SavingThrow{}
+	}
+	// Mental scores stay, physical ones are the beast's.
+	for _, a := range []Ability{INT, WIS, CHA} {
+		if got, want := formScore(form, a), formScore(own, a); got != want {
+			t.Errorf("%v in the form = %+v, want her own %+v", a, got, want)
+		}
+	}
+	for _, a := range []Ability{STR, DEX, CON} {
+		if got := formScore(form, a).Score; got != wolfScore(wolf, a) {
+			t.Errorf("%v in the form = %d, want the wolf's %d", a, got, wolfScore(wolf, a))
+		}
+	}
+	if form.ProficiencyBonus != own.ProficiencyBonus {
+		t.Errorf("proficiency bonus = %d, want her own %d", form.ProficiencyBonus, own.ProficiencyBonus)
+	}
+	// Her proficiencies stay, with the new modifier where the ability is the beast's.
+	if p := skill(form, "skill:perception"); p.Proficiency == ProficiencyNone || p.Bonus != max(skill(own, "skill:perception").Bonus, 3) {
+		t.Errorf("Perception = %+v, want her proficiency and the higher of her bonus and the wolf's +3", p)
+	}
+	if n := skill(form, "skill:nature"); n.Proficiency == ProficiencyNone || n.Bonus != skill(own, "skill:nature").Bonus {
+		t.Errorf("Nature = %+v, want her own proficiency and bonus (an Intelligence skill)", n)
+	}
+	// The wolf's proficiency she lacks is gained: the wolf's listed +4 (Stealth).
+	if s := skill(form, "skill:stealth"); s.Proficiency == ProficiencyNone || s.Bonus < 4 {
+		t.Errorf("Stealth = %+v, want the wolf's proficiency at +4 or better", s)
+	}
+	if s := skill(own, "skill:stealth"); s.Proficiency != ProficiencyNone {
+		t.Fatalf("her own Stealth = %+v, the test needs her without it", s)
+	}
+	// Saving throws: her Wisdom and Intelligence proficiencies (druid) stay; the beast's listed
+	// saves are gained, and the higher bonus wins where both have one.
+	for _, a := range []Ability{INT, WIS} {
+		if s := save(form, a); !s.Proficient || s.Bonus != save(own, a).Bonus {
+			t.Errorf("%v save = %+v, want her own proficient %+v", a, s, save(own, a))
+		}
+	}
+	spider, err := c.WildShapeDerived(own, "monster:test-spider") // saves: Dex +5, Wis +1
+	if err != nil {
+		t.Fatalf("WildShapeDerived(spider) error = %v", err)
+	}
+	if s := save(spider, DEX); !s.Proficient || s.Bonus != 5 {
+		t.Errorf("Dexterity save as the test spider = %+v, want proficient at the beast's +5", s)
+	}
+	if w, o := save(spider, WIS), save(own, WIS); !w.Proficient || w.Bonus != max(o.Bonus, 1) || w.Bonus < o.Bonus {
+		t.Errorf("Wisdom save as the test spider = %+v, want the higher of hers %+v and its +1", w, o)
+	}
+}
+
+func formScore(d Derived, a Ability) AbilityScore {
+	for _, s := range d.Abilities {
+		if s.Ability == a {
+			return s
+		}
+	}
+	return AbilityScore{}
+}
+
+func wolfScore(m *srd51.Monster, a Ability) int {
+	switch a {
+	case STR:
+		return m.Str
+	case DEX:
+		return m.Dex
+	}
+	return m.Con
 }
