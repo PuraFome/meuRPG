@@ -9,11 +9,15 @@
 -- The column has a constant default and the statement adds only what is missing (IF NOT EXISTS). The check is its own named
 -- constraint, dropped first, so the migration can run twice (an inline CHECK on ADD COLUMN IF NOT EXISTS adds a second
 -- constraint on the rerun in CockroachDB).
+--
+-- The size is checked on feature_state::text, which jsonb writes with a space after every colon and comma, so the same
+-- document is longer there than the compact JSON the server writes and limits to 8192 bytes (featureStateMaxBytes). The check
+-- allows 16384: room for the spaces of 64 keys with their entries, so a document the server accepts is never refused here.
 ALTER TABLE combatants
     ADD COLUMN IF NOT EXISTS feature_state JSONB NOT NULL DEFAULT '{}';
 ALTER TABLE combatants DROP CONSTRAINT IF EXISTS combatants_feature_state_valid;
 ALTER TABLE combatants ADD CONSTRAINT combatants_feature_state_valid
-    CHECK (jsonb_typeof(feature_state) = 'object' AND octet_length(feature_state::text) <= 8192);
+    CHECK (jsonb_typeof(feature_state) = 'object' AND octet_length(feature_state::text) <= 16384);
 
 -- The marks the old columns hold become entries of scope turn with one use: the table's features under their own key,
 -- Sneak Attack under 'sneak_attack' and Colossus Slayer under 'colossus_slayer'. Only rows with a mark and no state yet

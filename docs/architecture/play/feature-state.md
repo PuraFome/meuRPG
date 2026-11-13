@@ -50,8 +50,8 @@ The state holds only what ends with the turn, the round or the combat.
 
 ### Limits
 
-At most 64 keys, a key of at most 80 characters, a document of at most 8192 bytes.
-The database checks the type (an object) and the size (`combatants_feature_state_valid`); `featureState.validate` refuses the same limits, and the keys, with an error before the statement runs.
+At most 64 keys, a key of at most 80 characters, a document of at most 8192 bytes written compact.
+The database checks the type (an object) and the size of the text jsonb gives back, 16384 bytes, which has spaces the compact document does not (`combatants_feature_state_valid`); `featureState.validate` refuses the same limits, and the keys, with an error before the statement runs.
 
 ### Reading and writing inside `combatTx`
 

@@ -80,8 +80,9 @@ func TestFeatureStateMigrationCopiesOldMarks(t *testing.T) {
 	}
 	check("after the second Up")
 
-	// The check refuses a state that is not an object or is too big.
-	for _, bad := range []string{`'[]'`, `'"x"'`, `jsonb_build_object('k', repeat('x', 9000))`} {
+	// The check refuses a state that is not an object or is too big (over 16384 bytes of the jsonb text; the server's own limit
+	// is 8192 compact bytes, which is never over this).
+	for _, bad := range []string{`'[]'`, `'"x"'`, `jsonb_build_object('k', repeat('x', 17000))`} {
 		if _, err := db.ExecContext(ctx, fmt.Sprintf(`UPDATE combatants SET feature_state = %s WHERE id = '%s'`, bad, none)); err == nil {
 			t.Errorf("feature_state = %s was accepted", bad)
 		}

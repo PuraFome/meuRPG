@@ -1,6 +1,8 @@
 package play
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -77,5 +79,36 @@ func TestUndoPutsBackTheEntryOfEachKeyTheRollMarked(t *testing.T) {
 	got := a.featureStateOf(t, "Toren")
 	if _, ok := got[featureSneakAttack]; ok || got["giant"] != before || got["other"] != (featureEntry{S: scopeCombat, N: 2}) || len(got) != 2 {
 		t.Errorf("feature_state = %v, want giant put back, sneak_attack gone and the other key alone", got)
+	}
+}
+
+// The largest document Go lets through (64 keys of 80 characters, entries with a choice, at most featureStateMaxBytes compact)
+// is accepted by the database too: the column checks the text jsonb gives back, which has spaces after every colon and comma.
+func TestTheLargestFeatureStateGoAcceptsIsAcceptedByTheDatabase(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	_ = a.threeAndAGoblin(t)
+	build := func(n int) featureState {
+		fs := featureState{}
+		for i := range featureStateMaxKeys {
+			key := fmt.Sprintf("%0*d", featureStateMaxKey, i)
+			fs[key] = featureEntry{S: scopeRound, At: "12", N: 1, C: strings.Repeat("x", n)}
+		}
+		return fs
+	}
+	n := 0
+	for build(n+1).validate() == nil {
+		n++
+	}
+	fs := build(n)
+	if err := fs.validate(); err != nil {
+		t.Fatalf("the document of choices of %d characters is refused: %v", n, err)
+	}
+	if len(fs) != featureStateMaxKeys || len(fs.bytes()) <= featureStateMaxBytes-featureStateMaxKeys {
+		t.Fatalf("the document has %d keys and %d bytes: not the largest Go accepts", len(fs), len(fs.bytes()))
+	}
+	a.writeFeatureState(t, "Toren", fs) // fails the test when the database refuses it
+	if got := a.featureStateOf(t, "Toren"); len(got) != featureStateMaxKeys {
+		t.Errorf("the state read back has %d keys, want %d", len(got), featureStateMaxKeys)
 	}
 }
