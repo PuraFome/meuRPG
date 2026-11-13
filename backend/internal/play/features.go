@@ -486,10 +486,6 @@ func (f *featureFlow) effect(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	prior, err := f.s.priorTempClaims(ctx, f.c, f.call.actionKey, "")
-	if err != nil {
-		return err
-	}
 	dur := durationSpec{Kind: rules.EffectDurationRounds, Rounds: clamp32(u.EffectRounds, 1, math.MaxInt32), Anchor: f.who.ID}
 	cs, err := listCombatants(ctx, f.c)
 	if err != nil {
@@ -512,8 +508,10 @@ func (f *featureFlow) effect(ctx context.Context) error {
 		f.made.Lasting.Effects = append(f.made.Lasting.Effects, r.ID)
 	}
 	f.fe.Effect = len(rows) > 0
+	// A second use does not replace the first (dropSameSpell is for spells), so it inherits no claim: the row that raised the
+	// pool owns it, and the later row claims only a pool it raises itself.
 	scratch := actionEvent{Hits: f.hits}
-	if err := f.s.giveEffectTempHP(ctx, f.c, cs, rows, f.targets, &scratch, prior); err != nil {
+	if err := f.s.giveEffectTempHP(ctx, f.c, cs, rows, f.targets, &scratch, nil); err != nil {
 		return err
 	}
 	f.hits = scratch.Hits

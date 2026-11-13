@@ -12,6 +12,8 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
 // UseFeature end to end (#743, docs/architecture/play/feature-state.md "Using a feature"). The names are invented: a Fighter 5 of
@@ -783,5 +785,84 @@ func TestUseFeatureAndOncePerTurnExtraDamageKeepTheirOwnState(t *testing.T) {
 	}
 	if got := left(); got != 0 {
 		t.Errorf("uses left after the second extra = %d, want 0", got)
+	}
+}
+
+// A feature used twice on the same target leaves two effect rows; only one of them claims the temporary hit points, so ending
+// either row never takes back a pool another row still claims, and the undo of the second use leaves the first as it was.
+func TestUseFeatureTwiceClaimsTheTempHPOnce(t *testing.T) {
+	t.Parallel()
+	m := newFeatureTable(t)
+	e := m.fight(t)
+	claims := func() (rows []string, claimants int) {
+		t.Helper()
+		res, err := m.h.pool.Query(t.Context(), `SELECT id, modifiers FROM combatant_states WHERE source_key = $1 ORDER BY created_at, id`, m.keys["Postura"])
+		if err != nil {
+			t.Fatalf("list the effects: %v", err)
+		}
+		defer res.Close()
+		for res.Next() {
+			var st playdb.CombatantState
+			if err := res.Scan(&st.ID, &st.Modifiers); err != nil {
+				t.Fatalf("scan: %v", err)
+			}
+			rows = append(rows, st.ID)
+			if combat.TempHPClaim(effectModifiers(st)) > 0 {
+				claimants++
+			}
+		}
+		return rows, claimants
+	}
+	end := func(id string) {
+		t.Helper()
+		if _, err := m.master.lasting.EndLastingEffect(t.Context(), connect.NewRequest(&playv1.EndLastingEffectRequest{
+			CampaignId: m.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey(), EffectId: id, Scope: playv1.EffectEndScope_EFFECT_END_SCOPE_THIS,
+		})); err != nil {
+			t.Fatalf("EndLastingEffect() error = %v", err)
+		}
+	}
+	use := func() {
+		t.Helper()
+		m.mustUse(t, m.ana, e, "Pensantus", "Postura", func(r *playv1.UseFeatureRequest) { r.Choice = "fogo" })
+	}
+	again := func() { // the next turn of Pensantus: the use of the turn is back
+		t.Helper()
+		e = m.passTo(t, m.passTo(t, m.get(t, m.master), "Toren"), "Pensantus")
+	}
+	use()
+	again()
+	use()
+	rows, n := claims()
+	if len(rows) != 2 || n != 1 {
+		t.Fatalf("after two uses: %d effects, %d of them claim the temporary hit points, want 2 and 1", len(rows), n)
+	}
+	if _, temp, _ := m.hp(t, "Pensantus"); temp != 3 {
+		t.Fatalf("temporary hit points = %d, want 3", temp)
+	}
+	// The undo of the second use: the first row stays, with its claim.
+	m.undoLast(t, e)
+	if rows, n = claims(); len(rows) != 1 || n != 1 {
+		t.Errorf("after the undo: %d effects, %d claims, want 1 and 1", len(rows), n)
+	}
+	if _, temp, _ := m.hp(t, "Pensantus"); temp != 3 {
+		t.Errorf("temporary hit points after the undo = %d, want 3", temp)
+	}
+	// Ending the row that does not claim leaves the pool; ending the one that claims takes it back.
+	again()
+	use()
+	rows, _ = claims()
+	end(rows[len(rows)-1])
+	if _, temp, _ := m.hp(t, "Pensantus"); temp != 3 {
+		t.Errorf("ending the second row: temporary hit points = %d, want 3 (the first row still claims them)", temp)
+	}
+	again()
+	use()
+	rows, _ = claims()
+	end(rows[0])
+	if _, temp, _ := m.hp(t, "Pensantus"); temp != 0 {
+		t.Errorf("ending the row that claims: temporary hit points = %d, want 0", temp)
+	}
+	if _, n = claims(); n > 1 {
+		t.Errorf("%d rows claim the pool after the first ended, want at most 1", n)
 	}
 }
