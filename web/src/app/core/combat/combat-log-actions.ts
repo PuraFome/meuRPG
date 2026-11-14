@@ -25,7 +25,6 @@ import { article } from '../format/article';
 import { dcLabel } from '../format/save-dc';
 import { inThe, pushText, subject, the } from './combat-log-words';
 import { upFirst } from '../format/text';
-import type { LogContext } from './combat-log-types';
 import { durationPt } from './creature-action';
 
 /** What a class resource did (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo). The hit points a touch gave back
