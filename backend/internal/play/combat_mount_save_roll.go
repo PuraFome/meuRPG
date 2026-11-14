@@ -65,8 +65,6 @@ func readMountSaveCall(ctx context.Context, msg *playv1.RollMountSaveRequest) (m
 type mountSaveRun struct {
 	made   actionEvent
 	result *playv1.MountSaveResult
-	fell   *playdb.Combatant // the rider as it stands after a fall
-	from   *grid.Square      // where the rider stood
 	offer  *playv1.OutsideInspirationOffer
 	lucky  *playv1.LuckyOffer
 	held   *playv1.HeldRollOffer
@@ -96,10 +94,6 @@ func (s *Service) RollMountSave(ctx context.Context, req *connect.Request[playv1
 		return connect.NewResponse(&playv1.RollMountSaveResponse{Encounter: out, HeldRollOffer: run.held}), nil
 	}
 	out, err := s.finish(ctx, call.m, res, func(ctx context.Context, d *encounterData) {
-		if run.fell != nil {
-			s.publishCombatantMoved(ctx, call.m.CampaignID, d.enc, *run.fell, run.from)
-			s.positionChanged(ctx, call.m.CampaignID, d.enc, *run.fell, run.from)
-		}
 		s.publishEncounterChanged(ctx, call.m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, call.m.CampaignID, d.enc.ID, !run.made.Secret)
 	})
@@ -343,24 +337,32 @@ func (s *Service) dropRiderOf(ctx context.Context, c *combatTx, rider, mount pla
 	if err != nil {
 		return err
 	}
-	to, noRoom, err := s.landingOf(ctx, c, cs, rider, mount)
-	if err != nil {
-		return err
-	}
-	col, row := clamp32(to.Col, 0, math.MaxInt32), clamp32(to.Row, 0, math.MaxInt32)
-	from := squareOfCombatant(rider)
+	var col, row *int32 // the rider stays with no square when it or its mount has none
+	var from *grid.Square
+	noRoom := false
 	cover := rider.CoverMark
-	if to != from {
-		cover = "none"
+	if placed(rider) && placed(mount) {
+		to, nr, err := s.landingOf(ctx, c, cs, rider, mount)
+		if err != nil {
+			return err
+		}
+		noRoom = nr
+		lc, lr := clamp32(to.Col, 0, math.MaxInt32), clamp32(to.Row, 0, math.MaxInt32)
+		col, row = &lc, &lr
+		was := squareOfCombatant(rider)
+		from = &was
+		if to != was {
+			cover = "none"
+		}
 	}
 	if err := c.q.SetCombatantRide(ctx, playdb.SetCombatantRideParams{
-		ID: rider.ID, GridCol: &col, GridRow: &row,
+		ID: rider.ID, GridCol: col, GridRow: row,
 		MovementUsedFt: rider.MovementUsedFt, MovementUsedDft: rider.MovementUsedDft, MountMoveUsed: rider.MountMoveUsed, CoverMark: cover,
 	}); err != nil {
 		return err
 	}
 	after := rider
-	after.MountedOnID, after.GridCol, after.GridRow, after.CoverMark = nil, &col, &row, cover
+	after.MountedOnID, after.GridCol, after.GridRow, after.CoverMark = nil, col, row, cover
 	if immune, err := c.immuneToCondition(ctx, rider, condProne); err != nil {
 		return err
 	} else if prone && !immune && !slices.Contains(rider.Conditions, condProne) && len(rider.Conditions) < maxConditions {
@@ -369,19 +371,21 @@ func (s *Service) dropRiderOf(ctx context.Context, c *combatTx, rider, mount pla
 			return err
 		}
 	}
-	ev.Reaction.LandCol, ev.Reaction.LandRow, ev.Reaction.NoRoom = col, row, noRoom
+	if col != nil {
+		ev.Reaction.LandCol, ev.Reaction.LandRow = *col, *row
+	}
+	ev.Reaction.NoRoom = noRoom
 	ev.From = moveStateOf(rider)
 	if err := settleMounts(ctx, c); err != nil {
 		return err
 	}
-	c.landed = append(c.landed, riderLanded{rider: after, from: &from})
+	c.landed = append(c.landed, riderLanded{rider: after, from: from})
 	if prone {
 		thrown := *ev
 		if err := insertEvent(ctx, c, eventRiderThrown, &c.actorUserID, nil, thrown); err != nil {
 			return err
 		}
 	}
-	run.fell, run.from = &after, &from
 	return nil
 }
 
@@ -390,7 +394,7 @@ func (s *Service) dropRiderOf(ctx context.Context, c *combatTx, rider, mount pla
 // nobody is told why). With no free neighbor it is the nearest free square, and noRoom says so.
 func (s *Service) landingOf(ctx context.Context, c *combatTx, cs []playdb.Combatant, rider, mount playdb.Combatant) (to grid.Square, noRoom bool, err error) {
 	if !placed(mount) {
-		return squareOfCombatant(mount), true, nil
+		return grid.Square{}, true, nil // no square to land next to
 	}
 	at := squareOfCombatant(mount)
 	terrain, err := s.terrainOf(ctx, c.tx, c.session.CampaignID, c.enc)
