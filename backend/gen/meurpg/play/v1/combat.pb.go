@@ -28626,13 +28626,17 @@ type CombatLogFeatureUsed struct {
 	// True: a lasting effect was put on the targets.
 	EffectApplied bool `protobuf:"varint,6,opt,name=effect_applied,json=effectApplied,proto3" json:"effect_applied,omitempty"`
 	// What the use cost of the turn, the resource's Portuguese name and the uses of it left after this one. Read by the master
-	// and the user's player; every other player reads UNSPECIFIED, "" and 0 (the line is the plain one).
-	// `resource_name_pt` is empty when the use spent no resource of its own (then `resource_left` is 0).
+	// and the user's player; every other player reads UNSPECIFIED, "", 0 and 0 (the line is the plain one).
+	// `resource_name_pt` is empty when the use spent no resource of its own.
 	Economy        FeatureEconomy `protobuf:"varint,7,opt,name=economy,proto3,enum=meurpg.play.v1.FeatureEconomy" json:"economy,omitempty"`
 	ResourceNamePt string         `protobuf:"bytes,8,opt,name=resource_name_pt,json=resourceNamePt,proto3" json:"resource_name_pt,omitempty"`
 	ResourceLeft   int32          `protobuf:"varint,9,opt,name=resource_left,json=resourceLeft,proto3" json:"resource_left,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The most uses there are (the resource's total, or the uses the scope allows), the same way `resource_left` counts.
+	// For a use limited by a scope only (Halo, 2 per combat), `resource_name_pt` is empty and these two come from the scope.
+	// A use with no limit leaves both 0.
+	ResourceMax   int32 `protobuf:"varint,10,opt,name=resource_max,json=resourceMax,proto3" json:"resource_max,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CombatLogFeatureUsed) Reset() {
@@ -28724,6 +28728,13 @@ func (x *CombatLogFeatureUsed) GetResourceNamePt() string {
 func (x *CombatLogFeatureUsed) GetResourceLeft() int32 {
 	if x != nil {
 		return x.ResourceLeft
+	}
+	return 0
+}
+
+func (x *CombatLogFeatureUsed) GetResourceMax() int32 {
+	if x != nil {
+		return x.ResourceMax
 	}
 	return 0
 }
@@ -30932,7 +30943,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\fcombatant_id\x18\x03 \x01(\tR\vcombatantId\x12'\n" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"J\n" +
 	"\x0fEndRageResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xd7\x02\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xfa\x02\n" +
 	"\x14CombatLogFeatureUsed\x12\x1f\n" +
 	"\vfeature_key\x18\x01 \x01(\tR\n" +
 	"featureKey\x12\x17\n" +
@@ -30943,7 +30954,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0eeffect_applied\x18\x06 \x01(\bR\reffectApplied\x128\n" +
 	"\aeconomy\x18\a \x01(\x0e2\x1e.meurpg.play.v1.FeatureEconomyR\aeconomy\x12(\n" +
 	"\x10resource_name_pt\x18\b \x01(\tR\x0eresourceNamePt\x12#\n" +
-	"\rresource_left\x18\t \x01(\x05R\fresourceLeft*d\n" +
+	"\rresource_left\x18\t \x01(\x05R\fresourceLeft\x12!\n" +
+	"\fresource_max\x18\n" +
+	" \x01(\x05R\vresourceMax*d\n" +
 	"\rEncounterMode\x12\x1e\n" +
 	"\x1aENCOUNTER_MODE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13ENCOUNTER_MODE_GRID\x10\x01\x12\x1a\n" +
