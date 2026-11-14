@@ -543,6 +543,22 @@ The SRD's feat (Grappler, from `5e-SRD-Feats.json`, effects in `effects/feats.js
 `Build.Feats` are the keys a character took: `Derive` adds their effects and lists each among the features (source "Talento").
 A character that no longer meets the prerequisite of a feat it holds keeps the feat on the sheet with the issue `feat_prerequisite`, and its effects do not apply until it meets it again.
 
+## Weapon
+
+A table weapon (`weapon:<slug>@mesa`, `TableWeapon`, kind 11) is a weapon the SRD's equipment list lacks. Once the entry exists it is an equipment row of the weapon kind under its own key (`rules/overlay_weapon.go`): the sheet's weapon list, the attack lines, the proficiency by category and the `weapon_rule` and power attack filters by weapon property read it as they read an SRD weapon. It is mundane: a magic weapon is an item, a separate area.
+
+| Field | Rule |
+|---|---|
+| `category` | `simple` or `martial`, required (SRD 5.1, Equipment, Weapons: the proficiency by category). |
+| `ranged` | Ranged or melee, as the SRD's `range` column. |
+| `damage`, `damage_type` | Dice of 1 to 20 dice of 4, 6, 8, 10, 12 or 20 sides, or a flat 1 to 99; a damage type of the content. |
+| `two_handed_damage` | Required with the property `weapon-property:versatile` and refused without it. |
+| `properties` | `weapon-property:` keys of the content, each once, at most 10. |
+| `normal_range_ft`, `long_range_ft` | Feet, as the SRD's rows. Required for a ranged weapon and for a melee one with the property `thrown` (the long range at least the normal, both up to 1000); refused on any other melee weapon, whose reach is 5 feet, or 10 with `reach`. |
+| `weight_oz`, `price_cp` | The table's notes (ounces up to 160000, copper pieces up to 100000000). The engine does not count them yet. |
+
+Archiving or switching a weapon off takes it out of a player's catalog and `ListTableEntries`, unless a sheet of theirs carries it (it then stays, marked); a sheet that carries it keeps the attack line. The migration `00336` widens `campaign_content_kind_valid`.
+
 ## Spell
 
 A table spell has spell level, school, casting time, range, components (with the material), duration, concentration, ritual, classes, text and "at higher levels", plus the target (`SpellTarget`): one creature, several (with one more per level above), an area (cone, cube, cylinder, line or sphere, in feet, in steps of 5; an area takes no spell attack) or only the caster.
