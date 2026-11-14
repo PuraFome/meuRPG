@@ -337,6 +337,9 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 			return err
 		}
 	}
+	if err := checkRestFields(site, e); err != nil {
+		return err
+	}
 	entry := b.featureEntry[owner]
 	if err := b.checkStateReads(site, entry, e); err != nil {
 		return err
