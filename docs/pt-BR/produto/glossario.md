@@ -237,6 +237,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Caído, estável, morrendo | Down, stable, dying | Um personagem a 0 PV fazendo testes contra a morte; a 0 PV com três sucessos; a 0 PV com três falhas, esperando a confirmação do mestre. Só o mestre vê "Morrendo"; os jogadores veem "Caído" (RN-03). Não é a condição "Derrubado". |
 | Iniciativa | Initiative | A rolagem que define a ordem dos turnos. Cada combatente rola a própria, até NPCs iguais. O mestre decide um empate (RN-19). |
 | Levantar-se | Stand up | A ação de um combatente derrubado: custa metade do deslocamento do turno (RN-34). |
+| Montaria, montado | Mount, mounted | A criatura em que um cavaleiro se senta, e o estado desse cavaleiro. Montar e desmontar custam metade do deslocamento, uma montaria adestrada age logo depois do cavaleiro e o cavaleiro lançado da montaria cai derrubado (RN-21). |
 | Derrubado | Prone | A condição do SRD de estar deitado no chão. Não é "Caído". |
 | Ações lendárias | Legendary actions | O que uma criatura lendária faz no fim da vez de outra criatura, até o total de pontos (3 no SRD), cada opção com o seu custo; os pontos voltam no começo da vez dela. Só o mestre vê a oferta; os jogadores veem o que acontece (RN-20, RN-29). |
 | Ajudar | Help | Dá a um aliado vantagem no próximo teste ou ataque, até ser usada ou até o próximo turno de quem ajuda (RN-34). |
