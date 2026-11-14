@@ -127,10 +127,11 @@ describe('the log lines of a spell hit effect', () => {
       outcome: AttackOutcome.HIT,
       damage: { amount: 13, status: PendingDamageStatus.APPLIED, parts } as never,
     });
-  const part = (partKey: string, labelPt: string, counted = true) => ({
+  const part = (partKey: string, labelPt: string, counted = true, hitEffect = false) => ({
     partKey,
     labelPt,
     counted,
+    hitEffect,
     diceCount: 1,
     diceSides: 8,
     faces: [4],
@@ -140,7 +141,10 @@ describe('the log lines of a spell hit effect', () => {
   it('adds "(<efeito> incluído)" after the total when the hit carried the spell part', () => {
     const text = clean(
       logLine(
-        damageEntry([part('weapon', 'Rapieira'), part('spell:branding-smite', 'Clarão na Lâmina')]),
+        damageEntry([
+          part('weapon', 'Rapieira'),
+          part('spell:branding-smite', 'Clarão na Lâmina', true, true),
+        ]),
         '',
         ctx,
       )?.text,
@@ -151,7 +155,11 @@ describe('the log lines of a spell hit effect', () => {
   it('says nothing for a hit with no spell part, or one that did not count', () => {
     for (const parts of [
       [part('weapon', 'Rapieira'), part('sneak-attack', 'Ataque Furtivo')],
-      [part('weapon', 'Rapieira'), part('spell:x', 'Clarão', false)],
+      [part('weapon', 'Rapieira'), part('spell:x', 'Clarão', false, true)],
+      // the key looks like a spell's, but the entry does not flag the part: only the flag says a spell is behind it
+      [part('weapon', 'Rapieira'), part('spell:branding-smite', 'Clarão na Lâmina')],
+      // a hidden effect: the part reads the row's id for a key and no flag, so the line says nothing of it
+      [part('weapon', 'Rapieira'), part('7f3c9a52-0d41-4b8e-9d6a-1c2b3a4d5e6f', 'Outra fonte')],
       [],
     ]) {
       expect(logLine(damageEntry(parts), '', ctx)?.text).not.toContain('incluído');

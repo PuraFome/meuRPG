@@ -27,6 +27,8 @@ What a table feature's `on_event` hook gave (the hit points, the temporary hit p
 Movement lines carry `distance_ft`, `distance_dft` and, for a walk, `spent_dft` with `move_dragging` and `move_crawling`: what the movement really spent (the path's cost doubled again by a drag and by a crawl).
 The line says the second number only when it differs from the distance, with the reason in words (another creature's space and difficult terrain, "arrastando", "rastejando").
 The master's free move, a jump, and the no-map combat's "gastou 6,0 m de movimento" carry no `spent_dft` and say the distance; the numbers are those the panel already shows every player.
+The damage line of an attack names a spell's hit effect that counted: "(<efeito> incluído)".
+It reads the `hit_effect` flag of the damage's parts, never the key, so a hidden effect adds nothing to the line.
 The save of a spell's hit effect is a `HIT_RIDER` line that names the spell (`key_name_pt`; "Outra fonte" and no key for the target's player when the effect is hidden from the other players) and, on a failed save that gave a condition, the condition (`condition_name_pt`) and how long it lasts (`duration_text`: "até o fim do próximo turno dele" or "até o fim da magia").
 The master, the attacker's player and the target's player read it; no other player reads the line, and the d20, the total and the DC follow the rules of any rider.
 A failed save that pushes a creature (Thunderwave, the Open Hand push) shows in the line of the cast or of the rider.

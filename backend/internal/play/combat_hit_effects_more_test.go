@@ -768,3 +768,51 @@ func TestAHitPartAsOthersReadIt(t *testing.T) {
 		}
 	}
 }
+
+// The flag of a hit effect on a part's roll follows the part's key (RN-10): it is true only for a reader who reads the
+// spell's key (the attacker's player, the master, and the other players when the effect is public). A reader whose key is
+// the row's id reads false, so the flag never says a spell is behind the part. The weapon's own part never has it.
+func TestRN10_TheHitEffectFlagFollowsTheKeyTheReaderReads(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name            string
+		hide            bool
+		othersKey       string
+		othersHitEffect bool
+		ownersHitEffect bool
+	}{
+		{"a public effect", false, tableMark, true, true},
+		{"a hidden effect", true, "row-1", false, true},
+	} {
+		weapon := partRoll{Key: partWeapon, Label: "Machado", Count: 1, Sides: 8, Faces: []int32{5}, Sum: 5, Counted: true}
+		hit := partRoll{Key: tableMark, Label: "Marca de Nanquim", Count: 7, Sides: 12, Faces: []int32{1, 2, 3, 4, 5, 6, 7}, Sum: 28, Counted: true, Effect: "row-1", Hide: tc.hide}
+		p := playdb.PendingDamage{PartRolls: mustJSON([]partRoll{weapon, hit}), Parts: mustJSON([]partRecord{{Key: partWeapon, Kind: partWeapon}, {Key: tableMark, Kind: partAuto, Table: tableHitEffect, Effect: "row-1", Hide: tc.hide}})}
+		for _, r := range []struct {
+			who           string
+			master, reads bool
+			wantKey       string
+			want          bool
+		}{
+			{"the attacker's player", false, true, tableMark, tc.ownersHitEffect},
+			{"the master", true, true, tableMark, tc.ownersHitEffect},
+			{"another player", false, false, tc.othersKey, tc.othersHitEffect},
+		} {
+			rolls := partRollsProto(p, r.master, r.reads, dtPT)
+			if len(rolls) != 2 {
+				t.Fatalf("%s, %s: %d rolls, want 2", tc.name, r.who, len(rolls))
+			}
+			if got := rolls[1]; got.GetPartKey() != r.wantKey || got.GetHitEffect() != r.want {
+				t.Errorf("%s, %s: reads key %q hit_effect %v, want %q and %v", tc.name, r.who, got.GetPartKey(), got.GetHitEffect(), r.wantKey, r.want)
+			}
+			if rolls[0].GetHitEffect() {
+				t.Errorf("%s, %s: the weapon's roll reads hit_effect", tc.name, r.who)
+			}
+		}
+		if got := partRollProto(hit, dtPT); !got.GetHitEffect() { // the log's damage parts, read by the master and the attacker's player
+			t.Errorf("%s: the log's part of the effect reads hit_effect false", tc.name)
+		}
+		if got := partRollProto(weapon, dtPT); got.GetHitEffect() {
+			t.Errorf("%s: the log's weapon part reads hit_effect", tc.name)
+		}
+	}
+}

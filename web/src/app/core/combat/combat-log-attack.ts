@@ -31,11 +31,11 @@ function isShot(key: string): boolean {
 
 /** The applied damage in words: ", 25 de dano", or with the extra dice of a critical (Crítico Brutal) the groups of dice,
  * for whoever has the roll: the faces when the app rolled them, the counts and "dados físicos" when only the sum was typed. */
-/** " (Clarão na Lâmina incluído)": the spell effects that rode on the hit and counted. The entry flags no part as a
- * spell's, so a part is one when its key is the spell's (`spell:...`: the weapon and the extras have their own keys). */
+/** " (Clarão na Lâmina incluído)": the spell effects that rode on the hit and counted. Only the entry's flag says a part
+ * is a spell's hit effect (`hitEffect`); the key is never read, and a hidden effect's part carries no flag. */
 function includedEffects(d: CombatLogDamage): string {
   const names = d.parts
-    .filter((p) => p.counted && p.partKey.startsWith('spell:') && p.labelPt !== '')
+    .filter((p) => p.counted && p.hitEffect && p.labelPt !== '')
     .map((p) => p.labelPt);
   return names.length > 0 ? ` (${listNames(names)} incluído${names.length > 1 ? 's' : ''})` : '';
 }

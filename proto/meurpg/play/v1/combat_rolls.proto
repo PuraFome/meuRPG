@@ -299,6 +299,11 @@ message DamagePartRoll {
   // up, `sum` adds what counted. A part that does not count in the total is floored too, so the line of a part tells
   // nothing about the target.
   repeated CountedDie counted_dice = 13;
+  // Whether a spell's hit effect (a `weapon_hit_damage` effect) made the part. It follows `part_key`: it is true only for
+  // a reader who reads the spell's own key, the attacker's player and the master, and for the other players when the
+  // effect is public. A reader whose `part_key` is the effect row's id (an effect the master hides, or the owner's) gets
+  // false, so the flag never says a spell is behind the part.
+  bool hit_effect = 14;
 }
 
 // SelectedExtra is an extra the player marks when they roll the damage.

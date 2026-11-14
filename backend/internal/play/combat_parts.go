@@ -309,6 +309,17 @@ func (h hitFacts) buildParts() []partRecord {
 	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 {
 		return nil
 	}
+	weapon := h.weaponPart(reroll)
+	weapon.Plain = !reroll && len(extras) == 0 && len(autos) == 0 && len(h.planned) == 0 && onlyOffRows(maneuvers)
+	out := []partRecord{weapon}
+	out = h.appendExtras(out, extras, partExtra)
+	out = h.appendExtras(out, autos, partAuto)
+	out = append(out, h.planned...)
+	return append(out, maneuvers...)
+}
+
+// weaponPart is the weapon's own part of a hit.
+func (h hitFacts) weaponPart(reroll bool) partRecord {
 	weapon := partRecord{
 		Key: partWeapon, Label: h.attack.Name, Kind: partWeapon, Count: clamp32(h.attack.DiceCount, 0, 100), Sides: clamp32(h.attack.DiceSides, 0, 100),
 		Flat: clamp32(h.weaponBonus, -1000, 1000), DamageType: h.attack.DamageType, Reroll: reroll, Available: true,
@@ -316,16 +327,15 @@ func (h hitFacts) buildParts() []partRecord {
 	if reroll {
 		weapon.Note = "Combate com Armas Grandes: os 1 e 2 dos dados da arma são rerrolados"
 	}
-	weapon.Plain = !reroll && len(extras) == 0 && len(autos) == 0 && len(h.planned) == 0 && onlyOffRows(maneuvers)
-	out := []partRecord{weapon}
+	return weapon
+}
+
+// appendExtras adds the rules' extras of one kind as parts.
+func (h hitFacts) appendExtras(out []partRecord, extras []combat.Extra, kind string) []partRecord {
 	for _, e := range extras {
-		out = append(out, h.fromExtra(e, partExtra))
+		out = append(out, h.fromExtra(e, kind))
 	}
-	for _, e := range autos {
-		out = append(out, h.fromExtra(e, partAuto))
-	}
-	out = append(out, h.planned...)
-	return append(out, maneuvers...)
+	return out
 }
 
 // maneuverParts lists, for a player's character, the table maneuvers whose die goes on the
@@ -475,31 +485,51 @@ func partsProtoFor(p playdb.PendingDamage, rule combat.CriticalRule, damageTypeP
 		if !reads && isOffHitPart(sp) { // the off part of an effect is its caster's player's and the master's, never another player's
 			continue
 		}
-		count, fixed := partCriticalDice(sp, p.Critical, rule)
-		if sp.Count == 0 {
-			count, fixed = 0, 0
-		}
-		note := sp.Note
-		if sp.Key == partWeapon && count > 0 && p.ExtraDice > 0 {
-			count += int(p.ExtraDice)
-			note = joinNote(note, fmt.Sprintf("inclui %dd%d do %s", p.ExtraDice, sp.Sides, extraDiceName(p.ExtraDice, p.SavageDice)))
-		}
-		key, label, source, sides, reason := sp.Key, sp.Label, sp.Source, sp.Sides, sp.Reason
-		if sp.Table == tableHitEffect && !reads { // the dice, the words and the reason of a spell are its caster's and the master's (RN-10)
-			key, label, source = hitPartForOthers(sp, label, source)
-			count, fixed, sides, note = 0, 0, 0, ""
-			if sp.Hide {
-				reason = ""
-			}
-		}
-		out = append(out, &playv1.DamagePart{
-			Key: key, LabelPt: label, DiceCount: clamp32(count, 0, 200), DiceSides: sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
-			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: source,
-			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: reason,
-			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
-		})
+		out = append(out, partProto(sp, p, rule, damageTypePT, reads))
 	}
 	return out
+}
+
+// shownPart is what a viewer reads of a part's dice and words: the part's own, or, for a spell's hit part a viewer
+// does not read whole, the others' view of it (no dice, and a key and label that name the spell only when it is public).
+type shownPart struct {
+	key, label, source, reason, note string
+	count, fixed                     int
+	sides                            int32
+}
+
+// shownPartOf works out the dice and the words of a part for a viewer. The dice of a critical hit are doubled or
+// maxed (partCriticalDice); the weapon also carries the extra dice of a feature.
+func shownPartOf(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRule, reads bool) shownPart {
+	count, fixed := partCriticalDice(sp, p.Critical, rule)
+	if sp.Count == 0 {
+		count, fixed = 0, 0
+	}
+	note := sp.Note
+	if sp.Key == partWeapon && count > 0 && p.ExtraDice > 0 {
+		count += int(p.ExtraDice)
+		note = joinNote(note, fmt.Sprintf("inclui %dd%d do %s", p.ExtraDice, sp.Sides, extraDiceName(p.ExtraDice, p.SavageDice)))
+	}
+	sh := shownPart{key: sp.Key, label: sp.Label, source: sp.Source, reason: sp.Reason, note: note, count: count, fixed: fixed, sides: sp.Sides}
+	if sp.Table == tableHitEffect && !reads { // the dice, the words and the reason of a spell are its caster's and the master's (RN-10)
+		sh.key, sh.label, sh.source = hitPartForOthers(sp, sh.label, sh.source)
+		sh.count, sh.fixed, sh.sides, sh.note = 0, 0, 0, ""
+		if sp.Hide {
+			sh.reason = ""
+		}
+	}
+	return sh
+}
+
+// partProto is one stored part as a viewer reads it.
+func partProto(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) *playv1.DamagePart {
+	sh := shownPartOf(sp, p, rule, reads)
+	return &playv1.DamagePart{
+		Key: sh.key, LabelPt: sh.label, DiceCount: clamp32(sh.count, 0, 200), DiceSides: sh.sides, Flat: sp.Flat + clamp32(sh.fixed, 0, 10000),
+		DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: sh.source,
+		Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sh.reason,
+		Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: sh.note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
+	}
 }
 
 // partRollsProto converts what each part rolled. The extra die of Divine Smite is a line
@@ -527,9 +557,13 @@ func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT fun
 }
 
 // hitRollForOthers is what a spell's hit part rolled as the players who are not the attacker's read it: the amount,
-// never the dice, and "Outra fonte" when the effect is not theirs to read.
+// never the dice, and "Outra fonte" when the effect is not theirs to read. The hit-effect flag follows the key: a
+// hidden effect's row id is a key of no spell, so the flag is off with it.
 func hitRollForOthers(r partRoll) partRoll {
 	r.Key, r.Label, _ = hitPartForOthers(partRecord{Key: r.Key, Effect: r.Effect, Hide: r.Hide}, r.Label, "")
+	if r.Hide {
+		r.Effect = ""
+	}
 	r.Count, r.Sides, r.Faces, r.Rerolled, r.CountedDice = 0, 0, nil, nil, nil
 	return r
 }
@@ -537,7 +571,7 @@ func hitRollForOthers(r partRoll) partRoll {
 func partRollProto(r partRoll, damageTypePT func(string) string) *playv1.DamagePartRoll {
 	pr := &playv1.DamagePartRoll{
 		PartKey: r.Key, LabelPt: r.Label, DiceCount: r.Count, DiceSides: r.Sides, Faces: r.Faces, Flat: r.Flat + r.Fixed, Sum: r.Sum,
-		Counted: r.Counted, Physical: r.Physical, DamageTypeKey: r.DamageType,
+		Counted: r.Counted, Physical: r.Physical, DamageTypeKey: r.DamageType, HitEffect: r.Effect != "",
 	}
 	for _, rr := range r.Rerolled {
 		pr.Rerolled = append(pr.Rerolled, &playv1.Reroll{Index: rr.Index, From: rr.From, To: rr.To, SourceKey: rr.SourceKey})

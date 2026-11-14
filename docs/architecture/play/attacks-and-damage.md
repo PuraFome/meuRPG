@@ -193,6 +193,9 @@ The effect is a row of the caster ([Lasting effects](lasting-effects.md#the-dama
 After a weapon hit, `hitFacts.hitEffectParts` (`combat_hit_effects.go`) offers one part for each such row that is not spent and whose trigger holds.
 The part is automatic: the player never chooses it, it is the spell's rider.
 Its key and label are the spell's.
+Its roll (`DamagePartRoll`) carries `hit_effect` true.
+The flag follows the key: a reader who gets the effect row's id for a key (an effect the master hides, or the owner's) reads it false, so it never says a spell is behind the part.
+The caster's player and the master read it true, and so do the other players when the effect is public.
 
 | Trigger | The hit it rides on | Used up |
 | --- | --- | --- |
