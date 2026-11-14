@@ -51,6 +51,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-40 | **A rider on a creature's hit.** An NPC attack that asks a save of its target on a hit, or grapples it, offers the master the rider once the damage has landed: "Aplicar" or "Dispensar". A grapple gives the condition and notes the escape DC. A player never receives the offer. | [Detail](#rn-40-a-rider-on-a-creatures-hit) |
 | RN-41 | **Actions without a roll.** A creature's action that rolls nothing (a power the text describes) is used as a reminder: it spends the action and writes a log line, and the master reads the SRD text. | [Detail](#rn-41-actions-without-a-roll) |
 | RN-42 | **A monster attack with several damage parts.** A hit of a stat block attack deals every damage part of the action (a sword plus fire) as one damage to apply, each part resisted by its own type. | [Detail](#rn-42-a-monster-attack-with-several-damage-parts) |
+| RN-43 | **The master's Inspiration.** The master grants Inspiration to a player character as a reward; a character has it or not, never more than one. Spending it gives advantage on one of that character's own attack rolls, saving throws or ability checks. No other player reads who has it. | [Detail](#rn-43-the-masters-inspiration) |
 
 ## RN-01: Sheet lock
 
@@ -1329,6 +1330,23 @@ The first part is the attack's own damage and the others come from the stat bloc
 A critical hit follows the table's rule (RN-24) for every part.
 A player's character attack is unchanged.
 A player reads the damage as rolled, with the type of each part, and never what the target resists.
+
+## RN-43: The master's Inspiration
+
+**Partly built.**
+The master's grant and the list of who has it work; spending it, passing it and the master's undo are not built yet.
+This is the intended behaviour:
+
+The master grants Inspiration to a player character as a reward for good play (PHB 2014, ch. 4, outside SRD 5.1).
+The app says "Inspiração"; it is not the Bardic Inspiration die, which a bard gives with a class feature (RN-35).
+A character has it or not: it never stacks, and a grant to a character that already has one is refused.
+Creatures, NPCs and characters in the reserve never hold it.
+The holder's player spends it to roll one attack roll, saving throw or ability check of that character's own with advantage.
+The player chooses before the d20 is rolled, and the advantage cancels against disadvantage like any other.
+A player may pass it to another player character of the same campaign, without the master's approval.
+The master's undo takes back a grant made by mistake.
+A player reads only whether their own characters have it.
+Another player reads neither who has it nor that it moved (RN-10).
 
 ## Flows and states
 

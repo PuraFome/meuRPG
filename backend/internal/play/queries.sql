@@ -2114,3 +2114,14 @@ UPDATE game_sessions SET hint_seq = hint_seq + 1 WHERE id = $1 RETURNING hint_se
 -- name: GetHintSeq :one
 -- The session's number now: a read of one row by its primary key.
 SELECT hint_seq FROM game_sessions WHERE id = $1;
+
+-- name: ListCampaignFavor :many
+-- Who has the Inspiration in the campaign. The names come from the characters module's link, not a join.
+SELECT * FROM character_favor WHERE campaign_id = $1 ORDER BY created_at, character_id;
+
+-- name: InsertCharacterFavor :one
+-- No row comes back when the character already has it.
+INSERT INTO character_favor (character_id, campaign_id, granted_by_user_id)
+VALUES ($1, $2, sqlc.narg(granted_by_user_id))
+ON CONFLICT (character_id) DO NOTHING
+RETURNING *;

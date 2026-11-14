@@ -24,16 +24,27 @@ import { expect, type Page } from '@playwright/test';
 //    ("Dano a mais" over "Dados", #577). The approved board leaves about
 //    13px; under 4px the two read as touching.
 // 6. An attunement chip on a gear row stays on the line of the words before it: a narrow column wraps the name and the
-//    chip follows its last word; a chip alone on a line under the name is a finding (#561).
+//    chip follows its last word; a chip alone on a line under the name is a finding.
 // 7. The heading of a section with a count beside it ("Sintonização" and "Sintonizados: 2 de 3") shares a baseline with
-//    it, within 1px (#561).
+//    it, within 1px.
+// 8. A row marked `data-one-line` is one line: none of its words wraps and every box in it shares the first box's line
+//    (a gear row ellipsizes its name before anything drops under it). A name keeps at least 24px (three letters) and
+//    the row's words end before the button's column starts.
+// 9. A box marked `data-whole` shows each thing it holds whole or not at all: an item that is drawn (its top is inside the
+//    box) does not reach past the box's left or right edge ("duas mãos" cut to "duas mã", an icon cut in half).
+// 10. A group marked `data-equal-width="<selector>"` has every visible element matching the selector the same width, within
+//    1px (the buttons of one list, the pair at the foot of a sheet).
+// 11. A chip marked `data-chip` sits on the middle of the capitals of the words marked `data-chip-ref` in its row
+//    (`data-chip-row`), within 2px.
+// 12. A name marked `data-chip-ref` in a `data-one-line` row does not end in an ellipsis while the row's main box has room:
+//    the space between two of its items, or after the last one, is at most 4px beyond the box's own gap.
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch';
+  kind: 'icon-text' | 'one-line' | 'unequal-width' | 'chip-baseline' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch' | 'cut' | 'name-cut-with-room';
   where: string;
   detail: string;
 }
@@ -179,8 +190,18 @@ function auditLayout(): LayoutIssue[] {
     for (const n of textNodesOf(scope)) {
       const range = document.createRange();
       range.selectNodeContents(n);
+      // Words clipped by an ancestor (an ellipsized name) are not drawn past its edge.
+      let clip: DOMRect | null = null;
+      for (let a = n.parentElement; a && a !== scope.parentElement; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX !== 'visible') {
+          clip = a.getBoundingClientRect();
+          break;
+        }
+      }
       for (const r of range.getClientRects()) {
-        const x = Math.min(r.right, ir.right) - Math.max(r.left, ir.left);
+        const left = clip ? Math.max(r.left, clip.left) : r.left;
+        const right = clip ? Math.min(r.right, clip.right) : r.right;
+        const x = Math.min(right, ir.right) - Math.max(left, ir.left);
         const y = Math.min(r.bottom, ir.bottom) - Math.max(r.top, ir.top);
         if (x > 2 && y > 2) {
           issues.push({
@@ -283,6 +304,130 @@ function auditLayout(): LayoutIssue[] {
         kind: 'head-baseline',
         where: describeEl(head),
         detail: `the heading's baseline is at ${a.toFixed(1)}px and the count's at ${b.toFixed(1)}px (within 1px)`,
+      });
+    }
+  }
+
+  // 8. A row marked data-one-line is one line.
+  for (const row of document.querySelectorAll('[data-one-line]')) {
+    if (!visible(row)) continue;
+    const boxes = [...row.children].filter((c) => visible(c) && inFlow(c));
+    if (boxes.length === 0) continue;
+    const first = boxes[0].getBoundingClientRect();
+    const wraps = textNodesOf(row).filter((n) => {
+      const r = document.createRange();
+      r.selectNodeContents(n);
+      return new Set([...r.getClientRects()].filter((q) => q.width > 0 && q.height > 0).map((q) => Math.round(q.top))).size > 1;
+    });
+    const off = boxes.filter((b) => {
+      const r = b.getBoundingClientRect();
+      return r.top > first.bottom - 1 || r.bottom < first.top + 1;
+    });
+    // A name squeezed to nothing is clipped by its own box, so the overlap check never sees it.
+    const squeezed = [...row.querySelectorAll('[data-chip-ref]')].filter((n) => n.getBoundingClientRect().width < Math.min(24, n.scrollWidth));
+    const button = row.closest('[data-equal-width]')
+      ? [...row.querySelectorAll(row.closest('[data-equal-width]')!.getAttribute('data-equal-width')!)].find(visible)
+      : undefined;
+    // The main box's edge and the right edge of what it holds (a box that does not shrink would stick out of it).
+    const main = { right: Math.max(boxes[0].getBoundingClientRect().right, ...[...boxes[0].children].filter(visible).map((c) => c.getBoundingClientRect().right)) };
+    const underButton = button && main.right > button.getBoundingClientRect().left + 0.5 ? button : undefined;
+    if (squeezed.length > 0) {
+      issues.push({
+        kind: 'one-line',
+        where: describeEl(row),
+        detail: `the name "${squeezed[0].textContent!.trim().slice(0, 30)}" is ${squeezed[0].getBoundingClientRect().width.toFixed(0)}px wide (at least 24px)`,
+      });
+    }
+    if (underButton) {
+      issues.push({
+        kind: 'one-line',
+        where: describeEl(row),
+        detail: `the row's words end at ${main.right.toFixed(0)}px, over ${describeEl(underButton)} that starts at ${underButton.getBoundingClientRect().left.toFixed(0)}px`,
+      });
+    }
+    if (wraps.length > 0 || off.length > 0) {
+      issues.push({
+        kind: 'one-line',
+        where: describeEl(row),
+        detail: wraps.length > 0 ? `the words "${wraps[0].textContent!.trim().slice(0, 30)}" wrap onto a second line` : `${describeEl(off[0])} sits on another line than ${describeEl(boxes[0])}`,
+      });
+    }
+  }
+
+  // 9. A box marked data-whole shows each item whole or not at all.
+  for (const box of document.querySelectorAll('[data-whole]')) {
+    if (!visible(box)) continue;
+    const edge = box.getBoundingClientRect();
+    for (const item of box.children) {
+      const r = item.getBoundingClientRect();
+      if (r.top < edge.bottom - 1 && (r.right > edge.right + 0.5 || r.left < edge.left - 0.5)) {
+        issues.push({
+          kind: 'cut',
+          where: describeEl(box),
+          detail: `"${(item.textContent ?? '').trim().slice(0, 30) || item.tagName.toLowerCase()}" spans ${r.left.toFixed(0)}px to ${r.right.toFixed(0)}px in a box from ${edge.left.toFixed(0)}px to ${edge.right.toFixed(0)}px: it is drawn cut`,
+        });
+      }
+    }
+  }
+
+  // 10. The elements a group marks have one width.
+  for (const group of document.querySelectorAll('[data-equal-width]')) {
+    if (!visible(group)) continue;
+    const widths = [...group.querySelectorAll(group.getAttribute('data-equal-width')!)]
+      .filter(visible)
+      .map((el) => ({ el, w: el.getBoundingClientRect().width }));
+    if (widths.length < 2) continue;
+    const min = widths.reduce((a, b) => (b.w < a.w ? b : a));
+    const max = widths.reduce((a, b) => (b.w > a.w ? b : a));
+    if (max.w - min.w > 1) {
+      issues.push({
+        kind: 'unequal-width',
+        where: describeEl(group),
+        detail: `${describeEl(max.el)} is ${max.w.toFixed(1)}px wide and ${describeEl(min.el)} ${min.w.toFixed(1)}px (equal within 1px)`,
+      });
+    }
+  }
+
+  // 11. A marked chip is on the middle of the capitals of its row's words.
+  for (const chip of document.querySelectorAll('[data-chip]')) {
+    if (!visible(chip)) continue;
+    const ref = chip.closest('[data-chip-row]')?.querySelector('[data-chip-ref]');
+    const node = ref && visible(ref) ? textNodesOf(ref)[0] : null;
+    const cap = node ? capitals(node) : null;
+    if (!cap) continue;
+    const c = chip.getBoundingClientRect();
+    const diff = Math.abs(c.top + c.height / 2 - (cap.top + cap.bottom) / 2);
+    if (diff > 2) {
+      issues.push({
+        kind: 'chip-baseline',
+        where: describeEl(chip),
+        detail: `the chip's middle is ${diff.toFixed(1)}px from the middle of the capitals of its row's words (within 2px)`,
+      });
+    }
+  }
+
+  // 12. A name cut with an ellipsis while the row's main box has room left.
+  for (const row of document.querySelectorAll('[data-one-line]')) {
+    if (!visible(row)) continue;
+    const main = [...row.children].find((c) => visible(c) && inFlow(c));
+    if (!main) continue;
+    const cut = [...row.querySelectorAll('[data-chip-ref]')].find((n) => visible(n) && n.scrollWidth > n.clientWidth);
+    if (!cut) continue;
+    const box = main.getBoundingClientRect();
+    const gap = parseFloat(getComputedStyle(main).columnGap) || 0;
+    const items = [...main.children]
+      .filter((c) => visible(c) && inFlow(c) && c.getBoundingClientRect().width > 0)
+      .map((c) => c.getBoundingClientRect())
+      .sort((a, b) => a.left - b.left);
+    const free = Math.max(
+      ...items.map((r, i) => (i === 0 ? 0 : r.left - items[i - 1].right - gap)),
+      items.length > 0 ? box.right - items[items.length - 1].right : 0,
+    );
+    if (free > 4) {
+      issues.push({
+        kind: 'name-cut-with-room',
+        where: describeEl(row),
+        detail: `the name "${cut.textContent!.trim().slice(0, 30)}" is cut with an ellipsis while its row has ${free.toFixed(1)}px free (at most 4px)`,
       });
     }
   }
