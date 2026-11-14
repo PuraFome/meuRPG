@@ -51,6 +51,7 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-40 | **Efeito extra no acerto de uma criatura.** Um ataque de NPC que pede um teste do alvo ao acertar, ou o agarra, oferece o efeito ao mestre depois que o dano caiu: "Aplicar" ou "Dispensar". Agarrar dá a condição e anota a CD de fuga. O jogador nunca recebe a oferta. | [Detalhe](#rn-40-efeito-extra-no-acerto-de-uma-criatura) |
 | RN-41 | **Ações sem rolagem.** Uma ação de criatura que não rola nada (um poder que o texto descreve) é usada como lembrete: gasta a ação e escreve uma linha no registro, e o mestre lê o texto do SRD. | [Detalhe](#rn-41-ações-sem-rolagem) |
 | RN-42 | **Ataque de monstro com várias partes de dano.** O acerto de um ataque da ficha causa todas as partes de dano da ação (uma espada mais fogo) como um só dano a aplicar, cada parte resistida pelo próprio tipo. | [Detalhe](#rn-42-ataque-de-monstro-com-várias-partes-de-dano) |
+| RN-43 | **A Inspiração do mestre.** O mestre concede Inspiração a um personagem de jogador como recompensa; o personagem a tem ou não, nunca mais de uma. Gastá-la dá vantagem numa jogada de ataque, num teste de resistência ou num teste de habilidade do próprio personagem. Nenhum outro jogador lê quem a tem. | [Detalhe](#rn-43-a-inspiração-do-mestre) |
 
 ## RN-01: Trava da ficha
 
@@ -1329,6 +1330,23 @@ A primeira parte é o dano do próprio ataque e as outras vêm do plano da ficha
 Um acerto crítico segue a regra da mesa (RN-24) em todas as partes.
 O ataque do personagem de um jogador não muda.
 Um jogador lê o dano como rolado, com o tipo de cada parte, e nunca o que o alvo resiste.
+
+## RN-43: A Inspiração do mestre
+
+**Construída em parte.**
+A concessão do mestre e a lista de quem a tem funcionam; gastá-la, passá-la e o desfazer do mestre ainda não existem.
+Este é o comportamento pretendido:
+
+O mestre concede Inspiração a um personagem de jogador como recompensa por jogar bem (PHB 2014, cap. 4, fora do SRD 5.1).
+O app diz "Inspiração"; ela não é o dado de Inspiração de Bardo, que o bardo dá com uma característica de classe (RN-35).
+O personagem a tem ou não: ela nunca acumula, e conceder a um personagem que já tem uma é recusado.
+Criaturas, NPCs e personagens na reserva nunca a têm.
+O jogador de quem a tem a gasta para fazer, com vantagem, uma jogada de ataque, um teste de resistência ou um teste de habilidade do próprio personagem.
+O jogador escolhe antes de o d20 ser rolado, e a vantagem se anula com a desvantagem como qualquer outra.
+Um jogador pode passá-la a outro personagem de jogador da mesma campanha, sem aprovação do mestre.
+O desfazer do mestre desfaz uma concessão feita por engano.
+Um jogador lê só se os próprios personagens a têm.
+Outro jogador não lê quem a tem nem que ela mudou de mãos (RN-10).
 
 ## Fluxos e estados
 
