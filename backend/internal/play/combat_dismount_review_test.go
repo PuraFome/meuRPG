@@ -316,7 +316,7 @@ func TestMountedCombat_TheOfferWindowOfAHiddenMountReadsAsTheRiders(t *testing.T
 func TestMountedCombat_AnOpenHandThatKnocksTheMountProneAsksItsRider(t *testing.T) {
 	t.Parallel()
 	a, e, offers := riderMonkFight(t)
-	a.execSQL(t, `UPDATE combatants p SET mounted_on_id = g.id, grid_col = g.grid_col, grid_row = g.grid_row FROM combatants g WHERE g.label = 'Goblin' AND p.label = 'Pensantus'`)
+	a.execSQL(t, `UPDATE combatants SET mounted_on_id = (SELECT g.id FROM combatants g WHERE g.label = 'Goblin'), grid_col = (SELECT g.grid_col FROM combatants g WHERE g.label = 'Goblin'), grid_row = (SELECT g.grid_row FROM combatants g WHERE g.label = 'Goblin') WHERE label = 'Pensantus'`)
 	a.h.roller.queue(1)
 	if _, err := a.useRider(t, a.caio, e, offers[playv1.HitRiderKind_HIT_RIDER_KIND_OPEN_HAND], playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE); err != nil {
 		t.Fatalf("UseHitRider() error = %v", err)
