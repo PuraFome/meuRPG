@@ -56,10 +56,7 @@ func modifierTagPT(m EffectModifier) string {
 	case ModifierAura:
 		return fmt.Sprintf("Aura de %s: %s", MetersPT(m.RadiusFt), auraAffectsPT[m.Affects])
 	case ModifierRollBonus:
-		if m.ValueAbility != "" {
-			return fmt.Sprintf("Modificador de %s (mín. %+d) em %s", abilityTagsPT[m.ValueAbility], m.ValueMin, joinPT(m.AppliesTo, rollNamesPT))
-		}
-		return fmt.Sprintf("%+d em %s", m.Value, joinPT(m.AppliesTo, rollNamesPT))
+		return rollBonusTagPT(m)
 	case ModifierRollDie:
 		return fmt.Sprintf("%+dd%d em %s", m.Sign, m.Die, joinPT(m.AppliesTo, rollNamesPT))
 	case ModifierACBonus:
@@ -84,6 +81,14 @@ func modifierTagPT(m EffectModifier) string {
 		return weaponHitTagPT(m)
 	}
 	return abilityTagPT(m)
+}
+
+// rollBonusTagPT is the label of a bonus on rolls: a number, or the bearer's ability modifier with its least.
+func rollBonusTagPT(m EffectModifier) string {
+	if m.ValueAbility != "" {
+		return fmt.Sprintf("Modificador de %s (mín. %+d) em %s", abilityTagsPT[m.ValueAbility], m.ValueMin, joinPT(m.AppliesTo, rollNamesPT))
+	}
+	return fmt.Sprintf("%+d em %s", m.Value, joinPT(m.AppliesTo, rollNamesPT))
 }
 
 // abilityTagPT is the label of the kinds that name abilities ("Vantagem em resistências (SAB)").
