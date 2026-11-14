@@ -1,6 +1,10 @@
+import { create } from '@bufbuild/protobuf';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../gen/meurpg/play/v1/combat_pb';
 import { ResourceBlockedReason } from '../../../gen/meurpg/play/v1/resources_pb';
 import {
   REROLL_PENDING_TEXT,
@@ -195,5 +199,28 @@ describe('the question that holds a roll before a resource is spent', () => {
 
   it('says nothing for a reason that is not a pending question', () => {
     expect(pendingQuestionReasonText(ResourceBlockedReason.UNSPECIFIED)).toBe('');
+  });
+});
+
+describe('the refusals of a feature used with UseFeature', () => {
+  it('says what is wrong with the target or the choice and what to do, for the server reasons 128 and 129', () => {
+    expect(blockedMessage({ reason: EncounterBlockedReason.FEATURE_TARGET, combatantIds: [] } as never)).toBe(
+      'O alvo saiu do alcance. Escolha outro alvo.',
+    );
+    expect(blockedMessage({ reason: EncounterBlockedReason.FEATURE_CHOICE, combatantIds: [] } as never)).toBe(
+      'Essa opção não vale mais. Escolha outra.',
+    );
+  });
+
+  it('reads them through the error of a failed call, with the typed detail', () => {
+    for (const [reason, sentence] of [
+      [EncounterBlockedReason.FEATURE_TARGET, 'O alvo saiu do alcance. Escolha outro alvo.'],
+      [EncounterBlockedReason.FEATURE_CHOICE, 'Essa opção não vale mais. Escolha outra.'],
+    ] as const) {
+      const err = new ConnectError('refused', Code.FailedPrecondition, undefined, [
+        { desc: EncounterBlockedSchema, value: create(EncounterBlockedSchema, { reason }) },
+      ]);
+      expect(combatErrorMessage(err, 'usar a característica')).toBe(sentence);
+    }
   });
 });
