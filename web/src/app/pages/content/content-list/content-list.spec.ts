@@ -36,6 +36,7 @@ describe('ContentList', () => {
   const list = vi.fn();
   const catalog = vi.fn();
   const unarchive = vi.fn();
+  const setSwitches = vi.fn();
   const archive = vi.fn();
   const exportPack = vi.fn();
   const getCampaign = vi.fn();
@@ -63,6 +64,7 @@ describe('ContentList', () => {
       archived: false,
     }));
     archive.mockReset();
+    setSwitches.mockReset().mockResolvedValue({});
     exportPack.mockReset();
     statBlock.mockReset().mockResolvedValue({ summary: { namePt: 'Lobo' } });
     getCampaign.mockReset().mockResolvedValue({
@@ -90,7 +92,7 @@ describe('ContentList', () => {
         { provide: CreaturesClient, useValue: { statBlock } },
         {
           provide: TableContentClient,
-          useValue: { list, catalog, unarchive, archive, exportPack },
+          useValue: { list, catalog, unarchive, archive, exportPack, setSwitches },
         },
       ],
     });
@@ -264,7 +266,19 @@ describe('ContentList', () => {
     expect(text(el)).toContain('O mestre ainda não criou nada para esta mesa.');
   });
 
-  it('gives the master on a phone the reading and the archive only: a notice, a "Tipo" select and one button per row', async () => {
+  const rowMenu = async (
+    fixture: { detectChanges(): void; whenStable(): Promise<unknown> },
+    el: HTMLElement,
+    at: number,
+  ) => {
+    (el.querySelectorAll('.prow__btn')[at] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    return Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
+  };
+  const items = (menu: HTMLButtonElement[]) => menu.map((b) => text(b).replace(/^\S+ /, '').trim());
+
+  it('gives the master on a phone the reading, the switch and the archive: a notice, a "Tipo" select and a ⋮ menu per row (board 580-15)', async () => {
     const { fixture, el } = await setup(Role.MASTER, { phone: true, kind: 'classes' });
     expect(text(el)).toContain(
       'Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê e arquiva.',
@@ -274,28 +288,46 @@ describe('ContentList', () => {
     const buttons = Array.from(el.querySelectorAll('.prow__btn')).map((b) =>
       b.getAttribute('aria-label'),
     );
-    expect(buttons).toEqual(['Arquivar Guardião do Vale', 'Desarquivar Bardo das Cinzas']);
+    expect(buttons).toEqual(['Ações de Guardião do Vale', 'Ações de Bardo das Cinzas']);
     expect(text(el)).toContain('7 de 1000 entradas na campanha.');
+    // A live entry can be turned off for the players or archived; an archived one only comes back.
+    expect(items(await rowMenu(fixture, el, 0))).toEqual([
+      'Desligar para os jogadores',
+      'Arquivar',
+    ]);
+    (document.querySelector('.cdk-overlay-backdrop') as HTMLElement).click();
+    fixture.detectChanges();
+    const archivedMenu = await rowMenu(fixture, el, 1);
+    expect(items(archivedMenu)).toEqual(['Desarquivar']);
     // "Desarquivar" comes back at once, with no question.
-    (el.querySelectorAll('.prow__btn')[1] as HTMLButtonElement).click();
+    archivedMenu[0].click();
     await settle(fixture, 3);
     expect(unarchive).toHaveBeenCalledWith('camp-1', 'class:bardo-das-cinzas@mesa');
-    expect(
-      Array.from(el.querySelectorAll('.prow__btn')).map((b) => b.getAttribute('aria-label')),
-    ).toEqual(['Arquivar Guardião do Vale', 'Arquivar Bardo das Cinzas']);
     expect(text(el.querySelector('[role="status"]')!)).toContain(
       'A classe Bardo das Cinzas voltou.',
     );
   });
 
+  it('turns an entry off for the players from its ⋮ menu on a phone, and says so on the row', async () => {
+    const { fixture, el } = await setup(Role.MASTER, { phone: true, kind: 'classes' });
+    const menu = await rowMenu(fixture, el, 0);
+    menu[0].click();
+    await settle(fixture, 3);
+    expect(setSwitches).toHaveBeenCalledWith('camp-1', [
+      { key: 'class:guardiao-do-vale@mesa', off: true },
+    ]);
+    expect(text(el.querySelector('.prow')!)).toContain('Desligada para os jogadores');
+    expect(items(await rowMenu(fixture, el, 0))[0]).toBe('Ligar para os jogadores');
+  });
+
   it('says why a refused unarchive was refused, and to check an outcome the server could not confirm', async () => {
     const { fixture, el } = await setup(Role.MASTER, { phone: true, kind: 'classes' });
     unarchive.mockRejectedValueOnce(new ConnectError('refused', Code.InvalidArgument));
-    (el.querySelectorAll('.prow__btn')[1] as HTMLButtonElement).click();
+    (await rowMenu(fixture, el, 1))[0].click();
     await settle(fixture, 3);
     expect(text(el)).toContain('Não foi possível desarquivar: confira os dados e tente de novo.');
     unarchive.mockRejectedValueOnce(new ConnectError('maybe', Code.Unknown));
-    (el.querySelectorAll('.prow__btn')[1] as HTMLButtonElement).click();
+    (await rowMenu(fixture, el, 1))[0].click();
     await settle(fixture, 3);
     expect(text(el)).toContain('Não deu para confirmar se a alteração foi salva');
   });
