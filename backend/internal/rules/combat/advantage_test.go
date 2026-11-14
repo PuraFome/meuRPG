@@ -426,3 +426,29 @@ func TestAGoadSparedTargetStillSeesTheArmorDisadvantage(t *testing.T) {
 		}
 	}
 }
+
+func TestResolveWithTheInspirationSource(t *testing.T) {
+	favor := Source{Kind: SourceFavor, Effect: ModeAdvantage}
+	adv := Source{Kind: SourceProneTarget, Effect: ModeAdvantage}
+	dis := Source{Kind: SourcePoisonedAttacker, Effect: ModeDisadvantage}
+	tests := []struct {
+		name    string
+		sources []Source
+		want    RollMode
+	}{
+		{"alone it is advantage", []Source{favor}, ModeAdvantage},
+		{"against a disadvantage it is a normal roll", []Source{dis, favor}, ModeNormal},
+		{"against several disadvantages it is a normal roll", []Source{dis, dis, favor}, ModeNormal},
+		{"on an advantage it stays advantage", []Source{adv, favor}, ModeAdvantage},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Resolve(tt.sources); got != tt.want {
+				t.Fatalf("Resolve = %v, want %v", got, tt.want)
+			}
+		})
+	}
+	if SourceFavor != "favor" {
+		t.Fatalf("SourceFavor = %q, want %q", SourceFavor, "favor")
+	}
+}

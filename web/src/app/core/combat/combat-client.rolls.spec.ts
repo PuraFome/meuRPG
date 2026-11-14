@@ -56,12 +56,21 @@ describe('CombatClient: roll modes, damage parts and requests', () => {
     const client = clientWith({ rollDamage });
     await client.attacks.rollDamage('c', 'e', 'p', { parts: true }, 'k', {
       extras: [{ key: 'divine-smite', slotLevel: 2, pact: false }],
-      typedParts: [{ partKey: 'weapon', sum: 5 }],
+      typedParts: [
+        { partKey: 'divine-smite-extra', sum: 5 },
+        { damageType: 'damage-type:piercing', sum: 7 },
+      ],
     });
     const req = rollDamage.mock.calls[0][0];
     expect(req.extrasChosen).toBe(true);
     expect(req.selectedExtras).toEqual([{ key: 'divine-smite', slotLevel: 2, pact: false }]);
-    expect(req.typedParts).toEqual([{ partKey: 'weapon', sum: 5 }]);
+    // Each entry names one of the two, never both: an empty `damage_type` beside a `part_key` would be read as a key.
+    expect(req.typedParts).toEqual([
+      { partKey: 'divine-smite-extra', sum: 5 },
+      { damageType: 'damage-type:piercing', sum: 7 },
+    ]);
+    expect(Object.keys(req.typedParts[0])).toEqual(['partKey', 'sum']);
+    expect(Object.keys(req.typedParts[1])).toEqual(['damageType', 'sum']);
     await client.attacks.rollDamage('c', 'e', 'p', { inApp: true }, 'k2', { extras: [] });
     expect(rollDamage.mock.calls[1][0].extrasChosen).toBe(true);
     await client.attacks.rollDamage('c', 'e', 'p', { inApp: true }, 'k3');

@@ -298,6 +298,13 @@ The cast sheet and the attack sheet follow the same pattern one level down: `cas
 Sheets live in one frame (`sheet-frame`, scrolling inside with a fixed footer) and open through `openSheet` (a sheet on the phone, a dialog from the tablet up).
 While a sheet's own request is in the air it cannot be dismissed, so its answer is always shown and a second sheet never starts a second spend.
 Each action carries its own `idempotency_key`, made once and resent on the retry; the key follows the request, not the sheet (`ActionKey`): the same values again are a retry and keep it, while another die, slot or target is a new request with a new key.
+
+A feature action with a use (`ActionOption.via_use_feature`) is taken through `ActionSheets.takeFeature` and `FeatureService.UseFeature` (`CombatClient.features`).
+Its row (`action-groups`) shows the limit in its scope with what is left, whom it takes and what it spends (`core/combat/feature-use.ts`).
+The "Usar" sheet (`use-feature-sheet`) asks who (`feature_targets`, radio cards or check boxes) and which (buttons), and sends `target_ids` and `choice` with one idempotency key kept across retries.
+A use that asks nothing goes straight through for the player; for the master it always opens the sheet, which names the character the use is made for.
+The server's refusals (`FEATURE_TARGET` with the refused creatures, `FEATURE_CHOICE`, the economy's, `NO_USES`) are written in a red band and keep the selection.
+`FEATURE_USED` log lines read per audience in `combat-log-actions.ts`.
 `SpellCatalog` reads `GetSpellDetails` only when the screen needs it and forgets it on `content_changed` and on every `ready`.
 
 ## The master acting for a player's character

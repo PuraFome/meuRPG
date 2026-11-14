@@ -70,7 +70,9 @@ type searchTurn struct {
 	floor   rollFloor // the lowest number each d20 of the search counts as
 	step    gateResult
 	dieFace int // the die the player added after rolling: it counts in every total of the search
-	h       *hints
+	// favor is what the searcher's Inspiration did to the roll (favor_spend.go).
+	favor favorUse
+	h     *hints
 }
 
 // searchDice is the d20 of a search and the totals it is answered with.
@@ -314,7 +316,9 @@ func (s *Service) prepareSearchRoll(ctx context.Context, ts *trapSearch, r *sear
 	if err != nil {
 		return false, err
 	}
-	r.cm = cm
+	if r.cm, err = s.searchFavor(ctx, ts, r, cm); err != nil {
+		return false, err
+	}
 	if r.names, err = s.namerFor(ctx, r.c.tx, ts.m.CampaignID); err != nil {
 		return false, err
 	}
@@ -338,6 +342,13 @@ func (s *Service) prepareSearchRoll(ctx context.Context, ts *trapSearch, r *sear
 	return false, nil
 }
 
+// searchFavor counts the searcher's own Inspiration on the check, over the circumstances it has (in a combat or out of one).
+func (s *Service) searchFavor(ctx context.Context, ts *trapSearch, r *searchTurn, cm checkMode) (checkMode, error) {
+	var err error
+	r.favor, err = s.favorOfPlayerCheck(ctx, r.c.tx, r.c.q, r.h, ts.req.GetSpendFavor(), ts.m.CampaignID, ts.who.ID, ts.key, heldTrapSearch, cm)
+	return cm.withFavor(r.favor), err
+}
+
 // askSearchGate keeps the d20 until the player answers when a character out of a combat holds a
 // Bardic Inspiration die, before anything is spent or written (the Search action of a combat has spent
 // the action by now, and rolls as always), and so for a halfling's d20 that shows a 1, for the Lucky
@@ -355,7 +366,7 @@ func (s *Service) askSearchGate(ctx context.Context, ts *trapSearch, r *searchTu
 	}
 	step, err := s.heldGate(ctx, env, rollSpec{
 		Kind: heldTrapSearch, Key: ts.key, Request: ts.req, Roller: roller,
-		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Floor: r.floor, Lucky: r.opt.Lucky, MayAsk: true,
+		In: held, Modifier: r.bonus, Mode: r.cm.Mode, Floor: r.floor, Lucky: r.opt.Lucky, MayAsk: true, FavorSpent: r.favor.Used,
 	})
 	if err != nil {
 		return false, err
@@ -460,6 +471,7 @@ func trapSearchEvent(ts *trapSearch, r *searchTurn, d searchDice, found maplink.
 		Round: r.c.enc.Round, Actor: ts.place.combatantID, Key: ts.skill, D20: conv.Int32(d.face), Modifier: conv.Int32(r.bonus + r.dieFace), Total: conv.Int32(d.roll.Total),
 		Physical: d.roll.Physical, Found: found.Found, OnTurn: ts.place.spent, D20B: conv.Int32(d.face2), Floor: conv.Int32(r.floor.Value), FloorBy: r.floor.Source,
 		Lucky: r.step.Lucky, // the held d20 Lucky rolled again: the first of a Perception search's two
+		Favor: r.favor.Used,
 	}
 	if r.cm.Mode != combat.ModeNormal {
 		ev.RollMode, ev.Counted = modeKey(r.cm.Mode), conv.Int32(d.counted)

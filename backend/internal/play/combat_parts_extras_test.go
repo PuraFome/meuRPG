@@ -120,7 +120,7 @@ func TestRollDamageRefusesTypedSumsThatDoNotFit(t *testing.T) {
 	wantRefusal(t, "RollDamage(a part twice)", roll(part(extraWeaponDamage, 3), part(extraWeaponDamage, 4)),
 		connect.CodeInvalidArgument, "typed_parts must name each part once")
 	wantRefusal(t, "RollDamage(a part with no key)", roll(part("", 3)),
-		connect.CodeInvalidArgument, "typed_parts must name each part once")
+		connect.CodeInvalidArgument, "typed_parts must name a part_key or a damage_type")
 	if err := roll(part(extraWeaponDamage, 3), part("sneak-attack", 5)); err != nil {
 		t.Errorf("RollDamage(the sums that fit) error = %v", err)
 	}
