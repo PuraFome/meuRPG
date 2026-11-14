@@ -528,6 +528,11 @@ message TableFeature {
   // a use of a resource of the feature (`summon.resource_key`) instead of a slot: the same options, checks,
   // concentration, replacement and dismissal. A class, subclass, race or background feature has it; an option does not.
   TableSummon summon = 6;
+  // What an option asks of the character; only an option of a class or subclass feature (an entry of `options`)
+  // has it, and it is refused anywhere else. It is the same prerequisite as a table option's: a level in a class, the
+  // options picked, a Pact Boon, a spell. An option whose prerequisite is not met is listed in the choice, disabled,
+  // with what it lacks; a sheet that already has it keeps it and shows the "prerequisite" problem.
+  OptionPrerequisite prerequisite = 7;
 }
 
 // TableFeat is a feat (MR-025): an optional rule of the game that a character takes
@@ -588,7 +593,7 @@ message OptionPrerequisite {
   repeated string requires_option_keys = 2;
   // A Pact Boon the character has (an SRD one, or a table option of the set "pact_boon").
   string requires_pact = 3;
-  // A spell the character knows (a cantrip, a known or a prepared spell).
+  // A spell the character knows: the same meaning as FeatPrerequisite.requires_spell_key.
   string requires_spell_key = 4;
 }
 

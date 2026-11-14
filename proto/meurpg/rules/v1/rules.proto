@@ -492,6 +492,25 @@ message FeatPrerequisite {
   // True when the feat asks for races and none is left visible after the player's filter. Set by
   // the server on a player's read; never for the master. Ignored on write.
   bool races_hidden = 12;
+  // A level in one class, the table's or the SRD's (not the total level: that is `level`). Unset asks nothing.
+  FeatClassLevel class_level = 13;
+  // A Pact Boon the character has: an SRD one or a table option of the set "pact_boon". Empty asks nothing.
+  string requires_pact = 14;
+  // A spell the character knows: a cantrip, a known, a prepared or an always-prepared spell, and a granted spell that
+  // counts as known (from a race or a feat). A spell cast from an item does not count. The same meaning on a feat and on
+  // an option. Empty asks nothing.
+  string requires_spell_key = 15;
+  // Options (the SRD's or the table's) the character has picked; each one is asked. At most 10.
+  repeated string requires_option_keys = 16;
+}
+
+// FeatClassLevel is "level N in class X" in a feat's prerequisite.
+message FeatClassLevel {
+  // The class, the table's or the SRD's. A player does not read it when the class is hidden (the condition then
+  // reads as not set, as for the other keys); the master always does.
+  string class_key = 1;
+  // 1 to 20.
+  int32 level = 2;
 }
 
 // FeatIncrease is the ability increase a feat gives (its ability_increase effect):
@@ -525,6 +544,14 @@ enum FeatUnmetKind {
   FEAT_UNMET_KIND_SIZE = 8;
   // The character has the feature in `key`, which the feat asks them not to have.
   FEAT_UNMET_KIND_LACKS_FEATURE = 9;
+  // The character has fewer levels than `value` in the class in `key`.
+  FEAT_UNMET_KIND_CLASS_LEVEL = 10;
+  // The character does not have the Pact Boon in `key`.
+  FEAT_UNMET_KIND_PACT = 11;
+  // The character does not know the spell in `key`.
+  FEAT_UNMET_KIND_SPELL = 12;
+  // The character has not picked the option in `key`.
+  FEAT_UNMET_KIND_OPTION = 13;
 }
 
 // AbilityMinimum is an ability and the score asked of it.

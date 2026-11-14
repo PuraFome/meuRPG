@@ -136,6 +136,9 @@ type TableFeature struct {
 	// Summon says the feature brings the table's creatures to its holder, or is nil (see TableSummon). Only a
 	// class, subclass, race or background feature has it, not an option.
 	Summon *TableSummon
+	// Prerequisite is what an option of a class or subclass feature (or of a feat) asks of the character; only an
+	// entry of Options has it. An option whose prerequisite is not met is listed in the choice, blocked.
+	Prerequisite TableOptionPrerequisite
 }
 
 // TableCasting is how a class (or, for a third caster, a subclass) casts.
@@ -995,6 +998,8 @@ type overlayBuilder struct {
 	pending []pendingEffects
 	// featLacks are the features the feats ask the character not to have.
 	featLacks []featLack
+	// optionRequires are the options the prerequisites ask for, judged once every entry is built.
+	optionRequires []optionRequire
 	// strict is Overlay.Strict as a set.
 	strict map[string]bool
 	// optionEntry is the entry of every option of a feature list, by option key;
@@ -1175,6 +1180,9 @@ func (b *overlayBuilder) build(o Overlay) error {
 		return err
 	}
 	if err := b.checkFeatLacks(); err != nil {
+		return err
+	}
+	if err := b.checkOptionRequires(); err != nil {
 		return err
 	}
 	b.offerFeatSets()

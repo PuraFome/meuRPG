@@ -133,6 +133,7 @@ func deriveWith(b Build, c *content, inactive map[string]bool) Derived {
 	x.effectHints()
 	x.choiceEffects()
 	x.checkChoices()
+	x.checkOptionPrerequisites()
 	x.dropReplacedTiers()
 	// Only an issue tied to a table entry is ever blamed on a change.
 	for i := range d.Issues {
