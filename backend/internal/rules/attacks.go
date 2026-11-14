@@ -90,6 +90,7 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 		Light:        kind == "melee" && has("light"),
 		Finesse:      has("finesse"),
 		TwoHanded:    has("two-handed"),
+		Properties:   slices.Clone(w.Properties),
 		DamageNotePT: note,
 	}
 	a.Magical, a.Silvered, a.Adamantine = x.weaponMarks(key, facts)

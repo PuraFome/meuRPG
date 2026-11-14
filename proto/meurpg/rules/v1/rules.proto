@@ -2423,11 +2423,34 @@ message AttackOption {
   // beam was fired. The option stays enabled while this is above 0, though the
   // action is spent. 0 for every other attack, and before the first beam.
   int32 beams_left = 7;
+  // The power attack trades the character may make on this attack (power_attack effects of its table
+  // features) whose weapon filter accepts it: a penalty on the attack roll for flat damage on a hit. Empty for
+  // a spell, a creature or an NPC, and for a weapon no trade goes with. A trade whose resource has no use
+  // left is listed with `disabled` set. A trade that shares its pool with a maneuver die named in the same request may
+  // be listed enabled and still be refused with NO_USES_LEFT, since the two need two uses. The choice is sent as RollAttackRequest.power_attack_key, which the server checks again.
+  repeated PowerAttackOption power_attacks = 8;
   // The magic bonus of the character's weapon in `attack`, from 0 to 3, the same value as
   // `attack.magic_bonus`: the part of the attack bonus and the damage that is a counting +N.
   // 0 for a cantrip, an unarmed strike, a creature's, an NPC's and an opportunity attack.
   // Display only: the server rolls with the numbers already in `attack`.
   int32 magic_bonus = 9;
+}
+
+// PowerAttackOption is a trade of attack roll for damage the character may make on a weapon attack.
+message PowerAttackOption {
+  // The key of the feature that gives it, sent back as RollAttackRequest.power_attack_key.
+  string key = 1;
+  // The Portuguese name of the feature.
+  string name = 2;
+  // The number taken off the attack roll, 1 or more.
+  int32 penalty = 3;
+  // The flat damage added to a hit, 1 or more.
+  int32 damage_bonus = 4;
+  // True when the trade spends a use of a resource and none is left: it is listed, and the roll refuses it with
+  // NO_USES_LEFT.
+  bool disabled = 5;
+  // Set when `disabled` is true: the reason in Portuguese.
+  string disabled_reason_pt = 6;
 }
 
 // SpellOption is a spell the character can cast.
