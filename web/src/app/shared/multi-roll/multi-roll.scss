@@ -15,6 +15,32 @@
   gap: 10px;
 }
 
+@media (min-width: 640px) {
+  .actions--row {
+    flex-direction: row;
+    align-items: center;
+
+    .pick__main {
+      flex: 1 1 0;
+    }
+  }
+}
+
+// With the fields wide, "Rolar no app" is a button of the same height beside the answer, not a link under it.
+.actions--row .type__back {
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  text-decoration: none;
+
+  @media (min-width: 640px) {
+    flex: 1 1 0;
+  }
+}
+
 .pick__main {
   --mat-button-filled-container-height: 48px;
   width: 100%;
@@ -44,6 +70,27 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px 16px;
+}
+
+.type__fields--wide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+
+  .type__one {
+    min-width: 0;
+  }
+
+  .type__field {
+    width: 100%;
+    font-size: var(--mr-font-22);
+  }
+}
+
+.type__note {
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
 }
 
 .type__one {

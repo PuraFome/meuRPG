@@ -6592,6 +6592,32 @@ async function scanHitEffectSheet(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Atacar, os efeitos entram sozinhos no crítico ${where}`);
     await p.getByRole('button', { name: 'Digitar o resultado' }).click();
     await expectScreenPasses(p, `Atacar, digitar a soma com as partes dos efeitos ${where}`);
+    // One field for each damage type (a resistance counts by type): named by part and type, its range tied to it as the hint, and
+    // an error state in words when the sum is out of that range. The bonus is not typed, and the answer names the total.
+    const typedForm = p.getByRole('form', { name: 'Resultado dos dados físicos' });
+    for (const [label, hint] of [
+      ['Adaga, perfurante: 2d4', 'De 2 a 8.'],
+      ['Geada no Punho, frio: 4d8', 'De 4 a 32.'],
+      ['Clarão na Lâmina, radiante: 4d6', 'De 4 a 24.'],
+    ] as const) {
+      const field = typedForm.getByLabel(label, { exact: true });
+      await expect(field).toBeVisible();
+      await expect(field).not.toHaveAttribute('aria-invalid', 'true');
+      await expect(field, `${label} has its hint tied by aria-describedby`).toHaveAccessibleDescription(hint);
+    }
+    await expect(typedForm.getByText(/^Sem o [+−] \d+: o app soma o bônus\.$/)).toBeVisible();
+    await expect(typedForm.getByRole('button', { name: 'Aplicar dano' })).toHaveAttribute('aria-disabled', 'true');
+    const flareField = typedForm.getByLabel('Clarão na Lâmina, radiante: 4d6', { exact: true });
+    await flareField.fill('25');
+    await expect(flareField).toHaveAttribute('aria-invalid', 'true');
+    await expect(flareField).toHaveAccessibleDescription(/Digite um número de 4 a 24/);
+    await expectScreenPasses(p, `Atacar, digitar a soma, um campo fora da faixa ${where}`);
+    await typedForm.getByLabel('Adaga, perfurante: 2d4', { exact: true }).fill('5');
+    await typedForm.getByLabel('Geada no Punho, frio: 4d8', { exact: true }).fill('18');
+    await flareField.fill('14');
+    await expect(flareField).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(typedForm.getByRole('button', { name: /^Aplicar \d+ de dano$/ })).toBeEnabled();
+    await expectScreenPasses(p, `Atacar, digitar a soma, todos os campos válidos ${where}`);
     await p.getByRole('button', { name: /^Rolar .* no app$/ }).click();
     await expect(p.getByRole('button', { name: 'Voltar à sua vez' })).toBeFocused();
 

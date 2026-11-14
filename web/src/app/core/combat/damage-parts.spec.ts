@@ -7,7 +7,6 @@ import {
   partTotal,
   rerollText,
   rollFormula,
-  typedFields,
 } from './damage-parts';
 
 const weapon = {
@@ -76,14 +75,6 @@ describe('damage parts', () => {
     expect(activeParts([weapon, rage, sneak, smite], picks)).toEqual([weapon, rage, sneak]);
   });
 
-  it('gives one number field for each marked part that rolls dice, the weapon included', () => {
-    const picks = [{ key: 'sneak-attack', slotLevel: 0, pact: false }];
-    expect(typedFields([weapon, rage, sneak, smite], picks)).toEqual([
-      { key: 'weapon', label: 'Espada curta: 1d6', min: 1, max: 6 },
-      { key: 'sneak-attack', label: 'Ataque Furtivo: 2d6', min: 2, max: 12 },
-    ]);
-  });
-
   it('says what a part made and what Great Weapon Fighting rolled again', () => {
     const roll = {
       sum: 9,
@@ -109,12 +100,11 @@ describe('the off part of a spell hit effect', () => {
     reasonPt: 'só num golpe corpo a corpo. Continua esperando.',
   } as never;
 
-  it('is no part of the damage: not active, not typed, not in the formula', () => {
+  it('is no part of the damage: not active, not in the formula', () => {
     expect(isOffPart(off)).toBe(true);
     expect(isOffPart(weapon)).toBe(false);
     expect(isOffPart(sneak)).toBe(false);
     expect(activeParts([weapon, off], [])).toEqual([weapon]);
-    expect(typedFields([weapon, off], []).map((f) => f.key)).toEqual(['weapon']);
     expect(rollFormula([weapon, off], [])).toBe('1d6 + 3');
   });
 });

@@ -23,6 +23,8 @@ let nextId = 0;
 export interface RollField {
   readonly key: string;
   readonly label: string;
+  /** "De 2 a 12.": read under the field instead of the bare range. */
+  readonly hint?: string;
   readonly min: number;
   readonly max: number;
 }
@@ -56,6 +58,12 @@ export class MultiRoll {
   readonly waiting = input(false);
   readonly appLabel = input('Rolar no app');
   readonly hint = input('');
+  /** The button that sends the numbers, from the total (`null` until every number is valid): "Aplicar 14 de dano". */
+  readonly confirmLabel = input<((total: number | null) => string) | null>(null);
+  /** A line under the fields: what the app adds that is not typed ("Sem o + 3: o app soma o bônus."). */
+  readonly note = input('');
+  /** Fields that fill the row side by side (a phone stacks them) and the buttons side by side, for fields with a hint. */
+  readonly wide = input(false);
   readonly busy = input(false);
   readonly typing = model(false);
 
@@ -90,6 +98,9 @@ export class MultiRoll {
           : v.reduce((a, n) => a + n, 0);
     return base + this.modifier();
   });
+  protected readonly confirmText = computed(
+    () => this.confirmLabel()?.(this.total()) ?? 'Confirmar',
+  );
 
   /** Back to the buttons with the fields empty (the roll went through). */
   reset(): void {

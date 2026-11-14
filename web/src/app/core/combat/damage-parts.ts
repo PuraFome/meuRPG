@@ -88,28 +88,6 @@ export function rollFormula(parts: readonly DamagePart[], picks: readonly ExtraP
   return `${dice.join(' + ')}${bonus}`;
 }
 
-/** One number field for each active part that rolls dice (the weapon included), for physical dice. */
-export function typedFields(
-  parts: readonly DamagePart[],
-  picks: readonly ExtraPick[],
-): readonly { key: string; label: string; min: number; max: number }[] {
-  return activeParts(parts, picks)
-    .map((p) => ({
-      p,
-      dice: partDice(
-        p,
-        picks.find((x) => x.key === p.key),
-      ),
-    }))
-    .filter((x) => x.dice.count > 0)
-    .map(({ p, dice }) => ({
-      key: p.key,
-      label: `${p.labelPt}: ${dice.count}d${dice.sides}`,
-      min: dice.count,
-      max: dice.count * dice.sides,
-    }));
-}
-
 /** What a part took off the damage if it were taken out: its dice and its fixed number. */
 export function partTotal(roll: DamagePartRoll): number {
   return roll.sum + roll.flat;

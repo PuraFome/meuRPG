@@ -30,7 +30,7 @@
     @if (hint()) {
       <p class="type__hint" [id]="id + '-hint'">{{ hint() }}</p>
     }
-    <div class="type__fields">
+    <div class="type__fields" [class.type__fields--wide]="wide()">
       @for (f of fields(); track f.key; let i = $index) {
         <div class="type__one">
           <label class="type__label" [for]="id + '-' + i">{{ f.label }}</label>
@@ -51,12 +51,15 @@
             @if (invalid()[i]) {
               <mat-icon aria-hidden="true">error</mat-icon>Digite um número de {{ rangeText(f) }}
             } @else {
-              {{ rangeText(f) }}
+              {{ f.hint ?? rangeText(f) }}
             }
           </span>
         </div>
       }
     </div>
+    @if (note()) {
+      <p class="type__note">{{ note() }}</p>
+    }
     @if (totalNote()) {
       <div class="type__sum" [class.type__sum--wait]="total() === null" role="status">
         @if (total() !== null) {
@@ -68,7 +71,7 @@
         }
       </div>
     }
-    <div class="actions">
+    <div class="actions" [class.actions--row]="wide()">
       <button
         matButton="filled"
         type="submit"
@@ -77,7 +80,7 @@
         [disabled]="!complete() || busy()"
         disabledInteractive
       >
-        Confirmar
+        {{ confirmText() }}
       </button>
       @if (canApp()) {
         <button type="button" class="type__back" (click)="typing.set(false)">{{ appLabel() }}</button>
