@@ -5827,6 +5827,33 @@ func (q *Queries) ListCampaignFavor(ctx context.Context, campaignID string) ([]C
 	return items, nil
 }
 
+const listCampaignSessionIDs = `-- name: ListCampaignSessionIDs :many
+SELECT id FROM game_sessions WHERE campaign_id = $1 ORDER BY session_number
+`
+
+// The ids of the campaign's sessions, answered by the unique index on (campaign_id, session_number) alone: the rows of
+// other campaigns are never read, so a lock another transaction holds on one of them does not make the call wait
+// (CockroachDB makes a plain read of a locked row wait for it, so a lookup by id would).
+func (q *Queries) ListCampaignSessionIDs(ctx context.Context, campaignID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listCampaignSessionIDs, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCampaignTrapDamages = `-- name: ListCampaignTrapDamages :many
 SELECT d.id, d.game_session_id, d.trap_point_id, d.fire_id, d.character_id, d.status, d.critical, d.dice_count, d.dice_sides, d.dice_bonus, d.damage_type, d.faces, d.roll_total, d.half, d.amount, d.applied_amount, d.created_at, d.resolved_at, d.critical_max, d.settle_key, d.settle_hash, g.session_number, g.started_at AS session_started_at FROM trap_damages AS d
 JOIN game_sessions AS g ON g.id = d.game_session_id

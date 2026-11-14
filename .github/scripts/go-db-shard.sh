@@ -25,7 +25,7 @@
 # The play package alone took 920 s, so it is split by test: play-1 to play-6
 # each run the tests whose name hashes (cksum) to their part, with
 # `-run '^(TestA|TestB)$'`. The leaktest package is split the same way, in
-# leak-1 and leak-2: every test builds its own world, so no test needs another
+# leak-1 to leak-3: every test builds its own world, so no test needs another
 # to run first. The rules package (pure, CPU-bound under -race and coverage)
 # is split in rules-1 to rules-3: whole, it reached the 25-minute -timeout. A package is split by adding its prefix to split_prefixes, its
 # directory to split_dir (when it is not the prefix), its number of parts to
@@ -52,7 +52,7 @@ case_packages() {
   esac
 }
 
-# play-2 to play-6 name the same package as play-1, leak-2 the same as leak-1,
+# play-2 to play-6 name the same package as play-1, leak-2 and leak-3 the same as leak-1,
 # and rules-2 and rules-3 the same as rules-1: only the first part of a split
 # package counts here.
 named_groups="play-1 maps characters rules-1 dungeon leak-1"
@@ -64,7 +64,7 @@ split_dir() { case "$1" in leak) echo leaktest ;; *) echo "$1" ;; esac; }
 split_parts() {
   case "$1" in
     play) echo 6 ;;
-    leak) echo 2 ;;
+    leak) echo 3 ;;
     rules) echo 3 ;;
     *) echo "not a split package: $1" >&2; return 1 ;;
   esac

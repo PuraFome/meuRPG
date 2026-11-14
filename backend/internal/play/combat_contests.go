@@ -610,7 +610,7 @@ func (s *Service) startContest(ctx context.Context, m authz.Membership, msg *pla
 		if made, err = s.startContestTx(ctx, c, st, &held); err != nil {
 			return nil, err
 		}
-		if held != nil { // the d20 is kept for a question: nothing is written
+		if held != nil { // the d20 is kept for a question: only the held roll is written
 			return nil, nil
 		}
 		return made, nil
@@ -869,7 +869,7 @@ func (s *Service) answerContestTx(ctx context.Context, c *combatTx, ans contestA
 		if p, gate, err = s.gateContestDefender(ctx, r); err != nil {
 			return actionEvent{}, err
 		}
-		if gate.Held != nil { // the d20 is kept for a question: nothing is written
+		if gate.Held != nil { // the d20 is kept for a question: only the held roll is written
 			*held = s.heldCheckOffer(ctx, c, gate)
 			return actionEvent{}, nil
 		}
@@ -920,7 +920,7 @@ func (s *Service) respondContest(ctx context.Context, m authz.Membership, msg *p
 		if made, err = s.answerContestTx(ctx, c, ans, &held); err != nil {
 			return nil, err
 		}
-		if held != nil { // the d20 is kept for a question: nothing is written
+		if held != nil { // the d20 is kept for a question: only the held roll is written
 			return nil, nil
 		}
 		return made, nil
