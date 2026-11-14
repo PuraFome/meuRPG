@@ -11,8 +11,8 @@ import (
 	mapsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/maps/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
@@ -39,9 +39,15 @@ func (s *Service) CreateMapPoint(
 	if err != nil {
 		return nil, err
 	}
-	created, err := s.createPointTx(ctx, m.CampaignID, in, scopedKey, requestHash, current)
+	created, mapRow, replayed, err := s.createPointTx(ctx, m.CampaignID, in, scopedKey, requestHash)
 	if err != nil {
 		return nil, s.dbError(ctx, "create a point", err)
+	}
+	// A new point is hidden: only the master hears about it (MR-009), unless it
+	// is born visible to everyone (a trap created already triggered). A retry announces
+	// nothing: the first call did.
+	if !replayed {
+		s.publishPointsChanged(ctx, m.CampaignID, mapRow, playersSee(in.mapID, mapRow.RevealedAt, current) && everyoneSees(created), created)
 	}
 	out, err := s.masterPoint(ctx, m, created)
 	if err != nil {
@@ -130,36 +136,23 @@ func (s *Service) checkNewPoint(msg *mapsv1.CreateMapPointRequest) (newPoint, er
 	}, nil
 }
 
-// createPointTx inserts the point in one transaction, under the session's lock, or finds the one a retry of the same request
-// created (replayed), and tells the watchers once it committed. A new point is hidden: only the master hears about it (MR-009),
-// unless it is born visible to everyone (a trap created already triggered). A retry tells again what the first call did, with
-// the number as it stands.
-func (s *Service) createPointTx(ctx context.Context, campaignID string, in newPoint, scopedKey, requestHash *string, current string) (mapsdb.MapPoint, error) {
-	var created mapsdb.MapPoint
-	err := s.inSession(ctx, campaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+// createPointTx inserts the point in one transaction, or finds the one a retry
+// of the same request created (replayed).
+func (s *Service) createPointTx(ctx context.Context, campaignID string, in newPoint, scopedKey, requestHash *string) (created mapsdb.MapPoint, mapRow mapsdb.Map, replayed bool, err error) {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
-		mapRow, err := s.campaignMap(ctx, q, campaignID, in.mapID)
-		if err != nil {
+		var err error
+		if mapRow, err = s.campaignMap(ctx, q, campaignID, in.mapID); err != nil {
 			return err
 		}
-		var replayed bool
 		created, replayed, err = idem.Create(ctx, scopedKey, requestHash, q.GetMapPointByCreateKey,
 			func(p mapsdb.MapPoint) *string { return p.CreateHash },
 			func() (mapsdb.MapPoint, error) {
 				return s.insertNewPoint(ctx, q, campaignID, in, scopedKey, requestHash)
 			})
-		if err != nil {
-			return err
-		}
-		if replayed {
-			t.Replay()
-		}
-		s.announce(t, func(ctx context.Context) {
-			s.publishPointsChanged(ctx, campaignID, mapRow, playersSee(in.mapID, mapRow.RevealedAt, current) && everyoneSees(created), created)
-		})
-		return nil
+		return err
 	})
-	return created, err
+	return created, mapRow, replayed, err
 }
 
 // insertNewPoint counts the map's points against the limit, checks the target
@@ -226,15 +219,14 @@ func (s *Service) UpdateMapPoint(
 	if err != nil {
 		return nil, err
 	}
-	ch, err := s.changePointTx(ctx, m.CampaignID, mapID, pointID, change, func(ctx context.Context, ch pointChanged) {
-		s.announcePointChange(ctx, m.CampaignID, mapID, current, ch)
-		// The open scene shows the point's name and description, and stops being
-		// one when the point changes kind.
-		s.publishSceneChangedIf(ctx, m.CampaignID, pointID)
-	})
+	ch, err := s.changePointTx(ctx, m.CampaignID, mapID, pointID, change)
 	if err != nil {
 		return nil, s.dbError(ctx, "update a point", err)
 	}
+	s.announcePointChange(ctx, m.CampaignID, mapID, current, ch)
+	// The open scene shows the point's name and description, and stops being
+	// one when the point changes kind.
+	s.publishSceneChangedIf(ctx, m.CampaignID, pointID)
 	out, err := s.masterPoint(ctx, m, ch.after)
 	if err != nil {
 		return nil, err
@@ -378,10 +370,10 @@ type pointChanged struct {
 }
 
 // changePointTx locks the point, reads who knows of its trap and saves the
-// change, in one transaction under the session's lock; tell runs once it committed.
-func (s *Service) changePointTx(ctx context.Context, campaignID, mapID, pointID string, change pointChange, tell func(ctx context.Context, ch pointChanged)) (pointChanged, error) {
+// change, in one transaction.
+func (s *Service) changePointTx(ctx context.Context, campaignID, mapID, pointID string, change pointChange) (pointChanged, error) {
 	var ch pointChanged
-	err := s.inSession(ctx, campaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
 		if ch.mapRow, err = s.campaignMap(ctx, q, campaignID, mapID); err != nil {
@@ -393,11 +385,8 @@ func (s *Service) changePointTx(ctx context.Context, campaignID, mapID, pointID 
 		if ch.knowers, err = s.trapKnowers(ctx, tx, q, campaignID, ch.before); err != nil {
 			return err
 		}
-		if ch.after, err = s.applyPointChange(ctx, q, campaignID, ch.before, change); err != nil {
-			return err
-		}
-		s.announce(t, func(ctx context.Context) { tell(ctx, ch) })
-		return nil
+		ch.after, err = s.applyPointChange(ctx, q, campaignID, ch.before, change)
+		return err
 	})
 	return ch, err
 }
@@ -407,7 +396,7 @@ func (s *Service) changePointTx(ctx context.Context, campaignID, mapID, pointID 
 func (s *Service) announcePointChange(ctx context.Context, campaignID, mapID, current string, ch pointChanged) {
 	s.publishPointsChanged(ctx, campaignID, ch.mapRow,
 		playersSee(mapID, ch.mapRow.RevealedAt, current) && (everyoneSees(ch.before) || everyoneSees(ch.after)), ch.before, ch.after)
-	s.tellTrapKnowers(ctx, campaignID, mapID, ch.mapRow, current, ch.knowers)
+	s.tellTrapKnowers(campaignID, mapID, ch.mapRow, current, ch.knowers)
 }
 
 // baseUpdateParams is the update that saves the point as it is.
@@ -534,15 +523,14 @@ func (s *Service) DeleteMapPoint(
 	if err != nil {
 		return nil, s.dbError(ctx, "read the open scene", err)
 	}
-	_, err = s.deletePointTx(ctx, m.CampaignID, mapID, pointID, func(ctx context.Context, gone pointDeleted) {
-		s.publishPointsChanged(ctx, m.CampaignID, gone.mapRow, playersSee(mapID, gone.mapRow.RevealedAt, current) && everyoneSees(gone.deleted), gone.deleted)
-		s.tellTrapKnowers(ctx, m.CampaignID, mapID, gone.mapRow, current, gone.knowers)
-		if openScene == pointID {
-			s.publishSceneChanged(ctx, m.CampaignID)
-		}
-	})
+	gone, err := s.deletePointTx(ctx, m.CampaignID, mapID, pointID)
 	if err != nil {
 		return nil, s.dbError(ctx, "delete a point", err)
+	}
+	s.publishPointsChanged(ctx, m.CampaignID, gone.mapRow, playersSee(mapID, gone.mapRow.RevealedAt, current) && everyoneSees(gone.deleted), gone.deleted)
+	s.tellTrapKnowers(m.CampaignID, mapID, gone.mapRow, current, gone.knowers)
+	if openScene == pointID {
+		s.publishSceneChanged(ctx, m.CampaignID)
 	}
 	return connect.NewResponse(&mapsv1.DeleteMapPointResponse{}), nil
 }
@@ -569,12 +557,11 @@ func (s *Service) SetMapPointRevealed(
 		return nil, err
 	}
 	revealed := req.Msg.GetRevealed()
-	ch, err := s.changePointTx(ctx, m.CampaignID, mapID, pointID, pointChange{revealed: &revealed}, func(ctx context.Context, ch pointChanged) {
-		s.announcePointChange(ctx, m.CampaignID, mapID, current, ch)
-	})
+	ch, err := s.changePointTx(ctx, m.CampaignID, mapID, pointID, pointChange{revealed: &revealed})
 	if err != nil {
 		return nil, s.dbError(ctx, "reveal or hide a point", err)
 	}
+	s.announcePointChange(ctx, m.CampaignID, mapID, current, ch)
 	out, err := s.masterPoint(ctx, m, ch.after)
 	if err != nil {
 		return nil, err
@@ -602,10 +589,10 @@ func checkDeletable(p mapsdb.MapPoint) error {
 	return nil
 }
 
-// deletePointTx deletes the point in one transaction, under the session's lock; tell runs once it committed.
-func (s *Service) deletePointTx(ctx context.Context, campaignID, mapID, pointID string, tell func(ctx context.Context, gone pointDeleted)) (pointDeleted, error) {
+// deletePointTx deletes the point in one transaction.
+func (s *Service) deletePointTx(ctx context.Context, campaignID, mapID, pointID string) (pointDeleted, error) {
 	var out pointDeleted
-	err := s.inSession(ctx, campaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err := db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
 		if out.mapRow, err = s.campaignMap(ctx, q, campaignID, mapID); err != nil {
@@ -629,7 +616,6 @@ func (s *Service) deletePointTx(ctx context.Context, campaignID, mapID, pointID 
 		if err != nil {
 			return fmt.Errorf("delete point: %w", err)
 		}
-		s.announce(t, func(ctx context.Context) { tell(ctx, out) })
 		return nil
 	})
 	return out, err

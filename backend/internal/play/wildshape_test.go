@@ -642,7 +642,6 @@ func TestOutOfCombatTrapDamageGoesToTheBeastForm(t *testing.T) {
 			}
 			s.h.svc.SetTraps(msvc)
 			msvc.SetTrapFirer(s.h.svc)
-			msvc.SetSessionHost(s.h.svc)
 			srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
 			msvc.Mount(srv.Handle, mapsSessions{testSessions}, s.h.camps, reqlimit.HandlerOption())
 			server := httptest.NewServer(srv.Handler())

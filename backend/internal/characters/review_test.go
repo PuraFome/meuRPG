@@ -39,8 +39,6 @@ func (*hostSpy) ReviveInCombat(context.Context, pgx.Tx, string, string, string, 
 	return "", nil
 }
 
-func (*hostSpy) LockSession(context.Context, pgx.Tx, string) error { return nil }
-
 func (*hostSpy) GearChanged(context.Context, pgx.Tx, string, string) (func(context.Context), error) {
 	return nil, nil
 }

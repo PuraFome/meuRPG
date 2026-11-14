@@ -18,7 +18,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/safego"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -169,20 +168,16 @@ func (s *Service) PaintMapCells(
 
 	batch := paintBatch{campaignID: m.CampaignID, mapID: mapID, layer: layer, value: value, squares: squares}
 	var done paintDone
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if done, err = s.paintTx(ctx, s.queries.WithTx(tx), batch); err != nil {
-			return err
-		}
-		if done.changed > 0 {
-			s.announce(t, func(ctx context.Context) {
-				s.layersChanged(ctx, m.CampaignID, done.mapRow, done.playersToo, layer == mapsv1.MapLayer_MAP_LAYER_LIGHT)
-			})
-		}
-		return nil
+		done, err = s.paintTx(ctx, s.queries.WithTx(tx), batch)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "paint a map's squares", err)
+	}
+	if done.changed > 0 {
+		s.layersChanged(ctx, m.CampaignID, done.mapRow, done.playersToo, layer == mapsv1.MapLayer_MAP_LAYER_LIGHT)
 	}
 	return connect.NewResponse(&mapsv1.PaintMapCellsResponse{LayersRevision: done.revision, Changed: done.changed}), nil
 }
@@ -295,10 +290,9 @@ func storeLayers(ctx context.Context, q *mapsdb.Queries, mapID string, set layer
 }
 
 // bumpPaintRevision raises the counter a batch of paint moves and sets the revision the
-// master reads. The light is the master's alone: it has its own counter, so the layers'
-// revision a player reads does not tell them when the master paints it. A change the players
-// cannot see counts there too. (The session's hint number moves with every paint that changed
-// something, whichever counter it raised: it counts writes, and says nothing of the layer.)
+// master reads. The light is the master's alone: it has its own counter, so the number
+// players see does not tell them when the master paints it. A change the players cannot
+// see counts there too.
 func bumpPaintRevision(ctx context.Context, q *mapsdb.Queries, mapID string, done *paintDone) error {
 	if !done.playersToo {
 		light, err := q.BumpMapLightRevision(ctx, mapID)
@@ -409,15 +403,13 @@ func paintBit(l *grid.Layer, col, row int, on bool) bool {
 // changed (refreshVision); terrain and cover are theirs only on squares they
 // know, and the hint of the walls and the light covers the squares they see.
 func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow mapsdb.Map, playersToo, seeingChanged bool) {
-	// The hint goes through the gate, which may hold it for a later write's: it carries no number (the write's own bump moves it).
-	ctx = withoutOut(ctx)
 	if fogged(mapRow) && !playersToo && !seeingChanged {
-		s.layerHints.fire(mapRow.ID, s.layerHintEvery, false, func(bool) { s.publishMapChanged(ctx, campaignID, mapRow.ID, false) })
+		s.layerHints.fire(mapRow.ID, s.layerHintEvery, false, func(bool) { s.publishMapChanged(campaignID, mapRow.ID, false) })
 		return // only the master's own view of the layers changed
 	}
 	if fogged(mapRow) {
 		s.layerHints.fire(mapRow.ID, s.layerHintEvery, false, func(bool) {
-			s.publishMapChanged(ctx, campaignID, mapRow.ID, false)
+			s.publishMapChanged(campaignID, mapRow.ID, false)
 			s.refreshVision(ctx, campaignID, mapRow.ID)
 		})
 		return
@@ -431,7 +423,7 @@ func (s *Service) layersChanged(ctx context.Context, campaignID string, mapRow m
 		players = playersSee(mapRow.ID, mapRow.RevealedAt, current)
 	}
 	s.layerHints.fire(mapRow.ID, s.layerHintEvery, players, func(players bool) {
-		s.publishMapChanged(ctx, campaignID, mapRow.ID, players)
+		s.publishMapChanged(campaignID, mapRow.ID, players)
 	})
 }
 
@@ -682,10 +674,19 @@ func (s *Service) SetMapFog(
 	if err != nil {
 		return nil, err
 	}
-	copied, err := s.writeFog(ctx, m, mapID, current, msg, baseLight, imageCopy)
+	before, after, copied, err := s.writeFog(ctx, m, mapID, msg, baseLight, imageCopy)
 	s.discardFogCopy(ctx, m.CampaignID, imageCopy, err != nil || !copied)
 	if err != nil {
 		return nil, s.dbError(ctx, "set a map's fog", err)
+	}
+	// The players hear of what they read (the switch, "Visão do grupo"), not of the
+	// base light, which is the master's.
+	playersHear := before.FogEnabled != after.FogEnabled || before.GroupVision != after.GroupVision
+	s.publishMapChanged(m.CampaignID, mapID, playersHear && playersSee(mapID, after.RevealedAt, current))
+	// What everyone sees, and remembers, is worked out again (the base light is the
+	// master's, but it moves what the squares look like).
+	if after.FogEnabled {
+		s.refreshVision(ctx, m.CampaignID, mapID)
 	}
 	out, err := s.masterMap(ctx, m, mapID)
 	if err != nil {
@@ -725,11 +726,10 @@ func (s *Service) fogImageCopy(ctx context.Context, campaignID, mapID string, ms
 	return imageCopy, nil
 }
 
-// writeFog sets the fog's settings in one transaction, under the session's lock, and says whether the map got the copy of its image.
-// Once it committed it tells the watchers.
-func (s *Service) writeFog(ctx context.Context, m authz.Membership, mapID, current string, msg *mapsv1.SetMapFogRequest, baseLight *string, imageCopy *fogCopy) (copied bool, err error) {
-	var before, after mapsdb.Map
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+// writeFog sets the fog's settings in one transaction and returns the map's row before
+// and after, and whether the map got the copy of its image.
+func (s *Service) writeFog(ctx context.Context, m authz.Membership, mapID string, msg *mapsv1.SetMapFogRequest, baseLight *string, imageCopy *fogCopy) (before, after mapsdb.Map, copied bool, err error) {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
 		copied = false
@@ -748,20 +748,9 @@ func (s *Service) writeFog(ctx context.Context, m authz.Membership, mapID, curre
 		if err != nil {
 			return fmt.Errorf("set the fog's settings: %w", err)
 		}
-		s.announce(t, func(ctx context.Context) {
-			// The players hear of what they read (the switch, "Visão do grupo"), not of the
-			// base light, which is the master's.
-			playersHear := before.FogEnabled != after.FogEnabled || before.GroupVision != after.GroupVision
-			s.publishMapChanged(ctx, m.CampaignID, mapID, playersHear && playersSee(mapID, after.RevealedAt, current))
-			// What everyone sees, and remembers, is worked out again (the base light is the
-			// master's, but it moves what the squares look like).
-			if after.FogEnabled {
-				s.refreshVision(ctx, m.CampaignID, mapID)
-			}
-		})
 		return nil
 	})
-	return copied, err
+	return before, after, copied, err
 }
 
 // useFogCopy gives the map the copy of its image, and says whether it did. The copy is

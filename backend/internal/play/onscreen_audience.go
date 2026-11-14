@@ -12,6 +12,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
@@ -177,19 +178,9 @@ func sceneImageMove(session playdb.GameSession, before, after viewers) imageMove
 	}
 }
 
-// tellImageMove collects what the move did, for once the transaction committed (the image is read then, from the maps module). A move
-// that tells something moves the session's number.
-func (s *Service) tellImageMove(h *hints, campaignID string, mv imageMove) {
-	if mv.empty() {
-		return
-	}
-	h.touch()
-	h.after(func(ctx context.Context, say sayFn) { s.sayImageMove(ctx, say, campaignID, mv) })
-}
-
-// sayImageMove tells the streams what the move did through say: the master gets the image with its audience, the
+// publishImageMove tells the streams what the move did: the master gets the image with its audience, the
 // players who see it now the image, and the ones who stopped seeing it the update for no image.
-func (s *Service) sayImageMove(ctx context.Context, say sayFn, campaignID string, mv imageMove) {
+func (s *Service) publishImageMove(ctx context.Context, campaignID string, mv imageMove) {
 	if mv.empty() {
 		return
 	}
@@ -201,20 +192,18 @@ func (s *Service) sayImageMove(ctx context.Context, say sayFn, campaignID string
 			return
 		}
 	}
-	event := func(img *playv1.ShownImage) func() *playv1.WatchGameSessionResponse {
-		return func() *playv1.WatchGameSessionResponse {
-			return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
-				ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{Image: img},
-			}}
-		}
+	event := func(img *playv1.ShownImage) *playv1.WatchGameSessionResponse {
+		return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_ShownImageChanged_{
+			ShownImageChanged: &playv1.WatchGameSessionResponse_ShownImageChanged{Image: img},
+		}}
 	}
 	if mv.master {
-		sayTo(say, campaignID, true, nil, event(withAudience(shown, mv.audience)))
+		s.publishTo(campaignID, true, nil, event(withAudience(shown, mv.audience)))
 	}
 	if shown != nil {
-		sayTo(say, campaignID, false, mv.toImage, event(withAudience(shown, nil)))
+		s.publishTo(campaignID, false, mv.toImage, event(withAudience(shown, nil)))
 	}
-	sayTo(say, campaignID, false, mv.toNone, event(nil))
+	s.publishTo(campaignID, false, mv.toNone, event(nil))
 }
 
 // withAudience is a copy of the image carrying the audience (nil for none), nil for no image: the shown image
@@ -245,17 +234,18 @@ func (s *Service) SetShownImageAudience(
 		return nil, err
 	}
 	var mv imageMove
-	err = s.txOpen(ctx, m.CampaignID, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		mv = imageMove{}
+		q := s.queries.WithTx(tx)
+		session, err := lockOpenSessionOrNone(ctx, q, m.CampaignID)
+		if err != nil {
+			return err
+		}
 		if session.ShownImageID == nil {
 			return connect.NewError(connect.CodeNotFound, errors.New("no image is shown"))
 		}
-		var err error
-		if mv, err = s.changeShownAudience(ctx, s.queries.WithTx(tx), session, ask); err != nil {
-			return err
-		}
-		s.tellImageMove(h, m.CampaignID, mv)
-		return nil
+		mv, err = s.changeShownAudience(ctx, q, session, ask)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set who sees the shown image", err)
@@ -264,6 +254,8 @@ func (s *Service) SetShownImageAudience(
 	if err != nil {
 		return nil, s.dbError(ctx, "find the shown image", err)
 	}
+	mv.shown = shown
+	s.publishImageMove(ctx, m.CampaignID, mv)
 	return connect.NewResponse(&playv1.SetShownImageAudienceResponse{ShownImage: withAudience(shown, mv.audience)}), nil
 }
 

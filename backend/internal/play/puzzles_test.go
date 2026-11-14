@@ -52,7 +52,6 @@ func newPuzzleTable(t *testing.T) *puzzleTable {
 	if err != nil {
 		t.Fatalf("maps.New() error = %v", err)
 	}
-	msvc.SetSessionHost(a.h.svc)
 	a.h.svc.SetTerrain(msvc)
 	a.h.svc.SetPuzzleMaps(msvc)
 	a.h.svc.SetTraps(msvc) // a wrong move may fire a trap point ("Ao errar")

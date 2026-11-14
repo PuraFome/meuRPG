@@ -14,7 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
@@ -90,29 +90,26 @@ func (s *Service) SetMapPlayersMove(
 		return nil, err
 	}
 	var row mapsdb.Map
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		q := s.queries.WithTx(tx)
 		var err error
 		if row, err = lockMap(ctx, q, m.CampaignID, mapID); err != nil {
 			return err
 		}
 		if row.PlayersMoveTokens == req.Msg.GetEnabled() {
-			t.Replay() // nothing to write: the notice goes out again with the number as it stands
-		} else {
-			if row, err = q.SetMapPlayersMove(ctx, mapsdb.SetMapPlayersMoveParams{CampaignID: m.CampaignID, ID: mapID, Enabled: req.Msg.GetEnabled()}); err != nil {
-				return fmt.Errorf("set whether the players move: %w", err)
-			}
-			t.Touch()
+			return nil
 		}
-		// The players read the setting in the map: a notice, to the ones who see the map.
-		t.After(func(ctx context.Context, out sessiontell.Out) {
-			s.publishMapChanged(withOut(ctx, out), m.CampaignID, mapID, playersSee(mapID, row.RevealedAt, current))
-		})
+		row, err = q.SetMapPlayersMove(ctx, mapsdb.SetMapPlayersMoveParams{CampaignID: m.CampaignID, ID: mapID, Enabled: req.Msg.GetEnabled()})
+		if err != nil {
+			return fmt.Errorf("set whether the players move: %w", err)
+		}
 		return nil
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "set whether the players move their tokens", err)
 	}
+	// The players read the setting in the map: a notice, to the ones who see the map.
+	s.publishMapChanged(m.CampaignID, mapID, playersSee(mapID, row.RevealedAt, current))
 	res, err := s.masterMap(ctx, m, mapID)
 	if err != nil {
 		return nil, err
@@ -131,19 +128,6 @@ type moveOutcome struct {
 	doorsOpened bool
 }
 
-// changed says whether the move wrote anything: a token left its square, or a door opened.
-func (o moveOutcome) changed() bool {
-	if o.doorsOpened {
-		return true
-	}
-	for i := range o.after {
-		if o.before[i].XBp != o.after[i].XBp || o.before[i].YBp != o.after[i].YBp {
-			return true
-		}
-	}
-	return false
-}
-
 // MoveMapTokens implements mapsv1connect.MapServiceHandler.
 func (s *Service) MoveMapTokens(
 	ctx context.Context,
@@ -154,27 +138,15 @@ func (s *Service) MoveMapTokens(
 		return nil, err
 	}
 	var out moveOutcome
-	err = s.inSession(ctx, ask.m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if out, err = s.moveTx(ctx, tx, ask, chars); err != nil {
-			return err
-		}
-		if !out.changed() {
-			return nil
-		}
-		s.announce(t, func(ctx context.Context) { s.announceMove(ctx, ask, out) })
-		// What the characters that changed square see from where they stand is part of this write: the move moves the number once.
-		var landed []landedToken
-		for i, c := range out.chars {
-			if out.before[i].XBp != out.after[i].XBp || out.before[i].YBp != out.after[i].YBp {
-				landed = append(landed, landedToken{token: out.after[i], character: c})
-			}
-		}
-		return s.noticeLanded(ctx, tx, t, ask.m.CampaignID, ask.id, out.row, landed)
+		out, err = s.moveTx(ctx, tx, ask, chars)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "move tokens", err)
 	}
+	s.announceMove(ctx, ask, out)
 	res, err := s.moveAnswer(ctx, ask, out)
 	if err != nil {
 		return nil, err

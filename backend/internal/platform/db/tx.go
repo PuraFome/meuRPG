@@ -2,9 +2,7 @@ package db
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
-	"math/big"
 	"time"
 
 	"github.com/cockroachdb/cockroach-go/v2/crdb"
@@ -21,8 +19,8 @@ type TxStarter interface {
 
 // defaultRetryPolicy is cockroach-go's policy type: it counts the attempts and
 // ends them with *crdb.MaxRetriesExceededError.
-// The delay between attempts doubles from 10ms (capped at 500ms), and each wait is jittered over the upper half of its delay.
-// It gives up after 8 retries (at most about 1.6s of waiting in total).
+// It waits 10ms, 20ms, 40ms... (capped at 500ms) between attempts.
+// It gives up after 8 retries (about 1.6s of waiting in total).
 // Backing off, instead of retrying immediately, gives the transaction we
 // collided with time to finish.
 var defaultRetryPolicy crdb.RetryPolicy = &crdb.ExpBackoffRetryPolicy{
@@ -129,27 +127,11 @@ func runTx(ctx context.Context, conn TxStarter, opts pgx.TxOptions, policy crdb.
 			return retryErr
 		}
 		select {
-		case <-time.After(jittered(delay)):
+		case <-time.After(delay):
 		case <-ctx.Done():
 			return errors.Join(ctx.Err(), err)
 		}
 	}
-}
-
-// jittered spreads a retry delay over its upper half, [delay/2, delay]. Transactions that collided on the same row
-// would otherwise wake at the same instant, collide again, and spend their retries in step: on PostgreSQL every waiter
-// of a row lock that another transaction updated fails at the lock, so a burst of writers on one session needs the
-// retries to arrive one at a time.
-func jittered(delay time.Duration) time.Duration {
-	half := delay / 2
-	if half <= 0 {
-		return delay
-	}
-	n, err := rand.Int(rand.Reader, big.NewInt(int64(half)+1))
-	if err != nil {
-		return delay
-	}
-	return half + time.Duration(n.Int64())
 }
 
 // attempt runs fn once in a transaction of its own and commits it. A panic,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"connectrpc.com/connect"
@@ -12,6 +11,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/puzzle"
 )
@@ -38,8 +38,6 @@ type runTx struct {
 	later []time.Duration
 	// roundBegan says the change began a round: the time limit starts to run.
 	roundBegan bool
-	// wrote says the change wrote the run.
-	wrote bool
 }
 
 // params is the run as a SavePuzzleRun that changes nothing.
@@ -64,7 +62,7 @@ func (c *runTx) save(ctx context.Context, p playdb.SavePuzzleRunParams) error {
 	if err != nil {
 		return fmt.Errorf("save the puzzle's run: %w", err)
 	}
-	c.run, c.wrote = &row, true
+	c.run = &row
 	return nil
 }
 
@@ -103,26 +101,29 @@ func (s *Service) changeRun(ctx context.Context, m authz.Membership, rawID strin
 		return nil, err
 	}
 	var c *runTx
-	err = s.txOpenOr(ctx, m.CampaignID, errNoOpenSessionForPuzzle, func(tx pgx.Tx, h *hints, session playdb.GameSession) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if c, err = s.lockRunTx(ctx, s.queriesIn(tx), m, id, session); err != nil {
+		if c, err = s.lockRunTx(ctx, s.queriesIn(tx), m, id); err != nil {
 			return err
 		}
-		if err := change(c); err != nil {
-			return err
-		}
-		s.tellRunChange(h, c, id)
-		return nil
+		return change(c)
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "change a puzzle", err)
 	}
+	if c.tell {
+		s.tellRunChange(c, id)
+	}
 	return s.masterView(ctx, nil, m.CampaignID, c.def, c.run)
 }
 
-// lockRunTx takes the locks of a change in their one order: the session's row (Service.tx took it), the puzzle, the run
+// lockRunTx takes the locks of a change in their one order: the session's row, the puzzle, the run
 // (none yet: the puzzle was never shown in this session).
-func (s *Service) lockRunTx(ctx context.Context, q *playdb.Queries, m authz.Membership, id string, session playdb.GameSession) (*runTx, error) {
+func (s *Service) lockRunTx(ctx context.Context, q *playdb.Queries, m authz.Membership, id string) (*runTx, error) {
+	session, err := lockOpenSession(ctx, q, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
 	row, err := q.GetPuzzleForUpdate(ctx, playdb.GetPuzzleForUpdateParams{CampaignID: m.CampaignID, ID: id})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, errPuzzleNotFound()
@@ -145,23 +146,21 @@ func (s *Service) lockRunTx(ctx context.Context, q *playdb.Queries, m authz.Memb
 	return c, nil
 }
 
-// tellRunChange collects what a change of the run tells once it is committed: puzzle_changed to the session, and again at each
-// moment the change asked for. A change the players do not see (a run prepared at a new start) tells nothing but moves the
-// session's number: the master's list of the session's puzzles changed.
-func (s *Service) tellRunChange(h *hints, c *runTx, id string) {
-	if !c.tell {
-		if c.wrote {
-			h.touch()
-		}
-		return
-	}
-	later := slices.Clone(c.later)
+// tellRunChange sends puzzle_changed to the session once the change is committed, and again at each
+// moment the change asked for.
+func (s *Service) tellRunChange(c *runTx, id string) {
+	campaignID := c.m.CampaignID
+	s.publishPuzzleChanged(campaignID, id)
 	if c.roundBegan {
 		if dl := deadlineOf(c.def, runOrZero(c.run)); dl != nil {
-			later = append(later, dl.Sub(c.now)) // the apps read the run again when the time is up
+			c.later = append(c.later, dl.Sub(c.now)) // the apps read the run again when the time is up
 		}
 	}
-	s.tellPuzzleChanged(h, c.m.CampaignID, id, later...)
+	for _, after := range c.later {
+		if after > 0 {
+			s.puzzles.hints.schedule(after, func() { s.sendPuzzleChanged(campaignID, id) })
+		}
+	}
 }
 
 func runOrZero(r *playdb.PuzzleRun) playdb.PuzzleRun {
@@ -247,7 +246,7 @@ func (c *runTx) insertShownRun(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("make the puzzle's run: %w", err)
 	}
-	c.run, c.wrote = &row, true
+	c.run = &row
 	c.roundBegan = true
 	return nil
 }
@@ -361,7 +360,7 @@ func (c *runTx) insertPreparedRun(ctx context.Context, seed int64, start []byte)
 	if err != nil {
 		return fmt.Errorf("make the puzzle's run: %w", err)
 	}
-	c.run, c.wrote = &row, true
+	c.run = &row
 	return nil
 }
 

@@ -421,14 +421,9 @@ func (s *Service) snapshotHP(ctx context.Context, c *combatTx, w combatWrite) (e
 
 // stillOpen reads the campaign's open session, which Service.tx locked: it must still be the one the try resolved.
 func stillOpen(ctx context.Context, q *playdb.Queries, campaignID, wantID string) (playdb.GameSession, error) {
-	return stillOpenOr(ctx, q, campaignID, wantID, errNoOpenSession)
-}
-
-// stillOpenOr is stillOpen for a call that refuses with its own error when the session ended since it was read.
-func stillOpenOr(ctx context.Context, q *playdb.Queries, campaignID, wantID string, none func() error) (playdb.GameSession, error) {
 	session, err := q.GetOpenGameSession(ctx, campaignID)
 	if errors.Is(err, pgx.ErrNoRows) || (err == nil && session.ID != wantID) {
-		return session, none() // MR-013: the session ended since it was read
+		return session, errNoOpenSession() // MR-013: the session ended since it was read
 	}
 	if err != nil {
 		return session, fmt.Errorf("find the open session: %w", err)

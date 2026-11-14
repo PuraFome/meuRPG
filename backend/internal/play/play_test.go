@@ -625,7 +625,7 @@ func (noMaps) ListLeftImages(context.Context, string, string, bool) ([]*playv1.S
 	return nil, errors.New("not in this test")
 }
 
-func (noMaps) TakeBackImage(context.Context, pgx.Tx, string, string) (link.ImageAudience, error) {
+func (noMaps) TakeBackImage(context.Context, string, string) (link.ImageAudience, error) {
 	return link.ImageAudience{}, errors.New("not in this test")
 }
 
@@ -725,7 +725,7 @@ func (noRoster) ReviveDead(context.Context, pgx.Tx, string, string, time.Time) (
 	return "", errors.New("not in this test")
 }
 
-func (noRoster) MarkRevivifyBlocked(context.Context, pgx.Tx, string, string, bool) error {
+func (noRoster) SetRevivifyBlocked(context.Context, pgx.Tx, string, string, bool) error {
 	return errors.New("not in this test")
 }
 
