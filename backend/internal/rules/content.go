@@ -201,6 +201,8 @@ type content struct {
 	raceSets    map[string][][]int
 	raceSizes   map[string][]string
 	bgEquipment map[string]string
+	// bgGroups are a table background's "this or that" groups.
+	bgGroups map[string][]BackgroundGroup
 	// entryRevision is the revision of each table entry at its last change.
 	entryRevision  map[string]int
 	entryChangedAt map[string]time.Time
