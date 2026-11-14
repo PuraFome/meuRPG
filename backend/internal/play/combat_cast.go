@@ -734,7 +734,8 @@ func (f *castFlow) settleCountered(ctx context.Context) (any, error) {
 	made := &f.out.made
 	made.Secret = f.caster.Hidden
 	made.Reaction = &reactionEvent{Kind: string(reaction.CounterspellKind), Countered: true, Spell: f.call.spellKey, Level: int32(f.slotLevel)} //nolint:gosec // a slot level, 0 to 9
-	if err := f.spendReadied(ctx); err != nil {                                                                                                 // a countered readied spell is spent: its slot is gone and its row fired
+	// A countered readied spell is spent: its slot is gone and its row fired.
+	if err := f.spendReadied(ctx); err != nil {
 		return nil, err
 	}
 	if err := touch(ctx, f.c); err != nil {

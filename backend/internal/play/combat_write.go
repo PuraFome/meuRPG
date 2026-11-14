@@ -601,12 +601,9 @@ func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
 	if err := s.settleReactions(ctx, c); err != nil {
 		return err
 	}
-	// A readier the change defeated (or that a replayed action defeated) loses its readied action.
-	if err := loseReadiedOfDefeated(ctx, c); err != nil {
-		return err
-	}
-	// A held spell goes with its concentration, and the concentration with the held spell.
-	return settleReadiedSpells(ctx, c)
+	// A readier the change defeated (or that a replayed action defeated) loses its readied action, and a held spell goes
+	// with its concentration, and the concentration with the held spell.
+	return settleReadied(ctx, c)
 }
 
 // record writes the change's event and keeps in the result what the handlers and the log

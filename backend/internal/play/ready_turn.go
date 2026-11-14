@@ -39,27 +39,20 @@ func loseReadiedAtTurnStart(ctx context.Context, c *combatTx, ids []string, roun
 // written before the change's own event, and the undo of that change goes past it (chainReadiedDefeat) and leaves the row
 // lost: a revived or returned readier does not get it back, and its Ready cannot be undone any more (chainReadied).
 // FireReadied refuses a defeated, dismissed, down or incapacitated readier all the same: this keeps none waiting, it never
-// replaces that check.
-func loseReadiedOfDefeated(ctx context.Context, c *combatTx) error {
-	if c.enc.ID == "" {
-		return nil
-	}
-	rows, err := c.q.ListWaitingReadiedActions(ctx, c.enc.ID)
-	if err != nil || len(rows) == 0 {
-		return err
-	}
-	cs, err := c.q.ListCombatantsWithDismissed(ctx, c.enc.ID) // listCombatants leaves the dismissed out
-	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
-	}
+// replaces that check. It takes the waiting rows and every combatant (the dismissed too) and gives back the rows still waiting.
+func loseReadiedOfDefeated(ctx context.Context, c *combatTx, rows []playdb.ReadiedAction, cs []playdb.Combatant) ([]playdb.ReadiedAction, error) {
+	waiting := rows[:0:0]
 	for _, row := range rows {
-		if who, ok := combatantByID(cs, row.CombatantID); ok && (who.Defeated || who.Dismissed) {
-			if err := markReadiedLost(ctx, c, row, who, c.enc.Round, who.Defeated, who.Dismissed); err != nil {
-				return err
-			}
+		who, ok := combatantByID(cs, row.CombatantID)
+		if !ok || (!who.Defeated && !who.Dismissed) {
+			waiting = append(waiting, row)
+			continue
+		}
+		if err := markReadiedLost(ctx, c, row, who, c.enc.Round, who.Defeated, who.Dismissed); err != nil {
+			return nil, err
 		}
 	}
-	return nil
+	return waiting, nil
 }
 
 // loseReadied marks the row lost and writes its line.

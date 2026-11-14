@@ -3,6 +3,7 @@ package play
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -14,26 +15,61 @@ import (
 // spell, the master or the player ending it), and ends the concentration of a readier whose spell stopped waiting
 // (lost at its next turn, defeated or dismissed, given up, let pass). The slot stays spent: nothing comes back.
 
-// settleReadiedSpells keeps each held spell and its concentration together. A waiting spell whose readier no longer
-// concentrates on it is broken, with its line; a readier that concentrates on a held spell with none waiting stops.
+// settleReadied is the readied actions' part of settleChange. It reads the waiting rows and the combatants once: a readier
+// that is defeated or dismissed loses its row (loseReadiedOfDefeated), then each held spell and its concentration are kept
+// together (settleReadiedSpellsOf). With no row waiting and nobody holding a spell there is nothing to do.
+func settleReadied(ctx context.Context, c *combatTx) error {
+	rows, all, err := readiedState(ctx, c)
+	if err != nil || (len(rows) == 0 && !slices.ContainsFunc(all, holdsReadiedSpell)) {
+		return err
+	}
+	if rows, err = loseReadiedOfDefeated(ctx, c, rows, all); err != nil {
+		return err
+	}
+	return settleReadiedSpellsOf(ctx, c, rows, all)
+}
+
+// settleReadiedSpells keeps each held spell and its concentration together, outside settleChange (a correction).
 func settleReadiedSpells(ctx context.Context, c *combatTx) error {
-	if c.enc.ID == "" {
-		return nil
-	}
-	rows, err := c.q.ListWaitingReadiedActions(ctx, c.enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the readied actions: %w", err)
-	}
-	cs, err := listCombatants(ctx, c)
+	rows, all, err := readiedState(ctx, c)
 	if err != nil {
 		return err
 	}
+	return settleReadiedSpellsOf(ctx, c, rows, all)
+}
+
+// readiedState is the combat's waiting rows and all of its combatants, the dismissed too; nothing for no combat.
+func readiedState(ctx context.Context, c *combatTx) ([]playdb.ReadiedAction, []playdb.Combatant, error) {
+	if c.enc.ID == "" {
+		return nil, nil, nil
+	}
+	rows, err := c.q.ListWaitingReadiedActions(ctx, c.enc.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list the readied actions: %w", err)
+	}
+	all, err := c.q.ListCombatantsWithDismissed(ctx, c.enc.ID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("list the combatants: %w", err)
+	}
+	return rows, all, nil
+}
+
+// holdsReadiedSpell says the combatant concentrates on a held spell.
+func holdsReadiedSpell(c playdb.Combatant) bool {
+	return conv.OrZero(c.ConcentrationSpell) == concentrationReadied
+}
+
+// settleReadiedSpellsOf keeps each held spell and its concentration together, for the combatants in the order. A waiting
+// spell whose readier no longer concentrates on it is broken, with its line; a readier that concentrates on a held spell
+// with none waiting stops.
+func settleReadiedSpellsOf(ctx context.Context, c *combatTx, rows []playdb.ReadiedAction, all []playdb.Combatant) error {
+	cs := slices.DeleteFunc(slices.Clone(all), func(x playdb.Combatant) bool { return x.Dismissed })
 	holds, err := breakUnheldSpells(ctx, c, rows, cs)
 	if err != nil {
 		return err
 	}
 	for _, who := range cs {
-		if conv.OrZero(who.ConcentrationSpell) != concentrationReadied || holds[who.ID] {
+		if !holdsReadiedSpell(who) || holds[who.ID] {
 			continue
 		}
 		if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID}); err != nil {
@@ -52,7 +88,7 @@ func breakUnheldSpells(ctx context.Context, c *combatTx, rows []playdb.ReadiedAc
 		if row.Kind != readiedSpell || !ok {
 			continue
 		}
-		if conv.OrZero(who.ConcentrationSpell) == concentrationReadied {
+		if holdsReadiedSpell(who) {
 			holds[who.ID] = true
 			continue
 		}
