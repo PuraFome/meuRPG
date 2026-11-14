@@ -32,9 +32,11 @@ export function favorBlockedMessage(reason: FavorBlockedReason): string {
     case FavorBlockedReason.SELF:
       return 'Você não pode passar a Inspiração a si mesmo.';
     case FavorBlockedReason.ADDS_NOTHING:
-      return 'A rolagem já tem vantagem: a Inspiração não mudaria nada.';
+      return 'A Inspiração não mudaria esta rolagem.';
     case FavorBlockedReason.AFTER_THE_ROLL:
       return 'O d20 já foi rolado: a Inspiração não pode mais ser usada.';
+    case FavorBlockedReason.NOTHING_TO_ROLL:
+      return 'Esta ação não rola um d20: a Inspiração não pode ser usada.';
     default:
       return 'A Inspiração não pode ser usada agora.';
   }

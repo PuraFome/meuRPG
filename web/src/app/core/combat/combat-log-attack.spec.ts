@@ -23,6 +23,50 @@ describe('damageNotes for a damage reduction step', () => {
   });
 });
 
+describe('damageNotes for a typed damage-type group', () => {
+  const part = (over: object) => ({
+    partKey: 'p',
+    labelPt: 'Adaga',
+    diceCount: 1,
+    diceSides: 4,
+    faces: [],
+    flat: 0,
+    sum: 0,
+    counted: true,
+    damageTypeKey: 'piercing',
+    countedDice: [],
+    ...over,
+  });
+  const damage = (parts: object[]) => ({ parts, rolled: [], steps: [] }) as never;
+
+  it('does not say "= 0" for the part of the group that carries no sum of its own', () => {
+    const notes = damageNotes(
+      damage([
+        part({ partKey: 'a', flat: 3, sum: 6 }),
+        part({ partKey: 'b', labelPt: 'Gume Afiado', diceSides: 8 }),
+      ]),
+    );
+    expect(notes).toEqual(['Adaga 1d4 + 3 = 9', 'Gume Afiado 1d8 (somado em Adaga)']);
+  });
+
+  it('keeps "= 0" for a part alone in its type, and for another type', () => {
+    const notes = damageNotes(
+      damage([
+        part({ partKey: 'a', sum: 6 }),
+        part({ partKey: 'b', labelPt: 'Brasa', damageTypeKey: 'fire' }),
+      ]),
+    );
+    expect(notes).toEqual(['Adaga 1d4 = 6', 'Brasa 1d4 = 0']);
+  });
+
+  it('keeps the flat number of the part, which counts by itself', () => {
+    const notes = damageNotes(
+      damage([part({ partKey: 'a', sum: 6 }), part({ partKey: 'b', labelPt: 'Gume', flat: 2 })]),
+    );
+    expect(notes[1]).toBe('Gume 1d4 + 2 = 2');
+  });
+});
+
 describe('attackText with a power attack', () => {
   const entry = (powerAttack: object | undefined) =>
     ({

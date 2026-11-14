@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -1113,6 +1115,9 @@ func (e *logEntry) ownersOnly(v combatViewer, actor, target playdb.Combatant) bo
 	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield:
 		return !v.owns(actor)
 	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER && e.ev.Rider != nil && e.ev.Rider.OwnersOnly:
+		if e.ev.Rider.EffectHidden { // the effect is not the target's player's to read: the attacker's player reads the outcome of its own hit
+			return !v.owns(actor)
+		}
 		return !v.owns(actor) && !v.owns(target)
 	}
 	return false
@@ -1285,9 +1290,31 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 		if r.ActionKey != "" && !c.v.master {
 			creatureRiderForPlayer(out.HitRider, c.v.owns(target), r)
 		}
+		if r.OwnersOnly {
+			e.spellRiderKey(c, out, r)
+		}
 		e.riderDamage(c, out.HitRider, r)
 	}
 	return true
+}
+
+// spellRiderKey names the spell of the save of a hit effect on the line: the master and the spell's owner (the player
+// of the character that cast it) read it, and so does every viewer of the line when the spell's audience is all the
+// players; whoever may not read the spell, the attacker's player included, reads "Outra fonte" (and no key) and no ability of
+// the save (RN-10).
+func (e *logEntry) spellRiderKey(c *logViewing, out *playv1.CombatLogEntry, r *riderEvent) {
+	hidden := r.HiddenSource && !c.v.master && !c.v.owns(c.byID[r.SourceID])
+	names := hidingNames(func(k string) string { return c.names.contentName(c.ctx, k) }, []combat.Modifier{{Source: e.ev.Key, Hidden: hidden}})
+	out.KeyNamePt = names(e.ev.Key)
+	if !hidden && r.SaveAbility != "" { // the save's ability is the spell's to tell: the reader who may not read the spell reads none
+		out.HitRider.SaveAbility, out.HitRider.SaveAbilityNamePt = r.SaveAbility, cmp.Or(abilityPT[r.SaveAbility], c.names.contentName(c.ctx, "ability:"+r.SaveAbility))
+	}
+	if hidden {
+		out.Key = ""
+		if out.HitRider.GetDurationText() == durationSpellEndTx { // "the spell" tells the reader that a spell is behind the line
+			out.HitRider.DurationText = durationEffectEndTx
+		}
+	}
 }
 
 // riderDamage adds the damage a creature's rider opened, as the viewer gets a cast target's.
@@ -1333,7 +1360,7 @@ func (e *logEntry) fillAttack(c *logViewing, out *playv1.CombatLogEntry) bool {
 		out.TargetArmorClass, out.CoverBonus = &e.ev.TargetAC, e.ev.CoverBonus
 	}
 	if c.dice {
-		e.attackDice(out, v)
+		e.attackDice(out, v, c.actor)
 	}
 	// The trade the attack made: its feature and numbers are the dice's audience.
 	out.PowerAttack = e.ev.PowerAttack.logView(c.dice)
@@ -1348,7 +1375,7 @@ func (e *logEntry) fillAttack(c *logViewing, out *playv1.CombatLogEntry) bool {
 }
 
 // attackDice are the dice of an attack: the master's and the attacker's player's.
-func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer) {
+func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer, actor playdb.Combatant) {
 	out.AttackRoll = diceRoll(1, 20, []int32{e.ev.D20}, e.ev.Modifier, e.ev.Total, e.ev.Physical)
 	if e.ev.D20B != 0 {
 		out.AttackRoll = diceRoll(2, 20, pairOf(e.ev.D20, e.ev.D20B, e.ev.Counted), e.ev.Modifier, e.ev.Total, e.ev.Physical)
@@ -1356,6 +1383,7 @@ func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer) {
 	}
 	e.ev.mark(out.AttackRoll)
 	out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
+	out.FavorTextPt = favorLine(e.ev, v, actor)
 	out.Reason = e.rolls.reasonOf(e.ev)
 	out.BonusDice = bonusDiceOf(e.ev)
 	out.AttackRoll.ExtraDice = extraDiceProto(e.ev.Extra, v.master, e.rolls.keyName)
@@ -1400,6 +1428,7 @@ func (e *logEntry) fillRemoval(c *logViewing, out *playv1.CombatLogEntry) bool {
 
 func (e *logEntry) fillSpell(c *logViewing, out *playv1.CombatLogEntry) bool {
 	out.Spell = e.spellView(c.v, c.byID)
+	out.FavorTextPt = favorLine(e.ev, c.v, c.actor)
 	out.CreatureAction = e.creatureActionView(c.v, c.byID)
 	return true
 }

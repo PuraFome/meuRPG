@@ -364,8 +364,8 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 			if err := dismissCombatant(ctx, c, rest, who); err != nil {
 				return nil, false, err
 			}
-		} else if err := c.q.DeleteCombatant(ctx, who.ID); err != nil {
-			return nil, false, fmt.Errorf("delete the combatant: %w", err)
+		} else if err := deleteCombatant(ctx, c.q, who); err != nil {
+			return nil, false, err
 		}
 		rest = slices.DeleteFunc(rest, func(o playdb.Combatant) bool { return o.ID == who.ID })
 	}

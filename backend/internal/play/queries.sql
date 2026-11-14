@@ -2015,13 +2015,20 @@ DELETE FROM character_inspiration WHERE campaign_id = $1;
 -- A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
 -- of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
 -- combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
--- window kept.
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+-- window kept. favor_spent says the roll was made with the roller's Inspiration, which a retry or the answer reads.
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by, favor_spent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 RETURNING *;
 
 -- name: GetInspirationHoldByKey :one
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2;
+
+-- name: GetInspirationHoldOfRoller :one
+-- The hold a roller made under a key. The key is the request's, and two members of one group check send the same one: the hold
+-- is the roller's own, found by its character or by its combatant. A NULL parameter matches nothing.
+SELECT * FROM inspiration_holds
+WHERE campaign_id = $1 AND idempotency_key = $2
+  AND (character_id = sqlc.narg(character_id) OR combatant_id = sqlc.narg(combatant_id));
 
 -- name: GetInspirationHold :one
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND id = $2;
@@ -2051,14 +2058,28 @@ SELECT * FROM inspiration_holds WHERE encounter_id = $1 AND answer_key IS NULL O
 -- the combatants' views. The rolls of the other kinds held in a combat are not part of the view.
 SELECT * FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL ORDER BY created_at, id;
 
--- name: DeleteInspirationHold :exec
-DELETE FROM inspiration_holds WHERE id = $1;
+-- name: DeleteInspirationHold :many
+-- One hold, answered or not. Says whether it spent the character's Inspiration and never got the roll (no answer yet): that
+-- spend goes back. Only hold_forget.go calls it.
+WITH changed AS (
+DELETE FROM inspiration_holds
+WHERE id = $1
+RETURNING id, campaign_id, character_id, favor_spent, answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
 
--- name: DeleteInspirationHoldsOf :exec
--- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what).
+-- name: DeleteInspirationHoldsOf :many
+-- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
+-- character's Inspiration and never got the roll (no answer yet): that spend goes back. Only hold_forget.go calls it.
+-- It also drops the character's holds outside a combat (combatant_id IS NULL) when its combatant leaves or the combat ends, and those are
+-- refunded too.
+WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE (encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
-   OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id));
+   OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id))
+RETURNING id, campaign_id, character_id, favor_spent, answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
 
 -- name: AnswerInspirationHold :exec
 UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
@@ -2097,17 +2118,22 @@ UPDATE inspiration_holds SET stroke_ask = TRUE, stroke_failed = $2, die_answer_k
 -- answer's key. The roll is closed by the answer_key the settled path writes.
 UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, stroke_answer_key = $5, stroke_from = $6, counted_by = $7 WHERE id = $1;
 
--- name: DeleteOrphanInspirationHolds :exec
+-- name: DeleteOrphanInspirationHolds :many
 -- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 -- A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 -- round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
 -- Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
+-- Only hold_forget.go calls it.
+WITH changed AS (
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
   AND NOT h.reroll_ask
-  AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);
+  AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
+RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
 
 -- name: InsertHitRider :one
 -- A rider a monk's hit offers (combat_riders.go).
@@ -2195,3 +2221,11 @@ INSERT INTO character_favor (character_id, campaign_id, granted_by_user_id)
 VALUES ($1, $2, sqlc.narg(granted_by_user_id))
 ON CONFLICT (character_id) DO NOTHING
 RETURNING *;
+
+-- name: SpendCharacterFavor :one
+-- Takes the character's Inspiration; no row comes back when it has none, so of two spends only one wins.
+DELETE FROM character_favor WHERE character_id = $1 AND campaign_id = $2 RETURNING character_id;
+
+-- name: HasCharacterFavor :one
+-- Says the character has the Inspiration, without taking it: a roll a reaction window holds is checked against it, and the replay spends it.
+SELECT EXISTS (SELECT 1 FROM character_favor WHERE character_id = $1 AND campaign_id = $2);

@@ -322,6 +322,12 @@ type actionEvent struct {
 	// that counted as 20 (D20 and the dice after it hold the 20 then, and this keeps the d20 it replaced). One use of
 	// the feature was spent; the undo of an attack gives it back. Nil when the roll was not changed.
 	Stroke *strokeUse `json:"stroke,omitempty"`
+	// Favor says the roll was made with the roller's Inspiration (favor_spend.go): the undo of the roll gives it back, and the
+	// log says so to the master and the roller's player. The spend is part of this event, never an event of its own.
+	Favor bool `json:"favor,omitempty"`
+	// FavorLost says why the Inspiration the roller asked for was not spent (a favorLost* value): the replay of a roll a reaction window held
+	// found it gone or adding nothing, and the roll was made without it. The log says so to the master and the roller's player.
+	FavorLost string `json:"favor_lost,omitempty"`
 	// D20Reroll is the uses the d20 rolled again by a reroll rule spent on a weapon attack, a cast's spell attack or a
 	// saving throw (held_reroll.go); the undo of an attack or a cast gives them back. Nil when none were spent.
 	D20Reroll *damageRerollUse `json:"d20_reroll,omitempty"`

@@ -29,8 +29,10 @@ import {
 import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { d20Formula } from '../../../../core/combat/roll-mode';
+import { waitingHitLines } from '../../../../core/effects/hit-effect-text';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { initialPicks } from '../../../../core/combat/damage-parts';
+import type { TypedEntry } from '../../../../core/combat/typed-fields';
 import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import { heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
 import { HeldVanishWatch } from '../../../../core/held-rolls/held-vanish';
@@ -140,6 +142,13 @@ export class AttackSheet {
   });
   protected readonly mode = new AttackMode(this.s, this.modes);
   protected readonly outcome = computed(() => outcomeOf(this.s.roll(), this.s.asking()));
+  /** After a miss: the caster's own hit effects that still wait for a weapon hit, one sentence each (#577). */
+  protected readonly waitingEffects = computed(() => {
+    const attacker = this.data.state
+      .encounter()
+      ?.combatants.find((c) => c.id === this.data.attackerId);
+    return this.outcome()?.hit === false && attacker ? waitingHitLines(attacker) : [];
+  });
   protected readonly dmg = new AttackDamage(
     this.s,
     this.name,
@@ -437,7 +446,7 @@ export class AttackSheet {
 
   protected rollDamage(
     die: DamageDie | { readonly parts: true },
-    typedParts?: { partKey: string; sum: number }[],
+    typedParts?: readonly TypedEntry[],
   ): Promise<void> {
     return this.rolls.rollDamage(die, typedParts);
   }

@@ -187,3 +187,21 @@
     font-size: var(--mr-font-11);
   }
 }
+
+// `collapseInactive`: four tabs or more in a room under 480px: the tabs not chosen are an icon and a count, 48 px high; the chosen one keeps its word.
+@container (max-width: 479px) {
+  .tl--collapse.tl--many .tl__tab--icon:not(.tl__tab--on) {
+    gap: 3px;
+    min-width: 48px;
+    justify-content: center;
+    padding: 0 var(--mr-space-1);
+
+    .tl__label {
+      display: none;
+    }
+
+    .mat-icon {
+      display: inline-block;
+    }
+  }
+}

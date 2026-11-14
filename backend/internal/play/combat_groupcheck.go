@@ -366,6 +366,7 @@ func (s *Service) RollGroupCheck(
 	if err != nil {
 		return nil, err
 	}
+	in.spend = req.Msg.GetSpendFavor()
 	hold := &groupHold{m: m, key: key, raw: req.Msg}
 	ctx = context.WithValue(ctx, groupHoldKey{}, hold)
 	_, _, err = s.groupWrite(ctx, m, key, idem.Hash(req.Msg), eventGroupCheckRolled, func(q *playdb.Queries, tx pgx.Tx, session playdb.GameSession) (groupCheckEvent, string, error) {
@@ -460,6 +461,10 @@ func (s *Service) rollMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, 
 	if err != nil {
 		return err
 	}
+	if spec.favor, err = s.favorOnMember(ctx, q, tx, spec); err != nil {
+		return err
+	}
+	spec.mode = spec.mode.withFavor(spec.favor)
 	roll, held, err := s.memberRollOf(ctx, q, tx, spec)
 	if err != nil || held {
 		return err
@@ -511,6 +516,18 @@ type memberRoll struct {
 	lucky       bool
 	floor       rollFloor // the lowest number the d20 of this check counts as
 	mode        checkMode
+	// favor is what the roller's Inspiration did to the roll (favor_spend.go); the master's roll for a player never has it.
+	favor favorUse
+}
+
+// favorOnMember decides the Inspiration of the player's own roll for the group check, over the circumstances of the check. The
+// master's roll for a player (byMaster) has no field to ask it with and never spends what is the player's.
+func (s *Service) favorOnMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, spec memberRoll) (favorUse, error) {
+	if spec.byMaster {
+		return favorUse{Mode: spec.mode.Mode}, nil
+	}
+	gh := groupHoldOf(ctx)
+	return s.favorOfPlayerCheck(ctx, tx, q, gh.h, spec.in.spend, gh.m.CampaignID, spec.characterID, gh.key, heldGroupCheck, spec.mode)
 }
 
 // memberRollOf makes the d20 of the member. held says the roll was kept for the player's answer
@@ -550,7 +567,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 	step, err := s.heldGate(ctx, s.outsideGate(tx, q, gh.h), rollSpec{
 		Kind: heldGroupCheck, Key: gh.key, Request: gh.raw, Roller: heldRoller{CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, UserID: gh.m.UserID},
 		In: rollInput{inApp: spec.in.inApp, typedFaces: spec.in.faces}, Modifier: spec.bonus, Mode: spec.mode.Mode, Floor: spec.floor, Lucky: spec.lucky, MayAsk: true,
-		Stroke: groupStrokeRule(spec.check),
+		Stroke: groupStrokeRule(spec.check), FavorSpent: spec.favor.Used,
 	})
 	if err != nil {
 		return contestRoll{}, false, false, err
@@ -566,7 +583,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 		Skill: spec.check.SkillKey, Faces: faces32(step.Roll.Faces), Modifier: conv.Int32(spec.bonus),
 		Total: conv.Int32(step.Roll.Total), Physical: step.Roll.Physical,
 		Mode: checkModeKey(checkModeOfRoll(spec.mode.Mode)), Unknown: !spec.known, Lucky: step.Lucky, Stroke: step.Stroke,
-		countedRoll: countedOf(step.Roll),
+		countedRoll: countedOf(step.Roll), Favor: spec.favor.Used,
 	}
 	if step.Bonus != nil {
 		roll.BonusSides, roll.BonusFace = step.Bonus.Sides, step.Bonus.Face
@@ -576,7 +593,7 @@ func (s *Service) gatedMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx
 
 // keepMemberRoll spends the Helps the roll used and keeps the roll on the member.
 func (s *Service) keepMemberRoll(ctx context.Context, q *playdb.Queries, tx pgx.Tx, session playdb.GameSession, spec memberRoll, roll contestRoll) error {
-	roll.Notes = notesOfSources(spec.mode.Sources, spec.mode.hide)
+	roll.Notes, roll.Favor = notesOfSources(spec.mode.Sources, spec.mode.hide), spec.favor.Used
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &spec.characterID})
 	if err != nil {
 		return err

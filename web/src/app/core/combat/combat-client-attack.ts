@@ -101,7 +101,12 @@ export class CombatAttackCalls {
               pact: x.pact,
             })),
             extrasChosen: true,
-            typedParts: (choice.typedParts ?? []).map((t) => ({ partKey: t.partKey, sum: t.sum })),
+            // One of the two keys on each entry: the server refuses both, and an empty one reads as no key.
+            typedParts: (choice.typedParts ?? []).map((t) =>
+              'damageType' in t
+                ? { damageType: t.damageType, sum: t.sum }
+                : { partKey: t.partKey, sum: t.sum },
+            ),
           }
         : {}),
     });

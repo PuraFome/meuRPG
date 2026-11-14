@@ -19,6 +19,7 @@ import type {
   ModeChoice,
   PairDie,
 } from '../../../../core/combat/combat-client-types';
+import { type TypedEntry, typedEntries } from '../../../../core/combat/typed-fields';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import type { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
@@ -149,7 +150,7 @@ export class AttackRolls {
 
   async rollDamage(
     die: DamageDie | { readonly parts: true },
-    typedParts?: { partKey: string; sum: number }[],
+    typedParts?: readonly TypedEntry[],
   ): Promise<void> {
     const p = this.s.pending();
     if (!p || this.s.busy()) {
@@ -183,12 +184,9 @@ export class AttackRolls {
     );
   }
 
-  /** The sums typed for each group of dice, in the order of the fields. */
+  /** The sums typed for each damage type (or part that needs its own key), in the order of the fields. */
   rollDamageParts(sums: number[]): Promise<void> {
-    return this.rollDamage(
-      { parts: true },
-      this.damage.fields().map((f, i) => ({ partKey: f.key, sum: sums[i] })),
-    );
+    return this.rollDamage({ parts: true }, typedEntries(this.damage.typed(), sums));
   }
 
   /** What a roll answered: the result and, for a hit, the damage; or, for a held roll, the d20 and its question (Lucky

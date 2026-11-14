@@ -1990,7 +1990,7 @@ enum EncounterBlockedReason {
   // free). The attack's sheet reads the reason from PendingDamage.parts.
   ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE = 81;
   // RemoveDamagePart: the part is the weapon's or an automatic line, which cannot be
-  // taken out, or it was taken out already.
+  // taken out, it was taken out already, or a damage-type sum typed for the roll covers it.
   ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE = 82;
   // TakeAction (Reckless Attack): it is declared with the first attack of the turn,
   // and an attack was made.
@@ -2639,6 +2639,12 @@ message CombatLogHitRider {
   // The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
   // an entry the master retired or switched off (RN-23).
   string treated_as_source_name = 23;
+  // The ability of the save a spell's hit effect makes the target roll, as a key ("wis") and its Portuguese name
+  // ("Sabedoria"). Set only on the line of a spell's save, and only for who may read the spell: the master, the player who
+  // owns the spell's caster, and every viewer of the line when the spell's audience is all players. Empty for anyone
+  // else, the attacker's player included, who reads the line of an effect that is not theirs to read (RN-10).
+  string save_ability = 24;
+  string save_ability_name_pt = 25;
 }
 
 // HiddenRevealQuestion is one question the master has to answer: the area spell
@@ -4366,6 +4372,12 @@ message RollAttackRequest {
   // question, or a reaction window): the trade as it was when the roll was held, so the answer settles on the same
   // penalty, damage and resource however the sheet changed meanwhile. A request from a client has it cleared.
   PowerAttackPin power_attack_pin = 105;
+
+  // Spends the character's Inspiration for advantage on this attack roll, chosen before the d20 is rolled.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 106;
 }
 
 // PowerAttackPin is the numbers of a power attack trade when its roll was held.
@@ -5066,6 +5078,12 @@ message CastSpellRequest {
   // (otherwise `failed_precondition` with WALL_PLACEMENT_REQUIRED, before anything is spent); malformed
   // (see SpellWall), sent for any other spell, or sent in a combat without a map, it is `invalid_argument`.
   SpellWall wall = 35;
+
+  // Spends the character's Inspiration for advantage on this spell attack roll, chosen before the d20 is rolled.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 36;
 }
 
 // SpellOptionChoice is a table cast option ticked on a casting.
@@ -6136,6 +6154,10 @@ message CombatLogEntry {
   CombatLogReadied readied_lost = 121;
   // FEATURE_USED: the feature, the choice and what the use did. The line has the audience of a feature action.
   CombatLogFeatureUsed feature_used = 118;
+  // ATTACK, SPELL_CAST, REACTION_WINDOW (the concentration save) and EFFECT (the save of an effect): "<name> usou a Inspiração." when
+  // the roll was made with the roller's Inspiration. Only the master and the roller's own player get it, like the roll's dice; empty for
+  // anyone else and when the roll used none.
+  string favor_text_pt = 129;
   // ATTACK: the power attack the roll made, when it made one. The feature and the numbers are the master's and the
   // attacker's player's; another player reads that a trade was made (`CombatLogPowerAttack`).
   CombatLogPowerAttack power_attack = 122;
@@ -6237,6 +6259,9 @@ message CombatLogEffect {
   // The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
   // an entry the master retired or switched off (RN-23).
   string treated_as_source_name = 20;
+  // ENDED: true when the effect ended with its use still waiting (no hit spent it).
+  // False when a hit spent it or it is not an on-hit effect; read by the same readers as the line.
+  bool unused = 21;
 }
 
 // CombatLogEffectChange is what an effect did.
@@ -7318,6 +7343,12 @@ message ResolveConcentrationSaveRequest {
   // LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
   // the creature is incapacitated.
   bool use_legendary_resistance = 103;
+
+  // Spends the character's Inspiration for advantage on this concentration saving throw, chosen before the d20 is rolled.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 104;
 }
 
 message ResolveConcentrationSaveResponse {

@@ -5,6 +5,7 @@ import type { DamagePart, SlotOption } from '../../../../../gen/meurpg/play/v1/c
 import {
   type ExtraPick,
   defaultSlot,
+  isOffPart,
   partDice,
   partFormula,
 } from '../../../../core/combat/damage-parts';
@@ -33,7 +34,11 @@ export class DamageParts {
   readonly disabled = input(false);
 
   protected readonly id = `damage-parts-${nextId++}`;
-  protected readonly fixed = computed(() => this.parts().filter((p) => !p.choosable));
+  protected readonly fixed = computed(() =>
+    this.parts().filter((p) => !p.choosable && !isOffPart(p)),
+  );
+  /** A spell's hit effect this weapon does not carry: listed with its reason, never counted. */
+  protected readonly off = computed(() => this.parts().filter((p) => isOffPart(p)));
   protected readonly extras = computed(() => this.parts().filter((p) => p.choosable));
 
   /** Another maneuver is marked: only one maneuver for each attack, so this one is off until it is unmarked. */

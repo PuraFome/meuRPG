@@ -637,8 +637,8 @@ func (s *Service) removeWrite(ctx context.Context, c *combatTx, m authz.Membersh
 	if err := c.ownerGone(ctx, target.ID); err != nil {
 		return nil, err
 	}
-	if err := c.q.DeleteCombatant(ctx, target.ID); err != nil {
-		return nil, fmt.Errorf("delete the combatant: %w", err)
+	if err := deleteCombatant(ctx, c.q, target); err != nil {
+		return nil, err
 	}
 	rest := slices.DeleteFunc(slices.Clone(cs), func(o playdb.Combatant) bool { return o.ID == target.ID })
 	if _, err := saveOrder(ctx, c.q, cs, rest); err != nil {

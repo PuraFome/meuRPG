@@ -17,7 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 /** What a count says (C6-10): `wait`, amber, something waits for the person; `news`, grená, new messages; `count`, neutral, how many there are. */
 export type TabTone = 'wait' | 'news' | 'count';
 
-/** More tabs than this and a narrow list drops the icons, so each word and count stays whole. */
+/** More tabs than this and a narrow list drops the icons (or, with `collapseInactive`, the words of the tabs not chosen), so each count stays whole. */
 const MANY_TABS = 3;
 
 /** The edge fade of a list that scrolls sideways, and how near the edge the fade starts. */
@@ -52,7 +52,7 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="tl-wrap" [class.tl-wrap--start]="fadeStart()" [class.tl-wrap--end]="fadeEnd()">
-    <div #list class="tl" role="tablist" [class.tl--compact]="compact()" [class.tl--many]="tabs().length > MANY_TABS" [attr.aria-label]="label()" (scroll)="measure()">
+    <div #list class="tl" role="tablist" [class.tl--compact]="compact()" [class.tl--collapse]="collapseInactive()" [class.tl--many]="tabs().length > MANY_TABS" [attr.aria-label]="label()" (scroll)="measure()">
       @for (t of tabs(); track t.id) {
         <button
           #tab
@@ -61,6 +61,7 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
           class="tl__tab"
           [id]="idOf(t.id)"
           [class.tl__tab--on]="t.id === current()"
+          [class.tl__tab--icon]="!!t.icon"
           [attr.aria-selected]="t.id === current()"
           [attr.aria-controls]="panelOf(t.id)"
           [attr.aria-label]="nameOf(t)"
@@ -71,7 +72,7 @@ export const tabPanelId = (prefix: string, id: string): string => `${prefix}-pan
           @if (t.icon) {
             <mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>
           }
-          <span>{{ t.label }}</span>
+          <span class="tl__label">{{ t.label }}</span>
           <!-- A space between the label and the count, so the text the eye reads is the start of the name (WCAG 2.5.3). -->
           @if (t.badge) {
             &ngsp;
@@ -94,6 +95,11 @@ export class TabList {
   readonly selected = model('');
   /** The narrow look of a list that does not fit a phone: smaller type and padding, so more tabs show. */
   readonly compact = input(false);
+  /**
+   * With more than three tabs in a room under 480px, a tab that has an icon and is not the chosen one is its icon and its count (48 px
+   * high, the word in its accessible name), and the chosen one keeps its word. Off by default: a list of words stays words.
+   */
+  readonly collapseInactive = input(false);
 
   /** More tabs lie beyond the left or the right edge: the fade says so. */
   protected readonly MANY_TABS = MANY_TABS;

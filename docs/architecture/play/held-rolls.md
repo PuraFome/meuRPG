@@ -98,6 +98,13 @@ One question at a time: an open hold of the roller refuses a new roll (`INSPIRAT
 A weapon attack's Lucky answer keeps the new d20 on the row only when the die's question follows.
 A hold made in a combat records its `round`; one of an earlier round, or whose combatant no longer holds the die, is stale and forgotten by the next roll (`heldRoll.stale`).
 
+### One way to drop a hold
+
+Every delete of `inspiration_holds` goes through `hold_forget.go`: `forgetHoldsOf` (a combatant's holds and the character's holds outside a combat, both refunded), `deleteCombatant` (forgets a combatant's holds, then deletes the combatant: the one function that calls `DeleteCombatant`), `forgetHold` (the gate forgetting a stale one) and `forgetOrphanHolds` (the sweep of a die that ran out). A hold that spent the master's Inspiration (`favor_spent`) and has no answer gives it back before the row is gone ([favor](favor.md#the-spend)); an answered one gives nothing.
+The paths: the gate (`gateOpen`), `RemoveCombatant`, `dropCombatants` (the non-dismiss branch), the end of a combat and the leaving of a character (`dieToCharacters`, for every combatant of a character whether it holds a die or not), the move of a character into a combat, and `dieAdvance`.
+Nothing relies on the foreign-key cascade from `combatants` and `encounters` (migration 00255): a path that deletes a combatant calls `deleteCombatant`, which forgets the holds first. An archtest fails for any other call of `DeleteCombatant`, for a query that deletes from `combatants` (other than `DeleteCombatant`) or from `encounters`, and for a `deleteCombatant` that deletes before it forgets.
+`byKey` finds a hold by the campaign, the key and the roller (its character or its combatant), so the members of a group check, which send one key, never read each other's holds.
+
 ## The questions are a chain
 
 `chain` is the ordered list of what a held roll may ask: `luckyQuestion` first (the 1 is on the table first, SRD 5.1), `rerollQuestion` after it (the table's reroll rule, below), `dieQuestion` after that, then `indomitableQuestion` and `strokeQuestion` (the result is known only then).
@@ -115,6 +122,10 @@ Each says when it waits (`pending`), what it asks (`offer`) and what its answer 
 - **Stroke of Luck** waits while `stroke_ask` is set and neither it nor the roll was answered.
   It is asked only after the result is known, with the Lucky reroll and the die already in the total.
   Its answer is final: using it spends the use and closes the row; keeping the roll spends nothing.
+
+The master's Inspiração is not a link of this chain: it is chosen before the d20, never asked ([Inspiração](favor.md#the-spend)).
+The hold remembers `favor_spent`, so a retry and the answer count the Inspiração without spending it again.
+`RollAttack`, `CastSpell`, `ResolveConcentrationSave` and `RollEffectSave` set it when the roll they hold used or kept the Inspiração.
 
 Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
 
