@@ -46,6 +46,7 @@ export const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
   option: TableContentKind.OPTION,
   classfeature: TableContentKind.CLASS_FEATURE,
   creature: TableContentKind.CREATURE,
+  weapon: TableContentKind.WEAPON,
 };
 
 export const NEW_TITLES: Readonly<Record<number, string>> = {
@@ -58,6 +59,7 @@ export const NEW_TITLES: Readonly<Record<number, string>> = {
   [TableContentKind.FEAT]: 'Novo talento',
   [TableContentKind.OPTION]: 'Nova opção',
   [TableContentKind.CLASS_FEATURE]: 'Nova característica de classe',
+  [TableContentKind.WEAPON]: 'Nova arma',
   [TableContentKind.CREATURE]: 'Nova criatura',
 };
 

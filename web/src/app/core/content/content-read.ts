@@ -1,6 +1,7 @@
 import { effectReadItem } from './spell-effect-tags';
 import type {
   TableBackground,
+  TableWeapon,
   TableClassFeature,
   TableEntry,
   TableFeat,
@@ -27,6 +28,14 @@ import { summonLine } from './summon-names';
 import { entryEffectsPart } from './content-read-rolls';
 import { spellToDraft } from './spell-draft';
 import { readHit } from './hit-effect-read';
+import {
+  priceText,
+  weaponDamage,
+  weaponProperties,
+  weaponRange,
+  weaponUse,
+  weightText,
+} from './weapon-text';
 import { previewRows } from './spell-preview';
 import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
@@ -121,6 +130,20 @@ function readBackground(b: TableBackground, nameOf: NameOf): EntryRead {
   return { rows, sections, text: [] };
 }
 
+function readWeapon(w: TableWeapon, nameOf: NameOf): EntryRead {
+  const rows: ReadRow[] = [
+    { label: 'Categoria', value: weaponUse(w) },
+    { label: 'Dano', value: weaponDamage(w, nameOf) },
+  ];
+  const range = weaponRange(w);
+  if (range) rows.push({ label: 'Distância', value: range });
+  if (w.properties.length > 0)
+    rows.push({ label: 'Propriedades', value: weaponProperties(w, nameOf).join(', ') });
+  if (w.weightOz > 0) rows.push({ label: 'Peso', value: weightText(w.weightOz) });
+  if (w.priceCp > 0) rows.push({ label: 'Preço', value: priceText(w.priceCp) });
+  return { rows, sections: [], text: w.descPt };
+}
+
 function readFeat(
   f: TableFeat,
   nameOf: NameOf,
@@ -209,6 +232,8 @@ export function readEntry(
       return readSubrace(body.value, nameOf, parentOf(body.value.raceKey));
     case 'tableBackground':
       return readBackground(body.value, nameOf);
+    case 'tableWeapon':
+      return readWeapon(body.value, nameOf);
     case 'tableFeat':
       return readFeat(body.value, nameOf, optionSide);
     case 'tableOption':
