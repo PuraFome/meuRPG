@@ -37,7 +37,12 @@ func (s *Service) mustNotBeLimited(ctx context.Context, c *combatTx, who playdb.
 	if err != nil {
 		return err
 	}
-	if !carriesRider(cs, who) {
+	return mountLimit(cs, who, key)
+}
+
+// mountLimit is mustNotBeLimited for a caller that has the combatants (cs) in hand.
+func mountLimit(cs []playdb.Combatant, who playdb.Combatant, key string) error {
+	if mountActionAllowed(key) || !carriesRider(cs, who) {
 		return nil
 	}
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED, "a mount that carries a rider takes only Dash, Disengage and Dodge",

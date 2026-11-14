@@ -244,7 +244,7 @@ func (f *takeActionFlow) locate(ctx context.Context) error {
 	if f.isReaction() {
 		return nil
 	}
-	return f.s.mustNotBeLimited(ctx, f.c, f.who, f.call.actionKey)
+	return mountLimit(cs, f.who, f.call.actionKey)
 }
 
 // isReaction says the action asked for is a feature action of the reaction economy.
