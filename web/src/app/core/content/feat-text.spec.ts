@@ -132,6 +132,17 @@ describe('what a feat asks, in Portuguese', () => {
     expect(
       unmetLines([u({ kind: FeatUnmetKind.SPELL, key: 'spell:eldritch-blast' })], named),
     ).toEqual(['Exige a magia Rajada Mística, que você ainda não conhece.']);
+    // A condition the player may not read (no key) is said once, and never joined into the line.
+    expect(
+      unmetLines(
+        [
+          u({ kind: FeatUnmetKind.OPTION, hidden: true }),
+          u({ kind: FeatUnmetKind.OPTION }),
+          u({ kind: FeatUnmetKind.CLASS_LEVEL, key: 'class:warlock', value: 5 }),
+        ],
+        named,
+      ),
+    ).toEqual(['Pede uma condição que a mesa não mostra.', 'Exige Bruxo 5.']);
     // The older kinds keep their own line, and a hidden one still names nothing.
     expect(
       unmetLines(
