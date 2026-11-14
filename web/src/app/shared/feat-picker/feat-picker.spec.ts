@@ -145,7 +145,10 @@ describe('FeatPicker', () => {
   it('offers "Todos" and "Só os que posso (N)": the second hides the feats the character does not qualify for (#580 board 580-04)', () => {
     const el = setup();
     const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.filter button'));
-    expect(buttons.map(text)).toEqual(['Todos', 'Só os que posso (2)']);
+    expect(buttons.map((b) => text(b.querySelector('span')!))).toEqual([
+      'Todos',
+      'Só os que posso (2)',
+    ]);
     expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
     buttons[1].click();
     fixture.detectChanges();
