@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 var reasonCombatantDown = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN
@@ -66,5 +67,31 @@ func TestMountedCombat_ADownRiderDirectsNoDashDisengageOrDodge(t *testing.T) {
 				t.Errorf("the master taking %s for the mount error = %v, want it taken", key, err)
 			}
 		})
+	}
+}
+
+// A down rider's player is refused only the three actions the mount takes (COMBATANT_DOWN); the others stay what they were for any
+// mount that carries a rider (MOUNT_ACTION_LIMITED), and the turn options show the three disabled with the same reason.
+func TestMountedCombat_TheDownRiderRefusalIsLimitedToTheThreeActions(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.ridden(t)
+	c.downToren(t)
+	enc := c.get(t, c.master)
+	_, err := c.action(t, c.caio, enc, "Ogro", "standard:search")
+	wantBlockedBy(t, "the down rider's player taking Search for the mount", err, reasonMountActionLimited)
+	opts := c.mustOptions(t, c.caio, enc, "Ogro")
+	seen := 0
+	for _, a := range opts.GetOptions().GetStandardActions() {
+		switch a.GetAction().GetKey() {
+		case "standard:dash", "standard:disengage", "standard:dodge":
+			seen++
+			if a.GetEnabled() || a.GetReason().GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN {
+				t.Errorf("%s for the down rider's player = enabled %v, reason %v, want disabled with COMBATANT_DOWN", a.GetAction().GetKey(), a.GetEnabled(), a.GetReason())
+			}
+		}
+	}
+	if seen != 3 {
+		t.Errorf("the options list %d of the three actions, want 3", seen)
 	}
 }
