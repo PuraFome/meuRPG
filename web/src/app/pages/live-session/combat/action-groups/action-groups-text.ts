@@ -1,4 +1,7 @@
 import type { ActionTabId } from '../../../../core/combat/action-tabs';
+import { circleLabel } from '../../../../core/combat/combat-grid';
+import { freeText } from '../../../../core/combat/cast-flow';
+import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 
 /** The standard actions an extra action may be, by the key the server sends. */
 export const EXTRA_NAMES: Readonly<Record<string, string>> = {
@@ -22,3 +25,39 @@ export const shortCircle = (level: number): string => `${level}º`;
 /** The question Fúria asks a Berserker (SRD 5.1, Path of the Berserker, Frenzy). */
 export const FRENZY_QUESTION =
   'Entrar em frenesi? Um ataque corpo a corpo como ação bônus em cada turno seguinte; quando a fúria acabar, você ganha 1 nível de exaustão.';
+
+/** One row of the slots above the spells: the circle, how many there are and how many are spent. */
+export interface SlotRow {
+  readonly title: string;
+  readonly short: string;
+  readonly total: number;
+  readonly used: number;
+  readonly text: string;
+}
+
+/** One row for each circle the character has slots in, then the pact slots. */
+export function slotRowsOf(slots: {
+  readonly usage: readonly SlotUsageVm[];
+  readonly pact: PactSlotsVm | null;
+}): SlotRow[] {
+  const { usage, pact } = slots;
+  const rows = usage
+    .filter((u) => u.total > 0)
+    .map((u) => ({
+      title: circleLabel(u.level),
+      short: shortCircle(u.level),
+      total: u.total,
+      used: u.used,
+      text: freeText(u.total - u.used, u.total),
+    }));
+  if (pact && pact.total > 0) {
+    rows.push({
+      title: `${circleLabel(pact.slotLevel)} (pacto)`,
+      short: `${shortCircle(pact.slotLevel)} pacto`,
+      total: pact.total,
+      used: pact.used,
+      text: freeText(pact.total - pact.used, pact.total),
+    });
+  }
+  return rows;
+}

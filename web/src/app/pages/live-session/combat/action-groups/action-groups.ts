@@ -29,7 +29,6 @@ import {
   attackTagsOf,
   beamsLeftLine,
   bonusAttackLine,
-  circleLabel,
   groupOf,
   groupState,
   isBonusAttack,
@@ -62,7 +61,6 @@ import {
   hiddenWord,
 } from '../../../../core/combat/contest-view';
 import { castRefOf } from '../../../../core/combat/cast-ref';
-import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
 import { type ListedDie, maneuverLine } from '../../../../core/effects/roll-die';
 import type { GearFlow } from '../../../../core/combat/gear-flow';
@@ -79,7 +77,7 @@ import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/a
 import { resourceOf, useLine } from '../../../../core/combat/feature-use';
 import type { ResourceUsageVm } from '../../../../core/play/resource-usage.types';
 import { GroupState } from './group-state';
-import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-groups-text';
+import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, slotRowsOf } from './action-groups-text';
 import { offersWeaponAttack } from './weapon-offer';
 
 /**
@@ -369,28 +367,7 @@ export class ActionGroups {
   /** Every spell, whatever its economy, as the server ordered them. */
   protected readonly spells = computed(() => this.options().spells);
   /** One row for each circle the character has slots in, then the pact slots. */
-  protected readonly slotRows = computed(() => {
-    const { usage, pact } = this.slots();
-    const rows = usage
-      .filter((u) => u.total > 0)
-      .map((u) => ({
-        title: circleLabel(u.level),
-        short: shortCircle(u.level),
-        total: u.total,
-        used: u.used,
-        text: freeText(u.total - u.used, u.total),
-      }));
-    if (pact && pact.total > 0) {
-      rows.push({
-        title: `${circleLabel(pact.slotLevel)} (pacto)`,
-        short: `${shortCircle(pact.slotLevel)} pacto`,
-        total: pact.total,
-        used: pact.used,
-        text: freeText(pact.total - pact.used, pact.total),
-      });
-    }
-    return rows;
-  });
+  protected readonly slotRows = computed(() => slotRowsOf(this.slots()));
   /** Atacar and Conjurar are not repeated here: they are the rows above. */
   protected readonly standard = computed(() =>
     this.options().standardActions.filter(
