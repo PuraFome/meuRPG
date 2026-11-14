@@ -94,6 +94,20 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 		DamageNotePT: note,
 	}
 	a.Magical, a.Silvered, a.Adamantine = x.weaponMarks(key, facts)
+	fillWeaponDamage(&a, w, monkWeapon, martialDie, oneHanded, dmg)
+	if a.Melee && t.reachFt > 0 {
+		a.ReachFt = t.reachFt // the weapon keeps its own range: a reach is not a throwing range
+	}
+	ammo, fires := c.ammunition[key]
+	a.AmmunitionKey = ammo
+	x.d.Attacks = append(x.d.Attacks, a)
+	if fires {
+		x.d.Attacks = append(x.d.Attacks, x.improvisedMelee(a))
+	}
+}
+
+// fillWeaponDamage writes the damage lines, the dice and the ranges of a weapon's attack.
+func fillWeaponDamage(a *Attack, w *srd51.Weapon, monkWeapon bool, martialDie int, oneHanded, dmg int) {
 	monkDie := 0
 	if monkWeapon {
 		monkDie = martialDie
@@ -105,17 +119,8 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 		a.VersatileDamage = withModifier(monkDice(w.TwoHandedDamage, monkDie), dmg)
 	}
 	a.RangeFt, a.LongRangeFt = weaponRange(w)
-	if a.Melee && t.reachFt > 0 {
-		a.ReachFt = t.reachFt // the weapon keeps its own range: a reach is not a throwing range
-	}
 	a.DamageDice, _ = ParseDice(a.Damage)
 	a.VersatileDice, _ = ParseDice(a.VersatileDamage)
-	ammo, fires := c.ammunition[key]
-	a.AmmunitionKey = ammo
-	x.d.Attacks = append(x.d.Attacks, a)
-	if fires {
-		x.d.Attacks = append(x.d.Attacks, x.improvisedMelee(a))
-	}
 }
 
 // damageBludgeoning is the damage type of an improvised weapon.

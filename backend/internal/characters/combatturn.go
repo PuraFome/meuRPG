@@ -342,14 +342,7 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 	if d.ArmorUntrained.Any() {
 		refuseSpellOptions(out)
 	}
-	// The Berserker's Rage asks whether to frenzy (SRD 5.1, Path of the Berserker).
-	if rules.HasFeature(d, "feature:frenzy") {
-		for _, a := range out.GetFeatureActions() {
-			if a.GetAction().GetKey() == "feature:rage" {
-				a.OffersFrenzy = true
-			}
-		}
-	}
+	offerFrenzy(d, out)
 	// The movement is kept in tenths of a foot (RN-21): the feet fields are those
 	// rounded down, so the two never disagree.
 	speed := turn.SpeedFt * 10
@@ -371,6 +364,18 @@ func (s *Service) CombatTurnOptions(ctx context.Context, tx pgx.Tx, campaignID, 
 		}
 	}
 	return out, nil
+}
+
+// offerFrenzy marks the Berserker's Rage as asking whether to frenzy (SRD 5.1, Path of the Berserker).
+func offerFrenzy(d rules.Derived, out *rulesv1.TurnOptions) {
+	if !rules.HasFeature(d, "feature:frenzy") {
+		return
+	}
+	for _, a := range out.GetFeatureActions() {
+		if a.GetAction().GetKey() == "feature:rage" {
+			a.OffersFrenzy = true
+		}
+	}
 }
 
 // fillAmmunitionLeft says on each attack line of a weapon that fires ammunition how many pieces the character has left
