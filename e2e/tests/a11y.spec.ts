@@ -21,6 +21,7 @@ import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
+import { beginPowerCombatRPC, powerAttackTable, spendBreathRPC } from './power-attack-support';
 import { beginManeuverCombatRPC, maneuverTable, spendPoolRPC } from './maneuver-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
@@ -6827,6 +6828,104 @@ for (const [scheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const)
   for (const width of [390, 768, 1280]) {
     test(`o editor do ataque poderoso passa no axe e nas conferências de layout no tema ${theme}, em ${width}px`, { tag: ['@a11y', '@586', '@MR-025'] }, async ({ browser }) => {
       await scanPowerAttackEditor(browser, scheme, width);
+    });
+  }
+}
+
+/**
+ * The power attack on the player's screens (#586, MR-025): the weapon rows with the trade's line, the roll step with the trade off
+ * and on (the before and after box), the bow's trade off for lack of uses, a miss (the +10 does not come in) and a hit (the +10 is
+ * an automatic part of the damage). Toren has the feats "Golpe Pesado" and "Disparo Firme" through the content helpers.
+ */
+async function scanPowerAttackSheet(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  const openSheet = async (weapon: RegExp) => {
+    await p.getByRole('button', { name: weapon }).click();
+    const sheet = p.getByRole('dialog');
+    await viaTargetList(p, sheet);
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await expect(sheet.getByText('Troca do talento')).toBeVisible();
+    return sheet;
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await powerAttackTable(m, p, `Acessibilidade ataque poderoso ${Date.now()}`);
+    campaignId = table.campaignId;
+    await beginPowerCombatRPC(m, table);
+    await openSessionPage(p, campaignId);
+    await openActionTab(p, 'Ataques');
+
+    // The weapon rows name the trade each weapon takes, and only those.
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    await expect(groups.getByText('Golpe Pesado: −5 no ataque, +10 no dano')).toBeVisible();
+    await expect(groups.getByText('Disparo Firme: −5 no ataque, +10 no dano')).toBeVisible();
+    await expectScreenPasses(p, `Ataques, as linhas do ataque poderoso ${where}`);
+
+    // The roll step: the trade is off, and the button says what it always said.
+    let sheet = await openSheet(/^Atacar com Espada grande/);
+    const check = sheet.getByRole('checkbox', { name: /Usar Golpe Pesado/ });
+    await expect(check).not.toBeChecked();
+    await expectScreenPasses(p, `Atacar, rolar com a troca do talento desligada ${where}`);
+
+    // Ticked: the box with the attack and the damage as they were and as they become.
+    await pickRadio(sheet, 'Usar Golpe Pesado');
+    await expect(check).toBeChecked();
+    await expect(sheet.getByText('1d20 + 1', { exact: true })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Rolar 1d20 + 1 no app' })).toBeVisible();
+    await expectScreenPasses(p, `Atacar, rolar com a troca do talento ligada ${where}`);
+
+    // A 1 on the d20 typed: a miss, and the +10 does not come in.
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expectScreenPasses(p, `Rolagem física com a troca do talento, vazia ${where}`);
+    await sheet.getByLabel(/Role 1d20/).fill('1');
+    await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
+    await expect(sheet.getByText('sem dano, o +10 não entra')).toBeVisible();
+    await expect(sheet.getByText(/contra o Goblin 1/)).toBeVisible();
+    await expectScreenPasses(p, `Atacar, o erro com a troca do talento ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(sheet).toHaveCount(0);
+
+    // The pool of the bow's trade is empty: the check is off, with the server's reason.
+    await spendBreathRPC(m, table);
+    await p.reload();
+    await openActionTab(p, 'Ataques');
+    sheet = await openSheet(/^Atacar com Arco longo/);
+    await expect(sheet.getByRole('checkbox', { name: /Usar Disparo Firme/ })).toBeDisabled();
+    await expect(sheet.getByText('Sem usos do recurso.')).toBeVisible();
+    await expectScreenPasses(p, `Atacar, a troca do talento sem usos ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(sheet).toHaveCount(0);
+
+    // A 19 typed: a hit; the damage shows the +10 as an automatic part, then the roll with its numbers.
+    sheet = await openSheet(/^Atacar com Espada grande/);
+    await pickRadio(sheet, 'Usar Golpe Pesado');
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20/).fill('19');
+    await sheet.getByRole('button', { name: 'Confirmar 19' }).click();
+    await expect(sheet.getByText('Acertou')).toBeVisible();
+    await expect(sheet.getByText('automático').first()).toBeVisible();
+    await expectScreenPasses(p, `Atacar, o acerto com a troca do talento e o dano com a parte automática ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`o ataque poderoso na ficha de ataque passa no axe e nas conferências de layout no tema ${theme}, em ${width}px`, { tag: ['@a11y', '@586', '@MR-025'] }, async ({ browser }) => {
+      test.setTimeout(300_000);
+      await scanPowerAttackSheet(browser, scheme, width);
     });
   }
 }
