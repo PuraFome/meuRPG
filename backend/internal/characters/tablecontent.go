@@ -491,7 +491,7 @@ func featureUseOf(m *rulesv1.FeatureUse) *rules.FeatureUse {
 	if m == nil {
 		return nil
 	}
-	u := &rules.FeatureUse{LimitScope: enumOrUnknown(useScopeOf, m.GetLimitScope()), LimitUses: m.GetLimitUses()}
+	u := &rules.FeatureUse{LimitScope: enumOrUnknown(useScopeOf, m.GetLimitScope()), LimitUses: m.GetLimitUses(), ChoiceLabel: m.GetChoiceLabel()}
 	if t := m.GetTargets(); t != nil {
 		u.Targets = &rules.FeatureTargets{Min: int(t.GetMin()), Max: int(t.GetMax()), Who: enumOrUnknown(featureWhoOf, t.GetWho()), RangeFt: int(t.GetRangeFt())}
 	}

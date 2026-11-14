@@ -52,6 +52,8 @@ type FeatureUse struct {
 	Choices    []FeatureChoice `json:"choices,omitempty"`
 	Applies    *FeatureApplies `json:"applies,omitempty"`
 	Trigger    *FeatureTrigger `json:"trigger,omitempty"`
+	// ChoiceLabel is the question over the choices ("Qual forma"); empty: the app asks "Qual opção".
+	ChoiceLabel string `json:"choice_label,omitempty"`
 }
 
 // The moments a reaction feature's trigger waits for (FeatureTrigger.Kinds).
@@ -103,7 +105,7 @@ func (a *FeatureApplies) empty() bool {
 
 // declaresNothing says the use is an empty message.
 func (u *FeatureUse) declaresNothing() bool {
-	return u.LimitScope == "" && u.LimitUses == "" && u.Targets.empty() && len(u.Choices) == 0 && u.Applies.empty() && u.Trigger == nil
+	return u.LimitScope == "" && u.LimitUses == "" && u.Targets.empty() && len(u.Choices) == 0 && u.Applies.empty() && u.Trigger == nil && u.ChoiceLabel == ""
 }
 
 // ActionUse is what Derive works out of the use a grant_action declares, with the character's formulas:
@@ -125,6 +127,8 @@ type ActionUse struct {
 	EffectRounds int  `json:",omitempty"`
 	// Trigger is what makes the app ask the player to use the feature (nil: the player uses it from the sheet only).
 	Trigger *FeatureTrigger `json:",omitempty"`
+	// ChoiceLabel is the question over the choices, "" for the app's own.
+	ChoiceLabel string `json:",omitempty"`
 }
 
 // Limited says the use counts against a limit in a scope.
@@ -168,7 +172,7 @@ func (x *deriver) useOf(act *Action, a activeEffect) bool {
 	if t := u.Targets; t != nil {
 		out.Targets = *t
 	}
-	out.Choices = slices.Clone(u.Choices)
+	out.Choices, out.ChoiceLabel = slices.Clone(u.Choices), u.ChoiceLabel
 	if t := u.Trigger; t != nil {
 		out.Trigger = &FeatureTrigger{Kinds: slices.Clone(t.Kinds), RangeFt: t.RangeFt}
 	}
@@ -247,6 +251,7 @@ func (b *overlayBuilder) checkUse(site effectSite, e *Effect) error {
 	checkUseLimit(u, at)
 	checkUseTargets(u.Targets, at)
 	checkUseChoices(u.Choices, at)
+	checkUseChoiceLabel(u, at)
 	checkUseTrigger(e.Economy, u, at)
 	b.checkUseApplies(&c, site, u.Applies)
 	if err := c.err(); err != nil {
@@ -346,6 +351,17 @@ func checkUseTrigger(economy string, u *FeatureUse, at useRefuse) {
 	}
 	if t.RangeFt < 1 || t.RangeFt > maxFeatureRangeFt {
 		at(".trigger.range_ft", ReasonValue, "range_ft is 1 to %d: how close the creature comes", maxFeatureRangeFt)
+	}
+}
+
+// checkUseChoiceLabel checks the question over the choices: it needs choices to ask about, and is 1 to 80 characters.
+func checkUseChoiceLabel(u *FeatureUse, at useRefuse) {
+	switch n := utf8.RuneCountInString(u.ChoiceLabel); {
+	case n == 0:
+	case len(u.Choices) == 0:
+		at(".choice_label", ReasonValue, "choice_label asks about the choices: the use offers none")
+	case n > maxChoiceTextRunes:
+		at(".choice_label", ReasonValue, "the question is at most %d characters", maxChoiceTextRunes)
 	}
 }
 

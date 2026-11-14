@@ -47,6 +47,8 @@ func TestFeatureUseShapes(t *testing.T) {
 			u.Applies = &FeatureApplies{Heal: "1d6"}
 		}), "", ""},
 		{"choices", with(func(u *FeatureUse) { u.Choices = repeat(8) }), "", ""},
+		{"choices with a question", with(func(u *FeatureUse) { u.Choices, u.ChoiceLabel = repeat(2), "Qual forma" }), "", ""},
+		{"a question of 80 characters", with(func(u *FeatureUse) { u.Choices, u.ChoiceLabel = repeat(2), strings.Repeat("ã", 80) }), "", ""},
 		{"a heal and temporary hit points", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Heal: "2d4+2", TempHP: "level()"} }), "", ""},
 		{"an effect", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Effect: goodEffect(), EffectRounds: 10} }), "", ""},
 		{"an effect that applies to all", with(func(u *FeatureUse) {
@@ -87,6 +89,11 @@ func TestFeatureUseShapes(t *testing.T) {
 		{"a repeated key", with(func(u *FeatureUse) { u.Choices = []FeatureChoice{{Key: "a", TextPT: "A"}, {Key: "a", TextPT: "B"}} }), ".use.choices[1].key", ReasonValue},
 		{"an empty text", with(func(u *FeatureUse) { u.Choices = []FeatureChoice{{Key: "a"}} }), ".use.choices[0].text_pt", ReasonValue},
 		{"a long text", with(func(u *FeatureUse) { u.Choices = []FeatureChoice{{Key: "a", TextPT: strings.Repeat("ã", 81)}} }), ".use.choices[0].text_pt", ReasonValue},
+		{"a question with no choices", with(func(u *FeatureUse) { u.ChoiceLabel = "Qual forma" }), ".use.choice_label", ReasonValue},
+		{"a question beside a limit and no choices", with(func(u *FeatureUse) {
+			u.LimitScope, u.LimitUses, u.ChoiceLabel = UseScopeTurn, "1", "Qual forma"
+		}), ".use.choice_label", ReasonValue},
+		{"a question of 81 characters", with(func(u *FeatureUse) { u.Choices, u.ChoiceLabel = repeat(2), strings.Repeat("ã", 81) }), ".use.choice_label", ReasonValue},
 		// What it applies.
 		{"a heal with no dice", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Heal: "5"} }), ".use.applies.heal", ReasonValue},
 		{"a heal with MOD", with(func(u *FeatureUse) { u.Applies = &FeatureApplies{Heal: "1d6 + MOD"} }), ".use.applies.heal", ReasonValue},
@@ -243,5 +250,24 @@ func TestAnActionWithoutAUseStaysOnTakeAction(t *testing.T) {
 	var none *ActionUse
 	if none.Limited() || none.Left(3) != -1 {
 		t.Error("a nil use has no limit")
+	}
+}
+
+// TestAChoiceQuestionDerivesForTheCharacter: the question over the choices is on the action the character gets, empty when
+// the table gave none.
+func TestAChoiceQuestionDerivesForTheCharacter(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	choices := []FeatureChoice{{Key: "fogo", TextPT: "Fogo"}, {Key: "gelo", TextPT: "Gelo"}}
+	for _, label := range []string{"Qual forma", ""} {
+		c, err := srd.With(featWith(useFeat, useAction(&FeatureUse{Choices: choices, ChoiceLabel: label})))
+		if err != nil {
+			t.Fatal(err)
+		}
+		b := pensantus()
+		b.Feats = append(b.Feats, useFeat)
+		if u := grantedActionOf(t, Derive(b, c), useFeat).Use; u == nil || u.ChoiceLabel != label {
+			t.Errorf("label %q: Use = %+v, want ChoiceLabel %q", label, u, label)
+		}
 	}
 }

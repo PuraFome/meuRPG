@@ -475,6 +475,7 @@ func useOptionToProto(o *rulesv1.ActionOption, u *rules.ActionUse) {
 	for _, c := range u.Choices {
 		o.Choices = append(o.Choices, &rulesv1.FeatureChoice{Key: c.Key, TextPt: c.TextPT})
 	}
+	o.UseQuestionPt = u.ChoiceLabel
 }
 
 var (

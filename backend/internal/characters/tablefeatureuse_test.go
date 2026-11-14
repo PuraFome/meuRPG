@@ -144,3 +144,41 @@ func TestAnUnknownTriggerKindReachesTheRulesToBeRefused(t *testing.T) {
 		t.Errorf("trigger = %+v, want the known kind and two unknown words (the unspecified one is no moment)", u.Trigger)
 	}
 }
+
+// TestAChoiceLabelSurvivesTheJSONOfAPackage: the question over a use's choices goes through the JSON of the package and becomes
+// the engine's `choice_label`.
+func TestAChoiceLabelSurvivesTheJSONOfAPackage(t *testing.T) {
+	t.Parallel()
+	in := &rulesv1.TableEffect{Type: "grant_action", Economy: "bonus_action", Use: &rulesv1.FeatureUse{
+		Choices: []*rulesv1.FeatureChoice{{Key: "lobo", TextPt: "Lobo"}}, ChoiceLabel: "Qual forma",
+	}}
+	raw, err := protojson.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := &rulesv1.TableEffect{}
+	if err := protojson.Unmarshal(raw, out); err != nil {
+		t.Fatal(err)
+	}
+	if !proto.Equal(in, out) {
+		t.Fatalf("round trip = %v, want %v", out, in)
+	}
+	if got := tableEffectsOf([]*rulesv1.TableEffect{out})[0].Use.ChoiceLabel; got != "Qual forma" {
+		t.Errorf("choice_label = %q, want the table's", got)
+	}
+}
+
+// TestTheChoiceQuestionReachesTheTurnOptions: the option carries the question of the feature's choices as use_question_pt,
+// and an action that gave none carries "" (the app asks "Qual opção").
+func TestTheChoiceQuestionReachesTheTurnOptions(t *testing.T) {
+	t.Parallel()
+	choices := []rules.FeatureChoice{{Key: "a", TextPT: "A"}}
+	asked := rules.Action{Key: "feature:x@mesa", Economy: rules.EconomyBonusAction, Use: &rules.ActionUse{Choices: choices, ChoiceLabel: "Qual forma"}}
+	if got := actionOptionToProto(combat.ActionOption{Action: asked}).GetUseQuestionPt(); got != "Qual forma" {
+		t.Errorf("use_question_pt = %q, want the feature's question", got)
+	}
+	plain := rules.Action{Key: "feature:y@mesa", Economy: rules.EconomyBonusAction, Use: &rules.ActionUse{Choices: choices}}
+	if got := actionOptionToProto(combat.ActionOption{Action: plain}).GetUseQuestionPt(); got != "" {
+		t.Errorf("use_question_pt = %q, want none", got)
+	}
+}
