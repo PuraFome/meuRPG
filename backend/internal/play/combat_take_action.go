@@ -70,9 +70,6 @@ func readTakeActionCall(req *playv1.TakeActionRequest) (takeActionCall, error) {
 	if call.actionKey == standardAttack || call.actionKey == standardCast {
 		return call, connect.NewError(connect.CodeInvalidArgument, errors.New("an attack is rolled with RollAttack, and a spell is cast with CastSpell"))
 	}
-	if call.actionKey == actionReady {
-		return call, connect.NewError(connect.CodeInvalidArgument, errors.New("standard:ready is taken with ReadyService.ReadyAction, which names the trigger"))
-	}
 	if call.in, call.rolled, err = readTakeActionRoll(req); err != nil {
 		return call, err
 	}
@@ -200,6 +197,9 @@ func (f *takeActionFlow) run(ctx context.Context) (any, error) {
 	f.out.vitals, f.out.extra = nil, nil
 	if err := f.locate(ctx); err != nil {
 		return nil, err
+	}
+	if f.call.actionKey == actionReady { // after locate, whose mount limit refuses every action of a mount but three
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("standard:ready is taken with ReadyService.ReadyAction, which names the trigger"))
 	}
 	if err := f.choose(); err != nil {
 		return nil, err
