@@ -47,14 +47,15 @@ ON CONFLICT (kind) DO NOTHING;
 -- turn waits for it, and the rider's roll is a held roll of the kind `mount_save` (Lucky and a Bardic Inspiration die are asked
 -- about as for any saving throw). The answer is `mount_save_rolled` (the save, which closes the undo chain) and, when the rider
 -- falls, `rider_thrown` just before it (the Prone condition, the square it landed on and its link cleared). The window itself writes no
--- event: the push or the prone that opened it stays the last thing the master can undo until it is answered. The widened
+-- event: the push or the prone that opened it stays the last thing the master can undo until it is answered. A mount knocked prone or
+-- dropped to 0 hit points under its rider opens a window of the kind `dismount`: the rider's reaction to land on its feet. The widened
 -- CHECKs only add values, so every row stays valid.
 ALTER TABLE reaction_windows
     DROP CONSTRAINT IF EXISTS reaction_windows_kind_valid,
     ADD CONSTRAINT reaction_windows_kind_valid CHECK (kind IN (
         'shield', 'uncanny_dodge', 'hellish_rebuke', 'counterspell', 'cutting_words',
         'deflect_missiles', 'feather_fall', 'concentration_save', 'master_check', 'effect_save', 'contest',
-        'maneuver_reduce', 'protection', 'legendary_resistance', 'parry', 'slow_fall', 'mount_save'
+        'maneuver_reduce', 'protection', 'legendary_resistance', 'parry', 'slow_fall', 'mount_save', 'dismount'
     ));
 ALTER TABLE inspiration_holds
     DROP CONSTRAINT IF EXISTS inspiration_holds_kind_valid,
@@ -70,7 +71,7 @@ ON CONFLICT (kind) DO NOTHING;
 -- +goose Down
 DELETE FROM session_events WHERE kind IN ('mount_save_rolled', 'rider_thrown');
 DELETE FROM session_event_kinds WHERE kind IN ('mount_save_rolled', 'rider_thrown');
-DELETE FROM reaction_windows WHERE kind = 'mount_save';
+DELETE FROM reaction_windows WHERE kind IN ('mount_save', 'dismount');
 DELETE FROM inspiration_holds WHERE kind = 'mount_save';
 ALTER TABLE inspiration_holds
     DROP CONSTRAINT IF EXISTS inspiration_holds_kind_valid,

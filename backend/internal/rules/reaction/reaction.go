@@ -139,6 +139,9 @@ const (
 	// MountSave is the Dexterity saving throw of a mounted rider whose mount was moved against its will or who was knocked prone
 	// (SRD 5.1, "Mounted Combat"): it uses nobody's reaction and holds the turn like the concentration save.
 	MountSave Kind = "mount_save"
+	// Dismount is the reaction of a rider whose mount was knocked prone or dropped to 0 hit points: it lands on its feet next to the
+	// mount (SRD 5.1, "Mounted Combat"), or falls prone. It uses the rider's reaction.
+	Dismount Kind = "dismount"
 )
 
 // Reason is why a window closed by itself.

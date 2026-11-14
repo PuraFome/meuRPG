@@ -6741,6 +6741,12 @@ enum ReactionKind {
   // falling damage by five times its monk level (SRD 5.1, Slow Fall). The fall damage waits
   // (AWAITING_REACTION) until the window is answered or closed.
   REACTION_KIND_SLOW_FALL = 18;
+  // Desmontar: the mount a rider sits on was knocked prone or dropped to 0 hit points, and the rider may use its reaction to
+  // land on its feet within 5 ft as the mount falls; otherwise it falls prone in a space within 5 ft (SRD 5.1, "Mounted
+  // Combat"). The window has no prompt: the answer USE lands the rider on its feet and PASS drops it prone. A rider that has no
+  // reaction left, or cannot react, falls at once and has no window. The rider's player and the master answer it; a creature's
+  // is the master's.
+  REACTION_KIND_DISMOUNT = 20;
 }
 
 enum ReactionWindowStatus {

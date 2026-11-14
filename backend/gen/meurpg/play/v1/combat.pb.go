@@ -3406,6 +3406,12 @@ const (
 	// falling damage by five times its monk level (SRD 5.1, Slow Fall). The fall damage waits
 	// (AWAITING_REACTION) until the window is answered or closed.
 	ReactionKind_REACTION_KIND_SLOW_FALL ReactionKind = 18
+	// Desmontar: the mount a rider sits on was knocked prone or dropped to 0 hit points, and the rider may use its reaction to
+	// land on its feet within 5 ft as the mount falls; otherwise it falls prone in a space within 5 ft (SRD 5.1, "Mounted
+	// Combat"). The window has no prompt: the answer USE lands the rider on its feet and PASS drops it prone. A rider that has no
+	// reaction left, or cannot react, falls at once and has no window. The rider's player and the master answer it; a creature's
+	// is the master's.
+	ReactionKind_REACTION_KIND_DISMOUNT ReactionKind = 20
 )
 
 // Enum value maps for ReactionKind.
@@ -3430,6 +3436,7 @@ var (
 		16: "REACTION_KIND_LEGENDARY_RESISTANCE",
 		17: "REACTION_KIND_PARRY",
 		18: "REACTION_KIND_SLOW_FALL",
+		20: "REACTION_KIND_DISMOUNT",
 	}
 	ReactionKind_value = map[string]int32{
 		"REACTION_KIND_UNSPECIFIED":          0,
@@ -3451,6 +3458,7 @@ var (
 		"REACTION_KIND_LEGENDARY_RESISTANCE": 16,
 		"REACTION_KIND_PARRY":                17,
 		"REACTION_KIND_SLOW_FALL":            18,
+		"REACTION_KIND_DISMOUNT":             20,
 	}
 )
 
@@ -31347,7 +31355,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x19HIGHLIGHT_KIND_FINAL_BLOW\x10\x04\x12 \n" +
 	"\x1cHIGHLIGHT_KIND_CRITICAL_HITS\x10\x05\x12 \n" +
 	"\x1cHIGHLIGHT_KIND_CHECKS_PASSED\x10\x06\x12!\n" +
-	"\x1dHIGHLIGHT_KIND_TREASURE_FOUND\x10\a*\xee\x04\n" +
+	"\x1dHIGHLIGHT_KIND_TREASURE_FOUND\x10\a*\x8a\x05\n" +
 	"\fReactionKind\x12\x1d\n" +
 	"\x19REACTION_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14REACTION_KIND_SHIELD\x10\x01\x12\x1f\n" +
@@ -31368,7 +31376,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x18REACTION_KIND_PROTECTION\x10\x0f\x12&\n" +
 	"\"REACTION_KIND_LEGENDARY_RESISTANCE\x10\x10\x12\x17\n" +
 	"\x13REACTION_KIND_PARRY\x10\x11\x12\x1b\n" +
-	"\x17REACTION_KIND_SLOW_FALL\x10\x12*\xb1\x01\n" +
+	"\x17REACTION_KIND_SLOW_FALL\x10\x12\x12\x1a\n" +
+	"\x16REACTION_KIND_DISMOUNT\x10\x14*\xb1\x01\n" +
 	"\x14ReactionWindowStatus\x12&\n" +
 	"\"REACTION_WINDOW_STATUS_UNSPECIFIED\x10\x00\x12\x1f\n" +
 	"\x1bREACTION_WINDOW_STATUS_OPEN\x10\x01\x12#\n" +
