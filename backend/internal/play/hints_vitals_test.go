@@ -240,14 +240,14 @@ func (g *hintRig) refused(call func() error) {
 }
 
 // keyed runs the three phases of a writer that takes an idempotency key: the write, its repeat and the key used for another request.
+// The phases are plain steps, not subtests: the helpers fail the test they were built with (g.t), which a subtest's goroutine must
+// not do, and with -failfast (the repeat of the changed tests) a subtest that starts after another test failed is skipped, so
+// the writes never happen and the test fails later on a row that was never made.
 func (g *hintRig) keyed(call, again, other func() error) {
 	g.t.Helper()
-	var first map[string][]string
-	g.t.Run("the write moves the number once and the events carry it", func(_ *testing.T) {
-		first = g.first(call, true)
-	})
-	g.t.Run("the repeat of the key moves nothing and tells again", func(_ *testing.T) { g.replay(again, first) })
-	g.t.Run("the key used for another request tells nothing", func(_ *testing.T) { g.refused(other) })
+	first := g.first(call, true) // the write moves the number once and the events carry it
+	g.replay(again, first)       // the repeat of the key moves nothing and tells again
+	g.refused(other)             // the key used for another request tells nothing
 }
 
 // setupAdjust is the table, and the writer's call (repeatable: one key) and its key used for another request.

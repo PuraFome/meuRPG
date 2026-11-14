@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"testing"
 	"time"
 
@@ -21,7 +22,6 @@ const kPuzzleChanged = "*playv1.WatchGameSessionResponse_PuzzleChanged_"
 func (p *puzzleTable) puzzleHints(t *testing.T, quiet ...string) *hintRig {
 	t.Helper()
 	p.h.svc.puzzles.hintEvery = time.Nanosecond
-	p.h.svc.puzzles.hints.after = p.h.hints.After
 	g := newHintRig(t, p.h, p.campaignID, p.master, map[string]*user{"Ana": p.ana, "Caio": p.caio, "Bia": p.bia}, quiet...)
 	g.unnumbered = []string{kMapChanged, "*playv1.WatchGameSessionResponse_PuzzleChanged_"}
 	return g
@@ -360,5 +360,23 @@ func TestMakePuzzleMoveThatFiresATrapLostHints(t *testing.T) {
 	g.lost(p.moveCall(t, p.ana, seq.GetId(), bellMove(3), newKey())) // the first bell is wrong
 	if p.eventCount(t, "trap_triggered") != 1 {
 		t.Errorf("%d firings, want 1", p.eventCount(t, "trap_triggered"))
+	}
+}
+
+// The hints a sequence's play schedules for the steps that follow (puzzles_session.go, c.later) are timers of the table's gate: the
+// test's tracker must hold them from the first write of the table on, or one fires on its own clock in the middle of a later
+// step and is heard where the test says nothing may be (a lost send, a quiet person). Settle waits for them; after it the
+// stream has heard the first step's hint.
+func TestPuzzleTableTracksTheSequenceStepsItSchedulesInSetup(t *testing.T) {
+	t.Parallel()
+	p := newPuzzleTable(t)
+	seq := p.sequence(t, "Os sinos do Salão do trono")
+	p.show(t, seq.GetId())
+	p.playSequence(t, seq.GetId()) // schedules a hint at each step, 1.2 s apart
+	ana := listen(t, p.h, p.campaignID, p.ana.id, false)
+	p.h.hints.Settle(t)
+	heard := eventKinds(ana.heard(t, p.h))
+	if !slices.Contains(heard, kPuzzleChanged) {
+		t.Errorf("Ana heard %v once the tracker settled, want the sequence's step hints (puzzle_changed): the timers are not tracked", heard)
 	}
 }

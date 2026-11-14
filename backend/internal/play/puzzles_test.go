@@ -60,6 +60,7 @@ func newPuzzleTable(t *testing.T) *puzzleTable {
 	msvc.Mount(srv.Handle, mapsSessions{testSessions}, a.h.camps, reqlimit.HandlerOption())
 	server := httptest.NewServer(srv.Handler())
 	t.Cleanup(server.Close)
+	a.h.svc.puzzles.hints.after = a.h.hints.After // the gate's timers (a sequence's steps) are the tracker's from the first write on
 	return &puzzleTable{armed: a, msvc: msvc, server: server}
 }
 
