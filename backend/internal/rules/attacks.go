@@ -110,7 +110,31 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	}
 	a.DamageDice, _ = ParseDice(a.Damage)
 	a.VersatileDice, _ = ParseDice(a.VersatileDamage)
+	ammo, fires := c.ammunition[key]
+	a.AmmunitionKey = ammo
 	x.d.Attacks = append(x.d.Attacks, a)
+	if fires {
+		x.d.Attacks = append(x.d.Attacks, x.improvisedMelee(a))
+	}
+}
+
+// damageBludgeoning is the damage type of an improvised weapon.
+const damageBludgeoning = "damage-type:bludgeoning"
+
+// ImprovisedMeleeSuffix follows a weapon's key in the key of its improvised melee line.
+const ImprovisedMeleeSuffix = ":melee"
+
+// improvisedMelee is the line of a weapon that fires ammunition used in melee (SRD 5.1, "Improvised Weapons"): 1d4 plus
+// Strength bludgeoning, never proficient, with none of the weapon's own bonuses, and no ammunition spent.
+func (x *deriver) improvisedMelee(bow Attack) Attack {
+	str := x.mods[STR]
+	a := Attack{
+		Key: bow.Key + ImprovisedMeleeSuffix, Name: bow.Name + ", melee", NamePT: bow.NamePT + ", corpo a corpo", Kind: "weapon", Ability: STR,
+		AttackBonus: str, DamageType: damageBludgeoning, DamageTypeNamePT: x.c.namePT(damageBludgeoning),
+		Melee: true, AbilityMod: str, Improvised: true, Damage: withModifier("1d4", str),
+	}
+	a.DamageDice, _ = ParseDice(a.Damage)
+	return a
 }
 
 // sheetMarks is what the sheet's own mark (full.weapon_marks) says of the carried weapon.
@@ -291,7 +315,7 @@ func (x *deriver) unarmedStrike(martialArts bool, martialDie int) {
 	a := Attack{
 		Key: UnarmedStrikeKey, Name: "Unarmed Strike", NamePT: namePT, Kind: "weapon", Ability: t.attackAbility,
 		AttackBonus: x.mods[t.attackAbility] + x.prof + t.attackBonus, Proficient: true,
-		DamageType: "damage-type:bludgeoning", DamageTypeNamePT: x.c.namePT("damage-type:bludgeoning"),
+		DamageType: damageBludgeoning, DamageTypeNamePT: x.c.namePT(damageBludgeoning),
 		Melee: true, RangeFt: max(unarmedReachFt, t.reachFt), MartialArts: martialArts, AbilityMod: mod,
 		Magical: magical || ki, Silvered: silvered, Adamantine: adamantine,
 	}

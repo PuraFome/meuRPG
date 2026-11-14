@@ -1035,6 +1035,9 @@ const (
 	// other action of the mount (an attack, a spell, Help, Hide, Search, Ready, Use an Object, a grapple or a shove, a creature's
 	// action) is refused. A reaction is not an action and stays free. `combatant_ids` names the mount. Nothing is changed.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED EncounterBlockedReason = 142
+	// RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has none of the kind
+	// left. Nothing is written. The melee line of the weapon, and a thrown weapon, spend no ammunition.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY EncounterBlockedReason = 145
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1164,6 +1167,7 @@ var (
 		140: "ENCOUNTER_BLOCKED_REASON_MOUNTED",
 		141: "ENCOUNTER_BLOCKED_REASON_NO_ROOM_TO_DISMOUNT",
 		142: "ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED",
+		145: "ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                      0,
@@ -1290,6 +1294,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_MOUNTED":                          140,
 		"ENCOUNTER_BLOCKED_REASON_NO_ROOM_TO_DISMOUNT":              141,
 		"ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED":             142,
+		"ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY":                 145,
 	}
 )
 
@@ -31091,7 +31096,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\x81/\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xb1/\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -31217,7 +31222,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"(ENCOUNTER_BLOCKED_REASON_MOUNT_MOVE_USED\x10\x8b\x01\x12%\n" +
 	" ENCOUNTER_BLOCKED_REASON_MOUNTED\x10\x8c\x01\x121\n" +
 	",ENCOUNTER_BLOCKED_REASON_NO_ROOM_TO_DISMOUNT\x10\x8d\x01\x122\n" +
-	"-ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED\x10\x8e\x01*\x91\x03\n" +
+	"-ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED\x10\x8e\x01\x12.\n" +
+	")ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY\x10\x91\x01*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

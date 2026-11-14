@@ -140,9 +140,9 @@ func (s *Service) SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, ch
 }
 
 // AmmunitionLeft is the pieces a character of the campaign holds of a kind, 0 when it never held any. `not_found` for
-// a character that is not in the campaign.
+// a character that is not in the campaign. A nil tx reads outside a transaction (the turn's options).
 func (s *Service) AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (int32, error) {
-	q := s.queries.WithTx(tx)
+	q := s.queriesIn(tx)
 	id, err := s.ammunitionCharacter(ctx, q, campaignID, characterID)
 	if err != nil {
 		return 0, err

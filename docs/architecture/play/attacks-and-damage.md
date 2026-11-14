@@ -89,6 +89,22 @@ The Attack action makes one attack, or more with Extra Attack: `combatants.attac
 Extra Attack belongs to weapon attacks only: a cantrip spends the whole action and counts no attack, and after a weapon attack a cantrip gives `ACTION_USED`, and vice versa.
 The master has the last word on an NPC, with one exception: an NPC from a creature with a Multiattack (`AttacksPerAction` above 1) is held to the count of its routine, and the attack after the last gives `ATTACKS_USED` to the master too (`routineLeft`); a creature without Multiattack, a reaction, the extra action and a player's character the master acts for are not counted. The routine itself (which attacks, in which mix) is not stored: the screen reads it from the stat block, and ending the routine early is the screen's.
 
+**Ammunition.**
+A player's character that attacks at range with a weapon that fires ammunition (a bow, a crossbow, a sling, a blowgun) takes one piece of it for each attack roll, so Extra Attack takes one for each attack (`combat_ammunition.go`).
+The sheet's attack line carries the kind (`rules.Attack.AmmunitionKey`, from `effects/ammunition.json`, and `link.Attack.Ammunition`).
+`prepare` refuses with `AMMUNITION_EMPTY` when none is left, and nothing is written.
+`writeAttack` takes the piece after the roll settled, in the same transaction, through the characters keeper with the combat's id.
+It writes the `ammunition_spent` event just before the attack's own event, a line that only the master and the character's player read.
+That event never closes the undo chain (`chainAmmunition`), and the undo does not give the piece back: the master corrects the stock with `SetAmmunition`.
+Two attacks at the last piece give one shot: the keeper locks the stock, and the second gets `AMMUNITION_EMPTY`.
+A thrown weapon, a melee weapon, the creatures and the master's NPCs spend nothing.
+
+**The improvised line.**
+A weapon that fires ammunition has a second attack line, keyed `<weapon key>:melee` and named "<weapon>, corpo a corpo" (`improvised` is true).
+It is a melee attack of 1d4 plus Strength, bludgeoning, without proficiency or the weapon's bonuses, and it spends no ammunition.
+`GetTurnOptions` fills `ammunition_left` on the ammunition line (0 when none is left) for the character's player and the master, and leaves it absent on every other line.
+A sheet's derived attacks never carry it.
+
 **Beams and bonus action attacks.**
 A cantrip with several beams (Eldritch Blast) is one attack roll per `RollAttack`, each beam with its own damage (Agonizing Blast on each), up to `Attack.Beams`; the combatant row remembers the attack of the action (`action_attack_key`) and `attacks_made` counts the beams.
 `GetTurnOptions` offers the next beam the same way (`beams_left`).

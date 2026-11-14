@@ -93,6 +93,7 @@ func TestSavageAttacksAddsOneWeaponDieToAMeleeWeaponCritical(t *testing.T) {
 	t.Run("a ranged attack", func(t *testing.T) {
 		t.Parallel()
 		a, e := raceFight(t, "race:half-orc", "class:fighter", 1)
+		a.stockArrows(t, a.toren)
 		if p := a.mustAttack(t, a.caio, e, "Ragna", shortbowKey, "Goblin", disadvantage(20)).GetPendingDamage(); !p.GetCritical() || p.GetExtraDiceCount() != 0 {
 			t.Errorf("a ranged critical = %d extra, want none", p.GetExtraDiceCount())
 		}

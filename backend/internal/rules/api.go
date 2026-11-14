@@ -1100,6 +1100,12 @@ type Attack struct {
 	// strike from a weapon_rule; a creature's attack has neither.
 	Silvered   bool `json:",omitempty"`
 	Adamantine bool `json:",omitempty"`
+	// AmmunitionKey is the key of the ammunition a character's ranged weapon fires ("equipment:arrow"); empty for
+	// every other line. The combat spends a piece of it for each attack roll made with the line.
+	AmmunitionKey string `json:",omitempty"`
+	// Improvised says the line is the melee use of a weapon that is not made for it (a bow used as a club), keyed
+	// "<weapon key>:melee": 1d4 plus Strength with no proficiency. It spends no ammunition.
+	Improvised bool `json:",omitempty"`
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads

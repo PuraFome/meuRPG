@@ -265,7 +265,10 @@ func (f *attackFlow) prepare(ctx context.Context) error {
 	if err := f.checkEconomy(ctx); err != nil {
 		return err
 	}
-	return f.readCover(ctx)
+	if err := f.readCover(ctx); err != nil {
+		return err
+	}
+	return f.checkAmmunition(ctx)
 }
 
 // writeAttack is what the settled d20 does: the event, the economy, the damage it opens and the offer it answers.
@@ -273,7 +276,7 @@ func (f *attackFlow) writeAttack(ctx context.Context) error {
 	// spendPowerAttack stays after resolve: rollExtraDice (in resolve) assigns maneuverSpent, and the power attack's
 	// resource is appended to what it left.
 	for _, phase := range []func(context.Context) error{
-		f.resolve, f.spendPowerAttack, f.readPowerHidden, f.autoParry, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
+		f.resolve, f.spendAmmunition, f.spendPowerAttack, f.readPowerHidden, f.autoParry, f.record, f.spendEconomy, f.spendLimit, f.closeThrow, f.openHitDamage, f.answerOffer, f.settle,
 	} {
 		if err := phase(ctx); err != nil {
 			return err

@@ -1378,6 +1378,13 @@ message Attack {
   // 0 for a weapon with no counting bonus, for a spell, an unarmed strike and a creature's attack.
   // Display only: `attack_bonus` and `damage` already include it, so the app never adds it again.
   int32 magic_bonus = 25;
+  // For a weapon that fires ammunition, used at range: the pieces of its kind the character has left (0: none, the shot is
+  // refused). Absent for every other line, and in a sheet's derived attacks (only the turn's options carry it, for the
+  // character's player and the master).
+  optional int32 ammunition_left = 26;
+  // The line is an improvised melee attack with a weapon that is not made for it (a bow used as a club): 1d4 plus Strength,
+  // no proficiency, and no ammunition spent.
+  bool improvised = 27;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

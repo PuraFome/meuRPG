@@ -289,6 +289,7 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		Key:                 a.Key,
 		Name:                a.Name,
 		NamePt:              a.NamePT,
+		Improvised:          a.Improvised,
 		AttackBonus:         i32(a.AttackBonus),
 		Damage:              a.Damage,
 		DamageTypePt:        a.DamageTypeNamePT,

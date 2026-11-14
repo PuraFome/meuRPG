@@ -115,6 +115,7 @@ func (c chainEvent) payload() (ev actionEvent, ok bool) {
 // that says something decides. The last one always does.
 var chainRules = []func(c chainEvent) chainVerdict{
 	chainCreatures,
+	chainAmmunition,
 	chainCastZoneCatch,
 	chainConcentrationEnd,
 	chainReadiedDefeat,
@@ -145,6 +146,15 @@ func chainVerdictOf(c chainEvent) chainVerdict {
 		}
 	}
 	return chainClose
+}
+
+// chainAmmunition: the piece of ammunition a shot took is written before the attack's own event, which is what an undo
+// acts on: the line stays in the log, and it never closes the undo chain.
+func chainAmmunition(c chainEvent) chainVerdict {
+	if c.row.Kind == eventAmmunitionSpent {
+		return chainSkip
+	}
+	return chainGoOn
 }
 
 // chainCreatures: the creatures a cast or an ended concentration made or dismissed are

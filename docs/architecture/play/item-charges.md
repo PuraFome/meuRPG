@@ -44,6 +44,13 @@ It refuses with `ChargesBlocked` `COMBAT_RUNNING` while that combat is not ended
 A character that fired nothing in its latest combat is `invalid_argument`.
 It writes the session event `ammunition_recovered`.
 
+## Ammunition in combat
+
+A ranged attack with a weapon that fires ammunition takes one piece in the attack's transaction ([Attacks and damage](attacks-and-damage.md#the-two-step-attack)).
+The keeper's `SpendAmmunition` starts the count of a combat over (nothing fired, not recovered) when the combat is not the one it last counted.
+With none left the attack is refused with `EncounterBlocked` `AMMUNITION_EMPTY`.
+Each shot writes the session event `ammunition_spent` with the combat's round, which reads as the line `AMMUNITION_SPENT`.
+
 ## Events
 
 The events are `item_charge_spent`, `item_charges_restored`, `item_destroyed`, `ammunition_spent` and `ammunition_recovered`.

@@ -6864,7 +6864,14 @@ type Attack struct {
 	// It counts only while the weapon is equipped and, when the piece needs attunement, attuned.
 	// 0 for a weapon with no counting bonus, for a spell, an unarmed strike and a creature's attack.
 	// Display only: `attack_bonus` and `damage` already include it, so the app never adds it again.
-	MagicBonus    int32 `protobuf:"varint,25,opt,name=magic_bonus,json=magicBonus,proto3" json:"magic_bonus,omitempty"`
+	MagicBonus int32 `protobuf:"varint,25,opt,name=magic_bonus,json=magicBonus,proto3" json:"magic_bonus,omitempty"`
+	// For a weapon that fires ammunition, used at range: the pieces of its kind the character has left (0: none, the shot is
+	// refused). Absent for every other line, and in a sheet's derived attacks (only the turn's options carry it, for the
+	// character's player and the master).
+	AmmunitionLeft *int32 `protobuf:"varint,26,opt,name=ammunition_left,json=ammunitionLeft,proto3,oneof" json:"ammunition_left,omitempty"`
+	// The line is an improvised melee attack with a weapon that is not made for it (a bow used as a club): 1d4 plus Strength,
+	// no proficiency, and no ammunition spent.
+	Improvised    bool `protobuf:"varint,27,opt,name=improvised,proto3" json:"improvised,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7072,6 +7079,20 @@ func (x *Attack) GetMagicBonus() int32 {
 		return x.MagicBonus
 	}
 	return 0
+}
+
+func (x *Attack) GetAmmunitionLeft() int32 {
+	if x != nil && x.AmmunitionLeft != nil {
+		return *x.AmmunitionLeft
+	}
+	return 0
+}
+
+func (x *Attack) GetImprovised() bool {
+	if x != nil {
+		return x.Improvised
+	}
+	return false
 }
 
 // Feature is a class feature, racial trait or background feature.
@@ -14650,7 +14671,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"from_level\x18\r \x01(\x05R\tfromLevel\x124\n" +
 	"\x16no_material_components\x18\x0e \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
-	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\xeb\x06\n" +
+	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\xcd\a\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -14682,7 +14703,12 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"adamantine\x12\x18\n" +
 	"\amagical\x18\x18 \x01(\bR\amagical\x12\x1f\n" +
 	"\vmagic_bonus\x18\x19 \x01(\x05R\n" +
-	"magicBonus\"\xb3\x02\n" +
+	"magicBonus\x12,\n" +
+	"\x0fammunition_left\x18\x1a \x01(\x05H\x00R\x0eammunitionLeft\x88\x01\x01\x12\x1e\n" +
+	"\n" +
+	"improvised\x18\x1b \x01(\bR\n" +
+	"improvisedB\x12\n" +
+	"\x10_ammunition_left\"\xb3\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -15975,6 +16001,7 @@ func file_meurpg_rules_v1_rules_proto_init() {
 	if File_meurpg_rules_v1_rules_proto != nil {
 		return
 	}
+	file_meurpg_rules_v1_rules_proto_msgTypes[45].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
