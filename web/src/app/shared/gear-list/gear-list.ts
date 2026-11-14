@@ -16,6 +16,7 @@ import {
 } from '@angular/core';
 
 import type { GearVm } from '../../core/characters/gear';
+import { BonusChip } from '../bonus-chip/bonus-chip';
 import { Fold } from '../fold/fold';
 import { WeaponTags } from '../weapon-tags/weapon-tags';
 
@@ -38,7 +39,7 @@ export interface GearToggle {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-gear-list',
-  imports: [Fold, MatButtonModule, MatIconModule, NgTemplateOutlet, WeaponTags],
+  imports: [BonusChip, Fold, MatButtonModule, MatIconModule, NgTemplateOutlet, WeaponTags],
   templateUrl: './gear-list.html',
   styleUrl: './gear-list.scss',
 })
@@ -54,9 +55,9 @@ export class GearList {
   readonly gear = input.required<readonly GearVm[]>();
   /** Whether the buttons exist: false for a reader who may not change the gear. */
   readonly canChange = input(true);
-  /** Whether each weapon has its "⋮" for its marks (the owner while the sheet is editable, the master always). */
+  /** Whether each row has its "⋮" for its marks or bonus (the owner while the sheet is editable, the master always). */
   readonly canMark = input(false);
-  /** A tap on a weapon's "⋮": the page opens the sheet of its marks. */
+  /** A tap on a row's "⋮": the page opens the sheet of its marks (a weapon) or its bonus (armor, shield). */
   readonly marksOpened = output<GearVm>();
   /** The piece being saved: its button waits, the others stay. */
   readonly busyKey = input<string | null>(null);
@@ -74,8 +75,10 @@ export class GearList {
   /** The attunement chip of a piece: 'on' when it is attuned, 'asks' when it asks and is not, '' for none. */
   readonly attunement = input<(piece: GearVm) => AttunementChip>(() => '');
 
-  /** The armor class now (`DerivedSheet.armor_class`): a row shows the server's number only when it differs. */
+  /** The armor class now (`DerivedSheet.armor_class`): the "Equipado" head shows it and a row says what a change would leave. */
   readonly armorClass = input<number | null>(null);
+  /** Whether the "Equipado" head carries "CA N" on the right. */
+  readonly showArmorClass = input(false);
 
   readonly toggled = output<GearToggle>();
 
@@ -115,12 +118,25 @@ export class GearList {
           ? 'Arma de duas mãos'
           : 'Arma';
 
-  /** What the button promises about the armor class: the server's number, only when it differs from the current. */
+  /** What the button promises about the armor class, said only to a screen reader: the server's number when it differs. */
   protected armorLine(g: GearVm, current: number | null): string {
     if (this.combat() || g.armorClassIfToggled <= 0 || g.armorClassIfToggled === current) {
       return '';
     }
     return `CA ${g.armorClassIfToggled}`;
+  }
+
+  /** What a screen reader hears for the "⋮" of a row: the title of the sheet it opens. */
+  protected moreLabel(g: GearVm): string {
+    return `${g.kind === 'weapon' ? 'Marcas' : 'Bônus'} · ${g.namePt}`;
+  }
+
+  /** The warning a two-handed weapon in the carried group gives: drawing it leaves the shield idle. */
+  protected warnText(g: GearVm): string {
+    const ac = this.armorClass();
+    return ac === null
+      ? ', Sacar desativa o escudo'
+      : `, Sacar desativa o escudo: CA ${ac} → ${g.armorClassIfToggled}`;
   }
 
   protected icon(g: GearVm): string {

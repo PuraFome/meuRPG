@@ -260,4 +260,43 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
     const { el } = render((h) => h.manage.set(true));
     expect(el.querySelector('.gear__lock')).toBeNull();
   });
+
+  it('puts the armor class on the "Equipado" head, not on a line of its own', () => {
+    const { el } = render((h) =>
+      h.sheet.set(sheetWith([entry({})], [piece('equipment:mace', 'Maça')])),
+    );
+    expect(el.querySelector('.gear__ac')).toBeNull();
+    expect(flat(el.querySelector('.gear-group__ac'))).toBe('CA 14');
+    expect(flat(el.querySelector('section.mr-panel'))).toContain('Classe de armadura 14');
+  });
+
+  it('draws the legend of the chips on the rows: the marks, the attunement and the bonus', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith(
+          [],
+          [
+            {
+              ...piece('equipment:rapier', 'Rapieira'),
+              marks: { silvered: true, adamantine: false, magical: true },
+              bonus: 1,
+              bonusCounts: true,
+            },
+          ],
+        ),
+      ),
+    );
+    const legend = el.querySelector('ul.legend')!;
+    expect(legend.getAttribute('aria-label')).toBe('Legenda dos selos');
+    expect(Array.from(legend.querySelectorAll('li')).map((li) => flat(li))).toEqual([
+      expect.stringContaining('Prateada'),
+      expect.stringContaining('Mágica'),
+      expect.stringContaining('Bônus mágico, já somado'),
+    ]);
+  });
+
+  it('draws no legend when no row has a chip', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([], [piece('equipment:mace', 'Maça')])));
+    expect(el.querySelector('ul.legend')).toBeNull();
+  });
 });

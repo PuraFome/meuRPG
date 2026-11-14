@@ -10,6 +10,7 @@ import {
   GearList,
   type GearToggle,
 } from '../../../shared/gear-list/gear-list';
+import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
 import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
 import { FullSheetVm } from '../character-sheet.types';
 import { coinEntries, keepUnitsTogether } from '../sheet-format';
@@ -22,7 +23,7 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-equipment-panel',
-  imports: [GearList, MatButtonModule, MatIconModule],
+  imports: [BonusChip, GearList, MatButtonModule, MatIconModule],
   templateUrl: './equipment-panel.html',
   styleUrl: './equipment-panel.scss',
 })
@@ -96,6 +97,22 @@ export class EquipmentPanel {
     const chip = this.chipOf();
     return this.sheet().gear.some((g) => chip(g) !== '');
   });
+
+  /** The marks that appear on some gear row, for the legend: the word and the icon of each chip. */
+  protected readonly legendMarks = computed(() => {
+    const gear = this.sheet().gear;
+    return [
+      { word: 'Prateada', icon: 'dark_mode', on: gear.some((g) => g.marks?.silvered) },
+      { word: 'Adamantina', icon: 'diamond', on: gear.some((g) => g.marks?.adamantine) },
+      { word: 'Mágica', icon: 'auto_awesome', on: gear.some((g) => g.marks?.magical) },
+    ].filter((m) => m.on);
+  });
+  /** Some gear row carries a magic bonus chip. */
+  protected readonly hasBonus = computed(() => this.sheet().gear.some((g) => !!g.bonus));
+  /** The legend shows when any chip is on a row. */
+  protected readonly hasLegend = computed(
+    () => this.legendMarks().length > 0 || this.showsChips() || this.hasBonus(),
+  );
 
   /** The line under a magic item that asks and is not attuned, with its icon; the same words as the short-rest sheet. */
   protected reasonOfEntry(e: AttunementEntryVm) {

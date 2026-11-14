@@ -1,5 +1,5 @@
 :host {
-  display: inline-block;
+  display: inline-flex;
 }
 
 .weapon-tags {
@@ -20,5 +20,24 @@
     width: 16px;
     height: 16px;
     font-size: 16px;
+  }
+}
+
+// The compact tag: a round chip, the icon alone.
+.weapon-tags__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: 999px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
   }
 }

@@ -162,8 +162,16 @@ function auditLayout(): LayoutIssue[] {
     for (const n of textNodesOf(scope)) {
       const range = document.createRange();
       range.selectNodeContents(n);
+      // Words clipped by an ancestor (an ellipsized name) are not drawn past its edge.
+      let clip: DOMRect | null = null;
+      for (let a = n.parentElement; a && a !== scope.parentElement; a = a.parentElement) {
+        if (getComputedStyle(a).overflowX !== 'visible') clip = a.getBoundingClientRect();
+        if (clip) break;
+      }
       for (const r of range.getClientRects()) {
-        const x = Math.min(r.right, ir.right) - Math.max(r.left, ir.left);
+        const left = clip ? Math.max(r.left, clip.left) : r.left;
+        const right = clip ? Math.min(r.right, clip.right) : r.right;
+        const x = Math.min(right, ir.right) - Math.max(left, ir.left);
         const y = Math.min(r.bottom, ir.bottom) - Math.max(r.top, ir.top);
         if (x > 2 && y > 2) {
           issues.push({

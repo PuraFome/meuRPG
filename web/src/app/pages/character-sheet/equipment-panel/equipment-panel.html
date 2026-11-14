@@ -1,7 +1,6 @@
 @let s = sheet();
 <section class="mr-panel" aria-labelledby="equipamento-heading">
   <h2 id="equipamento-heading" class="mr-panel__title">Equipamento</h2>
-  <p class="gear__ac">Classe de armadura <strong>{{ s.armorClass }}</strong></p>
   @if (hasAttunement()) {
     <p class="att-head">
       <mat-icon aria-hidden="true">link</mat-icon>
@@ -16,6 +15,7 @@
   <app-gear-list
     [gear]="s.gear"
     [armorClass]="s.armorClass"
+    [showArmorClass]="true"
     [canChange]="canEquip()"
     [canMark]="canMark()"
     [busyKey]="equipBusyKey()"
@@ -83,10 +83,18 @@
       <p class="gear__notice" role="status">{{ magicNotice() }}</p>
     </section>
   }
-  @if (showsChips()) {
-    <ul class="legend" aria-label="Legenda dos selos de sintonização">
-      <li><span class="legend__chip legend__chip--on"><mat-icon aria-hidden="true">link</mat-icon></span>Sintonizado</li>
-      <li><span class="legend__chip"><mat-icon aria-hidden="true">link</mat-icon></span>Pede sintonização</li>
+  @if (hasLegend()) {
+    <ul class="legend" aria-label="Legenda dos selos">
+      @for (m of legendMarks(); track m.word) {
+        <li><span class="legend__chip legend__chip--mark"><mat-icon aria-hidden="true">{{ m.icon }}</mat-icon></span>{{ m.word }}</li>
+      }
+      @if (showsChips()) {
+        <li><span class="legend__chip legend__chip--on"><mat-icon aria-hidden="true">link</mat-icon></span>Sintonizado</li>
+        <li><span class="legend__chip"><mat-icon aria-hidden="true">link</mat-icon></span>Pede sintonização</li>
+      }
+      @if (hasBonus()) {
+        <li><app-bonus-chip [bonus]="1" />Bônus mágico, já somado</li>
+      }
     </ul>
   }
   @if (!canMark() && !canManageMagic() && canEquip()) {

@@ -1590,7 +1590,7 @@ describe('CharacterSheetPage', () => {
       };
     }
     const more = (el: HTMLElement, name: string) =>
-      el.querySelector<HTMLButtonElement>(`button[aria-label="Marcas da ${name}"]`);
+      el.querySelector<HTMLButtonElement>(`button[aria-label="Marcas · ${name}"]`);
     let opened: WeaponMarksData[] = [];
     /** The sheet of the marks is a dialog here (no phone): record what it was opened with and close it as `result`. */
     function configureMarks(result: boolean | undefined = undefined): void {

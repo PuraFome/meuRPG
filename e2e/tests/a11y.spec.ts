@@ -8527,8 +8527,8 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
     await p.goto('/');
     const sheet = {
       weaponKeys: ['equipment:longsword'],
-      armorKey: 'equipment:chain-mail',
-      itemBonuses: [{ key: 'equipment:longsword', bonus: 3, requiresAttunement: true }],
+      armorKey: 'equipment:studded-leather-armor',
+      itemBonuses: [{ key: 'equipment:longsword', bonus: 3, requiresAttunement: true }, { key: 'equipment:studded-leather-armor', bonus: 2 }],
       magicItems: [
         { key: 'item:ring-of-protection' },
         { key: 'item:cloak-of-elvenkind' },
@@ -8555,7 +8555,7 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
         await cropAtt(gearOf(page).locator('.magic'), `itens-magicos-${who}-${width}`, colorScheme);
       }
     }
-    await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos de sintonização' }), 'legenda-selos', colorScheme);
+    await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos' }), 'legenda-selos', colorScheme);
     await cropAtt(gearOf(p).locator('.gear__lock'), 'linha-travada', colorScheme);
 
     // The master: the same list with the menus.
@@ -8747,17 +8747,22 @@ async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | '
     await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
     const equipment = p.getByRole('region', { name: 'Equipamento' });
     await expect(equipment.getByRole('list', { name: 'Marcas da arma' })).toHaveCount(2);
-    await expect(equipment.getByText('Prateada')).toBeVisible();
-    await expect(equipment.getByText('Adamantina')).toBeVisible();
+    // The chips carry the word for a screen reader; the legend under the list shows it.
+    const marksLists = equipment.getByRole('list', { name: 'Marcas da arma' });
+    await expect(marksLists.getByText('Prateada')).toHaveCount(1);
+    await expect(marksLists.getByText('Adamantina')).toHaveCount(1);
+    const legend = equipment.getByRole('list', { name: 'Legenda dos selos' });
+    await expect(legend.getByText('Prateada')).toBeVisible();
+    await expect(legend.getByText('Adamantina')).toBeVisible();
     await expectScreenPasses(p, `Ficha, marcas nas armas ${where}`);
     // The table is in play, so the owner's sheet is locked: no "⋮" for the owner, and a line says who marks.
-    await expect(equipment.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(equipment.getByRole('button', { name: /^Marcas · / })).toHaveCount(0);
     await expect(equipment.getByText('Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.')).toBeVisible();
 
     // The master edits at any time: the weapon's "⋮" opens its marks, then a saved mark.
     await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
     const masterEquipment = m.getByRole('region', { name: 'Equipamento' });
-    await masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' }).click();
+    await masterEquipment.getByRole('button', { name: 'Marcas · Espada longa' }).click();
     const sheet = m.getByRole('dialog', { name: 'Marcas da Espada longa' });
     await expect(sheet.getByRole('checkbox', { name: /^Prateada/ })).toBeChecked();
     await expect(sheet.getByRole('checkbox', { name: /^Adamantina/ })).not.toBeChecked();
@@ -8766,12 +8771,12 @@ async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | '
     await sheet.getByRole('button', { name: 'Salvar marcas' }).click();
     await expect(sheet).toHaveCount(0);
     await expect(masterEquipment.getByRole('status').filter({ hasText: 'Marcas salvas.' })).toBeVisible();
-    await expect(masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' })).toBeFocused();
+    await expect(masterEquipment.getByRole('button', { name: 'Marcas · Espada longa' })).toBeFocused();
 
     // Another player never sees the grid, nor the marks.
     outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
     await openLive(outsider.page, `/campaigns/${campaignId}/characters/${table.characterId}`);
-    await expect(outsider.page.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(outsider.page.getByRole('button', { name: /^Marcas · / })).toHaveCount(0);
     await expect(outsider.page.getByRole('dialog', { name: /^Marcas da / })).toHaveCount(0);
     await expect(outsider.page.getByText('Prateada')).toHaveCount(0);
     await expectScreenPasses(outsider.page, `Ficha de outro jogador, sem as marcas ${where}`);

@@ -8,61 +8,81 @@
   font-weight: 600;
 }
 
+.gear-group__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  margin: 0 0 var(--mr-space-1);
+
+  .gear-group__title {
+    margin: 0;
+  }
+}
+
+.gear-group__ac {
+  font-size: var(--mr-font-14);
+  font-variant-numeric: tabular-nums;
+}
+
+// A row is one line: only the name shrinks (and ellipsizes); "duas mãos" goes first where the list is narrow.
+// The list is a two-column grid, the row's words and the button, so the buttons of one list share a width.
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
 .gear-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--mr-space-2);
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.gear-group__title--carried {
-  display: flex;
-  align-items: center;
-  gap: var(--mr-space-1);
-  font-size: var(--mr-font-14);
-
-  .mat-icon {
-    width: var(--mr-font-18);
-    height: var(--mr-font-18);
-    font-size: var(--mr-font-18);
-  }
-}
-
 .gear-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
   align-items: center;
-  gap: var(--mr-space-1) var(--mr-space-3);
   padding-block: var(--mr-space-1);
   border-top: 1px solid var(--mr-rule);
 }
 
-.gear-row__text {
+.gear-row__main {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--mr-space-2);
+  align-items: center;
+  gap: var(--mr-space-2);
   min-width: 0;
-}
 
-.gear-row__lead {
-  min-width: 0;
-  overflow-wrap: anywhere;
+  > * {
+    flex: none;
+  }
 
-  > * + * {
-    margin-inline-start: var(--mr-space-2);
+  > .gear-row__name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  > .gear-row__more {
+    margin-inline-start: auto;
   }
 }
 
-.gear-row__name {
-  overflow-wrap: anywhere;
-}
-
-.gear-row__glue {
-  white-space: nowrap;
+@container (max-width: 420px) {
+  .gear-row__kind {
+    display: none;
+  }
 }
 
 .gear-row__kind {
   font-size: var(--mr-font-14);
+  white-space: nowrap;
 }
 
 .gear-row__icon {
@@ -81,6 +101,7 @@
   border: 1px dashed var(--mr-rule);
   border-radius: var(--mr-radius-pill);
   font-size: var(--mr-font-14);
+  white-space: nowrap;
 }
 
 .gear-row--idle .gear-row__name {
@@ -109,24 +130,15 @@
 
 .gear-row__button {
   min-height: 2.75rem;
-  min-width: 2.75rem;
-}
-
-.gear-row__ac {
-  margin-inline-start: var(--mr-space-2);
-  font-variant-numeric: tabular-nums;
+  min-width: 80px;
+  justify-self: stretch;
+  padding-inline: var(--mr-space-2);
+  white-space: nowrap;
 }
 
 .gear-row__count {
-  margin-inline-start: var(--mr-space-1);
   font-size: var(--mr-font-14);
   font-weight: 600;
-}
-
-.gear-row__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--mr-space-2);
 }
 
 // The weapon's marks menu: a quiet 44 px target beside "Equipar" / "Guardar".
@@ -161,7 +173,6 @@
   box-sizing: border-box;
   width: 22px;
   height: 22px;
-  margin-inline-start: 4px;
   border: 1px dashed var(--mr-rule);
   border-radius: 999px;
   vertical-align: middle;
