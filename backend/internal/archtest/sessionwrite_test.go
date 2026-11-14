@@ -1066,6 +1066,21 @@ func TestSessionWriteKeys(t *testing.T) {
 			nil,
 		},
 		{
+			// The limit named in the rule's header: the forwarded implementation is not read, so a caller of it is a writer only
+			// through a function of the package that shares the name. With no such function (a package whose RPC handler of that
+			// name is gone, or never was) a new play caller in its own transaction outside Service.tx is NOT flagged. This pins
+			// today's behavior; play's seq rows (hints_*_test.go) are what catch such a caller.
+			"a caller of a delegated method that no function of the package shares the name of is not flagged (a named limit)",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"type Keeper interface{ SetExhaustion(c C, tx pgx.Tx) error }\n" +
+					"type clocked struct{ Keeper }\n" +
+					"func (k clocked) SetExhaustion(c C, tx pgx.Tx) error { return k.Keeper.SetExhaustion(c, tx) }\n" +
+					"func (s *Service) Tire(c C) error { return db.InTx(c, p, func(tx pgx.Tx) error { return s.vitals.SetExhaustion(c, tx) }) }",
+			},
+			nil,
+		},
+		{
 			"a same-named wrapper that also writes is a writer",
 			map[string]string{
 				"internal/play/a.go": "package play\n" +
