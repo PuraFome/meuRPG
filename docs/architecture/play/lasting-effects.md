@@ -172,7 +172,7 @@ How the hit uses it is in [Attacks and damage](attacks-and-damage.md#a-spells-hi
 - **When the concentration ends it.**
   The caster's own line is the conditions line with `concentration_ended_key` set to the spell.
   The effect's line is an `EFFECT` entry with change `ENDED`, reason `concentration`, the effect's key and name and the caster as actor; it follows the effect's visibility (hidden or `owner`: no other player reads it).
-  The effect's line carries `unused` (`CombatLogEffect.unused`): true when the ended casting held an on-hit effect (a `weapon_hit_damage` modifier of any trigger) with no `spent_at`, so the line reads "acabou sem golpe".
+  The effect's line carries `unused` (`CombatLogEffect.unused`): true when the ended casting held an on-hit effect (a `weapon_hit_damage` modifier of any trigger) that no hit used, so the line reads "acabou sem golpe". A `next_hit` and a `next_melee_hit` are used when they have a `spent_at`; an `each_hit` and a `marked_target` are never spent, so they count as used when a rolled or applied damage holds a roll of the row (`endedUnused`).
   False when a hit spent the row, or the effect is not an on-hit one.
   The bit is stored in the line's event (`lastingEvent.Unused`, set where the casting ends), so the line reads the same later and the undo of the end takes it away with the line.
   Whoever reads the line reads the bit.
