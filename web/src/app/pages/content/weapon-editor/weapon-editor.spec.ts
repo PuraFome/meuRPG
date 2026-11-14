@@ -110,8 +110,8 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
   it('asks for the two-handed damage only while the weapon is Versátil', async () => {
     const { fixture, el } = setup();
     expect(field(el, 'table_weapon.two_handed_damage')).toBeTruthy();
-    const chips = Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
-      (b.getAttribute('aria-label') ?? '').includes('Versátil'),
+    const chips = Array.from(el.querySelectorAll<HTMLButtonElement>('button.tchip')).find((b) =>
+      (b.textContent ?? '').includes('Versátil'),
     )!;
     chips.click();
     await settle(fixture, 2);
@@ -145,13 +145,11 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
 
   it('says what the combination of properties is as soon as it is on the form', async () => {
     const { fixture, el } = setup(false);
-    const picker = el.querySelector<HTMLSelectElement>(
-      '[data-field="table_weapon.properties"] select',
-    )!;
-    picker.value = P('ammunition');
-    picker.dispatchEvent(new Event('change'));
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button.tchip'))
+      .find((b) => (b.textContent ?? '').includes('Munição'))!
+      .click();
     await settle(fixture, 2);
-    expect(text(el)).toContain('Munição é de arma à distância');
+    expect(text(el)).toContain('Munição só numa arma à distância.');
   });
 
   it('puts the server refusal of the damage at the damage field, in Portuguese', async () => {

@@ -29,14 +29,15 @@ import {
   WEAPON_NAME_MAX,
   draftToWeapon,
   emptyWeapon,
-  lockedProperties,
+  lockNote,
   propertyClash,
+  propertyLocks,
   unreadableWeaponPaths,
   weaponToDraft,
 } from '../../../core/content/weapon-draft';
 import { COINS } from '../../../core/content/weapon-text';
-import { PickList } from '../../../shared/form-fields/pick-list';
-import { RadioCards, type RadioCard } from '../../../shared/form-fields/radio-cards';
+import { ToggleChips, type ToggleChip } from '../../../shared/form-fields/toggle-chips';
+import { Segmented, type Segment } from '../../../shared/segmented/segmented';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
@@ -46,11 +47,11 @@ import type { EditorSaved } from '../spell-editor/spell-editor';
 
 const NOT_A_NUMBER = 'Escreva um número, como 2 ou 1,5.';
 
-const CATEGORIES: readonly RadioCard[] = [
+const CATEGORIES: readonly Segment<string>[] = [
   { value: 'simple', label: 'Simples' },
   { value: 'martial', label: 'Marcial' },
 ];
-const USES: readonly RadioCard[] = [
+const USES: readonly Segment<string>[] = [
   { value: 'melee', label: 'Corpo a corpo' },
   { value: 'ranged', label: 'À distância' },
 ];
@@ -70,8 +71,8 @@ const USES: readonly RadioCard[] = [
     PlayersSwitch,
     EntryRead,
     MatIconModule,
-    PickList,
-    RadioCards,
+    Segmented,
+    ToggleChips,
     SelectField,
     TextField,
   ],
@@ -116,18 +117,22 @@ export class WeaponEditor {
   ]);
   protected readonly versatile = computed(() => this.draft().properties.includes(VERSATILE));
 
-  /** The SRD's properties, the ones this use cannot carry shut, with the reason. */
-  protected readonly propertyOptions = computed<SelectOption[]>(() => {
-    const locked = lockedProperties(this.draft().ranged);
-    const why = this.draft().ranged ? 'só corpo a corpo' : 'só à distância';
+  private readonly locks = computed(() =>
+    propertyLocks(this.draft().ranged, this.draft().properties),
+  );
+  /** The SRD's properties as chips: the shut ones stay, dashed, and the line under them says why. */
+  protected readonly propertyChips = computed<ToggleChip[]>(() => {
+    const shut = this.locks().map((l) => l.key);
+    const chosen = this.draft().properties;
     return this.menu()
       .list('weapon_properties')
-      .map((p) =>
-        locked.includes(p.key)
-          ? { value: p.key, label: `${p.namePt} (${why})`, disabled: true }
-          : { value: p.key, label: p.namePt },
-      );
+      .map((p) => ({
+        value: p.key,
+        label: p.namePt,
+        locked: shut.includes(p.key) && !chosen.includes(p.key),
+      }));
   });
+  protected readonly lockLine = computed(() => lockNote(this.locks()));
   protected readonly clash = computed(() =>
     propertyClash(this.draft().ranged, this.draft().properties),
   );

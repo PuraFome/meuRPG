@@ -8,8 +8,8 @@
         <app-text-field label="Nome" [value]="d.name" [maxlength]="nameMax" path="table_weapon.name_pt" [issues]="issuesOf('table_weapon.name_pt')" (valueChange)="patch({ name: $event })" />
       </div>
       <div class="grid grid--2">
-        <app-radio-cards label="Categoria" [options]="categories" [value]="d.category === martial ? 'martial' : 'simple'" path="table_weapon.category" [issues]="issuesOf('table_weapon.category')" (valueChange)="setCategory($event)" />
-        <app-radio-cards label="Uso" [options]="uses" [value]="d.ranged ? 'ranged' : 'melee'" (valueChange)="setUse($event)" />
+        <app-segmented label="Categoria" [segments]="categories" [value]="d.category === martial ? 'martial' : 'simple'" (choose)="setCategory($event)" />
+        <app-segmented label="Uso" [segments]="uses" [value]="d.ranged ? 'ranged' : 'melee'" (choose)="setUse($event)" />
       </div>
       <div class="grid grid--2">
         <app-text-field label="Dano" [value]="d.damage" path="table_weapon.damage" [issues]="issuesOf('table_weapon.damage')" hint="Como 1d8 ou 2d6." (valueChange)="patch({ damage: $event })" />
@@ -24,7 +24,7 @@
 
     <section class="mr-panel block" aria-labelledby="props-t">
       <h2 class="mr-panel__title" id="props-t">Propriedades</h2>
-      <app-pick-list label="Propriedades" addLabel="Adicionar propriedade" [options]="propertyOptions()" [values]="d.properties" path="table_weapon.properties" [issues]="issuesOf('table_weapon.properties')" hint="Da lista do SRD. As que o uso da arma não aceita ficam fechadas." (added)="patch({ properties: [...d.properties, $event] })" (removed)="patch({ properties: d.properties.filter((k) => k !== $event) })" />
+      <app-toggle-chips label="Propriedades" [chips]="propertyChips()" [values]="d.properties" [lockNote]="lockLine()" path="table_weapon.properties" [issues]="issuesOf('table_weapon.properties')" (valuesChange)="patch({ properties: $event })" />
       @if (rangeShown()) {
         <div class="grid grid--2">
           <app-text-field label="Distância normal" suffix="m" [value]="d.normalRange" inputmode="decimal" path="table_weapon.normal_range_ft" [issues]="issuesOf('table_weapon.normal_range_ft')" (valueChange)="patch({ normalRange: $event })" />
