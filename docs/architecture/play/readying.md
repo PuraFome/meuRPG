@@ -6,7 +6,7 @@ The rules for the table are in [RN-31](../../product/rules.md#rn-31-reactions-an
 
 ## Model
 
-A readied action is a `readied_actions` row (migration 00330).
+A readied action is a `readied_actions` row (migration 00334).
 It holds the readier, the trigger text (1 to 200 characters), the kind, the held action and its name, the target named at Ready and the move.
 A spell row also holds its slot level (`slot_level`, 0 for a cantrip) and the cast id of its Ready (`spell_cast_id`).
 The kinds are `attack`, `move`, `other` and `spell`.

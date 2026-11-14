@@ -164,7 +164,7 @@ type InsertReadiedActionParams struct {
 	SpellCastID  *string
 }
 
-// The readied actions of a combat (migration 00330).
+// The readied actions of a combat (migration 00334).
 func (q *Queries) InsertReadiedAction(ctx context.Context, arg InsertReadiedActionParams) (ReadiedAction, error) {
 	row := q.db.QueryRow(ctx, insertReadiedAction,
 		arg.EncounterID,

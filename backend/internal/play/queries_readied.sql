@@ -1,4 +1,4 @@
--- The readied actions of a combat (migration 00330).
+-- The readied actions of a combat (migration 00334).
 
 -- name: InsertReadiedAction :one
 INSERT INTO readied_actions (encounter_id, combatant_id, round, trigger_text, kind, action_key, action_name_pt, move_ft, target_id, created_at, slot_level, spell_cast_id)
