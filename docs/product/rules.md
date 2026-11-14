@@ -1098,6 +1098,9 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
   A move cannot be held in a combat without a map.
+  A Ready cannot fire during the readier's own turn.
+  In a shared turn, that turn lasts until the readier ends its own part.
+  The SRD is silent here: its tied creatures act one after the other, and it has no shared turns.
   The reaction is spent only when the held action is taken; until then the creature's other reactions stay offered.
   A held attack still waits for the reactions that come before any attack roll (Cutting Words, Protection, the master's check).
   Meanwhile its window takes no other answer and does not pass by itself.

@@ -1098,6 +1098,9 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Esconder-se e Ajudar não podem ser guardados: têm chamadas próprias, que uma reação não executa.
   Correr e Desengajar também não: valem só para o turno da própria criatura.
   Um movimento não pode ser guardado num combate sem mapa.
+  Uma ação preparada não dispara durante o turno de quem a preparou.
+  Num turno compartilhado, esse turno dura até quem preparou encerrar a própria parte.
+  O SRD é omisso aqui: as criaturas empatadas agem uma depois da outra, e ele não tem turnos compartilhados.
   A reação só é gasta quando a ação guardada é tomada; até lá as outras reações da criatura continuam oferecidas.
   Um ataque guardado ainda espera as reações que vêm antes de qualquer jogada de ataque (Palavras de Interrupção, Proteção, a conferência do mestre).
   Nesse meio-tempo a janela dele não aceita outra resposta e não passa sozinha.
