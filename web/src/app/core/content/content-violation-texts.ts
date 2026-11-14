@@ -4,6 +4,7 @@ import { RACE_FIELD_TEXTS } from './content-violation-texts-race';
 /** What the server's reason at a field says in Portuguese: the table `violationText` looks a violation up in (the rest of its words are there). */
 
 import { CREATURE_FIELD_TEXTS } from './content-violation-texts-creature';
+import { WEAPON_FIELD_TEXTS } from './content-violation-texts-weapon';
 import { SPELL_EFFECT_TEXTS } from './content-violation-texts-spell-effect';
 import { SPELL_SUMMON_TEXTS, SUMMON_FIELD_TEXTS } from './content-violation-texts-summon';
 
@@ -339,6 +340,7 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Esta característica tem efeitos demais. Tire alguns.',
   },
   ...CREATURE_FIELD_TEXTS,
+  ...WEAPON_FIELD_TEXTS,
   ...SPELL_EFFECT_TEXTS,
   ...SPELL_SUMMON_TEXTS,
   ...SUMMON_FIELD_TEXTS,

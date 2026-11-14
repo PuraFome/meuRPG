@@ -136,3 +136,27 @@ export function unreadableWeaponPaths(d: WeaponDraft): string[] {
     bad(d.price) ? `${p}.price_cp` : '',
   ].filter(Boolean);
 }
+
+/**
+ * The combination of properties the SRD's weapons never have, in words (the server refuses them all at `.properties` and does
+ * not say which, so the editor says it as soon as the combination is on the form); empty when there is none.
+ */
+export function propertyClash(ranged: boolean, properties: readonly string[]): string {
+  const has = (p: string): boolean => properties.includes(`${PREFIX}${p}`);
+  if (has('loading') && !has('ammunition')) {
+    return 'Recarga só vale para uma arma com Munição.';
+  }
+  if (has('ammunition') && !ranged) {
+    return 'Munição é de arma à distância: uma arma corpo a corpo arremessada usa Arremesso.';
+  }
+  if (has('reach') && ranged) {
+    return 'Alcance é de arma corpo a corpo.';
+  }
+  if (has('two-handed') && has('versatile')) {
+    return 'Versátil já diz que a arma vai em uma ou duas mãos: tire Duas mãos ou tire Versátil.';
+  }
+  if (has('two-handed') && has('light')) {
+    return 'Leve é de arma usada em cada mão: ela não pode exigir Duas mãos.';
+  }
+  return '';
+}
