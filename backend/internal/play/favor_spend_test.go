@@ -168,7 +168,7 @@ type spendTry struct {
 func (f *favorParty) tryFavor(ctx context.Context, a favorAsk) spendTry {
 	var out spendTry
 	err := db.InTx(ctx, f.h.pool, func(tx pgx.Tx) error {
-		out.use, out.err = f.h.svc.useFavor(ctx, f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx)), a)
+		out.use, out.err = f.h.svc.useFavor(ctx, f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx), nil), a)
 		return nil
 	})
 	if err != nil {
@@ -187,7 +187,7 @@ func (f *favorParty) holdOf(t *testing.T, key string, spent bool) heldRoll {
 	t.Helper()
 	var held heldRoll
 	err := db.InTx(t.Context(), f.h.pool, func(tx pgx.Tx) error {
-		env := f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx))
+		env := f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx), nil)
 		var err error
 		held, err = newHeldStores(env.q).insert(t.Context(), env, heldRoll{
 			CampaignID: f.campaignID, CharacterID: f.toren.GetId(), UserID: f.caio.id, Key: key, Kind: heldSceneCheck,
@@ -404,7 +404,7 @@ func TestUseFavorOfTwentyRacersSpendsItOnce(t *testing.T) {
 			// As a path does: the error leaves the closure, so a serialization failure retries it and a refusal rolls back.
 			results[i].err = db.InTx(t.Context(), f.h.pool, func(tx pgx.Tx) error {
 				var err error
-				results[i].use, err = f.h.svc.useFavor(t.Context(), f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx)), a)
+				results[i].use, err = f.h.svc.useFavor(t.Context(), f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx), nil), a)
 				return err
 			})
 		})
@@ -436,7 +436,7 @@ func TestUseFavorIsPartOfTheCallersTransaction(t *testing.T) {
 	}
 	errStop := context.Canceled
 	err := db.InTx(t.Context(), f.h.pool, func(tx pgx.Tx) error {
-		if _, err := f.h.svc.useFavor(t.Context(), f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx)), f.ask(combat.ModeNormal)); err != nil {
+		if _, err := f.h.svc.useFavor(t.Context(), f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx), nil), f.ask(combat.ModeNormal)); err != nil {
 			return err
 		}
 		return errStop

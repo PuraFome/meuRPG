@@ -335,9 +335,14 @@ func (s *Service) writeBackCreatures(ctx context.Context, c *combatTx, cs []play
 // With dismiss, the rows stay and only hide (see endSummons).
 func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.Combatant, drop []playdb.Combatant, dismiss bool) (rest []playdb.Combatant, turnPassed bool, err error) {
 	rest = slices.Clone(cs)
+	stored := slices.Clone(cs) // the order as the table keeps it
 	for _, who := range drop {
 		// What it cast or carried ends with it (RN-22).
 		if err := s.endEffectsOfLeaver(ctx, c, rest, who); err != nil {
+			return nil, false, err
+		}
+		// A mount it carried has its own place back before the turn is settled.
+		if rest, stored, err = releaseMountBefore(ctx, c, rest, stored, who); err != nil {
 			return nil, false, err
 		}
 		passed, err := leaveTurn(ctx, c, rest, who)
@@ -345,26 +350,24 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 			return nil, false, err
 		}
 		turnPassed = turnPassed || passed || inTurn(c.enc, who)
-		if err := s.leaveRow(ctx, c, who, dismiss); err != nil {
+		if dismiss {
+			if err := dismissCombatant(ctx, c, rest, who); err != nil {
+				return nil, false, err
+			}
+		} else if err := leaveRow(ctx, c, who); err != nil {
 			return nil, false, err
 		}
 		rest = slices.DeleteFunc(rest, func(o playdb.Combatant) bool { return o.ID == who.ID })
 	}
-	if _, err := saveOrder(ctx, c.q, cs, rest); err != nil {
+	if err := closeUpOrder(ctx, c, stored, rest); err != nil {
 		return nil, false, err
 	}
 	return rest, turnPassed, nil
 }
 
-// leaveRow takes the combatant's row out of the combat: hidden (dismiss) or deleted. The foreign key would delete its held rolls and the
-// Inspiration they spent with them, so they are forgotten first.
-func (s *Service) leaveRow(ctx context.Context, c *combatTx, who playdb.Combatant, dismiss bool) error {
-	if dismiss {
-		if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{conv.OrZero(who.CreatureID)}, Dismissed: true}); err != nil {
-			return fmt.Errorf("dismiss the combatant: %w", err)
-		}
-		return nil
-	}
+// leaveRow deletes the combatant's row. The foreign key would delete its held rolls and the Inspiration they spent with them, so they are
+// forgotten first.
+func leaveRow(ctx context.Context, c *combatTx, who playdb.Combatant) error {
 	if err := forgetHoldsOf(ctx, c.q, holdOwnerOfCombatant(who)); err != nil {
 		return fmt.Errorf("forget the held rolls: %w", err)
 	}
@@ -372,6 +375,55 @@ func (s *Service) leaveRow(ctx context.Context, c *combatTx, who playdb.Combatan
 		return fmt.Errorf("delete the combatant: %w", err)
 	}
 	return nil
+}
+
+// closeUpOrder saves the order the combatants that stay have, and gives the mount of a rider that left its own place back.
+func closeUpOrder(ctx context.Context, c *combatTx, stored, rest []playdb.Combatant) error {
+	if _, err := saveOrder(ctx, c.q, stored, rest); err != nil {
+		return err
+	}
+	return settleMounts(ctx, c)
+}
+
+// releaseMountBefore is releaseMountOf for the loop of dropCombatants: rest are the combatants still in the combat, stored the order as the
+// table keeps it (every combatant of the call); both answer as they stand once the mount has its own place.
+func releaseMountBefore(ctx context.Context, c *combatTx, rest, stored []playdb.Combatant, who playdb.Combatant) (newRest, newStored []playdb.Combatant, err error) {
+	now, changed, err := releaseMountOf(ctx, c, rest, who)
+	if err != nil || !changed {
+		return rest, stored, err
+	}
+	for _, o := range now {
+		if i := slices.IndexFunc(stored, func(s playdb.Combatant) bool { return s.ID == o.ID }); i >= 0 {
+			stored[i].OrderIndex, stored[i].TieOrdered = o.OrderIndex, o.TieOrdered
+		}
+	}
+	return now, stored, nil
+}
+
+// dismissCombatant hides the combatant of a creature (dismissed rows stay, whole) and puts the rider it carried on foot.
+func dismissCombatant(ctx context.Context, c *combatTx, rest []playdb.Combatant, who playdb.Combatant) error {
+	if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{conv.OrZero(who.CreatureID)}, Dismissed: true}); err != nil {
+		return fmt.Errorf("dismiss the combatant: %w", err)
+	}
+	return unseatRider(ctx, c, rest, who)
+}
+
+// unseatRider puts the rider of a dismissed mount on foot where it stands: the link goes, and the change remembers it for the undo,
+// which seats the rider again (rejoinCreatures). A mount that is deleted needs no code: the foreign key clears the link.
+func unseatRider(ctx context.Context, c *combatTx, cs []playdb.Combatant, mount playdb.Combatant) error {
+	rider := riderOf(cs, mount.ID)
+	if rider == nil {
+		return nil
+	}
+	if err := setRiderLink(ctx, c.q, *rider, nil); err != nil {
+		return err
+	}
+	c.unseated = append(c.unseated, unseat{Rider: rider.ID, Mount: mount.ID})
+	if len(mount.MountPriorInit) == 0 {
+		return nil
+	}
+	_, _, err := releaseJoin(ctx, c.q, mount) // the dismissed mount keeps its own total, for the day it is back
+	return err
 }
 
 // discardDamageOf drops, inside the change's transaction, the damage still to roll or to
@@ -502,7 +554,7 @@ func (s *Service) creatureEvent(ctx context.Context, c *combatTx, kind string, w
 // (the ones a concentration ended or a cast replaced): they are alive again and
 // their dismissed combatants return to the order, the same ones, with the hit
 // points, conditions and initiative they had.
-func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string) error {
+func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string, unseated []unseat) error {
 	var revived []string
 	for _, reason := range []string{"concentration", "replaced"} { // what a cast dismisses for; ids are the event's own
 		back, err := s.roster.ReviveCreatures(ctx, c.tx, c.session.CampaignID, ids, reason)
@@ -520,6 +572,15 @@ func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string
 	cs, err := c.q.ListCombatants(ctx, c.enc.ID)
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
+	}
+	if err := seatRiders(ctx, c.q, cs, unseated); err != nil {
+		return err
+	}
+	if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	if cs, err = syncMounts(ctx, c, cs); err != nil { // a mount that carries its rider again has its initiative
+		return err
 	}
 	_, err = saveOrder(ctx, c.q, cs, orderCombatants(cs))
 	return err

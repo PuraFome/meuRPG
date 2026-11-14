@@ -172,11 +172,11 @@ func TestTwoAurasOfOneSourceGiveOnce(t *testing.T) {
 		return playdb.CombatantState{ID: id, CombatantID: owner, Kind: stateEffect, SourceKey: &source, Modifiers: mods, PlayerVisible: true}
 	}
 	cs := []playdb.Combatant{at("a", "players", 1, 1), at("b", "players", 3, 1), at("c", "players", 2, 1), at("far", "players", 20, 20), at("foe", "npcs", 2, 2)}
-	same := withAuras(map[string][]playdb.CombatantState{"a": {mark("r1", "a", "spell:x")}, "b": {mark("r2", "b", "spell:x")}}, cs, nil)
+	same := withAuras(map[string][]playdb.CombatantState{"a": {mark("r1", "a", "spell:x")}, "b": {mark("r2", "b", "spell:x")}}, cs, nil, nil)
 	if got := len(checkBonusesOf(same, "c", "skill:perception", true)); got != 1 {
 		t.Errorf("a creature between two auras of one spell has %d bonuses, want 1", got)
 	}
-	both := withAuras(map[string][]playdb.CombatantState{"a": {mark("r1", "a", "spell:x")}, "b": {mark("r2", "b", "spell:y")}}, cs, nil)
+	both := withAuras(map[string][]playdb.CombatantState{"a": {mark("r1", "a", "spell:x")}, "b": {mark("r2", "b", "spell:y")}}, cs, nil, nil)
 	if got := len(checkBonusesOf(both, "c", "skill:perception", true)); got != 2 {
 		t.Errorf("a creature between two auras of two spells has %d bonuses, want 2", got)
 	}
@@ -206,7 +206,7 @@ func TestTwoAurasOfOneSourceGiveOnce(t *testing.T) {
 		source := "spell:own"
 		row := playdb.CombatantState{ID: "own", CombatantID: "a", Kind: stateEffect, SourceKey: &source, Modifiers: own, PlayerVisible: true}
 		for name, where := range map[string][]playdb.Combatant{"on the map": cs, "off the map": {{ID: "a", Side: "players"}}} {
-			got := len(checkBonusesOf(withAuras(map[string][]playdb.CombatantState{"a": {row}}, where, nil), "a", "skill:perception", true))
+			got := len(checkBonusesOf(withAuras(map[string][]playdb.CombatantState{"a": {row}}, where, nil, nil), "a", "skill:perception", true))
 			if got != tt.want {
 				t.Errorf("an aura of %s, the bearer %s has %d bonuses from it, want %d", tt.affects, name, got, tt.want)
 			}
@@ -214,11 +214,11 @@ func TestTwoAurasOfOneSourceGiveOnce(t *testing.T) {
 	}
 	// Without a grid (RN-25) nobody has a square, and nobody but the master can say who is inside.
 	unplaced := []playdb.Combatant{{ID: "a", Side: "players"}, {ID: "c", Side: "players"}}
-	if got := len(checkBonusesOf(withAuras(map[string][]playdb.CombatantState{"a": {mark("r1", "a", "spell:x")}}, unplaced, nil), "c", "skill:perception", true)); got != 0 {
+	if got := len(checkBonusesOf(withAuras(map[string][]playdb.CombatantState{"a": {mark("r1", "a", "spell:x")}}, unplaced, nil, nil), "c", "skill:perception", true)); got != 0 {
 		t.Errorf("a creature with no square has %d bonuses from an aura, want 0", got)
 	}
 	plain := map[string][]playdb.CombatantState{"a": {{ID: "x", Kind: stateEffect}}}
-	if got := withAuras(plain, cs, nil); len(got) != 1 || len(got["a"]) != 1 {
+	if got := withAuras(plain, cs, nil, nil); len(got) != 1 || len(got["a"]) != 1 {
 		t.Errorf("a combat with no aura read as %v", got)
 	}
 }
@@ -388,14 +388,14 @@ func TestAnAuraOfAnNPCReadsOtherSourceWhenTheRollKnowsNoReader(t *testing.T) {
 		return false
 	}
 	npc := []playdb.Combatant{at("pc", "players", kindPlayer, 1), at("boss", "npcs", kindNPC, 2)}
-	if visibleOn(withAuras(map[string][]playdb.CombatantState{"boss": {mark("boss")}}, npc, nil), "pc") {
+	if visibleOn(withAuras(map[string][]playdb.CombatantState{"boss": {mark("boss")}}, npc, nil, nil), "pc") {
 		t.Error("an NPC's aura reads by name on a player's roll that knows no reader: want \"Outra fonte\"")
 	}
-	if !visibleOn(withAuras(map[string][]playdb.CombatantState{"boss": {mark("boss")}}, npc, &combatViewer{master: true}), "pc") {
+	if !visibleOn(withAuras(map[string][]playdb.CombatantState{"boss": {mark("boss")}}, npc, &combatViewer{master: true}, nil), "pc") {
 		t.Error("the master does not read the NPC's aura by name (the positive control)")
 	}
 	pcBearer := []playdb.Combatant{at("hero", "players", kindPlayer, 1), at("foe", "npcs", kindNPC, 2)}
-	if !visibleOn(withAuras(map[string][]playdb.CombatantState{"hero": {mark("hero")}}, pcBearer, nil), "foe") {
+	if !visibleOn(withAuras(map[string][]playdb.CombatantState{"hero": {mark("hero")}}, pcBearer, nil, nil), "foe") {
 		t.Error("a character's public aura reads \"Outra fonte\" on a roll that knows no reader (the positive control)")
 	}
 }

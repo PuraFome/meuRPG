@@ -233,7 +233,7 @@ func TestFavorHoldIsScopedToItsRoller(t *testing.T) {
 		t.Fatalf("hold Toren's roll: %v", err)
 	}
 	ask := favorAsk{Want: true, CampaignID: f.campaignID, CharacterID: f.pens.GetId(), Own: true, Key: key, Kind: heldGroupCheck, Rolls: true}
-	env := f.h.svc.outsideGate(nil, playdb.New(f.h.pool))
+	env := f.h.svc.outsideGate(nil, playdb.New(f.h.pool), nil)
 	got, err := f.h.svc.useFavor(t.Context(), env, ask)
 	if err != nil || !got.Spent || got.Used != true {
 		t.Fatalf("Pensantus's spend under Toren's key = %+v, %v, want it spent by Pensantus (Toren's hold is not hers)", got, err)

@@ -434,7 +434,7 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 	if err != nil {
 		return nil, err
 	}
-	states, err := statesAt(ctx, q, enc.ID, nil)
+	states, err := s.statesAt(ctx, tx, q, enc.ID, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -661,7 +661,7 @@ func contestLogEntry(entry *logEntry, ev actionEvent) bool {
 // roll_bonus of checks, a check_bonus of the skill: the reader the other checks use, checkBonusesOf) to what the check
 // rolls, with a note for each. A bonus to saves never counts in a check.
 func (s *Service) withCheckBonus(ctx context.Context, tx pgx.Tx, campaignID string, q *playdb.Queries, enc playdb.Encounter, who playdb.Combatant, skill string, n checkNumbers, notes []rollNote) (checkNumbers, []rollNote, error) {
-	states, err := statesAt(ctx, q, enc.ID, nil)
+	states, err := s.statesAt(ctx, tx, q, enc.ID, nil)
 	if err != nil {
 		return n, notes, err
 	}
