@@ -47,7 +47,6 @@
       <app-text-field label="Descrição" [value]="d.description" [rows]="3" path="table_weapon.desc_pt" [issues]="issuesOf('table_weapon.desc_pt')" hint="Em texto, com as suas palavras. Opcional." (valueChange)="patch({ description: $event })" />
     </section>
 
-    <app-editor-bar saveLabel="Salvar arma" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
   </div>
 
   <aside class="editor__side" aria-label="Como os jogadores veem">
@@ -72,3 +71,4 @@
     }
   </aside>
 </div>
+<app-editor-bar [sticky]="true" saveLabel="Salvar arma" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
