@@ -200,6 +200,7 @@ The `e2e` workflow runs the Playwright suite against the local stack.
   The counts (`PLAIN_SHARDS`, `A11Y_SHARDS`) and the fresh shard (`FRESH_SHARD`) are the workflow's `env`: the `plan` matrix and the check in `lint and typecheck` read the same values.
   A serial group (`test.describe.configure({ mode: 'serial' })`, in a describe or at the top of a file) runs whole in one shard, so its tests need not be independent.
   `e2e-list-reporter.mjs` finds the groups.
+  When the list fails, the script lists once more without the reporter and puts its output in the error, because a spec that throws when it loads says nothing through the reporter.
   `check` fails when a group is in two lists, when the flags select only part of a group (a tag on one of its tests), and when it finds no group at all.
   The fresh shard (`--fresh-shard=<n>`) gets less test time, because its migrations and the devidp check make its setup slower.
   Its extra setup time is the entry `(extra setup of the fresh shard)` of `e2e/timings.json`.

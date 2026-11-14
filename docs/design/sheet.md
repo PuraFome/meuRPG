@@ -13,7 +13,8 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
 - **Granted spells** (`combat-column`): a "Magias concedidas" panel after "Magias" (it exists without a spellcasting class), one row per spell like the spell list's, with the level as the first tag and how it is cast as the others ("À vontade", "Gasta um uso de <recurso>", "Também com espaço", "Só como ritual", "Conhecida"); under the row, the source and the numbers it gives ("Carisma · CD 14 · ataque +6"), or the instruction to pick the casting ability in the sheet's choices.
 - **Equipamento** (`equipment-panel`): `gear-list` with "Equipado" and "Carregado" as `h3` groups.
   The "Equipado" head carries "CA N" on the right, the server's number; a screen reader hears "Classe de armadura N" in its place.
-  Each piece is one row on one line.
+  Each piece is one row on one line while its name keeps 96 px.
+  Under that, the marks and the chip drop together to a second line under the name, at the name's x; the "⋮" and the button stay at the right edge, on the middle of the whole row.
   A row has the kind icon, the name (it ellipsizes first), "×N" for equal copies and "duas mãos" (dropped when there is no room).
   A carried two-handed weapon that would leave the shield idle has a ⚠.
   The shield it idles has a dashed "Parado" tag.
@@ -23,11 +24,13 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   It is solid ("Bônus mágico +1, já somado") when the bonus is added to the numbers now, dashed ("Bônus mágico +1, não conta agora") when it is not.
   The armor and shield rows show no armor class of their own; the "Equipado" head has it.
   The button says only its verb.
+  In the combat's fold the cost goes under the verb when the list is under 290 px wide, so the name keeps its 96 px.
   The armor class the server says the change gives is in its accessible name, which starts with the verb and ends with the piece ("Guardar CA 16 Escudo").
   A two-handed weapon in the pack with the shield in hand has the ⚠ and a hidden ", Sacar desativa o escudo: CA 21 → 18" on its row.
   The combat's fold has no hidden text there: its own warning line says it.
   A row with a blocked reason under it is not one line by design.
   A legend line under the list names the marks present, the attunement chips and the bonus chip.
+  The legend is the shared `app-chip-legend`, the same piece the combat's "Ataques" tab uses.
   "Carregados (n)" folds from five pieces.
   A change says "Guardado: Espada longa. Classe de armadura 14." in a live region and puts the focus on the moved piece's button.
   A refusal is an alert, and when the sheet could not be read again it offers "Tentar de novo".
@@ -57,6 +60,15 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   The master sees "Muda a ficha de Tor: depois da trava, só você muda marcas e bônus. Tor os lê na ficha e nos ataques."
   Saved, the panel says "Marcas e bônus salvos." and the focus returns to the weapon's "⋮".
   An equipped weapon's chip is its attack's (the sheet's mark or a table rule); a carried weapon's is the sheet's.
+- **Modificadores de itens** (`combat-column`): an open block below the combat numbers, with one line for each piece that adds a magic bonus: "+N · name".
+  The target is on the right: "na CA" or "no ataque e no dano".
+  The name keeps 96 px beside it; when the target does not fit beside that, it drops under the name, at its x.
+  A piece that does not count now is muted and gives its reason once under its line.
+  Without entries there is no block.
+  The reason of an idle shield is said once: in its line when it has a bonus, else in the note below the numbers (the equipment panel has no note of its own).
+- **Bônus no ataque** (`combat-column`, `bonus-chip`): in the "Ataques" table a weapon with a counting magic bonus has the "+N" chip after its marks, from the server's `magic_bonus` of the attack.
+  The chip takes the place of "Mágica" on that row; a bonus that does not count shows no chip there.
+  A spell has none.
 - **Bônus mágico das peças** (`piece-bonus-sheet`, `bonus-group`, `bonus-chip`): armor and shield have the same "⋮", named "Bônus · <peça>", which opens "Bônus · <peça>".
   The sheet has its own description line, with the character's name before it for the master.
   The line is "Soma na CA enquanto a armadura está equipada." or "Soma na CA com o escudo em uso.".

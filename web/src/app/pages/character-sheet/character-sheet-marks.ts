@@ -1,7 +1,7 @@
-import type { Attack, DerivedSheet } from '../../../gen/meurpg/rules/v1/rules_pb';
+import type { Attack, DerivedSheet, ItemModifier } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { FullSheet } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { type GearVm, type MarksVm, gearWithMarks } from '../../core/characters/gear';
-import type { WeaponMarkVm } from './character-sheet.types';
+import type { ItemModifierVm, WeaponMarkVm } from './character-sheet.types';
 
 /** An attack's marks as the engine derived them. */
 export function marksOf(a: Pick<Attack, 'silvered' | 'adamantine' | 'magical'>): MarksVm {
@@ -22,4 +22,16 @@ export function sheetGear(derived: DerivedSheet, full: FullSheet): GearVm[] {
     full.itemBonuses,
     derived.itemModifiers,
   );
+}
+
+/** The server's item modifiers as the sheet's list. */
+export function itemModifiersOf(modifiers: readonly ItemModifier[]): ItemModifierVm[] {
+  return modifiers.map((m) => ({
+    target: m.target,
+    value: m.value,
+    sourceKey: m.sourceKey,
+    sourceNamePt: m.sourceNamePt,
+    counts: m.counts,
+    reasonPt: m.reasonPt,
+  }));
 }

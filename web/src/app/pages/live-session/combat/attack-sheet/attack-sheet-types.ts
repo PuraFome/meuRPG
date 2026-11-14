@@ -15,6 +15,8 @@ export interface AttackSheetData {
   readonly attackerId: string;
   readonly round: number;
   readonly attack: Attack;
+  /** The magic bonus of the player's weapon the attack numbers include now; absent for none. */
+  readonly bonus?: number;
   /** The attack's targets from `GetTurnOptions`, in turn order. */
   readonly targets: readonly TargetInReach[];
   /** The weapon attack of the extra action an effect gives (Velocidade): it spends that action, not the Attack action. */

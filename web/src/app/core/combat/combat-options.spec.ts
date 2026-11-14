@@ -19,6 +19,7 @@ import {
   featureUsesText,
   isBonusAttack,
   isReactionHint,
+  magicBonusOf,
   reasonText,
 } from './combat-options';
 
@@ -226,5 +227,13 @@ describe('what a feature row says about its resource', () => {
     expect(featureUsesText('second_wind', 1)).toBe('1 uso');
     expect(featureUsesText('rage', 2)).toBe('2 usos');
     expect(featureUsesText('', 0)).toBe('');
+  });
+});
+
+describe('the magic bonus of an attack option', () => {
+  it('reads what the server says, and 0 for an option without one', () => {
+    expect(magicBonusOf(create(AttackOptionSchema, { magicBonus: 2 }))).toBe(2);
+    expect(magicBonusOf(create(AttackOptionSchema, {}))).toBe(0);
+    expect(magicBonusOf(undefined)).toBe(0);
   });
 });
