@@ -116,6 +116,21 @@ describe('SheetEquip saves from the piece sheets', () => {
     expect(weapon.reloads()).toBe(1);
   });
 
+  it('opens the marks sheet with the stored marks, never the ones the row derives', () => {
+    const derived: GearVm = {
+      ...sword,
+      marks: { silvered: false, adamantine: false, magical: true },
+    };
+    const none = setup();
+    none.equip.openPiece(derived);
+    expect(none.marksOpened[0].marks).toEqual(marks);
+
+    const stored = setup();
+    stored.setVm(vmOf({ silvered: true }));
+    stored.equip.openPiece(derived);
+    expect(stored.marksOpened[0].marks).toEqual({ ...marks, silvered: true });
+  });
+
   it('keeps the usual words for any other refusal and does not read again', async () => {
     const t = setup(new ConnectError('x', Code.PermissionDenied));
     t.equip.openPiece(shield);

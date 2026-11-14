@@ -125,16 +125,13 @@ export class SheetEquip {
         .subscribe((saved) => saved && this.marksNotice.set('Bônus salvo.'));
       return;
     }
-    const current =
-      vm.sheet.kind === 'full'
-        ? vm.sheet.weaponMarks.find((m) => m.weaponKey === piece.key)
-        : undefined;
     this.host
       .openMarksSheet({
         ...common,
         weaponName: piece.namePt,
         copies: piece.count,
-        marks: current ?? piece.marks ?? { silvered: false, adamantine: false, magical: false },
+        // The stored marks, never the row's: a bonus that counts shows "Mágica" there without the box being checked.
+        marks: opened.marks,
         save: (change) => this.saveWeapon(piece, change, opened),
       })
       .subscribe((saved) => saved && this.marksNotice.set('Marcas e bônus salvos.'));

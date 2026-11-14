@@ -36,13 +36,15 @@ import { expect, type Page } from '@playwright/test';
 //    1px (the buttons of one list, the pair at the foot of a sheet).
 // 11. A chip marked `data-chip` sits on the middle of the capitals of the words marked `data-chip-ref` in its row
 //    (`data-chip-row`), within 2px.
+// 12. A name marked `data-chip-ref` in a `data-one-line` row does not end in an ellipsis while the row's main box has room:
+//    the space between two of its items, or after the last one, is at most 4px beyond the box's own gap.
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'one-line' | 'unequal-width' | 'chip-baseline' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch' | 'cut';
+  kind: 'icon-text' | 'one-line' | 'unequal-width' | 'chip-baseline' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch' | 'cut' | 'name-cut-with-room';
   where: string;
   detail: string;
 }
@@ -376,6 +378,32 @@ function auditLayout(): LayoutIssue[] {
         kind: 'chip-baseline',
         where: describeEl(chip),
         detail: `the chip's middle is ${diff.toFixed(1)}px from the middle of the capitals of its row's words (within 2px)`,
+      });
+    }
+  }
+
+  // 12. A name cut with an ellipsis while the row's main box has room left.
+  for (const row of document.querySelectorAll('[data-one-line]')) {
+    if (!visible(row)) continue;
+    const main = [...row.children].find((c) => visible(c) && inFlow(c));
+    if (!main) continue;
+    const cut = [...row.querySelectorAll('[data-chip-ref]')].find((n) => visible(n) && n.scrollWidth > n.clientWidth);
+    if (!cut) continue;
+    const box = main.getBoundingClientRect();
+    const gap = parseFloat(getComputedStyle(main).columnGap) || 0;
+    const items = [...main.children]
+      .filter((c) => visible(c) && inFlow(c) && c.getBoundingClientRect().width > 0)
+      .map((c) => c.getBoundingClientRect())
+      .sort((a, b) => a.left - b.left);
+    const free = Math.max(
+      ...items.map((r, i) => (i === 0 ? 0 : r.left - items[i - 1].right - gap)),
+      items.length > 0 ? box.right - items[items.length - 1].right : 0,
+    );
+    if (free > 4) {
+      issues.push({
+        kind: 'name-cut-with-room',
+        where: describeEl(row),
+        detail: `the name "${cut.textContent!.trim().slice(0, 30)}" is cut with an ellipsis while its row has ${free.toFixed(1)}px free (at most 4px)`,
       });
     }
   }
