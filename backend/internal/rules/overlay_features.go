@@ -17,7 +17,7 @@ import (
 // the SRD has no effect of that type (a feat from another book brings it).
 var overlayEffectTypes = []string{
 	"modifier", "proficiency", "resource", "sense", "roll_mode", "grant_action",
-	"superiority_die", "extra_attack", "extra_damage", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon", "natural_attack",
+	"superiority_die", "extra_attack", "extra_damage", "power_attack", "ambush", "wild_shape", "slot_recovery", "ranged_attack", "resistance", "state", "weapon_rule", "pseudo_weapon", "natural_attack",
 	"condition_immunity", "breathes_water", "granted_spell", "on_event", "spell_modifier", "reroll", "roll_minimum", "flag", "choice", "ability_increase", "note",
 }
 
@@ -354,6 +354,7 @@ var effectTypeChecks = map[string]func(b *overlayBuilder, site effectSite, e *Ef
 	"extra_damage":     (*overlayBuilder).checkOnTarget,
 	"spell_modifier":   (*overlayBuilder).checkOnTarget,
 	"ambush":           (*overlayBuilder).checkOnTarget,
+	"power_attack":     (*overlayBuilder).checkPowerAttack,
 	"reroll":           (*overlayBuilder).checkReroll,
 	"roll_minimum":     (*overlayBuilder).checkRollMinimum,
 	"flag":             func(_ *overlayBuilder, site effectSite, e *Effect) error { return checkFlag(site, e) },
@@ -650,6 +651,8 @@ var ownFields = map[string][]string{
 	"ability_increase": {"value", "count", "from"},
 	// An extra_damage adds its value to a weapon hit, when its applies holds, from a resource if it names one.
 	"extra_damage": {"applies", "value", "resource", "dice", "dice_sides", "damage_type", "weapon", "frequency", "no_crit_doubling", "while"},
+	// A power_attack trades a penalty on the attack roll for flat damage, for the weapons its filters choose.
+	"power_attack": {"attack_penalty", "damage_bonus", "weapon", "weapon_properties", "only_proficient", "resource"},
 	// An ambush gives an edge against a target, by its applies alone.
 	"ambush": {"applies"},
 	// A reroll covers some rolls up to a face and may spend a resource.
@@ -722,6 +725,8 @@ var effectFields = []effectField{
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
 	{"only_proficient", func(e *Effect) bool { return e.OnlyProficient }, func(e *Effect) { e.OnlyProficient = false }},
+	{"attack_penalty", func(e *Effect) bool { return e.AttackPenalty != 0 }, func(e *Effect) { e.AttackPenalty = 0 }},
+	{"weapon_properties", func(e *Effect) bool { return len(e.WeaponProperties) > 0 }, func(e *Effect) { e.WeaponProperties = nil }},
 	{"cost", func(e *Effect) bool { return e.Cost != "" }, func(e *Effect) { e.Cost = "" }},
 	{"cost_max", func(e *Effect) bool { return e.CostMax != "" }, func(e *Effect) { e.CostMax = "" }},
 	{"value_per_point", func(e *Effect) bool { return e.ValuePerPoint != "" }, func(e *Effect) { e.ValuePerPoint = "" }},
@@ -1039,7 +1044,7 @@ func (b *overlayBuilder) compileEffectsOf(owner string) error {
 // oneOfAKind says a feature has at most one effect of the type: its key names what the player marks,
 // or what the recovery call reads.
 func oneOfAKind(effectType string) bool {
-	return effectType == "extra_damage" || effectType == "spell_modifier" || effectType == "slot_recovery"
+	return effectType == "extra_damage" || effectType == "power_attack" || effectType == "spell_modifier" || effectType == "slot_recovery"
 }
 
 // compilePending checks and compiles one owner's pending effects, on copies. It

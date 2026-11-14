@@ -83,6 +83,9 @@ func (s *Service) GetTurnOptions(
 	if res.ManeuverDice, err = s.listManeuverDice(ctx, who, reads); err != nil {
 		return nil, err
 	}
+	if err := s.listPowerAttacks(ctx, who, reads, res.GetOptions()); err != nil {
+		return nil, err
+	}
 	res.ContestAttackOptions, res.ContestState, err = s.contestOptionsFor(ctx, m, d, v, who, opts, code)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the contests of the turn", err)
