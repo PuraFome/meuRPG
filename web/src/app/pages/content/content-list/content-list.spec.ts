@@ -282,7 +282,7 @@ describe('ContentList', () => {
   it('gives the master on a phone the reading, the switch and the archive: a notice, a "Tipo" select and a ⋮ menu per row (board 580-15)', async () => {
     const { fixture, el } = await setup(Role.MASTER, { phone: true, kind: 'classes' });
     expect(text(el)).toContain(
-      'Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê e arquiva.',
+      'Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê, liga, desliga e arquiva.',
     );
     expect(el.querySelector('.menu')).toBeNull();
     expect(text(el)).not.toContain('Nova classe');

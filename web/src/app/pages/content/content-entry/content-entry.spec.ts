@@ -518,7 +518,7 @@ describe('ContentEntry', () => {
     expect(text(el.querySelector('.tags')!)).toContain('Criatura da mesa');
     expect(text(el.querySelector('.tags')!)).toContain('Atualizada em 06/11/2026');
     expect(t).toContain(
-      'Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê e arquiva.',
+      'Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê, liga, desliga e arquiva.',
     );
     expect(t).toContain('com dono, 4 + 4 × nível');
     expect(t).toContain('Elo com o guardião. Entende o dono.');
