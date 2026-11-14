@@ -1,3 +1,4 @@
+import { menu } from '../../../core/content/content-testing-menu';
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -140,6 +141,13 @@ describe('the content entry model', () => {
       body: { case: 'tableSubrace', value: { raceKey: 'race:own' } },
     } as never;
     expect(subraceParentOf(sub, 'race:x')).toBe('race:own');
+  });
+
+  it('names an SRD option a prerequisite asks, such as a Pact Boon, in Portuguese from the menu (#580)', () => {
+    const named = nameResolver(null, [], menu());
+    expect(named('feature:pact-of-the-tome')).toBe('Pacto do Tomo');
+    // A key nobody names keeps the old fallback.
+    expect(named('feature:pact-of-the-blade')).toBe('pact-of-the-blade');
   });
 
   it('names a key by the catalog, the table or the key itself, and wires the menu once both are there', () => {
