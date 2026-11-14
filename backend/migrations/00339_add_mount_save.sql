@@ -12,7 +12,7 @@ ALTER TABLE reaction_windows
     ADD CONSTRAINT reaction_windows_kind_valid CHECK (kind IN (
         'shield', 'uncanny_dodge', 'hellish_rebuke', 'counterspell', 'cutting_words',
         'deflect_missiles', 'feather_fall', 'concentration_save', 'master_check', 'effect_save', 'contest',
-        'maneuver_reduce', 'protection', 'legendary_resistance', 'parry', 'slow_fall', 'mount_save', 'dismount'
+        'maneuver_reduce', 'protection', 'legendary_resistance', 'parry', 'slow_fall', 'readied', 'mount_save', 'dismount'
     ));
 ALTER TABLE inspiration_holds
     DROP CONSTRAINT IF EXISTS inspiration_holds_kind_valid,
@@ -41,5 +41,5 @@ ALTER TABLE reaction_windows
     ADD CONSTRAINT reaction_windows_kind_valid CHECK (kind IN (
         'shield', 'uncanny_dodge', 'hellish_rebuke', 'counterspell', 'cutting_words',
         'deflect_missiles', 'feather_fall', 'concentration_save', 'master_check', 'effect_save', 'contest',
-        'maneuver_reduce', 'protection', 'legendary_resistance', 'parry', 'slow_fall'
+        'maneuver_reduce', 'protection', 'legendary_resistance', 'parry', 'slow_fall', 'readied'
     ));
