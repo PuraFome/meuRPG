@@ -606,9 +606,10 @@ func (f *castFlow) checkFavor(context.Context) error {
 	return favorRefusal(favorAsk{Own: ownsCharacter(f.v, f.caster)})
 }
 
-// checkFavorHeld validates the spend of a cast a reaction window holds: the replay makes the roll that spends it.
+// checkFavorHeld validates the spend of a cast a reaction window holds: the replay makes the roll that spends it (and is no hold, so it
+// has nothing to validate: if the Inspiration cannot be spent by then, the roll is made without it).
 func (f *castFlow) checkFavorHeld(ctx context.Context) error {
-	if !f.req.GetSpendFavor() {
+	if !f.req.GetSpendFavor() || f.c.replay != nil {
 		return nil
 	}
 	_, err := f.s.spellAttackTruth(ctx, f.c, f.out.modes, f.sp, f.caster, f.targs[0], true)

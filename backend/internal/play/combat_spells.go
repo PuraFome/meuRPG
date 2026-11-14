@@ -468,7 +468,7 @@ func (s *Service) spellAttackTruth(ctx context.Context, c *combatTx, modes *spel
 	truth := modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.reader, modes.names)
 	fv, err := s.useFavor(ctx, s.inspirationGate(c), favorAsk{
 		Want: modes.spend, CampaignID: c.session.CampaignID, CharacterID: caster.CharacterID, Own: ownsCharacter(modes.v, caster),
-		Key: modes.key, Kind: heldSpellAttack, Sources: truth.Sources, Rolls: true, Check: check,
+		Key: modes.key, Kind: heldSpellAttack, Sources: truth.Sources, Hide: truth.Hide, Rolls: true, Check: check,
 	})
 	if err != nil {
 		return truth, err
@@ -514,7 +514,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	d20 := step.Roll
 	modes.attack[target.ID] = rolled.truth.Shown
-	made.Favor = modes.favor.Used
+	made.Favor, made.FavorLost = modes.favor.Used, modes.favor.Lost
 	if err := s.spendSpellAttackRoll(ctx, c, caster, target, modes, made); err != nil {
 		return err
 	}

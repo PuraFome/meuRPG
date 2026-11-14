@@ -448,7 +448,7 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 		x.run.result.AutoFail, x.le.Change = true, "failed"
 		return false, false, s.refuseFavorOnAutoFail(x)
 	}
-	fv, err := s.favorOnSave(ctx, s.inspirationGate(c), x.call.m, x.reactor, heldEffectSave, x.call.key, x.msg.GetSpendFavor(), f.sources, true)
+	fv, err := s.favorOnSave(ctx, s.inspirationGate(c), x.call.m, x.reactor, heldEffectSave, x.call.key, x.msg.GetSpendFavor(), f.states, f.sources, true)
 	if err != nil {
 		return false, false, err
 	}

@@ -417,7 +417,7 @@ func (s *Service) rollConcentration(
 	if err != nil {
 		return false, err
 	}
-	fv, err := s.concentrationFavor(ctx, c, call, reactor, creatureFacts(reactor, states, sheet.Traits))
+	fv, err := s.concentrationFavor(ctx, c, call, reactor, states, creatureFacts(reactor, states, sheet.Traits))
 	if err != nil {
 		return false, err
 	}
@@ -460,12 +460,12 @@ func (s *Service) rollConcentration(
 }
 
 // concentrationFavor spends the Inspiration the save asked for, over the modes the save has before it.
-func (s *Service) concentrationFavor(ctx context.Context, c *combatTx, call concentrationCall, reactor playdb.Combatant, facts combat.Creature) (favorUse, error) {
+func (s *Service) concentrationFavor(ctx context.Context, c *combatTx, call concentrationCall, reactor playdb.Combatant, states map[string][]playdb.CombatantState, facts combat.Creature) (favorUse, error) {
 	sun, err := s.sunlightOf(ctx, c.q, c.enc)
 	if err != nil {
 		return favorUse{}, err
 	}
-	return s.favorOnSave(ctx, s.inspirationGate(c), call.m, reactor, heldConcentrationSave, call.key, call.msg.GetSpendFavor(), concentrationSources(sun.facts(facts, reactor)), true)
+	return s.favorOnSave(ctx, s.inspirationGate(c), call.m, reactor, heldConcentrationSave, call.key, call.msg.GetSpendFavor(), states, concentrationSources(sun.facts(facts, reactor)), true)
 }
 
 // recordConcentrationRoll writes what the save showed in the event and the result, and answers

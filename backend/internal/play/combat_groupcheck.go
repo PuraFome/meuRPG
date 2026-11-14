@@ -510,7 +510,7 @@ func (s *Service) favorOnMember(ctx context.Context, q *playdb.Queries, tx pgx.T
 		return favorUse{Mode: spec.mode.Mode}, nil
 	}
 	gh := groupHoldOf(ctx)
-	return s.favorOfPlayerCheck(ctx, tx, q, spec.in.spend, gh.m.CampaignID, spec.characterID, gh.key, heldGroupCheck, spec.mode.Sources)
+	return s.favorOfPlayerCheck(ctx, tx, q, spec.in.spend, gh.m.CampaignID, spec.characterID, gh.key, heldGroupCheck, spec.mode)
 }
 
 // memberRollOf makes the d20 of the member. held says the roll was kept for the player's answer

@@ -1159,7 +1159,7 @@ func (c *sceneRollCall) modeAndBonus(ctx context.Context, sessionID string, acti
 	}
 	// The player's own Inspiration, over the circumstances of the check: the roller is the player (the master is refused
 	// before), and the character is theirs.
-	c.out.favor, err = c.s.favorOfPlayerCheck(ctx, c.tx, c.q, c.req.GetSpendFavor(), c.m.CampaignID, c.out.who.ID, c.key, heldSceneCheck, cm.Sources)
+	c.out.favor, err = c.s.favorOfPlayerCheck(ctx, c.tx, c.q, c.req.GetSpendFavor(), c.m.CampaignID, c.out.who.ID, c.key, heldSceneCheck, cm)
 	if err != nil {
 		return cm, 0, err
 	}

@@ -76,6 +76,10 @@ The helper answers in this order:
 6. A roller that is not the owner (the master rolling for an absent player included) gets `NOT_THE_HOLDER`.
 7. A call that rolls no d20 gets `NOTHING_TO_ROLL`.
 8. A roll the Inspiration would not change gets `ADDS_NOTHING`: it already has advantage, or an advantage and a disadvantage cancel.
+   The judgement is the roller's: only the sources the roller may read count (`visibleSources`, in `spendFavor` and nowhere else).
+   A hidden advantage, or a hidden advantage and disadvantage that cancel, never cause the refusal: the spend goes, the roll is made with every source, and the hidden ones read "Outra fonte".
+   So a refusal never tells a player that a source they cannot see exists, and they cannot probe for it.
+   `NOTHING_TO_ROLL` leaks nothing: it reads what the call is (no d20 at all), not any source.
 9. The helper deletes the character's row, and no row back is `HAS_NONE`.
 
 Of concurrent spends of one Inspiration exactly one wins and the rest get `HAS_NONE`.
@@ -83,6 +87,7 @@ A refusal spends nothing and moves no hint number.
 The row is deleted in the transaction of the roll, so a roll that is not written leaves it.
 The spend is part of the roll's event (`Favor`), never an event of its own, so it never closes the undo chain.
 `favorGiveBack` puts the row back, for the undo of such a roll; it is idempotent.
+The spend is valid when made; a reaction that comes later (a Protection's disadvantage) can cancel the advantage, as it cancels any advantage, and the Inspiração is still spent.
 The Inspiration is a source of the roll, `SourceFavor`, shown as "Inspiração" to the master and the roller and never hidden.
 A hold keeps `favor_spent`, so a retry and the answer count the Inspiration again without spending it.
 
@@ -133,7 +138,12 @@ Under a spend `d20_face_2` is not read, and on any skill but Perception it is ne
 A window that would hold an attack or a cast checks the spend without making it: the row stays.
 A spend the replay would refuse (no Inspiration, nothing to add, a worse `roll_mode`) is refused at hold time: the call errors and nothing is held.
 The replay is the real roll and spends the row.
-A replay whose Inspiration is gone, or whose sources changed so that it adds nothing, fails with a client error: the attack is dropped and nothing is spent.
+A replay whose Inspiration is gone, or whose sources changed so that it adds nothing, does not drop the roll: it is made without the Inspiração, in the normal mode of its real sources, and nothing is spent (so nothing is given back).
+The roll's event says `favor` false and `favor_lost` ("gone" or "adds_nothing").
+The master and the roller's own player read a line in Portuguese: in the combat log of an attack or a cast ("<name> não tinha mais a Inspiração: a rolagem foi feita sem ela." or "A Inspiração de <name> não mudaria mais a rolagem: ela foi guardada e a rolagem foi feita sem ela."), and as a note of the roll for a check, a contest or a Hide ("Inspiração não usada: não estava mais com você" or "Inspiração guardada: não mudaria mais a rolagem").
+No other player reads it, and there is no "usou a Inspiração" line.
+It applies to every roll a window holds: the weapon attack, the spell attack, the contest start, the contest answer and Hide.
+A concentration save and an effect save have no window, so they have no replay.
 The typed faces are checked only at the replay.
 A contest start, a contest answer and Hide are held the same way by Cutting Words and the master's check window: the hold only checks the Inspiration is there, and the replay spends it.
 
@@ -181,6 +191,7 @@ A player calling it is `permission_denied`.
 `favor_spend_test.go` covers the decision table of the helper, the held retry and answer, the race of twenty spends and the adapters.
 `favor_combat_test.go` covers the four combat paths: the spend, the refusals, the retry, the typed faces, the log, the undo, the held roll and the window replay.
 `favor_checks_test.go`, `favor_checks_more_test.go` and `favor_checks_special_test.go` cover the seven checks: the spend, the refusals, the settled retry, the held roll, the typed faces, the number, the window and the trap search in a combat.
+`favor_round2_test.go` covers the spell attack that spends once, `ADDS_NOTHING` judged on what the roller reads (an attack, a save and a check, with a hidden advantage, a hidden pair and a visible control) and the spend before a Protection that cancels the advantage.
 `TestAuthorizationMatrix` has the rows of the three calls.
 `internal/leaktest/favor_test.go` proves that a third player reads nothing of who has it, in the read, the log and the stream.
 `internal/leaktest/favor_checks_test.go` proves that the source "Inspiração" of a spent check reaches the roller and the master and no one else.

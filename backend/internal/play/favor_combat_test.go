@@ -466,7 +466,10 @@ func TestFavorOnAReplayOfAHeldCombatRoll(t *testing.T) {
 	}
 }
 
-func TestFavorGoneAtTheReplayDropsTheAction(t *testing.T) {
+// B3: an Inspiração that is gone when the window's replay comes does not drop the roll: it is made without it (a normal roll from the
+// real sources, nothing spent, the event says it was not made with it), and the master and the roller's own player read why in the line
+// of the roll.
+func TestFavorGoneAtTheReplayRollsWithoutIt(t *testing.T) {
 	t.Parallel()
 	for _, p := range favorPaths {
 		t.Run(p.name, func(t *testing.T) {
@@ -484,31 +487,73 @@ func TestFavorGoneAtTheReplayDropsTheAction(t *testing.T) {
 				t.Fatalf("take the Inspiration away: %v", err)
 			}
 			w := f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
+			f.h.roller.queue(12)
 			f.mustAnswer(t, f.master, f.e, w.GetId(), passAnswer)
-			var states []string
-			rows, err := f.h.pool.Query(t.Context(), `SELECT state FROM reaction_holds`)
-			if err != nil {
-				t.Fatalf("read the holds: %v", err)
-			}
-			defer rows.Close()
-			for rows.Next() {
-				var st string
-				if err := rows.Scan(&st); err != nil {
-					t.Fatalf("read a hold: %v", err)
-				}
-				states = append(states, st)
-			}
-			if err := rows.Err(); err != nil {
-				t.Fatalf("read the holds: %v", err)
-			}
-			if len(states) != 1 || states[0] != "dropped" {
-				t.Errorf("the holds are %v, want the one dropped", states)
-			}
+			f.wantRolledWithoutIt(t, p, u, p.actor+" não tinha mais a Inspiração: a rolagem foi feita sem ela.", 1)
 			if f.favorHolds(t) {
 				t.Error("the replay gave an Inspiration out of nothing")
 			}
 		})
 	}
+}
+
+// wantRolledWithoutIt checks the replay of a held roll wrote the roll with nothing spent: the hold is released, one event of the roll that
+// does not say it was made with the Inspiração, the line the master and the roller's player read, and the dice the mode makes.
+func (f *favorFight) wantRolledWithoutIt(t *testing.T, p favorPath, roller *user, line string, dice int) {
+	t.Helper()
+	var states []string
+	rows, err := f.h.pool.Query(t.Context(), `SELECT state FROM reaction_holds`)
+	if err != nil {
+		t.Fatalf("read the holds: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var st string
+		if err := rows.Scan(&st); err != nil {
+			t.Fatalf("read a hold: %v", err)
+		}
+		states = append(states, st)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read the holds: %v", err)
+	}
+	if len(states) != 1 || states[0] != "released" {
+		t.Errorf("the holds are %v, want the one released and none dropped", states)
+	}
+	if f.eventCount(t, p.kind) != 2 || f.eventFavor(t, p.kind) == "true" { // the hold's event, and the roll the replay wrote
+		t.Errorf("the roll's events are %d and the roll says %q, want the hold's and the roll's, made without the Inspiração", f.eventCount(t, p.kind), f.eventFavor(t, p.kind))
+	}
+	for name, reader := range map[string]*user{"the master": f.master, "the roller's player": roller} {
+		entry := f.lineOf(t, reader, p.log)
+		if entry == nil || entry.GetFavorTextPt() != line {
+			t.Errorf("%s reads %q, want %q", name, entry.GetFavorTextPt(), line)
+			continue
+		}
+		if got := len(diceOfEntry(entry)); got != dice {
+			t.Errorf("%s reads %d d20 in the roll, want %d", name, got, dice)
+		}
+	}
+	for name, reader := range map[string]*user{"another player": f.ana, "a third player": f.caio} {
+		if reader == roller {
+			continue
+		}
+		if entry := f.lineOf(t, reader, p.log); entry != nil && entry.GetFavorTextPt() != "" {
+			t.Errorf("%s reads %q, want nothing of the Inspiração", name, entry.GetFavorTextPt())
+		}
+	}
+}
+
+// diceOfEntry are the d20 a log line of an attack or of a spell attack shows.
+func diceOfEntry(e *playv1.CombatLogEntry) []int32 {
+	if r := e.GetAttackRoll(); r != nil {
+		return r.GetFaces()
+	}
+	for _, tg := range e.GetSpell().GetTargets() {
+		if r := tg.GetAttackRoll(); r != nil {
+			return r.GetFaces()
+		}
+	}
+	return nil
 }
 
 // With physical dice the typed faces are as many as the mode the Inspiration makes: one face under a spend that makes advantage is
@@ -771,8 +816,9 @@ func TestFavorWorseModeIsRefusedAtTheHold(t *testing.T) {
 	}
 }
 
-// A replay whose sources changed so that the Inspiration adds nothing is refused as the spend would be: the action is dropped.
-func TestFavorThatAddsNothingAtTheReplayDropsTheAction(t *testing.T) {
+// B3: a replay whose sources changed, in what the roller reads, so that the Inspiração adds nothing, rolls without it: the Inspiração
+// stays with the player, the roll is made from the real sources, and the master and the roller's player read why.
+func TestFavorThatAddsNothingAtTheReplayRollsWithoutIt(t *testing.T) {
 	t.Parallel()
 	for _, p := range favorPaths {
 		t.Run(p.name, func(t *testing.T) {
@@ -787,9 +833,37 @@ func TestFavorThatAddsNothingAtTheReplayDropsTheAction(t *testing.T) {
 			}
 			f.setConditions(t, f.e, "Goblin", "condition:restrained") // an advantage of its own meanwhile
 			w := f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
+			f.h.roller.queue(3, 17)
 			f.mustAnswer(t, f.master, f.e, w.GetId(), passAnswer)
-			if !f.favorHolds(t) || f.eventFavor(t, p.kind) == "true" || f.eventCount(t, p.kind) != 1 {
-				t.Errorf("the Inspiration is there = %v, the roll says %q and the events are %d, want it kept and only the hold written", f.favorHolds(t), f.eventFavor(t, p.kind), f.eventCount(t, p.kind))
+			f.wantRolledWithoutIt(t, p, u, "A Inspiração de "+p.actor+" não mudaria mais a rolagem: ela foi guardada e a rolagem foi feita sem ela.", 2)
+			if !f.favorHolds(t) {
+				t.Error("the Inspiração was taken though the roll was made without it")
+			}
+		})
+	}
+}
+
+// B3: what the master hides is not what the roller reads: an advantage the master put on the roller meanwhile (an effect the players do not
+// read) does not make the spend refuse at the replay. The Inspiração is spent, as at a table where the player does not know.
+func TestFavorWithAHiddenAdvantageAtTheReplayIsSpent(t *testing.T) {
+	t.Parallel()
+	for _, p := range favorPaths {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFavorFight(t)
+			f.setRules(t, enemyReactionsAlways)
+			p.ready(t, f)
+			u, who := p.roller(f)
+			f.give(t, who)
+			if held, err := p.send(t, f, u, newKey(), true, nil); err != nil || !held.heldByWindow {
+				t.Fatalf("the spend on a roll a window holds = %+v, %v, want it held", held, err)
+			}
+			f.hiddenEffect(t, p.actor, false, "["+attackAdv+"]")
+			w := f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
+			f.h.roller.queue(3, 17)
+			f.mustAnswer(t, f.master, f.e, w.GetId(), passAnswer)
+			if f.favorHolds(t) || f.eventFavor(t, p.kind) != "true" || f.eventCount(t, p.kind) != 2 {
+				t.Errorf("the Inspiração is there = %v, the roll says %q and the events are %d, want it spent by the replay and the hold's event and the roll's written", f.favorHolds(t), f.eventFavor(t, p.kind), f.eventCount(t, p.kind))
 			}
 		})
 	}

@@ -651,7 +651,7 @@ func (f *attackFlow) readTruth(ctx context.Context) error {
 func (f *attackFlow) favorAsk() favorAsk {
 	return favorAsk{
 		Want: f.req.GetSpendFavor(), CampaignID: f.m.CampaignID, CharacterID: f.attacker.CharacterID, Own: ownsCharacter(f.v, f.attacker),
-		Key: f.call.key, Kind: heldWeaponAttack, Sources: f.truth.Sources, Rolls: true,
+		Key: f.call.key, Kind: heldWeaponAttack, Sources: f.truth.Sources, Hide: f.truth.Hide, Rolls: true,
 	}
 }
 
@@ -787,7 +787,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 		// shows it, a player's never does.
 		TargetAC: clamp32(f.targetAC, 0, math.MaxInt32),
 		Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
-		CoverRestricted: f.cp.restricted, CoverSeenBy: f.cp.seenBy, Favor: f.favor.Used,
+		CoverRestricted: f.cp.restricted, CoverSeenBy: f.cp.seenBy, Favor: f.favor.Used, FavorLost: f.favor.Lost,
 	}
 	if b := f.rolled.Bonus; b != nil {
 		made.Res = &resourceEvent{Kind: resBardicUse, Sides: b.Sides, Face: b.Face, FromID: b.From, ExpiresRound: b.ExpiresRound}

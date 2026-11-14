@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -34,8 +35,15 @@ type favorAsk struct {
 	// Sources are the circumstances of the roll before the Inspiration (after Protection and the like): the mode with it is
 	// what they and the Inspiration resolve to (SRD 5.1: any advantages and disadvantages together cancel to a straight roll).
 	Sources []combat.Source
+	// Hide says which of the sources the roller may not read (an effect the master hides, the sun: they read "Outra fonte" in the roll,
+	// RN-10); nil when they read all of them. ADDS_NOTHING is judged on the sources they read alone, so that a refusal never tells them
+	// what they cannot read.
+	Hide func(combat.Source) bool
 	// Rolls is false when the call rolls no d20 (a save that fails by itself, an area spell), so there is nothing to spend on.
 	Rolls bool
+	// Replay says the roll is the replay of one a reaction window held: an Inspiration that can no longer be spent then (gone, or adding
+	// nothing) does not refuse the roll, which would drop it with no reason; the roll is made without it and says so (favorUse.Lost).
+	Replay bool
 	// Check only validates: a roll a reaction window holds is refused as the spend would refuse it, and nothing is taken (the
 	// replay is the roll that spends). The Inspiration must be there at that time, and the replay answers for it later.
 	Check bool
@@ -49,8 +57,22 @@ type favorUse struct {
 	Used bool
 	// Spent says it was spent in this call, so a hold the roll makes must remember it (favor_spent).
 	Spent bool
+	// Lost says why the spend the replay of a held roll asked for was not made (a favorLost* value): the roll is made without it, nothing
+	// was taken, and the roll tells the master and the roller's player.
+	Lost string
 	// Checked says the call only validated a spend a reaction window will make at its replay: nothing was taken.
 	Checked bool
+}
+
+// Why a replay could not spend the Inspiration (favorUse.Lost).
+const (
+	favorLostGone    = "gone"
+	favorLostNothing = "adds_nothing"
+)
+
+// favorLost is the answer of a replay that cannot spend: the roll runs with the mode its real sources make, and says why.
+func favorLost(a favorAsk, why string) favorUse {
+	return favorUse{Mode: combat.Resolve(a.Sources), Lost: why}
 }
 
 // favorMode is the mode a roll has once the Inspiration counts.
@@ -63,7 +85,7 @@ func favorMode(sources []combat.Source) combat.RollMode {
 func notesSources(notes []rollNote) []combat.Source {
 	var out []combat.Source
 	for _, n := range notes {
-		if n.Kind == noteEffectBonus {
+		if !n.givesMode() {
 			continue
 		}
 		effect := combat.ModeDisadvantage
@@ -92,6 +114,7 @@ func (s *Service) useFavor(ctx context.Context, env gateEnv, a favorAsk) (favorU
 	if !a.Want {
 		return favorUse{Mode: combat.Resolve(a.Sources)}, nil
 	}
+	a.Replay = env.c != nil && env.c.replay != nil
 	return spendFavor(ctx, env.q, a)
 }
 
@@ -126,7 +149,12 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	if err := favorRefusal(a); err != nil {
 		return favorUse{}, err
 	}
-	if favorMode(a.Sources) == combat.Resolve(a.Sources) {
+	// The judgement is the roller's: what a source they may not read does to the roll is no reason to refuse (the spend goes, as at a
+	// table where the player does not know), and the mode the roll is made with counts every source.
+	if seen := visibleSources(a.Sources, a.Hide); favorMode(seen) == combat.Resolve(seen) {
+		if a.Replay {
+			return favorLost(a, favorLostNothing), nil
+		}
 		return favorUse{}, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_ADDS_NOTHING, "the inspiration would not change the roll")
 	}
 	if a.Check {
@@ -134,12 +162,23 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	}
 	_, err := q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: a.CharacterID, CampaignID: a.CampaignID})
 	if errors.Is(err, pgx.ErrNoRows) {
+		if a.Replay {
+			return favorLost(a, favorLostGone), nil
+		}
 		return favorUse{}, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_HAS_NONE, "the character has no inspiration")
 	}
 	if err != nil {
 		return favorUse{}, fmt.Errorf("spend the character's inspiration: %w", err)
 	}
 	return favorUse{Mode: favorMode(a.Sources), Used: true, Spent: true}, nil
+}
+
+// visibleSources are the sources the roller may read: hide says which they may not.
+func visibleSources(sources []combat.Source, hide func(combat.Source) bool) []combat.Source {
+	if hide == nil {
+		return sources
+	}
+	return slices.DeleteFunc(slices.Clone(sources), hide)
 }
 
 // favorRefusal is the refusal that needs no look at the roll's mode or at the row: the roller is not the owner, or the call
@@ -221,6 +260,11 @@ func (cm checkMode) withFavor(fv favorUse) checkMode {
 
 // withFavor is the combatant's check with the Inspiration counted: a note of it, and the mode their notes make.
 func (p preparedCheck) withFavor(fv favorUse) preparedCheck {
+	if fv.Lost != "" { // the replay could not spend it: a note says so, which the mode never reads
+		p.notes = append(append([]rollNote(nil), p.notes...), rollNote{Kind: noteFavorLost, Label: favorLostNote(fv.Lost)})
+		p.favor = fv
+		return p
+	}
 	if !fv.Used {
 		return p
 	}
@@ -270,13 +314,28 @@ func ownsCharacter(v combatViewer, c playdb.Combatant) bool {
 	return v.owns(c) && c.Kind == kindPlayer && backedByCharacter(c)
 }
 
-// favorLine is the line of a roll made with the Inspiration ("Toren usou a Inspiração."). It has the audience of the roll's dice: the
-// master and the roller's own player, never another player.
+// favorLine is the line of a roll made with the Inspiration ("Toren usou a Inspiração."), or of one that was made without the Inspiration
+// its replay could no longer spend. It has the audience of the roll's dice: the master and the roller's own player, never another player.
 func favorLine(ev actionEvent, v combatViewer, actor playdb.Combatant) string {
-	if !ev.Favor || (!v.master && !v.owns(actor)) {
-		return ""
+	if v.master || v.owns(actor) {
+		switch {
+		case ev.Favor:
+			return actor.Label + " usou a Inspiração."
+		case ev.FavorLost == favorLostGone:
+			return actor.Label + " não tinha mais a Inspiração: a rolagem foi feita sem ela."
+		case ev.FavorLost == favorLostNothing:
+			return "A Inspiração de " + actor.Label + " não mudaria mais a rolagem: ela foi guardada e a rolagem foi feita sem ela."
+		}
 	}
-	return actor.Label + " usou a Inspiração."
+	return ""
+}
+
+// favorLostNote is the note of a check rolled without the Inspiration its replay could no longer spend.
+func favorLostNote(why string) string {
+	if why == favorLostGone {
+		return "Inspiração não usada: não estava mais com você"
+	}
+	return "Inspiração guardada: não mudaria mais a rolagem"
 }
 
 // ownsSave says the member who rolls a saving throw is the owner of the player's character that makes it: the player, never the
@@ -287,16 +346,17 @@ func ownsSave(m authz.Membership, reactor playdb.Combatant) bool {
 
 // favorOfPlayerCheck decides the Inspiration of a check that only a player rolls for their own character (a scene check, a group
 // check, a trap search, a hint try): the roller is the player and the master is refused before, so Own is always true.
-func (s *Service) favorOfPlayerCheck(ctx context.Context, tx pgx.Tx, q *playdb.Queries, want bool, campaignID, characterID, key string, kind heldKind, sources []combat.Source) (favorUse, error) {
+func (s *Service) favorOfPlayerCheck(ctx context.Context, tx pgx.Tx, q *playdb.Queries, want bool, campaignID, characterID, key string, kind heldKind, cm checkMode) (favorUse, error) {
 	return s.useFavor(ctx, s.outsideGate(tx, q), favorAsk{
-		Want: want, CampaignID: campaignID, CharacterID: characterID, Own: true, Key: key, Kind: kind, Sources: sources, Rolls: true,
+		Want: want, CampaignID: campaignID, CharacterID: characterID, Own: true, Key: key, Kind: kind, Sources: cm.Sources, Hide: cm.hide, Rolls: true,
 	})
 }
 
 // favorOnSave decides the Inspiration of a saving throw of a combatant: the mode to roll with, and whether it counts. rolls is false
-// for a save that fails by itself.
-func (s *Service) favorOnSave(ctx context.Context, env gateEnv, m authz.Membership, reactor playdb.Combatant, kind heldKind, key string, want bool, sources []combat.Source, rolls bool) (favorUse, error) {
+// for a save that fails by itself. states are the combat's, which say what the master hides from the roller.
+func (s *Service) favorOnSave(ctx context.Context, env gateEnv, m authz.Membership, reactor playdb.Combatant, kind heldKind, key string, want bool, states map[string][]playdb.CombatantState, sources []combat.Source, rolls bool) (favorUse, error) {
 	return s.useFavor(ctx, env, favorAsk{
-		Want: want, CampaignID: m.CampaignID, CharacterID: reactor.CharacterID, Own: ownsSave(m, reactor), Key: key, Kind: kind, Sources: sources, Rolls: rolls,
+		Want: want, CampaignID: m.CampaignID, CharacterID: reactor.CharacterID, Own: ownsSave(m, reactor), Key: key, Kind: kind, Sources: sources,
+		Hide: hideFor(hiddenConditionsOf(states, reactor), hasHiddenEffect(states, reactor.ID)), Rolls: rolls,
 	})
 }

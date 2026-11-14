@@ -281,6 +281,8 @@ type modeResult struct {
 	Shown []*playv1.AdvantageSource
 	// CriticalOnHit says a hit is a critical hit by the target's condition.
 	CriticalOnHit bool
+	// Hide says which of Sources the viewer reads as "Outra fonte" (RN-10); nil when they read them all.
+	Hide func(combat.Source) bool
 }
 
 // attackMode works out the mode of an attack roll. v is the viewer who reads the
@@ -300,6 +302,7 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 	}
 	// What an effect the master hides gives is "Outra fonte" to a player (RN-10).
 	hide := f.hiddenFrom(v, attacker, target)
+	out.Hide = hide
 	for _, src := range shown.Sources {
 		out.Shown = append(out.Shown, sourceProto(src, ctx, hide))
 	}

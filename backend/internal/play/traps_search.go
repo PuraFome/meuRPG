@@ -334,7 +334,7 @@ func (s *Service) prepareSearchRoll(ctx context.Context, ts *trapSearch, r *sear
 // searchFavor counts the searcher's own Inspiration on the check, over the circumstances it has (in a combat or out of one).
 func (s *Service) searchFavor(ctx context.Context, ts *trapSearch, r *searchTurn, cm checkMode) (checkMode, error) {
 	var err error
-	r.favor, err = s.favorOfPlayerCheck(ctx, r.c.tx, r.c.q, ts.req.GetSpendFavor(), ts.m.CampaignID, ts.who.ID, ts.key, heldTrapSearch, cm.Sources)
+	r.favor, err = s.favorOfPlayerCheck(ctx, r.c.tx, r.c.q, ts.req.GetSpendFavor(), ts.m.CampaignID, ts.who.ID, ts.key, heldTrapSearch, cm)
 	return cm.withFavor(r.favor), err
 }
 

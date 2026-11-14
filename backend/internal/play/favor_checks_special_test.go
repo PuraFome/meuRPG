@@ -1,6 +1,7 @@
 package play
 
 import (
+	"encoding/json"
 	"slices"
 	"testing"
 
@@ -217,8 +218,47 @@ func TestFavorOnTheReplayOfAHeldCombatCheck(t *testing.T) {
 	}
 }
 
-// An Inspiration gone when the replay comes drops the check, and nothing is spent.
-func TestFavorGoneAtTheReplayDropsTheCombatCheck(t *testing.T) {
+// rollJSONOf is the roll a check of a combat wrote, as the table keeps it.
+func (e *checkEnv) rollJSONOf(t *testing.T, path string) string {
+	t.Helper()
+	query := map[string]string{
+		"a contest start":  `SELECT initiator_roll::text FROM combat_contests ORDER BY created_at DESC LIMIT 1`,
+		"a contest answer": `SELECT defender_roll::text FROM combat_contests ORDER BY created_at DESC LIMIT 1`,
+		"a hide":           `SELECT roll::text FROM combat_hide_attempts ORDER BY created_at DESC LIMIT 1`,
+	}[path]
+	var got string
+	if err := e.h.pool.QueryRow(t.Context(), query).Scan(&got); err != nil {
+		t.Fatalf("read the roll of %s: %v", path, err)
+	}
+	return got
+}
+
+// wantRolledWithoutIt checks the replay of a check wrote the roll with nothing spent: the hold is released and not dropped, the roll does not
+// say it was made with the Inspiração, and its notes (which only the master and the roller read) say why, in the words given.
+func (e *checkEnv) wantRolledWithoutIt(t *testing.T, path, note string, dice int) {
+	t.Helper()
+	var state string
+	if err := e.h.pool.QueryRow(t.Context(), `SELECT state FROM reaction_holds ORDER BY created_at DESC LIMIT 1`).Scan(&state); err != nil {
+		t.Fatalf("read the hold: %v", err)
+	}
+	if state != "released" {
+		t.Errorf("the hold is %q, want it released and the check rolled", state)
+	}
+	var roll contestRoll
+	raw := e.rollJSONOf(t, path)
+	if err := json.Unmarshal([]byte(raw), &roll); err != nil {
+		t.Fatalf("read the roll %s: %v", raw, err)
+	}
+	if e.stored(t) || !slices.Contains(roll.Notes, rollNote{Kind: noteFavorLost, Label: note}) {
+		t.Errorf("the roll = %s (made with the Inspiração: %v), want it made without and a note %q of kind favor_lost", raw, e.stored(t), note)
+	}
+	if len(roll.Faces) != dice {
+		t.Errorf("the roll = %s, want %d d20", raw, dice)
+	}
+}
+
+// B3: an Inspiração gone when the replay comes does not drop the check: it rolls without it, nothing is spent, and the notes say why.
+func TestFavorGoneAtTheReplayRollsTheCombatCheckWithoutIt(t *testing.T) {
 	t.Parallel()
 	for _, p := range checkEnvs {
 		if p.name != "a contest start" && p.name != "a contest answer" && p.name != "a hide" {
@@ -237,16 +277,40 @@ func TestFavorGoneAtTheReplayDropsTheCombatCheck(t *testing.T) {
 				t.Fatalf("take the Inspiration away: %v", err)
 			}
 			w := e.windowHeld(t)
+			e.h.roller.queue(12)
 			e.mustAnswer(t, e.master, e.fight.refresh(t), w.GetId(), passAnswer)
-			var state string
-			if err := e.h.pool.QueryRow(t.Context(), `SELECT state FROM reaction_holds ORDER BY created_at DESC LIMIT 1`).Scan(&state); err != nil {
-				t.Fatalf("read the hold: %v", err)
-			}
-			if state != "dropped" {
-				t.Errorf("the hold is %q, want it dropped", state)
-			}
+			e.wantRolledWithoutIt(t, p.name, "Inspiração não usada: não estava mais com você", 1)
 			if e.favorHolds(t) {
 				t.Error("the replay gave an Inspiration out of nothing")
+			}
+		})
+	}
+}
+
+// B3: an Inspiração that adds nothing when the replay comes (an advantage of its own came meanwhile) stays with the player and the check
+// rolls without it.
+func TestFavorThatAddsNothingAtTheReplayRollsTheCombatCheckWithoutIt(t *testing.T) {
+	t.Parallel()
+	for _, p := range checkEnvs {
+		if p.name != "a contest start" && p.name != "a contest answer" && p.name != "a hide" {
+			continue
+		}
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			e := p.mk(t)
+			e.setRules(t, enemyReactionsAlways)
+			e.give(t, e.who)
+			held, err := e.send(t, newKey(), true)
+			if err != nil || !held.heldByWindow {
+				t.Fatalf("the spend on a check a window holds = %+v, %v, want it held", held, err)
+			}
+			e.advantage(t)
+			w := e.windowHeld(t)
+			e.h.roller.queue(3, 17)
+			e.mustAnswer(t, e.master, e.fight.refresh(t), w.GetId(), passAnswer)
+			e.wantRolledWithoutIt(t, p.name, "Inspiração guardada: não mudaria mais a rolagem", 2)
+			if !e.favorHolds(t) {
+				t.Error("the Inspiração was taken though the check was rolled without it")
 			}
 		})
 	}
@@ -369,8 +433,25 @@ func TestFavorOnATypedSearchOfAnotherSkillIgnoresTheLightsDie(t *testing.T) {
 	}
 }
 
-// A window's replay of a check that spends the Inspiration and then holds a Bardic die keeps the die's question with favor_spent (only
-// a weapon attack's hold carries the window's mark); a retry under the same key finds it: never HAS_NONE, and no second spend.
+// holdRow is the row of the Bardic die's question a replay kept under the request's key.
+type holdRow struct {
+	id                   string
+	window, spent, asked bool
+}
+
+func (f *favorParty) holdRowOf(t *testing.T, key string) holdRow {
+	t.Helper()
+	var r holdRow
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT id, window_hold, favor_spent, answer_key IS NULL FROM inspiration_holds WHERE idempotency_key = $1`, key).Scan(&r.id, &r.window, &r.spent, &r.asked); err != nil {
+		t.Fatalf("read the die's question kept under the key: %v", err)
+	}
+	return r
+}
+
+// A window's replay of a check that spends the Inspiration and then holds a Bardic die keeps the die's question with favor_spent. What it
+// guards: the question's row remembers the spend (a replay that forgot it would count the roll as made without the Inspiration: the retry
+// and the answer would spend the next one or leave it out), a client's retry of the key is answered as the first call was with nothing
+// written and nothing spent, and the answer to the die counts the Inspiration once and spends no other.
 func TestFavorRetryAfterAWindowReplayThatHoldsADie(t *testing.T) {
 	t.Parallel()
 	for _, p := range checkEnvs {
@@ -393,26 +474,38 @@ func TestFavorRetryAfterAWindowReplayThatHoldsADie(t *testing.T) {
 			if e.favorHolds(t) {
 				t.Fatal("the replay did not spend the Inspiration")
 			}
-			var spent bool
-			if err := e.h.pool.QueryRow(t.Context(), `SELECT favor_spent FROM inspiration_holds WHERE idempotency_key = $1`, key).Scan(&spent); err != nil || !spent {
-				t.Fatalf("the replay's hold: favor_spent %v, %v, want the die's question kept with the Inspiration spent (a check's hold is never a window's mark)", spent, err)
+			row := e.holdRowOf(t, key)
+			if !row.spent || row.window || !row.asked {
+				t.Fatalf("the replay's hold = %+v, want the die's question open, with the Inspiration spent and no window's mark (a check's hold is never one)", row)
 			}
+			e.give(t, e.who) // another one: neither the retry nor the answer may take it
+			events, seq := e.eventsAll(t), e.seq(t)
 			again, err := e.send(t, key, true)
-			if err != nil {
-				t.Fatalf("the retry of the key whose replay holds a die error = %v, want no refusal (the Inspiration was spent by that key)", err)
+			if err != nil || !again.heldByWindow || e.eventsAll(t) != events || e.seq(t) != seq || !e.favorHolds(t) {
+				t.Errorf("the retry = %+v, %v (events %d -> %d, number %d -> %d, Inspiration there %v), want the first answer, nothing written and nothing spent", again, err, events, e.eventsAll(t), seq, e.seq(t), e.favorHolds(t))
 			}
-			if again.holdID == "" && !again.heldByWindow && len(again.faces) != 2 {
-				t.Errorf("the retry = %+v, want the die's question, the held check, or the written roll with its two dice", again)
+			// What the answer writes for a window-replayed contest or hide is the same with or without the spend (it writes no
+			// contest row here, spend or not); this test pins what the spend adds: nothing more is taken by the answer.
+			if _, err := e.answerHeldRoll(t, e.roller, row.id, dieAnswer(false)); err != nil {
+				t.Fatalf("the answer to the die's question error = %v", err)
 			}
-			if e.favorHolds(t) {
-				t.Error("the retry gave the Inspiration back")
+			if !e.favorHolds(t) {
+				t.Error("the answer to the die's question took the second Inspiração, want it untouched")
 			}
 		})
 	}
 }
 
+// eventsAll counts the events of the campaign's sessions: a retry that wrote one is found.
+func (f *favorParty) eventsAll(t *testing.T) int {
+	t.Helper()
+	return f.count(t, `SELECT count(*) FROM session_events WHERE game_session_id IN (SELECT id FROM game_sessions WHERE campaign_id = $1)`)
+}
+
 // The same for the attacks: the replay of a weapon attack held by a window spends the Inspiration and holds the die's question under the
-// window's mark, which a client's retry of the key does not find as its own. The retry must not be told HAS_NONE nor spend again.
+// window's mark, which is why a retry of the key does not find the question as its own (held_store.go byKeyOf: a window's hold is the
+// replay's, not the request's). What it guards: the row keeps window_hold and favor_spent, the retry is answered as the first call
+// was (the event of the key) with nothing written and nothing spent, and the answer to the die counts the Inspiration once.
 func TestFavorRetryAfterAWindowReplayOfAnAttackThatHoldsADie(t *testing.T) {
 	t.Parallel()
 	p := favorPaths[0]
@@ -432,17 +525,21 @@ func TestFavorRetryAfterAWindowReplayOfAnAttackThatHoldsADie(t *testing.T) {
 	if f.favorHolds(t) {
 		t.Fatal("the replay did not spend the Inspiration")
 	}
-	var window, spent bool
-	if err := f.h.pool.QueryRow(t.Context(), `SELECT window_hold, favor_spent FROM inspiration_holds WHERE idempotency_key = $1`, key).Scan(&window, &spent); err != nil || !spent {
-		t.Fatalf("the replay's hold = window %v, favor_spent %v, %v, want the die's question kept with the Inspiration spent", window, spent, err)
+	row := f.holdRowOf(t, key)
+	if !row.spent || !row.window || !row.asked {
+		t.Fatalf("the replay's hold = %+v, want the die's question open, with the Inspiration spent and the window's mark", row)
 	}
-	t.Logf("the replay's hold carries the window's mark: %v", window)
-	f.give(t, who) // another one: the retry must leave it
-	_, err = p.send(t, f, u, key, true, nil)
+	f.give(t, who) // another one: neither the retry nor the answer may take it
+	events, seq := f.eventsAll(t), f.seq(t)
+	again, err := p.send(t, f, u, key, true, nil)
+	if err != nil || !again.heldByWindow || f.eventsAll(t) != events || f.seq(t) != seq || !f.favorHolds(t) {
+		t.Errorf("the retry = %+v, %v (events %d -> %d, number %d -> %d, Inspiration there %v), want the first answer, nothing written and nothing spent", again, err, events, f.eventsAll(t), seq, f.seq(t), f.favorHolds(t))
+	}
+	out, err := f.answerHeldRoll(t, u, row.id, dieAnswer(false))
 	if err != nil {
-		t.Errorf("the retry of the key whose replay holds a die error = %v, want no refusal", err)
+		t.Fatalf("the answer to the die's question error = %v", err)
 	}
-	if !f.favorHolds(t) {
-		t.Error("the retry spent the second Inspiration")
+	if got := p.answered(out); len(got.faces) != 2 || got.mode != playv1.RollMode_ROLL_MODE_ADVANTAGE || !got.hasFavorSource() || f.eventFavor(t, p.kind) != "true" || !f.favorHolds(t) {
+		t.Errorf("the answered roll = %+v (the roll says %q, the new Inspiração there: %v), want the advantage once with the source of the Inspiração, and the second Inspiração untouched", got, f.eventFavor(t, p.kind), f.favorHolds(t))
 	}
 }

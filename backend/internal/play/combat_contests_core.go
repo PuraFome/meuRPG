@@ -94,6 +94,7 @@ const maxContestsListed = 20
 const (
 	noteHelp         = "help"
 	noteFavor        = "favor"
+	noteFavorLost    = "favor_lost"
 	noteEffectBonus  = "effect_bonus"
 	noteUnseen       = "unseen_attacker"
 	notePoisoned     = "poisoned"
@@ -116,6 +117,9 @@ type rollNote struct {
 	Value  int  `json:"value,omitempty"`
 	Hidden bool `json:"hidden,omitempty"`
 }
+
+// givesMode says the note is a circumstance of the roll's mode: a bonus and the note of an Inspiração that was not spent are not.
+func (n rollNote) givesMode() bool { return n.Kind != noteEffectBonus && n.Kind != noteFavorLost }
 
 // proto is the note as the reader gets it. A roll is read by the master and by its roller's own player alone, so any
 // reader but the master is the owner: a hidden effect's bonus reads "Outra fonte +2" to them, and a player's own
@@ -483,8 +487,8 @@ func (s *Service) checkSourcesRead(ctx context.Context, campaignID string, enc p
 func notesMode(notes []rollNote) combat.CheckMode {
 	sources := make([]combat.CheckSource, 0, len(notes))
 	for _, n := range notes {
-		if n.Kind == noteEffectBonus {
-			continue // a bonus says nothing of advantage
+		if !n.givesMode() {
+			continue // a bonus says nothing of advantage, nor does the note of an Inspiração that was not spent
 		}
 		sources = append(sources, combat.CheckSource{Kind: n.Kind, Advantage: n.Adv})
 	}

@@ -318,7 +318,7 @@ func (h *hintTryTx) skill(ctx context.Context, plan *hintTryPlan) error {
 		return err
 	}
 	// The player's own Inspiration, over the circumstances of the check (the roller is the player, and the character theirs).
-	plan.favor, err = h.s.favorOfPlayerCheck(ctx, h.tx, h.q, h.raw.GetSpendFavor(), h.m.CampaignID, plan.who.ID, h.key, heldHintTry, plan.cm.Sources)
+	plan.favor, err = h.s.favorOfPlayerCheck(ctx, h.tx, h.q, h.raw.GetSpendFavor(), h.m.CampaignID, plan.who.ID, h.key, heldHintTry, plan.cm)
 	if err != nil {
 		return err
 	}
