@@ -628,25 +628,36 @@ describe('a use of a feature (UseFeature): the line of each audience, as the ser
     it('says the resource spent and what is left of it, after the choice and what it gave', () => {
       const wild = { namePt: 'Entidade simbiótica', economy: FeatureEconomy.ACTION, tempHp: 16 };
       expect(
-        text(used({ ...wild, resourceNamePt: 'Forma Selvagem', resourceLeft: 2 }), MASTER),
+        text(
+          used({ ...wild, resourceNamePt: 'Forma Selvagem', resourceLeft: 2, resourceMax: 3 }),
+          MASTER,
+        ),
       ).toBe(
-        ' usou Entidade simbiótica: 16 PV temporários · gastou a ação e 1 uso de Forma Selvagem (restam 2)',
+        ' usou Entidade simbiótica: 16 PV temporários · gastou a ação e 1 uso de Forma Selvagem (restam 2 de 3)',
       );
       expect(
-        text(used({ economy: FeatureEconomy.NONE, resourceNamePt: 'Forma Selvagem', resourceLeft: 0 }), MASTER),
-      ).toBe(' usou Halo de esporos · gastou 1 uso de Forma Selvagem (restam 0)');
+        text(
+          used({
+            economy: FeatureEconomy.NONE,
+            resourceNamePt: 'Forma Selvagem',
+            resourceLeft: 0,
+            resourceMax: 2,
+          }),
+          MASTER,
+        ),
+      ).toBe(' usou Halo de esporos · gastou 1 uso de Forma Selvagem (restam 0 de 2)');
     });
 
     it('says a use counted by its scope alone (no resource name)', () => {
-      expect(text(used({ economy: FeatureEconomy.REACTION, resourceLeft: 1 }), MASTER)).toBe(
-        ' usou Halo de esporos · gastou a reação e 1 uso (restam 1)',
-      );
+      expect(
+        text(used({ economy: FeatureEconomy.REACTION, resourceLeft: 1, resourceMax: 2 }), MASTER),
+      ).toBe(' usou Halo de esporos · gastou a reação e 1 uso (restam 1 de 2)');
     });
 
     it('is the plain line for the others and for an entry that did not say', () => {
-      expect(text(used({ economy: FeatureEconomy.UNSPECIFIED }, { targetLabel: 'Zumbi 1' }), PLAYER)).toBe(
-        ' usou Halo de esporos no Zumbi 1',
-      );
+      expect(
+        text(used({ economy: FeatureEconomy.UNSPECIFIED }, { targetLabel: 'Zumbi 1' }), PLAYER),
+      ).toBe(' usou Halo de esporos no Zumbi 1');
       expect(text(used({}), MASTER)).toBe(' usou Halo de esporos');
     });
   });
