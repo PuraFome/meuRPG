@@ -82,6 +82,10 @@ const (
 	eventMountKindSet        = "mount_kind_set"
 	eventCombatantMounted    = "combatant_mounted"
 	eventCombatantDismounted = "combatant_dismounted"
+	// A rider's saving throw to stay on its mount was rolled (RollMountSave, combat_mount_save.go): the answer of the window, a closing
+	// event; and the rider fell off, written just before it (the fall's own line).
+	eventMountSaveRolled = "mount_save_rolled"
+	eventRiderThrown     = "rider_thrown"
 )
 
 // The kinds of the XP awards (package progression writes them

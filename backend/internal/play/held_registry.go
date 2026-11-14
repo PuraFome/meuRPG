@@ -68,6 +68,7 @@ func init() {
 		heldCounterspell:      {rerun: registerRerun((*Service).AnswerReaction)},
 		heldContest:           {rerun: rerunContest},
 		heldInitiative:        {rerun: registerRerun((*Service).SubmitInitiative)},
+		heldMountSave:         {rerun: registerRerun((*Service).RollMountSave), rerollApplies: rules.RollAppliesSave},
 	}
 }
 

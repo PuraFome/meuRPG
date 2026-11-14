@@ -64,6 +64,10 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
       'Uma montaria que leva alguém só pode usar Disparada, Desengajar ou Esquivar. Nada foi mudado.',
     ],
     [
+      EncounterBlockedReason.MOUNT_SAVE_PENDING,
+      'O cavaleiro precisa do teste de Destreza para ficar na montaria. Nada foi mudado.',
+    ],
+    [
       EncounterBlockedReason.TOO_MANY_COMBATANTS,
       'Não cabem mais combatentes neste combate. Nada foi gasto.',
     ],

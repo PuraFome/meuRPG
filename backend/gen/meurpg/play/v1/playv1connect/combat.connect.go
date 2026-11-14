@@ -90,6 +90,9 @@ const (
 	// CombatServiceDismountCombatantProcedure is the fully-qualified name of the CombatService's
 	// DismountCombatant RPC.
 	CombatServiceDismountCombatantProcedure = "/meurpg.play.v1.CombatService/DismountCombatant"
+	// CombatServiceRollMountSaveProcedure is the fully-qualified name of the CombatService's
+	// RollMountSave RPC.
+	CombatServiceRollMountSaveProcedure = "/meurpg.play.v1.CombatService/RollMountSave"
 	// CombatServiceSetCombatantCoverProcedure is the fully-qualified name of the CombatService's
 	// SetCombatantCover RPC.
 	CombatServiceSetCombatantCoverProcedure = "/meurpg.play.v1.CombatService/SetCombatantCover"
@@ -673,6 +676,24 @@ type CombatServiceClient interface {
 	//   - `invalid_argument`: the rider rides nothing.
 	//   - `failed_precondition`: the square is not next to the mount, is a wall, or is taken (NO_ROOM_TO_DISMOUNT).
 	DismountCombatant(context.Context, *connect.Request[v1.DismountCombatantRequest]) (*connect.Response[v1.DismountCombatantResponse], error)
+	// RollMountSave answers the pending mount save of a rider (`Encounter.mount_save`): a Dexterity saving throw against DC 10 with
+	// the rider's own save bonus, its advantage and disadvantage and its auto-failures (paralyzed, stunned, unconscious and the
+	// like fail it with no d20), asked about Lucky and a Bardic Inspiration die like any save (held roll kind MOUNT_SAVE;
+	// AnswerHeldRoll settles it). On a success nothing changes but the log line ("Toren se segurou"). On a failure the rider
+	// falls: it gets the Prone condition, lands on the free square within 5 ft of the mount the server picks (the nearest, in
+	// the order of the grid's reach; with none free, the nearest free square, and the line says so), and its link to the mount is
+	// cleared; the mount gets back its own initiative and turn. The rider's player rolls, or the master (for an NPC rider, only
+	// the master). A retry of the key is the same answer. The roll is a closing event: the push or the prone that opened the
+	// window can be undone only before it is answered.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session, or the rider is not visible to the caller.
+	//   - `permission_denied`: the caller is a player and the rider is not theirs.
+	//   - `invalid_argument`: no way of rolling is set, or `d20_face` is not 1 to 20.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED); the rider owes no save (NOT_YOUR_TURN_TO_ANSWER); a roll of the
+	//     rider's waits for an answer (a held roll question); a physical d20 where the table's rules ask for the app's (the usual
+	//     roll refusals).
+	RollMountSave(context.Context, *connect.Request[v1.RollMountSaveRequest]) (*connect.Response[v1.RollMountSaveResponse], error)
 	// SetCombatantCover marks the cover a combatant has that the map does not show
 	// (D4): none, half (+2 to AC and Dexterity saves), three-quarters (+5) or
 	// total (it cannot be targeted). It adds to the cover the map gives against
@@ -1751,6 +1772,12 @@ func NewCombatServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(combatServiceMethods.ByName("DismountCombatant")),
 			connect.WithClientOptions(opts...),
 		),
+		rollMountSave: connect.NewClient[v1.RollMountSaveRequest, v1.RollMountSaveResponse](
+			httpClient,
+			baseURL+CombatServiceRollMountSaveProcedure,
+			connect.WithSchema(combatServiceMethods.ByName("RollMountSave")),
+			connect.WithClientOptions(opts...),
+		),
 		setCombatantCover: connect.NewClient[v1.SetCombatantCoverRequest, v1.SetCombatantCoverResponse](
 			httpClient,
 			baseURL+CombatServiceSetCombatantCoverProcedure,
@@ -2040,6 +2067,7 @@ type combatServiceClient struct {
 	setCombatantMount        *connect.Client[v1.SetCombatantMountRequest, v1.SetCombatantMountResponse]
 	mountCombatant           *connect.Client[v1.MountCombatantRequest, v1.MountCombatantResponse]
 	dismountCombatant        *connect.Client[v1.DismountCombatantRequest, v1.DismountCombatantResponse]
+	rollMountSave            *connect.Client[v1.RollMountSaveRequest, v1.RollMountSaveResponse]
 	setCombatantCover        *connect.Client[v1.SetCombatantCoverRequest, v1.SetCombatantCoverResponse]
 	setCombatantHidden       *connect.Client[v1.SetCombatantHiddenRequest, v1.SetCombatantHiddenResponse]
 	setMonsterReactionMode   *connect.Client[v1.SetMonsterReactionModeRequest, v1.SetMonsterReactionModeResponse]
@@ -2169,6 +2197,11 @@ func (c *combatServiceClient) MountCombatant(ctx context.Context, req *connect.R
 // DismountCombatant calls meurpg.play.v1.CombatService.DismountCombatant.
 func (c *combatServiceClient) DismountCombatant(ctx context.Context, req *connect.Request[v1.DismountCombatantRequest]) (*connect.Response[v1.DismountCombatantResponse], error) {
 	return c.dismountCombatant.CallUnary(ctx, req)
+}
+
+// RollMountSave calls meurpg.play.v1.CombatService.RollMountSave.
+func (c *combatServiceClient) RollMountSave(ctx context.Context, req *connect.Request[v1.RollMountSaveRequest]) (*connect.Response[v1.RollMountSaveResponse], error) {
+	return c.rollMountSave.CallUnary(ctx, req)
 }
 
 // SetCombatantCover calls meurpg.play.v1.CombatService.SetCombatantCover.
@@ -2842,6 +2875,24 @@ type CombatServiceHandler interface {
 	//   - `invalid_argument`: the rider rides nothing.
 	//   - `failed_precondition`: the square is not next to the mount, is a wall, or is taken (NO_ROOM_TO_DISMOUNT).
 	DismountCombatant(context.Context, *connect.Request[v1.DismountCombatantRequest]) (*connect.Response[v1.DismountCombatantResponse], error)
+	// RollMountSave answers the pending mount save of a rider (`Encounter.mount_save`): a Dexterity saving throw against DC 10 with
+	// the rider's own save bonus, its advantage and disadvantage and its auto-failures (paralyzed, stunned, unconscious and the
+	// like fail it with no d20), asked about Lucky and a Bardic Inspiration die like any save (held roll kind MOUNT_SAVE;
+	// AnswerHeldRoll settles it). On a success nothing changes but the log line ("Toren se segurou"). On a failure the rider
+	// falls: it gets the Prone condition, lands on the free square within 5 ft of the mount the server picks (the nearest, in
+	// the order of the grid's reach; with none free, the nearest free square, and the line says so), and its link to the mount is
+	// cleared; the mount gets back its own initiative and turn. The rider's player rolls, or the master (for an NPC rider, only
+	// the master). A retry of the key is the same answer. The roll is a closing event: the push or the prone that opened the
+	// window can be undone only before it is answered.
+	//
+	// Errors:
+	//   - `not_found`: the combat is not in the open session, or the rider is not visible to the caller.
+	//   - `permission_denied`: the caller is a player and the rider is not theirs.
+	//   - `invalid_argument`: no way of rolling is set, or `d20_face` is not 1 to 20.
+	//   - `failed_precondition`: the combat is ended (ENCOUNTER_ENDED); the rider owes no save (NOT_YOUR_TURN_TO_ANSWER); a roll of the
+	//     rider's waits for an answer (a held roll question); a physical d20 where the table's rules ask for the app's (the usual
+	//     roll refusals).
+	RollMountSave(context.Context, *connect.Request[v1.RollMountSaveRequest]) (*connect.Response[v1.RollMountSaveResponse], error)
 	// SetCombatantCover marks the cover a combatant has that the map does not show
 	// (D4): none, half (+2 to AC and Dexterity saves), three-quarters (+5) or
 	// total (it cannot be targeted). It adds to the cover the map gives against
@@ -3916,6 +3967,12 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(combatServiceMethods.ByName("DismountCombatant")),
 		connect.WithHandlerOptions(opts...),
 	)
+	combatServiceRollMountSaveHandler := connect.NewUnaryHandler(
+		CombatServiceRollMountSaveProcedure,
+		svc.RollMountSave,
+		connect.WithSchema(combatServiceMethods.ByName("RollMountSave")),
+		connect.WithHandlerOptions(opts...),
+	)
 	combatServiceSetCombatantCoverHandler := connect.NewUnaryHandler(
 		CombatServiceSetCombatantCoverProcedure,
 		svc.SetCombatantCover,
@@ -4219,6 +4276,8 @@ func NewCombatServiceHandler(svc CombatServiceHandler, opts ...connect.HandlerOp
 			combatServiceMountCombatantHandler.ServeHTTP(w, r)
 		case CombatServiceDismountCombatantProcedure:
 			combatServiceDismountCombatantHandler.ServeHTTP(w, r)
+		case CombatServiceRollMountSaveProcedure:
+			combatServiceRollMountSaveHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantCoverProcedure:
 			combatServiceSetCombatantCoverHandler.ServeHTTP(w, r)
 		case CombatServiceSetCombatantHiddenProcedure:
@@ -4382,6 +4441,10 @@ func (UnimplementedCombatServiceHandler) MountCombatant(context.Context, *connec
 
 func (UnimplementedCombatServiceHandler) DismountCombatant(context.Context, *connect.Request[v1.DismountCombatantRequest]) (*connect.Response[v1.DismountCombatantResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.DismountCombatant is not implemented"))
+}
+
+func (UnimplementedCombatServiceHandler) RollMountSave(context.Context, *connect.Request[v1.RollMountSaveRequest]) (*connect.Response[v1.RollMountSaveResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.CombatService.RollMountSave is not implemented"))
 }
 
 func (UnimplementedCombatServiceHandler) SetCombatantCover(context.Context, *connect.Request[v1.SetCombatantCoverRequest]) (*connect.Response[v1.SetCombatantCoverResponse], error) {
