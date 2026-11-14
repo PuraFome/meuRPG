@@ -30,7 +30,7 @@
           <span class="line__name">{{ p.labelPt }}</span>
           <span class="line__what">{{ formula(p) }}{{ p.damageTypePt ? ' de ' + p.damageTypePt : '' }}</span>
           <span class="extra__why off__why">
-            <mat-icon aria-hidden="true">block</mat-icon>Indisponível: {{ p.reasonPt }}
+            <mat-icon aria-hidden="true">block</mat-icon><span class="off__text">Indisponível: {{ p.reasonPt }}</span>
           </span>
         </li>
       }

@@ -6506,6 +6506,9 @@ async function scanHitEffectCard(browser: Browser, colorScheme: 'light' | 'dark'
     await expect(flare.getByText('Concentração')).toHaveCount(0);
     await expectScreenPasses(p, `O efeito que espera o próximo golpe, sem concentração ${where}`);
 
+    // A spell cast with a bonus action leaves no other spell this turn but a cantrip: "Sinal da Presa" is cast on the next turn.
+    await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: id('Pensantus'), discardPendingDamage: true });
+    await passTurnsToAndWait(m, campaignId, 'Pensantus', p);
     await cast(keys.sign, 1, [{ combatantId: id('Goblin 1') }]);
     const sign = card('Sinal da Presa no Goblin 1');
     await expect(sign).toBeVisible();
@@ -6515,7 +6518,11 @@ async function scanHitEffectCard(browser: Browser, colorScheme: 'light' | 'dark'
     await expectScreenPasses(p, `O efeito que espera o próximo golpe, o alvo marcado e a concentração ${where}`);
 
     // "Seus efeitos" of the sheet lists the same sentences.
-    await openSheetTab(p);
+    // In a combat the player has no rail "Conversa · Ficha" (the combat takes the column): from 768 px the sheet is the block under
+    // the scene, and only the phone has "Ficha" in its pinned nav.
+    if (width < 768) {
+      await openSheetTab(p);
+    }
     await expect(p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
     await expectScreenPasses(p, `Seus efeitos com o efeito que espera o golpe ${where}`);
   } finally {
@@ -6564,7 +6571,8 @@ async function scanHitEffectSheet(browser: Browser, colorScheme: 'light' | 'dark
           hitSpellBody(
             'Clarão na Lâmina',
             { trigger: 'TABLE_HIT_TRIGGER_NEXT_HIT', die: 6, dice: 2, perSlotDice: 0, maxDice: 2, damageType: 'damage-type:radiant', save: 'con', onFailConditions: ['condition:blinded'] },
-            { concentration: false },
+            // Public: the save of a spell whose effect only its owner sees is a line of the master's alone (effectHiddenFrom).
+            { concentration: false, effect: { visibility: 'TABLE_EFFECT_AUDIENCE_PUBLIC', modifiers: [hitModifier({ trigger: 'TABLE_HIT_TRIGGER_NEXT_HIT', die: 6, dice: 2, perSlotDice: 0, maxDice: 2, damageType: 'damage-type:radiant', save: 'con', onFailConditions: ['condition:blinded'] })] } },
           ),
         );
         sheet.knownSpellKeys = [...pensantusCasting.knownSpellKeys, keys.frost, keys.flare];
@@ -6617,6 +6625,7 @@ async function scanHitEffectSheet(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
 
     // The next turn: both effects ride on a critical hit with the dagger.
+    await combatRPC(m, 'EndTurn', { campaignId, encounterId: enc.id, expectedCombatantId: id('Pensantus'), discardPendingDamage: true });
     await passTurnsToAndWait(m, campaignId, 'Pensantus', p);
     await cast(keys.flare);
     await moveTo(8, 9);
@@ -6660,8 +6669,9 @@ async function scanHitEffectSheet(browser: Browser, colorScheme: 'light' | 'dark
     await expect(flareField).not.toHaveAttribute('aria-invalid', 'true');
     await expect(typedForm.getByRole('button', { name: /^Aplicar \d+ de dano$/ })).toBeEnabled();
     await expectScreenPasses(p, `Atacar, digitar a soma, todos os campos válidos ${where}`);
-    await p.getByRole('button', { name: /^Rolar .* no app$/ }).click();
+    await typedForm.getByRole('button', { name: /^Aplicar \d+ de dano$/ }).click();
     await expect(p.getByRole('button', { name: 'Voltar à sua vez' })).toBeFocused();
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
 
     // The log: the player who rolled reads the save and the effect named in the damage; the master reads the same.
     const log = await openCombatLog(p);
