@@ -119,6 +119,30 @@ function auditLayout(): LayoutIssue[] {
     }
   }
 
+  // 1a'. An icon and its words share a line: in a row that is not a column, the words' first line starts beside the
+  //      icon, not under it (a wrapping row whose text cannot shrink leaves the icon alone on a line of its own).
+  for (const icon of document.querySelectorAll('mat-icon, .mat-icon')) {
+    if (!visible(icon) || !inFlow(icon) || !inFlow(icon.parentElement!)) continue;
+    if (icon.closest('.mat-mdc-form-field-icon-prefix, .mat-mdc-form-field-icon-suffix')) continue;
+    const row = icon.parentElement;
+    if (!row) continue;
+    const cs = getComputedStyle(row);
+    if (!cs.display.includes('flex') || cs.flexDirection.startsWith('column')) continue;
+    const texts = textNodesOf(row)
+      .map(capitals)
+      .filter((t) => t !== null);
+    if (texts.length === 0) continue;
+    const first = texts.reduce((a, b) => (b.top < a.top ? b : a));
+    const r = icon.getBoundingClientRect();
+    if (first.top > r.bottom - 1) {
+      issues.push({
+        kind: 'icon-text',
+        where: describeEl(row),
+        detail: 'the icon has a line of its own: the words start under it, not beside it',
+      });
+    }
+  }
+
   // 1b. A control's content (icon and one line of words) sits in the middle
   //     of the control.
   for (const c of document.querySelectorAll('button, a.mat-mdc-button-base, .mat-mdc-chip')) {
