@@ -1220,7 +1220,7 @@ describe('CharacterSheetPage', () => {
     expect(section.textContent).toContain('Sem moedas');
   });
 
-  it('says why an idle shield adds nothing to the armor class, in the combat numbers and in "Equipamento"', async () => {
+  it('says why an idle shield adds nothing to the armor class, once, in the combat numbers', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -1236,7 +1236,8 @@ describe('CharacterSheetPage', () => {
       );
     const el = await render();
     expect(el.textContent).toContain('O escudo não conta na CA');
-    expect(sectionTitled(el, 'Equipamento').textContent).toContain('guarde a arma');
+    expect(el.textContent!.split('O escudo não').length - 1).toBe(1);
+    expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('O escudo não');
   });
 
   it('says nothing about the shield when it counts', async () => {
