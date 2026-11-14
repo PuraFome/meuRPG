@@ -72,3 +72,22 @@ func TestMountedCombat_ARiderThatLeavesMidTurnTakesItsMountOutOfTheTurn(t *testi
 		}
 	})
 }
+
+// TestMountedCombat_AReactionFeatureOfARiddenMountIsNotLimited: a reaction is not an action, so the limit of a controlled mount that
+// carries a rider does not stop one taken with TakeAction. Toren, a monk, is made the mount of Goblin 1 in the table; his Slow Fall
+// still works, and a feature of his turn's economy would not.
+func TestMountedCombat_AReactionFeatureOfARiddenMountIsNotLimited(t *testing.T) {
+	t.Parallel()
+	r, e := monkFall(t)
+	r.execSQL(t, `UPDATE combatants SET mount_kind = 'controlled' WHERE id = $1`, r.id(t, "Toren"))
+	r.execSQL(t, `UPDATE combatants SET mounted_on_id = $1 WHERE id = $2`, r.id(t, "Toren"), r.id(t, "Goblin 1"))
+	if _, err := r.action(t, r.master, e, "Toren", "standard:search"); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("the positive control: Search by the ridden mount = %v, want it refused (failed_precondition)", err)
+	}
+	if _, err := r.action(t, r.caio, e, "Toren", "feature:slow-fall"); err != nil {
+		t.Fatalf("TakeAction(Slow Fall) by a ridden controlled mount error = %v, want it taken: a reaction is no action", err)
+	}
+	if _, amount := r.fallOf(t, "Toren"); amount != 10 {
+		t.Errorf("the fall damage = %d after Slow Fall, want 10", amount)
+	}
+}
