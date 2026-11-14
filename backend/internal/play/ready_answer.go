@@ -477,12 +477,17 @@ func (u *undoer) readiedUseBack(ctx context.Context, kind string, ev actionEvent
 }
 
 // readiedFiredBack is the undo of a readied_fired event: of the fire, the window it opened goes (unless it was answered:
-// the answer's own event comes first) and the row keeps waiting; of "Deixar passar", the row waits and its window is open
-// again.
+// the answer's own event comes first, or a use of it is held: REACTION_PENDING) and the row keeps waiting; of "Deixar
+// passar", the row waits and its window is open again.
 func (u *undoer) readiedFiredBack(ctx context.Context, ev actionEvent) error {
 	r := ev.Readied
 	switch {
 	case r != nil && r.Opened:
+		// A use the window holds (a roll waiting for a die or for other windows) names the window: it would be left naming one
+		// that is gone, so the undo waits for it.
+		if err := mustNotBeHeld(ctx, u.c.q, u.c.enc.ID, r.Window); err != nil {
+			return err
+		}
 		n, err := u.c.q.DeleteUnansweredReadiedWindow(ctx, playdb.DeleteUnansweredReadiedWindowParams{ID: r.Window, EncounterID: u.c.enc.ID})
 		if err != nil {
 			return fmt.Errorf("take the readied action's window back: %w", err)
