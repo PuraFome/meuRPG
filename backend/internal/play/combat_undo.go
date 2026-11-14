@@ -398,7 +398,6 @@ type undoRun struct {
 	unpushed   []*forcedMove             // the creatures a cast pushed that the undo put back
 	rearmed    *trapFireEvent            // the trap an undone firing armed again
 	alsoUndone []string                  // the older parts of a firing that went with it
-	afterGear  func(context.Context)     // what the sheet's gear told after the commit (an undone swap)
 	gearOwner  string                    // the owner of the character whose swap was undone: his log changed
 }
 
@@ -597,9 +596,6 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 	s.publishUndone(ctx, campaignID, d, ev)
 	// The undo rewrote the log: full.
 	s.publishLogChange(ctx, campaignID, d.enc.ID, !ev.Secret, true)
-	if run.afterGear != nil {
-		run.afterGear(ctx)
-	}
 	if run.gearOwner != "" { // the swap's line was the owner's too
 		s.publishGearLog(ctx, campaignID, d.enc.ID, run.gearOwner)
 	}
