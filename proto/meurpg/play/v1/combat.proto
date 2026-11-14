@@ -2115,6 +2115,10 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_MOUNTED = 140;
   // DismountCombatant: no free square next to the mount (a wall, another combatant, or a square that is not next to it).
   ENCOUNTER_BLOCKED_REASON_NO_ROOM_TO_DISMOUNT = 141;
+  // A controlled mount that carries a rider takes only the Dash, Disengage and Dodge actions (SRD 5.1, "Mounted Combat"): any
+  // other action of the mount (an attack, a spell, Help, Hide, Search, Ready, Use an Object, a grapple or a shove, a creature's
+  // action) is refused. A reaction is not an action and stays free. `combatant_ids` names the mount. Nothing is changed.
+  ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED = 142;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

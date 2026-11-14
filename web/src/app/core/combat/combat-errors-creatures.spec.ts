@@ -60,6 +60,10 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
       'Não há quadrado livre ao lado da montaria para desmontar ali. Nada foi mudado.',
     ],
     [
+      EncounterBlockedReason.MOUNT_ACTION_LIMITED,
+      'Uma montaria que leva alguém só pode usar Disparada, Desengajar ou Esquivar. Nada foi mudado.',
+    ],
+    [
       EncounterBlockedReason.TOO_MANY_COMBATANTS,
       'Não cabem mais combatentes neste combate. Nada foi gasto.',
     ],
