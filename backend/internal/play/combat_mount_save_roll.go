@@ -339,9 +339,9 @@ func (s *Service) throwRider(ctx context.Context, c *combatTx, rider, mount play
 	return nil
 }
 
-// landingOf is the square a thrown rider lands on: the nearest free neighbour of the mount (SRD: a space within 5 feet), in the order
+// landingOf is the square a thrown rider lands on: the nearest free neighbor of the mount (SRD: a space within 5 feet), in the order
 // of distance, then row, then column. A creature holds a square whether the players see it or not (a fall never stops at one, and
-// nobody is told why). With no free neighbour it is the nearest free square, and noRoom says so.
+// nobody is told why). With no free neighbor it is the nearest free square, and noRoom says so.
 func (s *Service) landingOf(ctx context.Context, c *combatTx, cs []playdb.Combatant, rider, mount playdb.Combatant) (to grid.Square, noRoom bool, err error) {
 	at := squareOfCombatant(mount)
 	if !placed(mount) {
@@ -356,33 +356,42 @@ func (s *Service) landingOf(ctx context.Context, c *combatTx, cs []playdb.Combat
 		return at, true, err
 	}
 	occ := occupantsFor(cs, rider, combatViewer{master: true})
-	near := landingSquares(terrain, at, occ, mover)
-	if len(near) == 0 {
-		for dc := -mountSearchReach; dc <= mountSearchReach; dc++ {
-			for dr := -mountSearchReach; dr <= mountSearchReach; dr++ {
-				sq := grid.Square{Col: at.Col + dc, Row: at.Row + dr}
-				if _, taken := occ.At(sq); sq != at && !taken && terrain.Standable(sq) {
-					near = append(near, sq)
-				}
+	if near := landingSquares(terrain, at, occ, mover); len(near) > 0 {
+		return slices.MinFunc(near, nearerTo(at)), false, nil
+	}
+	if far := freeSquaresAround(terrain, occ, at); len(far) > 0 {
+		return slices.MinFunc(far, nearerTo(at)), true, nil
+	}
+	return at, true, nil
+}
+
+// freeSquaresAround are the squares within mountSearchReach of at that a creature can stand on and none holds.
+func freeSquaresAround(terrain grid.Terrain, occ grid.OccupantMap, at grid.Square) []grid.Square {
+	var out []grid.Square
+	for dc := -mountSearchReach; dc <= mountSearchReach; dc++ {
+		for dr := -mountSearchReach; dr <= mountSearchReach; dr++ {
+			sq := grid.Square{Col: at.Col + dc, Row: at.Row + dr}
+			if _, taken := occ.At(sq); sq != at && !taken && terrain.Standable(sq) {
+				out = append(out, sq)
 			}
 		}
-		noRoom = true
 	}
-	if len(near) == 0 {
-		return at, true, nil
-	}
-	nearer := func(a, b grid.Square) int {
-		da, db := (a.Col-at.Col)*(a.Col-at.Col)+(a.Row-at.Row)*(a.Row-at.Row), (b.Col-at.Col)*(b.Col-at.Col)+(b.Row-at.Row)*(b.Row-at.Row)
+	return out
+}
+
+// nearerTo orders squares by their distance to at, then by row, then by column.
+func nearerTo(at grid.Square) func(a, b grid.Square) int {
+	dist := func(sq grid.Square) int { return (sq.Col-at.Col)*(sq.Col-at.Col) + (sq.Row-at.Row)*(sq.Row-at.Row) }
+	return func(a, b grid.Square) int {
 		switch {
-		case da != db:
-			return da - db
+		case dist(a) != dist(b):
+			return dist(a) - dist(b)
 		case a.Row != b.Row:
 			return a.Row - b.Row
 		}
 		return a.Col - b.Col
 	}
-	return slices.MinFunc(near, nearer), noRoom, nil
 }
 
-// mountSearchReach is how far, in squares, a rider with no free neighbour looks for the nearest free square.
+// mountSearchReach is how far, in squares, a rider with no free neighbor looks for the nearest free square.
 const mountSearchReach = 10

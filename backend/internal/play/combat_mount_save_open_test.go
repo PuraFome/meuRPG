@@ -46,9 +46,9 @@ func (c *armed) askSave(t *testing.T, rider string, cause playv1.MountSaveCause)
 }
 
 // mountSaveOf is the pending save the master reads in an armed arena.
-func (a *armed) mountSaveOf(t *testing.T, u *user) *playv1.MountSavePrompt {
+func (c *armed) mountSaveOf(t *testing.T, u *user) *playv1.MountSavePrompt {
 	t.Helper()
-	return a.get(t, u).GetMountSave()
+	return c.get(t, u).GetMountSave()
 }
 
 // wantSave checks the window the master reads: the rider, the mount, the DC and the cause.
@@ -281,15 +281,18 @@ func TestMountedCombat_TheWindowClearsWhenItsPairIsGone(t *testing.T) {
 		clear func(t *testing.T, c *cave)
 	}{
 		{"the rider gets off by the master's row", causePushed, func(t *testing.T, c *cave) {
+			t.Helper()
 			c.execSQL(t, `UPDATE combatants SET mounted_on_id = NULL WHERE id = $1`, c.id(t, "Toren"))
 			c.touchCombat(t)
 		}},
-		{"the mount is removed", causePushed, func(t *testing.T, c *cave) { c.removeFromCombat(t, "Ogro") }},
+		{"the mount is removed", causePushed, func(t *testing.T, c *cave) { t.Helper(); c.removeFromCombat(t, "Ogro") }},
 		{"the rider leaves", causePushed, func(t *testing.T, c *cave) {
+			t.Helper()
 			c.execSQL(t, `DELETE FROM combatants WHERE id = $1`, c.id(t, "Toren"))
 			c.touchCombat(t)
 		}},
 		{"the prone is taken off", causeProne, func(t *testing.T, c *cave) {
+			t.Helper()
 			c.execSQL(t, `UPDATE combatants SET conditions = '{}' WHERE id = $1`, c.id(t, "Toren"))
 			c.touchCombat(t)
 		}},

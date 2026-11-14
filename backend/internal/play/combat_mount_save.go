@@ -166,7 +166,7 @@ func (s *Service) mountSaveView(ctx context.Context, m authz.Membership, d *enco
 			continue
 		}
 		rider, ok := byID[conv.OrZero(w.ReactorID)]
-		if !ok || !(v.master || v.owns(rider)) {
+		if !ok || (!v.master && !v.owns(rider)) {
 			continue
 		}
 		return s.mountSavePrompt(ctx, m, d, v, w, rider)

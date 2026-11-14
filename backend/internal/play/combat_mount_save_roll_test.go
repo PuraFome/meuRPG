@@ -118,6 +118,7 @@ func TestMountedCombat_TheSaveIsADexteritySavingThrowAgainstDC10(t *testing.T) {
 		{
 			name: "advantage from the Dodge action takes the better d20", build: riddenCave, roll: saveFaces(3, 15), held: true, modifier: 2, dice: 2,
 			prepare: func(t *testing.T, c *cave) {
+				t.Helper()
 				if _, err := c.action(t, c.caio, c.get(t, c.master), "Toren", "standard:dodge"); err != nil {
 					t.Fatalf("Dodge error = %v", err)
 				}
@@ -126,6 +127,7 @@ func TestMountedCombat_TheSaveIsADexteritySavingThrowAgainstDC10(t *testing.T) {
 		{
 			name: "disadvantage from restrained takes the worse d20", build: riddenCave, roll: saveFaces(15, 3), modifier: 2, dice: 2,
 			prepare: func(t *testing.T, c *cave) {
+				t.Helper()
 				if _, err := c.conditions(t, c.master, c.get(t, c.master), "Toren", []string{"condition:restrained"}, true, false); err != nil {
 					t.Fatalf("restrain error = %v", err)
 				}
@@ -134,6 +136,7 @@ func TestMountedCombat_TheSaveIsADexteritySavingThrowAgainstDC10(t *testing.T) {
 		{
 			name: "paralyzed fails with no d20, even with a 20", build: riddenCave, roll: saveFace(20), auto: true,
 			prepare: func(t *testing.T, c *cave) {
+				t.Helper()
 				if _, err := c.conditions(t, c.master, c.get(t, c.master), "Toren", []string{"condition:paralyzed"}, true, false); err != nil {
 					t.Fatalf("paralyze error = %v", err)
 				}
@@ -215,7 +218,7 @@ func TestMountedCombat_AHeldSaveOnlyWritesALogLine(t *testing.T) {
 	wantBlockedBy(t, "a second save", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN_TO_ANSWER)
 }
 
-// A save that fails throws the rider: Prone, on the nearest free neighbour of the mount (west of it, the north one being a wall),
+// A save that fails throws the rider: Prone, on the nearest free neighbor of the mount (west of it, the north one being a wall),
 // off the mount, with the mount's own initiative back, and the turn is free again.
 func TestMountedCombat_AFailedSaveThrowsTheRider(t *testing.T) {
 	t.Parallel()
@@ -259,8 +262,8 @@ func TestMountedCombat_AFailedSaveThrowsTheRider(t *testing.T) {
 	}
 }
 
-// The landing is the nearest free neighbour, taken in the order of distance, then row, then column: a neighbour that a creature holds
-// is skipped, a hidden creature included (nobody lands on top of it, and nobody is told why). With every neighbour taken the rider
+// The landing is the nearest free neighbor, taken in the order of distance, then row, then column: a neighbor that a creature holds
+// is skipped, a hidden creature included (nobody lands on top of it, and nobody is told why). With every neighbor taken the rider
 // takes the nearest free square and the line says so.
 func TestMountedCombat_TheLandingSquare(t *testing.T) {
 	t.Parallel()
@@ -275,7 +278,7 @@ func TestMountedCombat_TheLandingSquare(t *testing.T) {
 		{name: "west is free", want: [2]int32{6, 7}},
 		{name: "west is taken", held: [][2]int32{{6, 7}}, want: [2]int32{7, 8}},
 		{name: "a hidden creature holds the west square", held: [][2]int32{{6, 7}}, hidden: true, want: [2]int32{7, 8}},
-		{name: "every neighbour is taken", held: [][2]int32{{6, 6}, {8, 6}, {6, 7}, {6, 8}, {7, 8}, {8, 8}}, want: [2]int32{5, 7}, noRoom: true},
+		{name: "every neighbor is taken", held: [][2]int32{{6, 6}, {8, 6}, {6, 7}, {6, 8}, {7, 8}, {8, 8}}, want: [2]int32{5, 7}, noRoom: true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -349,7 +352,7 @@ func TestMountedCombat_TheSaveAsksLuckyAndTheBardicDie(t *testing.T) {
 			t.Error("the window closed or an event was written before the player answered")
 		}
 		c.h.roller.queue(8)
-		out, err := c.answerHeldRoll(t, c.caio, res.GetHeldRollOffer().GetHoldId(), dieAnswer(true)) // 3 + 2 + 8 = 13
+		out, err := c.answerHeldRoll(t, c.caio, res.GetHeldRollOffer().GetHoldId(), dieAnswer(true)) // the d20 3 and the modifier 2 with the die 8 make 13
 		if err != nil {
 			t.Fatalf("AnswerHeldRoll() error = %v", err)
 		}

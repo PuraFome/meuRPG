@@ -1098,13 +1098,13 @@ func shoveKnocksProne(ctx context.Context, r *shoveRun) (stored, line string, er
 	if immune, err := r.c.immuneToCondition(ctx, r.target, condProne); err != nil || immune {
 		return shoveStays, contestLineShoveStays, err // a target that cannot be knocked prone stays on its feet
 	}
-	if err = setConditionsOf(ctx, r.c, r.target, withCondition(r.target.Conditions, condProne)); err != nil {
+	if err := setConditionsOf(ctx, r.c, r.target, withCondition(r.target.Conditions, condProne)); err != nil {
 		return shoveProne, contestLineShoveProne, err
 	}
 	if !slices.Contains(r.target.Conditions, condProne) { // a rider knocked prone owes a save (combat_mount_save.go)
-		err = r.c.svc.riderProne(ctx, r.c, r.target.ID)
+		return shoveProne, contestLineShoveProne, r.c.svc.riderProne(ctx, r.c, r.target.ID)
 	}
-	return shoveProne, contestLineShoveProne, err
+	return shoveProne, contestLineShoveProne, nil
 }
 
 // shovePushes is the outcome PUSH: the target goes to the square behind it, unless something
