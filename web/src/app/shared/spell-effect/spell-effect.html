@@ -13,7 +13,7 @@
 }
 @if (effect().on || feature()) {
   @if (feature()) {
-    <p class="line duration" role="note"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span>Vale <strong>em todo combate</strong>, enquanto quem leva a aura estiver de pé e consciente.</span></p>
+    <p class="line duration" role="note"><mat-icon aria-hidden="true">hourglass_empty</mat-icon><span class="duration__text">Vale <strong>em todo combate</strong>, enquanto quem leva a aura estiver de pé e consciente.</span></p>
   } @else {
   <p class="line duration" role="note">
     <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
@@ -59,7 +59,7 @@
     </div>
     <div class="group" role="group" aria-labelledby="spell-effect-reach" [attr.data-field]="path('aura.affects')">
       <span class="group__label" id="spell-effect-reach">Alcança</span>
-      <app-segmented label="Alcança" [segments]="affectsOptions" [value]="aura.affects" [wrap]="true" (choose)="patchAura({ affects: $event })" />
+      <app-segmented label="Alcança" [segments]="affectsOptions" [value]="aura.affects" (choose)="patchAura({ affects: $event })" />
       <app-field-note [issues]="issues('aura.affects')" [hint]="feature() ? 'Contado a partir de quem leva a aura, no momento de cada jogada. Aliados inclui quem a leva.' : 'Contado a partir de quem conjura, no momento de cada jogada. Aliados inclui quem conjura.'" />
     </div>
     <p class="line"><mat-icon aria-hidden="true">info</mat-icon>{{ auraRefusedLine }}</p>

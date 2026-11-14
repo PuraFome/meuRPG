@@ -6108,6 +6108,15 @@ async function shootAura(page: Page, width: number, scheme: string): Promise<voi
   await page.screenshot({ path: `${dir}/579-aura-feature-${width}-${scheme}.png` });
 }
 
+/** The 2x crop of the roll mode's three segments, as `579-aura-feature-segmentos-390-<scheme>.png`, when `E2E_SHOTS_DIR` names a folder. */
+async function shootSegments(page: Page, scheme: string): Promise<void> {
+  const dir = process.env.E2E_SHOTS_DIR;
+  if (!dir) {
+    return;
+  }
+  await page.locator('app-spell-effect app-segmented', { hasText: 'De uma habilidade' }).screenshot({ path: `${dir}/579-aura-feature-segmentos-390-${scheme}.png` });
+}
+
 async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(180_000);
   const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
@@ -6377,10 +6386,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Característica de classe, a aura com o bônus de uma habilidade (${scheme}, 390px)`);
       await shootAura(m, 390, scheme);
-      const dir = process.env.E2E_SHOTS_DIR;
-      if (dir) {
-        await m.locator('app-spell-effect app-segmented').first().screenshot({ path: `${dir}/579-aura-feature-segmentos-390-${scheme}.png` });
-      }
+      await shootSegments(m, scheme);
     } finally {
       await Promise.all([mContext.close(), pContext.close()]);
     }

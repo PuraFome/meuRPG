@@ -66,6 +66,12 @@
   .inline {
     vertical-align: middle;
   }
+
+  // The words of a feature's line take the rest of the row beside the icon and wrap there (a text with no room to shrink would wrap under it).
+  &__text {
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 
 .group__head {

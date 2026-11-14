@@ -157,7 +157,7 @@ describe('SpellEffect (#579, boards 579-01, 579-02 and 579-04)', () => {
     expect(el.querySelector('app-search-pick')).toBeNull();
   });
 
-  it('puts "Alcança" in its own group of three one-line choices under the range field', () => {
+  it('puts "Alcança" in its own group of three equal choices in one row (no wrap: a phone gets no orphan) under the range field', () => {
     const { el } = setup(on({ aura: { radiusM: '9', affects: 'allies' } }), { self: true });
     const group = el.querySelector<HTMLElement>('[aria-labelledby="spell-effect-reach"]')!;
     expect(group.querySelector('.group__label')?.textContent).toBe('Alcança');
@@ -165,7 +165,7 @@ describe('SpellEffect (#579, boards 579-01, 579-02 and 579-04)', () => {
       (l.textContent ?? '').replace('check', '').trim(),
     );
     expect(labels).toEqual(['Aliados', 'Inimigos', 'Só quem conjura']);
-    expect(group.querySelector('app-segmented')?.classList.contains('seg--wrap')).toBe(true);
+    expect(group.querySelector('app-segmented')?.classList.contains('seg--wrap')).toBe(false);
     expect(el.querySelector('.narrow app-text-field')).not.toBeNull();
     expect(text(el)).toContain('Contado a partir de quem conjura, no momento de cada jogada.');
   });
