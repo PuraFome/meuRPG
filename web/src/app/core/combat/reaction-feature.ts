@@ -77,7 +77,7 @@ export function featureLateCost(e: Encounter, w: ReactionWindow, lateSeconds: nu
 /** What the player's prompt says, ready to draw (board 743-02). */
 export interface FeatureWindowView {
   readonly title: string;
-  /** "Zumbi 1 · Rodada 2". */
+  /** "Reação · Zumbi 1 · Rodada 2". */
   readonly subtitle: string;
   /** "O Zumbi 1 chegou a 1,5 m de você." (bold) */
   readonly lead: string;
@@ -97,7 +97,7 @@ export function featureWindowView(w: ReactionWindow, round: number): FeatureWind
   const question = `Usar ${article(name)} ${name}?`;
   return {
     title: name,
-    subtitle: `${w.trigger?.actorLabel ?? ''} · Rodada ${round}`,
+    subtitle: `Reação · ${w.trigger?.actorLabel ?? ''} · Rodada ${round}`,
     lead,
     question,
     note: 'Gasta a sua reação: ela volta no começo da sua próxima vez. O app registra o uso; o mestre resolve o resto.',

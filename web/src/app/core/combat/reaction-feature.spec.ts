@@ -27,7 +27,7 @@ describe("the player's prompt of a feature window (board 743-02)", () => {
   it('names the feature, the creature and where it stands, for a creature that moved near', () => {
     const v = featureWindowView(halo(FeatureTriggerKind.ENEMY_MOVES_WITHIN), 2);
     expect(v.title).toBe('Halo de esporos');
-    expect(v.subtitle).toBe('Zumbi 1 · Rodada 2');
+    expect(v.subtitle).toBe('Reação · Zumbi 1 · Rodada 2');
     expect(plain(v.lead)).toBe('O Zumbi 1 chegou a 1,5 m de você.');
     expect(v.question).toBe('Usar o Halo de esporos?');
     expect(v.note).toBe(

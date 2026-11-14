@@ -607,3 +607,18 @@ describe('the DC of a concentration save reaches the screen only when the server
     expect(plain(result(0).text[0])).toContain('= 9. A concentração em Voo acabou.');
   });
 });
+
+describe('a feature window (#743) opens its own sheet for the player who answers it', () => {
+  const halo = (over: object = {}) =>
+    reactionWindow({ id: 'halo', kind: ReactionKind.FEATURE, ...over } as never);
+
+  it('is the window the sheet opens by itself although it has no prompt of its own', () => {
+    expect(sheetWindow(encounter({ reactionWindows: [halo()] } as never))?.id).toBe('halo');
+  });
+
+  it('is never opened for a window that is not for the caller (a hidden creature, or another reactor)', () => {
+    expect(
+      sheetWindow(encounter({ reactionWindows: [halo({ forYou: false })] } as never)),
+    ).toBeUndefined();
+  });
+});
