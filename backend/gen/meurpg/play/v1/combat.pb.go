@@ -10266,8 +10266,12 @@ type DismountCombatantResponse struct {
 	Encounter *Encounter             `protobuf:"bytes,1,opt,name=encounter,proto3" json:"encounter,omitempty"`
 	// The movement the rider has left this turn, in tenths of a foot, after the cost.
 	MovementLeftDft int32 `protobuf:"varint,2,opt,name=movement_left_dft,json=movementLeftDft,proto3" json:"movement_left_dft,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// True when the rider stayed on the mount because something the caller does not see held
+	// the square it chose (a hidden creature): nothing was spent and the screen says "Algo
+	// bloqueia o caminho", never what it was (RN-10), as a move that stops early does.
+	StoppedEarly  bool `protobuf:"varint,3,opt,name=stopped_early,json=stoppedEarly,proto3" json:"stopped_early,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DismountCombatantResponse) Reset() {
@@ -10312,6 +10316,13 @@ func (x *DismountCombatantResponse) GetMovementLeftDft() int32 {
 		return x.MovementLeftDft
 	}
 	return 0
+}
+
+func (x *DismountCombatantResponse) GetStoppedEarly() bool {
+	if x != nil {
+		return x.StoppedEarly
+	}
+	return false
 }
 
 // SetCombatantCoverRequest marks the cover a combatant has that the map does not
@@ -28528,10 +28539,11 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\brider_id\x18\x03 \x01(\tR\ariderId\x12\x10\n" +
 	"\x03col\x18\x04 \x01(\x05R\x03col\x12\x10\n" +
 	"\x03row\x18\x05 \x01(\x05R\x03row\x12'\n" +
-	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\"\x80\x01\n" +
+	"\x0fidempotency_key\x18\x06 \x01(\tR\x0eidempotencyKey\"\xa5\x01\n" +
 	"\x19DismountCombatantResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x12*\n" +
-	"\x11movement_left_dft\x18\x02 \x01(\x05R\x0fmovementLeftDft\"\xdd\x01\n" +
+	"\x11movement_left_dft\x18\x02 \x01(\x05R\x0fmovementLeftDft\x12#\n" +
+	"\rstopped_early\x18\x03 \x01(\bR\fstoppedEarly\"\xdd\x01\n" +
 	"\x18SetCombatantCoverRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +

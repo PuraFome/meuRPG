@@ -3637,6 +3637,10 @@ message DismountCombatantResponse {
   Encounter encounter = 1;
   // The movement the rider has left this turn, in tenths of a foot, after the cost.
   int32 movement_left_dft = 2;
+  // True when the rider stayed on the mount because something the caller does not see held
+  // the square it chose (a hidden creature): nothing was spent and the screen says "Algo
+  // bloqueia o caminho", never what it was (RN-10), as a move that stops early does.
+  bool stopped_early = 3;
 }
 
 // SetCombatantCoverRequest marks the cover a combatant has that the map does not
