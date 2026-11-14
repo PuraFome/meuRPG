@@ -24,12 +24,15 @@ function setup(
   });
   const favor = TestBed.inject(FavorState);
   openFavor(favor, holders);
-  const fav = new FavorSpend({
-    favor,
-    who: () => ({ characterId: 'c1', name: 'Brisa' }),
-    circumstances: () => ({ mode: RollMode.NORMAL, advantages: [], disadvantages: [] }),
-    ...host,
-  });
+  const fav = TestBed.runInInjectionContext(
+    () =>
+      new FavorSpend({
+        favor,
+        who: () => ({ characterId: 'c1', name: 'Brisa' }),
+        circumstances: () => ({ mode: RollMode.NORMAL, advantages: [], disadvantages: [] }),
+        ...host,
+      }),
+  );
   const fixture = TestBed.createComponent(FavorSpendBox);
   fixture.componentRef.setInput('control', fav);
   fixture.detectChanges();
@@ -86,7 +89,8 @@ describe('FavorSpendBox', () => {
       'A Inspiração não mudaria esta rolagem: ela já tem vantagem (Ajuda de Tor).',
     );
     expect(box()!.getAttribute('aria-disabled')).toBe('true');
-    expect(box()!.getAttribute('aria-describedby')).toBe(why.id);
+    expect(box()!.getAttribute('aria-describedby')).toContain(why.id);
+    expect(box()!.getAttribute('aria-describedby')).toContain('-hint');
     expect(box()!.disabled).toBe(false);
     box()!.click();
     fixture.detectChanges();

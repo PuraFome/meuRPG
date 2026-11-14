@@ -122,10 +122,14 @@ export class CastCaller {
           metamagicChoices(this.s.chosenMeta(), this.s.picks()),
           this.extras(sculpted, destination, spend),
         );
+        this.host.fav?.spent();
         this.show(res.encounter, res.cast);
       },
       (err) => {
-        if (!this.questions.asks(err)) {
+        if (this.questions.asks(err)) {
+          // The d20 is rolled and kept for a question: the Inspiração is spent already.
+          this.host.fav?.spent();
+        } else {
           this.s.error.set(
             this.host.fav?.refused(err) ?? combatErrorMessage(err, 'conjurar a magia'),
           );

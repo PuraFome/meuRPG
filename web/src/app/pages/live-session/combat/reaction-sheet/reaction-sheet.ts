@@ -230,7 +230,11 @@ export class ReactionSheet {
   );
   protected readonly concentrationModeText = computed(() => {
     const p = this.asked().prompt;
-    return p.case === 'concentrationSave' ? concentrationModeLine(p.value) : '';
+    // Ticked, the Inspiração decides the mode and the line says how: it only reads, the box is the way back.
+    return (
+      this.fav.lock()?.line ??
+      (p.case === 'concentrationSave' ? concentrationModeLine(p.value) : '')
+    );
   });
   protected readonly pair: readonly RollField[] = [
     { key: 'd20-1', label: 'Primeiro d20', min: 1, max: 20 },

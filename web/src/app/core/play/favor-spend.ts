@@ -1,4 +1,4 @@
-import { computed, signal } from '@angular/core';
+import { computed, effect, signal } from '@angular/core';
 
 import {
   type AdvantageSource,
@@ -14,7 +14,7 @@ import { favorBlocked, favorBlockedMessage } from './favor-errors';
 import type { FavorState } from './favor-state';
 
 /** The sentence under the box when the Inspiração is the master's to hold, not the master's to spend (board 581-07, item 7). */
-export const FAVOR_ONLY_PLAYER = 'Só a jogadora pode usar a Inspiração dela.';
+export const FAVOR_ONLY_PLAYER = 'Só quem joga com este personagem pode usar a Inspiração dele.';
 /** The read of who has it failed: the box is there, dashed, and says so (581-07, item 13). */
 export const FAVOR_READ_FAILED = 'Não deu para ler a Inspiração agora. Tente de novo em instantes.';
 /** A mode asked of the master is on its way: the Inspiração stays out of this roll (the app's own words, not on a board). */
@@ -27,13 +27,20 @@ export function favorByMasterText(name: string): string {
   return `O mestre agindo por ${name}`;
 }
 
-/** What a roll's circumstances say, as the roller reads them: the mode the roll would be made with, which counts the sources the
- * roller may not read, and the name of each source they do read (a hidden source, "Outra fonte", is neither: the spend is
- * judged on what the roller sees, as the server does, so a refusal never tells a player that a hidden source exists). */
+/** What a roll's circumstances say, as the roller reads them: the sources they read, by side, and what the ones they may not read
+ * ("Outra fonte") do. The spend is judged as the server judges it (`favorMode`, `favorAgainst`, `visibleSources`): ADDS_NOTHING on the
+ * sources the roller reads alone, so a refusal never tells them a hidden source exists; the mode the roll then has on every source,
+ * hidden ones included. */
 export interface FavorCircumstances {
+  /** The mode the roll would have without the Inspiração, on every source. */
   readonly mode: RollMode;
+  /** The names of the sources the roller reads, by side. */
   readonly advantages: readonly string[];
   readonly disadvantages: readonly string[];
+  /** A source the roller may not read gives disadvantage: it counts toward the mode, never toward the refusal. */
+  readonly hiddenDisadvantage?: boolean;
+  /** A source the roller reads has no side the wire says: the sheet cannot judge it, the server does. */
+  readonly undecided?: boolean;
 }
 
 /** "Ajuda de Tor" from "Ajuda de Tor: vantagem": the part of a sentence before its colon names the source. */
@@ -41,7 +48,8 @@ function shortName(text: string): string {
   return text.split(':')[0].trim();
 }
 
-/** The circumstances of an attack or a spell attack: the server's sources (`TargetInReach.sources`) and its suggested mode. */
+/** The circumstances of an attack or a spell attack: the server's sources (`TargetInReach.sources`) and its suggested mode. A
+ * hidden source (`OTHER_SOURCE`) keeps its side on the wire; the Inspiração itself is not a circumstance. */
 export function circumstancesOfSources(
   mode: RollMode,
   sources: readonly AdvantageSource[],
@@ -55,11 +63,15 @@ export function circumstancesOfSources(
     mode,
     advantages: named(RollMode.ADVANTAGE),
     disadvantages: named(RollMode.DISADVANTAGE),
+    hiddenDisadvantage: sources.some(
+      (s) => s.kind === AdvantageSourceKind.OTHER_SOURCE && s.effect === RollMode.DISADVANTAGE,
+    ),
   };
 }
 
-/** The circumstances of a check: the mode of the check's option and its notes (`RollNote`). A bonus an effect adds says nothing of
- * the mode, a hidden source reads "other" and the Inspiração itself is not one of the circumstances. */
+/** The circumstances of a check: the mode of the check's option and its notes (`RollNote`). A bonus an effect adds says nothing of the
+ * mode, a hidden source reads "other" (it has a side, and never counts toward the refusal) and the Inspiração itself is not one of
+ * the circumstances. */
 export function circumstancesOfNotes(
   mode: RollModeKind,
   notes: readonly RollNote[],
@@ -74,38 +86,61 @@ export function circumstancesOfNotes(
           : RollMode.NORMAL,
     advantages: seen.filter((n) => n.advantage).map((n) => n.labelPt),
     disadvantages: seen.filter((n) => !n.advantage).map((n) => n.labelPt),
+    hiddenDisadvantage: notes.some((n) => n.kind === 'other' && !n.advantage),
   };
 }
 
+/** The side a sentence of a prompt says ("Esquivando: vantagem", "Outra fonte: desvantagem"), or `null` when it says none. */
+function sideOf(text: string): 'advantage' | 'disadvantage' | null {
+  if (/desvantagem/i.test(text)) {
+    return 'disadvantage';
+  }
+  return /vantagem/i.test(text) ? 'advantage' : null;
+}
+
 /** The circumstances of a saving throw a window asks (the concentration save, an effect's save): the prompt's `mode` ("normal",
- * "advantage" or "disadvantage") and its sources in words. A source the master hides reads "Outra fonte" and is not counted; the
- * sentences do not say which side they are on, so with a mode that is not normal they all name that side, and a normal mode names
- * none (the server judges it). */
+ * "advantage" or "disadvantage", on every source) and its sources in words, each "<name>: vantagem|desvantagem"; a hidden one reads
+ * "Outra fonte: …" and is not counted for the refusal. A sentence that names no side takes the side of the mode when the mode is
+ * not normal (every source then has it); under a normal mode it is `undecided`, and the server judges. */
 export function circumstancesOfPrompt(
   mode: string,
   sourcesPt: readonly string[],
 ): FavorCircumstances {
-  const names = sourcesPt.filter((s) => !s.startsWith('Outra fonte')).map(shortName);
-  return {
-    mode:
-      mode === 'advantage'
-        ? RollMode.ADVANTAGE
-        : mode === 'disadvantage'
-          ? RollMode.DISADVANTAGE
-          : RollMode.NORMAL,
-    advantages: mode === 'advantage' ? names : [],
-    disadvantages: mode === 'disadvantage' ? names : [],
-  };
+  const resolved =
+    mode === 'advantage'
+      ? RollMode.ADVANTAGE
+      : mode === 'disadvantage'
+        ? RollMode.DISADVANTAGE
+        : RollMode.NORMAL;
+  const fallback = mode === 'advantage' || mode === 'disadvantage' ? mode : null;
+  const advantages: string[] = [];
+  const disadvantages: string[] = [];
+  let hiddenDisadvantage = mode === 'disadvantage';
+  let undecided = false;
+  for (const text of sourcesPt) {
+    const side = sideOf(text) ?? fallback;
+    if (text.startsWith('Outra fonte')) {
+      hiddenDisadvantage ||= side === 'disadvantage';
+    } else if (side === 'advantage') {
+      advantages.push(shortName(text));
+    } else if (side === 'disadvantage') {
+      disadvantages.push(shortName(text));
+    } else {
+      undecided = true;
+    }
+  }
+  return { mode: resolved, advantages, disadvantages, hiddenDisadvantage, undecided };
 }
 
 /** What the Inspiração would do to a roll: nothing (and why), or the mode the roll then has and the sentence that says it. */
 export type FavorJudgement =
   | { readonly ok: false; readonly reason: string }
-  | { readonly ok: true; readonly mode: RollMode; readonly line: string };
+  | { readonly ok: true; readonly mode: RollMode | null; readonly line: string };
 
-/** The one place that works out the mode a roll has with the Inspiração (the server's table, "The spend" in the favor note):
- * normal becomes advantage, a disadvantage turns normal, an advantage (or an advantage and a disadvantage that cancel) is
- * `ADDS_NOTHING`, judged on the sources the roller reads. */
+/** The one place that works out the mode a roll has with the Inspiração, as the server does (`spendFavor`, `favorMode`): it adds
+ * nothing (`ADDS_NOTHING`) when the sources the roller reads include an advantage, whatever else is there; otherwise it changes
+ * the roll, to Normal when any source (read or not) gives disadvantage, else to advantage. A source whose side the wire does not
+ * say leaves the mode to the server (`mode: null`). */
 export function judgeFavor(c: FavorCircumstances): FavorJudgement {
   const nothing = 'A Inspiração não mudaria esta rolagem:';
   if (c.advantages.length > 0 && c.disadvantages.length > 0) {
@@ -117,7 +152,14 @@ export function judgeFavor(c: FavorCircumstances): FavorJudgement {
   if (c.advantages.length > 0) {
     return { ok: false, reason: `${nothing} ela já tem vantagem (${c.advantages.join(', ')}).` };
   }
-  if (orNormal(c.mode) === RollMode.DISADVANTAGE || c.disadvantages.length > 0) {
+  if (c.undecided) {
+    return { ok: true, mode: null, line: '' };
+  }
+  if (
+    orNormal(c.mode) === RollMode.DISADVANTAGE ||
+    c.disadvantages.length > 0 ||
+    c.hiddenDisadvantage
+  ) {
     const names = c.disadvantages.length > 0 ? ` (${c.disadvantages.join(', ')})` : '';
     return {
       ok: true,
@@ -233,7 +275,15 @@ export class FavorSpend {
       : null;
   });
 
-  constructor(private readonly host: FavorSpendHost) {}
+  /** Built in an injection context (a sheet's field): a tick never outlives the box being open, so a box that closes (another target,
+   * a mode asked, a read that failed) and opens again is not ticked, and cannot spend on circumstances the player never saw. */
+  constructor(private readonly host: FavorSpendHost) {
+    effect(() => {
+      if (this.view()?.kind !== 'open') {
+        this.ticked.set(false);
+      }
+    });
+  }
 
   set(ticked: boolean): void {
     this.ticked.set(ticked);

@@ -114,7 +114,7 @@ export class FakeContestClient {
   readonly shoves: { contestId: string; outcome: number; key: string }[] = [];
   readonly hides: { actionKey: string; die: unknown; key: string; spendFavor?: boolean }[] = [];
   readonly helps: { input: HelpInput; key: string }[] = [];
-  readonly groupRolls: { die: unknown; key: string }[] = [];
+  readonly groupRolls: { die: unknown; key: string; spendFavor?: boolean }[] = [];
   /** What the next calls answer; a spec sets them, or `error` to make the call fail. */
   contest: ContestView = contestView();
   attempt: HideAttemptView = hideAttempt();
@@ -197,9 +197,9 @@ export class FakeContestClient {
     return Promise.resolve(this.group);
   }
 
-  rollGroupCheck(_c: string, _id: string, die: unknown, key: string) {
+  rollGroupCheck(_c: string, _id: string, die: unknown, key: string, spendFavor = false) {
     this.calls.push('rollGroupCheck');
-    this.groupRolls.push({ die, key });
+    this.groupRolls.push({ die, key, ...(spendFavor ? { spendFavor } : {}) });
     this.fail();
     return Promise.resolve(this.lucky ?? (this.group as GroupCheckView));
   }

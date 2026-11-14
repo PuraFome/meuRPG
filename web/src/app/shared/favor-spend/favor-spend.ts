@@ -28,9 +28,9 @@ export class FavorSpendBox {
   protected readonly view = computed(() => this.control().view());
   protected readonly off = computed(() => this.view()?.kind === 'off' || this.busy());
   protected readonly on = computed(() => this.control().spend());
-  /** The text a screen reader hears after the label: the reason when it is off, else the hint. */
+  /** What a screen reader hears after the label: the hint (which says "O mestre agindo por X" when off) and, when off, the reason. */
   protected readonly describedBy = computed(() =>
-    this.view()?.kind === 'off' ? `${this.id}-why` : `${this.id}-hint`,
+    this.view()?.kind === 'off' ? `${this.id}-hint ${this.id}-why` : `${this.id}-hint`,
   );
   protected readonly sub = computed(() => {
     const v = this.view();

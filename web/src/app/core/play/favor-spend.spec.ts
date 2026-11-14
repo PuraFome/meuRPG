@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
 import { create } from '@bufbuild/protobuf';
 
 import {
@@ -80,7 +81,7 @@ describe('the circumstances a sheet reads', () => {
       note('other', 'Outra fonte', true),
       note('effect_bonus', 'Bênção', true),
     ]);
-    expect(c).toEqual({
+    expect(c).toMatchObject({
       mode: RollMode.DISADVANTAGE,
       advantages: [],
       disadvantages: ['Envenenada'],
@@ -89,13 +90,66 @@ describe('the circumstances a sheet reads', () => {
 
   it('of a saving throw come from the prompt, and a hidden source is not counted', () => {
     expect(
-      circumstancesOfPrompt('disadvantage', ['Envenenada: desvantagem', 'Outra fonte']),
-    ).toEqual({
+      circumstancesOfPrompt('disadvantage', [
+        'Envenenada: desvantagem',
+        'Outra fonte: desvantagem',
+      ]),
+    ).toMatchObject({
       mode: RollMode.DISADVANTAGE,
       advantages: [],
       disadvantages: ['Envenenada'],
+      hiddenDisadvantage: true,
     });
-    expect(circumstancesOfPrompt('normal', [])).toEqual(none);
+    expect(circumstancesOfPrompt('normal', [])).toMatchObject(none);
+  });
+});
+
+describe("the judgement on the server's own table (favorMode, visibleSources)", () => {
+  it('refuses a visible advantage and a visible disadvantage that cancel to a normal prompt', () => {
+    const c = circumstancesOfPrompt('normal', ['Esquivando: vantagem', 'Envenenada: desvantagem']);
+    expect(c).toMatchObject({ advantages: ['Esquivando'], disadvantages: ['Envenenada'] });
+    const j = judgeFavor(c);
+    expect(j.ok).toBe(false);
+    expect(!j.ok && j.reason).toContain('se anulam');
+  });
+
+  it('rolls Normal, not advantage, when an advantage and a disadvantage are both hidden', () => {
+    const c = circumstancesOfPrompt('normal', [
+      'Outra fonte: vantagem',
+      'Outra fonte: desvantagem',
+    ]);
+    expect(c.advantages).toEqual([]);
+    expect(judgeFavor(c)).toMatchObject({ ok: true, mode: RollMode.NORMAL });
+    const sources = circumstancesOfSources(RollMode.NORMAL, [
+      source(105, RollMode.ADVANTAGE, 'Outra fonte: vantagem'),
+      source(105, RollMode.DISADVANTAGE, 'Outra fonte: desvantagem'),
+    ]);
+    expect(judgeFavor(sources)).toMatchObject({ ok: true, mode: RollMode.NORMAL });
+    const notes = circumstancesOfNotes(RollModeKind.NORMAL, [
+      create(RollNoteSchema, { kind: 'other', labelPt: 'Outra fonte', advantage: true }),
+      create(RollNoteSchema, { kind: 'other', labelPt: 'Outra fonte', advantage: false }),
+    ]);
+    expect(judgeFavor(notes)).toMatchObject({ ok: true, mode: RollMode.NORMAL });
+  });
+
+  it('gives advantage when the only sources are hidden advantages, and Normal under a hidden disadvantage alone', () => {
+    expect(judgeFavor(circumstancesOfPrompt('advantage', ['Outra fonte: vantagem']))).toMatchObject(
+      {
+        ok: true,
+        mode: RollMode.ADVANTAGE,
+      },
+    );
+    expect(
+      judgeFavor(circumstancesOfPrompt('disadvantage', ['Outra fonte: desvantagem'])),
+    ).toMatchObject({ ok: true, mode: RollMode.NORMAL });
+  });
+
+  it('leaves the mode to the server when a sentence names no side under a normal mode', () => {
+    const c = circumstancesOfPrompt('normal', [
+      'Luz do sol (Sensibilidade)',
+      'Outra fonte: vantagem',
+    ]);
+    expect(judgeFavor(c)).toEqual({ ok: true, mode: null, line: '' });
   });
 });
 
@@ -111,12 +165,15 @@ describe('FavorSpend', () => {
     });
     const favor = TestBed.inject(FavorState);
     openFavor(favor, holders);
-    const fav = new FavorSpend({
-      favor,
-      who: () => ({ characterId: 'c1', name: 'Brisa' }),
-      circumstances: () => none,
-      ...host,
-    });
+    const fav = TestBed.runInInjectionContext(
+      () =>
+        new FavorSpend({
+          favor,
+          who: () => ({ characterId: 'c1', name: 'Brisa' }),
+          circumstances: () => none,
+          ...host,
+        }),
+    );
     return { fav, favor, client };
   }
 
@@ -212,6 +269,22 @@ describe('FavorSpend', () => {
     fav.spent();
     expect(fav.ticked()).toBe(false);
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('unticks when the box closes, so it is not ticked when it opens again', () => {
+    const circumstances = signal<FavorCircumstances>(none);
+    const { fav } = setup({ circumstances: () => circumstances() });
+    fav.set(true);
+    TestBed.tick();
+    expect(fav.spend()).toBe(true);
+    circumstances.set({ ...none, mode: RollMode.ADVANTAGE, advantages: ['Ajuda de Tor'] });
+    TestBed.tick();
+    expect(fav.view()?.kind).toBe('off');
+    expect(fav.ticked()).toBe(false);
+    circumstances.set(none);
+    TestBed.tick();
+    expect(fav.view()?.kind).toBe('open');
+    expect(fav.ticked()).toBe(false);
   });
 
   it('words a refusal, unticks, and reads again when it has none', () => {

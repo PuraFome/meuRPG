@@ -147,6 +147,8 @@ export class AttackRolls {
           },
         );
         data.state.apply(res.encounter);
+        // The roll is made (or held for a question): the Inspiração is spent, so the box unticks and who has it is read again.
+        this.host.fav?.spent();
         this.settle(res);
         this.play(attackShow(this.host.name, res));
       },

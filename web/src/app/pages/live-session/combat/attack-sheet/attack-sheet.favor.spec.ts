@@ -97,6 +97,7 @@ function setup(opts: {
     state,
     master: opts.master,
   };
+  TestBed.resetTestingModule();
   TestBed.configureTestingModule({
     providers: [
       { provide: MAT_DIALOG_DATA, useValue: data },
@@ -149,9 +150,31 @@ describe('AttackSheet: the Inspiração (581-03)', () => {
     expect(html.indexOf('Inspiração do mestre')).toBeLessThan(html.indexOf('Como rolar o d20'));
   });
 
-  it('sends spend_favor and no roll mode while ticked, and the mode only reads', async () => {
+  /** The player picked another mode before ticking: the request would carry it, if the Inspiração were not spending. */
+  function pickDisadvantage(s: ReturnType<typeof setup>) {
+    const radio = Array.from(s.el.querySelectorAll<HTMLLabelElement>('.radio')).find((l) =>
+      l.textContent!.includes('Desvantagem'),
+    )!;
+    radio.querySelector('input')!.click();
+    s.fixture.detectChanges();
+    const reason = s.el.querySelector<HTMLInputElement>('.reason__field')!;
+    reason.value = 'estou ferido';
+    reason.dispatchEvent(new Event('input'));
+    s.fixture.detectChanges();
+  }
+
+  it('sends the picked mode when unticked, and spend_favor with no roll mode when ticked', async () => {
+    const off = setup({ targets: [target()] });
+    off.chooseTarget();
+    pickDisadvantage(off);
+    off.button('Rolar 2d20 no app')!.click();
+    await off.settle();
+    expect(off.api.rollAttack.mock.calls[0][9]).toMatchObject({ mode: RollMode.DISADVANTAGE });
+    expect(off.api.rollAttack.mock.calls[0][11].spendFavor).toBeUndefined();
+
     const s = setup({ targets: [target()] });
     s.chooseTarget();
+    pickDisadvantage(s);
     s.tick();
     const text = plain(s.el.querySelector('app-roll-mode-picker')?.textContent);
     expect(text).toContain('pela Inspiração');
@@ -165,6 +188,17 @@ describe('AttackSheet: the Inspiração (581-03)', () => {
     const args = s.api.rollAttack.mock.calls[0];
     expect(args[9]).toBeUndefined();
     expect(args[11].spendFavor).toBe(true);
+  });
+
+  it('unticks the box after the spend and reads who has the Inspiração again', async () => {
+    const s = setup({ targets: [target()] });
+    const refresh = vi.spyOn(TestBed.inject(FavorState), 'refresh').mockResolvedValue();
+    s.chooseTarget();
+    s.tick();
+    s.button('Rolar 2d20 no app')!.click();
+    await s.settle();
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(s.box()?.checked ?? false).toBe(false);
   });
 
   it('reads Normal under a disadvantage and says they cancel', () => {
@@ -217,7 +251,7 @@ describe('AttackSheet: the Inspiração (581-03)', () => {
       'O mestre agindo por Toren',
     );
     expect(plain(s.el.querySelector('.favor__why')?.textContent)).toContain(
-      'Só a jogadora pode usar a Inspiração dela.',
+      'Só quem joga com este personagem pode usar a Inspiração dele.',
     );
   });
 
