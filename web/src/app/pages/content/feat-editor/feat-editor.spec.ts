@@ -686,7 +686,7 @@ describe('FeatEditor (MR-025)', () => {
       expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeNull();
       click(el, 'Adicionar pré-requisito');
       fixture.detectChanges();
-      const items = Array.from(el.querySelectorAll('[role=menuitem]')).map((b) => text(b));
+      const items = Array.from(el.querySelectorAll('[role=menuitem] span')).map((b) => text(b));
       expect(items).toEqual([
         'Nível de classe',
         'Dádiva do pacto',
@@ -701,9 +701,9 @@ describe('FeatEditor (MR-025)', () => {
       expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeTruthy();
       click(el, 'Adicionar pré-requisito');
       fixture.detectChanges();
-      expect(Array.from(el.querySelectorAll('[role=menuitem]')).map((b) => text(b))).not.toContain(
-        'Nível de classe',
-      );
+      expect(
+        Array.from(el.querySelectorAll('[role=menuitem] span')).map((b) => text(b)),
+      ).not.toContain('Nível de classe');
       const select = field(
         el,
         'table_feat.prerequisite.class_level.class_key',

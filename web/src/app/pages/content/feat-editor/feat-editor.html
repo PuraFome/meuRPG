@@ -43,48 +43,88 @@
     <section class="mr-panel block" aria-labelledby="feat-asks-t">
       <h2 class="mr-panel__title" id="feat-asks-t">O que o talento pede</h2>
       <p class="hint">Vale só para quem vai pegar o talento. Deixe vazio o que o talento não pede. Quem confere é o servidor.</p>
-      <h3 class="sub">Todas estas habilidades, com no mínimo</h3>
-      <div class="grid grid--3">
-        @for (f of abilities(); track f.field) {
-          <app-text-field [label]="f.name" [value]="d.minimums[f.field]" inputmode="numeric" [path]="'table_feat.prerequisite.minimums.' + f.field" [issues]="issuesOf('table_feat.prerequisite.minimums.' + f.field)" (valueChange)="setScore('minimums', f.field, $event)" />
+      <details class="fold" [open]="oldOpen() || oldRefused()" (toggle)="oldOpen.set($any($event.target).open)">
+        <summary class="fold__summary">
+          <mat-icon aria-hidden="true">chevron_right</mat-icon>
+          <span class="fold__text"><strong>Habilidades, proficiência, nível, raças, tamanho e o que não pode ter</strong><span class="hint">{{ oldNote() }}</span></span>
+        </summary>
+        <h3 class="sub">Todas estas habilidades, com no mínimo</h3>
+        <div class="grid grid--3">
+          @for (f of abilities(); track f.field) {
+            <app-text-field [label]="f.name" [value]="d.minimums[f.field]" inputmode="numeric" [path]="'table_feat.prerequisite.minimums.' + f.field" [issues]="issuesOf('table_feat.prerequisite.minimums.' + f.field)" (valueChange)="setScore('minimums', f.field, $event)" />
+          }
+        </div>
+        @for (m of issuesOf('table_feat.prerequisite.minimums'); track m) {
+          <p class="inline-issue" role="note">{{ m }}</p>
+        }
+        <h3 class="sub">Uma destas habilidades, com no mínimo</h3>
+        <div class="grid grid--3">
+          @for (f of abilities(); track f.field) {
+            <app-text-field [label]="f.name" [value]="d.anyOf[f.field]" inputmode="numeric" [path]="'table_feat.prerequisite.any_of.' + f.field" [issues]="issuesOf('table_feat.prerequisite.any_of.' + f.field)" (valueChange)="setScore('anyOf', f.field, $event)" />
+          }
+        </div>
+        @for (m of issuesOf('table_feat.prerequisite.any_of'); track m) {
+          <p class="inline-issue" role="note">{{ m }}</p>
+        }
+        <div class="grid grid--2">
+          <app-select-field label="Proficiência" [options]="proficiencyOptions()" [value]="d.proficiencyKey" path="table_feat.prerequisite.proficiency_key" [issues]="issuesOf('table_feat.prerequisite.proficiency_key')" (valueChange)="patch({ proficiencyKey: $event })" />
+          <app-text-field label="Nível mínimo do personagem" [value]="d.level" inputmode="numeric" path="table_feat.prerequisite.level" [issues]="issuesOf('table_feat.prerequisite.level')" hint="Vazio: qualquer nível." (valueChange)="patch({ level: $event })" />
+        </div>
+        <div class="grid grid--2">
+          <app-search-pick label="Raças (basta uma)" placeholder="Procurar raça ou sub-raça" emptyText="Nenhuma raça com esse nome." hint="Uma sub-raça conta como a raça dela. Vazio: qualquer raça." [options]="raceSearch()" [chips]="raceChipList()" path="table_feat.prerequisite.races" [issues]="raceIssues()" (added)="addRace($event)" (removed)="removeRace($event)" />
+          <app-select-field label="Tamanho" [options]="sizes" [value]="d.size" path="table_feat.prerequisite.size" [issues]="issuesOf('table_feat.prerequisite.size')" hint="O tamanho que a ficha conta. Qualquer: não pede." (valueChange)="patch({ size: $event })" />
+        </div>
+        <app-search-pick label="Não pode ter" placeholder="Procurar traço, característica ou talento" [options]="lackSearch()" [groups]="lackGroups" [chips]="lackChipList()" path="table_feat.prerequisite.lacks_feature_key" [issues]="issuesOf('table_feat.prerequisite.lacks_feature_key')" hint="Quem já tem isto não pode pegar o talento; quem ganhar depois fica com um aviso na ficha." (added)="patch({ lacksFeatureKey: $event })" (removed)="patch({ lacksFeatureKey: '' })" />
+        <app-check-row label="Pode conjurar ao menos uma magia" [checked]="d.spellcasting" path="table_feat.prerequisite.spellcasting" (toggled)="patch({ spellcasting: $event })" />
+      </details>
+      <div class="asks-head">
+        <h3 class="sub">Classe, pacto, magia e opções</h3>
+        <span class="hint">O jogador precisa de todos</span>
+      </div>
+      @for (a of askRows(); track a.kind) {
+        <div class="ask">
+          <span class="ask__name"><mat-icon aria-hidden="true">{{ a.icon }}</mat-icon>{{ a.label }}</span>
+          <div class="ask__body">
+            @switch (a.kind) {
+              @case ('class') {
+                <div class="grid grid--2">
+                  <app-select-field label="Classe" [options]="classOptions()" [value]="d.classKey" path="table_feat.prerequisite.class_level.class_key" [issues]="issuesOf('table_feat.prerequisite.class_level.class_key')" (valueChange)="patch({ classKey: $event })" />
+                  <app-text-field label="Nível mínimo (1 a 20)" [value]="d.classLevel" inputmode="numeric" path="table_feat.prerequisite.class_level.level" [issues]="issuesOf('table_feat.prerequisite.class_level.level')" (valueChange)="patch({ classLevel: $event })" />
+                </div>
+                @for (m of issuesOf('table_feat.prerequisite.class_level'); track m) {
+                  <p class="inline-issue" role="note">{{ m }}</p>
+                }
+              }
+              @case ('pact') {
+                <app-select-field label="Dádiva" [options]="pactOptions()" [value]="d.requiresPact" path="table_feat.prerequisite.requires_pact" [issues]="issuesOf('table_feat.prerequisite.requires_pact')" (valueChange)="patch({ requiresPact: $event })" />
+              }
+              @case ('spell') {
+                <app-select-field label="Magia" [options]="requireSpellOptions()" [value]="d.requiresSpell" path="table_feat.prerequisite.requires_spell_key" [issues]="issuesOf('table_feat.prerequisite.requires_spell_key')" (valueChange)="patch({ requiresSpell: $event })" />
+              }
+              @default {
+                <app-pick-list label="Outras opções" addLabel="Adicionar opção" [options]="requirable()" [values]="d.requiresOptions" [max]="10" path="table_feat.prerequisite.requires_option_keys" [issues]="issuesOf('table_feat.prerequisite.requires_option_keys')" hint="{{ d.requiresOptions.length }} de 10. Opções que o personagem já escolheu, do SRD ou da mesa." (added)="patch({ requiresOptions: [...d.requiresOptions, $event] })" (removed)="patch({ requiresOptions: d.requiresOptions.filter((k) => k !== $event) })" />
+              }
+            }
+          </div>
+          <button type="button" class="ask__x" [attr.aria-label]="'Tirar ' + a.label" (click)="clearAsk(a.kind)"><mat-icon aria-hidden="true">close</mat-icon></button>
+        </div>
+      }
+      <div class="asks-add">
+        @if (askMissing().length > 0) {
+          <div class="asks-add__menu">
+            <button type="button" class="add" aria-haspopup="menu" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())"><mat-icon aria-hidden="true">add</mat-icon>Adicionar pré-requisito<mat-icon aria-hidden="true">arrow_drop_down</mat-icon></button>
+            @if (menuOpen()) {
+              <div class="asks-add__list" role="menu">
+                @for (a of askMissing(); track a.kind) {
+                  <button type="button" role="menuitem" (click)="addAsk(a.kind)"><mat-icon aria-hidden="true">{{ a.icon }}</mat-icon><span>{{ a.label }}</span></button>
+                }
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="hint"><mat-icon aria-hidden="true">lock</mat-icon>Os quatro tipos já estão na lista. Outra opção entra na linha "Outras opções".</p>
         }
       </div>
-      @for (m of issuesOf('table_feat.prerequisite.minimums'); track m) {
-        <p class="inline-issue" role="note">{{ m }}</p>
-      }
-      <h3 class="sub">Uma destas habilidades, com no mínimo</h3>
-      <div class="grid grid--3">
-        @for (f of abilities(); track f.field) {
-          <app-text-field [label]="f.name" [value]="d.anyOf[f.field]" inputmode="numeric" [path]="'table_feat.prerequisite.any_of.' + f.field" [issues]="issuesOf('table_feat.prerequisite.any_of.' + f.field)" (valueChange)="setScore('anyOf', f.field, $event)" />
-        }
-      </div>
-      @for (m of issuesOf('table_feat.prerequisite.any_of'); track m) {
-        <p class="inline-issue" role="note">{{ m }}</p>
-      }
-      <div class="grid grid--2">
-        <app-select-field label="Proficiência" [options]="proficiencyOptions()" [value]="d.proficiencyKey" path="table_feat.prerequisite.proficiency_key" [issues]="issuesOf('table_feat.prerequisite.proficiency_key')" (valueChange)="patch({ proficiencyKey: $event })" />
-        <app-text-field label="Nível mínimo do personagem" [value]="d.level" inputmode="numeric" path="table_feat.prerequisite.level" [issues]="issuesOf('table_feat.prerequisite.level')" hint="Vazio: qualquer nível." (valueChange)="patch({ level: $event })" />
-      </div>
-      <div class="grid grid--2">
-        <app-search-pick label="Raças (basta uma)" placeholder="Procurar raça ou sub-raça" emptyText="Nenhuma raça com esse nome." hint="Uma sub-raça conta como a raça dela. Vazio: qualquer raça." [options]="raceSearch()" [chips]="raceChipList()" path="table_feat.prerequisite.races" [issues]="raceIssues()" (added)="addRace($event)" (removed)="removeRace($event)" />
-        <app-select-field label="Tamanho" [options]="sizes" [value]="d.size" path="table_feat.prerequisite.size" [issues]="issuesOf('table_feat.prerequisite.size')" hint="O tamanho que a ficha conta. Qualquer: não pede." (valueChange)="patch({ size: $event })" />
-      </div>
-      <app-search-pick label="Não pode ter" placeholder="Procurar traço, característica ou talento" [options]="lackSearch()" [groups]="lackGroups" [chips]="lackChipList()" path="table_feat.prerequisite.lacks_feature_key" [issues]="issuesOf('table_feat.prerequisite.lacks_feature_key')" hint="Quem já tem isto não pode pegar o talento; quem ganhar depois fica com um aviso na ficha." (added)="patch({ lacksFeatureKey: $event })" (removed)="patch({ lacksFeatureKey: '' })" />
-      <app-check-row label="Pode conjurar ao menos uma magia" [checked]="d.spellcasting" path="table_feat.prerequisite.spellcasting" (toggled)="patch({ spellcasting: $event })" />
-      <h3 class="sub">Classe, pacto, magia e opções</h3>
-      <p class="hint">O jogador precisa de todos os que estiverem aqui.</p>
-      <div class="grid grid--2">
-        <app-select-field label="Classe" [options]="classOptions()" [value]="d.classKey" path="table_feat.prerequisite.class_level.class_key" [issues]="issuesOf('table_feat.prerequisite.class_level.class_key')" (valueChange)="patch({ classKey: $event })" />
-        <app-text-field label="Nível na classe (1 a 20)" [value]="d.classLevel" inputmode="numeric" path="table_feat.prerequisite.class_level.level" [issues]="issuesOf('table_feat.prerequisite.class_level.level')" (valueChange)="patch({ classLevel: $event })" />
-      </div>
-      @for (m of issuesOf('table_feat.prerequisite.class_level'); track m) {
-        <p class="inline-issue" role="note">{{ m }}</p>
-      }
-      <div class="grid grid--2">
-        <app-select-field label="Dádiva do pacto" [options]="pactOptions()" [value]="d.requiresPact" path="table_feat.prerequisite.requires_pact" [issues]="issuesOf('table_feat.prerequisite.requires_pact')" (valueChange)="patch({ requiresPact: $event })" />
-        <app-select-field label="Magia que conhece" [options]="requireSpellOptions()" [value]="d.requiresSpell" path="table_feat.prerequisite.requires_spell_key" [issues]="issuesOf('table_feat.prerequisite.requires_spell_key')" (valueChange)="patch({ requiresSpell: $event })" />
-      </div>
-      <app-pick-list label="Outras opções" addLabel="Adicionar opção" [options]="requirable()" [values]="d.requiresOptions" [max]="10" path="table_feat.prerequisite.requires_option_keys" [issues]="issuesOf('table_feat.prerequisite.requires_option_keys')" hint="Opções que o personagem já escolheu, do SRD ou da mesa. No máximo 10." (added)="patch({ requiresOptions: [...d.requiresOptions, $event] })" (removed)="patch({ requiresOptions: d.requiresOptions.filter((k) => k !== $event) })" />
       @for (m of issuesOf('table_feat.prerequisite'); track m) {
         <p class="inline-issue" role="note">{{ m }}</p>
       }
