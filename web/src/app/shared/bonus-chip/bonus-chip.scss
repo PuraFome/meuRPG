@@ -1,0 +1,37 @@
+:host {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+
+.bonus-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  box-sizing: border-box;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--mr-accent);
+  border-radius: 999px;
+  background: var(--mr-accent-soft, transparent);
+  font-size: var(--mr-font-14);
+  line-height: 1;
+  white-space: nowrap;
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.bonus-chip--idle {
+  border: 1px dashed var(--mr-rule);
+  background: transparent;
+  color: var(--mr-ink-muted);
+}
+
+.bonus-chip__words {
+  font-size: var(--mr-font-14);
+}
