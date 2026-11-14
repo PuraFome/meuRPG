@@ -195,6 +195,8 @@ A rider at 0 hit points that is alive is unconscious and auto-fails the save, so
 A rider that is defeated is not asked and does not fall.
 The rider lands on the nearest free neighbor of the mount, ordered by distance, then row, then column.
 With no free neighbor it lands on the nearest free square, and only the master's line and result say so.
+With no free square at all within `mountSearchReach`, the rider stays on the mount's square, and the master's line and result say so the same way.
+A mount with no square on the grid leaves the rider with none either.
 A creature holds a square whether the players see it or not, so a fall never lands on a hidden creature and nobody is told why.
 The window closes by itself when the rider is defeated, when the rider or the mount leaves, is removed or dismissed, when the rider is not on that mount any more, when the pushed mount is back on its square (the undo of the push) or when the prone is taken off.
 
