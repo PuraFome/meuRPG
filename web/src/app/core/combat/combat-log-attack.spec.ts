@@ -164,9 +164,18 @@ describe('a power attack in the log, as each viewer reads it', () => {
     expect(notes('Outra fonte')).toEqual(['Outra fonte cortante']);
   });
 
-  it('gives the attacker and the master the flat number of the part', () => {
-    expect(damageNotes({ parts: [part({ flat: 10 })], steps: [] } as never)).toEqual([
-      'Golpe Pesado + 10 = 10',
+  it('gives the attacker and the master no line for the +10: the sentence already says it, and the other parts stay', () => {
+    const sword = part({
+      partKey: 'weapon',
+      labelPt: 'Espada grande',
+      diceCount: 2,
+      diceSides: 6,
+      faces: [4, 5],
+      sum: 9,
+      flat: 6,
+    });
+    expect(damageNotes({ parts: [sword, part({ flat: 10 })], steps: [] } as never)).toEqual([
+      'Espada grande 2d6 (4, 5) + 6 = 15',
     ]);
   });
 });

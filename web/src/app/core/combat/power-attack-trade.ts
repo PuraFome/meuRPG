@@ -127,7 +127,7 @@ export function poolShortMessage(pool: string, left: number | null): string {
 }
 
 /** The key the server gives the damage part of a power attack. */
-const TRADE_PART_KEY = 'power_attack';
+export const TRADE_PART_KEY = 'power_attack';
 
 /** The damage part is the flat damage of a power attack: automatic, never doubled, only on a hit. */
 export function isTradePart(p: { readonly key: string }): boolean {
