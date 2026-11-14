@@ -119,6 +119,9 @@ type windowTrigger struct {
 	Moment string `json:"moment,omitempty"`
 	// Hidden says the creature that triggered a FEATURE window is hidden: the master alone reads and answers it (RN-10).
 	Hidden bool `json:"hidden,omitempty"`
+	// Turn is the turn key (round and whose turn) when a FEATURE window opened: the reactor is asked once about the feature for the
+	// creature in each turn (askedThisTurn).
+	Turn string `json:"turn,omitempty"`
 }
 
 // windowOutcome is what an answered window did: kept with the window, and, for the

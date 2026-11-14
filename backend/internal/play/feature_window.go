@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -119,12 +120,32 @@ func (s *Service) featureSpecs(ctx context.Context, c *combatTx, cs []playdb.Com
 		if !near || !s.featureReady(ctx, c, cs, k, fa, m.mover, dist) {
 			continue
 		}
+		asked, err := s.askedThisTurn(ctx, c, r, fa.Key, m.mover.ID)
+		if err != nil {
+			return nil, err
+		}
+		if asked {
+			continue
+		}
 		specs = append(specs, windowSpec{
 			kind: reaction.Feature, reactor: &r,
-			trigger: windowTrigger{Actor: m.mover.ID, Key: fa.Key, Distance: dist, Moment: m.kind, Hidden: m.mover.Hidden},
+			trigger: windowTrigger{Actor: m.mover.ID, Key: fa.Key, Distance: dist, Moment: m.kind, Hidden: m.mover.Hidden, Turn: turnKey(c.enc)},
 		})
 	}
 	return specs, nil
+}
+
+// askedThisTurn says the reactor was asked about the feature for the creature in this turn already, whatever the answer was: the
+// window's own row is the mark, so the undo that removes the window removes it, and the undo that opens it again puts it back.
+// The turn's start and the move are one question.
+func (s *Service) askedThisTurn(ctx context.Context, c *combatTx, reactor playdb.Combatant, key, creature string) (bool, error) {
+	asked, err := c.q.HasFeatureWindowAsked(ctx, playdb.HasFeatureWindowAskedParams{
+		EncounterID: c.enc.ID, ReactorID: reactor.ID, Actor: creature, Key: key, Turn: turnKey(c.enc),
+	})
+	if err != nil {
+		return false, fmt.Errorf("find the feature window asked: %w", err)
+	}
+	return asked, nil
 }
 
 // watches says the reactor notices the creature: a blind reactor notices nothing, an invisible creature is noticed by no

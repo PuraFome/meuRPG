@@ -1598,6 +1598,15 @@ INSERT INTO reaction_windows (encounter_id, group_id, kind, reactor_id, pending_
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
 
+-- name: HasFeatureWindowAsked :one
+-- Says the reactor was asked about the feature for the creature in the turn: a FEATURE window of the same reactor, feature, creature and
+-- turn key is open or answered. A window the undo removed is not there, and one the undo opened again is.
+SELECT EXISTS (
+    SELECT 1 FROM reaction_windows
+    WHERE encounter_id = sqlc.arg(encounter_id) AND reactor_id = sqlc.arg(reactor_id)::UUID AND kind = 'feature' AND status IN ('open', 'answered')
+      AND trigger ->> 'actor' = sqlc.arg(actor)::TEXT AND trigger ->> 'key' = sqlc.arg(key)::TEXT AND trigger ->> 'turn' = sqlc.arg(turn)::TEXT
+);
+
 -- name: ListOpenReactionWindows :many
 SELECT * FROM reaction_windows WHERE encounter_id = $1 AND status = 'open' ORDER BY seq;
 

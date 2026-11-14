@@ -1139,6 +1139,9 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   A mesa escreve o gatilho na característica: os momentos (um inimigo começa o turno a até certa distância, um inimigo se move para dentro dela) e a distância.
   O app abre a janela para o jogador de quem tem a característica quando uma criatura do outro lado começa o turno dentro da distância, ou sai de fora e entra nela, e quem a tem pode reagir.
   Uma criatura que já estava dentro da distância e se move dentro dela não dispara o gatilho de novo.
+  O movimento conta da casa de onde a criatura saiu até a casa onde chegou: uma criatura que atravessa a distância e para fora dela não dispara nada.
+  Quem tem a característica é perguntado uma vez sobre cada criatura em cada turno, seja qual for a resposta: uma criatura que sai da distância e volta no mesmo turno não pergunta de novo, e o começo do turno dela e o movimento são uma pergunta só.
+  O turno seguinte da criatura pergunta de novo.
   A pergunta não aparece se a reação já foi gasta, se quem a tem não pode reagir, se não enxerga a criatura, se a característica não tem mais usos ou se não dá para mirá-la nessa criatura.
   "Usar" executa a característica como reação sobre essa criatura: gasta a reação, um uso e o recurso da característica, e a linha do uso diz isso.
   "Deixar passar" não gasta nada.

@@ -171,6 +171,11 @@ A table feature whose `use` has a `trigger` and the economy `reaction` opens a w
 Two moments open it: a creature of the other side starts its turn (`startTurn`, `openStartFeatures`), and a creature ends a move (`openMoveFeatures`, beside the opportunity offers).
 The turn-start window needs the creature within `range_ft` of the owner.
 The move window needs it within `range_ft` at the end and outside it at the start of the move.
+Only the start and the end square of one `MoveCombatant` count: a creature that crosses the range in one call triggers nothing.
+The reactor is asked once about each feature for each creature in each turn (`askedThisTurn`): the window's own row is the mark, and `windowTrigger.turn` keeps the turn key (round and whose turn) it opened in.
+A row that is open or answered counts, whatever the answer, so a creature that goes out of the range and in again does not ask again, and the turn-start and the move are one question.
+The undo that deletes the window deletes the mark, and the undo of a pass or a use reopens the row, so the mark follows.
+The creature's next turn has a new turn key and asks again.
 One window opens for each triggered feature of each reactor, all in one new group.
 The reactor is a player's character on the map, of the other side, with its reaction free, not incapacitated and not blinded, and the feature has a use left.
 The reactor must see the creature (`watches`), and the creature must be a target the feature can aim at.

@@ -1139,6 +1139,9 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   The table writes the trigger on the feature: the moments (an enemy starts its turn within a distance, an enemy moves to within it) and the distance.
   The app opens the window for the owner's player when a creature of the other side starts its turn within the distance, or moves from outside it to inside it, and the owner can react.
   A creature that was already within the distance and moves within it does not trigger it again.
+  The move counts from the square it left to the square it reached: a creature that crosses the distance and stops outside it triggers nothing.
+  The owner is asked once about each creature in each turn, whatever the answer: a creature that goes out of the distance and in again in the same turn does not ask again, and the start of its turn and its move are one question.
+  The creature's next turn asks again.
   The owner is not asked when its reaction is spent, it cannot react, it sees nothing of the creature, the feature has no use left or it cannot be aimed at the creature.
   "Usar" runs the feature as a reaction on that creature: the reaction, one use and the feature's resource are spent, and the line of the use says so.
   "Deixar passar" spends nothing.

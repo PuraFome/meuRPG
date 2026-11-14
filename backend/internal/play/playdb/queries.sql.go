@@ -3771,6 +3771,37 @@ func (q *Queries) HasCharacterFavor(ctx context.Context, arg HasCharacterFavorPa
 	return exists, err
 }
 
+const hasFeatureWindowAsked = `-- name: HasFeatureWindowAsked :one
+SELECT EXISTS (
+    SELECT 1 FROM reaction_windows
+    WHERE encounter_id = $1 AND reactor_id = $2::UUID AND kind = 'feature' AND status IN ('open', 'answered')
+      AND trigger ->> 'actor' = $3::TEXT AND trigger ->> 'key' = $4::TEXT AND trigger ->> 'turn' = $5::TEXT
+)
+`
+
+type HasFeatureWindowAskedParams struct {
+	EncounterID string
+	ReactorID   string
+	Actor       string
+	Key         string
+	Turn        string
+}
+
+// Says the reactor was asked about the feature for the creature in the turn: a FEATURE window of the same reactor, feature, creature and
+// turn key is open or answered. A window the undo removed is not there, and one the undo opened again is.
+func (q *Queries) HasFeatureWindowAsked(ctx context.Context, arg HasFeatureWindowAskedParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasFeatureWindowAsked,
+		arg.EncounterID,
+		arg.ReactorID,
+		arg.Actor,
+		arg.Key,
+		arg.Turn,
+	)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const hasLongRestInSession = `-- name: HasLongRestInSession :one
 SELECT EXISTS (
     SELECT 1 FROM session_events
