@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
@@ -22,10 +23,13 @@ type sayFn = func(campaignID string, ev live.Event)
 func (s *Service) sayNow(campaignID string, ev live.Event) { s.send(campaignID, ev) }
 
 // sayWith is the say that stamps each event with seq (WatchGameSessionResponse.session_seq) and sends it; seq 0 sends it unstamped.
+// It stamps a copy and never the caller's message: a publisher may send one message to several audiences, and a stream may be
+// marshalling an earlier send of it.
 func (s *Service) sayWith(seq int64) sayFn {
 	return func(campaignID string, ev live.Event) {
 		if seq > 0 && ev.Message != nil {
-			ev.Message.SessionSeq = seq // not shared with a stream yet: send is next
+			ev.Message = proto.CloneOf(ev.Message)
+			ev.Message.SessionSeq = seq
 		}
 		s.send(campaignID, ev)
 	}
