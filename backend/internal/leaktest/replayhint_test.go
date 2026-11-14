@@ -14,6 +14,7 @@ import (
 // second the second request has a key the server never saw (a second write). Ana and Caio hear the same in both: nothing.
 func TestAReplayOfAWriteToAHiddenCombatantTellsPlayersWhatANewKeyDoes(t *testing.T) {
 	hear := func(t *testing.T, replay bool) map[string][]string {
+		t.Helper()
 		w := newWorld(t)
 		hid := w.combatant(w.hiddenNPC)
 		if !hid.GetHidden() {
