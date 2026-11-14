@@ -9,6 +9,8 @@ import {
   featureAuraDraft,
   rowToModifiers,
 } from './spell-effect-draft';
+import { auraMenu } from './content-testing-menu-aura';
+import { draftToEffect as effectOf, emptyEffect } from './effect-draft';
 import { catalog } from './content-testing';
 
 const cat = catalog();
@@ -62,5 +64,14 @@ describe('a feature aura (#579)', () => {
     expect(m.value).toBe(0);
     const back = effectToDraft(auraOf('3', 'ability')).rows[0];
     expect(back).toMatchObject({ rollMode: 'ability', valueAbility: 'cha', valueMin: '1' });
+  });
+
+  it('is written under `aura`, and comes back as the same draft', () => {
+    const auraDraft = effectToDraft(auraOf('4,5', 'ability'));
+    const out = effectOf({ ...emptyEffect('aura'), aura: auraDraft }, auraMenu());
+    expect(out).toMatchObject({ type: 'aura' });
+    expect(out?.aura?.aura?.radiusFt).toBe(15);
+    expect(out?.aura?.modifiers[0]).toMatchObject({ valueAbility: 'cha', valueMin: 1 });
+    expect(effectToDraft(out!.aura!)).toMatchObject({ aura: { radiusM: '4,5' } });
   });
 });

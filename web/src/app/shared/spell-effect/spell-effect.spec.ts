@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { settle } from '../../../test-settle';
 import {
+  type EffectRow,
   type SpellEffectDraft,
   emptyEffect,
   emptyRow,
@@ -214,5 +215,51 @@ describe('SpellEffect (#579, boards 579-01, 579-02 and 579-04)', () => {
     fixture.componentRef.setInput('effect', on({ visibility: 'owner' }));
     await settle(fixture, 3);
     expect(el.querySelector('[data-field="table_spell.effect.player_label_pt"]')).toBeNull();
+  });
+
+  describe('as the block of a feature aura (#579)', () => {
+    const aura = (rows: EffectRow[] = [{ ...emptyRow('roll'), rollMode: 'ability' }]) =>
+      on({ aura: { radiusM: '3', affects: 'allies' }, rows });
+    function feature(effect: SpellEffectDraft) {
+      const out = setup(effect);
+      out.fixture.componentRef.setInput('feature', true);
+      out.fixture.componentRef.setInput('basePath', 'table_feat.effects[0].aura');
+      out.fixture.detectChanges();
+      return out;
+    }
+
+    it('has no switch of its own and says it holds the whole combat', () => {
+      const { el } = feature(aura());
+      expect(el.querySelector('button[role="switch"]')).toBeNull();
+      expect(text(el)).toContain(
+        'Vale em todo combate, enquanto quem leva a aura estiver de pé e consciente.',
+      );
+      expect(text(el)).not.toContain('Em volta de quem conjura');
+    });
+
+    it('takes the number of a roll from an ability, with a least, and writes both', () => {
+      const { el, sent } = feature(aura());
+      const ability = field(
+        el,
+        'table_feat.effects[0].aura.modifiers[0].value_ability',
+      ) as HTMLSelectElement;
+      expect(ability).toBeTruthy();
+      expect(ability.value).toBe('cha');
+      const least = field(
+        el,
+        'table_feat.effects[0].aura.modifiers[0].value_min',
+      ) as HTMLInputElement;
+      expect(least.value).toBe('1');
+      least.value = '2';
+      least.dispatchEvent(new Event('input'));
+      expect(sent.at(-1)!.rows[0]).toMatchObject({ rollMode: 'ability', valueMin: '2' });
+    });
+
+    it('offers the ability only in a feature, not in a spell', () => {
+      const spell = setup(on({ rows: [{ ...emptyRow('roll') }] }));
+      expect(text(spell.el)).not.toContain('De uma habilidade');
+      const own = feature(aura([{ ...emptyRow('roll') }]));
+      expect(text(own.el)).toContain('De uma habilidade');
+    });
   });
 });
