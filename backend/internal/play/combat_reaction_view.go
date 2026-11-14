@@ -201,6 +201,9 @@ func (wv *windowView) offerWindows(offers []playdb.OpportunityOffer, windows []*
 	for _, o := range offers {
 		mover, ok1 := wv.byID[o.MoverID]
 		reactor, ok2 := wv.byID[o.ReactorID]
+		if ok1 {
+			mover = offerMoverFor(wv.d.cs, wv.v, mover, o)
+		}
 		if !ok1 || !ok2 || !wv.v.seesAtOffer(mover, o) {
 			continue
 		}

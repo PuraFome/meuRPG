@@ -41,6 +41,7 @@ func (a *armed) mountedOn(t *testing.T, label string) *string {
 func TestMountedCombat_ADefeatedCreatureSteedAsksItsRiderBeforeItGoes(t *testing.T) {
 	t.Parallel()
 	a, e := wolfRide(t)
+	wolf := a.id(t, "Lobo atroz 1")
 	if _, err := a.adjustHP(t, e, "Lobo atroz 1", damageHP(500)); err != nil {
 		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 	}
@@ -59,7 +60,7 @@ func TestMountedCombat_ADefeatedCreatureSteedAsksItsRiderBeforeItGoes(t *testing
 		t.Errorf("the rider after the answer rides %v, want it landed", *on)
 	}
 	var dismissed bool
-	if err := a.h.pool.QueryRow(t.Context(), `SELECT dismissed FROM combatants WHERE id = $1`, a.id(t, "Lobo atroz 1")).Scan(&dismissed); err != nil || !dismissed {
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT dismissed FROM combatants WHERE id = $1`, wolf).Scan(&dismissed); err != nil || !dismissed {
 		t.Errorf("the steed after the answer: dismissed = %v (%v), want it gone", dismissed, err)
 	}
 }

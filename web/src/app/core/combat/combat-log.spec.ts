@@ -1042,6 +1042,18 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
     expect(autoFail).toMatchObject({ text: ' caiu da montaria (falha automática)' });
   });
 
+  it('writes "Toren caiu da montaria" for a dismount fall, with no save text for the master either', () => {
+    const fall = logLine(
+      entry({
+        kind: CombatLogKind.RIDER_THROWN,
+        actorLabel: 'Toren',
+        targetLabel: 'Pônei',
+        mountSave: { landedCol: 6, landedRow: 7 },
+      } as never),
+    );
+    expect(fall).toMatchObject({ actor: 'Toren', text: ' caiu da montaria' });
+  });
+
   it('writes the Wild Shape lines: the form, and why it ended, with the number only where the server sent it (RN-20)', () => {
     const ws = (over: {
       started?: boolean;

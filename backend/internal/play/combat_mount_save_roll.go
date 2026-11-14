@@ -374,6 +374,7 @@ func (s *Service) dropRiderOf(ctx context.Context, c *combatTx, rider, mount pla
 	if err := settleMounts(ctx, c); err != nil {
 		return err
 	}
+	c.landed = append(c.landed, riderLanded{rider: after, from: &from})
 	if prone {
 		thrown := *ev
 		if err := insertEvent(ctx, c, eventRiderThrown, &c.actorUserID, nil, thrown); err != nil {

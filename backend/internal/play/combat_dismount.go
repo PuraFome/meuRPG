@@ -7,6 +7,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -23,16 +24,19 @@ const (
 	mountCauseMountDefeated = "mount_defeated"
 )
 
-// riderCanReact says the rider has a reaction it may spend now: it is not spent, not incapacitated, not down.
+// riderCanReact says the rider has a reaction it may spend now: it is not spent, not incapacitated, not down, not surprised.
 func (s *Service) riderCanReact(ctx context.Context, c *combatTx, rider playdb.Combatant) (bool, error) {
 	if rider.ReactionUsed || rider.EffectNoReaction || slices.ContainsFunc(rider.Conditions, func(k string) bool { return slices.Contains(incapacitating, k) }) {
 		return false, nil
 	}
 	if rider.Kind == kindPlayer {
 		down, err := s.isDown(ctx, c.tx, c.session.CampaignID, rider)
-		return !down, err
+		if err != nil || down {
+			return false, err
+		}
 	}
-	return true, nil
+	surprised, err := s.surprisedReactor(ctx, c.tx, c.session.CampaignID, rider) // a surprised creature takes no reaction
+	return !surprised, err
 }
 
 // openDismount asks the rider whose mount was knocked prone, or defeated, whether it lands on its feet; a rider that cannot react
@@ -61,25 +65,37 @@ func (s *Service) openDismount(ctx context.Context, c *combatTx, _ []playdb.Comb
 	return err
 }
 
+// riderLanded is a rider that was taken off its mount: the rider as it stands after, and the square it left.
+type riderLanded struct {
+	rider playdb.Combatant
+	from  *grid.Square
+}
+
 // dropRider takes the rider off the mount: prone when it fell, on its feet when it landed. The fall has the line of a thrown rider.
 func (s *Service) dropRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, cause string, prone bool) error {
 	ev := actionEvent{Round: c.enc.Round, Secret: rider.Hidden || mount.Hidden, Actor: rider.ID, Target: mount.ID}
-	ev.Reaction = &reactionEvent{Kind: string(reaction.MountSave), Cause: cause, AutoFail: true}
-	return s.dropRiderOf(ctx, c, rider, mount, &ev, &mountSaveRun{}, prone)
+	ev.Reaction = &reactionEvent{Kind: string(reaction.MountSave), Cause: cause} // no save was asked: the cause says so, and no d20 or DC is written
+	if err := s.dropRiderOf(ctx, c, rider, mount, &ev, &mountSaveRun{}, prone); err != nil {
+		return err
+	}
+	return s.goneSteed(ctx, c, mount)
 }
 
-// openDefeatedMounts opens the dismount window of the rider of every NPC mount that is at 0 hit points: it runs after each change. A
-// creature that is defeated is dismissed instead, and its rider lands on its feet with no window.
+// openDefeatedMounts opens the dismount window of the rider of every mount that is at 0 hit points, a creature steed too: it runs after
+// each change, and the defeated steed stays linked until the window is answered or closes.
 func (s *Service) openDefeatedMounts(ctx context.Context, c *combatTx) error {
 	if c.enc.ID == "" || c.enc.Status != statusActive {
 		return nil
+	}
+	if riders, err := c.q.EncounterHasRiders(ctx, c.enc.ID); err != nil || !riders {
+		return err
 	}
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return err
 	}
 	for _, mount := range cs {
-		if !mount.Defeated || isCreature(mount) {
+		if !mount.Defeated {
 			continue
 		}
 		if rider := riderOf(cs, mount.ID); rider != nil {
@@ -110,10 +126,8 @@ func dismountGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]play
 	if !ok || !there || rider.Defeated || rider.MountedOnID == nil || *rider.MountedOnID != mount.ID {
 		return true
 	}
-	if t.Cause == mountCauseMountDefeated {
-		return !mount.Defeated
-	}
-	return mount.Defeated || !slices.Contains(mount.Conditions, condProne)
+	// A mount that was knocked prone and is then defeated keeps the window, whatever its cause said: the rider still owes its landing.
+	return !mount.Defeated && (t.Cause == mountCauseMountDefeated || !slices.Contains(mount.Conditions, condProne))
 }
 
 // answerDismount: "Usar" spends the reaction and lands the rider on its feet within 5 feet of the mount; "Deixar passar" throws it
@@ -150,6 +164,9 @@ func (s *Service) answerDismount(ctx context.Context, c *combatTx, w playdb.Reac
 	run := &mountSaveRun{}
 	landing := actionEvent{Round: c.enc.Round, Secret: secret, Actor: reactor.ID, Target: mount.ID, Reaction: &reactionEvent{Kind: string(reaction.MountSave), Cause: t.Cause}}
 	if err := s.dropRiderOf(ctx, c, after, mount, &landing, run, false); err != nil {
+		return err
+	}
+	if err := s.goneSteed(ctx, c, mount); err != nil {
 		return err
 	}
 	ev.Reaction = &reactionEvent{Kind: w.Kind, Window: w.ID, Used: true, ByMaster: c.master, LandCol: landing.Reaction.LandCol, LandRow: landing.Reaction.LandRow, NoRoom: landing.Reaction.NoRoom}
@@ -203,4 +220,13 @@ func (s *Service) fallWithWindow(ctx context.Context, c *combatTx, w playdb.Reac
 		return nil
 	}
 	return s.dropRider(ctx, c, rider, mount, t.Cause, true)
+}
+
+// goneSteed sends a defeated creature steed away once its rider is off it: the steed disappears from the combat as a creature that
+// was dismissed does. A mount that is not a defeated creature stays where it fell, as any defeated combatant does.
+func (s *Service) goneSteed(ctx context.Context, c *combatTx, mount playdb.Combatant) error {
+	if !mount.Defeated || !isCreature(mount) || mount.CreatureID == nil {
+		return nil
+	}
+	return s.dropCreatureCombatants(ctx, c, []string{*mount.CreatureID})
 }

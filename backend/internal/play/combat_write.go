@@ -271,7 +271,9 @@ type combatTx struct {
 	// change answered, for the sentence of the windows it closed; tellIDs are the
 	// combatants whose character vitals a replayed action changed.
 	reactionNotes []reactionNote
-	replay        *replayState
+	// landed are the riders a dismount or a fall of a window took off their mounts, told to the streams and the fog after the commit.
+	landed []riderLanded
+	replay *replayState
 	// pushed are the forced moves a replayed held action made, published after the commit of the answer that released it.
 	pushed       []*forcedMove
 	lastAnswered reaction.Kind
@@ -466,6 +468,14 @@ func (s *Service) tellChange(h *hints, campaignID string, c *combatTx) {
 	if len(c.told) > 0 || c.zonesMoved {
 		mapID := conv.OrZero(c.enc.MapID)
 		h.after(func(ctx context.Context, _ func(string, live.Event)) { s.maps.VisionChanged(ctx, campaignID, mapID) })
+	}
+	if landed, enc := c.landed, c.enc; len(landed) > 0 {
+		h.after(func(ctx context.Context, _ func(string, live.Event)) {
+			for _, l := range landed {
+				s.publishCombatantMoved(ctx, campaignID, enc, l.rider, l.from)
+				s.positionChanged(ctx, campaignID, enc, l.rider, l.from)
+			}
+		})
 	}
 	if notes, tellIDs, encID := c.reactionNotes, c.tellIDs, c.enc.ID; len(notes) > 0 || len(tellIDs) > 0 {
 		h.after(func(ctx context.Context, say func(string, live.Event)) {

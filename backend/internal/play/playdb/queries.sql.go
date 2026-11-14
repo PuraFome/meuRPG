@@ -1914,6 +1914,18 @@ func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesO
 	return items, nil
 }
 
+const encounterHasRiders = `-- name: EncounterHasRiders :one
+SELECT EXISTS (SELECT 1 FROM combatants WHERE encounter_id = $1 AND mounted_on_id IS NOT NULL)
+`
+
+// Whether any combatant of the combat sits on a mount: the cheap check before the scans that look for a mount's rider.
+func (q *Queries) EncounterHasRiders(ctx context.Context, encounterID string) (bool, error) {
+	row := q.db.QueryRow(ctx, encounterHasRiders, encounterID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const endCombatantTurnPart = `-- name: EndCombatantTurnPart :exec
 UPDATE combatants
 SET turn_state = 'ended'

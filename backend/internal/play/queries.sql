@@ -2195,3 +2195,7 @@ INSERT INTO character_favor (character_id, campaign_id, granted_by_user_id)
 VALUES ($1, $2, sqlc.narg(granted_by_user_id))
 ON CONFLICT (character_id) DO NOTHING
 RETURNING *;
+
+-- name: EncounterHasRiders :one
+-- Whether any combatant of the combat sits on a mount: the cheap check before the scans that look for a mount's rider.
+SELECT EXISTS (SELECT 1 FROM combatants WHERE encounter_id = $1 AND mounted_on_id IS NOT NULL);
