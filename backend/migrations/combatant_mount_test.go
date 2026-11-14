@@ -42,8 +42,8 @@ func TestCombatantMountMigration(t *testing.T) {
 	old := combatant("Antiga")
 	horse, rider, other := combatant("Cavalo"), combatant("Cavaleiro"), combatant("Outro")
 
-	if _, err := provider.Up(ctx); err != nil {
-		t.Fatalf("Up() error = %v", err)
+	if _, err := provider.UpTo(ctx, 333); err != nil {
+		t.Fatalf("UpTo(333) error = %v", err)
 	}
 	// An old row is unmounted: no steed, no kind, nothing kept, no move used.
 	var steed *string
@@ -83,8 +83,8 @@ func TestCombatantMountMigration(t *testing.T) {
 
 	// A second run changes nothing and a way down removes the columns and the kinds.
 	exec(t, db, "DELETE FROM goose_db_version WHERE version_id = 333")
-	if _, err := provider.Up(ctx); err != nil {
-		t.Fatalf("second Up() error = %v", err)
+	if _, err := provider.UpTo(ctx, 333); err != nil {
+		t.Fatalf("second UpTo(333) error = %v", err)
 	}
 	if _, err := provider.DownTo(ctx, 329); err != nil {
 		t.Fatalf("DownTo(329) error = %v", err)
