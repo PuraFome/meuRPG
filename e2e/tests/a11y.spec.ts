@@ -6678,6 +6678,8 @@ async function scanHitEffectSheet(browser: Browser, colorScheme: 'light' | 'dark
     const keys: { frost: string; flare: string } = { frost: '', flare: '' };
     const table = await tableForCombat(m, p, `Acessibilidade folha golpe ${Date.now()}`, true, true, {
       sheet,
+      // The goblin lives through the critical: an NPC the hit kills rolls no save of the effect (#577), and this spec reads that line.
+      goblinHitPoints: 60,
       before: async (id, master) => {
         keys.frost = await createEntryRPC(master, id, 'tableSpell', hitSpellBody('Geada no Punho', { dice: 2, perSlotDice: 0, maxDice: 2 }));
         keys.flare = await createEntryRPC(
