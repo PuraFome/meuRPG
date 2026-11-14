@@ -49,7 +49,8 @@ func TestAFeatAsksForAClassLevelAPactASpellAndOptions(t *testing.T) {
 		{"spell known", known, featKeyMagicMissl, nil},
 		{"spell unknown", warlock(3), featKeyMagicMissl, []FeatUnmet{{Kind: FeatUnmetSpell, Key: "spell:magic-missile"}}},
 		{"both options missing", choiceBuild("race:human", "", ClassLevel{Class: "class:fighter", Level: 1}), featKeyNeedsStyle, []FeatUnmet{
-			{Kind: FeatUnmetOption, Key: "feature:fighting-style-defense"}, {Kind: FeatUnmetOption, Key: "feature:fighting-style-dueling"}}},
+			{Kind: FeatUnmetOption, Key: "feature:fighting-style-defense"}, {Kind: FeatUnmetOption, Key: "feature:fighting-style-dueling"},
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
