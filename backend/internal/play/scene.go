@@ -888,6 +888,7 @@ type sceneRolled struct {
 	rollID   string
 	who      link.Character
 	repeated bool
+	favor    favorUse // what the roller's Inspiration did to the roll (favor_spend.go)
 	at       time.Time
 	doneRow  playdb.GetSessionEventByIdempotencyKeyRow
 	offer    *playv1.OutsideInspirationOffer // the roll waits for the answer about a Bardic Inspiration die
@@ -1049,7 +1050,7 @@ func (c *sceneRollCall) run(ctx context.Context) error {
 	step, err := c.s.heldGate(ctx, c.s.outsideGate(c.tx, c.q), rollSpec{
 		Kind: heldSceneCheck, Key: c.key, Request: c.req, Roller: heldRoller{CampaignID: c.m.CampaignID, CharacterID: c.out.who.ID, UserID: c.m.UserID},
 		In: c.in, Modifier: bonus, Mode: cm.Mode, Floor: floor, Lucky: opt.Lucky, MayAsk: true,
-		Stroke: checkStrokeRule(action.DC, !scene.ShowDC),
+		Stroke: checkStrokeRule(action.DC, !scene.ShowDC), FavorSpent: c.out.favor.Used,
 	})
 	if err != nil {
 		return err
@@ -1156,6 +1157,16 @@ func (c *sceneRollCall) modeAndBonus(ctx context.Context, sessionID string, acti
 	if err != nil {
 		return cm, 0, err
 	}
+	// The player's own Inspiration, over the circumstances of the check: the roller is the player (the master is refused
+	// before), and the character is theirs.
+	c.out.favor, err = c.s.useFavor(ctx, c.s.outsideGate(c.tx, c.q), favorAsk{
+		Want: c.req.GetSpendFavor(), CampaignID: c.m.CampaignID, CharacterID: c.out.who.ID, Own: true, Key: c.key, Kind: heldSceneCheck,
+		Sources: cm.Sources, Rolls: true,
+	})
+	if err != nil {
+		return cm, 0, err
+	}
+	cm = cm.withFavor(c.out.favor)
 	names, err := c.s.namerFor(ctx, c.tx, c.m.CampaignID)
 	if err != nil {
 		return cm, 0, err
@@ -1183,7 +1194,7 @@ func (c *sceneRollCall) write(ctx context.Context, session playdb.GameSession, s
 	ev := sceneRollEvent{
 		PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 		D20: clamp32(d20.Face(), 1, d20Sides), Modifier: conv.Int32(bonus), Total: conv.Int32(d20.Total),
-		Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, d20Sides), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode),
+		Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, d20Sides), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode), Favor: c.out.favor.Used,
 		Lucky: step.Lucky, Stroke: step.Stroke, CountedBy: d20.CountedBy,
 	}
 	if step.Bonus != nil {

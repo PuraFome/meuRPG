@@ -161,6 +161,7 @@ func parseHidePlan(msg *playv1.HideRequest) (hidePlan, error) {
 	if err != nil {
 		return hidePlan{}, err
 	}
+	in.spend = msg.GetSpendFavor()
 	return hidePlan{combatantID: combatantID, actionKey: actionKey, in: in, req: msg}, nil
 }
 
@@ -181,12 +182,15 @@ func (s *Service) attemptHide(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	// A Cutting Words can take a die off the Stealth roll: it waits for the windows, with nothing
 	// spent (combat_cutting_checks.go).
-	if held, ok, err := s.holdCheck(ctx, c, m, "hide", p.req, cs, who, nil, p.in); err != nil || ok {
+	if held, ok, err := s.holdHide(ctx, c, m, v, p, cs, who); err != nil || ok {
 		return held, nil, err
 	}
 	// The d20 comes before anything is spent: it may wait for a question, with nothing written.
 	prep, err := s.prepareCheck(ctx, c, who, skillStealth, cs)
 	if err != nil {
+		return actionEvent{}, nil, err
+	}
+	if prep, err = s.favorOnCheck(ctx, c, prep, p.favorAsk(v, who)); err != nil {
 		return actionEvent{}, nil, err
 	}
 	gate, err := s.gateCheck(ctx, c, prep, checkHold{kind: heldHide, key: p.key, req: p.req, m: m, who: who, in: p.in})
@@ -201,29 +205,50 @@ func (s *Service) attemptHide(ctx context.Context, c *combatTx, m authz.Membersh
 	if err != nil {
 		return actionEvent{}, nil, err
 	}
+	ev, err := s.recordHide(ctx, c, v, who, cs, prep, p, gate)
+	return ev, vitals, err
+}
+
+// recordHide rolls the Stealth check and keeps the pending attempt that waits for the master.
+func (s *Service) recordHide(ctx context.Context, c *combatTx, v combatViewer, who playdb.Combatant, cs []playdb.Combatant, prep preparedCheck, p hidePlan, gate gateResult) (actionEvent, error) {
 	roll, err := s.finishCheck(ctx, c, who, cs, prep, p.in, gate)
 	if err != nil {
-		return actionEvent{}, vitals, err
+		return actionEvent{}, err
 	}
 	roll.ByMaster = v.master && !initiatorIsNPC(who)
 	stored, err := encodeRoll(roll)
 	if err != nil {
-		return actionEvent{}, vitals, err
+		return actionEvent{}, err
 	}
 	attempt, err := c.q.InsertHideAttempt(ctx, playdb.InsertHideAttemptParams{
 		EncounterID: c.enc.ID, HiderID: who.ID, Status: hidePending, Roll: stored, Round: c.enc.Round, CreatedAt: c.now,
 	})
 	if err != nil {
-		return actionEvent{}, vitals, fmt.Errorf("keep the hide attempt: %w", err)
+		return actionEvent{}, fmt.Errorf("keep the hide attempt: %w", err)
 	}
 	if err := touch(ctx, c); err != nil {
-		return actionEvent{}, vitals, err
+		return actionEvent{}, err
 	}
 	c.characterID = &who.CharacterID
 	return actionEvent{
 		Round: c.enc.Round, Secret: who.Hidden, Actor: who.ID, Key: p.actionKey,
 		Contest: &contestEvent{ContestID: attempt.ID, Line: contestLineHideTried},
-	}, vitals, nil
+	}, nil
+}
+
+// favorAsk is what the Hide tells the helper about the Inspiration the request asks: the hider's own character.
+func (p hidePlan) favorAsk(v combatViewer, who playdb.Combatant) favorAsk {
+	return favorAsk{Want: p.in.spend, CharacterID: who.CharacterID, Own: ownsCharacter(v, who), Key: p.key, Kind: heldHide, Rolls: true}
+}
+
+// holdHide holds the Stealth roll for the windows of a Cutting Words, with nothing rolled or spent; an Inspiration the replay could
+// not take is refused now.
+func (s *Service) holdHide(ctx context.Context, c *combatTx, m authz.Membership, v combatViewer, p hidePlan, cs []playdb.Combatant, who playdb.Combatant) (actionEvent, bool, error) {
+	ev, held, err := s.holdCheck(ctx, c, m, "hide", p.req, cs, who, nil, p.in)
+	if err != nil || !held {
+		return ev, held, err
+	}
+	return ev, true, s.checkFavorOfCheck(ctx, c, who, skillStealth, cs, p.favorAsk(v, who))
 }
 
 // hider finds the combatant that hides, who may act now and, for a player, roll this way.

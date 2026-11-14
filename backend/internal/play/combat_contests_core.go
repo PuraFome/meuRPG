@@ -156,6 +156,8 @@ type contestRoll struct {
 	// Deferred says the player left the roll to the master: Skill is their choice and
 	// there are no faces.
 	Deferred bool `json:"deferred,omitempty"`
+	// Favor says the roll was made with the roller's Inspiration (favor_spend.go); its note is among Notes.
+	Favor bool `json:"favor,omitempty"`
 	// The Bardic Inspiration die the player added after the d20 (already in Total).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
 	BonusFace  int32 `json:"bonus_face,omitempty"`
@@ -265,6 +267,8 @@ func errNotAwaiting() error {
 type checkInput struct {
 	inApp bool
 	faces []int
+	// spend is the request's spend_favor: the roller's Inspiration on this check (favor_spend.go).
+	spend bool
 }
 
 // parseCheckInput reads a request's CheckRollInput: exactly one way, the faces 1 to 20.

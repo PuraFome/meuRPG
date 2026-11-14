@@ -215,6 +215,8 @@ type hintTryPlan struct {
 	bonus  int
 	// floor is the lowest number the try's d20 counts as: the table's minimum of a check, or Reliable Talent.
 	floor rollFloor
+	// favor is what the player's Inspiration did to the try (favor_spend.go).
+	favor favorUse
 }
 
 // applyHintTry is the try's transaction. The session's row is locked first and then
@@ -315,6 +317,15 @@ func (h *hintTryTx) skill(ctx context.Context, plan *hintTryPlan) error {
 	if plan.cm, err = h.s.checkModeOf(ctx, h.tx, h.m.CampaignID, h.session.ID, plan.who.ID, key, ability, isCheck); err != nil {
 		return err
 	}
+	// The player's own Inspiration, over the circumstances of the check (the roller is the player, and the character theirs).
+	plan.favor, err = h.s.useFavor(ctx, h.s.outsideGate(h.tx, h.q), favorAsk{
+		Want: h.raw.GetSpendFavor(), CampaignID: h.m.CampaignID, CharacterID: plan.who.ID, Own: true, Key: h.key, Kind: heldHintTry,
+		Sources: plan.cm.Sources, Rolls: true,
+	})
+	if err != nil {
+		return err
+	}
+	plan.cm = plan.cm.withFavor(plan.favor)
 	if plan.bonus, err = h.s.withEffectDice(h.in, h.in.extraFaces, &plan.cm, plan.option.Bonus); err != nil {
 		return err
 	}
@@ -328,7 +339,7 @@ func (h *hintTryTx) skill(ctx context.Context, plan *hintTryPlan) error {
 func (h *hintTryTx) roll(ctx context.Context, plan hintTryPlan) (gateResult, error) {
 	return h.s.heldGate(ctx, h.s.outsideGate(h.tx, h.q), rollSpec{
 		Kind: heldHintTry, Key: h.key, Request: h.raw, Roller: heldRoller{CampaignID: h.m.CampaignID, CharacterID: plan.who.ID, UserID: h.m.UserID},
-		In: h.in, Modifier: plan.bonus, Mode: plan.cm.Mode, Floor: plan.floor, Lucky: plan.option.Lucky, MayAsk: true,
+		In: h.in, Modifier: plan.bonus, Mode: plan.cm.Mode, Floor: plan.floor, Lucky: plan.option.Lucky, MayAsk: true, FavorSpent: plan.favor.Used,
 	})
 }
 

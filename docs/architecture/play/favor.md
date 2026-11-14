@@ -53,8 +53,10 @@ Each holder is the character's id and name; the name comes from the characters m
 The owner of a player character that has the Inspiration spends it for advantage on one of the character's own d20 rolls.
 The player chooses it before the d20 is rolled, with `spend_favor` on the roll's request.
 The roll is an attack, a saving throw or an ability check; the request of each roll path has the field.
-The combat paths carry it: `RollAttack`, `CastSpell` (a spell attack against one target), `ResolveConcentrationSave` and `RollEffectSave`.
-The other paths are not wired yet, and neither are the death save, the counterspell check and initiative.
+Eleven paths carry it.
+Four are combat rolls: `RollAttack`, `CastSpell` (a spell attack against one target), `ResolveConcentrationSave` and `RollEffectSave`.
+Seven are checks: `RollSceneCheck`, `RollGroupCheck`, `StartContest`, `RespondContest`, `Hide`, `SearchForTraps` and `TryPuzzleHint`.
+The death save, the counterspell check and initiative do not carry it yet.
 `useFavor` (`favor_spend.go`) is the one place that decides it, inside the transaction of the roll.
 
 | The roll before the spend | The roll with it |
@@ -90,6 +92,21 @@ A cast that makes no single attack roll gets `NOTHING_TO_ROLL`, and so does an e
 A spell attack finds its truth in one function (`spellAttackTruth`), shared by the roll and by the hold of a Bardic die.
 The attack's pinned request keeps `spend_favor`, so a retry that changes it is a different request.
 
+## The checks
+
+The seven checks give the helper the check's own sources before the Inspiration (`checkMode.withFavor` and `preparedCheck.withFavor` add it after).
+Scene, group, trap and hint are the player-only roles' calls, for the player's own character; the master gets `NOT_THE_HOLDER`.
+A contest start, a contest answer and Hide are the owner's of the combatant; the master rolling for a player's combatant gets `NOT_THE_HOLDER`.
+A grapple that comes from an attack, and a contest answer left to the master (`defer_to_master`), roll no d20 and get `NOTHING_TO_ROLL` when they ask for it.
+The master's `RollForPlayer` for a group check has no field to spend with, so it never spends.
+A trap search in a combat spends the combatant's action and the Inspiration in the same transaction, and a refusal keeps both.
+The roll's event or stored row keeps `Favor`, and the held roll keeps `favor_spent`.
+"Inspiração" is a source of the check, or a note of a contest or a Hide, and only the roller and the master read it; there is no log line.
+A settled retry answers as the first call did and never spends again.
+The retry that flips `spend_favor` on a settled check is a different request (`invalid_argument`), except the hint try, which keeps no request hash: a retry of a written try answers the stored result, ignores `spend_favor`, spends nothing and refuses nothing.
+A held retry never gets `HAS_NONE`, and the answer to a Bardic die or a Lucky question never spends.
+Each spend moves the session's hint number by the one step the roll already moves it, and a refusal moves none.
+
 ## A reaction window
 
 A window that would hold an attack or a cast checks the spend without making it: the row stays.
@@ -97,6 +114,7 @@ A spend the replay would refuse (no Inspiration, nothing to add, a worse `roll_m
 The replay is the real roll and spends the row.
 A replay whose Inspiration is gone, or whose sources changed so that it adds nothing, fails with a client error: the attack is dropped and nothing is spent.
 The typed faces are checked only at the replay.
+A contest start, a contest answer and Hide are held the same way by Cutting Words and the master's check window: the hold only checks the Inspiration is there, and the replay spends it.
 
 ## The log and the undo
 
@@ -141,5 +159,7 @@ A player calling it is `permission_denied`.
 `favor_grant_test.go` covers the grant, the read, the refusals (the combatants of a combat among them), a dead holder, the retry and the races.
 `favor_spend_test.go` covers the decision table of the helper, the held retry and answer, the race of twenty spends and the adapters.
 `favor_combat_test.go` covers the four combat paths: the spend, the refusals, the retry, the typed faces, the log, the undo, the held roll and the window replay.
+`favor_checks_test.go`, `favor_checks_more_test.go` and `favor_checks_special_test.go` cover the seven checks: the spend, the refusals, the settled retry, the held roll, the typed faces, the number, the window and the trap search in a combat.
 `TestAuthorizationMatrix` has the rows of the three calls.
 `internal/leaktest/favor_test.go` proves that a third player reads nothing of who has it, in the read, the log and the stream.
+`internal/leaktest/favor_checks_test.go` proves that the source "Inspiração" of a spent check reaches the roller and the master and no one else.

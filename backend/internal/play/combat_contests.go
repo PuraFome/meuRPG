@@ -269,6 +269,7 @@ func parseContestStart(m authz.Membership, msg *playv1.StartContestRequest) (con
 			return contestStart{}, err
 		}
 	}
+	st.in.spend = msg.GetSpendFavor()
 	return st, nil
 }
 
@@ -439,8 +440,19 @@ func (s *Service) gateContestInitiator(ctx context.Context, r *contestRun) (prep
 	if err != nil {
 		return preparedCheck{}, gateResult{}, err
 	}
+	// The Inspiration of the initiator's own character, chosen before the d20: the master never spends it (favor_spend.go).
+	if p, err = s.favorOnCheck(ctx, r.c, p, r.initiatorFavor()); err != nil {
+		return preparedCheck{}, gateResult{}, err
+	}
 	gate, err := s.gateCheck(ctx, r.c, p, checkHold{kind: heldContest, key: r.st.key, req: keptAs(r.st.req), m: r.st.m, who: r.initiator, in: r.st.in})
 	return p, gate, err
+}
+
+// initiatorFavor is what the initiator's roll tells the helper about the Inspiration the request asks.
+func (r *contestRun) initiatorFavor() favorAsk {
+	return favorAsk{
+		Want: r.st.in.spend, CharacterID: r.initiator.CharacterID, Own: ownsCharacter(r.v, r.initiator), Key: r.st.key, Kind: heldContest, Rolls: true,
+	}
 }
 
 // rollContestInitiator rolls (or reads the typed dice of) the initiator's side, adds the
@@ -520,7 +532,12 @@ func (s *Service) rollContest(ctx context.Context, r *contestRun) (*playv1.HeldR
 		gate gateResult
 		err  error
 	)
-	if !r.st.byAttack {
+	if r.st.byAttack {
+		// Nobody rolls: the attack was rolled already, and an Inspiration has no d20 to go on.
+		if err := favorOnNoRoll(r.st.in.spend, ownsCharacter(r.v, r.initiator)); err != nil {
+			return nil, err
+		}
+	} else {
 		if p, gate, err = s.gateContestInitiator(ctx, r); err != nil {
 			return nil, err
 		}
@@ -671,6 +688,8 @@ type contestAnswer struct {
 	// leave says the player leaves the roll to the master (no roll is read then).
 	leave bool
 	in    checkInput
+	// spend is the request's spend_favor (favor_spend.go).
+	spend bool
 	// req is the request, kept when a reaction window holds the roll.
 	req *playv1.RespondContestRequest
 }
@@ -686,7 +705,7 @@ func parseContestAnswer(m authz.Membership, msg *playv1.RespondContestRequest) (
 	if err != nil {
 		return contestAnswer{}, err
 	}
-	ans := contestAnswer{m: m, key: key, encID: encID, contestID: contestID, skill: msg.GetSkill(), leave: msg.GetDeferToMaster(), req: msg}
+	ans := contestAnswer{m: m, key: key, encID: encID, contestID: contestID, skill: msg.GetSkill(), leave: msg.GetDeferToMaster(), spend: msg.GetSpendFavor(), req: msg}
 	if ans.skill == playv1.ContestSkill_CONTEST_SKILL_UNSPECIFIED {
 		ans.skill = playv1.ContestSkill_CONTEST_SKILL_ATHLETICS
 	}
@@ -810,8 +829,18 @@ func (s *Service) gateContestDefender(ctx context.Context, r *answerRun) (prepar
 	if err != nil {
 		return preparedCheck{}, gateResult{}, err
 	}
+	if p, err = s.favorOnCheck(ctx, r.c, p, r.defenderFavor()); err != nil {
+		return preparedCheck{}, gateResult{}, err
+	}
 	gate, err := s.gateCheck(ctx, r.c, p, checkHold{kind: heldContest, key: r.ans.key, req: keptAs(r.ans.req), m: r.ans.m, who: r.defender, in: r.ans.in})
 	return p, gate, err
+}
+
+// defenderFavor is what the defender's roll tells the helper about the Inspiration the request asks.
+func (r *answerRun) defenderFavor() favorAsk {
+	return favorAsk{
+		Want: r.ans.spend, CharacterID: r.defender.CharacterID, Own: ownsCharacter(r.v, r.defender), Key: r.ans.key, Kind: heldContest, Rolls: true,
+	}
 }
 
 // rollDefender rolls the defender's side, settles the contest and writes the answer. It
@@ -860,7 +889,10 @@ func (s *Service) answerContestTx(ctx context.Context, c *combatTx, ans contestA
 		return held, err
 	}
 	if ans.leave {
-		err = leaveRollToMaster(ctx, r)
+		// The roll is the master's, later: the Inspiration has no d20 to go on now.
+		if err = favorOnNoRoll(ans.spend, ownsCharacter(r.v, r.defender)); err == nil {
+			err = leaveRollToMaster(ctx, r)
+		}
 	} else {
 		var (
 			p    preparedCheck

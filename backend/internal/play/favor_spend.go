@@ -225,8 +225,43 @@ func (p preparedCheck) withFavor(fv favorUse) preparedCheck {
 		return p
 	}
 	p.notes = append(append([]rollNote(nil), p.notes...), rollNote{Kind: noteFavor, Label: labelFavor, Adv: true})
-	p.mode = notesMode(p.notes)
+	p.mode, p.favor = notesMode(p.notes), fv
 	return p
+}
+
+// favorOnCheck decides the Inspiration of a combatant's check in a combat (a contest's side, a Hide) over the circumstances its
+// notes make, and counts it on the prepared check. The caller says the request, the roller and whether it owns the character.
+func (s *Service) favorOnCheck(ctx context.Context, c *combatTx, p preparedCheck, a favorAsk) (preparedCheck, error) {
+	a.CampaignID, a.Sources = c.session.CampaignID, notesSources(p.notes)
+	fv, err := s.useFavor(ctx, s.inspirationGate(c), a)
+	if err != nil {
+		return p, err
+	}
+	return p.withFavor(fv), nil
+}
+
+// checkFavorOfCheck validates the spend of a check a reaction window holds before any d20: it is refused as the roll would refuse
+// it, and nothing is taken (the replay is the roll that spends, and answers for the Inspiration then).
+func (s *Service) checkFavorOfCheck(ctx context.Context, c *combatTx, who playdb.Combatant, skill string, cs []playdb.Combatant, a favorAsk) error {
+	if !a.Want {
+		return nil
+	}
+	p, err := s.prepareCheck(ctx, c, who, skill, cs)
+	if err != nil {
+		return err
+	}
+	a.Check = true
+	_, err = s.favorOnCheck(ctx, c, p, a)
+	return err
+}
+
+// favorOnNoRoll is the answer to a spend on a call that rolls no d20 (a grapple that came from an attack, a contest answer left to
+// the master): the caller is told they are not the holder, or that there is nothing to roll.
+func favorOnNoRoll(want, own bool) error {
+	if !want {
+		return nil
+	}
+	return favorRefusal(favorAsk{Own: own})
 }
 
 // ownsCharacter says the viewer is the owner of the combatant's character: the player of a player's character that a character

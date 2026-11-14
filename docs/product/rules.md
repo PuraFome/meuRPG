@@ -1334,7 +1334,8 @@ A player reads the damage as rolled, with the type of each part, and never what 
 ## RN-43: The master's Inspiration
 
 **Partly built.**
-The master's grant and the list of who has it work; spending it, passing it and the master's undo are not built yet.
+Built: the master's grant, the list of who has it, and spending it on an attack roll, a cast with one spell attack, a concentration save, an effect save, a scene check, a group check, a contest (the start and the answer), Hide, a trap search and a puzzle hint try.
+Not built: spending it on a death save, a Counterspell check and initiative; passing it to another player; the master's undo of a grant.
 This is the intended behaviour:
 
 The master grants Inspiration to a player character as a reward for good play (PHB 2014, ch. 4, outside SRD 5.1).

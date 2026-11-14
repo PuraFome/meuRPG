@@ -1334,7 +1334,8 @@ Um jogador lê o dano como rolado, com o tipo de cada parte, e nunca o que o alv
 ## RN-43: A Inspiração do mestre
 
 **Construída em parte.**
-A concessão do mestre e a lista de quem a tem funcionam; gastá-la, passá-la e o desfazer do mestre ainda não existem.
+Construído: a concessão do mestre, a lista de quem a tem e gastá-la numa jogada de ataque, num conjuro com uma só jogada de ataque, num teste de resistência de concentração, num teste de resistência de efeito, num teste de cena, num teste em grupo, numa disputa (o início e a resposta), em Esconder, numa busca por armadilhas e numa tentativa de dica de quebra-cabeça.
+Não construído: gastá-la num teste de morte, num teste de Contramágica e na iniciativa; passá-la a outro jogador; o desfazer do mestre de uma concessão.
 Este é o comportamento pretendido:
 
 O mestre concede Inspiração a um personagem de jogador como recompensa por jogar bem (PHB 2014, cap. 4, fora do SRD 5.1).

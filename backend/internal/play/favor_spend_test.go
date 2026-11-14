@@ -330,7 +330,7 @@ func TestUseFavorOnTheRetryOfAHeldRollReadsTheHold(t *testing.T) {
 		}
 	}
 	// A retry that no longer asks for it still counts it: the hold made the roll with it (a flipped spend_favor changes nothing).
-	a.Want = false
+	a.Sources, a.Want = nil, false
 	if got := f.tryFavor(t.Context(), a); got.err != nil || !got.use.Used || got.use.Spent || got.use.Mode != combat.ModeAdvantage {
 		t.Errorf("the retry with Want=false = %+v, %v, want used, not spent, advantage", got.use, got.err)
 	}
