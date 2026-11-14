@@ -90,6 +90,13 @@ describe('WeaponMarksSheet ("Marcas · <arma>")', () => {
     expect(el.querySelector('.marks__copies')!.nextElementSibling!.className).toBe('marks__intro');
   });
 
+  it('says "para todas" for more than two copies', () => {
+    const { text } = setup({ copies: 3 });
+    expect(text('.marks__copies')).toBe(
+      'info A ficha tem 3 cópias: marcas e bônus valem para todas.',
+    );
+  });
+
   it('shows the reason with a block icon only when there is one', () => {
     expect(setup().el.querySelector('.marks__reason')).toBeNull();
     TestBed.resetTestingModule();

@@ -174,8 +174,8 @@ describe('GearList', () => {
     const row = (fixture.nativeElement as HTMLElement).querySelector('.gear-row')!;
     const warn = row.querySelector('.gear-row__warn')!;
     expect(warn.getAttribute('aria-hidden')).toBe('true');
-    const said = Array.from(row.querySelectorAll('.mr-visually-hidden')).find((n) =>
-      n.textContent!.includes('Sacar desativa o escudo'),
+    const said = Array.from(row.querySelectorAll('span')).find(
+      (n) => n.children.length === 0 && n.textContent!.includes('Sacar desativa o escudo'),
     )!;
     expect(said.classList).toContain('mr-visually-hidden');
     expect(said.textContent!.trim()).toBe(', Sacar desativa o escudo: CA 21 → 18');
@@ -192,16 +192,30 @@ describe('GearList', () => {
     const kind = el.querySelector('.gear-row__kind')!;
     expect(kind.textContent!.trim()).toBe('duas mãos');
     expect(kind.getAttribute('aria-hidden')).toBe('true');
-    expect(name.nextElementSibling ?? name.nextSibling).toBeTruthy();
     expect(name.compareDocumentPosition(kind) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // a screen reader hears the kind label whether or not the words are drawn
     expect(el.querySelector('.gear-row__main')!.textContent).toContain('Arma de duas mãos');
-    const rule = Array.from(document.querySelectorAll('style'))
-      .map((n) => n.textContent ?? '')
-      .join('\n');
-    expect(rule).toMatch(/gear-row__kind[^}]*flex:\s*1 1 0/);
-    expect(rule).toMatch(/gear-row__kind[^}]*overflow:\s*hidden/);
-    expect(rule).not.toContain('@container');
+  });
+
+  it('leaves the hidden warning off the row in the combat fold, whose own line says it', () => {
+    const bow: GearVm = {
+      ...sword,
+      key: 'equipment:longbow',
+      namePt: 'Arco longo',
+      equipped: false,
+      twoHanded: true,
+      armorClassIfToggled: 14,
+    };
+    const fixture = setup([bow]);
+    fixture.componentRef.setInput('armorClass', 16);
+    fixture.componentRef.setInput('warned', [bow.key]);
+    fixture.detectChanges();
+    const said = () => (fixture.nativeElement as HTMLElement).textContent!;
+    expect(said()).toContain('Sacar desativa o escudo: CA 16 → 14');
+    fixture.componentRef.setInput('combat', true);
+    fixture.detectChanges();
+    expect(said()).not.toContain('Sacar desativa o escudo');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.gear-row__warn')).not.toBeNull();
   });
 
   it('has no "duas mãos" in the combat fold', () => {
@@ -221,21 +235,24 @@ describe('GearList', () => {
     const ac = el.querySelector('.gear-group__ac')!;
     expect(ac.textContent!.trim()).toBe('CA 21');
     expect(ac.getAttribute('aria-hidden')).toBe('true');
-    expect(ac.nextElementSibling!.classList).toContain('mr-visually-hidden');
-    expect(ac.nextElementSibling!.textContent!.trim()).toBe('Classe de armadura 21');
-    // the number sits at the end of the head, opposite the heading
-    const head = el.querySelector('.gear-group__head')!;
+    const head = ac.parentElement!;
+    const said = Array.from(head.querySelectorAll('span')).find(
+      (n) => n.textContent!.trim() === 'Classe de armadura 21',
+    )!;
+    expect(said.classList).toContain('mr-visually-hidden');
+    // the number is in the head of "Equipado", after its heading
     expect(head.firstElementChild!.tagName).toBe('H3');
-    expect(Array.from(head.children).indexOf(ac)).toBeGreaterThan(0);
+    expect(head.firstElementChild!.textContent!.trim()).toBe('Equipado');
+    expect(head.firstElementChild!.compareDocumentPosition(ac)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(head.closest('section')!.querySelector('ul')!.contains(ac)).toBe(false);
     const titles = Array.from(el.querySelectorAll('h3'));
     expect(titles.map((h) => h.textContent!.trim())).toEqual(['Equipado', 'Carregado']);
     titles.forEach((h) => expect(h.querySelector('mat-icon')).toBeNull());
-    // both headings begin at the section's own edge: no padding or icon in front of either
-    titles.forEach((h) => {
-      expect(h.closest('section')!.classList).toContain('gear-group');
-      expect(h.className).toContain('gear-group__title');
-    });
-    expect(el.querySelector('.gear-group__head .gear-group__title')).toBe(titles[0]);
+    // each heading is the first thing in its section (or in its head): nothing in front of it
+    expect(head.firstElementChild).toBe(titles[0]);
+    expect(titles[1].closest('section')!.firstElementChild).toBe(titles[1]);
   });
 
   it('has no "⋮" unless asked, and keeps it when the gear has no equip button (a locked sheet)', () => {

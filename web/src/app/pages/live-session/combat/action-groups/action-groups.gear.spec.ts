@@ -204,7 +204,7 @@ describe('ActionGroups: "Sacar ou guardar" (#562)', () => {
       count: 1,
     };
 
-    it('warns before the drawing, marks the bow’s row and says the change once, in a hidden line', async () => {
+    it('warns before the drawing, marks the bow’s row and says the change once, in the fold’s own line', async () => {
       const { el } = await setup({ gear: [hand, sword, bow] });
       expect(el.textContent).toContain(
         'Sacar Arco longo (duas mãos) deixa o escudo de lado: CA 16 → 14.',
@@ -216,8 +216,8 @@ describe('ActionGroups: "Sacar ou guardar" (#562)', () => {
       expect(row.querySelector('button')!.getAttribute('aria-label')).not.toContain(
         'A classe de armadura vai de',
       );
-      const said = row.querySelector('.gear-row__warn + .mr-visually-hidden')!;
-      expect(said.textContent).toContain('Sacar desativa o escudo: CA 16 → 14');
+      expect(row.textContent).not.toContain('Sacar desativa o escudo');
+      expect(row.querySelector('.gear-row__warn + .mr-visually-hidden')).toBeNull();
     });
 
     it('marks the shield "Parado" and the header "CA 18 → 16" once the bow is drawn', async () => {

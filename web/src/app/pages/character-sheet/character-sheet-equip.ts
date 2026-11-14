@@ -36,6 +36,19 @@ function storedOf(vm: CharacterSheetVm | null, key: string): Stored {
   };
 }
 
+/** Whether the stored sheet still lists the piece: its armor, its shield or one of its weapons. */
+function onSheet(vm: CharacterSheetVm, piece: GearVm): boolean {
+  const full = vm.fullSheet;
+  if (!full) {
+    return false;
+  }
+  return piece.kind === 'armor'
+    ? full.armorKey === piece.key
+    : piece.kind === 'shield'
+      ? full.shield
+      : full.weaponKeys.includes(piece.key);
+}
+
 function sameStored(a: Stored, b: Stored): boolean {
   return (
     a.bonus === b.bonus &&
@@ -107,7 +120,7 @@ export class SheetEquip {
           pieceName: piece.namePt,
           kind: piece.kind,
           save: (bonus) =>
-            this.saveGear({ bonus: { key: piece.key, bonus } }, piece.key, opened, STALE_BONUS),
+            this.saveGear({ bonus: { key: piece.key, bonus } }, piece, opened, STALE_BONUS),
         })
         .subscribe((saved) => saved && this.marksNotice.set('Bônus salvo.'));
       return;
@@ -122,13 +135,14 @@ export class SheetEquip {
         weaponName: piece.namePt,
         copies: piece.count,
         marks: current ?? piece.marks ?? { silvered: false, adamantine: false, magical: false },
-        save: (change) => this.saveWeapon(piece.key, change, opened),
+        save: (change) => this.saveWeapon(piece, change, opened),
       })
       .subscribe((saved) => saved && this.marksNotice.set('Marcas e bônus salvos.'));
   }
 
   /** Saves one weapon's marks and bonus together; the answer is the refusal in words, or '' when it is saved. */
-  private saveWeapon(weaponKey: string, change: WeaponChange, opened: Stored): Promise<string> {
+  private saveWeapon(piece: GearVm, change: WeaponChange, opened: Stored): Promise<string> {
+    const weaponKey = piece.key;
     const marks = change.marks;
     const mine =
       marks.silvered || marks.adamantine || marks.magical ? [{ weaponKey, ...marks }] : [];
@@ -140,7 +154,7 @@ export class SheetEquip {
         marks: [...others.map((m) => ({ weaponKey: m.weaponKey, ...marksOf(m) })), ...mine],
         bonus: { key: weaponKey, bonus: change.bonus },
       },
-      weaponKey,
+      piece,
       opened,
       STALE_MARKS,
     );
@@ -149,11 +163,12 @@ export class SheetEquip {
   /**
    * Saves a change of the gear over the whole stored sheet.
    * The answer is the refusal in words, or '' when it is saved.
-   * A piece that is not as the sheet opened with, or a stale revision, answers `stale` and reads the sheet again.
+   * A piece that is not as the sheet opened with, a piece the stored sheet no longer lists, or a stale revision,
+   * answers `stale` and reads the sheet again.
    */
   private async saveGear(
     change: GearChange,
-    key: string,
+    piece: GearVm,
     opened: Stored,
     stale: string,
   ): Promise<string> {
@@ -162,7 +177,7 @@ export class SheetEquip {
     if (!vm?.fullSheet || !campaignId) {
       return 'A ficha não está aberta.';
     }
-    if (!sameStored(opened, storedOf(vm, key))) {
+    if (!onSheet(vm, piece) || !sameStored(opened, storedOf(vm, piece.key))) {
       await this.host.reload();
       return stale;
     }

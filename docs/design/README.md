@@ -113,7 +113,11 @@ It catches what is never right:
 - a button's or chip's content off its middle (2 px);
 - text running over an icon by more than 2 px;
 - words closer than 6 px to the top or bottom border of a radio or checkbox tile;
-- a button or link outside the box of its `.mr-panel`.
+- a button or link outside the box of its `.mr-panel`;
+- a row marked as one line that wraps, or whose name is under three letters wide;
+- the buttons of a marked group with widths more than 1 px apart;
+- a marked chip more than 2 px off the middle of the capitals of its row's words;
+- an item of a marked box cut at its left or right edge ("duas mãos" shown as "duas mã").
 
 An icon next to words needs no hand adjustment: the fonts carry metric overrides ([tokens.md](tokens.md#fonts)).
 On one line, centre both (`align-items: center`); when the text can wrap, align to the top and give the icon `margin-top` = (line height − icon size) / 2.

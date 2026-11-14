@@ -24,20 +24,18 @@ import { expect, type Page } from '@playwright/test';
 //    ("Dano a mais" over "Dados", #577). The approved board leaves about
 //    13px; under 4px the two read as touching.
 // 6. An attunement chip on a gear row stays on the line of the words before it: a narrow column wraps the name and the
-//    chip follows its last word; a chip alone on a line under the name is a finding (#561).
+//    chip follows its last word; a chip alone on a line under the name is a finding.
 // 7. The heading of a section with a count beside it ("Sintonização" and "Sintonizados: 2 de 3") shares a baseline with
-//    it, within 1px (#561).
-//
+//    it, within 1px.
 // 8. A row marked `data-one-line` is one line: none of its words wraps and every box in it shares the first box's line
 //    (a gear row ellipsizes its name before anything drops under it). A name keeps at least 24px (three letters) and
 //    the row's words end before the button's column starts.
-// 9. A group marked `data-equal-width="<selector>"` has every visible element matching the selector the same width, within
-//    1px (the buttons of one list, the pair at the foot of a sheet).
-// 10. A chip marked `data-chip` sits on the middle of the capitals of the words marked `data-chip-ref` in its row
-//    (`data-chip-row`), within 2px.
-//
-// 11. A box marked `data-whole` shows each thing it holds whole or not at all: an item that is drawn (its top is inside the
+// 9. A box marked `data-whole` shows each thing it holds whole or not at all: an item that is drawn (its top is inside the
 //    box) does not reach past the box's left or right edge ("duas mãos" cut to "duas mã", an icon cut in half).
+// 10. A group marked `data-equal-width="<selector>"` has every visible element matching the selector the same width, within
+//    1px (the buttons of one list, the pair at the foot of a sheet).
+// 11. A chip marked `data-chip` sits on the middle of the capitals of the words marked `data-chip-ref` in its row
+//    (`data-chip-row`), within 2px.
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
@@ -262,6 +260,28 @@ function auditLayout(): LayoutIssue[] {
     }
   }
 
+  // 7. The heading and the count of a section head share a baseline.
+  for (const head of document.querySelectorAll('.att__head')) {
+    if (!visible(head)) continue;
+    const title = head.querySelector('.att__title');
+    const count = head.querySelector('.att__count');
+    if (!title || !count) continue;
+    const baselineOf = (el: Element): number | null => {
+      const node = textNodesOf(el).filter((n) => n.parentElement!.closest('.mat-icon') === null)[0];
+      if (!node) return null;
+      return capitals(node)?.bottom ?? null;
+    };
+    const a = baselineOf(title);
+    const b = baselineOf(count);
+    if (a !== null && b !== null && Math.abs(a - b) > 1) {
+      issues.push({
+        kind: 'head-baseline',
+        where: describeEl(head),
+        detail: `the heading's baseline is at ${a.toFixed(1)}px and the count's at ${b.toFixed(1)}px (within 1px)`,
+      });
+    }
+  }
+
   // 8. A row marked data-one-line is one line.
   for (const row of document.querySelectorAll('[data-one-line]')) {
     if (!visible(row)) continue;
@@ -308,7 +328,7 @@ function auditLayout(): LayoutIssue[] {
     }
   }
 
-  // 11. A box marked data-whole shows each item whole or not at all.
+  // 9. A box marked data-whole shows each item whole or not at all.
   for (const box of document.querySelectorAll('[data-whole]')) {
     if (!visible(box)) continue;
     const edge = box.getBoundingClientRect();
@@ -324,7 +344,7 @@ function auditLayout(): LayoutIssue[] {
     }
   }
 
-  // 9. The elements a group marks have one width.
+  // 10. The elements a group marks have one width.
   for (const group of document.querySelectorAll('[data-equal-width]')) {
     if (!visible(group)) continue;
     const widths = [...group.querySelectorAll(group.getAttribute('data-equal-width')!)]
@@ -342,7 +362,7 @@ function auditLayout(): LayoutIssue[] {
     }
   }
 
-  // 10. A marked chip is on the middle of the capitals of its row's words.
+  // 11. A marked chip is on the middle of the capitals of its row's words.
   for (const chip of document.querySelectorAll('[data-chip]')) {
     if (!visible(chip)) continue;
     const ref = chip.closest('[data-chip-row]')?.querySelector('[data-chip-ref]');
@@ -356,28 +376,6 @@ function auditLayout(): LayoutIssue[] {
         kind: 'chip-baseline',
         where: describeEl(chip),
         detail: `the chip's middle is ${diff.toFixed(1)}px from the middle of the capitals of its row's words (within 2px)`,
-      });
-    }
-  }
-
-  // 7. The heading and the count of a section head share a baseline.
-  for (const head of document.querySelectorAll('.att__head')) {
-    if (!visible(head)) continue;
-    const title = head.querySelector('.att__title');
-    const count = head.querySelector('.att__count');
-    if (!title || !count) continue;
-    const baselineOf = (el: Element): number | null => {
-      const node = textNodesOf(el).filter((n) => n.parentElement!.closest('.mat-icon') === null)[0];
-      if (!node) return null;
-      return capitals(node)?.bottom ?? null;
-    };
-    const a = baselineOf(title);
-    const b = baselineOf(count);
-    if (a !== null && b !== null && Math.abs(a - b) > 1) {
-      issues.push({
-        kind: 'head-baseline',
-        where: describeEl(head),
-        detail: `the heading's baseline is at ${a.toFixed(1)}px and the count's at ${b.toFixed(1)}px (within 1px)`,
       });
     }
   }

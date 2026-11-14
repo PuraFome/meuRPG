@@ -49,11 +49,11 @@ export class EquipmentPanel {
   /** A tap on "Equipar" / "Guardar": the page calls the server and reads the sheet again. */
   readonly gearToggled = output<GearToggle>();
 
-  /** Whether each weapon has its "⋮" for its marks: the owner while the sheet is editable, the master always. */
+  /** Whether each row has its "⋮" for its marks or bonus: the owner while the sheet is editable, the master always. */
   readonly canMark = input(false);
-  /** What the last save of marks said ("Marcas salvas."). */
+  /** What the last save from a "⋮" said ("Marcas e bônus salvos.", "Bônus salvo."). */
   readonly marksNotice = input('');
-  /** A tap on a weapon's "⋮": the page opens the sheet of its marks. */
+  /** A tap on a row's "⋮": the page opens the sheet of its marks and bonus (a weapon) or its bonus (armor, shield). */
   readonly marksOpened = output<GearVm>();
 
   /** The owner (while the sheet is editable) and the master add and remove magic items. */

@@ -296,6 +296,21 @@ describe('saving the gear change over the whole sheet', () => {
     expect(value.itemBonuses).toEqual([]);
   });
 
+  it('removes the whole entry of an attuned piece on "Nenhum": its attunement goes with it', async () => {
+    const other = { ...entry, key: 'equipment:dagger', id: 'i2', itemKey: 'magic:dagger' };
+    const value = await save(create(FullSheetSchema, { itemBonuses: [entry, other] }), {
+      bonus: { key: 'equipment:mace', bonus: 0 },
+    });
+    expect(value.itemBonuses).toHaveLength(1);
+    expect(value.itemBonuses[0]).toMatchObject({
+      key: 'equipment:dagger',
+      attuned: true,
+      requiresAttunement: true,
+      itemKey: 'magic:dagger',
+    });
+    expect(value.itemBonuses.some((b) => b.itemKey === 'magic:mace' || b.id === 'i1')).toBe(false);
+  });
+
   it('sends the marks and the bonus in one request', async () => {
     const value = await save(create(FullSheetSchema, {}), {
       marks: [{ weaponKey: 'equipment:mace', silvered: true, adamantine: false, magical: false }],

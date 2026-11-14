@@ -57,11 +57,12 @@ class FakeCharacterSheetSource {
     () => Promise.resolve();
   setEquippedFn: (key: string, equipped: boolean) => Promise<void> = () => Promise.resolve();
   gearChanges: GearChange[] = [];
-  setWeaponMarksFn: (
+  saveGearFn: (
     revision: number,
     name: string,
     sheet: unknown,
     marks: readonly WeaponMarkVm[],
+    bonus?: { readonly key: string; readonly bonus: number },
   ) => Promise<CharacterSheetVm> = () => Promise.reject(new Error('not stubbed'));
   saveGear(
     _campaignId: string,
@@ -72,7 +73,7 @@ class FakeCharacterSheetSource {
     change: GearChange,
   ): Promise<CharacterSheetVm> {
     this.gearChanges.push(change);
-    return this.setWeaponMarksFn(revision, name, sheet, change.marks ?? []);
+    return this.saveGearFn(revision, name, sheet, change.marks ?? [], change.bonus);
   }
   markCharacterDeadFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> =
     () => Promise.reject(new Error('not stubbed'));
@@ -1578,6 +1579,8 @@ describe('CharacterSheetPage', () => {
     const dagger = gearPiece({ key: 'equipment:dagger', namePt: 'Adaga' });
     const body = create(FullSheetSchema, {
       armorKey: 'equipment:chain',
+      shield: true,
+      weaponKeys: ['equipment:dagger', 'equipment:mace'],
       weaponMarks: [{ weaponKey: 'equipment:mace', adamantine: true }],
     });
 
@@ -1650,7 +1653,7 @@ describe('CharacterSheetPage', () => {
         sheet: unknown;
         marks: readonly WeaponMarkVm[];
       }[] = [];
-      fake.setWeaponMarksFn = (revision, name, sheet, marks) => {
+      fake.saveGearFn = (revision, name, sheet, marks) => {
         calls.push({ revision, name, sheet, marks });
         return Promise.resolve({ ...withWeapons(), revision: 8 });
       };
@@ -1679,7 +1682,7 @@ describe('CharacterSheetPage', () => {
     it('keeps the other weapons’ marks and drops the weapon’s own when none is left', async () => {
       configureMarks();
       let sent: readonly WeaponMarkVm[] = [];
-      fake.setWeaponMarksFn = (_r, _n, _s, marks) => {
+      fake.saveGearFn = (_r, _n, _s, marks) => {
         sent = marks;
         return Promise.resolve(withWeapons());
       };
@@ -1697,7 +1700,7 @@ describe('CharacterSheetPage', () => {
 
     it('answers a stale revision with the conflict text, so the sheet stays open', async () => {
       configureMarks();
-      fake.setWeaponMarksFn = () => Promise.reject(new ConnectError('stale', Code.Aborted));
+      fake.saveGearFn = () => Promise.reject(new ConnectError('stale', Code.Aborted));
       fake.getCharacterSheetFn = () => Promise.resolve(withWeapons());
       const el = await render();
       more(el, 'Adaga')!.click();
@@ -1711,7 +1714,11 @@ describe('CharacterSheetPage', () => {
 
     it('saves marks and bonus together in one change, "Nenhum" being 0', async () => {
       configureMarks();
-      fake.setWeaponMarksFn = () => Promise.resolve(withWeapons());
+      let reached: { readonly key: string; readonly bonus: number } | undefined;
+      fake.saveGearFn = (_r, _n, _s, _m, bonus) => {
+        reached = bonus;
+        return Promise.resolve(withWeapons());
+      };
       fake.getCharacterSheetFn = () => Promise.resolve(withWeapons());
       const el = await render();
       more(el, 'Adaga')!.click();
@@ -1726,6 +1733,24 @@ describe('CharacterSheetPage', () => {
         ],
         bonus: { key: 'equipment:dagger', bonus: 2 },
       });
+      expect(reached).toEqual({ key: 'equipment:dagger', bonus: 2 });
+    });
+
+    it('saves a bonus-only change with the marks left as they are', async () => {
+      configureMarks();
+      let reached: { readonly key: string; readonly bonus: number } | undefined;
+      fake.saveGearFn = (_r, _n, _s, _m, bonus) => {
+        reached = bonus;
+        return Promise.resolve(withWeapons());
+      };
+      fake.getCharacterSheetFn = () => Promise.resolve(withWeapons());
+      const el = await render();
+      more(el, 'Maça')!.click();
+      await opened[0].save({
+        marks: { silvered: false, adamantine: true, magical: false },
+        bonus: 3,
+      });
+      expect(reached).toEqual({ key: 'equipment:mace', bonus: 3 });
     });
 
     it('opens the weapon sheet with its bonus, copies and reason', async () => {
@@ -1753,7 +1778,7 @@ describe('CharacterSheetPage', () => {
 
     it('opens the bonus sheet of an armor and a shield, saving only the bonus', async () => {
       configureMarks();
-      fake.setWeaponMarksFn = () => Promise.resolve(withWeapons());
+      fake.saveGearFn = () => Promise.resolve(withWeapons());
       const armor = gearPiece({
         key: 'equipment:chain',
         namePt: 'Cota de malha',

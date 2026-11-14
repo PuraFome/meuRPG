@@ -267,7 +267,7 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
     );
     expect(el.querySelector('.gear__ac')).toBeNull();
     expect(flat(el.querySelector('.gear-group__ac'))).toBe('CA 14');
-    const said = Array.from(el.querySelectorAll('.mr-visually-hidden')).find((n) =>
+    const said = Array.from(el.querySelectorAll('span')).find((n) =>
       flat(n)?.includes('Classe de armadura'),
     )!;
     expect(flat(said)).toBe('Classe de armadura 14');

@@ -11,9 +11,62 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
 - **Spell list** (`combat-column`): one `h3` per level ("Truques", "1º nível"); each spell is a 44 px button that opens its description, with `mr-tag` tags below it ("Ritual", "Concentração", "Reação", then the state: "Preparada" with the `success` border, or "No grimório" / "Conhecida" plain) and the 44 px "?" (`app-spell-help`) at the end.
   The state is a word, never colour alone.
 - **Granted spells** (`combat-column`): a "Magias concedidas" panel after "Magias" (it exists without a spellcasting class), one row per spell like the spell list's, with the level as the first tag and how it is cast as the others ("À vontade", "Gasta um uso de <recurso>", "Também com espaço", "Só como ritual", "Conhecida"); under the row, the source and the numbers it gives ("Carisma · CD 14 · ataque +6"), or the instruction to pick the casting ability in the sheet's choices.
-- **Equipamento** (`equipment-panel`): "Classe de armadura" with the server's number, then `gear-list`: "Equipado" and "Carregado" as `h3` groups; the "Equipado" head carries "CA N" on the right. Each piece is one row on one line: the kind icon, the name (it ellipsizes first), "×N" for equal copies, "duas mãos" (dropped when there is no room), a ⚠ on a carried two-handed weapon that would leave the shield idle, a dashed "Parado" tag on the shield it idles, the weapon's marks as 22 px icon-only chips (each named by its word), the magic bonus chip, the "⋮" and an outlined 44 px "Equipar" or "Guardar" of equal width in every row. The bonus chip is "+N" with a spark: solid ("Bônus mágico +1, já somado") when the bonus is added to the numbers now, dashed ("Bônus mágico +1, não conta agora") when it is not. The armor and shield rows show no armor class of their own; the "Equipado" head has it. The button says only its verb; the armor class the server says the change gives is in its accessible name, which starts with the verb and ends with the piece ("Guardar CA 16 Escudo"). A two-handed weapon in the pack with the shield in hand says "A classe de armadura vai de 18 para 16" to a screen reader and has the ⚠ on its row. A legend line under the list names the marks present, the attunement chips and the bonus chip. "Carregados (n)" folds from five pieces. A change says "Guardado: Espada longa. Classe de armadura 14." in a live region and puts the focus on the moved piece's button; a refusal is an alert, and when the sheet could not be read again it offers "Tentar de novo". The sheet is read again when the tab is shown again, so a change from another tab does not linger. A dead character's sheet has no buttons; a locked one keeps them (the gear is played). The free-text items, "Do antecedente" and the coins follow. From 1200 px the panel is in the fourth column under the player's notes (the notes stay the first block) and before "Características e traços", beside "Ataques"; under 1200 px it is the single-column sheet's block after the combat numbers, and in the document it follows the saves and skills.
-- **Marcas das armas** (`weapon-tags`, `weapon-marks-sheet`): a weapon's marks are a crescent "Prateada", a crystal "Adamantina" and a spark "Mágica". On its row in "Equipamento" they are icon-only chips named by their word. In the "Ataques" table, beside the attack's name in the combat's action rows and after the numbers in the attack sheet's header ("Tor · +6 · 1d8 + 3 cortante · ☾ Prateada") each keeps its icon and its word; a plain weapon has none. Every row the viewer may edit has a "⋮" (44 px) before "Equipar" / "Guardar": the owner before the lock, the master always; never on a dead character, never for another player. On a weapon it is named "Marcas · <arma>" and opens a sheet with that title (no article): a bottom sheet on a phone, a dialog from a tablet up. It has "A arma é:", one row for each mark (a checkbox in the accent colour, its icon, the word and what it beats: "vence “nem prateado”", "vence “nem adamantino”", and for "Mágica" "vence os três: “não mágico”, “nem prateado”, “nem adamantino”"), then the radio group "Bônus mágico" with "Nenhum", "+1", "+2" and "+3" as four equal 44 px segments. "Soma no ataque e no dano, e a arma conta como mágica." explains the bonus, and a note gives the reason when the bonus does not count now. A single "Salvar" saves marks and bonus in one request, over the whole sheet at the revision the page holds (alone and full width on a phone; beside "Cancelar", the same size, in the dialog). Two copies of one weapon are one row, and the sheet says "A ficha tem 2 cópias: marcas e bônus valem para as duas." While it saves the button is a muted "Salvando…" and the sheet cannot be dismissed. A refusal is an alert in the sheet, which stays open; a stale sheet says "A ficha mudou enquanto você editava. Nada foi salvo: feche e abra de novo." and the page reads the sheet again. The foot says who edits: "O dono só muda enquanto a ficha não trava. Depois, só o mestre." (the master sees "Muda a ficha de Tor: depois da trava, só você muda marcas e bônus. Tor os lê na ficha e nos ataques."). Saved, the panel says "Marcas e bônus salvos." and the focus returns to the weapon's "⋮". An equipped weapon's chip is its attack's (the sheet's mark or a table rule); a carried weapon's is the sheet's.
-- **Bônus mágico das peças** (`piece-bonus-sheet`, `bonus-group`, `bonus-chip`): armor and shield have the same "⋮", named "Bônus · <peça>", which opens "Bônus · <peça>". It has its own description line ("Soma na CA enquanto a armadura está equipada." or "Soma na CA com o escudo em uso."; the master sees the character's name before it), the radio group "Bônus mágico" and one "Salvar" with the same saving, refusal and stale-sheet behaviour as the weapon's sheet. The bonus is 0 to 3; "Nenhum" removes it. Saved, the panel says "Bônus salvo." The bonus is added to the armor class or to the weapon's attack and damage only while the piece is equipped and the rules count it (the reason is in the sheet when they do not); otherwise its chip is dashed. On a locked sheet the owner has no "⋮" and the panel says "Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda."
+- **Equipamento** (`equipment-panel`): `gear-list` with "Equipado" and "Carregado" as `h3` groups.
+  The "Equipado" head carries "CA N" on the right, the server's number; a screen reader hears "Classe de armadura N" in its place.
+  Each piece is one row on one line.
+  A row has the kind icon, the name (it ellipsizes first), "×N" for equal copies and "duas mãos" (dropped when there is no room).
+  A carried two-handed weapon that would leave the shield idle has a ⚠.
+  The shield it idles has a dashed "Parado" tag.
+  The weapon's marks are 22 px icon-only chips, each named by its word.
+  A row ends with the magic bonus chip, the "⋮" and an outlined 44 px "Equipar" or "Guardar" of equal width in every row.
+  The bonus chip is "+N" with a spark.
+  It is solid ("Bônus mágico +1, já somado") when the bonus is added to the numbers now, dashed ("Bônus mágico +1, não conta agora") when it is not.
+  The armor and shield rows show no armor class of their own; the "Equipado" head has it.
+  The button says only its verb.
+  The armor class the server says the change gives is in its accessible name, which starts with the verb and ends with the piece ("Guardar CA 16 Escudo").
+  A two-handed weapon in the pack with the shield in hand has the ⚠ and a hidden ", Sacar desativa o escudo: CA 21 → 18" on its row.
+  The combat's fold has no hidden text there: its own warning line says it.
+  A row with a blocked reason under it is not one line by design.
+  A legend line under the list names the marks present, the attunement chips and the bonus chip.
+  "Carregados (n)" folds from five pieces.
+  A change says "Guardado: Espada longa. Classe de armadura 14." in a live region and puts the focus on the moved piece's button.
+  A refusal is an alert, and when the sheet could not be read again it offers "Tentar de novo".
+  The sheet is read again when the tab is shown again, so a change from another tab does not linger.
+  A dead character's sheet has no buttons; a locked one keeps them (the gear is played).
+  The free-text items, "Do antecedente" and the coins follow.
+  From 1200 px the panel is in the fourth column under the player's notes (the notes stay the first block) and before "Características e traços", beside "Ataques".
+  Under 1200 px it is the single-column sheet's block after the combat numbers, and in the document it follows the saves and skills.
+- **Marcas das armas** (`weapon-tags`, `weapon-marks-sheet`): a weapon's marks are a crescent "Prateada", a crystal "Adamantina" and a spark "Mágica".
+  On its row in "Equipamento" they are icon-only chips named by their word.
+  In the "Ataques" table, beside the attack's name in the combat's action rows and after the numbers in the attack sheet's header ("Tor · +6 · 1d8 + 3 cortante · ☾ Prateada") each keeps its icon and its word; a plain weapon has none.
+  Every row the viewer may edit has a "⋮" (36 px wide, 44 px tall) before "Equipar" / "Guardar".
+  The owner has it before the lock, the master always; never on a dead character, never for another player.
+  On a weapon it is named "Marcas · <arma>" and opens a sheet with that title: a bottom sheet on a phone, a dialog from a tablet up.
+  The sheet has "A arma é:" and one row for each mark: a checkbox in the accent colour, its icon, the word and what it beats.
+  "Prateada" beats "nem prateado", "Adamantina" beats "nem adamantino", and "Mágica" beats the three: "não mágico", "nem prateado", "nem adamantino".
+  Then comes the radio group "Bônus mágico" with "Nenhum", "+1", "+2" and "+3" as four equal 44 px segments.
+  "Soma no ataque e no dano, e a arma conta como mágica." explains the bonus, and a note gives the reason when the bonus does not count now.
+  A single "Salvar" saves marks and bonus in one request, over the whole sheet at the revision the page holds.
+  "Salvar" is alone and full width on a phone; in the dialog it is beside "Cancelar", the same size.
+  Equal copies of one weapon are one row, and the sheet says "A ficha tem 2 cópias: marcas e bônus valem para as duas." (for more than two, "valem para todas").
+  While it saves the button is a muted "Salvando…" and the sheet cannot be dismissed.
+  A refusal is an alert in the sheet, which stays open.
+  A stale sheet says "A ficha mudou enquanto você editava. Nada foi salvo: feche e abra de novo." and the page reads the sheet again.
+  A piece the stored sheet no longer lists is stale in the same way.
+  The foot says who edits: "O dono só muda enquanto a ficha não trava. Depois, só o mestre."
+  The master sees "Muda a ficha de Tor: depois da trava, só você muda marcas e bônus. Tor os lê na ficha e nos ataques."
+  Saved, the panel says "Marcas e bônus salvos." and the focus returns to the weapon's "⋮".
+  An equipped weapon's chip is its attack's (the sheet's mark or a table rule); a carried weapon's is the sheet's.
+- **Bônus mágico das peças** (`piece-bonus-sheet`, `bonus-group`, `bonus-chip`): armor and shield have the same "⋮", named "Bônus · <peça>", which opens "Bônus · <peça>".
+  The sheet has its own description line, with the character's name before it for the master.
+  The line is "Soma na CA enquanto a armadura está equipada." or "Soma na CA com o escudo em uso.".
+  Then come the radio group "Bônus mágico" and one "Salvar", with the same saving, refusal and stale-sheet behaviour as the weapon's sheet.
+  While a save runs the group is inert; after a refusal the focus returns to the radio that had it.
+  The bonus is 0 to 3.
+  "Nenhum" removes the whole entry, including its attunement.
+  Saved, the panel says "Bônus salvo."
+  The bonus is added to the armor class or to the weapon's attack and damage only while the piece is equipped and the rules count it (the reason is in the sheet when they do not); otherwise its chip is dashed.
+  On a locked sheet the owner has no "⋮" and the panel says "Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda."
 - **Other speeds** (`combat-stats`): under the walking speed of the "Deslocamento" box, one line for each speed beyond walking ("Voo 3 m (10 pés)", "Natação", "Escalada", "Escavação") and "Respira na água" when the table gives it; the box has no extra line for a character with only a walking speed.
 - **Resources** (`resource-counters`, `shared/count-pips`): inside a session the sheet shows "Recursos" right after the combat numbers, one read-only box per resource (name, "2 de 3", pips, and when it comes back), then "Espaços de magia" with a row per spell level and the pact slots as "Pacto · 2º nível".
   Outside a session the sheet shows the maximums only. Nothing in the block takes focus.

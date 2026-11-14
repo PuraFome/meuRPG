@@ -75,4 +75,38 @@ describe('BonusGroup', () => {
     expect(el.querySelector('fieldset')!.disabled).toBe(true);
     expect(radios().every((r) => r.matches(':disabled'))).toBe(true);
   });
+
+  it('gives the focus back to the radio that had it when the row is enabled again', () => {
+    const { fixture, el, radios, host } = setup();
+    document.body.appendChild(el);
+    radios()[2].focus();
+    expect(document.activeElement).toBe(radios()[2]);
+    // A browser drops the focus of a radio that a disabled fieldset makes inert.
+    radios()[2].blur();
+    host.disabled.set(true);
+    fixture.detectChanges();
+    expect(document.activeElement).toBe(document.body);
+    host.disabled.set(false);
+    fixture.detectChanges();
+    TestBed.tick();
+    expect(document.activeElement).toBe(radios()[2]);
+    el.remove();
+  });
+
+  it('does not take the focus from something else when the row is enabled again', () => {
+    const { fixture, el, radios, host } = setup();
+    document.body.appendChild(el);
+    const other = document.createElement('button');
+    document.body.appendChild(other);
+    radios()[2].focus();
+    host.disabled.set(true);
+    fixture.detectChanges();
+    other.focus();
+    host.disabled.set(false);
+    fixture.detectChanges();
+    TestBed.tick();
+    expect(document.activeElement).toBe(other);
+    other.remove();
+    el.remove();
+  });
 });

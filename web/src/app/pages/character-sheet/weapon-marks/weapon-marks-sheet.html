@@ -1,7 +1,7 @@
 <app-sheet-frame [title]="'Marcas · ' + data.weaponName" titleId="sheet-t" [phone]="inSheet" (closed)="cancel()">
   @if (data.copies > 1) {
     <app-sheet-note class="marks__copies" icon="info" [muted]="false">
-      A ficha tem {{ data.copies }} cópias: marcas e bônus valem para as duas.
+      A ficha tem {{ data.copies }} cópias: marcas e bônus valem para {{ data.copies === 2 ? 'as duas' : 'todas' }}.
     </app-sheet-note>
   }
   <p class="marks__intro">{{ data.isMaster ? data.characterName + ' · a arma é:' : 'A arma é:' }}</p>

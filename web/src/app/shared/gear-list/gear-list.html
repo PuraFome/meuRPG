@@ -43,6 +43,7 @@
   </section>
 }
 
+<!-- A row with a reason line under it is not one line: that line is a second line by design, so it has no data-one-line. -->
 <ng-template #row let-g>
   <li
     class="gear-row"
@@ -63,7 +64,9 @@
       }
       @if (g.twoHanded && warns(g)) {
         <mat-icon class="gear-row__warn" aria-hidden="true">warning</mat-icon>
-        <span class="mr-visually-hidden">{{ warnText(g) }}</span>
+        @if (!combat()) {
+          <span class="mr-visually-hidden">{{ warnText(g) }}</span>
+        }
       }
       @if (idle(g)) {
         <span class="gear-row__idle">Parado</span>

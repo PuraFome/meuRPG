@@ -23,9 +23,13 @@ const sword: GearVm = {
   armorClassIfToggled: 0,
   count: 1,
 };
+const armor: GearVm = { ...sword, key: 'equipment:chain', namePt: 'Cota de malha', kind: 'armor' };
 const shield: GearVm = { ...sword, key: 'equipment:shield', namePt: 'Escudo', kind: 'shield' };
 
-function vmOf(over: { bonus?: number; silvered?: boolean } = {}): CharacterSheetVm {
+function vmOf(
+  over: { bonus?: number; silvered?: boolean; listed?: boolean } = {},
+): CharacterSheetVm {
+  const listed = over.listed ?? true;
   return {
     id: 'ch1',
     name: 'Tor',
@@ -33,6 +37,9 @@ function vmOf(over: { bonus?: number; silvered?: boolean } = {}): CharacterSheet
     isMaster: false,
     sheet: { kind: 'full', weaponMarks: [] },
     fullSheet: create(FullSheetSchema, {
+      armorKey: listed ? armor.key : '',
+      shield: listed,
+      weaponKeys: listed ? [sword.key] : [],
       weaponMarks: over.silvered ? [{ weaponKey: sword.key, silvered: true }] : [],
       itemBonuses: over.bonus
         ? [
@@ -132,5 +139,31 @@ describe('SheetEquip saves from the piece sheets', () => {
     expect(await t.marksOpened[0].save({ marks, bonus: 0 })).toBe(STALE_MARKS);
     expect(t.saved).toEqual([]);
     expect(t.reloads()).toBe(1);
+  });
+
+  it('refuses a piece the stored sheet no longer lists, even with no bonus stored: nothing is saved, the sheet is read again', async () => {
+    for (const [piece, text] of [
+      [armor, STALE_BONUS],
+      [shield, STALE_BONUS],
+      [sword, STALE_MARKS],
+    ] as const) {
+      const t = setup();
+      t.equip.openPiece(piece);
+      t.setVm(vmOf({ listed: false }));
+      const save =
+        piece.kind === 'weapon'
+          ? t.marksOpened[0].save({ marks, bonus: 1 })
+          : t.bonusOpened[0].save(1);
+      expect(await save).toBe(text);
+      expect(t.saved).toEqual([]);
+      expect(t.reloads()).toBe(1);
+    }
+  });
+
+  it('saves a piece the stored sheet lists: its armor, its shield and its weapon', async () => {
+    const t = setup();
+    t.equip.openPiece(armor);
+    expect(await t.bonusOpened[0].save(1)).toBe('');
+    expect(t.saved).toEqual([{ bonus: { key: armor.key, bonus: 1 } }]);
   });
 });
