@@ -13,8 +13,12 @@ import (
 // reads nothing of an effect that is for its owner alone.
 func TestRN10_TheAttackersPlayerReadsTheOutcomeOfAnNPCsHitEffectSave(t *testing.T) {
 	t.Parallel()
-	a := newHitCasters(t, func(s *rulesv1.TableSpell) { s.Effect.Visibility = rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER },
-		hitMod(trigEach, func(m *tableMod) { m.Save, m.OnFailConditions, m.ConditionDuration = "wis", []string{frightenedKey}, spellEnd }))
+	a := newHitCasters(t, func(s *rulesv1.TableSpell) {
+		s.Effect.Visibility = rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER
+	},
+		hitMod(trigEach, func(m *tableMod) {
+			m.Save, m.OnFailConditions, m.ConditionDuration = "wis", []string{frightenedKey}, spellEnd
+		}))
 	e := a.hitFight(t)
 	a.castMark(t, e, 1)
 	a.rollDamage(t, a.strike(t, e, battleaxe, "Capitão Goblin", d20(19)), 1, 1, 4) // the weapon, the die of the effect, the save (a 4: it fails)
