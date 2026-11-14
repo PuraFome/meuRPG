@@ -348,7 +348,7 @@ func (s *Service) hitSave(ctx context.Context, c *combatTx, u hitUse, st playdb.
 // noteHitSave puts on the line of the save what the viewers read besides the roll: the conditions a failed save gave and
 // how long they last, and whether the spell is hidden from the other players.
 func (s *Service) noteHitSave(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, mod rules.EffectModifier, conds []string, re *riderEvent) error {
-	re.HiddenSource = !st.PlayerVisible || st.Audience != audienceAll
+	re.HiddenSource, re.SourceID = !st.PlayerVisible || st.Audience != audienceAll, conv.OrZero(st.SourceID)
 	if len(conds) == 0 {
 		return nil
 	}

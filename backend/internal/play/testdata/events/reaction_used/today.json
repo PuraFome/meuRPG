@@ -960,6 +960,7 @@
     "result": "x",
     "owners_only": true,
     "hidden_source": true,
+    "source_id": "x",
     "effect_hidden": true,
     "d20": 1,
     "total": 1,

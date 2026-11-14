@@ -1290,10 +1290,11 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 	return true
 }
 
-// spellRiderKey names the spell of the save of a hit effect on the line: the master and the caster's player read it,
-// the target's player "Outra fonte" (and no key) when the effect is hidden from the other players (RN-10).
+// spellRiderKey names the spell of the save of a hit effect on the line: the master and the spell's owner (the player
+// of the character that cast it) read it, and so does every viewer of the line when the spell's audience is all the
+// players; whoever may not read the spell, the attacker's player included, reads "Outra fonte" (and no key) (RN-10).
 func (e *logEntry) spellRiderKey(c *logViewing, out *playv1.CombatLogEntry, r *riderEvent) {
-	hidden := r.HiddenSource && !c.v.master && (!c.v.owns(c.actor) || r.EffectHidden)
+	hidden := r.HiddenSource && !c.v.master && !c.v.owns(c.byID[r.SourceID])
 	names := hidingNames(func(k string) string { return c.names.contentName(c.ctx, k) }, []combat.Modifier{{Source: e.ev.Key, Hidden: hidden}})
 	out.KeyNamePt = names(e.ev.Key)
 	if hidden {
