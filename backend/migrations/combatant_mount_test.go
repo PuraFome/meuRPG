@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestCombatantMountMigration: 00331 gives a combatant the columns of the mounted combat with the defaults that keep
+// TestCombatantMountMigration: 00333 gives a combatant the columns of the mounted combat with the defaults that keep
 // every old row unmounted, refuses a mount that carries itself, a second rider on one mount and an unknown kind, lets a
 // deleted mount free its rider, adds the two event kinds, runs again without changing anything and comes down cleanly.
 func TestCombatantMountMigration(t *testing.T) {
@@ -82,7 +82,7 @@ func TestCombatantMountMigration(t *testing.T) {
 	}
 
 	// A second run changes nothing and a way down removes the columns and the kinds.
-	exec(t, db, "DELETE FROM goose_db_version WHERE version_id = 331")
+	exec(t, db, "DELETE FROM goose_db_version WHERE version_id = 333")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("second Up() error = %v", err)
 	}
