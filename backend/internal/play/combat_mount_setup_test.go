@@ -9,9 +9,10 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// A pair made before the rider's first roll (a Find Steed that came with the combat) is ordered by the roll: the rider's SubmitInitiative
-// gives the controlled mount the rider's initiative, as getting on after the roll does, and the pair begins the combat as one turn.
-func TestMountedCombat_ThePairIsOrderedByTheRidersFirstRoll(t *testing.T) {
+// The defensive path of SubmitInitiative: no call makes a pair in SETUP (MountCombatant refuses it), so a pair that stands there is a row
+// written outside the calls (here, SQL). The rider's SubmitInitiative still gives the controlled mount the rider's initiative, as getting
+// on after the roll does, and the pair begins the combat as one turn.
+func TestMountedCombat_ThePairIsOrderedByTheRidersFirstRollDefensively(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
 	e := c.start(t, plan{
