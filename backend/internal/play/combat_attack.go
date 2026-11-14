@@ -134,6 +134,12 @@ func (s *Service) RollAttack(
 	ctx context.Context,
 	req *connect.Request[playv1.RollAttackRequest],
 ) (*connect.Response[playv1.RollAttackResponse], error) {
+	req.Msg.PowerAttackPin = nil // only the server pins a trade (rerunAttack, a replay), never the caller
+	return s.rollAttackAgain(ctx, req)
+}
+
+// rollAttackAgain is RollAttack for a request the server keeps: a held roll's answer reruns it with its pinned trade.
+func (s *Service) rollAttackAgain(ctx context.Context, req *connect.Request[playv1.RollAttackRequest]) (*connect.Response[playv1.RollAttackResponse], error) {
 	m, err := authz.RequireCampaignMember(ctx, req.Msg.GetCampaignId())
 	if err != nil {
 		return nil, err
@@ -568,7 +574,7 @@ func (f *attackFlow) holdForWindow(ctx context.Context) (bool, error) {
 	if _, answering := heldReplyOf(ctx); answering {
 		return false, nil
 	}
-	ev, ok, err := f.s.holdAttackRoll(ctx, f.c, f.m, f.req, f.cs, f.attacker, f.target, f.attackKey)
+	ev, ok, err := f.s.holdAttackRoll(ctx, f.c, f.m, f.pinnedRequest(), f.cs, f.attacker, f.target, f.attackKey)
 	if err != nil || !ok {
 		return false, err
 	}
@@ -608,7 +614,7 @@ func (f *attackFlow) rollD20(ctx context.Context) error {
 	f.strokeSpec(ctx)
 	f.attack.ToHit += bonusTotal(rollBonusesOf(modeIn.states, f.attacker.ID, rules.RollAppliesAttack))
 	f.attack.ToHit -= f.powerPenalty() // a held roll's replay reads the bonus the roll was made with, so this counts once
-	f.rolled, err = f.s.rollHeldAttack(ctx, f.c, f.v, f.req, f.spec, f.attacker, f.target, f.attackKey, f.truth.Mode, f.call.in, f.attack.ToHit)
+	f.rolled, err = f.s.rollHeldAttack(ctx, f.c, f.v, f.pinnedRequest(), f.spec, f.attacker, f.target, f.attackKey, f.truth.Mode, f.call.in, f.attack.ToHit)
 	if err != nil || f.rolled.Held != nil {
 		return err
 	}

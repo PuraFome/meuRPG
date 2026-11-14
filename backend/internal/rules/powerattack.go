@@ -138,8 +138,8 @@ func (b *overlayBuilder) checkPowerAttack(site effectSite, e *Effect) error {
 func (x *deriver) powerAttacks() {
 	for _, a := range x.active {
 		e := a.effect
-		if e.Type != "power_attack" || !x.applies(a) {
-			continue
+		if e.Type != "power_attack" || !x.applies(a) || slices.ContainsFunc(x.d.PowerAttacks, func(p PowerAttack) bool { return p.Key == a.owner }) {
+			continue // one trade for each feature: the first effect of a key stands
 		}
 		if e.Resource != "" && !slices.ContainsFunc(x.d.Resources, func(r Resource) bool { return r.Key == e.Resource }) {
 			continue

@@ -345,3 +345,27 @@ func TestPowerAttackIsOnTheMenu(t *testing.T) {
 		}
 	}
 }
+
+// A feature has one power attack even when the content compiled for it (the SRD's effects, not the overlay builder) gives
+// it two, or the deriver reaches it twice: the first effect of the key stands.
+func TestDeriveListsAPowerAttackOnceForEachFeature(t *testing.T) {
+	t.Parallel()
+	c := newContent()
+	c.namesPT[powerFeature] = "Troca Pesada"
+	first := &Effect{Type: "power_attack", AttackPenalty: 5, DamageBonus: 10}
+	second := &Effect{Type: "power_attack", AttackPenalty: 2, DamageBonus: 4}
+	other := &Effect{Type: "power_attack", AttackPenalty: 1, DamageBonus: 2}
+	x := &deriver{c: c, d: &Derived{}, active: []activeEffect{
+		{owner: powerFeature, effect: first}, {owner: "feature:outra", effect: other}, {owner: powerFeature, effect: second}, {owner: powerFeature, effect: first},
+	}}
+	x.powerAttacks()
+	if len(x.d.PowerAttacks) != 2 {
+		t.Fatalf("power attacks = %+v, want one for each feature", x.d.PowerAttacks)
+	}
+	if p := x.d.PowerAttacks[0]; p.Key != powerFeature || p.AttackPenalty != 5 || p.DamageBonus != 10 {
+		t.Errorf("the first = %+v, want the first effect of %s", p, powerFeature)
+	}
+	if p := x.d.PowerAttacks[1]; p.Key != "feature:outra" || p.AttackPenalty != 1 {
+		t.Errorf("the second = %+v, want the other feature's", p)
+	}
+}

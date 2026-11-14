@@ -11038,8 +11038,8 @@ type AttackOption struct {
 	BeamsLeft int32 `protobuf:"varint,7,opt,name=beams_left,json=beamsLeft,proto3" json:"beams_left,omitempty"`
 	// The power attack trades the character may make on this attack (power_attack effects of its table
 	// features) whose weapon filter accepts it: a penalty on the attack roll for flat damage on a hit. Empty for
-	// a spell, a creature or an NPC, and for a weapon no trade goes with. The choice is sent as
-	// RollAttackRequest.power_attack_key, which the server checks again.
+	// a spell, a creature or an NPC, and for a weapon no trade goes with. A trade whose resource has no use
+	// left is listed with `disabled` set. The choice is sent as RollAttackRequest.power_attack_key, which the server checks again.
 	PowerAttacks  []*PowerAttackOption `protobuf:"bytes,8,rep,name=power_attacks,json=powerAttacks,proto3" json:"power_attacks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -11141,9 +11141,14 @@ type PowerAttackOption struct {
 	// The number taken off the attack roll, 1 or more.
 	Penalty int32 `protobuf:"varint,3,opt,name=penalty,proto3" json:"penalty,omitempty"`
 	// The flat damage added to a hit, 1 or more.
-	DamageBonus   int32 `protobuf:"varint,4,opt,name=damage_bonus,json=damageBonus,proto3" json:"damage_bonus,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DamageBonus int32 `protobuf:"varint,4,opt,name=damage_bonus,json=damageBonus,proto3" json:"damage_bonus,omitempty"`
+	// True when the trade spends a use of a resource and none is left: it is listed, and the roll refuses it with
+	// NO_USES_LEFT.
+	Disabled bool `protobuf:"varint,5,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	// Set when `disabled` is true: the reason in Portuguese.
+	DisabledReasonPt string `protobuf:"bytes,6,opt,name=disabled_reason_pt,json=disabledReasonPt,proto3" json:"disabled_reason_pt,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *PowerAttackOption) Reset() {
@@ -11202,6 +11207,20 @@ func (x *PowerAttackOption) GetDamageBonus() int32 {
 		return x.DamageBonus
 	}
 	return 0
+}
+
+func (x *PowerAttackOption) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *PowerAttackOption) GetDisabledReasonPt() string {
+	if x != nil {
+		return x.DisabledReasonPt
+	}
+	return ""
 }
 
 // SpellOption is a spell the character can cast.
@@ -14553,12 +14572,14 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x14bonus_drops_modifier\x18\x06 \x01(\bR\x12bonusDropsModifier\x12\x1d\n" +
 	"\n" +
 	"beams_left\x18\a \x01(\x05R\tbeamsLeft\x12G\n" +
-	"\rpower_attacks\x18\b \x03(\v2\".meurpg.rules.v1.PowerAttackOptionR\fpowerAttacks\"v\n" +
+	"\rpower_attacks\x18\b \x03(\v2\".meurpg.rules.v1.PowerAttackOptionR\fpowerAttacks\"\xc0\x01\n" +
 	"\x11PowerAttackOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\apenalty\x18\x03 \x01(\x05R\apenalty\x12!\n" +
-	"\fdamage_bonus\x18\x04 \x01(\x05R\vdamageBonus\"\xf0\x03\n" +
+	"\fdamage_bonus\x18\x04 \x01(\x05R\vdamageBonus\x12\x1a\n" +
+	"\bdisabled\x18\x05 \x01(\bR\bdisabled\x12,\n" +
+	"\x12disabled_reason_pt\x18\x06 \x01(\tR\x10disabledReasonPt\"\xf0\x03\n" +
 	"\vSpellOption\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x128\n" +
 	"\aeconomy\x18\x02 \x01(\x0e2\x1e.meurpg.rules.v1.ActionEconomyR\aeconomy\x12\x18\n" +

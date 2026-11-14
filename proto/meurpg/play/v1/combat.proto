@@ -4144,6 +4144,22 @@ message RollAttackRequest {
   // character has not or a weapon the effect does not go with (its text is the reason in Portuguese); a resource
   // blocked reason NO_USES_LEFT when no use is left. Empty makes no trade.
   string power_attack_key = 104;
+  // Set by the server alone, on the request it keeps for a roll that waits (a Lucky, Bardic Inspiration or Stroke of Luck
+  // question, or a reaction window): the trade as it was when the roll was held, so the answer settles on the same
+  // penalty, damage and resource however the sheet changed meanwhile. A request from a client has it cleared.
+  PowerAttackPin power_attack_pin = 105;
+}
+
+// PowerAttackPin is the numbers of a power attack trade when its roll was held.
+message PowerAttackPin {
+  // The Portuguese name of the feature that gives the trade.
+  string name_pt = 1;
+  // The number taken off the attack roll.
+  int32 penalty = 2;
+  // The flat damage added to a hit.
+  int32 damage_bonus = 3;
+  // The resource each use spends; empty for none.
+  string resource = 4;
 }
 
 // AttackRoll is the attack roll and what it did.

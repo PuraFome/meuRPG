@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
@@ -113,6 +114,9 @@ func (f *attackFlow) checkPowerAttack(ctx context.Context) error {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("power_attack_key is not a power attack of the character"))
 	}
 	p := f.sheet.Traits.PowerAttacks[i]
+	if pin := f.req.GetPowerAttackPin(); pin != nil { // the roll was held: its numbers stay as they were
+		p.NamePT, p.AttackPenalty, p.DamageBonus, p.Resource = pin.GetNamePt(), int(pin.GetPenalty()), int(pin.GetDamageBonus()), pin.GetResource()
+	}
 	if ok, why := powerAttackRule(p).Allows(powerAttackLine(f.attack)); !ok {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New(why))
 	}
@@ -121,12 +125,29 @@ func (f *attackFlow) checkPowerAttack(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if left, _ := poolLeft(vit, p.Resource); left <= 0 {
+		need := int32(1)
+		if f.maneuver != nil && f.maneuver.Resource == p.Resource {
+			need = 2 // the maneuver die and the trade each spend a use of the one pool
+		}
+		if left, _ := poolLeft(vit, p.Resource); left < need {
 			return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NO_USES_LEFT, "no uses left")
 		}
 	}
 	f.power = &p
 	return nil
+}
+
+// pinnedRequest is the request a roll that waits keeps: as sent, with the trade as it is now, so the answer settles on
+// these numbers and not on what the sheet says by then (RollAttackRequest.power_attack_pin).
+func (f *attackFlow) pinnedRequest() *playv1.RollAttackRequest {
+	if f.power == nil {
+		return f.req
+	}
+	pinned, _ := proto.Clone(f.req).(*playv1.RollAttackRequest)
+	pinned.PowerAttackPin = &playv1.PowerAttackPin{
+		NamePt: f.power.NamePT, Penalty: conv.Int32(f.power.AttackPenalty), DamageBonus: conv.Int32(f.power.DamageBonus), Resource: f.power.Resource,
+	}
+	return pinned
 }
 
 // powerPenalty is what the trade takes off the attack roll, 0 for an attack that makes none.
@@ -180,12 +201,31 @@ func (s *Service) listPowerAttacks(ctx context.Context, who playdb.Combatant, re
 		}
 		line := powerAttackLine(sheet.Attacks[i])
 		for _, p := range sheet.Traits.PowerAttacks {
-			if ok, _ := powerAttackRule(p).Allows(line); ok {
-				o.PowerAttacks = append(o.PowerAttacks, &rulesv1.PowerAttackOption{
-					Key: p.Key, Name: p.NamePT, Penalty: conv.Int32(p.AttackPenalty), DamageBonus: conv.Int32(p.DamageBonus),
-				})
+			if ok, _ := powerAttackRule(p).Allows(line); !ok {
+				continue
 			}
+			opt, err := s.powerAttackOption(ctx, reads, p)
+			if err != nil {
+				return err
+			}
+			o.PowerAttacks = append(o.PowerAttacks, opt)
 		}
 	}
 	return nil
+}
+
+// powerAttackOption is a trade as the options list it: disabled, with its reason, when its resource has no use left.
+func (s *Service) powerAttackOption(ctx context.Context, reads *turnReads, p link.PowerAttack) (*rulesv1.PowerAttackOption, error) {
+	opt := &rulesv1.PowerAttackOption{Key: p.Key, Name: p.NamePT, Penalty: conv.Int32(p.AttackPenalty), DamageBonus: conv.Int32(p.DamageBonus)}
+	if p.Resource == "" {
+		return opt, nil
+	}
+	vit, err := reads.vitalsOf(ctx)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the character's power attack uses", err)
+	}
+	if left, _ := poolLeft(vit, p.Resource); left <= 0 {
+		opt.Disabled, opt.DisabledReasonPt = true, "Sem usos do recurso."
+	}
+	return opt, nil
 }

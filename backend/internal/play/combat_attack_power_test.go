@@ -39,9 +39,17 @@ type powerTable struct {
 	heavyKey, freeKey string
 	// subKey is the subclass that holds both trades: archiving it hides them from the players.
 	subKey string
+	// entry is that subclass as the table stored it, for editing the trades.
+	entry *rulesv1.TableEntry
 }
 
 func newPowerTable(t *testing.T) *powerTable {
+	t.Helper()
+	return newPowerTableWith(t, false)
+}
+
+// newPowerTableWith is newPowerTable, and with withDie also a maneuver die of the attack that spends the trades' pool.
+func newPowerTableWith(t *testing.T, withDie bool) *powerTable {
 	t.Helper()
 	g := &powerTable{}
 	g.armed = newArmedWith(t, func(a *armed) {
@@ -55,9 +63,15 @@ func newPowerTable(t *testing.T) *powerTable {
 		free := &rulesv1.TableFeature{NamePt: powerFreeName, DescPt: []string{"Troca precisão por dano."}, Effects: []*rulesv1.TableEffect{{
 			Type: "power_attack", AttackPenalty: freePenalty, DamageBonus: freeDamage, Weapon: "melee",
 		}}}
+		features := []*rulesv1.TableFeature{pool, heavy, free}
+		if withDie {
+			features = append(features, &rulesv1.TableFeature{NamePt: "Golpe Preciso", DescPt: []string{"Um dado."}, Effects: []*rulesv1.TableEffect{
+				{Type: "superiority_die", Applies: rules.ManeuverAttack, Resource: powerUses, Value: "8"},
+			}})
+		}
 		sub := &rulesv1.TableSubclass{
 			NamePt: "Mestre do Golpe", ClassKey: "class:fighter", DescPt: []string{"Golpes."},
-			Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: []*rulesv1.TableFeature{pool, heavy, free}}},
+			Levels: []*rulesv1.TableSubclassLevel{{Level: 3, Features: features}},
 		}
 		res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
 			CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: sub},
@@ -83,7 +97,7 @@ func newPowerTable(t *testing.T) *powerTable {
 		if err != nil {
 			t.Fatalf("CreateCharacter(Pipo) error = %v", err)
 		}
-		g.subKey = res.Msg.GetEntry().GetKey()
+		g.subKey, g.entry = res.Msg.GetEntry().GetKey(), res.Msg.GetEntry()
 		a.toren = made.Msg.GetCharacter()
 		a.pens = a.ana.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 14, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
