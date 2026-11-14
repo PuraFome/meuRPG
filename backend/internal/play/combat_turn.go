@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 
@@ -107,7 +108,13 @@ func turnMembers(cs []playdb.Combatant) []playdb.Combatant {
 // startTurn starts the turn of the group whose living members are ids: every
 // one's turn starts at once (the economy resets, the Escudo bonus ends, a
 // death save is due again), and the combat's state points at the first.
+//
+// The transaction must carry the service (every caller runs in Service.write): without it the turn would start and skip the
+// effects of its start and the windows of the features that wait for it, so it is refused.
 func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) error {
+	if c.svc == nil {
+		return errors.New("start a turn: the transaction has no service")
+	}
 	if err := closeOldTurn(ctx, c, ids); err != nil {
 		return err
 	}
@@ -116,16 +123,11 @@ func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) erro
 			return fmt.Errorf("reset the turn: %w", err)
 		}
 	}
-	if c.svc != nil {
-		if err := c.svc.startOfTurnEffects(ctx, c, ids, round); err != nil {
-			return err
-		}
+	if err := c.svc.startOfTurnEffects(ctx, c, ids, round); err != nil {
+		return err
 	}
 	if err := setCurrent(ctx, c, ids[0], round); err != nil {
 		return err
-	}
-	if c.svc == nil {
-		return nil
 	}
 	return c.svc.openStartFeatures(ctx, c, ids)
 }
@@ -152,18 +154,13 @@ func (s *Service) openStartFeatures(ctx context.Context, c *combatTx, ids []stri
 // turn, then the Escudo bonus of the ones whose turn starts.
 func closeOldTurn(ctx context.Context, c *combatTx, ids []string) error {
 	// What ends at the end of the turn that is over ends first (RN-22).
-	if c.svc != nil {
-		if err := c.svc.effectsBeforeTurn(ctx, c); err != nil {
-			return err
-		}
+	if err := c.svc.effectsBeforeTurn(ctx, c); err != nil {
+		return err
 	}
 	if err := c.q.ClearCombatTurns(ctx, c.enc.ID); err != nil {
 		return fmt.Errorf("clear the turn: %w", err)
 	}
-	if c.svc != nil {
-		return c.svc.endShields(ctx, c, ids)
-	}
-	return nil
+	return c.svc.endShields(ctx, c, ids)
 }
 
 // startOfTurnEffects settles what the start of the turn of ids changes, after their
