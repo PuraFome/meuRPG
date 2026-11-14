@@ -109,6 +109,11 @@ type windowTrigger struct {
 	Held []string `json:"held,omitempty"`
 	// Bonus is what Parry adds to the armor class against the hit (ParryKind).
 	Bonus int32 `json:"bonus,omitempty"`
+	// Cause is what asked a rider's mount save ("pushed" or "prone"), Target the mount it sits on, and AtCol and AtRow the square a
+	// pushed mount stands on: the window closes when it is not there any more (the push was undone).
+	Cause string `json:"cause,omitempty"`
+	AtCol int32  `json:"at_col,omitempty"`
+	AtRow int32  `json:"at_row,omitempty"`
 }
 
 // windowOutcome is what an answered window did: kept with the window, and, for the
@@ -262,6 +267,16 @@ func (s *Service) reactionGate(ctx context.Context, c *combatTx, ignoring ...str
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING, "a concentration save waits for its answer")
 		}
 	}
+	for _, w := range open {
+		if w.Kind != string(reaction.MountSave) {
+			continue
+		}
+		if hidden, err := mountSaveHidden(ctx, c, w); err != nil {
+			return err
+		} else if !hidden { // a hidden rider or mount holds the turn as any reaction of the master's does (RN-10)
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING, "a rider's save to stay on its mount waits for its answer")
+		}
+	}
 	return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_PENDING, "a reaction waits for its answer")
 }
 
@@ -308,6 +323,8 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 	switch reaction.Kind(w.Kind) {
 	case reaction.Concentration:
 		return concentrationGone(w, t, byID), true, nil
+	case reaction.MountSave:
+		return mountSaveGone(w, t, byID), true, nil
 	case reaction.FeatherFall, reaction.SlowFall:
 		gone, err = fallGone(ctx, c, t)
 		return gone, true, err

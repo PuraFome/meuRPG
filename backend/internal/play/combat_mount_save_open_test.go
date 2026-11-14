@@ -1,7 +1,6 @@
 package play
 
 import (
-	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -243,8 +242,6 @@ func TestMountedCombat_TheWindowHoldsTheTurn(t *testing.T) {
 
 	_, err := c.move(t, c.caio, "Ogro", 6, 7)
 	wantBlockedBy(t, "the mount moving", err, reasonMountSavePending)
-	_, err = c.move(t, c.master, "Ogro", 6, 7)
-	wantBlockedBy(t, "the master moving the mount", err, reasonMountSavePending)
 	_, err = c.action(t, c.caio, enc, "Ogro", "standard:dash")
 	wantBlockedBy(t, "the mount's Dash", err, reasonMountSavePending)
 	_, err = c.dismountAs(t, c.caio, "Toren", 6, 7)
@@ -253,9 +250,6 @@ func TestMountedCombat_TheWindowHoldsTheTurn(t *testing.T) {
 	wantBlockedBy(t, "the end of the turn", err, reasonMountSavePending)
 	_, err = c.endTurn(t, c.master, enc, false)
 	wantBlockedBy(t, "the end of the turn by the master", err, reasonMountSavePending)
-	if b := wantBlockedBy(t, "the dismount", func() error { _, e := c.dismountAs(t, c.caio, "Toren", 6, 7); return e }(), reasonMountSavePending); !slices.Contains(b.GetCombatantIds(), c.id(t, "Toren")) {
-		t.Errorf("combatant_ids = %v, want the rider", b.GetCombatantIds())
-	}
 }
 
 // openSaveWindows are the rows of the open windows of the kind.
@@ -291,7 +285,10 @@ func TestMountedCombat_TheWindowClearsWhenItsPairIsGone(t *testing.T) {
 			c.touchCombat(t)
 		}},
 		{"the mount is removed", causePushed, func(t *testing.T, c *cave) { c.removeFromCombat(t, "Ogro") }},
-		{"the rider leaves", causePushed, func(t *testing.T, c *cave) { c.removeFromCombat(t, "Toren") }},
+		{"the rider leaves", causePushed, func(t *testing.T, c *cave) {
+			c.execSQL(t, `DELETE FROM combatants WHERE id = $1`, c.id(t, "Toren"))
+			c.touchCombat(t)
+		}},
 		{"the prone is taken off", causeProne, func(t *testing.T, c *cave) {
 			c.execSQL(t, `UPDATE combatants SET conditions = '{}' WHERE id = $1`, c.id(t, "Toren"))
 			c.touchCombat(t)

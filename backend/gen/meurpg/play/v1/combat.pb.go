@@ -1026,7 +1026,8 @@ const (
 	// action) is refused. A reaction is not an action and stays free. `combatant_ids` names the mount. Nothing is changed.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED EncounterBlockedReason = 142
 	// A rider owes the Dexterity saving throw of Encounter.mount_save (RollMountSave): the turn, a move, an action, a mount and a
-	// dismount wait for it, as for any open window (the master too). `combatant_ids` names the rider.
+	// dismount wait for it, as for any open window (the master too). A player who does not see the rider or its mount is
+	// answered REACTION_PENDING, as for any reaction of the master's (RN-10): the refusal names nobody.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING EncounterBlockedReason = 143
 )
 

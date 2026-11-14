@@ -422,7 +422,10 @@ func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb
 			return err
 		}
 		if !slices.Contains(target.Conditions, condProne) && len(target.Conditions) < maxConditions {
-			return setConditionsOf(ctx, c, target, withCondition(target.Conditions, condProne))
+			if err := setConditionsOf(ctx, c, target, withCondition(target.Conditions, condProne)); err != nil {
+				return err
+			}
+			return s.riderProne(ctx, c, target.ID) // a rider knocked prone owes a save (combat_mount_save.go)
 		}
 	case choicePush:
 		return s.pushByRider(ctx, c, cs, attacker, target, re)

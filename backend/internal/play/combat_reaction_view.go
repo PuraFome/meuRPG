@@ -139,7 +139,7 @@ func (wv *windowView) openOne(w playdb.ReactionWindow, order []reaction.Window, 
 	answers := wv.v.master || (reactor != nil && wv.v.owns(*reactor))
 	now := reaction.AnswerNow(order, w.ID)
 	var pw *playv1.ReactionWindow
-	if answers && wv.shownNow(w, now) {
+	if answers && reaction.Kind(w.Kind) != reaction.MountSave && wv.shownNow(w, now) { // a rider's save reads as Encounter.mount_save
 		var err error
 		if pw, err = wv.window(w, reactor, now); err != nil {
 			return nil, err
@@ -255,6 +255,8 @@ func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		wv.contestWait(reactor, answers, wait)
 	case reaction.EffectSave:
 		wv.effectSaveWait(w, reactor, answers, wait)
+	case reaction.MountSave:
+		wv.mountSaveWait(w, reactor, answers, wait)
 	default:
 		wv.reactionWait(reaction.Kind(w.Kind) == reaction.Concentration, reactor, answers, wait)
 	}

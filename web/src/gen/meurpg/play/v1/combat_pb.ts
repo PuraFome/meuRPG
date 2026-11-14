@@ -15916,7 +15916,8 @@ export enum EncounterBlockedReason {
 
   /**
    * A rider owes the Dexterity saving throw of Encounter.mount_save (RollMountSave): the turn, a move, an action, a mount and a
-   * dismount wait for it, as for any open window (the master too). `combatant_ids` names the rider.
+   * dismount wait for it, as for any open window (the master too). A player who does not see the rider or its mount is
+   * answered REACTION_PENDING, as for any reaction of the master's (RN-10): the refusal names nobody.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_MOUNT_SAVE_PENDING = 143;
    */
