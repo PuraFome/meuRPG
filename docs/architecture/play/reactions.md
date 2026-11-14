@@ -230,7 +230,8 @@ The master's screen (`core/combat/reaction-autopass.ts`, driven by `combat-view`
 It remembers when it first saw each open window waiting for its player (`reactor_is_player`, `answer_now`).
 The kinds are Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, Readied action and Reaction feature.
 After `AUTO_PASS_SECONDS` (30) it sends the same `AnswerReaction` "Deixar passar" the master can tap.
-Its idempotency key is `auto-pass:<window id>`, so two tabs or a retry never answer twice.
+Its idempotency key is the window's id with every hex digit flipped but the version and the variant ones (`autoPassKey`: the server takes only a UUID), so two tabs or a retry never answer twice.
+The same pass and a player's "Usar" can reach the server together: the first answer wins, the other is refused (`failed_precondition`) and nothing is spent twice.
 A refusal because it was answered meanwhile is ignored.
 Saving throws (`CONCENTRATION_SAVE`, `EFFECT_SAVE`, the Hellish Rebuke second step), contests and the master's check never auto-pass.
 An NPC's window never auto-passes, a READIED one included.
