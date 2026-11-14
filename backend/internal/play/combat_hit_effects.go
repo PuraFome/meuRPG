@@ -196,25 +196,37 @@ func (s *Service) liveHitParts(ctx context.Context, c *combatTx, p playdb.Pendin
 		if sp.Table != tableHitEffect || sp.Removed {
 			continue
 		}
-		st, err := c.q.GetLastingEffect(ctx, playdb.GetLastingEffectParams{ID: sp.Effect, EncounterID: c.enc.ID})
-		if errors.Is(err, pgx.ErrNoRows) || (err == nil && st.SpentAt != nil) {
-			parts[i].Removed = true
-			continue
-		}
+		gone, err := s.hitPartGone(ctx, c, p, sp, &open)
 		if err != nil {
-			return nil, fmt.Errorf("find the effect of the part: %w", err)
+			return nil, err
 		}
-		if mod, ok := hitModifierOf(effectModifiers(st)); !ok || !consumesHit(mod.Trigger) {
-			continue
-		}
-		if open == nil {
-			if open, err = c.q.ListOpenPendingDamages(ctx, c.enc.ID); err != nil {
-				return nil, fmt.Errorf("list the pending damages: %w", err)
-			}
-		}
-		parts[i].Removed = waitsForEarlierAttack(open, p, sp.Effect)
+		parts[i].Removed = gone
 	}
 	return parts, nil
+}
+
+// hitPartGone says the part of a hit effect is out of this damage: its row is used or ended, or an earlier attack waits
+// for it. open is the open pending damages, read once the first time they are needed.
+func (s *Service) hitPartGone(ctx context.Context, c *combatTx, p playdb.PendingDamage, sp partRecord, open *[]playdb.PendingDamage) (bool, error) {
+	st, err := c.q.GetLastingEffect(ctx, playdb.GetLastingEffectParams{ID: sp.Effect, EncounterID: c.enc.ID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find the effect of the part: %w", err)
+	}
+	if st.SpentAt != nil {
+		return true, nil
+	}
+	if mod, ok := hitModifierOf(effectModifiers(st)); !ok || !consumesHit(mod.Trigger) {
+		return false, nil
+	}
+	if *open == nil {
+		if *open, err = c.q.ListOpenPendingDamages(ctx, c.enc.ID); err != nil {
+			return false, fmt.Errorf("list the pending damages: %w", err)
+		}
+	}
+	return waitsForEarlierAttack(*open, p, sp.Effect), nil
 }
 
 // waitsForEarlierAttack says an attack of the same attacker, made before p and still waiting for its damage, offers the

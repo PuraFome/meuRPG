@@ -37,6 +37,7 @@ func TestTheUndoOfAMarkedTargetHitKeepsTheMarkAndTheTarget(t *testing.T) {
 func TestTheUndoOfAHitThatUsedAnEffectNeverLosesTheEffectWhenItWasEnded(t *testing.T) {
 	t.Parallel()
 	newHit := func(t *testing.T) (*armed, *playv1.Encounter) {
+		t.Helper()
 		a := newHitCasters(t, nil, hitMod(trigNext))
 		e := a.hitFight(t)
 		a.castMark(t, e, 1)

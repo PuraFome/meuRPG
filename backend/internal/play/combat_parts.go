@@ -319,7 +319,7 @@ func (h hitFacts) buildParts() []partRecord {
 		return nil
 	}
 	weapon := h.weaponPart(reroll)
-	weapon.Plain = !reroll && len(extras) == 0 && len(autos) == 0 && len(h.planned) == 0 && h.power == nil && onlyOffRows(maneuvers)
+	weapon.Plain = !reroll && len(extras) == 0 && len(autos) == 0 && h.onlyOffRows(maneuvers)
 	out := []partRecord{weapon}
 	out = h.appendExtras(out, extras, partExtra)
 	out = h.appendExtras(out, autos, partAuto)
@@ -328,6 +328,12 @@ func (h hitFacts) buildParts() []partRecord {
 	}
 	out = append(out, h.planned...)
 	return append(out, maneuvers...)
+}
+
+// onlyOffRows says nothing but the off rows of a spell's hit effect is listed beside the weapon: no planned part, and no
+// power attack (the others read that row, so its absence would tell them an effect waits).
+func (h hitFacts) onlyOffRows(maneuvers []partRecord) bool {
+	return len(h.planned) == 0 && h.power == nil && onlyOffRows(maneuvers)
 }
 
 // weaponPart is the weapon's own part of a hit.
@@ -590,26 +596,10 @@ func rollForOthers(r partRoll) partRoll {
 // them: the server knows only the group's sum, so the group is one row, at the row that carries the sum: the names of
 // its visible parts and "Outra fonte", the damage type, the group's sum and the fixed numbers of its parts (RN-10).
 func mergeHiddenGroups(rolls []partRoll) []partRoll {
-	merged := map[string]*partRoll{}
-	for i, r := range rolls {
+	merged := map[string]partRoll{}
+	for _, r := range rolls {
 		if r.GroupHidden {
-			names := []string{}
-			flat := int32(0)
-			for _, o := range rolls {
-				if o.Group != r.Group || o.Effect != "" && o.Hide {
-					continue
-				}
-				names = append(names, o.Label)
-				flat += o.Flat + o.Fixed
-			}
-			row := rolls[i]
-			if row.Effect != "" && row.Hide { // every part of the group is hidden: the row carries the id of the effect's row
-				row = hitRollForOthers(row)
-			}
-			row.Label, row.Flat, row.Fixed = strings.Join(append(names, otherSourceTx), " + "), flat, 0
-			row.Count, row.Sides, row.Faces, row.Rerolled, row.CountedDice = 0, 0, nil, nil, nil
-			row.Effect, row.Hide, row.Counted = "", false, true
-			merged[r.Group] = &row
+			merged[r.Group] = oneRowOfGroup(r, rolls)
 		}
 	}
 	if len(merged) == 0 {
@@ -622,10 +612,29 @@ func mergeHiddenGroups(rolls []partRoll) []partRoll {
 		case !ok || r.Group == "":
 			out = append(out, r)
 		case r.GroupHidden:
-			out = append(out, *g)
+			out = append(out, g)
 		}
 	}
 	return out
+}
+
+// oneRowOfGroup is the row of a group that holds a hidden part, from the row that carries the group's sum.
+func oneRowOfGroup(holder partRoll, rolls []partRoll) partRoll {
+	var names []string
+	var flat int32
+	for _, o := range rolls {
+		if o.Group == holder.Group && (o.Effect == "" || !o.Hide) {
+			names, flat = append(names, o.Label), flat+o.Flat+o.Fixed
+		}
+	}
+	row := holder
+	if row.Effect != "" && row.Hide { // every part of the group is hidden: the row carries the id of the effect's row
+		row = hitRollForOthers(row)
+	}
+	row.Label, row.Flat, row.Fixed = strings.Join(append(names, otherSourceTx), " + "), flat, 0
+	row.Count, row.Sides, row.Faces, row.Rerolled, row.CountedDice = 0, 0, nil, nil, nil
+	row.Effect, row.Hide, row.Counted = "", false, true
+	return row
 }
 
 // powerPartForOthers is the power attack's part as a player who is neither the master nor the attacker's owner reads it:

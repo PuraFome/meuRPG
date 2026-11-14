@@ -907,6 +907,7 @@
     "result": "x",
     "owners_only": true,
     "hidden_source": true,
+    "effect_hidden": true,
     "d20": 1,
     "total": 1,
     "dc": 1,

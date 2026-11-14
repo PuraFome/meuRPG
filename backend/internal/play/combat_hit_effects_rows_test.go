@@ -51,7 +51,8 @@ func newRowsFight(t *testing.T, audience rulesv1.TableEffectAudience) (*armed, *
 		hitMod(trigEach, func(m *tableMod) { m.Die, m.Dice, m.MaxDice = 12, 2, 13 }))
 	e := a.hitFight(t)
 	a.castMark(t, e, 1)
-	return a, e, a.strike(t, e, battleaxe, "Goblin", d20(19))
+	hit := a.strike(t, e, battleaxe, "Goblin", d20(19))
+	return a, e, hit
 }
 
 // readStored is the stored pending damage as a viewer reads it: the parts and the part rolls, as the owner (and the master)
