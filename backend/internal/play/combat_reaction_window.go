@@ -333,6 +333,9 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 	case reaction.Readied:
 		gone, err = readiedGone(ctx, c, t)
 		return gone, true, err
+	case reaction.Feature:
+		gone, err = s.featureGone(ctx, c, w, t, byID)
+		return gone, true, err
 	case reaction.LegendaryResistance:
 		if resistGone(t, byID) {
 			return true, true, nil

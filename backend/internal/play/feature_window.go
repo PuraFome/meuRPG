@@ -7,6 +7,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -153,6 +154,34 @@ func (s *Service) featureReady(ctx context.Context, c *combatTx, cs []playdb.Com
 		return false
 	}
 	return sc.canAimAt(*fa.Use, mover, dist)
+}
+
+// featureGone says the feature of a FEATURE window cannot be used on the creature that triggered it any more: the creature left
+// the fight or joined the reactor's side, or the feature is not ready now (no use or resource left, the reaction spent, nothing to aim at).
+func (s *Service) featureGone(ctx context.Context, c *combatTx, w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) (bool, error) {
+	mover, ok := byID[t.Actor]
+	reactor, ok2 := byID[conv.OrZero(w.ReactorID)]
+	if !ok || !ok2 || mover.Defeated || mover.Dismissed || mover.Side == reactor.Side {
+		return true, nil
+	}
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
+	if err != nil {
+		return false, err
+	}
+	fa, ok := featureOfKey(sheet, t.Key)
+	if !ok {
+		return true, nil
+	}
+	k, ok, err := s.kitOf(ctx, c.tx, c.session.CampaignID, reactor)
+	if err != nil || !ok {
+		return !ok && err == nil, err
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return false, err
+	}
+	dist, _ := distanceFt(reactor, mover)
+	return !s.featureReady(ctx, c, cs, k, fa, mover, dist), nil
 }
 
 // featureViewer is who reads the targets of the feature: its user's player, and the master when the creature is hidden from them.
