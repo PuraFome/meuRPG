@@ -612,7 +612,7 @@ func (s *Service) publishUndoRun(ctx context.Context, campaignID string, d *enco
 		s.followToSquare(ctx, campaignID, d, m.Target, &grid.Square{Col: int(m.Col), Row: int(m.Row)})
 	}
 	for _, vit := range run.vitals {
-		s.publishVitals(campaignID, vit)
+		s.publishVitals(ctx, campaignID, vit)
 	}
 	if run.rearmed != nil && s.traps != nil {
 		s.traps.TrapChanged(ctx, campaignID, run.rearmed.MapID, run.rearmed.PointID) // players who saw it fire lose it again
@@ -633,7 +633,7 @@ func (s *Service) followToSquare(ctx context.Context, campaignID string, d *enco
 // out of their sight (RN-10).
 func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encounterData, ev actionEvent) {
 	if ev.UndoneKind == eventLegendarySpent { // the master's text spend: nothing a player sees
-		s.publishEncounterChangedToMaster(campaignID, d.enc)
+		s.publishEncounterChangedToMaster(ctx, campaignID, d.enc)
 		return
 	}
 	f, err := s.fogSightOf(ctx, campaignID, d.enc)

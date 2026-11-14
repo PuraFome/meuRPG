@@ -21,6 +21,32 @@ type sayFn = func(campaignID string, ev live.Event)
 // their own commit).
 func (s *Service) sayNow(campaignID string, ev live.Event) { s.send(campaignID, ev) }
 
+// sayWith is the say that stamps each event with seq (WatchGameSessionResponse.session_seq) and sends it; seq 0 sends it unstamped.
+func (s *Service) sayWith(seq int64) sayFn {
+	return func(campaignID string, ev live.Event) {
+		if seq > 0 && ev.Message != nil {
+			ev.Message.SessionSeq = seq // not shared with a stream yet: send is next
+		}
+		s.send(campaignID, ev)
+	}
+}
+
+type sayKey struct{}
+
+// withSay returns ctx carrying say, for the publishers of a combat handler's publish callback: they take only a context, and
+// sayOf hands them the say that stamps with the number of the write.
+func withSay(ctx context.Context, say sayFn) context.Context {
+	return context.WithValue(ctx, sayKey{}, say)
+}
+
+// sayOf is the say a publisher called with ctx sends through: the one withSay put there, else sayNow (no number).
+func (s *Service) sayOf(ctx context.Context) sayFn {
+	if say, ok := ctx.Value(sayKey{}).(sayFn); ok {
+		return say
+	}
+	return s.sayNow
+}
+
 // txOpen is Service.tx on the campaign's open session: the session is read first, with no lock, so tx can take its row lock as the
 // first statement of the attempt, and fn is given it after the check that it is still the open one (stillOpen). It refuses with
 // NO_OPEN_SESSION when the campaign has none.

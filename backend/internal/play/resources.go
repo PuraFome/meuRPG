@@ -262,8 +262,8 @@ func eventByKey(ctx context.Context, q *playdb.Queries, sessionID, key, kind str
 }
 
 // publishVitalsOf tells the streams the new vitals of the characters.
-func (s *Service) publishVitalsOf(campaignID string, vitals []*playv1.CharacterVitals) {
-	s.tellVitalsOf(s.sayNow, campaignID, vitals)
+func (s *Service) publishVitalsOf(ctx context.Context, campaignID string, vitals []*playv1.CharacterVitals) {
+	s.tellVitalsOf(s.sayOf(ctx), campaignID, vitals)
 }
 
 // tellVitalsOf is publishVitalsOf through say: an after-commit step of Service.tx tells it with the session's number.
