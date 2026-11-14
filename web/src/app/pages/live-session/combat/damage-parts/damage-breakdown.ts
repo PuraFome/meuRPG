@@ -20,7 +20,7 @@ import {
   type DamageStep,
   DamageStepKind,
 } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { partTotal, rerollText } from '../../../../core/combat/damage-parts';
+import { groupHolder, partTotal, rerollText } from '../../../../core/combat/damage-parts';
 import { reasonValid, stepLine } from '../../../../core/combat/roll-mode';
 
 let nextId = 0;
@@ -74,6 +74,10 @@ export class DamageBreakdown {
         ? ' · dado físico'
         : '';
     const flat = r.flat === 0 ? '' : ` ${r.flat < 0 ? '−' : '+'} ${Math.abs(r.flat)}`;
+    const holder = r.flat === 0 ? groupHolder(r, this.rolls()) : undefined;
+    if (holder) {
+      return `${dice} · somado em ${holder.labelPt}`;
+    }
     return dice ? `${dice}${faces}${flat} = ${partTotal(r)}` : `${partTotal(r)}`;
   }
 

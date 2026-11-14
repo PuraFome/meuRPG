@@ -10,6 +10,7 @@ import (
 	"math"
 	"reflect"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 
@@ -69,6 +70,9 @@ type partRecord struct {
 	// Reroll: Great Weapon Fighting rerolls this part's 1s and 2s.
 	Reroll bool   `json:"reroll,omitempty"`
 	Note   string `json:"note,omitempty"`
+	// Plain is set on the weapon part when the only other parts are the off rows of a spell's hit effect: the players
+	// who are not the attacker's read such a hit as one with no parts (RN-10).
+	Plain bool `json:"plain,omitempty"`
 	// SlotLevel and Pact are the slot a Divine Smite spent, once rolled.
 	SlotLevel int32 `json:"slot_level,omitempty"`
 	Pact      bool  `json:"pact,omitempty"`
@@ -123,6 +127,10 @@ type partRoll struct {
 	// and no number.
 	Effect string `json:"effect,omitempty"`
 	Hide   bool   `json:"hide,omitempty"`
+	// Group is the damage type whose typed sum covered this part (typedGroups); the sum sits on one part of the group, and
+	// GroupHidden says that part's sum includes a part hidden from the others, so they never read it (RN-10).
+	Group       string `json:"group,omitempty"`
+	GroupHidden bool   `json:"group_hidden,omitempty"`
 }
 
 type rerolled struct {
@@ -310,6 +318,26 @@ func (h hitFacts) buildParts() []partRecord {
 	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 && h.power == nil {
 		return nil
 	}
+	weapon := h.weaponPart(reroll)
+	weapon.Plain = !reroll && len(extras) == 0 && len(autos) == 0 && h.onlyOffRows(maneuvers)
+	out := []partRecord{weapon}
+	out = h.appendExtras(out, extras, partExtra)
+	out = h.appendExtras(out, autos, partAuto)
+	if h.power != nil { // a miss opens no damage, so only a hit that made the trade reaches here
+		out = append(out, h.power.powerPart(h.attack.DamageType))
+	}
+	out = append(out, h.planned...)
+	return append(out, maneuvers...)
+}
+
+// onlyOffRows says nothing but the off rows of a spell's hit effect is listed beside the weapon: no planned part, and no
+// power attack (the others read that row, so its absence would tell them an effect waits).
+func (h hitFacts) onlyOffRows(maneuvers []partRecord) bool {
+	return len(h.planned) == 0 && h.power == nil && onlyOffRows(maneuvers)
+}
+
+// weaponPart is the weapon's own part of a hit.
+func (h hitFacts) weaponPart(reroll bool) partRecord {
 	weapon := partRecord{
 		Key: partWeapon, Label: h.attack.Name, Kind: partWeapon, Count: clamp32(h.attack.DiceCount, 0, 100), Sides: clamp32(h.attack.DiceSides, 0, 100),
 		Flat: clamp32(h.weaponBonus, -1000, 1000), DamageType: h.attack.DamageType, Reroll: reroll, Available: true,
@@ -317,18 +345,15 @@ func (h hitFacts) buildParts() []partRecord {
 	if reroll {
 		weapon.Note = "Combate com Armas Grandes: os 1 e 2 dos dados da arma são rerrolados"
 	}
-	out := []partRecord{weapon}
+	return weapon
+}
+
+// appendExtras adds the rules' extras of one kind as parts.
+func (h hitFacts) appendExtras(out []partRecord, extras []combat.Extra, kind string) []partRecord {
 	for _, e := range extras {
-		out = append(out, h.fromExtra(e, partExtra))
+		out = append(out, h.fromExtra(e, kind))
 	}
-	for _, e := range autos {
-		out = append(out, h.fromExtra(e, partAuto))
-	}
-	if h.power != nil { // a miss opens no damage, so only a hit that made the trade reaches here
-		out = append(out, h.power.powerPart(h.attack.DamageType))
-	}
-	out = append(out, h.planned...)
-	return append(out, maneuvers...)
+	return out
 }
 
 // maneuverParts lists, for a player's character, the table maneuvers whose die goes on the
@@ -470,14 +495,30 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 // spell's hit effect whole.
 func partsProtoFor(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) []*playv1.DamagePart {
 	var out []*playv1.DamagePart
-	for _, sp := range readParts(p.Parts) {
-		out = append(out, partProtoFor(sp, p, rule, damageTypePT, reads))
+	all := readParts(p.Parts)
+	if !reads && plainToOthers(all) {
+		return nil
+	}
+	for _, sp := range all {
+		if !reads && isOffHitPart(sp) { // the off part of an effect is its caster's player's and the master's, never another player's
+			continue
+		}
+		out = append(out, partProto(sp, p, rule, damageTypePT, reads))
 	}
 	return out
 }
 
-// partProtoFor is one stored part as the viewer reads it.
-func partProtoFor(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) *playv1.DamagePart {
+// shownPart is what a viewer reads of a part's dice and words: the part's own, or, for a spell's hit part a viewer
+// does not read whole, the others' view of it (no dice, and a key and label that name the spell only when it is public).
+type shownPart struct {
+	key, label, source, reason, note string
+	count, fixed                     int
+	sides                            int32
+}
+
+// shownPartOf works out the dice and the words of a part for a viewer. The dice of a critical hit are doubled or
+// maxed (partCriticalDice); the weapon also carries the extra dice of a feature.
+func shownPartOf(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRule, reads bool) shownPart {
 	count, fixed := partCriticalDice(sp, p.Critical, rule)
 	if sp.Count == 0 {
 		count, fixed = 0, 0
@@ -487,19 +528,28 @@ func partProtoFor(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRul
 		count += int(p.ExtraDice)
 		note = joinNote(note, fmt.Sprintf("inclui %dd%d do %s", p.ExtraDice, sp.Sides, extraDiceName(p.ExtraDice, p.SavageDice)))
 	}
-	if sp.Table == tablePowerAttack && !reads { // the trade's feature and number are its attacker's and the master's (RN-10)
+	sh := shownPart{key: sp.Key, label: sp.Label, source: sp.Source, reason: sp.Reason, note: note, count: count, fixed: fixed, sides: sp.Sides}
+	if sp.Table == tableHitEffect && !reads { // the dice, the words and the reason of a spell are its caster's and the master's (RN-10)
+		sh.key, sh.label, sh.source = hitPartForOthers(sp, sh.label, sh.source)
+		sh.count, sh.fixed, sh.sides, sh.note = 0, 0, 0, ""
+		if sp.Hide {
+			sh.reason = ""
+		}
+	}
+	return sh
+}
+
+// partProto is one stored part as a viewer reads it.
+func partProto(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) *playv1.DamagePart {
+	if sp.Table == tablePowerAttack && !reads { // the trade's feature and number are its attacker's and the master's (RN-10): before the dice are worked out, so no number is left in the flat
 		sp = powerPartForOthers(sp)
 	}
-	key, label, source, sides := sp.Key, sp.Label, sp.Source, sp.Sides
-	if sp.Table == tableHitEffect && !reads { // the dice of a spell are its caster's and the master's (RN-10)
-		key, label, source = hitPartForOthers(sp, label, source)
-		count, fixed, sides = 0, 0, 0
-	}
+	sh := shownPartOf(sp, p, rule, reads)
 	return &playv1.DamagePart{
-		Key: key, LabelPt: label, DiceCount: clamp32(count, 0, 200), DiceSides: sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
-		DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: source,
-		Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
-		Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
+		Key: sh.key, LabelPt: sh.label, DiceCount: clamp32(sh.count, 0, 200), DiceSides: sh.sides, Flat: sp.Flat + clamp32(sh.fixed, 0, 10000),
+		DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: sh.source,
+		Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sh.reason,
+		Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: sh.note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
 	}
 }
 
@@ -508,15 +558,19 @@ func partProtoFor(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRul
 // so nothing tells a player what the target is (RN-10, RN-20).
 func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT func(string) string) []*playv1.DamagePartRoll {
 	var out []*playv1.DamagePartRoll
-	for _, r := range readPartRolls(p.PartRolls) {
+	if !reads && plainToOthers(readParts(p.Parts)) {
+		return nil
+	}
+	rolls := readPartRolls(p.PartRolls)
+	if !reads {
+		rolls = mergeHiddenGroups(rolls)
+	}
+	for _, r := range rolls {
 		if r.Conditional && !master {
 			r.Counted = true // a player reads the same lines whatever the target is
 		}
-		if r.Effect != "" && !reads {
-			r = hitRollForOthers(r)
-		}
-		if r.Key == partPowerAttack && !reads {
-			r = powerRollForOthers(r)
+		if !reads {
+			r = rollForOthers(r)
 		}
 		pr := partRollProto(r, damageTypePT)
 		if master {
@@ -525,6 +579,62 @@ func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT fun
 		out = append(out, pr)
 	}
 	return out
+}
+
+// rollForOthers is what a part rolled as the players who are neither the master nor the attacker's owner read it.
+func rollForOthers(r partRoll) partRoll {
+	if r.Effect != "" {
+		r = hitRollForOthers(r)
+	}
+	if r.Key == partPowerAttack {
+		r = powerRollForOthers(r)
+	}
+	return r
+}
+
+// mergeHiddenGroups is the rolls as the other players read them when a typed damage-type group holds a part hidden from
+// them: the server knows only the group's sum, so the group is one row, at the row that carries the sum: the names of
+// its visible parts and "Outra fonte", the damage type, the group's sum and the fixed numbers of its parts (RN-10).
+func mergeHiddenGroups(rolls []partRoll) []partRoll {
+	merged := map[string]partRoll{}
+	for _, r := range rolls {
+		if r.GroupHidden {
+			merged[r.Group] = oneRowOfGroup(r, rolls)
+		}
+	}
+	if len(merged) == 0 {
+		return rolls
+	}
+	var out []partRoll
+	for _, r := range rolls {
+		g, ok := merged[r.Group]
+		switch {
+		case !ok || r.Group == "":
+			out = append(out, r)
+		case r.GroupHidden:
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// oneRowOfGroup is the row of a group that holds a hidden part, from the row that carries the group's sum.
+func oneRowOfGroup(holder partRoll, rolls []partRoll) partRoll {
+	var names []string
+	var flat int32
+	for _, o := range rolls {
+		if o.Group == holder.Group && (o.Effect == "" || !o.Hide) {
+			names, flat = append(names, o.Label), flat+o.Flat+o.Fixed
+		}
+	}
+	row := holder
+	if row.Effect != "" && row.Hide { // every part of the group is hidden: the row carries the id of the effect's row
+		row = hitRollForOthers(row)
+	}
+	row.Label, row.Flat, row.Fixed = strings.Join(append(names, otherSourceTx), " + "), flat, 0
+	row.Count, row.Sides, row.Faces, row.Rerolled, row.CountedDice = 0, 0, nil, nil, nil
+	row.Effect, row.Hide, row.Counted = "", false, true
+	return row
 }
 
 // powerPartForOthers is the power attack's part as a player who is neither the master nor the attacker's owner reads it:
@@ -543,9 +653,13 @@ func powerRollForOthers(r partRoll) partRoll {
 }
 
 // hitRollForOthers is what a spell's hit part rolled as the players who are not the attacker's read it: the amount,
-// never the dice, and "Outra fonte" when the effect is not theirs to read.
+// never the dice, and "Outra fonte" when the effect is not theirs to read. The hit-effect flag follows the key: a
+// hidden effect's row id is a key of no spell, so the flag is off with it.
 func hitRollForOthers(r partRoll) partRoll {
 	r.Key, r.Label, _ = hitPartForOthers(partRecord{Key: r.Key, Effect: r.Effect, Hide: r.Hide}, r.Label, "")
+	if r.Hide {
+		r.Effect = ""
+	}
 	r.Count, r.Sides, r.Faces, r.Rerolled, r.CountedDice = 0, 0, nil, nil, nil
 	return r
 }
@@ -553,7 +667,7 @@ func hitRollForOthers(r partRoll) partRoll {
 func partRollProto(r partRoll, damageTypePT func(string) string) *playv1.DamagePartRoll {
 	pr := &playv1.DamagePartRoll{
 		PartKey: r.Key, LabelPt: r.Label, DiceCount: r.Count, DiceSides: r.Sides, Faces: r.Faces, Flat: r.Flat + r.Fixed, Sum: r.Sum,
-		Counted: r.Counted, Physical: r.Physical, DamageTypeKey: r.DamageType,
+		Counted: r.Counted, Physical: r.Physical, DamageTypeKey: r.DamageType, HitEffect: r.Effect != "",
 	}
 	for _, rr := range r.Rerolled {
 		pr.Rerolled = append(pr.Rerolled, &playv1.Reroll{Index: rr.Index, From: rr.From, To: rr.To, SourceKey: rr.SourceKey})
@@ -776,8 +890,9 @@ type rollPartsInput struct {
 	rule     combat.CriticalRule
 	choice   extraChoice
 	in       rollInput
-	typed    map[string]int
-	target   link.Traits // the target's traits: its creature type
+	typed    typedSums
+	cover    map[string]*typeGroup // by part key: the group a typed damage type covers
+	target   link.Traits           // the target's traits: its creature type
 	selectOK func(part partRecord, mark *playv1.SelectedExtra) error
 }
 
@@ -791,6 +906,11 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 		return partsRoll{}, err
 	}
 	linkDivineSmite(final)
+	if !r.in.inApp {
+		if r.cover, err = r.typedGroups(final); err != nil {
+			return partsRoll{}, err
+		}
+	}
 	diceParts := 0
 	for _, sp := range final {
 		if r.counts(sp) && sp.Count > 0 && sp.Sides > 0 {
@@ -955,7 +1075,21 @@ func (s *Service) rollPartDice(pr *partRoll, sp partRecord, r rollPartsInput, di
 	if r.in.inApp {
 		return s.rollInApp(pr, sp, expr)
 	}
-	typed, ok := r.typed[sp.Key]
+	if g := r.cover[partIdent(sp)]; g != nil {
+		// The group's total sits on one of its parts; the other parts of the group add no dice of their own and keep no faces.
+		// A damage type that covers one part is no group: its sum stays on that part, as a part_key sum does, and the
+		// master may take it out.
+		many := g.parts >= 2
+		if many {
+			pr.Group = g.typ
+		}
+		if partIdent(sp) == g.holder {
+			pr.Sum = clamp32(g.sum, 0, 100000)
+			pr.GroupHidden = many && g.hidden
+		}
+		return nil
+	}
+	typed, ok := r.typed.byPart[sp.Key]
 	if !ok && diceParts == 1 {
 		typed, ok = r.in.typed, true // typed_sum: a damage of one group of dice
 	}
@@ -994,16 +1128,121 @@ func (s *Service) rollInApp(pr *partRoll, sp partRecord, expr dice.Expr) error {
 	return nil
 }
 
-// typedPartsOf reads the typed sums by part key, refusing a key twice.
-func typedPartsOf(raw []*playv1.TypedPart) (map[string]int, error) {
-	out := map[string]int{}
+// typedSums are the sums typed for the dice: by part key, and by damage type for every dice part of that type.
+type typedSums struct {
+	byPart map[string]int
+	byType map[string]int
+}
+
+// typeGroup is a damage type whose dice parts share one typed sum; the sum is kept on the first of them that the
+// other players can read (the first of all when every one is hidden from them).
+type typeGroup struct {
+	typ    string
+	sum    int
+	holder string
+	hidden bool // a part of the group is hidden from the other players
+	parts  int  // how many dice parts the damage type covers
+}
+
+// typedPartsOf reads the typed sums: each entry names one part key or one damage type, once. A refusal reads nothing.
+func typedPartsOf(raw []*playv1.TypedPart) (typedSums, error) {
+	out := typedSums{byPart: map[string]int{}, byType: map[string]int{}}
 	for _, t := range raw {
-		if _, dup := out[t.GetPartKey()]; dup || t.GetPartKey() == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts must name each part once"))
+		key, typ := t.GetPartKey(), t.GetDamageType()
+		switch {
+		case key == "" && typ == "":
+			return typedSums{}, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts must name a part_key or a damage_type"))
+		case key != "" && typ != "":
+			return typedSums{}, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts must name a part_key or a damage_type, not both"))
 		}
-		out[t.GetPartKey()] = int(t.GetSum())
+		seen := out.byPart
+		name := key
+		if typ != "" {
+			seen, name = out.byType, typ
+			if !strings.HasPrefix(typ, "damage-type:") {
+				return typedSums{}, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts damage_type must be a damage-type: key"))
+			}
+		}
+		if _, dup := seen[name]; dup {
+			return typedSums{}, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts must name each part once"))
+		}
+		seen[name] = int(t.GetSum())
 	}
 	return out, nil
+}
+
+// typedGroups checks the sum typed for each damage type (in the order of the keys) against the combined dice of its
+// parts and says which parts it covers. The extra die of Divine Smite stays out of every group: whether it counts
+// depends on the target, so it keeps its own part_key.
+func (r rollPartsInput) typedGroups(final []partRecord) (map[string]*typeGroup, error) {
+	cover := map[string]*typeGroup{}
+	for _, typ := range slices.Sorted(maps.Keys(r.typed.byType)) {
+		g, lo, hi, err := r.typedGroup(typ, final)
+		if err != nil {
+			return nil, err
+		}
+		for _, sp := range final {
+			if count, _ := r.diceOf(sp); r.inGroup(sp, typ, count) {
+				cover[partIdent(sp)] = g
+			}
+		}
+		if err := g.check(lo, hi); err != nil {
+			return nil, err
+		}
+	}
+	return cover, nil
+}
+
+// typedGroup gathers the parts a damage type's typed sum covers: its holder, whether a part is hidden, and the combined
+// range of their dice.
+func (r rollPartsInput) typedGroup(typ string, final []partRecord) (g *typeGroup, lo, hi int, err error) {
+	g = &typeGroup{typ: typ, sum: r.typed.byType[typ]}
+	first := ""
+	for _, sp := range final {
+		count, _ := r.diceOf(sp)
+		if !r.inGroup(sp, typ, count) {
+			continue
+		}
+		if _, both := r.typed.byPart[sp.Key]; both {
+			return nil, 0, 0, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("typed_parts names %s and a part of it (%s)", typ, sp.Key))
+		}
+		first = cmp.Or(first, partIdent(sp))
+		g.parts++
+		if sp.Hide {
+			g.hidden = true
+		} else {
+			g.holder = cmp.Or(g.holder, partIdent(sp))
+		}
+		lo, hi = lo+count, hi+count*int(sp.Sides)
+	}
+	g.holder = cmp.Or(g.holder, first)
+	return g, lo, hi, nil
+}
+
+// partIdent tells one part of a hit from another when a typed group is worked out: the effect's row for the damage of a
+// spell's hit effect (two casters of one spell give two parts of one key), the key for any other.
+func partIdent(sp partRecord) string {
+	if sp.Table == tableHitEffect && sp.Effect != "" {
+		return sp.Effect
+	}
+	return sp.Key
+}
+
+// inGroup says whether a part is one of the dice parts a typed damage type covers.
+func (r rollPartsInput) inGroup(sp partRecord, typ string, count int) bool {
+	return r.counts(sp) && sp.DamageType == typ && count > 0 && sp.Sides > 0 && sp.Key != combat.ExtraDivineSmiteExtra
+}
+
+// check refuses a group with no dice part and a sum outside the combined range of its parts. The roller is the owner or
+// the master, who read every part whole, so the range shows its bounds whether or not a part is hidden from the other players.
+func (g *typeGroup) check(lo, hi int) error {
+	switch {
+	case g.holder == "":
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("typed_parts names %s, which has no dice in this attack", g.typ))
+	case g.sum < lo || g.sum > hi:
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the sum of %s must be %d to %d", g.typ, lo, hi))
+	}
+	return nil
 }
 
 // storePartsRoll writes what a roll left on the pending damage.
@@ -1499,13 +1738,13 @@ func (r *partsRoll) legacy() dice.Result {
 // rollPendingParts checks and rolls the parts of a pending damage: the extras the player
 // marked, with their conditions checked again, and the dice of the counted parts.
 func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID string, p playdb.PendingDamage, attacker, target playdb.Combatant,
-	in rollInput, typed map[string]int, choice extraChoice,
+	in rollInput, typed typedSums, choice extraChoice,
 ) (*partsRoll, error) {
 	tsheet, err := s.sheetOf(ctx, c.tx, campaignID, target)
 	if err != nil {
 		return nil, err
 	}
-	parts, err := s.liveHitParts(ctx, c, readParts(p.Parts))
+	parts, err := s.liveHitParts(ctx, c, p, readParts(p.Parts))
 	if err != nil {
 		return nil, err
 	}

@@ -84,3 +84,33 @@ describe('the order and the labels of the effects (RN-22)', () => {
     expect(text.match(/Paralisado/g)).toHaveLength(1);
   });
 });
+
+describe('the mark of a marked target, as another player reads it (#577)', () => {
+  // The server gives a player who is not the caster a label with the mark's name and no card, modifier or dice.
+  const wight = combatant({
+    id: 'w',
+    label: 'Wight',
+    effectLabels: [{ effectId: 'm1', textPt: 'Sinal da Presa' }],
+  } as never);
+  const tor = combatant({
+    id: 'tor',
+    label: 'Tor',
+    kind: CombatantKind.PLAYER,
+    mine: true,
+  } as never);
+
+  it.each([
+    ['the strip of a phone (390 px)', OrderStrip],
+    ['the column of a desktop (1280 px)', OrderColumn],
+  ])('shows the name of the mark and no dice, trigger or test in %s', (_name, cmp) => {
+    const fixture = TestBed.createComponent(cmp as typeof OrderStrip);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ currentCombatantId: 'tor', combatants: [wight, tor] }),
+    );
+    fixture.detectChanges();
+    const text = plain((fixture.nativeElement as HTMLElement).textContent);
+    expect(text).toContain('Sinal da Presa');
+    expect(text).not.toMatch(/\dd\d|golpe com arma|teste de resistência|restantes/);
+  });
+});

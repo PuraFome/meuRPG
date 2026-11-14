@@ -236,6 +236,12 @@ message LastingEffect {
   string players_see_pt = 29;
   // The effect was used up (a next_hit that hit): the card of the caster reads "used" instead of "pending".
   bool spent = 30;
+  // The combatant a marked_target spell marked (Hunter's Mark): set on the caster's own row of the
+  // spell, empty on every other effect. Only the master and the caster's player read it. It is empty
+  // too when the viewer does not see the marked creature (a hidden one, or one the fog hides), so
+  // the id never tells a player that a creature is there (RN-10). The card then says "no alvo
+  // marcado"; with the id the client names the creature from its own combatant list.
+  string marked_combatant_id = 31;
   // An aura (only the master and the bearer's player read these): how far from the bearer it reaches, in feet, and
   // whom, from the bearer's side ("self", "allies" or "enemies"). Zero and empty for an effect that is not an aura.
   int32 radius_ft = 32;

@@ -22,7 +22,9 @@ import { pointsText } from '../resources/pools';
 import { countsSentence } from './death-saves';
 import { article } from '../format/article';
 import { dcLabel } from '../format/save-dc';
-import { pushText, the } from './combat-log-words';
+import { pushText, subject, the } from './combat-log-words';
+import { upFirst } from '../format/text';
+import type { LogContext } from './combat-log-types';
 import { durationPt } from './creature-action';
 
 /** What a class resource did (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo). The hit points a touch gave back
@@ -316,6 +318,38 @@ export function wildShapeText(e: CombatLogEntry): string {
     default:
       return ' voltou à forma normal';
   }
+}
+
+/** The answer of a spell's hit effect that has a save (a `hit_rider` entry with the choice APPLY and no stat-block action): the
+ * target is the subject, so the line has no actor. The entry carries the spell's key and, when the server names it, `keyNamePt`; it
+ * carries no ability, condition or duration, so the words are the save's result alone (the effect's own line says the condition). */
+export function isSpellRider(e: CombatLogEntry): boolean {
+  const r = e.hitRider;
+  return (
+    !!r &&
+    r.choice === HitRiderChoice.APPLY &&
+    !r.actionNamePt &&
+    (r.result === HitRiderLogResult.SAVED || r.result === HitRiderLogResult.FAILED)
+  );
+}
+
+/**
+ * "O Zumbi 1 falhou no teste de resistência contra o Clarão na Lâmina (d20 12, total 15 contra CD 14): fica Cego até o fim do
+ * próximo turno dele". The condition and its duration come with the line (`conditionNamePt`, `durationText`); the save's ability
+ * (`saveAbilityNamePt`, empty for who may not read the spell) follows "teste de resistência" when the line has it.
+ */
+export function spellRiderText(e: CombatLogEntry, ctx: LogContext): string {
+  const r = e.hitRider!;
+  const who = upFirst(subject(e.targetLabel || 'alguém', ctx));
+  const roll = r.numbers
+    ? ` (${d20TotalText(r.d20, r.saveTotal, treatedOf(r))}${r.dc > 0 ? ` contra ${dcLabel(r.dc)}` : ''})`
+    : '';
+  const verb = r.result === HitRiderLogResult.SAVED ? 'passou' : 'falhou';
+  const given = r.conditionNamePt
+    ? `: fica ${r.conditionNamePt}${r.durationText ? ` ${r.durationText}` : ''}`
+    : '';
+  const ability = r.saveAbilityNamePt ? ` de ${r.saveAbilityNamePt}` : '';
+  return `${who} ${verb} no teste de resistência${ability} contra ${e.keyNamePt ? the(e.keyNamePt) : 'o efeito'}${roll}${given}`;
 }
 
 /** The line of an answered monk rider: "Toren usou a Técnica da Mão Aberta (Derrubar) em Goblin: ...". The roll comes for the master and the monk's player, the DC for the master and, when the table shows it, the target's player. */

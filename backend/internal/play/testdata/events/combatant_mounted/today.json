@@ -459,7 +459,8 @@
     "effects": [
       "x"
     ],
-    "owner_only": true
+    "owner_only": true,
+    "unused": true
   },
   "extra": [
     {
@@ -888,7 +889,9 @@
       "resource": "x",
       "rider": "x",
       "effect": "x",
-      "hide": true
+      "hide": true,
+      "group": "x",
+      "group_hidden": true
     }
   ],
   "parts_before": {},
@@ -974,6 +977,10 @@
     "choice": "x",
     "result": "x",
     "owners_only": true,
+    "hidden_source": true,
+    "source_id": "x",
+    "save_ability": "x",
+    "effect_hidden": true,
     "d20": 1,
     "total": 1,
     "dc": 1,

@@ -21,6 +21,7 @@
 }
 
 .fixed,
+.offs,
 .extras {
   display: flex;
   flex-direction: column;
@@ -54,6 +55,27 @@
   border-radius: var(--mr-radius-pill);
   font-size: var(--mr-font-13);
   line-height: 20px;
+}
+
+.off {
+  color: var(--mr-ink-muted);
+}
+
+.off__why {
+  flex-basis: 100%;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  padding-left: 0;
+
+  // A reason longer than the line wraps beside its icon, never under it.
+  .mat-icon {
+    flex: none;
+  }
+}
+
+.off__text {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .line__note {

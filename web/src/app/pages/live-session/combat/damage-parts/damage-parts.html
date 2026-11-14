@@ -23,6 +23,20 @@
     </ul>
   }
 
+  @if (off().length) {
+    <ul class="offs">
+      @for (p of off(); track p.key) {
+        <li class="line off">
+          <span class="line__name">{{ p.labelPt }}</span>
+          <span class="line__what">{{ formula(p) }}{{ p.damageTypePt ? ' de ' + p.damageTypePt : '' }}</span>
+          <span class="extra__why off__why">
+            <mat-icon aria-hidden="true">block</mat-icon><span class="off__text">Indisponível: {{ p.reasonPt }}</span>
+          </span>
+        </li>
+      }
+    </ul>
+  }
+
   @if (extras().length) {
     <ul class="extras" [attr.aria-label]="'Extras que você pode somar'">
       @for (p of extras(); track p.key) {

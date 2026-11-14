@@ -1322,7 +1322,12 @@ type DamagePartRoll struct {
 	// The dice of the part that counted as another number than they showed (a table roll_minimum). `faces` keeps what came
 	// up, `sum` adds what counted. A part that does not count in the total is floored too, so the line of a part tells
 	// nothing about the target.
-	CountedDice   []*CountedDie `protobuf:"bytes,13,rep,name=counted_dice,json=countedDice,proto3" json:"counted_dice,omitempty"`
+	CountedDice []*CountedDie `protobuf:"bytes,13,rep,name=counted_dice,json=countedDice,proto3" json:"counted_dice,omitempty"`
+	// Whether a spell's hit effect (a `weapon_hit_damage` effect) made the part. It follows `part_key`: it is true only for
+	// a reader who reads the spell's own key, the attacker's player and the master, and for the other players when the
+	// effect is public. A reader whose `part_key` is the effect row's id (an effect the master hides, or the owner's) gets
+	// false, so the flag never says a spell is behind the part.
+	HitEffect     bool `protobuf:"varint,14,opt,name=hit_effect,json=hitEffect,proto3" json:"hit_effect,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1448,6 +1453,13 @@ func (x *DamagePartRoll) GetCountedDice() []*CountedDie {
 	return nil
 }
 
+func (x *DamagePartRoll) GetHitEffect() bool {
+	if x != nil {
+		return x.HitEffect
+	}
+	return false
+}
+
 // SelectedExtra is an extra the player marks when they roll the damage.
 type SelectedExtra struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -1510,12 +1522,24 @@ func (x *SelectedExtra) GetPact() bool {
 	return false
 }
 
-// TypedPart is the sum a player typed for a group of dice (physical dice, one field
-// for each group).
+// TypedPart is the sum a player typed for dice (physical dice). It names exactly one
+// of `part_key` and `damage_type`, never both and never neither (INVALID_ARGUMENT).
 type TypedPart struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PartKey       string                 `protobuf:"bytes,1,opt,name=part_key,json=partKey,proto3" json:"part_key,omitempty"`
-	Sum           int32                  `protobuf:"varint,2,opt,name=sum,proto3" json:"sum,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// One group of dice: the weapon, a hit effect or an extra that rolls dice. The sum is
+	// between the part's dice (doubled on a critical hit as the table's rule says) and
+	// those dice times their faces.
+	PartKey string `protobuf:"bytes,1,opt,name=part_key,json=partKey,proto3" json:"part_key,omitempty"`
+	Sum     int32  `protobuf:"varint,2,opt,name=sum,proto3" json:"sum,omitempty"`
+	// A `damage-type:` key (for example `damage-type:piercing`). The sum covers every dice
+	// part of that damage type in the attack (the weapon, a hit effect, the extras that
+	// roll dice and count) and is between the combined dice of those parts and the
+	// combined dice times their faces, doubled on a critical hit as the rule says. The
+	// damage type must have a dice part in the attack and may appear once, and no
+	// `part_key` of a part of that type may be in the same request. The group's total
+	// counts for the type: a resistance, vulnerability or immunity to it acts on the sum,
+	// and the parts of the group keep no faces.
+	DamageType    string `protobuf:"bytes,3,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1562,6 +1586,13 @@ func (x *TypedPart) GetSum() int32 {
 		return x.Sum
 	}
 	return 0
+}
+
+func (x *TypedPart) GetDamageType() string {
+	if x != nil {
+		return x.DamageType
+	}
+	return ""
 }
 
 // CombatantEffect is a state of a combatant, with where it comes from and when it ends.
@@ -1862,7 +1893,7 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\n" +
 	"source_key\x18\x04 \x01(\tR\tsourceKey\x12\x1f\n" +
 	"\vsource_name\x18\x05 \x01(\tR\n" +
-	"sourceName\"\xac\x03\n" +
+	"sourceName\"\xcb\x03\n" +
 	"\x0eDamagePartRoll\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x19\n" +
 	"\blabel_pt\x18\x02 \x01(\tR\alabelPt\x12\x1d\n" +
@@ -1879,15 +1910,19 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	" \x01(\tR\rdamageTypeKey\x122\n" +
 	"\brerolled\x18\v \x03(\v2\x16.meurpg.play.v1.RerollR\brerolled\x12\x19\n" +
 	"\brider_pt\x18\f \x01(\tR\ariderPt\x12=\n" +
-	"\fcounted_dice\x18\r \x03(\v2\x1a.meurpg.play.v1.CountedDieR\vcountedDice\"T\n" +
+	"\fcounted_dice\x18\r \x03(\v2\x1a.meurpg.play.v1.CountedDieR\vcountedDice\x12\x1d\n" +
+	"\n" +
+	"hit_effect\x18\x0e \x01(\bR\thitEffect\"T\n" +
 	"\rSelectedExtra\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1d\n" +
 	"\n" +
 	"slot_level\x18\x02 \x01(\x05R\tslotLevel\x12\x12\n" +
-	"\x04pact\x18\x03 \x01(\bR\x04pact\"8\n" +
+	"\x04pact\x18\x03 \x01(\bR\x04pact\"Y\n" +
 	"\tTypedPart\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x10\n" +
-	"\x03sum\x18\x02 \x01(\x05R\x03sum\"\xef\x02\n" +
+	"\x03sum\x18\x02 \x01(\x05R\x03sum\x12\x1f\n" +
+	"\vdamage_type\x18\x03 \x01(\tR\n" +
+	"damageType\"\xef\x02\n" +
 	"\x0fCombatantEffect\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x126\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\".meurpg.play.v1.CombatantStateKindR\x04kind\x12\x1b\n" +

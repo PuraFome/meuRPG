@@ -473,6 +473,7 @@
                 [campaignId]="campaignId()"
                 [state]="state()"
                 [deathNote]="deathNote()"
+                [ownLabel]="own()?.label ?? ''"
                 [fold]="true"
               />
               <div class="player__side">
@@ -1143,6 +1144,7 @@
               [gearFlow]="gearFlow"
               [choosing]="targeting.mode.session()?.key ?? ''"
               [own]="me"
+              [combatants]="encounter()?.combatants ?? []"
               [attacksLeft]="attacksLeft()"
               [attacksPerAction]="attacksPerAction()"
               [slots]="ownSlots()"
