@@ -68,7 +68,9 @@ func (f *readyFlow) pickReadySlot(cf *castFlow) func(context.Context) error {
 		}
 		slot := &playv1.SpellSlot{Level: level}
 		pact := slices.IndexFunc(cf.cast.slots, func(s *rulesv1.SlotChoice) bool { return s.GetLevel() == level && s.GetResource() == "" && s.GetPact() })
-		plain := slices.ContainsFunc(cf.cast.slots, func(s *rulesv1.SlotChoice) bool { return s.GetLevel() == level && s.GetResource() == "" && !s.GetPact() })
+		plain := slices.ContainsFunc(cf.cast.slots, func(s *rulesv1.SlotChoice) bool {
+			return s.GetLevel() == level && s.GetResource() == "" && !s.GetPact()
+		})
 		slot.Pact = !plain && pact >= 0
 		cf.req.Slot = slot
 		return nil

@@ -28,6 +28,24 @@ func settleReadiedSpells(ctx context.Context, c *combatTx) error {
 	if err != nil {
 		return err
 	}
+	holds, err := breakUnheldSpells(ctx, c, rows, cs)
+	if err != nil {
+		return err
+	}
+	for _, who := range cs {
+		if conv.OrZero(who.ConcentrationSpell) != concentrationReadied || holds[who.ID] {
+			continue
+		}
+		if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID}); err != nil {
+			return fmt.Errorf("end the readied spell's concentration: %w", err)
+		}
+	}
+	return nil
+}
+
+// breakUnheldSpells breaks the waiting spells whose readier no longer concentrates on them, and says which readiers
+// still hold one.
+func breakUnheldSpells(ctx context.Context, c *combatTx, rows []playdb.ReadiedAction, cs []playdb.Combatant) (map[string]bool, error) {
 	holds := map[string]bool{}
 	for _, row := range rows {
 		who, ok := combatantByID(cs, row.CombatantID)
@@ -39,18 +57,10 @@ func settleReadiedSpells(ctx context.Context, c *combatTx) error {
 			continue
 		}
 		if err := breakReadied(ctx, c, row, who); err != nil {
-			return err
+			return nil, err
 		}
 	}
-	for _, who := range cs {
-		if conv.OrZero(who.ConcentrationSpell) != concentrationReadied || holds[who.ID] {
-			continue
-		}
-		if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID}); err != nil {
-			return fmt.Errorf("end the readied spell's concentration: %w", err)
-		}
-	}
-	return nil
+	return holds, nil
 }
 
 // breakReadied ends a held spell whose concentration ended: the row is broken and its readied_lost line written. The
@@ -117,33 +127,45 @@ func (s *Service) brokenReadiedBack(ctx context.Context, c *combatTx, run *undoR
 		return err
 	}
 	for _, older := range olderThan(recent, last) {
-		if older.Kind != eventReadiedLost && older.Kind != eventConditionsSet {
-			return nil
-		}
-		ev, err := readEvent(older.Payload)
-		if err != nil {
+		r, more, err := brokenLineOf(older)
+		if err != nil || !more {
 			return err
 		}
-		if older.Kind == eventConditionsSet {
-			if ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd { // the 0 hit points' end of a concentration comes first
-				continue
-			}
-			return nil
-		}
-		r := ev.Readied
-		if r == nil || r.Ended != readiedBroken {
+		if r == nil {
 			continue
 		}
-		who, ok := combatantByID(cs, ev.Actor)
+		who, ok := combatantByID(cs, r.actor)
 		if !ok || conv.OrZero(who.ConcentrationSpell) != concentrationReadied {
 			continue
 		}
-		if err := c.q.ReopenReadiedAction(ctx, r.ID); err != nil {
+		if err := c.q.ReopenReadiedAction(ctx, r.id); err != nil {
 			return fmt.Errorf("make the readied spell wait again: %w", err)
 		}
 		run.alsoUndone = append(run.alsoUndone, older.ID)
 	}
 	return nil
+}
+
+// brokenLine is a readied_lost line of a held spell that broke: its row and its readier.
+type brokenLine struct{ id, actor string }
+
+// brokenLineOf reads an event older than the undone one: the broken line it is (nil for another line to go past), and
+// whether the walk goes on (the 0 hit points' end of a concentration comes before its lines; anything else ends it).
+func brokenLineOf(older playdb.ListRecentSessionEventsRow) (*brokenLine, bool, error) {
+	if older.Kind != eventReadiedLost && older.Kind != eventConditionsSet {
+		return nil, false, nil
+	}
+	ev, err := readEvent(older.Payload)
+	if err != nil {
+		return nil, false, err
+	}
+	if older.Kind == eventConditionsSet {
+		return nil, ev.Reaction != nil && ev.Reaction.Kind == concentrationEnd, nil
+	}
+	if ev.Readied == nil || ev.Readied.Ended != readiedBroken {
+		return nil, true, nil
+	}
+	return &brokenLine{id: ev.Readied.ID, actor: ev.Actor}, true, nil
 }
 
 // olderThan are the events older than last, newest first.

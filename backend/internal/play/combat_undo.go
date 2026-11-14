@@ -475,10 +475,7 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	// What the action ended or revealed is as it was (takeBack): the lines it wrote
 	// about it go too.
 	run.alsoUndone = append(run.alsoUndone, ev.linesBefore()...)
-	if err := s.takeBackCompanions(ctx, c, run, recent, last, ev); err != nil {
-		return nil, err
-	}
-	if err := s.brokenReadiedBack(ctx, c, run, recent, last); err != nil { // a held spell the action broke waits again
+	if err := s.takeBackAround(ctx, c, run, recent, last, ev); err != nil {
 		return nil, err
 	}
 	if err := touch(ctx, c); err != nil {
@@ -512,6 +509,15 @@ func (u *undoRun) noteSnapBack(ctx context.Context, c *combatTx, id string) erro
 		u.snapBack, u.snapped = &sq, id
 	}
 	return nil
+}
+
+// takeBackAround takes back what goes with the action (takeBackCompanions) and makes a held spell the action broke
+// wait again (brokenReadiedBack).
+func (s *Service) takeBackAround(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, ev actionEvent) error {
+	if err := s.takeBackCompanions(ctx, c, run, recent, last, ev); err != nil {
+		return err
+	}
+	return s.brokenReadiedBack(ctx, c, run, recent, last)
 }
 
 // takeBackCompanions takes back what goes with the action of its kind: the move for the

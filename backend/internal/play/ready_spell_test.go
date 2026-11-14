@@ -138,6 +138,9 @@ func TestReadySpellRefusals(t *testing.T) {
 		_, err := a.ready(t, a.ana, a.readySpell(t, e, "Pensantus", c.spell, c.slot, ""))
 		wantCode(t, c.name, err, connect.CodeInvalidArgument)
 	}
+	if n := a.events(t); n != before {
+		t.Fatalf("the refusals wrote %d events, want %d", n, before)
+	}
 	a.correct(t, a.pens, func(r *playv1.AdjustCharacterVitalsRequest) {
 		r.SpellSlotsUsed = []*playv1.SpellSlotsUsed{{Level: 2, Used: 2}}
 	})
@@ -361,7 +364,8 @@ func TestReadiedSpellBreaksWithItsConcentration(t *testing.T) {
 		a := newCasters(t)
 		e := a.castersFight(t, 1)
 		a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", magicMissileSpell, 1, ""))
-		return a, e, a.slotsUsed(t, "Pensantus", 1)
+		slots := a.slotsUsed(t, "Pensantus", 1)
+		return a, e, slots
 	}
 	t.Run("ended by his player", func(t *testing.T) {
 		t.Parallel()

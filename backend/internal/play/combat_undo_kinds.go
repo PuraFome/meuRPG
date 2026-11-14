@@ -863,6 +863,11 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 			return err
 		}
 	}
+	return u.castSlotBack(ctx, who, ev)
+}
+
+// castSlotBack gives back the slot a cast spent, a player's through its vitals, an NPC's on its combatant.
+func (u *undoer) castSlotBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
 	if ev.Slot == nil || ev.Readied.released() { // the slot of a readied spell's release was spent at Ready: its undo keeps it spent
 		return nil
 	}
