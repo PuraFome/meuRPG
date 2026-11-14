@@ -33,6 +33,7 @@ import {
   unreadableNumber,
 } from '../../core/content/effect-draft';
 import { readWhole, wholeText } from '../../core/content/whole-number';
+import { keptView } from '../../core/content/effect-kept';
 import { neverFolded, visibleFields } from '../../core/content/effect-visible';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckGroup, type CheckOption } from '../form-fields/check-group';
@@ -145,9 +146,14 @@ export class EffectPicker {
   readonly effectChange = output<EffectDraft>();
 
   protected readonly typeOptions = computed<SelectOption[]>(() => {
-    const types = this.menu()
-      .typesFor(this.featEditor())
-      .map((t) => ({ value: t.type, label: t.namePt }));
+    const menu = this.menu();
+    const types = menu.typesFor(this.featEditor()).map((t) => ({ value: t.type, label: t.namePt }));
+    // A stored effect of a type the editor does not offer keeps its own name on the select, so it never reads as another type.
+    const own = this.effect().type;
+    const kept = menu.typeOf(own);
+    if (kept !== undefined && !types.some((t) => t.value === own)) {
+      types.push({ value: own, label: kept.namePt });
+    }
     return this.allowTextOnly() ? [{ value: '', label: 'Só texto' }, ...types] : types;
   });
   protected readonly typeHint = computed(() => {
@@ -158,6 +164,7 @@ export class EffectPicker {
   });
   /** In the feat editor (its effects and its options) the hints are one line. */
   private readonly inFeat = computed(() => this.featEditor() || this.featOption());
+  protected readonly kept = computed(() => keptView(this.effect(), this.menu()));
   protected readonly allFields = computed(() =>
     visibleFields(this.menu().fieldsOf(this.effect().type), this.effect()).filter(
       // The feat editor names a choice by itself ("habilidade"), so the field is not asked.
@@ -378,9 +385,7 @@ export class EffectPicker {
     return key ? this.effect()[key] : '';
   }
 
-  protected inMeters(name: string): boolean {
-    return meterKey(name) !== undefined;
-  }
+  protected readonly inMeters = (name: string): boolean => meterKey(name) !== undefined;
 
   /** Whether a yes-or-no field is on. */
   protected flag(name: string): boolean {

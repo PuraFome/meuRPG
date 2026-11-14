@@ -65,6 +65,7 @@ import { beginLegendaryFight, legendaryScreens, shotScale } from './legendary-su
 import { LEFT_OUT_VIEWPORTS, leftOutShotScale, refuseEntries, shootLeftOut, targetLeftTheMenu } from './left-out-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { ATT_WIDTHS, attViewport, attunementScale, cropAtt, shootAtt } from './attunement-support';
+import { armorClassOf, bonusSheet, cropBonus, masterSetsShieldBonus, readDaggerTwice, shootBonus } from './bonus-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
@@ -8759,8 +8760,8 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
     await p.goto('/');
     const sheet = {
       weaponKeys: ['equipment:longsword'],
-      armorKey: 'equipment:chain-mail',
-      itemBonuses: [{ key: 'equipment:longsword', bonus: 3, requiresAttunement: true }],
+      armorKey: 'equipment:studded-leather-armor',
+      itemBonuses: [{ key: 'equipment:longsword', bonus: 3, requiresAttunement: true }, { key: 'equipment:studded-leather-armor', bonus: 2 }],
       magicItems: [
         { key: 'item:ring-of-protection' },
         { key: 'item:cloak-of-elvenkind' },
@@ -8787,7 +8788,7 @@ async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'da
         await cropAtt(gearOf(page).locator('.magic'), `itens-magicos-${who}-${width}`, colorScheme);
       }
     }
-    await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos de sintonização' }), 'legenda-selos', colorScheme);
+    await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos' }), 'legenda-selos', colorScheme);
     await cropAtt(gearOf(p).locator('.gear__lock'), 'linha-travada', colorScheme);
 
     // The master: the same list with the menus.
@@ -8979,32 +8980,37 @@ async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | '
     await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
     const equipment = p.getByRole('region', { name: 'Equipamento' });
     await expect(equipment.getByRole('list', { name: 'Marcas da arma' })).toHaveCount(2);
-    await expect(equipment.getByText('Prateada')).toBeVisible();
-    await expect(equipment.getByText('Adamantina')).toBeVisible();
+    // The chips carry the word for a screen reader; the legend under the list shows it.
+    const marksLists = equipment.getByRole('list', { name: 'Marcas da arma' });
+    await expect(marksLists.getByText('Prateada')).toHaveCount(1);
+    await expect(marksLists.getByText('Adamantina')).toHaveCount(1);
+    const legend = equipment.getByRole('list', { name: 'Legenda dos selos' });
+    await expect(legend.getByText('Prateada')).toBeVisible();
+    await expect(legend.getByText('Adamantina')).toBeVisible();
     await expectScreenPasses(p, `Ficha, marcas nas armas ${where}`);
     // The table is in play, so the owner's sheet is locked: no "⋮" for the owner, and a line says who marks.
-    await expect(equipment.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(equipment.getByRole('button', { name: /^Marcas · / })).toHaveCount(0);
     await expect(equipment.getByText('Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.')).toBeVisible();
 
     // The master edits at any time: the weapon's "⋮" opens its marks, then a saved mark.
     await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
     const masterEquipment = m.getByRole('region', { name: 'Equipamento' });
-    await masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' }).click();
-    const sheet = m.getByRole('dialog', { name: 'Marcas da Espada longa' });
+    await masterEquipment.getByRole('button', { name: 'Marcas · Espada longa' }).click();
+    const sheet = m.getByRole('dialog', { name: 'Marcas · Espada longa' });
     await expect(sheet.getByRole('checkbox', { name: /^Prateada/ })).toBeChecked();
     await expect(sheet.getByRole('checkbox', { name: /^Adamantina/ })).not.toBeChecked();
     await expectScreenPasses(m, `Ficha do mestre, Marcas da arma ${where}`);
     await sheet.getByRole('checkbox', { name: /^Adamantina/ }).check();
-    await sheet.getByRole('button', { name: 'Salvar marcas' }).click();
+    await sheet.getByRole('button', { name: 'Salvar', exact: true }).click();
     await expect(sheet).toHaveCount(0);
-    await expect(masterEquipment.getByRole('status').filter({ hasText: 'Marcas salvas.' })).toBeVisible();
-    await expect(masterEquipment.getByRole('button', { name: 'Marcas da Espada longa' })).toBeFocused();
+    await expect(masterEquipment.getByRole('status').filter({ hasText: 'Marcas e bônus salvos.' })).toBeVisible();
+    await expect(masterEquipment.getByRole('button', { name: 'Marcas · Espada longa' })).toBeFocused();
 
     // Another player never sees the grid, nor the marks.
     outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
     await openLive(outsider.page, `/campaigns/${campaignId}/characters/${table.characterId}`);
-    await expect(outsider.page.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
-    await expect(outsider.page.getByRole('dialog', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(outsider.page.getByRole('button', { name: /^Marcas · / })).toHaveCount(0);
+    await expect(outsider.page.getByRole('dialog', { name: /^Marcas · / })).toHaveCount(0);
     await expect(outsider.page.getByText('Prateada')).toHaveCount(0);
     await expectScreenPasses(outsider.page, `Ficha de outro jogador, sem as marcas ${where}`);
 
@@ -9036,6 +9042,235 @@ test('as marcas das armas passam no axe e nas conferências de layout no tema es
   test.setTimeout(300_000);
   await scanWeaponMarksScreens(browser, 'dark', 390);
 });
+
+/**
+ * The magic bonus of weapons, armor and shields, through the real stack at one width: the gear rows with their "+N" chips and "⋮",
+ * the idle shield and the carried armor, the "Marcas" and "Bônus" sheets for the owner and the master, each save with the armor
+ * class the server derives, the saving and the refused states, and the locked sheet. Each state passes axe and the layout checks
+ * and is saved (`E2E_SHOTS_DIR`) with 2x crops.
+ */
+async function scanBonusBoards(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = attViewport(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...attunementScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...attunementScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForMaps(m, p, `Quadros do bônus mágico ${Date.now()}`, false, bonusSheet, toren);
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    await openLive(p, route);
+    await openLive(m, route);
+    const gearOf = (page: Page) => page.getByRole('region', { name: 'Equipamento' });
+    const rowOf = (page: Page, name: string) => gearOf(page).locator('.gear-row').filter({ hasText: name });
+    const crop = (at: Locator, name: string) => cropBonus(at, name, width, colorScheme);
+    const withMaster = width !== 768;
+    const who = [[p, 'dono'], ...(withMaster ? [[m, 'mestre']] : [])] as [Page, string][];
+
+    // A sheet of a piece, opened from its "⋮", judged and saved as the owner or the master sees it.
+    const openPiece = async (page: Page, title: string) => {
+      await gearOf(page).getByRole('button', { name: title, exact: true }).click();
+      const sheet = page.getByRole('dialog', { name: title, exact: true });
+      await expect(sheet).toBeVisible();
+      return sheet;
+    };
+    const closeSheet = async (page: Page, sheet: Locator) => {
+      await page.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+    };
+    const pieceSheet = async (page: Page, who: string, title: string, shot: string, check?: (sheet: Locator) => Promise<void>) => {
+      const sheet = await openPiece(page, title);
+      await check?.(sheet);
+      await expectScreenPasses(page, `${title}, ${who} ${where}`);
+      await shootBonus(page, `folha-${shot}-${who}`, width, colorScheme, sheet);
+      await crop(sheet, `recorte-folha-${shot}-${who}`);
+      await closeSheet(page, sheet);
+    };
+    const choose = async (sheet: Locator, word: string) => {
+      await sheet.locator('.bg__opt').filter({ hasText: new RegExp(`^\\s*${word.replace('+', '\\+')}\\s*$`) }).click();
+      await expect(sheet.getByRole('radio', { name: word, exact: true })).toBeChecked();
+    };
+    const save = async (page: Page, sheet: Locator, notice: string) => {
+      await sheet.getByRole('button', { name: 'Salvar', exact: true }).click();
+      await expect(sheet).toHaveCount(0);
+      await expect(gearOf(page).getByRole('status').filter({ hasText: notice })).toBeVisible();
+    };
+
+    // State 1: the longsword (marked), the dagger twice, the shield and the armor equipped, the longbow carried.
+    for (const [page, name] of who) {
+      await expect(gearOf(page).getByRole('heading', { name: 'Equipado', level: 3 })).toBeVisible();
+      await expect(gearOf(page).getByRole('heading', { name: 'Carregado', level: 3 })).toBeVisible();
+      await expect(gearOf(page).getByRole('button', { name: /^(Marcas|Bônus) · /, exact: false })).toHaveCount(5);
+      await expectScreenPasses(page, `A ficha ${name}, as peças com bônus ${where}`);
+      await shootBonus(page, `ficha-${name}`, width, colorScheme, gearOf(page));
+      if (width !== 768) {
+        await crop(rowOf(page, 'Espada longa'), `linha-espada-${name}`);
+        await crop(rowOf(page, 'Escudo'), `linha-escudo-${name}`);
+        await crop(rowOf(page, 'Arco longo'), `linha-arco-carregado-${name}`);
+      }
+    }
+    await crop(gearOf(p).locator('.gear-group__head').first(), 'cabecalho-equipado');
+    await crop(gearOf(p).locator('section.gear-group').nth(1), 'grupo-carregado');
+    await crop(gearOf(p).getByRole('list', { name: 'Legenda dos selos' }), 'legenda');
+
+    // The sheets, from each row's "⋮": the weapon with its marks, the one with two copies, the carried one with its reason, the armor, the shield.
+    for (const [page, name] of who) {
+      await pieceSheet(page, name, 'Marcas · Espada longa', 'arma', async (sheet) => {
+        await expect(sheet.getByRole('checkbox', { name: /^Prateada/ })).toBeChecked();
+        await expect(sheet.getByRole('radio', { name: '+1', exact: true })).toBeChecked();
+      });
+      await pieceSheet(page, name, 'Marcas · Arco longo', 'arma-carregada', async (sheet) => {
+        await expect(sheet.getByText('Carregado, não equipado.')).toBeVisible();
+      });
+      await pieceSheet(page, name, 'Bônus · Cota de malha', 'armadura', async (sheet) => {
+        await expect(sheet.getByRole('radio', { name: '+2', exact: true })).toBeChecked();
+      });
+      await pieceSheet(page, name, 'Bônus · Escudo', 'escudo', async (sheet) => {
+        await expect(sheet.getByRole('radio', { name: '+1', exact: true })).toBeChecked();
+      });
+    }
+
+    // State 2: the two-handed longbow is equipped, so the shield is idle, and the armor is carried: their chips are dashed and say why.
+    const equipment = gearOf(p);
+    await equipment.getByRole('button', { name: /^Equipar .*Arco longo/ }).click();
+    await expect(equipment.getByRole('button', { name: /^Guardar .*Arco longo/ })).toBeVisible();
+    await equipment.getByRole('button', { name: /^Guardar .*Cota de malha/ }).click();
+    await expect(equipment.getByRole('button', { name: /^Equipar .*Cota de malha/ })).toBeVisible();
+    const idle = equipment.locator('.gear-row--idle');
+    await expect(idle).toContainText('Parado');
+    await expect(idle.locator('.bonus-chip--idle')).toHaveCount(1);
+    await expect(rowOf(p, 'Cota de malha').locator('.bonus-chip--idle')).toHaveCount(1);
+    await expectScreenPasses(p, `A ficha do dono, o escudo parado e a armadura carregada ${where}`);
+    await shootBonus(p, 'ficha-escudo-parado', width, colorScheme, equipment);
+    await crop(idle, 'linha-escudo-parado');
+    await crop(rowOf(p, 'Cota de malha'), 'linha-armadura-carregada');
+    await crop(equipment.locator('.gear-group__head').first(), 'cabecalho-equipado-escudo-parado');
+    await pieceSheet(p, 'dono', 'Bônus · Cota de malha', 'armadura-carregada', async (sheet) => {
+      await expect(sheet.getByText('Carregado, não equipado.')).toBeVisible();
+    });
+    await pieceSheet(p, 'dono', 'Bônus · Escudo', 'escudo-parado', async (sheet) => {
+      await expect(sheet.getByText('Uma arma de duas mãos equipada deixa o escudo parado.')).toBeVisible();
+    });
+
+    // Back to State 1: the longbow carried, the armor on.
+    await equipment.getByRole('button', { name: /^Guardar .*Arco longo/ }).click();
+    await expect(equipment.getByRole('button', { name: /^Equipar .*Arco longo/ })).toBeVisible();
+    await equipment.getByRole('button', { name: /^Equipar .*Cota de malha/ }).click();
+    await expect(equipment.getByRole('button', { name: /^Guardar .*Cota de malha/ })).toBeVisible();
+    await expect(equipment.locator('.gear-row--idle')).toHaveCount(0);
+
+    // Each save, with the armor class the server derives.
+    let ac = await armorClassOf(equipment);
+    let sheet = await openPiece(p, 'Bônus · Escudo');
+    await choose(sheet, '+2');
+    await save(p, sheet, 'Bônus salvo.');
+    expect(await armorClassOf(equipment)).toBe(ac + 1);
+    ac += 1;
+    await expectScreenPasses(p, `A ficha do dono, o bônus do escudo salvo ${where}`);
+    await shootBonus(p, 'bonus-salvo', width, colorScheme, equipment.getByRole('status').filter({ hasText: 'Bônus salvo.' }));
+    await crop(equipment.getByRole('status').filter({ hasText: 'Bônus salvo.' }), 'aviso-bonus-salvo');
+    await expect(equipment.getByRole('button', { name: 'Bônus · Escudo', exact: true })).toBeFocused();
+
+    sheet = await openPiece(p, 'Bônus · Cota de malha');
+    await choose(sheet, 'Nenhum');
+    await save(p, sheet, 'Bônus salvo.');
+    expect(await armorClassOf(equipment)).toBe(ac - 2);
+    ac -= 2;
+    await expect(rowOf(p, 'Cota de malha').locator('app-bonus-chip')).toHaveCount(0);
+    await expectScreenPasses(p, `A ficha do dono, a armadura sem bônus ${where}`);
+    sheet = await openPiece(p, 'Bônus · Cota de malha');
+    await choose(sheet, '+2');
+    await save(p, sheet, 'Bônus salvo.');
+    expect(await armorClassOf(equipment)).toBe(ac + 2);
+    ac += 2;
+    await expect(rowOf(p, 'Cota de malha').locator('app-bonus-chip')).toContainText('+2');
+
+    sheet = await openPiece(p, 'Marcas · Espada longa');
+    await choose(sheet, '+2');
+    await save(p, sheet, 'Marcas e bônus salvos.');
+    expect(await armorClassOf(equipment)).toBe(ac);
+    await expect(rowOf(p, 'Espada longa').locator('app-bonus-chip')).toContainText('+2');
+    await expectScreenPasses(p, `A ficha do dono, o bônus da espada salvo ${where}`);
+
+    // The saving state: the request is held, the choice and the button wait and the sheet stays open.
+    const update = '**/meurpg.characters.v1.CharacterService/UpdateCharacter';
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await p.route(update, async (r) => {
+      await held;
+      await r.continue();
+    });
+    sheet = await openPiece(p, 'Bônus · Escudo');
+    await choose(sheet, '+3');
+    await sheet.getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect(sheet.getByRole('button', { name: 'Salvando…' })).toBeVisible();
+    await expectScreenPasses(p, `Bônus · Escudo, salvando ${where}`);
+    await shootBonus(p, 'folha-escudo-salvando', width, colorScheme, sheet);
+    await crop(sheet, 'recorte-folha-escudo-salvando');
+    release();
+    await expect(sheet).toHaveCount(0);
+    await p.unroute(update);
+
+    // The refusal: the master changed the shield while the sheet was open, so nothing is saved and the sheet says so.
+    sheet = await openPiece(p, 'Bônus · Escudo');
+    await masterSetsShieldBonus(m, campaignId, table.characterId, 1);
+    await choose(sheet, '+2');
+    await sheet.getByRole('button', { name: 'Salvar', exact: true }).click();
+    await expect(sheet.getByRole('alert')).toContainText('Não foi possível salvar o bônus.');
+    await expectScreenPasses(p, `Bônus · Escudo, a ficha mudou ${where}`);
+    await shootBonus(p, 'folha-escudo-recusa', width, colorScheme, sheet);
+    await crop(sheet, 'recorte-folha-escudo-recusa');
+    await closeSheet(p, sheet);
+
+    // The dagger twice: one row "Adaga ×2" with its bonus, and the sheet says the copies share the marks and the bonus.
+    for (const [page, name] of who) {
+      const back = await readDaggerTwice(page);
+      await openLive(page, route);
+      await expect(rowOf(page, 'Adaga').locator('.gear-row__count')).toHaveText('×2');
+      await expectScreenPasses(page, `A ficha ${name}, a adaga duas vezes ${where}`);
+      await shootBonus(page, `ficha-adaga-duas-${name}`, width, colorScheme, gearOf(page));
+      if (width !== 768) {
+        await crop(rowOf(page, 'Adaga'), `linha-adaga-${name}`);
+      }
+      await pieceSheet(page, name, 'Marcas · Adaga', 'arma-duas-copias', async (sheet) => {
+        await expect(sheet.getByText('A ficha tem 2 cópias: marcas e bônus valem para as duas.')).toBeVisible();
+      });
+      await back();
+    }
+
+    // The sheet locked by the first session: no "⋮", and the line says who changes what.
+    await startSessionRPC(m, campaignId);
+    await openLive(p, route);
+    await expect(equipment.getByRole('button', { name: /^(Marcas|Bônus) · / })).toHaveCount(0);
+    const lock = equipment.getByText('Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.');
+    await expect(lock).toBeVisible();
+    await expect(rowOf(p, 'Espada longa').locator('app-bonus-chip')).toBeVisible();
+    await expectScreenPasses(p, `A ficha travada do dono, sem os menus ${where}`);
+    await shootBonus(p, 'ficha-travada-dono', width, colorScheme, equipment);
+    await crop(lock, 'linha-travada');
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  test(`as telas do bônus mágico das armas, armaduras e escudos passam no axe e nas conferências de layout no tema ${theme}, em 390, 768 e 1280`, { tag: ['@a11y', '@564'] }, async ({ browser }) => {
+    test.setTimeout(900_000);
+    for (const width of ATT_WIDTHS) {
+      await scanBonusBoards(browser, colorScheme, width);
+    }
+  });
+}
 
 /** The question of a table feature's reroll (R6, R7, R9): the player's "Tirou 2: rolar de novo?" and the answer on its way, and the
  * master's card while the roller answers first, when it is the master's turn to answer, and once the roller did. */

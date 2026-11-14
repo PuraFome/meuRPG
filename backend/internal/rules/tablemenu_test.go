@@ -328,6 +328,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"ranged_attack":      {Type: "ranged_attack", Applies: RangedAttackSpell, IgnoreCover: true},
 		"extra_damage":       {Type: "extra_damage", Applies: ExtraDamageLargerTarget, Value: "2", Resource: "dados_de_teste"},
 		"ambush":             {Type: "ambush", Applies: AmbushUnactedAdvantage},
+		"power_attack":       {Type: "power_attack", AttackPenalty: 5, DamageBonus: 10},
 		"reroll":             {Type: "reroll", Rolls: []string{RollAppliesAttack}, AtMost: 2},
 		"roll_minimum":       {Type: "roll_minimum", Rolls: []string{RollDamage}, Value: "2"},
 		"wild_shape":         {Type: "wild_shape", MaxCR: "1"},
@@ -419,6 +420,10 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.Flag = ""
 		case "aura":
 			e.Aura = nil
+		case "attack_penalty":
+			e.AttackPenalty = 0
+		case "damage_bonus":
+			e.DamageBonus = 0
 		default:
 			t.Fatalf("no way to clear %q", field)
 		}

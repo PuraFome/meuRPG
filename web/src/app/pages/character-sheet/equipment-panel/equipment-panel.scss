@@ -10,10 +10,6 @@
   line-height: 1.4;
 }
 
-.gear__ac {
-  margin: 0 0 var(--mr-space-2);
-}
-
 .gear__note {
   margin: var(--mr-space-2) 0 0;
   font-size: var(--mr-font-14);
@@ -223,6 +219,11 @@
     border-style: solid;
     border-color: var(--mr-accent);
     background: var(--mr-accent-soft, transparent);
+  }
+
+  &--mark {
+    border-style: solid;
+    border-color: var(--mr-control-line);
   }
 }
 

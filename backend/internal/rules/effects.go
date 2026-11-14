@@ -168,6 +168,14 @@ type Effect struct {
 	Frequency      string `json:"frequency,omitempty"`
 	NoCritDoubling bool   `json:"no_crit_doubling,omitempty"`
 
+	// power_attack (powerattack.go): AttackPenalty is taken off the attack roll (1 to 10) and
+	// DamageBonus (the field weapon_rule shares, here 1 to 20) added to the damage of a hit; Weapon
+	// (as for extra_damage), WeaponProperties ("weapon-property:" keys the weapon must all have) and
+	// OnlyProficient (the weapon line must be one the character is proficient with) say which weapon
+	// attacks it goes with; Resource, when set, is spent once per use.
+	AttackPenalty    int      `json:"attack_penalty,omitempty"`
+	WeaponProperties []string `json:"weapon_properties,omitempty"`
+
 	// spell_modifier (spellmodifier.go): AppliesTo which spells ("damage_spell", "cantrip", an SRD
 	// school key or damage type key) and SpellChange what it does (SpellChange*). From, Value (the
 	// fixed damage), DamageType and Count are the change's own.
@@ -350,7 +358,7 @@ var (
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces", "slot_recovery",
 		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
 		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
-		"reroll", "roll_minimum", "flag", "natural_attack", "aura",
+		"reroll", "roll_minimum", "flag", "natural_attack", "aura", "power_attack",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
@@ -464,6 +472,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"on_event":           effectCompiler.onEvent,
 	"superiority_die":    effectCompiler.superiorityDie,
 	"extra_damage":       effectCompiler.extraDamage,
+	"power_attack":       effectCompiler.powerAttack,
 	"spell_modifier":     effectCompiler.spellModifier,
 	"ambush":             effectCompiler.ambush,
 	"reroll":             effectCompiler.reroll,
@@ -554,6 +563,9 @@ func (x effectCompiler) strayFields() error {
 	if err := x.strayExtraDamage(); err != nil {
 		return err
 	}
+	if err := x.strayPowerAttack(); err != nil {
+		return err
+	}
 	if err := x.strayConditions(); err != nil {
 		return err
 	}
@@ -624,7 +636,7 @@ func (x effectCompiler) strayExtraDamage() error {
 		return x.fail("damage_type belongs to extra_damage, spell_modifier, pseudo_weapon, natural_attack and roll_minimum")
 	}
 	if !slices.Contains(weaponEffects, e.Type) && e.Weapon != "" {
-		return x.fail("weapon belongs to extra_damage, weapon_rule and pseudo_weapon")
+		return x.fail("weapon belongs to extra_damage, weapon_rule, pseudo_weapon and power_attack")
 	}
 	if e.Type != "spell_modifier" && (e.AppliesTo != "" || e.SpellChange != "") {
 		return x.fail("applies_to and spell_change belong to spell_modifier")
@@ -654,8 +666,8 @@ func (x effectCompiler) strayOwnFields() error {
 	if x.e.While != "" && !slices.Contains(gatedEffectTypes, x.e.Type) {
 		return x.fail("while belongs to the effects that hold only while a state is on")
 	}
-	if x.e.Type != "proficiency" && x.e.OnlyProficient {
-		return x.fail("only_proficient belongs to proficiency")
+	if x.e.Type != "proficiency" && x.e.Type != "power_attack" && x.e.OnlyProficient {
+		return x.fail("only_proficient belongs to proficiency and power_attack")
 	}
 	return nil
 }
@@ -1163,6 +1175,6 @@ func (c *content) validRollTarget(t string) bool {
 // The effect types that read the fields they share: weapon (extra_damage's filter, the
 // weapon lines a weapon_rule chooses, the kind of a pseudo_weapon) and damage_type.
 var (
-	weaponEffects     = []string{"extra_damage", "weapon_rule", "pseudo_weapon"}
+	weaponEffects     = []string{"extra_damage", "weapon_rule", "pseudo_weapon", "power_attack"}
 	damageTypeEffects = []string{"extra_damage", "spell_modifier", "pseudo_weapon", "natural_attack", "roll_minimum"}
 )

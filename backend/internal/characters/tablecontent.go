@@ -444,6 +444,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			AppliesTo: e.GetAppliesTo(), SpellChange: e.GetSpellChange(),
 			DamageTypes: e.GetDamageTypes(), Kind: e.GetKind(), Conditions: e.GetConditions(), AgainstCondition: e.GetAgainstCondition(),
 			Flag: e.GetFlag(), Use: featureUseOf(e.GetUse()), Aura: tableSpellEffectOf(e.GetAura()),
+			AttackPenalty: int(e.GetAttackPenalty()), WeaponProperties: e.GetWeaponProperties(),
 		})
 	}
 	return out

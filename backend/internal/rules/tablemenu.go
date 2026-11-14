@@ -161,6 +161,8 @@ const (
 	ListStateEconomies = "state_economies"
 	ListWeaponFilters  = "weapon_filters"
 	ListWeaponKinds    = "weapon_kinds"
+	// ListWeaponProperties are the weapon properties of the content, which a power_attack may require.
+	ListWeaponProperties = "weapon_properties"
 	// ListLackableFeatures are the SRD features, traits, background features and feats a feat's
 	// `prerequisite.lacks_feature_key` may name besides the table's own, which the editor already holds.
 	ListLackableFeatures = "lackable_features"
@@ -257,6 +259,16 @@ var menuTypes = []MenuType{
 		{Name: "resource", Kind: "resource_ref"},
 		{Name: "when", Kind: "condition"},
 		{Name: "while", Kind: "state_ref"},
+		{Name: "text_pt", Kind: "text"},
+	}},
+	{Type: "power_attack", NamePT: "Ataque poderoso", HintPT: "Uma troca que o jogador faz ao atacar com arma: um número tirado da jogada de ataque (de 1 a 10) em troca de dano fixo somado ao acerto (de 1 a 20; o acerto crítico não o dobra). Vale para qualquer arma, só as corpo a corpo ou só as à distância, e a arma pode ter de ter todas as propriedades escolhidas (até 4) e de ser uma com que o personagem tem proficiência. Se a entrada define um recurso, cada uso da troca gasta um. O jogador escolhe usar na hora de atacar.", Fields: []MenuField{
+		{Name: "attack_penalty", Required: true, Kind: "number", Min: MinPowerAttackPenalty, Max: MaxPowerAttackPenalty},
+		{Name: "damage_bonus", Required: true, Kind: "number", Min: MinPowerAttackDamage, Max: MaxPowerAttackDamage},
+		{Name: "weapon", Kind: "choice", List: ListExtraDamageWeapons, AlwaysShown: true},
+		{Name: "weapon_properties", Kind: "choices", List: ListWeaponProperties, AlwaysShown: true},
+		{Name: "only_proficient", Kind: "yes_no", AlwaysShown: true},
+		{Name: "resource", Kind: "resource_ref"},
+		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
 	{Type: "ambush", NamePT: "Emboscada", HintPT: "Uma vantagem do personagem contra alvos pegos de surpresa: vantagem nas jogadas de ataque contra uma criatura que ainda não teve o seu turno no combate, ou acerto crítico em uma criatura surpresa (a marca de surpresa é a do mestre, no início do combate).", Fields: []MenuField{
@@ -752,6 +764,7 @@ func (c *content) menuLists() []MenuList {
 		{Name: ListStateEconomies, Values: namedMenu(stateEconomies, func(k string) string { return economyNms[k] })},
 		{Name: ListWeaponFilters, Values: namedMenuHint(weaponFilters, weaponFilterNms)},
 		{Name: ListWeaponKinds, Values: namedMenuHint(weaponKinds, weaponFilterNms)},
+		{Name: ListWeaponProperties, Values: c.menuWeaponProperties()},
 		{Name: ListLackableFeatures, Values: c.menuLackableFeatures()},
 		{Name: ListRaceTraits, Values: c.menuRaceTraits()},
 		{Name: ListEffectFlags, Values: effectFlagValues()},

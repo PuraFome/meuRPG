@@ -162,6 +162,7 @@ func (x *deriver) resourcesAndActions() {
 	x.flagEffects()
 	x.auraEffects()
 	x.extraDamages()
+	x.powerAttacks()
 	x.spellModifiers()
 	x.ambushes()
 	for _, a := range x.active {

@@ -51,7 +51,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | Type | Notes |
 | --- | --- |
 | `modifier`, `proficiency`, `sense`, `roll_mode`, `extra_attack`, `note` | As in [Effects](rules.md#effects). A `modifier` on `score.<ability>` is an `add` with a `cap` from 20 to 30 (`MaxNormalScore` to `MaxScore`), and no other modifier has a cap. A score above its cap stays as it is. |
-| `proficiency` with `only_proficient` | A switch of the effect with level `expertise` on a skill (`skill:*` is every skill): the skill is doubled only where the character already has its proficiency from another source when the sheet is worked out (the race, the background, the sheet's picks or another feature), never from the effect itself or from another `only_proficient` effect. Without the switch the effect doubles the skill, proficient or not. Any other level, a target that is not a skill and any other effect type refuse it at `.only_proficient` (`bad_value`). It is a `yes_no` field of the proficiency type in the effect menu. |
+| `proficiency` with `only_proficient` | A switch of the effect with level `expertise` on a skill (`skill:*` is every skill): the skill is doubled only where the character already has its proficiency from another source when the sheet is worked out (the race, the background, the sheet's picks or another feature), never from the effect itself or from another `only_proficient` effect. Without the switch the effect doubles the skill, proficient or not. Any other level, a target that is not a skill and any other effect type but `power_attack` refuse it at `.only_proficient` (`bad_value`); [Power attack](#power-attack) reads it on its own terms. It is a `yes_no` field of the proficiency type in the effect menu. |
 | `resource` | With uses and recharge. The resource may not have the name of an SRD one. |
 | `grant_action` | May carry `resource`: the name of a `resource` effect of the same entry (a feat included), its class, or an SRD resource. Each use spends `cost` of it (1 when empty) and the action is off while fewer are left; see [Costs, healing actions and hooks](#costs-healing-actions-and-hooks). Refused as `bad_reference` when nothing defines the resource. |
 | `grant_action` with `use` | Declares that the action is taken with `UseFeature`, not `TakeAction`: a limit per turn, round or combat, targets, a choice and what it applies. Package/JSON only (the editor's menu does not offer it). See [Feature use](#feature-use). |
@@ -70,6 +70,7 @@ A table feature has effects of these types only; anything else is `forbidden_eff
 | `breathes_water` | The character breathes underwater (`Derived.BreathesWater`). No field of its own: a stray one is refused, `when` and `text_pt` are allowed. |
 | `granted_spell` | See [Granted spells](#granted-spells). |
 | `extra_damage` | See [Extra damage](#extra-damage). May carry `while`. |
+| `power_attack` | See [Power attack](#power-attack). |
 | `choice` | Picks among SRD options (a key the SRD has) or, for kind `feature`, among the option list of a table feature. Kinds: `skill`, `expertise`, `cantrip`, `spell`, `language`, `tool`, `feature`, `feat`, and, in a feat only, `ability` and `damage_type` (see [Feat options and picks](#feat-options-and-picks)). A `feature` choice never asks for more than the options it lists. |
 | `ability_increase` | Feats only. `count` different abilities from `from`, `value` 1 or 2; at most one per feat. The sheet keeps the result in `ExtraAbilityBonuses`. |
 | `ambush` | See [Ambush](#ambush). |
@@ -218,6 +219,28 @@ Checked at its fields:
 
 `Derive` fills `Derived.ExtraDamages` with the fixed amount and the dice worked out (`Amount`, `Dice`), the damage type, the weapon and the frequency with their defaults; a resource the character does not have at that level leaves the effect out, and so does a formula that gives no damage.
 The attack card offers it after a hit as a choosable part ([Attacks and damage](play/attacks-and-damage.md)).
+
+### Power attack
+
+`power_attack` (menu name "Ataque poderoso"; fields `attack_penalty`, `damage_bonus`, `weapon`, `weapon_properties`, `only_proficient`, `resource`, `when`, `text_pt`; `rules/powerattack.go`) is a trade the player may make on a weapon attack.
+It takes a penalty off the attack roll and adds flat damage to a hit.
+Checked at its fields:
+
+- `attack_penalty` is a literal from 1 to 10, taken off the attack roll (`.attack_penalty`, `bad_value`);
+- `damage_bonus` is a literal from 1 to 20, a flat number added to the damage of a hit (`.damage_bonus`, `bad_value`);
+- `weapon` is `any` (empty), `melee` or `ranged` (`.weapon`, `bad_value`);
+- `weapon_properties` lists `weapon-property:` keys of the content, each once and at most 4; the weapon must have all of them, and empty is no filter (`.weapon_properties`, `bad_reference` for an unknown key, `bad_value` for a repeat or a fifth);
+- `only_proficient` asks the weapon line to be one the character is proficient with;
+- `resource`, when set, is one the entry or its class defines, and each use of the trade spends one (`.resource`, `bad_reference`);
+- any field the type does not read is refused for the entry being written, and a feature has at most one (`.type`, `forbidden_effect`).
+
+`Derive` fills `Derived.PowerAttacks` with the fields above and the Portuguese names of the properties; a resource the character does not have at that level leaves the effect out, and `when` gates it.
+`rules.Attack.Properties` holds the property keys of a weapon line; a pseudo-weapon line, a natural attack, the unarmed strike and a spell have none.
+`PowerAttack.Allows` says whether the trade goes with an attack line, with the reason in Portuguese when it does not: the weapon kind, a property the weapon lacks, or no proficiency.
+A property filter never matches a line without properties.
+`only_proficient` reads the line's `Proficient`.
+A pseudo-weapon line and a natural attack line count as proficient.
+`link.Traits.PowerAttacks` carries the same fields to the combat.
 
 ### Granted spells
 
