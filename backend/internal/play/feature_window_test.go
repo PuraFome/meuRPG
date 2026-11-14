@@ -318,3 +318,41 @@ func TestAnUnknownFeatureTriggerIsRefusedAtSave(t *testing.T) {
 		t.Errorf("CreateTableEntry with an unknown trigger: error = %v, want invalid argument", err)
 	}
 }
+
+// A goblin the master hid opens the window for the master alone: Ana reads no window and no word of it, Caio reads that the
+// master is waited for, nobody but the master may answer, and the master's answer works (RN-10).
+func TestAHiddenCreaturesFeatureWindowIsTheMastersAlone(t *testing.T) {
+	t.Parallel()
+	m := haloTable(t)
+	e := m.fightHalo(t)
+	hideAgain(t, m.armed, e, "Goblin")
+	e = m.passTo(t, e, "Goblin")
+	w := m.windowOf(t, m.master, kindFeature)
+	if w == nil || w.GetTrigger().GetActorLabel() != "Goblin" {
+		t.Fatalf("the master reads %v, want Pensantus's FEATURE window naming the goblin", w)
+	}
+	for _, u := range []*user{m.ana, m.caio} {
+		if got := m.windowOf(t, u, kindFeature); got != nil {
+			t.Errorf("a player reads %v of the hidden creature's window", got)
+		}
+		if wait := m.get(t, u).GetReactionWait(); wait.GetTitlePt() != "Esperando o mestre" {
+			t.Errorf("a player reads the wait %q, want %q", wait.GetTitlePt(), "Esperando o mestre")
+		}
+	}
+	_, err := m.answerReaction(t, m.ana, e, w.GetId(), passAnswer)
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Errorf("Ana's answer to the hidden creature's window: error = %v, want permission denied", err)
+	}
+	if lines := logLinesOf(t, m.armed, m.ana, e, playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED); len(lines) != 0 {
+		t.Errorf("Ana reads %v before the answer", lines)
+	}
+	if _, err := m.answerReaction(t, m.master, e, w.GetId(), useAnswer(0)); err != nil {
+		t.Fatalf("the master's USE of the hidden creature's window: %v", err)
+	}
+	if lines := logLinesOf(t, m.armed, m.ana, e, playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED); len(lines) != 0 {
+		t.Errorf("Ana reads the use against a hidden creature: %v", lines)
+	}
+	if lines := logLinesOf(t, m.armed, m.master, e, playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED); len(lines) != 1 {
+		t.Errorf("the master reads %d lines of the use, want 1", len(lines))
+	}
+}
