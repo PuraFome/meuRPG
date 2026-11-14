@@ -19,6 +19,7 @@ import type { TabItem } from '../../shared/tab-list/tab-list';
 import { wireLiveSessionEffects } from './live-session-effects';
 import { CALLING_NOTICE_MS, LiveSessionEvents } from './live-session-events';
 import { LiveSessionParts, injectLiveSessionServices } from './live-session-deps';
+import { FavorState } from '../../core/play/favor-state';
 import { LIVE_SESSION_IMPORTS } from './live-session-imports';
 import { LiveSessionLoader } from './live-session-loader';
 import { LiveSessionSheets } from './live-session-sheets';
@@ -56,6 +57,8 @@ const BADGE_MAX = 99;
   // The conversation panel is named here, not in the shared list, so the compiler can see that only the
   // `@defer` block uses it and gives it a chunk of its own.
   imports: [...LIVE_SESSION_IMPORTS, ConversationPanel],
+  // The page's own copy of who has the Inspiração, so the order list, the Grupo tab and the band read one state.
+  providers: [FavorState],
   templateUrl: './live-session.html',
   styleUrl: './live-session.scss',
 })
@@ -67,6 +70,7 @@ export class LiveSession {
   protected readonly mover = this.parts.mover;
   protected readonly trapBoard = this.parts.trapBoard;
   protected readonly toasts = this.parts.toasts;
+  protected readonly favor = this.services.favor;
   protected readonly fog = this.parts.fog;
   protected readonly dark = this.parts.dark;
   protected readonly combat = this.parts.combat;

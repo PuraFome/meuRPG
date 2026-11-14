@@ -769,3 +769,29 @@ a.mr-list__row:hover .mr-list__name {
     font-size: 20px;
   }
 }
+
+// "Dar Inspiração" in a master's menu (RN-43, 581-01, 581-02, states 12): a star, the words and, when the character already has
+// it, the reason under them. The item stays reachable and says "indisponível" to a screen reader, drawn dashed and quiet.
+.mat-mdc-menu-item.mr-favor-item {
+  height: auto;
+  min-height: 48px;
+  padding-block: var(--mr-space-2);
+
+  &[aria-disabled='true'] {
+    border: 1px dashed var(--mr-control-line);
+    border-radius: var(--mr-radius-sm);
+    color: var(--mr-ink-muted);
+    cursor: default;
+  }
+}
+
+.mr-favor-item__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.mr-favor-item__sub {
+  font-size: var(--mr-font-13);
+  line-height: 17px;
+  color: var(--mr-ink-muted);
+}

@@ -32,6 +32,7 @@ import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
 import { alliedTable, closeSheet, contestRPC, idOf, typeD20 } from './contests-support';
 import { awardXpRPC, createEnemyRPC, tableForXp, tableForXpCombat, winCombatRPC } from './xp-support';
 import { tableForGold, threeTreasuresRPC, treasureFoundRPC } from './gold-support';
+import { FAVOR_WIDTHS, favorShotScale, favorViewport, holdersRPC, shootFavor } from './favor-support';
 import { movePensantus, pensantusFirst, sq20, thirdPlayer, trapRPC, treasureRPC, type TrapTable } from './trap-support';
 import { cavePoints, clickSquare, dragSquares, editorRoute, mapToPaint } from './editor-support';
 import { campaignWithEmptyPlayer, factor, masterCampaign, method, setTableRulesRPC, wallSquares } from './table-rules-support';
@@ -12276,5 +12277,202 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
   test(`a luz do sol no combate passa no axe e nas conferências de layout no tema ${theme}: o interruptor, o aviso do NPC, o escopo e a pintura, em 390, 768 e 1280`, { tag: ['@a11y', '@RN-20', '@RN-29'] }, async ({ browser }) => {
     test.setTimeout(400_000);
     await scanSunlightScreens(browser, colorScheme);
+  });
+}
+
+// ---- The master's Inspiração (#581, RN-43, RN-10; boards 581-01, 581-02, 581-04 and the states of 581-07) ----
+
+// The master grants it from the "Mais" menu of an order row and of the "Grupo" row, and reads who has it (the "★ Inspiração" mark and
+// "1 com Inspiração"); the holder's player reads the notice, the chip in the band and the panel on the sheet; another player reads
+// nothing; a read that fails draws nothing. Every state is scanned and photographed at 390, 768 and 1280 px.
+async function scanFavorScreens(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = favorViewport(1280);
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport, colorScheme, ...favorShotScale });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport, colorScheme, ...favorShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  let close: () => Promise<void> = async () => undefined;
+  // One state at every width: `show` brings it up and says where to look; `hide` takes it down again (a menu is closed).
+  const everyWidth = async (page: Page, name: string, what: string, show: () => Promise<Locator>, hide?: () => Promise<void>) => {
+    for (const width of FAVOR_WIDTHS) {
+      await page.setViewportSize(favorViewport(width));
+      const at = await show();
+      await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+      await shootFavor(page, name, width, colorScheme, at);
+      await hide?.();
+    }
+  };
+  const menuItem = (page: Page) => page.getByRole('menuitem', { name: /^Dar Inspiração/ });
+  const closeMenu = async (page: Page) => {
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.mat-mdc-menu-panel')).toHaveCount(0);
+  };
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade Inspiração ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    const third = await thirdPlayer(browser, { m, p, table, campaignId, done: async () => undefined } satisfies TrapTable, brisa);
+    close = third.close;
+    const square = sq20(4, 7);
+    await placeTokenRPC(m, campaignId, table.mapId, third.characterId, square.xBp, square.yBp);
+    const b = third.page;
+    await openSessionPage(p, campaignId);
+    await openSessionPage(b, campaignId);
+
+    // Outside a combat: the "Grupo" row's menu, before and after the grant.
+    await openSessionPage(m, campaignId, 'grupo');
+    const openGrupoMenu = async (name: string) => {
+      await showMasterTab(m, 'grupo');
+      await m.getByRole('button', { name: `Mais ações de ${name}` }).click();
+      await expect(menuItem(m)).toBeVisible();
+      return m.locator('.mat-mdc-menu-panel');
+    };
+    expect(await holdersRPC(m, campaignId)).toEqual([]);
+    await everyWidth(m, 'grupo-menu-dar', 'O Grupo, o menu de Pensantus com "Dar Inspiração"', () => openGrupoMenu('Pensantus'), () => closeMenu(m));
+    await m.setViewportSize(favorViewport(1280));
+    await openGrupoMenu('Pensantus');
+    await menuItem(m).click();
+    await expect(m.locator('.js-favor-note')).toHaveText('Pensantus ganhou Inspiração.');
+    await expect(m.locator('.js-favor-count')).toContainText('1 com Inspiração');
+    // The master reads the holder; the holder's player reads their own character; another player reads nobody.
+    expect(await holdersRPC(m, campaignId)).toEqual([table.characterId]);
+    expect(await holdersRPC(p, campaignId)).toEqual([table.characterId]);
+    expect(await holdersRPC(b, campaignId)).toEqual([]);
+    await everyWidth(m, 'grupo-com-inspiracao', 'O Grupo, com a marca ao lado do nome e o contador', async () => {
+      await showMasterTab(m, 'grupo');
+      await expect(m.locator('.js-favor-count')).toBeVisible();
+      return m.locator('app-party-panel');
+    });
+    await everyWidth(
+      m,
+      'grupo-menu-ja-tem',
+      'O Grupo, o menu de Pensantus, que já tem a Inspiração: o item tracejado com o motivo',
+      async () => {
+        const panel = await openGrupoMenu('Pensantus');
+        await expect(menuItem(m)).toBeDisabled();
+        await expect(menuItem(m)).toContainText('Pensantus já tem Inspiração.');
+        return panel;
+      },
+      () => closeMenu(m),
+    );
+
+    // The holder's player reads the notice, on the page they had open; the other player reads nothing.
+    const notice = p.locator('app-favor-notice');
+    await expect(notice).toContainText('O mestre deu Inspiração a você. Use antes de rolar um d20 seu.');
+    await expect(b.locator('app-favor-notice .text')).toHaveCount(0);
+    await everyWidth(p, 'aviso-do-jogador', 'O aviso ao jogador que ganhou a Inspiração', async () => notice);
+
+    // The sheet: the panel for the owner, with no "Passar a…", and its title alone for the master.
+    const sheetRoute = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    await p.goto(sheetRoute);
+    const panel = p.locator('app-favor-panel');
+    await expect(panel.getByRole('heading', { name: 'Inspiração' })).toBeVisible({ timeout: 30_000 });
+    await expect(panel).toContainText('Do mestre. Vantagem num d20 seu: marque "Usar a Inspiração" antes de rolar.');
+    await expect(panel.getByRole('button')).toHaveCount(0);
+    await expectLoaded(p);
+    await everyWidth(p, 'ficha-painel', 'A ficha de quem tem a Inspiração: o painel, sem "Passar a…"', async () => panel);
+    await m.goto(sheetRoute);
+    const masterPanel = m.locator('app-favor-panel');
+    await expect(masterPanel.getByRole('heading', { name: 'Inspiração' })).toBeVisible({ timeout: 30_000 });
+    await expect(masterPanel.locator('.favor__text')).toHaveCount(0);
+    await expectLoaded(m);
+    await everyWidth(m, 'ficha-painel-mestre', 'A ficha de quem tem a Inspiração, lida pelo mestre', async () => masterPanel);
+
+    // A combat: Pensantus has the first turn.
+    await beginAttackCombatRPC(m, table, { Pensantus: 20, Brisa: 15, 'Capitão Goblin': 10, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await openSessionPage(b, campaignId);
+    const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    const rowMenu = async (name: string) => {
+      await openOrderRow(m, name);
+      await order.getByRole('button', { name: `Mais ações para ${name}` }).click();
+      await expect(m.getByRole('menuitem').first()).toBeVisible();
+      return m.locator('.mat-mdc-menu-panel');
+    };
+
+    // The player's band: the chip on their own turn; nothing for the other player.
+    const chip = p.locator('app-favor-chip');
+    await expect(chip).toHaveCount(1);
+    await expect(chip).toContainText('Inspiração');
+    await expect(b.locator('app-favor-chip')).toHaveCount(0);
+    await everyWidth(p, 'vez-com-chip', 'Sua vez, com "Inspiração" na faixa', async () => {
+      await openTurn(p);
+      return chip;
+    });
+
+    // The master's order: the mark in the holder's row, the item on a player's row, dashed for a holder, absent on an NPC.
+    await everyWidth(m, 'ordem-com-selo', 'A ordem do mestre, com a marca da Inspiração na linha de Pensantus', async () => {
+      await openOrderRow(m, 'Pensantus');
+      const mark = m.getByTestId('order-favor');
+      await expect(mark).toHaveCount(1);
+      return mark.locator('xpath=ancestor::li[1]');
+    });
+    await everyWidth(
+      m,
+      'ordem-menu-dar',
+      'A ordem, o menu de Brisa com "Dar Inspiração"',
+      async () => {
+        const menu = await rowMenu('Brisa');
+        await expect(menuItem(m)).toBeEnabled();
+        return menu;
+      },
+      () => closeMenu(m),
+    );
+    await m.setViewportSize(favorViewport(1280));
+    await rowMenu('Brisa');
+    await menuItem(m).click();
+    await expect(m.locator('.js-favor-note')).toHaveText('Brisa ganhou Inspiração.');
+    await expect(b.locator('app-favor-notice')).toContainText('O mestre deu Inspiração a você. Use antes de rolar um d20 seu.');
+    await everyWidth(
+      m,
+      'ordem-menu-ja-tem',
+      'A ordem, o menu de Brisa, que já tem a Inspiração: o item tracejado com o motivo',
+      async () => {
+        const menu = await rowMenu('Brisa');
+        await expect(menuItem(m)).toBeDisabled();
+        await expect(menuItem(m)).toContainText('Brisa já tem Inspiração.');
+        return menu;
+      },
+      () => closeMenu(m),
+    );
+    await everyWidth(
+      m,
+      'ordem-menu-npc',
+      'A ordem, o menu de um NPC: sem "Dar Inspiração"',
+      async () => {
+        const menu = await rowMenu('Goblin 2');
+        await expect(menuItem(m)).toHaveCount(0);
+        return menu;
+      },
+      () => closeMenu(m),
+    );
+
+    // A read that fails draws nothing: no chip, no notice, and the turn goes on.
+    await p.route('**/meurpg.play.v1.FavorService/GetFavor', (route) => route.abort());
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('button', { name: 'Encerrar turno' }).first()).toBeVisible();
+    await expect(chip).toHaveCount(0);
+    await expect(p.locator('app-favor-notice .text')).toHaveCount(0);
+    await everyWidth(p, 'vez-sem-leitura', 'Sua vez, com a leitura da Inspiração falhando: nada a mais na faixa', async () => {
+      await openTurn(p);
+      return p.getByRole('region', { name: 'Vez no combate' });
+    });
+    await p.unroute('**/meurpg.play.v1.FavorService/GetFavor');
+  } finally {
+    await close();
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  test(`a Inspiração do mestre passa no axe e nas conferências de layout no tema ${theme}: o Grupo, a ordem, a faixa do jogador, o aviso, o painel da ficha e a leitura que falha, em 390, 768 e 1280`, { tag: ['@a11y', '@RN-43', '@RN-10'] }, async ({ browser }) => {
+    test.setTimeout(720_000);
+    await scanFavorScreens(browser, colorScheme);
   });
 }

@@ -2,6 +2,12 @@
   <div class="party__head">
     <h2 class="mr-panel__title" id="party-heading"><mat-icon aria-hidden="true">groups</mat-icon>Grupo</h2>
     <app-session-xp [campaignId]="campaignId()" [campaignName]="campaignName()" />
+    @if (favor.count() > 0) {
+      <!-- How many characters have the master's Inspiração (RN-43, 581-02); the master reads every one of the campaign. -->
+      <p class="party__favor js-favor-count">
+        <mat-icon aria-hidden="true">star</mat-icon>{{ favor.count() }} com Inspiração
+      </p>
+    }
   </div>
   @if (party().length === 0) {
     <p class="party__empty">
@@ -16,6 +22,9 @@
           <div class="member__who">
             <span class="member__line">
               <span class="member__name">{{ v.name }}</span>
+              @if (favor.has(v.characterId)) {
+                <app-favor-chip class="js-favor-badge" />
+              }
               @if (dark().has(v.characterId)) {
                 <!-- The master's light warning (B3): only the master's panel has it, so a player's screen never does (RN-10). -->
                 <span class="js-dark member__dark">
@@ -33,6 +42,13 @@
             @if (nudger.messageFor() === v.characterId && nudger.message()) {
               <span class="member__said" role="status">{{ nudger.message() }}</span>
             }
+            <span role="status">
+              @if (favor.note(); as n) {
+                @if (n.characterId === v.characterId) {
+                  <span class="member__said js-favor-note">{{ n.text }}</span>
+                }
+              }
+            </span>
           </div>
 
           <div class="member__hp">
@@ -113,6 +129,24 @@
                 <mat-icon aria-hidden="true">more_vert</mat-icon>
               </button>
               <mat-menu #menu="matMenu">
+                @if (favor.campaignId() !== '') {
+                  <!-- The master's Inspiração (RN-43, 581-02): dashed with the reason when the character has it. -->
+                  <button
+                    mat-menu-item
+                    type="button"
+                    class="mr-favor-item js-favor"
+                    [disabled]="favor.has(v.characterId) || favor.granting().has(v.characterId)"
+                    (click)="giveFavor(v)"
+                  >
+                    <mat-icon aria-hidden="true">star_border</mat-icon>
+                    <span class="mr-favor-item__text">
+                      Dar Inspiração
+                      @if (favor.has(v.characterId)) {
+                        <span class="mr-favor-item__sub">{{ favorHolds(v.name) }}</span>
+                      }
+                    </span>
+                  </button>
+                }
                 <button
                   mat-menu-item
                   type="button"
