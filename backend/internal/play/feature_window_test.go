@@ -120,29 +120,38 @@ func TestTheFeatureWindowIsNotOpenedWhenTheTriggerDoesNotHold(t *testing.T) {
 		run   func(t *testing.T, m *featureTable)
 	}{
 		{"the goblin starts its turn 15 ft away", func(t *testing.T) *featureTable { t.Helper(); return haloTable(t) }, func(t *testing.T, m *featureTable) {
+			t.Helper()
 			e := m.fightHalo(t)
 			m.put(t, "Goblin", 8, 5)
 			m.passTo(t, e, "Goblin")
 		}},
 		{"the feature waits for a move and the goblin starts its turn near", func(t *testing.T) *featureTable { t.Helper(); return haloTable(t, whenItMoves) }, func(t *testing.T, m *featureTable) {
+			t.Helper()
 			m.passTo(t, m.fightHalo(t), "Goblin")
 		}},
 		{"the feature waits for a turn and the goblin moves near", func(t *testing.T) *featureTable { t.Helper(); return haloTable(t, whenItStarts) }, func(t *testing.T, m *featureTable) {
+			t.Helper()
 			e := m.fightHalo(t)
 			m.put(t, "Goblin", 12, 5)
 			e = m.passTo(t, e, "Goblin")
 			m.moveTo(t, e, "Goblin", 7, 5)
 		}},
 		{"the goblin was near and moves near", func(t *testing.T) *featureTable { t.Helper(); return haloTable(t, whenItMoves) }, func(t *testing.T, m *featureTable) {
+			t.Helper()
 			e := m.passTo(t, m.fightHalo(t), "Goblin")
 			m.moveTo(t, e, "Goblin", 7, 4)
 		}},
-		{"the reaction is spent", func(t *testing.T) *featureTable { return haloTableOf(t, "2", nil, []*rulesv1.TableFeature{reflexo}) }, func(t *testing.T, m *featureTable) {
+		{"the reaction is spent", func(t *testing.T) *featureTable {
+			t.Helper()
+			return haloTableOf(t, "2", nil, []*rulesv1.TableFeature{reflexo})
+		}, func(t *testing.T, m *featureTable) {
+			t.Helper()
 			e := m.passTo(t, m.fightHalo(t), "Toren")
 			m.mustUse(t, m.ana, e, "Pensantus", "Reflexo", nil)
 			m.passTo(t, e, "Goblin")
 		}},
 		{"an ally of Pensantus starts its turn near", func(t *testing.T) *featureTable { t.Helper(); return haloTable(t) }, func(t *testing.T, m *featureTable) {
+			t.Helper()
 			m.passTo(t, m.fightHalo(t), "Toren")
 		}},
 	}
