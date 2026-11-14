@@ -103,26 +103,26 @@ func (c chargedItem) write(ctx context.Context, q *charactersdb.Queries, now tim
 	return nil
 }
 
-// SpendItemCharges spends amount charges of an entry and returns the entry before and after. It refuses with
+// SpendItemCharges spends amount charges of an entry and returns the entry after. It refuses with
 // CharacterBlocked ITEM_DESTROYED (the item was lost), ITEM_NO_CHARGES (none left, or the master has not set the
 // count of an item that rolls it) and CHARGES_NOT_ENOUGH (more than left); `invalid_argument` for an amount below 1 or
 // an item with no charges, `not_found` for a character or entry that is not there. Spending the last charge loses
 // the item at once when the catalog says "always", and leaves the d20 to ResolveLastCharge when it says "d20".
-func (s *Service) SpendItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, amount int32) (before, after *charactersv1.SheetMagicItem, err error) {
+func (s *Service) SpendItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, amount int32) (after *charactersv1.SheetMagicItem, err error) {
 	c, q, err := s.lockChargedItem(ctx, tx, campaignID, characterID, entryID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	before = c.view()
+	before := c.view()
 	switch {
 	case amount < 1:
-		return nil, nil, invalidArgument(fieldErr("amount", "must be at least 1"))
+		return nil, invalidArgument(fieldErr("amount", "must be at least 1"))
 	case before.GetLost() != charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED:
-		return nil, nil, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ITEM_DESTROYED, c.characterID)
+		return nil, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ITEM_DESTROYED, c.characterID)
 	case before.GetChargesLeft() <= 0:
-		return nil, nil, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ITEM_NO_CHARGES, c.characterID)
+		return nil, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ITEM_NO_CHARGES, c.characterID)
 	case amount > before.GetChargesLeft():
-		return nil, nil, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARGES_NOT_ENOUGH, c.characterID)
+		return nil, errBlocked(charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARGES_NOT_ENOUGH, c.characterID)
 	}
 	left := before.GetChargesLeft() - amount
 	lost, pending := "", false
@@ -135,27 +135,27 @@ func (s *Service) SpendItemCharges(ctx context.Context, tx pgx.Tx, campaignID, c
 		}
 	}
 	if err := c.write(ctx, q, s.now(), c.ic.Max-left, lost, pending, c.row.DawnsWaited); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	c.row.ChargesUsed, c.row.Lost, c.row.LastRollPending, c.set = c.ic.Max-left, lost, pending, true
-	return before, c.view(), nil
+	return c.view(), nil
 }
 
 // ResolveLastCharge settles the d20 of an item whose last charge went (see SpendItemCharges): a 1 loses the item as
 // its catalog entry says (when it says), a 20 regains extra charges (the dice the caller rolled for the item's
 // empty_high_regain, cut to the maximum) when the item has that rule, and any other face only ends the wait. It
 // returns the charges regained. `invalid_argument` for a d20 out of 1..20 and for an item that waits for no roll.
-func (s *Service) ResolveLastCharge(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, d20, extra int32) (before, after *charactersv1.SheetMagicItem, regained int32, err error) {
+func (s *Service) ResolveLastCharge(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, d20, extra int32) (after *charactersv1.SheetMagicItem, regained int32, err error) {
 	c, q, err := s.lockChargedItem(ctx, tx, campaignID, characterID, entryID)
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, 0, err
 	}
-	before = c.view()
+	before := c.view()
 	if d20 < 1 || d20 > 20 {
-		return nil, nil, 0, invalidArgument(fieldErr("d20", "must be 1 to 20"))
+		return nil, 0, invalidArgument(fieldErr("d20", "must be 1 to 20"))
 	}
 	if !before.GetLastRollPending() {
-		return nil, nil, 0, invalidArgument(fieldErr("entry_id", "has no last charge to roll"))
+		return nil, 0, invalidArgument(fieldErr("entry_id", "has no last charge to roll"))
 	}
 	used, lost := c.row.ChargesUsed, ""
 	switch {
@@ -166,33 +166,32 @@ func (s *Service) ResolveLastCharge(ctx context.Context, tx pgx.Tx, campaignID, 
 		used = c.ic.Max - regained
 	}
 	if err := c.write(ctx, q, s.now(), used, lost, false, c.row.DawnsWaited); err != nil {
-		return nil, nil, 0, err
+		return nil, 0, err
 	}
 	c.row.ChargesUsed, c.row.Lost, c.row.LastRollPending, c.set = used, lost, false, true
-	return before, c.view(), regained, nil
+	return c.view(), regained, nil
 }
 
 // SetItemCharges is the master's correction of an entry: left charges (0 to the maximum, which also sets the count of
 // an item that rolls it) and how it was lost, ITEM_LOSS_UNSPECIFIED when it is not. It ends a pending roll.
 // `invalid_argument` for a count out of range, an unknown loss and an item with no charges.
-func (s *Service) SetItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, left int32, lost charactersv1.ItemLoss) (before, after *charactersv1.SheetMagicItem, err error) {
+func (s *Service) SetItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, left int32, lost charactersv1.ItemLoss) (after *charactersv1.SheetMagicItem, err error) {
 	c, q, err := s.lockChargedItem(ctx, tx, campaignID, characterID, entryID)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	before = c.view()
 	if left < 0 || left > c.ic.Max {
-		return nil, nil, invalidArgument(fieldErr("charges_left", "must be 0 to the item's maximum"))
+		return nil, invalidArgument(fieldErr("charges_left", "must be 0 to the item's maximum"))
 	}
 	stored, ok := itemLossStored(lost)
 	if !ok {
-		return nil, nil, invalidArgument(fieldErr("lost", "is not a way an item is lost"))
+		return nil, invalidArgument(fieldErr("lost", "is not a way an item is lost"))
 	}
 	if err := c.write(ctx, q, s.now(), c.ic.Max-left, stored, false, 0); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	c.row.ChargesUsed, c.row.Lost, c.row.LastRollPending, c.set = c.ic.Max-left, stored, false, true
-	return before, c.view(), nil
+	return c.view(), nil
 }
 
 // itemLossStored is the text a row stores for a loss, and false for a value that is no loss.

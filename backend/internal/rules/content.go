@@ -96,6 +96,8 @@ type content struct {
 	itemCharges map[string]ItemCharges
 	// ammunition maps a weapon with the ammunition property to the ammunition it fires (effects/ammunition.json).
 	ammunition map[string]string
+	// ammunitionKinds are the keys of the catalog's ammunition, sorted, found once at load.
+	ammunitionKinds []string
 	// treasure is the generator's content: the SRD 5.2.1 values of the magic
 	// items and our tables of coins, gems and art (effects/magic_item_values.json
 	// and effects/treasure.json).

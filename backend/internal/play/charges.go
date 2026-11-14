@@ -39,12 +39,12 @@ type ItemKeeper interface {
 	ItemAccess(ctx context.Context, tx pgx.Tx, campaignID, characterID string) (playerUserID string, dead, sheetEditable bool, err error)
 	// ChargedItem reads an entry of the character's sheet with its charges, and locks the character.
 	ChargedItem(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string) (*charactersv1.SheetMagicItem, error)
-	// SpendItemCharges spends charges of an entry and returns the entry before and after.
-	SpendItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, amount int32) (before, after *charactersv1.SheetMagicItem, err error)
+	// SpendItemCharges spends charges of an entry and returns the entry after.
+	SpendItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, amount int32) (after *charactersv1.SheetMagicItem, err error)
 	// ResolveLastCharge settles the d20 of an item whose last charge went; extra is the charges a 20 gives back.
-	ResolveLastCharge(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, d20, extra int32) (before, after *charactersv1.SheetMagicItem, regained int32, err error)
+	ResolveLastCharge(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, d20, extra int32) (after *charactersv1.SheetMagicItem, regained int32, err error)
 	// SetItemCharges is the master's correction of an entry.
-	SetItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, left int32, lost charactersv1.ItemLoss) (before, after *charactersv1.SheetMagicItem, err error)
+	SetItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, left int32, lost charactersv1.ItemLoss) (after *charactersv1.SheetMagicItem, err error)
 	// SetAmmunition sets the pieces the character holds of a kind.
 	SetAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string, quantity int32) (*charactersv1.SheetAmmunition, error)
 	// SpendAmmunition takes one piece of a kind for a shot in the encounter and returns the pieces left.
@@ -306,7 +306,7 @@ func (s *Service) spendChargesTx(ctx context.Context, tx pgx.Tx, h *hints, sessi
 	if _, err := s.requireItemCharacter(ctx, tx, call.m, call.charText); err != nil {
 		return err
 	}
-	_, after, err := s.vitals.SpendItemCharges(ctx, tx, call.m.CampaignID, call.charText, req.GetEntryId(), req.GetAmount())
+	after, err := s.vitals.SpendItemCharges(ctx, tx, call.m.CampaignID, call.charText, req.GetEntryId(), req.GetAmount())
 	if err != nil {
 		return err
 	}
@@ -437,7 +437,7 @@ func (s *Service) rollLastChargeTx(ctx context.Context, tx pgx.Tx, h *hints, ses
 	if err != nil {
 		return err
 	}
-	_, after, regained, err := s.vitals.ResolveLastCharge(ctx, tx, call.m.CampaignID, call.charText, entryID, d20, extra)
+	after, regained, err := s.vitals.ResolveLastCharge(ctx, tx, call.m.CampaignID, call.charText, entryID, d20, extra)
 	if err != nil {
 		return err
 	}
@@ -536,7 +536,7 @@ func (s *Service) setChargesTx(ctx context.Context, tx pgx.Tx, h *hints, session
 	if again {
 		return s.chargeRetry(ctx, tx, h, call, done, req.GetEntryId(), run)
 	}
-	_, after, err := s.vitals.SetItemCharges(ctx, tx, call.m.CampaignID, call.charText, req.GetEntryId(), req.GetChargesLeft(), req.GetLost())
+	after, err := s.vitals.SetItemCharges(ctx, tx, call.m.CampaignID, call.charText, req.GetEntryId(), req.GetChargesLeft(), req.GetLost())
 	if err != nil {
 		return err
 	}

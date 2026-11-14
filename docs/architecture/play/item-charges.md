@@ -41,7 +41,8 @@ It ends a wait for the d20, writes `item_charges_restored` (or `item_destroyed` 
 `SetAmmunition` sets the pieces of one kind, 0 to 9999.
 `RecoverAmmunition` takes back half, rounded down, of what each kind fired in the character's latest combat, once for each combat.
 It refuses with `ChargesBlocked` `COMBAT_RUNNING` while that combat is not ended, and `ALREADY_RECOVERED` after it ran.
-A character that fired nothing in its latest combat is `invalid_argument`.
+A combat that fired nothing is skipped, and the recovery goes to the newest earlier ended combat that fired some, among the latest ten.
+A character that fired nothing in any of them is `invalid_argument`.
 It writes the session event `ammunition_recovered`.
 
 ## Ammunition in combat

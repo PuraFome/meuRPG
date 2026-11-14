@@ -726,3 +726,33 @@ func TestRecoveringAmmunitionAfterACombatThatFiredNothing(t *testing.T) {
 		t.Errorf("the refusal = %q, want it to say why", err)
 	}
 }
+
+// A combat that fired nothing is passed over: the recovery goes to the newest earlier combat that fired some.
+func TestRecoveringAmmunitionSkipsALaterCombatThatFiredNothing(t *testing.T) {
+	t.Parallel()
+	c := newCharged(t)
+	_, err := c.master.charges.SetAmmunition(t.Context(), connect.NewRequest(&playv1.SetAmmunitionRequest{CampaignId: c.campaignID, CharacterId: c.pens.GetId(), AmmoKey: arrowAmmo, Quantity: 20}))
+	if err != nil {
+		t.Fatalf("SetAmmunition() error = %v", err)
+	}
+	fight := plan{
+		npcs:     []*playv1.Participant{{CharacterId: c.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 10, "Pensantus": 18, "Brisa": 1},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {8, 8}},
+	}
+	first := c.start(t, fight)
+	c.fire(t, first.GetId(), 4)
+	c.endEncounter(t, first)
+	c.endEncounter(t, c.start(t, fight))
+
+	res, err := c.recoverAmmo(t, c.ana, newKey())
+	if err != nil {
+		t.Fatalf("RecoverAmmunition() error = %v", err)
+	}
+	if got := res.GetAmmunition(); len(got) != 1 || got[0].GetQuantity() != 18 || got[0].GetSpentLastCombat() != 4 {
+		t.Errorf("the recovery = %v, want 18 arrows (16 held and half of the 4 fired in the first combat)", got)
+	}
+	_, err = c.recoverAmmo(t, c.ana, newKey())
+	wantChargesBlocked(t, "a second recovery", err, playv1.ChargesBlockedReason_CHARGES_BLOCKED_REASON_ALREADY_RECOVERED)
+}

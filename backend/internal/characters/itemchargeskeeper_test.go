@@ -21,7 +21,7 @@ func (et *editorTable) inTx(t *testing.T, fn func(tx pgx.Tx) error) error {
 }
 
 type spendResult struct {
-	before, after *charactersv1.SheetMagicItem
+	after *charactersv1.SheetMagicItem
 }
 
 func (et *editorTable) spend(t *testing.T, pc *charactersv1.Character, key string, amount int32) (spendResult, error) {
@@ -29,7 +29,7 @@ func (et *editorTable) spend(t *testing.T, pc *charactersv1.Character, key strin
 	var r spendResult
 	err := et.inTx(t, func(tx pgx.Tx) error {
 		var err error
-		r.before, r.after, err = et.h.svc.SpendItemCharges(t.Context(), tx, et.campaign, pc.GetId(), magicItemOf(pc, key).GetId(), amount)
+		r.after, err = et.h.svc.SpendItemCharges(t.Context(), tx, et.campaign, pc.GetId(), magicItemOf(pc, key).GetId(), amount)
 		return err
 	})
 	return r, err
@@ -53,12 +53,15 @@ func refusedWith(err error) charactersv1.CharacterBlockedReason {
 func TestSpendItemChargesTakesTheCharges(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t, wandKey)
+	if got := magicItemOf(et.read(t, et.master, pc.GetId()), wandKey); got.GetChargesLeft() != 7 {
+		t.Fatalf("before the spend: %+v", got)
+	}
 	r, err := et.spend(t, pc, wandKey, 2)
 	if err != nil {
 		t.Fatalf("spend: %v", err)
 	}
-	if r.before.GetChargesLeft() != 7 || r.after.GetChargesLeft() != 5 || r.after.GetChargesMax() != 7 || r.after.GetLastRollPending() {
-		t.Errorf("before %+v after %+v", r.before, r.after)
+	if r.after.GetChargesLeft() != 5 || r.after.GetChargesMax() != 7 || r.after.GetLastRollPending() {
+		t.Errorf("after %+v", r.after)
 	}
 	if got := magicItemOf(et.read(t, et.master, pc.GetId()), wandKey); got.GetChargesLeft() != 5 {
 		t.Errorf("read back: %+v", got)
@@ -111,7 +114,7 @@ func TestSpendItemChargesRefusals(t *testing.T) {
 	et.setCharges(t, pc.GetId(), magicItemOf(pc, "item:staff-of-power").GetId(), 20, "")
 	spendEntry := func(character, entry string, amount int32) error {
 		return et.inTx(t, func(tx pgx.Tx) error {
-			_, _, err := et.h.svc.SpendItemCharges(t.Context(), tx, et.campaign, character, entry, amount)
+			_, err := et.h.svc.SpendItemCharges(t.Context(), tx, et.campaign, character, entry, amount)
 			return err
 		})
 	}
@@ -156,7 +159,7 @@ func (et *editorTable) resolve(t *testing.T, pc *charactersv1.Character, key str
 	var regained int32
 	err := et.inTx(t, func(tx pgx.Tx) error {
 		var err error
-		r.before, r.after, regained, err = et.h.svc.ResolveLastCharge(t.Context(), tx, et.campaign, pc.GetId(), magicItemOf(pc, key).GetId(), d20, extra)
+		r.after, regained, err = et.h.svc.ResolveLastCharge(t.Context(), tx, et.campaign, pc.GetId(), magicItemOf(pc, key).GetId(), d20, extra)
 		return err
 	})
 	return r, regained, err
@@ -171,8 +174,11 @@ func TestResolveLastCharge(t *testing.T) {
 		}
 	}
 	// A 1 loses the item as its data says.
+	if got := magicItemOf(et.read(t, et.master, pc.GetId()), wandKey); !got.GetLastRollPending() {
+		t.Fatalf("the emptied wand waits for no roll: %+v", got)
+	}
 	r, regained, err := et.resolve(t, pc, wandKey, 1, 0)
-	if err != nil || r.after.GetLost() != charactersv1.ItemLoss_ITEM_LOSS_GONE || r.after.GetLastRollPending() || regained != 0 || !r.before.GetLastRollPending() {
+	if err != nil || r.after.GetLost() != charactersv1.ItemLoss_ITEM_LOSS_GONE || r.after.GetLastRollPending() || regained != 0 {
 		t.Errorf("a 1: %+v %d %v", r, regained, err)
 	}
 	if _, _, err := et.resolve(t, pc, wandKey, 10, 0); connect.CodeOf(err) != connect.CodeInvalidArgument {
@@ -233,14 +239,17 @@ func TestSetItemCharges(t *testing.T) {
 		var r spendResult
 		err := et.inTx(t, func(tx pgx.Tx) error {
 			var err error
-			r.before, r.after, err = et.h.svc.SetItemCharges(t.Context(), tx, et.campaign, pc.GetId(), magicItemOf(pc, key).GetId(), left, lost)
+			r.after, err = et.h.svc.SetItemCharges(t.Context(), tx, et.campaign, pc.GetId(), magicItemOf(pc, key).GetId(), left, lost)
 			return err
 		})
 		return r, err
 	}
 	// The luck blade leaves the "not set" state and keeps its row at full.
+	if got := magicItemOf(et.read(t, et.master, pc.GetId()), "item:luck-blade"); got.GetChargesLeft() != -1 {
+		t.Fatalf("the blade before the master sets it: %+v", got)
+	}
 	r, err := set("item:luck-blade", 3, charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED)
-	if err != nil || r.before.GetChargesLeft() != -1 || r.after.GetChargesLeft() != 3 {
+	if err != nil || r.after.GetChargesLeft() != 3 {
 		t.Fatalf("blade: %+v %v", r, err)
 	}
 	if rows, err := et.h.svc.queries.ListItemCharges(context.Background(), pc.GetId()); err != nil || len(rows) != 1 {
@@ -253,8 +262,11 @@ func TestSetItemCharges(t *testing.T) {
 	if _, err := et.spend(t, pc, wandKey, 7); err != nil {
 		t.Fatalf("empty wand: %v", err)
 	}
+	if got := magicItemOf(et.read(t, et.master, pc.GetId()), wandKey); !got.GetLastRollPending() {
+		t.Fatalf("the emptied wand waits for no roll: %+v", got)
+	}
 	r, err = set(wandKey, 7, charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED)
-	if err != nil || r.after.GetChargesLeft() != 7 || r.after.GetLastRollPending() || !r.before.GetLastRollPending() {
+	if err != nil || r.after.GetChargesLeft() != 7 || r.after.GetLastRollPending() {
 		t.Fatalf("restore: %+v %v", r, err)
 	}
 	if rows, _ := et.h.svc.queries.ListItemCharges(context.Background(), pc.GetId()); len(rows) != 1 {
@@ -293,7 +305,7 @@ func TestTwoSpendsOfTheLastChargeSpendOnce(t *testing.T) {
 	entry := magicItemOf(pc, wandKey).GetId()
 	et.setCharges(t, pc.GetId(), entry, 6, "") // one charge of seven left
 	spendOne := func(tx pgx.Tx) error {
-		_, _, err := et.h.svc.SpendItemCharges(t.Context(), tx, et.campaign, pc.GetId(), entry, 1)
+		_, err := et.h.svc.SpendItemCharges(t.Context(), tx, et.campaign, pc.GetId(), entry, 1)
 		return err
 	}
 	first, second := et.raceTwo(t, spendOne, spendOne)

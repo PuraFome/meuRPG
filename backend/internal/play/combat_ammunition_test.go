@@ -34,11 +34,17 @@ type archery struct {
 
 func newArchery(t *testing.T) *archery {
 	t.Helper()
+	return newArcheryOf(t, "race:human")
+}
+
+// newArcheryOf is the same party with Toren of the race.
+func newArcheryOf(t *testing.T, race string) *archery {
+	t.Helper()
 	return &archery{newArmedWith(t, func(a *armed) {
 		scores := func(str, dex, con, intl int32) *rulesv1.AbilityScores {
 			return &rulesv1.AbilityScores{Strength: str, Dexterity: dex, Constitution: con, Intelligence: intl, Wisdom: 10, Charisma: 8}
 		}
-		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5, scores(14, 16, 14, 10), []string{shortbowKey, handaxeKey, battleaxe}, nil)
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", race, 5, scores(14, 16, 14, 10), []string{shortbowKey, handaxeKey, battleaxe}, nil)
 		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, scores(10, 14, 12, 16), nil, []string{fireBolt})
 		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, scores(10, 16, 14, 10), []string{rapier}, nil)
 	})}
@@ -326,7 +332,98 @@ func TestUndoingAShotLeavesTheShotBeforeItToUndo(t *testing.T) {
 		}
 	}
 	s.undoLast(t, e)
+	if got := s.held(t); got != 8 {
+		t.Errorf("arrows after the undo of a shot = %d, want 8: an undo does not give the pieces back", got)
+	}
 	if id := s.log(t, s.master, s.get(t, s.master)).GetUndoableEventId(); id == "" {
 		t.Error("after the undo of the second shot the first one is not offered to undo")
+	}
+}
+
+// A roll that waits for an answer takes no piece yet: the halfling's Lucky holds a typed 1 with a question, and the piece goes
+// with the answer that settles the attack.
+func TestAShotHeldForAnAnswerTakesNoPieceUntilItIsAnswered(t *testing.T) {
+	t.Parallel()
+	s := newArcheryOf(t, "race:halfling")
+	s.stock(t, 9)
+	e := s.fight(t, 8)
+	held, err := s.shoot(t, e, shortbowKey)
+	if err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	if held.GetHeldRollOffer().GetLucky() == nil {
+		t.Fatalf("the attack = %v, want the Lucky question", held)
+	}
+	if got := s.held(t); got != 9 {
+		t.Errorf("arrows while the question waits = %d, want 9", got)
+	}
+	if n := s.countEvents(t, eventAmmunitionSpent); n != 0 {
+		t.Errorf("the session has %d ammunition events while the question waits, want none", n)
+	}
+	if _, err := s.answerHeldRoll(t, s.caio, held.GetHeldRollOffer().GetHoldId(), func(r *playv1.AnswerHeldRollRequest) {
+		r.Answer = &playv1.AnswerHeldRollRequest_Lucky{Lucky: &playv1.LuckyAnswer{Reroll: false}}
+	}); err != nil {
+		t.Fatalf("AnswerLucky() error = %v", err)
+	}
+	if got := s.held(t); got != 8 {
+		t.Errorf("arrows after the answer = %d, want 8", got)
+	}
+	if n := s.countEvents(t, eventAmmunitionSpent); n != 1 {
+		t.Errorf("the session has %d ammunition events after the answer, want 1", n)
+	}
+}
+
+// A hit takes its piece as a miss does.
+func TestAShotThatHitsSpendsOnePiece(t *testing.T) {
+	t.Parallel()
+	s := newArchery(t)
+	s.stock(t, 4)
+	e := s.fight(t, 8)
+	res, err := s.attack(t, s.caio, e, "Toren", shortbowKey, "Goblin", d20(15))
+	if err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	if res.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT {
+		t.Fatalf("the shot = %v, want a hit", res.GetRoll().GetOutcome())
+	}
+	if got := s.held(t); got != 3 {
+		t.Errorf("arrows after a hit = %d, want 3", got)
+	}
+	if n := s.countEvents(t, eventAmmunitionSpent); n != 1 {
+		t.Errorf("the session has %d ammunition events, want 1", n)
+	}
+}
+
+// The master's NPC takes no piece of a bow, whatever its stock says.
+func TestAnNPCsBowTakesNoAmmunition(t *testing.T) {
+	t.Parallel()
+	s := newArchery(t)
+	if _, err := s.master.charges.SetAmmunition(t.Context(), connect.NewRequest(&playv1.SetAmmunitionRequest{CampaignId: s.campaignID, CharacterId: s.goblin.GetId(), AmmoKey: arrowAmmo, Quantity: 6})); err != nil {
+		t.Fatalf("SetAmmunition(goblin) error = %v", err)
+	}
+	e := s.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
+		npcRolls: []int{20},
+		players:  map[string]int32{"Toren": 10, "Pensantus": 5, "Brisa": 1},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {8, 3}, "Pensantus": {10, 8}, "Brisa": {8, 8}},
+	})
+	if _, err := s.attack(t, s.master, e, "Goblin", shortBow, "Toren", d20(1)); err != nil {
+		t.Fatalf("RollAttack(goblin, shortbow) error = %v", err)
+	}
+	if n := s.countEvents(t, eventAttackRolled); n != 1 {
+		t.Fatalf("the session has %d attack events, want 1", n)
+	}
+	if n := s.countEvents(t, eventAmmunitionSpent); n != 0 {
+		t.Errorf("the session has %d ammunition events, want none", n)
+	}
+	res, err := s.master.characters.GetCharacter(t.Context(), connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: s.campaignID, CharacterId: s.goblin.GetId()}))
+	if err != nil {
+		t.Fatalf("GetCharacter(goblin) error = %v", err)
+	}
+	for _, am := range res.Msg.GetCharacter().GetSheet().GetFull().GetAmmunition() {
+		if am.GetKey() == arrowAmmo && (am.GetQuantity() != 6 || am.GetSpentLastCombat() != 0) {
+			t.Errorf("the goblin's arrows = %v, want 6 and none fired", am)
+		}
 	}
 }
