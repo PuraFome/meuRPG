@@ -44,23 +44,232 @@ describe('GearList', () => {
     expect(el.querySelector('button')!.getAttribute('aria-label')).toContain('2 iguais');
   });
 
-  it('gives each weapon a "⋮" for its marks when asked, never armor or shield, and says which weapon', () => {
+  it('gives every row a "⋮" when asked, named like the sheet it opens', () => {
     const armor: GearVm = {
       ...sword,
       key: 'equipment:mail',
       namePt: 'Cota de malha',
       kind: 'armor',
     };
-    const fixture = setup([sword, armor]);
+    const shield: GearVm = { ...sword, key: 'equipment:shield', namePt: 'Escudo', kind: 'shield' };
+    const fixture = setup([sword, armor, shield]);
     fixture.componentRef.setInput('canMark', true);
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const buttons = Array.from(el.querySelectorAll('.gear-row__more'));
-    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual(['Marcas da Espada longa']);
+    expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Marcas · Espada longa',
+      'Bônus · Cota de malha',
+      'Bônus · Escudo',
+    ]);
+    buttons.forEach((b) => expect(b.getAttribute('aria-haspopup')).toBe('dialog'));
     const asked: GearVm[] = [];
     fixture.componentInstance.marksOpened.subscribe((g) => asked.push(g));
-    (buttons[0] as HTMLButtonElement).click();
-    expect(asked).toEqual([sword]);
+    (buttons[1] as HTMLButtonElement).click();
+    expect(asked).toEqual([armor]);
+  });
+
+  it('draws each row as one line: marked for the layout checks, in the order of the board', () => {
+    const fixture = setup([
+      {
+        ...sword,
+        twoHanded: true,
+        marks: { silvered: true, adamantine: false, magical: true },
+        bonus: 1,
+        bonusCounts: true,
+      },
+    ]);
+    fixture.componentRef.setInput('canMark', true);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const row = el.querySelector('li.gear-row')!;
+    expect(row.hasAttribute('data-one-line')).toBe(true);
+    expect(row.hasAttribute('data-chip-row')).toBe(true);
+    expect(el.querySelector('ul.gear-rows')!.getAttribute('data-equal-width')).toBe(
+      '.gear-row__button',
+    );
+    expect(row.querySelector('.gear-row__name')!.hasAttribute('data-chip-ref')).toBe(true);
+    const order = Array.from(
+      row.querySelectorAll(
+        '.gear-row__icon, .gear-row__name, .gear-row__kind, app-weapon-tags, app-bonus-chip, .gear-row__more, .gear-row__button',
+      ),
+    ).map((n) =>
+      n.tagName.startsWith('APP-')
+        ? n.tagName.toLowerCase()
+        : n.classList[0] === 'mat-icon'
+          ? 'gear-row__icon'
+          : n.classList.contains('gear-row__button')
+            ? 'gear-row__button'
+            : n.classList[0],
+    );
+    expect(order).toEqual([
+      'gear-row__icon',
+      'gear-row__name',
+      'gear-row__kind',
+      'app-weapon-tags',
+      'app-bonus-chip',
+      'gear-row__more',
+      'gear-row__button',
+    ]);
+  });
+
+  it('says the marks with icons only, and keeps each word for a screen reader', () => {
+    const fixture = setup([
+      { ...sword, marks: { silvered: true, adamantine: false, magical: false } },
+    ]);
+    const chip = (fixture.nativeElement as HTMLElement).querySelector('.weapon-tags__chip')!;
+    expect(chip.hasAttribute('data-chip')).toBe(true);
+    expect(chip.querySelector('.mr-visually-hidden')!.textContent!.trim()).toBe('Prateada');
+    const visible = Array.from(chip.childNodes)
+      .filter((n) => n.nodeType === Node.TEXT_NODE)
+      .map((n) => n.textContent!.trim())
+      .join('');
+    expect(visible).toBe('');
+  });
+
+  it('lets a counting bonus take the place of the "Mágica" chip, and keeps a stored mark without one', () => {
+    const marks = { silvered: true, adamantine: false, magical: true };
+    const fixture = setup([
+      { ...sword, marks, bonus: 1, bonusCounts: true },
+      { ...sword, key: 'k2', namePt: 'Maça', marks, bonus: 1, bonusCounts: false },
+      { ...sword, key: 'k3', namePt: 'Adaga', marks },
+    ]);
+    const words = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.gear-row'),
+    ).map((row) =>
+      Array.from(row.querySelectorAll('.weapon-tags__chip .mr-visually-hidden')).map((n) =>
+        n.textContent!.trim(),
+      ),
+    );
+    expect(words).toEqual([['Prateada'], ['Prateada', 'Mágica'], ['Prateada', 'Mágica']]);
+  });
+
+  it('shows the magic bonus chip only when the piece has one, dashed when it does not count', () => {
+    const fixture = setup([
+      { ...sword, bonus: 2, bonusCounts: true },
+      { ...sword, key: 'k2', namePt: 'Maça', bonus: 1, bonusCounts: false },
+      { ...sword, key: 'k3', namePt: 'Adaga' },
+    ]);
+    const el = fixture.nativeElement as HTMLElement;
+    const rows = Array.from(el.querySelectorAll('.gear-row'));
+    expect(rows[0].querySelector('.bonus-chip')).not.toBeNull();
+    expect(rows[0].querySelector('.bonus-chip--idle')).toBeNull();
+    expect(rows[1].querySelector('.bonus-chip--idle')).not.toBeNull();
+    expect(rows[2].querySelector('app-bonus-chip')).toBeNull();
+  });
+
+  it('marks the shield "Parado" with a dashed chip when a two-handed weapon leaves it idle', () => {
+    const shield: GearVm = {
+      ...sword,
+      key: 'equipment:shield',
+      namePt: 'Escudo',
+      kind: 'shield',
+      bonus: 1,
+      bonusCounts: true,
+    };
+    const fixture = setup([shield]);
+    fixture.componentRef.setInput('shieldIdle', true);
+    fixture.detectChanges();
+    const row = (fixture.nativeElement as HTMLElement).querySelector('.gear-row')!;
+    expect(row.querySelector('.gear-row__idle')!.textContent!.trim()).toBe('Parado');
+    expect(row.querySelector('.bonus-chip--idle')).not.toBeNull();
+  });
+
+  it('says in words what drawing a two-handed weapon does to the shield and the armor class', () => {
+    const bow: GearVm = {
+      ...sword,
+      key: 'equipment:longbow',
+      namePt: 'Arco longo',
+      equipped: false,
+      twoHanded: true,
+      armorClassIfToggled: 18,
+    };
+    const fixture = setup([bow]);
+    fixture.componentRef.setInput('armorClass', 21);
+    fixture.componentRef.setInput('warned', [bow.key]);
+    fixture.detectChanges();
+    const row = (fixture.nativeElement as HTMLElement).querySelector('.gear-row')!;
+    const warn = row.querySelector('.gear-row__warn')!;
+    expect(warn.getAttribute('aria-hidden')).toBe('true');
+    const said = Array.from(row.querySelectorAll('span')).find(
+      (n) => n.children.length === 0 && n.textContent!.includes('Sacar desativa o escudo'),
+    )!;
+    expect(said.classList).toContain('mr-visually-hidden');
+    expect(said.textContent!.trim()).toBe(', Sacar desativa o escudo: CA 21 → 18');
+    // the warning is read once: the button's name does not repeat it
+    expect(row.querySelector('button')!.getAttribute('aria-label')).toBe(
+      'Equipar CA 18 Arco longo',
+    );
+  });
+
+  it('puts "duas mãos" after the name, aria-hidden, where it can be clipped before the name', () => {
+    const fixture = setup([{ ...sword, twoHanded: true }]);
+    const el = fixture.nativeElement as HTMLElement;
+    const name = el.querySelector('.gear-row__name')!;
+    const kind = el.querySelector('.gear-row__kind')!;
+    expect(kind.textContent!.trim()).toBe('duas mãos');
+    expect(kind.getAttribute('aria-hidden')).toBe('true');
+    expect(name.compareDocumentPosition(kind) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // a screen reader hears the kind label whether or not the words are drawn
+    expect(el.querySelector('.gear-row__main')!.textContent).toContain('Arma de duas mãos');
+  });
+
+  it('leaves the hidden warning off the row in the combat fold, whose own line says it', () => {
+    const bow: GearVm = {
+      ...sword,
+      key: 'equipment:longbow',
+      namePt: 'Arco longo',
+      equipped: false,
+      twoHanded: true,
+      armorClassIfToggled: 14,
+    };
+    const fixture = setup([bow]);
+    fixture.componentRef.setInput('armorClass', 16);
+    fixture.componentRef.setInput('warned', [bow.key]);
+    fixture.detectChanges();
+    const said = () => (fixture.nativeElement as HTMLElement).textContent!;
+    expect(said()).toContain('Sacar desativa o escudo: CA 16 → 14');
+    fixture.componentRef.setInput('combat', true);
+    fixture.detectChanges();
+    expect(said()).not.toContain('Sacar desativa o escudo');
+    expect((fixture.nativeElement as HTMLElement).querySelector('.gear-row__warn')).not.toBeNull();
+  });
+
+  it('has no "duas mãos" in the combat fold', () => {
+    const fixture = setup([{ ...sword, twoHanded: true }]);
+    fixture.componentRef.setInput('combat', true);
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.gear-row__kind')).toBeNull();
+  });
+
+  it('shows "CA N" on the "Equipado" head when asked, and the two headings start alike', () => {
+    const fixture = setup([sword, { ...sword, key: 'k2', namePt: 'Maça', equipped: false }]);
+    fixture.componentRef.setInput('armorClass', 21);
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.gear-group__ac')).toBeNull();
+    fixture.componentRef.setInput('showArmorClass', true);
+    fixture.detectChanges();
+    const ac = el.querySelector('.gear-group__ac')!;
+    expect(ac.textContent!.trim()).toBe('CA 21');
+    expect(ac.getAttribute('aria-hidden')).toBe('true');
+    const head = ac.parentElement!;
+    const said = Array.from(head.querySelectorAll('span')).find(
+      (n) => n.textContent!.trim() === 'Classe de armadura 21',
+    )!;
+    expect(said.classList).toContain('mr-visually-hidden');
+    // the number is in the head of "Equipado", after its heading
+    expect(head.firstElementChild!.tagName).toBe('H3');
+    expect(head.firstElementChild!.textContent!.trim()).toBe('Equipado');
+    expect(head.firstElementChild!.compareDocumentPosition(ac)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(head.closest('section')!.querySelector('ul')!.contains(ac)).toBe(false);
+    const titles = Array.from(el.querySelectorAll('h3'));
+    expect(titles.map((h) => h.textContent!.trim())).toEqual(['Equipado', 'Carregado']);
+    titles.forEach((h) => expect(h.querySelector('mat-icon')).toBeNull());
+    // each heading is the first thing in its section (or in its head): nothing in front of it
+    expect(head.firstElementChild).toBe(titles[0]);
+    expect(titles[1].closest('section')!.firstElementChild).toBe(titles[1]);
   });
 
   it('has no "⋮" unless asked, and keeps it when the gear has no equip button (a locked sheet)', () => {
@@ -73,7 +282,7 @@ describe('GearList', () => {
     expect(fixture.nativeElement.querySelector('.gear-row__button')).toBeNull();
   });
 
-  it('shows the armor class a two-handed weapon would give, on its button and in its label', () => {
+  it('keeps the armor class a two-handed weapon would give out of the button, in its label only', () => {
     const bow: GearVm = {
       ...sword,
       key: 'equipment:longbow',
@@ -87,7 +296,8 @@ describe('GearList', () => {
     fixture.componentRef.setInput('armorClass', 18);
     fixture.detectChanges();
     const button = (fixture.nativeElement as HTMLElement).querySelector('button')!;
-    expect(button.textContent).toContain('CA 16');
+    expect(button.textContent).not.toContain('CA');
+    expect(button.textContent!.trim()).toBe('Equipar');
     expect(button.getAttribute('aria-label')).toBe('Equipar CA 16 Arco longo');
   });
 

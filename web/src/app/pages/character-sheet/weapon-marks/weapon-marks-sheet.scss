@@ -4,7 +4,7 @@
 
 .marks__intro {
   margin: 0 0 var(--mr-space-2);
-  color: var(--mr-muted, inherit);
+  color: var(--mr-ink-muted);
 }
 
 .marks {
@@ -51,44 +51,25 @@
 
 .marks__beats {
   font-size: var(--mr-font-14);
-  color: var(--mr-muted, inherit);
+  color: var(--mr-ink-muted);
 }
 
-.foot {
-  display: flex;
-  flex-direction: column;
-  gap: var(--mr-space-3);
+.marks__copies {
+  margin: 0 0 var(--mr-space-2);
 }
 
-// "Salvar marcas" and "Cancelar" have the same width and height; on a phone "Salvar marcas" is alone and full width.
-.pair {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--mr-space-3);
+.marks__reason {
+  margin: var(--mr-space-2) 0 0;
 }
 
-.pair--one {
-  grid-template-columns: 1fr;
+.marks__bonus {
+  margin-top: var(--mr-space-3);
+  padding-top: var(--mr-space-3);
+  border-top: 1px solid var(--mr-rule);
 }
 
-.pair__btn {
-  min-height: 48px;
-  width: 100%;
-}
-
-.marks__lock {
-  display: flex;
-  align-items: flex-start;
-  line-height: 1.4;
-  gap: var(--mr-space-2);
-  margin: 0;
+.marks__help {
+  margin: var(--mr-space-2) 0 0;
   font-size: var(--mr-font-14);
-  color: var(--mr-muted, inherit);
-
-  .mat-icon {
-    flex: none;
-    width: var(--mr-font-18);
-    height: var(--mr-font-18);
-    font-size: var(--mr-font-18);
-  }
+  color: var(--mr-ink-muted);
 }
