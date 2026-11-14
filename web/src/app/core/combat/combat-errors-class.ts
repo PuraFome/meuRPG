@@ -26,4 +26,8 @@ export const CLASS_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = n
     EncounterBlockedReason.READY_ACTION,
     'Essa ação não pode ser preparada agora. Escolha outra. Nada foi gasto.',
   ],
+  [
+    EncounterBlockedReason.READY_SPELL_TIME,
+    'Só uma magia de 1 ação pode ser preparada. Escolha outra. Nada foi gasto.',
+  ],
 ]);

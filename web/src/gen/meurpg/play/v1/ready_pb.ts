@@ -74,7 +74,7 @@ export type ReadyActionRequest = Message<"meurpg.play.v1.ReadyActionRequest"> & 
   targetCombatantId: string;
 
   /**
-   * SPELL: the spell and the slot to cast it with (not offered yet: a spell is refused with READY_ACTION).
+   * SPELL: the spell and the level of the slot to cast it with (0 for a cantrip).
    *
    * @generated from field: string spell_key = 9;
    */
@@ -238,8 +238,15 @@ export const ReadyService: GenService<{
    *   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED, COMBATANT_DOWN and the
    *     other refusals of a turn; READY_TRIGGER (an empty trigger, or one longer than 200 characters); READY_ACTION (an
    *     attack the combatant does not have, a standard action that cannot be held (Attack, Cast a Spell, Ready, Hide,
-   *     Help, Dash, Disengage), a move in a combat without a map or with no speed, a spell, or an action readied
-   *     already). Nothing is spent.
+   *     Help, Dash, Disengage), a move in a combat without a map or with no speed, a spell with no key, or an action
+   *     readied already); READY_SPELL_TIME (a spell whose casting time is not 1 action); the refusals of CastSpell
+   *     for the spell (NO_SLOT, a spell the caster does not have or a slot that does not fit as `invalid_argument`).
+   *     Nothing is spent.
+   *
+   * A spell is cast at Ready: the slot and the action are spent and the readier concentrates on it (any other
+   * concentration ends); nothing of the spell happens until its release. CastSpell by the readier while its READIED
+   * window is open, or AnswerReaction USE, releases it as a reaction with no slot spent again. The spell is lost, with
+   * its slot, when its concentration ends, when it is let pass, or when the readied action is lost.
    *
    * @generated from rpc meurpg.play.v1.ReadyService.ReadyAction
    */

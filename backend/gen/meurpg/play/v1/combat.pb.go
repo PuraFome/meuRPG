@@ -1708,7 +1708,7 @@ const (
 	ReadiedStatus_READIED_STATUS_FIRED ReadiedStatus = 2
 	// The master fired it and the readier let it pass.
 	ReadiedStatus_READIED_STATUS_IGNORED ReadiedStatus = 3
-	// The readier's next turn started first.
+	// The readier's next turn started first, or it was defeated or left the fight.
 	ReadiedStatus_READIED_STATUS_LOST ReadiedStatus = 4
 	// The concentration on a held spell ended.
 	ReadiedStatus_READIED_STATUS_BROKEN ReadiedStatus = 5
@@ -6284,7 +6284,9 @@ type Combatant struct {
 	DeathSuccesses int32 `protobuf:"varint,26,opt,name=death_successes,json=deathSuccesses,proto3" json:"death_successes,omitempty"`
 	DeathFailures  int32 `protobuf:"varint,27,opt,name=death_failures,json=deathFailures,proto3" json:"death_failures,omitempty"`
 	// The conditions the master marked ("caído", "envenenado"; RN-22), and the
-	// spell it is concentrating on, if any.
+	// spell it is concentrating on, if any. A readied spell holds the
+	// concentration: the master and the owner get its key, everybody else gets
+	// nothing (RN-10).
 	Conditions         []string `protobuf:"bytes,28,rep,name=conditions,proto3" json:"conditions,omitempty"`
 	ConcentrationSpell string   `protobuf:"bytes,29,opt,name=concentration_spell,json=concentrationSpell,proto3" json:"concentration_spell,omitempty"`
 	// The armor class from its sheet ("CA 15"). Only the master gets it: a
@@ -7158,7 +7160,7 @@ type ReadiedAction struct {
 	// The trigger, in the player's own words (1 to 200 characters).
 	TriggerText string      `protobuf:"bytes,2,opt,name=trigger_text,json=triggerText,proto3" json:"trigger_text,omitempty"`
 	Kind        ReadiedKind `protobuf:"varint,3,opt,name=kind,proto3,enum=meurpg.play.v1.ReadiedKind" json:"kind,omitempty"`
-	// The attack's or the standard action's key; empty for a move and a spell.
+	// The attack's, the standard action's or the spell's key; empty for a move.
 	ActionKey string `protobuf:"bytes,4,opt,name=action_key,json=actionKey,proto3" json:"action_key,omitempty"`
 	// The name of the action in Portuguese, when the content has one.
 	ActionNamePt string `protobuf:"bytes,5,opt,name=action_name_pt,json=actionNamePt,proto3" json:"action_name_pt,omitempty"`

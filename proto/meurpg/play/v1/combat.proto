@@ -2744,7 +2744,9 @@ message Combatant {
   int32 death_successes = 26;
   int32 death_failures = 27;
   // The conditions the master marked ("caído", "envenenado"; RN-22), and the
-  // spell it is concentrating on, if any.
+  // spell it is concentrating on, if any. A readied spell holds the
+  // concentration: the master and the owner get its key, everybody else gets
+  // nothing (RN-10).
   repeated string conditions = 28;
   string concentration_spell = 29;
   // The armor class from its sheet ("CA 15"). Only the master gets it: a
@@ -2996,7 +2998,7 @@ enum ReadiedStatus {
   READIED_STATUS_FIRED = 2;
   // The master fired it and the readier let it pass.
   READIED_STATUS_IGNORED = 3;
-  // The readier's next turn started first.
+  // The readier's next turn started first, or it was defeated or left the fight.
   READIED_STATUS_LOST = 4;
   // The concentration on a held spell ended.
   READIED_STATUS_BROKEN = 5;
@@ -3010,7 +3012,7 @@ message ReadiedAction {
   // The trigger, in the player's own words (1 to 200 characters).
   string trigger_text = 2;
   ReadiedKind kind = 3;
-  // The attack's or the standard action's key; empty for a move and a spell.
+  // The attack's, the standard action's or the spell's key; empty for a move.
   string action_key = 4;
   // The name of the action in Portuguese, when the content has one.
   string action_name_pt = 5;

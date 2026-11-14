@@ -43,7 +43,7 @@ type ReadyActionRequest struct {
 	ActionKey string `protobuf:"bytes,7,opt,name=action_key,json=actionKey,proto3" json:"action_key,omitempty"`
 	// The creature the player names in the trigger, if any: a combatant the caller sees.
 	TargetCombatantId string `protobuf:"bytes,8,opt,name=target_combatant_id,json=targetCombatantId,proto3" json:"target_combatant_id,omitempty"`
-	// SPELL: the spell and the slot to cast it with (not offered yet: a spell is refused with READY_ACTION).
+	// SPELL: the spell and the level of the slot to cast it with (0 for a cantrip).
 	SpellKey      string `protobuf:"bytes,9,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
 	SlotLevel     int32  `protobuf:"varint,10,opt,name=slot_level,json=slotLevel,proto3" json:"slot_level,omitempty"`
 	unknownFields protoimpl.UnknownFields

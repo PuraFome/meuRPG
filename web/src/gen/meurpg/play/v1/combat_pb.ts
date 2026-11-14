@@ -1815,7 +1815,9 @@ export type Combatant = Message<"meurpg.play.v1.Combatant"> & {
 
   /**
    * The conditions the master marked ("caído", "envenenado"; RN-22), and the
-   * spell it is concentrating on, if any.
+   * spell it is concentrating on, if any. A readied spell holds the
+   * concentration: the master and the owner get its key, everybody else gets
+   * nothing (RN-10).
    *
    * @generated from field: repeated string conditions = 28;
    */
@@ -2354,7 +2356,7 @@ export type ReadiedAction = Message<"meurpg.play.v1.ReadiedAction"> & {
   kind: ReadiedKind;
 
   /**
-   * The attack's or the standard action's key; empty for a move and a spell.
+   * The attack's, the standard action's or the spell's key; empty for a move.
    *
    * @generated from field: string action_key = 4;
    */
@@ -15732,7 +15734,7 @@ export enum ReadiedStatus {
   IGNORED = 3,
 
   /**
-   * The readier's next turn started first.
+   * The readier's next turn started first, or it was defeated or left the fight.
    *
    * @generated from enum value: READIED_STATUS_LOST = 4;
    */
