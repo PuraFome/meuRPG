@@ -56,6 +56,9 @@ The group check is also how the master asks one, some or all living player chara
 Both sides of a contest, and a Hide, add the flat bonuses of their lasting effects that apply to ability checks (`roll_bonus` of checks, `check_bonus` of the skill): `prepareCheck` and the answer options go through `withCheckBonus`, which reads them with `checkBonusesOf`, the reader the other checks use.
 A bonus to saves or to attacks never enters a contest.
 Each bonus is a note of the roll (`effect_bonus`, "Marca de Nanquim +3"; it says nothing of advantage, `notesMode` skips it); an effect the master hides reads "Outra fonte +3" to the player and by name to the master alone (RN-10), decided when the roll is read (`rollNote.proto(master)`), not when it is kept.
+The notes follow one hiding rule: a note whose source the master hides (`rollNote.Hidden`, set from `hideFor` when the notes are made and kept with the roll) reads "Outra fonte" (kind `other`) to a reader but the master, keeps its advantage or disadvantage, and a bonus keeps its value.
+The master reads every note in full.
+`TestTheNotesOfAContestRollFollowTheHidingRule` holds the rows for a contest start, a contest answer and a Hide.
 
 ## The floor of a check
 

@@ -112,30 +112,38 @@ type rollNote struct {
 	Kind  string `json:"kind"`
 	Label string `json:"label"`
 	Adv   bool   `json:"adv,omitempty"`
-	// Value and Hidden are for an effect_bonus: the flat bonus a lasting effect added (Label is the effect's name) and
-	// whether the master hides the effect, which only the master reads by name (RN-10).
-	Value  int  `json:"value,omitempty"`
+	// Value is for an effect_bonus: the flat bonus a lasting effect added (Label is the effect's name).
+	Value int `json:"value,omitempty"`
+	// Hidden says the roller may not read the source behind the note: the master hides it (RN-10). It is stored with the note,
+	// so every read of the roll follows the rule: only the master reads what the source is (proto). The Inspiração's judgement
+	// leaves these sources out as well (notesSources).
 	Hidden bool `json:"hidden,omitempty"`
-	// secret says the roller may not read the source behind the note (the master hides it, RN-10). Never stored: it is read once, from
-	// the note the roll is prepared with, to judge what the Inspiração adds (notesSources).
-	secret bool
 }
 
 // givesMode says the note is a circumstance of the roll's mode: a bonus and the note of an Inspiração that was not spent are not.
 func (n rollNote) givesMode() bool { return n.Kind != noteEffectBonus && n.Kind != noteFavorLost }
 
 // proto is the note as the reader gets it. A roll is read by the master and by its roller's own player alone, so any
-// reader but the master is the owner: a hidden effect's bonus reads "Outra fonte +2" to them, and a player's own
-// effect of the owner's audience keeps its name.
+// reader but the master is the owner: the source of a hidden note reads "Outra fonte" to them (a bonus keeps its value, a
+// circumstance keeps its advantage or disadvantage), and a player's own effect of the owner's audience keeps its name.
 func (n rollNote) proto(master bool) *playv1.RollNote {
-	label := n.Label
+	kind, label := n.Kind, n.Label
+	if n.Hidden && !master {
+		kind, label = n.maskedKind(), otherSourceTx
+	}
 	if n.Kind == noteEffectBonus {
-		if n.Hidden && !master {
-			label = otherSourceTx
-		}
 		label = fmt.Sprintf("%s %+d", label, n.Value)
 	}
-	return &playv1.RollNote{Kind: n.Kind, LabelPt: label, Advantage: n.Adv}
+	return &playv1.RollNote{Kind: kind, LabelPt: label, Advantage: n.Adv}
+}
+
+// maskedKind is the kind a hidden note shows: a bonus keeps its own (it says only that something added to the roll), a
+// circumstance says no more than its label does.
+func (n rollNote) maskedKind() string {
+	if n.Kind == noteEffectBonus {
+		return n.Kind
+	}
+	return "other"
 }
 
 func notesProto(notes []rollNote, master bool) []*playv1.RollNote {
@@ -454,7 +462,7 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 	var out []rollNote
 	for _, src := range combat.SaveMode(scene) {
 		if note, ok := checkSourceNotes[src.Kind]; ok {
-			note.secret = hide(src)
+			note.Hidden = hide(src)
 			if src.Kind == combat.SourceEffectCheck {
 				note.Adv = src.Effect == combat.ModeAdvantage // a table spell's effect may give the disadvantage
 			}
