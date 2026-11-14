@@ -2685,6 +2685,13 @@ message ActionOption {
   // True on Ready ("standard:ready"): it is taken with ReadyService.ReadyAction (a trigger and the held action), not
   // with TakeAction, which refuses it.
   bool via_ready_action = 16;
+  // For a feature action that offers `choices`: the question over them, from the feature's `use.choice_label` ("Qual forma").
+  // Empty when the feature has none (the app asks "Qual opção").
+  string use_question_pt = 17;
+  // True only in the master's own read, and only for a feature action taken with UseFeature that is disabled for nothing but
+  // the economy of the turn (the action, the bonus action or the reaction spent, a use of the turn spent, the attack action
+  // first): UseFeature lets the master use it anyway. False for every player and for any other reason.
+  bool master_may_override = 18;
 }
 
 // UseScope is how long a use of a feature counts against its limit.

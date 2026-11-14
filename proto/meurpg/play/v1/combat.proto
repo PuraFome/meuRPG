@@ -7509,4 +7509,21 @@ message CombatLogFeatureUsed {
   int32 temp_hp = 5;
   // True: a lasting effect was put on the targets.
   bool effect_applied = 6;
+  // What the use cost of the turn, the resource's Portuguese name and the uses of it left after this one. Read by the master
+  // and the user's player; every other player reads UNSPECIFIED, "" and 0 (the line is the plain one).
+  // `resource_name_pt` is empty when the use spent no resource of its own (then `resource_left` is 0).
+  FeatureEconomy economy = 7;
+  string resource_name_pt = 8;
+  int32 resource_left = 9;
+}
+
+// FeatureEconomy is the part of the turn a use of a feature cost, in the combat log.
+enum FeatureEconomy {
+  // The line does not say (an older use, or a reader that does not see the cost).
+  FEATURE_ECONOMY_UNSPECIFIED = 0;
+  FEATURE_ECONOMY_ACTION = 1;
+  FEATURE_ECONOMY_BONUS_ACTION = 2;
+  FEATURE_ECONOMY_REACTION = 3;
+  // The feature costs nothing of the turn (a free action, or movement).
+  FEATURE_ECONOMY_NONE = 4;
 }

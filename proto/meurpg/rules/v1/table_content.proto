@@ -2143,6 +2143,9 @@ message FeatureUse {
   // When the app asks the player to use the feature without being asked for it: a reaction window opens for the owner.
   // Unset: the player uses the feature from the Usar sheet only. It needs the economy `reaction`.
   FeatureTrigger trigger = 6;
+  // The question over the options, as the player reads it ("Qual forma"), at most 80 characters. Empty: the app asks
+  // "Qual opção". It needs `choices`.
+  string choice_label = 7 [(meurpg.options.v1.max_len) = 80];
 }
 
 // FeatureTrigger is what a reaction feature waits for. Refusals are at `use.trigger.kinds[i]` and `use.trigger.range_ft`.

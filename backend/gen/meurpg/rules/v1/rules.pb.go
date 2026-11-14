@@ -12333,8 +12333,15 @@ type ActionOption struct {
 	// True on Ready ("standard:ready"): it is taken with ReadyService.ReadyAction (a trigger and the held action), not
 	// with TakeAction, which refuses it.
 	ViaReadyAction bool `protobuf:"varint,16,opt,name=via_ready_action,json=viaReadyAction,proto3" json:"via_ready_action,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// For a feature action that offers `choices`: the question over them, from the feature's `use.choice_label` ("Qual forma").
+	// Empty when the feature has none (the app asks "Qual opção").
+	UseQuestionPt string `protobuf:"bytes,17,opt,name=use_question_pt,json=useQuestionPt,proto3" json:"use_question_pt,omitempty"`
+	// True only in the master's own read, and only for a feature action taken with UseFeature that is disabled for nothing but
+	// the economy of the turn (the action, the bonus action or the reaction spent, a use of the turn spent, the attack action
+	// first): UseFeature lets the master use it anyway. False for every player and for any other reason.
+	MasterMayOverride bool `protobuf:"varint,18,opt,name=master_may_override,json=masterMayOverride,proto3" json:"master_may_override,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *ActionOption) Reset() {
@@ -12475,6 +12482,20 @@ func (x *ActionOption) GetResourceTotal() int32 {
 func (x *ActionOption) GetViaReadyAction() bool {
 	if x != nil {
 		return x.ViaReadyAction
+	}
+	return false
+}
+
+func (x *ActionOption) GetUseQuestionPt() string {
+	if x != nil {
+		return x.UseQuestionPt
+	}
+	return ""
+}
+
+func (x *ActionOption) GetMasterMayOverride() bool {
+	if x != nil {
+		return x.MasterMayOverride
 	}
 	return false
 }
@@ -15182,7 +15203,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x12\n" +
 	"\x04free\x18\x03 \x01(\x05R\x04free\x12\x14\n" +
 	"\x05total\x18\x04 \x01(\x05R\x05total\x12\x1a\n" +
-	"\bresource\x18\x05 \x01(\tR\bresource\"\x9f\x05\n" +
+	"\bresource\x18\x05 \x01(\tR\bresource\"\xf7\x05\n" +
 	"\fActionOption\x12/\n" +
 	"\x06action\x18\x01 \x01(\v2\x17.meurpg.rules.v1.ActionR\x06action\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
@@ -15203,7 +15224,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\tuse_total\x18\r \x01(\x05R\buseTotal\x12\x19\n" +
 	"\buse_left\x18\x0e \x01(\x05R\auseLeft\x12%\n" +
 	"\x0eresource_total\x18\x0f \x01(\x05R\rresourceTotal\x12(\n" +
-	"\x10via_ready_action\x18\x10 \x01(\bR\x0eviaReadyAction\":\n" +
+	"\x10via_ready_action\x18\x10 \x01(\bR\x0eviaReadyAction\x12&\n" +
+	"\x0fuse_question_pt\x18\x11 \x01(\tR\ruseQuestionPt\x12.\n" +
+	"\x13master_may_override\x18\x12 \x01(\bR\x11masterMayOverride\":\n" +
 	"\rFeatureChoice\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\atext_pt\x18\x02 \x01(\tR\x06textPt\"\xae\x02\n" +

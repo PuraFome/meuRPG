@@ -8916,7 +8916,10 @@ type FeatureUse struct {
 	Applies *FeatureApplies `protobuf:"bytes,5,opt,name=applies,proto3" json:"applies,omitempty"`
 	// When the app asks the player to use the feature without being asked for it: a reaction window opens for the owner.
 	// Unset: the player uses the feature from the Usar sheet only. It needs the economy `reaction`.
-	Trigger       *FeatureTrigger `protobuf:"bytes,6,opt,name=trigger,proto3" json:"trigger,omitempty"`
+	Trigger *FeatureTrigger `protobuf:"bytes,6,opt,name=trigger,proto3" json:"trigger,omitempty"`
+	// The question over the options, as the player reads it ("Qual forma"), at most 80 characters. Empty: the app asks
+	// "Qual opção". It needs `choices`.
+	ChoiceLabel   string `protobuf:"bytes,7,opt,name=choice_label,json=choiceLabel,proto3" json:"choice_label,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8991,6 +8994,13 @@ func (x *FeatureUse) GetTrigger() *FeatureTrigger {
 		return x.Trigger
 	}
 	return nil
+}
+
+func (x *FeatureUse) GetChoiceLabel() string {
+	if x != nil {
+		return x.ChoiceLabel
+	}
+	return ""
 }
 
 // FeatureTrigger is what a reaction feature waits for. Refusals are at `use.trigger.kinds[i]` and `use.trigger.range_ft`.
@@ -9858,7 +9868,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\rFormulaHelper\x12\x12\n" +
 	"\x04call\x18\x01 \x01(\tR\x04call\x12\x18\n" +
 	"\areturns\x18\x02 \x01(\tR\areturns\x12\x17\n" +
-	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt\"\xde\x02\n" +
+	"\ahint_pt\x18\x03 \x01(\tR\x06hintPt\"\x87\x03\n" +
 	"\n" +
 	"FeatureUse\x12:\n" +
 	"\vlimit_scope\x18\x01 \x01(\x0e2\x19.meurpg.rules.v1.UseScopeR\n" +
@@ -9868,7 +9878,8 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\atargets\x18\x03 \x01(\v2\x1f.meurpg.rules.v1.FeatureTargetsR\atargets\x12>\n" +
 	"\achoices\x18\x04 \x03(\v2\x1e.meurpg.rules.v1.FeatureChoiceB\x04\x88\xb5\x18\bR\achoices\x129\n" +
 	"\aapplies\x18\x05 \x01(\v2\x1f.meurpg.rules.v1.FeatureAppliesR\aapplies\x129\n" +
-	"\atrigger\x18\x06 \x01(\v2\x1f.meurpg.rules.v1.FeatureTriggerR\atrigger\"l\n" +
+	"\atrigger\x18\x06 \x01(\v2\x1f.meurpg.rules.v1.FeatureTriggerR\atrigger\x12'\n" +
+	"\fchoice_label\x18\a \x01(\tB\x04\x90\xb5\x18PR\vchoiceLabel\"l\n" +
 	"\x0eFeatureTrigger\x12?\n" +
 	"\x05kinds\x18\x01 \x03(\x0e2#.meurpg.rules.v1.FeatureTriggerKindB\x04\x88\xb5\x18\x02R\x05kinds\x12\x19\n" +
 	"\brange_ft\x18\x02 \x01(\x05R\arangeFt\"\x84\x01\n" +
