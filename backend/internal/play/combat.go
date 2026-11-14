@@ -147,6 +147,10 @@ func (s *Service) closeEncounter(ctx context.Context, c *combatTx, cs []playdb.C
 	if err := c.q.DeleteHiddenRevealsOfEncounter(ctx, c.enc.ID); err != nil {
 		return fmt.Errorf("drop the hidden reveals: %w", err)
 	}
+	// A readied action that waits goes with the combat: nothing can fire it any more.
+	if err := dropReadied(ctx, c); err != nil {
+		return err
+	}
 	zs, err := listZones(ctx, c)
 	if err != nil {
 		return err

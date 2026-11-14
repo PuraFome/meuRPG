@@ -602,6 +602,8 @@ type WeaponEntry struct {
 	// weapons, 0 otherwise.
 	NormalRangeFt int
 	LongRangeFt   int
+	// Archived and Off mark a table weapon the master retired or switched off for the players; the SRD's never are.
+	Archived, Off bool
 }
 
 // SpellEntry is a spell in the Catalog.
@@ -1261,6 +1263,9 @@ const (
 	// IssueFeatPrerequisite: a feat the character took whose prerequisite it no longer
 	// meets; the feat does not apply until it does again (SRD 5.1, Feats).
 	IssueFeatPrerequisite = "feat_prerequisite"
+	// IssueOptionPrerequisite: an option the character picked whose prerequisite it no longer meets (a class
+	// level, a Pact Boon, a spell or other options); the pick stays on the sheet.
+	IssueOptionPrerequisite = "option_prerequisite"
 	// IssueArmorProficiency: armor or a shield without the proficiency.
 	IssueArmorProficiency = "armor_proficiency"
 	// IssueScoreAbove20: a score above 20 without a manual bonus.

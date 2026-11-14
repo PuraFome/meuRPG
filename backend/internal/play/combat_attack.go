@@ -205,6 +205,8 @@ type attackFlow struct {
 	// maneuver is the table die the request names (checked in prepare); maneuverSpent are the resources its roll spent and the power attack's resource.
 	maneuver      *link.Maneuver
 	maneuverSpent []string
+	// readied is the readied attack the catch window fires (ready_answer.go), nil for any other attack.
+	readied *readiedUse
 	// power is the power attack trade the request names (checked in prepare); its penalty is off the roll's bonus.
 	power *link.PowerAttack
 	// powerHidden says the master had hidden the trade's feature from the players (readPowerHidden).
@@ -398,6 +400,9 @@ func (f *attackFlow) pickAttack(ctx context.Context) error {
 
 // catchMissile adds the caught missile to the attacks: a throw back is made under its own key.
 func (f *attackFlow) catchMissile(ctx context.Context) error {
+	if readied, err := f.readiedAttackOf(ctx); readied || err != nil {
+		return err
+	}
 	thrown, w, err := f.s.deflectThrow(ctx, f.c, f.call.catchID, f.attacker, f.cs)
 	if err != nil {
 		return err
@@ -574,7 +579,7 @@ func (f *attackFlow) holdForWindow(ctx context.Context) (bool, error) {
 	if _, answering := heldReplyOf(ctx); answering {
 		return false, nil
 	}
-	ev, ok, err := f.s.holdAttackRoll(ctx, f.c, f.m, f.pinnedRequest(), f.cs, f.attacker, f.target, f.attackKey)
+	ev, ok, err := f.s.holdAttackRoll(ctx, f.c, f.m, f.pinnedRequest(), f.cs, f.attacker, f.target, f.attackKey, f.call.catchID != "" && f.readied == nil)
 	if err != nil || !ok {
 		return false, err
 	}
@@ -805,6 +810,9 @@ func (f *attackFlow) countAttack(ctx context.Context) error {
 func (f *attackFlow) closeThrow(ctx context.Context) error {
 	if f.call.catchID == "" {
 		return nil
+	}
+	if f.readied != nil { // a readied attack: the window, the row and the line of its use
+		return f.readied.spend(ctx, f.c, f.attacker, &f.out.made)
 	}
 	if _, err := f.s.spendResourceOf(ctx, f.c, f.attacker, resKi); err != nil {
 		return err

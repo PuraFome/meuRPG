@@ -238,7 +238,7 @@ func TestSrdImportTraits(t *testing.T) {
 
 // TestSrdImportEquipment: armor, weapons with and without each
 // part (the reach property makes a melee weapon's range 10, not a ranged one's),
-// tools, and the rest left out.
+// tools, ammunition, and the rest left out.
 func TestSrdImportEquipment(t *testing.T) {
 	t.Parallel()
 	rows := `[
@@ -256,7 +256,8 @@ func TestSrdImportEquipment(t *testing.T) {
 	{"index": "dagger", "name": "Dagger", "equipment_category": {"index": "weapon"}, "weapon_category": "Simple", "weapon_range": "Melee",
 		"damage": {"damage_dice": "1d4", "damage_type": {"index": "piercing"}}, "range": {"normal": 5}, "throw_range": {"normal": 20, "long": 60}, "properties": [{"index": "thrown"}]},
 	{"index": "lute", "name": "Lute", "equipment_category": {"index": "tools"}},
-	{"index": "rope", "name": "Rope", "equipment_category": {"index": "adventuring-gear"}}]`
+	{"index": "arrow", "name": "Arrow", "equipment_category": {"index": "adventuring-gear"}, "equipment_categories": [{"index": "adventuring-gear"}, {"index": "ammunition"}]},
+	{"index": "rope", "name": "Rope", "equipment_category": {"index": "adventuring-gear"}, "equipment_categories": [{"index": "adventuring-gear"}]}]`
 	out, err := convertEquipment(srdImportInputs(map[string]string{"5e-SRD-Equipment.json": rows}))
 	if err != nil {
 		t.Fatal(err)
