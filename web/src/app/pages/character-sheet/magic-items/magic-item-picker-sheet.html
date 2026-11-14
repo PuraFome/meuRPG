@@ -1,0 +1,89 @@
+<app-sheet-frame
+  title="Adicionar item mágico"
+  titleId="sheet-t"
+  subtitle="Do jogo: anéis, mantos, cajados e outros. Armas e armaduras +1, +2 e +3 vêm pelo “⋮” da peça."
+  [phone]="inSheet"
+  (closed)="cancel()"
+>
+  @if (error()) {
+    <p class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <span><strong>Não foi possível adicionar o item.</strong> {{ error() }}</span>
+    </p>
+  }
+  <label class="picker__label" for="magic-item-search">Procurar</label>
+  <span class="picker__search">
+    <mat-icon aria-hidden="true">search</mat-icon>
+    <input
+      id="magic-item-search"
+      type="search"
+      class="picker__input"
+      autocomplete="off"
+      [value]="query()"
+      [disabled]="busy()"
+      (input)="typed($any($event.target).value)"
+    />
+  </span>
+  <p class="mr-visually-hidden" role="status">{{ loading() ? 'Procurando.' : items().length + ' itens.' }}</p>
+  @if (loadError()) {
+    <p class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon><span>Não deu para ler os itens.</span>
+      <button matButton="outlined" type="button" (click)="retry()">Tentar de novo</button>
+    </p>
+  } @else if (!loading() && items().length === 0) {
+    <p class="mr-muted">
+      Nenhum item mágico com “{{ query() }}”. Armas e armaduras +1, +2 e +3 vêm pelo “⋮” da peça.
+    </p>
+  } @else {
+    <div class="picker__list" role="radiogroup" aria-label="Itens mágicos">
+      @for (i of items(); track i.key) {
+        <label class="card" [class.card--on]="chosen() === i.key">
+          <input
+            type="radio"
+            name="magic-item"
+            class="card__radio"
+            [value]="i.key"
+            [checked]="chosen() === i.key"
+            [disabled]="busy()"
+            (change)="choose(i.key)"
+          />
+          <span class="card__dot" aria-hidden="true"></span>
+          <span class="card__name">{{ i.namePt }}</span>
+          <span class="card__line mr-muted">
+            {{ words(i) }}
+            @if (i.variants.length > 0) {
+              · {{ i.variants.length }} variantes
+            }
+          </span>
+          @if (asks(i)) {
+            <span class="card__tag"><mat-icon aria-hidden="true">link</mat-icon>{{ asksLine(i) }}</span>
+          }
+        </label>
+      }
+    </div>
+  }
+  @if (chosenItem(); as item) {
+    @if (item.variants.length > 0) {
+      <label class="picker__label" for="magic-item-variant">Variante</label>
+      <select
+        id="magic-item-variant"
+        class="picker__select"
+        [disabled]="busy()"
+        (change)="variant.set($any($event.target).value)"
+      >
+        <option value="" [selected]="variant() === ''">Escolha o tipo</option>
+        @for (v of item.variants; track v.key) {
+          <option [value]="v.key" [selected]="variant() === v.key">{{ v.namePt }}</option>
+        }
+      </select>
+    }
+  }
+  <div foot class="foot">
+    <button matButton="filled" type="button" [disabled]="busy() || key() === null" disabledInteractive (click)="add()">
+      <mat-icon aria-hidden="true">add</mat-icon>Adicionar item
+    </button>
+    @if (!inSheet) {
+      <button matButton="outlined" type="button" [disabled]="busy()" (click)="cancel()">Cancelar</button>
+    }
+  </div>
+</app-sheet-frame>

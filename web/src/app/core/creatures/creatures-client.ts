@@ -89,12 +89,13 @@ export class CreaturesClient {
     return this.characters.listWildShapeForms({ campaignId, characterId });
   }
 
-  /** "Virar Lobo": the action and one use (`AssumeWildShape`). The answer is the vitals with the form and, in a combat, the combat. */
+  /** "Virar Lobo": the action and one use (`AssumeWildShape`); `stay` is "Permanecer na forma": the same beast, one use, no action, the time starts over. The answer is the vitals with the form and, in a combat, the combat. */
   async assumeWildShape(
     campaignId: string,
     characterId: string,
     beastKey: string,
     idempotencyKey: string,
+    stay = false,
   ): Promise<{
     readonly vitals: CharacterVitals | undefined;
     readonly encounter: Encounter | undefined;
@@ -104,6 +105,7 @@ export class CreaturesClient {
       characterId,
       beastKey,
       idempotencyKey,
+      stay,
     });
     return { vitals: res.vitals, encounter: res.encounter };
   }
@@ -237,6 +239,15 @@ export class CreaturesClient {
   async vitalsOf(campaignId: string, characterId: string): Promise<CharacterVitals | null> {
     const res = await this.play.getLiveSession({ campaignId });
     return res.vitals.find((v) => v.characterId === characterId) ?? null;
+  }
+
+  /** The druid's form with no session open (`GetCharacterWildShape`): the form alone, as the vitals carry it; `null` when it is in its own shape. */
+  async wildShapeOf(
+    campaignId: string,
+    characterId: string,
+  ): Promise<Pick<CharacterVitals, 'resources' | 'wildShape'> | null> {
+    const res = await this.play.getCharacterWildShape({ campaignId, characterId });
+    return res.wildShape ? { resources: [], wildShape: res.wildShape } : null;
   }
 
   /** Casts Convocar Familiar, Animar Mortos or Conjurar Animais outside a combat. */

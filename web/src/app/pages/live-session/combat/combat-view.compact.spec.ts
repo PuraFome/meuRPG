@@ -98,12 +98,13 @@ async function mount(
 }
 
 describe('CombatView: the player’s own turn on a phone', () => {
-  it('has the map first and the movement row under it, with the one "Mover"', async () => {
+  it('has the map first and the movement row under it, and the one "Mover" in the economy row of "Ações"', async () => {
     const { el, named, state } = await mount([PHONE_QUERY]);
     const card = el.querySelector('app-combat-map-card')!;
     expect(card.querySelector('app-move-row')).not.toBeNull();
     expect(named('Mover')).toHaveLength(1);
-    expect(card.contains(named('Mover')[0])).toBe(true);
+    expect(card.contains(named('Mover')[0])).toBe(false);
+    expect(named('Mover')[0].closest('app-action-groups .econ')).not.toBeNull();
     expect(card.querySelector('[aria-label="Ver mapa"]')).not.toBeNull();
     named('Mover')[0].click();
     expect(state.moving()).toBe(true);
@@ -113,12 +114,21 @@ describe('CombatView: the player’s own turn on a phone', () => {
     const { el } = await mount([PHONE_QUERY]);
     const card = el.querySelector('app-turn-panel')!;
     expect(card.querySelector('h2')?.textContent).toBe('Sua vez, Toren');
-    expect(card.textContent).toContain('depois de você: Goblin 2');
+    expect(card.textContent).toContain('em seguida: Goblin 2');
     expect(card.textContent).toContain('PV 19 de 28');
     expect(card.textContent).toContain('CA 17');
+    // The economy is the first row of "Ações" (584-01), never the card's.
+    expect(card.querySelector('.eco')).toBeNull();
     expect(
-      [...card.querySelectorAll('.eco li')].map((li) => li.getAttribute('aria-label')),
-    ).toEqual(['Ação disponível', 'Ação bônus disponível', 'Reação disponível']);
+      [...el.querySelectorAll('app-action-groups .econ li')].map((li) =>
+        li.getAttribute('aria-label'),
+      ),
+    ).toEqual([
+      'Ação disponível',
+      'Ação bônus disponível',
+      'Reação disponível',
+      expect.stringContaining('Movimento'),
+    ]);
     expect(
       [...el.querySelectorAll('app-action-groups [role="tab"]')].map((t) =>
         t.getAttribute('aria-label'),
@@ -131,10 +141,11 @@ describe('CombatView: the player’s own turn on a phone', () => {
     ]);
   });
 
-  it('has "Ainda tem" and the one "Encerrar turno" in the sticky bar', async () => {
+  it('has the one filled "Encerrar turno" alone in the sticky bar', async () => {
     const { el } = await mount([PHONE_QUERY]);
     const bar = el.querySelector('app-turn-bar')!;
-    expect(bar.textContent).toContain('Ainda tem');
+    expect(bar.textContent).not.toContain('Ainda tem');
+    expect(bar.querySelector('button.end--filled')).not.toBeNull();
     // The card's own button (`.turn__end`) is `display: none` under 1024px, and so is this bar from 1024px: one on every screen.
     expect(bar.querySelectorAll('button.end')).toHaveLength(1);
     expect(el.querySelector('app-turn-panel .banner')).toBeNull();
@@ -142,15 +153,15 @@ describe('CombatView: the player’s own turn on a phone', () => {
 });
 
 describe('CombatView: the player’s own turn at 1280', () => {
-  it('has the turn bar with the shapes, the one "Mover" and the one "Encerrar turno"', async () => {
+  it('has the band with the one filled "Encerrar turno", and "Mover" in the economy row of the rail', async () => {
     const { el, named, state } = await mount(LAPTOP);
     const bar = el.querySelector('app-turn-panel .banner')!;
     expect(named('Mover')).toHaveLength(1);
-    expect(bar.contains(named('Mover')[0])).toBe(true);
+    expect(bar.contains(named('Mover')[0])).toBe(false);
+    expect(named('Mover')[0].closest('app-action-groups .econ')).not.toBeNull();
     expect(bar.querySelectorAll('button.end')).toHaveLength(1);
-    expect([...bar.querySelectorAll('li')].map((li) => li.getAttribute('aria-label'))).toHaveLength(
-      4,
-    );
+    expect(bar.querySelector('button.end--filled')).not.toBeNull();
+    expect(bar.querySelectorAll('li')).toHaveLength(0);
     named('Mover')[0].click();
     expect(state.moving()).toBe(true);
   });

@@ -77,11 +77,10 @@ named_packages() { for g in $named_groups; do case_packages "$g" | tr ' ' '\n'; 
 # A split package's tests (Test*, Fuzz*, Example*), sorted, one per line, read
 # from the top-level `func` lines of its _test.go files (TestMain is not a test).
 split_tests() {
-  local prefix=$1 listed="SPLIT_TESTS_FILE_$1"
-  # --check reads once and passes the list on through a file named by
-  # SPLIT_TESTS_FILE_<prefix>. An environment string is capped at 128 KiB on
-  # Linux, and every program started after one that big fails to start.
-  if [ -n "${!listed:-}" ] && [ -s "${!listed}" ]; then cat "${!listed}"; return; fi
+  local prefix=$1 listed="SPLIT_TESTS_$1"
+  # --check reads once and passes the list on through the shell variable
+  # SPLIT_TESTS_<prefix>.
+  if [ -n "${!listed:-}" ]; then echo "${!listed}"; return; fi
   grep -hE '^func (Test|Fuzz|Example)([A-Z0-9_][A-Za-z0-9_]*)?\(' "internal/$(split_dir "$prefix")"/*_test.go \
     | sed -E 's/^func ([A-Za-z0-9_]+)\(.*/\1/' | grep -vx TestMain | sort -u
 }
@@ -165,9 +164,6 @@ if [ "${1:-}" = "--check" ]; then
     exit 1
   fi
   summary=""
-  list_files=""
-  # shellcheck disable=SC2064
-  trap "rm -f \$list_files" EXIT
   for prefix in $split_prefixes; do
     parts_count=$(split_parts "$prefix")
     # Every part runs the split package, and nothing else.
@@ -179,10 +175,10 @@ if [ "${1:-}" = "--check" ]; then
     done
     # The parts together are exactly the package's tests, each once.
     tests=$(split_tests "$prefix")
-    list_file=$(mktemp)
-    list_files="$list_files $list_file"
-    printf '%s\n' "$tests" >"$list_file"
-    export "SPLIT_TESTS_FILE_$prefix=$list_file"
+    # A shell variable, not an exported one: Linux refuses to start any program
+    # whose environment holds a string over 128 KiB (MAX_ARG_STRLEN), and a
+    # split package's list can be longer than that.
+    printf -v "SPLIT_TESTS_$prefix" '%s' "$tests"
     parts=$(for i in $(seq 1 "$parts_count"); do echo "$tests" | part_of "$i" "$parts_count"; done | sort)
     if [ -z "$tests" ] || [ "$parts" != "$tests" ]; then
       echo "::error::the $prefix parts are not exactly the $prefix package's tests" >&2

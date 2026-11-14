@@ -48,3 +48,12 @@ export function tieShortWords(text: string): string {
 export function upFirst(text: string): string {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
+
+/** A span of game time in hours and minutes: "2 h", "1 h 30 min", "45 min". */
+export function hoursText(seconds: number): string {
+  const secondsPerHour = 3600;
+  const secondsPerMinute = 60;
+  const h = Math.floor(seconds / secondsPerHour);
+  const m = Math.floor((seconds % secondsPerHour) / secondsPerMinute);
+  return [h > 0 ? `${h} h` : '', m > 0 || h === 0 ? `${m} min` : ''].filter(Boolean).join(' ');
+}

@@ -7,6 +7,7 @@ import { combatantInitial } from '../../../../core/combat/combat-view';
 import { moveLine } from '../../../../core/combat/move-line';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { EconomyShapes, economyShapes } from '../../../../shared/economy-shapes/economy-shapes';
+import { WildBand } from '../../../../shared/wild-shape/wild-band';
 import type { OwnHitPoints } from '../turn-panel/own-numbers';
 
 /**
@@ -17,7 +18,7 @@ import type { OwnHitPoints } from '../turn-panel/own-numbers';
  */
 @Component({
   selector: 'app-act-as-card',
-  imports: [CombatantToken, EconomyShapes, MatButtonModule, MatIconModule],
+  imports: [CombatantToken, EconomyShapes, MatButtonModule, MatIconModule, WildBand],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="card" [attr.aria-label]="title()" data-testid="act-as-card">
@@ -52,6 +53,10 @@ import type { OwnHitPoints } from '../turn-panel/own-numbers';
           </dd>
         </div>
       </dl>
+      @if (who().wildShapeBeastKey) {
+        <!-- The form and the time it has left, which the master reads (584-04). -->
+        <app-wild-band class="card__form" [beast]="who().wildShapeBeastNamePt" [detail]="time()" />
+      }
       <app-economy-shapes [shapes]="shapes()" />
       <p class="card__wait">
         Esperando {{ who().label }}. Se o jogador não estiver, jogue este turno por ele.
@@ -72,6 +77,8 @@ export class ActAsCard {
   readonly classLine = input('');
   /** The character's hit points from its vitals (the master reads the numbers). */
   readonly hitPoints = input<OwnHitPoints | null>(null);
+  /** The time the character's form has left, as the server writes it ("52 min restantes"). */
+  readonly time = input('');
   readonly busy = input(false);
   /** "Agir por …": the master takes the turn for the character. */
   readonly act = output<void>();

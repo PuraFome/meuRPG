@@ -80,6 +80,9 @@ type vitalsMax struct {
 	beast       string
 	beastNamePT string
 	beastMax    int
+	beastAC     int
+	// formSeconds is how long a form of this character lasts; 0 for a character with no druid level.
+	formSeconds int
 }
 
 // recoveryLevel is the level that sets the recovery's allowance: the levels of its class,
@@ -112,7 +115,7 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 	d := rules.Derive(buildWithStates(full, stateKeysOf(active)), content)
 	m := vitalsMax{hitPoints: max(d.HitPointsMax, 0), hitDice: d.HitDice, resources: d.Resources, songSides: d.SongOfRestSides, states: d.States, hooks: d.Hooks, recoveries: d.TableRecoveries, hookNames: hookNamesOf(content, d.Hooks)}
 	if b, ok := content.MonsterDerived(conv.OrZero(beast)); ok && beast != nil {
-		m.beast, m.beastNamePT, m.beastMax = *beast, content.NamePT(*beast), max(b.HitPointsMax, 1)
+		m.beast, m.beastNamePT, m.beastMax, m.beastAC = *beast, content.NamePT(*beast), max(b.HitPointsMax, 1), max(b.ArmorClass, 0)
 	}
 	for i, n := range d.SpellSlots {
 		if i < maxSpellLevel {
@@ -135,6 +138,7 @@ func maxima(content *rules.Content, characterID string, doc []byte, beast *strin
 		}
 	}
 	m.hitDieMin = d.HitDieMinimum
+	m.formSeconds = rules.WildShapeSeconds(d)
 	return m, nil
 }
 
@@ -238,7 +242,10 @@ func vitalsToProto(row vitalsRow, m vitalsMax) *playv1.CharacterVitals {
 	if row.WildShapeBeast != nil && m.beast == *row.WildShapeBeast && row.WildShapeHp != nil {
 		// The beast's pool is cut to the stat block's maximum, as the character's is.
 		v.WildShape = &playv1.WildShapeState{
-			BeastKey: m.beast, BeastNamePt: m.beastNamePT, HitPointsCurrent: min(max(*row.WildShapeHp, 1), i32(m.beastMax)), HitPointsMax: i32(m.beastMax),
+			BeastKey: m.beast, BeastNamePt: m.beastNamePT, HitPointsCurrent: min(max(*row.WildShapeHp, 1), i32(m.beastMax)), HitPointsMax: i32(m.beastMax), ArmorClass: i32(m.beastAC),
+		}
+		if m.formSeconds > 0 {
+			v.WildShape.SecondsTotal = new(i32(m.formSeconds))
 		}
 	}
 	v.ActiveStates = activeStatesProto(parseStoredStates(row.ActiveStates), m.states)
