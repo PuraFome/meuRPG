@@ -57,6 +57,16 @@ describe('toCharacterSheetVm on a bare and on a dense character', () => {
         nextLevelXp: 6500,
         breathWeapon: { textPt: 'Sopro de fogo' },
         pactMagic: { slotLevel: 2, count: 2 },
+        itemModifiers: [
+          {
+            target: 'ac',
+            value: 1,
+            sourceKey: 'equipment:shield',
+            sourceNamePt: 'Escudo',
+            counts: false,
+            reasonPt: 'Parado.',
+          },
+        ],
         proficiencies: { armor: ['Leve'], weapons: ['Simples'], tools: ['Ferreiro'] },
         spells: [
           {
@@ -113,6 +123,16 @@ describe('toCharacterSheetVm on a bare and on a dense character', () => {
     expect(sheet.pactSlots).toEqual({ level: 2, count: 2 });
     expect(sheet.breathWeapon).toBe('Sopro de fogo');
     expect(sheet.hasWildShape).toBe(true);
+    expect(sheet.itemModifiers).toEqual([
+      {
+        target: 'ac',
+        value: 1,
+        sourceKey: 'equipment:shield',
+        sourceNamePt: 'Escudo',
+        counts: false,
+        reasonPt: 'Parado.',
+      },
+    ]);
     expect(sheet.spells).toEqual([
       {
         key: 'spell:light',
