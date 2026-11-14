@@ -80,6 +80,7 @@ The helper answers in this order:
    The sources the roller may not read are marked where the roll's sources are made (a path's `Hide`, or `combat.Source.Hidden` for the notes of a contest start, a contest answer and a Hide, from the same rule the other checks use), and `spendFavor` is the one place that leaves them out of the judgement.
    A hidden advantage, or a hidden advantage and disadvantage that cancel, never cause the refusal: the spend goes, the roll is made with every source, and the hidden ones read "Outra fonte".
    So a refusal never tells a player that a source they cannot see exists, and they cannot probe for it.
+   The refusal of a `roll_mode` worse than the one the spend gives (`favorAgainst`, `INVALID_ARGUMENT`) is judged the same way, on `favorUse.Seen` (the mode of the sources the roller reads alone) and not on the mode the roll is made with, so a hidden disadvantage cannot be told apart by it.
    `NOTHING_TO_ROLL` leaks nothing: it reads what the call is (no d20 at all), not any source.
 9. The helper deletes the character's row, and no row back is `HAS_NONE`.
 

@@ -53,6 +53,9 @@ type favorAsk struct {
 type favorUse struct {
 	// Mode is the mode to roll with.
 	Mode combat.RollMode
+	// Seen is the mode the roller reads the spend giving, from the sources they may read alone: favorAgainst judges the mode they ask on it,
+	// so that a refusal never tells them of a source they cannot read (RN-10).
+	Seen combat.RollMode
 	// Used says the Inspiration counts on this roll: it was spent now, or by the held roll a retry or an answer belongs to.
 	Used bool
 	// Spent says it was spent in this call, so a hold the roll makes must remember it (favor_spent).
@@ -179,14 +182,15 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	}
 	// The judgement is the roller's: what a source they may not read does to the roll is no reason to refuse (the spend goes, as at a
 	// table where the player does not know), and the mode the roll is made with counts every source.
-	if seen := visibleSources(a.Sources, a.Hide); favorMode(seen) == combat.Resolve(seen) {
+	seen := visibleSources(a.Sources, a.Hide)
+	if favorMode(seen) == combat.Resolve(seen) {
 		if a.Replay {
 			return favorLost(a, favorLostNothing), nil
 		}
 		return favorUse{}, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_ADDS_NOTHING, "the inspiration would not change the roll")
 	}
 	if a.Check {
-		return checkFavor(ctx, q, a)
+		return checkFavor(ctx, q, a, seen)
 	}
 	_, err := q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: a.CharacterID, CampaignID: a.CampaignID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -198,7 +202,7 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	if err != nil {
 		return favorUse{}, fmt.Errorf("spend the character's inspiration: %w", err)
 	}
-	return favorUse{Mode: favorMode(a.Sources), Used: true, Spent: true}, nil
+	return favorUse{Mode: favorMode(a.Sources), Seen: favorMode(seen), Used: true, Spent: true}, nil
 }
 
 // visibleSources are the sources the roller may read: hide says which they may not.
@@ -222,7 +226,7 @@ func favorRefusal(a favorAsk) error {
 }
 
 // checkFavor is the validation of a spend that is made later: the character has the Inspiration now, and the roll takes it.
-func checkFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, error) {
+func checkFavor(ctx context.Context, q *playdb.Queries, a favorAsk, seen []combat.Source) (favorUse, error) {
 	has, err := q.HasCharacterFavor(ctx, playdb.HasCharacterFavorParams{CharacterID: a.CharacterID, CampaignID: a.CampaignID})
 	if err != nil {
 		return favorUse{}, fmt.Errorf("read the character's inspiration: %w", err)
@@ -230,15 +234,16 @@ func checkFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	if !has {
 		return favorUse{}, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_HAS_NONE, "the character has no inspiration")
 	}
-	return favorUse{Mode: favorMode(a.Sources), Checked: true}, nil
+	return favorUse{Mode: favorMode(a.Sources), Seen: favorMode(seen), Checked: true}, nil
 }
 
 // favorAgainst refuses a request that spends the Inspiration and asks for a mode worse than the one it gives (the roll
-// would waste it): the mode the caller asked is not a mode the Inspiration allows. A request that answers a master's
+// would waste it): the mode the caller asked is not a mode the Inspiration allows. It is judged on the mode the roller reads (fv.Seen,
+// the sources they may read alone), never on the one the roll is made with, so a hidden source cannot change the answer. A request that answers a master's
 // decision (requestID) is the master's to settle.
 func favorAgainst(fv favorUse, want playv1.RollMode, requestID string) error {
 	asked, ok := modeFromProto(want)
-	if (!fv.Spent && !fv.Checked) || !ok || requestID != "" || !fv.Mode.Better(asked) {
+	if (!fv.Spent && !fv.Checked) || !ok || requestID != "" || !fv.Seen.Better(asked) {
 		return nil
 	}
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("spend_favor gives a better mode than the roll_mode asked: leave the Inspiration for another roll"))

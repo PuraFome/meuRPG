@@ -79,3 +79,53 @@ func TestFavorAddsNothingIsJudgedOnWhatTheRollerReadsOnACombatCheck(t *testing.T
 		})
 	}
 }
+
+// hideConditionOnToren gives Toren a condition through an effect only the master reads (player_visible off), as the master's hiding of it
+// is made: the combatant carries it (as the effect set it) and the effect's state names it, which hiddenConditionsOf reads.
+func (e *checkEnv) hideConditionOnToren(t *testing.T, condition string) {
+	t.Helper()
+	e.execSQL(t, `INSERT INTO combatant_states (encounter_id, combatant_id, kind, started_round, created_at, group_id, source_key, source_kind, duration_kind, condition_keys, modifiers, player_visible)
+		SELECT encounter_id, id, 'effect', 1, now(), gen_random_uuid(), 'spell:hidden', 'master', 'until_dismissed', ARRAY[$3]::text[], '[]'::jsonb, false FROM combatants WHERE encounter_id = $1 AND label = $2`,
+		e.fight.e.GetId(), "Toren", condition)
+	e.execSQL(t, `UPDATE combatants SET conditions = ARRAY[$3]::text[], effect_conditions = ARRAY[$3]::text[] WHERE encounter_id = $1 AND label = $2`,
+		e.fight.e.GetId(), "Toren", condition)
+}
+
+// A condition the master hides (condition:poisoned, Envenenado: a disadvantage on ability checks) is a source the roller may not read, as a hidden effect is: the
+// contest and the Hide answer the spend as they do with no hidden source, and the spend goes (the roll is straight, one d20).
+func TestFavorAddsNothingIsJudgedOnAHiddenConditionOnACombatCheck(t *testing.T) {
+	t.Parallel()
+	for _, p := range []struct {
+		name string
+		mk   func(*testing.T) *checkEnv
+	}{{"a contest start", newContestStartEnv}, {"a contest answer", newContestAnswerEnv}, {"a hide", newHideEnv}} {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			run := func(hidden bool) (checkOutcome, int) {
+				e := p.mk(t)
+				e.give(t, e.who)
+				if hidden {
+					e.hideConditionOnToren(t, "condition:poisoned")
+				}
+				e.h.roller.queue(4, 17)
+				seq := e.seq(t)
+				got, err := e.send(t, newKey(), true)
+				out := checkOutcome{spent: !e.favorHolds(t), hasFavor: got.hasFavor(), steps: e.seq(t) - seq}
+				if err != nil {
+					out.err = err.Error()
+				} else {
+					out.stored = e.stored(t)
+				}
+				return out, len(got.faces)
+			}
+			base, baseFaces := run(false)
+			hidden, faces := run(true)
+			if base.err != "" || !base.spent || !base.stored || baseFaces != 2 {
+				t.Fatalf("the check with no hidden source = %+v with %d dice, want the spend to go and the pair of dice", base, baseFaces)
+			}
+			if hidden != base || faces != 1 {
+				t.Errorf("the check with a hidden condition = %+v with %d dice, want the answer of the check with none (%+v) and 1 d20", hidden, faces, base)
+			}
+		})
+	}
+}
