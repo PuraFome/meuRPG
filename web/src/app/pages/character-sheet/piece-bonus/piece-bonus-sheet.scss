@@ -4,22 +4,9 @@
 
 .bonus__intro {
   margin: 0 0 var(--mr-space-3);
-  color: var(--mr-muted, inherit);
+  color: var(--mr-ink-muted);
 }
 
 .bonus__reason {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--mr-space-2);
   margin: var(--mr-space-2) 0 0;
-  font-size: var(--mr-font-14);
-  line-height: 1.4;
-  color: var(--mr-muted, inherit);
-
-  .mat-icon {
-    flex: none;
-    width: var(--mr-font-18);
-    height: var(--mr-font-18);
-    font-size: var(--mr-font-18);
-  }
 }

@@ -67,9 +67,17 @@
 }
 
 .bg:disabled {
-  opacity: 0.6;
+  .bg__row {
+    background: var(--mr-ground);
+    color: var(--mr-ink-muted);
+  }
 
   .bg__opt {
     cursor: default;
+  }
+
+  .bg__opt--on {
+    background: var(--mr-ground);
+    color: var(--mr-ink-muted);
   }
 }

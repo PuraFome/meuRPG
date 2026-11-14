@@ -22,8 +22,8 @@
 
 // Saving: a plain muted button, never the dashed "cannot" one.
 .pair__btn--busy {
-  --mat-button-filled-disabled-container-color: var(--mr-surface-2, rgba(128, 128, 128, 0.15));
-  --mat-button-filled-disabled-label-text-color: var(--mr-muted, inherit);
+  --mat-button-filled-disabled-container-color: var(--mr-ground);
+  --mat-button-filled-disabled-label-text-color: var(--mr-ink-muted);
   gap: var(--mr-space-2);
 }
 
@@ -34,7 +34,7 @@
   gap: var(--mr-space-2);
   margin: 0;
   font-size: var(--mr-font-14);
-  color: var(--mr-muted, inherit);
+  color: var(--mr-ink-muted);
 
   .mat-icon {
     flex: none;

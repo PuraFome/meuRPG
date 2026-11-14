@@ -7,6 +7,7 @@ import type { MarksVm } from '../../../core/characters/gear';
 import { BonusGroup } from '../../../shared/bonus-group/bonus-group';
 import { saveFlow } from '../../../shared/sheet/save-flow';
 import { SheetSaveFoot } from '../../../shared/sheet/sheet-save-foot/sheet-save-foot';
+import { SheetNote } from '../../../shared/sheet/sheet-note/sheet-note';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 
@@ -17,7 +18,7 @@ export interface WeaponChange {
   readonly bonus: number;
 }
 
-/** What the sheet of a weapon's marks and bonus needs. `save` answers the error in words, or an empty text when they are saved. */
+/** What the sheet of a weapon's marks and bonus needs. */
 export interface WeaponMarksData {
   readonly weaponName: string;
   readonly characterName: string;
@@ -30,6 +31,9 @@ export interface WeaponMarksData {
   readonly copies: number;
   /** Why the bonus does not count now; empty when it does. */
   readonly reason?: string;
+  /** Saves the marks and the bonus.
+   * It answers the refusal in words.
+   * It answers an empty text when they are saved. */
   readonly save: (change: WeaponChange) => Promise<string>;
 }
 
@@ -80,7 +84,7 @@ export function openWeaponMarks(
 @Component({
   selector: 'app-weapon-marks-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, BonusGroup, SheetFrame, SheetSaveFoot],
+  imports: [MatIconModule, BonusGroup, SheetFrame, SheetNote, SheetSaveFoot],
   templateUrl: './weapon-marks-sheet.html',
   styleUrl: './weapon-marks-sheet.scss',
 })
@@ -96,6 +100,12 @@ export class WeaponMarksSheet {
   );
   protected readonly busy = this.flow.busy;
   protected readonly error = this.flow.error;
+
+  protected lock(): string {
+    return this.data.isMaster
+      ? `Muda a ficha de ${this.data.characterName}: depois da trava, só você muda marcas e bônus. ${this.data.characterName} os lê na ficha e nos ataques.`
+      : 'O dono só muda enquanto a ficha não trava. Depois, só o mestre.';
+  }
 
   protected set(name: MarkName, on: boolean): void {
     this.draft.update((d) => ({ ...d, [name]: on }));

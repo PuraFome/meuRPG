@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { WeaponMarksSheet, type WeaponChange, type WeaponMarksData } from './weapon-marks-sheet';
@@ -41,12 +42,20 @@ function setup(over: Partial<WeaponMarksData> = {}) {
     Array.from(el.querySelectorAll('.bg__opt'))
       .find((l) => l.textContent!.includes(word))!
       .querySelector('input')!;
+  const choose = (word: string) => {
+    const input = radio(word);
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+  };
+  const closeFrame = () =>
+    fixture.debugElement.query(By.css('app-sheet-frame')).triggerEventHandler('closed');
   const text = (sel: string) => el.querySelector(sel)!.textContent!.replace(/\s+/g, ' ').trim();
   const press = (label: string) =>
     Array.from(el.querySelectorAll('button'))
       .find((b) => b.textContent!.includes(label))!
       .click();
-  return { fixture, el, box, radio, text, press, saves, closed };
+  return { fixture, el, box, radio, text, press, choose, closeFrame, saves, closed };
 }
 
 describe('WeaponMarksSheet ("Marcas · <arma>")', () => {
@@ -76,7 +85,7 @@ describe('WeaponMarksSheet ("Marcas · <arma>")', () => {
     TestBed.resetTestingModule();
     const { text, el } = setup({ copies: 2 });
     expect(text('.marks__copies')).toBe(
-      'infoA ficha tem 2 cópias: marcas e bônus valem para as duas.',
+      'info A ficha tem 2 cópias: marcas e bônus valem para as duas.',
     );
     expect(el.querySelector('.marks__copies')!.nextElementSibling!.className).toBe('marks__intro');
   });
@@ -89,12 +98,14 @@ describe('WeaponMarksSheet ("Marcas · <arma>")', () => {
   });
 
   it('saves marks and bonus together with the one "Salvar"', async () => {
-    const { box, radio, press, saves, closed, fixture, el } = setup();
+    const { box, radio, choose, press, saves, closed, fixture, el } = setup();
     expect(box('Prateada').checked).toBe(true);
     expect(radio('+1').checked).toBe(true);
     box('Mágica').checked = true;
     box('Mágica').dispatchEvent(new Event('change'));
-    radio('+3').dispatchEvent(new Event('change'));
+    choose('+3');
+    expect(radio('+3').checked).toBe(true);
+    expect(radio('+1').checked).toBe(false);
     expect(el.textContent).not.toContain('Salvar marcas');
     press('Salvar');
     await fixture.whenStable();
@@ -105,8 +116,8 @@ describe('WeaponMarksSheet ("Marcas · <arma>")', () => {
   });
 
   it('saves 0 for "Nenhum"', async () => {
-    const { radio, press, saves, fixture } = setup();
-    radio('Nenhum').dispatchEvent(new Event('change'));
+    const { choose, press, saves, fixture } = setup();
+    choose('Nenhum');
     press('Salvar');
     await fixture.whenStable();
     expect(saves[0].bonus).toBe(0);
@@ -114,7 +125,7 @@ describe('WeaponMarksSheet ("Marcas · <arma>")', () => {
 
   it('is muted, inert and cannot be dismissed while saving', () => {
     let release!: (why: string) => void;
-    const { fixture, el, box, press, closed } = setup({
+    const { fixture, el, box, press, closeFrame, closed } = setup({
       save: () => new Promise<string>((r) => (release = r)),
     });
     press('Salvar');
@@ -123,18 +134,33 @@ describe('WeaponMarksSheet ("Marcas · <arma>")', () => {
     expect(box('Prateada').disabled).toBe(true);
     expect(el.querySelector('.pair__btn')!.textContent).toContain('Salvando…');
     expect(el.querySelector('mat-progress-spinner')).not.toBeNull();
-    press('Salvando…');
+    closeFrame();
+    fixture.componentInstance['cancel']();
     expect(closed).toEqual([]);
     release('x');
   });
 
+  it('saves once when "Salvar" is pressed twice', async () => {
+    const calls: WeaponChange[] = [];
+    const { press, fixture } = setup({
+      save: (c) => {
+        calls.push(c);
+        return new Promise<string>(() => undefined);
+      },
+    });
+    press('Salvar');
+    press('Salvar');
+    await fixture.whenStable();
+    expect(calls).toHaveLength(1);
+  });
+
   it('says the refusal and stays open with the choices as they were, "Salvar" back', async () => {
-    const { el, box, radio, press, closed, fixture } = setup({
+    const { el, box, radio, choose, press, closed, fixture } = setup({
       save: () => Promise.resolve('A ficha mudou enquanto você editava.'),
     });
     box('Adamantina').checked = true;
     box('Adamantina').dispatchEvent(new Event('change'));
-    radio('+2').dispatchEvent(new Event('change'));
+    choose('+2');
     press('Salvar');
     await fixture.whenStable();
     fixture.detectChanges();

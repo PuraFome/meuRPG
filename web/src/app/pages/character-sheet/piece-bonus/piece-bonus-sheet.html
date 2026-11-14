@@ -2,10 +2,7 @@
   <p class="bonus__intro">{{ description() }}</p>
   <app-bonus-group [value]="bonus()" [disabled]="busy()" (valueChange)="bonus.set($event)" />
   @if (data.reason) {
-    <p class="bonus__reason">
-      <mat-icon aria-hidden="true">block</mat-icon>
-      <span>{{ data.reason }}</span>
-    </p>
+    <app-sheet-note class="bonus__reason" icon="block">{{ data.reason }}</app-sheet-note>
   }
   @if (error()) {
     <p class="mr-notice mr-notice--danger" role="alert">

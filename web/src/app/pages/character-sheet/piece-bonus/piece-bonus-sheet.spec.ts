@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
 import { PieceBonusSheet, type PieceBonusData } from './piece-bonus-sheet';
@@ -34,12 +35,20 @@ function setup(over: Partial<PieceBonusData> = {}) {
     Array.from(el.querySelectorAll('.bg__opt'))
       .find((l) => l.textContent!.includes(word))!
       .querySelector('input')!;
+  const choose = (word: string) => {
+    const input = radio(word);
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    fixture.detectChanges();
+  };
+  const closeFrame = () =>
+    fixture.debugElement.query(By.css('app-sheet-frame')).triggerEventHandler('closed');
   const text = (sel: string) => el.querySelector(sel)!.textContent!.replace(/\s+/g, ' ').trim();
   const press = (label: string) =>
     Array.from(el.querySelectorAll('button'))
       .find((b) => b.textContent!.includes(label))!
       .click();
-  return { fixture, el, radio, text, press, saves, closed };
+  return { fixture, el, radio, text, press, choose, closeFrame, saves, closed };
 }
 
 describe('PieceBonusSheet ("Bônus · <peça>")', () => {
@@ -63,9 +72,11 @@ describe('PieceBonusSheet ("Bônus · <peça>")', () => {
   });
 
   it('starts from the stored bonus and saves the chosen number', async () => {
-    const { radio, press, saves, closed, fixture } = setup();
+    const { radio, choose, press, saves, closed, fixture } = setup();
     expect(radio('+2').checked).toBe(true);
-    radio('+3').dispatchEvent(new Event('change'));
+    choose('+3');
+    expect(radio('+3').checked).toBe(true);
+    expect(radio('+2').checked).toBe(false);
     press('Salvar');
     await fixture.whenStable();
     expect(saves).toEqual([3]);
@@ -73,8 +84,8 @@ describe('PieceBonusSheet ("Bônus · <peça>")', () => {
   });
 
   it('saves 0 for "Nenhum"', async () => {
-    const { radio, press, saves, fixture } = setup();
-    radio('Nenhum').dispatchEvent(new Event('change'));
+    const { choose, press, saves, fixture } = setup();
+    choose('Nenhum');
     press('Salvar');
     await fixture.whenStable();
     expect(saves).toEqual([0]);
@@ -90,23 +101,38 @@ describe('PieceBonusSheet ("Bônus · <peça>")', () => {
 
   it('is muted and inert while saving, and cannot be closed', () => {
     let release!: (why: string) => void;
-    const { fixture, el, press, closed } = setup({
+    const { fixture, el, press, closeFrame, closed } = setup({
       save: () => new Promise<string>((r) => (release = r)),
     });
     press('Salvar');
     fixture.detectChanges();
     expect(el.querySelector('fieldset')!.disabled).toBe(true);
     expect(el.querySelector('.pair__btn')!.textContent).toContain('Salvando…');
-    press('Cancelar');
+    closeFrame();
+    fixture.componentInstance['cancel']();
     expect(closed).toEqual([]);
     release('x');
   });
 
+  it('saves once when "Salvar" is pressed twice', async () => {
+    const calls: number[] = [];
+    const { press, fixture } = setup({
+      save: (b) => {
+        calls.push(b);
+        return new Promise<string>(() => undefined);
+      },
+    });
+    press('Salvar');
+    press('Salvar');
+    await fixture.whenStable();
+    expect(calls).toEqual([2]);
+  });
+
   it('says the refusal in an alert, keeps the choice and puts "Salvar" back', async () => {
-    const { el, radio, press, closed, fixture } = setup({
+    const { el, radio, choose, press, closed, fixture } = setup({
       save: () => Promise.resolve('A ficha mudou enquanto você editava.'),
     });
-    radio('+1').dispatchEvent(new Event('change'));
+    choose('+1');
     press('Salvar');
     await fixture.whenStable();
     fixture.detectChanges();

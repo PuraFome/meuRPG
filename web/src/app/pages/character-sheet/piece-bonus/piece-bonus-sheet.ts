@@ -5,11 +5,12 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { BonusGroup } from '../../../shared/bonus-group/bonus-group';
 import { saveFlow } from '../../../shared/sheet/save-flow';
+import { SheetNote } from '../../../shared/sheet/sheet-note/sheet-note';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { SheetSaveFoot } from '../../../shared/sheet/sheet-save-foot/sheet-save-foot';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 
-/** What the sheet of an armor's or a shield's magic bonus needs. `save` answers the error in words, or an empty text when it is saved. */
+/** What the sheet of an armor's or a shield's magic bonus needs. */
 export interface PieceBonusData {
   readonly pieceName: string;
   readonly kind: 'armor' | 'shield';
@@ -20,7 +21,9 @@ export interface PieceBonusData {
   readonly bonus: number;
   /** Why the bonus does not count now; empty when it does. */
   readonly reason?: string;
-  /** The bonus to save; 0 removes it. */
+  /** Saves the bonus; 0 removes it.
+   * It answers the refusal in words.
+   * It answers an empty text when the bonus is saved. */
   readonly save: (bonus: number) => Promise<string>;
 }
 
@@ -45,7 +48,7 @@ export function openPieceBonus(
 @Component({
   selector: 'app-piece-bonus-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [MatIconModule, BonusGroup, SheetFrame, SheetSaveFoot],
+  imports: [MatIconModule, BonusGroup, SheetFrame, SheetNote, SheetSaveFoot],
   templateUrl: './piece-bonus-sheet.html',
   styleUrl: './piece-bonus-sheet.scss',
 })

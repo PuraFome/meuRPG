@@ -44,17 +44,35 @@ describe('BonusGroup', () => {
     expect(el.querySelectorAll('mat-icon')).toHaveLength(1);
   });
 
-  it('says the value of the radio that changes', () => {
-    const { radios, host } = setup();
-    radios()[3].dispatchEvent(new Event('change'));
-    radios()[0].dispatchEvent(new Event('change'));
+  it('says the value of the radio a person picks, and shows it checked', () => {
+    const { fixture, radios, host } = setup();
+    for (const [i, value] of [
+      [3, 3],
+      [0, 0],
+    ]) {
+      radios()[i].checked = true;
+      radios()[i].dispatchEvent(new Event('change', { bubbles: true }));
+      host.value.set(value);
+      fixture.detectChanges();
+      expect(radios().map((r) => r.checked)).toEqual(radios().map((_, j) => j === i));
+    }
     expect(host.got).toEqual([3, 0]);
   });
 
+  it('says the value when its label is clicked', () => {
+    const { fixture, el, radios, host } = setup();
+    el.querySelectorAll<HTMLLabelElement>('label')[2].click();
+    host.value.set(2);
+    fixture.detectChanges();
+    expect(host.got).toEqual([2]);
+    expect(radios()[2].checked).toBe(true);
+  });
+
   it('is inert while disabled', () => {
-    const { fixture, el, host } = setup();
+    const { fixture, el, radios, host } = setup();
     host.disabled.set(true);
     fixture.detectChanges();
     expect(el.querySelector('fieldset')!.disabled).toBe(true);
+    expect(radios().every((r) => r.matches(':disabled'))).toBe(true);
   });
 });

@@ -1,9 +1,8 @@
 <app-sheet-frame [title]="'Marcas · ' + data.weaponName" titleId="sheet-t" [phone]="inSheet" (closed)="cancel()">
   @if (data.copies > 1) {
-    <p class="marks__copies">
-      <mat-icon aria-hidden="true">info</mat-icon>
-      <span>A ficha tem {{ data.copies }} cópias: marcas e bônus valem para as duas.</span>
-    </p>
+    <app-sheet-note class="marks__copies" icon="info" [muted]="false">
+      A ficha tem {{ data.copies }} cópias: marcas e bônus valem para as duas.
+    </app-sheet-note>
   }
   <p class="marks__intro">{{ data.isMaster ? data.characterName + ' · a arma é:' : 'A arma é:' }}</p>
   <ul class="marks">
@@ -30,10 +29,7 @@
     <app-bonus-group [value]="bonus()" [disabled]="busy()" (valueChange)="bonus.set($event)" />
     <p class="marks__help">Soma no ataque e no dano, e a arma conta como mágica.</p>
     @if (data.reason) {
-      <p class="marks__reason">
-        <mat-icon aria-hidden="true">block</mat-icon>
-        <span>{{ data.reason }}</span>
-      </p>
+      <app-sheet-note class="marks__reason" icon="block">{{ data.reason }}</app-sheet-note>
     }
   </div>
   @if (error()) {
@@ -46,11 +42,7 @@
     foot
     [inSheet]="inSheet"
     [busy]="busy()"
-    [lock]="
-      data.isMaster
-        ? 'Muda a ficha de ' + data.characterName + ': depois da trava, só você muda marcas e bônus. ' + data.characterName + ' os lê na ficha e nos ataques.'
-        : 'O dono só muda enquanto a ficha não trava. Depois, só o mestre.'
-    "
+    [lock]="lock()"
     (saved)="save()"
     (cancelled)="cancel()"
   />
