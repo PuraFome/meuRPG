@@ -83,6 +83,15 @@ export function fixedMode(menu: EffectMenuVm, target: string): string {
   return only.length === 1 ? only[0] : '';
 }
 
+/** The mode of a target that fixes it is shown and cannot change; a stored mode that is another one stays free, to be corrected. */
+export function modeIsFixed(
+  menu: EffectMenuVm,
+  e: Pick<EffectDraft, 'mode' | 'target'>,
+  name: string,
+): boolean {
+  return name === 'mode' && e.mode !== '' && e.mode === fixedMode(menu, e.target);
+}
+
 /** The effect after its target changed: a target that fixes its mode sets it, only the critical range keeps a scope and only a score a limit. */
 export function afterTarget(menu: EffectMenuVm, d: EffectDraft): EffectDraft {
   const score = isScoreTarget(d.target);

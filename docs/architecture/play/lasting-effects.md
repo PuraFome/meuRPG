@@ -119,7 +119,15 @@ Code in `lasting_effects_aura.go`.
 - **Who reads what.** A player reads an aura's bonus on their own roll as the source's name, or "Outra fonte" when the bearer is hidden from them or the effect is for its owner only (`PlayerVisible` false on the view row).
   The radius is never sent to a player who does not own the aura.
   The leak rows plant a radius and a bonus and read them as every player, with the master and the bearer's owner as positive controls.
-- **Not built.** A feature's aura (Paladin's Aura of Protection): table features have no lasting row, so an aura of a feature has nowhere to hang.
+- **A feature's aura.** Aura of Protection is the effect type `aura` of a table feature (`effectaura.go`, `Derived.Auras`, `link.Traits.Auras`).
+  It is written once, when the character joins a combat, as one row on the combatant (`source_kind` `feature`, duration `until_dismissed`; `lasting_effects_aura_feature.go`), and it is never saved on the character, so ending the combat drops it (`giveBackOrDrop`).
+  Joining twice writes it once (`featureAurasOn`).
+  The bonus can be an ability modifier of the bearer, at least `value_min`: the number is worked out once, at the join, from the sheet (`featureAurasOf`: `max(modifier, value_min)`) and written as a plain number, so a CHA 8 paladin still gives +1, and a Charisma that changes later in the same combat changes nothing until the next combat (`TestAFeatureAuraKeepsTheBonusItWasWrittenWith`).
+  The bearer is reached by their own aura (`allies` includes them, SRD), and the no-double test guards that it counts once.
+  Each bearer gives their own and each feature counts once per bearer: two paladins' auras both reach an ally, and one paladin's two effects of the same feature give once (`spread`, `TestAFeatureAuraGivesOncePerBearerAndFeature`).
+  An aura needs its bearer up and conscious, and that is decided when the aura is read, never kept in the row: `aurasOf` leaves a feature's aura out while the bearer is not fighting (a condition that incapacitates) or is at 0 hit points (`downFeatureBearers`, which reads the vitals the way `isDown` does).
+  Nothing writes the aura's sleep, so hit points that change by any path (the vitals call, a revive, an undo, a rest) wake or silence it at the next roll.
+  A feature's aura gives no next-hit damage (`weapon_hit_damage`) and no `value_ability` outside a feature (`spellModifierRefusal`).
 
 Who reads what:
 

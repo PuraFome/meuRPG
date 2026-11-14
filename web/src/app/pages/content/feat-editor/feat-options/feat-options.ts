@@ -1,3 +1,4 @@
+import type { CatalogVm } from '../../../../core/content/catalog';
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -41,6 +42,7 @@ export class FeatOptions {
   readonly menu = input.required<EffectMenuVm>();
   readonly issuesOf = input<(path: string) => readonly string[]>(() => []);
   readonly spellOptions = input<readonly SelectOption[]>([]);
+  readonly catalog = input<CatalogVm | null>(null);
   /** The number of the feat's choice of options among its effects (from 1), or 0 when it has none. */
   readonly choiceNumber = input(0);
   /** The name of the set the choice offers, or empty when it offers the options of the feat. */
