@@ -4135,6 +4135,31 @@ message RollAttackRequest {
   // attacker, a spell attack, a maneuver the character has not or one of another `applies`; a resource
   // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
   string maneuver_key = 103;
+  // A power attack trade (a power_attack effect of a table feature) the player makes on this weapon attack: its
+  // key, one of the AttackOption.power_attacks the attack lists. The effect's attack penalty is taken off the
+  // attack roll, so the roll's modifier and total count it; a roll that waits for a Lucky or Bardic Inspiration
+  // answer keeps the modifier it was made with, so the answer settles on the same bonus. If the effect has a
+  // resource, one use is spent when the attack is written (a held roll spends it on the replay) and an undo gives it
+  // back. Only the character's own weapon attack: `invalid_argument` for an NPC attacker, a spell attack, a key the
+  // character has not or a weapon the effect does not go with (its text is the reason in Portuguese); a resource
+  // blocked reason NO_USES_LEFT when no use is left. Empty makes no trade.
+  string power_attack_key = 104;
+  // Set by the server alone, on the request it keeps for a roll that waits (a Lucky, Bardic Inspiration or Stroke of Luck
+  // question, or a reaction window): the trade as it was when the roll was held, so the answer settles on the same
+  // penalty, damage and resource however the sheet changed meanwhile. A request from a client has it cleared.
+  PowerAttackPin power_attack_pin = 105;
+}
+
+// PowerAttackPin is the numbers of a power attack trade when its roll was held.
+message PowerAttackPin {
+  // The Portuguese name of the feature that gives the trade.
+  string name_pt = 1;
+  // The number taken off the attack roll.
+  int32 penalty = 2;
+  // The flat damage added to a hit.
+  int32 damage_bonus = 3;
+  // The resource each use spends; empty for none.
+  string resource = 4;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -5722,6 +5747,23 @@ message CombatLogWildShape {
   int32 carried_damage = 5;
 }
 
+// CombatLogPowerAttack is the trade of attack roll for damage an attack made (the `power_attack` effect of a table
+// feature, `RollAttackRequest.power_attack_key`). The master and the attacker's player read the feature and the numbers
+// (`key`, `name_pt`, `penalty`, `damage_bonus`). Another player reads that the attacker made a trade and nothing of the
+// numbers: `name_pt` is the feature's name, or "Outra fonte" with `hidden` set when the master retired or switched off
+// the feature, and `key` is empty (RN-10).
+message CombatLogPowerAttack {
+  // The feature's content key and its Portuguese name.
+  string key = 1;
+  string name_pt = 2;
+  // What the trade took off the attack roll and added to the damage of a hit, as positive numbers: the master's and
+  // the attacker's player's alone.
+  int32 penalty = 3;
+  int32 damage_bonus = 4;
+  // The feature is one the players may not read; `name_pt` is then "Outra fonte". Set for another player only.
+  bool hidden = 5;
+}
+
 // CombatLogEntry is one line of the combat log, as the caller may see it.
 // Fields marked "only the master" are left out for a player.
 message CombatLogEntry {
@@ -5854,6 +5896,9 @@ message CombatLogEntry {
   CombatLogGearSwapped gear_swapped = 117;
   // FEATURE_USED: the feature, the choice and what the use did. The line has the audience of a feature action.
   CombatLogFeatureUsed feature_used = 118;
+  // ATTACK: the power attack the roll made, when it made one. The feature and the numbers are the master's and the
+  // attacker's player's; another player reads that a trade was made (`CombatLogPowerAttack`).
+  CombatLogPowerAttack power_attack = 122;
   // The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
   // A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
   // sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and

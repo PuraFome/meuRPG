@@ -658,6 +658,10 @@
       "Light": false,
       "Finesse": false,
       "TwoHanded": false,
+      "Properties": [
+        "weapon-property:versatile",
+        "weapon-property:monk"
+      ],
       "MartialArts": false,
       "AbilityMod": 1,
       "Notes": ""
