@@ -30,20 +30,40 @@ export async function tableForCombat(
   name: string,
   grid = true,
   attacks = false,
-  character: { build?: CharacterBuild; sheet?: Record<string, unknown>; before?: (campaignId: string, master: Page) => Promise<CharacterBuild> } = {},
+  character: {
+    build?: CharacterBuild;
+    sheet?: Record<string, unknown>;
+    before?: (campaignId: string, master: Page) => Promise<CharacterBuild>;
+  } = {},
 ): Promise<CombatTable> {
   const base = await tableForMaps(masterPage, playerPage, name, true, character.sheet ?? (attacks ? pensantusAttacks : {}), character.build, character.before);
   // With `attacks` the Capitão carries a scimitar and wears chain mail, so the master has something to roll.
-  const captainBody = characterRpcBody('ENEMY', { ...pensantus, name: 'Capitão Goblin' }) as { sheet: { full: object } };
+  const captainBody = characterRpcBody('ENEMY', {
+    ...pensantus,
+    name: 'Capitão Goblin',
+  }) as { sheet: { full: object } };
   if (attacks) {
-    captainBody.sheet.full = { ...captainBody.sheet.full, weaponKeys: ['equipment:scimitar'], armorKey: 'equipment:chain-mail' };
+    captainBody.sheet.full = {
+      ...captainBody.sheet.full,
+      weaponKeys: ['equipment:scimitar'],
+      armorKey: 'equipment:chain-mail',
+    };
   }
   const captain = await createCharacterRPC(masterPage, base.campaignId, captainBody);
   expect(captain.ok()).toBeTruthy();
   const odra = await createCharacterRPC(masterPage, base.campaignId, {
     kind: 'CHARACTER_KIND_STORY',
     name: 'Velha Odra',
-    sheet: { basic: { hitPointsMax: 9, armorClass: 10, speedFt: 25, attackBonus: 0, damage: '1d4', description: '' } },
+    sheet: {
+      basic: {
+        hitPointsMax: 9,
+        armorClass: 10,
+        speedFt: 25,
+        attackBonus: 0,
+        damage: '1d4',
+        description: '',
+      },
+    },
   });
   expect(odra.ok()).toBeTruthy();
 
@@ -59,7 +79,14 @@ export async function tableForCombat(
   await placeTokenRPC(masterPage, base.campaignId, mapId, base.characterId, 2500, 5400);
   const captainId = (await captain.json()).character.id as string;
   await placeTokenRPC(masterPage, base.campaignId, mapId, captainId, 5750, 3900);
-  return { ...base, sessionId, mapId, captainId, goblinId: base.npcId!, odraId: (await odra.json()).character.id as string };
+  return {
+    ...base,
+    sessionId,
+    mapId,
+    captainId,
+    goblinId: base.npcId!,
+    odraId: (await odra.json()).character.id as string,
+  };
 }
 
 /** What Pensantus carries in the attack specs: a dagger, Raio de Fogo and some
@@ -72,7 +99,11 @@ export const pensantusAttacks = {
 };
 
 /** Where `beginAttackCombatRPC` puts the NPCs when the caller names no squares. */
-export const attackCombatSquares: Record<string, [number, number]> = { 'Capitão Goblin': [11, 5], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10] };
+export const attackCombatSquares: Record<string, [number, number]> = {
+  'Capitão Goblin': [11, 5],
+  'Goblin 1': [9, 9],
+  'Goblin 2': [14, 10],
+};
 
 /**
  * Starts a combat with the Capitão and two Goblins in plain sight, rolls
@@ -100,7 +131,12 @@ export async function beginAttackCombatRPC(
         { characterId: table.goblinId, count: 2, hidden: false },
       ]);
   for (const c of enc.combatants) {
-    enc = await combatRPC(master, 'SubmitInitiative', { campaignId: table.campaignId, encounterId: enc.id, combatantId: c.id, d20Face: faces[c.label] ?? 1 });
+    enc = await combatRPC(master, 'SubmitInitiative', {
+      campaignId: table.campaignId,
+      encounterId: enc.id,
+      combatantId: c.id,
+      d20Face: faces[c.label] ?? 1,
+    });
   }
   for (const added of enc.combatants.filter((c) => (c as { bestiaryCreatureKey?: string }).bestiaryCreatureKey)) {
     const same = enc.combatants.filter((c) => c.id !== added.id && c.initiative === added.initiative).map((c) => c.label);
@@ -108,17 +144,35 @@ export async function beginAttackCombatRPC(
   }
   for (const [label, [col, row]] of Object.entries(at)) {
     const id = enc.combatants.find((c) => c.label === label)!.id;
-    enc = await combatRPC(master, 'MoveCombatant', { campaignId: table.campaignId, encounterId: enc.id, combatantId: id, col, row });
+    enc = await combatRPC(master, 'MoveCombatant', {
+      campaignId: table.campaignId,
+      encounterId: enc.id,
+      combatantId: id,
+      col,
+      row,
+    });
   }
   for (const label of hidden) {
     const id = enc.combatants.find((c) => c.label === label)!.id;
-    enc = await combatRPC(master, 'SetCombatantHidden', { campaignId: table.campaignId, encounterId: enc.id, combatantId: id, hidden: true });
+    enc = await combatRPC(master, 'SetCombatantHidden', {
+      campaignId: table.campaignId,
+      encounterId: enc.id,
+      combatantId: id,
+      hidden: true,
+    });
   }
-  return combatRPC(master, 'BeginCombat', { campaignId: table.campaignId, encounterId: enc.id });
+  return combatRPC(master, 'BeginCombat', {
+    campaignId: table.campaignId,
+    encounterId: enc.id,
+  });
 }
 
 export async function setGridRPC(page: Page, campaignId: string, mapId: string, columns: number): Promise<void> {
-  const res = await callRPC(page, 'meurpg.maps.v1.MapService/SetMapGrid', { campaignId, mapId, columns });
+  const res = await callRPC(page, 'meurpg.maps.v1.MapService/SetMapGrid', {
+    campaignId,
+    mapId,
+    columns,
+  });
   expect(res.ok(), await res.text()).toBeTruthy();
 }
 
@@ -157,14 +211,19 @@ export async function startEncounterWithMonstersRPC(page: Page, table: CombatTab
 }
 
 export async function getEncounterRPC(page: Page, campaignId: string): Promise<Encounter> {
-  const res = await callRPC(page, 'meurpg.play.v1.CombatService/GetEncounter', { campaignId });
+  const res = await callRPC(page, 'meurpg.play.v1.CombatService/GetEncounter', {
+    campaignId,
+  });
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).encounter as Encounter;
 }
 
 /** Any write of `CombatService` that takes the encounter and an idempotency key. */
 export async function combatRPC(page: Page, method: string, body: object): Promise<Encounter> {
-  const res = await callRPC(page, `meurpg.play.v1.CombatService/${method}`, { idempotencyKey: crypto.randomUUID(), ...body });
+  const res = await callRPC(page, `meurpg.play.v1.CombatService/${method}`, {
+    idempotencyKey: crypto.randomUUID(),
+    ...body,
+  });
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).encounter as Encounter;
 }
@@ -177,6 +236,7 @@ export interface Encounter {
   status: string;
   round?: number;
   currentCombatantId?: string;
+  reactionWindows?: { id: string; kind: string }[];
   masterTurn?: boolean;
   gridColumns: number;
   gridRows: number;
@@ -239,14 +299,22 @@ export const toren: CharacterBuild = {
   extraSkills: ['Percepção', 'Sobrevivência'],
   scores: { for: 16, des: 12, con: 15, int: 10, sab: 13, car: 8 },
 };
-export const torenSheet = { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail' };
+export const torenSheet = {
+  weaponKeys: ['equipment:longsword'],
+  armorKey: 'equipment:chain-mail',
+};
 
 /** The master's correction of a player's vitals (hit points, slots used, resources used). */
 export async function adjustVitalsRPC(page: Page, campaignId: string, characterId: string, change: object): Promise<void> {
   // The correction names the revision of the vitals it read, as the app does.
   const live = await callRPC(page, 'meurpg.play.v1.PlayService/GetLiveSession', { campaignId });
   expect(live.ok(), await live.text()).toBeTruthy();
-  const vitals = ((await live.json()) as { vitals?: { characterId: string; revision?: number }[] }).vitals ?? [];
+  const vitals =
+    (
+      (await live.json()) as {
+        vitals?: { characterId: string; revision?: number }[];
+      }
+    ).vitals ?? [];
   const expectedRevision = vitals.find((v) => v.characterId === characterId)?.revision ?? 0;
   const res = await callRPC(page, 'meurpg.play.v1.PlayService/AdjustCharacterVitals', {
     campaignId,
@@ -300,9 +368,7 @@ export async function passTurnsTo(master: Page, campaignId: string, label: strin
     // any member still acting, and each member's part is ended on its own (ending
     // a part that already ended is `aborted`).
     const group = enc.turnGroupIds?.length ? enc.turnGroupIds : [enc.currentCombatantId ?? ''];
-    const acting = group
-      .map((id) => enc.combatants.find((c) => c.id === id))
-      .filter((c): c is Combatant => !!c && !c.turnPartEnded);
+    const acting = group.map((id) => enc.combatants.find((c) => c.id === id)).filter((c): c is Combatant => !!c && !c.turnPartEnded);
     if (acting.some((c) => c.label === label)) {
       return enc;
     }
@@ -376,11 +442,16 @@ export const dalila: CharacterBuild = {
   extraSkills: ['Acrobacia', 'Investigação', 'Percepção', 'Furtividade'],
   scores: { for: 10, des: 16, con: 14, int: 14, sab: 12, car: 8 },
 };
-export const dalilaSheet = { expertiseSkillKeys: ['skill:acrobatics', 'skill:investigation', 'skill:perception', 'skill:stealth'] };
+export const dalilaSheet = {
+  expertiseSkillKeys: ['skill:acrobatics', 'skill:investigation', 'skill:perception', 'skill:stealth'],
+};
 
 export const brisaSheet = {
   weaponKeys: ['equipment:mace'],
   preparedSpellKeys: ['spell:cure-wounds'],
 };
 /** Brisa with Ajuda prepared (a 2nd-level spell: she has two such slots at level 3). */
-export const brisaAidSheet = { ...brisaSheet, preparedSpellKeys: ['spell:cure-wounds', 'spell:aid'] };
+export const brisaAidSheet = {
+  ...brisaSheet,
+  preparedSpellKeys: ['spell:cure-wounds', 'spell:aid'],
+};

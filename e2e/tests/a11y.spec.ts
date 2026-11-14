@@ -71,7 +71,7 @@ import { armorClassOf, bonusCombatSheet, bonusSheet, cropBonus, masterSetsBonuse
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
-import { beginCrowdedCombatRPC, boxIn, callFeatBody, elementFeatBody, endSessionOf, markFeatBody, volleyFeatBody } from './feature-use-support';
+import { beginCrowdedCombatRPC, boxIn, callFeatBody, chamadosFeatBody, elementFeatBody, endSessionOf, haloFeatBody, haloSquares, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
 import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
@@ -13058,5 +13058,131 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
       test.setTimeout(300_000);
       await scanCrowdedTargets(browser, colorScheme, width);
     });
+  }
+}
+
+/**
+ * The feature window and the master's override (#743, boards 743-02 and 743-06): the master uses a rest resource (the log says what it cost
+ * and what is left), the bonus action is spent and its next row is dashed with the reason but pressable, and the confirmation says why and asks
+ * "Usar mesmo assim". The Capitão then starts its turn 10 feet from Pensantus: her player's prompt, the master's card, and the prompt after the
+ * master let the window pass (the time ran out). Saves screenshots when `E2E_SHOTS_DIR`.
+ */
+async function scanFeatureWindowScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = featViewport(width);
+  const master = await browser.newContext({
+    storageState: authStatePath('Mestre Teste'),
+    colorScheme,
+    viewport,
+    ...featShotScale,
+  });
+  const player = await browser.newContext({
+    storageState: authStatePath('Jogador Teste'),
+    colorScheme,
+    viewport,
+    ...featShotScale,
+  });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade janela ${Date.now()}`, true, true, {
+      sheet: pensantusCasting,
+    });
+    campaignId = table.campaignId;
+    for (const body of [chamadosFeatBody(), markFeatBody(), haloFeatBody()]) {
+      await giveFeatRPC(m, campaignId, table.characterId, await createEntryRPC(m, campaignId, 'tableFeat', body));
+    }
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, haloSquares);
+    const shoot = async (page: Page, screen: string): Promise<void> => shootFeat(page, screen, width, colorScheme);
+
+    // The master acts for Pensantus: the resource is used, the bonus action is spent, and the next row can be used anyway.
+    await openSessionPage(m, campaignId);
+    await m.getByRole('button', { name: 'Agir por Pensantus' }).click();
+    await openActionTab(m, 'Habilidades');
+    await m.getByRole('button', { name: 'Usar Chamados de Teste' }).click();
+    await m
+      .getByRole('dialog', { name: /Chamados de Teste/ })
+      .getByRole('button', { name: 'Usar', exact: true })
+      .click();
+    const spent = (await openSpentGroup(m, 'Ação bônus')).getByRole('button', {
+      name: /Usar Marca de Teste: o mestre pode usar mesmo assim/,
+    });
+    await expect(spent).toBeEnabled();
+    await expectScreenPasses(m, `Usar característica, a linha que o mestre pode usar mesmo assim ${where}`);
+    await shoot(m, 'usar-linha-assim');
+    await spent.click();
+    const over = m.getByRole('dialog', { name: /Marca de Teste/ });
+    await over.locator('label', { hasText: 'Goblin 1' }).click();
+    await expect(over.getByRole('button', { name: 'Usar mesmo assim' })).toBeEnabled();
+    await expectScreenPasses(m, `Usar característica, o mestre confirma Usar mesmo assim ${where}`);
+    await shoot(m, 'usar-confirma-assim');
+    await over.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(over).toHaveCount(0);
+
+    // The Capitão starts its turn near Pensantus: the window opens for her player and the master reads its card.
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    const after = await combatRPC(m, 'EndTurn', {
+      campaignId,
+      encounterId: begun.id,
+      expectedCombatantId: begun.currentCombatantId,
+      discardPendingDamage: true,
+    });
+    await waitForEncounterRevision(p, after);
+    const prompt = p.getByRole('alertdialog', { name: /Halo de esporos/ });
+    await expect(prompt.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
+    await expectScreenPasses(p, `Usar característica, a janela do Halo de esporos ${where}`);
+    await shoot(p, 'usar-janela');
+    await expect(m.getByText(/Halo\sde\sesporos\s·\so\sCapitão\sGoblin\scomeçou\sa\svez/).first()).toBeVisible();
+    await expectScreenPasses(m, `Usar característica, a janela do Halo na fila do mestre ${where}`);
+    await shoot(m, 'usar-fila-mestre');
+
+    // The time ran out (the master lets it pass): the prompt says so, the reaction stays free, and it only closes.
+    const window = (await getEncounterRPC(m, campaignId)).reactionWindows?.[0] as { id: string } | undefined;
+    expect(window, 'the window is open').toBeTruthy();
+    const res = await callRPC(m, 'meurpg.play.v1.CombatService/AnswerReaction', {
+      campaignId,
+      encounterId: after.id,
+      windowId: window!.id,
+      answer: 'REACTION_CHOICE_PASS',
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(res.ok(), await res.text()).toBeTruthy();
+    await expect(prompt.getByText(/Você não respondeu a tempo: o Capitão Goblin seguiu\. A sua reação continua livre\./)).toBeVisible();
+    await expectScreenPasses(p, `Usar característica, a janela que fechou sozinha ${where}`);
+    await shoot(p, 'usar-janela-perdida');
+    await prompt.getByRole('button', { name: 'Fechar' }).click();
+    await expect(prompt).toHaveCount(0);
+
+    // The owner's log says what the use cost and what is left of it.
+    const log = await openCombatLog(p);
+    await expect(log.getByText(/gastou a ação bônus e 1 uso de Chamados de Teste \(restam 1 de 2\)/)).toBeVisible();
+    await expectScreenPasses(p, `Usar característica, o registro com o custo do uso ${where}`);
+    await shoot(p, 'usar-registro');
+  } finally {
+    await endSessionOf(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(
+      `a janela do Halo e o Usar mesmo assim passam no axe e nas conferências de layout no tema ${theme}, em ${width}`,
+      { tag: ['@a11y', '@MR-014'] },
+      async ({ browser }) => {
+        test.setTimeout(300_000);
+        await scanFeatureWindowScreens(browser, colorScheme, width);
+      },
+    );
   }
 }
