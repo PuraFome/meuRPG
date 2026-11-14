@@ -253,3 +253,19 @@ func TestMountedCombat_ATrapThatKnocksTheRiderProneAsksItsSave(t *testing.T) {
 	}
 	wantSave(t, "after the trap", r.mountSaveOf(t, r.master), r.id(t, "Toren"), r.id(t, "Ogro"), causeProne)
 }
+
+// A push that throws a rider at 0 hit points at once leaves nothing to undo: the fall is written with the push and the rider does not
+// get back on its mount, so the push is no action an undo can take back (as the push whose save was answered is not).
+func TestMountedCombat_ThePushThatThrewADyingRiderCannotBeUndone(t *testing.T) {
+	t.Parallel()
+	c := newAreaCave(t)
+	c.mountedWave(t)
+	c.downToren(t)
+	c.wave(t)
+	if got := c.saveRowOf(t, "Toren"); !got.Prone || got.MountedOnID != "" {
+		t.Fatalf("the rider after the push = %+v, want thrown", got)
+	}
+	if id := c.log(t, c.master, c.get(t, c.master)).GetUndoableEventId(); id != "" {
+		t.Errorf("the log offers %s to undo, want nothing: the fall cannot be taken back", id)
+	}
+}
