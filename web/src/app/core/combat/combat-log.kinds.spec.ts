@@ -10,6 +10,7 @@ import {
   CombatLogEntrySchema,
   CombatLogKind,
   DeathSaveOutcome,
+  FeatureEconomy,
   HitRiderChoice,
   HitRiderLogResult,
   PendingDamageStatus,
@@ -604,5 +605,49 @@ describe('a use of a feature (UseFeature): the line of each audience, as the ser
 
   it('names the use in the undo confirmation', () => {
     expect(undoLabel(entry(used({})))).toBe('o uso de Halo de esporos da Sálvia');
+  });
+
+  describe('what it cost (the master and the user read it from the typed fields)', () => {
+    it('says the part of the turn spent', () => {
+      const halo = { economy: FeatureEconomy.REACTION };
+      expect(text(used(halo, { targetLabel: 'Zumbi 1' }), MASTER)).toBe(
+        ' usou Halo de esporos no Zumbi 1 · gastou a reação',
+      );
+      expect(text(used({ economy: FeatureEconomy.ACTION }), MASTER)).toBe(
+        ' usou Halo de esporos · gastou a ação',
+      );
+      expect(text(used({ economy: FeatureEconomy.BONUS_ACTION }), MASTER)).toBe(
+        ' usou Halo de esporos · gastou a ação bônus',
+      );
+    });
+
+    it('says nothing of a use that cost no part of the turn', () => {
+      expect(text(used({ economy: FeatureEconomy.NONE }), MASTER)).toBe(' usou Halo de esporos');
+    });
+
+    it('says the resource spent and what is left of it, after the choice and what it gave', () => {
+      const wild = { namePt: 'Entidade simbiótica', economy: FeatureEconomy.ACTION, tempHp: 16 };
+      expect(
+        text(used({ ...wild, resourceNamePt: 'Forma Selvagem', resourceLeft: 2 }), MASTER),
+      ).toBe(
+        ' usou Entidade simbiótica: 16 PV temporários · gastou a ação e 1 uso de Forma Selvagem (restam 2)',
+      );
+      expect(
+        text(used({ economy: FeatureEconomy.NONE, resourceNamePt: 'Forma Selvagem', resourceLeft: 0 }), MASTER),
+      ).toBe(' usou Halo de esporos · gastou 1 uso de Forma Selvagem (restam 0)');
+    });
+
+    it('says a use counted by its scope alone (no resource name)', () => {
+      expect(text(used({ economy: FeatureEconomy.REACTION, resourceLeft: 1 }), MASTER)).toBe(
+        ' usou Halo de esporos · gastou a reação e 1 uso (restam 1)',
+      );
+    });
+
+    it('is the plain line for the others and for an entry that did not say', () => {
+      expect(text(used({ economy: FeatureEconomy.UNSPECIFIED }, { targetLabel: 'Zumbi 1' }), PLAYER)).toBe(
+        ' usou Halo de esporos no Zumbi 1',
+      );
+      expect(text(used({}), MASTER)).toBe(' usou Halo de esporos');
+    });
   });
 });
