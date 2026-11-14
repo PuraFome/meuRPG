@@ -98,7 +98,7 @@ func (s *Service) SetAmmunition(ctx context.Context, tx pgx.Tx, campaignID, char
 // SpendAmmunition takes one piece of a kind for a shot in the encounter and returns the pieces left. A combat other
 // than the one the row last counted starts the count over (spent 0, not recovered) before the shot. ErrNoAmmunition
 // when none is left or the character never held the kind; nothing is written then. The row is locked, so two
-// shots at the last piece never both fire.
+// shots at the last piece never both fire. invalid_argument for a key that is no kind of ammunition.
 func (s *Service) SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string) (left int32, err error) {
 	q := s.queries.WithTx(tx)
 	id, err := s.ammunitionCharacter(ctx, q, campaignID, characterID)
@@ -108,6 +108,13 @@ func (s *Service) SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, ch
 	enc, ok := uid.Canonical(encounterID)
 	if !ok {
 		return 0, invalidArgument(fieldErr("encounter_id", "is not an id"))
+	}
+	content, err := s.contentFor(ctx, tx, campaignID)
+	if err != nil {
+		return 0, wrap("read rules content", err)
+	}
+	if !slices.Contains(content.AmmunitionKinds(), ammoKey) {
+		return 0, invalidArgument(fieldErr("ammo_key", "is not a kind of ammunition"))
 	}
 	row, err := q.GetAmmunitionForUpdate(ctx, charactersdb.GetAmmunitionForUpdateParams{CharacterID: id, AmmoKey: ammoKey})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -132,13 +139,15 @@ func (s *Service) SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, ch
 	return row.Quantity - 1, nil
 }
 
-// AmmunitionLeft is the pieces a character holds of a kind, 0 when it never held any.
-func (s *Service) AmmunitionLeft(ctx context.Context, tx pgx.Tx, characterID, ammoKey string) (int32, error) {
-	id, ok := uid.Canonical(characterID)
-	if !ok {
-		return 0, errCharacterNotFound()
+// AmmunitionLeft is the pieces a character of the campaign holds of a kind, 0 when it never held any. `not_found` for
+// a character that is not in the campaign.
+func (s *Service) AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (int32, error) {
+	q := s.queries.WithTx(tx)
+	id, err := s.ammunitionCharacter(ctx, q, campaignID, characterID)
+	if err != nil {
+		return 0, err
 	}
-	n, err := s.queries.WithTx(tx).GetAmmunitionQuantity(ctx, charactersdb.GetAmmunitionQuantityParams{CharacterID: id, AmmoKey: ammoKey})
+	n, err := q.GetAmmunitionQuantity(ctx, charactersdb.GetAmmunitionQuantityParams{CharacterID: id, AmmoKey: ammoKey})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, nil
 	}

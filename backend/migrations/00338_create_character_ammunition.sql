@@ -1,8 +1,10 @@
 -- +goose Up
--- The ammunition a player character holds (SRD 5.1: each attack with an ammunition weapon spends one piece). One row
--- for each kind (ammo_key, a catalog key such as equipment:arrow) the character has had; the kinds the SRD lists come from the
--- catalog. spent_last_combat counts the pieces fired in the combat last_encounter_id, and recovered says the half
--- that can be picked up after it was taken back. The row goes with the character; a sheet's save never touches it.
+-- The ammunition a player character holds: one row for each kind (ammo_key, a catalog key such as equipment:arrow)
+-- the character has had.
+-- Each attack with an ammunition weapon spends one piece.
+-- spent_last_combat counts the pieces fired in the combat last_encounter_id.
+-- recovered says the half that can be picked up after that combat was taken back.
+-- The row goes with the character, and a sheet's save never touches it.
 CREATE TABLE IF NOT EXISTS character_ammunition (
     character_id UUID NOT NULL REFERENCES characters (id) ON DELETE CASCADE,
     ammo_key TEXT NOT NULL,

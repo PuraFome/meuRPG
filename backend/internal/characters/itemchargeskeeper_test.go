@@ -3,10 +3,12 @@ package characters
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/encoding/prototext"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -122,15 +124,19 @@ func TestSpendItemChargesRefusals(t *testing.T) {
 	if _, err := et.spend(t, pc, "item:staff-of-power", 1); refusedWith(err) != charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ITEM_NO_CHARGES {
 		t.Errorf("an empty staff: %v", err)
 	}
-	for name, err := range map[string]error{
-		"zero":      spendEntry(pc.GetId(), wand, 0),
-		"negative":  spendEntry(pc.GetId(), wand, -1),
-		"a bag":     spendEntry(pc.GetId(), magicItemOf(pc, bagKey).GetId(), 1),
-		"no entry":  spendEntry(pc.GetId(), "m99", 1),
-		"no entry2": spendEntry(pc.GetId(), "", 1),
+	for _, c := range []struct {
+		name, entry string
+		amount      int32
+		code        connect.Code
+	}{
+		{"zero", wand, 0, connect.CodeInvalidArgument},
+		{"negative", wand, -1, connect.CodeInvalidArgument},
+		{"a bag", magicItemOf(pc, bagKey).GetId(), 1, connect.CodeInvalidArgument},
+		{"an entry that is not there", "m99", 1, connect.CodeNotFound},
+		{"an empty entry id", "", 1, connect.CodeNotFound},
 	} {
-		if code := connect.CodeOf(err); code != connect.CodeInvalidArgument && code != connect.CodeNotFound {
-			t.Errorf("%s: %v", name, err)
+		if err := spendEntry(pc.GetId(), c.entry, c.amount); connect.CodeOf(err) != c.code {
+			t.Errorf("%s: want %v, got %v", c.name, c.code, err)
 		}
 	}
 	if err := spendEntry("not-an-id", wand, 1); connect.CodeOf(err) != connect.CodeNotFound {
@@ -263,19 +269,41 @@ func TestSetItemCharges(t *testing.T) {
 	if err != nil || r.after.GetLost() != charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED || r.after.GetChargesLeft() != 4 {
 		t.Fatalf("unlose: %+v %v", r, err)
 	}
-	for name, err := range map[string]error{
-		"above max": errOf(set(wandKey, 8, 0)),
-		"negative":  errOf(set(wandKey, -1, 0)),
-		"a bag":     errOf(set(bagKey, 1, 0)),
-		"bad loss":  errOf(set(wandKey, 1, charactersv1.ItemLoss(77))),
+	for _, c := range []struct {
+		name string
+		key  string
+		left int32
+		lost charactersv1.ItemLoss
+	}{
+		{"above max", wandKey, 8, charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED},
+		{"negative", wandKey, -1, charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED},
+		{"a bag", bagKey, 1, charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED},
+		{"bad loss", wandKey, 1, charactersv1.ItemLoss(77)},
 	} {
-		if connect.CodeOf(err) != connect.CodeInvalidArgument {
-			t.Errorf("%s: %v", name, err)
+		if _, err := set(c.key, c.left, c.lost); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s: %v", c.name, err)
 		}
 	}
 }
 
-func errOf(_ spendResult, err error) error { return err }
+// Two spends of the last charge in parallel transactions: exactly one wins, the other finds the wand empty.
+func TestTwoSpendsOfTheLastChargeSpendOnce(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t, wandKey)
+	entry := magicItemOf(pc, wandKey).GetId()
+	et.setCharges(t, pc.GetId(), entry, 6, "") // one charge of seven left
+	spendOne := func(tx pgx.Tx) error {
+		_, _, err := et.h.svc.SpendItemCharges(t.Context(), tx, et.campaign, pc.GetId(), entry, 1)
+		return err
+	}
+	first, second := et.raceTwo(t, spendOne, spendOne)
+	if first != nil || refusedWith(second) != charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ITEM_NO_CHARGES {
+		t.Errorf("first %v, second %v", first, second)
+	}
+	if got := magicItemOf(et.read(t, et.master, pc.GetId()), wandKey); got.GetChargesLeft() != 0 || !got.GetLastRollPending() {
+		t.Errorf("state: %+v", got)
+	}
+}
 
 // A save never sets the pending roll, and keeps the one stored.
 func TestSaveIgnoresTheLastRollPending(t *testing.T) {
@@ -299,17 +327,60 @@ func TestSaveIgnoresTheLastRollPending(t *testing.T) {
 	}
 }
 
-// Another player and a pending member never read the pending flag.
+// leakCanary is a name whose letters lie outside a-f, so no id, hex digit or key of a reply can spell it.
+const leakCanary = "Zorvak4321"
+
+// renamed saves the character under a new name, as the master, and returns it as saved.
+func (et *editorTable) renamed(t *testing.T, pc *charactersv1.Character, name string) *charactersv1.Character {
+	t.Helper()
+	req := editorSaveOf(pc)
+	req.Name = name
+	saved, err := editorUpdate(et.master, req)
+	if err != nil {
+		t.Fatalf("rename: %v", err)
+	}
+	return saved
+}
+
+// requireHiddenFromOthers checks every reader who is neither the master nor the character's player: the character is
+// not found, no error or list they get holds the canary (the character's name) or the secret, and the list of the
+// one who has a character of his own is not empty, so the check on it is not about an empty answer.
+func (et *editorTable) requireHiddenFromOthers(t *testing.T, pc *charactersv1.Character, secret string) {
+	t.Helper()
+	own := et.caio.createPensantus(t, et.campaign)
+	for name, u := range map[string]*user{"caio": et.caio, "pia": et.pia, "visitor": et.visitor} {
+		_, err := u.api.GetCharacter(t.Context(), connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: et.campaign, CharacterId: pc.GetId()}))
+		if connect.CodeOf(err) != connect.CodeNotFound || strings.Contains(err.Error(), leakCanary) {
+			t.Errorf("%s reads the character: %v", name, err)
+		}
+		res, err := u.api.ListCharacters(t.Context(), connect.NewRequest(&charactersv1.ListCharactersRequest{CampaignId: et.campaign}))
+		if err != nil {
+			continue // a stranger gets no list at all
+		}
+		text := prototext.Format(res.Msg)
+		if strings.Contains(text, leakCanary) || strings.Contains(text, secret) {
+			t.Errorf("%s lists the character: %s", name, text)
+		}
+		if u == et.caio && !strings.Contains(text, own.GetId()) {
+			t.Errorf("caio's list does not hold his own character: %s", text)
+		}
+	}
+}
+
+// Another player and a pending member never read the pending flag. They find no character (not_found), which is the
+// whole guarantee for them; the positive control proves the flag is there for the owner and the master.
 func TestAnotherPlayerNeverReadsThePendingRoll(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t, wandKey)
 	if _, err := et.spend(t, pc, wandKey, 7); err != nil {
 		t.Fatalf("spend: %v", err)
 	}
-	for _, u := range []*user{et.caio, et.pia, et.visitor} {
-		_, err := u.api.GetCharacter(t.Context(), connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: et.campaign, CharacterId: pc.GetId()}))
-		if connect.CodeOf(err) != connect.CodeNotFound {
-			t.Errorf("another reader: %v", err)
+	pc = et.renamed(t, pc, leakCanary)
+	for _, reader := range []*user{et.master, et.dona} {
+		read := et.read(t, reader, pc.GetId())
+		if !magicItemOf(read, wandKey).GetLastRollPending() || read.GetName() != leakCanary {
+			t.Fatalf("the owner and the master read the pending roll: %+v", read)
 		}
 	}
+	et.requireHiddenFromOthers(t, pc, "last_roll_pending")
 }

@@ -2,13 +2,13 @@ package characters
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"google.golang.org/protobuf/encoding/prototext"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 )
@@ -82,22 +82,23 @@ func TestSetAmmunition(t *testing.T) {
 			t.Errorf("an empty kind that fired nothing is listed: %+v", read.GetSheet().GetFull().GetAmmunition())
 		}
 	}
-	for name, err := range map[string]error{
-		"not ammunition": errOf2(et.setAmmo(t, pc, "equipment:longbow", 1)),
-		"unknown":        errOf2(et.setAmmo(t, pc, "", 1)),
-		"negative":       errOf2(et.setAmmo(t, pc, arrowKey, -1)),
-		"too many":       errOf2(et.setAmmo(t, pc, arrowKey, 10000)),
+	for _, c := range []struct {
+		name, key string
+		quantity  int32
+	}{
+		{"not ammunition", "equipment:longbow", 1},
+		{"unknown", "", 1},
+		{"negative", arrowKey, -1},
+		{"too many", arrowKey, 10000},
 	} {
-		if connect.CodeOf(err) != connect.CodeInvalidArgument {
-			t.Errorf("%s: %v", name, err)
+		if _, err := et.setAmmo(t, pc, c.key, c.quantity); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s: %v", c.name, err)
 		}
 	}
 	if _, err := et.setAmmo(t, &charactersv1.Character{Id: uuid.NewString()}, arrowKey, 1); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Errorf("another character: %v", err)
 	}
 }
-
-func errOf2(_ *charactersv1.SheetAmmunition, err error) error { return err }
 
 func TestReadListsTheKindsInOrderWithTheirFiredPieces(t *testing.T) {
 	t.Parallel()
@@ -125,7 +126,7 @@ func TestSaveIgnoresAndKeepsTheAmmunition(t *testing.T) {
 	}
 	req := editorSaveOf(et.read(t, et.master, pc.GetId()))
 	req.Sheet = editorClone(req.GetSheet(), func(f *charactersv1.FullSheet) {
-		f.Ammunition = []*charactersv1.SheetAmmunition{{Key: arrowKey, Quantity: 5000}, {Key: boltKey, Quantity: 7}}
+		f.Ammunition = []*charactersv1.SheetAmmunition{{Key: arrowKey, Quantity: 12}, {Key: boltKey, Quantity: 7}}
 	})
 	saved, err := editorUpdate(et.master, req)
 	if err != nil {
@@ -139,20 +140,10 @@ func TestSaveIgnoresAndKeepsTheAmmunition(t *testing.T) {
 	if err := et.h.pool.QueryRow(t.Context(), "SELECT sheet::text FROM characters WHERE id = $1", pc.GetId()).Scan(&doc); err != nil {
 		t.Fatal(err)
 	}
-	if containsAny(doc, "ammunition", "5000") {
+	// The bolts only came with the request: a document that holds the key or the field kept what the save sent.
+	if strings.Contains(doc, "ammunition") || strings.Contains(doc, boltKey) {
 		t.Errorf("the document holds ammunition: %s", doc)
 	}
-}
-
-func containsAny(s string, subs ...string) bool {
-	for _, sub := range subs {
-		for i := 0; i+len(sub) <= len(s); i++ {
-			if s[i:i+len(sub)] == sub {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func TestSpendAmmunition(t *testing.T) {
@@ -187,6 +178,11 @@ func TestSpendAmmunition(t *testing.T) {
 	if a := ammoOf(et.read(t, et.master, pc.GetId()), arrowKey); a.GetSpentLastCombat() != 1 || a.GetQuantity() != 0 {
 		t.Errorf("after the refusal: %+v", a)
 	}
+	for _, key := range []string{"equipment:longbow", ""} { // not a kind of ammunition: refused, not "none left"
+		if _, err := et.shoot(t, pc, key, encA); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("spend of %q: %v", key, err)
+		}
+	}
 	if _, err := et.shoot(t, pc, arrowKey, "nope"); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("a bad encounter id: %v", err)
 	}
@@ -202,7 +198,7 @@ func TestAmmunitionLeft(t *testing.T) {
 		var n int32
 		if err := et.inTx(t, func(tx pgx.Tx) error {
 			var err error
-			n, err = et.h.svc.AmmunitionLeft(t.Context(), tx, pc.GetId(), key)
+			n, err = et.h.svc.AmmunitionLeft(t.Context(), tx, et.campaign, pc.GetId(), key)
 			return err
 		}); err != nil {
 			t.Fatalf("AmmunitionLeft: %v", err)
@@ -217,6 +213,14 @@ func TestAmmunitionLeft(t *testing.T) {
 	}
 	if n := left(arrowKey); n != 9 {
 		t.Errorf("held: %d", n)
+	}
+	// The campaign is part of the question: the character of another campaign is not found.
+	err := et.inTx(t, func(tx pgx.Tx) error {
+		_, err := et.h.svc.AmmunitionLeft(t.Context(), tx, uuid.NewString(), pc.GetId(), arrowKey)
+		return err
+	})
+	if connect.CodeOf(err) != connect.CodeNotFound {
+		t.Errorf("another campaign: %v", err)
 	}
 }
 
@@ -277,7 +281,8 @@ func TestAmmunitionGoesWithTheCharacter(t *testing.T) {
 	}
 }
 
-// Two shots at the last piece in parallel transactions: exactly one fires.
+// Two shots at the last piece in parallel transactions: exactly one fires. The first transaction takes the row's lock
+// and holds it until the second one has started, so the shots meet on the lock and the first always wins.
 func TestTwoShotsAtTheLastPieceFireOnce(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t)
@@ -285,44 +290,64 @@ func TestTwoShotsAtTheLastPieceFireOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	enc := uuid.NewString()
-	var wg sync.WaitGroup
-	errs := make([]error, 2)
-	for i := range errs {
-		wg.Go(func() { _, errs[i] = et.shoot(t, pc, arrowKey, enc) })
-	}
-	wg.Wait()
-	ok := 0
-	for _, err := range errs {
-		switch {
-		case err == nil:
-			ok++
-		case !errors.Is(err, ErrNoAmmunition):
-			t.Errorf("unexpected: %v", err)
-		}
-	}
-	if ok != 1 {
-		t.Errorf("%d shots fired", ok)
+	first, second := et.raceTwo(t,
+		func(tx pgx.Tx) error {
+			_, err := et.h.svc.SpendAmmunition(t.Context(), tx, et.campaign, pc.GetId(), arrowKey, enc)
+			return err
+		},
+		func(tx pgx.Tx) error {
+			_, err := et.h.svc.SpendAmmunition(t.Context(), tx, et.campaign, pc.GetId(), arrowKey, enc)
+			return err
+		})
+	if first != nil || !errors.Is(second, ErrNoAmmunition) {
+		t.Errorf("first %v, second %v", first, second)
 	}
 	if a := ammoOf(et.read(t, et.master, pc.GetId()), arrowKey); a.GetQuantity() != 0 || a.GetSpentLastCombat() != 1 {
 		t.Errorf("state: %+v", a)
 	}
 }
 
-// Another player, a pending member and a stranger never read the ammunition: the character is not found.
+// raceTwo runs two transactions on the same lock, the first one ahead. The first runs its work, which takes the lock,
+// and then waits, still open, until the second one is about to run its own work; the second starts only once the first
+// holds the lock. So the first always wins and the second meets either its lock or its commit, never a state before
+// it. It returns what each work returned.
+func (et *editorTable) raceTwo(t *testing.T, firstWork, secondWork func(tx pgx.Tx) error) (first, second error) {
+	t.Helper()
+	var lockedOnce, startedOnce sync.Once
+	locked, started := make(chan struct{}), make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		first = et.inTx(t, func(tx pgx.Tx) error {
+			err := firstWork(tx)
+			lockedOnce.Do(func() { close(locked) })
+			<-started
+			return err
+		})
+	})
+	wg.Go(func() {
+		<-locked
+		startedOnce.Do(func() { close(started) })
+		second = et.inTx(t, secondWork)
+	})
+	wg.Wait()
+	return first, second
+}
+
+// The ammunition of a character reaches the master and its player only. Another player's reads find no character
+// (not_found), which is the whole guarantee for them; the positive control below proves the data is there on that
+// same read path, and the canary in the character's name must be in no answer another reader gets.
 func TestAnotherPlayerNeverReadsTheAmmunition(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t)
 	if _, err := et.setAmmo(t, pc, arrowKey, 4); err != nil {
 		t.Fatal(err)
 	}
-	for _, u := range []*user{et.caio, et.pia, et.visitor} {
-		_, err := u.api.GetCharacter(t.Context(), connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: et.campaign, CharacterId: pc.GetId()}))
-		if connect.CodeOf(err) != connect.CodeNotFound {
-			t.Errorf("another reader: %v", err)
-		}
-		res, err := u.api.ListCharacters(t.Context(), connect.NewRequest(&charactersv1.ListCharactersRequest{CampaignId: et.campaign}))
-		if err == nil && containsAny(prototext.Format(res.Msg), arrowKey, "ammunition") {
-			t.Errorf("the list carries ammunition")
+	pc = et.renamed(t, pc, leakCanary)
+	for _, reader := range []*user{et.master, et.dona} {
+		read := et.read(t, reader, pc.GetId())
+		if a := ammoOf(read, arrowKey); a.GetQuantity() != 4 || read.GetName() != leakCanary {
+			t.Fatalf("the owner and the master read the ammunition: %+v", read.GetSheet().GetFull().GetAmmunition())
 		}
 	}
+	et.requireHiddenFromOthers(t, pc, arrowKey)
 }

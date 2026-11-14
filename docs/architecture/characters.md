@@ -213,20 +213,35 @@ A character that is dead keeps its attunements until the master ends them.
 Another player never reaches the character: `not_found`, as for `SetEquipped`, and never reads the magic items or their state.
 The app leaves out the automatic end of an attunement (distance, another attuner, death): the master ends it by hand.
 The charges of an item come from the catalog (`rules.ItemCharges`) and what an entry spent from `character_item_charges`, one row for each entry id (see [Characters data](../data/characters.md#character_item_charges)).
-`SheetMagicItem` carries `charges_max`, `charges_left` and `lost`, filled by the server on every read and ignored on a save; an item with no charges reads 0 and 0.
+`SheetMagicItem` carries `charges_max`, `charges_left` and `lost`.
+The server fills them on every read and ignores them on a save.
+An item with no charges reads 0 and 0.
 An item whose charges the SRD rolls reads `charges_left` -1 until the master sets them, which writes its row.
 `lost` is `ItemLoss`: gone, a plain item or partly magic.
 A save that removes an entry deletes its row in the same transaction, so a new entry that takes the freed id starts full.
 The counts are read only where the sheet is: the player of the character and the master.
-`last_roll_pending` says the last charge went from an item that rolls a d20 and the roll waits; it is read and ignored on a save like the other fields.
-The charge keeper (`itemchargeskeeper.go`) is what play calls inside its own transaction: `SpendItemCharges`, `ResolveLastCharge` and `SetItemCharges`.
+`last_roll_pending` says the last charge went from an item that rolls a d20 and the roll waits.
+It is read and ignored on a save like the other fields.
+The charge keeper (`itemchargeskeeper.go`) is what play calls inside its own transaction.
+Its methods are `SpendItemCharges`, `ResolveLastCharge` and `SetItemCharges`.
 Each locks the character's row, asks nothing of the caller (play authorizes first) and takes and returns proto values.
-Spending the last charge loses the item at once when the catalog says so, and waits for the d20 when it says that; `ResolveLastCharge` settles it (a 1 loses the item, a 20 regains the dice play rolled, cut to the maximum).
-`SetItemCharges` is the master's correction: it also sets the count of an item that rolls its start, ends a pending roll and writes or deletes the row.
-Ammunition is `character_ammunition` (see [Characters data](../data/characters.md#character_ammunition)); `FullSheet.ammunition` lists the kinds with pieces or fired in the last combat, filled on a read and ignored on a save.
-`SetAmmunition`, `SpendAmmunition`, `AmmunitionLeft` and `RecoverAmmunition` are the keeper's methods for it; they ask nothing of the caller either.
-`SpendAmmunition` locks the kind's row, starts the count over when the combat is another, and returns `ErrNoAmmunition` without writing when no piece is left, so two shots at the last piece fire once.
-`RecoverAmmunition` returns half (rounded down) of what a combat spent, once: `ErrAmmunitionRecovered` when it was done and `ErrNothingToRecover` when nothing was fired.
+Spending the last charge loses the item at once when the catalog says so.
+When the catalog says d20 instead, the item waits for the roll.
+`ResolveLastCharge` settles that roll.
+A 1 loses the item, and a 20 regains the dice play rolled, cut to the maximum.
+`SetItemCharges` is the master's correction.
+It also sets the count of an item that rolls its start, ends a pending roll and writes or deletes the row.
+Ammunition is `character_ammunition` (see [Characters data](../data/characters.md#character_ammunition)).
+`FullSheet.ammunition` lists the kinds with pieces or fired in the last combat.
+It is filled on a read and ignored on a save.
+`SetAmmunition`, `SpendAmmunition`, `AmmunitionLeft` and `RecoverAmmunition` are the keeper's methods for it.
+They ask nothing of the caller either.
+`SpendAmmunition` and `SetAmmunition` refuse a key that is no kind of ammunition with `invalid_argument`.
+`AmmunitionLeft` takes the campaign, so a character of another campaign is `not_found`.
+`SpendAmmunition` locks the kind's row and starts the count over when the combat is another.
+It returns `ErrNoAmmunition` without writing when no piece is left, so two shots at the last piece fire once.
+`RecoverAmmunition` returns half (rounded down) of what a combat spent, once.
+It returns `ErrAmmunitionRecovered` when it was done and `ErrNothingToRecover` when nothing was fired.
 `ContentService.ListMagicItems` lists the items the picker offers: items and families with their variants, never the +N armor and weapon families, found by name, in pages like `ListSpells`.
 
 ## Class and race choices
