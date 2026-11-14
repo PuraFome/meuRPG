@@ -54,6 +54,8 @@ func stoppedAtTheSession(t *testing.T, tb *table, write func() error, free func(
 	}
 	done := make(chan error, 1)
 	go func() { done <- write() }()
+	// On CockroachDB this sees a statement that touches game_sessions, running or blocked: the check that the sheets stay free
+	// while it is there is what fails for the old order.
 	observer := dbtest.SideConnection(t, tb.h.pool)
 	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(5 * time.Millisecond) {
 		n, err := dbtest.WaitingStatements(ctx, observer, `%game_sessions%`, backends...)
@@ -131,8 +133,8 @@ func (u *user) endLiveSession(t *testing.T, campaignID string) {
 	}
 }
 
-// The session's number moves once for an award and once for its undo while a session is open, never for a retry of a key, and not at
-// all with no session open: the xp_changed hint carries it (the funnel's seq rows of the other modules).
+// The session's number moves once for an award and once for its undo while a session is open, and never for a retry of a key.
+// (An award with no session open has no number to read, so it is not asserted here.)
 func TestAnAwardAndItsUndoMoveTheSessionsNumberOnce(t *testing.T) {
 	t.Parallel()
 	tb := newTable(t, gold, 2)

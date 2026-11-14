@@ -61,8 +61,9 @@ Without a host (no play module) the maps writes run in a transaction of their ow
 With no open session `InSession` runs the write in a plain transaction and moves no number. What the write collected as steps after the commit (`After`, and a combat that changed) goes out with no number, for every module: the steps of `After` and `EncounterChanged`.
 The hints that are events (`CreaturesChanged`) go nowhere, because no stream is open, and `CombatLogChangedFull` sends nothing, because there is no combat to read.
 `AppendEvent`, `OpenSessionID` and the writers that play calls inside its own transaction (`OpenDoors`, the puzzle seam's `PuzzleOpenDoor`, `PuzzleRevealPoint` and `PuzzleRevealClue`, the session maps' `RevealMap`, `LeaveImage`, `TakeBackImage`, `SetTokenPositions`, `DiscoverScene` and `DiscoverSceneFor`, the shown image's copy, `TriggerTrap`, `RestoreTrap` and `SearchTraps`) take that transaction and open none: the session row is already held.
+An experience award and its undo (`progression`'s `give` and `UndoLastXPAward`) run in `InSession` too, through `SetSessionHost`.
 The fog's memory (`rememberFor`) takes the session's lock and moves no number.
-The `sessionwrite` rule of `archtest` scans only the `play` and `maps` packages and follows calls by name, without types.
+The `sessionwrite` rule of `archtest` scans the `play`, `maps` and `progression` packages and follows calls by name, without types.
 It fails for a function that opens a transaction outside `Service.tx` and `Service.txOn` and writes in it.
 It fails too for an autocommit write: a writer query called on a `Queries` with no `WithTx` in the chain (`s.queries.X(...)`), which commits on its own, outside any transaction and so outside the funnel.
 Both kinds are listed in `sessionwrite_exceptions.txt`, which can only shrink, and an entry whose reason starts with `permanent:` records a writer that never touches session state.
