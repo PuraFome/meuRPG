@@ -197,6 +197,7 @@ stateDiagram-v2
 - **Start of the turn.** `startTurn` ends what ends at the start of effects, resets for each living member the movement, action, bonus action, Dash, reaction, Shield bonus and the death save due (`ResetCombatantTurn`), and points `current_combatant_id` at the first.
 - **"Is it their turn"** is always `actsNow` (in the turn and the part not ended): `MoveCombatant`, `RollAttack`, `RollDamage`, `TakeAction`, `CastSpell`, the death saves, the reactions and `GetTurnOptions`.
   Undo stays closed after an ended part (`turn_part_ended` is not undoable).
+  `CastSpell` off the turn is the release of a readied spell while its READIED window is open (`mayCastNow`, see [Readying](readying.md#readied-spells)).
 - **What each receives (RN-20).** `Encounter.turn_group_ids` and `Combatant.turn_part_ended` only for a group that has a player character, never with a hidden member.
   An NPC-only group reaches the player as the ids they see, with no chosen `current_combatant_id` or total, plus `npc_only_groups` for the plural "os Goblins".
   A player's economy reaches them, the master and the other players of the same group.

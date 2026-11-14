@@ -8,6 +8,7 @@ The rules for the table are in [RN-31](../../product/rules.md#rn-31-reactions-an
 
 A readied action is a `readied_actions` row (migration 00330).
 It holds the readier, the trigger text (1 to 200 characters), the kind, the held action and its name, the target named at Ready and the move.
+A spell row also holds its slot level (`slot_level`, 0 for a cantrip) and the cast id of its Ready (`spell_cast_id`).
 The kinds are `attack`, `move`, `other` and `spell`.
 `attack` holds one of the readier's attacks by its key.
 `other` holds a standard action other than Attack, Cast a Spell and Ready.
@@ -16,7 +17,7 @@ It refuses Dash and Disengage too: they last only for the readier's own turn, an
 Each of them would be taken for nothing.
 `move` holds the speed the readier had at Ready (`move_ft`).
 A combat without a map (theatre of the mind) refuses a readied move (`READY_ACTION`): there is no square to walk to.
-`spell` is refused at Ready (`READY_ACTION`) for now.
+`spell` holds one of the readier's class spells by its key: see [Readied spells](#readied-spells).
 A combatant has at most one waiting row.
 `Combatant.readied` (119) is the waiting row, for the master and the readier's player.
 
@@ -28,6 +29,7 @@ A combatant has at most one waiting row.
 | `fired` | The readier used its READIED window ("Usar") |
 | `ignored` | The readier let its READIED window pass ("Deixar passar"), or it passed by itself after 30 s |
 | `lost` | The readier's next turn started, or it was defeated or dismissed (`loseReadiedOfDefeated`, in the settle step of every change) |
+| `broken` | The concentration that held a readied spell ended (`settleReadiedSpells`) |
 | `canceled` | The readier's player gave it up on the readier's turn (`CancelReadied`) |
 
 A row that does not wait is history: no call changes it again, and the undo is the only way back to `waiting`.
@@ -86,6 +88,7 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   The master's walk of the readier while the window is open is the use too, as if the player made it.
   `AnswerReaction` "Usar" on a move window is `invalid_argument`: it carries no square.
 - **other**: the `TakeAction` path, charged to the reaction instead of the action.
+- **spell**: the `CastSpell` path as a reaction: see [Readied spells](#readied-spells).
 
 A use closes the window as answered, marks the row `fired` and writes the `readied_fired` line just before the action's own event.
 It records the reaction's kind as `readied` (`recordReaction`).
@@ -120,7 +123,58 @@ The window carries no prompt; the master's `ReactionTrigger` names the readier, 
 Another player reads only `reaction_wait`: "Esperando a reação de <name>" for a player character they see, else "Esperando o mestre".
 Another player reads the lines (`ACTION_READIED`, `READIED_FIRED`, `READIED_LOST`) with the actor alone.
 A hidden readier's window and lines are the master's alone.
-`internal/leaktest` (`ready_test.go`, `ready_fire_test.go`) checks each of these with canaries and positive controls.
+`internal/leaktest` (`ready_test.go`, `ready_fire_test.go`, `ready_spell_test.go`) checks each of these with canaries and positive controls.
+
+## Readied spells
+
+A readied spell is cast at Ready and released by the trigger (SRD 5.1, "Ready").
+The code is `ready_spell.go` and `ready_spell_lost.go`.
+
+### At Ready
+
+`ReadyAction` with `kind` `SPELL` names the spell (`spell_key`) and the slot level (`slot_level`, 0 for a cantrip).
+It checks the spell as `CastSpell` does (`checkSpell`): a class spell the caster knows or prepared, a slot of that level, silence.
+Metamagic and spells granted by a feature are not offered.
+The casting time must be exactly 1 action, else `READY_SPELL_TIME` (a reaction or a bonus action spell, a ritual is never cast in combat).
+A spell attack cantrip (Fire Bolt) is refused as a spell (`invalid_argument`): it is readied as an `attack`.
+A pact slot is spent only when no plain slot of that level is free.
+Targets and range are checked at the release, not at Ready.
+Ready spends the slot and the action, and notes the spell cast this turn.
+It sets the readier's concentration to the sentinel `readied` (`concentrationReadied`), even for a spell without concentration.
+A previous concentration ends there, with its line and its dismissed creatures, as a new concentration spell ends it.
+No effect of the spell happens: no damage, no lasting effect, no zone, no `spell_casts` record.
+
+### The release
+
+The release is the spell's cast as a reaction, through `castSpell` with `readied` set (`findReadied`).
+`AnswerReaction` "Usar" builds the `CastSpellRequest` from the row: the targets are `creature_ids`, or the target named at Ready.
+A spell placed on the map (an area, a wall) is released with `CastSpell` by the readier, with its point, while the READIED window is open.
+The release spends no slot, the reaction instead of the action, and takes the slot level of Ready.
+Metamagic at the release is `invalid_argument`.
+A concentration spell keeps the concentration, now with its own key; another spell ends it.
+The cast waits for the windows any cast opens (Counterspell), with the READIED window open and `REACTION_PENDING` (`readiedHeld`).
+A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
+A refused release spends nothing and the window stays open.
+"Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.
+
+### When it is lost
+
+A held spell and its concentration go together, checked in the settle step of every change (`settleReadiedSpells`).
+A waiting spell whose readier no longer holds the sentinel is `broken`, with a `READIED_LOST` line (status `BROKEN`).
+That covers a failed concentration save, 0 hit points (`endConcentrationOfDownCharacter` calls it too), an incapacitating condition, a new concentration spell, and the player or the master ending the concentration.
+A readier that holds the sentinel with no waiting spell stops concentrating, with no line of its own.
+That covers the next turn, a defeat, a dismissal, `CancelReadied` and the pass, whose own lines name the loss.
+The slot stays spent in every case.
+
+### Who reads it
+
+The held spell's key and name, its level and that it is a spell are the master's and the readier's player's (RN-10).
+`Combatant.concentration_spell` carries the held key for them and nothing for the others (`heldSpellView`).
+The `ACTION_READIED` line carries the slot (`spell.slot`) for them alone.
+The end of the previous concentration (`concentration_ended_key`) is public on that line, as on a cast line.
+The concentration save lines of a held spell are the master's and the owner's; another player reads none.
+Their concentration save line names it "a magia preparada".
+`internal/leaktest` (`ready_spell_test.go`) checks these with canaries and positive controls.
 
 ## Undo
 
@@ -128,6 +182,11 @@ The undo of a Ready gives the action back and deletes the row and its line.
 The Ready of a row already lost cannot be undone (`chainReadied`): the lost row and its line stay.
 The undo of a use takes back the action, the line and the reaction, makes the row wait and opens its window again.
 The undo of a pass makes the row wait and opens its window again.
+The undo of the Ready of a spell also gives back the slot, the spell cast this turn and the concentration it ended, with its creatures.
+The undo of a spell's release is the cast's undo, the slot excepted, and holds the spell again with the sentinel.
+The undo of a spell's pass holds the spell again.
+The undo of a change that broke a held spell makes the row wait again when it gives the concentration back (`brokenReadiedBack`), and takes the line with it.
+Otherwise the row stays broken: `chainReadiedDefeat` goes past its line.
 The undo of the fire deletes its window while it was not answered (open, or closed by itself); the row keeps waiting.
 A fire whose window was answered comes back after the answer's undo.
 The lost line of a defeat or a dismissal is written before the change's own event; the undo of that change goes past it and the row stays lost.
@@ -141,3 +200,5 @@ The lost line of a defeat or a dismissal is written before the change's own even
 | `readied_fired` with `ended: ignored` (the pass) | `READIED_FIRED` (105), status `IGNORED` | Yes |
 | The used action's event with `readied.ended: fired` | `READIED_FIRED` (105), status `FIRED`, before the action's own line | Yes, with the action |
 | `readied_lost` | `READIED_LOST` (106) | Passed over by the undo of the change that defeated or dismissed the readier |
+| `readied_lost` with `ended: broken` | `READIED_LOST` (106), status `BROKEN` | With the change that ended the concentration, when it gives it back |
+| `readied_lost` with `ended: ignored` (a spell's pass) | `READIED_LOST` (106), status `IGNORED` | With the pass |

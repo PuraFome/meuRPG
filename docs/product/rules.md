@@ -600,6 +600,7 @@ When a concentrating character takes damage, the game asks its owner for the con
 A spell that deals two damage types gives one reminder for the cast, from the sum of what landed.
 The master's card reads "Teste de Constituição, CD 10"; nobody else reads the DC.
 Casting a second concentration spell ends the first, and the log says which one ended.
+A readied spell holds the concentration until it is released or lost (RN-31): readying a spell ends another concentration, and the end of its concentration loses the spell.
 A spell or the master that ends concentration on a summoning spell (Conjure Animals) dismisses the creatures of that casting.
 The master's undo gives the concentration and the same creatures back.
 A spell that forces a saving throw later (Flaming Sphere, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones. Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Stinking Cloud, Spike Growth and Wall of Fire are the exception: the app keeps their area and calls for the later saves by itself (RN-37).
@@ -1085,7 +1086,11 @@ A player reads only their own windows, and the numbers of the trigger (an attack
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
 - **Ready** (SRD 5.1, "Ready").
   On its turn a creature spends its action to hold another until a trigger its player writes.
-  The held action is an attack, a move or another standard action; a spell is not offered yet.
+  The held action is an attack, a move, a spell or another standard action.
+  A held spell must take 1 action to cast; it is cast at Ready, with its slot, and its power is held until the trigger.
+  Holding it takes concentration, which ends any other concentration of the creature.
+  Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
+  The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
   A move cannot be held in a combat without a map.
@@ -1097,7 +1102,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   A creature whose reaction is spent, or that cannot react, is not asked, and the readied action waits until it is lost.
   It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight.
   The spent action does not come back.
-  The players who are not the readier's read only that it readied an action.
+  The players who are not the readier's read only that it readied an action, never which spell, its level or that it is a spell.
   A hidden creature's readied action is the master's alone.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.
 
