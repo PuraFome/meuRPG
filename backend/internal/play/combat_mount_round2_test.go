@@ -1,7 +1,10 @@
 package play
 
 import (
+	"errors"
 	"testing"
+
+	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
@@ -83,4 +86,74 @@ func TestMountedCombat_AMountMarkedControlledMidTurnJoinsTheRidersPart(t *testin
 			t.Errorf("the Ogro after the mark = %+v, want acting with the economy it had spent", ogre)
 		}
 	})
+}
+
+// shapeOfRefusal is what a player reads of a refusal: its code, its words and its reason.
+func shapeOfRefusal(t *testing.T, err error) string {
+	t.Helper()
+	var ce *connect.Error
+	if !errors.As(err, &ce) {
+		t.Fatalf("error = %v, want a connect error", err)
+	}
+	reason := ""
+	for _, d := range ce.Details() {
+		if v, e := d.Value(); e == nil {
+			if b, ok := v.(*playv1.EncounterBlocked); ok {
+				reason = b.GetReason().String()
+			}
+		}
+	}
+	return ce.Code().String() + "|" + ce.Message() + "|" + reason
+}
+
+// TestMountedCombat_ARiderOfAHiddenMountTeleportsAsAnUnmountedCasterDoes: Ana's Pensantus rides an Ogro the players do not see and casts
+// Misty Step. The destination checks answer as they do for a caster on foot (a square off the grid, too far), and a square that would
+// be free is refused as a square a hidden creature holds is: the same code, words and reason, so the refusal names no mount. The caster
+// on foot, with a hidden goblin on the square, is the twin; a visible mount is MOUNTED as ever.
+func TestMountedCombat_ARiderOfAHiddenMountTeleportsAsAnUnmountedCasterDoes(t *testing.T) {
+	t.Parallel()
+	ride := func(t *testing.T, hideTheMount bool) *cave {
+		t.Helper()
+		c := newCaveWith(t, 3, []string{mistyStep})
+		c.fight(t)
+		c.mustMark(t, "Ogro", "controlled")
+		c.side(t, "Ogro", playv1.CombatantSide_COMBATANT_SIDE_PARTY)
+		c.mustMove(t, c.master, "Ogro", 5, 9)
+		c.passTo(t, c.get(t, c.master), "Pensantus")
+		c.mustMount(t, c.ana, "Pensantus", "Ogro")
+		if hideTheMount {
+			c.hide(t, "Ogro")
+		}
+		return c
+	}
+	riding := ride(t, true)
+	onFoot := newCaveWith(t, 3, []string{mistyStep})
+	onFoot.fight(t)
+	onFoot.passTo(t, onFoot.get(t, onFoot.master), "Pensantus")
+	from := riding.squareOf(t, riding.ana, "Pensantus")
+	home := onFoot.squareOf(t, onFoot.ana, "Pensantus")
+	if from != [2]int32{5, 9} {
+		t.Fatalf("premise: the rider stands on %v, want its mount's (5,9)", from)
+	}
+	// A hidden goblin on a square next to the caster on foot is the square a free one reads as for the rider.
+	onFoot.mustMove(t, onFoot.master, "Goblin 1", home[0]-1, home[1])
+	onFoot.hide(t, "Goblin 1")
+
+	for name, tc := range map[string]struct {
+		rider, foot *playv1.SpellOrigin
+	}{
+		"off the grid": {at(400, 400), at(400, 400)},
+		"too far":      {at(from[0]+9, from[1]), at(home[0]+9, home[1])},
+		"a free square (the twin holds a hidden creature)": {at(from[0], from[1]-1), at(home[0]-1, home[1])},
+	} {
+		_, a := riding.misty(t, riding.ana, tc.rider)
+		_, b := onFoot.misty(t, onFoot.ana, tc.foot)
+		if a == nil || b == nil || shapeOfRefusal(t, a) != shapeOfRefusal(t, b) {
+			t.Errorf("%s: the rider of a hidden mount reads %v, the caster on foot %v; want the same refusal", name, a, b)
+		}
+	}
+	// The mount a player sees is named, as before: MOUNTED, whatever the square.
+	seen := ride(t, false)
+	_, err := seen.misty(t, seen.ana, at(400, 400))
+	wantBlockedBy(t, "a rider of a visible mount to a square off the grid", err, reasonMounted)
 }
