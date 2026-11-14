@@ -40,6 +40,13 @@
     "resource": "x",
     "cost": 1
   },
+  "power_attack": {
+    "key": "x",
+    "name": "x",
+    "penalty": 1,
+    "damage_bonus": 1,
+    "hidden": true
+  },
   "target_ac": 1,
   "floor": 1,
   "floor_by": "x",
