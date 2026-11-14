@@ -220,7 +220,7 @@
               [preferApp]="preferApp"
               [modifier]="dmg.flat()"
               totalNote="Dano total"
-              appLabel="Rolar o dano no app"
+              [appLabel]="dmg.partsLabel()"
               hint="Role os dados de cada linha e digite a soma de cada uma, sem os números fixos."
               [busy]="s.busy()"
               [(typing)]="s.typing"

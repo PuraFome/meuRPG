@@ -126,6 +126,76 @@ describe('DamageParts', () => {
   });
 });
 
+describe('DamageParts hit effect', () => {
+  const weapon = {
+    key: 'weapon',
+    labelPt: 'Rapieira',
+    diceCount: 1,
+    diceSides: 8,
+    flat: 3,
+    damageTypePt: 'perfurante',
+  };
+  const effect = {
+    key: 'spell:branding-smite',
+    labelPt: 'Clarão na Lâmina',
+    diceCount: 2,
+    diceSides: 6,
+    flat: 0,
+    auto: true,
+    available: true,
+    damageTypePt: 'radiante',
+    notePt: 'O efeito acaba com este golpe.',
+  };
+  const off = {
+    key: 'spell:frostfist',
+    labelPt: 'Geada no Punho',
+    diceCount: 2,
+    diceSides: 8,
+    flat: 0,
+    damageTypePt: 'frio',
+    reasonPt: 'só num golpe corpo a corpo. Continua esperando.',
+  };
+  function render(parts: object[]) {
+    const fixture = TestBed.createComponent(DamageParts);
+    fixture.componentRef.setInput('parts', parts);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    return {
+      el,
+      text: (sel: string) =>
+        Array.from(el.querySelectorAll(sel)).map((n) => n.textContent!.replace(/\s+/g, ' ').trim()),
+    };
+  }
+
+  it('lists the effect alone, with its chip, its formula and its rider text', () => {
+    const { el, text } = render([weapon, effect]);
+    expect(text('.fixed .line')[1]).toBe(
+      'Clarão na Lâmina 2d6 de radiante automáticoO efeito acaba com este golpe.',
+    );
+    expect(el.querySelector('.line__note')!.textContent).toContain('O efeito acaba');
+    expect(el.querySelectorAll('input')).toHaveLength(0);
+  });
+
+  it('says "dados dobrados" on the weapon and on the effect under a critical', () => {
+    const { text } = render([
+      { ...weapon, diceCount: 2, doubled: true },
+      { ...effect, diceCount: 4, doubled: true },
+    ]);
+    expect(text('.fixed .line')[0]).toBe('Rapieira 2d8 + 3 de perfurante dados dobrados');
+    expect(text('.fixed .line')[1]).toContain('4d6 de radiante dados dobradosautomático');
+  });
+
+  it('lists the off part as a row with no checkbox and its reason under it', () => {
+    const { el, text } = render([weapon, off]);
+    expect(el.querySelectorAll('input')).toHaveLength(0);
+    expect(el.querySelectorAll('.fixed .line')).toHaveLength(1);
+    expect(text('.off')).toEqual([
+      'Geada no Punho2d8 de frioblockIndisponível: só num golpe corpo a corpo. Continua esperando.',
+    ]);
+    expect(el.querySelector('.off mat-icon')!.textContent).toBe('block');
+  });
+});
+
 describe('DamageParts maneuvers', () => {
   const maneuver = (key: string, name: string) => ({
     key,

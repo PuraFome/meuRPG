@@ -494,11 +494,12 @@ describe('AttackSheet: the damage parts', () => {
 
   it('answers with the extras marked, even none', async () => {
     const { fixture, el, api } = withDamage(DiceMode.APP);
+    const rollButton = (label: string) =>
+      [...el.querySelectorAll('button')].find((b) => plain(b.textContent).includes(label));
+    expect(rollButton('Rolar 1d6 + 2d6 + 3 no app')).toBeTruthy();
     el.querySelector<HTMLInputElement>('.extra__box')!.click();
     fixture.detectChanges();
-    [...el.querySelectorAll('button')]
-      .find((b) => plain(b.textContent).includes('Rolar o dano no app'))!
-      .click();
+    rollButton('Rolar 1d6 + 3 no app')!.click();
     await fixture.whenStable();
     expect(api.rollDamage.mock.calls[0][3]).toEqual({ inApp: true });
     expect(api.rollDamage.mock.calls[0][5]).toEqual({ extras: [] });

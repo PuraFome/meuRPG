@@ -18,6 +18,8 @@ import {
   deathSaveText,
   hitPointsText,
   hitRiderText,
+  isSpellRider,
+  spellRiderText,
   modeAnsweredText,
   monstersAddedText,
   movedText,
@@ -242,7 +244,10 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   ],
   [
     CombatLogKind.HIT_RIDER,
-    ({ e, base }) => {
+    ({ e, base, ctx }) => {
+      if (isSpellRider(e)) {
+        return { ...base, icon: 'auto_awesome', actor: '', text: spellRiderText(e, ctx) };
+      }
       return { ...base, icon: 'sports_martial_arts', text: hitRiderText(e) };
     },
   ],

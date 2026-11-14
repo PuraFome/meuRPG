@@ -48,12 +48,44 @@ export function partFormula(part: DamagePart, pick?: ExtraPick): string {
   return dice ? `${dice} ${flat}` : `${part.flat}`;
 }
 
+/**
+ * A spell's hit effect that this weapon does not carry (a melee-only effect on a ranged line): listed with its
+ * dice and its reason, never choosable, never rolled, never in the total. Weapon and automatic lines are never
+ * `available` on the wire, so what marks it is the reason.
+ */
+export function isOffPart(part: DamagePart): boolean {
+  return !part.choosable && !part.available && !!part.reasonPt;
+}
+
 /** The parts that count in the damage: the weapon and the automatic lines, and the extras that are marked. */
 export function activeParts(
   parts: readonly DamagePart[],
   picks: readonly ExtraPick[],
 ): readonly DamagePart[] {
-  return parts.filter((p) => !p.choosable || picks.some((x) => x.key === p.key));
+  return parts.filter((p) => (p.choosable ? picks.some((x) => x.key === p.key) : !isOffPart(p)));
+}
+
+/**
+ * What "Rolar ... no app" rolls: the dice of every part that counts, then the fixed numbers added up
+ * ("1d8 + 2d6 + 3", "1d8 − 1"). Nothing but fixed numbers reads as the number alone.
+ */
+export function rollFormula(parts: readonly DamagePart[], picks: readonly ExtraPick[]): string {
+  const active = activeParts(parts, picks);
+  const dice = active
+    .map((p) =>
+      partDice(
+        p,
+        picks.find((x) => x.key === p.key),
+      ),
+    )
+    .filter((d) => d.count > 0)
+    .map((d) => `${d.count}d${d.sides}`);
+  const flat = active.reduce((sum, p) => sum + p.flat, 0);
+  if (dice.length === 0) {
+    return `${flat}`;
+  }
+  const bonus = flat === 0 ? '' : ` ${flat < 0 ? '−' : '+'} ${Math.abs(flat)}`;
+  return `${dice.join(' + ')}${bonus}`;
 }
 
 /** One number field for each active part that rolls dice (the weapon included), for physical dice. */

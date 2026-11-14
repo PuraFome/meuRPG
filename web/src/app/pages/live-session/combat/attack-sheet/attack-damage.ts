@@ -2,7 +2,7 @@ import { type Signal, computed } from '@angular/core';
 
 import { damageFormula, extraDiceOf } from '../../../../core/combat/combat-dice';
 import { criticalSentence, criticalSum, brutalTyped } from '../../../../core/combat/critical';
-import { activeParts, typedFields } from '../../../../core/combat/damage-parts';
+import { activeParts, rollFormula, typedFields } from '../../../../core/combat/damage-parts';
 import type { RollField } from '../../../../shared/multi-roll/multi-roll';
 import {
   afterDamageText,
@@ -42,6 +42,8 @@ export class AttackDamage {
   readonly flat = computed(() =>
     activeParts(this.parts(), this.s.picks()).reduce((sum, p) => sum + p.flat, 0),
   );
+  /** "Rolar 1d8 + 2d6 + 3 no app": the dice of every part that counts, then the fixed number. */
+  readonly partsLabel = computed(() => `Rolar ${rollFormula(this.parts(), this.s.picks())} no app`);
   readonly line = computed(() => {
     const d = this.s.damage();
     return d?.roll ? damageFormula(d.roll, d.damageTypePt, extraDiceOf(d), d.criticalMax) : '';

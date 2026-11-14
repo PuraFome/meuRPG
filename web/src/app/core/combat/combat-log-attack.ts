@@ -31,18 +31,27 @@ function isShot(key: string): boolean {
 
 /** The applied damage in words: ", 25 de dano", or with the extra dice of a critical (Crítico Brutal) the groups of dice,
  * for whoever has the roll: the faces when the app rolled them, the counts and "dados físicos" when only the sum was typed. */
+/** " (Clarão na Lâmina incluído)": the spell effects that rode on the hit and counted. The entry flags no part as a
+ * spell's, so a part is one when its key is the spell's (`spell:...`: the weapon and the extras have their own keys). */
+function includedEffects(d: CombatLogDamage): string {
+  const names = d.parts
+    .filter((p) => p.counted && p.partKey.startsWith('spell:') && p.labelPt !== '')
+    .map((p) => p.labelPt);
+  return names.length > 0 ? ` (${listNames(names)} incluído${names.length > 1 ? 's' : ''})` : '';
+}
+
 function appliedWords(d: CombatLogDamage): string {
   const extra = extraDiceOf(d);
   const kind = d.damageTypePt || 'dano';
   const cut = (formula: string) => formula.replace(/ = \d+$/, '');
   const split = extra && d.roll ? splitFormula(d.roll, extra, d.criticalMax) : null;
   if (split) {
-    return `, dano ${cut(split)} = ${d.amount} de ${kind}`;
+    return `, dano ${cut(split)} = ${d.amount} de ${kind}${includedEffects(d)}`;
   }
   const typed = extra && d.roll ? physicalSplitFormula(d.roll, extra, d.criticalMax) : null;
   return typed
-    ? `, dano ${cut(typed)} = ${d.amount} de ${kind}, dados físicos`
-    : `, ${d.amount} de dano`;
+    ? `, dano ${cut(typed)} = ${d.amount} de ${kind}${includedEffects(d)}, dados físicos`
+    : `, ${d.amount} de dano${includedEffects(d)}`;
 }
 
 /** The damage of an attack or of one target of a cast, as the sentence

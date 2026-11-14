@@ -21,6 +21,7 @@
 }
 
 .fixed,
+.offs,
 .extras {
   display: flex;
   flex-direction: column;
@@ -54,6 +55,15 @@
   border-radius: var(--mr-radius-pill);
   font-size: var(--mr-font-13);
   line-height: 20px;
+}
+
+.off {
+  color: var(--mr-ink-muted);
+}
+
+.off__why {
+  flex-basis: 100%;
+  padding-left: 0;
 }
 
 .line__note {

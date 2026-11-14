@@ -6492,6 +6492,137 @@ for (const [scheme, width] of [['light', 390], ['light', 1280], ['dark', 390], [
 }
 
 /**
+ * The attack sheet and the log with a spell's hit effect (#577, boards 577-06 and 577-07): Pensantus keeps "Geada no Punho" (a
+ * melee-only effect) and shoots the short bow, so the effect is listed off with its reason and never in the roll button; then he
+ * casts "Clarão na Lâmina" (next hit, a Constitution save) and critically hits with the dagger, so both effects ride on the hit, alone
+ * and automatic, with the dice of every part doubled and the button listing them. The log is read by the player who rolled and by the
+ * master. The miss with the effect still waiting has no line in the sheet (the result card does not say it), so it is not scanned.
+ */
+async function scanHitEffectSheet(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(300_000);
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const sheet: Record<string, unknown> = { ...pensantusCasting, weaponKeys: ['equipment:dagger', 'equipment:shortbow'] };
+    const keys: { frost: string; flare: string } = { frost: '', flare: '' };
+    const table = await tableForCombat(m, p, `Acessibilidade folha golpe ${Date.now()}`, true, true, {
+      sheet,
+      before: async (id, master) => {
+        keys.frost = await createEntryRPC(master, id, 'tableSpell', hitSpellBody('Geada no Punho', { dice: 2, perSlotDice: 0, maxDice: 2 }));
+        keys.flare = await createEntryRPC(
+          master,
+          id,
+          'tableSpell',
+          hitSpellBody(
+            'Clarão na Lâmina',
+            { trigger: 'TABLE_HIT_TRIGGER_NEXT_HIT', die: 6, dice: 2, perSlotDice: 0, maxDice: 2, damageType: 'damage-type:radiant', save: 'con', onFailConditions: ['condition:blinded'] },
+            { concentration: false },
+          ),
+        );
+        sheet.knownSpellKeys = [...pensantusCasting.knownSpellKeys, keys.frost, keys.flare];
+        sheet.preparedSpellKeys = [...pensantusCasting.preparedSpellKeys, keys.frost, keys.flare];
+        return pensantus;
+      },
+    });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const cast = async (spellKey: string) => {
+      const res = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
+        campaignId,
+        encounterId: enc.id,
+        casterId: id('Pensantus'),
+        spellKey,
+        slot: { level: 2 },
+        targets: [],
+        idempotencyKey: crypto.randomUUID(),
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    const moveTo = async (col: number, row: number) => {
+      await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: id('Pensantus'), col, row });
+    };
+    // Attack with a weapon on a target and type the d20: the sheet stops at the damage.
+    const hit = async (weapon: RegExp, sheetName: RegExp, target: string, d20: string) => {
+      await openActionTab(p, 'Ataques');
+      await p.getByRole('button', { name: weapon }).click();
+      const dialog = p.getByRole('dialog', { name: sheetName });
+      await viaTargetList(p, dialog);
+      await dialog.locator('label', { hasText: target }).click();
+      await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await p.getByLabel(/Role 1d20/).fill(d20);
+      await p.getByRole('button', { name: `Confirmar ${d20}` }).click();
+    };
+
+    await openSessionPage(p, campaignId);
+    await cast(keys.frost);
+    await moveTo(4, 9);
+    await hit(/^Atacar com Arco curto/, /Atacar com Arco curto/, 'Goblin 2', '18');
+    const parts = p.getByRole('region', { name: 'O que entra no dano' });
+    await expect(parts).toContainText('Geada no Punho');
+    await expect(parts).toContainText('Indisponível: só num golpe corpo a corpo. Continua esperando.');
+    await expect(parts.getByRole('checkbox')).toHaveCount(0);
+    const bowRoll = p.getByRole('button', { name: /^Rolar 1d6( \+ \d+)? no app$/ });
+    await expect(bowRoll).toBeVisible();
+    await expectScreenPasses(p, `Atacar, o efeito que não vale neste golpe, fica de fora ${where}`);
+    await bowRoll.click();
+    await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+
+    // The next turn: both effects ride on a critical hit with the dagger.
+    await passTurnsToAndWait(m, campaignId, 'Pensantus', p);
+    await cast(keys.flare);
+    await moveTo(8, 9);
+    await hit(/^Atacar com Adaga/, /Atacar com Adaga/, 'Goblin 1', '20');
+    await expect(parts).toContainText('Geada no Punho');
+    await expect(parts).toContainText('Clarão na Lâmina');
+    await expect(parts).toContainText('O efeito acaba com este golpe.');
+    await expect(parts.getByText('automático')).toHaveCount(2);
+    await expect(parts.getByText('dados dobrados')).toHaveCount(3);
+    await expect(parts.getByRole('checkbox')).toHaveCount(0);
+    const roll = p.getByRole('button', { name: /^Rolar .*4d6.* no app$/ });
+    await expect(roll).toContainText('2d4');
+    await expect(roll).toContainText('4d8');
+    await expect(roll).toContainText('4d6');
+    await expectScreenPasses(p, `Atacar, os efeitos entram sozinhos no crítico ${where}`);
+    await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expectScreenPasses(p, `Atacar, digitar a soma com as partes dos efeitos ${where}`);
+    await p.getByRole('button', { name: /^Rolar .* no app$/ }).click();
+    await expect(p.getByRole('button', { name: 'Voltar à sua vez' })).toBeFocused();
+
+    // The log: the player who rolled reads the save and the effect named in the damage; the master reads the same.
+    const log = await openCombatLog(p);
+    await expect(log).toContainText('no teste de resistência');
+    await expect(log).toContainText('incluíd');
+    await expectScreenPasses(p, `Registro do combate, o efeito do golpe e o teste de resistência, visto por quem rolou ${where}`);
+    if (width < 768) {
+      await p.keyboard.press('Escape');
+    }
+    await openSessionPage(m, campaignId);
+    await openCombatPanel(m, 'Registro');
+    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('no teste de resistência');
+    await expectScreenPasses(m, `Registro do combate, o efeito do golpe e o teste de resistência, visto pelo mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 390], ['light', 1280], ['dark', 390], ['dark', 1280]] as const) {
+  test(`a folha de ataque e o registro com o efeito do golpe passam no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-048', '@RN-22'] }, async ({ browser }) => {
+    await scanHitEffectSheet(browser, scheme, width);
+  });
+}
+
+/**
  * The entries the rules refuse (#736): the master's list with the left-out panel, the "⋮" menu and the question to remove, the
  * editor of an entry with the marked field and the target that left the menu, the notice on the campaign's "Regras" tab, and
  * the player's list that says nothing of it. Each screen is judged at 390, 768 and 1280 px; E2E_SHOTS_DIR, when set, also
