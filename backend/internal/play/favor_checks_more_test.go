@@ -6,6 +6,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // untouched says nothing was rolled (the scripted dice are all still there) and the session's number is where it was.
@@ -207,6 +208,40 @@ func TestFavorTypedFacesOfACheck(t *testing.T) {
 		got, err := e.typed(t, newKey(), true, 10, 15)
 		if err != nil || len(got.faces) != 2 || got.mode != "advantage" || !got.hasFavor() || e.favorHolds(t) {
 			t.Errorf("the pair under a spend = %+v, %v (Inspiration there %v), want the advantage written and the Inspiration spent", got, err, e.favorHolds(t))
+		}
+	})
+}
+
+// A roll held for the Bardic Inspiration question that is forgotten before it is answered (the die ran out, the combat began or ended)
+// never happens, so the Inspiration it spent goes back; the hold of a roll that was answered has nothing to give back.
+func TestFavorGoesBackWhenTheHeldRollIsForgotten(t *testing.T) {
+	t.Parallel()
+	forEachCheck(t, func(t *testing.T, e *checkEnv) {
+		t.Helper()
+		e.die(t)
+		e.give(t, e.who)
+		e.h.roller.queue(4, 15)
+		held, err := e.send(t, newKey(), true)
+		if err != nil || held.holdID == "" || e.favorHolds(t) {
+			t.Fatalf("%s with a die and the spend = %+v, %v (Inspiration there %v), want the die's question with the Inspiration spent", e.name, held, err, e.favorHolds(t))
+		}
+		var enc, comb *string
+		if err := e.h.pool.QueryRow(t.Context(), `SELECT encounter_id, combatant_id FROM inspiration_holds WHERE id = $1`, held.holdID).Scan(&enc, &comb); err != nil {
+			t.Fatalf("read the hold: %v", err)
+		}
+		owner := holdOwner{EncounterID: enc, CombatantID: comb}
+		if enc == nil {
+			id := e.who.GetId()
+			owner.CharacterID = &id
+		}
+		if err := forgetHoldsOf(t.Context(), playdb.New(e.h.pool), owner); err != nil {
+			t.Fatalf("forgetHoldsOf() error = %v", err)
+		}
+		if !e.favorHolds(t) {
+			t.Error("the held roll was forgotten and the Inspiration it spent did not come back")
+		}
+		if err := forgetHoldsOf(t.Context(), playdb.New(e.h.pool), owner); err != nil || !e.favorHolds(t) {
+			t.Errorf("forgetting nothing = %v (Inspiration there %v), want nothing changed", err, e.favorHolds(t))
 		}
 	})
 }

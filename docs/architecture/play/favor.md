@@ -85,6 +85,10 @@ The spend is part of the roll's event (`Favor`), never an event of its own, so i
 `favorGiveBack` puts the row back, for the undo of such a roll; it is idempotent.
 The Inspiration is a source of the roll, `SourceFavor`, shown as "Inspiração" to the master and the roller and never hidden.
 A hold keeps `favor_spent`, so a retry and the answer count the Inspiration again without spending it.
+
+A hold that is forgotten before it is answered (the die ran out, the combat began or ended, the character left it) gives the Inspiration back: the roll never happens, and no event exists to undo. `DeleteInspirationHoldsOf` and `DeleteOrphanInspirationHolds` return which rows held a spend with no answer, and `forgetHoldsOf` and `dieAdvance` put it back (it does not stack on a newer grant).
+
+Known limit: the undo of a cast gives back the Inspiration a catch spent on its zone save through the live combatant. A character that left the combat before the undo is no longer there, so its Inspiration is not given back; the master can grant it again.
 The spend is applied to the roll's truth before the roller's mode is chosen, so a typed roll carries two faces and the mode cannot be better than the truth.
 A Protection disadvantage is applied after it and cancels the advantage, so the roll is normal.
 A spend that comes with a worse `roll_mode` than the one it gives is refused with `invalid_argument`.

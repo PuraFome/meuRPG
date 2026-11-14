@@ -12,7 +12,7 @@ type favorGrantedEvent struct {
 	CharacterID string `json:"character_id"`
 }
 
-// favorSpentEvent is the payload of favor_spent: the character that spent the Inspiration. The spend itself is not built yet.
+// favorSpentEvent is the payload of favor_spent: the character that spent the Inspiration. No writer uses it: a spend rides its roll's event (Favor).
 type favorSpentEvent struct {
 	CharacterID string `json:"character_id"`
 }

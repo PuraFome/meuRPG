@@ -187,6 +187,30 @@ func favorGiveBack(ctx context.Context, q *playdb.Queries, campaignID, character
 	return nil
 }
 
+// favorGiveBackIf gives the Inspiration back when it was spent on a held roll that is forgotten before it was answered: no roll
+// event exists for that spend, so nothing else would put it back.
+func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, campaignID, characterID string) error {
+	if !unsettled || characterID == "" {
+		return nil
+	}
+	return favorGiveBack(ctx, q, campaignID, characterID)
+}
+
+// forgetHoldsOf forgets every held roll of an owner (a combatant, or a character outside a combat), giving back the Inspiration the
+// unanswered ones spent.
+func forgetHoldsOf(ctx context.Context, q *playdb.Queries, owner holdOwner) error {
+	rows, err := q.DeleteInspirationHoldsOf(ctx, playdb.DeleteInspirationHoldsOfParams(owner))
+	if err != nil {
+		return fmt.Errorf("delete the held rolls: %w", err)
+	}
+	for _, r := range rows {
+		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // favorBack gives the Inspiration the undone roll spent back to its character. It is idempotent: a character that holds another
 // one by now (a grant after the spend) keeps the one row, so the master's undo never stacks two.
 func (u *undoer) favorBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {

@@ -1984,11 +1984,16 @@ SELECT * FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attac
 -- name: DeleteInspirationHold :exec
 DELETE FROM inspiration_holds WHERE id = $1;
 
--- name: DeleteInspirationHoldsOf :exec
--- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what).
+-- name: DeleteInspirationHoldsOf :many
+-- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
+-- character's Inspiration and never got the roll (no answer yet): that spend goes back.
+WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE (encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
-   OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id));
+   OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id))
+RETURNING id, campaign_id, character_id, favor_spent, answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
 
 -- name: AnswerInspirationHold :exec
 UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
@@ -2027,17 +2032,21 @@ UPDATE inspiration_holds SET stroke_ask = TRUE, stroke_failed = $2, die_answer_k
 -- answer's key. The roll is closed by the answer_key the settled path writes.
 UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, stroke_answer_key = $5, stroke_from = $6, counted_by = $7 WHERE id = $1;
 
--- name: DeleteOrphanInspirationHolds :exec
+-- name: DeleteOrphanInspirationHolds :many
 -- The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 -- A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 -- round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
 -- Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
+WITH changed AS (
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
   AND NOT h.reroll_ask
-  AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id);
+  AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
+RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
 
 -- name: InsertHitRider :one
 -- A rider a monk's hit offers (combat_riders.go).

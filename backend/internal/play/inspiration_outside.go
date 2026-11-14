@@ -524,7 +524,7 @@ func (s *Service) carryDieIn(ctx context.Context, c *combatTx, all []playdb.Comb
 	if _, err := c.q.DeleteCharacterInspiration(ctx, a.CharacterID); err != nil {
 		return fmt.Errorf("take the die off the character: %w", err)
 	}
-	if err := c.q.DeleteInspirationHoldsOf(ctx, playdb.DeleteInspirationHoldsOfParams(holdOwnerOfCombatant(a))); err != nil {
+	if err := forgetHoldsOf(ctx, c.q, holdOwnerOfCombatant(a)); err != nil {
 		return fmt.Errorf("forget the held rolls: %w", err)
 	}
 	return nil
@@ -578,7 +578,7 @@ func (s *Service) giveDieBack(ctx context.Context, c *combatTx, cs []playdb.Comb
 		return fmt.Errorf("take the die off the combatant: %w", err)
 	}
 	// The rolls held in the combat have nothing to settle once it is over (or the character is out of it).
-	if err := c.q.DeleteInspirationHoldsOf(ctx, playdb.DeleteInspirationHoldsOfParams(holdOwnerOfCombatant(a))); err != nil {
+	if err := forgetHoldsOf(ctx, c.q, holdOwnerOfCombatant(a)); err != nil {
 		return fmt.Errorf("forget the rolls held in the combat: %w", err)
 	}
 	return nil
@@ -590,8 +590,14 @@ func (s *Service) dieAdvance(ctx context.Context, c *combatTx, seconds int32) er
 	if err := c.q.DeleteExpiredCharacterInspiration(ctx, playdb.DeleteExpiredCharacterInspirationParams{CampaignID: c.session.CampaignID, Column2: seconds}); err != nil {
 		return fmt.Errorf("end the dice whose time ran out: %w", err)
 	}
-	if err := c.q.DeleteOrphanInspirationHolds(ctx, c.session.CampaignID); err != nil {
+	orphans, err := c.q.DeleteOrphanInspirationHolds(ctx, c.session.CampaignID)
+	if err != nil {
 		return fmt.Errorf("forget the rolls that waited for a die that ran out: %w", err)
+	}
+	for _, o := range orphans {
+		if err := favorGiveBackIf(ctx, c.q, o.UnsettledFavor, o.CampaignID, o.CharacterID); err != nil {
+			return err
+		}
 	}
 	if err := c.q.AdvanceCharacterInspiration(ctx, playdb.AdvanceCharacterInspirationParams{CampaignID: c.session.CampaignID, Column2: seconds}); err != nil {
 		return fmt.Errorf("move the dice's time on: %w", err)

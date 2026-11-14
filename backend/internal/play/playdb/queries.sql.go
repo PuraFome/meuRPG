@@ -1591,10 +1591,14 @@ func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) error {
 	return err
 }
 
-const deleteInspirationHoldsOf = `-- name: DeleteInspirationHoldsOf :exec
+const deleteInspirationHoldsOf = `-- name: DeleteInspirationHoldsOf :many
+WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE (encounter_id = $1 AND combatant_id = $2)
    OR (combatant_id IS NULL AND character_id = $3)
+RETURNING id, campaign_id, character_id, favor_spent, answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
 `
 
 type DeleteInspirationHoldsOfParams struct {
@@ -1603,10 +1607,32 @@ type DeleteInspirationHoldsOfParams struct {
 	CharacterID *string
 }
 
-// Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what).
-func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspirationHoldsOfParams) error {
-	_, err := q.db.Exec(ctx, deleteInspirationHoldsOf, arg.EncounterID, arg.CombatantID, arg.CharacterID)
-	return err
+type DeleteInspirationHoldsOfRow struct {
+	CampaignID     string
+	CharacterID    string
+	UnsettledFavor bool
+}
+
+// Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
+// character's Inspiration and never got the roll (no answer yet): that spend goes back.
+func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspirationHoldsOfParams) ([]DeleteInspirationHoldsOfRow, error) {
+	rows, err := q.db.Query(ctx, deleteInspirationHoldsOf, arg.EncounterID, arg.CombatantID, arg.CharacterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteInspirationHoldsOfRow
+	for rows.Next() {
+		var i DeleteInspirationHoldsOfRow
+		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteLastingEffect = `-- name: DeleteLastingEffect :exec
@@ -1722,22 +1748,47 @@ func (q *Queries) DeleteOpportunityOffersOfMove(ctx context.Context, moveID stri
 	return err
 }
 
-const deleteOrphanInspirationHolds = `-- name: DeleteOrphanInspirationHolds :exec
+const deleteOrphanInspirationHolds = `-- name: DeleteOrphanInspirationHolds :many
+WITH changed AS (
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
   AND NOT h.reroll_ask
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
+RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
 `
+
+type DeleteOrphanInspirationHoldsRow struct {
+	CampaignID     string
+	CharacterID    string
+	UnsettledFavor bool
+}
 
 // The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 // A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 // round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
 // Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
-func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) error {
-	_, err := q.db.Exec(ctx, deleteOrphanInspirationHolds, campaignID)
-	return err
+func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) ([]DeleteOrphanInspirationHoldsRow, error) {
+	rows, err := q.db.Query(ctx, deleteOrphanInspirationHolds, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteOrphanInspirationHoldsRow
+	for rows.Next() {
+		var i DeleteOrphanInspirationHoldsRow
+		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deletePendingDamage = `-- name: DeletePendingDamage :exec
