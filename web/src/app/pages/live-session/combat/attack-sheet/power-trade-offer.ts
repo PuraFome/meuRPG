@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 
 import type { PowerAttackOption } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { tradeOfferSub } from '../../../../core/combat/power-attack-trade';
+import { tradeOfferSub, tradeWhy } from '../../../../core/combat/power-attack-trade';
 import { OptionCard } from '../../../../shared/option-card/option-card';
 
 /** What the trade does to the roll and to the damage: each number as it was and as it is. */
@@ -15,7 +15,7 @@ export interface TradeBox {
 /**
  * "Troca do talento" on the roll step of a weapon attack (a `power_attack` effect of the character's features): one
  * check for each trade, "Usar Golpe Pesado", off at the start of every attack. A trade with no use left stays on the list,
- * dashed, with the reason the server wrote. With a trade ticked a box shows the attack and the damage as they were
+ * dashed, with the reason (the pool's name when the trade spends one, else the server's text). With a trade ticked a box shows the attack and the damage as they were
  * (struck) and as they are, in a live region so the new numbers are read when the check changes.
  */
 @Component({
@@ -29,7 +29,7 @@ export interface TradeBox {
         <app-option-card
           [title]="'Usar ' + t.name"
           [sub]="sub(t)"
-          [why]="t.disabled ? t.disabledReasonPt || 'Sem usos.' : ''"
+          [why]="why(t)"
           [checked]="pickedKey() === t.key"
           (chosen)="chosen.emit(t.key)"
         />
@@ -137,5 +137,9 @@ export class PowerTradeOffer {
 
   protected sub(t: PowerAttackOption): string {
     return tradeOfferSub(t);
+  }
+
+  protected why(t: PowerAttackOption): string {
+    return tradeWhy(t);
   }
 }

@@ -7260,13 +7260,15 @@ async function scanPowerAttackSheet(browser: Browser, colorScheme: 'light' | 'da
     await sheet.getByRole('button', { name: 'Fechar' }).last().click();
     await expect(sheet).toHaveCount(0);
 
-    // The pool of the bow's trade is empty: the check is off, with the server's reason.
+    // The pool of the bow's trade is empty: the check is off, with the pool named.
     await spendBreathRPC(m, table);
     await p.reload();
     await openActionTab(p, 'Ataques');
     sheet = await openSheet(/^Atacar com Arco longo/);
     await expect(sheet.getByRole('checkbox', { name: /Usar Disparo Firme/ })).toBeDisabled();
-    await expect(sheet.getByText('Sem usos do recurso.')).toBeVisible();
+    // The pool is named by the feature that defines it (a table content resource has no other display name).
+    await expect(sheet.getByText('Sem usos de Disparo Firme.')).toBeVisible();
+    await expect(sheet.getByText(/gasta 1 de Disparo Firme/)).toBeVisible();
     await expectScreenPasses(p, `Atacar, a troca do talento sem usos ${where}`);
     await sheet.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(sheet).toHaveCount(0);

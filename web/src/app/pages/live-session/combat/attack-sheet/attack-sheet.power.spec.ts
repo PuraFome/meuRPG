@@ -442,6 +442,46 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       expect(s.el.querySelector<HTMLInputElement>('app-roll-die-offer input')!.checked).toBe(true);
     });
 
+    it('names the pool and the uses the trade lists when the die names none (586-05 #4)', async () => {
+      api.rollAttack.mockRejectedValue(noUses());
+      const pooled = create(PowerAttackOptionSchema, {
+        ...heavy,
+        resourceNamePt: 'Fôlego do Atirador',
+        usesLeft: 1,
+      });
+      api.turnOptions.mockResolvedValue({
+        maneuverDice: [create(ManeuverDieOptionSchema, { ...certeiro, resourceNamePt: '' })],
+        options: { attacks: [{ attack: montante, powerAttacks: [pooled] }] },
+      });
+      const s = setup({ trades: [pooled], dice: [certeiro] });
+      s.el.querySelector<HTMLInputElement>('app-roll-die-offer input')!.click();
+      s.fixture.detectChanges();
+      s.tick();
+      s.press('Rolar 1d20 + 1 no app');
+      await s.settle();
+      expect(plain(s.el.querySelector('[role="alert"]')?.textContent)).toContain(
+        'Sem usos suficientes: cada um gasta 1 de Fôlego do Atirador, e resta 1. Desmarque um.',
+      );
+    });
+
+    it('writes the pool on the check of a trade that spends one, and why a trade with none is off (586-05 #3)', () => {
+      const pooled = create(PowerAttackOptionSchema, {
+        ...heavy,
+        resourceNamePt: 'Fôlego do Atirador',
+        usesLeft: 3,
+      });
+      const none = create(PowerAttackOptionSchema, {
+        ...steady,
+        resourceNamePt: 'Fôlego do Atirador',
+        usesLeft: 0,
+        disabledReasonPt: 'Sem usos do recurso.',
+      });
+      const s = setup({ trades: [pooled, none] });
+      expect(s.text()).toContain('gasta 1 de Fôlego do Atirador · resta 2');
+      expect(s.text()).toContain('Sem usos de Fôlego do Atirador.');
+      expect(s.text()).not.toContain('Sem usos do recurso.');
+    });
+
     it('reads the uses again when the trade alone found none, and lists it off', async () => {
       api.rollAttack.mockRejectedValue(noUses());
       api.turnOptions.mockResolvedValue({

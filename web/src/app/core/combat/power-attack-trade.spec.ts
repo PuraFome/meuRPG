@@ -13,6 +13,7 @@ import {
   poolShortMessage,
   tradeBox,
   tradeOfferSub,
+  tradeWhy,
   tradePartFormula,
   tradePartNote,
   tradeRollLabel,
@@ -94,6 +95,49 @@ describe('the weapon row line', () => {
 describe('the offer under "Troca do talento"', () => {
   it('says what the trade costs and gives, and that the damage needs a hit', () => {
     expect(tradeOfferSub(heavy)).toBe('−5 no ataque, +10 no dano se acertar');
+  });
+});
+
+describe('the offer of a trade that spends a pool (586-05 #3, #4)', () => {
+  const spends = (uses: number) =>
+    create(PowerAttackOptionSchema, {
+      ...heavy,
+      resourceNamePt: 'Fôlego do Atirador',
+      usesLeft: uses,
+      disabled: uses === 0,
+    });
+
+  it('says which pool it spends and what is left after the roll', () => {
+    expect(tradeOfferSub(spends(3))).toBe(
+      '−5 no ataque, +10 no dano se acertar · gasta 1 de Fôlego do Atirador · resta 2',
+    );
+    expect(tradeOfferSub(spends(2))).toBe(
+      '−5 no ataque, +10 no dano se acertar · gasta 1 de Fôlego do Atirador · resta 1',
+    );
+  });
+
+  it('leaves "resta" out when the roll takes the last use, and the pool out for a trade that spends nothing', () => {
+    expect(tradeOfferSub(spends(1))).toBe(
+      '−5 no ataque, +10 no dano se acertar · gasta 1 de Fôlego do Atirador',
+    );
+    expect(tradeOfferSub(spends(0))).toBe(
+      '−5 no ataque, +10 no dano se acertar · gasta 1 de Fôlego do Atirador',
+    );
+    expect(tradeOfferSub(heavy)).toBe('−5 no ataque, +10 no dano se acertar');
+  });
+
+  it('writes the reason of a trade with no use left with the pool, and keeps the server text without it', () => {
+    expect(tradeWhy(spends(0))).toBe('Sem usos de Fôlego do Atirador.');
+    expect(tradeWhy(spends(2))).toBe('');
+    const bare = create(PowerAttackOptionSchema, {
+      ...heavy,
+      disabled: true,
+      disabledReasonPt: 'Sem usos do recurso.',
+    });
+    expect(tradeWhy(bare)).toBe('Sem usos do recurso.');
+    expect(tradeWhy(create(PowerAttackOptionSchema, { ...heavy, disabled: true }))).toBe(
+      'Sem usos.',
+    );
   });
 });
 

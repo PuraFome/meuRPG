@@ -24,9 +24,24 @@ export function tradeRowLine(o: PowerAttackOption): string {
   return `${o.name}: ${numbers(o)}`;
 }
 
-/** The line under "Usar Golpe Pesado": the numbers, and that the damage needs a hit. */
+/** The line under "Usar Golpe Pesado": the numbers, and that the damage needs a hit. A trade that spends a pool adds which
+ * one ("gasta 1 de Fôlego do Atirador") and, when the roll leaves some, how many uses are left after it ("resta 2"). */
 export function tradeOfferSub(o: PowerAttackOption): string {
-  return `${numbers(o)} se acertar`;
+  const base = `${numbers(o)} se acertar`;
+  if (!o.resourceNamePt) {
+    return base;
+  }
+  const after = o.usesLeft - 1;
+  return `${base} · gasta 1 de ${o.resourceNamePt}${after > 0 ? ` · resta ${after}` : ''}`;
+}
+
+/** Why a trade is off: with its pool named, "Sem usos de Fôlego do Atirador."; otherwise the reason the server wrote.
+ * Empty for a trade that is on. */
+export function tradeWhy(o: PowerAttackOption): string {
+  if (!o.disabled) {
+    return '';
+  }
+  return o.resourceNamePt ? `Sem usos de ${o.resourceNamePt}.` : o.disabledReasonPt || 'Sem usos.';
 }
 
 /** The attack bonus the roll is made with: the weapon's, less the penalty of the trade picked. */

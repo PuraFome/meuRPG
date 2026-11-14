@@ -323,7 +323,13 @@ export class AttackRolls {
     const dieLeft = this.maneuverDice().find((o) => o.die?.key === die?.key)?.usesLeft ?? 0;
     if (die && !listed?.disabled && dieLeft > 0) {
       const pool = this.maneuverDice().find((o) => o.die?.key === die.key)?.resourceNamePt ?? '';
-      this.s.error.set(poolShortMessage(pool, dieLeft));
+      // The trade's own read of the pool is the one the roll was refused on; the die's is the fallback.
+      this.s.error.set(
+        poolShortMessage(
+          listed?.resourceNamePt || pool,
+          listed?.resourceNamePt ? listed.usesLeft : dieLeft,
+        ),
+      );
       return;
     }
     this.host.trade.pickedKey.set('');
