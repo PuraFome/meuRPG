@@ -109,6 +109,11 @@ export function maneuverDiceOf(
     : [];
 }
 
+/** The counting bonus the sheet shows: the option's own; none for the master's roll or a thrown-back attack. */
+function sheetMagicBonus(req: AttackSheetRequest, option: AttackOption | undefined): number {
+  return req.master || req.thrown ? 0 : magicBonusOf(option);
+}
+
 /** What the attack sheet is handed, or `null` when the attack is not among the options (nothing to open). */
 export function attackSheetData(req: AttackSheetRequest): AttackSheetData | null {
   const found = findAttack(req.options, req.key, req.thrown);
@@ -116,7 +121,7 @@ export function attackSheetData(req: AttackSheetRequest): AttackSheetData | null
     return null;
   }
   const e = req.encounter;
-  const magicBonus = req.master || req.thrown ? 0 : magicBonusOf(found.option);
+  const magicBonus = sheetMagicBonus(req, found.option);
   return {
     campaignId: req.campaignId,
     encounterId: e.id,
