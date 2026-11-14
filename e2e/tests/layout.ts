@@ -23,8 +23,9 @@ import { expect, type Page } from '@playwright/test';
 //    up over its own box, so a heading placed right over the field touched it
 //    ("Dano a mais" over "Dados", #577). The approved board leaves about
 //    13px; under 4px the two read as touching.
-// 6. An attunement chip on a gear row stays on the line of the words before it: a narrow column wraps the name and the
-//    chip follows its last word; a chip alone on a line under the name is a finding.
+// 6. An attunement chip on a gear row stays on the line of the other members of its marks group (the marks and the
+//    bonus chip): the group drops under the name as a whole and may hold only the chip; a chip alone on a line while
+//    the rest of its group stays on another is a finding.
 // 7. The heading of a section with a count beside it ("Sintonização" and "Sintonizados: 2 de 3") shares a baseline with
 //    it, within 1px.
 // 8. A row marked `data-one-line` is one line, or two lines when the second line holds only what is marked
@@ -244,21 +245,20 @@ function auditLayout(): LayoutIssue[] {
   //    (words beside it or under it are not "above"); the field's own words,
   //    an open menu and a bar that floats over the page are left out.
   const MIN_LABEL_GAP = 4;
-  // 6. A gear row's attunement chip is on the last line of the words before it.
+  // 6. A gear row's attunement chip is on the line of the other members of its marks group.
   for (const chip of document.querySelectorAll('.gear-row__att')) {
     if (!visible(chip)) continue;
-    const before = chip.previousElementSibling ?? chip.parentElement?.firstElementChild;
-    if (!before || before === chip) continue;
-    const rects = [...before.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
-    if (rects.length === 0) continue;
-    const last = rects[rects.length - 1];
     const c = chip.getBoundingClientRect();
     const middle = c.top + c.height / 2;
-    if (middle > last.bottom + 1 || middle < last.top - 1) {
+    const apart = [...(chip.parentElement?.children ?? [])]
+      .filter((m) => m !== chip && visible(m) && inFlow(m))
+      .map((m) => m.getBoundingClientRect())
+      .find((r) => middle > r.bottom + 1 || middle < r.top - 1);
+    if (apart) {
       issues.push({
         kind: 'chip-alone',
         where: describeEl(chip.closest('.gear-row') ?? chip),
-        detail: `the chip's middle is at ${middle.toFixed(0)}px and the words before it end on a line from ${last.top.toFixed(0)}px to ${last.bottom.toFixed(0)}px: it sits on a line of its own`,
+        detail: `the chip's middle is at ${middle.toFixed(0)}px and a member of its group sits on a line from ${apart.top.toFixed(0)}px to ${apart.bottom.toFixed(0)}px: the chip sits on a line of its own`,
       });
     }
   }
@@ -296,19 +296,25 @@ function auditLayout(): LayoutIssue[] {
       r.selectNodeContents(n);
       return new Set([...r.getClientRects()].filter((q) => q.width > 0 && q.height > 0).map((q) => Math.round(q.top))).size > 1;
     });
+    // A wrap group that dropped to the second line is allowed; underName judges where it sits.
     const off = boxes.filter((b) => {
       const r = b.getBoundingClientRect();
-      return r.top > first.bottom - 1 || r.bottom < first.top + 1;
+      return !b.hasAttribute('data-wrap-group') && (r.top > first.bottom - 1 || r.bottom < first.top + 1);
     });
     // A name squeezed is clipped by its own box, so the overlap check never sees it; 96px is its floor.
     const squeezed = [...row.querySelectorAll('[data-chip-ref]')].filter((n) => visible(n) && n.getBoundingClientRect().width < Math.min(96, n.scrollWidth) - 0.5);
-    // What sits under the name's line: only the marks group, at the name's x.
+    // What sits under the name's line: only wrap groups; the first starts at the name's x and the rest follow it on its line.
     const underName = [...row.querySelectorAll('[data-chip-ref]')].flatMap((n) => {
       const line = n.getBoundingClientRect();
-      return [...(n.parentElement?.children ?? [])]
-        .filter((c) => c !== n && visible(c) && inFlow(c) && c.getBoundingClientRect().top >= line.bottom - 1)
-        .filter((c) => !c.hasAttribute('data-wrap-group') || Math.abs(c.getBoundingClientRect().left - line.left) > 1)
-        .map((c) => ({ c, line }));
+      const below = [...(n.parentElement?.children ?? [])].filter((c) => c !== n && visible(c) && inFlow(c) && c.getBoundingClientRect().top >= line.bottom - 1);
+      const groups = below.filter((c) => c.hasAttribute('data-wrap-group'));
+      const lead = groups[0];
+      const strays = [
+        ...below.filter((c) => !c.hasAttribute('data-wrap-group')),
+        ...(lead && Math.abs(lead.getBoundingClientRect().left - line.left) > 1 ? [lead] : []),
+        ...groups.slice(1).filter((c) => c.getBoundingClientRect().top >= lead.getBoundingClientRect().bottom - 1),
+      ];
+      return strays.map((c) => ({ c, line }));
     });
     const button = row.closest('[data-equal-width]')
       ? [...row.querySelectorAll(row.closest('[data-equal-width]')!.getAttribute('data-equal-width')!)].find(visible)
@@ -327,7 +333,7 @@ function auditLayout(): LayoutIssue[] {
       issues.push({
         kind: 'one-line',
         where: describeEl(row),
-        detail: `${describeEl(underName[0].c)} is under the name's line and is not a marks group at the name's x (${underName[0].line.left.toFixed(0)}px)`,
+        detail: `${describeEl(underName[0].c)} is under the name's line and is not a wrap group that starts at the name's x (${underName[0].line.left.toFixed(0)}px) with the rest of them on its line`,
       });
     }
     if (underButton) {
@@ -477,11 +483,16 @@ function auditLayout(): LayoutIssue[] {
   return issues;
 }
 
+/** One line per misplaced piece on the screen as it is now. */
+export async function layoutIssues(page: Page, screen: string): Promise<string[]> {
+  await page.evaluate(() => document.fonts.ready);
+  const issues = await page.evaluate(auditLayout);
+  return issues.map((i) => `${screen}: ${i.kind} ${i.where}: ${i.detail}`);
+}
+
 /** Lists one line per misplaced piece on the screen as it is now. A soft
  * check: the test goes on to its next screens and fails at the end, so one
  * run shows every screen's findings. */
 export async function expectAligned(page: Page, screen: string): Promise<void> {
-  await page.evaluate(() => document.fonts.ready);
-  const issues = await page.evaluate(auditLayout);
-  expect.soft(issues.map((i) => `${screen}: ${i.kind} ${i.where}: ${i.detail}`)).toEqual([]);
+  expect.soft(await layoutIssues(page, screen)).toEqual([]);
 }

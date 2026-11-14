@@ -114,7 +114,8 @@ It catches what is never right:
 - text running over an icon by more than 2 px;
 - words closer than 6 px to the top or bottom border of a radio or checkbox tile;
 - a button or link outside the box of its `.mr-panel`;
-- a row marked as one line that wraps (its marks and chips may drop under the name, together and at its x), or whose name is under 96 px wide while its text is wider;
+- a row marked as one line that wraps (its marked groups may drop under the name: the first at the name's x, the rest after it on that line), or whose name is under 96 px wide while its text is wider;
+- an attunement chip on a line apart from the rest of its marks group (a group on the second line may hold only the chip);
 - the buttons of a marked group with widths more than 1 px apart;
 - a marked chip more than 2 px off the middle of the capitals of its row's words (a chip on the second line, under the name, is left out);
 - a name of a one-line row cut with an ellipsis while its own line has more than 4 px free;
