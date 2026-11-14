@@ -235,3 +235,59 @@ func TestMountedCombat_AMountWhoseNeighbourLeftComesBackFirstAmongItsTie(t *test
 		t.Errorf("order of a mount that stood first = %v, want %v", got, want)
 	}
 }
+
+// TestMountedCombat_TheDriverReadsNothingMasterOnlyOfTheMount: the rider's player directs the Ogro without owning it. The turn options of the
+// mount carry no pending damage (the dice of the Ogro's attack are the master's), no contest state (what the Ogro would roll to escape or
+// to hide), no effect notes and no jump limits. The master reads the pending damage (the positive control), and reads the mount's Hide and
+// Help as disabled, as every other action it does not take.
+func TestMountedCombat_TheDriverReadsNothingMasterOnlyOfTheMount(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.ridden(t)
+	onTurn := c.mustOptions(t, c.master, c.get(t, c.master), "Ogro") // Toren's turn: Hide and Help would be open to a creature that takes them
+	c.passTo(t, c.get(t, c.master), "Goblin 1")
+	c.moveOffering(t, "Goblin 1", 11, 7)
+	var offerID string
+	for _, o := range c.offersOf(t, c.master) {
+		if o.GetReactorId() == c.id(t, "Ogro") {
+			offerID = o.GetId()
+		}
+	}
+	if offerID == "" {
+		t.Fatalf("the Ogro has no offer: %v", c.offersOf(t, c.master))
+	}
+	if _, err := c.offerAttack(t, c.master, "Ogro", "basic:0", "Goblin 1", offerID, d20(15)); err != nil {
+		t.Fatalf("the master's reaction attack for the Ogro error = %v", err)
+	}
+	e := c.get(t, c.master)
+
+	master := c.mustOptions(t, c.master, e, "Ogro")
+	if len(master.GetPendingDamages()) != 1 {
+		t.Fatalf("the master reads %d pending damages of the Ogro, want 1 (the positive control)", len(master.GetPendingDamages()))
+	}
+	if len(onTurn.GetContestState().GetHideActions()) == 0 {
+		t.Error("the master reads no Hide action of the mount: the positive control failed")
+	}
+	for _, a := range onTurn.GetContestState().GetHideActions() {
+		if a.GetEnabled() {
+			t.Errorf("the master reads the mount's %s as enabled", a.GetKey())
+		}
+	}
+	if h := onTurn.GetContestState().GetHelpAction(); h == nil || h.GetEnabled() {
+		t.Errorf("the master reads the mount's Help as %v, want it listed and disabled", h)
+	}
+
+	driver := c.mustOptions(t, c.caio, e, "Ogro")
+	if p := driver.GetPendingDamages(); len(p) != 0 {
+		t.Errorf("the driver reads the Ogro's pending damage %v, want none: its dice are the master's", p)
+	}
+	if st := driver.GetContestState(); st != nil {
+		t.Errorf("the driver reads the Ogro's contest state %v, want none", st)
+	}
+	if n := driver.GetEffectNotes(); len(n) != 0 {
+		t.Errorf("the driver reads the Ogro's effect notes %v, want none", n)
+	}
+	if j := driver.GetOptions().GetJumps(); j != nil {
+		t.Errorf("the driver reads the Ogro's jump limits %v, want none", j)
+	}
+}
