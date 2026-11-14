@@ -1,0 +1,30 @@
+name: Load the test database image
+description: >-
+  Loads the image the `database-image` job of backend.yml pulled and saved, so this job never touches the registry
+  (docs/ci.md, "How the test database image reaches the jobs"). It sets TEST_POSTGRES_IMAGE or TEST_COCKROACH_IMAGE for
+  the later steps of the job: start-postgres.sh and start-cockroach.sh then run that local image with `--pull=never`.
+  The job needs `database-image` and a checkout.
+runs:
+  using: composite
+  steps:
+    - name: Download the image
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: database-image
+        path: ${{ runner.temp }}/database-image
+
+    - name: Load it (no pull)
+      shell: bash
+      env:
+        DIR: ${{ runner.temp }}/database-image
+      run: |
+        set -euo pipefail
+        for f in "$DIR"/*.tar.gz; do
+          tag=$("$GITHUB_ACTION_PATH/../../scripts/database-image.sh" load "$f" | tail -1)
+          case "$tag" in
+            meurpg-test-db:postgres) echo "TEST_POSTGRES_IMAGE=$tag" >> "$GITHUB_ENV" ;;
+            meurpg-test-db:cockroach) echo "TEST_COCKROACH_IMAGE=$tag" >> "$GITHUB_ENV" ;;
+            *) echo "::error::the saved image carries the tag '$tag', not a test database's" >&2; exit 1 ;;
+          esac
+          echo "Loaded $tag from the run's artifact: this job does not pull."
+        done

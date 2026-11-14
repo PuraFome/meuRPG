@@ -5,18 +5,21 @@
 # packages each, and so do those of `repeat-changed`: on a train, on main, nightly and by hand.
 # The composite action `test-database` starts it for them (docs/ci.md, "Which database the tests run on").
 # `flake-check` and `nightly-hunt` call this script directly.
-# The image is the one backend.yml names (COCKROACH_IMAGE there), so the digest lives in one place.
+# The image is the one backend.yml pins by digest (COCKROACH_IMAGE there). A `go-db` job runs the copy its run pulled once and
+# saved (TEST_COCKROACH_IMAGE, set by the action load-database-image) and never pulls; `flake-check` and `nightly-hunt` pull
+# the pinned image themselves (docs/ci.md, "How the test database image reaches the jobs").
 # Usage: start-cockroach.sh   (from anywhere; needs docker)
 set -euo pipefail
 
-workflow="$(dirname "$0")/../workflows/backend.yml"
-image=$(grep -m1 -E '^[[:space:]]*COCKROACH_IMAGE:' "$workflow" | sed -E 's/^[[:space:]]*COCKROACH_IMAGE:[[:space:]]*//')
-if [ -z "$image" ]; then
-  echo "::error::COCKROACH_IMAGE not found in $workflow; this script no longer matches it." >&2
-  exit 1
+image=$("$(dirname "$0")/database-image.sh" ref cockroach)
+pull=()
+if [ -n "${TEST_COCKROACH_IMAGE:-}" ]; then
+  image=$TEST_COCKROACH_IMAGE
+  pull=(--pull=never)
 fi
+echo "CockroachDB image: $image (${pull[*]:-pulled by docker run})"
 
-docker run --detach --name cockroach --publish 127.0.0.1:26257:26257 \
+docker run ${pull[@]+"${pull[@]}"} --detach --name cockroach --publish 127.0.0.1:26257:26257 \
   "$image" start-single-node --insecure \
   --store=type=mem,size=4GiB --cache=512MiB --max-sql-memory=2GiB
 for _ in $(seq 1 60); do

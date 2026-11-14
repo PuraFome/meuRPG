@@ -5,14 +5,22 @@
 # Usage: start-postgres.sh   (from anywhere; needs docker)
 set -euo pipefail
 
-# From Amazon's public mirror of the official image, because Docker Hub's anonymous pull limit hits GitHub's shared
-# runners. The tag is the major line, 17; pin a digest here when one is chosen.
-image=public.ecr.aws/docker/library/postgres:17
+# The image is the one backend.yml pins by digest (POSTGRES_IMAGE there), from Amazon's public mirror of the official
+# image because Docker Hub's anonymous pull limit hits GitHub's shared runners. A `go-db` job runs the copy its run
+# pulled once and saved (TEST_POSTGRES_IMAGE, set by the action load-database-image) and never pulls; any other caller
+# pulls the pinned image itself (docs/ci.md, "How the test database image reaches the jobs").
+image=$("$(dirname "$0")/database-image.sh" ref postgres)
+pull=()
+if [ -n "${TEST_POSTGRES_IMAGE:-}" ]; then
+  image=$TEST_POSTGRES_IMAGE
+  pull=(--pull=never)
+fi
+echo "PostgreSQL image: $image (${pull[*]:-pulled by docker run})"
 
 # max_connections and max_pred_locks_per_transaction size the server's bookkeeping of serializable transactions,
 # which is shared by all its databases: with too little, many test binaries at once make it summarize the old ones and
 # cancel statements with 40001 that no test conflicts with.
-docker run --detach --name postgres --publish 127.0.0.1:5432:5432 \
+docker run ${pull[@]+"${pull[@]}"} --detach --name postgres --publish 127.0.0.1:5432:5432 \
   --env POSTGRES_USER=root --env POSTGRES_HOST_AUTH_METHOD=trust --env POSTGRES_DB=postgres \
   --tmpfs /var/lib/postgresql/data:rw \
   "$image" postgres \
