@@ -1,12 +1,13 @@
 package play
 
 import (
-	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"slices"
 	"strings"
 	"testing"
 
 	connect "connectrpc.com/connect"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
 // An opportunity attack on a mount (SRD 5.1, "Mounted Combat"): when the mount provokes, the reactor may hit the mount or its rider. The
@@ -49,7 +50,7 @@ func TestMountedCombat_TheReactorMayHitTheMountOrItsRider(t *testing.T) {
 func TestMountedCombat_TheTurnOptionsOfTheReactorListTheMountAndItsRider(t *testing.T) {
 	t.Parallel()
 	c, _ := mountLeaves(t)
-	res := c.armed.mustOptions(t, c.master, c.get(t, c.master), "Goblin 1")
+	res := c.mustOptions(t, c.master, c.get(t, c.master), "Goblin 1")
 	var ids []string
 	for _, a := range res.GetAttackTargets() {
 		for _, tg := range a.GetTargets() {

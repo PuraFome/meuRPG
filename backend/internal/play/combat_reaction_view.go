@@ -137,7 +137,7 @@ func (wv *windowView) openWindows(open []playdb.ReactionWindow, line *waitLine) 
 // part in the line the caller reads.
 func (wv *windowView) openOne(w playdb.ReactionWindow, order []reaction.Window, line *waitLine) (*playv1.ReactionWindow, error) {
 	reactor := wv.reactorOf(w)
-	answers := wv.v.master || (reactor != nil && wv.v.owns(*reactor) && !(reaction.Kind(w.Kind) == reaction.Dismount && isCreature(*reactor))) // a creature's reaction is the master's
+	answers := wv.v.master || wv.ownerAnswers(w, reactor)
 	now := reaction.AnswerNow(order, w.ID)
 	var pw *playv1.ReactionWindow
 	if answers && reaction.Kind(w.Kind) != reaction.MountSave && wv.shownNow(w, now) { // a rider's save reads as Encounter.mount_save
@@ -542,4 +542,9 @@ func (wv *windowView) concentrationMode(reactor *playdb.Combatant, p *playv1.Con
 // statesAtRoll are the combat's states as the roll the window asks reads them: with the auras where everyone stands now.
 func (wv *windowView) statesAtRoll() map[string][]playdb.CombatantState {
 	return withAuras(statesOf(wv.d.states), wv.d.cs, &wv.v)
+}
+
+// ownerAnswers says the viewer's player answers the window of the reactor they own: not the dismount of a creature, which is the master's.
+func (wv *windowView) ownerAnswers(w playdb.ReactionWindow, reactor *playdb.Combatant) bool {
+	return reactor != nil && wv.v.owns(*reactor) && (reaction.Kind(w.Kind) != reaction.Dismount || !isCreature(*reactor))
 }
