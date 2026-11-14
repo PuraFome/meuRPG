@@ -80,3 +80,51 @@ func TestFiredTrapLogHoldsNoNPCCharacterID(t *testing.T) {
 		}
 	}
 }
+
+// The master settles the damage a firing did to the players' characters, one applied and one discarded, after a firing that also
+// caught a creature the players are not given: nothing the players read after either call names that creature. The control is
+// that the master's combat names it before the firing's damage is settled, and that the settled damage is one they read.
+func TestSettlingTheDamageOfAFiringNamesNoCreatureThePlayersAreNotGiven(t *testing.T) {
+	w := newWorld(t)
+	hidden := w.combatantOf(w.encounter, w.hiddenNPC.GetId()).GetId()
+	if !w.readsHold(w.master, hidden) {
+		t.Fatalf("the master's reads do not name the hidden creature, so the scan proves nothing")
+	}
+	// What names the hidden creature: its character, its combatant and its name. (The combat's ending makes other names
+	// public, so the scan is of this creature alone.)
+	noHidden := func(when string) {
+		t.Helper()
+		for _, p := range []*person{w.ana, w.caio} {
+			for _, needle := range []string{hidden, w.hiddenNPC.GetId(), w.hiddenNPC.GetName()} {
+				if w.readsHold(p, needle) {
+					t.Errorf("%s reads %q %s", p.name, needle, when)
+				}
+			}
+		}
+	}
+	fireByHand(w, hidden, w.combatantOf(w.encounter, w.pens.GetId()).GetId(), w.combatantOf(w.encounter, w.toren.GetId()).GetId())
+	firedTrapIsPublic(w)
+	// The combat ends: the damage that waits becomes the damage outside a combat, which these two calls settle.
+	must(w.master.combat.EndEncounter(t.Context(), rq(&playv1.EndEncounterRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey()})))
+	waiting := must(w.master.play.ListTrapDamages(t.Context(), rq(&playv1.ListTrapDamagesRequest{CampaignId: w.campaign}))).GetDamages()
+	var ofPens, ofToren *playv1.TrapDamage
+	for _, d := range waiting {
+		switch d.GetCharacterId() {
+		case w.pens.GetId():
+			ofPens = d
+		case w.toren.GetId():
+			ofToren = d
+		}
+	}
+	if ofPens == nil || ofToren == nil {
+		t.Fatalf("the master reads %d trap damages and not one for each caught character, so the settling proves nothing: %s", len(waiting), jsonOf(&playv1.ListTrapDamagesResponse{Damages: waiting}))
+	}
+	noHidden("before any call")
+	must(w.master.play.ApplyTrapDamage(t.Context(), rq(&playv1.ApplyTrapDamageRequest{CampaignId: w.campaign, TrapDamageId: ofPens.GetId(), IdempotencyKey: newKey()})))
+	noHidden("after the apply")
+	must(w.master.play.DiscardTrapDamage(t.Context(), rq(&playv1.DiscardTrapDamageRequest{CampaignId: w.campaign, TrapDamageId: ofToren.GetId(), IdempotencyKey: newKey()})))
+	noHidden("after the discard")
+	if !w.readsHold(w.ana, w.pts["trap-guardroom"].GetId()) {
+		t.Errorf("Ana reads nothing of the trap that went off, so the scan proves nothing")
+	}
+}
