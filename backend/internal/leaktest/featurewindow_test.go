@@ -26,6 +26,12 @@ const (
 // goblin's turn the next to come. It returns the goblin's combatant.
 func (w *world) haloFight(kinds []rulesv1.FeatureTriggerKind, goblinAt [2]int32) *playv1.Combatant {
 	w.t.Helper()
+	return w.haloFightOf(kinds, goblinAt, true)
+}
+
+// haloFightOf is haloFight with the goblin hidden or in view.
+func (w *world) haloFightOf(kinds []rulesv1.FeatureTriggerKind, goblinAt [2]int32, hidden bool) *playv1.Combatant {
+	w.t.Helper()
 	ctx := w.t.Context()
 	m := w.master
 	w.imgMap = w.image("halo-map-image", 240, 160)
@@ -58,7 +64,6 @@ func (w *world) haloFight(kinds []rulesv1.FeatureTriggerKind, goblinAt [2]int32)
 		}}},
 	})))
 	goblin, _ := w.npc("halo-goblin", &charactersv1.BasicSheet{HitPointsMax: 20, ArmorClass: 12, SpeedFt: 30})
-	hidden := true
 	e := must(m.combat.StartEncounter(ctx, rq(&playv1.StartEncounterRequest{
 		CampaignId: w.campaign, IdempotencyKey: newKey(), Name: w.secrets.public("halo-encounter"),
 		Participants: []*playv1.Participant{{CharacterId: goblin.GetId(), Hidden: &hidden}},
@@ -243,4 +248,49 @@ func TestAHiddenCreatureMovingNearOpensTheFeatureWindowForTheMasterAlone(t *test
 		window = w.thenTheMasterAnswers(t, goblin, playv1.ReactionChoice_REACTION_CHOICE_PASS)
 	})
 	w.requireWindowHeardByTheMasterAlone(t, got, window)
+}
+
+// A goblin in view starts its turn 10 ft from Toren and Caio, his player, reads the window naming it. The master then hides the
+// goblin while the window waits: from then on Caio and Ana read nothing of the goblin (its name, the distance) or of the window, and
+// Caio cannot answer it.
+func TestHidingTheCreatureOfAnOpenFeatureWindowTakesItFromThePlayer(t *testing.T) {
+	w := haloWorld(t)
+	goblin := w.haloFightOf([]rulesv1.FeatureTriggerKind{rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_STARTS_TURN_WITHIN}, [2]int32{5, 3}, false)
+	w.passToGoblin(goblin)
+	window := windowOfKind(w.caio, w, playv1.ReactionKind_REACTION_KIND_FEATURE)
+	if window == nil || window.GetTrigger().GetActorId() != goblin.GetId() {
+		t.Fatalf("Caio reads %v, want the Halo window naming the goblin in view", window)
+	}
+	if body := w.caio.call(playv1connect.CombatServiceGetEncounterProcedure, &playv1.GetEncounterRequest{CampaignId: w.campaign}).body; !strings.Contains(string(body), "distanceFt") {
+		t.Fatal("Caio's read does not hold the distance: the needle is unreachable")
+	}
+	hidden := true
+	must(w.master.combat.SetCombatantHidden(t.Context(), rq(&playv1.SetCombatantHiddenRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: goblin.GetId(), IdempotencyKey: newKey(), Hidden: hidden,
+	})))
+	w.haloNeedles(window.GetId())
+	w.secrets.add(&canary{needle: `"distanceFt":10`, kind: "feature-window-distance"})
+	for _, p := range []*person{w.ana, w.caio} {
+		for _, r := range w.haloReads(p) {
+			if r.status != 200 && !strings.Contains(string(r.body), "not_found") {
+				continue
+			}
+			for _, f := range w.inspect(p, r, nil) {
+				t.Errorf("%s: %s", p.name, f)
+			}
+		}
+		if enc := p.currentEncounter(w); len(enc.GetReactionWindows()) != 0 {
+			t.Errorf("%s reads the windows %v after the hide, want none", p.name, enc.GetReactionWindows())
+		}
+	}
+	// The window is closed: the answer Caio read the id of is refused, and the refusal says nothing of the goblin.
+	asked := w.caio.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: window.GetId(), Answer: playv1.ReactionChoice_REACTION_CHOICE_USE, IdempotencyKey: newKey(),
+	})
+	if asked.ok() {
+		t.Errorf("Caio answered the window of a creature the master hid: %d %s", asked.status, asked.body)
+	}
+	for _, f := range w.inspect(w.caio, asked, nil) {
+		t.Errorf("Caio's refusal: %s", f)
+	}
 }

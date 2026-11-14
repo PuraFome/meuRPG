@@ -157,11 +157,12 @@ func (s *Service) featureReady(ctx context.Context, c *combatTx, cs []playdb.Com
 }
 
 // featureGone says the feature of a FEATURE window cannot be used on the creature that triggered it any more: the creature left
-// the fight or joined the reactor's side, or the feature is not ready now (no use or resource left, the reaction spent, nothing to aim at).
+// the fight, joined the reactor's side, or was hidden after the window opened for the player (RN-10: the player may read nothing
+// more of it, so the window closes); or the feature is not ready now (no use or resource left, the reaction spent, nothing to aim at).
 func (s *Service) featureGone(ctx context.Context, c *combatTx, w playdb.ReactionWindow, t windowTrigger, byID map[string]playdb.Combatant) (bool, error) {
 	mover, ok := byID[t.Actor]
 	reactor, ok2 := byID[conv.OrZero(w.ReactorID)]
-	if !ok || !ok2 || mover.Defeated || mover.Dismissed || mover.Side == reactor.Side {
+	if !ok || !ok2 || mover.Defeated || mover.Dismissed || mover.Side == reactor.Side || (mover.Hidden && !t.Hidden) {
 		return true, nil
 	}
 	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, reactor)
