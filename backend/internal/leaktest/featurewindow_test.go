@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -139,7 +140,7 @@ func (w *world) requireNothingOfTheWindow(t *testing.T, window *playv1.ReactionW
 	fake := w.caio.call(playv1connect.CombatServiceAnswerReactionProcedure, &playv1.AnswerReactionRequest{
 		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: newKey(), Answer: playv1.ReactionChoice_REACTION_CHOICE_PASS, IdempotencyKey: newKey(),
 	})
-	if asked.ok() || fake.ok() || asked.status != fake.status || string(asked.body) != string(fake.body) {
+	if asked.ok() || fake.ok() || asked.status != fake.status || !bytes.Equal(asked.body, fake.body) {
 		t.Errorf("Caio's answer to the real window: %d %s; to an invented one: %d %s; they must read the same", asked.status, asked.body, fake.status, fake.body)
 	}
 }

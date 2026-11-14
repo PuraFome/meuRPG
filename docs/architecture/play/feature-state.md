@@ -72,6 +72,9 @@ The checks live once (`features_use.go`) and `GetTurnOptions` runs the same ones
 So an option listed as enabled is a call the server accepts, with two exceptions: the master's economy override (an option disabled only for the economy, `masterMayOverride`, is a call the master may make), and the arguments of the call (a target the feature cannot reach or a choice it does not offer is refused even when the option is enabled).
 A disabled row the call does not know how to name is refused all the same (`featureRefusal` fails closed, `NO_SLOT` included).
 
+A reaction feature with a `use.trigger` is also used from its window: `AnswerReaction` runs the same steps with the window as `featureFlow.win`, and the gate does not hold the use that answers it (`featureStopNow` with `reaction`).
+See [The feature window](reactions.md#the-feature-window).
+
 **Order.** The request is read (ids, key, targets, choice), then inside the write transaction (`s.write`, kind `feature_used`, the session row locked, the idempotency key replayed):
 
 1. Locate. The combatant must be a player's character the caller may act for (own player or master; an NPC or a creature is `invalid_argument` ("this is for a player's character; the master adjusts an NPC by hand"); a creature the player does not see is `not_found`).

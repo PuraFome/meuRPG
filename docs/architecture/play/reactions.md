@@ -165,6 +165,36 @@ A damage roll opens its window in `damageWindows`, for every damage that is not 
 The window is the same for a player's creature and for an NPC.
 The log line of the cut names the die, what it came off (the attack, the test or the damage) and the roll before and after; a player's line says only whether the attack still hit.
 
+## The feature window
+
+A table feature whose `use` has a `trigger` and the economy `reaction` opens a window of kind `feature` (`feature_window.go`).
+Two moments open it: a creature of the other side starts its turn (`startTurn`, `openStartFeatures`), and a creature ends a move (`openMoveFeatures`, beside the opportunity offers).
+The turn-start window needs the creature within `range_ft` of the owner.
+The move window needs it within `range_ft` at the end and outside it at the start of the move.
+One window opens for each triggered feature of each reactor, all in one new group.
+The reactor is a player's character on the map, of the other side, with its reaction free, not incapacitated and not blinded, and the feature has a use left.
+The reactor must see the creature (`watches`), and the creature must be a target the feature can aim at.
+An invisible creature opens no window.
+`windowTrigger` keeps `key` (the feature), `actor` (the creature), `distance`, `moment` and `hidden`.
+The reactor's player reads the creature, the feature, the distance and the moment in `ReactionWindow.trigger`.
+The window holds the gate (`REACTION_PENDING`) and the turn waits, as for any window.
+
+**Answering.** `AnswerReaction` "Usar" runs `UseFeature`'s steps with the window (`featureFlow.win`), as a reaction on the creature.
+The reaction, one use and the feature's resource are spent, the window closes as answered and the line is the feature's own.
+"Deixar passar" writes `reaction_declined` and spends nothing.
+The reactor's player or the master answers (`ByMaster`); another player gets `permission_denied`.
+A feature with a trigger takes no choice, because the answer carries none (`.use.trigger` is refused at save when the feature has choices).
+The web auto-passes the window at 30 s, as the other optional reactions.
+
+**Undo.** The undo of the move or of the start of a turn that opened the window removes it while it is unanswered (`DeleteUnansweredFeatureWindow`; the move event keeps the ids in `feature_windows`).
+The undo of the use reopens the window (`reopenWindowOf`), and so does the undo of the pass.
+
+**RN-10.** A window of a creature the master hid is the master's alone (`windowTrigger.Hidden`).
+It opens for any reactor without a sight check.
+No player is told: not the stream, not `reaction_wait` (the wait reads "Esperando o mestre"), not `GetTurnOptions`, not the combat read.
+The reactor's player cannot answer it (`windowToAnswer` reads it as an invented window).
+The leaktest has one row for each moment.
+
 ## The settle step and the gate
 
 After every write of a combat, `settleReactions` runs:
@@ -186,7 +216,7 @@ An optional reaction a player does not answer passes after 30 seconds.
 The server keeps no timer.
 The master's screen (`core/combat/reaction-autopass.ts`, driven by `combat-view`) keeps the clock.
 It remembers when it first saw each open window waiting for its player (`reactor_is_player`, `answer_now`).
-The kinds are Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall and Readied action.
+The kinds are Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, Readied action and Reaction feature.
 After `AUTO_PASS_SECONDS` (30) it sends the same `AnswerReaction` "Deixar passar" the master can tap.
 Its idempotency key is `auto-pass:<window id>`, so two tabs or a retry never answer twice.
 A refusal because it was answered meanwhile is ignored.
