@@ -1372,6 +1372,12 @@ message Attack {
   // The attack counts as magical for those resistances: a spell, the mark, a weapon_rule or a creature's
   // Magic Weapons. Display only: the engine decides from the derived value, never from this field.
   bool magical = 24;
+  // How much of `attack_bonus` and of the damage modifier is the weapon's magic bonus, from 0 to 3:
+  // the same +N that the sheet's item modifiers list for `attack:<key>` and `damage:<key>`.
+  // It counts only while the weapon is equipped and, when the piece needs attunement, attuned.
+  // 0 for a weapon with no counting bonus, for a spell, an unarmed strike and a creature's attack.
+  // Display only: `attack_bonus` and `damage` already include it, so the app never adds it again.
+  int32 magic_bonus = 25;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.
@@ -1586,6 +1592,7 @@ message Subrace {
   bool archived = 6;
   // Switched off for the players (see Race.off). Its own switch: a subrace of an
   // off race is hidden from the players too, and keeps this mark false.
+  // Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
   bool off = 7;
   // Content keys of the skills the subrace gives, added to the race's (see
   // Race.skill_keys). The race's skills that come from a trait this subrace replaces
@@ -1682,6 +1689,7 @@ message Subclass {
   // Set for a subclass that casts on its own (a third caster, the table's only).
   SubclassSpellcasting spellcasting = 6;
   // Switched off for the players (see Subrace.off): its own switch.
+  // Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
   bool off = 7;
   // The spells the subclass always has prepared, from a class level (a domain's,
   // an oath's); they do not count against the prepared limit. Without the ones
@@ -1725,6 +1733,7 @@ message Background {
   // A table background's equipment text; empty for the SRD's.
   string equipment_pt = 6;
   // Switched off for the players (see Race.off).
+  // Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
   bool off = 7;
 }
 
@@ -1773,6 +1782,7 @@ message Weapon {
   bool ranged = 5;
   // Set for a table weapon the master retired, or switched off for the players (RN-23); the SRD's are never.
   bool archived = 6;
+  // Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
   bool off = 7;
 }
 
@@ -2509,6 +2519,11 @@ message AttackOption {
   // left is listed with `disabled` set. A trade that shares its pool with a maneuver die named in the same request may
   // be listed enabled and still be refused with NO_USES_LEFT, since the two need two uses. The choice is sent as RollAttackRequest.power_attack_key, which the server checks again.
   repeated PowerAttackOption power_attacks = 8;
+  // The magic bonus of the character's weapon in `attack`, from 0 to 3, the same value as
+  // `attack.magic_bonus`: the part of the attack bonus and the damage that is a counting +N.
+  // 0 for a cantrip, an unarmed strike, a creature's, an NPC's and an opportunity attack.
+  // Display only: the server rolls with the numbers already in `attack`.
+  int32 magic_bonus = 9;
 }
 
 // PowerAttackOption is a trade of attack roll for damage the character may make on a weapon attack.
