@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// TestMountSaveMigration: 00335 widens the kind CHECKs of the reaction windows ('mount_save', 'dismount') and of the inspiration holds
+// TestMountSaveMigration: 00339 widens the kind CHECKs of the reaction windows ('mount_save', 'dismount') and of the inspiration holds
 // ('mount_save') and adds the event kinds of the rider's save; before it none of them is accepted (00333 only has the mounted
 // combat). The way down removes the rows of the new kinds and the kinds, and refuses them again; up, down and up again leave the same.
 func TestMountSaveMigration(t *testing.T) {
@@ -50,19 +50,19 @@ func TestMountSaveMigration(t *testing.T) {
 	}
 	version := func() int {
 		var n int
-		scan(`SELECT count(*) FROM goose_db_version WHERE version_id = 335 AND is_applied`, &n)
+		scan(`SELECT count(*) FROM goose_db_version WHERE version_id = 339 AND is_applied`, &n)
 		return n
 	}
 	for _, k := range []string{"mount_save", "dismount"} {
 		if window(k) == nil {
-			t.Errorf("a window of kind %s was accepted before 00335", k)
+			t.Errorf("a window of kind %s was accepted before 00339", k)
 		}
 	}
 	if hold("mount_save") == nil {
-		t.Error("a hold of kind mount_save was accepted before 00335")
+		t.Error("a hold of kind mount_save was accepted before 00339")
 	}
 	if kinds() != 0 || version() != 0 {
-		t.Errorf("before 00335: %d event kinds, version applied %d; want 0, 0", kinds(), version())
+		t.Errorf("before 00339: %d event kinds, version applied %d; want 0, 0", kinds(), version())
 	}
 
 	for round := range 2 { // up, down, up again: the same each time
@@ -70,7 +70,7 @@ func TestMountSaveMigration(t *testing.T) {
 			t.Fatalf("Up() round %d error = %v", round, err)
 		}
 		if version() != 1 {
-			t.Fatalf("round %d: 00335 is not applied", round)
+			t.Fatalf("round %d: 00339 is not applied", round)
 		}
 		for _, k := range []string{"mount_save", "dismount"} {
 			if err := window(k); err != nil {
