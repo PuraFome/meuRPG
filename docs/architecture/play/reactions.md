@@ -22,6 +22,7 @@ The code is `combat_reactions.go` and `combat_reaction_*.go`; the answer is `Ans
 | Opportunity attack | A creature leaves a reach | The mover's turn (its own offers, shown as a window; see [Movement](movement.md#opportunity-attacks)) |
 | Contest | A grapple, shove or escape that waits for the defender's roll or the shover's choice | Nothing: the contest row itself. Answered with `RespondContest` or `ResolveShove`, never `AnswerReaction`. Opened by `syncContests`, closed by itself when the contest no longer waits (see [Contests](contests.md)) |
 | Hidden reveal | A player's area spell hit hidden creatures and the table asks ("Perguntar a cada vez") | The turn: the master reads it as a window (`HIDDEN_REVEAL`) and answers with `ResolveHiddenReveal` |
+| Mount save | A mount moved against its will, or its rider knocked prone while mounted (see [Mounted combat](movement.md#the-riders-save)) | The turn, a move, a mount and a dismount (`MOUNT_SAVE_PENDING`), answered with `RollMountSave` (the app's die or a physical die; no reaction is used) |
 | Concentration save | Damage that lands on a concentrating creature (DC 10 or half the damage); 0 HP ends it with no save | The attack that dealt the damage (`CONCENTRATION_SAVE_PENDING`), answered with `ResolveConcentrationSave` (the app's die, a physical die, "Deixar o mestre rolar por mim" or the master's "keep") |
 | Effect save | An end-of-turn or start-of-turn save of a lasting effect, or the save a spell zone asks of a player's character or of an NPC with Legendary Resistance and a use left (`EFFECT_SAVE`) | The turn (see [Lasting effects](lasting-effects.md), [Spell zones](spell-zones.md)) |
 | Master check | The table rule "Reações dos inimigos" set to "Sempre" (`MASTER_CHECK`): a one-tap check on every attack, hit, cast and damage of a player against an enemy, so the pause says nothing | The action |
@@ -173,7 +174,7 @@ After every write of a combat, `settleReactions` runs:
 3. it replays the held actions in the combat's transaction (the same handler as the RPC, with what the answers decided in `replayState`: the countered cast, the Cutting Words die, the halved or deflected damage).
    Replaying a held request with its idempotency key returns the same answer.
 
-`reactionGate` refuses `EndTurn`, a second action, `RollDamage` and `ApplyPendingDamage` with `REACTION_PENDING` (or `CONCENTRATION_SAVE_PENDING`) while a window waits, for the master too (who ends the combat or answers).
+`reactionGate` refuses `EndTurn`, a second action, `RollDamage` and `ApplyPendingDamage` with `REACTION_PENDING` (or `CONCENTRATION_SAVE_PENDING`, or `MOUNT_SAVE_PENDING`) while a window waits, for the master too (who ends the combat or answers).
 Windows are answered in the initiative order inside a group (`NOT_YOUR_TURN_TO_ANSWER` otherwise); two answers at once settle to one.
 A window the reactor can no longer use closes by itself and says so, in words, only to its own reactor.
 Ending the combat discards every window and held action.

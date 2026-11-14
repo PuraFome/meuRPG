@@ -71,6 +71,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `RemoveCombatant` | Master | Takes someone out; if it was their turn, the turn passes. Refused (`PENDING_DAMAGE`) while a damage the combatant attacked with or took is still to roll or apply. A character's effects go back to game time when it leaves in setup (`effectRowsToCharacters`; its inspiration die is not given back). A creature leaving because its owner or the master dismissed it cannot be refused: the damage waiting on it is written as dropped (`damage_discarded`, before the `combatant_removed`) |
 | `SetCombatantSide` | Master | "Aliado" or enemy for an NPC (`side_set`); passes over opportunity offers now between allies |
 | `SetCombatantMount` | Master | Marks an NPC or a creature as a willing mount (`controlled` or `independent`) or takes the mark off (`mount_kind_set`); see [Mounted combat](movement.md#mounted-combat) |
+| `RollMountSave` | The rider's player; the master (for an NPC rider too) | The Dexterity saving throw a mounted rider owes after its mount was moved against its will or it was knocked prone, DC 10, with the held-roll gate; a failure throws the rider prone onto the nearest free square next to the mount (see [Mounted combat](movement.md#the-riders-save)) |
 | `MountCombatant`, `DismountCombatant` | The rider's player; the master | The rider gets on a willing mount within 5 ft or off onto a free square next to it, for half its speed, once per move (`combatant_mounted`, `combatant_dismounted`); see [Mounted combat](movement.md#mounted-combat) |
 | `SetCombatantHidden` | Master | Hides or shows an NPC |
 | `SetMonsterReactionMode` | Master | Chooses how an NPC's Parry is decided: the server on its own (default) or "Perguntar", a window for the master ([Reactions](reactions.md#parry)) |
@@ -215,6 +216,7 @@ stateDiagram-v2
   A mount that gets its own total back while a turn runs leaves that turn, unless its own total puts it in the group on turn (`idleReleased`).
   A rider that is removed or dismissed releases its mount before the turn is settled (`releaseMountOf`), so the turn passes to the group after the rider's.
   The pair's tie is not a tie for the master to resolve (`unresolvedTies`).
+  `SubmitInitiative` runs `syncMounts` too, so a pair made before the rider's first roll is ordered by it.
   `SetInitiativeOrder` keeps the mount right after its rider, and a pair's tie flag is one (`pairTies`).
   The undo of a mount or a dismount gives back the order, the initiative of the mount and the mount's `turn_state` and economy.
 - **Who ends a part.**

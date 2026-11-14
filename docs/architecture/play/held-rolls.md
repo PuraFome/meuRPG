@@ -5,7 +5,7 @@ The questions are the halfling's Lucky (RN-35), the reroll a table feature gives
 Lucky and the die are asked in that order, so the player decides after seeing the d20 and before the result (SRD 5.1).
 The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.go`, `held_registry.go`, `held_roller.go`, `held_reroll.go`, `combat_lucky.go`, `inspiration_held.go`, `inspiration_lucky.go` and `inspiration_outside.go`.
 
-## The thirteen kinds
+## The fourteen kinds
 
 Whichever path rolls the d20 asks the same gate.
 
@@ -24,6 +24,7 @@ Whichever path rolls the d20 asks the same gate.
 | Hide check | `Hide` (the Stealth check) | `inspiration_holds` |
 | Counterspell check | `AnswerReaction` (the ability check of a Counterspell above the slot's level) | `inspiration_holds` |
 | Initiative | `SubmitInitiative` (a player's character in SETUP; the master may roll for it and then waits for the player's first 10 s) | `inspiration_holds` |
+| Mount save | `RollMountSave` (the rider's Dexterity saving throw against DC 10; a retry of a written save answers with its result read back from the event, the Bardic Inspiration die in `Res` included) | `inspiration_holds` |
 
 **Death saves.** The d20 of a death save is gated like a saving throw with no modifier (`deathSaveWrite`): a Bardic Inspiration die the combatant holds or a halfling's 1 keeps it with the counts untouched until the answer, and the die moves the total across 10 (`combat.DeathSaveWith`) but never a natural 1 (two failures) or a natural 20 (back with 1 hit point). The event keeps the die (`Res`, which the undo gives back) and the Lucky reroll. A failed death save is also offered Indomitable once Lucky and the die are answered, and the counts stay untouched until that is answered too. The player's screen shows the question under the counts (`CombatDeaths.held`, read again from the combatant's `held_roll_offer`).
 
