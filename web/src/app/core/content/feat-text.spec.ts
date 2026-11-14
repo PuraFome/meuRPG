@@ -6,7 +6,7 @@ import {
   FeatUnmetKind,
   FeatUnmetSchema,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { prerequisiteParts, prerequisiteSupport, unmetText } from './feat-text';
+import { prerequisiteParts, prerequisiteSupport, unmetLines, unmetText } from './feat-text';
 
 const HIDDEN_LINE = 'Pede uma condição que a mesa não mostra.';
 
@@ -104,6 +104,46 @@ describe('what a feat asks, in Portuguese', () => {
     expect(unmet({ kind: FeatUnmetKind.OPTION, key: 'option:x@mesa' })).toBe(
       'Exige a opção Nome, que você ainda não escolheu.',
     );
+  });
+
+  it('joins what a character lacks of those four into one "Exige" line (board 580-04)', () => {
+    const named = (k: string) =>
+      ({
+        'class:warlock': 'Bruxo',
+        'option:pact-of-the-blade': 'Pacto da Lâmina',
+        'spell:eldritch-blast': 'Rajada Mística',
+        'option:brasa@mesa': 'Olhar de Brasa',
+        'option:sedenta@mesa': 'Lâmina Sedenta',
+      })[k] ?? k;
+    const u = (init: Parameters<typeof create<typeof FeatUnmetSchema>>[1]) =>
+      create(FeatUnmetSchema, init);
+    expect(
+      unmetLines(
+        [
+          u({ kind: FeatUnmetKind.CLASS_LEVEL, key: 'class:warlock', value: 5 }),
+          u({ kind: FeatUnmetKind.PACT, key: 'option:pact-of-the-blade' }),
+          u({ kind: FeatUnmetKind.SPELL, key: 'spell:eldritch-blast' }),
+          u({ kind: FeatUnmetKind.OPTION, key: 'option:brasa@mesa' }),
+          u({ kind: FeatUnmetKind.OPTION, key: 'option:sedenta@mesa' }),
+        ],
+        named,
+      ),
+    ).toEqual([
+      'Exige Bruxo 5, Pacto da Lâmina, Rajada Mística, Olhar de Brasa e Lâmina Sedenta.',
+    ]);
+    expect(
+      unmetLines([u({ kind: FeatUnmetKind.SPELL, key: 'spell:eldritch-blast' })], named),
+    ).toEqual(['Exige a magia Rajada Mística, que você ainda não conhece.']);
+    // The older kinds keep their own line, and a hidden one still names nothing.
+    expect(
+      unmetLines(
+        [
+          u({ kind: FeatUnmetKind.LEVEL, value: 4 }),
+          u({ kind: FeatUnmetKind.CLASS_LEVEL, key: 'class:warlock', value: 5 }),
+        ],
+        named,
+      ),
+    ).toEqual(['Precisa de nível 4 ou mais.', 'Exige Bruxo 5.']);
   });
 
   it('says nothing for a feat that asks nothing', () => {
