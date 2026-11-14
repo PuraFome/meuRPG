@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
 import { createEntryRPC, giveFeatRPC } from './content-support';
-import { attackCombatSquares, beginAttackCombatRPC, getEncounterRPC, pensantusCasting, tableForCombat } from './combat-support';
+import { attackCombatSquares, beginAttackCombatRPC, combatRPC, getEncounterRPC, pensantusCasting, tableForCombat } from './combat-support';
 import { elementFeatBody, endSessionOf, markFeatBody } from './feature-use-support';
 import { openSessionPage } from './live-session-support';
 import { newSignedInContext, openActionTab, openCombatLog, openSpentGroup } from './support';
@@ -70,6 +70,58 @@ test('um jogador usa uma característica com alvo e o mestre usa uma com opção
     // The server holds both uses: the player's page shows the turn's limit spent too.
     await expect(p.getByRole('region', { name: 'O que você pode fazer' }).getByRole('button', { name: 'Usar Elemento de Teste' })).toBeDisabled();
     expect((await getEncounterRPC(m, campaignId)).currentCombatantId).toBeTruthy();
+  } finally {
+    await endSessionOf(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+});
+
+/**
+ * The server's refusal of a target (FEATURE_TARGET): the chosen goblin leaves the reach before the call, the sheet reads the sentence that names it,
+ * keeps the choice, and a second pick goes through with the same sheet. Nothing is spent by the refused call.
+ */
+test('o servidor recusa um alvo que saiu do alcance e a folha deixa escolher outro', { tag: ['@MR-014', '@RN-19'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Usar característica recusa ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    await giveFeatRPC(m, campaignId, table.characterId, await createEntryRPC(m, campaignId, 'tableFeat', markFeatBody()));
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, attackCombatSquares);
+    const captain = begun.combatants.find((c) => c.label === 'Capitão Goblin')!.id;
+
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await openActionTab(p, 'Habilidades');
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    await groups.getByRole('button', { name: 'Usar Marca de Teste' }).click();
+    const mark = p.getByRole('dialog', { name: /Marca de Teste/ });
+    await mark.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(mark.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
+
+    // The captain leaves the 9 m of the use after it was picked.
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: captain, col: 19, row: 1 });
+    await mark.getByRole('button', { name: 'Usar no Capitão Goblin' }).click();
+    const band = mark.locator('.mr-notice--danger');
+    await expect(band).toContainText('O Capitão Goblin saiu do alcance. Escolha outro alvo.');
+    await expect(mark.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
+    await expect(groups.getByText(/Uso de Marca de Teste/)).toHaveCount(0);
+
+    // A second pick goes through, and the use is spent once.
+    await mark.locator('label', { hasText: 'Goblin 1' }).click();
+    await mark.getByRole('button', { name: 'Usar no Goblin 1' }).click();
+    await expect(mark).toHaveCount(0);
+    await expect(groups.getByText(/Uso de Marca de Teste: 2 PV temporários/)).toBeVisible();
+    const log = await openCombatLog(p);
+    await expect(log.getByText(/Pensantus usou Marca de Teste no Goblin 1/)).toBeVisible();
+    await expect(log.getByText(/Marca de Teste no Capitão Goblin/)).toHaveCount(0);
   } finally {
     await endSessionOf(m, campaignId);
     await master.close();
