@@ -3,7 +3,7 @@
 export const WEAPON_FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: string }[] = [
   {
     shape: /^table_weapon\.damage$/,
-    text: 'Use dados de d4, d6, d8, d10, d12 ou d20, como 1d8 ou 2d6, ou um dano fixo de 1 a 99.',
+    text: 'Use dados de d4, d6, d8, d10 ou d12, como 1d8 ou 2d6.',
   },
   {
     shape: /^table_weapon\.damage_type$/,
@@ -11,10 +11,16 @@ export const WEAPON_FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text
   },
   {
     shape: /^table_weapon\.two_handed_damage$/,
-    text: 'O dano com duas mãos é um dado, como 1d10, e só vale para uma arma Versátil.',
+    text: 'O Versátil pede o dano com duas mãos, um dado como 1d10.',
   },
-  { shape: /^table_weapon\.weight_oz$/, text: 'O peso vai de 0 a 10.000 lb.' },
-  { shape: /^table_weapon\.price_cp$/, text: 'O preço vai de 0 a 1.000.000 PO.' },
+  {
+    shape: /^table_weapon\.weight_oz$/,
+    text: 'O peso e o preço não são negativos. O peso vai até 10.000 lb.',
+  },
+  {
+    shape: /^table_weapon\.price_cp$/,
+    text: 'O peso e o preço não são negativos. O preço vai até 1.000.000 PO.',
+  },
   {
     shape: /^table_weapon\.properties$/,
     reason: 'limit',
@@ -35,10 +41,10 @@ export const WEAPON_FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text
   },
   {
     shape: /^table_weapon\.normal_range_ft$/,
-    text: 'Uma arma à distância ou de Arremesso pede a distância normal, de 1 a 300 m. Uma corpo a corpo sem Arremesso não tem distância.',
+    text: 'Arremesso e uma arma à distância pedem a distância normal e a longa.',
   },
   {
     shape: /^table_weapon\.long_range_ft$/,
-    text: 'A distância longa não pode ser menor que a normal, e vai até 300 m.',
+    text: 'A distância longa não pode ser menor que a normal.',
   },
 ];

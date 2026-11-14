@@ -44,6 +44,9 @@ let nextId = 0;
           (input)="valueChange.emit($any($event.target).value)"
         />
       }
+      @if (counter() && maxlength()) {
+        <span matTextSuffix class="count">{{ value().length }}/{{ maxlength() }}</span>
+      }
       @if (suffix()) {
         <span matTextSuffix class="suffix">{{ suffix() }}</span>
       }
@@ -68,6 +71,12 @@ let nextId = 0;
       --mat-form-field-outlined-focus-label-text-color: var(--mr-danger-ink);
     }
 
+    .count {
+      padding-right: 12px;
+      font-size: var(--mr-font-14);
+      color: var(--mr-ink-muted);
+    }
+
     .suffix {
       padding-right: 12px;
       color: var(--mr-ink-muted);
@@ -84,6 +93,8 @@ export class TextField {
   /** More than 0 makes it a paragraph field with that many rows. */
   readonly rows = input(0);
   readonly maxlength = input(0);
+  /** Shows "19/60" in the field's end, as the name of a weapon does (board 580-10). */
+  readonly counter = input(false);
   readonly inputmode = input('');
   /** What a field left empty means ("da base"); the label then stays above it. */
   readonly placeholder = input('');

@@ -184,6 +184,9 @@ export function propertyClash(ranged: boolean, properties: readonly string[]): s
   if (has('two-handed') && has('versatile')) {
     return 'Uma arma de Duas mãos não é Versátil.';
   }
+  if (has('light') && has('heavy')) {
+    return 'Leve e Pesada não vão juntas. Tire uma.';
+  }
   if (has('two-handed') && has('light')) {
     return 'Leve é de arma usada em cada mão: ela não pode exigir Duas mãos.';
   }

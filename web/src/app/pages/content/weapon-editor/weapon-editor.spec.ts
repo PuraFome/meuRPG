@@ -166,7 +166,11 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
   });
 
   const chipNames = (el: HTMLElement) =>
-    Array.from(el.querySelectorAll('button.tchip')).map((b) => text(b).trim());
+    Array.from(el.querySelectorAll('button.tchip')).map((b) =>
+      text(b)
+        .replace(/^\s*(lock|check)\s/, '')
+        .trim(),
+    );
 
   it('lists the properties in the board order: by name, Especial last', () => {
     const { el } = setup();
@@ -226,7 +230,11 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
         '[data-field="table_weapon.damage"], [data-field="table_weapon.normal_range_ft"], .tchips',
       ),
     ).map((n) => n.getAttribute('data-field') ?? 'chips');
-    expect(order).toEqual(['table_weapon.damage', 'table_weapon.normal_range_ft', 'chips']);
+    expect(order).toEqual([
+      'table_weapon.damage',
+      'table_weapon.normal_range_ft',
+      'table_weapon.properties',
+    ]);
   });
 
   it('says how many sheets use the weapon, and that a change reaches the locked ones', () => {

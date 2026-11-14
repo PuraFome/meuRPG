@@ -138,6 +138,9 @@ function nameText(r: string, ctx: ViolationContext, shape: string): string | und
     return `Já existe ${ctx.aOne} da mesa com este nome. Escolha outro.`;
   }
   if (r === 'bad_name' || r === 'bad_text') {
+    if (shape.startsWith('table_weapon.')) {
+      return `Escreva o nome da arma, até ${NAME_MAX} caracteres.`;
+    }
     // a table creature's name allows 80 letters, like its traits and attacks
     return shape.startsWith('table_creature.')
       ? 'O nome tem de 1 a 80 letras.'

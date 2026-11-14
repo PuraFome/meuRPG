@@ -53,9 +53,9 @@ const PROPERTY_NAMES: Readonly<Record<string, string>> = {
   'weapon-property:versatile': 'Versátil',
 };
 
-/** The property names, Versátil with its two-handed damage and Arremesso with its range. */
-export function weaponProperties(w: TableWeapon, nameOf: NameOf): string[] {
-  const range = weaponRange(w);
+/** The property names, Versátil with its two-handed damage and Arremesso with its range (the read view says the range in its own row). */
+export function weaponProperties(w: TableWeapon, nameOf: NameOf, withRange = true): string[] {
+  const range = withRange ? weaponRange(w) : '';
   return w.properties.map((key) => {
     const known = nameOf(key);
     const name = known !== key ? known : (PROPERTY_NAMES[key] ?? key);

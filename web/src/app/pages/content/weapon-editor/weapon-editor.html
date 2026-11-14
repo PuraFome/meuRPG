@@ -5,42 +5,44 @@
     <section class="mr-panel block" aria-labelledby="data-t">
       <h2 class="mr-panel__title" id="data-t">Dados da arma</h2>
       <div class="grid grid--2">
-        <app-text-field label="Nome" [value]="d.name" [maxlength]="nameMax" path="table_weapon.name_pt" [issues]="issuesOf('table_weapon.name_pt')" (valueChange)="patch({ name: $event })" />
+        <app-text-field label="Nome da arma" [value]="d.name" [maxlength]="nameMax" [counter]="true" path="table_weapon.name_pt" [issues]="issuesOf('table_weapon.name_pt')" (valueChange)="patch({ name: $event })" />
+        <p class="hint side">Uma arma comum. Mágica e prateada são marcas da ficha, não da arma.</p>
       </div>
       <div class="grid grid--2">
-        <app-segmented label="Categoria" [segments]="categories" [value]="d.category === martial ? 'martial' : 'simple'" (choose)="setCategory($event)" />
-        <app-segmented label="Uso" [segments]="uses" [value]="d.ranged ? 'ranged' : 'melee'" (choose)="setUse($event)" />
+        <div class="seg-group">
+          <span class="seg__label">Categoria</span>
+          <app-segmented label="Categoria" [segments]="categories" [value]="d.category === martial ? 'martial' : 'simple'" (choose)="setCategory($event)" />
+        </div>
+        <div class="seg-group">
+          <span class="seg__label">Uso</span>
+          <app-segmented label="Uso" [segments]="uses" [value]="d.ranged ? 'ranged' : 'melee'" (choose)="setUse($event)" />
+        </div>
+        <p class="hint span-2">Quem tem proficiência em armas {{ d.category === martial ? 'marciais' : 'simples' }} soma o bônus de proficiência no ataque.</p>
       </div>
-      <div class="grid grid--2">
+      <div class="grid grid--3">
         <app-text-field label="Dano" [value]="d.damage" path="table_weapon.damage" [issues]="issuesOf('table_weapon.damage')" hint="Como 1d8 ou 2d6." (valueChange)="patch({ damage: $event })" />
         <app-select-field label="Tipo de dano" [options]="damageTypeOptions()" [value]="d.damageType" placeholder="Escolha…" path="table_weapon.damage_type" [issues]="issuesOf('table_weapon.damage_type')" (valueChange)="patch({ damageType: $event })" />
+        @if (versatile()) {
+          <app-text-field label="Com duas mãos" [value]="d.twoHandedDamage" path="table_weapon.two_handed_damage" [issues]="issuesOf('table_weapon.two_handed_damage')" hint="Pede o Versátil." (valueChange)="patch({ twoHandedDamage: $event })" />
+        } @else {
+          <p class="hint side">Sem Versátil, não há dano com duas mãos.</p>
+        }
       </div>
-      @if (versatile()) {
-        <div class="grid grid--2">
-          <app-text-field label="Dano com duas mãos" [value]="d.twoHandedDamage" path="table_weapon.two_handed_damage" [issues]="issuesOf('table_weapon.two_handed_damage')" hint="O dano de uma arma Versátil usada com as duas mãos." (valueChange)="patch({ twoHandedDamage: $event })" />
-        </div>
-      }
-    </section>
-
-    <section class="mr-panel block" aria-labelledby="props-t">
-      <h2 class="mr-panel__title" id="props-t">Propriedades</h2>
-      <app-toggle-chips label="Propriedades" [chips]="propertyChips()" [values]="d.properties" [lockNote]="lockLine()" path="table_weapon.properties" [issues]="issuesOf('table_weapon.properties')" (valuesChange)="patch({ properties: $event })" />
       @if (rangeShown()) {
-        <div class="grid grid--2">
-          <app-text-field label="Distância normal" suffix="m" [value]="d.normalRange" inputmode="decimal" path="table_weapon.normal_range_ft" [issues]="issuesOf('table_weapon.normal_range_ft')" (valueChange)="patch({ normalRange: $event })" />
-          <app-text-field label="Distância longa" suffix="m" [value]="d.longRange" inputmode="decimal" path="table_weapon.long_range_ft" [issues]="issuesOf('table_weapon.long_range_ft')" (valueChange)="patch({ longRange: $event })" />
+        <div class="grid grid--3">
+          <app-text-field label="Distância normal" suffix="m" [value]="d.normalRange" inputmode="decimal" path="table_weapon.normal_range_ft" [issues]="issuesOf('table_weapon.normal_range_ft')" [hint]="feet(d.normalRange, '')" (valueChange)="patch({ normalRange: $event })" />
+          <app-text-field label="Distância longa" suffix="m" [value]="d.longRange" inputmode="decimal" path="table_weapon.long_range_ft" [issues]="issuesOf('table_weapon.long_range_ft')" [hint]="feet(d.longRange, ': até lá, com desvantagem')" (valueChange)="patch({ longRange: $event })" />
+          <p class="hint side">Uma arma à distância e uma de Arremesso pedem as duas.</p>
         </div>
       }
-    </section>
-
-    <section class="mr-panel block" aria-labelledby="goods-t">
-      <h2 class="mr-panel__title" id="goods-t">Peso e preço</h2>
-      <div class="grid grid--2">
+      <div class="seg-group">
+        <span class="seg__label">Propriedades</span>
+        <app-toggle-chips label="Propriedades" [chips]="propertyChips()" [values]="d.properties" [lockNote]="lockLine()" path="table_weapon.properties" [issues]="issuesOf('table_weapon.properties')" (valuesChange)="patch({ properties: $event })" />
+      </div>
+      <div class="grid grid--3">
         <app-text-field label="Peso" suffix="kg" [value]="d.weightKg" inputmode="decimal" path="table_weapon.weight_oz" [issues]="issuesOf('table_weapon.weight_oz')" [hint]="inBook()" (valueChange)="patch({ weightKg: $event })" />
-        <div class="grid grid--2">
-          <app-text-field label="Preço" [value]="d.price" inputmode="numeric" path="table_weapon.price_cp" [issues]="issuesOf('table_weapon.price_cp')" (valueChange)="patch({ price: $event })" />
-          <app-select-field label="Moeda" [options]="coins" [value]="d.coin" (valueChange)="patch({ coin: $event })" />
-        </div>
+        <app-text-field label="Preço" [value]="d.price" inputmode="numeric" path="table_weapon.price_cp" [issues]="issuesOf('table_weapon.price_cp')" (valueChange)="patch({ price: $event })" />
+        <app-select-field label="Moeda" [options]="coins" [value]="d.coin" (valueChange)="patch({ coin: $event })" />
       </div>
       <app-text-field label="Descrição" [value]="d.description" [rows]="3" path="table_weapon.desc_pt" [issues]="issuesOf('table_weapon.desc_pt')" hint="Em texto, com as suas palavras. Opcional." (valueChange)="patch({ description: $event })" />
     </section>
@@ -59,6 +61,14 @@
     </section>
     @if (entry(); as saved) {
       <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
+    }
+    @if (entry(); as used) {
+      @if (used.charactersUsing > 0) {
+        <section class="mr-panel usage" aria-labelledby="usage-t">
+          <h2 class="usage__title" id="usage-t"><mat-icon aria-hidden="true">sync_alt</mat-icon>Em uso por {{ used.charactersUsing }} {{ used.charactersUsing === 1 ? 'ficha' : 'fichas' }}</h2>
+          <p class="hint">Mudar o dano ou as propriedades vale na hora, também nos ataques das fichas travadas.</p>
+        </section>
+      }
     }
   </aside>
 </div>

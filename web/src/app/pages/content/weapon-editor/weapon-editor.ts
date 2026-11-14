@@ -32,9 +32,11 @@ import {
   lockNote,
   propertyClash,
   propertyLocks,
+  readDecimal,
   unreadableWeaponPaths,
   weaponToDraft,
 } from '../../../core/content/weapon-draft';
+import { metersToFeet } from '../../../core/units';
 import { COINS } from '../../../core/content/weapon-text';
 import { ToggleChips, type ToggleChip } from '../../../shared/form-fields/toggle-chips';
 import { Segmented, type Segment } from '../../../shared/segmented/segmented';
@@ -46,6 +48,9 @@ import { PlayersSwitch } from '../players-switch/players-switch';
 import type { EditorSaved } from '../spell-editor/spell-editor';
 
 const NOT_A_NUMBER = 'Escreva um número, como 2 ou 1,5.';
+
+/** The properties by name, "Especial" last (board 580-10). */
+const propertyRank = (p: { key: string }): number => (p.key === 'weapon-property:special' ? 1 : 0);
 
 const CATEGORIES: readonly Segment<string>[] = [
   { value: 'simple', label: 'Simples' },
@@ -124,8 +129,8 @@ export class WeaponEditor {
   protected readonly propertyChips = computed<ToggleChip[]>(() => {
     const shut = this.locks().map((l) => l.key);
     const chosen = this.draft().properties;
-    return this.menu()
-      .list('weapon_properties')
+    return [...this.menu().list('weapon_properties')]
+      .sort((a, b) => propertyRank(a) - propertyRank(b) || a.namePt.localeCompare(b.namePt, 'pt'))
       .map((p) => ({
         value: p.key,
         label: p.namePt,
@@ -141,6 +146,11 @@ export class WeaponEditor {
     const kg = Number(this.draft().weightKg.replace(',', '.'));
     return Number.isFinite(kg) && kg > 0 ? `No livro: ${Math.round(kg * 2 * 10) / 10} lb` : '';
   });
+  /** "20 pés." under a distance typed in meters; the long one says what it means. */
+  protected feet(meters: string, tail: string): string {
+    const m = readDecimal(meters);
+    return Number.isNaN(m) || m <= 0 ? '' : `${metersToFeet(m)} pés${tail}.`;
+  }
   protected readonly rangeShown = computed(
     () => this.draft().ranged || this.draft().properties.includes('weapon-property:thrown'),
   );

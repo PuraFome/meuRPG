@@ -131,14 +131,13 @@ function readBackground(b: TableBackground, nameOf: NameOf): EntryRead {
 }
 
 function readWeapon(w: TableWeapon, nameOf: NameOf): EntryRead {
-  const rows: ReadRow[] = [
-    { label: 'Categoria', value: weaponUse(w) },
-    { label: 'Dano', value: weaponDamage(w, nameOf) },
-  ];
+  const rows: ReadRow[] = [{ label: 'Categoria', value: weaponUse(w) }];
+  const damage = weaponDamage(w, nameOf);
+  if (damage) rows.push({ label: 'Dano', value: damage });
   const range = weaponRange(w);
   if (range) rows.push({ label: 'Distância', value: range });
   if (w.properties.length > 0)
-    rows.push({ label: 'Propriedades', value: weaponProperties(w, nameOf).join(', ') });
+    rows.push({ label: 'Propriedades', value: weaponProperties(w, nameOf, false).join(', ') });
   if (w.weightOz > 0) rows.push({ label: 'Peso', value: weightText(w.weightOz) });
   if (w.priceCp > 0) rows.push({ label: 'Preço', value: priceText(w.priceCp) });
   return { rows, sections: [], text: w.descPt };
