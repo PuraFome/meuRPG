@@ -112,6 +112,15 @@ func testClass(name string) *rulesv1.TableClass {
 	return c
 }
 
+// testWeapon is a martial versatile sword with a weight and a price.
+func testWeapon(name string) *rulesv1.TableWeapon {
+	return &rulesv1.TableWeapon{
+		NamePt: name, DescPt: []string{"Uma lâmina de teste."}, Category: rulesv1.WeaponCategory_WEAPON_CATEGORY_MARTIAL,
+		Damage: "1d8", DamageType: "damage-type:slashing", TwoHandedDamage: "1d10",
+		Properties: []string{"weapon-property:versatile"}, WeightOz: 48, PriceCp: 1500,
+	}
+}
+
 // testCreature is a wolf of the SRD with the hit points and armor class given.
 func testCreature(name string, hitPoints, armorClass int32) *rulesv1.TableCreature {
 	return &rulesv1.TableCreature{NamePt: name, BaseKey: "monster:wolf", HitPoints: hitPoints, ArmorClass: armorClass}
@@ -148,6 +157,8 @@ func createReq(campaign string, body proto.Message) *rulesv1.CreateTableEntryReq
 		r.Body = &rulesv1.CreateTableEntryRequest_TableClassFeature{TableClassFeature: b}
 	case *rulesv1.TableCreature:
 		r.Body = &rulesv1.CreateTableEntryRequest_TableCreature{TableCreature: b}
+	case *rulesv1.TableWeapon:
+		r.Body = &rulesv1.CreateTableEntryRequest_TableWeapon{TableWeapon: b}
 	}
 	return r
 }
@@ -175,6 +186,8 @@ func updateReq(campaign, key string, revision int32, body proto.Message) *rulesv
 		r.Body = &rulesv1.UpdateTableEntryRequest_TableClassFeature{TableClassFeature: b}
 	case *rulesv1.TableCreature:
 		r.Body = &rulesv1.UpdateTableEntryRequest_TableCreature{TableCreature: b}
+	case *rulesv1.TableWeapon:
+		r.Body = &rulesv1.UpdateTableEntryRequest_TableWeapon{TableWeapon: b}
 	}
 	return r
 }
@@ -198,6 +211,8 @@ func bodyMessage(e *rulesv1.TableEntry) proto.Message {
 		return b.TableFeat
 	case *rulesv1.TableEntry_TableCreature:
 		return b.TableCreature
+	case *rulesv1.TableEntry_TableWeapon:
+		return b.TableWeapon
 	}
 	return nil
 }
@@ -317,6 +332,7 @@ func TestTableContentEveryKindIsCreatedUpdatedArchivedAndBroughtBack(t *testing.
 		{"spell", testSpell("Raio de teste", "class:wizard"), testSpell("Raio Renomeado", "class:wizard"), "spell:raio-de-teste@mesa"},
 		{"feat", testFeat("Punho de ferro"), testFeat("Punho Renomeado"), "feat:punho-de-ferro@mesa"},
 		{"creature", testCreature("Lobo da Mesa", 40, 14), testCreature("Lobo Renomeado", 40, 14), "creature:lobo-da-mesa@mesa"},
+		{"weapon", testWeapon("Espada do Vale"), testWeapon("Espada Renomeada"), "weapon:espada-do-vale@mesa"},
 	}
 	if class.GetKey() != "class:guardiao-do-vale@mesa" {
 		t.Fatalf("the class key = %q, want one made from the name", class.GetKey())

@@ -963,15 +963,17 @@ type equipmentSource struct {
 	Index             string `json:"index"`
 	Name              string `json:"name"`
 	EquipmentCategory ref    `json:"equipment_category"`
-	WeaponCategory    string `json:"weapon_category"`
-	WeaponRange       string `json:"weapon_range"`
-	Damage            *equipmentDamage
-	TwoHandedDamage   *equipmentDamage `json:"two_handed_damage"`
-	Range             *equipmentRange  `json:"range"`
-	ThrowRange        *equipmentRange  `json:"throw_range"`
-	Properties        []ref            `json:"properties"`
-	ArmorCategory     string           `json:"armor_category"`
-	ArmorClass        *struct {
+	// EquipmentCategories are all the categories of the entry: arrows are adventuring gear and also ammunition.
+	EquipmentCategories []ref  `json:"equipment_categories"`
+	WeaponCategory      string `json:"weapon_category"`
+	WeaponRange         string `json:"weapon_range"`
+	Damage              *equipmentDamage
+	TwoHandedDamage     *equipmentDamage `json:"two_handed_damage"`
+	Range               *equipmentRange  `json:"range"`
+	ThrowRange          *equipmentRange  `json:"throw_range"`
+	Properties          []ref            `json:"properties"`
+	ArmorCategory       string           `json:"armor_category"`
+	ArmorClass          *struct {
 		Base     int  `json:"base"`
 		DexBonus bool `json:"dex_bonus"`
 		MaxBonus int  `json:"max_bonus"`
@@ -999,7 +1001,10 @@ func convertEquipment(in *inputs) (output, error) {
 		case "tools":
 			e.Kind = "tool"
 		default:
-			continue
+			if !slices.ContainsFunc(r.EquipmentCategories, func(c ref) bool { return c.Index == "ammunition" }) {
+				continue
+			}
+			e.Kind = "ammunition"
 		}
 		out = append(out, e)
 	}

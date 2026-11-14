@@ -965,11 +965,12 @@ type CombatServiceClient interface {
 	// REACTION_PENDING), and there is no amount.
 	DiscardPendingDamage(context.Context, *connect.Request[v1.DiscardPendingDamageRequest]) (*connect.Response[v1.DiscardPendingDamageResponse], error)
 	// TakeAction takes one of the standard actions that only spend the action
-	// economy: Dash, Disengage, Dodge, Help, Hide, Ready, Search and Use an
+	// economy: Dash, Disengage, Dodge, Help, Hide, Search and Use an
 	// Object (the keys of rules.v1.TurnOptions.standard_actions, such as
 	// "standard:dash"), or a feature action of the character's class or race
 	// (rules.v1.TurnOptions.feature_actions, such as "feature:second-wind").
-	// Attack and Cast a Spell are not taken here: RollAttack and CastSpell. Dash
+	// Attack and Cast a Spell are not taken here: RollAttack and CastSpell. Ready
+	// ("standard:ready") is ReadyService.ReadyAction, which names the trigger. Dash
 	// doubles the speed for the rest of the turn (RN-21). The rest only spend
 	// the action and go to the log: the app reminds the table of their effects.
 	//
@@ -992,8 +993,9 @@ type CombatServiceClient interface {
 	//     open session, or the caller is a player and may not see it.
 	//   - `permission_denied`: the caller is a player and the combatant is not
 	//     their character.
-	//   - `invalid_argument`: the action_key is not one of those listed above,
-	//     or the roll is missing or out of range for an action that rolls.
+	//   - `invalid_argument`: the action_key is not one of those listed above
+	//     (Ready included), or the roll is missing or out of range for an action
+	//     that rolls.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
 	//     ACTION_USED, BONUS_ACTION_USED or REACTION_USED (a player: the economy
 	//     the action costs), NO_USES (the resource is spent; recharge says when it
@@ -3134,11 +3136,12 @@ type CombatServiceHandler interface {
 	// REACTION_PENDING), and there is no amount.
 	DiscardPendingDamage(context.Context, *connect.Request[v1.DiscardPendingDamageRequest]) (*connect.Response[v1.DiscardPendingDamageResponse], error)
 	// TakeAction takes one of the standard actions that only spend the action
-	// economy: Dash, Disengage, Dodge, Help, Hide, Ready, Search and Use an
+	// economy: Dash, Disengage, Dodge, Help, Hide, Search and Use an
 	// Object (the keys of rules.v1.TurnOptions.standard_actions, such as
 	// "standard:dash"), or a feature action of the character's class or race
 	// (rules.v1.TurnOptions.feature_actions, such as "feature:second-wind").
-	// Attack and Cast a Spell are not taken here: RollAttack and CastSpell. Dash
+	// Attack and Cast a Spell are not taken here: RollAttack and CastSpell. Ready
+	// ("standard:ready") is ReadyService.ReadyAction, which names the trigger. Dash
 	// doubles the speed for the rest of the turn (RN-21). The rest only spend
 	// the action and go to the log: the app reminds the table of their effects.
 	//
@@ -3161,8 +3164,9 @@ type CombatServiceHandler interface {
 	//     open session, or the caller is a player and may not see it.
 	//   - `permission_denied`: the caller is a player and the combatant is not
 	//     their character.
-	//   - `invalid_argument`: the action_key is not one of those listed above,
-	//     or the roll is missing or out of range for an action that rolls.
+	//   - `invalid_argument`: the action_key is not one of those listed above
+	//     (Ready included), or the roll is missing or out of range for an action
+	//     that rolls.
 	//   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN,
 	//     ACTION_USED, BONUS_ACTION_USED or REACTION_USED (a player: the economy
 	//     the action costs), NO_USES (the resource is spent; recharge says when it

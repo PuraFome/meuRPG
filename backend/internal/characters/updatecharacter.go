@@ -156,6 +156,9 @@ func (s *Service) saveSheetIn(ctx context.Context, tx pgx.Tx, u *sheetSave) (cha
 	if err := s.carryHitPoints(ctx, q, u.content, u.id, current.Sheet, sheetDoc); err != nil {
 		return row, err
 	}
+	if err := dropRemovedItemCharges(ctx, q, u.id, u.sheet.GetFull()); err != nil {
+		return row, err
+	}
 	u.afterArmor, err = s.tellGearChange(ctx, tx, u.m.CampaignID, u.id, stored.GetFull(), u.sheet.GetFull())
 	return row, err
 }
