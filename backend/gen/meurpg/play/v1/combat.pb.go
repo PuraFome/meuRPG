@@ -1393,7 +1393,7 @@ type MountSaveCause int32
 
 const (
 	MountSaveCause_MOUNT_SAVE_CAUSE_UNSPECIFIED MountSaveCause = 0
-	// The mount was moved against its will by an effect: a shove, a push or a pull of a spell or a feature, a grappler's drag. Its
+	// The mount was moved against its will by an effect: a shove or a push of a spell or a feature, a grappler's drag. Its
 	// own move, the master's token moves and a teleport the mount or the rider cast are voluntary and ask nothing.
 	MountSaveCause_MOUNT_SAVE_CAUSE_PUSHED MountSaveCause = 1
 	// The rider was knocked prone while it rode (a shove, a spell, a feature, a trap, an effect that lasts). The master's manual
@@ -2894,10 +2894,9 @@ const (
 	CombatLogKind_COMBAT_LOG_KIND_MOUNTED CombatLogKind = 107
 	// A rider got off its mount ("Toren desmontou de Pônei"): the same audience as MOUNTED.
 	CombatLogKind_COMBAT_LOG_KIND_DISMOUNTED CombatLogKind = 108
-	// A rider's save to stay on its mount ("Toren se segurou na montaria"): the actor is the rider and the target the mount.
+	// A rider's save passed to stay on its mount ("Toren se segurou na montaria"): the actor is the rider and the target the mount.
 	// `mount_save` has the cause and the outcome; the d20, the total and the DC are the master's and the rider's player's. A failed
-	// save is this line for them only, and RIDER_THROWN for everyone who sees both combatants. A hidden combatant in it makes the line
-	// the master's alone (RN-10).
+	// save writes no such line: it is the single RIDER_THROWN line. A hidden combatant in it makes the line the master's alone (RN-10).
 	CombatLogKind_COMBAT_LOG_KIND_MOUNT_SAVE CombatLogKind = 109
 	// A rider fell off its mount ("Toren caiu da montaria"): the same audience as MOUNT_SAVE, with no number for anyone.
 	CombatLogKind_COMBAT_LOG_KIND_RIDER_THROWN CombatLogKind = 110

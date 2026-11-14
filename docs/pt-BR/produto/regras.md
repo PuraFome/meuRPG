@@ -591,7 +591,7 @@ O par ocupa um só lugar, o quadrado da montaria, e o turno da montaria continua
   Só pode usar Disparada, Desengajar e Esquivar, e o jogador do cavaleiro a move, com o deslocamento e o movimento dela.
   O cavaleiro não se move por conta própria enquanto monta.
 - **Montaria independente** mantém a própria iniciativa e o próprio turno, e leva o cavaleiro junto.
-- **Desmontada forçada.** Quando a montaria é movida contra a vontade (um empurrão, uma puxada) ou o cavaleiro é derrubado, o jogador do cavaleiro faz um teste de resistência de Destreza contra CD 10 (uma janela, como a de concentração da RN-31): se falhar, o cavaleiro cai derrubado a até 1,5 m da montaria.
+- **Desmontada forçada.** Quando a montaria é movida contra a vontade (um empurrão ou uma repulsão) ou o cavaleiro é derrubado, o jogador do cavaleiro faz um teste de resistência de Destreza contra CD 10 (uma janela, como a de concentração da RN-31): se falhar, o cavaleiro cai derrubado a até 1,5 m da montaria.
   O mestre rola pelo cavaleiro NPC.
 - **Montaria derrubada ou abatida** abre uma janela de reação para o cavaleiro (RN-31): ele gasta a reação para cair de pé ou cai derrubado a até 1,5 m.
   Uma montaria dispensada pelo conjurador deixa o cavaleiro cair de pé, sem janela.

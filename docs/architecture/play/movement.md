@@ -158,7 +158,7 @@ A mount carries one rider, and a combatant that rides is not a mount.
 | A rider at 0 hit points | A down rider stays on its mount and the pair keeps its order and its group. The mount keeps its Dash, Disengage and Dodge limit; its rider's player does not move it or take its Dash, Disengage or Dodge (`COMBATANT_DOWN`: a down rider directs nothing, for those three actions only; `GetTurnOptions` shows them disabled with that reason to the rider's player) and the master does. A rider that drops to 0 stays on its mount until a push or a prone asks its save: a rider at 0 hit points that is alive is unconscious and falls at once, with no prompt and no d20 (see [the rider's save](#the-riders-save)) |
 | Who may mount | The master mounts any combatant that is not a player's character. A player mounts their own creatures and the combatants of the party that the master marked as mounts. `NOT_A_MOUNT` otherwise, `MOUNT_TOO_SMALL`, `MOUNT_TOO_FAR`, `ALREADY_MOUNTED` and `MOUNT_TAKEN` for the rest |
 | Cost | Half the rider's speed on the surface it stands on, without the Dash (`mountCostDFt`, next to `standUpCostDFt`), charged to its one `movement_used_dft`. A speed of 0 or too little movement left is `TOO_FAR` with `missing_dft` |
-| Prone and defeated | Mounting asks nothing of the rider's or the mount's posture: a prone rider mounts for half its speed without standing up. A mount at 0 hit points keeps its rider linked, and the rider dismounts with `DismountCombatant` like any rider |
+| Prone and defeated | Mounting asks nothing of the rider's or the mount's posture: a prone rider mounts for half its speed without standing up. A mount at 0 hit points or prone opens the rider's dismount window (see [the rider's dismount](#the-riders-dismount)): the rider stays linked until it is answered, and `DismountCombatant` is refused with `REACTION_PENDING` meanwhile |
 | When | A ride is made only in a running combat (`NOT_ACTIVE` in SETUP, for the master too), so no initiative is written while a rider exists: a total that changes later is the order's (`SetInitiativeOrder` and a join keep every controlled mount right after its rider). `SubmitInitiative` runs `syncMounts` only as a defensive step, for a pair written outside the calls |
 | Once per move | A rider mounts or dismounts once in a move: `mount_move_used` is set by either and the start of its turn clears it (`MOUNT_MOVE_USED`) |
 | One square | The rider's square becomes the mount's, and the pair is one occupant: `samePair` keeps the two rows out of each other's way in the occupants of a move, a push, a drag, a teleport and a return to reach |
@@ -217,12 +217,11 @@ The answer is a closing event (`reaction_answered`): it cannot be undone and not
 The window closes by itself when the rider or the mount leaves, the rider is defeated or not on that mount any more, and when the mount stands up (cause `mount_prone`) or is healed (cause `mount_defeated`).
 A defeated creature steed is a defeated mount first: the window opens, the steed stays linked to its rider, and it disappears from the combat once the window is answered or closes by itself (`goneSteed`).
 A steed the caster dismisses (the concentration of its spell ends, or a later cast replaces it) lets the rider land on its feet with no window: `dismissCombatant` takes the rider off.
-Find Steed's own dismissal is the slice that adds that spell; the helper `dropRider` with `prone` false is its landing.
 A mount that was knocked prone and is then defeated keeps the window, and a mount marked prone after it was defeated keeps it too.
 The landing and the fall are told to the streams and the fog after the commit, as the fall of a failed save is (`riderLanded`).
 A fall from the window writes no save: its log line has cause unspecified, no d20, no DC and no automatic failure, and reads "caiu da montaria" for everyone who gets it.
 A surprised rider has no reaction (as an opportunity attack's reactor) and falls at once.
-The web has no prompt for the window yet (slice 4): the master answers it, for a player's character too, until then.
+The web has no prompt for this window: the master answers it, for a player's character too.
 The master's manual edit of a mount's conditions opens no window, like the rider's save.
 
 | Path | Asks the save |
@@ -236,7 +235,6 @@ The master's manual edit of a mount's conditions opens no window, like the rider
 | Prone by a shove, a hit's rider, a spell, a zone or a trap | Yes (`riderProne`) |
 | The master's edit of the conditions, an undo | No: they are corrections |
 
-There is no pull in the game, so nothing asks the save for one.
 The cause (the push or the prone) is undoable only before the window is answered, and the roll is a closing event.
 The push or the prone that threw a rider at 0 hit points at once is not undoable either (`chainForcedFall`).
 A fall does not step into the zones or the traps of the square it lands on.

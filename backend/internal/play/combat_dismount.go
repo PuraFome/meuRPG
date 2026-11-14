@@ -59,7 +59,7 @@ func (s *Service) openDismount(ctx context.Context, c *combatTx, _ []playdb.Comb
 		return err
 	}
 	if !can {
-		return s.dropRider(ctx, c, rider, mount, cause, true)
+		return s.dropRider(ctx, c, rider, mount, cause)
 	}
 	_, err = s.openWindows(ctx, c, newGroup(), nil, []windowSpec{{kind: reaction.Dismount, reactor: &rider, trigger: windowTrigger{Target: mount.ID, Cause: cause}}})
 	return err
@@ -71,11 +71,11 @@ type riderLanded struct {
 	from  *grid.Square
 }
 
-// dropRider takes the rider off the mount: prone when it fell, on its feet when it landed. The fall has the line of a thrown rider.
-func (s *Service) dropRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, cause string, prone bool) error {
+// dropRider takes the rider off the mount, prone: the rider that landed on its feet is answerDismount's. The fall has the line of a thrown rider.
+func (s *Service) dropRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, cause string) error {
 	ev := actionEvent{Round: c.enc.Round, Secret: rider.Hidden || mount.Hidden, Actor: rider.ID, Target: mount.ID}
 	ev.Reaction = &reactionEvent{Kind: string(reaction.MountSave), Cause: cause} // no save was asked: the cause says so, and no d20 or DC is written
-	if err := s.dropRiderOf(ctx, c, rider, mount, &ev, &mountSaveRun{}, prone); err != nil {
+	if err := s.dropRiderOf(ctx, c, rider, mount, &ev, &mountSaveRun{}, true); err != nil {
 		return err
 	}
 	return s.goneSteed(ctx, c, mount)
@@ -151,7 +151,7 @@ func (s *Service) answerDismount(ctx context.Context, c *combatTx, w playdb.Reac
 		if _, err := s.closeWindow(ctx, c, w, windowAnswered, reaction.ReasonNone, windowOutcome{ByMaster: c.master}, ""); err != nil {
 			return err
 		}
-		return s.dropRider(ctx, c, reactor, mount, t.Cause, true)
+		return s.dropRider(ctx, c, reactor, mount, t.Cause)
 	}
 	if err := s.spendReaction(ctx, c, reactor, reaction.Dismount); err != nil {
 		return err
@@ -219,7 +219,7 @@ func (s *Service) fallWithWindow(ctx context.Context, c *combatTx, w playdb.Reac
 	if rider.ID == "" || mount.ID == "" || rider.Defeated {
 		return nil
 	}
-	return s.dropRider(ctx, c, rider, mount, t.Cause, true)
+	return s.dropRider(ctx, c, rider, mount, t.Cause)
 }
 
 // goneSteed sends a defeated creature steed away once its rider is off it: the steed disappears from the combat as a creature that

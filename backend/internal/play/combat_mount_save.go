@@ -31,7 +31,7 @@ import (
 //
 // and what does not: the mount's own move (its rider's player, or the master), the master's token, a teleport (the spell moves its
 // caster, so the mount's own or the rider's, which is refused), the return of a mover to the square it left the reach at, the master's
-// manual edit of the conditions and every undo. A pull has no path yet: it would call mountPushed from where it writes the square.
+// manual edit of the conditions and every undo.
 
 // mountSaveDC is the DC of the saving throw, the SRD's 10.
 const mountSaveDC = 10

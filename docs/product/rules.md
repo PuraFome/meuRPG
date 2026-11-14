@@ -591,7 +591,7 @@ The pair is one occupant of the mount's square, and the mount's turn is its own.
   It can only Dash, Disengage and Dodge, and the rider's player moves it, with its speed and its movement.
   The rider does not move on its own while mounted.
 - **An independent mount** keeps its own initiative and its own turn, and carries the rider along.
-- **Forced dismount.** When the mount is moved against its will (a shove, a push, a pull) or the rider is knocked prone, the rider's player makes a Dexterity saving throw against DC 10 (a window like the concentration save of RN-31): on a failure the rider falls prone within 1.5 m of the mount.
+- **Forced dismount.** When the mount is moved against its will (a shove or a push) or the rider is knocked prone, the rider's player makes a Dexterity saving throw against DC 10 (a window like the concentration save of RN-31): on a failure the rider falls prone within 1.5 m of the mount.
   The master rolls for an NPC rider.
 - **A mount knocked prone or defeated** opens a reaction window for its rider (RN-31): the rider spends its reaction to land on its feet, or falls prone within 1.5 m.
   A steed the caster dismisses lets the rider land on its feet with no window.
