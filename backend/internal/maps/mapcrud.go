@@ -14,7 +14,6 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
@@ -258,24 +257,22 @@ func (s *Service) CreateMap(
 	}
 	var created mapsdb.Map
 	var used, replayed bool
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if created, replayed, used, err = s.createMapTx(ctx, tx, newMap{
+		created, replayed, used, err = s.createMapTx(ctx, tx, newMap{
 			campaignID: m.CampaignID, userID: m.UserID, name: name, imageID: imageID,
 			fogOn: fogOn, reuse: reuse, key: scopedKey, hash: requestHash,
-		}); err != nil {
-			return err
-		}
-		if replayed {
-			t.Replay() // the first call may have died before it told: the notice goes out again, with the number as it stands
-		}
-		// A new map is hidden: only the master hears about it.
-		s.announce(t, func(ctx context.Context) { s.publishMapChanged(ctx, m.CampaignID, created.ID, false) })
-		return nil
+		})
+		return err
 	})
 	s.discardFogCopy(ctx, m.CampaignID, reuse, err != nil || !used)
 	if err != nil {
 		return nil, s.dbError(ctx, "create a map", err)
+	}
+	// A new map is hidden: only the master hears about it. A retry announces nothing: the
+	// first call did.
+	if !replayed {
+		s.publishMapChanged(m.CampaignID, created.ID, false)
 	}
 	out, err := s.masterMap(ctx, m, created.ID)
 	if err != nil {
@@ -375,17 +372,15 @@ func (s *Service) DeleteMap(
 		return nil, err
 	}
 	var deleted mapsdb.Map
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if deleted, err = s.deleteMapRow(ctx, tx, m.CampaignID, mapID); err != nil {
-			return err
-		}
-		s.announce(t, func(ctx context.Context) { s.announceDeletedMap(ctx, m.CampaignID, mapID, pre, deleted) })
-		return nil
+		deleted, err = s.deleteMapRow(ctx, tx, m.CampaignID, mapID)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "delete a map", err)
 	}
+	s.announceDeletedMap(ctx, m.CampaignID, mapID, pre, deleted)
 	return connect.NewResponse(&mapsv1.DeleteMapResponse{}), nil
 }
 
@@ -452,11 +447,11 @@ func (s *Service) announceDeletedMap(ctx context.Context, campaignID, mapID stri
 	s.tiles.forget(mapID)
 	s.seen.forget(mapID)
 	seen := playersSee(mapID, deleted.RevealedAt, pre.current)
-	s.publishMapChanged(ctx, campaignID, mapID, seen)
-	s.publishParentsChanged(ctx, campaignID, mapID, pre.links, pre.current, seen, false)
+	s.publishMapChanged(campaignID, mapID, seen)
+	s.publishParentsChanged(campaignID, mapID, pre.links, pre.current, seen, false)
 	if mapID == pre.current {
 		// The foreign key unset the session's current map.
-		s.publishCurrentMapCleared(ctx, campaignID)
+		s.publishCurrentMapCleared(campaignID)
 	}
 	if pre.openScene != "" {
 		// The map's points went with it: if the scene was one of them, the
@@ -486,17 +481,15 @@ func (s *Service) SetMapRevealed(
 	}
 
 	var before, after mapsdb.Map
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if before, after, err = s.revealMapRow(ctx, tx, m, mapID, req.Msg.GetRevealed()); err != nil {
-			return err
-		}
-		s.announce(t, func(ctx context.Context) { s.announceRevealedMap(ctx, m.CampaignID, mapID, current, before, after) })
-		return nil
+		before, after, err = s.revealMapRow(ctx, tx, m, mapID, req.Msg.GetRevealed())
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "reveal or hide a map", err)
 	}
+	s.announceRevealedMap(ctx, m.CampaignID, mapID, current, before, after)
 	out, err := s.masterMap(ctx, m, mapID)
 	if err != nil {
 		return nil, err
@@ -522,7 +515,7 @@ func (s *Service) revealMapRow(ctx context.Context, tx pgx.Tx, m authz.Membershi
 // the maps that link to it.
 func (s *Service) announceRevealedMap(ctx context.Context, campaignID, mapID, current string, before, after mapsdb.Map) {
 	seenBefore, seenAfter := playersSee(mapID, before.RevealedAt, current), playersSee(mapID, after.RevealedAt, current)
-	s.publishMapChanged(ctx, campaignID, mapID, seenBefore || seenAfter)
+	s.publishMapChanged(campaignID, mapID, seenBefore || seenAfter)
 	if seenAfter && !seenBefore {
 		s.refreshVision(ctx, campaignID, mapID) // the first view the players have of a fog map is recorded now
 	}
@@ -533,5 +526,5 @@ func (s *Service) announceRevealedMap(ctx context.Context, campaignID, mapID, cu
 		s.logger.ErrorContext(ctx, "maps: cannot tell the parent maps about a revealed map", "error", err)
 		return
 	}
-	s.publishParentsChanged(ctx, campaignID, mapID, cm, current, seenBefore, seenAfter)
+	s.publishParentsChanged(campaignID, mapID, cm, current, seenBefore, seenAfter)
 }

@@ -17,8 +17,8 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/maps/mapsdb"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
 )
 
@@ -314,32 +314,29 @@ func (s *Service) RevealTrap(
 	}
 
 	var res trapReveal
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if res, err = s.revealTrapTx(ctx, tx, m, trapRevealCall{mapID: mapID, pointID: pointID, all: all, ids: ids, userOf: userOf}); err != nil || !res.changed {
-			return err // nothing changed: nothing is told and no number moves
-		}
-		s.announce(t, func(ctx context.Context) { s.announceTrapReveal(ctx, m.CampaignID, current, all, res) })
-		return nil
+		res, err = s.revealTrapTx(ctx, tx, m, trapRevealCall{mapID: mapID, pointID: pointID, all: all, ids: ids, userOf: userOf})
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "reveal a trap", err)
+	}
+	if res.changed {
+		seen := playersSee(mapID, res.mapRow.RevealedAt, current)
+		// Everyone who sees the map hears of a trap revealed to all. A trap
+		// revealed to some characters reaches only their players (and the master,
+		// who made the change), never the others.
+		s.publishPointsChanged(ctx, m.CampaignID, res.mapRow, all && seen, res.after)
+		if !all && seen && len(res.newUsers) > 0 {
+			s.live.PublishToUsers(m.CampaignID, res.newUsers, mapChangedEvent(mapID))
+		}
 	}
 	out, err := s.masterPoint(ctx, m, res.after)
 	if err != nil {
 		return nil, err
 	}
 	return connect.NewResponse(&mapsv1.RevealTrapResponse{Point: out}), nil
-}
-
-// announceTrapReveal tells who hears of a revealed trap. Everyone who sees the map hears of a trap revealed to all. A trap revealed to
-// some characters reaches only their players (and the master, who made the change), never the others.
-func (s *Service) announceTrapReveal(ctx context.Context, campaignID, current string, all bool, res trapReveal) {
-	seen := playersSee(res.mapRow.ID, res.mapRow.RevealedAt, current)
-	s.publishPointsChanged(ctx, campaignID, res.mapRow, all && seen, res.after)
-	if !all && seen && len(res.newUsers) > 0 {
-		s.publishUsers(ctx, campaignID, res.newUsers, mapChangedEvent(res.mapRow.ID))
-	}
 }
 
 // trapRevealCall is a RevealTrap request after its checks: the trap, and to whom it is
@@ -441,16 +438,10 @@ func (s *Service) MarkTreasureFound(
 	}
 
 	var res treasureChange // changed: this call is the one that found it
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if res, err = s.markTreasureFoundTx(ctx, tx, m, mapID, pointID, ids); err != nil {
-			return err
-		}
-		// A found treasure is visible to everyone who sees the map.
-		s.announce(t, func(ctx context.Context) {
-			s.publishPointsChanged(ctx, m.CampaignID, res.mapRow, playersSee(mapID, res.mapRow.RevealedAt, current), res.after)
-		})
-		return nil
+		res, err = s.markTreasureFoundTx(ctx, tx, m, mapID, pointID, ids)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a treasure found", err)
@@ -458,6 +449,8 @@ func (s *Service) MarkTreasureFound(
 	if res.changed {
 		logging.Event(ctx, s.logger, "treasure.found", slog.String("map_id", mapID), slog.String("point_id", pointID), slog.Int("finders", len(ids)))
 	}
+	// A found treasure is visible to everyone who sees the map.
+	s.publishPointsChanged(ctx, m.CampaignID, res.mapRow, playersSee(mapID, res.mapRow.RevealedAt, current), res.after)
 	out, err := s.masterPoint(ctx, m, res.after)
 	if err != nil {
 		return nil, err
@@ -545,19 +538,17 @@ func (s *Service) UnmarkTreasureFound(
 	}
 
 	var res treasureChange
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
-		if res, err = s.unmarkTreasureFoundTx(ctx, tx, m, mapID, pointID); err != nil || !res.changed {
-			return err
-		}
-		// A found treasure was visible to everyone; so was the change.
-		s.announce(t, func(ctx context.Context) {
-			s.publishPointsChanged(ctx, m.CampaignID, res.mapRow, playersSee(mapID, res.mapRow.RevealedAt, current), res.after)
-		})
-		return nil
+		res, err = s.unmarkTreasureFoundTx(ctx, tx, m, mapID, pointID)
+		return err
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "unmark a treasure", err)
+	}
+	if res.changed {
+		// A found treasure was visible to everyone; so was the change.
+		s.publishPointsChanged(ctx, m.CampaignID, res.mapRow, playersSee(mapID, res.mapRow.RevealedAt, current), res.after)
 	}
 	out, err := s.masterPoint(ctx, m, res.after)
 	if err != nil {
@@ -631,8 +622,8 @@ func (s *Service) trapKnowers(ctx context.Context, tx pgx.Tx, q *mapsdb.Queries,
 
 // tellTrapKnowers tells those players that the map changed, after the commit,
 // when the map is one they see.
-func (s *Service) tellTrapKnowers(ctx context.Context, campaignID, mapID string, mapRow mapsdb.Map, currentMap string, users []string) {
+func (s *Service) tellTrapKnowers(campaignID, mapID string, mapRow mapsdb.Map, currentMap string, users []string) {
 	if len(users) > 0 && playersSee(mapID, mapRow.RevealedAt, currentMap) {
-		s.publishUsers(ctx, campaignID, users, mapChangedEvent(mapID))
+		s.live.PublishToUsers(campaignID, users, mapChangedEvent(mapID))
 	}
 }

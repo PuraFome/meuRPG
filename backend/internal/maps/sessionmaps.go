@@ -248,17 +248,15 @@ func (sm *SessionMaps) leftAudiences(ctx context.Context, campaignID string) (ma
 	return out, nil
 }
 
-// TakeBackImage takes the image off the left list inside tx and returns who it
-// was left with, or returns a `not_found` Connect error when it is not on it
-// (nothing is deleted then). The caller checked that the caller is the
-// campaign's master.
-func (sm *SessionMaps) TakeBackImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (link.ImageAudience, error) {
-	q := sm.queries.WithTx(tx)
-	who, err := leftWith(ctx, q, campaignID, imageID)
+// TakeBackImage takes the image off the left list and returns who it was left
+// with, or returns a `not_found` Connect error when it is not on it. The caller
+// checked that the caller is the campaign's master.
+func (sm *SessionMaps) TakeBackImage(ctx context.Context, campaignID, imageID string) (link.ImageAudience, error) {
+	who, err := sm.leftWith(ctx, campaignID, imageID)
 	if err != nil {
 		return who, err
 	}
-	n, err := q.TakeBackLeftImage(ctx, mapsdb.TakeBackLeftImageParams{CampaignID: campaignID, ImageID: imageID})
+	n, err := sm.queries.TakeBackLeftImage(ctx, mapsdb.TakeBackLeftImageParams{CampaignID: campaignID, ImageID: imageID})
 	if err != nil {
 		return who, fmt.Errorf("take the left image back: %w", err)
 	}
@@ -266,6 +264,11 @@ func (sm *SessionMaps) TakeBackImage(ctx context.Context, tx pgx.Tx, campaignID,
 		return who, errImageNotFound()
 	}
 	return who, nil
+}
+
+// leftWith is who the image was left with; a `not_found` error when it is not left.
+func (sm *SessionMaps) leftWith(ctx context.Context, campaignID, imageID string) (link.ImageAudience, error) {
+	return leftWith(ctx, sm.queries, campaignID, imageID)
 }
 
 // leftWith reads who the image was left with, through q.

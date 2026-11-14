@@ -61,7 +61,6 @@ func (h *harness) mapsService(t *testing.T) (*maps.Service, *httptest.Server) {
 	if err != nil {
 		t.Fatalf("maps.New() error = %v", err)
 	}
-	msvc.SetSessionHost(h.svc)
 	h.svc.SetTerrain(msvc)
 	h.svc.SetFog(msvc)
 	srv := httpserver.New(httpserver.Config{Logger: slog.New(slog.DiscardHandler)})
@@ -1196,7 +1195,6 @@ func TestFogCombatMoveCost(t *testing.T) {
 	if err != nil {
 		t.Fatalf("maps.New() error = %v", err)
 	}
-	msvc.SetSessionHost(h.svc)
 	h.svc.SetTerrain(msvc)
 	h.svc.SetFog(msvc)
 	if _, err := h.pool.Exec(t.Context(), `UPDATE maps SET fog_enabled = true WHERE id = $1`, mapID); err != nil {

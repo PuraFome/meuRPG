@@ -106,11 +106,6 @@ func defeatedPlayerOf(cs []playdb.Combatant, characterID string) *playdb.Combata
 // and the vitals, which everyone in the session reads). It carries no reason (RN-10). Call it
 // after the commit.
 func (s *Service) PublishCharacterEvent(ctx context.Context, campaignID, ownerUserID, characterID, event string) {
-	s.tellCharacterEvent(ctx, s.sayNow, campaignID, ownerUserID, characterID, event)
-}
-
-// tellCharacterEvent is PublishCharacterEvent through say: an after-commit step of Service.tx tells it with the session's number.
-func (s *Service) tellCharacterEvent(ctx context.Context, say sayFn, campaignID, ownerUserID, characterID, event string) {
 	var msg *playv1.WatchGameSessionResponse
 	switch event {
 	case characterChangesRequested:
@@ -126,10 +121,10 @@ func (s *Service) tellCharacterEvent(ctx context.Context, say sayFn, campaignID,
 			CharacterRevived: &playv1.WatchGameSessionResponse_CharacterRevived{CharacterId: characterID},
 		}}
 		if v, err := s.vitals.GetVitals(ctx, campaignID, characterID); err == nil {
-			say(campaignID, vitalsHint(v))
+			s.publishVitals(campaignID, v)
 		}
 	default:
 		return
 	}
-	say(campaignID, live.Event{Audience: live.Audience{Master: true, UserID: ownerUserID}, Message: msg})
+	s.send(campaignID, live.Event{Audience: live.Audience{Master: true, UserID: ownerUserID}, Message: msg})
 }

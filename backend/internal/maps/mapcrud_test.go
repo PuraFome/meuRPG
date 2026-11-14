@@ -313,8 +313,7 @@ func TestCreateMap_TheFogRuleAndTheImageOfAFogMap(t *testing.T) {
 	}
 }
 
-// Who hears about a new map: nobody but the master. A replay tells the master again (the first call may have died before it told,
-// and the live session's number is stored: #735), without a new number.
+// Who hears about a new map: nobody but the master, and a replay announces nothing.
 func TestCreateMap_OnlyTheMasterHearsAboutIt(t *testing.T) {
 	t.Parallel()
 	s := newScenes(t, true)
@@ -332,7 +331,7 @@ func TestCreateMap_OnlyTheMasterHearsAboutIt(t *testing.T) {
 	}
 	s.probe(probe.GetId())
 	alias := map[string]string{created.GetId(): "nova", probe.GetId(): "sonda"}
-	wantEvents(t, "the master", eventLog(masterWatch.drain(probe.GetId()), alias), []string{"map_changed:nova", "map_changed:nova"})
+	wantEvents(t, "the master", eventLog(masterWatch.drain(probe.GetId()), alias), []string{"map_changed:nova"})
 	wantEvents(t, "Ana", eventLog(anaWatch.drain(probe.GetId()), alias), nil)
 }
 
