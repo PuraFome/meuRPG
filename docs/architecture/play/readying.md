@@ -10,7 +10,7 @@ A readied action is a `readied_actions` row (migration 00330).
 It holds the readier, the trigger text (1 to 200 characters), the kind, the held action and its name, the target named at Ready and the move.
 A spell row also holds its slot level (`slot_level`, 0 for a cantrip) and the cast id of its Ready (`spell_cast_id`).
 The kinds are `attack`, `move`, `other` and `spell`.
-`attack` holds one of the readier's attacks by its key.
+`attack` holds one of the readier's weapon or natural attacks by its key; a spell attack is readied as a `spell`.
 `other` holds a standard action other than Attack, Cast a Spell and Ready.
 Ready also refuses Hide and Help, which have their own calls a reaction does not run.
 It refuses Dash and Disengage too: they last only for the readier's own turn, and no reaction reaches it.
@@ -50,7 +50,8 @@ The end of the combat drops every row.
 - a surprised readier before its first turn ends: the surprise refusal of every reaction;
 - an incapacitated or unconscious readier, or one an effect keeps from reacting: `CANNOT_ACT`;
 - a readier whose reaction is spent: `REACTION_USED`;
-- a row whose window is already open: `REACTION_PENDING`.
+- a row whose window is already open: `REACTION_PENDING`;
+- a readier that owes a concentration save: `CONCENTRATION_SAVE_PENDING`, and a question about a hidden creature the master owes: `HIDDEN_REVEAL_PENDING` (`readiedGate`).
 
 A refused fire leaves the row waiting until it is lost.
 The fire event (`readied_fired` with `opened`) writes no log line.
@@ -65,6 +66,7 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   The d20 is the typed one, or the app's.
   `RollAttack` with `catch_window_id` set to the READIED window does the same.
   The roll waits for the windows any attack roll opens first: Cutting Words, Protection, the master's check of "Sempre" (`holdAttackRoll`).
+  It also waits for its roller's answer about a die (a Bardic Inspiration die, Lucky, Stroke of Luck), kept in `inspiration_holds` (`readiedHeldForDie`).
   Meanwhile the READIED window stays open and the row waits; `AnswerReaction` answers `used` false.
   While the roll is held, the window takes no answer: a second "Usar" and "Deixar passar" are `REACTION_PENDING` (`mustNotBeHeld`).
   The master reads it with `answer_now` false, so the automatic pass leaves it alone.
@@ -96,6 +98,8 @@ The attack spends the reaction in its own economy, as an opportunity attack does
 Another action spends it in `TakeAction`'s economy, charged to the reaction.
 A move spends it with `spendReactionAs`.
 A refused use spends nothing and the window stays open: the readier may still pass.
+Every use is refused while its readier owes a concentration save (`CONCENTRATION_SAVE_PENDING`) or the master owes a question about a hidden creature (`HIDDEN_REVEAL_PENDING`), as the fire is (`readiedGate` in `readiedUseOf`).
+The answer to a held roll's die runs the use again and passes these checks: it is the use they waited for.
 "Deixar passar" marks the row `ignored`, keeps the reaction and writes the `readied_fired` line (status `IGNORED`).
 
 The window closes by itself, with the reason told to its reactor alone.
@@ -128,15 +132,17 @@ A hidden readier's window and lines are the master's alone.
 ## Readied spells
 
 A readied spell is cast at Ready and released by the trigger (SRD 5.1, "Ready").
-The code is `ready_spell.go` and `ready_spell_lost.go`.
+The code is `ready_spell.go`, `ready_spell_attack.go` and `ready_spell_lost.go`.
 
 ### At Ready
 
 `ReadyAction` with `kind` `SPELL` names the spell (`spell_key`) and the slot level (`slot_level`, 0 for a cantrip).
 It checks the spell as `CastSpell` does (`checkSpell`): a class spell the caster knows or prepared, a slot of that level, silence.
-Metamagic and spells granted by a feature are not offered.
+Metamagic and spells granted by a feature are not offered: neither Ready nor the release reads `granted_by`.
 The casting time must be exactly 1 action, else `READY_SPELL_TIME` (a reaction or a bonus action spell, a ritual is never cast in combat).
-A spell attack cantrip (Fire Bolt) is refused as a spell (`invalid_argument`): it is readied as an `attack`.
+A spell attack cantrip (Fire Bolt, Ray of Frost) is readied as a spell, with no slot (`checkSpellAttack`): its energy holds the concentration too.
+Its row has no `spell_cast_id` (`heldSpellAttackRow`), and its release is `RollAttack` as a reaction, as a readied attack's (`usedAs`).
+As an `attack` it is refused (`READY_ACTION`): it would hold no concentration.
 A pact slot is spent only when no plain slot of that level is free.
 Targets and range are checked at the release, not at Ready.
 Ready spends the slot and the action, and notes the spell cast this turn.
@@ -149,10 +155,13 @@ No effect of the spell happens: no damage, no lasting effect, no zone, no `spell
 The release is the spell's cast as a reaction, through `castSpell` with `readied` set (`findReadied`).
 `AnswerReaction` "Usar" builds the `CastSpellRequest` from the row: the targets are `creature_ids`, or the target named at Ready.
 A spell placed on the map (an area, a wall) is released with `CastSpell` by the readier, with its point, while the READIED window is open.
-The release spends no slot, the reaction instead of the action, and takes the slot level of Ready.
+The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).
+The release is checked as a cast: a spell the caster no longer has prepared is refused, and can only be let pass.
+`CastSpell` is a release only off the caster's turn, for the spell its own open READIED window holds (`findReadied`); any other cast is an ordinary one.
 Metamagic at the release is `invalid_argument`.
 A concentration spell keeps the concentration, now with its own key; another spell ends it.
 The cast waits for the windows any cast opens (Counterspell), with the READIED window open and `REACTION_PENDING` (`readiedHeld`).
+A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.
@@ -172,9 +181,10 @@ The held spell's key and name, its level and that it is a spell are the master's
 `Combatant.concentration_spell` carries the held key for them and nothing for the others (`heldSpellView`).
 The `ACTION_READIED` line carries the slot (`spell.slot`) for them alone.
 The end of the previous concentration (`concentration_ended_key`) is public on that line, as on a cast line.
-The concentration save lines of a held spell are the master's and the owner's; another player reads none.
-Their concentration save line names it "a magia preparada".
-`internal/leaktest` (`ready_spell_test.go`) checks these with canaries and positive controls.
+The concentration save of a held spell is the master's and the owner's: its window, its result and its line name the held spell (`HeldSpell` on the trigger, `Held` on the event).
+Another player reads none of it: no window, no line, and the wait reads "Esperando o mestre", never the readier's Constitution save.
+A line whose held spell is unknown names it "a magia preparada".
+`internal/leaktest` (`ready_spell_test.go`) checks these, the save's wait included, with canaries and positive controls.
 
 ## Undo
 

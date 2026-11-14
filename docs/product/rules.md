@@ -1088,7 +1088,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   On its turn a creature spends its action to hold another until a trigger its player writes.
   The held action is an attack, a move, a spell or another standard action.
   A held spell must take 1 action to cast; it is cast at Ready, with its slot, and its power is held until the trigger.
-  Holding it takes concentration, which ends any other concentration of the creature.
+  Holding it takes concentration, which ends any other concentration of the creature; a cantrip with an attack roll is held this way too.
   Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
   The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
@@ -1103,6 +1103,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight.
   The spent action does not come back.
   The players who are not the readier's read only that it readied an action, never which spell, its level or that it is a spell.
+  The concentration save of a held spell is the readier's player's and the master's: the other players read only that the table waits for the master.
   A hidden creature's readied action is the master's alone.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.
 

@@ -237,16 +237,17 @@ export const ReadyService: GenService<{
    *   - `invalid_argument`: no key or a key used for another request, a malformed id.
    *   - `failed_precondition` (EncounterBlocked): NOT_ACTIVE, NOT_YOUR_TURN, ACTION_USED, COMBATANT_DOWN and the
    *     other refusals of a turn; READY_TRIGGER (an empty trigger, or one longer than 200 characters); READY_ACTION (an
-   *     attack the combatant does not have, a standard action that cannot be held (Attack, Cast a Spell, Ready, Hide,
-   *     Help, Dash, Disengage), a move in a combat without a map or with no speed, a spell with no key, or an action
-   *     readied already); READY_SPELL_TIME (a spell whose casting time is not 1 action); the refusals of CastSpell
+   *     attack the combatant does not have, a spell attack as an ATTACK, a standard action that cannot be held (Attack,
+   *     Cast a Spell, Ready, Hide, Help, Dash, Disengage), a move in a combat without a map or with no speed, a spell
+   *     with no key, or an action readied already); READY_SPELL_TIME (a spell whose casting time is not 1 action); the refusals of CastSpell
    *     for the spell (NO_SLOT, a spell the caster does not have or a slot that does not fit as `invalid_argument`).
    *     Nothing is spent.
    *
    * A spell is cast at Ready: the slot and the action are spent and the readier concentrates on it (any other
    * concentration ends); nothing of the spell happens until its release. CastSpell by the readier while its READIED
-   * window is open, or AnswerReaction USE, releases it as a reaction with no slot spent again. The spell is lost, with
-   * its slot, when its concentration ends, when it is let pass, or when the readied action is lost.
+   * window is open, or AnswerReaction USE, releases it as a reaction with no slot spent again. A spell attack cantrip
+   * is readied as a SPELL too, and released with RollAttack (catch_window_id) or AnswerReaction USE. The spell is lost,
+   * with its slot, when its concentration ends, when it is let pass, or when the readied action is lost.
    *
    * @generated from rpc meurpg.play.v1.ReadyService.ReadyAction
    */
@@ -261,7 +262,9 @@ export const ReadyService: GenService<{
    * action; PASS lets it go and keeps the reaction. Nothing is spent here. Only the master.
    *
    * The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
-   * surprised; its reaction is free; no READIED window of it is open. A refusal leaves the readied action waiting.
+   * surprised; its reaction is free; no READIED window of it is open; it owes no concentration save
+   * (CONCENTRATION_SAVE_PENDING) and no hidden reveal waits for the master (HIDDEN_REVEAL_PENDING). A refusal leaves
+   * the readied action waiting.
    * UndoLastAction takes the fire back while its window was not answered: the window goes and the row keeps waiting.
    *
    * Errors:
