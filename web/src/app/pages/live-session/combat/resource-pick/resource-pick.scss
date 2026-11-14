@@ -48,6 +48,8 @@
 // A radio card: the chosen one has a thicker accent border and a soft fill, and the dot is filled too.
 .opt {
   display: flex;
+  // In a list that scrolls the cards keep their height, they are not squeezed to fit it.
+  flex: none;
   align-items: center;
   gap: var(--mr-space-3);
   box-sizing: border-box;

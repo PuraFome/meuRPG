@@ -12488,7 +12488,7 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
 async function expectCollapsedTabs(page: Page, chosen: string): Promise<void> {
   const list = page.getByRole('tablist', { name: 'Tipos de ação' });
   const room = await boxIn(page, list);
-  for (const tab of await page.getByRole('tab').all()) {
+  for (const tab of await list.getByRole('tab').all()) {
     const name = ((await tab.getAttribute('aria-label')) ?? '').replace(/\s*\d+.*$/, '');
     const word = tab.locator('.tl__label');
     const box = await boxIn(page, tab);
@@ -12652,6 +12652,13 @@ async function scanCrowdedTargets(browser: Browser, colorScheme: 'light' | 'dark
     const list = sheet.locator('.pick__list--scrolls');
     await expect(list, 'nine cards: the list scrolls inside itself').toBeVisible();
     expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight), 'the list is taller than its room').toBe(true);
+    // A card is not squeezed to make the list fit its room: it does not shrink, and its lines stay inside its border.
+    for (const card of await sheet.locator('.opt').all()) {
+      const { shrink, over } = await card.evaluate((el) => ({ shrink: getComputedStyle(el).flexShrink, over: el.scrollHeight - el.clientHeight }));
+      const name = (await card.innerText()).split('\n')[0];
+      expect(shrink, `the card ${name} does not shrink`).toBe('0');
+      expect(over, `the lines of the card ${name} stay inside it`).toBeLessThanOrEqual(1);
+    }
     const inView = async (what: string, target: Locator): Promise<void> => {
       const box = await boxIn(p, target);
       expect(box.y, `${what} starts inside the viewport`).toBeGreaterThanOrEqual(0);
