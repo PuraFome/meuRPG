@@ -1209,6 +1209,11 @@
     "fire": 1,
     "why": "x",
     "kept": true,
+    "cause": "x",
+    "auto_fail": true,
+    "land_col": 1,
+    "land_row": 1,
+    "no_room": true,
     "saved_ids": [
       "x"
     ],
