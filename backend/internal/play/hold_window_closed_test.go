@@ -3,6 +3,9 @@ package play
 import (
 	"testing"
 
+	connect "connectrpc.com/connect"
+
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -200,5 +203,49 @@ func TestHeldEffectSaveGoesWithItsWindow(t *testing.T) {
 				h.want(t, c.name, c.dieStays)
 			})
 		}
+	}
+}
+
+// The save of a zone (a beam a creature enters) keeps its question the same way, and the zone ending closes the window by itself.
+func TestHeldZoneSaveGoesWithItsWindow(t *testing.T) {
+	t.Parallel()
+	c := newCaveOf(t, 5, []string{mistyStep}, func(a *armed) *charactersv1.Character {
+		return a.caio.caster(t, a.campaignID, "Toren", "class:druid", "race:human", 3, abilities(12, 12, 14, 16, 10), nil, nil, nil, []string{moonbeamKey})
+	})
+	e := c.zoneFight(t)
+	c.mustCastArea(t, c.caio, "Toren", moonbeamKey, slotOfLevel(2), at(8, 7), nil)
+	c.passTo(t, e, "Pensantus")
+	if _, err := c.misty(t, c.ana, at(8, 7)); err != nil {
+		t.Fatalf("CastSpell(Misty Step) error = %v", err)
+	}
+	w := c.windowOf(t, c.ana, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("the teleported wizard's player is not asked the save of the beam")
+	}
+	c.giveCombatantDie(t, "Pensantus", e)
+	if _, err := c.rollEffectSave(t, c.ana, c.get(t, c.master), w.GetId(), effectSaveFace(3)); err != nil {
+		t.Fatalf("RollEffectSave() error = %v", err)
+	}
+	var id string
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT id FROM inspiration_holds WHERE kind = $1`, string(heldEffectSave)).Scan(&id); err != nil {
+		t.Fatalf("the question the zone's save kept: %v", err)
+	}
+	zone := c.oneZone(t, c.master, moonbeamKey)
+	if _, err := c.master.combat.EndSpellZone(t.Context(), connect.NewRequest(&playv1.EndSpellZoneRequest{CampaignId: c.campaignID, EncounterId: e.GetId(), ZoneId: zone.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("EndSpellZone() error = %v", err)
+	}
+	var n int
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM inspiration_holds WHERE id = $1`, id).Scan(&n); err != nil || n != 0 {
+		t.Errorf("the hold %s is still there after the zone ended (%d, %v)", id, n, err)
+	}
+}
+
+// The question of a window that closed is gone: answering it is refused, it does not settle a save nobody asks any more.
+func TestAnsweringTheHeldQuestionOfAClosedWindowIsRefused(t *testing.T) {
+	t.Parallel()
+	h := concentrationHold(t, false, false)
+	h.f.dropConcentration(t, h.f.e)
+	if _, err := h.f.answerHeldRoll(t, h.f.ana, h.id, luckyAnswer(17)); err == nil {
+		t.Error("the answer to the question of a closed window was accepted")
 	}
 }
