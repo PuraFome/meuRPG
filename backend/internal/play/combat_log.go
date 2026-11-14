@@ -614,6 +614,8 @@ var logHandlers = map[string]logHandler{
 	eventReactionAnswered:        (*logBuilder).reactionAnswered,
 	eventConcentrationSaveRolled: (*logBuilder).reactionAnswered,
 	eventReactionDeclined:        (*logBuilder).reactionDeclined,
+	eventMountSaveRolled:         mountSaveLine,
+	eventRiderThrown:             plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_RIDER_THROWN),
 	eventDamageRolled:            (*logBuilder).damageEvent,
 	eventDamageApplied:           (*logBuilder).damageEvent,
 	eventDamageDiscarded:         (*logBuilder).damageEvent,
@@ -1193,6 +1195,8 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:          (*logEntry).fillDeathSave,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:  (*logEntry).fillConditions,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:        (*logEntry).fillEffectEnd,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_MOUNT_SAVE:          (*logEntry).fillMountSave,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_RIDER_THROWN:        (*logEntry).fillMountSave,
 }
 
 // fill writes the fields of the entry's kind.

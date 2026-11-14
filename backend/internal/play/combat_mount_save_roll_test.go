@@ -65,7 +65,7 @@ func (c *cave) saveRowOf(t *testing.T, label string) saveRow {
 	var on *string
 	var conds []string
 	err := c.h.pool.QueryRow(t.Context(),
-		`SELECT conditions, initiative, coalesce(cardinality(mount_prior_init), 0), defeated, hidden, mounted_on_id::text FROM combatants WHERE id = $1`, c.id(t, label),
+		`SELECT conditions, initiative, (CASE WHEN mount_prior_init IS NULL OR mount_prior_init::text IN ('null', '{}', '[]') THEN 0 ELSE 1 END), defeated, hidden, mounted_on_id::text FROM combatants WHERE id = $1`, c.id(t, label),
 	).Scan(&conds, &r.Initiative, &r.PriorInit, &r.Defeated, &r.Hidden, &on)
 	if err != nil {
 		t.Fatalf("read %s: %v", label, err)
@@ -111,12 +111,12 @@ func TestMountedCombat_TheSaveIsADexteritySavingThrowAgainstDC10(t *testing.T) {
 		auto     bool
 		dice     int
 	}{
-		{name: "not proficient, 9 + 1 reaches 10", build: riddenCave, roll: saveFace(9), held: true, modifier: 1, dice: 1},
-		{name: "not proficient, 8 + 1 is 9", build: riddenCave, roll: saveFace(8), modifier: 1, dice: 1},
+		{name: "not proficient, 8 + 2 reaches 10", build: riddenCave, roll: saveFace(8), held: true, modifier: 2, dice: 1},
+		{name: "not proficient, 7 + 2 is 9", build: riddenCave, roll: saveFace(7), modifier: 2, dice: 1},
 		{name: "proficient, 5 + 5 reaches 10", build: rogueCave, roll: saveFace(5), held: true, modifier: 5, dice: 1},
 		{name: "proficient, 4 + 5 is 9", build: rogueCave, roll: saveFace(4), modifier: 5, dice: 1},
 		{
-			name: "advantage from the Dodge action takes the better d20", build: riddenCave, roll: saveFaces(3, 15), held: true, modifier: 1, dice: 2,
+			name: "advantage from the Dodge action takes the better d20", build: riddenCave, roll: saveFaces(3, 15), held: true, modifier: 2, dice: 2,
 			prepare: func(t *testing.T, c *cave) {
 				if _, err := c.action(t, c.caio, c.get(t, c.master), "Toren", "standard:dodge"); err != nil {
 					t.Fatalf("Dodge error = %v", err)
@@ -124,7 +124,7 @@ func TestMountedCombat_TheSaveIsADexteritySavingThrowAgainstDC10(t *testing.T) {
 			},
 		},
 		{
-			name: "disadvantage from restrained takes the worse d20", build: riddenCave, roll: saveFaces(15, 3), modifier: 1, dice: 2,
+			name: "disadvantage from restrained takes the worse d20", build: riddenCave, roll: saveFaces(15, 3), modifier: 2, dice: 2,
 			prepare: func(t *testing.T, c *cave) {
 				if _, err := c.conditions(t, c.master, c.get(t, c.master), "Toren", []string{"condition:restrained"}, true, false); err != nil {
 					t.Fatalf("restrain error = %v", err)
@@ -203,8 +203,8 @@ func TestMountedCombat_AHeldSaveOnlyWritesALogLine(t *testing.T) {
 	}
 	for who, u := range map[string]*user{"the master": c.master, "Toren's player": c.caio} {
 		ls := c.linesOfKind(t, u, playv1.CombatLogKind_COMBAT_LOG_KIND_MOUNT_SAVE)
-		if len(ls) != 1 || ls[0].GetMountSave().GetD20() != 15 || ls[0].GetMountSave().GetTotal() != 16 || ls[0].GetMountSave().GetDc() != 10 {
-			t.Errorf("%s reads %v, want the d20 15, the total 16 and the DC 10", who, ls)
+		if len(ls) != 1 || ls[0].GetMountSave().GetD20() != 15 || ls[0].GetMountSave().GetTotal() != 17 || ls[0].GetMountSave().GetDc() != 10 {
+			t.Errorf("%s reads %v, want the d20 15, the total 17 and the DC 10", who, ls)
 		}
 	}
 	again := c.mustRollSave(t, c.caio, "Toren", set)
@@ -225,7 +225,7 @@ func TestMountedCombat_AFailedSaveThrowsTheRider(t *testing.T) {
 	if mount.PriorInit == 0 || mount.Initiative != rider.Initiative {
 		t.Fatalf("setup: the mount %+v should carry the rider's initiative %d", mount, rider.Initiative)
 	}
-	res := c.mustRollSave(t, c.caio, "Toren", saveFace(8))
+	res := c.mustRollSave(t, c.caio, "Toren", saveFace(7))
 	got := res.GetResult()
 	if got.GetHeld() || got.GetLandedCol() != 6 || got.GetLandedRow() != 7 || got.GetNoRoomNextToMount() {
 		t.Fatalf("result = %v, want a fall to (6,7) with room", got)
@@ -341,7 +341,7 @@ func TestMountedCombat_TheSaveAsksLuckyAndTheBardicDie(t *testing.T) {
 		c := riddenCave(t)
 		c.giveCombatantDie(t, "Toren", c.get(t, c.master))
 		c.askSave(t, "Toren", causePushed)
-		res := c.mustRollSave(t, c.caio, "Toren", saveFace(3)) // 3 + 1 = 4: a fall without the die
+		res := c.mustRollSave(t, c.caio, "Toren", saveFace(3)) // 3 + 2 = 5: a fall without the die
 		if res.GetResult() != nil || res.GetHeldRollOffer() == nil || res.GetHeldRollOffer().GetKind() != playv1.HeldRollKind_HELD_ROLL_KIND_MOUNT_SAVE {
 			t.Fatalf("answer = %v, want the question of a mount save alone", res)
 		}
@@ -349,13 +349,13 @@ func TestMountedCombat_TheSaveAsksLuckyAndTheBardicDie(t *testing.T) {
 			t.Error("the window closed or an event was written before the player answered")
 		}
 		c.h.roller.queue(8)
-		out, err := c.answerHeldRoll(t, c.caio, res.GetHeldRollOffer().GetHoldId(), dieAnswer(true)) // 3 + 1 + 8 = 12
+		out, err := c.answerHeldRoll(t, c.caio, res.GetHeldRollOffer().GetHoldId(), dieAnswer(true)) // 3 + 2 + 8 = 13
 		if err != nil {
 			t.Fatalf("AnswerHeldRoll() error = %v", err)
 		}
 		got := out.GetMountSave().GetResult()
-		if !got.GetHeld() || len(got.GetBonusDice()) != 1 || got.GetSave().GetTotal() != 12 {
-			t.Errorf("the settled save = %v, want held with a die, total 12", got)
+		if !got.GetHeld() || len(got.GetBonusDice()) != 1 || got.GetSave().GetTotal() != 13 {
+			t.Errorf("the settled save = %v, want held with a die, total 13", got)
 		}
 		if r := c.saveRowOf(t, "Toren"); r.Prone || r.MountedOnID == "" {
 			t.Errorf("the rider after the answer = %+v, want on the mount", r)

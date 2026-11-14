@@ -10,6 +10,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
@@ -193,6 +194,7 @@ type mountSaveFacts struct {
 	mode     combat.RollMode
 	autoFail bool
 	creature combat.Creature
+	traits   link.Traits
 }
 
 // mountSaveFacts reads the circumstances of the rider's Dexterity saving throw: the mode with the sources the sheet shows for it and the
@@ -208,7 +210,7 @@ func (s *Service) mountSaveFacts(ctx context.Context, tx pgx.Tx, q *playdb.Queri
 	}
 	creature := sun.facts(creatureFacts(rider, states, sheet.Traits), rider)
 	sources := combat.SaveMode(combat.SaveScene{Creature: creature, Ability: "dex", EffectVisible: true})
-	return mountSaveFacts{mode: combat.Resolve(sources), autoFail: combat.AutoFailsSave(creature, "dex"), creature: creature}, nil
+	return mountSaveFacts{mode: combat.Resolve(sources), autoFail: combat.AutoFailsSave(creature, "dex"), creature: creature, traits: sheet.Traits}, nil
 }
 
 // mountSaveHidden says a player who asks is not to be told whose save holds the turn: the rider or its mount is hidden from the
@@ -224,4 +226,33 @@ func mountSaveHidden(ctx context.Context, c *combatTx, w playdb.ReactionWindow) 
 	rider, ok := combatantByID(cs, conv.OrZero(w.ReactorID))
 	mount, there := combatantByID(cs, windowTriggerOf(w).Target)
 	return !ok || !there || rider.Hidden || mount.Hidden, nil
+}
+
+// mountSaveLine is the handler of a rider's roll: a line when the rider held ("Toren se segurou"). A rider that fell has the line of its
+// fall instead (eventRiderThrown), written before this event.
+func mountSaveLine(_ *logBuilder, _ playdb.ListEncounterEventsRow, entry *logEntry) bool {
+	if entry.ev.Reaction == nil || !entry.ev.Reaction.Kept {
+		return false
+	}
+	entry.kind = playv1.CombatLogKind_COMBAT_LOG_KIND_MOUNT_SAVE
+	return true
+}
+
+// fillMountSave writes the line of a rider's save or fall: the cause and the outcome for everyone who gets the line, the d20, the total
+// and the DC for the master and the rider's player (RN-10: another player reads only the outcome), and the master's note that no
+// square next to the mount was free.
+func (e *logEntry) fillMountSave(c *logViewing, out *playv1.CombatLogEntry) bool {
+	re := e.ev.Reaction
+	if re == nil {
+		return false
+	}
+	ms := &playv1.CombatLogMountSave{
+		Cause: mountCauseOf(re.Cause), Held: re.Kept, AutoFail: re.AutoFail, LandedCol: re.LandCol, LandedRow: re.LandRow,
+	}
+	if c.v.master || c.v.owns(c.actor) {
+		ms.D20, ms.Total, ms.Dc = e.ev.D20, e.ev.Total, re.SaveDC
+	}
+	ms.NoRoomNextToMount = c.v.master && re.NoRoom
+	out.MountSave = ms
+	return true
 }

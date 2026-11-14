@@ -93,7 +93,7 @@ func TestMountedCombat_AHiddenRiderLeaksNothingOfTheSave(t *testing.T) {
 		}
 	}
 	c.execSQL(t, `UPDATE combatants SET hidden = true WHERE id = $1`, c.id(t, saveCanary))
-	c.askSave(t, saveCanary, causeProne)
+	c.askSave(t, saveCanary, causePushed)
 
 	if got := c.mountSaveOf(t, c.master); got.GetRiderId() != c.id(t, saveCanary) {
 		t.Errorf("the master reads %v, want the save of the hidden rider (the control)", got)
