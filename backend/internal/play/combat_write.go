@@ -491,7 +491,7 @@ func (s *Service) tellReplayed(h *hints, w combatWrite, res combatResult) {
 	}
 	h.tell(campaignID, castsChangedEvent(true))
 	ev, err := readEvent(res.payload)
-	secret := err == nil && ev.Secret
+	secret := err != nil || ev.Secret // an event that cannot be read is told to the master alone
 	h.after(func(ctx context.Context, say func(string, live.Event)) {
 		s.tellCombatAgain(ctx, say, campaignID, res.session.ID, encID, secret)
 	})
@@ -949,7 +949,7 @@ func (s *Service) finish(ctx context.Context, m authz.Membership, res combatResu
 // event was not one a hidden combatant is in. It tells the forced moves the stored event made again.
 func (s *Service) publishRetried(ctx context.Context, campaignID string, res combatResult, d *encounterData) {
 	ev, err := readEvent(res.payload)
-	if err == nil && ev.Secret {
+	if err != nil || ev.Secret {
 		s.publishEncounterChangedToMaster(campaignID, d.enc) // the players were not told of the first call: nor of its replay
 	} else {
 		s.publishEncounterChanged(ctx, campaignID, d.enc)
