@@ -114,6 +114,8 @@ The kinds include `encounter_started`, `initiative_submitted`, `initiative_order
 The master and the rider's player read the d20, the total and the DC; another player reads only the outcome.
 The master's line says when no square next to the mount was free.
 The lines are the master's alone when the rider or the mount is hidden (RN-10).
+A rider that lands on its feet through the dismount window has the reaction line "usou a reação para desmontar de pé", and a rider that falls from it has the line of `rider_thrown` with no cause (`MOUNT_SAVE_CAUSE_UNSPECIFIED`) and no DC.
+The dismount's own answer writes `reaction_answered`, and a pass is no line of its own.
 A new kind is a row in `session_event_kinds` (a migration) and an `event...` constant in the code; `TestEveryEventKindOfTheCodeIsInTheTable` fails if one is missing.
 
 A payload is at most 16 KiB of the database's text of the JSON (a `CHECK` of `session_events`).
