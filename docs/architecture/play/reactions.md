@@ -186,7 +186,11 @@ The reactor's player or the master answers (`ByMaster`); another player gets `pe
 A feature with a trigger takes no choice, because the answer carries none (`.use.trigger` is refused at save when the feature has choices).
 The web auto-passes the window at 30 s, as the other optional reactions.
 
-**Undo.** The undo of the move or of the start of a turn that opened the window removes it while it is unanswered (`DeleteUnansweredFeatureWindow`; the move event keeps the ids in `feature_windows`).
+**Closing.** The window is checked again at every settle (`featureGone`): it closes as `trigger_gone`, with the other kinds' quiet path, when the creature is defeated, dismissed, on the reactor's side or hidden since the window opened for the player, or when the feature is not ready (no use or resource left, the reaction spent, nothing to aim at).
+A creature hidden after its window opened to the player closes it, so the player reads nothing more of the creature (RN-10).
+
+**Undo.** Only the undo of the move that opened the window removes it while it is unanswered (`DeleteUnansweredFeatureWindow`; the move event keeps the ids in `feature_windows`).
+The end of a turn is not undoable, so a window the start of a turn opened is answered or closed, never undone.
 The undo of the use reopens the window (`reopenWindowOf`), and so does the undo of the pass.
 
 **RN-10.** A window of a creature the master hid is the master's alone (`windowTrigger.Hidden`).
