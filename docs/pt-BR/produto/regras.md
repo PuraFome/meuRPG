@@ -601,6 +601,7 @@ Quando um personagem concentrado leva dano, o jogo pede ao dono o teste de resis
 Uma magia que causa dois tipos de dano gera um só lembrete por conjuração, a partir da soma do que acertou.
 O cartão do mestre diz "Teste de Constituição, CD 10"; ninguém mais lê a CD.
 Conjurar uma segunda magia de concentração encerra a primeira, e o registro diz qual terminou.
+Uma magia preparada mantém a concentração até ser liberada ou perdida (RN-31): preparar uma magia encerra outra concentração, e o fim da concentração faz perder a magia.
 Uma magia, ou o mestre, que encerra a concentração de uma magia de invocação (Conjurar Animais) dispensa as criaturas daquela conjuração.
 O "desfazer" do mestre devolve a concentração e as mesmas criaturas.
 Uma magia que força um teste de resistência mais tarde (Esfera Flamejante, Nevasca, Terremoto) rola os testes e o dano quando é conjurada; o mestre chama os testes seguintes. Espíritos Guardiões, Raio Lunar, Névoa Mortal, Teia, Área Escorregadia, Constrição, Névoa Fétida, Crescer Espinhos e Muralha de Fogo são a exceção: o app mantém a área delas e chama os testes seguintes sozinho (RN-37).
@@ -1069,6 +1070,7 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Queda Suave | Até cinco criaturas em queda a 18 m não sofrem dano de queda. |
 | Queda Lenta (monge 4) | O monge em queda tira 5 vezes o nível dele do próprio dano de queda. |
 | Ataque de oportunidade | Veja a RN-21. |
+| Ação preparada | O mestre diz que o gatilho de uma ação preparada aconteceu: quem a preparou pode usar a reação para tomar a ação guardada (um ataque, um movimento até a velocidade, uma magia, outra ação) ou deixá-la passar. Só o jogador de quem preparou e o mestre leem o gatilho e a ação; os outros leem "Esperando a reação de <nome>" ou "Esperando o mestre". |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
 | Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, decidido pelo servidor sem janela (uma janela só para o mestre em "Perguntar"). |
 | Resistência Lendária | A magia de um jogador com teste de resistência, ou um efeito de acerto que rola um teste, alcança uma criatura com a característica e um uso sobrando, quer o teste de resistência dela tenha passado, quer tenha falhado: o lançamento ou a resposta ao efeito espera só o mestre (RN-29). A área de uma magia que pega essa criatura pede o teste dela só ao mestre. |
@@ -1082,8 +1084,33 @@ A ação em espera aguarda até a janela ser respondida, e é descartada se não
 O turno espera pelas janelas abertas.
 Um jogador lê só as próprias janelas, e os números do gatilho (um total de ataque, uma classe de armadura, um dano) são do mestre.
 
-- **Uma reação opcional que o jogador não responde passa depois de 30 segundos** (Escudo Arcano, Esquiva Sobrenatural, a conjuração da Repreensão Infernal, Contramágica, Palavras de Interrupção, Defletir Projéteis, Proteção, Queda Suave, Queda Lenta e um ataque de oportunidade oferecido a um jogador). A tela do mestre a conta ("Passa sozinho em N s"), o aviso do jogador diz "Se você não responder, passa sozinho em N s.". Nunca um teste de resistência, uma disputa nem o teste do mestre.
+- **Uma reação opcional que o jogador não responde passa depois de 30 segundos** (Escudo Arcano, Esquiva Sobrenatural, a conjuração da Repreensão Infernal, Contramágica, Palavras de Interrupção, Defletir Projéteis, Proteção, Queda Suave, Queda Lenta, uma ação preparada que o mestre disparou e um ataque de oportunidade oferecido a um jogador). A tela do mestre a conta ("Passa sozinho em N s"), o aviso do jogador diz "Se você não responder, passa sozinho em N s.". Nunca um teste de resistência, uma disputa nem o teste do mestre.
 - **Um jogador que está rolando ganha mais tempo.** Enquanto o jogador rola um dado físico, a janela espera até 2 minutos: "Você está rolando: a mesa espera 2 min", e o mestre lê "Rolando… passa sozinho em N s". O mestre pode passá-la antes.
+- **Preparar** (SRD 5.1, "Ready").
+  No próprio turno, uma criatura gasta a ação para guardar outra até um gatilho que o jogador dela escreve.
+  A ação guardada é um ataque, um movimento, uma magia ou outra ação padrão.
+  Uma magia guardada precisa levar 1 ação para ser conjurada.
+  Ela é conjurada ao preparar, com o espaço de magia, e o poder dela fica guardado até o gatilho.
+  Guardá-la exige concentração, que encerra qualquer outra concentração da criatura.
+  Um truque com jogada de ataque é guardado do mesmo jeito.
+  Liberada, a magia tem efeito como reação e não gasta espaço de novo; a Contramágica ainda pode barrá-la.
+  A magia se perde, com o espaço gasto, se a concentração acabar antes, se a criatura a deixar passar ou quando a ação preparada se perde.
+  Esconder-se e Ajudar não podem ser guardados: têm chamadas próprias, que uma reação não executa.
+  Correr e Desengajar também não: valem só para o turno da própria criatura.
+  Um movimento não pode ser guardado num combate sem mapa.
+  A reação só é gasta quando a ação guardada é tomada; até lá as outras reações da criatura continuam oferecidas.
+  Um ataque guardado ainda espera as reações que vêm antes de qualquer jogada de ataque (Palavras de Interrupção, Proteção, a conferência do mestre).
+  Nesse meio-tempo a janela dele não aceita outra resposta e não passa sozinha.
+  Um movimento guardado provoca ataques de oportunidade como qualquer movimento, mesmo depois de um Desengajar no turno da própria criatura.
+  Esses ataques seguram o fim do turno em andamento até serem respondidos.
+  Uma criatura sem reação, ou que não pode reagir, não é perguntada, e a ação preparada espera até se perder.
+  Ela se perde no início do próximo turno da criatura, ou quando a criatura é derrotada ou sai da luta.
+  A ação gasta não volta.
+  Os jogadores que não são o de quem preparou leem só que ela preparou uma ação, nunca qual magia, o nível dela nem que é uma magia.
+  A linha do Preparar deles não nomeia nenhuma concentração que acabou.
+  Eles ainda veem o que qualquer concentração encerrada faz: o indicador de concentração da criatura fica em branco e os efeitos da magia de concentração anterior terminam.
+  O teste de concentração de uma magia guardada é do jogador de quem preparou e do mestre: os outros jogadores leem só que a mesa espera o mestre.
+  A ação preparada de uma criatura escondida é só do mestre.
 - **Regra da mesa "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (padrão) abre uma janela só quando um inimigo pode reagir; "Sempre" abre a conferência de um toque do mestre em todo ataque, conjuração e dano de um jogador contra um inimigo, de modo que a pausa não diz nada aos jogadores.
 
 Como é construído: [Arquitetura](../../architecture/play/reactions.md).
