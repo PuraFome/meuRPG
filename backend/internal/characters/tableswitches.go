@@ -115,6 +115,12 @@ func optionEntries(c *rules.Content, uses map[string]int) []*rulesv1.OptionSwitc
 	for _, e := range c.TableWeapons() {
 		add(rulesv1.TableContentKind_TABLE_CONTENT_KIND_WEAPON, e.Key, e.NamePT, "", 0, e.Archived, e.Off)
 	}
+	sortOptionEntries(out)
+	return out
+}
+
+// sortOptionEntries orders the entries by kind, then Portuguese name, then key.
+func sortOptionEntries(out []*rulesv1.OptionSwitchEntry) {
 	slices.SortStableFunc(out, func(a, b *rulesv1.OptionSwitchEntry) int {
 		if d := cmp.Compare(a.GetKind(), b.GetKind()); d != 0 {
 			return d
@@ -124,7 +130,6 @@ func optionEntries(c *rules.Content, uses map[string]int) []*rulesv1.OptionSwitc
 		}
 		return strings.Compare(a.GetKey(), b.GetKey())
 	})
-	return out
 }
 
 // ListOptionSwitches implements rulesv1connect.TableContentServiceHandler.
