@@ -56,6 +56,14 @@ export function asksSomething(o: ActionOption): boolean {
   return asksTargets(o) || asksChoice(o);
 }
 
+/**
+ * The use opens its sheet: when it asks who or which, and always for the master, whose use is made in the name of a player's
+ * character and is confirmed. The player's own use with nothing to ask goes straight through.
+ */
+export function needsSheet(o: ActionOption, master: boolean): boolean {
+  return master || asksSomething(o);
+}
+
 /** "inimigo", "aliados", "criaturas": who the use may be aimed at, in the number the limit says. */
 function whoWord(who: FeatureTargetWho, plural: boolean): string {
   switch (who) {
@@ -76,7 +84,8 @@ export function targetLimitText(o: ActionOption, where: 'row' | 'head' = 'row'):
   if (!asksTargets(o)) {
     return '';
   }
-  const count = o.targetMin === o.targetMax ? `${o.targetMax}` : `de ${o.targetMin} a ${o.targetMax}`;
+  const count =
+    o.targetMin === o.targetMax ? `${o.targetMax}` : `de ${o.targetMin} a ${o.targetMax}`;
   const who = whoWord(o.targetWho, o.targetMax !== 1);
   const range =
     o.targetRangeFt > 0 ? `${where === 'row' ? ' a' : ''} até ${metersText(o.targetRangeFt)}` : '';
@@ -100,8 +109,7 @@ function resourceText(o: ActionOption, resource: ResourceUsageVm | undefined): s
   const cost = Math.max(o.action.cost, 1);
   const name = resource?.namePt ? ` de ${resource.namePt}` : '';
   const total = o.resourceTotal || resource?.total || 0;
-  const left =
-    total > 0 && !isUnlimited(total) ? ` (restam ${o.usesLeft} de ${total})` : '';
+  const left = total > 0 && !isUnlimited(total) ? ` (restam ${o.usesLeft} de ${total})` : '';
   return `gasta ${cost} ${cost === 1 ? 'uso' : 'usos'}${name}${left}`;
 }
 
@@ -233,12 +241,15 @@ export function featureRefusalText(
     return generic;
   }
   const the = names.map((n) => `${article(n) === 'a' ? 'a' : 'o'} ${n}`);
-  const list = the.length === 1 ? the[0] : `${the.slice(0, -1).join(', ')} e ${the[the.length - 1]}`;
+  const list =
+    the.length === 1 ? the[0] : `${the.slice(0, -1).join(', ')} e ${the[the.length - 1]}`;
   return `${upFirst(list)} ${names.length === 1 ? 'saiu' : 'saíram'} do alcance. Escolha outro alvo.`;
 }
 
 /** The first sentence of a refusal, for the bold lead of the red band; the rest follows it. */
 export function leadOf(text: string): { readonly lead: string; readonly rest: string } {
   const at = text.indexOf('. ');
-  return at < 0 ? { lead: text, rest: '' } : { lead: text.slice(0, at + 1), rest: text.slice(at + 2) };
+  return at < 0
+    ? { lead: text, rest: '' }
+    : { lead: text.slice(0, at + 1), rest: text.slice(at + 2) };
 }

@@ -409,15 +409,20 @@ function creatureRiderText(e: CombatLogEntry, r: NonNullable<CombatLogEntry['hit
  */
 export function featureUsedText(e: CombatLogEntry, ctx: LogContext): string {
   const f = e.featureUsed;
-  const name = f?.namePt || e.keyNamePt || 'uma característica';
   const who = e.targetLabel;
   const target =
     who && who !== e.actorLabel ? ` ${ctx.players.has(who) ? `em ${who}` : inThe(who)}` : '';
-  const details = [
-    f?.choiceTextPt ?? '',
-    f && f.healed > 0 ? `${f.healed} PV recuperados` : '',
-    f && f.tempHp > 0 ? `${f.tempHp} PV temporários` : '',
-    f?.effectApplied ? 'efeito aplicado' : '',
-  ].filter(Boolean);
+  const details = f ? featureUsedDetails(f) : [];
+  const name = f?.namePt || e.keyNamePt || 'uma característica';
   return ` usou ${name}${target}${details.length > 0 ? `: ${details.join(', ')}` : ''}`;
+}
+
+/** The choice, and what the use healed and gave, in the order the line reads them. */
+function featureUsedDetails(f: NonNullable<CombatLogEntry['featureUsed']>): string[] {
+  return [
+    f.choiceTextPt,
+    f.healed > 0 ? `${f.healed} PV recuperados` : '',
+    f.tempHp > 0 ? `${f.tempHp} PV temporários` : '',
+    f.effectApplied ? 'efeito aplicado' : '',
+  ].filter(Boolean);
 }

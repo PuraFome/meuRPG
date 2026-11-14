@@ -37,17 +37,30 @@ function option(over: Record<string, unknown> = {}): ActionOption {
     enabled: true,
     viaUseFeature: true,
     ...over,
-    action: { key: 'feature:x', namePt: 'Característica', economy: ActionEconomy.ACTION, ...(over['action'] as object) },
+    action: {
+      key: 'feature:x',
+      namePt: 'Característica',
+      economy: ActionEconomy.ACTION,
+      ...(over['action'] as object),
+    },
   } as never);
 }
 
-const wild = { key: 'wild_shape', namePt: 'Forma Selvagem', total: 2, used: 0, recharge: 'short_rest' } as const;
+const wild = {
+  key: 'wild_shape',
+  namePt: 'Forma Selvagem',
+  total: 2,
+  used: 0,
+  recharge: 'short_rest',
+} as const;
 
 describe('what a feature taken with UseFeature asks', () => {
   it('asks for creatures only when it picks some', () => {
     expect(asksTargets(option())).toBe(false);
     expect(asksTargets(option({ targetMax: 1, targetWho: FeatureTargetWho.SELF }))).toBe(false);
-    expect(asksTargets(option({ targetMax: 3, targetMin: 1, targetWho: FeatureTargetWho.ALLY }))).toBe(true);
+    expect(
+      asksTargets(option({ targetMax: 3, targetMin: 1, targetWho: FeatureTargetWho.ALLY })),
+    ).toBe(true);
   });
 
   it('asks for an option when the feature offers some', () => {
@@ -74,8 +87,14 @@ describe('the line under a feature taken with UseFeature', () => {
   });
 
   it('starts with a capital when the limit is not the first part, and says the temporary hit points', () => {
-    const o = option({ usesLeft: 2, resourceTotal: 2, action: { resourceKey: 'wild_shape', tempHp: 16 } });
-    expect(plain(useLine(o, wild))).toBe('Gasta 1 uso de Forma Selvagem (restam 2 de 2) · 16 PV temporários');
+    const o = option({
+      usesLeft: 2,
+      resourceTotal: 2,
+      action: { resourceKey: 'wild_shape', tempHp: 16 },
+    });
+    expect(plain(useLine(o, wild))).toBe(
+      'Gasta 1 uso de Forma Selvagem (restam 2 de 2) · 16 PV temporários',
+    );
   });
 
   it('says whom it takes and how far, with the limit of the scope', () => {
@@ -100,12 +119,19 @@ describe('the line under a feature taken with UseFeature', () => {
   });
 
   it('writes the head of the list of creatures with the count and the range', () => {
-    const o = option({ targetMin: 1, targetMax: 3, targetWho: FeatureTargetWho.ALLY, targetRangeFt: 30 });
+    const o = option({
+      targetMin: 1,
+      targetMax: 3,
+      targetWho: FeatureTargetWho.ALLY,
+      targetRangeFt: 30,
+    });
     expect(plain(targetLimitText(o, 'head'))).toBe('de 1 a 3 aliados até 9 m');
     expect(plain(targetLimitText(o))).toBe('de 1 a 3 aliados a até 9 m');
-    expect(plain(targetLimitText(option({ targetMin: 2, targetMax: 2, targetWho: FeatureTargetWho.ANY })))).toBe(
-      '2 criaturas',
-    );
+    expect(
+      plain(
+        targetLimitText(option({ targetMin: 2, targetMax: 2, targetWho: FeatureTargetWho.ANY })),
+      ),
+    ).toBe('2 criaturas');
     expect(targetLimitText(option())).toBe('');
   });
 });
@@ -116,10 +142,18 @@ describe('the creatures of the list and the choice sent', () => {
       target: { combatantId: id, label, tooFar, distanceFt: 5 },
       disabledReasonPt: reason,
     });
-  const o = option({ targetMin: 1, targetMax: 2, targetWho: FeatureTargetWho.ENEMY, targetRangeFt: 10 });
+  const o = option({
+    targetMin: 1,
+    targetMax: 2,
+    targetWho: FeatureTargetWho.ENEMY,
+    targetRangeFt: 10,
+  });
 
   it("keeps the server's reason on a creature that cannot be picked and picks the others", () => {
-    const rows = useRows([target('a', 'Zumbi 1'), target('b', 'Zumbi 2', 'Fora de alcance: até 3 m')], o);
+    const rows = useRows(
+      [target('a', 'Zumbi 1'), target('b', 'Zumbi 2', 'Fora de alcance: até 3 m')],
+      o,
+    );
     expect(rows.map((r) => r.blocked)).toEqual(['', 'Fora de alcance: até 3 m']);
     expect(pickable(rows)).toEqual(['a']);
   });
@@ -128,11 +162,18 @@ describe('the creatures of the list and the choice sent', () => {
     expect(choiceComplete(o, { targetIds: [], choice: '' })).toBe(false);
     expect(choiceComplete(o, { targetIds: ['a'], choice: '' })).toBe(true);
     expect(choiceComplete(o, { targetIds: ['a', 'b', 'c'], choice: '' })).toBe(false);
-    expect(missingText(o, { targetIds: [], choice: '' })).toBe('Escolha de 1 a 2 inimigos até 3 m.');
+    expect(plain(missingText(o, { targetIds: [], choice: '' }))).toBe(
+      'Escolha de 1 a 2 inimigos até 3 m.',
+    );
   });
 
   it('needs one of the options when the feature offers them', () => {
-    const c = option({ choices: [{ key: 'fire', textPt: 'Fogo' }, { key: 'cold', textPt: 'Frio' }] });
+    const c = option({
+      choices: [
+        { key: 'fire', textPt: 'Fogo' },
+        { key: 'cold', textPt: 'Frio' },
+      ],
+    });
     expect(choiceComplete(c, { targetIds: [], choice: '' })).toBe(false);
     expect(choiceComplete(c, { targetIds: [], choice: 'acid' })).toBe(false);
     expect(choiceComplete(c, { targetIds: [], choice: 'fire' })).toBe(true);
@@ -185,9 +226,9 @@ describe('the refusals of a target and of a choice', () => {
     expect(featureRefusalText(blocked(EncounterBlockedReason.FEATURE_TARGET, ['a']), label)).toBe(
       'O Zumbi 1 saiu do alcance. Escolha outro alvo.',
     );
-    expect(featureRefusalText(blocked(EncounterBlockedReason.FEATURE_TARGET, ['a', 'b']), label)).toBe(
-      'O Zumbi 1 e a Brisa saíram do alcance. Escolha outro alvo.',
-    );
+    expect(
+      featureRefusalText(blocked(EncounterBlockedReason.FEATURE_TARGET, ['a', 'b']), label),
+    ).toBe('O Zumbi 1 e a Brisa saíram do alcance. Escolha outro alvo.');
   });
 
   it('says it without a name when the count or the side is wrong', () => {

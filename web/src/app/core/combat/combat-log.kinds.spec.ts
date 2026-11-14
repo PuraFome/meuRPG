@@ -569,27 +569,32 @@ describe('the spells that read hit points', () => {
 });
 
 describe('a use of a feature (UseFeature): the line of each audience, as the server filled the entry', () => {
-  const used = (feature: object, over: Over = {}) => ({
+  const used = (feature: object, over: Over = {}): Over => ({
     kind: CombatLogKind.FEATURE_USED,
     actorLabel: 'Sálvia',
-    featureUsed: { featureKey: 'feature:x', namePt: 'Halo de esporos', ...feature },
+    featureUsed: { featureKey: 'feature:x', namePt: 'Halo de esporos', ...feature } as never,
     ...over,
   });
 
   it('names the feature and the creature it was used on, for the table', () => {
-    expect(text(used({}, { targetLabel: 'Zumbi 1' }), PLAYER)).toBe(' usou Halo de esporos no Zumbi 1');
-    expect(text(used({}, { targetLabel: 'Brisa' }), PLAYER)).toBe(' usou Halo de esporos em Brisa');
+    expect(text(used({}, { targetLabel: 'Zumbi 1' }), PLAYER)).toBe(
+      ' usou Halo de esporos no Zumbi 1',
+    );
+    expect(text(used({}, { targetLabel: 'Toren' }), PLAYER)).toBe(' usou Halo de esporos em Toren');
   });
 
   it('says the choice, as the feature labels it', () => {
-    expect(
-      text(used({ namePt: 'Corrigir o tipo de dano', choiceTextPt: 'Fogo' }), PLAYER),
-    ).toBe(' usou Corrigir o tipo de dano: Fogo');
+    expect(text(used({ namePt: 'Corrigir o tipo de dano', choiceTextPt: 'Fogo' }), PLAYER)).toBe(
+      ' usou Corrigir o tipo de dano: Fogo',
+    );
   });
 
   it('says what it healed and gave when the entry carries the numbers (the master and the user)', () => {
     expect(
-      text(used({ namePt: 'Entidade simbiótica', tempHp: 16, healed: 3, effectApplied: true }), MASTER),
+      text(
+        used({ namePt: 'Entidade simbiótica', tempHp: 16, healed: 3, effectApplied: true }),
+        MASTER,
+      ),
     ).toBe(' usou Entidade simbiótica: 3 PV recuperados, 16 PV temporários, efeito aplicado');
   });
 
@@ -598,6 +603,6 @@ describe('a use of a feature (UseFeature): the line of each audience, as the ser
   });
 
   it('names the use in the undo confirmation', () => {
-    expect(undoLabel(entry(used({}) as Over))).toBe('o uso de Halo de esporos da Sálvia');
+    expect(undoLabel(entry(used({})))).toBe('o uso de Halo de esporos da Sálvia');
   });
 });

@@ -1153,6 +1153,7 @@
               [busy]="busy()"
               [familiar]="theatre() ? null : familiar()"
               [wild]="wild()"
+              [resources]="ownVitals()?.resources ?? []"
               [beast]="me.wildShapeBeastNamePt"
               [stay]="stay()"
               [moveAside]="!!acting()"

@@ -1,0 +1,109 @@
+// What "Usar característica" adds to the resource sheets' shared styles: the choice buttons, who the use is for and why "Usar" is off.
+.choices {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choices .ask {
+  padding: 0;
+  margin-bottom: var(--mr-space-2);
+}
+
+.choices__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--mr-space-2);
+
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  }
+}
+
+.choice {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  color: var(--mr-ink);
+  font: inherit;
+  font-size: var(--mr-font-15);
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+
+  // The chosen one: the accent frame and fill, with a check, so it is not colour alone.
+  &--on {
+    padding: 0 11px;
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent-soft);
+  }
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
+  }
+
+  @media (min-width: 768px) {
+    min-height: 44px;
+  }
+}
+
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: 10px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-ground);
+}
+
+.who__mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-size: var(--mr-font-15);
+  font-weight: 700;
+}
+
+.who__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+// Why "Usar" is dashed and off: written, with an icon, never colour alone.
+.missing {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 0;
+  font-size: var(--mr-font-15);
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: var(--mr-font-18);
+  }
+}

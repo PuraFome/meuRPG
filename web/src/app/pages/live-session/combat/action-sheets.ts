@@ -19,6 +19,14 @@ import type { ActionOption } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { AdjustNpc, type AdjustNpcData } from './adjust-npc/adjust-npc';
 import { ConditionsDialog, type ConditionsData } from './conditions-dialog/conditions-dialog';
 import { FeatureSheet, type FeatureSheetData } from './feature-sheet/feature-sheet';
+import {
+  UseFeatureSheet,
+  type UseFeatureSheetData,
+  type UseFeatureSheetResult,
+} from './use-feature-sheet/use-feature-sheet';
+import type { Observable } from 'rxjs';
+import { needsSheet, resourceOf, usedNote } from '../../../core/combat/feature-use';
+import { ActionKey } from '../../../core/connect/idempotency';
 import { openBardicInspiration, openFlexibleCasting, openLayOnHands } from './resource-sheets';
 import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
 import type { CombatSheetsContext } from './combat-sheets-context';
@@ -172,6 +180,73 @@ export class ActionSheets {
       FeatureSheet,
       { data, ariaLabel: name, labelledBy: 'sheet-t' },
     ).subscribe();
+  }
+
+  private readonly useKey = new ActionKey();
+
+  /**
+   * "Usar" on a feature taken with `UseFeature` (#743; `TakeAction` refuses its key). One that asks who or which, and any use of
+   * the master acting as the character, opens the sheet; the player's own use with nothing to ask is called at once. Either way
+   * the note of the turn says what it gave and what is left of the resource.
+   */
+  async takeFeature(own: Combatant, e: Encounter, option: ActionOption): Promise<void> {
+    const resource = resourceOf(option, this.ctx.ownVitals()?.resources);
+    const name = option.action?.namePt ?? '';
+    if (needsSheet(option, this.ctx.isMaster())) {
+      this.useFeature(own, e, option).subscribe((result) => {
+        if (result) {
+          this.ctx.note(usedNote(name, result, option, resource));
+        }
+      });
+      return;
+    }
+    const actionKey = option.action?.key ?? '';
+    let result = { healed: 0, tempHp: 0 };
+    const made = await this.ctx.calls.run(async (current) => {
+      const res = await this.ctx.api.features.useFeature(
+        {
+          campaignId: this.ctx.campaignId(),
+          encounterId: current.id,
+          combatantId: own.id,
+          actionKey,
+        },
+        this.useKey.keyFor({ combatant: own.id, key: actionKey }),
+      );
+      this.useKey.renew();
+      result = res;
+      return res.encounter;
+    });
+    if (made) {
+      this.ctx.note(usedNote(name, result, option, resource));
+    }
+  }
+
+  /** "Usar" on a feature taken with `UseFeature` that asks who or which, and always for the master acting as the character
+   * (the confirmation). Answers what the use healed and gave when it worked. */
+  useFeature(
+    own: Combatant,
+    e: Encounter,
+    option: ActionOption,
+  ): Observable<UseFeatureSheetResult | undefined> {
+    const key = option.action?.key ?? '';
+    const data: UseFeatureSheetData = {
+      campaignId: this.ctx.campaignId(),
+      encounterId: e.id,
+      combatantId: own.id,
+      userLabel: own.label,
+      option,
+      targets: this.ctx.options()?.featureTargets.find((t) => t.actionKey === key)?.targets ?? [],
+      resource: resourceOf(option, this.ctx.ownVitals()?.resources),
+      master: this.ctx.isMaster(),
+      state: this.ctx.state(),
+    };
+    const name = option.action?.namePt ?? '';
+    return openSheet<UseFeatureSheet, UseFeatureSheetData, UseFeatureSheetResult>(
+      this.ctx.dialog,
+      this.ctx.bottomSheet,
+      UseFeatureSheet,
+      { data, ariaLabel: name, labelledBy: 'sheet-t', width: '480px' },
+    );
   }
 
   /** A table feature's action that asks how many to spend, for whom, or the dice of its heal (MR-025). */

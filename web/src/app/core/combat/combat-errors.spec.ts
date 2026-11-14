@@ -204,12 +204,12 @@ describe('the question that holds a roll before a resource is spent', () => {
 
 describe('the refusals of a feature used with UseFeature', () => {
   it('says what is wrong with the target or the choice and what to do, for the server reasons 128 and 129', () => {
-    expect(blockedMessage({ reason: EncounterBlockedReason.FEATURE_TARGET, combatantIds: [] } as never)).toBe(
-      'O alvo saiu do alcance. Escolha outro alvo.',
-    );
-    expect(blockedMessage({ reason: EncounterBlockedReason.FEATURE_CHOICE, combatantIds: [] } as never)).toBe(
-      'Essa opção não vale mais. Escolha outra.',
-    );
+    expect(
+      blockedMessage({ reason: EncounterBlockedReason.FEATURE_TARGET, combatantIds: [] } as never),
+    ).toBe('O alvo saiu do alcance. Escolha outro alvo.');
+    expect(
+      blockedMessage({ reason: EncounterBlockedReason.FEATURE_CHOICE, combatantIds: [] } as never),
+    ).toBe('Essa opção não vale mais. Escolha outra.');
   });
 
   it('reads them through the error of a failed call, with the typed detail', () => {

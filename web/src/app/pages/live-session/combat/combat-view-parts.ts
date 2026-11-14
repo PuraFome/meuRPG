@@ -63,6 +63,8 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
     layers: () => this.layers(),
     fogVision: () => this.fogVision(),
     spendClosed: () => this.moves.moveNote.set(''),
+    calls: this.calls,
+    note: (text) => this.actionNote.set(text),
     target: () => this.targeting,
   });
   /** The player's choice of a target on the map for an attack, a spell or a grapple (C7-04, C7-05); the sheets open with it named. */
@@ -300,6 +302,9 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
       return;
     }
     const name = option.action.namePt;
+    if (option.viaUseFeature) {
+      return this.sheets.actions.takeFeature(own, e, option);
+    }
     const flow = resourceFlow(key);
     if (flow) {
       this.sheets.actions.resource(flow, key, own.id, e.id);
@@ -314,7 +319,6 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
       this.sheets.actions.tableAction(own, e, option);
       return;
     }
-    const actionKey = key;
     if (
       await this.calls.run(
         async (current) =>
@@ -323,7 +327,7 @@ export abstract class CombatViewPartsDirective extends CombatViewActingDirective
               this.campaignId(),
               current.id,
               own.id,
-              actionKey,
+              key,
               undefined,
               undefined,
               false,

@@ -74,6 +74,8 @@ import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-us
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
 import { ActionRow, type RowEconomy } from './action-row';
 import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
+import { resourceOf, useLine } from '../../../../core/combat/feature-use';
+import type { ResourceUsageVm } from '../../../../core/play/resource-usage.types';
 import { GroupState } from './group-state';
 import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-groups-text';
 import { offersWeaponAttack } from './weapon-offer';
@@ -164,6 +166,8 @@ export class ActionGroups {
     readonly detail: string;
     readonly reason: string;
   } | null>(null);
+  /** The character's resources, for the name of the one a feature spends from ("gasta 1 uso de Forma Selvagem"). */
+  readonly resources = input<readonly ResourceUsageVm[]>([]);
   /** The master acts for the character: "Mover" is in the map's header (C8-01), so the economy row does not repeat it. */
   readonly moveAside = input(false);
   /** "Permanecer na forma": what it costs and why it cannot be pressed ('' when it can); `null` outside a form. */
@@ -500,7 +504,10 @@ export class ActionGroups {
   /** Whether a feature is off, why, and the line under its name: what a use costs and what is left (the server's reason, or "Faltam usos"). */
   protected readonly featureOff = featureIsOff;
   protected readonly featureWhy = featureWhy;
-  protected readonly featureDetail = featureLine;
+  /** The line under a feature's name: a feature taken with `UseFeature` says its scope, whom it takes and what it spends. */
+  protected featureDetail(a: ActionOption): string {
+    return a.viaUseFeature ? useLine(a, resourceOf(a, this.resources())) : featureLine(a);
+  }
 
   /** The feature that is the druid's Wild Shape: it opens the beasts' sheet instead of being "used". */
   protected isWild(a: ActionOption): boolean {

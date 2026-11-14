@@ -11,6 +11,25 @@
   border: 0;
 }
 
+.pick__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+
+  // Eight creatures or more: the list scrolls inside itself and the buttons stay in reach.
+  &--scrolls {
+    max-height: 360px;
+    padding: 2px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    &:focus-visible {
+      outline: 2px solid var(--mr-focus);
+      outline-offset: 2px;
+    }
+  }
+}
+
 .pick__legend {
   margin: 0 0 var(--mr-space-2);
   padding: 0;
@@ -67,6 +86,26 @@
 
   .opt--on & {
     border: 6px solid var(--mr-accent);
+  }
+}
+
+// A check box: square, with the check in it when chosen.
+.opt__radio--box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+
+  .opt--on & {
+    border: 2px solid var(--mr-accent);
+    background: var(--mr-accent);
+    color: var(--mr-on-accent);
+  }
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
   }
 }
 
