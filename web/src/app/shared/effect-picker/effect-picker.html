@@ -100,6 +100,22 @@
               />
             }
           }
+          @case ('aura') {
+            @if (effect().aura; as aura) {
+              <app-spell-effect
+                [feature]="true"
+                [effect]="aura"
+                [context]="auraContext"
+                [basePath]="path('aura')"
+                [skills]="catalog()?.skills ?? []"
+                [damageTypes]="catalog()?.damageTypes ?? []"
+                [abilityNames]="catalogAbilityNames()"
+                [nameOf]="catalog()?.nameOf ?? identity"
+                [issuesOf]="issuesOf()"
+                (effectChange)="setAura($event)"
+              />
+            }
+          }
           @case ('yes_no') {
             <app-check-row
               [label]="labelOf(f)"

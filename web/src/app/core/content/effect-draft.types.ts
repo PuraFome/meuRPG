@@ -1,4 +1,5 @@
 import type { TableEffect } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import type { SpellEffectDraft } from './spell-effect-draft';
 
 /** The fields of `TableEffect`, as plain values: strings for text, arrays for lists, numbers for counts and ranges. */
 export interface EffectDraft {
@@ -108,6 +109,8 @@ export interface EffectDraft {
   name: string;
   set: string;
   cap: number;
+  /** aura: the effect the holder carries into a combat, as the spell editor's block draws it. */
+  aura?: SpellEffectDraft;
 }
 
 /** The fields a request carries for one effect: the type, and only what that type reads. */

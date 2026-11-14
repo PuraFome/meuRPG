@@ -56,6 +56,9 @@ func modifierTagPT(m EffectModifier) string {
 	case ModifierAura:
 		return fmt.Sprintf("Aura de %s: %s", MetersPT(m.RadiusFt), auraAffectsPT[m.Affects])
 	case ModifierRollBonus:
+		if m.ValueAbility != "" {
+			return fmt.Sprintf("Modificador de %s (mín. %+d) em %s", abilityTagsPT[m.ValueAbility], m.ValueMin, joinPT(m.AppliesTo, rollNamesPT))
+		}
 		return fmt.Sprintf("%+d em %s", m.Value, joinPT(m.AppliesTo, rollNamesPT))
 	case ModifierRollDie:
 		return fmt.Sprintf("%+dd%d em %s", m.Sign, m.Die, joinPT(m.AppliesTo, rollNamesPT))

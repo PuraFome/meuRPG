@@ -1,5 +1,5 @@
 import type { TableSpellEffect } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { rangeMeters } from './effect-draft';
+import { rangeMeters } from '../units';
 import {
   type AuraAffectsChoice,
   type AuraDraft,
@@ -65,6 +65,11 @@ export function rowTags(r: EffectRow, damageName: (key: string) => string): stri
     case 'check_bonus':
       return [`${signed(whole(r.value))} em testes de perícia`];
     case 'roll':
+      if (r.rollMode === 'ability') {
+        return [
+          `Modificador de ${ABILITY_TAGS_PT[r.valueAbility] ?? r.valueAbility} (mín. ${signed(whole(r.valueMin))}) em ${rolls}`,
+        ];
+      }
       return [
         r.rollMode === 'die'
           ? `${r.sign < 0 ? '-' : '+'}1d${whole(r.die)} em ${rolls}`

@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it } from 'vitest';
 
-import { settle } from '../../../../test-settle';
+import { settle } from '../../../test-settle';
 import {
   type SpellEffectDraft,
   emptyEffect,
   emptyRow,
-} from '../../../core/content/spell-effect-draft';
+} from '../../core/content/spell-effect-draft';
 import { type EffectContext, SpellEffect } from './spell-effect';
 
 const CTX: EffectContext = {

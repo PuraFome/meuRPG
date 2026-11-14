@@ -37,6 +37,9 @@ import { neverFolded, visibleFields } from '../../core/content/effect-visible';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckGroup, type CheckOption } from '../form-fields/check-group';
 import { CheckRow } from '../form-fields/check-row';
+import { type CatalogVm } from '../../core/content/catalog';
+import { type SpellEffectDraft } from '../../core/content/spell-effect-draft';
+import { type EffectContext, SpellEffect } from '../spell-effect/spell-effect';
 import { FieldNote } from '../form-fields/field-note';
 import { PickList } from '../form-fields/pick-list';
 import { RadioCards, type RadioCard } from '../form-fields/radio-cards';
@@ -87,6 +90,7 @@ import {
     PickList,
     RadioCards,
     SelectField,
+    SpellEffect,
     TextField,
   ],
   templateUrl: './effect-picker.html',
@@ -94,6 +98,8 @@ import {
 })
 export class EffectPicker {
   readonly effect = input.required<EffectDraft>();
+  /** The catalog an aura effect's block names skills, damage types and abilities from; without it the block has no lists. */
+  readonly catalog = input<CatalogVm | null>(null);
   readonly menu = input.required<EffectMenuVm>();
   /** "table_race.traits[0].effects[0]": the path the fields' own names are added to. */
   readonly basePath = input.required<string>();
@@ -211,7 +217,7 @@ export class EffectPicker {
   /** Rows the whole width of the effect: the rolls and the scope cards. */
   protected wide(f: EffectMenuField): boolean {
     const v = this.viewOf(f);
-    return v === 'rolls' || (v === 'cards' && f.name === 'applies');
+    return v === 'rolls' || v === 'aura' || (v === 'cards' && f.name === 'applies');
   }
 
   protected readonly resource = computed(() =>
@@ -415,6 +421,25 @@ export class EffectPicker {
       this.expanded.set(false);
       this.effectChange.emit(emptyEffect(type));
     }
+  }
+
+  /** What the block of an aura reads of the entry around it: nothing a spell would say, it always lasts and is the bearer's own. */
+  protected readonly auraContext: EffectContext = {
+    lasts: true,
+    durationText: '',
+    concentration: false,
+    hasSave: false,
+    hasAttack: false,
+    saveName: '',
+    self: true,
+    targets: '',
+  };
+
+  protected readonly identity = (key: string): string => key;
+  protected readonly catalogAbilityNames = computed(() => this.catalog()?.abilities.map((a) => a.name) ?? []);
+
+  protected setAura(aura: SpellEffectDraft): void {
+    this.effectChange.emit({ ...this.effect(), aura });
   }
 
   protected setText(name: string, text: string): void {

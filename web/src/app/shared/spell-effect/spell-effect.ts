@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { CONDITIONS } from '../../../core/combat/conditions';
+import { CONDITIONS } from '../../core/combat/conditions';
 import {
   AURA_REFUSED,
   AURA_REFUSED_PT,
@@ -19,18 +19,18 @@ import {
   modifierIndexOf,
   rowFieldPath,
   rowToModifiers,
-} from '../../../core/content/spell-effect-draft';
-import { auraTag, rowTags } from '../../../core/content/spell-effect-tags';
-import { latestInput } from '../../../shared/latest-input';
-import { CheckGroup } from '../../../shared/form-fields/check-group';
-import { FieldNote } from '../../../shared/form-fields/field-note';
-import { PickList } from '../../../shared/form-fields/pick-list';
-import { RadioCards, type RadioCard } from '../../../shared/form-fields/radio-cards';
-import { SearchPick } from '../../../shared/form-fields/search-pick';
-import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
-import { SwitchField } from '../../../shared/form-fields/switch-field';
-import { TextField } from '../../../shared/form-fields/text-field';
-import { Segmented, type Segment } from '../../../shared/segmented/segmented';
+} from '../../core/content/spell-effect-draft';
+import { auraTag, rowTags } from '../../core/content/spell-effect-tags';
+import { latestInput } from '../latest-input';
+import { CheckGroup } from '../form-fields/check-group';
+import { FieldNote } from '../form-fields/field-note';
+import { PickList } from '../form-fields/pick-list';
+import { RadioCards, type RadioCard } from '../form-fields/radio-cards';
+import { SearchPick } from '../form-fields/search-pick';
+import { SelectField, type SelectOption } from '../form-fields/select-field';
+import { SwitchField } from '../form-fields/switch-field';
+import { TextField } from '../form-fields/text-field';
+import { Segmented, type Segment } from '../segmented/segmented';
 
 const AT = 'table_spell.effect';
 
@@ -106,6 +106,10 @@ export class SpellEffect {
   readonly nameOf = input<(key: string) => string>((k) => k);
   /** The messages of one path: the server's refusals and the form's own. */
   readonly issuesOf = input<(path: string) => readonly string[]>(() => []);
+  /** Where the block's fields are in the request: the spell's `table_spell.effect`, or the feature effect's `aura`. */
+  readonly basePath = input(AT);
+  /** The block is the aura of a feature (#579): always an aura on, no spell around it, and a roll bonus may come from an ability. */
+  readonly feature = input(false);
   readonly effectChange = output<SpellEffectDraft>();
   private readonly draft = latestInput(this.effect);
 
@@ -126,10 +130,11 @@ export class SpellEffect {
     { value: '1', label: 'Soma' },
     { value: '-1', label: 'Tira' },
   ];
-  protected readonly fixedOrDie: Segment<'fixed' | 'die'>[] = [
+  protected readonly rollModes = computed<Segment<'fixed' | 'die' | 'ability'>[]>(() => [
     { value: 'fixed', label: 'Número fixo' },
     { value: 'die', label: 'Um dado' },
-  ];
+    ...(this.feature() ? [{ value: 'ability' as const, label: 'De uma habilidade' }] : []),
+  ]);
   protected readonly resistances: Segment<'resist' | 'immune' | 'vulnerable'>[] = [
     { value: 'resist', label: 'Resistência' },
     { value: 'immune', label: 'Imunidade' },
@@ -214,7 +219,8 @@ export class SpellEffect {
   );
 
   protected path(field: string): string {
-    return field ? `${AT}.${field}` : AT;
+    const base = this.basePath();
+    return field ? `${base}.${field}` : base;
   }
 
   protected issues(field: string): readonly string[] {
@@ -225,7 +231,7 @@ export class SpellEffect {
   protected rowIssues(i: number, field: string): readonly string[] {
     const rows = this.effect().rows;
     if (rowToModifiers(rows[i]).length === 0 && field === 'applies_to') {
-      return this.issuesOf()(rowFieldPath(rows, i, field));
+      return this.issuesOf()(this.own(rowFieldPath(rows, i, field)));
     }
     const first = modifierIndexOf(rows, i);
     const count = Math.max(1, rowToModifiers(rows[i]).length);
@@ -246,7 +252,12 @@ export class SpellEffect {
       field === 'abilities' && rows[i].kind === 'advantage' && rows[i].rolls.includes('attack')
         ? 1
         : 0;
-    return rowFieldPath(rows, i, field, skip);
+    return this.own(rowFieldPath(rows, i, field, skip));
+  }
+
+  /** The path as the draft names it (`table_spell.effect...`) on this block's base. */
+  private own(path: string): string {
+    return this.basePath() + path.slice(AT.length);
   }
 
   protected send(next: SpellEffectDraft): void {

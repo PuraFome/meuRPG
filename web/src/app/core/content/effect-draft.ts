@@ -6,9 +6,10 @@ import type {
   GetEffectMenuResponse,
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { feetToMeters, metersToFeet } from '../units';
+import { metersToFeet, rangeMeters } from '../units';
 import type { EffectDraft, EffectInit } from './effect-draft.types';
 import { visibleFields } from './effect-visible';
+import { effectToDraft as spellEffectToDraft, featureAuraDraft } from './spell-effect-draft';
 import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
 import { WHOLE_MAX } from './whole-number';
 
@@ -124,6 +125,7 @@ export function emptyEffect(type = ''): EffectDraft {
     name: '',
     set: '',
     cap: 0,
+    ...(type === 'aura' ? { aura: featureAuraDraft() } : {}),
   };
 }
 
@@ -207,6 +209,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
     name: e.name,
     set: e.set,
     cap: e.cap,
+    ...(e.aura ? { aura: spellEffectToDraft(e.aura) } : {}),
   };
 }
 
@@ -335,10 +338,7 @@ export class EffectMenuVm {
   }
 }
 
-/** The metres a range field shows, from the feet it stores. */
-export function rangeMeters(ft: number): string {
-  return ft > 0 ? String(feetToMeters(ft)).replace('.', ',') : '';
-}
+export { rangeMeters };
 
 /** Whether a range field holds something that is not a number of metres the server can store (empty is fine: it means none). The text is
  * a plain decimal ("18", "4,5"), and its feet are a whole number within int32. */
@@ -462,6 +462,8 @@ export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
           return d.choice === '';
         case 'count':
           return d.count <= 0;
+        case 'aura':
+          return !d.aura;
         default:
           return choiceEmpty(d, f.name);
       }
