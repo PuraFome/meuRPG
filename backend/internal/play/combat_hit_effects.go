@@ -283,6 +283,9 @@ func (s *Service) hitSave(ctx context.Context, c *combatTx, u hitUse, st playdb.
 			re.Result = riderFailed
 		}
 	}
+	if err := s.noteHitSave(ctx, c, u, st, mod, conds, &re); err != nil {
+		return err
+	}
 	if err := s.hitSaveLine(ctx, c, u, st, &re, ev); err != nil || len(conds) == 0 {
 		return err
 	}
@@ -304,6 +307,38 @@ func (s *Service) hitSave(ctx context.Context, c *combatTx, u hitUse, st playdb.
 		ev.EffectLines = append(ev.EffectLines, line)
 	}
 	return nil
+}
+
+// noteHitSave puts on the line of the save what the viewers read besides the roll: the conditions a failed save gave and
+// how long they last, and whether the spell is hidden from the other players.
+func (s *Service) noteHitSave(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, mod rules.EffectModifier, conds []string, re *riderEvent) error {
+	re.HiddenSource = !st.PlayerVisible || st.Audience != audienceAll
+	if len(conds) == 0 {
+		return nil
+	}
+	names, err := s.namerFor(ctx, c.tx, u.m.CampaignID)
+	if err != nil {
+		return err
+	}
+	re.ConditionName, re.Duration = hitConditionText(names, conds), hitConditionDuration(mod)
+	return nil
+}
+
+// hitConditionText is the names of the conditions a failed save gave, for the line of the save.
+func hitConditionText(names func(string) string, conds []string) string {
+	out := make([]string, len(conds))
+	for i, k := range conds {
+		out[i] = names(k)
+	}
+	return strings.Join(out, ", ")
+}
+
+// hitConditionDuration is how long the conditions of a failed save last, in the words of the line of the save.
+func hitConditionDuration(mod rules.EffectModifier) string {
+	if mod.ConditionDuration == rules.ConditionDurationSpellEnd {
+		return "até o fim da magia"
+	}
+	return "até o fim do próximo turno dele"
 }
 
 // hitSaveLine writes the line of the save: the target's roll, the DC and what came of it, as the line of a rider.

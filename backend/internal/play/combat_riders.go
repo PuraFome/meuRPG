@@ -57,10 +57,13 @@ type riderEvent struct {
 	Result string `json:"result"`
 	// OwnersOnly is the line of a spell's hit effect: its save tells that the effect has one, so only the master, the
 	// attacker's player and the target's player get it (RN-10).
-	OwnersOnly bool  `json:"owners_only,omitempty"`
-	D20        int32 `json:"d20,omitempty"`
-	Total      int32 `json:"total,omitempty"`
-	DC         int32 `json:"dc,omitempty"`
+	OwnersOnly bool `json:"owners_only,omitempty"`
+	// HiddenSource says the spell is not the other players' to read (the master hides the effect, or it is its owner's):
+	// the target's player reads "Outra fonte" in its place.
+	HiddenSource bool  `json:"hidden_source,omitempty"`
+	D20          int32 `json:"d20,omitempty"`
+	Total        int32 `json:"total,omitempty"`
+	DC           int32 `json:"dc,omitempty"`
 	// countedRoll is the number the d20 counted as when a minimum raised it.
 	countedRoll
 	// Pushed is the forced move of a push that landed (combat_forced.go).
@@ -541,16 +544,7 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 	default:
 		out.Choice = playv1.HitRiderChoice_HIT_RIDER_CHOICE_DECLINE
 	}
-	switch r.Result {
-	case riderSaved:
-		out.Result = playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_SAVED
-	case riderFailed:
-		out.Result = playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_FAILED
-	case riderApplied:
-		out.Result = playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_APPLIED
-	default:
-		out.Result = playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_DECLINED
-	}
+	out.Result = riderResultProto(r.Result)
 	out.PushedFt, out.PushNoMap, out.PushStopped = pushedFt(r.Pushed), pushedNoMap(r.Pushed), pushedStopped(r.Pushed)
 	if r.ActionKey != "" {
 		out.ActionKey, out.ActionNamePt, out.DurationText, out.RepeatSave = r.ActionKey, r.ActionName, r.Duration, r.RepeatSave
@@ -561,10 +555,26 @@ func riderLogProto(r *riderEvent, numbers, showDC bool) *playv1.CombatLogHitRide
 			out.EscapeDc = r.EscapeDC
 		}
 	}
+	if r.OwnersOnly && r.ConditionName != "" { // a spell's save: the condition a failed save gave and how long it lasts
+		out.ConditionNamePt, out.DurationText = r.ConditionName, r.Duration
+	}
 	if numbers && r.D20 > 0 {
 		riderNumbersProto(out, r, showDC)
 	}
 	return out
+}
+
+// riderResultProto is how an answered rider ended, as the line reads it.
+func riderResultProto(result string) playv1.HitRiderLogResult {
+	switch result {
+	case riderSaved:
+		return playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_SAVED
+	case riderFailed:
+		return playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_FAILED
+	case riderApplied:
+		return playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_APPLIED
+	}
+	return playv1.HitRiderLogResult_HIT_RIDER_LOG_RESULT_DECLINED
 }
 
 // riderNumbersProto sets the roll of the save on the line: the d20, the total, what the die counted as and the DC.

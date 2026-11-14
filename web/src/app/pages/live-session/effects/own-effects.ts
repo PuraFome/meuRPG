@@ -54,7 +54,7 @@ export class OwnEffects {
       return characterCards(this.outsideMine());
     }
     const everyone = this.src.encounter()?.combatants ?? [];
-    return combatCards(own.effects, (e) => markedNameOf(e, own, everyone));
+    return combatCards(own.effects, (e) => markedNameOf(e, everyone));
   });
   /** The names of the conditions the cards hold, for the label under the numbers. */
   readonly conditions = computed<string[]>(() => {

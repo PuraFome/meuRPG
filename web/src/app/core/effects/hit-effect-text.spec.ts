@@ -138,15 +138,9 @@ describe('the cards of the caster', () => {
     expect(hitCards(own, [own])[0].concentration).toBe(true);
   });
 
-  it('names the marked creature in the title and the line', () => {
-    const wight = {
-      ...combatant({ id: 'w', label: 'Wight' }),
-      effectLabels: [create(EffectLabelSchema, { effectId: 'm', textPt: 'Sinal da Presa' })],
-    };
-    const other = {
-      ...combatant({ id: 'z', label: 'Zumbi' }),
-      effectLabels: [create(EffectLabelSchema, { effectId: 'n', textPt: 'Bênção' })],
-    };
+  it('names the marked creature in the title and the line from marked_combatant_id', () => {
+    const wight = combatant({ id: 'w', label: 'Wight' });
+    const zumbi = combatant({ id: 'z', label: 'Zumbi' });
     const own = {
       ...me,
       effects: [
@@ -157,22 +151,36 @@ describe('the cards of the caster', () => {
             sourceNamePt: 'Sinal da Presa',
             concentration: true,
             roundsLeft: 580,
+            markedCombatantId: 'w',
           },
         ),
       ],
     };
-    const [card] = hitCards(own, [own, wight, other]);
+    const [card] = hitCards(own, [own, wight, zumbi]);
     expect(card.title).toBe('Sinal da Presa no Wight');
     expect(card.line).toBe('Cada golpe com arma no Wight: +1d6 do tipo da arma. 58 min restantes.');
-    expect(markedNameOf(own.effects[0], own, [own, wight, other])).toBe('Wight');
+    expect(markedNameOf(own.effects[0], [own, wight, zumbi])).toBe('Wight');
   });
 
-  it('does not guess the mark when two creatures carry it', () => {
+  it('never guesses the mark from a label: with no id it says "no alvo marcado"', () => {
     const label = [create(EffectLabelSchema, { effectId: 'm', textPt: 'Sinal da Presa' })];
-    const a = { ...combatant({ id: 'w', label: 'Wight' }), effectLabels: label };
-    const b = { ...combatant({ id: 'g', label: 'Ghoul' }), effectLabels: label };
+    const wight = { ...combatant({ id: 'w', label: 'Wight' }), effectLabels: label };
     const e = row('a', { trigger: 'marked_target' }, { sourceNamePt: 'Sinal da Presa' });
-    expect(markedNameOf(e, me, [me, a, b])).toBe('');
-    expect(hitCards({ ...me, effects: [e] }, [me, a, b])[0].title).toBe('Sinal da Presa');
+    expect(markedNameOf(e, [me, wight])).toBe('');
+    const [card] = hitCards({ ...me, effects: [e] }, [me, wight]);
+    expect(card.title).toBe('Sinal da Presa no alvo marcado');
+    expect(card.line).toContain('Cada golpe com arma no alvo marcado');
+  });
+
+  it('says "no alvo marcado" when the marked creature is not in the combatant list', () => {
+    const e = row('a', { trigger: 'marked_target' }, { markedCombatantId: 'gone' });
+    const [card] = hitCards({ ...me, effects: [e] }, [me, combatant({ id: 'w', label: 'Wight' })]);
+    expect(card.title).toBe('Clarão na Lâmina no alvo marcado');
+    expect(card.line).toContain('no alvo marcado');
+  });
+
+  it('names no one for an effect that marks nobody', () => {
+    const e = row('a', { trigger: 'next_hit' }, { markedCombatantId: 'w' });
+    expect(hitCards({ ...me, effects: [e] }, [me])[0].title).toBe('Clarão na Lâmina');
   });
 });

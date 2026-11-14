@@ -40,6 +40,55 @@ describe('the log lines of a spell hit effect', () => {
     );
   });
 
+  it('says what a failed save gave and for how long', () => {
+    const line = logLine(
+      rider(
+        {
+          result: HitRiderLogResult.FAILED,
+          conditionNamePt: 'Cego',
+          durationText: 'até o fim do próximo turno dele',
+        },
+        { keyNamePt: 'Clarão na Lâmina' },
+      ),
+      '',
+      ctx,
+    )!;
+    expect(clean(line.text)).toBe(
+      'O Zumbi 1 falhou no teste de resistência contra o Clarão na Lâmina: fica Cego até o fim do próximo turno dele',
+    );
+  });
+
+  it('puts the condition after the numbers the viewer reads', () => {
+    const line = logLine(
+      rider(
+        {
+          result: HitRiderLogResult.FAILED,
+          numbers: true,
+          d20: 5,
+          saveTotal: 7,
+          dc: 14,
+          conditionNamePt: 'Cego',
+          durationText: 'até o fim da magia',
+        },
+        { keyNamePt: 'Clarão na Lâmina' },
+      ),
+      '',
+      ctx,
+    )!;
+    expect(clean(line.text)).toMatch(/\(.*= 7 contra CD 14\): fica Cego até o fim da magia$/);
+  });
+
+  it('says only the condition when the line has no duration', () => {
+    const line = logLine(
+      rider({ result: HitRiderLogResult.FAILED, conditionNamePt: 'Cego' }),
+      '',
+      ctx,
+    )!;
+    expect(clean(line.text)).toBe(
+      'O Zumbi 1 falhou no teste de resistência contra o efeito: fica Cego',
+    );
+  });
+
   it('says a passed save, and keeps the numbers for whoever the server gave them to', () => {
     const line = logLine(
       rider(

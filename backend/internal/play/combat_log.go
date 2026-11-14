@@ -18,6 +18,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -1276,9 +1277,23 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 		if r.ActionKey != "" && !c.v.master {
 			creatureRiderForPlayer(out.HitRider, c.v.owns(target), r)
 		}
+		if r.OwnersOnly {
+			e.spellRiderKey(c, out, r)
+		}
 		e.riderDamage(c, out.HitRider, r)
 	}
 	return true
+}
+
+// spellRiderKey names the spell of the save of a hit effect on the line: the master and the caster's player read it,
+// the target's player "Outra fonte" (and no key) when the effect is hidden from the other players (RN-10).
+func (e *logEntry) spellRiderKey(c *logViewing, out *playv1.CombatLogEntry, r *riderEvent) {
+	hidden := r.HiddenSource && !c.v.master && !c.v.owns(c.actor)
+	names := hidingNames(func(k string) string { return c.names.contentName(c.ctx, k) }, []combat.Modifier{{Source: e.ev.Key, Hidden: hidden}})
+	out.KeyNamePt = names(e.ev.Key)
+	if hidden {
+		out.Key = ""
+	}
 }
 
 // riderDamage adds the damage a creature's rider opened, as the viewer gets a cast target's.

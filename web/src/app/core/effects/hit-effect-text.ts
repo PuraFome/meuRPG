@@ -19,7 +19,7 @@ import { SECONDS_PER_ROUND } from './effects-text';
 /** One card of the caster's pending hit effects. */
 export interface HitCardView {
   readonly key: string;
-  /** "Sinal da Presa no Wight": the spell, and the marked creature when it is a marked target and the app can tell who. */
+  /** "Sinal da Presa no Wight": the spell, and for a marked target the creature (or "no alvo marcado" when the app cannot tell who). */
   readonly title: string;
   /** The chip "Concentração" is drawn only for a concentration effect. */
   readonly concentration: boolean;
@@ -35,6 +35,12 @@ const TRIGGER_WORDS: Readonly<Record<string, string>> = {
 };
 
 const SECONDS_PER_MINUTE = 60;
+
+/** What a one-shot effect waits for, after the weapon attack that missed. */
+const WAITING_FOR: Readonly<Record<string, string>> = {
+  next_hit: 'o próximo golpe com arma que acertar',
+  next_melee_hit: 'o próximo golpe corpo a corpo que acertar',
+};
 
 /** What the marked creature is called when the app cannot tell which one it is. */
 const MARKED_FALLBACK = 'alvo marcado';
@@ -96,19 +102,15 @@ function timeText(effect: LastingEffect): string {
 }
 
 /**
- * The creature a marked-target effect is on, when the app can tell: the one other combatant that carries a label of the spell's
- * name (the mark the target shows, which the caster's player reads as a label and never as a card). Two creatures with that
- * label, or none, give `''`: the line then says "no alvo marcado" instead of naming the wrong one.
+ * The creature a marked-target effect is on: the combatant `marked_combatant_id` names, as the viewer's combatant list has it.
+ * Empty when the server sent no id (the creature is hidden from the viewer, or the effect marks nobody) or the creature is not
+ * in the list: the line then says "no alvo marcado". The name is never guessed from the labels other creatures carry.
  */
-export function markedNameOf(
-  effect: LastingEffect,
-  own: Combatant,
-  combatants: readonly Combatant[],
-): string {
-  const marked = combatants.filter(
-    (c) => c.id !== own.id && c.effectLabels.some((l) => l.textPt === effect.sourceNamePt),
-  );
-  return marked.length === 1 ? marked[0].label : '';
+export function markedNameOf(effect: LastingEffect, combatants: readonly Combatant[]): string {
+  if (effect.markedCombatantId === '') {
+    return '';
+  }
+  return combatants.find((c) => c.id === effect.markedCombatantId)?.label ?? '';
 }
 
 /** The one sentence of the effect: "Cada golpe com arma no Wight: +1d6 do tipo da arma. 58 min restantes." */
@@ -134,12 +136,27 @@ export function hitCards(own: Combatant, combatants: readonly Combatant[]): HitC
   return own.effects
     .filter((e) => e.casterId === own.id && !e.spent && hitOf(e))
     .map((e) => {
-      const marked = hitOf(e)?.trigger === 'marked_target' ? markedNameOf(e, own, combatants) : '';
+      const isMark = hitOf(e)?.trigger === 'marked_target';
+      const marked = isMark ? markedNameOf(e, combatants) : '';
       return {
         key: e.id,
-        title: marked ? `${e.sourceNamePt} no ${marked}` : e.sourceNamePt,
+        title: isMark ? `${e.sourceNamePt} no ${marked || MARKED_FALLBACK}` : e.sourceNamePt,
         concentration: e.concentration,
         line: hitCardLine(e, marked),
       };
+    });
+}
+
+/**
+ * After a miss: "Clarão na Lâmina continua esperando o próximo golpe com arma que acertar." for each of the caster's own
+ * pending effects that a hit uses up (`next_hit`, `next_melee_hit`). An effect on every hit or on the marked creature waits for
+ * nothing, so it has no line.
+ */
+export function waitingHitLines(own: Combatant): string[] {
+  return own.effects
+    .filter((e) => e.casterId === own.id && !e.spent)
+    .flatMap((e) => {
+      const waits = WAITING_FOR[hitOf(e)?.trigger ?? ''];
+      return waits ? [`${e.sourceNamePt} continua esperando ${waits}.`] : [];
     });
 }

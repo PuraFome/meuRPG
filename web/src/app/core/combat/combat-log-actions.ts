@@ -333,7 +333,11 @@ export function isSpellRider(e: CombatLogEntry): boolean {
   );
 }
 
-/** "O Zumbi 1 falhou no teste de resistência contra o Clarão na Lâmina (d20 12, total 15 contra CD 14)". */
+/**
+ * "O Zumbi 1 falhou no teste de resistência contra o Clarão na Lâmina (d20 12, total 15 contra CD 14): fica Cego até o fim do
+ * próximo turno dele". The condition and its duration come with the line (`conditionNamePt`, `durationText`); the entry has no
+ * field for the save's ability, so the line does not name it.
+ */
 export function spellRiderText(e: CombatLogEntry, ctx: LogContext): string {
   const r = e.hitRider!;
   const who = upFirst(subject(e.targetLabel || 'alguém', ctx));
@@ -341,7 +345,10 @@ export function spellRiderText(e: CombatLogEntry, ctx: LogContext): string {
     ? ` (${d20TotalText(r.d20, r.saveTotal, treatedOf(r))}${r.dc > 0 ? ` contra ${dcLabel(r.dc)}` : ''})`
     : '';
   const verb = r.result === HitRiderLogResult.SAVED ? 'passou' : 'falhou';
-  return `${who} ${verb} no teste de resistência contra ${e.keyNamePt ? the(e.keyNamePt) : 'o efeito'}${roll}`;
+  const given = r.conditionNamePt
+    ? `: fica ${r.conditionNamePt}${r.durationText ? ` ${r.durationText}` : ''}`
+    : '';
+  return `${who} ${verb} no teste de resistência contra ${e.keyNamePt ? the(e.keyNamePt) : 'o efeito'}${roll}${given}`;
 }
 
 /** The line of an answered monk rider: "Toren usou a Técnica da Mão Aberta (Derrubar) em Goblin: ...". The roll comes for the master and the monk's player, the DC for the master and, when the table shows it, the target's player. */

@@ -3,7 +3,6 @@ import { create } from '@bufbuild/protobuf';
 
 import { CombatantSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import {
-  EffectLabelSchema,
   EffectModifierKind,
   EffectModifierSchema,
   WeaponHitDamageSchema,
@@ -41,6 +40,7 @@ function mark(id: string, over: object = {}, hit: object = {}) {
     targetIds: ['me'],
     concentration: true,
     roundsLeft: 580,
+    markedCombatantId: 'w',
     modifiers: [
       create(EffectModifierSchema, {
         kind: EffectModifierKind.WEAPON_HIT_DAMAGE,
@@ -54,11 +54,7 @@ function mark(id: string, over: object = {}, hit: object = {}) {
 describe('ActionGroups: the card of the effect waiting for the next hit (#577)', () => {
   function setup(effects: ReturnType<typeof mark>[]) {
     const own = create(CombatantSchema, { id: 'me', label: 'Jabuti', mine: true, effects });
-    const wight = create(CombatantSchema, {
-      id: 'w',
-      label: 'Wight',
-      effectLabels: [create(EffectLabelSchema, { effectId: 'm', textPt: 'Sinal da Presa' })],
-    });
+    const wight = create(CombatantSchema, { id: 'w', label: 'Wight' });
     const fixture = TestBed.createComponent(ActionGroups);
     fixture.componentRef.setInput('options', create(TurnOptionsSchema, { attacks: [sword] }));
     fixture.componentRef.setInput('own', own);

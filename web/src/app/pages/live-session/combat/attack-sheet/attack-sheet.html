@@ -261,6 +261,12 @@
             {{ dmg.after() }}
           </p>
         }
+        @for (line of waitingEffects(); track line) {
+          <p class="sheet__note" data-testid="hit-waiting">
+            <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+            {{ line }}
+          </p>
+        }
         <p class="sheet__note">
           <mat-icon aria-hidden="true">info</mat-icon>
           {{ spent() }}{{ cantrip ? ' Truque: nenhum espaço de magia foi gasto.' : '' }}

@@ -244,6 +244,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		out.CasterId = caster.ID
 	}
 	out.OriginPt = ev.originOf(f, caster, casterSeen)
+	out.MarkedCombatantId = ev.markedIDOf(f, caster)
 	for _, m := range effectModifiers(f) {
 		out.Modifiers = append(out.Modifiers, ev.modifierCard(m))
 	}
