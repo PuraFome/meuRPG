@@ -175,10 +175,13 @@ export class AttackSheet {
   );
   protected readonly maneuverUses = this.rolls.maneuverUses;
   protected readonly maneuverKey = computed(() => this.rolls.maneuver()?.key ?? '');
+  /** With a trade of the talent beside it the die has no heading of its own (586-05 #4): the group is read from its checks. */
   protected readonly maneuverLegend = computed(() =>
     this.maneuverDice().length > 1
       ? 'Dado da manobra neste ataque'
-      : 'Dados das suas características',
+      : this.trade.options().length > 0
+        ? ''
+        : 'Dados das suas características',
   );
   /** The extra dice typed beside the d20 (the effects' d4, then the table die), each with its sign. */
   private typedExtras(): readonly { face: number; sign: number }[] | null {
@@ -446,6 +449,7 @@ export class AttackSheet {
   protected pickTrade(key: string): void {
     this.trade.choose(key);
     this.s.error.set('');
+    this.s.poolNotice.set('');
   }
 
   protected rollAttackTyped(face: number): Promise<void> {

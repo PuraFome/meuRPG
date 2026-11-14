@@ -59,6 +59,11 @@ export class PowerTrade {
     return this.picked() ? tradeRollLabel(mode, this.bonus()) : null;
   }
 
+  /** The roll button with no trade ticked: on a weapon that offers one it says it rolls the attack (586-05 #1), else it says what it always said. */
+  offLabel(): string {
+    return this.options().length > 0 ? 'Rolar ataque no app' : 'Rolar no app';
+  }
+
   /** The d20 as a formula; for a roll that made a trade the penalty is written apart ("+ 6 − 5") and the line names the target. */
   formula(roll: Parameters<typeof d20Formula>[0], target: string): string {
     const m = this.made();

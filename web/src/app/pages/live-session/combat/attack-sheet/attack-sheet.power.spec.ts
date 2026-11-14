@@ -216,7 +216,17 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       expect(text()).toContain('−5 no ataque, +10 no dano se acertar');
       expect(checks().map((c) => c.checked)).toEqual([false]);
       expect(el.querySelector('.box')).toBeNull();
-      expect(button('Rolar no app')).toBeDefined();
+      expect(button('Rolar ataque no app')).toBeDefined();
+    });
+
+    it('says "Digitar o resultado" as the outlined button, never as a link, with the trade off and on (586-03)', () => {
+      const s = setup({ trades: [heavy] });
+      const typed = () => s.button('Digitar o resultado')!;
+      expect(typed().classList).not.toContain('pick__link');
+      expect(typed().classList).toContain('pick__main--quiet');
+      s.tick();
+      expect(typed().classList).not.toContain('pick__link');
+      expect(typed().classList).toContain('pick__main--quiet');
     });
 
     it('is off on every attack: a sheet opened after one that ticked it starts off again', () => {
@@ -244,7 +254,7 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       expect(box).toContain('1d20 + 6→fica 1d20 + 1');
       expect(box).toContain('2d6 + 3→fica 2d6 + 13 cortante, se acertar');
       expect(button('Rolar 1d20 + 1 no app')).toBeDefined();
-      expect(button('Rolar no app')).toBeUndefined();
+      expect(button('Rolar ataque no app')).toBeUndefined();
       expect(text()).not.toContain('Rolar 1d20 + 6');
     });
 
@@ -253,7 +263,7 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       tick();
       tick();
       expect(el.querySelector('.box')).toBeNull();
-      expect(button('Rolar no app')).toBeDefined();
+      expect(button('Rolar ataque no app')).toBeDefined();
     });
 
     it('names the two d20 on the button with advantage or disadvantage, the mode shown as always (586-05 #13)', () => {
@@ -311,7 +321,7 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       api.rollAttack.mockResolvedValue(answer(AttackOutcome.HIT, [16]));
       const { tick, press, settle } = setup({ trades: [steady] });
       tick();
-      press('Rolar no app');
+      press('Rolar ataque no app');
       await settle();
       expect(extras()?.powerAttackKey ?? '').toBe('');
     });
@@ -345,7 +355,7 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       expect(extras()?.powerAttackKey).toBe('feat:golpe-pesado@mesa');
       TestBed.resetTestingModule();
       const off = setup({ trades: [heavy] });
-      off.press('Rolar no app');
+      off.press('Rolar ataque no app');
       await off.settle();
       expect(extras()?.powerAttackKey ?? '').toBe('');
     });
@@ -353,7 +363,7 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
     it('sends the key with the typed d20 too, and a new idempotency key when the check changes', async () => {
       api.rollAttack.mockRejectedValue(new ConnectError('lost', Code.Unavailable));
       const s = setup({ trades: [heavy] });
-      s.press('Rolar no app');
+      s.press('Rolar ataque no app');
       await s.settle();
       const without = lastCall()[6];
       s.tick();
@@ -418,7 +428,7 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
     it('does not mention the trade on an attack that made none', async () => {
       api.rollAttack.mockResolvedValue(answer(AttackOutcome.HIT, [16]));
       const s = setup({ trades: [heavy] });
-      s.press('Rolar no app');
+      s.press('Rolar ataque no app');
       await s.settle();
       expect(s.text()).not.toContain('Golpe Pesado: −5');
       expect(s.text()).not.toContain('contra o Zumbi 1');
@@ -441,6 +451,22 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       );
       expect(s.checks().map((c) => c.checked)).toEqual([true]);
       expect(s.el.querySelector<HTMLInputElement>('app-roll-die-offer input')!.checked).toBe(true);
+    });
+
+    it('draws the refusal directly under the two checks, with no heading over the die of its own (586-05 #4)', async () => {
+      api.rollAttack.mockRejectedValue(noUses());
+      api.turnOptions.mockResolvedValue({ maneuverDice: [certeiro] });
+      const s = setup({ trades: [heavy], dice: [certeiro] });
+      s.el.querySelector<HTMLInputElement>('app-roll-die-offer input')!.click();
+      s.fixture.detectChanges();
+      s.tick();
+      s.press('Rolar 1d20 + 1 no app');
+      await s.settle();
+      const notice = s.el.querySelector('[role="alert"]');
+      expect(notice).not.toBeNull();
+      expect(s.el.querySelector('app-power-trade-offer')!.nextElementSibling).toBe(notice);
+      expect(s.el.querySelector('app-roll-die-offer legend.offer__legend')).toBeNull();
+      expect(s.el.querySelector('.chosen')!.previousElementSibling).toBeNull();
     });
 
     it('says on both cards of a shared pool with one use what they spend and what is left (586-05 #4)', () => {

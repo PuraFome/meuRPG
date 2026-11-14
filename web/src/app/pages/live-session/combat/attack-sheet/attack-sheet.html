@@ -130,6 +130,13 @@
             [box]="trade.box(mode.rollMode())"
             (chosen)="pickTrade($event)"
           />
+          @if (s.poolNotice(); as note) {
+            <!-- Two checks on one pool with one use: said right under them. -->
+            <div class="mr-notice mr-notice--danger" role="alert">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <p>{{ note }}</p>
+            </div>
+          }
         }
         <!-- The d4 an effect adds (Bênção, Perdição) with physical dice: typed before the d20 is confirmed. -->
         @if (typedFields().length > 0 && (s.typing() || !canApp)) {
@@ -144,12 +151,13 @@
             hint="Role o seu dado e digite o número que saiu (1 a 20)."
             totalNote="Total do ataque"
             [modifier]="trade.bonus()"
-            [appLabel]="trade.rollLabel(mode.rollMode()) ?? 'Rolar no app'"
+            [appLabel]="trade.rollLabel(mode.rollMode()) ?? trade.offLabel()"
             [typedFormula]="hasExtras() ? typedFormula : null"
             [confirmTotal]="hasExtras()"
             [waiting]="extrasPending()"
             [busy]="s.busy()"
             [sticky]="true"
+            [typeOutlined]="true"
             [(typing)]="s.typing"
             (app)="rollAttack({ inApp: true })"
             (typed)="rollAttackTyped($event)"
@@ -256,6 +264,7 @@
               [busy]="s.busy()"
               [appLabel]="dmg.appLabel()"
               [sticky]="true"
+              [typeOutlined]="true"
               [(typing)]="s.typing"
               (app)="rollDamage({ inApp: true })"
               (typed)="rollDamageTyped($event)"

@@ -288,10 +288,12 @@ export class AttackRolls {
 
   /** "Usar <dado>": the die ticked joins the roll; none ticked leaves it as it is. */
   useDie(key: string): void {
+    this.s.poolNotice.set('');
     this.extra.maneuver.set(this.maneuverDice().find((o) => o.die?.key === key)?.die ?? null);
   }
 
   private fail(err: unknown): void {
+    this.s.poolNotice.set('');
     const die = this.extra.maneuver();
     const trade = this.host.trade.picked();
     const noUses = resourceBlocked(err)?.reason === ResourceBlockedReason.NO_USES_LEFT;
@@ -324,7 +326,7 @@ export class AttackRolls {
     if (die && !listed?.disabled && dieLeft > 0) {
       const pool = this.maneuverDice().find((o) => o.die?.key === die.key)?.resourceNamePt ?? '';
       // The trade's own read of the pool is the one the roll was refused on; the die's is the fallback.
-      this.s.error.set(
+      this.s.poolNotice.set(
         poolShortMessage(
           listed?.resourceNamePt || pool,
           listed?.resourceNamePt ? listed.usesLeft : dieLeft,
