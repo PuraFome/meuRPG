@@ -306,6 +306,9 @@ func (f *takeActionFlow) mayTake(ctx context.Context) error {
 	} else if err := f.s.mustBeOnTurn(ctx, f.c, f.who); err != nil {
 		return err
 	}
+	if err := f.s.mustBeDirected(ctx, f.c, f.v, f.who); err != nil {
+		return err
+	}
 	// The master has the last word: he may act again with the action used.
 	if f.call.useExtra {
 		if err := f.mayUseExtra(ctx); err != nil {

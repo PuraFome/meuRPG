@@ -40,6 +40,23 @@ func (s *Service) mustNotBeLimited(ctx context.Context, c *combatTx, who playdb.
 	return mountLimit(cs, who, key)
 }
 
+// mustBeDirected refuses the player who takes an action for a controlled mount whose rider is down: a rider at 0 hit points directs
+// nothing (COMBATANT_DOWN, as its move gives). The master takes the action for the mount, which keeps the pair's turn.
+func (s *Service) mustBeDirected(ctx context.Context, c *combatTx, v combatViewer, who playdb.Combatant) error {
+	if v.master || who.MountKind != mountKindControlled {
+		return nil
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	rider := riderOf(cs, who.ID)
+	if rider == nil {
+		return nil
+	}
+	return s.mustNotBeDown(ctx, c.tx, c.session.CampaignID, *rider)
+}
+
 // mountLimit is mustNotBeLimited for a caller that has the combatants (cs) in hand.
 func mountLimit(cs []playdb.Combatant, who playdb.Combatant, key string) error {
 	if mountActionAllowed(key) || !carriesRider(cs, who) {
