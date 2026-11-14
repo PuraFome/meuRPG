@@ -37,7 +37,7 @@ func auraMark(st playdb.CombatantState) (rules.EffectModifier, bool) {
 // without a square for either (no grid, or a creature not on the map) nobody is reached but the bearer (of a self or an
 // allies aura), and the master judges (RN-25).
 func auraReaches(a rules.EffectModifier, bearer, c playdb.Combatant) bool {
-	if c.Dismissed {
+	if c.Dismissed || a.RadiusFt < 0 { // a radius below 0 is an aura asleep (restFeatureAuras)
 		return false
 	}
 	switch a.Affects {

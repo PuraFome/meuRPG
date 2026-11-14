@@ -45,8 +45,17 @@ func (s *Service) changeVitals(ctx context.Context, q *playdb.Queries, tx pgx.Tx
 			return nil, nil, fmt.Errorf("reset the death saves: %w", err)
 		}
 	}
+	// A feature's aura needs its bearer on their feet: it sleeps at 0 hit points and wakes above them.
+	if wasDown, down := isAtZero(before), isAtZero(after); wasDown != down {
+		if err := s.restFeatureAuras(ctx, q, sessionID, characterID, down); err != nil {
+			return nil, nil, err
+		}
+	}
 	return before, after, nil
 }
+
+// isAtZero says the vitals are those of a character at 0 hit points.
+func isAtZero(v *playv1.CharacterVitals) bool { return v.GetHitPointsMax() > 0 && v.GetHitPointsCurrent() == 0 }
 
 // vitalsOf changes a character's vitals inside the combat's transaction.
 func (s *Service) vitalsOf(ctx context.Context, c *combatTx, characterID string, req *playv1.AdjustCharacterVitalsRequest) (before, after *playv1.CharacterVitals, err error) {
