@@ -23,9 +23,9 @@ const (
 	// MaxWeaponProperties is the most properties one weapon has.
 	MaxWeaponProperties = 10
 	// MaxTableWeaponRangeFt bounds a normal and a long range, and MaxWeaponWeightOz and MaxWeaponPriceCP the notes.
-	MaxTableWeaponRangeFt  = 1000
-	MaxWeaponWeightOz = 160000
-	MaxWeaponPriceCP  = 100_000_000
+	MaxTableWeaponRangeFt = 1000
+	MaxWeaponWeightOz     = 160000
+	MaxWeaponPriceCP      = 100_000_000
 )
 
 // weaponDice is the damage of a weapon: dice of the dice a weapon rolls, or a flat 1 to 99.
