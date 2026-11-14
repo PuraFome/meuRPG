@@ -268,10 +268,11 @@ func (s *Service) rollHookDice(d rules.DiceFormula) (int, error) {
 
 // restRow is a living, active player character with its vitals and maximums.
 type restRow struct {
-	row     vitalsRow
-	m       vitalsMax
-	view    *playv1.CharacterVitals
-	content *rules.Content
+	row      vitalsRow
+	m        vitalsMax
+	view     *playv1.CharacterVitals
+	content  *rules.Content
+	campaign string
 }
 
 // restRows reads the campaign's living, active player characters inside tx.
@@ -294,7 +295,7 @@ func (s *Service) restRows(ctx context.Context, tx pgx.Tx, campaignID string) ([
 		if err := s.liveFamiliar(ctx, q, campaignID, &row); err != nil {
 			return nil, wrap("read the familiar", err)
 		}
-		out = append(out, restRow{row: row, m: m, view: vitalsToProto(row, m), content: content})
+		out = append(out, restRow{row: row, m: m, view: vitalsToProto(row, m), content: content, campaign: campaignID})
 	}
 	return out, nil
 }

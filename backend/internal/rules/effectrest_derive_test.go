@@ -37,7 +37,7 @@ func TestADailyChoiceWaitsUntilThePlayerPicksAndTheSkillCarriesUntilWhichRest(t 
 	}
 
 	d = Derive(restBuild(func(b *Build) {
-		b.DailyPicks = []DailyPick{{ChoiceID: restFeat + "#0", Key: "skill:stealth", Until: DurationLongRest}}
+		b.DailyPicks = []DailyPick{{ChoiceID: restFeat + "#0", Key: "skill:stealth", Until: DurationLongRest, Signature: "skill|long_rest|"}}
 	}), c)
 	if s := skillOf(d, "skill:stealth"); s.Proficiency != ProficiencyFull || s.UntilRest != DurationLongRest {
 		t.Errorf("stealth after the pick = %+v, want full proficiency until the long rest", s)
@@ -48,7 +48,7 @@ func TestADailyChoiceWaitsUntilThePlayerPicksAndTheSkillCarriesUntilWhichRest(t 
 
 	// A pick that is no skill, or for a choice the sheet does not have, counts for nothing.
 	d = Derive(restBuild(func(b *Build) {
-		b.DailyPicks = []DailyPick{{ChoiceID: restFeat + "#0", Key: "skill:nada", Until: DurationLongRest}, {ChoiceID: "feat:outro#0", Key: "skill:stealth", Until: DurationLongRest}}
+		b.DailyPicks = []DailyPick{{ChoiceID: restFeat + "#0", Key: "skill:nada", Until: DurationLongRest}, {ChoiceID: "feat:outro#0", Key: "skill:stealth", Until: DurationLongRest, Signature: "skill|long_rest|"}}
 	}), c)
 	if s := skillOf(d, "skill:stealth"); s.Proficiency != ProficiencyNone || d.DailyChoices[0].Picked != "" {
 		t.Errorf("a pick that does not fit counted: %+v %+v", s, d.DailyChoices)
@@ -83,5 +83,24 @@ func TestADailyChoiceDoesNotRaiseTheSkillsThePlayerKeeps(t *testing.T) {
 	}), c)
 	if !hasIssue(d, IssueSkillCount) {
 		t.Errorf("issues = %+v, want the skill count refused: a wizard keeps 2 and the daily choice adds none", d.Issues)
+	}
+}
+
+// A pick belongs to the choice it was made for, not to the place of an effect: when the master reorders a feat's effects, a pick
+// that no longer fits the choice at its id counts for nothing, and a choice that only changed place is not given another's pick.
+func TestAPickDoesNotFollowAReorderedChoice(t *testing.T) {
+	t.Parallel()
+	arcane := Effect{Type: "choice", Choice: "skill", Count: 1, From: []string{"skill:arcana", "skill:history"}, DailyChoice: true, Duration: DurationLongRest}
+	wild := Effect{Type: "choice", Choice: "skill", Count: 1, From: []string{"skill:nature", "skill:survival"}, DailyChoice: true, Duration: DurationLongRest}
+	before := withOverlay(t, featWith(restFeat, arcane, wild))
+	d := Derive(restBuild(nil), before)
+	pick := DailyPick{ChoiceID: restFeat + "#0", Key: "skill:arcana", Until: DurationLongRest, Signature: d.DailyChoices[0].Signature}
+	if got := Derive(restBuild(func(b *Build) { b.DailyPicks = []DailyPick{pick} }), before).DailyChoices[0].Picked; got != "skill:arcana" {
+		t.Fatalf("the pick on its own choice reads %q", got)
+	}
+	after := withOverlay(t, featWith(restFeat, wild, arcane)) // the two swap places
+	got := Derive(restBuild(func(b *Build) { b.DailyPicks = []DailyPick{pick} }), after)
+	if got.DailyChoices[0].Picked != "" || got.DailyChoices[1].Picked != "" {
+		t.Errorf("daily choices after a reorder = %+v, want the pick dropped", got.DailyChoices)
 	}
 }

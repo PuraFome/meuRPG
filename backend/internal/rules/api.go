@@ -937,14 +937,16 @@ type Skill struct {
 
 // DailyPick is the answer to a daily choice: the choice's id (an owner's key, "#" and the effect's number),
 // the skill or tool picked and the rest that ends it.
-type DailyPick struct{ ChoiceID, Key, Until string }
+type DailyPick struct{ ChoiceID, Key, Until, Signature string }
 
 // DailyChoice is a daily choice of a skill or a tool the character has, picked or waiting. Options is empty
 // when any is allowed.
 type DailyChoice struct {
 	ID, OwnerNamePT, Kind, UntilRest string
-	Options                          []string
-	Picked                           string
+	// Signature is what the choice is (its kind, duration and options): a pick made for another one does not fit.
+	Signature string
+	Options   []string
+	Picked    string
 }
 
 // HitDice is a pool of hit dice of one size: Count d Die.

@@ -2,10 +2,12 @@ package characters
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -134,5 +136,126 @@ func TestASaveKeepsTheStoredDailyPicks(t *testing.T) {
 	got := master.get(t, campaign, pc.GetId())
 	if got.GetSheet().GetFull().GetShortRested() || len(got.GetSheet().GetFull().GetDailyPicks()) != 1 || got.GetSheet().GetFull().GetDailyPicks()[0].GetKey() != "skill:stealth" {
 		t.Errorf("the saved sheet's picks = %v (short rested %v), want the stored stealth pick and no mark", got.GetSheet().GetFull().GetDailyPicks(), got.GetSheet().GetFull().GetShortRested())
+	}
+}
+
+func sheetPicksOf(c *charactersv1.Character) []*charactersv1.DailyPick {
+	return c.GetSheet().GetFull().GetDailyPicks()
+}
+
+// A rest that read the sheets before a pick was made must not take the pick back: the rest locks the sheet and reads it again.
+func TestARestDoesNotOverwriteAPickMadeAfterItReadTheSheets(t *testing.T) {
+	t.Parallel()
+	h, _, player, campaign, pc, choice := dailyHarness(t)
+	var stale restRow
+	if err := db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+		rows, err := h.svc.restRows(t.Context(), tx, campaign)
+		if len(rows) == 1 {
+			stale = rows[0]
+		}
+		return err
+	}); err != nil || stale.row.ID == "" {
+		t.Fatalf("restRows() = %v, %v", stale.row.ID, err)
+	}
+	if err := player.pick(t, campaign, pc.GetId(), choice, "skill:stealth"); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.InTx(t.Context(), h.pool, func(tx pgx.Tx) error {
+		return h.svc.endRestPicks(t.Context(), h.svc.queries.WithTx(tx), stale, false)
+	}); err != nil {
+		t.Fatalf("endRestPicks() error = %v", err)
+	}
+	got := player.get(t, campaign, pc.GetId())
+	if p := sheetPicksOf(got); len(p) != 1 || p[0].GetKey() != "skill:stealth" {
+		t.Errorf("picks after a short rest that read the sheets before the pick = %v, want the stealth pick kept", p)
+	}
+	if !got.GetSheet().GetFull().GetShortRested() {
+		t.Errorf("the short rest left no mark on a sheet with a short-rest proficiency")
+	}
+}
+
+// The rest clears by what the effect lasts today: the master changes a long-rest choice to a short-rest one.
+func TestARestClearsAPickByTheEffectsDurationToday(t *testing.T) {
+	t.Parallel()
+	h, master, player, campaign, pc, choice := dailyHarness(t)
+	if err := player.pick(t, campaign, pc.GetId(), choice, "skill:stealth"); err != nil {
+		t.Fatal(err)
+	}
+	key, _, _ := strings.Cut(choice, "#")
+	entry := master.entries(t, campaign)[key]
+	body := proto.Clone(bodyMessage(entry)).(*rulesv1.TableFeat)
+	body.Effects[0].Duration = "short_rest"
+	if _, err := master.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(campaign, key, entry.GetRevision(), body))); err != nil {
+		t.Fatalf("UpdateTableEntry() error = %v", err)
+	}
+	takeRest(t, h, campaign, playv1.RestKind_REST_KIND_SHORT)
+	if p := sheetPicksOf(player.get(t, campaign, pc.GetId())); len(p) != 0 {
+		t.Errorf("picks after a short rest = %v, want the pick cleared: the choice now lasts until a short rest", p)
+	}
+}
+
+// A short rest clears a pick that lasts until a short rest and keeps one that lasts until a long rest; the mark is only set
+// for a sheet that has a proficiency until a short rest.
+func TestAShortRestClearsAShortRestPickAndMarksOnlyASheetThatHasOne(t *testing.T) {
+	t.Parallel()
+	h, master, player, campaign, pc, choice := dailyHarness(t)
+	key, _, _ := strings.Cut(choice, "#")
+	other := h.newUser("Outra")
+	h.join(master, campaign, other)
+	if err := player.pick(t, campaign, pc.GetId(), key+"#1", "proficiency:carpenters-tools"); err != nil {
+		t.Fatal(err)
+	}
+	if err := player.pick(t, campaign, pc.GetId(), choice, "skill:stealth"); err != nil {
+		t.Fatal(err)
+	}
+	plain := other.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Sem feat", pensantusSheet())
+	takeRest(t, h, campaign, playv1.RestKind_REST_KIND_SHORT)
+	got := player.get(t, campaign, pc.GetId())
+	if p := sheetPicksOf(got); len(p) != 1 || p[0].GetKey() != "skill:stealth" {
+		t.Errorf("picks after a short rest = %v, want only the long-rest pick", p)
+	}
+	if !got.GetSheet().GetFull().GetShortRested() {
+		t.Error("the sheet with a short-rest proficiency has no mark after the short rest")
+	}
+	if other.get(t, campaign, plain.GetId()).GetSheet().GetFull().GetShortRested() {
+		t.Error("a sheet with no short-rest proficiency was marked")
+	}
+}
+
+// Picking what the choice already holds changes nothing: the revision stays, and the key is judged as any other.
+func TestPickingTheSameKeyAgainIsANoOpAndAKeyThatIsNoToolIsRefusedAlike(t *testing.T) {
+	t.Parallel()
+	_, _, player, campaign, pc, choice := dailyHarness(t)
+	if err := player.pick(t, campaign, pc.GetId(), choice, "skill:stealth"); err != nil {
+		t.Fatal(err)
+	}
+	rev := player.get(t, campaign, pc.GetId()).GetRevision()
+	if err := player.pick(t, campaign, pc.GetId(), choice, "skill:stealth"); err != nil {
+		t.Fatal(err)
+	}
+	if now := player.get(t, campaign, pc.GetId()).GetRevision(); now != rev {
+		t.Errorf("revision %d after picking the same key again, want %d", now, rev)
+	}
+	// There is no table content of the tool kind, so nothing a master hid can be told apart: a proficiency that is no tool and
+	// a key that does not exist are refused with the same answer.
+	toolChoice := strings.TrimSuffix(choice, "#0") + "#1"
+	a := player.pick(t, campaign, pc.GetId(), toolChoice, "proficiency:light-armor")
+	b := player.pick(t, campaign, pc.GetId(), toolChoice, "proficiency:nada")
+	if a == nil || b == nil || a.Error() != b.Error() || connect.CodeOf(a) != connect.CodeInvalidArgument {
+		t.Errorf("refusals = %v and %v, want the same invalid_argument", a, b)
+	}
+}
+
+// A dead character takes no pick, and a basic sheet has no daily choices.
+func TestADailyPickOnADeadCharacterOrABasicSheetIsRefused(t *testing.T) {
+	t.Parallel()
+	_, master, player, campaign, pc, choice := dailyHarness(t)
+	npc := master.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_MINION, "Capanga", basicSheet())
+	if err := master.pick(t, campaign, npc.GetId(), choice, "skill:stealth"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("a pick on a basic sheet: error = %v, want invalid_argument", err)
+	}
+	master.markDead(t, pc)
+	if err := player.pick(t, campaign, pc.GetId(), choice, "skill:stealth"); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Errorf("a pick on a dead character: error = %v, want failed_precondition", err)
 	}
 }

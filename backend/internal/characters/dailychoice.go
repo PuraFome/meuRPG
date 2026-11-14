@@ -11,7 +11,6 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
-	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -34,11 +33,13 @@ func keepDailyState(stored, saved *charactersv1.FullSheet) {
 	}
 }
 
-// restedState is the daily state after a rest: a short rest ends the picks that last until a short rest and
-// marks the short rest as taken; a long rest ends every pick and the mark. changed says it differs from the sheet's.
-func restedState(full *charactersv1.FullSheet, restBound, long bool) (picks []*charactersv1.DailyPick, shortRested, changed bool) {
+// restedState is the daily state after a rest. A short rest ends the picks of the choices that now last until a short rest
+// (by the effect's duration today, not the one the pick was made under) and marks the short rest as taken; a long rest ends every
+// pick and the mark. A pick whose choice is gone ends too. changed says it differs from the sheet's.
+func restedState(full *charactersv1.FullSheet, current []rules.DailyChoice, restBound, long bool) (picks []*charactersv1.DailyPick, shortRested, changed bool) {
 	for _, p := range full.GetDailyPicks() {
-		if !long && p.GetUntilRest() != rulesv1.RestBound_REST_BOUND_SHORT {
+		i := slices.IndexFunc(current, func(c rules.DailyChoice) bool { return c.ID == p.GetChoiceId() })
+		if !long && i >= 0 && current[i].UntilRest == rules.DurationLongRest {
 			picks = append(picks, p)
 		}
 	}
@@ -52,9 +53,30 @@ func restedState(full *charactersv1.FullSheet, restBound, long bool) (picks []*c
 	return picks, shortRested, len(picks) != len(full.GetDailyPicks()) || shortRested != full.GetShortRested()
 }
 
-// endRestPicks writes the daily state a rest leaves, when it changes it.
+// mayNeedRestState says the snapshot of a sheet has daily state a rest may change: a pick, the short-rest mark, or a proficiency
+// a short rest spends.
+func mayNeedRestState(f *charactersv1.FullSheet, content *rules.Content, long bool) bool {
+	if f == nil {
+		return false
+	}
+	return len(f.GetDailyPicks()) > 0 || f.GetShortRested() || (!long && rules.Derive(buildOf(f), content).RestBound)
+}
+
+// endRestPicks writes the daily state a rest leaves, when it changes it. The snapshot the rest read says whether the sheet may
+// need it; the sheet is then locked and read again, so a pick made meanwhile is never overwritten.
 func (s *Service) endRestPicks(ctx context.Context, q *charactersdb.Queries, r restRow, long bool) error {
-	sheet, err := loadSheet(r.row.ID, r.row.Sheet)
+	snap, err := loadSheet(r.row.ID, r.row.Sheet)
+	if err != nil {
+		return err
+	}
+	if !mayNeedRestState(snap.GetFull(), r.content, long) {
+		return nil
+	}
+	locked, err := q.GetCharacterForUpdate(ctx, charactersdb.GetCharacterForUpdateParams{CampaignID: r.campaign, ID: r.row.ID})
+	if err != nil {
+		return wrap("lock the character for the rest", err)
+	}
+	sheet, err := loadSheet(locked.ID, locked.Sheet)
 	if err != nil {
 		return err
 	}
@@ -62,8 +84,8 @@ func (s *Service) endRestPicks(ctx context.Context, q *charactersdb.Queries, r r
 	if full == nil {
 		return nil
 	}
-	restBound := !long && rules.Derive(buildOf(full), r.content).RestBound
-	picks, shortRested, changed := restedState(full, restBound, long)
+	d := rules.Derive(buildOf(full), r.content)
+	picks, shortRested, changed := restedState(full, d.DailyChoices, !long && d.RestBound, long)
 	if !changed {
 		return nil
 	}
@@ -143,6 +165,9 @@ func (s *Service) pickIn(ctx context.Context, tx pgx.Tx, m authz.Membership, id,
 	if err != nil {
 		return 0, err
 	}
+	if slices.EqualFunc(next.GetDailyPicks(), full.GetDailyPicks(), func(a, b *charactersv1.DailyPick) bool { return proto.Equal(a, b) }) {
+		return current.Revision, nil // already as asked: the revision stays, an open editor is not made stale
+	}
 	doc, err := storeJSON.Marshal(&charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: next}})
 	if err != nil {
 		return 0, wrap("encode a sheet", err)
@@ -168,8 +193,8 @@ func withDailyPick(content *rules.Content, full *charactersv1.FullSheet, choiceI
 	if key == "" {
 		return next, nil
 	}
-	until := rules.Derive(buildOf(full), content).DailyChoices[idx].UntilRest
-	next.DailyPicks = append(next.DailyPicks, &charactersv1.DailyPick{ChoiceId: choiceID, Key: key, UntilRest: restBoundToProto(until)})
+	choice := rules.Derive(buildOf(full), content).DailyChoices[idx]
+	next.DailyPicks = append(next.DailyPicks, &charactersv1.DailyPick{ChoiceId: choiceID, Key: key, UntilRest: restBoundToProto(choice.UntilRest), Signature: choice.Signature})
 	got := rules.Derive(buildOf(next), content).DailyChoices
 	if i := slices.IndexFunc(got, func(c rules.DailyChoice) bool { return c.ID == choiceID }); i < 0 || got[i].Picked != key {
 		return nil, invalidArgument(fieldErr("key", "is not one the daily choice offers"))

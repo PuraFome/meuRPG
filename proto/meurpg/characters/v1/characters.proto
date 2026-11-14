@@ -1629,6 +1629,9 @@ message DailyPick {
   string key = 2;
   // The rest that ends the pick.
   meurpg.rules.v1.RestBound until_rest = 3;
+  // What the choice was when the pick was made (its kind, duration and options): a pick whose choice has since changed to
+  // something else counts for nothing, so a reordered or edited effect never gives a pick to another choice.
+  string signature = 4;
 }
 
 // SheetMagicItem is a magic item of the sheet that is not a +N weapon, armor or shield.

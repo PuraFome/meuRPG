@@ -3608,7 +3608,10 @@ type DailyPick struct {
 	// The skill or tool key picked.
 	Key string `protobuf:"bytes,2,opt,name=key,proto3" json:"key,omitempty"`
 	// The rest that ends the pick.
-	UntilRest     v1.RestBound `protobuf:"varint,3,opt,name=until_rest,json=untilRest,proto3,enum=meurpg.rules.v1.RestBound" json:"until_rest,omitempty"`
+	UntilRest v1.RestBound `protobuf:"varint,3,opt,name=until_rest,json=untilRest,proto3,enum=meurpg.rules.v1.RestBound" json:"until_rest,omitempty"`
+	// What the choice was when the pick was made (its kind, duration and options): a pick whose choice has since changed to
+	// something else counts for nothing, so a reordered or edited effect never gives a pick to another choice.
+	Signature     string `protobuf:"bytes,4,opt,name=signature,proto3" json:"signature,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3662,6 +3665,13 @@ func (x *DailyPick) GetUntilRest() v1.RestBound {
 		return x.UntilRest
 	}
 	return v1.RestBound(0)
+}
+
+func (x *DailyPick) GetSignature() string {
+	if x != nil {
+		return x.Signature
+	}
+	return ""
 }
 
 // SheetMagicItem is a magic item of the sheet that is not a +N weapon, armor or shield.
@@ -13988,12 +13998,13 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\f\n" +
 	"\n" +
-	"background\"u\n" +
+	"background\"\x93\x01\n" +
 	"\tDailyPick\x12\x1b\n" +
 	"\tchoice_id\x18\x01 \x01(\tR\bchoiceId\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x129\n" +
 	"\n" +
-	"until_rest\x18\x03 \x01(\x0e2\x1a.meurpg.rules.v1.RestBoundR\tuntilRest\"\xb0\x03\n" +
+	"until_rest\x18\x03 \x01(\x0e2\x1a.meurpg.rules.v1.RestBoundR\tuntilRest\x12\x1c\n" +
+	"\tsignature\x18\x04 \x01(\tR\tsignature\"\xb0\x03\n" +
 	"\x0eSheetMagicItem\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
 	"\aattuned\x18\x02 \x01(\bR\aattuned\x12/\n" +
