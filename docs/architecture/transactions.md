@@ -76,7 +76,7 @@ The rule does not see a `db` package aliased on import, a `Begin` on a field not
 It matches helpers by bare name across the package, so two functions of one name are one.
 It does not judge a `Queries` that arrives as a parameter, and the host check proves a `pgx.Tx` parameter, not that the caller passes its own transaction.
 The writers of the characters module that go through `InSession` are pinned by name in `archtest` (`TestCharactersSessionWritersRunInTheSeam`): each must open no transaction of its own, tell nothing itself and call `inSession` (`UpdateCharacter`, the only caller of `writeSheetSave`, must call that).
-The module is pinned by name and not scanned, so a new writer of it that touches the session is not seen until it is listed.
+The module is pinned by name and not scanned, so a writer of it that touches the session is not seen until it is listed.
 The pin cannot see what a helper does, a write through `s.pool` or an autocommit query inside a pinned function, an `inSession` call in a dead branch, or a caller that reaches `saveSheetIn` or `levelUpIn` without the pinned function.
 `TestSeamProblems` holds fixtures of what it reports: a `db.InTx`, a `Begin`, a send of its own and a function that never calls `inSession`.
 The other writers of other modules that run in their own transaction and tell the streams after it (the characters module's `MarkCharacterDead`, portraits, `RequestCharacterChanges`, `ResubmitCharacter`, `SetAttunement` and the rest) are not under the funnel and move no number, so a hint lost by one of them is not detected by the number.
