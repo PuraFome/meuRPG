@@ -219,8 +219,13 @@ func heldOfInspirationHold(row playdb.InspirationHold) heldRoll {
 // (and by its combatant in a combat).
 type inspirationHoldStore struct{ q *playdb.Queries }
 
+// byKey finds the roll the roller made under a key: another roller's hold under the same key (the members of a group check send
+// one) is not its own.
 func (st inspirationHoldStore) byKey(ctx context.Context, roller heldRoller, key string) (heldRoll, bool, error) {
-	row, err := st.q.GetInspirationHoldByKey(ctx, playdb.GetInspirationHoldByKeyParams{CampaignID: roller.CampaignID, IdempotencyKey: key})
+	owner := holdOwnerOf(roller)
+	row, err := st.q.GetInspirationHoldOfRoller(ctx, playdb.GetInspirationHoldOfRollerParams{
+		CampaignID: roller.CampaignID, IdempotencyKey: key, CharacterID: owner.CharacterID, CombatantID: owner.CombatantID,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return heldRoll{}, false, nil
 	}
@@ -318,7 +323,7 @@ func (st inspirationHoldStore) answer(ctx context.Context, h heldRoll, key strin
 }
 
 func (st inspirationHoldStore) forget(ctx context.Context, h heldRoll) error {
-	return st.q.DeleteInspirationHold(ctx, h.ID) //nolint:wrapcheck // the gate wraps it
+	return forgetHold(ctx, st.q, h.ID)
 }
 
 // asked moves the combat's revision for the question of any roll held in a combat: the master and the roller's player

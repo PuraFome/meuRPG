@@ -98,6 +98,13 @@ One question at a time: an open hold of the roller refuses a new roll (`INSPIRAT
 A weapon attack's Lucky answer keeps the new d20 on the row only when the die's question follows.
 A hold made in a combat records its `round`; one of an earlier round, or whose combatant no longer holds the die, is stale and forgotten by the next roll (`heldRoll.stale`).
 
+### One way to drop a hold
+
+Every delete of `inspiration_holds` goes through `hold_forget.go`: `forgetHoldsOf` (a combatant's or a character's holds), `forgetHold` (the gate forgetting a stale one) and `forgetOrphanHolds` (the sweep of a die that ran out). A hold that spent the master's Inspiration (`favor_spent`) and has no answer gives it back before the row is gone ([favor](favor.md#the-spend)); an answered one gives nothing.
+The paths: the gate (`gateOpen`), `RemoveCombatant`, `dropCombatants` (the non-dismiss branch), the end of a combat and the leaving of a character (`dieToCharacters`, for every combatant of a character whether it holds a die or not), the move of a character into a combat, and `dieAdvance`.
+Nothing relies on the foreign-key cascade from `combatants` and `encounters` (migration 00255): a path that deletes a combatant calls `forgetHoldsOf` first, and an archtest fails otherwise.
+`byKey` finds a hold by the campaign, the key and the roller (its character or its combatant), so the members of a group check, which send one key, never read each other's holds.
+
 ## The questions are a chain
 
 `chain` is the ordered list of what a held roll may ask: `luckyQuestion` first (the 1 is on the table first, SRD 5.1), `rerollQuestion` after it (the table's reroll rule, below), `dieQuestion` after that, then `indomitableQuestion` and `strokeQuestion` (the result is known only then).

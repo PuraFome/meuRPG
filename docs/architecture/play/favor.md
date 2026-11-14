@@ -86,7 +86,13 @@ The spend is part of the roll's event (`Favor`), never an event of its own, so i
 The Inspiration is a source of the roll, `SourceFavor`, shown as "Inspiração" to the master and the roller and never hidden.
 A hold keeps `favor_spent`, so a retry and the answer count the Inspiration again without spending it.
 
-A hold that is forgotten before it is answered (the die ran out, the combat began or ended, the character left it) gives the Inspiration back: the roll never happens, and no event exists to undo. `DeleteInspirationHoldsOf` and `DeleteOrphanInspirationHolds` return which rows held a spend with no answer, and `forgetHoldsOf` and `dieAdvance` put it back (it does not stack on a newer grant).
+A hold that is dropped before it is answered (the die ran out, the round turned, the combat began or ended, the combatant or the character left it) gives the Inspiration back: the roll never happens, and no event exists to undo.
+There is one way to drop a hold, `hold_forget.go`: `forgetHoldsOf` (every hold of a combatant or of a character out of a combat), `forgetHold` (the gate's, for a stale question) and `forgetOrphanHolds` (the sweep of game time, for a die that ran out).
+Each deletes the rows `RETURNING` which of them spent the Inspiration with no answer, and `favorGiveBackIf` puts it back before the call returns; it does not stack on a newer grant, and a hold that was answered gives nothing.
+The paths that use it: the gate when it meets a stale hold of the roller (`gateOpen`), `RemoveCombatant` and `dropCombatants` before `DeleteCombatant`, the end of a combat and the leaving of a character (`dieToCharacters`, for every combatant of a character, with a die or without), and the move of a character into a combat (`carryDieIn`).
+Nothing relies on the foreign key's cascade from `combatants` and `encounters`, which would delete the row with the Inspiration.
+`archtest` keeps it so: only the three queries delete from `inspiration_holds`, only `hold_forget.go` calls them, and a file of `internal/play` that calls `DeleteCombatant` also calls `forgetHoldsOf`.
+The held roll is found by its roller as well as its key (`GetInspirationHoldOfRoller`: the character or the combatant), because the members of a group check send one key: a member never reads another's hold, nor counts the Inspiration it spent.
 
 Known limit: the undo of a cast gives back the Inspiration a catch spent on its zone save through the live combatant. A character that left the combat before the undo is no longer there, so its Inspiration is not given back; the master can grant it again.
 The spend is applied to the roll's truth before the roller's mode is chosen, so a typed roll carries two faces and the mode cannot be better than the truth.

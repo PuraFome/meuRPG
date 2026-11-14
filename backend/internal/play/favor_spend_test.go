@@ -379,7 +379,7 @@ func TestHeldRollKeepsTheSpendInTheHold(t *testing.T) {
 	for _, spent := range []bool{true, false} {
 		key := newKey()
 		f.holdOf(t, key, spent)
-		got, found, err := newHeldStores(f.h.svc.queries).byKeyOf(t.Context(), heldSceneCheck, heldRoller{CampaignID: f.campaignID}, key)
+		got, found, err := newHeldStores(f.h.svc.queries).byKeyOf(t.Context(), heldSceneCheck, heldRoller{CampaignID: f.campaignID, CharacterID: f.toren.GetId()}, key)
 		if err != nil || !found || got.FavorSpent != spent {
 			t.Errorf("the hold read back = %+v, found %v, %v, want FavorSpent=%v", got, found, err, spent)
 		}

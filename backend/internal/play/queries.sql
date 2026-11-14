@@ -1953,6 +1953,13 @@ RETURNING *;
 -- name: GetInspirationHoldByKey :one
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND idempotency_key = $2;
 
+-- name: GetInspirationHoldOfRoller :one
+-- The hold a roller made under a key. The key is the request's, and two members of one group check send the same one: the hold
+-- is the roller's own, found by its character or by its combatant. A NULL parameter matches nothing.
+SELECT * FROM inspiration_holds
+WHERE campaign_id = $1 AND idempotency_key = $2
+  AND (character_id = sqlc.narg(character_id) OR combatant_id = sqlc.narg(combatant_id));
+
 -- name: GetInspirationHold :one
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND id = $2;
 
@@ -1981,12 +1988,19 @@ SELECT * FROM inspiration_holds WHERE encounter_id = $1 AND answer_key IS NULL O
 -- the combatants' views. The rolls of the other kinds held in a combat are not part of the view.
 SELECT * FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attack' AND answer_key IS NULL ORDER BY created_at, id;
 
--- name: DeleteInspirationHold :exec
-DELETE FROM inspiration_holds WHERE id = $1;
+-- name: DeleteInspirationHold :many
+-- One hold, answered or not. Says whether it spent the character's Inspiration and never got the roll (no answer yet): that
+-- spend goes back. Only hold_forget.go calls it.
+WITH changed AS (
+DELETE FROM inspiration_holds
+WHERE id = $1
+RETURNING id, campaign_id, character_id, favor_spent, answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
 
 -- name: DeleteInspirationHoldsOf :many
 -- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
--- character's Inspiration and never got the roll (no answer yet): that spend goes back.
+-- character's Inspiration and never got the roll (no answer yet): that spend goes back. Only hold_forget.go calls it.
 WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE (encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
@@ -2037,6 +2051,7 @@ UPDATE inspiration_holds SET faces = $2, counted = $3, total = $4, stroke_answer
 -- A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 -- round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
 -- Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
+-- Only hold_forget.go calls it.
 WITH changed AS (
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL

@@ -541,19 +541,32 @@ func dieGiverCombatant(all []playdb.Combatant, row playdb.CharacterInspiration) 
 	return nil
 }
 
-// dieToCharacters gives back to the characters the die their combatants hold when a combat ends
-// or a character leaves it (only limits it to those combatants), with the rounds it had left,
-// 6 seconds each.
+// dieToCharacters runs when a combat ends or a character leaves it (only limits it to those combatants): the die each combatant holds
+// goes back to its character, with the rounds it had left, 6 seconds each, and the rolls held in the combat are forgotten, whether the
+// combatant holds a die or not (a Lucky or a reroll question waits for no die), giving back the Inspiration the unanswered ones spent.
 func (s *Service) dieToCharacters(ctx context.Context, c *combatTx, cs, only []playdb.Combatant) error {
 	round := max(c.enc.Round, 1)
 	for _, a := range cs {
-		if !backedByCharacter(a) || !holdsDie(a, round) ||
-			(only != nil && !slices.ContainsFunc(only, func(o playdb.Combatant) bool { return o.ID == a.ID })) {
+		if !backedByCharacter(a) || (only != nil && !slices.ContainsFunc(only, func(o playdb.Combatant) bool { return o.ID == a.ID })) {
 			continue
 		}
+		if err := s.leaveWithDie(ctx, c, cs, a, round); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// leaveWithDie is dieToCharacters for one combatant of a character.
+func (s *Service) leaveWithDie(ctx context.Context, c *combatTx, cs []playdb.Combatant, a playdb.Combatant, round int32) error {
+	if holdsDie(a, round) {
 		if err := s.giveDieBack(ctx, c, cs, a, *a.InspirationExpiresRound-round); err != nil {
 			return err
 		}
+	}
+	// The rolls held in the combat have nothing to settle once it is over (or the character is out of it).
+	if err := forgetHoldsOf(ctx, c.q, holdOwnerOfCombatant(a)); err != nil {
+		return fmt.Errorf("forget the rolls held in the combat: %w", err)
 	}
 	return nil
 }
@@ -577,10 +590,6 @@ func (s *Service) giveDieBack(ctx context.Context, c *combatTx, cs []playdb.Comb
 	if err := c.q.SetCombatantInspirationDie(ctx, playdb.SetCombatantInspirationDieParams{ID: a.ID}); err != nil {
 		return fmt.Errorf("take the die off the combatant: %w", err)
 	}
-	// The rolls held in the combat have nothing to settle once it is over (or the character is out of it).
-	if err := forgetHoldsOf(ctx, c.q, holdOwnerOfCombatant(a)); err != nil {
-		return fmt.Errorf("forget the rolls held in the combat: %w", err)
-	}
 	return nil
 }
 
@@ -590,14 +599,8 @@ func (s *Service) dieAdvance(ctx context.Context, c *combatTx, seconds int32) er
 	if err := c.q.DeleteExpiredCharacterInspiration(ctx, playdb.DeleteExpiredCharacterInspirationParams{CampaignID: c.session.CampaignID, Column2: seconds}); err != nil {
 		return fmt.Errorf("end the dice whose time ran out: %w", err)
 	}
-	orphans, err := c.q.DeleteOrphanInspirationHolds(ctx, c.session.CampaignID)
-	if err != nil {
-		return fmt.Errorf("forget the rolls that waited for a die that ran out: %w", err)
-	}
-	for _, o := range orphans {
-		if err := favorGiveBackIf(ctx, c.q, o.UnsettledFavor, o.CampaignID, o.CharacterID); err != nil {
-			return err
-		}
+	if err := forgetOrphanHolds(ctx, c.q, c.session.CampaignID); err != nil {
+		return err
 	}
 	if err := c.q.AdvanceCharacterInspiration(ctx, playdb.AdvanceCharacterInspirationParams{CampaignID: c.session.CampaignID, Column2: seconds}); err != nil {
 		return fmt.Errorf("move the dice's time on: %w", err)

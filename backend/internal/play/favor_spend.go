@@ -105,7 +105,7 @@ func favorHoldOf(ctx context.Context, env gateEnv, a favorAsk) (h heldRoll, foun
 		}
 		return h, true, true, nil
 	}
-	h, found, err = stores.byKeyOf(ctx, a.Kind, heldRoller{CampaignID: a.CampaignID}, a.Key)
+	h, found, err = stores.byKeyOf(ctx, a.Kind, heldRoller{CampaignID: a.CampaignID, CharacterID: a.CharacterID}, a.Key)
 	return h, found, false, err
 }
 
@@ -183,30 +183,6 @@ func favorGiveBack(ctx context.Context, q *playdb.Queries, campaignID, character
 	_, err := q.InsertCharacterFavor(ctx, playdb.InsertCharacterFavorParams{CharacterID: characterID, CampaignID: campaignID})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("give the character's inspiration back: %w", err)
-	}
-	return nil
-}
-
-// favorGiveBackIf gives the Inspiration back when it was spent on a held roll that is forgotten before it was answered: no roll
-// event exists for that spend, so nothing else would put it back.
-func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, campaignID, characterID string) error {
-	if !unsettled || characterID == "" {
-		return nil
-	}
-	return favorGiveBack(ctx, q, campaignID, characterID)
-}
-
-// forgetHoldsOf forgets every held roll of an owner (a combatant, or a character outside a combat), giving back the Inspiration the
-// unanswered ones spent.
-func forgetHoldsOf(ctx context.Context, q *playdb.Queries, owner holdOwner) error {
-	rows, err := q.DeleteInspirationHoldsOf(ctx, playdb.DeleteInspirationHoldsOfParams(owner))
-	if err != nil {
-		return fmt.Errorf("delete the held rolls: %w", err)
-	}
-	for _, r := range rows {
-		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID); err != nil {
-			return err
-		}
 	}
 	return nil
 }

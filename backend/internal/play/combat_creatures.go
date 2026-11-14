@@ -345,12 +345,8 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 			return nil, false, err
 		}
 		turnPassed = turnPassed || passed || inTurn(c.enc, who)
-		if dismiss {
-			if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{conv.OrZero(who.CreatureID)}, Dismissed: true}); err != nil {
-				return nil, false, fmt.Errorf("dismiss the combatant: %w", err)
-			}
-		} else if err := c.q.DeleteCombatant(ctx, who.ID); err != nil {
-			return nil, false, fmt.Errorf("delete the combatant: %w", err)
+		if err := s.leaveRow(ctx, c, who, dismiss); err != nil {
+			return nil, false, err
 		}
 		rest = slices.DeleteFunc(rest, func(o playdb.Combatant) bool { return o.ID == who.ID })
 	}
@@ -358,6 +354,24 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 		return nil, false, err
 	}
 	return rest, turnPassed, nil
+}
+
+// leaveRow takes the combatant's row out of the combat: hidden (dismiss) or deleted. The foreign key would delete its held rolls and the
+// Inspiration they spent with them, so they are forgotten first.
+func (s *Service) leaveRow(ctx context.Context, c *combatTx, who playdb.Combatant, dismiss bool) error {
+	if dismiss {
+		if _, err := c.q.SetCreatureCombatantsDismissed(ctx, playdb.SetCreatureCombatantsDismissedParams{EncounterID: c.enc.ID, CreatureIds: []string{conv.OrZero(who.CreatureID)}, Dismissed: true}); err != nil {
+			return fmt.Errorf("dismiss the combatant: %w", err)
+		}
+		return nil
+	}
+	if err := forgetHoldsOf(ctx, c.q, holdOwnerOfCombatant(who)); err != nil {
+		return fmt.Errorf("forget the held rolls: %w", err)
+	}
+	if err := c.q.DeleteCombatant(ctx, who.ID); err != nil {
+		return fmt.Errorf("delete the combatant: %w", err)
+	}
+	return nil
 }
 
 // discardDamageOf drops, inside the change's transaction, the damage still to roll or to
