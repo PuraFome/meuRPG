@@ -64,11 +64,12 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginLegendaryFight, legendaryScreens, shotScale } from './legendary-support';
 import { LEFT_OUT_VIEWPORTS, leftOutShotScale, refuseEntries, shootLeftOut, targetLeftTheMenu } from './left-out-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
+import { ATT_WIDTHS, attViewport, attunementScale, cropAtt, shootAtt } from './attunement-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
-import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -1287,9 +1288,9 @@ async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
 
-    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row in the card; the attack is on the first screen.
-    const shapes = p.getByRole('list', { name: 'O que tem neste turno' }).getByRole('listitem');
-    await expect(shapes).toHaveCount(3);
+    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row, the first of "Ações" (board 584-01); the attack is on the first screen.
+    const shapes = p.getByRole('list', { name: 'O que resta da vez' }).getByRole('listitem');
+    await expect(shapes).toHaveCount(4); // the Ação, the Bônus, the Reação and the walker (board 584-01)
     const row = await Promise.all((await shapes.all()).map((t) => boxOf(t)));
     expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
     expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
@@ -4319,6 +4320,36 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
     await expectScreenPasses(p, `A vez como Lobo ${where}`);
 
+    // The turn band of the form (584-01, 584-02): the chip with the time, the economy row above the tabs, and "Permanecer na forma".
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).toBeVisible();
+    await expectScreenPasses(p, `A faixa da vez na forma, com o tempo e a linha da vez ${where}`);
+    // As a beast the tabs are Ataques (the beast's bite), Druida (the way back and the stay) and Outras; there is no Magias tab.
+    await expect(p.getByRole('tab', { name: /^Magias/ })).toHaveCount(0);
+    await expect(p.getByText('Sem magias na forma de fera. Volte à forma normal para conjurar.')).toBeVisible();
+    await openActionTab(p, 'Ataques');
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expectScreenPasses(p, `A aba Ataques na forma ${where}`);
+    await openActionTab(p, 'Outras');
+    await expectScreenPasses(p, `A aba Outras na forma ${where}`);
+    await openActionTab(p, 'Druida');
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expect(p.getByText('Permanecer na forma').first()).toBeVisible();
+    await expectScreenPasses(p, `A aba Druida na forma, com Permanecer na forma ${where}`);
+    await tapAboveBar(p.getByRole('button', { name: 'Permanecer na forma' }));
+    // The answer is in when its outcome is on the screen: the use is spent, so the row of "Permanecer" says there is none left (the
+    // vitals arrive after the call returns, and the options reload with the revision). Then the buttons that waited for it are on
+    // again; the scan reads the settled screen, never a frame in between.
+    await expect(p.locator('app-action-row', { hasText: 'Permanecer na forma' })).toContainText('Sem usos de Forma Selvagem');
+    await expect(p.getByRole('button', { name: 'Voltar à forma normal' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(p, `Depois de permanecer na forma ${where}`);
+    // Another player reads the name of the beast, never the time (RN-20).
+    await t.goto(sessionRoute(campaignId));
+    await expect(t.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(t, `A forma da Sálvia, vista por outro jogador ${where}`);
+
     // The beast falls: the notice that stays.
     await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);
     await expect(p.getByTestId('form-ended')).toBeVisible();
@@ -4398,6 +4429,55 @@ test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferênci
 test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
   test.setTimeout(360_000);
   await scanCreatureCombatScreens(browser, 'light', 320);
+});
+
+// The sheet of a druid in a Wild Shape form with no session open (584-06 card 9): the form with its pool and no time, both buttons off
+// and the line that says why. The form is taken in a combat; the session ends, and the sheet reads it from its own small read.
+async function scanWildShapeSheetWithoutSession(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const where = `(${colorScheme === 'dark' ? 'dark' : 'light'}, ${width}px)`;
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) => browser.newContext({ storageState: authStatePath(user), colorScheme, viewport })),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForCreatureCombat(m, p, t, `Acessibilidade forma sem sessão ${Date.now()}`);
+    campaignId = table.campaignId;
+    await beginCreatureCombat(m, table, { Sálvia: p, Toren: t }, { Toren: 20, Sálvia: 13, 'Capitão Goblin': 5, 'Goblin 1': 4, 'Goblin 2': 4 });
+    await passTurnsTo(m, campaignId, 'Sálvia');
+    await p.goto(sessionRoute(campaignId));
+    await openActionTab(p, 'Druida');
+    await tapAboveBar(p.getByRole('button', { name: 'Transformar: Forma Selvagem' }));
+    const wild = p.getByRole('dialog', { name: 'Forma Selvagem' });
+    await wild.getByLabel('Buscar fera').fill('lobo');
+    await wild.locator('label', { hasText: '(Wolf)' }).click();
+    await wild.getByRole('button', { name: 'Virar Lobo' }).click();
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await endOpenSessionRPC(m, campaignId);
+    await p.goto(`/campaigns/${campaignId}/characters/${table.heroId}`);
+    const block = p.locator('app-creatures-panel .form');
+    await expect(block).toContainText('Na forma de Lobo');
+    await expect(block).toContainText('Só durante um combate ou uma sessão.');
+    await expect(block).not.toContainText(/restantes|rodadas?/);
+    await expectScreenPasses(p, `A ficha da forma sem sessão aberta ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId).catch(() => undefined);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('a ficha da Forma Selvagem sem sessão aberta passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWildShapeSheetWithoutSession(browser, 'light', 1280);
+});
+
+test('a ficha da Forma Selvagem sem sessão aberta passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWildShapeSheetWithoutSession(browser, 'dark', 390);
 });
 
 // The map editor (slice 9.12, MR-034, MR-035, MR-036, MR-041, E9-01 and E9-02): painting with each tool, the in-place questions, the
@@ -6200,6 +6280,107 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema esc
 
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 320);
+});
+
+/** "Como funciona" shares the row of the switch's title (it is not stranded alone on a line of its own), whatever the width. */
+async function expectHeadNotStranded(block: Locator, where: string): Promise<void> {
+  const title = await boxOf(block.getByRole('switch', { name: 'Efeito no próximo golpe' }));
+  const button = await boxOf(block.getByRole('button', { name: 'Como funciona' }));
+  expect.soft(Math.abs(button.y + button.height / 2 - (title.y + title.height / 2)), `"Como funciona" na linha do título ${where}`).toBeLessThan(6);
+}
+
+/**
+ * "Efeito no próximo golpe" of a table spell (#577): the editor's block with each of the four triggers picked, the marked target's card
+ * locked (a spell of the caster alone), the switch off with the reason of a spell that does not last, a refusal and a missing cap at
+ * their fields, "Como funciona" open, and what a player reads of the spell. The editor is judged from 768 px up (a phone only reads).
+ */
+async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade próximo golpe ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const fist = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Geada no Punho'));
+    const mark = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Marca do Caçador', { trigger: 'TABLE_HIT_TRIGGER_MARKED_TARGET', save: '', onFailConditions: [], conditionDuration: '' }, { target: { kind: 'TABLE_SPELL_TARGET_KIND_CREATURE' }, range: { kind: 'SPELL_RANGE_KIND_RANGED', distanceFt: 60 } }));
+
+    if (width >= 768) {
+      await open(m, entryRoute(campaignId, fist));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
+      const block = m.locator('app-hit-effect-block');
+      await expect(block.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
+      await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe ligado, o alvo marcado travado ${where}`);
+      await expectHeadNotStranded(block, where);
+      for (const card of ['Próximo golpe com arma', 'Cada golpe enquanto durar', 'Próximo golpe corpo a corpo']) {
+        await pickRadio(block, card);
+        await expect(block.getByRole('radio', { name: new RegExp(`^${card}`) })).toBeChecked();
+        await expectScreenPasses(m, `Editor de magia, o gatilho "${card}" ${where}`);
+      }
+      await block.getByRole('button', { name: 'Como funciona' }).click();
+      await expect(block.getByRole('button', { name: 'Como funciona' })).toHaveAttribute('aria-expanded', 'true');
+      await expectScreenPasses(m, `Editor de magia, "Como funciona" aberto ${where}`);
+
+      await open(m, entryRoute(campaignId, mark));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Marca do Caçador');
+      await expect(block.getByRole('radio', { name: /^Cada golpe no alvo marcado/ })).toBeChecked();
+      await expectScreenPasses(m, `Editor de magia, o gatilho "Cada golpe no alvo marcado" ${where}`);
+      await expectHeadNotStranded(block, where);
+
+      // A spell that does not last keeps no effect: the switch is off and says why.
+      await open(m, `/campaigns/${campaignId}/content/new/spell`);
+      const fresh = m.locator('app-hit-effect-block');
+      await expect(fresh.getByRole('switch', { name: 'Efeito no próximo golpe' })).toBeDisabled();
+      await expect(fresh.getByText('Uma magia instantânea não guarda efeito para o golpe.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe que a magia instantânea não guarda ${where}`);
+
+      // A cap left empty and dice at 0: the form says the cap, the server refuses the dice, each at its field.
+      await open(m, entryRoute(campaignId, fist));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
+      await block.getByLabel('Dados', { exact: true }).fill('0');
+      await block.getByLabel('No máximo').fill('');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(block.getByLabel('No máximo')).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Editor de magia, o máximo de dados que falta ${where}`);
+      await block.getByLabel('No máximo').fill('5');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(block.getByLabel('Dados', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expect(block.getByLabel('Dados', { exact: true }).locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, a recusa dos dados no campo ${where}`);
+    }
+
+    await open(p, entryRoute(campaignId, fist));
+    await expect(p.getByRole('heading', { name: 'Efeito no próximo golpe' })).toBeVisible();
+    await expect(p.getByText('Só quem conjura e você')).toBeVisible();
+    await expectScreenPasses(p, `Magia com efeito no próximo golpe, vista por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, mark));
+    await expect(p.getByText('Em quem conjura: cada golpe com arma no alvo marcado, por até 1 minuto.')).toBeVisible();
+    await expectScreenPasses(p, `Magia do alvo marcado, vista por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 1280);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 768);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'dark', 1024);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'dark', 390);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 320);
 });
 
 /**
@@ -8338,6 +8519,286 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
   await scanGearScreens(browser, 'dark', 390);
 });
 
+/** The attunement (#561): the sheet's "Itens mágicos" and "Sintonização" for the owner (window closed) and the master (open), the picker and "Remover item". */
+async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', magicItems: [{ key: 'item:ring-of-protection' }, { key: 'item:bag-of-holding' }] };
+    const table = await tableForCombat(m, p, `Acessibilidade sintonização ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+
+    // The owner outside a rest: the list, the pills and "Muda num descanso".
+    await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const equipment = p.getByRole('region', { name: 'Equipamento' });
+    await expect(equipment.getByRole('heading', { name: /^Itens mágicos/, level: 3 })).toBeVisible();
+    await expect(equipment.getByText('Muda num descanso')).toBeVisible();
+    await expectScreenPasses(p, `Ficha, Itens mágicos ${where}`);
+
+    // The picker and the removal, from the master's, since the owner's sheet is locked.
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const masterGear = m.getByRole('region', { name: 'Equipamento' });
+    await masterGear.getByRole('button', { name: 'Adicionar item mágico' }).click();
+    const picker = m.getByRole('dialog', { name: 'Adicionar item mágico' });
+    await expect(picker.getByRole('button', { name: 'Adicionar item' })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(m, `Adicionar item mágico ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(picker).toBeHidden();
+    await masterGear.getByRole('button', { name: /^Remover item · / }).first().click();
+    const removal = m.getByRole('alertdialog', { name: /^Remover .*\?$/ });
+    await expect(removal).toBeVisible();
+    await expectScreenPasses(m, `Remover item ${where}`);
+    await removal.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(removal).toBeHidden();
+
+    // The master attunes at any time.
+    await m.getByRole('button', { name: 'Mudar sintonização' }).click();
+    const att = m.getByRole('dialog', { name: /^Sintonização/ });
+    await expect(att).toBeVisible();
+    await expectScreenPasses(m, `Sintonização, o mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a sintonização passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAttunementScreens(browser, 'light', 1280);
+});
+
+test('a sintonização passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAttunementScreens(browser, 'dark', 390);
+});
+
+/**
+ * The attunement screens of the boards (#561), through the real stack, each judged by axe and the layout checks and
+ * saved at 390, 768 and 1280 px (`E2E_SHOTS_DIR`) with 2x crops of the chips, the lock line and the rest sheet's row.
+ */
+async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = attViewport(1280);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...attunementScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: attViewport(390), ...attunementScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let outsider: Awaited<ReturnType<typeof secondPlayer>> | undefined;
+  let campaignId = '';
+  const everyWidth = async (page: Page, name: string, what: string, at: () => Locator) => {
+    for (const width of ATT_WIDTHS) {
+      await page.setViewportSize(attViewport(width));
+      await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+      await shootAtt(page, name, width, colorScheme, at());
+    }
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = {
+      weaponKeys: ['equipment:longsword'],
+      armorKey: 'equipment:chain-mail',
+      itemBonuses: [{ key: 'equipment:longsword', bonus: 3, requiresAttunement: true }],
+      magicItems: [
+        { key: 'item:ring-of-protection' },
+        { key: 'item:cloak-of-elvenkind' },
+        { key: 'item:pearl-of-power' },
+        { key: 'item:ring-of-shooting-stars' },
+        { key: 'item:boots-of-elvenkind' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Quadros da sintonização ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    await openLive(p, route);
+    await openLive(m, route);
+    const gearOf = (page: Page) => page.getByRole('region', { name: 'Equipamento' });
+
+    // The owner, outside a rest: the list, the chips on the gear, the lock line, "Muda num descanso".
+    await expect(gearOf(p).getByText('Muda num descanso')).toBeVisible();
+    await everyWidth(p, 'ficha-dono', 'A ficha do dono, itens mágicos e sintonia', () => gearOf(p));
+    // The chip on its row and the magic items' rows (icon, reason line), at the narrowest and the widest.
+    for (const width of [390, 1280]) {
+      for (const [page, who] of [[p, 'dono'], [m, 'mestre']] as const) {
+        await page.setViewportSize(attViewport(width));
+        await cropAtt(gearOf(page).locator('.gear-row').filter({ hasText: 'Espada longa' }), `chip-peca-${who}-${width}`, colorScheme);
+        await cropAtt(gearOf(page).locator('.magic'), `itens-magicos-${who}-${width}`, colorScheme);
+      }
+    }
+    await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos de sintonização' }), 'legenda-selos', colorScheme);
+    await cropAtt(gearOf(p).locator('.gear__lock'), 'linha-travada', colorScheme);
+
+    // The master: the same list with the menus.
+    await everyWidth(m, 'ficha-mestre', 'A ficha do mestre, itens mágicos com os menus', () => gearOf(m));
+
+    // Each sheet is opened at the width it is judged at (a phone gets the bottom sheet, a tablet and up the dialog).
+    const sheetShots = async (page: Page, name: string, what: string, open: () => Promise<Locator>, close: () => Promise<void>) => {
+      for (const width of ATT_WIDTHS) {
+        await page.setViewportSize(attViewport(width));
+        const at = await open();
+        await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+        await shootAtt(page, name, width, colorScheme, at);
+        await close();
+      }
+    };
+    const picker = m.getByRole('dialog', { name: 'Adicionar item mágico' });
+    const openPicker = async () => {
+      await gearOf(m).getByRole('button', { name: 'Adicionar item mágico' }).click();
+      await expect(picker.getByRole('radio').first()).toBeVisible();
+      return picker;
+    };
+    const closeByEscape = async (page: Page, sheet: Locator) => {
+      await page.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+    };
+    await sheetShots(m, 'adicionar-item', 'O seletor de item mágico', openPicker, () => closeByEscape(m, picker));
+    await sheetShots(
+      m,
+      'adicionar-item-sem-resultado',
+      'O seletor, busca sem resultado',
+      async () => {
+        await openPicker();
+        await picker.getByRole('searchbox').fill('espada +2');
+        await expect(picker.getByText('Nenhum item mágico com “espada +2”.')).toBeVisible();
+        return picker;
+      },
+      () => closeByEscape(m, picker),
+    );
+
+    // The master's attunement sheet: first nothing attuned, then the sword, the ring and the cloak (the limit), the pearl refused.
+    const att = m.getByRole('dialog', { name: /^Sintonização/ });
+    const openAtt = async () => {
+      await gearOf(m).getByRole('button', { name: 'Mudar sintonização' }).click();
+      await expect(att).toBeVisible();
+      return att;
+    };
+    await sheetShots(m, 'sintonizacao-mestre', 'A sintonização do mestre', openAtt, () => closeByEscape(m, att));
+    await m.setViewportSize(attViewport(1280));
+    await openAtt();
+    for (const [verb, name] of [['Sintonizar', 'Anel de proteção'], ['Sintonizar', 'Espada longa'], ['Sintonizar', 'Manto élfico']]) {
+      await att.getByRole('button', { name: new RegExp(`^${verb} ${name}`) }).click();
+      await expect(att.getByRole('button', { name: new RegExp(`^Encerrar ${name}`) })).toBeVisible();
+    }
+    await closeByEscape(m, att);
+    await sheetShots(m, 'sintonizacao-no-limite-mestre', 'A sintonização do mestre no limite de 3, com o item que o personagem não cumpre', openAtt, () => closeByEscape(m, att));
+
+    // "Remover item": attuned (the count goes down) and not attuned.
+    const removeShots = async (name: string, screen: string, what: string, words?: string) => {
+      const dialog = m.getByRole('alertdialog', { name: `Remover ${name}?` });
+      await sheetShots(
+        m,
+        screen,
+        what,
+        async () => {
+          await gearOf(m).getByRole('button', { name: `Remover item · ${name}` }).click();
+          if (words) {
+            await expect(dialog).toContainText(words);
+          }
+          return dialog;
+        },
+        async () => {
+          await dialog.getByRole('button', { name: 'Cancelar' }).click();
+          await expect(dialog).toBeHidden();
+        },
+      );
+    };
+    await removeShots('Anel de proteção', 'remover-item-sintonizado', 'Remover item sintonizado', 'Sintonizados 3 → 2');
+    await removeShots('Botas élficas', 'remover-item', 'Remover item sem sintonia');
+
+    // The rests: at each width the owner reads the section at the limit, then with a free place after the master ends the
+    // cloak, then attunes (the window is spent), and the master's next rest opens another.
+    const restSheet = p.getByRole('dialog', { name: 'Gastar dados de vida' });
+    const section = restSheet.getByRole('region', { name: 'Sintonização' });
+    for (const width of ATT_WIDTHS) {
+      await m.setViewportSize(attViewport(1280));
+      await openSessionPage(m, campaignId, 'grupo');
+      const card = m.getByRole('region', { name: 'Descanso' });
+      await card.getByRole('button', { name: 'Descanso curto' }).click();
+      await card.getByRole('alertdialog', { name: 'Começar o descanso curto?' }).getByRole('button', { name: 'Descansar' }).click();
+      await expect(card.getByText('Descanso curto feito.').first()).toBeVisible();
+      const openRest = async () => {
+        await p.setViewportSize(attViewport(width));
+        await openSessionPage(p, campaignId);
+        await openSheetTab(p);
+        await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+        await expect(restSheet).toBeVisible();
+      };
+      await openRest();
+      await expect(section).toContainText('Sintonizados: 3 de 3');
+      await expectScreenPasses(p, `A folha do descanso curto, o dono no limite (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-no-descanso-limite', width, colorScheme, section);
+      await restSheet.locator('button', { hasText: 'Fechar' }).click();
+      await expect(restSheet).toBeHidden();
+
+      // The master ends the cloak: the owner has a free place.
+      await m.setViewportSize(attViewport(1280));
+      await openLive(m, route);
+      await openAtt();
+      await att.getByRole('button', { name: 'Encerrar Manto élfico' }).click();
+      await expect(att.getByRole('button', { name: 'Sintonizar Manto élfico' })).toBeVisible();
+      await closeByEscape(m, att);
+      await openRest();
+      await expect(section).toContainText('Sintonizados: 2 de 3');
+      await expectScreenPasses(p, `A folha do descanso curto, com uma vaga (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-no-descanso', width, colorScheme, section);
+      if (width === 390) {
+        await cropAtt(section.getByRole('listitem').filter({ hasText: 'Pérola do poder' }), 'linha-do-descanso', colorScheme);
+        await cropAtt(section.locator('.att__head'), 'cabecalho-do-descanso', colorScheme);
+        await cropAtt(section.getByRole('listitem').filter({ hasText: 'Manto élfico' }), 'icone-do-descanso', colorScheme);
+      }
+      await section.getByRole('button', { name: 'Sintonizar Manto élfico' }).click();
+      const used = restSheet.getByText('A sintonização deste descanso foi usada.');
+      await expect(used).toBeVisible();
+      await expectScreenPasses(p, `A folha do descanso curto, a sintonização usada (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-usada', width, colorScheme, used);
+      await restSheet.locator('button', { hasText: 'Fechar' }).click();
+      await expect(restSheet).toBeHidden();
+    }
+
+    // Another player reads none of it.
+    outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport: attViewport(390), ...attunementScale });
+    // Their sheet route is refused: nothing about items or attunement shows.
+    await openLive(outsider.page, route);
+    await expect(outsider.page.getByRole('heading', { name: 'Personagem não encontrado' })).toBeVisible();
+    await expect(outsider.page.getByText('Itens mágicos')).toHaveCount(0);
+    await expect(outsider.page.getByText(/^Sintonizados:/)).toHaveCount(0);
+    await expect(outsider.page.getByRole('button', { name: /sintoniz/i })).toHaveCount(0);
+    await everyWidth(outsider.page, 'ficha-outro-jogador', 'O que outro jogador vê de Toren, sem itens nem sintonia', () => outsider!.page.locator('main').first());
+
+    // A dead character: the owner has no controls, and the sheet says so.
+    const dead = await callRPC(m, 'meurpg.characters.v1.CharacterService/MarkCharacterDead', { campaignId, characterId: table.characterId });
+    expect(dead.ok(), await dead.text()).toBeTruthy();
+    await openLive(p, route);
+    await expect(gearOf(p).getByRole('button', { name: /^Remover item/ })).toHaveCount(0);
+    await everyWidth(p, 'ficha-personagem-morto', 'A ficha do personagem morto, sem controles de itens', () => gearOf(p));
+  } finally {
+    if (outsider) {
+      await outsider.close();
+    }
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  test(`as telas dos quadros da sintonização passam no axe e nas conferências de layout no tema ${theme}, em 390, 768 e 1280`, { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanAttunementBoards(browser, colorScheme);
+  });
+}
+
 /** The weapon marks (#585): the chips on the gear and attacks, the weapon's "⋮" menu for the owner and the master, never for another player. */
 async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
@@ -8370,7 +8831,7 @@ async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | '
     await expectScreenPasses(p, `Ficha, marcas nas armas ${where}`);
     // The table is in play, so the owner's sheet is locked: no "⋮" for the owner, and a line says who marks.
     await expect(equipment.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
-    await expect(equipment.getByText('Marcas das armas: depois da trava, só o mestre muda.')).toBeVisible();
+    await expect(equipment.getByText('Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.')).toBeVisible();
 
     // The master edits at any time: the weapon's "⋮" opens its marks, then a saved mark.
     await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);

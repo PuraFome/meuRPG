@@ -1102,7 +1102,7 @@
   },
   "src/app/pages/live-session/combat/combatant-tags/form-tag.ts": {
     "@angular-eslint/prefer-on-push-component-change-detection": {
-      "count": 2
+      "count": 1
     }
   },
   "src/app/pages/live-session/combat/conditions-dialog/conditions-dialog.ts": {

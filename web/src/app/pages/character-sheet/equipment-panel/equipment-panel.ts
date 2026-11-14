@@ -1,10 +1,16 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import { type AttunementEntryVm, MagicCategories } from '../../../core/characters/attunement';
 import type { GearVm } from '../../../core/characters/gear';
 
-import { GearList, type GearToggle } from '../../../shared/gear-list/gear-list';
+import {
+  type AttunementChip,
+  GearList,
+  type GearToggle,
+} from '../../../shared/gear-list/gear-list';
+import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
 import { FullSheetVm } from '../character-sheet.types';
 import { coinEntries, keepUnitsTogether } from '../sheet-format';
 
@@ -22,6 +28,11 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
 })
 export class EquipmentPanel {
   readonly sheet = input.required<FullSheetVm>();
+  /** Who looks: the master reads "Tor não cumpre", the owner "você não cumpre". */
+  readonly viewer = input<'owner' | 'master'>('owner');
+  /** The character's name, for what the master reads. */
+  readonly characterName = input('');
+  private readonly categories = inject(MagicCategories);
   /** Whether the gear list has its buttons: for the owner and the master alike, unless the character is dead. The
    * sheet's lock does not matter: the gear is played. */
   readonly canEquip = input(false);
@@ -43,6 +54,68 @@ export class EquipmentPanel {
   readonly marksNotice = input('');
   /** A tap on a weapon's "⋮": the page opens the sheet of its marks. */
   readonly marksOpened = output<GearVm>();
+
+  /** The owner (while the sheet is editable) and the master add and remove magic items. */
+  readonly canManageMagic = input(false);
+  /** "Mudar" opens the sheet "Sintonização": the master always, the owner while a rest's window is open. */
+  readonly canChangeAttunement = input(false);
+  /** A dead character's owner: no "Mudar" and no "Muda num descanso". */
+  readonly attunementIsClosed = input(false);
+  /** What the last add or remove said. */
+  readonly magicNotice = input('');
+  readonly attunementOpened = output<void>();
+  readonly magicAdding = output<void>();
+  readonly magicRemoving = output<AttunementEntryVm>();
+
+  protected readonly magicItems = computed(() =>
+    this.sheet().attunement.entries.filter((e) => e.kind === 'magic'),
+  );
+  /** The header "Sintonizados: N de 3" shows when anything on the sheet asks for attunement or is attuned. */
+  protected readonly hasAttunement = computed(() =>
+    this.sheet().attunement.entries.some((e) => e.asks || e.attuned),
+  );
+
+  /** The attunement chip of each gear row, from the entry of the piece that names it. */
+  protected readonly chipOf = computed(() => {
+    const pieces = new Map(
+      this.sheet()
+        .attunement.entries.filter((e) => e.kind === 'piece' && e.gearKey)
+        .map((e) => [e.gearKey, e] as const),
+    );
+    return (g: GearVm): AttunementChip => {
+      const e = pieces.get(g.key);
+      if (!e) {
+        return '';
+      }
+      return e.attuned ? 'on' : e.asks ? 'asks' : '';
+    };
+  });
+
+  /** Some gear row carries an attunement chip: the legend says what the two look like. */
+  protected readonly showsChips = computed(() => {
+    const chip = this.chipOf();
+    return this.sheet().gear.some((g) => chip(g) !== '');
+  });
+
+  /** The line under a magic item that asks and is not attuned, with its icon; the same words as the short-rest sheet. */
+  protected reasonOfEntry(e: AttunementEntryVm) {
+    if (e.attuned || !e.asks) {
+      return null;
+    }
+    const why = reasonOf(e, { viewer: this.viewer(), name: this.characterName() });
+    return why.reason === '' ? null : why;
+  }
+
+  protected iconOf(e: AttunementEntryVm): string {
+    return this.categories.iconOf(e.key);
+  }
+
+  protected pill(e: AttunementEntryVm): string {
+    if (e.attuned) {
+      return 'Sintonizado';
+    }
+    return e.asks ? 'Pede sintonização' : '';
+  }
 
   /** The sheet lists a weapon: there is something to mark. */
   protected readonly hasWeapons = computed(() =>

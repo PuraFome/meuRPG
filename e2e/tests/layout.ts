@@ -18,13 +18,22 @@ import { expect, type Page } from '@playwright/test';
 // 4. Inside a card (`.mr-panel`), no button or link sits outside the card's
 //    box: a row whose columns do not shrink pushed "⋮" and "Revelar aos
 //    jogadores" out of the initiative card beside the session's side panels.
+// 5. A form field's floating label keeps at least 4px (capitals to baseline)
+//    from the words just above it: the outline of the field pushes the label
+//    up over its own box, so a heading placed right over the field touched it
+//    ("Dano a mais" over "Dados", #577). The approved board leaves about
+//    13px; under 4px the two read as touching.
+// 6. An attunement chip on a gear row stays on the line of the words before it: a narrow column wraps the name and the
+//    chip follows its last word; a chip alone on a line under the name is a finding (#561).
+// 7. The heading of a section with a count beside it ("Sintonização" and "Sintonizados: 2 de 3") shares a baseline with
+//    it, within 1px (#561).
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'off-centre' | 'overlap' | 'tile' | 'outside-card';
+  kind: 'icon-text' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch';
   where: string;
   detail: string;
 }
@@ -41,7 +50,7 @@ function auditLayout(): LayoutIssue[] {
     const cs = getComputedStyle(el);
     return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) !== 0;
   };
-  const describe = (el: Element): string => {
+  const describeEl = (el: Element): string => {
     const name = (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim();
     return `<${el.tagName.toLowerCase()}> "${name.slice(0, 50)}"`;
   };
@@ -104,7 +113,7 @@ function auditLayout(): LayoutIssue[] {
     if (Math.abs(d) > 1) {
       issues.push({
         kind: 'icon-text',
-        where: describe(row),
+        where: describeEl(row),
         detail: `the icon's middle is ${Math.abs(d).toFixed(1)}px ${d > 0 ? 'below' : 'above'} the middle of the capitals`,
       });
     }
@@ -131,7 +140,7 @@ function auditLayout(): LayoutIssue[] {
     if (Math.abs(d) > 2) {
       issues.push({
         kind: 'off-centre',
-        where: describe(c),
+        where: describeEl(c),
         detail: `the content is ${Math.abs(d).toFixed(1)}px ${d > 0 ? 'below' : 'above'} the middle`,
       });
     }
@@ -152,7 +161,7 @@ function auditLayout(): LayoutIssue[] {
         if (x > 2 && y > 2) {
           issues.push({
             kind: 'overlap',
-            where: describe(scope),
+            where: describeEl(scope),
             detail: `"${n.textContent!.trim().slice(0, 30)}" runs ${x.toFixed(0)}px over the icon "${icon.textContent!.trim()}"`,
           });
         }
@@ -177,7 +186,7 @@ function auditLayout(): LayoutIssue[] {
     if (top < 6 || bottom < 6) {
       issues.push({
         kind: 'tile',
-        where: describe(tile),
+        where: describeEl(tile),
         detail: `the words are ${top.toFixed(0)}px from the top edge and ${bottom.toFixed(0)}px from the bottom one (at least 6px each)`,
       });
     }
@@ -203,6 +212,104 @@ function auditLayout(): LayoutIssue[] {
           detail: `sticks out of its card by ${Math.max(r.right - cb.right, cb.left - r.left).toFixed(0)}px`,
         });
       }
+    }
+  }
+
+  // 5. A floating label keeps clear of the words above it. Measured from the
+  //    baseline of those words to the top of the label's capitals (the label
+  //    is scaled down, so its band is scaled the same way). Only words that
+  //    overlap the label's columns and end above the label's capitals count
+  //    (words beside it or under it are not "above"); the field's own words,
+  //    an open menu and a bar that floats over the page are left out.
+  const MIN_LABEL_GAP = 4;
+  // 6. A gear row's attunement chip is on the last line of the words before it.
+  for (const chip of document.querySelectorAll('.gear-row__att')) {
+    if (!visible(chip)) continue;
+    const before = chip.previousElementSibling ?? chip.parentElement?.firstElementChild;
+    if (!before || before === chip) continue;
+    const rects = [...before.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+    if (rects.length === 0) continue;
+    const last = rects[rects.length - 1];
+    const c = chip.getBoundingClientRect();
+    const middle = c.top + c.height / 2;
+    if (middle > last.bottom + 1 || middle < last.top - 1) {
+      issues.push({
+        kind: 'chip-alone',
+        where: describeEl(chip.closest('.gear-row') ?? chip),
+        detail: `the chip's middle is at ${middle.toFixed(0)}px and the words before it end on a line from ${last.top.toFixed(0)}px to ${last.bottom.toFixed(0)}px: it sits on a line of its own`,
+      });
+    }
+  }
+
+  // 7. The heading and the count of a section head share a baseline.
+  for (const head of document.querySelectorAll('.att__head')) {
+    if (!visible(head)) continue;
+    const title = head.querySelector('.att__title');
+    const count = head.querySelector('.att__count');
+    if (!title || !count) continue;
+    const baselineOf = (el: Element): number | null => {
+      const node = textNodesOf(el).filter((n) => n.parentElement!.closest('.mat-icon') === null)[0];
+      if (!node) return null;
+      return capitals(node)?.bottom ?? null;
+    };
+    const a = baselineOf(title);
+    const b = baselineOf(count);
+    if (a !== null && b !== null && Math.abs(a - b) > 1) {
+      issues.push({
+        kind: 'head-baseline',
+        where: describeEl(head),
+        detail: `the heading's baseline is at ${a.toFixed(1)}px and the count's at ${b.toFixed(1)}px (within 1px)`,
+      });
+    }
+  }
+
+  // Every line of words on the page, once: its columns and the baseline of its capitals.
+  let all: { node: Text; left: number; right: number; baseline: number }[] | null = null;
+  const lines = () => {
+    if (all) return all;
+    all = [];
+    for (const node of textNodesOf(document.body)) {
+      // Words in an open menu or in a bar that stays on the screen while the page scrolls lie over the form, not above a field.
+      if (node.parentElement!.closest('.cdk-overlay-container')) continue;
+      let floating = false;
+      for (let e: Element | null = node.parentElement; e && !floating; e = e.parentElement) floating = ['fixed', 'sticky'].includes(getComputedStyle(e).position);
+      if (floating) continue;
+      const cap = capitals(node);
+      if (!cap) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const rects = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+      for (const r of rects) all.push({ node, left: r.left, right: r.right, baseline: r.top + (cap.bottom - rects[0].top) });
+    }
+    return all;
+  };
+  for (const label of document.querySelectorAll('.mdc-floating-label--float-above')) {
+    const field = label.closest('mat-form-field, .mat-mdc-form-field');
+    if (!field || !visible(label) || !label.textContent?.trim()) continue;
+    const lnode = textNodesOf(label)[0];
+    if (!lnode) continue;
+    const lr = document.createRange();
+    lr.selectNodeContents(lnode);
+    const lrect = [...lr.getClientRects()].find((r) => r.width > 0 && r.height > 0);
+    if (!lrect) continue;
+    const lcs = getComputedStyle(lnode.parentElement!);
+    ctx.font = `${lcs.fontStyle} ${lcs.fontWeight} ${lcs.fontSize} ${lcs.fontFamily}`;
+    const lh = ctx.measureText('H');
+    const scale = lrect.height / (lh.fontBoundingBoxAscent + lh.fontBoundingBoxDescent);
+    const capTop = lrect.top + (lh.fontBoundingBoxAscent - lh.actualBoundingBoxAscent) * scale;
+    let nearest: { baseline: number; text: string } | null = null;
+    for (const l of lines()) {
+      if (field.contains(l.node)) continue;
+      if (l.right <= lrect.left || l.left >= lrect.right) continue;
+      if (l.baseline > capTop) continue;
+      if (!nearest || l.baseline > nearest.baseline) nearest = { baseline: l.baseline, text: l.node.textContent!.trim().slice(0, 30) };
+    }
+    if (nearest && capTop - nearest.baseline < MIN_LABEL_GAP) {
+      issues.push({
+        kind: 'label-touch',
+        where: `<${field.tagName.toLowerCase()}> "${(field.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 50)}"`,
+        detail: `the label "${label.textContent!.trim()}" is ${(capTop - nearest.baseline).toFixed(1)}px under "${nearest.text}" (at least ${MIN_LABEL_GAP}px)`,
+      });
     }
   }
   return issues;

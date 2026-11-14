@@ -148,6 +148,16 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   Leaving it gives the old target and range back while they are still the caster's (`beforeSummon`).
   `summonRefusals` says before the save what the server refuses, on the field the master changes.
   Those are a cantrip, a ritual, a target other than the caster, a stored zone, and a stored effect that is for those who fail a save or are hit or that has an instantaneous duration.
+- **The spell's "Efeito no próximo golpe"** (`core/content/hit-effect-draft`, `core/content/hit-effect-read`, `pages/content/spell-editor/hit-effect-block`, `core/content/content-violation-texts-hit`) edits the `weapon_hit_damage` modifier of `TableSpell.effect`.
+  The draft edits only that modifier.
+  `applyHit` writes it back in its own place and leaves the rest of the stored `kept.effect` alone: the other modifiers, the conditions, `applies`, the audience and the label.
+  An effect left with no modifier and no condition is not sent.
+  The cap "No máximo" is required, from 1 to 20, and the form says so before the save.
+  The block is off for an instantaneous spell, and says why.
+  The marked target is locked unless the target is "Uma criatura" with no extra targets per level (a cantrip has none, so a stale count there does not lock).
+  When a change locks it, the trigger moves to "Próximo golpe com arma" and the block says so in a polite live region.
+  "Cada golpe enquanto durar" and the marked target need concentration; the block says so while it is off.
+  A refusal of the server lands at the field, and the read view and the editor's preview share `readHit`.
   "Salvar magia" stops and lands on the first of them.
   A refusal at `table_spell.summon.*` sits under its own field (`SPELL_SUMMON_TEXTS`).
   The preview and the read view add "Invoca: Lobo do Vale, Lobo." from `summonLine`.

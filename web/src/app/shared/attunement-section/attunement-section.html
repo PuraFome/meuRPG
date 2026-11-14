@@ -1,0 +1,73 @@
+@let s = section();
+<section class="att" [attr.aria-label]="bare() ? 'Sintonização' : null" [attr.aria-labelledby]="bare() ? null : headingId">
+  @if (bare()) {
+    <p class="att__lead mr-muted" [id]="headingId">{{ s.count }} · {{ lowerFirst(s.lead) }}</p>
+  } @else {
+    <header class="att__head">
+      <h3 class="att__title" [id]="headingId"><mat-icon aria-hidden="true">link</mat-icon>{{ s.title }}</h3>
+      <span class="att__count">{{ s.count }}</span>
+    </header>
+    <p class="att__lead mr-muted">{{ s.lead }}</p>
+  }
+  <p class="att__status" role="status">{{ status() }}</p>
+  @if (error()) {
+    <p class="att__error" role="alert">
+      <mat-icon aria-hidden="true">error_outline</mat-icon>
+      <span>{{ error() }}</span>
+    </p>
+  }
+  @if (s.empty) {
+    <p class="att__empty mr-muted">{{ s.empty }}</p>
+  }
+  @if (s.asking.length > 0) {
+    <h4 class="att__group">Pedem sintonização</h4>
+    @if (s.limitLine) {
+      <p class="att__limit" [id]="limitId"><mat-icon aria-hidden="true">block</mat-icon><span><strong>Limite de 3 itens.</strong>{{ limitRest() }}</span></p>
+    }
+    <ul class="att__rows">
+      @for (r of s.asking; track r.entry.id) {
+        <ng-container *ngTemplateOutlet="row; context: { $implicit: r }" />
+      }
+    </ul>
+  }
+  @if (s.attuned.length > 0) {
+    <h4 class="att__group">Sintonizados</h4>
+    <ul class="att__rows">
+      @for (r of s.attuned; track r.entry.id) {
+        <ng-container *ngTemplateOutlet="row; context: { $implicit: r }" />
+      }
+    </ul>
+  }
+</section>
+
+<ng-template #row let-r>
+  <li class="att-row">
+    <mat-icon class="att-row__icon" aria-hidden="true">{{ icon(r.entry) }}</mat-icon>
+    <span class="att-row__name">{{ r.entry.namePt }}</span>
+    @if (r.button !== 'none') {
+      <button
+        type="button"
+        matButton="outlined"
+        class="att-row__button"
+        [class.att-row__button--dashed]="r.button === 'dashed'"
+        [disabled]="r.button === 'dashed' || busyId() !== null"
+        [disabledInteractive]="true"
+        [attr.aria-busy]="busyId() === r.entry.id ? 'true' : null"
+        [attr.aria-describedby]="r.reason ? reasonId(r) : r.button === 'dashed' && s.limitLine ? limitId : null"
+        [attr.aria-label]="r.verb + ' ' + r.entry.namePt"
+        [attr.data-entry-id]="r.entry.id"
+        (click)="tap(r)"
+      >
+        @if (busyId() === r.entry.id) {
+          <mat-spinner diameter="16" aria-hidden="true" />
+        }
+        {{ r.verb }}
+      </button>
+    }
+    @if (r.reason) {
+      <span class="att-row__reason mr-muted" [id]="reasonId(r)">
+        <mat-icon aria-hidden="true">{{ r.reasonIcon }}</mat-icon>{{ r.reason }}
+      </span>
+    }
+  </li>
+</ng-template>

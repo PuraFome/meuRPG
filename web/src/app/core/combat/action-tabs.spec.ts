@@ -163,10 +163,10 @@ describe('actionTabs', () => {
     ).toContain('class');
   });
 
-  it('keeps "Magias" for a beast even with no spell to show, so the tab says why', () => {
-    const tabs = actionTabs({ ...counts, spells: 0 }, 'Druida', { beast: true });
-    expect(tabs.map((t) => t.id)).toContain('spells');
-    expect(actionTabs({ ...counts, spells: 0 }, 'Druida').map((t) => t.id)).not.toContain('spells');
+  it('has no "Magias" in a beast\'s shape, and the class tab keeps its name (584-01)', () => {
+    const tabs = actionTabs({ ...counts, spells: 3, features: 2 }, 'Druida', { beast: true });
+    expect(tabs.map((t) => t.id)).toEqual(['attacks', 'class', 'other']);
+    expect(tabs.find((t) => t.id === 'class')).toMatchObject({ label: 'Druida', badge: '2' });
   });
 
   it('says one in the singular', () => {
