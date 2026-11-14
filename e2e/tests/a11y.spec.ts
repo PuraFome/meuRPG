@@ -28,7 +28,7 @@ import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog }
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
 import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser, openActionTab, openCombatLog, openFoldedPanel, openSpentGroup, openXpHistory, viaTargetList } from './support';
-import { FAVOR_WIDTHS, favorShotScale, favorViewport, holdersRPC, shootFavor } from './favor-support';
+import { FAVOR_WIDTHS, favorBox, favorCheck, favorShotScale, favorViewport, holdersRPC, setConditionsRPC, shootFavor, tickFavor, grantFavorRPC } from './favor-support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
@@ -13241,10 +13241,144 @@ async function scanFavorScreens(browser: Browser, colorScheme: 'light' | 'dark')
   }
 }
 
+/**
+ * The spend box "Inspiração do mestre" in the attack sheet (#581, RN-43, boards 581-03 and 581-07): open and unticked; ticked, with the
+ * roll-mode segment only reading ("pela Inspiração", the other cells dashed); with a disadvantage, reading Normal; dashed when the target
+ * already gives advantage; dashed when the master acts for the player; dashed when the read fails; and, after the roll, the result's
+ * "Vantagem: Inspiração" with the log line "Pensantus usou a Inspiração.". Every state is scanned and photographed at 390, 768 and 1280.
+ * The other sheets share the one component and the one helper, and their wiring is in the specs of each sheet.
+ */
+async function scanFavorSpend(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = favorViewport(1280);
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport, colorScheme, ...favorShotScale });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport, colorScheme, ...favorShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  const everyWidth = async (page: Page, name: string, what: string, at: () => Locator) => {
+    for (const width of FAVOR_WIDTHS) {
+      await page.setViewportSize(favorViewport(width));
+      await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+      await shootFavor(page, name, width, colorScheme, at());
+    }
+  };
+  // Pensantus attacks Goblin 1 with Raio de Fogo; the sheet is open on the "Rolar" step when this returns.
+  const openAttack = async (page: Page): Promise<Locator> => {
+    await page.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await viaTargetList(page, page.getByRole('dialog'));
+    await page.locator('label', { hasText: 'Goblin 1' }).click();
+    await expect(page.getByRole('heading', { name: 'Como rolar o d20' })).toBeVisible();
+    return page.getByRole('dialog');
+  };
+  const closeSheet = async (page: Page) => {
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  };
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade gasto da Inspiração ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    let enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await grantFavorRPC(m, campaignId, table.characterId);
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await expect(p.locator('app-favor-chip')).toHaveCount(1);
+
+    // Open, unticked: the box above "Como rolar o d20", the hint, and the segment as the server suggests.
+    let sheet = await openAttack(p);
+    await expect(favorBox(sheet)).toContainText('Vantagem nesta jogada · ela sai da sua ficha');
+    await expect(favorCheck(sheet)).not.toBeChecked();
+    await expect(sheet.getByText('pela Inspiração')).toHaveCount(0);
+    await everyWidth(p, 'gasto-aberta', 'Atacar, a caixa "Inspiração do mestre" desmarcada', () => favorBox(sheet));
+
+    // Ticked: the segment only reads the mode, the other cells dashed, and the reason says how to choose again.
+    await tickFavor(sheet);
+    await expect(sheet.getByText('Desmarque a caixa')).toBeVisible();
+    await expect(sheet.getByRole('radio', { name: /Normal/ })).toBeDisabled();
+    await everyWidth(p, 'gasto-marcada', 'Atacar, a caixa marcada: o modo só é lido, "pela Inspiração"', () => favorBox(sheet));
+    await favorCheck(sheet).uncheck();
+    await closeSheet(p);
+
+    // With a disadvantage (Envenenado), the mode reads Normal and says they cancel.
+    enc = await setConditionsRPC(m, campaignId, enc, 'Pensantus', ['condition:poisoned']);
+    await waitForEncounterRevision([m, p], enc);
+    await expect(p.getByText('Envenenado').first()).toBeVisible();
+    sheet = await openAttack(p);
+    await tickFavor(sheet);
+    await expect(sheet.getByText(/Desvantagem \(.*\) e Inspiração se anulam: um d20\. Desmarque a caixa para voltar a desvantagem\./)).toBeVisible();
+    await everyWidth(p, 'gasto-desvantagem', 'Atacar com desvantagem, a caixa marcada: o modo lê Normal', () => favorBox(sheet));
+    await favorCheck(sheet).uncheck();
+    await closeSheet(p);
+    enc = await setConditionsRPC(m, campaignId, enc, 'Pensantus', []);
+    await waitForEncounterRevision([m, p], enc);
+
+    // Dashed with the reason when the target already gives advantage (Contido), still reachable and not ticked by a click.
+    enc = await setConditionsRPC(m, campaignId, enc, 'Goblin 1', ['condition:restrained']);
+    await waitForEncounterRevision([m, p], enc);
+    sheet = await openAttack(p);
+    await expect(favorCheck(sheet)).toHaveAttribute('aria-disabled', 'true');
+    await expect(favorBox(sheet)).toContainText('A Inspiração não mudaria esta rolagem: ela já tem vantagem');
+    await favorCheck(sheet).click();
+    await expect(favorCheck(sheet)).not.toBeChecked();
+    await everyWidth(p, 'gasto-ja-tem-vantagem', 'Atacar, a caixa tracejada: o alvo já dá vantagem', () => favorBox(sheet));
+    await closeSheet(p);
+    enc = await setConditionsRPC(m, campaignId, enc, 'Goblin 1', []);
+    await waitForEncounterRevision([m, p], enc);
+
+    // Dashed when the master acts for the player: only the player spends their Inspiração.
+    await m.getByRole('button', { name: 'Agir por Pensantus' }).click();
+    await expect(m.getByText('Você está agindo por Pensantus')).toBeVisible();
+    const byMaster = await openAttack(m);
+    await expect(favorBox(byMaster)).toContainText('O mestre agindo por Pensantus');
+    await expect(favorBox(byMaster)).toContainText('Só a jogadora pode usar a Inspiração dela.');
+    await expect(favorCheck(byMaster)).toHaveAttribute('aria-disabled', 'true');
+    await everyWidth(m, 'gasto-mestre-age', 'Atacar pelo mestre, a caixa tracejada: só a jogadora usa a Inspiração', () => favorBox(byMaster));
+    await closeSheet(m);
+    await m.getByRole('button', { name: 'Voltar ao mestre' }).click();
+
+    // The read fails: the box is there, dashed, with the reason; the roll goes on without it.
+    await p.route('**/meurpg.play.v1.FavorService/GetFavor', (route) => route.abort());
+    await openSessionPage(p, campaignId);
+    sheet = await openAttack(p);
+    await expect(favorBox(sheet)).toContainText('Não deu para ler a Inspiração agora. Tente de novo em instantes.');
+    await expect(favorCheck(sheet)).toHaveAttribute('aria-disabled', 'true');
+    await everyWidth(p, 'gasto-sem-leitura', 'Atacar, a caixa tracejada: a leitura da Inspiração falhou', () => favorBox(sheet));
+    await closeSheet(p);
+    await p.unroute('**/meurpg.play.v1.FavorService/GetFavor');
+    await openSessionPage(p, campaignId);
+
+    // The roll: "Vantagem: Inspiração" under the result, the Inspiração leaves the sheet, and the log says so.
+    await p.setViewportSize(favorViewport(1280));
+    sheet = await openAttack(p);
+    await tickFavor(sheet);
+    await sheet.getByRole('button', { name: /^Rolar 2d20 no app/ }).click();
+    await expect(sheet.getByText(/Acertou|Errou|Crítico/).first()).toBeVisible();
+    await expect(sheet.getByText('Vantagem: Inspiração')).toBeVisible();
+    expect(await holdersRPC(m, campaignId)).toEqual([]);
+    await everyWidth(p, 'gasto-resultado', 'Atacar, o resultado com "Vantagem: Inspiração"', () => sheet.locator('app-attack-result'));
+    await p.setViewportSize(favorViewport(1280));
+    await closeSheet(p);
+    await expect(p.locator('app-favor-chip')).toHaveCount(0);
+    const log = await openCombatLog(p);
+    await expect(log).toContainText('Pensantus usou a Inspiração.');
+    await expectScreenPasses(p, `O registro, "Pensantus usou a Inspiração." (${colorScheme})`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
 for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
   test(`a Inspiração do mestre passa no axe e nas conferências de layout no tema ${theme}: o Grupo, a ordem, a faixa do jogador, o aviso, o painel da ficha e a leitura que falha, em 390, 768 e 1280`, { tag: ['@a11y', '@RN-43', '@RN-10'] }, async ({ browser }) => {
     test.setTimeout(720_000);
     await scanFavorScreens(browser, colorScheme);
+  });
+  test(`a caixa "Inspiração do mestre" da folha de ataque passa no axe e nas conferências de layout no tema ${theme}: aberta, marcada, com desvantagem, tracejada (vantagem já dada, o mestre age, leitura que falha) e o resultado, em 390, 768 e 1280`, { tag: ['@a11y', '@RN-43', '@RN-10'] }, async ({ browser }) => {
+    test.setTimeout(720_000);
+    await scanFavorSpend(browser, colorScheme);
   });
   for (const width of [390, 1280]) {
     test(`usar característica com oito alvos passa no axe e mantém "Usar" à vista no tema ${theme}, em ${width}`, { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {

@@ -22,6 +22,7 @@ import type {
 import { type TypedEntry, typedEntries } from '../../../../core/combat/typed-fields';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
 import type { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import { type HeldAnswer, asksLucky } from '../../../../core/held-rolls/held-roll-offer';
 import { dieFields, genericDieFields, rollDiceOf } from '../../../../core/effects/effects';
@@ -85,6 +86,8 @@ export class AttackRolls {
       readonly attack: Attack;
       readonly name: string;
       readonly modeChoice: () => ModeChoice | undefined;
+      /** The box of the master's Inspiração: ticked, the roll spends it and sends no mode of its own. */
+      readonly fav?: FavorSpend;
     },
   ) {
     this.maneuverDice.set(s.data.maneuverDice ?? []);
@@ -113,7 +116,8 @@ export class AttackRolls {
       this.s.busy,
       this.s.error,
       async () => {
-        const mode = this.host.modeChoice();
+        const spend = this.host.fav?.spend() ?? false;
+        const mode = spend ? undefined : this.host.modeChoice();
         const res = await this.host.api.attacks.rollAttack(
           data.campaignId,
           data.encounterId,
@@ -128,6 +132,7 @@ export class AttackRolls {
             extra,
             spend: data.useExtraAction,
             maneuver: maneuverKey,
+            favor: spend,
           }),
           data.asReaction ?? false,
           data.opportunity?.offerId ?? '',
@@ -138,6 +143,7 @@ export class AttackRolls {
             useExtraAction: data.useExtraAction ?? false,
             ...(maneuverKey ? { maneuverKey } : {}),
             legendaryOption: data.legendary?.option ?? '',
+            ...(spend ? { spendFavor: true } : {}),
           },
         );
         data.state.apply(res.encounter);
@@ -280,6 +286,11 @@ export class AttackRolls {
   }
 
   private fail(err: unknown): void {
+    const refused = this.host.fav?.refused(err);
+    if (refused !== null && refused !== undefined) {
+      this.s.error.set(refused);
+      return;
+    }
     const die = this.extra.maneuver();
     if (die && resourceBlocked(err)?.reason === ResourceBlockedReason.NO_USES_LEFT) {
       // The sheet was older than the table: nothing was spent; the offer shows the uses as they are now.

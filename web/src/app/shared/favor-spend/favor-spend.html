@@ -1,0 +1,24 @@
+@if (view()) {
+  <section class="favor" [attr.aria-labelledby]="id + '-t'">
+    <h3 class="favor__title" [id]="id + '-t'">Inspiração do mestre</h3>
+    <label class="favor__box" [class.favor__box--on]="on()" [class.favor__box--off]="off()">
+      <input
+        type="checkbox"
+        class="mr-check-input favor__check"
+        [checked]="on()"
+        [attr.aria-disabled]="off() ? 'true' : null"
+        [attr.aria-describedby]="describedBy()"
+        (click)="toggle($event)"
+      />
+      <span class="favor__text">
+        <b class="favor__label">Usar a Inspiração</b>
+        <span class="favor__hint" [id]="id + '-hint'">{{ sub() }}</span>
+        @if (reason()) {
+          <span class="favor__why" [id]="id + '-why'">
+            <mat-icon aria-hidden="true">block</mat-icon>{{ reason() }}
+          </span>
+        }
+      </span>
+    </label>
+  </section>
+}

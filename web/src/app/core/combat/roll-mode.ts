@@ -70,9 +70,44 @@ export function sourceWord(source: AdvantageSource): string {
  * "Outra fonte" (an effect the master keeps from the players) and the advantage an active effect gives on a saving throw or an
  * ability check ("Efeito ativo: vantagem em testes de habilidade") are the server's sentence as it is: it already says what they are. */
 export function sourceLine(source: AdvantageSource): string {
+  if (source.kind === AdvantageSourceKind.FAVOR) {
+    return `Vantagem: ${sourceLabel(source)}`;
+  }
   return SENTENCE_SOURCES.has(source.kind)
     ? source.textPt
     : `${sourceWord(source)}: ${source.textPt}`;
+}
+
+/** How a source that is only a label reads in "Vantagem: Inspiração, Outra fonte": the master's Inspiração the roller spent, and a
+ * source the master keeps from the players (always "Outra fonte", never what it is). `null` for every other kind. */
+export function sourceLabel(source: AdvantageSource): string | null {
+  switch (source.kind) {
+    case AdvantageSourceKind.FAVOR:
+      return 'Inspiração';
+    case AdvantageSourceKind.OTHER_SOURCE:
+      return 'Outra fonte';
+    default:
+      return null;
+  }
+}
+
+/** The lines under a roll for its sources. A roll made with the Inspiração reads as the board has it, the labels of one side on one
+ * line ("Vantagem: Inspiração, Outra fonte"); any other roll reads each source with `sourceLine`, as before. */
+export function sourceLines(all: readonly AdvantageSource[] | undefined): string[] {
+  const sources = all ?? [];
+  if (!sources.some((s) => s.kind === AdvantageSourceKind.FAVOR)) {
+    return sources.map(sourceLine);
+  }
+  const lines: string[] = [];
+  for (const effect of [RollMode.ADVANTAGE, RollMode.DISADVANTAGE]) {
+    const labels = sources.filter((s) => s.effect === effect).flatMap((s) => sourceLabel(s) ?? []);
+    if (labels.length > 0) {
+      lines.push(
+        `${effect === RollMode.ADVANTAGE ? 'Vantagem' : 'Desvantagem'}: ${labels.join(', ')}`,
+      );
+    }
+  }
+  return [...lines, ...sources.filter((s) => sourceLabel(s) === null).map(sourceLine)];
 }
 
 /** The lines "Bênção +1d4: 3" for the dice an effect added to a roll, named after the effect. A roll whose sources already

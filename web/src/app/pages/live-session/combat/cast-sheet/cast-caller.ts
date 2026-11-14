@@ -10,6 +10,7 @@ import { newKey } from '../../../../core/connect/idempotency';
 import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import { metamagicChoices } from '../../../../core/resources/metamagic';
 import type { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
 import { runBusy } from '../../../../shared/sheet/run-busy';
 import type { CastArea } from './cast-area';
 import type { CastChoices } from './cast-choices';
@@ -17,6 +18,8 @@ import type { CastDamage } from './cast-damage';
 import type { CastQuestions } from './cast-questions';
 import { castShow, castTargetsOf } from './cast-sheet-view';
 import type { CastState } from './cast-state';
+import type { CastExtras } from '../../../../core/combat/combat-client-types';
+import type { Square } from '../../../../core/combat/combat-grid';
 
 /** The request that casts the spell, and what the sheet does with its answer. Plain class the cast sheet builds. */
 export class CastCaller {
@@ -32,6 +35,8 @@ export class CastCaller {
     private readonly host: {
       readonly api: CombatClient;
       readonly animator: Pick<RollAnimator, 'play'>;
+      /** The box of the master's Inspiração: ticked, the cast spends it and sends no mode of its own. */
+      readonly fav?: FavorSpend;
     },
   ) {}
 
@@ -92,6 +97,7 @@ export class CastCaller {
             ])
           : this.castKey;
         const picked = this.s.picked();
+        const spend = this.host.fav?.spend() ?? false;
         const destination = this.s.teleportFt > 0 ? this.s.destination() : null;
         const res = await this.host.api.casts.castSpell(
           data.campaignId,
@@ -110,27 +116,40 @@ export class CastCaller {
           key,
           undefined,
           this.choices.damageType(),
-          this.choices.kind() === 'attack' && picked !== null
+          this.choices.kind() === 'attack' && picked !== null && !spend
             ? { mode: picked, reason: this.s.reason().trim() }
             : undefined,
           metamagicChoices(this.s.chosenMeta(), this.s.picks()),
-          {
-            ...this.area.extras(),
-            ...(this.choices.asksAbility ? { abilityKey: this.s.ability() } : {}),
-            ...(sculpted.length ? { sculptedIds: sculpted } : {}),
-            ...(this.s.tablePicks().length ? { spellOptions: this.s.tablePicks() } : {}),
-            ...(destination ? { destination } : {}),
-            ...(data.grant ? { grantedBy: data.grant.sourceKey } : {}),
-          },
+          this.extras(sculpted, destination, spend),
         );
         this.show(res.encounter, res.cast);
       },
       (err) => {
         if (!this.questions.asks(err)) {
-          this.s.error.set(combatErrorMessage(err, 'conjurar a magia'));
+          this.s.error.set(
+            this.host.fav?.refused(err) ?? combatErrorMessage(err, 'conjurar a magia'),
+          );
         }
       },
     );
+  }
+
+  /** What a cast adds to the request beyond the spell, the slot and the targets. */
+  private extras(
+    sculpted: readonly string[],
+    destination: Square | null,
+    spend: boolean,
+  ): CastExtras {
+    const { data } = this.s;
+    return {
+      ...this.area.extras(),
+      ...(this.choices.asksAbility ? { abilityKey: this.s.ability() } : {}),
+      ...(sculpted.length ? { sculptedIds: sculpted } : {}),
+      ...(this.s.tablePicks().length ? { spellOptions: this.s.tablePicks() } : {}),
+      ...(destination ? { destination } : {}),
+      ...(data.grant ? { grantedBy: data.grant.sourceKey } : {}),
+      ...(spend ? { spendFavor: true } : {}),
+    };
   }
 
   /** The cast as the result step shows it. */

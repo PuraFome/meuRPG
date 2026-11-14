@@ -38,6 +38,7 @@ import { heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
 import { HeldVanishWatch } from '../../../../core/held-rolls/held-vanish';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { metersText } from '../../../../core/units';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { RollDieOffer } from '../../../../shared/roll-die-offer/roll-die-offer';
@@ -49,6 +50,7 @@ import { DamageParts } from '../damage-parts/damage-parts';
 import { MultiRoll, type RollField } from '../../../../shared/multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { AttackDamage } from './attack-damage';
+import { attackFavor } from './attack-favor';
 import { AttackMode } from './attack-mode';
 import { BonusChip } from '../../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../../shared/weapon-tags/weapon-tags';
@@ -95,6 +97,7 @@ export type { AttackSheetData } from './attack-sheet-types';
     CombatantToken,
     DamageParts,
     ExtraDice,
+    FavorSpendBox,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
@@ -140,7 +143,12 @@ export class AttackSheet {
     busy: this.s.busy,
     error: this.s.error,
   });
-  protected readonly mode = new AttackMode(this.s, this.modes);
+  protected readonly fav = attackFavor(
+    this.data,
+    () => this.mode,
+    () => this.modes,
+  );
+  protected readonly mode: AttackMode = new AttackMode(this.s, this.modes, this.fav);
   protected readonly outcome = computed(() => outcomeOf(this.s.roll(), this.s.asking()));
   /** After a miss: the caster's own hit effects that still wait for a weapon hit, one sentence each (#577). */
   protected readonly waitingEffects = computed(() => {
@@ -162,6 +170,7 @@ export class AttackSheet {
     attack: this.attack,
     name: this.name,
     modeChoice: () => this.mode.choice(),
+    fav: this.fav,
   });
   protected readonly extraFields = this.rolls.extraFields;
   /** What the player types with physical dice besides the d20: the effects' d4, then the table die ticked. */

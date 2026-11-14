@@ -16,6 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import type { ReactionWindow } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import { type SlotRow, defaultSlot, lastSlotWarning } from '../../../../core/combat/cast-flow';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -40,7 +41,11 @@ import {
   playerRollingText,
   playerSecondsLeft,
 } from '../../../../core/combat/reaction-autopass';
+import { isPlayer } from '../../../../core/combat/combat-view';
+import { FavorSpend, circumstancesOfPrompt } from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
 import { ResourceClient } from '../../../../core/resources/resources-client';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { SlotPicker } from '../../../../shared/slot-picker/slot-picker';
 import { RollAnimator } from '../../../../shared/roll-overlay/roll-animator';
@@ -97,6 +102,7 @@ const ARROWS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
     HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
+    FavorSpendBox,
     MultiRoll,
     NgTemplateOutlet,
     RollDieOffer,
@@ -117,6 +123,26 @@ export class ReactionSheet {
   /** The window being asked: the first one, then the second step the answer opened. */
   protected readonly asked = signal<ReactionWindow>(this.data.window);
 
+  /** The master's Inspiração (RN-43) for the concentration save: a player's character that is asked for it. */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => {
+      const p = this.asked().prompt;
+      const me = this.data.state
+        .encounter()
+        ?.combatants.find((c) => c.id === this.asked().reactorId);
+      return p.case === 'concentrationSave' && me && isPlayer(me)
+        ? { characterId: me.characterId, name: me.label }
+        : null;
+    },
+    circumstances: () => {
+      const p = this.asked().prompt;
+      return p.case === 'concentrationSave'
+        ? circumstancesOfPrompt(p.value.mode, p.value.modeSourcesPt)
+        : null;
+    },
+  });
+
   /** The calls and what they leave: the step, what is in the air, what came back (`ReactionFlow`). */
   private readonly flow = new ReactionFlow({
     data: this.data,
@@ -126,6 +152,7 @@ export class ReactionSheet {
     close: (result) => this.sheet.close(result),
     asked: () => this.asked(),
     chosen: () => this.chosen(),
+    fav: this.fav,
   });
   protected readonly busy = this.flow.busy;
   protected readonly error = this.flow.error;
@@ -184,6 +211,15 @@ export class ReactionSheet {
   /** The mode of the concentration save the server will roll with, and the d20 a typed answer takes. */
   protected readonly concentrationMode = computed<ConcentrationMode>(() => {
     const p = this.asked().prompt;
+    // With the Inspiração ticked the save is rolled with the mode it gives, and a typed answer takes that many d20.
+    const given = this.fav.mode();
+    if (given !== null) {
+      return given === RollMode.ADVANTAGE
+        ? 'advantage'
+        : given === RollMode.DISADVANTAGE
+          ? 'disadvantage'
+          : 'normal';
+    }
     return p.case === 'concentrationSave' ? concentrationMode(p.value) : 'normal';
   });
   protected readonly concentrationDice = computed(() =>

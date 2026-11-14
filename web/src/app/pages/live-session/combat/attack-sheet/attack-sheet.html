@@ -91,12 +91,14 @@
         }
       </div>
       @if (mode.hasMode()) {
+        <app-favor-spend [control]="fav" [busy]="s.busy()" />
         <app-roll-mode-picker
           [suggested]="mode.suggested()"
           [sources]="mode.sources()"
           [approval]="mode.approval"
           [request]="modes.request()"
           [mode]="mode.chosen()"
+          [lock]="fav.lock()"
           (modeChange)="mode.set($event)"
           [(reason)]="modes.reason"
           [busy]="s.busy()"

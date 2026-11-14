@@ -29,9 +29,11 @@ export interface FavorNote {
  * `ready` and after a lost hint. The master's read has every holder of the campaign; a player's only their own characters, so the
  * same code shows the master the badges and the player the chip, and never anything about another player (RN-10).
  *
- * A read that fails shows nothing: no badge, no chip, no box, and a roll goes on without the Inspiração. The page that shows
- * a session (the session page, the character sheet) provides its own copy and calls `follow`; `providedIn: 'root'` keeps a
- * component that is tested alone working, with nobody followed.
+ * A read that fails shows no badge and no chip, and a roll goes on without the Inspiração (`failed` lets its sheet say so). The
+ * character sheet provides its own copy and calls `follow`. The live session uses the root copy, so the roll sheets it opens
+ * (a dialog or a bottom sheet is built from the root injector, never from the page's) read the same state as the page; it calls
+ * `follow` when it opens a session and `stop` when it leaves. `providedIn: 'root'` also keeps a component that is tested alone
+ * working, with nobody followed.
  */
 @Injectable({ providedIn: 'root' })
 export class FavorState {
@@ -41,6 +43,9 @@ export class FavorState {
   readonly campaignId = signal('');
   /** The holders the last read gave, by character id, with the character's name. Empty while the read has not come or failed. */
   readonly holders = signal<ReadonlyMap<string, string>>(new Map());
+  /** The last read failed (the network, an error): the roll sheets say so, dashed, instead of hiding the box (board 581-07, item 13).
+   * `false` while no read has come yet, and again after a read that works. */
+  readonly failed = signal(false);
   /** How many characters have it ("1 com Inspiração" on the master's Grupo tab). */
   readonly count = computed(() => this.holders().size);
   /** The character a player has just received it for, until they dismiss the notice or no longer have it; empty otherwise. */
@@ -99,11 +104,14 @@ export class FavorState {
       const list = await this.client.read(campaignId);
       if (seq === this.seq) {
         this.take(new Map(list.map((h) => [h.characterId, h.name])));
+        this.failed.set(false);
       }
     } catch {
-      // A read that fails shows nothing (the roll goes on without it); the next hint reads again.
+      // A read that fails shows no chip and no badge, and a roll goes on without the Inspiração: its sheet says "Não deu para
+      // ler a Inspiração agora" (the box, dashed). The next hint reads again.
       if (seq === this.seq) {
         this.holders.set(new Map());
+        this.failed.set(true);
       }
     } finally {
       if (seq === this.seq) {
@@ -184,6 +192,7 @@ export class FavorState {
     this.again = false;
     this.lastGood = null;
     this.holders.set(new Map());
+    this.failed.set(false);
     this.gained.set('');
     this.granting.set(new Set());
     clearTimeout(this.noteTimer);

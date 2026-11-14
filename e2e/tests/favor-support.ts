@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { callRPC } from './support';
+import { combatRPC, type Encounter } from './combat-support';
 
 // Setup for the specs of the master's Inspiração screens (#581, RN-43), through the API: the master's grant and the read, as
 // the screens call them. The specs prove what the screens say of who has it; the table and the combat come from the other supports.
@@ -53,4 +54,27 @@ export async function shootFavor(page: Page, screen: string, width: number, colo
   }
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: join(shotsDir, `${screen}-${width}-${colorScheme === 'light' ? 'claro' : 'escuro'}.png`) });
+}
+
+/** The box "Inspiração do mestre" of a roll sheet (`app-favor-spend`), inside `scope` (the sheet, or the whole page). */
+export function favorBox(scope: Page | Locator): Locator {
+  return scope.locator('app-favor-spend');
+}
+
+/** The checkbox "Usar a Inspiração" of the box. Dashed boxes keep it reachable (`aria-disabled`), so it is always there. */
+export function favorCheck(scope: Page | Locator): Locator {
+  return favorBox(scope).getByRole('checkbox', { name: /Usar a Inspiração/ });
+}
+
+/** Ticks the box and waits for the roll-mode segment to read "pela Inspiração" (a box that is dashed would not). */
+export async function tickFavor(scope: Page | Locator): Promise<void> {
+  await favorCheck(scope).check();
+  await expect(scope.getByText('pela Inspiração')).toBeVisible();
+}
+
+/** `SetCombatantConditions` as the master: the keys the combatant has from now on (`[]` takes them all away). */
+export async function setConditionsRPC(master: Page, campaignId: string, encounter: Encounter, label: string, keys: string[]): Promise<Encounter> {
+  const combatant = encounter.combatants.find((c) => c.label === label);
+  expect(combatant, `${label} must be in the combat`).toBeTruthy();
+  return combatRPC(master, 'SetCombatantConditions', { campaignId, encounterId: encounter.id, combatantId: combatant!.id, conditions: { keys } });
 }

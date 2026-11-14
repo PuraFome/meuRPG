@@ -189,6 +189,8 @@ export interface CastExtras {
   readonly spellOptions?: readonly { readonly key: string; readonly damageTypeKey: string }[];
   /** A granted spell: the source of the grant it is cast through (`SpellGrantOption.source_key`). */
   readonly grantedBy?: string;
+  /** The caster spends the master's Inspiração on the spell attack's d20 (`CastSpellRequest.spend_favor`); no `rollMode` goes with it. */
+  readonly spendFavor?: boolean;
 }
 
 /** What a summoning spell brings (`SummonChoice`): the option, a content key per creature and, optionally, a name each. */
@@ -268,6 +270,8 @@ export interface AttackEffects {
   readonly maneuverKey?: string;
   /** The master only: the key of the legendary option of kind "attack" the attack is made with (`LegendaryOption.key`). */
   readonly legendaryOption?: string;
+  /** The roller spends the master's Inspiração on this d20 (`RollAttackRequest.spend_favor`); then no `rollMode` goes with it. */
+  readonly spendFavor?: boolean;
 }
 
 /** How a concentration window is settled: the d20 in the app, a typed face, "Deixar o mestre rolar por mim", or the
@@ -278,6 +282,8 @@ export type ConcentrationAnswer =
       readonly maneuverKey?: string;
       /** The master's choice: if the save fails, Legendary Resistance turns it into a success. */
       readonly useLegendaryResistance?: boolean;
+      /** The player spends the master's Inspiração on this save (`spend_favor`). */
+      readonly spendFavor?: boolean;
     }
   | {
       readonly kind: 'typed';
@@ -288,6 +294,7 @@ export type ConcentrationAnswer =
       /** A table die added to the roll: its face is the last of `extra`. */
       readonly maneuverKey?: string;
       readonly useLegendaryResistance?: boolean;
+      readonly spendFavor?: boolean;
     }
   | { readonly kind: 'hand' }
   | { readonly kind: 'keep' };

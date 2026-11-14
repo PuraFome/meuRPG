@@ -428,6 +428,27 @@ describe('the combat log sentences (timeline.md, Rodadas 1 and 2)', () => {
   });
 });
 
+describe('the Inspiração of a roll (favor_text_pt)', () => {
+  const rolled = attack({
+    actorLabel: 'Brisa',
+    targetLabel: 'Goblin 1',
+    key: 'equipment:rapier',
+    keyNamePt: 'Florete',
+  });
+
+  it('adds "<nome> usou a Inspiração." under the line of the roll', () => {
+    const line = logLine({ ...rolled, favorTextPt: 'Brisa usou a Inspiração.' });
+    expect(line?.notes).toContain('Brisa usou a Inspiração.');
+    expect(line?.text).toContain('ataca o Goblin 1');
+  });
+
+  it('keeps the notes the line already has, and adds nothing when the roll used none', () => {
+    expect(logLine(rolled)?.notes?.some((n) => n.includes('Inspiração'))).toBeFalsy();
+    const withNote = logLine({ ...rolled, favorTextPt: 'Brisa usou a Inspiração.' });
+    expect(withNote?.notes?.at(-1)).toBe('Brisa usou a Inspiração.');
+  });
+});
+
 describe('what the master did for a character', () => {
   it('ends the line with "(pelo mestre)" for everyone who reads it, and only then', () => {
     const rounds = [

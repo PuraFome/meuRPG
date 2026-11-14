@@ -49,6 +49,13 @@ export class RollModePicker {
   readonly busy = input(false);
   /** Nothing is preselected: the targets of a cast suggest different modes. */
   readonly mixed = input(false);
+  /** The Inspiração is ticked: the segment only reads `mode` (every cell dashed, none can be picked), says `word` beside the title
+   * ("pela Inspiração") and `line` under it, how to choose again. No reason is asked and no request is made while it stands. */
+  readonly lock = input<{
+    readonly mode: RollMode;
+    readonly word: string;
+    readonly line: string;
+  } | null>(null);
 
   readonly ask = output<void>();
   readonly cancelAsk = output<void>();
@@ -84,13 +91,15 @@ export class RollModePicker {
   protected sourceWord = sourceWord;
 
   protected pick(mode: RollMode): void {
-    if (!this.pending() && !this.answered()) {
+    if (!this.pending() && !this.answered() && !this.lock()) {
       this.mode.set(mode);
     }
   }
 
   protected isOff(mode: RollMode): boolean {
-    return this.pending() || !!this.answered() || (this.busy() && mode !== this.mode());
+    return (
+      !!this.lock() || this.pending() || !!this.answered() || (this.busy() && mode !== this.mode())
+    );
   }
 
   protected onReason(event: Event): void {
@@ -98,6 +107,10 @@ export class RollModePicker {
   }
 
   protected checked(mode: RollMode): boolean {
+    const lock = this.lock();
+    if (lock) {
+      return orNormal(lock.mode) === mode;
+    }
     return this.answered()
       ? this.answered()!.decidedMode === mode
       : this.mode() === mode && !this.mixed();
