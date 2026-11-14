@@ -234,7 +234,7 @@ describe('FeatEditor (MR-025)', () => {
     expect(rows()).toEqual([
       'Pede: Nada',
       'Ao atacar: \u22125 no ataque, +10 no dano',
-      'Usos: 3 \u00b7 voltam no descanso curto',
+      'Usos: 3 \u00b7 volta no descanso curto ou longo',
     ]);
     expect(text(el.querySelector('.preview')!)).toContain('você pode trocar acerto por dano.');
     const penalty = field(el, 'table_feat.effects[0].attack_penalty') as HTMLInputElement;

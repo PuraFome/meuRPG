@@ -37,7 +37,7 @@ describe('powerAttackRead: the rows a player reads of a power attack (the board 
     const read = powerAttackRead([power({ resource: 'folego_do_atirador' }), spent, other]);
     expect(read.rows).toEqual([
       { label: 'Ao atacar', value: '−5 no ataque, +10 no dano' },
-      { label: 'Usos', value: '3 · voltam no descanso curto' },
+      { label: 'Usos', value: '3 · volta no descanso curto ou longo' },
     ]);
     expect(read.rest).toEqual([read.rest[0], other]);
     expect(read.rest).not.toContain(spent);
@@ -48,7 +48,7 @@ describe('powerAttackRead: the rows a player reads of a power attack (the board 
       powerAttackRead([power({ resource: 'x' }), pool({ resource: 'x', recharge })]).rows.find(
         (r) => r.label === 'Usos',
       )?.value;
-    expect(usos('long_rest')).toBe('3 · voltam no descanso longo');
+    expect(usos('long_rest')).toBe('3 · volta no descanso longo');
     expect(usos('dawn')).toBe('3 · voltam ao amanhecer');
   });
 

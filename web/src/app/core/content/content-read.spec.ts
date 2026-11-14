@@ -605,7 +605,7 @@ describe('what a player reads of a power attack (the board of #586)', () => {
     expect(read.rows.map((r) => `${r.label}: ${r.value}`)).toEqual([
       'Pede: Nada',
       'Ao atacar: −5 no ataque, +10 no dano',
-      'Usos: 3 · voltam no descanso curto',
+      'Usos: 3 · volta no descanso curto ou longo',
     ]);
     expect(read.effects).toBeUndefined();
   });

@@ -7157,7 +7157,7 @@ async function scanPowerAttackEditor(browser: Browser, colorScheme: 'light' | 'd
       await expect(m.getByLabel('Quando vale', { exact: true })).toHaveAttribute('placeholder', 'Sempre');
       const steadySeen = m.getByRole('complementary', { name: 'Como os jogadores veem' });
       await expect(steadySeen.getByText('Usos', { exact: true })).toBeVisible();
-      await expect(steadySeen.getByText('3 \u00b7 voltam no descanso curto', { exact: true })).toBeVisible();
+      await expect(steadySeen.getByText('3 \u00b7 volta no descanso curto ou longo', { exact: true })).toBeVisible();
       await expectScreenPasses(m, `Editor de talento, "Ataque poderoso" à distância com o recurso do talento ${where}`);
 
       // The numbers outside their ranges and a fifth property: the editor says so on the fields, and so does the server on saving.

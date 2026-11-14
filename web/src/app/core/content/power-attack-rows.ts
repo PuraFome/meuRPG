@@ -1,4 +1,6 @@
 import type { TableEffect } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { restoredText } from '../combat/power-attack-trade';
 import { signed } from '../effects/effects';
 import { RECHARGE_WORDS, type ReadRow } from './content-read-parts';
 
@@ -12,15 +14,15 @@ export interface PowerAttackRead {
 
 const WHOLE = /^\d+$/;
 
-/** The words of the board for when the uses come back (the sentence of a line says "num"; the row says "no"). */
+/** When the uses come back, in the sentence the player's sheet says it ("volta no descanso curto ou longo"), not a second one. */
 const BACK: Readonly<Record<string, string>> = {
   ...RECHARGE_WORDS,
-  short_rest: 'voltam no descanso curto',
-  long_rest: 'voltam no descanso longo',
+  short_rest: restoredText(Recharge.SHORT_REST),
+  long_rest: restoredText(Recharge.LONG_REST),
 };
 
 /**
- * The rows of "Como os jogadores veem" for a power attack: "Ao atacar: −5 no ataque, +10 no dano" and "Usos: 3 · voltam no descanso curto".
+ * The rows of "Como os jogadores veem" for a power attack: "Ao atacar: −5 no ataque, +10 no dano" and "Usos: 3 · volta no descanso curto ou longo".
  * Numbers outside the ranges (a stored effect the editor keeps as it is) draw nothing: they are not a trade a player can make.
  */
 export function powerAttackRead(effects: readonly TableEffect[]): PowerAttackRead {

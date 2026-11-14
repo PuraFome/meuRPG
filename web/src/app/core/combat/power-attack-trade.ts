@@ -38,7 +38,7 @@ export function tradeOfferSub(o: PowerAttackOption): string {
 
 /** When the pool comes back, as the Ação lines say it ("volta no descanso curto ou longo": a long rest gives the uses of a
  * short-rest pool back too); the other recharges read as in `rechargeText`. */
-function restoredText(recharge: Recharge): string {
+export function restoredText(recharge: Recharge): string {
   switch (recharge) {
     case Recharge.SHORT_REST:
       return 'volta no descanso curto ou longo';
