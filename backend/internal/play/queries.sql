@@ -1945,9 +1945,9 @@ DELETE FROM character_inspiration WHERE campaign_id = $1;
 -- A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
 -- of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
 -- combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
--- window kept.
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+-- window kept. favor_spent says the roll was made with the roller's Inspiration, which a retry or the answer reads.
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by, favor_spent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, sqlc.narg(combatant_id), sqlc.narg(encounter_id), $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 RETURNING *;
 
 -- name: GetInspirationHoldByKey :one
@@ -2125,3 +2125,7 @@ INSERT INTO character_favor (character_id, campaign_id, granted_by_user_id)
 VALUES ($1, $2, sqlc.narg(granted_by_user_id))
 ON CONFLICT (character_id) DO NOTHING
 RETURNING *;
+
+-- name: SpendCharacterFavor :one
+-- Takes the character's Inspiration; no row comes back when it has none, so of two spends only one wins.
+DELETE FROM character_favor WHERE character_id = $1 AND campaign_id = $2 RETURNING character_id;

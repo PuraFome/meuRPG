@@ -116,6 +116,9 @@ Each says when it waits (`pending`), what it asks (`offer`) and what its answer 
   It is asked only after the result is known, with the Lucky reroll and the die already in the total.
   Its answer is final: using it spends the use and closes the row; keeping the roll spends nothing.
 
+The master's Inspiração is not a link of this chain: it is chosen before the d20, never asked ([Inspiração](favor.md#the-spend)).
+The hold remembers `favor_spent`, so a retry and the answer count the Inspiração without spending it again.
+
 Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
 
 ## The registry and the one answer

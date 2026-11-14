@@ -106,6 +106,8 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_SUNLIGHT_ATTACK = 113;
   ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION = 114;
   ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE = 115;
+  // The roller's own Inspiration, spent for advantage before the d20 (RN-43): the master and the roller read it, nobody else reads the roll.
+  ADVANTAGE_SOURCE_KIND_FAVOR = 116;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A

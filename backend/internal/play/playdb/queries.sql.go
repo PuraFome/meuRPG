@@ -4530,8 +4530,8 @@ func (q *Queries) InsertImageViewer(ctx context.Context, arg InsertImageViewerPa
 }
 
 const insertInspirationHold = `-- name: InsertInspirationHold :one
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $27, $28, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by, favor_spent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $28, $29, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent
 `
 
@@ -4562,6 +4562,7 @@ type InsertInspirationHoldParams struct {
 	RerollCost        int32
 	RerollSource      string
 	CountedBy         string
+	FavorSpent        bool
 	CombatantID       *string
 	EncounterID       *string
 }
@@ -4569,7 +4570,7 @@ type InsertInspirationHoldParams struct {
 // A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
 // of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
 // combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
-// window kept.
+// window kept. favor_spent says the roll was made with the roller's Inspiration, which a retry or the answer reads.
 func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirationHoldParams) (InspirationHold, error) {
 	row := q.db.QueryRow(ctx, insertInspirationHold,
 		arg.CampaignID,
@@ -4598,6 +4599,7 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		arg.RerollCost,
 		arg.RerollSource,
 		arg.CountedBy,
+		arg.FavorSpent,
 		arg.CombatantID,
 		arg.EncounterID,
 	)
@@ -11123,6 +11125,23 @@ func (q *Queries) SkipPendingOpportunityOffersOfMover(ctx context.Context, arg S
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const spendCharacterFavor = `-- name: SpendCharacterFavor :one
+DELETE FROM character_favor WHERE character_id = $1 AND campaign_id = $2 RETURNING character_id
+`
+
+type SpendCharacterFavorParams struct {
+	CharacterID string
+	CampaignID  string
+}
+
+// Takes the character's Inspiration; no row comes back when it has none, so of two spends only one wins.
+func (q *Queries) SpendCharacterFavor(ctx context.Context, arg SpendCharacterFavorParams) (string, error) {
+	row := q.db.QueryRow(ctx, spendCharacterFavor, arg.CharacterID, arg.CampaignID)
+	var character_id string
+	err := row.Scan(&character_id)
+	return character_id, err
 }
 
 const syncNPCCreatureSpent = `-- name: SyncNPCCreatureSpent :exec

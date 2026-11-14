@@ -343,7 +343,12 @@ type StartContestRequest struct {
 	ManeuverKey string `protobuf:"bytes,11,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
 	// The face of the die when the player rolls physical dice (the roll is typed d20 faces): 1
 	// to the die's sides. Empty (0) when the roll is in the app, where the server rolls the die.
-	ManeuverFace  int32 `protobuf:"varint,12,opt,name=maneuver_face,json=maneuverFace,proto3" json:"maneuver_face,omitempty"`
+	ManeuverFace int32 `protobuf:"varint,12,opt,name=maneuver_face,json=maneuverFace,proto3" json:"maneuver_face,omitempty"`
+	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,13,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -462,6 +467,13 @@ func (x *StartContestRequest) GetManeuverFace() int32 {
 	return 0
 }
 
+func (x *StartContestRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
+}
+
 // StartContestResponse returns the combat after it and the contest.
 type StartContestResponse struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
@@ -541,6 +553,11 @@ type RespondContestRequest struct {
 	// The player leaves the roll to the master: "Deixar o mestre rolar por mim". The skill
 	// is the player's choice and the contest waits for the master.
 	DeferToMaster bool `protobuf:"varint,7,opt,name=defer_to_master,json=deferToMaster,proto3" json:"defer_to_master,omitempty"`
+	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,8,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -620,6 +637,13 @@ func (x *RespondContestRequest) GetRoll() *CheckRollInput {
 func (x *RespondContestRequest) GetDeferToMaster() bool {
 	if x != nil {
 		return x.DeferToMaster
+	}
+	return false
+}
+
+func (x *RespondContestRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
 	}
 	return false
 }
@@ -1056,8 +1080,13 @@ type HideRequest struct {
 	// The action that gives Hide: "standard:hide" (the action) or the key of a feature
 	// action whose standard action is Hide (the rogue's Cunning Action, a bonus action).
 	// Unset is "standard:hide".
-	ActionKey     string          `protobuf:"bytes,5,opt,name=action_key,json=actionKey,proto3" json:"action_key,omitempty"`
-	Roll          *CheckRollInput `protobuf:"bytes,6,opt,name=roll,proto3" json:"roll,omitempty"`
+	ActionKey string          `protobuf:"bytes,5,opt,name=action_key,json=actionKey,proto3" json:"action_key,omitempty"`
+	Roll      *CheckRollInput `protobuf:"bytes,6,opt,name=roll,proto3" json:"roll,omitempty"`
+	// Spends the character's Inspiration for advantage on this Stealth check, chosen before the d20 is rolled.
+	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,7,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1132,6 +1161,13 @@ func (x *HideRequest) GetRoll() *CheckRollInput {
 		return x.Roll
 	}
 	return nil
+}
+
+func (x *HideRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 // HideResponse returns the combat and the attempt, which waits for the master.
@@ -2213,8 +2249,13 @@ type RollGroupCheckRequest struct {
 	IdempotencyKey string                 `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
 	GroupCheckId   string                 `protobuf:"bytes,3,opt,name=group_check_id,json=groupCheckId,proto3" json:"group_check_id,omitempty"`
 	Roll           *CheckRollInput        `protobuf:"bytes,4,opt,name=roll,proto3" json:"roll,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,5,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RollGroupCheckRequest) Reset() {
@@ -2273,6 +2314,13 @@ func (x *RollGroupCheckRequest) GetRoll() *CheckRollInput {
 		return x.Roll
 	}
 	return nil
+}
+
+func (x *RollGroupCheckRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 // RollGroupCheckResponse returns the group check and the caller's roll.
@@ -2650,7 +2698,7 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x0eCheckRollInput\x12 \n" +
 	"\vroll_in_app\x18\x01 \x01(\bH\x00R\trollInApp\x127\n" +
 	"\td20_faces\x18\x02 \x01(\v2\x18.meurpg.play.v1.D20FacesH\x00R\bd20FacesB\x06\n" +
-	"\x04roll\"\xfa\x03\n" +
+	"\x04roll\"\x9b\x04\n" +
 	"\x13StartContestRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2665,11 +2713,13 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\tescape_dc\x18\n" +
 	" \x01(\x05R\bescapeDc\x12!\n" +
 	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKey\x12#\n" +
-	"\rmaneuver_face\x18\f \x01(\x05R\fmaneuverFace\"\xcd\x01\n" +
+	"\rmaneuver_face\x18\f \x01(\x05R\fmaneuverFace\x12\x1f\n" +
+	"\vspend_favor\x18\r \x01(\bR\n" +
+	"spendFavor\"\xcd\x01\n" +
 	"\x14StartContestResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x125\n" +
 	"\acontest\x18\x02 \x01(\v2\x1b.meurpg.play.v1.ContestViewR\acontest\x12E\n" +
-	"\x0fheld_roll_offer\x18\x03 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xb3\x02\n" +
+	"\x0fheld_roll_offer\x18\x03 \x01(\v2\x1d.meurpg.play.v1.HeldRollOfferR\rheldRollOffer\"\xd4\x02\n" +
 	"\x15RespondContestRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2679,7 +2729,9 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"contest_id\x18\x04 \x01(\tR\tcontestId\x122\n" +
 	"\x05skill\x18\x05 \x01(\x0e2\x1c.meurpg.play.v1.ContestSkillR\x05skill\x122\n" +
 	"\x04roll\x18\x06 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\x12&\n" +
-	"\x0fdefer_to_master\x18\a \x01(\bR\rdeferToMaster\"\xcf\x01\n" +
+	"\x0fdefer_to_master\x18\a \x01(\bR\rdeferToMaster\x12\x1f\n" +
+	"\vspend_favor\x18\b \x01(\bR\n" +
+	"spendFavor\"\xcf\x01\n" +
 	"\x16RespondContestResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x125\n" +
 	"\acontest\x18\x02 \x01(\v2\x1b.meurpg.play.v1.ContestViewR\acontest\x12E\n" +
@@ -2712,7 +2764,7 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\vgrappled_id\x18\x04 \x01(\tR\n" +
 	"grappledId\"Q\n" +
 	"\x16ReleaseGrappleResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xf0\x01\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x91\x02\n" +
 	"\vHideRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2721,7 +2773,9 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\fcombatant_id\x18\x04 \x01(\tR\vcombatantId\x12\x1d\n" +
 	"\n" +
 	"action_key\x18\x05 \x01(\tR\tactionKey\x122\n" +
-	"\x04roll\x18\x06 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xc9\x01\n" +
+	"\x04roll\x18\x06 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\x12\x1f\n" +
+	"\vspend_favor\x18\a \x01(\bR\n" +
+	"spendFavor\"\xc9\x01\n" +
 	"\fHideResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\x129\n" +
 	"\aattempt\x18\x02 \x01(\v2\x1f.meurpg.play.v1.HideAttemptViewR\aattempt\x12E\n" +
@@ -2802,13 +2856,15 @@ const file_meurpg_play_v1_contests_proto_rawDesc = "" +
 	"\x06_group\"\\\n" +
 	"\x19RequestGroupCheckResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
-	"groupCheck\"\xbb\x01\n" +
+	"groupCheck\"\xdc\x01\n" +
 	"\x15RollGroupCheckRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12'\n" +
 	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\x12$\n" +
 	"\x0egroup_check_id\x18\x03 \x01(\tR\fgroupCheckId\x122\n" +
-	"\x04roll\x18\x04 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\"\xbb\x02\n" +
+	"\x04roll\x18\x04 \x01(\v2\x1e.meurpg.play.v1.CheckRollInputR\x04roll\x12\x1f\n" +
+	"\vspend_favor\x18\x05 \x01(\bR\n" +
+	"spendFavor\"\xbb\x02\n" +
 	"\x16RollGroupCheckResponse\x12?\n" +
 	"\vgroup_check\x18\x01 \x01(\v2\x1e.meurpg.play.v1.GroupCheckViewR\n" +
 	"groupCheck\x12X\n" +

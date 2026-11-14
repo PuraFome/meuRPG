@@ -127,6 +127,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceArmorUntrained:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT,
 	combat.SourceProtection:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION,
 	combat.SourceMagicResistance:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_MAGIC_RESISTANCE,
+	combat.SourceFavor:              playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FAVOR,
 	combat.SourceSunlightAttack:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_ATTACK,
 	combat.SourceSunlightPerception: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION,
 	combat.SourceSunlightSave:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE,
@@ -607,6 +608,7 @@ var staticSentences = map[string]string{
 	combat.SourceStealthArmor:     "Armadura: desvantagem em Furtividade",
 	combat.SourceArmorUntrained:   labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza",
 	combat.SourceOutlinedTarget:   "Alvo delineado: vantagem se o atacante o vê",
+	combat.SourceFavor:            labelFavor,
 }
 
 // otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an

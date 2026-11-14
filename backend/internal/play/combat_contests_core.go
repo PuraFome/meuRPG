@@ -93,11 +93,13 @@ const maxContestsListed = 20
 // conditions' names).
 const (
 	noteHelp         = "help"
+	noteFavor        = "favor"
 	noteEffectBonus  = "effect_bonus"
 	noteUnseen       = "unseen_attacker"
 	notePoisoned     = "poisoned"
 	labelUnseen      = "Atacante não visto"
 	labelPoisoned    = "Envenenado"
+	labelFavor       = "Inspiração"
 	defaultHideRefus = "Alguém vê você claramente: não dá para se esconder agora."
 )
 

@@ -1048,8 +1048,13 @@ type RollEffectSaveRequest struct {
 	// LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
 	// the creature is incapacitated.
 	UseLegendaryResistance bool `protobuf:"varint,12,opt,name=use_legendary_resistance,json=useLegendaryResistance,proto3" json:"use_legendary_resistance,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Spends the character's Inspiration for advantage on this saving throw, chosen before the d20 is rolled.
+	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,13,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RollEffectSaveRequest) Reset() {
@@ -1177,6 +1182,13 @@ func (x *RollEffectSaveRequest) GetManeuverKey() string {
 func (x *RollEffectSaveRequest) GetUseLegendaryResistance() bool {
 	if x != nil {
 		return x.UseLegendaryResistance
+	}
+	return false
+}
+
+func (x *RollEffectSaveRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
 	}
 	return false
 }
@@ -2152,7 +2164,7 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\teffect_id\x18\x04 \x01(\tR\beffectId\x12!\n" +
 	"\fcombatant_id\x18\x05 \x01(\tR\vcombatantId\"U\n" +
 	"\x1aRemoveEffectTargetResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xf4\x03\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x95\x04\n" +
 	"\x15RollEffectSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -2167,7 +2179,9 @@ const file_meurpg_play_v1_lasting_effects_service_proto_rawDesc = "" +
 	"\x0fsecond_d20_face\x18\n" +
 	" \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01\x12!\n" +
 	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKey\x128\n" +
-	"\x18use_legendary_resistance\x18\f \x01(\bR\x16useLegendaryResistanceB\x06\n" +
+	"\x18use_legendary_resistance\x18\f \x01(\bR\x16useLegendaryResistance\x12\x1f\n" +
+	"\vspend_favor\x18\r \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04rollB\x12\n" +
 	"\x10_second_d20_face\"\xed\x02\n" +
 	"\x16RollEffectSaveResponse\x127\n" +

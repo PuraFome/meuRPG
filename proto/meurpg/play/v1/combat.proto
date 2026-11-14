@@ -4135,6 +4135,12 @@ message RollAttackRequest {
   // attacker, a spell attack, a maneuver the character has not or one of another `applies`; a resource
   // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
   string maneuver_key = 103;
+
+  // Spends the character's Inspiration for advantage on this attack roll, chosen before the d20 is rolled.
+  // Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+  // It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 106;
 }
 
 // AttackRoll is the attack roll and what it did.
@@ -4823,6 +4829,12 @@ message CastSpellRequest {
   // (otherwise `failed_precondition` with WALL_PLACEMENT_REQUIRED, before anything is spent); malformed
   // (see SpellWall), sent for any other spell, or sent in a combat without a map, it is `invalid_argument`.
   SpellWall wall = 35;
+
+  // Spends the character's Inspiration for advantage on this spell attack roll, chosen before the d20 is rolled.
+  // Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+  // It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 36;
 }
 
 // SpellOptionChoice is a table cast option ticked on a casting.
@@ -7007,6 +7019,12 @@ message ResolveConcentrationSaveRequest {
   // LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
   // the creature is incapacitated.
   bool use_legendary_resistance = 103;
+
+  // Spends the character's Inspiration for advantage on this concentration saving throw, chosen before the d20 is rolled.
+  // Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+  // It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 104;
 }
 
 message ResolveConcentrationSaveResponse {

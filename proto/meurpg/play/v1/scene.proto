@@ -394,6 +394,12 @@ message RollSceneCheckRequest {
   // maneuver the character has not or that does not go on this roll, and with a resource
   // blocked reason NO_USES_LEFT when no use is left. Empty adds none.
   string maneuver_key = 8;
+
+  // Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+  // Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+  // It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 9;
 }
 
 // RollSceneCheckResponse is the roll that was made.

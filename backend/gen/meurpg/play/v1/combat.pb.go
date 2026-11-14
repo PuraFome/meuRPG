@@ -12332,7 +12332,12 @@ type RollAttackRequest struct {
 	// Only the character's own weapon attack (an opportunity attack included): `invalid_argument` for an NPC
 	// attacker, a spell attack, a maneuver the character has not or one of another `applies`; a resource
 	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
-	ManeuverKey   string `protobuf:"bytes,103,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	ManeuverKey string `protobuf:"bytes,103,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	// Spends the character's Inspiration for advantage on this attack roll, chosen before the d20 is rolled.
+	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,106,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12509,6 +12514,13 @@ func (x *RollAttackRequest) GetManeuverKey() string {
 		return x.ManeuverKey
 	}
 	return ""
+}
+
+func (x *RollAttackRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 type isRollAttackRequest_Roll interface {
@@ -15525,7 +15537,12 @@ type CastSpellRequest struct {
 	// (`origin`) is the line's first square or the ring's center. Required for a spell that lays a wall
 	// (otherwise `failed_precondition` with WALL_PLACEMENT_REQUIRED, before anything is spent); malformed
 	// (see SpellWall), sent for any other spell, or sent in a combat without a map, it is `invalid_argument`.
-	Wall          *SpellWall `protobuf:"bytes,35,opt,name=wall,proto3" json:"wall,omitempty"`
+	Wall *SpellWall `protobuf:"bytes,35,opt,name=wall,proto3" json:"wall,omitempty"`
+	// Spends the character's Inspiration for advantage on this spell attack roll, chosen before the d20 is rolled.
+	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,36,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -15764,6 +15781,13 @@ func (x *CastSpellRequest) GetWall() *SpellWall {
 		return x.Wall
 	}
 	return nil
+}
+
+func (x *CastSpellRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 type isCastSpellRequest_Roll interface {
@@ -26188,8 +26212,13 @@ type ResolveConcentrationSaveRequest struct {
 	// LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
 	// the creature is incapacitated.
 	UseLegendaryResistance bool `protobuf:"varint,103,opt,name=use_legendary_resistance,json=useLegendaryResistance,proto3" json:"use_legendary_resistance,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Spends the character's Inspiration for advantage on this concentration saving throw, chosen before the d20 is rolled.
+	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,104,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ResolveConcentrationSaveRequest) Reset() {
@@ -26317,6 +26346,13 @@ func (x *ResolveConcentrationSaveRequest) GetManeuverKey() string {
 func (x *ResolveConcentrationSaveRequest) GetUseLegendaryResistance() bool {
 	if x != nil {
 		return x.UseLegendaryResistance
+	}
+	return false
+}
+
+func (x *ResolveConcentrationSaveRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
 	}
 	return false
 }
@@ -28216,7 +28252,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	" \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12&\n" +
 	"\x0fcritical_on_hit\x18\v \x01(\bR\rcriticalOnHit\x12\x19\n" +
 	"\bnot_seen\x18\f \x01(\bR\anotSeenB\x0e\n" +
-	"\f_distance_ft\"\xe5\x05\n" +
+	"\f_distance_ft\"\x86\x06\n" +
 	"\x11RollAttackRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -28242,7 +28278,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12(\n" +
 	"\x10use_extra_action\x18e \x01(\bR\x0euseExtraAction\x12)\n" +
 	"\x10legendary_option\x18f \x01(\tR\x0flegendaryOption\x12!\n" +
-	"\fmaneuver_key\x18g \x01(\tR\vmaneuverKeyB\x06\n" +
+	"\fmaneuver_key\x18g \x01(\tR\vmaneuverKey\x12\x1f\n" +
+	"\vspend_favor\x18j \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04roll\"\xac\x06\n" +
 	"\n" +
 	"AttackRoll\x12\x1f\n" +
@@ -28480,7 +28518,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vSpellTarget\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05darts\x18\x02 \x01(\x05R\x05darts\x12$\n" +
-	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\x98\t\n" +
+	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xb9\t\n" +
 	"\x10CastSpellRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -28512,7 +28550,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"granted_by\x18! \x01(\tR\tgrantedBy\x12F\n" +
 	"\rspell_options\x18\" \x03(\v2!.meurpg.play.v1.SpellOptionChoiceR\fspellOptions\x12-\n" +
-	"\x04wall\x18# \x01(\v2\x19.meurpg.play.v1.SpellWallR\x04wallB\x06\n" +
+	"\x04wall\x18# \x01(\v2\x19.meurpg.play.v1.SpellWallR\x04wall\x12\x1f\n" +
+	"\vspend_favor\x18$ \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04rollB\x06\n" +
 	"\x04areaB\x10\n" +
 	"\x0e_reveal_hidden\"M\n" +
@@ -29441,7 +29481,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06caught\x18\x04 \x01(\bR\x06caught\x120\n" +
 	"\x14throw_back_available\x18\x05 \x01(\bR\x12throwBackAvailable\"0\n" +
 	"\x11FeatherFallResult\x12\x1b\n" +
-	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\xf6\x03\n" +
+	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\x97\x04\n" +
 	"\x1fResolveConcentrationSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -29455,7 +29495,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12+\n" +
 	"\x0fsecond_d20_face\x18e \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01\x12!\n" +
 	"\fmaneuver_key\x18f \x01(\tR\vmaneuverKey\x128\n" +
-	"\x18use_legendary_resistance\x18g \x01(\bR\x16useLegendaryResistanceB\x06\n" +
+	"\x18use_legendary_resistance\x18g \x01(\bR\x16useLegendaryResistance\x12\x1f\n" +
+	"\vspend_favor\x18h \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04rollB\x12\n" +
 	"\x10_second_d20_face\"\xfe\x02\n" +
 	" ResolveConcentrationSaveResponse\x127\n" +

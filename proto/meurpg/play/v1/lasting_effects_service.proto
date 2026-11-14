@@ -285,6 +285,12 @@ message RollEffectSaveRequest {
   // LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
   // the creature is incapacitated.
   bool use_legendary_resistance = 12;
+
+  // Spends the character's Inspiration for advantage on this saving throw, chosen before the d20 is rolled.
+  // Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
+  // It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 13;
 }
 
 message RollEffectSaveResponse {

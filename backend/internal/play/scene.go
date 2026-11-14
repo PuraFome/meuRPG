@@ -94,6 +94,8 @@ type sceneRollEvent struct {
 	D20B     int32  `json:"d20_b,omitempty"`
 	Counted  int32  `json:"counted,omitempty"`
 	RollMode string `json:"roll_mode,omitempty"`
+	// Favor says the roll was made with the roller's Inspiration (favor_spend.go); the spend is part of this event.
+	Favor bool `json:"favor,omitempty"`
 	// The Bardic Inspiration die the player added after the d20 (already in Total).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
 	BonusFace  int32 `json:"bonus_face,omitempty"`
