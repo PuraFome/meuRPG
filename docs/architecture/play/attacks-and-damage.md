@@ -306,7 +306,7 @@ The caster's player and the master read it true, and so do the other players whe
 - **Who reads what (RN-10).**
   The master and the attacker's own player read the part whole: spell, dice, faces, words, and the off part with its reason.
   Every other player reads the amount and never the dice or the words of an effect they may read (`partsProtoFor`, `hitRollForOthers`), and when the master hides the effect, or its audience is `owner`, the part reads "Outra fonte" with the row's id for a key and no source (`hitPartForOthers`).
-  The off part is never read by another player, hidden effect or public: it is dropped from their parts, and a hit whose only extra is an off row reads to them as a hit with no parts (`partRecord.Plain` on the weapon part, `plainToOthers`), before and after the roll.
+  The off part is never read by another player, hidden effect or public: it is dropped from their parts, and a hit whose only extra is an off row reads to them as a hit with no parts (`partRecord.Plain` on the weapon part, `plainToOthers`), before and after the roll. A hit that also made a power attack is never plain: they read the weapon and the power attack as they would with no effect waiting.
   The row's modifier, trigger, dice and save never reach another player, in the damage, the log or the effect lists, and neither does whether the row is spent (`readsSpent`).
 
 ## Roll modes

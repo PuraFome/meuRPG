@@ -319,7 +319,7 @@ func (h hitFacts) buildParts() []partRecord {
 		return nil
 	}
 	weapon := h.weaponPart(reroll)
-	weapon.Plain = !reroll && len(extras) == 0 && len(autos) == 0 && len(h.planned) == 0 && onlyOffRows(maneuvers)
+	weapon.Plain = !reroll && len(extras) == 0 && len(autos) == 0 && len(h.planned) == 0 && h.power == nil && onlyOffRows(maneuvers)
 	out := []partRecord{weapon}
 	out = h.appendExtras(out, extras, partExtra)
 	out = h.appendExtras(out, autos, partAuto)

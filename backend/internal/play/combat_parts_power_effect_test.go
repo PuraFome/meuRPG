@@ -1,9 +1,12 @@
 package play
 
 import (
+	"slices"
 	"testing"
 
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
 
@@ -53,5 +56,32 @@ func TestAPowerAttackAndAHitEffectInOneAttackAreBothMaskedForOtherPlayers(t *tes
 	}
 	if rolls := partRollsProto(pd, true, true, dtPT); rolls[1].GetFlat() != powerBonus || rolls[2].GetDiceCount() != 7 || !rolls[2].GetHitEffect() {
 		t.Errorf("the owner reads %v, want both rolls whole", rolls)
+	}
+}
+
+// RN-10: a ranged attack that made a power attack while its caster waits for a melee-only effect lists the effect's off
+// row, which no other player reads. The off row must hide only itself: the others read the weapon and the power attack as
+// they would with no effect waiting, so the missing power row never tells them an effect is there.
+func TestAnOffRowDoesNotTakeThePowerAttackRowFromOtherPlayers(t *testing.T) {
+	t.Parallel()
+	read := func(h hitFacts) []string {
+		pd := playdb.PendingDamage{Parts: mustJSON(h.buildParts())}
+		var keys []string
+		for _, p := range partsProtoFor(pd, combat.CriticalDoubledDice, dtPT, false) {
+			keys = append(keys, p.GetKey()+"/"+p.GetLabelPt())
+		}
+		return keys
+	}
+	with := powerFacts(powerTrade(false))
+	with.attack = link.Attack{Key: "e", Name: "Arco", Weapon: true, RangeFt: 80, DiceCount: 1, DiceSides: 8, DamageType: "damage-type:piercing"}
+	without := with
+	mod := rules.EffectModifier{Kind: rules.ModifierWeaponHitDamage, Trigger: rules.HitTriggerNextMeleeHit, Die: 6, Dice: 2}
+	row := withMods(playdb.CombatantState{ID: "row-1", SourceKey: new("spell:marca"), PlayerVisible: true, Audience: "all"}, []rules.EffectModifier{mod})
+	with.states = map[string][]playdb.CombatantState{"a": {row}}
+	if parts := with.buildParts(); !slices.ContainsFunc(parts, isOffHitPart) {
+		t.Fatalf("the parts = %+v, want the off row listed: the canary is unreachable", parts)
+	}
+	if got, want := read(with), read(without); !slices.Equal(got, want) || len(got) != 2 {
+		t.Errorf("the others read %v with the effect waiting, want %v (the weapon and the power attack, as with no effect)", got, want)
 	}
 }
