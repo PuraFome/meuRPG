@@ -275,6 +275,16 @@ func poolLeft(v *playv1.CharacterVitals, key string) (left int32, found bool) {
 	return 0, false
 }
 
+// poolName is the Portuguese name of the resource pool key, "" for a pool the character does not have.
+func poolName(v *playv1.CharacterVitals, key string) string {
+	for _, r := range v.GetResources() {
+		if r.GetKey() == key {
+			return r.GetNamePt()
+		}
+	}
+	return ""
+}
+
 // layCall is what UseLayOnHands reads from its request before the change.
 type layCall struct {
 	fr     flowRequest

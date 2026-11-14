@@ -224,7 +224,9 @@ func (s *Service) powerAttackOption(ctx context.Context, reads *turnReads, p lin
 	if err != nil {
 		return nil, s.dbError(ctx, "read the character's power attack uses", err)
 	}
-	if left, _ := poolLeft(vit, p.Resource); left <= 0 {
+	left, _ := poolLeft(vit, p.Resource)
+	opt.ResourceNamePt, opt.UsesLeft = poolName(vit, p.Resource), max(left, 0)
+	if left <= 0 {
 		opt.Disabled, opt.DisabledReasonPt = true, "Sem usos do recurso."
 	}
 	return opt, nil

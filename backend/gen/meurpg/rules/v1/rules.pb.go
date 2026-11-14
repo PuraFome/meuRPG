@@ -11603,8 +11603,15 @@ type PowerAttackOption struct {
 	Disabled bool `protobuf:"varint,5,opt,name=disabled,proto3" json:"disabled,omitempty"`
 	// Set when `disabled` is true: the reason in Portuguese.
 	DisabledReasonPt string `protobuf:"bytes,6,opt,name=disabled_reason_pt,json=disabledReasonPt,proto3" json:"disabled_reason_pt,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// The Portuguese name of the resource pool the trade spends a use of ("Fôlego do Atirador"), as in
+	// play.v1.ManeuverDieOption.resource_name_pt. Read by the roller: the owner of the attacker and the master. Empty
+	// when the trade spends nothing.
+	ResourceNamePt string `protobuf:"bytes,7,opt,name=resource_name_pt,json=resourceNamePt,proto3" json:"resource_name_pt,omitempty"`
+	// The uses the pool has before the trade, 0 or more: the roll spends one, so the screen shows what is left after it.
+	// The trade is listed at 0 (disabled). Read by the roller, like `resource_name_pt`. 0 when the trade spends nothing.
+	UsesLeft      int32 `protobuf:"varint,8,opt,name=uses_left,json=usesLeft,proto3" json:"uses_left,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PowerAttackOption) Reset() {
@@ -11677,6 +11684,20 @@ func (x *PowerAttackOption) GetDisabledReasonPt() string {
 		return x.DisabledReasonPt
 	}
 	return ""
+}
+
+func (x *PowerAttackOption) GetResourceNamePt() string {
+	if x != nil {
+		return x.ResourceNamePt
+	}
+	return ""
+}
+
+func (x *PowerAttackOption) GetUsesLeft() int32 {
+	if x != nil {
+		return x.UsesLeft
+	}
+	return 0
 }
 
 // SpellOption is a spell the character can cast.
@@ -15070,14 +15091,16 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"beams_left\x18\a \x01(\x05R\tbeamsLeft\x12G\n" +
 	"\rpower_attacks\x18\b \x03(\v2\".meurpg.rules.v1.PowerAttackOptionR\fpowerAttacks\x12\x1f\n" +
 	"\vmagic_bonus\x18\t \x01(\x05R\n" +
-	"magicBonus\"\xc0\x01\n" +
+	"magicBonus\"\x87\x02\n" +
 	"\x11PowerAttackOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\apenalty\x18\x03 \x01(\x05R\apenalty\x12!\n" +
 	"\fdamage_bonus\x18\x04 \x01(\x05R\vdamageBonus\x12\x1a\n" +
 	"\bdisabled\x18\x05 \x01(\bR\bdisabled\x12,\n" +
-	"\x12disabled_reason_pt\x18\x06 \x01(\tR\x10disabledReasonPt\"\xf0\x03\n" +
+	"\x12disabled_reason_pt\x18\x06 \x01(\tR\x10disabledReasonPt\x12(\n" +
+	"\x10resource_name_pt\x18\a \x01(\tR\x0eresourceNamePt\x12\x1b\n" +
+	"\tuses_left\x18\b \x01(\x05R\busesLeft\"\xf0\x03\n" +
 	"\vSpellOption\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x128\n" +
 	"\aeconomy\x18\x02 \x01(\x0e2\x1e.meurpg.rules.v1.ActionEconomyR\aeconomy\x12\x18\n" +

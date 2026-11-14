@@ -755,3 +755,81 @@ func TestAPowerAttackGoesOnEveryWayOfAttacking(t *testing.T) {
 		}
 	})
 }
+
+// The trade that spends a resource names the pool and says how many uses it has before the trade (PowerAttackOption.
+// resource_name_pt, uses_left); a trade that spends nothing leaves both empty. The master reads the same.
+func TestThePowerAttackOptionNamesThePoolAndItsUses(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	e := g.fight(t)
+	trades := func(u *user) map[string]*rulesv1.PowerAttackOption {
+		out := map[string]*rulesv1.PowerAttackOption{}
+		for _, o := range g.mustOptions(t, u, e, "Pipo").GetOptions().GetAttacks() {
+			if o.GetAttack().GetKey() == greatsword {
+				for _, p := range o.GetPowerAttacks() {
+					out[p.GetName()] = p
+				}
+			}
+		}
+		return out
+	}
+	check := func(when string, uses int32) {
+		t.Helper()
+		for _, viewer := range []*user{g.caio, g.master} {
+			got := trades(viewer)
+			if h := got[powerHeavyName]; h.GetResourceNamePt() != "Reserva de Golpes" || h.GetUsesLeft() != uses || h.GetDisabled() != (uses == 0) {
+				t.Errorf("%s: the heavy trade = %v, want the pool %q with %d uses left", when, h, "Reserva de Golpes", uses)
+			}
+			if f := got[powerFreeName]; f.GetResourceNamePt() != "" || f.GetUsesLeft() != 0 {
+				t.Errorf("%s: the free trade = %v, want no pool and no uses", when, f)
+			}
+		}
+	}
+	check("full pool", 2)
+	g.spendPool(t, 1)
+	check("one used", 1)
+	g.spendPool(t, 2)
+	check("spent", 0)
+}
+
+// One pool for a maneuver die and the trade: the trade's uses_left is the pool's, as the die's is, not what is left for the trade.
+func TestThePowerAttackOptionOfASharedPoolSaysTheUsesOfThePool(t *testing.T) {
+	t.Parallel()
+	g := newPowerTableWith(t, true)
+	e := g.fight(t)
+	g.spendPool(t, 1)
+	res := g.mustOptions(t, g.caio, e, "Pipo")
+	if dice := res.GetManeuverDice(); len(dice) != 1 || dice[0].GetUsesLeft() != 1 {
+		t.Fatalf("the maneuver dice = %v, want the die with 1 use left", dice)
+	}
+	for _, o := range res.GetOptions().GetAttacks() {
+		if o.GetAttack().GetKey() != greatsword {
+			continue
+		}
+		for _, p := range o.GetPowerAttacks() {
+			if p.GetName() == powerHeavyName && (p.GetResourceNamePt() != "Reserva de Golpes" || p.GetUsesLeft() != 1 || p.GetDisabled()) {
+				t.Errorf("the heavy trade = %v, want the pool's name and its 1 use left, listed enabled", p)
+			}
+		}
+	}
+}
+
+// The option reaches the roller only: GetTurnOptions of a character that is not the caller's is refused for another player
+// (combat_turn_options.go locateTurnOptions), so Ana reads neither the pool's name nor its uses on Pipo's trades.
+func TestAnotherPlayerReadsNoPowerAttackPoolOfPipo(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	e := g.fight(t)
+	res, err := g.options(t, g.ana, e, "Pipo")
+	if connect.CodeOf(err) != connect.CodePermissionDenied {
+		t.Errorf("Ana reads Pipo's turn options = %v, %v; want permission_denied", res, err)
+	}
+	for _, o := range res.GetOptions().GetAttacks() {
+		for _, p := range o.GetPowerAttacks() {
+			t.Errorf("Ana reads the trade %v on Pipo's turn options, want none", p)
+		}
+	}
+	if len(g.mustOptions(t, g.caio, e, "Pipo").GetOptions().GetAttacks()) == 0 {
+		t.Error("Caio reads no attack of Pipo (the positive control)")
+	}
+}
