@@ -50,6 +50,8 @@ The master's undo gives the use back.
 The attack's event keeps the trade (`key`, `name`, `penalty`, `damage_bonus`), so a resend finds the same and applies nothing twice.
 `AttackOption.power_attacks` lists, on each weapon line of a player's character, the trades whose filter accepts that line (`key`, `name`, `penalty`, `damage_bonus`).
 A spell line, a line the filter refuses and an NPC list none.
+A druid in a beast form keeps her power attacks, and the filter reads the beast's attack lines: natural attack lines of the stat block, melee or ranged, with no weapon property, and proficient.
+A trade that asks only for melee fits a melee line of the beast, one that names a weapon property (as heavy) fits none, and `only_proficient` does not exclude a beast's line.
 
 `RollDamage` rolls the damage dice (on a critical as the table rule says; the modifier once; the attack's type) or validates the typed sum (`dice.Physical`, from N to N × faces).
 

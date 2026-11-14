@@ -8,7 +8,7 @@ import type {
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { feetToMeters, metersToFeet } from '../units';
 import type { EffectDraft, EffectInit } from './effect-draft.types';
-import { visibleFields } from './effect-visible';
+import { offeredTypes, visibleFields } from './effect-visible';
 import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
 import { WHOLE_MAX } from './whole-number';
 
@@ -277,9 +277,9 @@ export class EffectMenuVm {
       : 'Separe por vírgula. O app só lembra; o mestre decide.';
   }
 
-  /** The types an editor offers: the ones only a feat has (`feat_only`) are left out unless it is the feat editor. */
+  /** The types an editor offers (`offeredTypes`). */
   typesFor(featEditor: boolean): readonly EffectMenuType[] {
-    return featEditor ? this.types : this.types.filter((t) => !t.featOnly);
+    return offeredTypes(this.types, featEditor);
   }
 
   typeOf(type: string): EffectMenuType | undefined {

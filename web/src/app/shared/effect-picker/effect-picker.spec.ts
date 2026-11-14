@@ -1,9 +1,16 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
+import { create } from '@bufbuild/protobuf';
+
+import {
+  EffectMenuTypeSchema,
+  TableEffectSchema,
+} from '../../../gen/meurpg/rules/v1/table_content_pb';
 import {
   type EffectDraft,
   EffectMenuVm,
   draftToEffect,
+  effectToDraft,
   emptyEffect,
   unreadableNumberPaths,
 } from '../../core/content/effect-draft';
@@ -67,6 +74,49 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
     expect(
       Array.from((field('type') as HTMLSelectElement).options).map((o) => o.text.trim()),
     ).not.toContain('Só texto');
+  });
+
+  describe('power_attack, which the editor does not offer yet', () => {
+    function powerAttackMenu(): EffectMenuVm {
+      const res = menuResponse();
+      res.types.push(
+        create(EffectMenuTypeSchema, {
+          type: 'power_attack',
+          namePt: 'Ataque poderoso',
+          hintPt: 'Uma troca que o jogador faz ao atacar com arma.',
+          fields: [
+            { name: 'attack_penalty', kind: 'number', required: true, min: 1, max: 10 },
+            { name: 'damage_bonus', kind: 'number', required: true, min: 1, max: 20 },
+            { name: 'only_proficient', kind: 'yes_no', alwaysShown: true },
+            { name: 'text_pt', kind: 'text' },
+          ],
+        }),
+      );
+      return new EffectMenuVm(res);
+    }
+
+    it('is left out of the type list, in the feature editor and in the feat editor', () => {
+      for (const featEditor of [false, true]) {
+        setup(emptyEffect('proficiency'), { menu: powerAttackMenu() });
+        fixture.componentRef.setInput('featEditor', featEditor);
+        fixture.detectChanges();
+        const labels = Array.from((field('type') as HTMLSelectElement).options).map((o) =>
+          o.text.trim(),
+        );
+        expect(labels).not.toContain('Ataque poderoso');
+        expect(labels).toContain('Proficiência');
+      }
+    });
+
+    it('still opens on a stored power_attack effect without crashing', () => {
+      setup(effectToDraft(create(TableEffectSchema, { type: 'power_attack', attackPenalty: 5 })), {
+        menu: powerAttackMenu(),
+      });
+      expect(field('type')).not.toBeNull();
+      const type = field('type') as HTMLSelectElement;
+      expect(type.options[type.selectedIndex].text.trim()).toBe('Ataque poderoso');
+      expect(type.value).toBe('power_attack');
+    });
   });
 
   it('draws the fields the menu says the type reads: the required one open, the optional ones folded under "Mais opções"', async () => {

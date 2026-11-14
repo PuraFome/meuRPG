@@ -1,4 +1,7 @@
-import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import type {
+  EffectMenuField,
+  EffectMenuType,
+} from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { onlyProficientApplies } from './effect-writers';
 
 /** What `visibleFields` reads of a draft. */
@@ -107,4 +110,16 @@ const NEVER_FOLDED: Readonly<Record<string, readonly string[]>> = {
 
 export function neverFolded(type: string, name: string): boolean {
   return NEVER_FOLDED[type]?.includes(name) ?? false;
+}
+
+/** The menu's types the editor does not offer yet: the server lists them, but the editor has no block that writes their fields.
+ * The branch that adds the `power_attack` block removes its entry. */
+const TYPES_NOT_OFFERED: readonly string[] = ['power_attack'];
+
+/** The types an editor offers: not the ones it has no block for yet, nor the `feat_only` ones outside the feat editor. */
+export function offeredTypes(
+  types: readonly EffectMenuType[],
+  featEditor: boolean,
+): readonly EffectMenuType[] {
+  return types.filter((t) => !TYPES_NOT_OFFERED.includes(t.type) && (featEditor || !t.featOnly));
 }

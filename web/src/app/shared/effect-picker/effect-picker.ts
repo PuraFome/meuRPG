@@ -140,9 +140,14 @@ export class EffectPicker {
   readonly effectChange = output<EffectDraft>();
 
   protected readonly typeOptions = computed<SelectOption[]>(() => {
-    const types = this.menu()
-      .typesFor(this.featEditor())
-      .map((t) => ({ value: t.type, label: t.namePt }));
+    const menu = this.menu();
+    const types = menu.typesFor(this.featEditor()).map((t) => ({ value: t.type, label: t.namePt }));
+    // A stored effect of a type the editor does not offer keeps its own name on the select, so it never reads as another type.
+    const own = this.effect().type;
+    const kept = menu.typeOf(own);
+    if (kept !== undefined && !types.some((t) => t.value === own)) {
+      types.push({ value: own, label: kept.namePt });
+    }
     return this.allowTextOnly() ? [{ value: '', label: 'Só texto' }, ...types] : types;
   });
   protected readonly typeHint = computed(() => {
