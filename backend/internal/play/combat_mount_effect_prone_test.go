@@ -24,8 +24,8 @@ func TestMountedCombat_ARiderLaughedProneAsksItsSave(t *testing.T) {
 	e := a.closeFight(t)
 	a.execSQL(t, `UPDATE combatants SET mounted_on_id = $1, grid_col = m.grid_col, grid_row = m.grid_row FROM combatants m WHERE m.id = $1 AND combatants.id = $2`, a.id(t, "Goblin"), a.id(t, "Toren"))
 	a.mustAddEffect(t, e, "spell:hideous-laughter", []string{"Toren"}, a.rounds(t, 10, "Pensantus"))
-	if a.mountedOn(t, "Toren") != nil {
-		t.Error("a rider laughed prone and incapacitated is still on its mount")
+	if a.mountSaveOf(t, a.caio) == nil {
+		t.Error("Toren reads no mount save after he was laughed prone on his mount")
 	}
 }
 
