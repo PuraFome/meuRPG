@@ -640,6 +640,9 @@ func (s *Service) removeWrite(ctx context.Context, c *combatTx, m authz.Membersh
 	if _, err := saveOrder(ctx, c.q, cs, rest); err != nil {
 		return nil, err
 	}
+	if err := settleMounts(ctx, c); err != nil { // the mount of a rider that left has its own place back
+		return nil, err
+	}
 	c.characterID = &target.CharacterID
 	return map[string]any{"combatant_id": target.ID}, nil
 }

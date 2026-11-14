@@ -28,6 +28,12 @@ type joinRow struct {
 	MovementDft      int32
 }
 
+// String is the row with its numbers, not the addresses of the optional ones.
+func (r joinRow) String() string {
+	return fmt.Sprintf("{init %d face %d bonus %d tie %v index %d state %s prior %q action %v bonus %v reaction %v moved %d}",
+		optInt(r.Initiative), optInt(r.Face), r.Bonus, r.Tie, r.Index, r.State, r.Prior, r.ActionUsed, r.BonusUsed, r.ReactionUsed, r.MovementDft)
+}
+
 func (c *cave) joinRowOf(t *testing.T, label string) joinRow {
 	t.Helper()
 	var r joinRow
@@ -81,7 +87,7 @@ func (c *cave) pairState(t *testing.T) string {
 	t.Helper()
 	out := []string{strings.Join(c.orderNow(t), ",")}
 	for _, l := range []string{"Toren", "Ogro", "Pensantus", "Escudeiro"} {
-		out = append(out, fmt.Sprintf("%s=%+v", l, c.joinRowOf(t, l)))
+		out = append(out, fmt.Sprintf("%s=%v", l, c.joinRowOf(t, l)))
 	}
 	return strings.Join(out, "\n")
 }
@@ -240,8 +246,9 @@ func TestMountedCombat_AMountWhoseTurnPassedKeepsItsEconomySpent(t *testing.T) {
 		t.Errorf("after Toren's part: group %q, current %q, want Toren,Ogro with the Ogro's part running", group(e), current(e))
 	}
 	e = c.mustEndPart(t, c.caio, e, "Ogro")
-	if current(e) != "Capitão Goblin" {
-		t.Errorf("after both parts the turn is %q's, want the Capitão's, next in the order", current(e))
+	order := c.orderNow(t)
+	if next := order[slices.Index(order, "Ogro")+1]; current(e) != next {
+		t.Errorf("after both parts the turn is %q's, want %s's, next in the order %v", current(e), next, order)
 	}
 }
 

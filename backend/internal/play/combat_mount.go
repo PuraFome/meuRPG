@@ -84,6 +84,9 @@ func (s *Service) mountKindIn(ctx context.Context, c *combatTx, call masterTarge
 	if err := c.q.SetCombatantMountKind(ctx, playdb.SetCombatantMountKindParams{ID: target.ID, MountKind: kind}); err != nil {
 		return nil, fmt.Errorf("set the mount kind: %w", err)
 	}
+	if err := settleMounts(ctx, c); err != nil { // a mount that carries a rider takes its initiative or gives it back with its kind
+		return nil, err
+	}
 	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
@@ -298,5 +301,5 @@ func (u *undoer) rideBack(ctx context.Context, ev actionEvent, on *string) error
 	}); err != nil {
 		return fmt.Errorf("put back the ride: %w", err)
 	}
-	return nil
+	return u.joinBack(ctx, ev.Join)
 }

@@ -246,12 +246,17 @@ func (s *Service) rideWrite(ctx context.Context, c *combatTx, call rideCall, don
 	if err != nil {
 		return nil, err
 	}
+	joined, err := rideInitiative(ctx, c, cs, rider, mount)
+	if err != nil {
+		return nil, err
+	}
 	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}
 	c.characterID = &rider.CharacterID
 	*done = rideDone{rider: after, mount: mount, from: squareOfState(moveStateOf(rider)), secret: rider.Hidden || mount.Hidden}
 	made := rideEvent(c.enc, rider, mount, to, cost, done.secret)
+	made.Join = joined
 	// The rider steps onto another square of the same map as a move does: the areas spells keep on it and the traps look at it.
 	if err := s.zonesAfterSteps(ctx, c, zoneStep{who: rider.ID, from: done.from, path: []grid.Square{to}, travels: true}); err != nil {
 		return nil, err

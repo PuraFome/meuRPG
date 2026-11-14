@@ -230,6 +230,34 @@ UPDATE combatants
 SET mounted_on_id = $2, grid_col = $3, grid_row = $4, movement_used_ft = $5, movement_used_dft = $6, mount_move_used = $7, cover_mark = $8
 WHERE id = $1;
 
+-- name: SetCombatantJoin :exec
+-- A controlled mount takes the initiative of its rider (the total, the d20, the bonus and whether the master ordered the tie) and
+-- keeps its own in mount_prior_init, or gives the prior back and clears it (NULL). The undo writes the stored values back.
+UPDATE combatants
+SET initiative = sqlc.narg(initiative), initiative_face = sqlc.narg(initiative_face), initiative_bonus = sqlc.arg(initiative_bonus),
+    tie_ordered = sqlc.arg(tie_ordered), mount_prior_init = sqlc.narg(mount_prior_init)
+WHERE id = sqlc.arg(id);
+
+-- name: SetCombatantTurnState :exec
+-- The part a combatant takes of the running turn: 'acting' (the mount that joins its rider's turn after its own passed) or
+-- 'idle' (the mount that gets off and leaves the group).
+UPDATE combatants
+SET turn_state = $2
+WHERE id = $1;
+
+-- name: RestoreCombatantTurn :exec
+-- The undo of a mount puts back every column the join of a turn reset (ResetCombatantTurn) and the turn state.
+UPDATE combatants
+SET creature_spent = sqlc.arg(creature_spent), movement_used_ft = sqlc.arg(movement_used_ft), movement_used_dft = sqlc.arg(movement_used_dft),
+    last_move_dft = sqlc.arg(last_move_dft), dashed = sqlc.arg(dashed), disengaged = sqlc.arg(disengaged), jump_doubled = sqlc.arg(jump_doubled),
+    mount_move_used = sqlc.arg(mount_move_used), action_surged = sqlc.arg(action_surged), spell_cast = sqlc.arg(spell_cast),
+    bonus_spell_cast = sqlc.arg(bonus_spell_cast), action_used = sqlc.arg(action_used), bonus_action_used = sqlc.arg(bonus_action_used),
+    object_interaction_used = sqlc.arg(object_interaction_used), reaction_used = sqlc.arg(reaction_used), reaction_kind = sqlc.narg(reaction_kind),
+    reaction_round = sqlc.narg(reaction_round), attacks_made = sqlc.arg(attacks_made), action_attack_key = sqlc.narg(action_attack_key),
+    bonus_attacks_left = sqlc.arg(bonus_attacks_left), ac_bonus = sqlc.arg(ac_bonus), extra_action_used = sqlc.arg(extra_action_used),
+    death_save_rolled = sqlc.arg(death_save_rolled), turn_state = sqlc.arg(turn_state)
+WHERE id = sqlc.arg(id);
+
 -- name: CarryRiders :exec
 -- The rider of a mount goes where the mount is: every mover that changes a square calls it for the mover (carryRider).
 UPDATE combatants r

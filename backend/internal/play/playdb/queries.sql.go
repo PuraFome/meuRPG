@@ -8910,6 +8910,79 @@ func (q *Queries) ResetNPCSpellUseOfCampaign(ctx context.Context, campaignID *st
 	return err
 }
 
+const restoreCombatantTurn = `-- name: RestoreCombatantTurn :exec
+UPDATE combatants
+SET creature_spent = $1, movement_used_ft = $2, movement_used_dft = $3,
+    last_move_dft = $4, dashed = $5, disengaged = $6, jump_doubled = $7,
+    mount_move_used = $8, action_surged = $9, spell_cast = $10,
+    bonus_spell_cast = $11, action_used = $12, bonus_action_used = $13,
+    object_interaction_used = $14, reaction_used = $15, reaction_kind = $16,
+    reaction_round = $17, attacks_made = $18, action_attack_key = $19,
+    bonus_attacks_left = $20, ac_bonus = $21, extra_action_used = $22,
+    death_save_rolled = $23, turn_state = $24
+WHERE id = $25
+`
+
+type RestoreCombatantTurnParams struct {
+	CreatureSpent         []byte
+	MovementUsedFt        int32
+	MovementUsedDft       int32
+	LastMoveDft           int32
+	Dashed                bool
+	Disengaged            bool
+	JumpDoubled           bool
+	MountMoveUsed         bool
+	ActionSurged          bool
+	SpellCast             bool
+	BonusSpellCast        bool
+	ActionUsed            bool
+	BonusActionUsed       bool
+	ObjectInteractionUsed bool
+	ReactionUsed          bool
+	ReactionKind          *string
+	ReactionRound         *int32
+	AttacksMade           int32
+	ActionAttackKey       *string
+	BonusAttacksLeft      int32
+	AcBonus               int32
+	ExtraActionUsed       bool
+	DeathSaveRolled       bool
+	TurnState             string
+	ID                    string
+}
+
+// The undo of a mount puts back every column the join of a turn reset (ResetCombatantTurn) and the turn state.
+func (q *Queries) RestoreCombatantTurn(ctx context.Context, arg RestoreCombatantTurnParams) error {
+	_, err := q.db.Exec(ctx, restoreCombatantTurn,
+		arg.CreatureSpent,
+		arg.MovementUsedFt,
+		arg.MovementUsedDft,
+		arg.LastMoveDft,
+		arg.Dashed,
+		arg.Disengaged,
+		arg.JumpDoubled,
+		arg.MountMoveUsed,
+		arg.ActionSurged,
+		arg.SpellCast,
+		arg.BonusSpellCast,
+		arg.ActionUsed,
+		arg.BonusActionUsed,
+		arg.ObjectInteractionUsed,
+		arg.ReactionUsed,
+		arg.ReactionKind,
+		arg.ReactionRound,
+		arg.AttacksMade,
+		arg.ActionAttackKey,
+		arg.BonusAttacksLeft,
+		arg.AcBonus,
+		arg.ExtraActionUsed,
+		arg.DeathSaveRolled,
+		arg.TurnState,
+		arg.ID,
+	)
+	return err
+}
+
 const restoreHuntersMark = `-- name: RestoreHuntersMark :exec
 INSERT INTO combatant_states (id, encounter_id, combatant_id, kind, source_id, started_round, amount, created_at)
 VALUES ($1, $2, $3, 'hunters_mark_target', $4, $5, 0, $6)
@@ -9653,6 +9726,36 @@ func (q *Queries) SetCombatantInspirationDie(ctx context.Context, arg SetCombata
 	return err
 }
 
+const setCombatantJoin = `-- name: SetCombatantJoin :exec
+UPDATE combatants
+SET initiative = $1, initiative_face = $2, initiative_bonus = $3,
+    tie_ordered = $4, mount_prior_init = $5
+WHERE id = $6
+`
+
+type SetCombatantJoinParams struct {
+	Initiative      *int32
+	InitiativeFace  *int32
+	InitiativeBonus int32
+	TieOrdered      bool
+	MountPriorInit  []byte
+	ID              string
+}
+
+// A controlled mount takes the initiative of its rider (the total, the d20, the bonus and whether the master ordered the tie) and
+// keeps its own in mount_prior_init, or gives the prior back and clears it (NULL). The undo writes the stored values back.
+func (q *Queries) SetCombatantJoin(ctx context.Context, arg SetCombatantJoinParams) error {
+	_, err := q.db.Exec(ctx, setCombatantJoin,
+		arg.Initiative,
+		arg.InitiativeFace,
+		arg.InitiativeBonus,
+		arg.TieOrdered,
+		arg.MountPriorInit,
+		arg.ID,
+	)
+	return err
+}
+
 const setCombatantJumpDoubled = `-- name: SetCombatantJumpDoubled :exec
 UPDATE combatants
 SET jump_doubled = $2
@@ -9918,6 +10021,24 @@ type SetCombatantSpellsCastParams struct {
 // limit), or the cast's undo.
 func (q *Queries) SetCombatantSpellsCast(ctx context.Context, arg SetCombatantSpellsCastParams) error {
 	_, err := q.db.Exec(ctx, setCombatantSpellsCast, arg.ID, arg.SpellCast, arg.BonusSpellCast)
+	return err
+}
+
+const setCombatantTurnState = `-- name: SetCombatantTurnState :exec
+UPDATE combatants
+SET turn_state = $2
+WHERE id = $1
+`
+
+type SetCombatantTurnStateParams struct {
+	ID        string
+	TurnState string
+}
+
+// The part a combatant takes of the running turn: 'acting' (the mount that joins its rider's turn after its own passed) or
+// 'idle' (the mount that gets off and leaves the group).
+func (q *Queries) SetCombatantTurnState(ctx context.Context, arg SetCombatantTurnStateParams) error {
+	_, err := q.db.Exec(ctx, setCombatantTurnState, arg.ID, arg.TurnState)
 	return err
 }
 

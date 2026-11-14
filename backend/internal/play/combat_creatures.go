@@ -357,6 +357,9 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 	if _, err := saveOrder(ctx, c.q, cs, rest); err != nil {
 		return nil, false, err
 	}
+	if err := settleMounts(ctx, c); err != nil { // the mount of a rider that left has its own place back
+		return nil, false, err
+	}
 	return rest, turnPassed, nil
 }
 
@@ -379,7 +382,11 @@ func unseatRider(ctx context.Context, c *combatTx, cs []playdb.Combatant, mount 
 		return err
 	}
 	c.unseated = append(c.unseated, unseat{Rider: rider.ID, Mount: mount.ID})
-	return nil
+	if len(mount.MountPriorInit) == 0 {
+		return nil
+	}
+	_, _, err := releaseJoin(ctx, c.q, mount) // the dismissed mount keeps its own total, for the day it is back
+	return err
 }
 
 // discardDamageOf drops, inside the change's transaction, the damage still to roll or to
@@ -530,6 +537,12 @@ func (s *Service) rejoinCreatures(ctx context.Context, c *combatTx, ids []string
 		return fmt.Errorf("list the combatants: %w", err)
 	}
 	if err := seatRiders(ctx, c.q, cs, unseated); err != nil {
+		return err
+	}
+	if cs, err = c.q.ListCombatants(ctx, c.enc.ID); err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	if cs, err = syncMounts(ctx, c, cs); err != nil { // a mount that carries its rider again has its initiative
 		return err
 	}
 	_, err = saveOrder(ctx, c.q, cs, orderCombatants(cs))
