@@ -50,7 +50,8 @@ func (e firingEars) heard(t *testing.T) (master, toren, pens []string) {
 func openEars(t *testing.T, a *armed) firingEars {
 	t.Helper()
 	a.h.svc.SetTraps(emptyTrapBook{}) // the trap's own hint is the maps module's: not what these tests read
-	e := firingEars{h: a.h,
+	e := firingEars{
+		h:      a.h,
 		master: listen(t, a.h, a.campaignID, a.master.id, true),
 		toren:  listen(t, a.h, a.campaignID, a.caio.id, false),
 		pens:   listen(t, a.h, a.campaignID, a.ana.id, false),
@@ -88,7 +89,6 @@ func want(t *testing.T, who string, got []string, wanted ...string) {
 // a combat tells no combat hint to anyone; a firing that only adds creatures the players are not given tells the master alone;
 // any other firing tells everyone to read the combat and its log again.
 func TestAfterFiringTellsEachAudienceOnlyWhatItMayCount(t *testing.T) {
-	t.Parallel()
 	x := newCoreFixture(t)
 	ears := openEars(t, x.armed)
 	enc := combatOf(t, x.armed, x.e.GetId())
@@ -161,7 +161,6 @@ func TestAfterFiringTellsEachAudienceOnlyWhatItMayCount(t *testing.T) {
 // revision 0 and the master the real number (publishEncounterChanged's split), and a firing that adds nothing for any
 // player tells the master alone. A combat that ended has no fog: everyone gets the real revision.
 func TestAfterFiringOnAFogMapTellsThePlayersNoRevision(t *testing.T) {
-	t.Parallel()
 	f := newFogCave(t)
 	e := f.fight(t)
 	ears := openEars(t, f.armed)

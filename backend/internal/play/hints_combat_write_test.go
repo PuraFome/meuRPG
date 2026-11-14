@@ -50,7 +50,7 @@ func (c *lossyCommit) Write(b []byte) (int, error) {
 	if len(b) > 6 && b[0] == 'Q' && strings.EqualFold(string(bytes.TrimRight(b[5:], "\x00")), "commit") {
 		switch c.arm.Swap(0) {
 		case 1:
-			_ = c.Conn.Close()
+			_ = c.Close()
 			return 0, net.ErrClosed
 		case 2:
 			n, err := c.Conn.Write(b)
@@ -65,7 +65,7 @@ func (c *lossyCommit) Read(b []byte) (int, error) {
 	if c.lostAn {
 		// The server answers the commit only once it has run it: wait for that, then lose the answer.
 		_, _ = c.Conn.Read(b)
-		_ = c.Conn.Close()
+		_ = c.Close()
 		return 0, net.ErrClosed
 	}
 	return c.Conn.Read(b)
@@ -321,6 +321,7 @@ func TestCombatWriteAndEndGameSessionRaceWithoutDeadlockAndStayConsistent(t *tes
 
 // endSessionAs ends the session as the master and returns the call's error (no t.Fatal, so a goroutine may call it).
 func endSessionAs(t *testing.T, x *coreFixture, sid string) error {
+	t.Helper()
 	_, err := x.master.play.EndGameSession(t.Context(), connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: x.campaignID, GameSessionId: sid}))
 	return err
 }
