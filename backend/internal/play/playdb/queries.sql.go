@@ -3555,6 +3555,23 @@ func (q *Queries) GetTrapDamageBySettleKey(ctx context.Context, settleKey *strin
 	return i, err
 }
 
+const hasCharacterFavor = `-- name: HasCharacterFavor :one
+SELECT EXISTS (SELECT 1 FROM character_favor WHERE character_id = $1 AND campaign_id = $2)
+`
+
+type HasCharacterFavorParams struct {
+	CharacterID string
+	CampaignID  string
+}
+
+// Says the character has the Inspiration, without taking it: a roll a reaction window holds is checked against it, and the replay spends it.
+func (q *Queries) HasCharacterFavor(ctx context.Context, arg HasCharacterFavorParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasCharacterFavor, arg.CharacterID, arg.CampaignID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const hasLongRestInSession = `-- name: HasLongRestInSession :one
 SELECT EXISTS (
     SELECT 1 FROM session_events

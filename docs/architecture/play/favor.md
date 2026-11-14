@@ -53,6 +53,8 @@ Each holder is the character's id and name; the name comes from the characters m
 The owner of a player character that has the Inspiration spends it for advantage on one of the character's own d20 rolls.
 The player chooses it before the d20 is rolled, with `spend_favor` on the roll's request.
 The roll is an attack, a saving throw or an ability check; the request of each roll path has the field.
+The combat paths carry it: `RollAttack`, `CastSpell` (a spell attack against one target), `ResolveConcentrationSave` and `RollEffectSave`.
+The other paths are not wired yet, and neither are the death save, the counterspell check and initiative.
 `useFavor` (`favor_spend.go`) is the one place that decides it, inside the transaction of the roll.
 
 | The roll before the spend | The roll with it |
@@ -64,13 +66,15 @@ The roll is an attack, a saving throw or an ability check; the request of each r
 
 The helper answers in this order:
 
-1. A request that does not ask for it keeps its mode.
-2. The answer to a held roll reads `favor_spent` from the hold, and never spends or refuses.
-3. A retry of a held roll finds the hold under its key: made with the Inspiration, it counts and spends nothing more; made without it, the request is refused with `AFTER_THE_ROLL`.
-4. A roller that is not the owner (the master rolling for an absent player included) gets `NOT_THE_HOLDER`.
-5. A call that rolls no d20 gets `NOTHING_TO_ROLL`.
-6. A roll the Inspiration would not change gets `ADDS_NOTHING`: it already has advantage, or an advantage and a disadvantage cancel.
-7. The helper deletes the character's row, and no row back is `HAS_NONE`.
+1. The hold the request belongs to is read first, whatever the request says.
+2. The answer to a held roll counts the Inspiration the hold remembers, and never spends or refuses.
+3. A retry of a held roll made with the Inspiration counts it and spends nothing more, even if the retry no longer asks for it.
+4. A retry that asks for it on a held roll made without it is refused with `AFTER_THE_ROLL`.
+5. A request that does not ask for it, and has no hold, keeps its mode.
+6. A roller that is not the owner (the master rolling for an absent player included) gets `NOT_THE_HOLDER`.
+7. A call that rolls no d20 gets `NOTHING_TO_ROLL`.
+8. A roll the Inspiration would not change gets `ADDS_NOTHING`: it already has advantage, or an advantage and a disadvantage cancel.
+9. The helper deletes the character's row, and no row back is `HAS_NONE`.
 
 Of concurrent spends of one Inspiration exactly one wins and the rest get `HAS_NONE`.
 A refusal spends nothing and moves no hint number.
@@ -79,6 +83,27 @@ The spend is part of the roll's event (`Favor`), never an event of its own, so i
 `favorGiveBack` puts the row back, for the undo of such a roll; it is idempotent.
 The Inspiration is a source of the roll, `SourceFavor`, shown as "Inspiração" to the master and the roller and never hidden.
 A hold keeps `favor_spent`, so a retry and the answer count the Inspiration again without spending it.
+The spend is applied to the roll's truth before the roller's mode is chosen, so a typed roll carries two faces and the mode cannot be better than the truth.
+A Protection disadvantage is applied after it and cancels the advantage, so the roll is normal.
+A spend that comes with a worse `roll_mode` than the one it gives is refused with `invalid_argument`.
+A cast that makes no single attack roll gets `NOTHING_TO_ROLL`, and so does an effect save that fails by itself.
+A spell attack finds its truth in one function (`spellAttackTruth`), shared by the roll and by the hold of a Bardic die.
+The attack's pinned request keeps `spend_favor`, so a retry that changes it is a different request.
+
+## A reaction window
+
+A window that holds an attack or a cast checks the spend without making it: the row stays, and a refusal drops the hold.
+The replay is the real roll and spends the row.
+A replay whose Inspiration is gone fails with a client error, the attack is dropped and nothing is spent.
+The same holds for a replay whose sources changed so that the Inspiration adds nothing.
+
+## The log and the undo
+
+The log entry of a roll made with the Inspiration carries `favor_text_pt`: "<name> usou a Inspiração."
+The master and the roller's own player read it; another player and someone outside the campaign read the roll as any other.
+The undo of an attack or a cast puts the row back, in its own transaction, and the master's undo does not stack: a character that was granted another since keeps the one.
+A concentration save and an effect save are not undoable kinds, so they have no undo.
+Each roll that spends moves the session's hint number once, as the roll already does, and a refusal moves none.
 
 ## Who hears and who reads
 
@@ -87,7 +112,8 @@ A hold keeps `favor_spent`, so a retry and the answer count the Inspiration agai
 | The row, in `GetFavor` | Every holder | Their own characters | None |
 | The hint of a grant | Yes | Yes | No |
 | The session's hint number | Steps by one | Steps by one | Steps by one, the same for whoever was picked |
-| The combat log and the session summary | No line | No line | No line |
+| The combat log line of a roll that spent it | Yes | Yes | No |
+| The combat log line of a grant, and the session summary | No line | No line | No line |
 
 The hint is `vitals_changed` with the character's vitals, which the master and the player already read, so it carries nothing about the Inspiration; the screens read the character and `GetFavor` again.
 A character whose vitals cannot be read (a dead one) tells nothing, and the number moves all the same.
@@ -111,5 +137,6 @@ A player calling it is `permission_denied`.
 
 `favor_grant_test.go` covers the grant, the read, the refusals (the combatants of a combat among them), a dead holder, the retry and the races.
 `favor_spend_test.go` covers the decision table of the helper, the held retry and answer, the race of twenty spends and the adapters.
+`favor_combat_test.go` covers the four combat paths: the spend, the refusals, the retry, the typed faces, the log, the undo, the held roll and the window replay.
 `TestAuthorizationMatrix` has the rows of the three calls.
 `internal/leaktest/favor_test.go` proves that a third player reads nothing of who has it, in the read, the log and the stream.

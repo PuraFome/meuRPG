@@ -127,6 +127,19 @@ func TestFavorSentenceIsNeverHidden(t *testing.T) {
 			}
 		})
 	}
+	// A hidden effect makes the anyHidden branch run: the effect's own source is "Outra fonte", the Inspiration still is not.
+	hiddenEffect := playdb.CombatantState{Kind: stateEffect, PlayerVisible: false}
+	facts := modeFacts{states: map[string][]playdb.CombatantState{"a": {hiddenEffect}}}
+	hideEffects := facts.hiddenFrom(combatViewer{}, playdb.Combatant{ID: "a"}, playdb.Combatant{ID: "b"})
+	if !hideEffects(combat.Source{Kind: combat.SourceEffectAttack}) {
+		t.Error("hiddenFrom with a hidden effect does not hide an effect's source: the branch under test did not run")
+	}
+	if hideEffects(favorSource) {
+		t.Error("hiddenFrom with a hidden effect hides the Inspiration")
+	}
+	if shown := sourceProto(favorSource, textContext{self: true, names: names}, hideEffects); shown.GetTextPt() != "Inspiração" {
+		t.Errorf("sourceProto of the Inspiration beside a hidden effect = %v, want the sentence Inspiração", shown)
+	}
 	note := rollNote{Kind: noteFavor, Label: labelFavor, Adv: true}
 	for _, master := range []bool{true, false} {
 		if got := note.proto(master); got.GetLabelPt() != "Inspiração" || got.GetKind() != "favor" || !got.GetAdvantage() {
@@ -254,6 +267,24 @@ func TestUseFavorDecisionTable(t *testing.T) {
 	}
 }
 
+// A retry that asks for the spend on a hold made without it comes after the d20, and one that does not ask is untouched.
+func TestUseFavorOnAHeldRollMadeWithoutIt(t *testing.T) {
+	t.Parallel()
+	f := newFavorParty(t)
+	if err := f.grant(f.toren.GetId()); err != nil {
+		t.Fatalf("grant: %v", err)
+	}
+	a := f.ask(combat.ModeNormal)
+	f.holdOf(t, a.Key, false)
+	a.Want = false
+	if got := f.tryFavor(t.Context(), a); got.err != nil || got.use.Used || got.use.Mode != combat.ModeNormal {
+		t.Errorf("the retry that does not ask = %+v, %v, want an untouched normal roll", got.use, got.err)
+	}
+	if !f.favorHolds(t) {
+		t.Error("a retry that does not ask took the Inspiration")
+	}
+}
+
 // The d20 is already rolled when a held roll exists under the request's key and was made without the Inspiration.
 func TestUseFavorRefusesAfterTheRollOnAFreshRequest(t *testing.T) {
 	t.Parallel()
@@ -298,6 +329,12 @@ func TestUseFavorOnTheRetryOfAHeldRollReadsTheHold(t *testing.T) {
 			t.Errorf("the retry on %v = %+v, %v, want mode %v used and not spent", in, got.use, got.err, want)
 		}
 	}
+	// A retry that no longer asks for it still counts it: the hold made the roll with it (a flipped spend_favor changes nothing).
+	a.Want = false
+	if got := f.tryFavor(t.Context(), a); got.err != nil || !got.use.Used || got.use.Spent || got.use.Mode != combat.ModeAdvantage {
+		t.Errorf("the retry with Want=false = %+v, %v, want used, not spent, advantage", got.use, got.err)
+	}
+	a.Want = true
 	// It does not need to be the holder's call: the hold decided it, so a retry that no longer says Own is not refused.
 	a.Own, a.Rolls = false, false
 	if got := f.tryFavor(t.Context(), a); got.err != nil || !got.use.Used {
@@ -321,6 +358,7 @@ func TestUseFavorOnTheAnswerToAHeldRollReadsTheHold(t *testing.T) {
 			func(a *favorAsk) { a.Own = false }, // the master answers: the roller is still who rolls
 			func(a *favorAsk) { a.Sources = sourcesOf(combat.ModeAdvantage) },
 			func(a *favorAsk) { a.Rolls = false },
+			func(a *favorAsk) { a.Want = false }, // the answer run of a request that no longer says it: the hold still decides
 		} {
 			b := a
 			edit(&b)

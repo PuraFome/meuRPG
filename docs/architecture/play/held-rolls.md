@@ -118,6 +118,7 @@ Each says when it waits (`pending`), what it asks (`offer`) and what its answer 
 
 The master's Inspiração is not a link of this chain: it is chosen before the d20, never asked ([Inspiração](favor.md#the-spend)).
 The hold remembers `favor_spent`, so a retry and the answer count the Inspiração without spending it again.
+`RollAttack`, `CastSpell`, `ResolveConcentrationSave` and `RollEffectSave` set it when the roll they hold used or kept the Inspiração.
 
 Cutting Words on a check is not a link of this chain: it is a reaction hold of the combat ([Reactions](reactions.md#cutting-words-on-a-check)).
 

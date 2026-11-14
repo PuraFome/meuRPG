@@ -417,16 +417,18 @@ func (s *Service) rollConcentration(
 	if err != nil {
 		return false, err
 	}
-	sun, err := s.sunlightOf(ctx, c.q, c.enc)
+	fv, err := s.concentrationFavor(ctx, c, call, reactor, creatureFacts(reactor, states, sheet.Traits))
 	if err != nil {
 		return false, err
 	}
-	mode := combat.Resolve(concentrationSources(sun.facts(creatureFacts(reactor, states, sheet.Traits), reactor)))
+	mode := fv.Mode
+	ev.Favor = fv.Used
 	save = withRollBonus(save, states, reactor.ID, rules.RollAppliesSave)
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (nothing has been written yet); the answer brings it back with the die added. So
 	// has a halfling's d20 that shows a 1, for the Lucky question first.
 	spec := saveSpec(call.m, heldConcentrationSave, reactor, call.key, call.msg, call.in, save.Bonus, mode, sheet.Traits)
+	spec.FavorSpent = fv.Used
 	// Indomitable (held_indomitable.go): the dice an effect adds after the gate move the total, so the roller may not
 	// know the result yet, as when the table hides the DC.
 	extras := len(effectDiceFor(states, reactor.ID, rules.RollAppliesSave)) > 0 || call.msg.GetManeuverKey() != ""
@@ -455,6 +457,15 @@ func (s *Service) rollConcentration(
 		return false, err
 	}
 	return recordConcentrationRoll(ev, run, gate, save.Bonus, delta, dc, t.Spell), nil
+}
+
+// concentrationFavor spends the Inspiration the save asked for, over the modes the save has before it.
+func (s *Service) concentrationFavor(ctx context.Context, c *combatTx, call concentrationCall, reactor playdb.Combatant, facts combat.Creature) (favorUse, error) {
+	sun, err := s.sunlightOf(ctx, c.q, c.enc)
+	if err != nil {
+		return favorUse{}, err
+	}
+	return s.favorOnSave(ctx, s.inspirationGate(c), call.m, reactor, heldConcentrationSave, call.key, call.msg.GetSpendFavor(), concentrationSources(sun.facts(facts, reactor)), true)
 }
 
 // recordConcentrationRoll writes what the save showed in the event and the result, and answers

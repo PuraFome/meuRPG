@@ -12334,8 +12334,8 @@ type RollAttackRequest struct {
 	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
 	ManeuverKey string `protobuf:"bytes,103,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
 	// Spends the character's Inspiration for advantage on this attack roll, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,106,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -15539,8 +15539,8 @@ type CastSpellRequest struct {
 	// (see SpellWall), sent for any other spell, or sent in a combat without a map, it is `invalid_argument`.
 	Wall *SpellWall `protobuf:"bytes,35,opt,name=wall,proto3" json:"wall,omitempty"`
 	// Spends the character's Inspiration for advantage on this spell attack roll, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,36,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -19695,6 +19695,10 @@ type CombatLogEntry struct {
 	GearSwapped *CombatLogGearSwapped `protobuf:"bytes,117,opt,name=gear_swapped,json=gearSwapped,proto3" json:"gear_swapped,omitempty"`
 	// FEATURE_USED: the feature, the choice and what the use did. The line has the audience of a feature action.
 	FeatureUsed *CombatLogFeatureUsed `protobuf:"bytes,118,opt,name=feature_used,json=featureUsed,proto3" json:"feature_used,omitempty"`
+	// ATTACK, SPELL_CAST, REACTION_WINDOW (the concentration save) and EFFECT (the save of an effect): "<name> usou a Inspiração." when
+	// the roll was made with the roller's Inspiration. Only the master and the roller's own player get it, like the roll's dice; empty for
+	// anyone else and when the roll used none.
+	FavorTextPt string `protobuf:"bytes,119,opt,name=favor_text_pt,json=favorTextPt,proto3" json:"favor_text_pt,omitempty"`
 	// The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
 	// A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
 	// sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and
@@ -20153,6 +20157,13 @@ func (x *CombatLogEntry) GetFeatureUsed() *CombatLogFeatureUsed {
 		return x.FeatureUsed
 	}
 	return nil
+}
+
+func (x *CombatLogEntry) GetFavorTextPt() string {
+	if x != nil {
+		return x.FavorTextPt
+	}
+	return ""
 }
 
 func (x *CombatLogEntry) GetSeq() int64 {
@@ -26213,8 +26224,8 @@ type ResolveConcentrationSaveRequest struct {
 	// the creature is incapacitated.
 	UseLegendaryResistance bool `protobuf:"varint,103,opt,name=use_legendary_resistance,json=useLegendaryResistance,proto3" json:"use_legendary_resistance,omitempty"`
 	// Spends the character's Inspiration for advantage on this concentration saving throw, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,104,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -28859,7 +28870,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\astarted\x18\x03 \x01(\bR\astarted\x12A\n" +
 	"\n" +
 	"end_reason\x18\x04 \x01(\x0e2\".meurpg.play.v1.WildShapeEndReasonR\tendReason\x12%\n" +
-	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\xee\x16\n" +
+	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\x92\x17\n" +
 	"\x0eCombatLogEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1d.meurpg.play.v1.CombatLogKindR\x04kind\x12*\n" +
@@ -28934,7 +28945,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0flegendary_spent\x18r \x01(\v2'.meurpg.play.v1.CombatLogLegendarySpentR\x0elegendarySpent\x12=\n" +
 	"\brecharge\x18s \x01(\v2!.meurpg.play.v1.CombatLogRechargeR\brecharge\x12G\n" +
 	"\fgear_swapped\x18u \x01(\v2$.meurpg.play.v1.CombatLogGearSwappedR\vgearSwapped\x12G\n" +
-	"\ffeature_used\x18v \x01(\v2$.meurpg.play.v1.CombatLogFeatureUsedR\vfeatureUsed\x12\x10\n" +
+	"\ffeature_used\x18v \x01(\v2$.meurpg.play.v1.CombatLogFeatureUsedR\vfeatureUsed\x12\"\n" +
+	"\rfavor_text_pt\x18w \x01(\tR\vfavorTextPt\x12\x10\n" +
 	"\x03seq\x18t \x01(\x03R\x03seqB\x13\n" +
 	"\x11_hit_points_afterB\x15\n" +
 	"\x13_target_armor_class\"\x84\x02\n" +

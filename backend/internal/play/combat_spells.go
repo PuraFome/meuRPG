@@ -448,7 +448,9 @@ func (s *Service) spellAttackD20(ctx context.Context, c *combatTx, sp link.Spell
 	}
 	var r spellAttackRolled
 	var err error
-	r.truth = modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.reader, modes.names)
+	if r.truth, err = s.spellAttackTruth(ctx, c, modes, sp, caster, target, false); err != nil {
+		return r, err
+	}
 	if r.choice, err = s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, r.truth.Mode, modes.ask); err != nil {
 		return r, err
 	}
@@ -457,6 +459,25 @@ func (s *Service) spellAttackD20(ctx context.Context, c *combatTx, sp link.Spell
 		Kind: heldSpellAttack, In: in, Modifier: sp.ToHit, Mode: r.choice.Mode, Floor: floorFor(modes.traits, rules.RollAppliesAttack, false),
 	})
 	return r, err
+}
+
+// spellAttackTruth is the mode of a spell attack as the combat makes it, with the Inspiration counted (favor_spend.go): the one place
+// that works it out for the two that need it, the cast that holds its d20 for a question and the one that rolls it. check only
+// validates the spend, for a cast a reaction window holds.
+func (s *Service) spellAttackTruth(ctx context.Context, c *combatTx, modes *spellModes, sp link.Spell, caster, target playdb.Combatant, check bool) (modeResult, error) {
+	truth := modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.reader, modes.names)
+	fv, err := s.useFavor(ctx, s.inspirationGate(c), favorAsk{
+		Want: modes.spend, CampaignID: c.session.CampaignID, CharacterID: caster.CharacterID, Own: ownsCharacter(modes.v, caster),
+		Key: modes.key, Kind: heldSpellAttack, Sources: truth.Sources, Rolls: true, Check: check,
+	})
+	if err != nil {
+		return truth, err
+	}
+	if err := favorAgainst(fv, modes.ask.want, modes.ask.requestID); err != nil {
+		return truth, err
+	}
+	modes.favor = fv
+	return truth.withFavor(fv, modes.names), nil
 }
 
 // spendSpellAttackRoll uses up what the roll used: the Help aimed at the target and Zombaria Viciosa's
@@ -493,6 +514,7 @@ func (s *Service) spellAttack(ctx context.Context, c *combatTx, m authz.Membersh
 	}
 	d20 := step.Roll
 	modes.attack[target.ID] = rolled.truth.Shown
+	made.Favor = modes.favor.Used
 	if err := s.spendSpellAttackRoll(ctx, c, caster, target, modes, made); err != nil {
 		return err
 	}

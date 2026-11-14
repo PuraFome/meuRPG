@@ -113,6 +113,9 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 		}
 	}
 	effectLogRoll(le, e, v, byID)
+	if le.D20 != nil { // the Inspiration is told with the roll's dice: to the master and the roller's own player
+		out.FavorTextPt = favorLine(e.ev, v, byID[e.ev.Actor])
+	}
 	if v.master && e.ev.Resisted {
 		le.Resisted, le.ResistedLeft = true, e.ev.ResistLeft
 	}

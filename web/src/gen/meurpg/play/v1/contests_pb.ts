@@ -260,8 +260,8 @@ export type StartContestRequest = Message<"meurpg.play.v1.StartContestRequest"> 
 
   /**
    * Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
-   * Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-   * It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+   * Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+   * It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
    * A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
    *
    * @generated from field: bool spend_favor = 13;
@@ -361,8 +361,8 @@ export type RespondContestRequest = Message<"meurpg.play.v1.RespondContestReques
 
   /**
    * Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
-   * Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-   * It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+   * Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+   * It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
    * A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
    *
    * @generated from field: bool spend_favor = 8;
@@ -623,8 +623,8 @@ export type HideRequest = Message<"meurpg.play.v1.HideRequest"> & {
 
   /**
    * Spends the character's Inspiration for advantage on this Stealth check, chosen before the d20 is rolled.
-   * Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-   * It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+   * Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+   * It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
    * A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
    *
    * @generated from field: bool spend_favor = 7;
@@ -1207,8 +1207,8 @@ export type RollGroupCheckRequest = Message<"meurpg.play.v1.RollGroupCheckReques
 
   /**
    * Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
-   * Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-   * It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+   * Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+   * It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
    * A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
    *
    * @generated from field: bool spend_favor = 5;

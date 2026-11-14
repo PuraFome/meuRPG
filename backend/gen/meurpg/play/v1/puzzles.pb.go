@@ -6664,8 +6664,8 @@ type TryPuzzleHintRequest struct {
 	// for each, 1 to the die's faces. With the app's dice the server rolls them.
 	ExtraDieFaces []int32 `protobuf:"varint,7,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
 	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,8,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields

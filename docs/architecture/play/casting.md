@@ -24,6 +24,7 @@ The spell, the level (`slot`: level or pact, none for a cantrip) and the targets
 - **At most 10 listed targets**, the master's too: what each target suffered stays in the cast's event, and a `session_events` payload is at most 16 KiB.
   A placed area spell is not listed: it reaches who the server finds inside, up to the 40 combatants a combat holds.
   Past 10 listed is `invalid_argument`.
+- **The master's Inspiração on a spell attack.** `spend_favor` on `CastSpell` with one target gives the attack advantage, and it is refused with `NOTHING_TO_ROLL` when the cast has no single attack roll ([Inspiração](favor.md#the-spend)).
 - **Roll mode of a spell attack.** `GetTurnOptions` writes the mode, sources and `critical_on_hit` on each target of a spell attack, as on a weapon attack (see [Attacks and damage](attacks-and-damage.md#roll-modes)).
 - **Held rolls.** A leveled spell attack against one target, an effect's save and a concentration save may wait for Lucky or a Bardic Inspiration die (see [Held rolls](held-rolls.md)).
   A cast held by a reaction window (Counterspell) is replayed with the stored request.

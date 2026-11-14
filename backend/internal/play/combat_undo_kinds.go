@@ -251,7 +251,7 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 		if err := u.attackerBack(ctx, who, ev); err != nil {
 			return err
 		}
-		if err := u.rollUsesBack(ctx, who, ev); err != nil {
+		if err := u.rollSpentBack(ctx, who, ev); err != nil {
 			return err
 		}
 		if err := u.meleeHitBack(ctx, who, ev); err != nil {
@@ -269,6 +269,14 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 		}
 	}
 	return nil
+}
+
+// rollSpentBack gives back what the d20 itself used: the effects' uses and the Inspiration.
+func (u *undoer) rollSpentBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if err := u.rollUsesBack(ctx, who, ev); err != nil {
+		return err
+	}
+	return u.favorBack(ctx, who, ev)
 }
 
 // dieHeldAgain gives the combatant the Bardic Inspiration die the roll used.
@@ -755,7 +763,7 @@ func (u *undoer) spellCast(ctx context.Context, ev actionEvent) error {
 		return nil
 	}
 	steps := []func(context.Context, playdb.Combatant, actionEvent) error{
-		u.castCounters, u.castDieBack, u.strokeBack, u.d20RerollBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack, u.resistedBack, u.castLimitBack,
+		u.castCounters, u.castDieBack, u.strokeBack, u.d20RerollBack, u.favorBack, u.castEffectsBack, u.castTeleportBack, u.castSpentBack, u.castConcentrationBack, u.castCreaturesBack, u.castRevealBack, u.castHitsBack, u.resistedBack, u.castLimitBack,
 	}
 	for _, step := range steps {
 		if err := step(ctx, who, ev); err != nil {

@@ -4137,8 +4137,8 @@ message RollAttackRequest {
   string maneuver_key = 103;
 
   // Spends the character's Inspiration for advantage on this attack roll, chosen before the d20 is rolled.
-  // Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-  // It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
   // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
   bool spend_favor = 106;
 }
@@ -4831,8 +4831,8 @@ message CastSpellRequest {
   SpellWall wall = 35;
 
   // Spends the character's Inspiration for advantage on this spell attack roll, chosen before the d20 is rolled.
-  // Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-  // It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
   // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
   bool spend_favor = 36;
 }
@@ -5866,6 +5866,10 @@ message CombatLogEntry {
   CombatLogGearSwapped gear_swapped = 117;
   // FEATURE_USED: the feature, the choice and what the use did. The line has the audience of a feature action.
   CombatLogFeatureUsed feature_used = 118;
+  // ATTACK, SPELL_CAST, REACTION_WINDOW (the concentration save) and EFFECT (the save of an effect): "<name> usou a Inspiração." when
+  // the roll was made with the roller's Inspiration. Only the master and the roller's own player get it, like the roll's dice; empty for
+  // anyone else and when the roll used none.
+  string favor_text_pt = 119;
   // The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
   // A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
   // sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and
@@ -7021,8 +7025,8 @@ message ResolveConcentrationSaveRequest {
   bool use_legendary_resistance = 103;
 
   // Spends the character's Inspiration for advantage on this concentration saving throw, chosen before the d20 is rolled.
-  // Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-  // It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
   // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
   bool spend_favor = 104;
 }

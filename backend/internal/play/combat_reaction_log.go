@@ -36,6 +36,9 @@ func (e *logEntry) reactionEntry(ctx context.Context, v combatViewer, byID map[s
 	out := &playv1.CombatLogEntry{
 		Id: e.id, Kind: e.kind, At: timestamppb.New(e.at), Round: e.ev.Round, ReactionTextPt: text,
 	}
+	if reaction.Kind(e.ev.Reaction.Kind) == reaction.Concentration && (v.master || v.owns(actor)) { // with the roll's dice: the master's and its own player's
+		out.FavorTextPt = favorLine(e.ev, v, actor)
+	}
 	if v.master || named {
 		out.ActorId, out.ActorLabel = actor.ID, actor.Label
 	}

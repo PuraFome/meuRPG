@@ -1049,8 +1049,8 @@ type RollEffectSaveRequest struct {
 	// the creature is incapacitated.
 	UseLegendaryResistance bool `protobuf:"varint,12,opt,name=use_legendary_resistance,json=useLegendaryResistance,proto3" json:"use_legendary_resistance,omitempty"`
 	// Spends the character's Inspiration for advantage on this saving throw, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,13,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields

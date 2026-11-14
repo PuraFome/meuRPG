@@ -345,8 +345,8 @@ type StartContestRequest struct {
 	// to the die's sides. Empty (0) when the roll is in the app, where the server rolls the die.
 	ManeuverFace int32 `protobuf:"varint,12,opt,name=maneuver_face,json=maneuverFace,proto3" json:"maneuver_face,omitempty"`
 	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,13,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -554,8 +554,8 @@ type RespondContestRequest struct {
 	// is the player's choice and the contest waits for the master.
 	DeferToMaster bool `protobuf:"varint,7,opt,name=defer_to_master,json=deferToMaster,proto3" json:"defer_to_master,omitempty"`
 	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,8,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -1083,8 +1083,8 @@ type HideRequest struct {
 	ActionKey string          `protobuf:"bytes,5,opt,name=action_key,json=actionKey,proto3" json:"action_key,omitempty"`
 	Roll      *CheckRollInput `protobuf:"bytes,6,opt,name=roll,proto3" json:"roll,omitempty"`
 	// Spends the character's Inspiration for advantage on this Stealth check, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,7,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -2250,8 +2250,8 @@ type RollGroupCheckRequest struct {
 	GroupCheckId   string                 `protobuf:"bytes,3,opt,name=group_check_id,json=groupCheckId,proto3" json:"group_check_id,omitempty"`
 	Roll           *CheckRollInput        `protobuf:"bytes,4,opt,name=roll,proto3" json:"roll,omitempty"`
 	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
-	// Only the roller may set it, for their own player character that has the Inspiration; the master cannot spend it for an absent player.
-	// It is refused when the character has none, when the Inspiration would not change the roll, when the call rolls no d20, and on the answer to a held roll.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
 	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
 	SpendFavor    bool `protobuf:"varint,5,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields

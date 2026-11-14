@@ -2129,3 +2129,7 @@ RETURNING *;
 -- name: SpendCharacterFavor :one
 -- Takes the character's Inspiration; no row comes back when it has none, so of two spends only one wins.
 DELETE FROM character_favor WHERE character_id = $1 AND campaign_id = $2 RETURNING character_id;
+
+-- name: HasCharacterFavor :one
+-- Says the character has the Inspiration, without taking it: a roll a reaction window holds is checked against it, and the replay spends it.
+SELECT EXISTS (SELECT 1 FROM character_favor WHERE character_id = $1 AND campaign_id = $2);
