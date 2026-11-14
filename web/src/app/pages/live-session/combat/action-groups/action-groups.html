@@ -78,7 +78,7 @@
     }
 
     <!-- The action tabs (C4-03, C4-04, C6-07): built from what the turn's options hold; every panel stays mounted, hidden while another tab is shown. -->
-    <app-tab-list class="tabs" label="Tipos de ação" [tabs]="tabItems()" [idPrefix]="prefix" [selected]="current()" (selectedChange)="tab.set($event)" />
+    <app-tab-list class="tabs" label="Tipos de ação" [collapseInactive]="true" [tabs]="tabItems()" [idPrefix]="prefix" [selected]="current()" (selectedChange)="tab.set($event)" />
     <!-- The target chosen on the map waits here, under the tabs (C7-05). -->
     <ng-content select="[pending]" />
 
