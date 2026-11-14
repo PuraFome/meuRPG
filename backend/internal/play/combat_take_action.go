@@ -237,11 +237,21 @@ func (f *takeActionFlow) locate(ctx context.Context) error {
 	if err := f.v.mayMove(cs, f.who); err != nil { // the rider's player acts for a controlled mount too
 		return err
 	}
-	if err := f.s.mustNotBeLimited(ctx, f.c, f.who, f.call.actionKey); err != nil {
+	if f.opts, err = f.s.optionsOf(ctx, f.c.tx, f.m.CampaignID, f.who); err != nil {
 		return err
 	}
-	f.opts, err = f.s.optionsOf(ctx, f.c.tx, f.m.CampaignID, f.who)
-	return err
+	// A controlled mount that carries a rider takes Dash, Disengage and Dodge; a reaction is no action and stays free.
+	if f.isReaction() {
+		return nil
+	}
+	return f.s.mustNotBeLimited(ctx, f.c, f.who, f.call.actionKey)
+}
+
+// isReaction says the action asked for is a feature action of the reaction economy.
+func (f *takeActionFlow) isReaction() bool {
+	return slices.ContainsFunc(f.opts.GetFeatureActions(), func(a *rulesv1.ActionOption) bool {
+		return a.GetAction().GetKey() == f.call.actionKey && a.GetAction().GetEconomy() == rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION
+	})
 }
 
 // choose finds the action among the standard or feature actions the combatant has, and refuses the ones
