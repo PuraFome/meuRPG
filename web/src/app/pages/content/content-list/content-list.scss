@@ -58,8 +58,7 @@
 
   // The master's four actions as a 2x2 grid of equal buttons (K1); one column on a phone.
   &__actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 232px));
+    display: flex;
     flex-shrink: 0;
     gap: var(--mr-space-2);
   }
@@ -164,8 +163,7 @@
 
   // The master's four actions as a 2x2 grid of equal buttons (K1); one column on a phone.
   &__actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 232px));
+    display: flex;
     flex-shrink: 0;
     gap: var(--mr-space-2);
   }
@@ -173,7 +171,7 @@
 
 .filters {
   display: grid;
-  grid-template-columns: minmax(0, 360px) minmax(0, 220px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 240px);
   gap: var(--mr-space-3);
 }
 

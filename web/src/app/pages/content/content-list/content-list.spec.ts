@@ -276,7 +276,8 @@ describe('ContentList', () => {
     await fixture.whenStable();
     return Array.from(document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
   };
-  const items = (menu: HTMLButtonElement[]) => menu.map((b) => text(b).replace(/^\S+ /, '').trim());
+  const items = (menu: HTMLButtonElement[]) =>
+    menu.map((b) => text(b.querySelector('.mat-mdc-menu-item-text')!).trim());
 
   it('gives the master on a phone the reading, the switch and the archive: a notice, a "Tipo" select and a ⋮ menu per row (board 580-15)', async () => {
     const { fixture, el } = await setup(Role.MASTER, { phone: true, kind: 'classes' });
@@ -314,7 +315,7 @@ describe('ContentList', () => {
     menu[0].click();
     await settle(fixture, 3);
     expect(setSwitches).toHaveBeenCalledWith('camp-1', [
-      { key: 'class:guardiao-do-vale@mesa', off: true },
+      { key: 'class:guardi-o-do-vale@mesa', off: true },
     ]);
     expect(text(el.querySelector('.prow')!)).toContain('Desligada para os jogadores');
     expect(items(await rowMenu(fixture, el, 0))[0]).toBe('Ligar para os jogadores');
