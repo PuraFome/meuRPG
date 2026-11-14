@@ -11,6 +11,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { MatButton } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type {
@@ -155,6 +156,7 @@ function askFilled(kind: AskKind, d: FeatDraft): boolean {
     FeatChoices,
     FeatOptions,
     FeatureEditor,
+    MatButton,
     MatIconModule,
     OptionSource,
     PickList,

@@ -70,6 +70,7 @@ import { ATT_WIDTHS, attViewport, attunementScale, cropAtt, shootAtt } from './a
 import { armorClassOf, bonusCombatSheet, bonusSheet, cropBonus, masterSetsBonuses, masterSetsShieldBonus, readDaggerTwice, shootBonus } from './bonus-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
+import { createPrerequisiteFeatsRPC } from './feat-prerequisites-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { beginCrowdedCombatRPC, boxIn, callFeatBody, elementFeatBody, endSessionOf, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
@@ -12083,6 +12084,8 @@ async function scanFeatAsks(browser: Browser, colorScheme: 'light' | 'dark', wid
     const feats = await createFeatsRPC(m, campaignId);
     await open(m, entryRoute(campaignId, feats.smallAndSlippery));
     await expect(m.getByLabel('Nome do talento')).toHaveValue('Pequeno e Escorregadio');
+    // The older fields are in a block that is folded until the master opens it (board 580-01).
+    await m.getByText('Habilidades, proficiência, nível, raças, tamanho e o que não pode ter').click();
     const races = m.getByRole('list', { name: 'Escolhidas' }).first();
     await expect(races.getByRole('listitem')).toHaveCount(3);
     await expect(races).toContainText('Desligada');
@@ -12169,7 +12172,7 @@ async function scanFeatList(browser: Browser, colorScheme: 'light' | 'dark', wid
     await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/level-up`);
     await passClassStep(p);
     await pickRadio(p, 'Um talento');
-    await expect(p.getByRole('heading', { name: 'Ainda não cumpre' })).toBeVisible();
+    await expect(p.getByRole('heading', { name: 'Ainda não disponíveis' })).toBeVisible();
     await expect(p.getByText('Só para Gnomo ou Halfling.')).toBeVisible();
     await expect(p.getByText('uma condição que a mesa não mostra')).toBeVisible();
     await expectScreenPasses(p, `Subir de nível, os talentos que o personagem ainda não cumpre ${where}`);
@@ -12186,6 +12189,39 @@ test('a lista de talentos do subir de nível com o que não cumpre passa no axe 
 test('a lista de talentos do subir de nível com o que não cumpre passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await scanFeatList(browser, 'dark', 390);
+});
+
+/** Pensantus goes from Mago 3 to 4 and takes a feat: the class level, the pact, the spell and the options joined into one "Exige" line (#580, board 580-04). */
+async function scanFeatAsksLine(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForLevelUp(m, p, `Acessibilidade exige ${Date.now()}`, { session: false });
+    await createPrerequisiteFeatsRPC(m, table.campaignId);
+    await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/level-up`);
+    await passClassStep(p);
+    await pickRadio(p, 'Um talento');
+    await expect(p.getByText('Exige Bruxo 5, Pacto da Lâmina, Rajada Mística, Olhar de Brasa e Lâmina Sedenta.')).toBeVisible();
+    await expect(p.getByText('Exige a magia Identificação, que você ainda não conhece.')).toBeVisible();
+    await expect(p.getByText('Pede uma condição que a mesa não mostra.').first()).toBeVisible();
+    await expectScreenPasses(p, `Subir de nível, o talento que exige classe, pacto, magia e opções ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('o talento que exige classe, pacto, magia e opções no subir de nível passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanFeatAsksLine(browser, 'light', 390);
+});
+
+test('o talento que exige classe, pacto, magia e opções no subir de nível passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanFeatAsksLine(browser, 'dark', 1280);
 });
 
 // The feat editor's options and named choices (MR-025, RN-23): the list of options, the most it takes, a whole set offered, a named ability choice

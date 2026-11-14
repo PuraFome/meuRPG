@@ -112,7 +112,7 @@
       <div class="asks-add">
         @if (askMissing().length > 0) {
           <div class="asks-add__menu">
-            <button type="button" class="add" aria-haspopup="menu" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())"><mat-icon aria-hidden="true">add</mat-icon>Adicionar pré-requisito<mat-icon aria-hidden="true">arrow_drop_down</mat-icon></button>
+            <button matButton="outlined" type="button" aria-haspopup="menu" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())"><mat-icon aria-hidden="true">add</mat-icon>Adicionar pré-requisito<mat-icon aria-hidden="true">arrow_drop_down</mat-icon></button>
             @if (menuOpen()) {
               <div class="asks-add__list" role="menu">
                 @for (a of askMissing(); track a.kind) {

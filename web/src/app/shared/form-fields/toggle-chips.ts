@@ -64,10 +64,10 @@ export interface ToggleChip {
       gap: 4px;
       min-height: 44px;
       padding: 0 var(--mr-space-3);
-      border: 1px solid var(--mr-border);
-      border-radius: 999px;
-      background: transparent;
-      color: inherit;
+      border: 1px solid var(--mr-control-line);
+      border-radius: var(--mr-radius-pill);
+      background: var(--mr-surface);
+      color: var(--mr-ink);
       font: inherit;
       cursor: pointer;
     }
@@ -79,21 +79,28 @@ export interface ToggleChip {
     }
 
     .tchip--on {
-      border-color: var(--mr-primary);
-      background: var(--mr-primary-container, transparent);
-      font-weight: 600;
+      border-color: var(--mr-accent);
+      background: var(--mr-accent-soft);
+      color: var(--mr-accent-strong);
+      font-weight: 700;
+    }
+
+    .tchip:focus-visible {
+      outline: 2px solid var(--mr-accent);
+      outline-offset: 2px;
     }
 
     .tchip--locked {
       border-style: dashed;
-      color: var(--mr-text-muted);
+      color: var(--mr-ink-muted);
+      border-width: 1px;
       cursor: not-allowed;
     }
 
     .tchips__note {
       margin: var(--mr-space-2) 0 0;
-      font-size: 0.875rem;
-      color: var(--mr-text-muted);
+      font-size: var(--mr-font-14);
+      color: var(--mr-ink-muted);
     }
   `,
 })
