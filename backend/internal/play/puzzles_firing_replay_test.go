@@ -12,7 +12,7 @@ import (
 // puzzle's trap: with two firings (the master armed the trap again between two wrong moves) the retry of the first tells the first.
 
 // firingOfMove is the firing the stored event of the move holds, as the retry of that move reads it.
-func (p *puzzleTable) firingOfMove(t *testing.T, puzzleID, _ string) *trapFireEvent {
+func (p *puzzleTable) firingOfMove(t *testing.T, puzzleID, key string) *trapFireEvent {
 	t.Helper()
 	ctx := t.Context()
 	session, err := p.h.svc.queries.GetOpenGameSession(ctx, p.campaignID)
@@ -30,7 +30,7 @@ func (p *puzzleTable) firingOfMove(t *testing.T, puzzleID, _ string) *trapFireEv
 		t.Fatalf("shownRun() error = %v", err)
 	}
 	res := &moveResult{}
-	if err := p.h.svc.recallFiring(ctx, tx, q, session, d, res); err != nil {
+	if err := p.h.svc.recallFiring(ctx, tx, q, session, d, key, res); err != nil {
 		t.Fatalf("recallFiring() error = %v", err)
 	}
 	return res.fired
