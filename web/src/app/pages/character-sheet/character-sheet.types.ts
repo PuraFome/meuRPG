@@ -5,6 +5,7 @@ import {
   ReviewStatus,
 } from '../../core/characters/characters.types';
 import { DamageTypeKey, SkillProficiency } from '../../core/characters/character-labels';
+import type { AttunementVm } from '../../core/characters/attunement';
 import type { GearVm, MarksVm } from '../../core/characters/gear';
 import type { FullSheet as GenFullSheet } from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
@@ -226,6 +227,8 @@ export interface FullSheetVm {
   readonly shieldIdle: boolean;
   /** The gear, equipped and carried (`DerivedSheet.gear`). */
   readonly gear: readonly GearVm[];
+  /** The magic items and the +N pieces a character can be attuned to, with the server's say on each (`FullSheet.magic_items`, `item_bonuses`). */
+  readonly attunement: AttunementVm;
   /** The marks the sheet itself sets on its carried weapons (`FullSheet.weapon_marks`), for the "Marcar as armas" grid. */
   readonly weaponMarks: readonly WeaponMarkVm[];
   readonly hitPointsMax: number;
@@ -471,6 +474,16 @@ export abstract class CharacterSheetSource {
     name: string,
     sheet: GenFullSheet,
     marks: readonly WeaponMarkVm[],
+  ): Promise<CharacterSheetVm>;
+  /** Saves the sheet's magic items over the whole stored sheet (`UpdateCharacter`, at `revision`): adding or removing one is a
+   * full-sheet save, and the server keeps the ids and the attunement of the entries it already has. `id` is empty for a new one. */
+  abstract setMagicItems(
+    campaignId: string,
+    characterId: string,
+    revision: number,
+    name: string,
+    sheet: GenFullSheet,
+    items: readonly { readonly id: string; readonly key: string }[],
   ): Promise<CharacterSheetVm>;
   abstract getCharacterSheet(campaignId: string, characterId: string): Promise<CharacterSheetVm>;
   /** Called only when `isMaster` — never for a player (RN-11). */

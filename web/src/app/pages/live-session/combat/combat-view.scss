@@ -264,6 +264,16 @@
   flex-direction: column;
   gap: var(--mr-space-4);
   min-width: 0;
+
+  // Nothing to say: the live region stays in the page for a screen reader, but takes no room and leaves no gap (the first action row
+  // must end above the sticky bar on a 390 x 844 phone).
+  &:has(> .mr-live:empty):not(:has(> :not(.mr-live))) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 }
 
 @media (max-width: 1023.98px) {

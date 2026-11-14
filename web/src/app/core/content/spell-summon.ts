@@ -1,10 +1,6 @@
 import { clone, create } from '@bufbuild/protobuf';
 
-import {
-  TableEffectApplies,
-  type TableSummon,
-  TableSummonSchema,
-} from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { type TableSummon, TableSummonSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { SpellDraft } from './spell-types';
 import { type SummonDraft, wholeOf } from './summon-draft';
 
@@ -54,10 +50,10 @@ export function summonRefusals(d: SpellDraft): readonly SummonRefusal[] {
       text: 'Um truque não invoca: a invocação gasta um espaço de magia. Escolha o 1º círculo ou mais.',
     });
   }
-  if (d.kept?.effect && d.duration === 'instant') {
+  if (d.effect.on && d.duration === 'instant') {
     out.push({
       path: 'table_spell.duration.kind',
-      text: 'Esta magia guarda um efeito, que dura enquanto a magia dura: escolha uma duração que não seja instantânea, ou outra mecânica.',
+      text: 'Esta magia deixa um efeito, que dura enquanto a magia dura: escolha uma duração que não seja instantânea, ou outra mecânica.',
     });
   }
   if (d.ritual) {
@@ -72,15 +68,10 @@ export function summonRefusals(d: SpellDraft): readonly SummonRefusal[] {
       text: 'As criaturas aparecem ao lado de quem conjura: o alvo é “Só quem conjura”.',
     });
   }
-  const applies = d.kept?.effect?.applies;
-  if (
-    applies !== undefined &&
-    applies !== TableEffectApplies.UNSPECIFIED &&
-    applies !== TableEffectApplies.ALL
-  ) {
+  if (d.effect.on && d.effect.applies !== 'all') {
     out.push({
       path: 'table_spell.summon',
-      text: 'Esta magia guarda um efeito só para quem falha no teste ou é atingido, e quem conjura sozinho não tem teste nem ataque. Escolha outra mecânica.',
+      text: 'Esta magia deixa um efeito só para quem falha no teste ou é atingido, e quem conjura sozinho não tem teste nem ataque. Escolha outra mecânica.',
     });
   }
   if (d.kept?.zone) {

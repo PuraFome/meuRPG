@@ -75,8 +75,11 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { SwitchField } from '../../../shared/form-fields/switch-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { Segmented } from '../../../shared/segmented/segmented';
+import { SpellEffect, type EffectContext } from './spell-effect';
 import { HitEffectBlock } from './hit-effect-block';
 import { SpellSummon } from './spell-summon';
+import { draftToEffect } from '../../../core/content/spell-effect-draft';
+import { effectAdvice } from '../../../core/content/spell-effect-checks';
 import { EntryRead } from '../entry-read/entry-read';
 import { previewRead } from '../../../core/content/preview';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
@@ -107,6 +110,7 @@ export interface EditorSaved {
     MatIconModule,
     Segmented,
     SelectField,
+    SpellEffect,
     SpellSummon,
     SwitchField,
     TextField,
@@ -197,6 +201,30 @@ export class SpellEditor {
     const stored = e?.body.case === 'tableSpell' && e.body.value.damage.length > 0;
     return stored && unappliedDamage(this.draft()) ? UNAPPLIED_DAMAGE_PT : '';
   });
+  /** What the effect block reads of the rest of the spell (it edits none of it). */
+  protected readonly effectContext = computed<EffectContext>(() => {
+    const d = this.draft();
+    const n = d.count;
+    return {
+      lasts: d.duration !== 'instant',
+      durationText: durationText(d),
+      concentration: d.concentration,
+      hasSave: d.mechanic === 'save',
+      hasAttack: d.mechanic === 'attack',
+      saveName: this.catalog().abilities.find((a) => a.ability === d.saveAbility)?.name ?? '',
+      self: d.target === 'self',
+      targets:
+        d.target === 'self'
+          ? 'Quem conjura.'
+          : d.target === 'creatures'
+            ? `As ${n} criaturas da magia.`
+            : d.target === 'area'
+              ? 'As criaturas na área.'
+              : 'A criatura da magia.',
+    };
+  });
+  protected readonly abilityNames = computed(() => this.catalog().abilities.map((a) => a.name));
+  protected readonly skills = computed<SelectOption[]>(() => [...this.catalog().skills]);
   protected readonly schools = computed<SelectOption[]>(() => [...this.catalog().schools]);
   protected readonly classes = computed(() => this.catalog().castingClasses);
   /** "Mais criaturas por nível de espaço" stays folded until asked, or until the spell has a number there. */
@@ -258,7 +286,7 @@ export class SpellEditor {
   /** What the engine will refuse about the spell next to "Invocar" (`summonRefusals`) and in "Efeito no próximo golpe" (`hitRefusals`), said before the save. */
   private readonly advance = computed(() => {
     const d = this.draft();
-    return [...summonRefusals(d), ...hitRefusals(d.kept?.effect, d.hit, hitAvailable(d))];
+    return [...summonRefusals(d), ...hitRefusals(draftToEffect(d.effect), d.hit, hitAvailable(d))];
   });
 
   protected setHit(hit: HitDraft): void {
@@ -269,9 +297,9 @@ export class SpellEditor {
   protected readonly hitAbilities = computed<SelectOption[]>(() =>
     this.catalog().abilities.map((a) => ({ value: hitAbilityKey(a.ability), label: a.name })),
   );
-  /** The path of a field of the weapon-hit modifier: its place among the stored effect's modifiers. */
+  /** The path of a field of the weapon-hit modifier: it goes last, after what the other block writes. */
   protected readonly hitPathOf = computed(() => {
-    const effect = this.draft().kept?.effect;
+    const effect = draftToEffect(this.draft().effect);
     return (field: string) => hitPath(effect, field);
   });
   /** "1 minuto", "até ser dissipada": the chip of the block says how long the effect lasts. */
@@ -292,6 +320,9 @@ export class SpellEditor {
   protected readonly fieldIssues = (path: string): readonly string[] => {
     return [
       ...this.saver.issues(path),
+      ...effectAdvice(this.draft().effect)
+        .filter((r) => r.path === path)
+        .map((r) => r.text),
       ...this.advance()
         .filter((r) => r.path === path)
         .map((r) => r.text),
@@ -355,4 +386,18 @@ export class SpellEditor {
     }
     this.saver.focusRefusal(this.host.nativeElement, this.injector);
   }
+}
+
+/** The duration as the spell says it for the effect: "1 minuto", "até ser dissipada". */
+function durationText(d: SpellDraft): string {
+  if (d.duration === 'until_dispelled') {
+    return 'até ser dissipada';
+  }
+  const words = {
+    round: ['rodada', 'rodadas'],
+    minute: ['minuto', 'minutos'],
+    hour: ['hora', 'horas'],
+    day: ['dia', 'dias'],
+  }[d.durationUnit];
+  return `${d.durationAmount} ${words[d.durationAmount === 1 ? 0 : 1]}`;
 }

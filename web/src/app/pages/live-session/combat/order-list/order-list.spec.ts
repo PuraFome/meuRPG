@@ -290,12 +290,15 @@ describe("OrderList with a player's creatures (E9-12)", () => {
     expect(el.textContent).not.toContain('Concentrado');
   });
 
-  it('shows a druid in a beast form to the master: "Na forma de Lobo" and the beast\'s pool beside the druid\'s own', () => {
+  it("says a druid in a beast form once, as board 584-04 draws it: the beast's pool in the number and the bar, the facts line, the beast and its time", () => {
     const wolfForm = {
       ...salvia,
+      armorClass: 13,
+      hitPointsCurrent: 27,
+      hitPointsMax: 27,
       wildShapeBeastKey: 'monster:wolf',
       wildShapeBeastNamePt: 'Lobo',
-      wildShapeHitPointsCurrent: 11,
+      wildShapeHitPointsCurrent: 7,
       wildShapeHitPointsMax: 11,
       concentrationSpell: '',
     } as typeof salvia;
@@ -304,14 +307,29 @@ describe("OrderList with a player's creatures (E9-12)", () => {
       'encounter',
       encounter({ combatants: [wolfForm], currentCombatantId: 's' }),
     );
+    fixture.componentRef.setInput('formTimes', new Map([['sc', '52 min restantes']]));
     fixture.detectChanges();
-    openAllRows(fixture);
     const el = fixture.nativeElement as HTMLElement;
-    expect(text(el.querySelector('app-form-tag'))).toContain('Na forma de Lobo');
-    const hp = text(el.querySelector('.row__open'));
-    expect(hp).toContain('Lobo 11 de 11');
-    expect(hp).toContain('38 de 38');
-    expect(hp!.indexOf('11 de 11')).toBeLessThan(hp!.indexOf('38 de 38'));
+    // The closed row: the beast's pool is the number and the bar, the line under the name is "Inic. 13 · Lobo".
+    expect(text(el.querySelector('.row__hp-n'))).toBe('7/11');
+    expect(el.querySelector('.row__bar')?.getAttribute('aria-label')).toBe(
+      '7 de 11 pontos de vida',
+    );
+    expect(text(el.querySelector('.row__sub'))).toBe('Inic. 13 · Lobo');
+    openAllRows(fixture);
+    const open = text(el.querySelector('.row__open'))!;
+    // The opened row: the facts line, then the beast with its time, and nothing says the form again.
+    expect(text(el.querySelector('.row__facts'))).toBe(
+      'CA 13 · 7 de 11 PV do Lobo · a Sálvia tem 27 de 27',
+    );
+    expect(text(el.querySelector('app-form-tag'))).toBe(
+      'petsLobo · hourglass_empty52 min restantes',
+    );
+    expect(open).not.toContain('Na forma de');
+    expect(open).not.toContain('Forma Selvagem');
+    expect(open).not.toContain('PV do Lobo 7');
+    expect(el.querySelector('app-beast-pool')).toBeNull();
+    expect(open.match(/Lobo/g)).toHaveLength(2);
   });
 
   it('shows no pool where the combat sends none, and no form tag for a druid in her own shape', () => {
