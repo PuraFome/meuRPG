@@ -202,3 +202,23 @@ func (ev *effectViewer) modifierCard(m rules.EffectModifier) *playv1.EffectModif
 	}
 	return out
 }
+
+// markedIDOf is the id of the creature the caster's row of a marked_target spell marked, for the caster's player and
+// the master; empty for any other effect or reader. It is empty too when the viewer does not see the creature (a hidden
+// one, or one the fog hides), so the id never tells a player a creature is there (RN-10). The mark is the row of the
+// same casting on the creature (carriesMark), so it needs no column.
+func (ev *effectViewer) markedIDOf(f playdb.CombatantState, caster playdb.Combatant) string {
+	if hit, ok := hitModifierOf(effectModifiers(f)); !ok || hit.Trigger != rules.HitTriggerMarkedTarget {
+		return ""
+	}
+	if !ev.v.master && !ev.v.owns(caster) {
+		return ""
+	}
+	for id, rows := range statesOf(ev.d.states) {
+		target, ok := ev.byID[id]
+		if ok && id != f.CombatantID && carriesMark(rows, f) && ev.v.sees(target) {
+			return id
+		}
+	}
+	return ""
+}

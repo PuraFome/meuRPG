@@ -76,6 +76,8 @@ export interface ModeChoice {
   readonly requestId?: string;
 }
 
+import type { TypedEntry } from './typed-fields';
+
 /** What the player marked in the damage sheet: the extras with Divine Smite's slot, and the sums typed for physical dice. */
 export interface DamageChoice {
   readonly extras: readonly {
@@ -83,7 +85,8 @@ export interface DamageChoice {
     readonly slotLevel: number;
     readonly pact: boolean;
   }[];
-  readonly typedParts?: readonly { readonly partKey: string; readonly sum: number }[];
+  /** Each sum under one damage type or one part, never both (`TypedPart`). */
+  readonly typedParts?: readonly TypedEntry[];
 }
 
 /** How the damage comes: the app rolls it, or the sum of the physical dice

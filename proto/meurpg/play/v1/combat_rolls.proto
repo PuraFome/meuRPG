@@ -106,6 +106,8 @@ enum AdvantageSourceKind {
   ADVANTAGE_SOURCE_KIND_SUNLIGHT_ATTACK = 113;
   ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION = 114;
   ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE = 115;
+  // The roller's own Inspiration, spent for advantage before the d20 (RN-43): the master and the roller read it, nobody else reads the roll.
+  ADVANTAGE_SOURCE_KIND_FAVOR = 116;
 }
 
 // AdvantageSource is one circumstance of a roll, as the caller may read it. A
@@ -299,6 +301,11 @@ message DamagePartRoll {
   // up, `sum` adds what counted. A part that does not count in the total is floored too, so the line of a part tells
   // nothing about the target.
   repeated CountedDie counted_dice = 13;
+  // Whether a spell's hit effect (a `weapon_hit_damage` effect) made the part. It follows `part_key`: it is true only for
+  // a reader who reads the spell's own key, the attacker's player and the master, and for the other players when the
+  // effect is public. A reader whose `part_key` is the effect row's id (an effect the master hides, or the owner's) gets
+  // false, so the flag never says a spell is behind the part.
+  bool hit_effect = 14;
 }
 
 // SelectedExtra is an extra the player marks when they roll the damage.
@@ -309,11 +316,23 @@ message SelectedExtra {
   bool pact = 3;
 }
 
-// TypedPart is the sum a player typed for a group of dice (physical dice, one field
-// for each group).
+// TypedPart is the sum a player typed for dice (physical dice). It names exactly one
+// of `part_key` and `damage_type`, never both and never neither (INVALID_ARGUMENT).
 message TypedPart {
+  // One group of dice: the weapon, a hit effect or an extra that rolls dice. The sum is
+  // between the part's dice (doubled on a critical hit as the table's rule says) and
+  // those dice times their faces.
   string part_key = 1;
   int32 sum = 2;
+  // A `damage-type:` key (for example `damage-type:piercing`). The sum covers every dice
+  // part of that damage type in the attack (the weapon, a hit effect, the extras that
+  // roll dice and count) and is between the combined dice of those parts and the
+  // combined dice times their faces, doubled on a critical hit as the rule says. The
+  // damage type must have a dice part in the attack and may appear once, and no
+  // `part_key` of a part of that type may be in the same request. The group's total
+  // counts for the type: a resistance, vulnerability or immunity to it acts on the sum,
+  // and the parts of the group keep no faces.
+  string damage_type = 3;
 }
 
 // CombatantStateKind is a state a combatant is in for a while (PM-07).

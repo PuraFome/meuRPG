@@ -108,6 +108,19 @@ func TestRN10_APendingHitEffectReachesOnlyItsCastersPlayerAndTheMaster(t *testin
 			}
 			canaries := []*regexp.Regexp{
 				regexp.MustCompile(`"diceSides":\s*12`), regexp.MustCompile(`"diceCount":\s*7\b`), regexp.MustCompile(`(?i)marked_target|next_hit|each_hit|next_melee_hit`),
+				regexp.MustCompile(`Depois do dano, o alvo faz um teste de resistência de Sabedoria`), // the rider text of the part
+			}
+			// The rider text is on the part before the roll: the caster's player and the master read it (the positive
+			// control), and the others read no word of it, before the roll or after.
+			for name, u := range map[string]*user{"Ana": a.ana, "the master": a.master} {
+				if text := a.readsOf(t, u, e, "Pensantus"); !canaries[3].MatchString(text) {
+					t.Errorf("%s does not read the rider text of the part: the canary is unreachable", name)
+				}
+			}
+			for name, u := range map[string]*user{"Caio": a.caio, "Bia": a.bia} {
+				if text := a.readsOf(t, u, e, "Pensantus"); canaries[3].MatchString(text) {
+					t.Errorf("%s reads the rider text of the part before the roll", name)
+				}
 			}
 			a.rollDamage(t, hit, 1, 1, 2, 3, 4, 5, 6, 7, 2) // the weapon, the seven dice, the save (a 2: it fails)
 			for _, p := range []struct {
@@ -405,7 +418,7 @@ func TestAHitSpellNextMeleeHitIsNotUsedByAThrownWeaponAtRange(t *testing.T) {
 	})
 	a.castMark(t, e, 1)
 	thrown := a.strike(t, e, handaxeKey, "Capitão Goblin", func(r *playv1.RollAttackRequest) { r.Roll, r.D20Faces = nil, []int32{19, 19} }) // at long range: disadvantage
-	wantHitPart(t, "the thrown handaxe at 25 ft", thrown, false)
+	wantOffHitPart(t, "the thrown handaxe at 25 ft", thrown)
 	a.rollDamage(t, thrown, 3)
 	if _, spent := a.rows(t); spent != 0 {
 		t.Errorf("a thrown handaxe at range used a next_melee_hit")
@@ -753,5 +766,76 @@ func TestAHitPartAsOthersReadIt(t *testing.T) {
 		if mine := partRollsProto(p, true, true, dtPT)[0]; mine.GetDiceCount() != 7 || len(mine.GetFaces()) != 7 || mine.GetLabelPt() != tc.label {
 			t.Errorf("%s: the attacker's side reads the roll %v, want it whole", tc.name, mine)
 		}
+	}
+}
+
+// The flag of a hit effect on a part's roll follows the part's key (RN-10): it is true only for a reader who reads the
+// spell's key (the attacker's player, the master, and the other players when the effect is public). A reader whose key is
+// the row's id reads false, so the flag never says a spell is behind the part. The weapon's own part never has it.
+func TestRN10_TheHitEffectFlagFollowsTheKeyTheReaderReads(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name            string
+		hide            bool
+		othersKey       string
+		othersHitEffect bool
+		ownersHitEffect bool
+	}{
+		{"a public effect", false, tableMark, true, true},
+		{"a hidden effect", true, "row-1", false, true},
+	} {
+		weapon := partRoll{Key: partWeapon, Label: "Machado", Count: 1, Sides: 8, Faces: []int32{5}, Sum: 5, Counted: true}
+		hit := partRoll{Key: tableMark, Label: "Marca de Nanquim", Count: 7, Sides: 12, Faces: []int32{1, 2, 3, 4, 5, 6, 7}, Sum: 28, Counted: true, Effect: "row-1", Hide: tc.hide}
+		p := playdb.PendingDamage{PartRolls: mustJSON([]partRoll{weapon, hit}), Parts: mustJSON([]partRecord{{Key: partWeapon, Kind: partWeapon}, {Key: tableMark, Kind: partAuto, Table: tableHitEffect, Effect: "row-1", Hide: tc.hide}})}
+		for _, r := range []struct {
+			who           string
+			master, reads bool
+			wantKey       string
+			want          bool
+		}{
+			{"the attacker's player", false, true, tableMark, tc.ownersHitEffect},
+			{"the master", true, true, tableMark, tc.ownersHitEffect},
+			{"another player", false, false, tc.othersKey, tc.othersHitEffect},
+		} {
+			rolls := partRollsProto(p, r.master, r.reads, dtPT)
+			if len(rolls) != 2 {
+				t.Fatalf("%s, %s: %d rolls, want 2", tc.name, r.who, len(rolls))
+			}
+			if got := rolls[1]; got.GetPartKey() != r.wantKey || got.GetHitEffect() != r.want {
+				t.Errorf("%s, %s: reads key %q hit_effect %v, want %q and %v", tc.name, r.who, got.GetPartKey(), got.GetHitEffect(), r.wantKey, r.want)
+			}
+			if rolls[0].GetHitEffect() {
+				t.Errorf("%s, %s: the weapon's roll reads hit_effect", tc.name, r.who)
+			}
+		}
+		if got := partRollProto(hit, dtPT); !got.GetHitEffect() { // the log's damage parts, read by the master and the attacker's player
+			t.Errorf("%s: the log's part of the effect reads hit_effect false", tc.name)
+		}
+		if got := partRollProto(weapon, dtPT); got.GetHitEffect() {
+			t.Errorf("%s: the log's weapon part reads hit_effect", tc.name)
+		}
+	}
+}
+
+// With two pending hits on one next_hit the effect goes to the earlier attack, whichever damage the player rolls first:
+// rolling the second hit's damage first leaves the effect waiting for the first one.
+func TestAHitSpellTwoPendingHitsTheEffectGoesToTheEarlierAttack(t *testing.T) {
+	t.Parallel()
+	a := newHitParty(t, hitParty{class: "class:paladin", level: 5, cha: 16, spells: []hitSpellOf{{name: "Marca de Nanquim", key: tableMark, mods: []*tableMod{hitMod(trigNext)}}}})
+	e := a.hitFight(t)
+	a.castMark(t, e, 1)
+	first := a.strike(t, e, battleaxe, "Capitão Goblin", d20(19))
+	second := a.strike(t, e, battleaxe, "Capitão Goblin", d20(18))
+	if r := hitRoll(a.rollDamage(t, second, 5)); r != nil {
+		t.Errorf("the later hit's roll has the part %v, want the effect kept for the earlier attack", r)
+	}
+	if _, spent := a.rows(t); spent != 0 {
+		t.Fatalf("spent = %d after the later hit's roll, want the effect still waiting", spent)
+	}
+	if r := hitRoll(a.rollDamage(t, first, 3, 4)); r == nil {
+		t.Errorf("the earlier hit's roll has no part of the spell")
+	}
+	if _, spent := a.rows(t); spent != 1 {
+		t.Errorf("spent = %d, want 1", spent)
 	}
 }

@@ -6663,6 +6663,11 @@ type TryPuzzleHintRequest struct {
 	// Physical dice: the faces of the dice an effect adds to the roll (Bênção, Orientação), one
 	// for each, 1 to the die's faces. With the app's dice the server rolls them.
 	ExtraDieFaces []int32 `protobuf:"varint,7,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
+	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,8,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6755,6 +6760,13 @@ func (x *TryPuzzleHintRequest) GetExtraDieFaces() []int32 {
 		return x.ExtraDieFaces
 	}
 	return nil
+}
+
+func (x *TryPuzzleHintRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 type isTryPuzzleHintRequest_Roll interface {
@@ -7332,7 +7344,7 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\tpuzzle_id\x18\x02 \x01(\tR\bpuzzleId\x12+\n" +
 	"\x11expected_revision\x18\x03 \x01(\x05R\x10expectedRevision\"O\n" +
 	"\x1aPlayPuzzleSequenceResponse\x121\n" +
-	"\x03run\x18\x01 \x01(\v2\x1f.meurpg.play.v1.MasterPuzzleRunR\x03run\"\x89\x02\n" +
+	"\x03run\x18\x01 \x01(\v2\x1f.meurpg.play.v1.MasterPuzzleRunR\x03run\"\xaa\x02\n" +
 	"\x14TryPuzzleHintRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
@@ -7341,7 +7353,9 @@ const file_meurpg_play_v1_puzzles_proto_rawDesc = "" +
 	"\bd20_face\x18\x04 \x01(\x05H\x00R\ad20Face\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
 	"\td20_faces\x18\x06 \x03(\x05R\bd20Faces\x12&\n" +
-	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFacesB\x06\n" +
+	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFaces\x12\x1f\n" +
+	"\vspend_favor\x18\b \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04roll\"\xaa\x04\n" +
 	"\x15TryPuzzleHintResponse\x12+\n" +
 	"\x03run\x18\x01 \x01(\v2\x19.meurpg.play.v1.PuzzleRunR\x03run\x12,\n" +

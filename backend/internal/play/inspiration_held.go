@@ -66,7 +66,11 @@ func (s *Service) holdSpellAttack(
 	// roll was made with when it is settled.
 	ask := modes.ask
 	ask.dry, ask.trusted = !forced, forced
-	truth := modes.in.facts(c.enc, c.sight).attackMode(caster, target, modes.traits, shapeOfSpell(sp), actsNow(c.enc, caster), modes.reader, modes.names)
+	truth, err := s.spellAttackTruth(ctx, c, modes, sp, caster, target, false)
+	if err != nil {
+		return nil, err
+	}
+	spec.FavorSpent = modes.favor.Used
 	choice, err := s.chooseMode(ctx, c, modes.v, caster, target, sp.Key, truth.Mode, ask)
 	if err != nil {
 		return nil, err

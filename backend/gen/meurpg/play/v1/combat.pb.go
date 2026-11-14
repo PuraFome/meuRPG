@@ -894,7 +894,7 @@ const (
 	// free). The attack's sheet reads the reason from PendingDamage.parts.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE EncounterBlockedReason = 81
 	// RemoveDamagePart: the part is the weapon's or an automatic line, which cannot be
-	// taken out, or it was taken out already.
+	// taken out, it was taken out already, or a damage-type sum typed for the roll covers it.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE EncounterBlockedReason = 82
 	// TakeAction (Reckless Attack): it is declared with the first attack of the turn,
 	// and an attack was made.
@@ -5541,8 +5541,14 @@ type CombatLogHitRider struct {
 	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
 	// an entry the master retired or switched off (RN-23).
 	TreatedAsSourceName string `protobuf:"bytes,23,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The ability of the save a spell's hit effect makes the target roll, as a key ("wis") and its Portuguese name
+	// ("Sabedoria"). Set only on the line of a spell's save, and only for who may read the spell: the master, the player who
+	// owns the spell's caster, and every viewer of the line when the spell's audience is all players. Empty for anyone
+	// else, the attacker's player included, who reads the line of an effect that is not theirs to read (RN-10).
+	SaveAbility       string `protobuf:"bytes,24,opt,name=save_ability,json=saveAbility,proto3" json:"save_ability,omitempty"`
+	SaveAbilityNamePt string `protobuf:"bytes,25,opt,name=save_ability_name_pt,json=saveAbilityNamePt,proto3" json:"save_ability_name_pt,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CombatLogHitRider) Reset() {
@@ -5732,6 +5738,20 @@ func (x *CombatLogHitRider) GetTreatedAsSource() string {
 func (x *CombatLogHitRider) GetTreatedAsSourceName() string {
 	if x != nil {
 		return x.TreatedAsSourceName
+	}
+	return ""
+}
+
+func (x *CombatLogHitRider) GetSaveAbility() string {
+	if x != nil {
+		return x.SaveAbility
+	}
+	return ""
+}
+
+func (x *CombatLogHitRider) GetSaveAbilityNamePt() string {
+	if x != nil {
+		return x.SaveAbilityNamePt
 	}
 	return ""
 }
@@ -13154,8 +13174,13 @@ type RollAttackRequest struct {
 	// question, or a reaction window): the trade as it was when the roll was held, so the answer settles on the same
 	// penalty, damage and resource however the sheet changed meanwhile. A request from a client has it cleared.
 	PowerAttackPin *PowerAttackPin `protobuf:"bytes,105,opt,name=power_attack_pin,json=powerAttackPin,proto3" json:"power_attack_pin,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// Spends the character's Inspiration for advantage on this attack roll, chosen before the d20 is rolled.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,106,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RollAttackRequest) Reset() {
@@ -13344,6 +13369,13 @@ func (x *RollAttackRequest) GetPowerAttackPin() *PowerAttackPin {
 		return x.PowerAttackPin
 	}
 	return nil
+}
+
+func (x *RollAttackRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 type isRollAttackRequest_Roll interface {
@@ -16433,7 +16465,12 @@ type CastSpellRequest struct {
 	// (`origin`) is the line's first square or the ring's center. Required for a spell that lays a wall
 	// (otherwise `failed_precondition` with WALL_PLACEMENT_REQUIRED, before anything is spent); malformed
 	// (see SpellWall), sent for any other spell, or sent in a combat without a map, it is `invalid_argument`.
-	Wall          *SpellWall `protobuf:"bytes,35,opt,name=wall,proto3" json:"wall,omitempty"`
+	Wall *SpellWall `protobuf:"bytes,35,opt,name=wall,proto3" json:"wall,omitempty"`
+	// Spends the character's Inspiration for advantage on this spell attack roll, chosen before the d20 is rolled.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,36,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -16672,6 +16709,13 @@ func (x *CastSpellRequest) GetWall() *SpellWall {
 		return x.Wall
 	}
 	return nil
+}
+
+func (x *CastSpellRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 type isCastSpellRequest_Roll interface {
@@ -20669,6 +20713,10 @@ type CombatLogEntry struct {
 	ReadiedLost  *CombatLogReadied `protobuf:"bytes,121,opt,name=readied_lost,json=readiedLost,proto3" json:"readied_lost,omitempty"`
 	// FEATURE_USED: the feature, the choice and what the use did. The line has the audience of a feature action.
 	FeatureUsed *CombatLogFeatureUsed `protobuf:"bytes,118,opt,name=feature_used,json=featureUsed,proto3" json:"feature_used,omitempty"`
+	// ATTACK, SPELL_CAST, REACTION_WINDOW (the concentration save) and EFFECT (the save of an effect): "<name> usou a Inspiração." when
+	// the roll was made with the roller's Inspiration. Only the master and the roller's own player get it, like the roll's dice; empty for
+	// anyone else and when the roll used none.
+	FavorTextPt string `protobuf:"bytes,129,opt,name=favor_text_pt,json=favorTextPt,proto3" json:"favor_text_pt,omitempty"`
 	// ATTACK: the power attack the roll made, when it made one. The feature and the numbers are the master's and the
 	// attacker's player's; another player reads that a trade was made (`CombatLogPowerAttack`).
 	PowerAttack *CombatLogPowerAttack `protobuf:"bytes,122,opt,name=power_attack,json=powerAttack,proto3" json:"power_attack,omitempty"`
@@ -21153,6 +21201,13 @@ func (x *CombatLogEntry) GetFeatureUsed() *CombatLogFeatureUsed {
 	return nil
 }
 
+func (x *CombatLogEntry) GetFavorTextPt() string {
+	if x != nil {
+		return x.FavorTextPt
+	}
+	return ""
+}
+
 func (x *CombatLogEntry) GetPowerAttack() *CombatLogPowerAttack {
 	if x != nil {
 		return x.PowerAttack
@@ -21413,8 +21468,11 @@ type CombatLogEffect struct {
 	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
 	// an entry the master retired or switched off (RN-23).
 	TreatedAsSourceName string `protobuf:"bytes,20,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// ENDED: true when the effect ended with its use still waiting (no hit spent it).
+	// False when a hit spent it or it is not an on-hit effect; read by the same readers as the line.
+	Unused        bool `protobuf:"varint,21,opt,name=unused,proto3" json:"unused,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CombatLogEffect) Reset() {
@@ -21585,6 +21643,13 @@ func (x *CombatLogEffect) GetTreatedAsSourceName() string {
 		return x.TreatedAsSourceName
 	}
 	return ""
+}
+
+func (x *CombatLogEffect) GetUnused() bool {
+	if x != nil {
+		return x.Unused
+	}
+	return false
 }
 
 // CombatLogLegendarySpent is the master's line of a spend of legendary actions.
@@ -27318,8 +27383,13 @@ type ResolveConcentrationSaveRequest struct {
 	// LEGENDARY_RESISTANCE_NONE_LEFT for a failed save with no use left; nothing changes. It works while
 	// the creature is incapacitated.
 	UseLegendaryResistance bool `protobuf:"varint,103,opt,name=use_legendary_resistance,json=useLegendaryResistance,proto3" json:"use_legendary_resistance,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Spends the character's Inspiration for advantage on this concentration saving throw, chosen before the d20 is rolled.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,104,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ResolveConcentrationSaveRequest) Reset() {
@@ -27447,6 +27517,13 @@ func (x *ResolveConcentrationSaveRequest) GetManeuverKey() string {
 func (x *ResolveConcentrationSaveRequest) GetUseLegendaryResistance() bool {
 	if x != nil {
 		return x.UseLegendaryResistance
+	}
+	return false
+}
+
+func (x *ResolveConcentrationSaveRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
 	}
 	return false
 }
@@ -28722,7 +28799,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rduration_text\x18\a \x01(\tR\fdurationText\x12\x1f\n" +
 	"\vrepeat_save\x18\b \x01(\bR\n" +
 	"repeatSave\x12\x12\n" +
-	"\x04text\x18\t \x01(\tR\x04text\"\x8c\a\n" +
+	"\x04text\x18\t \x01(\tR\x04text\"\xe0\a\n" +
 	"\x11CombatLogHitRider\x126\n" +
 	"\x06choice\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.HitRiderChoiceR\x06choice\x129\n" +
 	"\x06result\x18\x02 \x01(\x0e2!.meurpg.play.v1.HitRiderLogResultR\x06result\x12\x10\n" +
@@ -28751,7 +28828,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"treated_as\x18\x15 \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
 	"\x11treated_as_source\x18\x16 \x01(\tR\x0ftreatedAsSource\x123\n" +
-	"\x16treated_as_source_name\x18\x17 \x01(\tR\x13treatedAsSourceNameB\r\n" +
+	"\x16treated_as_source_name\x18\x17 \x01(\tR\x13treatedAsSourceName\x12!\n" +
+	"\fsave_ability\x18\x18 \x01(\tR\vsaveAbility\x12/\n" +
+	"\x14save_ability_name_pt\x18\x19 \x01(\tR\x11saveAbilityNamePtB\r\n" +
 	"\v_treated_as\"\xb4\x01\n" +
 	"\x14HiddenRevealQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
@@ -29394,7 +29473,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	" \x03(\v2\x1f.meurpg.play.v1.AdvantageSourceR\asources\x12&\n" +
 	"\x0fcritical_on_hit\x18\v \x01(\bR\rcriticalOnHit\x12\x19\n" +
 	"\bnot_seen\x18\f \x01(\bR\anotSeenB\x0e\n" +
-	"\f_distance_ft\"\xd9\x06\n" +
+	"\f_distance_ft\"\xfa\x06\n" +
 	"\x11RollAttackRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -29422,7 +29501,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10legendary_option\x18f \x01(\tR\x0flegendaryOption\x12!\n" +
 	"\fmaneuver_key\x18g \x01(\tR\vmaneuverKey\x12(\n" +
 	"\x10power_attack_key\x18h \x01(\tR\x0epowerAttackKey\x12H\n" +
-	"\x10power_attack_pin\x18i \x01(\v2\x1e.meurpg.play.v1.PowerAttackPinR\x0epowerAttackPinB\x06\n" +
+	"\x10power_attack_pin\x18i \x01(\v2\x1e.meurpg.play.v1.PowerAttackPinR\x0epowerAttackPin\x12\x1f\n" +
+	"\vspend_favor\x18j \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04roll\"\x82\x01\n" +
 	"\x0ePowerAttackPin\x12\x17\n" +
 	"\aname_pt\x18\x01 \x01(\tR\x06namePt\x12\x18\n" +
@@ -29665,7 +29746,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\vSpellTarget\x12!\n" +
 	"\fcombatant_id\x18\x01 \x01(\tR\vcombatantId\x12\x14\n" +
 	"\x05darts\x18\x02 \x01(\x05R\x05darts\x12$\n" +
-	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\x98\t\n" +
+	"\x0edead_target_id\x18\x03 \x01(\tR\fdeadTargetId\"\xb9\t\n" +
 	"\x10CastSpellRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -29697,7 +29778,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"granted_by\x18! \x01(\tR\tgrantedBy\x12F\n" +
 	"\rspell_options\x18\" \x03(\v2!.meurpg.play.v1.SpellOptionChoiceR\fspellOptions\x12-\n" +
-	"\x04wall\x18# \x01(\v2\x19.meurpg.play.v1.SpellWallR\x04wallB\x06\n" +
+	"\x04wall\x18# \x01(\v2\x19.meurpg.play.v1.SpellWallR\x04wall\x12\x1f\n" +
+	"\vspend_favor\x18$ \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04rollB\x06\n" +
 	"\x04areaB\x10\n" +
 	"\x0e_reveal_hidden\"M\n" +
@@ -30010,7 +30093,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x18\n" +
 	"\apenalty\x18\x03 \x01(\x05R\apenalty\x12!\n" +
 	"\fdamage_bonus\x18\x04 \x01(\x05R\vdamageBonus\x12\x16\n" +
-	"\x06hidden\x18\x05 \x01(\bR\x06hidden\"\xff\x18\n" +
+	"\x06hidden\x18\x05 \x01(\bR\x06hidden\"\xa4\x19\n" +
 	"\x0eCombatLogEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1d.meurpg.play.v1.CombatLogKindR\x04kind\x12*\n" +
@@ -30088,7 +30171,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\areadied\x18w \x01(\v2 .meurpg.play.v1.CombatLogReadiedR\areadied\x12E\n" +
 	"\rreadied_fired\x18x \x01(\v2 .meurpg.play.v1.CombatLogReadiedR\freadiedFired\x12C\n" +
 	"\freadied_lost\x18y \x01(\v2 .meurpg.play.v1.CombatLogReadiedR\vreadiedLost\x12G\n" +
-	"\ffeature_used\x18v \x01(\v2$.meurpg.play.v1.CombatLogFeatureUsedR\vfeatureUsed\x12G\n" +
+	"\ffeature_used\x18v \x01(\v2$.meurpg.play.v1.CombatLogFeatureUsedR\vfeatureUsed\x12#\n" +
+	"\rfavor_text_pt\x18\x81\x01 \x01(\tR\vfavorTextPt\x12G\n" +
 	"\fpower_attack\x18z \x01(\v2$.meurpg.play.v1.CombatLogPowerAttackR\vpowerAttack\x12\x10\n" +
 	"\x03seq\x18t \x01(\x03R\x03seqB\x13\n" +
 	"\x11_hit_points_afterB\x15\n" +
@@ -30113,7 +30197,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10expires_at_round\x18\n" +
 	" \x01(\x05R\x0eexpiresAtRoundB\t\n" +
 	"\a_healedB\x11\n" +
-	"\x0f_nothing_reason\"\x93\x06\n" +
+	"\x0f_nothing_reason\"\xab\x06\n" +
 	"\x0fCombatLogEffect\x12\x1d\n" +
 	"\n" +
 	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +
@@ -30137,7 +30221,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"treated_as\x18\x12 \x01(\x05H\x03R\ttreatedAs\x88\x01\x01\x12*\n" +
 	"\x11treated_as_source\x18\x13 \x01(\tR\x0ftreatedAsSource\x123\n" +
-	"\x16treated_as_source_name\x18\x14 \x01(\tR\x13treatedAsSourceNameB\x06\n" +
+	"\x16treated_as_source_name\x18\x14 \x01(\tR\x13treatedAsSourceName\x12\x16\n" +
+	"\x06unused\x18\x15 \x01(\bR\x06unusedB\x06\n" +
 	"\x04_d20B\b\n" +
 	"\x06_totalB\x05\n" +
 	"\x03_dcB\r\n" +
@@ -30646,7 +30731,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06caught\x18\x04 \x01(\bR\x06caught\x120\n" +
 	"\x14throw_back_available\x18\x05 \x01(\bR\x12throwBackAvailable\"0\n" +
 	"\x11FeatherFallResult\x12\x1b\n" +
-	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\xf6\x03\n" +
+	"\tsaved_ids\x18\x01 \x03(\tR\bsavedIds\"\x97\x04\n" +
 	"\x1fResolveConcentrationSaveRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
@@ -30660,7 +30745,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0fextra_die_faces\x18d \x03(\x05R\rextraDieFaces\x12+\n" +
 	"\x0fsecond_d20_face\x18e \x01(\x05H\x01R\rsecondD20Face\x88\x01\x01\x12!\n" +
 	"\fmaneuver_key\x18f \x01(\tR\vmaneuverKey\x128\n" +
-	"\x18use_legendary_resistance\x18g \x01(\bR\x16useLegendaryResistanceB\x06\n" +
+	"\x18use_legendary_resistance\x18g \x01(\bR\x16useLegendaryResistance\x12\x1f\n" +
+	"\vspend_favor\x18h \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04rollB\x12\n" +
 	"\x10_second_d20_face\"\xfe\x02\n" +
 	" ResolveConcentrationSaveResponse\x127\n" +

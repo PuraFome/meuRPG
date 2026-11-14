@@ -196,6 +196,14 @@ func wantHitPart(t *testing.T, what string, p *playv1.PendingDamage, want bool) 
 	return part
 }
 
+// wantOffHitPart wants the spell's part listed off: unavailable, with its reason, and not an automatic one.
+func wantOffHitPart(t *testing.T, what string, p *playv1.PendingDamage) {
+	t.Helper()
+	if part := hitPart(p); part == nil || part.GetAvailable() || part.GetAuto() || part.GetReasonPt() == "" {
+		t.Errorf("%s: the spell's part = %v, want it listed off with its reason", what, part)
+	}
+}
+
 // A cast puts the effect on the caster, and a next_hit is used by the first weapon hit only: a miss leaves it, the
 // hit offers it as an automatic part of the dice the spell says, the roll rolls them and spends it, and the next hit
 // has no part.
@@ -277,7 +285,7 @@ func TestAHitSpellNextMeleeHitWaitsForAMeleeHit(t *testing.T) {
 	e := a.hitFight(t)
 	a.castMark(t, e, 1)
 	ranged := a.strike(t, e, shortbowKey, "Capitão Goblin", d20(19))
-	wantHitPart(t, "the ranged hit", ranged, false)
+	wantOffHitPart(t, "the ranged hit", ranged)
 	a.rollDamage(t, ranged, 3)
 	if _, spent := a.rows(t); spent != 0 {
 		t.Fatalf("a ranged hit spent the effect")
