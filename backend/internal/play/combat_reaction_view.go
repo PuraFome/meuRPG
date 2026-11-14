@@ -256,8 +256,14 @@ func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		wv.contestWait(reactor, answers, wait)
 	case reaction.EffectSave:
 		wv.effectSaveWait(w, reactor, answers, wait)
+	case reaction.Concentration:
+		if windowTriggerOf(w).Spell == concentrationReadied && !wv.v.master && !answers { // a held spell's save is the readier's secret (RN-10)
+			wait.Master = true
+			return
+		}
+		wv.reactionWait(true, reactor, answers, wait)
 	default:
-		wv.reactionWait(reaction.Kind(w.Kind) == reaction.Concentration, reactor, answers, wait)
+		wv.reactionWait(false, reactor, answers, wait)
 	}
 }
 
@@ -405,7 +411,7 @@ func (wv *windowView) trigger(w playdb.ReactionWindow) *playv1.ReactionTrigger {
 		out.Damage = &t.Damage
 	}
 	if reaction.Kind(w.Kind) == reaction.Concentration {
-		out.ConcentrationSpellKey = t.Spell
+		out.SpellKey, out.ConcentrationSpellKey = t.concentrationSpell(), t.concentrationSpell()
 	}
 	// Unlike rollKindOf, a trigger that names no roll stays unspecified.
 	switch t.Roll {
@@ -491,7 +497,7 @@ func (wv *windowView) masterCheckPrompt(w playdb.ReactionWindow, out *playv1.Rea
 func (wv *windowView) concentrationPrompt(w playdb.ReactionWindow, reactor *playdb.Combatant, out *playv1.ReactionWindow) error {
 	t := windowTriggerOf(w)
 	p := &playv1.ConcentrationSavePrompt{
-		SpellKey: t.Spell, SpellNamePt: wv.names(t.Spell), DamageTaken: t.Taken,
+		SpellKey: t.concentrationSpell(), SpellNamePt: wv.names(t.concentrationSpell()), DamageTaken: t.Taken,
 		HandedToMaster: t.Handed,
 	}
 	if wv.v.master || (reactor != nil && wv.v.saveDCFor(*reactor)) { // the DC is the master's, and the reading member's when the table shows it

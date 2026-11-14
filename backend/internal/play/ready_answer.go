@@ -50,10 +50,8 @@ func readiedUseOf(ctx context.Context, c *combatTx, windowID string, who playdb.
 	if err := mustBeOpen(w); err != nil {
 		return nil, err
 	}
-	if c.replay == nil { // the replay of the held roll is the use the hold waited for
-		if err := mustNotBeHeld(ctx, c.q, c.enc.ID, w.ID); err != nil {
-			return nil, err
-		}
+	if err := mayUseNow(ctx, c, w, who); err != nil {
+		return nil, err
 	}
 	row, err := c.q.GetWaitingReadiedAction(ctx, playdb.GetWaitingReadiedActionParams{ID: windowTriggerOf(w).Readied, EncounterID: c.enc.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -62,13 +60,26 @@ func readiedUseOf(ctx context.Context, c *combatTx, windowID string, who playdb.
 	if err != nil {
 		return nil, fmt.Errorf("read the readied action: %w", err)
 	}
-	if row.Kind != kind {
+	if usedAs(row) != kind {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("the readied action holds another kind of action"))
 	}
 	if who.ReactionUsed {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")
 	}
 	return &readiedUse{w: w, row: row}, nil
+}
+
+// mayUseNow refuses a use held for other windows or for a die, and one its readier's concentration save or the master's
+// question holds (readiedGate). The replay of the held roll, or the run again of a roll held for a die, is the use the
+// hold waited for.
+func mayUseNow(ctx context.Context, c *combatTx, w playdb.ReactionWindow, who playdb.Combatant) error {
+	if _, rerun := heldReplyOf(ctx); c.replay != nil || rerun {
+		return nil
+	}
+	if err := mustNotBeHeld(ctx, c.q, c.enc.ID, w.ID); err != nil {
+		return err
+	}
+	return c.svc.readiedGate(ctx, c, who)
 }
 
 // spend is what the use writes besides the action's own economy: the window answered, the row fired, the reaction's
@@ -131,6 +142,10 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 	case readiedMove:
 		return nil, true, connect.NewError(connect.CodeInvalidArgument, errors.New("a readied move is made with MoveCombatant while its window is open"))
 	case readiedSpell:
+		if heldSpellAttackRow(row) {
+			out, err := s.useReadiedAttack(ctx, m, in, msg, w, row)
+			return out, true, err
+		}
 		out, err := s.useReadiedSpell(ctx, m, in, msg, row)
 		return out, true, err
 	}
@@ -342,6 +357,15 @@ func mustNotBeHeld(ctx context.Context, q *playdb.Queries, encID, windowID strin
 // readiedHeld says a held action (reaction_holds, still held) is the use of the READIED window: an attack that names it
 // in its catch_window_id, or the cast of the readied spell by its readier (heldRelease).
 func readiedHeld(ctx context.Context, q *playdb.Queries, encID, windowID string) (bool, error) {
+	if held, err := readiedHeldForDie(ctx, q, encID, windowID); held || err != nil {
+		return held, err
+	}
+	return readiedHeldForWindows(ctx, q, encID, windowID)
+}
+
+// readiedHeldForWindows says the use of a READIED window waits for other reaction windows (reaction_holds): an
+// attack's roll that catches it, or a cast that releases its spell.
+func readiedHeldForWindows(ctx context.Context, q *playdb.Queries, encID, windowID string) (bool, error) {
 	holds, err := q.ListHeldReactionHolds(ctx, encID)
 	if err != nil {
 		return false, fmt.Errorf("list the held actions: %w", err)

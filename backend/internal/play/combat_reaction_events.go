@@ -23,8 +23,10 @@ type reactionEvent struct {
 	Group string `json:"group,omitempty"`
 	// Kind is the reaction answered (reaction.Kind), Window the window and Used
 	// false for "Deixar passar".
-	Kind     string `json:"kind,omitempty"`
-	Window   string `json:"window,omitempty"`
+	Kind   string `json:"kind,omitempty"`
+	Window string `json:"window,omitempty"`
+	// Held is the readied spell a concentration save was on (Spell is then concentrationReadied).
+	Held     string `json:"held,omitempty"`
 	Used     bool   `json:"used,omitempty"`
 	ByMaster bool   `json:"by_master,omitempty"`
 	// Slot is the slot spent, Racial the Infernal Legacy.

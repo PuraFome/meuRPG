@@ -133,7 +133,7 @@ func TestReadySpellRefusals(t *testing.T) {
 		{"a spell he has not", "spell:fireball", 3},
 		{"a 1st-level spell with no slot", magicMissileSpell, 0},
 		{"a slot he has not", magicMissileSpell, 3},
-		{"an attack cantrip", fireBolt, 0},
+		{"an attack cantrip with a slot", fireBolt, 1},
 	} {
 		_, err := a.ready(t, a.ana, a.readySpell(t, e, "Pensantus", c.spell, c.slot, ""))
 		wantCode(t, c.name, err, connect.CodeInvalidArgument)

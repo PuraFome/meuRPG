@@ -100,6 +100,9 @@ func (s *Service) mayFire(ctx context.Context, c *combatTx, who playdb.Combatant
 	if err := s.mustReactNowOrOnTurn(ctx, c, who); err != nil {
 		return err
 	}
+	if err := s.readiedGate(ctx, c, who); err != nil {
+		return err
+	}
 	if who.EffectNoReaction || slices.ContainsFunc(who.Conditions, func(k string) bool { return slices.Contains(incapacitating, k) }) {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CANNOT_ACT, "the readier cannot react now")
 	}

@@ -1076,6 +1076,7 @@
     "group": "x",
     "kind": "x",
     "window": "x",
+    "held": "x",
     "used": true,
     "by_master": true,
     "slot": {

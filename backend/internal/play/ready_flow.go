@@ -57,8 +57,10 @@ type readyFlow struct {
 	call readyCall
 	// name is the held action's name, kept in the row and the event.
 	name string
-	// spell is the cast a SPELL holds (ready_spell.go): its checks, its slot and its concentration.
-	spell *castFlow
+	// spell is the cast a SPELL holds (ready_spell.go): its checks, its slot and its concentration. spellAttack says it
+	// is a spell attack cantrip (ready_spell_attack.go), released with RollAttack.
+	spell       *castFlow
+	spellAttack bool
 	// vitals are the player's vitals the slot of a SPELL changed.
 	vitals []*playv1.CharacterVitals
 }
@@ -139,6 +141,9 @@ func (f *readyFlow) checkAction() error {
 		if f.call.key == "" || i < 0 {
 			return errReadyAction("the attack is not one the combatant has")
 		}
+		if opts.GetAttacks()[i].GetAttack().GetKind() == rulesv1.AttackKind_ATTACK_KIND_SPELL {
+			return errReadyAction("a spell attack is readied as a spell: its energy holds the concentration")
+		}
 		f.name = opts.GetAttacks()[i].GetAttack().GetNamePt()
 	case readiedOther:
 		i := slices.IndexFunc(opts.GetStandardActions(), func(a *rulesv1.ActionOption) bool { return a.GetAction().GetKey() == f.call.key })
@@ -199,6 +204,9 @@ func (f *readyFlow) insert(ctx context.Context) (playdb.ReadiedAction, error) {
 	}
 	if f.spell != nil {
 		p.SlotLevel, p.SpellCastID = clamp32(f.spell.slotLevel, 0, maxSlotLevel), &f.spell.out.made.CastID
+	}
+	if f.spellAttack {
+		p.SpellCastID = nil // a spell attack cantrip has no cast: its release is its attack (heldSpellAttackRow)
 	}
 	if f.call.kind == readiedMove {
 		p.MoveFt = readyMoveFt(who)

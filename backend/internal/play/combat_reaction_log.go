@@ -322,6 +322,9 @@ func (f *reactionFacts) featherFall() (string, bool) {
 func (f *reactionFacts) concentration() (string, bool) {
 	re := f.re
 	spell := f.spellName(re.Spell)
+	if re.Held != "" {
+		spell = f.spellName(re.Held)
+	}
 	if !f.seesReactor || (re.Spell == concentrationReadied && !f.v.master && !f.v.owns(f.reactor)) { // a held spell is the readier's secret (RN-10)
 		return "", false
 	}

@@ -39,8 +39,10 @@ func (f *readyFlow) checkSpell(ctx context.Context) error {
 		return nil
 	}
 	t := f.take
-	req := &playv1.CastSpellRequest{CampaignId: t.m.CampaignID, EncounterId: t.c.enc.ID, CasterId: t.who.ID, SpellKey: f.call.spellKey}
-	cf := newCastFlow(t.s, t.c, t.m, req, castCall{encounterID: t.c.enc.ID, casterID: t.who.ID, spellKey: f.call.spellKey}, &castOut{})
+	cf := f.heldCast()
+	if a := spellAttackOf(t.opts, f.call.spellKey); a != nil {
+		return f.checkSpellAttack(ctx, cf, a)
+	}
 	for _, phase := range []func(context.Context) error{cf.findCaster, cf.pickSpell, cf.checkReadyTime, cf.checkEnabled, f.pickReadySlot(cf), cf.pickSlot, cf.checkSilence} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -139,7 +141,7 @@ func (f *castFlow) findReadied(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("read the readied action: %w", err)
 		}
-		if row.Kind != readiedSpell || conv.OrZero(row.ActionKey) != f.call.spellKey {
+		if row.Kind != readiedSpell || heldSpellAttackRow(row) || conv.OrZero(row.ActionKey) != f.call.spellKey {
 			continue
 		}
 		f.readied, err = readiedUseOf(ctx, f.c, w.ID, f.caster, readiedSpell)
@@ -255,4 +257,83 @@ func concentrationEndedFor(key string, v combatViewer, who playdb.Combatant) str
 		return ""
 	}
 	return key
+}
+
+// heldSpellOf is the spell the combatant holds readied when its concentration is the one that holds it, else "".
+func heldSpellOf(ctx context.Context, c *combatTx, who playdb.Combatant) (string, error) {
+	if conv.OrZero(who.ConcentrationSpell) != concentrationReadied {
+		return "", nil
+	}
+	rows, err := c.q.ListWaitingReadiedActions(ctx, c.enc.ID)
+	if err != nil {
+		return "", fmt.Errorf("list the readied actions: %w", err)
+	}
+	for _, row := range rows {
+		if row.CombatantID == who.ID && row.Kind == readiedSpell {
+			return conv.OrZero(row.ActionKey), nil
+		}
+	}
+	return "", nil
+}
+
+// concentrationSpell is the spell a concentration window is for: the readied spell its concentration holds, when it
+// holds one.
+func (t windowTrigger) concentrationSpell() string {
+	if t.HeldSpell != "" {
+		return t.HeldSpell
+	}
+	return t.Spell
+}
+
+// readiedGate refuses the fire and the use of a readied action while its readier owes a concentration save (it may
+// lose what it holds) or a question about a hidden creature waits for the master (nobody's action goes on).
+func (s *Service) readiedGate(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	if err := s.mustNotHold(ctx, c); err != nil {
+		return err
+	}
+	open, err := openWindowsOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	if slices.ContainsFunc(open, func(w playdb.ReactionWindow) bool {
+		return reaction.Kind(w.Kind) == reaction.Concentration && conv.OrZero(w.ReactorID) == who.ID
+	}) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_CONCENTRATION_SAVE_PENDING, "the readier's concentration save waits for its answer")
+	}
+	return nil
+}
+
+// readiedHeldForDie says the use of a READIED window waits for its roller's answer about a die (a Bardic Inspiration
+// die, Lucky, Stroke of Luck: inspiration_holds): a weapon attack that catches the window, or a spell attack that
+// releases its spell. The answer is the use.
+func readiedHeldForDie(ctx context.Context, q *playdb.Queries, encID, windowID string) (bool, error) {
+	holds, err := q.ListOpenInspirationHoldsOfEncounter(ctx, &encID)
+	if err != nil {
+		return false, fmt.Errorf("list the held rolls: %w", err)
+	}
+	for _, h := range holds {
+		switch heldKind(h.Kind) {
+		case heldWeaponAttack:
+			var req playv1.RollAttackRequest
+			if err := proto.Unmarshal(h.Request, &req); err != nil {
+				return false, fmt.Errorf("read a held attack: %w", err)
+			}
+			if req.GetCatchWindowId() == windowID {
+				return true, nil
+			}
+		case heldSpellAttack:
+			if held, err := heldRelease(ctx, q, encID, windowID, h.Request); held || err != nil {
+				return held, err
+			}
+		}
+	}
+	return false, nil
+}
+
+// concentrationSpell is the spell a concentration save was on: the readied spell, when its concentration held one.
+func (re *reactionEvent) concentrationSpell() string {
+	if re.Held != "" {
+		return re.Held
+	}
+	return re.Spell
 }
