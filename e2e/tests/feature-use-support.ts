@@ -17,12 +17,7 @@ export function markFeatBody(namePt = 'Marca de Teste'): Record<string, unknown>
         use: {
           limitScope: 'USE_SCOPE_COMBAT',
           limitUses: '1',
-          targets: {
-            min: 1,
-            max: 1,
-            who: 'FEATURE_TARGET_WHO_ENEMY',
-            rangeFt: 30,
-          },
+          targets: { min: 1, max: 1, who: 'FEATURE_TARGET_WHO_ENEMY', rangeFt: 30 },
           applies: { tempHp: '2' },
         },
       },
@@ -42,12 +37,7 @@ export function volleyFeatBody(namePt = 'Rajada de Teste'): Record<string, unkno
         use: {
           limitScope: 'USE_SCOPE_ROUND',
           limitUses: '2',
-          targets: {
-            min: 1,
-            max: 3,
-            who: 'FEATURE_TARGET_WHO_ENEMY',
-            rangeFt: 60,
-          },
+          targets: { min: 1, max: 3, who: 'FEATURE_TARGET_WHO_ENEMY', rangeFt: 60 },
           applies: { tempHp: '1' },
         },
       },
@@ -95,10 +85,7 @@ export function callFeatBody(namePt = 'Chamado de Teste'): Record<string, unknow
       {
         type: 'grant_action',
         economy: 'bonus_action',
-        use: {
-          targets: { min: 1, max: 1, who: 'FEATURE_TARGET_WHO_ENEMY' },
-          applies: { tempHp: '1' },
-        },
+        use: { targets: { min: 1, max: 1, who: 'FEATURE_TARGET_WHO_ENEMY' }, applies: { tempHp: '1' } },
       },
     ],
   };
@@ -115,33 +102,17 @@ export async function beginCrowdedCombatRPC(master: Page, table: CombatTable, go
   ]);
   const faces = (label: string): number => (label === 'Pensantus' ? 20 : label === 'Capitão Goblin' ? 15 : Number(label.replace(/\D/g, '')) || 1);
   for (const c of enc.combatants) {
-    enc = await combatRPC(master, 'SubmitInitiative', {
-      campaignId: table.campaignId,
-      encounterId: enc.id,
-      combatantId: c.id,
-      d20Face: faces(c.label),
-    });
+    enc = await combatRPC(master, 'SubmitInitiative', { campaignId: table.campaignId, encounterId: enc.id, combatantId: c.id, d20Face: faces(c.label) });
   }
-  const squares: Record<string, [number, number]> = {
-    'Capitão Goblin': [2, 2],
-  };
+  const squares: Record<string, [number, number]> = { 'Capitão Goblin': [2, 2] };
   for (let i = 1; i <= goblins; i++) {
     squares[`Goblin ${i}`] = [10 + (i % 6), 3 + Math.floor(i / 6) * 2];
   }
   for (const [label, [col, row]] of Object.entries(squares)) {
     const id = enc.combatants.find((c) => c.label === label)!.id;
-    enc = await combatRPC(master, 'MoveCombatant', {
-      campaignId: table.campaignId,
-      encounterId: enc.id,
-      combatantId: id,
-      col,
-      row,
-    });
+    enc = await combatRPC(master, 'MoveCombatant', { campaignId: table.campaignId, encounterId: enc.id, combatantId: id, col, row });
   }
-  return combatRPC(master, 'BeginCombat', {
-    campaignId: table.campaignId,
-    encounterId: enc.id,
-  });
+  return combatRPC(master, 'BeginCombat', { campaignId: table.campaignId, encounterId: enc.id });
 }
 
 /** The box of a locator, or a failure that says it has none (a locator that is not drawn). */

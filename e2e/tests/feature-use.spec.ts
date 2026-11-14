@@ -14,21 +14,15 @@ import { newSignedInContext, openActionTab, openCombatLog, openSpentGroup } from
  */
 test('um jogador usa uma característica com alvo e o mestre usa uma com opção por ele', { tag: ['@MR-014', '@RN-19'] }, async ({ browser }) => {
   test.setTimeout(240_000);
-  const master = await newSignedInContext(browser, 'Mestre Teste', {
-    viewport: { width: 1280, height: 900 },
-  });
-  const player = await newSignedInContext(browser, 'Jogador Teste', {
-    viewport: { width: 1280, height: 900 },
-  });
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
   const m = await master.newPage();
   const p = await player.newPage();
   let campaignId = '';
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Usar característica ${Date.now()}`, true, true, {
-      sheet: pensantusCasting,
-    });
+    const table = await tableForCombat(m, p, `Usar característica ${Date.now()}`, true, true, { sheet: pensantusCasting });
     campaignId = table.campaignId;
     for (const body of [markFeatBody(), elementFeatBody()]) {
       await giveFeatRPC(m, campaignId, table.characterId, await createEntryRPC(m, campaignId, 'tableFeat', body));
@@ -70,11 +64,7 @@ test('um jogador usa uma característica com alvo e o mestre usa uma com opção
     await expect(element).toHaveCount(0);
     // The master's own log (the fold "Registro" of the rail) says it, with the numbers; the player's carries it too.
     await m.getByRole('heading', { name: 'Registro' }).getByRole('button').click();
-    await expect(
-      m
-        .getByRole('log', { name: 'Registro do combate' })
-        .getByText(/Pensantus usou Elemento de Teste: Gelo, 3\sPV\stemporários\s·\sgastou\s1\suso\s\(restam\s0\sde\s1\)\s\(pelo mestre\)/),
-    ).toBeVisible();
+    await expect(m.getByRole('log', { name: 'Registro do combate' }).getByText(/Pensantus usou Elemento de Teste: Gelo, 3\sPV\stemporários\s·\sgastou\s1\suso\s\(restam\s0\sde\s1\)\s\(pelo mestre\)/)).toBeVisible();
     await expect(log.getByText(/Pensantus usou Elemento de Teste/)).toBeVisible();
     await expect(m.getByRole('button', { name: 'Usar Elemento de Teste' })).toBeDisabled();
 
@@ -94,12 +84,8 @@ test('um jogador usa uma característica com alvo e o mestre usa uma com opção
  */
 test('o servidor recusa um alvo que saiu do alcance e a folha deixa escolher outro', { tag: ['@MR-014', '@RN-19'] }, async ({ browser }) => {
   test.setTimeout(240_000);
-  const master = await newSignedInContext(browser, 'Mestre Teste', {
-    viewport: { width: 1280, height: 900 },
-  });
-  const player = await newSignedInContext(browser, 'Jogador Teste', {
-    viewport: { width: 1280, height: 900 },
-  });
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
   const m = await master.newPage();
   const p = await player.newPage();
   let campaignId = '';
@@ -122,13 +108,7 @@ test('o servidor recusa um alvo que saiu do alcance e a folha deixa escolher out
     await expect(mark.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
 
     // The captain leaves the 9 m of the use after it was picked.
-    await combatRPC(m, 'MoveCombatant', {
-      campaignId,
-      encounterId: begun.id,
-      combatantId: captain,
-      col: 19,
-      row: 1,
-    });
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: captain, col: 19, row: 1 });
     await mark.getByRole('button', { name: 'Usar no Capitão Goblin' }).click();
     const band = mark.locator('.mr-notice--danger');
     await expect(band).toContainText('O Capitão Goblin saiu do alcance. Escolha outro alvo.');
