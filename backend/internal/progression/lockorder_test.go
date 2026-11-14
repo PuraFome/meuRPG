@@ -54,11 +54,13 @@ func stoppedAtTheSession(t *testing.T, tb *table, write func() error, free func(
 	}
 	done := make(chan error, 1)
 	go func() { done <- write() }()
-	// The statement is the one that locks the session's row (FOR UPDATE): on CockroachDB the count is of running statements, blocked
-	// ones among them, and the plain read of the session that InSession makes first does not match this pattern.
+	// Any statement on game_sessions will do: on CockroachDB the write waits already at the plain read of the open session that
+	// InSession makes first (a plain read of a row another transaction holds FOR UPDATE waits), before the statement that locks it. In
+	// either case the write has taken nothing else, and the old order (the sheets first, the session's row after) takes the sheets
+	// before its first statement on game_sessions, so the sheets are held when it is seen: the check that they are free is what fails.
 	observer := dbtest.SideConnection(t, tb.h.pool)
 	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(5 * time.Millisecond) {
-		n, err := dbtest.WaitingStatements(ctx, observer, `%game_sessions%FOR UPDATE%`, backends...)
+		n, err := dbtest.WaitingStatements(ctx, observer, `%game_sessions%`, backends...)
 		if err != nil {
 			t.Fatalf("look for the waiting write: %v", err)
 		}
