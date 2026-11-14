@@ -109,6 +109,7 @@ The answer to a held roll's die runs the use again and passes these checks: it i
 
 The window closes by itself, with the reason told to its reactor alone.
 That happens when the readier is defeated or incapacitated, spends its reaction elsewhere, or the row stops waiting.
+A change that ends the row (a held spell broken, a readier defeated) closes its window in the same call, a correction to 0 hit points too: the table does not wait for it.
 
 The automatic pass of 30 s counts on the master's screen from when the window opened.
 It can pass a window whose player is still choosing a square for a move, or a target: the row is then ignored.
@@ -205,6 +206,8 @@ The undo of a spell's pass holds the spell again.
 The undo of a change that broke a held spell makes the row wait again when it gives the concentration back (`brokenReadiedBack`), and takes the line with it.
 Otherwise the row stays broken: `chainReadiedDefeat` goes past its line.
 The undo of the fire deletes its window while it was not answered (open, or closed by itself); the row keeps waiting.
+It is refused while a use of the window is held (a roll waiting for a die or for other windows names the window): `REACTION_PENDING`.
+The undo of a change that broke a held spell makes the row wait, but does not open its closed window again: the master fires it again.
 A fire whose window was answered comes back after the answer's undo.
 The lost line of a defeat or a dismissal is written before the change's own event; the undo of that change goes past it and the row stays lost.
 
