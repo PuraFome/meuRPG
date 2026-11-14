@@ -51,36 +51,40 @@
     [attr.data-one-line]="blocked()(g) ? null : ''"
     [class.gear-row--idle]="idle(g)"
   >
-    <span class="gear-row__main">
+    <span class="gear-row__main" [class.gear-row__main--more]="canMark()">
       <mat-icon class="gear-row__icon" aria-hidden="true">{{ icon(g) }}</mat-icon>
-      <span class="gear-row__name" data-chip-ref>{{ g.namePt }}</span>
-      @if (g.count > 1) {
-        <span class="gear-row__count" aria-hidden="true">×{{ g.count }}</span>
-        <span class="mr-visually-hidden">, {{ g.count }} iguais</span>
-      }
-      <span class="mr-visually-hidden">, {{ kindLabel(g) }}</span>
-      @if (g.twoHanded && !combat()) {
-        <span class="gear-row__kind mr-muted" aria-hidden="true" data-whole><span>duas mãos</span></span>
-      }
-      @if (g.twoHanded && warns(g)) {
-        <mat-icon class="gear-row__warn" aria-hidden="true">warning</mat-icon>
-        @if (!combat()) {
-          <span class="mr-visually-hidden">{{ warnText(g) }}</span>
+      <span class="gear-row__body">
+        <span class="gear-row__name" data-chip-ref>{{ g.namePt }}</span>
+        @if (g.count > 1) {
+          <span class="gear-row__count" aria-hidden="true">×{{ g.count }}</span>
+          <span class="mr-visually-hidden">, {{ g.count }} iguais</span>
         }
-      }
-      @if (idle(g)) {
-        <span class="gear-row__idle">Parado</span>
-      }
-      <app-weapon-tags [marks]="rowMarks(g)" [compact]="true" />
-      @if (attunement()(g); as chip) {
-        <span class="gear-row__att" data-chip [class.gear-row__att--on]="chip === 'on'">
-          <mat-icon aria-hidden="true">link</mat-icon>
-          <span class="mr-visually-hidden">{{ chip === 'on' ? 'Sintonizado' : 'Pede sintonização' }}</span>
+        <span class="mr-visually-hidden">, {{ kindLabel(g) }}</span>
+        @if (g.twoHanded && !combat()) {
+          <span class="gear-row__kind mr-muted" aria-hidden="true" data-whole><span>duas mãos</span></span>
+        }
+        @if (g.twoHanded && warns(g)) {
+          <mat-icon class="gear-row__warn" aria-hidden="true">warning</mat-icon>
+          @if (!combat()) {
+            <span class="mr-visually-hidden">{{ warnText(g) }}</span>
+          }
+        }
+        @if (idle(g)) {
+          <span class="gear-row__idle">Parado</span>
+        }
+        <span class="gear-row__marks" data-wrap-group>
+          <app-weapon-tags [marks]="rowMarks(g)" [compact]="true" />
+          @if (attunement()(g); as chip) {
+            <span class="gear-row__att" data-chip [class.gear-row__att--on]="chip === 'on'">
+              <mat-icon aria-hidden="true">link</mat-icon>
+              <span class="mr-visually-hidden">{{ chip === 'on' ? 'Sintonizado' : 'Pede sintonização' }}</span>
+            </span>
+          }
+          @if (g.bonus) {
+            <app-bonus-chip data-chip [bonus]="g.bonus" [counts]="g.bonusCounts !== false && !idle(g)" />
+          }
         </span>
-      }
-      @if (g.bonus) {
-        <app-bonus-chip data-chip [bonus]="g.bonus" [counts]="g.bonusCounts !== false && !idle(g)" />
-      }
+      </span>
       @if (canMark()) {
         <button
           type="button"

@@ -55,6 +55,7 @@ var tableKinds = []struct {
 	{"option", rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION},
 	{"classfeature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE},
 	{"creature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE},
+	{"weapon", rulesv1.TableContentKind_TABLE_CONTENT_KIND_WEAPON},
 }
 
 func kindPrefix(k rulesv1.TableContentKind) string {
@@ -111,6 +112,8 @@ func newBody(kind rulesv1.TableContentKind) tableBody {
 		return &rulesv1.TableClassFeature{}
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE:
 		return &rulesv1.TableCreature{}
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_WEAPON:
+		return &rulesv1.TableWeapon{}
 	}
 	return nil
 }
@@ -138,10 +141,12 @@ func setBody(e *rulesv1.TableEntry, b tableBody) {
 		e.Body = &rulesv1.TableEntry_TableClassFeature{TableClassFeature: v}
 	case *rulesv1.TableCreature:
 		e.Body = &rulesv1.TableEntry_TableCreature{TableCreature: v}
+	case *rulesv1.TableWeapon:
+		e.Body = &rulesv1.TableEntry_TableWeapon{TableWeapon: v}
 	}
 }
 
-// bodyFields are the ten oneof getters of a write request.
+// bodyFields are the eleven oneof getters of a write request.
 type bodyFields interface {
 	GetTableClass() *rulesv1.TableClass
 	GetTableSubclass() *rulesv1.TableSubclass
@@ -153,6 +158,7 @@ type bodyFields interface {
 	GetTableOption() *rulesv1.TableOption
 	GetTableClassFeature() *rulesv1.TableClassFeature
 	GetTableCreature() *rulesv1.TableCreature
+	GetTableWeapon() *rulesv1.TableWeapon
 }
 
 // bodyOf is the body a request carries, with the kind it gives, or nil.
@@ -178,6 +184,8 @@ func bodyOf(r bodyFields) (tableBody, rulesv1.TableContentKind) {
 		return r.GetTableClassFeature(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE
 	case r.GetTableCreature() != nil:
 		return r.GetTableCreature(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE
+	case r.GetTableWeapon() != nil:
+		return r.GetTableWeapon(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_WEAPON
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
@@ -265,9 +273,28 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableCreature:
 			o.Creatures = append(o.Creatures, tableCreatureOf(te, b))
 			idx["creatures"] = append(idx["creatures"], e)
+		case *rulesv1.TableWeapon:
+			o.Weapons = append(o.Weapons, tableWeaponOf(te, b))
+			idx["weapons"] = append(idx["weapons"], e)
 		}
 	}
 	return o, idx
+}
+
+// tableWeaponOf is the engine's weapon of a stored one.
+func tableWeaponOf(te rules.TableEntry, b *rulesv1.TableWeapon) rules.TableWeapon {
+	category := ""
+	switch b.GetCategory() {
+	case rulesv1.WeaponCategory_WEAPON_CATEGORY_SIMPLE:
+		category = "simple"
+	case rulesv1.WeaponCategory_WEAPON_CATEGORY_MARTIAL:
+		category = "martial"
+	}
+	return rules.TableWeapon{
+		TableEntry: te, DescPT: b.GetDescPt(), Category: category, Ranged: b.GetRanged(), Damage: b.GetDamage(), DamageType: b.GetDamageType(),
+		TwoHandedDamage: b.GetTwoHandedDamage(), Properties: b.GetProperties(), NormalRangeFt: int(b.GetNormalRangeFt()), LongRangeFt: int(b.GetLongRangeFt()),
+		WeightOz: int(b.GetWeightOz()), PriceCP: int(b.GetPriceCp()),
+	}
 }
 
 // tableCreatureOf is the engine's creature of a stored one.
@@ -412,7 +439,15 @@ func tableFeaturesOf(in []*rulesv1.TableFeature) []rules.TableFeature {
 func tableFeatureOf(f *rulesv1.TableFeature) rules.TableFeature {
 	return rules.TableFeature{
 		Key: f.GetKey(), NamePT: f.GetNamePt(), DescPT: f.GetDescPt(), Effects: tableEffectsOf(f.GetEffects()),
-		Options: tableFeaturesOf(f.GetOptions()), Summon: tableSummonOf(f.GetSummon()),
+		Options: tableFeaturesOf(f.GetOptions()), Summon: tableSummonOf(f.GetSummon()), Prerequisite: optionPrerequisiteOf(f.GetPrerequisite()),
+	}
+}
+
+// optionPrerequisiteOf is the engine's prerequisite of a stored option's.
+func optionPrerequisiteOf(p *rulesv1.OptionPrerequisite) rules.TableOptionPrerequisite {
+	return rules.TableOptionPrerequisite{
+		ClassKey: p.GetClassLevel().GetClassKey(), ClassLevel: int(p.GetClassLevel().GetLevel()), RequiresOptions: p.GetRequiresOptionKeys(),
+		RequiresPact: p.GetRequiresPact(), RequiresSpell: p.GetRequiresSpellKey(),
 	}
 }
 
@@ -478,19 +513,17 @@ func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
 			Minimums: tableScoresOf(p.GetMinimums()), AnyOf: tableScoresOf(p.GetAnyOf()), Proficiency: p.GetProficiencyKey(),
 			Spellcasting: p.GetSpellcasting(), Race: p.GetRaceKey(), Level: int(p.GetLevel()),
 			Races: p.GetRaces(), Size: p.GetSize(), LacksFeature: p.GetLacksFeatureKey(),
+			ClassKey: p.GetClassLevel().GetClassKey(), ClassLevel: int(p.GetClassLevel().GetLevel()), RequiresOptions: p.GetRequiresOptionKeys(),
+			RequiresPact: p.GetRequiresPact(), RequiresSpell: p.GetRequiresSpellKey(),
 		},
 	}
 }
 
 // tableOptionOf is the engine's option of a stored one.
 func tableOptionOf(te rules.TableEntry, b *rulesv1.TableOption) rules.TableOption {
-	p := b.GetPrerequisite()
 	return rules.TableOption{
 		TableEntry: te, DescPT: b.GetDescPt(), Set: b.GetSet(), OfferedBy: b.GetOfferedBy(), Effects: tableEffectsOf(b.GetEffects()),
-		Prerequisite: rules.TableOptionPrerequisite{
-			ClassKey: p.GetClassLevel().GetClassKey(), ClassLevel: int(p.GetClassLevel().GetLevel()), RequiresOptions: p.GetRequiresOptionKeys(),
-			RequiresPact: p.GetRequiresPact(), RequiresSpell: p.GetRequiresSpellKey(),
-		},
+		Prerequisite: optionPrerequisiteOf(b.GetPrerequisite()),
 	}
 }
 
@@ -832,7 +865,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 
 // overlayPath splits "classes[2].levels[4]" into the kind's list, the index and
 // the rest.
-var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options|class_features|creatures)\[(\d+)\](.*)$`)
+var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options|class_features|creatures|weapons)\[(\d+)\](.*)$`)
 
 // slugify makes the slug of a key from a Portuguese name: lower case, without
 // accents, the rest of it a-z0-9 joined by hyphens, at most rules.MaxSlugLength.
@@ -1325,17 +1358,23 @@ func (v playerView) stripOption(b *rulesv1.TableOption) {
 		b.OfferedBy = "" // a feature the players do not see is not named to them
 	}
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
-	if p := b.GetPrerequisite(); p != nil {
-		p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)
-		if v.hidden(p.GetRequiresPact()) {
-			p.RequiresPact = ""
-		}
-		if v.hidden(p.GetRequiresSpellKey()) {
-			p.RequiresSpellKey = ""
-		}
-		if p.GetClassLevel() != nil && v.hidden(p.GetClassLevel().GetClassKey()) {
-			p.ClassLevel = nil
-		}
+	v.stripOptionPrerequisite(b.GetPrerequisite())
+}
+
+// stripOptionPrerequisite takes the hidden keys out of what an option asks for.
+func (v playerView) stripOptionPrerequisite(p *rulesv1.OptionPrerequisite) {
+	if p == nil {
+		return
+	}
+	p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)
+	if v.hidden(p.GetRequiresPact()) {
+		p.RequiresPact = ""
+	}
+	if v.hidden(p.GetRequiresSpellKey()) {
+		p.RequiresSpellKey = ""
+	}
+	if p.GetClassLevel() != nil && v.hidden(p.GetClassLevel().GetClassKey()) {
+		p.ClassLevel = nil
 	}
 }
 
@@ -1387,6 +1426,16 @@ func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 			p.LacksFeatureKey = "" // nor a feature the players do not see
 			p.LacksHidden = true
 		}
+		p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)
+		if v.hidden(p.GetRequiresPact()) {
+			p.RequiresPact = ""
+		}
+		if v.hidden(p.GetRequiresSpellKey()) {
+			p.RequiresSpellKey = ""
+		}
+		if p.GetClassLevel() != nil && v.hidden(p.GetClassLevel().GetClassKey()) {
+			p.ClassLevel = nil
+		}
 	}
 }
 
@@ -1407,6 +1456,7 @@ func (v playerView) dropEffects(fs []*rulesv1.TableFeature) {
 				ef.Spell = "" // a granted spell the players do not see is not named to them
 			}
 		}
+		v.stripOptionPrerequisite(f.GetPrerequisite())
 		v.dropEffects(f.GetOptions())
 	}
 }

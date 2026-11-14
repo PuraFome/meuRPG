@@ -209,3 +209,85 @@ func TestItemBonusGolden(t *testing.T) {
 	}
 	levelUpGoldenJSON(t, "item-bonuses", got)
 }
+
+// countingValue is the value the counting "attack:<key>" and "damage:<key>" modifiers
+// of the sheet give the weapon; both must give the same one.
+func countingValue(t *testing.T, d Derived, key string) int {
+	t.Helper()
+	attack, damage := 0, 0
+	for _, m := range d.ItemModifiers {
+		switch {
+		case m.Counts && m.Target == "attack:"+key:
+			attack = m.Value
+		case m.Counts && m.Target == "damage:"+key:
+			damage = m.Value
+		}
+	}
+	if attack != damage {
+		t.Fatalf("counting modifiers of %s: attack %d, damage %d, want one value", key, attack, damage)
+	}
+	return attack
+}
+
+func TestAttackMagicBonusIsTheCountingModifierOfTheWeapon(t *testing.T) {
+	t.Parallel()
+	for name, tt := range map[string]struct {
+		mut  func(*Build)
+		want int
+	}{
+		"no bonus":         {func(*Build) {}, 0},
+		"plus one":         {func(b *Build) { b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 1}} }, 1},
+		"plus three":       {func(b *Build) { b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 3}} }, 3},
+		"needs attunement": {func(b *Build) { b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 2, RequiresAttunement: true}} }, 0},
+		"attuned": {func(b *Build) {
+			b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 2, RequiresAttunement: true, Attuned: true}}
+		}, 2},
+		"a shield bonus is no weapon's": {func(b *Build) { b.Shield, b.ItemBonuses = true, []ItemBonus{{Key: ShieldKey, Bonus: 2}} }, 0},
+		"a two-handed weapon beside it": {func(b *Build) {
+			b.Weapons = append(b.Weapons, "equipment:greatsword")
+			b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 1}, {Key: "equipment:greatsword", Bonus: 3}}
+		}, 1},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			plain := weaponLine(t, derivedWithBuild(t, func(b *Build) { b.Weapons = []string{sword} }), sword)
+			d := derivedWithBuild(t, func(b *Build) {
+				b.Weapons = []string{sword}
+				tt.mut(b)
+			})
+			a := weaponLine(t, d, sword)
+			if a.MagicBonus != tt.want || a.MagicBonus != countingValue(t, d, sword) {
+				t.Errorf("MagicBonus = %d (counting modifiers %d), want %d", a.MagicBonus, countingValue(t, d, sword), tt.want)
+			}
+			if a.AttackBonus != plain.AttackBonus+tt.want {
+				t.Errorf("AttackBonus = %d, want %d", a.AttackBonus, plain.AttackBonus+tt.want)
+			}
+		})
+	}
+}
+
+// A weapon in the backpack has no attack line, so it has no bonus to show; the unarmed strike and a cantrip carry none.
+func TestAttackMagicBonusIsZeroWhenStowedAndForOtherLines(t *testing.T) {
+	t.Parallel()
+	d := derivedWithBuild(t, func(b *Build) {
+		b.Weapons, b.Carried = []string{sword}, []string{sword}
+		b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 2}}
+	})
+	for _, a := range d.Attacks {
+		if a.Key == sword {
+			t.Errorf("a stowed weapon has an attack line: %+v", a)
+		}
+		if a.MagicBonus != 0 {
+			t.Errorf("%s: MagicBonus = %d, want 0", a.Key, a.MagicBonus)
+		}
+	}
+	equipped := derivedWithBuild(t, func(b *Build) {
+		b.Weapons = []string{sword}
+		b.ItemBonuses = []ItemBonus{{Key: sword, Bonus: 2}}
+	})
+	for _, a := range equipped.Attacks {
+		if want := map[bool]int{true: 2, false: 0}[a.Key == sword]; a.MagicBonus != want {
+			t.Errorf("%s: MagicBonus = %d, want %d", a.Key, a.MagicBonus, want)
+		}
+	}
+}

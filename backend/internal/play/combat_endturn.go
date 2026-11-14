@@ -173,6 +173,9 @@ func (s *Service) endTurnGates(ctx context.Context, c *combatTx, v combatViewer,
 	if err := s.mustNotWaitForOffers(ctx, c, current); err != nil {
 		return false, err
 	}
+	if err := s.mustNotWaitForReadiedOffers(ctx, c); err != nil {
+		return false, err
+	}
 	if _, err := c.q.SkipPendingOpportunityOffersOfMover(ctx, playdb.SkipPendingOpportunityOffersOfMoverParams{EncounterID: c.enc.ID, MoverID: current.ID, AnsweredAt: &c.now}); err != nil {
 		return false, fmt.Errorf("pass the opportunity offers over: %w", err)
 	}

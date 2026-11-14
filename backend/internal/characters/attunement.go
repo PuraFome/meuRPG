@@ -84,6 +84,7 @@ func keepMagicItems(stored, saved *charactersv1.FullSheet) {
 		}
 		taken[it.GetId()] = true
 		it.RequiresAttunement, it.RestrictionPt, it.Restriction, it.SameItemAttuned, it.NamePt = false, "", charactersv1.AttunementRestriction_ATTUNEMENT_RESTRICTION_UNSPECIFIED, false, ""
+		it.ChargesMax, it.ChargesLeft, it.Lost = 0, 0, charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED
 	}
 }
 

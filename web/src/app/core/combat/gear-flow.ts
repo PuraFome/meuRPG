@@ -1,6 +1,7 @@
 import { effect, signal, untracked } from '@angular/core';
 
 import type { GearClient, GearVm } from '../characters/gear';
+import { article } from '../format/article';
 import { combatErrorMessage } from './combat-errors';
 
 /** What `GearFlow` reads from the screen it serves. */
@@ -67,7 +68,7 @@ export function twoHandedWarnings(
     .filter((g) => g.armorClassIfToggled > 0 && g.armorClassIfToggled !== armorClass)
     .map((g) => ({
       key: g.key,
-      text: `Sacar ${g.namePt} (duas mãos) deixa o escudo de lado: CA ${armorClass} → ${g.armorClassIfToggled}.`,
+      text: `Sacar ${article(g.namePt)} ${g.namePt} desativa o escudo: CA ${armorClass} → ${g.armorClassIfToggled}.`,
     }));
 }
 

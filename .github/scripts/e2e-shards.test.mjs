@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { groupedTests } from './e2e-list-reporter.mjs';
-import { FRESH_KEY, freshOverhead, groupProblems, MAX_FRESH_EXTRA_SECONDS, split as splitTests, testKey, testsOf, timingsOf } from './e2e-shards.mjs';
+import { FRESH_KEY, freshOverhead, groupProblems, listTests, MAX_FRESH_EXTRA_SECONDS, split as splitTests, testKey, testsOf, timingsOf } from './e2e-shards.mjs';
 
 // Invented tests: a file, a title and how long it takes.
 const key = (file, title) => testKey('chrome', file, [title]);
@@ -226,4 +226,57 @@ test('the split of a serial group does not depend on the order its tests are lis
   const sorted = (tests) => split(tests, timings, 2).map((shard) => [...shard].sort());
   assert.deepEqual(sorted([...group, ...solo]), sorted([...group].reverse().concat(solo)));
   assert.deepEqual(sorted([...group, ...solo]), sorted([...solo].reverse().concat(group)));
+});
+
+// Playwright as the job met it: a spec that throws when it loads fails the list, and the list reporter says nothing of it.
+function playwrightWithASpecThatThrows(calls) {
+  return async (args) => {
+    calls.push(args);
+    const withReporter = args.some((arg) => arg.startsWith('--reporter='));
+    const failure = new Error('Command failed: npx playwright test --list');
+    failure.code = 1;
+    failure.stdout = withReporter ? '{"workers":2,"tests":[]}\n' : '';
+    failure.stderr = withReporter ? '' : "Error: boom at import\n\n   at throws.spec.ts:2\n\n> 2 | throw new Error('boom at import');";
+    throw failure;
+  };
+}
+
+test('a spec that throws when it loads fails the list with the error and where it was thrown', async () => {
+  const calls = [];
+  await assert.rejects(
+    listTests(['--grep-invert', '@a11y'], [], playwrightWithASpecThatThrows(calls)),
+    (error) => {
+      assert.match(error.message, /^playwright --list failed \(1\):/);
+      assert.match(error.message, /Error: boom at import/);
+      assert.match(error.message, /throws\.spec\.ts:2/);
+      return true;
+    },
+  );
+  // The second list is the same one without the reporter: same filters, nothing else changed.
+  assert.equal(calls.length, 2);
+  assert.ok(calls[0].some((arg) => arg.startsWith('--reporter=')));
+  assert.deepEqual(calls[1], ['test', '--list', '--grep-invert', '@a11y']);
+});
+
+test('a list that fails and works again without the reporter says the reporter failed', async () => {
+  let calls = 0;
+  const play = async (args) => {
+    calls += 1;
+    if (args.some((arg) => arg.startsWith('--reporter='))) throw Object.assign(new Error('reporter crashed'), { code: 1, stderr: 'TypeError: root is not iterable' });
+    return { stdout: 'Total: 3 tests in 1 file', stderr: '' };
+  };
+  await assert.rejects(listTests([], [], play), /TypeError: root is not iterable[\s\S]*the list without the reporter works, so the reporter failed/);
+  assert.equal(calls, 2);
+});
+
+test('a list that works is asked once', async () => {
+  let calls = 0;
+  const play = async () => {
+    calls += 1;
+    return { stdout: JSON.stringify({ workers: 2, tests: [{ project: 'chrome', file: 'a.spec.ts', titles: ['t'], group: null }] }), stderr: '' };
+  };
+  const listed = await listTests([], [], play);
+  assert.equal(calls, 1);
+  assert.equal(listed.workers, 2);
+  assert.equal(listed.tests.length, 1);
 });

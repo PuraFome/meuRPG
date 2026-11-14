@@ -290,7 +290,9 @@ Tests then use `newSignedInContext(browser, 'Jogador Teste')` or `test.use({ sto
 - No test sets the display name of the shared accounts: `ui.spec.ts` expects "Minha conta", the default text with no name set.
 
 **Accessibility.** `a11y.spec.ts` runs axe (`@axe-core/playwright`) on the main screens in the light and dark themes, on desktop and mobile, and fails on any serious or critical violation of WCAG 2.1 A and AA.
-On the same screens it runs the alignment checks of `e2e/tests/layout.ts`: an icon at the height of its own words, button content in the middle of it, nothing on top of an icon, words away from the edge of a radio card, a gear row on one line, equal widths in a marked group, a chip on the capitals of its row's words, no name cut while its row has room, nothing cut at the edge of a marked box (see [Design](design/README.md#how-a-screen-is-made)).
+On the same screens it runs the alignment checks of `e2e/tests/layout.ts`: an icon at the height of its own words, button content in the middle of it, nothing on top of an icon, words away from the edge of a radio card, a gear row or an action row on one line (or two, with the marked groups under a name of at least 96 px, the first at the name's x), an attunement chip on the line of its marks group, equal widths in a marked group, a chip on the capitals of its row's words, no name cut while its line has room, nothing cut at the edge of a marked box (see [Design](design/README.md#how-a-screen-is-made)).
+`e2e/tests/layout.spec.ts` runs the one-line and chip checks on small pages that carry the layout rules of the rows, in a phone-wide column, and needs no stack: a wrong layout must be reported and the right one must pass.
+Its gear row and spell row pages carry the compiled stylesheets of `gear-list` and `action-row`, so the name keeps 96 px beside the "⋮", the "?" and the button on a phone.
 `npx playwright test --grep @a11y` runs only it. Every new screen enters this file.
 
 **e2e linters.** `cd e2e && npm run lint:install && npm run lint` runs ESLint with `no-floating-promises`, `await-thenable` (a missing `await` is the classic Playwright flake) and `eslint-plugin-playwright`.

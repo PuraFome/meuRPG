@@ -1,10 +1,14 @@
 import { Component, computed, input, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import { abilityLabel, formatModifier } from '../../../core/characters/character-labels';
+import { attackMarksFor } from '../../../core/characters/gear';
 import type { VitalsVm } from '../../../core/play/live-session.types';
+import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../shared/weapon-tags/weapon-tags';
 import { SpellHelp } from '../../../shared/spell-details/spell-help';
-import { FullSheetVm } from '../character-sheet.types';
+import { itemModifierLines, shieldNoteShown } from '../character-sheet-modifiers';
+import { AttackVm, FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {
   grantedSpellLevel,
@@ -25,7 +29,7 @@ import {
  */
 @Component({
   selector: 'app-combat-column',
-  imports: [CombatStats, SpellHelp, WeaponTags],
+  imports: [BonusChip, CombatStats, MatIconModule, SpellHelp, WeaponTags],
   templateUrl: './combat-column.html',
   styleUrl: './combat-column.scss',
 })
@@ -52,6 +56,14 @@ export class CombatColumn {
 
   /** A tap on a spell (its name or its "?"): the key, so the sheet opens its description. */
   readonly spellOpened = output<string>();
+  /** One line per piece with a magic bonus. */
+  protected readonly modifierLines = computed(() => itemModifierLines(this.sheet().itemModifiers));
+  /** The shield's own line carries why it is idle, so the note below the numbers is left out. */
+  protected readonly shieldNote = computed(() => shieldNoteShown(this.sheet()));
+  /** The marks of an attack's row: a counting +N takes the place of "Mágica". */
+  protected marksFor(atk: AttackVm) {
+    return attackMarksFor(atk.marks, atk.magicBonus);
+  }
   /** The spells by level, each with its tags and, for a class that prepares, whether it is prepared. */
   protected readonly spellGroupList = computed(() =>
     spellGroups(this.sheet().spells, this.sheet().spellcasting),

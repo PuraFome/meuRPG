@@ -95,6 +95,22 @@ The Crystal ball is the special case: a family that is also an item (`Standalone
 `Attunement` is true when the SRD header says "(requires attunement)"; `AttunementBy` keeps the restriction in English ("by a paladin") and `AttunementByPT` the Portuguese label (`attunement:<restriction>` in `names_pt.json`; loading refuses a restriction without a label and the reverse).
 An attunement that applies to one property only stays in the text.
 
+**Charges.**
+`effects/item_charges.json` maps the key of an item with charges to its numbers, written by hand from the item's text:
+
+- `max` is 1 to 100.
+- `start` is the dice of the charges a new copy holds when the SRD rolls them (Luck Blade, Nine Lives Stealer); it rolls up to `max`, and a new copy has no count until the master sets it.
+- `recharge` is `dawn`, `none` or `dawns_after_empty`. The last one needs `wait_dawns` and regains `all`.
+- `regain` is `all` or dice such as `1d6+1`, given whenever the item recharges.
+- `empty` is what the last charge does: `none`, `d20` or `always`.
+- `lost` is how the item is lost: `gone`, `plain` (a nonmagical item that stays on the sheet) or `partly` (it keeps its bonus to attack and damage rolls). `always` needs it, and `d20` takes it for a 1.
+- `empty_high_regain` is the dice a 20 gives back to an item that rolls a d20.
+
+Loading refuses an entry of a key that is no catalog item or is a family, a count out of range, an unknown value and a regain that is not dice.
+A test fails when an item whose text says "charge" has no entry, or the reverse, and another reads each maximum and regain from the SRD text and compares them; the entries whose wording it cannot read are listed in the test with the reason.
+`Content.ItemCharges(key)` returns them, and `Left(used)` clamps a stored count to the maximum; the server never rolls them (ADR-0008).
+A family has no entry: the sheet holds a variant.
+
 **What gets drawn.**
 A flat list would overweight the families, so `MagicItemUnits(rarity)` returns units: each standalone item and one unit per (family, rarity), with that rarity's variants in `Options`.
 Whoever draws picks a unit and, within it, an option: the Ring of Resistance is a rare unit with ten options.

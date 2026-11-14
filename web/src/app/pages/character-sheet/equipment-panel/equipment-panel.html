@@ -24,9 +24,6 @@
     (toggled)="gearToggled.emit($event)"
     (marksOpened)="marksOpened.emit($event)"
   />
-  @if (s.shieldIdle) {
-    <p class="gear__note mr-muted">O escudo não vale nada com uma arma de duas mãos equipada: guarde a arma.</p>
-  }
   <p class="gear__notice" role="status">{{ equipNotice() }}</p>
   @if (equipError()) {
     <p class="gear__error" role="alert">
@@ -84,20 +81,7 @@
       <p class="gear__notice" role="status">{{ magicNotice() }}</p>
     </section>
   }
-  @if (hasLegend()) {
-    <ul class="legend" aria-label="Legenda dos selos">
-      @for (m of legendMarks(); track m.word) {
-        <li><span class="legend__chip legend__chip--mark"><mat-icon aria-hidden="true">{{ m.icon }}</mat-icon></span>{{ m.word }}</li>
-      }
-      @if (showsChips()) {
-        <li><span class="legend__chip legend__chip--on"><mat-icon aria-hidden="true">link</mat-icon></span>Sintonizado</li>
-        <li><span class="legend__chip"><mat-icon aria-hidden="true">link</mat-icon></span>Pede sintonização</li>
-      }
-      @if (hasBonus()) {
-        <li><app-bonus-chip [bonus]="1" [counts]="bonusCounts()" [words]="true" /></li>
-      }
-    </ul>
-  }
+  <app-chip-legend [marks]="legendMarks()" [attunement]="showsChips()" [bonus]="legendBonus()" />
   @if (!canMark() && !canManageMagic() && canEquip()) {
     <p class="gear__lock mr-muted"><mat-icon aria-hidden="true">lock</mat-icon>Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.</p>
   }

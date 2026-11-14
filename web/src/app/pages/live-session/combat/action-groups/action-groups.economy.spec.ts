@@ -206,7 +206,7 @@ describe('ActionGroups: the tabs in a form (584-01, 584-02)', () => {
     ];
     const { el } = setup(
       {},
-      { beast: 'Lobo', stay, options, contestAttacks, gearFlow: { weapons: [] } },
+      { beast: 'Lobo', stay, options, contestAttacks, gearFlow: { gear: () => [] } },
     );
     // No drawing or putting away of weapons in a form.
     expect(el.querySelector('.panel app-gear-fold')).toBeNull();

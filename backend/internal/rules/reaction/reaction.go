@@ -142,6 +142,8 @@ const (
 	// Dismount is the reaction of a rider whose mount was knocked prone or dropped to 0 hit points: it lands on its feet next to the
 	// mount (SRD 5.1, "Mounted Combat"), or falls prone. It uses the rider's reaction.
 	Dismount Kind = "dismount"
+	// Readied is a readied action the master fired: its readier uses its reaction to act now, or lets it pass.
+	Readied Kind = "readied"
 )
 
 // Reason is why a window closed by itself.

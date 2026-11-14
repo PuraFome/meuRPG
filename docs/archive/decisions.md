@@ -442,6 +442,7 @@ These decisions used to open and close the roadmap page.
 - **RN-29** — Monsters in combat as hidden NPCs, with RN-20 unchanged. Vinicius decided 05/10/2026.
 - **RN-29** — Average hit points for monsters (question 81) accepted. Vinicius answered 05/10/2026, question 81.
 - **RN-30** — Status "Proposta" (security audit of 07/10/2026, items S3 and S4): the numbers (10 campaigns per account, 100 images per day, the `CAMPAIGN_CREATORS` list) are ours; Samuel confirms or changes them. Still open. Origin: security audit 07/10/2026.
+- **RN-31** — The Ready tie inside a shared turn (a readier tied with its trigger acts until its own part ends, so its Ready waits) was decided by Vinicius on 14/11/2026 for #582.
 
 ### Product: glossary
 

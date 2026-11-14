@@ -197,6 +197,29 @@ func (s *Service) mustNotWaitForOffers(ctx context.Context, c *combatTx, who pla
 	return nil
 }
 
+// mustNotWaitForReadiedOffers holds the end of the turn, the master's too, while an offer waits whose mover is not in
+// the turn: one a readied move made (ready_answer.go), which no turn of its own would pass over. As a reaction window
+// does, it must be answered within the turn it happened in.
+func (s *Service) mustNotWaitForReadiedOffers(ctx context.Context, c *combatTx) error {
+	offers, err := c.q.ListWaitingOpportunityOffers(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the opportunity offers: %w", err)
+	}
+	if len(offers) == 0 {
+		return nil
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, o := range offers {
+		if mover, ok := combatantByID(cs, o.MoverID); ok && !inTurn(c.enc, mover) {
+			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_OPPORTUNITY_PENDING, "an opportunity attack of a readied move waits for its answer")
+		}
+	}
+	return nil
+}
+
 // pruneOffers skips the pending offers nobody can answer any more, after any
 // change: the mover is defeated, or the reactor is gone, defeated, down,
 // incapacitated or has no reaction left (spent on another offer, or on anything).
