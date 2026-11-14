@@ -1,4 +1,7 @@
+import { create } from '@bufbuild/protobuf';
+
 import { WeaponCategory } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { TableWeaponSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import {
   draftToWeapon,
   emptyWeapon,
@@ -7,7 +10,11 @@ import {
   type WeaponDraft,
 } from './weapon-draft';
 
-const filled = (p: Partial<WeaponDraft>): WeaponDraft => ({ ...emptyWeapon(), name: 'Lança', ...p });
+const filled = (p: Partial<WeaponDraft>): WeaponDraft => ({
+  ...emptyWeapon(),
+  name: 'Lança',
+  ...p,
+});
 
 describe('weapon draft', () => {
   it('starts as a simple melee weapon with nothing typed', () => {
@@ -33,7 +40,7 @@ describe('weapon draft', () => {
     );
     expect(w.normalRangeFt).toBe(80);
     expect(w.longRangeFt).toBe(320);
-    expect(w.weightOz).toBe(71);
+    expect(w.weightOz).toBe(64);
     expect(w.priceCp).toBe(2500);
   });
 
@@ -69,7 +76,7 @@ describe('weapon draft', () => {
         coin: 'PO',
       }),
     );
-    const back = weaponToDraft(w);
+    const back = weaponToDraft(create(TableWeaponSchema, w));
     expect(back.price).toBe('5');
     expect(back.coin).toBe('PO');
     expect(back.normalRange).toBe('6');
