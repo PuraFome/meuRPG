@@ -67,6 +67,19 @@ describe('the sentence of a hit effect', () => {
     );
   });
 
+  it('reads the dice of the slot the spell was cast with, as the server baked them into the row', () => {
+    // A level 4 slot of a spell that starts at level 2 with 2d8: the server sends 4d8 and no per-slot climb, so the card is 4d8.
+    const upcast = row(
+      'a',
+      { dice: 4, die: 8, perSlotDice: 0, maxDice: 0 },
+      { roundsLeft: undefined },
+    );
+    expect(hitCardLine(upcast, '')).toBe('No próximo golpe com arma: +4d8 radiante.');
+    expect(hitCardLine(upcast, '')).not.toContain('2d8');
+    const card = hitCards(combatant({ id: 'me', label: 'Brisa', effects: [upcast] }), [])[0];
+    expect(card.line).toContain('+4d8');
+  });
+
   it('says the weapon type when the effect names none', () => {
     const e = row('a', { trigger: 'each_hit', dice: 1, damageTypeKey: '', damageTypePt: '' });
     expect(hitCardLine(e, '')).toBe('Cada golpe com arma: +1d6 do tipo da arma. 1 min restantes.');
