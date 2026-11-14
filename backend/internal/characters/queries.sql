@@ -1017,3 +1017,11 @@ FOR UPDATE;
 UPDATE character_ammunition
 SET quantity = sqlc.arg(quantity), recovered = true, updated_at = sqlc.arg(now)
 WHERE character_id = sqlc.arg(character_id) AND ammo_key = sqlc.arg(ammo_key);
+
+-- name: SetRestState :exec
+-- A rest ended what the sheet's daily picks and short-rest proficiencies last until (#580): the whole list of picks and the
+-- "short rest taken" flag are written into the stored sheet, and the revision goes up so a stale editor is told.
+UPDATE characters
+SET sheet = jsonb_set(jsonb_set(sheet, '{full,daily_picks}', sqlc.arg(picks)::JSONB), '{full,short_rested}', sqlc.arg(short_rested)::JSONB),
+    revision = revision + 1, updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND sheet ? 'full';
