@@ -1165,3 +1165,50 @@ func TestALandingThatFiresATrapMovesAThirdPlayersNumberByTheLandingAndTheFiring(
 		t.Errorf("Ana's number moved by %d for a landing that fires, want 2: the landing, then the firing", noticeable)
 	}
 }
+
+// takeBackWorld builds a world where the master left an image with Ana alone (or with Caio too, when withCaio), takes it back, and reads
+// what Caio's stream was told: how far his number went, and the kinds of his events (the heartbeats left out).
+func takeBackWorld(t *testing.T, withCaio bool) (moved int64, kinds []string) {
+	t.Helper()
+	w := newWorld(t)
+	image := w.newShown("seq-take-back", w.ana, w.caio)
+	aud := chosen(w.ana)
+	if withCaio {
+		aud = chosen(w.ana, w.caio)
+	}
+	w.showImage(image, true, aud)
+	must(w.master.play.SetShownImage(t.Context(), rq(&playv1.SetShownImageRequest{CampaignId: w.campaign})))
+	w.hints.Settle(w.t)
+	watch := w.watchStream(w.caio)
+	start := watch.number()
+	must(w.master.play.TakeBackLeftImage(t.Context(), rq(&playv1.TakeBackLeftImageRequest{CampaignId: w.campaign, ImageId: image.id})))
+	// The take-back was made when the call returned: a beat that begins after the next one reads what it left.
+	watch.beatAfter(t, watch.count(), func(int64) bool { return true })
+	end := watch.beatAfter(t, watch.count(), func(int64) bool { return true })
+	for _, ev := range watch.since(1) {
+		if c := eventCase(ev); c != "heartbeat" {
+			kinds = append(kinds, c)
+			if ev.GetSessionSeq() != start+1 {
+				t.Errorf("Caio heard %s with number %d, want %d, the take-back's", c, ev.GetSessionSeq(), start+1)
+			}
+		}
+	}
+	return end - start, kinds
+}
+
+// TestATakeBackMovesAThirdPlayersNumberOnceWhetherItConcernedThemOrNot: taking back an image left on the table is one write that moves
+// the number once, so Caio, who the image was not left with, reads the same number as Caio, who it was left with, and hears nothing
+// but his own list's hint in the world where it concerned him (control). The number is all he learns of the take-back.
+func TestATakeBackMovesAThirdPlayersNumberOnceWhetherItConcernedThemOrNot(t *testing.T) {
+	movedNot, heardNot := takeBackWorld(t, false)
+	movedWith, heardWith := takeBackWorld(t, true)
+	if movedNot != 1 || movedWith != 1 {
+		t.Errorf("Caio's number moved by %d where the image was not his and by %d where it was, want 1 for both: a take-back is one write", movedNot, movedWith)
+	}
+	if len(heardNot) != 0 {
+		t.Errorf("Caio heard %v of the take-back of an image left with Ana alone, want nothing", heardNot)
+	}
+	if len(heardWith) != 1 || heardWith[0] != "left_images_changed" {
+		t.Errorf("Caio heard %v of the take-back of an image left with him, want left_images_changed alone: the control is gone", heardWith)
+	}
+}

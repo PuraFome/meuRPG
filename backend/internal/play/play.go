@@ -189,9 +189,10 @@ type MapKeeper interface {
 	// reads, oldest first: every one for the master (each with its audience),
 	// and for a player the ones left with them.
 	ListLeftImages(ctx context.Context, campaignID, userID string, master bool) ([]*playv1.ShownImage, error)
-	// TakeBackImage removes the image from the left list and returns who it was
-	// left with, or returns a `not_found` Connect error when it is not on it.
-	TakeBackImage(ctx context.Context, campaignID, imageID string) (link.ImageAudience, error)
+	// TakeBackImage removes the image from the left list inside tx and returns
+	// who it was left with, or returns a `not_found` Connect error when it is
+	// not on it.
+	TakeBackImage(ctx context.Context, tx pgx.Tx, campaignID, imageID string) (link.ImageAudience, error)
 	// MapGrid, ScenePoint and MapTokens read inside tx when the caller has one
 	// (nil: the pool): a change that holds a transaction must pass it.
 	//

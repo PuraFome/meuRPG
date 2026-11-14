@@ -613,7 +613,7 @@ func (noMaps) ListLeftImages(context.Context, string, string, bool) ([]*playv1.S
 	return nil, errors.New("not in this test")
 }
 
-func (noMaps) TakeBackImage(context.Context, string, string) (link.ImageAudience, error) {
+func (noMaps) TakeBackImage(context.Context, pgx.Tx, string, string) (link.ImageAudience, error) {
 	return link.ImageAudience{}, errors.New("not in this test")
 }
 

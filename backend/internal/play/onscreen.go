@@ -173,11 +173,7 @@ func (s *Service) tellShownImage(h *hints, campaignID string, out shownOutcome, 
 	if out.moved {
 		// After the image, as it was told before: the streams hear the image, then the list.
 		h.after(func(_ context.Context, say sayFn) {
-			sayTo(say, campaignID, true, out.leftTo.audiences(), func() *playv1.WatchGameSessionResponse {
-				return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
-					LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
-				}}
-			})
+			sayTo(say, campaignID, true, out.leftTo.audiences(), leftImagesChangedMessage)
 		})
 	}
 }
@@ -275,21 +271,27 @@ func (s *Service) TakeBackLeftImage(
 	if imageID == nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("image not found"))
 	}
-	was, err := s.maps.TakeBackImage(ctx, m.CampaignID, *imageID)
+	// One write that moves the session's number once: the list's hint goes to the master and the players the image was left with,
+	// with the number. With no open session there is no number, and the take-back runs plain and tells nothing.
+	err = s.txOrNone(ctx, m.CampaignID, func(tx pgx.Tx, h *hints, _ string) error {
+		was, err := s.maps.TakeBackImage(ctx, tx, m.CampaignID, *imageID)
+		if err != nil {
+			return err
+		}
+		tellViewers(h, m.CampaignID, leftViewers(was), leftImagesChangedMessage)
+		return nil
+	})
 	if err != nil {
 		return nil, s.dbError(ctx, "take a left image back", err)
 	}
-	s.publishLeftImagesChanged(m.CampaignID, leftViewers(was))
 	return connect.NewResponse(&playv1.TakeBackLeftImageResponse{}), nil
 }
 
-// publishLeftImagesChanged tells the master and the players an image was left with that the
-// images left with the players changed; the app reads the list again. A player the image was not
-// left with hears nothing (RN-10).
-func (s *Service) publishLeftImagesChanged(campaignID string, to viewers) {
-	s.publishToViewers(campaignID, to, &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
+// leftImagesChangedMessage is the hint that the images left with the players changed; the app reads the list again.
+func leftImagesChangedMessage() *playv1.WatchGameSessionResponse {
+	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_LeftImagesChanged_{
 		LeftImagesChanged: &playv1.WatchGameSessionResponse_LeftImagesChanged{},
-	}})
+	}}
 }
 
 // leftViewers is who an image left with the players was left with.

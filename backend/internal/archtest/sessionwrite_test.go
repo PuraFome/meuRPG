@@ -71,23 +71,34 @@ var sessionSentinels = []string{"send", "tellMembers", "publish", "touch", "Next
 //     non-test file of the same directory counts when that function writes by the same rule (any receiver, any depth, by
 //     name, so two methods of one name are one). The funnel is never entered, and a call of tx or txOn is not a write;
 //   - an exported function or method with a pgx.Tx parameter is also an offender when it writes by that rule: it is the seam
-//     a module calls with its own transaction (characters' ReviewHost), and no closure of this package holds it.
+//     a module calls with its own transaction (characters' ReviewHost), and no closure of this package holds it;
+//   - a writer query called on a Queries that has no WithTx in its chain is an autocommit write: it commits on its own, outside
+//     any transaction and so outside the funnel. The key is the function with the suffix " autocommit". The receiver is the
+//     "queries" field or another Queries field that nothing in the package binds with WithTx, or a local name assigned from
+//     one of them; s.queries.WithTx(tx).X(...) and q := s.queries.WithTx(tx) are not. The same exceptions file lists it, and
+//     only a "# permanent:" reason fits a write that never touches session state;
+//   - an exception whose reason starts with "host:" or "characters host:" says the function runs inside its caller's
+//     transaction: the entry fails if the function takes no pgx.Tx parameter (or is not declared), so the reason cannot go stale.
 //
 // Limits:
-//   - a closure that is a method value, a field or a package-level function is not read;
-//   - a closure that is a parameter of the enclosing function is not read either, but a literal that calls a parameter of
-//     function type is taken to write;
-//   - a name that two functions share is followed in both, which can list a site that only reads (list it, with the reason,
-//     or rename the helper);
-//   - a call through an interface or a function value is not followed;
+//   - `db` aliased on import: db.InTx is recognized only when the receiver is an identifier literally named db;
+//   - Begin on a field not named pool: only pool.Begin and x.pool.Begin (and their BeginTx) open a transaction;
+//   - closures passed as parameters or method values: a closure that is a method value, a field, a package-level function or
+//     a parameter of the enclosing function is not read (a literal that calls a parameter of function type is taken to write);
+//   - calls through interfaces or function values are not followed;
+//   - helpers matched by bare name across the package: a name that two functions share is followed in both, which can list a
+//     site that only reads (list it, with the reason, or rename the helper);
 //   - a write by raw SQL in a string is seen only through the named queries (the txhints rule keeps hint_seq out of strings);
 //   - a savepoint (tx.Begin) is part of its transaction and not read on its own;
 //   - a sentinel is matched by its bare name: any x.send, x.publish or x.touch call marks a writer, even if x is not a
 //     session stream;
-//   - db.InTx is recognized only when the receiver is an identifier literally named db.
+//   - the autocommit rule does not judge a Queries that arrives as a parameter or from a function's result (the caller binds
+//     it), and a Queries field name is bound for every struct once any literal or assignment gives it a WithTx value;
+//   - the host check proves a pgx.Tx parameter, not that the caller passes its own transaction or that the session row is locked.
 func TestWritesGoThroughTheFunnel(t *testing.T) {
 	root := os.DirFS(backendRoot)
 	found := map[string]string{}
+	decls := map[string]*ast.FuncDecl{}
 	files := 0
 	for _, dir := range sessionWriteDirs {
 		entries, err := fs.ReadDir(root, dir)
@@ -116,19 +127,83 @@ func TestWritesGoThroughTheFunnel(t *testing.T) {
 			t.Fatalf("%s: found %d writer queries and %d Go files: is backendRoot right?", dir, len(writers), len(srcs))
 		}
 		files += len(srcs)
+		parsed, err := funcDeclsByKey(srcs)
+		if err != nil {
+			t.Fatalf("%s: %v", dir, err)
+		}
+		maps.Copy(decls, parsed)
 		keys, err := sessionWriteKeys(srcs, writers)
 		if err != nil {
 			t.Fatalf("%s: %v", dir, err)
 		}
 		for _, k := range keys {
+			if strings.HasSuffix(k, autocommitSuffix) {
+				found[k] = fmt.Sprintf("%q writes with a Queries that has no WithTx: the write commits on its own, outside any transaction "+
+					"and outside the funnel: call it on s.queries.WithTx(tx) inside Service.tx, or list the function in "+
+					"sessionwrite_exceptions.txt (# permanent: <reason> if it never touches session state)", k)
+				continue
+			}
 			found[k] = fmt.Sprintf("%q writes in a transaction outside the funnel: use Service.tx (internal/play/hints.go) "+
 				"and collect the hints with h.tell, or list the function in sessionwrite_exceptions.txt "+
 				"(# permanent: <reason> if it never touches session state)", k)
 		}
 	}
 	failProblems(t, compareExceptions("sessionwrite_exceptions.txt", parseExceptions(sessionWriteExceptions), found))
+	failProblems(t, hostExceptionProblems("sessionwrite_exceptions.txt", sessionWriteExceptions, decls))
 	work, permanent := countExceptions(sessionWriteExceptions)
 	t.Logf("%d non-test Go files checked; %d known exceptions: %d in the work queue, %d permanent", files, len(found), work, permanent)
+}
+
+// hostPrefixes start the reason of an exception that is a host: a function that runs inside the transaction of the module
+// that calls it, so it takes that transaction as a pgx.Tx parameter and opens none of its own.
+var hostPrefixes = []string{"host:", "characters host:"}
+
+// funcDeclsByKey returns the function declarations of the files by the key an exception uses ("package file function").
+func funcDeclsByKey(srcs map[string][]byte) (map[string]*ast.FuncDecl, error) {
+	out := map[string]*ast.FuncDecl{}
+	for p, src := range srcs {
+		f, err := parser.ParseFile(token.NewFileSet(), p, src, parser.SkipObjectResolution)
+		if err != nil {
+			return nil, err
+		}
+		for _, decl := range f.Decls {
+			if d, ok := decl.(*ast.FuncDecl); ok {
+				out[fmt.Sprintf("%s %s %s", f.Name.Name, path.Base(p), funcName(d))] = d
+			}
+		}
+	}
+	return out, nil
+}
+
+// hostExceptionProblems returns a problem for each entry of the exceptions text whose reason starts with a host prefix and
+// whose function does not take a pgx.Tx parameter (or is not declared): the reason says it runs inside the caller's
+// transaction, which it cannot do without one, so a refactor that drops the parameter makes the reason stale.
+func hostExceptionProblems(file, text string, decls map[string]*ast.FuncDecl) []string {
+	var problems []string
+	for line := range strings.Lines(text) {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, reason, ok := strings.Cut(line, " #")
+		if !ok {
+			continue
+		}
+		key, reason = strings.TrimSpace(key), strings.TrimSpace(reason)
+		if !slices.ContainsFunc(hostPrefixes, func(p string) bool { return strings.HasPrefix(reason, p) }) {
+			continue
+		}
+		d := decls[key]
+		switch {
+		case d == nil:
+			problems = append(problems, fmt.Sprintf("%s: the host entry %q names a function that is not declared: remove it", file, key))
+		case !hasTxParam(d):
+			problems = append(problems, fmt.Sprintf("%s: the host entry %q says it runs inside its caller's transaction, "+
+				"but the function takes no pgx.Tx parameter: give it the transaction, or change the reason", file, key))
+		}
+	}
+	slices.Sort(problems)
+	return problems
 }
 
 // countExceptions returns the number of entries of the work queue and of the permanent ones (the reason, after " #", starts
@@ -198,6 +273,7 @@ func sessionWriteKeys(srcs map[string][]byte, writers map[string]bool) ([]string
 	}
 	dropDelegations(files)
 	reach := writingNames(files, writers)
+	queryFields := queriesFields(files)
 	var keys []string
 	add := func(f sessionFile, fn string) {
 		k := fmt.Sprintf("%s %s %s", f.ast.Name.Name, path.Base(f.path), fn)
@@ -211,6 +287,9 @@ func sessionWriteKeys(srcs map[string][]byte, writers map[string]bool) ([]string
 			case *ast.FuncDecl:
 				if d.Body == nil || sessionFunnel[f.path+":"+funcName(d)] {
 					continue
+				}
+				if autocommitWrite(d, writers, queryFields) {
+					add(f, funcName(d)+autocommitSuffix)
 				}
 				if opensWritingTx(d, writers, reach) || (d.Name.IsExported() && hasTxParam(d) && writes(d.Body, writers, reach)) {
 					add(f, funcName(d))
@@ -230,6 +309,132 @@ func sessionWriteKeys(srcs map[string][]byte, writers map[string]bool) ([]string
 	}
 	slices.Sort(keys)
 	return keys, nil
+}
+
+// autocommitSuffix ends the key of a function that writes on a *db.Queries that is not bound to a transaction.
+const autocommitSuffix = " autocommit"
+
+// queriesFields returns the names of the struct fields of the package whose type is a Queries of any package
+// (*db.Queries, *playdb.Queries) and that are never given a value from a WithTx call (a keyed literal field: v or an
+// assignment x.field = v): a call of a writer query on one of them has no transaction. The service's own field (queries) is
+// one; the field of a struct that a transaction builds around s.queries.WithTx(tx) is not.
+func queriesFields(files []sessionFile) map[string]bool {
+	out := map[string]bool{}
+	bound := map[string]bool{}
+	for _, f := range files {
+		ast.Inspect(f.ast, func(n ast.Node) bool {
+			switch x := n.(type) {
+			case *ast.KeyValueExpr:
+				if id, ok := x.Key.(*ast.Ident); ok && hasWithTx(x.Value) {
+					bound[id.Name] = true
+				}
+			case *ast.AssignStmt:
+				for i, l := range x.Lhs {
+					if sel, ok := l.(*ast.SelectorExpr); ok && i < len(x.Rhs) && hasWithTx(x.Rhs[i]) {
+						bound[sel.Sel.Name] = true
+					}
+				}
+			}
+			return true
+		})
+	}
+	for _, f := range files {
+		ast.Inspect(f.ast, func(n ast.Node) bool {
+			st, ok := n.(*ast.StructType)
+			if !ok {
+				return true
+			}
+			for _, fld := range st.Fields.List {
+				t := fld.Type
+				if star, ok := t.(*ast.StarExpr); ok {
+					t = star.X
+				}
+				if sel, ok := t.(*ast.SelectorExpr); ok && sel.Sel.Name == "Queries" {
+					for _, id := range fld.Names {
+						out[id.Name] = !bound[id.Name]
+					}
+				}
+			}
+			return true
+		})
+	}
+	return out
+}
+
+// autocommitWrite reports whether n calls a writer query on a Queries that has no WithTx in its chain: a selector that is a
+// Queries field (s.queries.UpdateThing(...)), or a local name assigned from one (q := s.queries; q.UpdateThing(...)). Such a
+// call commits on its own, outside any transaction and so outside the funnel. A local name that is also assigned from a
+// WithTx call anywhere in n is taken as bound to a transaction; a parameter is not judged (the caller binds it).
+func autocommitWrite(n ast.Node, writers, fields map[string]bool) bool {
+	raw, bound := map[string]bool{}, map[string]bool{}
+	note := func(lhs, rhs []ast.Expr) {
+		for i, l := range lhs {
+			id, ok := l.(*ast.Ident)
+			if !ok || len(rhs) == 0 {
+				continue
+			}
+			r := rhs[0]
+			if len(rhs) == len(lhs) {
+				r = rhs[i]
+			}
+			switch {
+			case hasWithTx(r):
+				bound[id.Name] = true
+			case isQueriesField(r, fields):
+				raw[id.Name] = true
+			}
+		}
+	}
+	ast.Inspect(n, func(n ast.Node) bool {
+		switch x := n.(type) {
+		case *ast.AssignStmt:
+			note(x.Lhs, x.Rhs)
+		case *ast.ValueSpec:
+			lhs := make([]ast.Expr, len(x.Names))
+			for i, id := range x.Names {
+				lhs[i] = id
+			}
+			note(lhs, x.Values)
+		}
+		return true
+	})
+	found := false
+	ast.Inspect(n, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || found {
+			return !found
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || !writers[sel.Sel.Name] {
+			return true
+		}
+		recv := ast.Unparen(sel.X)
+		if id, ok := recv.(*ast.Ident); ok {
+			found = raw[id.Name] && !bound[id.Name]
+		} else {
+			found = isQueriesField(recv, fields)
+		}
+		return !found
+	})
+	return found
+}
+
+// isQueriesField reports whether e is a selector x.F with F a Queries field, with no call in it.
+func isQueriesField(e ast.Expr, fields map[string]bool) bool {
+	sel, ok := ast.Unparen(e).(*ast.SelectorExpr)
+	return ok && fields[sel.Sel.Name]
+}
+
+// hasWithTx reports whether e has a call of WithTx.
+func hasWithTx(e ast.Expr) bool {
+	found := false
+	ast.Inspect(e, func(n ast.Node) bool {
+		if call, ok := n.(*ast.CallExpr); ok && callName(call) == "WithTx" {
+			found = true
+		}
+		return !found
+	})
+	return found
 }
 
 // dropDelegations makes the pure delegations of the package invisible to the rules: in a method whose receiver type embeds a
@@ -514,6 +719,31 @@ func TestCountExceptions(t *testing.T) {
 	}
 }
 
+func TestHostExceptionProblems(t *testing.T) {
+	srcs := map[string][]byte{"internal/play/a.go": []byte("package play\n" +
+		"func (s *Service) Host(c C, tx pgx.Tx) error { return nil }\n" +
+		"func (s *Service) Stale(c C) error { return nil }\n" +
+		"func (s *Service) Other(c C) error { return nil }\n")}
+	decls, err := funcDeclsByKey(srcs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := "play a.go (*Service).Host # host: runs inside play's transaction\n" +
+		"play a.go (*Service).Stale # characters host: runs inside the characters module's transaction\n" +
+		"play a.go (*Service).Gone # host: runs inside play's transaction\n" +
+		"play a.go (*Service).Other # permanent: not a host\n" +
+		"play a.go (*Service).Other # unconverted: not a host either\n"
+	got := hostExceptionProblems("x.txt", text, decls)
+	want := []string{
+		`x.txt: the host entry "play a.go (*Service).Gone" names a function that is not declared: remove it`,
+		`x.txt: the host entry "play a.go (*Service).Stale" says it runs inside its caller's transaction, ` +
+			`but the function takes no pgx.Tx parameter: give it the transaction, or change the reason`,
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("hostExceptionProblems = %q, want %q", got, want)
+	}
+}
+
 func TestSessionWriteKeys(t *testing.T) {
 	writers := map[string]bool{"UpdateThing": true}
 	cases := []struct {
@@ -707,6 +937,62 @@ func TestSessionWriteKeys(t *testing.T) {
 				"internal/play/a.go": "package play\nvar run = func(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return q.UpdateThing(c) }) }",
 			},
 			[]string{"play a.go run"},
+		},
+		{
+			"an autocommit write is flagged",
+			map[string]string{
+				"internal/play/a.go": "package play\ntype Service struct{ queries *playdb.Queries }\n" +
+					"func (s *Service) F(c C) error { return s.queries.UpdateThing(c, p) }",
+			},
+			[]string{"play a.go (*Service).F" + autocommitSuffix},
+		},
+		{
+			"a write on a local that is the raw queries is flagged",
+			map[string]string{
+				"internal/play/a.go": "package play\ntype Service struct{ queries *playdb.Queries }\n" +
+					"func (s *Service) F(c C) error { q := s.queries; return q.UpdateThing(c, p) }",
+			},
+			[]string{"play a.go (*Service).F" + autocommitSuffix},
+		},
+		{
+			"a write through WithTx is not autocommit",
+			map[string]string{
+				"internal/play/a.go": "package play\ntype Service struct{ queries *playdb.Queries }\n" +
+					"func (s *Service) f(c C, tx pgx.Tx) error { q := s.queries.WithTx(tx); return q.UpdateThing(c, p) }\n" +
+					"func (s *Service) g(c C, tx pgx.Tx) error { return s.queries.WithTx(tx).UpdateThing(c, p) }",
+			},
+			nil,
+		},
+		{
+			"a read on the raw queries is not autocommit",
+			map[string]string{
+				"internal/play/a.go": "package play\ntype Service struct{ queries *playdb.Queries }\n" +
+					"func (s *Service) F(c C) error { _, err := s.queries.GetThing(c); return err }",
+			},
+			nil,
+		},
+		{
+			"a Queries field that a transaction binds with WithTx is not autocommit",
+			map[string]string{
+				"internal/play/a.go": "package play\ntype Service struct{ queries *playdb.Queries }\ntype flow struct{ q *playdb.Queries }\n" +
+					"func (s *Service) f(c C, tx pgx.Tx) error { f := &flow{q: s.queries.WithTx(tx)}; return f.q.UpdateThing(c, p) }",
+			},
+			nil,
+		},
+		{
+			"a Queries field that nothing binds is autocommit",
+			map[string]string{
+				"internal/play/a.go": "package play\ntype hold struct{ q *playdb.Queries }\n" +
+					"func (h *hold) save(c C) error { return h.q.UpdateThing(c, p) }",
+			},
+			[]string{"play a.go (*hold).save" + autocommitSuffix},
+		},
+		{
+			"a parameter is not judged",
+			map[string]string{
+				"internal/play/a.go": "package play\nfunc F(c C, q *playdb.Queries) error { return q.UpdateThing(c, p) }",
+			},
+			nil,
 		},
 		{
 			"one key per function",
