@@ -811,7 +811,9 @@
       "resource": "x",
       "rider": "x",
       "effect": "x",
-      "hide": true
+      "hide": true,
+      "group": "x",
+      "group_hidden": true
     }
   ],
   "parts_before": {},

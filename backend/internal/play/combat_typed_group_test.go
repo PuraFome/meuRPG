@@ -172,39 +172,51 @@ func TestAGroupAndAPartKeyOfAnotherTypeRollTogether(t *testing.T) {
 }
 
 // TestATypedGroupGetsTheResistanceOfItsTypeLikeTheSamePartsRolledOneByOne: a rapier (1d8 + 3) and a Sneak Attack (2d6),
-// both piercing, against a creature that resists piercing. The group's 7 and the parts 3 and 4 are the same damage:
-// the step is 10 to 5 and the creature loses the same hit points.
+// both piercing, against a creature that resists piercing. The group's sum and the same two parts typed one by one are the
+// same damage: the same step and the creature loses the same hit points, an odd total halved down as the steps do.
 func TestATypedGroupGetsTheResistanceOfItsTypeLikeTheSamePartsRolledOneByOne(t *testing.T) {
 	t.Parallel()
-	a, e, shrub := partsFight(t, func(a *armed) {
-		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:rogue", "race:human", 3, abilities(16, 16, 14, 12, 10), []string{rapier}, nil)
-	}, "monster:awakened-shrub")
-	hp := func() int32 { return byLabel(t, a.get(t, a.master), shrub).GetHitPointsCurrent() }
-	sneak := []*playv1.SelectedExtra{{Key: "sneak-attack"}}
-	roll := func(typed ...*playv1.TypedPart) (lost int32, steps []*playv1.DamageStep) {
-		t.Helper()
-		e = a.passTo(t, a.get(t, a.master), "Toren")
-		a.setConditions(t, e, shrub, "condition:restrained")
-		hit := a.mustAttack(t, a.caio, e, "Toren", rapier, shrub, func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{5, 18} })
-		before := hp()
-		a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), extrasMarked(sneak, typed...))
-		for _, r := range a.log(t, a.master, e).GetRounds() {
-			for _, en := range r.GetEntries() {
-				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetDamage() != nil {
-					steps = en.GetDamage().GetSteps()
+	for _, tt := range []struct {
+		name          string
+		weapon, sneak int32
+		before, after int32
+	}{
+		{"an even total", 3, 4, 10, 5},
+		{"an odd total", 4, 4, 11, 5},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			a, e, shrub := partsFight(t, func(a *armed) {
+				a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:rogue", "race:human", 3, abilities(16, 16, 14, 12, 10), []string{rapier}, nil)
+			}, "monster:awakened-shrub")
+			hp := func() int32 { return byLabel(t, a.get(t, a.master), shrub).GetHitPointsCurrent() }
+			sneak := []*playv1.SelectedExtra{{Key: "sneak-attack"}}
+			roll := func(typed ...*playv1.TypedPart) (lost int32, steps []*playv1.DamageStep) {
+				t.Helper()
+				e = a.passTo(t, a.get(t, a.master), "Toren")
+				a.setConditions(t, e, shrub, "condition:restrained")
+				hit := a.mustAttack(t, a.caio, e, "Toren", rapier, shrub, func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{5, 18} })
+				before := hp()
+				a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(), extrasMarked(sneak, typed...))
+				for _, r := range a.log(t, a.master, e).GetRounds() {
+					for _, en := range r.GetEntries() {
+						if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK && en.GetDamage() != nil {
+							steps = en.GetDamage().GetSteps()
+						}
+					}
 				}
+				a.mustEndTurn(t, a.caio, a.get(t, a.caio))
+				return before - hp(), steps
 			}
-		}
-		a.mustEndTurn(t, a.caio, a.get(t, a.caio))
-		return before - hp(), steps
-	}
-	byParts, partSteps := roll(&playv1.TypedPart{PartKey: "weapon", Sum: 3}, &playv1.TypedPart{PartKey: "sneak-attack", Sum: 4})
-	byGroup, groupSteps := roll(&playv1.TypedPart{DamageType: "damage-type:piercing", Sum: 7})
-	if byParts != 5 || byGroup != byParts {
-		t.Errorf("hit points lost: %d by parts, %d by group, want 5 and 5 (10 halved)", byParts, byGroup)
-	}
-	if len(partSteps) != 1 || len(groupSteps) != 1 || groupSteps[0].GetBefore() != 10 || groupSteps[0].GetAfter() != 5 {
-		t.Errorf("steps: %v by parts, %v by group, want one resistance, 10 to 5", partSteps, groupSteps)
+			byParts, partSteps := roll(&playv1.TypedPart{PartKey: "weapon", Sum: tt.weapon}, &playv1.TypedPart{PartKey: "sneak-attack", Sum: tt.sneak})
+			byGroup, groupSteps := roll(&playv1.TypedPart{DamageType: "damage-type:piercing", Sum: tt.weapon + tt.sneak})
+			if byParts != tt.after || byGroup != byParts {
+				t.Errorf("hit points lost: %d by parts, %d by group, want %d and %d (%d halved)", byParts, byGroup, tt.after, tt.after, tt.before)
+			}
+			if len(partSteps) != 1 || len(groupSteps) != 1 || groupSteps[0].GetBefore() != tt.before || groupSteps[0].GetAfter() != tt.after || partSteps[0].GetAfter() != tt.after {
+				t.Errorf("steps: %v by parts, %v by group, want one resistance, %d to %d", partSteps, groupSteps, tt.before, tt.after)
+			}
+		})
 	}
 }
 
@@ -219,5 +231,56 @@ func TestAHeldRollOfATypedGroupLandsAsRolled(t *testing.T) {
 	held := heldPartsRoll(got.parts, got.rolls, true)
 	if held.byType[groupPiercing] != 12 || held.byType[groupRadiant] != 3 || held.total != 15 {
 		t.Errorf("held byType = %v total %d, want piercing 12 and radiant 3", held.byType, held.total)
+	}
+}
+
+// TestAHeldTypedGroupLandsAsRolledThroughTheRealRolls: a rogue's rapier and Sneak Attack (both piercing) are typed as one
+// group against another rogue, whose Uncanny Dodge holds the damage. The window reads the group's total with the flat
+// number, and the answer lands it halved: the replay read the group's sum from the part that carries it.
+func TestAHeldTypedGroupLandsAsRolledThroughTheRealRolls(t *testing.T) {
+	t.Parallel()
+	a := newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:rogue", "race:human", 3, abilities(16, 16, 14, 12, 10), []string{rapier}, nil)
+		a.pens = a.ana.hero(t, a.campaignID, "Reator", "class:rogue", "race:human", 5, abilities(10, 14, 12, 10, 8), []string{rapier}, nil)
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, abilities(10, 16, 14, 10, 8), []string{rapier}, nil)
+	})
+	e := a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3}, reveal: []string{"Goblin"},
+		players: map[string]int32{"Toren": 18, "Reator": 10, "Brisa": 1},
+		at:      map[string][2]int32{"Toren": {3, 3}, "Goblin": {8, 8}, "Reator": {4, 4}, "Brisa": {9, 9}},
+	})
+	a.setConditions(t, e, "Reator", "condition:restrained")
+	hit := a.mustAttack(t, a.caio, e, "Toren", rapier, "Reator", func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{5, 18} })
+	held := a.mustDamage(t, a.caio, e, hit.GetPendingDamage().GetId(),
+		extrasMarked([]*playv1.SelectedExtra{{Key: "sneak-attack"}}, &playv1.TypedPart{DamageType: groupPiercing, Sum: 9}))
+	if held.GetPendingDamage().GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+		t.Fatalf("the damage landed before the rogue answered: %v", held.GetPendingDamage())
+	}
+	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_UNCANNY_DODGE)
+	if w == nil || w.GetUncannyDodge().GetDamage() != 12 || w.GetUncannyDodge().GetHalved() != 6 {
+		t.Fatalf("the rogue's window = %v, want the group's 9 and the flat 3: 12 halved to 6", w)
+	}
+	a.mustAnswer(t, a.ana, e, w.GetId(), useAnswer(0))
+	if status, amount := a.pendingOf(t, hit.GetPendingDamage().GetId()); status != "rolled" || amount != 6 {
+		t.Errorf("the pending damage = %s for %d, want rolled for 6", status, amount)
+	}
+	var raw []byte
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT part_rolls FROM pending_damages WHERE id = $1`, hit.GetPendingDamage().GetId()).Scan(&raw); err != nil {
+		t.Fatalf("read the part rolls: %v", err)
+	}
+	var carrying int
+	for _, r := range readPartRolls(raw) {
+		if r.Group != groupPiercing {
+			t.Errorf("the part %s of the landed damage keeps group %q, want %s", r.Key, r.Group, groupPiercing)
+		}
+		if r.Sum != 0 {
+			carrying++
+			if r.Key != partWeapon || r.Sum != 9 {
+				t.Errorf("the sum %d sits on %s, want the group's 9 on the weapon", r.Sum, r.Key)
+			}
+		}
+	}
+	if carrying != 1 {
+		t.Errorf("%d parts carry a sum, want the group's on one", carrying)
 	}
 }

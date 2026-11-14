@@ -894,7 +894,7 @@ const (
 	// free). The attack's sheet reads the reason from PendingDamage.parts.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_EXTRA_NOT_AVAILABLE EncounterBlockedReason = 81
 	// RemoveDamagePart: the part is the weapon's or an automatic line, which cannot be
-	// taken out, or it was taken out already.
+	// taken out, it was taken out already, or a damage-type sum typed for the roll covers it.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE EncounterBlockedReason = 82
 	// TakeAction (Reckless Attack): it is declared with the first attack of the turn,
 	// and an attack was made.

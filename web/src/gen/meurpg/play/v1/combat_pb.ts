@@ -15026,7 +15026,7 @@ export enum EncounterBlockedReason {
 
   /**
    * RemoveDamagePart: the part is the weapon's or an automatic line, which cannot be
-   * taken out, or it was taken out already.
+   * taken out, it was taken out already, or a damage-type sum typed for the roll covers it.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE = 82;
    */
