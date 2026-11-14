@@ -34,6 +34,7 @@
     <ng-content select="[lead]" />
     @if (feature().effects.length === 0) {
       <app-effect-picker
+        [catalog]="catalog()"
         [effect]="firstEffect()"
         [menu]="menu()"
         [basePath]="path('effects[0]')"
@@ -51,6 +52,7 @@
       />
     } @else {
       <app-effect-picker
+        [catalog]="catalog()"
         [effect]="feature().effects[0]"
         [menu]="menu()"
         [basePath]="path('effects[0]')"
@@ -85,6 +87,7 @@
     <div class="effect">
       <div class="grid">
         <app-effect-picker
+        [catalog]="catalog()"
           [effect]="e.effect"
           [menu]="menu()"
           [basePath]="path('effects[' + e.index + ']')"
@@ -139,6 +142,7 @@
           [basePath]="path('options[' + k + ']')"
           [issuesOf]="issuesOf()"
           [spellOptions]="spellOptions()"
+          [catalog]="catalog()"
           [isOption]="true"
           [featOption]="featEditor() || featOption()"
           nameLabel="Nome da opção"

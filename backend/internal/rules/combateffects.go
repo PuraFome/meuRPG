@@ -175,6 +175,10 @@ type EffectModifier struct {
 	Affects  string `json:"affects,omitempty"`
 	// Value is the armor class bonus, or the speed multiplier in percent.
 	Value int `json:"value,omitempty"`
+	// ValueAbility, on ModifierRollBonus of a feature's aura, is the ability key whose modifier the bonus is, read from
+	// the bearer when the aura is put on (Value is then 0); ValueMin is the least it is (Aura of Protection).
+	ValueAbility string `json:"value_ability,omitempty"`
+	ValueMin     int    `json:"value_min,omitempty"`
 	// Skill is the skill key of ModifierCheckBonus ("skill:stealth").
 	Skill string `json:"skill,omitempty"`
 	// Abilities are the ability keys of ModifierSaveAdvantage and ModifierCheckAdvantage.
@@ -735,6 +739,9 @@ func checkModifier(m EffectModifier) error {
 	if !slices.Contains(modifierKinds, m.Kind) {
 		return modifierField("kind", "unknown kind %q", m.Kind)
 	}
+	if (m.ValueAbility != "" || m.ValueMin != 0) && m.Kind != ModifierRollBonus {
+		return modifierField("value_ability", "only roll_bonus takes its value from an ability")
+	}
 	if check, ok := modifierChecks[m.Kind]; ok {
 		return check(m)
 	}
@@ -769,14 +776,36 @@ func checkAuraModifier(m EffectModifier) error {
 }
 
 func checkRollBonus(m EffectModifier) error {
-	if m.Value == 0 || m.Value < -maxRollBonus || m.Value > maxRollBonus {
+	if m.ValueAbility != "" || m.ValueMin != 0 {
+		if err := checkValueAbility(m); err != nil {
+			return err
+		}
+	} else if m.Value == 0 || m.Value < -maxRollBonus || m.Value > maxRollBonus {
 		return modifierField("value", "roll_bonus needs a value from 1 to 20, or -20 to -1")
+	}
+	if m.Value != 0 && m.ValueAbility != "" {
+		return modifierField("value", "a bonus from an ability has no value of its own")
 	}
 	if len(m.AppliesTo) == 0 {
 		return modifierField("applies_to", "roll_bonus needs applies_to")
 	}
 	return checkAppliesTo(m.AppliesTo)
 }
+
+// checkValueAbility checks a roll_bonus that takes its number from the bearer's ability: a known ability and a least
+// value of 1 to maxValueMin.
+func checkValueAbility(m EffectModifier) error {
+	switch {
+	case !slices.Contains(saveAbilities, m.ValueAbility):
+		return modifierField("value_ability", "value_ability is an ability: str, dex, con, int, wis or cha")
+	case m.ValueMin < 1 || m.ValueMin > maxValueMin:
+		return modifierField("value_min", "value_min is from 1 to %d", maxValueMin)
+	}
+	return nil
+}
+
+// maxValueMin is the highest value_min of a bonus from an ability.
+const maxValueMin = 5
 
 func checkTempHP(m EffectModifier) error {
 	if m.Value < 1 || m.Value > maxTempHP {
