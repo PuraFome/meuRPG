@@ -428,17 +428,22 @@ func (c *content) featUnmetPT(u FeatUnmet, b Build) string {
 		return "Não pode ter " + c.namePT(u.Key) + "."
 	case FeatUnmetLevel:
 		return fmt.Sprintf("Precisa de nível %d ou mais.", u.Value)
-	case FeatUnmetClassLevel:
-		return fmt.Sprintf("Precisa de nível %d de %s.", u.Value, c.namePT(u.Key))
-	case FeatUnmetPact, FeatUnmetSpell, FeatUnmetOption:
-		if c.hiddenTo(b, u.Key) {
-			return hiddenUnmetPT
-		}
-		return map[string]string{
-			FeatUnmetPact: "Precisa da Dádiva do Pacto ", FeatUnmetSpell: "Precisa conhecer a magia ", FeatUnmetOption: "Precisa ter escolhido ",
-		}[u.Kind] + optionLabel(c.namePT(u.Key)) + "."
+	case FeatUnmetClassLevel, FeatUnmetPact, FeatUnmetSpell, FeatUnmetOption:
+		return c.knowledgeUnmetPT(u, b)
 	}
 	return ""
+}
+
+// knowledgeUnmetPT says what a character lacks of a class level, a Pact Boon, a spell or an option a feat asks for.
+func (c *content) knowledgeUnmetPT(u FeatUnmet, b Build) string {
+	if u.Kind == FeatUnmetClassLevel {
+		return fmt.Sprintf("Precisa de nível %d de %s.", u.Value, c.namePT(u.Key))
+	}
+	if c.hiddenTo(b, u.Key) {
+		return hiddenUnmetPT
+	}
+	prefix := map[string]string{FeatUnmetPact: "Precisa da Dádiva do Pacto ", FeatUnmetSpell: "Precisa conhecer a magia ", FeatUnmetOption: "Precisa ter escolhido "}[u.Kind]
+	return prefix + optionLabel(c.namePT(u.Key)) + "."
 }
 
 // featPickChoices adds the choices a feat of the table asks besides the feats it grants:
