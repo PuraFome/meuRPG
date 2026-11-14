@@ -1797,7 +1797,7 @@ type TableEffect struct {
 	// are refused. The aura reaches nobody while its bearer is at 0 hit points or incapacitated (unconscious,
 	// paralyzed, stunned, petrified or incapacitated). A level that widens it is a second aura effect with a
 	// `when` for each size: the first whose `when` holds is the one carried.
-	Aura          *TableSpellEffect `protobuf:"bytes,89,opt,name=aura,proto3" json:"aura,omitempty"`
+	Aura          *TableSpellEffect `protobuf:"bytes,92,opt,name=aura,proto3" json:"aura,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -9028,7 +9028,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x16no_material_components\x18V \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
 	"\tuses_cost\x18W \x01(\x05R\busesCost\x12-\n" +
 	"\x03use\x18X \x01(\v2\x1b.meurpg.rules.v1.FeatureUseR\x03use\x125\n" +
-	"\x04aura\x18Y \x01(\v2!.meurpg.rules.v1.TableSpellEffectR\x04aura\"\x81\x02\n" +
+	"\x04aura\x18\\ \x01(\v2!.meurpg.rules.v1.TableSpellEffectR\x04aura\"\x81\x02\n" +
 	"\fTableFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x1f\n" +
