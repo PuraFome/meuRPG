@@ -1623,6 +1623,23 @@ func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspir
 	return err
 }
 
+const deleteInspirationHoldsOfKind = `-- name: DeleteInspirationHoldsOfKind :exec
+DELETE FROM inspiration_holds
+WHERE encounter_id = $1 AND combatant_id = $2 AND kind = $3
+`
+
+type DeleteInspirationHoldsOfKindParams struct {
+	EncounterID *string
+	CombatantID *string
+	Kind        string
+}
+
+// The holds of one kind a combatant owns in a combat: the question of a window that closed by itself.
+func (q *Queries) DeleteInspirationHoldsOfKind(ctx context.Context, arg DeleteInspirationHoldsOfKindParams) error {
+	_, err := q.db.Exec(ctx, deleteInspirationHoldsOfKind, arg.EncounterID, arg.CombatantID, arg.Kind)
+	return err
+}
+
 const deleteLastingEffect = `-- name: DeleteLastingEffect :exec
 DELETE FROM combatant_states WHERE id = $1 AND kind = 'effect'
 `

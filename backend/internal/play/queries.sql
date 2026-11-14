@@ -2060,6 +2060,11 @@ DELETE FROM inspiration_holds
 WHERE (encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
    OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id));
 
+-- name: DeleteInspirationHoldsOfKind :exec
+-- The holds of one kind a combatant owns in a combat: the question of a window that closed by itself.
+DELETE FROM inspiration_holds
+WHERE encounter_id = $1 AND combatant_id = $2 AND kind = $3;
+
 -- name: AnswerInspirationHold :exec
 UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
 
