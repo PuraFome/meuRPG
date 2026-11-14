@@ -1631,6 +1631,15 @@ message SheetMagicItem {
   bool same_item_attuned = 7;
   // The item's Portuguese name from the catalog. Filled by the server on every read.
   string name_pt = 8;
+  // The charges the item holds, 0 for an item with none. Filled by the server from the catalog on
+  // every read; a save ignores it.
+  int32 charges_max = 9;
+  // The charges left, 0 to charges_max (charges_max when nothing was spent). Filled by the server
+  // on every read; a save ignores it. Only the character's player and the master read it.
+  int32 charges_left = 10;
+  // The item was lost when its last charge went (a wand that crumbled): it holds no charges and
+  // none can be spent. Filled by the server on every read; a save ignores it.
+  bool destroyed = 11;
 }
 
 // AttunementRestriction says whether a character meets what an item asks for to be attuned.

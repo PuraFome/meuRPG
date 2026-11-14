@@ -123,6 +123,14 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma peça que pede sintonização não soma nada até o personagem se sintonizar com ela.
   A ficha lista cada bônus com a origem e diz por que um não soma nada.
   Duas armas com a mesma chave são uma linha e dividem o bônus.
+- **Cargas de itens mágicos (SRD 5.1, "Magic Items": a entrada de cada varinha, cajado, anel e outro item que tem cargas).**
+  Um item mágico que tem cargas guarda um número fixo, e a ficha mostra quantas restam.
+  O catálogo diz, para cada item assim, quantas cargas ele guarda, se algumas voltam ao amanhecer e quantas, e o que a última carga faz.
+  As cargas que voltam ao amanhecer voltam no número que o item nomeia: uma quantidade fixa, todas, ou dados como 1d6 + 1.
+  A última carga pode não fazer nada, destruir o item na hora, ou pedir um d20 em que 1 perde o item e 20 devolve algumas cargas.
+  Um item que nunca recarrega (um talismã, um escaravelho) guarda o que sobrou até o mestre corrigir.
+  Salvar a ficha nunca muda as cargas, e tirar um item da ficha descarta o que ele gastou.
+  Um jogador lê as cargas só dos próprios personagens, e o mestre lê todas.
 - **Sintonização.**
   Um personagem fica sintonizado com no máximo três itens mágicos ao mesmo tempo, e só um item que a ficha lista como um que pede sintonização pode ser sintonizado.
   Um descanso curto ou longo abre uma janela para cada personagem que ele cobre, e nessa janela o dono sintoniza um item ou encerra uma sintonização; o mestre faz qualquer um dos dois a qualquer hora.

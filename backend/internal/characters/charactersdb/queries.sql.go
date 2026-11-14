@@ -331,6 +331,23 @@ func (q *Queries) DeleteCreatures(ctx context.Context, arg DeleteCreaturesParams
 	return err
 }
 
+const deleteItemChargesExcept = `-- name: DeleteItemChargesExcept :exec
+DELETE FROM character_item_charges
+WHERE character_id = $1
+  AND NOT (entry_id = ANY ($2::TEXT[]))
+`
+
+type DeleteItemChargesExceptParams struct {
+	CharacterID string
+	KeepIds     []string
+}
+
+// Deletes the rows of the entries a saved sheet no longer has.
+func (q *Queries) DeleteItemChargesExcept(ctx context.Context, arg DeleteItemChargesExceptParams) error {
+	_, err := q.db.Exec(ctx, deleteItemChargesExcept, arg.CharacterID, arg.KeepIds)
+	return err
+}
+
 const deleteLevelUpRoll = `-- name: DeleteLevelUpRoll :exec
 DELETE FROM character_level_up_rolls
 WHERE character_id = $1::UUID AND to_level = $2
@@ -2264,6 +2281,40 @@ func (q *Queries) ListDeadPlayerCharacters(ctx context.Context, campaignID strin
 	return items, nil
 }
 
+const listItemCharges = `-- name: ListItemCharges :many
+SELECT entry_id, charges_used, destroyed
+FROM character_item_charges
+WHERE character_id = $1
+ORDER BY entry_id
+`
+
+type ListItemChargesRow struct {
+	EntryID     string
+	ChargesUsed int32
+	Destroyed   bool
+}
+
+// What the character's magic items spent: one row for each entry that spent a charge or was lost.
+func (q *Queries) ListItemCharges(ctx context.Context, characterID string) ([]ListItemChargesRow, error) {
+	rows, err := q.db.Query(ctx, listItemCharges, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListItemChargesRow
+	for rows.Next() {
+		var i ListItemChargesRow
+		if err := rows.Scan(&i.EntryID, &i.ChargesUsed, &i.Destroyed); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listLevelUps = `-- name: ListLevelUps :many
 SELECT l.id, l.character_id, l.class_key, l.from_level, l.to_level, l.choices, l.created_at,
        c.name AS character_name, c.player_user_id
@@ -3447,6 +3498,33 @@ func (q *Queries) SetFamiliarSight(ctx context.Context, arg SetFamiliarSightPara
 	var i SetFamiliarSightRow
 	err := row.Scan(&i.Revision, &i.UpdatedAt)
 	return i, err
+}
+
+const setItemCharges = `-- name: SetItemCharges :exec
+INSERT INTO character_item_charges (character_id, entry_id, charges_used, destroyed, updated_at)
+VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (character_id, entry_id) DO UPDATE
+SET charges_used = excluded.charges_used, destroyed = excluded.destroyed, updated_at = excluded.updated_at
+`
+
+type SetItemChargesParams struct {
+	CharacterID string
+	EntryID     string
+	ChargesUsed int32
+	Destroyed   bool
+	Now         time.Time
+}
+
+// Writes what an entry spent: a row with nothing spent and not lost is deleted, so the table holds only what changed.
+func (q *Queries) SetItemCharges(ctx context.Context, arg SetItemChargesParams) error {
+	_, err := q.db.Exec(ctx, setItemCharges,
+		arg.CharacterID,
+		arg.EntryID,
+		arg.ChargesUsed,
+		arg.Destroyed,
+		arg.Now,
+	)
+	return err
 }
 
 const setStoryEditing = `-- name: SetStoryEditing :one

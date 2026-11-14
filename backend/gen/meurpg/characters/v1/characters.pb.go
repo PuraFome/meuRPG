@@ -3545,7 +3545,16 @@ type SheetMagicItem struct {
 	// copy of an item at a time). Filled by the server on every read; a save ignores it.
 	SameItemAttuned bool `protobuf:"varint,7,opt,name=same_item_attuned,json=sameItemAttuned,proto3" json:"same_item_attuned,omitempty"`
 	// The item's Portuguese name from the catalog. Filled by the server on every read.
-	NamePt        string `protobuf:"bytes,8,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	NamePt string `protobuf:"bytes,8,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
+	// The charges the item holds, 0 for an item with none. Filled by the server from the catalog on
+	// every read; a save ignores it.
+	ChargesMax int32 `protobuf:"varint,9,opt,name=charges_max,json=chargesMax,proto3" json:"charges_max,omitempty"`
+	// The charges left, 0 to charges_max (charges_max when nothing was spent). Filled by the server
+	// on every read; a save ignores it. Only the character's player and the master read it.
+	ChargesLeft int32 `protobuf:"varint,10,opt,name=charges_left,json=chargesLeft,proto3" json:"charges_left,omitempty"`
+	// The item was lost when its last charge went (a wand that crumbled): it holds no charges and
+	// none can be spent. Filled by the server on every read; a save ignores it.
+	Destroyed     bool `protobuf:"varint,11,opt,name=destroyed,proto3" json:"destroyed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3634,6 +3643,27 @@ func (x *SheetMagicItem) GetNamePt() string {
 		return x.NamePt
 	}
 	return ""
+}
+
+func (x *SheetMagicItem) GetChargesMax() int32 {
+	if x != nil {
+		return x.ChargesMax
+	}
+	return 0
+}
+
+func (x *SheetMagicItem) GetChargesLeft() int32 {
+	if x != nil {
+		return x.ChargesLeft
+	}
+	return 0
+}
+
+func (x *SheetMagicItem) GetDestroyed() bool {
+	if x != nil {
+		return x.Destroyed
+	}
+	return false
 }
 
 // ItemBonus is the magic bonus of one piece of the sheet's gear. Rule: `key` is the
@@ -13692,7 +13722,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01B\f\n" +
 	"\n" +
-	"background\"\xb8\x02\n" +
+	"background\"\x9a\x03\n" +
 	"\x0eSheetMagicItem\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
 	"\aattuned\x18\x02 \x01(\bR\aattuned\x12/\n" +
@@ -13701,7 +13731,12 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\vrestriction\x18\x05 \x01(\x0e2+.meurpg.characters.v1.AttunementRestrictionR\vrestriction\x12\x0e\n" +
 	"\x02id\x18\x06 \x01(\tR\x02id\x12*\n" +
 	"\x11same_item_attuned\x18\a \x01(\bR\x0fsameItemAttuned\x12\x17\n" +
-	"\aname_pt\x18\b \x01(\tR\x06namePt\"\xed\x02\n" +
+	"\aname_pt\x18\b \x01(\tR\x06namePt\x12\x1f\n" +
+	"\vcharges_max\x18\t \x01(\x05R\n" +
+	"chargesMax\x12!\n" +
+	"\fcharges_left\x18\n" +
+	" \x01(\x05R\vchargesLeft\x12\x1c\n" +
+	"\tdestroyed\x18\v \x01(\bR\tdestroyed\"\xed\x02\n" +
 	"\tItemBonus\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05bonus\x18\x02 \x01(\x05R\x05bonus\x12/\n" +
