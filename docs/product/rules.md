@@ -686,6 +686,7 @@ Members read the campaign's content, except creatures (below); only the master w
   The master and the target's player read the effect in full.
   The other players read only what the creature visibly shows, the condition and not the number behind it.
   An effect from a caster the players do not see names no caster.
+  A spell on its caster alone may make the effect an aura: it reaches, at each roll, the creatures within its radius on the chosen side ("allies" includes its bearer, as the SRD's allied auras do), gives only what a roll reads, and a player reads its bonus as the source's name or "Outra fonte", never the radius of an aura they do not own.
   The lasting effect of a class or a feature is a state of its owner.
   A spell may also write a next-hit effect on its caster: extra weapon damage on the caster's next hit, next melee hit, every hit while concentrating, or every hit on the creature the spell marked.
   The master picks the die, the dice (more per slot level above, up to a cap) and the damage type (the weapon's if none).

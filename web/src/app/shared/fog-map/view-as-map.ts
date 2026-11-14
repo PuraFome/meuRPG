@@ -20,11 +20,13 @@ import { FogMap } from './fog-map';
   imports: [FogMap, MatButtonModule, MatIconModule],
   template: `
     <div class="mr-notice mr-notice--warning band" role="status">
-      <mat-icon aria-hidden="true">visibility</mat-icon>
-      <p>
-        Você está vendo o mapa como <strong>{{ name() }}</strong
-        >. Para voltar {{ backTo() }}, escolha “Todos”.
-      </p>
+      <div class="mr-notice__said">
+        <mat-icon aria-hidden="true">visibility</mat-icon>
+        <p>
+          Você está vendo o mapa como <strong>{{ name() }}</strong
+          >. Para voltar {{ backTo() }}, escolha “Todos”.
+        </p>
+      </div>
       <button matButton="outlined" type="button" class="band__back" (click)="back.emit()">Voltar {{ backTo() }}</button>
     </div>
     <app-fog-map
@@ -55,11 +57,6 @@ import { FogMap } from './fog-map';
     .band {
       align-items: center;
       flex-wrap: wrap;
-    }
-
-    .band p {
-      flex: 1 1 14rem;
-      margin: 0;
     }
 
     .band__back {
