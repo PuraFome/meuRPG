@@ -74,9 +74,9 @@
     white-space: nowrap;
   }
 
-  // The 44px target reaches into the button's margin, so the words keep their room.
+  // The 44px-tall target reaches into the button's margin, so the words keep their room.
   > .gear-row__more {
-    margin-inline: auto -6px;
+    margin-inline: auto -8px;
   }
 }
 
@@ -169,8 +169,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  // 36px wide and 44px tall: the target stays above the 24px minimum and the name keeps the room.
-  width: 36px;
+  // 32px wide and 44px tall: the target stays above the 24px minimum and the name keeps the room.
+  width: 32px;
   height: 44px;
   padding: 0;
   border: 1px solid transparent;

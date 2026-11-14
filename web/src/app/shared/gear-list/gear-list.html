@@ -71,7 +71,7 @@
       @if (idle(g)) {
         <span class="gear-row__idle">Parado</span>
       }
-      <app-weapon-tags [marks]="g.marks" [compact]="true" />
+      <app-weapon-tags [marks]="rowMarks(g)" [compact]="true" />
       @if (attunement()(g); as chip) {
         <span class="gear-row__att" data-chip [class.gear-row__att--on]="chip === 'on'">
           <mat-icon aria-hidden="true">link</mat-icon>

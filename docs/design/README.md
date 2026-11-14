@@ -117,6 +117,7 @@ It catches what is never right:
 - a row marked as one line that wraps, or whose name is under three letters wide;
 - the buttons of a marked group with widths more than 1 px apart;
 - a marked chip more than 2 px off the middle of the capitals of its row's words;
+- a name of a one-line row cut with an ellipsis while the row's main box has more than 4 px free;
 - an item of a marked box cut at its left or right edge ("duas mãos" shown as "duas mã").
 
 An icon next to words needs no hand adjustment: the fonts carry metric overrides ([tokens.md](tokens.md#fonts)).

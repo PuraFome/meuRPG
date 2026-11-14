@@ -131,6 +131,13 @@ export class GearList {
     return `${g.kind === 'weapon' ? 'Marcas' : 'Bônus'} · ${g.namePt}`;
   }
 
+  /** The marks a row shows: a bonus that counts takes the place of "Mágica" (the attack is magical because of it). */
+  protected rowMarks(g: GearVm): GearVm['marks'] {
+    return g.marks && g.bonus && g.bonusCounts !== false && !this.idle(g)
+      ? { ...g.marks, magical: false }
+      : g.marks;
+  }
+
   /** The warning a two-handed weapon in the carried group gives: drawing it leaves the shield idle. */
   protected warnText(g: GearVm): string {
     const ac = this.armorClass();

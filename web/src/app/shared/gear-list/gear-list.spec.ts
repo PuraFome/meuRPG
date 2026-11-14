@@ -127,6 +127,23 @@ describe('GearList', () => {
     expect(visible).toBe('');
   });
 
+  it('lets a counting bonus take the place of the "Mágica" chip, and keeps a stored mark without one', () => {
+    const marks = { silvered: true, adamantine: false, magical: true };
+    const fixture = setup([
+      { ...sword, marks, bonus: 1, bonusCounts: true },
+      { ...sword, key: 'k2', namePt: 'Maça', marks, bonus: 1, bonusCounts: false },
+      { ...sword, key: 'k3', namePt: 'Adaga', marks },
+    ]);
+    const words = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('.gear-row'),
+    ).map((row) =>
+      Array.from(row.querySelectorAll('.weapon-tags__chip .mr-visually-hidden')).map((n) =>
+        n.textContent!.trim(),
+      ),
+    );
+    expect(words).toEqual([['Prateada'], ['Prateada', 'Mágica'], ['Prateada', 'Mágica']]);
+  });
+
   it('shows the magic bonus chip only when the piece has one, dashed when it does not count', () => {
     const fixture = setup([
       { ...sword, bonus: 2, bonusCounts: true },

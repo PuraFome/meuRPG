@@ -39,7 +39,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
 - **Marcas das armas** (`weapon-tags`, `weapon-marks-sheet`): a weapon's marks are a crescent "Prateada", a crystal "Adamantina" and a spark "Mágica".
   On its row in "Equipamento" they are icon-only chips named by their word.
   In the "Ataques" table, beside the attack's name in the combat's action rows and after the numbers in the attack sheet's header ("Tor · +6 · 1d8 + 3 cortante · ☾ Prateada") each keeps its icon and its word; a plain weapon has none.
-  Every row the viewer may edit has a "⋮" (36 px wide, 44 px tall) before "Equipar" / "Guardar".
+  Every row the viewer may edit has a "⋮" (32 px wide, 44 px tall) before "Equipar" / "Guardar".
   The owner has it before the lock, the master always; never on a dead character, never for another player.
   On a weapon it is named "Marcas · <arma>" and opens a sheet with that title: a bottom sheet on a phone, a dialog from a tablet up.
   The sheet has "A arma é:" and one row for each mark: a checkbox in the accent colour, its icon, the word and what it beats.
