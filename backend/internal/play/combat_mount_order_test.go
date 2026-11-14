@@ -227,7 +227,7 @@ func TestMountedCombat_AMountWhoseTurnPassedKeepsItsEconomySpent(t *testing.T) {
 	}
 	c.spendTheOgre(t)
 	ogre := c.joinRowOf(t, "Ogro")
-	e := c.passTo(t, c.get(t, c.master), "Toren") // the Ogro's turn and Pensantus's are over
+	_ = c.passTo(t, c.get(t, c.master), "Toren") // the Ogro's turn and Pensantus's are over
 
 	c.mustMount(t, c.caio, "Toren", "Ogro")
 
@@ -241,7 +241,7 @@ func TestMountedCombat_AMountWhoseTurnPassedKeepsItsEconomySpent(t *testing.T) {
 	if got := group(c.get(t, c.master)); got != "Toren,Ogro" {
 		t.Fatalf("the group on turn = %q, want Toren,Ogro", got)
 	}
-	e = c.mustEndPart(t, c.caio, c.get(t, c.caio), "Toren")
+	e := c.mustEndPart(t, c.caio, c.get(t, c.caio), "Toren")
 	if group(e) != "Toren,Ogro" || current(e) != "Ogro" {
 		t.Errorf("after Toren's part: group %q, current %q, want Toren,Ogro with the Ogro's part running", group(e), current(e))
 	}

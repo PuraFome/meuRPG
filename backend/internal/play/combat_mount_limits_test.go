@@ -25,29 +25,38 @@ func (c *cave) ridden(t *testing.T) {
 
 // limitedCalls are the actions of the Ogro that its rider's mount refuses, by entry point, as the user makes them.
 func (c *cave) limitedCalls() map[string]func(t *testing.T, u *user) error {
-	enc := func(t *testing.T) string { return c.get(t, c.master).GetId() }
+	enc := func(t *testing.T) string {
+		t.Helper()
+		return c.get(t, c.master).GetId()
+	}
 	return map[string]func(t *testing.T, u *user) error{
 		"TakeAction search": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := c.action(t, u, c.get(t, c.master), "Ogro", "standard:search")
 			return err
 		},
 		"TakeAction ready": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := c.action(t, u, c.get(t, c.master), "Ogro", "standard:ready")
 			return err
 		},
 		"TakeAction use an object": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := c.action(t, u, c.get(t, c.master), "Ogro", "standard:use-an-object")
 			return err
 		},
 		"TakeAction help": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := c.action(t, u, c.get(t, c.master), "Ogro", "standard:help")
 			return err
 		},
 		"RollAttack": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := c.attack(t, u, c.get(t, c.master), "Ogro", "basic:0", "Goblin 1", d20(15))
 			return err
 		},
 		"StartContest grapple": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := u.contests.StartContest(t.Context(), connect.NewRequest(&playv1.StartContestRequest{
 				CampaignId: c.campaignID, EncounterId: enc(t), IdempotencyKey: newKey(), Roll: rollIn(),
 				InitiatorId: c.id(t, "Ogro"), TargetId: c.id(t, "Goblin 1"), Purpose: playv1.ContestPurpose_CONTEST_PURPOSE_GRAPPLE,
@@ -55,6 +64,7 @@ func (c *cave) limitedCalls() map[string]func(t *testing.T, u *user) error {
 			return err
 		},
 		"StartContest shove": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := u.contests.StartContest(t.Context(), connect.NewRequest(&playv1.StartContestRequest{
 				CampaignId: c.campaignID, EncounterId: enc(t), IdempotencyKey: newKey(), Roll: rollIn(),
 				InitiatorId: c.id(t, "Ogro"), TargetId: c.id(t, "Goblin 1"), Purpose: playv1.ContestPurpose_CONTEST_PURPOSE_SHOVE,
@@ -62,6 +72,7 @@ func (c *cave) limitedCalls() map[string]func(t *testing.T, u *user) error {
 			return err
 		},
 		"Help": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := u.contests.Help(t.Context(), connect.NewRequest(&playv1.HelpRequest{
 				CampaignId: c.campaignID, EncounterId: enc(t), IdempotencyKey: newKey(), CombatantId: c.id(t, "Ogro"),
 				Kind: playv1.HelpKind_HELP_KIND_ATTACK, AllyId: c.id(t, "Toren"), TargetId: c.id(t, "Goblin 1"),
@@ -69,6 +80,7 @@ func (c *cave) limitedCalls() map[string]func(t *testing.T, u *user) error {
 			return err
 		},
 		"Hide": func(t *testing.T, u *user) error {
+			t.Helper()
 			_, err := c.action(t, u, c.get(t, c.master), "Ogro", actionHide)
 			return err
 		},
