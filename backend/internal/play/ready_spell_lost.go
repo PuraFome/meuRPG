@@ -17,23 +17,27 @@ import (
 
 // settleReadied is the readied actions' part of settleChange. It reads the waiting rows and the combatants once: a readier
 // that is defeated or dismissed loses its row (loseReadiedOfDefeated), then each held spell and its concentration are kept
-// together (settleReadiedSpellsOf). With no row waiting and nobody holding a spell there is nothing to do.
-func settleReadied(ctx context.Context, c *combatTx) error {
+// together (settleReadiedSpellsOf). With no row waiting and nobody holding a spell there is nothing to do. It says
+// whether a row stopped waiting: its READIED window, if open, must then close (readiedGone).
+func settleReadied(ctx context.Context, c *combatTx) (bool, error) {
 	rows, all, err := readiedState(ctx, c)
 	if err != nil || (len(rows) == 0 && !slices.ContainsFunc(all, holdsReadiedSpell)) {
-		return err
+		return false, err
 	}
+	before := len(rows)
 	if rows, err = loseReadiedOfDefeated(ctx, c, rows, all); err != nil {
-		return err
+		return false, err
 	}
-	return settleReadiedSpellsOf(ctx, c, rows, all)
+	broke, err := settleReadiedSpellsOf(ctx, c, rows, all)
+	return broke || len(rows) < before, err
 }
 
-// settleReadiedSpells keeps each held spell and its concentration together, outside settleChange (a correction).
-func settleReadiedSpells(ctx context.Context, c *combatTx) error {
+// settleReadiedSpells keeps each held spell and its concentration together, outside settleChange (a correction), and
+// says whether a held spell broke.
+func settleReadiedSpells(ctx context.Context, c *combatTx) (bool, error) {
 	rows, all, err := readiedState(ctx, c)
 	if err != nil {
-		return err
+		return false, err
 	}
 	return settleReadiedSpellsOf(ctx, c, rows, all)
 }
@@ -61,28 +65,28 @@ func holdsReadiedSpell(c playdb.Combatant) bool {
 
 // settleReadiedSpellsOf keeps each held spell and its concentration together, for the combatants in the order. A waiting
 // spell whose readier no longer concentrates on it is broken, with its line; a readier that concentrates on a held spell
-// with none waiting stops.
-func settleReadiedSpellsOf(ctx context.Context, c *combatTx, rows []playdb.ReadiedAction, all []playdb.Combatant) error {
+// with none waiting stops. It says whether a held spell broke.
+func settleReadiedSpellsOf(ctx context.Context, c *combatTx, rows []playdb.ReadiedAction, all []playdb.Combatant) (bool, error) {
 	cs := slices.DeleteFunc(slices.Clone(all), func(x playdb.Combatant) bool { return x.Dismissed })
-	holds, err := breakUnheldSpells(ctx, c, rows, cs)
+	holds, broke, err := breakUnheldSpells(ctx, c, rows, cs)
 	if err != nil {
-		return err
+		return false, err
 	}
 	for _, who := range cs {
 		if !holdsReadiedSpell(who) || holds[who.ID] {
 			continue
 		}
 		if err := c.q.SetCombatantConcentration(ctx, playdb.SetCombatantConcentrationParams{ID: who.ID}); err != nil {
-			return fmt.Errorf("end the readied spell's concentration: %w", err)
+			return false, fmt.Errorf("end the readied spell's concentration: %w", err)
 		}
 	}
-	return nil
+	return broke, nil
 }
 
 // breakUnheldSpells breaks the waiting spells whose readier no longer concentrates on them, and says which readiers
-// still hold one.
-func breakUnheldSpells(ctx context.Context, c *combatTx, rows []playdb.ReadiedAction, cs []playdb.Combatant) (map[string]bool, error) {
-	holds := map[string]bool{}
+// still hold one and whether one broke.
+func breakUnheldSpells(ctx context.Context, c *combatTx, rows []playdb.ReadiedAction, cs []playdb.Combatant) (map[string]bool, bool, error) {
+	holds, broke := map[string]bool{}, false
 	for _, row := range rows {
 		who, ok := combatantByID(cs, row.CombatantID)
 		if row.Kind != readiedSpell || !ok {
@@ -93,10 +97,11 @@ func breakUnheldSpells(ctx context.Context, c *combatTx, rows []playdb.ReadiedAc
 			continue
 		}
 		if err := breakReadied(ctx, c, row, who); err != nil {
-			return nil, err
+			return nil, false, err
 		}
+		broke = true
 	}
-	return holds, nil
+	return holds, broke, nil
 }
 
 // breakReadied ends a held spell whose concentration ended: the row is broken and its readied_lost line written. The
