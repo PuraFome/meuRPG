@@ -61,6 +61,10 @@ describe('what a table weapon says', () => {
     expect(weaponProperties(bolas, nameOf)).toEqual(['Arremesso (6\u00a0m / 18\u00a0m)']);
   });
 
+  it('leaves the range off Arremesso where a "Distância" row already says it (board 580-11)', () => {
+    expect(weaponProperties(bolas, nameOf, false)).toEqual(['Arremesso']);
+  });
+
   it('gives the range of a ranged weapon or a thrown one, and none otherwise', () => {
     expect(weaponRange(bolas)).toBe('6\u00a0m / 18\u00a0m');
     expect(weaponRange(axe)).toBe('');

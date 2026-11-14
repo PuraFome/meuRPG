@@ -11,6 +11,7 @@ describe('the property combinations a weapon never has (#580)', () => {
     [false, p('ammunition'), 'Munição só numa arma à distância.'],
     [true, p('reach'), 'Alcance só numa arma corpo a corpo.'],
     [false, p('two-handed', 'versatile'), 'Uma arma de Duas mãos não é Versátil.'],
+    [false, p('light', 'heavy'), 'Leve e Pesada não vão juntas. Tire uma.'],
     [
       false,
       p('two-handed', 'light'),

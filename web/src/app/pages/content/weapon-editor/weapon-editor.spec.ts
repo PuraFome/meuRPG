@@ -30,6 +30,9 @@ function weaponMenu(): EffectMenuVm {
         { key: P('reach'), namePt: 'Alcance' },
         { key: P('ammunition'), namePt: 'Munição' },
         { key: P('thrown'), namePt: 'Arremesso' },
+        { key: P('special'), namePt: 'Especial' },
+        { key: P('heavy'), namePt: 'Pesada' },
+        { key: P('finesse'), namePt: 'Acuidade' },
       ],
     }),
   );
@@ -160,5 +163,106 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
     expect(text(field(el, 'table_weapon.damage').closest('app-text-field')!)).toContain(
       'Use dados de d4',
     );
+  });
+
+  const chipNames = (el: HTMLElement) =>
+    Array.from(el.querySelectorAll('button.tchip')).map((b) => text(b).trim());
+
+  it('lists the properties in the board order: by name, Especial last', () => {
+    const { el } = setup();
+    expect(chipNames(el)).toEqual([
+      'Acuidade',
+      'Alcance',
+      'Arremesso',
+      'Leve',
+      'Munição',
+      'Pesada',
+      'Versátil',
+      'Especial',
+    ]);
+  });
+
+  it('labels the category and the use, and says what the category means for the attack', () => {
+    const { el } = setup();
+    const labels = Array.from(el.querySelectorAll('.seg__label, legend, label')).map((l) =>
+      text(l).trim(),
+    );
+    expect(labels).toContain('Categoria');
+    expect(labels).toContain('Uso');
+    expect(text(el)).toContain(
+      'Quem tem proficiência em armas simples soma o bônus de proficiência no ataque.',
+    );
+  });
+
+  it('names the field "Nome da arma" and counts its letters', () => {
+    const { el } = setup();
+    expect(text(el)).toContain('Nome da arma');
+    expect(text(el)).toContain('14/60');
+  });
+
+  it('calls the two-handed damage "Com duas mãos", and says why it is missing without Versátil', async () => {
+    const { fixture, el } = setup();
+    expect(text(field(el, 'table_weapon.two_handed_damage').closest('app-text-field')!)).toContain(
+      'Com duas mãos',
+    );
+    expect(text(el)).not.toContain('Dano com duas mãos');
+    Array.from(el.querySelectorAll<HTMLButtonElement>('button.tchip'))
+      .find((b) => text(b).includes('Versátil'))!
+      .click();
+    await settle(fixture, 2);
+    expect(text(el)).toContain('Sem Versátil, não há dano com duas mãos.');
+  });
+
+  it('writes the distances in feet under the fields that take meters', () => {
+    const { el } = setup();
+    expect(text(el)).toContain('20 pés.');
+    expect(text(el)).toContain('60 pés: até lá, com desvantagem.');
+  });
+
+  it('puts the distances right under the damage, before the properties', () => {
+    const { el } = setup();
+    const order = Array.from(
+      el.querySelectorAll(
+        '[data-field="table_weapon.damage"], [data-field="table_weapon.normal_range_ft"], .tchips',
+      ),
+    ).map((n) => n.getAttribute('data-field') ?? 'chips');
+    expect(order).toEqual(['table_weapon.damage', 'table_weapon.normal_range_ft', 'chips']);
+  });
+
+  it('says how many sheets use the weapon, and that a change reaches the locked ones', () => {
+    const { fixture, el } = setup();
+    expect(text(el)).not.toContain('Em uso por');
+    const e = stored();
+    e.charactersUsing = 1;
+    fixture.componentRef.setInput('entry', e);
+    fixture.detectChanges();
+    expect(text(el)).toContain('Em uso por 1 ficha');
+    expect(text(el)).toContain(
+      'Mudar o dano ou as propriedades vale na hora, também nos ataques das fichas travadas.',
+    );
+  });
+
+  it('hides the damage row of the preview until there is a damage, and shows Arremesso plain', () => {
+    const { fixture, el } = setup(false);
+    const preview = () => text(el.querySelector('.preview')!);
+    expect(preview()).not.toContain('Dano');
+    type(el, 'table_weapon.damage', '1d4');
+    fixture.detectChanges();
+    expect(preview()).toContain('Dano');
+    const stored1 = setup();
+    const p = text(stored1.el.querySelector('.preview')!);
+    expect(p).toContain('Arremesso');
+    expect(p).not.toContain('Arremesso (');
+  });
+
+  it('refuses Leve with Pesada as soon as they are both on', async () => {
+    const { fixture, el } = setup(false);
+    for (const n of ['Leve', 'Pesada']) {
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button.tchip'))
+        .find((b) => text(b).includes(n))!
+        .click();
+      await settle(fixture, 2);
+    }
+    expect(text(el)).toContain('Leve e Pesada não vão juntas. Tire uma.');
   });
 });

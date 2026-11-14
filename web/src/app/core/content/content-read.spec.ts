@@ -11,6 +11,7 @@ import {
   TableSubclassSchema,
   TableSubraceSchema,
   TableSpellSchema,
+  TableWeaponSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { readEntry } from './content-read';
 import { ensureStop } from './content-read-parts';
@@ -564,5 +565,32 @@ describe('what the master reads of a feature that summons (#578)', () => {
     expect(read.sections[0].items[0].text).toBe(
       'Um lobo do vale luta ao seu lado. Invoca: Lobo do Vale, Unheard of.',
     );
+  });
+});
+
+describe('what a player reads of a weapon (board 580-11)', () => {
+  const read = (over: Parameters<typeof create<typeof TableWeaponSchema>>[1]) =>
+    readEntry(
+      entry(TableContentKind.WEAPON, 'Boleadeira', {
+        body: { case: 'tableWeapon', value: create(TableWeaponSchema, over) },
+      }),
+      nameOf,
+    );
+
+  it('says Arremesso plain, the distance being the row of its own', () => {
+    const r = read({
+      ranged: true,
+      damage: '1d4',
+      properties: ['weapon-property:thrown'],
+      normalRangeFt: 20,
+      longRangeFt: 60,
+    });
+    const rows = Object.fromEntries(r.rows.map((x) => [x.label, flat(x.value)]));
+    expect(rows['Distância']).toBe('6 m / 18 m');
+    expect(rows['Propriedades']).toBe('Arremesso');
+  });
+
+  it('has no "Dano" row before there is a damage to say', () => {
+    expect(read({}).rows.map((x) => x.label)).not.toContain('Dano');
   });
 });
