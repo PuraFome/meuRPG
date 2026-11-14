@@ -108,6 +108,11 @@ func TestMountedCombat_AControlledMountTakesOnlyDashDisengageAndDodge(t *testing
 	for name, call := range c.limitedCalls() {
 		for who, u := range map[string]*user{"the rider's player": c.caio, "the master": c.master} {
 			err := call(t, u)
+			if name == "RollAttack" && u == c.caio {
+				// The master answers for the mount's attacks (its reaction attacks too): its rider's player is not the mount's.
+				wantCode(t, name+" by "+who, err, connect.CodePermissionDenied)
+				continue
+			}
 			b := wantBlockedBy(t, name+" by "+who, err, reasonMountActionLimited)
 			if ids := b.GetCombatantIds(); len(ids) != 1 || ids[0] != c.id(t, "Ogro") {
 				t.Errorf("%s by %s names %v, want the Ogro", name, who, ids)
