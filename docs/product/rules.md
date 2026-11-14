@@ -31,7 +31,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-20 | **What players see of enemies in combat.** Players do not see enemy hit points as a number. They see one word: "Ileso", "Ferido", "Muito ferido" or "Derrotado". | [Detail](#rn-20-what-players-see-of-enemies-in-combat) |
 | RN-21 | **Grid movement.** On the map grid, each square is 1.5 m and movement is a **circle**: the distance between two squares is the straight line between their centres, and what a combatant can reach is the circle of its remaining movement. | [Detail](#rn-21-grid-movement) |
 | RN-22 | **Conditions and concentration.** The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, the game asks its owner for the concentration save (RN-31). | [Detail](#rn-22-conditions-and-concentration) |
-| RN-23 | **Table content.** The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures that hold only in their campaign, next to the SRD 5.1. Members read the campaign's content, except creatures; only the master writes. | [Detail](#rn-23-table-content) |
+| RN-23 | **Table content.** The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features, weapons and creatures that hold only in their campaign, next to the SRD 5.1. Members read the campaign's content, except creatures; only the master writes. | [Detail](#rn-23-table-content) |
 | RN-24 | **Table rules.** At the top of the "Regras da mesa" page is the **table style**: "Tudo no app" (dice in the app, combat with a map, fog on in new maps), "Mesa física" (physical dice, combat without a map by default, fog off) or "Teatro da mente" (each player picks the dice, combat without a map, no fog), and "Personalizado" when the choices match none. | [Detail](#rn-24-table-rules) |
 | RN-25 | **The grid and combat without a grid.** The rules count in 1.5 m squares on every map (RN-21). A map drawn with bigger squares is calibrated: "each square of this drawing is worth 3 m" makes the app count four 1.5 m squares in each one, and a 1.5 m reach stays the neighbour. | [Detail](#rn-25-the-grid-and-combat-without-a-grid) |
 | RN-26 | **Doors.** A closed door blocks movement, sight and light, like a wall, and counts as a wall for cover. A character who walks into it opens it, unless it is locked; the master opens, closes and locks any door, in the editor and in the session. | [Detail](#rn-26-doors) |
@@ -133,6 +133,17 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   The sheet lock does not hold attunement, it holds the list of items and the kind.
   A character that dies stays attuned until the master ends it.
   The app does not end an attunement by itself (distance, another attuner, death): the master ends it by hand.
+- **Charges of magic items (SRD 5.1, "Magic Items": the entry of each wand, staff, ring and other item that has charges).**
+  A magic item that has charges holds a fixed number, and the sheet shows how many are left.
+  The catalog says, for each such item, how many charges it holds, whether some come back at dawn and how many, and what its last charge does.
+  The charges that return at dawn are all of them or dice such as 1d6 + 1, as the item says.
+  The last charge may do nothing, lose the item at once, or ask for a d20 where a 1 loses the item and a 20 gives some charges back on the items that say so.
+  The loss has three outcomes, as the item says: it is gone (the wands, and the staffs of fire, frost, healing and swarming insects), it becomes a plain nonmagical item that stays on the sheet as what it is made of (the staffs of charming, striking and the woodlands), or it keeps only its bonus to attack and damage rolls (the staff of power).
+  An item whose charges the SRD rolls (the luck blade, the nine lives stealer) has none set when it is new: the master sets them, from 0 to the maximum.
+  The figurine of the ivory goats regains all its charges on the seventh dawn after the last one was spent.
+  An item that does not recharge (a talisman, a scarab) keeps what is left until the master corrects it.
+  A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
+  A player reads the charges of their own characters only, and the master reads all of them.
 - **Wholeness of Body of the Open Hand monk (level 6).**
   The monk's own action heals three times the monk level in hit points, up to the maximum.
   It has no roll and no dice to type.
@@ -601,6 +612,7 @@ When a concentrating character takes damage, the game asks its owner for the con
 A spell that deals two damage types gives one reminder for the cast, from the sum of what landed.
 The master's card reads "Teste de Constituição, CD 10"; nobody else reads the DC.
 Casting a second concentration spell ends the first, and the log says which one ended.
+A readied spell holds the concentration until it is released or lost (RN-31): readying a spell ends another concentration, and the end of its concentration loses the spell.
 A spell or the master that ends concentration on a summoning spell (Conjure Animals) dismisses the creatures of that casting.
 The master's undo gives the concentration and the same creatures back.
 A spell that forces a saving throw later (Flaming Sphere, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones. Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Stinking Cloud, Spike Growth and Wall of Fire are the exception: the app keeps their area and calls for the later saves by itself (RN-37).
@@ -635,14 +647,14 @@ How it is built: [Architecture](../architecture/play/lasting-effects.md) and [ru
 
 ## RN-23: Table content
 
-The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features and creatures that hold only in their campaign, next to the SRD 5.1.
+The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features, weapons and creatures that hold only in their campaign, next to the SRD 5.1.
 Members read the campaign's content, except creatures (below); only the master writes.
 
 - **A change takes effect at once, locked sheets included.** The sheet recalculates, and whatever fell outside the rules shows on it as a notice ("A classe mudou") with the exact sentences, without blocking other edits. Only the owner and the master read it. It disappears by itself when what it says is fixed. Only the owners of the sheets that use the changed entry are notified.
 - **Nothing is deleted.** The master archives and unarchives; there is no "Apagar". An archived entry keeps working on the sheets that already use it, and is no longer offered as a new choice. The master is never given an archived entry as a new choice either: the screen names the refusal.
 - **Table content never runs code.** Effects come from a closed menu (modifier, proficiency, resource, sense, roll mode, action, extra attack, ranged attack, Wild Shape, spell slots, choice, note, granted spell, maneuver die, reroll, flag, natural attack). A feature with only text always holds. The server returns every violation of an entry at once, each pointing at the editor field it belongs to, and a refused save changes nothing.
 - **What players see.** Every enabled playable option, whole (numbers and effects). They look up every enabled spell under "Magias" ([MR-045](stories.md#mr-045-look-up-spells)) and pick on the sheet only from their class's list (each class's list by the level in it, with multiclass).
-- **The switches.** On "Opções para os jogadores" the master turns each class, subclass, race, subrace, background, spell, feat, option and class feature on or off, SRD and table alike (one switch per option, how many sheets use it, "Ligar todas" and "Desligar todas" per kind, saved at once). Everything is on by default. What is off never reaches a player in any read; sheets that already use it keep working; a switched-off class hides its subclasses, features and options, and a switched-off race its subraces and traits, except on a sheet that already has the parent (a sheet keeps what its own race, class or subclass gives). A player's new choice of a switched-off option is refused (on create, edit and level up), an unrelated edit never is, and the master is never refused. A player's sheet keeps, when edited or leveled up, what the master archived or switched off afterwards.
+- **The switches.** On "Opções para os jogadores" the master turns each class, subclass, race, subrace, background, spell, feat, option, weapon and class feature on or off, SRD and table alike (one switch per option, how many sheets use it, "Ligar todas" and "Desligar todas" per kind, saved at once). Everything is on by default. What is off never reaches a player in any read; sheets that already use it keep working; a switched-off class hides its subclasses, features and options, and a switched-off race its subraces and traits, except on a sheet that already has the parent (a sheet keeps what its own race, class or subclass gives). A player's new choice of a switched-off option is refused (on create, edit and level up), an unrelated edit never is, and the master is never refused. A player's sheet keeps, when edited or leveled up, what the master archived or switched off afterwards.
   The master switches creatures on and off in the "Criaturas" group of this screen.
   The creature editor has the same switch.
 - **A table spell can summon creatures.** They are the table's or the SRD's.
@@ -699,6 +711,7 @@ Members read the campaign's content, except creatures (below); only the master w
 - **Classes.** A table class brings the 20-level table (proficiency bonus, features, cantrips and spells known, slots or pact slots), hit die, saving throws, skills, proficiencies, the ability score improvement levels (4, 8, 12, 16 and 19 by default) and spellcasting (none, full, half or pact). The one-third caster is a subclass that casts. The class editor starts from the server's numbers. Multiclass at creation and level up work with table classes, with the SRD prerequisites as a sheet notice.
 - **Races and subraces.** A table subrace adds its ability bonuses and traits to its race's. It may instead replace some of the race's traits, or all of the race's ability bonuses, the ones the player places included. A character of that subrace does not have a replaced trait, and the catalog and the editor's preview show what it replaces. A trait may offer a one-time "one of" choice, asked in "Escolhas" (RN-33). The subrace editor lists the race's traits as a checklist to mark the ones it replaces, and the trait editor has the options of a "one of" choice. A pack carries the same fields.
 - **Feats.** A table feat may ask for ability scores, a proficiency, spellcasting, a level, one of several races (a subrace counts as its race), a size, or a feature the character must not have. A player who does not meet it is refused at the level up and in a feat choice, and a race, a feat to lack or a feature that the master hid is never named to a player, in their copy of the feat, in the level-up options or in the feat cards, except what their own sheet has (its race, or a feat or feature it holds). A feat that asks only for hidden races is not offered to them. The feat editor has fields for the races, the size and the missing feature, and a pack carries them too.
+- **Weapons.** A table weapon is an equipment row: a name, a text, simple or martial, damage dice and type, weight, price, the SRD's properties (at most 10) and, for a ranged or thrown weapon, a normal and a long range. A versatile weapon also gives its two-handed damage. A weapon never combines what the SRD's never do: Loading needs Ammunition, Ammunition is for ranged weapons (a thrown melee weapon uses Thrown), Reach is for melee weapons, and Two-Handed refuses Versatile and Light. The sheet attacks with it as with an SRD weapon: Finesse takes the higher of STR and DEX, a ranged weapon uses DEX, Reach is 10 feet, and proficiency follows its category. A weapon the master archives or switches off stays on the sheets that carry it, marked, and leaves every other player's catalog; the owner is told when it changes. The weapon editor has these fields, and a pack carries them too.
 - **Feat options and picks.** A table feat may have a list of up to 60 options the player picks from, or offer a whole SRD option set (the fighting styles, for example) instead. It may also ask the player for an ability or a damage type, give it a name, and use it in the feat's other effects: the proficiency in that ability's saving throw, resistance to that damage type, the save DC from that ability. Until the pick is made, the effects that use it do not apply and the sheet asks for it. A modifier of an ability score takes a limit from 20 to 30, and a score already above it stays as it is.
   A feat's own options hide only with the feat.
   Only the options of an option set hide one by one.
@@ -1069,6 +1082,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Slow Fall (monk 4) | The falling monk takes 5 times its level off its own falling damage. |
 | Opportunity attack | See RN-21. |
+| Readied action | The master says the trigger of a readied action happened: the readier may use its reaction to take the held action (an attack, a move up to its speed, a spell, another action) or let it pass. Only the readier's player and the master read the trigger and the action; the others read "Esperando a reação de <nome>" or "Esperando o mestre". |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
 | Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, decided by the server with no window (a window for the master only in "Perguntar"). |
 | Legendary Resistance | A player's spell with a saving throw, or a hit rider that rolls a save, reaches a creature with the trait and a use left, whether its save passed or failed: the cast or the rider's answer waits for the master alone (RN-29). A spell's area that catches such a creature asks its save of the master alone. |
@@ -1082,8 +1096,36 @@ The held action waits until the window is answered, and is dropped if it can no 
 The turn waits for open windows.
 A player reads only their own windows, and the numbers of the trigger (an attack total, an armor class, a damage) are the master's.
 
-- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
+- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
+- **Ready** (SRD 5.1, "Ready").
+  On its turn a creature spends its action to hold another until a trigger its player writes.
+  The held action is an attack, a move, a spell or another standard action.
+  A held spell must take 1 action to cast.
+  It is cast at Ready, with its slot, and its power is held until the trigger.
+  Holding it takes concentration, which ends any other concentration of the creature.
+  A cantrip with an attack roll is held this way too.
+  Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
+  The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
+  Hide and Help cannot be held: they have their own calls, which a reaction does not run.
+  Dash and Disengage cannot be held either: they last only for the creature's own turn.
+  A move cannot be held in a combat without a map.
+  A Ready cannot fire during the readier's own turn.
+  In a shared turn, that turn lasts until the readier ends its own part.
+  The SRD is silent here: its tied creatures act one after the other, and it has no shared turns.
+  The reaction is spent only when the held action is taken; until then the creature's other reactions stay offered.
+  A held attack still waits for the reactions that come before any attack roll (Cutting Words, Protection, the master's check).
+  Meanwhile its window takes no other answer and does not pass by itself.
+  A held move provokes opportunity attacks as any move does, even after a Disengage on the creature's own turn.
+  Those attacks hold the end of the turn in progress until they are answered.
+  A creature whose reaction is spent, or that cannot react, is not asked, and the readied action waits until it is lost.
+  It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight.
+  The spent action does not come back.
+  The players who are not the readier's read only that it readied an action, never which spell, its level or that it is a spell.
+  Their line of the Ready names no concentration that ended.
+  They still see what any ended concentration does: the creature's concentration indicator goes blank and the effects of its earlier concentration spell end.
+  The concentration save of a held spell is the readier's player's and the master's: the other players read only that the table waits for the master.
+  A hidden creature's readied action is the master's alone.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.
 
 How it is built: [Architecture](../architecture/play/reactions.md).

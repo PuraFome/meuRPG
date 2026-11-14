@@ -629,7 +629,7 @@ Each invite chooses whether it requires approval, and a refusal deletes the char
 - Rules: RN-23, RN-24, RN-25
 - Modules: rules, characters, campaigns, play, maps
 
-The story covers own classes **and** subclasses, races and subraces, backgrounds, spells, feats, options, class features, creatures, the content pack (export and import), the option switches, the table rules and the campaign's grid.
+The story covers own classes **and** subclasses, races and subraces, backgrounds, spells, feats, options, class features, weapons, creatures, the content pack (export and import), the option switches, the table rules and the campaign's grid.
 A player's proposal (MR-026) and reading rules from a PDF (MR-027) are separate, later stories.
 The data rules, limits and the server side are in [Table content: rules](../architecture/rules-table-content.md) and [Table content: characters](../architecture/characters-table-content.md).
 
@@ -842,7 +842,8 @@ The data rules, limits and the server side are in [Table content: rules](../arch
   The notice clears itself when the numbers match again.
 - **Given** table content that a sheet uses, **when** the game master archives it, **then** the sheet keeps it **and** it no longer appears as a new choice; nothing in the table content is ever deleted.
   An archived entry can still be edited and can be unarchived, and then it is a new choice again.
-- **Given** the "Opções para os jogadores" screen, **when** the game master switches off a class, subclass, race, subrace, background, spell, feat, option, or class feature (SRD or table), **then** players no longer see or pick it; what is on, they see in full, with numbers and effects.
+- **Given** a weapon the game master registered (dice, damage type, properties, range), **when** a sheet carries it, **then** the sheet shows its attack line as for an SRD weapon, **and** a weapon that combines what the SRD's never do (Loading without Ammunition, Reach on a ranged weapon, Two-Handed with Versatile) is refused at "Propriedades" with the reason; **when** the game master archives it, **then** the sheets that carry it keep it and no other player's catalog has it (RN-23) (`TestATableWeaponIsReadByAPlayerAndWornByASheet`, `TestAWeaponsPropertiesFollowTheSRDsCombinations`, `TestACarriedTableWeaponStaysInTheOwnersCatalog`).
+- **Given** the "Opções para os jogadores" screen, **when** the game master switches off a class, subclass, race, subrace, background, spell, feat, option, weapon, or class feature (SRD or table), **then** players no longer see or pick it; what is on, they see in full, with numbers and effects.
   A switched-off class takes its subclasses with it, and a switched-off race its subraces.
 - **Given** a switched-off or archived option, **when** a player creates or edits a sheet or levels up, **then** the server refuses it as a new choice, **and** a sheet that already has it keeps working and an unrelated edit is never refused.
   The game master is never refused.

@@ -250,10 +250,16 @@ func (w *world) passTurnsTo(combatantID string) {
 // damage that asks his player the Constitution save.
 func (w *world) hurtToren(toren, bandit *playv1.Combatant) {
 	ctx := w.t.Context()
-	m := w.master
 	if _, err := w.pool.Exec(ctx, `UPDATE combatants SET concentration_spell = $2 WHERE id = $1`, toren.GetId(), "spell:web"); err != nil {
 		w.t.Fatalf("make Toren concentrate: %v", err)
 	}
+	w.banditHitsToren(toren, bandit, 2*saveDCConcentration)
+}
+
+// banditHitsToren has the bandit hit Toren and the master apply the amount of damage.
+func (w *world) banditHitsToren(toren, bandit *playv1.Combatant, amount int32) {
+	ctx := w.t.Context()
+	m := w.master
 	opts := must(m.combat.GetTurnOptions(ctx, rq(&playv1.GetTurnOptionsRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: bandit.GetId()})))
 	key := ""
 	for _, a := range opts.GetOptions().GetAttacks() {
@@ -274,7 +280,7 @@ func (w *world) hurtToren(toren, bandit *playv1.Combatant) {
 	}
 	must(m.combat.RollDamage(ctx, rq(&playv1.RollDamageRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Roll: &playv1.RollDamageRequest_RollInApp{RollInApp: true}})))
 	must(m.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{
-		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Amount: proto.Int32(2 * saveDCConcentration),
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), PendingDamageId: hit.GetPendingDamage().GetId(), IdempotencyKey: newKey(), Amount: proto.Int32(amount),
 	})))
 }
 

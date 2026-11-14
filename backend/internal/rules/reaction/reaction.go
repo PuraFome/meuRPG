@@ -136,6 +136,8 @@ const (
 	// ParryKind is a stat block's Parry: the creature adds a number to its armor class against one melee
 	// weapon attack that would hit it. The hit waits for the master, who answers for the creature.
 	ParryKind Kind = "parry"
+	// Readied is a readied action the master fired: its readier uses its reaction to act now, or lets it pass.
+	Readied Kind = "readied"
 )
 
 // Reason is why a window closed by itself.

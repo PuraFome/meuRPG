@@ -31,7 +31,7 @@ Como o código faz isso está nos [docs de arquitetura](../../architecture/READM
 | RN-20 | **O que o jogador vê dos inimigos no combate.** Os jogadores não veem os PV dos inimigos como número. Veem uma palavra: "Ileso", "Ferido", "Muito ferido" ou "Derrotado". | [Detalhes](#rn-20-o-que-o-jogador-vê-dos-inimigos-no-combate) |
 | RN-21 | **Movimento na grade.** Na grade do mapa, cada quadrado tem 1,5 m e o movimento é um **círculo**: a distância entre dois quadrados é a linha reta entre os centros, e o que um combatente alcança é o círculo do movimento que lhe resta. | [Detalhes](#rn-21-movimento-na-grade) |
 | RN-22 | **Condições e concentração.** O app marca condições (derrubado, envenenado...) e concentração, e avisa: quando um personagem concentrado sofre dano, o jogo pede ao dono dele o teste de resistência de concentração (RN-31). | [Detalhes](#rn-22-condições-e-concentração) |
-| RN-23 | **Conteúdo da mesa.** O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe e criaturas que valem só na campanha dele, ao lado do SRD 5.1. Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escreve. | [Detalhes](#rn-23-conteúdo-da-mesa) |
+| RN-23 | **Conteúdo da mesa.** O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe, armas e criaturas que valem só na campanha dele, ao lado do SRD 5.1. Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escreve. | [Detalhes](#rn-23-conteúdo-da-mesa) |
 | RN-24 | **Regras da mesa.** No topo da página "Regras da mesa" fica o **estilo da mesa**: "Tudo no app" (dados no app, combate com mapa, névoa ligada nos mapas novos), "Mesa física" (dados físicos, combate sem mapa por padrão, névoa desligada) ou "Teatro da mente" (cada jogador escolhe os dados, combate sem mapa, sem névoa), e "Personalizado" quando as escolhas não batem com nenhum. | [Detalhes](#rn-24-regras-da-mesa) |
 | RN-25 | **A grade e o combate sem grade.** As regras contam em quadrados de 1,5 m em todo mapa (RN-21). Um mapa desenhado com quadrados maiores é calibrado: "cada quadrado deste desenho vale 3 m" faz o app contar quatro quadrados de 1,5 m em cada um, e um alcance de 1,5 m continua sendo o vizinho. | [Detalhes](#rn-25-a-grade-e-o-combate-sem-grade) |
 | RN-26 | **Portas.** Uma porta fechada bloqueia movimento, visão e luz, como uma parede, e conta como parede para cobertura. Quem anda até ela a abre, a menos que esteja trancada; o mestre abre, fecha e tranca qualquer porta, no editor e na sessão. | [Detalhes](#rn-26-portas) |
@@ -123,6 +123,17 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um escudo não soma nada enquanto uma arma de duas mãos está equipada, e uma peça que pede sintonização não soma nada até o personagem se sintonizar com ela.
   A ficha lista cada bônus com a origem e diz por que um não soma nada.
   Duas armas com a mesma chave são uma linha e dividem o bônus.
+- **Cargas de itens mágicos (SRD 5.1, "Magic Items": a entrada de cada varinha, cajado, anel e outro item que tem cargas).**
+  Um item mágico que tem cargas guarda um número fixo, e a ficha mostra quantas restam.
+  O catálogo diz, para cada item assim, quantas cargas ele guarda, se algumas voltam ao amanhecer e quantas, e o que a última carga faz.
+  As cargas que voltam ao amanhecer são todas ou dados como 1d6 + 1, como o item diz.
+  A última carga pode não fazer nada, perder o item na hora, ou pedir um d20 em que 1 perde o item e 20 devolve algumas cargas nos itens que dizem isso.
+  A perda tem três desfechos, como o item diz: ele some (as varinhas e os cajados de fogo, gelo, cura e enxame de insetos), vira um item comum sem magia que fica na ficha como aquilo de que é feito (os cajados de encantamento, de golpe e dos bosques), ou guarda só o bônus de ataque e de dano (o cajado de poder).
+  Um item cujas cargas o SRD sorteia (a lâmina da sorte, o ladrão de nove vidas) não tem nenhuma definida quando é novo: o mestre as define, de 0 até o máximo.
+  A estatueta das cabras de marfim recupera todas as cargas no sétimo amanhecer depois que a última foi gasta.
+  Um item que não recarrega (um talismã, um escaravelho) guarda o que sobrou até o mestre corrigir.
+  Salvar a ficha nunca muda as cargas, e tirar um item da ficha descarta o que ele gastou.
+  Um jogador lê as cargas só dos próprios personagens, e o mestre lê todas.
 - **Sintonização.**
   Um personagem fica sintonizado com no máximo três itens mágicos ao mesmo tempo, e só um item que a ficha lista como um que pede sintonização pode ser sintonizado.
   Um descanso curto ou longo abre uma janela para cada personagem que ele cobre, e nessa janela o dono sintoniza um item ou encerra uma sintonização; o mestre faz qualquer um dos dois a qualquer hora.
@@ -601,6 +612,7 @@ Quando um personagem concentrado leva dano, o jogo pede ao dono o teste de resis
 Uma magia que causa dois tipos de dano gera um só lembrete por conjuração, a partir da soma do que acertou.
 O cartão do mestre diz "Teste de Constituição, CD 10"; ninguém mais lê a CD.
 Conjurar uma segunda magia de concentração encerra a primeira, e o registro diz qual terminou.
+Uma magia preparada mantém a concentração até ser liberada ou perdida (RN-31): preparar uma magia encerra outra concentração, e o fim da concentração faz perder a magia.
 Uma magia, ou o mestre, que encerra a concentração de uma magia de invocação (Conjurar Animais) dispensa as criaturas daquela conjuração.
 O "desfazer" do mestre devolve a concentração e as mesmas criaturas.
 Uma magia que força um teste de resistência mais tarde (Esfera Flamejante, Nevasca, Terremoto) rola os testes e o dano quando é conjurada; o mestre chama os testes seguintes. Espíritos Guardiões, Raio Lunar, Névoa Mortal, Teia, Área Escorregadia, Constrição, Névoa Fétida, Crescer Espinhos e Muralha de Fogo são a exceção: o app mantém a área delas e chama os testes seguintes sozinho (RN-37).
@@ -635,14 +647,14 @@ Como é construído: [Arquitetura](../../architecture/play/lasting-effects.md) e
 
 ## RN-23: Conteúdo da mesa
 
-O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe e criaturas que valem só na campanha dele, ao lado do SRD 5.1.
+O mestre cadastra classes, subclasses, raças, sub-raças, antecedentes, magias, talentos, opções, características de classe, armas e criaturas que valem só na campanha dele, ao lado do SRD 5.1.
 Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escreve.
 
 - **Uma mudança vale na hora, inclusive nas fichas travadas.** A ficha recalcula, e o que ficou fora das regras aparece nela como um aviso ("A classe mudou") com as frases exatas, sem bloquear outras edições. Só o dono e o mestre o leem. Ele some sozinho quando o que diz é corrigido. Só os donos das fichas que usam a entrada alterada são avisados.
 - **Nada é apagado.** O mestre arquiva e desarquiva; não existe "Apagar". Uma entrada arquivada continua funcionando nas fichas que já a usam e deixa de ser oferecida como nova escolha. O mestre também nunca recebe uma entrada arquivada como nova escolha: a tela nomeia a recusa.
 - **O conteúdo da mesa nunca executa código.** Os efeitos vêm de um menu fechado (modificador, proficiência, recurso, sentido, modo de jogada, ação, ataque extra, ataque à distância, Forma Selvagem, espaços de magia, escolha, nota, magia concedida, dado de manobra, rolar de novo, sinalizador, ataque natural). Uma característica só com texto sempre vale. O servidor devolve de uma vez todas as violações de uma entrada, cada uma apontando o campo do editor a que pertence, e um salvamento recusado não muda nada.
 - **O que os jogadores veem.** Toda opção jogável ligada, inteira (números e efeitos). Eles consultam toda magia ligada em "Magias" ([MR-045](historias.md#mr-045-consultar-as-magias)) e escolhem na ficha só da lista da classe deles (a lista de cada classe pelo nível nela, com multiclasse).
-- **Os interruptores.** Em "Opções para os jogadores", o mestre liga ou desliga cada classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção e característica de classe, do SRD e da mesa por igual (um interruptor por opção, quantas fichas a usam, "Ligar todas" e "Desligar todas" por tipo, salvo na hora). Tudo vem ligado por padrão. O que está desligado nunca chega a um jogador em nenhuma leitura; as fichas que já o usam continuam funcionando; uma classe desligada esconde suas subclasses, características e opções, e uma raça desligada suas sub-raças e traços, exceto numa ficha que já tem a original (a ficha mantém o que sua própria raça, classe ou subclasse dá). Uma nova escolha de um jogador por uma opção desligada é recusada (na criação, na edição e na subida de nível), uma edição sem relação nunca é, e o mestre nunca é recusado. A ficha de um jogador mantém, ao ser editada ou subir de nível, o que o mestre arquivou ou desligou depois.
+- **Os interruptores.** Em "Opções para os jogadores", o mestre liga ou desliga cada classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção, arma e característica de classe, do SRD e da mesa por igual (um interruptor por opção, quantas fichas a usam, "Ligar todas" e "Desligar todas" por tipo, salvo na hora). Tudo vem ligado por padrão. O que está desligado nunca chega a um jogador em nenhuma leitura; as fichas que já o usam continuam funcionando; uma classe desligada esconde suas subclasses, características e opções, e uma raça desligada suas sub-raças e traços, exceto numa ficha que já tem a original (a ficha mantém o que sua própria raça, classe ou subclasse dá). Uma nova escolha de um jogador por uma opção desligada é recusada (na criação, na edição e na subida de nível), uma edição sem relação nunca é, e o mestre nunca é recusado. A ficha de um jogador mantém, ao ser editada ou subir de nível, o que o mestre arquivou ou desligou depois.
   O mestre liga e desliga criaturas no grupo "Criaturas" desta tela.
   O editor de criatura tem o mesmo interruptor.
 - **Uma magia da mesa pode invocar criaturas.** Elas são da mesa ou do SRD.
@@ -699,6 +711,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
 - **Classes.** Uma classe da mesa traz a tabela de 20 níveis (bônus de proficiência, características, truques e magias conhecidos, espaços ou espaços de pacto), dado de vida, testes de resistência, perícias, proficiências, os níveis de aumento de habilidade (4, 8, 12, 16 e 19 por padrão) e conjuração (nenhuma, completa, metade ou pacto). O conjurador de um terço é uma subclasse que conjura. O editor de classe começa dos números do servidor. A multiclasse na criação e na subida de nível funciona com classes da mesa, com os pré-requisitos do SRD como aviso na ficha.
 - **Raças e sub-raças.** Uma sub-raça da mesa soma os bônus de habilidade e os traços dela aos da raça. Ela pode, em vez disso, substituir alguns traços da raça, ou todos os bônus de habilidade da raça, inclusive os que o jogador distribui. O personagem dessa sub-raça não tem um traço substituído, e o catálogo e a prévia do editor mostram o que ela substitui. Um traço pode oferecer uma escolha única de "um entre", pedida em "Escolhas" (RN-33). O editor de sub-raça lista os traços da raça numa lista para marcar os que ela substitui, e o editor de traço tem as opções de uma escolha "um entre". Um pacote traz os mesmos campos.
 - **Talentos.** Um talento da mesa pode pedir valores de habilidade, uma proficiência, conjuração, um nível, uma entre várias raças (uma sub-raça conta como a raça dela), um tamanho ou uma característica que o personagem não pode ter. O jogador que não cumpre é recusado na subida de nível e numa escolha de talento, e uma raça, um talento a não ter ou uma característica que o mestre escondeu nunca é nomeado a um jogador, na cópia do talento, nas opções da subida de nível nem nos cartões de talento, exceto o que a própria ficha dele tem (a raça, ou um talento ou característica que ela possui). Um talento que pede só raças escondidas não é oferecido a eles. O editor de talento tem campos para as raças, o tamanho e a característica ausente, e um pacote também os traz.
+- **Armas.** Uma arma da mesa é uma linha de equipamento: nome, texto, simples ou marcial, dado e tipo de dano, peso, preço, as propriedades do SRD (no máximo 10) e, para uma arma à distância ou de arremesso, o alcance normal e o longo. Uma arma versátil também traz o dano com as duas mãos. A arma nunca combina o que as do SRD não combinam: Recarga exige Munição, Munição é de arma à distância (a arma corpo a corpo arremessada usa Arremesso), Alcance é de arma corpo a corpo, e Duas mãos recusa Versátil e Leve. A ficha ataca com ela como com uma arma do SRD: Acuidade usa o maior entre FOR e DES, a arma à distância usa DES, o Alcance vale 10 pés e a proficiência segue a categoria. A arma que o mestre arquiva ou desliga continua nas fichas que a carregam, marcada, e sai do catálogo dos demais jogadores; o dono é avisado quando ela muda. O editor de armas tem esses campos, e um pacote também os traz.
 - **Opções e escolhas de um talento.** Um talento da mesa pode ter uma lista de até 60 opções para o jogador escolher, ou oferecer um conjunto inteiro de opções do SRD (os estilos de luta, por exemplo). Pode também pedir ao jogador uma habilidade ou um tipo de dano, dar um nome a ela e usá-la nos outros efeitos do talento: a proficiência no teste de resistência daquela habilidade, a resistência àquele tipo de dano, a CD calculada com aquela habilidade. Enquanto a escolha não é feita, os efeitos que a usam não valem e a ficha a pede. Um modificador do valor de uma habilidade leva um limite de 20 a 30, e um valor que já passa dele fica como está.
   As opções próprias de um talento se escondem só com o talento.
   Só as opções de um conjunto de opções se escondem uma a uma.
@@ -1069,6 +1082,7 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Queda Suave | Até cinco criaturas em queda a 18 m não sofrem dano de queda. |
 | Queda Lenta (monge 4) | O monge em queda tira 5 vezes o nível dele do próprio dano de queda. |
 | Ataque de oportunidade | Veja a RN-21. |
+| Ação preparada | O mestre diz que o gatilho de uma ação preparada aconteceu: quem a preparou pode usar a reação para tomar a ação guardada (um ataque, um movimento até a velocidade, uma magia, outra ação) ou deixá-la passar. Só o jogador de quem preparou e o mestre leem o gatilho e a ação; os outros leem "Esperando a reação de <nome>" ou "Esperando o mestre". |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
 | Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, decidido pelo servidor sem janela (uma janela só para o mestre em "Perguntar"). |
 | Resistência Lendária | A magia de um jogador com teste de resistência, ou um efeito de acerto que rola um teste, alcança uma criatura com a característica e um uso sobrando, quer o teste de resistência dela tenha passado, quer tenha falhado: o lançamento ou a resposta ao efeito espera só o mestre (RN-29). A área de uma magia que pega essa criatura pede o teste dela só ao mestre. |
@@ -1082,8 +1096,36 @@ A ação em espera aguarda até a janela ser respondida, e é descartada se não
 O turno espera pelas janelas abertas.
 Um jogador lê só as próprias janelas, e os números do gatilho (um total de ataque, uma classe de armadura, um dano) são do mestre.
 
-- **Uma reação opcional que o jogador não responde passa depois de 30 segundos** (Escudo Arcano, Esquiva Sobrenatural, a conjuração da Repreensão Infernal, Contramágica, Palavras de Interrupção, Defletir Projéteis, Proteção, Queda Suave, Queda Lenta e um ataque de oportunidade oferecido a um jogador). A tela do mestre a conta ("Passa sozinho em N s"), o aviso do jogador diz "Se você não responder, passa sozinho em N s.". Nunca um teste de resistência, uma disputa nem o teste do mestre.
+- **Uma reação opcional que o jogador não responde passa depois de 30 segundos** (Escudo Arcano, Esquiva Sobrenatural, a conjuração da Repreensão Infernal, Contramágica, Palavras de Interrupção, Defletir Projéteis, Proteção, Queda Suave, Queda Lenta, uma ação preparada que o mestre disparou e um ataque de oportunidade oferecido a um jogador). A tela do mestre a conta ("Passa sozinho em N s"), o aviso do jogador diz "Se você não responder, passa sozinho em N s.". Nunca um teste de resistência, uma disputa nem o teste do mestre.
 - **Um jogador que está rolando ganha mais tempo.** Enquanto o jogador rola um dado físico, a janela espera até 2 minutos: "Você está rolando: a mesa espera 2 min", e o mestre lê "Rolando… passa sozinho em N s". O mestre pode passá-la antes.
+- **Preparar** (SRD 5.1, "Ready").
+  No próprio turno, uma criatura gasta a ação para guardar outra até um gatilho que o jogador dela escreve.
+  A ação guardada é um ataque, um movimento, uma magia ou outra ação padrão.
+  Uma magia guardada precisa levar 1 ação para ser conjurada.
+  Ela é conjurada ao preparar, com o espaço de magia, e o poder dela fica guardado até o gatilho.
+  Guardá-la exige concentração, que encerra qualquer outra concentração da criatura.
+  Um truque com jogada de ataque é guardado do mesmo jeito.
+  Liberada, a magia tem efeito como reação e não gasta espaço de novo; a Contramágica ainda pode barrá-la.
+  A magia se perde, com o espaço gasto, se a concentração acabar antes, se a criatura a deixar passar ou quando a ação preparada se perde.
+  Esconder-se e Ajudar não podem ser guardados: têm chamadas próprias, que uma reação não executa.
+  Correr e Desengajar também não: valem só para o turno da própria criatura.
+  Um movimento não pode ser guardado num combate sem mapa.
+  Uma ação preparada não dispara durante o turno de quem a preparou.
+  Num turno compartilhado, esse turno dura até quem preparou encerrar a própria parte.
+  O SRD é omisso aqui: as criaturas empatadas agem uma depois da outra, e ele não tem turnos compartilhados.
+  A reação só é gasta quando a ação guardada é tomada; até lá as outras reações da criatura continuam oferecidas.
+  Um ataque guardado ainda espera as reações que vêm antes de qualquer jogada de ataque (Palavras de Interrupção, Proteção, a conferência do mestre).
+  Nesse meio-tempo a janela dele não aceita outra resposta e não passa sozinha.
+  Um movimento guardado provoca ataques de oportunidade como qualquer movimento, mesmo depois de um Desengajar no turno da própria criatura.
+  Esses ataques seguram o fim do turno em andamento até serem respondidos.
+  Uma criatura sem reação, ou que não pode reagir, não é perguntada, e a ação preparada espera até se perder.
+  Ela se perde no início do próximo turno da criatura, ou quando a criatura é derrotada ou sai da luta.
+  A ação gasta não volta.
+  Os jogadores que não são o de quem preparou leem só que ela preparou uma ação, nunca qual magia, o nível dela nem que é uma magia.
+  A linha do Preparar deles não nomeia nenhuma concentração que acabou.
+  Eles ainda veem o que qualquer concentração encerrada faz: o indicador de concentração da criatura fica em branco e os efeitos da magia de concentração anterior terminam.
+  O teste de concentração de uma magia guardada é do jogador de quem preparou e do mestre: os outros jogadores leem só que a mesa espera o mestre.
+  A ação preparada de uma criatura escondida é só do mestre.
 - **Regra da mesa "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (padrão) abre uma janela só quando um inimigo pode reagir; "Sempre" abre a conferência de um toque do mestre em todo ataque, conjuração e dano de um jogador contra um inimigo, de modo que a pausa não diz nada aos jogadores.
 
 Como é construído: [Arquitetura](../../architecture/play/reactions.md).

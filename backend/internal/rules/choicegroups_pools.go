@@ -384,47 +384,64 @@ func (cb *choiceBuilder) retired(key string) bool {
 	return (cb.c.archived[key] || cb.c.off[key]) && !slices.Contains(cb.plain, key)
 }
 
+// hiddenPrerequisite is a condition on an entry the player may not read: it keeps its kind and whether the sheet meets it,
+// and names nothing (no key, no name, no number).
+func hiddenPrerequisite(kind string, met bool) OptionPrerequisite {
+	pre := OptionPrerequisite{Kind: kind, Met: met}
+	if !met {
+		pre.ReasonPT = hiddenPrerequisiteReasonPT
+	}
+	return pre
+}
+
+// hiddenPrerequisiteReasonPT is the reason of a condition on a hidden entry; it names nothing.
+const hiddenPrerequisiteReasonPT = "Exige uma condição que a mesa não mostra."
+
 // optionPrerequisites are what a table option asks for, each with whether the sheet meets it
-// now: a level in a class, other options, a Pact Boon and a spell the sheet knows.
+// now: a level in a class, other options, a Pact Boon and a spell the sheet knows. A condition on an entry
+// a player may not read names nothing.
 func (cb *choiceBuilder) optionPrerequisites(p TableOptionPrerequisite) []OptionPrerequisite {
 	c := cb.c
+	hidden := func(key string) bool { return c.hiddenTo(cb.b, key) }
 	var out []OptionPrerequisite
 	if p.ClassKey != "" {
-		have := 0
-		for _, oc := range cb.x.classes {
-			if oc.key == p.ClassKey {
-				have = oc.level
-			}
-		}
+		have := classLevelIn(cb.b.Classes, p.ClassKey)
 		pre := OptionPrerequisite{Kind: PrerequisiteLevel, Key: p.ClassKey, Level: p.ClassLevel, NamePT: c.namePT(p.ClassKey), Met: have >= p.ClassLevel}
-		if !pre.Met {
+		switch {
+		case hidden(p.ClassKey):
+			pre = hiddenPrerequisite(PrerequisiteLevel, pre.Met)
+		case !pre.Met:
 			pre.ReasonPT = fmt.Sprintf("Exige o nível %d de %s. Você está no %d.", p.ClassLevel, c.namePT(p.ClassKey), have)
 		}
 		out = append(out, pre)
 	}
 	for _, k := range p.RequiresOptions {
 		pre := OptionPrerequisite{Kind: PrerequisiteFeature, Key: k, NamePT: optionLabel(c.namePT(k)), Met: slices.Contains(cb.plain, k)}
-		if !pre.Met {
+		switch {
+		case hidden(k):
+			pre = hiddenPrerequisite(PrerequisiteFeature, pre.Met)
+		case !pre.Met:
 			pre.ReasonPT = fmt.Sprintf("Exige a opção %s, que você ainda não escolheu.", optionLabel(c.namePT(k)))
 		}
 		out = append(out, pre)
 	}
 	if p.RequiresPact != "" {
-		out = append(out, cb.invocationBoon(p.RequiresPact))
+		pre := cb.invocationBoon(p.RequiresPact)
+		if hidden(p.RequiresPact) {
+			pre = hiddenPrerequisite(PrerequisiteFeature, pre.Met)
+		}
+		out = append(out, pre)
 	}
 	if p.RequiresSpell != "" {
 		spell := p.RequiresSpell
-		pre := OptionPrerequisite{Kind: PrerequisiteSpell, Key: spell, NamePT: c.namePT(spell), Met: cb.knowsSpell(spell)}
-		if !pre.Met {
+		pre := OptionPrerequisite{Kind: PrerequisiteSpell, Key: spell, NamePT: c.namePT(spell), Met: knowsSpell(*cb.derive(), spell)}
+		switch {
+		case hidden(spell):
+			pre = hiddenPrerequisite(PrerequisiteSpell, pre.Met)
+		case !pre.Met:
 			pre.ReasonPT = fmt.Sprintf("Exige a magia %s, que você ainda não conhece.", c.namePT(spell))
 		}
 		out = append(out, pre)
 	}
 	return out
-}
-
-// knowsSpell says whether the sheet knows a spell: a cantrip, a known or a prepared spell, or
-// one a pick grants.
-func (cb *choiceBuilder) knowsSpell(key string) bool {
-	return cb.knowsCantrip(key) || slices.Contains(cb.b.SpellsKnown, key) || slices.Contains(cb.b.SpellsPrepared, key)
 }
