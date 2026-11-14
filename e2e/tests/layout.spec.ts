@@ -1,12 +1,12 @@
-import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import { expect } from '@playwright/test';
+import { compile } from 'sass';
 import { test } from './diagnostics';
 import { expectAligned, layoutIssues } from './layout';
 
-// The gear row's stylesheet is compiled with the web app's own sass.
+// The stylesheets of the rows are compiled with the sass of this package, pinned to the web app's version, so the list of tests
+// loads where only e2e/ is installed.
 const webDir = path.join(__dirname, '..', '..', 'web');
-const { compile } = createRequire(path.join(webDir, 'package.json'))('sass') as { compile: (file: string) => { css: string } };
 
 // The one-line and chip checks of layout.ts (8, 6, 12), run on small pages that carry the markup and the layout rules of the
 // action row, the gear row's marks group and the combat column's item modifiers, in a column as narrow as a phone's.
