@@ -838,6 +838,11 @@ WHERE encounter_id = sqlc.arg(encounter_id) AND summon_group_id = sqlc.arg(summo
 -- combat a dismissed creature left).
 SELECT * FROM encounters WHERE id = $1;
 
+-- name: GetEncounterCampaignID :one
+-- The campaign a combat is in: a reader of the combat's states that has the combat's ID alone (the auras of a feature
+-- need the bearer's hit points, which a campaign holds).
+SELECT g.campaign_id FROM encounters e JOIN game_sessions g ON g.id = e.game_session_id WHERE e.id = $1;
+
 -- name: ListCreatureCombatants :many
 -- The creatures in a combat, in turn order: what the combat writes back to
 -- their owners' lists and what it keeps in step with them.

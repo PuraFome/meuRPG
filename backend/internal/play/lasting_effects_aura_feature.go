@@ -3,7 +3,6 @@ package play
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"slices"
 
@@ -19,7 +18,8 @@ import (
 // the holder joins a combat and gone when it leaves or the combat ends: it is never a record of the character's, so
 // giveEffectBack drops it and the next combat makes it again from the sheet. It has no clock: the holder carries it as
 // long as it is in the fight (until the master ends it by hand). Nothing is written when the holder is downed or
-// incapacitated: aurasOf leaves the aura out then and it is back when the holder is up again.
+// incapacitated: aurasOf decides it when the aura is read (from the hit points and the conditions as they are then), so
+// it is back when the holder is up again, whichever way the hit points changed.
 
 // sourceKindFeature is the source of the rows a feature writes.
 const sourceKindFeature = "feature"
@@ -29,54 +29,31 @@ func isFeatureAura(st playdb.CombatantState) bool {
 	return conv.OrZero(st.SourceKind) == sourceKindFeature && isMarked(st)
 }
 
-// restFeatureAuras puts the feature auras of a character's combatant to sleep (down: it fell to 0 hit points) or wakes them
-// (it is above 0 again) in the session's combat. A sleeping aura keeps its radius with a minus sign and reaches nobody
-// (auraReaches). It runs for every change of a character's vitals (changeVitals): damage, healing, the master's hand, an
-// undo. A character that is incapacitated by a condition is another way: aurasOf reads the combatant's conditions.
-func (s *Service) restFeatureAuras(ctx context.Context, q *playdb.Queries, sessionID, characterID string, down bool) error {
-	enc, err := q.GetOpenEncounter(ctx, sessionID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("find the open encounter: %w", err)
-	}
-	rows, err := q.ListLastingEffects(ctx, enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the effects: %w", err)
-	}
-	cs, err := q.ListCombatants(ctx, enc.ID)
-	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
-	}
+// downFeatureBearers are the combatants (by ID) that bear the aura of a feature and are at 0 hit points: aurasOf leaves
+// their auras out. It reads a character's hit points only when the combat has such an aura, so a combat with none reads
+// nothing more. rows are the states of the combat; tx is the change's transaction, nil for a read.
+func (s *Service) downFeatureBearers(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, rows []playdb.CombatantState) (map[string]bool, error) {
+	var down map[string]bool
 	for _, st := range rows {
+		if !isFeatureAura(st) || down[st.CombatantID] {
+			continue
+		}
 		i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == st.CombatantID })
-		if i < 0 || !backedByCharacter(cs[i]) || cs[i].CharacterID != characterID || !isFeatureAura(st) {
+		if i < 0 || !backedByCharacter(cs[i]) {
 			continue
 		}
-		mods, changed := auraAsleep(storedModifiers(st), down)
-		if !changed {
-			continue
+		gone, err := s.isDown(ctx, tx, campaignID, cs[i])
+		if err != nil {
+			return nil, err
 		}
-		body, _ := json.Marshal(mods) // plain values: they cannot fail to encode
-		if err := q.SetLastingEffectModifiers(ctx, playdb.SetLastingEffectModifiersParams{ID: st.ID, Modifiers: body}); err != nil {
-			return fmt.Errorf("rest the aura of a feature: %w", err)
+		if gone {
+			if down == nil {
+				down = map[string]bool{}
+			}
+			down[cs[i].ID] = true
 		}
 	}
-	return nil
-}
-
-// auraAsleep is the modifiers with the mark of the aura asleep (a radius below 0) or awake, and whether it changed.
-func auraAsleep(mods []rules.EffectModifier, asleep bool) ([]rules.EffectModifier, bool) {
-	out := slices.Clone(mods)
-	changed := false
-	for i, m := range out {
-		if m.Kind != rules.ModifierAura || (m.RadiusFt < 0) == asleep {
-			continue
-		}
-		out[i].RadiusFt, changed = -m.RadiusFt, true
-	}
-	return out, changed
+	return down, nil
 }
 
 // carriedToCombat brings in what the characters that joined carry: their inspiration die and the auras of their features.
@@ -125,31 +102,24 @@ func (s *Service) featureAurasOn(ctx context.Context, c *combatTx, all []playdb.
 	if err != nil {
 		return fmt.Errorf("list the effects: %w", err)
 	}
-	down, err := s.isDown(ctx, c.tx, c.session.CampaignID, a)
-	if err != nil {
-		return err
-	}
 	for _, fa := range sheet.Traits.Auras {
 		if slices.ContainsFunc(rows, func(st playdb.CombatantState) bool {
 			return st.CombatantID == a.ID && isFeatureAura(st) && conv.OrZero(st.SourceKey) == fa.Source
 		}) {
 			continue
 		}
-		if err := s.addFeatureAura(ctx, c, all, a, fa, down); err != nil {
+		if err := s.addFeatureAura(ctx, c, all, a, fa); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// addFeatureAura writes the row of one aura on its bearer; one that joins at 0 hit points waits asleep for it to stand.
-func (s *Service) addFeatureAura(ctx context.Context, c *combatTx, all []playdb.Combatant, bearer playdb.Combatant, fa link.FeatureAura, down bool) error {
+// addFeatureAura writes the row of one aura on its bearer.
+func (s *Service) addFeatureAura(ctx context.Context, c *combatTx, all []playdb.Combatant, bearer playdb.Combatant, fa link.FeatureAura) error {
 	var mods []rules.EffectModifier
 	if err := json.Unmarshal(fa.Modifiers, &mods); err != nil {
 		return fmt.Errorf("read the modifiers of an aura: %w", err)
-	}
-	if down {
-		mods, _ = auraAsleep(mods, true)
 	}
 	spec := effectSpec{
 		key: fa.Source, sourceKind: sourceKindFeature, caster: &bearer, targets: []playdb.Combatant{bearer},

@@ -160,11 +160,12 @@ export class SpellEffect {
     { value: 'adv', label: 'Vantagem' },
     { value: 'dis', label: 'Desvantagem' },
   ];
-  protected readonly affectsOptions: Segment<AuraAffectsChoice>[] = [
+  /** Nobody casts a feature: its third option is the one who bears it. */
+  protected readonly affectsOptions = computed<Segment<AuraAffectsChoice>[]>(() => [
     { value: 'allies', label: 'Aliados' },
     { value: 'enemies', label: 'Inimigos' },
-    { value: 'self', label: 'Só quem conjura' },
-  ];
+    { value: 'self', label: this.feature() ? 'Só quem a leva' : 'Só quem conjura' },
+  ]);
 
   protected readonly abilityOptions = computed(() =>
     ABILITY_KEYS.map((k, i) => ({ value: k as string, label: this.abilityNames()[i] ?? k })),

@@ -33,7 +33,7 @@ func (s *Service) settleDamage(ctx context.Context, c *combatTx, target playdb.C
 	if damageType == "" || amount <= 0 {
 		return landing{}, amount, nil
 	}
-	states, err := statesAt(ctx, c.q, c.enc.ID, nil)
+	states, err := s.statesAt(ctx, c.tx, c.q, c.enc.ID, nil)
 	if err != nil {
 		return landing{}, 0, err
 	}

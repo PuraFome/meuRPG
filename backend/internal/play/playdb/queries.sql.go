@@ -2214,6 +2214,19 @@ func (q *Queries) GetEncounterByID(ctx context.Context, id string) (Encounter, e
 	return i, err
 }
 
+const getEncounterCampaignID = `-- name: GetEncounterCampaignID :one
+SELECT g.campaign_id FROM encounters e JOIN game_sessions g ON g.id = e.game_session_id WHERE e.id = $1
+`
+
+// The campaign a combat is in: a reader of the combat's states that has the combat's ID alone (the auras of a feature
+// need the bearer's hit points, which a campaign holds).
+func (q *Queries) GetEncounterCampaignID(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getEncounterCampaignID, id)
+	var campaign_id string
+	err := row.Scan(&campaign_id)
+	return campaign_id, err
+}
+
 const getEncounterInSession = `-- name: GetEncounterInSession :one
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares FROM encounters
 WHERE game_session_id = $1 AND id = $2

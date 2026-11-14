@@ -134,3 +134,126 @@ func TestAFeatureAuraIsOneRowOnItsBearerThatTheCombatEndTakesAway(t *testing.T) 
 		t.Errorf("the character's records = %d after the combat, want 0: the aura is made again from the sheet", records)
 	}
 }
+
+// downBearer takes Toren to 0 hit points the way the table does: a hit of the Goblin, applied by the master. It returns the
+// encounter, the pending damage and the undoable event, for the tests that take the hit back.
+func (a *armed) downBearer(t *testing.T) *playv1.Encounter {
+	t.Helper()
+	a.hurt(t, a.toren, 1)
+	e := a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3},
+		players: map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:  []string{"Goblin"},
+		at:      map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {4, 4}},
+	})
+	a.mustEndTurn(t, a.caio, e)
+	a.mustEndTurn(t, a.ana, e)
+	a.h.roller.queue(15, 3)
+	hit := a.mustAttack(t, a.master, e, "Goblin", sword, "Toren", inAppRoll)
+	id := hit.GetPendingDamage().GetId()
+	a.mustDamage(t, a.master, e, id, inAppDamage)
+	if _, err := a.settle(t, a.master, e, id, true); err != nil {
+		t.Fatalf("ApplyPendingDamage() error = %v", err)
+	}
+	return e
+}
+
+// Whether the bearer is up is read when the bonus is: the bearer that the Goblin brings to 0 gives nothing, and the undo of
+// that hit gives the bonus back, with no write about the aura anywhere (#579).
+func TestAFeatureAuraComesBackWhenTheHitThatDownedTheBearerIsUndone(t *testing.T) {
+	t.Parallel()
+	a := newAuraRig(t, 16, protectionAura(10))
+	e := a.downBearer(t)
+	if got := a.vitals(t, a.toren).GetHitPointsCurrent(); got != 0 {
+		t.Fatalf("Toren after the hit = %d hit points, want 0", got)
+	}
+	if got := a.bonusOf(t, a.bri.GetId()); got != 0 {
+		t.Errorf("Brisa with the bearer at 0: bonus = %d, want 0", got)
+	}
+	if err := a.undo(t, a.master, e, a.log(t, a.master, e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if got := a.bonusOf(t, a.bri.GetId()); got != 3 {
+		t.Errorf("Brisa after the undo: bonus = %d, want 3", got)
+	}
+}
+
+// The bearer back from 0 has the aura again, and one that reaches 0 by a write that is not the vitals' call (the sheet's
+// own row, as a rest or a future rule would write it) gives nothing at once: the decision is read, not kept.
+func TestAFeatureAuraFollowsTheBearersHitPointsWhoeverWritesThem(t *testing.T) {
+	t.Parallel()
+	a := newAuraRig(t, 16, protectionAura(10))
+	a.arena(t, arenaPlan{at: map[string][2]int32{"Brisa": {5, 3}}})
+	a.hurt(t, a.toren, 9) // the vitals row exists from here on
+	setHP := func(hp int) {
+		t.Helper()
+		if _, err := a.h.pool.Exec(t.Context(), `UPDATE character_vitals SET hit_points_current = $2 WHERE character_id = $1`, a.toren.GetId(), hp); err != nil {
+			t.Fatalf("write the hit points: %v", err)
+		}
+	}
+	if got := a.bonusOf(t, a.bri.GetId()); got != 3 {
+		t.Fatalf("Brisa with the bearer up: bonus = %d, want 3", got)
+	}
+	setHP(0)
+	if got := a.bonusOf(t, a.bri.GetId()); got != 0 {
+		t.Errorf("the bearer taken to 0 by a direct write: bonus = %d, want 0", got)
+	}
+	if got := a.bonusOf(t, a.toren.GetId()); got != 0 {
+		t.Errorf("the bearer himself at 0: bonus = %d, want 0", got)
+	}
+	a.hurt(t, a.toren, 4) // the vitals' own call, from the 0 the direct write left
+	if got := a.bonusOf(t, a.bri.GetId()); got != 3 {
+		t.Errorf("Brisa with the bearer standing again: bonus = %d, want 3", got)
+	}
+}
+
+// Two bearers of one feature each give theirs (Pensantus between two paladins reads +3 and +1); one bearer's two effects of
+// the same feature give once (the level-scaled pair), whatever the number of rows on him.
+func TestAFeatureAuraGivesOncePerBearerAndFeature(t *testing.T) {
+	t.Parallel()
+	t.Run("two bearers give both", func(t *testing.T) {
+		t.Parallel()
+		a := newArmedWith(t, func(a *armed) {
+			res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
+				CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: flagSubclass("class:fighter", protectionAura(10), "")},
+			}))
+			if err != nil {
+				t.Fatalf("CreateTableEntry() error = %v", err)
+			}
+			key := res.Msg.GetEntry().GetKey()
+			a.toren = a.caio.heroWith(t, a.campaignID, "Toren", classLevel("class:fighter", 5, key), abilities(16, 13, 14, 10, 16), []string{longsword}, nil, []string{"feature:fighter-fighting-style-defense"})
+			a.bri = a.bia.heroWith(t, a.campaignID, "Brisa", classLevel("class:fighter", 5, key), abilities(16, 13, 14, 10, 12), []string{longsword}, nil, []string{"feature:fighter-fighting-style-defense"})
+			a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 3, scores16(), nil, []string{fireBolt})
+		})
+		a.arena(t, arenaPlan{at: map[string][2]int32{"Toren": {3, 3}, "Brisa": {6, 3}, "Pensantus": {4, 4}}})
+		if got := a.bonusOf(t, a.pens.GetId()); got != 4 {
+			t.Errorf("Pensantus inside both auras: bonus = %d, want 4 (+3 and +1)", got)
+		}
+	})
+	t.Run("one bearer's two effects give once", func(t *testing.T) {
+		t.Parallel()
+		a := newAuraRig(t, 16, append(protectionAura(10), protectionAura(30)...))
+		a.arena(t, arenaPlan{at: map[string][2]int32{"Brisa": {5, 3}}})
+		if got := a.bonusOf(t, a.bri.GetId()); got != 3 {
+			t.Errorf("Brisa inside both effects of one paladin: bonus = %d, want 3, once", got)
+		}
+	})
+}
+
+// The bonus is worked out where the aura is written, when the bearer joins: a Charisma that changes in the fight does not
+// change what the aura gives until the next combat.
+func TestAFeatureAuraKeepsTheBonusItWasWrittenWith(t *testing.T) {
+	t.Parallel()
+	a := newAuraRig(t, 16, protectionAura(10))
+	a.arena(t, arenaPlan{at: map[string][2]int32{"Brisa": {5, 3}}})
+	if got := a.bonusOf(t, a.bri.GetId()); got != 3 {
+		t.Fatalf("Brisa: bonus = %d, want 3", got)
+	}
+	var cha string
+	if err := a.h.pool.QueryRow(t.Context(), `UPDATE characters SET sheet = jsonb_set(sheet, '{full,base_scores,charisma}', '8') WHERE id = $1 RETURNING sheet #>> '{full,base_scores,charisma}'`, a.toren.GetId()).Scan(&cha); err != nil || cha != "8" {
+		t.Fatalf("change the Charisma: %q, %v", cha, err)
+	}
+	if got := a.bonusOf(t, a.bri.GetId()); got != 3 {
+		t.Errorf("Brisa after the bearer's Charisma fell: bonus = %d, want 3 as written at the join", got)
+	}
+}

@@ -59,7 +59,7 @@
     </div>
     <div class="group" role="group" aria-labelledby="spell-effect-reach" [attr.data-field]="path('aura.affects')">
       <span class="group__label" id="spell-effect-reach">Alcança</span>
-      <app-segmented label="Alcança" [segments]="affectsOptions" [value]="aura.affects" (choose)="patchAura({ affects: $event })" />
+      <app-segmented label="Alcança" [stackOnPhone]="true" [segments]="affectsOptions()" [value]="aura.affects" (choose)="patchAura({ affects: $event })" />
       <app-field-note [issues]="issues('aura.affects')" [hint]="feature() ? 'Contado a partir de quem leva a aura, no momento de cada jogada. Aliados inclui quem a leva.' : 'Contado a partir de quem conjura, no momento de cada jogada. Aliados inclui quem conjura.'" />
     </div>
     <p class="line"><mat-icon aria-hidden="true">info</mat-icon>{{ auraRefusedLine }}</p>
@@ -121,7 +121,7 @@
           }
           @case ('roll') {
             <div class="row row--roll">
-              <app-segmented label="Número ou dado" [segments]="rollModes()" [value]="r.rollMode" (choose)="patchRow(r.id, { rollMode: $event })" />
+              <app-segmented label="Número ou dado" [stackOnPhone]="true" [segments]="rollModes()" [value]="r.rollMode" (choose)="patchRow(r.id, { rollMode: $event })" />
               @if (r.rollMode === 'die') {
                 <app-select-field label="Dado" [options]="dice" [value]="r.die" [path]="rowPath(i, 'die')" [issues]="rowIssues(i, 'die')" (valueChange)="patchRow(r.id, { die: $event })" />
                 <app-select-field label="Soma ou tira" [options]="signs" [value]="'' + r.sign" [path]="rowPath(i, 'sign')" [issues]="rowIssues(i, 'sign')" (valueChange)="patchRow(r.id, { sign: +$event === -1 ? -1 : 1 })" />

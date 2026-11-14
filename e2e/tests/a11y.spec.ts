@@ -6108,6 +6108,38 @@ async function shootAura(page: Page, width: number, scheme: string): Promise<voi
   await page.screenshot({ path: `${dir}/579-aura-feature-${width}-${scheme}.png` });
 }
 
+/** The segments of each group of the effect block are equal in width (±1 px), and no word of a label breaks across lines. */
+async function expectEqualSegments(page: Page): Promise<void> {
+  const groups = await page.locator('app-spell-effect app-segmented').evaluateAll((hosts) =>
+    hosts.map((h) => {
+      const items = Array.from(h.querySelectorAll<HTMLElement>('.seg__item'));
+      return {
+        label: h.querySelector('.seg')?.getAttribute('aria-label') ?? '',
+        widths: items.map((i) => i.getBoundingClientRect().width),
+        broken: items.flatMap((i) => {
+          const out: string[] = [];
+          const walker = document.createTreeWalker(i, NodeFilter.SHOW_TEXT);
+          for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+            for (const m of (n.textContent ?? '').matchAll(/\S+/g)) {
+              const r = document.createRange();
+              r.setStart(n, m.index ?? 0);
+              r.setEnd(n, (m.index ?? 0) + m[0].length);
+              if (r.getClientRects().length > 1) {
+                out.push(m[0]);
+              }
+            }
+          }
+          return out;
+        }),
+      };
+    }),
+  );
+  for (const g of groups) {
+    expect.soft(Math.max(...g.widths) - Math.min(...g.widths), `${g.label}: the segments are equal in width (${g.widths.map(Math.round).join(', ')})`).toBeLessThanOrEqual(1);
+    expect.soft(g.broken, `${g.label}: no word of a label breaks`).toEqual([]);
+  }
+}
+
 /** The 2x crop of the roll mode's three segments, as `579-aura-feature-segmentos-390-<scheme>.png`, when `E2E_SHOTS_DIR` names a folder. */
 async function shootSegments(page: Page, scheme: string): Promise<void> {
   const dir = process.env.E2E_SHOTS_DIR;
@@ -6306,6 +6338,7 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expectScreenPasses(m, `Característica de classe, a aura sem mudança ${where}`);
       await addAbilityBonus(m);
       await expectCardsHoldTheirText(m);
+      await expectEqualSegments(m);
       await expectScreenPasses(m, `Característica de classe, a aura com o bônus de uma habilidade ${where}`);
       await shootAura(m, width, colorScheme);
       await m.getByLabel('No mínimo').fill('9');
@@ -6384,6 +6417,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await openFeatureAura(m, campaignId);
       await addAbilityBonus(m);
       await expectCardsHoldTheirText(m);
+      await expectEqualSegments(m);
       await expectScreenPasses(m, `Característica de classe, a aura com o bônus de uma habilidade (${scheme}, 390px)`);
       await shootAura(m, 390, scheme);
       await shootSegments(m, scheme);

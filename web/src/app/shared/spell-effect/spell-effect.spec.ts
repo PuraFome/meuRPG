@@ -166,6 +166,8 @@ describe('SpellEffect (#579, boards 579-01, 579-02 and 579-04)', () => {
     );
     expect(labels).toEqual(['Aliados', 'Inimigos', 'Só quem conjura']);
     expect(group.querySelector('app-segmented')?.classList.contains('seg--wrap')).toBe(false);
+    // On a phone the three stack as full-width rows of the one group, never a word broken in a third.
+    expect(group.querySelector('app-segmented')?.classList.contains('seg--stack')).toBe(true);
     expect(el.querySelector('.narrow app-text-field')).not.toBeNull();
     expect(text(el)).toContain('Contado a partir de quem conjura, no momento de cada jogada.');
   });
@@ -235,6 +237,22 @@ describe('SpellEffect (#579, boards 579-01, 579-02 and 579-04)', () => {
         'Vale em todo combate, enquanto quem leva a aura estiver de pé e consciente.',
       );
       expect(text(el)).not.toContain('Em volta de quem conjura');
+    });
+
+    it('reads "Só quem a leva" for the third reach, and the spell keeps "Só quem conjura"', () => {
+      const { el } = feature(aura());
+      const labels = Array.from(
+        el.querySelectorAll('[aria-labelledby="spell-effect-reach"] label'),
+      ).map((l) => (l.textContent ?? '').replace('check', '').trim());
+      expect(labels).toEqual(['Aliados', 'Inimigos', 'Só quem a leva']);
+      expect(text(el)).not.toContain('Só quem conjura');
+    });
+
+    it('stacks the choices of the number-or-die row on a phone, like the reach', () => {
+      const { el } = feature(aura());
+      const groups = Array.from(el.querySelectorAll('app-segmented'));
+      const rollMode = groups.find((g) => (g.textContent ?? '').includes('Número fixo'));
+      expect(rollMode?.classList.contains('seg--stack')).toBe(true);
     });
 
     it('takes the number of a roll from an ability, with a least, and writes both', () => {
