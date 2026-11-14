@@ -79,7 +79,8 @@ export const SPELL_EFFECT_TEXTS: readonly { shape: RegExp; reason?: string; text
     text: 'Este tipo não vale numa aura. Só valem os que a jogada lê, e o dano extra do acerto não vale.',
   },
   {
-    shape: /\.effects\[\]\.aura\.modifiers\[\]\.(value|die|sign|applies_to|abilities|skill|resistance_kind|damage_types(\[\])?)$/,
+    shape:
+      /\.effects\[\]\.aura\.modifiers\[\]\.(value|die|sign|applies_to|abilities|skill|resistance_kind|damage_types(\[\])?)$/,
     text: 'Confira esta mudança da aura.',
   },
   {

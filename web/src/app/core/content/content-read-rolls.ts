@@ -100,7 +100,9 @@ function auraItem(e: TableEffect, nameOf: (key: string) => string): RollItem | n
     return null;
   }
   const parts = [auraTag(d.aura), ...d.rows.flatMap((r) => rowTags(r, nameOf))];
-  return parts.length < 2 ? null : { title: 'Aura', text: `${parts.join(', ')}, em todo o combate.` };
+  return parts.length < 2
+    ? null
+    : { title: 'Aura', text: `${parts.join(', ')}, em todo o combate.` };
 }
 
 /** When a pool's uses come back, in the few words the "Usos" line has room for. */

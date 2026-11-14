@@ -102,17 +102,12 @@
           }
           @case ('aura') {
             @if (effect().aura; as aura) {
-              <app-spell-effect
-                [feature]="true"
+              <app-effect-aura
                 [effect]="aura"
-                [context]="auraContext"
+                [catalog]="catalog()"
                 [basePath]="path('aura')"
-                [skills]="catalog()?.skills ?? []"
-                [damageTypes]="catalog()?.damageTypes ?? []"
-                [abilityNames]="catalogAbilityNames()"
-                [nameOf]="catalog()?.nameOf ?? identity"
                 [issuesOf]="issuesOf()"
-                (effectChange)="setAura($event)"
+                (effectChange)="effectChange.emit({ ...effect(), aura: $event })"
               />
             }
           }

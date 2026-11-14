@@ -60,7 +60,7 @@
     <div class="group" role="group" aria-labelledby="spell-effect-reach" [attr.data-field]="path('aura.affects')">
       <span class="group__label" id="spell-effect-reach">Alcança</span>
       <app-segmented label="Alcança" [segments]="affectsOptions" [value]="aura.affects" [wrap]="true" (choose)="patchAura({ affects: $event })" />
-      <app-field-note [issues]="issues('aura.affects')" hint="Contado a partir de quem conjura, no momento de cada jogada. Aliados inclui quem conjura." />
+      <app-field-note [issues]="issues('aura.affects')" [hint]="feature() ? 'Contado a partir de quem leva a aura, no momento de cada jogada. Aliados inclui quem a leva.' : 'Contado a partir de quem conjura, no momento de cada jogada. Aliados inclui quem conjura.'" />
     </div>
     <p class="line"><mat-icon aria-hidden="true">info</mat-icon>{{ auraRefusedLine }}</p>
     @for (m of issues('aura'); track m) {
@@ -125,13 +125,16 @@
               @if (r.rollMode === 'die') {
                 <app-select-field label="Dado" [options]="dice" [value]="r.die" [path]="rowPath(i, 'die')" [issues]="rowIssues(i, 'die')" (valueChange)="patchRow(r.id, { die: $event })" />
                 <app-select-field label="Soma ou tira" [options]="signs" [value]="'' + r.sign" [path]="rowPath(i, 'sign')" [issues]="rowIssues(i, 'sign')" (valueChange)="patchRow(r.id, { sign: +$event === -1 ? -1 : 1 })" />
-              } @else if (r.rollMode === 'ability') {
-                <app-select-field label="Habilidade de quem leva a aura" [options]="abilityOptions()" [value]="r.valueAbility" [path]="rowPath(i, 'value_ability')" [issues]="rowIssues(i, 'value_ability')" (valueChange)="patchRow(r.id, { valueAbility: $event })" />
-                <app-text-field label="No mínimo" inputmode="numeric" hint="De 1 a 5. O bônus é o modificador da habilidade, ou isso se for menor." [value]="r.valueMin" [path]="rowPath(i, 'value_min')" [issues]="rowIssues(i, 'value_min')" (valueChange)="patchRow(r.id, { valueMin: $event })" />
-              } @else {
+              } @else if (r.rollMode === 'fixed') {
                 <app-text-field label="Quanto" inputmode="numeric" hint="De -20 a 20, sem o 0." [value]="r.value" [path]="rowPath(i, 'value')" [issues]="rowIssues(i, 'value')" (valueChange)="patchRow(r.id, { value: $event })" />
               }
             </div>
+            @if (r.rollMode === 'ability') {
+              <div class="row row--2">
+                <app-select-field label="Habilidade de quem leva a aura" [options]="abilityOptions()" [value]="r.valueAbility" [path]="rowPath(i, 'value_ability')" [issues]="rowIssues(i, 'value_ability')" (valueChange)="patchRow(r.id, { valueAbility: $event })" />
+                <app-text-field label="No mínimo" inputmode="numeric" hint="De 1 a 5. O bônus é o modificador da habilidade, ou isso se for menor." [value]="r.valueMin" [path]="rowPath(i, 'value_min')" [issues]="rowIssues(i, 'value_min')" (valueChange)="patchRow(r.id, { valueMin: $event })" />
+              </div>
+            }
             <app-check-group label="Nas jogadas" [options]="rollOptions" [values]="r.rolls" [path]="rowPath(i, 'applies_to')" [issues]="rowIssues(i, 'applies_to')" (valuesChange)="patchRow(r.id, { rolls: $any($event) })" />
           }
           @case ('resistance') {

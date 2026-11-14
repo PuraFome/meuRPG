@@ -9,6 +9,9 @@ import type {
 import { metersToFeet, rangeMeters } from '../units';
 import type { EffectDraft, EffectInit } from './effect-draft.types';
 import { visibleFields } from './effect-visible';
+import { CHOICE_EMPTY } from './effect-required';
+import { underAura } from './effect-input-paths';
+import { effectUnreadable } from './spell-effect-checks';
 import { effectToDraft as spellEffectToDraft, featureAuraDraft } from './spell-effect-draft';
 import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
 import { WHOLE_MAX } from './whole-number';
@@ -386,11 +389,12 @@ export function unreadableNumberPaths(
   effects: readonly EffectDraft[],
   menu: EffectMenuVm,
 ): string[] {
-  return effects.flatMap((e, k) =>
-    visibleFields(menu.fieldsOf(e.type), e)
+  return effects.flatMap((e, k) => [
+    ...visibleFields(menu.fieldsOf(e.type), e)
       .filter((f) => f.kind === 'number' && unreadableNumber(e, f.name))
       .map((f) => `${base}[${k}].${f.name}`),
-  );
+    ...(e.aura ? underAura(`${base}[${k}]`, effectUnreadable(e.aura)) : []),
+  ]);
 }
 
 /** What the editor says of a range field it cannot read. */
@@ -400,22 +404,6 @@ export const UNREADABLE_RANGE = 'Escreva só o número de metros, como 18 ou 4,5
 export function strictRangeFeet(text: string): number {
   return unreadableRange(text) ? Number.NaN : rangeFeet(text);
 }
-
-/** The required closed-list fields of the action, maneuver, resistance, spell and condition types, by name: whether each is still empty. */
-const CHOICE_EMPTY: Readonly<Record<string, (d: EffectDraft) => boolean>> = {
-  event: (d) => d.event === '',
-  economy: (d) => d.economy === '',
-  applies: (d) => d.applies === '',
-  except: (d) => d.except === '',
-  while: (d) => d.while === '',
-  spell: (d) => d.spell === '',
-  ability: (d) => d.ability === '',
-  conditions: (d) => d.conditions.length === 0,
-  applies_to: (d) => d.appliesTo === '',
-  spell_change: (d) => d.spellChange === '',
-  rolls: (d) => d.rolls.length === 0,
-  at_most: (d) => d.atMost <= 0,
-};
 
 /** Whether a required field the switch of `missingRequired` does not name (a closed list, a text) is still empty: the table's own, else the draft's string of that name. */
 function choiceEmpty(d: EffectDraft, name: string): boolean {
@@ -462,8 +450,6 @@ export function missingRequired(d: EffectDraft, menu: EffectMenuVm): string[] {
           return d.choice === '';
         case 'count':
           return d.count <= 0;
-        case 'aura':
-          return !d.aura;
         default:
           return choiceEmpty(d, f.name);
       }

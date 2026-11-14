@@ -52,6 +52,16 @@ export function metersPt(ft: number): string {
   return `${ft > 0 ? rangeMeters(ft) : '0'} m`;
 }
 
+function rollTag(r: EffectRow, rolls: string): string {
+  if (r.rollMode === 'ability') {
+    return `Modificador de ${ABILITY_TAGS_PT[r.valueAbility] ?? r.valueAbility} (mín. ${signed(whole(r.valueMin))}) em ${rolls}`;
+  }
+  if (r.rollMode === 'die') {
+    return `${r.sign < 0 ? '-' : '+'}1d${whole(r.die)} em ${rolls}`;
+  }
+  return `${signed(whole(r.value))} em ${rolls}`;
+}
+
 /** The label of one row, as the server's `EffectTagsPT` writes it, `damageName` naming a damage-type key. Empty while the row is not readable. */
 export function rowTags(r: EffectRow, damageName: (key: string) => string): string[] {
   const rolls = joinPt(ROLL_WORDS.filter((w) => r.rolls.includes(w)).map((w) => ROLL_NAMES_PT[w]));
@@ -65,16 +75,7 @@ export function rowTags(r: EffectRow, damageName: (key: string) => string): stri
     case 'check_bonus':
       return [`${signed(whole(r.value))} em testes de perícia`];
     case 'roll':
-      if (r.rollMode === 'ability') {
-        return [
-          `Modificador de ${ABILITY_TAGS_PT[r.valueAbility] ?? r.valueAbility} (mín. ${signed(whole(r.valueMin))}) em ${rolls}`,
-        ];
-      }
-      return [
-        r.rollMode === 'die'
-          ? `${r.sign < 0 ? '-' : '+'}1d${whole(r.die)} em ${rolls}`
-          : `${signed(whole(r.value))} em ${rolls}`,
-      ];
+      return [rollTag(r, rolls)];
     case 'resistance': {
       const only = r.damageTypes.length === 1 ? r.damageTypes[0] : '';
       const what =

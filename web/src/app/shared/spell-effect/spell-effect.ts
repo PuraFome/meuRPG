@@ -51,6 +51,18 @@ export interface EffectContext {
   readonly targets: string;
 }
 
+/** What the block of a feature's aura reads of the entry around it: nothing a spell would say, it always lasts and is the bearer's own. */
+export const FEATURE_AURA_CONTEXT: EffectContext = {
+  lasts: true,
+  durationText: '',
+  concentration: false,
+  hasSave: false,
+  hasAttack: false,
+  saveName: '',
+  self: true,
+  targets: '',
+};
+
 const ABILITY_KEYS = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const;
 const ROLL_OPTIONS: readonly { value: RollWord; label: string }[] = [
   { value: 'attack', label: 'Ataque' },
