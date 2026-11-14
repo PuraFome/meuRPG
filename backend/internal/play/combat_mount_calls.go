@@ -218,44 +218,47 @@ func (s *Service) publishRide(ctx context.Context, campaignID string, d *encount
 	done.hook.after(ctx, campaignID, d.enc)
 }
 
+// ridersOf reads who a ride is about and checks that the caller may make it now: the combatants, the viewer, the rider, the mount it
+// gets on or off, and the surface the rider stands on.
+func (s *Service) ridersOf(ctx context.Context, c *combatTx, call rideCall) (cs []playdb.Combatant, v combatViewer, rider, mount playdb.Combatant, standing grid.Surface, err error) {
+	if err := notEnded(c.enc); err != nil {
+		return nil, v, rider, mount, standing, err
+	}
+	if isTheatre(c.enc) {
+		return nil, v, rider, mount, standing, errNeedsAMap() // no squares: nobody is next to a mount
+	}
+	if cs, err = listCombatants(ctx, c); err != nil {
+		return nil, v, rider, mount, standing, err
+	}
+	v = c.viewer(call.m, cs)
+	if rider, err = findCombatant(cs, call.riderID, v); err != nil {
+		return nil, v, rider, mount, standing, err
+	}
+	if err := v.mayAct(rider); err != nil {
+		return nil, v, rider, mount, standing, err
+	}
+	if mount, err = rideMountOf(cs, v, call, rider); err != nil {
+		return nil, v, rider, mount, standing, err
+	}
+	if err := s.rideGates(ctx, c, call.m, v, rider); err != nil {
+		return nil, v, rider, mount, standing, err
+	}
+	if standing, err = s.standingSurface(ctx, c.tx, c.enc, combatViewer{master: true}, rider); err != nil { // the real surface: the server decides
+		return nil, v, rider, mount, standing, fmt.Errorf("read the surface the rider stands on: %w", err)
+	}
+	return cs, v, rider, mount, standing, nil
+}
+
 // rideWrite is the transaction of a mount or a dismount: who may, where the rider goes, what it costs, and the event the log and the
 // undo keep.
 func (s *Service) rideWrite(ctx context.Context, c *combatTx, call rideCall, done *rideDone) (any, error) {
-	if err := notEnded(c.enc); err != nil {
-		return nil, err
-	}
-	if isTheatre(c.enc) {
-		return nil, errNeedsAMap() // no squares: nobody is next to a mount
-	}
-	cs, err := listCombatants(ctx, c)
+	cs, v, rider, mount, standing, err := s.ridersOf(ctx, c, call)
 	if err != nil {
 		return nil, err
-	}
-	v := c.viewer(call.m, cs)
-	rider, err := findCombatant(cs, call.riderID, v)
-	if err != nil {
-		return nil, err
-	}
-	if err := v.mayAct(rider); err != nil {
-		return nil, err
-	}
-	mount, err := rideMountOf(cs, v, call, rider)
-	if err != nil {
-		return nil, err
-	}
-	if err := s.rideGates(ctx, c, call.m, v, rider); err != nil {
-		return nil, err
-	}
-	standing, err := s.standingSurface(ctx, c.tx, c.enc, combatViewer{master: true}, rider) // the real surface: the server decides
-	if err != nil {
-		return nil, fmt.Errorf("read the surface the rider stands on: %w", err)
 	}
 	to, stopped, err := s.rideSquare(ctx, c, call, cs, v, rider, mount, standing)
-	if err != nil {
-		return nil, err
-	}
-	if stopped {
-		return s.dismountStopped(ctx, c, rider, mount, done)
+	if err != nil || stopped {
+		return s.dismountStopped(ctx, c, err, rider, mount, done)
 	}
 	cost := mountCostDFt(rider, standing)
 	after, err := rideTo(ctx, c, rider, mount, to, cost, call.dismount)
@@ -380,13 +383,16 @@ func (s *Service) dismountSquare(ctx context.Context, c *combatTx, call rideCall
 	if no := dismountVerdict(rider, standing, planned, &to); no != nil {
 		return to, false, no.err()
 	}
-	real := landingSquares(terrain, at, occupantsFor(cs, rider, combatViewer{master: true}), mover)
-	return to, !slices.Contains(real, to), nil
+	actual := landingSquares(terrain, at, occupantsFor(cs, rider, combatViewer{master: true}), mover)
+	return to, !slices.Contains(actual, to), nil
 }
 
-// dismountStopped is the write of a dismount a hidden creature stopped: the rider stays on the mount, nothing is spent and the move
+// dismountStopped is the answer of a dismount that did not get to the landing: the refusal, or the write of a dismount a hidden creature stopped: the rider stays on the mount, nothing is spent and the move
 // of the mount's ride is not used. It leaves the event of a move that goes nowhere, which the log skips as it skips any such move.
-func (s *Service) dismountStopped(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, done *rideDone) (any, error) {
+func (s *Service) dismountStopped(ctx context.Context, c *combatTx, refused error, rider, mount playdb.Combatant, done *rideDone) (any, error) {
+	if refused != nil {
+		return nil, refused
+	}
 	if err := touch(ctx, c); err != nil {
 		return nil, err
 	}

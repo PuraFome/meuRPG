@@ -1,6 +1,7 @@
 package leaktest
 
 import (
+	"bytes"
 	"strings"
 	"testing"
 
@@ -82,7 +83,7 @@ func TestADismountOntoAHiddenCreatureReadsAsAMoveCutShort(t *testing.T) {
 	if !holds.ok() || !landsOn(empty, 13, 8) {
 		t.Fatalf("premise: the rider's options with the square empty = %d %s, want it offered", empty.status, empty.body)
 	}
-	if holds.status != empty.status || string(holds.body) != string(empty.body) {
+	if holds.status != empty.status || !bytes.Equal(holds.body, empty.body) {
 		t.Errorf("the rider's options with a hidden creature on the landing are %s, with the square empty %s; want the same", holds.body, empty.body)
 	}
 
