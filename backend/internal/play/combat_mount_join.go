@@ -124,6 +124,12 @@ func releaseJoin(ctx context.Context, q *playdb.Queries, m playdb.Combatant) (pl
 // takes its initiative, and a mount that carries none (or is not controlled any more) has its own back. It saves the order when
 // anything changed and answers the combatants as they stand, in order. cs are the combatants as stored.
 func syncMounts(ctx context.Context, c *combatTx, cs []playdb.Combatant) ([]playdb.Combatant, error) {
+	out, _, err := syncMountsReleased(ctx, c, cs)
+	return out, err
+}
+
+// syncMountsReleased is syncMounts that also answers the mounts that got their own initiative back, by ID.
+func syncMountsReleased(ctx context.Context, c *combatTx, cs []playdb.Combatant) (ordered []playdb.Combatant, released []string, err error) {
 	work := slices.Clone(cs)
 	after := map[int]string{} // the mounts that got their own initiative back, by place in cs, and who they stood after
 	changed := false
@@ -141,14 +147,18 @@ func syncMounts(ctx context.Context, c *combatTx, cs []playdb.Combatant) ([]play
 			continue
 		}
 		if err != nil {
-			return nil, err
+			return nil, nil, err
+		}
+		if _, gaveBack := after[i]; gaveBack {
+			released = append(released, m.ID)
 		}
 		changed = true
 	}
 	if !changed {
-		return cs, nil
+		return cs, nil, nil
 	}
-	return saveOrder(ctx, c.q, cs, orderCombatants(placedAfter(work, after)))
+	ordered, err = saveOrder(ctx, c.q, cs, orderCombatants(placedAfter(work, after)))
+	return ordered, released, err
 }
 
 // predecessorOf is the ID of the combatant right before the one at place i of cs, "" for the first.
@@ -175,14 +185,72 @@ func placedAfter(cs []playdb.Combatant, after map[int]string) []playdb.Combatant
 	return out
 }
 
-// settleMounts is syncMounts for the combatants the change left in the combat.
+// settleMounts is syncMounts for the combatants the change left in the combat. A mount that got its own initiative back while a turn
+// runs leaves that turn unless its own total puts it in the group on turn.
 func settleMounts(ctx context.Context, c *combatTx) error {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return err
 	}
-	_, err = syncMounts(ctx, c, cs)
-	return err
+	now, released, err := syncMountsReleased(ctx, c, cs)
+	if err != nil {
+		return err
+	}
+	return idleReleased(ctx, c, now, released)
+}
+
+// idleReleased takes the mounts that got their own initiative back out of the turn that runs, unless they are in the group on turn.
+// It updates now to match.
+func idleReleased(ctx context.Context, c *combatTx, now []playdb.Combatant, released []string) error {
+	if c.enc.Status != statusActive || c.enc.CurrentCombatantID == nil {
+		return nil
+	}
+	on, ok := combatantByID(now, *c.enc.CurrentCombatantID)
+	if !ok {
+		return nil
+	}
+	for _, id := range released {
+		i := slices.IndexFunc(now, func(o playdb.Combatant) bool { return o.ID == id })
+		if i < 0 {
+			continue
+		}
+		left, err := idleUnlessGrouped(ctx, c, now, on, now[i])
+		if err != nil {
+			return err
+		}
+		if left {
+			now[i].TurnState = turnIdle
+		}
+	}
+	return nil
+}
+
+// releaseMountOf gives the mount its own place before its rider leaves the combat, so that the turn the rider's leaving settles
+// (leaveTurn) sees the mount where it will be and not in the rider's group. It answers the combatants as they stand, the leaver
+// included, in order, and whether it changed anything; cs are the combatants as they are.
+func releaseMountOf(ctx context.Context, c *combatTx, cs []playdb.Combatant, who playdb.Combatant) (_ []playdb.Combatant, changed bool, _ error) {
+	if who.MountedOnID == nil {
+		return cs, false, nil
+	}
+	work := slices.Clone(cs)
+	for i := range work {
+		if work[i].ID == who.ID {
+			work[i].MountedOnID = nil // as good as gone: the mount no longer carries it
+		}
+	}
+	now, released, err := syncMountsReleased(ctx, c, work)
+	if err != nil || len(released) == 0 {
+		return cs, false, err
+	}
+	if err := idleReleased(ctx, c, now, released); err != nil {
+		return nil, false, err
+	}
+	for i := range now {
+		if now[i].ID == who.ID {
+			now[i].MountedOnID = who.MountedOnID
+		}
+	}
+	return now, true, nil
 }
 
 // turnSnap is what the start of a turn resets on a combatant (ResetCombatantTurn) and its turn state, as the undo of a mount that took
@@ -314,21 +382,27 @@ func joinTurn(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, p
 
 // leaveGroup takes the mount that got off out of the rider's turn, unless it is in the rider's group by its own total.
 func leaveGroup(ctx context.Context, c *combatTx, now []playdb.Combatant, rider, mount playdb.Combatant) error {
+	_, err := idleUnlessGrouped(ctx, c, now, rider, mount)
+	return err
+}
+
+// idleUnlessGrouped takes the mount out of the turn unless it is in the anchor's group; it says whether it did.
+func idleUnlessGrouped(ctx context.Context, c *combatTx, now []playdb.Combatant, rider, mount playdb.Combatant) (bool, error) {
 	if mount.TurnState == turnIdle {
-		return nil
+		return false, nil
 	}
 	for _, g := range groupRuns(now) {
 		in := func(id string) bool {
 			return slices.ContainsFunc(g, func(o playdb.Combatant) bool { return o.ID == id })
 		}
 		if in(mount.ID) && in(rider.ID) {
-			return nil
+			return false, nil
 		}
 	}
 	if err := c.q.SetCombatantTurnState(ctx, playdb.SetCombatantTurnStateParams{ID: mount.ID, TurnState: turnIdle}); err != nil {
-		return fmt.Errorf("take the mount out of the turn: %w", err)
+		return false, fmt.Errorf("take the mount out of the turn: %w", err)
 	}
-	return nil
+	return true, nil
 }
 
 // joinBack puts the mount and the order back as the ride found them (the undo of a mount or a dismount).

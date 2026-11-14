@@ -335,9 +335,14 @@ func (s *Service) writeBackCreatures(ctx context.Context, c *combatTx, cs []play
 // With dismiss, the rows stay and only hide (see endSummons).
 func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.Combatant, drop []playdb.Combatant, dismiss bool) (rest []playdb.Combatant, turnPassed bool, err error) {
 	rest = slices.Clone(cs)
+	stored := slices.Clone(cs) // the order as the table keeps it
 	for _, who := range drop {
 		// What it cast or carried ends with it (RN-22).
 		if err := s.endEffectsOfLeaver(ctx, c, rest, who); err != nil {
+			return nil, false, err
+		}
+		// A mount it carried has its own place back before the turn is settled.
+		if rest, stored, err = releaseMountBefore(ctx, c, rest, stored, who); err != nil {
 			return nil, false, err
 		}
 		passed, err := leaveTurn(ctx, c, rest, who)
@@ -354,13 +359,28 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 		}
 		rest = slices.DeleteFunc(rest, func(o playdb.Combatant) bool { return o.ID == who.ID })
 	}
-	if _, err := saveOrder(ctx, c.q, cs, rest); err != nil {
+	if _, err := saveOrder(ctx, c.q, stored, rest); err != nil {
 		return nil, false, err
 	}
 	if err := settleMounts(ctx, c); err != nil { // the mount of a rider that left has its own place back
 		return nil, false, err
 	}
 	return rest, turnPassed, nil
+}
+
+// releaseMountBefore is releaseMountOf for the loop of dropCombatants: rest are the combatants still in the combat, stored the order as the
+// table keeps it (every combatant of the call); both answer as they stand once the mount has its own place.
+func releaseMountBefore(ctx context.Context, c *combatTx, rest, stored []playdb.Combatant, who playdb.Combatant) (newRest, newStored []playdb.Combatant, err error) {
+	now, changed, err := releaseMountOf(ctx, c, rest, who)
+	if err != nil || !changed {
+		return rest, stored, err
+	}
+	for _, o := range now {
+		if i := slices.IndexFunc(stored, func(s playdb.Combatant) bool { return s.ID == o.ID }); i >= 0 {
+			stored[i].OrderIndex, stored[i].TieOrdered = o.OrderIndex, o.TieOrdered
+		}
+	}
+	return now, stored, nil
 }
 
 // dismissCombatant hides the combatant of a creature (dismissed rows stay, whole) and puts the rider it carried on foot.

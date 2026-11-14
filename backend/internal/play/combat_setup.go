@@ -620,6 +620,10 @@ func (s *Service) removeWrite(ctx context.Context, c *combatTx, m authz.Membersh
 	if cs, err = s.releaseCreatures(ctx, c, cs, target); err != nil {
 		return nil, err
 	}
+	// A mount it carried has its own place back before the turn is settled.
+	if cs, _, err = releaseMountOf(ctx, c, cs, target); err != nil {
+		return nil, err
+	}
 	// It leaves the turn first; the turn passes when nobody who acts is left.
 	if *turnPassed, err = leaveTurn(ctx, c, cs, target); err != nil {
 		return nil, err
