@@ -157,3 +157,24 @@ func TestMountedCombat_ARiderOfAHiddenMountTeleportsAsAnUnmountedCasterDoes(t *t
 	_, err := seen.misty(t, seen.ana, at(400, 400))
 	wantBlockedBy(t, "a rider of a visible mount to a square off the grid", err, reasonMounted)
 }
+
+// TestMountedCombat_NoRideIsMadeBeforeTheCombatRuns: the initiative is rolled in SETUP, and a mount or a dismount is refused there
+// (NOT_ACTIVE, for the master too), so no rider exists while a total is written and no writer of the initiative meets a controlled mount
+// that carries one. The master's marks of a mount are allowed in SETUP: they carry no rider.
+func TestMountedCombat_NoRideIsMadeBeforeTheCombatRuns(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	e := c.setupUnplaced(t)
+	if e.GetStatus() != playv1.EncounterStatus_ENCOUNTER_STATUS_SETUP {
+		t.Fatalf("premise: the combat is %v, want SETUP", e.GetStatus())
+	}
+	c.mustMark(t, "Ogro", "controlled")
+	c.mustMove(t, c.master, "Ogro", 7, 7)
+	for who, u := range map[string]*user{"the rider's player": c.caio, "the master": c.master} {
+		_, err := c.mountAs(t, u, "Toren", "Ogro")
+		wantBlockedBy(t, "a mount in SETUP by "+who, err, blockedNotActive)
+	}
+	if got := c.rideRowOf(t, "Toren"); got.MountedOn != "" {
+		t.Errorf("Toren rides %s in SETUP, want nothing", got.MountedOn)
+	}
+}
