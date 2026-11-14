@@ -551,7 +551,7 @@ func (s *Service) mayMove(ctx context.Context, a *moveAttempt) error {
 	switch {
 	case a.c.enc.Status != statusActive:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-	case !a.onTurn: // not in the turn that is running, or its part ended (a controlled mount's is its rider's)
+	case !a.onTurn || !actsNow(a.c.enc, a.target): // not in the turn that is running, or a part of the pair ended: a controlled mount moves in both its rider's part and its own
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 	case !placed(a.target):
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "you are not on the map yet; ask the master")
@@ -1103,7 +1103,7 @@ func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encoun
 	switch {
 	case enc.Status != statusActive:
 		return who, sight, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-	case !actsNow(enc, actor):
+	case !actsNow(enc, actor) || !actsNow(enc, who): // the rider's part and the mount's own
 		return who, sight, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 	}
 	return who, sight, s.mustNotBeDown(ctx, nil, m.CampaignID, actor)
