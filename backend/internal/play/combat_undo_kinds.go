@@ -54,6 +54,8 @@ var undoers = map[string]func(*undoer, context.Context, actionEvent) error{
 	eventWildShapeEnded:    (*undoer).wildShapeEnded,
 	eventFamiliarSight:     (*undoer).familiarSight,
 	eventLegendarySpent:    (*undoer).legendaryBack,
+	eventActionReadied:     (*undoer).readiedBack,
+	eventReadiedFired:      (*undoer).readiedFiredBack,
 
 	eventCombatantMounted:    (*undoer).mountBack,
 	eventCombatantDismounted: (*undoer).dismountBack,
@@ -909,7 +911,12 @@ func (u *undoer) castSpentBack(ctx context.Context, who playdb.Combatant, ev act
 			return err
 		}
 	}
-	if ev.Slot == nil {
+	return u.castSlotBack(ctx, who, ev)
+}
+
+// castSlotBack gives back the slot a cast spent, a player's through its vitals, an NPC's on its combatant.
+func (u *undoer) castSlotBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	if ev.Slot == nil || ev.Readied.released() { // the slot of a readied spell's release was spent at Ready: its undo keeps it spent
 		return nil
 	}
 	if who.Kind == kindPlayer {

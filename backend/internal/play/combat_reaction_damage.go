@@ -83,8 +83,10 @@ func cuttingAsks(ask, roll string) bool {
 
 // holdAttackRoll holds an attack roll that Cutting Words can change: nothing is rolled
 // or spent until the windows are answered (the replay subtracts the die from the roll).
-func (s *Service) holdAttackRoll(ctx context.Context, c *combatTx, m authz.Membership, req *playv1.RollAttackRequest, cs []playdb.Combatant, attacker, target playdb.Combatant, key string) (actionEvent, bool, error) {
-	if c.replay != nil || req.GetCatchWindowId() != "" {
+// A Deflect Missiles throw back (throwBack) is not held: the caller says so, since
+// catch_window_id also names a readied attack's window, which is held as any attack.
+func (s *Service) holdAttackRoll(ctx context.Context, c *combatTx, m authz.Membership, req *playv1.RollAttackRequest, cs []playdb.Combatant, attacker, target playdb.Combatant, key string, throwBack bool) (actionEvent, bool, error) {
+	if c.replay != nil || throwBack {
 		return actionEvent{}, false, nil
 	}
 	specs, err := s.cuttingWindows(ctx, c, cs, attacker, "attack", windowTrigger{Actor: attacker.ID, Target: target.ID, Key: key})

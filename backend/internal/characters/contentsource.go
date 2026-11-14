@@ -199,7 +199,7 @@ func (f catalogFilter) gone(key string, retired bool) bool {
 	return g
 }
 
-// dropRetired takes the archived and switched off entries out of the six lists.
+// dropRetired takes the archived and switched off entries out of the seven lists.
 func (f catalogFilter) dropRetired(out *rulesv1.Content) {
 	out.Races = slices.DeleteFunc(out.Races, func(r *rulesv1.Race) bool { return f.gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
 	out.Subraces = slices.DeleteFunc(out.Subraces, func(r *rulesv1.Subrace) bool { return f.gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
@@ -207,6 +207,7 @@ func (f catalogFilter) dropRetired(out *rulesv1.Content) {
 	out.Subclasses = slices.DeleteFunc(out.Subclasses, func(r *rulesv1.Subclass) bool { return f.gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
 	out.Backgrounds = slices.DeleteFunc(out.Backgrounds, func(r *rulesv1.Background) bool { return f.gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
 	out.Spells = slices.DeleteFunc(out.Spells, func(r *rulesv1.Spell) bool { return f.gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
+	out.Weapons = slices.DeleteFunc(out.Weapons, func(r *rulesv1.Weapon) bool { return f.gone(r.GetKey(), r.GetArchived() || r.GetOff()) })
 }
 
 // dropOrphans takes out an entry whose required parent was taken out.

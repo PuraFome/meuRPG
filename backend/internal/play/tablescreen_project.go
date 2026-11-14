@@ -268,6 +268,8 @@ func tvLogLine(e *playv1.CombatLogEntry) (string, bool) {
 			return actor + " conjurou uma magia", true
 		}
 		return actor + " conjurou " + what, true
+	case playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:
+		return actor + " preparou uma ação", true
 	case playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:
 		if what == "" {
 			return actor + " agiu", true

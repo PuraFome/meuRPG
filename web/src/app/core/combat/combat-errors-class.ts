@@ -1,6 +1,6 @@
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 
-/** The refusals of what a class or a table maneuver asks of the turn: what happened and what to do instead. */
+/** The refusals of what a class or a table maneuver asks of the turn, and of Ready (Preparar): what happened and what to do instead. */
 export const CLASS_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = new Map([
   [
     EncounterBlockedReason.RECKLESS_TOO_LATE,
@@ -17,5 +17,21 @@ export const CLASS_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = n
   [
     EncounterBlockedReason.WILD_SHAPE_ENDED,
     'A forma já acabou. Para virar fera de novo, use Forma Selvagem.',
+  ],
+  [
+    EncounterBlockedReason.READY_TRIGGER,
+    'Escreva o gatilho da ação preparada, com até 200 caracteres. Nada foi gasto.',
+  ],
+  [
+    EncounterBlockedReason.READY_ACTION,
+    'Essa ação não pode ser preparada agora. Escolha outra. Nada foi gasto.',
+  ],
+  [
+    EncounterBlockedReason.READY_SPELL_TIME,
+    'Só uma magia de 1 ação pode ser preparada. Escolha outra. Nada foi gasto.',
+  ],
+  [
+    EncounterBlockedReason.READY_OWN_TURN,
+    'A ação preparada só dispara fora do turno de quem a preparou. Nada foi gasto.',
   ],
 ]);

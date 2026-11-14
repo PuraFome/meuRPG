@@ -587,6 +587,23 @@ type ReactionWindow struct {
 	AnsweredAt      *time.Time
 }
 
+type ReadiedAction struct {
+	ID           string
+	EncounterID  string
+	CombatantID  string
+	Round        int32
+	TriggerText  string
+	Kind         string
+	ActionKey    *string
+	ActionNamePt string
+	SpellCastID  *string
+	MoveFt       int32
+	SlotLevel    int32
+	TargetID     *string
+	Status       string
+	CreatedAt    time.Time
+}
+
 type RevivifyRequest struct {
 	ID                string
 	CampaignID        string

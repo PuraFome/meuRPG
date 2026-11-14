@@ -64,6 +64,9 @@ type windowTrigger struct {
 	// player), or the spell a concentration window is for.
 	Spell string `json:"spell,omitempty"`
 	Level int32  `json:"level,omitempty"`
+	// HeldSpell is the readied spell a concentration window's Spell (concentrationReadied) holds: the master's and the
+	// readier's player's to read (RN-10).
+	HeldSpell string `json:"held_spell,omitempty"`
 	// Zone is the area a spell keeps on the map that asks the saving throw of an EffectSave window
 	// (zones_save.go); Phase is then "zone_enter" or "zone_start".
 	Zone string `json:"zone,omitempty"`
@@ -109,6 +112,8 @@ type windowTrigger struct {
 	Held []string `json:"held,omitempty"`
 	// Bonus is what Parry adds to the armor class against the hit (ParryKind).
 	Bonus int32 `json:"bonus,omitempty"`
+	// Readied is the readied action (readied_actions.id) a READIED window was fired for.
+	Readied string `json:"readied,omitempty"`
 }
 
 // windowOutcome is what an answered window did: kept with the window, and, for the
@@ -320,6 +325,9 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 	case reaction.Contest:
 		waits, err := contestStillWaits(ctx, c, w)
 		return !waits, true, err
+	case reaction.Readied:
+		gone, err = readiedGone(ctx, c, t)
+		return gone, true, err
 	case reaction.LegendaryResistance:
 		if resistGone(t, byID) {
 			return true, true, nil

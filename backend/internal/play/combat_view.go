@@ -142,6 +142,8 @@ type encounterData struct {
 	riders      []playdb.HitRider
 	// zones are the areas spells keep on the map.
 	zones []*zone
+	// readied are the readied actions that wait (ready_turn.go).
+	readied []playdb.ReadiedAction
 }
 
 // loadEncounter reads a combat's combatants, in turn order.
@@ -178,8 +180,12 @@ func loadEncounter(ctx context.Context, q *playdb.Queries, enc playdb.Encounter,
 	if err != nil {
 		return nil, err
 	}
+	readied, err := q.ListWaitingReadiedActions(ctx, enc.ID)
+	if err != nil {
+		return nil, fmt.Errorf("list the readied actions: %w", err)
+	}
 	cs = withSilenceDeaf(cs, zones)
-	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, setupOffers: setupOffers, riders: riders, zones: zones}, nil
+	return &encounterData{enc: enc, cs: cs, states: states, requests: requests, holds: holds, allHolds: allHolds, setupOffers: setupOffers, riders: riders, zones: zones, readied: readied}, nil
 }
 
 // openInitiatives are the questions of the initiatives of a combat in SETUP that wait for an answer, by character: the
@@ -470,9 +476,11 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 	p.TurnPartEnded = r.turn.flags && e.Status == statusActive && c.TurnState == turnEnded
 	p.States = statesFor(r.byCombatant[c.ID], d.cs, v)
 	p.ConditionSources = conditionSourcesFor(c, d.cs, v, r.names)
-	if v.master || v.owns(c) { // the two things that decide whether a rage ends
+	if v.master || v.owns(c) { // the two things that decide whether a rage ends, and the readied action (RN-10)
 		p.AttackedHostileSinceLastTurn, p.TookDamageSinceLastTurn = c.AttackedHostile, c.TookDamage
+		p.Readied = readiedView(d.readied, c, r.names)
 	}
+	heldSpellView(p, p.GetReadied(), c)
 	return p
 }
 

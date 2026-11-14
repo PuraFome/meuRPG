@@ -18,6 +18,10 @@ var featUnmetKinds = map[string]rulesv1.FeatUnmetKind{
 	rules.FeatUnmetLevel:          rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_LEVEL,
 	rules.FeatUnmetSize:           rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_SIZE,
 	rules.FeatUnmetLacksFeature:   rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_LACKS_FEATURE,
+	rules.FeatUnmetClassLevel:     rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_CLASS_LEVEL,
+	rules.FeatUnmetPact:           rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_PACT,
+	rules.FeatUnmetSpell:          rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_SPELL,
+	rules.FeatUnmetOption:         rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_OPTION,
 }
 
 // featOptionsToProto is the feats a character may take, as the app's feat picker reads
@@ -44,8 +48,12 @@ func featOptionOf(o rules.FeatOption) *rulesv1.FeatOption {
 		Prerequisite: &rulesv1.FeatPrerequisite{
 			ProficiencyKey: p.Proficiency, Spellcasting: p.Spellcasting, RaceKey: p.Race, Level: i32(p.Level),
 			Races: p.Races, Size: p.Size, LacksFeatureKey: p.LacksFeature,
+			RequiresPact: p.RequiresPact, RequiresSpellKey: p.RequiresSpell, RequiresOptionKeys: p.RequiresOptions,
 		},
 		LacksFeatureNamePt: o.LacksFeatureNamePT,
+	}
+	if p.ClassKey != "" {
+		out.Prerequisite.ClassLevel = &rulesv1.FeatClassLevel{ClassKey: p.ClassKey, Level: i32(p.ClassLevel)}
 	}
 	if len(p.Minimums) > 0 {
 		out.Prerequisite.Minimums = abilityScores(p.Minimums)
