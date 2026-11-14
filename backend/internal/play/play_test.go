@@ -546,7 +546,10 @@ func (noSheets) LockSheets(context.Context, pgx.Tx, string, time.Time) (int64, e
 	return 0, errors.New("not in this test")
 }
 
-type noVitals struct{ RestKeeper }
+type noVitals struct {
+	RestKeeper
+	ItemKeeper
+}
 
 func (noVitals) ListVitals(context.Context, string) ([]*playv1.CharacterVitals, error) {
 	return nil, errors.New("not in this test")

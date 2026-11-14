@@ -10,6 +10,7 @@ import (
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/uid"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -21,13 +22,14 @@ import (
 // MaxAmmunition is the most pieces of one kind a character holds.
 const MaxAmmunition = 9999
 
+// The refusals are package link's, so package play tells them apart without importing this one.
 var (
 	// ErrNoAmmunition: no piece of the kind is left (or the character never held any).
-	ErrNoAmmunition = errors.New("no ammunition left")
+	ErrNoAmmunition = link.ErrNoAmmunition
 	// ErrAmmunitionRecovered: the pieces of the character's last combat were already taken back.
-	ErrAmmunitionRecovered = errors.New("the ammunition of the last combat was already recovered")
+	ErrAmmunitionRecovered = link.ErrAmmunitionRecovered
 	// ErrNothingToRecover: the character fired nothing in that combat.
-	ErrNothingToRecover = errors.New("no ammunition was fired in that combat")
+	ErrNothingToRecover = link.ErrNothingToRecover
 )
 
 // fillAmmunition fills FullSheet.ammunition from the stored rows: one entry per kind with pieces or fired in the

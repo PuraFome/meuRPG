@@ -76,6 +76,8 @@ type SheetLocker interface {
 type VitalsKeeper interface {
 	// RestKeeper is the rests and the resources that move points between the vitals.
 	RestKeeper
+	// ItemKeeper is the charges of the magic items and the ammunition, which also belong to the character.
+	ItemKeeper
 	// ListVitals returns the vitals of the campaign's living, active player
 	// characters, oldest first.
 	ListVitals(ctx context.Context, campaignID string) ([]*playv1.CharacterVitals, error)
@@ -762,6 +764,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewCombatServiceHandler(s, opts...))
 	handle(playv1connect.NewContestServiceHandler(s, opts...))
 	handle(playv1connect.NewResourceServiceHandler(s, opts...))
+	handle(playv1connect.NewChargesServiceHandler(s, opts...))
 	handle(playv1connect.NewCastingServiceHandler(s, opts...))
 	handle(playv1connect.NewFeatureServiceHandler(s, opts...))
 	handle(playv1connect.NewPuzzleServiceHandler(s, opts...))

@@ -134,6 +134,11 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um item que não recarrega (um talismã, um escaravelho) guarda o que sobrou até o mestre corrigir.
   Salvar a ficha nunca muda as cargas, e tirar um item da ficha descarta o que ele gastou.
   Um jogador lê as cargas só dos próprios personagens, e o mestre lê todas.
+- **Munição (SRD 5.1, "Weapons": a propriedade de munição).**
+  Flechas, virotes, balas de funda e dardos de zarabatana são contados na ficha, um número para cada tipo.
+  O dono define a quantidade enquanto a ficha está aberta para edição, e o mestre a qualquer momento.
+  Depois que um combate termina, um minuto procurando no campo de batalha devolve metade, arredondada para baixo, das peças de cada tipo que o personagem disparou nele, uma vez para cada combate.
+  Um jogador lê a munição só dos próprios personagens, e o mestre lê toda.
 - **Sintonização.**
   Um personagem fica sintonizado com no máximo três itens mágicos ao mesmo tempo, e só um item que a ficha lista como um que pede sintonização pode ser sintonizado.
   Um descanso curto ou longo abre uma janela para cada personagem que ele cobre, e nessa janela o dono sintoniza um item ou encerra uma sintonização; o mestre faz qualquer um dos dois a qualquer hora.

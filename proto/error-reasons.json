@@ -478,6 +478,22 @@
     },
     {
       "module": "play",
+      "message": "meurpg.play.v1.ChargesBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "ChargesBlockedReason",
+          "reasons": [
+            "REGAIN_FACE_NEEDED",
+            "COMBAT_RUNNING",
+            "ALREADY_RECOVERED"
+          ],
+          "unsent": []
+        }
+      ]
+    },
+    {
+      "module": "play",
       "message": "meurpg.play.v1.PuzzleInvalid",
       "fields": [
         {

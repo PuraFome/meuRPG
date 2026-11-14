@@ -87,6 +87,7 @@ function fullyPopulatedFullSheet(): FullSheet {
     weaponMarks: [],
     itemBonuses: [],
     magicItems: [],
+    ammunition: [],
     cantripKeys: ['spell:fire-bolt', 'spell:ray-of-frost', 'spell:minor-illusion'],
     knownSpellKeys: [
       'spell:magic-missile',

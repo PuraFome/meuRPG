@@ -195,6 +195,7 @@ function minimalFullSheet(overrides: Partial<FullSheet> = {}): FullSheet {
     cuttingWordsAsk: CuttingWordsAsk.UNSPECIFIED,
     xpValue: 0,
     size: '',
+    ammunition: [],
     ...overrides,
   };
 }

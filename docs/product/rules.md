@@ -144,6 +144,11 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   An item that does not recharge (a talisman, a scarab) keeps what is left until the master corrects it.
   A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
   A player reads the charges of their own characters only, and the master reads all of them.
+- **Ammunition (SRD 5.1, "Weapons": the ammunition property).**
+  Arrows, bolts, sling bullets and blowgun needles are counted on the sheet, one number for each kind.
+  The owner sets the count while the sheet is open to editing, and the master at any time.
+  After a combat ends, a minute spent searching the battlefield gives back half, rounded down, of the pieces of each kind the character fired in it, once for each combat.
+  A player reads the ammunition of their own characters only, and the master reads all of them.
 - **Wholeness of Body of the Open Hand monk (level 6).**
   The monk's own action heals three times the monk level in hit points, up to the maximum.
   It has no roll and no dice to type.

@@ -278,6 +278,7 @@ type user struct {
 	lasting    playv1connect.LastingEffectServiceClient
 	favor      playv1connect.FavorServiceClient
 	resource   playv1connect.ResourceServiceClient
+	charges    playv1connect.ChargesServiceClient
 	casting    playv1connect.CastingServiceClient
 	feature    playv1connect.FeatureServiceClient
 	encounters playv1connect.EncounterServiceClient
@@ -316,6 +317,7 @@ func (h *harness) clients(userID string) *user {
 		lasting:    playv1connect.NewLastingEffectServiceClient(c, url),
 		favor:      playv1connect.NewFavorServiceClient(c, url),
 		resource:   playv1connect.NewResourceServiceClient(c, url),
+		charges:    playv1connect.NewChargesServiceClient(c, url),
 		casting:    playv1connect.NewCastingServiceClient(c, url),
 		feature:    playv1connect.NewFeatureServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
