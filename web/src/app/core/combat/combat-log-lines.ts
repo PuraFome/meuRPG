@@ -38,6 +38,7 @@ import { contestText } from './combat-log-contest';
 import { effectEndedText, effectLine, exhaustionLogText } from './combat-log-effects';
 import { LogContext, LogLine, NO_CONTEXT } from './combat-log-types';
 import { the } from './combat-log-words';
+import { MOUNT_LINES } from './combat-log-mount';
 
 /** What a line builder is given: the entry, the fields every line shares, the combat's name and who is reading. */
 interface LineArgs {
@@ -49,7 +50,10 @@ interface LineArgs {
 
 /** One builder per kind of entry, so a new kind is one more row and no function grows with it. A builder answers `null` for an
  * entry it cannot write (an effect with no effect in it). */
-const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | null> = new Map([
+const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | null> = new Map<
+  CombatLogKind,
+  (args: LineArgs) => LogLine | null
+>([
   [
     CombatLogKind.COMBAT_BEGUN,
     ({ base, encounterName, ctx }) => {
@@ -253,34 +257,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       return { ...base, icon: 'door_open', text: ' abriu a porta' };
     },
   ],
-  // A rider got on or off a mount (SRD 5.1, "Mounting and Dismounting"): "Toren montou em Pônei". The server sends the line only to who
-  // sees both combatants; the master's alone when either is hidden.
-  [
-    CombatLogKind.MOUNTED,
-    ({ base, e }) => {
-      return { ...base, icon: 'pets', text: ` montou em ${e.targetLabel || 'uma montaria'}` };
-    },
-  ],
-  [
-    CombatLogKind.DISMOUNTED,
-    ({ base, e }) => {
-      return { ...base, icon: 'pets', text: ` desmontou de ${e.targetLabel || 'uma montaria'}` };
-    },
-  ],
-  // A rider's save to stay on its mount, and its fall (SRD 5.1, "Mounted Combat"). The numbers are the master's and the rider's player's;
-  // another player reads the outcome alone (RN-10).
-  [
-    CombatLogKind.MOUNT_SAVE,
-    ({ base, e }) => {
-      return { ...base, icon: 'pets', text: ` se segurou na montaria${mountSaveRoll(e)}` };
-    },
-  ],
-  [
-    CombatLogKind.RIDER_THROWN,
-    ({ base, e }) => {
-      return { ...base, icon: 'pets', text: ` caiu da montaria${mountSaveRoll(e)}${landing(e)}` };
-    },
-  ],
+  ...MOUNT_LINES,
   [
     CombatLogKind.EFFECT_ENDED,
     ({ e, base, ctx }) => {
@@ -434,28 +411,4 @@ export function logLine(
 ): LogLine | null {
   const base = { id: e.id, actor: e.actorLabel, hidden: e.hidden, undoable: e.undoable };
   return LINE_BUILDERS.get(e.kind)?.({ e, base, encounterName, ctx }) ?? null;
-}
-
-/** The numbers of a rider's save: "(15 + 2 = 17, CD 10)" for the master and the rider's player, "(falha automática)" for a rider that
- * failed with no d20, and nothing for another player, who is sent no number. */
-function mountSaveRoll(e: CombatLogEntry): string {
-  const save = e.mountSave;
-  if (save?.autoFail) {
-    return ' (falha automática)';
-  }
-  if (!save?.d20) {
-    return '';
-  }
-  const modifier = save.total - save.d20;
-  const sign = modifier < 0 ? '-' : '+';
-  return ` (${save.d20} ${sign} ${Math.abs(modifier)} = ${save.total}, CD ${save.dc})`;
-}
-
-/** The master's note of a fall that found no free square next to the mount. */
-function landing(e: CombatLogEntry): string {
-  const save = e.mountSave;
-  if (!save?.noRoomNextToMount) {
-    return '';
-  }
-  return ` e parou em (${save.landedCol}, ${save.landedRow}), sem lugar ao lado de ${e.targetLabel || 'a montaria'}`;
 }
