@@ -138,7 +138,11 @@ describe('ActionGroups: a feature taken with UseFeature (#743)', () => {
   });
 
   it('does not let a locked row be pressed, marked or not', () => {
-    const spent = { enabled: false, masterMayOverride: true, reason: { code: DisabledReasonCode.ACTION_USED } };
+    const spent = {
+      enabled: false,
+      masterMayOverride: true,
+      reason: { code: DisabledReasonCode.ACTION_USED },
+    };
     const { row, used, fixture } = setup([entity(spent)], 'Esperando o mestre');
     (row('Entidade simbiótica').querySelector('button') as HTMLButtonElement).click();
     fixture.detectChanges();
