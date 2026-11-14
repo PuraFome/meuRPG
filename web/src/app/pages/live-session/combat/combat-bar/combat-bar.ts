@@ -1,3 +1,4 @@
+import { FormChip } from '../../../../shared/wild-shape/form-chip';
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
@@ -42,6 +43,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
 @Component({
   selector: 'app-combat-bar',
   imports: [
+    FormChip,
     CombatantToken,
     MatButtonModule,
     MatIconModule,

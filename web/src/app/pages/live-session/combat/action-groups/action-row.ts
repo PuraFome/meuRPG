@@ -15,7 +15,8 @@ const ECONOMY_WORD: Readonly<Record<RowEconomy, string>> = {
   action: 'Ação',
   bonus: 'Bônus',
   reaction: 'Reação',
-  free: 'Sem custo',
+  // The word of the economy, not of the price: a free action takes no Action, Bonus action or Reaction (a use may still be spent).
+  free: 'Sem ação',
 };
 
 let nextId = 0;

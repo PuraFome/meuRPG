@@ -48,6 +48,7 @@ import {
 import { CombatColumn } from './combat-column/combat-column';
 import { EquipmentPanel } from './equipment-panel/equipment-panel';
 import { SheetEquip } from './character-sheet-equip';
+import { createSheetMagicItems } from './magic-items/sheet-magic-items';
 import { openWeaponMarks } from './weapon-marks/weapon-marks-sheet';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { FeaturesPanel } from './features-panel/features-panel';
@@ -358,6 +359,19 @@ export class CharacterSheetPage {
     },
     apply: (characterId, vm) => this.applyWrite(characterId, vm),
     openMarksSheet: (data) => openWeaponMarks(this.dialog, this.bottomSheet, data),
+  });
+
+  /** The sheet's magic items and attunement (`SheetMagicItems`). */
+  protected readonly magic = createSheetMagicItems({
+    source: this.source,
+    dialog: this.dialog,
+    bottomSheet: this.bottomSheet,
+    campaignId: () => this.campaignId(),
+    characterId: () => (this.destroyed ? '' : this.characterId),
+    reload: () => this.reloadQuietly(),
+    state: this.state,
+    vitals: this.vitals,
+    apply: (characterId, vm) => this.applyWrite(characterId, vm),
   });
 
   /** Reads the character again without the loading state, so the page does not blink; `true` when the new sheet is on screen. */

@@ -45,6 +45,20 @@ describe('applyVitals', () => {
     ).toBe(17);
   });
 
+  it('takes the closing of the attunement window at the same revision, and never its reopening', () => {
+    const open = [pensantusVitals({ revision: 5, attunementOpen: true })];
+    expect(
+      applyVitals(open, pensantusVitals({ revision: 5, attunementOpen: false }))[0].attunementOpen,
+    ).toBe(false);
+    const shut = [pensantusVitals({ revision: 5, attunementOpen: false })];
+    expect(
+      applyVitals(shut, pensantusVitals({ revision: 5, attunementOpen: true }))[0].attunementOpen,
+    ).toBe(false);
+    expect(
+      applyVitals(open, pensantusVitals({ revision: 4, attunementOpen: false }))[0].attunementOpen,
+    ).toBe(true);
+  });
+
   it("drops the familiar's sight when the same revision arrives without it", () => {
     const sight = { creatureId: 'nanquim', inCombat: true };
     const list = [pensantusVitals({ revision: 5, familiarSight: sight })];

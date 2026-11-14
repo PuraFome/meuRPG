@@ -10,11 +10,8 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { ContestTurnState } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import type { EffectNote } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
-import { joinDots, tight } from '../../../../core/format/text';
 import { contestNotes } from '../../../../core/combat/contest-view';
 import { noteParts } from '../../../../core/effects/effects';
-import { metersFixed } from '../../../../core/units';
-import { moveLine } from '../../../../core/combat/move-line';
 import { article } from '../../../../core/combat/combat-log';
 import {
   combatantInitial,
@@ -37,9 +34,8 @@ import {
   playsBefore,
 } from '../../../../core/combat/joint-turn';
 import { keepClear } from '../../../../shared/scroll-clearance/scroll-clearance';
-import { EconomyShapes, economyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
-import { WildBand } from '../../../../shared/wild-shape/wild-band';
+import { FormChip } from '../../../../shared/wild-shape/form-chip';
 import type { FallNote } from '../../../../core/traps/trap-log';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { EndPart } from '../joint-turn/end-part';
@@ -74,7 +70,6 @@ import { isMasterWait } from '../../../../core/combat/reactions';
     CombatantTags,
     CombatantToken,
     ConcentrationLine,
-    EconomyShapes,
     EndPart,
     EndTurn,
     JointOthers,
@@ -87,7 +82,7 @@ import { isMasterWait } from '../../../../core/combat/reactions';
     OwnNumbers,
     RageStatus,
     TurnReaction,
-    WildBand,
+    FormChip,
   ],
   templateUrl: './turn-panel.html',
   styleUrl: './turn-panel.scss',
@@ -131,13 +126,13 @@ export class TurnPanel {
   readonly hitPoints = input<OwnHitPoints | null>(null);
 
   readonly endTurn = output<void>();
-  /** "Mover" of the turn bar (from 1024px): the page opens the move page. */
-  readonly move = output<void>();
   /** "Ataque de oportunidade": the key of the melee attack. */
   readonly opportunity = output<string>();
   readonly endConcentration = output<void>();
   /** "Encerrar fúria": the id of the raging character. */
   readonly endRage = output<string>();
+  /** The time the form has left, as the server writes it ("52 min restantes"); empty when the reader may not have it. */
+  readonly formTime = input('');
 
   private readonly hero = viewChild<ElementRef<HTMLElement>>('hero');
   private readonly bar = viewChild<ElementRef<HTMLElement>>('bar');
@@ -171,13 +166,6 @@ export class TurnPanel {
           max: c.wildShapeHitPointsMax,
         }
       : null;
-  });
-  /** "Sem magias · 12,0 m": the beast's armor class is the one on the vitals card, once on the page. */
-  protected readonly formDetail = computed(() => {
-    const c = this.own();
-    return c?.wildShapeBeastKey
-      ? joinDots(['Sem magias', tight(metersFixed(c.speedDft / 10))])
-      : '';
   });
   /** The player looks through their familiar's eyes: the character is blind and does not attack (the master resolves it, MR-036). */
   protected readonly blind = computed(() => !!this.own()?.familiarSightCreatureId);
@@ -222,36 +210,6 @@ export class TurnPanel {
       ? `É a sua vez, mas com ${pv} você não age. Role o teste contra a morte.`
       : `É a sua vez, mas com ${pv} você não age.`;
   });
-  /** The shapes of the card: the Ação, the Bônus and the Reação; with Extra Attack the Ação says the attacks left. */
-  protected readonly cardShapes = computed(() => {
-    const c = this.own();
-    return c
-      ? economyShapes(c, {
-          attacksLeft: this.attacksLeft(),
-          attacksPerAction: this.attacksPerAction(),
-          // With no map the movement is a number the player spends by saying it: the walker keeps the count (MR-025).
-          moveText: this.theatre() && this.line().canMove ? this.line().left : null,
-        })
-      : [];
-  });
-  /** The turn bar's shapes: the same and the walker with the metres left. */
-  protected readonly bannerShapes = computed(() => {
-    const c = this.own();
-    return c
-      ? economyShapes(c, {
-          attacksLeft: this.attacksLeft(),
-          attacksPerAction: this.attacksPerAction(),
-          moveText: this.line().canMove ? this.line().left : null,
-        })
-      : [];
-  });
-  /** The movement left, and whether there is a move to make. */
-  protected readonly line = computed(() => {
-    const c = this.own();
-    return c
-      ? moveLine(c, this.contest()?.grappled === true)
-      : { lead: '', rest: '', left: '', percent: 0, canMove: false };
-  });
   protected readonly strip = computed(() => this.encounter().combatants);
   /** The pill of a joint turn: "Turno conjunto com Brisa" for a member, "Turno
    * conjunto" for the other players. A group of NPCs alone has none (RN-20). */
@@ -268,8 +226,6 @@ export class TurnPanel {
   protected readonly afterPrefix = computed(() =>
     this.banner().joint ? 'Depois de vocês' : 'Depois de você',
   );
-  /** "depois de você": the card's second line reads "Rodada 3 · depois de você: Toren". */
-  protected readonly afterLower = computed(() => this.afterPrefix().toLowerCase());
   /** "O turno passa quando você e a Brisa encerrarem." */
   protected readonly footerNote = computed(() => {
     const joint = this.banner().joint;
