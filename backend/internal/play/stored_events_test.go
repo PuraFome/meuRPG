@@ -96,6 +96,12 @@ var otherWriters = map[string][]storedShape{
 	"favor_granted":             {storedShapeOf[favorGrantedEvent]("today.json")},
 	"favor_spent":               {storedShapeOf[favorSpentEvent]("today.json")},
 	"favor_passed":              {storedShapeOf[favorPassedEvent]("today.json")},
+	"favor_pass_asked":          {storedShapeOf[favorPassEvent]("today.json")},
+	"favor_pass_refused":        {storedShapeOf[favorPassEvent]("today.json")},
+	"favor_pass_canceled":       {storedShapeOf[favorPassEvent]("today.json")},
+	"favor_refund_prompted":     {storedShapeOf[favorRefundEvent]("today.json")},
+	"favor_refunded":            {storedShapeOf[favorRefundEvent]("today.json")},
+	"favor_refund_kept":         {storedShapeOf[favorRefundEvent]("today.json")},
 }
 
 // vitalsEvent is the payload vitalsPayload writes, named so that a test can reflect on it.

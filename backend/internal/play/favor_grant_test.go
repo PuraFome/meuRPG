@@ -505,6 +505,18 @@ func checkFavorAuthorization(t *testing.T, f favorTable) {
 			_, err := c.PassFavor(ctx, connect.NewRequest(&playv1.PassFavorRequest{CampaignId: f.campaign, FromCharacterId: f.character, ToCharacterId: f.character, IdempotencyKey: newKey()}))
 			return err
 		}, [4]connect.Code{connect.CodeUnimplemented, connect.CodeUnimplemented, connect.CodeUnimplemented, connect.CodeNotFound}},
+		{"AnswerFavorPass", func(ctx context.Context, c client) error {
+			_, err := c.AnswerFavorPass(ctx, connect.NewRequest(&playv1.AnswerFavorPassRequest{CampaignId: f.campaign, PassId: f.character, Accept: true, IdempotencyKey: newKey()}))
+			return err
+		}, [4]connect.Code{connect.CodeUnimplemented, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound}},
+		{"CancelFavorPass", func(ctx context.Context, c client) error {
+			_, err := c.CancelFavorPass(ctx, connect.NewRequest(&playv1.CancelFavorPassRequest{CampaignId: f.campaign, PassId: f.character, IdempotencyKey: newKey()}))
+			return err
+		}, [4]connect.Code{connect.CodeUnimplemented, connect.CodeUnimplemented, connect.CodeUnimplemented, connect.CodeNotFound}},
+		{"AnswerFavorRefund", func(ctx context.Context, c client) error {
+			_, err := c.AnswerFavorRefund(ctx, connect.NewRequest(&playv1.AnswerFavorRefundRequest{CampaignId: f.campaign, PromptId: f.character, GiveBack: true, IdempotencyKey: newKey()}))
+			return err
+		}, [4]connect.Code{connect.CodeUnimplemented, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound}},
 	}
 	covered := map[string]bool{}
 	for _, r := range rows {

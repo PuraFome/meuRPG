@@ -295,6 +295,33 @@ type Encounter struct {
 	SunlightSquares    []byte
 }
 
+type FavorPass struct {
+	ID              string
+	CampaignID      string
+	GameSessionID   string
+	FromCharacterID string
+	ToCharacterID   string
+	AskedByUserID   string
+	Status          string
+	AskKey          string
+	ClosedKey       *string
+	CreatedAt       time.Time
+	ClosedAt        *time.Time
+}
+
+type FavorRefundPrompt struct {
+	ID            string
+	CampaignID    string
+	GameSessionID string
+	CharacterID   string
+	RollLabelPt   string
+	HiddenSources []byte
+	Status        string
+	AnswerKey     *string
+	CreatedAt     time.Time
+	AnsweredAt    *time.Time
+}
+
 type GameSession struct {
 	ID                  string
 	CampaignID          string

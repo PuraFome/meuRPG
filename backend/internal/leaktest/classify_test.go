@@ -44,7 +44,8 @@ const (
 // unbuilt are the procedures that answer `unimplemented` for now. The probe does not take that answer (HTTP 501) for the server
 // failing; a procedure leaves this list when it is built.
 var unbuilt = map[string]bool{
-	playv1connect.FavorServicePassFavorProcedure: true,
+	playv1connect.FavorServicePassFavorProcedure:       true,
+	playv1connect.FavorServiceCancelFavorPassProcedure: true,
 }
 
 type classified struct {
@@ -160,6 +161,9 @@ var notReads = map[string]classified{
 	playv1connect.CastingServiceConfirmCastTimePassedProcedure:                  {masterWrite, masterOnlyWhy},
 	playv1connect.CastingServiceEndActiveSpellProcedure:                         {playerAction, "a player ends a spell of their own character; the master any"},
 	playv1connect.FavorServiceGrantFavorProcedure:                               {masterWrite, masterOnlyWhy},
+	playv1connect.FavorServiceAnswerFavorPassProcedure:                          {masterWrite, masterOnlyWhy},
+	playv1connect.FavorServiceCancelFavorPassProcedure:                          {playerAction, "the giver's player gives up the pending ask of their own character; not built yet, it answers unimplemented (see unbuilt)"},
+	playv1connect.FavorServiceAnswerFavorRefundProcedure:                        {masterWrite, masterOnlyWhy},
 	playv1connect.FavorServicePassFavorProcedure:                                {playerAction, "the holder's player passes the Inspiration of their own character to another player character; not built yet, it answers unimplemented (see unbuilt)"},
 	playv1connect.LastingEffectServiceAdvanceGameTimeProcedure:                  {masterWrite, masterOnlyWhy},
 	playv1connect.LastingEffectServiceAddCharacterEffectProcedure:               {masterWrite, masterOnlyWhy},

@@ -42,6 +42,15 @@ const (
 	FavorServiceGetFavorProcedure = "/meurpg.play.v1.FavorService/GetFavor"
 	// FavorServicePassFavorProcedure is the fully-qualified name of the FavorService's PassFavor RPC.
 	FavorServicePassFavorProcedure = "/meurpg.play.v1.FavorService/PassFavor"
+	// FavorServiceAnswerFavorPassProcedure is the fully-qualified name of the FavorService's
+	// AnswerFavorPass RPC.
+	FavorServiceAnswerFavorPassProcedure = "/meurpg.play.v1.FavorService/AnswerFavorPass"
+	// FavorServiceCancelFavorPassProcedure is the fully-qualified name of the FavorService's
+	// CancelFavorPass RPC.
+	FavorServiceCancelFavorPassProcedure = "/meurpg.play.v1.FavorService/CancelFavorPass"
+	// FavorServiceAnswerFavorRefundProcedure is the fully-qualified name of the FavorService's
+	// AnswerFavorRefund RPC.
+	FavorServiceAnswerFavorRefundProcedure = "/meurpg.play.v1.FavorService/AnswerFavorRefund"
 )
 
 // FavorServiceClient is a client for the meurpg.play.v1.FavorService service.
@@ -51,9 +60,19 @@ type FavorServiceClient interface {
 	// GetFavor lists who has the Inspiration: every holder for the master, only the
 	// caller's own characters for a player.
 	GetFavor(context.Context, *connect.Request[v1.GetFavorRequest]) (*connect.Response[v1.GetFavorResponse], error)
-	// PassFavor hands the holder's Inspiration to another player character. Not built yet:
-	// it answers `unimplemented`.
+	// PassFavor asks to pass the holder's Inspiration to another player character: it stores a
+	// pending pass and nothing moves until the master answers. Only in an open session. A retry
+	// with the same key answers the same pass.
 	PassFavor(context.Context, *connect.Request[v1.PassFavorRequest]) (*connect.Response[v1.PassFavorResponse], error)
+	// AnswerFavorPass is the master's answer to a pending pass: accept moves the Inspiration
+	// (refused CANNOT_RECEIVE, to the master alone, when the receiver already has one),
+	// refuse keeps it with the giver. Only the master.
+	AnswerFavorPass(context.Context, *connect.Request[v1.AnswerFavorPassRequest]) (*connect.Response[v1.AnswerFavorPassResponse], error)
+	// CancelFavorPass gives a pending ask up. Only the giver's owner.
+	CancelFavorPass(context.Context, *connect.Request[v1.CancelFavorPassRequest]) (*connect.Response[v1.CancelFavorPassResponse], error)
+	// AnswerFavorRefund is the master's answer to a refund prompt: give back the Inspiration a
+	// roll spent for nothing, or keep it spent. Only the master.
+	AnswerFavorRefund(context.Context, *connect.Request[v1.AnswerFavorRefundRequest]) (*connect.Response[v1.AnswerFavorRefundResponse], error)
 }
 
 // NewFavorServiceClient constructs a client for the meurpg.play.v1.FavorService service. By
@@ -86,14 +105,35 @@ func NewFavorServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(favorServiceMethods.ByName("PassFavor")),
 			connect.WithClientOptions(opts...),
 		),
+		answerFavorPass: connect.NewClient[v1.AnswerFavorPassRequest, v1.AnswerFavorPassResponse](
+			httpClient,
+			baseURL+FavorServiceAnswerFavorPassProcedure,
+			connect.WithSchema(favorServiceMethods.ByName("AnswerFavorPass")),
+			connect.WithClientOptions(opts...),
+		),
+		cancelFavorPass: connect.NewClient[v1.CancelFavorPassRequest, v1.CancelFavorPassResponse](
+			httpClient,
+			baseURL+FavorServiceCancelFavorPassProcedure,
+			connect.WithSchema(favorServiceMethods.ByName("CancelFavorPass")),
+			connect.WithClientOptions(opts...),
+		),
+		answerFavorRefund: connect.NewClient[v1.AnswerFavorRefundRequest, v1.AnswerFavorRefundResponse](
+			httpClient,
+			baseURL+FavorServiceAnswerFavorRefundProcedure,
+			connect.WithSchema(favorServiceMethods.ByName("AnswerFavorRefund")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // favorServiceClient implements FavorServiceClient.
 type favorServiceClient struct {
-	grantFavor *connect.Client[v1.GrantFavorRequest, v1.GrantFavorResponse]
-	getFavor   *connect.Client[v1.GetFavorRequest, v1.GetFavorResponse]
-	passFavor  *connect.Client[v1.PassFavorRequest, v1.PassFavorResponse]
+	grantFavor        *connect.Client[v1.GrantFavorRequest, v1.GrantFavorResponse]
+	getFavor          *connect.Client[v1.GetFavorRequest, v1.GetFavorResponse]
+	passFavor         *connect.Client[v1.PassFavorRequest, v1.PassFavorResponse]
+	answerFavorPass   *connect.Client[v1.AnswerFavorPassRequest, v1.AnswerFavorPassResponse]
+	cancelFavorPass   *connect.Client[v1.CancelFavorPassRequest, v1.CancelFavorPassResponse]
+	answerFavorRefund *connect.Client[v1.AnswerFavorRefundRequest, v1.AnswerFavorRefundResponse]
 }
 
 // GrantFavor calls meurpg.play.v1.FavorService.GrantFavor.
@@ -111,6 +151,21 @@ func (c *favorServiceClient) PassFavor(ctx context.Context, req *connect.Request
 	return c.passFavor.CallUnary(ctx, req)
 }
 
+// AnswerFavorPass calls meurpg.play.v1.FavorService.AnswerFavorPass.
+func (c *favorServiceClient) AnswerFavorPass(ctx context.Context, req *connect.Request[v1.AnswerFavorPassRequest]) (*connect.Response[v1.AnswerFavorPassResponse], error) {
+	return c.answerFavorPass.CallUnary(ctx, req)
+}
+
+// CancelFavorPass calls meurpg.play.v1.FavorService.CancelFavorPass.
+func (c *favorServiceClient) CancelFavorPass(ctx context.Context, req *connect.Request[v1.CancelFavorPassRequest]) (*connect.Response[v1.CancelFavorPassResponse], error) {
+	return c.cancelFavorPass.CallUnary(ctx, req)
+}
+
+// AnswerFavorRefund calls meurpg.play.v1.FavorService.AnswerFavorRefund.
+func (c *favorServiceClient) AnswerFavorRefund(ctx context.Context, req *connect.Request[v1.AnswerFavorRefundRequest]) (*connect.Response[v1.AnswerFavorRefundResponse], error) {
+	return c.answerFavorRefund.CallUnary(ctx, req)
+}
+
 // FavorServiceHandler is an implementation of the meurpg.play.v1.FavorService service.
 type FavorServiceHandler interface {
 	// GrantFavor gives the Inspiration to a player character. Only the master.
@@ -118,9 +173,19 @@ type FavorServiceHandler interface {
 	// GetFavor lists who has the Inspiration: every holder for the master, only the
 	// caller's own characters for a player.
 	GetFavor(context.Context, *connect.Request[v1.GetFavorRequest]) (*connect.Response[v1.GetFavorResponse], error)
-	// PassFavor hands the holder's Inspiration to another player character. Not built yet:
-	// it answers `unimplemented`.
+	// PassFavor asks to pass the holder's Inspiration to another player character: it stores a
+	// pending pass and nothing moves until the master answers. Only in an open session. A retry
+	// with the same key answers the same pass.
 	PassFavor(context.Context, *connect.Request[v1.PassFavorRequest]) (*connect.Response[v1.PassFavorResponse], error)
+	// AnswerFavorPass is the master's answer to a pending pass: accept moves the Inspiration
+	// (refused CANNOT_RECEIVE, to the master alone, when the receiver already has one),
+	// refuse keeps it with the giver. Only the master.
+	AnswerFavorPass(context.Context, *connect.Request[v1.AnswerFavorPassRequest]) (*connect.Response[v1.AnswerFavorPassResponse], error)
+	// CancelFavorPass gives a pending ask up. Only the giver's owner.
+	CancelFavorPass(context.Context, *connect.Request[v1.CancelFavorPassRequest]) (*connect.Response[v1.CancelFavorPassResponse], error)
+	// AnswerFavorRefund is the master's answer to a refund prompt: give back the Inspiration a
+	// roll spent for nothing, or keep it spent. Only the master.
+	AnswerFavorRefund(context.Context, *connect.Request[v1.AnswerFavorRefundRequest]) (*connect.Response[v1.AnswerFavorRefundResponse], error)
 }
 
 // NewFavorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -149,6 +214,24 @@ func NewFavorServiceHandler(svc FavorServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(favorServiceMethods.ByName("PassFavor")),
 		connect.WithHandlerOptions(opts...),
 	)
+	favorServiceAnswerFavorPassHandler := connect.NewUnaryHandler(
+		FavorServiceAnswerFavorPassProcedure,
+		svc.AnswerFavorPass,
+		connect.WithSchema(favorServiceMethods.ByName("AnswerFavorPass")),
+		connect.WithHandlerOptions(opts...),
+	)
+	favorServiceCancelFavorPassHandler := connect.NewUnaryHandler(
+		FavorServiceCancelFavorPassProcedure,
+		svc.CancelFavorPass,
+		connect.WithSchema(favorServiceMethods.ByName("CancelFavorPass")),
+		connect.WithHandlerOptions(opts...),
+	)
+	favorServiceAnswerFavorRefundHandler := connect.NewUnaryHandler(
+		FavorServiceAnswerFavorRefundProcedure,
+		svc.AnswerFavorRefund,
+		connect.WithSchema(favorServiceMethods.ByName("AnswerFavorRefund")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.FavorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case FavorServiceGrantFavorProcedure:
@@ -157,6 +240,12 @@ func NewFavorServiceHandler(svc FavorServiceHandler, opts ...connect.HandlerOpti
 			favorServiceGetFavorHandler.ServeHTTP(w, r)
 		case FavorServicePassFavorProcedure:
 			favorServicePassFavorHandler.ServeHTTP(w, r)
+		case FavorServiceAnswerFavorPassProcedure:
+			favorServiceAnswerFavorPassHandler.ServeHTTP(w, r)
+		case FavorServiceCancelFavorPassProcedure:
+			favorServiceCancelFavorPassHandler.ServeHTTP(w, r)
+		case FavorServiceAnswerFavorRefundProcedure:
+			favorServiceAnswerFavorRefundHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -176,4 +265,16 @@ func (UnimplementedFavorServiceHandler) GetFavor(context.Context, *connect.Reque
 
 func (UnimplementedFavorServiceHandler) PassFavor(context.Context, *connect.Request[v1.PassFavorRequest]) (*connect.Response[v1.PassFavorResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.FavorService.PassFavor is not implemented"))
+}
+
+func (UnimplementedFavorServiceHandler) AnswerFavorPass(context.Context, *connect.Request[v1.AnswerFavorPassRequest]) (*connect.Response[v1.AnswerFavorPassResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.FavorService.AnswerFavorPass is not implemented"))
+}
+
+func (UnimplementedFavorServiceHandler) CancelFavorPass(context.Context, *connect.Request[v1.CancelFavorPassRequest]) (*connect.Response[v1.CancelFavorPassResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.FavorService.CancelFavorPass is not implemented"))
+}
+
+func (UnimplementedFavorServiceHandler) AnswerFavorRefund(context.Context, *connect.Request[v1.AnswerFavorRefundRequest]) (*connect.Response[v1.AnswerFavorRefundResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.FavorService.AnswerFavorRefund is not implemented"))
 }

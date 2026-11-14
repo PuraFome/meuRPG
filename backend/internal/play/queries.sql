@@ -2229,3 +2229,76 @@ DELETE FROM character_favor WHERE character_id = $1 AND campaign_id = $2 RETURNI
 -- name: HasCharacterFavor :one
 -- Says the character has the Inspiration, without taking it: a roll a reaction window holds is checked against it, and the replay spends it.
 SELECT EXISTS (SELECT 1 FROM character_favor WHERE character_id = $1 AND campaign_id = $2);
+
+-- name: InsertFavorPass :one
+-- No row comes back when the giver already has a pending pass (the partial unique index): the ask is refused PASS_PENDING. A retry of
+-- the same key finds its row with GetFavorPassByAskKey first.
+INSERT INTO favor_passes (campaign_id, game_session_id, from_character_id, to_character_id, asked_by_user_id, ask_key)
+VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT DO NOTHING
+RETURNING *;
+
+-- name: GetFavorPass :one
+SELECT * FROM favor_passes WHERE id = $1 AND campaign_id = $2;
+
+-- name: GetFavorPassByAskKey :one
+SELECT * FROM favor_passes WHERE campaign_id = $1 AND ask_key = $2;
+
+-- name: GetFavorPassByClosedKey :one
+SELECT * FROM favor_passes WHERE campaign_id = $1 AND closed_key = $2;
+
+-- name: ListPendingFavorPasses :many
+-- Every pending pass of the campaign, oldest first: the master's list.
+SELECT * FROM favor_passes WHERE campaign_id = $1 AND status = 'pending' ORDER BY created_at, id;
+
+-- name: ListPendingFavorPassesOfGivers :many
+-- The pending passes asked from these characters: a player reads their own asks.
+SELECT * FROM favor_passes WHERE campaign_id = $1 AND status = 'pending' AND from_character_id = ANY(sqlc.arg(from_character_ids)::uuid[]) ORDER BY created_at, id;
+
+-- name: GetPendingFavorPassOfGiver :one
+SELECT * FROM favor_passes WHERE from_character_id = $1 AND status = 'pending';
+
+-- name: CloseFavorPass :one
+-- Closes a pass that is still pending; no row comes back when another call closed it first, so of two answers only one wins.
+UPDATE favor_passes SET status = sqlc.arg(status), closed_key = sqlc.arg(closed_key), closed_at = now()
+WHERE id = sqlc.arg(id) AND campaign_id = sqlc.arg(campaign_id) AND status = 'pending'
+RETURNING *;
+
+-- name: CloseFavorPassesOfSession :many
+-- The end of a session cancels every pass still pending in it. The closed rows come back for the events.
+WITH changed AS (
+    UPDATE favor_passes SET status = 'canceled', closed_at = now()
+    WHERE game_session_id = $1 AND status = 'pending'
+    RETURNING *
+)
+SELECT * FROM changed ORDER BY created_at, id;
+
+-- name: InsertFavorRefundPrompt :one
+INSERT INTO favor_refund_prompts (campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING *;
+
+-- name: GetFavorRefundPrompt :one
+SELECT * FROM favor_refund_prompts WHERE id = $1 AND campaign_id = $2;
+
+-- name: GetFavorRefundPromptByAnswerKey :one
+SELECT * FROM favor_refund_prompts WHERE campaign_id = $1 AND answer_key = $2;
+
+-- name: ListOpenFavorRefundPrompts :many
+-- The master's questions that wait, oldest first.
+SELECT * FROM favor_refund_prompts WHERE campaign_id = $1 AND status = 'open' ORDER BY created_at, id;
+
+-- name: AnswerFavorRefundPrompt :one
+-- Answers a prompt that is still open; no row comes back when another call answered it first.
+UPDATE favor_refund_prompts SET status = sqlc.arg(status), answer_key = sqlc.arg(answer_key), answered_at = now()
+WHERE id = sqlc.arg(id) AND campaign_id = sqlc.arg(campaign_id) AND status = 'open'
+RETURNING *;
+
+-- name: CloseFavorRefundPromptsOfSession :many
+-- The end of a session keeps spent the Inspiration of every prompt still open in it.
+WITH changed AS (
+    UPDATE favor_refund_prompts SET status = 'kept', answered_at = now()
+    WHERE game_session_id = $1 AND status = 'open'
+    RETURNING *
+)
+SELECT * FROM changed ORDER BY created_at, id;
