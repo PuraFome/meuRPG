@@ -5998,6 +5998,16 @@ for (const [scheme, label] of [
  * archive, a refusal on its field; the same list on a phone with the sheet that asks to archive; and what a player reads. The
  * entries come through the API, with one archived so its state shows.
  */
+/** Saves the viewport of the feature aura row as `579-aura-feature-<width>-<scheme>.png` when `E2E_SHOTS_DIR` names a folder. */
+async function shootAura(page: Page, width: number, scheme: string): Promise<void> {
+  const dir = process.env.E2E_SHOTS_DIR;
+  if (!dir) {
+    return;
+  }
+  await page.getByLabel('Habilidade de quem leva a aura').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: `${dir}/579-aura-feature-${width}-${scheme}.png` });
+}
+
 async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(180_000);
   const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
@@ -6182,6 +6192,26 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
       await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Editor de magia, os dois blocos de efeito ligados juntos ${where}`);
+      // A feature's aura (#579 slice 3): the block with no switch, the bonus taken from an ability, and the refusal of a least out of range.
+      await open(m, `/campaigns/${campaignId}/content/new/classfeature`);
+      await m.getByLabel('Classe', { exact: true }).selectOption({ label: 'Paladino' });
+      await m.getByLabel('Nível na classe (1 a 20)').fill('6');
+      await m.getByLabel('Nome da característica').fill('Aura de Proteção');
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Aura' });
+      await expect(m.getByText('Vale em todo combate, enquanto quem leva a aura estiver de pé e consciente.')).toBeVisible();
+      await expectScreenPasses(m, `Característica de classe, a aura sem mudança ${where}`);
+      await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
+      await m.getByLabel('Tipo', { exact: true }).selectOption({ label: 'Bônus nas jogadas' });
+      await m.locator('app-spell-effect label', { hasText: 'De uma habilidade' }).click();
+      await expect(m.getByLabel('Habilidade de quem leva a aura')).toHaveValue('cha');
+      await expect(m.getByText('Modificador de CAR (mín. +1) em ataques e resistências', { exact: true })).toBeVisible();
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Característica de classe, a aura com o bônus de uma habilidade ${where}`);
+      await shootAura(m, width, colorScheme);
+      await m.getByLabel('No mínimo').fill('9');
+      await m.getByRole('button', { name: 'Salvar característica' }).click();
+      await expect(m.getByLabel('No mínimo')).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Característica de classe, a recusa do mínimo da aura ${where}`);
       const undead = await createEntryRPC(m, campaignId, 'tableCreature', damageCreatureBody());
       await open(m, entryRoute(campaignId, undead));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Defunto do Vale');

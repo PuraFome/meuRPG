@@ -22,6 +22,7 @@ import {
   unreadableNumberPaths,
 } from './effect-draft';
 import { paragraphs } from './spell-draft';
+import { effectFieldPaths, effectUnreadable } from './spell-effect-checks';
 import {
   type SummonDraft,
   draftToSummon,
@@ -346,8 +347,16 @@ export function featureOwnPaths(base: string, f: FeatureDraft, menu: EffectMenuV
     for (const field of menu.fieldsOf(e.type)) {
       out.push(`${at}.${field.name}`);
     }
+    if (e.aura) {
+      out.push(...auraPathsAt(`${at}.aura`, effectFieldPaths(e.aura)));
+    }
   });
   return out;
+}
+
+/** The paths a feature's aura block draws (`table_spell.effect...`, as the spell's block writes them), moved under the effect's `aura` field. */
+function auraPathsAt(base: string, paths: readonly string[]): string[] {
+  return paths.map((p) => base + p.slice('table_spell.effect'.length));
 }
 
 /** The paths of the number fields of one feature (and of its named options: an unnamed one is not sent) whose text is no whole number, at `base`. */
@@ -358,6 +367,9 @@ export function unreadableFeaturePaths(
 ): string[] {
   return [
     ...unreadableNumberPaths(`${base}.effects`, f.effects, menu),
+    ...f.effects.flatMap((e, k) =>
+      e.aura ? auraPathsAt(`${base}.effects[${k}].aura`, effectUnreadable(e.aura)) : [],
+    ),
     ...summonBlockedPaths(base, f),
     ...f.options.flatMap((o, k) =>
       o.name.trim() === '' ? [] : unreadableFeaturePaths(`${base}.options[${k}]`, o, menu),
