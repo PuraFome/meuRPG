@@ -1036,7 +1036,10 @@
     "faces": [
       1
     ],
-    "total": 1
+    "total": 1,
+    "economy": "x",
+    "resource_name": "x",
+    "resource_left": 1
   },
   "creature_action": {
     "name": "x",

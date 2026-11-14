@@ -5,11 +5,12 @@ import (
 	"fmt"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// featureUseEvent is what a feature_used event keeps of the use: IDs, keys and numbers only (the choice's text and the
-// feature's name are read from the sheet when the log is shown). The event's own fields hold the rest: Actor, Target (the
+// featureUseEvent is what a feature_used event keeps of the use: IDs, keys and numbers, and the words of the economy and of the
+// resource it spent (the choice's text and the feature's name are read from the sheet when the log is shown). The event's own fields hold the rest: Actor, Target (the
 // only target, when it is not the user), Key (the feature), the economy before, FeatureBefore (the feature state before),
 // Hits (what each target's hit points were before, for the undo), Lasting (the effect rows made), Resource and PointsSpent.
 type featureUseEvent struct {
@@ -26,6 +27,47 @@ type featureUseEvent struct {
 	// Faces and Total are the dice the server rolled for the heal (one roll, given to every target).
 	Faces []int32 `json:"faces,omitempty"`
 	Total int32   `json:"total,omitempty"`
+	// Economy is what the use cost of the turn (an economyWord*), ResourceName the resource it spent and ResourceLeft the uses of
+	// it left after this one ("" and 0 for a use that spent none).
+	Economy      string `json:"economy,omitempty"`
+	ResourceName string `json:"resource_name,omitempty"`
+	ResourceLeft int32  `json:"resource_left,omitempty"`
+}
+
+// The words of featureUseEvent.Economy.
+const (
+	economyWordAction = "action"
+	economyWordBonus  = "bonus_action"
+	economyWordReact  = "reaction"
+	economyWordNone   = "none"
+)
+
+// economyWordOf is the word the event keeps for the economy a feature spends: the free and the movement cost none.
+func economyWordOf(e rulesv1.ActionEconomy) string {
+	switch e {
+	case rulesv1.ActionEconomy_ACTION_ECONOMY_BONUS_ACTION:
+		return economyWordBonus
+	case rulesv1.ActionEconomy_ACTION_ECONOMY_REACTION:
+		return economyWordReact
+	case rulesv1.ActionEconomy_ACTION_ECONOMY_FREE, rulesv1.ActionEconomy_ACTION_ECONOMY_MOVEMENT:
+		return economyWordNone
+	}
+	return economyWordAction
+}
+
+// economyOfWord is the line's economy of the word the event keeps, UNSPECIFIED for an event that kept none.
+func economyOfWord(w string) playv1.FeatureEconomy {
+	switch w {
+	case economyWordAction:
+		return playv1.FeatureEconomy_FEATURE_ECONOMY_ACTION
+	case economyWordBonus:
+		return playv1.FeatureEconomy_FEATURE_ECONOMY_BONUS_ACTION
+	case economyWordReact:
+		return playv1.FeatureEconomy_FEATURE_ECONOMY_REACTION
+	case economyWordNone:
+		return playv1.FeatureEconomy_FEATURE_ECONOMY_NONE
+	}
+	return playv1.FeatureEconomy_FEATURE_ECONOMY_UNSPECIFIED
 }
 
 // featureTargetUse is what one target got.
@@ -88,8 +130,8 @@ func featureUsedLine(_ *logBuilder, _ playdb.ListEncounterEventsRow, entry *logE
 	return true
 }
 
-// fillFeatureUsed is the line's body: the feature, the choice and what the use did. The hit points are the master's and the
-// user's player's, as in the other lines that heal; that a lasting effect was put on is the table's.
+// fillFeatureUsed is the line's body: the feature, the choice and what the use did. The hit points, the economy and the resource
+// are the master's and the user's player's, as in the other lines that heal; that a lasting effect was put on is the table's.
 func (e *logEntry) fillFeatureUsed(c *logViewing, out *playv1.CombatLogEntry) bool {
 	f := e.ev.Feature
 	if f == nil {
@@ -101,6 +143,7 @@ func (e *logEntry) fillFeatureUsed(c *logViewing, out *playv1.CombatLogEntry) bo
 	}
 	if c.v.master || c.v.owns(c.actor) {
 		used.Healed, used.TempHp = f.Healed, f.TempHP
+		used.Economy, used.ResourceNamePt, used.ResourceLeft = economyOfWord(f.Economy), f.ResourceName, f.ResourceLeft
 	}
 	out.FeatureUsed = used
 	return true

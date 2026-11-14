@@ -354,6 +354,7 @@ func (f *featureFlow) begin(ctx context.Context) error {
 // spend writes what the use costs: the economy and the use of the feature's resource.
 func (f *featureFlow) spend(ctx context.Context) error {
 	economy := featureEconomy(f.row)
+	f.fe.Economy = economyWordOf(economy)
 	if err := spendFeatureEconomy(ctx, f.c, spentEconomy(f.who, economy), f.call.actionKey, economy); err != nil {
 		return err
 	}
@@ -368,7 +369,18 @@ func (f *featureFlow) spend(ctx context.Context) error {
 	}
 	f.out.vitals = append(f.out.vitals, vitals)
 	f.made.Resource, f.made.PointsSpent = fa.Resource, n
+	f.fe.ResourceName, f.fe.ResourceLeft = resourceLeftOf(vitals, fa.Resource)
 	return nil
+}
+
+// resourceLeftOf is the name of the resource in the character's vitals and the uses of it left, "" and 0 when the vitals do not have it.
+func resourceLeftOf(v *playv1.CharacterVitals, key string) (name string, left int32) {
+	for _, r := range v.GetResources() {
+		if r.GetKey() == key {
+			return r.GetNamePt(), max(r.GetTotal()-r.GetUsed(), 0)
+		}
+	}
+	return "", 0
 }
 
 // apply gives each target what the use applies: the hit points healed (the dice rolled by the server, once, for every
