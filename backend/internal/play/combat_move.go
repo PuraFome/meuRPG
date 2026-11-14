@@ -190,7 +190,7 @@ func placed(c playdb.Combatant) bool { return c.GridCol != nil && c.GridRow != n
 func occupantsFor(cs []playdb.Combatant, mover playdb.Combatant, v combatViewer) grid.OccupantMap {
 	out := grid.OccupantMap{}
 	for _, o := range cs {
-		if o.ID == mover.ID || o.Defeated || !placed(o) || !v.sees(o) {
+		if o.ID == mover.ID || samePair(o, mover) || o.Defeated || !placed(o) || !v.sees(o) { // the pair is one occupant: neither is in the other's way
 			continue
 		}
 		sq := squareOfCombatant(o)
@@ -241,6 +241,10 @@ type moveState struct {
 	UsedDFt int32  `json:"used_dft,omitempty"`
 	LastDFt int32  `json:"last_dft,omitempty"`
 	Cover   string `json:"cover,omitempty"`
+	// RiderID and RiderCover are the rider of a mount and the master's cover mark it had: the move clears the mark of a rider that
+	// changes square, and the undo gives it back (carryRiderBack).
+	RiderID    string `json:"rider_id,omitempty"`
+	RiderCover string `json:"rider_cover,omitempty"`
 }
 
 func moveStateOf(c playdb.Combatant) *moveState {
@@ -325,7 +329,9 @@ const slowedFoot = 2
 // of the write runs again on a retry, and every run starts from a new one, so
 // nothing of a failed attempt stays.
 type moveAttempt struct {
-	req     moveRequest
+	req moveRequest
+	// actor is who acts for the move: the mover, or the rider of a controlled mount (its turn, its state).
+	actor   playdb.Combatant
 	c       *combatTx
 	v       combatViewer
 	cs      []playdb.Combatant
@@ -469,14 +475,24 @@ func (s *Service) loadMover(ctx context.Context, a *moveAttempt) error {
 	if a.target, err = findCombatant(cs, a.req.combID, a.v); err != nil {
 		return err
 	}
-	if err := a.v.mayAct(a.target); err != nil {
+	if err := a.v.mayMove(cs, a.target); err != nil {
 		return err
 	}
 	if err := s.readiedMoveOf(ctx, a); err != nil {
 		return err
 	}
+	if a.target.MountedOnID != nil { // the pair moves as its mount does: the rider is carried, whoever asks
+		return mountedFor(a.v, cs, a.target, errMoveBlocked())
+	}
+	a.actor = a.target
+	if rider := riderOf(cs, a.target.ID); rider != nil && a.target.MountKind == mountKindControlled {
+		a.actor = *rider // a controlled mount moves in its rider's turn, and the rider's player is the one who acts
+	}
 	if a.dragged, a.dragging, err = s.draggedBy(ctx, a.c.q, cs, a.target); err != nil {
 		return err
+	}
+	if a.dragging && a.dragged.MountedOnID != nil && a.req.walking() {
+		return mountedFor(a.v, cs, a.dragged, errMoveBlocked()) // the grappler cannot take a rider off its mount by dragging it
 	}
 	if a.mover, err = s.moverWith(ctx, a.c.tx, a.req.m.CampaignID, a.target); err != nil {
 		return err
@@ -536,7 +552,7 @@ func (s *Service) readTerrain(ctx context.Context, a *moveAttempt) error {
 // mayMove checks that a player may move the combatant now. The master moves
 // anyone at any time.
 func (s *Service) mayMove(ctx context.Context, a *moveAttempt) error {
-	a.onTurn = actsNow(a.c.enc, a.target)
+	a.onTurn = actsNow(a.c.enc, a.actor)
 	if a.v.master {
 		return nil
 	}
@@ -544,16 +560,16 @@ func (s *Service) mayMove(ctx context.Context, a *moveAttempt) error {
 	switch {
 	case a.c.enc.Status != statusActive:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-	case !a.onTurn && a.readied == nil: // not in the turn that is running, or its part ended; a readied move is a reaction
+	case (!a.onTurn || !actsNow(a.c.enc, a.target)) && a.readied == nil: // not in the turn that is running, or a part of the pair ended: a controlled mount moves in both its rider's part and its own; a readied move is a reaction
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 	case !placed(a.target):
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "you are not on the map yet; ask the master")
 	}
-	if err := s.mustNotBeDown(ctx, a.c.tx, a.req.m.CampaignID, a.target); err != nil {
+	if err := s.mustNotBeDown(ctx, a.c.tx, a.req.m.CampaignID, a.actor); err != nil {
 		return err
 	}
 	// A surprised creature does not move on its first turn (SRD 5.1, "Surprise").
-	return s.mustNotBeSurprised(ctx, a.c, a.target)
+	return s.mustNotBeSurprised(ctx, a.c, a.actor)
 }
 
 // planMove sets the move up, checks that nothing holds the turn and works out
@@ -575,7 +591,7 @@ func (s *Service) planMove(ctx context.Context, a *moveAttempt) error {
 		return a.planMasterWalk()
 	}
 	if a.readied == nil {
-		if err := s.mustNotWait(ctx, a.c, a.target); err != nil {
+		if err := s.mustNotWait(ctx, a.c, a.actor); err != nil {
 			return err
 		}
 	}
@@ -590,7 +606,7 @@ func (s *Service) startMove(ctx context.Context, a *moveAttempt) error {
 		return err
 	}
 	a.th = th
-	a.from = moveStateOf(a.target)
+	a.from = moveStateIn(a.cs, a.target)
 	a.made = actionEvent{Round: a.c.enc.Round, Secret: a.target.Hidden, Actor: a.target.ID, OnTurn: a.onTurn, From: a.from, SpendCost: a.spent}
 	a.to = grid.Square{Col: int(a.col), Row: int(a.row)}
 	if a.req.jump == playv1.JumpKind_JUMP_KIND_HIGH {
@@ -821,6 +837,9 @@ func (s *Service) writeMove(ctx context.Context, a *moveAttempt) error {
 	}); err != nil {
 		return fmt.Errorf("move the combatant: %w", err)
 	}
+	if err := carryRider(ctx, a.c.q, a.target.ID); err != nil { // a mount takes its rider along (combat_mount.go)
+		return err
+	}
 	if err := touch(ctx, a.c); err != nil {
 		return err
 	}
@@ -851,7 +870,7 @@ func (s *Service) dragAlong(ctx context.Context, a *moveAttempt) error {
 	}
 	a.draggedMoved, a.draggedFrom = &moved, &from
 	a.draggedID = a.dragged.ID
-	a.made.Dragged, a.made.DraggedFrom = a.dragged.ID, moveStateOf(a.dragged)
+	a.made.Dragged, a.made.DraggedFrom = a.dragged.ID, moveStateIn(a.cs, a.dragged)
 	return nil
 }
 
@@ -916,6 +935,7 @@ func (s *Service) publishMove(ctx context.Context, campaignID string, d *encount
 		s.publishCoverCleared(ctx, campaignID, d.enc, a.moved)
 	}
 	s.positionChanged(ctx, campaignID, d.enc, a.moved, squareOfState(a.made.From)) // the fog remembers what it showed
+	s.publishRideAlong(ctx, campaignID, d, a.moved, squareOfState(a.made.From))
 	s.publishDoorsOpened(ctx, campaignID, d.enc, a)
 	a.th.after(ctx, campaignID, d.enc)
 	s.noticeAfterMove(ctx, campaignID, d.enc, a.moved) // a trap near where the mover ended may be noticed (MR-035)
@@ -1083,8 +1103,11 @@ func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encoun
 	if err != nil {
 		return who, sight, nil, err
 	}
-	if err := v.mayAct(who); err != nil {
+	if err := v.mayMove(d.cs, who); err != nil {
 		return who, sight, nil, err
+	}
+	if who.MountedOnID != nil { // a rider is moved by its mount, as MoveCombatant says
+		return who, sight, nil, mountedFor(v, d.cs, who, errMoveBlocked())
 	}
 	if sight == nil && v.master { // the master's warning follows the same fog rule as the real offers
 		if sight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
@@ -1098,13 +1121,17 @@ func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encoun
 	if err != nil || v.master {
 		return who, sight, readied, err
 	}
+	actor := who // a controlled mount moves in its rider's turn, and the rider's player is the one who acts
+	if rider := riderOf(d.cs, who.ID); rider != nil && who.MountKind == mountKindControlled {
+		actor = *rider
+	}
 	switch {
 	case enc.Status != statusActive:
 		return who, sight, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-	case !actsNow(enc, who) && readied == nil:
+	case (!actsNow(enc, actor) || !actsNow(enc, who)) && readied == nil: // the rider's part and the mount's own; a readied move is a reaction
 		return who, sight, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 	}
-	return who, sight, readied, s.mustNotBeDown(ctx, nil, m.CampaignID, who)
+	return who, sight, readied, s.mustNotBeDown(ctx, nil, m.CampaignID, actor)
 }
 
 // moverOption is the combatant whose moves GetMoveOptions works out, and the readied move whose window is open for it.

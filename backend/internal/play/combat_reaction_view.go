@@ -61,6 +61,8 @@ type windowView struct {
 	d     *encounterData
 	names func(key string) string
 	byID  map[string]playdb.Combatant
+	// asleep are the bearers of a feature's aura at 0 hit points (their auras give nothing).
+	asleep map[string]bool
 }
 
 // reactionView builds Encounter.reaction_windows and Encounter.reaction_wait for the
@@ -85,7 +87,11 @@ func (s *Service) reactionView(ctx context.Context, m authz.Membership, d *encou
 	if len(open) == 0 && len(offers) == 0 && len(reveals) == 0 {
 		return nil, nil, nil
 	}
-	wv := &windowView{s: s, ctx: ctx, m: m, v: v, d: d, names: names, byID: combatantsByID(d.cs)}
+	asleep, err := s.downFeatureBearers(ctx, nil, m.CampaignID, d.cs, d.states)
+	if err != nil {
+		return nil, nil, err
+	}
+	wv := &windowView{s: s, ctx: ctx, m: m, v: v, d: d, names: names, byID: combatantsByID(d.cs), asleep: asleep}
 	line := waitLine{holds: reaction.HoldsTurn}
 	windows, err := wv.openWindows(open, &line)
 	if err != nil {
@@ -552,5 +558,5 @@ func (wv *windowView) concentrationMode(reactor *playdb.Combatant, p *playv1.Con
 
 // statesAtRoll are the combat's states as the roll the window asks reads them: with the auras where everyone stands now.
 func (wv *windowView) statesAtRoll() map[string][]playdb.CombatantState {
-	return withAuras(statesOf(wv.d.states), wv.d.cs, &wv.v)
+	return withAuras(statesOf(wv.d.states), wv.d.cs, &wv.v, wv.asleep)
 }
