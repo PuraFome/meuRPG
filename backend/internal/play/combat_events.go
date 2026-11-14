@@ -957,25 +957,32 @@ func (s *Service) publishLogChanged(ctx context.Context, campaignID, encounterID
 // not tell that player anything that an ordinary change does not. A player's own read (ListCombatLog with since_seq) answers with the
 // whole log when an undo they may see happened.
 func (s *Service) publishLogChange(ctx context.Context, campaignID, encounterID string, players, full bool) {
-	logChangedMessage := func(full bool) *playv1.WatchGameSessionResponse {
-		return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
-			CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID, Full: full},
-		}}
-	}
-	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: logChangedMessage(full)})
-	msg := logChangedMessage(false)
+	s.sayLogChange(ctx, s.sayNow, campaignID, encounterID, players, full)
+}
+
+// sayLogChange is publishLogChange through say: an after-commit step of Service.tx tells it with the session's number.
+func (s *Service) sayLogChange(ctx context.Context, say sayFn, campaignID, encounterID string, players, full bool) {
+	say(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: combatLogChangedMessage(encounterID, full)})
+	msg := combatLogChangedMessage(encounterID, false)
 	if !players {
 		return
 	}
 	if memo := fogMemoOf(ctx); memo != nil {
 		if seers, scoped := linesSeenBy(memo.lines); scoped {
 			for _, u := range seers {
-				s.send(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: msg})
+				say(campaignID, live.Event{Audience: live.Audience{UserID: u}, Message: combatLogChangedMessage(encounterID, false)})
 			}
 			return
 		}
 	}
-	s.send(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
+	say(campaignID, live.Event{Audience: live.Audience{Players: true}, Message: msg})
+}
+
+// combatLogChangedMessage is the hint that the combat's log changed.
+func combatLogChangedMessage(encounterID string, full bool) *playv1.WatchGameSessionResponse {
+	return &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_CombatLogChanged_{
+		CombatLogChanged: &playv1.WatchGameSessionResponse_CombatLogChanged{EncounterId: encounterID, Full: full},
+	}}
 }
 
 // stoppedHit is a pending damage that a later Escudo stopped: its id and the
