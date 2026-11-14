@@ -316,7 +316,7 @@ func (f *attackFlow) findTarget(ctx context.Context) error {
 // leave is theirs to hit even if it is out of their sight now (an NPC that retreated into the dark).
 func (f *attackFlow) movedTarget(ctx context.Context) (playdb.Combatant, bool) {
 	o, err := pendingOffer(ctx, f.c, f.call.offerID)
-	if err != nil || o.ReactorID != f.attacker.ID || o.MoverID != f.call.targetID {
+	if err != nil || o.ReactorID != f.attacker.ID || !offerTargets(f.cs, o, f.call.targetID) {
 		return playdb.Combatant{}, false
 	}
 	i := slices.IndexFunc(f.cs, func(x playdb.Combatant) bool { return x.ID == f.call.targetID })
@@ -338,8 +338,8 @@ func (f *attackFlow) checkOffer(ctx context.Context) error {
 		return err
 	}
 	f.offer = offer
-	if offer.ReactorID != f.attacker.ID || offer.MoverID != f.target.ID {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made by the offer's reactor on its mover"))
+	if offer.ReactorID != f.attacker.ID || !offerTargets(f.cs, offer, f.target.ID) {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made by the offer's reactor on its mover or the mover's rider"))
 	}
 	if f.attacker.ReactionUsed {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_REACTION_USED, "the reaction is used")

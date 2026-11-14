@@ -151,7 +151,7 @@ func TestMountedCombat_AHiddenMountLeavesOnlyTheRiderToTheReactor(t *testing.T) 
 		}
 	}
 	// The rider is a target of the offer, the hidden mount is not one the player names: the attack on the rider is allowed.
-	if _, err := c.offerAttack(t, c.caio, "Toren", "basic:0", "Goblin 1", toren.GetId(), d20(15)); err != nil {
+	if _, err := c.offerAttack(t, c.caio, "Toren", "equipment:battleaxe", "Goblin 1", toren.GetId(), d20(15)); err != nil {
 		t.Errorf("RollAttack(rider) on the offer of its hidden mount error = %v", err)
 	}
 	if !strings.Contains(c.copyOf(t, c.master), saveCanary) {

@@ -40,6 +40,12 @@ func (s *Service) offerForViewer(ctx context.Context, m authz.Membership, d *enc
 	reactor, ok2 := combatantByID(d.cs, o.ReactorID)
 	// The mover is judged on the square it left: a retreating NPC the player saw
 	// leave still has the offer for their reactor, though they do not see it now.
+	if ok1 && ok2 && !v.seesAtOffer(mover, o) {
+		// A mount the player does not see leaves them the rider: the offer is the rider's (RN-10).
+		if rider := riderOf(d.cs, mover.ID); rider != nil && v.seesAtOffer(*rider, o) {
+			mover = *rider
+		}
+	}
 	if !ok1 || !ok2 || !v.seesAtOffer(mover, o) {
 		return nil, false
 	}
