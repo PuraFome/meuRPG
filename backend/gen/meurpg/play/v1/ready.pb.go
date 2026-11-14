@@ -6,7 +6,7 @@
 
 // Ready (SRD 5.1, "Ready"; "Preparar"): on its turn a combatant spends its action to act later, as a reaction, when a
 // trigger it names happens. The player writes the trigger in their own words and picks what to hold: one attack, a move
-// up to its speed, or another standard action. The master judges when the trigger happens. The readied action waits
+// up to its speed, a spell, or another standard action. The master judges when the trigger happens. The readied action waits
 // until the master fires it, its owner gives it up, or the readier's next turn starts (it is lost; nothing comes back).
 //
 // The trigger and the held action are the master's and the readier's player's (RN-10). Every other player reads only
@@ -39,7 +39,8 @@ type ReadyActionRequest struct {
 	TriggerText string      `protobuf:"bytes,5,opt,name=trigger_text,json=triggerText,proto3" json:"trigger_text,omitempty"`
 	Kind        ReadiedKind `protobuf:"varint,6,opt,name=kind,proto3,enum=meurpg.play.v1.ReadiedKind" json:"kind,omitempty"`
 	// ATTACK: the key of one of the combatant's attacks (rules.v1.TurnOptions.attacks). OTHER: the key of a standard
-	// action (rules.v1.TurnOptions.standard_actions) other than Attack, Cast a Spell and Ready. Empty for a move.
+	// action (rules.v1.TurnOptions.standard_actions) other than Attack, Cast a Spell, Ready, Hide, Help, Dash and
+	// Disengage. Empty for a move and a spell.
 	ActionKey string `protobuf:"bytes,7,opt,name=action_key,json=actionKey,proto3" json:"action_key,omitempty"`
 	// The creature the player names in the trigger, if any: a combatant the caller sees.
 	TargetCombatantId string `protobuf:"bytes,8,opt,name=target_combatant_id,json=targetCombatantId,proto3" json:"target_combatant_id,omitempty"`

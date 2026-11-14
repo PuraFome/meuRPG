@@ -1068,7 +1068,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Slow Fall (monk 4) | The falling monk takes 5 times its level off its own falling damage. |
 | Opportunity attack | See RN-21. |
-| Readied action | The master says the trigger of a readied action happened: the readier may use its reaction to take the held action (an attack, a move up to its speed, another action) or let it pass. Only the readier's player and the master read the trigger and the action; the others read "Esperando a reação de <nome>" or "Esperando o mestre". |
+| Readied action | The master says the trigger of a readied action happened: the readier may use its reaction to take the held action (an attack, a move up to its speed, a spell, another action) or let it pass. Only the readier's player and the master read the trigger and the action; the others read "Esperando a reação de <nome>" or "Esperando o mestre". |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
 | Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, decided by the server with no window (a window for the master only in "Perguntar"). |
 | Legendary Resistance | A player's spell with a saving throw, or a hit rider that rolls a save, reaches a creature with the trait and a use left, whether its save passed or failed: the cast or the rider's answer waits for the master alone (RN-29). A spell's area that catches such a creature asks its save of the master alone. |
@@ -1087,8 +1087,10 @@ A player reads only their own windows, and the numbers of the trigger (an attack
 - **Ready** (SRD 5.1, "Ready").
   On its turn a creature spends its action to hold another until a trigger its player writes.
   The held action is an attack, a move, a spell or another standard action.
-  A held spell must take 1 action to cast; it is cast at Ready, with its slot, and its power is held until the trigger.
-  Holding it takes concentration, which ends any other concentration of the creature; a cantrip with an attack roll is held this way too.
+  A held spell must take 1 action to cast.
+  It is cast at Ready, with its slot, and its power is held until the trigger.
+  Holding it takes concentration, which ends any other concentration of the creature.
+  A cantrip with an attack roll is held this way too.
   Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
   The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
@@ -1102,7 +1104,9 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   A creature whose reaction is spent, or that cannot react, is not asked, and the readied action waits until it is lost.
   It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight.
   The spent action does not come back.
-  The players who are not the readier's read only that it readied an action, never which spell, its level or that it is a spell.
+  The players who are not the readier's read only that it readied an action, never which spell or its level.
+  They may still read that the creature's earlier concentration ended at Ready (the line's `concentration_ended_key`), and its concentration reads blank to them.
+  So they may guess that it holds a spell; the game never says so.
   The concentration save of a held spell is the readier's player's and the master's: the other players read only that the table waits for the master.
   A hidden creature's readied action is the master's alone.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.

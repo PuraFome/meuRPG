@@ -15,7 +15,7 @@ The kinds are `attack`, `move`, `other` and `spell`.
 Ready also refuses Hide and Help, which have their own calls a reaction does not run.
 It refuses Dash and Disengage too: they last only for the readier's own turn, and no reaction reaches it.
 Each of them would be taken for nothing.
-`move` holds the speed the readier had at Ready (`move_ft`).
+`move` holds the readier's most speed on any surface at Ready, as at the start of a turn (`move_ft`).
 A combat without a map (theatre of the mind) refuses a readied move (`READY_ACTION`): there is no square to walk to.
 `spell` holds one of the readier's class spells by its key: see [Readied spells](#readied-spells).
 A combatant has at most one waiting row.
@@ -30,7 +30,7 @@ A combatant has at most one waiting row.
 | `ignored` | The readier let its READIED window pass ("Deixar passar"), or it passed by itself after 30 s |
 | `lost` | The readier's next turn started, or it was defeated or dismissed (`loseReadiedOfDefeated`, in the settle step of every change) |
 | `broken` | The concentration that held a readied spell ended (`settleReadiedSpells`) |
-| `canceled` | The readier's player gave it up on the readier's turn (`CancelReadied`) |
+| `canceled` | The readier's player, or the master, gave it up on the readier's turn (`CancelReadied`) |
 
 A row that does not wait is history: no call changes it again, and the undo is the only way back to `waiting`.
 The end of the combat drops every row.
@@ -46,12 +46,14 @@ The end of the combat drops every row.
 `FireReadied` refuses, in this order and writing nothing:
 
 - a row that does not wait, or a readier out of the order (dismissed): `not_found`;
-- a defeated readier, or one at 0 hit points: `COMBATANT_DOWN` (`mustReactNowOrOnTurn`);
-- a surprised readier before its first turn ends: the surprise refusal of every reaction;
+- a defeated readier: `COMBATANT_DOWN`;
+- a readier at 0 hit points: `COMBATANT_DOWN` (`mustReactNowOrOnTurn`);
+- a surprised readier before its first turn ends: the surprise refusal of every reaction (`mustReactNowOrOnTurn`);
+- a readier that owes a concentration save: `CONCENTRATION_SAVE_PENDING` (`readiedGate`);
+- a question about a hidden creature the master owes: `HIDDEN_REVEAL_PENDING` (`readiedGate`);
 - an incapacitated or unconscious readier, or one an effect keeps from reacting: `CANNOT_ACT`;
 - a readier whose reaction is spent: `REACTION_USED`;
-- a row whose window is already open: `REACTION_PENDING`;
-- a readier that owes a concentration save: `CONCENTRATION_SAVE_PENDING`, and a question about a hidden creature the master owes: `HIDDEN_REVEAL_PENDING` (`readiedGate`).
+- a row whose window is already open: `REACTION_PENDING`.
 
 A refused fire leaves the row waiting until it is lost.
 The fire event (`readied_fired` with `opened`) writes no log line.
@@ -77,8 +79,11 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   The target must be one the attacker can attack now (reach, sight).
   Otherwise the attack's own refusal comes back and the window stays open.
 - **move**: `MoveCombatant` off the readier's turn, while its READIED move window is open.
-  It walks at most the lesser of `move_ft` and its speed now.
+  Its budget is its own (`readiedSpeedsOf`): each surface's speed as at the start of a turn, held to `move_ft`.
+  The movement the readier spent on its own turn does not count, and neither does its Dash.
+  So a swimmer that readied in water may swim its swim speed, and walk only its walking speed.
   It pays its way like a move on turn and spends no movement of the turn.
+  `GetMoveOptions` reads the same budget for the readier while the window is open.
   Move's own refusals apply: a grappled readier has no speed (`TOO_FAR`).
   A refused move spends nothing and the window stays open.
   A move that stops short (a wall, a creature in the way, a trap) is still the use, and the window ends.
@@ -108,7 +113,7 @@ That happens when the readier is defeated or incapacitated, spends its reaction 
 The automatic pass of 30 s counts on the master's screen from when the window opened.
 It can pass a window whose player is still choosing a square for a move, or a target: the row is then ignored.
 
-## The reaction (Q1)
+## The reaction
 
 The reaction is spent only when the readied action is used.
 While the row waits, the readier's other reactions stay offered.

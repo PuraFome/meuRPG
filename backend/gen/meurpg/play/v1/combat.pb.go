@@ -1657,7 +1657,8 @@ const (
 	ReadiedKind_READIED_KIND_SPELL ReadiedKind = 2
 	// A move up to the combatant's speed.
 	ReadiedKind_READIED_KIND_MOVE ReadiedKind = 3
-	// Another standard action (Dash, Disengage, Dodge, Help, Hide, Search, Use an Object).
+	// Another standard action: Dodge, Search or Use an Object (Attack, Cast a Spell, Ready, Hide, Help, Dash and
+	// Disengage are refused).
 	ReadiedKind_READIED_KIND_OTHER ReadiedKind = 4
 )
 
@@ -2891,8 +2892,9 @@ const (
 	// The master fired a readied action and the readier used it or let it pass: the actor is the readier. Same audience
 	// as ACTION_READIED, `readied_fired` (its status says which). A use is followed by the line of the action itself.
 	CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED CombatLogKind = 105
-	// A readied action ended without firing: the readier's next turn started, or its owner gave it up
-	// (CancelReadied). Same audience as ACTION_READIED, `readied_lost`.
+	// A readied action ended without firing: the readier's next turn started, its owner gave it up (CancelReadied),
+	// the readier was defeated or dismissed, the concentration of a held spell ended, or a held spell was let pass.
+	// Same audience as ACTION_READIED, `readied_lost`.
 	CombatLogKind_COMBAT_LOG_KIND_READIED_LOST CombatLogKind = 106
 	// A character used a feature of its own (FeatureService.UseFeature): the actor, the targets and `feature_used`.
 	CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED CombatLogKind = 103
@@ -3435,8 +3437,9 @@ const (
 	// A readied action (ReadyService): the master fired it (FireReadied), and its readier may use the reaction to act
 	// now, or let it pass. The window has no prompt: the reactor and the master read the trigger and the action in the
 	// reactor's Combatant.readied; the master's trigger names the readier, the target and the action.
-	// AnswerReaction USE runs an attack (as RollAttack with catch_window_id) or another standard action; a move is
-	// made with MoveCombatant while the window is open, and AnswerReaction USE refuses it.
+	// AnswerReaction USE runs an attack (as RollAttack with catch_window_id), another standard action or the release of
+	// a held spell (as CastSpell, or RollAttack for a spell attack cantrip); a move is made with MoveCombatant while the
+	// window is open, and AnswerReaction USE refuses it.
 	ReactionKind_REACTION_KIND_READIED ReactionKind = 19
 )
 
@@ -21007,7 +21010,7 @@ type CombatLogReadied struct {
 	// The trigger, in the player's own words.
 	TriggerText string      `protobuf:"bytes,2,opt,name=trigger_text,json=triggerText,proto3" json:"trigger_text,omitempty"`
 	Kind        ReadiedKind `protobuf:"varint,3,opt,name=kind,proto3,enum=meurpg.play.v1.ReadiedKind" json:"kind,omitempty"`
-	// The attack's or the standard action's key; empty for a move.
+	// The attack's, the standard action's or the spell's key; empty for a move.
 	ActionKey string `protobuf:"bytes,4,opt,name=action_key,json=actionKey,proto3" json:"action_key,omitempty"`
 	// Its name in Portuguese, when the content has one.
 	ActionNamePt string `protobuf:"bytes,5,opt,name=action_name_pt,json=actionNamePt,proto3" json:"action_name_pt,omitempty"`

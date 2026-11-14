@@ -10410,7 +10410,7 @@ export type CombatLogReadied = Message<"meurpg.play.v1.CombatLogReadied"> & {
   kind: ReadiedKind;
 
   /**
-   * The attack's or the standard action's key; empty for a move.
+   * The attack's, the standard action's or the spell's key; empty for a move.
    *
    * @generated from field: string action_key = 4;
    */
@@ -15814,7 +15814,8 @@ export enum ReadiedKind {
   MOVE = 3,
 
   /**
-   * Another standard action (Dash, Disengage, Dodge, Help, Hide, Search, Use an Object).
+   * Another standard action: Dodge, Search or Use an Object (Attack, Cast a Spell, Ready, Hide, Help, Dash and
+   * Disengage are refused).
    *
    * @generated from enum value: READIED_KIND_OTHER = 4;
    */
@@ -16868,8 +16869,9 @@ export enum CombatLogKind {
   READIED_FIRED = 105,
 
   /**
-   * A readied action ended without firing: the readier's next turn started, or its owner gave it up
-   * (CancelReadied). Same audience as ACTION_READIED, `readied_lost`.
+   * A readied action ended without firing: the readier's next turn started, its owner gave it up (CancelReadied),
+   * the readier was defeated or dismissed, the concentration of a held spell ended, or a held spell was let pass.
+   * Same audience as ACTION_READIED, `readied_lost`.
    *
    * @generated from enum value: COMBAT_LOG_KIND_READIED_LOST = 106;
    */
@@ -17406,8 +17408,9 @@ export enum ReactionKind {
    * A readied action (ReadyService): the master fired it (FireReadied), and its readier may use the reaction to act
    * now, or let it pass. The window has no prompt: the reactor and the master read the trigger and the action in the
    * reactor's Combatant.readied; the master's trigger names the readier, the target and the action.
-   * AnswerReaction USE runs an attack (as RollAttack with catch_window_id) or another standard action; a move is
-   * made with MoveCombatant while the window is open, and AnswerReaction USE refuses it.
+   * AnswerReaction USE runs an attack (as RollAttack with catch_window_id), another standard action or the release of
+   * a held spell (as CastSpell, or RollAttack for a spell attack cantrip); a move is made with MoveCombatant while the
+   * window is open, and AnswerReaction USE refuses it.
    *
    * @generated from enum value: REACTION_KIND_READIED = 19;
    */

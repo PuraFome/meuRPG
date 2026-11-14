@@ -4,7 +4,7 @@
 
 // Ready (SRD 5.1, "Ready"; "Preparar"): on its turn a combatant spends its action to act later, as a reaction, when a
 // trigger it names happens. The player writes the trigger in their own words and picks what to hold: one attack, a move
-// up to its speed, or another standard action. The master judges when the trigger happens. The readied action waits
+// up to its speed, a spell, or another standard action. The master judges when the trigger happens. The readied action waits
 // until the master fires it, its owner gives it up, or the readier's next turn starts (it is lost; nothing comes back).
 //
 // The trigger and the held action are the master's and the readier's player's (RN-10). Every other player reads only
@@ -83,10 +83,10 @@ type ReadyServiceClient interface {
 	// (the readier's player answers it, the master for an NPC). AnswerReaction USE spends the reaction and runs the held
 	// action; PASS lets it go and keeps the reaction. Nothing is spent here. Only the master.
 	//
-	// The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
-	// surprised; its reaction is free; no READIED window of it is open; it owes no concentration save
-	// (CONCENTRATION_SAVE_PENDING) and no hidden reveal waits for the master (HIDDEN_REVEAL_PENDING). A refusal leaves
-	// the readied action waiting.
+	// The checks, in order: the readied action waits; the readier is not out of the fight, down or surprised; it owes
+	// no concentration save (CONCENTRATION_SAVE_PENDING) and no hidden reveal waits for the master
+	// (HIDDEN_REVEAL_PENDING); it is not incapacitated (CANNOT_ACT); its reaction is free; no READIED window of it is
+	// open. A refusal leaves the readied action waiting.
 	// UndoLastAction takes the fire back while its window was not answered: the window goes and the row keeps waiting.
 	//
 	// Errors:
@@ -195,10 +195,10 @@ type ReadyServiceHandler interface {
 	// (the readier's player answers it, the master for an NPC). AnswerReaction USE spends the reaction and runs the held
 	// action; PASS lets it go and keeps the reaction. Nothing is spent here. Only the master.
 	//
-	// The checks, in order: the readied action waits; the readier is not out of the fight, down, incapacitated or
-	// surprised; its reaction is free; no READIED window of it is open; it owes no concentration save
-	// (CONCENTRATION_SAVE_PENDING) and no hidden reveal waits for the master (HIDDEN_REVEAL_PENDING). A refusal leaves
-	// the readied action waiting.
+	// The checks, in order: the readied action waits; the readier is not out of the fight, down or surprised; it owes
+	// no concentration save (CONCENTRATION_SAVE_PENDING) and no hidden reveal waits for the master
+	// (HIDDEN_REVEAL_PENDING); it is not incapacitated (CANNOT_ACT); its reaction is free; no READIED window of it is
+	// open. A refusal leaves the readied action waiting.
 	// UndoLastAction takes the fire back while its window was not answered: the window goes and the row keeps waiting.
 	//
 	// Errors:
