@@ -64,6 +64,7 @@ func TestLastActionChain(t *testing.T) {
 		{"a door opened is passed over", []chainRow{{id: "x", kind: eventDoorOpened, enc: enc}, under}, "act"},
 		{"a hider that was found is passed over", []chainRow{{id: "x", kind: eventHideEnded, enc: enc}, under}, "act"},
 		{"a puzzle line is passed over", []chainRow{{id: "x", kind: eventPuzzleShown}, {id: "y", kind: eventPuzzleReset}, under}, "act"},
+		{"a favor line is passed over", []chainRow{{id: "x", kind: eventFavorGranted}, {id: "y", kind: eventFavorPassed}, under}, "act"},
 		{"the clue of a solve is passed over", []chainRow{{id: "s", kind: eventPuzzleSolved, seq: 6}, {id: "x", kind: eventClueRevealed, seq: 5}, under}, "act"},
 		{"a clue with no solve after it closes the chain", []chainRow{{id: "x", kind: eventClueRevealed, seq: 5}, under}, ""},
 		{"a trap noticed is passed over", []chainRow{{id: "x", kind: eventTrapNoticed}, under}, "act"},

@@ -725,4 +725,76 @@ describe('SpellEditor', () => {
       );
     });
   });
+
+  describe('"Deixa um efeito nos alvos" (#579)', () => {
+    const effectSwitch = (el: HTMLElement) =>
+      el.querySelector<HTMLButtonElement>('app-spell-effect button[role="switch"]')!;
+
+    it('is off for a new spell, and a spell without effect sends none', async () => {
+      const { fixture, el } = setup(true, { duration: { kind: 3 } });
+      expect(effectSwitch(el).getAttribute('aria-checked')).toBe('false');
+      save.mockResolvedValue({
+        entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+        affected: [],
+      });
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      expect(save.mock.calls[0][2].value.effect).toBeUndefined();
+    });
+
+    it('sends the effect the master wrote, on the mechanic the spell has, and the preview reads it', async () => {
+      const { fixture, el } = setup(true, { duration: { kind: 3 } });
+      effectSwitch(el).click();
+      await settle(fixture, 3);
+      click(el, 'Adicionar o que muda');
+      await settle(fixture, 3);
+      const kind = field(el, 'table_spell.effect.modifiers[0].kind') as HTMLSelectElement;
+      kind.selectedIndex = Array.from(kind.options).findIndex((o) =>
+        o.text.startsWith('Bônus na CA'),
+      );
+      kind.dispatchEvent(new Event('change'));
+      await settle(fixture, 3);
+      const value = field(el, 'table_spell.effect.modifiers[0].value') as HTMLInputElement;
+      value.value = '2';
+      value.dispatchEvent(new Event('input'));
+      await settle(fixture, 3);
+      expect(text(el.querySelector('.preview')!)).toContain('Nos alvos: CA +2, enquanto durar.');
+      save.mockResolvedValue({
+        entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
+        affected: [],
+      });
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      expect(save.mock.calls[0][2].value.effect).toMatchObject({
+        modifiers: [{ kind: 2, value: 2 }],
+      });
+    });
+
+    it('lands a refusal of the server on the field it names, and says nothing in the banner for it', async () => {
+      const { fixture, el } = setup(true, { duration: { kind: 3 } });
+      effectSwitch(el).click();
+      await settle(fixture, 3);
+      click(el, 'Adicionar o que muda');
+      await settle(fixture, 3);
+      const kind = field(el, 'table_spell.effect.modifiers[0].kind') as HTMLSelectElement;
+      kind.selectedIndex = Array.from(kind.options).findIndex((o) =>
+        o.text.startsWith('PV temporários'),
+      );
+      kind.dispatchEvent(new Event('change'));
+      await settle(fixture, 3);
+      const value = field(el, 'table_spell.effect.modifiers[0].value') as HTMLInputElement;
+      value.value = '1500';
+      value.dispatchEvent(new Event('input'));
+      await settle(fixture, 3);
+      save.mockRejectedValue(refusal(['table_spell.effect.modifiers[0].value', 'bad_value']));
+      click(el, 'Salvar magia');
+      await settle(fixture, 3);
+      expect(text(el.querySelector('app-spell-effect')!)).toContain(
+        'Este número está fora do que o tipo aceita',
+      );
+      expect(
+        field(el, 'table_spell.effect.modifiers[0].value').contains(document.activeElement),
+      ).toBe(true);
+    });
+  });
 });

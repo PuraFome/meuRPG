@@ -14,6 +14,8 @@ import type { MarksVm } from '../../core/characters/gear';
 })
 export class WeaponTags {
   readonly marks = input<MarksVm | null | undefined>(null);
+  /** Each tag is a round 22px chip with only its icon; the word stays for a screen reader. */
+  readonly compact = input(false);
 
   protected readonly tags = computed(() => {
     const m = this.marks();

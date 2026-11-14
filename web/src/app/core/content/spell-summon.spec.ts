@@ -1,10 +1,9 @@
+import { emptyEffect } from './spell-effect-draft';
 import { create, fromBinary, toBinary } from '@bufbuild/protobuf';
 
 import {
   TableContentKind,
   TableEntrySchema,
-  TableEffectApplies,
-  TableSpellEffectSchema,
   TableSpellSchema,
   TableSpellZoneSchema,
   TableSummonReplaces,
@@ -52,7 +51,7 @@ describe('"Invocar" in the spell draft (#578, board C3)', () => {
   it('opens a spell that summons on "Invocar", with the summon as typed', () => {
     const d = spellToDraft(stored());
     expect(d.mechanic).toBe('summon');
-    expect(d.kept?.effect).toBeUndefined();
+    expect(d.effect.on).toBe(false);
     expect(d.summon).toMatchObject({
       creatureKeys: ['creature:lobo-do-vale@mesa', 'monster:wolf'],
       count: '1 + slot()',
@@ -172,8 +171,10 @@ describe('what the engine will refuse about a summoning spell, said before the s
   });
 
   it('refuses a stored effect on an instantaneous spell, and one that is not for all, with what to do', () => {
-    const effect = create(TableSpellEffectSchema, { applies: TableEffectApplies.FAILED_SAVE });
-    const d = { ...on({}), kept: { effect } };
+    const d = {
+      ...on({}),
+      effect: { ...emptyEffect(), on: true, applies: 'failed_save' as const },
+    };
     expect(d.duration).toBe('instant');
     const got = summonRefusals(d);
     expect(got.map((r) => r.path)).toEqual(['table_spell.duration.kind', 'table_spell.summon']);
@@ -181,7 +182,7 @@ describe('what the engine will refuse about a summoning spell, said before the s
     const all = {
       ...d,
       duration: 'until_dispelled' as const,
-      kept: { effect: create(TableSpellEffectSchema, { applies: TableEffectApplies.ALL }) },
+      effect: { ...emptyEffect(), on: true },
     };
     expect(summonRefusals(all)).toEqual([]);
   });

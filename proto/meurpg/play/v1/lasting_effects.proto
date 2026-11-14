@@ -236,6 +236,10 @@ message LastingEffect {
   string players_see_pt = 29;
   // The effect was used up (a next_hit that hit): the card of the caster reads "used" instead of "pending".
   bool spent = 30;
+  // An aura (only the master and the bearer's player read these): how far from the bearer it reaches, in feet, and
+  // whom, from the bearer's side ("self", "allies" or "enemies"). Zero and empty for an effect that is not an aura.
+  int32 radius_ft = 32;
+  string affects = 33;
 }
 
 // CatalogEffect is an effect the master may add.

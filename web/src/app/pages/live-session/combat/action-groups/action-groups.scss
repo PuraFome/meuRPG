@@ -83,13 +83,12 @@
   }
 }
 
+// The icon and the words are one line (the notice's own row, without the button): the words wrap beside the icon, and
+// the button is what goes to the next line when the notice is narrow.
 .groups__pending {
   flex-wrap: wrap;
   align-items: center;
-
-  p {
-    flex: 1 1 200px;
-  }
+  justify-content: space-between;
 }
 
 .group {

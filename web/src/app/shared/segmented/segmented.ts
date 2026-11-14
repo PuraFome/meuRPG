@@ -25,7 +25,7 @@ let nextId = 0;
 @Component({
   selector: 'app-segmented',
   imports: [MatIconModule],
-  host: { '[class.seg--track]': "appearance() === 'track'" },
+  host: { '[class.seg--track]': "appearance() === 'track'", '[class.seg--wrap]': 'wrap()' },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="seg" role="radiogroup" [attr.aria-label]="label()">
@@ -60,6 +60,8 @@ export class Segmented<T extends string> {
   readonly value = input.required<T>();
   /** `buttons`: separate bordered segments; `track`: one compact rounded track. */
   readonly appearance = input<'buttons' | 'track'>('buttons');
+  /** Equal cells, one line of text each: when the options do not fit one row they wrap whole into a grid. */
+  readonly wrap = input(false);
   readonly choose = output<T>();
   protected readonly name = `seg-${nextId++}`;
 }

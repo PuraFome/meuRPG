@@ -2,11 +2,17 @@
   <p class="mr-muted">Sem equipamento.</p>
 } @else {
   <section class="gear-group" [attr.aria-labelledby]="'gear-eq-' + idBase">
-    <h3 class="gear-group__title" [class.mr-visually-hidden]="combat()" [id]="'gear-eq-' + idBase">Equipado</h3>
+    <div class="gear-group__head">
+      <h3 class="gear-group__title" [class.mr-visually-hidden]="combat()" [id]="'gear-eq-' + idBase">Equipado</h3>
+      @if (showArmorClass() && armorClass() !== null) {
+        <span class="gear-group__ac" aria-hidden="true">CA {{ armorClass() }}</span>
+        <span class="mr-visually-hidden">Classe de armadura {{ armorClass() }}</span>
+      }
+    </div>
     @if (equipped().length === 0) {
       <p class="mr-muted">Nada equipado.</p>
     } @else {
-      <ul class="gear-rows">
+      <ul class="gear-rows" data-equal-width=".gear-row__button">
         @for (g of equipped(); track g.key) {
           <ng-container *ngTemplateOutlet="row; context: { $implicit: g }" />
         }
@@ -16,20 +22,18 @@
   <section class="gear-group" [attr.aria-labelledby]="'gear-ca-' + idBase">
     @if (folded()) {
       <app-fold appearance="flush" [muted]="true" [title]="carriedTitle()" [level]="4" [open]="!combat()">
-        <ul class="gear-rows">
+        <ul class="gear-rows" data-equal-width=".gear-row__button">
           @for (g of carried(); track g.key) {
             <ng-container *ngTemplateOutlet="row; context: { $implicit: g }" />
           }
         </ul>
       </app-fold>
     } @else {
-      <h3 class="gear-group__title gear-group__title--carried" [id]="'gear-ca-' + idBase">
-        <mat-icon fontIcon="backpack" aria-hidden="true"></mat-icon>{{ carriedTitle() }}
-      </h3>
+      <h3 class="gear-group__title" [id]="'gear-ca-' + idBase">{{ carriedTitle() }}</h3>
       @if (carried().length === 0) {
         <p class="mr-muted">{{ combat() ? 'Nenhum.' : 'Nada guardado.' }}</p>
       } @else {
-        <ul class="gear-rows">
+        <ul class="gear-rows" data-equal-width=".gear-row__button">
           @for (g of carried(); track g.key) {
             <ng-container *ngTemplateOutlet="row; context: { $implicit: g }" />
           }
@@ -39,50 +43,58 @@
   </section>
 }
 
+<!-- A row with a reason line under it is not one line: that line is a second line by design, so it has no data-one-line. -->
 <ng-template #row let-g>
-  <li class="gear-row" [class.gear-row--idle]="idle(g)">
-    <mat-icon class="gear-row__icon" aria-hidden="true">{{ icon(g) }}</mat-icon>
-    <span class="gear-row__text">
-      <span class="gear-row__lead">
-        <span class="gear-row__name">{{ g.namePt }}</span>
-        @if (g.count > 1) {
-          <span class="gear-row__count" aria-hidden="true">×{{ g.count }}</span>
-          <span class="mr-visually-hidden">, {{ g.count }} iguais</span>
+  <li
+    class="gear-row"
+    data-chip-row
+    [attr.data-one-line]="blocked()(g) ? null : ''"
+    [class.gear-row--idle]="idle(g)"
+  >
+    <span class="gear-row__main">
+      <mat-icon class="gear-row__icon" aria-hidden="true">{{ icon(g) }}</mat-icon>
+      <span class="gear-row__name" data-chip-ref>{{ g.namePt }}</span>
+      @if (g.count > 1) {
+        <span class="gear-row__count" aria-hidden="true">×{{ g.count }}</span>
+        <span class="mr-visually-hidden">, {{ g.count }} iguais</span>
+      }
+      <span class="mr-visually-hidden">, {{ kindLabel(g) }}</span>
+      @if (g.twoHanded && !combat()) {
+        <span class="gear-row__kind mr-muted" aria-hidden="true" data-whole><span>duas mãos</span></span>
+      }
+      @if (g.twoHanded && warns(g)) {
+        <mat-icon class="gear-row__warn" aria-hidden="true">warning</mat-icon>
+        @if (!combat()) {
+          <span class="mr-visually-hidden">{{ warnText(g) }}</span>
         }
-        <span class="mr-visually-hidden">, {{ kindLabel(g) }}</span>
-        @if (g.twoHanded && !combat()) {
-          <span class="gear-row__kind mr-muted" aria-hidden="true">duas mãos</span>
-        }
-        @if (g.twoHanded && warns(g)) {
-          <mat-icon class="gear-row__warn" aria-hidden="true">warning</mat-icon>
-        }
-        <!-- The tags and the chip travel together, and the joiner glues them to the name's last word: a narrow column wraps the name and the chip follows it, never starts a line of its own. -->
-        <span class="gear-row__glue">{{ '\u2060' }}<app-weapon-tags [marks]="g.marks" />
-          @if (attunement()(g); as chip) {<span class="gear-row__att" [class.gear-row__att--on]="chip === 'on'">
-            <mat-icon aria-hidden="true">link</mat-icon>
-            <span class="mr-visually-hidden">{{ chip === 'on' ? 'Sintonizado' : 'Pede sintonização' }}</span>
-          </span>}
-        </span>
-      </span>
+      }
       @if (idle(g)) {
         <span class="gear-row__idle">Parado</span>
       }
+      <app-weapon-tags [marks]="rowMarks(g)" [compact]="true" />
+      @if (attunement()(g); as chip) {
+        <span class="gear-row__att" data-chip [class.gear-row__att--on]="chip === 'on'">
+          <mat-icon aria-hidden="true">link</mat-icon>
+          <span class="mr-visually-hidden">{{ chip === 'on' ? 'Sintonizado' : 'Pede sintonização' }}</span>
+        </span>
+      }
+      @if (g.bonus) {
+        <app-bonus-chip data-chip [bonus]="g.bonus" [counts]="g.bonusCounts !== false && !idle(g)" />
+      }
+      @if (canMark()) {
+        <button
+          type="button"
+          class="gear-row__more"
+          [attr.data-marks-key]="g.key"
+          aria-haspopup="dialog"
+          [attr.aria-label]="moreLabel(g)"
+          (click)="marksOpened.emit(g)"
+        >
+          <mat-icon aria-hidden="true">more_vert</mat-icon>
+        </button>
+      }
     </span>
-    @if (canChange() || (canMark() && g.kind === 'weapon')) {
-      <span class="gear-row__actions">
-        @if (canMark() && g.kind === 'weapon') {
-          <button
-            type="button"
-            class="gear-row__more"
-            [attr.data-marks-key]="g.key"
-            aria-haspopup="dialog"
-            [attr.aria-label]="'Marcas da ' + g.namePt"
-            (click)="marksOpened.emit(g)"
-          >
-            <mat-icon aria-hidden="true">more_vert</mat-icon>
-          </button>
-        }
-        @if (canChange()) {
+    @if (canChange()) {
       <button
         matButton="outlined"
         type="button"
@@ -100,12 +112,7 @@
             <mat-icon [fontIcon]="word === 'grátis' ? 'bolt' : 'circle'" aria-hidden="true"></mat-icon>{{ word }}
           </span>
         }
-        @if (armorLine(g, armorClass()); as ac) {
-          <span class="gear-row__ac">{{ ac }}</span>
-        }
       </button>
-        }
-      </span>
     }
     @if (canChange() && blocked()(g); as why) {
       <span class="gear-row__line mr-muted" [id]="reasonId(g)">{{ why }}</span>

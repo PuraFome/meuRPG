@@ -172,6 +172,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.RangedWeaponNoLongRangeDisadvantage = d.RangedWeaponNoLongRangeDisadvantage
 	t.UnactedAdvantage, t.SurprisedCritical = d.UnactedAdvantage, d.SurprisedCritical
 	t.Maneuvers, t.ExtraDamages, t.SpellModifiers = tableTraitsOf(d)
+	t.PowerAttacks = powerAttacksOf(d)
 	t.RerollRules = rerollRulesOf(d)
 	t.Flags = slices.Clone(d.Flags)
 	t.RollMinimums, t.SpellCriticalRange = rollMinimumsOf(d), spellCriticalRangeOf(d)
@@ -211,6 +212,18 @@ func tableTraitsOf(d rules.Derived) (maneuvers []link.Maneuver, extras []link.Ex
 		})
 	}
 	return maneuvers, extras, options
+}
+
+// powerAttacksOf are the attack-for-damage trades the character's table features offer.
+func powerAttacksOf(d rules.Derived) (out []link.PowerAttack) {
+	for _, p := range d.PowerAttacks {
+		out = append(out, link.PowerAttack{
+			Key: p.Key, NamePT: p.NamePT, Weapon: p.Weapon, Resource: p.Resource, TextPT: p.TextPT,
+			AttackPenalty: p.AttackPenalty, DamageBonus: p.DamageBonus,
+			Properties: slices.Clone(p.Properties), PropertyNamesPT: slices.Clone(p.PropertyNamesPT), OnlyProficient: p.OnlyProficient,
+		})
+	}
+	return out
 }
 
 // rerollRulesOf are the rerolls of a die the character's table features give.

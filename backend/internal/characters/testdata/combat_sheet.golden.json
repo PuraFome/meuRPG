@@ -25,6 +25,11 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Properties": [
+          "weapon-property:versatile",
+          "weapon-property:monk"
+        ],
+        "Proficient": true,
         "Magical": false
       },
       {
@@ -50,6 +55,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": false,
+        "Proficient": true,
         "Magical": true
       },
       {
@@ -75,6 +81,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": false,
+        "Proficient": true,
         "Magical": true
       },
       {
@@ -100,6 +107,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Proficient": true,
         "Magical": false
       }
     ],
@@ -241,6 +249,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Proficient": true,
         "Magical": false
       }
     ],
@@ -415,6 +424,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Proficient": true,
         "Magical": false
       }
     ],
@@ -731,6 +741,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Proficient": true,
         "Magical": false
       }
     ],
@@ -905,6 +916,10 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Properties": [
+          "weapon-property:versatile"
+        ],
+        "Proficient": true,
         "Magical": false
       },
       {
@@ -930,6 +945,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Proficient": true,
         "Magical": false
       }
     ],
@@ -1104,6 +1120,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Proficient": true,
         "Magical": false
       }
     ],
@@ -1518,6 +1535,7 @@
         "Finesse": false,
         "TwoHanded": false,
         "Weapon": true,
+        "Proficient": true,
         "Magical": false
       }
     ],

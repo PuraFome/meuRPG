@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+// The Inspiration the master grants a player character (PHB 2014 ch. 4, outside
+// SRD 5.1). It is called favor here because "inspiration" already means Bardic
+// Inspiration in the code; the app says "Inspiração".
+package meurpg.play.v1;
+
+// FavorBlockedReason is why a favor call was refused with `failed_precondition`.
+enum FavorBlockedReason {
+  FAVOR_BLOCKED_REASON_UNSPECIFIED = 0;
+  // The character already has the Inspiration: it never stacks.
+  FAVOR_BLOCKED_REASON_ALREADY_HAS = 1;
+  // Creatures and NPCs never hold it.
+  FAVOR_BLOCKED_REASON_NOT_A_PLAYER_CHARACTER = 2;
+  // The caller's character does not hold it.
+  FAVOR_BLOCKED_REASON_NOT_THE_HOLDER = 3;
+  // The caller's character has none to spend.
+  FAVOR_BLOCKED_REASON_HAS_NONE = 4;
+  // What a pass tells its giver when the receiver cannot take it (it has one, it is in
+  // another campaign or it is an NPC). The server never sends the receiver's state.
+  FAVOR_BLOCKED_REASON_CANNOT_RECEIVE = 5;
+  // The pass names the giver as the receiver.
+  FAVOR_BLOCKED_REASON_SELF = 6;
+  // The roll already has advantage, so the Inspiration would change nothing.
+  FAVOR_BLOCKED_REASON_ADDS_NOTHING = 7;
+  // The d20 was already rolled.
+  FAVOR_BLOCKED_REASON_AFTER_THE_ROLL = 8;
+}
+
+// FavorBlocked is the error detail of FavorService's `failed_precondition`.
+message FavorBlocked {
+  FavorBlockedReason reason = 1;
+}
+
+// FavorHolder is a character that has the Inspiration.
+message FavorHolder {
+  string character_id = 1;
+  string character_name = 2;
+}
+
+message GrantFavorRequest {
+  string campaign_id = 1;
+  string character_id = 2;
+  string idempotency_key = 3;
+}
+
+message GrantFavorResponse {}
+
+message GetFavorRequest {
+  string campaign_id = 1;
+}
+
+message GetFavorResponse {
+  // The master reads every holder of the campaign; a player reads only their own.
+  repeated FavorHolder holders = 1;
+}
+
+message PassFavorRequest {
+  string campaign_id = 1;
+  string from_character_id = 2;
+  string to_character_id = 3;
+  string idempotency_key = 4;
+}
+
+message PassFavorResponse {}
+
+// FavorService is the Inspiration of the player characters: the master grants it, the
+// holder passes it on. A character has it or not and it never stacks.
+//
+// Errors:
+//   - `not_found`: the campaign does not exist, or the caller is not a member of it.
+//   - `permission_denied`: a player calls what is the master's.
+//   - `failed_precondition`: FavorBlocked. An id that is not a player character of the campaign is NOT_A_PLAYER_CHARACTER.
+//   - `invalid_argument`: an id or the key is malformed.
+service FavorService {
+  // GrantFavor gives the Inspiration to a player character. Only the master.
+  rpc GrantFavor(GrantFavorRequest) returns (GrantFavorResponse);
+
+  // GetFavor lists who has the Inspiration: every holder for the master, only the
+  // caller's own characters for a player.
+  rpc GetFavor(GetFavorRequest) returns (GetFavorResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
+  // PassFavor hands the holder's Inspiration to another player character. Not built yet:
+  // it answers `unimplemented`.
+  rpc PassFavor(PassFavorRequest) returns (PassFavorResponse);
+}

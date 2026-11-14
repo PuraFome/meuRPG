@@ -769,6 +769,9 @@ type Derived struct {
 	// ExtraDamages are the damage the character's table features add to a weapon hit
 	// once per turn (extra_damage effects), with the amount worked out.
 	ExtraDamages []ExtraDamage
+	// PowerAttacks are the trades of a penalty on the attack roll for flat damage that the character's table
+	// features offer (power_attack effects).
+	PowerAttacks []PowerAttack `json:",omitempty"`
 	// SpellModifiers are the cast options the character's table features offer
 	// (spell_modifier effects), worked out for the character.
 	SpellModifiers []SpellModifier `json:",omitempty"`
@@ -1066,6 +1069,10 @@ type Attack struct {
 	// Attack takes a finesse or a ranged weapon, and Great Weapon Fighting a
 	// two-handed melee one. False for a spell and a creature's attack.
 	Finesse, TwoHanded bool
+	// Properties are the weapon's property keys ("weapon-property:heavy"), for the effects that choose
+	// weapons by them (power_attack). A pseudo-weapon line, a natural attack, the unarmed strike and a
+	// spell have none.
+	Properties []string `json:",omitempty"`
 	// MartialArts says the Martial Arts bonus action unarmed strike goes with
 	// this attack: the unarmed strike, and a monk weapon, while the monk wears
 	// no armor and no shield.

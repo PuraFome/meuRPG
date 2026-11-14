@@ -325,7 +325,7 @@
             (equipRetried)="gear.retry()"
             [canMark]="vm.canEdit && vm.state !== 'dead'"
             [marksNotice]="gear.marksNotice()"
-            (marksOpened)="gear.openMarks($event)"
+            (marksOpened)="gear.openPiece($event)"
             (gearToggled)="gear.toggle($event)"
             [canManageMagic]="vm.canEdit && vm.state !== 'dead'"
             [canChangeAttunement]="vm.isMaster || (vm.state !== 'dead' && magic.windowOpen())"

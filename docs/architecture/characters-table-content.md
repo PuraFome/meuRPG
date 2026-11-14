@@ -358,8 +358,14 @@ Level-up changes none of it (`full.custom_background` is locked).
 Storage is the protojson of the entry, so there is no column and no migration.
 An enum left unset reaches the rules empty, which they read as the default (`applies`, `visibility`, `resistance_kind`) or refuse (`kind`); a number this build does not know reaches them as `unknown` and is refused at its field.
 The violation is `table_spell.effect.modifiers[1].value` and the like.
-The spell editor of the web app builds its body from its own draft (`spell-draft.ts`) and edits only the next-hit modifier of `effect` (`hit-effect-draft.ts`), keeping the rest of the stored effect as it was.
-Saving a spell in the editor replaces the body: the stored effect goes back as it was, and a zone written through the API is removed.
+The spell editor of the web app builds its body from its own draft (`spell-draft.ts`), and the effect has two blocks that write it side by side.
+"Deixa um efeito nos alvos" (`spell-effect-draft.ts`, `spell-effect.ts`) edits every modifier but the next-hit one: seven kinds of change, "Em quem fica", the conditions, the aura, who sees it and the label.
+"Efeito no próximo golpe" (`hit-effect-draft.ts`) edits only the `weapon_hit_damage` modifier, and `spellEffect` writes it last, after the first block's modifiers, so the paths of that block's refusals keep their index.
+With only the second block on, the stored effect's `applies`, audience and label go on carrying it; a modifier kind neither block offers goes back untouched.
+The editor has no call to tag a draft, so it writes the card's labels itself (`rowTags`), kept equal to `rules.EffectTagsPT` by a table of cases on each side.
+A zone is still kept as it was loaded; saving a spell in the editor replaces the body, so a zone written through the API stays only as the draft carried it.
+`TableSpellEffect.aura` (`TableEffectAura`) maps through `auraAffectsOf`.
+A player's copy of a spell drops `visibility` and `player_label_pt` of an owner-only effect (`forPlayer`, `effectKeepsItsSecrets`), and the aura's radius with it.
 How the rules read the effect is in [Table content: rules](rules-table-content.md#the-lasting-effect-of-a-spell).
 
 **The next-hit effect.**

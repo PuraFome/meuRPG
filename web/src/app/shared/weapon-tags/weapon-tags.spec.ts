@@ -3,9 +3,10 @@ import { TestBed } from '@angular/core/testing';
 import type { MarksVm } from '../../core/characters/gear';
 import { WeaponTags } from './weapon-tags';
 
-function render(marks: MarksVm | null | undefined): HTMLElement {
+function render(marks: MarksVm | null | undefined, compact = false): HTMLElement {
   const fixture = TestBed.createComponent(WeaponTags);
   fixture.componentRef.setInput('marks', marks);
+  fixture.componentRef.setInput('compact', compact);
   fixture.detectChanges();
   return fixture.nativeElement as HTMLElement;
 }
@@ -34,5 +35,19 @@ describe('WeaponTags', () => {
     expect(Array.from(el.querySelectorAll('li')).map((li) => li.textContent)).toEqual([
       expect.stringContaining('Mágica'),
     ]);
+  });
+
+  it('draws each mark as a round chip with only its icon when compact, the word kept for a screen reader', () => {
+    const el = render({ silvered: true, adamantine: false, magical: true }, true);
+    const chips = Array.from(el.querySelectorAll('li'));
+    expect(chips.map((li) => li.querySelector('.mr-visually-hidden')!.textContent)).toEqual([
+      'Prateada',
+      'Mágica',
+    ]);
+    chips.forEach((li) => {
+      expect(li.classList).toContain('weapon-tags__chip');
+      expect(li.classList).not.toContain('mr-tag');
+      expect(li.querySelector('mat-icon')!.getAttribute('aria-hidden')).toBe('true');
+    });
   });
 });

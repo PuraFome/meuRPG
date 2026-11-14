@@ -6,9 +6,18 @@
     [path]="path('type')"
     [issues]="typeIssues()"
     [hint]="typeHint()"
+    [disabled]="effect().kept !== undefined"
     (valueChange)="setType($event)"
   />
 </div>
+@if (kept(); as kept) {
+  <dl class="kept">
+    @for (row of kept.rows; track row[0]) {
+      <div class="kept__row"><dt>{{ row[0] }}</dt><dd>{{ row[1] }}</dd></div>
+    }
+  </dl>
+  <p class="kept__note">{{ kept.note }}</p>
+}
 <div class="fields">
   @for (f of fields(); track f.name) {
     <div class="frow" [class.frow--wide]="wide(f)">

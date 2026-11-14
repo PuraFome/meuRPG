@@ -87,7 +87,7 @@ ALTER TABLE reaction_windows
     ));
 DELETE FROM session_events WHERE kind IN ('mount_kind_set', 'combatant_mounted', 'combatant_dismounted');
 DELETE FROM session_event_kinds WHERE kind IN ('mount_kind_set', 'combatant_mounted', 'combatant_dismounted');
-DROP INDEX IF EXISTS combatants_mounted_on_id_idx;
+DROP INDEX IF EXISTS combatants_mounted_on_id_idx CASCADE;
 ALTER TABLE combatants DROP CONSTRAINT IF EXISTS combatants_mount_prior_init_valid;
 ALTER TABLE combatants DROP CONSTRAINT IF EXISTS combatants_mount_kind_valid;
 ALTER TABLE combatants DROP CONSTRAINT IF EXISTS combatants_mounted_on_not_self;

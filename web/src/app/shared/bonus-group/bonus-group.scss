@@ -1,0 +1,83 @@
+:host {
+  display: block;
+}
+
+.bg {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bg__legend {
+  padding: 0;
+  margin-bottom: var(--mr-space-2);
+  font-weight: 600;
+  font-size: var(--mr-font-14);
+}
+
+.bg__row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--mr-rule-strong, var(--mr-rule));
+  border-radius: var(--mr-radius-md, 8px);
+  overflow: hidden;
+}
+
+.bg__opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mr-space-1);
+  height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+
+  & + & {
+    border-left: 1px solid var(--mr-rule-strong, var(--mr-rule));
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--mr-accent);
+    outline-offset: -2px;
+  }
+}
+
+.bg__opt--on {
+  background: var(--mr-accent-soft);
+  color: var(--mr-accent);
+}
+
+// The native radio stays in the tab order and answers the arrow keys; only its drawing is hidden.
+.bg__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.bg__check {
+  width: var(--mr-font-18);
+  height: var(--mr-font-18);
+  font-size: var(--mr-font-18);
+}
+
+.bg:disabled {
+  .bg__row {
+    background: var(--mr-ground);
+    color: var(--mr-ink-muted);
+  }
+
+  .bg__opt {
+    cursor: default;
+  }
+
+  .bg__opt--on {
+    background: var(--mr-ground);
+    color: var(--mr-ink-muted);
+  }
+}

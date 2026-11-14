@@ -5,12 +5,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { type AttunementEntryVm, MagicCategories } from '../../../core/characters/attunement';
 import type { GearVm } from '../../../core/characters/gear';
 
+import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
+import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
 import {
   type AttunementChip,
   GearList,
   type GearToggle,
 } from '../../../shared/gear-list/gear-list';
-import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
 import { FullSheetVm } from '../character-sheet.types';
 import { coinEntries, keepUnitsTogether } from '../sheet-format';
 
@@ -22,7 +23,7 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-equipment-panel',
-  imports: [GearList, MatButtonModule, MatIconModule],
+  imports: [BonusChip, GearList, MatButtonModule, MatIconModule],
   templateUrl: './equipment-panel.html',
   styleUrl: './equipment-panel.scss',
 })
@@ -48,11 +49,11 @@ export class EquipmentPanel {
   /** A tap on "Equipar" / "Guardar": the page calls the server and reads the sheet again. */
   readonly gearToggled = output<GearToggle>();
 
-  /** Whether each weapon has its "⋮" for its marks: the owner while the sheet is editable, the master always. */
+  /** Whether each row has its "⋮" for its marks or bonus: the owner while the sheet is editable, the master always. */
   readonly canMark = input(false);
-  /** What the last save of marks said ("Marcas salvas."). */
+  /** What the last save from a "⋮" said ("Marcas e bônus salvos.", "Bônus salvo."). */
   readonly marksNotice = input('');
-  /** A tap on a weapon's "⋮": the page opens the sheet of its marks. */
+  /** A tap on a row's "⋮": the page opens the sheet of its marks and bonus (a weapon) or its bonus (armor, shield). */
   readonly marksOpened = output<GearVm>();
 
   /** The owner (while the sheet is editable) and the master add and remove magic items. */
@@ -96,6 +97,26 @@ export class EquipmentPanel {
     const chip = this.chipOf();
     return this.sheet().gear.some((g) => chip(g) !== '');
   });
+
+  /** The marks that appear on some gear row, for the legend: the word and the icon of each chip. */
+  protected readonly legendMarks = computed(() => {
+    const gear = this.sheet().gear;
+    return [
+      { word: 'Prateada', icon: 'dark_mode', on: gear.some((g) => g.marks?.silvered) },
+      { word: 'Adamantina', icon: 'diamond', on: gear.some((g) => g.marks?.adamantine) },
+      { word: 'Mágica', icon: 'auto_awesome', on: gear.some((g) => g.marks?.magical) },
+    ].filter((m) => m.on);
+  });
+  /** Some gear row carries a magic bonus chip. */
+  protected readonly hasBonus = computed(() => this.sheet().gear.some((g) => !!g.bonus));
+  /** Some bonus is added to the numbers now (the legend's chip is solid), else every one is dashed. */
+  protected readonly bonusCounts = computed(() =>
+    this.sheet().gear.some((g) => !!g.bonus && g.bonusCounts !== false),
+  );
+  /** The legend shows when any chip is on a row. */
+  protected readonly hasLegend = computed(
+    () => this.legendMarks().length > 0 || this.showsChips() || this.hasBonus(),
+  );
 
   /** The line under a magic item that asks and is not attuned, with its icon; the same words as the short-rest sheet. */
   protected reasonOfEntry(e: AttunementEntryVm) {

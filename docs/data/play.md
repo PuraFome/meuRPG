@@ -1,7 +1,7 @@
 # Play tables: sessions, history and effects
 
 The `play` module owns the game session and everything that happens in it.
-This page holds the session, its history, the stage, casting outside combat, group checks, lasting effects on characters and the Bardic Inspiration die.
+This page holds the session, its history, the stage, casting outside combat, group checks, lasting effects on characters, the Bardic Inspiration die and the Inspiration the master grants.
 Combat is in [combat.md](combat.md) and puzzles in [puzzles.md](puzzles.md).
 
 ```mermaid
@@ -95,6 +95,11 @@ erDiagram
         uuid campaign_id FK
         uuid source_character_id FK
     }
+    character_favor {
+        uuid character_id PK,FK
+        uuid campaign_id FK
+        uuid granted_by_user_id
+    }
     inspiration_holds {
         uuid id PK
         uuid campaign_id FK
@@ -140,6 +145,8 @@ erDiagram
     campaigns ||--o{ character_inspiration : "campaign_id"
     characters ||--o| character_inspiration : "character_id"
     characters |o--o{ character_inspiration : "source_character_id"
+    campaigns ||--o{ character_favor : "campaign_id"
+    characters ||--o| character_favor : "character_id"
     campaigns ||--o{ game_sessions : "campaign_id"
     maps |o--o{ game_sessions : "current_map_id"
     map_points |o--o{ game_sessions : "open_scene_point_id"
@@ -320,6 +327,18 @@ The save columns (`end_save_ability`, `start_save_ability`, `save_dc`, `on_fail_
 `player_visible`, `audience` (`all` or `owner`) and `player_label` (1 to 30 characters) are the master's switches for what the player reads.
 When a combat takes the character in, the row becomes a `combatant_states` row of kind `effect` with the same id, and goes back when the combat ends (see [combat.md](combat.md#combatant_states-and-hit_riders)).
 
+## `character_favor`
+
+`character_favor` is the Inspiration the master grants a player character (PHB 2014 ch. 4, outside SRD 5.1).
+The code calls it favor because "inspiration" already means the Bardic Inspiration die; the app says "Inspiração".
+A character has it or not: the primary key is `character_id`, so it never stacks, and no row means none.
+`granted_by_user_id` is the master that granted it, without a foreign key, and `created_at` orders the holders.
+The index `character_favor_campaign_idx` serves the list of a campaign's holders.
+Both foreign keys cascade.
+Only a player character gets a row: the server refuses an NPC, a reserved character and any id that is not a player character of the campaign.
+The grant is the session event `favor_granted`, keyed by the request's idempotency key.
+`inspiration_holds.favor_spent` is a column on held rolls.
+
 ## `character_inspiration` and `inspiration_holds`
 
 `character_inspiration` is the Bardic Inspiration die a character holds out of a running combat (SRD 5.1): the primary key is `character_id` (one die at a time), `sides` is 6, 8, 10 or 12, `source_character_id` the bard (`SET NULL`), and `seconds_left` is 1 to 600 seconds of game time (the master's clock moves it and deletes a die with none left).
@@ -381,3 +400,4 @@ Cascades with the session or the character; the index is by session.
 - `spell_casts` rows are read by the master and the target's player for the amounts; a `secret` cast is the master's alone (RN-10).
 - `character_effects`: the owner and the master, filtered by `player_visible` and `audience`.
 - `inspiration_holds` and `character_inspiration`: the holder and the master.
+- `character_favor`: the master reads every row of the campaign; a player reads only their own characters' rows.

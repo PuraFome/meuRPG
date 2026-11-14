@@ -15,5 +15,11 @@ export function weaponMarksOf(full: FullSheet): WeaponMarkVm[] {
 
 /** The gear rows with their weapons' marks, as the combat's read gives them. */
 export function sheetGear(derived: DerivedSheet, full: FullSheet): GearVm[] {
-  return gearWithMarks(derived.gear, derived.attacks, full.weaponMarks);
+  return gearWithMarks(
+    derived.gear,
+    derived.attacks,
+    full.weaponMarks,
+    full.itemBonuses,
+    derived.itemModifiers,
+  );
 }

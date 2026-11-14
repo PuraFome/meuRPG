@@ -490,7 +490,7 @@ func (s *Service) rollRiderSave(ctx context.Context, c *combatTx, m authz.Member
 	if err != nil {
 		return false, err
 	}
-	states, err := s.readStates(ctx, c.tx, c.enc.ID)
+	states, err := s.readStatesAt(ctx, c.tx, c.enc.ID, nil)
 	if err != nil {
 		return false, err
 	}

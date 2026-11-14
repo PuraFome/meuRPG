@@ -255,11 +255,14 @@ legend.label {
     display: flex;
     align-items: flex-start;
     gap: 4px;
+    line-height: 20px;
 
+    // The icon's box is as tall as one line of the words, so its glyph sits on the middle of their capitals.
     .mat-icon {
       flex: none;
       width: 16px;
-      height: 16px;
+      height: 20px;
+      line-height: 20px;
       font-size: var(--mr-font-16);
     }
   }

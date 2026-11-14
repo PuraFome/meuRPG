@@ -1,0 +1,10 @@
+@if (words()) {
+  <span class="bonus-chip" [class.bonus-chip--idle]="!counts()" aria-hidden="true">
+    <mat-icon aria-hidden="true">auto_awesome</mat-icon>+{{ bonus() }}
+  </span>
+  <span class="bonus-chip__words">{{ label() }}</span>
+} @else {
+  <span class="bonus-chip" [class.bonus-chip--idle]="!counts()" role="img" [attr.aria-label]="name()">
+    <mat-icon aria-hidden="true">auto_awesome</mat-icon><span aria-hidden="true">+{{ bonus() }}</span>
+  </span>
+}

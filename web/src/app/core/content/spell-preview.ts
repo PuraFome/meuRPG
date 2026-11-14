@@ -1,3 +1,4 @@
+import { effectFieldPaths } from './spell-effect-checks';
 import { feetToMeters, formatMeters } from '../units';
 import type {
   DurationKindKey,
@@ -10,6 +11,7 @@ import {
   formatRange,
 } from '../../shared/spell-details/spell-details-format';
 import { rangeFeet } from './effect-draft';
+import { draftToEffect } from './spell-effect-draft';
 import { hitAvailable, hitFieldPaths } from './hit-effect-draft';
 import { SHAPE_OPTIONS } from './spell-options';
 import { SUMMON_FIELD_PATHS } from './spell-summon';
@@ -234,7 +236,7 @@ export function spellFieldPaths(d: SpellDraft): Set<string> {
     ...castFieldPaths(d),
     ...targetFieldPaths(d),
     ...mechanicFieldPaths(d),
-    ...(d.hit.enabled && hitAvailable(d) ? hitFieldPaths(d.kept?.effect) : []),
+    ...(d.hit.enabled && hitAvailable(d) ? hitFieldPaths(draftToEffect(d.effect)) : []),
   ];
-  return new Set(paths.map((x) => `table_spell.${x}`));
+  return new Set([...paths.map((x) => `table_spell.${x}`), ...effectFieldPaths(d.effect)]);
 }

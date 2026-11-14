@@ -9,6 +9,7 @@ import {
   CharacterState as GenCharacterState,
   type FullSheet,
   FullSheetSchema,
+  ItemBonusSchema,
   SheetMagicItemSchema,
   WeaponMarkSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -21,7 +22,7 @@ import {
   CharacterSheetSource,
   CharacterSheetVm,
   CharacterStoryVm,
-  type WeaponMarkVm,
+  type GearChange,
 } from './character-sheet.types';
 import { toCharacterSheetVm, toCharacterStoryInit } from './character-sheet-map';
 
@@ -107,16 +108,29 @@ export class CharacterSheetSourceLive implements CharacterSheetSource {
     await this.client.setEquipped({ campaignId, characterId, key, equipped });
   }
 
-  async setWeaponMarks(
+  async saveGear(
     campaignId: string,
     characterId: string,
     revision: number,
     name: string,
     sheet: FullSheet,
-    marks: readonly WeaponMarkVm[],
+    change: GearChange,
   ): Promise<CharacterSheetVm> {
     const next = clone(FullSheetSchema, sheet);
-    next.weaponMarks = marks.map((m) => create(WeaponMarkSchema, m));
+    if (change.marks) {
+      next.weaponMarks = change.marks.map((m) => create(WeaponMarkSchema, m));
+    }
+    if (change.bonus) {
+      const { key, bonus } = change.bonus;
+      const entry = next.itemBonuses.find((b) => b.key === key);
+      if (bonus === 0) {
+        next.itemBonuses = next.itemBonuses.filter((b) => b.key !== key);
+      } else if (entry) {
+        entry.bonus = bonus;
+      } else {
+        next.itemBonuses.push(create(ItemBonusSchema, { key, bonus }));
+      }
+    }
     const res = await this.client.updateCharacter({
       campaignId,
       characterId,

@@ -296,6 +296,24 @@ a.mr-list__row:hover .mr-list__name {
     margin: 0;
   }
 
+  // A notice with a button beside its words: the icon and the words are one line of their own (they wrap beside the
+  // icon, never under it), and it is the button that goes to the next line when the notice is narrow.
+  &__said {
+    display: flex;
+    flex: 1 1 14rem;
+    align-items: flex-start;
+    gap: var(--mr-space-3);
+    min-width: 0;
+
+    > .mat-icon {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      font-size: var(--mr-font-20);
+      margin-top: 1px;
+    }
+  }
+
   &--warning {
     background: var(--mr-warning-surface);
     border-color: var(--mr-warning-line);

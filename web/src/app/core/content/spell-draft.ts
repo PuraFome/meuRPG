@@ -10,11 +10,14 @@ import type { MessageInitShape } from '@bufbuild/protobuf';
 import {
   TableAreaShape,
   type TableSpell,
+  type TableSpellEffect,
   type TableSpellDamageSchema,
   TableSpellTargetKind,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { rangeFeet, rangeMeters } from './effect-draft';
 import { applyHit, hitAvailable, hitFromEffect, settleHit } from './hit-effect-draft';
+import { effectUnreadable } from './spell-effect-checks';
+import { draftToEffect, effectToDraft, hitShell } from './spell-effect-draft';
 import { draftToSpellSummon } from './spell-summon';
 import { emptySummon, summonToDraft } from './summon-draft';
 import {
@@ -148,12 +151,9 @@ function damageToDraft(s: TableSpell): Partial<SpellDraft> {
   return out;
 }
 
-/** The effect and the zone of a stored spell: no control shows them, so the draft carries them through. */
+/** The zone of a stored spell: no control shows it, so the draft carries it through. The effect has its own block. */
 function keptToDraft(s: TableSpell): Partial<SpellDraft> {
-  if (!s.effect && !s.zone) {
-    return {};
-  }
-  return { kept: { effect: s.effect, zone: s.zone } };
+  return { effect: effectToDraft(s.effect), ...(s.zone ? { kept: { zone: s.zone } } : {}) };
 }
 
 /** A stored spell, as a form. */
@@ -271,9 +271,19 @@ function mechanicInit(d: SpellDraft): Pick<SpellInit, 'attack' | 'save' | 'heal'
   }
 }
 
-/** The stored effect with the weapon-hit modifier the form says written in; nothing else of it changes. */
+/**
+ * The effect of the spell: "Deixa um efeito nos alvos" while it is on, with the weapon-hit modifier of "Efeito no próximo golpe"
+ * written in last (so the paths of the first block's refusals stay right). With only the second on, the stored effect's
+ * audience and label go on carrying it.
+ */
+export function spellEffect(d: SpellDraft): TableSpellEffect | undefined {
+  const mine = draftToEffect(d.effect);
+  const hitOn = d.hit.enabled && hitAvailable(d);
+  return applyHit(mine ?? (hitOn ? hitShell(d.effect) : undefined), d.hit, hitAvailable(d));
+}
+
 function effectInit(d: SpellDraft): Pick<SpellInit, 'effect'> {
-  const effect = applyHit(d.kept?.effect, d.hit, hitAvailable(d));
+  const effect = spellEffect(d);
   return effect ? { effect } : {};
 }
 
@@ -354,6 +364,7 @@ export function unreadableSpellPaths(d: SpellDraft): string[] {
     ...(bad(d.perSlot) && d.level > 0 && (d.target === 'creatures' || d.target === 'creature')
       ? ['table_spell.target.per_slot_level']
       : []),
+    ...effectUnreadable(d.effect),
   ];
 }
 

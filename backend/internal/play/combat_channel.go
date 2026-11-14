@@ -246,7 +246,7 @@ func (f *takeActionFlow) turnUndead(ctx context.Context, sheet link.Sheet) error
 	if err != nil {
 		return fmt.Errorf("list the combatants: %w", err)
 	}
-	states, err := f.s.readStates(ctx, f.c.tx, f.c.enc.ID)
+	states, err := f.s.readStatesAt(ctx, f.c.tx, f.c.enc.ID, nil)
 	if err != nil {
 		return err
 	}

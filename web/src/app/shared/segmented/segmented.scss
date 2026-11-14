@@ -54,6 +54,18 @@
   cursor: default;
 }
 
+// Options that never wrap their text: equal cells that go to the next row whole when the row is short.
+:host(.seg--wrap) {
+  .seg {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  }
+
+  .seg__item {
+    white-space: nowrap;
+  }
+}
+
 // The compact switch: one ground-tinted rounded track, the chosen option a raised chip.
 :host(.seg--track) {
   .seg {

@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 )
@@ -146,5 +148,39 @@ func TestTakeBackOfADiscardFromAnUnknownStatus(t *testing.T) {
 	var status string
 	if err := a.h.pool.QueryRow(t.Context(), "SELECT status FROM pending_damages WHERE id = $1", id).Scan(&status); err != nil || status != pendingRolled {
 		t.Errorf("status = %q (%v), want %q", status, err, pendingRolled)
+	}
+}
+
+// TestUndoTakesBackTheAttackPastAnInspirationGrant: the master grants the Inspiration after an
+// attack, the grant is no action of the combat, so the undo takes the attack back and the grant stays.
+func TestUndoTakesBackTheAttackPastAnInspirationGrant(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFight(t, 1)
+	a.passTo(t, e, "Toren")
+	a.mustAttack(t, a.caio, e, "Toren", battleaxe, "Goblin", d20(15))
+	attack := a.lastEventID(t, e)
+
+	if _, err := a.master.favor.GrantFavor(t.Context(), connect.NewRequest(&playv1.GrantFavorRequest{CampaignId: a.campaignID, CharacterId: a.toren.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("GrantFavor() error = %v", err)
+	}
+	if got := a.lastEventID(t, e); got != attack {
+		t.Fatalf("the undoable event after the grant = %q, want the attack %q", got, attack)
+	}
+	if err := a.undo(t, a.master, e, attack); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	count := func(query string) int {
+		var n int
+		if err := a.h.pool.QueryRow(t.Context(), query, a.campaignID).Scan(&n); err != nil {
+			t.Fatalf("count (%s): %v", query, err)
+		}
+		return n
+	}
+	if n := count(`SELECT count(*) FROM character_favor WHERE campaign_id = $1`); n != 1 {
+		t.Errorf("character_favor rows after the undo = %d, want 1: the grant stays", n)
+	}
+	if n := count(`SELECT count(*) FROM session_events WHERE kind = 'favor_granted' AND game_session_id IN (SELECT id FROM game_sessions WHERE campaign_id = $1)`); n != 1 {
+		t.Errorf("favor_granted events after the undo = %d, want 1: the grant stays", n)
 	}
 }

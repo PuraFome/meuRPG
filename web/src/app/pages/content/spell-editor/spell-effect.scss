@@ -1,0 +1,165 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--mr-space-3) var(--mr-space-4);
+  align-items: start;
+
+  @media (min-width: 768px) {
+    &--2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    &--roll {
+      grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.narrow {
+  max-width: 14rem; // as modest as "Quanto"
+}
+
+.line {
+  display: flex;
+  // Icon and words in one row: the words wrap beside the icon, not under it (a wrapping row leaves the icon alone).
+  align-items: flex-start;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: var(--mr-font-16);
+    height: var(--mr-font-16);
+    margin-top: calc((20px - var(--mr-font-16)) / 2); // centred on the first line of words
+    font-size: var(--mr-font-16);
+  }
+
+  &__side {
+    margin-left: auto;
+  }
+}
+
+.duration {
+  // Top-aligned like every .line: the icon's margin centres it on the first line of words (centring it on the row
+  // put it 2px off the capitals, with its margin counted in).
+  flex-wrap: wrap;
+  padding: var(--mr-space-2) var(--mr-space-3);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface-sunken, var(--mr-accent-soft));
+  color: var(--mr-ink);
+
+  .inline {
+    vertical-align: middle;
+  }
+}
+
+.group__head {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 var(--mr-space-2);
+}
+
+.group__label {
+  font-weight: 700;
+}
+
+.count {
+  color: var(--mr-ink-muted);
+  font-size: var(--mr-font-14);
+}
+
+.rowcard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+  margin-bottom: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-rule);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface-sunken, transparent);
+
+  &__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: var(--mr-space-2);
+    align-items: start;
+  }
+}
+
+.remove,
+.add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--mr-space-3);
+  border: 0;
+  background: transparent;
+  color: var(--mr-accent-ink, var(--mr-accent));
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.remove {
+  justify-content: center;
+  padding: 0;
+  color: var(--mr-ink-muted);
+}
+
+.onCard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+}
+
+.chip {
+  padding: 2px var(--mr-space-3);
+  border: 1px solid var(--mr-rule);
+  border-radius: 999px;
+  font-weight: 700;
+  color: var(--mr-ink);
+}
+
+.inline-issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 18px;
+  color: var(--mr-danger-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    margin-top: 1px;
+    font-size: 16px;
+  }
+}

@@ -1,3 +1,4 @@
+import { effectReadItem } from './spell-effect-tags';
 import type {
   TableBackground,
   TableClassFeature,
@@ -182,10 +183,12 @@ function readSpell(s: TableSpell, nameOf: NameOf): EntryRead {
   const classes = names(s.classKeys, nameOf);
   if (classes) rows.push({ label: 'Classes', value: classes });
   const summon = summonLine(s.summon, nameOf);
+  const effect = effectReadItem(s.effect, nameOf);
   return {
     rows,
     sections: [],
     text: [...s.descPt, ...s.higherLevelPt, ...(summon ? [summon] : [])],
+    ...(effect ? { effects: [effect] } : {}),
     ...(hit ? { hit } : {}),
   };
 }

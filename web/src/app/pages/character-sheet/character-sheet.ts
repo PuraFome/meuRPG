@@ -49,6 +49,7 @@ import { CombatColumn } from './combat-column/combat-column';
 import { EquipmentPanel } from './equipment-panel/equipment-panel';
 import { SheetEquip } from './character-sheet-equip';
 import { createSheetMagicItems } from './magic-items/sheet-magic-items';
+import { openPieceBonus } from './piece-bonus/piece-bonus-sheet';
 import { openWeaponMarks } from './weapon-marks/weapon-marks-sheet';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
 import { FeaturesPanel } from './features-panel/features-panel';
@@ -359,6 +360,7 @@ export class CharacterSheetPage {
     },
     apply: (characterId, vm) => this.applyWrite(characterId, vm),
     openMarksSheet: (data) => openWeaponMarks(this.dialog, this.bottomSheet, data),
+    openBonusSheet: (data) => openPieceBonus(this.dialog, this.bottomSheet, data),
   });
 
   /** The sheet's magic items and attunement (`SheetMagicItems`). */

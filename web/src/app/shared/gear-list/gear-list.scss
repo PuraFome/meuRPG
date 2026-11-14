@@ -8,65 +8,107 @@
   font-weight: 600;
 }
 
+.gear-group__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+  margin: 0 0 var(--mr-space-1);
+
+  .gear-group__title {
+    margin: 0;
+  }
+}
+
+.gear-group__ac {
+  font-size: var(--mr-font-14);
+  font-variant-numeric: tabular-nums;
+}
+
+// A row is one line and only the name shrinks (it ellipsizes before anything wraps); "duas mãos" is drawn only where the row has room left.
+// The list is a two-column grid, the row's words and the button, so the buttons of one list share a width.
+:host {
+  display: block;
+}
+
 .gear-rows {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.gear-group__title--carried {
-  display: flex;
-  align-items: center;
-  gap: var(--mr-space-1);
-  font-size: var(--mr-font-14);
-
-  .mat-icon {
-    width: var(--mr-font-18);
-    height: var(--mr-font-18);
-    font-size: var(--mr-font-18);
-  }
-}
-
 .gear-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: subgrid;
+  grid-column: 1 / -1;
   align-items: center;
-  gap: var(--mr-space-1) var(--mr-space-3);
   padding-block: var(--mr-space-1);
   border-top: 1px solid var(--mr-rule);
 }
 
-.gear-row__text {
+.gear-row__main {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--mr-space-2);
+  align-items: center;
+  gap: 4px;
   min-width: 0;
-}
 
-.gear-row__lead {
-  min-width: 0;
-  overflow-wrap: anywhere;
+  > * {
+    flex: none;
+  }
 
-  > * + * {
-    margin-inline-start: var(--mr-space-2);
+  // The kind icon is the size of the name's capitals, so the name keeps the room.
+  > .gear-row__icon {
+    width: var(--mr-font-18);
+    height: var(--mr-font-18);
+    font-size: var(--mr-font-18);
+  }
+
+  > .gear-row__name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // The 44px-tall target reaches into the button's margin, so the words keep their room.
+  > .gear-row__more {
+    margin-inline: auto -8px;
   }
 }
 
-.gear-row__name {
-  overflow-wrap: anywhere;
-}
-
-.gear-row__glue {
-  white-space: nowrap;
-}
-
-.gear-row__kind {
+// "duas mãos" takes the room the row has left, up to its own width; a narrower box drops the words to a hidden second line.
+// The words are the only item of a one-line box that wraps: with a zero-width item as tall as the box before them, they drop to a second line,
+// outside the box, as a whole when the box is narrower than they are, and are never drawn cut.
+.gear-row__main > .gear-row__kind {
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: max-content;
+  height: 1.4em;
+  overflow: hidden;
   font-size: var(--mr-font-14);
+  line-height: 1.4;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    flex: none;
+    width: 0;
+    height: 100%;
+  }
+
+  > span {
+    flex: none;
+  }
 }
 
-.gear-row__icon {
-  flex: none;
+.gear-row__main > app-weapon-tags {
+  display: flex;
 }
 
 .gear-row__warn {
@@ -77,10 +119,11 @@
 }
 
 .gear-row__idle {
-  padding: 0 var(--mr-space-2);
+  padding: 0 6px;
   border: 1px dashed var(--mr-rule);
   border-radius: var(--mr-radius-pill);
   font-size: var(--mr-font-14);
+  white-space: nowrap;
 }
 
 .gear-row--idle .gear-row__name {
@@ -109,24 +152,16 @@
 
 .gear-row__button {
   min-height: 2.75rem;
-  min-width: 2.75rem;
-}
-
-.gear-row__ac {
+  min-width: 80px;
+  justify-self: stretch;
   margin-inline-start: var(--mr-space-2);
-  font-variant-numeric: tabular-nums;
+  padding-inline: var(--mr-space-2);
+  white-space: nowrap;
 }
 
 .gear-row__count {
-  margin-inline-start: var(--mr-space-1);
   font-size: var(--mr-font-14);
   font-weight: 600;
-}
-
-.gear-row__actions {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--mr-space-2);
 }
 
 // The weapon's marks menu: a quiet 44 px target beside "Equipar" / "Guardar".
@@ -134,7 +169,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  // 32px wide and 44px tall: the target stays above the 24px minimum and the name keeps the room.
+  width: 32px;
   height: 44px;
   padding: 0;
   border: 1px solid transparent;
@@ -161,10 +197,8 @@
   box-sizing: border-box;
   width: 22px;
   height: 22px;
-  margin-inline-start: 4px;
   border: 1px dashed var(--mr-rule);
   border-radius: 999px;
-  vertical-align: middle;
 
   .mat-icon {
     width: 14px;
