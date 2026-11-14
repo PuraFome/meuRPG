@@ -76,6 +76,22 @@ func mountLimit(cs []playdb.Combatant, who playdb.Combatant, key string) error {
 		func(b *playv1.EncounterBlocked) { b.CombatantIds = []string{who.ID} })
 }
 
+// limitForDriver is limitMountOptions for the player who directs the mount without owning it: only the three actions and the economy.
+func limitForDriver(res *playv1.GetTurnOptionsResponse, o *rulesv1.TurnOptions, keep func(*rulesv1.ActionOption) bool, riderDown bool) {
+	o.Attacks, o.Spells, o.FeatureActions = nil, nil, nil
+	o.StandardActions = slices.DeleteFunc(o.StandardActions, func(a *rulesv1.ActionOption) bool { return !keep(a) })
+	res.AttackTargets, res.SpellTargets, res.ResourceTargets, res.FeatureTargets = nil, nil, nil, nil
+	res.ContestAttackOptions, res.ManeuverDice, res.ExtraAction = nil, nil, nil
+	// What is left is the mount's economy and the three actions: the dice of its pending damage, the rolls of its contests, its notes and
+	// its jumps are the master's (RN-20).
+	res.PendingDamages, res.ContestState, res.EffectNotes, o.Jumps = nil, nil, nil, nil
+	if riderDown {
+		for _, a := range o.GetStandardActions() {
+			a.Enabled, a.Reason = false, &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN}
+		}
+	}
+}
+
 // limitMountOptions shows the turn options of a mount that carries a rider as it takes them: Dash, Disengage and Dodge stay as they were,
 // and every other row is disabled with the words that say why (the three too, for a rider that is down, to its player). The player who directs the mount without owning it (the rider's, for a
 // creature of the master's) reads the three actions and the mount's economy, and nothing else: the rest of an NPC's stat block is not
@@ -90,18 +106,7 @@ func limitMountOptions(res *playv1.GetTurnOptionsResponse, cs []playdb.Combatant
 	}
 	keep := func(a *rulesv1.ActionOption) bool { return mountActionAllowed(a.GetAction().GetKey()) }
 	if !v.master && !v.owns(who) {
-		o.Attacks, o.Spells, o.FeatureActions = nil, nil, nil
-		o.StandardActions = slices.DeleteFunc(o.StandardActions, func(a *rulesv1.ActionOption) bool { return !keep(a) })
-		res.AttackTargets, res.SpellTargets, res.ResourceTargets, res.FeatureTargets = nil, nil, nil, nil
-		res.ContestAttackOptions, res.ManeuverDice, res.ExtraAction = nil, nil, nil
-		// What is left is the mount's economy and the three actions: the dice of its pending damage, the rolls of its contests, its notes and
-		// its jumps are the master's (RN-20).
-		res.PendingDamages, res.ContestState, res.EffectNotes, o.Jumps = nil, nil, nil, nil
-		if riderDown {
-			for _, a := range o.GetStandardActions() {
-				a.Enabled, a.Reason = false, &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN}
-			}
-		}
+		limitForDriver(res, o, keep, riderDown)
 		return
 	}
 	for _, a := range o.GetAttacks() {

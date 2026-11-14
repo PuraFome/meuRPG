@@ -183,7 +183,7 @@ func (s *Service) mountSaveView(ctx context.Context, m authz.Membership, d *enco
 			continue
 		}
 		rider, ok := byID[conv.OrZero(w.ReactorID)]
-		if !ok || (!v.master && !(v.owns(rider) && !isCreature(rider))) { // a creature's save is the master's to answer
+		if !ok || (!v.master && (!v.owns(rider) || isCreature(rider))) { // a creature's save is the master's to answer
 			continue
 		}
 		return s.mountSavePrompt(ctx, m, d, v, w, rider)
