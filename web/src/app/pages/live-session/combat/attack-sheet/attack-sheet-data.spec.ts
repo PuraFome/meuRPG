@@ -278,9 +278,8 @@ describe('attackSheetData: the magic bonus', () => {
     ).toBeUndefined();
   });
 
-  it("carries none for a creature's option, which has no bonus", () => {
-    expect(
-      attackSheetData(request({ attacker: goblin, options: withBonus(0) }))?.bonus,
-    ).toBeUndefined();
+  it('carries none for a thrown-back missile, even when its key has an option with a bonus', () => {
+    const thrown = { attack: sword, targets: [] };
+    expect(attackSheetData(request({ options: withBonus(2), thrown }))?.bonus).toBeUndefined();
   });
 });

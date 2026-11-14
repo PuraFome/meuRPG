@@ -473,6 +473,8 @@ describe('the articles of the names', () => {
   it('knows the feminine words that do not end in "a"', () => {
     expect(article('Mace')).toBe('a');
     expect(article('Foice')).toBe('a');
+    expect(article('Glaive')).toBe('a');
+    expect(article('Glaive de prata')).toBe('a');
     expect(article('Machado')).toBe('o');
   });
 });
