@@ -107,7 +107,7 @@ func newPowerTableWith(t *testing.T, withDie bool) *powerTable {
 	return g
 }
 
-// fightInspired starts the combat with Orla first, gives Pipo her Bardic Inspiration die and passes to Pipo's turn.
+// fightInspired starts the combat with Orla first, gives Pipo the Bardic Inspiration die and passes to Pipo's turn.
 func (g *powerTable) fightInspired(t *testing.T) *playv1.Encounter {
 	t.Helper()
 	e := g.start(t, plan{
@@ -343,7 +343,7 @@ func TestTheNaturalTwentyHitsAndTheNaturalOneMissesWithThePenalty(t *testing.T) 
 			if err != nil {
 				t.Fatalf("RollAttack() error = %v", err)
 			}
-			if offer := res.GetHeldRollOffer(); offer.GetLucky() != nil { // Pipo is a halfling: a 1 asks first, and he keeps it
+			if offer := res.GetHeldRollOffer(); offer.GetLucky() != nil { // Pipo is a halfling: a 1 asks first, and the player keeps it
 				answer, err := g.answerLucky(t, g.caio, e, offer.GetHoldId(), keepTheOne)
 				if err != nil {
 					t.Fatalf("AnswerLucky(keep) error = %v", err)
@@ -388,7 +388,7 @@ func TestAPowerAttackTheSheetOrTheWeaponRefusesWritesNothing(t *testing.T) {
 	if got := g.eventCount(t); got != events {
 		t.Errorf("events = %d, want %d: a refused attack wrote one", got, events)
 	}
-	// Toren has no power attack: Pipo's key is not his.
+	// Toren has no power attack: the key is Pipo's, not Toren's.
 	g.passTo(t, e, "Toren")
 	events = g.eventCount(t)
 	if _, err := g.attack(t, g.ana, e, "Toren", battleaxe, "Goblin", func(r *playv1.RollAttackRequest) {

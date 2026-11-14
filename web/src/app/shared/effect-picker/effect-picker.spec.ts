@@ -108,6 +108,35 @@ describe('EffectPicker (the closed menu of ADR-0018, from the server)', () => {
       }
     });
 
+    it('shows a stored power_attack read-only: the numbers as text, no field, a note, and a select that cannot switch', () => {
+      setup(
+        effectToDraft(
+          create(TableEffectSchema, {
+            type: 'power_attack',
+            attackPenalty: 5,
+            damageBonus: 10,
+            weapon: 'melee',
+            weaponProperties: ['weapon-property:heavy'],
+            onlyProficient: true,
+            resource: 'resource:fury',
+          }),
+        ),
+        { menu: powerAttackMenu() },
+      );
+      const t = text(el);
+      expect(t).toContain('Penalidade no ataque−5');
+      expect(t).toContain('Bônus no dano+10');
+      expect(t).toContain('corpo a corpo');
+      expect(t).toContain('weapon-property:heavy');
+      expect(t).toContain('Só com arma proficientesim');
+      expect(t).toContain('resource:fury');
+      expect(t).toContain('O editor ainda não muda este efeito');
+      for (const name of ['attack_penalty', 'damage_bonus', 'only_proficient', 'text_pt']) {
+        expect(field(name)).toBeNull();
+      }
+      expect((field('type') as HTMLSelectElement).disabled).toBe(true);
+    });
+
     it('still opens on a stored power_attack effect without crashing', () => {
       setup(effectToDraft(create(TableEffectSchema, { type: 'power_attack', attackPenalty: 5 })), {
         menu: powerAttackMenu(),

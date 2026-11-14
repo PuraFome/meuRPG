@@ -450,7 +450,7 @@ func TestTheLogLineOfAnAttackWithAnArchivedPowerAttackSaysAnotherSourceToAnother
 			if m := en.GetPowerAttack(); m != nil {
 				seen++
 				if m.GetNamePt() != powerHeavyName || m.GetKey() != g.heavyKey || m.GetPenalty() != heavyPenalty || m.GetHidden() {
-					t.Errorf("Caio reads %v, want his own feature, name and numbers", m)
+					t.Errorf("Caio reads %v, want the feature, name and numbers of their own", m)
 				}
 			}
 		}

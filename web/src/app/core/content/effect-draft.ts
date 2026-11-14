@@ -6,13 +6,14 @@ import type {
   GetEffectMenuResponse,
   TableEffect,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { feetToMeters, metersToFeet } from '../units';
 import type { EffectDraft, EffectInit } from './effect-draft.types';
+import { keptOf, keptToInit } from './effect-kept';
 import { offeredTypes, visibleFields } from './effect-visible';
 import { EFFECT_WRITERS, rangeFeet } from './effect-writers';
-import { WHOLE_MAX } from './whole-number';
+import { rangeMeters, unreadableRange } from './effect-range';
 
 export type { EffectDraft, EffectInit } from './effect-draft.types';
+export { rangeMeters, unreadableRange } from './effect-range';
 export { onlyProficientApplies, rangeFeet, splitTags } from './effect-writers';
 export {
   type ChoiceKind,
@@ -132,6 +133,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
   return {
     id: newRowId(),
     type: e.type,
+    kept: keptOf(e),
     target: e.target,
     mode: e.mode,
     value: e.value,
@@ -213,7 +215,7 @@ export function effectToDraft(e: TableEffect): EffectDraft {
 /** The effect a request sends: `type` and the fields the menu says that type reads, and nothing else. An empty text or an empty
  * list is not sent: the server reads "not set" the same way. */
 export function draftToEffect(d: EffectDraft, menu: EffectMenuVm): EffectInit {
-  const out: EffectInit = { type: d.type };
+  const out: EffectInit = d.kept ? keptToInit(d.kept) : { type: d.type };
   for (const f of visibleFields(menu.fieldsOf(d.type), d)) {
     Object.assign(out, EFFECT_WRITERS.get(f.name)?.(d));
   }
@@ -333,25 +335,6 @@ export class EffectMenuVm {
   nameOf(list: string, key: string): string {
     return this.list(list).find((v) => v.key === key)?.namePt ?? key;
   }
-}
-
-/** The metres a range field shows, from the feet it stores. */
-export function rangeMeters(ft: number): string {
-  return ft > 0 ? String(feetToMeters(ft)).replace('.', ',') : '';
-}
-
-/** Whether a range field holds something that is not a number of metres the server can store (empty is fine: it means none). The text is
- * a plain decimal ("18", "4,5"), and its feet are a whole number within int32. */
-export function unreadableRange(text: string): boolean {
-  const t = text.trim();
-  if (t === '') {
-    return false;
-  }
-  if (!/^\d+([.,]\d+)?$/.test(t)) {
-    return true;
-  }
-  const ft = metersToFeet(Number(t.replace(',', '.')));
-  return !Number.isSafeInteger(ft) || ft > WHOLE_MAX;
 }
 
 /** The number fields the editor shows in metres (the server stores feet), and the draft key that holds their text: the one place that

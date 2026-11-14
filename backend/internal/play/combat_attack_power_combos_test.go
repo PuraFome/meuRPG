@@ -2,6 +2,7 @@ package play
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -24,12 +25,20 @@ const (
 // powerFeat creates the feat with the trade and its pool; its key is the key the request names.
 func powerFeat(t *testing.T, a *armed) string {
 	t.Helper()
+	return powerFeatWith(t, a, func(*rulesv1.TableEffect) {})
+}
+
+// powerFeatWith is powerFeat with the trade changed by edit before it is saved.
+func powerFeatWith(t *testing.T, a *armed, edit func(*rulesv1.TableEffect)) string {
+	t.Helper()
+	trade := &rulesv1.TableEffect{Type: "power_attack", AttackPenalty: comboPenalty, DamageBonus: comboDamage, Weapon: "any", Resource: comboPool}
+	edit(trade)
 	res, err := a.master.table.CreateTableEntry(t.Context(), connect.NewRequest(&rulesv1.CreateTableEntryRequest{
 		CampaignId: a.campaignID, Body: &rulesv1.CreateTableEntryRequest_TableFeat{TableFeat: &rulesv1.TableFeat{
 			NamePt: "Troca do Talento", DescPt: []string{"Troca precisão por dano."},
 			Effects: []*rulesv1.TableEffect{
 				{Type: "resource", Resource: comboPool, Max: "2", Recharge: "short_rest"},
-				{Type: "power_attack", AttackPenalty: comboPenalty, DamageBonus: comboDamage, Weapon: "any", Resource: comboPool},
+				trade,
 			},
 		}},
 	}))
@@ -225,5 +234,40 @@ func TestAPowerAttackOnDeflectMissilesThrowBack(t *testing.T) {
 	}
 	if got := a.comboUsesLeft(t, a.pens); got != 1 {
 		t.Errorf("uses left = %d, want 1", got)
+	}
+}
+
+// The same throw back with a trade that asks `only_proficient` and no other filter: the throw back is built from the missile
+// and has no line of the sheet, so its line is not marked proficient and the filter refuses the trade ("sem proficiência").
+// This pins what the code does today: the line's proficiency decides, the throw is refused and no use is spent.
+func TestAnOnlyProficientPowerAttackOnDeflectMissilesThrowBack(t *testing.T) {
+	t.Parallel()
+	var feat string
+	a, e := reactorFight(t, func(t *testing.T, a *armed) *charactersv1.Character {
+		t.Helper()
+		feat = powerFeatWith(t, a, func(trade *rulesv1.TableEffect) { trade.OnlyProficient = true })
+		c := monkThree(t, a)
+		a.giveFeat(t, c, feat)
+		return c
+	})
+	hit := a.mustAttack(t, a.master, e, "Goblin", shortBow, "Reator", disadvantage(15))
+	a.mustDamage(t, a.master, e, hit.GetPendingDamage().GetId(), typedDamage(6))
+	w := a.windowOf(t, a.ana, playv1.ReactionKind_REACTION_KIND_DEFLECT_MISSILES)
+	if w == nil {
+		t.Fatal("the monk has no Deflect Missiles window")
+	}
+	a.mustAnswer(t, a.ana, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
+		r.Answer, r.Roll = playv1.ReactionChoice_REACTION_CHOICE_USE, &playv1.AnswerReactionRequest_Typed{Typed: 8}
+	})
+	_, err := a.throwBack(t, a.ana, e, w.GetId(), "Reator", "Goblin", func(r *playv1.RollAttackRequest) { disadvantage(15)(r); r.PowerAttackKey = feat })
+	if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "sem proficiência") {
+		t.Fatalf("RollAttack(throw back with an only_proficient trade) error = %v, want invalid_argument \"sem proficiência\"", err)
+	}
+	if got := a.comboUsesLeft(t, a.pens); got != 2 {
+		t.Errorf("uses left = %d, want 2", got)
+	}
+	// The same throw back without the trade still goes through: the refusal is the trade's, not the throw's.
+	if _, err := a.throwBack(t, a.ana, e, w.GetId(), "Reator", "Goblin", func(r *playv1.RollAttackRequest) { disadvantage(15)(r) }); err != nil {
+		t.Errorf("RollAttack(throw back without the trade) error = %v", err)
 	}
 }

@@ -10,7 +10,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
-// A druid in a beast form keeps the power attacks of her features that the beast's attack line fits. The wolf's Bite is a
+// A druid in a beast form keeps the power attacks of the druid's features that the beast's attack line fits. The wolf's Bite is a
 // natural attack line of the stat block: a weapon line, melee, with no weapon properties, and one the beast is always
 // proficient with (rules.monsterAttack). So a trade that asks only for a melee weapon is listed on the Bite and accepted,
 // a trade that also asks for proficiency fits it too, and a trade that names a weapon property (heavy) never does.
