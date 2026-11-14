@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // TestUpdateCharacterItemBonusesAreCheckedAndRoundTrip: a bonus on a piece the sheet does not carry, or outside 1 to 3,
@@ -83,5 +84,51 @@ func TestItemBonusesFollowTheSheetLock(t *testing.T) {
 		`failed_precondition: the sheet is locked: a game session has started, so only the master edits it | CharacterBlocked{reason=CHARACTER_BLOCKED_REASON_SHEET_LOCKED character_id="`+pc.GetId()+`"}`)
 	if _, err := editorUpdate(et.master, req); err != nil {
 		t.Errorf("the master's bonus change on a locked sheet: %v", err)
+	}
+}
+
+// TestMasterChangingABonusShowsTheNewMagicBonusWithTheNewNumbers: the next read after the master's save carries the new
+// magic_bonus on the sheet's attack and on the combat option, together with the new attack bonus and damage.
+func TestMasterChangingABonusShowsTheNewMagicBonusWithTheNewNumbers(t *testing.T) {
+	t.Parallel()
+	et := newEditorTable(t, nil)
+	pc := et.editorStandardFighter(t)
+	const rapier = "equipment:rapier"
+	save := func(c *charactersv1.Character, bonuses ...*charactersv1.ItemBonus) {
+		t.Helper()
+		req := editorSaveOf(c)
+		req.Sheet = editorClone(c.GetSheet(), func(f *charactersv1.FullSheet) {
+			f.WeaponKeys = []string{rapier}
+			f.ItemBonuses = bonuses
+		})
+		if _, err := editorUpdate(et.master, req); err != nil {
+			t.Fatalf("the master's save error = %v", err)
+		}
+	}
+	read := func() *rulesv1.Attack {
+		t.Helper()
+		for _, a := range et.dona.get(t, et.campaign, pc.GetId()).GetDerived().GetAttacks() {
+			if a.GetKey() == rapier {
+				return a
+			}
+		}
+		t.Fatalf("no attack %s", rapier)
+		return nil
+	}
+	save(pc)
+	plain := read()
+	if plain.GetMagicBonus() != 0 {
+		t.Errorf("magic_bonus without a bonus = %d, want 0", plain.GetMagicBonus())
+	}
+	for _, n := range []int32{1, 3} {
+		save(et.dona.get(t, et.campaign, pc.GetId()), &charactersv1.ItemBonus{Key: rapier, Bonus: n})
+		got := read()
+		if got.GetMagicBonus() != n || got.GetAttackBonus() != plain.GetAttackBonus()+n || got.GetDamageDice().GetBonus() != plain.GetDamageDice().GetBonus()+n {
+			t.Errorf("+%d: magic_bonus %d, attack_bonus %d (plain %d), damage bonus %d (plain %d)", n, got.GetMagicBonus(), got.GetAttackBonus(), plain.GetAttackBonus(), got.GetDamageDice().GetBonus(), plain.GetDamageDice().GetBonus())
+		}
+	}
+	save(et.dona.get(t, et.campaign, pc.GetId()), &charactersv1.ItemBonus{Key: rapier, Bonus: 2, RequiresAttunement: true})
+	if got := read(); got.GetMagicBonus() != 0 || got.GetAttackBonus() != plain.GetAttackBonus() {
+		t.Errorf("needs attunement, not attuned: magic_bonus %d, attack_bonus %d, want 0 and %d", got.GetMagicBonus(), got.GetAttackBonus(), plain.GetAttackBonus())
 	}
 }
