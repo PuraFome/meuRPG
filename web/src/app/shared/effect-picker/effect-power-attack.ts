@@ -59,6 +59,7 @@ let nextId = 0;
       </div>
       <app-radio-cards
         label="Com que armas"
+        [strongLegend]="true"
         [options]="cards"
         [value]="weapon()"
         [path]="path('weapon')"

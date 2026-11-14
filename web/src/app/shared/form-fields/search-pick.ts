@@ -93,7 +93,7 @@ export function searchSections(
   selector: 'app-search-pick',
   imports: [FieldNote, MatFormFieldModule, MatIconModule, MatInputModule],
   template: `
-    <mat-form-field appearance="outline" subscriptSizing="dynamic" [class.invalid]="invalid()">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" [floatLabel]="placeholder() ? 'always' : 'auto'" [class.invalid]="invalid()">
       <mat-label>{{ label() }}</mat-label>
       <input
         #field

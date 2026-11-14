@@ -310,6 +310,16 @@ describe('EffectPicker: the power_attack block ("Ataque poderoso")', () => {
     });
   });
 
+  describe('the labels of the block (board 586-01)', () => {
+    it('floats "A arma precisa ter" over "Procurar propriedade" and sets "Com que armas" in bold', () => {
+      setup(trade());
+      const props = el.querySelector('.power__props')!;
+      expect(props.querySelector('.mdc-floating-label--float-above')).not.toBeNull();
+      expect(props.querySelector('input')!.placeholder).toBe('Procurar propriedade');
+      expect(el.querySelector('.legend')!.classList).toContain('legend--strong');
+    });
+  });
+
   describe('the name of the pool', () => {
     const both = () => [
       trade({ weapon: 'ranged', resource: 'folego_do_atirador' }),
