@@ -138,6 +138,9 @@ func (s *Service) initiativeWrite(ctx context.Context, c *combatTx, call initiat
 	if _, err := saveOrder(ctx, c.q, cs, orderCombatants(cs)); err != nil {
 		return nil, err
 	}
+	if _, err := syncMounts(ctx, c, cs); err != nil { // a controlled mount takes the initiative of a rider that rolls now
+		return nil, err
+	}
 	if *regained, err = s.regainOnInitiative(ctx, c, target); err != nil { // a pool that recharges on initiative
 		return nil, err
 	}
