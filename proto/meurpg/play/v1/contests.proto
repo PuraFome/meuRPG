@@ -264,6 +264,12 @@ message StartContestRequest {
   // The face of the die when the player rolls physical dice (the roll is typed d20 faces): 1
   // to the die's sides. Empty (0) when the roll is in the app, where the server rolls the die.
   int32 maneuver_face = 12;
+
+  // Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 13;
 }
 
 // StartContestResponse returns the combat after it and the contest.
@@ -290,6 +296,12 @@ message RespondContestRequest {
   // The player leaves the roll to the master: "Deixar o mestre rolar por mim". The skill
   // is the player's choice and the contest waits for the master.
   bool defer_to_master = 7;
+
+  // Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 8;
 }
 
 // RespondContestResponse returns the combat and the contest after the answer.
@@ -354,6 +366,12 @@ message HideRequest {
   // Unset is "standard:hide".
   string action_key = 5;
   CheckRollInput roll = 6;
+
+  // Spends the character's Inspiration for advantage on this Stealth check, chosen before the d20 is rolled.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 7;
 }
 
 // HideResponse returns the combat and the attempt, which waits for the master.
@@ -509,6 +527,12 @@ message RollGroupCheckRequest {
   string idempotency_key = 2;
   string group_check_id = 3;
   CheckRollInput roll = 4;
+
+  // Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+  // Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+  // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+  // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+  bool spend_favor = 5;
 }
 
 // RollGroupCheckResponse returns the group check and the caller's roll.

@@ -1333,7 +1333,7 @@ func (e *logEntry) fillAttack(c *logViewing, out *playv1.CombatLogEntry) bool {
 		out.TargetArmorClass, out.CoverBonus = &e.ev.TargetAC, e.ev.CoverBonus
 	}
 	if c.dice {
-		e.attackDice(out, v)
+		e.attackDice(out, v, c.actor)
 	}
 	// The trade the attack made: its feature and numbers are the dice's audience.
 	out.PowerAttack = e.ev.PowerAttack.logView(c.dice)
@@ -1348,7 +1348,7 @@ func (e *logEntry) fillAttack(c *logViewing, out *playv1.CombatLogEntry) bool {
 }
 
 // attackDice are the dice of an attack: the master's and the attacker's player's.
-func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer) {
+func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer, actor playdb.Combatant) {
 	out.AttackRoll = diceRoll(1, 20, []int32{e.ev.D20}, e.ev.Modifier, e.ev.Total, e.ev.Physical)
 	if e.ev.D20B != 0 {
 		out.AttackRoll = diceRoll(2, 20, pairOf(e.ev.D20, e.ev.D20B, e.ev.Counted), e.ev.Modifier, e.ev.Total, e.ev.Physical)
@@ -1356,6 +1356,7 @@ func (e *logEntry) attackDice(out *playv1.CombatLogEntry, v combatViewer) {
 	}
 	e.ev.mark(out.AttackRoll)
 	out.ModeChange = e.modeChange(e.ev, e.ev.ByMaster)
+	out.FavorTextPt = favorLine(e.ev, v, actor)
 	out.Reason = e.rolls.reasonOf(e.ev)
 	out.BonusDice = bonusDiceOf(e.ev)
 	out.AttackRoll.ExtraDice = extraDiceProto(e.ev.Extra, v.master, e.rolls.keyName)
@@ -1400,6 +1401,7 @@ func (e *logEntry) fillRemoval(c *logViewing, out *playv1.CombatLogEntry) bool {
 
 func (e *logEntry) fillSpell(c *logViewing, out *playv1.CombatLogEntry) bool {
 	out.Spell = e.spellView(c.v, c.byID)
+	out.FavorTextPt = favorLine(e.ev, c.v, c.actor)
 	out.CreatureAction = e.creatureActionView(c.v, c.byID)
 	return true
 }

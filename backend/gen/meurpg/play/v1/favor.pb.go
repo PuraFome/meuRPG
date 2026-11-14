@@ -43,10 +43,12 @@ const (
 	FavorBlockedReason_FAVOR_BLOCKED_REASON_CANNOT_RECEIVE FavorBlockedReason = 5
 	// The pass names the giver as the receiver.
 	FavorBlockedReason_FAVOR_BLOCKED_REASON_SELF FavorBlockedReason = 6
-	// The roll already has advantage, so the Inspiration would change nothing.
+	// The roll would not change: it already has advantage, or advantage and disadvantage cancel.
 	FavorBlockedReason_FAVOR_BLOCKED_REASON_ADDS_NOTHING FavorBlockedReason = 7
 	// The d20 was already rolled.
 	FavorBlockedReason_FAVOR_BLOCKED_REASON_AFTER_THE_ROLL FavorBlockedReason = 8
+	// The spend was asked on a call that rolls no d20: nothing is spent.
+	FavorBlockedReason_FAVOR_BLOCKED_REASON_NOTHING_TO_ROLL FavorBlockedReason = 9
 )
 
 // Enum value maps for FavorBlockedReason.
@@ -61,6 +63,7 @@ var (
 		6: "FAVOR_BLOCKED_REASON_SELF",
 		7: "FAVOR_BLOCKED_REASON_ADDS_NOTHING",
 		8: "FAVOR_BLOCKED_REASON_AFTER_THE_ROLL",
+		9: "FAVOR_BLOCKED_REASON_NOTHING_TO_ROLL",
 	}
 	FavorBlockedReason_value = map[string]int32{
 		"FAVOR_BLOCKED_REASON_UNSPECIFIED":            0,
@@ -72,6 +75,7 @@ var (
 		"FAVOR_BLOCKED_REASON_SELF":                   6,
 		"FAVOR_BLOCKED_REASON_ADDS_NOTHING":           7,
 		"FAVOR_BLOCKED_REASON_AFTER_THE_ROLL":         8,
+		"FAVOR_BLOCKED_REASON_NOTHING_TO_ROLL":        9,
 	}
 )
 
@@ -516,7 +520,7 @@ const file_meurpg_play_v1_favor_proto_rawDesc = "" +
 	"\x11from_character_id\x18\x02 \x01(\tR\x0ffromCharacterId\x12&\n" +
 	"\x0fto_character_id\x18\x03 \x01(\tR\rtoCharacterId\x12'\n" +
 	"\x0fidempotency_key\x18\x04 \x01(\tR\x0eidempotencyKey\"\x13\n" +
-	"\x11PassFavorResponse*\xf5\x02\n" +
+	"\x11PassFavorResponse*\x9f\x03\n" +
 	"\x12FavorBlockedReason\x12$\n" +
 	" FAVOR_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12$\n" +
 	" FAVOR_BLOCKED_REASON_ALREADY_HAS\x10\x01\x12/\n" +
@@ -526,7 +530,8 @@ const file_meurpg_play_v1_favor_proto_rawDesc = "" +
 	"#FAVOR_BLOCKED_REASON_CANNOT_RECEIVE\x10\x05\x12\x1d\n" +
 	"\x19FAVOR_BLOCKED_REASON_SELF\x10\x06\x12%\n" +
 	"!FAVOR_BLOCKED_REASON_ADDS_NOTHING\x10\a\x12'\n" +
-	"#FAVOR_BLOCKED_REASON_AFTER_THE_ROLL\x10\b2\x89\x02\n" +
+	"#FAVOR_BLOCKED_REASON_AFTER_THE_ROLL\x10\b\x12(\n" +
+	"$FAVOR_BLOCKED_REASON_NOTHING_TO_ROLL\x10\t2\x89\x02\n" +
 	"\fFavorService\x12S\n" +
 	"\n" +
 	"GrantFavor\x12!.meurpg.play.v1.GrantFavorRequest\x1a\".meurpg.play.v1.GrantFavorResponse\x12R\n" +

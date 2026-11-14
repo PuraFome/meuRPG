@@ -398,6 +398,8 @@ type effectSaveFacts struct {
 	creature combat.Creature
 	save     link.Save
 	mode     combat.RollMode
+	// sources are the circumstances the mode is made of, before the Inspiration (favor_spend.go).
+	sources []combat.Source
 }
 
 // readEffectSaveFacts checks the way of rolling and reads the target's save and the mode it is
@@ -429,7 +431,7 @@ func (s *Service) readEffectSaveFacts(ctx context.Context, c *combatTx, x *effec
 	if x.t.OnDamage { // Riso Histérico: advantage on the save the damage asks (SRD)
 		sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
 	}
-	f.mode = combat.Resolve(sources)
+	f.sources, f.mode = sources, combat.Resolve(sources)
 	f.save, err = s.saveOf(ctx, c.tx, c.session.CampaignID, x.reactor, x.ability)
 	f.save = withRollBonus(f.save, f.states, x.reactor.ID, rules.RollAppliesSave)
 	return f, err
@@ -444,12 +446,18 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 	x.run.result = &playv1.EffectSaveResult{Modifier: conv.Int32(f.save.Bonus)}
 	if combat.AutoFailsSave(f.creature, x.ability) {
 		x.run.result.AutoFail, x.le.Change = true, "failed"
-		return false, false, nil
+		return false, false, s.refuseFavorOnAutoFail(x)
 	}
+	fv, err := s.favorOnSave(ctx, s.inspirationGate(c), x.call.m, x.reactor, heldEffectSave, x.call.key, x.msg.GetSpendFavor(), f.states, f.sources, true)
+	if err != nil {
+		return false, false, err
+	}
+	f.mode, x.ev.Favor = fv.Mode, fv.Used
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (nothing has been written yet); the answer brings it back with the die added. So
 	// has a halfling's d20 that shows a 1, for the Lucky question first.
 	spec := saveSpec(x.call.m, heldEffectSave, x.reactor, x.call.key, x.msg, x.call.in, f.save.Bonus, f.mode, f.sheet.Traits)
+	spec.FavorSpent = fv.Used
 	// Indomitable (held_indomitable.go): the dice an effect adds after the gate move the total, so the roller may not
 	// know the result yet, as when the table hides the DC.
 	extras := len(effectDiceFor(f.states, x.reactor.ID, rules.RollAppliesSave)) > 0 || x.msg.GetManeuverKey() != ""
@@ -478,6 +486,14 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 	}
 	saved, err = s.recordEffectSaveRoll(ctx, c, x, step, extra, delta)
 	return saved, false, err
+}
+
+// refuseFavorOnAutoFail is the answer to a spend on a save that fails by itself: there is no d20 to spend the Inspiration on.
+func (s *Service) refuseFavorOnAutoFail(x *effectSaveStep) error {
+	if !x.msg.GetSpendFavor() {
+		return nil
+	}
+	return favorRefusal(favorAsk{Own: ownsSave(x.call.m, x.reactor)})
 }
 
 // recordEffectSaveRoll writes what the d20 and the dice showed in the result, the log line and the

@@ -274,7 +274,7 @@ func (f *castFlow) prepare(ctx context.Context) error {
 		}
 	}
 	f.aimAtCaster()
-	for _, phase := range []func(context.Context) error{f.checkHitTargets, f.checkPool, f.readModes, f.checkSpellAttack} {
+	for _, phase := range []func(context.Context) error{f.checkHitTargets, f.checkPool, f.readModes, f.checkSpellAttack, f.checkFavor} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
@@ -598,11 +598,33 @@ func (f *castFlow) checkSpellAttack(ctx context.Context) error {
 	return f.s.mustRollThisWay(ctx, f.c.tx, f.m, in)
 }
 
+// checkFavor refuses a spend on a cast that makes no single attack roll (a save, an area, Magic Missile, a spell with several rays):
+// there is no one d20 to spend the Inspiration on.
+func (f *castFlow) checkFavor(context.Context) error {
+	if !f.req.GetSpendFavor() || (f.sp.AttackType != "" && len(raysAt(f.sp, f.targets)) == 1) {
+		return nil
+	}
+	return favorRefusal(favorAsk{Own: ownsCharacter(f.v, f.caster)})
+}
+
+// checkFavorHeld validates the spend of a cast a reaction window holds: the replay makes the roll that spends it (and is no hold, so it
+// has nothing to validate: if the Inspiration cannot be spent by then, the roll is made without it).
+func (f *castFlow) checkFavorHeld(ctx context.Context) error {
+	if !f.req.GetSpendFavor() || f.c.replay != nil {
+		return nil
+	}
+	_, err := f.s.spellAttackTruth(ctx, f.c, f.out.modes, f.sp, f.caster, f.targs[0], true)
+	return err
+}
+
 // holdForWindow lets the cast wait for a reaction window: it answers true, with the event that holds it, when
 // it does.
 func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 	if f.sp.FeatureSummon {
 		return false, nil // a feature's summon is no spell to counter
+	}
+	if err := f.checkFavorHeld(ctx); err != nil { // the replay would refuse it: refuse it now, before anything is held
+		return false, err
 	}
 	held, ok, err := f.s.holdCast(ctx, f.c, f.m, f.req, f.cs, f.caster, f.call.spellKey, int32(f.slotLevel), f.targs, f.sp.AttackType != "") //nolint:gosec // a slot level, 0 to 9
 	if err != nil {
@@ -610,8 +632,9 @@ func (f *castFlow) holdForWindow(ctx context.Context) (bool, error) {
 	}
 	if ok {
 		f.out.made = held
+		return true, nil
 	}
-	return ok, nil
+	return false, nil
 }
 
 // holdForDie asks the player of a spell attack against one target, when the character holds a Bardic

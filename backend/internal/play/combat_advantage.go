@@ -127,6 +127,7 @@ var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
 	combat.SourceArmorUntrained:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT,
 	combat.SourceProtection:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION,
 	combat.SourceMagicResistance:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_MAGIC_RESISTANCE,
+	combat.SourceFavor:              playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FAVOR,
 	combat.SourceSunlightAttack:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_ATTACK,
 	combat.SourceSunlightPerception: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION,
 	combat.SourceSunlightSave:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE,
@@ -280,6 +281,8 @@ type modeResult struct {
 	Shown []*playv1.AdvantageSource
 	// CriticalOnHit says a hit is a critical hit by the target's condition.
 	CriticalOnHit bool
+	// Hide says which of Sources the viewer reads as "Outra fonte" (RN-10); nil when they read them all.
+	Hide func(combat.Source) bool
 }
 
 // attackMode works out the mode of an attack roll. v is the viewer who reads the
@@ -299,6 +302,7 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 	}
 	// What an effect the master hides gives is "Outra fonte" to a player (RN-10).
 	hide := f.hiddenFrom(v, attacker, target)
+	out.Hide = hide
 	for _, src := range shown.Sources {
 		out.Shown = append(out.Shown, sourceProto(src, ctx, hide))
 	}
@@ -607,6 +611,7 @@ var staticSentences = map[string]string{
 	combat.SourceStealthArmor:     "Armadura: desvantagem em Furtividade",
 	combat.SourceArmorUntrained:   labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza",
 	combat.SourceOutlinedTarget:   "Alvo delineado: vantagem se o atacante o vê",
+	combat.SourceFavor:            labelFavor,
 }
 
 // otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an
@@ -880,6 +885,11 @@ type spellModes struct {
 	// pre is the d20 of a spell attack settled before the cast spent anything, when the caster's
 	// player held a Bardic Inspiration die (inspiration_held.go); nil otherwise.
 	pre *spellAttackPre
+	// spend and key are the request's spend_favor and idempotency key; favor is what the Inspiration did to the cast's spell attack
+	// (favor_spend.go), decided in the first of the two places that work the attack's mode out.
+	spend bool
+	key   string
+	favor favorUse
 }
 
 // spellModes reads the combat for the d20 rolls of a cast.
@@ -902,6 +912,7 @@ func (s *Service) spellModes(ctx context.Context, c *combatTx, m authz.Membershi
 	}
 	return &spellModes{
 		in: in, v: v, reader: reader, names: names, traits: sheet.Traits, ask: modeAsk{want: req.GetRollMode(), reason: req.GetModeReason()},
+		spend: req.GetSpendFavor(), key: req.GetIdempotencyKey(),
 		attack: map[string][]*playv1.AdvantageSource{}, save: map[string][]*playv1.AdvantageSource{},
 	}, nil
 }

@@ -296,6 +296,8 @@ Death saves and initiative are untouched.
   The master sets any mode on his own rolls with a reason.
   A request closes when the attack uses it, when the player takes it back (`CancelRollModeRequest`), or when the turn or combat ends.
   Every change is a log line.
+- **The master's Inspiração.** `spend_favor` on `RollAttack` and on a spell attack gives the roll advantage before the mode is chosen, so typed dice are two faces, and a worse `roll_mode` asked with it is refused with `invalid_argument`; the roll's event says it (`Favor`) ([Inspiração](favor.md#the-spend)).
+  `RollSceneCheck`, `RollGroupCheck`, `StartContest`, `RespondContest`, `Hide`, `SearchForTraps` and `TryPuzzleHint` carry it too, with the same rules; a trap search in a combat spends the action and the Inspiração together.
 - **Where the text lives.** `session_events` holds ids and numbers only, so reasons are rows of `combat_reasons` and `roll_mode_requests`; the event carries the row's id.
   A reason is read by the master and the attacker's player only.
 - **Physical dice.** With a real die the player types both faces (`d20_faces`, in the order rolled); the server picks the one that counts (`counted_index`).
