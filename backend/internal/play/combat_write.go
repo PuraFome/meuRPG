@@ -530,15 +530,7 @@ func (s *Service) tellCombatAgain(ctx context.Context, say func(string, live.Eve
 		}
 	}
 	if secret {
-		for _, id := range tellIDs {
-			if x, ok := combatantByID(cs, id); ok && x.CharacterID != "" {
-				if v, err := s.vitals.GetVitals(ctx, campaignID, x.CharacterID); err == nil && v != nil {
-					hint := vitalsHint(v)
-					hint.Audience = live.Audience{Master: true}
-					say(campaignID, hint)
-				}
-			}
-		}
+		s.tellMasterVitalsAgain(ctx, say, campaignID, cs, tellIDs)
 		return
 	}
 	open, err := s.queries.ListOpenReactionWindows(ctx, enc.ID)
@@ -551,6 +543,22 @@ func (s *Service) tellCombatAgain(ctx context.Context, say func(string, live.Eve
 	}
 	s.tellReactions(ctx, say, campaignID, enc.ID, notes, tellIDs)
 	s.maps.VisionChanged(ctx, campaignID, conv.OrZero(enc.MapID))
+}
+
+// tellMasterVitalsAgain is the vitals step of the replay of a change only the master reads: the vitals of the combat's players
+// go to him alone.
+func (s *Service) tellMasterVitalsAgain(ctx context.Context, say func(string, live.Event), campaignID string, cs []playdb.Combatant, ids []string) {
+	for _, id := range ids {
+		x, ok := combatantByID(cs, id)
+		if !ok || x.CharacterID == "" {
+			continue
+		}
+		if v, err := s.vitals.GetVitals(ctx, campaignID, x.CharacterID); err == nil && v != nil {
+			hint := vitalsHint(v)
+			hint.Audience = live.Audience{Master: true}
+			say(campaignID, hint)
+		}
+	}
 }
 
 // replayOfKey says whether the key was used for this very change already, and then
