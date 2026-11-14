@@ -289,7 +289,7 @@ type Proficiency struct {
 type Equipment struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
-	// Kind is "armor", "weapon" or "tool".
+	// Kind is "armor", "weapon", "tool" or "ammunition".
 	Kind   string  `json:"kind"`
 	Armor  *Armor  `json:"armor,omitempty"`
 	Weapon *Weapon `json:"weapon,omitempty"`

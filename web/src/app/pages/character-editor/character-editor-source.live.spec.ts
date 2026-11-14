@@ -17,7 +17,11 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
-import { AttunementRestriction } from '../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  AttunementRestriction,
+  SheetMagicItemSchema,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
+import { create } from '@bufbuild/protobuf';
 import { Role, XpMode } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
 
 import { CONNECT_TRANSPORT } from '../../core/connect/transport';
@@ -199,8 +203,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     const loaded = {
       ...fullyPopulatedFullSheet(),
       magicItems: [
-        {
-          $typeName: 'meurpg.characters.v1.SheetMagicItem' as const,
+        create(SheetMagicItemSchema, {
           key: 'item:ring-of-protection',
           attuned: true,
           requiresAttunement: true,
@@ -209,7 +212,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
           id: 'm1',
           sameItemAttuned: false,
           namePt: '',
-        },
+        }),
       ],
     };
     const form = { ...toFormFullSheet('Pensantus', loaded), armor: '', weapons: [] as string[] };

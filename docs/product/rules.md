@@ -133,6 +133,17 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   The sheet lock does not hold attunement, it holds the list of items and the kind.
   A character that dies stays attuned until the master ends it.
   The app does not end an attunement by itself (distance, another attuner, death): the master ends it by hand.
+- **Charges of magic items (SRD 5.1, "Magic Items": the entry of each wand, staff, ring and other item that has charges).**
+  A magic item that has charges holds a fixed number, and the sheet shows how many are left.
+  The catalog says, for each such item, how many charges it holds, whether some come back at dawn and how many, and what its last charge does.
+  The charges that return at dawn are all of them or dice such as 1d6 + 1, as the item says.
+  The last charge may do nothing, lose the item at once, or ask for a d20 where a 1 loses the item and a 20 gives some charges back on the items that say so.
+  The loss has three outcomes, as the item says: it is gone (the wands, and the staffs of fire, frost, healing and swarming insects), it becomes a plain nonmagical item that stays on the sheet as what it is made of (the staffs of charming, striking and the woodlands), or it keeps only its bonus to attack and damage rolls (the staff of power).
+  An item whose charges the SRD rolls (the luck blade, the nine lives stealer) has none set when it is new: the master sets them, from 0 to the maximum.
+  The figurine of the ivory goats regains all its charges on the seventh dawn after the last one was spent.
+  An item that does not recharge (a talisman, a scarab) keeps what is left until the master corrects it.
+  A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
+  A player reads the charges of their own characters only, and the master reads all of them.
 - **Wholeness of Body of the Open Hand monk (level 6).**
   The monk's own action heals three times the monk level in hit points, up to the maximum.
   It has no roll and no dice to type.
