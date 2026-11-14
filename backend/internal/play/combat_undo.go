@@ -129,6 +129,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainHeldFall,
 	chainRevive,
 	chainHideDecision,
+	chainForcedFall,
 	chainAction,
 }
 
@@ -325,6 +326,22 @@ func chainHideDecision(c chainEvent) chainVerdict {
 		return chainClose
 	}
 	return chainGoOn
+}
+
+// chainForcedFall: an action whose change threw a rider at 0 hit points off its mount (the fall is written just before the action's own
+// event, with no window: openMountSave) is no action an undo can take back, as the push whose save was answered is not.
+func chainForcedFall(c chainEvent) chainVerdict {
+	if !slices.Contains(undoableKinds, c.row.Kind) {
+		return chainGoOn
+	}
+	i := slices.IndexFunc(c.recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == c.row.ID })
+	if i < 0 || i+1 >= len(c.recent) || c.recent[i+1].Kind != eventRiderThrown {
+		return chainGoOn
+	}
+	if ev, err := readEvent(c.recent[i+1].Payload); err != nil || ev.Reaction == nil || ev.Reaction.Window != "" {
+		return chainGoOn
+	}
+	return chainClose
 }
 
 // chainAction: the action of this combat an undo can take back, or the end of the chain.
