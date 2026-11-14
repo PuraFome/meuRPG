@@ -131,6 +131,18 @@
           }
         }
       }
+      <div class="effect">
+        <app-spell-effect
+          [effect]="d.effect"
+          [context]="effectContext()"
+          [skills]="skills()"
+          [damageTypes]="damageTypes()"
+          [abilityNames]="abilityNames()"
+          [nameOf]="catalog().nameOf"
+          [issuesOf]="fieldIssues"
+          (effectChange)="patch({ effect: $event })"
+        />
+      </div>
       @if (unappliedDamage()) {
         <p class="inline-issue" role="note" data-warning="unapplied-damage"><mat-icon aria-hidden="true">warning</mat-icon>{{ unappliedDamage() }}</p>
       }

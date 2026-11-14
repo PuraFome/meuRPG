@@ -9,8 +9,10 @@
 @for (k of kept(); track k.pointId) {
   <section class="mr-panel enc" [attr.aria-labelledby]="'enc-' + k.pointId">
     <div class="enc__head">
-      <mat-icon class="enc__flag" aria-hidden="true">flag</mat-icon>
-      <h2 class="enc__t" [id]="'enc-' + k.pointId">{{ k.name }}</h2>
+      <div class="enc__who">
+        <mat-icon class="enc__flag" aria-hidden="true">flag</mat-icon>
+        <h2 class="enc__t" [id]="'enc-' + k.pointId">{{ k.name }}</h2>
+      </div>
       <span class="enc__pill"><mat-icon aria-hidden="true">visibility_off</mat-icon>Encontro guardado</span>
     </div>
 
