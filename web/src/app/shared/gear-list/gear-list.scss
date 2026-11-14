@@ -25,18 +25,18 @@
   font-variant-numeric: tabular-nums;
 }
 
-// A row is one line: only the name shrinks (and ellipsizes); "duas mãos" goes first where the list is narrow.
+// A row is one line and only the name shrinks (it ellipsizes before anything wraps).
+// "duas mãos" shrinks far faster than the name, so it is clipped away first, only where the row has no room for it;
+// then the piece's icon.
 // The list is a two-column grid, the row's words and the button, so the buttons of one list share a width.
 :host {
   display: block;
-  container-type: inline-size;
 }
 
 .gear-rows {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: var(--mr-space-2);
   list-style: none;
   margin: 0;
   padding: 0;
@@ -74,19 +74,23 @@
   }
 }
 
-@container (max-width: 420px) {
-  .gear-row__kind {
-    display: none;
-  }
-}
-
-.gear-row__kind {
+.gear-row__main > .gear-row__kind {
+  flex: 0 1000 auto;
+  min-width: 0;
+  overflow: hidden;
   font-size: var(--mr-font-14);
   white-space: nowrap;
 }
 
-.gear-row__icon {
-  flex: none;
+// The piece's icon is decoration: it is the second to go, before the name is squeezed to nothing.
+.gear-row__main > .gear-row__icon {
+  flex: 0 100 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.gear-row__main > app-weapon-tags {
+  display: flex;
 }
 
 .gear-row__warn {
@@ -132,6 +136,7 @@
   min-height: 2.75rem;
   min-width: 80px;
   justify-self: stretch;
+  margin-inline-start: var(--mr-space-2);
   padding-inline: var(--mr-space-2);
   white-space: nowrap;
 }
@@ -175,7 +180,6 @@
   height: 22px;
   border: 1px dashed var(--mr-rule);
   border-radius: 999px;
-  vertical-align: middle;
 
   .mat-icon {
     width: 14px;

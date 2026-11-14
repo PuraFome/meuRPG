@@ -93,7 +93,7 @@
         <li><span class="legend__chip"><mat-icon aria-hidden="true">link</mat-icon></span>Pede sintonização</li>
       }
       @if (hasBonus()) {
-        <li><app-bonus-chip [bonus]="1" />Bônus mágico, já somado</li>
+        <li><app-bonus-chip [bonus]="1" [counts]="bonusCounts()" [words]="true" /></li>
       }
     </ul>
   }

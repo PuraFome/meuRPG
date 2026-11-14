@@ -161,18 +161,13 @@ export class GearList {
   }
 
   /** What a screen reader hears: the words the button shows, in the order it shows them, then the piece (an accessible
-   * name starts with the visible text), and the armor class the server says a two-handed weapon would leave. */
+   * name starts with the visible text). */
   protected buttonLabel(g: GearVm): string {
     const shown = [this.verb(g), this.cost()(g), this.armorLine(g, this.armorClass())]
       .filter(Boolean)
       .join(' ');
-    const ac = this.armorClass();
-    const change =
-      this.warns(g) && ac !== null
-        ? `. A classe de armadura vai de ${ac} para ${g.armorClassIfToggled}`
-        : '';
     const many = g.count > 1 ? ` (${g.count} iguais, a troca vale para todas)` : '';
-    return `${shown} ${g.namePt}${many}${change}`;
+    return `${shown} ${g.namePt}${many}`;
   }
 
   protected ask(g: GearVm): void {

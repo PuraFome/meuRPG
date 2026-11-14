@@ -267,7 +267,11 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
     );
     expect(el.querySelector('.gear__ac')).toBeNull();
     expect(flat(el.querySelector('.gear-group__ac'))).toBe('CA 14');
-    expect(flat(el.querySelector('section.mr-panel'))).toContain('Classe de armadura 14');
+    const said = Array.from(el.querySelectorAll('.mr-visually-hidden')).find((n) =>
+      flat(n)?.includes('Classe de armadura'),
+    )!;
+    expect(flat(said)).toBe('Classe de armadura 14');
+    expect(said.classList).toContain('mr-visually-hidden');
   });
 
   it('draws the legend of the chips on the rows: the marks, the attunement and the bonus', () => {
@@ -293,6 +297,29 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
       expect.stringContaining('Mágica'),
       expect.stringContaining('Bônus mágico, já somado'),
     ]);
+  });
+
+  it('reads the legend’s bonus once: the chip is hidden and the words stay', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([], [{ ...piece('equipment:rapier', 'Rapieira'), bonus: 1, bonusCounts: true }]),
+      ),
+    );
+    const li = el.querySelector('ul.legend li')!;
+    expect(li.querySelector('[aria-label]')).toBeNull();
+    expect(li.querySelector('.bonus-chip')!.getAttribute('aria-hidden')).toBe('true');
+    expect(flat(li)).toContain('Bônus mágico, já somado');
+  });
+
+  it('says the legend’s bonus does not count, with a dashed chip, when every bonus is dashed', () => {
+    const { el } = render((h) =>
+      h.sheet.set(
+        sheetWith([], [{ ...piece('equipment:rapier', 'Rapieira'), bonus: 1, bonusCounts: false }]),
+      ),
+    );
+    const li = el.querySelector('ul.legend li')!;
+    expect(flat(li)).toContain('Bônus mágico, não conta agora');
+    expect(li.querySelector('.bonus-chip--idle')).not.toBeNull();
   });
 
   it('draws no legend when no row has a chip', () => {

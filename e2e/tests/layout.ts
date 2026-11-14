@@ -29,7 +29,8 @@ import { expect, type Page } from '@playwright/test';
 //    it, within 1px (#561).
 //
 // 8. A row marked `data-one-line` is one line: none of its words wraps and every box in it shares the first box's line
-//    (a gear row ellipsizes its name before anything drops under it).
+//    (a gear row ellipsizes its name before anything drops under it). A name keeps at least 24px (three letters) and
+//    the row's words end before the button's column starts.
 // 9. A group marked `data-equal-width="<selector>"` has every visible element matching the selector the same width, within
 //    1px (the buttons of one list, the pair at the foot of a sheet).
 // 10. A chip marked `data-chip` sits on the middle of the capitals of the words marked `data-chip-ref` in its row
@@ -165,8 +166,10 @@ function auditLayout(): LayoutIssue[] {
       // Words clipped by an ancestor (an ellipsized name) are not drawn past its edge.
       let clip: DOMRect | null = null;
       for (let a = n.parentElement; a && a !== scope.parentElement; a = a.parentElement) {
-        if (getComputedStyle(a).overflowX !== 'visible') clip = a.getBoundingClientRect();
-        if (clip) break;
+        if (getComputedStyle(a).overflowX !== 'visible') {
+          clip = a.getBoundingClientRect();
+          break;
+        }
       }
       for (const r of range.getClientRects()) {
         const left = clip ? Math.max(r.left, clip.left) : r.left;
@@ -271,6 +274,28 @@ function auditLayout(): LayoutIssue[] {
       const r = b.getBoundingClientRect();
       return r.top > first.bottom - 1 || r.bottom < first.top + 1;
     });
+    // A name squeezed to nothing is clipped by its own box, so the overlap check never sees it.
+    const squeezed = [...row.querySelectorAll('[data-chip-ref]')].filter((n) => n.getBoundingClientRect().width < Math.min(24, n.scrollWidth));
+    const button = row.closest('[data-equal-width]')
+      ? [...row.querySelectorAll(row.closest('[data-equal-width]')!.getAttribute('data-equal-width')!)].find(visible)
+      : undefined;
+    // The main box's edge and the right edge of what it holds (a box that does not shrink would stick out of it).
+    const main = { right: Math.max(boxes[0].getBoundingClientRect().right, ...[...boxes[0].children].filter(visible).map((c) => c.getBoundingClientRect().right)) };
+    const underButton = button && main.right > button.getBoundingClientRect().left + 0.5 ? button : undefined;
+    if (squeezed.length > 0) {
+      issues.push({
+        kind: 'one-line',
+        where: describeEl(row),
+        detail: `the name "${squeezed[0].textContent!.trim().slice(0, 30)}" is ${squeezed[0].getBoundingClientRect().width.toFixed(0)}px wide (at least 24px)`,
+      });
+    }
+    if (underButton) {
+      issues.push({
+        kind: 'one-line',
+        where: describeEl(row),
+        detail: `the row's words end at ${main.right.toFixed(0)}px, over ${describeEl(underButton)} that starts at ${underButton.getBoundingClientRect().left.toFixed(0)}px`,
+      });
+    }
     if (wraps.length > 0 || off.length > 0) {
       issues.push({
         kind: 'one-line',

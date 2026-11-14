@@ -5,13 +5,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { type AttunementEntryVm, MagicCategories } from '../../../core/characters/attunement';
 import type { GearVm } from '../../../core/characters/gear';
 
+import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
+import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
 import {
   type AttunementChip,
   GearList,
   type GearToggle,
 } from '../../../shared/gear-list/gear-list';
-import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
-import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
 import { FullSheetVm } from '../character-sheet.types';
 import { coinEntries, keepUnitsTogether } from '../sheet-format';
 
@@ -109,6 +109,10 @@ export class EquipmentPanel {
   });
   /** Some gear row carries a magic bonus chip. */
   protected readonly hasBonus = computed(() => this.sheet().gear.some((g) => !!g.bonus));
+  /** Some bonus is added to the numbers now (the legend's chip is solid), else every one is dashed. */
+  protected readonly bonusCounts = computed(() =>
+    this.sheet().gear.some((g) => !!g.bonus && g.bonusCounts !== false),
+  );
   /** The legend shows when any chip is on a row. */
   protected readonly hasLegend = computed(
     () => this.legendMarks().length > 0 || this.showsChips() || this.hasBonus(),
