@@ -119,7 +119,15 @@ Code in `lasting_effects_aura.go`.
 - **Who reads what.** A player reads an aura's bonus on their own roll as the source's name, or "Outra fonte" when the bearer is hidden from them or the effect is for its owner only (`PlayerVisible` false on the view row).
   The radius is never sent to a player who does not own the aura.
   The leak rows plant a radius and a bonus and read them as every player, with the master and the bearer's owner as positive controls.
-- **Not built.** A feature's aura (Paladin's Aura of Protection): table features have no lasting row, so an aura of a feature has nowhere to hang.
+- **A feature's aura.** Aura of Protection is the effect type `aura` of a table feature (`effectaura.go`, `Derived.Auras`, `link.Traits.Auras`).
+  It is written once, when the character joins a combat, as one row on the combatant (`source_kind` `feature`, duration `until_dismissed`; `lasting_effects_aura_feature.go`), and it is never saved on the character, so ending the combat drops it (`giveBackOrDrop`).
+  Joining twice writes it once (`featureAurasOn`).
+  The bonus can be an ability modifier of the bearer, at least `value_min`: the number is worked out once, at the join, from the sheet (`featureAurasOf`: `max(modifier, value_min)`) and written as a plain number, so a CHA 8 paladin still gives +1, and a Charisma that changes later in the same combat changes nothing until the next combat (`TestAFeatureAuraKeepsTheBonusItWasWrittenWith`).
+  The bearer is reached by their own aura (`allies` includes them, SRD), and the no-double test guards that it counts once.
+  Each bearer gives their own and each feature counts once per bearer: two paladins' auras both reach an ally, and one paladin's two effects of the same feature give once (`spread`, `TestAFeatureAuraGivesOncePerBearerAndFeature`).
+  An aura needs its bearer up and conscious, and that is decided when the aura is read, never kept in the row: `aurasOf` leaves a feature's aura out while the bearer is not fighting (a condition that incapacitates) or is at 0 hit points (`downFeatureBearers`, which reads the vitals the way `isDown` does).
+  Nothing writes the aura's sleep, so hit points that change by any path (the vitals call, a revive, an undo, a rest) wake or silence it at the next roll.
+  A feature's aura gives no next-hit damage (`weapon_hit_damage`) and no `value_ability` outside a feature (`spellModifierRefusal`).
 
 Who reads what:
 
@@ -168,6 +176,7 @@ How the hit uses it is in [Attacks and damage](attacks-and-damage.md#a-spells-hi
 
 A player's character keeps its level in `character_vitals.exhaustion_level` (the vitals apply the halved maximum of level 4: `combat.ExhaustedMaxHP`); an NPC's is a column of the combatant.
 `SetExhaustion` and `LowerExhaustion` (master only, `expected_level` required) change it in one transaction, and a long rest lowers it by one.
+The level is written by the vitals keeper of the characters module inside the combat write's transaction (the master's call, and the end of a frenzied rage), so the session's number moves once with the write.
 Level 6 needs `confirm_death`; in a combat it puts the player's character at three death failures (the `ConfirmDeath` flow), outside one the call marks the character dead (`CombatRoster.MarkDead`).
 The concentration save reads `combat.SaveMode` like the other saves (exhaustion 3 gives disadvantage, with `second_d20_face` for physical dice); its prompt (`ConcentrationSavePrompt`) carries the same mode and its sources (`mode`, `mode_sources_pt`, from `concentrationSources`, the function the roll uses too), so the sheet asks for both d20 whenever the roll needs two.
 
@@ -186,6 +195,7 @@ A state a table feature defines (a stance, a form; [Table content](../rules-tabl
 
 - A base-AC effect (Mage Armor) is worked out per target (`modifiersForTarget`: the sheet for a character; 13 + the initiative bonus, the Dexterity modifier, for a summoned creature).
 - A base-AC effect takes no hold of a creature that wears armor (or an NPC with a basic sheet) in every path: a cast outside a combat is refused (`TARGET_WEARS_ARMOR`); a cast in a combat reads "no effect" on that hit (`dropWithoutHold`, the reason is the master's) and spends the slot like any other effect the target resists; `AddCharacterEffect` and `AddLastingEffect` leave that target out and answer `failed_precondition` ("the effect takes no hold of ...") when no target is left.
+- `AddCharacterEffect`, `EndLastingEffect` on a character outside a combat and `AdvanceGameTime` run in `Service.tx` ([Live session](live-session.md#the-hint-number)): each moves the session's number once, tells the casts to everyone and the vitals the write changed (master and the character's player). A retry of the key moves nothing and tells the casts and the vitals again (the effect's characters, or every character's when the stored result does not say whose).
 - `AddCharacterEffect` reads `seconds` with no `duration_kind` as `ROUNDS` (the clock of game time, 1 second to 24 hours); an unknown kind reads as no kind. An effect with conditions and no numeric modifiers (Hold Person, Web, Faerie Fire) is stored with an empty `modifiers` array.
 - A retry of `AddLastingEffect` (same key) answers with the cards of the effects its first answer made, read from the ids in the event it wrote (`addedIDs`).
 - When a caster who concentrates dies or leaves, the effects it held on others end with reason `caster_left` (logged as `left`) and their follow-up runs (Haste's lethargy, Heroism's temporary hit points).

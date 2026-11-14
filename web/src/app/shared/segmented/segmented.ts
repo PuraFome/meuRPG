@@ -25,7 +25,11 @@ let nextId = 0;
 @Component({
   selector: 'app-segmented',
   imports: [MatIconModule],
-  host: { '[class.seg--track]': "appearance() === 'track'", '[class.seg--wrap]': 'wrap()' },
+  host: {
+    '[class.seg--track]': "appearance() === 'track'",
+    '[class.seg--wrap]': 'wrap()',
+    '[class.seg--stack]': 'stackOnPhone()',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="seg" role="radiogroup" [attr.aria-label]="label()">
@@ -62,6 +66,8 @@ export class Segmented<T extends string> {
   readonly appearance = input<'buttons' | 'track'>('buttons');
   /** Equal cells, one line of text each: when the options do not fit one row they wrap whole into a grid. */
   readonly wrap = input(false);
+  /** From a phone's width down the options are full-width rows of one group (a label that cannot keep one line in an equal share). */
+  readonly stackOnPhone = input(false);
   readonly choose = output<T>();
   protected readonly name = `seg-${nextId++}`;
 }
