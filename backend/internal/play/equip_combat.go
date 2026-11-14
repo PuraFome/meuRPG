@@ -9,7 +9,6 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
@@ -23,47 +22,43 @@ import (
 // EquipInCombat implements characters.ReviewHost: it asks the combat that holds the
 // character, inside the transaction that writes the sheet and before it writes. It writes the
 // swap as an event of the combat (gear_swapped) with the turn's economy from before, so the master's
-// undo takes the swap back first. It runs inside characters' InSession, with the session's row already
-// held: what it tells (the combat, the swap's line) goes out through t after the commit, with the
-// write's number, and outside a combat it tells nothing.
-func (s *Service) EquipInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, change link.EquipChange, t sessiontell.Tell) error {
+// undo takes the swap back first. It returns what to call after the commit (the combat's streams
+// are told), or nil outside a combat.
+func (s *Service) EquipInCombat(ctx context.Context, tx pgx.Tx, campaignID, characterID, actorUserID string, change link.EquipChange) (func(context.Context), error) {
 	q := s.queries.WithTx(tx)
 	session, enc, found, err := openCombatOf(ctx, q, campaignID)
 	if err != nil || !found || enc.Status != statusActive {
-		return err // no running combat: gear is free to change
+		return nil, err // no running combat: gear is free to change
 	}
 	cs, err := q.ListCombatants(ctx, enc.ID)
 	if err != nil {
-		return fmt.Errorf("list the combatants: %w", err)
+		return nil, fmt.Errorf("list the combatants: %w", err)
 	}
 	who := wearerIn(cs, characterID)
 	if who == nil {
-		return nil
+		return nil, nil
 	}
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), actorUserID: actorUserID, svc: s})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	swap := gearSwapOf(*who, change, c.enc.Round)
 	if conv.OrZero(who.UserID) == actorUserID { // the owner is bound by the turn; the master has the last word
 		if swap.Cost, err = s.mayEquip(ctx, c, *who, change); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if err := s.writeGearSwap(ctx, c, actorUserID, characterID, swap); err != nil {
-		return err
+		return nil, err
 	}
 	if err := touch(ctx, c); err != nil { // as every change of a combat: the stream carries the new revision
-		return err
+		return nil, err
 	}
 	owner := conv.OrZero(who.UserID)
-	st := tellOf(t)
-	st.touchSteps()
-	st.later(func(ctx context.Context, say sayFn) {
-		s.tellEncounterChanged(ctx, say, campaignID, c.enc)
-		s.tellGearLog(say, campaignID, c.enc.ID, owner) // the swap's line is the master's and the owner's
-	})
-	return nil
+	return func(ctx context.Context) {
+		s.publishEncounterChanged(ctx, campaignID, c.enc)
+		s.publishGearLog(ctx, campaignID, c.enc.ID, owner) // the swap's line is the master's and the owner's
+	}, nil
 }
 
 // mayEquip checks a player's change against the combat and spends what it costs; it says what it cost.

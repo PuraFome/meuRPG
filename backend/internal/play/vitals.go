@@ -16,6 +16,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
+	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -447,14 +448,14 @@ func vitalsPayload(before, after *playv1.CharacterVitals) ([]byte, error) {
 func (s *Service) PublishVitalsChanged(ctx context.Context, campaignID, characterID string) {
 	pctx, stop := afterCommit(ctx)
 	defer stop()
-	s.tellVitalsNow(pctx, s.sayNow, campaignID, characterID)
-}
-
-// tellVitalsNow is PublishVitalsChanged through say: the vitals as they stand, read now.
-func (s *Service) tellVitalsNow(ctx context.Context, say sayFn, campaignID, characterID string) {
-	v, err := s.vitals.GetVitals(ctx, campaignID, characterID)
+	v, err := s.vitals.GetVitals(pctx, campaignID, characterID)
 	if err != nil {
 		return
 	}
-	say(campaignID, vitalsHint(v))
+	s.send(campaignID, live.Event{
+		Audience: vitalsAudience(v),
+		Message: &playv1.WatchGameSessionResponse{Event: &playv1.WatchGameSessionResponse_VitalsChanged_{
+			VitalsChanged: &playv1.WatchGameSessionResponse_VitalsChanged{Vitals: v},
+		}},
+	})
 }

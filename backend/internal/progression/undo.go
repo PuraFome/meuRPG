@@ -14,8 +14,8 @@ import (
 	progressionv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/progression/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
 
@@ -39,10 +39,9 @@ func (s *Service) UndoLastXPAward(
 		return nil, err
 	}
 	var out undoneAward
-	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
+	err = db.InTx(ctx, s.pool, func(tx pgx.Tx) error {
 		var err error
 		out, err = s.undoTx(ctx, tx, m, key, expected) // a retry starts over
-		tellXP(t, out.repeated, out.logged)
 		return err
 	})
 	if err != nil {
@@ -197,5 +196,6 @@ func (s *Service) announceUndo(ctx context.Context, m authz.Membership, out undo
 	}
 	if out.logged {
 		logging.Event(ctx, s.logger, "xp.undone", slog.String("award_id", out.award.ID))
+		s.log.PublishXPChanged(m.CampaignID)
 	}
 }

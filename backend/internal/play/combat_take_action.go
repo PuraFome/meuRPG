@@ -142,9 +142,9 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 	enc, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
-		s.publishVitals(ctx, m.CampaignID, out.vitals)
+		s.publishVitals(m.CampaignID, out.vitals)
 		for _, v := range out.extra {
-			s.publishVitals(ctx, m.CampaignID, v)
+			s.publishVitals(m.CampaignID, v)
 		}
 	})
 	if err != nil {

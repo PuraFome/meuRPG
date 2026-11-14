@@ -362,7 +362,7 @@ func (s *Service) UseReaction(
 	out, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret && !ev.AttackerHidden)
-		s.publishVitals(ctx, m.CampaignID, vitals)
+		s.publishVitals(m.CampaignID, vitals)
 	})
 	if err != nil {
 		return nil, err

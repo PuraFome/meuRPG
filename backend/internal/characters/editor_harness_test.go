@@ -18,7 +18,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
-	"github.com/PuraFome/meuRPG/backend/internal/platform/sessiontell"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -344,20 +343,20 @@ func (*gearHostSpy) ReviveInCombat(context.Context, pgx.Tx, string, string, stri
 	return "", nil
 }
 
-func (g *gearHostSpy) ArmorWorn(_ context.Context, _ pgx.Tx, _, _ string, t sessiontell.Tell) error {
+func (*gearHostSpy) LockSession(context.Context, pgx.Tx, string) error { return nil }
+
+func (g *gearHostSpy) ArmorWorn(context.Context, pgx.Tx, string, string) (func(context.Context), error) {
 	g.record("ArmorWorn")
-	t.After(func(context.Context, sessiontell.Out) { g.record("after ArmorWorn") })
-	return nil
+	return func(context.Context) { g.record("after ArmorWorn") }, nil
 }
 
-func (g *gearHostSpy) GearChanged(_ context.Context, _ pgx.Tx, _, _ string, t sessiontell.Tell) error {
+func (g *gearHostSpy) GearChanged(context.Context, pgx.Tx, string, string) (func(context.Context), error) {
 	g.record("GearChanged")
-	t.After(func(context.Context, sessiontell.Out) { g.record("after GearChanged") })
-	return nil
+	return func(context.Context) { g.record("after GearChanged") }, nil
 }
 
-func (*gearHostSpy) EquipInCombat(context.Context, pgx.Tx, string, string, string, EquipChange, sessiontell.Tell) error {
-	return nil
+func (*gearHostSpy) EquipInCombat(context.Context, pgx.Tx, string, string, string, EquipChange) (func(context.Context), error) {
+	return nil, nil
 }
 
 func (*gearHostSpy) PublishEncounterChanged(context.Context, string, string) {}
