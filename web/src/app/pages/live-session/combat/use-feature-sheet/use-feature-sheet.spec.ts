@@ -14,6 +14,7 @@ import {
 import {
   ActionEconomy,
   ActionOptionSchema,
+  DisabledReasonCode,
   FeatureTargetWho,
   UseScope,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
@@ -124,6 +125,11 @@ describe('UseFeatureSheet (#743)', () => {
     });
     expect(flat(el.querySelector('h2'))).toBe('Corrigir o tipo de dano');
     expect(flat(el.querySelector('.frame__sub'))).toBe('Sem custo · 1 por turno · restam 1 de 1');
+  });
+
+  it('heads the options with the question the feature carries, "Qual forma"', () => {
+    const { el } = render({ option: option({ ...FIRE, useQuestionPt: 'Qual forma' }) });
+    expect(flat(el.querySelector('.choices .ask'))).toBe('Qual forma');
   });
 
   it('keeps "Usar" off until an option is chosen, and says why', () => {
@@ -367,6 +373,60 @@ describe('UseFeatureSheet (#743)', () => {
         targets: [target('a', 'Ana'), target('b', 'Bia')],
       });
       expect(flat(el.querySelector('p[role=status]'))).toBe('0 de 2 escolhidos.');
+    });
+  });
+
+  describe('the master overriding the economy (master_may_override)', () => {
+    const spent = (over: Record<string, unknown> = {}) =>
+      option(
+        {
+          enabled: false,
+          masterMayOverride: true,
+          reason: { code: DisabledReasonCode.REACTION_USED },
+          ...over,
+        },
+        { namePt: 'Entidade simbiótica', economy: ActionEconomy.ACTION },
+      );
+
+    it('says why it is spent and asks "Usar mesmo assim"', () => {
+      const { el, button } = render({ master: true, userLabel: 'Sálvia', option: spent() });
+      expect(flat(el.querySelector('.override')).replace(/^info ?/, '')).toBe(
+        'Reação já usada. O mestre pode usar mesmo assim.',
+      );
+      expect(el.querySelector('.override')?.getAttribute('role')).toBe('status');
+      expect(flat(button('Usar mesmo assim'))).toBe('Usar mesmo assim');
+      expect(button('Usar mesmo assim').getAttribute('aria-disabled')).toBeNull();
+    });
+
+    it('calls UseFeature as any use: the server lets the master through', async () => {
+      useFeature.mockResolvedValue({
+        encounter: create(EncounterSchema, { id: 'enc', revision: 3 }),
+        healed: 0,
+        tempHp: 0,
+      });
+      const { button, click, settle } = render({ master: true, option: spent() });
+      click(button('Usar mesmo assim'));
+      await settle();
+      expect(useFeature).toHaveBeenCalledWith(
+        {
+          campaignId: 'camp',
+          encounterId: 'enc',
+          combatantId: 'pensantus',
+          actionKey: 'feature:x',
+          targetIds: [],
+          choice: '',
+        },
+        expect.any(String),
+      );
+      expect(close).toHaveBeenCalled();
+    });
+
+    it('is the plain confirmation when the row is not marked, and for a player', () => {
+      const plain = render({ master: true, option: spent({ masterMayOverride: false }) });
+      expect(plain.el.querySelector('.override')).toBeNull();
+      expect(flat(plain.button('Usar'))).toBe('Usar');
+      const player = render({ master: false, option: spent() });
+      expect(player.el.querySelector('.override')).toBeNull();
     });
   });
 });

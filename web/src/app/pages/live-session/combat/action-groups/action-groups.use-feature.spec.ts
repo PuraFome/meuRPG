@@ -116,4 +116,32 @@ describe('ActionGroups: a feature taken with UseFeature (#743)', () => {
     );
     expect(r.querySelector('button')).toBeNull();
   });
+
+  it('keeps a spent row dashed with its reason, but lets the master press it when the server marks it', () => {
+    const spent = {
+      enabled: false,
+      masterMayOverride: true,
+      reason: { code: DisabledReasonCode.ACTION_USED },
+    };
+    const { row, used, fixture } = setup([entity(spent)]);
+    const r = row('Entidade simbiótica');
+    expect(plain(r.querySelector('.row__why')?.textContent)).toContain('Ação já usada');
+    const b = r.querySelector('button') as HTMLButtonElement;
+    expect(b.classList.contains('row__btn--off')).toBe(true);
+    expect(b.getAttribute('aria-disabled')).toBeNull();
+    expect(b.getAttribute('aria-label')).toBe(
+      'Usar Entidade simbiótica: o mestre pode usar mesmo assim',
+    );
+    b.click();
+    fixture.detectChanges();
+    expect(used).toEqual(['feature:symbiotic-entity']);
+  });
+
+  it('does not let a locked row be pressed, marked or not', () => {
+    const spent = { enabled: false, masterMayOverride: true, reason: { code: DisabledReasonCode.ACTION_USED } };
+    const { row, used, fixture } = setup([entity(spent)], 'Esperando o mestre');
+    (row('Entidade simbiótica').querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(used).toEqual([]);
+  });
 });
