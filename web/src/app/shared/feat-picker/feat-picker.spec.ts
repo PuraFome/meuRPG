@@ -37,7 +37,7 @@ describe('FeatPicker', () => {
     const el = setup();
     const [grappler, athlete] = cards(el).map(text);
     expect(grappler).toContain('Agarrador');
-    expect(grappler).toContain('Pede: Força 13.');
+    expect(grappler).toContain('Pede Força 13.');
     expect(grappler).not.toContain('Da mesa');
     expect(athlete).toContain('Atleta');
     expect(athlete).toContain('Da mesa');
@@ -238,12 +238,11 @@ describe('FeatPicker', () => {
     fixture.componentRef.setInput('nameOf', (k: string) => names[k] ?? k);
     fixture.detectChanges();
     const [h, o] = cards(el).map(text);
-    expect(h).toContain('Pede: Destreza 13 e uma condição que a mesa não mostra.');
+    // A feat the character cannot take says what is missing once, never again as "Pede" (board 580-04).
+    expect(h).not.toContain('Pede Destreza 13');
     expect(h).toContain('Pede uma condição que a mesa não mostra.');
     expect(h).not.toMatch(/feat:|race:/);
-    expect(o).toContain(
-      'Pede: Destreza 13, ser Gnomo ou Halfling, ter tamanho pequeno e não ter Agarrador.',
-    );
+    expect(o).not.toContain('Pede Destreza 13');
     expect(o).toContain('Só para Gnomo ou Halfling.');
     expect(o).toContain('Só para tamanho pequeno.');
     expect(o).toContain('Não pode ter Agarrador.');

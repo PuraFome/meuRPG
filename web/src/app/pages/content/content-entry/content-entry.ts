@@ -218,7 +218,7 @@ export class ContentEntry {
   protected readonly backQuery = computed(() =>
     this.isMaster() && this.nav() ? { kind: this.nav()!.slug } : {},
   );
-  protected readonly nameOf = computed(() => nameResolver(this.catalog(), this.entries()));
+  protected readonly nameOf = computed(() => nameResolver(this.catalog(), this.entries(), this.menu()));
   /** The entry a player reads (or the master where the app has no editor yet), written by `readEntry`. */
   protected readonly read = computed(() => {
     // The master's creature on a phone is read by `app-creature-read`, which writes its own text.

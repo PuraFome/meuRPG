@@ -32,7 +32,7 @@ describe('what a feat asks, in Portuguese', () => {
       'Força 13 e Destreza 13',
       'Inteligência 13 ou Sabedoria 13 (uma delas)',
       'proficiência em Armadura média',
-      'poder conjurar ao menos uma magia',
+      'conjurar ao menos uma magia',
       'ser Anão',
       'nível 4 ou mais',
     ]);

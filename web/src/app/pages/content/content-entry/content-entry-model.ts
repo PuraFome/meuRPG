@@ -187,11 +187,24 @@ export function archivedWordOf(entry: TableEntry | null): string {
 export function nameResolver(
   catalog: CatalogVm | null,
   entries: readonly TableEntry[],
+  menu: EffectMenuVm | null = null,
 ): (key: string) => string {
-  return (key) =>
-    catalog?.nameOf(key) ??
-    entries.find((e) => e.key === key)?.namePt ??
-    key.replace(/^[a-z-]+:/, '');
+  return (key) => {
+    const named = catalog?.nameOf(key);
+    return (
+      (named !== key ? named : undefined) ??
+      entries.find((e) => e.key === key)?.namePt ??
+      srdOptionName(menu, key) ??
+      (named === key ? key : undefined) ??
+      key.replace(/^[a-z-]+:/, '')
+    );
+  };
+}
+
+/** An SRD option (a Pact Boon, an invocation...) by its key, from the menu, with its set's prefix taken off. */
+function srdOptionName(menu: EffectMenuVm | null, key: string): string | undefined {
+  const found = menu?.optionSets.flatMap((s) => s.options).find((o) => o.key === key);
+  return found?.namePt.replace(/^[^:]+: /, '');
 }
 
 /** "Arquivar Guardião do Vale?" as a bottom sheet on a phone: whether the person confirmed. */

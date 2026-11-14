@@ -682,7 +682,7 @@ describe('ContentEntry', () => {
     const feat = entry(TableContentKind.FEAT, 'Lutador de Corda');
     const { el } = await setup(Role.PLAYER, feat.key, [...mirathel(), feat]);
     expect(el.querySelector('app-feat-editor')).toBeNull();
-    expect(text(el)).toContain('Pré-requisito');
+    expect(text(el)).toContain('Pede');
     expect(text(el)).toContain('Força 13');
   });
 
