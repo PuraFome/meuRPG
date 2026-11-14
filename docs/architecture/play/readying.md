@@ -50,6 +50,8 @@ The end of the combat drops every row.
 - a readier at 0 hit points: `COMBATANT_DOWN` (`mustReactNowOrOnTurn`);
 - a surprised readier before its first turn ends: the surprise refusal of every reaction (`mustReactNowOrOnTurn`);
 - a readier that acts now: `READY_OWN_TURN` (a trigger cannot come during its own turn);
+  A readier tied in initiative with the creature that triggers it counts as acting until its own part of the tie ends.
+  Its turn is not over, so its Ready cannot fire yet, and the row keeps waiting.
 - a readier that owes a concentration save: `CONCENTRATION_SAVE_PENDING` (`readiedGate`);
 - a question about a hidden creature the master owes: `HIDDEN_REVEAL_PENDING` (`readiedGate`);
 - an incapacitated or unconscious readier, or one an effect keeps from reacting: `CANNOT_ACT`;
@@ -173,6 +175,8 @@ The cast waits for the windows any cast opens (Counterspell), with the READIED w
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
+A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
+Nothing is cast, and no write fails.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.
 
 ### When it is lost
@@ -208,6 +212,7 @@ The undo of a change that broke a held spell makes the row wait again when it gi
 Otherwise the row stays broken: `chainReadiedDefeat` goes past its line.
 The undo of the fire deletes its window while it was not answered (open, or closed by itself); the row keeps waiting.
 It is refused while a use of the window is held (a roll waiting for a die or for other windows names the window): `REACTION_PENDING`.
+The master ends such a hold without its player: it answers a roll held for a die with `AnswerHeldRoll` once the player's first 10 s are over (at once when no player plays the roller, `playerFirst`), and a hold waiting for other windows ends when they are answered or pass.
 The undo of a change that broke a held spell makes the row wait, but does not open its closed window again: the master fires it again.
 A fire whose window was answered comes back after the answer's undo.
 The lost line of a defeat or a dismissal is written before the change's own event; the undo of that change goes past it and the row stays lost.
