@@ -29,7 +29,7 @@ describe('the words around the change sentences', () => {
     expect(changeTitle(change({ key: 'subrace:x@mesa' }))).toBe('A sub-raça mudou.');
     expect(changeTitle(change({ key: 'background:x@mesa' }))).toBe('O antecedente mudou.');
     expect(changeTitle(change({ key: 'spell:x@mesa' }))).toBe('A magia mudou.');
-    expect(changeTitle(change({ key: 'equipment:machado-de-lenhador@mesa' }))).toBe('A arma mudou.');
+    expect(changeTitle(change({ key: 'weapon:machado-de-lenhador@mesa' }))).toBe('A arma mudou.');
     expect(changeTitle(change({ key: 'nothing' }))).toBe('O conteúdo mudou.');
   });
 
