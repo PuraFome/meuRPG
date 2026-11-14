@@ -961,6 +961,7 @@
     "owners_only": true,
     "hidden_source": true,
     "source_id": "x",
+    "save_ability": "x",
     "effect_hidden": true,
     "d20": 1,
     "total": 1,

@@ -63,6 +63,8 @@ type riderEvent struct {
 	HiddenSource bool `json:"hidden_source,omitempty"`
 	// SourceID is the combatant that cast the spell: its player is the spell's owner and reads its name.
 	SourceID string `json:"source_id,omitempty"`
+	// SaveAbility is the ability key of a spell's save ("wis"): the line names it to who may read the spell.
+	SaveAbility string `json:"save_ability,omitempty"`
 	// EffectHidden says the effect's lines are not the players' to read (the master hides it, a target is hidden, or it is
 	// for its targets' players alone and the target is no player's): the save line is then the attacker's player's and the
 	// master's alone, with the outcome (RN-10).

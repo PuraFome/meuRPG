@@ -5368,8 +5368,14 @@ type CombatLogHitRider struct {
 	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
 	// an entry the master retired or switched off (RN-23).
 	TreatedAsSourceName string `protobuf:"bytes,23,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// The ability of the save a spell's hit effect makes the target roll, as a key ("wis") and its Portuguese name
+	// ("Sabedoria"). Set only on the line of a spell's save, and only for who may read the spell: the master, the player who
+	// owns the spell's caster, and every viewer of the line when the spell's audience is all players. Empty for anyone
+	// else, the attacker's player included, who reads the line of an effect that is not theirs to read (RN-10).
+	SaveAbility       string `protobuf:"bytes,24,opt,name=save_ability,json=saveAbility,proto3" json:"save_ability,omitempty"`
+	SaveAbilityNamePt string `protobuf:"bytes,25,opt,name=save_ability_name_pt,json=saveAbilityNamePt,proto3" json:"save_ability_name_pt,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *CombatLogHitRider) Reset() {
@@ -5559,6 +5565,20 @@ func (x *CombatLogHitRider) GetTreatedAsSource() string {
 func (x *CombatLogHitRider) GetTreatedAsSourceName() string {
 	if x != nil {
 		return x.TreatedAsSourceName
+	}
+	return ""
+}
+
+func (x *CombatLogHitRider) GetSaveAbility() string {
+	if x != nil {
+		return x.SaveAbility
+	}
+	return ""
+}
+
+func (x *CombatLogHitRider) GetSaveAbilityNamePt() string {
+	if x != nil {
+		return x.SaveAbilityNamePt
 	}
 	return ""
 }
@@ -28301,7 +28321,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\rduration_text\x18\a \x01(\tR\fdurationText\x12\x1f\n" +
 	"\vrepeat_save\x18\b \x01(\bR\n" +
 	"repeatSave\x12\x12\n" +
-	"\x04text\x18\t \x01(\tR\x04text\"\x8c\a\n" +
+	"\x04text\x18\t \x01(\tR\x04text\"\xe0\a\n" +
 	"\x11CombatLogHitRider\x126\n" +
 	"\x06choice\x18\x01 \x01(\x0e2\x1e.meurpg.play.v1.HitRiderChoiceR\x06choice\x129\n" +
 	"\x06result\x18\x02 \x01(\x0e2!.meurpg.play.v1.HitRiderLogResultR\x06result\x12\x10\n" +
@@ -28330,7 +28350,9 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"treated_as\x18\x15 \x01(\x05H\x00R\ttreatedAs\x88\x01\x01\x12*\n" +
 	"\x11treated_as_source\x18\x16 \x01(\tR\x0ftreatedAsSource\x123\n" +
-	"\x16treated_as_source_name\x18\x17 \x01(\tR\x13treatedAsSourceNameB\r\n" +
+	"\x16treated_as_source_name\x18\x17 \x01(\tR\x13treatedAsSourceName\x12!\n" +
+	"\fsave_ability\x18\x18 \x01(\tR\vsaveAbility\x12/\n" +
+	"\x14save_ability_name_pt\x18\x19 \x01(\tR\x11saveAbilityNamePtB\r\n" +
 	"\v_treated_as\"\xb4\x01\n" +
 	"\x14HiddenRevealQuestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +

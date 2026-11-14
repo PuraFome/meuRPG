@@ -40,6 +40,29 @@ describe('the log lines of a spell hit effect', () => {
     );
   });
 
+  it('names the ability of the save after the test when the entry carries it', () => {
+    const line = logLine(
+      rider(
+        { result: HitRiderLogResult.FAILED, saveAbility: 'str', saveAbilityNamePt: 'Força' },
+        { keyNamePt: 'Clarão na Lâmina' },
+      ),
+      '',
+      ctx,
+    )!;
+    expect(clean(line.text)).toBe(
+      'O Zumbi 1 falhou no teste de resistência de Força contra o Clarão na Lâmina',
+    );
+  });
+
+  it('keeps the line without the ability when the entry carries no name', () => {
+    const line = logLine(
+      rider({ result: HitRiderLogResult.SAVED, saveAbility: 'str' }, { keyNamePt: 'Clarão' }),
+      '',
+      ctx,
+    )!;
+    expect(clean(line.text)).toBe('O Zumbi 1 passou no teste de resistência contra o Clarão');
+  });
+
   it('says what a failed save gave and for how long', () => {
     const line = logLine(
       rider(
