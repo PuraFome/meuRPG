@@ -2262,7 +2262,7 @@ enum MountRefusal {
   MOUNT_REFUSAL_TOO_SMALL = 1;
   // The mount is farther than 5 ft.
   MOUNT_REFUSAL_TOO_FAR = 2;
-  // The mount carries a rider already, or rides.
+  // The mount carries a rider already.
   MOUNT_REFUSAL_TAKEN = 3;
   // The combatant mounted or dismounted in this move already.
   MOUNT_REFUSAL_MOVE_USED = 4;

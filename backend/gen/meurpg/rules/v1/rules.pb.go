@@ -1592,7 +1592,7 @@ const (
 	MountRefusal_MOUNT_REFUSAL_TOO_SMALL MountRefusal = 1
 	// The mount is farther than 5 ft.
 	MountRefusal_MOUNT_REFUSAL_TOO_FAR MountRefusal = 2
-	// The mount carries a rider already, or rides.
+	// The mount carries a rider already.
 	MountRefusal_MOUNT_REFUSAL_TAKEN MountRefusal = 3
 	// The combatant mounted or dismounted in this move already.
 	MountRefusal_MOUNT_REFUSAL_MOVE_USED MountRefusal = 4

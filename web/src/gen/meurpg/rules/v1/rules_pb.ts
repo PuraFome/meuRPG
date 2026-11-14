@@ -8395,7 +8395,7 @@ export enum MountRefusal {
   TOO_FAR = 2,
 
   /**
-   * The mount carries a rider already, or rides.
+   * The mount carries a rider already.
    *
    * @generated from enum value: MOUNT_REFUSAL_TAKEN = 3;
    */

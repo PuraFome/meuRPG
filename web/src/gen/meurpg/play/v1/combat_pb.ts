@@ -4092,7 +4092,7 @@ export type DismountCombatantRequest = Message<"meurpg.play.v1.DismountCombatant
   riderId: string;
 
   /**
-   * The square it lands on, next to the mount. Left out in a combat with no map.
+   * The square it lands on, next to the mount.
    *
    * @generated from field: int32 col = 4;
    */
@@ -18192,7 +18192,7 @@ export const CombatService: GenService<{
    * MountCombatant puts a rider on a mount (SRD 5.1, "Mounting and Dismounting": it takes an amount of movement equal to
    * half your speed to mount, and you cannot mount without that much movement left or with a speed of 0). The rider acts on
    * its own turn (the master, on any turn of it). The mount is within 5 ft of the rider (a diagonal neighbour counts, as a
-   * reach does; a combat with no map leaves the distance to the master), alive, in this combat, at least one size larger than
+   * reach does; a combat with no map is refused), alive, in this combat, at least one size larger than
    * the rider (Tiny, Small, Medium, Large, Huge, Gargantuan) and willing: a player mounts a creature of their own and a
    * combatant the master marked (`mount_kind`) on the party's side, and the master mounts anything (a combatant with no mark
    * obeys its own turn as an "independent" one). The cost is half the speed of the surface the rider stands on, without the
@@ -18221,7 +18221,7 @@ export const CombatService: GenService<{
   },
   /**
    * DismountCombatant takes a rider off its mount, on its turn (SRD 5.1, "Mounting and Dismounting"). The rider lands on the
-   * square `col`, `row`: free, passable, and next to the mount (a diagonal neighbour counts; a combat with no map names none).
+   * square `col`, `row`: free, passable, and next to the mount (a diagonal neighbour counts; a combat with no map is refused).
    * The cost, the turn, the once per move and the audience are those of MountCombatant, and the master can undo it. The
    * mount keeps its square; the rider is a combatant on its own square again.
    *

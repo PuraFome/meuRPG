@@ -10180,7 +10180,7 @@ type DismountCombatantRequest struct {
 	EncounterId string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
 	// The combatant that dismounts (a UUID).
 	RiderId string `protobuf:"bytes,3,opt,name=rider_id,json=riderId,proto3" json:"rider_id,omitempty"`
-	// The square it lands on, next to the mount. Left out in a combat with no map.
+	// The square it lands on, next to the mount.
 	Col            int32  `protobuf:"varint,4,opt,name=col,proto3" json:"col,omitempty"`
 	Row            int32  `protobuf:"varint,5,opt,name=row,proto3" json:"row,omitempty"`
 	IdempotencyKey string `protobuf:"bytes,6,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`

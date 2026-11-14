@@ -8,8 +8,8 @@
 -- mount_kind is on the MOUNT: '' is not a willing mount, 'controlled' obeys its rider and 'independent' keeps its own turn. The
 -- master marks it (SetCombatantMount).
 --
--- mount_prior_init is NULL or one JSON object {"initiative": <total or null>, "face": <d20 or null>, "tie": <the master ordered it>}:
--- the initiative, the d20 and the master's order of a mount.
+-- mount_prior_init is NULL or one JSON object {"initiative": <total or null>, "face": <d20 or null>, "tie": <the master ordered it>, "bonus": <the modifier>, "after": <the id of the combatant before it>}:
+-- the initiative, the d20, the master's order and the place of a mount.
 --
 -- mount_move_used says the rider already mounted or dismounted in this move (once per move); the start of its turn clears it.
 --
