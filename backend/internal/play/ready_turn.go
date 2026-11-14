@@ -153,7 +153,8 @@ func (e *logEntry) fillReadied(c *logViewing, out *playv1.CombatLogEntry) bool {
 		out.Key, out.ConcentrationEndedKey = "", ""
 		return true
 	}
-	out.ConcentrationEndedKey = e.ev.ConcEnded // the concentration a readied spell ended, as a cast's line says it
+	// The concentration a readied spell ended, as a cast's line says it.
+	out.ConcentrationEndedKey = e.ev.ConcEnded
 	if e.ev.Readied.holdsSpell() && e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED { // the slot it spent
 		out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, c.v, c.actor), Concentrating: true, ConcentrationEndedKey: e.ev.ConcEnded}
 	}

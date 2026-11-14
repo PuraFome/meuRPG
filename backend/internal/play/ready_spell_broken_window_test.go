@@ -21,15 +21,19 @@ func (a *armed) openReadiedWindows(t *testing.T) int {
 func TestABrokenHeldSpellClosesItsOpenWindow(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
-		name  string
+		name string
 		brk  func(t *testing.T, a *armed, e *playv1.Encounter)
 	}{
 		{"the master ends its concentration", func(t *testing.T, a *armed, e *playv1.Encounter) {
+			t.Helper()
 			if _, err := a.conditions(t, a.master, e, "Pensantus", nil, false, true); err != nil {
 				t.Fatalf("SetCombatantConditions(end_concentration) error = %v", err)
 			}
 		}},
-		{"a correction to 0 hit points", func(t *testing.T, a *armed, _ *playv1.Encounter) { a.correct(t, a.pens, hpIs(0)) }},
+		{"a correction to 0 hit points", func(t *testing.T, a *armed, _ *playv1.Encounter) {
+			t.Helper()
+			a.correct(t, a.pens, hpIs(0))
+		}},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
