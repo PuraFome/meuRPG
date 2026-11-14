@@ -6,6 +6,7 @@ import {
   FeatUnmetKind,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ABILITY_LABELS } from '../characters/character-labels';
+import { featureKeyName as optionKeyName } from './class-feature-text';
 import type { AbilityKey } from '../characters/characters.types';
 
 /**
@@ -135,6 +136,16 @@ export function prerequisiteParts(
   if (p.level > 0) {
     parts.push(`nível ${p.level} ou mais`);
   }
+  if (p.classLevel && p.classLevel.classKey !== '') {
+    parts.push(`${nameOf(p.classLevel.classKey)} ${p.classLevel.level}`);
+  }
+  if (p.requiresPact !== '') {
+    parts.push(optionKeyName(p.requiresPact, nameOf));
+  }
+  if (p.requiresSpellKey !== '') {
+    parts.push(nameOf(p.requiresSpellKey));
+  }
+  parts.push(...p.requiresOptionKeys.map((k) => optionKeyName(k, nameOf)));
   return parts;
 }
 
@@ -169,6 +180,14 @@ export function unmetText(u: FeatUnmet, nameOf: KeyName): string {
       return u.key ? `Não pode ter ${u.namePt || nameOf(u.key)}.` : hiddenOr(u);
     case FeatUnmetKind.LEVEL:
       return `Precisa de nível ${u.value} ou mais.`;
+    case FeatUnmetKind.CLASS_LEVEL:
+      return `Exige ${nameOf(u.key)} ${u.value}.`;
+    case FeatUnmetKind.PACT:
+      return `Exige a dádiva ${optionKeyName(u.key, nameOf)}.`;
+    case FeatUnmetKind.SPELL:
+      return `Exige a magia ${nameOf(u.key)}, que você ainda não conhece.`;
+    case FeatUnmetKind.OPTION:
+      return `Exige a opção ${optionKeyName(u.key, nameOf)}, que você ainda não escolheu.`;
     default:
       return hiddenOr(u);
   }

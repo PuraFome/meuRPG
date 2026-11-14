@@ -102,6 +102,9 @@ describe('the feat form (MR-025)', () => {
         size: '',
         lacksFeatureKey: '',
         level: 4,
+        requiresPact: '',
+        requiresSpellKey: '',
+        requiresOptionKeys: [],
       },
       effects: [
         { type: 'ability_increase', count: 1, from: ['strength', 'dexterity'], value: '1' },
@@ -130,6 +133,9 @@ describe('the feat form (MR-025)', () => {
       size: 'Medium',
       lacksFeatureKey: 'feat:grappler',
       level: 0,
+      requiresPact: '',
+      requiresSpellKey: '',
+      requiresOptionKeys: [],
     });
   });
 
@@ -156,6 +162,9 @@ describe('the feat form (MR-025)', () => {
       size: '',
       lacksFeatureKey: '',
       level: 0,
+      requiresPact: '',
+      requiresSpellKey: '',
+      requiresOptionKeys: [],
     });
     expect(init.effects).toEqual([]);
   });

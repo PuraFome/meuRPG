@@ -65,6 +65,13 @@ export interface FeatDraft {
   lacksFeatureKey: string;
   /** As typed; empty asks nothing. */
   level: string;
+  /** A level in one class (#580): the class key, and the level as typed. Both set, or nothing is asked. */
+  classKey: string;
+  classLevel: string;
+  /** A Pact Boon, a spell the character knows, and options already picked (at most 10); empty asks nothing. */
+  requiresPact: string;
+  requiresSpell: string;
+  requiresOptions: string[];
   /**
    * The feat's own option list, in order. An option the server made keeps its key; a new one has none and the server
    * makes it. An unnamed option is not sent.
@@ -84,6 +91,11 @@ export function emptyFeat(): FeatDraft {
     size: '',
     lacksFeatureKey: '',
     level: '',
+    classKey: '',
+    classLevel: '',
+    requiresPact: '',
+    requiresSpell: '',
+    requiresOptions: [],
     options: [],
   };
 }
@@ -124,6 +136,11 @@ export function featToDraft(f: TableFeat): FeatDraft {
     raceKey: p?.raceKey ?? '',
     ...whoOf(p),
     level: p && p.level > 0 ? String(p.level) : '',
+    classKey: p?.classLevel?.classKey ?? '',
+    classLevel: p?.classLevel && p.classLevel.level > 0 ? String(p.classLevel.level) : '',
+    requiresPact: p?.requiresPact ?? '',
+    requiresSpell: p?.requiresSpellKey ?? '',
+    requiresOptions: [...(p?.requiresOptionKeys ?? [])],
     options: f.options.map(featureToDraft),
   };
 }
@@ -158,6 +175,12 @@ export function draftToFeat(d: FeatDraft, menu: EffectMenuVm): FeatInit {
       size: d.size,
       lacksFeatureKey: d.lacksFeatureKey,
       level: level === '' ? 0 : Number(level),
+      ...(d.classKey && d.classLevel.trim() !== ''
+        ? { classLevel: { classKey: d.classKey, level: Number(d.classLevel.trim()) } }
+        : {}),
+      requiresPact: d.requiresPact,
+      requiresSpellKey: d.requiresSpell,
+      requiresOptionKeys: [...d.requiresOptions],
     },
     effects: d.feature.effects.map((e) => draftToEffect(e, menu)),
     ...optionsInit(d.options, menu),
@@ -180,6 +203,12 @@ export function featPaths(d: FeatDraft, menu: EffectMenuVm): string[] {
     `${p}.prerequisite.lacks_feature_key`,
     `${p}.prerequisite.level`,
     `${p}.prerequisite.spellcasting`,
+    `${p}.prerequisite.class_level`,
+    `${p}.prerequisite.class_level.class_key`,
+    `${p}.prerequisite.class_level.level`,
+    `${p}.prerequisite.requires_pact`,
+    `${p}.prerequisite.requires_spell_key`,
+    `${p}.prerequisite.requires_option_keys`,
     `${p}.effects`,
     `${p}.options`,
   ];
@@ -187,6 +216,7 @@ export function featPaths(d: FeatDraft, menu: EffectMenuVm): string[] {
     out.push(`${p}.prerequisite.minimums.${a}`, `${p}.prerequisite.any_of.${a}`);
   }
   d.races.forEach((_, i) => out.push(`${p}.prerequisite.races[${i}]`));
+  d.requiresOptions.forEach((_, i) => out.push(`${p}.prerequisite.requires_option_keys[${i}]`));
   d.feature.effects.forEach((e, k) => {
     out.push(...effectInputPaths(`${p}.effects[${k}]`, e, menu));
   });
