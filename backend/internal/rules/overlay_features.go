@@ -47,6 +47,9 @@ func (b *overlayBuilder) addFeature(f *TableFeature, k featureKind, path string)
 	if err := b.checkFeatureHead(f, k.prefix, path); err != nil {
 		return err
 	}
+	if !f.Prerequisite.IsZero() {
+		return ovErr(f.Key, "only an option has a prerequisite").at(path+".prerequisite", ReasonValue)
+	}
 	b.know(f.Key, k)
 	effects, err := b.featureOptions(f, k, path)
 	if err != nil {
@@ -255,7 +258,29 @@ func (b *overlayBuilder) addOptions(f *TableFeature, k featureKind, path string)
 		}
 		keys = append(keys, o.Key)
 	}
-	return keys, nil
+	// An option may ask for a sibling, so the prerequisites are judged once every option is known.
+	var c entryErrors
+	for i := range f.Options {
+		b.addOptionPrerequisite(&c, &f.Options[i], k, fmt.Sprintf("%s.options[%d]", path, i))
+	}
+	return keys, c.err()
+}
+
+// addOptionPrerequisite checks the prerequisite of an inline option and, when it is sound, makes it one the choice reads.
+// An option of a trait is a one-time choice of one and asks nothing.
+func (b *overlayBuilder) addOptionPrerequisite(c *entryErrors, o *TableFeature, k featureKind, at string) {
+	if o.Prerequisite.IsZero() {
+		return
+	}
+	if k.prefix == traitKeyPrefix {
+		c.at(o.Key, at, ".prerequisite", ReasonValue, "an option of a trait has no prerequisite: the player picks one")
+		return
+	}
+	before := len(c.list)
+	b.checkPrerequisiteFields(c, o.Key, at, o.Prerequisite)
+	if len(c.list) == before {
+		b.n.optionPrereq[o.Key] = o.Prerequisite
+	}
 }
 
 // addFeatureOption registers one option of feature f: a feature of its own with f as its parent, or, for

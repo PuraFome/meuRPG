@@ -572,6 +572,9 @@ var logHandlers = map[string]logHandler{
 	eventLegendarySpent:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT),
 	eventRechargeRolled:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED),
 	eventGearSwapped:             gearSwappedLine,
+	eventActionReadied:           readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED),
+	eventReadiedFired:            readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED),
+	eventReadiedLost:             readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST),
 	eventFeatureUsed:             featureUsedLine,
 	eventCombatantHiddenSet:      (*logBuilder).hiddenSet,
 	eventActionTaken:             (*logBuilder).actionTaken,
@@ -1125,6 +1128,7 @@ var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:           true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:          true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:    true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:  true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:    true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:        true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:      true,
@@ -1174,6 +1178,9 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:     (*logEntry).fillLegendarySpent,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:     (*logEntry).fillRechargeRolled,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:        (*logEntry).fillGearSwapped,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:      (*logEntry).fillReadied,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED:       (*logEntry).fillReadied,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST:        (*logEntry).fillReadied,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:        (*logEntry).fillFeatureUsed,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
@@ -1481,11 +1488,11 @@ func (e *logEntry) fillConditions(c *logViewing, out *playv1.CombatLogEntry) boo
 	out.Conditions = e.ev.Conditions
 	if !c.v.master && !c.v.owns(c.actor) { // a condition with no outward sign is the owner's and the master's (RN-10)
 		out.Conditions = withoutOwnerOnly(e.ev.Conditions)
-		if e.ev.ConcEnded == "" && slices.Equal(out.Conditions, withoutOwnerOnly(e.ev.CondBefore)) {
+		if concentrationEndedFor(e.ev.ConcEnded, c.v, c.actor) == "" && slices.Equal(out.Conditions, withoutOwnerOnly(e.ev.CondBefore)) {
 			return false // nothing a player may read changed
 		}
 	}
-	out.ConcentrationEndedKey = e.ev.ConcEnded
+	out.ConcentrationEndedKey = concentrationEndedFor(e.ev.ConcEnded, c.v, c.actor)
 	return true
 }
 
@@ -1507,7 +1514,7 @@ func (e *logEntry) fillEffectEnd(c *logViewing, out *playv1.CombatLogEntry) bool
 // target's own player's; the caster's d20 the master's and the caster's.
 func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *playv1.CombatLogSpell {
 	caster := byID[e.ev.Actor]
-	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, v, caster), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
+	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, v, caster), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: concentrationEndedFor(e.ev.ConcEnded, v, caster)}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
 	out.MaterialSpent = e.ev.Material && (v.master || v.owns(caster)) // the diamonds are the caster's and the master's line
 	if e.ev.Res != nil && e.ev.Res.Kind == resMetamagic {

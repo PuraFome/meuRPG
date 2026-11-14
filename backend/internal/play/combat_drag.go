@@ -97,7 +97,8 @@ func (s *Service) dragTo(ctx context.Context, c *combatTx, v combatViewer, cs []
 // movement left is the path that fits at half speed, and each square says where the dragged
 // creature would end (a square with no room for it is refused). A combatant that drags nobody
 // gets moveOptions as it is.
-func (s *Service) moveOptionsWithDrag(ctx context.Context, plan grid.Terrain, cs []playdb.Combatant, who playdb.Combatant, mover grid.Mover, v combatViewer) (*playv1.GetMoveOptionsResponse, error) {
+func (s *Service) moveOptionsWithDrag(ctx context.Context, plan grid.Terrain, cs []playdb.Combatant, o moverOption, mover grid.Mover, v combatViewer) (*playv1.GetMoveOptionsResponse, error) {
+	who, sp := o.who, o.speeds()
 	occ := occupantsFor(cs, who, v)
 	dragged, dragging, err := s.draggedBy(ctx, s.queries, cs, who)
 	// moveOptions reads the movement left: the path that fits is what is left divided by
@@ -105,13 +106,13 @@ func (s *Service) moveOptionsWithDrag(ctx context.Context, plan grid.Terrain, cs
 	// cost itself, grid.Mover.Crawls.)
 	div := 1
 	if err != nil || !dragging {
-		return moveOptions(plan, who, mover, occ, div), err
+		return moveOptions(plan, who, mover, sp, occ, div), err
 	}
 	halves := combat.DragHalvesSpeed(who.Size, dragged.Size)
 	if halves {
 		div *= 2
 	}
-	out := moveOptions(plan, who, mover, occ, div)
+	out := moveOptions(plan, who, mover, sp, occ, div)
 	if !v.master && !v.sees(dragged) {
 		return out, nil // the halving holds, but what it drags is not theirs to know
 	}
