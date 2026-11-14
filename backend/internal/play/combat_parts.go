@@ -1128,12 +1128,11 @@ type typedSums struct {
 // typeGroup is a damage type whose dice parts share one typed sum; the sum is kept on the first of them that the
 // other players can read (the first of all when every one is hidden from them).
 type typeGroup struct {
-	typ     string
-	sum     int
-	holder  string
-	hidden  bool // a part of the group is hidden from the roller
-	visible int  // how many parts of the group are not
-	parts   int  // how many dice parts the damage type covers
+	typ    string
+	sum    int
+	holder string
+	hidden bool // a part of the group is hidden from the other players
+	parts  int  // how many dice parts the damage type covers
 }
 
 // typedPartsOf reads the typed sums: each entry names one part key or one damage type, once. A refusal reads nothing.
@@ -1195,8 +1194,7 @@ func (r rollPartsInput) typedGroup(typ string, final []partRecord) (g *typeGroup
 		if !r.inGroup(sp, typ, count) {
 			continue
 		}
-		// A key typed for a part hidden from the roller is passed over, as a key of no part is: naming it would tell it is there.
-		if _, both := r.typed.byPart[sp.Key]; both && !sp.Hide {
+		if _, both := r.typed.byPart[sp.Key]; both {
 			return nil, 0, 0, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("typed_parts names %s and a part of it (%s)", typ, sp.Key))
 		}
 		first = cmp.Or(first, sp.Key)
@@ -1204,7 +1202,6 @@ func (r rollPartsInput) typedGroup(typ string, final []partRecord) (g *typeGroup
 		if sp.Hide {
 			g.hidden = true
 		} else {
-			g.visible++
 			g.holder = cmp.Or(g.holder, sp.Key)
 		}
 		lo, hi = lo+count, hi+count*int(sp.Sides)
@@ -1218,19 +1215,16 @@ func (r rollPartsInput) inGroup(sp partRecord, typ string, count int) bool {
 	return r.counts(sp) && sp.DamageType == typ && count > 0 && sp.Sides > 0 && sp.Key != combat.ExtraDivineSmiteExtra
 }
 
-// check refuses a group with no dice part and a sum outside the combined range of its parts. A group with a part hidden
-// from the roller gives no number (RN-10), and a type whose only dice are hidden is refused as a type with none.
+// check refuses a group with no dice part and a sum outside the combined range of its parts. The roller is the owner or
+// the master, who read every part whole, so the range shows its bounds whether or not a part is hidden from the other players.
 func (g *typeGroup) check(lo, hi int) error {
-	inRange := g.sum >= lo && g.sum <= hi
 	switch {
-	case g.holder == "" || g.visible == 0 && !inRange:
+	case g.holder == "":
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("typed_parts names %s, which has no dice in this attack", g.typ))
-	case inRange:
-		return nil
-	case g.hidden:
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the sum of %s is out of range", g.typ))
+	case g.sum < lo || g.sum > hi:
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the sum of %s must be %d to %d", g.typ, lo, hi))
 	}
-	return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the sum of %s must be %d to %d", g.typ, lo, hi))
+	return nil
 }
 
 // storePartsRoll writes what a roll left on the pending damage.

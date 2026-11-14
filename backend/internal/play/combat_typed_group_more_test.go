@@ -240,10 +240,11 @@ func weaponPiercing() partRecord {
 	return partRecord{Key: partWeapon, Label: "Rapieira", Kind: partWeapon, Count: 1, Sides: 8, Flat: 3, DamageType: groupPiercing, Available: true}
 }
 
-// RN-10: a group with a part hidden from the roller says nothing of the range, of the part's key or of whether it is there.
-func TestRN10_AGroupWithAHiddenPartGivesNoNumbersAndNoKey(t *testing.T) {
+// "Hidden" is hidden from the OTHER players: the roller is the owner or the master, who read every part whole. For the
+// roller a group that holds a hidden part is a group like any other: its range shows its bounds, a part_key typed for the
+// hidden part works, and a type whose dice are all hidden has dice.
+func TestAGroupWithAHiddenPartIsAGroupLikeAnyOtherForTheRoller(t *testing.T) {
 	t.Parallel()
-	const neutral = "the sum of damage-type:piercing is out of range"
 	for _, order := range []string{"hidden first", "hidden last"} {
 		parts := []partRecord{hiddenHex(), weaponPiercing()}
 		if order == "hidden last" {
@@ -251,32 +252,40 @@ func TestRN10_AGroupWithAHiddenPartGivesNoNumbersAndNoKey(t *testing.T) {
 		}
 		for _, n := range []int{1, 99} { // the group is 2 to 14
 			_, err := groupCase{parts: parts, typed: typedSums{byType: map[string]int{groupPiercing: n}}}.roll()
-			if connect.CodeOf(err) != connect.CodeInvalidArgument || err == nil || err.Error() != "invalid_argument: "+neutral {
-				t.Errorf("%s, sum %d: error = %v, want invalid_argument %q and no number", order, n, err, neutral)
+			if connect.CodeOf(err) != connect.CodeInvalidArgument || err == nil || !strings.Contains(err.Error(), "the sum of damage-type:piercing must be 2 to 14") {
+				t.Errorf("%s, sum %d: error = %v, want invalid_argument with the bounds 2 to 14", order, n, err)
 			}
 		}
-		// A key typed for the hidden part is no sign it is there: the group covers it, as a key of no part is passed over.
-		for _, key := range []string{"spell:hunters-hex", "spell:not-here"} {
-			got, err := groupCase{parts: parts, typed: typedSums{byType: map[string]int{groupPiercing: 9}, byPart: map[string]int{key: 5}}}.roll()
-			if err != nil || got.byType[groupPiercing] != 12 {
-				t.Errorf("%s, key %s: byType = %v, error = %v, want the group's 9 and the flat 3", order, key, got.byType, err)
-			}
+		// A part_key typed for the hidden part beside its type's sum is the same refusal as for any part of the group.
+		_, err := groupCase{parts: parts, typed: typedSums{byType: map[string]int{groupPiercing: 9}, byPart: map[string]int{"spell:hunters-hex": 5}}}.roll()
+		if connect.CodeOf(err) != connect.CodeInvalidArgument || err == nil || !strings.Contains(err.Error(), "names damage-type:piercing and a part of it (spell:hunters-hex)") {
+			t.Errorf("%s: error = %v, want the refusal naming the type and the part", order, err)
+		}
+		// A key of no part is still passed over.
+		if got, err := (groupCase{parts: parts, typed: typedSums{byType: map[string]int{groupPiercing: 9}, byPart: map[string]int{"spell:not-here": 5}}}.roll()); err != nil || got.byType[groupPiercing] != 12 {
+			t.Errorf("%s, a key of no part: byType = %v, error = %v, want the group's 9 and the flat 3", order, got.byType, err)
+		}
+		// With no group typed, each dice part takes the sum typed for its key, the hidden one too.
+		got, err := groupCase{parts: parts, typed: typedSums{byPart: map[string]int{partWeapon: 4, "spell:hunters-hex": 5}}}.roll()
+		if err != nil || got.byType[groupPiercing] != 12 {
+			t.Errorf("%s, part keys: byType = %v, error = %v, want 4 + 5 and the flat 3", order, got.byType, err)
 		}
 	}
-	// A type whose only dice part is hidden is refused as a type with none is, with nothing else to tell them apart.
+	// A type whose only dice part is hidden has dice: its bounds are shown and a sum in them is taken.
 	slashing := partRecord{Key: partWeapon, Kind: partWeapon, Count: 1, Sides: 8, DamageType: "damage-type:slashing", Available: true}
-	refuse := func(typ string) string {
-		_, err := groupCase{parts: []partRecord{slashing, hiddenHex()}, typed: typedSums{byType: map[string]int{typ: 99}, byPart: map[string]int{partWeapon: 4}}}.roll()
-		if connect.CodeOf(err) != connect.CodeInvalidArgument || err == nil {
-			t.Fatalf("type %s: error = %v, want invalid_argument", typ, err)
-		}
-		return strings.ReplaceAll(err.Error(), typ, "TYPE")
+	_, err := groupCase{parts: []partRecord{slashing, hiddenHex()}, typed: typedSums{byType: map[string]int{groupPiercing: 99}, byPart: map[string]int{partWeapon: 4}}}.roll()
+	if err == nil || !strings.Contains(err.Error(), "the sum of damage-type:piercing must be 1 to 6") {
+		t.Errorf("a type of hidden dice: error = %v, want the bounds 1 to 6", err)
 	}
-	if hidden, none := refuse(groupPiercing), refuse(groupFire); hidden != none {
-		t.Errorf("a type with only a hidden part reads %q, a type with none %q: they must read the same", hidden, none)
+	if got, err := (groupCase{parts: []partRecord{slashing, hiddenHex()}, typed: typedSums{byType: map[string]int{groupPiercing: 4}, byPart: map[string]int{partWeapon: 4}}}.roll()); err != nil || got.byType[groupPiercing] != 4 {
+		t.Errorf("a type of hidden dice, sum 4: byType = %v, error = %v, want it accepted", got.byType, err)
+	}
+	// A type with no dice part at all is still refused as such.
+	if _, err := (groupCase{parts: []partRecord{slashing}, typed: typedSums{byType: map[string]int{groupFire: 3}, byPart: map[string]int{partWeapon: 4}}}.roll()); err == nil || !strings.Contains(err.Error(), "has no dice in this attack") {
+		t.Errorf("a type with no dice: error = %v", err)
 	}
 	// And a group with no part hidden keeps its numbers.
-	_, err := groupCase{parts: []partRecord{weaponPiercing()}, typed: typedSums{byType: map[string]int{groupPiercing: 99}}}.roll()
+	_, err = groupCase{parts: []partRecord{weaponPiercing()}, typed: typedSums{byType: map[string]int{groupPiercing: 99}}}.roll()
 	if err == nil || !strings.Contains(err.Error(), "must be 1 to 8") {
 		t.Errorf("a visible group: error = %v, want its range", err)
 	}
