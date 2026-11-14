@@ -65,6 +65,19 @@ func mountsAfterRiders(cs []playdb.Combatant) []playdb.Combatant {
 	return out
 }
 
+// pairTies makes the tie flag of a rider and the controlled mount that takes its total one: ordered when either was.
+func pairTies(cs []playdb.Combatant) []playdb.Combatant {
+	out := slices.Clone(cs)
+	for i, a := range out {
+		for j, b := range out {
+			if joinedPair(a, b) && (a.TieOrdered || b.TieOrdered) {
+				out[i].TieOrdered, out[j].TieOrdered = true, true
+			}
+		}
+	}
+	return out
+}
+
 // riderJoined is the rider a controlled mount takes the initiative of: the one that sits on it and has rolled; nil for any other mount.
 func riderJoined(cs []playdb.Combatant, mount playdb.Combatant) *playdb.Combatant {
 	if mount.MountKind != mountKindControlled {

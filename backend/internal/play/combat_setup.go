@@ -317,7 +317,7 @@ func (s *Service) orderWrite(ctx context.Context, c *combatTx, call orderCall) (
 	if err := mustBeTied(cs, call.ids, call.m); err != nil {
 		return nil, err
 	}
-	if _, err := saveOrder(ctx, c.q, cs, withOrder(orderCombatants(cs), call.ids)); err != nil {
+	if _, err := saveOrder(ctx, c.q, cs, pairTies(mountsAfterRiders(withOrder(orderCombatants(cs), call.ids)))); err != nil {
 		return nil, err
 	}
 	if err := touch(ctx, c); err != nil {
