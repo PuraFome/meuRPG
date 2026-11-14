@@ -80,7 +80,9 @@ interface FeatCard {
                     <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
                   }
                 </label>
-                <p class="card__line">{{ c.asks ? 'Pede: ' + c.asks + '.' : 'Não pede nada.' }}</p>
+                @if (c.asks || c.why.length === 0) {
+                  <p class="card__line">{{ c.asks ? 'Pede: ' + c.asks + '.' : 'Não pede nada.' }}</p>
+                }
                 @if (c.increase) {
                   <p class="card__line">{{ c.increase }}</p>
                 }

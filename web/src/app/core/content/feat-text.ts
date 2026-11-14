@@ -205,8 +205,13 @@ function keyedPart(u: FeatUnmet, nameOf: KeyName): string {
  * own sentence, with the note of what is missing.
  */
 export function unmetLines(unmet: readonly FeatUnmet[], nameOf: KeyName): string[] {
-  const keyed = unmet.filter((u) => KEYED.has(u.kind));
-  const lines = unmet.filter((u) => !KEYED.has(u.kind)).map((u) => unmetText(u, nameOf));
+  // A keyed condition with no key is one the player may not read: it is said once, apart from the line.
+  const keyed = unmet.filter((u) => KEYED.has(u.kind) && u.key !== '');
+  const unread = unmet.some((u) => KEYED.has(u.kind) && u.key === '') ? [HIDDEN_UNMET] : [];
+  const lines = [
+    ...unmet.filter((u) => !KEYED.has(u.kind)).map((u) => unmetText(u, nameOf)),
+    ...unread,
+  ];
   if (keyed.length === 1) {
     return [...lines, keyedUnmet(keyed[0], nameOf)];
   }
