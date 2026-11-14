@@ -1,19 +1,20 @@
 package play
 
 import (
+	"errors"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
 
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
-	"github.com/jackc/pgx/v5"
 )
 
 // The charges of magic items and the ammunition at the table (ChargesService): who may spend, roll and correct, what
@@ -153,7 +154,10 @@ func (c *charged) correct(t *testing.T, u *user, key string, left int32, lost ch
 func wantChargeBlock(t *testing.T, call string, err error, want charactersv1.CharacterBlockedReason) {
 	t.Helper()
 	wantCode(t, call, err, connect.CodeFailedPrecondition)
-	ce, _ := err.(*connect.Error)
+	var ce *connect.Error
+	if !errors.As(err, &ce) {
+		t.Fatalf("%s: %v is not a connect error", call, err)
+	}
 	for _, d := range ce.Details() {
 		if v, derr := d.Value(); derr == nil {
 			if b, ok := v.(*charactersv1.CharacterBlocked); ok && b.GetReason() == want {
@@ -167,7 +171,10 @@ func wantChargeBlock(t *testing.T, call string, err error, want charactersv1.Cha
 func wantChargesBlocked(t *testing.T, call string, err error, want playv1.ChargesBlockedReason) *playv1.ChargesBlocked {
 	t.Helper()
 	wantCode(t, call, err, connect.CodeFailedPrecondition)
-	ce, _ := err.(*connect.Error)
+	var ce *connect.Error
+	if !errors.As(err, &ce) {
+		t.Fatalf("%s: %v is not a connect error", call, err)
+	}
 	for _, d := range ce.Details() {
 		if v, derr := d.Value(); derr == nil {
 			if b, ok := v.(*playv1.ChargesBlocked); ok && b.GetReason() == want {

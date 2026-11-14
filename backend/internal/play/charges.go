@@ -466,14 +466,14 @@ func (s *Service) rollLastChargeTx(ctx context.Context, tx pgx.Tx, h *hints, ses
 func (s *Service) rollTheLastCharge(ctx context.Context, tx pgx.Tx, campaignID, itemKey string, input rollLastChargeInput) (d20, regainFace, regain int32, err error) {
 	face := input.in.typed
 	if input.in.inApp {
-		rolled, err := dice.Roll(s.roller, dice.Expr{Count: 1, Sides: 20})
+		rolled, err := dice.Roll(s.roller, dice.Expr{Count: 1, Sides: d20Sides})
 		if err != nil {
 			return 0, 0, 0, fmt.Errorf("roll the d20 of the last charge: %w", err)
 		}
 		face = rolled.Faces[0]
 	}
 	d20 = clamp32(face, 1, 20)
-	if d20 != 20 {
+	if d20 != d20Sides {
 		return d20, 0, 0, nil
 	}
 	content, err := s.roster.RulesContent(ctx, tx, campaignID)
