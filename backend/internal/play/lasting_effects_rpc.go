@@ -795,7 +795,7 @@ func (s *Service) endEffectTx(ctx context.Context, c *combatTx, rawID string, sc
 	}
 	return actionEvent{
 		Round: c.enc.Round, Secret: s.effectHiddenFrom(first, targetsOf(cs, []string{first.CombatantID})), Actor: conv.OrZero(first.SourceID), Target: first.CombatantID,
-		Lasting: &lastingEvent{Key: conv.OrZero(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}},
+		Lasting: &lastingEvent{Key: conv.OrZero(first.SourceKey), Change: "ended", Reason: reason, Effects: []string{first.ID}, Unused: endedUnused(rows)},
 	}, nil
 }
 
@@ -897,6 +897,6 @@ func (s *Service) removeTargetTx(ctx context.Context, c *combatTx, effID, combID
 	}
 	return actionEvent{
 		Round: c.enc.Round, Secret: s.effectHiddenFrom(row, targetsOf(cs, []string{combID})), Actor: conv.OrZero(row.SourceID), Target: combID,
-		Lasting: &lastingEvent{Key: conv.OrZero(row.SourceKey), Change: "ended", Reason: endByMaster, Targets: []string{combID}, Effects: []string{row.ID}},
+		Lasting: &lastingEvent{Key: conv.OrZero(row.SourceKey), Change: "ended", Reason: endByMaster, Targets: []string{combID}, Effects: []string{row.ID}, Unused: endedUnused([]playdb.CombatantState{row})},
 	}, nil
 }

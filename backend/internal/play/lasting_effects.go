@@ -81,6 +81,9 @@ type lastingEvent struct {
 	// OwnerOnly says only the targets' players read the line (an effect for its owner alone,
 	// the owner-class conditions, exhaustion): the master reads it always.
 	OwnerOnly bool `json:"owner_only,omitempty"`
+	// Unused says an on-hit effect ended with its use still waiting (no hit spent it): the line is read from
+	// the event, so it keeps saying so after the rows are gone, and the undo takes it away with the line.
+	Unused bool `json:"unused,omitempty"`
 }
 
 // isEffect says a state is an effect that lasts.
@@ -568,7 +571,7 @@ func (s *Service) endCasting(ctx context.Context, c *combatTx, cs []playdb.Comba
 	hidden := s.effectHiddenFrom(first, targetsOf(cs, targets))
 	line, err := insertEventID(ctx, c, eventLastingEnded, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: hidden, Actor: conv.OrZero(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience != audienceAll},
+		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience != audienceAll, Unused: endedUnused(k.rows)},
 	})
 	if err != nil {
 		return err
@@ -577,6 +580,14 @@ func (s *Service) endCasting(ctx context.Context, c *combatTx, cs []playdb.Comba
 	// back, takes the line back too (write, UndoLastAction).
 	c.endedLines = append(c.endedLines, line)
 	return nil
+}
+
+// endedUnused says a casting that ends holds an on-hit effect (a weapon_hit_damage of any trigger) no hit spent.
+func endedUnused(rows []playdb.CombatantState) bool {
+	return slices.ContainsFunc(rows, func(st playdb.CombatantState) bool {
+		_, ok := hitModifierOf(effectModifiers(st))
+		return ok && st.SpentAt == nil
+	})
 }
 
 // targetsOf are the combatants of ids.

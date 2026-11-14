@@ -448,7 +448,8 @@
     "effects": [
       "x"
     ],
-    "owner_only": true
+    "owner_only": true,
+    "unused": true
   },
   "extra": [
     {

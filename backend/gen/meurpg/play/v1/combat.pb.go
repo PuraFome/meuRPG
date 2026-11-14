@@ -20384,8 +20384,11 @@ type CombatLogEffect struct {
 	// The name of the feature in `treated_as_source`, for the roller's player and the master only; empty for anyone else and for
 	// an entry the master retired or switched off (RN-23).
 	TreatedAsSourceName string `protobuf:"bytes,20,opt,name=treated_as_source_name,json=treatedAsSourceName,proto3" json:"treated_as_source_name,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// ENDED: true when the effect ended with its use still waiting (no hit spent it).
+	// False when a hit spent it or it is not an on-hit effect; read by the same readers as the line.
+	Unused        bool `protobuf:"varint,21,opt,name=unused,proto3" json:"unused,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CombatLogEffect) Reset() {
@@ -20556,6 +20559,13 @@ func (x *CombatLogEffect) GetTreatedAsSourceName() string {
 		return x.TreatedAsSourceName
 	}
 	return ""
+}
+
+func (x *CombatLogEffect) GetUnused() bool {
+	if x != nil {
+		return x.Unused
+	}
+	return false
 }
 
 // CombatLogLegendarySpent is the master's line of a spend of legendary actions.
@@ -28918,7 +28928,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x10expires_at_round\x18\n" +
 	" \x01(\x05R\x0eexpiresAtRoundB\t\n" +
 	"\a_healedB\x11\n" +
-	"\x0f_nothing_reason\"\x93\x06\n" +
+	"\x0f_nothing_reason\"\xab\x06\n" +
 	"\x0fCombatLogEffect\x12\x1d\n" +
 	"\n" +
 	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +
@@ -28942,7 +28952,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\n" +
 	"treated_as\x18\x12 \x01(\x05H\x03R\ttreatedAs\x88\x01\x01\x12*\n" +
 	"\x11treated_as_source\x18\x13 \x01(\tR\x0ftreatedAsSource\x123\n" +
-	"\x16treated_as_source_name\x18\x14 \x01(\tR\x13treatedAsSourceNameB\x06\n" +
+	"\x16treated_as_source_name\x18\x14 \x01(\tR\x13treatedAsSourceName\x12\x16\n" +
+	"\x06unused\x18\x15 \x01(\bR\x06unusedB\x06\n" +
 	"\x04_d20B\b\n" +
 	"\x06_totalB\x05\n" +
 	"\x03_dcB\r\n" +
