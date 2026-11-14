@@ -279,3 +279,51 @@ func TestTheHoldForgetChecksSeeAViolation(t *testing.T) {
 		t.Errorf("a combatant deleted after the forget = %v, want none", got)
 	}
 }
+
+// favorRowFiles are the only files that put a spent Inspiration back: the master's undo of a roll (favor_spend.go, and the undo of a zone's catch in zones_save.go) and the refund path
+// (hold_forget.go). The row is one per character and never stacks, so every give-back goes through favorGiveBack and its one-row rule.
+var favorRowFiles = []string{"internal/play/favor_spend.go", "internal/play/hold_forget.go", "internal/play/zones_save.go"}
+
+// TestFavorGiveBackIsCalledOnlyFromTheRefundPaths fails for a non-test Go file that calls favorGiveBack or favorGiveBackIf outside the files
+// that own the refund of a spent Inspiration.
+func TestFavorGiveBackIsCalledOnlyFromTheRefundPaths(t *testing.T) {
+	root := os.DirFS(backendRoot)
+	var problems []string
+	err := fs.WalkDir(root, "internal/play", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") || slices.Contains(favorRowFiles, path) || strings.Contains(path, "/playdb/") {
+			return nil
+		}
+		src, err := fs.ReadFile(root, path)
+		if err != nil {
+			return err
+		}
+		problems = append(problems, plainCallsOf(path, src, []string{"favorGiveBack", "favorGiveBackIf"})...)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	failProblems(t, problems)
+}
+
+// plainCallsOf lists the calls of the package-level functions by name (f(...), which callsOf does not read: it reads x.f(...)).
+func plainCallsOf(file string, src []byte, funcs []string) []string {
+	var out []string
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, file, src, 0)
+	if err != nil {
+		return []string{file + ": " + err.Error()}
+	}
+	ast.Inspect(f, func(n ast.Node) bool {
+		if call, ok := n.(*ast.CallExpr); ok {
+			if id, ok := call.Fun.(*ast.Ident); ok && slices.Contains(funcs, id.Name) {
+				out = append(out, file+":"+strconv.Itoa(fset.Position(id.Pos()).Line)+" calls "+id.Name+": an Inspiration spent is given back only through hold_forget.go (refundSpentFavor, forgetHoldsOf) or the undo of its roll")
+			}
+		}
+		return true
+	})
+	return out
+}

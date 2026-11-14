@@ -63,8 +63,16 @@ type favorUse struct {
 	// Lost says why the spend the replay of a held roll asked for was not made (a favorLost* value): the roll is made without it, nothing
 	// was taken, and the roll tells the master and the roller's player.
 	Lost string
+	// Refund lists the sources the roller may not read when the Inspiration added something over the ones they read but nothing over every
+	// source (the hidden ones already gave the advantage): the roll resolves at once and the master is asked whether to give it back.
+	Refund *refundAsk
 	// Checked says the call only validated a spend a reaction window will make at its replay: nothing was taken.
 	Checked bool
+}
+
+// refundAsk is what the master's refund prompt keeps of a spend that added nothing: the sources the roller could not read.
+type refundAsk struct {
+	Hidden []combat.Source
 }
 
 // Why a replay could not spend the Inspiration (favorUse.Lost).
@@ -128,7 +136,11 @@ func (s *Service) useFavor(ctx context.Context, env gateEnv, a favorAsk) (favorU
 	if err := s.owedBeforeTheSpend(ctx, env, a); err != nil {
 		return favorUse{}, err
 	}
-	return spendFavor(ctx, env.q, a)
+	use, err := spendFavor(ctx, env.q, a)
+	if err != nil || use.Refund == nil {
+		return use, err
+	}
+	return use, s.openRefundPrompt(ctx, env, a, use.Refund)
 }
 
 // owedBeforeTheSpend gives the roller the Inspiration its stale holds still owe, before the roll tries to spend it. A hold whose question
@@ -207,7 +219,11 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	if err != nil {
 		return favorUse{}, fmt.Errorf("spend the character's inspiration: %w", err)
 	}
-	return favorUse{Mode: favorMode(a.Sources), Seen: favorMode(seen), Used: true, Spent: true}, nil
+	use := favorUse{Mode: favorMode(a.Sources), Seen: favorMode(seen), Used: true, Spent: true}
+	if favorMode(a.Sources) == combat.Resolve(a.Sources) { // visibly it added something, but not over every source
+		use.Refund = &refundAsk{Hidden: slices.DeleteFunc(slices.Clone(a.Sources), func(src combat.Source) bool { return a.Hide == nil || !a.Hide(src) })}
+	}
+	return use, nil
 }
 
 // favorInPass is the refusal of a spend of an Inspiration that waits in a pass the master has not answered (RN-43): it is the first look

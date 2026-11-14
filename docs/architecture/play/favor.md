@@ -4,7 +4,7 @@ The master grants Inspiration to a player character; the rule is [RN-43](../../p
 The code calls it favor because "inspiration" already means the Bardic Inspiration die ([Held rolls](held-rolls.md)); the app says "Inspiração".
 The contract is `FavorService` (`proto/meurpg/play/v1/favor.proto`).
 The code is `favor_grant.go`, `favor_pass.go`, `favor_read.go`, `favor_events.go`, `favor_rpc.go` and `favor_spend.go`.
-`GrantFavor`, `GetFavor`, `PassFavor`, `AnswerFavorPass` and `CancelFavorPass` are built; `AnswerFavorRefund` answers `unimplemented` to the master (slice 3, part 3).
+`GrantFavor`, `GetFavor`, `PassFavor`, `AnswerFavorPass`, `CancelFavorPass` and `AnswerFavorRefund` are built (`favor_refund.go` is the refund).
 The spend is the helper `useFavor`, which the roll paths call.
 
 ## The table
@@ -213,8 +213,27 @@ The undo of an attack or a cast puts the row back in the undo's transaction, and
 A concentration save and an effect save are not undoable kinds, so they have no undo, except the save of a zone at its cast: the undo of the cast gives its Inspiration back.
 `keep` and `hand_to_master` on a concentration save, and a skipped effect save, ignore `spend_favor` without refusing it.
 Each roll that spends moves the session's hint number once, as the roll already does, and a refusal moves none.
-The pass has no line in the combat log yet, and the master's undo does not reach it: both are scoped to a combat and a pass belongs to the session (the events carry no encounter), so a line and an undo wait for a decision on where they live.
-`chainFavor` keeps every `favor_*` event out of the undo chain.
+**In a combat.** A favor event written while the session's combat is running (not in setup), and whose characters are all player combatants of it, carries the open encounter (the `session_events.encounter_id` column) and, in its payload, the round, the combatants (`combatant_id`, `target_id`), `secret` (a hidden combatant is in it) and the audience (`fogged` and `seen_by`: the owners of the characters named), with the names `actionEvent` uses, so the log reads them (`favorInCombat`, `favorStage`). Outside a combat, or with a character that is not a combatant, the event carries none of it: no line and no undo.
+Three log kinds carry the line, in `CombatLogFavor.text_pt`, built for each reader (`combat_log_favor.go`):
+
+| Kind | Event | Master | Giver or roller | Receiver |
+| --- | --- | --- | --- | --- |
+| `FAVOR_PASSED` (116) | `favor_passed` | "Brisa passou a Inspiração para Tor." | "O mestre aceitou: a sua Inspiração foi para Tor." | "Brisa passou a Inspiração para você." |
+| `FAVOR_PASS_ANSWERED` (118) | `favor_pass_refused`, `favor_pass_canceled`, and the undo of an accepted pass | names | "O mestre recusou: a Inspiração continua com você." / "Você desistiu de passar a Inspiração." | after an undo only: "O mestre desfez a passagem: a Inspiração não está mais com você." (no actor in the entry) |
+| `FAVOR_REFUNDED` (117) | `favor_refunded` | "O mestre devolveu a Inspiração de Brisa." | "O mestre devolveu a sua Inspiração." | none |
+
+No other player reads a line, nor hears of it or of its undo (`seen_by`), and an entry with a hidden combatant is the master's alone, even after the master shows it (`secret`).
+`chainFavor` keeps the ask, the prompt, the kept prompt and every favor event of another combat or of none out of the undo chain; a grant, an accepted pass, a refusal and a cancel of this combat are its actions (`favorUndoKinds`).
+The master's undo (`takeBackFavor`) of a grant takes the row back; of an accepted pass it takes it from the receiver and gives it to the giver in the undo's own transaction; of a refusal or a cancel it only closes the line.
+It is refused `UNDO_TARGET_CHANGED` (naming the combatant) when the character spent it since, and `ALREADY_HAS` when the giver has another by then; nothing changes, since the transaction rolls back whole.
+The undo tells the master and the owners of the event, and no other player.
+The grant has no log line of its own (no kind), so the master's screen offers its undo from `undoable_event_id`.
+
+## The refund prompt
+
+`spendFavor` judges the sources the roller reads. A spend that adds something over them but nothing over every source (a hidden advantage already gave it) resolves the roll at once and returns `favorUse.Refund`; `useFavor` then opens a row of `favor_refund_prompts` (the roll's name by its held kind, the hidden sources), writes `favor_refund_prompted` (no key, the master only) and tells the roller's vitals to the master alone. The roll's own write moves the hint number: the prompt moves none by itself.
+`GetFavor.refund_prompts` is the master's alone, with the hidden sources as the master reads them.
+`AnswerFavorRefund` is the master's call, idempotent by its key (a retry answers the same prompt and moves nothing). A prompt already answered or ended is `PASS_CLOSED` (the closest existing reason). "Give back" goes through the one refund path, `refundSpentFavor` in `hold_forget.go` (the one-row rule: a character that has one again keeps it), closes it `returned`, writes `favor_refunded` (the master and the owner; a line of the log in a combat) and tells the roller's vitals. "Keep" closes it `kept` and writes `favor_refund_kept`, the master's alone. The session's end closes the open prompts `kept`. The player reads only "O mestre devolveu a sua Inspiração.", never why, and nothing when it is kept. `TestFavorGiveBackIsCalledOnlyFromTheRefundPaths` keeps every give-back in `favor_spend.go`, `hold_forget.go` and the zone's undo.
 
 ## Who hears and who reads
 
@@ -229,10 +248,12 @@ The pass has no line in the combat log yet, and the master's undo does not reach
 | The session's hint number | Steps by one | Steps by one | Steps by one, the same for whoever was picked |
 | The combat log line of a roll that spent it | Yes | Yes | No |
 | The combat log line of a grant, and the session summary | No line | No line | No line |
+| The log line of a pass answered or a refund, in a combat | Yes, with names | The giver or roller: their part; the receiver: that they have it | None |
+| The refund prompt, in `GetFavor` | Yes, with the hidden sources | No | No |
 
 The hint is `vitals_changed` with the character's vitals, which the master and the player already read, so it carries nothing about the Inspiration; the screens read the character and `GetFavor` again.
 A character whose vitals cannot be read (a dead one) tells nothing, and the number moves all the same.
-`favor_granted` is no line of the combat log: it belongs to no combat, so the log never reads it.
+`favor_granted` is no line of the combat log; in a combat it is only an action the master can undo.
 
 ## Reasons
 

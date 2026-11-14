@@ -261,16 +261,38 @@ type passEvent struct {
 	userID  string
 	key     string
 	hash    *string
+	// log says the event is a line of the running combat's log (the pass answered): it carries the combat. The ask and the cancel by the
+	// end of a session never do.
+	log   bool
+	stage *favorInCombat
 }
 
 // writePassEvent writes the event of a pass call under its key: the ids only, never a name or a text.
 func (s *Service) writePassEvent(ctx context.Context, q *playdb.Queries, e passEvent) error {
 	from := e.pass.FromCharacterID
 	ev := keyedEvent{sessionID: e.session, kind: e.kind, userID: e.userID, key: e.key, hash: e.hash, characterID: &from}
+	var payload any = favorPassEvent{PassID: e.pass.ID, FromCharacterID: e.pass.FromCharacterID, ToCharacterID: e.pass.ToCharacterID}
 	if e.kind == eventFavorPassed {
-		return s.appendKeyedEvent(ctx, q, ev, favorPassedEvent{PassID: e.pass.ID, FromCharacterID: e.pass.FromCharacterID, ToCharacterID: e.pass.ToCharacterID})
+		payload = favorPassedEvent{PassID: e.pass.ID, FromCharacterID: e.pass.FromCharacterID, ToCharacterID: e.pass.ToCharacterID}
 	}
-	return s.appendKeyedEvent(ctx, q, ev, favorPassEvent{PassID: e.pass.ID, FromCharacterID: e.pass.FromCharacterID, ToCharacterID: e.pass.ToCharacterID})
+	if e.log && e.stage != nil {
+		ev.encounterID = &e.stage.EncounterID
+		if e.kind == eventFavorPassed {
+			payload = favorPassedCombatEvent{payload.(favorPassedEvent), *e.stage}
+		} else {
+			payload = favorPassCombatEvent{payload.(favorPassEvent), *e.stage}
+		}
+	}
+	return s.appendKeyedEvent(ctx, q, ev, payload)
+}
+
+// stageOfPass finds the combat a pass answer is a line of: both characters must be combatants of the running combat.
+func (s *Service) stageOfPass(ctx context.Context, q *playdb.Queries, sessionID string, pass playdb.FavorPass) (*favorInCombat, error) {
+	st, ok, err := s.favorStage(ctx, q, sessionID, pass.FromCharacterID, pass.ToCharacterID)
+	if err != nil || !ok {
+		return nil, err
+	}
+	return &st, nil
 }
 
 // tellPassAgain is the retry of a pass call already made: it tells again what the first call would have, from the stored payload, and
@@ -442,10 +464,24 @@ func (s *Service) closeWith(ctx context.Context, tx pgx.Tx, h *hints, c favorPas
 	if err != nil {
 		return playdb.FavorPass{}, fmt.Errorf("close the ask: %w", err)
 	}
-	if err := s.writePassEvent(ctx, q, passEvent{kind: kind, pass: closed, session: c.sessionID, userID: c.m.UserID, key: c.key, hash: c.hash}); err != nil {
-		return playdb.FavorPass{}, err
+	return closed, s.writeAndTellPass(ctx, tx, h, c, closed, kind, false)
+}
+
+// writeAndTellPass writes the event of a pass answer (a line of the combat's log when the pass was answered in a running combat) and
+// collects what it tells.
+func (s *Service) writeAndTellPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPassCall, pass playdb.FavorPass, kind string, moved bool) error {
+	q := s.queries.WithTx(tx)
+	stage, err := s.stageOfPass(ctx, q, c.sessionID, pass)
+	if err != nil {
+		return err
 	}
-	return closed, s.tellPassOf(ctx, tx, h, closed, false)
+	if err := s.writePassEvent(ctx, q, passEvent{kind: kind, pass: pass, session: c.sessionID, userID: c.m.UserID, key: c.key, hash: c.hash, log: true, stage: stage}); err != nil {
+		return err
+	}
+	if stage != nil {
+		tellFavorLog(h, pass.CampaignID, *stage)
+	}
+	return s.tellPassOf(ctx, tx, h, pass, moved)
 }
 
 // tellPassOf collects the hints of a pass call: the giver's vitals, and the receiver's when the Inspiration moved. Each reaches the master
@@ -498,10 +534,7 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 		}
 		return playdb.FavorPass{}, fmt.Errorf("give the receiver the inspiration: %w", err)
 	}
-	if err := s.writePassEvent(ctx, q, passEvent{kind: eventFavorPassed, pass: closed, session: c.sessionID, userID: c.m.UserID, key: c.key, hash: c.hash}); err != nil {
-		return playdb.FavorPass{}, err
-	}
-	return closed, s.tellPassOf(ctx, tx, h, closed, true)
+	return closed, s.writeAndTellPass(ctx, tx, h, c, closed, eventFavorPassed, true)
 }
 
 // favorReasonOf is the FavorBlocked reason of an error, unspecified for any other error.

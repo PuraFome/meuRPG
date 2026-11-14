@@ -1377,8 +1377,8 @@ Um jogador lê o dano como rolado, com o tipo de cada parte, e nunca o que o alv
 
 **Construída em parte.**
 Construído: a concessão do mestre, a lista de quem a tem e gastá-la numa jogada de ataque, num conjuro com uma só jogada de ataque, num teste de resistência de concentração, num teste de resistência de efeito, num teste de cena, num teste em grupo, numa disputa (o início e a resposta), em Esconder, numa busca por armadilhas e numa tentativa de dica de quebra-cabeça.
-Também construído: pedir para passá-la a outro personagem de jogador e a resposta do mestre ao pedido.
-Não construído: gastá-la num teste de morte, num teste de Contramágica e na iniciativa; as linhas da passagem no registro e o desfazer do mestre de uma passagem aceita; o desfazer do mestre de uma concessão; a pergunta do mestre sobre uma Inspiração que uma jogada gastou à toa.
+Também construído: pedir para passá-la a outro personagem de jogador e a resposta do mestre ao pedido, com as linhas no registro do combate e o desfazer do mestre de uma passagem aceita; o desfazer do mestre de uma concessão; e a pergunta do mestre sobre uma Inspiração que uma jogada gastou à toa.
+Não construído: gastá-la num teste de morte, num teste de Contramágica e na iniciativa. Fora de um combate a passagem e a concessão não escrevem linha em registro e não se desfazem: as respostas aparecem na lista de quem a tem e no aviso ao vivo, e o mestre a retira com uma concessão e uma passagem suas.
 Este é o comportamento pretendido:
 
 O mestre concede Inspiração a um personagem de jogador como recompensa por jogar bem (PHB 2014, cap. 4, fora do SRD 5.1).
@@ -1393,7 +1393,9 @@ Um jogador só pode passá-la a outro personagem de jogador da mesma campanha pe
 - **Recusar.** Ela continua com quem pediu, que lê uma só frase para toda recusa: "O mestre recusou: a Inspiração continua com você."
 - **O fim da sessão** cancela os pedidos ainda abertos: a Inspiração continua com quem pediu.
 - **Quem lê.** O mestre lê todos os pedidos; quem pediu, só os seus; quem recebe não lê nada até ela mudar de mãos e então só que a tem. Outro jogador não lê nada (RN-10).
-O desfazer do mestre desfaz uma concessão feita por engano.
+- **Num combate.** A resposta é uma linha do registro do combate, nas palavras de cada leitor: o mestre lê os nomes, quem pediu lê o que aconteceu com a sua, quem recebe lê quem a passou para ele, e nenhum outro jogador lê nada. Um combatente escondido na linha a deixa só do mestre. O desfazer do mestre de uma passagem aceita é um só passo: ela volta a quem pediu e sai de quem recebeu, que lê "O mestre desfez a passagem: a Inspiração não está mais com você."; é recusado se quem recebeu já a gastou ou se quem pediu tem outra.
+- **A devolução.** Quando uma jogada a gastou e ela não acrescentou nada sobre todas as fontes de vantagem (uma fonte que o jogador não pode ler já a dava), a jogada resolve na hora e o mestre escolhe "Devolver" ou "Manter gasta". O jogador lê só "O mestre devolveu a sua Inspiração.", nunca o porquê; uma pergunta sem resposta mantém a Inspiração gasta quando a sessão acaba.
+O desfazer do mestre desfaz uma concessão feita por engano, num combate; uma já gasta é recusada.
 Um jogador lê só se os próprios personagens a têm.
 Outro jogador não lê quem a tem nem que ela mudou de mãos (RN-10).
 

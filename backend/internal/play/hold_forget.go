@@ -22,6 +22,12 @@ func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, cam
 	return favorGiveBack(ctx, q, campaignID, characterID)
 }
 
+// refundSpentFavor is the master's refund of an Inspiration a roll spent for nothing (favor_refund.go): the one other way the row is given
+// back, through the same one-row rule (a character that has it again keeps its one row).
+func refundSpentFavor(ctx context.Context, q *playdb.Queries, campaignID, characterID string) error {
+	return favorGiveBackIf(ctx, q, true, campaignID, characterID)
+}
+
 // forgetHoldsOf drops every held roll of an owner (a combatant, or a character outside a combat), giving back the Inspiration the
 // unanswered ones spent. The owner's query also drops the character's holds outside any combat (combatant_id IS NULL) when its combatant
 // leaves or the combat ends: those are refunded the same way.

@@ -1377,8 +1377,8 @@ A player reads the damage as rolled, with the type of each part, and never what 
 
 **Partly built.**
 Built: the master's grant, the list of who has it, and spending it on an attack roll, a cast with one spell attack, a concentration save, an effect save, a scene check, a group check, a contest (the start and the answer), Hide, a trap search and a puzzle hint try.
-Also built: asking to pass it to another player character, and the master's answer to the ask.
-Not built: spending it on a death save, a Counterspell check and initiative; the lines of the pass in the log and the master's undo of an accepted pass; the master's undo of a grant; the master's refund prompt for an Inspiration a roll spent for nothing.
+Also built: asking to pass it to another player character and the master's answer to the ask, with its lines in the combat's log and the master's undo of an accepted pass; the master's undo of a grant; and the master's refund prompt for an Inspiration a roll spent for nothing.
+Not built: spending it on a death save, a Counterspell check and initiative. Outside a combat the pass and the grant write no line in a log and cannot be undone: the answers show in the list of who has it and in the live hint, and the master takes the Inspiration back with a grant and a pass of his own.
 This is the intended behaviour:
 
 The master grants Inspiration to a player character as a reward for good play (PHB 2014, ch. 4, outside SRD 5.1).
@@ -1393,7 +1393,9 @@ A player may pass it to another player character of the same campaign only by as
 - **Refusing.** It stays with the giver, who reads one sentence for every refusal: "O mestre recusou: a Inspiração continua com você."
 - **The end of the session** cancels the asks still open: the Inspiration stays with the giver.
 - **Who reads it.** The master reads every ask; a giver only their own; the receiver reads nothing until it moves, and then only that they have it. Another player reads nothing at all (RN-10).
-The master's undo takes back a grant made by mistake.
+- **In a combat.** The answer is a line of the combat's log in each reader's words: the master reads the names, the giver reads what happened to theirs, the receiver reads who passed it to them, and no other player reads anything. A hidden combatant in it keeps the line the master's alone. The master's undo of an accepted pass is one step: it goes back to the giver and leaves the receiver, who reads "O mestre desfez a passagem: a Inspiração não está mais com você."; it is refused if the receiver already spent it or the giver has another by then.
+- **The refund.** When a roll spent it and it added nothing over every source of advantage (a source the player may not read already gave it), the roll resolves at once and the master chooses "Devolver" or "Manter gasta". The player reads only "O mestre devolveu a sua Inspiração.", never why; an unanswered question keeps it spent when the session ends.
+The master's undo takes back a grant made by mistake, in a combat; one already spent is refused.
 A player reads only whether their own characters have it.
 Another player reads neither who has it nor that it moved (RN-10).
 

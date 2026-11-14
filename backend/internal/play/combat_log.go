@@ -87,6 +87,8 @@ type logEntry struct {
 	removed   *actionEvent
 	partLabel string
 	rolls     *logRolls
+	// favor is the variant of a line about the Inspiration (combat_log_favor.go).
+	favor string
 }
 
 // damageLog is what became of one pending damage of a spell: where it is, the
@@ -522,7 +524,13 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 	}
 	var out []*logEntry
 	for _, e := range events {
-		if undone[e.ID] || e.Kind == eventActionUndone {
+		if e.Kind == eventActionUndone {
+			if entry := favorUndoneLine(e); entry != nil {
+				out = append(out, entry)
+			}
+			continue
+		}
+		if undone[e.ID] {
 			continue
 		}
 		if entry := b.entry(e); entry != nil {
@@ -601,6 +609,10 @@ var logHandlers = map[string]logHandler{
 	eventLastingVisibility:       effectLine,
 	eventExhaustion:              effectLine,
 	eventHitRider:                (*logBuilder).hitRider,
+	eventFavorPassed:             favorLogLine(playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASSED, favorLinePassed),
+	eventFavorAskRefused:         favorLogLine(playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASS_ANSWERED, favorLineRefused),
+	eventFavorPassCanceled:       favorLogLine(playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASS_ANSWERED, favorLineCanceled),
+	eventFavorRefunded:           favorLogLine(playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_REFUNDED, favorLineRefunded),
 	eventStateChanged:            plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED),
 	eventDamagePartRemoved:       (*logBuilder).partRemoved,
 	eventTrapSearched:            (*logBuilder).trapSearched,
@@ -1205,6 +1217,9 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:          (*logEntry).fillDeathSave,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:  (*logEntry).fillConditions,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:        (*logEntry).fillEffectEnd,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASSED:        (*logEntry).fillFavor,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASS_ANSWERED: (*logEntry).fillFavor,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_REFUNDED:      (*logEntry).fillFavor,
 }
 
 // fill writes the fields of the entry's kind.

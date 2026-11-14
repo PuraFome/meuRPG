@@ -683,6 +683,8 @@ type keyedEvent struct {
 	sessionID, kind, userID, key string
 	characterID                  *string
 	hash                         *string
+	// encounterID is the combat the event belongs to, when it is one of its lines (favor events written in a combat).
+	encounterID *string
 }
 
 // appendKeyedEvent encodes the payload, numbers the event and inserts it.
@@ -704,7 +706,7 @@ func (s *Service) insertKeyedEvent(ctx context.Context, q *playdb.Queries, e key
 	at = s.now()
 	row, err := insertSessionEvent(ctx, q, playdb.InsertSessionEventParams{
 		GameSessionID: e.sessionID, Seq: seq, Kind: e.kind, ActorUserID: &e.userID, CharacterID: e.characterID,
-		Payload: body, IdempotencyKey: &e.key, IdempotencyHash: e.hash, CreatedAt: at,
+		Payload: body, IdempotencyKey: &e.key, IdempotencyHash: e.hash, CreatedAt: at, EncounterID: e.encounterID,
 	})
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("insert session event: %w", err)

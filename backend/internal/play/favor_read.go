@@ -45,7 +45,13 @@ func (s *Service) GetFavor(ctx context.Context, req *connect.Request[playv1.GetF
 	if err != nil {
 		return nil, s.dbError(ctx, "list the asks to pass the inspiration", err)
 	}
-	return connect.NewResponse(&playv1.GetFavorResponse{Holders: holders, Passes: passes}), nil
+	var prompts []*playv1.FavorRefundPrompt
+	if m.Role == authz.RoleMaster {
+		if prompts, err = s.readRefundPrompts(ctx, m); err != nil {
+			return nil, s.dbError(ctx, "list the refund questions", err)
+		}
+	}
+	return connect.NewResponse(&playv1.GetFavorResponse{Holders: holders, Passes: passes, RefundPrompts: prompts}), nil
 }
 
 // readPasses are the pending passes the caller reads: the master all of them, with receiver_has (who has the Inspiration now, which is

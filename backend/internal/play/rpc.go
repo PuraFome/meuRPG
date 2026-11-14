@@ -249,6 +249,9 @@ func (s *Service) endSessionIn(ctx context.Context, tx pgx.Tx, m authz.Membershi
 		return err
 	}
 	out.told = append(out.told, passTold...)
+	if err := s.closeRefundPromptsOfSession(ctx, tx, m, sessionID); err != nil {
+		return err
+	}
 	out.session, err = q.EndGameSession(ctx, playdb.EndGameSessionParams{
 		CampaignID: m.CampaignID, ID: sessionID, Now: s.now(),
 	})

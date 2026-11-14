@@ -114,6 +114,11 @@ type vitalsEvent struct {
 var extraShapes = map[string][]storedShape{
 	"lasting_effect_added": {storedShapeOf[charEffectEvent]("today-character.json")}, // out of a combat: lasting_effects_charadd.go
 	"lasting_effect_ended": {storedShapeOf[gameTimeEvent]("today-character.json")},   // out of a combat: lasting_effects_chars.go
+	"favor_granted":        {storedShapeOf[favorGrantedCombatEvent]("today-combat.json")},
+	"favor_passed":         {storedShapeOf[favorPassedCombatEvent]("today-combat.json")},
+	"favor_pass_refused":   {storedShapeOf[favorPassCombatEvent]("today-combat.json")},
+	"favor_pass_canceled":  {storedShapeOf[favorPassCombatEvent]("today-combat.json")},
+	"favor_refunded":       {storedShapeOf[favorRefundCombatEvent]("today-combat.json")},
 }
 
 // externalKinds are the kinds that only another module writes. Their payloads are copied by hand.

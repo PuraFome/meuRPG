@@ -382,6 +382,7 @@ All four foreign keys cascade.
 `answer_key` is the idempotency key of the answer, unique in the campaign.
 The session's end closes every open prompt of it as `kept`.
 The foreign keys cascade.
+A favor event written in a running combat also has `session_events.encounter_id` set and the round, the combatants and the audience in its payload, which is how the combat's log and undo read it.
 The events are `favor_pass_asked`, `favor_passed`, `favor_pass_refused`, `favor_pass_canceled`, `favor_refund_prompted`, `favor_refunded` and `favor_refund_kept`.
 
 ## `character_inspiration` and `inspiration_holds`
