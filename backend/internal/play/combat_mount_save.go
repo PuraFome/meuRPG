@@ -98,7 +98,7 @@ func (s *Service) openMountSave(ctx context.Context, c *combatTx, _ []playdb.Com
 func (s *Service) throwDownRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, cause playv1.MountSaveCause) error {
 	ev := actionEvent{Round: c.enc.Round, Secret: rider.Hidden || mount.Hidden, Actor: rider.ID, Target: mount.ID}
 	ev.Reaction = &reactionEvent{Kind: string(reaction.MountSave), SaveDC: mountSaveDC, Cause: mountCauseKey(cause), AutoFail: true}
-	return s.throwRider(ctx, c, rider, mount, &ev, &mountSaveRun{})
+	return s.throwRider(ctx, c, rider, mount, &ev)
 }
 
 // mountPushed asks the rider's save when the mount an effect moved against its will carries one: it runs after the square of the mount

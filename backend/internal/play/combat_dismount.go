@@ -75,7 +75,7 @@ type riderLanded struct {
 func (s *Service) dropRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, cause string) error {
 	ev := actionEvent{Round: c.enc.Round, Secret: rider.Hidden || mount.Hidden, Actor: rider.ID, Target: mount.ID}
 	ev.Reaction = &reactionEvent{Kind: string(reaction.MountSave), Cause: cause} // no save was asked: the cause says so, and no d20 or DC is written
-	if err := s.dropRiderOf(ctx, c, rider, mount, &ev, &mountSaveRun{}, true); err != nil {
+	if err := s.dropRiderOf(ctx, c, rider, mount, &ev, true); err != nil {
 		return err
 	}
 	return s.goneSteed(ctx, c, mount)
@@ -161,9 +161,8 @@ func (s *Service) answerDismount(ctx context.Context, c *combatTx, w playdb.Reac
 	}
 	after := reactor
 	after.ReactionUsed = true
-	run := &mountSaveRun{}
 	landing := actionEvent{Round: c.enc.Round, Secret: secret, Actor: reactor.ID, Target: mount.ID, Reaction: &reactionEvent{Kind: string(reaction.MountSave), Cause: t.Cause}}
-	if err := s.dropRiderOf(ctx, c, after, mount, &landing, run, false); err != nil {
+	if err := s.dropRiderOf(ctx, c, after, mount, &landing, false); err != nil {
 		return err
 	}
 	if err := s.goneSteed(ctx, c, mount); err != nil {

@@ -220,7 +220,7 @@ func (s *Service) writeMountSave(ctx context.Context, c *combatTx, call mountSav
 	}
 	ev.Reaction.Kept = held
 	if !held {
-		if err := s.throwRider(ctx, c, rider, mount, &ev, run); err != nil {
+		if err := s.throwRider(ctx, c, rider, mount, &ev); err != nil {
 			return nil, err
 		}
 	}
@@ -326,35 +326,22 @@ func recordMountRoll(ev *actionEvent, gate gateResult, bonus, delta int) bool {
 
 // throwRider is the fall of a rider that failed its save: Prone (unless it is immune), on the square landingOf picks, off the mount,
 // which gets its own initiative back. The line of the fall is written before the save's own event.
-func (s *Service) throwRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, ev *actionEvent, run *mountSaveRun) error {
-	return s.dropRiderOf(ctx, c, rider, mount, ev, run, true)
+func (s *Service) throwRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, ev *actionEvent) error {
+	return s.dropRiderOf(ctx, c, rider, mount, ev, true)
 }
 
 // dropRiderOf takes the rider off the mount, on the square landingOf picks. A rider that falls is prone (unless it is immune) and has
 // the line of a thrown rider; one that lands on its feet (prone false) has neither.
-func (s *Service) dropRiderOf(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, ev *actionEvent, run *mountSaveRun, prone bool) error {
+func (s *Service) dropRiderOf(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, ev *actionEvent, prone bool) error {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return err
 	}
-	var col, row *int32 // the rider stays with no square when it or its mount has none
-	var from *grid.Square
-	noRoom := false
-	cover := rider.CoverMark
-	if placed(rider) && placed(mount) {
-		to, nr, err := s.landingOf(ctx, c, cs, rider, mount)
-		if err != nil {
-			return err
-		}
-		noRoom = nr
-		lc, lr := clamp32(to.Col, 0, math.MaxInt32), clamp32(to.Row, 0, math.MaxInt32)
-		col, row = &lc, &lr
-		was := squareOfCombatant(rider)
-		from = &was
-		if to != was {
-			cover = "none"
-		}
+	at, err := s.landAt(ctx, c, cs, rider, mount)
+	if err != nil {
+		return err
 	}
+	col, row, from, noRoom, cover := at.col, at.row, at.from, at.noRoom, at.cover
 	if err := c.q.SetCombatantRide(ctx, playdb.SetCombatantRideParams{
 		ID: rider.ID, GridCol: col, GridRow: row,
 		MovementUsedFt: rider.MovementUsedFt, MovementUsedDft: rider.MovementUsedDft, MountMoveUsed: rider.MountMoveUsed, CoverMark: cover,
@@ -387,6 +374,33 @@ func (s *Service) dropRiderOf(ctx context.Context, c *combatTx, rider, mount pla
 		}
 	}
 	return nil
+}
+
+// riderLanding is where a thrown or landing rider ends up: no square at all when it or its mount has none.
+type riderLanding struct {
+	col, row *int32
+	from     *grid.Square
+	noRoom   bool
+	cover    string
+}
+
+// landAt works out the landing of the rider next to its mount.
+func (s *Service) landAt(ctx context.Context, c *combatTx, cs []playdb.Combatant, rider, mount playdb.Combatant) (riderLanding, error) {
+	out := riderLanding{cover: rider.CoverMark}
+	if !placed(rider) || !placed(mount) {
+		return out, nil
+	}
+	to, noRoom, err := s.landingOf(ctx, c, cs, rider, mount)
+	if err != nil {
+		return out, err
+	}
+	lc, lr := clamp32(to.Col, 0, math.MaxInt32), clamp32(to.Row, 0, math.MaxInt32)
+	was := squareOfCombatant(rider)
+	out.col, out.row, out.from, out.noRoom = &lc, &lr, &was, noRoom
+	if to != was {
+		out.cover = "none"
+	}
+	return out, nil
 }
 
 // landingOf is the square a thrown rider lands on: the nearest free neighbor of the mount (SRD: a space within 5 feet), in the order
