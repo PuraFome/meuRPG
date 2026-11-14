@@ -1194,9 +1194,25 @@ message DerivedSkill {
   ProficiencyLevel proficiency = 4;
   // The total bonus to add to the d20.
   int32 bonus = 5;
-  // The rest the proficiency lasts until ("short_rest" or "long_rest"): set for a skill the player picked for the day
-  // (TableEffect.daily_choice); empty for a lasting proficiency.
-  string until_rest = 6;
+  // The rest the proficiency lasts until: set for a skill the player picked for the day (TableEffect.daily_choice);
+  // unspecified for a lasting proficiency.
+  RestBound until_rest = 6;
+}
+
+// RestBound is the rest a proficiency or a daily pick lasts until (TableEffect.duration is its table-content string).
+enum RestBound {
+  REST_BOUND_UNSPECIFIED = 0;
+  // Until the next short rest (a long rest ends it too).
+  REST_BOUND_SHORT = 1;
+  // Until the next long rest.
+  REST_BOUND_LONG = 2;
+}
+
+// DailyChoiceKind is what a daily choice picks.
+enum DailyChoiceKind {
+  DAILY_CHOICE_KIND_UNSPECIFIED = 0;
+  DAILY_CHOICE_KIND_SKILL = 1;
+  DAILY_CHOICE_KIND_TOOL = 2;
 }
 
 // DailyChoice is a choice of a skill or a tool that the player makes again after each rest of its duration (TableEffect.daily_choice),
@@ -1206,10 +1222,8 @@ message DailyChoice {
   string id = 1;
   // The name of the feature, feat or option that gives it.
   string owner_name_pt = 2;
-  // "skill" or "tool".
-  string kind = 3;
-  // "short_rest" or "long_rest".
-  string until_rest = 4;
+  DailyChoiceKind kind = 3;
+  RestBound until_rest = 4;
   // The keys the player picks from; empty when any is allowed.
   repeated string options = 5;
   // The key picked for today; empty while the choice waits.

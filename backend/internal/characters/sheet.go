@@ -678,7 +678,7 @@ func loadStory(characterID string, doc []byte) (*charactersv1.CharacterStory, er
 func dailyPicksOf(in []*charactersv1.DailyPick) []rules.DailyPick {
 	out := make([]rules.DailyPick, len(in))
 	for i, p := range in {
-		out[i] = rules.DailyPick{ChoiceID: p.GetChoiceId(), Key: p.GetKey(), Until: p.GetUntilRest()}
+		out[i] = rules.DailyPick{ChoiceID: p.GetChoiceId(), Key: p.GetKey(), Until: restBoundOf(p.GetUntilRest())}
 	}
 	return out
 }

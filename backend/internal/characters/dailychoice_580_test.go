@@ -80,7 +80,7 @@ func TestADailyChoiceIsPickedOnALockedSheetAndTheRestsClearIt(t *testing.T) {
 	if err := player.pick(t, campaign, pc.GetId(), choice, "skill:stealth"); err != nil {
 		t.Fatalf("the owner's pick on a locked sheet: %v", err)
 	}
-	if s := skillOfSheet(player.get(t, campaign, pc.GetId()), "skill:stealth"); s.GetProficiency() != rulesv1.ProficiencyLevel_PROFICIENCY_LEVEL_PROFICIENT || s.GetUntilRest() != "long_rest" {
+	if s := skillOfSheet(player.get(t, campaign, pc.GetId()), "skill:stealth"); s.GetProficiency() != rulesv1.ProficiencyLevel_PROFICIENCY_LEVEL_PROFICIENT || s.GetUntilRest() != rulesv1.RestBound_REST_BOUND_LONG {
 		t.Errorf("stealth after the pick = %v, want full proficiency until the long rest", s)
 	}
 	if err := master.pick(t, campaign, pc.GetId(), choice, "skill:arcana"); err != nil {
@@ -104,7 +104,7 @@ func TestADailyChoiceIsPickedOnALockedSheetAndTheRestsClearIt(t *testing.T) {
 	if s := skillOfSheet(got, "skill:perception"); s.GetProficiency() != rulesv1.ProficiencyLevel_PROFICIENCY_LEVEL_NONE {
 		t.Errorf("perception after the short rest = %v, want it spent", s)
 	}
-	if s := skillOfSheet(got, "skill:arcana"); s.GetUntilRest() != "long_rest" {
+	if s := skillOfSheet(got, "skill:arcana"); s.GetUntilRest() != rulesv1.RestBound_REST_BOUND_LONG {
 		t.Errorf("a pick until the long rest after a short rest = %v, want it kept", s)
 	}
 	takeRest(t, h, campaign, playv1.RestKind_REST_KIND_LONG)
@@ -112,7 +112,7 @@ func TestADailyChoiceIsPickedOnALockedSheetAndTheRestsClearIt(t *testing.T) {
 	if s := skillOfSheet(got, "skill:perception"); s.GetProficiency() != rulesv1.ProficiencyLevel_PROFICIENCY_LEVEL_PROFICIENT {
 		t.Errorf("perception after the long rest = %v, want it back", s)
 	}
-	if s := skillOfSheet(got, "skill:arcana"); s.GetUntilRest() != "" || slices.ContainsFunc(got.GetDerived().GetDailyChoices(), func(c *rulesv1.DailyChoice) bool { return c.GetPicked() != "" }) {
+	if s := skillOfSheet(got, "skill:arcana"); s.GetUntilRest() != rulesv1.RestBound_REST_BOUND_UNSPECIFIED || slices.ContainsFunc(got.GetDerived().GetDailyChoices(), func(c *rulesv1.DailyChoice) bool { return c.GetPicked() != "" }) {
 		t.Errorf("after the long rest the pick should be gone: %v %v", s, got.GetDerived().GetDailyChoices())
 	}
 }
@@ -126,7 +126,7 @@ func TestASaveKeepsTheStoredDailyPicks(t *testing.T) {
 	}
 	cur := master.get(t, campaign, pc.GetId())
 	sheet := cur.GetSheet()
-	sheet.GetFull().DailyPicks = []*charactersv1.DailyPick{{ChoiceId: choice, Key: "skill:arcana", UntilRest: "long_rest"}}
+	sheet.GetFull().DailyPicks = []*charactersv1.DailyPick{{ChoiceId: choice, Key: "skill:arcana", UntilRest: rulesv1.RestBound_REST_BOUND_LONG}}
 	sheet.GetFull().ShortRested = true
 	if _, err := master.update(t, cur, "Pensantus", sheet); err != nil {
 		t.Fatalf("UpdateCharacter() error = %v", err)

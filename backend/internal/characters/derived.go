@@ -147,7 +147,7 @@ func savingThrowToProto(st rules.SavingThrow) *rulesv1.SavingThrow {
 
 func derivedSkillToProto(sk rules.Skill) *rulesv1.DerivedSkill {
 	return &rulesv1.DerivedSkill{
-		Key: sk.Key, NamePt: sk.NamePT, Ability: abilityToProto[sk.Ability], Proficiency: proficiencyToProto[sk.Proficiency], Bonus: i32(sk.Bonus), UntilRest: sk.UntilRest,
+		Key: sk.Key, NamePt: sk.NamePT, Ability: abilityToProto[sk.Ability], Proficiency: proficiencyToProto[sk.Proficiency], Bonus: i32(sk.Bonus), UntilRest: restBoundToProto(sk.UntilRest),
 	}
 }
 
@@ -591,7 +591,33 @@ func itemModifiersOf(in []rules.ItemModifier) []*rulesv1.ItemModifier {
 func dailyChoicesOf(in []rules.DailyChoice) []*rulesv1.DailyChoice {
 	out := make([]*rulesv1.DailyChoice, len(in))
 	for i, c := range in {
-		out[i] = &rulesv1.DailyChoice{Id: c.ID, OwnerNamePt: c.OwnerNamePT, Kind: c.Kind, UntilRest: c.UntilRest, Options: c.Options, Picked: c.Picked}
+		out[i] = &rulesv1.DailyChoice{Id: c.ID, OwnerNamePt: c.OwnerNamePT, Kind: dailyKindToProto[c.Kind], UntilRest: restBoundToProto(c.UntilRest), Options: c.Options, Picked: c.Picked}
 	}
 	return out
+}
+
+// restBoundToProto is the wire form of a duration of the rules ("short_rest", "long_rest"; anything else is unspecified).
+func restBoundToProto(duration string) rulesv1.RestBound {
+	switch duration {
+	case rules.DurationShortRest:
+		return rulesv1.RestBound_REST_BOUND_SHORT
+	case rules.DurationLongRest:
+		return rulesv1.RestBound_REST_BOUND_LONG
+	}
+	return rulesv1.RestBound_REST_BOUND_UNSPECIFIED
+}
+
+// restBoundOf is the rules' duration of a wire form.
+func restBoundOf(b rulesv1.RestBound) string {
+	switch b {
+	case rulesv1.RestBound_REST_BOUND_SHORT:
+		return rules.DurationShortRest
+	case rulesv1.RestBound_REST_BOUND_LONG:
+		return rules.DurationLongRest
+	}
+	return ""
+}
+
+var dailyKindToProto = map[string]rulesv1.DailyChoiceKind{
+	"skill": rulesv1.DailyChoiceKind_DAILY_CHOICE_KIND_SKILL, "tool": rulesv1.DailyChoiceKind_DAILY_CHOICE_KIND_TOOL,
 }

@@ -11,6 +11,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
@@ -37,7 +38,7 @@ func keepDailyState(stored, saved *charactersv1.FullSheet) {
 // marks the short rest as taken; a long rest ends every pick and the mark. changed says it differs from the sheet's.
 func restedState(full *charactersv1.FullSheet, restBound, long bool) (picks []*charactersv1.DailyPick, shortRested, changed bool) {
 	for _, p := range full.GetDailyPicks() {
-		if !long && p.GetUntilRest() != rules.DurationShortRest {
+		if !long && p.GetUntilRest() != rulesv1.RestBound_REST_BOUND_SHORT {
 			picks = append(picks, p)
 		}
 	}
@@ -168,7 +169,7 @@ func withDailyPick(content *rules.Content, full *charactersv1.FullSheet, choiceI
 		return next, nil
 	}
 	until := rules.Derive(buildOf(full), content).DailyChoices[idx].UntilRest
-	next.DailyPicks = append(next.DailyPicks, &charactersv1.DailyPick{ChoiceId: choiceID, Key: key, UntilRest: until})
+	next.DailyPicks = append(next.DailyPicks, &charactersv1.DailyPick{ChoiceId: choiceID, Key: key, UntilRest: restBoundToProto(until)})
 	got := rules.Derive(buildOf(next), content).DailyChoices
 	if i := slices.IndexFunc(got, func(c rules.DailyChoice) bool { return c.ID == choiceID }); i < 0 || got[i].Picked != key {
 		return nil, invalidArgument(fieldErr("key", "is not one the daily choice offers"))

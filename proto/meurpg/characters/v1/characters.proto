@@ -1615,10 +1615,10 @@ message FullSheet {
   repeated SheetMagicItem magic_items = 44;
   // The skills and tools the player picked for today (TableEffect.daily_choice), each until a rest. Only SetDailyChoice writes it,
   // and a short rest or a long rest clears what it ends; a save keeps it as it is.
-  repeated DailyPick daily_picks = 45;
+  repeated DailyPick daily_picks = 46;
   // A short rest was taken since the last long rest: a proficiency that lasts until a short rest is spent (TableEffect.duration).
   // Only a rest writes it.
-  bool short_rested = 46;
+  bool short_rested = 47;
 }
 
 // DailyPick is the answer to one daily choice.
@@ -1627,8 +1627,8 @@ message DailyPick {
   string choice_id = 1;
   // The skill or tool key picked.
   string key = 2;
-  // "short_rest" or "long_rest": the rest that ends the pick.
-  string until_rest = 3;
+  // The rest that ends the pick.
+  meurpg.rules.v1.RestBound until_rest = 3;
 }
 
 // SheetMagicItem is a magic item of the sheet that is not a +N weapon, armor or shield.
