@@ -71,6 +71,39 @@ describe('DamageBreakdown for the player', () => {
     expect(plain()).toContain('Golpe Divino contra morto-vivo 1d8 (5) = 5 não conta');
   });
 
+  it('does not say "= 0" for the part of a typed group that carries no sum of its own', () => {
+    const typed = [
+      {
+        partKey: 'weapon',
+        labelPt: 'Espada longa',
+        diceCount: 2,
+        diceSides: 6,
+        faces: [],
+        flat: 3,
+        sum: 6,
+        counted: true,
+        damageTypeKey: 'piercing',
+        rerolled: [],
+      },
+      {
+        partKey: 'edge',
+        labelPt: 'Gume Afiado',
+        diceCount: 1,
+        diceSides: 8,
+        faces: [],
+        flat: 0,
+        sum: 0,
+        counted: true,
+        damageTypeKey: 'piercing',
+        rerolled: [],
+      },
+    ] as never[];
+    const { plain } = setup({ amount: 9, rolls: typed });
+    expect(plain()).toContain('Espada longa 2d6 · dado físico + 3 = 9');
+    expect(plain()).toContain('Gume Afiado 1d8 · somado em Espada longa');
+    expect(plain()).not.toContain('= 0');
+  });
+
   it('writes the resistance line and the damage after it', () => {
     const { plain } = setup({ amount: 10, steps: [fire], amountAfterSteps: 5 });
     expect(plain()).toContain('Resistência a fogo (tiefling): 10 → 5');

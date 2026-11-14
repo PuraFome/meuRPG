@@ -29,6 +29,8 @@ The line says the second number only when it differs from the distance, with the
 The master's free move, a jump, and the no-map combat's "gastou 6,0 m de movimento" carry no `spent_dft` and say the distance; the numbers are those the panel already shows every player.
 The damage line of an attack names a spell's hit effect that counted: "(<efeito> incluído)".
 It reads the `hit_effect` flag of the damage's parts, never the key, so a hidden effect adds nothing to the line.
+A damage typed by damage type keeps its sum on one part of the group (the others have sum 0 and no faces): the dice notes and the master's part table read the sum on that part ("Adaga 1d4 + 3 = 9") and the others as "Gume Afiado 1d8 (somado em Adaga)", never "= 0".
+The web finds the pair by the damage type key alone (a counted dice part with no faces and sum 0, beside a counted one of the same type with a sum), so it needs no field; a reader whose sum is masked to 0 (RN-10) reads every part of the group as before.
 The save of a spell's hit effect is a `HIT_RIDER` line that names the spell (`key_name_pt`; "Outra fonte" and no key for the target's player when the effect is hidden from the other players) and, on a failed save that gave a condition, the condition (`condition_name_pt`) and how long it lasts (`duration_text`: "até o fim do próximo turno dele" or "até o fim da magia").
 The master, the attacker's player and the target's player read it; no other player reads the line, and the d20, the total and the DC follow the rules of any rider.
 A failed save that pushes a creature (Thunderwave, the Open Hand push) shows in the line of the cast or of the rider.

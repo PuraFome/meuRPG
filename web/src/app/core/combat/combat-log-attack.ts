@@ -287,5 +287,10 @@ export function damageNotes(d: CombatLogDamage | undefined): string[] {
     const base = `${st.labelPt || word}: ${st.before} → ${st.after}`;
     return st.ignored ? `${base} (o mestre deixou de fora)` : base;
   });
-  return [...d.parts.map(partLine), ...rolledLine(d), ...steps, ...countedSources(countedOf(d))];
+  return [
+    ...d.parts.map((p) => partLine(p, d.parts)),
+    ...rolledLine(d),
+    ...steps,
+    ...countedSources(countedOf(d)),
+  ];
 }

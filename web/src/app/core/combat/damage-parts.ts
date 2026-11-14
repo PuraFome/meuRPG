@@ -93,6 +93,33 @@ export function partTotal(roll: DamagePartRoll): number {
   return roll.sum + roll.flat;
 }
 
+/**
+ * The part that carries the sum of a typed damage-type group when `roll` is another dice part of it: a part with dice, no faces
+ * and sum 0 that counts, while a counted part of the same damage type has no faces and a sum. The player typed one sum for the
+ * type, so the server keeps it on the first part and the others read 0; "= 0" would say they did nothing. Undefined for any
+ * other part (a rolled part, a flat part, a part whose group holder is hidden from the reader has no holder here either).
+ */
+export function groupHolder(
+  roll: DamagePartRoll,
+  rolls: readonly DamagePartRoll[],
+): DamagePartRoll | undefined {
+  if (roll.diceCount <= 0 || roll.faces.length > 0 || roll.sum !== 0 || !roll.counted) {
+    return undefined;
+  }
+  if (roll.damageTypeKey === '') {
+    return undefined;
+  }
+  return rolls.find(
+    (o) =>
+      o !== roll &&
+      o.counted &&
+      o.damageTypeKey === roll.damageTypeKey &&
+      o.diceCount > 0 &&
+      o.faces.length === 0 &&
+      o.sum > 0,
+  );
+}
+
 /** "rolou de novo 1→4" for each die Great Weapon Fighting rolled again. */
 export function rerollText(roll: DamagePartRoll): string {
   return roll.rerolled.map((r) => `rolou de novo ${r.from}→${r.to}`).join(', ');
