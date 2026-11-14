@@ -303,7 +303,7 @@ func (s *Service) readContestRun(ctx context.Context, c *combatTx, st contestSta
 	if err != nil {
 		return nil, err
 	}
-	if err := v.mayAct(initiator); err != nil {
+	if err := v.mayMove(cs, initiator); err != nil {
 		return nil, err
 	}
 	open, err := c.q.ListUnansweredContestsOf(ctx, playdb.ListUnansweredContestsOfParams{EncounterID: c.enc.ID, InitiatorID: initiator.ID})

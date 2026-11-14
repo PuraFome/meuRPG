@@ -234,7 +234,10 @@ func (f *takeActionFlow) locate(ctx context.Context) error {
 	if f.who, err = findCombatant(cs, f.call.combatantID, f.v); err != nil {
 		return err
 	}
-	if err := f.v.mayAct(f.who); err != nil {
+	if err := f.v.mayMove(cs, f.who); err != nil { // the rider's player acts for a controlled mount too
+		return err
+	}
+	if err := f.s.mustNotBeLimited(ctx, f.c, f.who, f.call.actionKey); err != nil {
 		return err
 	}
 	f.opts, err = f.s.optionsOf(ctx, f.c.tx, f.m.CampaignID, f.who)
@@ -290,7 +293,7 @@ func (f *takeActionFlow) mayTake(ctx context.Context) error {
 		if err := f.s.mustReactNowOrOnTurn(ctx, f.c, f.who); err != nil {
 			return err
 		}
-	} else if err := f.s.mustActNow(ctx, f.c, f.who); err != nil {
+	} else if err := f.s.mustBeOnTurn(ctx, f.c, f.who); err != nil {
 		return err
 	}
 	// The master has the last word: he may act again with the action used.

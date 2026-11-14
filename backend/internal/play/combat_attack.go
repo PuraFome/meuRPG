@@ -276,7 +276,7 @@ func (f *attackFlow) findAttacker(ctx context.Context) error {
 		return err
 	}
 	f.sees = f.c.actorSight(f.v, cs, f.attacker)
-	return f.v.mayAct(f.attacker)
+	return f.v.mayMove(cs, f.attacker)
 }
 
 // findTarget reads the target, who cannot be the attacker.
