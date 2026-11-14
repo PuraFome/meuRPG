@@ -7,7 +7,7 @@ import type { VitalsVm } from '../../../core/play/live-session.types';
 import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../shared/weapon-tags/weapon-tags';
 import { SpellHelp } from '../../../shared/spell-details/spell-help';
-import { itemModifierLines } from '../character-sheet-modifiers';
+import { itemModifierLines, shieldNoteShown } from '../character-sheet-modifiers';
 import { AttackVm, FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {
@@ -59,9 +59,7 @@ export class CombatColumn {
   /** One line per piece with a magic bonus. */
   protected readonly modifierLines = computed(() => itemModifierLines(this.sheet().itemModifiers));
   /** The shield's own line carries why it is idle, so the note below the numbers is left out. */
-  protected readonly shieldNote = computed(
-    () => this.sheet().shieldIdle && !this.sheet().gear.some((g) => g.kind === 'shield' && g.bonus),
-  );
+  protected readonly shieldNote = computed(() => shieldNoteShown(this.sheet()));
   /** The marks of an attack's row: a counting +N takes the place of "Mágica". */
   protected marksFor(atk: AttackVm) {
     return attackMarksFor(atk.marks, atk.magicBonus);

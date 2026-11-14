@@ -24,9 +24,9 @@
       <ul class="modifiers__list">
         @for (line of modifierLines(); track line.sourceKey) {
           <li class="modifiers__item" [class.modifiers__item--idle]="!line.counts">
-            <span class="modifiers__line">
-              <span class="modifiers__name"><strong>+{{ line.value }}</strong> · {{ line.namePt }}</span>
-              <span class="modifiers__target">{{ line.targetPt }}</span>
+            <span class="modifiers__line" data-one-line>
+              <span class="modifiers__name" data-chip-ref><strong>+{{ line.value }}</strong> · {{ line.namePt }}</span>
+              <span class="modifiers__target" data-wrap-group>{{ line.targetPt }}</span>
             </span>
             @if (!line.counts && line.reasonPt) {
               <span class="modifiers__reason"><mat-icon aria-hidden="true">block</mat-icon>{{ line.reasonPt }}</span>

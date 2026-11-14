@@ -60,6 +60,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   An equipped weapon's chip is its attack's (the sheet's mark or a table rule); a carried weapon's is the sheet's.
 - **Modificadores de itens** (`combat-column`): an open block below the combat numbers, with one line for each piece that adds a magic bonus: "+N · name".
   The target is on the right: "na CA" or "no ataque e no dano".
+  The name keeps 96 px beside it; when the target does not fit beside that, it drops under the name, at its x.
   A piece that does not count now is muted and gives its reason once under its line.
   Without entries there is no block.
   The reason of an idle shield is said once: in its line when it has a bonus, else in the note below the numbers (the equipment panel has no note of its own).

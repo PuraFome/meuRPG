@@ -47,17 +47,21 @@
 
 .modifiers__line {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--mr-space-3);
+  gap: 0 var(--mr-space-3);
   min-width: 0;
   font-size: var(--mr-font-16);
   line-height: 22px;
 }
 
+// The name keeps 96px beside the target; when the target does not fit beside that, it drops under the name.
+// The name's base size is its floor, so the line breaks on the floor and the name then grows to its own width at most.
 .modifiers__name {
-  flex: 0 1 auto;
+  flex: 1000 1 96px;
   min-width: 0;
+  max-width: max-content;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
