@@ -292,8 +292,9 @@ func TestCombatWriteAndEndGameSessionRaceWithoutDeadlockAndStayConsistent(t *tes
 		if got := x.keyedEvents(t, sid, key); got != 1 {
 			t.Errorf("events under the key = %d, want 1", got)
 		}
-		if got := x.h.hintSeq(t, sid); got != base+1 {
-			t.Errorf("hint_seq = %d, want %d", got, base+1)
+		// The change moved the number once, and ending the session is a write too: it moves it once more.
+		if got := x.h.hintSeq(t, sid); got != base+2 {
+			t.Errorf("hint_seq = %d, want %d (the change's bump and the end's)", got, base+2)
 		}
 	})
 	t.Run("the end comes before the change", func(t *testing.T) {
@@ -364,12 +365,13 @@ func TestCombatWriteRacingEndGameSessionIsConsistentWhicheverWins(t *testing.T) 
 			if endErr != nil {
 				t.Errorf("EndGameSession() error = %v", endErr)
 			}
-			wantEvents, wantSeq := 1, base+1
+			// The end moves the number once, whichever wins; the change moves it once more only when it committed.
+			wantEvents, wantSeq := 1, base+2
 			if writeErr != nil {
 				if got := shapeOf(writeErr); got != noSession {
 					t.Fatalf("write() = %s, want success or %s", got, noSession)
 				}
-				wantEvents, wantSeq = 0, base
+				wantEvents, wantSeq = 0, base+1
 			}
 			if got := x.keyedEvents(t, sid, key); got != wantEvents {
 				t.Errorf("events under the key = %d, want %d (the change's error: %v)", got, wantEvents, writeErr)
