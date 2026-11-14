@@ -3,8 +3,8 @@
 The master grants Inspiration to a player character; the rule is [RN-43](../../product/rules.md#rn-43-the-masters-inspiration).
 The code calls it favor because "inspiration" already means the Bardic Inspiration die ([Held rolls](held-rolls.md)); the app says "Inspiração".
 The contract is `FavorService` (`proto/meurpg/play/v1/favor.proto`).
-The code is `favor_grant.go`, `favor_read.go`, `favor_events.go`, `favor_rpc.go` and `favor_spend.go`.
-`GrantFavor` and `GetFavor` are built; `PassFavor` answers `unimplemented` to a member of the campaign.
+The code is `favor_grant.go`, `favor_pass.go`, `favor_read.go`, `favor_events.go`, `favor_rpc.go` and `favor_spend.go`.
+`GrantFavor`, `GetFavor`, `PassFavor`, `AnswerFavorPass` and `CancelFavorPass` are built; `AnswerFavorRefund` answers `unimplemented` to the master (slice 3, part 3).
 The spend is the helper `useFavor`, which the roll paths call.
 
 ## The table
@@ -40,6 +40,58 @@ A grant moves it once.
 A retry tells the hint again, from the stored event, and moves nothing.
 Of concurrent grants to the same character exactly one succeeds and the rest get `ALREADY_HAS`.
 
+## The pass
+
+A player passes the Inspiration only by asking, and the master answers ([RN-43](../../product/rules.md#rn-43-the-masters-inspiration)).
+An ask is a row of `favor_passes` ([Data](../../data/play.md#favor_passes-and-favor_refund_prompts)), `pending` until it ends as `accepted`, `refused` or `canceled`.
+Nothing moves while it is pending.
+Each call is a `Service.tx` transaction on the session the pass was asked in, so asks and answers take turns with every other write of the session.
+
+`PassFavor(campaign, from, to, key)` is the giver's owner's call, in an open session.
+It refuses in this order, so that no refusal tells the caller what they may not read:
+
+1. `not_found` for a caller that is not a member; `invalid_argument` for a key or an id that is not a UUID.
+2. `SELF`: the receiver is the giver. It reads nothing.
+3. `NO_SESSION`: the campaign has no open session (the master answers at the table). It is the campaign's own state, which every member reads, and the transaction needs the session to lock.
+4. The retry of a key answers the stored pass whatever its state is now; the key of another request is `invalid_argument`.
+5. `NOT_THE_HOLDER`: the giver is not a player character of the caller's (the master included), or has none. It reads only the caller's own state.
+6. `NOT_A_PLAYER_CHARACTER`: the receiver is not a player character of the campaign that is out of the reserve; it is the one answer for an NPC, a reserved character, another game's character and an id nobody has.
+7. `PASS_PENDING`: the giver already has a pending ask. Two asks of one giver at once leave one row (the partial unique index decides), and the other is told `PASS_PENDING`.
+
+The receiver's state is never read at the ask: a receiver that already has the Inspiration is asked for all the same.
+The master finds it in `GetFavor` (`receiver_has`) and at the accept.
+The ask writes the row and the session event `favor_pass_asked` (ids only: the pass, the giver and the receiver), under the key, and tells the master and the giver's owner.
+
+`AnswerFavorPass(campaign, pass, accept, key)` is the master's call.
+`not_found` is the pass of another campaign or one that does not exist; a player gets `permission_denied`.
+A retry of its key answers the stored outcome (the event of the key finds it) and moves no number; a key used for the other answer, another pass or a cancel is `invalid_argument`.
+The pass is read again under the session's lock: one that is no longer pending is `PASS_CLOSED`, so of an accept and a cancel, or of two accepts, one wins and the others read `PASS_CLOSED`.
+
+- **Accept** is one transaction.
+  It closes the pass `accepted`, deletes the giver's row (`SpendCharacterFavor`), inserts the receiver's with `ON CONFLICT DO NOTHING` and writes `favor_passed`.
+  If the receiver already has one (or is no player character of the table any more), the insert gives no row and the call answers `CANNOT_RECEIVE`: the transaction is rolled back whole, so nothing changed, no event was written, no number moved and no hint was sent, and the pass stays pending.
+  Only the master is told: `CANNOT_RECEIVE` goes to nobody else.
+  A giver that has none by now (nothing takes it while the pass is pending, but the master's undo of a grant will) gets `NOT_THE_HOLDER`, again with nothing changed.
+  An accept racing a grant to the receiver ends one way or the other: the grant first (the accept is `CANNOT_RECEIVE`) or the accept first (the grant is `ALREADY_HAS`); the receiver never has two rows.
+- **Refuse** closes it `refused` and writes `favor_pass_refused`; nothing moves.
+
+`CancelFavorPass(campaign, pass, key)` is the giver's owner's call: it closes the pass `canceled` and writes `favor_pass_canceled`.
+The master, the receiver and every other player get `not_found` for a pass that is not theirs to cancel, whatever its state, so a closed pass of someone else is never told apart from one that does not exist.
+The owner of a closed pass gets `PASS_CLOSED`.
+
+**The spend.** While the giver's pass is pending a spend is refused `PASS_PENDING` (`favorInPass`).
+It comes in `spendFavor` after the refusals that need no look at the character (`NOT_THE_HOLDER`, `NOTHING_TO_ROLL`) and before the judgement of the roll (`ADDS_NOTHING`), and in the check of a spend a window will make: the box that spends it is closed whatever the roll is, which the player knows because the ask is theirs.
+The replay of a roll a window held, which finds the pass pending, behaves as the replay does for the other Inspirations it can no longer spend: the roll is made without it and says so (`favorLostPending`, "A Inspiração de <name> está num pedido de passagem que o mestre não respondeu: a rolagem foi feita sem ela." for the master and the roller's player; "Inspiração não usada: está num pedido de passagem sem resposta" as the note of a check).
+A spend and an accept at once: the spend is `PASS_PENDING` before the accept commits and `HAS_NONE` after, never a spend, and the Inspiration moves once.
+
+**The end of a session** closes the passes still pending in it `canceled` (`CloseFavorPassesOfSession`, in the transaction of `endSessionIn`).
+Each writes `favor_pass_canceled` (the master's hand, no key) and its giver's vitals hint reaches the master and the giver's owner with the end.
+The Inspiration stays with the giver.
+
+The hints are the grant's: `vitals_changed` for the giver (and the receiver, at an accept), which reaches the master and the character's own player; the screens read `GetFavor` again.
+Each write moves the session's number once, and a refusal or a replay moves none.
+A third player hears nothing.
+
 ## The read
 
 `GetFavor` is a read (`IDEMPOTENT`) for any member of the campaign, in or out of a session.
@@ -47,6 +99,8 @@ The master reads every holder of the campaign.
 A player reads only the holders among their own characters, and a player with none reads an empty list.
 Someone outside the campaign, and a pending member, get `not_found`.
 Each holder is the character's id and name; the name comes from the characters module, since the query cannot join its table.
+`passes` holds the pending asks (`ListPendingFavorPasses`): the master reads every one, with `receiver_has` true when the receiver has the Inspiration now (his Aceitar is dashed with the reason); a player reads only the asks of their own characters, and `receiver_has` is never sent to a player.
+An answered or canceled pass is not listed.
 
 ## The spend
 
@@ -159,6 +213,8 @@ The undo of an attack or a cast puts the row back in the undo's transaction, and
 A concentration save and an effect save are not undoable kinds, so they have no undo, except the save of a zone at its cast: the undo of the cast gives its Inspiration back.
 `keep` and `hand_to_master` on a concentration save, and a skipped effect save, ignore `spend_favor` without refusing it.
 Each roll that spends moves the session's hint number once, as the roll already does, and a refusal moves none.
+The pass has no line in the combat log yet, and the master's undo does not reach it: both are scoped to a combat and a pass belongs to the session (the events carry no encounter), so a line and an undo wait for a decision on where they live.
+`chainFavor` keeps every `favor_*` event out of the undo chain.
 
 ## Who hears and who reads
 
@@ -166,6 +222,10 @@ Each roll that spends moves the session's hint number once, as the roll already 
 | --- | --- | --- | --- |
 | The row, in `GetFavor` | Every holder | Their own characters | None |
 | The hint of a grant | Yes | Yes | No |
+| The ask, in `GetFavor` | Every pending ask, with `receiver_has` | Their own asks, never `receiver_has` | None |
+| The hint of an ask, a refusal and a cancel (the giver's vitals) | Yes | The giver's owner | No |
+| The hint of an accept (the giver's and the receiver's vitals) | Yes | Both owners | No |
+| `CANNOT_RECEIVE` | Yes | No | No |
 | The session's hint number | Steps by one | Steps by one | Steps by one, the same for whoever was picked |
 | The combat log line of a roll that spent it | Yes | Yes | No |
 | The combat log line of a grant, and the session summary | No line | No line | No line |
@@ -184,8 +244,9 @@ A character whose vitals cannot be read (a dead one) tells nothing, and the numb
 | `NOT_A_PLAYER_CHARACTER` | The id is not a player character of this campaign that is out of the reserve |
 
 The spend sends `NOT_THE_HOLDER`, `HAS_NONE`, `ADDS_NOTHING`, `AFTER_THE_ROLL` and `NOTHING_TO_ROLL`.
-`CANNOT_RECEIVE` and `SELF` are for the pass, which is not built.
-A grant with no open session is `NO_OPEN_SESSION` (`GameSessionBlocked`).
+The pass sends `SELF`, `NO_SESSION`, `PASS_PENDING`, `PASS_CLOSED` and `CANNOT_RECEIVE` (the master's alone), besides `NOT_THE_HOLDER` and `NOT_A_PLAYER_CHARACTER`.
+`PASS_PENDING` is also the spend's.
+A grant with no open session is `NO_OPEN_SESSION` (`GameSessionBlocked`); an ask with none is `NO_SESSION` (`FavorBlocked`).
 A player calling it is `permission_denied`.
 
 ## Tests
@@ -195,6 +256,7 @@ A player calling it is `permission_denied`.
 `favor_combat_test.go` covers the four combat paths: the spend, the refusals, the retry, the typed faces, the log, the undo, the held roll and the window replay.
 `favor_checks_test.go`, `favor_checks_more_test.go` and `favor_checks_special_test.go` cover the seven checks: the spend, the refusals, the settled retry, the held roll, the typed faces, the number, the window and the trap search in a combat.
 `favor_round2_test.go` covers the spell attack that spends once, `ADDS_NOTHING` judged on what the roller reads (an attack, a save and a check, with a hidden advantage, a hidden pair and a visible control) and the spend before a Protection that cancels the advantage.
-`TestAuthorizationMatrix` has the rows of the three calls.
+`favor_pass_test.go` covers the pass: the ask and its refusals in order, the retries, the answers, `CANNOT_RECEIVE`, the cancel, the read, the spend refused while pending, the end of a session, the hints, and the races (two asks, accept and cancel, two accepts, accept and a grant to the receiver, accept and a spend).
+`TestAuthorizationMatrix` has the rows of the calls.
 `internal/leaktest/favor_test.go` proves that a third player reads nothing of who has it, in the read, the log and the stream.
 `internal/leaktest/favor_checks_test.go` proves that the source "Inspiração" of a spent check reaches the roller and the master and no one else.

@@ -7,7 +7,7 @@ const (
 	eventFavorPassed  = "favor_passed"
 
 	eventFavorPassAsked      = "favor_pass_asked"
-	eventFavorPassRefused    = "favor_pass_refused"
+	eventFavorAskRefused     = "favor_pass_refused"
 	eventFavorPassCanceled   = "favor_pass_canceled"
 	eventFavorRefundPrompted = "favor_refund_prompted"
 	eventFavorRefunded       = "favor_refunded"

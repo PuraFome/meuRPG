@@ -244,6 +244,11 @@ func (s *Service) endSessionIn(ctx context.Context, tx pgx.Tx, m authz.Membershi
 			return err
 		}
 	}
+	passTold, err := s.cancelPassesOfSession(ctx, tx, m, sessionID)
+	if err != nil {
+		return err
+	}
+	out.told = append(out.told, passTold...)
 	out.session, err = q.EndGameSession(ctx, playdb.EndGameSessionParams{
 		CampaignID: m.CampaignID, ID: sessionID, Now: s.now(),
 	})

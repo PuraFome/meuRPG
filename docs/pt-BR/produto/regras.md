@@ -1377,7 +1377,8 @@ Um jogador lê o dano como rolado, com o tipo de cada parte, e nunca o que o alv
 
 **Construída em parte.**
 Construído: a concessão do mestre, a lista de quem a tem e gastá-la numa jogada de ataque, num conjuro com uma só jogada de ataque, num teste de resistência de concentração, num teste de resistência de efeito, num teste de cena, num teste em grupo, numa disputa (o início e a resposta), em Esconder, numa busca por armadilhas e numa tentativa de dica de quebra-cabeça.
-Não construído: gastá-la num teste de morte, num teste de Contramágica e na iniciativa; passá-la a outro jogador; o desfazer do mestre de uma concessão.
+Também construído: pedir para passá-la a outro personagem de jogador e a resposta do mestre ao pedido.
+Não construído: gastá-la num teste de morte, num teste de Contramágica e na iniciativa; as linhas da passagem no registro e o desfazer do mestre de uma passagem aceita; o desfazer do mestre de uma concessão; a pergunta do mestre sobre uma Inspiração que uma jogada gastou à toa.
 Este é o comportamento pretendido:
 
 O mestre concede Inspiração a um personagem de jogador como recompensa por jogar bem (PHB 2014, cap. 4, fora do SRD 5.1).
@@ -1386,7 +1387,12 @@ O personagem a tem ou não: ela nunca acumula, e conceder a um personagem que j�
 Criaturas, NPCs e personagens na reserva nunca a têm.
 O jogador de quem a tem a gasta para fazer, com vantagem, uma jogada de ataque, um teste de resistência ou um teste de habilidade do próprio personagem.
 O jogador escolhe antes de o d20 ser rolado, e a vantagem se anula com a desvantagem como qualquer outra.
-Um jogador só pode passá-la a outro personagem de jogador da mesma campanha pedindo: o mestre lê "<jogador> quer passar a Inspiração para <personagem>" e aceita ("Aceitar") ou recusa ("Recusar"). Enquanto o mestre não responde, nada muda de lugar.
+Um jogador só pode passá-la a outro personagem de jogador da mesma campanha pedindo, e só com uma sessão aberta (o mestre responde à mesa): o mestre lê "<jogador> quer passar a Inspiração para <personagem>" e aceita ("Aceitar") ou recusa ("Recusar"). Enquanto o mestre não responde, nada muda de lugar.
+- **O pedido.** Um personagem tem um pedido por vez. Enquanto ele espera, quem pediu lê "Esperando o mestre", pode cancelá-lo e não pode gastar a Inspiração (o gasto é recusado até o pedido ser respondido ou cancelado); uma jogada que uma janela de reação segurou e refaz nesse meio-tempo é feita sem ela, e diz isso.
+- **Aceitar.** Muda a Inspiração de lugar: quem pediu a perde e quem recebe passa a tê-la. Quem recebe e já tem uma não pode recebê-la: só o mestre é avisado, nada muda e o pedido continua, para ele recusar. Quem pediu nunca lê o estado de quem recebe.
+- **Recusar.** Ela continua com quem pediu, que lê uma só frase para toda recusa: "O mestre recusou: a Inspiração continua com você."
+- **O fim da sessão** cancela os pedidos ainda abertos: a Inspiração continua com quem pediu.
+- **Quem lê.** O mestre lê todos os pedidos; quem pediu, só os seus; quem recebe não lê nada até ela mudar de mãos e então só que a tem. Outro jogador não lê nada (RN-10).
 O desfazer do mestre desfaz uma concessão feita por engano.
 Um jogador lê só se os próprios personagens a têm.
 Outro jogador não lê quem a tem nem que ela mudou de mãos (RN-10).

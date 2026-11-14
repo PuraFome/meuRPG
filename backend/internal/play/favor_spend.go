@@ -71,6 +71,8 @@ type favorUse struct {
 const (
 	favorLostGone    = "gone"
 	favorLostNothing = "adds_nothing"
+	// favorLostPending: the Inspiração waits in a pass the master has not answered (RN-43), so the replay cannot spend it.
+	favorLostPending = "pass_pending"
 )
 
 // favorLost is the answer of a replay that cannot spend: the roll runs with the mode its real sources make, and says why.
@@ -180,6 +182,9 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	if err := favorRefusal(a); err != nil {
 		return favorUse{}, err
 	}
+	if use, stop, err := favorInPass(ctx, q, a); stop {
+		return use, err
+	}
 	// The judgement is the roller's: what a source they may not read does to the roll is no reason to refuse (the spend goes, as at a
 	// table where the player does not know), and the mode the roll is made with counts every source.
 	seen := visibleSources(a.Sources, a.Hide)
@@ -203,6 +208,26 @@ func spendFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 		return favorUse{}, fmt.Errorf("spend the character's inspiration: %w", err)
 	}
 	return favorUse{Mode: favorMode(a.Sources), Seen: favorMode(seen), Used: true, Spent: true}, nil
+}
+
+// favorInPass is the refusal of a spend of an Inspiration that waits in a pass the master has not answered (RN-43): it is the first look
+// at the character's own state, after the refusals that need none (favorRefusal), and before the judgement of the roll, so the box
+// that spends it is closed whatever the roll is; the ask is the player's own, so the refusal tells them nothing they do not know. The
+// replay of a held roll does not refuse (the roll would be dropped with no reason): it is made without the Inspiração, and says so.
+func favorInPass(ctx context.Context, q *playdb.Queries, a favorAsk) (use favorUse, stop bool, err error) {
+	if a.CharacterID == "" {
+		return favorUse{}, false, nil
+	}
+	_, err = q.GetPendingFavorPassOfGiver(ctx, a.CharacterID)
+	switch {
+	case errors.Is(err, pgx.ErrNoRows):
+		return favorUse{}, false, nil
+	case err != nil:
+		return favorUse{}, true, fmt.Errorf("read the character's pending pass: %w", err)
+	case a.Replay:
+		return favorLost(a, favorLostPending), true, nil
+	}
+	return favorUse{}, true, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_PASS_PENDING, "the inspiration waits in an ask the master has not answered")
 }
 
 // visibleSources are the sources the roller may read: hide says which they may not.
@@ -359,6 +384,8 @@ func favorLine(ev actionEvent, v combatViewer, actor playdb.Combatant) string {
 			return actor.Label + " não tinha mais a Inspiração: a rolagem foi feita sem ela."
 		case ev.FavorLost == favorLostNothing:
 			return "A Inspiração de " + actor.Label + " não mudaria mais a rolagem: ela foi guardada e a rolagem foi feita sem ela."
+		case ev.FavorLost == favorLostPending:
+			return "A Inspiração de " + actor.Label + " está num pedido de passagem que o mestre não respondeu: a rolagem foi feita sem ela."
 		}
 	}
 	return ""
@@ -366,8 +393,11 @@ func favorLine(ev actionEvent, v combatViewer, actor playdb.Combatant) string {
 
 // favorLostNote is the note of a check rolled without the Inspiration its replay could no longer spend.
 func favorLostNote(why string) string {
-	if why == favorLostGone {
+	switch why {
+	case favorLostGone:
 		return "Inspiração não usada: não estava mais com você"
+	case favorLostPending:
+		return "Inspiração não usada: está num pedido de passagem sem resposta"
 	}
 	return "Inspiração guardada: não mudaria mais a rolagem"
 }

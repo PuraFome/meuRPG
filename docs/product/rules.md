@@ -1377,7 +1377,8 @@ A player reads the damage as rolled, with the type of each part, and never what 
 
 **Partly built.**
 Built: the master's grant, the list of who has it, and spending it on an attack roll, a cast with one spell attack, a concentration save, an effect save, a scene check, a group check, a contest (the start and the answer), Hide, a trap search and a puzzle hint try.
-Not built: spending it on a death save, a Counterspell check and initiative; passing it to another player; the master's undo of a grant.
+Also built: asking to pass it to another player character, and the master's answer to the ask.
+Not built: spending it on a death save, a Counterspell check and initiative; the lines of the pass in the log and the master's undo of an accepted pass; the master's undo of a grant; the master's refund prompt for an Inspiration a roll spent for nothing.
 This is the intended behaviour:
 
 The master grants Inspiration to a player character as a reward for good play (PHB 2014, ch. 4, outside SRD 5.1).
@@ -1386,7 +1387,12 @@ A character has it or not: it never stacks, and a grant to a character that alre
 Creatures, NPCs and characters in the reserve never hold it.
 The holder's player spends it to roll one attack roll, saving throw or ability check of that character's own with advantage.
 The player chooses before the d20 is rolled, and the advantage cancels against disadvantage like any other.
-A player may pass it to another player character of the same campaign only by asking: the master reads "<player> quer passar a Inspiração para <character>" and accepts ("Aceitar") or refuses ("Recusar"). Until the master answers, nothing moves.
+A player may pass it to another player character of the same campaign only by asking, and only while a session is open (the master answers at the table): the master reads "<player> quer passar a Inspiração para <character>" and accepts ("Aceitar") or refuses ("Recusar"). Until the master answers, nothing moves.
+- **The ask.** A character has one ask at a time. While it waits the giver reads "Esperando o mestre", may cancel it, and cannot spend the Inspiration (the spend is refused until the ask is answered or canceled); a roll a reaction window held and replays meanwhile is made without it, and says so.
+- **Accepting.** It moves the Inspiration: the giver loses it and the receiver has it. A receiver that already has one cannot take it: the master alone is told, nothing changes and the ask stays, so he refuses it. The giver is never told the receiver's state.
+- **Refusing.** It stays with the giver, who reads one sentence for every refusal: "O mestre recusou: a Inspiração continua com você."
+- **The end of the session** cancels the asks still open: the Inspiration stays with the giver.
+- **Who reads it.** The master reads every ask; a giver only their own; the receiver reads nothing until it moves, and then only that they have it. Another player reads nothing at all (RN-10).
 The master's undo takes back a grant made by mistake.
 A player reads only whether their own characters have it.
 Another player reads neither who has it nor that it moved (RN-10).

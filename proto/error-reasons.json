@@ -465,9 +465,7 @@
             "HAS_NONE",
             "ADDS_NOTHING",
             "AFTER_THE_ROLL",
-            "NOTHING_TO_ROLL"
-          ],
-          "unsent": [
+            "NOTHING_TO_ROLL",
             "CANNOT_RECEIVE",
             "SELF",
             "PASS_PENDING",
