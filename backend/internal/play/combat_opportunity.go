@@ -331,27 +331,19 @@ func (s *Service) returnToReach(ctx context.Context, c *combatTx, pendingID stri
 	if err != nil {
 		return nil, false, err
 	}
-	if squareTaken(cs, mover, *o.LeftCol, *o.LeftRow) {
+	if slices.ContainsFunc(cs, func(m playdb.Combatant) bool {
+		return m.ID != mover.ID && !m.Defeated && placed(m) && *m.GridCol == *o.LeftCol && *m.GridRow == *o.LeftRow
+	}) {
 		return nil, true, nil
 	}
-	before := moveStateIn(cs, mover)
+	before := moveStateOf(mover)
 	if err := c.q.SetCombatantMove(ctx, playdb.SetCombatantMoveParams{
 		ID: mover.ID, GridCol: o.LeftCol, GridRow: o.LeftRow,
 		MovementUsedFt: mover.MovementUsedFt, MovementUsedDft: mover.MovementUsedDft, LastMoveDft: mover.LastMoveDft, CoverMark: mover.CoverMark,
 	}); err != nil {
 		return nil, false, fmt.Errorf("take the mover back to where it left the reach: %w", err)
 	}
-	if err := carryRider(ctx, c.q, mover.ID); err != nil {
-		return nil, false, err
-	}
 	return before, false, nil
-}
-
-// squareTaken says whether a combatant other than the mover, its rider or its mount stands on the square.
-func squareTaken(cs []playdb.Combatant, mover playdb.Combatant, col, row int32) bool {
-	return slices.ContainsFunc(cs, func(m playdb.Combatant) bool {
-		return m.ID != mover.ID && !samePair(m, mover) && !m.Defeated && placed(m) && *m.GridCol == col && *m.GridRow == row
-	})
 }
 
 // publishReturned tells the streams the mover went back, as a move.
@@ -362,7 +354,6 @@ func (s *Service) publishReturned(ctx context.Context, campaignID string, d *enc
 	if back, ok := combatantByID(d.cs, ev.Target); ok {
 		s.publishCombatantMoved(ctx, campaignID, d.enc, back, squareOfState(ev.ReturnedFrom))
 		s.positionChanged(ctx, campaignID, d.enc, back, squareOfState(ev.ReturnedFrom))
-		s.publishRideAlong(ctx, campaignID, d, back, squareOfState(ev.ReturnedFrom))
 	}
 }
 
@@ -387,7 +378,7 @@ func putBackMove(ctx context.Context, c *combatTx, id string, st *moveState) err
 	}); err != nil {
 		return fmt.Errorf("put the mover back: %w", err)
 	}
-	return carryRiderBack(ctx, c.q, id, st)
+	return nil
 }
 
 func coverOrNone(c string) string {
