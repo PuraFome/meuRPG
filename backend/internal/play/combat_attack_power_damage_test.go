@@ -295,10 +295,10 @@ func TestAHeldRollsReplayWritesThePowerPartOnce(t *testing.T) {
 		g := newPowerTable(t)
 		e := g.fight(t)
 		held, err := g.swing(t, e, g.heavyKey, 1)
-		if err != nil || held.GetLuckyOffer() == nil {
+		if err != nil || held.GetHeldRollOffer().GetLucky() == nil || held.GetHeldRollOffer().GetKind() != playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK {
 			t.Fatalf("RollAttack() = %v, %v; want Lucky's question", held, err)
 		}
-		res, err := g.answerLucky(t, g.caio, e, held.GetLuckyOffer().GetHoldId(), rerollTyped(15))
+		res, err := g.answerLucky(t, g.caio, e, held.GetHeldRollOffer().GetHoldId(), rerollTyped(15))
 		if err != nil || res.GetAttack().GetPendingDamage() == nil {
 			t.Fatalf("AnswerLucky() = %v, %v; want a hit", res, err)
 		}
@@ -313,10 +313,10 @@ func TestAHeldRollsReplayWritesThePowerPartOnce(t *testing.T) {
 		g := newPowerTable(t)
 		e := g.fightInspired(t)
 		held, err := g.swing(t, e, g.heavyKey, 9)
-		if err != nil || held.GetInspirationOffer() == nil {
+		if err != nil || held.GetHeldRollOffer().GetDie() == nil || held.GetHeldRollOffer().GetKind() != playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK {
 			t.Fatalf("RollAttack() = %v, %v; want the die's question", held, err)
 		}
-		res, err := g.answer(t, g.caio, e, held.GetInspirationOffer().GetHoldId(), func(r *playv1.AnswerBardicInspirationRequest) {
+		res, err := g.answer(t, g.caio, e, held.GetHeldRollOffer().GetHoldId(), func(r *playv1.AnswerBardicInspirationRequest) {
 			r.Use, r.Roll = true, &playv1.AnswerBardicInspirationRequest_TypedFace{TypedFace: 3}
 		})
 		if err != nil || res.GetAttack().GetPendingDamage() == nil {

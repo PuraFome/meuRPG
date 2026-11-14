@@ -105,8 +105,10 @@ func TestPowerAttackWithEveryFieldIsAccepted(t *testing.T) {
 		t.Fatalf("With: %v", err)
 	}
 	// Exactly four properties are the most it takes.
-	four := powerAttackOverlay(Effect{Type: "power_attack", AttackPenalty: 1, DamageBonus: 1,
-		WeaponProperties: []string{"weapon-property:ammunition", "weapon-property:finesse", "weapon-property:heavy", "weapon-property:light"}})
+	four := powerAttackOverlay(Effect{
+		Type: "power_attack", AttackPenalty: 1, DamageBonus: 1,
+		WeaponProperties: []string{"weapon-property:ammunition", "weapon-property:finesse", "weapon-property:heavy", "weapon-property:light"},
+	})
 	if _, err := loadForTest(t).With(four); err != nil {
 		t.Errorf("four properties: %v", err)
 	}

@@ -317,7 +317,7 @@ func TestTheNaturalTwentyHitsAndTheNaturalOneMissesWithThePenalty(t *testing.T) 
 	}{
 		{"a 20 that falls short of 18", func(g *powerTable) string { return g.freeKey }, 20, playv1.AttackOutcome_ATTACK_OUTCOME_CRITICAL_HIT, 20 + pipoToHit - freePenalty},
 		{"a 19 that falls short of 18", func(g *powerTable) string { return g.freeKey }, 19, playv1.AttackOutcome_ATTACK_OUTCOME_MISS, 19 + pipoToHit - freePenalty},
-		{"a 1 that would reach with no penalty", func(g *powerTable) string { return "" }, 1, playv1.AttackOutcome_ATTACK_OUTCOME_MISS, 1 + pipoToHit},
+		{"a 1 that would reach with no penalty", func(*powerTable) string { return "" }, 1, playv1.AttackOutcome_ATTACK_OUTCOME_MISS, 1 + pipoToHit},
 		{"a 1 with the penalty", func(g *powerTable) string { return g.freeKey }, 1, playv1.AttackOutcome_ATTACK_OUTCOME_MISS, 1 + pipoToHit - freePenalty},
 		{"a 18 with the heavy trade that still reaches 18", func(g *powerTable) string { return g.heavyKey }, 18, playv1.AttackOutcome_ATTACK_OUTCOME_HIT, 18 + pipoToHit - heavyPenalty},
 	} {
@@ -329,7 +329,7 @@ func TestTheNaturalTwentyHitsAndTheNaturalOneMissesWithThePenalty(t *testing.T) 
 			if err != nil {
 				t.Fatalf("RollAttack() error = %v", err)
 			}
-			if offer := res.GetLuckyOffer(); offer != nil { // Pipo is a halfling: a 1 asks first, and he keeps it
+			if offer := res.GetHeldRollOffer(); offer.GetLucky() != nil { // Pipo is a halfling: a 1 asks first, and he keeps it
 				answer, err := g.answerLucky(t, g.caio, e, offer.GetHoldId(), keepTheOne)
 				if err != nil {
 					t.Fatalf("AnswerLucky(keep) error = %v", err)
@@ -514,8 +514,8 @@ func TestAHeldRollAppliesThePowerAttackPenaltyOnce(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RollAttack() error = %v", err)
 	}
-	offer := held.GetLuckyOffer()
-	if offer == nil {
+	offer := held.GetHeldRollOffer()
+	if offer.GetLucky() == nil || offer.GetKind() != playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK {
 		t.Fatalf("the roll = %v, want Lucky's question", held)
 	}
 	if d := offer.GetD20(); d.GetModifier() != int32(pipoToHit-heavyPenalty) || d.GetTotal() != 1+pipoToHit-heavyPenalty {
@@ -552,8 +552,8 @@ func TestAHeldRollForBardicInspirationAppliesThePowerAttackPenaltyOnce(t *testin
 	if err != nil {
 		t.Fatalf("RollAttack() error = %v", err)
 	}
-	offer := held.GetInspirationOffer()
-	if offer == nil {
+	offer := held.GetHeldRollOffer()
+	if offer.GetDie() == nil || offer.GetKind() != playv1.HeldRollKind_HELD_ROLL_KIND_WEAPON_ATTACK {
 		t.Fatalf("the roll = %v, want the die's question", held)
 	}
 	const bonus = pipoToHit - heavyPenalty
