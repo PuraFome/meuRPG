@@ -1,7 +1,7 @@
 import { TableEffectAudience } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { conditionName } from '../combat/conditions';
 import { formatDuration } from '../../shared/spell-details/spell-details-format';
-import { hitAvailable, type HitDraft, type HitTriggerKey } from './hit-effect-draft';
+import { hitAvailable, type HitDraft, type HitLasts, type HitTriggerKey } from './hit-effect-draft';
 import type { SpellDraft } from './spell-types';
 
 /**
@@ -79,12 +79,12 @@ function lastsText(d: SpellDraft): string {
   return length ? `até ${length.replace(/^até /, '')}` : 'até ser dissipada';
 }
 
-function damageChip(h: HitDraft, nameOf: (key: string) => string): string {
+export function damageChip(h: HitDraft, nameOf: (key: string) => string): string {
   const type = h.damageType ? nameOf(h.damageType) : 'do tipo da arma';
   return `+${h.dice}d${h.die} ${type}`;
 }
 
-function moreChip(h: HitDraft, level: number): string {
+export function moreChip(h: HitDraft, level: number): string {
   const perSlot = Number(h.perSlot);
   // A truque has no slot level to climb.
   if (level === 0 || !(perSlot > 0)) return '';
@@ -93,10 +93,15 @@ function moreChip(h: HitDraft, level: number): string {
 }
 
 /** The conditions by their names ("Impedido"); a key this app does not know is left out. Exhaustion is had, not "fica". */
-function conditionPhrases(keys: readonly string[]): string[] {
+export function conditionPhrases(keys: readonly string[]): string[] {
   return keys
     .filter((k) => conditionName(k) !== '')
     .map((k) => (k === 'condition:exhaustion' ? `com ${conditionName(k)}` : conditionName(k)));
+}
+
+/** How long a condition a failed test gives lasts: "até o fim da magia" or "até o fim do próximo turno dele". */
+export function hitUntil(lasts: HitLasts): string {
+  return lasts === 'spell_end' ? 'até o fim da magia' : 'até o fim do próximo turno dele';
 }
 
 function saveSentence(h: HitDraft, nameOf: (key: string) => string): readonly HitSentencePart[] {
@@ -105,8 +110,7 @@ function saveSentence(h: HitDraft, nameOf: (key: string) => string): readonly Hi
   const test = `O alvo faz um teste de resistência${ability ? ` de ${ability}` : ''}`;
   const names = conditionPhrases(h.condition ? [h.condition, ...h.extraConditions] : []);
   if (names.length === 0) return [{ text: `${test}.` }];
-  const until =
-    h.conditionLasts === 'spell_end' ? 'até o fim da magia' : 'até o fim do próximo turno dele';
+  const until = hitUntil(h.conditionLasts);
   return [
     { text: `${test}; se falhar, fica ` },
     ...names.flatMap<HitSentencePart>((n, i) => [

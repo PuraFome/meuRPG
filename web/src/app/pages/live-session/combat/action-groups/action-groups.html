@@ -81,6 +81,8 @@
     <ng-content select="[pending]" />
 
     <div class="panel" role="tabpanel" [id]="panelId('attacks')" [attr.aria-labelledby]="tabButtonId('attacks')" [hidden]="current() !== 'attacks'">
+      <!-- The effect waiting for the next weapon hit (#577, 577-05, 577-06): first in Ataques, under the economy row and the tabs. -->
+      <app-hit-effect-cards [cards]="hitEffects()" />
       @if (grappled()) {
         <!-- W7-X board 5: "Escapar" is the first line of the Ação of a grappled combatant. -->
         <app-action-row

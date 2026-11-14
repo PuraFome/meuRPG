@@ -3,6 +3,7 @@ import { type Signal, computed, effect, inject, signal, untracked } from '@angul
 import { type Encounter, EncounterStatus } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { CharacterEffect } from '../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import { conditionTags } from '../../../core/combat/conditions';
+import { markedNameOf } from '../../../core/effects/hit-effect-text';
 import { EffectsClient } from '../../../core/effects/effects-client';
 import {
   type EffectCardView,
@@ -49,7 +50,11 @@ export class OwnEffects {
   /** The cards of "Seus efeitos". */
   readonly cards = computed<EffectCardView[]>(() => {
     const own = this.own();
-    return own ? combatCards(own.effects) : characterCards(this.outsideMine());
+    if (!own) {
+      return characterCards(this.outsideMine());
+    }
+    const everyone = this.src.encounter()?.combatants ?? [];
+    return combatCards(own.effects, (e) => markedNameOf(e, own, everyone));
   });
   /** The names of the conditions the cards hold, for the label under the numbers. */
   readonly conditions = computed<string[]>(() => {

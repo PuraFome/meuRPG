@@ -69,7 +69,7 @@ import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support'
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
-import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -6382,6 +6382,114 @@ test('o efeito no próximo golpe passa no axe e nas conferências de layout no t
 test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanNextHit(browser, 'light', 320);
 });
+
+/**
+ * The card of the effect waiting for the caster's next weapon hit (#577), at the top of "Ataques" under the economy row: "Clarão na
+ * Lâmina" (next hit, with a saving throw, no concentration) alone, then also "Sinal da Presa" (a marked target, concentration, an hour
+ * long) with the creature it marks named in its title. The player casts both through the API, as the table does, so the screens are the
+ * real ones. Both spells are the table's own, put in Pensantus's list before the sheet is made.
+ */
+async function scanHitEffectCard(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(300_000);
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    // The sheet is filled by `before`, which runs once the campaign exists and before the character is made.
+    const sheet: Record<string, unknown> = { ...pensantusCasting };
+    const keys: { flare: string; sign: string } = { flare: '', sign: '' };
+    const table = await tableForCombat(m, p, `Acessibilidade golpe pendente ${Date.now()}`, true, true, {
+      sheet,
+      before: async (id, master) => {
+        keys.flare = await createEntryRPC(
+          master,
+          id,
+          'tableSpell',
+          hitSpellBody(
+            'Clarão na Lâmina',
+            { trigger: 'TABLE_HIT_TRIGGER_NEXT_HIT', die: 6, dice: 2, perSlotDice: 0, maxDice: 2, damageType: 'damage-type:radiant', save: 'con', onFailConditions: ['condition:blinded'] },
+            { concentration: false },
+          ),
+        );
+        keys.sign = await createEntryRPC(
+          master,
+          id,
+          'tableSpell',
+          hitSpellBody(
+            'Sinal da Presa',
+            { trigger: 'TABLE_HIT_TRIGGER_MARKED_TARGET', die: 6, dice: 1, perSlotDice: 0, maxDice: 1, damageType: '', save: '', onFailConditions: [], conditionDuration: '' },
+            {
+              level: 1,
+              castingTime: { unit: 'CASTING_TIME_UNIT_ACTION', amount: 1 },
+              duration: { kind: 'SPELL_DURATION_KIND_TIMED', amount: 1, unit: 'SPELL_DURATION_UNIT_HOUR', upTo: true },
+              target: { kind: 'TABLE_SPELL_TARGET_KIND_CREATURE' },
+              range: { kind: 'SPELL_RANGE_KIND_RANGED', distanceFt: 60 },
+              effect: { visibility: 'TABLE_EFFECT_AUDIENCE_PUBLIC', modifiers: [hitModifier({ trigger: 'TABLE_HIT_TRIGGER_MARKED_TARGET', die: 6, dice: 1, perSlotDice: 0, maxDice: 1, damageType: '', save: '', onFailConditions: [], conditionDuration: '' })] },
+            },
+          ),
+        );
+        sheet.knownSpellKeys = [...pensantusCasting.knownSpellKeys, keys.flare, keys.sign];
+        sheet.preparedSpellKeys = [...pensantusCasting.preparedSpellKeys, keys.flare, keys.sign];
+        return pensantus;
+      },
+    });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const cast = async (spellKey: string, slotLevel: number, targets: object[]) => {
+      const res = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
+        campaignId,
+        encounterId: enc.id,
+        casterId: id('Pensantus'),
+        spellKey,
+        slot: { level: slotLevel },
+        targets,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    const card = (name: string) => p.getByTestId('hit-effect-card').filter({ has: p.getByRole('heading', { name, exact: false }) });
+
+    await openSessionPage(p, campaignId);
+    await cast(keys.flare, 2, []);
+    await openActionTab(p, 'Ataques');
+    const flare = card('Clarão na Lâmina');
+    await expect(flare).toBeVisible();
+    await expect(flare).toContainText('No próximo golpe com arma: +2d6 radiante; teste de resistência de Constituição ou fica Cego até o fim do próximo turno dele.');
+    await expect(flare.getByText('Concentração')).toHaveCount(0);
+    await expectScreenPasses(p, `O efeito que espera o próximo golpe, sem concentração ${where}`);
+
+    await cast(keys.sign, 1, [{ combatantId: id('Goblin 1') }]);
+    const sign = card('Sinal da Presa no Goblin 1');
+    await expect(sign).toBeVisible();
+    await expect(sign).toContainText('Cada golpe com arma no Goblin 1: +1d6 do tipo da arma.');
+    await expect(sign.getByText('Concentração')).toBeVisible();
+    await expect(p.getByTestId('hit-effect-card')).toHaveCount(2);
+    await expectScreenPasses(p, `O efeito que espera o próximo golpe, o alvo marcado e a concentração ${where}`);
+
+    // "Seus efeitos" of the sheet lists the same sentences.
+    await openSheetTab(p);
+    await expect(p.getByRole('heading', { name: 'Seus efeitos' })).toBeVisible();
+    await expectScreenPasses(p, `Seus efeitos com o efeito que espera o golpe ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 390], ['light', 1280], ['dark', 390], ['dark', 1280]] as const) {
+  test(`o efeito que espera o próximo golpe passa no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-048', '@RN-22'] }, async ({ browser }) => {
+    await scanHitEffectCard(browser, scheme, width);
+  });
+}
 
 /**
  * The entries the rules refuse (#736): the master's list with the left-out panel, the "⋮" menu and the question to remove, the

@@ -66,6 +66,8 @@ import { standUpRow } from '../../../../core/combat/stand-up';
 import { type ListedDie, maneuverLine } from '../../../../core/effects/roll-die';
 import type { GearFlow } from '../../../../core/combat/gear-flow';
 import { GearFold } from './gear-fold';
+import { HitEffectCards } from './hit-effect-cards';
+import { hitCards } from '../../../../core/effects/hit-effect-text';
 import { Fold } from '../../../../shared/fold/fold';
 import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
@@ -104,6 +106,7 @@ import { offersWeaponAttack } from './weapon-offer';
     Fold,
     GearFold,
     GroupState,
+    HitEffectCards,
     MatButtonModule,
     MatIconModule,
     NgTemplateOutlet,
@@ -122,6 +125,8 @@ export class ActionGroups {
   readonly choosing = input('');
   /** The player's own combatant: its economy and movement. */
   readonly own = input.required<Combatant>();
+  /** Everyone in the combat, to name the creature a marked-target effect is on. */
+  readonly combatants = input<readonly Combatant[]>([]);
   /** Extra Attack: the attacks of this Attack action that remain, and how many
    * it makes (`TurnEconomy`). */
   readonly attacksLeft = input(0);
@@ -280,6 +285,8 @@ export class ActionGroups {
       this.canUse,
     ),
   );
+  /** The effects waiting for the caster's next weapon hit (#577), the card at the top of "Ataques". */
+  protected readonly hitEffects = computed(() => hitCards(this.own(), this.combatants()));
   /** The one line above the weapon rows: only with dice and at least one weapon attack still on offer. */
   protected readonly maneuverNote = computed(() =>
     offersWeaponAttack(this.attackParts().open) ? maneuverLine(this.maneuverDice(), 'list') : '',

@@ -142,6 +142,10 @@ How the hit uses it is in [Attacks and damage](attacks-and-damage.md#a-spells-hi
   `EffectModifier.hit` (`WeaponHitDamage`: `trigger`, `die`, `dice`, `per_slot_dice`, `max_dice`, `damage_type_key`, `damage_type_pt`, `save`, `condition_keys`, `condition_names_pt`, `condition_duration`) is set by `effectViewer.modifierCard`, and `LastingEffect.spent` says a `next_hit` was used.
   The card of the caster says "pending" or "used"; its tags read the damage ("+1d6 no próximo golpe com arma, ...", `tagsOfRow`), and a row on a target reads what the spell does to that creature, never the damage.
   Only the master and the combatant's own player are given a card at all (`decorateCard`), and a mark has no modifier, so no other player is ever given these numbers: they read the label alone.
+- **The caster's card in the app.**
+  `hitCards` (`core/effects/hit-effect-text.ts`) turns the caster's own rows that have a `hit` and are not `spent` into the card at the top of the "Ataques" tab (`app-hit-effect-cards`, under the economy row), and the same sentence opens "O que isso muda" of the row in "Seus efeitos".
+  The sentence reuses the content editor's damage words (`damageChip`) and writes the trigger, the dice, the saving throw with its conditions and how long they last, and the time left from `rounds_left`.
+  The marked creature is named from the other combatant that carries a label with the spell's name (the mark), because the server sends the caster no card for the mark and no group id on the label; when none or several carry it, the line says "no alvo marcado".
 - **When the concentration ends it.**
   The caster's own line is the conditions line with `concentration_ended_key` set to the spell.
   The effect's line is an `EFFECT` entry with change `ENDED`, reason `concentration`, the effect's key and name and the caster as actor; it follows the effect's visibility (hidden or `owner`: no other player reads it).

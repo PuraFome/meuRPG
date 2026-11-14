@@ -1143,6 +1143,7 @@
               [gearFlow]="gearFlow"
               [choosing]="targeting.mode.session()?.key ?? ''"
               [own]="me"
+              [combatants]="encounter()?.combatants ?? []"
               [attacksLeft]="attacksLeft()"
               [attacksPerAction]="attacksPerAction()"
               [slots]="ownSlots()"
