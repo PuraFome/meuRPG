@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 // The line of a use of a feature in the combat log says what the use cost (#743 part 2, docs/architecture/play/feature-state.md
@@ -54,20 +55,36 @@ func TestTheLogLineOfAUseSaysTheResourceAndWhatIsLeft(t *testing.T) {
 	m.mustUse(t, m.ana, e, "Pensantus", "Chamado", nil)
 	for name, u := range map[string]*user{"the master": m.master, "Pensantus's player": m.ana} {
 		line := m.usedLine(t, u, e)
-		if line.GetResourceNamePt() != "Chamados" || line.GetResourceLeft() != 1 {
-			t.Errorf("%s reads the resource %q with %d left, want Chamados with 1", name, line.GetResourceNamePt(), line.GetResourceLeft())
+		if line.GetResourceNamePt() != "Chamados" || line.GetResourceLeft() != 1 || line.GetResourceMax() != 2 {
+			t.Errorf("%s reads the resource %q with %d of %d, want Chamados with 1 of 2", name, line.GetResourceNamePt(), line.GetResourceLeft(), line.GetResourceMax())
 		}
 	}
 }
 
-// A use that spends no resource of its own names none.
-func TestTheLogLineOfAUseWithoutAResourceNamesNone(t *testing.T) {
+// A use limited by a scope only (Brado: 2 per combat, no resource of its own) names no resource and counts the scope: 1 of 2.
+func TestTheLogLineOfAScopeLimitedUseCountsTheScope(t *testing.T) {
 	t.Parallel()
 	m := newFeatureTable(t)
 	e := m.fight(t)
-	m.mustUse(t, m.ana, e, "Pensantus", "Postura", m.validArgs(t, "Postura"))
-	if line := m.usedLine(t, m.ana, e); line.GetResourceNamePt() != "" || line.GetResourceLeft() != 0 {
-		t.Errorf("the line names the resource %q with %d left, want none", line.GetResourceNamePt(), line.GetResourceLeft())
+	m.h.roller.queue(3)
+	m.mustUse(t, m.ana, e, "Pensantus", "Brado", m.validArgs(t, "Brado"))
+	for name, u := range map[string]*user{"the master": m.master, "Pensantus's player": m.ana} {
+		line := m.usedLine(t, u, e)
+		if line.GetResourceNamePt() != "" || line.GetResourceLeft() != 1 || line.GetResourceMax() != 2 {
+			t.Errorf("%s reads the resource %q with %d of %d, want none and 1 of 2", name, line.GetResourceNamePt(), line.GetResourceLeft(), line.GetResourceMax())
+		}
+	}
+}
+
+// A use with no limit at all leaves the count at 0 of 0, so the line has no parenthesis.
+func TestTheLogLineOfAUseWithNoLimitHasNoCount(t *testing.T) {
+	t.Parallel()
+	alerta := grantFeature("Alerta", "reaction", "", useOf(rulesv1.UseScope_USE_SCOPE_UNSPECIFIED, "", nil, &rulesv1.FeatureApplies{TempHp: "4"}))
+	m := newFeatureTableOf(t, []*rulesv1.TableFeature{alerta})
+	e := m.fight(t)
+	m.mustUse(t, m.ana, e, "Pensantus", "Alerta", nil)
+	if line := m.usedLine(t, m.ana, e); line.GetResourceNamePt() != "" || line.GetResourceLeft() != 0 || line.GetResourceMax() != 0 {
+		t.Errorf("the line counts %q %d of %d, want no count", line.GetResourceNamePt(), line.GetResourceLeft(), line.GetResourceMax())
 	}
 }
 
@@ -81,8 +98,8 @@ func TestTheLogLineOfAUseIsPlainForAnotherPlayer(t *testing.T) {
 	if line.GetNamePt() != "Chamado" {
 		t.Fatalf("another player reads the feature %q, want Chamado", line.GetNamePt())
 	}
-	if line.GetEconomy() != playv1.FeatureEconomy_FEATURE_ECONOMY_UNSPECIFIED || line.GetResourceNamePt() != "" || line.GetResourceLeft() != 0 {
-		t.Errorf("another player reads the economy %v and the resource %q with %d left, want none of it", line.GetEconomy(), line.GetResourceNamePt(), line.GetResourceLeft())
+	if line.GetEconomy() != playv1.FeatureEconomy_FEATURE_ECONOMY_UNSPECIFIED || line.GetResourceNamePt() != "" || line.GetResourceLeft() != 0 || line.GetResourceMax() != 0 {
+		t.Errorf("another player reads the economy %v and the resource %q with %d of %d, want none of it", line.GetEconomy(), line.GetResourceNamePt(), line.GetResourceLeft(), line.GetResourceMax())
 	}
 }
 

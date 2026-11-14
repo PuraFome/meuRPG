@@ -100,6 +100,8 @@ func TestAFeatureUsesCostIsReadByTheMasterAndTheUserAlone(t *testing.T) {
 	resource := w.chamadoFight()
 	w.secrets.add(&canary{needle: "FEATURE_ECONOMY_", kind: "feature-use-economy", readers: names([]*person{w.caio})})
 	w.secrets.add(&canary{needle: "resourceNamePt", kind: "feature-use-resource-field", readers: names([]*person{w.caio})})
+	w.secrets.add(&canary{needle: "resourceLeft", kind: "feature-use-resource-left-field", readers: names([]*person{w.caio})})
+	w.secrets.add(&canary{needle: "resourceMax", kind: "feature-use-resource-max-field", readers: names([]*person{w.caio})})
 
 	toren := w.combatant(w.toren)
 	if cur := w.encounter.GetCurrentCombatantId(); cur != toren.GetId() {
@@ -113,7 +115,7 @@ func TestAFeatureUsesCostIsReadByTheMasterAndTheUserAlone(t *testing.T) {
 	// The positive control: the master's and Caio's logs hold the needles, so they are reachable.
 	for _, p := range []*person{w.master, w.caio} {
 		body := p.call(playv1connect.CombatServiceListCombatLogProcedure, &playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}).body
-		for _, needle := range []string{resource, "FEATURE_ECONOMY_BONUS_ACTION", "resourceNamePt"} {
+		for _, needle := range []string{resource, "FEATURE_ECONOMY_BONUS_ACTION", "resourceNamePt", "resourceLeft", "resourceMax"} {
 			if !bytes.Contains(body, []byte(needle)) {
 				t.Errorf("%s's log does not hold %q: the needle is unreachable (%s)", p.name, needle, body)
 			}

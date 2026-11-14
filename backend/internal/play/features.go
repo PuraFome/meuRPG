@@ -369,18 +369,18 @@ func (f *featureFlow) spend(ctx context.Context) error {
 	}
 	f.out.vitals = append(f.out.vitals, vitals)
 	f.made.Resource, f.made.PointsSpent = fa.Resource, n
-	f.fe.ResourceName, f.fe.ResourceLeft = resourceLeftOf(vitals, fa.Resource)
+	f.fe.ResourceName, f.fe.ResourceLeft, f.fe.ResourceMax = resourceLeftOf(vitals, fa.Resource)
 	return nil
 }
 
-// resourceLeftOf is the name of the resource in the character's vitals and the uses of it left, "" and 0 when the vitals do not have it.
-func resourceLeftOf(v *playv1.CharacterVitals, key string) (name string, left int32) {
+// resourceLeftOf is the name of the resource in the character's vitals, the uses of it left and its total, "" and 0 when the vitals do not have it.
+func resourceLeftOf(v *playv1.CharacterVitals, key string) (name string, left, total int32) {
 	for _, r := range v.GetResources() {
 		if r.GetKey() == key {
-			return r.GetNamePt(), max(r.GetTotal()-r.GetUsed(), 0)
+			return r.GetNamePt(), max(r.GetTotal()-r.GetUsed(), 0), r.GetTotal()
 		}
 	}
-	return "", 0
+	return "", 0, 0
 }
 
 // apply gives each target what the use applies: the hit points healed (the dice rolled by the server, once, for every
@@ -554,6 +554,7 @@ func (f *featureFlow) remember(ctx context.Context) error {
 		return nil
 	}
 	key, now := useStateKey(f.call.actionKey), f.scene.now
+	f.countScope(*f.fa.Use)
 	state := readFeatureState(f.who.FeatureState)
 	var before *featureEntry
 	n := int32(1)
@@ -570,6 +571,14 @@ func (f *featureFlow) remember(ctx context.Context) error {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	return nil
+}
+
+// countScope gives the line the uses of the scope, left after this one and allowed, when the use has no resource of its own.
+func (f *featureFlow) countScope(u link.FeatureUse) {
+	if f.fe.ResourceName != "" {
+		return
+	}
+	f.fe.ResourceLeft, f.fe.ResourceMax = clamp32(f.scene.left(f.call.actionKey, u)-1, 0, math.MaxInt32), clamp32(u.Uses, 0, math.MaxInt32)
 }
 
 // spentEconomy is the combatant with the economy the action spends marked used: the free and the movement cost none.

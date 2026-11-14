@@ -28,10 +28,13 @@ type featureUseEvent struct {
 	Faces []int32 `json:"faces,omitempty"`
 	Total int32   `json:"total,omitempty"`
 	// Economy is what the use cost of the turn (an economyWord*), ResourceName the resource it spent and ResourceLeft the uses of
-	// it left after this one ("" and 0 for a use that spent none).
+	// it left after this one, ResourceMax of them ("" and 0 for a use that spent none).
 	Economy      string `json:"economy,omitempty"`
 	ResourceName string `json:"resource_name,omitempty"`
 	ResourceLeft int32  `json:"resource_left,omitempty"`
+	// ResourceMax is the most uses there were: the resource's total, or the uses the scope allows when the use has no resource
+	// of its own (then ResourceName is empty and ResourceLeft counts the scope).
+	ResourceMax int32 `json:"resource_max,omitempty"`
 }
 
 // The words of featureUseEvent.Economy.
@@ -143,7 +146,7 @@ func (e *logEntry) fillFeatureUsed(c *logViewing, out *playv1.CombatLogEntry) bo
 	}
 	if c.v.master || c.v.owns(c.actor) {
 		used.Healed, used.TempHp = f.Healed, f.TempHP
-		used.Economy, used.ResourceNamePt, used.ResourceLeft = economyOfWord(f.Economy), f.ResourceName, f.ResourceLeft
+		used.Economy, used.ResourceNamePt, used.ResourceLeft, used.ResourceMax = economyOfWord(f.Economy), f.ResourceName, f.ResourceLeft, f.ResourceMax
 	}
 	out.FeatureUsed = used
 	return true
