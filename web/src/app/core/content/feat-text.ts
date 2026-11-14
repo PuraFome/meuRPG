@@ -131,7 +131,7 @@ export function prerequisiteParts(
     parts.push(`proficiência em ${nameOf(p.proficiencyKey)}`);
   }
   if (p.spellcasting) {
-    parts.push('poder conjurar ao menos uma magia');
+    parts.push('conjurar ao menos uma magia');
   }
   parts.push(...whoParts(p, nameOf, lacks));
   if (p.level > 0) {

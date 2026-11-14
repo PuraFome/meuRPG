@@ -122,7 +122,7 @@ describe('FeatEditor (MR-025)', () => {
     const rows = Array.from(el.querySelectorAll('.preview .rows__row')).map(
       (r) => `${r.querySelector('dt')!.textContent}: ${r.querySelector('dd')!.textContent}`,
     );
-    expect(rows[0]).toContain('Pré-requisito: Força 13, ser Humano e nível 4 ou mais');
+    expect(rows[0]).toContain('Pede: Força 13, ser Humano e nível 4 ou mais');
     expect(text(el.querySelector('.preview')!)).toContain('Você prende quem quiser.');
   });
 

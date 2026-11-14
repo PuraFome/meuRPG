@@ -150,7 +150,7 @@ function readFeat(
   optionSide?: (o: TableFeature) => string,
 ): EntryRead {
   const asks = prerequisiteSupport(f.prerequisite, nameOf);
-  const rows: ReadRow[] = [{ label: 'Pré-requisito', value: asks || 'Nenhum' }];
+  const rows: ReadRow[] = [{ label: asks ? 'Pede' : 'Pré-requisito', value: asks || 'Nenhum' }];
   for (const e of f.effects) {
     if (e.type === 'ability_increase' && e.count > 0) {
       const from = e.from.map((k) => nameOf(`ability:${k}`));
@@ -176,7 +176,10 @@ function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName
   const rows: ReadRow[] = [
     { label: 'Conjunto', value: optionSetName(o.set) },
     ...(o.offeredBy === '' ? [] : [{ label: 'Oferecida por', value: offeredByName(o.offeredBy) }]),
-    { label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' },
+    {
+      label: asks.length > 0 ? 'Pede' : 'Pré-requisito',
+      value: asks.length > 0 ? asks.join(', ') : 'Nenhum',
+    },
   ];
   return { rows, sections: [], text: o.descPt, ...entryEffectsPart(o.effects, nameOf) };
 }
