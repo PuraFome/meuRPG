@@ -133,13 +133,32 @@ describe('FeatPicker', () => {
     expect(boxes.map((b) => b.disabled)).toEqual([false, false, true]);
   });
 
-  it('puts the feats the character meets first under "Disponíveis" and the others under "Ainda não cumpre", each with its reason', () => {
+  it('puts the feats the character meets first under "Disponíveis" and the others under "Ainda não disponíveis", each with its reason', () => {
     const el = setup();
     const headings = Array.from(el.querySelectorAll('.group')).map(text);
-    expect(headings).toEqual(['Disponíveis', 'Ainda não cumpre']);
+    expect(headings).toEqual(['Disponíveis', 'Ainda não disponíveis']);
     const lists = Array.from(el.querySelectorAll('.cards'));
     expect(lists.map((l) => l.querySelectorAll('.card').length)).toEqual([2, 1]);
     expect(text(lists[1])).toContain('Precisa de Força 15.');
+  });
+
+  it('offers "Todos" and "Só os que posso (N)": the second hides the feats the character does not qualify for (#580 board 580-04)', () => {
+    const el = setup();
+    const buttons = Array.from(el.querySelectorAll<HTMLButtonElement>('.filter button'));
+    expect(buttons.map(text)).toEqual(['Todos', 'Só os que posso (2)']);
+    expect(buttons.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false']);
+    buttons[1].click();
+    fixture.detectChanges();
+    expect(Array.from(el.querySelectorAll('.group')).map(text)).toEqual(['Disponíveis']);
+    expect(cards(el).length).toBe(2);
+    expect(
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.filter button')).map((b) =>
+        b.getAttribute('aria-pressed'),
+      ),
+    ).toEqual(['false', 'true']);
+    buttons[0].click();
+    fixture.detectChanges();
+    expect(cards(el).length).toBe(3);
   });
 
   it('filters by name with no case and no accents, and says how many were found', () => {
@@ -154,7 +173,7 @@ describe('FeatPicker', () => {
     search.value = 'mestre das';
     search.dispatchEvent(new Event('input'));
     fixture.detectChanges();
-    expect(Array.from(el.querySelectorAll('.group')).map(text)).toEqual(['Ainda não cumpre']);
+    expect(Array.from(el.querySelectorAll('.group')).map(text)).toEqual(['Ainda não disponíveis']);
     expect(text(el.querySelector('[role="status"]')!)).toBe('1 talento encontrado.');
   });
 
