@@ -11,7 +11,7 @@ import { naturalMark } from './natural-mark';
 import { effectTreatedNote } from './combat-log-dice';
 import { luckyText } from './lucky';
 import { LogContext, LogLine } from './combat-log-types';
-import { ofSubject, subject } from './combat-log-words';
+import { ofSubject, subject, the } from './combat-log-words';
 import { upFirst } from '../format/text';
 import { abilityName } from '../effects/ability-choice';
 
@@ -104,8 +104,14 @@ function endedLine(fx: CombatLogEffect, ctx: LogContext): string {
     const caster = fx.targetLabels[0] ?? 'alguém';
     return `${fx.sourceNamePt} ${ofSubject(caster, ctx)} acabou: ${caster} começou outra magia de concentração`;
   }
-  const base = `${fx.sourceNamePt} acabou ${effectTargets(fx, ctx, 'em')}`;
   const why = ENDED_WHY[fx.reason];
+  if (fx.unused) {
+    // An on-hit effect that ended with its hit still waiting; its caster is its only target.
+    const caster = fx.targetLabels[0] ?? 'alguém';
+    const unused = `${upFirst(the(fx.sourceNamePt))} ${ofSubject(caster, ctx)} acabou sem golpe`;
+    return why ? `${unused}: ${why}` : unused;
+  }
+  const base = `${fx.sourceNamePt} acabou ${effectTargets(fx, ctx, 'em')}`;
   return why ? `${base}: ${why}` : base;
 }
 

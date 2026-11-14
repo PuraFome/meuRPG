@@ -14,6 +14,7 @@ import {
 import { article } from '../../../../core/combat/combat-log';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import { criticalHint, criticalTypedHint, fixedParts } from '../../../../core/combat/critical';
+import { inTypedGroup } from '../../../../core/combat/damage-parts';
 import { heldReason } from '../../../../core/combat/reaction-master';
 
 /**
@@ -114,6 +115,15 @@ export function zoneLabel(p: PendingDamage, e: Encounter): string {
   return zone ? `Zona de magia: ${zone.spellNamePt}` : '';
 }
 
+/** The keys of the parts the master may take out: a choosable extra that is not in a typed group (the server refuses those). */
+function removableKeys(p: PendingDamage): Set<string> {
+  const rolls = p.partRolls ?? [];
+  const grouped = new Set(rolls.filter((r) => inTypedGroup(r, rolls)).map((r) => r.partKey));
+  return new Set(
+    (p.parts ?? []).filter((x) => x.choosable && !grouped.has(x.key)).map((x) => x.key),
+  );
+}
+
 /** One pending damage as its card shows it. */
 export function pendingCard(p: PendingDamage, e: Encounter, all: readonly PendingDamage[]) {
   const attacker = e.combatants.find((c) => c.id === p.attackerId);
@@ -124,8 +134,8 @@ export function pendingCard(p: PendingDamage, e: Encounter, all: readonly Pendin
   return {
     p,
     total,
-    /** The extras the master may take out: the ones the player could choose, while they count. */
-    removable: new Set((p.parts ?? []).filter((x) => x.choosable).map((x) => x.key)),
+    /** The extras the master may take out: the ones the player could choose, while they count, and no damage-type sum covers. */
+    removable: removableKeys(p),
     rolls: p.partRolls ?? [],
     steps: p.steps ?? [],
     rolled,

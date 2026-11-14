@@ -5,6 +5,7 @@ import type {
   DiceRoll,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import type { CountedDie, DamagePartRoll } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
+import { groupHolder } from './damage-parts';
 import { modifierText, rollText, treatedFormula, treatedSourceName } from './combat-dice';
 import { listNames } from './conditions';
 import { hasRuleReroll, luckyText } from './lucky';
@@ -27,11 +28,16 @@ export function markedFaces(faces: readonly number[], counted: readonly CountedD
 }
 
 /** "Espada curta 1d6 (4) + 2 = 6": the dice of one part of a damage, with the dice a floor raised marked. */
-export function partLine(p: DamagePartRoll): string {
+export function partLine(p: DamagePartRoll, all: readonly DamagePartRoll[] = []): string {
   const dice = p.diceCount > 0 ? `${p.diceCount}d${p.diceSides}` : '';
   const faces = p.faces.length > 0 ? ` (${markedFaces(p.faces, p.countedDice)})` : '';
   const flat = p.flat !== 0 ? ` ${p.flat > 0 ? '+' : '−'} ${Math.abs(p.flat)}` : '';
   const out = p.counted ? '' : ' — não conta';
+  // The typed sum of a damage type sits on its first part: the others of the group add no sum of their own.
+  const holder = p.flat === 0 ? groupHolder(p, all) : undefined;
+  if (holder) {
+    return `${p.labelPt} ${dice} (somado em ${holder.labelPt})`;
+  }
   return `${p.labelPt} ${dice}${faces}${dice ? flat : flat.trim()} = ${p.sum + p.flat}${out}`.trim();
 }
 
@@ -72,7 +78,7 @@ export function countedNotes(d: CombatLogDamage | undefined): string[] {
   if (!d) {
     return [];
   }
-  const parts = d.parts.filter((p) => p.countedDice.length > 0).map(partLine);
+  const parts = d.parts.filter((p) => p.countedDice.length > 0).map((p) => partLine(p, d.parts));
   return [...parts, ...rolledLine(d), ...countedSources(countedOf(d))];
 }
 

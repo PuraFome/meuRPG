@@ -82,6 +82,7 @@ Opening the scene that is open already with no audience changes nothing, so a se
 `RollSceneCheck` (RN-18): the player rolls with their own living character an action of the open scene.
 The server rolls the d20, or takes the typed d20 (1 to 20); a mode forced by the campaign refuses the other form with `WRONG_DICE_MODE`.
 Total = d20 + the `SceneOptions` bonus, with the advantage rules and the held-roll gate applied (see [Held rolls](held-rolls.md)).
+`spend_favor` gives the roll advantage with the player's Inspiração, before the mode is chosen, and the roll's sources then read "Inspiração" for the roller and the master only ([Inspiração](favor.md#the-checks)).
 `physical` rolls type both faces (`d20_faces`) when the mode has two dice.
 
 - **Attempts.** Each character rolls each action up to its limit (`scene_actions.max_attempts`: 1 by default, 1 to 5, or 0 for unlimited), counting rolls and granted attempts since the last `scene_opened`.

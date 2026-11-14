@@ -1596,19 +1596,51 @@ func (q *Queries) DeleteHitRidersOfPending(ctx context.Context, pendingID *strin
 	return err
 }
 
-const deleteInspirationHold = `-- name: DeleteInspirationHold :exec
-DELETE FROM inspiration_holds WHERE id = $1
+const deleteInspirationHold = `-- name: DeleteInspirationHold :many
+WITH changed AS (
+DELETE FROM inspiration_holds
+WHERE id = $1
+RETURNING id, campaign_id, character_id, favor_spent, answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
 `
 
-func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, deleteInspirationHold, id)
-	return err
+type DeleteInspirationHoldRow struct {
+	CampaignID     string
+	CharacterID    string
+	UnsettledFavor bool
 }
 
-const deleteInspirationHoldsOf = `-- name: DeleteInspirationHoldsOf :exec
+// One hold, answered or not. Says whether it spent the character's Inspiration and never got the roll (no answer yet): that
+// spend goes back. Only hold_forget.go calls it.
+func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) ([]DeleteInspirationHoldRow, error) {
+	rows, err := q.db.Query(ctx, deleteInspirationHold, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteInspirationHoldRow
+	for rows.Next() {
+		var i DeleteInspirationHoldRow
+		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const deleteInspirationHoldsOf = `-- name: DeleteInspirationHoldsOf :many
+WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE (encounter_id = $1 AND combatant_id = $2)
    OR (combatant_id IS NULL AND character_id = $3)
+RETURNING id, campaign_id, character_id, favor_spent, answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
 `
 
 type DeleteInspirationHoldsOfParams struct {
@@ -1617,10 +1649,34 @@ type DeleteInspirationHoldsOfParams struct {
 	CharacterID *string
 }
 
-// Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what).
-func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspirationHoldsOfParams) error {
-	_, err := q.db.Exec(ctx, deleteInspirationHoldsOf, arg.EncounterID, arg.CombatantID, arg.CharacterID)
-	return err
+type DeleteInspirationHoldsOfRow struct {
+	CampaignID     string
+	CharacterID    string
+	UnsettledFavor bool
+}
+
+// Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
+// character's Inspiration and never got the roll (no answer yet): that spend goes back. Only hold_forget.go calls it.
+// It also drops the character's holds outside a combat (combatant_id IS NULL) when its combatant leaves or the combat ends, and those are
+// refunded too.
+func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspirationHoldsOfParams) ([]DeleteInspirationHoldsOfRow, error) {
+	rows, err := q.db.Query(ctx, deleteInspirationHoldsOf, arg.EncounterID, arg.CombatantID, arg.CharacterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteInspirationHoldsOfRow
+	for rows.Next() {
+		var i DeleteInspirationHoldsOfRow
+		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deleteLastingEffect = `-- name: DeleteLastingEffect :exec
@@ -1736,22 +1792,48 @@ func (q *Queries) DeleteOpportunityOffersOfMove(ctx context.Context, moveID stri
 	return err
 }
 
-const deleteOrphanInspirationHolds = `-- name: DeleteOrphanInspirationHolds :exec
+const deleteOrphanInspirationHolds = `-- name: DeleteOrphanInspirationHolds :many
+WITH changed AS (
 DELETE FROM inspiration_holds h
 WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND (h.lucky_index IS NULL OR h.lucky_answer_key IS NOT NULL)
   AND NOT h.stroke_ask
   AND NOT h.reroll_ask
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
+RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key
+)
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
 `
+
+type DeleteOrphanInspirationHoldsRow struct {
+	CampaignID     string
+	CharacterID    string
+	UnsettledFavor bool
+}
 
 // The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
 // A roll held in a combat (round set) has its die on the combatant and is forgotten by the
 // round it was held in (outsideRoll) or when the combat ends (dieToCharacters). A roll whose
 // Lucky question, whose reroll question or whose Stroke of Luck question still waits stays: those questions need no die.
-func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) error {
-	_, err := q.db.Exec(ctx, deleteOrphanInspirationHolds, campaignID)
-	return err
+// Only hold_forget.go calls it.
+func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID string) ([]DeleteOrphanInspirationHoldsRow, error) {
+	rows, err := q.db.Query(ctx, deleteOrphanInspirationHolds, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []DeleteOrphanInspirationHoldsRow
+	for rows.Next() {
+		var i DeleteOrphanInspirationHoldsRow
+		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const deletePendingDamage = `-- name: DeletePendingDamage :exec
@@ -2530,6 +2612,77 @@ type GetInspirationHoldByKeyParams struct {
 
 func (q *Queries) GetInspirationHoldByKey(ctx context.Context, arg GetInspirationHoldByKeyParams) (InspirationHold, error) {
 	row := q.db.QueryRow(ctx, getInspirationHoldByKey, arg.CampaignID, arg.IdempotencyKey)
+	var i InspirationHold
+	err := row.Scan(
+		&i.ID,
+		&i.CampaignID,
+		&i.CharacterID,
+		&i.UserID,
+		&i.Kind,
+		&i.IdempotencyKey,
+		&i.Request,
+		&i.Faces,
+		&i.Modifier,
+		&i.Total,
+		&i.Counted,
+		&i.Physical,
+		&i.AnswerKey,
+		&i.CreatedAt,
+		&i.Round,
+		&i.LuckyIndex,
+		&i.LuckyAnswerKey,
+		&i.LuckyTo,
+		&i.CombatantID,
+		&i.EncounterID,
+		&i.WindowHold,
+		&i.IndomitableAsk,
+		&i.IndomitableFailed,
+		&i.IndomitableAnswerKey,
+		&i.IndomitableFrom,
+		&i.IndomitableTo,
+		&i.DieAnswerKey,
+		&i.DieUsed,
+		&i.StrokeAsk,
+		&i.StrokeFailed,
+		&i.StrokeAnswerKey,
+		&i.StrokeFrom,
+		&i.RerollAsk,
+		&i.RerollIndex,
+		&i.RerollAtMost,
+		&i.RerollResource,
+		&i.RerollCost,
+		&i.RerollSource,
+		&i.RerollAnswerKey,
+		&i.RerollFrom,
+		&i.RerollTo,
+		&i.CountedBy,
+		&i.FavorSpent,
+	)
+	return i, err
+}
+
+const getInspirationHoldOfRoller = `-- name: GetInspirationHoldOfRoller :one
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent FROM inspiration_holds
+WHERE campaign_id = $1 AND idempotency_key = $2
+  AND (character_id = $3 OR combatant_id = $4)
+`
+
+type GetInspirationHoldOfRollerParams struct {
+	CampaignID     string
+	IdempotencyKey string
+	CharacterID    *string
+	CombatantID    *string
+}
+
+// The hold a roller made under a key. The key is the request's, and two members of one group check send the same one: the hold
+// is the roller's own, found by its character or by its combatant. A NULL parameter matches nothing.
+func (q *Queries) GetInspirationHoldOfRoller(ctx context.Context, arg GetInspirationHoldOfRollerParams) (InspirationHold, error) {
+	row := q.db.QueryRow(ctx, getInspirationHoldOfRoller,
+		arg.CampaignID,
+		arg.IdempotencyKey,
+		arg.CharacterID,
+		arg.CombatantID,
+	)
 	var i InspirationHold
 	err := row.Scan(
 		&i.ID,
@@ -3582,6 +3735,23 @@ func (q *Queries) GetTrapDamageBySettleKey(ctx context.Context, settleKey *strin
 	return i, err
 }
 
+const hasCharacterFavor = `-- name: HasCharacterFavor :one
+SELECT EXISTS (SELECT 1 FROM character_favor WHERE character_id = $1 AND campaign_id = $2)
+`
+
+type HasCharacterFavorParams struct {
+	CharacterID string
+	CampaignID  string
+}
+
+// Says the character has the Inspiration, without taking it: a roll a reaction window holds is checked against it, and the replay spends it.
+func (q *Queries) HasCharacterFavor(ctx context.Context, arg HasCharacterFavorParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasCharacterFavor, arg.CharacterID, arg.CampaignID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const hasLongRestInSession = `-- name: HasLongRestInSession :one
 SELECT EXISTS (
     SELECT 1 FROM session_events
@@ -4565,8 +4735,8 @@ func (q *Queries) InsertImageViewer(ctx context.Context, arg InsertImageViewerPa
 }
 
 const insertInspirationHold = `-- name: InsertInspirationHold :one
-INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $27, $28, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
+INSERT INTO inspiration_holds (campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, created_at, round, lucky_index, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, stroke_ask, stroke_failed, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, counted_by, favor_spent)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $28, $29, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
 RETURNING id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent
 `
 
@@ -4597,6 +4767,7 @@ type InsertInspirationHoldParams struct {
 	RerollCost        int32
 	RerollSource      string
 	CountedBy         string
+	FavorSpent        bool
 	CombatantID       *string
 	EncounterID       *string
 }
@@ -4604,7 +4775,7 @@ type InsertInspirationHoldParams struct {
 // A d20 roll that waits for the answer about a Bardic Inspiration die, or for the Lucky question
 // of a d20 that shows a 1 (lucky_index, NULL without one). A roll held in a combat also names its
 // combatant and its combat, which own the hold (00255); window_hold is the weapon attack a reaction
-// window kept.
+// window kept. favor_spent says the roll was made with the roller's Inspiration, which a retry or the answer reads.
 func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirationHoldParams) (InspirationHold, error) {
 	row := q.db.QueryRow(ctx, insertInspirationHold,
 		arg.CampaignID,
@@ -4633,6 +4804,7 @@ func (q *Queries) InsertInspirationHold(ctx context.Context, arg InsertInspirati
 		arg.RerollCost,
 		arg.RerollSource,
 		arg.CountedBy,
+		arg.FavorSpent,
 		arg.CombatantID,
 		arg.EncounterID,
 	)
@@ -11388,6 +11560,23 @@ func (q *Queries) SkipPendingOpportunityOffersOfMover(ctx context.Context, arg S
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const spendCharacterFavor = `-- name: SpendCharacterFavor :one
+DELETE FROM character_favor WHERE character_id = $1 AND campaign_id = $2 RETURNING character_id
+`
+
+type SpendCharacterFavorParams struct {
+	CharacterID string
+	CampaignID  string
+}
+
+// Takes the character's Inspiration; no row comes back when it has none, so of two spends only one wins.
+func (q *Queries) SpendCharacterFavor(ctx context.Context, arg SpendCharacterFavorParams) (string, error) {
+	row := q.db.QueryRow(ctx, spendCharacterFavor, arg.CharacterID, arg.CampaignID)
+	var character_id string
+	err := row.Scan(&character_id)
+	return character_id, err
 }
 
 const syncNPCCreatureSpent = `-- name: SyncNPCCreatureSpent :exec
