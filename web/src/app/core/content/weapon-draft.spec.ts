@@ -5,7 +5,8 @@ import { TableWeaponSchema } from '../../../gen/meurpg/rules/v1/table_content_pb
 import {
   draftToWeapon,
   emptyWeapon,
-  lockedProperties,
+  lockNote,
+  propertyLocks,
   weaponToDraft,
   type WeaponDraft,
 } from './weapon-draft';
@@ -85,15 +86,25 @@ describe('weapon draft', () => {
   });
 
   describe('locked properties (board 580-11)', () => {
-    it('locks reach and loading on the wrong side of the melee/ranged line', () => {
-      expect(lockedProperties(false)).toContain('weapon-property:ammunition');
-      expect(lockedProperties(false)).toContain('weapon-property:loading');
-      expect(lockedProperties(true)).toContain('weapon-property:reach');
+    const keys = (ranged: boolean, props: string[] = []) =>
+      propertyLocks(ranged, props).map((l) => l.key.replace('weapon-property:', ''));
+
+    it('always locks Especial: a table weapon has no rule text to give it', () => {
+      expect(keys(false)).toEqual(['special']);
     });
 
-    it('never locks the ones both kinds may carry', () => {
-      expect(lockedProperties(true)).not.toContain('weapon-property:light');
-      expect(lockedProperties(false)).not.toContain('weapon-property:light');
+    it('locks Alcance on a ranged weapon, and Recarga while it has no Munição', () => {
+      expect(keys(true)).toEqual(['reach', 'loading', 'special']);
+      expect(keys(true, ['weapon-property:ammunition'])).toEqual(['reach', 'special']);
+    });
+
+    it('says why in one line: a sentence for a single lock, "Nome: motivo" for several', () => {
+      expect(lockNote(propertyLocks(false, []))).toBe(
+        'Especial pede um texto de regra, que a arma da mesa não tem.',
+      );
+      expect(lockNote(propertyLocks(true, []))).toBe(
+        'Alcance: só corpo a corpo · Recarga: pede Munição · Especial: pede um texto de regra, que a arma da mesa não tem.',
+      );
     });
   });
 });

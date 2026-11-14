@@ -8,17 +8,9 @@ describe('the property combinations a weapon never has (#580)', () => {
   });
   it.each([
     [false, p('loading'), 'Recarga só vale para uma arma com Munição.'],
-    [
-      false,
-      p('ammunition'),
-      'Munição é de arma à distância: uma arma corpo a corpo arremessada usa Arremesso.',
-    ],
-    [true, p('reach'), 'Alcance é de arma corpo a corpo.'],
-    [
-      false,
-      p('two-handed', 'versatile'),
-      'Versátil já diz que a arma vai em uma ou duas mãos: tire Duas mãos ou tire Versátil.',
-    ],
+    [false, p('ammunition'), 'Munição só numa arma à distância.'],
+    [true, p('reach'), 'Alcance só numa arma corpo a corpo.'],
+    [false, p('two-handed', 'versatile'), 'Uma arma de Duas mãos não é Versátil.'],
     [
       false,
       p('two-handed', 'light'),

@@ -69,9 +69,38 @@ export function emptyWeapon(): WeaponDraft {
   };
 }
 
-/** The properties the weapon's use leaves out: ammunition and loading are a ranged weapon's, reach a melee one's. */
-export function lockedProperties(ranged: boolean): readonly string[] {
-  return ranged ? [REACH] : [AMMUNITION, LOADING];
+export interface PropertyLock {
+  key: string;
+  name: string;
+  /** Why it is shut, said after the name. */
+  reason: string;
+}
+
+const SPECIAL = `${PREFIX}special`;
+
+/** The properties this weapon cannot take now, with the reason (board 580-11): they stay on screen, shut. */
+export function propertyLocks(ranged: boolean, properties: readonly string[]): PropertyLock[] {
+  const locks: PropertyLock[] = [];
+  if (ranged) {
+    locks.push({ key: REACH, name: 'Alcance', reason: 'só corpo a corpo' });
+    if (!properties.includes(AMMUNITION)) {
+      locks.push({ key: LOADING, name: 'Recarga', reason: 'pede Munição' });
+    }
+  }
+  locks.push({
+    key: SPECIAL,
+    name: 'Especial',
+    reason: 'pede um texto de regra, que a arma da mesa não tem',
+  });
+  return locks;
+}
+
+/** The one line under the chips that says why each shut one is shut. */
+export function lockNote(locks: readonly PropertyLock[]): string {
+  if (locks.length === 1) {
+    return `${locks[0].name} ${locks[0].reason}.`;
+  }
+  return `${locks.map((l) => `${l.name}: ${l.reason}`).join(' · ')}.`;
 }
 
 /** The number a field's text holds, with a comma or a point: empty is 0, text that is no non-negative number is NaN. */
@@ -147,13 +176,13 @@ export function propertyClash(ranged: boolean, properties: readonly string[]): s
     return 'Recarga só vale para uma arma com Munição.';
   }
   if (has('ammunition') && !ranged) {
-    return 'Munição é de arma à distância: uma arma corpo a corpo arremessada usa Arremesso.';
+    return 'Munição só numa arma à distância.';
   }
   if (has('reach') && ranged) {
-    return 'Alcance é de arma corpo a corpo.';
+    return 'Alcance só numa arma corpo a corpo.';
   }
   if (has('two-handed') && has('versatile')) {
-    return 'Versátil já diz que a arma vai em uma ou duas mãos: tire Duas mãos ou tire Versátil.';
+    return 'Uma arma de Duas mãos não é Versátil.';
   }
   if (has('two-handed') && has('light')) {
     return 'Leve é de arma usada em cada mão: ela não pode exigir Duas mãos.';
