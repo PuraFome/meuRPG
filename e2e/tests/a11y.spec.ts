@@ -7153,7 +7153,7 @@ async function scanPowerAttackEditor(browser: Browser, colorScheme: 'light' | 'd
       await expect(m.getByLabel('Nome do talento')).toHaveValue('Disparo Firme');
       await expect(m.getByRole('radio', { name: /Só à distância/ })).toBeChecked();
       await expect(m.getByRole('checkbox', { name: 'Só armas em que o personagem tem proficiência' })).not.toBeChecked();
-      await expect(m.getByRole('status').filter({ hasText: 'Vale para:' })).toContainText('Cada troca gasta 1 uso de Folego Do Atirador.');
+      await expect(m.getByRole('status').filter({ hasText: 'Vale para:' })).toContainText('Cada troca gasta 1 uso de Disparo Firme.');
       await expect(m.getByLabel('Gasta um uso de', { exact: true })).toHaveValue('folego_do_atirador');
       await m.getByRole('button', { name: /Mais opções/ }).first().click();
       await expect(m.getByLabel('Quando vale', { exact: true })).toHaveAttribute('placeholder', 'Sempre');

@@ -26,6 +26,8 @@ test(
     const sheet: Record<string, unknown> = { ...pensantusCasting, weaponKeys: ['equipment:dagger', 'equipment:shortbow'] };
     const table = await tableForCombat(m, p, `Próximo golpe ${Date.now()}`, true, true, {
       sheet,
+      // The goblin lives through the hit: an NPC the hit kills rolls no save of the effect (#577), and this spec reads that line.
+      goblinHitPoints: 60,
       before: async (id, owner) => {
         // Public: the save of a spell whose effect only its owner sees is a line of the master's alone (the server's effectHiddenFrom).
         const frost = await createEntryRPC(owner, id, 'tableSpell', hitSpellBody('Geada no Punho', {}, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_PUBLIC', modifiers: [hitModifier()] } }));
