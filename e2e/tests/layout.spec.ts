@@ -1,6 +1,12 @@
+import { createRequire } from 'node:module';
+import * as path from 'node:path';
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
 import { expectAligned, layoutIssues } from './layout';
+
+// The gear row's stylesheet is compiled with the web app's own sass.
+const webDir = path.join(__dirname, '..', '..', 'web');
+const { compile } = createRequire(path.join(webDir, 'package.json'))('sass') as { compile: (file: string) => { css: string } };
 
 // The one-line and chip checks of layout.ts (8, 6, 12), run on small pages that carry the markup and the layout rules of the
 // action row, the gear row's marks group and the combat column's item modifiers, in a column as narrow as a phone's.
@@ -94,4 +100,61 @@ test('a legenda dos chips quebra por itens inteiros: uma palavra solta do seu ch
   await expectAligned(page, 'Legenda dos chips, itens inteiros');
   await page.setContent(`<style>${css}</style>${legend('width: 90px')}`);
   expect((await layoutIssues(page, 'Legenda quebrada')).join('\n')).toMatch(/legend-broken .*a legend wraps by whole items/);
+});
+
+/**
+ * A combat gear row of the real `gear-list` stylesheet (compiled here, the host as a box), with its markup: the kind icon, the name, one mark,
+ * the "⋮" and an outlined button that carries its cost. The list is as wide as the fold is on a phone and up.
+ */
+function gearRow(listWidth: number, name: string, cost: string): string {
+  const css = compile(path.join(webDir, 'src', 'app', 'shared', 'gear-list', 'gear-list.scss')).css.replace(/:host/g, '.gear-host');
+  return `<style>:root { --mr-space-1: 4px; --mr-space-2: 8px; --mr-space-3: 12px; --mr-font-14: 14px; --mr-font-18: 18px; --mr-rule: #ccc; } body { margin: 0; font: 16px/22px sans-serif; } .mat-icon { display: inline-block; } .gear-row__button { box-sizing: border-box; border: 1px solid #555; background: none; font: inherit; } ${css}</style>
+    <div class="gear-host" style="width: ${listWidth}px">
+      <ul class="gear-rows" data-equal-width=".gear-row__button">
+        <li class="gear-row" data-chip-row data-one-line>
+          <span class="gear-row__main gear-row__main--more">
+            <span class="mat-icon gear-row__icon">x</span>
+            <span class="gear-row__body">
+              <span class="gear-row__name" data-chip-ref>${name}</span>
+              <span class="gear-row__marks" data-wrap-group><span class="chip gear-row__att" data-chip></span></span>
+            </span>
+            <button type="button" class="gear-row__more">⋮</button>
+          </span>
+          <button type="button" class="gear-row__button">Guardar<span class="gear-row__cost"><span class="mat-icon">b</span>${cost}</span></button>
+        </li>
+      </ul>
+    </div>`;
+}
+
+test('a linha de equipamento do combate guarda 96px para o nome, ao lado do "⋮" e do botão com o seu custo, do celular em diante', async ({ page }) => {
+  for (const width of [236, 270, 290, 306, 400, 768]) {
+    await page.setContent(gearRow(width, 'Espada longa dos ventos do norte', 'grátis'));
+    const name = (await page.locator('.gear-row__name').boundingBox())!;
+    expect(name.width, `the name at ${width}px`).toBeGreaterThanOrEqual(96);
+    await expectAligned(page, `Linha de equipamento do combate, lista de ${width}px`);
+  }
+});
+
+/** A spell row of the real `action-row` stylesheet (compiled here, the host as a box): the name and its economy tag, the "?" and the button. */
+function actionRow(rowWidth: number): string {
+  const css = compile(path.join(webDir, 'src', 'app', 'pages', 'live-session', 'combat', 'action-groups', 'action-row.scss')).css.replace(/:host\(([^)]*)\)/g, '.row-host$1').replace(/:host/g, '.row-host');
+  return `<style>:root { --mr-font-14: 14px; --mr-font-15: 15px; --mr-font-21: 21px; } body { margin: 0; font: 16px/22px sans-serif; } ${css}</style>
+    <div class="row-host row--help" style="width: ${rowWidth}px">
+      <div class="row__text">
+        <span class="row__head row__head--one" data-chip-row data-one-line>
+          <span class="row__name" data-chip-ref>Raio de Fogo</span>
+          <span class="row__tags" data-wrap-group><span class="row__econ">Ação</span></span>
+        </span>
+      </div>
+      <button type="button" class="help" style="grid-column: 2; width: 44px">?</button>
+      <button type="button" class="row__btn">Conjurar</button>
+    </div>`;
+}
+
+test('a linha de ação com o "?" e o botão guarda 96px para o nome na largura de um celular de 320', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.setContent(actionRow(262));
+  const name = (await page.locator('.row__name').boundingBox())!;
+  expect(name.width, 'the name beside the "?" and the button').toBeGreaterThanOrEqual(96);
+  await expectAligned(page, 'Linha de ação com o "?", a 320px');
 });

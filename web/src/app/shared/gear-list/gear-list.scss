@@ -30,6 +30,7 @@
 // The list is a two-column grid, the row's words and the button, so the buttons of one list share a width.
 :host {
   display: block;
+  container-type: inline-size;
 }
 
 .gear-rows {
@@ -180,6 +181,15 @@
     height: var(--mr-font-14);
     font-size: var(--mr-font-14);
     margin: 0 var(--mr-space-1) 0 0;
+  }
+}
+
+// Where the line cannot hold the name's 96px beside the "⋮" and the whole button, the cost goes under the verb, inside the button.
+@container (max-width: 290px) {
+  .gear-row__cost {
+    display: flex;
+    justify-content: center;
+    margin-inline-start: 0;
   }
 }
 

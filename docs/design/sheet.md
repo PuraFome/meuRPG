@@ -24,6 +24,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   It is solid ("Bônus mágico +1, já somado") when the bonus is added to the numbers now, dashed ("Bônus mágico +1, não conta agora") when it is not.
   The armor and shield rows show no armor class of their own; the "Equipado" head has it.
   The button says only its verb.
+  In the combat's fold the cost goes under the verb when the list is under 290 px wide, so the name keeps its 96 px.
   The armor class the server says the change gives is in its accessible name, which starts with the verb and ends with the piece ("Guardar CA 16 Escudo").
   A two-handed weapon in the pack with the shield in hand has the ⚠ and a hidden ", Sacar desativa o escudo: CA 21 → 18" on its row.
   The combat's fold has no hidden text there: its own warning line says it.

@@ -8,6 +8,13 @@
   padding: 12px 0;
 }
 
+// On a phone's width the name keeps its 96px beside the "?" and the button: the gaps between the three columns are tighter.
+@media (max-width: 359px) {
+  :host {
+    column-gap: 4px;
+  }
+}
+
 .row__text {
   display: flex;
   grid-column: 1 / 3;
