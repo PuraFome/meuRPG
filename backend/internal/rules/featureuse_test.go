@@ -124,6 +124,35 @@ func TestFeatureUseShapes(t *testing.T) {
 		{"a use beside the action's own temporary hit points", plain(func(e *Effect) { e.TempHP = "2" }), ".use", ReasonValue},
 		{"a use whose text names a standard action", plain(func(e *Effect) { e.TextPT = "Desengajar como ação bônus." }), ".use", ReasonValue},
 	}...)
+	// A trigger asks the owner's player to use a reaction feature when an enemy starts its turn near, or comes near.
+	react := func(mut func(e *Effect)) []Effect {
+		e := Effect{Type: "grant_action", Economy: EconomyReaction, Use: &FeatureUse{
+			Targets: &FeatureTargets{Min: 1, Max: 1, Who: FeatureWhoEnemy, RangeFt: 10},
+			Trigger: &FeatureTrigger{Kinds: []string{FeatureTriggerStartsTurn, FeatureTriggerMoves}, RangeFt: 10},
+		}}
+		mut(&e)
+		return []Effect{e}
+	}
+	cases = append(cases, []struct {
+		name       string
+		effects    []Effect
+		field, why string
+	}{
+		{"a trigger on a reaction", react(func(*Effect) {}), "", ""},
+		{"a trigger of one kind", react(func(e *Effect) { e.Use.Trigger.Kinds = []string{FeatureTriggerMoves} }), "", ""},
+		{"a trigger alone", react(func(e *Effect) { e.Use.Targets = nil }), "", ""},
+		{"an unknown trigger kind", react(func(e *Effect) { e.Use.Trigger.Kinds = []string{FeatureTriggerMoves, "unknown"} }), ".use.trigger.kinds[1]", ReasonValue},
+		{"a made-up trigger kind", react(func(e *Effect) { e.Use.Trigger.Kinds = []string{"enemy_attacks"} }), ".use.trigger.kinds[0]", ReasonValue},
+		{"a trigger with no kind", react(func(e *Effect) { e.Use.Trigger.Kinds = nil }), ".use.trigger.kinds", ReasonValue},
+		{"a trigger kind twice", react(func(e *Effect) { e.Use.Trigger.Kinds = []string{FeatureTriggerMoves, FeatureTriggerMoves} }), ".use.trigger.kinds[1]", ReasonValue},
+		{"a trigger of three kinds", react(func(e *Effect) {
+			e.Use.Trigger.Kinds = []string{FeatureTriggerMoves, FeatureTriggerStartsTurn, FeatureTriggerMoves}
+		}), ".use.trigger.kinds", ReasonLimit},
+		{"a trigger with no reach", react(func(e *Effect) { e.Use.Trigger.RangeFt = 0 }), ".use.trigger.range_ft", ReasonValue},
+		{"a trigger of a reach above 300", react(func(e *Effect) { e.Use.Trigger.RangeFt = 301 }), ".use.trigger.range_ft", ReasonValue},
+		{"a trigger on a bonus action", react(func(e *Effect) { e.Economy = EconomyBonusAction }), ".use.trigger", ReasonValue},
+		{"a trigger on an action", react(func(e *Effect) { e.Economy = EconomyAction }), ".use.trigger", ReasonValue},
+	}...)
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -136,6 +165,27 @@ func TestFeatureUseShapes(t *testing.T) {
 			}
 			violationAt(t, err, "feats[0].effects[0]"+tc.field, tc.why)
 		})
+	}
+}
+
+// TestAFeatureTriggerDerivesForTheCharacter: the trigger the table declares is on the action the character gets.
+func TestAFeatureTriggerDerivesForTheCharacter(t *testing.T) {
+	t.Parallel()
+	srd := loadForTest(t)
+	c, err := srd.With(featWith(useFeat, Effect{Type: "grant_action", Economy: EconomyReaction, Use: &FeatureUse{
+		LimitScope: UseScopeCombat, LimitUses: "2",
+		Targets: &FeatureTargets{Min: 1, Max: 1, Who: FeatureWhoEnemy, RangeFt: 10},
+		Trigger: &FeatureTrigger{Kinds: []string{FeatureTriggerStartsTurn, FeatureTriggerMoves}, RangeFt: 10},
+	}}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := pensantus()
+	b.Feats = append(b.Feats, useFeat)
+	u := grantedActionOf(t, Derive(b, c), useFeat).Use
+	want := FeatureTrigger{Kinds: []string{FeatureTriggerStartsTurn, FeatureTriggerMoves}, RangeFt: 10}
+	if u == nil || u.Trigger == nil || u.Trigger.RangeFt != want.RangeFt || len(u.Trigger.Kinds) != 2 || u.Trigger.Kinds[0] != want.Kinds[0] || u.Trigger.Kinds[1] != want.Kinds[1] {
+		t.Errorf("Use.Trigger = %+v, want %+v", u, want)
 	}
 }
 

@@ -6720,6 +6720,13 @@ enum ReactionKind {
   // a held spell (as CastSpell, or RollAttack for a spell attack cantrip); a move is made with MoveCombatant while the
   // window is open, and AnswerReaction USE refuses it.
   REACTION_KIND_READIED = 19;
+  // A reaction feature that declares a `use.trigger` (a table feature, FeatureService.UseFeature): an enemy started its
+  // turn within the reach, or moved to within it, and the owner may use the feature on it now, or not use it. The window
+  // is the owner's player's, the master's for a hidden creature (the player reads nothing). The reactor and the
+  // master read, in `trigger`, who it was (`actor_id`, `actor_label`), the feature (`action_key`, `action_name_pt`),
+  // the `distance_ft` and what happened (`feature_trigger`). AnswerReaction USE runs the feature as a reaction on that
+  // creature (or on `creature_ids`, which the feature's own targets check); PASS leaves everything unspent.
+  REACTION_KIND_FEATURE = 21;
 }
 
 enum ReactionWindowStatus {
@@ -6866,6 +6873,8 @@ message ReactionTrigger {
   // The saving throw of a Hellish Rebuke's aggressor (the master's roll) and its bonus.
   optional int32 save_dc = 18;
   optional int32 save_bonus = 19;
+  // A FEATURE window: what happened. Also sent to the reactor's player, who sees the creature (RN-10).
+  meurpg.rules.v1.FeatureTriggerKind feature_trigger = 20;
 }
 
 // SlotEffect is what a slot does to a Counterspell, read by the master.

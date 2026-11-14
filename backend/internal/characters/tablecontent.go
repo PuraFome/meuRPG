@@ -501,6 +501,17 @@ func featureUseOf(m *rulesv1.FeatureUse) *rules.FeatureUse {
 	if a := m.GetApplies(); a != nil {
 		u.Applies = &rules.FeatureApplies{Heal: a.GetHeal(), TempHP: a.GetTempHp(), Effect: tableSpellEffectOf(a.GetEffect()), EffectRounds: int(a.GetEffectRounds())}
 	}
+	if t := m.GetTrigger(); t != nil {
+		u.Trigger = &rules.FeatureTrigger{RangeFt: int(t.GetRangeFt())}
+		for _, k := range t.GetKinds() {
+			// Every kind is a moment: the unspecified one is "unknown" too, which the rules refuse at its place.
+			word, ok := featureTriggerKindOf[k]
+			if !ok {
+				word = "unknown"
+			}
+			u.Trigger.Kinds = append(u.Trigger.Kinds, word)
+		}
+	}
 	return u
 }
 
@@ -580,6 +591,10 @@ var (
 		rulesv1.UseScope_USE_SCOPE_TURN:   rules.UseScopeTurn,
 		rulesv1.UseScope_USE_SCOPE_ROUND:  rules.UseScopeRound,
 		rulesv1.UseScope_USE_SCOPE_COMBAT: rules.UseScopeCombat,
+	}
+	featureTriggerKindOf = map[rulesv1.FeatureTriggerKind]string{
+		rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_STARTS_TURN_WITHIN: rules.FeatureTriggerStartsTurn,
+		rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_MOVES_WITHIN:       rules.FeatureTriggerMoves,
 	}
 	featureWhoOf = map[rulesv1.FeatureTargetWho]string{
 		rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_SELF:  rules.FeatureWhoSelf,

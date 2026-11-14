@@ -2698,6 +2698,15 @@ enum UseScope {
   USE_SCOPE_COMBAT = 3;
 }
 
+// FeatureTriggerKind is what a reaction feature waits for to ask its player (FeatureTrigger).
+enum FeatureTriggerKind {
+  FEATURE_TRIGGER_KIND_UNSPECIFIED = 0;
+  // An enemy of the user starts its turn within `range_ft` of the user.
+  FEATURE_TRIGGER_KIND_ENEMY_STARTS_TURN_WITHIN = 1;
+  // An enemy of the user moves to a square within `range_ft` of the user, from one outside it.
+  FEATURE_TRIGGER_KIND_ENEMY_MOVES_WITHIN = 2;
+}
+
 // FeatureTargetWho says whom a feature's use may be aimed at.
 enum FeatureTargetWho {
   FEATURE_TARGET_WHO_UNSPECIFIED = 0;

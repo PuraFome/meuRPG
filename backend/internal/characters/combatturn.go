@@ -253,6 +253,9 @@ func featureUseOfAction(u *rules.ActionUse) *link.FeatureUse {
 	for _, c := range u.Choices {
 		out.Choices = append(out.Choices, link.FeatureChoice{Key: c.Key, TextPT: c.TextPT})
 	}
+	if t := u.Trigger; t != nil {
+		out.Trigger = &link.FeatureTrigger{Kinds: slices.Clone(t.Kinds), RangeFt: t.RangeFt}
+	}
 	if h := u.Result.Heal; h != nil {
 		out.Heal = &link.Dice{Count: h.Count, Sides: h.Sides, Bonus: h.Bonus}
 	}

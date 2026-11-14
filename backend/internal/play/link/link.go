@@ -535,6 +535,15 @@ type FeatureUse struct {
 	Heal                                *Dice
 	TempHP, EffectRounds                int
 	HasEffect                           bool
+	// Trigger is what makes the app ask the player to use a reaction feature; nil for a feature used from the sheet only.
+	Trigger *FeatureTrigger
+}
+
+// FeatureTrigger is the moments (rules.FeatureTriggerStartsTurn, rules.FeatureTriggerMoves) a reaction feature waits for and
+// the reach in feet from its owner.
+type FeatureTrigger struct {
+	Kinds   []string
+	RangeFt int
 }
 
 // FeatureChoice is one option of a use: the key the server checks and the label the player reads.
