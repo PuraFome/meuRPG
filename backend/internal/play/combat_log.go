@@ -1296,6 +1296,9 @@ func (e *logEntry) spellRiderKey(c *logViewing, out *playv1.CombatLogEntry, r *r
 	out.KeyNamePt = names(e.ev.Key)
 	if hidden {
 		out.Key = ""
+		if out.HitRider.GetDurationText() == durationSpellEndTx { // "the spell" tells the reader that a spell is behind the line
+			out.HitRider.DurationText = durationEffectEndTx
+		}
 	}
 }
 

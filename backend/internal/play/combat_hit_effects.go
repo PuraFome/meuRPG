@@ -357,10 +357,17 @@ func hitConditionText(names func(string) string, conds []string) string {
 	return strings.Join(out, ", ")
 }
 
+// The words of how long the conditions of a failed save last when they hold as long as the spell; the neutral words are
+// the ones a reader reads when the effect's source is hidden from them (RN-10).
+const (
+	durationSpellEndTx  = "até o fim da magia"
+	durationEffectEndTx = "até o fim do efeito"
+)
+
 // hitConditionDuration is how long the conditions of a failed save last, in the words of the line of the save.
 func hitConditionDuration(mod rules.EffectModifier) string {
 	if mod.ConditionDuration == rules.ConditionDurationSpellEnd {
-		return "até o fim da magia"
+		return durationSpellEndTx
 	}
 	return "até o fim do próximo turno dele"
 }

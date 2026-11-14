@@ -121,6 +121,12 @@ func TestRN10_TheSpellSaveLineKeepsItsTextFromOtherPlayers(t *testing.T) {
 			if len(lines) != 1 || lines[0].GetKeyNamePt() != tc.spell || lines[0].GetHitRider().GetConditionNamePt() == "" {
 				t.Fatalf("the target's player reads %v, want the spell %q and the condition", lines, tc.spell)
 			}
+			if got := lines[0].GetHitRider().GetDurationText(); tc.spell == otherSourceTx && (got == "" || strings.Contains(got, "magia")) {
+				t.Errorf("the target's player reads the duration %q of a hidden effect, want neutral words that do not say it is a spell", got)
+			}
+			if got := lines[0].GetHitRider().GetDurationText(); tc.spell != otherSourceTx && got != untilSpellEndText {
+				t.Errorf("the target's player reads the duration %q of a public effect, want %q", got, untilSpellEndText)
+			}
 			if tc.spell == otherSourceTx && lines[0].GetKey() != "" {
 				t.Errorf("the target's player reads the key %q of a hidden effect", lines[0].GetKey())
 			}
