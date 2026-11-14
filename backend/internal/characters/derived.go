@@ -117,6 +117,7 @@ func derivedNumbersToProto(d rules.Derived) *rulesv1.DerivedSheet {
 		ArmorClassDescription: d.ArmorClassDescription,
 		ShieldIdle:            d.ShieldIdle,
 		ItemModifiers:         itemModifiersOf(d.ItemModifiers),
+		DailyChoices:          dailyChoicesOf(d.DailyChoices),
 		Size:                  d.Size,
 		HitPointsMax:          i32(max(d.HitPointsMax, 1)),
 		HitPointsFromEffects:  i32(d.HitPointsFromEffects),
@@ -146,7 +147,7 @@ func savingThrowToProto(st rules.SavingThrow) *rulesv1.SavingThrow {
 
 func derivedSkillToProto(sk rules.Skill) *rulesv1.DerivedSkill {
 	return &rulesv1.DerivedSkill{
-		Key: sk.Key, NamePt: sk.NamePT, Ability: abilityToProto[sk.Ability], Proficiency: proficiencyToProto[sk.Proficiency], Bonus: i32(sk.Bonus),
+		Key: sk.Key, NamePt: sk.NamePT, Ability: abilityToProto[sk.Ability], Proficiency: proficiencyToProto[sk.Proficiency], Bonus: i32(sk.Bonus), UntilRest: sk.UntilRest,
 	}
 }
 
@@ -582,6 +583,15 @@ func itemModifiersOf(in []rules.ItemModifier) []*rulesv1.ItemModifier {
 		out = append(out, &rulesv1.ItemModifier{
 			Target: m.Target, Value: i32(m.Value), SourceKey: m.SourceKey, SourceNamePt: m.SourceNamePT, Counts: m.Counts, ReasonPt: m.ReasonPT,
 		})
+	}
+	return out
+}
+
+// dailyChoicesOf is the wire form of Derived.DailyChoices.
+func dailyChoicesOf(in []rules.DailyChoice) []*rulesv1.DailyChoice {
+	out := make([]*rulesv1.DailyChoice, len(in))
+	for i, c := range in {
+		out[i] = &rulesv1.DailyChoice{Id: c.ID, OwnerNamePt: c.OwnerNamePT, Kind: c.Kind, UntilRest: c.UntilRest, Options: c.Options, Picked: c.Picked}
 	}
 	return out
 }
