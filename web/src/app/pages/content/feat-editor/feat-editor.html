@@ -77,54 +77,7 @@
         <app-search-pick label="Não pode ter" placeholder="Procurar traço, característica ou talento" [options]="lackSearch()" [groups]="lackGroups" [chips]="lackChipList()" path="table_feat.prerequisite.lacks_feature_key" [issues]="issuesOf('table_feat.prerequisite.lacks_feature_key')" hint="Quem já tem isto não pode pegar o talento; quem ganhar depois fica com um aviso na ficha." (added)="patch({ lacksFeatureKey: $event })" (removed)="patch({ lacksFeatureKey: '' })" />
         <app-check-row label="Pode conjurar ao menos uma magia" [checked]="d.spellcasting" path="table_feat.prerequisite.spellcasting" (toggled)="patch({ spellcasting: $event })" />
       </details>
-      <div class="asks-head">
-        <h3 class="sub">Classe, pacto, magia e opções</h3>
-        <span class="hint">O jogador precisa de todos</span>
-      </div>
-      @for (a of askRows(); track a.kind) {
-        <div class="ask">
-          <span class="ask__name"><mat-icon aria-hidden="true">{{ a.icon }}</mat-icon>{{ a.label }}</span>
-          <div class="ask__body">
-            @switch (a.kind) {
-              @case ('class') {
-                <div class="grid grid--2">
-                  <app-select-field label="Classe" [options]="classOptions()" [value]="d.classKey" path="table_feat.prerequisite.class_level.class_key" [issues]="issuesOf('table_feat.prerequisite.class_level.class_key')" (valueChange)="patch({ classKey: $event })" />
-                  <app-text-field label="Nível mínimo (1 a 20)" [value]="d.classLevel" inputmode="numeric" path="table_feat.prerequisite.class_level.level" [issues]="issuesOf('table_feat.prerequisite.class_level.level')" (valueChange)="patch({ classLevel: $event })" />
-                </div>
-                @for (m of issuesOf('table_feat.prerequisite.class_level'); track m) {
-                  <p class="inline-issue" role="note">{{ m }}</p>
-                }
-              }
-              @case ('pact') {
-                <app-select-field label="Dádiva" [options]="pactOptions()" [value]="d.requiresPact" path="table_feat.prerequisite.requires_pact" [issues]="issuesOf('table_feat.prerequisite.requires_pact')" (valueChange)="patch({ requiresPact: $event })" />
-              }
-              @case ('spell') {
-                <app-select-field label="Magia" [options]="requireSpellOptions()" [value]="d.requiresSpell" path="table_feat.prerequisite.requires_spell_key" [issues]="issuesOf('table_feat.prerequisite.requires_spell_key')" (valueChange)="patch({ requiresSpell: $event })" />
-              }
-              @default {
-                <app-pick-list label="Outras opções" addLabel="Adicionar opção" [options]="requirable()" [values]="d.requiresOptions" [max]="10" path="table_feat.prerequisite.requires_option_keys" [issues]="issuesOf('table_feat.prerequisite.requires_option_keys')" hint="{{ d.requiresOptions.length }} de 10. Opções que o personagem já escolheu, do SRD ou da mesa." (added)="patch({ requiresOptions: [...d.requiresOptions, $event] })" (removed)="patch({ requiresOptions: d.requiresOptions.filter((k) => k !== $event) })" />
-              }
-            }
-          </div>
-          <button type="button" class="ask__x" [attr.aria-label]="'Tirar ' + a.label" (click)="clearAsk(a.kind)"><mat-icon aria-hidden="true">close</mat-icon></button>
-        </div>
-      }
-      <div class="asks-add">
-        @if (askMissing().length > 0) {
-          <div class="asks-add__menu">
-            <button matButton="outlined" type="button" aria-haspopup="menu" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())"><mat-icon aria-hidden="true">add</mat-icon>Adicionar pré-requisito<mat-icon aria-hidden="true">arrow_drop_down</mat-icon></button>
-            @if (menuOpen()) {
-              <div class="asks-add__list" role="menu">
-                @for (a of askMissing(); track a.kind) {
-                  <button type="button" role="menuitem" (click)="addAsk(a.kind)"><mat-icon aria-hidden="true">{{ a.icon }}</mat-icon><span>{{ a.label }}</span></button>
-                }
-              </div>
-            }
-          </div>
-        } @else {
-          <p class="hint"><mat-icon aria-hidden="true">lock</mat-icon>Os quatro tipos já estão na lista. Outra opção entra na linha "Outras opções".</p>
-        }
-      </div>
+      <app-ask-rows [head]="true" base="table_feat.prerequisite" [value]="draft()" [issuesOf]="issuesOf" [classOptions]="classOptions()" [pactOptions]="pactOptions()" [requirable]="requirable()" [spellSearch]="catalog().spellSearch" [resetKey]="entry()?.key + '@' + entry()?.revision" (asksChange)="patch($event)" />
       @for (m of issuesOf('table_feat.prerequisite'); track m) {
         <p class="inline-issue" role="note">{{ m }}</p>
       }
@@ -143,6 +96,10 @@
     @if (entry(); as saved) {
       <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
     }
+    <section class="mr-panel card-note" aria-labelledby="hidden-t">
+      <h2 class="card-note__title" id="hidden-t"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</h2>
+      <p class="hint">O que você esconder dos jogadores (uma opção desligada, por exemplo) aparece para eles como “uma condição que a mesa não mostra”, nunca pelo nome.</p>
+    </section>
     <app-feat-choices [uses]="uses()" />
   </aside>
 </div>

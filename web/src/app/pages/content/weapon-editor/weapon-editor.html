@@ -64,8 +64,8 @@
     }
     @if (entry(); as used) {
       @if (used.charactersUsing > 0) {
-        <section class="mr-panel usage" aria-labelledby="usage-t">
-          <h2 class="usage__title" id="usage-t"><mat-icon aria-hidden="true">sync_alt</mat-icon>Em uso por {{ used.charactersUsing }} {{ used.charactersUsing === 1 ? 'ficha' : 'fichas' }}</h2>
+        <section class="mr-panel card-note" aria-labelledby="usage-t">
+          <h2 class="card-note__title" id="usage-t"><mat-icon aria-hidden="true">sync_alt</mat-icon>Em uso por {{ used.charactersUsing }} {{ used.charactersUsing === 1 ? 'ficha' : 'fichas' }}</h2>
           <p class="hint">Mudar o dano ou as propriedades vale na hora, também nos ataques das fichas travadas.</p>
         </section>
       }

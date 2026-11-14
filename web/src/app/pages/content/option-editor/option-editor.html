@@ -47,27 +47,7 @@
     <section class="mr-panel block" aria-labelledby="option-asks-t">
       <h2 class="mr-panel__title" id="option-asks-t">O que a opção pede</h2>
       <p class="hint">Vale só para quem vai escolher a opção. Deixe vazio o que ela não pede: quem não cumpre vê a opção na lista, apagada, com o que falta.</p>
-      <div class="grid grid--2">
-        <app-select-field label="Classe" [options]="classOptions()" [value]="d.classKey" path="table_option.prerequisite.class_level.class_key" [issues]="issuesOf('table_option.prerequisite.class_level.class_key')" (valueChange)="patch({ classKey: $event })" />
-        <app-text-field label="Nível na classe (1 a 20)" [value]="d.classLevel" inputmode="numeric" path="table_option.prerequisite.class_level.level" [issues]="issuesOf('table_option.prerequisite.class_level.level')" (valueChange)="patch({ classLevel: $event })" />
-      </div>
-      @for (m of issuesOf('table_option.prerequisite.class_level'); track m) {
-        <p class="inline-issue" role="note">{{ m }}</p>
-      }
-      <app-pick-list
-        label="Outras opções"
-        addLabel="Adicionar uma opção que ela exige"
-        [options]="requirable()"
-        [values]="d.requiresOptions"
-        path="table_option.prerequisite.requires_option_keys"
-        [issues]="issuesOf('table_option.prerequisite.requires_option_keys')"
-        (added)="patch({ requiresOptions: [...d.requiresOptions, $event] })"
-        (removed)="patch({ requiresOptions: d.requiresOptions.filter((k) => k !== $event) })"
-      />
-      <div class="grid grid--2">
-        <app-select-field label="Dádiva do pacto" [options]="pactOptions()" [value]="d.requiresPact" path="table_option.prerequisite.requires_pact" [issues]="issuesOf('table_option.prerequisite.requires_pact')" (valueChange)="patch({ requiresPact: $event })" />
-        <app-select-field label="Magia que conhece" [options]="requireSpellOptions()" [value]="d.requiresSpell" path="table_option.prerequisite.requires_spell_key" [issues]="issuesOf('table_option.prerequisite.requires_spell_key')" (valueChange)="patch({ requiresSpell: $event })" />
-      </div>
+      <app-ask-rows base="table_option.prerequisite" [value]="d" [issuesOf]="issuesOf" [classOptions]="classOptions()" [pactOptions]="pactOptions()" [requirable]="requirable()" [spellSearch]="catalog().spellSearch" [resetKey]="entry()?.key + '@' + entry()?.revision" (asksChange)="patch($event)" />
       @for (m of issuesOf('table_option.prerequisite'); track m) {
         <p class="inline-issue" role="note">{{ m }}</p>
       }
@@ -88,5 +68,9 @@
     @if (entry(); as saved) {
       <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
     }
+    <section class="mr-panel card-note" aria-labelledby="hidden-t">
+      <h2 class="card-note__title" id="hidden-t"><mat-icon aria-hidden="true">visibility_off</mat-icon>Só você vê</h2>
+      <p class="hint">Uma classe, pacto, magia ou opção que você esconder some do que a opção pede, para os jogadores; no lugar fica “uma condição que a mesa não mostra”.</p>
+    </section>
   </aside>
 </div>

@@ -63,6 +63,7 @@ import { PickList } from '../../../shared/form-fields/pick-list';
 import { SearchPick } from '../../../shared/form-fields/search-pick';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
+import { AskRows } from '../ask-rows/ask-rows';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import { EntryRead } from '../entry-read/entry-read';
 import { FeatChoices } from './feat-choices/feat-choices';
@@ -77,38 +78,6 @@ const LACKS = 'table_feat.prerequisite.lacks_feature_key';
 /** The sizes a feat may ask for, as the server writes them. */
 const FEAT_SIZES: SelectOption[] = [{ value: '', label: 'Qualquer' }, ...SIZE_OPTIONS];
 
-type AskKind = 'class' | 'pact' | 'spell' | 'options';
-
-interface Ask {
-  kind: AskKind;
-  label: string;
-  icon: string;
-  /** The first path is the one that takes the focus. */
-  paths: readonly string[];
-}
-
-const ASK = 'table_feat.prerequisite';
-const ASKS: readonly Ask[] = [
-  {
-    kind: 'class',
-    label: 'Nível de classe',
-    icon: 'shield',
-    paths: [`${ASK}.class_level.class_key`, `${ASK}.class_level.level`, `${ASK}.class_level`],
-  },
-  { kind: 'pact', label: 'Dádiva do pacto', icon: 'bookmark', paths: [`${ASK}.requires_pact`] },
-  {
-    kind: 'spell',
-    label: 'Magia que conhece',
-    icon: 'auto_fix_high',
-    paths: [`${ASK}.requires_spell_key`],
-  },
-  {
-    kind: 'options',
-    label: 'Outras opções',
-    icon: 'format_list_bulleted',
-    paths: [`${ASK}.requires_option_keys`],
-  },
-];
 const ASK_PATH = /\.(class_level|requires_)/;
 const NO_ASKS: Partial<FeatDraft> = {
   classKey: '',
@@ -117,26 +86,6 @@ const NO_ASKS: Partial<FeatDraft> = {
   requiresSpell: '',
   requiresOptions: [],
 };
-const CLEARED: Record<AskKind, Partial<FeatDraft>> = {
-  class: { classKey: '', classLevel: '' },
-  pact: { requiresPact: '' },
-  spell: { requiresSpell: '' },
-  options: { requiresOptions: [] },
-};
-
-function askFilled(kind: AskKind, d: FeatDraft): boolean {
-  switch (kind) {
-    case 'class':
-      return d.classKey !== '' || d.classLevel !== '';
-    case 'pact':
-      return d.requiresPact !== '';
-    case 'spell':
-      return d.requiresSpell !== '';
-    default:
-      return d.requiresOptions.length > 0;
-  }
-}
-
 /**
  * The feat editor: a name, a text, what the feat asks of a character, and its effects.
  * The prerequisite has ability scores, a proficiency, spellcasting, races, a size, a feature to lack and a level.
@@ -152,6 +101,7 @@ function askFilled(kind: AskKind, d: FeatDraft): boolean {
     CheckRow,
     EditorAlerts,
     EditorBar,
+    AskRows,
     EntryRead,
     FeatChoices,
     FeatOptions,
@@ -207,31 +157,11 @@ export class FeatEditor {
     { value: '', label: 'Nenhuma' },
     ...this.catalog().classes,
   ]);
-  protected readonly requireSpellOptions = computed<SelectOption[]>(() => [
-    { value: '', label: 'Nenhuma' },
-    ...this.catalog().spells,
-  ]);
   protected readonly pactOptions = computed<SelectOption[]>(() =>
     pactChoices(this.menu(), this.entries()),
   );
   protected readonly requirable = computed<SelectOption[]>(() =>
     requirableOptions(this.menu(), this.entries()),
-  );
-  /** The kinds of the "Adicionar pré-requisito" menu the master opened and has not filled yet. */
-  private readonly opened = signal<readonly AskKind[]>([]);
-  protected readonly menuOpen = signal(false);
-  /** The rows on the list: the kinds with a value, a refusal, or that the master just added. */
-  protected readonly askRows = computed(() => {
-    const d = this.draft();
-    return ASKS.filter(
-      (a) =>
-        this.opened().includes(a.kind) ||
-        askFilled(a.kind, d) ||
-        a.paths.some((p) => this.saver.issues(p).length > 0),
-    );
-  });
-  protected readonly askMissing = computed(() =>
-    ASKS.filter((a) => !this.askRows().some((r) => r.kind === a.kind)),
   );
   /** The block of the older fields opens by itself when a refusal lands inside it. */
   protected readonly oldOpen = signal(false);
@@ -350,8 +280,6 @@ export class FeatEditor {
         const e = this.entry();
         this.draft.set(e?.body.case === 'tableFeat' ? featToDraft(e.body.value) : emptyFeat());
         this.saver.clear();
-        this.opened.set([]);
-        this.menuOpen.set(false);
         this.seedLeftOut();
       });
     });
@@ -362,21 +290,6 @@ export class FeatEditor {
     if (this.saver.seedLeftOut(this.leftOut(), this.known)) {
       this.saver.focusRefusal(this.host.nativeElement, this.injector);
     }
-  }
-
-  protected addAsk(kind: AskKind): void {
-    this.opened.update((o) => [...o, kind]);
-    this.menuOpen.set(false);
-    focusAfterRender(
-      this.host.nativeElement,
-      this.injector,
-      ASKS.find((a) => a.kind === kind)?.paths[0] ?? '',
-    );
-  }
-
-  protected clearAsk(kind: AskKind): void {
-    this.opened.update((o) => o.filter((k) => k !== kind));
-    this.patch(CLEARED[kind]);
   }
 
   protected patch(p: Partial<FeatDraft>): void {

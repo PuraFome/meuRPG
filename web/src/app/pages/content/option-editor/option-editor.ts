@@ -52,6 +52,7 @@ import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
 import { PickList } from '../../../shared/form-fields/pick-list';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
+import { AskRows } from '../ask-rows/ask-rows';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import { EntryRead } from '../entry-read/entry-read';
 import { PlayersSwitch } from '../players-switch/players-switch';
@@ -70,6 +71,7 @@ const LISTED_OPTIONS = 3;
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-option-editor',
   imports: [
+    AskRows,
     EditorAlerts,
     EditorBar,
     EntryRead,
@@ -190,10 +192,6 @@ export class OptionEditor {
     ...this.catalog().classes,
   ]);
   protected readonly spellOptions = computed<SelectOption[]>(() => [...this.catalog().spells]);
-  protected readonly requireSpellOptions = computed<SelectOption[]>(() => [
-    { value: '', label: 'Nenhuma' },
-    ...this.catalog().spells,
-  ]);
   /** The SRD's options (every set's) and the table's own, but this one: what an option may require, by name. */
   protected readonly requirable = computed<SelectOption[]>(() =>
     requirableOptions(this.menu(), this.entries(), this.entry()?.key ?? ''),
