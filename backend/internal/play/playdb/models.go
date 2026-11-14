@@ -320,6 +320,7 @@ type FavorRefundPrompt struct {
 	AnswerKey     *string
 	CreatedAt     time.Time
 	AnsweredAt    *time.Time
+	RollKey       string
 }
 
 type GameSession struct {

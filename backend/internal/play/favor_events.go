@@ -72,6 +72,9 @@ type favorInCombat struct {
 	Secret      bool     `json:"secret,omitempty"`
 	Fogged      bool     `json:"fogged,omitempty"`
 	SeenBy      []string `json:"seen_by,omitempty"`
+	// Owner is the owner of the first character named (the giver, the roller, the character granted); it is never stored. A pass that moved
+	// nothing (refused, canceled) is the giver's business alone, so only their owner hears of it (stageOfPass).
+	Owner string `json:"-"`
 }
 
 // The payloads of the favor events written in a combat: the same ids, and the combat's fields.
@@ -110,16 +113,13 @@ func (s *Service) favorStage(ctx context.Context, q *playdb.Queries, sessionID s
 	}
 	st := favorInCombat{EncounterID: enc.ID, Round: enc.Round, Fogged: true}
 	var ids []string
-	for _, id := range characterIDs {
-		i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == id })
-		if i < 0 {
+	for i, id := range characterIDs {
+		j := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == id })
+		if j < 0 {
 			return favorInCombat{}, false, nil
 		}
-		ids = append(ids, cs[i].ID)
-		st.Secret = st.Secret || cs[i].Hidden
-		if cs[i].UserID != nil && !slices.Contains(st.SeenBy, *cs[i].UserID) {
-			st.SeenBy = append(st.SeenBy, *cs[i].UserID)
-		}
+		ids = append(ids, cs[j].ID)
+		st.note(cs[j], i == 0)
 	}
 	st.Actor = ids[0]
 	if len(ids) > 1 {
@@ -127,6 +127,21 @@ func (s *Service) favorStage(ctx context.Context, q *playdb.Queries, sessionID s
 	}
 	slices.Sort(st.SeenBy)
 	return st, true, nil
+}
+
+// note adds a combatant of the event to the audience: a hidden one makes it secret, and its owner is among those who may hear of it (the
+// first named is the Owner).
+func (st *favorInCombat) note(c playdb.Combatant, first bool) {
+	st.Secret = st.Secret || c.Hidden
+	if c.UserID == nil {
+		return
+	}
+	if first {
+		st.Owner = *c.UserID
+	}
+	if !slices.Contains(st.SeenBy, *c.UserID) {
+		st.SeenBy = append(st.SeenBy, *c.UserID)
+	}
 }
 
 // tellFavorLog tells the master, and the owners the line is for, that the combat's log changed. A line with a hidden combatant is the

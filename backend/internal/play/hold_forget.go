@@ -2,8 +2,13 @@ package play
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/jackc/pgx/v5"
+
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -14,18 +19,46 @@ import (
 // encounters delete their holds by it), so a path that deletes a combatant calls forgetHoldsOf first (archtest).
 
 // favorGiveBackIf gives the Inspiration back when it was spent on a held roll that is dropped before it was answered: no roll event
-// exists for that spend, so nothing else would put it back. A hold that was answered, or that spent nothing, gives nothing.
-func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, campaignID, characterID string) error {
+// exists for that spend, so nothing else would put it back. A hold that was answered, or that spent nothing, gives nothing. The refund
+// prompt that roll opened (rollKey) closes as kept: the Inspiration is back, so there is nothing left to give.
+func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, campaignID, characterID, rollKey string) error {
 	if !unsettled || characterID == "" {
 		return nil
 	}
-	return favorGiveBack(ctx, q, campaignID, characterID)
+	if err := favorGiveBack(ctx, q, campaignID, characterID); err != nil {
+		return err
+	}
+	return keepRefundOfRoll(ctx, q, campaignID, rollKey)
 }
 
+// keepRefundOfRoll closes as kept the refund prompt of a roll that is gone (its undo, or its held roll forgotten): the Inspiration went back
+// with the roll, so the master's question has no spend left to refund. No event is written for it: the roll's own undo is the record, and the
+// transaction that drops the roll moves the session's number.
+func keepRefundOfRoll(ctx context.Context, q *playdb.Queries, campaignID, rollKey string) error {
+	key := rollKeyOf(rollKey)
+	if key == "" {
+		return nil
+	}
+	if _, err := q.CloseFavorRefundPromptsOfRoll(ctx, playdb.CloseFavorRefundPromptsOfRollParams{CampaignID: campaignID, RollKey: key}); err != nil {
+		return fmt.Errorf("keep the refund question of the roll: %w", err)
+	}
+	return nil
+}
+
+// rollKeyOf is the key the refund prompt keeps for a roll: the request's, without the suffix of a reaction window's replay.
+func rollKeyOf(key string) string { return strings.TrimSuffix(key, windowHoldSuffix) }
+
 // refundSpentFavor is the master's refund of an Inspiration a roll spent for nothing (favor_refund.go): the one other way the row is given
-// back, through the same one-row rule (a character that has it again keeps its one row).
+// back. The roller must have none now: one that has it (the spend was given back already by the roll's undo, or the master granted another)
+// answers ALREADY_HAS, so a spend is never refunded twice and the one-row rule is never the silent reason.
 func refundSpentFavor(ctx context.Context, q *playdb.Queries, campaignID, characterID string) error {
-	return favorGiveBackIf(ctx, q, true, campaignID, characterID)
+	if _, err := q.InsertCharacterFavor(ctx, playdb.InsertCharacterFavorParams{CharacterID: characterID, CampaignID: campaignID}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_ALREADY_HAS, "the character has the inspiration: there is nothing to give back")
+		}
+		return fmt.Errorf("give the character's inspiration back: %w", err)
+	}
+	return nil
 }
 
 // forgetHoldsOf drops every held roll of an owner (a combatant, or a character outside a combat), giving back the Inspiration the
@@ -37,7 +70,7 @@ func forgetHoldsOf(ctx context.Context, q *playdb.Queries, owner holdOwner) erro
 		return fmt.Errorf("delete the held rolls: %w", err)
 	}
 	for _, r := range rows {
-		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID); err != nil {
+		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.IdempotencyKey); err != nil {
 			return err
 		}
 	}
@@ -63,7 +96,7 @@ func forgetHold(ctx context.Context, q *playdb.Queries, id string) error {
 		return fmt.Errorf("delete the held roll: %w", err)
 	}
 	for _, r := range rows {
-		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID); err != nil {
+		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.IdempotencyKey); err != nil {
 			return err
 		}
 	}
@@ -100,7 +133,7 @@ func forgetOrphanHolds(ctx context.Context, q *playdb.Queries, campaignID string
 		return fmt.Errorf("forget the rolls that waited for a die that ran out: %w", err)
 	}
 	for _, r := range rows {
-		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID); err != nil {
+		if err := favorGiveBackIf(ctx, q, r.UnsettledFavor, r.CampaignID, r.CharacterID, r.IdempotencyKey); err != nil {
 			return err
 		}
 	}

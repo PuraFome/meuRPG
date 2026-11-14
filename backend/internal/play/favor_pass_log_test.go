@@ -44,6 +44,31 @@ func (f *favorFight) eventEncounter(t *testing.T, kind string) (encounter *strin
 	return encounter, round
 }
 
+// undoableLine is the entry of the combat's log the master undoes as its last action: the undo reads its id from the line the master reads.
+func (f *favorFight) undoableLine(t *testing.T) *playv1.CombatLogEntry {
+	t.Helper()
+	for _, l := range logEntries(f.log(t, f.master, f.e)) {
+		if l.GetUndoable() {
+			return l
+		}
+	}
+	t.Fatal("no line of the master's log is the combat's last action")
+	return nil
+}
+
+// logHints counts, for each reader, the hints that the combat's log changed since the marker.
+func logHints(heard map[string][]*playv1.WatchGameSessionResponse) map[string]int {
+	out := map[string]int{}
+	for name, got := range heard {
+		for _, ev := range got {
+			if ev.GetCombatLogChanged() != nil {
+				out[name]++
+			}
+		}
+	}
+	return out
+}
+
 // Each answer to a pass in a combat is a line of its log, in the words of each reader; a player the pass is not about reads nothing.
 func TestPassAnsweredInACombatWritesALinePerReader(t *testing.T) {
 	t.Parallel()
@@ -151,10 +176,7 @@ func TestUndoOfAnAcceptedPass(t *testing.T) {
 	if _, err := f.answer(p.GetId(), true); err != nil {
 		t.Fatal(err)
 	}
-	id := f.log(t, f.master, f.e).GetUndoableEventId()
-	if id == "" {
-		t.Fatal("the accepted pass is not the last action of the combat")
-	}
+	id := f.undoableLine(t).GetId()
 	ws := f.passWatchers(t)
 	before := f.seq(t)
 	if err := f.undo(t, f.master, f.e, id); err != nil {
@@ -227,10 +249,7 @@ func TestUndoOfARefusedPassOnlyClosesTheLine(t *testing.T) {
 	if _, err := f.answer(p.GetId(), false); err != nil {
 		t.Fatal(err)
 	}
-	id := f.log(t, f.master, f.e).GetUndoableEventId()
-	if id == "" {
-		t.Fatal("the refusal is not the last action of the combat")
-	}
+	id := f.undoableLine(t).GetId()
 	if err := f.undo(t, f.master, f.e, id); err != nil {
 		t.Fatalf("UndoLastAction() error = %v", err)
 	}
@@ -240,31 +259,157 @@ func TestUndoOfARefusedPassOnlyClosesTheLine(t *testing.T) {
 	}
 }
 
-// The master's undo of a grant takes it back, in the combat the grant was made in; a grant already spent is refused.
+// The master's undo of a grant takes it back, in the combat the grant was made in, and reads it from the grant's own line (the master's
+// alone); a grant already spent is refused.
 func TestUndoOfAGrant(t *testing.T) {
 	t.Parallel()
 	f := newFavorFight(t)
 	f.give(t, f.toren)
-	id := f.log(t, f.master, f.e).GetUndoableEventId()
-	if id == "" {
-		t.Fatal("the grant is not the last action of the combat")
+	line := f.undoableLine(t)
+	if got := line.GetFavor().GetTextPt(); got != "O mestre deu a Inspiração a Toren." {
+		t.Fatalf("the grant's line reads %q, want the master's sentence", got)
 	}
 	if enc, _ := f.eventEncounter(t, eventFavorGranted); enc == nil {
 		t.Fatal("the grant carries no combat")
 	}
 	f.execSQL(t, `DELETE FROM character_favor WHERE character_id = $1`, f.toren.GetId()) // spent
-	if got := blockedOf(t, f.undo(t, f.master, f.e, id)).GetReason(); got != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED {
+	if got := blockedOf(t, f.undo(t, f.master, f.e, line.GetId())).GetReason(); got != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED {
 		t.Errorf("the undo of a spent grant = %v, want UNDO_TARGET_CHANGED", got)
 	}
 	f.give(t, f.pens)
-	id = f.log(t, f.master, f.e).GetUndoableEventId()
+	id := f.undoableLine(t).GetId()
+	if id == line.GetId() {
+		t.Fatal("the second grant is not the last action")
+	}
 	if err := f.undo(t, f.master, f.e, id); err != nil {
 		t.Fatalf("UndoLastAction() error = %v", err)
 	}
 	if f.has(t, f.pens.GetId()) {
 		t.Error("the undo did not take the grant back")
 	}
-	if f.log(t, f.master, f.e).GetUndoableEventId() == id {
+	if f.undoableLine(t).GetId() != line.GetId() {
 		t.Error("the undone grant is still the last action")
+	}
+}
+
+// The grant's line, the pass's hints and the master's undo of a grant tell the master alone: the holder's player, another player and a
+// third player hear one hint of the log changing only when the line is theirs, and read no sentence. A hidden holder changes nothing for
+// them.
+func TestGrantInACombatIsTheMastersLineAlone(t *testing.T) {
+	t.Parallel()
+	for _, hidden := range []bool{false, true} {
+		t.Run(map[bool]string{false: "shown", true: "hidden"}[hidden], func(t *testing.T) {
+			t.Parallel()
+			f := newFavorFight(t)
+			if hidden {
+				hideAgain(t, f.armed, f.e, "Toren")
+			}
+			ws := f.passWatchers(t)
+			f.give(t, f.toren)
+			f.wantTexts(t, "the grant", map[*user][]string{f.master: {"O mestre deu a Inspiração a Toren."}})
+			heard := logHints(f.heardBy(t, ws))
+			if heard["master"] != 1 || heard["caio"] != 0 || heard["ana"] != 0 || heard["bia"] != 0 {
+				t.Errorf("log hints of the grant = %v, want the master's alone", heard)
+			}
+			ws = f.passWatchers(t)
+			if err := f.undo(t, f.master, f.e, f.undoableLine(t).GetId()); err != nil {
+				t.Fatalf("UndoLastAction() error = %v", err)
+			}
+			heard = logHints(f.heardBy(t, ws))
+			if heard["caio"] != 0 || heard["ana"] != 0 || heard["bia"] != 0 {
+				t.Errorf("log hints of the undo of the grant = %v, want none for the players", heard)
+			}
+		})
+	}
+}
+
+// The hints of a pass answered in a combat: the master and the giver's owner always hear that the log changed; the receiver's owner only when
+// the pass was accepted (a refusal or a cancel leaves the Inspiration where it was, and is not theirs to hear of); a third player never.
+func TestPassAnswerLogHintsInACombat(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name   string
+		answer func(t *testing.T, f *favorFight, id string)
+		ana    int
+	}{
+		{"accepted", func(t *testing.T, f *favorFight, id string) {
+			if _, err := f.answer(id, true); err != nil {
+				t.Fatal(err)
+			}
+		}, 1},
+		{"refused", func(t *testing.T, f *favorFight, id string) {
+			if _, err := f.answer(id, false); err != nil {
+				t.Fatal(err)
+			}
+		}, 0},
+		{"canceled", func(t *testing.T, f *favorFight, id string) {
+			if _, err := f.cancelAs(f.caio, id, newKey()); err != nil {
+				t.Fatal(err)
+			}
+		}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFavorFight(t)
+			f.give(t, f.toren)
+			p := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+			ws := f.passWatchers(t)
+			tc.answer(t, f, p.GetId())
+			heard := logHints(f.heardBy(t, ws))
+			if heard["master"] != 1 || heard["caio"] != 1 || heard["ana"] != tc.ana || heard["bia"] != 0 {
+				t.Errorf("log hints = %v, want the master 1, Caio 1, Ana %d, Bia 0", heard, tc.ana)
+			}
+		})
+	}
+}
+
+// The undo of a grant takes back the ask the holder had made to pass it on: the ask closes as canceled in the same step, with a
+// favor_pass_canceled that is no line and no combat's action, and no hint of its own.
+func TestUndoOfAGrantCancelsTheHoldersPendingAsk(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.give(t, f.toren)
+	p := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+	ws := f.passWatchers(t)
+	before := f.seq(t)
+	if err := f.undo(t, f.master, f.e, f.undoableLine(t).GetId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if f.has(t, f.toren.GetId()) || f.passStatus(t, p.GetId()) != "canceled" {
+		t.Errorf("Toren has it %v, ask %q, want it gone and the ask canceled", f.has(t, f.toren.GetId()), f.passStatus(t, p.GetId()))
+	}
+	if enc, _ := f.eventEncounter(t, eventFavorPassCanceled); enc != nil {
+		t.Errorf("the cancel by the undo carries combat %v, want none", *enc)
+	}
+	if now := f.seq(t); now != before+1 {
+		t.Errorf("hint_seq = %d, want %d (one step)", now, before+1)
+	}
+	if got := logHints(f.heardBy(t, ws)); got["bia"] != 0 || got["ana"] != 0 {
+		t.Errorf("log hints of the undo = %v, want none for Ana and Bia", got)
+	}
+	f.wantTexts(t, "the undone grant", nil)
+	if got := f.passesOf(t, f.master); len(got) != 0 {
+		t.Errorf("the master still reads the passes %v, want none pending", got)
+	}
+}
+
+// The undo of an accepted pass takes back the ask the receiver had made, in the same step, for the Inspiration it no longer has.
+func TestUndoOfAnAcceptedPassCancelsTheReceiversPendingAsk(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.give(t, f.toren)
+	p := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+	if _, err := f.answer(p.GetId(), true); err != nil {
+		t.Fatal(err)
+	}
+	onward := f.mustAsk(t, f.pens.GetId(), f.bri.GetId()) // Pensantus asks to pass it on to Brisa
+	if err := f.undo(t, f.master, f.e, f.undoableLine(t).GetId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if !f.has(t, f.toren.GetId()) || f.has(t, f.pens.GetId()) || f.passStatus(t, onward.GetId()) != "canceled" {
+		t.Errorf("Toren %v, Pensantus %v, onward ask %q, want it back with Toren and the ask canceled", f.has(t, f.toren.GetId()), f.has(t, f.pens.GetId()), f.passStatus(t, onward.GetId()))
+	}
+	if all, pending := f.passRows(t); pending != 0 || all != 2 {
+		t.Errorf("passes: %d rows, %d pending, want 2 and none pending", all, pending)
 	}
 }

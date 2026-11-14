@@ -622,7 +622,7 @@ LIMIT $2;
 
 -- name: ListRecentSessionEvents :many
 -- The session's latest events, newest first (the undo looks for the last action).
-SELECT id, seq, kind, encounter_id, payload FROM session_events
+SELECT id, seq, kind, encounter_id, payload, idempotency_key FROM session_events
 WHERE game_session_id = $1
 ORDER BY seq DESC
 LIMIT $2;
@@ -2064,9 +2064,9 @@ SELECT * FROM inspiration_holds WHERE encounter_id = $1 AND kind = 'weapon_attac
 WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE id = $1
-RETURNING id, campaign_id, character_id, favor_spent, answer_key
+RETURNING id, campaign_id, character_id, favor_spent, answer_key, idempotency_key
 )
-SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor, idempotency_key FROM changed ORDER BY id;
 
 -- name: DeleteInspirationHoldsOf :many
 -- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
@@ -2077,9 +2077,9 @@ WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE (encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
    OR (combatant_id IS NULL AND character_id = sqlc.narg(character_id))
-RETURNING id, campaign_id, character_id, favor_spent, answer_key
+RETURNING id, campaign_id, character_id, favor_spent, answer_key, idempotency_key
 )
-SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor, idempotency_key FROM changed ORDER BY id;
 
 -- name: AnswerInspirationHold :exec
 UPDATE inspiration_holds SET answer_key = $2 WHERE id = $1;
@@ -2131,9 +2131,9 @@ WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND NOT h.stroke_ask
   AND NOT h.reroll_ask
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
-RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key
+RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key, h.idempotency_key
 )
-SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id;
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor, idempotency_key FROM changed ORDER BY id;
 
 -- name: InsertHitRider :one
 -- A rider a monk's hit offers (combat_riders.go).
@@ -2274,8 +2274,8 @@ WITH changed AS (
 SELECT * FROM changed ORDER BY created_at, id;
 
 -- name: InsertFavorRefundPrompt :one
-INSERT INTO favor_refund_prompts (campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO favor_refund_prompts (campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, roll_key)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetFavorRefundPrompt :one
@@ -2293,6 +2293,15 @@ SELECT * FROM favor_refund_prompts WHERE campaign_id = $1 AND status = 'open' OR
 UPDATE favor_refund_prompts SET status = sqlc.arg(status), answer_key = sqlc.arg(answer_key), answered_at = now()
 WHERE id = sqlc.arg(id) AND campaign_id = sqlc.arg(campaign_id) AND status = 'open'
 RETURNING *;
+
+-- name: CloseFavorRefundPromptsOfRoll :many
+-- The roll a prompt belongs to is gone (undone, or its held roll forgotten): the Inspiration it spent went back, so the prompt closes as kept.
+WITH changed AS (
+    UPDATE favor_refund_prompts SET status = 'kept', answered_at = now()
+    WHERE campaign_id = $1 AND character_id = $2 AND roll_key = $3 AND status = 'open'
+    RETURNING *
+)
+SELECT * FROM changed ORDER BY created_at, id;
 
 -- name: CloseFavorRefundPromptsOfSession :many
 -- The end of a session keeps spent the Inspiration of every prompt still open in it.

@@ -61,7 +61,7 @@ func (s *Service) openRefundPrompt(ctx context.Context, env gateEnv, a favorAsk,
 		return fmt.Errorf("encode the hidden sources: %w", err)
 	}
 	prompt, err := env.q.InsertFavorRefundPrompt(ctx, playdb.InsertFavorRefundPromptParams{
-		CampaignID: a.CampaignID, GameSessionID: open.ID, CharacterID: a.CharacterID, RollLabelPt: refundLabels[a.Kind], HiddenSources: body,
+		CampaignID: a.CampaignID, GameSessionID: open.ID, CharacterID: a.CharacterID, RollLabelPt: refundLabels[a.Kind], HiddenSources: body, RollKey: rollKeyOf(a.Key),
 	})
 	if err != nil {
 		return fmt.Errorf("open the refund prompt: %w", err)
@@ -69,13 +69,20 @@ func (s *Service) openRefundPrompt(ctx context.Context, env gateEnv, a favorAsk,
 	if err := s.writeRefundEvent(ctx, env.q, open.ID, nil, eventFavorRefundPrompted, prompt, nil); err != nil {
 		return err
 	}
-	if env.h != nil {
-		env.h.touch()
-		if v, err := s.vitals.GetVitalsTx(ctx, env.tx, a.CampaignID, a.CharacterID); err == nil {
-			env.h.tell(a.CampaignID, live.Event{Audience: live.Audience{Master: true}, Message: vitalsHint(v).Message})
-		}
-	}
+	s.tellRefundMaster(ctx, env.tx, env.h, a.CampaignID, a.CharacterID)
 	return nil
+}
+
+// tellRefundMaster moves the session's number and tells the master alone, with the roller's vitals hint, to read GetFavor again: a prompt
+// opened or closed. The roller's player is never told: they read nothing of a question the master answers.
+func (s *Service) tellRefundMaster(ctx context.Context, tx pgx.Tx, h *hints, campaignID, characterID string) {
+	if h == nil {
+		return
+	}
+	h.touch()
+	if v, err := s.vitals.GetVitalsTx(ctx, tx, campaignID, characterID); err == nil {
+		h.tell(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: vitalsHint(v).Message})
+	}
 }
 
 // writeRefundEvent writes an event of a prompt: ids only. A refund written in a combat carries the combat (a line of its log).
@@ -201,21 +208,36 @@ func (s *Service) AnswerFavorRefund(ctx context.Context, req *connect.Request[pl
 	return connect.NewResponse(&playv1.AnswerFavorRefundResponse{Prompt: views[0]}), nil
 }
 
-// answerRefundIn is the transaction of the answer: a retry of the key answers the stored outcome, a closed question is PASS_CLOSED
-// (the closest reason: it was answered or ended), and the Inspiration goes back through the one refund path.
+// answerRefundIn is the transaction of the answer: a retry of the key answers the stored outcome (and tells again what the first call
+// told), a closed question is PASS_CLOSED (the closest reason: it was answered or ended), and the Inspiration goes back through the one
+// refund path, which refuses a roller that has one again.
 func (s *Service) answerRefundIn(ctx context.Context, tx pgx.Tx, h *hints, c refundCall) (playdb.FavorRefundPrompt, error) {
 	q := s.queries.WithTx(tx)
 	kind := eventFavorRefundKept
 	if c.giveBack {
 		kind = eventFavorRefunded
 	}
-	if done, again, err := eventByKey(ctx, q, c.sessionID, c.key, kind, c.hash); err != nil || again {
-		if err != nil {
-			return playdb.FavorRefundPrompt{}, err
-		}
-		h.replay()
-		return s.replayRefund(ctx, q, c, done.Payload)
+	done, again, err := eventByKey(ctx, q, c.sessionID, c.key, kind, c.hash)
+	if err != nil {
+		return playdb.FavorRefundPrompt{}, err
 	}
+	if again {
+		h.replay()
+		return s.replayRefund(ctx, tx, h, c, done.Payload)
+	}
+	closed, err := closeRefundPrompt(ctx, q, c)
+	if err != nil {
+		return playdb.FavorRefundPrompt{}, err
+	}
+	if !c.giveBack {
+		s.tellRefundMaster(ctx, tx, h, closed.CampaignID, closed.CharacterID)
+		return closed, s.writeKeyedRefundEvent(ctx, q, c, kind, closed, nil)
+	}
+	return closed, s.returnRefund(ctx, tx, h, c, closed)
+}
+
+// closeRefundPrompt answers the question that is still open, and refuses one that is not.
+func closeRefundPrompt(ctx context.Context, q *playdb.Queries, c refundCall) (playdb.FavorRefundPrompt, error) {
 	prompt, err := q.GetFavorRefundPrompt(ctx, playdb.GetFavorRefundPromptParams{ID: c.promptID, CampaignID: c.m.CampaignID})
 	if err != nil {
 		return playdb.FavorRefundPrompt{}, fmt.Errorf("read the question again: %w", err)
@@ -234,25 +256,29 @@ func (s *Service) answerRefundIn(ctx context.Context, tx pgx.Tx, h *hints, c ref
 	if err != nil {
 		return playdb.FavorRefundPrompt{}, fmt.Errorf("answer the question: %w", err)
 	}
-	if !c.giveBack {
-		return closed, s.writeKeyedRefundEvent(ctx, q, c, kind, closed, nil)
-	}
+	return closed, nil
+}
+
+// returnRefund gives the Inspiration back: the roller must have none now (the spend is still unrefunded; ALREADY_HAS otherwise, and the
+// answer rolls back with the question still open), then the line of the combat's log when the refund is one, the event and the hints.
+func (s *Service) returnRefund(ctx context.Context, tx pgx.Tx, h *hints, c refundCall, closed playdb.FavorRefundPrompt) error {
+	q := s.queries.WithTx(tx)
 	if err := refundSpentFavor(ctx, q, closed.CampaignID, closed.CharacterID); err != nil {
-		return playdb.FavorRefundPrompt{}, err
+		return err
 	}
 	st, inCombat, err := s.favorStage(ctx, q, c.sessionID, closed.CharacterID)
 	if err != nil {
-		return playdb.FavorRefundPrompt{}, err
+		return err
 	}
 	var stage *favorInCombat
 	if inCombat {
 		stage = &st
 		tellFavorLog(h, closed.CampaignID, st)
 	}
-	if err := s.writeKeyedRefundEvent(ctx, q, c, kind, closed, stage); err != nil {
-		return playdb.FavorRefundPrompt{}, err
+	if err := s.writeKeyedRefundEvent(ctx, q, c, eventFavorRefunded, closed, stage); err != nil {
+		return err
 	}
-	return closed, s.tellRefund(ctx, tx, h, closed)
+	return s.tellRefund(ctx, tx, h, closed)
 }
 
 // writeKeyedRefundEvent writes the answer's event under its key.
@@ -266,16 +292,21 @@ func (s *Service) writeKeyedRefundEvent(ctx context.Context, q *playdb.Queries, 
 	return s.appendKeyedEvent(ctx, q, ev, body)
 }
 
-// replayRefund answers the retry of an answer: the prompt as it is now, and the character's hint again when it was a refund.
-func (s *Service) replayRefund(ctx context.Context, q *playdb.Queries, c refundCall, payload []byte) (playdb.FavorRefundPrompt, error) {
+// replayRefund answers the retry of an answer: the prompt as it is now, and what the first call told again (the roller's vitals hint when
+// it was a refund, the master's when the Inspiration was kept), with no number moved.
+func (s *Service) replayRefund(ctx context.Context, tx pgx.Tx, h *hints, c refundCall, payload []byte) (playdb.FavorRefundPrompt, error) {
 	var made favorRefundEvent
 	if err := json.Unmarshal(payload, &made); err != nil {
 		return playdb.FavorRefundPrompt{}, fmt.Errorf("read the refund event: %w", err)
 	}
-	p, err := q.GetFavorRefundPrompt(ctx, playdb.GetFavorRefundPromptParams{ID: made.PromptID, CampaignID: c.m.CampaignID})
+	p, err := s.queries.WithTx(tx).GetFavorRefundPrompt(ctx, playdb.GetFavorRefundPromptParams{ID: made.PromptID, CampaignID: c.m.CampaignID})
 	if err != nil {
 		return playdb.FavorRefundPrompt{}, fmt.Errorf("find the question: %w", err)
 	}
+	if c.giveBack {
+		return p, s.tellRefund(ctx, tx, h, p)
+	}
+	s.tellRefundMaster(ctx, tx, h, p.CampaignID, p.CharacterID)
 	return p, nil
 }
 

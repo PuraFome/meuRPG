@@ -286,11 +286,39 @@ func (s *Service) writePassEvent(ctx context.Context, q *playdb.Queries, e passE
 	return s.appendKeyedEvent(ctx, q, ev, payload)
 }
 
-// stageOfPass finds the combat a pass answer is a line of: both characters must be combatants of the running combat.
-func (s *Service) stageOfPass(ctx context.Context, q *playdb.Queries, sessionID string, pass playdb.FavorPass) (*favorInCombat, error) {
+// writeCanceledPassEvent writes the favor_pass_canceled of a pass that was closed by something other than the giver's call (the session's
+// end, the master's undo of the Inspiration the ask would have passed): no key, no combat, so it is no line of any log and no action to undo.
+func (s *Service) writeCanceledPassEvent(ctx context.Context, q *playdb.Queries, sessionID string, actor *string, pass playdb.FavorPass) error {
+	body, err := json.Marshal(favorPassEvent{PassID: pass.ID, FromCharacterID: pass.FromCharacterID, ToCharacterID: pass.ToCharacterID})
+	if err != nil {
+		return fmt.Errorf("encode the event payload: %w", err)
+	}
+	seq, err := q.NextSessionEventSeq(ctx, sessionID)
+	if err != nil {
+		return fmt.Errorf("next event number: %w", err)
+	}
+	from := pass.FromCharacterID
+	if _, err := insertSessionEvent(ctx, q, playdb.InsertSessionEventParams{
+		GameSessionID: sessionID, Seq: seq, Kind: eventFavorPassCanceled, ActorUserID: actor, CharacterID: &from, Payload: body, CreatedAt: s.now(),
+	}); err != nil {
+		return fmt.Errorf("insert session event: %w", err)
+	}
+	return nil
+}
+
+// stageOfPass finds the combat a pass answer is a line of: both characters must be combatants of the running combat. Only an accepted pass
+// (moved) is told to the receiver's owner too: a refusal or a cancel leaves the Inspiration with the giver, and what the receiver was never
+// to have is not theirs to hear of.
+func (s *Service) stageOfPass(ctx context.Context, q *playdb.Queries, sessionID string, pass playdb.FavorPass, moved bool) (*favorInCombat, error) {
 	st, ok, err := s.favorStage(ctx, q, sessionID, pass.FromCharacterID, pass.ToCharacterID)
 	if err != nil || !ok {
 		return nil, err
+	}
+	if !moved {
+		st.SeenBy = nil
+		if st.Owner != "" {
+			st.SeenBy = []string{st.Owner}
+		}
 	}
 	return &st, nil
 }
@@ -471,7 +499,7 @@ func (s *Service) closeWith(ctx context.Context, tx pgx.Tx, h *hints, c favorPas
 // collects what it tells.
 func (s *Service) writeAndTellPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPassCall, pass playdb.FavorPass, kind string, moved bool) error {
 	q := s.queries.WithTx(tx)
-	stage, err := s.stageOfPass(ctx, q, c.sessionID, pass)
+	stage, err := s.stageOfPass(ctx, q, c.sessionID, pass, moved)
 	if err != nil {
 		return err
 	}
@@ -603,19 +631,8 @@ func (s *Service) cancelPassesOfSession(ctx context.Context, tx pgx.Tx, m authz.
 		return nil, fmt.Errorf("cancel the pending asks: %w", err)
 	}
 	for _, pass := range closed {
-		body, err := json.Marshal(favorPassEvent{PassID: pass.ID, FromCharacterID: pass.FromCharacterID, ToCharacterID: pass.ToCharacterID})
-		if err != nil {
-			return nil, fmt.Errorf("encode the event payload: %w", err)
-		}
-		seq, err := q.NextSessionEventSeq(ctx, sessionID)
-		if err != nil {
-			return nil, fmt.Errorf("next event number: %w", err)
-		}
-		from := pass.FromCharacterID
-		if _, err := insertSessionEvent(ctx, q, playdb.InsertSessionEventParams{
-			GameSessionID: sessionID, Seq: seq, Kind: eventFavorPassCanceled, ActorUserID: &m.UserID, CharacterID: &from, Payload: body, CreatedAt: s.now(),
-		}); err != nil {
-			return nil, fmt.Errorf("insert session event: %w", err)
+		if err := s.writeCanceledPassEvent(ctx, q, sessionID, &m.UserID, playdb.FavorPass(pass)); err != nil {
+			return nil, err
 		}
 		v, err := s.vitals.GetVitalsTx(ctx, tx, m.CampaignID, pass.FromCharacterID)
 		switch {

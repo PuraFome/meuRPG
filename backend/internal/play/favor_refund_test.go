@@ -106,16 +106,193 @@ func TestAnswerFavorRefundGiveBack(t *testing.T) {
 	}
 }
 
-// A character that holds another Inspiração by then keeps the one row.
+// A roller that holds an Inspiração again by then (the master granted another) is refused with ALREADY_HAS, not given a silent RETURNED: the
+// answer rolls back, the prompt stays open and the character keeps the one row.
 func TestAnswerFavorRefundNeverStacks(t *testing.T) {
 	t.Parallel()
 	f, p := refundFight(t)
 	f.give(t, f.toren)
-	if _, err := f.answerRefund(f.master, p.GetId(), true, newKey()); err != nil {
-		t.Fatal(err)
+	seq := f.seq(t)
+	_, err := f.answerRefund(f.master, p.GetId(), true, newKey())
+	wantFavorBlocked(t, "a refund to a roller that has one", err, playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_ALREADY_HAS)
+	if f.rows(t) != 1 || f.seq(t) != seq || f.eventsOf(t, eventFavorRefunded) != 0 {
+		t.Errorf("rows %d, number %d (want %d), refunded events %d, want the refusal to change nothing", f.rows(t), f.seq(t), seq, f.eventsOf(t, eventFavorRefunded))
+	}
+	if got := f.prompts(t, f.master); len(got) != 1 || got[0].GetStatus() != playv1.FavorRefundStatus_FAVOR_REFUND_STATUS_OPEN {
+		t.Errorf("the master reads %v, want the prompt still open", got)
+	}
+}
+
+// The master undoes the roll that spent the Inspiração: it is back with the roller (the undo's give-back), so the prompt closes as kept, and
+// an answer to it is PASS_CLOSED: the same spend is never refunded twice.
+func TestUndoOfTheRollKeepsItsRefundPrompt(t *testing.T) {
+	t.Parallel()
+	f, p := refundFight(t)
+	if err := f.undo(t, f.master, f.e, f.undoableLine(t).GetId()); err != nil {
+		t.Fatalf("UndoLastAction(the roll) error = %v", err)
+	}
+	if !f.favorHolds(t) {
+		t.Fatal("the undo of the roll did not give the Inspiração back")
+	}
+	if got := f.prompts(t, f.master); len(got) != 0 {
+		t.Errorf("the master still reads %v after the roll was undone, want no prompt", got)
+	}
+	if status := f.promptStatus(t, p.GetId()); status != "kept" {
+		t.Errorf("the prompt of the undone roll is %q, want kept", status)
+	}
+	_, err := f.answerRefund(f.master, p.GetId(), true, newKey())
+	wantFavorBlocked(t, "an answer to the prompt of an undone roll", err, blockedPassClosed)
+	if f.rows(t) != 1 {
+		t.Errorf("character_favor has %d rows, want 1", f.rows(t))
+	}
+}
+
+// A held roll that spent the Inspiração is forgotten before it is answered (the round turned): the Inspiração goes back with it and the
+// prompt of that spend closes as kept.
+func TestForgottenHeldRollKeepsItsRefundPrompt(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.give(t, f.toren)
+	f.giveCombatantDie(t, "Toren", f.e)
+	f.hiddenEffect(t, "Toren", false, "["+attackAdv+"]")
+	f.h.roller.queue(4, 15)
+	held, err := favorPaths[0].send(t, f, f.caio, newKey(), true, nil)
+	if err != nil || held.holdID == "" {
+		t.Fatalf("the attack with the Inspiração and a die = %+v, %v, want the die's question", held, err)
+	}
+	prompts := f.prompts(t, f.master)
+	if len(prompts) != 1 {
+		t.Fatalf("the master reads %d prompts of the held roll, want 1", len(prompts))
+	}
+	if _, err := f.endTurn(t, f.master, f.e, true); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	f.e = f.passTo(t, f.e, "Toren") // the round turned: the hold is stale
+	f.h.roller.queue(7)
+	if _, err := favorPaths[0].send(t, f, f.caio, newKey(), false, nil); err != nil {
+		t.Fatalf("the next attack error = %v", err)
+	}
+	if f.holdExists(t, held.holdID) || !f.favorHolds(t) {
+		t.Fatalf("the stale hold is there = %v, the Inspiração is back = %v, want it forgotten and given back", f.holdExists(t, held.holdID), f.favorHolds(t))
+	}
+	if status := f.promptStatus(t, prompts[0].GetId()); status != "kept" {
+		t.Errorf("the prompt of the forgotten roll is %q, want kept", status)
+	}
+	if _, err := f.answerRefund(f.master, prompts[0].GetId(), true, newKey()); !isBlockedBy(err, blockedPassClosed) {
+		t.Errorf("an answer to the prompt of a forgotten roll = %v, want PASS_CLOSED", err)
 	}
 	if f.rows(t) != 1 {
 		t.Errorf("character_favor has %d rows, want 1", f.rows(t))
+	}
+}
+
+func (f *favorFight) promptStatus(t *testing.T, id string) string {
+	t.Helper()
+	var status string
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT status FROM favor_refund_prompts WHERE id = $1`, id).Scan(&status); err != nil {
+		t.Fatalf("read the prompt: %v", err)
+	}
+	return status
+}
+
+// vitalsHints counts, for each reader, the vitals hints of a character since the marker.
+func vitalsHints(heard map[string][]*playv1.WatchGameSessionResponse, characterID string) map[string]int {
+	out := map[string]int{}
+	for name, got := range heard {
+		for _, ev := range got {
+			if ev.GetVitalsChanged().GetVitals().GetCharacterId() == characterID {
+				out[name]++
+			}
+		}
+	}
+	return out
+}
+
+// The prompt opens for the master alone: Toren's vitals hint of the prompt reaches him, and Ana and Bia hear nothing of Toren (his own
+// player is told by the roll itself).
+func TestRefundPromptHintsReachTheMasterAlone(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.give(t, f.toren)
+	f.hiddenEffect(t, "Toren", false, "["+attackAdv+"]")
+	f.h.roller.queue(4, 17)
+	ws := f.passWatchers(t)
+	if _, err := favorPaths[0].send(t, f, f.caio, newKey(), true, nil); err != nil {
+		t.Fatal(err)
+	}
+	got := vitalsHints(f.heardBy(t, ws), f.toren.GetId())
+	if got["master"] == 0 || got["ana"] != 0 || got["bia"] != 0 {
+		t.Errorf("vitals hints of Toren = %v, want the master's and none for Ana and Bia", got)
+	}
+}
+
+// A refund tells the master and the roller's player (the vitals hint and the combat's line); Ana and Bia hear nothing, and Ana's number
+// of hints of the log does not move.
+func TestRefundHintsReachTheMasterAndTheRollerAlone(t *testing.T) {
+	t.Parallel()
+	f, p := refundFight(t)
+	ws := f.passWatchers(t)
+	before := f.seq(t)
+	if _, err := f.answerRefund(f.master, p.GetId(), true, newKey()); err != nil {
+		t.Fatal(err)
+	}
+	heard := f.heardBy(t, ws)
+	if v := vitalsHints(heard, f.toren.GetId()); v["master"] != 1 || v["caio"] != 1 || v["ana"] != 0 || v["bia"] != 0 {
+		t.Errorf("vitals hints of Toren = %v, want the master 1 and Caio 1", v)
+	}
+	if l := logHints(heard); l["master"] != 1 || l["caio"] != 1 || l["ana"] != 0 || l["bia"] != 0 {
+		t.Errorf("log hints = %v, want the master 1 and Caio 1", l)
+	}
+	if now := f.seq(t); now != before+1 {
+		t.Errorf("hint_seq = %d, want %d (one step)", now, before+1)
+	}
+}
+
+// Keeping it moves the number by one and tells the master's other tabs (his vitals hint of the roller) so that they close the prompt; the
+// roller's player and the others hear nothing. The retry tells it again and moves no number.
+func TestAnswerFavorRefundKeepMovesTheNumberAndTellsTheMaster(t *testing.T) {
+	t.Parallel()
+	f, p := refundFight(t)
+	ws := f.passWatchers(t)
+	before, key := f.seq(t), newKey()
+	if _, err := f.answerRefund(f.master, p.GetId(), false, key); err != nil {
+		t.Fatal(err)
+	}
+	if now := f.seq(t); now != before+1 {
+		t.Errorf("hint_seq = %d, want %d (one step)", now, before+1)
+	}
+	if v := vitalsHints(f.heardBy(t, ws), f.toren.GetId()); v["master"] != 1 || v["caio"] != 0 || v["ana"] != 0 || v["bia"] != 0 {
+		t.Errorf("vitals hints of Toren = %v, want the master's alone", v)
+	}
+	ws = f.passWatchers(t)
+	if _, err := f.answerRefund(f.master, p.GetId(), false, key); err != nil {
+		t.Fatalf("the retry of the keep error = %v", err)
+	}
+	if now := f.seq(t); now != before+1 {
+		t.Errorf("hint_seq after the retry = %d, want %d (no new step)", now, before+1)
+	}
+	if v := vitalsHints(f.heardBy(t, ws), f.toren.GetId()); v["master"] != 1 || v["caio"] != 0 || v["ana"] != 0 || v["bia"] != 0 {
+		t.Errorf("vitals hints of the retry = %v, want the master's again", v)
+	}
+}
+
+// The retry of a refund tells the roller's vitals hint again, as the first call did, and moves no number.
+func TestAnswerFavorRefundRetryTellsAgain(t *testing.T) {
+	t.Parallel()
+	f, p := refundFight(t)
+	key := newKey()
+	if _, err := f.answerRefund(f.master, p.GetId(), true, key); err != nil {
+		t.Fatal(err)
+	}
+	ws, before := f.passWatchers(t), f.seq(t)
+	if _, err := f.answerRefund(f.master, p.GetId(), true, key); err != nil {
+		t.Fatalf("the retry of the refund error = %v", err)
+	}
+	if now := f.seq(t); now != before {
+		t.Errorf("hint_seq after the retry = %d, want %d", now, before)
+	}
+	if v := vitalsHints(f.heardBy(t, ws), f.toren.GetId()); v["master"] != 1 || v["caio"] != 1 || v["ana"] != 0 || v["bia"] != 0 {
+		t.Errorf("vitals hints of the retry = %v, want the master's and Caio's again", v)
 	}
 }
 

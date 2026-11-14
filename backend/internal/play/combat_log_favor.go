@@ -7,7 +7,8 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
-// The lines about the Inspiration in the combat's log (RN-43): the pass the master accepted (FAVOR_PASSED), a pass he refused or the
+// The lines about the Inspiration in the combat's log (RN-43): the pass the master accepted and the Inspiration he gave (FAVOR_PASSED; the
+// grant is his alone: the line only gives him the undo of his last action, no player reads it), a pass he refused or the
 // giver gave up (FAVOR_PASS_ANSWERED, which also reads the master's undo of an accepted pass to the receiver), and the Inspiration he gave
 // back (FAVOR_REFUNDED). Each reader gets a sentence built for them: the master reads the names, the giver (or the roller) their own part,
 // the receiver only that they have it now. Another player reads nothing; the audience is stamped in the event (favorInCombat), so a
@@ -15,6 +16,7 @@ import (
 
 // The variants of a favor line.
 const (
+	favorLineGranted  = "granted"
 	favorLinePassed   = "passed"
 	favorLineRefused  = "refused"
 	favorLineCanceled = "canceled"
@@ -56,6 +58,7 @@ func (e *logEntry) fillFavor(c *logViewing, out *playv1.CombatLogEntry) bool {
 }
 
 var favorMasterTexts = map[string]string{
+	favorLineGranted:  "O mestre deu a Inspiração a {a}.",
 	favorLinePassed:   "{a} passou a Inspiração para {t}.",
 	favorLineRefused:  "O mestre recusou o pedido de {a}: a Inspiração continua com {a}.",
 	favorLineCanceled: "{a} desistiu de passar a Inspiração para {t}.",

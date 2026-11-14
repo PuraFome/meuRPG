@@ -609,6 +609,7 @@ var logHandlers = map[string]logHandler{
 	eventLastingVisibility:       effectLine,
 	eventExhaustion:              effectLine,
 	eventHitRider:                (*logBuilder).hitRider,
+	eventFavorGranted:            favorLogLine(playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASSED, favorLineGranted),
 	eventFavorPassed:             favorLogLine(playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASSED, favorLinePassed),
 	eventFavorAskRefused:         favorLogLine(playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASS_ANSWERED, favorLineRefused),
 	eventFavorPassCanceled:       favorLogLine(playv1.CombatLogKind_COMBAT_LOG_KIND_FAVOR_PASS_ANSWERED, favorLineCanceled),

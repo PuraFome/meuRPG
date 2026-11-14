@@ -43,43 +43,78 @@ func (s *Service) takeBackFavor(ctx context.Context, c *combatTx, kind string, p
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return nil, fmt.Errorf("read the favor event: %w", err)
 	}
-	campaignID := c.session.CampaignID
 	var ids []string
+	var err error
 	switch kind {
 	case eventFavorGranted:
-		if _, err := c.q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: p.CharacterID, CampaignID: campaignID}); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, errUndoSpent(ev.Actor)
-			}
-			return nil, fmt.Errorf("take the granted inspiration back: %w", err)
-		}
-		ids = []string{p.CharacterID}
+		ids, err = s.takeBackGrant(ctx, c, p, ev)
 	case eventFavorPassed:
-		if _, err := c.q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: p.ToCharacterID, CampaignID: campaignID}); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, errUndoSpent(ev.Target)
-			}
-			return nil, fmt.Errorf("take the passed inspiration back: %w", err)
-		}
-		if _, err := c.q.InsertCharacterFavor(ctx, playdb.InsertCharacterFavorParams{CharacterID: p.FromCharacterID, CampaignID: campaignID}); err != nil {
-			if errors.Is(err, pgx.ErrNoRows) { // the giver has another by now: the transaction rolls the receiver's back
-				return nil, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_ALREADY_HAS, "the giver has the inspiration again")
-			}
-			return nil, fmt.Errorf("give the giver the inspiration back: %w", err)
-		}
-		ids = []string{p.FromCharacterID, p.ToCharacterID}
+		ids, err = s.takeBackPass(ctx, c, p, ev)
 	default: // an answer that moved nothing: only its line goes
 		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+	return s.favorVitals(ctx, c, ids), nil
+}
+
+// takeBackGrant takes the Inspiration the master granted from the character, and the ask it may have made to pass it on.
+func (s *Service) takeBackGrant(ctx context.Context, c *combatTx, p favorUndoPayload, ev actionEvent) ([]string, error) {
+	if err := s.takeFavorFrom(ctx, c, p.CharacterID, ev.Actor); err != nil {
+		return nil, err
+	}
+	return []string{p.CharacterID}, nil
+}
+
+// takeBackPass takes the Inspiration from the receiver (and the ask it may have made to pass it on) and gives it to the giver again.
+func (s *Service) takeBackPass(ctx context.Context, c *combatTx, p favorUndoPayload, ev actionEvent) ([]string, error) {
+	if err := s.takeFavorFrom(ctx, c, p.ToCharacterID, ev.Target); err != nil {
+		return nil, err
+	}
+	if _, err := c.q.InsertCharacterFavor(ctx, playdb.InsertCharacterFavorParams{CharacterID: p.FromCharacterID, CampaignID: c.session.CampaignID}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) { // the giver has another by now: the transaction rolls the receiver's back
+			return nil, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_ALREADY_HAS, "the giver has the inspiration again")
+		}
+		return nil, fmt.Errorf("give the giver the inspiration back: %w", err)
+	}
+	return []string{p.FromCharacterID, p.ToCharacterID}, nil
+}
+
+// takeFavorFrom removes the character's row (the combatant says who the undo names when it was spent since) and closes the ask the character
+// had pending to pass it on: that Inspiration is gone, so the ask would wait for the master forever. The close is the giver's cancel
+// without a key: its favor_pass_canceled has no combat, so it is no line and no action to undo, and it tells nothing of its own (the
+// vitals hint the undo sends already reaches the character's owner, who reads GetFavor again and finds the ask closed).
+func (s *Service) takeFavorFrom(ctx context.Context, c *combatTx, characterID, combatantID string) error {
+	if _, err := c.q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: characterID, CampaignID: c.session.CampaignID}); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errUndoSpent(combatantID)
+		}
+		return fmt.Errorf("take the inspiration back: %w", err)
+	}
+	pass, err := c.q.GetPendingFavorPassOfGiver(ctx, characterID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("read the character's pending ask: %w", err)
+	}
+	closed, err := c.q.CloseFavorPass(ctx, playdb.CloseFavorPassParams{Status: passCanceled, ID: pass.ID, CampaignID: pass.CampaignID})
+	if err != nil {
+		return fmt.Errorf("cancel the character's pending ask: %w", err)
+	}
+	return s.writeCanceledPassEvent(ctx, c.q, c.session.ID, nil, closed)
+}
+
+// favorVitals reads the vitals of the characters the undo changed; one that cannot be read tells nothing.
+func (s *Service) favorVitals(ctx context.Context, c *combatTx, ids []string) []*playv1.CharacterVitals {
 	var out []*playv1.CharacterVitals
 	for _, id := range ids {
-		v, err := s.vitals.GetVitalsTx(ctx, c.tx, campaignID, id)
-		if err != nil {
-			continue // a character whose vitals cannot be read tells nothing
+		if v, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, id); err == nil {
+			out = append(out, v)
 		}
-		out = append(out, v)
 	}
-	return out, nil
+	return out
 }
 
 // publishFavorUndo tells what the undo of a favor event changed: the master, and the owners the event was told to, that the combat and its

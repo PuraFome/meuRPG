@@ -120,6 +120,7 @@ erDiagram
         jsonb hidden_sources
         text status
         text answer_key
+        text roll_key
     }
     inspiration_holds {
         uuid id PK
@@ -380,6 +381,7 @@ All four foreign keys cascade.
 `character_id` is the roller, `roll_label_pt` the roll's name as the log reads it, and `hidden_sources` a JSON list of the sources of advantage the roller could not read.
 `status` is `open`, `returned` (the Inspiration was given back) or `kept`; `answered_at` is set when it is not open.
 `answer_key` is the idempotency key of the answer, unique in the campaign.
+`roll_key` is the idempotency key of the roll that spent the Inspiration (without a reaction window's `#window`): the roll's undo and the forgetting of its held roll close the open prompt of that key as `kept` (an index on the open ones).
 The session's end closes every open prompt of it as `kept`.
 The foreign keys cascade.
 A favor event written in a running combat also has `session_events.encounter_id` set and the round, the combatants and the audience in its payload, which is how the combat's log and undo read it.

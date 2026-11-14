@@ -19,6 +19,8 @@
 --   - status: 'open' until the master answers; 'returned' (the Inspiration was given back), 'kept' (it stays spent: the master
 --     chose so, or the session ended without an answer).
 --   - answer_key is the idempotency key of the answer.
+--   - roll_key is the idempotency key of the roll that spent the Inspiration (without the reaction window's suffix): the roll's undo and
+--     the forgetting of its held roll close the prompt as 'kept', because the Inspiration went back with them.
 -- The rows go with the campaign, the session and the character.
 --
 -- Production is live: the migration only adds, and every statement may run twice.
@@ -56,6 +58,7 @@ CREATE TABLE IF NOT EXISTS favor_refund_prompts (
     answer_key TEXT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     answered_at TIMESTAMPTZ NULL,
+    roll_key TEXT NOT NULL DEFAULT '',
     CONSTRAINT favor_refund_prompts_status_valid CHECK (status IN ('open', 'returned', 'kept')),
     CONSTRAINT favor_refund_prompts_answered_valid CHECK ((status = 'open') = (answered_at IS NULL)),
     CONSTRAINT favor_refund_prompts_answer_key_unique UNIQUE (campaign_id, answer_key)
@@ -63,6 +66,7 @@ CREATE TABLE IF NOT EXISTS favor_refund_prompts (
 CREATE INDEX IF NOT EXISTS favor_refund_prompts_campaign_open_idx ON favor_refund_prompts (campaign_id, created_at) WHERE status = 'open';
 CREATE INDEX IF NOT EXISTS favor_refund_prompts_session_idx ON favor_refund_prompts (game_session_id);
 CREATE INDEX IF NOT EXISTS favor_refund_prompts_character_idx ON favor_refund_prompts (character_id);
+CREATE INDEX IF NOT EXISTS favor_refund_prompts_roll_idx ON favor_refund_prompts (campaign_id, character_id, roll_key) WHERE status = 'open';
 
 -- The events of the pass and of the refund: the ask, the pass (favor_passed, already there since 00332), the refusal, the
 -- cancel, the prompt, the refund and the prompt left as it was.

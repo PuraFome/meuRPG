@@ -508,7 +508,12 @@ func (s *Service) takeBackOf(ctx context.Context, c *combatTx, run *undoRun, las
 	case last.Kind == eventGearSwapped: // the swap is the characters module's too: the sheet goes back with the economy
 		return nil, s.takeBackGearSwap(ctx, c, run, last.Payload)
 	}
-	return s.takeBack(ctx, c, last.Kind, ev)
+	vitals, err := s.takeBack(ctx, c, last.Kind, ev)
+	if err != nil || !ev.Favor || last.IdempotencyKey == nil {
+		return vitals, err
+	}
+	// The Inspiration the roll spent is back (favorBack): the master's question about it closes as kept.
+	return vitals, keepRefundOfRoll(ctx, c.q, c.session.CampaignID, *last.IdempotencyKey)
 }
 
 // creatureToPutBack is the creature whose square the undo of ev changes behind the mover's

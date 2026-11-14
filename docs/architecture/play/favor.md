@@ -218,7 +218,7 @@ Three log kinds carry the line, in `CombatLogFavor.text_pt`, built for each read
 
 | Kind | Event | Master | Giver or roller | Receiver |
 | --- | --- | --- | --- | --- |
-| `FAVOR_PASSED` (116) | `favor_passed` | "Brisa passou a Inspiração para Tor." | "O mestre aceitou: a sua Inspiração foi para Tor." | "Brisa passou a Inspiração para você." |
+| `FAVOR_PASSED` (116) | `favor_passed`, and `favor_granted` (master only) | "Brisa passou a Inspiração para Tor." / "O mestre deu a Inspiração a Tor." | "O mestre aceitou: a sua Inspiração foi para Tor." | "Brisa passou a Inspiração para você." |
 | `FAVOR_PASS_ANSWERED` (118) | `favor_pass_refused`, `favor_pass_canceled`, and the undo of an accepted pass | names | "O mestre recusou: a Inspiração continua com você." / "Você desistiu de passar a Inspiração." | after an undo only: "O mestre desfez a passagem: a Inspiração não está mais com você." (no actor in the entry) |
 | `FAVOR_REFUNDED` (117) | `favor_refunded` | "O mestre devolveu a Inspiração de Brisa." | "O mestre devolveu a sua Inspiração." | none |
 
@@ -227,13 +227,15 @@ No other player reads a line, nor hears of it or of its undo (`seen_by`), and an
 The master's undo (`takeBackFavor`) of a grant takes the row back; of an accepted pass it takes it from the receiver and gives it to the giver in the undo's own transaction; of a refusal or a cancel it only closes the line.
 It is refused `UNDO_TARGET_CHANGED` (naming the combatant) when the character spent it since, and `ALREADY_HAS` when the giver has another by then; nothing changes, since the transaction rolls back whole.
 The undo tells the master and the owners of the event, and no other player.
-The grant has no log line of its own (no kind), so the master's screen offers its undo from `undoable_event_id`.
+The grant's line is the master's alone and reuses `FAVOR_PASSED` ("O mestre deu a Inspiração a Toren."; `fillFavor` says nothing to a player, and the event's `seen_by` is empty, so the owner of the character granted hears nothing of it either), so the screen offers its undo from the line the master reads (`undoable` on the entry), not from `undoable_event_id` alone. A hidden combatant makes it `secret` as the rest.
+A refusal or a cancel moved nothing, so its `seen_by` is the giver's owner alone (`stageOfPass(moved=false)`); only an accepted pass (and its undo) is told to the receiver's owner too.
+The undo of a grant or an accepted pass also cancels the pending ask of the character that lost the row (`takeFavorFrom`): it closes the `favor_passes` row as `canceled` with no key and writes a `favor_pass_canceled` with no combat (so no line and no action to undo), in the undo's transaction. It sends no hint of its own: the vitals hint the undo already sends to the master and the owner makes their screens read `GetFavor` again.
 
 ## The refund prompt
 
 `spendFavor` judges the sources the roller reads. A spend that adds something over them but nothing over every source (a hidden advantage already gave it) resolves the roll at once and returns `favorUse.Refund`; `useFavor` then opens a row of `favor_refund_prompts` (the roll's name by its held kind, the hidden sources), writes `favor_refund_prompted` (no key, the master only) and tells the roller's vitals to the master alone. The roll's own write moves the hint number: the prompt moves none by itself.
 `GetFavor.refund_prompts` is the master's alone, with the hidden sources as the master reads them.
-`AnswerFavorRefund` is the master's call, idempotent by its key (a retry answers the same prompt and moves nothing). A prompt already answered or ended is `PASS_CLOSED` (the closest existing reason). "Give back" goes through the one refund path, `refundSpentFavor` in `hold_forget.go` (the one-row rule: a character that has one again keeps it), closes it `returned`, writes `favor_refunded` (the master and the owner; a line of the log in a combat) and tells the roller's vitals. "Keep" closes it `kept` and writes `favor_refund_kept`, the master's alone. The session's end closes the open prompts `kept`. The player reads only "O mestre devolveu a sua Inspiração.", never why, and nothing when it is kept. `TestFavorGiveBackIsCalledOnlyFromTheRefundPaths` keeps every give-back in `favor_spend.go`, `hold_forget.go` and the zone's undo.
+`AnswerFavorRefund` is the master's call, idempotent by its key (a retry answers the same prompt and moves nothing). A prompt already answered or ended is `PASS_CLOSED` (the closest existing reason). The prompt keeps the idempotency key of the roll (`roll_key`): the undo of the roll (`takeBackOf`, from the undone event's key) and the forgetting of its held roll (`favorGiveBackIf`, from the hold's key) close it `kept` through `keepRefundOfRoll`, since the Inspiration went back with the roll; those closings write no event of their own (the roll's undo is the record). "Give back" goes through the one refund path, `refundSpentFavor` in `hold_forget.go`, which refuses a roller that has the Inspiration again with `ALREADY_HAS` (the spend was already refunded, or the master granted another; the answer rolls back and the prompt stays open for a "keep"), closes it `returned`, writes `favor_refunded` (the master and the owner; a line of the log in a combat) and tells the roller's vitals. "Keep" closes it `kept`, moves the hint number by one, tells the master's screens (the roller's vitals hint, the master's alone) so that his other tabs close the prompt, and writes `favor_refund_kept`, the master's alone. A retry of either answer tells again what the first told and moves no number. The session's end closes the open prompts `kept`. The player reads only "O mestre devolveu a sua Inspiração.", never why, and nothing when it is kept. `TestFavorGiveBackIsCalledOnlyFromTheRefundPaths` keeps every give-back in `favor_spend.go`, `hold_forget.go` and the zone's undo, and `TestInsertCharacterFavorIsCalledOnlyFromTheFavorFiles` keeps the raw insert of the row in `favor_grant.go`, `favor_pass.go`, `combat_undo_favor.go`, `favor_spend.go` and `hold_forget.go`.
 
 ## Who hears and who reads
 
@@ -247,13 +249,14 @@ The grant has no log line of its own (no kind), so the master's screen offers it
 | `CANNOT_RECEIVE` | Yes | No | No |
 | The session's hint number | Steps by one | Steps by one | Steps by one, the same for whoever was picked |
 | The combat log line of a roll that spent it | Yes | Yes | No |
-| The combat log line of a grant, and the session summary | No line | No line | No line |
-| The log line of a pass answered or a refund, in a combat | Yes, with names | The giver or roller: their part; the receiver: that they have it | None |
+| The combat log line of a grant in a combat | Yes ("O mestre deu a Inspiração a …") | No | No |
+| The session summary | No line | No line | No line |
+| The log line of a pass answered or a refund, in a combat | Yes, with names | The giver or roller: their part; the receiver: that they have it, only for an accepted pass | None |
 | The refund prompt, in `GetFavor` | Yes, with the hidden sources | No | No |
 
 The hint is `vitals_changed` with the character's vitals, which the master and the player already read, so it carries nothing about the Inspiration; the screens read the character and `GetFavor` again.
 A character whose vitals cannot be read (a dead one) tells nothing, and the number moves all the same.
-`favor_granted` is no line of the combat log; in a combat it is only an action the master can undo.
+`favor_granted` is a line of the combat log only for the master, and only in a combat; it is there for his undo.
 
 ## Reasons
 
@@ -278,6 +281,7 @@ A player calling it is `permission_denied`.
 `favor_checks_test.go`, `favor_checks_more_test.go` and `favor_checks_special_test.go` cover the seven checks: the spend, the refusals, the settled retry, the held roll, the typed faces, the number, the window and the trap search in a combat.
 `favor_round2_test.go` covers the spell attack that spends once, `ADDS_NOTHING` judged on what the roller reads (an attack, a save and a check, with a hidden advantage, a hidden pair and a visible control) and the spend before a Protection that cancels the advantage.
 `favor_pass_test.go` covers the pass: the ask and its refusals in order, the retries, the answers, `CANNOT_RECEIVE`, the cancel, the read, the spend refused while pending, the end of a session, the hints, and the races (two asks, accept and cancel, two accepts, accept and a grant to the receiver, accept and a spend).
+`favor_pass_log_test.go` and `favor_refund_test.go` cover the combat's lines, the hints of each reader (a third player hears nothing), the undo of a pass and of a grant with the ask they cancel, and the refund prompt: the answers, `ALREADY_HAS`, the prompt closed by the undo or the forgetting of its roll, and the hint number of a keep.
 `TestAuthorizationMatrix` has the rows of the calls.
 `internal/leaktest/favor_test.go` proves that a third player reads nothing of who has it, in the read, the log and the stream.
 `internal/leaktest/favor_checks_test.go` proves that the source "Inspiração" of a spent check reaches the roller and the master and no one else.

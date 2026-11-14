@@ -106,9 +106,11 @@ func (s *Service) grantFavorIn(ctx context.Context, tx pgx.Tx, h *hints, g favor
 	if err != nil {
 		return err
 	}
-	if inCombat { // a grant in a combat is the combat's last action, which the master's undo takes back
+	if inCombat { // a grant in a combat is the combat's last action, which the master's undo takes back: its line is the master's alone
+		st.SeenBy = nil
 		event.encounterID = &st.EncounterID
 		payload = favorGrantedCombatEvent{favorGrantedEvent{CharacterID: g.characterID}, st}
+		tellFavorLog(h, g.m.CampaignID, st)
 	}
 	if err := s.appendKeyedEvent(ctx, q, event, payload); err != nil {
 		return err

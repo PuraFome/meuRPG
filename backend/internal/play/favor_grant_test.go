@@ -516,7 +516,7 @@ func checkFavorAuthorization(t *testing.T, f favorTable) {
 		{"AnswerFavorRefund", func(ctx context.Context, c client) error {
 			_, err := c.AnswerFavorRefund(ctx, connect.NewRequest(&playv1.AnswerFavorRefundRequest{CampaignId: f.campaign, PromptId: f.character, GiveBack: true, IdempotencyKey: newKey()}))
 			return err
-		}, [4]connect.Code{connect.CodeUnimplemented, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound}},
+		}, [4]connect.Code{connect.CodeNotFound, connect.CodePermissionDenied, connect.CodePermissionDenied, connect.CodeNotFound}},
 	}
 	covered := map[string]bool{}
 	for _, r := range rows {

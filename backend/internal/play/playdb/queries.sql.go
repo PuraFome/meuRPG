@@ -117,7 +117,7 @@ func (q *Queries) AdvanceCharacterInspiration(ctx context.Context, arg AdvanceCh
 const answerFavorRefundPrompt = `-- name: AnswerFavorRefundPrompt :one
 UPDATE favor_refund_prompts SET status = $1, answer_key = $2, answered_at = now()
 WHERE id = $3 AND campaign_id = $4 AND status = 'open'
-RETURNING id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at
+RETURNING id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key
 `
 
 type AnswerFavorRefundPromptParams struct {
@@ -147,6 +147,7 @@ func (q *Queries) AnswerFavorRefundPrompt(ctx context.Context, arg AnswerFavorRe
 		&i.AnswerKey,
 		&i.CreatedAt,
 		&i.AnsweredAt,
+		&i.RollKey,
 	)
 	return i, err
 }
@@ -835,13 +836,75 @@ func (q *Queries) CloseFavorPassesOfSession(ctx context.Context, gameSessionID s
 	return items, nil
 }
 
+const closeFavorRefundPromptsOfRoll = `-- name: CloseFavorRefundPromptsOfRoll :many
+WITH changed AS (
+    UPDATE favor_refund_prompts SET status = 'kept', answered_at = now()
+    WHERE campaign_id = $1 AND character_id = $2 AND roll_key = $3 AND status = 'open'
+    RETURNING id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key
+)
+SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key FROM changed ORDER BY created_at, id
+`
+
+type CloseFavorRefundPromptsOfRollParams struct {
+	CampaignID  string
+	CharacterID string
+	RollKey     string
+}
+
+type CloseFavorRefundPromptsOfRollRow struct {
+	ID            string
+	CampaignID    string
+	GameSessionID string
+	CharacterID   string
+	RollLabelPt   string
+	HiddenSources []byte
+	Status        string
+	AnswerKey     *string
+	CreatedAt     time.Time
+	AnsweredAt    *time.Time
+	RollKey       string
+}
+
+// The roll a prompt belongs to is gone (undone, or its held roll forgotten): the Inspiration it spent went back, so the prompt closes as kept.
+func (q *Queries) CloseFavorRefundPromptsOfRoll(ctx context.Context, arg CloseFavorRefundPromptsOfRollParams) ([]CloseFavorRefundPromptsOfRollRow, error) {
+	rows, err := q.db.Query(ctx, closeFavorRefundPromptsOfRoll, arg.CampaignID, arg.CharacterID, arg.RollKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CloseFavorRefundPromptsOfRollRow
+	for rows.Next() {
+		var i CloseFavorRefundPromptsOfRollRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.GameSessionID,
+			&i.CharacterID,
+			&i.RollLabelPt,
+			&i.HiddenSources,
+			&i.Status,
+			&i.AnswerKey,
+			&i.CreatedAt,
+			&i.AnsweredAt,
+			&i.RollKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const closeFavorRefundPromptsOfSession = `-- name: CloseFavorRefundPromptsOfSession :many
 WITH changed AS (
     UPDATE favor_refund_prompts SET status = 'kept', answered_at = now()
     WHERE game_session_id = $1 AND status = 'open'
-    RETURNING id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at
+    RETURNING id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key
 )
-SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at FROM changed ORDER BY created_at, id
+SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key FROM changed ORDER BY created_at, id
 `
 
 type CloseFavorRefundPromptsOfSessionRow struct {
@@ -855,6 +918,7 @@ type CloseFavorRefundPromptsOfSessionRow struct {
 	AnswerKey     *string
 	CreatedAt     time.Time
 	AnsweredAt    *time.Time
+	RollKey       string
 }
 
 // The end of a session keeps spent the Inspiration of every prompt still open in it.
@@ -878,6 +942,7 @@ func (q *Queries) CloseFavorRefundPromptsOfSession(ctx context.Context, gameSess
 			&i.AnswerKey,
 			&i.CreatedAt,
 			&i.AnsweredAt,
+			&i.RollKey,
 		); err != nil {
 			return nil, err
 		}
@@ -1785,15 +1850,16 @@ const deleteInspirationHold = `-- name: DeleteInspirationHold :many
 WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE id = $1
-RETURNING id, campaign_id, character_id, favor_spent, answer_key
+RETURNING id, campaign_id, character_id, favor_spent, answer_key, idempotency_key
 )
-SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor, idempotency_key FROM changed ORDER BY id
 `
 
 type DeleteInspirationHoldRow struct {
 	CampaignID     string
 	CharacterID    string
 	UnsettledFavor bool
+	IdempotencyKey string
 }
 
 // One hold, answered or not. Says whether it spent the character's Inspiration and never got the roll (no answer yet): that
@@ -1807,7 +1873,7 @@ func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) ([]Delet
 	var items []DeleteInspirationHoldRow
 	for rows.Next() {
 		var i DeleteInspirationHoldRow
-		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor); err != nil {
+		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor, &i.IdempotencyKey); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1823,9 +1889,9 @@ WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE (encounter_id = $1 AND combatant_id = $2)
    OR (combatant_id IS NULL AND character_id = $3)
-RETURNING id, campaign_id, character_id, favor_spent, answer_key
+RETURNING id, campaign_id, character_id, favor_spent, answer_key, idempotency_key
 )
-SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor, idempotency_key FROM changed ORDER BY id
 `
 
 type DeleteInspirationHoldsOfParams struct {
@@ -1838,6 +1904,7 @@ type DeleteInspirationHoldsOfRow struct {
 	CampaignID     string
 	CharacterID    string
 	UnsettledFavor bool
+	IdempotencyKey string
 }
 
 // Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
@@ -1853,7 +1920,7 @@ func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspir
 	var items []DeleteInspirationHoldsOfRow
 	for rows.Next() {
 		var i DeleteInspirationHoldsOfRow
-		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor); err != nil {
+		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor, &i.IdempotencyKey); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -1985,15 +2052,16 @@ WHERE h.campaign_id = $1 AND h.answer_key IS NULL AND h.round IS NULL
   AND NOT h.stroke_ask
   AND NOT h.reroll_ask
   AND NOT EXISTS (SELECT 1 FROM character_inspiration d WHERE d.character_id = h.character_id)
-RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key
+RETURNING h.id, h.campaign_id, h.character_id, h.favor_spent, h.answer_key, h.idempotency_key
 )
-SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
+SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor, idempotency_key FROM changed ORDER BY id
 `
 
 type DeleteOrphanInspirationHoldsRow struct {
 	CampaignID     string
 	CharacterID    string
 	UnsettledFavor bool
+	IdempotencyKey string
 }
 
 // The held rolls of a character whose die is gone (it ran out): there is nothing left to ask.
@@ -2010,7 +2078,7 @@ func (q *Queries) DeleteOrphanInspirationHolds(ctx context.Context, campaignID s
 	var items []DeleteOrphanInspirationHoldsRow
 	for rows.Next() {
 		var i DeleteOrphanInspirationHoldsRow
-		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor); err != nil {
+		if err := rows.Scan(&i.CampaignID, &i.CharacterID, &i.UnsettledFavor, &i.IdempotencyKey); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2632,7 +2700,7 @@ func (q *Queries) GetFavorPassByClosedKey(ctx context.Context, arg GetFavorPassB
 }
 
 const getFavorRefundPrompt = `-- name: GetFavorRefundPrompt :one
-SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at FROM favor_refund_prompts WHERE id = $1 AND campaign_id = $2
+SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key FROM favor_refund_prompts WHERE id = $1 AND campaign_id = $2
 `
 
 type GetFavorRefundPromptParams struct {
@@ -2654,12 +2722,13 @@ func (q *Queries) GetFavorRefundPrompt(ctx context.Context, arg GetFavorRefundPr
 		&i.AnswerKey,
 		&i.CreatedAt,
 		&i.AnsweredAt,
+		&i.RollKey,
 	)
 	return i, err
 }
 
 const getFavorRefundPromptByAnswerKey = `-- name: GetFavorRefundPromptByAnswerKey :one
-SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at FROM favor_refund_prompts WHERE campaign_id = $1 AND answer_key = $2
+SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key FROM favor_refund_prompts WHERE campaign_id = $1 AND answer_key = $2
 `
 
 type GetFavorRefundPromptByAnswerKeyParams struct {
@@ -2681,6 +2750,7 @@ func (q *Queries) GetFavorRefundPromptByAnswerKey(ctx context.Context, arg GetFa
 		&i.AnswerKey,
 		&i.CreatedAt,
 		&i.AnsweredAt,
+		&i.RollKey,
 	)
 	return i, err
 }
@@ -4960,9 +5030,9 @@ func (q *Queries) InsertFavorPass(ctx context.Context, arg InsertFavorPassParams
 }
 
 const insertFavorRefundPrompt = `-- name: InsertFavorRefundPrompt :one
-INSERT INTO favor_refund_prompts (campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at
+INSERT INTO favor_refund_prompts (campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, roll_key)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key
 `
 
 type InsertFavorRefundPromptParams struct {
@@ -4971,6 +5041,7 @@ type InsertFavorRefundPromptParams struct {
 	CharacterID   string
 	RollLabelPt   string
 	HiddenSources []byte
+	RollKey       string
 }
 
 func (q *Queries) InsertFavorRefundPrompt(ctx context.Context, arg InsertFavorRefundPromptParams) (FavorRefundPrompt, error) {
@@ -4980,6 +5051,7 @@ func (q *Queries) InsertFavorRefundPrompt(ctx context.Context, arg InsertFavorRe
 		arg.CharacterID,
 		arg.RollLabelPt,
 		arg.HiddenSources,
+		arg.RollKey,
 	)
 	var i FavorRefundPrompt
 	err := row.Scan(
@@ -4993,6 +5065,7 @@ func (q *Queries) InsertFavorRefundPrompt(ctx context.Context, arg InsertFavorRe
 		&i.AnswerKey,
 		&i.CreatedAt,
 		&i.AnsweredAt,
+		&i.RollKey,
 	)
 	return i, err
 }
@@ -8001,7 +8074,7 @@ func (q *Queries) ListOpenCombatantsOfCreatures(ctx context.Context, arg ListOpe
 }
 
 const listOpenFavorRefundPrompts = `-- name: ListOpenFavorRefundPrompts :many
-SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at FROM favor_refund_prompts WHERE campaign_id = $1 AND status = 'open' ORDER BY created_at, id
+SELECT id, campaign_id, game_session_id, character_id, roll_label_pt, hidden_sources, status, answer_key, created_at, answered_at, roll_key FROM favor_refund_prompts WHERE campaign_id = $1 AND status = 'open' ORDER BY created_at, id
 `
 
 // The master's questions that wait, oldest first.
@@ -8025,6 +8098,7 @@ func (q *Queries) ListOpenFavorRefundPrompts(ctx context.Context, campaignID str
 			&i.AnswerKey,
 			&i.CreatedAt,
 			&i.AnsweredAt,
+			&i.RollKey,
 		); err != nil {
 			return nil, err
 		}
@@ -8899,7 +8973,7 @@ func (q *Queries) ListRecentPuzzleHintTries(ctx context.Context, runID string) (
 }
 
 const listRecentSessionEvents = `-- name: ListRecentSessionEvents :many
-SELECT id, seq, kind, encounter_id, payload FROM session_events
+SELECT id, seq, kind, encounter_id, payload, idempotency_key FROM session_events
 WHERE game_session_id = $1
 ORDER BY seq DESC
 LIMIT $2
@@ -8911,11 +8985,12 @@ type ListRecentSessionEventsParams struct {
 }
 
 type ListRecentSessionEventsRow struct {
-	ID          string
-	Seq         int32
-	Kind        string
-	EncounterID *string
-	Payload     []byte
+	ID             string
+	Seq            int32
+	Kind           string
+	EncounterID    *string
+	Payload        []byte
+	IdempotencyKey *string
 }
 
 // The session's latest events, newest first (the undo looks for the last action).
@@ -8934,6 +9009,7 @@ func (q *Queries) ListRecentSessionEvents(ctx context.Context, arg ListRecentSes
 			&i.Kind,
 			&i.EncounterID,
 			&i.Payload,
+			&i.IdempotencyKey,
 		); err != nil {
 			return nil, err
 		}
