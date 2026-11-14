@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -436,7 +437,7 @@ func (s *Service) spendReadiedMove(ctx context.Context, a *moveAttempt) error {
 func (a *moveAttempt) readiedMoveDFt() int {
 	fresh := a.target
 	fresh.MovementUsedDft, fresh.Dashed = 0, false
-	return min(movementLeftDFt(fresh), int(a.readied.row.MoveFt)*dftPerFt)
+	return min(movementLeftAtDFt(fresh, grid.SurfaceFloor), int(a.readied.row.MoveFt)*dftPerFt)
 }
 
 // readiedUseBack: the undo of the action a readied action's use ran puts the use back too: the row waits, its window is

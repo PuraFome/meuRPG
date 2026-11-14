@@ -1,0 +1,135 @@
+import { TestBed } from '@angular/core/testing';
+import { Code, ConnectError } from '@connectrpc/connect';
+import { describe, expect, it, vi } from 'vitest';
+
+import { type AttunementEntryVm, AttunementClient } from '../../core/characters/attunement';
+
+import { AttunementSection } from './attunement-section';
+
+const entry = (o: Partial<AttunementEntryVm> & { id: string }): AttunementEntryVm => ({
+  key: `item:${o.id}`,
+  namePt: o.id,
+  kind: 'magic',
+  attuned: false,
+  asks: true,
+  restrictionPt: '',
+  restriction: 'none',
+  sameItemAttuned: false,
+  ...o,
+});
+
+function setup(
+  set: AttunementClient['set'],
+  entries: AttunementEntryVm[],
+  viewer: 'owner' | 'master' = 'owner',
+) {
+  TestBed.configureTestingModule({ providers: [{ provide: AttunementClient, useValue: { set } }] });
+  const fixture = TestBed.createComponent(AttunementSection);
+  fixture.componentRef.setInput('attunement', {
+    entries,
+    attuned: entries.filter((e) => e.attuned).length,
+  });
+  fixture.componentRef.setInput('viewer', viewer);
+  fixture.componentRef.setInput('characterName', 'Tor');
+  fixture.componentRef.setInput('windowOpen', true);
+  fixture.componentRef.setInput('campaignId', 'c1');
+  fixture.componentRef.setInput('characterId', 'p1');
+  fixture.componentRef.setInput('revision', 7);
+  fixture.detectChanges();
+  return fixture;
+}
+const text = (f: ReturnType<typeof setup>): string =>
+  (f.nativeElement as HTMLElement).textContent ?? '';
+const button = (f: ReturnType<typeof setup>, id: string): HTMLButtonElement =>
+  (f.nativeElement as HTMLElement).querySelector(`[data-entry-id="${id}"]`)!;
+
+describe('AttunementSection', () => {
+  it('asks the server with the entry id and the held revision, then says it and tells the page', async () => {
+    const set = vi.fn().mockResolvedValue(undefined);
+    const f = setup(set, [entry({ id: 'm1', namePt: 'Manto élfico' })]);
+    const changed = vi.fn();
+    f.componentInstance.changed.subscribe(changed);
+    button(f, 'm1').click();
+    await f.whenStable();
+    f.detectChanges();
+    expect(set).toHaveBeenCalledWith('c1', 'p1', 'm1', true, 7);
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(text(f)).toContain('Manto élfico sintonizado. Sintonizados: 1 de 3.');
+  });
+
+  it('does nothing for a button the section knows will be refused, and says why under the row', () => {
+    const set = vi.fn();
+    const f = setup(set, [
+      entry({
+        id: 'm2',
+        namePt: 'Pérola do poder',
+        restrictionPt: 'Só para um conjurador',
+        restriction: 'notMet',
+      }),
+    ]);
+    expect(button(f, 'm2').getAttribute('aria-disabled')).toBe('true');
+    button(f, 'm2').click();
+    expect(set).not.toHaveBeenCalled();
+    expect(text(f)).toContain('Só para um conjurador: você não cumpre.');
+  });
+
+  it('shows a refusal as an alert in the app words and keeps the row', async () => {
+    const set = vi.fn().mockRejectedValue(new ConnectError('stale', Code.Aborted));
+    const f = setup(set, [entry({ id: 'm1', namePt: 'Manto élfico' })]);
+    button(f, 'm1').click();
+    await f.whenStable();
+    f.detectChanges();
+    const alert = (f.nativeElement as HTMLElement).querySelector('[role="alert"]');
+    expect(alert?.textContent).toContain('Não foi possível sintonizar Manto élfico.');
+    expect(button(f, 'm1')).toBeTruthy();
+  });
+
+  it('tells the page about a refusal, so it reads the sheet again', async () => {
+    const set = vi.fn().mockRejectedValue(new ConnectError('stale', Code.Aborted));
+    const f = setup(set, [entry({ id: 'm1', namePt: 'Manto élfico' })]);
+    const refused = vi.fn();
+    f.componentInstance.refused.subscribe(refused);
+    button(f, 'm1').click();
+    await f.whenStable();
+    expect(refused).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the button, with its focus, while the call is in the air', async () => {
+    let release: () => void = () => undefined;
+    const set = vi.fn().mockReturnValue(new Promise<void>((r) => (release = r)));
+    const f = setup(set, [entry({ id: 'm1', namePt: 'Manto élfico' })]);
+    const before = button(f, 'm1');
+    before.click();
+    f.detectChanges();
+    expect(button(f, 'm1')).toBe(before);
+    expect(before.getAttribute('aria-busy')).toBe('true');
+    release();
+    await f.whenStable();
+  });
+
+  it('leaves the count as it was when an entry that does not ask ends', async () => {
+    const set = vi.fn().mockResolvedValue(undefined);
+    const f = setup(set, [entry({ id: 'm9', namePt: 'Botas', asks: false, attuned: true })]);
+    button(f, 'm9').click();
+    await f.whenStable();
+    f.detectChanges();
+    expect(text(f)).toContain('desfeita a sintonização. Sintonizados: 1 de 3.');
+  });
+
+  it('under a title of its own, says the count and the lead in one line and has no heading', () => {
+    const f = setup(vi.fn(), [entry({ id: 'm1' })], 'master');
+    f.componentRef.setInput('bare', true);
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    expect(el.querySelector('.att__title')).toBeNull();
+    expect(el.querySelector('.att__lead')?.textContent).toBe(
+      'Sintonizados: 0 de 3 · você é o mestre: sintoniza e encerra a qualquer hora, sem descanso.',
+    );
+    expect(el.querySelector('section')?.getAttribute('aria-label')).toBe('Sintonização');
+  });
+
+  it('puts the master in the dialog title with the name', () => {
+    const f = setup(vi.fn(), [], 'master');
+    expect(text(f)).toContain('Sintonização · Tor');
+  });
+});

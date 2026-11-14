@@ -121,6 +121,12 @@ func (c *caveTerrain) Terrain(context.Context, pgx.Tx, string, string) (grid.Ter
 	return t, nil
 }
 
+// Surface is the SurfaceSource of the cave: the same layer Terrain gives (#819).
+func (c *caveTerrain) Surface(ctx context.Context, tx pgx.Tx, mapID string, _ grid.Grid) (*grid.SurfaceLayer, error) {
+	t, err := c.Terrain(ctx, tx, "", mapID)
+	return t.Surface, err
+}
+
 // newMapOf is newMap for an image of width x height pixels.
 func (h *harness) newMapOf(campaignID string, columns, width, height int) string {
 	h.t.Helper()

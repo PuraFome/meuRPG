@@ -38,6 +38,12 @@ const DOOR_ORDER: readonly DoorKind[] = [2, 1, 3, 4, 5];
       @if (layers().terrain.length) {
         <li><span class="mr-swatch mr-swatch--terrain" aria-hidden="true"></span>Terreno difícil</li>
       }
+      @if (layers().water?.length) {
+        <li><span class="mr-swatch mr-swatch--water" aria-hidden="true"></span>Água</li>
+      }
+      @if (layers().climb?.length) {
+        <li><span class="mr-swatch mr-swatch--climb" aria-hidden="true"></span>Escalável</li>
+      }
       @if (layers().noPass?.length) {
         <li><span class="mr-swatch mr-swatch--nopass" aria-hidden="true"></span>Não dá para passar</li>
       }

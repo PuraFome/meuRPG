@@ -37,6 +37,7 @@ These are single values, the same in both themes.
 | `--mr-map-token-down`, `-down-line`, `-down-ink` | `#d5dae1`, `#8a93a3`, `#525b6b` | A defeated token |
 | `--mr-map-accent` | `#9e2b3b` | Reach, chosen square, area templates |
 | `--mr-map-fog` | `#000000` | Fog of war: what was never seen, and the darkening of what was |
+| `--mr-map-water` | `#2f6f95` | Superfície, Água: the blue of a water square, under white waves; Escalável has no colour of its own, a pale veil under dark chevrons (`--mr-map-water-waves` and `--mr-map-climb-chevrons` hold the two drawings). The marks carry the meaning, never the blue alone |
 | `--mr-map-sample` | `#a8977a` | A sample of a map's floor under the legend swatches |
 
 ### Dice tray tokens

@@ -378,6 +378,11 @@ func (d *encounterData) npcOnlyGroups(v combatViewer) []*playv1.NpcGroup {
 // characters' vitals by character ID; a player only learns from them that a
 // character is down, and the master gets the hit points.
 func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, npcs map[string]masterNPC, names func(key string) string) *playv1.Encounter {
+	return d.viewOn(v, vitals, armorClass, npcs, names, nil)
+}
+
+// viewOn is view with the surface each combatant stands on, for the movement counter (#819); a combatant it does not name stands on the floor.
+func (d *encounterData) viewOn(v combatViewer, vitals map[string]*playv1.CharacterVitals, armorClass map[string]int32, npcs map[string]masterNPC, names func(key string) string, standing map[string]grid.Surface) *playv1.Encounter {
 	out := d.encounterHeader(v)
 	turn := d.turnFor(v)
 	out.CurrentCombatantId, out.MasterTurn, out.TurnGroupIds = turn.currentID, turn.masterTurn, turn.groupIDs
@@ -386,7 +391,7 @@ func (d *encounterData) view(v combatViewer, vitals map[string]*playv1.Character
 	out.Zones = d.zonesView(v, names)
 	d.sunlightView(v, out)
 	rd := combatantReader{
-		d: d, v: v, turn: turn, vitals: vitals, armorClass: armorClass, npcs: npcs, names: names,
+		d: d, v: v, turn: turn, vitals: vitals, armorClass: armorClass, npcs: npcs, names: names, standing: standing,
 		ties:        unresolvedTies(d.cs),
 		byCombatant: statesOf(d.states),
 		// Players in the same joint turn read each other's economy: they act
@@ -440,6 +445,8 @@ type combatantReader struct {
 	ties        map[string]bool
 	byCombatant map[string][]playdb.CombatantState
 	shared      bool
+	// standing is the surface each combatant stands on, as the viewer may know it (see standingSurfaces).
+	standing map[string]grid.Surface
 	// sun is the combat's sunlight, as the rolls read it: the master's copy says who stands in it.
 	sun sunlight
 }
@@ -451,7 +458,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 	if c.Kind == kindPlayer { // a creature's character_id is its owner's: never the owner's vitals
 		vit = r.vitals[c.CharacterID]
 	}
-	p := combatantToProto(c, v, r.ties[c.ID], vit, r.armorClass[sheetKey(c)], r.npcs[sheetKey(c)].portrait, actsNow(e, c), r.names)
+	p := combatantToProto(c, v, r.ties[c.ID], vit, r.armorClass[sheetKey(c)], r.npcs[sheetKey(c)].portrait, actsNow(e, c), r.names, r.standing[c.ID])
 	if v.master {
 		r.masterView(p, c)
 	}
@@ -459,7 +466,7 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 		p.LimitedActions = limitedActionsView(r.npcs[sheetKey(c)].limited, c, r.npcs[sheetKey(c)].persistent && c.Kind == kindNPC)
 	}
 	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
-		shareEconomy(p, c)
+		shareEconomy(p, c, r.standing[c.ID])
 	}
 	p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
 	p.InspirationOffer = inspirationOfferView(d, c, v)
@@ -496,7 +503,7 @@ const deathSaveGoal = 3
 // its sheet's portrait, for the master's copy only (0 and "" when unknown).
 // onTurn says it acts now: it is in the group on turn and its part has not
 // ended, in a running combat.
-func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, portrait string, onTurn bool, names func(key string) string) *playv1.Combatant {
+func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vitals *playv1.CharacterVitals, armorClass int32, portrait string, onTurn bool, names func(key string) string, standing grid.Surface) *playv1.Combatant {
 	controls := v.owns(c)          // the caller's player plays it: their character or its creature
 	detail := v.master || controls // the numbers of the turn: the master's and the player's
 	out := publicCombatant(c, v, controls)
@@ -519,7 +526,7 @@ func combatantToProto(c playdb.Combatant, v combatViewer, tieUnresolved bool, vi
 		out.InitiativeBonus = new(c.InitiativeBonus)
 		out.InitiativeFace = c.InitiativeFace
 		shareInitiativeMinimum(out, c)
-		shareEconomy(out, c)
+		shareEconomy(out, c, standing)
 		if c.ReactionUsed { // which reaction and when: the owner's and the master's; a joint-turn partner reads reaction_used
 			out.ReactionKind, out.ReactionRound = reactionKindOf(c.ReactionKind), conv.OrZero(c.ReactionRound)
 		}
@@ -646,20 +653,24 @@ func stateWordFor(state playv1.CombatantState, c playdb.Combatant, v combatViewe
 
 // shareEconomy gives a player's combatant's turn economy to another player who
 // is in the same joint turn (the rest of the detail stays the owner's).
-func shareEconomy(out *playv1.Combatant, c playdb.Combatant) {
+//
+// The speed and what is left of it are those of the surface the combatant stands on (#819, SRD 5.1 "Using Different Speeds"), which is
+// the floor unless the view says otherwise: see standingSurfaces.
+func shareEconomy(out *playv1.Combatant, c playdb.Combatant, standing grid.Surface) {
 	// The movement is kept in tenths of a foot; the `_ft` fields are those rounded
 	// down, for the web that is already shipped (RN-21).
 	out.SpeedFt = c.SpeedFt
 	out.SpeedFlyFt = c.SpeedFlyFt
 	out.SpeedSwimFt, out.SpeedClimbFt, out.SpeedBurrowFt = c.SpeedSwimFt, c.SpeedClimbFt, c.SpeedBurrowFt
-	out.SpeedDft = clamp32(speedDFt(c), 0, math.MaxInt32)
+	out.SpeedDft = clamp32(speedOnDFt(c, standing), 0, math.MaxInt32)
 	out.MovementUsedFt = c.MovementUsedDft / 10
 	out.MovementUsedDft = c.MovementUsedDft
-	out.MovementLeftFt = clamp32(movementLeftFt(c), 0, 1200) // twice the largest speed
-	out.MovementLeftDft = clamp32(movementLeftDFt(c), 0, math.MaxInt32)
+	left := movementLeftAtDFt(c, standing)
+	out.MovementLeftFt = clamp32(left/10, 0, 1200) // twice the largest speed
+	out.MovementLeftDft = clamp32(left, 0, math.MaxInt32)
 	out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
 	out.Disengaged = c.Disengaged
-	out.StandUpCostDft = clamp32(standUpCostDFt(c), 0, math.MaxInt32)
+	out.StandUpCostDft = clamp32(standUpCostDFt(c, standing), 0, math.MaxInt32)
 }
 
 // markKeyOf is the cover the master marked, as an event keeps it ("" for none).
@@ -714,19 +725,15 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 	if err != nil {
 		return nil, s.dbError(ctx, "work out what the player sees", err)
 	}
-	var byCharacter map[string]*playv1.CharacterVitals
-	if slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer }) {
-		all, err := s.vitals.ListVitals(ctx, m.CampaignID)
-		if err != nil {
-			return nil, s.dbError(ctx, "list vitals", err)
-		}
-		byCharacter = make(map[string]*playv1.CharacterVitals, len(all))
-		for _, vit := range all {
-			byCharacter[vit.GetCharacterId()] = vit
-		}
+	byCharacter, err := s.vitalsByCharacter(ctx, m, d)
+	if err != nil {
+		return nil, err
 	}
 	names := s.namesFor(ctx, m.CampaignID) // the content is read once for the whole view
-	out := d.view(v, byCharacter, s.armorClasses(ctx, m, d), s.npcDetails(ctx, m, d), names)
+	out, err := s.viewWithSurfaces(ctx, m, d, v, byCharacter, names)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.decorateCreatureRiders(ctx, m, out); err != nil {
 		return nil, s.dbError(ctx, "read the creature riders", err)
 	}
@@ -758,6 +765,31 @@ func (s *Service) viewFor(ctx context.Context, m authz.Membership, d *encounterD
 		return nil, err
 	}
 	return out, nil
+}
+
+// vitalsByCharacter reads the vitals of the player characters in the combat, by character; nil when there is none.
+func (s *Service) vitalsByCharacter(ctx context.Context, m authz.Membership, d *encounterData) (map[string]*playv1.CharacterVitals, error) {
+	if !slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer }) {
+		return nil, nil
+	}
+	all, err := s.vitals.ListVitals(ctx, m.CampaignID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list vitals", err)
+	}
+	out := make(map[string]*playv1.CharacterVitals, len(all))
+	for _, vit := range all {
+		out[vit.GetCharacterId()] = vit
+	}
+	return out, nil
+}
+
+// viewWithSurfaces is the view of the combat for the viewer, with the surface each combatant stands on for the counter (#819).
+func (s *Service) viewWithSurfaces(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, byCharacter map[string]*playv1.CharacterVitals, names func(key string) string) (*playv1.Encounter, error) {
+	standing, err := s.standingSurfaces(ctx, d, v)
+	if err != nil {
+		return nil, s.dbError(ctx, "read the surfaces combatants stand on", err)
+	}
+	return d.viewOn(v, byCharacter, s.armorClasses(ctx, m, d), s.npcDetails(ctx, m, d), names, standing), nil
 }
 
 // armorClasses reads the armor class of each character in the combat, for

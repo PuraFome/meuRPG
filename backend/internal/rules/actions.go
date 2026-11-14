@@ -84,6 +84,9 @@ type Action struct {
 	SpendsSlot bool `json:",omitempty"`
 	// Result is what a use of the action gives: hit points regained, temporary hit points.
 	Result ActionResult `json:",omitzero"`
+	// Use is what the feature declares to be used through UseFeature (featureuse.go); nil: the action is taken
+	// with TakeAction. See ViaUseFeature.
+	Use *ActionUse `json:",omitempty"`
 }
 
 // featureStandards are the features whose action is a standard action taken
@@ -248,6 +251,9 @@ func (x *deriver) grantAction(a activeEffect) {
 		return
 	}
 	x.costAndResult(&act, a)
+	if !x.useOf(&act, a) {
+		return // the use's formula failed: no use, no action (never the old way)
+	}
 	for _, route := range x.routes(act, a.effect.TextPT) {
 		if !slices.ContainsFunc(x.d.Actions, func(o Action) bool { return o.Key == route.Key && o.Economy == route.Economy }) {
 			x.d.Actions = append(x.d.Actions, route)

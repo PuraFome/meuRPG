@@ -20,7 +20,7 @@ import { tableWithOpenChoices } from './choices-support';
 import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
-import { paintRPC, pickRadio, tapSquare } from './move-support';
+import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
 import { beginManeuverCombatRPC, maneuverTable, spendPoolRPC } from './maneuver-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
@@ -64,11 +64,12 @@ import { createInkBladeRPC, tableForSpells } from './spells-support';
 import { beginLegendaryFight, legendaryScreens, shotScale } from './legendary-support';
 import { LEFT_OUT_VIEWPORTS, leftOutShotScale, refuseEntries, shootLeftOut, targetLeftTheMenu } from './left-out-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
+import { ATT_WIDTHS, attViewport, attunementScale, cropAtt, shootAtt } from './attunement-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
-import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -720,7 +721,7 @@ test('a impressão do mapa passa no axe e nas conferências de layout no tema cl
  * "Como você rola os dados", as a choice and locked (the master decided). */
 async function scanDiceScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const masterPage = await master.newPage();
   const playerPage = await player.newPage();
@@ -950,7 +951,7 @@ test('as rolagens e a descrição da magia passam no axe no tema escuro, no celu
  * set through the API so the screens are the same on every run. */
 async function scanCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1069,7 +1070,7 @@ test('o combate passa no axe e nas conferências de layout no tema escuro, no ce
  * a line), no horizontal scroll, the bar's help text on a measure of its own, and the roll and the buttons inside the row. */
 async function scanMasterInitiativeSetup(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 941 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1136,7 +1137,7 @@ for (const [scheme, width] of [['light', 1440], ['dark', 1728]] as const) {
  * questions, "Desfazer última ação" and "Dano/Cura". */
 async function scanActionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1287,9 +1288,9 @@ async function checkTurnAboveTheFold(browser: Browser): Promise<void> {
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
 
-    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row in the card; the attack is on the first screen.
-    const shapes = p.getByRole('list', { name: 'O que tem neste turno' }).getByRole('listitem');
-    await expect(shapes).toHaveCount(3);
+    // The shapes of the turn (the Ação, the Bônus, the Reação) are one compact row, the first of "Ações" (board 584-01); the attack is on the first screen.
+    const shapes = p.getByRole('list', { name: 'O que resta da vez' }).getByRole('listitem');
+    await expect(shapes).toHaveCount(4); // the Ação, the Bônus, the Reação and the walker (board 584-01)
     const row = await Promise.all((await shapes.all()).map((t) => boxOf(t)));
     expect(new Set(row.map((b) => Math.round(b.y))).size).toBe(1);
     expect(Math.max(...row.map((b) => b.height))).toBeLessThanOrEqual(80);
@@ -1322,7 +1323,7 @@ test('no celular de 390 x 844 as ações da vez ficam acima da dobra, logo sob o
  * "Ver mapa" icon, and the groups that are spent, folded and opened. */
 async function scanCompactTurnScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1393,7 +1394,7 @@ for (const [scheme, width] of [['light', 1280], ['dark', 390], ['dark', 1280], [
  * squares are chosen with the arrows under the map, which every width has. */
 async function scanMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1528,7 +1529,7 @@ test('mover e a pergunta do ataque de oportunidade passam no axe no tema claro, 
  * failures) and the question that confirms a death. */
 async function scanCastingScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1748,7 +1749,7 @@ test('conjurar, cair, o Escudo e as condições passam no axe e nas conferência
  * Contramágica, and the concentration save's prompt. */
 async function scanReactionScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1826,7 +1827,7 @@ test('as reações dos NPCs passam no axe e nas conferências de layout no tema 
  * Fôlego's sheet and Surto de Ação's note. */
 async function scanFighterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -1901,7 +1902,7 @@ test('o guerreiro (Ataque Extra, Retomar o Fôlego, Surto de Ação) passa no ax
  * ND and XP (the list open, "Usar 50 XP"). Built in one function so the sweep is one place. */
 async function scanXpScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2035,7 +2036,7 @@ test('as telas de XP passam no axe e nas conferências de layout no tema escuro,
  */
 async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2198,7 +2199,7 @@ async function scanSceneScreens(browser: Browser, colorScheme: 'light' | 'dark',
  */
 async function scanEnterSceneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2275,7 +2276,7 @@ test('as cenas de RP passam no axe e nas conferências de layout no tema claro, 
  */
 async function scanMilestoneScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width <= 390 ? 700 : 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2372,7 +2373,7 @@ test('os marcos planejados passam no axe e nas conferências de layout no tema c
  */
 async function scanNotesScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2623,7 +2624,7 @@ test('a ficha no desktop de 1280 mantém as quatro colunas, com as anotações n
  * state after the part ended, and the goblins' turn (a group of NPCs alone). */
 async function scanJointTurnScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2683,7 +2684,7 @@ test('o turno conjunto passa no axe e nas conferências de layout no celular de 
 // players' stage with its larger view, and the combat highlights.
 async function scanStageScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2825,7 +2826,7 @@ test('o retrato, o palco e os destaques passam no axe e nas conferências de lay
 // dialog (a sheet on a phone), "Mover Pensantus" with the pad, the amber notice of a move that stopped before a marked square, the group.
 async function scanTokenMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 1000 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const pensantus = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const toren = await browser.newContext({ storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
   const [m, a, b] = await Promise.all([master.newPage(), pensantus.newPage(), toren.newPage()]);
@@ -2895,7 +2896,7 @@ test('o mover de tokens passa no axe e nas conferências de layout no tema claro
 // move that stopped before a marked square, and the notice when the master locks it again.
 async function scanPlayerMoveScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 1000 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -2961,7 +2962,7 @@ test('o lado do jogador do mover de tokens passa no axe e nas conferências de l
 // display, and the chooser of players (a sheet on a phone, a dialog from a tablet up).
 async function scanSceneVisibilityScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3054,7 +3055,7 @@ test('o quem vê da cena passa no axe e nas conferências de layout no tema clar
  * reads, and the master's card under Sono in the log. */
 async function scanCombatDetailsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3149,7 +3150,7 @@ test('as magias na sessão passam no axe e nas conferências de layout no tema e
  */
 async function scanHiddenAreaScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, hiddenInArea: boolean): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3235,7 +3236,7 @@ test('a pergunta sem escondidas e o zoom do mapa grande passam no axe e nas conf
  */
 async function scanSceneOptionsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3347,7 +3348,7 @@ test('as opções da cena passam no axe e nas conferências de layout no tema cl
  */
 async function scanSessionSummaryScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -3634,7 +3635,7 @@ test('as escolhas pendentes passam no axe e nas conferências de layout no tema 
  */
 async function scanGoldScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -4160,7 +4161,7 @@ test('a névoa no combate passa no axe e nas conferências de layout no tema esc
 // sheet. Every state goes through axe and the alignment checks.
 async function scanTrapScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -4319,6 +4320,36 @@ async function scanCreatureCombatScreens(browser: Browser, colorScheme: 'light' 
     await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
     await expectScreenPasses(p, `A vez como Lobo ${where}`);
 
+    // The turn band of the form (584-01, 584-02): the chip with the time, the economy row above the tabs, and "Permanecer na forma".
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).toBeVisible();
+    await expectScreenPasses(p, `A faixa da vez na forma, com o tempo e a linha da vez ${where}`);
+    // As a beast the tabs are Ataques (the beast's bite), Druida (the way back and the stay) and Outras; there is no Magias tab.
+    await expect(p.getByRole('tab', { name: /^Magias/ })).toHaveCount(0);
+    await expect(p.getByText('Sem magias na forma de fera. Volte à forma normal para conjurar.')).toBeVisible();
+    await openActionTab(p, 'Ataques');
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expectScreenPasses(p, `A aba Ataques na forma ${where}`);
+    await openActionTab(p, 'Outras');
+    await expectScreenPasses(p, `A aba Outras na forma ${where}`);
+    await openActionTab(p, 'Druida');
+    await expect(p.getByRole('list', { name: 'O que resta da vez' })).toBeVisible();
+    await expect(p.getByText('Permanecer na forma').first()).toBeVisible();
+    await expectScreenPasses(p, `A aba Druida na forma, com Permanecer na forma ${where}`);
+    await tapAboveBar(p.getByRole('button', { name: 'Permanecer na forma' }));
+    // The answer is in when its outcome is on the screen: the use is spent, so the row of "Permanecer" says there is none left (the
+    // vitals arrive after the call returns, and the options reload with the revision). Then the buttons that waited for it are on
+    // again; the scan reads the settled screen, never a frame in between.
+    await expect(p.locator('app-action-row', { hasText: 'Permanecer na forma' })).toContainText('Sem usos de Forma Selvagem');
+    await expect(p.getByRole('button', { name: 'Voltar à forma normal' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(p.locator('.econ').getByRole('button', { name: 'Mover' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(p, `Depois de permanecer na forma ${where}`);
+    // Another player reads the name of the beast, never the time (RN-20).
+    await t.goto(sessionRoute(campaignId));
+    await expect(t.getByText('Na forma de Lobo').first()).toBeVisible();
+    await expectScreenPasses(t, `A forma da Sálvia, vista por outro jogador ${where}`);
+
     // The beast falls: the notice that stays.
     await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);
     await expect(p.getByTestId('form-ended')).toBeVisible();
@@ -4400,12 +4431,61 @@ test('as criaturas no combate e a Forma Selvagem passam no axe e nas conferênci
   await scanCreatureCombatScreens(browser, 'light', 320);
 });
 
+// The sheet of a druid in a Wild Shape form with no session open (584-06 card 9): the form with its pool and no time, both buttons off
+// and the line that says why. The form is taken in a combat; the session ends, and the sheet reads it from its own small read.
+async function scanWildShapeSheetWithoutSession(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const where = `(${colorScheme === 'dark' ? 'dark' : 'light'}, ${width}px)`;
+  const contexts = await Promise.all(
+    (['Mestre Teste', 'Jogador Teste', 'E-mail Não Verificado'] as const).map((user) => browser.newContext({ storageState: authStatePath(user), colorScheme, viewport })),
+  );
+  const [m, p, t] = await Promise.all(contexts.map((c) => c.newPage()));
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/'), t.goto('/')]);
+    const table = await tableForCreatureCombat(m, p, t, `Acessibilidade forma sem sessão ${Date.now()}`);
+    campaignId = table.campaignId;
+    await beginCreatureCombat(m, table, { Sálvia: p, Toren: t }, { Toren: 20, Sálvia: 13, 'Capitão Goblin': 5, 'Goblin 1': 4, 'Goblin 2': 4 });
+    await passTurnsTo(m, campaignId, 'Sálvia');
+    await p.goto(sessionRoute(campaignId));
+    await openActionTab(p, 'Druida');
+    await tapAboveBar(p.getByRole('button', { name: 'Transformar: Forma Selvagem' }));
+    const wild = p.getByRole('dialog', { name: 'Forma Selvagem' });
+    await wild.getByLabel('Buscar fera').fill('lobo');
+    await wild.locator('label', { hasText: '(Wolf)' }).click();
+    await wild.getByRole('button', { name: 'Virar Lobo' }).click();
+    await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
+    await endOpenSessionRPC(m, campaignId);
+    await p.goto(`/campaigns/${campaignId}/characters/${table.heroId}`);
+    const block = p.locator('app-creatures-panel .form');
+    await expect(block).toContainText('Na forma de Lobo');
+    await expect(block).toContainText('Só durante um combate ou uma sessão.');
+    await expect(block).not.toContainText(/restantes|rodadas?/);
+    await expectScreenPasses(p, `A ficha da forma sem sessão aberta ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId).catch(() => undefined);
+    }
+    await Promise.all(contexts.map((c) => c.close()));
+  }
+}
+
+test('a ficha da Forma Selvagem sem sessão aberta passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWildShapeSheetWithoutSession(browser, 'light', 1280);
+});
+
+test('a ficha da Forma Selvagem sem sessão aberta passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-037'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanWildShapeSheetWithoutSession(browser, 'dark', 390);
+});
+
 // The map editor (slice 9.12, MR-034, MR-035, MR-036, MR-041, E9-01 and E9-02): painting with each tool, the in-place questions, the
 // fog's settings, the Luz, Armadilha and Tesouro panels in each state, the map with no grid, with a combat on it, "Ver como", and,
 // on a phone, the manage view with its fixed notice. Every state goes through axe and the alignment checks.
 async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const pensantus = await newSignedInContext(browser, 'Jogador Teste');
   const toren = await newSignedInContext(browser, 'E-mail Não Verificado');
   const [m, ap, bp] = [await master.newPage(), await pensantus.newPage(), await toren.newPage()];
@@ -4434,6 +4514,15 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
       await expect(m.getByText('Pintar só no computador')).toBeVisible();
       await expectLoaded(m);
       await expectScreenPasses(m, `Mapa no celular, sem pintura ${where}`);
+      // Camadas, read-only, with the surface the master painted on a computer (#589).
+      const surface = await callRPC(m, 'meurpg.maps.v1.MapService/PaintMapCells', { campaignId, mapId: table.mapId, layer: 'MAP_LAYER_SURFACE', value: 1, squares: [{ col: 6, row: 9 }, { col: 7, row: 9 }] });
+      expect(surface.ok(), await surface.text()).toBeTruthy();
+      await m.goto(editorRoute(campaignId, table.mapId));
+      await expect(m.getByRole('heading', { name: 'Camadas' })).toBeVisible();
+      await expect(m.locator('app-map-layers-list')).toContainText('2 quadrados de água · custam o dobro');
+      await expectLoaded(m);
+      await expectScreenPasses(m, `Mapa no celular, Camadas com a superfície ${where}`);
+      await shootFeat(m, '589-phone-camadas', width, colorScheme, true);
       await m.getByRole('button', { name: 'Esquecer o que foi visto' }).click();
       await expect(m.getByRole('heading', { name: 'Esquecer o que foi visto?' })).toBeVisible();
       await expectScreenPasses(m, `Esquecer o que foi visto, no celular ${where}`);
@@ -4527,6 +4616,24 @@ async function scanMapEditorScreens(browser: Browser, colorScheme: 'light' | 'da
     await expectScreenPasses(m, `Pintar, Luz com os glifos ${where}`);
     await tools.getByRole('button', { name: 'Apagar' }).click();
     await expectScreenPasses(m, `Pintar, Apagar ${where}`);
+    // Superfície (#589): two brushes in the second row, painted into one layer; "Apagar" with it takes both off and says so in the bar.
+    await tools.getByRole('button', { name: 'Superfície' }).click();
+    await expect(m.getByText('Arraste para apagar a superfície')).toBeVisible();
+    await expectScreenPasses(m, `Pintar, Superfície, Apagar ${where}`);
+    await shootFeat(m, '589-editor-superficie-apagar', width, colorScheme);
+    await m.getByRole('radio', { name: 'Água' }).click();
+    await m.getByRole('radio', { name: '1×1' }).click();
+    await dragSquares(m, map, [12, 9], [14, 9]);
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+    await expect(m.getByText('Arraste para pintar · Shift apaga')).toBeVisible();
+    await expectScreenPasses(m, `Pintar, Superfície, Água ${where}`);
+    await shootFeat(m, '589-editor-superficie-agua', width, colorScheme);
+    await m.getByRole('radio', { name: 'Escalável' }).click();
+    await clickSquare(m, map, 18, 12);
+    await expect(m.locator('app-layers-panel').getByText('Tudo salvo').first()).toBeVisible();
+    await expect(m.locator('app-layers-panel')).toContainText('3 quadrados de água e 1 escalável · custam o dobro');
+    await expectScreenPasses(m, `Pintar, Superfície, Escalável ${where}`);
+    await shootFeat(m, '589-editor-superficie-escalavel', width, colorScheme);
 
     // The questions in place.
     await m.getByRole('button', { name: 'Mudar a grade' }).click();
@@ -4583,13 +4690,64 @@ test('o editor do mapa passa no axe e nas conferências de layout no tema claro,
   await scanMapEditorScreens(browser, 'light', 320);
 });
 
+// "Mover" over water and a climbable wall (#589, MR-034, RN-21): the legend names Água and Escalável and keeps the zoom beside it, and the cost line says what
+// swimming and climbing add, each with its word. Every state goes through axe and the alignment checks.
+async function scanSwimScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const where = `(${colorScheme}, ${width}px)`;
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const { p, campaignId, done } = await movingTable(browser, `Acessibilidade nadar ${Date.now()}`, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, {
+    character: { build: toren, sheet: torenSheet },
+    viewport,
+    colorScheme,
+    paint: async (master, t) => {
+      await paintRPC(master, t, 'MAP_LAYER_SURFACE', 1, [[6, 7], [7, 7]]);
+      await paintRPC(master, t, 'MAP_LAYER_SURFACE', 2, [[5, 6]]);
+    },
+  });
+  try {
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Toren' })).toBeVisible();
+    await p.getByRole('button', { name: 'Mover', exact: true }).click();
+    await expect(p.getByRole('heading', { name: 'Mover Toren' })).toBeVisible();
+    const legend = p.getByRole('list', { name: 'Legenda do mapa' });
+    await expect(legend.getByText('Água')).toBeVisible();
+    await expect(legend.getByText('Escalável')).toBeVisible();
+    await expectScreenPasses(p, `Mover, Água e Escalável na legenda ${where}`);
+    await shootFeat(p, '589-mover-legenda', width, colorScheme);
+    await tapSquare(p, 7, 7);
+    await expect(p.getByText('+3,0 m nadando: cada metro na água conta dobrado.')).toBeVisible();
+    await expectScreenPasses(p, `Mover, nadando ${where}`);
+    await shootFeat(p, '589-mover-nadando', width, colorScheme);
+    await tapSquare(p, 5, 6);
+    await expect(p.getByText('+1,5 m escalando: cada metro escalado conta dobrado.')).toBeVisible();
+    await expectScreenPasses(p, `Mover, escalando ${where}`);
+    await shootFeat(p, '589-mover-escalando', width, colorScheme);
+    await tapSquare(p, 19, 7);
+    await expect(p.getByRole('alert').filter({ hasText: 'Longe demais' })).toBeVisible();
+    await expectScreenPasses(p, `Mover, longe demais com água no mapa ${where}`);
+    await shootFeat(p, '589-mover-longe', width, colorScheme);
+  } finally {
+    await done();
+  }
+}
+
+test('o Mover com água e escalada passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSwimScreens(browser, 'light', 1280);
+});
+
+test('o Mover com água e escalada passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-034', '@RN-21'] }, async ({ browser }) => {
+  test.setTimeout(300_000);
+  await scanSwimScreens(browser, 'dark', 390);
+});
+
 // The doors (slice 10.14a, MR-010, RN-26, RN-10; E10-05 7 to 11): the "Porta" tool in "Pintar" with its panel, its refusal and its
 // question; the master's door sheet in the session (a door, a secret door and the question before revealing it); what a player's
 // map says (only "Porta fechada"); and the "Mover" page after a locked door stopped the move. Every state goes through axe and the
 // alignment checks. On a phone the editor is "Pintar só no computador" (the existing scans), so only the session's states run there.
 async function scanDoorScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const pensantus = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const toren = await newSignedInContext(browser, 'E-mail Não Verificado');
   const [m, ap, bp] = [await master.newPage(), await pensantus.newPage(), await toren.newPage()];
@@ -6124,6 +6282,107 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema cla
   await scanTableContent(browser, 'light', 320);
 });
 
+/** "Como funciona" shares the row of the switch's title (it is not stranded alone on a line of its own), whatever the width. */
+async function expectHeadNotStranded(block: Locator, where: string): Promise<void> {
+  const title = await boxOf(block.getByRole('switch', { name: 'Efeito no próximo golpe' }));
+  const button = await boxOf(block.getByRole('button', { name: 'Como funciona' }));
+  expect.soft(Math.abs(button.y + button.height / 2 - (title.y + title.height / 2)), `"Como funciona" na linha do título ${where}`).toBeLessThan(6);
+}
+
+/**
+ * "Efeito no próximo golpe" of a table spell (#577): the editor's block with each of the four triggers picked, the marked target's card
+ * locked (a spell of the caster alone), the switch off with the reason of a spell that does not last, a refusal and a missing cap at
+ * their fields, "Como funciona" open, and what a player reads of the spell. The editor is judged from 768 px up (a phone only reads).
+ */
+async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(180_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade próximo golpe ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const fist = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Geada no Punho'));
+    const mark = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Marca do Caçador', { trigger: 'TABLE_HIT_TRIGGER_MARKED_TARGET', save: '', onFailConditions: [], conditionDuration: '' }, { target: { kind: 'TABLE_SPELL_TARGET_KIND_CREATURE' }, range: { kind: 'SPELL_RANGE_KIND_RANGED', distanceFt: 60 } }));
+
+    if (width >= 768) {
+      await open(m, entryRoute(campaignId, fist));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
+      const block = m.locator('app-hit-effect-block');
+      await expect(block.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
+      await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe ligado, o alvo marcado travado ${where}`);
+      await expectHeadNotStranded(block, where);
+      for (const card of ['Próximo golpe com arma', 'Cada golpe enquanto durar', 'Próximo golpe corpo a corpo']) {
+        await pickRadio(block, card);
+        await expect(block.getByRole('radio', { name: new RegExp(`^${card}`) })).toBeChecked();
+        await expectScreenPasses(m, `Editor de magia, o gatilho "${card}" ${where}`);
+      }
+      await block.getByRole('button', { name: 'Como funciona' }).click();
+      await expect(block.getByRole('button', { name: 'Como funciona' })).toHaveAttribute('aria-expanded', 'true');
+      await expectScreenPasses(m, `Editor de magia, "Como funciona" aberto ${where}`);
+
+      await open(m, entryRoute(campaignId, mark));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Marca do Caçador');
+      await expect(block.getByRole('radio', { name: /^Cada golpe no alvo marcado/ })).toBeChecked();
+      await expectScreenPasses(m, `Editor de magia, o gatilho "Cada golpe no alvo marcado" ${where}`);
+      await expectHeadNotStranded(block, where);
+
+      // A spell that does not last keeps no effect: the switch is off and says why.
+      await open(m, `/campaigns/${campaignId}/content/new/spell`);
+      const fresh = m.locator('app-hit-effect-block');
+      await expect(fresh.getByRole('switch', { name: 'Efeito no próximo golpe' })).toBeDisabled();
+      await expect(fresh.getByText('Uma magia instantânea não guarda efeito para o golpe.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe que a magia instantânea não guarda ${where}`);
+
+      // A cap left empty and dice at 0: the form says the cap, the server refuses the dice, each at its field.
+      await open(m, entryRoute(campaignId, fist));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
+      await block.getByLabel('Dados', { exact: true }).fill('0');
+      await block.getByLabel('No máximo').fill('');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(block.getByLabel('No máximo')).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Editor de magia, o máximo de dados que falta ${where}`);
+      await block.getByLabel('No máximo').fill('5');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(block.getByLabel('Dados', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expect(block.getByLabel('Dados', { exact: true }).locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, a recusa dos dados no campo ${where}`);
+    }
+
+    await open(p, entryRoute(campaignId, fist));
+    await expect(p.getByRole('heading', { name: 'Efeito no próximo golpe' })).toBeVisible();
+    await expect(p.getByText('Só quem conjura e você')).toBeVisible();
+    await expectScreenPasses(p, `Magia com efeito no próximo golpe, vista por um jogador ${where}`);
+    await open(p, entryRoute(campaignId, mark));
+    await expect(p.getByText('Em quem conjura: cada golpe com arma no alvo marcado, por até 1 minuto.')).toBeVisible();
+    await expectScreenPasses(p, `Magia do alvo marcado, vista por um jogador ${where}`);
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 1280);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 768);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'dark', 1024);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'dark', 390);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no celular de 320', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 320);
+});
+
 /**
  * The entries the rules refuse (#736): the master's list with the left-out panel, the "⋮" menu and the question to remove, the
  * editor of an entry with the marked field and the target that left the menu, the notice on the campaign's "Regras" tab, and
@@ -6328,7 +6587,7 @@ async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', 
 async function scanRollMinimumSceneCheck(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(240_000);
   const viewport = { width, height: width >= 768 ? 900 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -6371,7 +6630,7 @@ async function scanRollMinimumSceneCheck(browser: Browser, colorScheme: 'light' 
 async function scanRollMinimumInitiative(browser: Browser, colorScheme: 'light' | 'dark', width: number, feat = 'Pé de Vento'): Promise<void> {
   test.setTimeout(240_000);
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -7598,7 +7857,7 @@ test('os reservados e os links passam no axe e nas conferências de layout no te
  */
 async function scanPastSessions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width <= 390 ? 700 : 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -7751,7 +8010,7 @@ test('reviver passa no axe e nas conferências de layout no tema escuro, no celu
 async function scanDeathsScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(180_000);
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -7818,7 +8077,7 @@ test('os mortos da luta e a pergunta de Revivificar passam no axe e nas conferê
 async function scanRevivifyScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   test.setTimeout(300_000);
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8050,7 +8309,7 @@ test('o painel de perguntas pendentes fora do combate passa no axe e nas confer�
 async function scanSheetMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const where = `(${colorScheme}, ${width}px)`;
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8119,7 +8378,7 @@ test('a folha que perdeu a pergunta, o mestre respondeu, passa no axe e nas conf
  * open swaps the question for "O mestre respondeu por você.", with no answer left to give. */
 async function scanEffectSaveMasterAnswers(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8200,7 +8459,7 @@ test('a resistência do fim do turno que perdeu a pergunta, o mestre respondeu, 
 /** The gear (#562): the sheet's "Equipamento" with "Equipar" / "Guardar", and the combat's "Sacar ou guardar" with the cost of each change. */
 async function scanGearScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8260,10 +8519,290 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
   await scanGearScreens(browser, 'dark', 390);
 });
 
+/** The attunement (#561): the sheet's "Itens mágicos" and "Sintonização" for the owner (window closed) and the master (open), the picker and "Remover item". */
+async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', magicItems: [{ key: 'item:ring-of-protection' }, { key: 'item:bag-of-holding' }] };
+    const table = await tableForCombat(m, p, `Acessibilidade sintonização ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+
+    // The owner outside a rest: the list, the pills and "Muda num descanso".
+    await openLive(p, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const equipment = p.getByRole('region', { name: 'Equipamento' });
+    await expect(equipment.getByRole('heading', { name: /^Itens mágicos/, level: 3 })).toBeVisible();
+    await expect(equipment.getByText('Muda num descanso')).toBeVisible();
+    await expectScreenPasses(p, `Ficha, Itens mágicos ${where}`);
+
+    // The picker and the removal, from the master's, since the owner's sheet is locked.
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
+    const masterGear = m.getByRole('region', { name: 'Equipamento' });
+    await masterGear.getByRole('button', { name: 'Adicionar item mágico' }).click();
+    const picker = m.getByRole('dialog', { name: 'Adicionar item mágico' });
+    await expect(picker.getByRole('button', { name: 'Adicionar item' })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(m, `Adicionar item mágico ${where}`);
+    await m.keyboard.press('Escape');
+    await expect(picker).toBeHidden();
+    await masterGear.getByRole('button', { name: /^Remover item · / }).first().click();
+    const removal = m.getByRole('alertdialog', { name: /^Remover .*\?$/ });
+    await expect(removal).toBeVisible();
+    await expectScreenPasses(m, `Remover item ${where}`);
+    await removal.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(removal).toBeHidden();
+
+    // The master attunes at any time.
+    await m.getByRole('button', { name: 'Mudar sintonização' }).click();
+    const att = m.getByRole('dialog', { name: /^Sintonização/ });
+    await expect(att).toBeVisible();
+    await expectScreenPasses(m, `Sintonização, o mestre ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+test('a sintonização passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAttunementScreens(browser, 'light', 1280);
+});
+
+test('a sintonização passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanAttunementScreens(browser, 'dark', 390);
+});
+
+/**
+ * The attunement screens of the boards (#561), through the real stack, each judged by axe and the layout checks and
+ * saved at 390, 768 and 1280 px (`E2E_SHOTS_DIR`) with 2x crops of the chips, the lock line and the rest sheet's row.
+ */
+async function scanAttunementBoards(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = attViewport(1280);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...attunementScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: attViewport(390), ...attunementScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let outsider: Awaited<ReturnType<typeof secondPlayer>> | undefined;
+  let campaignId = '';
+  const everyWidth = async (page: Page, name: string, what: string, at: () => Locator) => {
+    for (const width of ATT_WIDTHS) {
+      await page.setViewportSize(attViewport(width));
+      await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+      await shootAtt(page, name, width, colorScheme, at());
+    }
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = {
+      weaponKeys: ['equipment:longsword'],
+      armorKey: 'equipment:chain-mail',
+      itemBonuses: [{ key: 'equipment:longsword', bonus: 3, requiresAttunement: true }],
+      magicItems: [
+        { key: 'item:ring-of-protection' },
+        { key: 'item:cloak-of-elvenkind' },
+        { key: 'item:pearl-of-power' },
+        { key: 'item:ring-of-shooting-stars' },
+        { key: 'item:boots-of-elvenkind' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Quadros da sintonização ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    await openLive(p, route);
+    await openLive(m, route);
+    const gearOf = (page: Page) => page.getByRole('region', { name: 'Equipamento' });
+
+    // The owner, outside a rest: the list, the chips on the gear, the lock line, "Muda num descanso".
+    await expect(gearOf(p).getByText('Muda num descanso')).toBeVisible();
+    await everyWidth(p, 'ficha-dono', 'A ficha do dono, itens mágicos e sintonia', () => gearOf(p));
+    // The chip on its row and the magic items' rows (icon, reason line), at the narrowest and the widest.
+    for (const width of [390, 1280]) {
+      for (const [page, who] of [[p, 'dono'], [m, 'mestre']] as const) {
+        await page.setViewportSize(attViewport(width));
+        await cropAtt(gearOf(page).locator('.gear-row').filter({ hasText: 'Espada longa' }), `chip-peca-${who}-${width}`, colorScheme);
+        await cropAtt(gearOf(page).locator('.magic'), `itens-magicos-${who}-${width}`, colorScheme);
+      }
+    }
+    await cropAtt(gearOf(p).getByRole('list', { name: 'Legenda dos selos de sintonização' }), 'legenda-selos', colorScheme);
+    await cropAtt(gearOf(p).locator('.gear__lock'), 'linha-travada', colorScheme);
+
+    // The master: the same list with the menus.
+    await everyWidth(m, 'ficha-mestre', 'A ficha do mestre, itens mágicos com os menus', () => gearOf(m));
+
+    // Each sheet is opened at the width it is judged at (a phone gets the bottom sheet, a tablet and up the dialog).
+    const sheetShots = async (page: Page, name: string, what: string, open: () => Promise<Locator>, close: () => Promise<void>) => {
+      for (const width of ATT_WIDTHS) {
+        await page.setViewportSize(attViewport(width));
+        const at = await open();
+        await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+        await shootAtt(page, name, width, colorScheme, at);
+        await close();
+      }
+    };
+    const picker = m.getByRole('dialog', { name: 'Adicionar item mágico' });
+    const openPicker = async () => {
+      await gearOf(m).getByRole('button', { name: 'Adicionar item mágico' }).click();
+      await expect(picker.getByRole('radio').first()).toBeVisible();
+      return picker;
+    };
+    const closeByEscape = async (page: Page, sheet: Locator) => {
+      await page.keyboard.press('Escape');
+      await expect(sheet).toBeHidden();
+    };
+    await sheetShots(m, 'adicionar-item', 'O seletor de item mágico', openPicker, () => closeByEscape(m, picker));
+    await sheetShots(
+      m,
+      'adicionar-item-sem-resultado',
+      'O seletor, busca sem resultado',
+      async () => {
+        await openPicker();
+        await picker.getByRole('searchbox').fill('espada +2');
+        await expect(picker.getByText('Nenhum item mágico com “espada +2”.')).toBeVisible();
+        return picker;
+      },
+      () => closeByEscape(m, picker),
+    );
+
+    // The master's attunement sheet: first nothing attuned, then the sword, the ring and the cloak (the limit), the pearl refused.
+    const att = m.getByRole('dialog', { name: /^Sintonização/ });
+    const openAtt = async () => {
+      await gearOf(m).getByRole('button', { name: 'Mudar sintonização' }).click();
+      await expect(att).toBeVisible();
+      return att;
+    };
+    await sheetShots(m, 'sintonizacao-mestre', 'A sintonização do mestre', openAtt, () => closeByEscape(m, att));
+    await m.setViewportSize(attViewport(1280));
+    await openAtt();
+    for (const [verb, name] of [['Sintonizar', 'Anel de proteção'], ['Sintonizar', 'Espada longa'], ['Sintonizar', 'Manto élfico']]) {
+      await att.getByRole('button', { name: new RegExp(`^${verb} ${name}`) }).click();
+      await expect(att.getByRole('button', { name: new RegExp(`^Encerrar ${name}`) })).toBeVisible();
+    }
+    await closeByEscape(m, att);
+    await sheetShots(m, 'sintonizacao-no-limite-mestre', 'A sintonização do mestre no limite de 3, com o item que o personagem não cumpre', openAtt, () => closeByEscape(m, att));
+
+    // "Remover item": attuned (the count goes down) and not attuned.
+    const removeShots = async (name: string, screen: string, what: string, words?: string) => {
+      const dialog = m.getByRole('alertdialog', { name: `Remover ${name}?` });
+      await sheetShots(
+        m,
+        screen,
+        what,
+        async () => {
+          await gearOf(m).getByRole('button', { name: `Remover item · ${name}` }).click();
+          if (words) {
+            await expect(dialog).toContainText(words);
+          }
+          return dialog;
+        },
+        async () => {
+          await dialog.getByRole('button', { name: 'Cancelar' }).click();
+          await expect(dialog).toBeHidden();
+        },
+      );
+    };
+    await removeShots('Anel de proteção', 'remover-item-sintonizado', 'Remover item sintonizado', 'Sintonizados 3 → 2');
+    await removeShots('Botas élficas', 'remover-item', 'Remover item sem sintonia');
+
+    // The rests: at each width the owner reads the section at the limit, then with a free place after the master ends the
+    // cloak, then attunes (the window is spent), and the master's next rest opens another.
+    const restSheet = p.getByRole('dialog', { name: 'Gastar dados de vida' });
+    const section = restSheet.getByRole('region', { name: 'Sintonização' });
+    for (const width of ATT_WIDTHS) {
+      await m.setViewportSize(attViewport(1280));
+      await openSessionPage(m, campaignId, 'grupo');
+      const card = m.getByRole('region', { name: 'Descanso' });
+      await card.getByRole('button', { name: 'Descanso curto' }).click();
+      await card.getByRole('alertdialog', { name: 'Começar o descanso curto?' }).getByRole('button', { name: 'Descansar' }).click();
+      await expect(card.getByText('Descanso curto feito.').first()).toBeVisible();
+      const openRest = async () => {
+        await p.setViewportSize(attViewport(width));
+        await openSessionPage(p, campaignId);
+        await openSheetTab(p);
+        await p.getByRole('button', { name: 'Gastar dados de vida' }).click();
+        await expect(restSheet).toBeVisible();
+      };
+      await openRest();
+      await expect(section).toContainText('Sintonizados: 3 de 3');
+      await expectScreenPasses(p, `A folha do descanso curto, o dono no limite (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-no-descanso-limite', width, colorScheme, section);
+      await restSheet.locator('button', { hasText: 'Fechar' }).click();
+      await expect(restSheet).toBeHidden();
+
+      // The master ends the cloak: the owner has a free place.
+      await m.setViewportSize(attViewport(1280));
+      await openLive(m, route);
+      await openAtt();
+      await att.getByRole('button', { name: 'Encerrar Manto élfico' }).click();
+      await expect(att.getByRole('button', { name: 'Sintonizar Manto élfico' })).toBeVisible();
+      await closeByEscape(m, att);
+      await openRest();
+      await expect(section).toContainText('Sintonizados: 2 de 3');
+      await expectScreenPasses(p, `A folha do descanso curto, com uma vaga (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-no-descanso', width, colorScheme, section);
+      if (width === 390) {
+        await cropAtt(section.getByRole('listitem').filter({ hasText: 'Pérola do poder' }), 'linha-do-descanso', colorScheme);
+        await cropAtt(section.locator('.att__head'), 'cabecalho-do-descanso', colorScheme);
+        await cropAtt(section.getByRole('listitem').filter({ hasText: 'Manto élfico' }), 'icone-do-descanso', colorScheme);
+      }
+      await section.getByRole('button', { name: 'Sintonizar Manto élfico' }).click();
+      const used = restSheet.getByText('A sintonização deste descanso foi usada.');
+      await expect(used).toBeVisible();
+      await expectScreenPasses(p, `A folha do descanso curto, a sintonização usada (${colorScheme}, ${width}px)`);
+      await shootAtt(p, 'sintonia-usada', width, colorScheme, used);
+      await restSheet.locator('button', { hasText: 'Fechar' }).click();
+      await expect(restSheet).toBeHidden();
+    }
+
+    // Another player reads none of it.
+    outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport: attViewport(390), ...attunementScale });
+    // Their sheet route is refused: nothing about items or attunement shows.
+    await openLive(outsider.page, route);
+    await expect(outsider.page.getByRole('heading', { name: 'Personagem não encontrado' })).toBeVisible();
+    await expect(outsider.page.getByText('Itens mágicos')).toHaveCount(0);
+    await expect(outsider.page.getByText(/^Sintonizados:/)).toHaveCount(0);
+    await expect(outsider.page.getByRole('button', { name: /sintoniz/i })).toHaveCount(0);
+    await everyWidth(outsider.page, 'ficha-outro-jogador', 'O que outro jogador vê de Toren, sem itens nem sintonia', () => outsider!.page.locator('main').first());
+
+    // A dead character: the owner has no controls, and the sheet says so.
+    const dead = await callRPC(m, 'meurpg.characters.v1.CharacterService/MarkCharacterDead', { campaignId, characterId: table.characterId });
+    expect(dead.ok(), await dead.text()).toBeTruthy();
+    await openLive(p, route);
+    await expect(gearOf(p).getByRole('button', { name: /^Remover item/ })).toHaveCount(0);
+    await everyWidth(p, 'ficha-personagem-morto', 'A ficha do personagem morto, sem controles de itens', () => gearOf(p));
+  } finally {
+    if (outsider) {
+      await outsider.close();
+    }
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  test(`as telas dos quadros da sintonização passam no axe e nas conferências de layout no tema ${theme}, em 390, 768 e 1280`, { tag: ['@a11y', '@561'] }, async ({ browser }) => {
+    test.setTimeout(600_000);
+    await scanAttunementBoards(browser, colorScheme);
+  });
+}
+
 /** The weapon marks (#585): the chips on the gear and attacks, the weapon's "⋮" menu for the owner and the master, never for another player. */
 async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -8292,7 +8831,7 @@ async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | '
     await expectScreenPasses(p, `Ficha, marcas nas armas ${where}`);
     // The table is in play, so the owner's sheet is locked: no "⋮" for the owner, and a line says who marks.
     await expect(equipment.getByRole('button', { name: /^Marcas da / })).toHaveCount(0);
-    await expect(equipment.getByText('Marcas das armas: depois da trava, só o mestre muda.')).toBeVisible();
+    await expect(equipment.getByText('Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.')).toBeVisible();
 
     // The master edits at any time: the weapon's "⋮" opens its marks, then a saved mark.
     await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
@@ -8949,7 +9488,7 @@ const sizeOf = (width: number) => ({ width, height: width >= 768 ? 900 : width <
 // and the master's row with its menu and the question that ends the spell.
 async function scanAidScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9028,7 +9567,7 @@ test('a Ajuda a 0 PV, no jogador, na ficha e na ordem do mestre, passa no axe e 
 // Crítico Brutal: the critical's sum before the roll, the typed sheet with its total on the button, and the log line.
 async function scanBrutalScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9085,7 +9624,7 @@ test('o Crítico Brutal, antes de rolar, com dados físicos e no registro, passa
 // Talento Confiável on a trap search: the preview and the result, with the rule said.
 async function scanReliableTalentScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9129,7 +9668,7 @@ test('o Talento Confiável na busca por armadilhas passa no axe e nas conferênc
 
 async function scanJumpWarningScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9285,7 +9824,7 @@ test('as disputas e as ações especiais passam no axe e nas conferências de la
 // combat's setup, with the state of the one who is surprised.
 async function scanGroupCheckScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9423,7 +9962,7 @@ async function scanEffectsScreens(browser: Browser, colorScheme: 'light' | 'dark
 
 async function scanEffectsOutsideScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = sizeOf(width);
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(390) });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -9504,7 +10043,7 @@ for (const [scheme, width, words] of [
  * through the API, so every run draws the same screens. */
 async function scanEffectsPlayerScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -10148,7 +10687,7 @@ test('o mapa com a névoa e a muralha de fogo passa no axe e nas conferências d
 async function scanSessionBar(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const phone = width < 768;
   const viewport = { width, height: width >= 768 ? 900 : width <= 320 ? 568 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -10227,7 +10766,7 @@ test('a barra da sessão, o menu "Sessão" e a navegação fixa passam no axe e 
  * asked for the character, and the card of a downed character, whose death save leads the turn. */
 async function scanMasterActs(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -10284,7 +10823,7 @@ test('o mestre agir por um personagem passa no axe e nas conferências de layout
  * named in the mind's theatre), the result of the save action under the list, and the offer of a ghoul's claw rider after the hit. */
 async function scanCreatureActions(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -10367,7 +10906,7 @@ test('as ações de criatura do mestre passam no axe e nas conferências de layo
  * die (one die: a checkbox, ticked, with the physical d8; two dice: the radio group with "Nenhum"), and the pool with no use left. */
 async function scanManeuverSheetScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number, dice: 1 | 2): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();
@@ -11061,7 +11600,7 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
  * (the waiting screen, the map with a roll, the combat on the map), in one table with the fog on. The TV tab is a page of the master's own context. */
 async function scanTableScreen(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const pensantusPlayer = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const torenPlayer = await browser.newContext({ storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
   const m = await master.newPage();
@@ -11131,7 +11670,7 @@ test('a Tela da mesa, o painel do mestre e a TV, passa no axe e nas conferência
  * and its reason (the only one who could react spent the reaction). The menu is driven with the keyboard. */
 async function scanOfferScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: width >= 1024 ? 800 : 844 };
-  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
   const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
   const m = await master.newPage();
   const p = await player.newPage();

@@ -280,7 +280,7 @@ var deltaSafeKinds = map[string]bool{
 	eventAttackRolled: true, eventDamageRolled: true, eventDamageApplied: true, eventDamageDiscarded: true,
 	eventActionTaken: true, eventHitPointsAdjusted: true, eventDeathSaveRolled: true, eventDeathConfirmed: true,
 	eventConditionsSet: true, eventSpellCast: true, eventReactionUsed: true, eventReactionDeclined: true,
-	eventLegendarySpent: true, eventRechargeRolled: true,
+	eventLegendarySpent: true, eventRechargeRolled: true, eventFeatureUsed: true,
 }
 
 // sinceSeqOf is the number the log is filtered by: sinceSeq, or 0 (the whole log) when an event after it may have changed an
@@ -573,6 +573,7 @@ var logHandlers = map[string]logHandler{
 	eventActionReadied:           readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED),
 	eventReadiedFired:            readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED),
 	eventReadiedLost:             readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST),
+	eventFeatureUsed:             featureUsedLine,
 	eventCombatantHiddenSet:      (*logBuilder).hiddenSet,
 	eventActionTaken:             (*logBuilder).actionTaken,
 	eventHitPointsAdjusted:       masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED),
@@ -1126,6 +1127,7 @@ var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:          true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:    true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:  true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:    true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:        true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:      true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED: true,
@@ -1177,6 +1179,7 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:      (*logEntry).fillReadied,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED:       (*logEntry).fillReadied,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST:        (*logEntry).fillReadied,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:        (*logEntry).fillFeatureUsed,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:           (*logEntry).fillHitRider,
@@ -1786,6 +1789,22 @@ func (n *keyNames) of(ctx context.Context, c playdb.Combatant, key string) strin
 	if strings.HasPrefix(key, "spell:") && !isCreature(c) {
 		if sp, err := n.s.roster.CombatSpell(ctx, nil, n.campaignID, c.CharacterID, key, 0, ""); err == nil {
 			return sp.Name
+		}
+	}
+	return ""
+}
+
+// choiceText is the label of the choice a feature offered, from the sheet of the combatant that used it ("" when the sheet no
+// longer has it).
+func (n *keyNames) choiceText(ctx context.Context, c playdb.Combatant, key, choice string) string {
+	if n.of(ctx, c, key) == "" || choice == "" { // reads the sheet into byCharacter
+		return ""
+	}
+	if fa, ok := featureOfKey(n.byCharacter[sheetKey(c)], key); ok && fa.Use != nil {
+		for _, ch := range fa.Use.Choices {
+			if ch.Key == choice {
+				return ch.TextPT
+			}
 		}
 	}
 	return ""

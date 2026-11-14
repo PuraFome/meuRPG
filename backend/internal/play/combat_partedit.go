@@ -243,17 +243,22 @@ func takeOut(parts []partRecord, rolls []partRoll, key string) bool {
 // giveBackOnce gives back the use of a once-per-turn extra the master took out: the
 // damage never had it, so the turn may still add it (Sneak Attack, Colossus Slayer).
 func giveBackOnce(ctx context.Context, c *combatTx, attacker playdb.Combatant, key string) error {
-	turn := turnKey(c.enc)
-	sneak, colossus := attacker.SneakAttackTurn, attacker.ColossusSlayerTurn
-	switch {
-	case key == combat.ExtraSneakAttack && conv.OrZero(sneak) == turn:
-		sneak = nil
-	case key == combat.ExtraColossusSlayer && conv.OrZero(colossus) == turn:
-		colossus = nil
+	var feature string
+	switch key {
+	case combat.ExtraSneakAttack:
+		feature = featureSneakAttack
+	case combat.ExtraColossusSlayer:
+		feature = featureColossusSlayer
 	default:
 		return nil
 	}
-	if err := c.q.SetCombatantOncePerTurn(ctx, playdb.SetCombatantOncePerTurnParams{ID: attacker.ID, SneakAttackTurn: sneak, ColossusSlayerTurn: colossus}); err != nil {
+	now := stateNowOf(c.enc)
+	state := readFeatureState(attacker.FeatureState)
+	if !state.used(feature, now) {
+		return nil
+	}
+	state.del(feature)
+	if err := saveFeatureState(ctx, c, attacker.ID, state, now); err != nil {
 		return fmt.Errorf("give back the once-per-turn damage: %w", err)
 	}
 	return nil

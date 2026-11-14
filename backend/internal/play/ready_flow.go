@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"math"
 	"slices"
 	"strings"
@@ -112,7 +113,7 @@ func (f *readyFlow) check(ctx context.Context) error {
 	if f.call.kind == readiedMove && isTheatre(f.take.c.enc) {
 		return errReadyAction("a combat without a map has no square to move to")
 	}
-	if f.call.kind == readiedMove && speedDFt(f.take.who) == 0 {
+	if f.call.kind == readiedMove && speedOnDFt(f.take.who, grid.SurfaceFloor) == 0 {
 		return errReadyAction("a combatant with no speed cannot ready a move")
 	}
 	trigger := strings.TrimSpace(f.call.trigger)
@@ -221,7 +222,7 @@ func (f *readyFlow) insert(ctx context.Context) (playdb.ReadiedAction, error) {
 // readyMoveFt is the speed a readied move may go, in feet: the combatant's speed now, without this turn's Dash.
 func readyMoveFt(who playdb.Combatant) int32 {
 	who.Dashed = false
-	return clamp32(speedDFt(who)/dftPerFt, 0, math.MaxInt32)
+	return clamp32(speedOnDFt(who, grid.SurfaceFloor)/dftPerFt, 0, math.MaxInt32)
 }
 
 // errReadyAction refuses an action Ready cannot hold.

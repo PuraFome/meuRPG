@@ -234,10 +234,29 @@ func featureActionOf(d rules.Derived, a rules.Action) link.FeatureAction {
 	if h := a.Result.Heal; h != nil {
 		fa.Heal = &link.Dice{Count: h.Count, Sides: h.Sides, Bonus: h.Bonus}
 	}
+	fa.Use = featureUseOfAction(a.Use)
 	if i := slices.IndexFunc(d.States, func(s rules.State) bool { return s.Key == a.State }); a.State != "" && i >= 0 {
 		fa.StateRounds = d.States[i].DurationRounds
 	}
 	return fa
+}
+
+// featureUseOfAction is the use an action declares as the combat reads it, nil for an action taken with TakeAction.
+func featureUseOfAction(u *rules.ActionUse) *link.FeatureUse {
+	if u == nil {
+		return nil
+	}
+	out := &link.FeatureUse{
+		Scope: u.Scope, Uses: u.Uses, TargetMin: u.Targets.Min, TargetMax: u.Targets.Max, TargetWho: u.Targets.Who, TargetRangeFt: u.Targets.RangeFt,
+		TempHP: u.Result.TempHP, HasEffect: u.HasEffect, EffectRounds: u.EffectRounds,
+	}
+	for _, c := range u.Choices {
+		out.Choices = append(out.Choices, link.FeatureChoice{Key: c.Key, TextPT: c.TextPT})
+	}
+	if h := u.Result.Heal; h != nil {
+		out.Heal = &link.Dice{Count: h.Count, Sides: h.Sides, Bonus: h.Bonus}
+	}
+	return out
 }
 
 // hooksOf is the combat's view of the character's on_event effects, with the name of the feature that has each.
@@ -432,8 +451,37 @@ func turnOptionsToProto(o combat.TurnOptions) *rulesv1.TurnOptions {
 }
 
 func actionOptionToProto(a combat.ActionOption) *rulesv1.ActionOption {
-	return &rulesv1.ActionOption{Action: actionToProto(a.Action), Enabled: a.Enabled, Reason: reasonProto(a.Reason), UsesLeft: i32(a.UsesLeft)}
+	o := &rulesv1.ActionOption{Action: actionToProto(a.Action), Enabled: a.Enabled, Reason: reasonProto(a.Reason), UsesLeft: i32(a.UsesLeft)}
+	useOptionToProto(o, a.Action.Use)
+	return o
 }
+
+// useOptionToProto fills what an action that declares a use (rules.Action.ViaUseFeature) tells the player: that it
+// is taken with UseFeature, the scope of its limit, the targets it asks for and the choices it offers. It leaves
+// `uses_left` and `enabled` alone: the uses left in a turn, round or combat scope are the combatant's state, which
+// the play module reads from combatants.feature_state and sets with rules.ActionUse.Left(spent) after this.
+func useOptionToProto(o *rulesv1.ActionOption, u *rules.ActionUse) {
+	if u == nil {
+		return
+	}
+	o.ViaUseFeature = true
+	o.UseScope = useScopeToProto[u.Scope]
+	o.TargetMin, o.TargetMax, o.TargetRangeFt = i32(u.Targets.Min), i32(u.Targets.Max), i32(u.Targets.RangeFt)
+	o.TargetWho = featureWhoToProto[u.Targets.Who]
+	for _, c := range u.Choices {
+		o.Choices = append(o.Choices, &rulesv1.FeatureChoice{Key: c.Key, TextPt: c.TextPT})
+	}
+}
+
+var (
+	useScopeToProto = map[string]rulesv1.UseScope{
+		rules.UseScopeTurn: rulesv1.UseScope_USE_SCOPE_TURN, rules.UseScopeRound: rulesv1.UseScope_USE_SCOPE_ROUND, rules.UseScopeCombat: rulesv1.UseScope_USE_SCOPE_COMBAT,
+	}
+	featureWhoToProto = map[string]rulesv1.FeatureTargetWho{
+		rules.FeatureWhoSelf: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_SELF, rules.FeatureWhoAlly: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ALLY,
+		rules.FeatureWhoEnemy: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ENEMY, rules.FeatureWhoAny: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ANY,
+	}
+)
 
 // reasonProto is nil for an enabled option.
 func reasonProto(r *combat.Reason) *rulesv1.DisabledReason {

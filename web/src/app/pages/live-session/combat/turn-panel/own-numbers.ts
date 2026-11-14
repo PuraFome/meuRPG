@@ -3,6 +3,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { freeText } from '../../../../core/combat/cast-flow';
+import { combatPool } from '../../../../core/combat/form-pool';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
 
@@ -59,12 +60,8 @@ export class OwnNumbers {
   readonly hitPoints = input<OwnHitPoints | null>(null);
 
   protected readonly pvText = computed(() => {
-    const c = this.own();
-    if (c.hitPointsCurrent !== undefined && c.hitPointsMax !== undefined) {
-      return `${c.hitPointsCurrent} de ${c.hitPointsMax}`;
-    }
-    const v = this.hitPoints();
-    return v ? `${v.current} de ${v.max}` : '';
+    const pool = combatPool(this.own()) ?? this.hitPoints();
+    return pool ? `${pool.current} de ${pool.max}` : '';
   });
 
   protected readonly rows = computed(() => {

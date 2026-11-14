@@ -308,6 +308,7 @@ type person struct {
 	contests   playv1connect.ContestServiceClient
 	lasting    playv1connect.LastingEffectServiceClient
 	casting    playv1connect.CastingServiceClient
+	feature    playv1connect.FeatureServiceClient
 	puzzles    playv1connect.PuzzleServiceClient
 	encounters playv1connect.EncounterServiceClient
 	maps       mapsv1connect.MapServiceClient
@@ -353,6 +354,7 @@ func (s *stack) personWith(name, id string) *person {
 		contests:   playv1connect.NewContestServiceClient(c, url),
 		lasting:    playv1connect.NewLastingEffectServiceClient(c, url),
 		casting:    playv1connect.NewCastingServiceClient(c, url),
+		feature:    playv1connect.NewFeatureServiceClient(c, url),
 		puzzles:    playv1connect.NewPuzzleServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
 		ready:      playv1connect.NewReadyServiceClient(c, url),

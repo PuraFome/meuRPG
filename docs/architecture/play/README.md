@@ -48,6 +48,7 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `RevivifyService` | `revivify.proto` | Revivify requests outside combat (see [Death and revival](death-and-revival.md)) |
 | `LastingEffectService` | `lasting_effects_service.proto` | Effects that last, exhaustion |
 | `CastingService` | `casting.proto` | Spells cast outside combat |
+| `FeatureService` | `features.proto` | `UseFeature`: a table feature that declares a use (limit per turn, round or combat, targets, a choice, an effect; see [Feature state](feature-state.md#using-a-feature)) |
 | `EncounterService` | `encounters.proto` | The encounter builder and stored battle encounters |
 | `PuzzleService` | `puzzles.proto` | Puzzles |
 | `ReadyService` | `ready.proto` | Ready: hold an action for a trigger, give it up, and the master's fire (see [Readying](readying.md)) |
@@ -62,6 +63,7 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `ListGameSessions` | Campaign members | none |
 | `ListOpenGameSessions` | Anyone signed in; each sees only the campaigns they are an active member of | none |
 | `GetLiveSession`, `WatchGameSession` | Campaign members | `failed_precondition` `NO_OPEN_SESSION` |
+| `GetCharacterWildShape` | The master and the character's player; no session needed | `not_found` for any other reader, and for a character that cannot be read (same answer) |
 | `AdjustCharacterVitals` | The master, session open | `NO_OPEN_SESSION`; `not_found` unless the character is a living player character of the campaign; `invalid_argument` outside 0 to the maximum. `aborted` when `expected_revision` is absent or no longer the vitals' revision. The response carries `concentration_dc` and `concentration_cast_id` when a character concentrating on a spell cast outside combat lost hit points. At 0 HP the concentration of a character in the open combat ends too |
 | `NudgePlayer` | The master, session open | `NO_OPEN_SESSION`; `not_found`; `resource_exhausted` for a second nudge to the same character within 10 s |
 | `SetCurrentMap`, `SetShownImage`, `SetShownImageAudience` | The master, session open | `NO_OPEN_SESSION`; `not_found` for a map or image of another campaign (or no image shown); `invalid_argument` for an audience that is malformed; `SceneBlocked` `SCENE_NOT_PARTIAL` for the scene's players with no scene open to only some |
@@ -131,4 +133,4 @@ What a player may not see stays out of the response, never blank or zero.
 
 ## Pages
 
-[Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Spell zones](spell-zones.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Readying](readying.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md) · [The free dice roller](free-dice-roller.md) · [The table screen](table-screen.md)
+[Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Spell zones](spell-zones.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Readying](readying.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md) · [The free dice roller](free-dice-roller.md) · [The table screen](table-screen.md) · [Feature state](feature-state.md)

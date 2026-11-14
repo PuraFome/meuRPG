@@ -95,3 +95,67 @@
 .js-title:focus {
   outline: none;
 }
+
+// The form: the beast and its time, then "Voltar" and "Permanecer" (full width on a phone, side by side from 768).
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form__card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+}
+
+.form__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.form__title {
+  font-family: var(--mr-font-display);
+  font-size: var(--mr-font-19);
+  line-height: 23px;
+}
+
+.form__line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.form__hour {
+  width: 14px;
+  height: 14px;
+  font-size: var(--mr-font-14);
+}
+
+.form__btns {
+  display: grid;
+  // Side by side while each button has room for its label on one line, one under the other when it does not (the column is narrow).
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+}
+
+.form__btn {
+  --mat-button-outlined-container-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-ink);
+  --mat-button-outlined-outline-color: var(--mr-control-line);
+  width: 100%;
+
+  &.mr-button--off {
+    --mat-button-outlined-label-text-color: var(--mr-ink-muted);
+    --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
+    --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
+    border-style: dashed;
+  }
+}

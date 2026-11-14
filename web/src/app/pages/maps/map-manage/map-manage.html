@@ -2,7 +2,7 @@
   <mat-icon aria-hidden="true">info</mat-icon>
   <p>
     <strong>Pintar só no computador</strong>
-    Pintar o terreno, as paredes, a cobertura e a luz é no computador. No celular você vê as camadas e muda a névoa.
+    No celular você vê as camadas e muda a névoa.
   </p>
 </div>
 @if (image(); as img) {
@@ -39,6 +39,12 @@
   <app-map-legend [states]="true" [points]="state().points()" [tokens]="state().tokens()" [kindShapes]="true" [initialOf]="initialOf" />
 </div>
 
+<app-map-layers-list [layers]="painted.layers()" />
+
+@if (map(); as m) {
+  <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" />
+}
+
 @if (map(); as m) {
   <section class="mr-panel" aria-labelledby="gen-heading">
     <h2 class="mr-panel__title" id="gen-heading">Imagem do mapa</h2>
@@ -48,10 +54,6 @@
       (done)="onImageGenerated($event)"
     />
   </section>
-}
-
-@if (map(); as m) {
-  <app-fog-panel [campaignId]="campaignId()" [map]="m" (changed)="onMapChanged($event)" />
 }
 
 @if (dungeon.failed()) {

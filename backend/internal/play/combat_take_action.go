@@ -269,6 +269,9 @@ func (f *takeActionFlow) choose() error {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("action_key is not one of the standard or feature actions"))
 	}
 	f.action = list[i]
+	if f.action.GetViaUseFeature() {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("use UseFeature"))
+	}
 	if key == actionHide || key == actionHelp {
 		return errHideOrHelp()
 	}
@@ -656,6 +659,8 @@ func featureError(r *rulesv1.DisabledReason, master bool) error {
 	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_USES:
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NO_USES, "no uses left",
 			func(b *playv1.EncounterBlocked) { b.Recharge = r.GetRecharge() })
+	case rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_NO_VALID_TARGET:
+		return errFeatureTarget(nil)
 	}
 	return nil
 }

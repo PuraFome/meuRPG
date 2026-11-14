@@ -33,6 +33,15 @@ import {
 } from '../../../core/content/spell-draft';
 import { NAME_MAX } from '../../../core/content/feature-draft';
 import {
+  type HitDraft,
+  hitAbilityKey,
+  hitPath,
+  hitRefusals,
+  hitAvailable,
+  settleHit,
+  hitMoved,
+} from '../../../core/content/hit-effect-draft';
+import {
   ATTACK_OPTIONS,
   DURATION_OPTIONS,
   DURATION_UNITS,
@@ -66,6 +75,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { SwitchField } from '../../../shared/form-fields/switch-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { Segmented } from '../../../shared/segmented/segmented';
+import { HitEffectBlock } from './hit-effect-block';
 import { SpellSummon } from './spell-summon';
 import { EntryRead } from '../entry-read/entry-read';
 import { previewRead } from '../../../core/content/preview';
@@ -92,6 +102,7 @@ export interface EditorSaved {
     EditorBar,
     PlayersSwitch,
     EntryRead,
+    HitEffectBlock,
     MatButtonModule,
     MatIconModule,
     Segmented,
@@ -220,13 +231,22 @@ export class SpellEditor {
     }
   }
 
+  /** The lock moved the trigger on the last change: the block tells it. */
+  protected readonly hitMoved = signal(false);
+
   protected patch(p: Partial<SpellDraft>): void {
-    this.draft.update((d) => ({ ...d, ...p }));
+    const before = this.draft();
+    const next = settleHit({ ...before, ...p });
+    this.hitMoved.set(hitMoved(before, next));
+    this.draft.set(next);
     this.dirty.set(true);
   }
 
   protected setTarget(value: string): void {
-    this.draft.update((d) => withTarget(d, value as SpellDraft['target']));
+    const before = this.draft();
+    const next = withTarget(before, value as SpellDraft['target']);
+    this.hitMoved.set(hitMoved(before, next));
+    this.draft.set(next);
     this.dirty.set(true);
   }
 
@@ -235,8 +255,38 @@ export class SpellEditor {
     this.dirty.set(true);
   }
 
-  /** What the engine will refuse about the spell next to "Invocar", said before the save (`summonRefusals`). */
-  private readonly advance = computed(() => summonRefusals(this.draft()));
+  /** What the engine will refuse about the spell next to "Invocar" (`summonRefusals`) and in "Efeito no próximo golpe" (`hitRefusals`), said before the save. */
+  private readonly advance = computed(() => {
+    const d = this.draft();
+    return [...summonRefusals(d), ...hitRefusals(d.kept?.effect, d.hit, hitAvailable(d))];
+  });
+
+  protected setHit(hit: HitDraft): void {
+    this.patch({ hit });
+  }
+
+  /** The abilities by the wire key the saving throw of the hit carries. */
+  protected readonly hitAbilities = computed<SelectOption[]>(() =>
+    this.catalog().abilities.map((a) => ({ value: hitAbilityKey(a.ability), label: a.name })),
+  );
+  /** The path of a field of the weapon-hit modifier: its place among the stored effect's modifiers. */
+  protected readonly hitPathOf = computed(() => {
+    const effect = this.draft().kept?.effect;
+    return (field: string) => hitPath(effect, field);
+  });
+  /** "1 minuto", "até ser dissipada": the chip of the block says how long the effect lasts. */
+  protected readonly durationText = computed(() => {
+    const d = this.draft();
+    if (d.duration === 'until_dispelled') {
+      return 'até ser dissipada';
+    }
+    if (d.duration !== 'timed' || Number.isNaN(d.durationAmount)) {
+      return '';
+    }
+    const unit = { round: 'rodada', minute: 'minuto', hour: 'hora', day: 'dia' }[d.durationUnit];
+    const many = d.durationAmount === 1 ? '' : 's';
+    return `${d.durationAmount} ${unit}${many}`;
+  });
 
   /** The messages of one input: the server's, and the form's own (the spell's level, target or ritual that "Invocar" cannot take). */
   protected readonly fieldIssues = (path: string): readonly string[] => {

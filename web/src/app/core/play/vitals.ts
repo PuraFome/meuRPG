@@ -33,7 +33,13 @@ export function applyVitals(current: readonly VitalsVm[], incoming: VitalsVm): V
   const seen = current[index];
   const sightDropped =
     seen.revision === incoming.revision && !!seen.familiarSight && !incoming.familiarSight;
-  if (seen.revision >= incoming.revision && !sightDropped) {
+  // The server spends the owner's attunement window without bumping the revision and sends no event for it: the
+  // client that set the attunement says it, at the same revision, and the closing is taken.
+  const windowSpent =
+    seen.revision === incoming.revision &&
+    seen.attunementOpen === true &&
+    incoming.attunementOpen === false;
+  if (seen.revision >= incoming.revision && !sightDropped && !windowSpent) {
     return [...current];
   }
   const next = [...current];

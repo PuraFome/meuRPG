@@ -986,8 +986,8 @@ test('guerreiro 5: o Ataque Extra deixa dois ataques por ação, Retomar o Fôle
     let sheet = await attack();
     await expect(sheet.getByText('Você ainda tem 1 ataque desta ação.')).toBeVisible();
     await sheet.getByRole('button', { name: 'Voltar à sua vez' }).click();
-    // The Action stays a filled circle while an attack is left: the bar says how many.
-    await expect(p.locator('app-turn-bar').getByLabel('Ação, 1 ataque restante')).toBeVisible();
+    // The Action stays a filled circle while an attack is left: the economy row of "Ações" says how many (board 584-01).
+    await expect(p.getByRole('list', { name: 'O que resta da vez' }).getByLabel('Ação, 1 ataque restante')).toBeVisible();
     await openActionTab(p, 'Ataques');
     await expect(groups.getByRole('button', { name: /^Atacar com Espada/ })).toBeEnabled();
     sheet = await attack();
@@ -1134,10 +1134,10 @@ test('a distância sai em metros e em quadrados: a linha do movimento, a barra d
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
     // The movement row under the map: the meters and the squares, beside "Mover".
     await expect(p.getByRole('status').filter({ hasText: 'Restam 7,5 m' })).toContainText('Restam 7,5 m · 5 quadrados');
-    // The sticky turn bar: the walker with "7,5 m" among what is left, inside the bar.
-    const bar = p.locator('app-turn-bar');
-    await expect(bar.getByText('7,5 m')).toBeVisible();
-    expect(await bar.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+    // The economy row of "Ações" (the turn bar now holds only "Encerrar turno", board 584-02): the walker with "7,5 m" among what is left, inside the row.
+    const row = p.getByRole('list', { name: 'O que resta da vez' });
+    await expect(row.getByText('7,5 m')).toBeVisible();
+    expect(await row.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 
     // The master's card for the captain (a gnome too, in chain mail without the Strength 13 it asks for, so 10 ft
     // slower: 15 ft): the Deslocamento in both units, and the Movimento chip.
