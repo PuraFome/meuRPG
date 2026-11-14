@@ -6226,6 +6226,43 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByText('Sem recurso, tempo nem duração: a magia tem os seus.')).toBeVisible();
       await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Editor de magia, Invocar ${where}`);
+      // The effect a spell leaves (#579, boards 579-01, 579-02 and 579-04): off on a spell that does not last, on and empty, a change of each
+      // shape, the aura, and the refusals that land on the row that wrote them.
+      await open(m, `/campaigns/${campaignId}/content/new/spell`);
+      await m.getByLabel('Nome', { exact: true }).fill('Bênção da Mesa');
+      await expect(m.getByRole('switch', { name: 'Deixa um efeito nos alvos' })).toBeDisabled();
+      await expectScreenPasses(m, `Editor de magia, o efeito desligado numa magia instantânea ${where}`);
+      await m.getByLabel('Duração', { exact: true }).selectOption({ label: 'Até ser dissipada' });
+      await m.getByRole('switch', { name: 'Deixa um efeito nos alvos' }).click();
+      await expect(m.getByText('Ponha ao menos uma condição ou uma mudança. Um efeito vazio não é salvo.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, o efeito ligado e vazio ${where}`);
+      await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
+      await m.getByLabel('Tipo', { exact: true }).selectOption({ label: 'Bônus nas jogadas' });
+      await m.locator('app-spell-effect label', { hasText: 'Um dado' }).click();
+      await expect(m.getByText('+1d4 em ataques e resistências', { exact: true })).toBeVisible();
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Editor de magia, o efeito com um dado nas jogadas ${where}`);
+      await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
+      await m.getByLabel('Tipo', { exact: true }).last().selectOption({ label: 'Vantagem ou desvantagem' });
+      await expectScreenPasses(m, `Editor de magia, o efeito com vantagem ${where}`);
+      await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
+      await m.getByLabel('Tipo', { exact: true }).last().selectOption({ label: 'PV temporários' });
+      await m.getByLabel('Quantos', { exact: true }).fill('1500');
+      await m.getByRole('button', { name: 'Salvar magia' }).click();
+      await expect(m.getByLabel('Quantos', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expectScreenPasses(m, `Editor de magia, a recusa de um número fora da faixa ${where}`);
+      await m.locator('app-spell-effect label', { hasText: 'Só o dono do alvo e você' }).click();
+      await expectScreenPasses(m, `Editor de magia, o efeito só para o dono ${where}`);
+      await m.locator('app-segmented label', { hasText: 'Só quem conjura' }).first().click();
+      await m.getByRole('switch', { name: 'Em volta de quem conjura (aura)' }).click();
+      await expect(m.getByLabel('Até onde alcança')).toHaveValue('9');
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Editor de magia, a aura ${where}`);
+      // The two blocks that write one effect, "Deixa um efeito nos alvos" (#579) and "Efeito no próximo golpe" (#577), on at once: the seam between them.
+      await m.getByRole('switch', { name: 'Efeito no próximo golpe' }).click();
+      await expect(m.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Editor de magia, os dois blocos de efeito ligados juntos ${where}`);
       const undead = await createEntryRPC(m, campaignId, 'tableCreature', damageCreatureBody());
       await open(m, entryRoute(campaignId, undead));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Defunto do Vale');
@@ -6269,6 +6306,10 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
 
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanTableContent(browser, 'light', 1280);
+});
+
+test('o conteúdo da mesa passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanTableContent(browser, 'light', 768);
 });
 
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {

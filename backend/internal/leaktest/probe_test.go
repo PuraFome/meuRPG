@@ -2,6 +2,7 @@ package leaktest
 
 import (
 	"maps"
+	"net/http"
 	"sort"
 	"strings"
 	"testing"
@@ -112,12 +113,24 @@ func checkNotReads(t *testing.T, w *world, got *answers) {
 			if c.class == masterWrite && r.ok() {
 				t.Errorf("%s: %s got an answer from a master-only call (%s): %s", strings.TrimPrefix(procedure, "/meurpg."), p.name, c.why, shorten(r.body))
 			}
-			if r.status >= 500 {
+			if r.status >= 500 && (!unbuilt[procedure] || r.status != http.StatusNotImplemented) {
 				t.Errorf("%s: %s made the server fail (HTTP %d): %s", strings.TrimPrefix(procedure, "/meurpg."), p.name, r.status, shorten(r.body))
 			}
 			for _, f := range w.inspect(p, r, nil) {
 				t.Errorf("%s: %s: %s\n\tanswer: %s", strings.TrimPrefix(procedure, "/meurpg."), p.name, f, shorten(r.body))
 			}
+		}
+	}
+}
+
+// A procedure in unbuilt really answers `unimplemented` (HTTP 501) to a member: once it is built it has to leave the list, so
+// the probe goes back to taking every 5xx for a failure.
+func TestUnbuiltProceduresAnswerUnimplemented(t *testing.T) {
+	w := newWorld(t)
+	for procedure := range unbuilt {
+		r := w.caio.call(procedure, w.probeRequest(w.caio, methodOf(t, procedure)))
+		if r.status != http.StatusNotImplemented {
+			t.Errorf("%s answered HTTP %d to a member, want 501: take it out of unbuilt (%s)", strings.TrimPrefix(procedure, "/meurpg."), r.status, shorten(r.body))
 		}
 	}
 }
