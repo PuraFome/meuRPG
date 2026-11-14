@@ -78,6 +78,8 @@ type heldRoll struct {
 	StrokeAsk, StrokeFailed bool
 	StrokeAnswerKey         *string
 	StrokeFrom              *int32
+	// FavorSpent says the roll was made with the roller's Inspiration (favor_spend.go): a retry and the answer read it.
+	FavorSpent bool
 	// The reroll's question (held_reroll.go): asked, the die that showed the low face, the rule it was asked for (its limit,
 	// the resource and cost it spends, the feature that gives it), its answer's key and the d20 that counted before and
 	// after the new roll.
@@ -233,6 +235,7 @@ func heldOfInspirationHold(row playdb.InspirationHold) heldRoll {
 		StrokeAsk: row.StrokeAsk, StrokeFailed: row.StrokeFailed, StrokeAnswerKey: row.StrokeAnswerKey, StrokeFrom: row.StrokeFrom,
 		RerollAsk: row.RerollAsk, RerollIndex: row.RerollIndex, RerollAtMost: row.RerollAtMost, RerollResource: row.RerollResource,
 		RerollCost: row.RerollCost, RerollSource: row.RerollSource, RerollAnswerKey: row.RerollAnswerKey, RerollFrom: row.RerollFrom, RerollTo: row.RerollTo,
+		FavorSpent: row.FavorSpent,
 	}
 }
 
@@ -240,8 +243,13 @@ func heldOfInspirationHold(row playdb.InspirationHold) heldRoll {
 // (and by its combatant in a combat).
 type inspirationHoldStore struct{ q *playdb.Queries }
 
+// byKey finds the roll the roller made under a key: another roller's hold under the same key (the members of a group check send
+// one) is not its own.
 func (st inspirationHoldStore) byKey(ctx context.Context, roller heldRoller, key string) (heldRoll, bool, error) {
-	row, err := st.q.GetInspirationHoldByKey(ctx, playdb.GetInspirationHoldByKeyParams{CampaignID: roller.CampaignID, IdempotencyKey: key})
+	owner := holdOwnerOf(roller)
+	row, err := st.q.GetInspirationHoldOfRoller(ctx, playdb.GetInspirationHoldOfRollerParams{
+		CampaignID: roller.CampaignID, IdempotencyKey: key, CharacterID: owner.CharacterID, CombatantID: owner.CombatantID,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return heldRoll{}, false, nil
 	}
@@ -312,7 +320,7 @@ func (st inspirationHoldStore) insert(ctx context.Context, env gateEnv, h heldRo
 		CombatantID: nilIfEmpty(h.CombatantID), EncounterID: nilIfEmpty(h.EncounterID), WindowHold: h.Window && h.Kind == heldWeaponAttack,
 		IndomitableAsk: h.IndomAsk, IndomitableFailed: h.IndomFailed, StrokeAsk: h.StrokeAsk, StrokeFailed: h.StrokeFailed,
 		RerollAsk: h.RerollAsk, RerollIndex: h.RerollIndex, RerollAtMost: h.RerollAtMost, RerollResource: h.RerollResource,
-		RerollCost: h.RerollCost, RerollSource: h.RerollSource, CountedBy: h.CountedBy,
+		RerollCost: h.RerollCost, RerollSource: h.RerollSource, CountedBy: h.CountedBy, FavorSpent: h.FavorSpent,
 	})
 	if err != nil {
 		return heldRoll{}, fmt.Errorf("hold the roll: %w", err)
@@ -339,7 +347,7 @@ func (st inspirationHoldStore) answer(ctx context.Context, h heldRoll, key strin
 }
 
 func (st inspirationHoldStore) forget(ctx context.Context, h heldRoll) error {
-	return st.q.DeleteInspirationHold(ctx, h.ID) //nolint:wrapcheck // the gate wraps it
+	return forgetHold(ctx, st.q, h.ID)
 }
 
 // asked moves the combat's revision for the question of any roll held in a combat: the master and the roller's player
