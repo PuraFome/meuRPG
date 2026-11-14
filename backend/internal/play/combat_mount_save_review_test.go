@@ -178,7 +178,7 @@ func TestMountedCombat_ACreatureRiderIsAnsweredByTheMaster(t *testing.T) {
 	if _, err := a.summonWolves(t, a.bia, e, 11); err != nil {
 		t.Fatalf("CastSpell() error = %v", err)
 	}
-	a.execSQL(t, `UPDATE combatants SET mounted_on_id = m.id, grid_col = m.grid_col, grid_row = m.grid_row FROM combatants m WHERE m.label = 'Lobo atroz 2' AND combatants.label = 'Lobo atroz 1'`)
+	a.execSQL(t, `UPDATE combatants SET mounted_on_id = (SELECT id FROM combatants WHERE label = 'Lobo atroz 2'), grid_col = (SELECT grid_col FROM combatants WHERE label = 'Lobo atroz 2'), grid_row = (SELECT grid_row FROM combatants WHERE label = 'Lobo atroz 2') WHERE label = 'Lobo atroz 1'`)
 	a.askSave(t, "Lobo atroz 1", causePushed)
 	if got := a.mountSaveOf(t, a.master); got.GetRiderId() != a.id(t, "Lobo atroz 1") {
 		t.Fatalf("the master reads %v, want the save of the creature (the control)", got)
@@ -200,7 +200,7 @@ func TestMountedCombat_TheOpenHandAsksTheRidersSave(t *testing.T) {
 	t.Run("the push of the mount", func(t *testing.T) {
 		t.Parallel()
 		a, e, offers := riderMonkFight(t)
-		a.execSQL(t, `UPDATE combatants SET mounted_on_id = g.id, grid_col = g.grid_col, grid_row = g.grid_row FROM combatants g WHERE g.label = 'Goblin' AND combatants.label = 'Brisa'`)
+		a.execSQL(t, `UPDATE combatants SET mounted_on_id = (SELECT id FROM combatants WHERE label = 'Goblin'), grid_col = (SELECT grid_col FROM combatants WHERE label = 'Goblin'), grid_row = (SELECT grid_row FROM combatants WHERE label = 'Goblin') WHERE label = 'Brisa'`)
 		a.h.roller.queue(1)
 		if _, err := a.useRider(t, a.caio, e, offers[playv1.HitRiderKind_HIT_RIDER_KIND_OPEN_HAND], playv1.HitRiderChoice_HIT_RIDER_CHOICE_PUSH); err != nil {
 			t.Fatalf("UseHitRider() error = %v", err)
@@ -212,7 +212,7 @@ func TestMountedCombat_TheOpenHandAsksTheRidersSave(t *testing.T) {
 	t.Run("a push that moves nobody", func(t *testing.T) {
 		t.Parallel()
 		a, e, offers := riderMonkFight(t)
-		a.execSQL(t, `UPDATE combatants SET mounted_on_id = g.id, grid_col = g.grid_col, grid_row = g.grid_row FROM combatants g WHERE g.label = 'Goblin' AND combatants.label = 'Brisa'`)
+		a.execSQL(t, `UPDATE combatants SET mounted_on_id = (SELECT id FROM combatants WHERE label = 'Goblin'), grid_col = (SELECT grid_col FROM combatants WHERE label = 'Goblin'), grid_row = (SELECT grid_row FROM combatants WHERE label = 'Goblin') WHERE label = 'Brisa'`)
 		a.execSQL(t, `UPDATE combatants SET grid_col = 5, grid_row = 3 WHERE label = 'Pensantus'`) // in the way, right behind the Goblin
 		a.h.roller.queue(1)
 		if _, err := a.useRider(t, a.caio, e, offers[playv1.HitRiderKind_HIT_RIDER_KIND_OPEN_HAND], playv1.HitRiderChoice_HIT_RIDER_CHOICE_PUSH); err != nil {
@@ -229,7 +229,7 @@ func TestMountedCombat_TheOpenHandAsksTheRidersSave(t *testing.T) {
 		t.Parallel()
 		a, e, offers := riderMonkFight(t)
 		a.execSQL(t, `UPDATE combatants p SET grid_col = g.grid_col, grid_row = g.grid_row FROM combatants g WHERE g.label = 'Goblin' AND p.label = 'Pensantus'`)
-		a.execSQL(t, `UPDATE combatants SET mounted_on_id = p.id FROM combatants p WHERE p.label = 'Pensantus' AND combatants.label = 'Goblin'`)
+		a.execSQL(t, `UPDATE combatants SET mounted_on_id = (SELECT id FROM combatants WHERE label = 'Pensantus') WHERE label = 'Goblin'`)
 		a.h.roller.queue(1)
 		if _, err := a.useRider(t, a.caio, e, offers[playv1.HitRiderKind_HIT_RIDER_KIND_OPEN_HAND], playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE); err != nil {
 			t.Fatalf("UseHitRider() error = %v", err)
