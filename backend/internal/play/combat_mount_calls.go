@@ -135,6 +135,7 @@ type rideDone struct {
 	from         *grid.Square     // where the rider stood
 	secret       bool
 	hook         *trapHook // the trap the ride fired, for the streams
+	stopped      bool      // the dismount stopped on a square a creature the caller does not see holds: nobody moved
 }
 
 // MountCombatant implements playv1connect.CombatServiceHandler.
@@ -153,7 +154,7 @@ func (s *Service) MountCombatant(
 	if call.mountID, err = parseCombatID(req.Msg.GetMountId(), "combatant"); err != nil {
 		return nil, err
 	}
-	out, err := s.ride(ctx, call, idem.Hash(req.Msg), eventCombatantMounted)
+	out, _, err := s.ride(ctx, call, idem.Hash(req.Msg), eventCombatantMounted)
 	if err != nil {
 		return nil, err
 	}
@@ -173,31 +174,43 @@ func (s *Service) DismountCombatant(
 	if call.riderID, err = parseCombatID(req.Msg.GetRiderId(), "combatant"); err != nil {
 		return nil, err
 	}
-	out, err := s.ride(ctx, call, idem.Hash(req.Msg), eventCombatantDismounted)
+	out, stopped, err := s.ride(ctx, call, idem.Hash(req.Msg), eventCombatantDismounted)
 	if err != nil {
 		return nil, err
 	}
-	return connect.NewResponse(&playv1.DismountCombatantResponse{Encounter: out, MovementLeftDft: standUpMovementLeft(out, call.riderID)}), nil
+	return connect.NewResponse(&playv1.DismountCombatantResponse{Encounter: out, MovementLeftDft: standUpMovementLeft(out, call.riderID), StoppedEarly: stopped}), nil
 }
 
-// ride is the write of a mount or a dismount, with the answer the viewer reads.
-func (s *Service) ride(ctx context.Context, call rideCall, hash *string, kind string) (*playv1.Encounter, error) {
+// ride is the write of a mount or a dismount, with the answer the viewer reads and whether a dismount stopped early.
+func (s *Service) ride(ctx context.Context, call rideCall, hash *string, kind string) (*playv1.Encounter, bool, error) {
 	var done rideDone
 	res, err := s.write(ctx, combatWrite{m: call.m, key: call.key, hash: hash, kind: kind, encounterID: call.encounterID}, func(c *combatTx) (any, error) {
 		done = rideDone{}
 		return s.rideWrite(ctx, c, call, &done)
 	})
 	if err != nil {
-		return nil, s.dbError(ctx, "mount or dismount", err)
+		return nil, false, s.dbError(ctx, "mount or dismount", err)
 	}
-	return s.finish(ctx, call.m, res, func(ctx context.Context, d *encounterData) {
+	out, err := s.finish(ctx, call.m, res, func(ctx context.Context, d *encounterData) {
 		s.publishRide(ctx, call.m.CampaignID, d, &done)
 	})
+	if err != nil {
+		return nil, false, err
+	}
+	ev, err := resultEvent(res, actionEvent{StoppedEarly: done.stopped}) // a replay of the key reads it from the event
+	if err != nil {
+		return nil, false, s.dbError(ctx, "read the ride", err)
+	}
+	return out, ev.StoppedEarly, nil
 }
 
 // publishRide tells the streams that a rider mounted or dismounted: its square changed, and the log has a line unless a hidden
 // combatant is in it.
 func (s *Service) publishRide(ctx context.Context, campaignID string, d *encounterData, done *rideDone) {
+	if done.stopped { // nobody moved and nothing was said: the table's copy only changed in its revision
+		s.publishEncounterChangedFor(ctx, campaignID, d, done.rider.ID)
+		return
+	}
 	s.publishCombatantMoved(ctx, campaignID, d.enc, done.rider, done.from)
 	s.positionChanged(ctx, campaignID, d.enc, done.rider, done.from)
 	s.publishEncounterChangedFor(ctx, campaignID, d, done.rider.ID, done.mount.ID)
@@ -237,9 +250,12 @@ func (s *Service) rideWrite(ctx context.Context, c *combatTx, call rideCall, don
 	if err != nil {
 		return nil, fmt.Errorf("read the surface the rider stands on: %w", err)
 	}
-	to, err := s.rideSquare(ctx, c, call, cs, v, rider, mount, standing)
+	to, stopped, err := s.rideSquare(ctx, c, call, cs, v, rider, mount, standing)
 	if err != nil {
 		return nil, err
+	}
+	if stopped {
+		return s.dismountStopped(ctx, c, rider, mount, done)
 	}
 	cost := mountCostDFt(rider, standing)
 	after, err := rideTo(ctx, c, rider, mount, to, cost, call.dismount)
@@ -302,14 +318,15 @@ func rideMountOf(cs []playdb.Combatant, v combatViewer, call rideCall, rider pla
 }
 
 // rideSquare is the square the rider ends on, after the checks of the ride: the mount's for a mount, the landing for a dismount.
-func (s *Service) rideSquare(ctx context.Context, c *combatTx, call rideCall, cs []playdb.Combatant, v combatViewer, rider, mount playdb.Combatant, standing grid.Surface) (grid.Square, error) {
+// stopped says the dismount ends before it starts: a creature the caller does not see holds the square (see dismountSquare).
+func (s *Service) rideSquare(ctx context.Context, c *combatTx, call rideCall, cs []playdb.Combatant, v combatViewer, rider, mount playdb.Combatant, standing grid.Surface) (to grid.Square, stopped bool, err error) {
 	if call.dismount {
-		return s.dismountSquare(ctx, c, call, cs, rider, mount, standing)
+		return s.dismountSquare(ctx, c, call, cs, v, rider, mount, standing)
 	}
 	if err := s.mayBeMounted(v, rider, mount, cs, standing); err != nil {
-		return grid.Square{}, err
+		return grid.Square{}, false, err
 	}
-	return squareOfCombatant(mount), nil
+	return squareOfCombatant(mount), false, nil
 }
 
 // rideGates refuses the rider that may not act now: out of its turn, down, surprised, unable to act, or the turn waits.
@@ -345,22 +362,41 @@ func hiddenPair(cs []playdb.Combatant, v combatViewer, rider, mount playdb.Comba
 	return unseen(riderOf(cs, mount.ID)) || unseen(riderOf(cs, rider.ID)) || unseen(ridingOn(cs, mount)) || unseen(ridingOn(cs, rider))
 }
 
-// dismountSquare is the square the rider lands on, or the refusal.
-func (s *Service) dismountSquare(ctx context.Context, c *combatTx, call rideCall, cs []playdb.Combatant, rider, mount playdb.Combatant, standing grid.Surface) (grid.Square, error) {
-	to := grid.Square{Col: int(call.col), Row: int(call.row)}
+// dismountSquare is the square the rider lands on, or the refusal. The viewer plans on the creatures it sees, as the options offer
+// the squares, so a square that only a creature it does not see holds is a square it may choose; the real landing runs on everyone
+// and, as a move does (movement.md), stops before that creature: stopped is true, nothing is spent and no refusal says why (RN-10).
+func (s *Service) dismountSquare(ctx context.Context, c *combatTx, call rideCall, cs []playdb.Combatant, v combatViewer, rider, mount playdb.Combatant, standing grid.Surface) (to grid.Square, stopped bool, err error) {
+	to = grid.Square{Col: int(call.col), Row: int(call.row)}
 	terrain, err := s.terrainOf(ctx, c.tx, call.m.CampaignID, c.enc)
 	if err != nil {
-		return to, err
+		return to, false, err
 	}
 	mover, err := s.moverWith(ctx, c.tx, call.m.CampaignID, rider)
 	if err != nil {
-		return to, err
+		return to, false, err
 	}
-	landing := landingSquares(terrain, squareOfCombatant(mount), occupantsFor(cs, rider, combatViewer{master: true}), mover)
-	if no := dismountVerdict(rider, standing, landing, &to); no != nil {
-		return to, no.err()
+	at := squareOfCombatant(mount)
+	planned := landingSquares(terrain, at, occupantsFor(cs, rider, v), mover)
+	if no := dismountVerdict(rider, standing, planned, &to); no != nil {
+		return to, false, no.err()
 	}
-	return to, nil
+	real := landingSquares(terrain, at, occupantsFor(cs, rider, combatViewer{master: true}), mover)
+	return to, !slices.Contains(real, to), nil
+}
+
+// dismountStopped is the write of a dismount a hidden creature stopped: the rider stays on the mount, nothing is spent and the move
+// of the mount's ride is not used. It leaves the event of a move that goes nowhere, which the log skips as it skips any such move.
+func (s *Service) dismountStopped(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, done *rideDone) (any, error) {
+	if err := touch(ctx, c); err != nil {
+		return nil, err
+	}
+	c.kind = eventCombatantMoved
+	c.characterID = &rider.CharacterID
+	*done = rideDone{rider: rider, mount: mount, stopped: true}
+	return actionEvent{
+		Round: c.enc.Round, Actor: rider.ID, OnTurn: true, StoppedEarly: true, From: moveStateOf(rider),
+		Col: clamp32(squareOfCombatant(rider).Col, 0, math.MaxInt32), Row: clamp32(squareOfCombatant(rider).Row, 0, math.MaxInt32),
+	}, nil
 }
 
 // rideTo writes the ride: the link, the rider's square, the movement it cost and the mark of the move. It answers the rider as it stands.

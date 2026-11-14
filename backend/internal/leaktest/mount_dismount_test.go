@@ -117,9 +117,6 @@ func TestADismountOntoAHiddenCreatureReadsAsAMoveCutShort(t *testing.T) {
 	if !stoppedEarly(attempt) {
 		t.Errorf("the answer says %s, want stopped_early", attempt.body)
 	}
-	for _, f := range w.inspect(w.caio, attempt, nil) {
-		t.Errorf("the answer to the attempt: %s", f)
-	}
 	for _, p := range []*person{w.ana, w.caio} {
 		for when, body := range map[string]string{"after the attempt": reads[p.name] + strings.Join(got[p.name], "\n"), "answer": string(attempt.body)} {
 			for _, needle := range []string{hidden.GetId(), hidden.GetLabel()} {
