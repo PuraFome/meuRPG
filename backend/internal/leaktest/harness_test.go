@@ -324,6 +324,7 @@ type person struct {
 	notes      notesv1connect.NotesServiceClient
 	resources  playv1connect.ResourceServiceClient
 	screen     playv1connect.TableScreenServiceClient
+	ready      playv1connect.ReadyServiceClient
 	// reads, when set, replaces the rule of who may read a canary (see canary.mayRead). Only the table
 	// screen's reader sets it (tvReader, tablescreen_test.go).
 	reads func(*canary) bool
@@ -361,6 +362,7 @@ func (s *stack) personWith(name, id string) *person {
 		feature:    playv1connect.NewFeatureServiceClient(c, url),
 		puzzles:    playv1connect.NewPuzzleServiceClient(c, url),
 		encounters: playv1connect.NewEncounterServiceClient(c, url),
+		ready:      playv1connect.NewReadyServiceClient(c, url),
 		maps:       mapsv1connect.NewMapServiceClient(c, url),
 		gallery:    mapsv1connect.NewGalleryServiceClient(c, url),
 		imagegen:   mapsv1connect.NewImageGenerationServiceClient(c, url),

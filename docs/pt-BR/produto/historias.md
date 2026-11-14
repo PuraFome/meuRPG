@@ -629,7 +629,7 @@ Cada convite escolhe se exige aprovação, e uma recusa apaga o personagem e a p
 - Regras: RN-23, RN-24, RN-25
 - Módulos: rules, characters, campaigns, play, maps
 
-A história cobre classes **e** subclasses próprias, raças e sub-raças, antecedentes, magias, talentos, opções, características de classe, criaturas, o pacote de conteúdo (exportar e importar), os interruptores de opções, as regras da mesa e a grade da campanha.
+A história cobre classes **e** subclasses próprias, raças e sub-raças, antecedentes, magias, talentos, opções, características de classe, armas, criaturas, o pacote de conteúdo (exportar e importar), os interruptores de opções, as regras da mesa e a grade da campanha.
 A proposta de um jogador (MR-026) e a leitura de regras de um PDF (MR-027) são histórias à parte, para depois.
 As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa: regras](../../architecture/rules-table-content.md) e [Conteúdo da mesa: personagens](../../architecture/characters-table-content.md).
 
@@ -841,7 +841,8 @@ As regras de dados, os limites e o lado do servidor estão em [Conteúdo da mesa
   O aviso some sozinho quando os números voltam a bater.
 - **Dado** um conteúdo da mesa que uma ficha usa, **quando** o mestre o arquiva, **então** a ficha o mantém **e** ele deixa de aparecer como escolha nova; nada do conteúdo da mesa é apagado.
   Uma entrada arquivada ainda pode ser editada e pode ser desarquivada, e então volta a ser uma escolha nova.
-- **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção ou característica de classe (do SRD ou da mesa), **então** os jogadores deixam de vê-lo e de escolhê-lo; o que está ligado eles veem por inteiro, com números e efeitos.
+- **Dado** uma arma que o mestre cadastrou (dados, tipo de dano, propriedades, alcance), **quando** uma ficha a carrega, **então** a ficha mostra a linha de ataque como a de uma arma do SRD, **e** uma arma que combina o que as do SRD não combinam (Recarga sem Munição, Alcance numa arma à distância, Duas mãos com Versátil) é recusada em "Propriedades" com o motivo; **quando** o mestre a arquiva, **então** as fichas que a carregam a mantêm e o catálogo dos outros jogadores não a tem (RN-23) (`TestATableWeaponIsReadByAPlayerAndWornByASheet`, `TestAWeaponsPropertiesFollowTheSRDsCombinations`, `TestACarriedTableWeaponStaysInTheOwnersCatalog`).
+- **Dado** a tela "Opções para os jogadores", **quando** o mestre desliga uma classe, subclasse, raça, sub-raça, antecedente, magia, talento, opção, arma ou característica de classe (do SRD ou da mesa), **então** os jogadores deixam de vê-lo e de escolhê-lo; o que está ligado eles veem por inteiro, com números e efeitos.
   Uma classe desligada leva as subclasses dela junto, e uma raça desligada, as sub-raças.
 - **Dado** uma opção desligada ou arquivada, **quando** um jogador cria ou edita uma ficha ou sobe de nível, **então** o servidor a recusa como escolha nova, **e** uma ficha que já a tem continua funcionando e uma edição que não tem relação nunca é recusada.
   O mestre nunca é recusado.

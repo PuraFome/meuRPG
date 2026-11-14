@@ -309,6 +309,7 @@ Events carry these rows' ids and never the text.
 `combatant_states` are the states a combatant is in for a while: `kind` is `rage`, `hunters_mark_target`, `dodging`, `reckless` or `effect` (the lasting effects of [play.md](play.md#character_effects)).
 Columns: `source_id` (a Berserker's frenzy has its own combatant as source), `ends_combatant_id` and `ends_phase` (`start_of_turn`, `end_of_turn`) and `ends_round` (when it ends), `started_round`, `amount` (a rage's damage bonus), and, for an `effect`, `group_id`, `source_key`, `source_kind`, `duration_kind`, `condition_keys`, `modifiers`, the save and trigger columns, `follows_key`, `player_visible`, `audience` and `player_label`, as in `character_effects`.
 `spent_at` is when a roll used up an effect whose clock still runs (such as the next attack roll its target makes); the row stays until its end, a spent effect changes no roll, and the master's undo of that roll sets it back to `NULL`.
+An on-hit effect (`weapon_hit_damage`) that ends with `spent_at` still `NULL` writes `unused: true` in the payload of its `lasting_effect_ended` event, so the log line says it ended with no hit.
 `combatant_states_effect_valid` requires the effect columns on an `effect`.
 
 `hit_riders` are the offers a hit makes: the monk's (RN-35) and the master's, for an NPC attack with a rider (RN-40). Columns: the attacker, the target, `kind` (`open_hand`, `stunning_strike`, `creature`; `hit_riders_kind_valid`), the `round` of the hit, and `used` with `choice` once answered. A `creature` offer also has `action_key`, the stat block action it comes from ("monster:ghoul#claws"), and `pending_id`, the damage whose landing opened it, so that undoing that damage takes the offer back and an attack offers once for each damage.
@@ -336,6 +337,27 @@ A wall (Wall of Fire) keeps how it was laid: `wall_side` (`left`, `right`, `inne
 A catch at the cast adds `:cast` to the mark and one at the end of a turn adds `:end`, so each kind of catch asks once.
 `def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's twelve, whose definition is the code's.
 A zone is not a lasting effect: it has no single target, it carries squares, and its clock and its end are three places in the code ([Spell zones](../architecture/play/spell-zones.md)).
+
+## `readied_actions`
+
+`readied_actions` are the actions combatants readied (SRD 5.1, "Ready"; migration 00334).
+A row belongs to the combat (`encounter_id`) and to the readier (`combatant_id`), and goes away with either.
+The end of the combat deletes the rows.
+`round` is when it was readied, and `trigger_text` the player's own words, 1 to 200 characters.
+`kind` is `attack`, `spell`, `move` or `other`.
+`action_key` is the attack's, the standard action's or the spell's key, and `action_name_pt` its name when it was readied.
+`move_ft` is the most speed of a move on any surface at Ready, as at the start of a turn.
+`spell_cast_id` is the held cast of a spell, `NULL` for a spell attack cantrip (released as an attack).
+`slot_level` is the level of the slot a readied spell spent at Ready, 0 for a cantrip and for every other kind (`readied_actions_slot_valid`).
+`target_id` is the creature the player named, set to `NULL` when it leaves.
+`status` is `waiting`, `fired`, `ignored`, `lost`, `broken` or `canceled`.
+A combatant has at most one `waiting` row (`readied_actions_one_waiting_idx`).
+A row is `lost` when the readier's next turn starts.
+It is also `lost` as soon as the readier is defeated or dismissed (its turns are skipped); a revived readier does not get it back.
+A spell row is `broken` when the concentration that holds it ends.
+While a spell row waits, the readier's `concentration_spell` is `readied`.
+The master and the readier's player read a row.
+No other player does (RN-10).
 
 ## Contest, hold, hide, help, surprise (RN-34)
 

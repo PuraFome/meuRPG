@@ -89,6 +89,8 @@ const (
 	// A racial advantage on saving throws against one kind of source (Brave, Fey Ancestry, Gnome Cunning,
 	// Dwarven Resilience); Source.Condition is the key of the trait.
 	SourceTaggedSave = "tagged_save"
+	// SourceFavor is the roller's own Inspiration, spent for advantage before the d20 (RN-43).
+	SourceFavor = "favor"
 )
 
 // What a saving throw can be against, for the racial advantages that hold only against one kind of source. A save

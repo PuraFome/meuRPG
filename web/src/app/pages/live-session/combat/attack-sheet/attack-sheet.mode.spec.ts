@@ -409,6 +409,7 @@ describe('AttackSheet: the damage parts', () => {
       diceCount: 1,
       diceSides: 6,
       flat: 3,
+      damageTypeKey: 'damage-type:piercing',
       damageTypePt: 'perfurante',
     },
     {
@@ -417,6 +418,8 @@ describe('AttackSheet: the damage parts', () => {
       diceCount: 2,
       diceSides: 6,
       flat: 0,
+      damageTypeKey: 'damage-type:piercing',
+      damageTypePt: 'perfurante',
       choosable: true,
       selected: true,
       available: true,
@@ -434,7 +437,7 @@ describe('AttackSheet: the damage parts', () => {
     },
   ];
 
-  function withDamage(diceMode: DiceMode) {
+  function withDamage(diceMode: DiceMode, shown: readonly object[] = parts) {
     const state = new CombatState();
     state.apply(encounter({ currentCombatantId: 't', combatants: [toren, cap] } as never));
     const api = {
@@ -462,7 +465,7 @@ describe('AttackSheet: the damage parts', () => {
           diceCount: 1,
           diceSides: 6,
           bonus: 3,
-          parts,
+          parts: shown,
         } as never,
         targetLabel: 'Capitão Goblin',
       },
@@ -494,37 +497,147 @@ describe('AttackSheet: the damage parts', () => {
 
   it('answers with the extras marked, even none', async () => {
     const { fixture, el, api } = withDamage(DiceMode.APP);
+    const rollButton = (label: string) =>
+      [...el.querySelectorAll('button')].find((b) => plain(b.textContent).includes(label));
+    expect(rollButton('Rolar 1d6 + 2d6 + 3 no app')).toBeTruthy();
     el.querySelector<HTMLInputElement>('.extra__box')!.click();
     fixture.detectChanges();
-    [...el.querySelectorAll('button')]
-      .find((b) => plain(b.textContent).includes('Rolar o dano no app'))!
-      .click();
+    rollButton('Rolar 1d6 + 3 no app')!.click();
     await fixture.whenStable();
     expect(api.rollDamage.mock.calls[0][3]).toEqual({ inApp: true });
     expect(api.rollDamage.mock.calls[0][5]).toEqual({ extras: [] });
   });
 
-  it('asks one sum for each group of dice for physical dice, the weapon included', async () => {
+  const flare = {
+    key: 'hit:flare',
+    labelPt: 'Clarão na Lâmina',
+    diceCount: 2,
+    diceSides: 6,
+    flat: 0,
+    auto: true,
+    damageTypeKey: 'damage-type:radiant',
+    damageTypePt: 'radiante',
+  };
+  const type = (fixture: { detectChanges(): void }, el: HTMLElement, i: number, v: string) => {
+    const field = el.querySelectorAll<HTMLInputElement>('app-multi-roll input')[i];
+    field.value = v;
+    field.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  };
+  const button = (el: HTMLElement, text: string) =>
+    [...el.querySelectorAll('button')].find((b) => plain(b.textContent).includes(text));
+
+  it('asks one field for each damage type, named by part and type, with its range and the bonus line', async () => {
+    const { fixture, el, api } = withDamage(DiceMode.PHYSICAL, [parts[0], flare]);
+    const labels = [...el.querySelectorAll('app-multi-roll label')].map((l) =>
+      plain(l.textContent),
+    );
+    expect(labels).toEqual(['Espada curta, perfurante: 1d6', 'Clarão na Lâmina, radiante: 2d6']);
+    const hints = [...el.querySelectorAll('app-multi-roll .type__range')].map((h) =>
+      plain(h.textContent),
+    );
+    expect(hints).toEqual(['De 1 a 6.', 'De 2 a 12.']);
+    expect(plain(el.querySelector('app-multi-roll .type__note')!.textContent)).toBe(
+      'Sem o + 3: o app soma o bônus.',
+    );
+    expect(button(el, 'Aplicar dano')!.getAttribute('aria-disabled')).toBe('true');
+    type(fixture, el, 0, '4');
+    type(fixture, el, 1, '8');
+    expect(button(el, 'Aplicar 15 de dano')).toBeTruthy();
+    el.querySelector('app-multi-roll form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(api.rollDamage.mock.calls[0][5]).toEqual({
+      extras: [],
+      typedParts: [
+        { damageType: 'damage-type:piercing', sum: 4 },
+        { damageType: 'damage-type:radiant', sum: 8 },
+      ],
+    });
+  });
+
+  it('keeps "Rolar no app" beside the typed answer when the table lets the player choose', () => {
+    const { fixture, el } = withDamage(DiceMode.PLAYERS_CHOOSE, [parts[0], flare]);
+    button(el, 'Digitar o resultado')!.click();
+    fixture.detectChanges();
+    type(fixture, el, 0, '4');
+    type(fixture, el, 1, '8');
+    const row = el.querySelector('app-multi-roll .actions--row')!;
+    expect([...row.querySelectorAll('button')].map((b) => plain(b.textContent))).toEqual([
+      'Aplicar 15 de dano',
+      'Rolar 1d6 + 2d6 + 3 no app',
+    ]);
+  });
+
+  it('shares one field "Soma dos dados" among the parts of one type, over their combined range', async () => {
     const { fixture, el, api } = withDamage(DiceMode.PHYSICAL);
     const labels = [...el.querySelectorAll('app-multi-roll label')].map((l) =>
       plain(l.textContent),
     );
-    expect(labels).toEqual(['Espada curta: 1d6', 'Ataque Furtivo: 2d6']);
-    const fields = el.querySelectorAll<HTMLInputElement>('app-multi-roll input');
-    fields[0].value = '4';
-    fields[0].dispatchEvent(new Event('input'));
-    fields[1].value = '8';
-    fields[1].dispatchEvent(new Event('input'));
-    fixture.detectChanges();
-    expect(plain(el.querySelector('app-multi-roll .type__sum')!.textContent)).toContain('15');
+    expect(labels).toEqual(['Soma dos dados: 1d6 + 2d6']);
+    expect(plain(el.querySelector('app-multi-roll .type__range')!.textContent)).toBe('De 3 a 18.');
+    type(fixture, el, 0, '10');
+    expect(button(el, 'Aplicar 13 de dano')).toBeTruthy();
     el.querySelector('app-multi-roll form')!.dispatchEvent(new Event('submit'));
     await fixture.whenStable();
     expect(api.rollDamage.mock.calls[0][5]).toEqual({
       extras: [{ key: 'sneak-attack', slotLevel: 0, pact: false }],
-      typedParts: [
-        { partKey: 'weapon', sum: 4 },
-        { partKey: 'sneak-attack', sum: 8 },
-      ],
+      typedParts: [{ damageType: 'damage-type:piercing', sum: 10 }],
     });
+  });
+
+  it('refuses a sum outside the combined range of the group, in words, with the field marked', () => {
+    const { fixture, el } = withDamage(DiceMode.PHYSICAL);
+    type(fixture, el, 0, '19');
+    const field = el.querySelector('app-multi-roll input')!;
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(plain(el.querySelector('app-multi-roll .type__range')!.textContent)).toContain(
+      'Digite um número de 3 a 18',
+    );
+    expect(button(el, 'Aplicar dano')!.getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('doubles the ranges on a critical hit as the server sends the parts, and keeps the bonus line', () => {
+    const crit = [parts[0], flare].map((p) => ({
+      ...p,
+      diceCount: p.diceCount * 2,
+      doubled: true,
+    }));
+    const { el } = withDamage(DiceMode.PHYSICAL, crit);
+    expect(
+      [...el.querySelectorAll('app-multi-roll .type__range')].map((h) => plain(h.textContent)),
+    ).toEqual(['De 2 a 12.', 'De 4 a 24.']);
+    expect(plain(el.querySelector('app-multi-roll .type__note')!.textContent)).toContain('+ 3');
+  });
+
+  it('sends the extra die of Golpe Divino under its own part key beside the radiant group', async () => {
+    const extraDie = {
+      ...flare,
+      key: 'divine-smite-extra',
+      labelPt: 'Dado extra do Golpe Divino',
+      diceCount: 1,
+      diceSides: 8,
+      choosable: true,
+      selected: true,
+      available: true,
+    };
+    const { fixture, el, api } = withDamage(DiceMode.PHYSICAL, [parts[0], flare, extraDie]);
+    const labels = [...el.querySelectorAll('app-multi-roll label')].map((l) =>
+      plain(l.textContent),
+    );
+    expect(labels).toEqual([
+      'Espada curta, perfurante: 1d6',
+      'Clarão na Lâmina, radiante: 2d6',
+      'Dado extra do Golpe Divino, radiante: 1d8',
+    ]);
+    type(fixture, el, 0, '3');
+    type(fixture, el, 1, '7');
+    type(fixture, el, 2, '5');
+    el.querySelector('app-multi-roll form')!.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    expect(api.rollDamage.mock.calls[0][5].typedParts).toEqual([
+      { damageType: 'damage-type:piercing', sum: 3 },
+      { damageType: 'damage-type:radiant', sum: 7 },
+      { partKey: 'divine-smite-extra', sum: 5 },
+    ]);
   });
 });

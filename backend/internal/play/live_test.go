@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 	"uuid"
@@ -66,7 +67,13 @@ type watcher struct {
 	// markers is how many markers (markCurrentMap) the stream has been sent and
 	// beforeMarker has not read yet.
 	markers int
+	// lag is how long the client side holds each message before it hands it over (setLag): a test uses it to make a
+	// delivery late on purpose.
+	lag atomic.Int64
 }
+
+// setLag makes the stream hand each of its next messages over d late.
+func (w *watcher) setLag(d time.Duration) { w.lag.Store(int64(d)) }
 
 // watch opens WatchGameSession as u.
 func (u *user) watch(t *testing.T, campaignID string) *watcher {
@@ -86,6 +93,9 @@ func watchWith(t *testing.T, client playv1connect.PlayServiceClient, campaignID 
 	go func() {
 		defer close(w.events)
 		for stream.Receive() {
+			if d := time.Duration(w.lag.Load()); d > 0 {
+				time.Sleep(d)
+			}
 			w.events <- stream.Msg()
 		}
 		w.done <- stream.Err()
@@ -105,6 +115,21 @@ func (w *watcher) next(t *testing.T) *playv1.WatchGameSessionResponse {
 		return ev
 	case <-time.After(waitLimit):
 		t.Fatal("no event within the time limit")
+	}
+	return nil
+}
+
+// nextHeard is next for a read that collects events: when none comes in time it fails with the ones it did hear.
+func (w *watcher) nextHeard(t *testing.T, heard []*playv1.WatchGameSessionResponse) *playv1.WatchGameSessionResponse {
+	t.Helper()
+	select {
+	case ev, ok := <-w.events:
+		if !ok {
+			t.Fatalf("the stream ended (%v) before the marker; it had heard %v", <-w.done, heard)
+		}
+		return ev
+	case <-time.After(waitLimit):
+		t.Fatalf("no marker within the time limit; the stream had heard %v", heard)
 	}
 	return nil
 }
@@ -145,7 +170,7 @@ func (w *watcher) beforeMarker(t *testing.T) []*playv1.WatchGameSessionResponse 
 	}
 	var before []*playv1.WatchGameSessionResponse
 	for w.markers > 0 {
-		ev := w.next(t)
+		ev := w.nextHeard(t, before)
 		switch {
 		case ev.GetCurrentMapChanged() != nil:
 			w.markers--

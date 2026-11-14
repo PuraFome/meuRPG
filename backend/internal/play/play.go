@@ -769,6 +769,7 @@ func (s *Service) Mount(handle func(pattern string, handler http.Handler), sessi
 	handle(playv1connect.NewLastingEffectServiceHandler(s, opts...))
 	handle(playv1connect.NewFavorServiceHandler(s, opts...))
 	handle(playv1connect.NewRevivifyServiceHandler(s, opts...))
+	handle(playv1connect.NewReadyServiceHandler(s, opts...))
 	handle(playv1connect.NewTableScreenServiceHandler(s, opts...))
 	s.mountVoice(handle, sessions, members)
 }

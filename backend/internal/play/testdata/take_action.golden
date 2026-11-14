@@ -538,13 +538,8 @@ combatant Toren | false | true | false | false | false | 0 | false | false | fal
 state Toren | rage | 2 | - | 11 | 1 | -
 vitals Toren | <nil> | 0 | {0,0,0,0,0,0,0,0,0} | 0 | {"rage": 1}
 == Ready ==
-ok
-roll 
-event action_taken {"combatant_id": "Toren", "hp_kept": true, "key": "standard:ready", "round": 1}
-combatant Brisa | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
-combatant Goblin | false | false | false | false | false | 0 | false | false | false | 0 | - | 7 | 0 | false | false | 0
-combatant Pensantus | false | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
-combatant Toren | true | false | false | false | false | 0 | false | false | false | 0 | - | <nil> | <nil> | false | false | 0
+refused invalid_argument: standard:ready is taken with ReadyService.ReadyAction, which names the trigger
+state unchanged
 == Reckless Attack ==
 ok
 roll 

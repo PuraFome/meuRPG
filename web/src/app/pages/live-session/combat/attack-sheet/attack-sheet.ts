@@ -30,6 +30,7 @@ import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view'
 import { isCreature } from '../../../../core/combat/creature-names';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { initialPicks } from '../../../../core/combat/damage-parts';
+import type { TypedEntry } from '../../../../core/combat/typed-fields';
 import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import { heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
 import { HeldVanishWatch } from '../../../../core/held-rolls/held-vanish';
@@ -66,6 +67,7 @@ import { AttackSteps } from './attack-steps';
 import { ModeRequests } from './mode-requests';
 import { PowerTrade } from './power-trade';
 import { PowerTradeOffer } from './power-trade-offer';
+import { waitingEffectsOf } from './waiting-effects';
 
 /** An opportunity attack is a melee attack: it reaches 5 ft, whatever range the weapon has when thrown. */
 const REACTION_REACH_FT = 5;
@@ -142,6 +144,10 @@ export class AttackSheet {
   });
   protected readonly mode = new AttackMode(this.s, this.modes);
   protected readonly outcome = computed(() => outcomeOf(this.s.roll(), this.s.asking()));
+  /** After a miss: the caster's own hit effects that still wait for a weapon hit. */
+  protected readonly waitingEffects = computed(() =>
+    waitingEffectsOf(this.data.state.encounter(), this.data.attackerId, this.outcome()?.hit),
+  );
   protected readonly dmg = new AttackDamage(
     this.s,
     this.name,
@@ -453,7 +459,7 @@ export class AttackSheet {
 
   protected rollDamage(
     die: DamageDie | { readonly parts: true },
-    typedParts?: { partKey: string; sum: number }[],
+    typedParts?: readonly TypedEntry[],
   ): Promise<void> {
     return this.rolls.rollDamage(die, typedParts);
   }

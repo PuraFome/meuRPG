@@ -75,6 +75,9 @@ func (s *Service) concentrationAfterDamage(ctx context.Context, c *combatTx, tar
 		return err
 	}
 	trigger := windowTrigger{Actor: d.attacker, Target: target.ID, Key: d.key, Spell: *target.ConcentrationSpell, Taken: taken, Pending: d.pending.ID}
+	if trigger.HeldSpell, err = heldSpellOf(ctx, c, target); err != nil {
+		return err
+	}
 	_, err = s.openWindows(ctx, c, newGroup(), nil, []windowSpec{{kind: reaction.Concentration, reactor: &target, trigger: trigger}})
 	return err
 }
@@ -279,7 +282,7 @@ func concentrationResultOfRetry(payload []byte) *playv1.ConcentrationSaveResult 
 // the d20 was rolled, the dice with the Bardic Inspiration die and the d20 Lucky rolled again.
 func concentrationResultOf(ev actionEvent) *playv1.ConcentrationSaveResult {
 	re := ev.Reaction
-	out := &playv1.ConcentrationSaveResult{Dc: re.SaveDC, Kept: re.Kept, SpellKey: re.Spell, Resisted: ev.Resisted, ResistedLeft: ev.ResistLeft}
+	out := &playv1.ConcentrationSaveResult{Dc: re.SaveDC, Kept: re.Kept, SpellKey: re.concentrationSpell(), Resisted: ev.Resisted, ResistedLeft: ev.ResistLeft}
 	if ev.D20 == 0 { // kept with no roll
 		return out
 	}
@@ -321,7 +324,7 @@ func (s *Service) writeConcentrationSave(ctx context.Context, c *combatTx, call 
 	}
 	dc := clamp32(reaction.ConcentrationDC(int(t.Taken)), 0, math.MaxInt32)
 	ev := actionEvent{Round: c.enc.Round, Secret: reactor.Hidden, Actor: reactor.ID, Target: t.Actor, Key: t.Key, Pending: t.Pending}
-	ev.Reaction = &reactionEvent{Kind: string(reaction.Concentration), Window: w.ID, ByMaster: master, Spell: t.Spell, SaveDC: dc}
+	ev.Reaction = &reactionEvent{Kind: string(reaction.Concentration), Window: w.ID, ByMaster: master, Spell: t.Spell, Held: t.HeldSpell, SaveDC: dc}
 	kept, err := s.concentrationOutcome(ctx, c, call, reactor, t, &ev, run)
 	if err != nil {
 		return nil, err
@@ -366,7 +369,7 @@ func (s *Service) concentrationOutcome(ctx context.Context, c *combatTx, call co
 	kept := true
 	if call.keep {
 		ev.Reaction.Kept = true
-		run.result = &playv1.ConcentrationSaveResult{Dc: dc, Kept: true, SpellKey: t.Spell}
+		run.result = &playv1.ConcentrationSaveResult{Dc: dc, Kept: true, SpellKey: t.concentrationSpell()}
 	} else {
 		var err error
 		if kept, err = s.rollConcentration(ctx, c, call, reactor, t, dc, ev, run); err != nil {
@@ -417,16 +420,18 @@ func (s *Service) rollConcentration(
 	if err != nil {
 		return false, err
 	}
-	sun, err := s.sunlightOf(ctx, c.q, c.enc)
+	fv, err := s.concentrationFavor(ctx, c, call, reactor, states, creatureFacts(reactor, states, sheet.Traits))
 	if err != nil {
 		return false, err
 	}
-	mode := combat.Resolve(concentrationSources(sun.facts(creatureFacts(reactor, states, sheet.Traits), reactor)))
+	mode := fv.Mode
+	ev.Favor = fv.Used
 	save = withRollBonus(save, states, reactor.ID, rules.RollAppliesSave)
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (nothing has been written yet); the answer brings it back with the die added. So
 	// has a halfling's d20 that shows a 1, for the Lucky question first.
 	spec := saveSpec(call.m, heldConcentrationSave, reactor, call.key, call.msg, call.in, save.Bonus, mode, sheet.Traits)
+	spec.FavorSpent = fv.Used
 	// Indomitable (held_indomitable.go): the dice an effect adds after the gate move the total, so the roller may not
 	// know the result yet, as when the table hides the DC.
 	extras := len(effectDiceFor(states, reactor.ID, rules.RollAppliesSave)) > 0 || call.msg.GetManeuverKey() != ""
@@ -454,7 +459,16 @@ func (s *Service) rollConcentration(
 	if ev.ManeuverSpent, err = s.spendManeuverDice(ctx, c, reactor.CharacterID, extra); err != nil {
 		return false, err
 	}
-	return recordConcentrationRoll(ev, run, gate, save.Bonus, delta, dc, t.Spell), nil
+	return recordConcentrationRoll(ev, run, gate, save.Bonus, delta, dc, t.concentrationSpell()), nil
+}
+
+// concentrationFavor spends the Inspiration the save asked for, over the modes the save has before it.
+func (s *Service) concentrationFavor(ctx context.Context, c *combatTx, call concentrationCall, reactor playdb.Combatant, states map[string][]playdb.CombatantState, facts combat.Creature) (favorUse, error) {
+	sun, err := s.sunlightOf(ctx, c.q, c.enc)
+	if err != nil {
+		return favorUse{}, err
+	}
+	return s.favorOnSave(ctx, s.inspirationGate(c), call.m, reactor, heldConcentrationSave, call.key, call.msg.GetSpendFavor(), states, concentrationSources(sun.facts(facts, reactor)), true)
 }
 
 // recordConcentrationRoll writes what the save showed in the event and the result, and answers

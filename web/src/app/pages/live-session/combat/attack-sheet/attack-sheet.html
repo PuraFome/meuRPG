@@ -230,9 +230,10 @@
               [canType]="canType"
               [preferApp]="preferApp"
               [modifier]="dmg.flat()"
-              totalNote="Dano total"
+              [wide]="true"
+              [note]="dmg.bonusLine()"
+              [confirmLabel]="dmg.applyLabel"
               [appLabel]="dmg.partsLabel()"
-              hint="Role os dados de cada linha e digite a soma de cada uma, sem os números fixos."
               [busy]="s.busy()"
               [(typing)]="s.typing"
               (app)="rollDamage({ inApp: true })"
@@ -270,6 +271,12 @@
               <mat-icon aria-hidden="true">close</mat-icon>
             }
             {{ dmg.after() }}
+          </p>
+        }
+        @for (line of waitingEffects(); track line) {
+          <p class="sheet__note" data-testid="hit-waiting">
+            <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+            {{ line }}
           </p>
         }
         <p class="sheet__note">

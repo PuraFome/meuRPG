@@ -362,8 +362,13 @@ An option of this set is read as an inline option of its feature: it spends the 
 
 Checked at its fields: the key's set is known and equals `set` (`.set`, `bad_value`); `prerequisite.class_level` is a class of the content and a level 1 to 20, both or neither (`.prerequisite.class_level.class_key`, `.level`); `requires_option_keys` are SRD options of a set or table options, at most 10, never the option itself (`.prerequisite.requires_option_keys[i]`); `requires_pact` is a Pact Boon, the SRD's or a table option of `pact_boon` (`.prerequisite.requires_pact`); `requires_spell_key` is a spell of the content (`.prerequisite.requires_spell_key`); the effects are the menu's, but a `choice` is refused (`.effects[i].type`: an option does not ask for another choice).
 Every prerequisite set must hold.
-The pool lists an option that does not qualify with its reason and `Blocked()` (as the invocations' own prerequisites), and a sheet that picks it has the problem `prerequisite`; a spell the character knows is a cantrip, a known or a prepared spell, or one a pick grants.
+The pool lists an option that does not qualify with its reason and `Blocked()` (as the invocations' own prerequisites), and a sheet that picks it has the problem `prerequisite`; an option the sheet picked whose prerequisite is lost later stays on the sheet, stops applying its effects until the prerequisite holds again (as a feat does) and shows the issue `option_prerequisite` ("O personagem não cumpre mais o pré-requisito de X: …") next to the choice problem `prerequisite`; a condition on an entry a player may not read (RN-23) is written "Exige uma condição que a mesa não mostra." in the choice list and "pede uma condição que a mesa não mostra" in the issue (the same for the master, because the sheet stores the issue's text), with no key, name or number (option prerequisites name no hidden entry; a feat's player copy shows the same for its class level, pact, spell and options). A spell the character knows is the same on an option and on a feat: a cantrip, a known, a prepared or an always-prepared spell, or a granted spell that counts as known (a race's or a feat's); a spell cast from an item does not count. A class level is the sum of the sheet's entries of that class on both paths. An option may ask for an option of a feature built later in the overlay (the options asked are judged once every entry exists); two options that wait for each other are refused at `.prerequisite.requires_option_keys[i]`.
 An archived or switched-off option is left out of the pool unless the sheet already has it.
+An inline option (an entry of `TableFeature.options` of a class or subclass feature, or of a feat's own list) has the same `prerequisite` (`TableFeature.prerequisite`, field 7), judged by the same code: the choice lists it blocked with its reason, and a sheet that holds it after the prerequisite is lost keeps it and shows the problem `prerequisite`.
+It is checked at `.options[i].prerequisite...` after every option of the list is known, so an option may ask for a sibling.
+The prerequisite is refused on a feature that is not an option (`.prerequisite`, `bad_value`) and on an option of a trait, which is a one-time choice of one.
+A class feature of kind `classfeature` has no option list, so it has no prerequisite on options.
+A player's copy leaves out the hidden keys the prerequisite names.
 
 ## Table class features
 
@@ -521,11 +526,15 @@ The catalog lists no always-prepared spell for an expanded subclass.
 ## Feat
 
 `TableFeat` (`feat:<name>@mesa`) has a name, text, a `FeatPrerequisite` and effects (the feat owns them; it has no features).
-The prerequisite is all of: minimum scores that must all be met, scores of which one is enough, a proficiency key, "can cast at least one spell", a race or subrace key or a list of them of which one is enough (a subrace satisfies its parent race's key; a feat sets the key or the list, never both, and the list repeats no key), a size (`Tiny`, `Small`, `Medium` or `Large`, the one the sheet counts), a feature, trait or feat key the character must not have (never the feat itself), a total level.
+The prerequisite is all of: minimum scores that must all be met, scores of which one is enough, a proficiency key, "can cast at least one spell", a race or subrace key or a list of them of which one is enough (a subrace satisfies its parent race's key; a feat sets the key or the list, never both, and the list repeats no key), a size (`Tiny`, `Small`, `Medium` or `Large`, the one the sheet counts), a feature, trait or feat key the character must not have (never the feat itself), a total level, a level in one class (`class_level`: the class's own levels, not the total), a Pact Boon the character has (`requires_pact`), a spell it knows (`requires_spell_key`: a cantrip, a known, a prepared or an always-prepared spell, or a granted spell that counts as known; never a spell cast from an item) and options it has picked (`requires_option_keys`, at most 10, each one asked).
+The last four are the same conditions a table option asks (below), checked by the same field rules (`checkPrerequisiteFields`): a class and a level go together, the pact is a Pact Boon, the spell and the options exist.
+The SRD states only ability minimums for feats (SRD 5.1, Feats, Grappler), and gates Eldritch Invocations by class level, Pact Boon and cantrip (Warlock, Eldritch Invocations); the table may gate a feat the same way.
 Each key must exist, SRD or table; the table refuses a wrong one at its own field of `prerequisite`, when the master writes the feat and when a pack brings it.
-`Content.Feats`, `FeatOptions(build)` and `CheckFeat` answer who qualifies and what they lack (`FeatUnmet`; the kinds `race`, `size` and `lacks_feature` are among them).
+`Content.Feats`, `FeatOptions(build)` and `CheckFeat` answer who qualifies and what they lack (`FeatUnmet`; the kinds `race`, `size`, `lacks_feature`, `class_level`, `pact`, `spell` and `option` are among them).
+The Pact Boon and the options are judged on what the sheet owns, as `lacks_feature` is.
 The guided level-up judges a lacked feature before the feat's own grants.
 The sheet judges it on what the character owns (`lostFeats`).
+A feat whose prerequisite the character loses later (a class level, a pact, a spell or an option no longer held) stays on the sheet, is not applied and shows the problem `feat_prerequisite`, as one that lost a score does today; it applies again once the character meets it.
 The guided level-up refuses an unmet feat with `LEVEL_UP_REFUSAL_REASON_FEAT_PREREQUISITE`.
 A feat chosen inside a level-up is refused with `LEVEL_UP_REFUSAL_REASON_FEATURE_CHOICE`.
 The choice paths, feat choices at creation included, refuse it with `CHOICE_REFUSAL_REASON_PREREQUISITE_UNMET`.
@@ -542,6 +551,22 @@ A condition on a hidden feature the sheet does not have reads as a text that nam
 The SRD's feat (Grappler, from `5e-SRD-Feats.json`, effects in `effects/feats.json`) is in the same `feats` map.
 `Build.Feats` are the keys a character took: `Derive` adds their effects and lists each among the features (source "Talento").
 A character that no longer meets the prerequisite of a feat it holds keeps the feat on the sheet with the issue `feat_prerequisite`, and its effects do not apply until it meets it again.
+
+## Weapon
+
+A table weapon (`weapon:<slug>@mesa`, `TableWeapon`, kind 11) is a weapon the SRD's equipment list lacks. Once the entry exists it is an equipment row of the weapon kind under its own key (`rules/overlay_weapon.go`): the sheet's weapon list, the attack lines, the proficiency by category and the `weapon_rule` and power attack filters by weapon property read it as they read an SRD weapon. It is mundane: a magic weapon is an item, a separate area.
+
+| Field | Rule |
+|---|---|
+| `category` | `simple` or `martial`, required (SRD 5.1, Equipment, Weapons: the proficiency by category). |
+| `ranged` | Ranged or melee, as the SRD's `range` column. |
+| `damage`, `damage_type` | Dice of 1 to 20 dice of 4, 6, 8, 10, 12 or 20 sides, or a flat 1 to 99; a damage type of the content. |
+| `two_handed_damage` | Required with the property `weapon-property:versatile` and refused without it. |
+| `properties` | `weapon-property:` keys of the content, each once, at most 10. |
+| `normal_range_ft`, `long_range_ft` | Feet, as the SRD's rows. Required for a ranged weapon and for a melee one with the property `thrown` (the long range at least the normal, both up to 1000); refused on any other melee weapon, whose reach is 5 feet, or 10 with `reach`. |
+| `weight_oz`, `price_cp` | The table's notes (ounces up to 160000, copper pieces up to 100000000). The engine does not count them yet. |
+
+Archiving or switching a weapon off takes it out of a player's catalog and `ListTableEntries`, unless a sheet of theirs carries it (it then stays, marked); a sheet that carries it keeps the attack line. The migration `00336` widens `campaign_content_kind_valid`.
 
 ## Spell
 

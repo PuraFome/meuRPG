@@ -1,0 +1,9 @@
+{
+  "equipment:blowgun": "equipment:blowgun-needle",
+  "equipment:crossbow-hand": "equipment:crossbow-bolt",
+  "equipment:crossbow-heavy": "equipment:crossbow-bolt",
+  "equipment:crossbow-light": "equipment:crossbow-bolt",
+  "equipment:longbow": "equipment:arrow",
+  "equipment:shortbow": "equipment:arrow",
+  "equipment:sling": "equipment:sling-bullet"
+}

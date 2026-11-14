@@ -2,8 +2,8 @@ import { type Signal, computed } from '@angular/core';
 
 import { damageFormula, extraDiceOf } from '../../../../core/combat/combat-dice';
 import { criticalSentence, criticalSum, brutalTyped } from '../../../../core/combat/critical';
-import { activeFormula, activeParts, typedFields } from '../../../../core/combat/damage-parts';
-import { isTradePart } from '../../../../core/combat/power-attack-trade';
+import { activeParts, rollFormula } from '../../../../core/combat/damage-parts';
+import { typedBonusLine, typedFields } from '../../../../core/combat/typed-fields';
 import type { RollField } from '../../../../shared/multi-roll/multi-roll';
 import {
   afterDamageText,
@@ -31,24 +31,27 @@ export class AttackDamage {
   });
   readonly range = computed(() => damageRangeOf(this.brutal(), this.dice()));
   readonly parts = computed(() => this.s.pending()?.parts ?? []);
-  /** One field for each group of dice of the damage that is marked, for physical dice. */
+  /** One field for each damage type of the damage that is marked, for physical dice. */
+  readonly typed = computed(() => typedFields(this.parts(), this.s.picks()));
   readonly fields = computed<readonly RollField[]>(() =>
-    typedFields(this.parts(), this.s.picks()).map((f) => ({
+    this.typed().map((f) => ({
       key: f.key,
       label: f.label,
+      hint: f.hint,
       min: f.min,
       max: f.max,
     })),
   );
-  /** The button of the damage with parts: "Rolar o dano no app"; with a power attack's flat part it says the roll, "Rolar 2d6 + 13 no app". */
-  readonly partsLabel = computed(() =>
-    this.parts().some(isTradePart)
-      ? `Rolar ${activeFormula(this.parts(), this.s.picks())} no app`
-      : 'Rolar o dano no app',
-  );
+  /** "Sem o + 3: o app soma o bônus.": the fixed number the player does not type. */
+  readonly bonusLine = computed(() => typedBonusLine(this.flat()));
+  /** The button of the typed answer: "Aplicar 14 de dano" once every sum is there. */
+  readonly applyLabel = (total: number | null): string =>
+    total === null ? 'Aplicar dano' : `Aplicar ${total} de dano`;
   readonly flat = computed(() =>
     activeParts(this.parts(), this.s.picks()).reduce((sum, p) => sum + p.flat, 0),
   );
+  /** "Rolar 1d8 + 2d6 + 3 no app": the dice of every part that counts, then the fixed number. */
+  readonly partsLabel = computed(() => `Rolar ${rollFormula(this.parts(), this.s.picks())} no app`);
   readonly line = computed(() => {
     const d = this.s.damage();
     return d?.roll ? damageFormula(d.roll, d.damageTypePt, extraDiceOf(d), d.criticalMax) : '';

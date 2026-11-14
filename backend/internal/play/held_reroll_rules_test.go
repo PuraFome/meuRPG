@@ -477,7 +477,7 @@ func TestTheOrphanCleanupKeepsAPendingRerollAndDeletesAStaleHoldThatAsksNothing(
 		t.Fatalf("the check on a 2 = %v, %v; want the reroll question", held, err)
 	}
 	q := playdb.New(r.h.pool)
-	if err := q.DeleteOrphanInspirationHolds(t.Context(), r.campaignID); err != nil {
+	if _, err := q.DeleteOrphanInspirationHolds(t.Context(), r.campaignID); err != nil {
 		t.Fatalf("DeleteOrphanInspirationHolds() error = %v", err)
 	}
 	if n := r.holds(t); n != 1 {
@@ -486,7 +486,7 @@ func TestTheOrphanCleanupKeepsAPendingRerollAndDeletesAStaleHoldThatAsksNothing(
 	if _, err := r.h.pool.Exec(t.Context(), `UPDATE inspiration_holds SET reroll_ask = false WHERE campaign_id = $1`, r.campaignID); err != nil {
 		t.Fatalf("make the hold ask nothing: %v", err)
 	}
-	if err := q.DeleteOrphanInspirationHolds(t.Context(), r.campaignID); err != nil {
+	if _, err := q.DeleteOrphanInspirationHolds(t.Context(), r.campaignID); err != nil {
 		t.Fatalf("DeleteOrphanInspirationHolds() error = %v", err)
 	}
 	if n := r.holds(t); n != 0 {

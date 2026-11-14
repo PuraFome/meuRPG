@@ -18,7 +18,7 @@ The cleanup rules of the bucket are in [Operations](../operations/reference.md#c
 | `puzzles/<n>.json`, `encounters.json` | The puzzles, and the encounters saved on the maps' battle points. |
 | `content/<n>.json`, `content/options.json` | The table content entries and the options switched off. |
 
-A package never carries the players' private notes, the session history and logs, accounts (ids, e-mails, names), owners and members, invites and claim links, or a player's fog memory.
+A package never carries the charges the magic items spent (`character_item_charges`), so an imported character's items start full, nor the players' private notes, the session history and logs, accounts (ids, e-mails, names), owners and members, invites and claim links, or a player's fog memory.
 A package also leaves play out: traps come back armed, treasures unfound, nothing a player found out or remembers.
 Which maps and points are revealed is preparation and stays.
 

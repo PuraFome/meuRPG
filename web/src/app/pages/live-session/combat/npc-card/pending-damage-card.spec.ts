@@ -62,6 +62,41 @@ describe('pending damage card', () => {
     });
   });
 
+  it('offers Tirar only on a choosable extra that no damage-type sum covers', () => {
+    const e = encounter({
+      combatants: [combatant({ id: 'a', label: 'A' }), combatant({ id: 't', label: 'T' })],
+    });
+    const part = (key: string) => ({ key, choosable: true });
+    const roll = (partKey: string, type: string, sum: number) => ({
+      partKey,
+      damageTypeKey: type,
+      diceCount: 1,
+      faces: [],
+      sum,
+      flat: 0,
+      counted: true,
+    });
+    const removable = (rolls: object[], keys: string[]) =>
+      [
+        ...pendingCard(pending({ parts: keys.map(part), partRolls: rolls }), e, []).removable,
+      ].sort();
+    // Alone in its type, the sum on the part: it comes out.
+    expect(
+      removable([roll('sneak', 'piercing', 7), roll('edge', 'fire', 3)], ['sneak', 'edge']),
+    ).toEqual(['edge', 'sneak']);
+    // Two parts share the piercing sum: the holder and the follower stay, a part of another type comes out.
+    expect(
+      removable(
+        [roll('weapon', 'piercing', 7), roll('sneak', 'piercing', 0), roll('edge', 'fire', 3)],
+        ['sneak', 'weapon', 'edge'],
+      ),
+    ).toEqual(['edge']);
+    // The holder that is a choosable extra is hidden too, not only the follower.
+    expect(
+      removable([roll('sneak', 'piercing', 7), roll('edge', 'piercing', 0)], ['sneak', 'edge']),
+    ).toEqual([]);
+  });
+
   it('labels a damage the zone of a spell owes, in generic words (it carries no reason)', () => {
     const e = encounter({
       combatants: [combatant({ id: 'a', label: 'Bilbo' }), combatant({ id: 't', label: 'Tor' })],

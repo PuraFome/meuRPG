@@ -36,6 +36,9 @@ func (e *logEntry) reactionEntry(ctx context.Context, v combatViewer, byID map[s
 	out := &playv1.CombatLogEntry{
 		Id: e.id, Kind: e.kind, At: timestamppb.New(e.at), Round: e.ev.Round, ReactionTextPt: text,
 	}
+	if reaction.Kind(e.ev.Reaction.Kind) == reaction.Concentration && (v.master || v.owns(actor)) { // with the roll's dice: the master's and its own player's
+		out.FavorTextPt = favorLine(e.ev, v, actor)
+	}
 	if v.master || named {
 		out.ActorId, out.ActorLabel = actor.ID, actor.Label
 	}
@@ -126,6 +129,9 @@ func (e *logEntry) reactionFacts(ctx context.Context, re *reactionEvent, v comba
 }
 
 func (f *reactionFacts) spellName(key string) string {
+	if key == concentrationReadied {
+		return "a magia preparada"
+	}
 	if n := f.names.contentName(f.ctx, key); n != "" {
 		return n
 	}
@@ -319,7 +325,10 @@ func (f *reactionFacts) featherFall() (string, bool) {
 func (f *reactionFacts) concentration() (string, bool) {
 	re := f.re
 	spell := f.spellName(re.Spell)
-	if !f.seesReactor {
+	if re.Held != "" {
+		spell = f.spellName(re.Held)
+	}
+	if !f.seesReactor || (re.Spell == concentrationReadied && !f.v.master && !f.v.owns(f.reactor)) { // a held spell is the readier's secret (RN-10)
 		return "", false
 	}
 	if f.e.ev.Resisted {

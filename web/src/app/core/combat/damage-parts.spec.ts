@@ -1,12 +1,12 @@
 import {
-  activeFormula,
   activeParts,
   defaultSlot,
   initialPicks,
+  isOffPart,
   partFormula,
   partTotal,
   rerollText,
-  typedFields,
+  rollFormula,
 } from './damage-parts';
 
 const weapon = {
@@ -75,14 +75,6 @@ describe('damage parts', () => {
     expect(activeParts([weapon, rage, sneak, smite], picks)).toEqual([weapon, rage, sneak]);
   });
 
-  it('gives one number field for each marked part that rolls dice, the weapon included', () => {
-    const picks = [{ key: 'sneak-attack', slotLevel: 0, pact: false }];
-    expect(typedFields([weapon, rage, sneak, smite], picks)).toEqual([
-      { key: 'weapon', label: 'Espada curta: 1d6', min: 1, max: 6 },
-      { key: 'sneak-attack', label: 'Ataque Furtivo: 2d6', min: 2, max: 12 },
-    ]);
-  });
-
   it('says what a part made and what Great Weapon Fighting rolled again', () => {
     const roll = {
       sum: 9,
@@ -97,34 +89,73 @@ describe('damage parts', () => {
   });
 });
 
-describe('the formula of the parts that count', () => {
-  const heavy = {
-    key: 'power_attack',
-    labelPt: 'Golpe Pesado',
-    diceCount: 0,
-    diceSides: 0,
-    flat: 10,
-    auto: true,
+describe('the off part of a spell hit effect', () => {
+  const off = {
+    key: 'frostfist',
+    labelPt: 'Geada no Punho',
+    diceCount: 2,
+    diceSides: 8,
+    flat: 0,
+    available: false,
+    reasonPt: 'só num golpe corpo a corpo. Continua esperando.',
   } as never;
-  const greatsword = { ...(weapon as object), diceCount: 2, diceSides: 6, flat: 3 } as never;
 
-  it('adds the fixed numbers of the weapon and of the automatic parts: 2d6 + 13', () => {
-    expect(activeFormula([greatsword, heavy], [])).toBe('2d6 + 13');
+  it('is no part of the damage: not active, not in the formula', () => {
+    expect(isOffPart(off)).toBe(true);
+    expect(isOffPart(weapon)).toBe(false);
+    expect(isOffPart(sneak)).toBe(false);
+    expect(activeParts([weapon, off], [])).toEqual([weapon]);
+    expect(rollFormula([weapon, off], [])).toBe('1d6 + 3');
+  });
+});
+
+describe('rollFormula', () => {
+  const part = (diceCount: number, diceSides: number, flat: number, extra = {}) =>
+    ({
+      key: `p${diceCount}${diceSides}${flat}`,
+      labelPt: 'x',
+      diceCount,
+      diceSides,
+      flat,
+      ...extra,
+    }) as never;
+
+  it.each([
+    ['the weapon alone', [part(1, 6, 3)], '1d6 + 3'],
+    [
+      'the weapon and a hit effect',
+      [part(1, 8, 3), part(2, 6, 0, { auto: true })],
+      '1d8 + 2d6 + 3',
+    ],
+    [
+      'a critical: the dice doubled, the fixed number not',
+      [part(2, 8, 3), part(4, 6, 0)],
+      '2d8 + 4d6 + 3',
+    ],
+    ['a negative modifier', [part(1, 8, -1)], '1d8 − 1'],
+    [
+      'the fixed numbers of every part added',
+      [part(1, 8, 3), part(0, 0, 2), part(2, 6, -1)],
+      '1d8 + 2d6 + 4',
+    ],
+    ['a fixed sum that cancels', [part(1, 8, 2), part(1, 4, -2)], '1d8 + 1d4'],
+    ['no dice at all', [part(0, 0, 2)], '2'],
+    ['nothing', [], '0'],
+  ])('%s', (_name, parts, text) => {
+    expect(rollFormula(parts as never[], [])).toBe(text);
   });
 
-  it('groups the dice by size, and counts only the extras that are marked', () => {
-    const picks = [{ key: 'sneak-attack', slotLevel: 0, pact: false }];
-    expect(activeFormula([greatsword, heavy, sneak], picks)).toBe('4d6 + 13');
-    expect(activeFormula([greatsword, heavy, sneak], [])).toBe('2d6 + 13');
-    expect(
-      activeFormula([greatsword, smite], [{ key: 'divine-smite', slotLevel: 3, pact: false }]),
-    ).toBe('2d6 + 4d8 + 3');
+  it("adds the fixed number of a power attack: 2d6 + 13, the +10 beside the weapon's 3", () => {
+    const heavy = part(0, 0, 10, { key: 'power_attack', auto: true });
+    expect(rollFormula([part(2, 6, 3), heavy] as never[], [])).toBe('2d6 + 13');
+    expect(rollFormula([heavy] as never[], [])).toBe('10');
   });
 
-  it('writes dice alone and a flat number alone', () => {
-    expect(activeFormula([sneak], [{ key: 'sneak-attack', slotLevel: 0, pact: false }])).toBe(
-      '2d6',
+  it('counts a marked extra and leaves out one that is not marked', () => {
+    const extra = part(1, 6, 0, { key: 'sneak', choosable: true, available: true });
+    expect(rollFormula([part(1, 8, 3), extra], [])).toBe('1d8 + 3');
+    expect(rollFormula([part(1, 8, 3), extra], [{ key: 'sneak', slotLevel: 0, pact: false }])).toBe(
+      '1d8 + 1d6 + 3',
     );
-    expect(activeFormula([heavy], [])).toBe('10');
   });
 });

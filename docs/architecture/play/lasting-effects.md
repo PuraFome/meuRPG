@@ -168,9 +168,25 @@ How the hit uses it is in [Attacks and damage](attacks-and-damage.md#a-spells-hi
   `EffectModifier.hit` (`WeaponHitDamage`: `trigger`, `die`, `dice`, `per_slot_dice`, `max_dice`, `damage_type_key`, `damage_type_pt`, `save`, `condition_keys`, `condition_names_pt`, `condition_duration`) is set by `effectViewer.modifierCard`, and `LastingEffect.spent` says a `next_hit` was used.
   The card of the caster says "pending" or "used"; its tags read the damage ("+1d6 no próximo golpe com arma, ...", `tagsOfRow`), and a row on a target reads what the spell does to that creature, never the damage.
   Only the master and the combatant's own player are given a card at all (`decorateCard`), and a mark has no modifier, so no other player is ever given these numbers: they read the label alone.
+- **The marked creature's id.**
+  `LastingEffect.marked_combatant_id` is set on the caster's row of a `marked_target` spell (`effectViewer.markedIDOf`) and read by the master and the caster's player; every other row and reader gets it empty.
+  It is the combatant that holds the mark of the same casting (`carriesMark`), so it needs no column.
+  It is empty too when the viewer does not see the marked creature (hidden, or out of sight on a fog map), so the id never tells a player a creature is there (RN-10).
+- **The caster's card in the app.**
+  `hitCards` (`core/effects/hit-effect-text.ts`) turns the caster's own rows that have a `hit` and are not `spent` into the card at the top of the "Ataques" tab (`app-hit-effect-cards`, under the economy row), and the same sentence opens "O que isso muda" of the row in "Seus efeitos".
+  The sentence reuses the content editor's damage words (`damageChip`) and writes the trigger, the dice, the saving throw with its conditions and how long they last, and the time left from `rounds_left`.
+  The marked creature is named from `LastingEffect.marked_combatant_id` through the viewer's combatant list; with the id empty or the creature not in the list, the card and the line say "no alvo marcado".
+  After a miss, the attack sheet adds "<efeito> continua esperando o próximo golpe com arma que acertar." (or "... corpo a corpo ...") for each of the caster's pending `next_hit` and `next_melee_hit` rows (`waitingHitLines`); an `each_hit` or `marked_target` row has no such line.
+- **When the concentration ends it.**
+  The caster's own line is the conditions line with `concentration_ended_key` set to the spell.
+  The effect's line is an `EFFECT` entry with change `ENDED`, reason `concentration`, the effect's key and name and the caster as actor; it follows the effect's visibility (hidden or `owner`: no other player reads it).
+  The effect's line carries `unused` (`CombatLogEffect.unused`): true when the ended casting held an on-hit effect (a `weapon_hit_damage` modifier of any trigger) that no hit used, so the line reads "acabou sem golpe". A `next_hit` and a `next_melee_hit` are used when they have a `spent_at`; an `each_hit` and a `marked_target` are never spent, so they count as used when a rolled or applied damage holds a roll of the row (`endedUnused`).
+  False when a hit spent the row, or the effect is not an on-hit one.
+  The bit is stored in the line's event (`lastingEvent.Unused`, set where the casting ends), so the line reads the same later and the undo of the end takes it away with the line.
+  Whoever reads the line reads the bit.
 - **Tests.**
   `TestAHitEffectCardTheCastersPlayerAndTheMasterReadItWhole`, `TestAHitEffectCardSaysWhenItIsSpent` and `TestAHitSpellTheMarkFollowsTheVisibilityOfTheEffect`.
-  The leak tests are `TestRN10_AHitEffectCardIsNotReadByOtherPlayers`, `TestRN10_ABothBlocksSpellKeepsTheHitCardOffTheTarget`, `TestRN10_APendingHitEffectReachesOnlyItsCastersPlayerAndTheMaster` and `TestRN10_TheCastersPlayerAndTheMasterReadThePartWhole`.
+  The leak tests are `TestRN10_AHitEffectCardIsNotReadByOtherPlayers`, `TestRN10_ABothBlocksSpellKeepsTheHitCardOffTheTarget`, `TestRN10_APendingHitEffectReachesOnlyItsCastersPlayerAndTheMaster` and `TestRN10_TheCastersPlayerAndTheMasterReadThePartWhole`, `TestRN10_TheMarkedIDIsBlankWhenTheCasterDoesNotSeeTheCreature` and `TestRN10_AnotherPlayerNeverReadsTheMarkedID`.
 
 ## Exhaustion
 

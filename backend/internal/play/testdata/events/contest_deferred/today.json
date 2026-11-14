@@ -35,6 +35,8 @@
     "from": 1,
     "to": 1
   },
+  "favor": true,
+  "favor_lost": "x",
   "d20_reroll": {
     "resource": "x",
     "cost": 1
@@ -457,7 +459,8 @@
     "effects": [
       "x"
     ],
-    "owner_only": true
+    "owner_only": true,
+    "unused": true
   },
   "extra": [
     {
@@ -552,6 +555,22 @@
   "sunlight_on": true,
   "sunlight_scope": "x",
   "sunlight_squares": 1,
+  "readied": {
+    "id": "x",
+    "trigger": "x",
+    "kind": "x",
+    "action_key": "x",
+    "name": "x",
+    "move_ft": 1,
+    "target_id": "x",
+    "canceled": true,
+    "defeated": true,
+    "dismissed": true,
+    "window": "x",
+    "opened": true,
+    "ended": "x",
+    "line": "x"
+  },
   "mode": "x",
   "delta": 1,
   "col": 1,
@@ -870,7 +889,9 @@
       "resource": "x",
       "rider": "x",
       "effect": "x",
-      "hide": true
+      "hide": true,
+      "group": "x",
+      "group_hidden": true
     }
   ],
   "parts_before": {},
@@ -956,6 +977,10 @@
     "choice": "x",
     "result": "x",
     "owners_only": true,
+    "hidden_source": true,
+    "source_id": "x",
+    "save_ability": "x",
+    "effect_hidden": true,
     "d20": 1,
     "total": 1,
     "dc": 1,
@@ -1152,6 +1177,7 @@
     "group": "x",
     "kind": "x",
     "window": "x",
+    "held": "x",
     "used": true,
     "by_master": true,
     "slot": {

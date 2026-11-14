@@ -37,6 +37,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.EffectSave:          playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
 	reaction.LegendaryResistance: playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE,
 	reaction.ParryKind:           playv1.ReactionKind_REACTION_KIND_PARRY,
+	reaction.Readied:             playv1.ReactionKind_REACTION_KIND_READIED,
 }
 
 // reactionKindOf is the kind of a reaction a combatant spent, as it is recorded: a window's key or "opportunity";
@@ -261,8 +262,14 @@ func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		wv.contestWait(reactor, answers, wait)
 	case reaction.EffectSave:
 		wv.effectSaveWait(w, reactor, answers, wait)
+	case reaction.Concentration:
+		if windowTriggerOf(w).Spell == concentrationReadied && !wv.v.master && !answers { // a held spell's save is the readier's secret (RN-10)
+			wait.Master = true
+			return
+		}
+		wv.reactionWait(true, reactor, answers, wait)
 	default:
-		wv.reactionWait(reaction.Kind(w.Kind) == reaction.Concentration, reactor, answers, wait)
+		wv.reactionWait(false, reactor, answers, wait)
 	}
 }
 
@@ -342,6 +349,13 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		out.AnswerNow = answerNow
 		out.Trigger = wv.trigger(w)
 		out.Unanswered = wv.unanswered(w, reactor)
+		if kind == reaction.Readied && answerNow { // its attack's roll held for other windows: not to be answered (nor passed) now
+			held, err := readiedHeld(wv.ctx, wv.s.queries, wv.d.enc.ID, w.ID)
+			if err != nil {
+				return nil, err
+			}
+			out.AnswerNow = !held
+		}
 	}
 	var err error
 	switch kind {
@@ -359,6 +373,8 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		err = wv.resistancePrompt(w, out)
 	case reaction.ParryKind:
 		wv.parryPrompt(w, out)
+	case reaction.Readied:
+		// No prompt: the reactor and the master read the trigger and the action in the reactor's Combatant.readied.
 	default:
 		err = wv.morePrompt(kind, w, reactor, out)
 	}
@@ -401,7 +417,7 @@ func (wv *windowView) trigger(w playdb.ReactionWindow) *playv1.ReactionTrigger {
 		out.Damage = &t.Damage
 	}
 	if reaction.Kind(w.Kind) == reaction.Concentration {
-		out.ConcentrationSpellKey = t.Spell
+		out.SpellKey, out.ConcentrationSpellKey = t.concentrationSpell(), t.concentrationSpell()
 	}
 	// Unlike rollKindOf, a trigger that names no roll stays unspecified.
 	switch t.Roll {
@@ -487,7 +503,7 @@ func (wv *windowView) masterCheckPrompt(w playdb.ReactionWindow, out *playv1.Rea
 func (wv *windowView) concentrationPrompt(w playdb.ReactionWindow, reactor *playdb.Combatant, out *playv1.ReactionWindow) error {
 	t := windowTriggerOf(w)
 	p := &playv1.ConcentrationSavePrompt{
-		SpellKey: t.Spell, SpellNamePt: wv.names(t.Spell), DamageTaken: t.Taken,
+		SpellKey: t.concentrationSpell(), SpellNamePt: wv.names(t.concentrationSpell()), DamageTaken: t.Taken,
 		HandedToMaster: t.Handed,
 	}
 	if wv.v.master || (reactor != nil && wv.v.saveDCFor(*reactor)) { // the DC is the master's, and the reading member's when the table shows it

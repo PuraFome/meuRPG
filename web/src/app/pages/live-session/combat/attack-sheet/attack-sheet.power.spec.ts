@@ -495,6 +495,7 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
           diceSides: 6,
           flat: 3,
           damageTypePt: 'cortante',
+          damageTypeKey: 'damage-type:slashing',
         },
         {
           key: 'power_attack',
@@ -503,7 +504,9 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
           diceSides: 0,
           flat: 10,
           auto: true,
+          available: true,
           damageTypePt: 'cortante',
+          damageTypeKey: 'damage-type:slashing',
         },
       ],
       ...over,
@@ -533,12 +536,12 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       expect(text()).toContain('21');
     });
 
-    it('keeps the label the sheet always had for damage with no automatic trade part', () => {
+    it('rolls the formula of the weapon alone when the damage has no automatic trade part', () => {
       const p = pending();
       const { button } = setup({
         resume: { ...p, parts: p.parts.filter((x) => x.key === 'weapon') },
       });
-      expect(button('Rolar o dano no app')).toBeDefined();
+      expect(button('Rolar 2d6 + 3 no app')).toBeDefined();
     });
   });
 });

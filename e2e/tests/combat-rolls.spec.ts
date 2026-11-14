@@ -43,20 +43,28 @@ test(
       await expect(sheet.getByText(/vale/).first()).toBeVisible();
       await expect(sheet.getByText(/descartado/).first()).toBeVisible();
 
-      // Sneak Attack is offered, marked, and the player types one sum for each part.
+      // Sneak Attack is offered and marked. The rapier and the extra are both piercing, so the player types ONE sum
+      // for the type, over the range of both parts' dice: 1d8 + 2d6 is 3 to 20.
       const extra = sheet.getByRole('checkbox', { name: /Ataque Furtivo/ });
       await expect(extra).toBeEnabled();
       await extra.check();
       await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
-      await sheet.getByLabel(/Rapieira/).last().fill('5');
-      await sheet.getByLabel(/Ataque Furtivo/).last().fill('7');
-      await sheet.getByRole('button', { name: /Confirmar/ }).click();
+      const sum = sheet.getByLabel('Soma dos dados: 1d8 + 2d6', { exact: true });
+      await expect(sum).toHaveCount(1);
+      await expect(sheet.getByText('De 3 a 20.', { exact: true })).toBeVisible();
+      await sum.fill('12');
+      // 12 from the dice and the rapier's + 3, which the app adds.
+      await sheet.getByRole('button', { name: 'Aplicar 15 de dano' }).click();
       await expect(sheet.getByText(/Ataque Furtivo/).first()).toBeVisible();
 
       // The log has the pair and the part.
       await sheet.getByRole('button', { name: /Voltar à sua vez/ }).click();
       await openCombatLog(p);
-      await expect(p.getByRole('log', { name: 'Registro do combate' })).toContainText('Goblin 1');
+      const log = p.getByRole('log', { name: 'Registro do combate' });
+      await expect(log).toContainText('Goblin 1');
+      // One typed sum, but the log still names each part.
+      await expect(log).toContainText('Rapieira');
+      await expect(log).toContainText('Ataque Furtivo');
     } finally {
       await done().catch(() => undefined);
     }

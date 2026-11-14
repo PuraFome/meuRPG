@@ -91,7 +91,17 @@ func (s *Service) optionsOf(ctx context.Context, tx pgx.Tx, campaignID string, c
 			return nil, errCombatantNotFound()
 		}
 	}
+	markReadyOption(opts)
 	return opts, nil
+}
+
+// markReadyOption says Ready is taken with ReadyService.ReadyAction (TakeAction refuses it).
+func markReadyOption(opts *rulesv1.TurnOptions) {
+	for _, a := range opts.GetStandardActions() {
+		if a.GetAction().GetKey() == actionReady {
+			a.ViaReadyAction = true
+		}
+	}
 }
 
 // movementLeftOf is the combatant's speed, movement used and movement left this
@@ -354,8 +364,8 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 			if err := dismissCombatant(ctx, c, rest, who); err != nil {
 				return nil, false, err
 			}
-		} else if err := c.q.DeleteCombatant(ctx, who.ID); err != nil {
-			return nil, false, fmt.Errorf("delete the combatant: %w", err)
+		} else if err := deleteCombatant(ctx, c.q, who); err != nil {
+			return nil, false, err
 		}
 		rest = slices.DeleteFunc(rest, func(o playdb.Combatant) bool { return o.ID == who.ID })
 	}
