@@ -77,3 +77,40 @@ func TestAReadiedSpellIsTheOwnersAndTheMasters(t *testing.T) {
 	}
 	w.inspectPlayers(t, w.ana, w.pending)
 }
+
+// Toren's concentration save on his held Hold Person (RN-10): the master and Caio read the save and the spell it is on;
+// Ana and the TV read the master's wait ("Esperando o mestre"), never that Toren owes a save, and no line of it.
+func TestTheConcentrationSaveOnAReadiedSpellIsTheOwnersAndTheMasters(t *testing.T) {
+	w := newWorld(t)
+	w.onTorenTurnAsWizard()
+	toren, bandit := w.combatant(w.toren), w.combatant(w.bandit)
+	must(w.caio.ready.ReadyAction(t.Context(), rq(&playv1.ReadyActionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: toren.GetId(), IdempotencyKey: newKey(),
+		TriggerText: w.secrets.marker("readied-save-trigger", w.caio), Kind: playv1.ReadiedKind_READIED_KIND_SPELL, SpellKey: "spell:hold-person", SlotLevel: 2,
+	})))
+	for _, n := range append([]string{"teste de Constituição", "CONCENTRATION_SAVE", "concentração"}, readiedSpellWords...) {
+		w.secrets.add(&canary{needle: n, kind: "readied-spell-save", readers: names([]*person{w.caio})})
+	}
+	must(w.master.combat.SetCombatantHidden(t.Context(), rq(&playv1.SetCombatantHiddenRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: bandit.GetId(), IdempotencyKey: newKey(), Hidden: false})))
+	w.allow("bandit-name", w.ana, w.caio)
+	w.secrets.allowNeedle(bandit.GetId(), w.ana, w.caio)
+	w.placeForced(w.master, w.encounter.GetId(), placement{toren.GetId(), 12, 14}, placement{bandit.GetId(), 13, 14})
+	w.passTurnsTo(bandit.GetId())
+	if w.combatant(w.toren).GetReadied() == nil {
+		t.Fatal("Toren's readied spell was lost before the bandit's turn")
+	}
+	w.banditHitsToren(toren, bandit, 4)
+
+	enc := must(w.master.combat.GetEncounter(t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+	if !contains([]byte(enc.GetReactionWait().GetTitlePt()), "Toren") {
+		t.Errorf("the master's wait = %q, want Toren's save", enc.GetReactionWait().GetTitlePt())
+	}
+	w.readsHoldAll(t, w.master, "the save", "CONCENTRATION_SAVE", "spell:hold-person")
+	w.readsHoldAll(t, w.caio, "the save", "CONCENTRATION_SAVE", "spell:hold-person", "Imobilizar Pessoa")
+	ana := must(w.ana.combat.GetEncounter(t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter()
+	if got := ana.GetReactionWait().GetTitlePt(); got != "Esperando o mestre" {
+		t.Errorf("Ana's wait = %q, want \"Esperando o mestre\"", got)
+	}
+	w.inspectPlayers(t, w.ana, w.pending)
+	w.readScreen(t, "while Toren's save on the held spell waits", w.tvReader(), nil)
+}
