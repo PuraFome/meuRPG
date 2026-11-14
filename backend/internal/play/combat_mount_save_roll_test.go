@@ -386,3 +386,42 @@ func TestMountedCombat_TheSaveAsksLuckyAndTheBardicDie(t *testing.T) {
 		}
 	})
 }
+
+// A question kept for the rider (the Bardic die, Lucky) does not outlive the window it was asked for: when the window closes by itself,
+// the held roll goes with it and asks nothing of the rider any more.
+func TestMountedCombat_TheHeldQuestionGoesWithItsWindow(t *testing.T) {
+	t.Parallel()
+	for _, tt := range []struct {
+		name  string
+		clear func(t *testing.T, c *cave)
+	}{
+		{"the mount is removed", func(t *testing.T, c *cave) { t.Helper(); c.removeFromCombat(t, "Ogro") }},
+		{"the rider gets off", func(t *testing.T, c *cave) {
+			t.Helper()
+			c.execSQL(t, `UPDATE combatants SET mounted_on_id = NULL WHERE id = $1`, c.id(t, "Toren"))
+			c.touchCombat(t)
+		}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			c := riddenCave(t)
+			c.giveCombatantDie(t, "Toren", c.get(t, c.master))
+			c.askSave(t, "Toren", causePushed)
+			res := c.mustRollSave(t, c.caio, "Toren", saveFace(3))
+			if res.GetHeldRollOffer() == nil {
+				t.Fatalf("answer = %v, want the question of a mount save", res)
+			}
+			tt.clear(t, c)
+			if n := len(c.openSaveWindows(t)); n != 0 {
+				t.Fatalf("open mount_save windows = %d, want 0: the setup does not close the window", n)
+			}
+			var held int
+			if err := c.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM inspiration_holds WHERE kind = 'mount_save'`).Scan(&held); err != nil {
+				t.Fatalf("count the held rolls: %v", err)
+			}
+			if held != 0 {
+				t.Errorf("held mount saves = %d after the window closed, want 0", held)
+			}
+		})
+	}
+}
