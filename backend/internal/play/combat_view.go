@@ -453,13 +453,14 @@ func (r combatantReader) read(c playdb.Combatant) *playv1.Combatant {
 		vit = r.vitals[c.CharacterID]
 	}
 	p := combatantToProto(c, v, r.ties[c.ID], vit, r.armorClass[sheetKey(c)], r.npcs[sheetKey(c)].portrait, actsNow(e, c), r.names, r.standing[c.ID])
+	mountFor(p, c, d.cs, v)
 	if v.master {
 		r.masterView(p, c)
 	}
 	if v.master || v.owns(c) { // the limits of a creature: the master's and the player's who controls it (RN-29)
 		p.LimitedActions = limitedActionsView(r.npcs[sheetKey(c)].limited, c, r.npcs[sheetKey(c)].persistent && c.Kind == kindNPC)
 	}
-	if r.shared && inParty(c) && !v.owns(c) && inTurn(e, c) {
+	if (r.shared && inParty(c) && !v.owns(c) && inTurn(e, c)) || v.drives(d.cs, c) { // a joint turn's partner, or the player who moves a controlled mount for its rider
 		shareEconomy(p, c, r.standing[c.ID])
 	}
 	p.InspirationDie = inspirationDieView(d.cs, c, e.Round, v)
@@ -663,6 +664,7 @@ func shareEconomy(out *playv1.Combatant, c playdb.Combatant, standing grid.Surfa
 	out.Dashed, out.ActionUsed, out.BonusActionUsed, out.ReactionUsed = c.Dashed, c.ActionUsed, c.BonusActionUsed, c.ReactionUsed
 	out.Disengaged = c.Disengaged
 	out.StandUpCostDft = clamp32(standUpCostDFt(c, standing), 0, math.MaxInt32)
+	out.MountMoveUsed = c.MountMoveUsed
 }
 
 // markKeyOf is the cover the master marked, as an event keeps it ("" for none).
