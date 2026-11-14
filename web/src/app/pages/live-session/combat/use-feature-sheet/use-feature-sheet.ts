@@ -124,7 +124,7 @@ const ECONOMY_WORD: Readonly<Partial<Record<ActionEconomy, string>>> = {
             [rows]="rows()"
             [multi]="many"
             [picked]="targetIds()"
-            [chosen]="targetIds()[0] ?? null"
+            [chosen]="targetIds().at(0) ?? null"
             empty="Não há ninguém para escolher."
             (pick)="pickTarget($event)"
           />
