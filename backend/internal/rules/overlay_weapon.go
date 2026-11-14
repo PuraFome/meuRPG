@@ -88,6 +88,7 @@ func (b *overlayBuilder) checkWeaponShape(c *entryErrors, w *TableWeapon, path s
 		c.at(key, path, ".two_handed_damage", ReasonValue, "a versatile weapon needs its two-handed damage")
 	}
 	b.checkWeaponProperties(c, w, path)
+	checkWeaponCombinations(c, w, path)
 	if w.WeightOz < 0 || w.WeightOz > MaxWeaponWeightOz {
 		c.at(key, path, ".weight_oz", ReasonValue, "the weight is 0 to %d ounces", MaxWeaponWeightOz)
 	}
@@ -109,6 +110,24 @@ func (b *overlayBuilder) checkWeaponProperties(c *entryErrors, w *TableWeapon, p
 		case slices.Contains(w.Properties[:i], p):
 			c.at(key, path, fmt.Sprintf(".properties[%d]", i), ReasonValue, "the property %q is listed twice", p)
 		}
+	}
+}
+
+// checkWeaponCombinations refuses the property combinations the SRD's weapons never have, each at .properties.
+func checkWeaponCombinations(c *entryErrors, w *TableWeapon, path string) {
+	has := func(p string) bool { return slices.Contains(w.Properties, weaponPropertyPrefix+p) }
+	refuse := func(format string) { c.at(w.Key, path, ".properties", ReasonValue, "%s", format) }
+	switch {
+	case has("loading") && !has("ammunition"):
+		refuse("Recarga só vale para uma arma com Munição.")
+	case has("ammunition") && !w.Ranged:
+		refuse("Munição é de arma à distância: uma arma corpo a corpo arremessada usa Arremesso.")
+	case has("reach") && w.Ranged:
+		refuse("Alcance é de arma corpo a corpo.")
+	case has("two-handed") && has("versatile"):
+		refuse("Versátil já diz que a arma vai em uma ou duas mãos: tire Duas mãos ou tire Versátil.")
+	case has("two-handed") && has("light"):
+		refuse("Leve é de arma usada em cada mão: ela não pode exigir Duas mãos.")
 	}
 }
 

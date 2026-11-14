@@ -915,7 +915,7 @@ type KeyField struct {
 // BuildKeys lists the content keys a Build uses with the sheet field of each,
 // with the CharacterSheet field names ("full.classes[0].class_key"), in the
 // sheet's order: race, subrace, classes and subclasses, background, cantrips,
-// known spells, prepared spells and feature choices.
+// known spells, prepared spells, feature choices, feats and weapons.
 func BuildKeys(b Build) []KeyField {
 	var out []KeyField
 	add := func(key, field string) {
@@ -947,6 +947,9 @@ func BuildKeys(b Build) []KeyField {
 	}
 	for i, k := range b.Feats {
 		add(k, fmt.Sprintf("full.feat_keys[%d]", i))
+	}
+	for i, k := range b.Weapons {
+		add(k, fmt.Sprintf("full.weapon_keys[%d]", i))
 	}
 	return out
 }

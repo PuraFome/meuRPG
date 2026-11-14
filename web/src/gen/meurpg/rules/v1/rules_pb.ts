@@ -3659,6 +3659,7 @@ export type Subrace = Message<"meurpg.rules.v1.Subrace"> & {
   /**
    * Switched off for the players (see Race.off). Its own switch: a subrace of an
    * off race is hidden from the players too, and keeps this mark false.
+   * Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
    *
    * @generated from field: bool off = 7;
    */
@@ -3915,6 +3916,7 @@ export type Subclass = Message<"meurpg.rules.v1.Subclass"> & {
 
   /**
    * Switched off for the players (see Subrace.off): its own switch.
+   * Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
    *
    * @generated from field: bool off = 7;
    */
@@ -4059,6 +4061,7 @@ export type Background = Message<"meurpg.rules.v1.Background"> & {
 
   /**
    * Switched off for the players (see Race.off).
+   * Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
    *
    * @generated from field: bool off = 7;
    */
@@ -4189,6 +4192,8 @@ export type Weapon = Message<"meurpg.rules.v1.Weapon"> & {
   archived: boolean;
 
   /**
+   * Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
+   *
    * @generated from field: bool off = 7;
    */
   off: boolean;

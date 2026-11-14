@@ -7972,6 +7972,7 @@ type Subrace struct {
 	Archived bool `protobuf:"varint,6,opt,name=archived,proto3" json:"archived,omitempty"`
 	// Switched off for the players (see Race.off). Its own switch: a subrace of an
 	// off race is hidden from the players too, and keeps this mark false.
+	// Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
 	Off bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	// Content keys of the skills the subrace gives, added to the race's (see
 	// Race.skill_keys). The race's skills that come from a trait this subrace replaces
@@ -8381,6 +8382,7 @@ type Subclass struct {
 	// Set for a subclass that casts on its own (a third caster, the table's only).
 	Spellcasting *SubclassSpellcasting `protobuf:"bytes,6,opt,name=spellcasting,proto3" json:"spellcasting,omitempty"`
 	// Switched off for the players (see Subrace.off): its own switch.
+	// Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
 	Off bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	// The spells the subclass always has prepared, from a class level (a domain's,
 	// an oath's); they do not count against the prepared limit. Without the ones
@@ -8628,6 +8630,7 @@ type Background struct {
 	// A table background's equipment text; empty for the SRD's.
 	EquipmentPt string `protobuf:"bytes,6,opt,name=equipment_pt,json=equipmentPt,proto3" json:"equipment_pt,omitempty"`
 	// Switched off for the players (see Race.off).
+	// Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
 	Off           bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -8864,7 +8867,8 @@ type Weapon struct {
 	// True for a ranged weapon, false for a melee one.
 	Ranged bool `protobuf:"varint,5,opt,name=ranged,proto3" json:"ranged,omitempty"`
 	// Set for a table weapon the master retired, or switched off for the players (RN-23); the SRD's are never.
-	Archived      bool `protobuf:"varint,6,opt,name=archived,proto3" json:"archived,omitempty"`
+	Archived bool `protobuf:"varint,6,opt,name=archived,proto3" json:"archived,omitempty"`
+	// Switched off for the players (see Race.off); the weapon stays on a sheet that carries it, marked.
 	Off           bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

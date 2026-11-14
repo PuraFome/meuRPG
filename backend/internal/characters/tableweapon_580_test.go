@@ -2,6 +2,7 @@ package characters
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -112,5 +113,43 @@ func TestATableWeaponSurvivesAPackRoundTrip(t *testing.T) {
 	bad.Entries[0].GetTableWeapon().NormalRangeFt = 0
 	if pv := pt.preview(t, pt.to, bad); pv.GetTotals().GetRefused() != 1 {
 		t.Errorf("a pack with a ranged weapon with no range: totals %v, want it refused", pv.GetTotals())
+	}
+}
+
+// RN-23 through the service: the weapon a player's own sheet carries stays in their catalog when the master archives it,
+// and no other player gets it, nor the owner for a weapon their sheet does not carry.
+func TestACarriedTableWeaponStaysInTheOwnersCatalog(t *testing.T) {
+	t.Parallel()
+	h := newHarness(t)
+	master, owner, other := h.newUser("Samuel"), h.newUser("Dona"), h.newUser("Outra")
+	campaign := h.newCampaign(master, "Mirathel", owner, other)
+	w := master.addEntry(t, campaign, testWeapon("Espada do Vale"))
+	spare := master.addEntry(t, campaign, testWeapon("Lâmina Sobressalente"))
+	sheet := pensantusSheet()
+	sheet.GetFull().WeaponKeys = []string{w.GetKey()}
+	mine := owner.create(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus", sheet)
+	for _, key := range []string{w.GetKey(), spare.GetKey()} {
+		if _, err := master.table.ArchiveTableEntry(t.Context(), connect.NewRequest(&rulesv1.ArchiveTableEntryRequest{CampaignId: campaign, Key: key})); err != nil {
+			t.Fatalf("ArchiveTableEntry(%s) error = %v", key, err)
+		}
+	}
+	weapons := func(u *user, character string) []string {
+		res, err := u.catalogFor(t, campaign, character)
+		if err != nil {
+			t.Fatalf("ListContent() error = %v", err)
+		}
+		var keys []string
+		for _, x := range res.GetContent().GetWeapons() {
+			if strings.HasSuffix(x.GetKey(), "@mesa") {
+				keys = append(keys, x.GetKey())
+			}
+		}
+		return keys
+	}
+	if got := weapons(owner, mine.GetId()); !slices.Equal(got, []string{w.GetKey()}) {
+		t.Errorf("the owner's catalog weapons = %v, want only the one their sheet carries", got)
+	}
+	if got := weapons(other, ""); len(got) != 0 {
+		t.Errorf("another player's catalog weapons = %v, want none", got)
 	}
 }

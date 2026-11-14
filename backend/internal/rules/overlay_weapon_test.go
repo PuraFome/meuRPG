@@ -4,6 +4,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 )
 
 // #580 S2: a weapon of the table is an equipment row. Every name here is invented.
@@ -156,4 +157,73 @@ func TestATableWeaponRefusalsNameTheirField(t *testing.T) {
 
 func hasWeaponViolation(oe *OverlayError, field string) bool {
 	return slices.ContainsFunc(oe.Violations(), func(v *OverlayError) bool { return v.Field == field })
+}
+
+// RN-23: the weapon a sheet carries is one of the keys its Build uses, so the owner's catalog keeps it and a change to it
+// is the owner's to be told ("A arma mudou", through ChangedSince; the notice itself needs an issue tied to the weapon).
+func TestTheWeaponASheetCarriesIsOneOfItsBuildKeys(t *testing.T) {
+	t.Parallel()
+	b := weaponBuild("class:fighter", "equipment:dagger", weaponHalberd)
+	var got KeyField
+	for _, kf := range BuildKeys(b) {
+		if kf.Key == weaponHalberd {
+			got = kf
+		}
+	}
+	if got.Field != "full.weapon_keys[1]" {
+		t.Errorf("the carried weapon is at %q in BuildKeys, want full.weapon_keys[1]", got.Field)
+	}
+	o := Overlay{Revision: 3, Weapons: tableWeapons()}
+	o.Weapons[0].Revision, o.Weapons[0].ChangedAt = 3, time.Now()
+	c := withOverlay(t, o)
+	ch := c.ChangedSince(b, 2, nil)
+	if len(ch) != 1 || ch[0].Key != weaponHalberd || ch[0].Field != "full.weapon_keys[1]" {
+		t.Errorf("ChangedSince = %+v, want the halberd at full.weapon_keys[1]", ch)
+	}
+}
+
+// The property rules of the SRD's weapons (#580 board 580-16): each combination the SRD never has is refused at .properties.
+func TestAWeaponsPropertiesFollowTheSRDsCombinations(t *testing.T) {
+	t.Parallel()
+	melee := func(props ...string) TableWeapon {
+		return TableWeapon{TableEntry: TableEntry{Key: weaponHalberd, NamePT: "Arma"}, Category: "martial", Damage: "1d8", DamageType: "damage-type:slashing", Properties: props}
+	}
+	ranged := func(props ...string) TableWeapon {
+		w := melee(props...)
+		w.Ranged, w.NormalRangeFt, w.LongRangeFt = true, 30, 120
+		return w
+	}
+	const p = "weapon-property:"
+	refused := map[string]TableWeapon{
+		"loading without ammunition":   ranged(p + "loading"),
+		"ammunition on a melee weapon": melee(p + "ammunition"),
+		"reach on a ranged weapon":     ranged(p + "reach"),
+		"two-handed that is versatile": func() TableWeapon { w := melee(p+"two-handed", p+"versatile"); w.TwoHandedDamage = "1d10"; return w }(),
+		"two-handed that is light":     melee(p+"two-handed", p+"light"),
+	}
+	for name, w := range refused {
+		t.Run("refuses "+name, func(t *testing.T) {
+			t.Parallel()
+			_, err := loadForTest(t).With(Overlay{Revision: 1, Weapons: []TableWeapon{w}})
+			violationAt(t, err, "weapons[0].properties", ReasonValue)
+		})
+	}
+	accepted := map[string]TableWeapon{
+		"a ranged weapon that is light": ranged(p+"ammunition", p+"light", p+"loading"),
+		"a ranged weapon that is heavy": ranged(p+"ammunition", p+"heavy", p+"two-handed", p+"loading"),
+		"a ranged weapon that is thrown": func() TableWeapon {
+			w := ranged(p+"thrown", p+"finesse")
+			w.NormalRangeFt, w.LongRangeFt = 20, 60
+			return w
+		}(),
+		"a melee weapon with reach": melee(p+"reach", p+"heavy", p+"two-handed"),
+	}
+	for name, w := range accepted {
+		t.Run("accepts "+name, func(t *testing.T) {
+			t.Parallel()
+			if _, err := loadForTest(t).With(Overlay{Revision: 1, Weapons: []TableWeapon{w}}); err != nil {
+				t.Errorf("With() = %v", err)
+			}
+		})
+	}
 }
