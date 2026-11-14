@@ -66,8 +66,8 @@ func (a *armed) heldEffects(t *testing.T, spell string) int {
 
 // Pensantus holds Hold Person on the Capitão; on his next turn he readies Magic Missile. Ready casts it now: the 1st-level
 // slot is spent, the action too, Hold Person ends (its paralysis goes) and the readied spell is his concentration. Ana
-// and the master read the held spell as his concentration and in the row; Caio reads no concentration, and the line
-// that says Hold Person ended. Nothing of the spell happened: no damage, no effect.
+// and the master read the held spell as his concentration and in the row, and the line that says Hold Person ended; Caio
+// reads no concentration and the line with the actor alone. Nothing of the spell happened: no damage, no effect.
 func TestReadySpellCastsItNowAndHoldsItWithConcentration(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
@@ -103,8 +103,8 @@ func TestReadySpellCastsItNowAndHoldsItWithConcentration(t *testing.T) {
 		t.Errorf("Caio reads Pensantus's concentration %q, want none", got)
 	}
 	lines := a.readiedLines(t, a.caio, e, playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED)
-	if len(lines) != 1 || lines[0].GetSpell() != nil || lines[0].GetReadied() != nil || lines[0].GetConcentrationEndedKey() != holdPerson {
-		t.Errorf("Caio's readied lines = %v, want the actor and the end of Hold Person alone", lines)
+	if len(lines) != 1 || lines[0].GetSpell() != nil || lines[0].GetReadied() != nil || lines[0].GetConcentrationEndedKey() != "" {
+		t.Errorf("Caio's readied lines = %v, want the actor alone (RN-10: not the concentration it ended)", lines)
 	}
 	var slot int32
 	if err := a.h.pool.QueryRow(t.Context(), `SELECT slot_level FROM readied_actions`).Scan(&slot); err != nil || slot != 1 {
