@@ -67,8 +67,8 @@ func auraReaches(a rules.EffectModifier, bearer, c playdb.Combatant) bool {
 // the same spell reach a creature once). A combat with no aura answers the map it was given. v is who reads the
 // roll: a player does not read the name of an aura whose bearer they do not see, nor of one the master keeps from
 // the players or that is owner-only, on a creature that is not the bearer, which read "Outra fonte" (RN-10).
-func withAuras(states map[string][]playdb.CombatantState, cs []playdb.Combatant, v *combatViewer) map[string][]playdb.CombatantState {
-	auras := aurasOf(states, cs)
+func withAuras(states map[string][]playdb.CombatantState, cs []playdb.Combatant, v *combatViewer, down map[string]bool) map[string][]playdb.CombatantState {
+	auras := aurasOf(states, cs, down)
 	if len(auras) == 0 {
 		return states
 	}
@@ -90,14 +90,20 @@ type aura struct {
 	bearer playdb.Combatant
 }
 
-// aurasOf are the aura rows of the creatures still in the fight.
-func aurasOf(states map[string][]playdb.CombatantState, cs []playdb.Combatant) []aura {
+// aurasOf are the aura rows of the creatures still in the fight. down holds the bearers (by combatant) that are at 0 hit
+// points: a feature's aura needs its bearer up, so it is decided here, when the aura is read, from the character's hit
+// points and the combatant's conditions, whoever last changed them.
+func aurasOf(states map[string][]playdb.CombatantState, cs []playdb.Combatant, down map[string]bool) []aura {
 	var auras []aura
 	for _, b := range cs {
 		if b.Defeated || b.Dismissed {
 			continue
 		}
 		for _, st := range states[b.ID] {
+			// A feature's aura needs its bearer up: not at 0 hit points and not incapacitated (Aura of Protection).
+			if isFeatureAura(st) && (!fighting(b) || down[b.ID]) {
+				continue
+			}
 			if m, ok := auraMark(st); ok {
 				auras = append(auras, aura{row: st, mark: m, bearer: b})
 			}
@@ -106,7 +112,9 @@ func aurasOf(states map[string][]playdb.CombatantState, cs []playdb.Combatant) [
 	return auras
 }
 
-// spread adds to out the view of the aura on each creature it reaches, unless the source reached it already.
+// spread adds to out the view of the aura on each creature it reaches, unless the source reached it already. The source
+// of a spell is the spell (two casters' auras of it reach a creature once, as the rule says of one effect); that of a
+// feature is the bearer's feature, so two Paladins each give theirs.
 func (a aura) spread(cs []playdb.Combatant, v *combatViewer, reached map[[2]string]bool, out map[string][]playdb.CombatantState) {
 	given := givenByAura(a.row)
 	if len(given) == 0 {
@@ -115,6 +123,9 @@ func (a aura) spread(cs []playdb.Combatant, v *combatViewer, reached map[[2]stri
 	source := a.row.ID
 	if a.row.SourceKey != nil {
 		source = *a.row.SourceKey
+	}
+	if isFeatureAura(a.row) {
+		source = a.bearer.ID + "|" + source // two bearers of one feature each give; one bearer's two effects give once
 	}
 	for _, c := range cs {
 		if !auraReaches(a.mark, a.bearer, c) || reached[[2]string{c.ID, source}] {
@@ -143,11 +154,11 @@ func seenBy(v *combatViewer, bearer playdb.Combatant) bool {
 // readStatesAt is readStates as a roll reads it: with the auras of the combat (withAuras). A combat with no aura
 // reads one query, as readStates does.
 func (s *Service) readStatesAt(ctx context.Context, tx pgx.Tx, encID string, v *combatViewer) (map[string][]playdb.CombatantState, error) {
-	return statesAt(ctx, s.queriesIn(tx), encID, v)
+	return s.statesAt(ctx, tx, s.queriesIn(tx), encID, v)
 }
 
-// statesAt is readStatesAt on the queries of a change.
-func statesAt(ctx context.Context, q *playdb.Queries, encID string, v *combatViewer) (map[string][]playdb.CombatantState, error) {
+// statesAt is readStatesAt on the queries of a change (tx is the change's transaction, nil for a read).
+func (s *Service) statesAt(ctx context.Context, tx pgx.Tx, q *playdb.Queries, encID string, v *combatViewer) (map[string][]playdb.CombatantState, error) {
 	rows, err := q.ListCombatantStates(ctx, encID)
 	if err != nil {
 		return nil, fmt.Errorf("list the states: %w", err)
@@ -160,7 +171,15 @@ func statesAt(ctx context.Context, q *playdb.Queries, encID string, v *combatVie
 	if err != nil {
 		return nil, fmt.Errorf("list the combatants: %w", err)
 	}
-	return withAuras(states, cs, v), nil
+	campaignID, err := q.GetEncounterCampaignID(ctx, encID)
+	if err != nil {
+		return nil, fmt.Errorf("find the campaign of the combat: %w", err)
+	}
+	down, err := s.downFeatureBearers(ctx, tx, campaignID, cs, rows)
+	if err != nil {
+		return nil, err
+	}
+	return withAuras(states, cs, v, down), nil
 }
 
 func isMarked(st playdb.CombatantState) bool { _, ok := auraMark(st); return ok }

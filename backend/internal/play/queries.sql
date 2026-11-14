@@ -56,6 +56,12 @@ SELECT * FROM game_sessions
 WHERE campaign_id = $1 AND id = $2
 FOR UPDATE;
 
+-- name: ListCampaignSessionIDs :many
+-- The ids of the campaign's sessions, answered by the unique index on (campaign_id, session_number) alone: the rows of
+-- other campaigns are never read, so a lock another transaction holds on one of them does not make the call wait
+-- (CockroachDB makes a plain read of a locked row wait for it, so a lookup by id would).
+SELECT id FROM game_sessions WHERE campaign_id = $1 ORDER BY session_number;
+
 -- name: ListOpenGameSessions :many
 -- The open sessions of the given campaigns, newest first (RN-06). The
 -- partial unique index game_sessions_one_open_per_campaign finds each one.
@@ -896,6 +902,11 @@ WHERE encounter_id = sqlc.arg(encounter_id) AND summon_group_id = sqlc.arg(summo
 -- A combat by its ID alone (the creatures' host publishes the change of the
 -- combat a dismissed creature left).
 SELECT * FROM encounters WHERE id = $1;
+
+-- name: GetEncounterCampaignID :one
+-- The campaign a combat is in: a reader of the combat's states that has the combat's ID alone (the auras of a feature
+-- need the bearer's hit points, which a campaign holds).
+SELECT g.campaign_id FROM encounters e JOIN game_sessions g ON g.id = e.game_session_id WHERE e.id = $1;
 
 -- name: ListCreatureCombatants :many
 -- The creatures in a combat, in turn order: what the combat writes back to

@@ -13,8 +13,7 @@ import {
   TableSpellEffectSchema,
   TableEffectAuraSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { metersToFeet } from '../units';
-import { rangeMeters } from './effect-draft';
+import { metersToFeet, rangeMeters } from '../units';
 
 /**
  * The "Deixa um efeito nos alvos" block of the spell editor (#579): a `TableSpell.effect`. The server's modifiers are a closed set of
@@ -37,7 +36,11 @@ export interface EffectRow {
   /** ac_bonus, temp_hp, check_bonus and the fixed number of a roll: text. */
   readonly value: string;
   readonly skill: string;
-  readonly rollMode: 'fixed' | 'die';
+  /** 'ability' (a feature's aura only): the bonus is the bearer's modifier of `valueAbility`, at least `valueMin`. */
+  readonly rollMode: 'fixed' | 'die' | 'ability';
+  readonly valueAbility: string;
+  /** The least the bonus from an ability is, 1 to 5. */
+  readonly valueMin: string;
   /** The die's faces, "4" for a d4. */
   readonly die: string;
   readonly sign: 1 | -1;
@@ -109,6 +112,8 @@ export function emptyRow(kind: EffectKind | '' | 'unknown' = ''): EffectRow {
     value: '',
     skill: '',
     rollMode: 'fixed',
+    valueAbility: 'cha',
+    valueMin: '1',
     die: '4',
     sign: 1,
     rolls: ['attack', 'save'],
@@ -120,6 +125,11 @@ export function emptyRow(kind: EffectKind | '' | 'unknown' = ''): EffectRow {
     advantage: 'adv',
     abilities: [],
   };
+}
+
+/** The block of a feature's aura, new: on, an aura of 3 m around its bearer, for them and their side, public. */
+export function featureAuraDraft(): SpellEffectDraft {
+  return { ...emptyEffect(), on: true, aura: { radiusM: '3', affects: 'allies' } };
 }
 
 export function emptyEffect(): SpellEffectDraft {
@@ -213,7 +223,15 @@ function rowOf(m: TableEffectModifier): EffectRow {
     case K.CHECK_BONUS:
       return { ...emptyRow('check_bonus'), value: String(m.value), skill: m.skill };
     case K.ROLL_BONUS:
-      return { ...emptyRow('roll'), rollMode: 'fixed', value: String(m.value), rolls };
+      return m.valueAbility
+        ? {
+            ...emptyRow('roll'),
+            rollMode: 'ability',
+            valueAbility: m.valueAbility,
+            valueMin: String(m.valueMin),
+            rolls,
+          }
+        : { ...emptyRow('roll'), rollMode: 'fixed', value: String(m.value), rolls };
     case K.ROLL_DIE:
       return {
         ...emptyRow('roll'),
@@ -332,11 +350,20 @@ export function rowToModifiers(r: EffectRow): TableEffectModifier[] {
       return [modifier({ kind: K.CHECK_BONUS, value: whole(r.value), skill: r.skill })];
     case 'roll': {
       const appliesTo = r.rolls.map((w) => ROLL_TO_ENUM[w]);
-      return [
-        r.rollMode === 'die'
-          ? modifier({ kind: K.ROLL_DIE, die: whole(r.die), sign: r.sign, appliesTo })
-          : modifier({ kind: K.ROLL_BONUS, value: whole(r.value), appliesTo }),
-      ];
+      if (r.rollMode === 'die') {
+        return [modifier({ kind: K.ROLL_DIE, die: whole(r.die), sign: r.sign, appliesTo })];
+      }
+      if (r.rollMode === 'ability') {
+        return [
+          modifier({
+            kind: K.ROLL_BONUS,
+            valueAbility: r.valueAbility,
+            valueMin: whole(r.valueMin),
+            appliesTo,
+          }),
+        ];
+      }
+      return [modifier({ kind: K.ROLL_BONUS, value: whole(r.value), appliesTo })];
     }
     case 'resistance':
       return [

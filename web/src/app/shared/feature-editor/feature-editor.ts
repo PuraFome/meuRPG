@@ -12,6 +12,7 @@ import { EffectPicker } from '../effect-picker/effect-picker';
 import { FieldNote } from '../form-fields/field-note';
 import { TextField } from '../form-fields/text-field';
 import type { SelectOption } from '../form-fields/select-field';
+import type { CatalogVm } from '../../core/content/catalog';
 import { SummonBlock } from '../summon-block/summon-block';
 
 /**
@@ -40,6 +41,8 @@ export class FeatureEditor {
   readonly basePath = input.required<string>();
   readonly issuesOf = input<(path: string) => readonly string[]>(() => []);
   readonly spellOptions = input<readonly SelectOption[]>([]);
+  /** The catalog an aura effect names skills, damage types and abilities from. */
+  readonly catalog = input<CatalogVm | null>(null);
   readonly nameLabel = input('Nome do traço');
   readonly textLabel = input('Texto');
   /** "Remover traço": absent for a feature that must exist (a background's). */

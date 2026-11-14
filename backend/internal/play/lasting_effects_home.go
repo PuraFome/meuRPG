@@ -228,7 +228,7 @@ func (s *Service) endLongRestEffects(ctx context.Context, c *combatTx) error {
 // time they have left, in whole rounds (a partial round does not count: 59 seconds are 9
 // rounds), counted from the start of the first round. The record is the same: it only moves.
 func (s *Service) effectsToCombat(ctx context.Context, c *combatTx, all, added []playdb.Combatant) error {
-	if err := s.dieToCombat(ctx, c, all, added); err != nil {
+	if err := s.carriedToCombat(ctx, c, all, added); err != nil {
 		return err
 	}
 	var ids []string
@@ -343,7 +343,7 @@ func (s *Service) effectRowsToCharacters(ctx context.Context, c *combatTx, cs, o
 		if i < 0 || !backedByCharacter(cs[i]) || (only != nil && !slices.ContainsFunc(only, func(a playdb.Combatant) bool { return a.ID == st.CombatantID })) {
 			continue
 		}
-		if err := s.giveEffectBack(ctx, c, cs, cs[i], st); err != nil {
+		if err := s.giveBackOrDrop(ctx, c, cs, cs[i], st); err != nil {
 			return err
 		}
 	}

@@ -19,6 +19,12 @@ const CASES: [field: string, reason: string, text: RegExp][] = [
   ['table_spell.effect.aura.radius_ft', 'bad_value', /de 1,5 m a 36 m/],
   ['table_spell.effect.aura.affects', 'bad_value', /quem a aura alcança/],
   ['table_spell.effect.aura', 'bad_value', /Só quem conjura.*não vale CA/],
+  ['table_feat.effects[1].aura.modifiers[0].value_ability', 'bad_value', /habilidade de quem leva/],
+  ['table_feat.effects[1].aura.modifiers[0].value_min', 'bad_value', /de \+1 a \+5/],
+  ['table_class_feature.effects[0].aura.radius_ft', 'bad_value', /de 1,5 m a 36 m/],
+  ['table_option.effects[0].aura.affects', 'bad_value', /quem a aura alcança/],
+  ['table_feat.effects[0].aura.modifiers[2].kind', 'bad_value', /não vale numa aura/],
+  ['table_feat.effects[0].aura', 'bad_value', /vale em todo o combate/],
   ['table_spell.effect', 'bad_value', /ao menos uma condição ou uma mudança/],
 ];
 

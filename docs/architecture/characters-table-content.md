@@ -368,6 +368,14 @@ A zone is still kept as it was loaded; saving a spell in the editor replaces the
 A player's copy of a spell drops `visibility` and `player_label_pt` of an owner-only effect (`forPlayer`, `effectKeepsItsSecrets`), and the aura's radius with it.
 How the rules read the effect is in [Table content: rules](rules-table-content.md#the-lasting-effect-of-a-spell).
 
+**A feature's aura.**
+`TableEffect.aura` (`TableSpellEffect`) maps through `tableSpellEffectOf`, and `value_ability` and `value_min` of `TableEffectModifier` map with the other fields.
+`featureAurasOf` (`combattraits.go`) turns `Derived.Auras` into `link.Traits.Auras`, resolving each ability bonus against the sheet (`max(modifier, value_min)`) and clearing the ability fields.
+In the web app the effect picker draws the type `aura` with the spell's block (`shared/spell-effect/`, `feature` input: no switch, no duration, the whole combat), hosted by `app-effect-aura`.
+The roll row there has a third way to say the number, "De uma habilidade", with the ability and "No mínimo".
+The fields are known inputs for the refusals through `effectInputPaths` (`effect-input-paths.ts`), shared by every editor that lists effects, and the editors pass their `catalog` to name skills, damage types and abilities.
+The card's text is `auraItem` in `content-read-rolls.ts`.
+
 **The next-hit effect.**
 `TableEffectModifierKind` has `WEAPON_HIT_DAMAGE` (20), and `TableEffectModifier` the fields only it reads (`rules/v1/table_content.proto`):
 

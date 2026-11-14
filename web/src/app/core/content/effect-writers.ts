@@ -1,5 +1,6 @@
 import { metersToFeet } from '../units';
 import { type EffectDraft, type EffectInit } from './effect-draft.types';
+import { draftToEffect as draftToSpellEffect } from './spell-effect-draft';
 
 /** The tags of "against:magic, about:items": trimmed, empty ones dropped. */
 export function splitTags(text: string): string[] {
@@ -191,6 +192,13 @@ export const EFFECT_WRITERS: ReadonlyMap<string, EffectWriter> = new Map<string,
   ['damage_dice', trimmedText('damageDice')],
   ['rolls', pickedList('rolls')],
   ['at_most', positiveNumber('atMost')],
+  [
+    'aura',
+    (d) => {
+      const aura = d.aura ? draftToSpellEffect(d.aura) : undefined;
+      return aura ? { aura } : {};
+    },
+  ],
   ['ignore_cover', (d) => (d.ignoreCover ? { ignoreCover: true } : {})],
   [
     'only_proficient',

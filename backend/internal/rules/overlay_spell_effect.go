@@ -14,13 +14,19 @@ const maxSpellEffectItems = 8
 // the spell has none. Every field that is wrong is reported at the effect, one sentence for each. It is a
 // method of the builder because the conditions and the damage types are the SRD content's.
 func (b *overlayBuilder) checkSpellEffect(c *entryErrors, key, path string, ts *TableSpell, target SpellTarget) *EffectDef {
+	return b.checkLastingEffect(c, key, path, ts, target, false)
+}
+
+// checkLastingEffect is checkSpellEffect for a spell or, with fromFeature, for the aura of a feature: that one may
+// take the number of a roll bonus from the bearer's ability, and carries no next-hit effect.
+func (b *overlayBuilder) checkLastingEffect(c *entryErrors, key, path string, ts *TableSpell, target SpellTarget, fromFeature bool) *EffectDef {
 	e := ts.Effect
 	if e == nil {
 		return nil
 	}
 	checkEffectHead(c, key, path, ts, target)
 	b.checkEffectConditions(c, key, path, e.Conditions)
-	b.checkEffectModifiers(c, key, path, e.Modifiers, ts.Concentration, ts.Duration.Kind == DurationTimed || ts.Duration.Kind == DurationUntilDispelled, target)
+	b.checkEffectModifiers(c, key, path, e.Modifiers, ts.Concentration, ts.Duration.Kind == DurationTimed || ts.Duration.Kind == DurationUntilDispelled, target, fromFeature)
 	b.checkEffectAura(c, key, path, ts, target)
 	if len(e.Conditions) == 0 && len(e.Modifiers) == 0 {
 		c.at(key, path, ".effect", ReasonValue, "an effect needs a condition or a modifier")
@@ -103,7 +109,7 @@ func (f *combatEffects) hasCondition(k string) bool {
 	return ok
 }
 
-func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, mods []EffectModifier, concentration, timed bool, target SpellTarget) {
+func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, mods []EffectModifier, concentration, timed bool, target SpellTarget, fromFeature bool) {
 	if len(mods) > maxSpellEffectItems {
 		c.at(key, path, ".effect.modifiers", ReasonLimit, "an effect has at most %d modifiers", maxSpellEffectItems)
 	}
@@ -114,7 +120,7 @@ func (b *overlayBuilder) checkEffectModifiers(c *entryErrors, key, path string, 
 			err = b.base.checkModifierContent(m)
 		}
 		if err == nil {
-			err = spellModifierRefusal(m)
+			err = spellModifierRefusal(m, fromFeature)
 		}
 		if err == nil {
 			err = spellHitRefusal(m, concentration, timed, target)
@@ -146,8 +152,12 @@ var refusedForTableSpell = []string{ModifierAura, ModifierBaseAC, ModifierExtraA
 // worked out when the spell is cast, which a table spell has no way to say. A table effect's modifiers are a
 // closed set: conditions go in the effect's `conditions`, and what stops a creature from moving or acting is a
 // condition (paralyzed, restrained), not a modifier.
-func spellModifierRefusal(m EffectModifier) error {
+func spellModifierRefusal(m EffectModifier, fromFeature bool) error {
 	switch {
+	case !fromFeature && (m.ValueAbility != "" || m.ValueMin != 0):
+		return modifierField("value_ability", "only a feature's aura takes a bonus from an ability")
+	case fromFeature && m.Kind == ModifierWeaponHitDamage:
+		return modifierField("kind", "a feature's aura gives no next-hit effect")
 	case slices.Contains(refusedForTableSpell, m.Kind):
 		return modifierField("kind", "%s is not for a table spell", m.Kind)
 	case m.FromCaster:

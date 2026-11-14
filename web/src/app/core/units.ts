@@ -106,3 +106,8 @@ export function poundsToKg(pounds: number): string {
 export function weightWithPounds(pounds: number): string {
   return `${poundsToKg(pounds)} (${pounds} lb)`.replace(/(\d) (kg|lb)/g, '$1\u00a0$2');
 }
+
+/** The metres a range field shows, from the feet it stores; empty for none. */
+export function rangeMeters(ft: number): string {
+  return ft > 0 ? metersNumber(ft) : '';
+}

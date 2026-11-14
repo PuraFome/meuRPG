@@ -171,7 +171,7 @@ func (s *Service) readModeInputs(ctx context.Context, c *combatTx, cs []playdb.C
 	if err != nil {
 		return attackModeInputs{}, err
 	}
-	return attackModeInputs{cs: cs, states: withAuras(statesOf(rows), cs, v), hiding: hiding, helps: helps, surprised: surprised, down: down, sun: sun}, nil
+	return attackModeInputs{cs: cs, states: withAuras(statesOf(rows), cs, v, downSet(down)), hiding: hiding, helps: helps, surprised: surprised, down: down, sun: sun}, nil
 }
 
 // facts is the combat as the advantage rules read it.
@@ -566,4 +566,13 @@ func (s *Service) mustRollThisWay(ctx context.Context, tx pgx.Tx, m authz.Member
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE, "this is not how the campaign has you roll your dice")
 	}
 	return nil
+}
+
+// downSet is the combatants of the list as a set, for aurasOf.
+func downSet(ids []string) map[string]bool {
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out
 }

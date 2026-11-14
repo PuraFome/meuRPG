@@ -5,7 +5,10 @@
 .seg {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: 1fr;
+  grid-auto-columns: minmax(
+    0,
+    1fr
+  ); // equal shares: the chosen one's check lives inside its share, it does not widen it
   gap: var(--mr-space-2);
 }
 
@@ -52,6 +55,21 @@
   border-style: dashed;
   color: var(--mr-ink-muted);
   cursor: default;
+}
+
+// A group that stacks on a phone: every option is a full-width row, one line of text each.
+:host(.seg--stack) {
+  @media (max-width: 479.98px) {
+    .seg {
+      grid-auto-flow: row;
+      grid-auto-columns: auto;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .seg__item {
+      white-space: nowrap;
+    }
+  }
 }
 
 // Options that never wrap their text: equal cells that go to the next row whole when the row is short.

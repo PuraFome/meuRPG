@@ -10,6 +10,7 @@ import {
   effectToDraft,
   unreadableNumberPaths,
 } from './effect-draft';
+import { effectInputPaths } from './effect-input-paths';
 import { type FeatureDraft, emptyFeature } from './feature-draft';
 import { paragraphs } from './spell-draft';
 import { draftToSummon, summonBlockedPaths, summonPaths, summonToDraft } from './summon-draft';
@@ -76,11 +77,7 @@ export function classFeaturePaths(d: ClassFeatureDraft, menu: EffectMenuVm): str
     `${p}.effects`,
   ];
   d.feature.effects.forEach((e, k) => {
-    const at = `${p}.effects[${k}]`;
-    out.push(at, `${at}.type`);
-    for (const field of menu.fieldsOf(e.type)) {
-      out.push(`${at}.${field.name}`);
-    }
+    out.push(...effectInputPaths(`${p}.effects[${k}]`, e, menu));
   });
   if (d.feature.summon) {
     out.push(...summonPaths(p));

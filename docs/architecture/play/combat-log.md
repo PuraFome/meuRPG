@@ -103,7 +103,8 @@ The master's `combat_log_changed` carries `full` when the log was rewritten (an 
 That is an optimisation only: the answer is `full` whenever the log was rewritten for that reader.
 A player's `combat_log_changed` never carries `full`: an undo they cannot see must not tell them anything an ordinary change does not.
 An `encounter_changed` hint with no revision may mean a combatant was shown or hidden, so the app reads the whole log then.
-Renaming a creature (`RenameCreature`) and changing the table rules (`SetTableRules`) write no event and send no hint, so a line the app holds keeps the old name until the next read of the whole log.
+Renaming a creature (`RenameCreature`) writes no log event: it tells the combat changed (`encounter_changed`, with the session's number), and the app reads the log again.
+Changing the table rules (`SetTableRules`) writes no event either: it moves the session's number, and the master hears a `combat_log_changed` with `full` for the combat in progress, so the app drops the log it holds and reads from 0 (the rules decide what a line shows: `hideDeath`, `showSaveDC`). A player hears no event of it; their stream shows the number at the next beat.
 
 ## Events
 

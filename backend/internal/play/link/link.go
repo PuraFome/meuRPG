@@ -348,6 +348,8 @@ type Traits struct {
 	// Flags are the closed rules of the game the table's features switch on (flag effects), sorted. The play reads them
 	// only through HasFlag.
 	Flags []string `json:",omitempty"`
+	// Auras are the auras the table's features carry into a combat (aura effects), worked out for the character.
+	Auras []FeatureAura `json:",omitempty"`
 	// SpellCriticalRange is the lowest natural d20 that is a critical hit on a spell attack roll when a table
 	// feature lowers it (critical_range with the spell or both scope, 15 at the least); 0 is 20. The weapon
 	// range is Sheet.CriticalRange.
@@ -369,6 +371,14 @@ type Traits struct {
 	// that give advantage against a creature that has not had its turn yet and make a hit on a
 	// surprised creature critical; empty for none.
 	UnactedAdvantage, SurprisedCritical string
+}
+
+// FeatureAura is an aura a feature carries: the feature's key, the modifiers of the aura (the mark of its radius and
+// side first, as JSON of the rules' modifiers, the bonus from the bearer's ability already a number), who sees it
+// (Visibility, "public" or "owner") and the label the other players read.
+type FeatureAura struct {
+	Source, Visibility, LabelPT string
+	Modifiers                   []byte
 }
 
 // HasFlag says a flag effect of the table's features switches the flag on for the character (rules.FlagNeverSurprised...).

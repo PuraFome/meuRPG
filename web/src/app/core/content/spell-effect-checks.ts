@@ -13,6 +13,16 @@ import {
 
 const RADIUS = /^\d+([.,]\d+)?$/;
 
+/** The fields of a roll row the server may refuse. */
+function rollFields(r: EffectRow): readonly string[] {
+  if (r.rollMode === 'die') {
+    return ['die', 'sign', 'applies_to'];
+  }
+  return r.rollMode === 'ability'
+    ? ['value_ability', 'value_min', 'applies_to']
+    : ['value', 'applies_to'];
+}
+
 /** The field of a row whose text is no number the save can send, or undefined. */
 function unreadableField(r: EffectRow): string | undefined {
   const bad = (text: string) => Number.isNaN(readWhole(text));
@@ -22,13 +32,13 @@ function unreadableField(r: EffectRow): string | undefined {
     case 'check_bonus':
       return bad(r.value) ? 'value' : undefined;
     case 'roll':
-      return r.rollMode === 'die'
-        ? bad(r.die)
-          ? 'die'
-          : undefined
-        : bad(r.value)
-          ? 'value'
-          : undefined;
+      if (r.rollMode === 'die') {
+        return bad(r.die) ? 'die' : undefined;
+      }
+      if (r.rollMode === 'ability') {
+        return bad(r.valueMin) ? 'value_min' : undefined;
+      }
+      return bad(r.value) ? 'value' : undefined;
     case 'speed':
       return (r.speedMode === 'multiply' ? bad(r.percent) : !RADIUS.test(r.speedM.trim()))
         ? 'value'
@@ -132,7 +142,7 @@ export function effectFieldPaths(d: SpellEffectDraft): string[] {
       ac_bonus: ['value'],
       temp_hp: ['value'],
       check_bonus: ['skill', 'value'],
-      roll: r.rollMode === 'die' ? ['die', 'sign', 'applies_to'] : ['value', 'applies_to'],
+      roll: rollFields(r),
       resistance: ['resistance_kind', 'damage_types'],
       speed: ['value'],
       advantage: ['applies_to'],

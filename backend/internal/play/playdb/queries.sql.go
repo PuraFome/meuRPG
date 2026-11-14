@@ -2229,6 +2229,19 @@ func (q *Queries) GetEncounterByID(ctx context.Context, id string) (Encounter, e
 	return i, err
 }
 
+const getEncounterCampaignID = `-- name: GetEncounterCampaignID :one
+SELECT g.campaign_id FROM encounters e JOIN game_sessions g ON g.id = e.game_session_id WHERE e.id = $1
+`
+
+// The campaign a combat is in: a reader of the combat's states that has the combat's ID alone (the auras of a feature
+// need the bearer's hit points, which a campaign holds).
+func (q *Queries) GetEncounterCampaignID(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, getEncounterCampaignID, id)
+	var campaign_id string
+	err := row.Scan(&campaign_id)
+	return campaign_id, err
+}
+
 const getEncounterInSession = `-- name: GetEncounterInSession :one
 SELECT id, game_session_id, map_id, map_point_id, name, status, round, current_combatant_id, grid_columns, grid_rows, revision, created_at, started_at, ended_at, mode, sunlight_on, sunlight_scope, sunlight_squares FROM encounters
 WHERE game_session_id = $1 AND id = $2
@@ -5856,6 +5869,33 @@ func (q *Queries) ListCampaignFavor(ctx context.Context, campaignID string) ([]C
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCampaignSessionIDs = `-- name: ListCampaignSessionIDs :many
+SELECT id FROM game_sessions WHERE campaign_id = $1 ORDER BY session_number
+`
+
+// The ids of the campaign's sessions, answered by the unique index on (campaign_id, session_number) alone: the rows of
+// other campaigns are never read, so a lock another transaction holds on one of them does not make the call wait
+// (CockroachDB makes a plain read of a locked row wait for it, so a lookup by id would).
+func (q *Queries) ListCampaignSessionIDs(ctx context.Context, campaignID string) ([]string, error) {
+	rows, err := q.db.Query(ctx, listCampaignSessionIDs, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -11,6 +11,7 @@ import {
   effectToDraft,
   unreadableNumberPaths,
 } from './effect-draft';
+import { effectInputPaths } from './effect-input-paths';
 import {
   type FeatureDraft,
   ABILITY_FIELDS,
@@ -187,11 +188,7 @@ export function featPaths(d: FeatDraft, menu: EffectMenuVm): string[] {
   }
   d.races.forEach((_, i) => out.push(`${p}.prerequisite.races[${i}]`));
   d.feature.effects.forEach((e, k) => {
-    const at = `${p}.effects[${k}]`;
-    out.push(at, `${at}.type`);
-    for (const field of menu.fieldsOf(e.type)) {
-      out.push(`${at}.${field.name}`);
-    }
+    out.push(...effectInputPaths(`${p}.effects[${k}]`, e, menu));
   });
   d.options.forEach((o, k) => out.push(...featureOwnPaths(`${p}.options[${k}]`, o, menu)));
   return out;

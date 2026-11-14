@@ -38,6 +38,8 @@ import { neverFolded, visibleFields } from '../../core/content/effect-visible';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { CheckGroup, type CheckOption } from '../form-fields/check-group';
 import { CheckRow } from '../form-fields/check-row';
+import { type CatalogVm } from '../../core/content/catalog';
+import { EffectAura } from './effect-aura';
 import { FieldNote } from '../form-fields/field-note';
 import { PickList } from '../form-fields/pick-list';
 import { RadioCards, type RadioCard } from '../form-fields/radio-cards';
@@ -52,10 +54,10 @@ import {
   fieldLabel,
   fieldView,
   fixedHint,
-  fixedMode,
   holdsSomething,
   leftTheMenuChoice,
   listOptions,
+  modeIsFixed,
   modeLockNote,
   refHint,
   refusalTexts,
@@ -88,6 +90,7 @@ import {
     PickList,
     RadioCards,
     SelectField,
+    EffectAura,
     TextField,
   ],
   templateUrl: './effect-picker.html',
@@ -95,6 +98,8 @@ import {
 })
 export class EffectPicker {
   readonly effect = input.required<EffectDraft>();
+  /** The catalog an aura effect's block names skills, damage types and abilities from; without it the block has no lists. */
+  readonly catalog = input<CatalogVm | null>(null);
   readonly menu = input.required<EffectMenuVm>();
   /** "table_race.traits[0].effects[0]": the path the fields' own names are added to. */
   readonly basePath = input.required<string>();
@@ -218,7 +223,7 @@ export class EffectPicker {
   /** Rows the whole width of the effect: the rolls and the scope cards. */
   protected wide(f: EffectMenuField): boolean {
     const v = this.viewOf(f);
-    return v === 'rolls' || (v === 'cards' && f.name === 'applies');
+    return v === 'rolls' || v === 'aura' || (v === 'cards' && f.name === 'applies');
   }
 
   protected readonly resource = computed(() =>
@@ -242,23 +247,17 @@ export class EffectPicker {
     return name === 'at_most' ? 'ou menos' : '';
   }
 
-  /** The mode of a target that fixes it is shown and cannot change; a stored mode that is another one stays free, to be corrected. */
   protected modeLocked(f: EffectMenuField): boolean {
-    const e = this.effect();
-    return f.name === 'mode' && e.mode !== '' && e.mode === fixedMode(this.menu(), e.target);
-  }
-
-  protected countLocked(f: EffectMenuField): boolean {
-    return this.feat.countLocked(f);
+    return modeIsFixed(this.menu(), this.effect(), f.name);
   }
 
   protected locked(f: EffectMenuField): boolean {
-    return this.modeLocked(f) || this.countLocked(f);
+    return this.modeLocked(f) || this.feat.countLocked(f);
   }
 
   /** The reason a locked field is locked, written beside it with its lock. */
   protected lockNote(f: EffectMenuField): string {
-    if (this.countLocked(f)) {
+    if (this.feat.countLocked(f)) {
       return this.feat.countNote();
     }
     return this.modeLocked(f) ? modeLockNote(this.effect()) : '';

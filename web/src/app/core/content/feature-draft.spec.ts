@@ -29,6 +29,7 @@ import {
   unreadableFeaturePaths,
 } from './feature-draft';
 import { emptyEffect } from './effect-draft';
+import { emptyRow } from './spell-effect-draft';
 
 describe('the race, subrace and background forms (E10-01 states 6 and 7)', () => {
   const m = menu();
@@ -363,5 +364,48 @@ describe('unreadableFeaturePaths', () => {
         ),
       ).toEqual(['t.summon.resource_key']);
     });
+  });
+});
+
+describe('the paths of a feature aura (#579)', () => {
+  const aura = () => {
+    const e = emptyEffect('aura');
+    return {
+      ...e,
+      aura: {
+        ...e.aura!,
+        rows: [{ ...emptyRow('roll'), rollMode: 'ability' as const, valueMin: '9' }],
+      },
+    };
+  };
+  const feature = { ...emptyFeature(), effects: [aura()] };
+
+  it('draws its radius, its reach and the fields of its bonus where the server refuses them', () => {
+    const paths = featureOwnPaths('t', feature, menu());
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        't.effects[0].aura',
+        't.effects[0].aura.aura.radius_ft',
+        't.effects[0].aura.aura.affects',
+        't.effects[0].aura.modifiers[0].value_ability',
+        't.effects[0].aura.modifiers[0].value_min',
+      ]),
+    );
+  });
+
+  it('names an unreadable least or radius, so the save waits', () => {
+    const e = aura();
+    const bad = {
+      ...e,
+      aura: {
+        ...e.aura,
+        aura: { radiusM: 'x', affects: 'allies' as const },
+        rows: [{ ...e.aura.rows[0], valueMin: 'um' }],
+      },
+    };
+    expect(unreadableFeaturePaths('t', { ...emptyFeature(), effects: [bad] }, menu())).toEqual([
+      't.effects[0].aura.modifiers[0].value_min',
+      't.effects[0].aura.aura.radius_ft',
+    ]);
   });
 });

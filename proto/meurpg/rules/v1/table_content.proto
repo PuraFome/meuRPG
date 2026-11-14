@@ -437,6 +437,12 @@ message TableEffect {
   // grant_action only: how the action is used in a combat through UseFeature (limit per turn, round or combat,
   // targets, a choice, what it applies). Unset keeps the action on TakeAction.
   FeatureUse use = 88;
+  // aura only, required: the aura the holder carries into every combat it joins, as a table spell's: the
+  // modifiers a roll reads, `aura` (radius and side), the audience and the label. `applies` and `conditions`
+  // are refused. The aura reaches nobody while its bearer is at 0 hit points or incapacitated (unconscious,
+  // paralyzed, stunned, petrified or incapacitated). A level that widens it is a second aura effect with a
+  // `when` for each size: the first whose `when` holds is the one carried.
+  TableSpellEffect aura = 92;
   // power_attack: a trade the player may make on a weapon attack, `attack_penalty` (1 to 10) off the
   // attack roll for `damage_bonus` (1 to 20; weapon_rule shares the field) added to the damage of a hit.
   // Both are required. `weapon` is "any" (the default), "melee" or "ranged";
@@ -1316,6 +1322,12 @@ message TableEffectModifier {
   // WEAPON_HIT_DAMAGE only: how long the `on_fail_conditions` last. Unset is until the end of the target's
   // next turn. Needs `save`.
   TableHitConditionDuration condition_duration = 18;
+  // ROLL_BONUS only: the ability key ("str", "dex", "con", "int", "wis", "cha") whose modifier is the bonus,
+  // read from the bearer of the effect when it is put on. Replaces `value`, which is then 0. Only a feature's
+  // aura has one.
+  string value_ability = 19 [(meurpg.options.v1.max_len) = 16];
+  // ROLL_BONUS with `value_ability` only: the least the bonus is, 1 to 5 (Aura of Protection: at least +1).
+  int32 value_min = 20;
 }
 
 // TableZoneTrigger is when a table spell's area catches a creature.
