@@ -23,6 +23,7 @@ import { degreeWord, sourceWord } from './cover';
 import { hpCastText } from './combat-log-hp-cast';
 import { LogContext, LogRoll, PoolCard } from './combat-log-types';
 import { inThe, pushText, the } from './combat-log-words';
+import { powerAttackNote } from './power-attack-text';
 
 /** Whether the attack is made from afar, so the sentence says "atira". */
 function isShot(key: string): boolean {
@@ -139,6 +140,7 @@ export function attackText(e: CombatLogEntry): string {
   let out = ` ${verb}${weapon}${opportunity}: ${e.outcome === AttackOutcome.CRITICAL_HIT ? 'crítico' : e.outcome === AttackOutcome.MISS ? 'errou' : 'acertou'}`;
   out += coverNote(e);
   out += bonusDiceNote(e);
+  out += powerAttackNote(e.powerAttack);
   if (e.stoppedByReaction) {
     return `${out}, o Escudo Arcano segurou`; // the outcome is already "errou"
   }

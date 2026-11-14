@@ -1341,6 +1341,8 @@ func (e *logEntry) fillAttack(c *logViewing, out *playv1.CombatLogEntry) bool {
 	if c.dice {
 		e.attackDice(out, v)
 	}
+	// The trade the attack made: its feature and numbers are the dice's audience.
+	out.PowerAttack = e.ev.PowerAttack.logView(c.dice)
 	if len(e.stopped) > 0 || len(e.parried) > 0 { // Escudo or a Parry stopped it: a miss, with no damage
 		out.Outcome = playv1.AttackOutcome_ATTACK_OUTCOME_MISS
 		out.StoppedByReaction = len(e.stopped) > 0 || v.master // a player is not told a reaction did it (RN-20)

@@ -1,5 +1,6 @@
 import { DamageStepKind } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { damageNotes } from './combat-log-attack';
+import { AttackOutcome } from '../../../gen/meurpg/play/v1/combat_pb';
+import { attackText, damageNotes } from './combat-log-attack';
 
 describe('damageNotes for a damage reduction step', () => {
   const damage = (labelPt: string, ignored = false) =>
@@ -63,5 +64,41 @@ describe('damageNotes for a typed damage-type group', () => {
       damage([part({ partKey: 'a', sum: 6 }), part({ partKey: 'b', labelPt: 'Gume', flat: 2 })]),
     );
     expect(notes[1]).toBe('Gume 1d4 + 2 = 2');
+  });
+});
+
+describe('attackText with a power attack', () => {
+  const entry = (powerAttack: object | undefined) =>
+    ({
+      targetLabel: 'Goblin',
+      key: 'equipment:greatsword',
+      keyNamePt: 'Montante',
+      outcome: AttackOutcome.MISS,
+      bonusDice: [],
+      powerAttack,
+    }) as never;
+
+  it('tells the attacker and the master the trade with the numbers and a true minus', () => {
+    expect(
+      attackText(entry({ key: 'feat:golpe@mesa', namePt: 'Golpe', penalty: 5, damageBonus: 10 })),
+    ).toContain(': errou, com ataque poderoso (−5 no ataque, +10 no dano)');
+  });
+
+  it('tells another player that a trade was made, without the numbers', () => {
+    const text = attackText(entry({ key: '', namePt: 'Golpe', penalty: 0, damageBonus: 0 }));
+    expect(text).toContain(': errou, usou um ataque poderoso');
+    expect(text).not.toMatch(/\d/);
+  });
+
+  it('tells another player the same when the master hid the feature', () => {
+    const text = attackText(
+      entry({ key: '', namePt: 'Outra fonte', penalty: 0, damageBonus: 0, hidden: true }),
+    );
+    expect(text).toContain(': errou, usou um ataque poderoso');
+    expect(text).not.toContain('Outra fonte');
+  });
+
+  it('adds nothing to an attack that made no trade', () => {
+    expect(attackText(entry(undefined))).toMatch(/errou$/);
   });
 });

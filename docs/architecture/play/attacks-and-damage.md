@@ -32,9 +32,34 @@ A replay refused because the pool changed is dropped, and only the master reads 
 A natural 1 still misses, and a critical hit does not double the die.
 The die counts as an extra die for Stroke of Luck: the question comes blind, before the die is known.
 An opportunity attack and an attack as a reaction take the die like any other.
-`GetTurnOptionsResponse.maneuver_dice` lists those dice for a player's character, each with the name of its resource pool and the uses left. `GetTurnOptions` reads the character's sheet and vitals once (`turnReads`, `combat_turn_reads.go`) for Metamagic, the table's cast options and these dice, and the dice read neither when none fits. The web tells two pools apart by `RollDie.resource`, never by name.
+`GetTurnOptionsResponse.maneuver_dice` lists those dice for a player's character, each with the name of its resource pool and the uses left. `GetTurnOptions` reads the character's sheet and vitals once (`turnReads`, `combat_turn_reads.go`) for Metamagic, the table's cast options, the power attacks list and these dice, and the dice read neither when none fits. The web tells two pools apart by `RollDie.resource`, never by name.
 A die with no use left stays listed with `uses_left` 0.
 An NPC gets none.
+
+`RollAttackRequest.power_attack_key` makes the trade of a `power_attack` effect ([Rules: table content](../rules-table-content.md)) on a weapon attack of the player's own character.
+The server checks the key against the character's own power attacks, whatever the screen listed.
+It refuses an NPC attacker, a spell attack, a key the character has not and a weapon the effect's filter does not accept (`invalid_argument`; the filter's reason, in Portuguese, is the text).
+It refuses a trade whose resource has no use left (`NO_USES_LEFT`).
+A maneuver die and a trade that spend the same resource need two uses, and with fewer the attack is refused with `NO_USES_LEFT` before anything is spent.
+Every refusal comes before anything is written.
+The effect's attack penalty comes off the roll's bonus, so the roll's modifier, its total and a held roll's offer all count it.
+A natural 20 still hits and a natural 1 still misses.
+A held roll keeps the bonus it was made with, so the answer's replay counts the penalty once.
+A request the server keeps for a roll that waits (a Lucky, Bardic Inspiration or Stroke of Luck question, a reaction window) also keeps the trade's name, penalty, flat damage and resource (`power_attack_pin`).
+The replay and the answer use those numbers for the roll, the event's marker and the damage part, whatever the master edits in the feature's penalty, damage or resource meanwhile.
+The feature itself and its weapon filter are read from the sheet again on the replay, so a feature removed or a filter changed between the hold and the answer refuses the answer (a window's replay is dropped).
+A caller's own `power_attack_pin` is cleared.
+The checks, the resource's included, run again on the replay of a held roll, and a replay they refuse (the pool was spent meanwhile) is dropped.
+One use of the effect's resource is spent when the attack is written, and a held roll spends it on the replay.
+The master's undo gives the use back.
+The attack's event keeps the trade (`key`, `name`, `penalty`, `damage_bonus`), so a resend finds the same and applies nothing twice.
+`AttackOption.power_attacks` lists, on each weapon line of a player's character, the trades whose filter accepts that line (`key`, `name`, `penalty`, `damage_bonus`).
+A spell line, a line the filter refuses and an NPC list none.
+A feature lists one trade, whatever its content holds: the first `power_attack` effect of a key that is listed stands (an effect left out for a resource the character lacks does not count).
+A trade whose resource has no use left is listed with `disabled` and `disabled_reason_pt`; the roll refuses it with `NO_USES_LEFT`.
+A druid in a beast form keeps their power attacks, and the filter reads the beast's attack lines: natural attack lines of the stat block, melee or ranged, with no weapon property, and proficient.
+A trade that asks only for melee fits a melee line of the beast, one that names a weapon property (as heavy) fits none, and `only_proficient` does not exclude a beast's line.
+On Deflect Missiles' throw back the missile has no line on the sheet and is not marked proficient, so a trade with no weapon filter goes on it, while a trade with `only_proficient` is refused (`invalid_argument`, "sem proficiência") and spends no use.
 
 `RollDamage` rolls the damage dice (on a critical as the table rule says; the modifier once; the attack's type) or validates the typed sum (`dice.Physical`, from N to N × faces).
 
@@ -165,7 +190,8 @@ A hit with more than the weapon opens `PendingDamage.parts[]`:
 
 - the weapon;
 - the **offered** extras (Sneak Attack, Divine Smite with the slot to spend, Hunter's Mark, Colossus Slayer); a line that cannot be chosen is disabled and says why;
-- the **automatic** lines (Rage's bonus, only on a melee Strength weapon attack; Improved Divine Smite; Dueling; Brutal Critical through `automaticLines`; the damage a spell left on the caster's hits, [below](#a-spells-hit-effect)).
+- the **automatic** lines (Rage's bonus, only on a melee Strength weapon attack; Improved Divine Smite; Dueling; Brutal Critical through `automaticLines`; the damage a spell left on the caster's hits, [below](#a-spells-hit-effect));
+- the power attack's flat damage, when the attack made the trade ([below](#a-power-attacks-damage)).
 
 A critical doubles the dice of every part (or follows the table's "maximum plus a roll"), never the fixed numbers (SRD 5.1 "Critical Hits").
 In the app the server rolls every part; with physical dice the player types a sum for each part (`typed_parts[]`).
@@ -183,6 +209,27 @@ The attack sheet sends a `damage_type` entry for every damage type it types, one
 A held roll and its replay read the same request, so a group rolls the same way there.
 Divine Smite's extra die against an undead or fiend is rolled as its own part and only counts when the target is one: the player sees "+1d8" and never why, and the damage a player reads on an NPC is the damage as rolled (`damageHit.Shown`), so the total says nothing either.
 The `extra_damage` effect of a table feature ([Rules: table content](../rules-table-content.md#extra-damage)) is one more choosable extra after a weapon hit by a player's character: a fixed damage and/or dice, of the feature's damage type or the weapon's. The dice are a part like a maneuver's die (`partRecord.Count` and `Sides`), rolled in the app or typed per part, and a critical hit doubles them (`partCriticalDice`) unless the feature keeps them (`partRecord.NoCrit`); the fixed damage never doubles. Each part lands in `byType` under its own damage type, so a resistance takes only that line. It is listed off, with its reason, when the target is not larger (the sizes are public), when the weapon is of the other kind (melee or ranged; a thrown weapon at range is ranged), when it was used this turn (only for `once_per_turn`) or when the resource has no use left; marking it spends a use and the rider is the master's alone. The once-per-turn mark is kept by feature key in `combatants.feature_state` ([Feature state](feature-state.md)), and the master's undo puts it and the use back. `each_hit` sets no mark. It is not a maneuver: the one-maneuver-per-attack limit does not count it.
+
+### A power attack's damage
+
+A hit whose attack made the trade of a `power_attack` effect writes one automatic part, `power_attack`, at the time of the hit.
+The part is flat, has no dice and cannot be chosen.
+Its label is the feature's name, its source is the feature's key and its damage type is the weapon's.
+A miss writes no part.
+The part counts in the total and in the damage of its type, so a resistance of the target takes its share.
+A critical hit never doubles it.
+A held roll's replay writes it once, and undoing the attack or the damage removes it with the rest.
+The master's `RemoveDamagePart` does not take it out.
+The attack's event keeps `hidden` when the feature was retired or switched off when the attack was made.
+What each viewer reads (RN-10; `TestAPowerAttackIsTheAttackersAndTheMastersAlone`):
+
+- the master and the attacker's player read the feature's name, key, flat number and the penalty;
+- another player reads the part's label (the feature's name, or "Outra fonte" when the feature is hidden) and never its flat number, key or reason, nor those of its roll;
+- the damage total another player reads is the damage as rolled, so it includes the bonus, like the hit effect of a spell.
+
+The attack's line in the log tells another player only "usou um ataque poderoso", hidden feature or not.
+The name another player reads (the feature's, or "Outra fonte") is in the damage part's label and in the log marker's `name_pt`, and the app prints neither in the log line.
+The feature is hidden from the moment of the attack, so a later change by the master does not alter what the attack's damage and log say.
 
 Sneak Attack and Colossus Slayer are once per turn (the keys `sneak_attack` and `colossus_slayer` of `combatants.feature_state`); Hunter's Mark follows the caster's concentration (`combatant_states`).
 Great Weapon Fighting rerolls 1s and 2s once, shown on the part.

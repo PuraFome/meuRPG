@@ -94,7 +94,8 @@ type partRecord struct {
 	NoCrit bool `json:"no_crit,omitempty"`
 	// Effect is the row of the spell's effect a part of Table "hit_effect" is the damage of (combat_hit_effects.go).
 	Effect string `json:"effect,omitempty"`
-	// Hide says the effect of that row is not the other players' to read (the master hides it, or it is the owner's).
+	// Hide says the source is not the other players' to read: a spell's effect the master hides or that is the owner's, or the
+	// feature of a power attack the master retired or switched off (they read "Outra fonte").
 	Hide bool `json:"hide,omitempty"`
 }
 
@@ -122,7 +123,8 @@ type partRoll struct {
 	Resource string `json:"resource,omitempty"`
 	Rider    string `json:"rider,omitempty"`
 	// Effect (the effect row's id) and Hide are those of the part of a spell's hit effect (partRecord): the others read
-	// neither its dice nor, when it is hidden, its name or key.
+	// neither its dice nor, when it is hidden, its name or key. Hide is also a power attack's: the others read "Outra fonte"
+	// and no number.
 	Effect string `json:"effect,omitempty"`
 	Hide   bool   `json:"hide,omitempty"`
 	// Group is the damage type whose typed sum covered this part (typedGroups); the sum sits on one part of the group, and
@@ -241,6 +243,8 @@ type hitFacts struct {
 	// planned are the damage parts of a creature's attack after its first, from the stat block's plan
 	// (plannedParts): each rolls with its own type.
 	planned []partRecord
+	// power is the trade the attack made, when it made one: the flat part of its damage.
+	power *powerAttackEvent
 }
 
 // scene is the rules' ExtraScene for the hit.
@@ -311,7 +315,7 @@ func (h hitFacts) buildParts() []partRecord {
 	autos := automaticLines(scene)
 	reroll := h.sheet.Traits.GreatWeaponFighting && h.attack.Weapon && h.attack.Melee && h.attack.TwoHanded
 	maneuvers := append(append(h.maneuverParts(), h.extraDamageParts()...), h.hitEffectParts()...)
-	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 {
+	if len(extras) == 0 && len(autos) == 0 && !reroll && len(maneuvers) == 0 && len(h.planned) == 0 && h.power == nil {
 		return nil
 	}
 	weapon := h.weaponPart(reroll)
@@ -319,6 +323,9 @@ func (h hitFacts) buildParts() []partRecord {
 	out := []partRecord{weapon}
 	out = h.appendExtras(out, extras, partExtra)
 	out = h.appendExtras(out, autos, partAuto)
+	if h.power != nil { // a miss opens no damage, so only a hit that made the trade reaches here
+		out = append(out, h.power.powerPart(h.attack.DamageType))
+	}
 	out = append(out, h.planned...)
 	return append(out, maneuvers...)
 }
@@ -528,6 +535,9 @@ func shownPartOf(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRule
 
 // partProto is one stored part as a viewer reads it.
 func partProto(sp partRecord, p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) *playv1.DamagePart {
+	if sp.Table == tablePowerAttack && !reads { // the trade's feature and number are its attacker's and the master's (RN-10): before the dice are worked out, so no number is left in the flat
+		sp = powerPartForOthers(sp)
+	}
 	sh := shownPartOf(sp, p, rule, reads)
 	return &playv1.DamagePart{
 		Key: sh.key, LabelPt: sh.label, DiceCount: clamp32(sh.count, 0, 200), DiceSides: sh.sides, Flat: sp.Flat + clamp32(sh.fixed, 0, 10000),
@@ -549,11 +559,8 @@ func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT fun
 		if r.Conditional && !master {
 			r.Counted = true // a player reads the same lines whatever the target is
 		}
-		if r.Effect != "" && !reads {
-			r = hitRollForOthers(r)
-		}
-		if r.GroupHidden && !reads { // the group's sum holds a part they may not read: it is not theirs under another row
-			r.Sum = 0
+		if !reads {
+			r = rollForOthers(r)
 		}
 		pr := partRollProto(r, damageTypePT)
 		if master {
@@ -562,6 +569,35 @@ func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT fun
 		out = append(out, pr)
 	}
 	return out
+}
+
+// rollForOthers is what a part rolled as the players who are neither the master nor the attacker's owner read it.
+func rollForOthers(r partRoll) partRoll {
+	if r.Effect != "" {
+		r = hitRollForOthers(r)
+	}
+	if r.GroupHidden { // the group's sum holds a part they may not read: it is not theirs under another row
+		r.Sum = 0
+	}
+	if r.Key == partPowerAttack {
+		r = powerRollForOthers(r)
+	}
+	return r
+}
+
+// powerPartForOthers is the power attack's part as a player who is neither the master nor the attacker's owner reads it:
+// the feature's name, or "Outra fonte" when the master hid it, and no key, number or reason (RN-10).
+func powerPartForOthers(sp partRecord) partRecord {
+	sp.Label, sp.Flat, sp.Reason, sp.Note = powerNameForOthers(sp.Hide, sp.Source, sp.Label), 0, "", ""
+	sp.Source = ""
+	return sp
+}
+
+// powerRollForOthers is what the power attack's part rolled as the same players read it: the name and no number.
+func powerRollForOthers(r partRoll) partRoll {
+	r.Label = powerNameForOthers(r.Hide, r.Key, r.Label)
+	r.Flat, r.Fixed, r.Sum = 0, 0, 0
+	return r
 }
 
 // hitRollForOthers is what a spell's hit part rolled as the players who are not the attacker's read it: the amount,
@@ -1194,7 +1230,7 @@ func freeSmiteSlots(v *playv1.CharacterVitals) []*playv1.SlotOption {
 // hitParts works out the parts of the hit of a weapon attack and stores them on the
 // pending damage the attack opened. A hit with no extra and no automatic line has none.
 func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, v combatViewer, in attackModeInputs, attacker, target playdb.Combatant,
-	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, disadvantaged, opportunity bool, pendingID string,
+	sheet link.Sheet, attack link.Attack, weaponBonus int, mode combat.RollMode, disadvantaged, opportunity bool, pendingID string, power *powerAttackEvent,
 ) error {
 	if !attack.Weapon {
 		return nil
@@ -1205,7 +1241,7 @@ func (s *Service) hitParts(ctx context.Context, c *combatTx, campaignID string, 
 	}
 	h := hitFacts{
 		attacker: attacker, target: target, sheet: sheet, attack: attack, weaponBonus: weaponBonus, mode: mode, disadvantaged: disadvantaged,
-		cs: in.cs, states: in.states, enc: c.enc, viewer: v, names: names, opportunity: opportunity,
+		cs: in.cs, states: in.states, enc: c.enc, viewer: v, names: names, opportunity: opportunity, power: power,
 	}
 	if h.targetHurt, err = s.isHurt(ctx, c, campaignID, target); err != nil {
 		return err

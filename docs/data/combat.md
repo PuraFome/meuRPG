@@ -251,6 +251,9 @@ The damage of a strike that hit, from the d20 to the end (MR-012, MR-014).
   All are **copied from the sheet** when the strike hits, so changing the sheet later does not touch an open roll.
   Zero dice is a fixed number.
 - Result: `faces`, `physical` and `amount` are what was rolled (or the typed sum), `NULL` until rolled; `amount` counts a table's roll minimum on the dice, and `faces` keep what came up; `damage_type` is the content key (`damage-type:fire`); `parts`, `part_rolls`, `steps` (the resistance, vulnerability and immunity steps per damage type) and `after_steps` hold the breakdown; `landed_before` is an NPC's HP before the damage, to give back what a removed extra took; `taken` is what landed after temporary HP absorbed its share (a cast's rows for one target add up to the concentration save's damage, RN-22; an undo clears it); `applied_amount` is what the master applied when it was not `amount`.
+- Power attack: the `parts` of a hit that made a power attack hold an automatic part with the key and the table `power_attack`, a flat `flat`, the feature's key as `source` and `hide` when the feature was hidden at the hit.
+  Its `part_rolls` entry holds the same flat number.
+  The attack's event holds the trade as `power_attack` (`key`, `name`, `penalty`, `damage_bonus`, `hidden`).
 - Counted dice: `counted_dice` (`JSONB NOT NULL DEFAULT '[]'`) lists the dice of a damage with no parts of its own that a table's `roll_minimum` raised, as `{i, face, to, source_key}`: the index in `faces`, what the die showed, what it counts as and the content key of the feature.
   It is `[]` when no die was raised.
   The damage of a hit with parts keeps the same in each part of `part_rolls`.

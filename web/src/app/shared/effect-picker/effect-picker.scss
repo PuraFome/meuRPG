@@ -146,3 +146,30 @@
     color: var(--mr-accent-text);
   }
 }
+
+.kept {
+  margin: 0 0 var(--mr-space-3);
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--mr-space-2);
+    font-size: var(--mr-font-15);
+    line-height: 22px;
+  }
+
+  dt {
+    color: var(--mr-ink-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  &__note {
+    margin: 0 0 var(--mr-space-3);
+    font-size: var(--mr-font-15);
+    color: var(--mr-ink-muted);
+  }
+}
