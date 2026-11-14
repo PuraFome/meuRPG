@@ -41,7 +41,7 @@ test('um jogador usa uma característica com alvo e o mestre usa uma com opção
     await mark.locator('label', { hasText: 'Goblin 1' }).click();
     await mark.getByRole('button', { name: 'Usar no Goblin 1' }).click();
     await expect(mark).toHaveCount(0);
-    await expect(groups.getByText(/Marca de Teste usada/)).toBeVisible();
+    await expect(groups.getByText(/Uso de Marca de Teste: 2 PV temporários/)).toBeVisible();
 
     // The server's count: the bonus action is spent, so the row waits in the spent group, off, with the limit of the combat at 0.
     const spent = await openSpentGroup(p, 'Ação bônus');
@@ -61,7 +61,9 @@ test('um jogador usa uma característica com alvo e o mestre usa uma com opção
     await element.getByRole('button', { name: 'Gelo', exact: true }).click();
     await element.getByRole('button', { name: 'Usar: Gelo' }).click();
     await expect(element).toHaveCount(0);
-    // The player's own log carries the master's use, in the user's words, with the numbers.
+    // The master's own log (the fold "Registro" of the rail) says it, with the numbers; the player's carries it too.
+    await m.getByRole('heading', { name: 'Registro' }).getByRole('button').click();
+    await expect(m.getByRole('log', { name: 'Registro do combate' }).getByText(/Pensantus usou Elemento de Teste: Gelo, 3\sPV\stemporários\s\(pelo mestre\)/)).toBeVisible();
     await expect(log.getByText(/Pensantus usou Elemento de Teste/)).toBeVisible();
     await expect(m.getByRole('button', { name: 'Usar Elemento de Teste' })).toBeDisabled();
 
