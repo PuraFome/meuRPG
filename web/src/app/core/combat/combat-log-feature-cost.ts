@@ -23,22 +23,21 @@ function economyText(economy: FeatureEconomy): string {
   }
 }
 
-/** "(restam 2)", and "(restam 2 de 3)" once the entry says the most: the one place that writes what is left. */
+/** "(restam 2 de 3)": what is left of how many; `''` when the entry has no most (the line then has no parenthesis). */
 function leftText(f: FeatureCostFields): string {
-  const of = f.resourceMax > 0 ? ` de ${f.resourceMax}` : '';
-  return `(restam ${f.resourceLeft}${of})`;
+  return f.resourceMax > 0 ? ` (restam ${f.resourceLeft} de ${f.resourceMax})` : '';
 }
 
 /**
  * "1 uso de Forma Selvagem (restam 2 de 3)": the resource spent. A use limited only by its scope has no name ("1 uso (restam 1 de
- * 2)"); with no name and no limit the server sent no resource at all.
+ * 2)"); with no name and no most the server sent no resource at all.
  */
 function resourceText(f: FeatureCostFields): string {
   if (!f.resourceNamePt && f.resourceMax <= 0) {
     return '';
   }
   const name = f.resourceNamePt ? ` de ${f.resourceNamePt}` : '';
-  return `1 uso${name} ${leftText(f)}`;
+  return `1 uso${name}${leftText(f)}`;
 }
 
 /**
