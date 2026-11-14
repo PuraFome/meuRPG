@@ -631,7 +631,7 @@ func (s *Service) planPlayerMove(ctx context.Context, a *moveAttempt) error {
 		all:     occupantsFor(a.cs, a.target, combatViewer{master: true}),
 		mover:   a.mover,
 		origin:  squareOfCombatant(a.target),
-		leftDFt: movementLeftAtDFt(a.target, grid.SurfaceFloor) / a.factor, // the path that fits (a jump's: on foot): a drag costs twice its length
+		leftDFt: a.movementBudgetDFt() / a.factor, // the path that fits (a jump's: on foot): a drag costs twice its length
 	}
 	switch a.req.jump {
 	case playv1.JumpKind_JUMP_KIND_LONG:
@@ -646,7 +646,11 @@ func (s *Service) planPlayerMove(ctx context.Context, a *moveAttempt) error {
 // know of is in the way or the path costs more than they have, and cut short by
 // what they do not know of.
 func (a *moveAttempt) planWalk(p playerPlan) error {
-	if a.req.legendary == "" { // a legendary move has its own budget: a share of a fresh speed
+	switch {
+	case a.readied != nil: // a readied move has its own budget: each fresh speed, held to the move it readied
+		p.mover = withSpeedsOf(p.mover, readiedSpeedsOf(a.target, a.readied.row.MoveFt), a.factor)
+		p.leftDFt = mostLeftDFt(*p.mover.Speeds)
+	case a.req.legendary == "": // a legendary move has its own budget: a share of a fresh speed
 		p.mover = withSpeeds(p.mover, a.target, a.factor)
 		p.leftDFt = mostLeftDFt(*p.mover.Speeds) // the circle; the speed of each surface is checked step by step
 	}
@@ -754,7 +758,7 @@ func (a *moveAttempt) planHighJump(p playerPlan) error {
 // and squares marked "Não dá para passar"; a move past what is left is refused (TOO_FAR) and the master
 // decides to force it. Out of turn, for a player's character and when forced, the master's move stays
 // free and unlimited: it puts a token right. A readied move (ready_answer.go) pays its way whoever moves
-// it, a player's character too, within the move it readied.
+// it, a player's character too, within its own budget (readiedSpeedsOf): each fresh speed, held to the move it readied.
 func (a *moveAttempt) paysItsWay() bool {
 	if a.readied != nil { // a readied move walks its way whoever moves it
 		return true
@@ -1046,7 +1050,7 @@ func (s *Service) GetMoveOptions(
 	if err != nil {
 		return nil, s.dbError(ctx, "work out what the player sees", err)
 	}
-	who, sight, err := s.moverToPlan(ctx, m, d, v, sight, combID)
+	who, sight, readied, err := s.moverToPlan(ctx, m, d, v, sight, combID)
 	if err != nil {
 		return nil, err
 	}
@@ -1056,7 +1060,7 @@ func (s *Service) GetMoveOptions(
 		return connect.NewResponse(&playv1.GetMoveOptionsResponse{MovementLeftDft: clamp32(movementLeftAtDFt(who, grid.SurfaceFloor), 0, math.MaxInt32), Flier: flies(who)}), nil
 	}
 	jump := req.Msg.GetJump()
-	out, err := s.moveOptionsOn(ctx, m, d, v, sight, who, jump)
+	out, err := s.moveOptionsOn(ctx, m, d, v, sight, moverOption{who: who, readied: readied}, jump)
 	if err != nil {
 		return nil, err
 	}
@@ -1071,40 +1075,57 @@ func (s *Service) GetMoveOptions(
 
 // moverToPlan finds the combatant whose moves are asked, which the caller may act for, and
 // checks that the combat is one it can move in now: not ended and, for a player, running, on
-// the combatant's turn and with the character on its feet. It returns the fog of the master's
-// view too.
-func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, sight *fogSight, combID string) (playdb.Combatant, *fogSight, error) {
+// the combatant's turn (or in its open READIED move window) and with the character on its feet. It returns the
+// fog of the master's view too, and the readied move whose window is open for the combatant, if any.
+func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, sight *fogSight, combID string) (playdb.Combatant, *fogSight, *playdb.ReadiedAction, error) {
 	enc := d.enc
 	who, err := findCombatant(d.cs, combID, v)
 	if err != nil {
-		return who, sight, err
+		return who, sight, nil, err
 	}
 	if err := v.mayAct(who); err != nil {
-		return who, sight, err
+		return who, sight, nil, err
 	}
 	if sight == nil && v.master { // the master's warning follows the same fog rule as the real offers
 		if sight, err = s.fogSightOf(ctx, m.CampaignID, enc); err != nil {
-			return who, sight, s.dbError(ctx, "work out what the players see", err)
+			return who, sight, nil, s.dbError(ctx, "work out what the players see", err)
 		}
 	}
 	if err := notEnded(enc); err != nil {
-		return who, sight, err
+		return who, sight, nil, err
 	}
-	if v.master {
-		return who, sight, nil
+	readied, err := s.openReadiedMove(ctx, d, who)
+	if err != nil || v.master {
+		return who, sight, readied, err
 	}
 	switch {
 	case enc.Status != statusActive:
-		return who, sight, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-	case !actsNow(enc, who):
-		return who, sight, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
+		return who, sight, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
+	case !actsNow(enc, who) && readied == nil:
+		return who, sight, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 	}
-	return who, sight, s.mustNotBeDown(ctx, nil, m.CampaignID, who)
+	return who, sight, readied, s.mustNotBeDown(ctx, nil, m.CampaignID, who)
+}
+
+// moverOption is the combatant whose moves GetMoveOptions works out, and the readied move whose window is open for it.
+type moverOption struct {
+	who     playdb.Combatant
+	readied *playdb.ReadiedAction
+}
+
+// speeds are the speeds the move walks at: a readied move's own budget (readiedSpeedsOf) while its window is open,
+// else the turn's.
+func (o moverOption) speeds() grid.Speeds {
+	if o.readied != nil {
+		return readiedSpeedsOf(o.who, o.readied.MoveFt)
+	}
+	return speedsOf(o.who)
 }
 
 // moveOptionsOn works out the squares the combatant on the map can go to, or land on with
 // a long jump.
-func (s *Service) moveOptionsOn(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, sight *fogSight, who playdb.Combatant, jump playv1.JumpKind) (*playv1.GetMoveOptionsResponse, error) {
+func (s *Service) moveOptionsOn(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, sight *fogSight, o moverOption, jump playv1.JumpKind) (*playv1.GetMoveOptionsResponse, error) {
+	who := o.who
 	if !placed(who) {
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_PLACED, "the combatant is not on the map yet")
 	}
@@ -1126,11 +1147,14 @@ func (s *Service) moveOptionsOn(ctx context.Context, m authz.Membership, d *enco
 	switch jump {
 	case playv1.JumpKind_JUMP_KIND_UNSPECIFIED:
 	case playv1.JumpKind_JUMP_KIND_LONG:
+		if o.readied != nil && !actsNow(d.enc, who) { // a readied move is a walk: MoveCombatant takes no jump in its window
+			return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "a readied move does not jump")
+		}
 		return jumpOptions(planOn(v, terrain, known), who, mover, occupantsFor(d.cs, who, v)), nil
 	default:
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("jump must be unset or LONG: a high jump moves nobody"))
 	}
-	out, err := s.moveOptionsWithDrag(ctx, planOn(v, terrain, known), d.cs, who, mover, v)
+	out, err := s.moveOptionsWithDrag(ctx, planOn(v, terrain, known), d.cs, o, mover, v)
 	if err != nil {
 		return nil, s.dbError(ctx, "work out the drag", err)
 	}
@@ -1173,10 +1197,10 @@ func jumpOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ gri
 // moveOptions works out where the combatant can go in one straight move: the
 // squares it reaches with what is left of its movement and the squares inside
 // that circle that it cannot go to, with the reason. occ is who the mover plans
-// around (with the fog of war: the ones it sees).
-func moveOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, occ grid.OccupantMap, div int) *playv1.GetMoveOptionsResponse {
+// around (with the fog of war: the ones it sees), and sp the speeds the move walks at (optionSpeeds).
+func moveOptions(t grid.Terrain, who playdb.Combatant, mover grid.Mover, sp grid.Speeds, occ grid.OccupantMap, div int) *playv1.GetMoveOptionsResponse {
 	from := squareOfCombatant(who)
-	mover = withSpeeds(mover, who, div)
+	mover = withSpeedsOf(mover, sp, div)
 	// The lead is what is left at the speed of the surface the mover stands on (on what the viewer knows of it); the circle is the
 	// most it has left on any surface, and each square says what is left once it is there.
 	left := mover.Speeds.LeftAt(t.Surface.Get(from.Col, from.Row))

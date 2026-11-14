@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"math"
 	"slices"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 // readyTriggerMax is the longest trigger, in characters once trimmed (readied_actions_trigger_valid).
@@ -219,10 +219,10 @@ func (f *readyFlow) insert(ctx context.Context) (playdb.ReadiedAction, error) {
 	return row, nil
 }
 
-// readyMoveFt is the speed a readied move may go, in feet: the combatant's speed now, without this turn's Dash.
+// readyMoveFt is the speed a readied move may go, in feet: the most of the combatant's speeds on any surface, as at the
+// start of a turn (nothing spent, no Dash).
 func readyMoveFt(who playdb.Combatant) int32 {
-	who.Dashed = false
-	return clamp32(speedOnDFt(who, grid.SurfaceFloor)/dftPerFt, 0, math.MaxInt32)
+	return clamp32(mostLeftDFt(freshSpeedsOf(who))/dftPerFt, 0, math.MaxInt32)
 }
 
 // errReadyAction refuses an action Ready cannot hold.

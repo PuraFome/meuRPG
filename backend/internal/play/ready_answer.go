@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"slices"
 
 	"connectrpc.com/connect"
@@ -420,6 +419,27 @@ func (s *Service) readiedMoveOf(ctx context.Context, a *moveAttempt) error {
 	return s.mustReactNowOrOnTurn(ctx, a.c, a.target)
 }
 
+// openReadiedMove is the readied move of who whose READIED window is open while it is not on its turn, if any:
+// GetMoveOptions then works out the move at that move's own budget, as MoveCombatant walks it (readiedMoveOf).
+func (s *Service) openReadiedMove(ctx context.Context, d *encounterData, who playdb.Combatant) (*playdb.ReadiedAction, error) {
+	if actsNow(d.enc, who) || !slices.ContainsFunc(d.readied, func(r playdb.ReadiedAction) bool { return r.CombatantID == who.ID && r.Kind == readiedMove }) {
+		return nil, nil
+	}
+	open, err := s.queries.ListOpenReactionWindows(ctx, d.enc.ID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the reaction windows", err)
+	}
+	for _, w := range open {
+		if reaction.Kind(w.Kind) != reaction.Readied || conv.OrZero(w.ReactorID) != who.ID {
+			continue
+		}
+		if i := slices.IndexFunc(d.readied, func(r playdb.ReadiedAction) bool { return r.ID == windowTriggerOf(w).Readied && r.Kind == readiedMove }); i >= 0 {
+			return &d.readied[i], nil
+		}
+	}
+	return nil, nil
+}
+
 // spendReadiedMove spends the reaction of a readied move and writes its use.
 func (s *Service) spendReadiedMove(ctx context.Context, a *moveAttempt) error {
 	if a.readied == nil {
@@ -432,12 +452,9 @@ func (s *Service) spendReadiedMove(ctx context.Context, a *moveAttempt) error {
 	return a.readied.spend(ctx, a.c, a.target, &a.made)
 }
 
-// readiedMoveDFt is what a readied move may walk, in tenths of a foot: the speed it had at Ready, and no more than its
-// speed now (a grappled readier has none).
+// readiedMoveDFt is the most a readied move may walk on any surface, in tenths of a foot (readiedSpeedsOf).
 func (a *moveAttempt) readiedMoveDFt() int {
-	fresh := a.target
-	fresh.MovementUsedDft, fresh.Dashed = 0, false
-	return min(movementLeftAtDFt(fresh, grid.SurfaceFloor), int(a.readied.row.MoveFt)*dftPerFt)
+	return mostLeftDFt(readiedSpeedsOf(a.target, a.readied.row.MoveFt))
 }
 
 // readiedUseBack: the undo of the action a readied action's use ran puts the use back too: the row waits, its window is

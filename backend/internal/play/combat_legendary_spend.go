@@ -279,7 +279,8 @@ func (s *Service) spendLegendaryMove(ctx context.Context, a *moveAttempt) error 
 }
 
 // movementBudgetDFt is the movement the mover can walk now, in tenths of a foot: what is left of its
-// turn's, or, for a legendary move, a whole speed of its own (or the half the option says).
+// turn's on the floor; for a readied move, the most of its own budget on any surface (readiedMoveDFt); for a legendary
+// move, a whole speed of its own (or the half the option says).
 func (a *moveAttempt) movementBudgetDFt() int {
 	if a.readied != nil {
 		return a.readiedMoveDFt()
