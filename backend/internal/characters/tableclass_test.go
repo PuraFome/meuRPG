@@ -11,6 +11,7 @@ import (
 	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // The table's classes and subclasses end to end (MR-025, RN-23, ADR-0018): the class editor starts from the server's numbers and
@@ -193,8 +194,29 @@ func TestTableClassEditorStartsFromTheServer(t *testing.T) {
 	// The menu: every type with its name, the lists they point at, the option sets,
 	// the helpers and the classes classLevel takes.
 	menu := master.effectMenu(t, campaign)
-	if len(menu.GetTypes()) != 30 || menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
-		t.Fatalf("menu = %d types, limits %d/%d, extra attacks %d to %d", len(menu.GetTypes()), menu.GetMaxFeaturesPerClass(), menu.GetMaxEffectsPerFeature(), menu.GetExtraAttackMin(), menu.GetExtraAttackMax())
+	// The types are the list the server builds the menu from (the rules' own), not a count kept here: a new type must not break
+	// this test. The ones the editor depends on are named.
+	srd, err := rules.LoadSRD()
+	if err != nil {
+		t.Fatalf("LoadSRD: %v", err)
+	}
+	var wantTypes, gotTypes []string
+	for _, ty := range srd.EffectMenu().Types {
+		wantTypes = append(wantTypes, ty.Type)
+	}
+	for _, ty := range menu.GetTypes() {
+		gotTypes = append(gotTypes, ty.GetType())
+	}
+	if !slices.Equal(gotTypes, wantTypes) {
+		t.Errorf("menu types = %v, want the rules' own list %v", gotTypes, wantTypes)
+	}
+	for _, must := range []string{"modifier", "resource", "grant_action", "aura", "power_attack"} {
+		if !slices.Contains(gotTypes, must) {
+			t.Errorf("the menu has no %q type: %v", must, gotTypes)
+		}
+	}
+	if menu.GetMaxFeaturesPerClass() != 60 || menu.GetMaxEffectsPerFeature() != 20 || menu.GetExtraAttackMin() != 2 || menu.GetExtraAttackMax() != 4 {
+		t.Fatalf("menu limits %d/%d, extra attacks %d to %d", menu.GetMaxFeaturesPerClass(), menu.GetMaxEffectsPerFeature(), menu.GetExtraAttackMin(), menu.GetExtraAttackMax())
 	}
 	lists := map[string]*rulesv1.EffectMenuList{}
 	for _, l := range menu.GetLists() {

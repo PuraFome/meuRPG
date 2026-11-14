@@ -1,4 +1,6 @@
 import type { TableEffect } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { effectToDraft } from './spell-effect-draft';
+import { auraTag, rowTags } from './spell-effect-tags';
 
 /**
  * What a player reads of the effects that change a roll: a reroll, a minimum on a die and the critical range, each as a lead and
@@ -81,9 +83,26 @@ export function rollEffectItem(e: TableEffect, nameOf: (key: string) => string):
             text: `${e.value} a 20, em ${SCOPE_WORDS[e.applies] ?? SCOPE_WORDS['weapon']}.`,
           }
         : null;
+    case 'aura':
+      return auraItem(e, nameOf);
     default:
       return null;
   }
+}
+
+/** "Aura de 3 m: aliados, Modificador de CAR (mín. +1) em testes de resistência, em todo o combate.": a feature's aura. */
+function auraItem(e: TableEffect, nameOf: (key: string) => string): RollItem | null {
+  if (!e.aura) {
+    return null;
+  }
+  const d = effectToDraft(e.aura);
+  if (!d.aura) {
+    return null;
+  }
+  const parts = [auraTag(d.aura), ...d.rows.flatMap((r) => rowTags(r, nameOf))];
+  return parts.length < 2
+    ? null
+    : { title: 'Aura', text: `${parts.join(', ')}, em todo o combate.` };
 }
 
 /** When a pool's uses come back, in the few words the "Usos" line has room for. */
