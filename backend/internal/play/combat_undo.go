@@ -121,6 +121,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainOffer,
 	chainMoveCompanions,
 	chainPuzzle,
+	chainFavor,
 	chainTrapOutside,
 	chainShapeAndSight,
 	chainHeld,
@@ -218,6 +219,16 @@ func chainMoveCompanions(c chainEvent) chainVerdict {
 // neither closes the chain.
 func chainPuzzle(c chainEvent) chainVerdict {
 	if strings.HasPrefix(c.row.Kind, "puzzle_") || clueOfASolve(c.recent, c.row) {
+		return chainSkip
+	}
+	return chainGoOn
+}
+
+// chainFavor: a grant or a pass of the Inspiration is no action of the combat, as a puzzle isn't.
+// It never closes the chain.
+// Later slices decide how the spend sits in the chain and how the master's undo of a grant works.
+func chainFavor(c chainEvent) chainVerdict {
+	if strings.HasPrefix(c.row.Kind, "favor_") {
 		return chainSkip
 	}
 	return chainGoOn

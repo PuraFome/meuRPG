@@ -23,6 +23,7 @@ Every subject has its own page, listed at the end.
 | Death saves and bringing the dead back | RN-03 | [Death and revival](death-and-revival.md) |
 | Grapple, shove, hide, help, group check, surprise | RN-34 | [Contests](contests.md) |
 | Lasting effects and exhaustion | RN-22 | [Lasting effects](lasting-effects.md) |
+| The master's Inspiration | RN-43 | [The master's Inspiration](favor.md) |
 | Table rules inside combat | MR-025, RN-24 | [Table rules in combat](table-rules.md) |
 | Combat without a grid | MR-025, RN-25 | [Theatre of the mind](theatre.md) |
 | Undo, the combat log, highlights, session summary | MR-032, ADR-0007 | [Undo](undo.md), [Combat log and events](combat-log.md), [Highlights and summary](highlights-and-summary.md) |
@@ -47,6 +48,7 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `ContestService` | `contests.proto`, `contest_types.proto` | Grapple, shove, hide, help, group check, surprise |
 | `RevivifyService` | `revivify.proto` | Revivify requests outside combat (see [Death and revival](death-and-revival.md)) |
 | `LastingEffectService` | `lasting_effects_service.proto` | Effects that last, exhaustion |
+| `FavorService` | `favor.proto` | The master's Inspiration: grant and read (see [The master's Inspiration](favor.md)) |
 | `CastingService` | `casting.proto` | Spells cast outside combat |
 | `FeatureService` | `features.proto` | `UseFeature`: a table feature that declares a use (limit per turn, round or combat, targets, a choice, an effect; see [Feature state](feature-state.md#using-a-feature)) |
 | `EncounterService` | `encounters.proto` | The encounter builder and stored battle encounters |
@@ -133,4 +135,4 @@ What a player may not see stays out of the response, never blank or zero.
 
 ## Pages
 
-[Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Spell zones](spell-zones.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Readying](readying.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md) · [The free dice roller](free-dice-roller.md) · [The table screen](table-screen.md) · [Feature state](feature-state.md)
+[Live session](live-session.md) · [Vitals, rests and class resources](rests-and-resources.md) · [Held rolls](held-rolls.md) · [Scenes and stage](scenes-and-stage.md) · [Combat](combat.md) · [Attacks and damage](attacks-and-damage.md) · [Movement](movement.md) · [Spell zones](spell-zones.md) · [Casting](casting.md) · [Reactions](reactions.md) · [Readying](readying.md) · [Death and revival](death-and-revival.md) · [Contests](contests.md) · [Lasting effects](lasting-effects.md) · [The master's Inspiration](favor.md) · [Table rules in combat](table-rules.md) · [Theatre of the mind](theatre.md) · [Undo](undo.md) · [Combat log and events](combat-log.md) · [Highlights and summary](highlights-and-summary.md) · [Combat under fog](fog.md) · [Traps](traps.md) · [Creatures](creatures.md) · [Encounters](encounters.md) · [Puzzles](puzzles.md) · [The free dice roller](free-dice-roller.md) · [The table screen](table-screen.md) · [Feature state](feature-state.md)

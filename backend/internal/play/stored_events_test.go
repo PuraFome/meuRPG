@@ -93,6 +93,9 @@ var otherWriters = map[string][]storedShape{
 	"game_time_advanced":        {storedShapeOf[gameTimeEvent]("today.json")},
 	"free_roll_rolled":          {storedShapeOf[freeRollEvent]("today.json")},
 	"gear_swapped":              {storedShapeOf[gearSwapEvent]("today.json")},
+	"favor_granted":             {storedShapeOf[favorGrantedEvent]("today.json")},
+	"favor_spent":               {storedShapeOf[favorSpentEvent]("today.json")},
+	"favor_passed":              {storedShapeOf[favorPassedEvent]("today.json")},
 }
 
 // vitalsEvent is the payload vitalsPayload writes, named so that a test can reflect on it.

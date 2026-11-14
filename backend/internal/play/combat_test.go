@@ -1165,7 +1165,7 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventRestTaken, eventHitDiceSpent, eventArcaneRecovery, eventNaturalRecovery, eventInspirationGiven,
 		eventSpellCastOutside, eventSpellCastStarted, eventSpellCastFinished, eventSpellCastInterrupted, eventSpellCastEnded,
 		eventLastingAdded, eventLastingChanged, eventLastingEnded, eventLastingVisibility, eventLastingSaved, eventLastingTriggered, eventExhaustion, eventGameTimeAdvanced, eventFreeRoll,
-		eventZoneTriggered, eventZoneMoved, eventLegendarySpent, eventRechargeRolled, eventMonsterReactionSet, eventSunlightSet, eventGearSwapped, eventFeatureUsed,
+		eventZoneTriggered, eventZoneMoved, eventLegendarySpent, eventRechargeRolled, eventMonsterReactionSet, eventSunlightSet, eventGearSwapped, eventFeatureUsed, eventFavorGranted, eventFavorSpent, eventFavorPassed,
 		eventActionReadied, eventReadiedFired, eventReadiedLost,
 	}
 	rows, err := h.pool.Query(t.Context(), `SELECT kind FROM session_event_kinds`)
