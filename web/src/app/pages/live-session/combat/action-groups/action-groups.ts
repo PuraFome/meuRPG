@@ -34,6 +34,7 @@ import {
   groupState,
   isBonusAttack,
   isCantrip,
+  magicBonusOf,
   reasonText,
   spellLine,
   spellTags,
@@ -53,9 +54,7 @@ import { cannotAct } from '../../../../core/combat/conditions';
 import { spellSummary } from '../../../../core/combat/spell-summary';
 import {
   ESCAPE_DETAIL,
-  GRAPPLE_DETAIL,
   hiddenAttackNote,
-  SHOVE_DETAIL,
   SHOVE_ATTACK_NOTE,
   SPECIAL_ATTACKS_NOTE,
   hiddenWord,
@@ -68,6 +67,7 @@ import type { GearFlow } from '../../../../core/combat/gear-flow';
 import { GearFold } from './gear-fold';
 import { HitEffectCards } from './hit-effect-cards';
 import { hitCards } from '../../../../core/effects/hit-effect-text';
+import { AttackLegend } from './attack-legend';
 import { Fold } from '../../../../shared/fold/fold';
 import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
@@ -78,6 +78,7 @@ import { ActionRow, type RowEconomy } from './action-row';
 import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
 import { GroupState } from './group-state';
 import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-groups-text';
+import { specialAttack } from './action-groups-text';
 import { offersWeaponAttack } from './weapon-offer';
 
 /**
@@ -103,6 +104,7 @@ import { offersWeaponAttack } from './weapon-offer';
   imports: [
     EconomyShapes,
     ActionRow,
+    AttackLegend,
     Fold,
     GearFold,
     GroupState,
@@ -256,11 +258,7 @@ export class ActionGroups {
   protected readonly escapeDetail = ESCAPE_DETAIL;
   protected readonly escapeWhy = computed(() => reasonText(this.contest()?.escapeReason));
   /** The word of the attack list for Agarrar and Empurrar. */
-  protected special(o: ContestAttackOption): { name: string; detail: string } {
-    return o.kind === ContestAttackOptionKind.SHOVE
-      ? { name: 'Empurrar', detail: SHOVE_DETAIL }
-      : { name: 'Agarrar', detail: GRAPPLE_DETAIL };
-  }
+  protected readonly special = specialAttack;
   /** Spent this turn, by economy: its rows fold to one line. With Extra Attack the Action stays open while attacks remain. */
   protected readonly spent = computed<SpentGroups>(() => {
     const own = this.own();
@@ -454,6 +452,8 @@ export class ActionGroups {
 
   protected readonly attackTags = attackTagsOf;
   protected readonly attackMarks = attackMarksOf;
+  /** The counting magic bonus the server says is in an attack's numbers. */
+  protected readonly bonusOf = magicBonusOf;
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
   protected readonly castRef = castRefOf;

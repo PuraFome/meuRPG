@@ -138,6 +138,7 @@
         <app-gear-fold [flow]="flow" [own]="own()" [extra]="extraAction()" [locked]="locked()" />
         }
       }
+      <app-attack-legend [parts]="attackParts()" [flow]="beast() ? null : gearFlow()" />
     </div>
 
     @if (hasSpells()) {
@@ -287,11 +288,14 @@
 
 <ng-template #attackRow let-a>
   @if (a.attack; as atk) {
+    @let bonus = bonusOf(a);
     <app-action-row
       [name]="attackName(atk)"
       [economy]="isBonusAttack(a) ? 'bonus' : 'action'"
       [helpName]="isCantrip(atk) && !asksSave(atk) ? attackName(atk) : ''"
-      [marks]="attackMarks(atk)"
+      [marks]="attackMarks(atk, bonus)"
+      [bonus]="bonus"
+      [oneLine]="true"
       [detail]="withTags(attackTags(a), attackDetail(atk))"
       [note]="attackNote(a)"
       [rider]="rider(atk)"

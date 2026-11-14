@@ -68,8 +68,34 @@ export interface AttackVm {
   /** How many attack rolls it makes in one action (Eldritch Blast: 1 to 4
    * beams); 0 for a weapon. */
   readonly beams: number;
+  /** The counting magic bonus (0 to 3) inside `attackBonus` and the damage: 0 for a spell and for a weapon whose bonus does not count. */
+  readonly magicBonus: number;
   /** A weapon's marks as the engine derived them (the sheet's mark or a table rule); absent for a spell. */
   readonly marks?: MarksVm;
+}
+
+/** One magic bonus of a piece on one number of the sheet (`DerivedSheet.item_modifiers`). */
+export interface ItemModifierVm {
+  /** "ac", "attack:<weapon key>" or "damage:<weapon key>". */
+  readonly target: string;
+  readonly value: number;
+  readonly sourceKey: string;
+  readonly sourceNamePt: string;
+  /** Whether the bonus is in the numbers of the sheet now. */
+  readonly counts: boolean;
+  /** Why it adds nothing now, in the server's words; empty when it counts. */
+  readonly reasonPt: string;
+}
+
+/** The "Modificadores de itens" line of one piece. */
+export interface ItemModifierLineVm {
+  readonly sourceKey: string;
+  readonly value: number;
+  readonly namePt: string;
+  /** Where the bonus is added: "na CA", "no ataque e no dano". */
+  readonly targetPt: string;
+  readonly counts: boolean;
+  readonly reasonPt: string;
 }
 
 export interface SpellcastingVm {
@@ -227,6 +253,8 @@ export interface FullSheetVm {
   readonly shieldIdle: boolean;
   /** The gear, equipped and carried (`DerivedSheet.gear`). */
   readonly gear: readonly GearVm[];
+  /** The magic bonuses of the gear on the sheet's numbers, in the server's order (`DerivedSheet.item_modifiers`). */
+  readonly itemModifiers: readonly ItemModifierVm[];
   /** The magic items and the +N pieces a character can be attuned to, with the server's say on each (`FullSheet.magic_items`, `item_bonuses`). */
   readonly attunement: AttunementVm;
   /** The marks the sheet itself sets on its carried weapons (`FullSheet.weapon_marks`), for the "Marcar as armas" grid. */

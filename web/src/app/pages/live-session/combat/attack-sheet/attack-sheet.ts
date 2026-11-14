@@ -50,6 +50,7 @@ import { MultiRoll, type RollField } from '../../../../shared/multi-roll/multi-r
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { AttackDamage } from './attack-damage';
 import { AttackMode } from './attack-mode';
+import { BonusChip } from '../../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../../shared/weapon-tags/weapon-tags';
 import { AttackResult } from './attack-result';
 import { AttackRolls } from './attack-rolls';
@@ -89,6 +90,7 @@ export type { AttackSheetData } from './attack-sheet-types';
   imports: [
     AttackResult,
     WeaponTags,
+    BonusChip,
     AttackSteps,
     CombatantToken,
     DamageParts,
@@ -308,7 +310,11 @@ export class AttackSheet {
   protected readonly marks = computed(() =>
     this.s.typing() || this.data.opportunity || this.data.legendary
       ? null
-      : attackMarksOf(this.attack),
+      : attackMarksOf(this.attack, this.data.bonus ?? 0),
+  );
+  /** The counting magic bonus, a chip with its words after the marks; the same cases as the marks. */
+  protected readonly bonus = computed(() =>
+    this.s.typing() || this.data.opportunity || this.data.legendary ? 0 : (this.data.bonus ?? 0),
   );
   protected readonly rollLabel = computed(
     () => `Role 1d20 para ${this.name} (${signedBonus(this.attack.attackBonus)})`,
