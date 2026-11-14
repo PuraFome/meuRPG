@@ -91,3 +91,32 @@ func TestMountedCombat_AReactionFeatureOfARiddenMountIsNotLimited(t *testing.T) 
 		t.Errorf("the fall damage = %d after Slow Fall, want 10", amount)
 	}
 }
+
+// TestMountedCombat_TheDriverDoesNotRollTheMountsReactionAttack: the master answers for the reactions of a mount the rider's player does not own.
+// The driver's attack with the Ogro's opportunity offer is refused, as its damage roll is, so no pending damage is left that nobody but
+// the master may roll.
+func TestMountedCombat_TheDriverDoesNotRollTheMountsReactionAttack(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.ridden(t)
+	c.passTo(t, c.get(t, c.master), "Goblin 1")
+	c.moveOffering(t, "Goblin 1", 11, 7)
+	var offerID string
+	for _, o := range c.offersOf(t, c.master) {
+		if o.GetReactorId() == c.id(t, "Ogro") {
+			offerID = o.GetId()
+		}
+	}
+	if offerID == "" {
+		t.Fatalf("the Goblin left the Ogro's reach and the Ogro has no offer: %v", c.offersOf(t, c.master))
+	}
+	_, err := c.offerAttack(t, c.caio, "Ogro", "basic:0", "Goblin 1", offerID, d20(15))
+	wantCode(t, "the driver's reaction attack with the mount", err, connect.CodePermissionDenied)
+	var left int
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM pending_damages`).Scan(&left); err != nil || left != 0 {
+		t.Errorf("the refused attack left %d pending damages (error %v), want none", left, err)
+	}
+	if _, err := c.offerAttack(t, c.master, "Ogro", "basic:0", "Goblin 1", offerID, d20(15)); err != nil {
+		t.Errorf("the master's reaction attack for the mount error = %v, want it made", err)
+	}
+}
