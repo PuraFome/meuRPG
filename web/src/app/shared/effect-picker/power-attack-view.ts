@@ -1,7 +1,8 @@
 import { computed } from '@angular/core';
 
 import { POWER_COPY } from '../../core/content/effect-field-copy';
-import type { EffectDraft } from '../../core/content/effect-draft';
+import type { EffectDraft, EffectMenuVm } from '../../core/content/effect-draft';
+import { type ResourcePick, resourcePick } from './effect-picker-parts';
 import { FORBIDDEN_EFFECT_TEXT } from '../../core/content/content-violations';
 import type { EffectMenuField } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import type { SelectOption } from '../form-fields/select-field';
@@ -10,6 +11,8 @@ import type { SelectOption } from '../form-fields/select-field';
 interface PowerHost {
   readonly effect: () => EffectDraft;
   readonly siblings: () => readonly EffectDraft[];
+  readonly menu: () => EffectMenuVm;
+  readonly ownerName: () => string;
   readonly inFeat: () => boolean;
 }
 
@@ -48,6 +51,18 @@ export class PowerView {
       ? texts.map((t) => (t === FORBIDDEN_EFFECT_TEXT ? this.reason() : t))
       : texts;
   }
+
+  /** The resources the entry defines, for "Gasta um uso de", named after the entry as the server names them. */
+  readonly resource = computed<ResourcePick>(() => {
+    const h = this.host;
+    return resourcePick(
+      h.siblings(),
+      h.menu(),
+      h.effect().resource,
+      this.resourceNone(),
+      h.ownerName(),
+    );
+  });
 
   /** The label of "no resource" in the list of the entry's resources, or `undefined` for the picker's own. */
   resourceNone(): string | undefined {

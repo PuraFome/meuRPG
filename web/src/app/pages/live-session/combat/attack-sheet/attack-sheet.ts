@@ -65,7 +65,7 @@ import {
 import { AttackState } from './attack-state';
 import { AttackSteps } from './attack-steps';
 import { ModeRequests } from './mode-requests';
-import { PowerTrade } from './power-trade';
+import { PowerTrade, dieLegend } from './power-trade';
 import { PowerTradeOffer } from './power-trade-offer';
 import { waitingEffectsOf } from './waiting-effects';
 
@@ -177,11 +177,7 @@ export class AttackSheet {
   protected readonly maneuverKey = computed(() => this.rolls.maneuver()?.key ?? '');
   /** With a trade of the talent beside it the die has no heading of its own (586-05 #4): the group is read from its checks. */
   protected readonly maneuverLegend = computed(() =>
-    this.maneuverDice().length > 1
-      ? 'Dado da manobra neste ataque'
-      : this.trade.options().length > 0
-        ? ''
-        : 'Dados das suas características',
+    dieLegend(this.maneuverDice().length, this.trade.options().length > 0),
   );
   /** The extra dice typed beside the d20 (the effects' d4, then the table die), each with its sign. */
   private typedExtras(): readonly { face: number; sign: number }[] | null {
@@ -448,8 +444,7 @@ export class AttackSheet {
   /** The check of a trade: ticks it, or takes it off; the refusal of the last roll no longer holds. */
   protected pickTrade(key: string): void {
     this.trade.choose(key);
-    this.s.error.set('');
-    this.s.poolNotice.set('');
+    this.s.clearRefusals();
   }
 
   protected rollAttackTyped(face: number): Promise<void> {

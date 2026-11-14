@@ -321,10 +321,7 @@ describe('EffectPicker: the power_attack block ("Ataque poderoso")', () => {
   });
 
   describe('the name of the pool', () => {
-    const both = () => [
-      trade({ weapon: 'ranged', resource: 'folego_do_atirador' }),
-      resource(),
-    ];
+    const both = () => [trade({ weapon: 'ranged', resource: 'folego_do_atirador' }), resource()];
 
     it('is the name of the entry that defines it, accents kept, as the server names it', () => {
       setup(trade({ weapon: 'ranged', resource: 'folego_do_atirador' }), {

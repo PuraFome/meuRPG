@@ -34,6 +34,12 @@ export class AttackState {
   readonly error = signal('');
   /** The refusal of two checks that spend one pool with a use for one: drawn under the checks, not at the top of the sheet. */
   readonly poolNotice = signal('');
+
+  /** Neither refusal holds any more (a check or the target changed). */
+  clearRefusals(): void {
+    this.error.set('');
+    this.poolNotice.set('');
+  }
   readonly roll: WritableSignal<AttackRoll | null>;
   /** The roll waits for an answer: neither a result nor the damage is told. */
   readonly asking = computed(() => this.stage() === 'lucky' || this.stage() === 'inspire');

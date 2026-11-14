@@ -78,3 +78,11 @@ export class PowerTrade {
     return m ? tradeRollLine(m, outcome) : '';
   }
 }
+
+/** The heading over the table die on the roll step: none with a trade of the talent beside it (586-05 #4), else it names the die. */
+export function dieLegend(dice: number, withTrade: boolean): string {
+  if (dice > 1) {
+    return 'Dado da manobra neste ataque';
+  }
+  return withTrade ? '' : 'Dados das suas características';
+}

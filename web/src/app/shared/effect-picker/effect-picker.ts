@@ -63,7 +63,6 @@ import {
   modeLockNote,
   refHint,
   refusalTexts,
-  resourcePick,
   unreadableText,
 } from './effect-picker-parts';
 
@@ -174,6 +173,8 @@ export class EffectPicker {
   protected readonly power = new PowerView({
     effect: this.effect,
     siblings: this.siblings,
+    menu: this.menu,
+    ownerName: this.ownerName,
     inFeat: () => this.inFeat(),
   });
   protected readonly allFields = computed(() =>
@@ -240,15 +241,7 @@ export class EffectPicker {
     return v === 'rolls' || v === 'aura' || (v === 'cards' && f.name === 'applies');
   }
 
-  protected readonly resource = computed(() =>
-    resourcePick(
-      this.siblings(),
-      this.menu(),
-      this.effect().resource,
-      this.power.resourceNone(),
-      this.ownerName(),
-    ),
-  );
+  protected readonly resource = this.power.resource;
 
   protected rollOptions(f: EffectMenuField): CheckOption[] {
     return this.optionsOf(f).map((o) => ({ value: o.value, label: o.label }));

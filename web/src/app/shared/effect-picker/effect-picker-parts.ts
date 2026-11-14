@@ -45,7 +45,9 @@ export function resourceName(
   ownerName: string,
 ): string {
   const owner = ownerName.trim();
-  const defined = new Set(siblings.filter((e) => e.type === 'resource').map((e) => e.resource.trim()));
+  const defined = new Set(
+    siblings.filter((e) => e.type === 'resource').map((e) => e.resource.trim()),
+  );
   return owner !== '' && defined.size === 1 && defined.has(key.trim()) ? owner : titled(key);
 }
 
@@ -83,7 +85,10 @@ export function resourcePick(
     const key = r.resource.trim();
     if (key !== '' && !seen.has(key)) {
       seen.add(key);
-      options.push({ value: key, label: resourceLabel(r, menu, resourceName(key, siblings, ownerName)) });
+      options.push({
+        value: key,
+        label: resourceLabel(r, menu, resourceName(key, siblings, ownerName)),
+      });
     }
   }
   const name = current.trim();
