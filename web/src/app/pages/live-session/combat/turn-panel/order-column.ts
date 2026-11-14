@@ -19,6 +19,7 @@ import {
   orderItems,
 } from '../../../../core/combat/joint-turn';
 import { conditionTags } from '../../../../core/combat/conditions';
+import { combatPool } from '../../../../core/combat/form-pool';
 import { labelTags } from '../../../../core/effects/effects';
 import { coverMarkTags, sideTags } from '../../../../core/combat/cover';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
@@ -79,7 +80,7 @@ import { CombatantToken } from '../../../../shared/combatant-token/combatant-tok
             <span class="row__word" [class.row__word--out]="c.defeated">
               @if (c.defeated) {<mat-icon aria-hidden="true">close</mat-icon>}{{ word(c) }}
             </span>
-            @if (c.wildShapeBeastKey) {
+            @if (c.wildShapeBeastKey && !c.mine) {
               <app-form-tag [beast]="c.wildShapeBeastNamePt" />
             }
             <app-combatant-tags [names]="tags(c)" [label]="c.label" [states]="c.states" [sources]="c.conditionSources" [people]="encounter().combatants" />
@@ -144,11 +145,11 @@ export class OrderColumn {
       : '';
   }
 
-  /** " · 23 de 23 PV": the combatant's own numbers, or the player's vitals when the server sent none with it; empty when neither is there. */
+  /** " · 23 de 23 PV": the combatant's own numbers, or the player's vitals when the server sent none with it; empty when neither is there. In a form they are the beast's, named once: " · 7 de 11 PV (Lobo)" (584-02). */
   private ownNumbers(c: Combatant): string {
-    const now = c.hitPointsCurrent ?? this.hitPoints()?.current;
-    const max = c.hitPointsMax ?? this.hitPoints()?.max;
-    return now !== undefined && max !== undefined ? ` · ${now} de ${max} PV` : '';
+    const pool = combatPool(c) ?? this.hitPoints();
+    const beast = c.wildShapeBeastKey ? ` (${c.wildShapeBeastNamePt})` : '';
+    return pool ? ` · ${pool.current} de ${pool.max} PV${beast}` : '';
   }
 
   protected word(c: Combatant): string {

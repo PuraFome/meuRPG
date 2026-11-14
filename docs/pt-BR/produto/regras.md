@@ -687,6 +687,7 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   O mestre e o jogador do alvo leem o efeito inteiro.
   Os outros jogadores leem só o que a criatura mostra, a condição e não o número por trás.
   Um efeito de quem os jogadores não veem não nomeia ninguém.
+  Uma magia só em quem conjura pode fazer do efeito uma aura: ela alcança, a cada jogada, as criaturas dentro do raio no lado escolhido (“aliados” inclui quem conjura, como nas auras aliadas do SRD), dá só o que uma jogada lê, e o jogador lê o bônus dela como o nome da fonte ou "Outra fonte", nunca o raio de uma aura que não é dele.
   O efeito duradouro de uma classe ou característica é um estado do dono.
   Uma magia também pode escrever um efeito no próximo golpe de quem conjura: dano extra de arma no próximo golpe, no próximo golpe corpo a corpo, em cada golpe enquanto concentra, ou em cada golpe no alvo marcado pela magia.
   O mestre escolhe o dado, a quantidade (mais por nível de espaço acima, até um teto) e o tipo de dano (o da arma, se não escolher nenhum).

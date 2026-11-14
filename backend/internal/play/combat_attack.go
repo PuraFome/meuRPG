@@ -619,7 +619,7 @@ func (f *attackFlow) rollD20(ctx context.Context) error {
 
 // readTruth works the mode out from the combat: what the roll has before a Protection or the Inspiration.
 func (f *attackFlow) readTruth(ctx context.Context) error {
-	modeIn, err := f.s.readModeInputs(ctx, f.c, f.cs)
+	modeIn, err := f.s.readModeInputs(ctx, f.c, f.cs, &f.v)
 	if err != nil {
 		return err
 	}

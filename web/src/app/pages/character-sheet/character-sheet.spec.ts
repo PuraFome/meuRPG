@@ -202,6 +202,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
   return {
     kind: 'full',
     weaponMarks: [],
+    attunement: { entries: [], attuned: 0 },
     abilities: ABILITY_KEYS.map((key) => ({ key, score: 10, modifier: 0 })),
     proficiencyBonus: 2,
     savingThrows: [],
@@ -1619,7 +1620,9 @@ describe('CharacterSheetPage', () => {
       const el = await render();
       expect(more(el, 'Adaga')).toBeNull();
       expect(el.querySelector('[data-marks-key]')).toBeNull();
-      expect(el.textContent).toContain('Marcas das armas: depois da trava, só o mestre muda.');
+      expect(el.textContent).toContain(
+        'Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.',
+      );
     });
 
     it('has no "⋮" on a dead character’s sheet', async () => {

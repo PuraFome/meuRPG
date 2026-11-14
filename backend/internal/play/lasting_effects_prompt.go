@@ -72,7 +72,7 @@ func (wv *windowView) reactorSave(p *playv1.EffectSavePrompt, reactor playdb.Com
 	if err != nil {
 		return wv.s.dbError(wv.ctx, "read a saving throw", err)
 	}
-	states := statesOf(wv.d.states)
+	states := wv.statesAtRoll()
 	save = withRollBonus(save, states, reactor.ID, rules.RollAppliesSave)
 	p.Modifier, p.BonusKnown = conv.Int32(save.Bonus), save.Known
 	sheet, err := wv.s.sheetOf(wv.ctx, nil, wv.m.CampaignID, reactor)

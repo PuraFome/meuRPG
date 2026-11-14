@@ -28,6 +28,10 @@ import {
   SpellDetailsSchema,
   TurnOptionsSchema,
 } from '../../../../gen/meurpg/rules/v1/rules_pb';
+import {
+  EncounterBlockedReason,
+  EncounterBlockedSchema,
+} from '../../../../gen/meurpg/play/v1/combat_pb';
 import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { combatant, encounter, reactionWindow } from '../../../core/combat/combat-testing';
 import { autoPassKey } from '../../../core/combat/reaction-autopass';
@@ -1556,6 +1560,45 @@ describe('CombatView state: the familiar and the form of the druid', () => {
     const m = mountCombatView({ enc: druid({}, seen), master: true });
     m.view.sheets.actions.wildShape();
     expect(m.opened).toHaveLength(0);
+  });
+
+  it('stays in the form with the explicit stay call, applies the combat, and renews its key', async () => {
+    const enc = druid({ wildShapeBeastKey: 'wolf', wildShapeBeastNamePt: 'Lobo' });
+    const back = next(enc, { name: 'Continuou' });
+    const assumeWildShape = vi.fn(async () => ({ encounter: back }));
+    const { view, state } = mountCombatView({ enc, creatures: { assumeWildShape } });
+    await view.stayForm();
+    expect(assumeWildShape).toHaveBeenCalledWith('c', 'toren-c', 'wolf', expect.any(String), true);
+    expect(state.encounter()).toBe(back);
+    await view.stayForm();
+    const keys = assumeWildShape.mock.calls.map((c) => (c as unknown[])[3]);
+    expect(keys[0]).not.toBe(keys[1]);
+  });
+
+  it('after the form ended, says so and turns "Permanecer" off, never starting a new form', async () => {
+    const enc = druid({ wildShapeBeastKey: 'wolf', wildShapeBeastNamePt: 'Lobo' });
+    const assumeWildShape = vi.fn(async () => {
+      throw new ConnectError('x', Code.FailedPrecondition, undefined, [
+        {
+          desc: EncounterBlockedSchema,
+          value: create(EncounterBlockedSchema, {
+            reason: EncounterBlockedReason.WILD_SHAPE_ENDED,
+          }),
+        },
+      ]);
+    });
+    const { view } = mountCombatView({ enc, creatures: { assumeWildShape } });
+    await view.stayForm();
+    expect(view.error()).toContain('A forma já acabou');
+    expect(view.stay()?.reason).toContain('A forma já acabou');
+    expect(view.busy()).toBe(false);
+  });
+
+  it('does not stay in a form she is not in', async () => {
+    const assumeWildShape = vi.fn(async () => ({}));
+    const { view } = mountCombatView({ enc: druid(), creatures: { assumeWildShape } });
+    await view.stayForm();
+    expect(assumeWildShape).not.toHaveBeenCalled();
   });
 
   it('leaves the form: applies the combat the server answers, with a new key for the next time', async () => {

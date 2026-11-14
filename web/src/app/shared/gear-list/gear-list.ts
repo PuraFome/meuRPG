@@ -19,6 +19,9 @@ import type { GearVm } from '../../core/characters/gear';
 import { Fold } from '../fold/fold';
 import { WeaponTags } from '../weapon-tags/weapon-tags';
 
+/** What a row says of the piece's attunement: attuned, asks for it, or nothing. */
+export type AttunementChip = '' | 'on' | 'asks';
+
 /** What a tap on a row's button asks: this piece, equipped or stowed. */
 export interface GearToggle {
   readonly key: string;
@@ -67,6 +70,9 @@ export class GearList {
   readonly shieldIdle = input(false);
   /** The pieces whose drawing changes the armor class for the worse (a two-handed weapon with the shield in hand). */
   readonly warned = input<readonly string[]>([]);
+
+  /** The attunement chip of a piece: 'on' when it is attuned, 'asks' when it asks and is not, '' for none. */
+  readonly attunement = input<(piece: GearVm) => AttunementChip>(() => '');
 
   /** The armor class now (`DerivedSheet.armor_class`): a row shows the server's number only when it differs. */
   readonly armorClass = input<number | null>(null);

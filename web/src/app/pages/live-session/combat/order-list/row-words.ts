@@ -5,6 +5,8 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { isPlayer, stateWord } from '../../../../core/combat/combat-view';
 import { isCreature, kindWord, ofOwner } from '../../../../core/combat/creature-names';
+import { combatPool, ownPool } from '../../../../core/combat/form-pool';
+import { article } from '../../../../core/format/article';
 import { joinDots } from '../../../../core/format/text';
 import type { CombatantInfo } from '../combat-info';
 
@@ -59,6 +61,10 @@ export function rowDetail(
     const kind = kindWord(c);
     return [kind === 'Criatura' ? '' : kind, ac, ofOwner(encounter, c)].filter(Boolean).join(' · ');
   }
+  // In a form the line is the beast's name: its armor class is in the opened row, with its hit points (584-04).
+  if (c.wildShapeBeastKey) {
+    return c.wildShapeBeastNamePt;
+  }
   const first = isPlayer(c) ? (info?.classSummary ?? '') : '';
   return [first, ac].filter(Boolean).join(' · ');
 }
@@ -67,9 +73,14 @@ export function rowDetail(
 export function rowFacts(c: Combatant, shield: number, aidTag: string): string {
   const ac =
     c.armorClass === undefined ? '' : `CA ${c.armorClass}${shield > 0 ? ` + ${shield}` : ''}`;
-  const hp =
-    c.hitPointsMax === undefined
-      ? ''
-      : `${c.hitPointsCurrent} de ${c.hitPointsMax} PV${aidTag ? ` · ${aidTag}` : ''}`;
-  return joinDots([ac, hp].filter(Boolean));
+  const pool = combatPool(c);
+  const own = ownPool(c);
+  // In a form the hit points are the beast's, and the druid's own are said once, last (584-04):
+  // "CA 13 · 7 de 11 PV do Lobo · a Sálvia tem 27 de 27".
+  const beast = c.wildShapeBeastKey
+    ? ` d${article(c.wildShapeBeastNamePt) === 'a' ? 'a' : 'o'} ${c.wildShapeBeastNamePt}`
+    : '';
+  const hp = pool ? `${pool.current} de ${pool.max} PV${beast}${aidTag ? ` · ${aidTag}` : ''}` : '';
+  const druid = own ? `${article(c.label)} ${c.label} tem ${own.current} de ${own.max}` : '';
+  return joinDots([ac, hp, druid].filter(Boolean));
 }
