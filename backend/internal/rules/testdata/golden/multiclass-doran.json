@@ -571,6 +571,9 @@
         "Light": false,
         "Finesse": false,
         "TwoHanded": false,
+        "Properties": [
+          "weapon-property:versatile"
+        ],
         "MartialArts": false,
         "AbilityMod": 3,
         "Notes": ""
@@ -1303,6 +1306,9 @@
         "Light": false,
         "Finesse": false,
         "TwoHanded": false,
+        "Properties": [
+          "weapon-property:versatile"
+        ],
         "MartialArts": false,
         "AbilityMod": 3,
         "Notes": ""
