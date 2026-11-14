@@ -186,6 +186,41 @@ export function unmetText(u: FeatUnmet, nameOf: KeyName): string {
   }
 }
 
+const KEYED = new Set([
+  FeatUnmetKind.CLASS_LEVEL,
+  FeatUnmetKind.PACT,
+  FeatUnmetKind.SPELL,
+  FeatUnmetKind.OPTION,
+]);
+
+function keyedPart(u: FeatUnmet, nameOf: KeyName): string {
+  return u.kind === FeatUnmetKind.CLASS_LEVEL
+    ? `${nameOf(u.key)} ${u.value}`
+    : optionKeyName(u.key, nameOf);
+}
+
+/**
+ * The lines that say what a character lacks (board 580-04): what the older kinds lack, one line each, and the class level,
+ * pact, spell and options joined into one "Exige Bruxo 5, Pacto da Lâmina e Rajada Mística." A single condition keeps its
+ * own sentence, with the note of what is missing.
+ */
+export function unmetLines(unmet: readonly FeatUnmet[], nameOf: KeyName): string[] {
+  const keyed = unmet.filter((u) => KEYED.has(u.kind));
+  const lines = unmet.filter((u) => !KEYED.has(u.kind)).map((u) => unmetText(u, nameOf));
+  if (keyed.length === 1) {
+    return [...lines, keyedUnmet(keyed[0], nameOf)];
+  }
+  return keyed.length > 1
+    ? [
+        ...lines,
+        `Exige ${listWith(
+          keyed.map((u) => keyedPart(u, nameOf)),
+          'e',
+        )}.`,
+      ]
+    : lines;
+}
+
 /** What a character lacks of a class level, a pact, a spell or an option (#580): `Exige …`. */
 function keyedUnmet(u: FeatUnmet, nameOf: KeyName): string {
   switch (u.kind) {

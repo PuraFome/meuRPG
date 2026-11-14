@@ -128,9 +128,7 @@ describe('what a feat asks, in Portuguese', () => {
         ],
         named,
       ),
-    ).toEqual([
-      'Exige Bruxo 5, Pacto da Lâmina, Rajada Mística, Olhar de Brasa e Lâmina Sedenta.',
-    ]);
+    ).toEqual(['Exige Bruxo 5, Pacto da Lâmina, Rajada Mística, Olhar de Brasa e Lâmina Sedenta.']);
     expect(
       unmetLines([u({ kind: FeatUnmetKind.SPELL, key: 'spell:eldritch-blast' })], named),
     ).toEqual(['Exige a magia Rajada Mística, que você ainda não conhece.']);

@@ -11,7 +11,7 @@ import {
   type KeyName,
   abilityName,
   prerequisiteSupport,
-  unmetText,
+  unmetLines,
 } from '../../core/content/feat-text';
 
 /** One feat of the list, with what the card says about it. */
@@ -176,7 +176,7 @@ export class FeatPicker {
           name: feat.lacksFeatureNamePt,
           hidden: feat.lacksFeatureHidden,
         }),
-        why: feat.qualifies ? [] : feat.unmet.map((u) => unmetText(u, this.nameOf())),
+        why: feat.qualifies ? [] : unmetLines(feat.unmet, this.nameOf()),
         increase: inc ? increaseText(inc.count, inc.from, inc.value) : '',
         capNote:
           fixed && capped.length > 0
