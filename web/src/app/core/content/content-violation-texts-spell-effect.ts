@@ -60,6 +60,32 @@ export const SPELL_EFFECT_TEXTS: readonly { shape: RegExp; reason?: string; text
     shape: /^table_spell\.effect\.aura$/,
     text: 'Uma aura dura enquanto a magia dura, sai de quem conjura (alvo “Só quem conjura”), não põe condição e só dá o que a jogada lê: não vale CA, deslocamento nem PV temporários.',
   },
+  // A feature's aura effect (#579): the same effect under `effects[].aura`, with the bonus from an ability (`value_ability`, `value_min`).
+  {
+    shape: /\.effects\[\]\.aura\.modifiers\[\]\.value_ability$/,
+    text: 'Escolha a habilidade de quem leva a aura. O bônus de uma habilidade só vale em jogadas, sem número fixo ou dado.',
+  },
+  {
+    shape: /\.effects\[\]\.aura\.modifiers\[\]\.value_min$/,
+    text: 'O mínimo do bônus vai de +1 a +5.',
+  },
+  {
+    shape: /\.effects\[\]\.aura\.radius_ft$/,
+    text: 'O alcance da aura vai de 1,5 m a 36 m, em passos de 1,5 m.',
+  },
+  { shape: /\.effects\[\]\.aura\.affects$/, text: 'Escolha quem a aura alcança.' },
+  {
+    shape: /\.effects\[\]\.aura\.modifiers\[\]\.kind$/,
+    text: 'Este tipo não vale numa aura. Só valem os que a jogada lê, e o dano extra do acerto não vale.',
+  },
+  {
+    shape: /\.effects\[\]\.aura\.modifiers\[\]\.(value|die|sign|applies_to|abilities|skill|resistance_kind|damage_types(\[\])?)$/,
+    text: 'Confira esta mudança da aura.',
+  },
+  {
+    shape: /\.effects\[\]\.aura$/,
+    text: 'A aura de uma característica vale em todo o combate, sai de quem a leva, não põe condição e só dá o que a jogada lê: não vale CA, deslocamento nem PV temporários.',
+  },
   {
     shape: /^table_spell\.effect$/,
     text: 'Ponha ao menos uma condição ou uma mudança. Um efeito vazio não é salvo.',
