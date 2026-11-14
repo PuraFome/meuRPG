@@ -5,7 +5,7 @@ import { attackCombatSquares, beginAttackCombatRPC, combatRPC, getEncounterRPC, 
 import { callFeatBody, chamadosFeatBody, elementFeatBody, endSessionOf, haloFeatBody, haloSquares, markFeatBody } from './feature-use-support';
 import { openSessionPage } from './live-session-support';
 import { waitForEncounterRevision } from './revision-support';
-import { newSignedInContext, openActionTab, openCombatLog, openSpentGroup } from './support';
+import { callRPC, newSignedInContext, openActionTab, openCombatLog, openSpentGroup } from './support';
 
 /**
  * "Usar característica" (#743) through the real stack: a feature whose action declares a use is taken with `FeatureService.UseFeature`.
@@ -141,8 +141,11 @@ const haloReplies = [
     button: 'Usar no Capitão Goblin',
     logLine: /Pensantus usou Halo de esporos no Capitão Goblin · gastou a reação e 1 uso \(restam 1 de 2\)/,
     logged: 1,
+    reactionUsed: true,
+    reactionText: /Sua reação: Usada até o começo do seu próximo turno\./,
+    usesLeft: 1,
   },
-  { answer: 'Não usar', button: 'Não usar', logLine: /Pensantus usou Halo de esporos/, logged: 0 },
+  { answer: 'Não usar', button: 'Não usar', logLine: /Pensantus usou Halo de esporos/, logged: 0, reactionUsed: false, reactionText: /Sua reação: Disponível\./, usesLeft: 2 },
 ];
 for (const reply of haloReplies) {
   test(`o jogador responde a janela do Halo de esporos: ${reply.answer}`, { tag: ['@MR-014', '@RN-19'] }, async ({ browser }) => {
@@ -184,7 +187,19 @@ for (const reply of haloReplies) {
       await prompt.getByRole('button', { name: reply.button }).click();
       await expect(prompt).toHaveCount(0);
       const log = await openCombatLog(p);
+      // The log has rendered when it shows its first line; only then does "no use line" mean anything.
+      await expect(log.getByText('Combate iniciado: Emboscada na estrada')).toBeVisible();
       await expect(log.getByText(reply.logLine)).toHaveCount(reply.logged);
+      // What the answer spent: the reaction and one of the two uses for USE, nothing for "Não usar".
+      const own = (await getEncounterRPC(p, campaignId)).combatants.find((c) => c.mine)!;
+      expect(own.reactionUsed ?? false, 'the reaction').toBe(reply.reactionUsed);
+      await expect(p.getByRole('region', { name: 'Vez no combate' }).getByText(reply.reactionText)).toBeVisible();
+      const options = await callRPC(p, 'meurpg.play.v1.CombatService/GetTurnOptions', { campaignId, encounterId: begun.id, combatantId: own.id });
+      expect(options.ok(), await options.text()).toBeTruthy();
+      const features = ((await options.json()).options?.featureActions ?? []) as { action: { namePt?: string }; useLeft?: number; useTotal?: number }[];
+      const halo = features.find((f) => f.action.namePt === 'Halo de esporos');
+      expect(halo, 'the Halo is among the feature actions').toBeTruthy();
+      expect([halo?.useLeft ?? 0, halo?.useTotal ?? 0], 'restam N de M').toEqual([reply.usesLeft, 2]);
       // The turn goes on to the Capitão either way: the window held it until the answer.
       const now = await getEncounterRPC(m, campaignId);
       expect(now.reactionWindows ?? []).toHaveLength(0);
