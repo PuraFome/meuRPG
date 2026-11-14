@@ -10,6 +10,8 @@ import { metersText, poundsToKg } from '../units';
 
 type NameOf = (key: string) => string;
 
+/** Ounces in a pound. */
+const OZ_PER_LB = 16;
 const THROWN = 'weapon-property:thrown';
 const VERSATILE = 'weapon-property:versatile';
 
@@ -72,7 +74,7 @@ export function weightText(oz: number): string {
   if (oz <= 0) {
     return '';
   }
-  const pounds = Math.round((oz / 16) * 10) / 10;
+  const pounds = Math.round((oz / OZ_PER_LB) * 10) / 10;
   const lb = String(pounds).replace('.', ',');
   return `${poundsToKg(pounds)} (${lb} lb)`.replace(/(\d) (kg|lb)/g, '$1 $2');
 }

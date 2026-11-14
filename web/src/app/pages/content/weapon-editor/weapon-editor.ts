@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   ElementRef,
   Injector,
@@ -61,6 +62,7 @@ const USES: readonly RadioCard[] = [
  * together, and the form says so as soon as they do not.
  */
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-weapon-editor',
   imports: [
     EditorAlerts,

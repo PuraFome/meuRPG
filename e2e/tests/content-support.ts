@@ -190,7 +190,7 @@ export function criticalFeatureBody(namePt = 'Olho Treinado'): Record<string, un
   };
 }
 
-export async function createEntryRPC(master: Page, campaignId: string, kind: 'tableSpell' | 'tableRace' | 'tableSubrace' | 'tableBackground' | 'tableOption' | 'tableClassFeature' | 'tableFeat' | 'tableCreature', body: Record<string, unknown>): Promise<string> {
+export async function createEntryRPC(master: Page, campaignId: string, kind: 'tableSpell' | 'tableRace' | 'tableSubrace' | 'tableBackground' | 'tableOption' | 'tableClassFeature' | 'tableFeat' | 'tableCreature' | 'tableWeapon', body: Record<string, unknown>): Promise<string> {
   const res = await callRPC(master, `${service}/CreateTableEntry`, { campaignId, [kind]: body });
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).entry.key as string;

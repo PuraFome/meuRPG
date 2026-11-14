@@ -6210,6 +6210,24 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await open(m, entryRoute(campaignId, background));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Cartógrafo do Vale');
       await expectScreenPasses(m, `Editor de antecedente ${where}`);
+      const weapon = await createEntryRPC(m, campaignId, 'tableWeapon', {
+        namePt: 'Boleadeira de Vale',
+        category: 'WEAPON_CATEGORY_SIMPLE',
+        damage: '1d4',
+        damageType: 'damage-type:bludgeoning',
+        properties: ['weapon-property:thrown'],
+        normalRangeFt: 20,
+        longRangeFt: 60,
+        weightOz: 32,
+        priceCp: 500,
+      });
+      await open(m, `/campaigns/${campaignId}/content?kind=weapons`);
+      await expectScreenPasses(m, `Conteúdo da mesa, as armas ${where}`);
+      await open(m, entryRoute(campaignId, weapon));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Boleadeira de Vale');
+      await expectScreenPasses(m, `Editor de arma ${where}`);
+      await open(m, `/campaigns/${campaignId}/content/new/weapon`);
+      await expectScreenPasses(m, `Editor de arma, nova ${where}`);
       await open(m, `/campaigns/${campaignId}/content/new/option`);
       await expectScreenPasses(m, `Editor de opção, o conjunto a escolher ${where}`);
       const option = await createEntryRPC(m, campaignId, 'tableOption', {

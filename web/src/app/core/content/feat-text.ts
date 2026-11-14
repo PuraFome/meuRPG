@@ -180,6 +180,14 @@ export function unmetText(u: FeatUnmet, nameOf: KeyName): string {
       return u.key ? `Não pode ter ${u.namePt || nameOf(u.key)}.` : hiddenOr(u);
     case FeatUnmetKind.LEVEL:
       return `Precisa de nível ${u.value} ou mais.`;
+    default:
+      return keyedUnmet(u, nameOf);
+  }
+}
+
+/** What a character lacks of a class level, a pact, a spell or an option (#580): `Exige …`. */
+function keyedUnmet(u: FeatUnmet, nameOf: KeyName): string {
+  switch (u.kind) {
     case FeatUnmetKind.CLASS_LEVEL:
       return `Exige ${nameOf(u.key)} ${u.value}.`;
     case FeatUnmetKind.PACT:

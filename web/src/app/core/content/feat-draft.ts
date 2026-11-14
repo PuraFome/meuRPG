@@ -120,6 +120,22 @@ function whoOf(
   };
 }
 
+/** The class level, the pact, the spell and the options of a saved prerequisite (#580). */
+function askedOf(
+  p: TableFeat['prerequisite'],
+): Pick<
+  FeatDraft,
+  'classKey' | 'classLevel' | 'requiresPact' | 'requiresSpell' | 'requiresOptions'
+> {
+  return {
+    classKey: p?.classLevel?.classKey ?? '',
+    classLevel: p?.classLevel && p.classLevel.level > 0 ? String(p.classLevel.level) : '',
+    requiresPact: p?.requiresPact ?? '',
+    requiresSpell: p?.requiresSpellKey ?? '',
+    requiresOptions: [...(p?.requiresOptionKeys ?? [])],
+  };
+}
+
 export function featToDraft(f: TableFeat): FeatDraft {
   const p = f.prerequisite;
   return {
@@ -136,11 +152,7 @@ export function featToDraft(f: TableFeat): FeatDraft {
     raceKey: p?.raceKey ?? '',
     ...whoOf(p),
     level: p && p.level > 0 ? String(p.level) : '',
-    classKey: p?.classLevel?.classKey ?? '',
-    classLevel: p?.classLevel && p.classLevel.level > 0 ? String(p.classLevel.level) : '',
-    requiresPact: p?.requiresPact ?? '',
-    requiresSpell: p?.requiresSpellKey ?? '',
-    requiresOptions: [...(p?.requiresOptionKeys ?? [])],
+    ...askedOf(p),
     options: f.options.map(featureToDraft),
   };
 }

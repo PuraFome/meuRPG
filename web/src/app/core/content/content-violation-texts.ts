@@ -1,4 +1,4 @@
-import { FEAT_OPTION_TEXTS } from './content-violation-texts-feat';
+import { FEAT_OPTION_TEXTS, PREREQUISITE_TEXTS } from './content-violation-texts-feat';
 import { RACE_FIELD_TEXTS } from './content-violation-texts-race';
 
 /** What the server's reason at a field says in Portuguese: the table `violationText` looks a violation up in (the rest of its words are there). */
@@ -295,34 +295,6 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Esta característica não existe mais ou não tem lista de opções. Escolha outra.',
   },
   {
-    shape: /^table_(option|feat)\.prerequisite\.class_level$/,
-    text: 'A classe e o nível vão juntos: preencha os dois ou nenhum.',
-  },
-  {
-    shape: /^table_(option|feat)\.prerequisite\.class_level\.class_key$/,
-    text: 'Esta classe não existe mais. Escolha outra.',
-  },
-  {
-    shape: /^table_(option|feat)\.prerequisite\.class_level\.level$/,
-    text: 'O nível vai de 1 a 20.',
-  },
-  {
-    shape: /^table_feat\.prerequisite\.requires_option_keys(\[\])?$/,
-    text: 'Escolha opções que existem, no máximo 10.',
-  },
-  {
-    shape: /^table_option\.prerequisite\.requires_option_keys(\[\])?$/,
-    text: 'Escolha opções que existem, sem a própria opção, e no máximo 10.',
-  },
-  {
-    shape: /^table_(option|feat)\.prerequisite\.requires_pact$/,
-    text: 'Escolha uma dádiva do pacto da lista.',
-  },
-  {
-    shape: /^table_(option|feat)\.prerequisite\.requires_spell_key$/,
-    text: 'Esta magia não existe mais. Escolha outra.',
-  },
-  {
     shape: /^table_option\.effects\[\]\.type$/,
     text: 'Uma opção não pede outra escolha: use outro tipo de efeito.',
   },
@@ -343,6 +315,7 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     shape: /^table_class_feature\.effects(\[\])?$/,
     text: 'Esta característica tem efeitos demais. Tire alguns.',
   },
+  ...PREREQUISITE_TEXTS,
   ...CREATURE_FIELD_TEXTS,
   ...WEAPON_FIELD_TEXTS,
   ...SPELL_EFFECT_TEXTS,
