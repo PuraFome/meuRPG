@@ -13,7 +13,8 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
 - **Granted spells** (`combat-column`): a "Magias concedidas" panel after "Magias" (it exists without a spellcasting class), one row per spell like the spell list's, with the level as the first tag and how it is cast as the others ("À vontade", "Gasta um uso de <recurso>", "Também com espaço", "Só como ritual", "Conhecida"); under the row, the source and the numbers it gives ("Carisma · CD 14 · ataque +6"), or the instruction to pick the casting ability in the sheet's choices.
 - **Equipamento** (`equipment-panel`): `gear-list` with "Equipado" and "Carregado" as `h3` groups.
   The "Equipado" head carries "CA N" on the right, the server's number; a screen reader hears "Classe de armadura N" in its place.
-  Each piece is one row on one line.
+  Each piece is one row on one line while its name keeps 96 px.
+  Under that, the marks and the chip drop together to a second line under the name, at the name's x; the "⋮" and the button stay at the right edge, on the middle of the whole row.
   A row has the kind icon, the name (it ellipsizes first), "×N" for equal copies and "duas mãos" (dropped when there is no room).
   A carried two-handed weapon that would leave the shield idle has a ⚠.
   The shield it idles has a dashed "Parado" tag.

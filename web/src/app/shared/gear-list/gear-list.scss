@@ -25,7 +25,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-// A row is one line and only the name shrinks (it ellipsizes before anything wraps); "duas mãos" is drawn only where the row has room left.
+// A row is one line while the name keeps its floor of 96px; below it the marks and the chip drop under the name, at the name's x.
+// The name ellipsizes before anything else shrinks; "duas mãos" is drawn only where the row has room left.
 // The list is a two-column grid, the row's words and the button, so the buttons of one list share a width.
 :host {
   display: block;
@@ -50,40 +51,78 @@
 }
 
 .gear-row__main {
+  --gear-line: 28px;
+
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: center;
+  column-gap: 4px;
+  min-width: 0;
+
+  // The "⋮" is out of the flow, on the middle of the whole row, so a second line never moves it or the button.
+  &.gear-row__main--more {
+    min-height: 44px;
+    // 24px of the 32px target are reserved, the rest reaches into the button's margin.
+    padding-inline-end: 24px;
+  }
+
+  // The kind icon is the size of the name's capitals and sits on the first line.
+  > .gear-row__icon {
+    align-self: start;
+    width: var(--mr-font-18);
+    height: var(--mr-font-18);
+    margin-block: calc((var(--gear-line) - var(--mr-font-18)) / 2);
+    font-size: var(--mr-font-18);
+  }
+
+  > .gear-row__more {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: -8px;
+    translate: 0 -50%;
+  }
+}
+
+// The words and chips of the row: one line, and the marks group wraps under the name only when the name would get under 96px.
+// The name's base size is its floor, so the line breaks on the floor and the name then grows to its own width at most.
+.gear-row__body {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  column-gap: 4px;
   min-width: 0;
 
   > * {
     flex: none;
   }
 
-  // The kind icon is the size of the name's capitals, so the name keeps the room.
-  > .gear-row__icon {
-    width: var(--mr-font-18);
-    height: var(--mr-font-18);
-    font-size: var(--mr-font-18);
-  }
-
   > .gear-row__name {
-    flex: 0 1 auto;
+    flex: 1000 1 96px;
     min-width: 0;
+    max-width: max-content;
     overflow: hidden;
+    line-height: var(--gear-line);
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  // The 44px-tall target reaches into the button's margin, so the words keep their room.
-  > .gear-row__more {
-    margin-inline: auto -8px;
+  // The group is empty for a plain weapon: it takes no room and no gap.
+  > .gear-row__marks:not(:has(.weapon-tags, .gear-row__att, app-bonus-chip)) {
+    display: none;
   }
+}
+
+.gear-row__marks {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 // "duas mãos" takes the room the row has left, up to its own width; a narrower box drops the words to a hidden second line.
 // The words are the only item of a one-line box that wraps: with a zero-width item as tall as the box before them, they drop to a second line,
 // outside the box, as a whole when the box is narrower than they are, and are never drawn cut.
-.gear-row__main > .gear-row__kind {
+.gear-row__body > .gear-row__kind {
   display: flex;
   flex: 1 1 0;
   flex-wrap: wrap;
@@ -107,7 +146,7 @@
   }
 }
 
-.gear-row__main > app-weapon-tags {
+.gear-row__marks > app-weapon-tags {
   display: flex;
 }
 

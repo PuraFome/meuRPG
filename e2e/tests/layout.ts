@@ -27,17 +27,18 @@ import { expect, type Page } from '@playwright/test';
 //    chip follows its last word; a chip alone on a line under the name is a finding.
 // 7. The heading of a section with a count beside it ("Sintonização" and "Sintonizados: 2 de 3") shares a baseline with
 //    it, within 1px.
-// 8. A row marked `data-one-line` is one line: none of its words wraps and every box in it shares the first box's line
-//    (a gear row ellipsizes its name before anything drops under it). A name keeps at least 24px (three letters) and
-//    the row's words end before the button's column starts.
+// 8. A row marked `data-one-line` is one line, or two lines when the second line holds only what is marked
+//    `data-wrap-group` (the marks and the chips), at the name's x: none of its words wraps and every box in it shares
+//    the first box's line. A name marked `data-chip-ref` is never under 96px unless its whole text is narrower, and the
+//    row's words end before the button's column starts.
 // 9. A box marked `data-whole` shows each thing it holds whole or not at all: an item that is drawn (its top is inside the
 //    box) does not reach past the box's left or right edge ("duas mãos" cut to "duas mã", an icon cut in half).
 // 10. A group marked `data-equal-width="<selector>"` has every visible element matching the selector the same width, within
 //    1px (the buttons of one list, the pair at the foot of a sheet).
 // 11. A chip marked `data-chip` sits on the middle of the capitals of the words marked `data-chip-ref` in its row
-//    (`data-chip-row`), within 2px.
-// 12. A name marked `data-chip-ref` in a `data-one-line` row does not end in an ellipsis while the row's main box has room:
-//    the space between two of its items, or after the last one, is at most 4px beyond the box's own gap.
+//    (`data-chip-row`), within 2px; a chip on the second line, under the name, has no capitals to line up with.
+// 12. A name marked `data-chip-ref` in a `data-one-line` row does not end in an ellipsis while its own line has room:
+//    the space between two items of the name's line, or after the last one, is at most 4px beyond the box's own gap.
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
@@ -299,8 +300,16 @@ function auditLayout(): LayoutIssue[] {
       const r = b.getBoundingClientRect();
       return r.top > first.bottom - 1 || r.bottom < first.top + 1;
     });
-    // A name squeezed to nothing is clipped by its own box, so the overlap check never sees it.
-    const squeezed = [...row.querySelectorAll('[data-chip-ref]')].filter((n) => n.getBoundingClientRect().width < Math.min(24, n.scrollWidth));
+    // A name squeezed is clipped by its own box, so the overlap check never sees it; 96px is its floor.
+    const squeezed = [...row.querySelectorAll('[data-chip-ref]')].filter((n) => visible(n) && n.getBoundingClientRect().width < Math.min(96, n.scrollWidth) - 0.5);
+    // What sits under the name's line: only the marks group, at the name's x.
+    const underName = [...row.querySelectorAll('[data-chip-ref]')].flatMap((n) => {
+      const line = n.getBoundingClientRect();
+      return [...(n.parentElement?.children ?? [])]
+        .filter((c) => c !== n && visible(c) && inFlow(c) && c.getBoundingClientRect().top >= line.bottom - 1)
+        .filter((c) => !c.hasAttribute('data-wrap-group') || Math.abs(c.getBoundingClientRect().left - line.left) > 1)
+        .map((c) => ({ c, line }));
+    });
     const button = row.closest('[data-equal-width]')
       ? [...row.querySelectorAll(row.closest('[data-equal-width]')!.getAttribute('data-equal-width')!)].find(visible)
       : undefined;
@@ -311,7 +320,14 @@ function auditLayout(): LayoutIssue[] {
       issues.push({
         kind: 'one-line',
         where: describeEl(row),
-        detail: `the name "${squeezed[0].textContent!.trim().slice(0, 30)}" is ${squeezed[0].getBoundingClientRect().width.toFixed(0)}px wide (at least 24px)`,
+        detail: `the name "${squeezed[0].textContent!.trim().slice(0, 30)}" is ${squeezed[0].getBoundingClientRect().width.toFixed(0)}px wide (at least 96px, or its whole text)`,
+      });
+    }
+    if (underName.length > 0) {
+      issues.push({
+        kind: 'one-line',
+        where: describeEl(row),
+        detail: `${describeEl(underName[0].c)} is under the name's line and is not a marks group at the name's x (${underName[0].line.left.toFixed(0)}px)`,
       });
     }
     if (underButton) {
@@ -372,6 +388,7 @@ function auditLayout(): LayoutIssue[] {
     const cap = node ? capitals(node) : null;
     if (!cap) continue;
     const c = chip.getBoundingClientRect();
+    if (!ref || c.top >= ref.getBoundingClientRect().bottom - 1) continue;
     const diff = Math.abs(c.top + c.height / 2 - (cap.top + cap.bottom) / 2);
     if (diff > 2) {
       issues.push({
@@ -385,14 +402,14 @@ function auditLayout(): LayoutIssue[] {
   // 12. A name cut with an ellipsis while the row's main box has room left.
   for (const row of document.querySelectorAll('[data-one-line]')) {
     if (!visible(row)) continue;
-    const main = [...row.children].find((c) => visible(c) && inFlow(c));
-    if (!main) continue;
     const cut = [...row.querySelectorAll('[data-chip-ref]')].find((n) => visible(n) && n.scrollWidth > n.clientWidth);
-    if (!cut) continue;
+    const main = cut?.parentElement;
+    if (!cut || !main) continue;
     const box = main.getBoundingClientRect();
+    const line = cut.getBoundingClientRect();
     const gap = parseFloat(getComputedStyle(main).columnGap) || 0;
     const items = [...main.children]
-      .filter((c) => visible(c) && inFlow(c) && c.getBoundingClientRect().width > 0)
+      .filter((c) => visible(c) && inFlow(c) && c.getBoundingClientRect().width > 0 && c.getBoundingClientRect().top < line.bottom - 1)
       .map((c) => c.getBoundingClientRect())
       .sort((a, b) => a.left - b.left);
     const free = Math.max(

@@ -24,9 +24,15 @@
   gap: 0 8px;
 }
 
-// One-line head: only the name shrinks, and it ellipsizes.
+// The marks and the chip are one item, so they wrap together; the name is the only thing that shrinks.
+.row__marks-group {
+  display: contents;
+}
+
+// One-line head: the name ellipsizes down to 96px; under that the marks, the chip and the economy tag drop under it, at its x.
+// The name's base size is its floor, so the line breaks on the floor and the name then grows to its own width at most.
 .row__head--one {
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0 6px;
 
@@ -35,11 +41,23 @@
   }
 
   .row__name {
-    flex: 0 1 auto;
+    flex: 1000 1 96px;
     min-width: 0;
+    max-width: max-content;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .row__marks-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    // Empty for a plain weapon: it takes no room and no gap.
+    &:not(:has(.weapon-tags, app-bonus-chip)) {
+      display: none;
+    }
   }
 
   .row__tags {

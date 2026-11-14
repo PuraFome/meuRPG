@@ -43,12 +43,14 @@ let nextId = 0;
       @if (name()) {
         <span class="row__head" [class.row__head--one]="oneLine()" data-chip-row [attr.data-one-line]="oneLine() ? '' : null">
           <span class="row__name" data-chip-ref>{{ name() }}</span>
-          <app-weapon-tags class="row__marks" [marks]="marks()" [compact]="oneLine()" />
-          @if (bonus() > 0) {
-            <app-bonus-chip data-chip [bonus]="bonus()" />
-          }
+          <span class="row__marks-group" data-wrap-group>
+            <app-weapon-tags class="row__marks" [marks]="marks()" [compact]="oneLine()" />
+            @if (bonus() > 0) {
+              <app-bonus-chip data-chip [bonus]="bonus()" />
+            }
+          </span>
           @if (tags().length || economy()) {
-            <span class="row__tags">
+            <span class="row__tags" data-wrap-group>
               @for (tag of tags(); track tag) {
                 <span class="row__pill">{{ tag }}</span>
               }
@@ -116,7 +118,7 @@ export class ActionRow {
   readonly marks = input<MarksVm | null>(null);
   /** The magic bonus the weapon's numbers include now (a counting +N); 0 for none. */
   readonly bonus = input(0);
-  /** The name line is one line: the name ellipsizes first, the chips and the economy tag keep their size. */
+  /** The name line is one line while the name keeps 96px: the name ellipsizes first, then the marks, the chip and the economy tag drop under it together. */
   readonly oneLine = input(false);
   /** The economy the row spends (a mark and its word beside the name's tags); `null` for a row that spends none, or says it elsewhere. */
   readonly economy = input<RowEconomy | null>(null);

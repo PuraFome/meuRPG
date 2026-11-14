@@ -114,10 +114,10 @@ It catches what is never right:
 - text running over an icon by more than 2 px;
 - words closer than 6 px to the top or bottom border of a radio or checkbox tile;
 - a button or link outside the box of its `.mr-panel`;
-- a row marked as one line that wraps, or whose name is under three letters wide;
+- a row marked as one line that wraps (its marks and chips may drop under the name, together and at its x), or whose name is under 96 px wide while its text is wider;
 - the buttons of a marked group with widths more than 1 px apart;
-- a marked chip more than 2 px off the middle of the capitals of its row's words;
-- a name of a one-line row cut with an ellipsis while the row's main box has more than 4 px free;
+- a marked chip more than 2 px off the middle of the capitals of its row's words (a chip on the second line, under the name, is left out);
+- a name of a one-line row cut with an ellipsis while its own line has more than 4 px free;
 - an item of a marked box cut at its left or right edge ("duas mãos" shown as "duas mã").
 
 An icon next to words needs no hand adjustment: the fonts carry metric overrides ([tokens.md](tokens.md#fonts)).
