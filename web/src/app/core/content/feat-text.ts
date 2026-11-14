@@ -7,6 +7,7 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ABILITY_LABELS } from '../characters/character-labels';
 import { featureKeyName as optionKeyName } from './class-feature-text';
+import type { KeyName } from './key-name';
 import type { AbilityKey } from '../characters/characters.types';
 
 /**
@@ -15,7 +16,7 @@ import type { AbilityKey } from '../characters/characters.types';
  * no name for (a proficiency, a race) is named by `nameOf`, from the content catalog.
  */
 
-export type KeyName = (key: string) => string;
+export type { KeyName } from './key-name';
 
 const FIELDS: readonly { field: keyof AbilityScores & string; key: AbilityKey }[] = [
   { field: 'strength', key: 'str' },
