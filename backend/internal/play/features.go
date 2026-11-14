@@ -253,7 +253,12 @@ func (f *featureFlow) mayUse(ctx context.Context) error {
 	}
 	// The resource is read in this transaction: the options of the rules read it too, but the row of the use is the
 	// one this transaction would spend from.
-	return featureRefusal(f.scene.reason(f.fa, f.row, f.v.master), f.v.master)
+	if err := featureRefusal(f.scene.reason(f.fa, f.row, f.v.master), f.v.master); err != nil {
+		return err
+	}
+	// The use got past a spent economy only because the master said so: the line keeps it.
+	f.fe.Overridden = f.v.master && !f.row.GetEnabled() && masterMayOverride(f.row.GetReason().GetCode())
+	return nil
 }
 
 // featureRefusal is the refusal of a reason the checks found, nil when there is none. It fails closed: a disabled row whose

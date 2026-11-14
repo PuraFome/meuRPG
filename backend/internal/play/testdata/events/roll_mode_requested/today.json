@@ -1040,7 +1040,8 @@
     "economy": "x",
     "resource_name": "x",
     "resource_left": 1,
-    "resource_max": 1
+    "resource_max": 1,
+    "overridden": true
   },
   "creature_action": {
     "name": "x",

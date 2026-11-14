@@ -133,3 +133,35 @@ func TestAFeatureUsesCostIsReadByTheMasterAndTheUserAlone(t *testing.T) {
 		t.Errorf("Ana's log does not hold the feature's name: the plain line is missing (%s)", plain)
 	}
 }
+
+// The master's "Usar mesmo assim" of Chamado Curto, after Toren spent his bonus action on it: the line says the use was overridden to
+// the master and to Caio, Toren's player, and Ana reads the plain line, with no word of it.
+func TestAMastersOverriddenFeatureUseIsReadByTheMasterAndTheUserAlone(t *testing.T) {
+	w := haloWorld(t)
+	w.chamadoFight()
+	w.secrets.add(&canary{needle: `"overridden":true`, kind: "feature-use-overridden", readers: names([]*person{w.caio})})
+
+	toren := w.combatant(w.toren)
+	key := w.featureKeyOf(toren, "Chamado Curto")
+	use := func(p *person) {
+		must(p.feature.UseFeature(t.Context(), rq(&playv1.UseFeatureRequest{
+			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: toren.GetId(), IdempotencyKey: newKey(), ActionKey: key,
+		})))
+	}
+	use(w.caio)
+	use(w.master) // the bonus action is spent: the master's override
+
+	for _, p := range []*person{w.master, w.caio} {
+		body := p.call(playv1connect.CombatServiceListCombatLogProcedure, &playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}).body
+		if !bytes.Contains(body, []byte(`"overridden":true`)) {
+			t.Errorf("%s's log does not hold the override: the needle is unreachable (%s)", p.name, body)
+		}
+	}
+	for _, p := range []*person{w.ana, w.caio} {
+		for _, r := range w.reads(p) {
+			for _, f := range w.inspect(p, r, nil) {
+				t.Errorf("%s: %s", p.name, f)
+			}
+		}
+	}
+}

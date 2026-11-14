@@ -93,10 +93,12 @@ See [The feature window](reactions.md#the-feature-window).
 
 **Undo.** `feature_used` is in `undoableKinds` (it writes hit points, so it keeps holds): the economy, the resource, each target's hit points (`castHitTargetBack`), the effect rows (and the temporary hit points they gave), and the feature state are put back, and the line goes with the undo.
 
-**Log.** `COMBAT_LOG_KIND_FEATURE_USED`, the audience of an action (the table, unless the user or a target is hidden: `hitsVisible`), the numbers (`healed`, `temp_hp`) and the cost (`economy`, `resource_name_pt`, `resource_left`, `resource_max`) only for the master and the user's player; the choice's text and the feature's name are read from the sheet.
+**Log.** `COMBAT_LOG_KIND_FEATURE_USED`, the audience of an action (the table, unless the user or a target is hidden: `hitsVisible`), the numbers (`healed`, `temp_hp`) and the cost (`economy`, `resource_name_pt`, `resource_left`, `resource_max`, `overridden`) only for the master and the user's player; the choice's text and the feature's name are read from the sheet.
 The event keeps the cost (`featureUseEvent.Economy`, `ResourceName`, `ResourceLeft`, `ResourceMax`), written by `spend` for every use: a use from the Usar sheet and the use that answers a FEATURE window are the same steps.
 `economy` is `ACTION`, `BONUS_ACTION`, `REACTION` or `NONE` (a free action or movement); A use that spends a resource of its own fills `resource_name_pt`, `resource_left` and `resource_max` (the resource's total).
 A use limited by a scope only (Halo: 2 per combat) leaves `resource_name_pt` empty and counts the scope: `resource_left` is the uses left after this one and `resource_max` the uses the scope allows (`countScope`), so the web reads "gastou 1 uso (restam 1 de 2)".
+`overridden` is true when the master used the feature with the turn's economy spent ("Usar mesmo assim"): `featureFlow.mayUse` sets `featureUseEvent.Overridden` when the row was disabled by an economy reason and the master's call went past it.
+An ordinary use, and the line another player reads, are false.
 A use with no limit leaves both at 0, and the line has no parenthesis.
 The web writes the sentence from these fields; an older event, which kept none, reads `UNSPECIFIED`, "", 0 and 0; every other player reads those four too.
 

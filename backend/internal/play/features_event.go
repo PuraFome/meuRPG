@@ -35,6 +35,8 @@ type featureUseEvent struct {
 	// ResourceMax is the most uses there were: the resource's total, or the uses the scope allows when the use has no resource
 	// of its own (then ResourceName is empty and ResourceLeft counts the scope).
 	ResourceMax int32 `json:"resource_max,omitempty"`
+	// Overridden says the master used the feature although the turn's economy was spent ("Usar mesmo assim").
+	Overridden bool `json:"overridden,omitempty"`
 }
 
 // The words of featureUseEvent.Economy.
@@ -147,6 +149,7 @@ func (e *logEntry) fillFeatureUsed(c *logViewing, out *playv1.CombatLogEntry) bo
 	if c.v.master || c.v.owns(c.actor) {
 		used.Healed, used.TempHp = f.Healed, f.TempHP
 		used.Economy, used.ResourceNamePt, used.ResourceLeft, used.ResourceMax = economyOfWord(f.Economy), f.ResourceName, f.ResourceLeft, f.ResourceMax
+		used.Overridden = f.Overridden
 	}
 	out.FeatureUsed = used
 	return true

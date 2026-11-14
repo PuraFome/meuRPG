@@ -120,3 +120,38 @@ func TestTheLogLineOfAUseAnsweringTheFeatureWindowSaysTheReaction(t *testing.T) 
 		t.Errorf("another player reads the economy %v, want none", got)
 	}
 }
+
+// The master's "Usar mesmo assim" leaves a trace in the line: the use let past a spent economy is marked overridden, for the master
+// and the user's player; an ordinary use, and the line another player reads, are not.
+func TestTheLogLineOfAnOverriddenUseSaysSo(t *testing.T) {
+	t.Parallel()
+	m := newFeatureTable(t)
+	e := m.fight(t)
+	m.h.roller.queue(3, 3)
+	m.mustUse(t, m.ana, e, "Pensantus", "Brado", m.validArgs(t, "Brado"))
+	m.mustUse(t, m.master, e, "Pensantus", "Brado", m.validArgs(t, "Brado")) // the bonus action is spent: the master's override
+	for name, u := range map[string]*user{"the master": m.master, "Pensantus's player": m.ana, "another player": m.caio} {
+		lines := logLinesOf(t, m.armed, u, e, playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED)
+		if len(lines) != 2 {
+			t.Fatalf("%s reads %d FEATURE_USED lines, want 2", name, len(lines))
+		}
+		for _, l := range lines {
+			want := l.GetByMaster() && u != m.caio // the master's use is the second: the first is its player's
+			if got := l.GetFeatureUsed().GetOverridden(); got != want {
+				t.Errorf("%s reads a use by the master %v overridden = %v, want %v", name, l.GetByMaster(), got, want)
+			}
+		}
+	}
+}
+
+// A master's use that spent no past economy is not an override: he used the feature as its player would.
+func TestTheLogLineOfAMastersOrdinaryUseIsNotOverridden(t *testing.T) {
+	t.Parallel()
+	m := newFeatureTable(t)
+	e := m.fight(t)
+	m.h.roller.queue(3)
+	m.mustUse(t, m.master, e, "Pensantus", "Brado", m.validArgs(t, "Brado"))
+	if m.usedLine(t, m.master, e).GetOverridden() {
+		t.Error("the master reads his ordinary use as overridden")
+	}
+}
