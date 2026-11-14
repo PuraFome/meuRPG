@@ -49,6 +49,8 @@ export interface AttackSheetRequest {
   readonly resume?: PendingDamage;
   readonly held?: HeldRollOffer;
   readonly thrown?: ThrownAttack;
+  /** The counting magic bonus of the player's weapon; 0 or absent for none. */
+  readonly bonus?: number;
   /** The master's legendary attack: see `AttackSheetData.legendary`. */
   readonly legendary?: AttackSheetData['legendary'];
   /** A roll of the sheet was held for a question: the page learns the hold. */
@@ -121,6 +123,7 @@ export function attackSheetData(req: AttackSheetRequest): AttackSheetData | null
     attackerId: req.attacker.id,
     round: e.round,
     attack: found.attack,
+    ...(req.bonus ? { bonus: req.bonus } : {}),
     targets:
       req.thrown?.targets ??
       req.options?.attackTargets.find((t) => t.attackKey === req.key)?.targets ??

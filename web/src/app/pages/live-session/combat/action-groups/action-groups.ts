@@ -21,6 +21,7 @@ import {
   type SpellOption,
   type TurnOptions,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { countingGearBonus } from '../../../../core/characters/gear';
 import { article } from '../../../../core/combat/combat-log';
 import {
   attackDetail,
@@ -447,6 +448,10 @@ export class ActionGroups {
 
   protected readonly attackTags = attackTagsOf;
   protected readonly attackMarks = attackMarksOf;
+  /** The counting magic bonus of the weapon behind an attack (the gear the combat reads); 0 for a spell or a creature. */
+  protected bonusOf(a: Attack): number {
+    return countingGearBonus(this.gearFlow()?.gear() ?? [], a.key);
+  }
   protected readonly attackDetail = (a: Parameters<typeof attackDetail>[0]) => attackDetail(a);
   protected readonly reasonText = reasonText;
   protected readonly castRef = castRefOf;

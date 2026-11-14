@@ -24,6 +24,29 @@
   gap: 0 8px;
 }
 
+// One-line head: only the name shrinks, and it ellipsizes.
+.row__head--one {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0 6px;
+
+  > :not(.row__name) {
+    flex: none;
+  }
+
+  .row__name {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .row__tags {
+    flex-wrap: nowrap;
+  }
+}
+
 .row__name {
   overflow-wrap: anywhere;
   font-family: var(--mr-font-display);

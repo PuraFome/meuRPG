@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { MASTER_WAIT_NOTE_ID, isMasterWait } from '../../../../core/combat/reactions';
 import type { MarksVm } from '../../../../core/characters/gear';
+import { BonusChip } from '../../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../../shared/weapon-tags/weapon-tags';
 import { EconomyMark } from '../../../../shared/economy-shapes/economy-shapes';
 import { SpellHelp } from '../../../../shared/spell-details/spell-help';
@@ -36,13 +37,16 @@ let nextId = 0;
  */
 @Component({
   selector: 'app-action-row',
-  imports: [EconomyMark, MatButtonModule, MatIconModule, SpellHelp, WeaponTags],
+  imports: [BonusChip, EconomyMark, MatButtonModule, MatIconModule, SpellHelp, WeaponTags],
   template: `
     <div class="row__text">
       @if (name()) {
-        <span class="row__head">
-          <span class="row__name">{{ name() }}</span>
-          <app-weapon-tags class="row__marks" [marks]="marks()" />
+        <span class="row__head" [class.row__head--one]="oneLine()" data-chip-row [attr.data-one-line]="oneLine() ? '' : null">
+          <span class="row__name" data-chip-ref>{{ name() }}</span>
+          <app-weapon-tags class="row__marks" [marks]="marks()" [compact]="oneLine()" />
+          @if (bonus() > 0) {
+            <app-bonus-chip data-chip [bonus]="bonus()" />
+          }
           @if (tags().length || economy()) {
             <span class="row__tags">
               @for (tag of tags(); track tag) {
@@ -110,6 +114,10 @@ export class ActionRow {
   readonly helpName = input('');
   /** A weapon's marks: a chip beside the name, an icon and its word each. */
   readonly marks = input<MarksVm | null>(null);
+  /** The magic bonus the weapon's numbers include now (a counting +N); 0 for none. */
+  readonly bonus = input(0);
+  /** The name line is one line: the name ellipsizes first, the chips and the economy tag keep their size. */
+  readonly oneLine = input(false);
   /** The economy the row spends (a mark and its word beside the name's tags); `null` for a row that spends none, or says it elsewhere. */
   readonly economy = input<RowEconomy | null>(null);
   readonly detail = input('');

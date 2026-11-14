@@ -2,15 +2,12 @@ import { Component, computed, input, output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { abilityLabel, formatModifier } from '../../../core/characters/character-labels';
+import { attackMarksFor } from '../../../core/characters/gear';
 import type { VitalsVm } from '../../../core/play/live-session.types';
 import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../shared/weapon-tags/weapon-tags';
 import { SpellHelp } from '../../../shared/spell-details/spell-help';
-import {
-  attackMarksFor,
-  countingAttackBonus,
-  itemModifierLines,
-} from '../character-sheet-modifiers';
+import { countingAttackBonus, itemModifierLines } from '../character-sheet-modifiers';
 import { AttackVm, FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {

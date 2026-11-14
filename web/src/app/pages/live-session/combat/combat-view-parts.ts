@@ -27,7 +27,7 @@ import { DiceMode } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { HeldQuestions } from '../../../core/held-rolls/held-questions';
 import { HeldVanishWatch } from '../../../core/held-rolls/held-vanish';
 import { pendingCountText } from '../../../core/held-rolls/held-text';
-import { GearClient } from '../../../core/characters/gear';
+import { GearClient, countingGearBonus } from '../../../core/characters/gear';
 import { GearFlow } from '../../../core/combat/gear-flow';
 import { ResourceClient } from '../../../core/resources/resources-client';
 
@@ -37,6 +37,7 @@ import { ResourceClient } from '../../../core/resources/resources-client';
 export abstract class CombatViewPartsDirective extends CombatViewActingDirective {
   /** Every sheet and dialog the screen opens (`CombatSheets`). */
   protected readonly sheets = new CombatSheets({
+    weaponBonus: (key) => countingGearBonus(this.gearFlow.gear(), key),
     dialog: this.dialog,
     bottomSheet: this.bottomSheet,
     api: this.api,

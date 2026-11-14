@@ -1,9 +1,6 @@
+import { attackMarksFor } from '../../core/characters/gear';
 import type { ItemModifierVm } from './character-sheet.types';
-import {
-  attackMarksFor,
-  countingAttackBonus,
-  itemModifierLines,
-} from './character-sheet-modifiers';
+import { countingAttackBonus, itemModifierLines } from './character-sheet-modifiers';
 
 function mod(
   target: string,

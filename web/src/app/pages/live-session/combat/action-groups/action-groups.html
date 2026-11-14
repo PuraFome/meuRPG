@@ -283,11 +283,14 @@
 
 <ng-template #attackRow let-a>
   @if (a.attack; as atk) {
+    @let bonus = bonusOf(atk);
     <app-action-row
       [name]="attackName(atk)"
       [economy]="isBonusAttack(a) ? 'bonus' : 'action'"
       [helpName]="isCantrip(atk) && !asksSave(atk) ? attackName(atk) : ''"
-      [marks]="attackMarks(atk)"
+      [marks]="attackMarks(atk, bonus)"
+      [bonus]="bonus"
+      [oneLine]="true"
       [detail]="withTags(attackTags(a), attackDetail(atk))"
       [note]="attackNote(a)"
       [rider]="rider(atk)"

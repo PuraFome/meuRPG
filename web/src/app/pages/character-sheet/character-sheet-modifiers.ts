@@ -1,4 +1,3 @@
-import type { MarksVm } from '../../core/characters/gear';
 import type { ItemModifierLineVm, ItemModifierVm } from './character-sheet.types';
 
 function targetWords(targets: readonly string[]): string {
@@ -32,12 +31,4 @@ export function itemModifierLines(modifiers: readonly ItemModifierVm[]): ItemMod
 /** The bonus a weapon's attack number includes now; 0 when its piece does not count. */
 export function countingAttackBonus(modifiers: readonly ItemModifierVm[], key: string): number {
   return modifiers.find((m) => m.target === `attack:${key}` && m.counts)?.value ?? 0;
-}
-
-/** The marks the "Ataques" table shows: a counting +N takes the place of "Mágica". */
-export function attackMarksFor(
-  marks: MarksVm | undefined,
-  countingBonus: number,
-): MarksVm | undefined {
-  return marks && countingBonus > 0 ? { ...marks, magical: false } : marks;
 }

@@ -317,6 +317,9 @@
 
 // The dot and the chips of the weapon's marks move together to the next line, never apart.
 .sheet__marks {
-  margin-inline-start: var(--mr-space-1);
-  white-space: nowrap;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px var(--mr-space-2);
+  margin-top: 4px;
 }
