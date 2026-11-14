@@ -18,11 +18,12 @@ import { modeWord } from './roll-mode';
 import { conditionName, listNames } from './conditions';
 import { metersFixed, metersText } from '../units';
 import { circleLabel } from './combat-options';
+import type { LogContext } from './combat-log-types';
 import { pointsText } from '../resources/pools';
 import { countsSentence } from './death-saves';
 import { article } from '../format/article';
 import { dcLabel } from '../format/save-dc';
-import { pushText, subject, the } from './combat-log-words';
+import { inThe, pushText, subject, the } from './combat-log-words';
 import { upFirst } from '../format/text';
 import type { LogContext } from './combat-log-types';
 import { durationPt } from './creature-action';
@@ -433,4 +434,29 @@ function creatureRiderText(e: CombatLogEntry, r: NonNullable<CombatLogEntry['hit
     result = `: ${target} ficou ${r.conditionNamePt}${escape}${duration}${repeat}`;
   }
   return ` usou ${name} em ${target}${result}`;
+}
+
+/**
+ * What a use of a feature did (`FeatureService.UseFeature`): "usou Halo de esporos no Zumbi 1", "usou Corrigir o tipo de dano:
+ * Fogo", "usou Entidade simbiótica: 16 PV temporários". The numbers are in the entry only for the master and the user's
+ * player; the table reads the feature and the choice, and a hidden creature's name is not in the entry at all.
+ */
+export function featureUsedText(e: CombatLogEntry, ctx: LogContext): string {
+  const f = e.featureUsed;
+  const who = e.targetLabel;
+  const target =
+    who && who !== e.actorLabel ? ` ${ctx.players.has(who) ? `em ${who}` : inThe(who)}` : '';
+  const details = f ? featureUsedDetails(f) : [];
+  const name = f?.namePt || e.keyNamePt || 'uma característica';
+  return ` usou ${name}${target}${details.length > 0 ? `: ${details.join(', ')}` : ''}`;
+}
+
+/** The choice, and what the use healed and gave, in the order the line reads them. */
+function featureUsedDetails(f: NonNullable<CombatLogEntry['featureUsed']>): string[] {
+  return [
+    f.choiceTextPt,
+    f.healed > 0 ? `${f.healed} PV recuperados` : '',
+    f.tempHp > 0 ? `${f.tempHp} PV temporários` : '',
+    f.effectApplied ? 'efeito aplicado' : '',
+  ].filter(Boolean);
 }

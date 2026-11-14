@@ -71,6 +71,7 @@ import { armorClassOf, bonusCombatSheet, bonusSheet, cropBonus, masterSetsBonuse
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
+import { beginCrowdedCombatRPC, boxIn, callFeatBody, elementFeatBody, endSessionOf, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
 import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
@@ -12845,4 +12846,217 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
     test.setTimeout(400_000);
     await scanSunlightScreens(browser, colorScheme);
   });
+}
+
+/**
+ * The action tabs of the turn: when the list is narrower than 480 px each tab that is not chosen is an icon and a count, 48 px high, with its
+ * word in its accessible name and not drawn; the chosen tab keeps its word. From 480 px every tab shows its word.
+ */
+async function expectCollapsedTabs(page: Page, chosen: string): Promise<void> {
+  const list = page.getByRole('tablist', { name: 'Tipos de ação' });
+  const room = await boxIn(page, list);
+  for (const tab of await list.getByRole('tab').all()) {
+    const name = ((await tab.getAttribute('aria-label')) ?? '').replace(/\s*\d+.*$/, '');
+    const word = tab.locator('.tl__label');
+    const box = await boxIn(page, tab);
+    if (name === chosen) {
+      await expect(word, `the chosen tab ${name} keeps its word`).toBeVisible();
+    } else if (room.width < 480) {
+      await expect(word, `${name} is an icon and a count`).toBeHidden();
+      expect(box.height, `${name} is 48 px high`).toBeCloseTo(48, 0);
+      expect(box.width, `${name} is at least 48 px wide`).toBeGreaterThanOrEqual(47.5);
+      expect(box.width, `${name} is no wider than an icon and a count`).toBeLessThan(80);
+    } else {
+      await expect(word, `${name} shows its word in a room of ${room.width}px`).toBeVisible();
+    }
+  }
+}
+
+/**
+ * "Usar característica" (#743): the Habilidades tab with the rows of features that declare a use (the limit, whom it takes), the sheet that asks
+ * who (one creature, with the reason of one out of reach, and several with check boxes) and which (the choice), the server's refusal when a target
+ * moved after it was chosen, the use that worked, and the master's confirmation when it acts for Pensantus. Saves screenshots when `E2E_SHOTS_DIR`.
+ */
+async function scanUseFeatureScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = featViewport(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...featShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade usar ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    for (const body of [markFeatBody(), volleyFeatBody(), elementFeatBody()]) {
+      await giveFeatRPC(m, campaignId, table.characterId, await createEntryRPC(m, campaignId, 'tableFeat', body));
+    }
+    // Goblin 2 stands far from Pensantus: its card says why it cannot be picked.
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, { ...attackCombatSquares, 'Goblin 2': [19, 10] });
+    const idOf = (label: string): string => begun.combatants.find((c) => c.label === label)!.id;
+    const shoot = async (page: Page, screen: string): Promise<void> => shootFeat(page, screen, width, colorScheme);
+
+    // The master acts for Pensantus: the sheet names the character and asks to confirm.
+    await openSessionPage(m, campaignId);
+    await m.getByRole('button', { name: 'Agir por Pensantus' }).click();
+    await expect(m.getByText('Você está agindo por Pensantus')).toBeVisible();
+    await openActionTab(m, 'Habilidades');
+    await m.getByRole('button', { name: 'Usar Elemento de Teste' }).click();
+    const asMaster = m.getByRole('dialog', { name: /Elemento de Teste/ });
+    await expect(asMaster.getByText('Em quem: Pensantus')).toBeVisible();
+    await expectScreenPasses(m, `Usar característica, o mestre confirma o uso por Pensantus ${where}`);
+    await shoot(m, 'usar-mestre');
+    await asMaster.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(asMaster).toHaveCount(0);
+
+    // The player's turn: the rows.
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await openActionTab(p, 'Habilidades');
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    await expect(groups.getByRole('button', { name: 'Usar Marca de Teste' })).toBeVisible();
+    await expectScreenPasses(p, `Usar característica, as linhas da aba Habilidades ${where}`);
+    await shoot(p, 'usar-linhas');
+
+    // The tabs: with four, an inactive tab is its icon and count (48 px high, its word in its name) when the room is under 480 px (a phone, the 368 px rail).
+    await expectCollapsedTabs(p, 'Habilidades');
+    await shoot(p, 'usar-abas');
+
+    // Several creatures: check boxes and the count.
+    await groups.getByRole('button', { name: 'Usar Rajada de Teste' }).click();
+    const volley = p.getByRole('dialog', { name: /Rajada de Teste/ });
+    await expect(volley.getByText(/de\s1\sa\s3\sinimigos/).first()).toBeVisible();
+    await volley.locator('label', { hasText: 'Goblin 1' }).click();
+    await volley.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(volley.getByText(/2\sde\s3\sescolhidos/)).toBeVisible();
+    await expectScreenPasses(p, `Usar característica, vários alvos ${where}`);
+    await shoot(p, 'usar-varios');
+    await volley.getByRole('button', { name: 'Cancelar' }).click();
+
+    // A choice: the buttons say which, and the use goes with the one picked.
+    await groups.getByRole('button', { name: 'Usar Elemento de Teste' }).click();
+    const element = p.getByRole('dialog', { name: /Elemento de Teste/ });
+    await expect(element.getByRole('button', { name: 'Fogo', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    await expectScreenPasses(p, `Usar característica, a escolha de uma opção ${where}`);
+    await shoot(p, 'usar-opcao');
+    await element.getByRole('button', { name: 'Fogo', exact: true }).click();
+    await expect(element.getByRole('button', { name: 'Fogo', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(element.getByRole('button', { name: 'Usar: Fogo' })).toBeEnabled();
+    await expectScreenPasses(p, `Usar característica, uma opção escolhida ${where}`);
+    await element.getByRole('button', { name: 'Cancelar' }).click();
+
+    // One creature: Goblin 2 is out of reach, the other two can be picked.
+    await groups.getByRole('button', { name: 'Usar Marca de Teste' }).click();
+    const mark = p.getByRole('dialog', { name: /Marca de Teste/ });
+    await expect(mark.locator('label', { hasText: 'Capitão Goblin' })).toBeVisible();
+    await expectScreenPasses(p, `Usar característica, em quem, com um alvo fora do alcance ${where}`);
+    await shoot(p, 'usar-alvo');
+    await mark.locator('label', { hasText: 'Capitão Goblin' }).click();
+    await expect(mark.getByRole('button', { name: 'Usar no Capitão Goblin' })).toBeEnabled();
+    await expectScreenPasses(p, `Usar característica, um alvo escolhido ${where}`);
+
+    // The captain left after it was picked: the server refuses and the sheet says who, keeping the choice.
+    await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: begun.id, combatantId: idOf('Capitão Goblin'), col: 19, row: 1 });
+    await mark.getByRole('button', { name: 'Usar no Capitão Goblin' }).click();
+    await expect(mark.getByText('saiu do alcance')).toBeVisible();
+    await expectScreenPasses(p, `Usar característica, a recusa do servidor ${where}`);
+    await shoot(p, 'usar-recusa');
+    await mark.locator('label', { hasText: 'Goblin 1' }).click();
+    await mark.getByRole('button', { name: 'Usar no Goblin 1' }).click();
+    await expect(mark).toHaveCount(0);
+    await expect(groups.getByText(/Uso de Marca de Teste/)).toBeVisible();
+    await expectScreenPasses(p, `Usar característica, o uso feito ${where}`);
+    await shoot(p, 'usar-feito');
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`usar característica passa no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+      test.setTimeout(300_000);
+      await scanUseFeatureScreens(browser, colorScheme, width);
+    });
+  }
+}
+
+/**
+ * A use with many targets (boards 743-03 and 743-07): eight enemies and Pensantus make nine cards, the list scrolls inside the sheet and the
+ * sheet's head and foot stay in view: "Usar" is drawn inside the viewport without scrolling the sheet, before and after the list is scrolled.
+ */
+async function scanCrowdedTargets(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = featViewport(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...featShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade oito alvos ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    await giveFeatRPC(m, campaignId, table.characterId, await createEntryRPC(m, campaignId, 'tableFeat', callFeatBody()));
+    await beginCrowdedCombatRPC(m, table, 7);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await openActionTab(p, 'Habilidades');
+    await p.getByRole('region', { name: 'O que você pode fazer' }).getByRole('button', { name: 'Usar Chamado de Teste' }).click();
+    const sheet = p.getByRole('dialog', { name: /Chamado de Teste/ });
+    await expect(sheet.getByRole('radio')).toHaveCount(9);
+    const list = sheet.locator('.pick__list--scrolls');
+    await expect(list, 'nine cards: the list scrolls inside itself').toBeVisible();
+    expect(await list.evaluate((el) => el.scrollHeight > el.clientHeight), 'the list is taller than its room').toBe(true);
+    // A card is not squeezed to make the list fit its room: it does not shrink, and its lines stay inside its border.
+    for (const card of await sheet.locator('.opt').all()) {
+      const { shrink, over } = await card.evaluate((el) => ({ shrink: getComputedStyle(el).flexShrink, over: el.scrollHeight - el.clientHeight }));
+      const name = (await card.innerText()).split('\n')[0];
+      expect(shrink, `the card ${name} does not shrink`).toBe('0');
+      expect(over, `the lines of the card ${name} stay inside it`).toBeLessThanOrEqual(1);
+    }
+    const inView = async (what: string, target: Locator): Promise<void> => {
+      const box = await boxIn(p, target);
+      expect(box.y, `${what} starts inside the viewport`).toBeGreaterThanOrEqual(0);
+      expect(box.y + box.height, `${what} ends inside the viewport`).toBeLessThanOrEqual(viewport.height);
+    };
+    const use = sheet.getByRole('button', { name: 'Usar', exact: true });
+    await inView('"Usar"', use);
+    await inView('"Cancelar"', sheet.getByRole('button', { name: 'Cancelar' }));
+    await inView('the title', sheet.getByRole('heading', { name: 'Chamado de Teste' }));
+    await expectScreenPasses(p, `Usar característica, oito alvos ou mais ${where}`);
+    await shootFeat(p, 'usar-oito-alvos', width, colorScheme);
+    // The end of the list: the head and the foot have not moved, and the last card can be picked.
+    await list.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+    await inView('"Usar" at the end of the list', use);
+    await inView('the title at the end of the list', sheet.getByRole('heading', { name: 'Chamado de Teste' }));
+    await sheet.locator('label', { hasText: 'Goblin 7' }).click();
+    await inView('"Usar no Goblin 7"', sheet.getByRole('button', { name: 'Usar no Goblin 7' }));
+    await expectScreenPasses(p, `Usar característica, o último alvo escolhido ${where}`);
+    await shootFeat(p, 'usar-oito-alvos-fim', width, colorScheme);
+  } finally {
+    await endSessionOf(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  for (const width of [390, 1280]) {
+    test(`usar característica com oito alvos passa no axe e mantém "Usar" à vista no tema ${theme}, em ${width}`, { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
+      test.setTimeout(300_000);
+      await scanCrowdedTargets(browser, colorScheme, width);
+    });
+  }
 }

@@ -29,7 +29,6 @@ import {
   attackTagsOf,
   beamsLeftLine,
   bonusAttackLine,
-  circleLabel,
   groupOf,
   groupState,
   isBonusAttack,
@@ -60,7 +59,6 @@ import {
   hiddenWord,
 } from '../../../../core/combat/contest-view';
 import { castRefOf } from '../../../../core/combat/cast-ref';
-import { freeText } from '../../../../core/combat/cast-flow';
 import { standUpRow } from '../../../../core/combat/stand-up';
 import { type ListedDie, maneuverLine } from '../../../../core/effects/roll-die';
 import type { GearFlow } from '../../../../core/combat/gear-flow';
@@ -76,9 +74,10 @@ import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-us
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
 import { ActionRow, type RowEconomy } from './action-row';
 import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/action-spend';
+import { resourceOf, useLine } from '../../../../core/combat/feature-use';
+import type { ResourceUsageVm } from '../../../../core/play/resource-usage.types';
 import { GroupState } from './group-state';
-import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, shortCircle } from './action-groups-text';
-import { specialAttack } from './action-groups-text';
+import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, slotRowsOf, specialAttack } from './action-groups-text';
 import { offersWeaponAttack } from './weapon-offer';
 
 /**
@@ -171,6 +170,8 @@ export class ActionGroups {
     readonly detail: string;
     readonly reason: string;
   } | null>(null);
+  /** The character's resources, for the name of the one a feature spends from ("gasta 1 uso de Forma Selvagem"). */
+  readonly resources = input<readonly ResourceUsageVm[]>([]);
   /** The master acts for the character: "Mover" is in the map's header (C8-01), so the economy row does not repeat it. */
   readonly moveAside = input(false);
   /** "Permanecer na forma": what it costs and why it cannot be pressed ('' when it can); `null` outside a form. */
@@ -367,28 +368,7 @@ export class ActionGroups {
   /** Every spell, whatever its economy, as the server ordered them. */
   protected readonly spells = computed(() => this.options().spells);
   /** One row for each circle the character has slots in, then the pact slots. */
-  protected readonly slotRows = computed(() => {
-    const { usage, pact } = this.slots();
-    const rows = usage
-      .filter((u) => u.total > 0)
-      .map((u) => ({
-        title: circleLabel(u.level),
-        short: shortCircle(u.level),
-        total: u.total,
-        used: u.used,
-        text: freeText(u.total - u.used, u.total),
-      }));
-    if (pact && pact.total > 0) {
-      rows.push({
-        title: `${circleLabel(pact.slotLevel)} (pacto)`,
-        short: `${shortCircle(pact.slotLevel)} pacto`,
-        total: pact.total,
-        used: pact.used,
-        text: freeText(pact.total - pact.used, pact.total),
-      });
-    }
-    return rows;
-  });
+  protected readonly slotRows = computed(() => slotRowsOf(this.slots()));
   /** Atacar and Conjurar are not repeated here: they are the rows above. */
   protected readonly standard = computed(() =>
     this.options().standardActions.filter(
@@ -507,7 +487,10 @@ export class ActionGroups {
   /** Whether a feature is off, why, and the line under its name: what a use costs and what is left (the server's reason, or "Faltam usos"). */
   protected readonly featureOff = featureIsOff;
   protected readonly featureWhy = featureWhy;
-  protected readonly featureDetail = featureLine;
+  /** The line under a feature's name: a feature taken with `UseFeature` says its scope, whom it takes and what it spends. */
+  protected featureDetail(a: ActionOption): string {
+    return a.viaUseFeature ? useLine(a, resourceOf(a, this.resources())) : featureLine(a);
+  }
 
   /** The feature that is the druid's Wild Shape: it opens the beasts' sheet instead of being "used". */
   protected isWild(a: ActionOption): boolean {
