@@ -258,6 +258,8 @@ func answerHeldCheckResultOf(out proto.Message, res *playv1.AnswerHeldRollRespon
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_TrapSearch{TrapSearch: o}, o.GetHeldRollOffer()
 	case *playv1.TryPuzzleHintResponse:
 		res.Result, res.Next = &playv1.AnswerHeldRollResponse_HintTry{HintTry: o}, o.GetHeldRollOffer()
+	case *playv1.RollMountSaveResponse:
+		res.Result, res.Next = &playv1.AnswerHeldRollResponse_MountSave{MountSave: o}, o.GetHeldRollOffer()
 	}
 }
 
