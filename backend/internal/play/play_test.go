@@ -46,10 +46,11 @@ func TestAuthorizationMatrix(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	h.svc.SetTraps(emptyTrapBook{}) // a map book with no traps (see the traps rows below)
-	master, player, pending := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("Pendente")
-	campaign := h.newCampaign(master, "Mirathel", player)
+	master, player, pending, other := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("Pendente"), h.newUser("Outro")
+	campaign := h.newCampaign(master, "Mirathel", player, other)
 	h.joinPending(master, campaign, pending)
 	pc := player.createCharacter(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus")
+	otherPC := other.createCharacter(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Toren")
 	open := master.start(t, campaign).GetGameSession()
 
 	type client = playv1connect.PlayServiceClient
@@ -82,6 +83,17 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.GetLiveSession(ctx, connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: campaign}))
 			return err
 		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		// The one read that needs no open session (the sheet's, with the table not playing). Of the player's own character the
+		// player and the master read the answer (no form: an empty one); of another player's character the player is refused
+		// like a stranger and a pending member, with the not_found of a character they cannot read.
+		{"GetCharacterWildShape", func(ctx context.Context, c client) error {
+			_, err := c.GetCharacterWildShape(ctx, connect.NewRequest(&playv1.GetCharacterWildShapeRequest{CampaignId: campaign, CharacterId: pc.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"GetCharacterWildShape (another player's character)", func(ctx context.Context, c client) error {
+			_, err := c.GetCharacterWildShape(ctx, connect.NewRequest(&playv1.GetCharacterWildShapeRequest{CampaignId: campaign, CharacterId: otherPC.GetId()}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"WatchGameSession", func(ctx context.Context, c client) error {
 			return firstEventError(ctx, c, campaign)
 		}, [5]connect.Code{allowed, allowed, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
@@ -327,6 +339,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 			})
 		}
 	}
+	checkFavorAuthorization(t, favorTable{campaign: campaign, character: pc.GetId(), master: master, owner: player, bystander: other, outsider: h.newUser("De fora")})
 }
 
 // RN-01 (and MR-011's third criterion): when the first session of a
@@ -889,6 +902,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["ListGameSessions"] = c.ListGameSessions(ctx, connect.NewRequest(&playv1.ListGameSessionsRequest{CampaignId: id}))
 	_, calls["ListOpenGameSessions"] = c.ListOpenGameSessions(ctx, connect.NewRequest(&playv1.ListOpenGameSessionsRequest{}))
 	_, calls["GetLiveSession"] = c.GetLiveSession(ctx, connect.NewRequest(&playv1.GetLiveSessionRequest{CampaignId: id}))
+	_, calls["GetCharacterWildShape"] = c.GetCharacterWildShape(ctx, connect.NewRequest(&playv1.GetCharacterWildShapeRequest{CampaignId: id, CharacterId: id}))
 	_, calls["AdjustCharacterVitals"] = c.AdjustCharacterVitals(ctx, connect.NewRequest(&playv1.AdjustCharacterVitalsRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
 	_, calls["NudgePlayer"] = c.NudgePlayer(ctx, connect.NewRequest(&playv1.NudgePlayerRequest{CampaignId: id, CharacterId: id}))
 	_, calls["SendSessionMessage"] = c.SendSessionMessage(ctx, connect.NewRequest(&playv1.SendSessionMessageRequest{CampaignId: id, IdempotencyKey: id}))
@@ -1000,6 +1014,18 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())
 	}
 	maps.Copy(calls, combat)
+
+	// FavorService, the Inspiration the master grants, is mounted with the same checks.
+	favor := map[string]error{}
+	fc := playv1connect.NewFavorServiceClient(server.Client(), server.URL)
+	_, favor["GrantFavor"] = fc.GrantFavor(ctx, connect.NewRequest(&playv1.GrantFavorRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
+	_, favor["GetFavor"] = fc.GetFavor(ctx, connect.NewRequest(&playv1.GetFavorRequest{CampaignId: id}))
+	_, favor["PassFavor"] = fc.PassFavor(ctx, connect.NewRequest(&playv1.PassFavorRequest{CampaignId: id, FromCharacterId: id, ToCharacterId: id, IdempotencyKey: id}))
+	favorMethods := playv1.File_meurpg_play_v1_favor_proto.Services().ByName("FavorService").Methods()
+	if len(favor) != favorMethods.Len() {
+		t.Errorf("called %d favor methods, the service has %d", len(favor), favorMethods.Len())
+	}
+	maps.Copy(calls, favor)
 	for name, err := range calls {
 		if connect.CodeOf(err) != connect.CodeUnauthenticated {
 			t.Errorf("%s signed out: error = %v, want unauthenticated", name, err)

@@ -315,6 +315,8 @@
           <app-equipment-panel
             class="sheet__equipment"
             [sheet]="full"
+            [viewer]="vm.isMaster ? 'master' : 'owner'"
+            [characterName]="vm.name"
             [canEquip]="vm.state !== 'dead'"
             [equipBusyKey]="gear.busyKey()"
             [equipNotice]="gear.notice()"
@@ -323,8 +325,15 @@
             (equipRetried)="gear.retry()"
             [canMark]="vm.canEdit && vm.state !== 'dead'"
             [marksNotice]="gear.marksNotice()"
-            (marksOpened)="gear.openMarks($event)"
+            (marksOpened)="gear.openPiece($event)"
             (gearToggled)="gear.toggle($event)"
+            [canManageMagic]="vm.canEdit && vm.state !== 'dead'"
+            [canChangeAttunement]="vm.isMaster || (vm.state !== 'dead' && magic.windowOpen())"
+            [attunementIsClosed]="vm.state === 'dead' && !vm.isMaster"
+            [magicNotice]="magic.notice()"
+            (attunementOpened)="magic.openAttunement()"
+            (magicAdding)="magic.openPicker()"
+            (magicRemoving)="magic.openRemove($event)"
           />
           <div class="sheet__traits">
             <app-features-panel class="sheet__features" [sheet]="full" />

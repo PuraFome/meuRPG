@@ -32,6 +32,7 @@ import { combatErrorMessage } from '../../../core/combat/combat-errors';
 import { isUnlimited } from '../../../core/combat/unlimited-uses';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { CreatureCard } from './creature-card';
+import { readWild, stayBeast } from './wild-read';
 import type { EditMode } from '../../../shared/creatures/creature-edit';
 import {
   SummonSheet,
@@ -133,7 +134,29 @@ export class CreaturesPanel {
     readonly total: number;
     readonly recharge: string;
   } | null>(null);
+  /** The beast's pool and the time the form has left, as the server writes it (only the owner reads them): "52 min restantes". */
+  protected readonly formHp = signal<{ readonly current: number; readonly max: number } | null>(
+    null,
+  );
+  protected readonly formTime = signal('');
+  private readonly beastKey = signal('');
+  private readonly formTotal = signal(0);
   protected readonly wildError = signal('');
+  /** "Permanecer na forma" is on its way. */
+  protected readonly staying = signal(false);
+  private readonly stayKey = new ActionKey();
+  /** "Permanecer gasta 1 uso (restará 0): o Lobo fica com 7 PV e o tempo recomeça. Fora de combate, nada disso gasta ação." */
+  protected readonly stayLine = computed(() => {
+    const u = this.uses();
+    const uses = u && !isUnlimited(u.total) ? ` (restará ${Math.max(u.left - 1, 0)})` : '';
+    const beast = stayBeast(this.form(), this.formHp(), this.formTotal());
+    return `Permanecer gasta 1 uso${uses}${beast}. Fora de combate, nada disso gasta ação.`;
+  });
+  /** No use left: "Permanecer" waits for a rest. */
+  protected readonly noUses = computed(() => {
+    const u = this.uses();
+    return !!u && !isUnlimited(u.total) && u.left <= 0;
+  });
   /** "Voltar à forma normal" is on its way. */
   protected readonly leaving = signal(false);
   private readonly leaveKey = new ActionKey();
@@ -158,26 +181,26 @@ export class CreaturesPanel {
   });
 
   private async loadWild(): Promise<void> {
-    if (!this.wildShape() || this.isMaster() || !this.live()) {
+    if (!this.wildShape() || this.isMaster()) {
       return;
     }
     const seq = ++this.wildSeq;
     try {
-      const v = await this.client.vitalsOf(this.campaignId(), this.characterId());
+      // With no session open the form comes from its own small read, and it carries no time and no uses (card 9).
+      const live = this.live();
+      const v = live
+        ? await this.client.vitalsOf(this.campaignId(), this.characterId())
+        : await this.client.wildShapeOf(this.campaignId(), this.characterId());
       if (seq !== this.wildSeq) {
         return;
       }
-      const r = v?.resources.find((x) => x.key === 'wild_shape');
-      this.uses.set(
-        r
-          ? {
-              left: r.total - r.used,
-              total: r.total,
-              recharge: r.recharge === 2 ? 'long_rest' : 'short_rest',
-            }
-          : null,
-      );
-      this.form.set(v?.wildShape?.beastNamePt ?? '');
+      const read = readWild(v);
+      this.uses.set(read.uses);
+      this.form.set(read.form);
+      this.formTime.set(live ? read.time : '');
+      this.beastKey.set(read.beastKey);
+      this.formTotal.set(read.total);
+      this.formHp.set(read.hp);
     } catch {
       if (seq === this.wildSeq) {
         this.uses.set(null);
@@ -201,6 +224,31 @@ export class CreaturesPanel {
         this.notice.set(`Você virou ${r.beastNamePt}. O mestre encerra a forma.`);
       }
     });
+  }
+
+  /** "Permanecer na forma": the same beast, one use, the time starts over; out of a combat it spends no action. */
+  protected async stay(): Promise<void> {
+    if (this.staying() || this.noUses()) {
+      return;
+    }
+    this.staying.set(true);
+    this.wildError.set('');
+    try {
+      await this.client.assumeWildShape(
+        this.campaignId(),
+        this.characterId(),
+        this.beastKey(),
+        this.stayKey.keyFor([this.campaignId(), this.characterId()]),
+        true,
+      );
+      this.stayKey.renew();
+      this.notice.set(`Você continua na forma de ${this.form()}. O tempo recomeçou.`);
+    } catch (err) {
+      this.wildError.set(combatErrorMessage(err, 'permanecer na forma'));
+    } finally {
+      await this.loadWild();
+      this.staying.set(false);
+    }
   }
 
   protected async leave(): Promise<void> {

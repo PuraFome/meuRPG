@@ -1,0 +1,21 @@
+<fieldset class="bg" [disabled]="disabled()">
+  <legend class="bg__legend">Bônus mágico</legend>
+  <div class="bg__row">
+    @for (o of options; track o.value) {
+      <label class="bg__opt" [class.bg__opt--on]="value() === o.value">
+        <input
+          type="radio"
+          class="bg__input"
+          [name]="name"
+          [value]="o.value"
+          [checked]="value() === o.value"
+          (change)="valueChange.emit(o.value)"
+        />
+        @if (value() === o.value) {
+          <mat-icon class="bg__check" aria-hidden="true">check</mat-icon>
+        }
+        <span>{{ o.word }}</span>
+      </label>
+    }
+  </div>
+</fieldset>

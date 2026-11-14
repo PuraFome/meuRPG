@@ -1,11 +1,9 @@
 import { isMasterWait } from '../../../../core/combat/reactions';
 import { Component, ElementRef, computed, inject, input, output, signal } from '@angular/core';
 import type { Combatant } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { moveLine } from '../../../../core/combat/move-line';
 import { leftSentence, passNote } from '../../../../core/combat/joint-turn';
 import type { MineTab } from '../../../../core/combat/mine';
 import { keepClear } from '../../../../shared/scroll-clearance/scroll-clearance';
-import { EconomyShapes, economyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { EndPart } from '../joint-turn/end-part';
 import { MineTabs } from '../mine-tabs/mine-tabs';
 import { EndTurn } from './end-turn';
@@ -20,7 +18,7 @@ import { EndTurn } from './end-turn';
  */
 @Component({
   selector: 'app-turn-bar',
-  imports: [EconomyShapes, EndPart, EndTurn, MineTabs],
+  imports: [EndPart, EndTurn, MineTabs],
   template: `
     @if (tabs().length > 1) {
       <app-mine-tabs [tabs]="tabs()" [selected]="selected()" (select)="select.emit($event)" />
@@ -35,17 +33,8 @@ import { EndTurn } from './end-turn';
         <div class="row">
           @if (waiting() && !masterWait()) {
             <p class="what">{{ waiting() }}: a vez continua quando responderem.</p>
-          } @else {
-            <div class="left">
-              <span class="left__lead">Ainda tem</span>
-              @if (anyLeft()) {
-                <app-economy-shapes variant="inline" [onlyLeft]="true" [shapes]="shapes()" label="Ainda tem" />
-              } @else {
-                <span class="left__none">Nada mais neste turno</span>
-              }
-            </div>
           }
-          <app-end-turn class="row__end" [own]="me" [attacksLeft]="attacksLeft()" [settling]="optionsSettling()" [busy]="busy()" [waiting]="waiting()" [label]="surprised() ? 'Passar o turno' : 'Encerrar turno'" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
+          <app-end-turn class="row__end" [block]="true" [filled]="true" [own]="me" [attacksLeft]="attacksLeft()" [settling]="optionsSettling()" [busy]="busy()" [waiting]="waiting()" [label]="surprised() ? 'Passar o turno' : 'Encerrar turno'" [surprised]="surprised()" (endTurn)="endTurn.emit()" />
         </div>
       }
     }
@@ -76,35 +65,6 @@ import { EndTurn } from './end-turn';
       b {
         color: var(--mr-ink);
       }
-    }
-
-    .left {
-      display: flex;
-      flex: 1 1 0;
-      flex-direction: column;
-      gap: 2px;
-      min-width: 0;
-    }
-
-    .left__lead {
-      font-size: var(--mr-font-13);
-      line-height: 16px;
-      color: var(--mr-ink-muted);
-      // On the narrowest phones the shapes alone say it (the group is still named "Ainda tem"): the bar gives the page a line back.
-      @media (max-width: 359.98px) {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
-      }
-    }
-
-    .left__none {
-      font-size: var(--mr-font-13);
-      line-height: 16px;
-      font-weight: 700;
     }
 
     // One slim row: the movement left, when there is one, and "Encerrar turno" at the end. The
@@ -183,19 +143,4 @@ export class TurnBar {
       others.includes('o mestre'),
     );
   }
-
-  /** The shapes of what the turn still has: the Action, the Bonus action, the Reaction and, on a map, the metres left (C4-03). */
-  protected readonly shapes = computed(() => {
-    const c = this.own();
-    if (!c) {
-      return [];
-    }
-    const line = moveLine(c, false);
-    return economyShapes(c, {
-      attacksLeft: this.attacksLeft(),
-      attacksPerAction: this.attacksPerAction(),
-      moveText: line.canMove ? line.left : null,
-    });
-  });
-  protected readonly anyLeft = computed(() => this.shapes().some((s) => !s.spent));
 }

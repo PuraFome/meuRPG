@@ -1,3 +1,4 @@
+import { vitalsPool } from '../../../core/combat/form-pool';
 import type { RollDie } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import {
   ElementRef,
@@ -223,10 +224,10 @@ export abstract class CombatViewStateDirective {
       ...(joint.waitsForMaster ? ['o mestre'] : []),
     ];
   });
-  /** The player's own hit points, from its vitals (the combatant carries them only for a beast's pool): the turn card and the order read them. */
+  /** The player's own hit points, from its vitals (the form's pool in a form): the turn card and the order read them. */
   protected readonly ownHitPoints = computed(() => {
     const v = this.ownVitals();
-    return v ? { current: v.hitPointsCurrent, max: v.hitPointsMax } : null;
+    return v ? vitalsPool(v) : null;
   });
   /** The player's own slots, for the rows above the spell list. */
   protected readonly ownSlots = computed(() => {

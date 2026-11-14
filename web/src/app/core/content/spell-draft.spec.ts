@@ -5,6 +5,7 @@ import { Ability, SpellRangeKind, SpellSaveSuccess } from '../../../gen/meurpg/r
 import {
   TableAreaShape,
   TableEffectApplies,
+  TableEffectAudience,
   TableEffectModifierKind,
   TableSpellEffectSchema,
   TableSpellSchema,
@@ -274,6 +275,7 @@ describe('what the form has no control for', () => {
       schoolKey: 'school:abjuration',
       effect: create(TableSpellEffectSchema, {
         applies: TableEffectApplies.ALL,
+        visibility: TableEffectAudience.OWNER,
         conditions: ['condition:invisible'],
         modifiers: [{ kind: TableEffectModifierKind.AC_BONUS, value: 2 }],
       }),
@@ -285,7 +287,11 @@ describe('what the form has no control for', () => {
     const draft = { ...spellToDraft(stored), name: 'Marca de Cinza' };
     const sent = create(TableSpellSchema, draftToSpell(draft));
     expect(sent.namePt).toBe('Marca de Cinza');
-    expect(sent.effect).toEqual(stored.effect);
+    expect(sent.effect).toMatchObject({
+      conditions: ['condition:invisible'],
+      visibility: TableEffectAudience.OWNER,
+    });
+    expect(sent.effect?.modifiers).toEqual(stored.effect?.modifiers);
     expect(sent.zone).toEqual(stored.zone);
   });
 

@@ -88,6 +88,10 @@
           @if (nextLine()) {
             <span class="bar__next">{{ nextLine() }}</span>
           }
+          @if (banner().who?.wildShapeBeastKey) {
+            <!-- A druid in a form: the name of the beast, as every player reads it (584-04). -->
+            <app-form-chip [beast]="banner().who!.wildShapeBeastNamePt" />
+          }
           @if (actingFor()) {
             <span class="mr-tag bar__acting" data-testid="acting-chip">
               <mat-icon aria-hidden="true">person</mat-icon>Você age por {{ actingFor() }}

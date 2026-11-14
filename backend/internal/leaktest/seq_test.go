@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -692,27 +693,56 @@ func (w *world) seqLog(p *person, since int64) *playv1.ListCombatLogResponse {
 // what they held. Inside each world the players heard no event, a heartbeat held the number alone, and the answers of the combat log are
 // what they were before (hiddenWriteWorld).
 func TestAHiddenWriteMovesThePlayersNumberAndNothingElse(t *testing.T) {
-	for _, hw := range hiddenWrites {
-		t.Run(hw.name, func(t *testing.T) {
-			a := hiddenWriteWorld(t, &hw, 0, true)
-			b := hiddenWriteWorld(t, &hw, 1, true)
-			none := hiddenWriteWorld(t, &hw, 0, false)
-			if a.start != b.start || a.start != none.start {
-				t.Errorf("the worlds opened at numbers %d, %d and %d: they are built the same way", a.start, b.start, none.start)
-			}
-			if a.end != a.start+1 || b.end != b.start+1 || none.end != none.start {
-				t.Errorf("the numbers after: %d, %d and %d (before: %d), want one bump for each write and none without", a.end, b.end, none.end, a.start)
-			}
-			for name := range a.players {
-				if a.players[name] != b.players[name] {
-					t.Errorf("%s read other things in two worlds whose hidden content differs:\n A %s\n B %s", name, shorten([]byte(a.players[name])), shorten([]byte(b.players[name])))
-				}
-				if a.players[name] != none.players[name] {
-					t.Errorf("%s read other things in the world with the hidden write and the world without it:\n with    %s\n without %s", name, shorten([]byte(a.players[name])), shorten([]byte(none.players[name])))
-				}
-			}
-			if hw.masterLine && (a.masterLog == b.masterLog || a.masterLog == none.masterLog) {
-				t.Errorf("the master read the same log in worlds that differ in what he wrote: the control is gone")
+	// The world without the write is built the same way for every row that makes nothing before it (hiddenWrite.before): one
+	// of them serves all of those rows, built by the first that asks.
+	var (
+		sharedOnce sync.Once
+		shared     seqSnapshot
+		sharedOK   bool
+	)
+	control := func(t *testing.T, hw *hiddenWrite) seqSnapshot {
+		t.Helper()
+		if hw.before != nil {
+			return hiddenWriteWorld(t, hw, 0, false)
+		}
+		sharedOnce.Do(func() {
+			shared = hiddenWriteWorld(t, hw, 0, false)
+			sharedOK = true // not reached when the world's build stopped its test
+		})
+		if !sharedOK {
+			t.Fatal("the world without a write, shared by the rows that make nothing before it, could not be built")
+		}
+		return shared
+	}
+	// The rows run in two groups at the same time (each row builds three worlds, and most of a world's time is the database's
+	// copy of the schema, which waits for the server, not for this process); inside a group one row follows another.
+	for g := range 2 {
+		t.Run(fmt.Sprintf("group %d", g+1), func(t *testing.T) {
+			t.Parallel()
+			for i := g; i < len(hiddenWrites); i += 2 {
+				hw := &hiddenWrites[i]
+				t.Run(hw.name, func(t *testing.T) {
+					a := hiddenWriteWorld(t, hw, 0, true)
+					b := hiddenWriteWorld(t, hw, 1, true)
+					none := control(t, hw)
+					if a.start != b.start || a.start != none.start {
+						t.Errorf("the worlds opened at numbers %d, %d and %d: they are built the same way", a.start, b.start, none.start)
+					}
+					if a.end != a.start+1 || b.end != b.start+1 || none.end != none.start {
+						t.Errorf("the numbers after: %d, %d and %d (before: %d), want one bump for each write and none without", a.end, b.end, none.end, a.start)
+					}
+					for name := range a.players {
+						if a.players[name] != b.players[name] {
+							t.Errorf("%s read other things in two worlds whose hidden content differs:\n A %s\n B %s", name, shorten([]byte(a.players[name])), shorten([]byte(b.players[name])))
+						}
+						if a.players[name] != none.players[name] {
+							t.Errorf("%s read other things in the world with the hidden write and the world without it:\n with    %s\n without %s", name, shorten([]byte(a.players[name])), shorten([]byte(none.players[name])))
+						}
+					}
+					if hw.masterLine && (a.masterLog == b.masterLog || a.masterLog == none.masterLog) {
+						t.Errorf("the master read the same log in worlds that differ in what he wrote: the control is gone")
+					}
+				})
 			}
 		})
 	}

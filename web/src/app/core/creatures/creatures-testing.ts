@@ -324,7 +324,7 @@ export class FakeCreaturesClient {
   wild = { maxCr: '1/2', noFly: true, noSwim: false };
   assumed: string[] = [];
   wildShapeForms = vi.fn(async (_c: string, _ch: string) => ({ forms: this.forms, ...this.wild }));
-  assumeWildShape = vi.fn(async (_c: string, _ch: string, beastKey: string, _k: string) => {
+  assumeWildShape = vi.fn(async (_c: string, _ch: string, beastKey: string, ..._: unknown[]) => {
     this.assumed.push(beastKey);
     if (this.failWith) {
       throw this.failWith;

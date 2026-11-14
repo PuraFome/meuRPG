@@ -354,6 +354,30 @@ func TestWildShapeTimeLeftIsRead(t *testing.T) {
 	if got := s.vitals(t, s.bri).GetWildShape().GetSecondsLeft(); got != formSeconds-480 {
 		t.Errorf("seconds left in the vitals = %d, want %d", got, formSeconds-480)
 	}
+	// The vitals carry the words too (the band, the sheet's panel and the order read them): 2 h less 8 min.
+	if got := s.vitals(t, s.bri).GetWildShape().GetTimeLeftPt(); got != "1 h 52 min restantes" {
+		t.Errorf("time left in the vitals = %q, want %q", got, "1 h 52 min restantes")
+	}
+	// RN-20, the leak row: the master and the owner read both fields in the live session (the positive controls);
+	// another player is given no vitals of hers at all, so neither the seconds nor the words reach them.
+	readers := map[string]*user{"master": s.master, "owner": s.bia, "other player": s.caio}
+	for who, u := range readers {
+		var w *playv1.WildShapeState
+		for _, v := range u.liveSession(t, s.campaignID).GetVitals() {
+			if v.GetCharacterId() == s.bri.GetId() {
+				w = v.GetWildShape()
+			}
+		}
+		if who == "other player" {
+			if w != nil {
+				t.Errorf("%s reads the form %v, want none of it", who, w)
+			}
+			continue
+		}
+		if w.GetTimeLeftPt() != "1 h 52 min restantes" || w.SecondsLeft == nil || w.GetSecondsLeft() != formSeconds-480 {
+			t.Errorf("%s reads %v, want 1 h 52 min restantes and %d seconds", who, w, formSeconds-480)
+		}
+	}
 	text := func() string {
 		r, err := s.bia.lasting.ListCharacterEffects(t.Context(), connect.NewRequest(&playv1.ListCharacterEffectsRequest{CampaignId: s.campaignID}))
 		if err != nil {
@@ -383,6 +407,12 @@ func TestWildShapeTimeLeftIsRead(t *testing.T) {
 	f := cardOf(t, byLabel(t, s.get(t, s.master), "Sálvia"), wildShapeEffect)
 	if f == nil || f.GetClockTextPt() != "52 min restantes" {
 		t.Errorf("clock card = %v, want 52 min restantes", f)
+	}
+	// The form is said once, by the beast's name: the clock's effect is no label of its own (584-02, 584-04).
+	for _, who := range []*user{s.master, s.bia, s.caio} {
+		if l := byLabel(t, s.get(t, who), "Sálvia").GetEffectLabels(); len(l) != 0 {
+			t.Errorf("the order carries the labels %v on the druid in the form, want none", l)
+		}
 	}
 	if got := byLabel(t, s.get(t, s.master), "Sálvia").GetSpeedFt(); got == 0 {
 		t.Error("the druid has no speed")
@@ -435,6 +465,43 @@ func TestWildShapeClockEndsWithTheForm(t *testing.T) {
 			CampaignId: s.campaignID, CharacterId: s.bri.GetId(), IdempotencyKey: newKey(), ExpectedRevision: s.master.revisionOf(t, s.campaignID, s.bri.GetId()), ResourcesUsed: []*playv1.ResourceUsed{{Key: wildShapeResource, Used: 0}},
 		})); err != nil {
 			t.Fatalf("giving the uses back: %v", err)
+		}
+	}
+}
+
+// TestWildShapeReadOutsideASession: GetCharacterWildShape answers with no session open, with the clock, to the
+// master and the owner (the positive controls); another player and a stranger to the campaign (the spectator)
+// get the not_found of a character they cannot read, the same as for a character that does not exist.
+func TestWildShapeReadOutsideASession(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	s.mustAssume(t, s.bia, s.bri, wolfKey)
+	s.advanceGameTime(t, 480)
+	s.master.end(t, s.master.liveSession(t, s.campaignID).GetGameSession())
+	read := func(u *user, id string) (*playv1.WildShapeState, error) {
+		res, err := u.play.GetCharacterWildShape(t.Context(), connect.NewRequest(&playv1.GetCharacterWildShapeRequest{CampaignId: s.campaignID, CharacterId: id}))
+		if err != nil {
+			return nil, err
+		}
+		return res.Msg.GetWildShape(), nil
+	}
+	for who, u := range map[string]*user{"master": s.master, "owner": s.bia} {
+		w, err := read(u, s.bri.GetId())
+		if err != nil || w.GetBeastKey() != wolfKey || w.GetTimeLeftPt() != "1 h 52 min restantes" || w.GetSecondsLeft() != formSeconds-480 || w.GetArmorClass() != 13 || w.GetSecondsTotal() != formSeconds {
+			t.Errorf("%s reads %v, %v, want the wolf (CA 13, 2 h in all) with 1 h 52 min restantes", who, w, err)
+		}
+	}
+	if w, err := read(s.master, s.irma.GetId()); err != nil || w != nil {
+		t.Errorf("a druid in no form reads %v, %v, want no form and no error", w, err)
+	}
+	_, goneErr := read(s.caio, "00000000-0000-4000-8000-000000000000")
+	for who, u := range map[string]*user{"other player": s.caio, "spectator": s.h.newUser("De fora")} {
+		w, err := read(u, s.bri.GetId())
+		if w != nil || connect.CodeOf(err) != connect.CodeNotFound {
+			t.Errorf("%s reads %v, %v, want not_found and no form", who, w, err)
+		}
+		if who == "other player" && (err == nil || goneErr == nil || err.Error() != goneErr.Error()) {
+			t.Errorf("%s is told %v, a missing character is told %v, want the same", who, err, goneErr)
 		}
 	}
 }

@@ -276,6 +276,7 @@ type user struct {
 	combat     playv1connect.CombatServiceClient
 	contests   playv1connect.ContestServiceClient
 	lasting    playv1connect.LastingEffectServiceClient
+	favor      playv1connect.FavorServiceClient
 	resource   playv1connect.ResourceServiceClient
 	casting    playv1connect.CastingServiceClient
 	feature    playv1connect.FeatureServiceClient
@@ -313,6 +314,7 @@ func (h *harness) clients(userID string) *user {
 		combat:     playv1connect.NewCombatServiceClient(c, url),
 		contests:   playv1connect.NewContestServiceClient(c, url),
 		lasting:    playv1connect.NewLastingEffectServiceClient(c, url),
+		favor:      playv1connect.NewFavorServiceClient(c, url),
 		resource:   playv1connect.NewResourceServiceClient(c, url),
 		casting:    playv1connect.NewCastingServiceClient(c, url),
 		feature:    playv1connect.NewFeatureServiceClient(c, url),
