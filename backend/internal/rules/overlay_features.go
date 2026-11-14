@@ -337,6 +337,9 @@ func (b *overlayBuilder) checkEffect(owner, path string, e *Effect, strict bool)
 			return err
 		}
 	}
+	if err := checkRestFields(site, e); err != nil {
+		return err
+	}
 	entry := b.featureEntry[owner]
 	if err := b.checkStateReads(site, entry, e); err != nil {
 		return err
@@ -660,11 +663,11 @@ func (b *overlayBuilder) checkResourceEffect(site effectSite, e *Effect) error {
 // table.
 var ownFields = map[string][]string{
 	"modifier":     {"target", "mode", "value", "applies", "cap"},
-	"proficiency":  {"proficiency", "level", "only_proficient"},
+	"proficiency":  {"proficiency", "level", "only_proficient", "duration"},
 	"roll_mode":    {"roll", "targets", "against_condition", "while"},
 	"sense":        {"sense", "range_ft"},
 	"resource":     {"resource", "max", "recharge"},
-	"choice":       {"choice", "count", "from", "name", "set"},
+	"choice":       {"choice", "count", "from", "name", "set", "daily_choice", "duration"},
 	"extra_attack": {"count"},
 	// A grant_action may cost several uses of its resource, let the player choose how many,
 	// and heal or give temporary hit points; an on_event is the owner's hook on an event.
@@ -752,6 +755,8 @@ var effectFields = []effectField{
 	{"ignore_cover", func(e *Effect) bool { return e.IgnoreCover }, func(e *Effect) { e.IgnoreCover = false }},
 	{"range_multiplier", func(e *Effect) bool { return e.RangeMultiplier != 0 }, func(e *Effect) { e.RangeMultiplier = 0 }},
 	{"no_long_range_disadvantage", func(e *Effect) bool { return e.NoLongRangeDisadvantage }, func(e *Effect) { e.NoLongRangeDisadvantage = false }},
+	{"duration", func(e *Effect) bool { return e.Duration != "" }, func(e *Effect) { e.Duration = "" }},
+	{"daily_choice", func(e *Effect) bool { return e.DailyChoice }, func(e *Effect) { e.DailyChoice = false }},
 	{"only_proficient", func(e *Effect) bool { return e.OnlyProficient }, func(e *Effect) { e.OnlyProficient = false }},
 	{"attack_penalty", func(e *Effect) bool { return e.AttackPenalty != 0 }, func(e *Effect) { e.AttackPenalty = 0 }},
 	{"weapon_properties", func(e *Effect) bool { return len(e.WeaponProperties) > 0 }, func(e *Effect) { e.WeaponProperties = nil }},
@@ -1409,6 +1414,7 @@ func (b *overlayBuilder) addBackground(tb *TableBackground, path string) error {
 	key := tb.Key
 	var c entryErrors
 	b.checkBackgroundSkills(&c, tb, path)
+	b.checkBackgroundGroups(&c, tb, path)
 	if len(tb.Tools) > maxBackgroundTools {
 		c.at(key, path, ".tools", ReasonLimit, "at most 4 tools")
 	}
@@ -1433,14 +1439,21 @@ func (b *overlayBuilder) addBackground(tb *TableBackground, path string) error {
 	if tb.EquipmentPT != "" {
 		b.n.bgEquipment[key] = tb.EquipmentPT
 	}
+	if len(tb.Groups) > 0 {
+		b.n.bgGroups[key] = slices.Clone(tb.Groups)
+	}
 	return nil
 }
 
 // checkBackgroundSkills checks a background's two different SRD skills.
 func (b *overlayBuilder) checkBackgroundSkills(c *entryErrors, tb *TableBackground, path string) {
 	key := tb.Key
-	if len(tb.Skills) != CustomBackgroundSkillCount {
-		c.at(key, path, ".skills", ReasonValue, "a background gives %d different skills", CustomBackgroundSkillCount)
+	if len(tb.Skills)+groupSkillPicks(tb.Groups) != CustomBackgroundSkillCount {
+		why := ""
+		if len(tb.Groups) > 0 {
+			why = ", the ones it names and the picks of its skill groups together"
+		}
+		c.at(key, path, ".skills", ReasonValue, "a background gives %d different skills%s", CustomBackgroundSkillCount, why)
 	}
 	for i, s := range tb.Skills {
 		if _, ok := b.base.skills[s]; !ok {

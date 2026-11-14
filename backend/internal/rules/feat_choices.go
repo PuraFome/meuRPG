@@ -154,6 +154,7 @@ func (cb *choiceBuilder) background() {
 	g := cb.group(ChoiceOriginBackground, bg.Key, 0, 0)
 	cb.featChoice(g, bg.Key)
 	cb.featChoice(g, bg.Feature.Key)
+	cb.backgroundGroups(g, bg.Key)
 }
 
 // featOwners adds the choices the feats of the sheet ask (a feat that grants another).
