@@ -1066,7 +1066,7 @@ func (s *Service) rollPartDice(pr *partRoll, sp partRecord, r rollPartsInput, di
 	if r.in.inApp {
 		return s.rollInApp(pr, sp, expr)
 	}
-	if g := r.cover[sp.Key]; g != nil {
+	if g := r.cover[partIdent(sp)]; g != nil {
 		// The group's total sits on one of its parts; the other parts of the group add no dice of their own and keep no faces.
 		// A damage type that covers one part is no group: its sum stays on that part, as a part_key sum does, and the
 		// master may take it out.
@@ -1074,7 +1074,7 @@ func (s *Service) rollPartDice(pr *partRoll, sp partRecord, r rollPartsInput, di
 		if many {
 			pr.Group = g.typ
 		}
-		if sp.Key == g.holder {
+		if partIdent(sp) == g.holder {
 			pr.Sum = clamp32(g.sum, 0, 100000)
 			pr.GroupHidden = many && g.hidden
 		}
@@ -1174,7 +1174,7 @@ func (r rollPartsInput) typedGroups(final []partRecord) (map[string]*typeGroup, 
 		}
 		for _, sp := range final {
 			if count, _ := r.diceOf(sp); r.inGroup(sp, typ, count) {
-				cover[sp.Key] = g
+				cover[partIdent(sp)] = g
 			}
 		}
 		if err := g.check(lo, hi); err != nil {
@@ -1197,17 +1197,26 @@ func (r rollPartsInput) typedGroup(typ string, final []partRecord) (g *typeGroup
 		if _, both := r.typed.byPart[sp.Key]; both {
 			return nil, 0, 0, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("typed_parts names %s and a part of it (%s)", typ, sp.Key))
 		}
-		first = cmp.Or(first, sp.Key)
+		first = cmp.Or(first, partIdent(sp))
 		g.parts++
 		if sp.Hide {
 			g.hidden = true
 		} else {
-			g.holder = cmp.Or(g.holder, sp.Key)
+			g.holder = cmp.Or(g.holder, partIdent(sp))
 		}
 		lo, hi = lo+count, hi+count*int(sp.Sides)
 	}
 	g.holder = cmp.Or(g.holder, first)
 	return g, lo, hi, nil
+}
+
+// partIdent tells one part of a hit from another when a typed group is worked out: the effect's row for the damage of a
+// spell's hit effect (two casters of one spell give two parts of one key), the key for any other.
+func partIdent(sp partRecord) string {
+	if sp.Table == tableHitEffect && sp.Effect != "" {
+		return sp.Effect
+	}
+	return sp.Key
 }
 
 // inGroup says whether a part is one of the dice parts a typed damage type covers.

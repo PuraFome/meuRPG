@@ -391,3 +391,34 @@ func TestTypedGroupsAreCheckedInTheOrderOfTheirTypes(t *testing.T) {
 		}
 	}
 }
+
+// Two casters of the same spell give one attacker two parts with the same key: each is its own row (the effect's), so the
+// group's sum sits on one part only and is counted once, and the parts keep apart in the others' view.
+func TestTwoCastersOfOneSpellAreTwoPartsOfOneGroup(t *testing.T) {
+	t.Parallel()
+	first, second := hiddenHex(), hiddenHex()
+	second.Effect, second.Hide = "row-2", false
+	first.Hide = false
+	got, err := groupCase{
+		parts: []partRecord{first, second, weaponPiercing()},
+		typed: typedSums{byType: map[string]int{groupPiercing: 13}},
+	}.roll()
+	if err != nil {
+		t.Fatalf("rollParts() error = %v", err)
+	}
+	if got.byType[groupPiercing] != 16 {
+		t.Errorf("byType = %v, want the group's 13 and the flat 3 counted once", got.byType)
+	}
+	carriers := 0
+	for _, r := range got.rolls {
+		if r.Sum != 0 {
+			carriers++
+		}
+		if r.Group != groupPiercing {
+			t.Errorf("%s (%s) has group %q, want the group of its type", r.Key, r.Effect, r.Group)
+		}
+	}
+	if carriers != 1 {
+		t.Errorf("%d parts carry the group's sum, want one", carriers)
+	}
+}
