@@ -32,11 +32,11 @@
     <p class="custom">{{ s.customFeaturesText }}</p>
   }
 
-  @if (s.hints.length > 0) {
+  @if (hints().length > 0) {
     <div class="block">
       <h3 class="block__label">Lembretes</h3>
       <ul class="hints">
-        @for (hint of s.hints; track $index) {
+        @for (hint of hints(); track $index) {
           <li>{{ hint.text }}</li>
         }
       </ul>
