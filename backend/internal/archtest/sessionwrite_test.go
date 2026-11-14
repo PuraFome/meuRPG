@@ -30,7 +30,7 @@ var sessionWriteExceptions string
 // sessionWriteDirs are the packages whose transactions are read, with the module that owns the sqlc queries they call.
 // Only the files directly in each directory are read (their subpackages are other packages), and the *.sql files of the
 // directory name the queries.
-var sessionWriteDirs = []string{"internal/play", "internal/maps"}
+var sessionWriteDirs = []string{"internal/play", "internal/maps", "internal/progression"}
 
 // sessionFunnel holds the functions that are the funnel: the test does not read into them, and they are not offenders.
 var sessionFunnel = map[string]bool{
@@ -1198,5 +1198,77 @@ func TestSessionWriteKeys(t *testing.T) {
 		if !slices.Equal(got, c.want) {
 			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
 		}
+	}
+}
+
+// appendEventDirs are the packages that are not play and call play's AppendEvent (the open session's history): its first statement
+// takes the session's row, so a caller that opens a transaction of its own would lock the session after what it wrote before it.
+var appendEventDirs = []string{"internal/characters", "internal/maps", "internal/progression"}
+
+// appendEventProblems returns a problem for each function of the sources that calls a method named AppendEvent and takes no pgx.Tx
+// parameter: the call must run in the transaction of the caller (a funnel closure's, through inSession), never in one of its own.
+// Limit: whether that transaction took the session's row first is the seam rows' to prove (the lock-order tests); the rule sees
+// only the parameter.
+func appendEventProblems(srcs map[string][]byte) ([]string, error) {
+	decls, err := funcDeclsByKey(srcs)
+	if err != nil {
+		return nil, err
+	}
+	var problems []string
+	for key, d := range decls {
+		if d.Body == nil || hasTxParam(d) {
+			continue
+		}
+		called := false
+		ast.Inspect(d.Body, func(n ast.Node) bool {
+			if call, ok := n.(*ast.CallExpr); ok && callName(call) == "AppendEvent" {
+				called = true
+			}
+			return !called
+		})
+		if called {
+			problems = append(problems, fmt.Sprintf("%q calls AppendEvent but takes no pgx.Tx: it must run in its caller's transaction, the funnel's (inSession)", key))
+		}
+	}
+	slices.Sort(problems)
+	return problems, nil
+}
+
+func TestAppendEventCallersRunInTheirCallersTransaction(t *testing.T) {
+	root := os.DirFS(backendRoot)
+	for _, dir := range appendEventDirs {
+		entries, err := fs.ReadDir(root, dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		srcs := map[string][]byte{}
+		for _, e := range entries {
+			p := path.Join(dir, e.Name())
+			if e.IsDir() || path.Ext(p) != ".go" || isTestFile(p) {
+				continue
+			}
+			if srcs[p], err = fs.ReadFile(root, p); err != nil {
+				t.Fatal(err)
+			}
+		}
+		problems, err := appendEventProblems(srcs)
+		if err != nil {
+			t.Fatal(err)
+		}
+		failProblems(t, problems)
+	}
+}
+
+func TestAppendEventProblems(t *testing.T) {
+	srcs := map[string][]byte{"internal/maps/a.go": []byte("package maps\n" +
+		"func (s *Service) InTheCallersTx(c C, tx pgx.Tx) error { _, err := s.live.AppendEvent(c, tx, id); return err }\n" +
+		"func (s *Service) InOwnTx(c C) error { return db.InTx(c, s.pool, func(tx pgx.Tx) error { _, err := s.live.AppendEvent(c, tx, id); return err }) }\n" +
+		"func (s *Service) NoCall(c C) error { return nil }")}
+	got, err := appendEventProblems(srcs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !strings.Contains(got[0], "(*Service).InOwnTx") {
+		t.Errorf("appendEventProblems() = %q, want only (*Service).InOwnTx", got)
 	}
 }

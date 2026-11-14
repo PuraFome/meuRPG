@@ -42,3 +42,6 @@ play revive.go (*Service).ReviveInCombat # host: runs inside the funnel's transa
 play rpc.go (*Service).StartGameSession # session lifecycle: there is no row to lock before it creates one
 play session_seam.go (*Service).inNoSession # permanent: runs a foreign write when the campaign has no open session, so there is no number to move; a session that opens between the unlocked read and the commit is not locked by the write, and its screens read the change at their next Ready or read
 play xp.go (*Service).AppendEvent # unconverted: the callers in progression run inside their own transaction; those in characters and play run in the funnel, where it finds the session row held; it moves no number
+progression milestones.go (*Service).AddMilestone # permanent: planned_milestones only (the master's list of planned marks); no row of game_sessions or the live view
+progression milestones.go (*Service).MoveMilestone # permanent: planned_milestones only (the master's list of planned marks); no row of game_sessions or the live view
+progression milestones.go (*Service).changePlanned # permanent: planned_milestones only (the master's list of planned marks); no row of game_sessions or the live view
