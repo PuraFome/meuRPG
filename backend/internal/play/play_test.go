@@ -45,8 +45,8 @@ func TestAuthorizationMatrix(t *testing.T) {
 	t.Parallel()
 	h := newHarness(t)
 	h.svc.SetTraps(emptyTrapBook{}) // a map book with no traps (see the traps rows below)
-	master, player, pending := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("Pendente")
-	campaign := h.newCampaign(master, "Mirathel", player)
+	master, player, pending, bystander := h.newUser("Mestre"), h.newUser("Jogadora"), h.newUser("Pendente"), h.newUser("Outra jogadora")
+	campaign := h.newCampaign(master, "Mirathel", player, bystander)
 	h.joinPending(master, campaign, pending)
 	pc := player.createCharacter(t, campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Pensantus")
 	open := master.start(t, campaign).GetGameSession()
@@ -326,6 +326,7 @@ func TestAuthorizationMatrix(t *testing.T) {
 			})
 		}
 	}
+	checkFavorAuthorization(t, favorTable{campaign: campaign, character: pc.GetId(), master: master, owner: player, bystander: bystander, outsider: h.newUser("De fora")})
 }
 
 // RN-01 (and MR-011's third criterion): when the first session of a
@@ -999,6 +1000,18 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 		t.Errorf("called %d combat methods, the service has %d", len(combat), combatMethods.Len())
 	}
 	maps.Copy(calls, combat)
+
+	// FavorService, the Inspiration the master grants, is mounted with the same checks.
+	favor := map[string]error{}
+	fc := playv1connect.NewFavorServiceClient(server.Client(), server.URL)
+	_, favor["GrantFavor"] = fc.GrantFavor(ctx, connect.NewRequest(&playv1.GrantFavorRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
+	_, favor["GetFavor"] = fc.GetFavor(ctx, connect.NewRequest(&playv1.GetFavorRequest{CampaignId: id}))
+	_, favor["PassFavor"] = fc.PassFavor(ctx, connect.NewRequest(&playv1.PassFavorRequest{CampaignId: id, FromCharacterId: id, ToCharacterId: id, IdempotencyKey: id}))
+	favorMethods := playv1.File_meurpg_play_v1_favor_proto.Services().ByName("FavorService").Methods()
+	if len(favor) != favorMethods.Len() {
+		t.Errorf("called %d favor methods, the service has %d", len(favor), favorMethods.Len())
+	}
+	maps.Copy(calls, favor)
 	for name, err := range calls {
 		if connect.CodeOf(err) != connect.CodeUnauthenticated {
 			t.Errorf("%s signed out: error = %v, want unauthenticated", name, err)
