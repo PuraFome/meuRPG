@@ -343,8 +343,9 @@ func hitConditionDuration(mod rules.EffectModifier) string {
 
 // hitSaveLine writes the line of the save: the target's roll, the DC and what came of it, as the line of a rider.
 func (s *Service) hitSaveLine(ctx context.Context, c *combatTx, u hitUse, st playdb.CombatantState, re *riderEvent, ev *actionEvent) error {
+	re.EffectHidden = s.effectHiddenFrom(st, []playdb.Combatant{u.target})
 	line, err := insertEventID(ctx, c, eventHitRider, &c.actorUserID, nil, actionEvent{
-		Round: c.enc.Round, Secret: secretOf(u.attacker, u.target) || s.effectHiddenFrom(st, []playdb.Combatant{u.target}), Actor: u.attacker.ID, Target: u.target.ID, Key: conv.OrZero(st.SourceKey), Rider: re,
+		Round: c.enc.Round, Secret: secretOf(u.attacker, u.target), Actor: u.attacker.ID, Target: u.target.ID, Key: conv.OrZero(st.SourceKey), Rider: re,
 	})
 	if err != nil {
 		return err

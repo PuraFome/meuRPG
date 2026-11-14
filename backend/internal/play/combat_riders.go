@@ -60,7 +60,11 @@ type riderEvent struct {
 	OwnersOnly bool `json:"owners_only,omitempty"`
 	// HiddenSource says the spell is not the other players' to read (the master hides the effect, or it is its owner's):
 	// the target's player reads "Outra fonte" in its place.
-	HiddenSource bool  `json:"hidden_source,omitempty"`
+	HiddenSource bool `json:"hidden_source,omitempty"`
+	// EffectHidden says the effect's lines are not the players' to read (the master hides it, a target is hidden, or it is
+	// for its targets' players alone and the target is no player's): the save line is then the attacker's player's and the
+	// master's alone, with the outcome and without the spell's name (RN-10).
+	EffectHidden bool  `json:"effect_hidden,omitempty"`
 	D20          int32 `json:"d20,omitempty"`
 	Total        int32 `json:"total,omitempty"`
 	DC           int32 `json:"dc,omitempty"`

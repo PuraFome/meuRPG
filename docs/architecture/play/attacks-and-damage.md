@@ -297,7 +297,7 @@ The caster's player and the master read it true, and so do the other players whe
   A pass leaves nothing.
 - **What is logged.**
   The damage line carries the part by the spell's name.
-  The save is a `hit_rider` line with the roll, the DC and the result, the master's, the attacker's player's and the target's own player's to read, no other player's (the line says the effect has a save: `riderEvent.OwnersOnly`, `viewerGets`); a failed save adds the line of the new effect, which follows the effect's visibility.
+  The save is a `hit_rider` line with the roll, the DC and the result, the master's, the attacker's player's and the target's own player's to read, no other player's (the line says the effect has a save: `riderEvent.OwnersOnly`, `viewerGets`). When the effect's lines are not the players' to read (`riderEvent.EffectHidden`: hidden by the master, a hidden target, or for its owner alone on an NPC) the line is the master's and the attacker's player's: the attacker's player reads the result and the condition, never the NPC's die, modifier or total, and the spell only as "Outra fonte" (`ownersOnly`, `spellRiderKey`); a failed save adds the line of the new effect, which follows the effect's visibility.
   The ids of the effect rows and of the lines go in the event (`EffectsAdded`, `EffectLines`).
 - **Undo.**
   The master's undo of the damage clears `spent_at` (the same `EffectsSpent` path as Vicious Mockery), deletes the conditions the save put on the target and takes the lines away (`effectsAddedBack`).

@@ -1109,6 +1109,9 @@ func (e *logEntry) ownersOnly(v combatViewer, actor, target playdb.Combatant) bo
 	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield:
 		return !v.owns(actor)
 	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER && e.ev.Rider != nil && e.ev.Rider.OwnersOnly:
+		if e.ev.Rider.EffectHidden { // the effect is not the target's player's to read: the attacker's player reads the outcome of its own hit
+			return !v.owns(actor)
+		}
 		return !v.owns(actor) && !v.owns(target)
 	}
 	return false
@@ -1288,7 +1291,7 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 // spellRiderKey names the spell of the save of a hit effect on the line: the master and the caster's player read it,
 // the target's player "Outra fonte" (and no key) when the effect is hidden from the other players (RN-10).
 func (e *logEntry) spellRiderKey(c *logViewing, out *playv1.CombatLogEntry, r *riderEvent) {
-	hidden := r.HiddenSource && !c.v.master && !c.v.owns(c.actor)
+	hidden := r.HiddenSource && !c.v.master && (!c.v.owns(c.actor) || r.EffectHidden)
 	names := hidingNames(func(k string) string { return c.names.contentName(c.ctx, k) }, []combat.Modifier{{Source: e.ev.Key, Hidden: hidden}})
 	out.KeyNamePt = names(e.ev.Key)
 	if hidden {
