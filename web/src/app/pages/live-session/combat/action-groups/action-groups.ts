@@ -77,7 +77,13 @@ import { featureIsOff, featureLine, featureWhy } from '../../../../core/combat/a
 import { resourceOf, useLine } from '../../../../core/combat/feature-use';
 import type { ResourceUsageVm } from '../../../../core/play/resource-usage.types';
 import { GroupState } from './group-state';
-import { EXTRA_NAMES, FRENZY_QUESTION, TAB_ICONS, slotRowsOf, specialAttack } from './action-groups-text';
+import {
+  EXTRA_NAMES,
+  FRENZY_QUESTION,
+  TAB_ICONS,
+  slotRowsOf,
+  specialAttack,
+} from './action-groups-text';
 import { offersWeaponAttack } from './weapon-offer';
 
 /**
