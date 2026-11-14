@@ -20,6 +20,44 @@ const stored = () =>
   });
 
 describe('the feat form (MR-025)', () => {
+  it('round-trips the class level, the pact, the spell and the options a feat asks (#580)', () => {
+    const body = create(TableFeatSchema, {
+      namePt: 'Lâmina Rubra',
+      prerequisite: {
+        classLevel: { classKey: 'class:warlock', level: 5 },
+        requiresPact: 'option:pact-of-the-blade',
+        requiresSpellKey: 'spell:eldritch-blast',
+        requiresOptionKeys: ['option:brasa@mesa'],
+      },
+    });
+    const draft = featToDraft(body);
+    expect(draft.classKey).toBe('class:warlock');
+    expect(draft.classLevel).toBe('5');
+    expect(draft.requiresPact).toBe('option:pact-of-the-blade');
+    expect(draft.requiresSpell).toBe('spell:eldritch-blast');
+    expect(draft.requiresOptions).toEqual(['option:brasa@mesa']);
+    const sent = draftToFeat(draft, menu()).prerequisite;
+    expect(sent?.classLevel).toEqual({ classKey: 'class:warlock', level: 5 });
+    expect(sent?.requiresPact).toBe('option:pact-of-the-blade');
+    expect(sent?.requiresSpellKey).toBe('spell:eldritch-blast');
+    expect(sent?.requiresOptionKeys).toEqual(['option:brasa@mesa']);
+  });
+
+  it('sends no class level while the class or the level is empty, and lists the paths of the new rows', () => {
+    const draft = { ...emptyFeat(), classKey: 'class:warlock' };
+    expect(draftToFeat(draft, menu()).prerequisite?.classLevel).toBeUndefined();
+    expect(featPaths(draft, menu())).toEqual(
+      expect.arrayContaining([
+        'table_feat.prerequisite.class_level',
+        'table_feat.prerequisite.class_level.class_key',
+        'table_feat.prerequisite.class_level.level',
+        'table_feat.prerequisite.requires_pact',
+        'table_feat.prerequisite.requires_spell_key',
+        'table_feat.prerequisite.requires_option_keys',
+      ]),
+    );
+  });
+
   it('sends the options and the named choice back when only the name changes', () => {
     const body = create(TableFeatSchema, {
       namePt: 'Resistente',

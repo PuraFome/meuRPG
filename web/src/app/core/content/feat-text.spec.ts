@@ -63,6 +63,49 @@ describe('what a feat asks, in Portuguese', () => {
     ).toEqual(['ser Elfo ou Anão']);
   });
 
+  it('writes the class level, the pact, the spell and the options a feat asks, after the level (#580 board 580-01)', () => {
+    const p = create(FeatPrerequisiteSchema, {
+      level: 4,
+      classLevel: { classKey: 'class:warlock', level: 5 },
+      requiresPact: 'option:pact-of-the-blade',
+      requiresSpellKey: 'spell:eldritch-blast',
+      requiresOptionKeys: ['option:brasa@mesa', 'option:sedenta@mesa'],
+    });
+    const named = (key: string) =>
+      ({
+        'class:warlock': 'Bruxo',
+        'option:pact-of-the-blade': 'Pacto da Lâmina',
+        'spell:eldritch-blast': 'Rajada Mística',
+        'option:brasa@mesa': 'Olhar de Brasa',
+        'option:sedenta@mesa': 'Lâmina Sedenta',
+      })[key] ?? key;
+    expect(prerequisiteParts(p, named)).toEqual([
+      'nível 4 ou mais',
+      'Bruxo 5',
+      'Pacto da Lâmina',
+      'Rajada Mística',
+      'Olhar de Brasa',
+      'Lâmina Sedenta',
+    ]);
+  });
+
+  it("writes what a character lacks of a class level, a pact, a spell and an option from the server's codes", () => {
+    const unmet = (init: Parameters<typeof create<typeof FeatUnmetSchema>>[1]) =>
+      unmetText(create(FeatUnmetSchema, init), (k) => (k === 'class:warlock' ? 'Bruxo' : 'Nome'));
+    expect(unmet({ kind: FeatUnmetKind.CLASS_LEVEL, key: 'class:warlock', value: 5 })).toBe(
+      'Exige Bruxo 5.',
+    );
+    expect(unmet({ kind: FeatUnmetKind.PACT, key: 'option:pact-of-the-blade' })).toBe(
+      'Exige a dádiva Nome.',
+    );
+    expect(unmet({ kind: FeatUnmetKind.SPELL, key: 'spell:identify' })).toBe(
+      'Exige a magia Nome, que você ainda não conhece.',
+    );
+    expect(unmet({ kind: FeatUnmetKind.OPTION, key: 'option:x@mesa' })).toBe(
+      'Exige a opção Nome, que você ainda não escolheu.',
+    );
+  });
+
   it('says nothing for a feat that asks nothing', () => {
     expect(prerequisiteParts(undefined, nameOf)).toEqual([]);
     expect(prerequisiteSupport(create(FeatPrerequisiteSchema), nameOf)).toBe('');
