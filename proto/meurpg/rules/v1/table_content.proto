@@ -969,7 +969,9 @@ message TableBackgroundGroup {
   TableBackgroundGroupKind kind = 1;
   int32 choose = 2;
   // Skill keys, tool proficiency keys, or the texts of the equipment (1 to 80 characters).
-  repeated string options = 3 [(meurpg.options.v1.max_len) = 160];
+  // The limit is 320 bytes for each: 80 characters of up to 4 bytes (checked by checkGroup in
+  // backend/internal/rules/background_groups.go).
+  repeated string options = 3 [(meurpg.options.v1.max_len) = 320];
   // The named gaming sets the master typed ("Trilha"), 1 to 40 characters each; only for a tool group. The sheet lists
   // one as "Conjunto de jogo: Trilha".
   repeated string gaming_set_names = 4 [(meurpg.options.v1.max_len) = 160];

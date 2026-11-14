@@ -76,7 +76,13 @@ func (g BackgroundGroup) values() []string {
 func (g BackgroundGroup) Signature() string {
 	vals := g.values()
 	slices.Sort(vals)
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%d|%s", g.Kind, g.Choose, strings.Join(vals, "\x00"))))
+	// Every value is written with its length first, so no typed text can pass for a separator.
+	var in strings.Builder
+	fmt.Fprintf(&in, "%d:%s|%d", len(g.Kind), g.Kind, g.Choose)
+	for _, v := range vals {
+		fmt.Fprintf(&in, "|%d:%s", len(v), v)
+	}
+	sum := sha256.Sum256([]byte(in.String()))
 	return hex.EncodeToString(sum[:4])
 }
 
@@ -109,7 +115,8 @@ func (c *content) groupValueOK(choiceKey, value string) bool {
 			return slices.Contains(g.values(), value)
 		}
 	}
-	return true
+	// A stale pick is kept, but no longer than the longest value a group can hold.
+	return utf8.RuneCountInString(value) <= len(itemPrefix)+MaxGroupItemLength
 }
 
 // groupPick is a group of the sheet's background and what the sheet picked in it.
@@ -250,20 +257,50 @@ func (b *overlayBuilder) checkGroup(c *entryErrors, tb *TableBackground, g Backg
 	for i, o := range g.Options {
 		b.checkGroupOption(c, tb, g, o, g.Options[:i], fmt.Sprintf("%s.options[%d]", path, i))
 	}
-	for i, n := range g.SetNames {
+	checkGamingSetNames(c, key, g.SetNames, path)
+}
+
+// checkGamingSetNames checks the named gaming sets of a group, each at its own path.
+func checkGamingSetNames(c *entryErrors, key string, names []string, path string) {
+	for i, n := range names {
 		at := fmt.Sprintf("%s.gaming_set_names[%d]", path, i)
 		switch l := utf8.RuneCountInString(strings.TrimSpace(n)); {
 		case l < 1 || l > MaxGamingSetNameLength:
 			c.at(key, at, "", ReasonLimit, "a gaming set name has 1 to %d characters", MaxGamingSetNameLength)
-		case slices.ContainsFunc(g.SetNames[:i], func(o string) bool { return foldPT(o) == foldPT(n) }):
+		case plainTextProblem(c, key, at, n):
+		case slices.ContainsFunc(names[:i], func(o string) bool { return foldPT(o) == foldPT(n) }):
 			c.at(key, at, "", ReasonValue, "the gaming set %q is twice in the group", n)
 		}
 	}
 }
 
+// plainTextProblem refuses a typed text with a hidden character or spaces around it, and says whether it did.
+func plainTextProblem(c *entryErrors, key, at, text string) bool {
+	switch {
+	case strings.IndexFunc(text, isHiddenRune) >= 0:
+		c.at(key, at, "", ReasonText, "the text has hidden characters")
+	case strings.TrimSpace(text) != text:
+		c.at(key, at, "", ReasonText, "the text must not start or end with spaces")
+	default:
+		return false
+	}
+	return true
+}
+
+// inOtherGroup says an option (a skill or a tool) is already in another group of the background.
+func inOtherGroup(tb *TableBackground, self BackgroundGroup, o string) bool {
+	return slices.ContainsFunc(tb.Groups, func(g BackgroundGroup) bool {
+		return g.Kind == self.Kind && g.Signature() != self.Signature() && slices.Contains(g.Options, o)
+	})
+}
+
 func (b *overlayBuilder) checkGroupOption(c *entryErrors, tb *TableBackground, g BackgroundGroup, o string, before []string, at string) {
 	if slices.Contains(before, o) {
 		c.at(tb.Key, at, "", ReasonValue, "%q is twice in the group", o)
+		return
+	}
+	if g.Kind != GroupEquipment && inOtherGroup(tb, g, o) {
+		c.at(tb.Key, at, "", ReasonValue, "%q is in another group of the background", o)
 		return
 	}
 	switch g.Kind {
@@ -282,6 +319,8 @@ func (b *overlayBuilder) checkGroupOption(c *entryErrors, tb *TableBackground, g
 	case GroupEquipment:
 		if l := utf8.RuneCountInString(strings.TrimSpace(o)); l < 1 || l > MaxGroupItemLength {
 			c.at(tb.Key, at, "", ReasonLimit, "a piece of equipment has 1 to %d characters", MaxGroupItemLength)
+		} else {
+			plainTextProblem(c, tb.Key, at, o)
 		}
 	}
 }
@@ -290,6 +329,7 @@ func (b *overlayBuilder) checkGroupOption(c *entryErrors, tb *TableBackground, g
 // the master wrote them, and the player takes `Choose` of them. It only warns while open, like the tool picks.
 func (cb *choiceBuilder) backgroundGroups(g *groupBuild, background string) {
 	had := cb.toolsHad()
+	skillsHad := cb.skillsHad()
 	for _, p := range cb.c.backgroundGroupPicks(cb.b) {
 		title, hint, family := "Equipamento", "Peças de equipamento à escolha.", ""
 		switch p.Group.Kind {
@@ -304,7 +344,7 @@ func (cb *choiceBuilder) backgroundGroups(g *groupBuild, background string) {
 		ch := cb.addChoice(g, &Choice{Key: p.Key, FeatureKey: background, Kind: ChoiceKindOptions, TitlePT: title, HintPT: hint, Picks: p.Group.Choose, family: family, Advisory: true})
 		for _, v := range p.Group.values() {
 			o := ChoiceOption{Key: v, Stored: ScopedChoice(p.Key, v), NamePT: cb.groupOptionName(v)}
-			if p.Group.Kind == GroupTool && had[v] {
+			if (p.Group.Kind == GroupTool && had[v]) || (p.Group.Kind == GroupSkill && skillsHad[v]) {
 				blockOption(&o, "Você já tem esta proficiência.")
 			}
 			ch.Options = append(ch.Options, o)
@@ -325,4 +365,20 @@ func (cb *choiceBuilder) groupOptionName(value string) string {
 		return cb.c.namePT(value)
 	}
 	return cb.c.proficiencyNamePT(value)
+}
+
+// skillsHad are the skills the character has from another source than the background's groups: the race, the
+// class, a feat, an effect, the background's own skills and the ones the sheet lists. It works the sheet out again
+// without the picks of the groups, and only when a skill group needs it.
+func (cb *choiceBuilder) skillsHad() map[string]bool {
+	out := map[string]bool{}
+	if !slices.ContainsFunc(cb.c.bgGroups[cb.b.Background], func(g BackgroundGroup) bool { return g.Kind == GroupSkill }) {
+		return out
+	}
+	b := cb.b
+	b.FeatureChoices = slices.DeleteFunc(slices.Clone(b.FeatureChoices), func(k string) bool { return strings.Contains(k, groupKeyPart) })
+	for _, sk := range derive(b, cb.c).Skills {
+		out[sk.Key] = sk.Proficiency >= ProficiencyFull
+	}
+	return out
 }

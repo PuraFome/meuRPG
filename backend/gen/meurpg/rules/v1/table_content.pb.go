@@ -4665,6 +4665,8 @@ type TableBackgroundGroup struct {
 	Kind   TableBackgroundGroupKind `protobuf:"varint,1,opt,name=kind,proto3,enum=meurpg.rules.v1.TableBackgroundGroupKind" json:"kind,omitempty"`
 	Choose int32                    `protobuf:"varint,2,opt,name=choose,proto3" json:"choose,omitempty"`
 	// Skill keys, tool proficiency keys, or the texts of the equipment (1 to 80 characters).
+	// The limit is 320 bytes for each: 80 characters of up to 4 bytes (checked by checkGroup in
+	// backend/internal/rules/background_groups.go).
 	Options []string `protobuf:"bytes,3,rep,name=options,proto3" json:"options,omitempty"`
 	// The named gaming sets the master typed ("Trilha"), 1 to 40 characters each; only for a tool group. The sheet lists
 	// one as "Conjunto de jogo: Trilha".
@@ -9593,7 +9595,7 @@ const file_meurpg_rules_v1_table_content_proto_rawDesc = "" +
 	"\x14TableBackgroundGroup\x12=\n" +
 	"\x04kind\x18\x01 \x01(\x0e2).meurpg.rules.v1.TableBackgroundGroupKindR\x04kind\x12\x16\n" +
 	"\x06choose\x18\x02 \x01(\x05R\x06choose\x12\x1f\n" +
-	"\aoptions\x18\x03 \x03(\tB\x05\x90\xb5\x18\xa0\x01R\aoptions\x12/\n" +
+	"\aoptions\x18\x03 \x03(\tB\x05\x90\xb5\x18\xc0\x02R\aoptions\x12/\n" +
 	"\x10gaming_set_names\x18\x04 \x03(\tB\x05\x90\xb5\x18\xa0\x01R\x0egamingSetNames\"\xd9\x01\n" +
 	"\x10TableSpellTarget\x129\n" +
 	"\x04kind\x18\x01 \x01(\x0e2%.meurpg.rules.v1.TableSpellTargetKindR\x04kind\x12\x14\n" +
