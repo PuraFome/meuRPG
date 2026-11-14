@@ -405,6 +405,11 @@ var menuTypes = []MenuType{
 		{Name: "when", Kind: "condition"},
 		{Name: "text_pt", Kind: "text"},
 	}},
+	{Type: "aura", NamePT: "Aura", HintPT: "Uma aura que o personagem leva para todo combate em que entra, enquanto estiver de pé e consciente: quem está dentro do raio, do lado escolhido, recebe os modificadores na rolagem. Para a aura crescer com o nível, escreva duas auras e uma condição de nível em cada uma: vale a primeira cuja condição for verdadeira.", Fields: []MenuField{
+		{Name: "aura", Required: true, Kind: "aura"},
+		{Name: "when", Kind: "condition"},
+		{Name: "text_pt", Kind: "text"},
+	}},
 	{Type: "choice", NamePT: "Escolha", HintPT: "Algo que o jogador escolhe: perícias, especialização, truques, magias, idiomas, ferramentas ou uma opção de uma lista (do SRD, como um estilo de luta, ou a lista de opções da própria característica, como manobras). Num talento, também uma habilidade ou um tipo de dano: dê um nome à escolha e escreva @nome nos efeitos seguintes do talento (por exemplo, a proficiência save.@habilidade). Em vez da lista, uma escolha de opções pode oferecer um conjunto inteiro do SRD (o campo set).", Fields: []MenuField{
 		{Name: "choice", Required: true, Kind: "choice", List: ListChoiceKinds},
 		{Name: "count", Required: true, Kind: "number", Min: 1, Max: MaxChoiceCount},

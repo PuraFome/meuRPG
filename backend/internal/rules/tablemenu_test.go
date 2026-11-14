@@ -341,6 +341,7 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 		"condition_immunity": {Type: "condition_immunity", Conditions: []string{"condition:poisoned"}},
 		"breathes_water":     {Type: "breathes_water"},
 		"flag":               {Type: "flag", Flag: FlagNeverSurprised},
+		"aura":               auraEffect(10, chaSaveBonus),
 		"natural_attack":     {Type: "natural_attack", AttackName: "Mordida de Teste", DamageDice: "1d6", DamageType: "damage-type:piercing", Ability: "best"},
 		"granted_spell":      {Type: "granted_spell", Spell: "spell:detect-magic", Ability: "wis"},
 		// Only a feat has it, so it is hosted by a feat below.
@@ -416,6 +417,8 @@ func TestEffectMenuRequiredFieldsAreRequired(t *testing.T) {
 			e.AtMost = 0
 		case "flag":
 			e.Flag = ""
+		case "aura":
+			e.Aura = nil
 		default:
 			t.Fatalf("no way to clear %q", field)
 		}

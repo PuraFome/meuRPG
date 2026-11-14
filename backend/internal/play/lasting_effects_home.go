@@ -231,6 +231,9 @@ func (s *Service) effectsToCombat(ctx context.Context, c *combatTx, all, added [
 	if err := s.dieToCombat(ctx, c, all, added); err != nil {
 		return err
 	}
+	if err := s.featureAurasToCombat(ctx, c, all, added); err != nil {
+		return err
+	}
 	var ids []string
 	for _, a := range added {
 		if backedByCharacter(a) {
@@ -357,6 +360,12 @@ func (s *Service) giveEffectBack(ctx context.Context, c *combatTx, cs []playdb.C
 	if cast, err := c.q.GetSpellCast(ctx, playdb.GetSpellCastParams{ID: conv.OrZero(st.GroupID), CampaignID: c.session.CampaignID}); err == nil && cast.Status != castActive {
 		if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
 			return fmt.Errorf("end the effect of an ended cast: %w", err)
+		}
+		return nil
+	}
+	if isFeatureAura(st) { // the sheet makes it again in the next combat
+		if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+			return fmt.Errorf("end the aura of a feature: %w", err)
 		}
 		return nil
 	}

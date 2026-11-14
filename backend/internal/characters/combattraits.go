@@ -1,6 +1,7 @@
 package characters
 
 import (
+	"encoding/json"
 	"slices"
 	"strings"
 
@@ -174,6 +175,7 @@ func traitsOf(content *rules.Content, d rules.Derived) link.Traits {
 	t.Maneuvers, t.ExtraDamages, t.SpellModifiers = tableTraitsOf(d)
 	t.RerollRules = rerollRulesOf(d)
 	t.Flags = slices.Clone(d.Flags)
+	t.Auras = featureAurasOf(d)
 	t.RollMinimums, t.SpellCriticalRange = rollMinimumsOf(d), spellCriticalRangeOf(d)
 	return t
 }
@@ -236,4 +238,36 @@ func spellCriticalRangeOf(d rules.Derived) int {
 		return 0
 	}
 	return d.SpellCriticalRange
+}
+
+// featureAurasOf are the auras the character's features carry into a combat. The bonus an aura takes from the bearer's
+// ability (value_ability) is worked out here, from the sheet, and written as a plain number: the combat reads no sheet.
+func featureAurasOf(d rules.Derived) []link.FeatureAura {
+	var out []link.FeatureAura
+	for _, a := range d.Auras {
+		mods := slices.Clone(a.Def.Modifiers)
+		for i, m := range mods {
+			if m.ValueAbility == "" {
+				continue
+			}
+			mods[i].Value = max(abilityModifier(d, m.ValueAbility), m.ValueMin)
+			mods[i].ValueAbility, mods[i].ValueMin = "", 0
+		}
+		body, err := json.Marshal(mods)
+		if err != nil {
+			continue // plain values: they cannot fail to encode
+		}
+		out = append(out, link.FeatureAura{Source: a.Source, Visibility: a.Def.Visibility, LabelPT: a.Def.PlayerLabelPT, Modifiers: body})
+	}
+	return out
+}
+
+// abilityModifier is the modifier of the ability ("cha") of the sheet, 0 when it has none.
+func abilityModifier(d rules.Derived, ability string) int {
+	for _, a := range d.Abilities {
+		if string(a.Ability) == ability {
+			return a.Modifier
+		}
+	}
+	return 0
 }

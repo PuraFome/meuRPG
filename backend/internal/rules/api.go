@@ -780,6 +780,8 @@ type Derived struct {
 	Rerolls []RerollRule `json:",omitempty"`
 	// RollMinimums are the roll_minimum effects of the character, in the order of the effects (rolleffects.go).
 	RollMinimums []RollMinimum `json:",omitempty"`
+	// Auras are the aura effects that hold, one for each feature (effectaura.go).
+	Auras []FeatureAura `json:",omitempty"`
 	// Flags are the flags of the flag effects that hold, sorted and without repeats (effectflags.go).
 	Flags []string `json:",omitempty"`
 	// AttacksPerAction is how many attacks the Attack action makes: 1, or

@@ -98,6 +98,10 @@ func aurasOf(states map[string][]playdb.CombatantState, cs []playdb.Combatant) [
 			continue
 		}
 		for _, st := range states[b.ID] {
+			// A feature's aura needs its bearer up: not at 0 hit points and not incapacitated (Aura of Protection).
+			if isFeatureAura(st) && !fighting(b) {
+				continue
+			}
 			if m, ok := auraMark(st); ok {
 				auras = append(auras, aura{row: st, mark: m, bearer: b})
 			}

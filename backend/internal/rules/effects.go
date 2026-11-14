@@ -312,6 +312,9 @@ type Effect struct {
 	// flag (effectflags.go): the closed rule of the game it switches on, one of effectFlags.
 	Flag string `json:"flag,omitempty"`
 
+	// aura (effectaura.go): the aura the holder carries into a combat, as a table spell's effect is written.
+	Aura *TableSpellEffect `json:"aura,omitempty"`
+
 	// roll_minimum (rolleffects.go) uses Rolls too, with Value the lowest a die counts as (a literal, 2 to 20).
 	// A critical_range modifier uses Applies for its scope (CriticalScope*).
 	// reroll (rolleffects.go): Rolls are the rolls it covers (Roll*), a list because Applies holds one
@@ -335,6 +338,9 @@ type Effect struct {
 	// Set on an effect that reads a token, and kept for Derive, which writes the pick into the
 	// effect's fields and formulas before they run.
 	picks map[string]string
+
+	// auraDef is the effect of an aura effect as the combat reads it, made when the effect is compiled.
+	auraDef *EffectDef
 }
 
 // The closed sets of the effect schema.
@@ -344,7 +350,7 @@ var (
 		"resource", "choice", "grant_action", "extra_attack", "note", "handler", "wild_shape", "beast_spells", "replaces", "slot_recovery",
 		"ability_increase", "superiority_die", "song_of_rest", "ranged_attack", "extra_damage", "ambush", "resistance",
 		"state", "weapon_rule", "pseudo_weapon", "breathes_water", "condition_immunity", "granted_spell", "on_event", "spell_modifier",
-		"reroll", "roll_minimum", "flag", "natural_attack",
+		"reroll", "roll_minimum", "flag", "natural_attack", "aura",
 	}
 	modifierTargets = []string{
 		"ac.base", "ac", "hp.max", "speed.walk", "speed.fly", "speed.swim", "speed.climb", "speed.burrow", "initiative",
@@ -443,6 +449,7 @@ var effectCheckers = map[string]func(x effectCompiler) error{
 	"natural_attack":     effectCompiler.naturalAttack,
 	"breathes_water":     effectCompiler.breathesWater,
 	"flag":               effectCompiler.flag,
+	"aura":               effectCompiler.aura,
 	"granted_spell":      effectCompiler.grantedSpell,
 	"replaces":           effectCompiler.replaces,
 	"modifier":           effectCompiler.modifier,
@@ -554,6 +561,9 @@ func (x effectCompiler) strayFields() error {
 		return err
 	}
 	if err := x.strayFlag(); err != nil {
+		return err
+	}
+	if err := x.strayAura(); err != nil {
 		return err
 	}
 	return x.straySpellAndRangeFields()
