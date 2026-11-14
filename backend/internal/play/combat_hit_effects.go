@@ -187,9 +187,11 @@ func hitPartForOthers(sp partRecord, label, source string) (string, string, stri
 	return sp.Key, label, source
 }
 
-// liveHitParts takes out of the parts the damage of an effect that was used or ended since the hit offered it (two
-// hits of one turn wait for their damage: the first one's roll uses the next hit).
-func (s *Service) liveHitParts(ctx context.Context, c *combatTx, parts []partRecord) ([]partRecord, error) {
+// liveHitParts takes out of the parts the damage of an effect that was used or ended since the hit offered it, and, for a
+// next_hit or a next_melee_hit, the damage an earlier attack of the same attacker still waits to roll: two hits of one
+// turn wait for their damage, and the effect goes to the earlier attack whichever damage is rolled first.
+func (s *Service) liveHitParts(ctx context.Context, c *combatTx, p playdb.PendingDamage, parts []partRecord) ([]partRecord, error) {
+	var open []playdb.PendingDamage
 	for i, sp := range parts {
 		if sp.Table != tableHitEffect || sp.Removed {
 			continue
@@ -202,8 +204,30 @@ func (s *Service) liveHitParts(ctx context.Context, c *combatTx, parts []partRec
 		if err != nil {
 			return nil, fmt.Errorf("find the effect of the part: %w", err)
 		}
+		if mod, ok := hitModifierOf(effectModifiers(st)); !ok || !consumesHit(mod.Trigger) {
+			continue
+		}
+		if open == nil {
+			if open, err = c.q.ListOpenPendingDamages(ctx, c.enc.ID); err != nil {
+				return nil, fmt.Errorf("list the pending damages: %w", err)
+			}
+		}
+		parts[i].Removed = waitsForEarlierAttack(open, p, sp.Effect)
 	}
 	return parts, nil
+}
+
+// waitsForEarlierAttack says an attack of the same attacker, made before p and still waiting for its damage, offers the
+// effect row too: the earlier attack uses it.
+func waitsForEarlierAttack(open []playdb.PendingDamage, p playdb.PendingDamage, effect string) bool {
+	return slices.ContainsFunc(open, func(o playdb.PendingDamage) bool {
+		before := o.CreatedAt.Before(p.CreatedAt) || o.CreatedAt.Equal(p.CreatedAt) && o.ID < p.ID
+		waiting := o.Status == pendingAwaitingRoll || o.Status == pendingAwaitingReaction
+		return o.ID != p.ID && before && waiting && conv.OrZero(o.AttackerID) == conv.OrZero(p.AttackerID) &&
+			slices.ContainsFunc(readParts(o.Parts), func(sp partRecord) bool {
+				return sp.Table == tableHitEffect && sp.Effect == effect && !sp.Removed && !isOffHitPart(sp)
+			})
+	})
 }
 
 // hitUse is what a damage roll needs to use the effects its parts came from.

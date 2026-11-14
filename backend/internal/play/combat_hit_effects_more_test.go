@@ -816,3 +816,26 @@ func TestRN10_TheHitEffectFlagFollowsTheKeyTheReaderReads(t *testing.T) {
 		}
 	}
 }
+
+// With two pending hits on one next_hit the effect goes to the earlier attack, whichever damage the player rolls first:
+// rolling the second hit's damage first leaves the effect waiting for the first one.
+func TestAHitSpellTwoPendingHitsTheEffectGoesToTheEarlierAttack(t *testing.T) {
+	t.Parallel()
+	a := newHitParty(t, hitParty{class: "class:paladin", level: 5, cha: 16, spells: []hitSpellOf{{name: "Marca de Nanquim", key: tableMark, mods: []*tableMod{hitMod(trigNext)}}}})
+	e := a.hitFight(t)
+	a.castMark(t, e, 1)
+	first := a.strike(t, e, battleaxe, "Capitão Goblin", d20(19))
+	second := a.strike(t, e, battleaxe, "Capitão Goblin", d20(18))
+	if r := hitRoll(a.rollDamage(t, second, 5)); r != nil {
+		t.Errorf("the later hit's roll has the part %v, want the effect kept for the earlier attack", r)
+	}
+	if _, spent := a.rows(t); spent != 0 {
+		t.Fatalf("spent = %d after the later hit's roll, want the effect still waiting", spent)
+	}
+	if r := hitRoll(a.rollDamage(t, first, 3, 4)); r == nil {
+		t.Errorf("the earlier hit's roll has no part of the spell")
+	}
+	if _, spent := a.rows(t); spent != 1 {
+		t.Errorf("spent = %d, want 1", spent)
+	}
+}

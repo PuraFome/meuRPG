@@ -1726,7 +1726,7 @@ func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID 
 	if err != nil {
 		return nil, err
 	}
-	parts, err := s.liveHitParts(ctx, c, readParts(p.Parts))
+	parts, err := s.liveHitParts(ctx, c, p, readParts(p.Parts))
 	if err != nil {
 		return nil, err
 	}
