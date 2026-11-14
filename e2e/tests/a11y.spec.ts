@@ -5998,6 +5998,26 @@ for (const [scheme, label] of [
  * archive, a refusal on its field; the same list on a phone with the sheet that asks to archive; and what a player reads. The
  * entries come through the API, with one archived so its state shows.
  */
+/** The feature editor with an Aura de Proteção (SRD: the Charisma modifier, at least +1, on saving throws): the block as the feature has it, before any change. */
+async function openFeatureAura(m: Page, campaignId: string): Promise<void> {
+  await open(m, `/campaigns/${campaignId}/content/new/classfeature`);
+  await m.getByLabel('Classe', { exact: true }).selectOption({ label: 'Paladino' });
+  await m.getByLabel('Nível na classe (1 a 20)').fill('6');
+  await m.getByLabel('Nome da característica').fill('Aura de Proteção');
+  await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Aura' });
+  await expect(m.getByText('Vale em todo combate, enquanto quem leva a aura estiver de pé e consciente.')).toBeVisible();
+}
+
+/** A bonus on saving throws only, taken from the bearer's Charisma. */
+async function addAbilityBonus(m: Page): Promise<void> {
+  await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
+  await m.getByLabel('Tipo', { exact: true }).selectOption({ label: 'Bônus nas jogadas' });
+  await m.locator('app-spell-effect label', { hasText: 'De uma habilidade' }).click();
+  await expect(m.getByLabel('Habilidade de quem leva a aura')).toHaveValue('cha');
+  await m.locator('app-spell-effect app-check-group label', { hasText: 'Ataque' }).click();
+  await expect(m.getByText('Modificador de CAR (mín. +1) em resistências', { exact: true })).toBeVisible();
+}
+
 /** Saves the viewport of the feature aura row as `579-aura-feature-<width>-<scheme>.png` when `E2E_SHOTS_DIR` names a folder. */
 async function shootAura(page: Page, width: number, scheme: string): Promise<void> {
   const dir = process.env.E2E_SHOTS_DIR;
@@ -6193,18 +6213,9 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Editor de magia, os dois blocos de efeito ligados juntos ${where}`);
       // A feature's aura (#579 slice 3): the block with no switch, the bonus taken from an ability, and the refusal of a least out of range.
-      await open(m, `/campaigns/${campaignId}/content/new/classfeature`);
-      await m.getByLabel('Classe', { exact: true }).selectOption({ label: 'Paladino' });
-      await m.getByLabel('Nível na classe (1 a 20)').fill('6');
-      await m.getByLabel('Nome da característica').fill('Aura de Proteção');
-      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Aura' });
-      await expect(m.getByText('Vale em todo combate, enquanto quem leva a aura estiver de pé e consciente.')).toBeVisible();
+      await openFeatureAura(m, campaignId);
       await expectScreenPasses(m, `Característica de classe, a aura sem mudança ${where}`);
-      await m.getByRole('button', { name: 'Adicionar o que muda' }).click();
-      await m.getByLabel('Tipo', { exact: true }).selectOption({ label: 'Bônus nas jogadas' });
-      await m.locator('app-spell-effect label', { hasText: 'De uma habilidade' }).click();
-      await expect(m.getByLabel('Habilidade de quem leva a aura')).toHaveValue('cha');
-      await expect(m.getByText('Modificador de CAR (mín. +1) em ataques e resistências', { exact: true })).toBeVisible();
+      await addAbilityBonus(m);
       await expectCardsHoldTheirText(m);
       await expectScreenPasses(m, `Característica de classe, a aura com o bônus de uma habilidade ${where}`);
       await shootAura(m, width, colorScheme);
@@ -6264,6 +6275,37 @@ test('o conteúdo da mesa passa no axe e nas conferências de layout no tema cla
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
   await scanTableContent(browser, 'dark', 1024);
 });
+
+// The feature aura block on a phone (#579 slice 3). The editor is not offered below 768, so only the script's own phone query is forced off:
+// the block's CSS still runs at 390, which is what this looks at. Three equal segments and two fields that stack when they do not fit.
+for (const scheme of ['light', 'dark'] as const) {
+  test(`o bloco da aura de uma característica passa no axe e nas conferências de layout, no celular, no tema ${scheme === 'light' ? 'claro' : 'escuro'}`, { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+    test.setTimeout(180_000);
+    const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme: scheme, viewport: { width: 390, height: 900 }, deviceScaleFactor: 2 });
+    const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste') });
+    try {
+      const m = await mContext.newPage();
+      const p = await pContext.newPage();
+      await mContext.addInitScript(() => {
+        const real = window.matchMedia.bind(window);
+        window.matchMedia = (q: string) => real(q === '(max-width: 767.98px)' ? 'not all' : q);
+      });
+      await Promise.all([m.goto('/'), p.goto('/')]);
+      const campaignId = await campaignWithEmptyPlayer(m, p, `Aura no celular ${Date.now()}`);
+      await openFeatureAura(m, campaignId);
+      await addAbilityBonus(m);
+      await expectCardsHoldTheirText(m);
+      await expectScreenPasses(m, `Característica de classe, a aura com o bônus de uma habilidade (${scheme}, 390px)`);
+      await shootAura(m, 390, scheme);
+      const dir = process.env.E2E_SHOTS_DIR;
+      if (dir) {
+        await m.locator('app-spell-effect app-segmented').first().screenshot({ path: `${dir}/579-aura-feature-segmentos-390-${scheme}.png` });
+      }
+    } finally {
+      await Promise.all([mContext.close(), pContext.close()]);
+    }
+  });
+}
 
 test('o conteúdo da mesa passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanTableContent(browser, 'dark', 390);

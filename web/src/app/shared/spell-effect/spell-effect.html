@@ -132,7 +132,7 @@
             @if (r.rollMode === 'ability') {
               <div class="row row--2">
                 <app-select-field label="Habilidade de quem leva a aura" [options]="abilityOptions()" [value]="r.valueAbility" [path]="rowPath(i, 'value_ability')" [issues]="rowIssues(i, 'value_ability')" (valueChange)="patchRow(r.id, { valueAbility: $event })" />
-                <app-text-field label="No mínimo" inputmode="numeric" hint="De 1 a 5. O bônus é o modificador da habilidade, ou isso se for menor." [value]="r.valueMin" [path]="rowPath(i, 'value_min')" [issues]="rowIssues(i, 'value_min')" (valueChange)="patchRow(r.id, { valueMin: $event })" />
+                <app-text-field label="No mínimo" inputmode="numeric" hint="De 1 a 5. O bônus é o modificador da habilidade, e nunca fica abaixo deste número." [value]="r.valueMin" [path]="rowPath(i, 'value_min')" [issues]="rowIssues(i, 'value_min')" (valueChange)="patchRow(r.id, { valueMin: $event })" />
               </div>
             }
             <app-check-group label="Nas jogadas" [options]="rollOptions" [values]="r.rolls" [path]="rowPath(i, 'applies_to')" [issues]="rowIssues(i, 'applies_to')" (valuesChange)="patchRow(r.id, { rolls: $any($event) })" />
