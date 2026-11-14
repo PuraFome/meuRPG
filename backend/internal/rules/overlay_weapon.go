@@ -87,6 +87,18 @@ func (b *overlayBuilder) checkWeaponShape(c *entryErrors, w *TableWeapon, path s
 	case w.TwoHandedDamage == "" && has("versatile"):
 		c.at(key, path, ".two_handed_damage", ReasonValue, "a versatile weapon needs its two-handed damage")
 	}
+	b.checkWeaponProperties(c, w, path)
+	if w.WeightOz < 0 || w.WeightOz > MaxWeaponWeightOz {
+		c.at(key, path, ".weight_oz", ReasonValue, "the weight is 0 to %d ounces", MaxWeaponWeightOz)
+	}
+	if w.PriceCP < 0 || w.PriceCP > MaxWeaponPriceCP {
+		c.at(key, path, ".price_cp", ReasonValue, "the price is 0 to %d copper pieces", MaxWeaponPriceCP)
+	}
+}
+
+// checkWeaponProperties checks the property list: at most MaxWeaponProperties, each a weapon property, none twice.
+func (b *overlayBuilder) checkWeaponProperties(c *entryErrors, w *TableWeapon, path string) {
+	key := w.Key
 	if len(w.Properties) > MaxWeaponProperties {
 		c.at(key, path, ".properties", ReasonLimit, "%d properties; the limit is %d", len(w.Properties), MaxWeaponProperties)
 	}
@@ -97,12 +109,6 @@ func (b *overlayBuilder) checkWeaponShape(c *entryErrors, w *TableWeapon, path s
 		case slices.Contains(w.Properties[:i], p):
 			c.at(key, path, fmt.Sprintf(".properties[%d]", i), ReasonValue, "the property %q is listed twice", p)
 		}
-	}
-	if w.WeightOz < 0 || w.WeightOz > MaxWeaponWeightOz {
-		c.at(key, path, ".weight_oz", ReasonValue, "the weight is 0 to %d ounces", MaxWeaponWeightOz)
-	}
-	if w.PriceCP < 0 || w.PriceCP > MaxWeaponPriceCP {
-		c.at(key, path, ".price_cp", ReasonValue, "the price is 0 to %d copper pieces", MaxWeaponPriceCP)
 	}
 }
 

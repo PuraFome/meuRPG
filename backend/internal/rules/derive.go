@@ -96,6 +96,12 @@ func derive(b Build, c *content) Derived {
 	// prerequisite again (SRD 5.1, Feats). What the character has is judged with the
 	// feats in place, and the sheet is made again without the ones that no longer fit.
 	lost := c.lostFeats(b, d)
+	for k := range c.lostOptions(b, d) {
+		if lost == nil {
+			lost = map[string]bool{}
+		}
+		lost[k] = true
+	}
 	if len(lost) == 0 {
 		return d
 	}
@@ -711,7 +717,9 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 		return
 	}
 	pickedNames[f.Name] = true
-	col.add(key)
+	if !x.inactiveFeats[key] { // an option whose prerequisite is lost stays listed and does not apply
+		col.add(key)
+	}
 	col.feature(key, f.Name, parent, x.featureLevel(parent), f.Desc)
 }
 

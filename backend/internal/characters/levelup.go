@@ -522,7 +522,7 @@ func hideUnmet(u *rulesv1.FeatUnmet, t levelUpTarget) {
 		}
 	case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_CLASS_LEVEL, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_PACT, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_SPELL, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_OPTION:
 		if hiddenToSheet(t, u.GetKey()) {
-			u.Key, u.NamePt, u.Hidden = "", "", true
+			u.Key, u.NamePt, u.Value, u.Hidden = "", "", 0, true // a hidden class level sends no number either
 		}
 	}
 }

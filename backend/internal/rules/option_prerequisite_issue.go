@@ -3,6 +3,8 @@ package rules
 import (
 	"fmt"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 // checkOptionPrerequisites raises IssueOptionPrerequisite for each option the sheet picked and owns whose prerequisite
@@ -23,7 +25,7 @@ func (x *deriver) checkOptionPrerequisites() {
 			continue
 		}
 		x.issue(IssueOptionPrerequisite, fmt.Sprintf("full.feature_choice_keys[%d]", i),
-			"O personagem não cumpre mais o pré-requisito de %s: %s", x.c.namePT(key), strings.Join(unmet, " "))
+			"O personagem não cumpre mais o pré-requisito de %s: %s", x.c.namePT(key), lowerFirst(strings.Join(unmet, " ")))
 	}
 }
 
@@ -32,7 +34,37 @@ func (c *content) unmetPicked(p TableOptionPrerequisite, b Build, d Derived) []s
 	asked := FeatPrerequisite{ClassKey: p.ClassKey, ClassLevel: p.ClassLevel, RequiresPact: p.RequiresPact, RequiresSpell: p.RequiresSpell, RequiresOptions: p.RequiresOptions}
 	var out []string
 	for _, u := range c.unmetKnowledge(asked, b, d) {
+		// The sheet stores the text of its issues (known_issues), so it is the same for the master and the player:
+		// an entry hidden from the players is never named in it, whoever reads.
+		if c.hidden(u.Key) && !c.sheetHas(b, u.Key) {
+			out = append(out, hiddenUnmetPT)
+			continue
+		}
 		out = append(out, c.knowledgeUnmetPT(u, b))
 	}
 	return out
+}
+
+// lostOptions are the options the build picked and owns whose prerequisite the derived sheet no longer meets (as
+// lostFeats does for feats): they stay listed and do not apply until the character meets it again.
+func (c *content) lostOptions(b Build, d Derived) map[string]bool {
+	var lost map[string]bool
+	owns := ownedBy(b, d)
+	for _, key := range b.FeatureChoices {
+		p, ok := c.optionPrereq[key]
+		if !ok || !owns(key) || len(c.unmetPicked(p, b, d)) == 0 {
+			continue
+		}
+		if lost == nil {
+			lost = map[string]bool{}
+		}
+		lost[key] = true
+	}
+	return lost
+}
+
+// lowerFirst makes the first letter lower case, for a sentence that joins another after a colon.
+func lowerFirst(s string) string {
+	r, n := utf8.DecodeRuneInString(s)
+	return string(unicode.ToLower(r)) + s[n:]
 }

@@ -360,3 +360,33 @@ func TestALostOptionPrerequisiteIsAnIssueOfTheSheet(t *testing.T) {
 		}
 	}
 }
+
+// A lost option stops working as a lost feat does: its effect is gone while its prerequisite is unmet, the pick stays,
+// and the effect comes back with the class level.
+func TestAnOptionWhoseLevelIsLostStopsWorkingUntilItIsBack(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, gatedPostureOverlay())
+	base := Derive(postureBuild(3), c).Initiative
+	lost := Derive(postureBuild(3, postureBull), c)
+	if lost.Initiative != base {
+		t.Errorf("initiative with the Bull lost = %d, want %d (no +2)", lost.Initiative, base)
+	}
+	if !slices.ContainsFunc(lost.Features, func(f Feature) bool { return f.Key == postureBull }) {
+		t.Error("the lost option left the sheet")
+	}
+	if back := Derive(postureBuild(5, postureBull), c); back.Initiative != Derive(postureBuild(5), c).Initiative+2 {
+		t.Errorf("initiative with the Bull held = %d, want the +2 back", back.Initiative)
+	}
+}
+
+// The sentence of the issue reads as one: "…pré-requisito de X: precisa de nível 5 de Y.".
+func TestTheOptionPrerequisiteIssueReadsAsOneSentence(t *testing.T) {
+	t.Parallel()
+	c := withOverlay(t, gatedPostureOverlay())
+	d := Derive(postureBuild(3, postureBull), c)
+	i := slices.IndexFunc(d.Issues, func(i Issue) bool { return i.Code == IssueOptionPrerequisite })
+	const want = "O personagem não cumpre mais o pré-requisito de Postura do Touro: precisa de nível 5 de Guerreiro."
+	if i < 0 || d.Issues[i].Message != want {
+		t.Errorf("issue = %+v, want %q", d.Issues, want)
+	}
+}
