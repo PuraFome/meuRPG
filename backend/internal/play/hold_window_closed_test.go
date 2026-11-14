@@ -37,7 +37,7 @@ var heldSaveKinds = []struct {
 
 // holdOf reads the one unanswered hold of the kind and, when the case spent the Inspiration, writes the spend the way the paths that take
 // it write it: the hold's favor_spent and the character's row gone.
-func (h *savedHold) keep(t *testing.T, owner string, character string) {
+func (h *savedHold) keep(t *testing.T, _ string, character string) {
 	t.Helper()
 	if err := h.f.h.pool.QueryRow(t.Context(), `SELECT id FROM inspiration_holds WHERE kind = $1`, h.kind).Scan(&h.id); err != nil {
 		t.Fatalf("the question the save kept: %v", err)
