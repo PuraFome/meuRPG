@@ -89,6 +89,19 @@ describe('TabList', () => {
     expect(tabs().map((t) => t.textContent?.trim())).toEqual(['chatConversa 3', 'Ficha 1']);
   });
 
+  it('collapses the tabs that are not chosen to an icon and a count only on request, keeping each name whole', () => {
+    const { fixture, el, tabs } = setup('chat');
+    expect(el.querySelector('.tl--collapse')).toBeNull();
+    fixture.componentRef.setInput('collapseInactive', true);
+    fixture.detectChanges();
+    expect(el.querySelector('.tl--collapse')).not.toBeNull();
+    // An icon marks the tab that can collapse; the word stays in the DOM and in the name, the room decides (a container query).
+    expect(tabs()[0].classList.contains('tl__tab--icon')).toBe(true);
+    expect(tabs()[1].classList.contains('tl__tab--icon')).toBe(false);
+    expect(tabs()[0].querySelector('.tl__label')?.textContent).toBe('Conversa');
+    expect(tabs()[0].getAttribute('aria-label')).toBe('Conversa 3, 3 mensagens novas');
+  });
+
   it('selects on a click', () => {
     const { fixture, tabs } = setup();
     tabs()[2].click();

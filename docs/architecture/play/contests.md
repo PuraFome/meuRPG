@@ -26,6 +26,7 @@ The service is `play/combat_contests*.go` (start, answer, shove choice, close, r
 - **Advantage** comes from `combat_advantage.go`: `modeFacts` carries the hiding and the Helps; a hidden attacker is `AttackerUnseen`; the Help is the source `help`.
   The ability checks of the contests and the group check read the advantage rules' `SaveMode` (Poisoned, Frightened, exhaustion, an effect's advantage, the Rage on Strength, armor that gives disadvantage on Stealth, armor or a shield without proficiency on Strength and Dexterity) and the Helps with the check: `checkModeOf` serves the scene checks, the trap search, the puzzle hints and the group check, and `spendCheckHelps` uses the Help up on the roll.
   Grappled, Prone and Restrained are the conditions the advantage rules already know.
+- **The master's Inspiração.** `spend_favor` on `StartContest`, `RespondContest`, `RollGroupCheck` and `Hide` gives the roller's own check advantage before the mode is chosen ([Inspiração](favor.md#the-checks)); the master never spends it for a player, and a grapple that comes from an attack or an answer left to the master rolls no d20.
 - **After an attack roll**, `afterAttack` uses the Help and ends the hiding for every creature (`hide_ended`; the attack's undo gives them back).
   A cast with a verbal component ends the hiding too.
   A grapple or a shove starts with `endHiding` and, against the other side, notes the attack for the Rage.

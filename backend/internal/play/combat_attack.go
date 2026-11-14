@@ -193,12 +193,15 @@ type attackFlow struct {
 	cp          coverPair
 	spec        rollSpec
 	modeIn      attackModeInputs
+	names       func(string) string
 	truth       modeResult
-	rolled      attackRolled
-	bonusFace   int
-	targetAC    int
-	acRead      bool
-	result      combat.AttackResult
+	// favor is what the Inspiration did to the roll (favor_spend.go): its source is in truth, and the event says so.
+	favor     favorUse
+	rolled    attackRolled
+	bonusFace int
+	targetAC  int
+	acRead    bool
+	result    combat.AttackResult
 	// parried is the Parry the server used to turn the hit into a miss (autoParry).
 	parried *parryUsed
 	extra   []effectDie
@@ -583,6 +586,11 @@ func (f *attackFlow) holdForWindow(ctx context.Context) (bool, error) {
 	if err != nil || !ok {
 		return false, err
 	}
+	// The Inspiration is spent by the replay, the roll that is made. A roll that could not take it then is refused now, so that the
+	// player does not wait for the windows to learn it (the replay refuses again if it is gone by then: the attack is dropped).
+	if err := f.checkFavor(ctx); err != nil {
+		return false, err
+	}
 	f.out.made = ev
 	return true, nil
 }
@@ -603,22 +611,21 @@ func (f *attackFlow) modeShape() attackShape {
 // asked for and rolls one d20 or two (SRD 5.1, advantage and disadvantage): the gate rolls it, or keeps it for
 // the question it asks.
 func (f *attackFlow) rollD20(ctx context.Context) error {
-	modeIn, err := f.s.readModeInputs(ctx, f.c, f.cs, &f.v)
-	if err != nil {
+	if err := f.readTruth(ctx); err != nil {
 		return err
 	}
-	names, err := f.s.namerFor(ctx, f.c.tx, f.m.CampaignID)
-	if err != nil {
+	// The Inspiration was chosen with the request, so it comes before what the windows add to the replay (a Protection's
+	// disadvantage cancels it, as it cancels any advantage).
+	if err := f.applyFavor(ctx); err != nil {
 		return err
 	}
-	f.modeIn = modeIn
-	f.truth = modeIn.facts(f.c.enc, f.c.sight).attackMode(f.attacker, f.coverTarget, f.sheet.Traits, f.modeShape(), actsNow(f.c.enc, f.attacker) && !f.call.asReaction, f.v, names)
 	if err := f.applyProtection(); err != nil {
 		return err
 	}
 	f.strokeSpec(ctx)
-	f.attack.ToHit += bonusTotal(rollBonusesOf(modeIn.states, f.attacker.ID, rules.RollAppliesAttack))
+	f.attack.ToHit += bonusTotal(rollBonusesOf(f.modeIn.states, f.attacker.ID, rules.RollAppliesAttack))
 	f.attack.ToHit -= f.powerPenalty() // a held roll's replay reads the bonus the roll was made with, so this counts once
+	var err error
 	f.rolled, err = f.s.rollHeldAttack(ctx, f.c, f.v, f.pinnedRequest(), f.spec, f.attacker, f.target, f.attackKey, f.truth.Mode, f.call.in, f.attack.ToHit)
 	if err != nil || f.rolled.Held != nil {
 		return err
@@ -629,6 +636,59 @@ func (f *attackFlow) rollD20(ctx context.Context) error {
 		f.bonusFace = int(f.rolled.Bonus.Face) // the die the player added after rolling
 	}
 	return nil
+}
+
+// readTruth works the mode out from the combat: what the roll has before a Protection or the Inspiration.
+func (f *attackFlow) readTruth(ctx context.Context) error {
+	modeIn, err := f.s.readModeInputs(ctx, f.c, f.cs, &f.v)
+	if err != nil {
+		return err
+	}
+	if f.names, err = f.s.namerFor(ctx, f.c.tx, f.m.CampaignID); err != nil {
+		return err
+	}
+	f.modeIn = modeIn
+	f.truth = modeIn.facts(f.c.enc, f.c.sight).attackMode(f.attacker, f.coverTarget, f.sheet.Traits, f.modeShape(), actsNow(f.c.enc, f.attacker) && !f.call.asReaction, f.v, f.names)
+	return nil
+}
+
+// favorAsk is what the attack tells the helper: the attacker's own character, and the sources the truth has.
+func (f *attackFlow) favorAsk() favorAsk {
+	return favorAsk{
+		Want: f.req.GetSpendFavor(), CampaignID: f.m.CampaignID, CharacterID: f.attacker.CharacterID, Own: ownsCharacter(f.v, f.attacker),
+		Key: f.call.key, Kind: heldWeaponAttack, Sources: f.truth.Sources, Hide: f.truth.Hide, Rolls: true,
+	}
+}
+
+// applyFavor counts the Inspiration on the truth, before the mode is chosen, so that it shows as the roll's own advantage and not
+// as a change the caller made. A held roll remembers it (the hold's favor_spent), and the event says it.
+func (f *attackFlow) applyFavor(ctx context.Context) error {
+	fv, err := f.s.useFavor(ctx, combatGate(f.c), f.favorAsk())
+	if err != nil {
+		return err
+	}
+	if err := favorAgainst(fv, f.req.GetRollMode(), f.req.GetRollModeRequestId()); err != nil {
+		return err
+	}
+	f.truth, f.favor, f.spec.FavorSpent = f.truth.withFavor(fv, f.names), fv, fv.Used
+	return nil
+}
+
+// checkFavor validates a spend the replay will make: the roll is held by a reaction window, which is no roll yet.
+func (f *attackFlow) checkFavor(ctx context.Context) error {
+	if !f.req.GetSpendFavor() {
+		return nil
+	}
+	if err := f.readTruth(ctx); err != nil {
+		return err
+	}
+	a := f.favorAsk()
+	a.Check = true
+	fv, err := f.s.useFavor(ctx, combatGate(f.c), a)
+	if err != nil {
+		return err
+	}
+	return favorAgainst(fv, f.req.GetRollMode(), f.req.GetRollModeRequestId())
 }
 
 // resolve is what the roll did against the target's armor class (with the +5 of an active Escudo and the
@@ -732,7 +792,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 		// shows it, a player's never does.
 		TargetAC: clamp32(f.targetAC, 0, math.MaxInt32),
 		Cover:    cover.key(), CoverSource: cover.sourceKey(), CoverBonus: clamp32(cover.bonus(), 0, 5),
-		CoverRestricted: f.cp.restricted, CoverSeenBy: f.cp.seenBy,
+		CoverRestricted: f.cp.restricted, CoverSeenBy: f.cp.seenBy, Favor: f.favor.Used, FavorLost: f.favor.Lost,
 	}
 	if b := f.rolled.Bonus; b != nil {
 		made.Res = &resourceEvent{Kind: resBardicUse, Sides: b.Sides, Face: b.Face, FromID: b.From, ExpiresRound: b.ExpiresRound}

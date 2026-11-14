@@ -2,12 +2,14 @@ import { type MessageInitShape, create } from '@bufbuild/protobuf';
 
 import {
   EffectModifierKind,
+  EffectModifierSchema,
   EffectPhase,
   EffectRollKind,
   EffectSavePromptSchema,
   ExtraDieSchema,
   LastingEffectSchema,
   CharacterEffectSchema,
+  WeaponHitDamageSchema,
 } from '../../../gen/meurpg/play/v1/lasting_effects_pb';
 import {
   characterCards,
@@ -61,6 +63,33 @@ describe('the cards of "Seus efeitos"', () => {
     expect(card.save).toBe('No fim de cada turno seu: teste de resistência de Sabedoria.');
     expect(card.changes).toEqual(['Você não age nem se move, e não fala.']);
     expect(JSON.stringify(card)).not.toMatch(/CD|dc/);
+  });
+
+  it('read a pending hit effect as the sentence of the card, a spent one as the server wrote it', () => {
+    const hitRow = (spent: boolean) =>
+      create(LastingEffectSchema, {
+        id: 'h1',
+        sourceNamePt: 'Clarão na Lâmina',
+        changesPt: ['Algo do servidor.'],
+        spent,
+        modifiers: [
+          create(EffectModifierSchema, {
+            kind: EffectModifierKind.WEAPON_HIT_DAMAGE,
+            hit: create(WeaponHitDamageSchema, {
+              trigger: 'marked_target',
+              die: 6,
+              dice: 2,
+              damageTypeKey: 'damage-type:radiant',
+              damageTypePt: 'radiante',
+            }),
+          }),
+        ],
+      });
+    expect(combatCards([hitRow(false)], () => 'Wight')[0].changes).toEqual([
+      'Cada golpe com arma no Wight: +2d6 radiante.',
+      'Algo do servidor.',
+    ]);
+    expect(combatCards([hitRow(true)], () => 'Wight')[0].changes).toEqual(['Algo do servidor.']);
   });
 
   it('say a save at the start of the turn as such, and none without one', () => {
@@ -210,6 +239,10 @@ describe('the words around the turn', () => {
       labelTags(['Paralisado'], [{ textPt: 'Paralisado' }, { textPt: 'Preso numa teia' }]),
     ).toEqual(['Paralisado', 'Preso numa teia']);
     expect(labelTags([], undefined)).toEqual([]);
+  });
+
+  it('lists the mark of a marked target by its name alone', () => {
+    expect(labelTags([], [{ textPt: 'Sinal da Presa' }])).toEqual(['Sinal da Presa']);
   });
 
   it('drops the label that only joins the names of conditions the combatant already has', () => {

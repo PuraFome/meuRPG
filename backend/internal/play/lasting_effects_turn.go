@@ -288,6 +288,11 @@ func (s *Service) restoreEffects(ctx context.Context, c *combatTx, rows []playdb
 		if _, err := c.q.InsertLastingEffect(ctx, p); err != nil {
 			return fmt.Errorf("put an effect back: %w", err)
 		}
+		if st.SpentAt != nil { // a hit used it before it ended: it comes back as it was, never as an effect that waits again
+			if err := c.q.SetLastingEffectSpent(ctx, playdb.SetLastingEffectSpentParams{ID: st.ID, SpentAt: st.SpentAt}); err != nil {
+				return fmt.Errorf("put the use of an effect back: %w", err)
+			}
+		}
 		touched = append(touched, st.CombatantID)
 	}
 	if len(touched) == 0 {

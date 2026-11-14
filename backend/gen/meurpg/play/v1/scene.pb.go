@@ -1702,7 +1702,12 @@ type RollSceneCheckRequest struct {
 	// of its resource is spent when the roll is written. Refused with `invalid_argument` for a
 	// maneuver the character has not or that does not go on this roll, and with a resource
 	// blocked reason NO_USES_LEFT when no use is left. Empty adds none.
-	ManeuverKey   string `protobuf:"bytes,8,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	ManeuverKey string `protobuf:"bytes,8,opt,name=maneuver_key,json=maneuverKey,proto3" json:"maneuver_key,omitempty"`
+	// Spends the character's Inspiration for advantage on this ability check, chosen before the d20 is rolled.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,9,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1802,6 +1807,13 @@ func (x *RollSceneCheckRequest) GetManeuverKey() string {
 		return x.ManeuverKey
 	}
 	return ""
+}
+
+func (x *RollSceneCheckRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 type isRollSceneCheckRequest_Roll interface {
@@ -2434,7 +2446,7 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\"K\n" +
 	"\x14GetOpenSceneResponse\x123\n" +
-	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene\"\xad\x02\n" +
+	"\x05scene\x18\x01 \x01(\v2\x1d.meurpg.play.v1.OpenSceneInfoR\x05scene\"\xce\x02\n" +
 	"\x15RollSceneCheckRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12\x1b\n" +
@@ -2444,7 +2456,9 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12\x1b\n" +
 	"\td20_faces\x18\x06 \x03(\x05R\bd20Faces\x12&\n" +
 	"\x0fextra_die_faces\x18\a \x03(\x05R\rextraDieFaces\x12!\n" +
-	"\fmaneuver_key\x18\b \x01(\tR\vmaneuverKeyB\x06\n" +
+	"\fmaneuver_key\x18\b \x01(\tR\vmaneuverKey\x12\x1f\n" +
+	"\vspend_favor\x18\t \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04roll\"\xa9\x02\n" +
 	"\x16RollSceneCheckResponse\x12-\n" +
 	"\x04roll\x18\x01 \x01(\v2\x19.meurpg.play.v1.SceneRollR\x04roll\x12X\n" +

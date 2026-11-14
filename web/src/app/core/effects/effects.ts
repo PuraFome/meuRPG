@@ -11,6 +11,7 @@ import {
 import { dcLabel } from '../format/save-dc';
 import { upFirst } from '../format/text';
 import { abilityName } from './ability-choice';
+import { hitCardLine, hitOf } from './hit-effect-text';
 import { zoneSheetWords } from './zone-save';
 
 /**
@@ -52,8 +53,19 @@ function saveLine(effect: LastingEffect): string {
   return '';
 }
 
-/** The cards of the effects on a combatant, as the caller may read them. */
-export function combatCards(effects: readonly LastingEffect[] | undefined): EffectCardView[] {
+/** What a pending hit effect does, as the sentence of its card; empty for any other row and for one a hit already spent. */
+function hitLines(effect: LastingEffect, markNameOf: (effect: LastingEffect) => string): string[] {
+  return hitOf(effect) && !effect.spent ? [hitCardLine(effect, markNameOf(effect))] : [];
+}
+
+/**
+ * The cards of the effects on a combatant, as the caller may read them. A pending hit effect (#577) opens its "O que isso
+ * muda" with the sentence of the card at the top of "Ataques"; `markNameOf` names the creature a marked target is on.
+ */
+export function combatCards(
+  effects: readonly LastingEffect[] | undefined,
+  markNameOf: (effect: LastingEffect) => string = () => '',
+): EffectCardView[] {
   return (effects ?? []).map((e) => ({
     key: e.id,
     name: e.sourceNamePt,
@@ -61,7 +73,7 @@ export function combatCards(effects: readonly LastingEffect[] | undefined): Effe
     tags: [...e.tagsPt],
     clock: e.clockTextPt,
     save: saveLine(e),
-    changes: [...e.changesPt],
+    changes: [...hitLines(e, markNameOf), ...e.changesPt],
   }));
 }
 

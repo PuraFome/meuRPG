@@ -58,6 +58,8 @@ export function combatant(over: Partial<Combatant> & { id: string; label: string
     states: [],
     limitedActions: [],
     concentrationSpell: '',
+    effects: [],
+    effectLabels: [],
     armorClassBonus: 0,
     hitPointsMaxBonus: 0,
     deathSaveDue: false,

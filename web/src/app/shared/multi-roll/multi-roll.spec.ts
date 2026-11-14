@@ -120,3 +120,64 @@ describe('MultiRoll', () => {
     expect(el.querySelector('.type__num')?.textContent?.trim()).toBe('18');
   });
 });
+
+describe('MultiRoll: fields with a hint, a note and a verb for the answer', () => {
+  const damage: readonly RollField[] = [
+    { key: 'a', label: 'Rapieira, perfurante: 1d8', hint: 'De 1 a 8.', min: 1, max: 8 },
+    { key: 'b', label: 'Clarão na Lâmina, radiante: 2d6', hint: 'De 2 a 12.', min: 2, max: 12 },
+  ];
+  const verb = (total: number | null) =>
+    total === null ? 'Aplicar dano' : `Aplicar ${total} de dano`;
+  const opts = {
+    fields: damage,
+    canApp: true,
+    modifier: 3,
+    note: 'Sem o + 3: o app soma o bônus.',
+    confirmLabel: verb,
+    appLabel: 'Rolar no app',
+  };
+  const open = (extra: Record<string, unknown> = {}) => {
+    const s = setup({ ...opts, ...extra });
+    s.button('Digitar o resultado').click();
+    s.fixture.detectChanges();
+    return s;
+  };
+
+  it('reads the field hint, tied to its field by aria-describedby, and the note below the fields', () => {
+    const { el } = open();
+    const inputs = [...el.querySelectorAll('input')];
+    const hints = inputs.map((i) =>
+      el
+        .querySelector(`#${i.getAttribute('aria-describedby')!.split(' ')[0]}`)!
+        .textContent?.trim(),
+    );
+    expect(hints).toEqual(['De 1 a 8.', 'De 2 a 12.']);
+    expect(el.querySelector('.type__note')!.textContent).toContain(
+      'Sem o + 3: o app soma o bônus.',
+    );
+  });
+
+  it('names the total in the button once every field is valid, and keeps "Rolar no app" beside it', () => {
+    const { fixture, el, button, type, typed } = open();
+    expect(button('Aplicar dano').getAttribute('aria-disabled')).toBe('true');
+    type(0, '5');
+    type(1, '6');
+    expect(button('Aplicar 14 de dano').getAttribute('aria-disabled')).toBeNull();
+    expect(el.querySelector('.type__sum')).toBeNull();
+    expect(button('Rolar no app')).toBeTruthy();
+    el.querySelector('form')!.dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+    expect(typed).toEqual([[5, 6]]);
+  });
+
+  it('marks a number out of the field range with the error and the range in words', () => {
+    const { el, type } = open();
+    type(1, '13');
+    const second = el.querySelectorAll('input')[1];
+    expect(second.getAttribute('aria-invalid')).toBe('true');
+    expect(
+      el.querySelector(`#${second.getAttribute('aria-describedby')!.split(' ')[0]}`)!.textContent,
+    ).toContain('Digite um número de 2 a 12');
+    expect(el.querySelectorAll('input')[0].getAttribute('aria-invalid')).toBe('false');
+  });
+});

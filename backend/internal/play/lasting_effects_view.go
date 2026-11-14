@@ -244,6 +244,7 @@ func (ev *effectViewer) card(g effectGroup, onTarget string) *playv1.LastingEffe
 		out.CasterId = caster.ID
 	}
 	out.OriginPt = ev.originOf(f, caster, casterSeen)
+	out.MarkedCombatantId = ev.markedIDOf(f, caster)
 	ev.cardModifiers(out, f)
 	ev.cardClock(out, f, caster, casterSeen)
 	ev.cardSaves(out, f, ev.v.master || (casterSeen && ev.v.owns(caster)) || ev.v.saveDCFor(ev.byID[onTarget]))
