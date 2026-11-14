@@ -166,3 +166,43 @@ func TestMountedCombat_AMountThatJoinsKeepsTheReactionItSpent(t *testing.T) {
 		t.Errorf("the Ogro's reaction after joining = used %v kind %v round %v, want it spent still, as opportunity in round %d", used, kind, round, e.GetRound())
 	}
 }
+
+// TestMountedCombat_TheTieOrderKeepsAMountRightAfterItsRider: the Ogro carries the Escudeiro and Goblin 1 ties with them on the same total
+// and bonus. The master orders the tie with the mount first, or without naming the mount: the mount stays right after its rider, and
+// the three are ordered (the pair's tie flag is one: the mount's flag follows the rider's).
+func TestMountedCombat_TheTieOrderKeepsAMountRightAfterItsRider(t *testing.T) {
+	t.Parallel()
+	for name, ids := range map[string][]string{
+		"the mount named first":     {"Ogro", "Goblin 1", "Escudeiro"},
+		"the mount not named":       {"Goblin 1", "Escudeiro"},
+		"the mount named after all": {"Goblin 1", "Escudeiro", "Ogro"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c := newCave(t)
+			c.squireOnTheOgre(t)
+			squire := c.joinRowOf(t, "Escudeiro")
+			c.execSQL(t, `UPDATE combatants SET initiative = $2, initiative_bonus = $3, tie_ordered = false WHERE id = $1`, c.id(t, "Goblin 1"), *squire.Initiative, squire.Bonus)
+			c.execSQL(t, `UPDATE combatants SET tie_ordered = false WHERE id = ANY($1)`, []string{c.id(t, "Escudeiro"), c.id(t, "Ogro")})
+
+			var want []string
+			for _, l := range ids {
+				want = append(want, c.id(t, l))
+			}
+			if _, err := c.master.combat.SetInitiativeOrder(t.Context(), connect.NewRequest(&playv1.SetInitiativeOrderRequest{
+				CampaignId: c.campaignID, EncounterId: c.get(t, c.master).GetId(), IdempotencyKey: newKey(), CombatantIds: want,
+			})); err != nil {
+				t.Fatalf("SetInitiativeOrder() error = %v", err)
+			}
+			order := c.orderNow(t)
+			if at := slices.Index(order, "Escudeiro"); at < 0 || at+1 >= len(order) || order[at+1] != "Ogro" {
+				t.Errorf("order = %v, want the Ogro right after the Escudeiro", order)
+			}
+			for _, l := range []string{"Escudeiro", "Ogro", "Goblin 1"} {
+				if !c.joinRowOf(t, l).Tie {
+					t.Errorf("%s is not tie_ordered after the master ordered the tie", l)
+				}
+			}
+		})
+	}
+}
