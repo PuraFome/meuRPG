@@ -2052,6 +2052,9 @@ enum EncounterBlockedReason {
   ENCOUNTER_BLOCKED_REASON_READY_ACTION = 132;
   // ReadyService.ReadyAction: the spell's casting time is not 1 action (SRD 5.1, "Ready"). Nothing is spent.
   ENCOUNTER_BLOCKED_REASON_READY_SPELL_TIME = 133;
+  // ReadyService.FireReadied: the readier acts now. The trigger cannot come while it acts, and a fire would leave a window
+  // that can only be passed. Nothing is written; the row waits.
+  ENCOUNTER_BLOCKED_REASON_READY_OWN_TURN = 144;
 }
 
 // FamiliarSightBlockedReason says why "Ver pelos olhos do familiar" was refused

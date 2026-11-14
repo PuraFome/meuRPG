@@ -1005,6 +1005,9 @@ const (
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_READY_ACTION EncounterBlockedReason = 132
 	// ReadyService.ReadyAction: the spell's casting time is not 1 action (SRD 5.1, "Ready"). Nothing is spent.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_READY_SPELL_TIME EncounterBlockedReason = 133
+	// ReadyService.FireReadied: the readier acts now. The trigger cannot come while it acts, and a fire would leave a window
+	// that can only be passed. Nothing is written; the row waits.
+	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_READY_OWN_TURN EncounterBlockedReason = 144
 )
 
 // Enum value maps for EncounterBlockedReason.
@@ -1124,6 +1127,7 @@ var (
 		131: "ENCOUNTER_BLOCKED_REASON_READY_TRIGGER",
 		132: "ENCOUNTER_BLOCKED_REASON_READY_ACTION",
 		133: "ENCOUNTER_BLOCKED_REASON_READY_SPELL_TIME",
+		144: "ENCOUNTER_BLOCKED_REASON_READY_OWN_TURN",
 	}
 	EncounterBlockedReason_value = map[string]int32{
 		"ENCOUNTER_BLOCKED_REASON_UNSPECIFIED":                      0,
@@ -1240,6 +1244,7 @@ var (
 		"ENCOUNTER_BLOCKED_REASON_READY_TRIGGER":                    131,
 		"ENCOUNTER_BLOCKED_REASON_READY_ACTION":                     132,
 		"ENCOUNTER_BLOCKED_REASON_READY_SPELL_TIME":                 133,
+		"ENCOUNTER_BLOCKED_REASON_READY_OWN_TURN":                   144,
 	}
 )
 
@@ -30049,7 +30054,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x14COMBATANT_STATE_DOWN\x10\x05\x12\x19\n" +
 	"\x15COMBATANT_STATE_DYING\x10\x06\x12\x1a\n" +
 	"\x16COMBATANT_STATE_STABLE\x10\a\x12\x18\n" +
-	"\x14COMBATANT_STATE_DEAD\x10\b*\xb5+\n" +
+	"\x14COMBATANT_STATE_DEAD\x10\b*\xe3+\n" +
 	"\x16EncounterBlockedReason\x12(\n" +
 	"$ENCOUNTER_BLOCKED_REASON_UNSPECIFIED\x10\x00\x123\n" +
 	"/ENCOUNTER_BLOCKED_REASON_ENCOUNTER_ALREADY_OPEN\x10\x01\x12+\n" +
@@ -30165,7 +30170,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	")ENCOUNTER_BLOCKED_REASON_WILD_SHAPE_ENDED\x10\x82\x01\x12+\n" +
 	"&ENCOUNTER_BLOCKED_REASON_READY_TRIGGER\x10\x83\x01\x12*\n" +
 	"%ENCOUNTER_BLOCKED_REASON_READY_ACTION\x10\x84\x01\x12.\n" +
-	")ENCOUNTER_BLOCKED_REASON_READY_SPELL_TIME\x10\x85\x01*\x91\x03\n" +
+	")ENCOUNTER_BLOCKED_REASON_READY_SPELL_TIME\x10\x85\x01\x12,\n" +
+	"'ENCOUNTER_BLOCKED_REASON_READY_OWN_TURN\x10\x90\x01*\x91\x03\n" +
 	"\x1aFamiliarSightBlockedReason\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")FAMILIAR_SIGHT_BLOCKED_REASON_NO_FAMILIAR\x10\x01\x12,\n" +

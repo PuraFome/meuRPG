@@ -91,14 +91,17 @@ func (s *Service) fireReadiedTx(ctx context.Context, c *combatTx, id string) (ac
 	return ev, nil
 }
 
-// mayFire refuses a readier that cannot use its reaction now: out of the fight, down, surprised, incapacitated, with its
-// reaction spent, or already asked.
+// mayFire refuses a readier that cannot use its reaction now: out of the fight, down, surprised, acting on its own turn,
+// incapacitated, with its reaction spent, or already asked.
 func (s *Service) mayFire(ctx context.Context, c *combatTx, who playdb.Combatant, rowID string) error {
 	if who.Defeated {
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN, "the readier is out of the fight")
 	}
 	if err := s.mustReactNowOrOnTurn(ctx, c, who); err != nil {
 		return err
+	}
+	if actsNow(c.enc, who) {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_READY_OWN_TURN, "the readier acts now; the trigger cannot come on its own turn")
 	}
 	if err := s.readiedGate(ctx, c, who); err != nil {
 		return err

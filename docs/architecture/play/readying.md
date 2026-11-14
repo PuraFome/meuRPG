@@ -49,6 +49,7 @@ The end of the combat drops every row.
 - a defeated readier: `COMBATANT_DOWN`;
 - a readier at 0 hit points: `COMBATANT_DOWN` (`mustReactNowOrOnTurn`);
 - a surprised readier before its first turn ends: the surprise refusal of every reaction (`mustReactNowOrOnTurn`);
+- a readier that acts now: `READY_OWN_TURN` (a trigger cannot come during its own turn);
 - a readier that owes a concentration save: `CONCENTRATION_SAVE_PENDING` (`readiedGate`);
 - a question about a hidden creature the master owes: `HIDDEN_REVEAL_PENDING` (`readiedGate`);
 - an incapacitated or unconscious readier, or one an effect keeps from reacting: `CANNOT_ACT`;

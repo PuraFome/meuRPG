@@ -30,4 +30,8 @@ export const CLASS_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, string> = n
     EncounterBlockedReason.READY_SPELL_TIME,
     'Só uma magia de 1 ação pode ser preparada. Escolha outra. Nada foi gasto.',
   ],
+  [
+    EncounterBlockedReason.READY_OWN_TURN,
+    'A ação preparada só dispara fora do turno de quem a preparou. Nada foi gasto.',
+  ],
 ]);

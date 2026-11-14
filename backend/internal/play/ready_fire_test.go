@@ -136,3 +136,18 @@ func TestFireReadiedAttackIsAReactionAttack(t *testing.T) {
 		})
 	}
 }
+
+// FireReadied on the readier's own turn: the trigger cannot come while the readier acts, so the fire is refused, the
+// row keeps waiting and no window opens.
+func TestFireReadiedOnTheReadiersOwnTurnIsRefused(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.threeAndAGoblin(t)
+	a.mustReady(t, a.caio, a.readyAttack(t, e))
+	id := byLabel(t, a.get(t, a.master), "Toren").GetReadied().GetId()
+	_, err := a.fire(t, a.master, e, id)
+	wantBlockedBy(t, "a fire on the readier's own turn", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_READY_OWN_TURN)
+	if got := byLabel(t, a.get(t, a.master), "Toren").GetReadied().GetStatus(); got != playv1.ReadiedStatus_READIED_STATUS_WAITING {
+		t.Fatalf("the refused fire left the row %v, want waiting", got)
+	}
+}
