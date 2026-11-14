@@ -31,7 +31,11 @@ describe('ToggleChips (the weapon properties, board 580-11)', () => {
   it('is a group with a button per chip, pressed when chosen', () => {
     const { el, buttons } = setup();
     expect(el.querySelector('[role=group]')?.getAttribute('aria-label')).toBe('Propriedades');
-    expect(buttons().map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false']);
+    expect(buttons().map((b) => b.getAttribute('aria-pressed'))).toEqual([
+      'false',
+      'true',
+      'false',
+    ]);
   });
 
   it('adds and takes off a chip in the order chosen', () => {
