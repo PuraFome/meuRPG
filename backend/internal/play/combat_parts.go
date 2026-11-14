@@ -69,6 +69,9 @@ type partRecord struct {
 	// Reroll: Great Weapon Fighting rerolls this part's 1s and 2s.
 	Reroll bool   `json:"reroll,omitempty"`
 	Note   string `json:"note,omitempty"`
+	// Plain is set on the weapon part when the only other parts are the off rows of a spell's hit effect: the players
+	// who are not the attacker's read such a hit as one with no parts (RN-10).
+	Plain bool `json:"plain,omitempty"`
 	// SlotLevel and Pact are the slot a Divine Smite spent, once rolled.
 	SlotLevel int32 `json:"slot_level,omitempty"`
 	Pact      bool  `json:"pact,omitempty"`
@@ -313,6 +316,7 @@ func (h hitFacts) buildParts() []partRecord {
 	if reroll {
 		weapon.Note = "Combate com Armas Grandes: os 1 e 2 dos dados da arma são rerrolados"
 	}
+	weapon.Plain = !reroll && len(extras) == 0 && len(autos) == 0 && len(h.planned) == 0 && onlyOffRows(maneuvers)
 	out := []partRecord{weapon}
 	for _, e := range extras {
 		out = append(out, h.fromExtra(e, partExtra))
@@ -463,7 +467,14 @@ func partsProto(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT f
 // spell's hit effect whole.
 func partsProtoFor(p playdb.PendingDamage, rule combat.CriticalRule, damageTypePT func(string) string, reads bool) []*playv1.DamagePart {
 	var out []*playv1.DamagePart
-	for _, sp := range readParts(p.Parts) {
+	all := readParts(p.Parts)
+	if !reads && plainToOthers(all) {
+		return nil
+	}
+	for _, sp := range all {
+		if !reads && isOffHitPart(sp) { // the off part of an effect is its caster's player's and the master's, never another player's
+			continue
+		}
 		count, fixed := partCriticalDice(sp, p.Critical, rule)
 		if sp.Count == 0 {
 			count, fixed = 0, 0
@@ -475,9 +486,6 @@ func partsProtoFor(p playdb.PendingDamage, rule combat.CriticalRule, damageTypeP
 		}
 		key, label, source, sides, reason := sp.Key, sp.Label, sp.Source, sp.Sides, sp.Reason
 		if sp.Table == tableHitEffect && !reads { // the dice, the words and the reason of a spell are its caster's and the master's (RN-10)
-			if sp.Hide && !sp.Available { // the off part of an effect that is not theirs is not listed to them
-				continue
-			}
 			key, label, source = hitPartForOthers(sp, label, source)
 			count, fixed, sides, note = 0, 0, 0, ""
 			if sp.Hide {
@@ -499,6 +507,9 @@ func partsProtoFor(p playdb.PendingDamage, rule combat.CriticalRule, damageTypeP
 // so nothing tells a player what the target is (RN-10, RN-20).
 func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT func(string) string) []*playv1.DamagePartRoll {
 	var out []*playv1.DamagePartRoll
+	if !reads && plainToOthers(readParts(p.Parts)) {
+		return nil
+	}
 	for _, r := range readPartRolls(p.PartRolls) {
 		if r.Conditional && !master {
 			r.Counted = true // a player reads the same lines whatever the target is

@@ -48,6 +48,9 @@ func TestHitEffectNote(t *testing.T) {
 		},
 		{"a save with no condition", hit(rules.HitTriggerNextHit, "wis", ""), "O efeito acaba com este golpe. Depois do dano, o alvo faz um teste de resistência de Sabedoria."},
 		{"conditions with no save are never given", hit(rules.HitTriggerEachHit, "", "", "condition:blinded"), "O efeito vale em cada golpe enquanto durar."},
+		{"an unreadable condition is dropped", hit(rules.HitTriggerNextHit, "con", "", "condition:unknown", "condition:blinded"), "O efeito acaba com este golpe. Depois do dano, o alvo faz um teste de resistência de Constituição; se falhar, fica Cego até o fim do próximo turno dele."},
+		{"no readable condition leaves the save alone", hit(rules.HitTriggerNextHit, "con", "", "condition:unknown"), "O efeito acaba com este golpe. Depois do dano, o alvo faz um teste de resistência de Constituição."},
+		{"an unreadable ability leaves the trigger alone", hit(rules.HitTriggerNextHit, "xyz", "", "condition:blinded"), "O efeito acaba com este golpe."},
 		{
 			"three conditions", hit(rules.HitTriggerNextHit, "con", "", "condition:blinded", "condition:prone", "condition:frightened"),
 			"O efeito acaba com este golpe. Depois do dano, o alvo faz um teste de resistência de Constituição; se falhar, fica Cego, Caído e Amedrontado até o fim do próximo turno dele.",
@@ -61,7 +64,7 @@ func TestHitEffectNote(t *testing.T) {
 }
 
 // The part of a hit effect carries the note, and is listed off when a next_melee_hit meets a ranged weapon or a
-// thrown one at range; a row that is spent or not the attacker's is no part at all.
+// thrown one at range (it carries the reason and no note); a row that is spent or not the attacker's is no part at all.
 func TestAHitEffectPartNoteAndTheOffPart(t *testing.T) {
 	t.Parallel()
 	mod := rules.EffectModifier{Kind: rules.ModifierWeaponHitDamage, Trigger: rules.HitTriggerNextMeleeHit, Die: 8, Dice: 2, Save: "con", OnFailConditions: []string{"condition:blinded"}}
@@ -109,21 +112,21 @@ func TestAHitEffectPartNoteAndTheOffPart(t *testing.T) {
 	}
 }
 
-// The others read no note, no reason and no number of a hit effect's part, and a hidden effect's off part is not
-// listed to them at all; the attacker's player and the master read it whole.
+// The others read no note and no number of a hit effect's part, and never its off part, hidden effect or public: the
+// attacker's player and the master read the part and the off part whole. A hit whose only extra is an off row reads
+// to the others as a hit with no parts.
 func TestAHitPartNoteAndReasonAsOthersReadThem(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		name    string
-		hide    bool
-		off     bool
-		listed  bool
-		reasonK bool
+		name   string
+		hide   bool
+		off    bool
+		listed bool
 	}{
-		{"a public effect on", false, false, true, false},
-		{"a hidden effect on", true, false, true, false},
-		{"a public effect off", false, true, true, true},
-		{"a hidden effect off", true, true, false, false},
+		{"a public effect on", false, false, true},
+		{"a hidden effect on", true, false, true},
+		{"a public effect off", false, true, false},
+		{"a hidden effect off", true, true, false},
 	} {
 		part := partRecord{
 			Key: tableMark, Label: "Marca de Nanquim", Kind: partAuto, Count: 7, Sides: 12, Source: tableMark, Available: !tc.off, Table: tableHitEffect, Effect: "row-1", Hide: tc.hide,
@@ -132,22 +135,87 @@ func TestAHitPartNoteAndReasonAsOthersReadThem(t *testing.T) {
 		if tc.off {
 			part.Kind, part.Reason, part.Note = partExtra, offMeleeReason, ""
 		}
-		p := playdb.PendingDamage{Parts: mustJSON([]partRecord{part})}
+		weapon := partRecord{Key: partWeapon, Label: "Arco", Kind: partWeapon, Count: 1, Sides: 6, Available: true, Plain: tc.off}
+		p := playdb.PendingDamage{Parts: mustJSON([]partRecord{weapon, part})}
 		whole := partsProtoFor(p, combat.CriticalDoubledDice, dtPT, true)
-		if len(whole) != 1 || whole[0].GetNotePt() != part.Note || whole[0].GetReasonPt() != part.Reason {
+		if len(whole) != 2 || whole[1].GetNotePt() != part.Note || whole[1].GetReasonPt() != part.Reason {
 			t.Errorf("%s: the owner reads %v, want the note and the reason whole", tc.name, whole)
 		}
 		others := partsProtoFor(p, combat.CriticalDoubledDice, dtPT, false)
-		if (len(others) == 1) != tc.listed {
-			t.Fatalf("%s: the others read %d parts, want listed = %v", tc.name, len(others), tc.listed)
-		}
-		if len(others) == 0 {
+		if tc.off {
+			if len(others) != 0 {
+				t.Errorf("%s: the others read %v, want a hit with no parts", tc.name, others)
+			}
 			continue
 		}
-		o := others[0]
-		if o.GetNotePt() != "" || o.GetDiceCount() != 0 || o.GetDiceSides() != 0 || (o.GetReasonPt() != "") != tc.reasonK || (tc.hide && (o.GetLabelPt() != otherSourceTx || o.GetSourceKey() != "")) {
-			t.Errorf("%s: the others read %v, want no note, no dice, the reason only of a visible off part", tc.name, o)
+		if len(others) != 2 {
+			t.Fatalf("%s: the others read %d parts, want the weapon and the effect", tc.name, len(others))
 		}
+		o := others[1]
+		if o.GetNotePt() != "" || o.GetDiceCount() != 0 || o.GetDiceSides() != 0 || o.GetReasonPt() != "" || (tc.hide && (o.GetLabelPt() != otherSourceTx || o.GetSourceKey() != "")) {
+			t.Errorf("%s: the others read %v, want no note, no dice, no reason", tc.name, o)
+		}
+	}
+}
+
+// offRowReads are the stored pending damage of the ranged hit as a player who is not the attacker's reads it, before
+// the roll and after it, and as the attacker's player reads it before.
+type offRowReads struct {
+	before, after string
+	ownerBefore   []*playv1.DamagePart
+	amount        int32
+}
+
+// readOffRow makes the ranged hit of Pensantus on Toren (a natural 20), with the spell cast first or not, and reads
+// the stored pending damage as the others, with the same dice.
+func readOffRow(t *testing.T, visibility rulesv1.TableEffectAudience, cast bool) offRowReads {
+	t.Helper()
+	a := newHitCasters(t, func(s *rulesv1.TableSpell) { s.Effect.Visibility = visibility }, hitMod(trigMelee, func(m *tableMod) { m.Die, m.Dice, m.MaxDice = 12, 7, 13 }))
+	e := a.hitFight(t)
+	if cast {
+		a.castMark(t, e, 1)
+	}
+	hit := a.strike(t, e, shortbowKey, "Toren", d20(20))
+	read := func() string {
+		p, err := playdb.New(a.h.pool).GetPendingDamage(t.Context(), playdb.GetPendingDamageParams{EncounterID: e.GetId(), ID: hit.GetId()})
+		if err != nil {
+			t.Fatalf("GetPendingDamage() error = %v", err)
+		}
+		return jsonOf(&playv1.PendingDamage{Parts: partsProtoFor(p, combat.CriticalDoubledDice, dtPT, false), PartRolls: partRollsProto(p, false, false, dtPT)})
+	}
+	out := offRowReads{before: read(), ownerBefore: a.pendingOfPensantus(t, a.ana, e)[0].GetParts()}
+	out.amount = a.rollDamage(t, hit, 3).GetAmount()
+	out.after = read()
+	return out
+}
+
+// The off part is read by the caster's player and the master alone: to every other player a hit whose only row is an
+// off one is the same hit as one with no row (the parts and the part rolls, before and after the roll, and the amount).
+func TestRN10_AnOffRowLooksLikeNoRowToOthers(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name       string
+		visibility rulesv1.TableEffectAudience
+	}{
+		{"a public effect", rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_PUBLIC},
+		{"an effect of its owner", rulesv1.TableEffectAudience_TABLE_EFFECT_AUDIENCE_OWNER},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			withRow, noRow := readOffRow(t, tc.visibility, true), readOffRow(t, tc.visibility, false)
+			if withRow.before != noRow.before || withRow.after != noRow.after || withRow.amount != noRow.amount {
+				t.Errorf("the others read\n%s\n%s\n(%d), want the same as with no row:\n%s\n%s\n(%d)", withRow.before, withRow.after, withRow.amount, noRow.before, noRow.after, noRow.amount)
+			}
+			var off *playv1.DamagePart
+			for _, d := range withRow.ownerBefore {
+				if !d.GetAvailable() {
+					off = d
+				}
+			}
+			if off == nil || off.GetReasonPt() != offMeleeReason || off.GetDiceCount() != 7 {
+				t.Errorf("the caster's player reads %v, want the off part with its reason", withRow.ownerBefore)
+			}
+		})
 	}
 }
 
@@ -192,7 +260,7 @@ func TestAHitSpellNextMeleeHitIsListedOffOnARangedWeapon(t *testing.T) {
 	}
 }
 
-// The off part of an effect that is not theirs is no one else's to read: no reason, no name, no dice.
+// Only the caster's player and the master read the off part and its reason: no other player reads the reason, the name or the dice, of a hidden effect or a public one.
 func TestRN10_AnOffHitPartReachesOnlyItsCastersPlayerAndTheMaster(t *testing.T) {
 	t.Parallel()
 	a := newHitCasters(t, func(s *rulesv1.TableSpell) {

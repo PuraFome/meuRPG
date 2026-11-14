@@ -117,6 +117,20 @@ func (h hitFacts) hitEffectOffPart(r hitRow) partRecord {
 	return sp
 }
 
+// isOffHitPart says a part is the off part of a spell's hit effect.
+func isOffHitPart(sp partRecord) bool { return sp.Table == tableHitEffect && sp.Kind == partExtra }
+
+// onlyOffRows says the parts are off rows and nothing else (and at least one).
+func onlyOffRows(parts []partRecord) bool {
+	return len(parts) > 0 && !slices.ContainsFunc(parts, func(sp partRecord) bool { return !isOffHitPart(sp) })
+}
+
+// plainToOthers says the players who are not the attacker's read the hit as one with no parts: its weapon part is
+// flagged Plain, so the off row it was listed with cannot tell them the caster has an effect waiting.
+func plainToOthers(parts []partRecord) bool {
+	return slices.ContainsFunc(parts, func(sp partRecord) bool { return sp.Key == partWeapon && sp.Plain })
+}
+
 // hitEffectNote is the effect's own words on its part, built from the modifier: what the trigger means when it says
 // something, the save of the target and the conditions of a failure with their length. A modifier with no save is
 // the trigger's sentence alone (conditions without a save are never given, see useHitEffect).
@@ -130,16 +144,19 @@ func hitEffectNote(m rules.EffectModifier, names func(string) string) string {
 	case rules.HitTriggerMarkedTarget:
 		note = "O efeito vale nos golpes contra o alvo marcado."
 	}
-	if m.Save == "" {
+	ability := cmp.Or(abilityPT[m.Save], names("ability:"+m.Save))
+	if m.Save == "" || ability == "" { // a save that cannot be named is left out, never printed with a hole
 		return note
 	}
-	save := "Depois do dano, o alvo faz um teste de resistência de " + cmp.Or(abilityPT[m.Save], names("ability:"+m.Save))
-	if len(m.OnFailConditions) == 0 {
-		return strings.TrimSpace(note + " " + save + ".")
+	save := "Depois do dano, o alvo faz um teste de resistência de " + ability
+	var conds []string
+	for _, k := range m.OnFailConditions {
+		if n := names(k); n != "" {
+			conds = append(conds, n)
+		}
 	}
-	conds := make([]string, len(m.OnFailConditions))
-	for i, k := range m.OnFailConditions {
-		conds[i] = names(k)
+	if len(conds) == 0 {
+		return strings.TrimSpace(note + " " + save + ".")
 	}
 	length := "até o fim do próximo turno dele"
 	if m.ConditionDuration == rules.ConditionDurationSpellEnd {
