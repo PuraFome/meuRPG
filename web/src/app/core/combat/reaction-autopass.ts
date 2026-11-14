@@ -23,7 +23,11 @@ function clamp(seconds: number, max: number): number {
   return Math.min(max, Math.max(0, seconds));
 }
 
-/** The reactions a player may leave unanswered: using one is a choice, so not answering is the same as "Deixar passar". */
+/**
+ * The reactions a player may leave unanswered: using one is a choice, so not answering is the same as "Deixar passar".
+ * A readied action fired by the master (READIED) is one too: its row is then ignored, and the reaction stays.
+ * While a readied attack's roll is held for other reactions, the server sends its window with `answerNow` false: it does not pass.
+ */
 const OPTIONAL_KINDS: ReadonlySet<ReactionKind> = new Set([
   ReactionKind.SHIELD,
   ReactionKind.UNCANNY_DODGE,
@@ -35,6 +39,7 @@ const OPTIONAL_KINDS: ReadonlySet<ReactionKind> = new Set([
   ReactionKind.PROTECTION,
   ReactionKind.FEATHER_FALL,
   ReactionKind.SLOW_FALL,
+  ReactionKind.READIED,
 ]);
 
 /**

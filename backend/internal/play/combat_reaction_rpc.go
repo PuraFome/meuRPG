@@ -75,6 +75,10 @@ func (s *Service) AnswerReaction(
 	if _, err := s.queries.GetOpportunityOffer(ctx, playdb.GetOpportunityOfferParams{EncounterID: in.encID, ID: in.winID}); err == nil {
 		return s.answerOpportunityOffer(ctx, m, in, req.Msg)
 	}
+	// A readied action's window runs the held action in its own change (ready_answer.go).
+	if out, handled, err := s.answerReadied(ctx, m, in, req.Msg); handled {
+		return out, err
+	}
 
 	var got answered
 	res, err := s.write(ctx, combatWrite{m: m, key: in.key, hash: idem.Hash(req.Msg), kind: eventReactionAnswered, altKind: eventReactionUsed, encounterID: in.encID}, func(c *combatTx) (any, error) {

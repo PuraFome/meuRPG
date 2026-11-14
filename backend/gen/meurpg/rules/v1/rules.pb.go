@@ -12147,8 +12147,11 @@ type ActionOption struct {
 	UseLeft  int32 `protobuf:"varint,14,opt,name=use_left,json=useLeft,proto3" json:"use_left,omitempty"`
 	// The total of the action's rest resource (`uses_left` is what is left of it); 0 when it has none.
 	ResourceTotal int32 `protobuf:"varint,15,opt,name=resource_total,json=resourceTotal,proto3" json:"resource_total,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// True on Ready ("standard:ready"): it is taken with ReadyService.ReadyAction (a trigger and the held action), not
+	// with TakeAction, which refuses it.
+	ViaReadyAction bool `protobuf:"varint,16,opt,name=via_ready_action,json=viaReadyAction,proto3" json:"via_ready_action,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ActionOption) Reset() {
@@ -12284,6 +12287,13 @@ func (x *ActionOption) GetResourceTotal() int32 {
 		return x.ResourceTotal
 	}
 	return 0
+}
+
+func (x *ActionOption) GetViaReadyAction() bool {
+	if x != nil {
+		return x.ViaReadyAction
+	}
+	return false
 }
 
 // FeatureChoice is one option of a feature's use: a key the server checks and the label the player reads.
@@ -14979,7 +14989,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x04pact\x18\x02 \x01(\bR\x04pact\x12\x12\n" +
 	"\x04free\x18\x03 \x01(\x05R\x04free\x12\x14\n" +
 	"\x05total\x18\x04 \x01(\x05R\x05total\x12\x1a\n" +
-	"\bresource\x18\x05 \x01(\tR\bresource\"\xf5\x04\n" +
+	"\bresource\x18\x05 \x01(\tR\bresource\"\x9f\x05\n" +
 	"\fActionOption\x12/\n" +
 	"\x06action\x18\x01 \x01(\v2\x17.meurpg.rules.v1.ActionR\x06action\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
@@ -14999,7 +15009,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\achoices\x18\f \x03(\v2\x1e.meurpg.rules.v1.FeatureChoiceR\achoices\x12\x1b\n" +
 	"\tuse_total\x18\r \x01(\x05R\buseTotal\x12\x19\n" +
 	"\buse_left\x18\x0e \x01(\x05R\auseLeft\x12%\n" +
-	"\x0eresource_total\x18\x0f \x01(\x05R\rresourceTotal\":\n" +
+	"\x0eresource_total\x18\x0f \x01(\x05R\rresourceTotal\x12(\n" +
+	"\x10via_ready_action\x18\x10 \x01(\bR\x0eviaReadyAction\":\n" +
 	"\rFeatureChoice\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x17\n" +
 	"\atext_pt\x18\x02 \x01(\tR\x06textPt\"\xae\x02\n" +

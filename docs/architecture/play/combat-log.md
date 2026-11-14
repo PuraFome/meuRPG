@@ -35,6 +35,12 @@ A failed save that pushes a creature (Thunderwave, the Open Hand push) shows in 
 `pushed_ft` is the distance and `push_stopped` says something ended the push early.
 `push_no_map` says the combat has no map.
 A creature that saves has none of them.
+A readied action has three lines: `ACTION_READIED`, `READIED_FIRED` (status `FIRED` or `IGNORED`) and `READIED_LOST`.
+The detail (`readied`, `readied_fired`, `readied_lost`: the trigger, the held action, the status) is the master's and the readier's player's.
+Another player reads the line with the actor alone; a hidden readier's lines are the master's alone (see [Readying](readying.md)).
+The `ACTION_READIED` line of a spell carries its slot (`spell.slot`) for the master and the readier's player; its `concentration_ended_key` is public.
+A readied spell's pass and the end of its concentration write `READIED_LOST` (status `IGNORED` or `BROKEN`), which names the spell for the same two.
+The fire itself writes no line: the window tells it.
 Initiative, turn order and reinforcements are not log lines.
 
 | What | The master | The player |

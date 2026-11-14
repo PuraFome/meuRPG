@@ -2648,6 +2648,9 @@ message ActionOption {
   int32 use_left = 14;
   // The total of the action's rest resource (`uses_left` is what is left of it); 0 when it has none.
   int32 resource_total = 15;
+  // True on Ready ("standard:ready"): it is taken with ReadyService.ReadyAction (a trigger and the held action), not
+  // with TakeAction, which refuses it.
+  bool via_ready_action = 16;
 }
 
 // UseScope is how long a use of a feature counts against its limit.

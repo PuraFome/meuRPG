@@ -34,12 +34,14 @@ var undoableKinds = []string{
 	eventCombatantMoved, eventTrapTriggered, eventWildShapeStarted, eventWildShapeEnded, eventFamiliarSight,
 	eventHideResolved, // only the master's reveal of a hider (undoableHideResolved)
 	eventLegendarySpent, eventGearSwapped, eventFeatureUsed, eventCombatantMounted, eventCombatantDismounted,
+	eventActionReadied, eventReadiedFired,
 }
 
 // leavesHPAlone are the undoable kinds whose undo never writes hit points: they keep no holds.
 var leavesHPAlone = []string{
 	eventAttackRolled, eventDamageDiscarded, eventReactionDeclined, eventConditionsSet,
 	eventCombatantMoved, eventFamiliarSight, eventHideResolved, eventLegendarySpent, eventGearSwapped, eventCombatantMounted, eventCombatantDismounted,
+	eventActionReadied, eventReadiedFired,
 }
 
 // recentEvents is how many of the session's latest events the search for the
@@ -115,6 +117,8 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainCreatures,
 	chainCastZoneCatch,
 	chainConcentrationEnd,
+	chainReadiedDefeat,
+	chainReadied,
 	chainStateEndedByVitals,
 	chainOffer,
 	chainMoveCompanions,
@@ -484,7 +488,7 @@ func (s *Service) undoInTx(ctx context.Context, c *combatTx, expected string, ru
 	// What the action ended or revealed is as it was (takeBack): the lines it wrote
 	// about it go too.
 	run.alsoUndone = append(run.alsoUndone, ev.linesBefore()...)
-	if err := s.takeBackCompanions(ctx, c, run, recent, last, ev); err != nil {
+	if err := s.takeBackAround(ctx, c, run, recent, last, ev); err != nil {
 		return nil, err
 	}
 	if err := touch(ctx, c); err != nil {
@@ -518,6 +522,15 @@ func (u *undoRun) noteSnapBack(ctx context.Context, c *combatTx, id string) erro
 		u.snapBack, u.snapped = &sq, id
 	}
 	return nil
+}
+
+// takeBackAround takes back what goes with the action (takeBackCompanions) and makes a held spell the action broke
+// wait again (brokenReadiedBack).
+func (s *Service) takeBackAround(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, ev actionEvent) error {
+	if err := s.takeBackCompanions(ctx, c, run, recent, last, ev); err != nil {
+		return err
+	}
+	return s.brokenReadiedBack(ctx, c, run, recent, last)
 }
 
 // takeBackCompanions takes back what goes with the action of its kind: the move for the
@@ -554,6 +567,9 @@ func (s *Service) takeBackCompanions(ctx context.Context, c *combatTx, run *undo
 func (s *Service) takeBackEndedConcentration(ctx context.Context, c *combatTx, run *undoRun, recent []playdb.ListRecentSessionEventsRow, last playdb.ListRecentSessionEventsRow, group string) error {
 	at := slices.IndexFunc(recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == last.ID })
 	for _, older := range recent[at+1:] {
+		if older.Kind == eventReadiedLost { // the readied actions the change ended are written after it (settleChange)
+			continue
+		}
 		pe, ok := concentrationEndOf(older, group)
 		if !ok {
 			break
@@ -701,6 +717,9 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	}
 	u := &undoer{s: s, c: c, cs: cs, holds: ev.Holds, kept: ev.HPKept}
 	if err := u.undoWithTemp(ctx, kind, undo, ev); err != nil {
+		return nil, err
+	}
+	if err := u.readiedUseBack(ctx, kind, ev); err != nil {
 		return nil, err
 	}
 	return u.vitals, nil

@@ -601,6 +601,7 @@ When a concentrating character takes damage, the game asks its owner for the con
 A spell that deals two damage types gives one reminder for the cast, from the sum of what landed.
 The master's card reads "Teste de Constituição, CD 10"; nobody else reads the DC.
 Casting a second concentration spell ends the first, and the log says which one ended.
+A readied spell holds the concentration until it is released or lost (RN-31): readying a spell ends another concentration, and the end of its concentration loses the spell.
 A spell or the master that ends concentration on a summoning spell (Conjure Animals) dismisses the creatures of that casting.
 The master's undo gives the concentration and the same creatures back.
 A spell that forces a saving throw later (Flaming Sphere, Sleet Storm, Earthquake) rolls its saves and damage when it is cast; the master calls for the later ones. Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Stinking Cloud, Spike Growth and Wall of Fire are the exception: the app keeps their area and calls for the later saves by itself (RN-37).
@@ -1069,6 +1070,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Feather Fall | Up to five falling creatures within 60 ft take no falling damage. |
 | Slow Fall (monk 4) | The falling monk takes 5 times its level off its own falling damage. |
 | Opportunity attack | See RN-21. |
+| Readied action | The master says the trigger of a readied action happened: the readier may use its reaction to take the held action (an attack, a move up to its speed, a spell, another action) or let it pass. Only the readier's player and the master read the trigger and the action; the others read "Esperando a reação de <nome>" or "Esperando o mestre". |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
 | Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, decided by the server with no window (a window for the master only in "Perguntar"). |
 | Legendary Resistance | A player's spell with a saving throw, or a hit rider that rolls a save, reaches a creature with the trait and a use left, whether its save passed or failed: the cast or the rider's answer waits for the master alone (RN-29). A spell's area that catches such a creature asks its save of the master alone. |
@@ -1082,8 +1084,36 @@ The held action waits until the window is answered, and is dropped if it can no 
 The turn waits for open windows.
 A player reads only their own windows, and the numbers of the trigger (an attack total, an armor class, a damage) are the master's.
 
-- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
+- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
+- **Ready** (SRD 5.1, "Ready").
+  On its turn a creature spends its action to hold another until a trigger its player writes.
+  The held action is an attack, a move, a spell or another standard action.
+  A held spell must take 1 action to cast.
+  It is cast at Ready, with its slot, and its power is held until the trigger.
+  Holding it takes concentration, which ends any other concentration of the creature.
+  A cantrip with an attack roll is held this way too.
+  Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
+  The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
+  Hide and Help cannot be held: they have their own calls, which a reaction does not run.
+  Dash and Disengage cannot be held either: they last only for the creature's own turn.
+  A move cannot be held in a combat without a map.
+  A Ready cannot fire during the readier's own turn.
+  In a shared turn, that turn lasts until the readier ends its own part.
+  The SRD is silent here: its tied creatures act one after the other, and it has no shared turns.
+  The reaction is spent only when the held action is taken; until then the creature's other reactions stay offered.
+  A held attack still waits for the reactions that come before any attack roll (Cutting Words, Protection, the master's check).
+  Meanwhile its window takes no other answer and does not pass by itself.
+  A held move provokes opportunity attacks as any move does, even after a Disengage on the creature's own turn.
+  Those attacks hold the end of the turn in progress until they are answered.
+  A creature whose reaction is spent, or that cannot react, is not asked, and the readied action waits until it is lost.
+  It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight.
+  The spent action does not come back.
+  The players who are not the readier's read only that it readied an action, never which spell, its level or that it is a spell.
+  Their line of the Ready names no concentration that ended.
+  They still see what any ended concentration does: the creature's concentration indicator goes blank and the effects of its earlier concentration spell end.
+  The concentration save of a held spell is the readier's player's and the master's: the other players read only that the table waits for the master.
+  A hidden creature's readied action is the master's alone.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.
 
 How it is built: [Architecture](../architecture/play/reactions.md).
