@@ -451,6 +451,28 @@
     },
     {
       "module": "play",
+      "message": "meurpg.play.v1.FavorBlocked",
+      "fields": [
+        {
+          "field": "reason",
+          "enum": "FavorBlockedReason",
+          "reasons": [
+            "ALREADY_HAS",
+            "NOT_A_PLAYER_CHARACTER"
+          ],
+          "unsent": [
+            "NOT_THE_HOLDER",
+            "HAS_NONE",
+            "CANNOT_RECEIVE",
+            "SELF",
+            "ADDS_NOTHING",
+            "AFTER_THE_ROLL"
+          ]
+        }
+      ]
+    },
+    {
+      "module": "play",
       "message": "meurpg.play.v1.PuzzleInvalid",
       "fields": [
         {

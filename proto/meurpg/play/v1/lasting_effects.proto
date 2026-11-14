@@ -242,6 +242,10 @@ message LastingEffect {
   // the id never tells a player that a creature is there (RN-10). The card then says "no alvo
   // marcado"; with the id the client names the creature from its own combatant list.
   string marked_combatant_id = 31;
+  // An aura (only the master and the bearer's player read these): how far from the bearer it reaches, in feet, and
+  // whom, from the bearer's side ("self", "allies" or "enemies"). Zero and empty for an effect that is not an aura.
+  int32 radius_ft = 32;
+  string affects = 33;
 }
 
 // CatalogEffect is an effect the master may add.

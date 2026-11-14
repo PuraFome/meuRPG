@@ -1,9 +1,16 @@
 @if (tags().length) {
   <ul class="weapon-tags" aria-label="Marcas da arma">
     @for (t of tags(); track t.word) {
-      <li class="mr-tag weapon-tags__tag">
-        <mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ t.word }}
-      </li>
+      @if (compact()) {
+        <li class="weapon-tags__chip" data-chip>
+          <mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>
+          <span class="mr-visually-hidden">{{ t.word }}</span>
+        </li>
+      } @else {
+        <li class="mr-tag weapon-tags__tag">
+          <mat-icon aria-hidden="true">{{ t.icon }}</mat-icon>{{ t.word }}
+        </li>
+      }
     }
   </ul>
 }

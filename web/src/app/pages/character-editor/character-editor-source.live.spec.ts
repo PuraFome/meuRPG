@@ -185,6 +185,14 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
     ]);
     const lighter = { ...form, armor: '', shield: false, weapons: ['equipment:dagger'] };
     expect(mergeFullSheetInit(loaded, lighter).itemBonuses).toEqual([]);
+    const keysWithout = (change: object) =>
+      mergeFullSheetInit(loaded, { ...form, ...change }).itemBonuses?.map((b) => b.key);
+    expect(keysWithout({ armor: '' })).toEqual(['equipment:shield', 'equipment:rapier']);
+    expect(keysWithout({ shield: false })).toEqual(['equipment:chain-mail', 'equipment:rapier']);
+    expect(keysWithout({ weapons: ['equipment:dagger'] })).toEqual([
+      'equipment:chain-mail',
+      'equipment:shield',
+    ]);
   });
 
   it('keeps the magic items of the loaded sheet, attuned or not, whatever the form changes', () => {
