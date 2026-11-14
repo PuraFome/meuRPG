@@ -65,7 +65,7 @@ import { beginLegendaryFight, legendaryScreens, shotScale } from './legendary-su
 import { LEFT_OUT_VIEWPORTS, leftOutShotScale, refuseEntries, shootLeftOut, targetLeftTheMenu } from './left-out-support';
 import { beginTheatreRPC, secondPlayer } from './theatre-support';
 import { ATT_WIDTHS, attViewport, attunementScale, cropAtt, shootAtt } from './attunement-support';
-import { armorClassOf, bonusSheet, cropBonus, masterSetsShieldBonus, readDaggerTwice, shootBonus } from './bonus-support';
+import { armorClassOf, bonusCombatSheet, bonusSheet, cropBonus, masterSetsBonuses, masterSetsShieldBonus, readDaggerTwice, shootBonus } from './bonus-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
@@ -9269,6 +9269,207 @@ for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as c
     test.setTimeout(900_000);
     for (const width of ATT_WIDTHS) {
       await scanBonusBoards(browser, colorScheme, width);
+    }
+  });
+}
+
+/**
+ * The magic bonus in the sheet's combat column and in the combat, through the real stack at one width: the "Modificadores de itens"
+ * block (a carried piece muted with its reason once, the idle shield said once, nothing without bonuses), the "Ataques" chips for
+ * the owner and none for another sheet, the action rows with icon-only marks and the chip, the attack sheet's header with the words,
+ * and the fold's warning. Each state passes axe and the layout checks and is saved (`E2E_SHOTS_DIR`) with 2x crops.
+ */
+async function scanBonusCombatScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = attViewport(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...attunementScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...attunementScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Bônus mágico no combate ${Date.now()}`, true, true, { build: toren, sheet: bonusCombatSheet });
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    const crop = (at: Locator, name: string) => cropBonus(at, name, width, colorScheme);
+    const modifiersOf = (page: Page) => page.getByRole('region', { name: 'Modificadores de itens' });
+    const attacksOf = (page: Page) => page.getByRole('region', { name: 'Ataques', exact: true });
+    const gearOf = (page: Page) => page.getByRole('region', { name: 'Equipamento' });
+    const lineOf = (block: Locator, name: string) => block.locator('.modifiers__item').filter({ hasText: name });
+    const idleReason = 'Carregado, não equipado.';
+    const shieldReason = 'Uma arma de duas mãos equipada deixa o escudo parado.';
+
+    // The sheet with the longbow carried: four lines, the carried piece muted with its reason once, the chip on the longsword only.
+    await openLive(p, route);
+    const block = modifiersOf(p);
+    await expect(block.getByRole('heading', { name: 'Modificadores de itens', level: 3 })).toBeVisible();
+    await expect(block.locator('.modifiers__item')).toHaveCount(4);
+    await expect(lineOf(block, 'Cota de malha').locator('.modifiers__name')).toHaveText('+2 · Cota de malha');
+    await expect(lineOf(block, 'Cota de malha').locator('.modifiers__target')).toHaveText('na CA');
+    await expect(lineOf(block, 'Escudo').locator('.modifiers__name')).toHaveText('+1 · Escudo');
+    await expect(lineOf(block, 'Escudo').locator('.modifiers__target')).toHaveText('na CA');
+    await expect(lineOf(block, 'Espada longa').locator('.modifiers__name')).toHaveText('+1 · Espada longa');
+    await expect(lineOf(block, 'Espada longa').locator('.modifiers__target')).toHaveText('no ataque e no dano');
+    await expect(lineOf(block, 'Arco longo').locator('.modifiers__name')).toHaveText('+1 · Arco longo');
+    await expect(lineOf(block, 'Arco longo').locator('.modifiers__target')).toHaveText('no ataque e no dano');
+    await expect(lineOf(block, 'Arco longo')).toHaveClass(/modifiers__item--idle/);
+    await expect(block.getByText(idleReason)).toHaveCount(1);
+    await expect(p.getByText('O escudo não conta na CA')).toHaveCount(0);
+    const attacks = attacksOf(p);
+    const swordRow = attacks.getByRole('row').filter({ hasText: 'Espada longa' });
+    await expect(swordRow.locator('app-bonus-chip')).toHaveCount(1);
+    await expect(swordRow.getByRole('list', { name: 'Marcas da arma' })).toContainText('Prateada');
+    await expect(attacks.getByRole('row').filter({ hasText: 'Golpe desarmado' }).locator('app-bonus-chip')).toHaveCount(0);
+    await expect(attacks.locator('app-bonus-chip')).toHaveCount(1);
+    await expectScreenPasses(p, `A ficha, os modificadores de itens e o ataque com bônus ${where}`);
+    await shootBonus(p, 'ficha-modificadores', width, colorScheme, block);
+    await crop(block, 'recorte-modificadores');
+    await crop(lineOf(block, 'Cota de malha'), 'recorte-modificadores-linha-cota');
+    await crop(lineOf(block, 'Espada longa'), 'recorte-modificadores-linha-espada');
+    await crop(lineOf(block, 'Arco longo'), 'recorte-modificadores-linha-arco-carregado');
+    await shootBonus(p, 'ficha-ataques', width, colorScheme, attacks);
+    await crop(swordRow, 'recorte-ataques-linha-espada');
+    await crop(attacks.getByRole('row').filter({ hasText: 'Golpe desarmado' }), 'recorte-ataques-linha-sem-bonus');
+
+    // The same column, in order: the block, then the attacks. Narrower than 1200 px the equipment comes under them, in the same
+    // column; at 1280 it has the fourth column. From 768 the saves and skills have a column beside (after it at 768, before it at 1280).
+    const blockBox = await boxOf(block);
+    const attacksBox = await boxOf(attacks);
+    const gearBox = await boxOf(gearOf(p));
+    const savesBox = await boxOf(p.getByRole('region', { name: 'Testes de resistência' }));
+    expect(attacksBox.x, 'the attacks share the block column').toBeCloseTo(blockBox.x, 0);
+    expect(attacksBox.width).toBeCloseTo(blockBox.width, 0);
+    expect(attacksBox.y).toBeGreaterThanOrEqual(blockBox.y + blockBox.height);
+    if (width < 1200) {
+      expect(gearBox.x, 'the equipment stays in the column').toBeCloseTo(blockBox.x, 0);
+      expect(gearBox.y).toBeGreaterThanOrEqual(attacksBox.y + attacksBox.height);
+    } else {
+      expect(gearBox.x).toBeGreaterThanOrEqual(blockBox.x + blockBox.width);
+    }
+    if (width === 390) {
+      expect(savesBox.x, 'one column on a phone').toBeCloseTo(blockBox.x, 0);
+    } else if (width < 1200) {
+      expect(savesBox.x, 'the saves have the column beside').toBeGreaterThanOrEqual(blockBox.x + blockBox.width);
+    } else {
+      expect(savesBox.x + savesBox.width, 'the saves have the column before').toBeLessThanOrEqual(blockBox.x);
+    }
+
+    // The longbow equipped: the shield is idle, and its line says why, once, with no note of the sheet.
+    const equipment = gearOf(p);
+    await equipment.getByRole('button', { name: /^Equipar .*Arco longo/ }).click();
+    await expect(equipment.getByRole('button', { name: /^Guardar .*Arco longo/ })).toBeVisible();
+    await expect(block.locator('.modifiers__item')).toHaveCount(4);
+    await expect(lineOf(block, 'Escudo')).toHaveClass(/modifiers__item--idle/);
+    await expect(block.getByText(shieldReason)).toHaveCount(1);
+    await expect(block.getByText(idleReason)).toHaveCount(0);
+    await expect(p.getByText('O escudo não conta na CA')).toHaveCount(0);
+    await expectScreenPasses(p, `A ficha, o escudo parado nos modificadores ${where}`);
+    await shootBonus(p, 'ficha-modificadores-escudo-parado', width, colorScheme, block);
+    await crop(block, 'recorte-modificadores-escudo-parado');
+    await crop(lineOf(block, 'Escudo'), 'recorte-modificadores-linha-escudo-parado');
+
+    // No bonus on any piece: no block, no chip, and the idle shield is said by the sheet's note, once.
+    await masterSetsBonuses(m, campaignId, table.characterId, () => []);
+    await openLive(p, route);
+    await expect(p.getByRole('heading', { name: 'Modificadores de itens' })).toHaveCount(0);
+    await expect(modifiersOf(p)).toHaveCount(0);
+    await expect(attacksOf(p).locator('app-bonus-chip')).toHaveCount(0);
+    const note = p.getByRole('note').filter({ hasText: 'O escudo não conta na CA' });
+    await expect(note).toHaveCount(1);
+    await expectScreenPasses(p, `A ficha sem bônus, sem o bloco ${where}`);
+    await shootBonus(p, 'ficha-sem-bonus', width, colorScheme, attacksOf(p));
+    await crop(attacksOf(p).getByRole('row').filter({ hasText: 'Espada longa' }), 'recorte-ataques-linha-espada-sem-bonus');
+    await gearOf(p).getByRole('button', { name: /^Guardar .*Arco longo/ }).click();
+    await expect(gearOf(p).getByRole('button', { name: /^Equipar .*Arco longo/ })).toBeVisible();
+    await masterSetsBonuses(m, campaignId, table.characterId, () => bonusCombatSheet.itemBonuses);
+
+    // The master reads another sheet: a creature with a weapon and no bonus has neither chip nor block.
+    await openLive(m, `/campaigns/${campaignId}/characters/${table.captainId}`);
+    await expect(attacksOf(m).getByRole('row')).not.toHaveCount(1);
+    await expect(attacksOf(m).locator('app-bonus-chip')).toHaveCount(0);
+    await expect(modifiersOf(m)).toHaveCount(0);
+    await expectScreenPasses(m, `A ficha do mestre, uma criatura sem bônus ${where}`);
+    await shootBonus(m, 'ficha-mestre-sem-bonus', width, colorScheme, attacksOf(m));
+
+    // The combat: the action rows with icon-only marks and the chip, and the fold's warning.
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    const tab = await openActionTab(p, 'Ataques');
+    const swordAction = tab.locator('app-action-row').filter({ has: p.getByRole('button', { name: 'Atacar com Espada longa' }) });
+    await expect(swordAction.locator('app-bonus-chip')).toHaveCount(1);
+    await expect(swordAction.locator('.weapon-tags__chip')).toHaveCount(1);
+    await expect(swordAction.locator('.weapon-tags__tag')).toHaveCount(0);
+    await expect(swordAction.getByText('Bônus mágico, já somado')).toHaveCount(0);
+    const fistAction = tab.locator('app-action-row').filter({ has: p.getByRole('button', { name: 'Atacar com Golpe desarmado' }) });
+    await expect(fistAction.locator('app-bonus-chip')).toHaveCount(0);
+    await expectScreenPasses(p, `Combate, as linhas de ataque com o chip ${where}`);
+    await shootBonus(p, 'combate-ataques', width, colorScheme, swordAction);
+    await crop(swordAction, 'recorte-combate-linha-espada');
+    await crop(fistAction, 'recorte-combate-linha-sem-bonus');
+
+    const fold = tab.locator('app-fold').filter({ has: p.getByRole('heading', { name: 'Sacar ou guardar' }) });
+    const warning = fold.getByText('Sacar o Arco longo desativa o escudo: CA 21 → 18.');
+    await expect(warning).toHaveCount(1);
+    const gearRow = (name: string) => fold.locator('.gear-row').filter({ hasText: name });
+    await expect(gearRow('Escudo').locator('app-bonus-chip')).toHaveCount(1);
+    await expect(gearRow('Arco longo').locator('.bonus-chip--idle')).toHaveCount(1);
+    await expectScreenPasses(p, `Combate, Sacar ou guardar com o aviso do escudo ${where}`);
+    await shootBonus(p, 'combate-gaveta', width, colorScheme, fold);
+    await crop(warning, 'recorte-gaveta-aviso');
+    await crop(gearRow('Escudo'), 'recorte-gaveta-linha-escudo');
+    await crop(gearRow('Espada longa'), 'recorte-gaveta-linha-espada');
+    await crop(gearRow('Arco longo'), 'recorte-gaveta-linha-arco-carregado');
+
+    // The legend under the tab: only the chips the rows draw, in the sheet's order, hidden from a screen reader.
+    const legend = tab.locator('app-chip-legend ul');
+    await expect(tab.locator('app-chip-legend')).toHaveCount(1);
+    await expect(legend.locator('li')).toHaveText([/Prateada$/, /Bônus mágico, já somado$/]);
+    await expect(legend).toHaveAttribute('aria-hidden', 'true');
+    await expect(legend).toHaveAttribute('data-chip-legend', '');
+    await expect(fold.locator('app-chip-legend')).toHaveCount(0);
+    await expectScreenPasses(p, `Combate, a legenda dos chips sob as abas ${where}`);
+    await shootBonus(p, 'combate-legenda', width, colorScheme, legend);
+    await crop(legend, 'recorte-combate-legenda');
+
+    // The attack sheet: the header says the words once, after the marks.
+    await p.getByRole('button', { name: 'Atacar com Espada longa' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Atacar com Espada longa' });
+    await viaTargetList(p, sheet);
+    await expect(sheet.getByText('Bônus mágico, já somado')).toHaveCount(1);
+    await expect(sheet.locator('app-bonus-chip')).toHaveCount(1);
+    await expect(sheet.getByRole('list', { name: 'Marcas da arma' })).toContainText('Prateada');
+    await expectScreenPasses(p, `Combate, a folha de ataque com o bônus mágico ${where}`);
+    await shootBonus(p, 'combate-folha-ataque', width, colorScheme, sheet);
+    await crop(sheet.locator('.sheet__head'), 'recorte-folha-ataque-cabecalho');
+    await crop(sheet.locator('.sheet__sub'), 'recorte-folha-ataque-chip');
+    await sheet.getByRole('button', { name: 'Fechar' }).click();
+    await expect(sheet).toHaveCount(0);
+
+    // No chip on any row (no mark, no bonus): the legend is not drawn.
+    await masterSetsBonuses(m, campaignId, table.characterId, () => [], []);
+    await openSessionPage(p, campaignId);
+    const bare = await openActionTab(p, 'Ataques');
+    await expect(bare.getByRole('button', { name: 'Atacar com Espada longa' })).toBeVisible();
+    await expect(bare.locator('app-bonus-chip')).toHaveCount(0);
+    await expect(bare.locator('app-chip-legend ul')).toHaveCount(0);
+    await expectScreenPasses(p, `Combate, sem chips e sem a legenda ${where}`);
+    await shootBonus(p, 'combate-sem-chips', width, colorScheme, bare.locator('app-action-row').first());
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  test(`o bônus mágico na ficha e no combate (modificadores, ataques, linhas de ação, folha de ataque e gaveta) passa no axe e nas conferências de layout no tema ${theme}, em 390, 768 e 1280`, { tag: ['@a11y', '@564'] }, async ({ browser }) => {
+    test.setTimeout(900_000);
+    for (const width of ATT_WIDTHS) {
+      await scanBonusCombatScreens(browser, colorScheme, width);
     }
   });
 }

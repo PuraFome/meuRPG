@@ -1088,6 +1088,10 @@ type Attack struct {
 	// a character, when the sheet's mark or a weapon_rule says so (weaponMarks), and for
 	// the unarmed strike, when a weapon_rule says so or it has Ki-Empowered Strikes.
 	Magical bool `json:",omitempty"`
+	// MagicBonus is the part of AttackBonus and of the damage modifier that is the weapon's counting magic bonus
+	// (0 to MaxItemBonus), the value of its "attack:<key>" and "damage:<key>" item modifiers; 0 when none counts and for
+	// every line that is not a character's weapon.
+	MagicBonus int `json:",omitempty"`
 	// Silvered and Adamantine say the attack's weapon is of that material, for the
 	// resistances and immunities to nonmagical attacks that exempt it. A character's
 	// weapon has them from the sheet's mark or a weapon_rule (weaponMarks), and the unarmed
