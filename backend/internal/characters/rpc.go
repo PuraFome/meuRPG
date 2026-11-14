@@ -539,6 +539,9 @@ func (s *Service) character(ctx context.Context, content *rules.Content, row cha
 	if err := s.fillItemCharges(ctx, content, c); err != nil {
 		return nil, err
 	}
+	if err := s.fillAmmunition(ctx, content, c); err != nil {
+		return nil, err
+	}
 	if err := s.fillLevelUp(ctx, c, row, m); err != nil {
 		return nil, err
 	}

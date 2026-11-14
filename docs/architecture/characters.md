@@ -218,6 +218,15 @@ An item whose charges the SRD rolls reads `charges_left` -1 until the master set
 `lost` is `ItemLoss`: gone, a plain item or partly magic.
 A save that removes an entry deletes its row in the same transaction, so a new entry that takes the freed id starts full.
 The counts are read only where the sheet is: the player of the character and the master.
+`last_roll_pending` says the last charge went from an item that rolls a d20 and the roll waits; it is read and ignored on a save like the other fields.
+The charge keeper (`itemchargeskeeper.go`) is what play calls inside its own transaction: `SpendItemCharges`, `ResolveLastCharge` and `SetItemCharges`.
+Each locks the character's row, asks nothing of the caller (play authorizes first) and takes and returns proto values.
+Spending the last charge loses the item at once when the catalog says so, and waits for the d20 when it says that; `ResolveLastCharge` settles it (a 1 loses the item, a 20 regains the dice play rolled, cut to the maximum).
+`SetItemCharges` is the master's correction: it also sets the count of an item that rolls its start, ends a pending roll and writes or deletes the row.
+Ammunition is `character_ammunition` (see [Characters data](../data/characters.md#character_ammunition)); `FullSheet.ammunition` lists the kinds with pieces or fired in the last combat, filled on a read and ignored on a save.
+`SetAmmunition`, `SpendAmmunition`, `AmmunitionLeft` and `RecoverAmmunition` are the keeper's methods for it; they ask nothing of the caller either.
+`SpendAmmunition` locks the kind's row, starts the count over when the combat is another, and returns `ErrNoAmmunition` without writing when no piece is left, so two shots at the last piece fire once.
+`RecoverAmmunition` returns half (rounded down) of what a combat spent, once: `ErrAmmunitionRecovered` when it was done and `ErrNothingToRecover` when nothing was fired.
 `ContentService.ListMagicItems` lists the items the picker offers: items and families with their variants, never the +N armor and weapon families, found by name, in pages like `ListSpells`.
 
 ## Class and race choices

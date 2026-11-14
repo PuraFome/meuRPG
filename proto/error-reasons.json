@@ -35,7 +35,10 @@
             "ATTUNEMENT_LIMIT",
             "ATTUNEMENT_RESTRICTED",
             "ATTUNEMENT_NEEDS_REST",
-            "ATTUNEMENT_SAME_ITEM"
+            "ATTUNEMENT_SAME_ITEM",
+            "CHARGES_NOT_ENOUGH",
+            "ITEM_DESTROYED",
+            "ITEM_NO_CHARGES"
           ],
           "unsent": []
         }

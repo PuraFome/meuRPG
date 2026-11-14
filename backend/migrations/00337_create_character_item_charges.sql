@@ -1,7 +1,8 @@
 -- +goose Up
 -- The charges a character's magic items have spent (SRD 5.1: wands, staffs and rings hold charges that come back
 -- at dawn). One row for each entry of the sheet's magic_items (entry_id, "m<n>") that spent a charge, was set by the
--- master (an item whose charges the SRD rolls has no row until then) or was lost;
+-- master (an item whose charges the SRD rolls has no row until then) or was lost; last_roll_pending says the last
+-- charge went from an item that rolls a d20 for it and the roll has not been made;
 -- the maximum comes from the catalog, never from here. The row goes with the character, and the sheet's save
 -- deletes the rows of entries it removed, so a new entry that takes a freed id starts full.
 CREATE TABLE IF NOT EXISTS character_item_charges (
@@ -10,6 +11,7 @@ CREATE TABLE IF NOT EXISTS character_item_charges (
     charges_used INT NOT NULL DEFAULT 0,
     lost TEXT NOT NULL DEFAULT '',
     dawns_waited INT NOT NULL DEFAULT 0,
+    last_roll_pending BOOLEAN NOT NULL DEFAULT false,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (character_id, entry_id),
     CONSTRAINT character_item_charges_used_valid CHECK (charges_used >= 0),
