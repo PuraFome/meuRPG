@@ -359,13 +359,18 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 		}
 		rest = slices.DeleteFunc(rest, func(o playdb.Combatant) bool { return o.ID == who.ID })
 	}
-	if _, err := saveOrder(ctx, c.q, stored, rest); err != nil {
-		return nil, false, err
-	}
-	if err := settleMounts(ctx, c); err != nil { // the mount of a rider that left has its own place back
+	if err := closeUpOrder(ctx, c, stored, rest); err != nil {
 		return nil, false, err
 	}
 	return rest, turnPassed, nil
+}
+
+// closeUpOrder saves the order the combatants that stay have, and gives the mount of a rider that left its own place back.
+func closeUpOrder(ctx context.Context, c *combatTx, stored, rest []playdb.Combatant) error {
+	if _, err := saveOrder(ctx, c.q, stored, rest); err != nil {
+		return err
+	}
+	return settleMounts(ctx, c)
 }
 
 // releaseMountBefore is releaseMountOf for the loop of dropCombatants: rest are the combatants still in the combat, stored the order as the

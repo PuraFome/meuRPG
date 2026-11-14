@@ -226,10 +226,10 @@ func TestMountedCombat_AMountWhoseNeighbourLeftComesBackFirstAmongItsTie(t *test
 		return ids
 	}
 	if got, want := order("a"), []string{"a", "mount", "b"}; !slices.Equal(got, want) {
-		t.Errorf("order with its neighbour there = %v, want %v (the positive control)", got, want)
+		t.Errorf("order with its neighbor there = %v, want %v (the positive control)", got, want)
 	}
 	if got, want := order("gone"), []string{"mount", "a", "b"}; !slices.Equal(got, want) {
-		t.Errorf("order with its neighbour gone = %v, want %v", got, want)
+		t.Errorf("order with its neighbor gone = %v, want %v", got, want)
 	}
 	if got, want := order(""), []string{"mount", "a", "b"}; !slices.Equal(got, want) {
 		t.Errorf("order of a mount that stood first = %v, want %v", got, want)
