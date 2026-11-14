@@ -24,7 +24,8 @@ func TestReadiedActionsMigrationRunsTwice(t *testing.T) {
 	}
 	before := schema(t, db)
 
-	exec(t, db, "DELETE FROM goose_db_version WHERE version_id = 330")
+	// 00330 and every later migration run again: goose runs none lower than the database version.
+	exec(t, db, "DELETE FROM goose_db_version WHERE version_id >= 330")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("second Up() error = %v", err)
 	}
