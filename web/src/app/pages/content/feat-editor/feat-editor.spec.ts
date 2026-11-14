@@ -168,6 +168,9 @@ describe('FeatEditor (MR-025)', () => {
         size: '',
         lacksFeatureKey: '',
         level: 4,
+        requiresPact: '',
+        requiresSpellKey: '',
+        requiresOptionKeys: [],
       },
       effects: [
         { type: 'ability_increase', count: 1, from: ['strength', 'dexterity'], value: '1' },
@@ -254,6 +257,9 @@ describe('FeatEditor (MR-025)', () => {
       size: 'Small',
       lacksFeatureKey: 'feat:grappler',
       level: 0,
+      requiresPact: '',
+      requiresSpellKey: '',
+      requiresOptionKeys: [],
     });
   });
 
@@ -664,6 +670,39 @@ describe('FeatEditor (MR-025)', () => {
         'A escolha vem depois deste efeito. Suba a escolha ou desça este efeito.',
       );
       expect(bar(el).querySelector('button.mr-button--off')).not.toBeNull();
+    });
+  });
+
+  describe('what the feat asks of a class level, a pact, a spell and options (#580)', () => {
+    it('saves the class level, the spell and the options the master picked', async () => {
+      const { fixture, el } = setup(false);
+      const pick = (path: string, value: string) => {
+        const select = field(el, path) as HTMLSelectElement;
+        select.value = value;
+        select.dispatchEvent(new Event('change'));
+      };
+      pick('table_feat.prerequisite.class_level.class_key', 'class:wizard');
+      const level = field(el, 'table_feat.prerequisite.class_level.level') as HTMLInputElement;
+      level.value = '5';
+      level.dispatchEvent(new Event('input'));
+      pick('table_feat.prerequisite.requires_spell_key', catalog().spells[0].value);
+      fixture.detectChanges();
+      save.mockResolvedValue({ entry: stored(), affected: [] });
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      const sent = save.mock.calls[0][2].value.prerequisite;
+      expect(sent.classLevel).toEqual({ classKey: 'class:wizard', level: 5 });
+      expect(sent.requiresSpellKey).toBe(catalog().spells[0].value);
+    });
+
+    it('puts a refusal of the class level at the class level field, in words', async () => {
+      const { fixture, el } = setup();
+      save.mockRejectedValue(refusal(['table_feat.prerequisite.class_level.level', 'bad_value']));
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      expect(
+        text(field(el, 'table_feat.prerequisite.class_level.level').closest('app-text-field')!),
+      ).toContain('O nível vai de 1 a 20.');
     });
   });
 });

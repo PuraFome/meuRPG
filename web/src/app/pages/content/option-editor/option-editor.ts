@@ -17,7 +17,6 @@ import { RouterLink } from '@angular/router';
 import {
   type TableContentViolation,
   type TableEntry,
-  TableContentKind,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
@@ -44,6 +43,11 @@ import {
 } from '../../../core/content/option-draft';
 import { optionSetName } from '../../../core/content/option-text';
 import { previewRead } from '../../../core/content/preview';
+import {
+  pactChoices,
+  requirableOptions,
+  srdOptionsOf,
+} from '../../../core/content/requirable-options';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
 import { PickList } from '../../../shared/form-fields/pick-list';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
@@ -191,22 +195,12 @@ export class OptionEditor {
     ...this.catalog().spells,
   ]);
   /** The SRD's options (every set's) and the table's own, but this one: what an option may require, by name. */
-  protected readonly requirable = computed<SelectOption[]>(() => {
-    const srd = this.srdOptions(Object.values(OFFERERS).flat());
-    const own = this.entry()?.key;
-    const table = this.tableOptions().filter((o) => o.key !== own);
-    return [
-      ...srd.map((o) => ({ value: o.key, label: o.namePt })),
-      ...table.map((o) => ({ value: o.key, label: `${o.namePt} (da mesa)` })),
-    ].sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
-  });
-  protected readonly pactOptions = computed<SelectOption[]>(() => [
-    { value: '', label: 'Nenhuma' },
-    ...this.srdOptions(OFFERERS['pact_boon']).map((o) => ({ value: o.key, label: o.namePt })),
-    ...this.tableOptions()
-      .filter((o) => o.body.case === 'tableOption' && o.body.value.set === 'pact_boon')
-      .map((o) => ({ value: o.key, label: `${o.namePt} (da mesa)` })),
-  ]);
+  protected readonly requirable = computed<SelectOption[]>(() =>
+    requirableOptions(this.menu(), this.entries(), this.entry()?.key ?? ''),
+  );
+  protected readonly pactOptions = computed<SelectOption[]>(() =>
+    pactChoices(this.menu(), this.entries()),
+  );
   /** What a player reads, written by the same function as the player's page. */
   protected readonly preview = computed(() =>
     previewRead(
@@ -238,23 +232,14 @@ export class OptionEditor {
     });
   }
 
-  private tableOptions(): readonly TableEntry[] {
-    return this.entries().filter((e) => e.kind === TableContentKind.OPTION && !e.archived);
-  }
-
-  private srdOptions(offerers: readonly string[]): { key: string; namePt: string }[] {
-    return this.menu()
-      .optionSets.filter((s) => offerers.includes(s.key))
-      .flatMap((s) => s.options.filter((o) => !o.key.endsWith('@mesa')))
-      .map((o) => ({ key: o.key, namePt: o.namePt.replace(/^[^:]+: /, '') }));
-  }
-
   private nameOf(key: string): string {
     const named = this.catalog().nameOf(key);
     if (named !== key) {
       return named;
     }
-    const srd = this.srdOptions(Object.values(OFFERERS).flat()).find((o) => o.key === key);
+    const srd = srdOptionsOf(this.menu(), Object.values(OFFERERS).flat()).find(
+      (o) => o.key === key,
+    );
     return srd?.namePt ?? key;
   }
 

@@ -295,27 +295,31 @@ export const FIELD_TEXTS: readonly { shape: RegExp; reason?: string; text: strin
     text: 'Esta característica não existe mais ou não tem lista de opções. Escolha outra.',
   },
   {
-    shape: /^table_option\.prerequisite\.class_level$/,
+    shape: /^table_(option|feat)\.prerequisite\.class_level$/,
     text: 'A classe e o nível vão juntos: preencha os dois ou nenhum.',
   },
   {
-    shape: /^table_option\.prerequisite\.class_level\.class_key$/,
+    shape: /^table_(option|feat)\.prerequisite\.class_level\.class_key$/,
     text: 'Esta classe não existe mais. Escolha outra.',
   },
   {
-    shape: /^table_option\.prerequisite\.class_level\.level$/,
+    shape: /^table_(option|feat)\.prerequisite\.class_level\.level$/,
     text: 'O nível vai de 1 a 20.',
+  },
+  {
+    shape: /^table_feat\.prerequisite\.requires_option_keys(\[\])?$/,
+    text: 'Escolha opções que existem, no máximo 10.',
   },
   {
     shape: /^table_option\.prerequisite\.requires_option_keys(\[\])?$/,
     text: 'Escolha opções que existem, sem a própria opção, e no máximo 10.',
   },
   {
-    shape: /^table_option\.prerequisite\.requires_pact$/,
+    shape: /^table_(option|feat)\.prerequisite\.requires_pact$/,
     text: 'Escolha uma dádiva do pacto da lista.',
   },
   {
-    shape: /^table_option\.prerequisite\.requires_spell_key$/,
+    shape: /^table_(option|feat)\.prerequisite\.requires_spell_key$/,
     text: 'Esta magia não existe mais. Escolha outra.',
   },
   {

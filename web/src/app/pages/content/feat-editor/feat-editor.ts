@@ -53,8 +53,10 @@ import {
 } from '../../../core/content/feature-draft';
 import { askedRaces } from '../../../core/content/feat-text';
 import { previewRead } from '../../../core/content/preview';
+import { pactChoices, requirableOptions } from '../../../core/content/requirable-options';
 import { CheckRow } from '../../../shared/form-fields/check-row';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
+import { PickList } from '../../../shared/form-fields/pick-list';
 import { SearchPick } from '../../../shared/form-fields/search-pick';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
@@ -93,6 +95,7 @@ const FEAT_SIZES: SelectOption[] = [{ value: '', label: 'Qualquer' }, ...SIZE_OP
     FeatureEditor,
     MatIconModule,
     OptionSource,
+    PickList,
     PlayersSwitch,
     SearchPick,
     SelectField,
@@ -136,6 +139,20 @@ export class FeatEditor {
     ...this.catalog().proficiencies,
   ]);
   protected readonly sizes = FEAT_SIZES;
+  protected readonly classOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'Nenhuma' },
+    ...this.catalog().classes,
+  ]);
+  protected readonly requireSpellOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'Nenhuma' },
+    ...this.catalog().spells,
+  ]);
+  protected readonly pactOptions = computed<SelectOption[]>(() =>
+    pactChoices(this.menu(), this.entries()),
+  );
+  protected readonly requirable = computed<SelectOption[]>(() =>
+    requirableOptions(this.menu(), this.entries()),
+  );
   /** The place of the feat's choice of options among its effects, or -1. */
   protected readonly choiceAt = computed(() => optionChoiceIndex(this.draft().feature.effects));
   protected readonly choice = computed<EffectDraft | null>(
