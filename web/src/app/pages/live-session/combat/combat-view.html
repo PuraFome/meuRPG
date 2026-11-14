@@ -312,7 +312,7 @@
                   [hitPoints]="ownHitPoints()"
                   [effectNotes]="options()?.effectNotes ?? []"
                   (endTurn)="nextTurn()"
-                  (move)="moves.open()"
+                  [formTime]="ownVitals()?.wildShape?.timeLeftPt ?? ''"
                   (endRage)="rage.end($event)"
                   (opportunity)="openAttack($event, true)"
                   (endConcentration)="notices.endOwnConcentration()"
@@ -457,7 +457,7 @@
                       [grappled]="contestFacts()?.grappled === true"
                       [locked]="waiting()?.title ?? ''"
                       [busy]="busy()"
-                      [button]="!laptop()"
+                      [button]="false"
                       [drag]="laptop() && !!me.placed"
                       (move)="moves.open()"
                     />
@@ -724,6 +724,7 @@
           [title]="actCardTitle()"
           [classLine]="info().get(who.characterId)?.classSummary ?? ''"
           [hitPoints]="actCardHitPoints()"
+          [time]="formTimes().get(who.characterId) ?? ''"
           [busy]="busy()"
           (act)="actFor.set(who.id)"
         />
@@ -922,6 +923,7 @@
       [campaignId]="campaignId()"
       [info]="info()"
       [adjustable]="adjustable()"
+      [formTimes]="formTimes()"
       [busy]="busy()"
       [deathsHidden]="deathsHidden()"
       [theatre]="theatre()"
@@ -1152,6 +1154,8 @@
               [familiar]="theatre() ? null : familiar()"
               [wild]="wild()"
               [beast]="me.wildShapeBeastNamePt"
+              [stay]="stay()"
+              [moveAside]="!!acting()"
               [theatre]="theatre()"
               [contestAttacks]="contestAttacks()"
               [contest]="contestFacts()"
@@ -1173,6 +1177,7 @@
               (rollDamage)="rollPendingDamage()"
               (transform)="sheets.actions.wildShape()"
               (leaveForm)="leaveForm()"
+              (stayForm)="stayForm()"
             >
               @if (targeting.mode.active() && laptop()) {
                 <app-target-bar pending variant="card" [mode]="targeting.mode" />

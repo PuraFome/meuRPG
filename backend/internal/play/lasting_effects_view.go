@@ -138,6 +138,11 @@ func (ev *effectViewer) decorate(p *playv1.Combatant, c playdb.Combatant) {
 		if !ev.readsEffect(own) {
 			continue
 		}
+		// The form's clock is no tag: "Na forma de Lobo" (the beast's name) already says it, once (584-02, 584-04).
+		if conv.OrZero(own.SourceKey) == wildShapeEffect {
+			ev.decorateCard(p, c, own)
+			continue
+		}
 		if label := ev.labelFor(own); label != "" {
 			p.EffectLabels = append(p.EffectLabels, &playv1.EffectLabel{EffectId: own.ID, TextPt: label})
 		}

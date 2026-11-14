@@ -17,6 +17,7 @@ import {
   UseArcaneRecoveryResponseSchema,
   UseNaturalRecoveryResponseSchema,
 } from '../../../../gen/meurpg/play/v1/resources_pb';
+import { AttunementClient, type AttunementVm } from '../../../core/characters/attunement';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import type { VitalsVm } from '../../../core/play/live-session.types';
 import { pensantusVitals } from '../../../core/play/live-testing';
@@ -82,6 +83,8 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
   const useNaturalRecovery = vi.fn();
   const close = vi.fn();
   const apply = vi.fn();
+  const loadAttunement = vi.fn();
+  const setAttunement = vi.fn();
   const live = signal<VitalsVm>(fighterWizard());
 
   beforeEach(() => {
@@ -90,6 +93,8 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
     useNaturalRecovery.mockReset();
     close.mockReset();
     apply.mockReset();
+    loadAttunement.mockReset().mockResolvedValue(null);
+    setAttunement.mockReset();
     live.set(fighterWizard());
   });
 
@@ -113,6 +118,7 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
           provide: ResourceClient,
           useValue: { spendHitDice, useArcaneRecovery, useNaturalRecovery },
         },
+        { provide: AttunementClient, useValue: { load: loadAttunement, set: setAttunement } },
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: { close, disableClose: false } },
       ],
@@ -672,6 +678,113 @@ describe('HitDiceSheet (decisions batch 2 B 6)', () => {
       const sections = Array.from(el.querySelectorAll('.recovery'));
       expect(flat(sections[0])).toContain('Recuperação Arcana: usada; volta no descanso longo.');
       expect(sections[1].querySelector('.js-recovery-more')).not.toBeNull();
+    });
+  });
+
+  describe('Sintonização', () => {
+    const cloak: AttunementVm = {
+      attuned: 0,
+      entries: [
+        {
+          id: 'm1',
+          key: 'cloak',
+          namePt: 'Manto élfico',
+          kind: 'magic',
+          attuned: false,
+          asks: true,
+          restrictionPt: '',
+          restriction: 'none',
+          sameItemAttuned: false,
+        },
+      ],
+    };
+
+    it('shows the section while the rest opened the owner window, with the sheet read from the server', async () => {
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      expect(loadAttunement).toHaveBeenCalledWith('camp', 'pensantus');
+      expect(flat(el.querySelector('.att__title'))).toContain('Sintonização');
+      expect(flat(el.querySelector('app-attunement-section'))).toContain('Manto élfico');
+    });
+
+    it('stays out when the window is closed and nothing was set here', async () => {
+      const { el, settle } = render();
+      await settle();
+      expect(loadAttunement).not.toHaveBeenCalled();
+      expect(el.querySelector('app-attunement-section')).toBeNull();
+      expect(flat(el)).not.toContain('A sintonização deste descanso');
+    });
+
+    it('closes the section as soon as the owner sets an attunement, with no word from the stream', async () => {
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      setAttunement.mockResolvedValue(undefined);
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.getAttribute('aria-label') === 'Sintonizar Manto élfico')!
+        .click();
+      await settle();
+      expect(setAttunement).toHaveBeenCalledWith('camp', 'pensantus', 'm1', true, 4);
+      expect(el.querySelector('app-attunement-section')).toBeNull();
+      expect(flat(el)).toContain('A sintonização deste descanso foi usada.');
+    });
+
+    it('tells the page the window is spent, so the sheet opened again reads it spent', async () => {
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      setAttunement.mockResolvedValue(undefined);
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.getAttribute('aria-label') === 'Sintonizar Manto élfico')!
+        .click();
+      await settle();
+      expect(apply).toHaveBeenCalledWith(
+        expect.objectContaining({ attunementOpen: false, revision: 1 }),
+      );
+    });
+
+    it('reads the sheet again after a refusal, so the next tap holds the new revision', async () => {
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      setAttunement.mockRejectedValue(new Error('stale'));
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => b.getAttribute('aria-label') === 'Sintonizar Manto élfico')!
+        .click();
+      await settle();
+      expect(loadAttunement).toHaveBeenCalledTimes(2);
+      expect(el.querySelector('app-attunement-section')).not.toBeNull();
+    });
+
+    it('offers to try again when the sheet cannot be read, and reads it once the window opens again', async () => {
+      loadAttunement.mockRejectedValueOnce(new Error('down'));
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      expect(flat(el.querySelector('[role=alert]'))).toContain('Não deu para ler a sintonização.');
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => flat(b) === 'Tentar de novo')!
+        .click();
+      await settle();
+      expect(el.querySelector('app-attunement-section')).not.toBeNull();
+      live.set(fighterWizard({ attunementOpen: false, revision: 2 }));
+      await settle();
+      live.set(fighterWizard({ attunementOpen: true, revision: 3 }));
+      await settle();
+      expect(loadAttunement).toHaveBeenCalledTimes(3);
+    });
+
+    it('says the rest attunement was used once the window closes, and drops the section', async () => {
+      loadAttunement.mockResolvedValue({ attunement: cloak, revision: 4 });
+      const { el, settle } = render({}, { attunementOpen: true });
+      await settle();
+      live.set(fighterWizard({ attunementOpen: false, revision: 2 }));
+      await settle();
+      expect(el.querySelector('app-attunement-section')).toBeNull();
+      expect(flat(el.querySelector('.note[role=status]'))).toContain(
+        'A sintonização deste descanso foi usada. A próxima abre no próximo descanso, curto ou longo.',
+      );
     });
   });
 });
