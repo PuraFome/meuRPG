@@ -989,9 +989,15 @@ func (s *Service) rollPartDice(pr *partRoll, sp partRecord, r rollPartsInput, di
 	}
 	if g := r.cover[sp.Key]; g != nil {
 		// The group's total sits on one of its parts; the other parts of the group add no dice of their own and keep no faces.
-		pr.Group = g.typ
+		// A damage type that covers one part is no group: its sum stays on that part, as a part_key sum does, and the
+		// master may take it out.
+		many := g.parts >= 2
+		if many {
+			pr.Group = g.typ
+		}
 		if sp.Key == g.holder {
-			pr.Sum, pr.GroupHidden = clamp32(g.sum, 0, 100000), g.hidden
+			pr.Sum = clamp32(g.sum, 0, 100000)
+			pr.GroupHidden = many && g.hidden
 		}
 		return nil
 	}
@@ -1048,6 +1054,7 @@ type typeGroup struct {
 	holder  string
 	hidden  bool // a part of the group is hidden from the roller
 	visible int  // how many parts of the group are not
+	parts   int  // how many dice parts the damage type covers
 }
 
 // typedPartsOf reads the typed sums: each entry names one part key or one damage type, once. A refusal reads nothing.
@@ -1114,6 +1121,7 @@ func (r rollPartsInput) typedGroup(typ string, final []partRecord) (g *typeGroup
 			return nil, 0, 0, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("typed_parts names %s and a part of it (%s)", typ, sp.Key))
 		}
 		first = cmp.Or(first, sp.Key)
+		g.parts++
 		if sp.Hide {
 			g.hidden = true
 		} else {

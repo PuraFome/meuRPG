@@ -120,6 +120,26 @@ export function groupHolder(
   );
 }
 
+/**
+ * Whether `roll` is a part of a typed damage-type group: the part that carries the group's sum (a counted part with dice, no
+ * faces and a sum, beside a same-type counted follower) or a follower of it (`groupHolder`). The master cannot take such a
+ * part out. The server does not send the group on the wire, so this is the heuristic of the rows: a group whose holder or
+ * followers are masked from the reader (a part hidden from the others) is not seen here, and the server's refusal stands.
+ */
+export function inTypedGroup(roll: DamagePartRoll, rolls: readonly DamagePartRoll[]): boolean {
+  if (groupHolder(roll, rolls)) {
+    return true;
+  }
+  return (
+    roll.counted &&
+    roll.diceCount > 0 &&
+    roll.faces.length === 0 &&
+    roll.sum > 0 &&
+    roll.damageTypeKey !== '' &&
+    rolls.some((o) => o !== roll && groupHolder(o, rolls) === roll)
+  );
+}
+
 /** "rolou de novo 1→4" for each die Great Weapon Fighting rolled again. */
 export function rerollText(roll: DamagePartRoll): string {
   return roll.rerolled.map((r) => `rolou de novo ${r.from}→${r.to}`).join(', ');
