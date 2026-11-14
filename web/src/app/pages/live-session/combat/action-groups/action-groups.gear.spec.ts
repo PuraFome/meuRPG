@@ -206,9 +206,7 @@ describe('ActionGroups: "Sacar ou guardar" (#562)', () => {
 
     it('warns before the drawing, marks the bow’s row and says the change once, in the fold’s own line', async () => {
       const { el } = await setup({ gear: [hand, sword, bow] });
-      expect(el.textContent).toContain(
-        'Sacar Arco longo (duas mãos) deixa o escudo de lado: CA 16 → 14.',
-      );
+      expect(el.textContent).toContain('Sacar o Arco longo desativa o escudo: CA 16 → 14.');
       const row = Array.from(el.querySelectorAll('.gear-row')).find((r) =>
         r.textContent?.includes('Arco longo'),
       )!;
