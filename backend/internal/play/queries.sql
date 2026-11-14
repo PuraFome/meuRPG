@@ -295,6 +295,14 @@ SET creature_spent = creature_spent - 'legendary_actions', movement_used_ft = 0,
     attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
 WHERE id = $1;
 
+-- name: JoinCombatantTurn :exec
+-- ResetCombatantTurn for a mount that joins its rider's part of the turn: a reaction it spent stays spent (with its record), as it would
+-- until its own turn came.
+UPDATE combatants
+SET creature_spent = creature_spent - 'legendary_actions', movement_used_ft = 0, movement_used_dft = 0, last_move_dft = 0, dashed = false, disengaged = false, jump_doubled = false, mount_move_used = false, action_surged = false, spell_cast = false, bonus_spell_cast = false, action_used = false, bonus_action_used = false, object_interaction_used = false,
+    attacks_made = 0, action_attack_key = NULL, bonus_attacks_left = 0, ac_bonus = 0, extra_action_used = false, death_save_rolled = false, turn_state = 'acting'
+WHERE id = $1;
+
 -- name: ClearCombatTurns :exec
 -- Nobody is on turn: every combatant of the combat goes back to 'idle'. A new
 -- turn starts with this and then ResetCombatantTurn for each of its members.

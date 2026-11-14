@@ -156,8 +156,8 @@ func TestMountedCombat_AControlledMountTakesItsRidersInitiativeAndSitsRightAfter
 	if prior == nil || *prior.Initiative != *ogre.Initiative || *prior.Face != *ogre.Face || prior.Tie != ogre.Tie {
 		t.Errorf("mount_prior_init = %+v, want the Ogro's own initiative %d, face %d, tie %v", prior, *ogre.Initiative, *ogre.Face, ogre.Tie)
 	}
-	if joined.State != "acting" || joined.ActionUsed || joined.BonusUsed || joined.ReactionUsed || joined.MovementDft != 0 {
-		t.Errorf("the Ogro's turn after it joined Toren's = %+v, want acting with the economy fresh", joined)
+	if joined.State != "acting" || joined.ActionUsed || joined.BonusUsed || joined.MovementDft != 0 || !joined.ReactionUsed {
+		t.Errorf("the Ogro's turn after it joined Toren's = %+v, want acting with a fresh action, bonus action and movement and the reaction it spent still spent", joined)
 	}
 	e := c.get(t, c.master)
 	if got := group(e); got != "Toren,Ogro" {

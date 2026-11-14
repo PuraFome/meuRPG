@@ -374,7 +374,7 @@ func joinTurn(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, p
 		}
 		return nil
 	}
-	if err := c.q.ResetCombatantTurn(ctx, mount.ID); err != nil {
+	if err := c.q.JoinCombatantTurn(ctx, mount.ID); err != nil { // its reaction stays as it is
 		return fmt.Errorf("start the mount's part of the turn: %w", err)
 	}
 	return nil
