@@ -13,6 +13,13 @@ import { combatantIsPlayer, ofReactor } from './reaction-bar';
 import { type ParryCard, parryCard } from './parry-card';
 import { type LegendaryResistanceCard, legendaryResistanceCard } from './legendary-resistance-card';
 import { reactionKindName } from './reaction-record';
+import {
+  featureLateCost,
+  featureWindowFact,
+  featureWindowGroup,
+  featureWindowName,
+  isFeatureWindow,
+} from './reaction-feature';
 import { REACTION_NAMES, openWindows } from './reactions';
 
 export { heldReason, windowsBarText } from './reaction-bar';
@@ -26,7 +33,7 @@ export { heldReason, windowsBarText } from './reaction-bar';
 
 /** The name of the reaction a window offers, as `names_pt.json` writes it. */
 export function reactionName(w: ReactionWindow): string {
-  return reactionKindName(w.kind);
+  return isFeatureWindow(w) ? featureWindowName(w) : reactionKindName(w.kind);
 }
 
 /** The Shield spell's bonus to armor class (SRD 5.1). */
@@ -141,6 +148,7 @@ const ROW_FACTS: {
   [ReactionKind.HELLISH_REBUKE]: (_w, t) => (t ? [`o dano veio ${ofThe([t.actorLabel])}`] : []),
   [ReactionKind.FEATHER_FALL]: (_w, t) => (t?.actorLabel ? [`${t.actorLabel} cai`] : []),
   [ReactionKind.SLOW_FALL]: (w) => [`${w.reactorLabel} cai`],
+  [ReactionKind.FEATURE]: (w) => [featureWindowFact(w)],
   [ReactionKind.CUTTING_WORDS]: (_w, t, far) => [
     ...(t ? [`rolagem ${ofThe([t.actorLabel])}`] : []),
     ...(far ? [far] : []),
@@ -166,6 +174,8 @@ function groupTitle(first: ReactionWindow): string {
       return 'Reações a uma queda';
     case ReactionKind.HELLISH_REBUKE:
       return 'Reações a um dano';
+    case ReactionKind.FEATURE:
+      return 'Reações a uma criatura';
     default:
       return 'Reações a um ataque';
   }
@@ -195,6 +205,8 @@ function groupSubtitle(first: ReactionWindow): string {
         `Ataque ${ofThe([t.actorLabel])}${t.targetLabel ? ` contra ${t.targetLabel}` : ''}`,
         'ainda não rolado',
       ]);
+    case ReactionKind.FEATURE:
+      return joinDots([featureWindowGroup(first), 'na ordem da iniciativa']);
     default:
       return joinDots([
         `${t.actionNamePt || reactionName(first)} ${ofThe([t.actorLabel])}`,
@@ -291,7 +303,10 @@ function lateText(w: ReactionWindow): string {
 }
 
 /** What the reaction costs the character: its reaction, and the slot a spell takes. */
-function lateCost(w: ReactionWindow): string {
+function lateCost(e: Encounter, w: ReactionWindow): string {
+  if (isFeatureWindow(w)) {
+    return featureLateCost(e, w, LATE_SECONDS);
+  }
   const slots = w.prompt.case === 'shield' ? w.prompt.value.slots.filter((x) => x.free > 0) : [];
   const slot = [...slots].sort((x, y) => x.level - y.level)[0];
   const what = slot?.resource
@@ -382,7 +397,7 @@ function groupCard(e: Encounter, key: string, group: readonly ReactionWindow[]):
       row: rows[0],
       title: lateTitle(group[0]),
       text: lateText(group[0]),
-      cost: lateCost(group[0]),
+      cost: lateCost(e, group[0]),
     };
   }
   if (rows.length === 1 && !rows[0].isPlayer) {
