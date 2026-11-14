@@ -23,13 +23,17 @@ import { expect, type Page } from '@playwright/test';
 //    up over its own box, so a heading placed right over the field touched it
 //    ("Dano a mais" over "Dados", #577). The approved board leaves about
 //    13px; under 4px the two read as touching.
+// 6. An attunement chip on a gear row stays on the line of the words before it: a narrow column wraps the name and the
+//    chip follows its last word; a chip alone on a line under the name is a finding (#561).
+// 7. The heading of a section with a count beside it ("Sintonização" and "Sintonizados: 2 de 3") shares a baseline with
+//    it, within 1px (#561).
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch';
+  kind: 'icon-text' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch';
   where: string;
   detail: string;
 }
@@ -46,7 +50,7 @@ function auditLayout(): LayoutIssue[] {
     const cs = getComputedStyle(el);
     return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) !== 0;
   };
-  const describe = (el: Element): string => {
+  const describeEl = (el: Element): string => {
     const name = (el.getAttribute('aria-label') || el.textContent || '').replace(/\s+/g, ' ').trim();
     return `<${el.tagName.toLowerCase()}> "${name.slice(0, 50)}"`;
   };
@@ -109,7 +113,7 @@ function auditLayout(): LayoutIssue[] {
     if (Math.abs(d) > 1) {
       issues.push({
         kind: 'icon-text',
-        where: describe(row),
+        where: describeEl(row),
         detail: `the icon's middle is ${Math.abs(d).toFixed(1)}px ${d > 0 ? 'below' : 'above'} the middle of the capitals`,
       });
     }
@@ -136,7 +140,7 @@ function auditLayout(): LayoutIssue[] {
     if (Math.abs(d) > 2) {
       issues.push({
         kind: 'off-centre',
-        where: describe(c),
+        where: describeEl(c),
         detail: `the content is ${Math.abs(d).toFixed(1)}px ${d > 0 ? 'below' : 'above'} the middle`,
       });
     }
@@ -157,7 +161,7 @@ function auditLayout(): LayoutIssue[] {
         if (x > 2 && y > 2) {
           issues.push({
             kind: 'overlap',
-            where: describe(scope),
+            where: describeEl(scope),
             detail: `"${n.textContent!.trim().slice(0, 30)}" runs ${x.toFixed(0)}px over the icon "${icon.textContent!.trim()}"`,
           });
         }
@@ -182,7 +186,7 @@ function auditLayout(): LayoutIssue[] {
     if (top < 6 || bottom < 6) {
       issues.push({
         kind: 'tile',
-        where: describe(tile),
+        where: describeEl(tile),
         detail: `the words are ${top.toFixed(0)}px from the top edge and ${bottom.toFixed(0)}px from the bottom one (at least 6px each)`,
       });
     }
@@ -218,6 +222,47 @@ function auditLayout(): LayoutIssue[] {
   //    (words beside it or under it are not "above"); the field's own words,
   //    an open menu and a bar that floats over the page are left out.
   const MIN_LABEL_GAP = 4;
+  // 6. A gear row's attunement chip is on the last line of the words before it.
+  for (const chip of document.querySelectorAll('.gear-row__att')) {
+    if (!visible(chip)) continue;
+    const before = chip.previousElementSibling ?? chip.parentElement?.firstElementChild;
+    if (!before || before === chip) continue;
+    const rects = [...before.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+    if (rects.length === 0) continue;
+    const last = rects[rects.length - 1];
+    const c = chip.getBoundingClientRect();
+    const middle = c.top + c.height / 2;
+    if (middle > last.bottom + 1 || middle < last.top - 1) {
+      issues.push({
+        kind: 'chip-alone',
+        where: describeEl(chip.closest('.gear-row') ?? chip),
+        detail: `the chip's middle is at ${middle.toFixed(0)}px and the words before it end on a line from ${last.top.toFixed(0)}px to ${last.bottom.toFixed(0)}px: it sits on a line of its own`,
+      });
+    }
+  }
+
+  // 7. The heading and the count of a section head share a baseline.
+  for (const head of document.querySelectorAll('.att__head')) {
+    if (!visible(head)) continue;
+    const title = head.querySelector('.att__title');
+    const count = head.querySelector('.att__count');
+    if (!title || !count) continue;
+    const baselineOf = (el: Element): number | null => {
+      const node = textNodesOf(el).filter((n) => n.parentElement!.closest('.mat-icon') === null)[0];
+      if (!node) return null;
+      return capitals(node)?.bottom ?? null;
+    };
+    const a = baselineOf(title);
+    const b = baselineOf(count);
+    if (a !== null && b !== null && Math.abs(a - b) > 1) {
+      issues.push({
+        kind: 'head-baseline',
+        where: describeEl(head),
+        detail: `the heading's baseline is at ${a.toFixed(1)}px and the count's at ${b.toFixed(1)}px (within 1px)`,
+      });
+    }
+  }
+
   // Every line of words on the page, once: its columns and the baseline of its capitals.
   let all: { node: Text; left: number; right: number; baseline: number }[] | null = null;
   const lines = () => {

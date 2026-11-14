@@ -1,8 +1,6 @@
-import { create } from '@bufbuild/protobuf';
 import { TestBed } from '@angular/core/testing';
 
 import { type Combatant, CombatantKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
-import { ContestTurnStateSchema } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { TurnPanel } from './turn-panel';
 
@@ -46,59 +44,40 @@ describe('TurnPanel: the turn bar from 1024px', () => {
     for (const [k, v] of Object.entries(inputs)) {
       fixture.componentRef.setInput(k, v);
     }
-    const moves: number[] = [];
-    fixture.componentInstance.move.subscribe(() => moves.push(1));
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     const buttons = () =>
       [...el.querySelectorAll('button')].map((b) =>
         (b.textContent ?? '').replace(/\s+/g, ' ').trim(),
       );
-    return { el, moves, buttons };
+    return { el, buttons };
   }
-  const names = (el: HTMLElement) =>
-    [...el.querySelectorAll('.banner__shapes li')].map((li) =>
-      li.getAttribute('aria-label')?.replace(/ /g, ' '),
-    );
-
-  it('is one row: whose turn it is and who is next, the four shapes, "Mover" and "Encerrar turno"', () => {
+  it('is the master\'s band: the map and the round, whose turn it is and who is next, and "Encerrar turno" alone', () => {
     const { el, buttons } = setup();
     expect(el.querySelector('.banner h2')?.textContent).toBe('Sua vez, Pensantus');
-    expect(el.querySelector('.banner__sub')?.textContent).toMatch(/depois de você: Brisa/);
-    expect(names(el)).toEqual([
-      'Ação disponível',
-      'Ação bônus disponível',
-      'Reação disponível',
-      'Movimento: 9,0 m',
-    ]);
-    expect(buttons().filter((b) => b.endsWith('Mover'))).toHaveLength(1);
+    expect(el.querySelector('.banner__round')?.textContent).toMatch(/Combate · .*Rodada/s);
+    expect(el.querySelector('.banner__sub')?.textContent).toMatch(/Em seguida: Brisa/);
+    // The economy and "Mover" are the first row of "Ações" now, not the band's (584-02).
+    expect(el.querySelector('app-economy-shapes')).toBeNull();
+    expect(buttons().filter((b) => b.endsWith('Mover'))).toHaveLength(0);
     expect(buttons().filter((b) => b.endsWith('Encerrar turno'))).toHaveLength(1);
+    expect(el.querySelector('.banner app-end-turn .end--filled')).not.toBeNull();
   });
 
-  it('opens the move page with "Mover"', () => {
-    const { el, moves } = setup();
-    el.querySelector<HTMLButtonElement>('.banner__move')!.click();
-    expect(moves).toEqual([1]);
+  it('puts one chip with the form and its time under the title, and no card for the form', () => {
+    const { el } = setup(
+      { wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo' },
+      { formTime: '52 min restantes' },
+    );
+    const chip = el.querySelector('.banner app-form-chip');
+    expect(chip?.textContent?.replace(/\s+/g, ' ').trim()).toContain('Na forma de Lobo');
+    expect(chip?.textContent).toContain('52 min');
+    expect(chip?.textContent).not.toContain('restantes');
+    expect(el.querySelector('app-wild-band')).toBeNull();
   });
 
-  it('turns "Mover" off while an answer is awaited, and leaves it out when nothing is left to move', () => {
-    const waiting = setup({}, { waiting: { title: 'Esperando a reação do mestre', detail: '' } });
-    const move = waiting.el.querySelector<HTMLButtonElement>('.banner__move')!;
-    expect(move.getAttribute('aria-disabled') === 'true' || move.disabled).toBe(true);
-    move.click();
-    expect(waiting.moves).toEqual([]);
-    TestBed.resetTestingModule();
-    const still = setup({ movementLeftFt: 0, movementLeftDft: 0 });
-    expect(still.el.querySelector('.banner__move')).toBeNull();
-    expect(names(still.el)).toHaveLength(3);
-  });
-
-  it('leaves "Mover" out for a grappled character, and for a combat without a map keeps the walker with the metres left', () => {
-    const grappled = setup({}, { contest: create(ContestTurnStateSchema, { grappled: true }) });
-    expect(grappled.el.querySelector('.banner__move')).toBeNull();
-    TestBed.resetTestingModule();
-    const theatre = setup({}, { theatre: true });
-    expect(theatre.el.querySelector('.banner__move')).toBeNull();
-    expect(names(theatre.el)).toHaveLength(4);
+  it('gives a form with no time readable (another reader) the name alone', () => {
+    const { el } = setup({ wildShapeBeastKey: 'monster:wolf', wildShapeBeastNamePt: 'Lobo' });
+    expect(el.querySelector('.banner app-form-chip')?.textContent).not.toContain('·');
   });
 });

@@ -31,7 +31,7 @@
         <p>Não deu para ler as criaturas agora.</p>
       </div>
       <button type="button" class="retry" (click)="retry()"><mat-icon aria-hidden="true">refresh</mat-icon>Tentar de novo</button>
-    } @else if (creatures().length === 0) {
+    } @else if (creatures().length === 0 && !form()) {
       <p class="empty">{{ emptyText() }}</p>
     } @else {
       <ul class="cards">
@@ -74,22 +74,49 @@
       </div>
     }
     @if (wildShape() && !isMaster()) {
-      <div class="cast">
-        @if (form()) {
-          <button type="button" matButton="outlined" class="cast__btn js-wild" [class.mr-button--off]="!live() || leaving()" [disabled]="!live() || leaving()" disabledInteractive aria-describedby="wild-cost" (click)="leave()">
-            <mat-icon aria-hidden="true">pets</mat-icon>Voltar à forma normal
-          </button>
-          <p class="cast__cost" id="wild-cost">Na forma de {{ form() }}. Fora de combate não gasta ação.</p>
-        } @else {
+      @if (form()) {
+        <!-- The form (584-03): the beast with the time left, then "Voltar" and "Permanecer", full width on a phone and side by side from 768. -->
+        <div class="form" role="group" aria-labelledby="form-title">
+          <div class="form__card">
+            <mat-icon aria-hidden="true">pets</mat-icon>
+            <div class="form__text">
+              <b id="form-title" class="form__title">Na forma de {{ form() }}</b>
+              <span class="form__line">
+                @if (formTime()) {
+                  <mat-icon class="form__hour" aria-hidden="true">hourglass_empty</mat-icon><b>{{ formTime() }}</b>
+                }
+                @if (formHp(); as hp) {
+                  @if (formTime()) { · }{{ hp.current }} de {{ hp.max }} PV
+                }
+              </span>
+            </div>
+          </div>
+          <div class="form__btns">
+            <button type="button" matButton="outlined" class="form__btn js-wild" [class.mr-button--off]="!live() || leaving()" [disabled]="!live() || leaving()" disabledInteractive aria-describedby="wild-cost" (click)="leave()">
+              <mat-icon aria-hidden="true">undo</mat-icon>Voltar à forma normal
+            </button>
+            <button type="button" matButton="outlined" class="form__btn js-stay" [class.mr-button--off]="!live() || staying() || noUses()" [disabled]="!live() || staying() || noUses()" disabledInteractive aria-describedby="wild-cost" (click)="stay()">
+              <mat-icon aria-hidden="true">pets</mat-icon>Permanecer na forma
+            </button>
+          </div>
+          <p class="cast__cost" id="wild-cost">
+            {{ !live() ? wildLine() : noUses() ? 'Sem usos de Forma Selvagem.' : stayLine() }}
+          </p>
+          @if (wildError()) {
+            <p class="cast__cost" role="alert">{{ wildError() }}</p>
+          }
+        </div>
+      } @else {
+        <div class="cast">
           <button type="button" matButton="outlined" class="cast__btn js-wild" [class.mr-button--off]="!live()" [disabled]="!live()" disabledInteractive aria-describedby="wild-cost" (click)="transform()">
             <mat-icon aria-hidden="true">pets</mat-icon>Transformar: Forma Selvagem
           </button>
           <p class="cast__cost" id="wild-cost">{{ wildLine() }}</p>
-        }
-        @if (wildError()) {
-          <p class="cast__cost" role="alert">{{ wildError() }}</p>
-        }
-      </div>
+          @if (wildError()) {
+            <p class="cast__cost" role="alert">{{ wildError() }}</p>
+          }
+        </div>
+      }
     }
   </section>
 }

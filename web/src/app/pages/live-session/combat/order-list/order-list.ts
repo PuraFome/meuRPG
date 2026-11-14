@@ -41,6 +41,7 @@ import { NudgeButton } from '../../nudge-button/nudge-button';
 import { tieNumbers } from '../../../../core/format/text';
 import { joinDots } from '../../../../core/format/text';
 import { conditionTags } from '../../../../core/combat/conditions';
+import { type Pool, combatPool } from '../../../../core/combat/form-pool';
 import { labelTags } from '../../../../core/effects/effects';
 import { coverMark, coverText, sideTags } from '../../../../core/combat/cover';
 import { article } from '../../../../core/combat/combat-log';
@@ -60,7 +61,7 @@ import {
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import type { CombatantInfo } from '../combat-info';
 import { CombatantTags } from '../combatant-tags/combatant-tags';
-import { BeastPool, FormTag } from '../combatant-tags/form-tag';
+import { FormTag } from '../combatant-tags/form-tag';
 import { EndAidQuestion } from './end-aid-question';
 import { LoseQuestion } from './lose-question';
 import { OrderLegend } from './order-legend';
@@ -92,7 +93,6 @@ function concentrationOf(c: Combatant): string {
   selector: 'app-order-list',
   imports: [
     NudgeButton,
-    BeastPool,
     EndAidQuestion,
     FormTag,
     LoseQuestion,
@@ -118,6 +118,8 @@ export class OrderList {
   readonly info = input<ReadonlyMap<string, CombatantInfo>>(new Map());
   /** Whether "Dano/Cura" can open for this character (a living player). */
   readonly adjustable = input<ReadonlySet<string>>(new Set());
+  /** The time each form has left by character ("52 min restantes"): only what the viewer may read is in it. */
+  readonly formTimes = input<ReadonlyMap<string, string>>(new Map());
   readonly busy = input(false);
 
   readonly adjust = output<string>();
@@ -268,7 +270,8 @@ export class OrderList {
 
   /** The name of a row's head for a screen reader: who, whether it is their turn, their state and hit points. */
   protected headName(c: Combatant): string {
-    const hp = c.hitPointsMax === undefined ? '' : `${c.hitPointsCurrent} de ${c.hitPointsMax} PV`;
+    const pool = combatPool(c);
+    const hp = pool ? `${pool.current} de ${pool.max} PV` : '';
     return [c.label, this.current(c) ? 'é a vez' : '', rowState(c), hp].filter(Boolean).join(', ');
   }
 
@@ -361,7 +364,10 @@ export class OrderList {
 
   /** Ajuda's bonus on the combatant's maximum (0 without it). */
   protected aid(c: Combatant): number {
-    return Math.max(0, c.hitPointsMax === undefined ? 0 : c.hitPointsMaxBonus);
+    // The bonus is on the character's own maximum: in a form the bar is the beast's pool, which Ajuda does not touch.
+    return c.wildShapeBeastKey || c.hitPointsMax === undefined
+      ? 0
+      : Math.max(0, c.hitPointsMaxBonus);
   }
 
   protected readonly aidTag = aidTagForMaster;
@@ -391,17 +397,14 @@ export class OrderList {
 
   protected readonly article = article;
 
-  /** "PV do Lobo 11 de 11" on a phone, where the hit points are a line under the name; empty when the combat sends no pool (the master and the druid's player only). */
-  protected formPool(c: Combatant): string {
-    if (!c.wildShapeBeastKey || c.wildShapeHitPointsMax === undefined) {
-      return '';
-    }
-    return `PV d${article(c.wildShapeBeastNamePt) === 'a' ? 'a' : 'o'} ${c.wildShapeBeastNamePt} ${c.wildShapeHitPointsCurrent} de ${c.wildShapeHitPointsMax}`;
+  /** The hit points the row shows: the beast's in a form, the character's otherwise; empty when the viewer has none (RN-20). */
+  protected pool(c: Combatant): Pool | null {
+    return combatPool(c);
   }
 
   protected percent(c: Combatant): number {
-    const max = c.hitPointsMax ?? 0;
-    return max > 0 ? Math.min(100, Math.round(((c.hitPointsCurrent ?? 0) / max) * 100)) : 0;
+    const pool = combatPool(c);
+    return pool && pool.max > 0 ? Math.min(100, Math.round((pool.current / pool.max) * 100)) : 0;
   }
 
   /** The row of the one on turn; in a joint turn the box is on turn instead. */
