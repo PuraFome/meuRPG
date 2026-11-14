@@ -8,6 +8,7 @@ import {
   TableContentRefusalSchema,
   TableContentViolationSchema,
   TableFeatSchema,
+  TableOptionSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
@@ -68,7 +69,11 @@ describe('FeatEditor (MR-025)', () => {
       },
     });
 
-  function setup(existing: boolean | TableEntry = true, shown: CatalogVm = catalog()) {
+  function setup(
+    existing: boolean | TableEntry = true,
+    shown: CatalogVm = catalog(),
+    more: TableEntry[] = [],
+  ) {
     save.mockReset();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -77,7 +82,7 @@ describe('FeatEditor (MR-025)', () => {
     const fixture = TestBed.createComponent(FeatEditor);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('catalog', shown);
-    fixture.componentRef.setInput('entries', [owl()]);
+    fixture.componentRef.setInput('entries', [owl(), ...more]);
     fixture.componentRef.setInput('menu', menu());
     if (existing) fixture.componentRef.setInput('entry', existing === true ? stored() : existing);
     fixture.detectChanges();
@@ -756,7 +761,11 @@ describe('FeatEditor (MR-025)', () => {
       const level = field(el, 'table_feat.prerequisite.class_level.level') as HTMLInputElement;
       level.value = '5';
       level.dispatchEvent(new Event('input'));
-      pick('table_feat.prerequisite.requires_spell_key', catalog().spells[0].value);
+      const spell = field(el, 'table_feat.prerequisite.requires_spell_key') as HTMLInputElement;
+      spell.value = 'Luz';
+      spell.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('[role=option]')!.click();
       fixture.detectChanges();
       save.mockResolvedValue({ entry: stored(), affected: [] });
       click(el, 'Salvar talento');
@@ -774,6 +783,63 @@ describe('FeatEditor (MR-025)', () => {
       expect(
         text(field(el, 'table_feat.prerequisite.class_level.level').closest('app-text-field')!),
       ).toContain('O nível vai de 1 a 20.');
+    });
+
+    it('writes the class level as "Nível mínimo" with "de 20" at its end (board 580-01)', () => {
+      const body = create(TableFeatSchema, {
+        namePt: 'Lâmina Rubra',
+        prerequisite: { classLevel: { classKey: 'class:wizard', level: 5 } },
+      });
+      const { el } = setup(
+        entry(TableContentKind.FEAT, 'Lâmina Rubra', { body: { case: 'tableFeat', value: body } }),
+      );
+      const level = text(
+        field(el, 'table_feat.prerequisite.class_level.level').closest('app-text-field')!,
+      );
+      expect(level).toContain('Nível mínimo');
+      expect(level).toContain('de 20');
+      expect(level).not.toContain('1 a 20');
+    });
+
+    it('draws the spell as a search, names the one saved and marks a cantrip as "truque"', () => {
+      const body = create(TableFeatSchema, {
+        namePt: 'Lâmina Rubra',
+        prerequisite: { requiresSpellKey: 'spell:light' },
+      });
+      const { el } = setup(
+        entry(TableContentKind.FEAT, 'Lâmina Rubra', { body: { case: 'tableFeat', value: body } }),
+      );
+      const input = field(el, 'table_feat.prerequisite.requires_spell_key') as HTMLInputElement;
+      expect(input.getAttribute('role')).toBe('combobox');
+      expect(input.value).toBe('Luz');
+      expect(text(input.closest('app-search-pick')!)).toContain('truque');
+    });
+
+    it('shows a table option with the "Da mesa" badge, not the words "(da mesa)"', () => {
+      const body = create(TableFeatSchema, {
+        namePt: 'Lâmina Rubra',
+        prerequisite: { requiresOptionKeys: ['option:brasa@mesa'] },
+      });
+      const { el } = setup(
+        entry(TableContentKind.FEAT, 'Lâmina Rubra', { body: { case: 'tableFeat', value: body } }),
+        catalog(),
+        [
+          entry(TableContentKind.OPTION, 'Olhar de Brasa', {
+            key: 'option:brasa@mesa',
+            body: { case: 'tableOption', value: create(TableOptionSchema, { set: 'invocation' }) },
+          }),
+        ],
+      );
+      const row = field(el, 'table_feat.prerequisite.requires_option_keys');
+      expect(text(row)).not.toContain('(da mesa)');
+      expect(row.querySelector('.mr-tag')).toBeTruthy();
+    });
+
+    it('has the "Só você vê" card beside the preview', () => {
+      const { el } = setup();
+      const side = text(el.querySelector('.editor__side')!);
+      expect(side).toContain('Só você vê');
+      expect(side).toContain('uma condição que a mesa não mostra');
     });
   });
 });
