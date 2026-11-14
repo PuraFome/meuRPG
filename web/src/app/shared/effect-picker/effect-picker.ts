@@ -54,10 +54,10 @@ import {
   fieldLabel,
   fieldView,
   fixedHint,
-  fixedMode,
   holdsSomething,
   leftTheMenuChoice,
   listOptions,
+  modeIsFixed,
   modeLockNote,
   refHint,
   refusalTexts,
@@ -247,23 +247,17 @@ export class EffectPicker {
     return name === 'at_most' ? 'ou menos' : '';
   }
 
-  /** The mode of a target that fixes it is shown and cannot change; a stored mode that is another one stays free, to be corrected. */
   protected modeLocked(f: EffectMenuField): boolean {
-    const e = this.effect();
-    return f.name === 'mode' && e.mode !== '' && e.mode === fixedMode(this.menu(), e.target);
-  }
-
-  protected countLocked(f: EffectMenuField): boolean {
-    return this.feat.countLocked(f);
+    return modeIsFixed(this.menu(), this.effect(), f.name);
   }
 
   protected locked(f: EffectMenuField): boolean {
-    return this.modeLocked(f) || this.countLocked(f);
+    return this.modeLocked(f) || this.feat.countLocked(f);
   }
 
   /** The reason a locked field is locked, written beside it with its lock. */
   protected lockNote(f: EffectMenuField): string {
-    if (this.countLocked(f)) {
+    if (this.feat.countLocked(f)) {
       return this.feat.countNote();
     }
     return this.modeLocked(f) ? modeLockNote(this.effect()) : '';

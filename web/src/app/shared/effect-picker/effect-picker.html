@@ -98,9 +98,9 @@
             } @else {
               <app-text-field
                 [label]="labelOf(f)"
-                [value]="countLocked(f) ? '1' : read(f.name)"
-                [disabled]="countLocked(f)"
-                [describedBy]="countLocked(f) ? lockId(f) : ''"
+                [value]="feat.countLocked(f) ? '1' : read(f.name)"
+                [disabled]="feat.countLocked(f)"
+                [describedBy]="feat.countLocked(f) ? lockId(f) : ''"
                 [suffix]="suffixOf(f.name)"
                 [inputmode]="f.min < 0 ? 'text' : 'numeric'"
                 [path]="path(f.name)"
