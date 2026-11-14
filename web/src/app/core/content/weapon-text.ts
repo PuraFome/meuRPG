@@ -36,11 +36,27 @@ export function weaponDamage(w: TableWeapon, nameOf: NameOf): string {
   return [w.damage, type].filter(Boolean).join(' ');
 }
 
+/** The SRD's weapon properties in Portuguese: a player's catalog has no list of them, so the key says it for itself. */
+const PROPERTY_NAMES: Readonly<Record<string, string>> = {
+  'weapon-property:ammunition': 'Munição',
+  'weapon-property:finesse': 'Acuidade',
+  'weapon-property:heavy': 'Pesada',
+  'weapon-property:light': 'Leve',
+  'weapon-property:loading': 'Recarga',
+  'weapon-property:monk': 'Monge',
+  'weapon-property:reach': 'Alcance',
+  'weapon-property:special': 'Especial',
+  'weapon-property:thrown': 'Arremesso',
+  'weapon-property:two-handed': 'Duas mãos',
+  'weapon-property:versatile': 'Versátil',
+};
+
 /** The property names, Versátil with its two-handed damage and Arremesso with its range. */
 export function weaponProperties(w: TableWeapon, nameOf: NameOf): string[] {
   const range = weaponRange(w);
   return w.properties.map((key) => {
-    const name = nameOf(key);
+    const known = nameOf(key);
+    const name = known !== key ? known : (PROPERTY_NAMES[key] ?? key);
     if (key === VERSATILE && w.twoHandedDamage) {
       return `${name} (${w.twoHandedDamage})`;
     }
