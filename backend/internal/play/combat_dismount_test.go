@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	connect "connectrpc.com/connect"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 )
@@ -72,10 +74,9 @@ func TestMountedCombat_ADefeatedMountOpensTheDismountWindowOfItsRider(t *testing
 	if c.windowOf(t, c.ana, reactionDismount) != nil {
 		t.Error("another player reads Toren's window")
 	}
-	if _, err := c.answerReaction(t, c.ana, e, w.GetId(), useAnswer(0)); err == nil {
-		t.Error("another player answered Toren's window")
-	}
-	_, err := c.endTurn(t, c.master, e, false)
+	_, err := c.answerReaction(t, c.ana, e, w.GetId(), useAnswer(0))
+	wantRefusal(t, "another player's answer", err, connect.CodePermissionDenied, "you cannot answer this reaction")
+	_, err = c.endTurn(t, c.master, e, false)
 	wantBlockedBy(t, "the end of the turn", err, reasonReactionPending)
 	if got := c.rideRowOf(t, "Toren"); got.MountedOn == "" {
 		t.Error("Toren was thrown before he answered")

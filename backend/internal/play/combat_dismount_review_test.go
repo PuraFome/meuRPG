@@ -1,6 +1,7 @@
 package play
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -141,9 +142,8 @@ func TestMountedCombat_ACreatureRidersOwnerIsNotAsked(t *testing.T) {
 	if a.windowOf(t, a.bia, reactionDismount) != nil {
 		t.Error("the creature's owner reads the window")
 	}
-	if _, err := a.answerReaction(t, a.bia, e, w.GetId(), useAnswer(0)); err == nil {
-		t.Error("the creature's owner answered its window")
-	}
+	_, err := a.answerReaction(t, a.bia, e, w.GetId(), useAnswer(0))
+	wantRefusal(t, "the creature's owner's answer", err, connect.CodePermissionDenied, "you cannot answer this reaction")
 }
 
 // Where the prone of a mount comes from: a spell's condition and a trap, as the rider's own prone does.
@@ -309,5 +309,22 @@ func TestMountedCombat_TheOfferWindowOfAHiddenMountReadsAsTheRiders(t *testing.T
 	}
 	if strings.Contains(c.copyOf(t, c.caio), saveCanary) {
 		t.Error("Toren's player reads the hidden mount")
+	}
+}
+
+// The Open Hand's prone on the mount goes through the hit rider's own path and asks the rider's dismount.
+func TestMountedCombat_AnOpenHandThatKnocksTheMountProneAsksItsRider(t *testing.T) {
+	t.Parallel()
+	a, e, offers := riderMonkFight(t)
+	a.execSQL(t, `UPDATE combatants p SET mounted_on_id = g.id, grid_col = g.grid_col, grid_row = g.grid_row FROM combatants g WHERE g.label = 'Goblin' AND p.label = 'Pensantus'`)
+	a.h.roller.queue(1)
+	if _, err := a.useRider(t, a.caio, e, offers[playv1.HitRiderKind_HIT_RIDER_KIND_OPEN_HAND], playv1.HitRiderChoice_HIT_RIDER_CHOICE_PRONE); err != nil {
+		t.Fatalf("UseHitRider() error = %v", err)
+	}
+	if !slices.Contains(byLabel(t, a.get(t, a.master), "Goblin").GetConditions(), condProne) {
+		t.Fatal("the Goblin is not prone: the setup does not test the trigger")
+	}
+	if a.windowOf(t, a.master, reactionDismount) == nil {
+		t.Error("the master reads no dismount window after the Open Hand knocked the mount prone")
 	}
 }
