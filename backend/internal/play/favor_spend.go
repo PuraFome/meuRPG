@@ -81,9 +81,10 @@ func favorMode(sources []combat.Source) combat.RollMode {
 }
 
 // notesSources are the sources a check's notes make, for the helper: a bonus says nothing of advantage, and a note that is
-// not an advantage is a disadvantage (as notesMode reads them).
-func notesSources(notes []rollNote) []combat.Source {
-	var out []combat.Source
+// not an advantage is a disadvantage (as notesMode reads them). hide says which of them the roller may not read: the ones whose note is
+// secret (the master hides the source, RN-10), which spendFavor leaves out of its judgement and nowhere else.
+func notesSources(notes []rollNote) (sources []combat.Source, hide func(combat.Source) bool) {
+	var secret []combat.Source
 	for _, n := range notes {
 		if !n.givesMode() {
 			continue
@@ -92,9 +93,13 @@ func notesSources(notes []rollNote) []combat.Source {
 		if n.Adv {
 			effect = combat.ModeAdvantage
 		}
-		out = append(out, combat.Source{Kind: n.Kind, Effect: effect})
+		src := combat.Source{Kind: n.Kind, Effect: effect}
+		sources = append(sources, src)
+		if n.secret {
+			secret = append(secret, src)
+		}
 	}
-	return out
+	return sources, func(src combat.Source) bool { return slices.Contains(secret, src) }
 }
 
 // useFavor decides the spend of a roll, in the caller's transaction (so the row is deleted only if the roll is written).
@@ -115,7 +120,30 @@ func (s *Service) useFavor(ctx context.Context, env gateEnv, a favorAsk) (favorU
 		return favorUse{Mode: combat.Resolve(a.Sources)}, nil
 	}
 	a.Replay = env.c != nil && env.c.replay != nil
+	if err := s.owedBeforeTheSpend(ctx, env, a); err != nil {
+		return favorUse{}, err
+	}
 	return spendFavor(ctx, env.q, a)
+}
+
+// owedBeforeTheSpend gives the roller the Inspiration its stale holds still owe, before the roll tries to spend it. A hold whose question
+// went stale (the round turned, the die ran out) is forgotten only when the roller's next held roll meets it (gateOpen), which is after
+// the spend: a player whose Inspiração waits in such a hold would be told HAS_NONE for it. Only when the character has no row: with
+// one (a grant came in), the spend takes it and the gate's later forget gives the refund back, so none is lost to the one-row rule
+// (a give-back never stacks). Only the stale holds go (heldRoll.stale), never one that still waits. A refusal that follows rolls the
+// transaction back, so a spend that is refused still changes nothing.
+func (s *Service) owedBeforeTheSpend(ctx context.Context, env gateEnv, a favorAsk) error {
+	if !a.Own || !a.Rolls {
+		return nil // the refusal is the answer (favorRefusal): it needs no Inspiration
+	}
+	has, err := env.q.HasCharacterFavor(ctx, playdb.HasCharacterFavorParams{CharacterID: a.CharacterID, CampaignID: a.CampaignID})
+	if err != nil {
+		return fmt.Errorf("read the character's inspiration: %w", err)
+	}
+	if has {
+		return nil
+	}
+	return s.forgetStaleHoldsOf(ctx, env, heldRoller{CampaignID: a.CampaignID, CharacterID: a.CharacterID})
 }
 
 // favorHoldOf finds the held roll the request belongs to: the one an answer is being run for, or the one a retry made under its key.
@@ -276,7 +304,8 @@ func (p preparedCheck) withFavor(fv favorUse) preparedCheck {
 // favorOnCheck decides the Inspiration of a combatant's check in a combat (a contest's side, a Hide) over the circumstances its
 // notes make, and counts it on the prepared check. The caller says the request, the roller and whether it owns the character.
 func (s *Service) favorOnCheck(ctx context.Context, c *combatTx, p preparedCheck, a favorAsk) (preparedCheck, error) {
-	a.CampaignID, a.Sources = c.session.CampaignID, notesSources(p.notes)
+	a.CampaignID = c.session.CampaignID
+	a.Sources, a.Hide = notesSources(p.notes)
 	fv, err := s.useFavor(ctx, s.inspirationGate(c), a)
 	if err != nil {
 		return p, err

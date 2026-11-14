@@ -116,6 +116,9 @@ type rollNote struct {
 	// whether the master hides the effect, which only the master reads by name (RN-10).
 	Value  int  `json:"value,omitempty"`
 	Hidden bool `json:"hidden,omitempty"`
+	// secret says the roller may not read the source behind the note (the master hides it, RN-10). Never stored: it is read once, from
+	// the note the roll is prepared with, to judge what the Inspiração adds (notesSources).
+	secret bool
 }
 
 // givesMode says the note is a circumstance of the roll's mode: a bonus and the note of an Inspiração that was not spent are not.
@@ -446,9 +449,12 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 		Creature: sun.facts(creatureFacts(who, states, sheet.Traits), who), Ability: checkAbilityOf(skill), Check: true,
 		StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage, Perception: skill == skillPercept,
 	}
+	// What the roller may not read is told by the rule the other checks use (an effect the master hides, a condition it gives, the sun).
+	hide := hideFor(hiddenConditionsOf(states, who), hasHiddenEffect(states, who.ID))
 	var out []rollNote
 	for _, src := range combat.SaveMode(scene) {
 		if note, ok := checkSourceNotes[src.Kind]; ok {
+			note.secret = hide(src)
 			if src.Kind == combat.SourceEffectCheck {
 				note.Adv = src.Effect == combat.ModeAdvantage // a table spell's effect may give the disadvantage
 			}

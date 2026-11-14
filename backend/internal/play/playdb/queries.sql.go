@@ -1657,6 +1657,8 @@ type DeleteInspirationHoldsOfRow struct {
 
 // Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
 // character's Inspiration and never got the roll (no answer yet): that spend goes back. Only hold_forget.go calls it.
+// It also drops the character's holds outside a combat (combatant_id IS NULL) when its combatant leaves or the combat ends, and those are
+// refunded too.
 func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspirationHoldsOfParams) ([]DeleteInspirationHoldsOfRow, error) {
 	rows, err := q.db.Query(ctx, deleteInspirationHoldsOf, arg.EncounterID, arg.CombatantID, arg.CharacterID)
 	if err != nil {

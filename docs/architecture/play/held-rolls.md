@@ -100,9 +100,9 @@ A hold made in a combat records its `round`; one of an earlier round, or whose c
 
 ### One way to drop a hold
 
-Every delete of `inspiration_holds` goes through `hold_forget.go`: `forgetHoldsOf` (a combatant's or a character's holds), `forgetHold` (the gate forgetting a stale one) and `forgetOrphanHolds` (the sweep of a die that ran out). A hold that spent the master's Inspiration (`favor_spent`) and has no answer gives it back before the row is gone ([favor](favor.md#the-spend)); an answered one gives nothing.
+Every delete of `inspiration_holds` goes through `hold_forget.go`: `forgetHoldsOf` (a combatant's holds and the character's holds outside a combat, both refunded), `deleteCombatant` (forgets a combatant's holds, then deletes the combatant: the one function that calls `DeleteCombatant`), `forgetHold` (the gate forgetting a stale one) and `forgetOrphanHolds` (the sweep of a die that ran out). A hold that spent the master's Inspiration (`favor_spent`) and has no answer gives it back before the row is gone ([favor](favor.md#the-spend)); an answered one gives nothing.
 The paths: the gate (`gateOpen`), `RemoveCombatant`, `dropCombatants` (the non-dismiss branch), the end of a combat and the leaving of a character (`dieToCharacters`, for every combatant of a character whether it holds a die or not), the move of a character into a combat, and `dieAdvance`.
-Nothing relies on the foreign-key cascade from `combatants` and `encounters` (migration 00255): a path that deletes a combatant calls `forgetHoldsOf` first, and an archtest fails otherwise.
+Nothing relies on the foreign-key cascade from `combatants` and `encounters` (migration 00255): a path that deletes a combatant calls `deleteCombatant`, which forgets the holds first. An archtest fails for any other call of `DeleteCombatant`, for a query that deletes from `combatants` (other than `DeleteCombatant`) or from `encounters`, and for a `deleteCombatant` that deletes before it forgets.
 `byKey` finds a hold by the campaign, the key and the roller (its character or its combatant), so the members of a group check, which send one key, never read each other's holds.
 
 ## The questions are a chain

@@ -354,7 +354,7 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 			if err := dismissCombatant(ctx, c, rest, who); err != nil {
 				return nil, false, err
 			}
-		} else if err := leaveRow(ctx, c, who); err != nil {
+		} else if err := deleteCombatant(ctx, c.q, who); err != nil {
 			return nil, false, err
 		}
 		rest = slices.DeleteFunc(rest, func(o playdb.Combatant) bool { return o.ID == who.ID })
@@ -363,18 +363,6 @@ func (s *Service) dropCombatants(ctx context.Context, c *combatTx, cs []playdb.C
 		return nil, false, err
 	}
 	return rest, turnPassed, nil
-}
-
-// leaveRow deletes the combatant's row. The foreign key would delete its held rolls and the Inspiration they spent with them, so they are
-// forgotten first.
-func leaveRow(ctx context.Context, c *combatTx, who playdb.Combatant) error {
-	if err := forgetHoldsOf(ctx, c.q, holdOwnerOfCombatant(who)); err != nil {
-		return fmt.Errorf("forget the held rolls: %w", err)
-	}
-	if err := c.q.DeleteCombatant(ctx, who.ID); err != nil {
-		return fmt.Errorf("delete the combatant: %w", err)
-	}
-	return nil
 }
 
 // closeUpOrder saves the order the combatants that stay have, and gives the mount of a rider that left its own place back.

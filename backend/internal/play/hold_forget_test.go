@@ -255,3 +255,57 @@ func TestFavorHoldIsScopedToItsRoller(t *testing.T) {
 		t.Errorf("the Inspiration rows left = %v, want only Toren's: Pensantus spent her own", left)
 	}
 }
+
+// A hold that spent the Inspiration goes stale (the round turned) and is not forgotten yet: nothing has met it. The player's next roll
+// with the spend must work, and not be told HAS_NONE for an Inspiration that is only waiting to be given back: the stale hold is
+// forgotten, with its refund, before the roll spends. The one-row rule (a character holds at most one Inspiração; a give-back never
+// stacks on a grant) decides what is left.
+func (f *favorFight) staleSpent(t *testing.T) string {
+	t.Helper()
+	id := f.spentOnDie(t)
+	if _, err := f.endTurn(t, f.master, f.e, true); err != nil {
+		t.Fatalf("EndTurn() error = %v", err)
+	}
+	f.e = f.passTo(t, f.e, "Toren") // the round turned: the hold is stale
+	if !f.holdExists(t, id) || f.favorHolds(t) {
+		t.Fatalf("the stale hold %s is there = %v, the Inspiration is there = %v, want the hold still there and the Inspiration not yet given back", id, f.holdExists(t, id), f.favorHolds(t))
+	}
+	return id
+}
+
+// Case A: no new grant. The refund of the stale hold comes first, then the spend takes it: the roll is made with the Inspiração and the
+// player is not told HAS_NONE.
+func TestFavorSpendAfterAStaleHoldGetsItsRefundFirst(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	id := f.staleSpent(t)
+	f.h.roller.queue(4, 15)
+	got, err := favorPaths[0].send(t, f, f.caio, newKey(), true, nil)
+	if err != nil {
+		t.Fatalf("the next attack with the spend error = %v, want it to go: the stale hold's Inspiração is owed to the player, not HAS_NONE", err)
+	}
+	// Toren holds a die, so the roll waits for its question: the new hold remembers the Inspiração it spent.
+	if f.holdExists(t, id) || f.favorHolds(t) || len(got.faces) != 2 || got.holdID == "" || !f.holdFavorOf(t, got.holdID) {
+		t.Errorf("after the roll the stale hold is there = %v, the Inspiração is there = %v, the roll = %+v, want the hold forgotten and the Inspiração spent once, on a held roll of two dice that remembers it",
+			f.holdExists(t, id), f.favorHolds(t), got)
+	}
+}
+
+// Case B: a grant came in between. The roll with the spend spends ONE, and the player ends holding exactly one row: the stale hold's
+// give-back after the spend. The rule is one row, so two Inspirações the player was owed (the refund and the grant) leave one after the
+// spend, which is what the table gives: nothing is lost beyond the one-row rule.
+func TestFavorSpendAfterAStaleHoldAndANewGrantLeavesOneRow(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	id := f.staleSpent(t)
+	f.give(t, f.toren)
+	f.h.roller.queue(4, 15)
+	got, err := favorPaths[0].send(t, f, f.caio, newKey(), true, nil)
+	if err != nil {
+		t.Fatalf("the next attack with the spend error = %v, want it to go", err)
+	}
+	if f.holdExists(t, id) || f.rows(t) != 1 || len(got.faces) != 2 || got.holdID == "" || !f.holdFavorOf(t, got.holdID) {
+		t.Errorf("after the roll the stale hold is there = %v, the rows = %d, the roll = %+v, want the hold forgotten, exactly one row left (the grant spent, the refund kept) and a held roll that remembers the spend",
+			f.holdExists(t, id), f.rows(t), got)
+	}
+}

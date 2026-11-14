@@ -59,9 +59,9 @@ func holdDeletingQueries(file, sql string) []string {
 	return out
 }
 
-// TestHoldsAreDroppedOnlyThroughHoldForget fails for a non-test Go file of the backend, other than hold_forget.go, that calls a generated
-// query that deletes holds.
-func TestHoldsAreDroppedOnlyThroughHoldForget(t *testing.T) {
+// walkBackendGo runs check on every non-test Go file of the backend other than hold_forget.go and collects the problems.
+func walkBackendGo(t *testing.T, check func(path string, src []byte) []string) []string {
+	t.Helper()
 	var problems []string
 	root := os.DirFS(backendRoot)
 	err := fs.WalkDir(root, ".", func(path string, d fs.DirEntry, err error) error {
@@ -78,17 +78,29 @@ func TestHoldsAreDroppedOnlyThroughHoldForget(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		problems = append(problems, callsOfHoldDeletes(path, src)...)
+		problems = append(problems, check(path, src)...)
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	failProblems(t, problems)
+	return problems
+}
+
+// TestHoldsAreDroppedOnlyThroughHoldForget fails for a non-test Go file of the backend, other than hold_forget.go, that calls a generated
+// query that deletes holds.
+func TestHoldsAreDroppedOnlyThroughHoldForget(t *testing.T) {
+	failProblems(t, walkBackendGo(t, callsOfHoldDeletes))
 }
 
 // callsOfHoldDeletes lists the calls in the source of a method that deletes holds.
 func callsOfHoldDeletes(file string, src []byte) []string {
+	return callsOf(file, src, holdDeleteQueries, "a hold dropped with no answer loses the Inspiration it spent. "+
+		"Call forgetHoldsOf, forgetHold or forgetOrphanHolds from "+holdForgetFile+" instead")
+}
+
+// callsOf lists the calls in the source of any of the methods.
+func callsOf(file string, src []byte, methods []string, why string) []string {
 	var out []string
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, file, src, 0)
@@ -96,9 +108,8 @@ func callsOfHoldDeletes(file string, src []byte) []string {
 		return []string{file + ": " + err.Error()}
 	}
 	ast.Inspect(f, func(n ast.Node) bool {
-		if sel := selectorOfCall(n); sel != nil && slices.Contains(holdDeleteQueries, sel.Sel.Name) {
-			out = append(out, file+":"+strconv.Itoa(fset.Position(sel.Pos()).Line)+" calls "+sel.Sel.Name+": a hold dropped with no answer loses the Inspiration it spent. "+
-				"Call forgetHoldsOf, forgetHold or forgetOrphanHolds from "+holdForgetFile+" instead")
+		if sel := selectorOfCall(n); sel != nil && slices.Contains(methods, sel.Sel.Name) {
+			out = append(out, file+":"+strconv.Itoa(fset.Position(sel.Pos()).Line)+" calls "+sel.Sel.Name+": "+why)
 		}
 		return true
 	})
@@ -115,60 +126,121 @@ func selectorOfCall(n ast.Node) *ast.SelectorExpr {
 	return sel
 }
 
-// TestADeletedCombatantForgetsItsHolds fails for a non-test file of internal/play that calls DeleteCombatant and never calls
-// forgetHoldsOf: the foreign key of inspiration_holds cascades from combatants, and no path may rely on it (the Inspiration a held roll
-// spent would go with the row).
-func TestADeletedCombatantForgetsItsHolds(t *testing.T) {
-	dir := backendRoot + "/internal/play"
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	checked := 0
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
-			continue
-		}
-		src, err := os.ReadFile(dir + "/" + e.Name())
+// combatantDeleteQueries is the only statement that may DELETE FROM combatants, and the method it generates. encounters has no
+// delete at all: the combat's row goes with its session, and nothing may delete it under another name.
+var combatantDeleteQueries = []string{"DeleteCombatant"}
+
+var encounterDeleteQueries []string
+
+var (
+	deleteCombatantsSQL = regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+(ONLY\s+)?combatants\b`)
+	deleteEncountersSQL = regexp.MustCompile(`(?i)\bDELETE\s+FROM\s+(ONLY\s+)?encounters\b`)
+)
+
+// TestOnlyNamedQueriesDeleteCombatantsOrEncounters fails for a query in a sqlc query file that deletes from combatants or encounters and is
+// not on the allowlist: the foreign key of inspiration_holds cascades from both, so a delete under another name would take the held
+// rolls, and the Inspiration they spent, with it.
+func TestOnlyNamedQueriesDeleteCombatantsOrEncounters(t *testing.T) {
+	for _, f := range sqlcQueryFiles(t) {
+		src, err := os.ReadFile(backendRoot + "/" + f)
 		if err != nil {
 			t.Fatal(err)
 		}
-		checked++
-		failProblems(t, deletesCombatantsWithoutForgetting("internal/play/"+e.Name(), src))
-	}
-	if checked == 0 {
-		t.Fatal("no Go file found in internal/play: is backendRoot right?")
+		failProblems(t, cascadingDeletes(f, string(src)))
 	}
 }
 
-// deletesCombatantsWithoutForgetting says the source calls DeleteCombatant and has no call of forgetHoldsOf.
-func deletesCombatantsWithoutForgetting(file string, src []byte) []string {
+// cascadingDeletes names the queries of the file that delete combatants or encounters and are not allowed to.
+func cascadingDeletes(file, sql string) []string {
+	var out []string
+	heads := anyHeader.FindAllStringIndex(sql, -1)
+	for i, h := range heads {
+		end := len(sql)
+		if i+1 < len(heads) {
+			end = heads[i+1][0]
+		}
+		block := sql[h[0]:end]
+		name := queryHeader.FindStringSubmatch(block)[1]
+		code := stripCommentsAndStrings(block)
+		for _, c := range []struct {
+			re      *regexp.Regexp
+			table   string
+			allowed []string
+		}{{deleteCombatantsSQL, "combatants", combatantDeleteQueries}, {deleteEncountersSQL, "encounters", encounterDeleteQueries}} {
+			if c.re.MatchString(code) && !slices.Contains(c.allowed, name) {
+				out = append(out, file+": "+name+" deletes from "+c.table+": the foreign key would delete the held rolls and the Inspiration they spent. "+
+					"Delete a combatant only through deleteCombatant in "+holdForgetFile)
+			}
+		}
+	}
+	return out
+}
+
+// TestCombatantsAreDeletedOnlyThroughHoldForget fails for a non-test Go file of the backend, other than hold_forget.go, that calls the
+// generated DeleteCombatant.
+func TestCombatantsAreDeletedOnlyThroughHoldForget(t *testing.T) {
+	failProblems(t, walkBackendGo(t, func(path string, src []byte) []string {
+		return callsOf(path, src, combatantDeleteQueries, "a combatant deleted without forgetting its holds first loses the Inspiration they spent. "+
+			"Call deleteCombatant from "+holdForgetFile+" instead")
+	}))
+}
+
+// TestTheCombatantDeleteForgetsFirst fails when the function of hold_forget.go that calls DeleteCombatant does not call forgetHoldsOf
+// before it (the order matters: the forget reads the rows the delete would take).
+func TestTheCombatantDeleteForgetsFirst(t *testing.T) {
+	src, err := os.ReadFile(backendRoot + "/" + holdForgetFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failProblems(t, deletesBeforeForgetting(holdForgetFile, src))
+}
+
+// deletesBeforeForgetting lists the functions of the source that call DeleteCombatant with no forgetHoldsOf call before it, and fails
+// when no function calls it at all (the one function is the way the rest of the backend deletes combatants).
+func deletesBeforeForgetting(file string, src []byte) []string {
 	fset := token.NewFileSet()
 	f, err := parser.ParseFile(fset, file, src, 0)
 	if err != nil {
 		return []string{file + ": " + err.Error()}
 	}
-	deletes, forgets := 0, false
-	ast.Inspect(f, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
+	var out []string
+	deleters := 0
+	for _, d := range f.Decls {
+		fn, ok := d.(*ast.FuncDecl)
+		if !ok || fn.Body == nil {
+			continue
 		}
-		switch fn := call.Fun.(type) {
-		case *ast.SelectorExpr:
-			if fn.Sel.Name == "DeleteCombatant" {
-				deletes++
+		var forgetAt, deleteAt token.Pos
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
 			}
-		case *ast.Ident:
-			forgets = forgets || fn.Name == "forgetHoldsOf"
+			switch fun := call.Fun.(type) {
+			case *ast.SelectorExpr:
+				if fun.Sel.Name == "DeleteCombatant" && deleteAt == 0 {
+					deleteAt = call.Pos()
+				}
+			case *ast.Ident:
+				if fun.Name == "forgetHoldsOf" && forgetAt == 0 {
+					forgetAt = call.Pos()
+				}
+			}
+			return true
+		})
+		if deleteAt == 0 {
+			continue
 		}
-		return true
-	})
-	if deletes > 0 && !forgets {
-		return []string{file + " calls DeleteCombatant and never forgetHoldsOf: the foreign key would delete the combatant's held rolls and the " +
-			"Inspiration they spent with them. Call forgetHoldsOf(ctx, q, holdOwnerOfCombatant(c)) before the delete"}
+		deleters++
+		if forgetAt == 0 || forgetAt > deleteAt {
+			out = append(out, file+":"+strconv.Itoa(fset.Position(deleteAt).Line)+" "+fn.Name.Name+" calls DeleteCombatant before (or without) forgetHoldsOf: "+
+				"the foreign key would delete the combatant's held rolls and the Inspiration they spent with them")
+		}
 	}
-	return nil
+	if deleters != 1 {
+		out = append(out, file+": "+strconv.Itoa(deleters)+" functions call DeleteCombatant, want exactly one (deleteCombatant)")
+	}
+	return out
 }
 
 // The checks above fail on a violation: each one is shown on a source that has it, and passes on one that has not.
@@ -182,10 +254,28 @@ func TestTheHoldForgetChecksSeeAViolation(t *testing.T) {
 	if got := callsOfHoldDeletes("x.go", []byte("package x\nfunc f() { q.DeleteOrphanInspirationHolds(ctx, id) }\n")); len(got) != 1 {
 		t.Errorf("a call of a hold delete = %v, want one problem", got)
 	}
-	if got := deletesCombatantsWithoutForgetting("x.go", []byte("package x\nfunc f() { q.DeleteCombatant(ctx, id) }\n")); len(got) != 1 {
-		t.Errorf("a combatant deleted with no forget = %v, want one problem", got)
+	if got := callsOf("x.go", []byte("package x\nfunc f() { q.DeleteCombatant(ctx, id) }\n"), combatantDeleteQueries, "why"); len(got) != 1 {
+		t.Errorf("a combatant deleted outside hold_forget.go = %v, want one problem", got)
 	}
-	if got := deletesCombatantsWithoutForgetting("x.go", []byte("package x\nfunc f() { forgetHoldsOf(ctx, q, o); q.DeleteCombatant(ctx, id) }\n")); len(got) != 0 {
+	if got := cascadingDeletes("q.sql", "-- name: DropCombatants :exec\nDELETE FROM combatants WHERE encounter_id = $1;\n"); len(got) != 1 {
+		t.Errorf("a query that deletes combatants under another name = %v, want one problem", got)
+	}
+	if got := cascadingDeletes("q.sql", "-- name: DropEncounter :exec\nWITH x AS (DELETE FROM encounters WHERE id = $1 RETURNING id) SELECT id FROM x;\n"); len(got) != 1 {
+		t.Errorf("a query that deletes encounters = %v, want one problem", got)
+	}
+	if got := cascadingDeletes("q.sql", "-- name: DeleteCombatant :exec\nDELETE FROM combatants WHERE id = $1;\n-- name: DeleteBattleEncounter :execrows\nDELETE FROM battle_encounters WHERE id = $1;\n"); len(got) != 0 {
+		t.Errorf("the named delete and another table = %v, want none", got)
+	}
+	if got := deletesBeforeForgetting("x.go", []byte("package x\nfunc f() { q.DeleteCombatant(ctx, id) }\n")); len(got) != 1 {
+		t.Errorf("a delete with no forget = %v, want one problem", got)
+	}
+	if got := deletesBeforeForgetting("x.go", []byte("package x\nfunc f() { q.DeleteCombatant(ctx, id); forgetHoldsOf(ctx, q, o) }\n")); len(got) != 1 {
+		t.Errorf("a forget after the delete = %v, want one problem", got)
+	}
+	if got := deletesBeforeForgetting("x.go", []byte("package x\nfunc f() { forgetHoldsOf(ctx, q, o); q.DeleteCombatant(ctx, id) }\nfunc g() { forgetHoldsOf(ctx, q, o); q.DeleteCombatant(ctx, id) }\n")); len(got) != 1 {
+		t.Errorf("two functions that delete = %v, want one problem (exactly one function)", got)
+	}
+	if got := deletesBeforeForgetting("x.go", []byte("package x\nfunc f() { forgetHoldsOf(ctx, q, o); q.DeleteCombatant(ctx, id) }\n")); len(got) != 0 {
 		t.Errorf("a combatant deleted after the forget = %v, want none", got)
 	}
 }

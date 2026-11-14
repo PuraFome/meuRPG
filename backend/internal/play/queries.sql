@@ -2071,6 +2071,8 @@ SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean 
 -- name: DeleteInspirationHoldsOf :many
 -- Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
 -- character's Inspiration and never got the roll (no answer yet): that spend goes back. Only hold_forget.go calls it.
+-- It also drops the character's holds outside a combat (combatant_id IS NULL) when its combatant leaves or the combat ends, and those are
+-- refunded too.
 WITH changed AS (
 DELETE FROM inspiration_holds
 WHERE (encounter_id = sqlc.narg(encounter_id) AND combatant_id = sqlc.narg(combatant_id))
