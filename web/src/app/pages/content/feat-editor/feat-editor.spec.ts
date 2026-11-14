@@ -691,13 +691,19 @@ describe('FeatEditor (MR-025)', () => {
       expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeNull();
       click(el, 'Adicionar pré-requisito');
       fixture.detectChanges();
-      const items = Array.from(el.querySelectorAll('[role=menuitem] span')).map((b) => text(b));
+      const items = Array.from(el.querySelectorAll('[role=menuitem] .ask-menu__name')).map((b) =>
+        text(b),
+      );
       expect(items).toEqual([
         'Nível de classe',
         'Dádiva do pacto',
         'Magia que conhece',
         'Outras opções',
       ]);
+      expect(text(el.querySelector('[role=menu]')!)).toContain('Até 10');
+      expect(text(el.querySelector('[role=menu]')!)).toContain(
+        'Cada tipo entra uma vez; “Outras opções” leva até 10 opções.',
+      );
     });
 
     it('adds a row, no longer offers its kind, and clears it with its X', async () => {
@@ -706,9 +712,10 @@ describe('FeatEditor (MR-025)', () => {
       expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeTruthy();
       click(el, 'Adicionar pré-requisito');
       fixture.detectChanges();
-      expect(
-        Array.from(el.querySelectorAll('[role=menuitem] span')).map((b) => text(b)),
-      ).not.toContain('Nível de classe');
+      const item = el.querySelector<HTMLButtonElement>('[role=menuitem]')!;
+      expect(text(item)).toContain('Nível de classe');
+      expect(text(item)).toContain('Já na lista');
+      expect(item.disabled).toBe(true);
       const select = field(
         el,
         'table_feat.prerequisite.class_level.class_key',
