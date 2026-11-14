@@ -75,7 +75,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { SwitchField } from '../../../shared/form-fields/switch-field';
 import { TextField } from '../../../shared/form-fields/text-field';
 import { Segmented } from '../../../shared/segmented/segmented';
-import { SpellEffect, type EffectContext } from './spell-effect';
+import { SpellEffect, type EffectContext } from '../../../shared/spell-effect/spell-effect';
 import { HitEffectBlock } from './hit-effect-block';
 import { SpellSummon } from './spell-summon';
 import { draftToEffect } from '../../../core/content/spell-effect-draft';
