@@ -46,7 +46,8 @@ func (s *Service) mustNotBeLimited(ctx context.Context, c *combatTx, who playdb.
 
 // limitMountOptions shows the turn options of a mount that carries a rider as it takes them: Dash, Disengage and Dodge stay as they were,
 // and every other row is disabled with the words that say why. The player who directs the mount without owning it (the rider's, for a
-// creature of the master's) reads the three actions and nothing else: the rest of an NPC's stat block is not theirs to read (RN-20).
+// creature of the master's) reads the three actions and the mount's economy, and nothing else: the rest of an NPC's stat block is not
+// theirs to read (RN-20).
 func limitMountOptions(res *playv1.GetTurnOptionsResponse, cs []playdb.Combatant, v combatViewer, who playdb.Combatant) {
 	o := res.GetOptions()
 	if o == nil || !carriesRider(cs, who) {
@@ -61,6 +62,9 @@ func limitMountOptions(res *playv1.GetTurnOptionsResponse, cs []playdb.Combatant
 		o.StandardActions = slices.DeleteFunc(o.StandardActions, func(a *rulesv1.ActionOption) bool { return !keep(a) })
 		res.AttackTargets, res.SpellTargets, res.ResourceTargets, res.FeatureTargets = nil, nil, nil, nil
 		res.ContestAttackOptions, res.ManeuverDice, res.ExtraAction = nil, nil, nil
+		// What is left is the mount's economy and the three actions: the dice of its pending damage, the rolls of its contests, its notes and
+		// its jumps are the master's (RN-20).
+		res.PendingDamages, res.ContestState, res.EffectNotes, o.Jumps = nil, nil, nil, nil
 		return
 	}
 	for _, a := range o.GetAttacks() {
@@ -76,5 +80,11 @@ func limitMountOptions(res *playv1.GetTurnOptionsResponse, cs []playdb.Combatant
 	}
 	for _, co := range res.GetContestAttackOptions() {
 		co.Enabled, co.Reason = false, no()
+	}
+	for _, a := range res.GetContestState().GetHideActions() {
+		a.Enabled, a.Reason = false, no()
+	}
+	if h := res.GetContestState().GetHelpAction(); h != nil {
+		h.Enabled, h.Reason = false, no()
 	}
 }
