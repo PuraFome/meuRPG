@@ -1634,12 +1634,30 @@ message SheetMagicItem {
   // The charges the item holds, 0 for an item with none. Filled by the server from the catalog on
   // every read; a save ignores it.
   int32 charges_max = 9;
-  // The charges left, 0 to charges_max (charges_max when nothing was spent). Filled by the server
-  // on every read; a save ignores it. Only the character's player and the master read it.
+  // The charges left, 0 to charges_max (charges_max when nothing was spent), or -1 for a copy of an
+  // item whose charges the SRD rolls (Luck Blade, Nine Lives Stealer) before the master sets them:
+  // nothing can be spent from it. Filled by the server on every read; a save ignores it. Only the
+  // character's player and the master read it.
   int32 charges_left = 10;
-  // The item was lost when its last charge went (a wand that crumbled): it holds no charges and
-  // none can be spent. Filled by the server on every read; a save ignores it.
-  bool destroyed = 11;
+  // How the item was lost when its last charge went; ITEM_LOSS_UNSPECIFIED while it is not lost. A
+  // lost item holds no charges and none can be spent. Filled by the server on every read; a save
+  // ignores it.
+  ItemLoss lost = 11;
+}
+
+// ItemLoss is how a magic item with charges was lost when its last charge went (SRD 5.1: each wand,
+// staff, ring and talisman says what its last charge does).
+enum ItemLoss {
+  // The item is not lost.
+  ITEM_LOSS_UNSPECIFIED = 0;
+  // The item is destroyed: a wand that crumbles to ashes, a staff that turns to water.
+  ITEM_LOSS_GONE = 1;
+  // The item became a plain, nonmagical one: a staff that became a nonmagical quarterstaff. It stays
+  // on the sheet as what it is made of and gives none of its magic.
+  ITEM_LOSS_PLAIN_ITEM = 2;
+  // The item keeps its bonus to attack and damage rolls and loses every other property (Staff of
+  // Power).
+  ITEM_LOSS_PARTLY_MAGIC = 3;
 }
 
 // AttunementRestriction says whether a character meets what an item asks for to be attuned.

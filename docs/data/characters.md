@@ -215,7 +215,8 @@ So there is no maximum `CHECK`, only a minimum of 0.
 What a character's magic items spent.
 The primary key is `(character_id, entry_id)` and the character is `CASCADE`.
 `entry_id` is the id of the entry on the sheet (`m<n>`).
-A row holds `charges_used` (0 or more) and `destroyed` (the item was lost when its last charge went).
+A row holds `charges_used` (0 or more), `lost` (`gone`, `plain` or `partly` once the item was lost when its last charge went, empty otherwise) and `dawns_waited` (the dawns an item that waits for them has counted since its last charge).
+An item whose charges the SRD rolls has no row until the master sets them.
 **The maximum is not stored**: it comes from the catalog, and the server reads a count above it as an empty item.
 A character with no row for an entry has the item full.
 A save of the sheet deletes the rows of the entries it removed.

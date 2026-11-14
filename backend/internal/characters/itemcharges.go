@@ -32,11 +32,13 @@ func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c
 		if !ok {
 			continue
 		}
-		r := state[it.GetId()]
-		it.ChargesMax, it.Destroyed = ic.Max, r.Destroyed
-		it.ChargesLeft = max(0, ic.Max-r.ChargesUsed)
-		if r.Destroyed {
-			it.ChargesLeft = 0
+		r, set := state[it.GetId()]
+		it.ChargesMax, it.ChargesLeft = ic.Max, ic.Left(r.ChargesUsed)
+		switch {
+		case r.Lost != "":
+			it.Lost, it.ChargesLeft = itemLossOf(r.Lost), 0
+		case !set && ic.HasStart():
+			it.ChargesLeft = -1 // the SRD rolls its charges: the master sets them
 		}
 	}
 	return nil
@@ -56,4 +58,17 @@ func dropRemovedItemCharges(ctx context.Context, q *charactersdb.Queries, charac
 		return wrap("drop the charges of removed items", err)
 	}
 	return nil
+}
+
+// itemLossOf is the enum of the loss a row stores.
+func itemLossOf(lost string) charactersv1.ItemLoss {
+	switch lost {
+	case rules.LostGone:
+		return charactersv1.ItemLoss_ITEM_LOSS_GONE
+	case rules.LostPlain:
+		return charactersv1.ItemLoss_ITEM_LOSS_PLAIN_ITEM
+	case rules.LostPartly:
+		return charactersv1.ItemLoss_ITEM_LOSS_PARTLY_MAGIC
+	}
+	return charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED
 }

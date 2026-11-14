@@ -20,10 +20,13 @@
   "item:figurine-of-wondrous-power-ivory-goats": {
     "empty": "none",
     "max": 24,
-    "recharge": "none"
+    "recharge": "dawns_after_empty",
+    "regain": "all",
+    "wait_dawns": 7
   },
   "item:gem-of-brightness": {
-    "empty": "destroyed",
+    "empty": "always",
+    "lost": "plain",
     "max": 50,
     "recharge": "none"
   },
@@ -48,7 +51,8 @@
   "item:luck-blade": {
     "empty": "none",
     "max": 3,
-    "recharge": "none"
+    "recharge": "none",
+    "start": "1d4-1"
   },
   "item:mace-of-terror": {
     "empty": "none",
@@ -65,7 +69,8 @@
   "item:nine-lives-stealer": {
     "empty": "none",
     "max": 9,
-    "recharge": "none"
+    "recharge": "none",
+    "start": "1d8+1"
   },
   "item:orb-of-dragonkind": {
     "empty": "none",
@@ -134,7 +139,8 @@
     "regain": "1d3"
   },
   "item:ring-of-three-wishes": {
-    "empty": "destroyed",
+    "empty": "always",
+    "lost": "plain",
     "max": 3,
     "recharge": "none"
   },
@@ -145,30 +151,35 @@
     "regain": "1d3"
   },
   "item:scarab-of-protection": {
-    "empty": "destroyed",
+    "empty": "always",
+    "lost": "gone",
     "max": 12,
     "recharge": "none"
   },
   "item:staff-of-charming": {
     "empty": "d20",
+    "lost": "plain",
     "max": 10,
     "recharge": "dawn",
     "regain": "1d8+2"
   },
   "item:staff-of-fire": {
     "empty": "d20",
+    "lost": "gone",
     "max": 10,
     "recharge": "dawn",
     "regain": "1d6+4"
   },
   "item:staff-of-frost": {
     "empty": "d20",
+    "lost": "gone",
     "max": 10,
     "recharge": "dawn",
     "regain": "1d6+4"
   },
   "item:staff-of-healing": {
     "empty": "d20",
+    "lost": "gone",
     "max": 10,
     "recharge": "dawn",
     "regain": "1d6+4"
@@ -176,18 +187,21 @@
   "item:staff-of-power": {
     "empty": "d20",
     "empty_high_regain": "1d8+2",
+    "lost": "partly",
     "max": 20,
     "recharge": "dawn",
     "regain": "2d8+4"
   },
   "item:staff-of-striking": {
     "empty": "d20",
+    "lost": "plain",
     "max": 10,
     "recharge": "dawn",
     "regain": "1d6+4"
   },
   "item:staff-of-swarming-insects": {
     "empty": "d20",
+    "lost": "gone",
     "max": 10,
     "recharge": "dawn",
     "regain": "1d6+4"
@@ -201,6 +215,7 @@
   },
   "item:staff-of-the-woodlands": {
     "empty": "d20",
+    "lost": "plain",
     "max": 10,
     "recharge": "dawn",
     "regain": "1d6+4"
@@ -212,12 +227,14 @@
     "regain": "1d3"
   },
   "item:talisman-of-pure-good": {
-    "empty": "destroyed",
+    "empty": "always",
+    "lost": "gone",
     "max": 7,
     "recharge": "none"
   },
   "item:talisman-of-ultimate-evil": {
-    "empty": "destroyed",
+    "empty": "always",
+    "lost": "gone",
     "max": 6,
     "recharge": "none"
   },
@@ -229,30 +246,35 @@
   },
   "item:wand-of-binding": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
   },
   "item:wand-of-enemy-detection": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
   },
   "item:wand-of-fear": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
   },
   "item:wand-of-fireballs": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
   },
   "item:wand-of-lightning-bolts": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
@@ -265,18 +287,21 @@
   },
   "item:wand-of-magic-missiles": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
   },
   "item:wand-of-paralysis": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
   },
   "item:wand-of-polymorph": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
@@ -289,12 +314,14 @@
   },
   "item:wand-of-web": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"
   },
   "item:wand-of-wonder": {
     "empty": "d20",
+    "lost": "gone",
     "max": 7,
     "recharge": "dawn",
     "regain": "1d6+1"

@@ -2282,7 +2282,7 @@ func (q *Queries) ListDeadPlayerCharacters(ctx context.Context, campaignID strin
 }
 
 const listItemCharges = `-- name: ListItemCharges :many
-SELECT entry_id, charges_used, destroyed
+SELECT entry_id, charges_used, lost, dawns_waited
 FROM character_item_charges
 WHERE character_id = $1
 ORDER BY entry_id
@@ -2291,7 +2291,8 @@ ORDER BY entry_id
 type ListItemChargesRow struct {
 	EntryID     string
 	ChargesUsed int32
-	Destroyed   bool
+	Lost        string
+	DawnsWaited int32
 }
 
 // What the character's magic items spent: one row for each entry that spent a charge or was lost.
@@ -2304,7 +2305,12 @@ func (q *Queries) ListItemCharges(ctx context.Context, characterID string) ([]Li
 	var items []ListItemChargesRow
 	for rows.Next() {
 		var i ListItemChargesRow
-		if err := rows.Scan(&i.EntryID, &i.ChargesUsed, &i.Destroyed); err != nil {
+		if err := rows.Scan(
+			&i.EntryID,
+			&i.ChargesUsed,
+			&i.Lost,
+			&i.DawnsWaited,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -3501,27 +3507,29 @@ func (q *Queries) SetFamiliarSight(ctx context.Context, arg SetFamiliarSightPara
 }
 
 const setItemCharges = `-- name: SetItemCharges :exec
-INSERT INTO character_item_charges (character_id, entry_id, charges_used, destroyed, updated_at)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (character_id, entry_id) DO UPDATE
-SET charges_used = excluded.charges_used, destroyed = excluded.destroyed, updated_at = excluded.updated_at
+SET charges_used = excluded.charges_used, lost = excluded.lost, dawns_waited = excluded.dawns_waited, updated_at = excluded.updated_at
 `
 
 type SetItemChargesParams struct {
 	CharacterID string
 	EntryID     string
 	ChargesUsed int32
-	Destroyed   bool
+	Lost        string
+	DawnsWaited int32
 	Now         time.Time
 }
 
-// Writes what an entry spent: a row with nothing spent and not lost is deleted, so the table holds only what changed.
+// Writes what an entry spent, or restores it: a row of 0 spent that is not lost reads as a full item.
 func (q *Queries) SetItemCharges(ctx context.Context, arg SetItemChargesParams) error {
 	_, err := q.db.Exec(ctx, setItemCharges,
 		arg.CharacterID,
 		arg.EntryID,
 		arg.ChargesUsed,
-		arg.Destroyed,
+		arg.Lost,
+		arg.DawnsWaited,
 		arg.Now,
 	)
 	return err

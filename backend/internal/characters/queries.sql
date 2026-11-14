@@ -947,17 +947,17 @@ VALUES (sqlc.arg(id), sqlc.arg(campaign_id)::UUID, 'player', 'active', sqlc.arg(
 
 -- name: ListItemCharges :many
 -- What the character's magic items spent: one row for each entry that spent a charge or was lost.
-SELECT entry_id, charges_used, destroyed
+SELECT entry_id, charges_used, lost, dawns_waited
 FROM character_item_charges
 WHERE character_id = sqlc.arg(character_id)
 ORDER BY entry_id;
 
 -- name: SetItemCharges :exec
 -- Writes what an entry spent, or restores it: a row of 0 spent that is not lost reads as a full item.
-INSERT INTO character_item_charges (character_id, entry_id, charges_used, destroyed, updated_at)
-VALUES (sqlc.arg(character_id), sqlc.arg(entry_id), sqlc.arg(charges_used), sqlc.arg(destroyed), sqlc.arg(now))
+INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, updated_at)
+VALUES (sqlc.arg(character_id), sqlc.arg(entry_id), sqlc.arg(charges_used), sqlc.arg(lost), sqlc.arg(dawns_waited), sqlc.arg(now))
 ON CONFLICT (character_id, entry_id) DO UPDATE
-SET charges_used = excluded.charges_used, destroyed = excluded.destroyed, updated_at = excluded.updated_at;
+SET charges_used = excluded.charges_used, lost = excluded.lost, dawns_waited = excluded.dawns_waited, updated_at = excluded.updated_at;
 
 -- name: DeleteItemChargesExcept :exec
 -- Deletes the rows of the entries a saved sheet no longer has.
