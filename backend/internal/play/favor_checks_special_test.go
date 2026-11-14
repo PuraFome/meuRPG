@@ -1,7 +1,10 @@
 package play
 
 import (
+	"slices"
 	"testing"
+
+	"google.golang.org/protobuf/proto"
 
 	"connectrpc.com/connect"
 
@@ -154,8 +157,8 @@ func (e *checkEnv) windowHeld(t *testing.T) *playv1.ReactionWindow {
 	return w
 }
 
-// A reaction window holds a check of a combat before the d20 (Cutting Words): the hold only checks the Inspiration is there, with nothing
-// spent; the replay is the roll and spends it; one the replay finds gone drops the check, and nothing is spent.
+// A reaction window holds a check of a combat before the d20 (Cutting Words): the hold only checks the Inspiration is there, with
+// nothing spent, and refuses a spend the replay would refuse.
 func TestFavorOnACombatCheckAWindowHolds(t *testing.T) {
 	t.Parallel()
 	for _, p := range checkEnvs {
@@ -185,6 +188,7 @@ func TestFavorOnACombatCheckAWindowHolds(t *testing.T) {
 	}
 }
 
+// The replay of a check a window held is the roll: it spends the Inspiration.
 func TestFavorOnTheReplayOfAHeldCombatCheck(t *testing.T) {
 	t.Parallel()
 	for _, p := range checkEnvs {
@@ -213,6 +217,7 @@ func TestFavorOnTheReplayOfAHeldCombatCheck(t *testing.T) {
 	}
 }
 
+// An Inspiration gone when the replay comes drops the check, and nothing is spent.
 func TestFavorGoneAtTheReplayDropsTheCombatCheck(t *testing.T) {
 	t.Parallel()
 	for _, p := range checkEnvs {
@@ -253,7 +258,7 @@ func TestFavorOnATrapSearchInACombat(t *testing.T) {
 	t.Parallel()
 	r := newTrapRig(t)
 	r.trap(t, "Fosso Dourado", 7, 7, func(s *mapsv1.TrapSpec) { s.NoticeDc = 20 })
-	e := r.fight(t)
+	r.fight(t)
 	f := favorPartyOf(t, r.armed)
 	search := func(spend bool) (*playv1.SearchForTrapsResponse, error) {
 		return r.trapSearchCall(t, r.caio, func(q *playv1.SearchForTrapsRequest) {
@@ -283,7 +288,6 @@ func TestFavorOnATrapSearchInACombat(t *testing.T) {
 	if evs := r.trapSearchEvents(t); len(evs) != 1 || !evs[0].Favor {
 		t.Errorf("the trap_searched events = %+v, want the one that says the Inspiration was spent", evs)
 	}
-	_ = e
 }
 
 // A Perception search rolls a second die for the dim light; under a spend the faces are the pair of the advantage, and the typed second
@@ -303,5 +307,142 @@ func TestFavorOnAPerceptionSearch(t *testing.T) {
 	got := trapRolledOf(r.Msg)
 	if len(got.faces) != 2 || got.mode != "advantage" || !got.hasFavor() || e.favorHolds(t) || !e.stored(t) {
 		t.Errorf("the search = %+v (Inspiration there %v), want the pair, the advantage and the Inspiration spent", got, e.favorHolds(t))
+	}
+}
+
+// typedSearch is a search with typed dice and a spend, as Caio sends it.
+func (e *checkEnv) typedSearch(t *testing.T, skill playv1.TrapSearchSkill, edit func(*playv1.SearchForTrapsRequest)) (checkRolled, error) {
+	t.Helper()
+	req := &playv1.SearchForTrapsRequest{CampaignId: e.campaignID, IdempotencyKey: newKey(), Skill: skill, SpendFavor: true}
+	edit(req)
+	res, err := e.roller.play.SearchForTraps(t.Context(), connect.NewRequest(req))
+	if err != nil {
+		return checkRolled{}, err
+	}
+	return trapRolledOf(res.Msg), nil
+}
+
+// A Perception search with a real die and a spend: the spend counts against the search's mode, so the typed faces are the two of the
+// advantage; the extra d20_face_2 of the dim light is not read under it (the advantage rolls both totals from the pair), and one face is
+// refused as for any advantage, with the Inspiration left.
+func TestFavorOnATypedPerceptionSearch(t *testing.T) {
+	t.Parallel()
+	e := newTrapSearchEnv(t)
+	e.give(t, e.who)
+	e.h.roller.queue(4, 15)
+	seq := e.seq(t)
+	_, err := e.typedSearch(t, playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION, func(q *playv1.SearchForTrapsRequest) { q.D20Faces = []int32{9} })
+	if err == nil {
+		t.Fatal("one face under a spend was accepted, want it refused as for any advantage")
+	}
+	if c := connect.CodeOf(err); c != connect.CodeAborted && c != connect.CodeInvalidArgument {
+		t.Errorf("one face under a spend error = %v, want the dice-count refusal", err)
+	}
+	e.untouched(t, "the one face", 2, seq)
+	if !e.favorHolds(t) {
+		t.Fatal("a refused search took the Inspiration")
+	}
+	got, err := e.typedSearch(t, playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_PERCEPTION, func(q *playv1.SearchForTrapsRequest) {
+		q.D20Faces, q.D20Face_2 = []int32{3, 17}, proto.Int32(1)
+	})
+	if err != nil {
+		t.Fatalf("two faces and the light's die error = %v", err)
+	}
+	if !slices.Equal(got.faces, []int32{3, 17}) || got.mode != "advantage" || !got.hasFavor() || e.favorHolds(t) {
+		t.Errorf("the search = %+v (Inspiration there %v), want the pair 3 and 17, the advantage and the Inspiration spent", got, e.favorHolds(t))
+	}
+}
+
+// d20_face_2 is the light's die of a Perception search only: on any other skill it is not read at all under a spend, even out of range.
+func TestFavorOnATypedSearchOfAnotherSkillIgnoresTheLightsDie(t *testing.T) {
+	t.Parallel()
+	e := newTrapSearchEnv(t)
+	e.give(t, e.who)
+	got, err := e.typedSearch(t, playv1.TrapSearchSkill_TRAP_SEARCH_SKILL_INVESTIGATION, func(q *playv1.SearchForTrapsRequest) {
+		q.D20Faces, q.D20Face_2 = []int32{3, 17}, proto.Int32(99)
+	})
+	if err != nil {
+		t.Fatalf("an Investigation search with a stray d20_face_2 error = %v, want it ignored", err)
+	}
+	if !slices.Equal(got.faces, []int32{3, 17}) || got.mode != "advantage" || e.favorHolds(t) {
+		t.Errorf("the search = %+v (Inspiration there %v), want the pair, the advantage and the Inspiration spent", got, e.favorHolds(t))
+	}
+}
+
+// A window's replay of a check that spends the Inspiration and then holds a Bardic die keeps the die's question with favor_spent (only
+// a weapon attack's hold carries the window's mark); a retry under the same key finds it: never HAS_NONE, and no second spend.
+func TestFavorRetryAfterAWindowReplayThatHoldsADie(t *testing.T) {
+	t.Parallel()
+	for _, p := range checkEnvs {
+		if p.name != "a contest start" && p.name != "a contest answer" && p.name != "a hide" {
+			continue
+		}
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			e := p.mk(t)
+			e.setRules(t, enemyReactionsAlways)
+			e.give(t, e.who)
+			e.die(t)
+			key := newKey()
+			held, err := e.send(t, key, true)
+			if err != nil || !held.heldByWindow {
+				t.Fatalf("the spend on a check a window holds = %+v, %v, want it held", held, err)
+			}
+			e.h.roller.queue(3, 17)
+			e.mustAnswer(t, e.master, e.fight.refresh(t), e.windowHeld(t).GetId(), passAnswer)
+			if e.favorHolds(t) {
+				t.Fatal("the replay did not spend the Inspiration")
+			}
+			var spent bool
+			if err := e.h.pool.QueryRow(t.Context(), `SELECT favor_spent FROM inspiration_holds WHERE idempotency_key = $1`, key).Scan(&spent); err != nil || !spent {
+				t.Fatalf("the replay's hold: favor_spent %v, %v, want the die's question kept with the Inspiration spent (a check's hold is never a window's mark)", spent, err)
+			}
+			again, err := e.send(t, key, true)
+			if err != nil {
+				t.Fatalf("the retry of the key whose replay holds a die error = %v, want no refusal (the Inspiration was spent by that key)", err)
+			}
+			if again.holdID == "" && !again.heldByWindow && len(again.faces) != 2 {
+				t.Errorf("the retry = %+v, want the die's question, the held check, or the written roll with its two dice", again)
+			}
+			if e.favorHolds(t) {
+				t.Error("the retry gave the Inspiration back")
+			}
+		})
+	}
+}
+
+// The same for the attacks: the replay of a weapon attack held by a window spends the Inspiration and holds the die's question under the
+// window's mark, which a client's retry of the key does not find as its own. The retry must not be told HAS_NONE nor spend again.
+func TestFavorRetryAfterAWindowReplayOfAnAttackThatHoldsADie(t *testing.T) {
+	t.Parallel()
+	p := favorPaths[0]
+	f := newFavorFight(t)
+	f.setRules(t, enemyReactionsAlways)
+	p.ready(t, f)
+	u, who := p.roller(f)
+	f.giveCombatantDie(t, p.actor, f.e)
+	f.give(t, who)
+	key := newKey()
+	held, err := p.send(t, f, u, key, true, nil)
+	if err != nil || !held.heldByWindow {
+		t.Fatalf("the spend on a roll a window holds = %+v, %v, want it held", held, err)
+	}
+	f.h.roller.queue(3, 17)
+	f.mustAnswer(t, f.master, f.e, f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK).GetId(), passAnswer)
+	if f.favorHolds(t) {
+		t.Fatal("the replay did not spend the Inspiration")
+	}
+	var window, spent bool
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT window_hold, favor_spent FROM inspiration_holds WHERE idempotency_key = $1`, key).Scan(&window, &spent); err != nil || !spent {
+		t.Fatalf("the replay's hold = window %v, favor_spent %v, %v, want the die's question kept with the Inspiration spent", window, spent, err)
+	}
+	t.Logf("the replay's hold carries the window's mark: %v", window)
+	f.give(t, who) // another one: the retry must leave it
+	_, err = p.send(t, f, u, key, true, nil)
+	if err != nil {
+		t.Errorf("the retry of the key whose replay holds a die error = %v, want no refusal", err)
+	}
+	if !f.favorHolds(t) {
+		t.Error("the retry spent the second Inspiration")
 	}
 }

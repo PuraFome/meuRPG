@@ -105,7 +105,18 @@ The roll's event or stored row keeps `Favor`, and the held roll keeps `favor_spe
 A settled retry answers as the first call did and never spends again.
 The retry that flips `spend_favor` on a settled check is a different request (`invalid_argument`), except the hint try, which keeps no request hash: a retry of a written try answers the stored result, ignores `spend_favor`, spends nothing and refuses nothing.
 A held retry never gets `HAS_NONE`, and the answer to a Bardic die or a Lucky question never spends.
+The replay of a check a window held, when it spends and then holds a Bardic die, keeps `favor_spent` in that hold, so a retry of the key is not told `HAS_NONE` and does not spend again.
+The same holds for a weapon attack, whose hold also carries the window's mark.
 Each spend moves the session's hint number by the one step the roll already moves it, and a refusal moves none.
+
+## The Perception search
+
+The spend counts against the search's mode, so a Perception search with it rolls two d20 like any advantage.
+The squares in dim light keep their own disadvantage rule, so the Inspiration does not help on them.
+A disadvantage and the Inspiration leave a straight roll for the bright squares and the lower of two for the dim squares.
+`ADDS_NOTHING` reads the mode of the search, not each square.
+With a real die the two faces of the advantage are typed in `d20_faces`; one face is refused as for any advantage, and the Inspiration stays.
+Under a spend `d20_face_2` is not read, and on any skill but Perception it is never read.
 
 ## A reaction window
 

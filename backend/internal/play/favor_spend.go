@@ -285,6 +285,14 @@ func ownsSave(m authz.Membership, reactor playdb.Combatant) bool {
 	return m.Role != authz.RoleMaster && reactor.Kind == kindPlayer && backedByCharacter(reactor) && reactor.UserID != nil && *reactor.UserID == m.UserID
 }
 
+// favorOfPlayerCheck decides the Inspiration of a check that only a player rolls for their own character (a scene check, a group
+// check, a trap search, a hint try): the roller is the player and the master is refused before, so Own is always true.
+func (s *Service) favorOfPlayerCheck(ctx context.Context, tx pgx.Tx, q *playdb.Queries, want bool, campaignID, characterID, key string, kind heldKind, sources []combat.Source) (favorUse, error) {
+	return s.useFavor(ctx, s.outsideGate(tx, q), favorAsk{
+		Want: want, CampaignID: campaignID, CharacterID: characterID, Own: true, Key: key, Kind: kind, Sources: sources, Rolls: true,
+	})
+}
+
 // favorOnSave decides the Inspiration of a saving throw of a combatant: the mode to roll with, and whether it counts. rolls is false
 // for a save that fails by itself.
 func (s *Service) favorOnSave(ctx context.Context, env gateEnv, m authz.Membership, reactor playdb.Combatant, kind heldKind, key string, want bool, sources []combat.Source, rolls bool) (favorUse, error) {

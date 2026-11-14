@@ -506,14 +506,11 @@ type memberRoll struct {
 // favorOnMember decides the Inspiration of the player's own roll for the group check, over the circumstances of the check. The
 // master's roll for a player (byMaster) has no field to ask it with and never spends what is the player's.
 func (s *Service) favorOnMember(ctx context.Context, q *playdb.Queries, tx pgx.Tx, spec memberRoll) (favorUse, error) {
-	gh := groupHoldOf(ctx)
-	if spec.byMaster || gh == nil {
+	if spec.byMaster {
 		return favorUse{Mode: spec.mode.Mode}, nil
 	}
-	return s.useFavor(ctx, s.outsideGate(tx, q), favorAsk{
-		Want: spec.in.spend, CampaignID: gh.m.CampaignID, CharacterID: spec.characterID, Own: true, Key: gh.key, Kind: heldGroupCheck,
-		Sources: spec.mode.Sources, Rolls: true,
-	})
+	gh := groupHoldOf(ctx)
+	return s.favorOfPlayerCheck(ctx, tx, q, spec.in.spend, gh.m.CampaignID, spec.characterID, gh.key, heldGroupCheck, spec.mode.Sources)
 }
 
 // memberRollOf makes the d20 of the member. held says the roll was kept for the player's answer

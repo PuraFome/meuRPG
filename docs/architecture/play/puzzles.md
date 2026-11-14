@@ -125,6 +125,7 @@ flowchart TD
   The attempt limit is one per player per hint (`UNIQUE (run_id, user_id, hint_index)`): whoever failed waits for the master to release that hint.
   Each attempt raises the run's revision and sends `puzzle_changed`; there is no session event (the master reads them in `MasterPuzzleRun.hint_tries`, the latest 50).
   The try is a held roll (see [Held rolls](held-rolls.md)).
+  `spend_favor` gives the try advantage with the player's Inspiração, before the mode is chosen ([Inspiração](favor.md#the-checks)).
 - **Split information.** `puzzles.parts` stores up to 8 parts (character and text).
   On creation each character must be in `CombatParty` (living, a player's, an active member's).
   On read the player receives `my_part` and `part_holders` (only names of the other characters that have a part).

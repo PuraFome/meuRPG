@@ -533,7 +533,8 @@ func (s *Service) rollContest(ctx context.Context, r *contestRun) (*playv1.HeldR
 		err  error
 	)
 	if r.st.byAttack {
-		// Nobody rolls: the attack was rolled already, and an Inspiration has no d20 to go on.
+		// Nobody rolls: the attack was rolled already, and an Inspiration has no d20 to go on. Only the master starts such a grapple, so
+		// the reason is always NOT_THE_HOLDER; a player never reaches NOTHING_TO_ROLL here.
 		if err := favorOnNoRoll(r.st.in.spend, ownsCharacter(r.v, r.initiator)); err != nil {
 			return nil, err
 		}

@@ -540,7 +540,15 @@ func TestFavorSpendOnACheck(t *testing.T) {
 	})
 }
 
-// A spend moves the session's number as much as the same roll without it, and a refusal moves it none.
+// rollSteps is how many steps of the session's number a plain roll of each path gives. The combat paths (a contest, a Hide) write through
+// Service.tx and step it once; the scene, group, trap and hint paths write in their own transaction and step it 0 times, so for them the
+// check below reads 0 == 0 on both sides: the spend adds no step of its own, and there is none to add.
+var rollSteps = map[string]int64{
+	"a scene check": 0, "a group check": 0, "a trap search": 0, "a hint try": 0,
+	"a contest start": 1, "a contest answer": 1, "a hide": 1,
+}
+
+// A spend moves the session's number exactly as much as the same roll without it, and adds no step of its own.
 func TestFavorSpendMovesTheNumberLikeTheRoll(t *testing.T) {
 	t.Parallel()
 	forEachCheck(t, func(t *testing.T, e *checkEnv) {
@@ -554,18 +562,17 @@ func TestFavorSpendMovesTheNumberLikeTheRoll(t *testing.T) {
 		if e.favorHolds(t) {
 			t.Fatal("the Inspiration was not spent")
 		}
-		if got := e.seq(t) - before; got > 1 {
-			t.Errorf("the roll with the Inspiration moved the number %d times, want at most the one step of the roll", got)
-		}
-		spentSteps := e.seq(t) - before
+		spent := e.seq(t) - before
 		other := e.fresh()
 		other.h.roller.queue(4)
 		beforeOther := other.seq(t)
 		if _, err := other.send(t, newKey(), false); err != nil {
 			t.Fatalf("%s without it error = %v", e.name, err)
 		}
-		if plain := other.seq(t) - beforeOther; plain != spentSteps {
-			t.Errorf("the roll without it moved the number %d times and the one with it %d, want the same", plain, spentSteps)
+		plain := other.seq(t) - beforeOther
+		want := rollSteps[e.name]
+		if plain != want || spent != want {
+			t.Errorf("%s moved the number %d times with the Inspiration and %d without it, want %d for both", e.name, spent, plain, want)
 		}
 	})
 }
