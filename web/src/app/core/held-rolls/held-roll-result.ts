@@ -39,6 +39,8 @@ export function settledRoll(res: AnswerHeldRollResponse): SettledRoll | undefine
       return r.value.result;
     case 'concentrationSave':
       return r.value.result?.save;
+    case 'mountSave':
+      return r.value.result?.save;
     default:
       return undefined;
   }
