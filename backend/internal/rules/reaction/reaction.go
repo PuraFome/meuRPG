@@ -138,6 +138,9 @@ const (
 	ParryKind Kind = "parry"
 	// Readied is a readied action the master fired: its readier uses its reaction to act now, or lets it pass.
 	Readied Kind = "readied"
+	// Feature is a reaction feature whose trigger happened (an enemy starts its turn or moves within range of its user):
+	// the user's player uses the feature as a reaction, or lets it pass.
+	Feature Kind = "feature"
 )
 
 // Reason is why a window closed by itself.

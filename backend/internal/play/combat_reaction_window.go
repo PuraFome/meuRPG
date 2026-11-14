@@ -114,6 +114,11 @@ type windowTrigger struct {
 	Bonus int32 `json:"bonus,omitempty"`
 	// Readied is the readied action (readied_actions.id) a READIED window was fired for.
 	Readied string `json:"readied,omitempty"`
+	// Moment is what triggered a FEATURE window: a rules.FeatureTrigger* kind. Key is then the feature, Actor the creature
+	// that triggered it and Distance how far it stands from the reactor.
+	Moment string `json:"moment,omitempty"`
+	// Hidden says the creature that triggered a FEATURE window is hidden: the master alone reads and answers it (RN-10).
+	Hidden bool `json:"hidden,omitempty"`
 }
 
 // windowOutcome is what an answered window did: kept with the window, and, for the

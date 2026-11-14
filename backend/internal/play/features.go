@@ -145,6 +145,8 @@ type featureFlow struct {
 	hits    []castHit
 	made    actionEvent
 	fe      *featureUseEvent
+	// win is the FEATURE window the use answers (feature_window_answer.go), nil for a use UseFeature is called for.
+	win *playdb.ReactionWindow
 }
 
 func newFeatureFlow(s *Service, c *combatTx, m authz.Membership, call useFeatureCall, out *useFeatureOut) *featureFlow {
@@ -154,10 +156,7 @@ func newFeatureFlow(s *Service, c *combatTx, m authz.Membership, call useFeature
 // run is the transaction: the checks, then what the use costs and does. It answers the event the write stores.
 func (f *featureFlow) run(ctx context.Context) (any, error) {
 	f.out.vitals = nil
-	steps := []func(context.Context) error{
-		f.locate, f.findFeature, f.gate, f.mayUse, f.aim, f.pick, f.begin, f.spend, f.apply, f.remember,
-	}
-	for _, step := range steps {
+	for _, step := range f.steps() {
 		if err := step(ctx); err != nil {
 			return nil, err
 		}

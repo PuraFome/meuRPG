@@ -80,6 +80,11 @@ func (s *Service) AnswerReaction(
 		return out, err
 	}
 
+	// A feature's window runs the feature in its own change (feature_window_answer.go).
+	if out, handled, err := s.answerFeature(ctx, m, in, req.Msg); handled {
+		return out, err
+	}
+
 	var got answered
 	res, err := s.write(ctx, combatWrite{m: m, key: in.key, hash: idem.Hash(req.Msg), kind: eventReactionAnswered, altKind: eventReactionUsed, encounterID: in.encID}, func(c *combatTx) (any, error) {
 		got = answered{}

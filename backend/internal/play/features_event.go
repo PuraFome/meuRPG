@@ -65,6 +65,9 @@ func (u *undoer) featureUsed(ctx context.Context, ev actionEvent) error {
 	if err := u.featureEffectsBack(ctx, ev); err != nil {
 		return err
 	}
+	if err := u.s.reopenWindowOf(ctx, u.c, ev); err != nil { // a use that answered a FEATURE window: it waits again
+		return err
+	}
 	for _, h := range ev.Hits {
 		if err := u.castHitTargetBack(ctx, h); err != nil {
 			return err

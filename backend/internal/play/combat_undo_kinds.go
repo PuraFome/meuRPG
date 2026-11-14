@@ -605,6 +605,16 @@ func (u *undoer) combatantMoved(ctx context.Context, ev actionEvent) error {
 			return fmt.Errorf("take the opportunity offers away: %w", err)
 		}
 	}
+	return u.featureWindowsAway(ctx, ev)
+}
+
+// featureWindowsAway takes away the FEATURE windows the move opened that nobody answered (an answer is undone first).
+func (u *undoer) featureWindowsAway(ctx context.Context, ev actionEvent) error {
+	for _, id := range ev.FeatureWindows {
+		if _, err := u.c.q.DeleteUnansweredFeatureWindow(ctx, playdb.DeleteUnansweredFeatureWindowParams{ID: id, EncounterID: u.c.enc.ID}); err != nil {
+			return fmt.Errorf("take the feature windows away: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -1163,6 +1173,9 @@ func (u *undoer) reactionDeclined(ctx context.Context, ev actionEvent) error {
 	}
 	if err := u.s.reopenWindowOf(ctx, u.c, ev); err != nil {
 		return err
+	}
+	if ev.Pending == "" { // a window that holds no damage (a FEATURE window passed): nothing waits for a reaction
+		return nil
 	}
 	return u.setStatus(ctx, ev.Pending, pendingAwaitingReaction)
 }

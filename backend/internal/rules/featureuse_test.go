@@ -150,6 +150,7 @@ func TestFeatureUseShapes(t *testing.T) {
 		}), ".use.trigger.kinds", ReasonLimit},
 		{"a trigger with no reach", react(func(e *Effect) { e.Use.Trigger.RangeFt = 0 }), ".use.trigger.range_ft", ReasonValue},
 		{"a trigger of a reach above 300", react(func(e *Effect) { e.Use.Trigger.RangeFt = 301 }), ".use.trigger.range_ft", ReasonValue},
+		{"a trigger with choices", react(func(e *Effect) { e.Use.Choices = []FeatureChoice{{Key: "fogo", TextPT: "Fogo"}} }), ".use.trigger", ReasonValue},
 		{"a trigger on a bonus action", react(func(e *Effect) { e.Economy = EconomyBonusAction }), ".use.trigger", ReasonValue},
 		{"a trigger on an action", react(func(e *Effect) { e.Economy = EconomyAction }), ".use.trigger", ReasonValue},
 	}...)

@@ -247,7 +247,7 @@ func (b *overlayBuilder) checkUse(site effectSite, e *Effect) error {
 	checkUseLimit(u, at)
 	checkUseTargets(u.Targets, at)
 	checkUseChoices(u.Choices, at)
-	checkUseTrigger(e.Economy, u.Trigger, at)
+	checkUseTrigger(e.Economy, u, at)
 	b.checkUseApplies(&c, site, u.Applies)
 	if err := c.err(); err != nil {
 		return err
@@ -315,14 +315,19 @@ func checkUseTargetRange(t *FeatureTargets, at useRefuse) {
 	}
 }
 
-// checkUseTrigger checks what a reaction feature waits for: it is a reaction (the window spends the reaction), it names
-// one or two moments of the closed list, once each, and a reach in feet.
-func checkUseTrigger(economy string, t *FeatureTrigger, at useRefuse) {
+// checkUseTrigger checks what a reaction feature waits for: it is a reaction (the window spends the reaction) with no choice
+// to pick (the window only asks to use it or not), it names one or two moments of the closed list, once each, and a reach in
+// feet.
+func checkUseTrigger(economy string, u *FeatureUse, at useRefuse) {
+	t := u.Trigger
 	if t == nil {
 		return
 	}
-	if economy != EconomyReaction {
+	switch {
+	case economy != EconomyReaction:
 		at(".trigger", ReasonValue, "a trigger asks the player to use the reaction: the action's economy is reaction")
+	case len(u.Choices) > 0:
+		at(".trigger", ReasonValue, "a feature with a trigger offers no choice: the window only asks to use it or not")
 	}
 	switch {
 	case len(t.Kinds) == 0:

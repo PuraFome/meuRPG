@@ -1502,6 +1502,11 @@ WITH changed AS (
 )
 SELECT * FROM changed ORDER BY created_at, id;
 
+-- name: DeleteUnansweredFeatureWindow :execrows
+-- The undo of what opened a FEATURE window (a move, a turn): the window goes, unless it was answered (the answer is undone first).
+DELETE FROM reaction_windows
+WHERE id = sqlc.arg(id) AND encounter_id = sqlc.arg(encounter_id) AND kind = 'feature' AND status <> 'answered';
+
 -- name: ListEncounterRollModeRequests :many
 -- Every request of the combat, whatever its status, for the log.
 SELECT * FROM roll_mode_requests

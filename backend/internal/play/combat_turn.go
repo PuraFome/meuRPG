@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
 // Joint turns (MR-013, RN-19, RN-20): combatants adjacent in the turn order
@@ -120,7 +121,31 @@ func startTurn(ctx context.Context, c *combatTx, ids []string, round int32) erro
 			return err
 		}
 	}
-	return setCurrent(ctx, c, ids[0], round)
+	if err := setCurrent(ctx, c, ids[0], round); err != nil {
+		return err
+	}
+	if c.svc == nil {
+		return nil
+	}
+	return c.svc.openStartFeatures(ctx, c, ids)
+}
+
+// openStartFeatures opens the windows of the features that wait for an enemy to start its turn (feature_window.go).
+func (s *Service) openStartFeatures(ctx context.Context, c *combatTx, ids []string) error {
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		who, ok := combatantByID(cs, id)
+		if !ok {
+			continue
+		}
+		if _, err := s.openFeatureWindows(ctx, c, cs, featureMoment{kind: rules.FeatureTriggerStartsTurn, mover: who}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // closeOldTurn ends what the turn that is over leaves: its effects, then the marks of the

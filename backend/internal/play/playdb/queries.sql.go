@@ -1914,6 +1914,25 @@ func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesO
 	return items, nil
 }
 
+const deleteUnansweredFeatureWindow = `-- name: DeleteUnansweredFeatureWindow :execrows
+DELETE FROM reaction_windows
+WHERE id = $1 AND encounter_id = $2 AND kind = 'feature' AND status <> 'answered'
+`
+
+type DeleteUnansweredFeatureWindowParams struct {
+	ID          string
+	EncounterID string
+}
+
+// The undo of what opened a FEATURE window (a move, a turn): the window goes, unless it was answered (the answer is undone first).
+func (q *Queries) DeleteUnansweredFeatureWindow(ctx context.Context, arg DeleteUnansweredFeatureWindowParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUnansweredFeatureWindow, arg.ID, arg.EncounterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const endCombatantTurnPart = `-- name: EndCombatantTurnPart :exec
 UPDATE combatants
 SET turn_state = 'ended'

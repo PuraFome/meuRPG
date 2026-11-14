@@ -597,6 +597,9 @@
   "stopped_early": true,
   "locked_door": true,
   "move_id": "x",
+  "feature_windows": [
+    "x"
+  ],
   "offer_id": "x",
   "skipped": true,
   "returned_from": {
