@@ -84,7 +84,7 @@ describe('CombatView: Usar a feature taken with UseFeature (#743)', () => {
       },
       expect.any(String),
     ]);
-    expect(m.view.actionNote()).toBe('Entidade simbiótica usada: 16 PV temporários.');
+    expect(m.view.actionNote()).toBe('Uso de Entidade simbiótica: 16 PV temporários.');
   });
 
   it("writes the server's refusal when the call fails and notes nothing", async () => {
@@ -170,6 +170,6 @@ describe('CombatView: Usar a feature taken with UseFeature (#743)', () => {
     expect(m.view.actionNote()).toBe('');
     await m.view.useFeature('feature:fix');
     m.opened[1].close({ healed: 0, tempHp: 0 });
-    expect(m.view.actionNote()).toBe('Corrigir o tipo de dano usada.');
+    expect(m.view.actionNote()).toBe('Uso de Corrigir o tipo de dano.');
   });
 });

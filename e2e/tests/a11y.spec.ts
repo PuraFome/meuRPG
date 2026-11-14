@@ -12372,7 +12372,7 @@ async function scanUseFeatureScreens(browser: Browser, colorScheme: 'light' | 'd
     await mark.locator('label', { hasText: 'Goblin 1' }).click();
     await mark.getByRole('button', { name: 'Usar no Goblin 1' }).click();
     await expect(mark).toHaveCount(0);
-    await expect(groups.getByText(/Marca de Teste usada/)).toBeVisible();
+    await expect(groups.getByText(/Uso de Marca de Teste/)).toBeVisible();
     await expectScreenPasses(p, `Usar característica, o uso feito ${where}`);
     await shoot(p, 'usar-feito');
   } finally {

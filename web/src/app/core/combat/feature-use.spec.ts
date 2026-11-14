@@ -196,19 +196,19 @@ describe('the note after a use', () => {
   it('says what was given and what is left of the resource', () => {
     const o = option({ usesLeft: 2, resourceTotal: 2, action: { resourceKey: 'wild_shape' } });
     expect(plain(usedNote('Entidade simbiótica', { healed: 0, tempHp: 16 }, o, wild))).toBe(
-      'Entidade simbiótica usada: 16 PV temporários. Resta 1 de 2 usos de Forma Selvagem.',
+      'Uso de Entidade simbiótica: 16 PV temporários. Resta 1 de 2 usos de Forma Selvagem.',
     );
   });
 
   it('says only that it was used when it gave nothing and spent no resource', () => {
     expect(usedNote('Corrigir o tipo de dano', { healed: 0, tempHp: 0 }, option(), undefined)).toBe(
-      'Corrigir o tipo de dano usada.',
+      'Uso de Corrigir o tipo de dano.',
     );
   });
 
   it('says the heal too', () => {
     expect(usedNote('Cura', { healed: 7, tempHp: 3 }, option(), undefined)).toBe(
-      'Cura usada: 7 PV recuperados e 3 PV temporários.',
+      'Uso de Cura: 7 PV recuperados e 3 PV temporários.',
     );
   });
 });
@@ -253,5 +253,15 @@ describe('the refusals of a target and of a choice', () => {
       rest: 'Escolha outro alvo.',
     });
     expect(leadOf('Sem mais')).toEqual({ lead: 'Sem mais', rest: '' });
+  });
+
+  it('takes no gender from the name, a masculine one as well as a feminine one', () => {
+    const gave = { healed: 0, tempHp: 3 };
+    expect(usedNote('Elemento de Teste', gave, option(), undefined)).toBe(
+      'Uso de Elemento de Teste: 3 PV temporários.',
+    );
+    expect(usedNote('Marca de Teste', gave, option(), undefined)).toBe(
+      'Uso de Marca de Teste: 3 PV temporários.',
+    );
   });
 });

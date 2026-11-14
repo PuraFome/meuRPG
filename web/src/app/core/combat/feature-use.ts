@@ -198,7 +198,7 @@ export function useButtonLabel(
   return 'Usar';
 }
 
-/** "Entidade simbiótica usada: 16 PV temporários. Resta 1 de 2 usos de Forma Selvagem.": the note after a use that worked. */
+/** "Uso de Entidade simbiótica: 16 PV temporários. Resta 1 de 2 usos de Forma Selvagem.": the note (no gender: a name may be either) after a use that worked. */
 export function usedNote(
   name: string,
   result: { readonly healed: number; readonly tempHp: number },
@@ -212,7 +212,7 @@ export function usedNote(
   if (result.tempHp > 0) {
     gave.push(`${result.tempHp} PV temporários`);
   }
-  const head = gave.length > 0 ? `${name} usada: ${gave.join(' e ')}.` : `${name} usada.`;
+  const head = gave.length > 0 ? `Uso de ${name}: ${gave.join(' e ')}.` : `Uso de ${name}.`;
   if (!o.action?.resourceKey) {
     return head;
   }
