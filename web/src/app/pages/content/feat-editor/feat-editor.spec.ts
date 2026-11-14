@@ -674,8 +674,79 @@ describe('FeatEditor (MR-025)', () => {
   });
 
   describe('what the feat asks of a class level, a pact, a spell and options (#580)', () => {
+    const add = (el: HTMLElement, fixture: { detectChanges(): void }, what: string) => {
+      click(el, 'Adicionar pré-requisito');
+      fixture.detectChanges();
+      click(el, what);
+      fixture.detectChanges();
+    };
+
+    it('starts with no row, and offers the four kinds from "Adicionar pré-requisito" (board 580-01)', () => {
+      const { fixture, el } = setup(false);
+      expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeNull();
+      click(el, 'Adicionar pré-requisito');
+      fixture.detectChanges();
+      const items = Array.from(el.querySelectorAll('[role=menuitem]')).map((b) => text(b));
+      expect(items).toEqual([
+        'Nível de classe',
+        'Dádiva do pacto',
+        'Magia que conhece',
+        'Outras opções',
+      ]);
+    });
+
+    it('adds a row, no longer offers its kind, and clears it with its X', async () => {
+      const { fixture, el } = setup(false);
+      add(el, fixture, 'Nível de classe');
+      expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeTruthy();
+      click(el, 'Adicionar pré-requisito');
+      fixture.detectChanges();
+      expect(Array.from(el.querySelectorAll('[role=menuitem]')).map((b) => text(b))).not.toContain(
+        'Nível de classe',
+      );
+      const select = field(
+        el,
+        'table_feat.prerequisite.class_level.class_key',
+      ) as HTMLSelectElement;
+      select.value = 'class:wizard';
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('button[aria-label="Tirar Nível de classe"]')!.click();
+      fixture.detectChanges();
+      expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeNull();
+      save.mockResolvedValue({ entry: stored(), affected: [] });
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      expect(save.mock.calls[0][2].value.prerequisite.classLevel).toBeUndefined();
+    });
+
+    it('shows a saved row, and says so when the four kinds are all on the list', () => {
+      const body = create(TableFeatSchema, {
+        namePt: 'Lâmina Rubra',
+        prerequisite: {
+          classLevel: { classKey: 'class:wizard', level: 5 },
+          requiresPact: 'option:pact-of-the-blade',
+          requiresSpellKey: catalog().spells[0].value,
+          requiresOptionKeys: ['option:brasa@mesa'],
+        },
+      });
+      const { el } = setup(
+        entry(TableContentKind.FEAT, 'Lâmina Rubra', { body: { case: 'tableFeat', value: body } }),
+      );
+      expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeTruthy();
+      expect(field(el, 'table_feat.prerequisite.requires_pact')).toBeTruthy();
+      expect(text(el)).toContain('Os quatro tipos já estão na lista.');
+      expect(
+        Array.from(el.querySelectorAll('button')).some((b) =>
+          text(b).includes('Adicionar pré-requisito'),
+        ),
+      ).toBe(false);
+    });
+
     it('saves the class level, the spell and the options the master picked', async () => {
       const { fixture, el } = setup(false);
+      add(el, fixture, 'Nível de classe');
+      add(el, fixture, 'Magia que conhece');
       const pick = (path: string, value: string) => {
         const select = field(el, path) as HTMLSelectElement;
         select.value = value;
