@@ -73,6 +73,9 @@ func TestTheNotesOfAContestRollFollowTheHidingRule(t *testing.T) {
 	}{
 		{"a contest start", contests, func(w *world) *person { return w.ana }, func(w *world) *playv1.Combatant { return w.combatant(w.pens) }, func(w *world, key string) (string, proto.Message) {
 			healPens(w)
+			// A player's start needs the target within reach: the master brings Toren to the square beside her.
+			pens := w.combatantOf(must(w.master.combat.GetEncounter(w.t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter(), w.pens.GetId())
+			w.placeForced(w.master, w.encounter.GetId(), placement{id: w.combatant(w.toren).GetId(), col: pens.GetCol(), row: pens.GetRow() + 1})
 			w.toTurnOf(w.pens.GetId())
 			return playv1connect.ContestServiceStartContestProcedure, &playv1.StartContestRequest{
 				CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: key, Roll: appRoll(),
