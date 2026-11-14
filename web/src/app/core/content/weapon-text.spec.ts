@@ -94,4 +94,12 @@ describe('what a table weapon says', () => {
       joinDots(['Simples, à distância', '1d4 concussão', 'Arremesso (6\u00a0m / 18\u00a0m)']),
     );
   });
+
+  it('names the SRD properties in Portuguese even when the catalog knows no name for the key', () => {
+    const bare = (key: string) => key;
+    const w = create(TableWeaponSchema, {
+      properties: ['weapon-property:finesse', 'weapon-property:two-handed', 'weapon-property:custom'],
+    });
+    expect(weaponProperties(w, bare)).toEqual(['Acuidade', 'Duas mãos', 'weapon-property:custom']);
+  });
 });
