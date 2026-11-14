@@ -35,6 +35,7 @@
     "from": 1,
     "to": 1
   },
+  "favor": true,
   "d20_reroll": {
     "resource": "x",
     "cost": 1
