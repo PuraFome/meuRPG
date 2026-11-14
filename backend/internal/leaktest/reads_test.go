@@ -425,6 +425,10 @@ var reads = []read{
 		procedure: playv1connect.ResourceServiceListHeldRollsProcedure, allow: members, why: "a player reads the questions of their own rolls that wait; the master reads every one of the campaign",
 		req: func(w *world) proto.Message { return &playv1.ListHeldRollsRequest{CampaignId: w.campaign} },
 	},
+	{
+		procedure: playv1connect.FavorServiceGetFavorProcedure, allow: members, why: "each member reads who has the Inspiration among their own characters, which for a player with none is an empty list; the master reads every holder of the campaign (RN-10)",
+		req: func(w *world) proto.Message { return &playv1.GetFavorRequest{CampaignId: w.campaign} },
+	},
 
 	// ===== CombatService
 	{
