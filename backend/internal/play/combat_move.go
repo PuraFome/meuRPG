@@ -1121,17 +1121,23 @@ func (s *Service) moverToPlan(ctx context.Context, m authz.Membership, d *encoun
 	if err != nil || v.master {
 		return who, sight, readied, err
 	}
+	return who, sight, readied, s.playerMovesNow(ctx, m, d, who, readied)
+}
+
+// playerMovesNow checks a player's move options: the combat runs, it is the combatant's turn (and its rider's part, for
+// a controlled mount; a readied move is a reaction) and the acting character is on its feet.
+func (s *Service) playerMovesNow(ctx context.Context, m authz.Membership, d *encounterData, who playdb.Combatant, readied *playdb.ReadiedAction) error {
 	actor := who // a controlled mount moves in its rider's turn, and the rider's player is the one who acts
 	if rider := riderOf(d.cs, who.ID); rider != nil && who.MountKind == mountKindControlled {
 		actor = *rider
 	}
 	switch {
-	case enc.Status != statusActive:
-		return who, sight, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
-	case (!actsNow(enc, actor) || !actsNow(enc, who)) && readied == nil: // the rider's part and the mount's own; a readied move is a reaction
-		return who, sight, nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
+	case d.enc.Status != statusActive:
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_ACTIVE, "the combat is not running")
+	case (!actsNow(d.enc, actor) || !actsNow(d.enc, who)) && readied == nil: // the rider's part and the mount's own; a readied move is a reaction
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_NOT_YOUR_TURN, "it is not your turn")
 	}
-	return who, sight, readied, s.mustNotBeDown(ctx, nil, m.CampaignID, actor)
+	return s.mustNotBeDown(ctx, nil, m.CampaignID, actor)
 }
 
 // moverOption is the combatant whose moves GetMoveOptions works out, and the readied move whose window is open for it.

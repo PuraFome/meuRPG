@@ -82,7 +82,7 @@ func TestCombatantMountMigration(t *testing.T) {
 	}
 
 	// A second run changes nothing and a way down removes the columns and the kinds.
-	exec(t, db, "DELETE FROM goose_db_version WHERE version_id >= 333")
+	exec(t, db, "DELETE FROM goose_db_version WHERE version_id = 333")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("second Up() error = %v", err)
 	}
