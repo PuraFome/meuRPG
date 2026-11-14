@@ -368,6 +368,19 @@ var reads = []read{
 		req: func(w *world) proto.Message { return &playv1.GetLiveSessionRequest{CampaignId: w.campaign} },
 	},
 	{
+		procedure: playv1connect.PlayServiceGetCharacterWildShapeProcedure, label: "Ana's character", allow: onlyAna,
+		why: "a druid's Wild Shape form with its pool and its clock: the master and the owner read it with no session open (the positive controls); another player, a pending member and a stranger get the not_found of a character they cannot read",
+		req: func(w *world) proto.Message {
+			return &playv1.GetCharacterWildShapeRequest{CampaignId: w.campaign, CharacterId: w.pens.GetId()}
+		},
+	},
+	{
+		procedure: playv1connect.PlayServiceGetCharacterWildShapeProcedure, label: "Caio's character", allow: onlyCaio,
+		req: func(w *world) proto.Message {
+			return &playv1.GetCharacterWildShapeRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}
+		},
+	},
+	{
 		procedure: playv1connect.PlayServiceListGameSessionsProcedure, allow: members,
 		req: func(w *world) proto.Message {
 			return &playv1.ListGameSessionsRequest{CampaignId: w.campaign}

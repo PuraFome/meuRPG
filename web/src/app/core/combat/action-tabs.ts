@@ -37,6 +37,9 @@ const CLASS_TAB_BY_FEATURE: readonly (readonly [prefix: string, tab: string])[] 
   ['feature:flexible-casting', 'Feiticeiro'],
 ];
 
+/** The class tab of a druid in a beast's shape: the way back and the stay are its rows, and the class keeps its name (584-01). */
+export const WILD_SHAPE_TAB = 'Druida';
+
 /** What a tab with abilities of no class in the list (a race's breath, a feat) is called. */
 export const OTHER_FEATURES_TAB = 'Habilidades';
 
@@ -152,16 +155,14 @@ export function actionTabs(
       words: plural(counts.attacks, 'ataque', 'ataques'),
     });
   }
-  if (counts.spells > 0) {
+  // A druid in a beast's shape has no spells: there is no tab, only the notice at the foot of the actions (584-01, 584-02).
+  if (counts.spells > 0 && !options.beast) {
     tabs.push({
       id: 'spells',
       label: 'Magias',
       badge: String(counts.spells),
       words: plural(counts.spells, 'magia', 'magias'),
     });
-  } else if (options.beast) {
-    // A druid in a beast's shape casts nothing, and the tab says so instead of vanishing.
-    tabs.push({ id: 'spells', label: 'Magias', badge: '', words: '' });
   }
   if (counts.features > 0 || options.beast) {
     tabs.push({

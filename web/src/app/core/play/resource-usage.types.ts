@@ -28,6 +28,12 @@ export interface WildShapeVm {
   readonly beastNamePt: string;
   readonly hitPointsCurrent: number;
   readonly hitPointsMax: number;
+  /** "1 h 52 min restantes", as the server writes it; absent for a form with no clock and for whoever may not read it. */
+  readonly timeLeftPt?: string;
+  /** The beast's armor class: the character's while in the form. */
+  readonly armorClass?: number;
+  /** How long a form of this character lasts, in seconds: what "Permanecer" sets the clock back to. */
+  readonly secondsTotal?: number;
 }
 
 /** How many uses of a class or race resource the sheet gives and how many are spent (`ResourceUsage`). */
