@@ -144,7 +144,7 @@ func rerunAttack(ctx context.Context, s *Service, h heldRoll, key string) (proto
 	if h.Window {
 		orig.IdempotencyKey = key
 	}
-	out, err := s.RollAttack(ctx, connect.NewRequest(&orig))
+	out, err := s.rollAttackAgain(ctx, connect.NewRequest(&orig))
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func retryOfHeldAttack(msg *playv1.RollAttackRequest) func(ctx context.Context, 
 func sameApartFromPins(a, b *playv1.RollAttackRequest) bool {
 	unpin := func(r *playv1.RollAttackRequest) *playv1.RollAttackRequest {
 		c, _ := proto.Clone(r).(*playv1.RollAttackRequest)
-		c.RollMode, c.ModeReason, c.D20Faces = 0, "", nil
+		c.RollMode, c.ModeReason, c.D20Faces, c.PowerAttackPin = 0, "", nil, nil
 		return c
 	}
 	return proto.Equal(unpin(a), unpin(b))
