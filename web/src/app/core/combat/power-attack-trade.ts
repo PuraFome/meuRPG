@@ -1,7 +1,8 @@
-import { type Attack, AttackKind } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { type Attack, AttackKind, Recharge } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { AttackOption, PowerAttackOption } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { type RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { signed } from '../effects/effects';
+import { rechargeText } from './combat-errors';
 import { damageText } from './combat-options';
 import { d20Count } from './roll-mode';
 
@@ -35,13 +36,30 @@ export function tradeOfferSub(o: PowerAttackOption): string {
   return `${base} · gasta 1 de ${o.resourceNamePt}${after > 0 ? ` · resta ${after}` : ''}`;
 }
 
-/** Why a trade is off: with its pool named, "Sem usos de Fôlego do Atirador."; otherwise the reason the server wrote.
- * Empty for a trade that is on. */
+/** When the pool comes back, as the Ação lines say it ("volta no descanso curto ou longo": a long rest gives the uses of a
+ * short-rest pool back too); the other recharges read as in `rechargeText`. */
+function restoredText(recharge: Recharge): string {
+  switch (recharge) {
+    case Recharge.SHORT_REST:
+      return 'volta no descanso curto ou longo';
+    case Recharge.LONG_REST:
+      return 'volta no descanso longo';
+    default:
+      return rechargeText(recharge);
+  }
+}
+
+/** Why a trade is off: with its pool named, "Sem usos de Fôlego do Atirador: volta no descanso curto ou longo." (without the
+ * recharge when the server sent none); otherwise the reason the server wrote. Empty for a trade that is on. */
 export function tradeWhy(o: PowerAttackOption): string {
   if (!o.disabled) {
     return '';
   }
-  return o.resourceNamePt ? `Sem usos de ${o.resourceNamePt}.` : o.disabledReasonPt || 'Sem usos.';
+  if (!o.resourceNamePt) {
+    return o.disabledReasonPt || 'Sem usos.';
+  }
+  const back = o.recharge === Recharge.UNSPECIFIED ? '' : `: ${restoredText(o.recharge)}`;
+  return `Sem usos de ${o.resourceNamePt}${back}.`;
 }
 
 /** The attack bonus the roll is made with: the weapon's, less the penalty of the trade picked. */

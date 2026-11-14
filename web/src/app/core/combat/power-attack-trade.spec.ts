@@ -5,6 +5,7 @@ import {
   AttackOptionSchema,
   AttackSchema,
   PowerAttackOptionSchema,
+  Recharge,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import type { DiceRoll } from '../../../gen/meurpg/play/v1/combat_pb';
 import { RollMode } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
@@ -124,6 +125,20 @@ describe('the offer of a trade that spends a pool (586-05 #3, #4)', () => {
       '−5 no ataque, +10 no dano se acertar · gasta 1 de Fôlego do Atirador',
     );
     expect(tradeOfferSub(heavy)).toBe('−5 no ataque, +10 no dano se acertar');
+  });
+
+  it("says when the pool comes back, in the app's own sentences for a recharge", () => {
+    const empty = (recharge: Recharge) =>
+      tradeWhy(create(PowerAttackOptionSchema, { ...spends(0), recharge }));
+    expect(empty(Recharge.SHORT_REST)).toBe(
+      'Sem usos de Fôlego do Atirador: volta no descanso curto ou longo.',
+    );
+    expect(empty(Recharge.LONG_REST)).toBe(
+      'Sem usos de Fôlego do Atirador: volta no descanso longo.',
+    );
+    expect(empty(Recharge.DAWN)).toBe('Sem usos de Fôlego do Atirador: volta ao amanhecer.');
+    expect(empty(Recharge.NONE)).toBe('Sem usos de Fôlego do Atirador: só o mestre devolve.');
+    expect(empty(Recharge.UNSPECIFIED)).toBe('Sem usos de Fôlego do Atirador.');
   });
 
   it('writes the reason of a trade with no use left with the pool, and keeps the server text without it', () => {

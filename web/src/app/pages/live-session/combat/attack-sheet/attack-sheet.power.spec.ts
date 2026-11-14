@@ -23,6 +23,7 @@ import {
   AttackKind,
   AttackSchema,
   PowerAttackOptionSchema,
+  Recharge,
   RollDieSchema,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { CombatClient } from '../../../../core/combat/combat-client';
@@ -491,11 +492,14 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
         ...steady,
         resourceNamePt: 'Fôlego do Atirador',
         usesLeft: 0,
+        recharge: Recharge.SHORT_REST,
         disabledReasonPt: 'Sem usos do recurso.',
       });
       const s = setup({ trades: [pooled, none] });
       expect(s.text()).toContain('gasta 1 de Fôlego do Atirador · resta 2');
-      expect(s.text()).toContain('Sem usos de Fôlego do Atirador.');
+      expect(s.text()).toContain(
+        'Sem usos de Fôlego do Atirador: volta no descanso curto ou longo.',
+      );
       expect(s.text()).not.toContain('Sem usos do recurso.');
     });
 

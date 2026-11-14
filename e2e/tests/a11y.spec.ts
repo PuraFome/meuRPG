@@ -7266,8 +7266,9 @@ async function scanPowerAttackSheet(browser: Browser, colorScheme: 'light' | 'da
     await openActionTab(p, 'Ataques');
     sheet = await openSheet(/^Atacar com Arco longo/);
     await expect(sheet.getByRole('checkbox', { name: /Usar Disparo Firme/ })).toBeDisabled();
-    // The pool is named by the feature that defines it (a table content resource has no other display name).
-    await expect(sheet.getByText('Sem usos de Disparo Firme.')).toBeVisible();
+    // The pool is named by the feature that defines it (a table content resource has no other display name), and says when it
+    // comes back (a short-rest pool: a long rest brings it back too).
+    await expect(sheet.getByText('Sem usos de Disparo Firme: volta no descanso curto ou longo.')).toBeVisible();
     await expect(sheet.getByText(/gasta 1 de Disparo Firme/)).toBeVisible();
     await expectScreenPasses(p, `Atacar, a troca do talento sem usos ${where}`);
     await sheet.getByRole('button', { name: 'Fechar' }).first().click();
