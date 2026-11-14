@@ -151,6 +151,8 @@ type content struct {
 	optionPrereq   map[string]TableOptionPrerequisite
 	// creatureOf says, for each table creature, the SRD creature it is made from (overlay_creature.go).
 	creatureOf map[string]CreatureTableEntry
+	// weaponOf lists the table's weapons by key (overlay_weapon.go).
+	weaponOf map[string]WeaponTableEntry
 	// creatureSpecs are the table creatures' adjustments and compiled formulas, by key (overlay_creature_formula.go).
 	creatureSpecs map[string]*creatureSpec
 
@@ -1014,7 +1016,7 @@ func (c *content) weaponEntry(k string, e *srd51.Equipment) WeaponEntry {
 	return WeaponEntry{
 		Key: k, Name: e.Name, NamePT: c.namePT(k), Category: w.Category, Range: w.Range,
 		Damage: w.Damage, DamageType: w.DamageType, TwoHandedDamage: w.TwoHandedDamage,
-		Properties: w.Properties, NormalRangeFt: normal, LongRangeFt: long,
+		Properties: w.Properties, NormalRangeFt: normal, LongRangeFt: long, Archived: c.archived[k], Off: c.off[k],
 	}
 }
 
