@@ -125,10 +125,10 @@ test(
       // The log: the hit names the effect in its damage, and the target's save against it is a line of its own, for the player and for the master.
       const log = await openCombatLog(p);
       await expect(log).toContainText('Geada no Punho incluído');
-      await expect(log).toContainText('no teste de resistência contra a Geada no Punho');
+      await expect(log).toContainText('no teste de resistência de Força contra a Geada no Punho');
       await openSessionPage(m, campaignId);
       await openCombatPanel(m, 'Registro');
-      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('no teste de resistência contra a Geada no Punho');
+      await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('no teste de resistência de Força contra a Geada no Punho');
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();
