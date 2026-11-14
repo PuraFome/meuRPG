@@ -359,6 +359,7 @@ jobs:
 
       - name: Load the test database image
         # The image the `database-image` job pulled: this job does not touch the registry.
+        id: image
         uses: ./.github/actions/load-database-image
 
       - name: Start the test database
@@ -368,6 +369,8 @@ jobs:
         # by default and durability off (.github/scripts/start-postgres.sh).
         id: db
         uses: ./.github/actions/test-database
+        with:
+          image: ${{ steps.image.outputs.image }}
 
       - name: go test -race (this group, with the database)
         # With MEURPG_TEST_DATABASE_URL set, the integration tests
@@ -481,11 +484,14 @@ jobs:
           start: "false"
 
       - name: Load the PostgreSQL image
+        id: image
         if: ${{ steps.db.outputs.database == 'postgres' }}
         uses: ./.github/actions/load-database-image
 
       - name: Start PostgreSQL
         if: ${{ steps.db.outputs.database == 'postgres' }}
+        env:
+          TEST_POSTGRES_IMAGE: ${{ steps.image.outputs.image }}
         run: .github/scripts/start-postgres.sh
 
       - name: Run the listed tests on PostgreSQL

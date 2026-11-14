@@ -6,7 +6,7 @@
 # The composite action `test-database` starts it for them (docs/ci.md, "Which database the tests run on").
 # `flake-check` and `nightly-hunt` call this script directly.
 # The image is the one backend.yml pins by digest (COCKROACH_IMAGE there). A `go-db` job runs the copy its run pulled once and
-# saved (TEST_COCKROACH_IMAGE, set by the action load-database-image) and never pulls; `flake-check` and `nightly-hunt` pull
+# saved (TEST_COCKROACH_IMAGE, which the step that starts the database passes from the output of the action load-database-image) and never pulls; `flake-check` and `nightly-hunt` pull
 # the pinned image themselves (docs/ci.md, "How the test database image reaches the jobs").
 # Usage: start-cockroach.sh   (from anywhere; needs docker)
 set -euo pipefail

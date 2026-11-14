@@ -100,7 +100,7 @@ Two checks keep the list true (`.github/scripts/cockroach-only.sh`):
 
 The `go-db` groups and the list check do not pull the database image themselves: registries refuse an anonymous pull once a runner pool has used its data limit ("Data limit exceeded"), and seventeen jobs pulling the same image multiply it.
 The job `go-db database image` pulls the image the run needs (PostgreSQL in a preflight, CockroachDB in a train, as `test-database` decides) once, tags it `meurpg-test-db:<engine>`, and keeps it as the artifact `database-image` for one day.
-Every group and the list check download it with the action `.github/actions/load-database-image`, which loads it and sets `TEST_POSTGRES_IMAGE` or `TEST_COCKROACH_IMAGE`.
+Every group and the list check download it with the action `.github/actions/load-database-image`, which loads it and gives the tag as its `image` output (it writes no environment file). The step that starts the database passes the tag as `TEST_POSTGRES_IMAGE` or `TEST_COCKROACH_IMAGE` (through the `image` input of `test-database`, or the step's `env:`); `test-database` refuses a tag that is not the picked database's.
 `start-postgres.sh` and `start-cockroach.sh` then run that local image with `--pull=never`: the "Start the test database" step of a group prints the image and says it is not pulled, and the only job of the run that touches a registry for it is `go-db database image`.
 A registry that refuses the pull fails that job with its own message, once: nothing retries, and the groups are skipped, so `go (integration tests against CockroachDB)` fails and says the image job did not succeed.
 The scripts' `ref` mode, `database-image.sh ref postgres|cockroach`, prints the pin.

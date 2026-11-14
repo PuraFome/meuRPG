@@ -1,9 +1,13 @@
 name: Load the test database image
 description: >-
   Loads the image the `database-image` job of backend.yml pulled and saved, so this job never touches the registry
-  (docs/ci.md, "How the test database image reaches the jobs"). It sets TEST_POSTGRES_IMAGE or TEST_COCKROACH_IMAGE for
-  the later steps of the job: start-postgres.sh and start-cockroach.sh then run that local image with `--pull=never`.
-  The job needs `database-image` and a checkout.
+  (docs/ci.md, "How the test database image reaches the jobs"). It gives the loaded tag as its `image` output; the
+  step that starts the database passes it to start-postgres.sh or start-cockroach.sh (TEST_POSTGRES_IMAGE or
+  TEST_COCKROACH_IMAGE), which run that local image with `--pull=never`. The job needs `database-image` and a checkout.
+outputs:
+  image:
+    description: The local tag of the loaded image, `meurpg-test-db:postgres` or `meurpg-test-db:cockroach`.
+    value: ${{ steps.load.outputs.image }}
 runs:
   using: composite
   steps:
@@ -14,6 +18,7 @@ runs:
         path: ${{ runner.temp }}/database-image
 
     - name: Load it (no pull)
+      id: load
       shell: bash
       env:
         DIR: ${{ runner.temp }}/database-image
@@ -22,8 +27,7 @@ runs:
         for f in "$DIR"/*.tar.gz; do
           tag=$("$GITHUB_ACTION_PATH/../../scripts/database-image.sh" load "$f" | tail -1)
           case "$tag" in
-            meurpg-test-db:postgres) echo "TEST_POSTGRES_IMAGE=$tag" >> "$GITHUB_ENV" ;;
-            meurpg-test-db:cockroach) echo "TEST_COCKROACH_IMAGE=$tag" >> "$GITHUB_ENV" ;;
+            meurpg-test-db:postgres | meurpg-test-db:cockroach) echo "image=$tag" >> "$GITHUB_OUTPUT" ;;
             *) echo "::error::the saved image carries the tag '$tag', not a test database's" >&2; exit 1 ;;
           esac
           echo "Loaded $tag from the run's artifact: this job does not pull."

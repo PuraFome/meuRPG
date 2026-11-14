@@ -7,7 +7,7 @@ set -euo pipefail
 
 # The image is the one backend.yml pins by digest (POSTGRES_IMAGE there), from Amazon's public mirror of the official
 # image because Docker Hub's anonymous pull limit hits GitHub's shared runners. A `go-db` job runs the copy its run
-# pulled once and saved (TEST_POSTGRES_IMAGE, set by the action load-database-image) and never pulls; any other caller
+# pulled once and saved (TEST_POSTGRES_IMAGE, which the step that starts the database passes from the output of the action load-database-image) and never pulls; any other caller
 # pulls the pinned image itself (docs/ci.md, "How the test database image reaches the jobs").
 image=$("$(dirname "$0")/database-image.sh" ref postgres)
 pull=()
