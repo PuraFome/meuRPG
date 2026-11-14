@@ -8,12 +8,13 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
-// Guard for the hints of a retried AddLastingEffect: the retry tells the streams again, and its
+// Guard for the hints of a retried AddLastingEffect: the retry reaches the audience the first call reached. Its
 // log hint is secret when the first call's line was (an effect the players cannot see), so a retry
 // does not tell the players there is a new line they cannot read. Besides the combat and its log, the retry
-// of any combat change tells what the stored change does not say it did not tell (the replay rule of
-// Service.tx): the master's casts and the vitals of the combat's players, each to the master and its own
-// player. None of it is the secret line.
+// tells the master what the stored change does not say it did not tell (the replay rule of Service.tx): his casts
+// and the vitals of the combat's players. A change the players were not told of is not told to them again: a
+// player hears of the retry what the first call told them, and the vitals of their own character only when the
+// change was one they read.
 func TestAddLastingEffectRetryKeepsTheLogHintSecret(t *testing.T) {
 	t.Parallel()
 	const (
@@ -21,7 +22,7 @@ func TestAddLastingEffectRetryKeepsTheLogHintSecret(t *testing.T) {
 		masterAlone = "master[EncounterChanged,CombatLogChanged] caio[EncounterChanged] ana[EncounterChanged] bia[EncounterChanged]"
 		// The retry: the replayed hints come first, the combat and its log after, as the handler tells them.
 		bothAgain        = "master[SpellCastsChanged,VitalsChanged,VitalsChanged,VitalsChanged,EncounterChanged,CombatLogChanged] caio[VitalsChanged,EncounterChanged,CombatLogChanged] ana[VitalsChanged,EncounterChanged,CombatLogChanged] bia[VitalsChanged,EncounterChanged,CombatLogChanged]"
-		masterAloneAgain = "master[SpellCastsChanged,VitalsChanged,VitalsChanged,VitalsChanged,EncounterChanged,CombatLogChanged] caio[VitalsChanged,EncounterChanged] ana[VitalsChanged,EncounterChanged] bia[VitalsChanged,EncounterChanged]"
+		masterAloneAgain = "master[SpellCastsChanged,VitalsChanged,VitalsChanged,VitalsChanged,EncounterChanged,CombatLogChanged] caio[EncounterChanged] ana[EncounterChanged] bia[EncounterChanged]"
 	)
 	cases := []struct {
 		name       string
