@@ -36,12 +36,15 @@ import { expect, type Page } from '@playwright/test';
 // 10. A chip marked `data-chip` sits on the middle of the capitals of the words marked `data-chip-ref` in its row
 //    (`data-chip-row`), within 2px.
 //
+// 11. A box marked `data-whole` shows each thing it holds whole or not at all: an item that is drawn (its top is inside the
+//    box) does not reach past the box's left or right edge ("duas mãos" cut to "duas mã", an icon cut in half).
+//
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'one-line' | 'unequal-width' | 'chip-baseline' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch';
+  kind: 'icon-text' | 'one-line' | 'unequal-width' | 'chip-baseline' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch' | 'cut';
   where: string;
   detail: string;
 }
@@ -302,6 +305,22 @@ function auditLayout(): LayoutIssue[] {
         where: describeEl(row),
         detail: wraps.length > 0 ? `the words "${wraps[0].textContent!.trim().slice(0, 30)}" wrap onto a second line` : `${describeEl(off[0])} sits on another line than ${describeEl(boxes[0])}`,
       });
+    }
+  }
+
+  // 11. A box marked data-whole shows each item whole or not at all.
+  for (const box of document.querySelectorAll('[data-whole]')) {
+    if (!visible(box)) continue;
+    const edge = box.getBoundingClientRect();
+    for (const item of box.children) {
+      const r = item.getBoundingClientRect();
+      if (r.top < edge.bottom - 1 && (r.right > edge.right + 0.5 || r.left < edge.left - 0.5)) {
+        issues.push({
+          kind: 'cut',
+          where: describeEl(box),
+          detail: `"${(item.textContent ?? '').trim().slice(0, 30) || item.tagName.toLowerCase()}" spans ${r.left.toFixed(0)}px to ${r.right.toFixed(0)}px in a box from ${edge.left.toFixed(0)}px to ${edge.right.toFixed(0)}px: it is drawn cut`,
+        });
+      }
     }
   }
 

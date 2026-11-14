@@ -1,16 +1,15 @@
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 /**
  * The foot of a sheet that saves one thing: "Salvar", with "Cancelar" beside it in a dialog, and the line saying who can change it.
  * On a phone "Salvar" is alone and full width; in a dialog the two are the same size.
- * While `busy` the button is a muted "Salvando…" with a spinner and "Cancelar" is off.
+ * While `busy` the button is a muted "Salvando…" with a turning ring and "Cancelar" is off.
  */
 @Component({
   selector: 'app-sheet-save-foot',
-  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule],
+  imports: [MatButtonModule, MatIconModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './sheet-save-foot.html',
   styleUrl: './sheet-save-foot.scss',

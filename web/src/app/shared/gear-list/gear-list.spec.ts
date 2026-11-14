@@ -199,7 +199,7 @@ describe('GearList', () => {
     const rule = Array.from(document.querySelectorAll('style'))
       .map((n) => n.textContent ?? '')
       .join('\n');
-    expect(rule).toMatch(/gear-row__kind[^}]*flex:\s*0 1000 auto/);
+    expect(rule).toMatch(/gear-row__kind[^}]*flex:\s*1 1 0/);
     expect(rule).toMatch(/gear-row__kind[^}]*overflow:\s*hidden/);
     expect(rule).not.toContain('@container');
   });

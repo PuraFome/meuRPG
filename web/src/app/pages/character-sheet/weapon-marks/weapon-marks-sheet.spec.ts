@@ -133,7 +133,7 @@ describe('WeaponMarksSheet ("Marcas · <arma>")', () => {
     expect(el.querySelector('fieldset')!.disabled).toBe(true);
     expect(box('Prateada').disabled).toBe(true);
     expect(el.querySelector('.pair__btn')!.textContent).toContain('Salvando…');
-    expect(el.querySelector('mat-progress-spinner')).not.toBeNull();
+    expect(el.querySelector('.pair__spin')).not.toBeNull();
     closeFrame();
     fixture.componentInstance['cancel']();
     expect(closed).toEqual([]);

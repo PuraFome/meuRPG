@@ -27,6 +27,29 @@
   gap: var(--mr-space-2);
 }
 
+// A ring that turns: a plain element, since a spinner component in a button is an interactive control inside a control.
+.pair__spin {
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: pair-spin 0.8s linear infinite;
+}
+
+@keyframes pair-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pair__spin {
+    animation-duration: 3s;
+  }
+}
+
 .lock {
   display: flex;
   align-items: flex-start;

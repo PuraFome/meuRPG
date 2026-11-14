@@ -38,10 +38,10 @@ describe('SheetSaveFoot', () => {
     expect(buttons()).toHaveLength(1);
   });
 
-  it('says "Salvando…" with a spinner and turns both buttons off while busy', () => {
+  it('says "Salvando…" with a turning ring and turns both buttons off while busy', () => {
     const { el, buttons } = setup({ busy: true });
     expect(buttons()[0].textContent).toContain('Salvando…');
-    expect(el.querySelector('mat-progress-spinner')).not.toBeNull();
+    expect(el.querySelector('.pair__spin')).not.toBeNull();
     expect(buttons()[0].getAttribute('aria-disabled')).toBe('true');
     expect(buttons()[1].disabled).toBe(true);
     expect(getComputedStyle(buttons()[0]).borderStyle).not.toContain('dashed');

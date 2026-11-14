@@ -9,7 +9,7 @@
     (click)="saved.emit()"
   >
     @if (busy()) {
-      <mat-progress-spinner mode="indeterminate" diameter="18" aria-hidden="true" />
+      <span class="pair__spin" aria-hidden="true"></span>
     } @else {
       <mat-icon aria-hidden="true">save</mat-icon>
     }

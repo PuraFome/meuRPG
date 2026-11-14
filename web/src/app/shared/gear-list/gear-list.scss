@@ -25,9 +25,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-// A row is one line and only the name shrinks (it ellipsizes before anything wraps).
-// "duas mãos" shrinks far faster than the name, so it is clipped away first, only where the row has no room for it;
-// then the piece's icon.
+// A row is one line and only the name shrinks (it ellipsizes before anything wraps); "duas mãos" is drawn only where the row has room left.
 // The list is a two-column grid, the row's words and the button, so the buttons of one list share a width.
 :host {
   display: block;
@@ -54,7 +52,7 @@
 .gear-row__main {
   display: flex;
   align-items: center;
-  gap: var(--mr-space-2);
+  gap: 6px;
   min-width: 0;
 
   > * {
@@ -69,24 +67,45 @@
     white-space: nowrap;
   }
 
+  // The 44px target reaches into the button's margin, so the words keep their room.
   > .gear-row__more {
-    margin-inline-start: auto;
+    margin-inline: auto -8px;
   }
 }
 
+// "duas mãos" takes the room the row has left, up to its own width; a narrower box drops the words to a hidden second line.
+// The words are the only item of a one-line box that wraps: with a zero-width item as tall as the box before them, they drop to a second line,
+// outside the box, as a whole when the box is narrower than they are, and are never drawn cut.
 .gear-row__main > .gear-row__kind {
-  flex: 0 1000 auto;
+  display: flex;
+  flex: 1 1 0;
+  flex-wrap: wrap;
   min-width: 0;
+  max-width: max-content;
+  height: 1.4em;
   overflow: hidden;
   font-size: var(--mr-font-14);
+  line-height: 1.4;
   white-space: nowrap;
+
+  &::before {
+    content: '';
+    flex: none;
+    width: 0;
+    height: 100%;
+  }
+
+  > span {
+    flex: none;
+  }
 }
 
-// The piece's icon is decoration: it is the second to go, before the name is squeezed to nothing.
 .gear-row__main > .gear-row__icon {
-  flex: 0 100 auto;
-  min-width: 0;
-  overflow: hidden;
+  // From a tablet to a wide desktop the sheet (and the combat's side) hold the list in a column of 190 to 330px: the icon,
+  // decoration only, gives its room to the name and the chips there (it goes from every row, so the names stay aligned).
+  @media (min-width: 768px) and (max-width: 1599.98px) {
+    display: none;
+  }
 }
 
 .gear-row__main > app-weapon-tags {
@@ -101,7 +120,7 @@
 }
 
 .gear-row__idle {
-  padding: 0 var(--mr-space-2);
+  padding: 0 6px;
   border: 1px dashed var(--mr-rule);
   border-radius: var(--mr-radius-pill);
   font-size: var(--mr-font-14);
