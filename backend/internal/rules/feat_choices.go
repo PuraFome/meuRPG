@@ -301,7 +301,11 @@ func (c *content) featAsksPT(p FeatPrerequisite, b Build) string {
 func (c *content) knowledgeAsksPT(p FeatPrerequisite, b Build) []string {
 	var out []string
 	if p.ClassKey != "" {
-		out = append(out, fmt.Sprintf("nível %d de %s", p.ClassLevel, c.namePT(p.ClassKey)))
+		if c.hiddenTo(b, p.ClassKey) {
+			out = append(out, hiddenAskPT)
+		} else {
+			out = append(out, fmt.Sprintf("nível %d de %s", p.ClassLevel, c.namePT(p.ClassKey)))
+		}
 	}
 	name := func(prefix, key string) {
 		if c.hiddenTo(b, key) {
@@ -436,11 +440,11 @@ func (c *content) featUnmetPT(u FeatUnmet, b Build) string {
 
 // knowledgeUnmetPT says what a character lacks of a class level, a Pact Boon, a spell or an option a feat asks for.
 func (c *content) knowledgeUnmetPT(u FeatUnmet, b Build) string {
-	if u.Kind == FeatUnmetClassLevel {
-		return fmt.Sprintf("Precisa de nível %d de %s.", u.Value, c.namePT(u.Key))
-	}
 	if c.hiddenTo(b, u.Key) {
 		return hiddenUnmetPT
+	}
+	if u.Kind == FeatUnmetClassLevel {
+		return fmt.Sprintf("Precisa de nível %d de %s.", u.Value, c.namePT(u.Key))
 	}
 	prefix := map[string]string{FeatUnmetPact: "Precisa da Dádiva do Pacto ", FeatUnmetSpell: "Precisa conhecer a magia ", FeatUnmetOption: "Precisa ter escolhido "}[u.Kind]
 	return prefix + optionLabel(c.namePT(u.Key)) + "."

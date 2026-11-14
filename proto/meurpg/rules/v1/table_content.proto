@@ -554,7 +554,7 @@ message OptionPrerequisite {
   repeated string requires_option_keys = 2;
   // A Pact Boon the character has (an SRD one, or a table option of the set "pact_boon").
   string requires_pact = 3;
-  // A spell the character knows (a cantrip, a known or a prepared spell).
+  // A spell the character knows: the same meaning as FeatPrerequisite.requires_spell_key.
   string requires_spell_key = 4;
 }
 

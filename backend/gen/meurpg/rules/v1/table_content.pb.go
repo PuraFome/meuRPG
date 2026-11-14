@@ -2803,7 +2803,7 @@ type OptionPrerequisite struct {
 	RequiresOptionKeys []string `protobuf:"bytes,2,rep,name=requires_option_keys,json=requiresOptionKeys,proto3" json:"requires_option_keys,omitempty"`
 	// A Pact Boon the character has (an SRD one, or a table option of the set "pact_boon").
 	RequiresPact string `protobuf:"bytes,3,opt,name=requires_pact,json=requiresPact,proto3" json:"requires_pact,omitempty"`
-	// A spell the character knows (a cantrip, a known or a prepared spell).
+	// A spell the character knows: the same meaning as FeatPrerequisite.requires_spell_key.
 	RequiresSpellKey string `protobuf:"bytes,4,opt,name=requires_spell_key,json=requiresSpellKey,proto3" json:"requires_spell_key,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache

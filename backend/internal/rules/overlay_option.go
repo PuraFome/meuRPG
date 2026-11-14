@@ -243,12 +243,12 @@ func (b *overlayBuilder) checkPrerequisiteFields(c *entryErrors, key, path strin
 		c.at(key, path, ".prerequisite.requires_option_keys", ReasonLimit, "%d options; the limit is %d", len(p.RequiresOptions), MaxOptionRequires)
 	}
 	for i, k := range p.RequiresOptions {
-		switch {
-		case k == key:
-			c.at(key, path, fmt.Sprintf(".prerequisite.requires_option_keys[%d]", i), ReasonValue, "an option cannot require itself")
-		case !b.isOption(k):
-			c.at(key, path, fmt.Sprintf(".prerequisite.requires_option_keys[%d]", i), ReasonReference, "the option %q does not exist", k)
+		field := fmt.Sprintf(".prerequisite.requires_option_keys[%d]", i)
+		if k == key {
+			c.at(key, path, field, ReasonValue, "an option cannot require itself")
+			continue
 		}
+		b.optionRequires = append(b.optionRequires, optionRequire{owner: key, path: path, field: field, option: k})
 	}
 	if p.RequiresPact != "" && !b.isPact(p.RequiresPact) {
 		c.at(key, path, ".prerequisite.requires_pact", ReasonReference, "%q is not a Pact Boon", p.RequiresPact)
@@ -301,4 +301,42 @@ func (c *Content) Options() []OptionEntry {
 		return comparePT(a.NamePT, b.NamePT)
 	})
 	return out
+}
+
+// optionRequire is an option a prerequisite asks for, at the field of its owner.
+type optionRequire struct{ owner, path, field, option string }
+
+// checkOptionRequires judges the options the prerequisites ask for once every entry is built, so an option may ask for
+// one of a feature that comes later in the overlay: each must exist, and no two may wait for each other (they would stay
+// blocked forever).
+func (b *overlayBuilder) checkOptionRequires() error {
+	var c entryErrors
+	waits := map[string][]string{}
+	for _, r := range b.optionRequires {
+		if !b.isOption(r.option) {
+			c.at(r.owner, r.path, r.field, ReasonReference, "the option %q does not exist", r.option)
+			continue
+		}
+		waits[r.owner] = append(waits[r.owner], r.option)
+	}
+	for _, r := range b.optionRequires {
+		if slices.Contains(waits[r.owner], r.option) && waitsFor(waits, r.option, r.owner, map[string]bool{}) {
+			c.at(r.owner, r.path, r.field, ReasonValue, "%q and %q wait for each other: neither could ever be picked", r.owner, r.option)
+		}
+	}
+	return c.err()
+}
+
+// waitsFor says whether from, through the options it asks for, asks for target.
+func waitsFor(waits map[string][]string, from, target string, seen map[string]bool) bool {
+	if seen[from] {
+		return false
+	}
+	seen[from] = true
+	for _, k := range waits[from] {
+		if k == target || waitsFor(waits, k, target, seen) {
+			return true
+		}
+	}
+	return false
 }

@@ -496,7 +496,9 @@ message FeatPrerequisite {
   FeatClassLevel class_level = 13;
   // A Pact Boon the character has: an SRD one or a table option of the set "pact_boon". Empty asks nothing.
   string requires_pact = 14;
-  // A spell the character knows (a cantrip, a known or a prepared spell). Empty asks nothing.
+  // A spell the character knows: a cantrip, a known, a prepared or an always-prepared spell, and a granted spell that
+  // counts as known (from a race or a feat). A spell cast from an item does not count. The same meaning on a feat and on
+  // an option. Empty asks nothing.
   string requires_spell_key = 15;
   // Options (the SRD's or the table's) the character has picked; each one is asked. At most 10.
   repeated string requires_option_keys = 16;
@@ -504,6 +506,8 @@ message FeatPrerequisite {
 
 // FeatClassLevel is "level N in class X" in a feat's prerequisite.
 message FeatClassLevel {
+  // The class, the table's or the SRD's. A player does not read it when the class is hidden (the condition then
+  // reads as not set, as for the other keys); the master always does.
   string class_key = 1;
   // 1 to 20.
   int32 level = 2;

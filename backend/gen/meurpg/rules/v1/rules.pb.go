@@ -3406,7 +3406,9 @@ type FeatPrerequisite struct {
 	ClassLevel *FeatClassLevel `protobuf:"bytes,13,opt,name=class_level,json=classLevel,proto3" json:"class_level,omitempty"`
 	// A Pact Boon the character has: an SRD one or a table option of the set "pact_boon". Empty asks nothing.
 	RequiresPact string `protobuf:"bytes,14,opt,name=requires_pact,json=requiresPact,proto3" json:"requires_pact,omitempty"`
-	// A spell the character knows (a cantrip, a known or a prepared spell). Empty asks nothing.
+	// A spell the character knows: a cantrip, a known, a prepared or an always-prepared spell, and a granted spell that
+	// counts as known (from a race or a feat). A spell cast from an item does not count. The same meaning on a feat and on
+	// an option. Empty asks nothing.
 	RequiresSpellKey string `protobuf:"bytes,15,opt,name=requires_spell_key,json=requiresSpellKey,proto3" json:"requires_spell_key,omitempty"`
 	// Options (the SRD's or the table's) the character has picked; each one is asked. At most 10.
 	RequiresOptionKeys []string `protobuf:"bytes,16,rep,name=requires_option_keys,json=requiresOptionKeys,proto3" json:"requires_option_keys,omitempty"`
@@ -3558,8 +3560,10 @@ func (x *FeatPrerequisite) GetRequiresOptionKeys() []string {
 
 // FeatClassLevel is "level N in class X" in a feat's prerequisite.
 type FeatClassLevel struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	ClassKey string                 `protobuf:"bytes,1,opt,name=class_key,json=classKey,proto3" json:"class_key,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The class, the table's or the SRD's. A player does not read it when the class is hidden (the condition then
+	// reads as not set, as for the other keys); the master always does.
+	ClassKey string `protobuf:"bytes,1,opt,name=class_key,json=classKey,proto3" json:"class_key,omitempty"`
 	// 1 to 20.
 	Level         int32 `protobuf:"varint,2,opt,name=level,proto3" json:"level,omitempty"`
 	unknownFields protoimpl.UnknownFields

@@ -993,6 +993,8 @@ type overlayBuilder struct {
 	pending []pendingEffects
 	// featLacks are the features the feats ask the character not to have.
 	featLacks []featLack
+	// optionRequires are the options the prerequisites ask for, judged once every entry is built.
+	optionRequires []optionRequire
 	// strict is Overlay.Strict as a set.
 	strict map[string]bool
 	// optionEntry is the entry of every option of a feature list, by option key;
@@ -1165,6 +1167,9 @@ func (b *overlayBuilder) build(o Overlay) error {
 		return err
 	}
 	if err := b.checkFeatLacks(); err != nil {
+		return err
+	}
+	if err := b.checkOptionRequires(); err != nil {
 		return err
 	}
 	b.offerFeatSets()

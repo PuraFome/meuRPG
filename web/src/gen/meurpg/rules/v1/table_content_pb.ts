@@ -1201,7 +1201,7 @@ export type OptionPrerequisite = Message<"meurpg.rules.v1.OptionPrerequisite"> &
   requiresPact: string;
 
   /**
-   * A spell the character knows (a cantrip, a known or a prepared spell).
+   * A spell the character knows: the same meaning as FeatPrerequisite.requires_spell_key.
    *
    * @generated from field: string requires_spell_key = 4;
    */

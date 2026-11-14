@@ -777,7 +777,9 @@ export type FeatPrerequisite = Message<"meurpg.rules.v1.FeatPrerequisite"> & {
   requiresPact: string;
 
   /**
-   * A spell the character knows (a cantrip, a known or a prepared spell). Empty asks nothing.
+   * A spell the character knows: a cantrip, a known, a prepared or an always-prepared spell, and a granted spell that
+   * counts as known (from a race or a feat). A spell cast from an item does not count. The same meaning on a feat and on
+   * an option. Empty asks nothing.
    *
    * @generated from field: string requires_spell_key = 15;
    */
@@ -805,6 +807,9 @@ export const FeatPrerequisiteSchema: GenMessage<FeatPrerequisite> = /*@__PURE__*
  */
 export type FeatClassLevel = Message<"meurpg.rules.v1.FeatClassLevel"> & {
   /**
+   * The class, the table's or the SRD's. A player does not read it when the class is hidden (the condition then
+   * reads as not set, as for the other keys); the master always does.
+   *
    * @generated from field: string class_key = 1;
    */
   classKey: string;

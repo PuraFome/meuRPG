@@ -489,6 +489,9 @@ func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
 			p.LacksFeatureKey, f.LacksFeatureNamePt, f.LacksFeatureHidden = "", "", true
 		}
 		p.RequiresOptionKeys = slices.DeleteFunc(p.RequiresOptionKeys, func(k string) bool { return hiddenToSheet(t, k) })
+		if hiddenToSheet(t, p.GetClassLevel().GetClassKey()) {
+			p.ClassLevel = nil
+		}
 		if hiddenToSheet(t, p.GetRequiresPact()) {
 			p.RequiresPact = ""
 		}
@@ -517,7 +520,7 @@ func hideUnmet(u *rulesv1.FeatUnmet, t levelUpTarget) {
 		if hiddenToSheet(t, u.GetKey()) {
 			u.Key, u.NamePt, u.Hidden = "", "", true
 		}
-	case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_PACT, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_SPELL, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_OPTION:
+	case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_CLASS_LEVEL, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_PACT, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_SPELL, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_OPTION:
 		if hiddenToSheet(t, u.GetKey()) {
 			u.Key, u.NamePt, u.Hidden = "", "", true
 		}

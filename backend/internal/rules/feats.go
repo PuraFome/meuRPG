@@ -360,13 +360,7 @@ func (c *content) unmetOthers(p FeatPrerequisite, b Build, d Derived) []FeatUnme
 func (c *content) unmetKnowledge(p FeatPrerequisite, b Build, d Derived) []FeatUnmet {
 	var out []FeatUnmet
 	if p.ClassKey != "" {
-		have := 0
-		for _, cl := range b.Classes {
-			if cl.Class == p.ClassKey {
-				have += cl.Level
-			}
-		}
-		if have < p.ClassLevel {
+		if classLevelIn(b.Classes, p.ClassKey) < p.ClassLevel {
 			out = append(out, FeatUnmet{Kind: FeatUnmetClassLevel, Key: p.ClassKey, NamePT: c.namePT(p.ClassKey), Value: p.ClassLevel})
 		}
 	}
@@ -374,7 +368,7 @@ func (c *content) unmetKnowledge(p FeatPrerequisite, b Build, d Derived) []FeatU
 	if p.RequiresPact != "" && !owns(p.RequiresPact) {
 		out = append(out, FeatUnmet{Kind: FeatUnmetPact, Key: p.RequiresPact, NamePT: c.namePT(p.RequiresPact)})
 	}
-	if k := p.RequiresSpell; k != "" && !slices.ContainsFunc(d.Spells, func(s CharacterSpell) bool { return s.Spell.Key == k }) {
+	if k := p.RequiresSpell; k != "" && !knowsSpell(d, k) {
 		out = append(out, FeatUnmet{Kind: FeatUnmetSpell, Key: k, NamePT: c.namePT(k)})
 	}
 	for _, k := range p.RequiresOptions {
@@ -383,6 +377,25 @@ func (c *content) unmetKnowledge(p FeatPrerequisite, b Build, d Derived) []FeatU
 		}
 	}
 	return out
+}
+
+// classLevelIn is the character's level in one class: the sum of its entries, as a sheet may list a class twice.
+// The feat and the option prerequisites read it the same way.
+func classLevelIn(classes []ClassLevel, key string) int {
+	have := 0
+	for _, cl := range classes {
+		if cl.Class == key {
+			have += cl.Level
+		}
+	}
+	return have
+}
+
+// knowsSpell says whether the sheet knows a spell: its cantrips, known, prepared and always-prepared spells, and a
+// granted spell that counts as known (a race's or a feat's). A spell cast from an item does not count. The feat and the
+// option prerequisites read it the same way.
+func knowsSpell(d Derived, key string) bool {
+	return slices.ContainsFunc(d.Spells, func(s CharacterSpell) bool { return s.Spell.Key == key })
 }
 
 // prerequisiteRaces are the races and subraces the prerequisite asks for: Race and Races
