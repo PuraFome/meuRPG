@@ -602,6 +602,8 @@ type WeaponEntry struct {
 	// weapons, 0 otherwise.
 	NormalRangeFt int
 	LongRangeFt   int
+	// Archived and Off mark a table weapon the master retired or switched off for the players; the SRD's never are.
+	Archived, Off bool
 }
 
 // SpellEntry is a spell in the Catalog.

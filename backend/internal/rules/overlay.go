@@ -94,6 +94,7 @@ type Overlay struct {
 	Options       []TableOption
 	ClassFeatures []TableClassFeature
 	Creatures     []TableCreature
+	Weapons       []TableWeapon
 }
 
 // TableEntry is what every entry has. Key is "<kind>:<slug>@mesa" (kind is
@@ -851,6 +852,9 @@ func (c *content) isSwitchable(key string) bool {
 	case strings.HasPrefix(key, CreatureKeyPrefix):
 		_, ok := c.creatureOf[key]
 		return ok
+	case strings.HasPrefix(key, WeaponKeyPrefix):
+		_, ok := c.weaponOf[key]
+		return ok
 	}
 	return false
 }
@@ -878,6 +882,7 @@ func buildKeys(b Build, want func(string) bool) []string {
 		}
 	}
 	add(b.Feats...)
+	add(b.Weapons...) // a table weapon the sheet carries
 	return sortedKeys(seen)
 }
 
@@ -1004,6 +1009,8 @@ type overlayBuilder struct {
 	offKeys       map[string]bool
 	// creaturesOwned says the clone's creature maps are copies (ownCreatures).
 	creaturesOwned bool
+	// equipmentOwned says the clone's equipment map is a copy (ownEquipment).
+	equipmentOwned bool
 	resources      map[string]map[string]bool
 	// resourceMax is the formula of the maximum of each resource an entry declares.
 	resourceMax map[string]map[string]string
@@ -1056,6 +1063,7 @@ const (
 	claimOptions
 	claimClassFeatures
 	claimCreatures
+	claimWeapons
 )
 
 // overlayKinds lists the kinds in the order addEntries adds them.
@@ -1117,6 +1125,11 @@ func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
 			list: "creatures", prefix: CreatureKeyPrefix, claimRank: claimCreatures, n: len(o.Creatures),
 			entry: func(i int) TableEntry { return o.Creatures[i].TableEntry },
 			add:   func(i int, path string) error { return b.addCreature(&o.Creatures[i], path) },
+		},
+		{
+			list: "weapons", prefix: WeaponKeyPrefix, claimRank: claimWeapons, n: len(o.Weapons),
+			entry: func(i int) TableEntry { return o.Weapons[i].TableEntry },
+			add:   func(i int, path string) error { return b.addWeapon(&o.Weapons[i], path) },
 		},
 	}
 }
@@ -1445,6 +1458,7 @@ func (c *content) cloneForOverlay() *content {
 	n.optionSet = map[string]string{}
 	n.classFeatureOf = map[string]ClassFeatureEntry{}
 	n.creatureOf = map[string]CreatureTableEntry{}
+	n.weaponOf = map[string]WeaponTableEntry{}
 	n.creatureSpecs = map[string]*creatureSpec{}
 	n.optionPrereq = map[string]TableOptionPrerequisite{}
 	n.spells = maps.Clone(c.spells)

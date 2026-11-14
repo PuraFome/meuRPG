@@ -1744,6 +1744,9 @@ message Weapon {
   WeaponCategory category = 4;
   // True for a ranged weapon, false for a melee one.
   bool ranged = 5;
+  // Set for a table weapon the master retired, or switched off for the players (RN-23); the SRD's are never.
+  bool archived = 6;
+  bool off = 7;
 }
 
 // Spell is a spell from the rules content.

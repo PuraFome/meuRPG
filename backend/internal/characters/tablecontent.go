@@ -55,6 +55,7 @@ var tableKinds = []struct {
 	{"option", rulesv1.TableContentKind_TABLE_CONTENT_KIND_OPTION},
 	{"classfeature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE},
 	{"creature", rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE},
+	{"weapon", rulesv1.TableContentKind_TABLE_CONTENT_KIND_WEAPON},
 }
 
 func kindPrefix(k rulesv1.TableContentKind) string {
@@ -111,6 +112,8 @@ func newBody(kind rulesv1.TableContentKind) tableBody {
 		return &rulesv1.TableClassFeature{}
 	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE:
 		return &rulesv1.TableCreature{}
+	case rulesv1.TableContentKind_TABLE_CONTENT_KIND_WEAPON:
+		return &rulesv1.TableWeapon{}
 	}
 	return nil
 }
@@ -138,10 +141,12 @@ func setBody(e *rulesv1.TableEntry, b tableBody) {
 		e.Body = &rulesv1.TableEntry_TableClassFeature{TableClassFeature: v}
 	case *rulesv1.TableCreature:
 		e.Body = &rulesv1.TableEntry_TableCreature{TableCreature: v}
+	case *rulesv1.TableWeapon:
+		e.Body = &rulesv1.TableEntry_TableWeapon{TableWeapon: v}
 	}
 }
 
-// bodyFields are the ten oneof getters of a write request.
+// bodyFields are the eleven oneof getters of a write request.
 type bodyFields interface {
 	GetTableClass() *rulesv1.TableClass
 	GetTableSubclass() *rulesv1.TableSubclass
@@ -153,6 +158,7 @@ type bodyFields interface {
 	GetTableOption() *rulesv1.TableOption
 	GetTableClassFeature() *rulesv1.TableClassFeature
 	GetTableCreature() *rulesv1.TableCreature
+	GetTableWeapon() *rulesv1.TableWeapon
 }
 
 // bodyOf is the body a request carries, with the kind it gives, or nil.
@@ -178,6 +184,8 @@ func bodyOf(r bodyFields) (tableBody, rulesv1.TableContentKind) {
 		return r.GetTableClassFeature(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE
 	case r.GetTableCreature() != nil:
 		return r.GetTableCreature(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE
+	case r.GetTableWeapon() != nil:
+		return r.GetTableWeapon(), rulesv1.TableContentKind_TABLE_CONTENT_KIND_WEAPON
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }
@@ -265,9 +273,28 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableCreature:
 			o.Creatures = append(o.Creatures, tableCreatureOf(te, b))
 			idx["creatures"] = append(idx["creatures"], e)
+		case *rulesv1.TableWeapon:
+			o.Weapons = append(o.Weapons, tableWeaponOf(te, b))
+			idx["weapons"] = append(idx["weapons"], e)
 		}
 	}
 	return o, idx
+}
+
+// tableWeaponOf is the engine's weapon of a stored one.
+func tableWeaponOf(te rules.TableEntry, b *rulesv1.TableWeapon) rules.TableWeapon {
+	category := ""
+	switch b.GetCategory() {
+	case rulesv1.WeaponCategory_WEAPON_CATEGORY_SIMPLE:
+		category = "simple"
+	case rulesv1.WeaponCategory_WEAPON_CATEGORY_MARTIAL:
+		category = "martial"
+	}
+	return rules.TableWeapon{
+		TableEntry: te, DescPT: b.GetDescPt(), Category: category, Ranged: b.GetRanged(), Damage: b.GetDamage(), DamageType: b.GetDamageType(),
+		TwoHandedDamage: b.GetTwoHandedDamage(), Properties: b.GetProperties(), NormalRangeFt: int(b.GetNormalRangeFt()), LongRangeFt: int(b.GetLongRangeFt()),
+		WeightOz: int(b.GetWeightOz()), PriceCP: int(b.GetPriceCp()),
+	}
 }
 
 // tableCreatureOf is the engine's creature of a stored one.
@@ -832,7 +859,7 @@ func violationOf(oe *rules.OverlayError, idx overlayIndex, entry string) *rulesv
 
 // overlayPath splits "classes[2].levels[4]" into the kind's list, the index and
 // the rest.
-var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options|class_features|creatures)\[(\d+)\](.*)$`)
+var overlayPath = regexp.MustCompile(`^(classes|subclasses|races|subraces|backgrounds|spells|feats|options|class_features|creatures|weapons)\[(\d+)\](.*)$`)
 
 // slugify makes the slug of a key from a Portuguese name: lower case, without
 // accents, the rest of it a-z0-9 joined by hyphens, at most rules.MaxSlugLength.

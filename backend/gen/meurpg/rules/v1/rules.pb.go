@@ -8752,7 +8752,10 @@ type Weapon struct {
 	NamePt   string         `protobuf:"bytes,3,opt,name=name_pt,json=namePt,proto3" json:"name_pt,omitempty"`
 	Category WeaponCategory `protobuf:"varint,4,opt,name=category,proto3,enum=meurpg.rules.v1.WeaponCategory" json:"category,omitempty"`
 	// True for a ranged weapon, false for a melee one.
-	Ranged        bool `protobuf:"varint,5,opt,name=ranged,proto3" json:"ranged,omitempty"`
+	Ranged bool `protobuf:"varint,5,opt,name=ranged,proto3" json:"ranged,omitempty"`
+	// Set for a table weapon the master retired, or switched off for the players (RN-23); the SRD's are never.
+	Archived      bool `protobuf:"varint,6,opt,name=archived,proto3" json:"archived,omitempty"`
+	Off           bool `protobuf:"varint,7,opt,name=off,proto3" json:"off,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -8818,6 +8821,20 @@ func (x *Weapon) GetCategory() WeaponCategory {
 func (x *Weapon) GetRanged() bool {
 	if x != nil {
 		return x.Ranged
+	}
+	return false
+}
+
+func (x *Weapon) GetArchived() bool {
+	if x != nil {
+		return x.Archived
+	}
+	return false
+}
+
+func (x *Weapon) GetOff() bool {
+	if x != nil {
+		return x.Off
 	}
 	return false
 }
@@ -14656,13 +14673,15 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
 	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12:\n" +
-	"\bcategory\x18\x04 \x01(\x0e2\x1e.meurpg.rules.v1.ArmorCategoryR\bcategory\"\x9c\x01\n" +
+	"\bcategory\x18\x04 \x01(\x0e2\x1e.meurpg.rules.v1.ArmorCategoryR\bcategory\"\xca\x01\n" +
 	"\x06Weapon\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
 	"\aname_pt\x18\x03 \x01(\tR\x06namePt\x12;\n" +
 	"\bcategory\x18\x04 \x01(\x0e2\x1f.meurpg.rules.v1.WeaponCategoryR\bcategory\x12\x16\n" +
-	"\x06ranged\x18\x05 \x01(\bR\x06ranged\"\xc8\x02\n" +
+	"\x06ranged\x18\x05 \x01(\bR\x06ranged\x12\x1a\n" +
+	"\barchived\x18\x06 \x01(\bR\barchived\x12\x10\n" +
+	"\x03off\x18\a \x01(\bR\x03off\"\xc8\x02\n" +
 	"\x05Spell\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +

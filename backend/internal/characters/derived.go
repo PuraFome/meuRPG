@@ -503,7 +503,7 @@ func armorToProto(a rules.ArmorEntry) *rulesv1.Armor {
 }
 
 func weaponToProto(w rules.WeaponEntry) *rulesv1.Weapon {
-	return &rulesv1.Weapon{Key: w.Key, Name: w.Name, NamePt: w.NamePT, Category: weaponCategoryToProto[w.Category], Ranged: w.Range == "ranged"}
+	return &rulesv1.Weapon{Key: w.Key, Name: w.Name, NamePt: w.NamePT, Category: weaponCategoryToProto[w.Category], Ranged: w.Range == "ranged", Archived: w.Archived, Off: w.Off}
 }
 
 func challengeRatingToProto(r rules.ChallengeRating) *rulesv1.ChallengeRating {

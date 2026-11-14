@@ -61,6 +61,9 @@ enum TableContentKind {
   // read it by its own key. Summoning spells, Wild Shape and the encounter tools offer
   // SRD creatures only.
   TABLE_CONTENT_KIND_CREATURE = 10;
+  // A weapon the SRD does not have: "weapon:<slug>@mesa". It is an equipment row of the weapon kind: a sheet carries it
+  // in its weapon keys, attacks with it and is proficient by its category, like an SRD weapon.
+  TABLE_CONTENT_KIND_WEAPON = 11;
 }
 
 // TableEntry is one entry of the table's content, as ListTableEntries and the
@@ -104,7 +107,43 @@ message TableEntry {
     TableOption table_option = 18;
     TableClassFeature table_class_feature = 19;
     TableCreature table_creature = 20;
+    TableWeapon table_weapon = 21;
   }
+}
+
+// TableWeapon is a weapon the master adds as a table entry "weapon:<slug>@mesa": a name, a category, the damage and
+// the properties of a weapon of the SRD's equipment list. Once the entry exists it is an equipment row by its own key:
+// the sheet's weapon list, the attack lines, the proficiency by category (simple or martial) and the weapon rules
+// ("weapon-property:" filters of a power attack, a weapon the effects name) read it where they read an SRD weapon.
+// It is mundane: a magic weapon is an item, a separate area. Weight and price are the table's notes: the engine does
+// not count them yet.
+message TableWeapon {
+  string name_pt = 1;
+  // The text, one paragraph per entry.
+  // Each paragraph has at most 4,000 characters (maxTextRunes in backend/internal/rules/overlay.go).
+  // The request limit is 16 KiB for each paragraph: 4,000 characters of up to 4 bytes.
+  repeated string desc_pt = 2 [(meurpg.options.v1.max_len) = 16384];
+  // Simple or martial. Required.
+  WeaponCategory category = 3;
+  // True for a ranged weapon, false for a melee one.
+  bool ranged = 4;
+  // The damage dice, "1d8" (one to twenty dice of 4, 6, 8, 10, 12 or 20 sides, or a flat damage "1"). Required.
+  string damage = 5;
+  // A damage type key of the content ("damage-type:slashing"). Required.
+  string damage_type = 6;
+  // The dice when held in two hands; only with the property "weapon-property:versatile".
+  string two_handed_damage = 7;
+  // "weapon-property:" keys of the content (finesse, light, heavy, reach, thrown, versatile, two-handed...), each once and
+  // at most 10.
+  repeated string properties = 8;
+  // The range in feet: the normal and the long range of a ranged weapon, or of a melee weapon with the property
+  // "weapon-property:thrown" (both required then; long at least the normal). Refused on any other melee weapon: its reach
+  // is 10 feet with the property "weapon-property:reach" and 5 feet without.
+  int32 normal_range_ft = 9;
+  int32 long_range_ft = 10;
+  // Weight in ounces (0 to 160000) and price in copper pieces (0 to 100000000). Notes only.
+  int32 weight_oz = 11;
+  int32 price_cp = 12;
 }
 
 // TableEffect is one effect of a feature, from the closed menu: what the engine
@@ -1653,6 +1692,7 @@ message CreateTableEntryRequest {
     TableOption table_option = 18;
     TableClassFeature table_class_feature = 19;
     TableCreature table_creature = 20;
+    TableWeapon table_weapon = 21;
   }
   // Optional. 1 to 64 characters, chosen once by the app for this action: a retry with the
   // same key and the same request returns what the first call made instead of making another.
@@ -1689,6 +1729,7 @@ message UpdateTableEntryRequest {
     TableOption table_option = 18;
     TableClassFeature table_class_feature = 19;
     TableCreature table_creature = 20;
+    TableWeapon table_weapon = 21;
   }
 }
 
