@@ -81,7 +81,8 @@ func TestCombatantMountMigration(t *testing.T) {
 		t.Errorf("event kinds = %d, want 3", kinds)
 	}
 
-	// A second run (this migration and every later one run again) changes nothing and a way down removes the columns and the kinds.
+	// A second run changes nothing and a way down removes the columns and the kinds. Every version from 333 up is
+	// forgotten, so goose runs them again in order whatever later migrations the tree has.
 	exec(t, db, "DELETE FROM goose_db_version WHERE version_id >= 333")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("second Up() error = %v", err)

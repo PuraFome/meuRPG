@@ -6,7 +6,7 @@ import { type AttunementEntryVm, MagicCategories } from '../../../core/character
 import type { GearVm } from '../../../core/characters/gear';
 
 import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
-import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
+import { ChipLegend } from '../../../shared/chip-legend/chip-legend';
 import {
   type AttunementChip,
   GearList,
@@ -23,7 +23,7 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-equipment-panel',
-  imports: [BonusChip, GearList, MatButtonModule, MatIconModule],
+  imports: [ChipLegend, GearList, MatButtonModule, MatIconModule],
   templateUrl: './equipment-panel.html',
   styleUrl: './equipment-panel.scss',
 })
@@ -98,25 +98,17 @@ export class EquipmentPanel {
     return this.sheet().gear.some((g) => chip(g) !== '');
   });
 
-  /** The marks that appear on some gear row, for the legend: the word and the icon of each chip. */
-  protected readonly legendMarks = computed(() => {
-    const gear = this.sheet().gear;
-    return [
-      { word: 'Prateada', icon: 'dark_mode', on: gear.some((g) => g.marks?.silvered) },
-      { word: 'Adamantina', icon: 'diamond', on: gear.some((g) => g.marks?.adamantine) },
-      { word: 'Mágica', icon: 'auto_awesome', on: gear.some((g) => g.marks?.magical) },
-    ].filter((m) => m.on);
+  /** The marks of the gear rows, for the legend. */
+  protected readonly legendMarks = computed(() => this.sheet().gear.map((g) => g.marks));
+  /** The bonus chip of the legend: solid when some bonus is added to the numbers now, dashed when none is, absent without one. */
+  protected readonly legendBonus = computed((): '' | 'counts' | 'idle' => {
+    const bonuses = this.sheet().gear.filter((g) => !!g.bonus);
+    return bonuses.length === 0
+      ? ''
+      : bonuses.some((g) => g.bonusCounts !== false)
+        ? 'counts'
+        : 'idle';
   });
-  /** Some gear row carries a magic bonus chip. */
-  protected readonly hasBonus = computed(() => this.sheet().gear.some((g) => !!g.bonus));
-  /** Some bonus is added to the numbers now (the legend's chip is solid), else every one is dashed. */
-  protected readonly bonusCounts = computed(() =>
-    this.sheet().gear.some((g) => !!g.bonus && g.bonusCounts !== false),
-  );
-  /** The legend shows when any chip is on a row. */
-  protected readonly hasLegend = computed(
-    () => this.legendMarks().length > 0 || this.showsChips() || this.hasBonus(),
-  );
 
   /** The line under a magic item that asks and is not attuned, with its icon; the same words as the short-rest sheet. */
   protected reasonOfEntry(e: AttunementEntryVm) {

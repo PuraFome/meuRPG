@@ -11,7 +11,7 @@ import {
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { type MarksVm, markWords } from '../characters/gear';
+import { type MarksVm, attackMarksFor, markWords } from '../characters/gear';
 import { rechargeText } from './combat-errors';
 import { circleLabel } from './combat-grid';
 import { metersText } from '../units';
@@ -326,9 +326,20 @@ export function attackTagsOf(o: AttackOption): string[] {
   return o.attack && isCantrip(o.attack) ? ['Truque'] : [];
 }
 
-/** The marks of a weapon attack, for its chip beside the name; none for a spell or a creature's attack. */
-export function attackMarksOf(a: Attack | undefined): MarksVm | null {
-  return a?.kind === AttackKind.WEAPON && markWords(a).length > 0
-    ? { silvered: a.silvered, adamantine: a.adamantine, magical: a.magical }
-    : null;
+/** The counting magic bonus (0 to 3) the server says is inside an attack option's numbers; 0 when it says none. */
+export function magicBonusOf(o: AttackOption | undefined): number {
+  return o?.magicBonus ?? 0;
+}
+
+/** The marks of a weapon attack, for its chip beside the name; none for a spell or a creature's attack.
+ * A counting +N (`bonus`) takes the place of "Mágica". */
+export function attackMarksOf(a: Attack | undefined, bonus = 0): MarksVm | null {
+  if (a?.kind !== AttackKind.WEAPON) {
+    return null;
+  }
+  const marks = attackMarksFor(
+    { silvered: a.silvered, adamantine: a.adamantine, magical: a.magical },
+    bonus,
+  );
+  return markWords(marks).length > 0 ? (marks ?? null) : null;
 }

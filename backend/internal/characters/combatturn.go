@@ -423,6 +423,7 @@ func turnOptionsToProto(o combat.TurnOptions) *rulesv1.TurnOptions {
 		out.Attacks = append(out.Attacks, &rulesv1.AttackOption{
 			Attack: attackToProto(a.Attack), Enabled: a.Enabled, Reason: reasonProto(a.Reason),
 			BonusRule: bonusRuleToProto[a.Bonus], BonusAttacksLeft: i32(a.FlurryLeft), BonusDropsModifier: a.DropsModifier, BeamsLeft: i32(a.BeamsLeft),
+			MagicBonus: i32(a.Attack.MagicBonus),
 		})
 	}
 	for _, sp := range o.Spells {

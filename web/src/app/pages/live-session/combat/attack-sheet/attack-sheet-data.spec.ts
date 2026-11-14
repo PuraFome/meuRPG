@@ -258,3 +258,28 @@ describe('throwBackAttack', () => {
     expect(throwBackAttack(undefined, turn())).toBeNull();
   });
 });
+
+describe('attackSheetData: the magic bonus', () => {
+  const withBonus = (magicBonus: number) =>
+    turn({}, [{ attack: sword, magicBonus } as { attack: typeof sword }]);
+
+  it("carries the option's counting bonus", () => {
+    expect(attackSheetData(request({ options: withBonus(2) }))?.bonus).toBe(2);
+  });
+
+  it('carries none when the option says none', () => {
+    expect(attackSheetData(request({ options: withBonus(0) }))?.bonus).toBeUndefined();
+    expect(attackSheetData(request())?.bonus).toBeUndefined();
+  });
+
+  it("carries none for the master's roll", () => {
+    expect(
+      attackSheetData(request({ options: withBonus(2), master: true }))?.bonus,
+    ).toBeUndefined();
+  });
+
+  it('carries none for a thrown-back missile, even when its key has an option with a bonus', () => {
+    const thrown = { attack: sword, targets: [] };
+    expect(attackSheetData(request({ options: withBonus(2), thrown }))?.bonus).toBeUndefined();
+  });
+});
