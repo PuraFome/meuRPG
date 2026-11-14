@@ -520,7 +520,7 @@ The catalog lists no always-prepared spell for an expanded subclass.
     The sheet asks no pick for them.
 
   How the sheet merges the two is in [Characters: table content](characters-table-content.md#the-sheet-of-a-race-and-a-subrace).
-- **Background:** two skills, tools, languages to choose, the equipment as text and the feature, usually a note.
+- **Background:** two skills, tools, languages to choose, the equipment as text and the feature, usually a note. Up to 4 `groups` (`background_groups.go`) let the player pick some of a few skills, tools (the SRD's, and typed gaming sets) or pieces of equipment. A pick is `<background>#group:<signature>=<value>` in `feature_choice_keys`; the signature is a hash of the kind, the number of picks and the sorted options, so a reorder keeps the picks and an edit orphans them (a stale pick is accepted by `Validate` and counts for nothing; the group asks again). The skills a background names plus the picks of its skill groups are 2.
   A table background's equipment reaches `Derive` (`background_equipment_pt`).
 
 ## Feat

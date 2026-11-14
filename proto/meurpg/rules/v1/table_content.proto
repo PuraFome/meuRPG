@@ -946,6 +946,33 @@ message TableBackground {
   // The request limit is 16 KiB: 4,000 characters of up to 4 bytes.
   string equipment_pt = 5 [(meurpg.options.v1.max_len) = 16384];
   TableFeature feature = 6;
+  // The "this or that" groups of the background: each one lets the player pick some of a few skills, tools or pieces
+  // of equipment. The skills the background gives are `skills` and the picks of its skill groups together. At most 4.
+  repeated TableBackgroundGroup groups = 7;
+}
+
+// TableBackgroundGroupKind says what a background group offers.
+enum TableBackgroundGroupKind {
+  TABLE_BACKGROUND_GROUP_KIND_UNSPECIFIED = 0;
+  // Skills (SRD skill keys).
+  TABLE_BACKGROUND_GROUP_KIND_SKILL = 1;
+  // Tool proficiencies (SRD tool keys, the SRD's dice set and playing card set among them) and the named gaming sets the
+  // master types.
+  TABLE_BACKGROUND_GROUP_KIND_TOOL = 2;
+  // Pieces of equipment, each a short text.
+  TABLE_BACKGROUND_GROUP_KIND_EQUIPMENT = 3;
+}
+
+// TableBackgroundGroup is one "this or that" of a background: the player picks `choose` of the options, which are
+// `options` and `gaming_set_names` together (at least 2, and more than `choose`).
+message TableBackgroundGroup {
+  TableBackgroundGroupKind kind = 1;
+  int32 choose = 2;
+  // Skill keys, tool proficiency keys, or the texts of the equipment (1 to 80 characters).
+  repeated string options = 3 [(meurpg.options.v1.max_len) = 160];
+  // The named gaming sets the master typed ("Trilha"), 1 to 40 characters each; only for a tool group. The sheet lists
+  // one as "Conjunto de jogo: Trilha".
+  repeated string gaming_set_names = 4 [(meurpg.options.v1.max_len) = 160];
 }
 
 // TableSpellTargetKind says whom a table spell reaches.

@@ -316,6 +316,8 @@ type TableBackground struct {
 	// Feature is the background's feature, usually a note
 	// ("background-feature:<slug>@mesa").
 	Feature TableFeature
+	// Groups are the "this or that" picks of the background (background_groups.go).
+	Groups []BackgroundGroup
 }
 
 // TableSpell is a spell. Its details become the SpellDetails of the SRD's
@@ -1499,6 +1501,7 @@ func (c *content) cloneForOverlay() *content {
 	n.raceSets = map[string][][]int{}
 	n.raceSizes = map[string][]string{}
 	n.bgEquipment = map[string]string{}
+	n.bgGroups = map[string][]BackgroundGroup{}
 	n.catalog = Catalog{}
 	n.spellEntries = nil
 	n.spellDetails = nil

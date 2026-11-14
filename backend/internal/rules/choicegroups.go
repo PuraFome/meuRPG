@@ -532,7 +532,7 @@ func (cb *choiceBuilder) finish() ChoiceSet {
 		}
 	}
 	for _, k := range cb.b.FeatureChoices {
-		if choiceKey, value, ok := SplitScopedChoice(k); ok && !cb.used[ScopedChoice(choiceKey, value)] {
+		if choiceKey, value, ok := SplitScopedChoice(k); ok && !cb.used[ScopedChoice(choiceKey, value)] && !strings.Contains(choiceKey, groupKeyPart) {
 			set.NotOffered = append(set.NotOffered, k)
 		}
 	}

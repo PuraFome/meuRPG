@@ -52,6 +52,11 @@ type deriver struct {
 	// pickedLanguages and pickedTools are the picks that give a language or a tool (proficiency_picks.go).
 	owned                        map[string]bool
 	pickedLanguages, pickedTools []proficiencyPick
+	// groups are the picks of the background's groups (background_groups.go), read once; groupTyped are the labels of the
+	// typed gaming sets they gave.
+	groups     []groupPick
+	groupsRead bool
+	groupTyped []string
 
 	// inactiveFeats are the feats the character took and no longer meets the prerequisite
 	// of: the sheet lists them but their effects do not apply.
@@ -810,7 +815,7 @@ func (x *deriver) names() {
 	}
 	if _, ok := c.backgrounds[x.b.Background]; ok {
 		x.d.BackgroundNamePT = c.namePT(x.b.Background)
-		x.d.BackgroundEquipmentPT = c.bgEquipment[x.b.Background]
+		x.d.BackgroundEquipmentPT = x.groupEquipment(c.bgEquipment[x.b.Background])
 	} else if x.b.Background == "" {
 		x.d.BackgroundNamePT = x.b.CustomBackgroundName
 		x.d.BackgroundEquipmentPT = x.b.CustomBackgroundEquipment

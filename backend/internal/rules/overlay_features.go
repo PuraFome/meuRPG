@@ -1409,6 +1409,7 @@ func (b *overlayBuilder) addBackground(tb *TableBackground, path string) error {
 	key := tb.Key
 	var c entryErrors
 	b.checkBackgroundSkills(&c, tb, path)
+	b.checkBackgroundGroups(&c, tb, path)
 	if len(tb.Tools) > maxBackgroundTools {
 		c.at(key, path, ".tools", ReasonLimit, "at most 4 tools")
 	}
@@ -1433,14 +1434,21 @@ func (b *overlayBuilder) addBackground(tb *TableBackground, path string) error {
 	if tb.EquipmentPT != "" {
 		b.n.bgEquipment[key] = tb.EquipmentPT
 	}
+	if len(tb.Groups) > 0 {
+		b.n.bgGroups[key] = slices.Clone(tb.Groups)
+	}
 	return nil
 }
 
 // checkBackgroundSkills checks a background's two different SRD skills.
 func (b *overlayBuilder) checkBackgroundSkills(c *entryErrors, tb *TableBackground, path string) {
 	key := tb.Key
-	if len(tb.Skills) != CustomBackgroundSkillCount {
-		c.at(key, path, ".skills", ReasonValue, "a background gives %d different skills", CustomBackgroundSkillCount)
+	if len(tb.Skills)+groupSkillPicks(tb.Groups) != CustomBackgroundSkillCount {
+		why := ""
+		if len(tb.Groups) > 0 {
+			why = ", the ones it names and the picks of its skill groups together"
+		}
+		c.at(key, path, ".skills", ReasonValue, "a background gives %d different skills%s", CustomBackgroundSkillCount, why)
 	}
 	for i, s := range tb.Skills {
 		if _, ok := b.base.skills[s]; !ok {
