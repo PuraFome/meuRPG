@@ -66,18 +66,8 @@ func (c *content) loadItemCharges(fsys fs.FS) error {
 }
 
 func (c *content) itemChargesOf(key string, e chargesFile) (ItemCharges, error) {
-	m, ok := c.magicItems[key]
-	switch {
-	case !ok:
-		return ItemCharges{}, fmt.Errorf("is not a magic item")
-	case len(m.Variants) > 0 && !m.Standalone:
-		return ItemCharges{}, fmt.Errorf("is a family: give the numbers to its variants")
-	case e.Max < 1 || e.Max > maxItemCharges:
-		return ItemCharges{}, fmt.Errorf("max must be 1 to %d", maxItemCharges)
-	case e.Recharge != RechargeDawn && e.Recharge != RechargeNone:
-		return ItemCharges{}, fmt.Errorf("recharge must be %q or %q", RechargeDawn, RechargeNone)
-	case e.Empty != ChargesEmptyNone && e.Empty != ChargesEmptyD20 && e.Empty != ChargesEmptyDestroyed:
-		return ItemCharges{}, fmt.Errorf("empty is none, d20 or destroyed")
+	if err := c.checkChargesEntry(key, e); err != nil {
+		return ItemCharges{}, err
 	}
 	ic := ItemCharges{Max: e.Max, Recharge: e.Recharge, Empty: e.Empty}
 	if err := readRegain(&ic, e); err != nil {
@@ -91,6 +81,24 @@ func (c *content) itemChargesOf(key string, e chargesFile) (ItemCharges, error) 
 		ic.EmptyHighRegain = d
 	}
 	return ic, nil
+}
+
+// checkChargesEntry refuses an entry of a key that is no item or a family, and the values out of range.
+func (c *content) checkChargesEntry(key string, e chargesFile) error {
+	m, ok := c.magicItems[key]
+	switch {
+	case !ok:
+		return fmt.Errorf("is not a magic item")
+	case len(m.Variants) > 0 && !m.Standalone:
+		return fmt.Errorf("is a family: give the numbers to its variants")
+	case e.Max < 1 || e.Max > maxItemCharges:
+		return fmt.Errorf("max must be 1 to %d", maxItemCharges)
+	case e.Recharge != RechargeDawn && e.Recharge != RechargeNone:
+		return fmt.Errorf("recharge must be %q or %q", RechargeDawn, RechargeNone)
+	case e.Empty != ChargesEmptyNone && e.Empty != ChargesEmptyD20 && e.Empty != ChargesEmptyDestroyed:
+		return fmt.Errorf("empty is none, d20 or destroyed")
+	}
+	return nil
 }
 
 // readRegain reads the regain of an entry: "all" or dice, and only for an item that recharges at dawn.
