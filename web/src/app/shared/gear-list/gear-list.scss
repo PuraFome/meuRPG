@@ -52,11 +52,18 @@
 .gear-row__main {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 
   > * {
     flex: none;
+  }
+
+  // The kind icon is the size of the name's capitals, so the name keeps the room.
+  > .gear-row__icon {
+    width: var(--mr-font-18);
+    height: var(--mr-font-18);
+    font-size: var(--mr-font-18);
   }
 
   > .gear-row__name {
@@ -69,7 +76,7 @@
 
   // The 44px target reaches into the button's margin, so the words keep their room.
   > .gear-row__more {
-    margin-inline: auto -8px;
+    margin-inline: auto -6px;
   }
 }
 
@@ -162,7 +169,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
+  // 36px wide and 44px tall: the target stays above the 24px minimum and the name keeps the room.
+  width: 36px;
   height: 44px;
   padding: 0;
   border: 1px solid transparent;
