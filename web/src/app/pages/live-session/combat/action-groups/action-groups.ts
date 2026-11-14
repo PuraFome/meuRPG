@@ -39,6 +39,7 @@ import {
   spellLine,
   spellTags,
 } from '../../../../core/combat/combat-options';
+import { tradeLinesOf } from '../../../../core/combat/power-attack-trade';
 import {
   type ActionTabId,
   type SpentGroups,
@@ -444,10 +445,11 @@ export class ActionGroups {
   );
 
   /** The line of why under an attack: its bonus action rule, or the beams of a cast still to fire. */
-  protected attackNote(o: AttackOption): string {
-    return bonusAttackLine(o) || beamsLeftLine(o);
-  }
+  protected readonly attackNote = (o: AttackOption): string =>
+    bonusAttackLine(o) || beamsLeftLine(o);
 
+  /** The line of each power attack trade the server lists on a weapon ("Golpe Pesado: −5 no ataque, +10 no dano"). */
+  protected readonly powerLines = tradeLinesOf;
   protected readonly attackTags = attackTagsOf;
   protected readonly attackMarks = attackMarksOf;
   /** The counting magic bonus the server says is in an attack's numbers. */

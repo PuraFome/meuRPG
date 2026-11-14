@@ -87,3 +87,25 @@ export function partTotal(roll: DamagePartRoll): number {
 export function rerollText(roll: DamagePartRoll): string {
   return roll.rerolled.map((r) => `rolou de novo ${r.from}→${r.to}`).join(', ');
 }
+
+/** "2d6 + 13": the dice of the parts that count, one group for each die size in the order they first come, and the fixed
+ * numbers added up. */
+export function activeFormula(parts: readonly DamagePart[], picks: readonly ExtraPick[]): string {
+  const dice = new Map<number, number>();
+  let flat = 0;
+  for (const p of activeParts(parts, picks)) {
+    const d = partDice(
+      p,
+      picks.find((x) => x.key === p.key),
+    );
+    if (d.count > 0) {
+      dice.set(d.sides, (dice.get(d.sides) ?? 0) + d.count);
+    }
+    flat += p.flat;
+  }
+  const groups = [...dice].map(([sides, count]) => `${count}d${sides}`).join(' + ');
+  if (flat === 0) {
+    return groups || '0';
+  }
+  return groups ? `${groups} ${flat < 0 ? '−' : '+'} ${Math.abs(flat)}` : `${flat}`;
+}

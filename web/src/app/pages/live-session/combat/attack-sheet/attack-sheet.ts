@@ -28,7 +28,6 @@ import {
 } from '../../../../core/combat/combat-options';
 import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
-import { d20Formula } from '../../../../core/combat/roll-mode';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { initialPicks } from '../../../../core/combat/damage-parts';
 import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
@@ -65,6 +64,8 @@ import {
 import { AttackState } from './attack-state';
 import { AttackSteps } from './attack-steps';
 import { ModeRequests } from './mode-requests';
+import { PowerTrade } from './power-trade';
+import { PowerTradeOffer } from './power-trade-offer';
 
 /** An opportunity attack is a melee attack: it reaches 5 ft, whatever range the weapon has when thrown. */
 const REACTION_REACH_FT = 5;
@@ -99,6 +100,7 @@ export type { AttackSheetData } from './attack-sheet-types';
     RollDieOffer,
     RollModePicker,
     HeldRollPrompt,
+    PowerTradeOffer,
     RollPicker,
   ],
   templateUrl: './attack-sheet.html',
@@ -147,8 +149,11 @@ export class AttackSheet {
     computed(() => this.outcome()?.crit),
     computed(() => this.targetLabel()),
   );
+  /** "Troca do talento": the power attack trades the weapon lists, off at the start of every attack. */
+  protected readonly trade = new PowerTrade(this.attack, this.data.powerAttacks ?? []);
   private readonly rolls: AttackRolls = new AttackRolls(this.s, this.dmg, this.question, {
     api: this.api,
+    trade: this.trade,
     animator: this.animator,
     attack: this.attack,
     name: this.name,
@@ -184,7 +189,7 @@ export class AttackSheet {
     if (!extras) {
       return null;
     }
-    const bonus = this.attack.attackBonus;
+    const bonus = this.trade.bonus();
     const total = d20 + bonus + extras.reduce((n, e) => n + e.sign * e.face, 0);
     const mod = bonus === 0 ? '' : ` ${bonus < 0 ? '−' : '+'} ${Math.abs(bonus)}`;
     const text = extras.map((e) => ` ${e.sign < 0 ? '−' : '+'} ${e.face}`).join('');
@@ -199,7 +204,7 @@ export class AttackSheet {
   /** The attack bonus with the typed extra dice, for the total of the two d20. */
   protected readonly pairModifier = computed(() => {
     const extras = this.typedExtras();
-    return this.attack.attackBonus + (extras?.reduce((n, e) => n + e.sign * e.face, 0) ?? 0);
+    return this.trade.bonus() + (extras?.reduce((n, e) => n + e.sign * e.face, 0) ?? 0);
   });
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
@@ -254,7 +259,12 @@ export class AttackSheet {
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
   protected readonly d20Formula = computed(() => {
     const r = this.s.roll()?.d20;
-    return r ? d20Formula(r, true) : '';
+    return r ? this.trade.formula(r, this.targetLabel()) : '';
+  });
+  /** "Golpe Pesado: −5 no ataque", and for a miss that the +10 does not come in; empty for an attack that made no trade. */
+  protected readonly tradeLine = computed(() => {
+    const o = this.outcome();
+    return this.trade.rollLine(o ? (o.hit ? 'hit' : 'miss') : 'unknown');
   });
   /** The d20 is rolled but a reaction holds the result: "Esperando o mestre. O resultado do seu ataque sai quando ele responder." */
   protected readonly held = computed(() => heldWait(this.s.roll(), this.data.state.encounter()));
@@ -308,7 +318,7 @@ export class AttackSheet {
     this.s.typing() || this.data.opportunity || this.data.legendary ? 0 : (this.data.bonus ?? 0),
   );
   protected readonly rollLabel = computed(
-    () => `Role 1d20 para ${this.name} (${signedBonus(this.attack.attackBonus)})`,
+    () => `Role 1d20 para ${this.name} (${signedBonus(this.trade.bonus())})`,
   );
   /** A combat without a map: the master judges the reach, and the list says so instead of "Longe demais". */
   protected readonly theatre = computed(() => isTheatre(this.data.state.encounter()));
@@ -424,6 +434,12 @@ export class AttackSheet {
 
   protected useDie(key: string): void {
     this.rolls.useDie(key);
+  }
+
+  /** The check of a trade: ticks it, or takes it off; the refusal of the last roll no longer holds. */
+  protected pickTrade(key: string): void {
+    this.trade.choose(key);
+    this.s.error.set('');
   }
 
   protected rollAttackTyped(face: number): Promise<void> {

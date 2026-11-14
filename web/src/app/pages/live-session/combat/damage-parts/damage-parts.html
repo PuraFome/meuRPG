@@ -15,8 +15,8 @@
               <span class="line__auto">automático</span>
             }
           </span>
-          @if (p.notePt) {
-            <span class="line__note">{{ p.notePt }}</span>
+          @if (note(p)) {
+            <span class="line__note">{{ note(p) }}</span>
           }
         </li>
       }

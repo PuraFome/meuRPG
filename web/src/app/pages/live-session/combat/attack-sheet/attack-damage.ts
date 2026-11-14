@@ -2,7 +2,8 @@ import { type Signal, computed } from '@angular/core';
 
 import { damageFormula, extraDiceOf } from '../../../../core/combat/combat-dice';
 import { criticalSentence, criticalSum, brutalTyped } from '../../../../core/combat/critical';
-import { activeParts, typedFields } from '../../../../core/combat/damage-parts';
+import { activeFormula, activeParts, typedFields } from '../../../../core/combat/damage-parts';
+import { isTradePart } from '../../../../core/combat/power-attack-trade';
 import type { RollField } from '../../../../shared/multi-roll/multi-roll';
 import {
   afterDamageText,
@@ -38,6 +39,12 @@ export class AttackDamage {
       min: f.min,
       max: f.max,
     })),
+  );
+  /** The button of the damage with parts: "Rolar o dano no app"; with a power attack's flat part it says the roll, "Rolar 2d6 + 13 no app". */
+  readonly partsLabel = computed(() =>
+    this.parts().some(isTradePart)
+      ? `Rolar ${activeFormula(this.parts(), this.s.picks())} no app`
+      : 'Rolar o dano no app',
   );
   readonly flat = computed(() =>
     activeParts(this.parts(), this.s.picks()).reduce((sum, p) => sum + p.flat, 0),

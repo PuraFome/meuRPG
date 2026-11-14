@@ -1,4 +1,5 @@
 import {
+  activeFormula,
   activeParts,
   defaultSlot,
   initialPicks,
@@ -93,5 +94,37 @@ describe('damage parts', () => {
     } as never;
     expect(partTotal(roll)).toBe(12);
     expect(rerollText(roll)).toBe('rolou de novo 1→4, rolou de novo 2→5');
+  });
+});
+
+describe('the formula of the parts that count', () => {
+  const heavy = {
+    key: 'power_attack',
+    labelPt: 'Golpe Pesado',
+    diceCount: 0,
+    diceSides: 0,
+    flat: 10,
+    auto: true,
+  } as never;
+  const greatsword = { ...(weapon as object), diceCount: 2, diceSides: 6, flat: 3 } as never;
+
+  it('adds the fixed numbers of the weapon and of the automatic parts: 2d6 + 13', () => {
+    expect(activeFormula([greatsword, heavy], [])).toBe('2d6 + 13');
+  });
+
+  it('groups the dice by size, and counts only the extras that are marked', () => {
+    const picks = [{ key: 'sneak-attack', slotLevel: 0, pact: false }];
+    expect(activeFormula([greatsword, heavy, sneak], picks)).toBe('4d6 + 13');
+    expect(activeFormula([greatsword, heavy, sneak], [])).toBe('2d6 + 13');
+    expect(
+      activeFormula([greatsword, smite], [{ key: 'divine-smite', slotLevel: 3, pact: false }]),
+    ).toBe('2d6 + 4d8 + 3');
+  });
+
+  it('writes dice alone and a flat number alone', () => {
+    expect(activeFormula([sneak], [{ key: 'sneak-attack', slotLevel: 0, pact: false }])).toBe(
+      '2d6',
+    );
+    expect(activeFormula([heavy], [])).toBe('10');
   });
 });

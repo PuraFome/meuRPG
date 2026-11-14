@@ -263,6 +263,8 @@ export interface AttackEffects {
   readonly useExtraAction?: boolean;
   /** The weapon-attack table die ticked (`RollAttackRequest.maneuver_key`); empty for none. */
   readonly maneuverKey?: string;
+  /** The power attack trade ticked (`RollAttackRequest.power_attack_key`, one of the weapon line's `power_attacks`); empty for none. */
+  readonly powerAttackKey?: string;
   /** The master only: the key of the legendary option of kind "attack" the attack is made with (`LegendaryOption.key`). */
   readonly legendaryOption?: string;
 }

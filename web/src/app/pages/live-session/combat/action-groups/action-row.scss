@@ -127,6 +127,22 @@
   color: var(--mr-ink);
 }
 
+// The power attack trade a weapon accepts: the detail's size, in the ink of the name, with the talent's mark before it.
+.row__power {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  color: var(--mr-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: var(--mr-font-18);
+  }
+}
+
 // The SRD's English text of a creature's attack, as the stat block shows SRD text.
 .row__rider {
   text-wrap: pretty;

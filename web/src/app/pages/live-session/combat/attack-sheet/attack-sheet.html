@@ -122,6 +122,15 @@
             (pickedChange)="useDie($event)"
           />
         }
+        @if (trade.options().length > 0) {
+          <!-- The trade of a power attack feature (Golpe Pesado): off at the start of every attack. -->
+          <app-power-trade-offer
+            [trades]="trade.options()"
+            [pickedKey]="trade.pickedKey()"
+            [box]="trade.box(mode.rollMode())"
+            (chosen)="pickTrade($event)"
+          />
+        }
         <!-- The d4 an effect adds (Bênção, Perdição) with physical dice: typed before the d20 is confirmed. -->
         @if (typedFields().length > 0 && (s.typing() || !canApp)) {
           <app-extra-dice class="sheet__extra" [fields]="typedFields()" [(faces)]="extraFaces" />
@@ -134,7 +143,8 @@
             [label]="rollLabel()"
             hint="Role o seu dado e digite o número que saiu (1 a 20)."
             totalNote="Total do ataque"
-            [modifier]="attack.attackBonus"
+            [modifier]="trade.bonus()"
+            [appLabel]="trade.rollLabel(mode.rollMode()) ?? 'Rolar no app'"
             [typedFormula]="hasExtras() ? typedFormula : null"
             [confirmTotal]="hasExtras()"
             [waiting]="extrasPending()"
@@ -154,7 +164,7 @@
             [modifier]="pairModifier()"
             [waiting]="extrasPending()"
             totalNote="Total do ataque"
-            [appLabel]="'Rolar 2d20 no app'"
+            [appLabel]="trade.rollLabel(mode.rollMode()) ?? 'Rolar 2d20 no app'"
             [hint]="'Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ' + (mode.combine() === 'lower' ? 'menor' : 'maior') + '.'"
             [busy]="s.busy()"
             [(typing)]="s.typing"
@@ -169,6 +179,7 @@
         [targetLabel]="targetLabel()"
         [roll]="s.roll()"
         [d20Formula]="d20Formula()"
+        [tradeLine]="tradeLine()"
         [outcome]="outcome()"
         [held]="held()"
         [showDamage]="s.stage() === 'done'"
@@ -220,7 +231,7 @@
               [preferApp]="preferApp"
               [modifier]="dmg.flat()"
               totalNote="Dano total"
-              appLabel="Rolar o dano no app"
+              [appLabel]="dmg.partsLabel()"
               hint="Role os dados de cada linha e digite a soma de cada uma, sem os números fixos."
               [busy]="s.busy()"
               [(typing)]="s.typing"

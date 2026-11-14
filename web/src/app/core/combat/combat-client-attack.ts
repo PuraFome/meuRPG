@@ -69,6 +69,8 @@ export class CombatAttackCalls {
       useExtraAction: effects.useExtraAction ?? false,
       // The table die ticked on a weapon attack (Golpe Certeiro): its face is the last of `extraDieFaces`.
       ...(effects.maneuverKey ? { maneuverKey: effects.maneuverKey } : {}),
+      // The power attack trade ticked: the server checks it again. Its pin (`power_attack_pin`) is the server's alone, never sent.
+      ...(effects.powerAttackKey ? { powerAttackKey: effects.powerAttackKey } : {}),
       legendaryOption: effects.legendaryOption ?? '',
     });
     return attackResult(res);
