@@ -67,7 +67,11 @@ func mostLeftDFt(sp grid.Speeds) int {
 // is 2). The line's cost is checked against what is left on each surface divided by the factor, rounded down, so that the cost it
 // charges (the line times the factor) never goes past what is left, whatever the amount spent.
 func withSpeeds(m grid.Mover, c playdb.Combatant, factor int) grid.Mover {
-	sp := speedsOf(c)
+	return withSpeedsOf(m, speedsOf(c), factor)
+}
+
+// withSpeedsOf is withSpeeds for speeds already worked out.
+func withSpeedsOf(m grid.Mover, sp grid.Speeds, factor int) grid.Mover {
 	factor = max(factor, 1)
 	used := sp.UsedDFt / factor
 	left := func(limit int) int { return used + max(limit-sp.UsedDFt, 0)/factor }
@@ -75,6 +79,21 @@ func withSpeeds(m grid.Mover, c playdb.Combatant, factor int) grid.Mover {
 	sp.UsedDFt = used
 	m.Speeds = &sp
 	return m
+}
+
+// freshSpeedsOf is the combatant's speeds at the start of a turn: nothing spent and no Dash.
+func freshSpeedsOf(c playdb.Combatant) grid.Speeds {
+	c.MovementUsedDft, c.Dashed = 0, false
+	return speedsOf(c)
+}
+
+// readiedSpeedsOf are the speeds of a readied move (SRD 5.1 Ready): each surface's fresh speed, held to the move_ft the readier
+// chose. The turn's own movement and its Dash do not count.
+func readiedSpeedsOf(c playdb.Combatant, moveFt int32) grid.Speeds {
+	sp := freshSpeedsOf(c)
+	limit := int(moveFt) * dftPerFt
+	sp.FloorDFt, sp.WaterDFt, sp.ClimbDFt = min(sp.FloorDFt, limit), min(sp.WaterDFt, limit), min(sp.ClimbDFt, limit)
+	return sp
 }
 
 // surfaceLayerOf reads the surface layer of the combat's map: one indexed read of one column. It is nil for a combat without a map

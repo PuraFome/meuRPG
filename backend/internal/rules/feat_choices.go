@@ -292,7 +292,38 @@ func (c *content) featAsksPT(p FeatPrerequisite, b Build) string {
 	if p.Level > 0 {
 		out = append(out, fmt.Sprintf("nível %d ou mais", p.Level))
 	}
+	out = append(out, c.knowledgeAsksPT(p, b)...)
 	return strings.Join(out, " e ")
+}
+
+// knowledgeAsksPT are the class level, the Pact Boon, the spell and the options a prerequisite asks. A key a player may
+// not read is not named.
+func (c *content) knowledgeAsksPT(p FeatPrerequisite, b Build) []string {
+	var out []string
+	if p.ClassKey != "" {
+		if c.hiddenTo(b, p.ClassKey) {
+			out = append(out, hiddenAskPT)
+		} else {
+			out = append(out, fmt.Sprintf("nível %d de %s", p.ClassLevel, c.namePT(p.ClassKey)))
+		}
+	}
+	name := func(prefix, key string) {
+		if c.hiddenTo(b, key) {
+			out = append(out, hiddenAskPT)
+		} else {
+			out = append(out, prefix+optionLabel(c.namePT(key)))
+		}
+	}
+	if p.RequiresPact != "" {
+		name("a Dádiva ", p.RequiresPact)
+	}
+	if p.RequiresSpell != "" {
+		name("conhecer ", p.RequiresSpell)
+	}
+	for _, k := range p.RequiresOptions {
+		name("ter escolhido ", k)
+	}
+	return out
 }
 
 // abilityAsksPT are the ability scores a prerequisite asks: all the minimums, then one of the any-of scores.
@@ -401,8 +432,22 @@ func (c *content) featUnmetPT(u FeatUnmet, b Build) string {
 		return "Não pode ter " + c.namePT(u.Key) + "."
 	case FeatUnmetLevel:
 		return fmt.Sprintf("Precisa de nível %d ou mais.", u.Value)
+	case FeatUnmetClassLevel, FeatUnmetPact, FeatUnmetSpell, FeatUnmetOption:
+		return c.knowledgeUnmetPT(u, b)
 	}
 	return ""
+}
+
+// knowledgeUnmetPT says what a character lacks of a class level, a Pact Boon, a spell or an option a feat asks for.
+func (c *content) knowledgeUnmetPT(u FeatUnmet, b Build) string {
+	if c.hiddenTo(b, u.Key) {
+		return hiddenUnmetPT
+	}
+	if u.Kind == FeatUnmetClassLevel {
+		return fmt.Sprintf("Precisa de nível %d de %s.", u.Value, c.namePT(u.Key))
+	}
+	prefix := map[string]string{FeatUnmetPact: "Precisa da Dádiva do Pacto ", FeatUnmetSpell: "Precisa conhecer a magia ", FeatUnmetOption: "Precisa ter escolhido "}[u.Kind]
+	return prefix + optionLabel(c.namePT(u.Key)) + "."
 }
 
 // featPickChoices adds the choices a feat of the table asks besides the feats it grants:

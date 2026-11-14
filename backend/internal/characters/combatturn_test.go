@@ -69,3 +69,37 @@ func TestDiceText(t *testing.T) {
 		}
 	}
 }
+
+// TestTheOptionOfAWeaponCarriesItsMagicBonus: the player's weapon option and its attack say the counting +N; the
+// unarmed strike, a cantrip and a creature's or a basic sheet's attack say 0.
+func TestTheOptionOfAWeaponCarriesItsMagicBonus(t *testing.T) {
+	t.Parallel()
+	c := loadRules(t)
+	b := rules.Build{
+		BaseScores: map[rules.Ability]int{rules.STR: 16, rules.DEX: 12, rules.CON: 14, rules.INT: 10, rules.WIS: 8, rules.CHA: 8},
+		Race:       "race:human", Background: "background:acolyte",
+		Classes: []rules.ClassLevel{{Class: "class:fighter", Level: 2}},
+		Weapons: []string{"equipment:rapier", "equipment:shortsword"},
+		ItemBonuses: []rules.ItemBonus{
+			{Key: "equipment:rapier", Bonus: 2},
+			{Key: "equipment:shortsword", Bonus: 3, RequiresAttunement: true},
+		},
+	}
+	opts := turnOptionsToProto(combat.Options(rules.Derive(b, c), combat.TurnState{}, combat.Usage{}))
+	want := map[string]int32{"equipment:rapier": 2, "equipment:shortsword": 0}
+	for _, o := range opts.GetAttacks() {
+		w := want[o.GetAttack().GetKey()]
+		if o.GetMagicBonus() != w || o.GetAttack().GetMagicBonus() != w {
+			t.Errorf("%s: option magic_bonus %d, attack magic_bonus %d, want %d", o.GetAttack().GetKey(), o.GetMagicBonus(), o.GetAttack().GetMagicBonus(), w)
+		}
+	}
+	basic := basicDerived(offlineService(t).srd, &charactersv1.BasicSheet{
+		HitPointsMax: 9, ArmorClass: 12, SpeedFt: 30,
+		Attacks: []*charactersv1.BasicAttack{{Name: "Maça", AttackBonus: 3, DamageDiceCount: 1, DamageDiceSides: 6, DamageType: charactersv1.DamageType_DAMAGE_TYPE_BLUDGEONING}},
+	})
+	for _, o := range turnOptionsToProto(combat.Options(basic, combat.TurnState{}, combat.Usage{})).GetAttacks() {
+		if o.GetMagicBonus() != 0 || o.GetAttack().GetMagicBonus() != 0 {
+			t.Errorf("%s: magic_bonus %d / %d, want 0", o.GetAttack().GetKey(), o.GetMagicBonus(), o.GetAttack().GetMagicBonus())
+		}
+	}
+}

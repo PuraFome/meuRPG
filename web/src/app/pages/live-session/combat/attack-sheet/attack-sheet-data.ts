@@ -17,6 +17,7 @@ import {
   AttackKind,
   AttackSchema,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { magicBonusOf } from '../../../../core/combat/combat-options';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import type { AttackSheetData } from './attack-sheet';
@@ -108,6 +109,11 @@ export function maneuverDiceOf(
     : [];
 }
 
+/** The counting bonus the sheet shows: the option's own; none for the master's roll or a thrown-back attack. */
+function sheetMagicBonus(req: AttackSheetRequest, option: AttackOption | undefined): number {
+  return req.master || req.thrown ? 0 : magicBonusOf(option);
+}
+
 /** What the attack sheet is handed, or `null` when the attack is not among the options (nothing to open). */
 export function attackSheetData(req: AttackSheetRequest): AttackSheetData | null {
   const found = findAttack(req.options, req.key, req.thrown);
@@ -115,12 +121,14 @@ export function attackSheetData(req: AttackSheetRequest): AttackSheetData | null
     return null;
   }
   const e = req.encounter;
+  const magicBonus = sheetMagicBonus(req, found.option);
   return {
     campaignId: req.campaignId,
     encounterId: e.id,
     attackerId: req.attacker.id,
     round: e.round,
     attack: found.attack,
+    ...(magicBonus > 0 ? { bonus: magicBonus } : {}),
     targets:
       req.thrown?.targets ??
       req.options?.attackTargets.find((t) => t.attackKey === req.key)?.targets ??

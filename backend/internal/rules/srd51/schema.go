@@ -258,6 +258,13 @@ type Feat struct {
 	Races        []string `json:"races,omitempty"`
 	Size         string   `json:"size,omitempty"`
 	LacksFeature string   `json:"lacks_feature,omitempty"`
+	// ClassKey and ClassLevel ask for a level in one class, RequiresPact for a Pact Boon,
+	// RequiresSpell for a known spell and RequiresOptions for options the character picked. Only a table feat has them.
+	ClassKey        string   `json:"class_key,omitempty"`
+	ClassLevel      int      `json:"class_level,omitempty"`
+	RequiresPact    string   `json:"requires_pact,omitempty"`
+	RequiresSpell   string   `json:"requires_spell,omitempty"`
+	RequiresOptions []string `json:"requires_options,omitempty"`
 	// Options, OptionsChoose and OptionSet make the feat an offerer, as Feature.Options does for a feature.
 	// Options are the keys its choice of features lists, and OptionsChoose how many the player picks.
 	// OptionSet is the name of the option set the choice offers whole instead.
@@ -282,7 +289,7 @@ type Proficiency struct {
 type Equipment struct {
 	Key  string `json:"key"`
 	Name string `json:"name"`
-	// Kind is "armor", "weapon" or "tool".
+	// Kind is "armor", "weapon", "tool" or "ammunition".
 	Kind   string  `json:"kind"`
 	Armor  *Armor  `json:"armor,omitempty"`
 	Weapon *Weapon `json:"weapon,omitempty"`

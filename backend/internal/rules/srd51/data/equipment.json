@@ -5,6 +5,11 @@
   "kind": "tool"
  },
  {
+  "key": "equipment:arrow",
+  "name": "Arrow",
+  "kind": "ammunition"
+ },
+ {
   "key": "equipment:bagpipes",
   "name": "Bagpipes",
   "kind": "tool"
@@ -41,6 +46,11 @@
    "normal_range_ft": 25,
    "long_range_ft": 100
   }
+ },
+ {
+  "key": "equipment:blowgun-needle",
+  "name": "Blowgun needle",
+  "kind": "ammunition"
  },
  {
   "key": "equipment:breastplate",
@@ -121,6 +131,11 @@
   "key": "equipment:cooks-utensils",
   "name": "Cook's utensils",
   "kind": "tool"
+ },
+ {
+  "key": "equipment:crossbow-bolt",
+  "name": "Crossbow bolt",
+  "kind": "ammunition"
  },
  {
   "key": "equipment:crossbow-hand",
@@ -781,6 +796,11 @@
    "normal_range_ft": 30,
    "long_range_ft": 120
   }
+ },
+ {
+  "key": "equipment:sling-bullet",
+  "name": "Sling bullet",
+  "kind": "ammunition"
  },
  {
   "key": "equipment:smiths-tools",

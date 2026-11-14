@@ -222,6 +222,8 @@ func bodyOfEntry(e *rulesv1.TableEntry) (tableBody, rulesv1.TableContentKind) {
 		return b.TableClassFeature, rulesv1.TableContentKind_TABLE_CONTENT_KIND_CLASS_FEATURE
 	case *rulesv1.TableEntry_TableCreature:
 		return b.TableCreature, rulesv1.TableContentKind_TABLE_CONTENT_KIND_CREATURE
+	case *rulesv1.TableEntry_TableWeapon:
+		return b.TableWeapon, rulesv1.TableContentKind_TABLE_CONTENT_KIND_WEAPON
 	}
 	return nil, rulesv1.TableContentKind_TABLE_CONTENT_KIND_UNSPECIFIED
 }

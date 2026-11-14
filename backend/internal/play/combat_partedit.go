@@ -119,6 +119,9 @@ func (s *Service) removePartWrite(ctx context.Context, c *combatTx, r partRemova
 		return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_RESOLVED, "the damage was applied to a character already")
 	}
 	parts, rolls := readParts(p.Parts), readPartRolls(p.PartRolls)
+	if inTypedGroup(rolls, r.partKey) {
+		return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE, "that part is covered by a damage-type sum and cannot be taken out")
+	}
 	if !takeOut(parts, rolls, r.partKey) {
 		return actionEvent{}, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE, "that part cannot be taken out")
 	}
@@ -228,12 +231,19 @@ func giveBackHitPoints(ctx context.Context, c *combatTx, p playdb.PendingDamage,
 	return now, nil
 }
 
+// inTypedGroup says the roll was entered with a damage-type sum that covers the part: the sum sits on one part of the
+// group, so a part of it cannot come out alone.
+func inTypedGroup(rolls []partRoll, key string) bool {
+	return slices.ContainsFunc(rolls, func(x partRoll) bool { return x.Key == key && x.Group != "" })
+}
+
 // takeOut marks an extra as removed, and says whether it could be. Only an extra that
-// counts comes out; the weapon, an automatic line and a smite (whose slot is spent) stay.
+// counts comes out; the weapon, an automatic line, a smite (whose slot is spent) and a part a typed
+// damage-type sum covers stay.
 func takeOut(parts []partRecord, rolls []partRoll, key string) bool {
 	pi := slices.IndexFunc(parts, func(x partRecord) bool { return x.Key == key })
 	ri := slices.IndexFunc(rolls, func(x partRoll) bool { return x.Key == key })
-	if pi < 0 || ri < 0 || parts[pi].Kind != partExtra || key == combat.ExtraDivineSmite || key == combat.ExtraDivineSmiteExtra || !rolls[ri].Counted {
+	if pi < 0 || ri < 0 || rolls[ri].Group != "" || parts[pi].Kind != partExtra || key == combat.ExtraDivineSmite || key == combat.ExtraDivineSmiteExtra || !rolls[ri].Counted {
 		return false
 	}
 	parts[pi].Removed, rolls[ri].Counted = true, false

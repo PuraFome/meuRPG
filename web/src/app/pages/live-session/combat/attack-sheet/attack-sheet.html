@@ -5,7 +5,7 @@
   <div class="sheet__head">
     <div class="sheet__titles">
       <h2 class="sheet__title" id="sheet-t" tabindex="-1">{{ title() }}</h2>
-      <p class="sheet__sub">{{ subtitle() }}@if (marks(); as m) { <span class="sheet__marks">· <app-weapon-tags [marks]="m" /></span>}</p>
+      <p class="sheet__sub">{{ subtitle() }}@if (marks() || bonus() > 0) { <span class="sheet__marks">@if (marks(); as m) {<app-weapon-tags [marks]="m" />}@if (bonus() > 0) {<app-bonus-chip [bonus]="bonus()" [words]="true" />}</span>}</p>
     </div>
     <button type="button" class="sheet__close" aria-label="Fechar" [disabled]="s.busy()" (click)="close()">
       <mat-icon aria-hidden="true">close</mat-icon>
@@ -219,9 +219,10 @@
               [canType]="canType"
               [preferApp]="preferApp"
               [modifier]="dmg.flat()"
-              totalNote="Dano total"
-              appLabel="Rolar o dano no app"
-              hint="Role os dados de cada linha e digite a soma de cada uma, sem os números fixos."
+              [wide]="true"
+              [note]="dmg.bonusLine()"
+              [confirmLabel]="dmg.applyLabel"
+              [appLabel]="dmg.partsLabel()"
               [busy]="s.busy()"
               [(typing)]="s.typing"
               (app)="rollDamage({ inApp: true })"
@@ -259,6 +260,12 @@
               <mat-icon aria-hidden="true">close</mat-icon>
             }
             {{ dmg.after() }}
+          </p>
+        }
+        @for (line of waitingEffects(); track line) {
+          <p class="sheet__note" data-testid="hit-waiting">
+            <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+            {{ line }}
           </p>
         }
         <p class="sheet__note">

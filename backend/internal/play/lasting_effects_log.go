@@ -101,6 +101,7 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 		SourceKey: l.Key, SourceNamePt: names(l.Key), Change: effectChangeToProto[l.Change],
 		Ability: l.Ability, Amount: l.Amount, Reason: l.Reason,
 	}
+	le.Unused = l.Change == "ended" && l.Unused
 	if l.Ability != "" {
 		le.AbilityNamePt = names("ability:" + l.Ability)
 	}

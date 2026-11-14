@@ -149,6 +149,10 @@ func (s *Service) startOfTurnEffects(ctx context.Context, c *combatTx, ids []str
 	if err := s.endFamiliarSights(ctx, c, ids); err != nil {
 		return err
 	}
+	// A readied action lasts until the start of the readier's next turn (SRD 5.1, "Ready"): it is lost now.
+	if err := loseReadiedAtTurnStart(ctx, c, ids, round); err != nil {
+		return err
+	}
 	// The dodge and the reckless attack of the ones whose turn starts end, and so do
 	// the states that end at the start of their turn.
 	if err := s.endStatesAtStart(ctx, c, ids, round); err != nil {

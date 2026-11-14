@@ -71,7 +71,8 @@ func TestFeatureStateMigrationCopiesOldMarks(t *testing.T) {
 	}
 	check("after Up")
 
-	// A row that already has a state is left alone when the migration runs again.
+	// A row that already has a state is left alone when the migration runs again. Up runs every later migration again
+	// too: goose refuses to run one lower than the database's version.
 	exec(t, db, fmt.Sprintf(`UPDATE combatants SET feature_state = '{"x": {"s": "combat", "at": "", "n": 2}}' WHERE id = '%s'`, none))
 	want[none] = map[string]any{"x": map[string]any{"s": "combat", "at": "", "n": float64(2)}}
 	exec(t, db, "DELETE FROM goose_db_version WHERE version_id >= 329")

@@ -5,10 +5,12 @@ import {
   Injector,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { MatBottomSheet } from '@angular/material/bottom-sheet';
@@ -36,10 +38,12 @@ import {
   undoLabel,
 } from '../../../../core/combat/combat-log';
 import { isPlayer } from '../../../../core/combat/combat-view';
+import { type Lapse, LapseNotices, lapseNoticeText } from '../../../../core/combat/lapse-notice';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { PHONE_QUERY, mediaQuery } from '../../../../shared/map-view/media-query';
 import { Fold } from '../../../../shared/fold/fold';
 import { openSheet } from '../../../../shared/sheet/sheet-host';
+import { LapseNoticeCard } from './lapse-notice';
 import { LogList } from './log-list';
 import { LogSheet, type LogSheetData } from './log-sheet';
 
@@ -55,7 +59,7 @@ import { LogSheet, type LogSheetData } from './log-sheet';
  */
 @Component({
   selector: 'app-combat-log-panel',
-  imports: [Fold, LogList, MatButtonModule, MatIconModule, NgTemplateOutlet],
+  imports: [Fold, LapseNoticeCard, LogList, MatButtonModule, MatIconModule, NgTemplateOutlet],
   templateUrl: './combat-log-panel.html',
   styleUrl: './combat-log-panel.scss',
 })
@@ -80,6 +84,8 @@ export class CombatLogPanel {
   readonly deathNote = input(false);
   /** The Portuguese names of the legendary options (`legendaryNames`), for the master's line of a spend. */
   readonly legendaryNames = input<LegendaryNames | undefined>(undefined);
+  /** The label of the viewer's own character (a player's screen; empty for the master): who reads the notice of their own concentration ending with no hit. */
+  readonly ownLabel = input('');
 
   protected readonly open = signal(false);
   protected readonly confirming = signal(false);
@@ -87,17 +93,35 @@ export class CombatLogPanel {
   protected readonly error = signal('');
   private readonly safe = viewChild('safe', { read: ElementRef<HTMLButtonElement> });
 
+  /** The concentration that ended before the caster's hit, told above the log until it is touched. */
+  protected readonly lapse = signal<Lapse | null>(null);
+  protected readonly lapseText = computed(() => {
+    const lapse = this.lapse();
+    return lapse
+      ? lapseNoticeText(lapse, {
+          master: this.master(),
+          ownLabel: this.ownLabel(),
+          players: this.players(),
+        })
+      : '';
+  });
+  private readonly lapses = new LapseNotices();
+
   /** "Mudar as condições" under a Sono: the master's dialog for that creature. */
   readonly conditions = output<string>();
 
-  protected readonly groups = computed(() =>
-    logGroups(this.log().rounds(), this.encounter().round, this.encounter().name, {
-      master: this.master(),
-      players: new Set(
+  private readonly players = computed(
+    () =>
+      new Set(
         this.encounter()
           .combatants.filter(isPlayer)
           .map((c) => c.label),
       ),
+  );
+  protected readonly groups = computed(() =>
+    logGroups(this.log().rounds(), this.encounter().round, this.encounter().name, {
+      master: this.master(),
+      players: this.players(),
       theatre: isTheatre(this.encounter()),
       legendaryNames: this.legendaryNames(),
     }),
@@ -120,6 +144,31 @@ export class CombatLogPanel {
   protected readonly showList = computed(
     () => !this.phone() || this.inTab() || (this.master() && this.open()),
   );
+
+  constructor() {
+    // A concentration that ended with its effect still waiting is told to the caster's player and the master; the lines the log held when
+    // it was first read are not news.
+    effect(() => {
+      const id = this.encounter().id;
+      const rounds = this.log().rounds();
+      const loaded = this.log().loaded();
+      const viewer = { master: this.master(), ownLabel: this.ownLabel() };
+      untracked(() => {
+        const { reset, notice } = this.lapses.read(
+          id,
+          loaded,
+          rounds.flatMap((r) => r.entries),
+          viewer,
+        );
+        if (reset) {
+          this.lapse.set(null);
+        }
+        if (notice) {
+          this.lapse.set(notice);
+        }
+      });
+    });
+  }
 
   /** The player's tall sheet, with the whole log. */
   protected openSheet(): void {

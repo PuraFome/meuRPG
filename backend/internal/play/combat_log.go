@@ -1,6 +1,7 @@
 package play
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -572,6 +574,9 @@ var logHandlers = map[string]logHandler{
 	eventLegendarySpent:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT),
 	eventRechargeRolled:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED),
 	eventGearSwapped:             gearSwappedLine,
+	eventActionReadied:           readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED),
+	eventReadiedFired:            readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED),
+	eventReadiedLost:             readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST),
 	eventFeatureUsed:             featureUsedLine,
 	eventCombatantHiddenSet:      (*logBuilder).hiddenSet,
 	eventActionTaken:             (*logBuilder).actionTaken,
@@ -1110,6 +1115,9 @@ func (e *logEntry) ownersOnly(v combatViewer, actor, target playdb.Combatant) bo
 	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED && e.ev.EffectEnd != nil && e.ev.EffectEnd.Effect == effectShield:
 		return !v.owns(actor)
 	case e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER && e.ev.Rider != nil && e.ev.Rider.OwnersOnly:
+		if e.ev.Rider.EffectHidden { // the effect is not the target's player's to read: the attacker's player reads the outcome of its own hit
+			return !v.owns(actor)
+		}
 		return !v.owns(actor) && !v.owns(target)
 	}
 	return false
@@ -1125,6 +1133,7 @@ var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:           true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:          true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:    true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:  true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:    true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:        true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:      true,
@@ -1174,6 +1183,9 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:     (*logEntry).fillLegendarySpent,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:     (*logEntry).fillRechargeRolled,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:        (*logEntry).fillGearSwapped,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:      (*logEntry).fillReadied,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED:       (*logEntry).fillReadied,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST:        (*logEntry).fillReadied,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:        (*logEntry).fillFeatureUsed,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
@@ -1278,9 +1290,31 @@ func (e *logEntry) fillHitRider(c *logViewing, out *playv1.CombatLogEntry) bool 
 		if r.ActionKey != "" && !c.v.master {
 			creatureRiderForPlayer(out.HitRider, c.v.owns(target), r)
 		}
+		if r.OwnersOnly {
+			e.spellRiderKey(c, out, r)
+		}
 		e.riderDamage(c, out.HitRider, r)
 	}
 	return true
+}
+
+// spellRiderKey names the spell of the save of a hit effect on the line: the master and the spell's owner (the player
+// of the character that cast it) read it, and so does every viewer of the line when the spell's audience is all the
+// players; whoever may not read the spell, the attacker's player included, reads "Outra fonte" (and no key) and no ability of
+// the save (RN-10).
+func (e *logEntry) spellRiderKey(c *logViewing, out *playv1.CombatLogEntry, r *riderEvent) {
+	hidden := r.HiddenSource && !c.v.master && !c.v.owns(c.byID[r.SourceID])
+	names := hidingNames(func(k string) string { return c.names.contentName(c.ctx, k) }, []combat.Modifier{{Source: e.ev.Key, Hidden: hidden}})
+	out.KeyNamePt = names(e.ev.Key)
+	if !hidden && r.SaveAbility != "" { // the save's ability is the spell's to tell: the reader who may not read the spell reads none
+		out.HitRider.SaveAbility, out.HitRider.SaveAbilityNamePt = r.SaveAbility, cmp.Or(abilityPT[r.SaveAbility], c.names.contentName(c.ctx, "ability:"+r.SaveAbility))
+	}
+	if hidden {
+		out.Key = ""
+		if out.HitRider.GetDurationText() == durationSpellEndTx { // "the spell" tells the reader that a spell is behind the line
+			out.HitRider.DurationText = durationEffectEndTx
+		}
+	}
 }
 
 // riderDamage adds the damage a creature's rider opened, as the viewer gets a cast target's.
@@ -1483,11 +1517,11 @@ func (e *logEntry) fillConditions(c *logViewing, out *playv1.CombatLogEntry) boo
 	out.Conditions = e.ev.Conditions
 	if !c.v.master && !c.v.owns(c.actor) { // a condition with no outward sign is the owner's and the master's (RN-10)
 		out.Conditions = withoutOwnerOnly(e.ev.Conditions)
-		if e.ev.ConcEnded == "" && slices.Equal(out.Conditions, withoutOwnerOnly(e.ev.CondBefore)) {
+		if concentrationEndedFor(e.ev.ConcEnded, c.v, c.actor) == "" && slices.Equal(out.Conditions, withoutOwnerOnly(e.ev.CondBefore)) {
 			return false // nothing a player may read changed
 		}
 	}
-	out.ConcentrationEndedKey = e.ev.ConcEnded
+	out.ConcentrationEndedKey = concentrationEndedFor(e.ev.ConcEnded, c.v, c.actor)
 	return true
 }
 
@@ -1509,7 +1543,7 @@ func (e *logEntry) fillEffectEnd(c *logViewing, out *playv1.CombatLogEntry) bool
 // target's own player's; the caster's d20 the master's and the caster's.
 func (e *logEntry) spellView(v combatViewer, byID map[string]playdb.Combatant) *playv1.CombatLogSpell {
 	caster := byID[e.ev.Actor]
-	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, v, caster), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: e.ev.ConcEnded}
+	out := &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, v, caster), Concentrating: e.ev.Concentrate, ConcentrationEndedKey: concentrationEndedFor(e.ev.ConcEnded, v, caster)}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(e.ev, v, caster)
 	out.MaterialSpent = e.ev.Material && (v.master || v.owns(caster)) // the diamonds are the caster's and the master's line
 	if e.ev.Res != nil && e.ev.Res.Kind == resMetamagic {

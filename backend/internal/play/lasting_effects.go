@@ -81,6 +81,9 @@ type lastingEvent struct {
 	// OwnerOnly says only the targets' players read the line (an effect for its owner alone,
 	// the owner-class conditions, exhaustion): the master reads it always.
 	OwnerOnly bool `json:"owner_only,omitempty"`
+	// Unused says an on-hit effect ended with its use still waiting (no hit spent it): the line is read from
+	// the event, so it keeps saying so after the rows are gone, and the undo takes it away with the line.
+	Unused bool `json:"unused,omitempty"`
 }
 
 // isEffect says a state is an effect that lasts.
@@ -577,9 +580,13 @@ func (s *Service) endCasting(ctx context.Context, c *combatTx, cs []playdb.Comba
 	}
 	first := k.rows[0]
 	hidden := s.effectHiddenFrom(first, targetsOf(cs, targets))
+	unused, err := endedUnused(ctx, c, k.rows)
+	if err != nil {
+		return err
+	}
 	line, err := insertEventID(ctx, c, eventLastingEnded, &c.actorUserID, nil, actionEvent{
 		Round: c.enc.Round, Secret: hidden, Actor: conv.OrZero(first.SourceID), Target: targets[0],
-		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience != audienceAll},
+		Lasting: &lastingEvent{Key: k.key, Change: "ended", Targets: targets, Reason: reason, Effects: ids, OwnerOnly: first.Audience != audienceAll, Unused: unused},
 	})
 	if err != nil {
 		return err
@@ -588,6 +595,33 @@ func (s *Service) endCasting(ctx context.Context, c *combatTx, cs []playdb.Comba
 	// back, takes the line back too (write, UndoLastAction).
 	c.endedLines = append(c.endedLines, line)
 	return nil
+}
+
+// endedUnused says a casting that ends holds an on-hit effect (a weapon_hit_damage of any trigger) that no hit used. A
+// next_hit and a next_melee_hit are spent by the hit that uses them; an each_hit and a marked_target are never spent, so
+// they count as used when a damage that was rolled (or applied) took a part from the row (the roll keeps the row's id).
+func endedUnused(ctx context.Context, c *combatTx, rows []playdb.CombatantState) (bool, error) {
+	for _, st := range rows {
+		mod, ok := hitModifierOf(effectModifiers(st))
+		if !ok {
+			continue
+		}
+		if consumesHit(mod.Trigger) {
+			if st.SpentAt == nil {
+				return true, nil
+			}
+			continue
+		}
+		var used bool
+		const q = `SELECT EXISTS (SELECT 1 FROM pending_damages WHERE encounter_id = $1 AND status IN ('rolled', 'applied') AND part_rolls @> $2::jsonb)`
+		if err := c.tx.QueryRow(ctx, q, c.enc.ID, mustJSON([]map[string]string{{"effect": st.ID}})).Scan(&used); err != nil {
+			return false, fmt.Errorf("find the hits that used the effect: %w", err)
+		}
+		if !used {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // targetsOf are the combatants of ids.

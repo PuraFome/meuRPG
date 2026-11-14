@@ -113,6 +113,39 @@ describe('GearList', () => {
     ]);
   });
 
+  it('puts the marks and the chips in one group after the name, so they wrap together', () => {
+    const fixture = setup([
+      {
+        ...sword,
+        twoHanded: true,
+        marks: { silvered: true, adamantine: false, magical: false },
+        bonus: 1,
+        bonusCounts: true,
+      },
+    ]);
+    fixture.componentRef.setInput('canMark', true);
+    fixture.detectChanges();
+    const row = (fixture.nativeElement as HTMLElement).querySelector('li.gear-row')!;
+    const body = row.querySelector('.gear-row__body')!;
+    const group = body.querySelector(':scope > .gear-row__marks')!;
+    expect(group.hasAttribute('data-wrap-group')).toBe(true);
+    expect(group.previousElementSibling!.classList).toContain('gear-row__kind');
+    expect(group.nextElementSibling).toBeNull();
+    expect(Array.from(group.children).map((c) => c.tagName.toLowerCase())).toEqual([
+      'app-weapon-tags',
+      'app-bonus-chip',
+    ]);
+    // The "⋮" follows the body in the markup, out of the flow of the lines.
+    const more = row.querySelector('.gear-row__main > .gear-row__more')!;
+    expect(more.previousElementSibling).toBe(body);
+  });
+
+  it('keeps the name as the first item of the body, before everything that can wrap', () => {
+    const fixture = setup([{ ...sword, bonus: 2, bonusCounts: true }]);
+    const body = (fixture.nativeElement as HTMLElement).querySelector('.gear-row__body')!;
+    expect(body.firstElementChild!.classList).toContain('gear-row__name');
+  });
+
   it('says the marks with icons only, and keeps each word for a screen reader', () => {
     const fixture = setup([
       { ...sword, marks: { silvered: true, adamantine: false, magical: false } },

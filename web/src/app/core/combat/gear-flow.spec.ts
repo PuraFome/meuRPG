@@ -212,7 +212,7 @@ describe('the two-handed consequence', () => {
     expect(twoHandedWarnings([shield, bow], 18)).toEqual([
       {
         key: bow.key,
-        text: 'Sacar Arco longo (duas mãos) deixa o escudo de lado: CA 18 → 16.',
+        text: 'Sacar o Arco longo desativa o escudo: CA 18 → 16.',
       },
     ]);
     expect(twoHandedWarnings([sword, bow], 18)).toEqual([]); // no shield in hand: nothing is lost

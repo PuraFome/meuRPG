@@ -94,6 +94,7 @@ type Overlay struct {
 	Options       []TableOption
 	ClassFeatures []TableClassFeature
 	Creatures     []TableCreature
+	Weapons       []TableWeapon
 }
 
 // TableEntry is what every entry has. Key is "<kind>:<slug>@mesa" (kind is
@@ -135,6 +136,9 @@ type TableFeature struct {
 	// Summon says the feature brings the table's creatures to its holder, or is nil (see TableSummon). Only a
 	// class, subclass, race or background feature has it, not an option.
 	Summon *TableSummon
+	// Prerequisite is what an option of a class or subclass feature (or of a feat) asks of the character; only an
+	// entry of Options has it. An option whose prerequisite is not met is listed in the choice, blocked.
+	Prerequisite TableOptionPrerequisite
 }
 
 // TableCasting is how a class (or, for a third caster, a subclass) casts.
@@ -851,6 +855,9 @@ func (c *content) isSwitchable(key string) bool {
 	case strings.HasPrefix(key, CreatureKeyPrefix):
 		_, ok := c.creatureOf[key]
 		return ok
+	case strings.HasPrefix(key, WeaponKeyPrefix):
+		_, ok := c.weaponOf[key]
+		return ok
 	}
 	return false
 }
@@ -878,6 +885,7 @@ func buildKeys(b Build, want func(string) bool) []string {
 		}
 	}
 	add(b.Feats...)
+	add(b.Weapons...) // a table weapon the sheet carries
 	return sortedKeys(seen)
 }
 
@@ -907,7 +915,7 @@ type KeyField struct {
 // BuildKeys lists the content keys a Build uses with the sheet field of each,
 // with the CharacterSheet field names ("full.classes[0].class_key"), in the
 // sheet's order: race, subrace, classes and subclasses, background, cantrips,
-// known spells, prepared spells and feature choices.
+// known spells, prepared spells, feature choices, feats and weapons.
 func BuildKeys(b Build) []KeyField {
 	var out []KeyField
 	add := func(key, field string) {
@@ -939,6 +947,9 @@ func BuildKeys(b Build) []KeyField {
 	}
 	for i, k := range b.Feats {
 		add(k, fmt.Sprintf("full.feat_keys[%d]", i))
+	}
+	for i, k := range b.Weapons {
+		add(k, fmt.Sprintf("full.weapon_keys[%d]", i))
 	}
 	return out
 }
@@ -990,6 +1001,8 @@ type overlayBuilder struct {
 	pending []pendingEffects
 	// featLacks are the features the feats ask the character not to have.
 	featLacks []featLack
+	// optionRequires are the options the prerequisites ask for, judged once every entry is built.
+	optionRequires []optionRequire
 	// strict is Overlay.Strict as a set.
 	strict map[string]bool
 	// optionEntry is the entry of every option of a feature list, by option key;
@@ -1004,6 +1017,8 @@ type overlayBuilder struct {
 	offKeys       map[string]bool
 	// creaturesOwned says the clone's creature maps are copies (ownCreatures).
 	creaturesOwned bool
+	// equipmentOwned says the clone's equipment map is a copy (ownEquipment).
+	equipmentOwned bool
 	resources      map[string]map[string]bool
 	// resourceMax is the formula of the maximum of each resource an entry declares.
 	resourceMax map[string]map[string]string
@@ -1056,6 +1071,7 @@ const (
 	claimOptions
 	claimClassFeatures
 	claimCreatures
+	claimWeapons
 )
 
 // overlayKinds lists the kinds in the order addEntries adds them.
@@ -1118,6 +1134,11 @@ func (b *overlayBuilder) overlayKinds(o *Overlay) []overlayKind {
 			entry: func(i int) TableEntry { return o.Creatures[i].TableEntry },
 			add:   func(i int, path string) error { return b.addCreature(&o.Creatures[i], path) },
 		},
+		{
+			list: "weapons", prefix: WeaponKeyPrefix, claimRank: claimWeapons, n: len(o.Weapons),
+			entry: func(i int) TableEntry { return o.Weapons[i].TableEntry },
+			add:   func(i int, path string) error { return b.addWeapon(&o.Weapons[i], path) },
+		},
 	}
 }
 
@@ -1162,6 +1183,9 @@ func (b *overlayBuilder) build(o Overlay) error {
 		return err
 	}
 	if err := b.checkFeatLacks(); err != nil {
+		return err
+	}
+	if err := b.checkOptionRequires(); err != nil {
 		return err
 	}
 	b.offerFeatSets()
@@ -1445,6 +1469,7 @@ func (c *content) cloneForOverlay() *content {
 	n.optionSet = map[string]string{}
 	n.classFeatureOf = map[string]ClassFeatureEntry{}
 	n.creatureOf = map[string]CreatureTableEntry{}
+	n.weaponOf = map[string]WeaponTableEntry{}
 	n.creatureSpecs = map[string]*creatureSpec{}
 	n.optionPrereq = map[string]TableOptionPrerequisite{}
 	n.spells = maps.Clone(c.spells)

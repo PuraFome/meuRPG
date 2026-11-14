@@ -92,6 +92,7 @@ The mode (`grid` or `theatre`) is chosen at the start and never changes (see [Th
 | `MoveCombatant`, `GetMoveOptions`, `SpendMovement`, `StandUp` | See [Movement](movement.md) and [Theatre](theatre.md) | Movement |
 | `OfferOpportunity`, `WithdrawOpportunity`, `DeclineOpportunity`, `SkipOpportunity` | See [Movement](movement.md); the master's `OfferOpportunity` works in both modes | Opportunity attacks |
 | `AnswerReaction`, `MarkReactionRolling`, `ResolveConcentrationSave`, `UseReaction`, `DeclineReaction` | See [Reactions](reactions.md) | Reaction windows |
+| `ReadyAction`, `CancelReadied`, `FireReadied` (`ReadyService`) | The player on their own character, or the master on any combatant, on its turn; `FireReadied` the master only | Ready and the fire of a readied action: see [Readying](readying.md) |
 | `RollDeathSave`, `ConfirmDeath` | See [Death and revival](death-and-revival.md) | The fallen |
 | `AdjustCombatantHitPoints` | Master | "Dano/Cura" of an NPC: damage, healing or an exact value, and temporary HP. An NPC taken to 0 HP stops concentrating, with the end a damage to 0 HP has (`endConcentrationAtZero`: the spell's effects, its creatures and the log line); the undo of the adjustment takes that end back with it |
 | `EndCombatEffect` | Master | Ends an effect such as Aid (idempotent by key, not undoable) |
@@ -231,6 +232,7 @@ stateDiagram-v2
 - **Start of the turn.** `startTurn` ends what ends at the start of effects, resets for each living member the movement, action, bonus action, Dash, reaction, Shield bonus and the death save due (`ResetCombatantTurn`), and points `current_combatant_id` at the first.
 - **"Is it their turn"** is always `actsNow` (in the turn and the part not ended): `MoveCombatant`, `RollAttack`, `RollDamage`, `TakeAction`, `CastSpell`, the death saves, the reactions and `GetTurnOptions`.
   Undo stays closed after an ended part (`turn_part_ended` is not undoable).
+  `CastSpell` off the turn is the release of a readied spell while its READIED window is open (`mayCastNow`, see [Readying](readying.md#readied-spells)).
 - **What each receives (RN-20).** `Encounter.turn_group_ids` and `Combatant.turn_part_ended` only for a group that has a player character, never with a hidden member.
   An NPC-only group reaches the player as the ids they see, with no chosen `current_combatant_id` or total, plus `npc_only_groups` for the plural "os Goblins".
   A player's economy reaches them, the master and the other players of the same group.
@@ -296,6 +298,13 @@ The cast sheet and the attack sheet follow the same pattern one level down: `cas
 Sheets live in one frame (`sheet-frame`, scrolling inside with a fixed footer) and open through `openSheet` (a sheet on the phone, a dialog from the tablet up).
 While a sheet's own request is in the air it cannot be dismissed, so its answer is always shown and a second sheet never starts a second spend.
 Each action carries its own `idempotency_key`, made once and resent on the retry; the key follows the request, not the sheet (`ActionKey`): the same values again are a retry and keep it, while another die, slot or target is a new request with a new key.
+
+A feature action with a use (`ActionOption.via_use_feature`) is taken through `ActionSheets.takeFeature` and `FeatureService.UseFeature` (`CombatClient.features`).
+Its row (`action-groups`) shows the limit in its scope with what is left, whom it takes and what it spends (`core/combat/feature-use.ts`).
+The "Usar" sheet (`use-feature-sheet`) asks who (`feature_targets`, radio cards or check boxes) and which (buttons), and sends `target_ids` and `choice` with one idempotency key kept across retries.
+A use that asks nothing goes straight through for the player; for the master it always opens the sheet, which names the character the use is made for.
+The server's refusals (`FEATURE_TARGET` with the refused creatures, `FEATURE_CHOICE`, the economy's, `NO_USES`) are written in a red band and keep the selection.
+`FEATURE_USED` log lines read per audience in `combat-log-actions.ts`.
 `SpellCatalog` reads `GetSpellDetails` only when the screen needs it and forgets it on `content_changed` and on every `ready`.
 
 ## The master acting for a player's character
