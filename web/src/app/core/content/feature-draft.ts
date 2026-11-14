@@ -21,6 +21,7 @@ import {
   rangeMeters,
   unreadableNumberPaths,
 } from './effect-draft';
+import { effectInputPaths } from './effect-input-paths';
 import { paragraphs } from './spell-draft';
 import {
   type SummonDraft,
@@ -341,11 +342,7 @@ export function featureOwnPaths(base: string, f: FeatureDraft, menu: EffectMenuV
     out.push(...summonPaths(base));
   }
   f.effects.forEach((e, k) => {
-    const at = `${base}.effects[${k}]`;
-    out.push(at, `${at}.type`);
-    for (const field of menu.fieldsOf(e.type)) {
-      out.push(`${at}.${field.name}`);
-    }
+    out.push(...effectInputPaths(`${base}.effects[${k}]`, e, menu));
   });
   return out;
 }

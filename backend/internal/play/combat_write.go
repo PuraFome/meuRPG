@@ -77,6 +77,11 @@ const (
 	eventGearSwapped = "gear_swapped"
 	// A character used a feature that declares a use (UseFeature, features.go): the master's undo takes it back.
 	eventFeatureUsed = "feature_used"
+	// The master marked a combatant as a willing mount, or took the mark off (SetCombatantMount, combat_mount.go), and a rider got
+	// on a mount or off it (the mount and dismount calls). The mark is not undone, as the side is not.
+	eventMountKindSet        = "mount_kind_set"
+	eventCombatantMounted    = "combatant_mounted"
+	eventCombatantDismounted = "combatant_dismounted"
 )
 
 // The kinds of the XP awards (package progression writes them
@@ -221,6 +226,9 @@ type combatTx struct {
 	// transaction opened (nil without the fog of war): it filters what the change
 	// tells its caller and stamps who could see the event (combat_fog.go).
 	sight *fogSight
+	// unseated are the riders the dismissals of the change took off their mounts; the next event that names the dismissed creatures
+	// keeps them for the undo (insertEventID).
+	unseated []unseat
 	// stamped is the last event insertEvent stamped with who could see it, and
 	// lines every one of them: a change can write several lines (a dropped damage
 	// for each attack, a door and the move), each seen by its own players.
@@ -722,11 +730,20 @@ func insertEvent(ctx context.Context, c *combatTx, kind string, actor, key *stri
 	return err
 }
 
+// keepUnseated puts the riders the change's dismissals took off their mounts on the event that names the dismissed creatures.
+func (c *combatTx) keepUnseated(ev actionEvent) actionEvent {
+	if len(ev.Dismissed) > 0 && len(ev.Unseated) == 0 && len(c.unseated) > 0 {
+		ev.Unseated, c.unseated = c.unseated, nil
+	}
+	return ev
+}
+
 // insertEventID is insertEvent that returns the event's ID (a firing written as
 // several events, the first one's), for a change whose own event names it.
 func insertEventID(ctx context.Context, c *combatTx, kind string, actor, key *string, payload any) (string, error) {
 	if ev, ok := payload.(actionEvent); ok {
 		var err error
+		ev = c.keepUnseated(ev)
 		if kind != eventActionUndone { // an undo keeps the stamp of the action it takes back
 			if ev, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
 				return "", err
