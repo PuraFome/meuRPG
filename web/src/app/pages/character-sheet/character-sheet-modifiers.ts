@@ -27,8 +27,3 @@ export function itemModifierLines(modifiers: readonly ItemModifierVm[]): ItemMod
     };
   });
 }
-
-/** The bonus a weapon's attack number includes now; 0 when its piece does not count. */
-export function countingAttackBonus(modifiers: readonly ItemModifierVm[], key: string): number {
-  return modifiers.find((m) => m.target === `attack:${key}` && m.counts)?.value ?? 0;
-}

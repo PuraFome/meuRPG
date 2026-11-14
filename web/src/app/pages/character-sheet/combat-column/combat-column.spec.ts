@@ -5,7 +5,7 @@ import { GearVm } from '../../../core/characters/gear';
 import { AttackVm, FullSheetVm, ItemModifierVm } from '../character-sheet.types';
 import { CombatColumn } from './combat-column';
 
-const attack = (key: string, marks?: AttackVm['marks']): AttackVm => ({
+const attack = (key: string, marks?: AttackVm['marks'], magicBonus = 0): AttackVm => ({
   key,
   namePt: key,
   kind: 'weapon',
@@ -16,6 +16,7 @@ const attack = (key: string, marks?: AttackVm['marks']): AttackVm => ({
   saveDc: 0,
   saveAbility: null,
   beams: 0,
+  magicBonus,
   marks,
 });
 
@@ -110,28 +111,47 @@ describe('CombatColumn item modifiers', () => {
 describe('CombatColumn "Ataques" +N chip', () => {
   const marks = { silvered: true, adamantine: false, magical: true };
 
-  it('shows the counting +N after the marks in place of "Mágica"', () => {
-    const el = setup({
-      attacks: [attack('sword', marks)],
-      itemModifiers: [mod('attack:sword', 'sword'), mod('damage:sword', 'sword')],
-    });
+  it('shows the +N of the field after the marks in place of "Mágica"', () => {
+    const el = setup({ attacks: [attack('sword', marks, 2)] });
     const row = el.querySelector('.attacks__name')!;
     expect(row.hasAttribute('data-chip-row')).toBe(true);
     expect(row.querySelector('[data-chip-ref]')!.textContent).toContain('sword');
     expect(row.querySelector('.bonus-chip')!.getAttribute('aria-label')).toBe(
-      'Bônus mágico +1, já somado',
+      'Bônus mágico +2, já somado',
     );
     expect(row.querySelector('app-bonus-chip')!.hasAttribute('data-chip')).toBe(true);
     expect(row.textContent).toContain('Prateada');
     expect(row.textContent).not.toContain('Mágica');
   });
 
-  it('keeps "Mágica" and shows no chip for a weapon whose bonus does not count', () => {
+  it('puts the marks before the chip in the row', () => {
+    const el = setup({ attacks: [attack('sword', marks, 1)] });
+    const kids = Array.from(el.querySelector('.attacks__name')!.children).map((c) =>
+      c.tagName.toLowerCase(),
+    );
+    expect(kids).toEqual(['span', 'app-weapon-tags', 'app-bonus-chip']);
+  });
+
+  it('reads the field and nothing else: a gear or modifier bonus with a 0 field gives no chip', () => {
     const el = setup({
-      attacks: [attack('bow', marks)],
-      itemModifiers: [mod('attack:bow', 'bow', { counts: false, reasonPt: 'Pede sintonização.' })],
+      attacks: [attack('bow', marks, 0)],
+      gear: [{ key: 'bow', namePt: 'Arco', kind: 'weapon', bonus: 2, bonusCounts: true } as GearVm],
+      itemModifiers: [mod('attack:bow', 'bow', { value: 2 })],
     });
     expect(el.querySelector('.attacks .bonus-chip')).toBeNull();
     expect(el.querySelector('.attacks__name')!.textContent).toContain('Mágica');
+  });
+
+  it('gives a second weapon without a bonus no chip and keeps its "Mágica"', () => {
+    const el = setup({ attacks: [attack('sword', marks, 2), attack('dagger', marks, 0)] });
+    const rows = el.querySelectorAll('.attacks__name');
+    expect(rows[0].querySelector('.bonus-chip')).not.toBeNull();
+    expect(rows[1].querySelector('.bonus-chip')).toBeNull();
+    expect(rows[1].textContent).toContain('Mágica');
+  });
+
+  it('shows no chip on a spell row', () => {
+    const el = setup({ attacks: [{ ...attack('fire-bolt'), kind: 'spell' }] });
+    expect(el.querySelector('.attacks .bonus-chip')).toBeNull();
   });
 });

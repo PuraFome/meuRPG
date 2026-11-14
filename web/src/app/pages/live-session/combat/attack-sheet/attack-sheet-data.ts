@@ -17,6 +17,7 @@ import {
   AttackKind,
   AttackSchema,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import { magicBonusOf } from '../../../../core/combat/combat-options';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import type { AttackSheetData } from './attack-sheet';
@@ -49,8 +50,6 @@ export interface AttackSheetRequest {
   readonly resume?: PendingDamage;
   readonly held?: HeldRollOffer;
   readonly thrown?: ThrownAttack;
-  /** The counting magic bonus of the player's weapon; 0 or absent for none. */
-  readonly bonus?: number;
   /** The master's legendary attack: see `AttackSheetData.legendary`. */
   readonly legendary?: AttackSheetData['legendary'];
   /** A roll of the sheet was held for a question: the page learns the hold. */
@@ -117,13 +116,14 @@ export function attackSheetData(req: AttackSheetRequest): AttackSheetData | null
     return null;
   }
   const e = req.encounter;
+  const magicBonus = req.master || req.thrown ? 0 : magicBonusOf(found.option);
   return {
     campaignId: req.campaignId,
     encounterId: e.id,
     attackerId: req.attacker.id,
     round: e.round,
     attack: found.attack,
-    ...(req.bonus ? { bonus: req.bonus } : {}),
+    ...(magicBonus > 0 ? { bonus: magicBonus } : {}),
     targets:
       req.thrown?.targets ??
       req.options?.attackTargets.find((t) => t.attackKey === req.key)?.targets ??

@@ -49,12 +49,6 @@ export function bonusChipName(bonus: number, counts: boolean, withWords = false)
   return `Bônus mágico +${bonus}, ${counts ? 'já somado' : 'não conta agora'}`;
 }
 
-/** The magic bonus a weapon's attack numbers include now: the piece's bonus when it counts, else 0. */
-export function countingGearBonus(gear: readonly GearVm[], key: string): number {
-  const g = gear.find((p) => p.kind === 'weapon' && p.key === key);
-  return g?.bonus && g.bonusCounts !== false ? g.bonus : 0;
-}
-
 /** The marks an attack row or sheet shows: a counting +N takes the place of "Mágica". */
 export function attackMarksFor(
   marks: MarksVm | undefined,

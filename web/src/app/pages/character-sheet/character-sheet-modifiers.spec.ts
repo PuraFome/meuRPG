@@ -1,6 +1,6 @@
 import { attackMarksFor } from '../../core/characters/gear';
 import type { ItemModifierVm } from './character-sheet.types';
-import { countingAttackBonus, itemModifierLines } from './character-sheet-modifiers';
+import { itemModifierLines } from './character-sheet-modifiers';
 
 function mod(
   target: string,
@@ -41,14 +41,8 @@ describe('itemModifierLines', () => {
   });
 });
 
-describe('countingAttackBonus and attackMarksFor', () => {
+describe('attackMarksFor', () => {
   const marks = { silvered: true, adamantine: false, magical: true };
-
-  it('reads the bonus of a counting attack entry only', () => {
-    expect(countingAttackBonus([mod('attack:bow', 'bow', { value: 3 })], 'bow')).toBe(3);
-    expect(countingAttackBonus([mod('attack:bow', 'bow', { counts: false })], 'bow')).toBe(0);
-    expect(countingAttackBonus([mod('attack:bow', 'bow')], 'sword')).toBe(0);
-  });
 
   it('swaps "Mágica" for the +N, and keeps it without one', () => {
     expect(attackMarksFor(marks, 1)).toEqual({ silvered: true, adamantine: false, magical: false });

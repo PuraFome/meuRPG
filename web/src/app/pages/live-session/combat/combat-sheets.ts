@@ -85,7 +85,6 @@ export class CombatSheets {
       resume: req.resume,
       held: req.held,
       thrown: req.thrown,
-      bonus: this.weaponBonus(req),
       legendary: req.legendary,
       onHeld: (holdId) => this.inspirationHandled.add(holdId),
     });
@@ -100,11 +99,6 @@ export class CombatSheets {
       return;
     }
     this.openAttack(req, data, null);
-  }
-
-  /** The counting magic bonus of the player's own weapon; 0 for a creature's or the master's attack. */
-  private weaponBonus(req: AttackOpen): number {
-    return req.who || this.ctx.isMaster() ? 0 : (this.ctx.weaponBonus?.(req.key) ?? 0);
   }
 
   /** The attack sheet, at the roll when the target is already named. */

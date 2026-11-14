@@ -56,16 +56,15 @@
       </thead>
       <tbody>
         @for (atk of s.attacks; track atk.key) {
-          @let bonus = countingBonus(atk.key);
           <tr>
             <td>
               <span class="attacks__name" data-chip-row>
                 <span data-chip-ref>{{ atk.namePt }}</span>
                 @if (atk.marks) {
-                  <app-weapon-tags [marks]="marksFor(atk, bonus)" />
+                  <app-weapon-tags [marks]="marksFor(atk)" />
                 }
-                @if (bonus > 0) {
-                  <app-bonus-chip data-chip [bonus]="bonus" />
+                @if (atk.magicBonus > 0) {
+                  <app-bonus-chip data-chip [bonus]="atk.magicBonus" />
                 }
               </span>
               @if (atk.saveDc > 0 && atk.saveAbility) {

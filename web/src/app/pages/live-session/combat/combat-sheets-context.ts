@@ -54,8 +54,6 @@ export interface CombatSheetsContext {
   readonly state: () => CombatState;
   readonly diceMode: () => DiceMode;
   readonly preference: () => DicePreference;
-  /** The counting magic bonus of the player's weapon with this key; 0 for none. */
-  readonly weaponBonus?: (key: string) => number;
   /** The player's `GetTurnOptions`. */
   readonly options: () => GetTurnOptionsResponse | null;
   readonly vitals: () => readonly VitalsVm[];

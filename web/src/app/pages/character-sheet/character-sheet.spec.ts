@@ -480,6 +480,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 0,
+                magicBonus: 0,
               },
               {
                 key: 'spell:fire-bolt',
@@ -492,6 +493,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 0,
+                magicBonus: 0,
               },
               {
                 key: 'spell:poison-spray',
@@ -504,6 +506,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 14,
                 saveAbility: 'con',
                 beams: 0,
+                magicBonus: 0,
               },
             ],
           }),
@@ -540,6 +543,7 @@ describe('CharacterSheetPage', () => {
                 saveAbility: null,
                 versatileDamage: '',
                 beams: 0,
+                magicBonus: 0,
               },
               {
                 key: 'spell:eldritch-blast',
@@ -552,6 +556,7 @@ describe('CharacterSheetPage', () => {
                 saveAbility: null,
                 versatileDamage: '',
                 beams: 3,
+                magicBonus: 0,
               },
             ],
           }),
@@ -1174,6 +1179,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 0,
+                magicBonus: 0,
               },
               {
                 key: 'spell:fire-bolt',
@@ -1186,6 +1192,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 0,
+                magicBonus: 0,
               },
             ],
             equipment: [{ name: 'Corda (15m)', quantity: 1 }],
@@ -1284,6 +1291,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 1,
+                magicBonus: 0,
               },
               {
                 key: 'equipment:dagger',
@@ -1297,6 +1305,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 1,
+                magicBonus: 0,
               },
             ],
           }),

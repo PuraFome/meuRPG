@@ -7,7 +7,7 @@ import type { VitalsVm } from '../../../core/play/live-session.types';
 import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../shared/weapon-tags/weapon-tags';
 import { SpellHelp } from '../../../shared/spell-details/spell-help';
-import { countingAttackBonus, itemModifierLines } from '../character-sheet-modifiers';
+import { itemModifierLines } from '../character-sheet-modifiers';
 import { AttackVm, FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {
@@ -62,12 +62,9 @@ export class CombatColumn {
   protected readonly shieldNote = computed(
     () => this.sheet().shieldIdle && !this.sheet().gear.some((g) => g.kind === 'shield' && g.bonus),
   );
-  /** The counting +N of a weapon, 0 when it has none. */
-  protected countingBonus(key: string): number {
-    return countingAttackBonus(this.sheet().itemModifiers, key);
-  }
-  protected marksFor(atk: AttackVm, bonus: number) {
-    return attackMarksFor(atk.marks, bonus);
+  /** The marks of an attack's row: a counting +N takes the place of "Mágica". */
+  protected marksFor(atk: AttackVm) {
+    return attackMarksFor(atk.marks, atk.magicBonus);
   }
   /** The spells by level, each with its tags and, for a class that prepares, whether it is prepared. */
   protected readonly spellGroupList = computed(() =>
