@@ -271,6 +271,7 @@ What the stored event does not keep is not recovered:
 
 - a public cast change, because the spell level is not kept;
 - a reaction window that closed, because the combat the retry reads already shows it closed.
+- the `map_changed` hint of `EndEncounter`: its repeat tells the combat, the log and the vitals again, and not the map.
 - a trap a wrong move fired, only in part: the repeat reads the puzzle's trap point's latest stored `trap_triggered` event, which may be a later firing than the move's own, and tells nothing if that event is gone.
 
 The hints `AnswerReaction` tells from its handler after the write (`encounter_changed`, `combat_log_changed`, the answer's vitals) do not go through the collector, so they carry no number.

@@ -150,6 +150,7 @@ How the hit uses it is in [Attacks and damage](attacks-and-damage.md#a-spells-hi
 
 A player's character keeps its level in `character_vitals.exhaustion_level` (the vitals apply the halved maximum of level 4: `combat.ExhaustedMaxHP`); an NPC's is a column of the combatant.
 `SetExhaustion` and `LowerExhaustion` (master only, `expected_level` required) change it in one transaction, and a long rest lowers it by one.
+The level is written by the vitals keeper of the characters module inside the combat write's transaction (the master's call, and the end of a frenzied rage), so the session's number moves once with the write.
 Level 6 needs `confirm_death`; in a combat it puts the player's character at three death failures (the `ConfirmDeath` flow), outside one the call marks the character dead (`CombatRoster.MarkDead`).
 The concentration save reads `combat.SaveMode` like the other saves (exhaustion 3 gives disadvantage, with `second_d20_face` for physical dice); its prompt (`ConcentrationSavePrompt`) carries the same mode and its sources (`mode`, `mode_sources_pt`, from `concentrationSources`, the function the roll uses too), so the sheet asks for both d20 whenever the roll needs two.
 

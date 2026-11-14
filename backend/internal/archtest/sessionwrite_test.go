@@ -55,6 +55,16 @@ var sessionSentinels = []string{"send", "tellMembers", "publish", "touch", "Next
 //   - the literal writes if it, nested literals included, calls a method or function that is a query of the package's own
 //     *.sql files whose statement has an INSERT INTO, an UPDATE ... SET or a DELETE FROM (a sqlc method has the query's
 //     name; a query that only SELECTs, even FOR UPDATE, is a read), or one of sessionSentinels;
+//   - a pure delegation is not a write: a method that calls the method of its own name on an embedded field (a decorator
+//     of a foreign implementation: clockedVitals forwards AssumeWildShape to the characters module's keeper) does not
+//     take the name of the forwarded call as a write, because by name that call would be taken for every function of the
+//     package that has the name (the RPC handler Service.AssumeWildShape) and the wrapper would be listed for it. What
+//     else the method calls counts as for any function, so a decorator that also writes through a query of its own is
+//     still judged, and a forward under another name is followed as before. The embedded field is an interface declared in
+//     the package or a type of another package; an embedded struct of the package is followed by name. The forwarded
+//     implementation is not read, because it lives in a package this test does not scan (characters, which part 3 scans):
+//     what the callers of a delegation do with the number is pinned by the seq rows of the play package (hints_*_test.go),
+//     and that a caller is followed through the name the handler shares is a bonus of the by-name rule, not a guarantee;
 //   - a call of a parameter of the enclosing function that has a function type counts as a write too (the closure
 //     that the caller passes in is not seen, so it is taken to write: changeRun, changeActions);
 //   - the call is followed through the package: a call of a name that is the name of a function or method declared in a
@@ -186,6 +196,7 @@ func sessionWriteKeys(srcs map[string][]byte, writers map[string]bool) ([]string
 		}
 		files = append(files, sessionFile{p, f})
 	}
+	dropDelegations(files)
 	reach := writingNames(files, writers)
 	var keys []string
 	add := func(f sessionFile, fn string) {
@@ -219,6 +230,102 @@ func sessionWriteKeys(srcs map[string][]byte, writers map[string]bool) ([]string
 	}
 	slices.Sort(keys)
 	return keys, nil
+}
+
+// dropDelegations makes the pure delegations of the package invisible to the rules: in a method whose receiver type embeds a
+// field F that is an interface declared in the package or a type of another package, a call recv.F.M(...) with M the name
+// of the method itself is renamed to a name nothing declares.
+func dropDelegations(files []sessionFile) {
+	ifaces := map[string]bool{}
+	for _, f := range files {
+		for _, decl := range f.ast.Decls {
+			if gd, ok := decl.(*ast.GenDecl); ok {
+				for _, spec := range gd.Specs {
+					if ts, ok := spec.(*ast.TypeSpec); ok {
+						_, isIface := ts.Type.(*ast.InterfaceType)
+						ifaces[ts.Name.Name] = isIface
+					}
+				}
+			}
+		}
+	}
+	// embedded[T][F]: T embeds F, which is an interface of the package or a type of another package.
+	embedded := map[string]map[string]bool{}
+	for _, f := range files {
+		for _, decl := range f.ast.Decls {
+			gd, ok := decl.(*ast.GenDecl)
+			if !ok {
+				continue
+			}
+			for _, spec := range gd.Specs {
+				ts, ok := spec.(*ast.TypeSpec)
+				if !ok {
+					continue
+				}
+				st, ok := ts.Type.(*ast.StructType)
+				if !ok {
+					continue
+				}
+				for _, fld := range st.Fields.List {
+					if len(fld.Names) != 0 {
+						continue
+					}
+					t := fld.Type
+					if star, ok := t.(*ast.StarExpr); ok {
+						t = star.X
+					}
+					name, foreign := "", false
+					switch x := t.(type) {
+					case *ast.Ident:
+						name = x.Name
+					case *ast.SelectorExpr:
+						name, foreign = x.Sel.Name, true
+					}
+					if name != "" && (foreign || ifaces[name]) {
+						if embedded[ts.Name.Name] == nil {
+							embedded[ts.Name.Name] = map[string]bool{}
+						}
+						embedded[ts.Name.Name][name] = true
+					}
+				}
+			}
+		}
+	}
+	for _, f := range files {
+		for _, decl := range f.ast.Decls {
+			d, ok := decl.(*ast.FuncDecl)
+			if !ok || d.Body == nil || d.Recv == nil || len(d.Recv.List) != 1 || len(d.Recv.List[0].Names) != 1 {
+				continue
+			}
+			recvType := d.Recv.List[0].Type
+			if star, ok := recvType.(*ast.StarExpr); ok {
+				recvType = star.X
+			}
+			tid, ok := recvType.(*ast.Ident)
+			if !ok {
+				continue
+			}
+			recv := d.Recv.List[0].Names[0].Name
+			ast.Inspect(d.Body, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				m, ok := call.Fun.(*ast.SelectorExpr)
+				if !ok || m.Sel.Name != d.Name.Name {
+					return true
+				}
+				fld, ok := m.X.(*ast.SelectorExpr)
+				if !ok || !embedded[tid.Name][fld.Sel.Name] {
+					return true
+				}
+				if id, ok := fld.X.(*ast.Ident); ok && id.Name == recv {
+					call.Fun = ast.NewIdent("forwarded")
+				}
+				return true
+			})
+		}
+	}
 }
 
 // callName is the name a call is made by: f(...) or x.f(...).
@@ -537,6 +644,63 @@ func TestSessionWriteKeys(t *testing.T) {
 				"func (s *Service) txOn(c C, st S, id string, fn F) error { return db.InTx(c, st, func(tx pgx.Tx) error { q.BumpHintSeq(c, id); return fn(tx, &h) }) }",
 			"internal/play/a.go": "package play\nfunc F(s S) error { return db.InTx(c, p, func(tx pgx.Tx) error { return s.tx(c, id, nil) }) }",
 		}, nil},
+		{
+			"a pure delegation to an embedded interface is not a writer",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"type Keeper interface{ Assume(c C, tx pgx.Tx) error }\n" +
+					"type clocked struct{ Keeper }\n" +
+					"func (k clocked) Assume(c C, tx pgx.Tx) error { err := k.Keeper.Assume(c, tx); return read(c, err) }\n" +
+					"func (s *Service) Assume(c C) error { return q.UpdateThing(c) }\n" +
+					"func (s *Service) Change(c C) error { return db.InTx(c, p, func(tx pgx.Tx) error { return s.keeper.Assume(c, tx) }) }",
+			},
+			// The wrapper is not listed; its caller is read, and the name Assume writes in the handler.
+			[]string{"play a.go (*Service).Change"},
+		},
+		{
+			"a pure delegation to an embedded type of another package",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"type clocked struct{ chars.Keeper }\n" +
+					"func (k *clocked) Assume(c C, tx pgx.Tx) error { return k.Keeper.Assume(c, tx) }\n" +
+					"func (s *Service) Assume(c C) error { return q.UpdateThing(c) }",
+			},
+			nil,
+		},
+		{
+			"a same-named wrapper that also writes is a writer",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"type Keeper interface{ Assume(c C, tx pgx.Tx) error }\n" +
+					"type clocked struct{ Keeper }\n" +
+					"func (k clocked) Assume(c C, tx pgx.Tx) error { err := k.Keeper.Assume(c, tx); q.UpdateThing(c); return err }",
+			},
+			[]string{"play a.go (clocked).Assume"},
+		},
+		{
+			"a decorator that forwards under another name is judged as before",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"type Keeper interface{ Assume(c C, tx pgx.Tx) error }\n" +
+					"type clocked struct{ Keeper }\n" +
+					"func (k clocked) Set(c C, tx pgx.Tx) error { return k.Keeper.Assume(c, tx) }\n" +
+					"func (s *Service) Assume(c C) error { return q.UpdateThing(c) }",
+			},
+			[]string{"play a.go (clocked).Set"},
+		},
+		{
+			"a forward through a field that is not embedded, or an embedded struct of the package, is followed",
+			map[string]string{
+				"internal/play/a.go": "package play\n" +
+					"type inner struct{}\n" +
+					"func (inner) Assume(c C, tx pgx.Tx) error { return q.UpdateThing(c) }\n" +
+					"type wrapped struct{ inner }\n" +
+					"func (k wrapped) Assume(c C, tx pgx.Tx) error { return k.inner.Assume(c, tx) }\n" +
+					"type named struct{ keeper chars.Keeper }\n" +
+					"func (k named) Assume(c C, tx pgx.Tx) error { return k.keeper.Assume(c, tx) }",
+			},
+			[]string{"play a.go (inner).Assume", "play a.go (named).Assume", "play a.go (wrapped).Assume"},
+		},
 		{
 			"package-level literal",
 			map[string]string{

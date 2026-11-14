@@ -411,6 +411,9 @@ The table's `wild_shape` effects (`Derived.WildShape`: the highest challenge rat
 | `PlayService.LeaveWildShape` | The owning player and the master | "Voltar à forma normal": bonus action on the character's turn (the master's spends nothing); it takes the clock away. `NOT_IN_WILD_SHAPE` in own form. Writes `wild_shape_ended` (`reason: left`) |
 | `PlayService.AdjustCharacterVitals` | The master | `wild_shape_hit_points_current` (1 up to the beast's maximum; 0 ends the form, `wild_shape_ended` with `reason: master`). Without a form it is `invalid_argument` |
 
+- **One write.** Assuming and leaving a form, in a combat or out of one, are a combat write: the vitals keeper of the characters module changes the form inside its transaction and the session's number moves once ([Live session](live-session.md#the-hint-number)).
+  The vitals the call publishes go out after the commit with no number, as the combat's own hints do.
+  A repeat of the key outside a combat tells the vitals and the map's sight again.
 - **Damage on the beast, healing, what is left over.** The damage the master applies (`ApplyPendingDamage`) falls on the beast's pool, without temporary HP (`damageBeast`); if the beast falls to 0 the form ends, the combatant goes back to the character's numbers and what was left over passes to the druid by the usual path (temporary HP first, `changeVitals`, the death saves).
   Healing a druid in the form (`healCombatant`: a spell, Second Wind) heals the beast, up to its maximum.
   `wild_shape_ended` with `reason: damage` and `carried_damage` is written before the damage event and does not close the undo chain.
