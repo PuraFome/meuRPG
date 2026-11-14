@@ -69,31 +69,7 @@ func (s *Service) GetTurnOptions(
 	if err := s.attachMountOptions(ctx, m.CampaignID, d, v, who, terrain, res.GetOptions()); err != nil {
 		return nil, err
 	}
-	modes, err := s.weighTurnModes(ctx, m, d, v, sight, who)
-	if err != nil {
-		return nil, err
-	}
-	listAttackTargets(res, d, v, who, terrain, modes)
-	if err := s.listSpellTargets(ctx, m, res, d, v, who, terrain, modes); err != nil {
-		return nil, err
-	}
-	if err := s.listPendingDamage(ctx, m, res, d, v, who); err != nil {
-		return nil, err
-	}
-	if res.FeatureTargets, err = s.annotateFeatures(ctx, m, d, v, who, reads, res.GetOptions(), code); err != nil {
-		return nil, err
-	}
-	if res.ManeuverDice, err = s.listManeuverDice(ctx, who, reads); err != nil {
-		return nil, err
-	}
-	if err := s.listPowerAttacks(ctx, who, reads, res.GetOptions()); err != nil {
-		return nil, err
-	}
-	res.ContestAttackOptions, res.ContestState, err = s.contestOptionsFor(ctx, m, d, v, who, opts, code)
-	if err != nil {
-		return nil, s.dbError(ctx, "work out the contests of the turn", err)
-	}
-	if err := s.markUnseenTargets(ctx, m, res, d, v, sight, who); err != nil {
+	if err := s.fillTurnLists(ctx, m, res, d, v, sight, who, opts, reads, code, terrain); err != nil {
 		return nil, err
 	}
 	riderDown, err := s.riderIsDown(ctx, m.CampaignID, d.cs, v, who)
@@ -102,6 +78,36 @@ func (s *Service) GetTurnOptions(
 	}
 	limitMountOptions(res, d.cs, v, who, riderDown) // last: nothing above turns a row of a mount back on
 	return connect.NewResponse(res), nil
+}
+
+// fillTurnLists adds to the options of the turn the lists the combatant's sheet and the table give it: its attack and spell
+// targets, the damage waiting, the features, the maneuver dice, the power attacks and the contests.
+func (s *Service) fillTurnLists(ctx context.Context, m authz.Membership, res *playv1.GetTurnOptionsResponse, d *encounterData, v combatViewer, sight *fogSight, who playdb.Combatant, opts *rulesv1.TurnOptions, reads *turnReads, code rulesv1.DisabledReasonCode, terrain grid.Terrain) error {
+	modes, err := s.weighTurnModes(ctx, m, d, v, sight, who)
+	if err != nil {
+		return err
+	}
+	listAttackTargets(res, d, v, who, terrain, modes)
+	if err := s.listSpellTargets(ctx, m, res, d, v, who, terrain, modes); err != nil {
+		return err
+	}
+	if err := s.listPendingDamage(ctx, m, res, d, v, who); err != nil {
+		return err
+	}
+	if res.FeatureTargets, err = s.annotateFeatures(ctx, m, d, v, who, reads, res.GetOptions(), code); err != nil {
+		return err
+	}
+	if res.ManeuverDice, err = s.listManeuverDice(ctx, who, reads); err != nil {
+		return err
+	}
+	if err := s.listPowerAttacks(ctx, who, reads, res.GetOptions()); err != nil {
+		return err
+	}
+	res.ContestAttackOptions, res.ContestState, err = s.contestOptionsFor(ctx, m, d, v, who, opts, code)
+	if err != nil {
+		return s.dbError(ctx, "work out the contests of the turn", err)
+	}
+	return s.markUnseenTargets(ctx, m, res, d, v, sight, who)
 }
 
 // markUnseenTargets marks, for the master reading the turn of a player's character, the targets
