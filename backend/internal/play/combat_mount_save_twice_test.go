@@ -1,10 +1,10 @@
 package play
 
 import (
-	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"testing"
 
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // A second push (or a prone) while the rider's save is open moves the same save on: one roll covers both, and the window does not close
