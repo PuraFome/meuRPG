@@ -555,7 +555,11 @@ func partRollsProto(p playdb.PendingDamage, master, reads bool, damageTypePT fun
 	if !reads && plainToOthers(readParts(p.Parts)) {
 		return nil
 	}
-	for _, r := range readPartRolls(p.PartRolls) {
+	rolls := readPartRolls(p.PartRolls)
+	if !reads {
+		rolls = mergeHiddenGroups(rolls)
+	}
+	for _, r := range rolls {
 		if r.Conditional && !master {
 			r.Counted = true // a player reads the same lines whatever the target is
 		}
@@ -576,13 +580,52 @@ func rollForOthers(r partRoll) partRoll {
 	if r.Effect != "" {
 		r = hitRollForOthers(r)
 	}
-	if r.GroupHidden { // the group's sum holds a part they may not read: it is not theirs under another row
-		r.Sum = 0
-	}
 	if r.Key == partPowerAttack {
 		r = powerRollForOthers(r)
 	}
 	return r
+}
+
+// mergeHiddenGroups is the rolls as the other players read them when a typed damage-type group holds a part hidden from
+// them: the server knows only the group's sum, so the group is one row, at the row that carries the sum: the names of
+// its visible parts and "Outra fonte", the damage type, the group's sum and the fixed numbers of its parts (RN-10).
+func mergeHiddenGroups(rolls []partRoll) []partRoll {
+	merged := map[string]*partRoll{}
+	for i, r := range rolls {
+		if r.GroupHidden {
+			names := []string{}
+			flat := int32(0)
+			for _, o := range rolls {
+				if o.Group != r.Group || o.Effect != "" && o.Hide {
+					continue
+				}
+				names = append(names, o.Label)
+				flat += o.Flat + o.Fixed
+			}
+			row := rolls[i]
+			if row.Effect != "" && row.Hide { // every part of the group is hidden: the row carries the id of the effect's row
+				row = hitRollForOthers(row)
+			}
+			row.Label, row.Flat, row.Fixed = strings.Join(append(names, otherSourceTx), " + "), flat, 0
+			row.Count, row.Sides, row.Faces, row.Rerolled, row.CountedDice = 0, 0, nil, nil, nil
+			row.Effect, row.Hide, row.Counted = "", false, true
+			merged[r.Group] = &row
+		}
+	}
+	if len(merged) == 0 {
+		return rolls
+	}
+	var out []partRoll
+	for _, r := range rolls {
+		g, ok := merged[r.Group]
+		switch {
+		case !ok || r.Group == "":
+			out = append(out, r)
+		case r.GroupHidden:
+			out = append(out, *g)
+		}
+	}
+	return out
 }
 
 // powerPartForOthers is the power attack's part as a player who is neither the master nor the attacker's owner reads it:

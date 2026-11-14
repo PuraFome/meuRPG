@@ -306,10 +306,10 @@ func TestTheGroupSumIsKeptOnTheFirstPartTheOthersCanRead(t *testing.T) {
 	}
 }
 
-// RN-10: the sum of a group that holds a hidden part is never read by the others under a row that names another source.
-// The canary is the sum 13 (1d8 and 1d6 and a flat 3 make 16 of it): the owner and the master read it, the others
-// read neither it nor the hidden effect's key, and a group of no hidden part is read as it is.
-func TestRN10_TheOthersNeverReadTheSumOfAGroupThatHoldsAHiddenPart(t *testing.T) {
+// RN-10: a group that holds a hidden part is one row for the others: the visible parts' names and "Outra fonte", the damage
+// type and the group's sum (13: 1d8 and 1d6 and a flat 3 make 16 of it), never the hidden effect's key or name and never a
+// 0 that was not rolled. The owner and the master read the parts as before.
+func TestRN10_TheOthersReadAGroupThatHoldsAHiddenPartAsOneRow(t *testing.T) {
 	t.Parallel()
 	read := func(parts []partRecord, viewer string) string {
 		got, err := groupCase{parts: parts, typed: typedSums{byType: map[string]int{groupPiercing: 13}}}.roll()
@@ -327,8 +327,8 @@ func TestRN10_TheOthersNeverReadTheSumOfAGroupThatHoldsAHiddenPart(t *testing.T)
 			}
 		}
 		text := read(order, "other")
-		if canary.MatchString(text) || strings.Contains(text, "hunters-hex") || strings.Contains(text, "Marca de Nanquim") {
-			t.Errorf("the others read %s of a group that holds a hidden part", text)
+		if !canary.MatchString(text) || !strings.Contains(text, "Rapieira + Outra fonte") || strings.Contains(text, "hunters-hex") || strings.Contains(text, "Marca de Nanquim") || strings.Contains(text, "row-1") {
+			t.Errorf("the others read %s of a group that holds a hidden part, want one row with the sum and no word of the spell", text)
 		}
 	}
 	visible := hiddenHex()
