@@ -5,6 +5,13 @@ import { MatBottomSheet } from '@angular/material/bottom-sheet';
 import { MatDialog } from '@angular/material/dialog';
 
 import {
+  CombatLogEffectChange,
+  CombatLogEffectSchema,
+  type CombatLogEntry,
+  CombatLogEntrySchema,
+  CombatLogKind,
+  CombatLogRoundSchema,
+  CombatantKind,
   EncounterBlockedReason,
   EncounterBlockedSchema,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
@@ -71,5 +78,99 @@ describe('CombatLogPanel: the error of the undo', () => {
     expect(panel.undoRefusal(new ConnectError('x', Code.Aborted))).toBe(
       'Outra ação aconteceu antes: confira o registro.',
     );
+  });
+});
+
+describe('CombatLogPanel: the notice of a concentration that ended with no hit', () => {
+  const ended = (id: string) =>
+    create(CombatLogEntrySchema, {
+      id,
+      kind: CombatLogKind.EFFECT,
+      effect: create(CombatLogEffectSchema, {
+        sourceKey: 'spell:branding-smite',
+        sourceNamePt: 'Clarão na Lâmina',
+        targetLabels: ['Brisa'],
+        change: CombatLogEffectChange.ENDED,
+        reason: 'concentration',
+        unused: true,
+      }),
+    });
+
+  function open(inputs: { master?: boolean; ownLabel?: string }) {
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: CombatClient, useValue: {} },
+        { provide: MatDialog, useValue: { open: vi.fn() } },
+        { provide: MatBottomSheet, useValue: { open: vi.fn() } },
+      ],
+    });
+    const log = new CombatLogState();
+    const fixture = TestBed.createComponent(CombatLogPanel);
+    fixture.componentRef.setInput('log', log);
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({
+        id: 'enc',
+        round: 1,
+        combatants: [combatant({ id: 'p1', label: 'Brisa', kind: CombatantKind.PLAYER })],
+      }),
+    );
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput('state', new CombatState());
+    fixture.componentRef.setInput('master', inputs.master ?? false);
+    fixture.componentRef.setInput('ownLabel', inputs.ownLabel ?? '');
+    fixture.detectChanges();
+    const feed = (...entries: CombatLogEntry[]) => {
+      log.rounds.set([create(CombatLogRoundSchema, { round: 1, entries })]);
+      log.loaded.set(true);
+      fixture.detectChanges();
+    };
+    return { fixture, feed, el: fixture.nativeElement as HTMLElement };
+  }
+
+  const notice = (el: HTMLElement) => el.querySelector('[data-testid="lapse-notice"]');
+
+  it('shows the caster the notice above the log, and keeps the log line', () => {
+    const { feed, el } = open({ ownLabel: 'Brisa' });
+    feed();
+    feed(ended('a'));
+    expect(notice(el)?.textContent).toContain('A sua concentração acabou.');
+    expect(notice(el)?.textContent?.replace(/ /g, ' ')).toContain(
+      'O Clarão na Lâmina acabou sem golpe.',
+    );
+    expect(el.textContent).toContain('acabou sem golpe: a concentração acabou');
+    const section = el.querySelector('section.panel')!;
+    expect(
+      notice(el)!.compareDocumentPosition(section.querySelector('#log-body')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('shows the master the notice with the caster named', () => {
+    const { feed, el } = open({ master: true });
+    feed();
+    feed(ended('a'));
+    expect(notice(el)?.textContent?.replace(/ /g, ' ')).toContain(
+      'A concentração de Brisa acabou.',
+    );
+  });
+
+  it('shows another player the log line alone', () => {
+    const { feed, el } = open({ ownLabel: 'Tor' });
+    feed();
+    feed(ended('a'));
+    expect(notice(el)).toBeNull();
+    expect(el.textContent).toContain('acabou sem golpe: a concentração acabou');
+  });
+
+  it('takes the notice away when it is touched, and does not bring it back with the same log', () => {
+    const { feed, fixture, el } = open({ ownLabel: 'Brisa' });
+    feed();
+    feed(ended('a'));
+    (notice(el)!.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(notice(el)).toBeNull();
+    feed(ended('a'));
+    expect(notice(el)).toBeNull();
   });
 });

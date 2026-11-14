@@ -1,3 +1,5 @@
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import { test } from './diagnostics';
@@ -6790,6 +6792,96 @@ async function scanLeftOut(browser: Browser, colorScheme: 'light' | 'dark'): Pro
     await doneRefusing(); // a read the page started is answered before the page closes
     await Promise.all([mContext.close(), pContext.close()]);
   }
+}
+
+/**
+ * The notice above the log when the caster's concentration ends before the next hit spent the effect (#577, board 577-07 state 6):
+ * Pensantus casts "Clarão na Lâmina" (concentration, next hit) and ends his concentration with no hit. His player reads the notice
+ * above the log, in a polite status region, with an icon and the words; the master reads it with the caster named; both still read
+ * the log's line. E2E_SHOTS_DIR, when set, also saves the player's screen (dsf 2) as `577-roll-concentracao-acabou-<w>-<theme>.png`.
+ */
+async function scanLapseNotice(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(300_000);
+  const shots = process.env.E2E_SHOTS_DIR;
+  const viewport = { width, height: 900 };
+  const scale = shots ? { deviceScaleFactor: 2 } : {};
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...scale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...scale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const sheet: Record<string, unknown> = { ...pensantusCasting, weaponKeys: ['equipment:dagger'] };
+    let flare = '';
+    const table = await tableForCombat(m, p, `Acessibilidade concentração ${Date.now()}`, true, true, {
+      sheet,
+      before: async (id, master) => {
+        const body = { trigger: 'TABLE_HIT_TRIGGER_NEXT_HIT', die: 6, dice: 2, perSlotDice: 0, maxDice: 2, damageType: 'damage-type:radiant', save: 'con', onFailConditions: ['condition:blinded'] };
+        flare = await createEntryRPC(master, id, 'tableSpell', hitSpellBody('Clarão na Lâmina', body, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_PUBLIC', modifiers: [hitModifier(body)] } }));
+        sheet.knownSpellKeys = [...pensantusCasting.knownSpellKeys, flare];
+        sheet.preparedSpellKeys = [...pensantusCasting.preparedSpellKeys, flare];
+        return pensantus;
+      },
+    });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const caster = enc.combatants.find((c) => c.label === 'Pensantus')!.id;
+    await openSessionPage(p, campaignId);
+    await openSessionPage(m, campaignId);
+    await openCombatPanel(m, 'Registro');
+    const cast = await callRPC(p, 'meurpg.play.v1.CombatService/CastSpell', {
+      campaignId,
+      encounterId: enc.id,
+      casterId: caster,
+      spellKey: flare,
+      slot: { level: 2 },
+      targets: [],
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(cast.ok(), await cast.text()).toBeTruthy();
+    // No hit: the player ends his own concentration (the server writes "acabou sem golpe", reason concentration).
+    const ended = await combatRPC(p, 'SetCombatantConditions', { campaignId, encounterId: enc.id, combatantId: caster, endConcentration: true });
+    await waitForEncounterRevision([m, p], ended);
+
+    const mine = p.getByTestId('lapse-notice');
+    await expect(mine).toBeVisible();
+    await expect(mine).toContainText('A sua concentração acabou.');
+    await expect(mine).toContainText('O Clarão na Lâmina acabou sem golpe.');
+    // A polite status region that was there first, the words with an icon: never colour alone.
+    await expect(mine.locator('xpath=ancestor::*[@role="status"][1]')).toHaveAttribute('aria-live', 'polite');
+    await expect(mine.locator('mat-icon[aria-hidden="true"]')).toHaveCount(1);
+    await expectScreenPasses(p, `A concentração acabou sem golpe, vista por quem conjurou ${where}`);
+    if (shots) {
+      mkdirSync(shots, { recursive: true });
+      await mine.scrollIntoViewIfNeeded();
+      await p.screenshot({ path: join(shots, `577-roll-concentracao-acabou-${width}-${colorScheme}.png`) });
+    }
+    const theirs = m.getByTestId('lapse-notice');
+    await expect(theirs).toBeVisible();
+    await expect(theirs).toContainText('A concentração de Pensantus acabou.');
+    await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('acabou sem golpe');
+    await expectScreenPasses(m, `A concentração acabou sem golpe, vista pelo mestre ${where}`);
+
+    // Touched, it goes away and the log's line stays, for the notice's reader too.
+    await mine.getByRole('button', { name: 'Entendi' }).click();
+    await expect(mine).toHaveCount(0);
+    const log = await openCombatLog(p);
+    await expect(log).toContainText('acabou sem golpe');
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, width] of [['light', 390], ['light', 768], ['light', 1280], ['dark', 390], ['dark', 768], ['dark', 1280]] as const) {
+  test(`o aviso da concentração que acabou sem golpe passa no axe e nas conferências de layout no tema ${scheme === 'light' ? 'claro' : 'escuro'}, em ${width}px`, { tag: ['@a11y', '@MR-048', '@RN-22'] }, async ({ browser }) => {
+    await scanLapseNotice(browser, scheme, width);
+  });
 }
 
 test('as entradas fora da campanha passam no axe e nas conferências de layout no tema claro, em 390, 768 e 1280', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
