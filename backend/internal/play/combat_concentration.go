@@ -471,15 +471,6 @@ func (s *Service) concentrationFavor(ctx context.Context, c *combatTx, call conc
 	return s.favorOnSave(ctx, s.inspirationGate(c), call.m, reactor, heldConcentrationSave, call.key, call.msg.GetSpendFavor(), states, concentrationSources(sun.facts(facts, reactor)), true)
 }
 
-// concentrationFavor spends the Inspiration the save asked for, over the modes the save has before it.
-func (s *Service) concentrationFavor(ctx context.Context, c *combatTx, call concentrationCall, reactor playdb.Combatant, states map[string][]playdb.CombatantState, facts combat.Creature) (favorUse, error) {
-	sun, err := s.sunlightOf(ctx, c.q, c.enc)
-	if err != nil {
-		return favorUse{}, err
-	}
-	return s.favorOnSave(ctx, s.inspirationGate(c), call.m, reactor, heldConcentrationSave, call.key, call.msg.GetSpendFavor(), states, concentrationSources(sun.facts(facts, reactor)), true)
-}
-
 // recordConcentrationRoll writes what the save showed in the event and the result, and answers
 // whether the concentration is kept: the d20 and the dice the effects added reach the DC.
 func recordConcentrationRoll(ev *actionEvent, run *concentrationRun, gate gateResult, bonus, delta int, dc int32, spell string) bool {
