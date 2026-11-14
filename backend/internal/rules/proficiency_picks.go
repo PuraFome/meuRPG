@@ -143,6 +143,7 @@ func (x *deriver) checkProficiencyPicks() {
 	if n := tools - len(x.pickedTools) - len(x.b.ToolProficiencies); n > 0 {
 		x.openProficiencyPick(OpenChoiceTools, n, "ferramenta", "ferramentas")
 	}
+	x.checkBackgroundGroupPicks()
 	if n := languages - len(x.pickedLanguages) - len(x.b.Languages); n > 0 {
 		x.openProficiencyPick(OpenChoiceLanguages, n, "idioma", "idiomas")
 	}
