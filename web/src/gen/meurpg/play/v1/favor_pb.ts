@@ -260,9 +260,9 @@ export const FavorBlockedReasonSchema: GenEnum<FavorBlockedReason> = /*@__PURE__
  * holder passes it on. A character has it or not and it never stacks.
  *
  * Errors:
- *   - `not_found`: the campaign or the character does not exist, or the caller may not see it.
+ *   - `not_found`: the campaign does not exist, or the caller is not a member of it.
  *   - `permission_denied`: a player calls what is the master's.
- *   - `failed_precondition`: FavorBlocked.
+ *   - `failed_precondition`: FavorBlocked. An id that is not a player character of the campaign is NOT_A_PLAYER_CHARACTER.
  *   - `invalid_argument`: an id or the key is malformed.
  *
  * @generated from service meurpg.play.v1.FavorService

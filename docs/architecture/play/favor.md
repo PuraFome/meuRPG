@@ -37,7 +37,7 @@ It does not touch the combat: no combatant is read or written.
 A refusal writes nothing and moves no hint number.
 A grant moves it once.
 A retry tells the hint again, from the stored event, and moves nothing.
-Twenty grants at once to the same character give one success and nineteen `ALREADY_HAS`.
+Of concurrent grants to the same character exactly one succeeds and the rest get `ALREADY_HAS`.
 
 ## The read
 

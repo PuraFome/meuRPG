@@ -117,14 +117,18 @@ func TestFavorReachesOnlyTheMasterAndTheOwner(t *testing.T) {
 		}
 	}
 
-	watchers := map[*person]*streamWatcher{m: w.watchStream(m), dani: w.watchStream(dani), edu: w.watchStream(edu), caio: w.watchStream(caio)}
+	watchers := map[*person]*streamWatcher{m: w.watchStream(m), dani: w.watchStream(dani), edu: w.watchStream(edu), caio: w.watchStream(caio), w.ana: w.watchStream(w.ana)}
 	before, reads := hintNumber(watchers[caio]), caioReads()
+	anaBefore := hintNumber(watchers[w.ana])
 
 	// The first grant, in the middle of the combat the fixture runs.
 	w.grantFavor(first.GetId())
 	afterFirst := hintNumberOtherThan(watchers[caio], before)
 	if afterFirst != before+1 {
 		t.Errorf("Caio's hint number went from %d to %d with the first grant, want one step", before, afterFirst)
+	}
+	if anaAfterFirst := hintNumberOtherThan(watchers[w.ana], anaBefore); anaAfterFirst != anaBefore+1 {
+		t.Errorf("Ana's hint number went from %d to %d with the first grant, want one step", anaBefore, anaAfterFirst)
 	}
 	sameReads("after the first grant", reads, caioReads())
 
@@ -133,6 +137,9 @@ func TestFavorReachesOnlyTheMasterAndTheOwner(t *testing.T) {
 	afterSecond := hintNumberOtherThan(watchers[caio], afterFirst)
 	if afterSecond != afterFirst+1 {
 		t.Errorf("Caio's hint number went from %d to %d with the second grant, want one step", afterFirst, afterSecond)
+	}
+	if anaAfterSecond := hintNumberOtherThan(watchers[w.ana], anaBefore+1); anaAfterSecond != anaBefore+2 {
+		t.Errorf("Ana's hint number went from %d to %d with the second grant, want one step", anaBefore+1, anaAfterSecond)
 	}
 	sameReads("after the second grant", reads, caioReads())
 
@@ -188,7 +195,7 @@ func TestFavorReachesOnlyTheMasterAndTheOwner(t *testing.T) {
 				t.Errorf("%s: event %s: %s\n\tevent: %s", p.name, eventCase(ev), f, shorten(body))
 			}
 		}
-		want := map[*person][2]bool{m: {true, true}, dani: {true, false}, edu: {false, true}, caio: {false, false}}[p]
+		want := map[*person][2]bool{m: {true, true}, dani: {true, false}, edu: {false, true}, caio: {false, false}, w.ana: {false, false}}[p]
 		if heard := [2]bool{hints[first.GetId()], hints[second.GetId()]}; heard != want {
 			t.Errorf("%s's stream heard the vitals hints of (first, second) = %v, want %v", p.name, heard, want)
 		}
