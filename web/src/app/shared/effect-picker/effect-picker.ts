@@ -116,6 +116,8 @@ export class EffectPicker {
   readonly featEditor = input(false);
   /** The effects of the entry this one belongs to: a reroll spends one of its resources. */
   readonly siblings = input<readonly EffectDraft[]>([]);
+  /** The name of the entry: the resource it defines is named after it, as the server does. */
+  readonly ownerName = input('');
   /** The label of the type select ("Efeito"). */
   readonly label = input('Efeito');
   /**
@@ -239,7 +241,13 @@ export class EffectPicker {
   }
 
   protected readonly resource = computed(() =>
-    resourcePick(this.siblings(), this.menu(), this.effect().resource, this.power.resourceNone()),
+    resourcePick(
+      this.siblings(),
+      this.menu(),
+      this.effect().resource,
+      this.power.resourceNone(),
+      this.ownerName(),
+    ),
   );
 
   protected rollOptions(f: EffectMenuField): CheckOption[] {

@@ -26,6 +26,7 @@
       [basePath]="basePath()"
       [issuesOf]="issuesOf()"
       [siblings]="siblings()"
+      [ownerName]="ownerName()"
       (effectChange)="effectChange.emit($event)"
     />
     <ng-container *ngTemplateOutlet="moreButton" />

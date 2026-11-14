@@ -22,25 +22,43 @@ import type { SelectOption } from '../form-fields/select-field';
  * spend, the mode a target fixes, and what a refusal says of a field several types share.
  */
 
-/** "sorte_teimosa" as a person says it: "Sorte Teimosa". */
+/** The small words a Portuguese name keeps in lower case: "Fôlego do Atirador", never "Fôlego Do Atirador". */
+const SMALL_WORDS: ReadonlySet<string> = new Set(['de', 'do', 'da', 'dos', 'das', 'e', 'a', 'o']);
+
+/** "sorte_teimosa" as a person says it: "Sorte Teimosa"; "folego_do_atirador" as "Folego do Atirador". */
 export function titled(key: string): string {
   return key
     .split('_')
     .filter((w) => w !== '')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .map((w, i) => (i > 0 && SMALL_WORDS.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)))
     .join(' ');
 }
 
+/**
+ * What the editor calls the resource `key` of an entry. The content has no name for a resource of its own (a resource effect
+ * carries a key, a maximum and a recharge), so the server names it after the entry that defines it, and the editor says the same:
+ * `ownerName` when the entry has one resource and a name. Otherwise the key, as a person says it.
+ */
+export function resourceName(
+  key: string,
+  siblings: readonly EffectDraft[],
+  ownerName: string,
+): string {
+  const owner = ownerName.trim();
+  const defined = new Set(siblings.filter((e) => e.type === 'resource').map((e) => e.resource.trim()));
+  return owner !== '' && defined.size === 1 && defined.has(key.trim()) ? owner : titled(key);
+}
+
 /** "Sorte Teimosa (3 por descanso longo)": a resource the entry defines, with its uses and when they come back. */
-function resourceLabel(r: EffectDraft, menu: EffectMenuVm): string {
+function resourceLabel(r: EffectDraft, menu: EffectMenuVm, name: string): string {
   const max = r.max.trim();
   const when = r.recharge === '' ? '' : menu.nameOf('recharges', r.recharge).toLowerCase();
   if (max === '') {
-    return titled(r.resource);
+    return name;
   }
   const rest = r.recharge === 'short_rest' || r.recharge === 'long_rest';
   const uses = when === '' ? max : `${max}${rest ? ' por ' : ', '}${when}`;
-  return `${titled(r.resource)} (${uses})`;
+  return `${name} (${uses})`;
 }
 
 /** What "Gasta usos de" offers a reroll. */
@@ -57,6 +75,7 @@ export function resourcePick(
   menu: EffectMenuVm,
   current: string,
   none: string = RESOURCE_PICK_COPY.none,
+  ownerName = '',
 ): ResourcePick {
   const options: SelectOption[] = [{ value: '', label: none }];
   const seen = new Set<string>();
@@ -64,7 +83,7 @@ export function resourcePick(
     const key = r.resource.trim();
     if (key !== '' && !seen.has(key)) {
       seen.add(key);
-      options.push({ value: key, label: resourceLabel(r, menu) });
+      options.push({ value: key, label: resourceLabel(r, menu, resourceName(key, siblings, ownerName)) });
     }
   }
   const name = current.trim();

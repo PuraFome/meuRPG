@@ -42,6 +42,7 @@ describe('EffectPicker: the power_attack block ("Ataque poderoso")', () => {
       siblings?: EffectDraft[];
       issues?: Record<string, string[]>;
       featEditor?: boolean;
+      ownerName?: string;
     } = {},
   ) {
     emitted.length = 0;
@@ -52,6 +53,7 @@ describe('EffectPicker: the power_attack block ("Ataque poderoso")', () => {
     fixture.componentRef.setInput('basePath', BASE);
     fixture.componentRef.setInput('featEditor', over.featEditor ?? true);
     fixture.componentRef.setInput('siblings', over.siblings ?? [effect]);
+    fixture.componentRef.setInput('ownerName', over.ownerName ?? '');
     fixture.componentRef.setInput('issuesOf', (p: string) => over.issues?.[p] ?? []);
     fixture.componentInstance.effectChange.subscribe((e) => emitted.push(e));
     fixture.detectChanges();
@@ -304,7 +306,42 @@ describe('EffectPicker: the power_attack block ("Ataque poderoso")', () => {
       setup(trade({ weapon: 'ranged', resource: 'folego_do_atirador' }), {
         siblings: [trade({ weapon: 'ranged', resource: 'folego_do_atirador' }), resource()],
       });
-      expect(readingText()).toContain('Cada troca gasta 1 uso de Folego Do Atirador.');
+      expect(readingText()).toContain('Cada troca gasta 1 uso de Folego do Atirador.');
+    });
+  });
+
+  describe('the name of the pool', () => {
+    const both = () => [
+      trade({ weapon: 'ranged', resource: 'folego_do_atirador' }),
+      resource(),
+    ];
+
+    it('is the name of the entry that defines it, accents kept, as the server names it', () => {
+      setup(trade({ weapon: 'ranged', resource: 'folego_do_atirador' }), {
+        siblings: both(),
+        ownerName: 'Fôlego do Atirador',
+      });
+      expect(readingText()).toContain('Cada troca gasta 1 uso de Fôlego do Atirador.');
+      const select = field('resource') as HTMLSelectElement;
+      expect(Array.from(select.options).map((o) => o.text.trim())).toContain(
+        'Fôlego do Atirador (3 por descanso curto)',
+      );
+    });
+
+    it('is the key as a person says it, small words in lower case, when the entry has no name', () => {
+      setup(trade({ weapon: 'ranged', resource: 'folego_do_atirador' }), {
+        siblings: both(),
+        ownerName: '  ',
+      });
+      expect(readingText()).toContain('Cada troca gasta 1 uso de Folego do Atirador.');
+    });
+
+    it('is the key when the entry defines two resources, which the name could not tell apart', () => {
+      setup(trade({ resource: 'folego_do_atirador' }), {
+        siblings: [...both(), resource('mira_firme')],
+        ownerName: 'Disparo Firme',
+      });
+      expect(readingText()).toContain('Cada troca gasta 1 uso de Folego do Atirador.');
     });
   });
 
@@ -344,7 +381,7 @@ describe('EffectPicker: the power_attack block ("Ataque poderoso")', () => {
       const select = field('resource') as HTMLSelectElement;
       expect(Array.from(select.options).map((o) => o.text.trim())).toEqual([
         'Nenhum: não gasta nada',
-        'Folego Do Atirador (3 por descanso curto)',
+        'Folego do Atirador (3 por descanso curto)',
       ]);
       expect(select.value).toBe('folego_do_atirador');
     });

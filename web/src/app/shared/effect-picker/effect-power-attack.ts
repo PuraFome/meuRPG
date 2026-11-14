@@ -7,7 +7,7 @@ import { withNumber } from '../../core/content/effect-number';
 import { powerAttackIssues, powerLimits } from '../../core/content/power-attack-limits';
 import { powerAttackReading } from '../../core/content/power-attack-reading';
 import { UNREADABLE_COUNT, shownWhole } from '../../core/content/whole-number';
-import { refusalTexts, titled } from './effect-picker-parts';
+import { refusalTexts, resourceName } from './effect-picker-parts';
 import { CheckRow } from '../form-fields/check-row';
 import { FieldNote } from '../form-fields/field-note';
 import { RadioCards, type RadioCard } from '../form-fields/radio-cards';
@@ -106,6 +106,8 @@ export class EffectPowerAttack {
   readonly issuesOf = input<(path: string) => readonly string[]>(() => []);
   /** The effects of the entry: the resource a use spends is named from them. */
   readonly siblings = input<readonly EffectDraft[]>([]);
+  /** The name of the entry: the server names its resource after it. */
+  readonly ownerName = input('');
   readonly effectChange = output<EffectDraft>();
 
   protected readonly cards: readonly RadioCard[] = POWER_COPY.weaponCards;
@@ -154,7 +156,7 @@ export class EffectPowerAttack {
     );
     return powerAttackReading(this.effect(), {
       property: (key) => menu.nameOf('weapon_properties', key),
-      resource: (key) => (resource ? titled(key) : key),
+      resource: (key) => (resource ? resourceName(key, this.siblings(), this.ownerName()) : key),
     });
   });
 
