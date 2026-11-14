@@ -39,6 +39,14 @@ const (
 	// FeatUnmetLacksFeature: the character has the feature in Key, which the feat asks
 	// them not to have.
 	FeatUnmetLacksFeature = "lacks_feature"
+	// FeatUnmetClassLevel: the character has fewer levels than Value in the class in Key.
+	FeatUnmetClassLevel = "class_level"
+	// FeatUnmetPact: the character does not have the Pact Boon in Key.
+	FeatUnmetPact = "pact"
+	// FeatUnmetSpell: the character does not know the spell in Key.
+	FeatUnmetSpell = "spell"
+	// FeatUnmetOption: the character has not picked the option in Key.
+	FeatUnmetOption = "option"
 )
 
 // FeatPrerequisite is what a feat asks of a character. Every condition that is set
@@ -65,11 +73,20 @@ type FeatPrerequisite struct {
 	LacksFeature string `json:",omitempty"`
 	// Level is the least total character level; 0 is not asked.
 	Level int
+	// ClassKey and ClassLevel ask for a level in one class (a table's too); both or neither.
+	ClassKey   string `json:",omitempty"`
+	ClassLevel int    `json:",omitempty"`
+	// RequiresPact is a Pact Boon the character has, RequiresSpell a spell it knows and RequiresOptions
+	// options it has picked (each one); empty asks nothing.
+	RequiresPact    string   `json:",omitempty"`
+	RequiresSpell   string   `json:",omitempty"`
+	RequiresOptions []string `json:",omitempty"`
 }
 
 // IsZero says the prerequisite asks nothing.
 func (p FeatPrerequisite) IsZero() bool {
-	return len(p.Minimums) == 0 && len(p.AnyOf) == 0 && p.Proficiency == "" && !p.Spellcasting && p.Race == "" && len(p.Races) == 0 && p.Size == "" && p.LacksFeature == "" && p.Level == 0
+	return len(p.Minimums) == 0 && len(p.AnyOf) == 0 && p.Proficiency == "" && !p.Spellcasting && p.Race == "" && len(p.Races) == 0 && p.Size == "" && p.LacksFeature == "" && p.Level == 0 &&
+		p.ClassKey == "" && p.ClassLevel == 0 && p.RequiresPact == "" && p.RequiresSpell == "" && len(p.RequiresOptions) == 0
 }
 
 // AbilityMinimum is an ability and the score asked of it.
@@ -153,6 +170,7 @@ func (c *content) featEntry(f *srd51.Feat) FeatEntry {
 		Prerequisite: FeatPrerequisite{
 			Minimums: abilityMap(f.Minimums), AnyOf: abilityMap(f.AnyOf), Proficiency: f.Proficiency,
 			Spellcasting: f.Spellcasting, Race: f.Race, Races: slices.Clone(f.Races), Size: f.Size, LacksFeature: f.LacksFeature, Level: f.Level,
+			ClassKey: f.ClassKey, ClassLevel: f.ClassLevel, RequiresPact: f.RequiresPact, RequiresSpell: f.RequiresSpell, RequiresOptions: slices.Clone(f.RequiresOptions),
 		},
 		Table: isTableKey(f.Key), Archived: c.archived[f.Key], Off: c.off[f.Key],
 	}
@@ -332,6 +350,37 @@ func (c *content) unmetOthers(p FeatPrerequisite, b Build, d Derived) []FeatUnme
 	}
 	if p.Level > 0 && d.TotalLevel < p.Level {
 		out = append(out, FeatUnmet{Kind: FeatUnmetLevel, Value: p.Level})
+	}
+	return append(out, c.unmetKnowledge(p, b, d)...)
+}
+
+// unmetKnowledge are the class level, the Pact Boon, the spell and the options a feat asks for that the
+// character lacks, in that order. The sheet's own features say what it has picked: a Pact Boon and an option are
+// features of the sheet.
+func (c *content) unmetKnowledge(p FeatPrerequisite, b Build, d Derived) []FeatUnmet {
+	var out []FeatUnmet
+	if p.ClassKey != "" {
+		have := 0
+		for _, cl := range b.Classes {
+			if cl.Class == p.ClassKey {
+				have += cl.Level
+			}
+		}
+		if have < p.ClassLevel {
+			out = append(out, FeatUnmet{Kind: FeatUnmetClassLevel, Key: p.ClassKey, NamePT: c.namePT(p.ClassKey), Value: p.ClassLevel})
+		}
+	}
+	owns := ownedBy(b, d)
+	if p.RequiresPact != "" && !owns(p.RequiresPact) {
+		out = append(out, FeatUnmet{Kind: FeatUnmetPact, Key: p.RequiresPact, NamePT: c.namePT(p.RequiresPact)})
+	}
+	if k := p.RequiresSpell; k != "" && !slices.ContainsFunc(d.Spells, func(s CharacterSpell) bool { return s.Spell.Key == k }) {
+		out = append(out, FeatUnmet{Kind: FeatUnmetSpell, Key: k, NamePT: c.namePT(k)})
+	}
+	for _, k := range p.RequiresOptions {
+		if !owns(k) {
+			out = append(out, FeatUnmet{Kind: FeatUnmetOption, Key: k, NamePT: optionLabel(c.namePT(k))})
+		}
 	}
 	return out
 }

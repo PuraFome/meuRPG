@@ -488,6 +488,13 @@ func hideFeatRace(f *rulesv1.FeatOption, t levelUpTarget) {
 		if hiddenToSheet(t, p.GetLacksFeatureKey()) {
 			p.LacksFeatureKey, f.LacksFeatureNamePt, f.LacksFeatureHidden = "", "", true
 		}
+		p.RequiresOptionKeys = slices.DeleteFunc(p.RequiresOptionKeys, func(k string) bool { return hiddenToSheet(t, k) })
+		if hiddenToSheet(t, p.GetRequiresPact()) {
+			p.RequiresPact = ""
+		}
+		if hiddenToSheet(t, p.GetRequiresSpellKey()) {
+			p.RequiresSpellKey = ""
+		}
 	}
 	for _, u := range f.GetUnmet() {
 		hideUnmet(u, t)
@@ -507,6 +514,10 @@ func hideUnmet(u *rulesv1.FeatUnmet, t levelUpTarget) {
 			u.Hidden = true // every asked race is hidden
 		}
 	case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_LACKS_FEATURE:
+		if hiddenToSheet(t, u.GetKey()) {
+			u.Key, u.NamePt, u.Hidden = "", "", true
+		}
+	case rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_PACT, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_SPELL, rulesv1.FeatUnmetKind_FEAT_UNMET_KIND_OPTION:
 		if hiddenToSheet(t, u.GetKey()) {
 			u.Key, u.NamePt, u.Hidden = "", "", true
 		}

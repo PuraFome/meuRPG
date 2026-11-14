@@ -135,6 +135,9 @@ type TableFeature struct {
 	// Summon says the feature brings the table's creatures to its holder, or is nil (see TableSummon). Only a
 	// class, subclass, race or background feature has it, not an option.
 	Summon *TableSummon
+	// Prerequisite is what an option of a class or subclass feature (or of a feat) asks of the character; only an
+	// entry of Options has it. An option whose prerequisite is not met is listed in the choice, blocked.
+	Prerequisite TableOptionPrerequisite
 }
 
 // TableCasting is how a class (or, for a third caster, a subclass) casts.

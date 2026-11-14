@@ -412,7 +412,15 @@ func tableFeaturesOf(in []*rulesv1.TableFeature) []rules.TableFeature {
 func tableFeatureOf(f *rulesv1.TableFeature) rules.TableFeature {
 	return rules.TableFeature{
 		Key: f.GetKey(), NamePT: f.GetNamePt(), DescPT: f.GetDescPt(), Effects: tableEffectsOf(f.GetEffects()),
-		Options: tableFeaturesOf(f.GetOptions()), Summon: tableSummonOf(f.GetSummon()),
+		Options: tableFeaturesOf(f.GetOptions()), Summon: tableSummonOf(f.GetSummon()), Prerequisite: optionPrerequisiteOf(f.GetPrerequisite()),
+	}
+}
+
+// optionPrerequisiteOf is the engine's prerequisite of a stored option's.
+func optionPrerequisiteOf(p *rulesv1.OptionPrerequisite) rules.TableOptionPrerequisite {
+	return rules.TableOptionPrerequisite{
+		ClassKey: p.GetClassLevel().GetClassKey(), ClassLevel: int(p.GetClassLevel().GetLevel()), RequiresOptions: p.GetRequiresOptionKeys(),
+		RequiresPact: p.GetRequiresPact(), RequiresSpell: p.GetRequiresSpellKey(),
 	}
 }
 
@@ -478,19 +486,17 @@ func tableFeatOf(te rules.TableEntry, b *rulesv1.TableFeat) rules.TableFeat {
 			Minimums: tableScoresOf(p.GetMinimums()), AnyOf: tableScoresOf(p.GetAnyOf()), Proficiency: p.GetProficiencyKey(),
 			Spellcasting: p.GetSpellcasting(), Race: p.GetRaceKey(), Level: int(p.GetLevel()),
 			Races: p.GetRaces(), Size: p.GetSize(), LacksFeature: p.GetLacksFeatureKey(),
+			ClassKey: p.GetClassLevel().GetClassKey(), ClassLevel: int(p.GetClassLevel().GetLevel()), RequiresOptions: p.GetRequiresOptionKeys(),
+			RequiresPact: p.GetRequiresPact(), RequiresSpell: p.GetRequiresSpellKey(),
 		},
 	}
 }
 
 // tableOptionOf is the engine's option of a stored one.
 func tableOptionOf(te rules.TableEntry, b *rulesv1.TableOption) rules.TableOption {
-	p := b.GetPrerequisite()
 	return rules.TableOption{
 		TableEntry: te, DescPT: b.GetDescPt(), Set: b.GetSet(), OfferedBy: b.GetOfferedBy(), Effects: tableEffectsOf(b.GetEffects()),
-		Prerequisite: rules.TableOptionPrerequisite{
-			ClassKey: p.GetClassLevel().GetClassKey(), ClassLevel: int(p.GetClassLevel().GetLevel()), RequiresOptions: p.GetRequiresOptionKeys(),
-			RequiresPact: p.GetRequiresPact(), RequiresSpell: p.GetRequiresSpellKey(),
-		},
+		Prerequisite: optionPrerequisiteOf(b.GetPrerequisite()),
 	}
 }
 
@@ -1325,17 +1331,23 @@ func (v playerView) stripOption(b *rulesv1.TableOption) {
 		b.OfferedBy = "" // a feature the players do not see is not named to them
 	}
 	v.dropEffects([]*rulesv1.TableFeature{{Effects: b.GetEffects()}})
-	if p := b.GetPrerequisite(); p != nil {
-		p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)
-		if v.hidden(p.GetRequiresPact()) {
-			p.RequiresPact = ""
-		}
-		if v.hidden(p.GetRequiresSpellKey()) {
-			p.RequiresSpellKey = ""
-		}
-		if p.GetClassLevel() != nil && v.hidden(p.GetClassLevel().GetClassKey()) {
-			p.ClassLevel = nil
-		}
+	v.stripOptionPrerequisite(b.GetPrerequisite())
+}
+
+// stripOptionPrerequisite takes the hidden keys out of what an option asks for.
+func (v playerView) stripOptionPrerequisite(p *rulesv1.OptionPrerequisite) {
+	if p == nil {
+		return
+	}
+	p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)
+	if v.hidden(p.GetRequiresPact()) {
+		p.RequiresPact = ""
+	}
+	if v.hidden(p.GetRequiresSpellKey()) {
+		p.RequiresSpellKey = ""
+	}
+	if p.GetClassLevel() != nil && v.hidden(p.GetClassLevel().GetClassKey()) {
+		p.ClassLevel = nil
 	}
 }
 
@@ -1387,6 +1399,16 @@ func (v playerView) stripFeat(b *rulesv1.TableFeat) {
 			p.LacksFeatureKey = "" // nor a feature the players do not see
 			p.LacksHidden = true
 		}
+		p.RequiresOptionKeys = v.visible(p.RequiresOptionKeys)
+		if v.hidden(p.GetRequiresPact()) {
+			p.RequiresPact = ""
+		}
+		if v.hidden(p.GetRequiresSpellKey()) {
+			p.RequiresSpellKey = ""
+		}
+		if p.GetClassLevel() != nil && v.hidden(p.GetClassLevel().GetClassKey()) {
+			p.ClassLevel = nil
+		}
 	}
 }
 
@@ -1407,6 +1429,7 @@ func (v playerView) dropEffects(fs []*rulesv1.TableFeature) {
 				ef.Spell = "" // a granted spell the players do not see is not named to them
 			}
 		}
+		v.stripOptionPrerequisite(f.GetPrerequisite())
 		v.dropEffects(f.GetOptions())
 	}
 }

@@ -292,7 +292,34 @@ func (c *content) featAsksPT(p FeatPrerequisite, b Build) string {
 	if p.Level > 0 {
 		out = append(out, fmt.Sprintf("nível %d ou mais", p.Level))
 	}
+	out = append(out, c.knowledgeAsksPT(p, b)...)
 	return strings.Join(out, " e ")
+}
+
+// knowledgeAsksPT are the class level, the Pact Boon, the spell and the options a prerequisite asks. A key a player may
+// not read is not named.
+func (c *content) knowledgeAsksPT(p FeatPrerequisite, b Build) []string {
+	var out []string
+	if p.ClassKey != "" {
+		out = append(out, fmt.Sprintf("nível %d de %s", p.ClassLevel, c.namePT(p.ClassKey)))
+	}
+	name := func(prefix, key string) {
+		if c.hiddenTo(b, key) {
+			out = append(out, hiddenAskPT)
+		} else {
+			out = append(out, prefix+optionLabel(c.namePT(key)))
+		}
+	}
+	if p.RequiresPact != "" {
+		name("a Dádiva ", p.RequiresPact)
+	}
+	if p.RequiresSpell != "" {
+		name("conhecer ", p.RequiresSpell)
+	}
+	for _, k := range p.RequiresOptions {
+		name("ter escolhido ", k)
+	}
+	return out
 }
 
 // abilityAsksPT are the ability scores a prerequisite asks: all the minimums, then one of the any-of scores.
@@ -401,6 +428,15 @@ func (c *content) featUnmetPT(u FeatUnmet, b Build) string {
 		return "Não pode ter " + c.namePT(u.Key) + "."
 	case FeatUnmetLevel:
 		return fmt.Sprintf("Precisa de nível %d ou mais.", u.Value)
+	case FeatUnmetClassLevel:
+		return fmt.Sprintf("Precisa de nível %d de %s.", u.Value, c.namePT(u.Key))
+	case FeatUnmetPact, FeatUnmetSpell, FeatUnmetOption:
+		if c.hiddenTo(b, u.Key) {
+			return hiddenUnmetPT
+		}
+		return map[string]string{
+			FeatUnmetPact: "Precisa da Dádiva do Pacto ", FeatUnmetSpell: "Precisa conhecer a magia ", FeatUnmetOption: "Precisa ter escolhido ",
+		}[u.Kind] + optionLabel(c.namePT(u.Key)) + "."
 	}
 	return ""
 }

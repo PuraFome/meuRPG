@@ -224,8 +224,12 @@ func (b *overlayBuilder) checkOfferedBy(c *entryErrors, o *TableOption, path str
 
 // checkOptionPrerequisite checks what the option asks for, each at its own field.
 func (b *overlayBuilder) checkOptionPrerequisite(c *entryErrors, o *TableOption, path string) {
-	p, key := o.Prerequisite, o.Key
-	base := path + ".prerequisite"
+	b.checkPrerequisiteFields(c, o.Key, path, o.Prerequisite)
+}
+
+// checkPrerequisiteFields checks a prerequisite of the entry key at path (a table option's, an inline option's or a
+// feat's), each field at its own path.
+func (b *overlayBuilder) checkPrerequisiteFields(c *entryErrors, key, path string, p TableOptionPrerequisite) {
 	if (p.ClassKey == "") != (p.ClassLevel == 0) {
 		c.at(key, path, ".prerequisite.class_level", ReasonValue, "a class and a level go together")
 	}
@@ -252,11 +256,13 @@ func (b *overlayBuilder) checkOptionPrerequisite(c *entryErrors, o *TableOption,
 	if p.RequiresSpell != "" && !b.isSpell(p.RequiresSpell) {
 		c.at(key, path, ".prerequisite.requires_spell_key", ReasonReference, "the spell %q does not exist", p.RequiresSpell)
 	}
-	_ = base
 }
 
 // isOption says the key is an option of an SRD option set or a table option of the overlay.
 func (b *overlayBuilder) isOption(key string) bool {
+	if _, ok := b.optionEntry[key]; ok {
+		return true // an option of a table feature or feat
+	}
 	if strings.HasPrefix(key, OptionKeyPrefix) {
 		return b.entries[key]
 	}
