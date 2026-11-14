@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
@@ -420,5 +421,59 @@ func TestTwoCastersOfOneSpellAreTwoPartsOfOneGroup(t *testing.T) {
 	}
 	if carriers != 1 {
 		t.Errorf("%d parts carry the group's sum, want one", carriers)
+	}
+}
+
+// The master's way out of a Sneak Attack marked by mistake in a typed group is the undo of the damage roll: the damage
+// goes back to the roller, who chooses the extras again and types a new sum, and the target has its hit points back.
+func TestUndoOfTheDamageOfATypedGroupSendsTheRollBackToTheRoller(t *testing.T) {
+	t.Parallel()
+	a, _, shrub := partsFight(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:rogue", "race:human", 3, abilities(16, 16, 14, 12, 10), []string{rapier}, nil)
+	}, "monster:awakened-shrub")
+	e := a.passTo(t, a.get(t, a.master), "Toren")
+	a.setConditions(t, e, shrub, "condition:restrained")
+	hit := a.mustAttack(t, a.caio, e, "Toren", rapier, shrub, func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{5, 18} })
+	hp := func() int32 { return byLabel(t, a.get(t, a.master), shrub).GetHitPointsCurrent() }
+	before := hp()
+	id := hit.GetPendingDamage().GetId()
+
+	// The weapon and Sneak Attack are both piercing: one sum covers the two, and Sneak Attack was marked by mistake.
+	rolled := a.mustDamage(t, a.caio, e, id, extrasMarked([]*playv1.SelectedExtra{{Key: "sneak-attack"}}, &playv1.TypedPart{DamageType: groupPiercing, Sum: 12}))
+	if hp() >= before {
+		t.Fatalf("hit points = %d after the roll, want fewer than %d", hp(), before)
+	}
+	_, err := a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(&playv1.RemoveDamagePartRequest{
+		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: id, PartKey: "sneak-attack", Reason: "motivo", IdempotencyKey: newKey(),
+	}))
+	wantBlockedBy(t, "RemoveDamagePart(a part of a group)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE)
+
+	a.undoLast(t, a.get(t, a.master))
+	if hp() != before {
+		t.Errorf("hit points = %d after the undo, want %d", hp(), before)
+	}
+	o := a.mustOptions(t, a.caio, a.get(t, a.caio), "Toren")
+	if len(o.GetPendingDamages()) != 1 || o.GetPendingDamages()[0].GetId() != id || o.GetPendingDamages()[0].GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL || o.GetPendingDamages()[0].GetRoll() != nil {
+		t.Fatalf("pending damages after the undo = %v, want the damage to roll again", o.GetPendingDamages())
+	}
+	sneakOf := func(p *playv1.PendingDamage) *playv1.DamagePart {
+		for _, part := range p.GetParts() {
+			if part.GetKey() == "sneak-attack" {
+				return part
+			}
+		}
+		return nil
+	}
+	if sneak, first := sneakOf(o.GetPendingDamages()[0]), sneakOf(hit.GetPendingDamage()); sneak == nil || !sneak.GetChoosable() || !sneak.GetAvailable() || !proto.Equal(sneak, first) {
+		t.Fatalf("Sneak Attack after the undo = %v, want it as the hit offered it first (%v), choosable", sneak, first)
+	}
+
+	// The roller leaves Sneak Attack out and types a new sum for the weapon's own type group.
+	again := a.mustDamage(t, a.caio, e, id, extrasMarked(nil, &playv1.TypedPart{DamageType: groupPiercing, Sum: 5}))
+	if got := again.GetPendingDamage().GetAmount(); got >= rolled.GetPendingDamage().GetAmount() || got <= 0 {
+		t.Errorf("damage rolled again = %d, want less than %d and above 0", got, rolled.GetPendingDamage().GetAmount())
+	}
+	if hp() >= before || hp() <= before-rolled.GetPendingDamage().GetAmount() {
+		t.Errorf("hit points = %d after the new roll, want between %d and %d", hp(), before-rolled.GetPendingDamage().GetAmount(), before)
 	}
 }
