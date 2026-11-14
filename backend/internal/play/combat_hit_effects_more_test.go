@@ -108,6 +108,19 @@ func TestRN10_APendingHitEffectReachesOnlyItsCastersPlayerAndTheMaster(t *testin
 			}
 			canaries := []*regexp.Regexp{
 				regexp.MustCompile(`"diceSides":\s*12`), regexp.MustCompile(`"diceCount":\s*7\b`), regexp.MustCompile(`(?i)marked_target|next_hit|each_hit|next_melee_hit`),
+				regexp.MustCompile(`Depois do dano, o alvo faz um teste de resistência de Sabedoria`), // the rider text of the part
+			}
+			// The rider text is on the part before the roll: the caster's player and the master read it (the positive
+			// control), and the others read no word of it, before the roll or after.
+			for name, u := range map[string]*user{"Ana": a.ana, "the master": a.master} {
+				if text := a.readsOf(t, u, e, "Pensantus"); !canaries[3].MatchString(text) {
+					t.Errorf("%s does not read the rider text of the part: the canary is unreachable", name)
+				}
+			}
+			for name, u := range map[string]*user{"Caio": a.caio, "Bia": a.bia} {
+				if text := a.readsOf(t, u, e, "Pensantus"); canaries[3].MatchString(text) {
+					t.Errorf("%s reads the rider text of the part before the roll", name)
+				}
 			}
 			a.rollDamage(t, hit, 1, 1, 2, 3, 4, 5, 6, 7, 2) // the weapon, the seven dice, the save (a 2: it fails)
 			for _, p := range []struct {
@@ -405,7 +418,7 @@ func TestAHitSpellNextMeleeHitIsNotUsedByAThrownWeaponAtRange(t *testing.T) {
 	})
 	a.castMark(t, e, 1)
 	thrown := a.strike(t, e, handaxeKey, "Capitão Goblin", func(r *playv1.RollAttackRequest) { r.Roll, r.D20Faces = nil, []int32{19, 19} }) // at long range: disadvantage
-	wantHitPart(t, "the thrown handaxe at 25 ft", thrown, false)
+	wantOffHitPart(t, "the thrown handaxe at 25 ft", thrown)
 	a.rollDamage(t, thrown, 3)
 	if _, spent := a.rows(t); spent != 0 {
 		t.Errorf("a thrown handaxe at range used a next_melee_hit")

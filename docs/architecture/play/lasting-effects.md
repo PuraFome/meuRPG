@@ -142,6 +142,10 @@ How the hit uses it is in [Attacks and damage](attacks-and-damage.md#a-spells-hi
   `EffectModifier.hit` (`WeaponHitDamage`: `trigger`, `die`, `dice`, `per_slot_dice`, `max_dice`, `damage_type_key`, `damage_type_pt`, `save`, `condition_keys`, `condition_names_pt`, `condition_duration`) is set by `effectViewer.modifierCard`, and `LastingEffect.spent` says a `next_hit` was used.
   The card of the caster says "pending" or "used"; its tags read the damage ("+1d6 no próximo golpe com arma, ...", `tagsOfRow`), and a row on a target reads what the spell does to that creature, never the damage.
   Only the master and the combatant's own player are given a card at all (`decorateCard`), and a mark has no modifier, so no other player is ever given these numbers: they read the label alone.
+- **When the concentration ends it.**
+  The caster's own line is the conditions line with `concentration_ended_key` set to the spell.
+  The effect's line is an `EFFECT` entry with change `ENDED`, reason `concentration`, the effect's key and name and the caster as actor; it follows the effect's visibility (hidden or `owner`: no other player reads it).
+  Neither line says whether the hit effect was used or still waiting, because the log keeps no spent flag for the ended row.
 - **Tests.**
   `TestAHitEffectCardTheCastersPlayerAndTheMasterReadItWhole`, `TestAHitEffectCardSaysWhenItIsSpent` and `TestAHitSpellTheMarkFollowsTheVisibilityOfTheEffect`.
   The leak tests are `TestRN10_AHitEffectCardIsNotReadByOtherPlayers`, `TestRN10_ABothBlocksSpellKeepsTheHitCardOffTheTarget`, `TestRN10_APendingHitEffectReachesOnlyItsCastersPlayerAndTheMaster` and `TestRN10_TheCastersPlayerAndTheMasterReadThePartWhole`.

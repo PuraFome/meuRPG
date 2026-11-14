@@ -205,6 +205,13 @@ Its key and label are the spell's.
   A spell attack offers no part: it is not a weapon hit.
   A miss opens no damage, so it offers nothing and keeps the effect for the next hit.
   A row of another caster is never read, and Hunter's Mark stays its own hard-coded path (an offered extra on `combatant_states`), not a `weapon_hit_damage`.
+- **The words.**
+  The part's `note_pt` is the effect's own sentence, built from the modifier by `hitEffectNote`: what the trigger means, then, with a `save`, "Depois do dano, o alvo faz um teste de resistência de <habilidade>; se falhar, fica <condições> <duração>".
+  Without a save it is the trigger's sentence alone.
+- **Listed off.**
+  A `next_melee_hit` row meeting a ranged weapon, or a thrown one at range, is listed with its dice but off (`hitEffectOffPart`): `available` false, `reason_pt` "só num golpe corpo a corpo. Continua esperando.", never automatic, never chosen, never rolled and not in the total.
+  Its row stays unspent through the damage roll and the undo.
+  A spent row, another caster's row and a `marked_target` on an unmarked target are not listed at all.
 - **The dice.**
   The row holds the dice already worked out for the slot of the cast: `dice` plus `per_slot_dice` for each slot level above the spell's own, never more than `max_dice` (`hitDiceAt`).
   The part rolls them like every other part, with the app's dice or the typed sum of the part.
@@ -233,8 +240,9 @@ Its key and label are the spell's.
   The undo of the cast takes the caster's row and the mark away with the cast.
   The spell's part is an automatic line, so the master's `RemoveDamagePart` refuses it (`takeOut`): the effect stays spent and the save stays made, and the master's undo of the damage is the way back.
 - **Who reads what (RN-10).**
-  The master and the attacker's own player read the part whole: spell, dice, faces.
-  Every other player reads the amount and never the dice (`partsProtoFor`, `hitRollForOthers`), and when the master hides the effect, or its audience is `owner`, the part reads "Outra fonte" with the row's id for a key and no source (`hitPartForOthers`).
+  The master and the attacker's own player read the part whole: spell, dice, faces, words and reason.
+  Every other player reads the amount and never the dice, the words or the reason of an effect they may read (`partsProtoFor`, `hitRollForOthers`), and the off part of an effect they may not read is not listed to them.
+  When the master hides the effect, or its audience is `owner`, the part reads "Outra fonte" with the row's id for a key and no source (`hitPartForOthers`).
   The row's modifier, trigger, dice and save never reach another player, in the damage, the log or the effect lists, and neither does whether the row is spent (`readsSpent`).
 
 ## Roll modes

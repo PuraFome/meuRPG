@@ -473,15 +473,21 @@ func partsProtoFor(p playdb.PendingDamage, rule combat.CriticalRule, damageTypeP
 			count += int(p.ExtraDice)
 			note = joinNote(note, fmt.Sprintf("inclui %dd%d do %s", p.ExtraDice, sp.Sides, extraDiceName(p.ExtraDice, p.SavageDice)))
 		}
-		key, label, source, sides := sp.Key, sp.Label, sp.Source, sp.Sides
-		if sp.Table == tableHitEffect && !reads { // the dice of a spell are its caster's and the master's (RN-10)
+		key, label, source, sides, reason := sp.Key, sp.Label, sp.Source, sp.Sides, sp.Reason
+		if sp.Table == tableHitEffect && !reads { // the dice, the words and the reason of a spell are its caster's and the master's (RN-10)
+			if sp.Hide && !sp.Available { // the off part of an effect that is not theirs is not listed to them
+				continue
+			}
 			key, label, source = hitPartForOthers(sp, label, source)
-			count, fixed, sides = 0, 0, 0
+			count, fixed, sides, note = 0, 0, 0, ""
+			if sp.Hide {
+				reason = ""
+			}
 		}
 		out = append(out, &playv1.DamagePart{
 			Key: key, LabelPt: label, DiceCount: clamp32(count, 0, 200), DiceSides: sides, Flat: sp.Flat + clamp32(fixed, 0, 10000),
 			DamageTypeKey: sp.DamageType, DamageTypePt: damageTypePT(sp.DamageType), SourceKey: source,
-			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: sp.Reason,
+			Choosable: sp.Choosable, Selected: sp.Selected && !sp.Removed, Available: sp.Available && !sp.Removed, ReasonPt: reason,
 			Auto: sp.Kind == partAuto, Doubled: p.Critical && sp.Count > 0 && !sp.NoCrit, NeedsSlot: sp.NeedsSlot, NotePt: note, Maneuver: sp.Resource != "" && sp.Table == "", ResourceLeft: sp.ResourceLeft,
 		})
 	}
