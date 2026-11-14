@@ -26,24 +26,6 @@ func stoppedAtTheSession(t *testing.T, tb *table, write func() error, free func(
 	t.Helper()
 	ctx := t.Context()
 	sessionID := tb.startSession(t)
-	// The write's own connections, to tell its statements from other tests' on the same server.
-	var backends []string
-	var held []interface{ Release() }
-	for range 2 {
-		c, err := tb.h.pool.Acquire(ctx)
-		if err != nil {
-			t.Fatalf("Acquire() error = %v", err)
-		}
-		id, err := dbtest.BackendID(ctx, c)
-		if err != nil {
-			t.Fatalf("BackendID() error = %v", err)
-		}
-		backends = append(backends, id)
-		held = append(held, c)
-	}
-	for _, c := range held {
-		c.Release()
-	}
 	holder, err := dbtest.SideConnection(t, tb.h.pool).Begin(ctx)
 	if err != nil {
 		t.Fatalf("Begin() error = %v", err)
@@ -60,7 +42,7 @@ func stoppedAtTheSession(t *testing.T, tb *table, write func() error, free func(
 	// before its first statement on game_sessions, so the sheets are held when it is seen: the check that they are free is what fails.
 	observer := dbtest.SideConnection(t, tb.h.pool)
 	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(5 * time.Millisecond) {
-		n, err := dbtest.WaitingStatements(ctx, observer, `%game_sessions%`, backends...)
+		n, err := dbtest.WaitingForTable(ctx, observer, "game_sessions")
 		if err != nil {
 			t.Fatalf("look for the waiting write: %v", err)
 		}

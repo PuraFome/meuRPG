@@ -315,7 +315,7 @@ func waitForSessionLock(t *testing.T, observer *pgxpool.Pool, done <-chan error)
 	t.Helper()
 	deadline := time.Now().Add(20 * time.Second)
 	for {
-		n, err := dbtest.WaitingStatements(t.Context(), observer, `%FROM game_sessions%FOR UPDATE%`)
+		n, err := dbtest.WaitingForTable(t.Context(), observer, "game_sessions")
 		if err != nil {
 			t.Fatalf("look for the waiting gear path: %v", err)
 		}
