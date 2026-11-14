@@ -9,6 +9,8 @@ export interface RadioCard {
   readonly value: string;
   readonly label: string;
   readonly hint?: string;
+  /** The choice exists but cannot be taken now; its hint says why. */
+  readonly disabled?: boolean;
 }
 
 /**
@@ -26,13 +28,14 @@ export interface RadioCard {
       <span class="legend" aria-hidden="true">{{ label() }}</span>
       <div class="cards">
         @for (o of options(); track o.value; let first = $first) {
-          <label class="card">
+          <label class="card" [class.card--off]="o.disabled">
             <input
               type="radio"
               class="mr-visually-hidden"
               [name]="name"
               [value]="o.value"
               [checked]="value() === o.value"
+              [disabled]="o.disabled ?? false"
               [attr.data-field]="first ? path() || null : null"
               (change)="valueChange.emit(o.value)"
             />
@@ -99,6 +102,13 @@ export interface RadioCard {
         padding: 9px 13px;
         border: 2px solid var(--mr-accent);
         background: var(--mr-accent-soft);
+      }
+
+      &--off {
+        border-style: dashed;
+        background: transparent;
+        color: var(--mr-ink-muted);
+        cursor: not-allowed;
       }
 
       &:has(:focus-visible) {

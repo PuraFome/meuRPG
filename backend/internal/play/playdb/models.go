@@ -45,6 +45,13 @@ type CharacterEffect struct {
 	CreatedAt          time.Time
 }
 
+type CharacterFavor struct {
+	CharacterID     string
+	CampaignID      string
+	GrantedByUserID *string
+	CreatedAt       time.Time
+}
+
 type CharacterInspiration struct {
 	CharacterID       string
 	CampaignID        string
@@ -402,6 +409,7 @@ type InspirationHold struct {
 	RerollFrom           *int32
 	RerollTo             *int32
 	CountedBy            string
+	FavorSpent           bool
 }
 
 type OpportunityOffer struct {
