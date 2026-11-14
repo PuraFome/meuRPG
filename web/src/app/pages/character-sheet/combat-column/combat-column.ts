@@ -1,10 +1,17 @@
 import { Component, computed, input, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import { abilityLabel, formatModifier } from '../../../core/characters/character-labels';
 import type { VitalsVm } from '../../../core/play/live-session.types';
+import { BonusChip } from '../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../shared/weapon-tags/weapon-tags';
 import { SpellHelp } from '../../../shared/spell-details/spell-help';
-import { FullSheetVm } from '../character-sheet.types';
+import {
+  attackMarksFor,
+  countingAttackBonus,
+  itemModifierLines,
+} from '../character-sheet-modifiers';
+import { AttackVm, FullSheetVm } from '../character-sheet.types';
 import { CombatStats } from '../combat-stats/combat-stats';
 import {
   grantedSpellLevel,
@@ -25,7 +32,7 @@ import {
  */
 @Component({
   selector: 'app-combat-column',
-  imports: [CombatStats, SpellHelp, WeaponTags],
+  imports: [BonusChip, CombatStats, MatIconModule, SpellHelp, WeaponTags],
   templateUrl: './combat-column.html',
   styleUrl: './combat-column.scss',
 })
@@ -52,6 +59,19 @@ export class CombatColumn {
 
   /** A tap on a spell (its name or its "?"): the key, so the sheet opens its description. */
   readonly spellOpened = output<string>();
+  /** One line per piece with a magic bonus. */
+  protected readonly modifierLines = computed(() => itemModifierLines(this.sheet().itemModifiers));
+  /** The shield's own line carries why it is idle, so the note below the numbers is left out. */
+  protected readonly shieldNote = computed(
+    () => this.sheet().shieldIdle && !this.sheet().gear.some((g) => g.kind === 'shield' && g.bonus),
+  );
+  /** The counting +N of a weapon, 0 when it has none. */
+  protected countingBonus(key: string): number {
+    return countingAttackBonus(this.sheet().itemModifiers, key);
+  }
+  protected marksFor(atk: AttackVm, bonus: number) {
+    return attackMarksFor(atk.marks, bonus);
+  }
   /** The spells by level, each with its tags and, for a class that prepares, whether it is prepared. */
   protected readonly spellGroupList = computed(() =>
     spellGroups(this.sheet().spells, this.sheet().spellcasting),

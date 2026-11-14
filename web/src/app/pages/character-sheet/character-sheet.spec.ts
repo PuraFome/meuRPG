@@ -223,6 +223,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     hasShield: false,
     shieldIdle: false,
     gear: [],
+    itemModifiers: [],
     speedExtras: [],
     grantedSpells: [],
     hitPointsMax: 10,
@@ -1227,7 +1228,7 @@ describe('CharacterSheetPage', () => {
         }),
       );
     const el = await render();
-    expect(el.textContent).toContain('O escudo não soma na CA');
+    expect(el.textContent).toContain('O escudo não conta na CA');
     expect(sectionTitled(el, 'Equipamento').textContent).toContain('guarde a arma');
   });
 
@@ -1245,7 +1246,7 @@ describe('CharacterSheetPage', () => {
         }),
       );
     const el = await render();
-    expect(el.textContent).not.toContain('O escudo não soma na CA');
+    expect(el.textContent).not.toContain('O escudo não conta na CA');
     expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('sem efeito');
   });
 
