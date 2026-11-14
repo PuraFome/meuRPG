@@ -296,7 +296,7 @@ describe('sectionHeadingOf', () => {
 });
 
 describe('weaponGroups (#580 board 580-16)', () => {
-  const w = (key: string, over: Partial<(typeof SRD) & { namePt: string }> = {}) => ({
+  const w = (key: string, over: Partial<typeof SRD & { namePt: string }> = {}) => ({
     key,
     namePt: key,
     ...SRD,
