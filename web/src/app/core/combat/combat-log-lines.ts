@@ -267,6 +267,20 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       return { ...base, icon: 'pets', text: ` desmontou de ${e.targetLabel || 'uma montaria'}` };
     },
   ],
+  // A rider's save to stay on its mount, and its fall (SRD 5.1, "Mounted Combat"). The numbers are the master's and the rider's player's;
+  // another player reads the outcome alone (RN-10).
+  [
+    CombatLogKind.MOUNT_SAVE,
+    ({ base, e }) => {
+      return { ...base, icon: 'pets', text: ` se segurou na montaria${mountSaveRoll(e)}` };
+    },
+  ],
+  [
+    CombatLogKind.RIDER_THROWN,
+    ({ base, e }) => {
+      return { ...base, icon: 'pets', text: ` caiu da montaria${mountSaveRoll(e)}${landing(e)}` };
+    },
+  ],
   [
     CombatLogKind.EFFECT_ENDED,
     ({ e, base, ctx }) => {
@@ -420,4 +434,28 @@ export function logLine(
 ): LogLine | null {
   const base = { id: e.id, actor: e.actorLabel, hidden: e.hidden, undoable: e.undoable };
   return LINE_BUILDERS.get(e.kind)?.({ e, base, encounterName, ctx }) ?? null;
+}
+
+/** The numbers of a rider's save: "(15 + 2 = 17, CD 10)" for the master and the rider's player, "(falha automática)" for a rider that
+ * failed with no d20, and nothing for another player, who is sent no number. */
+function mountSaveRoll(e: CombatLogEntry): string {
+  const save = e.mountSave;
+  if (save?.autoFail) {
+    return ' (falha automática)';
+  }
+  if (!save?.d20) {
+    return '';
+  }
+  const modifier = save.total - save.d20;
+  const sign = modifier < 0 ? '-' : '+';
+  return ` (${save.d20} ${sign} ${Math.abs(modifier)} = ${save.total}, CD ${save.dc})`;
+}
+
+/** The master's note of a fall that found no free square next to the mount. */
+function landing(e: CombatLogEntry): string {
+  const save = e.mountSave;
+  if (!save?.noRoomNextToMount) {
+    return '';
+  }
+  return ` e parou em (${save.landedCol}, ${save.landedRow}), sem lugar ao lado de ${e.targetLabel || 'a montaria'}`;
 }

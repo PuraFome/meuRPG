@@ -983,6 +983,65 @@ describe('the log of spells, reactions, the fallen and conditions', () => {
     expect(dismounted).toMatchObject({ actor: 'Toren', text: ' desmontou de Pônei' });
   });
 
+  it('writes "Toren se segurou" and "Toren caiu da montaria": the numbers only where the server sent them (RN-10)', () => {
+    const held = logLine(
+      entry({
+        kind: CombatLogKind.MOUNT_SAVE,
+        actorLabel: 'Toren',
+        targetLabel: 'Pônei',
+        mountSave: { held: true, d20: 15, total: 17, dc: 10 },
+      } as never),
+    );
+    expect(held).toMatchObject({
+      actor: 'Toren',
+      text: ' se segurou na montaria (15 + 2 = 17, CD 10)',
+    });
+    const heldForOthers = logLine(
+      entry({
+        kind: CombatLogKind.MOUNT_SAVE,
+        actorLabel: 'Toren',
+        targetLabel: 'Pônei',
+        mountSave: { held: true },
+      } as never),
+    );
+    expect(heldForOthers).toMatchObject({ actor: 'Toren', text: ' se segurou na montaria' });
+    const thrown = logLine(
+      entry({
+        kind: CombatLogKind.RIDER_THROWN,
+        actorLabel: 'Toren',
+        targetLabel: 'Pônei',
+        mountSave: {
+          d20: 7,
+          total: 9,
+          dc: 10,
+          landedCol: 6,
+          landedRow: 7,
+          noRoomNextToMount: true,
+        },
+      } as never),
+    );
+    expect(thrown).toMatchObject({
+      actor: 'Toren',
+      text: ' caiu da montaria (7 + 2 = 9, CD 10) e parou em (6, 7), sem lugar ao lado de Pônei',
+    });
+    const thrownForOthers = logLine(
+      entry({
+        kind: CombatLogKind.RIDER_THROWN,
+        actorLabel: 'Toren',
+        mountSave: { landedCol: 6, landedRow: 7 },
+      } as never),
+    );
+    expect(thrownForOthers).toMatchObject({ actor: 'Toren', text: ' caiu da montaria' });
+    const autoFail = logLine(
+      entry({
+        kind: CombatLogKind.RIDER_THROWN,
+        actorLabel: 'Toren',
+        mountSave: { autoFail: true },
+      } as never),
+    );
+    expect(autoFail).toMatchObject({ text: ' caiu da montaria (falha automática)' });
+  });
+
   it('writes the Wild Shape lines: the form, and why it ended, with the number only where the server sent it (RN-20)', () => {
     const ws = (over: {
       started?: boolean;
