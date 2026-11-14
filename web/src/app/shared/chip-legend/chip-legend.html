@@ -1,0 +1,14 @@
+@if (any()) {
+  <ul class="legend" [attr.aria-label]="decorative() ? null : 'Legenda dos selos'" [attr.aria-hidden]="decorative() ? 'true' : null" data-chip-legend>
+    @for (m of shown(); track m.word) {
+      <li data-wrap-group><span class="legend__chip legend__chip--mark"><mat-icon aria-hidden="true">{{ m.icon }}</mat-icon></span>{{ m.word }}</li>
+    }
+    @if (attunement()) {
+      <li data-wrap-group><span class="legend__chip legend__chip--on"><mat-icon aria-hidden="true">link</mat-icon></span>Sintonizado</li>
+      <li data-wrap-group><span class="legend__chip"><mat-icon aria-hidden="true">link</mat-icon></span>Pede sintonização</li>
+    }
+    @if (bonus() !== '') {
+      <li data-wrap-group><app-bonus-chip [bonus]="1" [counts]="bonus() === 'counts'" [words]="true" /></li>
+    }
+  </ul>
+}

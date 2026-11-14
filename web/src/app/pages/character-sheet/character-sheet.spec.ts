@@ -223,6 +223,7 @@ function fullSheet(overrides: Partial<FullSheetVm> = {}): FullSheetVm {
     hasShield: false,
     shieldIdle: false,
     gear: [],
+    itemModifiers: [],
     speedExtras: [],
     grantedSpells: [],
     hitPointsMax: 10,
@@ -479,6 +480,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 0,
+                magicBonus: 0,
               },
               {
                 key: 'spell:fire-bolt',
@@ -491,6 +493,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 0,
+                magicBonus: 0,
               },
               {
                 key: 'spell:poison-spray',
@@ -503,6 +506,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 14,
                 saveAbility: 'con',
                 beams: 0,
+                magicBonus: 0,
               },
             ],
           }),
@@ -539,6 +543,7 @@ describe('CharacterSheetPage', () => {
                 saveAbility: null,
                 versatileDamage: '',
                 beams: 0,
+                magicBonus: 0,
               },
               {
                 key: 'spell:eldritch-blast',
@@ -551,6 +556,7 @@ describe('CharacterSheetPage', () => {
                 saveAbility: null,
                 versatileDamage: '',
                 beams: 3,
+                magicBonus: 0,
               },
             ],
           }),
@@ -1173,6 +1179,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 0,
+                magicBonus: 0,
               },
               {
                 key: 'spell:fire-bolt',
@@ -1185,6 +1192,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 0,
+                magicBonus: 0,
               },
             ],
             equipment: [{ name: 'Corda (15m)', quantity: 1 }],
@@ -1212,7 +1220,7 @@ describe('CharacterSheetPage', () => {
     expect(section.textContent).toContain('Sem moedas');
   });
 
-  it('says why an idle shield adds nothing to the armor class, in the combat numbers and in "Equipamento"', async () => {
+  it('says why an idle shield adds nothing to the armor class, once, in the combat numbers', async () => {
     configure();
     fake.getCharacterSheetFn = () =>
       Promise.resolve(
@@ -1227,8 +1235,9 @@ describe('CharacterSheetPage', () => {
         }),
       );
     const el = await render();
-    expect(el.textContent).toContain('O escudo não soma na CA');
-    expect(sectionTitled(el, 'Equipamento').textContent).toContain('guarde a arma');
+    expect(el.textContent).toContain('O escudo não conta na CA');
+    expect(el.textContent!.split('O escudo não').length - 1).toBe(1);
+    expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('O escudo não');
   });
 
   it('says nothing about the shield when it counts', async () => {
@@ -1245,7 +1254,7 @@ describe('CharacterSheetPage', () => {
         }),
       );
     const el = await render();
-    expect(el.textContent).not.toContain('O escudo não soma na CA');
+    expect(el.textContent).not.toContain('O escudo não conta na CA');
     expect(sectionTitled(el, 'Equipamento').textContent).not.toContain('sem efeito');
   });
 
@@ -1283,6 +1292,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 1,
+                magicBonus: 0,
               },
               {
                 key: 'equipment:dagger',
@@ -1296,6 +1306,7 @@ describe('CharacterSheetPage', () => {
                 saveDc: 0,
                 saveAbility: null,
                 beams: 1,
+                magicBonus: 0,
               },
             ],
           }),

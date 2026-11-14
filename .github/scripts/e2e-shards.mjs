@@ -140,13 +140,29 @@ export function groupProblems(whole, keys, seen) {
 const e2eDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'e2e');
 const reporter = join(dirname(fileURLToPath(import.meta.url)), 'e2e-list-reporter.mjs');
 
+// How the script asks Playwright for the list: the real `npx playwright`, or a stand-in in the unit tests.
+const playwright = (args) => run('npx', ['playwright', ...args], { cwd: e2eDir, env: process.env, encoding: 'utf8', maxBuffer: 1 << 28 });
+
+// What a failed list says. The list reporter prints no error of its own, so a spec that throws when it loads fails the list
+// with an empty stderr; the same list without the reporter prints the error and where it was thrown.
+async function whyListFailed(args, extra, play) {
+  try {
+    const plain = await play(['test', '--list', ...args, ...extra]);
+    return `the list without the reporter works, so the reporter failed.\nstdout: ${plain.stdout.slice(-1000)}\nstderr: ${plain.stderr.slice(-1000)}`;
+  } catch (error) {
+    return `the list without the reporter fails too:\n${String(error.stdout ?? '').slice(-3000)}${String(error.stderr ?? error.message).slice(-3000)}`;
+  }
+}
+
 // The tests `playwright test --list` selects, as {key, group}, and the workers a run would use.
-async function listTests(args, extra = []) {
+export async function listTests(args, extra = [], play = playwright) {
   let output;
   try {
-    output = await run('npx', ['playwright', 'test', '--list', `--reporter=${reporter}`, ...args, ...extra], { cwd: e2eDir, env: process.env, encoding: 'utf8', maxBuffer: 1 << 28 });
+    output = await play(['test', '--list', `--reporter=${reporter}`, ...args, ...extra]);
   } catch (error) {
-    throw new Error(`playwright --list failed (${error.code ?? error.name}):\n${error.stderr ?? error.message}`);
+    const own = String(error.stderr ?? '').trim();
+    const why = await whyListFailed(args, extra, play);
+    throw new Error(`playwright --list failed (${error.code ?? error.name}):\n${own ? `${own}\n` : ''}${why}`);
   }
   let listed;
   try {

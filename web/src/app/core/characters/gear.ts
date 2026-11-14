@@ -49,6 +49,14 @@ export function bonusChipName(bonus: number, counts: boolean, withWords = false)
   return `Bônus mágico +${bonus}, ${counts ? 'já somado' : 'não conta agora'}`;
 }
 
+/** The marks an attack row or sheet shows: a counting +N takes the place of "Mágica". */
+export function attackMarksFor(
+  marks: MarksVm | undefined,
+  countingBonus: number,
+): MarksVm | undefined {
+  return marks && countingBonus > 0 ? { ...marks, magical: false } : marks;
+}
+
 const KINDS: Record<number, GearVm['kind']> = {
   [GearKind.ARMOR]: 'armor',
   [GearKind.SHIELD]: 'shield',

@@ -8,6 +8,13 @@
   padding: 12px 0;
 }
 
+// On a phone's width the name keeps its 96px beside the "?" and the button: the gaps between the three columns are tighter.
+@media (max-width: 359px) {
+  :host {
+    column-gap: 4px;
+  }
+}
+
 .row__text {
   display: flex;
   grid-column: 1 / 3;
@@ -22,6 +29,47 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0 8px;
+}
+
+// The marks and the chip are one item, so they wrap together; the name is the only thing that shrinks.
+.row__marks-group {
+  display: contents;
+}
+
+// One-line head: the name ellipsizes down to 96px; under that the marks, the chip and the economy tag drop under it, at its x.
+// The name's base size is its floor, so the line breaks on the floor and the name then grows to its own width at most.
+.row__head--one {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+
+  > :not(.row__name) {
+    flex: none;
+  }
+
+  .row__name {
+    flex: 1000 1 96px;
+    min-width: 0;
+    max-width: max-content;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .row__marks-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    // Empty for a plain weapon: it takes no room and no gap.
+    &:not(:has(.weapon-tags, app-bonus-chip)) {
+      display: none;
+    }
+  }
+
+  .row__tags {
+    flex-wrap: nowrap;
+  }
 }
 
 .row__name {

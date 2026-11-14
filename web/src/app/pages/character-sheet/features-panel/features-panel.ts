@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { type DescribedText, chooseText } from '../../../core/text/description-language';
 import { DescriptionLangButton } from '../../../shared/srd-text/description-lang-button';
 import { RuleText, paragraphsOf } from '../../../shared/rule-text/rule-text';
+import { shieldReasonShown, SHIELD_SOURCE } from '../character-sheet-modifiers';
 import { FeatureVm, FullSheetVm } from '../character-sheet.types';
 
 /**
@@ -21,6 +22,13 @@ import { FeatureVm, FullSheetVm } from '../character-sheet.types';
 })
 export class FeaturesPanel {
   readonly sheet = input.required<FullSheetVm>();
+
+  /** The reminders: the server's hint about the idle shield is left out while the combat column says the same reason. */
+  protected readonly hints = computed(() =>
+    shieldReasonShown(this.sheet())
+      ? this.sheet().hints.filter((h) => h.sourceKey !== SHIELD_SOURCE)
+      : this.sheet().hints,
+  );
 
   /** Both languages exist for some feature, so "Ver em inglês" makes sense. */
   protected readonly canToggle = computed(() =>

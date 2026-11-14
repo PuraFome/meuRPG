@@ -115,4 +115,27 @@ describe('ActionRow', () => {
     const { el } = setup({ name: 'Raio de Fogo', button: 'Atacar' });
     expect(el.querySelector('.row__choosing')).toBeNull();
   });
+
+  it('puts the marks, the chip and the economy tag after the name, the marks and the chip in one group', () => {
+    const { el } = setup({
+      name: 'Espada longa',
+      oneLine: true,
+      economy: 'action',
+      bonus: 1,
+      marks: { silvered: true, adamantine: false, magical: false },
+    });
+    const head = el.querySelector('.row__head')!;
+    expect(Array.from(head.children).map((c) => c.className.split(' ')[0])).toEqual([
+      'row__name',
+      'row__marks-group',
+      'row__tags',
+    ]);
+    const group = head.querySelector('.row__marks-group')!;
+    expect(group.hasAttribute('data-wrap-group')).toBe(true);
+    expect(Array.from(group.children).map((c) => c.tagName.toLowerCase())).toEqual([
+      'app-weapon-tags',
+      'app-bonus-chip',
+    ]);
+    expect(head.querySelector('.row__tags')!.hasAttribute('data-wrap-group')).toBe(true);
+  });
 });

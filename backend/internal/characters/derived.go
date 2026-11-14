@@ -307,6 +307,7 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		Silvered:            a.Silvered,
 		Adamantine:          a.Adamantine,
 		Magical:             a.Magical,
+		MagicBonus:          i32(a.MagicBonus),
 	}
 }
 

@@ -139,9 +139,43 @@ describe('AttackSheet: the words around the roll', () => {
       attack: { ...bow, kind: AttackKind.WEAPON, silvered: true, magical: true } as Attack,
     });
     expect(subtitle(el)).toBe(
-      'Ação · −1 para acertar · 1d6 perfurante · alcance 24 m· dark_modePrateada auto_awesomeMágica',
+      'Ação · −1 para acertar · 1d6 perfurante · alcance 24 mdark_modePrateada auto_awesomeMágica',
     );
     expect(el.querySelector('.sheet__sub .weapon-tags')).not.toBeNull();
+  });
+
+  it('adds the counting magic bonus after the marks, with its words, and no "Mágica" beside it', () => {
+    const { el } = open({
+      attack: { ...bow, kind: AttackKind.WEAPON, silvered: true, magical: true } as Attack,
+      bonus: 1,
+    });
+    const line = plain(el.querySelector('.sheet__marks')?.textContent);
+    expect(line).toContain('Prateada');
+    expect(line).not.toContain('Mágica');
+    expect(line).toContain('+1');
+    expect(line).toContain('Bônus mágico, já somado');
+  });
+
+  it('keeps "Mágica" for a magical weapon without a counting bonus', () => {
+    const { el } = open({
+      attack: { ...bow, kind: AttackKind.WEAPON, magical: true } as Attack,
+    });
+    expect(plain(el.querySelector('.sheet__marks')?.textContent)).toContain('Mágica');
+    expect(el.querySelector('app-bonus-chip')).toBeNull();
+  });
+
+  it('shows the bonus alone when the weapon has no other mark, and not on an opportunity attack', () => {
+    const attack = { ...bow, kind: AttackKind.WEAPON, magical: true } as Attack;
+    expect(
+      open({ attack, bonus: 2 }).el.querySelector('.sheet__marks app-bonus-chip'),
+    ).not.toBeNull();
+    const opportunity = {
+      offerId: 'o1',
+      targetId: 'near',
+      targetLabel: 'Goblin 1',
+      byMaster: false,
+    };
+    expect(open({ attack, bonus: 2, opportunity }).el.querySelector('app-bonus-chip')).toBeNull();
   });
 
   it('has no chip for a plain weapon', () => {

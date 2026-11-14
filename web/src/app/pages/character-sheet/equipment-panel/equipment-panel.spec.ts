@@ -282,6 +282,14 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
     expect(flat(el.querySelector('.gear-row--idle .gear-row__idle'))).toBe('Parado');
   });
 
+  it('leaves the idle shield note to the combat column', () => {
+    const shield = { ...piece('equipment:shield', 'Escudo'), kind: 'shield' as const };
+    const { el } = render((h) =>
+      h.sheet.set({ ...sheetWith([], [shield]), shieldIdle: true } as FullSheetVm),
+    );
+    expect(el.textContent).not.toContain('O escudo não');
+  });
+
   it('draws the legend of the chips on the rows: the marks, the attunement and the bonus', () => {
     const { el } = render((h) =>
       h.sheet.set(

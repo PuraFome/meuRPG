@@ -11,10 +11,30 @@
     [aid]="aidVitals()?.hitPointsMaxBonus ?? 0"
     [hitDice]="s.hitDice"
   />
-  @if (s.shieldIdle) {
+  @if (shieldNote()) {
     <p class="mr-muted shield-note" role="note">
-      O escudo não soma na CA: há uma arma de duas mãos equipada. Guarde uma das duas para usar o escudo.
+      O escudo não conta na CA: há uma arma de duas mãos equipada. Guarde a arma de duas mãos.
     </p>
+  }
+  @if (modifierLines().length > 0) {
+    <section class="mr-panel modifiers" aria-labelledby="modificadores-heading">
+      <h3 id="modificadores-heading" class="modifiers__title">
+        <mat-icon aria-hidden="true">auto_awesome</mat-icon>Modificadores de itens
+      </h3>
+      <ul class="modifiers__list">
+        @for (line of modifierLines(); track line.sourceKey) {
+          <li class="modifiers__item" [class.modifiers__item--idle]="!line.counts">
+            <span class="modifiers__line" data-one-line>
+              <span class="modifiers__name" data-chip-ref><strong>+{{ line.value }}</strong> · {{ line.namePt }}</span>
+              <span class="modifiers__target" data-wrap-group>{{ line.targetPt }}</span>
+            </span>
+            @if (!line.counts && line.reasonPt) {
+              <span class="modifiers__reason"><mat-icon aria-hidden="true">block</mat-icon>{{ line.reasonPt }}</span>
+            }
+          </li>
+        }
+      </ul>
+    </section>
   }
 </section>
 
@@ -38,10 +58,15 @@
         @for (atk of s.attacks; track atk.key) {
           <tr>
             <td>
-              {{ atk.namePt }}
-              @if (atk.marks) {
-                <app-weapon-tags [marks]="atk.marks" />
-              }
+              <span class="attacks__name" data-chip-row>
+                <span data-chip-ref>{{ atk.namePt }}</span>
+                @if (atk.marks) {
+                  <app-weapon-tags [marks]="marksFor(atk)" />
+                }
+                @if (atk.magicBonus > 0) {
+                  <app-bonus-chip data-chip [bonus]="atk.magicBonus" />
+                }
+              </span>
               @if (atk.saveDc > 0 && atk.saveAbility) {
                 <span class="attacks__save"
                   >Teste de resistência de {{ abilityLabel(atk.saveAbility) }}</span
