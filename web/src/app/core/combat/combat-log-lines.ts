@@ -336,9 +336,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   // A character used a feature of its own (`UseFeature`): the audience is the server's, and the numbers are in the entry only for who may read them.
   [
     CombatLogKind.FEATURE_USED,
-    ({ e, base, ctx }) => {
-      return { ...base, icon: 'auto_awesome', text: featureUsedText(e, ctx) };
-    },
+    ({ e, base, ctx }) => ({ ...base, icon: 'auto_awesome', text: featureUsedText(e, ctx) }),
   ],
   // A swap of gear in the combat: the master's and the character's owner's line. The cost is what it spent.
   [
