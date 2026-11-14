@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -80,10 +81,10 @@ func (s *Service) openMountSave(ctx context.Context, c *combatTx, _ []playdb.Com
 	if err != nil {
 		return err
 	}
-	if slices.ContainsFunc(open, func(w playdb.ReactionWindow) bool {
+	if i := slices.IndexFunc(open, func(w playdb.ReactionWindow) bool {
 		return w.Kind == string(reaction.MountSave) && conv.OrZero(w.ReactorID) == rider.ID
-	}) {
-		return nil
+	}); i >= 0 {
+		return s.carrySaveOn(ctx, c, open[i], mount, cause) // one save covers both
 	}
 	trigger := windowTrigger{Target: mount.ID, Cause: mountCauseKey(cause)}
 	if placed(mount) {
@@ -91,6 +92,32 @@ func (s *Service) openMountSave(ctx context.Context, c *combatTx, _ []playdb.Com
 	}
 	_, err = s.openWindows(ctx, c, newGroup(), nil, []windowSpec{{kind: reaction.MountSave, reactor: &rider, trigger: trigger}})
 	return err
+}
+
+// carrySaveOn keeps the open save of a rider when a second push moves its mount before it is answered: the window takes the new square
+// (the one it had stays as a square the undo of the last push may put the mount back on), and a push makes the window the push's, so
+// that the rider standing up does not end it. A prone after the push changes nothing.
+func (s *Service) carrySaveOn(ctx context.Context, c *combatTx, w playdb.ReactionWindow, mount playdb.Combatant, cause playv1.MountSaveCause) error {
+	if cause != playv1.MountSaveCause_MOUNT_SAVE_CAUSE_PUSHED || !placed(mount) {
+		return nil
+	}
+	t := windowTriggerOf(w)
+	here := [2]int32{conv.OrZero(mount.GridCol), conv.OrZero(mount.GridRow)}
+	if t.Cause != mountCauseProne && here == [2]int32{t.AtCol, t.AtRow} {
+		return nil
+	}
+	if t.Cause != mountCauseProne {
+		t.Before = append(t.Before, [2]int32{t.AtCol, t.AtRow})
+	}
+	t.Cause, t.AtCol, t.AtRow = mountCauseKey(cause), here[0], here[1]
+	body, err := json.Marshal(t)
+	if err != nil {
+		return fmt.Errorf("encode the window's trigger: %w", err)
+	}
+	if _, err := c.q.SetReactionWindowTrigger(ctx, playdb.SetReactionWindowTriggerParams{ID: w.ID, Trigger: body}); err != nil {
+		return fmt.Errorf("move a mount save on: %w", err)
+	}
+	return nil
 }
 
 // throwDownRider is the fall of a rider at 0 hit points: the same fall and landing as a failed save, written as an automatic failure
@@ -147,7 +174,11 @@ func mountSaveGone(w playdb.ReactionWindow, t windowTrigger, byID map[string]pla
 	if t.Cause == mountCauseProne {
 		return !slices.Contains(rider.Conditions, condProne)
 	}
-	return !placed(mount) || conv.OrZero(mount.GridCol) != t.AtCol || conv.OrZero(mount.GridRow) != t.AtRow
+	if !placed(mount) {
+		return true
+	}
+	at := [2]int32{conv.OrZero(mount.GridCol), conv.OrZero(mount.GridRow)}
+	return at != [2]int32{t.AtCol, t.AtRow} && !slices.Contains(t.Before, at)
 }
 
 // mountSaveWait adds a rider's save to the line the caller reads. The master reads every one and a player only the character they see

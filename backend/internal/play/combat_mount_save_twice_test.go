@@ -1,6 +1,7 @@
 package play
 
 import (
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"testing"
 
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
@@ -100,5 +101,20 @@ func TestMountedCombat_AProneAfterAPushKeepsTheRidersSave(t *testing.T) {
 	c.touchCombat(t)
 	if c.mountSaveOf(t, c.master) == nil {
 		t.Error("the save of the push was lost when the prone went away")
+	}
+}
+
+// The mount put back on the square of the earlier push (the undo of the last) keeps the window; any other square closes it.
+func TestMountedCombat_TheSquaresOfTheEarlierPushesKeepTheSave(t *testing.T) {
+	t.Parallel()
+	one, two, three := int32(20), int32(22), int32(24)
+	rider := playdb.Combatant{ID: "r", MountedOnID: new("m")}
+	w := playdb.ReactionWindow{ReactorID: new("r")}
+	tr := windowTrigger{Target: "m", Cause: mountCauseKey(causePushed), AtCol: two, AtRow: 7, Before: [][2]int32{{one, 7}}}
+	for col, gone := range map[int32]bool{one: false, two: false, three: true, 18: true} {
+		mount := playdb.Combatant{ID: "m", GridCol: &col, GridRow: new(int32(7))}
+		if got := mountSaveGone(w, tr, map[string]playdb.Combatant{"r": rider, "m": mount}); got != gone {
+			t.Errorf("mountSaveGone with the mount at column %d = %v, want %v", col, got, gone)
+		}
 	}
 }

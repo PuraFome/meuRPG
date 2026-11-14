@@ -11272,6 +11272,40 @@ func (q *Queries) SetReactionWindowStep(ctx context.Context, arg SetReactionWind
 	return i, err
 }
 
+const setReactionWindowTrigger = `-- name: SetReactionWindowTrigger :one
+UPDATE reaction_windows SET trigger = $2 WHERE id = $1 AND status = 'open'
+RETURNING id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at
+`
+
+type SetReactionWindowTriggerParams struct {
+	ID      string
+	Trigger []byte
+}
+
+// The trigger of an open window changes and nothing else does: a second push of the mount a rider's save is asked for.
+func (q *Queries) SetReactionWindowTrigger(ctx context.Context, arg SetReactionWindowTriggerParams) (ReactionWindow, error) {
+	row := q.db.QueryRow(ctx, setReactionWindowTrigger, arg.ID, arg.Trigger)
+	var i ReactionWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Seq,
+		&i.GroupID,
+		&i.Kind,
+		&i.Status,
+		&i.ClosedReason,
+		&i.ReactorID,
+		&i.PendingDamageID,
+		&i.HoldID,
+		&i.Step,
+		&i.Trigger,
+		&i.Outcome,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
 const setScenePlayersMayJoin = `-- name: SetScenePlayersMayJoin :one
 UPDATE game_sessions SET scene_players_may_join = $1 WHERE id = $2
 RETURNING id, campaign_id, session_number, started_at, ended_at, current_map_id, shown_image_id, shown_image_keep, open_scene_point_id, create_key, create_hash, open_scene_everyone, shown_image_audience, scene_players_may_join, tv_mirror, tv_pin, tv_choice_revision, hint_seq

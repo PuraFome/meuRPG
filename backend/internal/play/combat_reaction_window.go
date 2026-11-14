@@ -117,6 +117,9 @@ type windowTrigger struct {
 	Cause string `json:"cause,omitempty"`
 	AtCol int32  `json:"at_col,omitempty"`
 	AtRow int32  `json:"at_row,omitempty"`
+	// Before are the squares the mount stood on after the earlier pushes the same save covers: the undo of the last one puts it back
+	// on the one before, and the window stays.
+	Before [][2]int32 `json:"before,omitempty"`
 	// Readied is the readied action (readied_actions.id) a READIED window was fired for.
 	Readied string `json:"readied,omitempty"`
 }

@@ -1619,6 +1619,11 @@ RETURNING *;
 UPDATE reaction_windows SET step = $2, trigger = $3 WHERE id = $1 AND status = 'open'
 RETURNING *;
 
+-- name: SetReactionWindowTrigger :one
+-- The trigger of an open window changes and nothing else does: a second push of the mount a rider's save is asked for.
+UPDATE reaction_windows SET trigger = $2 WHERE id = $1 AND status = 'open'
+RETURNING *;
+
 -- name: DeleteReactionWindowsOfEncounter :exec
 DELETE FROM reaction_windows WHERE encounter_id = $1;
 
