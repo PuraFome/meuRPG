@@ -223,11 +223,11 @@ test(
       await expect(p.locator('app-wild-pools')).toContainText('PV do Lobo');
       await expect(p.locator('app-wild-pools')).toContainText('11 de 11');
       await expect(p.locator('app-wild-pools')).toContainText('PV da Sálvia');
-      await openActionTab(p, 'Magias');
+      await expect(p.getByRole('tablist', { name: 'Tipos de ação' }).getByRole('tab', { name: /^Magias/ })).toHaveCount(0);
       await expect(p.getByText('Sem magias na forma de fera. Volte à forma normal para conjurar.')).toBeVisible();
       await expect(p.getByRole('button', { name: /Conjurar/ })).toHaveCount(0);
-      // The Forma Selvagem line is gone from the class's tab, which is "Habilidades" now: the way back is there.
-      await openActionTab(p, 'Habilidades');
+      // The Forma Selvagem line is gone from the class's tab, which keeps the class's name ("Druida", 584-01): the way back is there.
+      await openActionTab(p, 'Druida');
       await expect(p.getByRole('button', { name: 'Voltar à forma normal' })).toBeVisible();
       await expect(p.getByText('Traços do Lobo')).toBeVisible();
 
@@ -242,8 +242,10 @@ test(
       await expect(t.getByText(/PV do Lobo|11 de 11/)).toHaveCount(0);
       await m.goto(sessionRoute(campaignId));
       await openOrderRow(m, 'Sálvia');
-      await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).getByText('Na forma de Lobo').first()).toBeVisible();
-      await expect(m.getByRole('region', { name: 'Ordem de iniciativa' }).locator('app-beast-pool', { hasText: '11 de 11' })).toBeVisible();
+      // One line per fact (584-04): the form's pool in the number, and the druid's own pool once.
+      const orderRegion = m.getByRole('region', { name: 'Ordem de iniciativa' });
+      await expect(orderRegion).toContainText('11/11');
+      await expect(orderRegion).toContainText(/11 de 11 PV do Lobo\s*·\s*a Sálvia tem \d+ de \d+/);
 
       // Damage past the beast's hit points: the master applies it; the beast falls, 19 carry over, and she is told.
       await hitAndApply(m, campaignId, 'Goblin 1', 'Sálvia', 30);
@@ -268,7 +270,7 @@ test(
       await again.locator('label', { hasText: '(Wolf)' }).click();
       await again.getByRole('button', { name: 'Virar Lobo' }).click();
       await expect(p.getByText('Na forma de Lobo').first()).toBeVisible();
-      await openActionTab(p, 'Habilidades');
+      await openActionTab(p, 'Druida');
       await p.getByRole('button', { name: 'Voltar à forma normal' }).click();
       await expect(p.getByText('Na forma de Lobo')).toHaveCount(0);
       await expect(p.getByTestId('form-ended')).toHaveCount(0);

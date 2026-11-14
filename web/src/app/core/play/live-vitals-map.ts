@@ -28,6 +28,7 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
     hitPointsTemporary: v.hitPointsTemporary,
     hitPointsMaxBonus: v.hitPointsMaxBonus,
     exhaustionLevel: v.exhaustionLevel,
+    attunementOpen: v.attunementOpen,
     armorClassBase: v.armorClassBase,
     arcaneRecoveryAllowance: v.arcaneRecoveryAllowance,
     naturalRecoveryAllowance: v.naturalRecoveryAllowance,
@@ -72,6 +73,9 @@ export function toVitalsVm(v: CharacterVitals): VitalsVm {
           beastNamePt: v.wildShape.beastNamePt,
           hitPointsCurrent: v.wildShape.hitPointsCurrent,
           hitPointsMax: v.wildShape.hitPointsMax,
+          timeLeftPt: v.wildShape.timeLeftPt,
+          armorClass: v.wildShape.armorClass,
+          secondsTotal: v.wildShape.secondsTotal,
         }
       : null,
   };

@@ -188,36 +188,42 @@
   }
 }
 
-// The shapes, "Mover" and "Encerrar turno" on one row with the title (C6-07).
-.banner__shapes {
+// Where we are (the map and the round), a rule, whose turn it is, and "Encerrar turno" at the right: the master's band (584-02).
+.banner__round {
+  display: flex;
   flex: none;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 16px;
+  border-right: 1px solid var(--mr-line);
 }
 
-// "Mover" and "Encerrar turno" are the same width (C6-07).
+.banner__big {
+  font-family: var(--mr-font-display);
+  font-weight: 800;
+  font-size: var(--mr-font-22);
+  line-height: 26px;
+}
+
+.banner__who {
+  display: flex;
+  flex: 1 1 260px;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.banner__chip {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
 .banner__end {
   display: grid;
   flex: none;
-  grid-auto-columns: minmax(150px, 1fr);
-  grid-auto-flow: column;
+  grid-auto-columns: minmax(180px, 1fr);
   align-items: center;
-  gap: 12px;
   max-width: 420px;
-}
-
-.banner__move {
-  --mat-button-outlined-container-height: 48px;
-  width: 100%;
-  --mat-button-outlined-label-text-color: var(--mr-ink);
-  --mat-button-outlined-outline-color: var(--mr-control-line);
-  flex: none;
-  font-weight: 700;
-
-  &.mr-button--off {
-    --mat-button-outlined-label-text-color: var(--mr-ink-muted);
-    --mat-button-outlined-disabled-label-text-color: var(--mr-ink-muted);
-    --mat-button-outlined-disabled-outline-color: var(--mr-control-line);
-    border-style: dashed;
-  }
 }
 
 .banner__strip {
@@ -270,11 +276,6 @@
   flex: none;
   gap: 8px;
   padding: 3px;
-}
-
-.banner__band {
-  margin-top: 10px;
-  align-self: flex-start;
 }
 
 // "Esperando o mestre aplicar o dano": the tag under the trap's notice.

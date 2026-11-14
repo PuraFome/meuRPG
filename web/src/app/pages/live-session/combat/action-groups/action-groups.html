@@ -1,6 +1,24 @@
 <section class="groups" aria-labelledby="groups-title">
   <h2 class="groups__title" id="groups-title">O que você pode fazer</h2>
 
+  <!-- The economy of the turn, first in the panel and there while any tab is open (584-01, 584-02): the words say the state, the shape never alone. -->
+  <div class="econ" data-testid="turn-economy">
+    <app-economy-shapes class="econ__shapes" variant="inline" label="O que resta da vez" [shapes]="turnLine().shapes" />
+    @if (turnLine().canMove) {
+      <button
+        matButton="outlined"
+        type="button"
+        class="econ__move"
+        [class.mr-button--off]="!!locked()"
+        [disabled]="!!locked() || busy()"
+        disabledInteractive
+        (click)="!locked() && move.emit()"
+      >
+        <mat-icon aria-hidden="true">open_with</mat-icon>Mover
+      </button>
+    }
+  </div>
+
   <div class="mr-live" role="status">
     @if (note()) {
       <p class="groups__note"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ note() }}</p>
@@ -92,8 +110,8 @@
           }
         </app-fold>
       }
-      @if (contestAttacks().length) {
-        @for (o of contestAttacks(); track o.kind) {
+      @if (contestRows().length) {
+        @for (o of contestRows(); track o.kind) {
           <app-action-row
             [name]="special(o).name"
             economy="action"
@@ -107,22 +125,21 @@
             (press)="contestAttack.emit(o.kind)"
           />
         }
-        <p class="group__why group__why--plain">{{ specialNote }}</p>
+        <p class="group__why group__why--plain">{{ specialNote() }}</p>
       }
       @if (hiddenNote()) {
         <p class="group__why group__why--plain" data-testid="hidden-note">{{ hiddenNote() }}</p>
       }
 
       @if (gearFlow(); as flow) {
+        @if (!beast()) {
         <app-gear-fold [flow]="flow" [own]="own()" [extra]="extraAction()" [locked]="locked()" />
+        }
       }
     </div>
 
     @if (hasSpells()) {
       <div class="panel" role="tabpanel" [id]="panelId('spells')" [attr.aria-labelledby]="tabButtonId('spells')" [hidden]="current() !== 'spells'">
-        @if (beast()) {
-          <p class="group__why" id="no-spells"><mat-icon aria-hidden="true">block</mat-icon><span><b>Sem magias na forma de fera.</b> Volte à forma normal para conjurar.</span></p>
-        } @else {
           @if (slotRows().length) {
             <!-- One line of slots (C6-07): the one explanation of every "Sem espaço" below. -->
             <ul class="slots" aria-label="Seus espaços de magia">
@@ -145,7 +162,6 @@
               }
             </app-fold>
           }
-        }
       </div>
     }
 
@@ -163,6 +179,20 @@
             [busy]="busy()"
             (press)="leaveForm.emit()"
           />
+          @if (stay(); as st) {
+            <!-- A free change of the form (584-01, 584-02): one use, no action; the bolt says so. -->
+            <app-action-row
+              name="Permanecer na forma"
+              economy="free"
+              [detail]="st.detail"
+              button="Permanecer"
+              buttonLabel="Permanecer na forma"
+              [off]="!!st.reason || !!locked()"
+              [reason]="st.reason || locked()"
+              [busy]="busy()"
+              (press)="stayForm.emit()"
+            />
+          }
         }
         @for (f of featureParts().open; track f.action?.key) {
           <ng-container *ngTemplateOutlet="featureRow; context: { $implicit: f }" />
@@ -245,6 +275,11 @@
         </section>
       }
     </div>
+
+    @if (beast()) {
+      <!-- A form casts nothing: said once, at the foot of the actions (584-01, 584-02). -->
+      <p class="group__why" id="no-spells"><mat-icon aria-hidden="true">block</mat-icon><span>Sem magias na forma de fera. Volte à forma normal para conjurar.</span></p>
+    }
   }
 </section>
 

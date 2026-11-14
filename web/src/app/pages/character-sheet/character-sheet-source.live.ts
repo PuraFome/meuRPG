@@ -9,6 +9,7 @@ import {
   CharacterState as GenCharacterState,
   type FullSheet,
   FullSheetSchema,
+  SheetMagicItemSchema,
   WeaponMarkSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ContentService } from '../../../gen/meurpg/rules/v1/rules_pb';
@@ -116,6 +117,26 @@ export class CharacterSheetSourceLive implements CharacterSheetSource {
   ): Promise<CharacterSheetVm> {
     const next = clone(FullSheetSchema, sheet);
     next.weaponMarks = marks.map((m) => create(WeaponMarkSchema, m));
+    const res = await this.client.updateCharacter({
+      campaignId,
+      characterId,
+      revision,
+      name,
+      sheet: { content: { case: 'full', value: next } },
+    });
+    return toCharacterSheetVm(res.character!);
+  }
+
+  async setMagicItems(
+    campaignId: string,
+    characterId: string,
+    revision: number,
+    name: string,
+    sheet: FullSheet,
+    items: readonly { readonly id: string; readonly key: string }[],
+  ): Promise<CharacterSheetVm> {
+    const next = clone(FullSheetSchema, sheet);
+    next.magicItems = items.map((i) => create(SheetMagicItemSchema, { id: i.id, key: i.key }));
     const res = await this.client.updateCharacter({
       campaignId,
       characterId,

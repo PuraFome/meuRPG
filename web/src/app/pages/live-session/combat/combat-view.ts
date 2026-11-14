@@ -157,6 +157,9 @@ export class CombatView extends CombatViewPartsDirective {
         return;
       }
       void e.revision;
+      // The shape of the one in the spotlight changes what it can do (a beast attacks with its bite and casts nothing): the options are
+      // asked for again the moment the form changes, not when the next event of the combat arrives.
+      void who.wildShapeBeastKey;
       untracked(() => void this.turn.load(this.api, campaignId, e.id, who.id));
     });
     // The log is read again on every `combat_log_changed` and after every
