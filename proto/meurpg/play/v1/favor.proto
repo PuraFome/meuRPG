@@ -21,10 +21,12 @@ enum FavorBlockedReason {
   FAVOR_BLOCKED_REASON_CANNOT_RECEIVE = 5;
   // The pass names the giver as the receiver.
   FAVOR_BLOCKED_REASON_SELF = 6;
-  // The roll already has advantage, so the Inspiration would change nothing.
+  // The roll would not change: it already has advantage, or advantage and disadvantage cancel.
   FAVOR_BLOCKED_REASON_ADDS_NOTHING = 7;
   // The d20 was already rolled.
   FAVOR_BLOCKED_REASON_AFTER_THE_ROLL = 8;
+  // The spend was asked on a call that rolls no d20: nothing is spent.
+  FAVOR_BLOCKED_REASON_NOTHING_TO_ROLL = 9;
 }
 
 // FavorBlocked is the error detail of FavorService's `failed_precondition`.

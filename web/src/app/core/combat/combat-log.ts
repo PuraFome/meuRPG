@@ -121,6 +121,11 @@ const UNDO_LABELS: ReadonlyMap<CombatLogKind, (e: CombatLogEntry) => string> = n
     CombatLogKind.ACTION,
     (e) => `a ação de ${e.actorLabel}${e.keyNamePt ? ` (${e.keyNamePt})` : ''}`,
   ],
+  [
+    CombatLogKind.FEATURE_USED,
+    (e) =>
+      `o uso de ${e.featureUsed?.namePt || e.keyNamePt || 'uma característica'} ${ofThe(e.actorLabel)} ${e.actorLabel}`,
+  ],
   [CombatLogKind.HIT_POINTS_ADJUSTED, (e) => `o ajuste de PV de ${e.actorLabel || e.targetLabel}`],
   [
     CombatLogKind.SPELL_CAST,

@@ -393,23 +393,24 @@ func (p *rulesProbe) CombatWithoutMap(ctx context.Context, tx pgx.Tx, campaignID
 
 // ---- the death saves ----
 
-// drain returns what a stream has now, without waiting: the change that made
-// it is published before its call returns.
-func drain(w *watcher) []*playv1.WatchGameSessionResponse {
-	var out []*playv1.WatchGameSessionResponse
-	for {
-		select {
-		case ev, ok := <-w.events:
-			if !ok {
-				return out
-			}
-			if ev.GetHeartbeat() == nil {
-				out = append(out, ev)
-			}
-		default:
-			return out
-		}
+// streamsHeard returns what each stream heard of the change just made, up to a marker the master sends after it (markCurrentMap,
+// read with beforeMarker): the hub publishes in order, so the change is among the events however late it was delivered,
+// and an empty result means it sent that stream nothing. It waits for the marker with a bounded deadline and fails with
+// what the stream did hear.
+func (a *armed) streamsHeard(t *testing.T, ws ...*watcher) [][]*playv1.WatchGameSessionResponse {
+	t.Helper()
+	a.master.markCurrentMap(t, a.campaignID, a.mapID, ws...)
+	out := make([][]*playv1.WatchGameSessionResponse, len(ws))
+	for i, w := range ws {
+		out[i] = w.beforeMarker(t)
 	}
+	return out
+}
+
+// streamHeard is streamsHeard for one stream.
+func (a *armed) streamHeard(t *testing.T, w *watcher) []*playv1.WatchGameSessionResponse {
+	t.Helper()
+	return a.streamsHeard(t, w)[0]
 }
 
 // deathLines are a viewer's log lines of death saves.
@@ -476,8 +477,14 @@ func TestRN24_HiddenDeathSavesAreTheOwnersAndTheMasters(t *testing.T) {
 	}
 	a.seesNoDeathSaves(t, "Pensantus's player", a.ana, e)
 	a.seesNoDeathSaves(t, "Brisa's player", a.bia, e)
+	names := make([]string, 0, len(streams))
+	ws := make([]*watcher, 0, len(streams))
 	for who, w := range streams {
-		evs := drain(w)
+		names, ws = append(names, who), append(ws, w)
+	}
+	heard := a.streamsHeard(t, ws...)
+	for i, who := range names {
+		evs := heard[i]
 		text := asJSONAll(t, evs)
 		for _, k := range kinds(evs) {
 			if (who == "Pensantus's player" || who == "Brisa's player") && k == "other" {
@@ -621,10 +628,11 @@ func TestRN24_ARevivalAndADeathStayWithTheOwnerAndTheMaster(t *testing.T) {
 		t.Errorf("Toren's player reads %d death save lines, want his 2", n)
 	}
 	var vitalsFor, vitalsAna bool
-	for _, ev := range drain(watch) {
+	heardAfter := a.streamsHeard(t, watch, caioStream)
+	for _, ev := range heardAfter[0] {
 		vitalsAna = vitalsAna || ev.GetVitalsChanged() != nil
 	}
-	for _, ev := range drain(caioStream) {
+	for _, ev := range heardAfter[1] {
 		vitalsFor = vitalsFor || ev.GetVitalsChanged() != nil
 	}
 	if vitalsAna || !vitalsFor {

@@ -195,6 +195,20 @@ A hit with more than the weapon opens `PendingDamage.parts[]`:
 
 A critical doubles the dice of every part (or follows the table's "maximum plus a roll"), never the fixed numbers (SRD 5.1 "Critical Hits").
 In the app the server rolls every part; with physical dice the player types a sum for each part (`typed_parts[]`).
+A `typed_parts` entry names one part (`part_key`) or one damage type (`damage_type`, a `damage-type:` key), never both.
+A `damage_type` entry covers every dice part of that type in the attack: the weapon, a hit effect, the extras that roll dice and count.
+Its sum is checked against the group's combined dice (each part's count to count times faces, doubled on a critical hit as the table's rule says, or the rule's own numbers under "maximum plus a roll").
+A group and a `part_key` of a part in it, the same type twice, and a type with no dice part in the attack are `invalid_argument`; every other dice part still needs its own `part_key` or its type's group.
+The group's total counts under its type, so a resistance, vulnerability or immunity acts on the sum plus the fixed numbers of its parts; no part of the group keeps faces.
+The sum is kept on the first part of the group the other players can read (not a spell's hidden hit effect; the first of all when every part is hidden), and every part of a group of two or more counted dice parts keeps `partRoll.group`, the type that covered it. A `damage_type` entry that covers one part is no group: its sum stays on that part, as a `part_key` sum does, with no `group` set.
+A `typed_parts` entry that names neither a `part_key` nor a `damage_type`, and one that names both, are `invalid_argument` with words of their own; the entries are read in the order of the request and the groups checked in the order of their type keys.
+RN-10: "hidden" (`Hide`) is hidden from the other players; the roller is the owner or the master, who read every part whole. For the roller a group that holds a hidden part is a group like any other: the range error gives its bounds, a `part_key` typed beside the type for a part of the group (hidden or not) is `invalid_argument`, a `part_key` of no part is passed over, and a type whose only dice are hidden has dice (it is refused as a type with none only when no part has dice). The other players read a group that holds a part hidden from them as one row (`mergeHiddenGroups`): the names of its visible parts and "Outra fonte", the damage type, the group's sum and the parts' fixed numbers, never the hidden effect's key or name and never a 0 that was not rolled; `partRoll.group_hidden` marks the row that carries the sum. The owner and the master read each part as before. The total of the damage stays the damage as rolled, which includes the hidden part (it is the hit points the table sees change).
+The master cannot take a part out of a group, a type with two or more parts (`RemoveDamagePart` is refused with `DAMAGE_PART_NOT_REMOVABLE`, "covered by a damage-type sum"): the sum sits on one part, so taking out that one would drop the whole group and taking out another would take nothing. The damage rolled with a sum for each part, and a part alone in its type typed through a `damage_type` entry, come out as before.
+The master cannot take out one part of a typed group; undoing the damage sends the roll back to the roller, who types a new sum.
+A part of a spell's hit effect is told apart by its effect row, not its key (`partIdent`), so two casters of one spell give two parts of one group and its sum is counted once.
+Divine Smite's extra die stays out of every group and keeps its `part_key`, since whether it counts depends on the target.
+The attack sheet sends a `damage_type` entry for every damage type it types, one field for each type however many parts share it, and a `part_key` entry only for a part the server keeps out of the groups (Divine Smite's extra die) or one with no damage type.
+A held roll and its replay read the same request, so a group rolls the same way there.
 Divine Smite's extra die against an undead or fiend is rolled as its own part and only counts when the target is one: the player sees "+1d8" and never why, and the damage a player reads on an NPC is the damage as rolled (`damageHit.Shown`), so the total says nothing either.
 The `extra_damage` effect of a table feature ([Rules: table content](../rules-table-content.md#extra-damage)) is one more choosable extra after a weapon hit by a player's character: a fixed damage and/or dice, of the feature's damage type or the weapon's. The dice are a part like a maneuver's die (`partRecord.Count` and `Sides`), rolled in the app or typed per part, and a critical hit doubles them (`partCriticalDice`) unless the feature keeps them (`partRecord.NoCrit`); the fixed damage never doubles. Each part lands in `byType` under its own damage type, so a resistance takes only that line. It is listed off, with its reason, when the target is not larger (the sizes are public), when the weapon is of the other kind (melee or ranged; a thrown weapon at range is ranged), when it was used this turn (only for `once_per_turn`) or when the resource has no use left; marking it spends a use and the rider is the master's alone. The once-per-turn mark is kept by feature key in `combatants.feature_state` ([Feature state](feature-state.md)), and the master's undo puts it and the use back. `each_hit` sets no mark. It is not a maneuver: the one-maneuver-per-attack limit does not count it.
 
@@ -240,6 +254,9 @@ The effect is a row of the caster ([Lasting effects](lasting-effects.md#the-dama
 After a weapon hit, `hitFacts.hitEffectParts` (`combat_hit_effects.go`) offers one part for each such row that is not spent and whose trigger holds.
 The part is automatic: the player never chooses it, it is the spell's rider.
 Its key and label are the spell's.
+Its roll (`DamagePartRoll`) carries `hit_effect` true.
+The flag follows the key: a reader who gets the effect row's id for a key (an effect the master hides, or the owner's) reads it false, so it never says a spell is behind the part.
+The caster's player and the master read it true, and so do the other players when the effect is public.
 
 | Trigger | The hit it rides on | Used up |
 | --- | --- | --- |
@@ -252,6 +269,15 @@ Its key and label are the spell's.
   A spell attack offers no part: it is not a weapon hit.
   A miss opens no damage, so it offers nothing and keeps the effect for the next hit.
   A row of another caster is never read, and Hunter's Mark stays its own hard-coded path (an offered extra on `combatant_states`), not a `weapon_hit_damage`.
+- **The words.**
+  The part's `note_pt` is the effect's own sentence, built from the modifier by `hitEffectNote`: what the trigger means, then, with a `save`, "Depois do dano, o alvo faz um teste de resistência de <habilidade>; se falhar, fica <condições> <duração>".
+  Without a save, or when the ability cannot be named, it is the trigger's sentence alone; a condition that cannot be named is left out.
+  Only the part that rides on the hit has these words: the off part carries its reason and no note.
+- **Listed off.**
+  A `next_melee_hit` row meeting a ranged weapon, or a thrown one at range, is listed with its dice but off (`hitEffectOffPart`): `available` false, `reason_pt` "só num golpe corpo a corpo. Continua esperando.", never automatic, never chosen, never rolled and not in the total.
+  Its row stays unspent through the damage roll and the undo.
+  Only the caster's player and the master read it and its reason.
+  A spent row, another caster's row and a `marked_target` on an unmarked target are not listed at all.
 - **The dice.**
   The row holds the dice already worked out for the slot of the cast: `dice` plus `per_slot_dice` for each slot level above the spell's own, never more than `max_dice` (`hitDiceAt`).
   The part rolls them like every other part, with the app's dice or the typed sum of the part.
@@ -262,7 +288,7 @@ Its key and label are the spell's.
 - **Spend timing.**
   The effect is used when the damage is rolled and counted, not when the hit is made (`useHitEffects`, called from `damageFlow.landAll`).
   A `next_hit` or `next_melee_hit` row gets `combatant_states.spent_at` and its id goes in `EffectsSpent` of the damage event; the row stays until its clock ends it.
-  Two hits of one turn can both wait for their damage: the first roll uses the effect, and `liveHitParts` takes the part out of the second (it also drops a part whose concentration ended in between).
+  Two hits of one turn can both wait for their damage: the effect goes to the earlier attack, whichever damage is rolled first: `liveHitParts` takes the part out of a damage while an earlier attack of the same attacker still waits to roll it (it also drops a part whose effect was used or ended in between).
   A replay of a held roll never spends it twice.
   `each_hit` and `marked_target` are never spent.
 - **The save.**
@@ -273,15 +299,17 @@ Its key and label are the spell's.
   A pass leaves nothing.
 - **What is logged.**
   The damage line carries the part by the spell's name.
-  The save is a `hit_rider` line with the roll, the DC and the result, the master's, the attacker's player's and the target's own player's to read, no other player's (the line says the effect has a save: `riderEvent.OwnersOnly`, `viewerGets`); a failed save adds the line of the new effect, which follows the effect's visibility.
+  The save is a `hit_rider` line with the roll, the DC and the result, the master's, the attacker's player's and the target's own player's to read, no other player's (the line says the effect has a save: `riderEvent.OwnersOnly`, `viewerGets`). When the effect's lines are not the players' to read (`riderEvent.EffectHidden`: hidden by the master, a hidden target, or for its owner alone on an NPC) the line is the master's and the attacker's player's: the attacker's player reads the result and the condition, never the NPC's die, modifier or total, and the spell's name when they cast it (`riderEvent.SourceID` is theirs) or its audience is all players, and "Outra fonte" otherwise (`ownersOnly`, `spellRiderKey`); a failed save adds the line of the new effect, which follows the effect's visibility.
   The ids of the effect rows and of the lines go in the event (`EffectsAdded`, `EffectLines`).
 - **Undo.**
+  The undo is a chain: an ending of the effect (the concentration, the master's dismissal, a clock) is a later change, so the damage's undo is reached only after the ending is undone, and the row comes back with its id, its clock and its `spent_at` (`restoreEffects`), never as an effect that waits again. The master's dismissal closes the chain: the log offers no undo of the damage behind it.
   The master's undo of the damage clears `spent_at` (the same `EffectsSpent` path as Vicious Mockery), deletes the conditions the save put on the target and takes the lines away (`effectsAddedBack`).
   The undo of the cast takes the caster's row and the mark away with the cast.
   The spell's part is an automatic line, so the master's `RemoveDamagePart` refuses it (`takeOut`): the effect stays spent and the save stays made, and the master's undo of the damage is the way back.
 - **Who reads what (RN-10).**
-  The master and the attacker's own player read the part whole: spell, dice, faces.
-  Every other player reads the amount and never the dice (`partsProtoFor`, `hitRollForOthers`), and when the master hides the effect, or its audience is `owner`, the part reads "Outra fonte" with the row's id for a key and no source (`hitPartForOthers`).
+  The master and the attacker's own player read the part whole: spell, dice, faces, words, and the off part with its reason.
+  Every other player reads the amount and never the dice or the words of an effect they may read (`partsProtoFor`, `hitRollForOthers`), and when the master hides the effect, or its audience is `owner`, the part reads "Outra fonte" with the row's id for a key and no source (`hitPartForOthers`).
+  The off part is never read by another player, hidden effect or public: it is dropped from their parts, and a hit whose only extra is an off row reads to them as a hit with no parts (`partRecord.Plain` on the weapon part, `plainToOthers`), before and after the roll. A hit that also made a power attack is never plain: they read the weapon and the power attack as they would with no effect waiting.
   The row's modifier, trigger, dice and save never reach another player, in the damage, the log or the effect lists, and neither does whether the row is spent (`readsSpent`).
 
 ## Roll modes
@@ -296,6 +324,8 @@ Death saves and initiative are untouched.
   The master sets any mode on his own rolls with a reason.
   A request closes when the attack uses it, when the player takes it back (`CancelRollModeRequest`), or when the turn or combat ends.
   Every change is a log line.
+- **The master's Inspiração.** `spend_favor` on `RollAttack` and on a spell attack gives the roll advantage before the mode is chosen, so typed dice are two faces, and a worse `roll_mode` asked with it is refused with `invalid_argument`; the roll's event says it (`Favor`) ([Inspiração](favor.md#the-spend)).
+  `RollSceneCheck`, `RollGroupCheck`, `StartContest`, `RespondContest`, `Hide`, `SearchForTraps` and `TryPuzzleHint` carry it too, with the same rules; a trap search in a combat spends the action and the Inspiração together.
 - **Where the text lives.** `session_events` holds ids and numbers only, so reasons are rows of `combat_reasons` and `roll_mode_requests`; the event carries the row's id.
   A reason is read by the master and the attacker's player only.
 - **Physical dice.** With a real die the player types both faces (`d20_faces`, in the order rolled); the server picks the one that counts (`counted_index`).

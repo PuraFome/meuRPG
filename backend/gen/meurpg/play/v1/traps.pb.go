@@ -128,6 +128,11 @@ type SearchForTrapsRequest struct {
 	// Physical dice: the faces of the dice an effect adds to the roll (Bênção, Orientação), one
 	// for each, 1 to the die's faces. With the app's dice the server rolls them.
 	ExtraDieFaces []int32 `protobuf:"varint,9,rep,packed,name=extra_die_faces,json=extraDieFaces,proto3" json:"extra_die_faces,omitempty"`
+	// Spends the character's Inspiration for advantage on this Perception or Investigation check, chosen before the d20 is rolled.
+	// Only the roller (the owner of the player character) may set it, and the master cannot spend it for an absent player.
+	// It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
+	// A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
+	SpendFavor    bool `protobuf:"varint,10,opt,name=spend_favor,json=spendFavor,proto3" json:"spend_favor,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -234,6 +239,13 @@ func (x *SearchForTrapsRequest) GetExtraDieFaces() []int32 {
 		return x.ExtraDieFaces
 	}
 	return nil
+}
+
+func (x *SearchForTrapsRequest) GetSpendFavor() bool {
+	if x != nil {
+		return x.SpendFavor
+	}
+	return false
 }
 
 type isSearchForTrapsRequest_Roll interface {
@@ -1418,7 +1430,7 @@ var File_meurpg_play_v1_traps_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"\n" +
-	"\x1ameurpg/play/v1/traps.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a!meurpg/play/v1/combat_rolls.proto\"\xfe\x02\n" +
+	"\x1ameurpg/play/v1/traps.proto\x12\x0emeurpg.play.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bmeurpg/play/v1/combat.proto\x1a!meurpg/play/v1/combat_rolls.proto\"\x9f\x03\n" +
 	"\x15SearchForTrapsRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x125\n" +
@@ -1430,7 +1442,10 @@ const file_meurpg_play_v1_traps_proto_rawDesc = "" +
 	"d20_face_2\x18\x06 \x01(\x05H\x01R\bd20Face2\x88\x01\x01\x12&\n" +
 	"\x0fother_skill_key\x18\a \x01(\tR\rotherSkillKey\x12\x1b\n" +
 	"\td20_faces\x18\b \x03(\x05R\bd20Faces\x12&\n" +
-	"\x0fextra_die_faces\x18\t \x03(\x05R\rextraDieFacesB\x06\n" +
+	"\x0fextra_die_faces\x18\t \x03(\x05R\rextraDieFaces\x12\x1f\n" +
+	"\vspend_favor\x18\n" +
+	" \x01(\bR\n" +
+	"spendFavorB\x06\n" +
 	"\x04rollB\r\n" +
 	"\v_d20_face_2\"\xd0\x04\n" +
 	"\x16SearchForTrapsResponse\x12,\n" +

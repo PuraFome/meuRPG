@@ -2,22 +2,23 @@ import {
   CombatEffect,
   type CombatLogEntry,
   CombatLogKind,
-  SpellEffectKind,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { circleLabel } from './combat-options';
-import { creatureActionText } from './combat-log-creature';
+import { spellCastLine } from './combat-log-cast-line';
 import { trapLogText } from '../traps/trap-log';
 import { article } from '../format/article';
-import { luckyText } from './lucky';
-import { castCountedNotes, castTreatedNotes, rerollNote } from './combat-log-dice';
+import { rerollNote } from './combat-log-dice';
 import { legendaryOptionName } from './legendary-card';
 import {
   actionText,
   channelNotes,
   conditionsText,
   deathSaveText,
+  featureUsedText,
   hitPointsText,
   hitRiderText,
+  isSpellRider,
+  spellRiderText,
   modeAnsweredText,
   monstersAddedText,
   movedText,
@@ -26,14 +27,7 @@ import {
   stateText,
   wildShapeText,
 } from './combat-log-actions';
-import {
-  attackText,
-  castText,
-  damageNotes,
-  modeNote,
-  pairOf,
-  reviveCastText,
-} from './combat-log-attack';
+import { attackText, damageNotes, modeNote, pairOf } from './combat-log-attack';
 import { contestText } from './combat-log-contest';
 import { effectEndedText, effectLine, exhaustionLogText } from './combat-log-effects';
 import { LogContext, LogLine, NO_CONTEXT } from './combat-log-types';
@@ -128,40 +122,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
       return { ...base, icon: 'flag', actor: '', text: 'Combate encerrado' };
     },
   ],
-  [
-    CombatLogKind.SPELL_CAST,
-    ({ e, base, ctx }) => {
-      if (e.creatureAction) {
-        // The master also reads the SRD's text of the action, as a line under the sentence.
-        return {
-          ...base,
-          icon: 'bolt',
-          text: creatureActionText(e, ctx),
-          ...(e.creatureAction.text ? { notes: [`Texto do SRD: ${e.creatureAction.text}`] } : {}),
-        };
-      }
-      if (e.spell?.effectKind === SpellEffectKind.REVIVE) {
-        return { ...base, icon: 'favorite', ...reviveCastText(e, ctx) };
-      }
-      const cast = castText(e, ctx);
-      // "Sortudo: 1 → 14": a spell attack's d20 the halfling's Lucky rolled again, or a halfling player's save the app
-      // rolled again by itself (the server sends the roll to whoever may read it), kept by the event so a reload still
-      // finds it.
-      const targets = e.spell?.targets ?? [];
-      const lucky = [
-        ...targets.flatMap((t) => [rerollNote(t.attackRoll), luckyText(t.save?.roll)]),
-        ...castTreatedNotes(targets),
-        ...castCountedNotes(targets),
-      ].filter(Boolean);
-      return {
-        ...base,
-        icon: 'auto_awesome',
-        text: cast.text,
-        card: cast.card,
-        ...(lucky.length ? { notes: lucky } : {}),
-      };
-    },
-  ],
+  [CombatLogKind.SPELL_CAST, ({ e, base, ctx }) => spellCastLine(e, base, ctx)],
   // The master brought a dead character back: the server puts the combatant in the target and sends no actor.
   [
     CombatLogKind.CHARACTER_REVIVED,
@@ -242,7 +203,10 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   ],
   [
     CombatLogKind.HIT_RIDER,
-    ({ e, base }) => {
+    ({ e, base, ctx }) => {
+      if (isSpellRider(e)) {
+        return { ...base, icon: 'auto_awesome', actor: '', text: spellRiderText(e, ctx) };
+      }
       return { ...base, icon: 'sports_martial_arts', text: hitRiderText(e) };
     },
   ],
@@ -331,6 +295,11 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
         text: `gastou ${spent.cost} ${actions}: ${legendaryOptionName(ctx.legendaryNames, e.actorId, spent.optionName) ?? spent.optionName}`,
       };
     },
+  ],
+  // A character used a feature of its own (`UseFeature`): the audience is the server's, and the numbers are in the entry only for who may read them.
+  [
+    CombatLogKind.FEATURE_USED,
+    ({ e, base, ctx }) => ({ ...base, icon: 'auto_awesome', text: featureUsedText(e, ctx) }),
   ],
   // A swap of gear in the combat: the master's and the character's owner's line. The cost is what it spent.
   [

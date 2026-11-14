@@ -1052,6 +1052,12 @@ type LastingEffect struct {
 	PlayersSeePt string `protobuf:"bytes,29,opt,name=players_see_pt,json=playersSeePt,proto3" json:"players_see_pt,omitempty"`
 	// The effect was used up (a next_hit that hit): the card of the caster reads "used" instead of "pending".
 	Spent bool `protobuf:"varint,30,opt,name=spent,proto3" json:"spent,omitempty"`
+	// The combatant a marked_target spell marked (Hunter's Mark): set on the caster's own row of the
+	// spell, empty on every other effect. Only the master and the caster's player read it. It is empty
+	// too when the viewer does not see the marked creature (a hidden one, or one the fog hides), so
+	// the id never tells a player that a creature is there (RN-10). The card then says "no alvo
+	// marcado"; with the id the client names the creature from its own combatant list.
+	MarkedCombatantId string `protobuf:"bytes,31,opt,name=marked_combatant_id,json=markedCombatantId,proto3" json:"marked_combatant_id,omitempty"`
 	// An aura (only the master and the bearer's player read these): how far from the bearer it reaches, in feet, and
 	// whom, from the bearer's side ("self", "allies" or "enemies"). Zero and empty for an effect that is not an aura.
 	RadiusFt      int32  `protobuf:"varint,32,opt,name=radius_ft,json=radiusFt,proto3" json:"radius_ft,omitempty"`
@@ -1298,6 +1304,13 @@ func (x *LastingEffect) GetSpent() bool {
 		return x.Spent
 	}
 	return false
+}
+
+func (x *LastingEffect) GetMarkedCombatantId() string {
+	if x != nil {
+		return x.MarkedCombatantId
+	}
+	return ""
 }
 
 func (x *LastingEffect) GetRadiusFt() int32 {
@@ -2475,8 +2488,7 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\x04dice\x18\x02 \x01(\tR\x04dice\x12&\n" +
 	"\x0fdamage_type_key\x18\x03 \x01(\tR\rdamageTypeKey\x12$\n" +
 	"\x0edamage_type_pt\x18\x04 \x01(\tR\fdamageTypePt\x12!\n" +
-	"\fmax_triggers\x18\x05 \x01(\x05R\vmaxTriggers\"\xf3\n" +
-	"\n" +
+	"\fmax_triggers\x18\x05 \x01(\x05R\vmaxTriggers\"\xa3\v\n" +
 	"\rLastingEffect\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
 	"\bgroup_id\x18\x02 \x01(\tR\agroupId\x12!\n" +
@@ -2514,7 +2526,8 @@ const file_meurpg_play_v1_lasting_effects_proto_rawDesc = "" +
 	"\fplayer_label\x18\x1b \x01(\tR\vplayerLabel\x12\x1e\n" +
 	"\vend_text_pt\x18\x1c \x01(\tR\tendTextPt\x12$\n" +
 	"\x0eplayers_see_pt\x18\x1d \x01(\tR\fplayersSeePt\x12\x14\n" +
-	"\x05spent\x18\x1e \x01(\bR\x05spent\x12\x1b\n" +
+	"\x05spent\x18\x1e \x01(\bR\x05spent\x12.\n" +
+	"\x13marked_combatant_id\x18\x1f \x01(\tR\x11markedCombatantId\x12\x1b\n" +
 	"\tradius_ft\x18  \x01(\x05R\bradiusFt\x12\x18\n" +
 	"\aaffects\x18! \x01(\tR\aaffectsB\n" +
 	"\n" +
