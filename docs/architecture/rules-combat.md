@@ -67,6 +67,7 @@ Damage cantrips stay only in `attacks`, not in `spells`.
 **Bonus action attacks and beams.**
 `TurnOptions` is returned by `CombatService.GetTurnOptions`, with the economy including `attacks_per_action` and `attacks_left`.
 Each `AttackOption` says whether the attack is a bonus action attack right now (`bonus_rule`: off hand, Martial Arts, Flurry of Blows, or unspecified for an attack of the Attack action).
+Each `AttackOption` also carries `magic_bonus`, the counting magic bonus (0 to 3) that is inside the attack's numbers now, the same one the sheet's `Attack.magic_bonus` has.
 The combatant's `action_attack_key` and `bonus_attacks_left` feed it.
 Such an attack is enabled even with `attacks_left` 0 and has its `attack_targets`; Extra Attack's attacks come first, so `bonus_rule` stays unspecified while one is left.
 The off-hand option carries the damage `RollAttack` will roll (`bonus_drops_modifier` says the ability modifier was left out); during Flurry of Blows `bonus_attacks_left` counts the strikes down; when the bonus action is spent the option is disabled with `BONUS_ACTION_USED` and keeps its `bonus_rule`.

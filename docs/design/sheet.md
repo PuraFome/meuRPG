@@ -57,6 +57,14 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   The master sees "Muda a ficha de Tor: depois da trava, só você muda marcas e bônus. Tor os lê na ficha e nos ataques."
   Saved, the panel says "Marcas e bônus salvos." and the focus returns to the weapon's "⋮".
   An equipped weapon's chip is its attack's (the sheet's mark or a table rule); a carried weapon's is the sheet's.
+- **Modificadores de itens** (`combat-column`): an open block below the combat numbers, with one line for each piece that adds a magic bonus: "+N · name".
+  The target is on the right: "na CA" or "no ataque e no dano".
+  A piece that does not count now is muted and gives its reason once under its line.
+  Without entries there is no block.
+  The reason of an idle shield is said once: in its line when it has a bonus, else in the note below the numbers (the equipment panel has no note of its own).
+- **Bônus no ataque** (`combat-column`, `bonus-chip`): in the "Ataques" table a weapon with a counting magic bonus has the "+N" chip after its marks, from the server's `magic_bonus` of the attack.
+  The chip takes the place of "Mágica" on that row; a bonus that does not count shows no chip there.
+  A spell has none.
 - **Bônus mágico das peças** (`piece-bonus-sheet`, `bonus-group`, `bonus-chip`): armor and shield have the same "⋮", named "Bônus · <peça>", which opens "Bônus · <peça>".
   The sheet has its own description line, with the character's name before it for the master.
   The line is "Soma na CA enquanto a armadura está equipada." or "Soma na CA com o escudo em uso.".
