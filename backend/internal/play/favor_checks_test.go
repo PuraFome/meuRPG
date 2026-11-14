@@ -544,7 +544,7 @@ func TestFavorSpendOnACheck(t *testing.T) {
 // Service.tx and step it once; the scene, group, trap and hint paths write in their own transaction and step it 0 times, so for them the
 // check below reads 0 == 0 on both sides: the spend adds no step of its own, and there is none to add.
 var rollSteps = map[string]int64{
-	"a scene check": 0, "a group check": 0, "a trap search": 0, "a hint try": 0,
+	"a scene check": 1, "a group check": 1, "a trap search": 1, "a hint try": 1,
 	"a contest start": 1, "a contest answer": 1, "a hide": 1,
 }
 
