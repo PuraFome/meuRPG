@@ -212,9 +212,13 @@ func (x *deriver) proficiencies() {
 		}
 	}
 	x.proficiencyPicks()
+	for t := range x.dailyState().tools {
+		x.proficient[t] = true
+	}
 	for _, p := range x.pickedTools {
 		x.proficient[p.Value] = true
 	}
+	x.groupTyped = x.groupTools()
 	x.listProficiencies()
 }
 
@@ -260,7 +264,7 @@ func (x *deriver) listProficiencies() {
 	}
 	// The tools the player typed in the free field (what the master adds, or a sheet from before the picks) are listed
 	// too, by name.
-	listedNames(x.d.Proficiencies, x.b.ToolProficiencies, func(p Proficiency) string { return p.NamePT }, func(name string) {
+	listedNames(x.d.Proficiencies, slices.Concat(x.groupTyped, x.b.ToolProficiencies), func(p Proficiency) string { return p.NamePT }, func(name string) {
 		x.d.Proficiencies = append(x.d.Proficiencies, Proficiency{Kind: "tool", NamePT: name})
 	})
 	slices.SortFunc(x.d.Proficiencies, func(a, b Proficiency) int {
@@ -329,6 +333,9 @@ func (x *deriver) skillLevels() (map[string]ProficiencyLevel, map[string]bool) {
 			sk.raise(s, ProficiencyFull)
 		}
 	}
+	for s := range x.dailyState().skills {
+		sk.raise(s, ProficiencyFull)
+	}
 	var conditional []*Effect
 	for _, a := range x.active {
 		e := a.effect
@@ -387,6 +394,7 @@ func (x *deriver) automaticSkillKeys() []string {
 	var out []string
 	if bg, ok := x.c.backgrounds[x.b.Background]; ok {
 		out = append(out, bg.Skills...)
+		out = append(out, x.groupSkills()...)
 	}
 	if x.b.Background == "" {
 		for _, s := range x.b.CustomBackgroundSkills {
@@ -473,7 +481,7 @@ func (x *deriver) skills() {
 		b = x.modifiers("skill."+strings.TrimPrefix(key, "skill:"), b)
 		bonus[key] = b
 		x.d.Skills = append(x.d.Skills, Skill{
-			Key: key, NamePT: x.c.namePT(key), Ability: a, Proficiency: levels[key], Bonus: b,
+			Key: key, NamePT: x.c.namePT(key), Ability: a, Proficiency: levels[key], Bonus: b, UntilRest: x.dailyState().skills[key],
 		})
 	}
 	slices.SortFunc(x.d.Skills, func(a, b Skill) int { return comparePT(a.NamePT, b.NamePT) })
