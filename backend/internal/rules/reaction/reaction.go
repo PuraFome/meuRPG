@@ -136,6 +136,9 @@ const (
 	// ParryKind is a stat block's Parry: the creature adds a number to its armor class against one melee
 	// weapon attack that would hit it. The hit waits for the master, who answers for the creature.
 	ParryKind Kind = "parry"
+	// MountSave is the Dexterity saving throw of a mounted rider whose mount was moved against its will or who was knocked prone
+	// (SRD 5.1, "Mounted Combat"): it uses nobody's reaction and holds the turn like the concentration save.
+	MountSave Kind = "mount_save"
 )
 
 // Reason is why a window closed by itself.
@@ -168,7 +171,7 @@ type Facts struct {
 // ignores ReactionUsed. Incapacitated wins over a spent reaction, and both over a
 // gone trigger: the reason a reactor reads is about itself first.
 func Closure(kind Kind, f Facts) (Reason, bool) {
-	usesReaction := kind != Concentration && kind != MasterCheck && kind != Contest && kind != EffectSave && kind != LegendaryResistance
+	usesReaction := kind != Concentration && kind != MasterCheck && kind != Contest && kind != EffectSave && kind != LegendaryResistance && kind != MountSave
 	switch {
 	case f.Incapacitated && usesReaction:
 		return ReasonReactorIncapacitated, true
