@@ -64,7 +64,8 @@ Under the attacks of the player's "Ataques" tab, a fold "Sacar ou guardar" (`act
 
 Under the "Ataques" tab, after the fold, one legend line names the chips that tab draws.
 It is the sheet's `app-chip-legend`, in the sheet's order and words ("Prateada", "Adamantina", "Mágica", "Bônus mágico, já somado").
-It lists only the chips some row shows and is not drawn when no row has one.
+It lists the chips of the whole tab, closed folds included, and is not drawn when no row has one.
+It draws one bonus chip: solid when any counts, dashed only when none does, the sheet's rule.
 It is hidden from a screen reader, because each chip carries its word.
 It wraps by whole items.
 
