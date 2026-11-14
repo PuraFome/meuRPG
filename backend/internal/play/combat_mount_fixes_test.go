@@ -142,3 +142,27 @@ func TestMountedCombat_ALegendaryActionOfARiddenMountIsLimited(t *testing.T) {
 		t.Errorf("the positive control: Detect by Draco with nobody on it error = %v, want it spent", err)
 	}
 }
+
+// TestMountedCombat_AMountThatJoinsKeepsTheReactionItSpent: the Ogro spent its reaction this round and its own turn is still to come. It
+// joins Toren's part with a fresh action, bonus action and movement, and the reaction it spent stays spent, with its record.
+func TestMountedCombat_AMountThatJoinsKeepsTheReactionItSpent(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	e := c.fight(t)
+	c.steed(t)
+	c.execSQL(t, `UPDATE combatants SET reaction_used = true, reaction_kind = 'opportunity', reaction_round = $2, action_used = true WHERE id = $1`, c.id(t, "Ogro"), e.GetRound())
+	c.mustMount(t, c.caio, "Toren", "Ogro")
+	var used bool
+	var kind *string
+	var round *int32
+	var action bool
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT reaction_used, reaction_kind, reaction_round, action_used FROM combatants WHERE id = $1`, c.id(t, "Ogro")).Scan(&used, &kind, &round, &action); err != nil {
+		t.Fatalf("read the Ogro's reaction: %v", err)
+	}
+	if action {
+		t.Error("the Ogro's action is still spent: its part of the turn starts fresh (positive control)")
+	}
+	if !used || kind == nil || *kind != "opportunity" || round == nil || *round != e.GetRound() {
+		t.Errorf("the Ogro's reaction after joining = used %v kind %v round %v, want it spent still, as opportunity in round %d", used, kind, round, e.GetRound())
+	}
+}
