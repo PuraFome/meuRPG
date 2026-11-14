@@ -66,6 +66,16 @@ describe('the content entry model', () => {
     expect(archivedDay(dated)).toBe('01/04/2026');
   });
 
+  it('agrees "Atualizad_" with the kind: a magia, uma raça, a classe; um talento, um antecedente', () => {
+    const at = timestampFromDate(new Date(2026, 2, 12, 15));
+    const line = (kind: TableContentKind) => updatedLine({ ...race, kind, updatedAt: at });
+    expect(line(TableContentKind.SPELL)).toBe('Atualizada em 12/03/2026');
+    expect(line(TableContentKind.RACE)).toBe('Atualizada em 12/03/2026');
+    expect(line(TableContentKind.CLASS_FEATURE)).toBe('Atualizada em 12/03/2026');
+    expect(line(TableContentKind.FEAT)).toBe('Atualizado em 12/03/2026');
+    expect(line(TableContentKind.BACKGROUND)).toBe('Atualizado em 12/03/2026');
+  });
+
   it('agrees the noun and the participle with the kind', () => {
     expect(nounPhraseOf(null)).toBe('');
     expect(nounPhraseOf(race)).toBe('A raça Corujeiro');
