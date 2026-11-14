@@ -48,3 +48,23 @@ func TestMountedCombat_ADownRiderKeepsItsMountsTurnAndLimit(t *testing.T) {
 		t.Errorf("the down rider after its mount moved = %+v, want carried to (8,8) and still on it", got)
 	}
 }
+
+// A down rider directs nothing: its player gets COMBATANT_DOWN on the mount's Dash, Disengage and Dodge as on its move, and the master
+// still takes them for the mount (it keeps the pair's turn).
+func TestMountedCombat_ADownRiderDirectsNoDashDisengageOrDodge(t *testing.T) {
+	t.Parallel()
+	for _, key := range []string{"standard:dash", "standard:disengage", "standard:dodge"} {
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+			c := newCave(t)
+			c.ridden(t)
+			c.downToren(t)
+			enc := c.get(t, c.master)
+			_, err := c.action(t, c.caio, enc, "Ogro", key)
+			wantBlockedBy(t, "the down rider's player taking "+key+" for the mount", err, reasonCombatantDown)
+			if _, err := c.action(t, c.master, enc, "Ogro", key); err != nil {
+				t.Errorf("the master taking %s for the mount error = %v, want it taken", key, err)
+			}
+		})
+	}
+}
