@@ -780,8 +780,31 @@ func closeDamageWindows(ctx context.Context, c *combatTx, kind string, ev action
 		if id == "" {
 			continue
 		}
+		if err := forgetHoldsOfPending(ctx, c, id); err != nil {
+			return err
+		}
 		if err := c.q.CloseOpenReactionWindowsOfPending(ctx, playdb.CloseOpenReactionWindowsOfPendingParams{EncounterID: c.enc.ID, Pending: id, AnsweredAt: c.now}); err != nil {
 			return fmt.Errorf("close the windows of a damage taken back: %w", err)
+		}
+	}
+	return nil
+}
+
+// forgetHoldsOfPending forgets the question each open window of a damage kept for its reactor, before the windows are closed: the roll
+// of a save that waits for a damage taken back never happens (hold_forget.go).
+func forgetHoldsOfPending(ctx context.Context, c *combatTx, pending string) error {
+	open, err := openWindowsOf(ctx, c)
+	if err != nil {
+		return err
+	}
+	for _, w := range open {
+		if windowTriggerOf(w).Pending != pending { // the raw close below matches the trigger's pending, as these windows are about it
+			continue
+		}
+		if kind, ok := heldKindOfWindow(reaction.Kind(w.Kind)); ok {
+			if err := forgetHoldsOfKind(ctx, c.q, c.enc.ID, w.ReactorID, string(kind)); err != nil {
+				return fmt.Errorf("forget the question kept for a window of a damage taken back: %w", err)
+			}
 		}
 	}
 	return nil

@@ -217,8 +217,26 @@ func (s *Service) closeWindow(ctx context.Context, c *combatTx, w playdb.Reactio
 	if err != nil {
 		return w, fmt.Errorf("close a reaction window: %w", err)
 	}
+	if kind, ok := heldKindOfWindow(reaction.Kind(w.Kind)); ok && status == windowClosed && w.ReactorID != nil {
+		// The Bardic die or Lucky question kept for the reactor's save has nothing to settle once the window is gone.
+		if err := forgetHoldsOfKind(ctx, c.q, c.enc.ID, w.ReactorID, string(kind)); err != nil {
+			return w, fmt.Errorf("forget the question kept for a closed window: %w", err)
+		}
+	}
 	c.reactionNotes = append(c.reactionNotes, reactionNote{window: closed, byItself: status == windowClosed, reason: reason, spentOn: spentOn})
 	return closed, nil
+}
+
+// heldKindOfWindow is the kind of held roll a save window keeps its question in: the windows that ask a roll of the reactor.
+func heldKindOfWindow(k reaction.Kind) (heldKind, bool) {
+	switch k {
+	case reaction.Concentration:
+		return heldConcentrationSave, true
+	case reaction.EffectSave:
+		return heldEffectSave, true
+	default:
+		return "", false
+	}
 }
 
 // errNotYourTurnToAnswer is the refusal of a window that was answered or closed
