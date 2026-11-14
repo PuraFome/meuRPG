@@ -297,6 +297,8 @@ The caster's player and the master read it true, and so do the other players whe
   They last until the end of the target's next turn, or, with `condition_duration` `spell_end`, as long as the spell does (a spell that asks for concentration, lasts a set time or lasts until dispelled): the end of the concentration ends them.
   A new failed save of the same casting replaces the old conditions on that target (`endHitConditions`); the undo of that damage puts the replaced rows back with their ids and clocks (`Restore`, `effectsBack`).
   A pass leaves nothing.
+  An NPC or a creature that the hit's damage left defeated rolls no save (`hitTargetGone`): there is no line and no condition, and the effect is still used.
+  A player's character at 0 hit points, dying, still rolls it, because its conditions still apply (its damage waits for the master, so the hit never defeats it at the roll).
 - **What is logged.**
   The damage line carries the part by the spell's name.
   The save is a `hit_rider` line with the roll, the DC and the result, the master's, the attacker's player's and the target's own player's to read, no other player's (the line says the effect has a save: `riderEvent.OwnersOnly`, `viewerGets`). When the effect's lines are not the players' to read (`riderEvent.EffectHidden`: hidden by the master, a hidden target, or for its owner alone on an NPC) the line is the master's and the attacker's player's: the attacker's player reads the result and the condition, never the NPC's die, modifier or total, and the spell's name when they cast it (`riderEvent.SourceID` is theirs) or its audience is all players, and "Outra fonte" otherwise (`ownersOnly`, `spellRiderKey`); a failed save adds the line of the new effect, which follows the effect's visibility.
