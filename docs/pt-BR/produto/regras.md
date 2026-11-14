@@ -1344,7 +1344,7 @@ O personagem a tem ou não: ela nunca acumula, e conceder a um personagem que j�
 Criaturas, NPCs e personagens na reserva nunca a têm.
 O jogador de quem a tem a gasta para fazer, com vantagem, uma jogada de ataque, um teste de resistência ou um teste de habilidade do próprio personagem.
 O jogador escolhe antes de o d20 ser rolado, e a vantagem se anula com a desvantagem como qualquer outra.
-Um jogador pode passá-la a outro personagem de jogador da mesma campanha, sem aprovação do mestre.
+Um jogador só pode passá-la a outro personagem de jogador da mesma campanha pedindo: o mestre lê "<jogador> quer passar a Inspiração para <personagem>" e aceita ("Aceitar") ou recusa ("Recusar"). Enquanto o mestre não responde, nada muda de lugar.
 O desfazer do mestre desfaz uma concessão feita por engano.
 Um jogador lê só se os próprios personagens a têm.
 Outro jogador não lê quem a tem nem que ela mudou de mãos (RN-10).

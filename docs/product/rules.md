@@ -1344,7 +1344,7 @@ A character has it or not: it never stacks, and a grant to a character that alre
 Creatures, NPCs and characters in the reserve never hold it.
 The holder's player spends it to roll one attack roll, saving throw or ability check of that character's own with advantage.
 The player chooses before the d20 is rolled, and the advantage cancels against disadvantage like any other.
-A player may pass it to another player character of the same campaign, without the master's approval.
+A player may pass it to another player character of the same campaign only by asking: the master reads "<player> quer passar a Inspiração para <character>" and accepts ("Aceitar") or refuses ("Recusar"). Until the master answers, nothing moves.
 The master's undo takes back a grant made by mistake.
 A player reads only whether their own characters have it.
 Another player reads neither who has it nor that it moved (RN-10).
