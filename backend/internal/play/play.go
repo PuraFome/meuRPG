@@ -30,6 +30,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	"connectrpc.com/connect"
@@ -604,7 +605,8 @@ type Service struct {
 	// reads where the tokens stand and the moment it opens its transaction.
 	afterTrapRead func()
 	// dropSend is a test hook: send drops an event for which it returns true, as a send lost after the commit would be.
-	dropSend func(campaignID string, ev live.Event) bool
+	// It is swapped while sends run (a gate's timer sends on its own goroutine), so it is read and stored atomically.
+	dropSend atomic.Pointer[sendDrop]
 	roller   dice.Roller
 	logger   *slog.Logger
 	now      func() time.Time

@@ -12,6 +12,9 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
+// sendDrop is the test hook of send: it says whether an event is dropped, as a send lost after the commit would be.
+type sendDrop func(campaignID string, ev live.Event) bool
+
 // send is the one place in this package that hands an event to the live hub:
 // every other file tells the streams through it (the archtest in
 // internal/archtest/publish_test.go fails for a call to Publish anywhere else).
@@ -19,7 +22,7 @@ import (
 // it takes no context and waits for nobody; it reports how many subscriptions
 // received the event.
 func (s *Service) send(campaignID string, ev live.Event) int {
-	if s.dropSend != nil && s.dropSend(campaignID, ev) {
+	if drop := s.dropSend.Load(); drop != nil && (*drop)(campaignID, ev) {
 		return 0
 	}
 	return s.hub.Publish(campaignID, ev)

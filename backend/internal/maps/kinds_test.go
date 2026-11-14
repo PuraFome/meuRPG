@@ -947,6 +947,11 @@ func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 		t.Fatal(err)
 	}
 	masterConn.Release()
+	// The open session's id, read before the master's call holds its row (a read of a locked row waits).
+	var openSession string
+	if err := probe.QueryRow(ctx, `SELECT id FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL`, s.campaign).Scan(&openSession); err != nil {
+		t.Fatal(err)
+	}
 	// waiting counts the statements of the given sides that wait for the lock of the rows a pattern names right now.
 	waiting := func(pattern string, sessions ...string) int {
 		n, err := dbtest.WaitingStatements(ctx, probe, pattern, sessions...)
@@ -991,11 +996,15 @@ func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 	}
 	fired := make(chan error, 1)
 	go func() {
-		if _, err := play.Exec(ctx, `SELECT id FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL FOR UPDATE`, s.campaign); err != nil {
+		// The funnel's first statement (play.LockSessionForHints): the row by its id.
+		if _, err := play.Exec(ctx, `SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE`, openSession); err != nil {
 			fired <- err
 			return
 		}
 		_, err := s.h.svc.TriggerTrap(ctx, play, s.campaign, s.mapID, trap.GetId(), time.Now())
+		if err == nil {
+			err = play.Commit(ctx) // a move ends its transaction at once: a read of the point in the master's answer waits for these locks
+		}
 		fired <- err
 	}()
 	waitFor("the move", `%FROM game_sessions%FOR UPDATE%`, playSession)
@@ -1008,9 +1017,6 @@ func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 	// The move's transaction began before the reveal committed, so it may be asked to go again (40001); play's funnel retries it. What
 	// it never is is a deadlock: the two wait on the session row first, in one order.
 	err = <-fired
-	if err == nil {
-		err = play.Commit(ctx)
-	}
 	var pg *pgconn.PgError
 	if err != nil && (!errors.As(err, &pg) || pg.Code != "40001") {
 		t.Fatalf("the move ended with %v, want success or a request to go again", err)

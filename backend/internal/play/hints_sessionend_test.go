@@ -154,13 +154,13 @@ func TestEndGameSessionTellsTheFogBeforeTheStreamsEnd(t *testing.T) {
 	c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
 	g := newHintRig(t, c.h, c.campaignID, c.master, map[string]*user{"Ana": c.ana, "Caio": c.caio})
 	fogAtEnd := int32(-1)
-	sent := c.h.svc.dropSend
-	c.h.svc.dropSend = func(campaignID string, ev live.Event) bool {
+	sent := c.h.svc.dropSend.Load()
+	c.h.svc.setDropSend(func(campaignID string, ev live.Event) bool {
 		if ev.Message.GetSessionEnded() != nil && fogAtEnd < 0 {
 			fogAtEnd = c.h.vision.n.Load()
 		}
-		return sent(campaignID, ev)
-	}
+		return (*sent)(campaignID, ev)
+	})
 	fog, before := c.h.vision.n.Load(), g.seq()
 	do(t, func() error {
 		_, err := c.master.play.EndGameSession(t.Context(), connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: c.campaignID, GameSessionId: g.session}))
@@ -177,5 +177,66 @@ func TestEndGameSessionTellsTheFogBeforeTheStreamsEnd(t *testing.T) {
 		if !slices.Contains(kinds, kSessionEnded) {
 			t.Errorf("%s never heard the session end: %v", name, kinds)
 		}
+	}
+}
+
+// The lock that finds the open session (GetOpenGameSessionForUpdate, which reads every column) and the first statement of the funnel
+// (LockSessionForHints) lock one row: a write that takes the session through the first and another that
+// takes it through the second take turns. CockroachDB locks the key of the index a scan reads, so a lock
+// found through the open-session index would not stop the funnel's lock by id.
+func TestOpenSessionLockStopsTheFunnelsLock(t *testing.T) {
+	t.Parallel()
+	dbtest.PoolSize(t, 6)
+	a := newArmed(t)
+	ctx := t.Context()
+	sessionID := a.master.liveSession(t, a.campaignID).GetGameSession().GetId()
+
+	first, err := a.h.pool.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	t.Cleanup(func() { _ = first.Rollback(context.Background()) })
+	if _, err := a.h.svc.queries.WithTx(first).GetOpenGameSessionForUpdate(ctx, a.campaignID); err != nil {
+		t.Fatalf("GetOpenGameSessionForUpdate() error = %v", err)
+	}
+	second, err := dbtest.SideConnection(t, a.h.pool).Begin(ctx)
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	t.Cleanup(func() { _ = second.Rollback(context.Background()) })
+	secondID, err := dbtest.BackendID(ctx, second)
+	if err != nil {
+		t.Fatalf("BackendID() error = %v", err)
+	}
+	locked := make(chan error, 1)
+	go func() {
+		_, err := a.h.svc.queries.WithTx(second).LockSessionForHints(ctx, sessionID)
+		locked <- err
+	}()
+	probe := dbtest.SideConnection(t, a.h.pool)
+	deadline := time.Now().Add(20 * time.Second) // the test's ceiling, not a delay
+	for {
+		n, err := dbtest.WaitingStatements(ctx, probe, `%FROM game_sessions%FOR UPDATE%`, secondID)
+		if err != nil {
+			t.Fatalf("WaitingStatements() error = %v", err)
+		}
+		if n > 0 {
+			break
+		}
+		select {
+		case err := <-locked:
+			t.Fatalf("LockSessionForHints() returned (%v) while the open-session lock was held: the two lock different keys", err)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the funnel's lock never waited")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err := first.Rollback(ctx); err != nil {
+		t.Fatalf("Rollback() error = %v", err)
+	}
+	if err := <-locked; err != nil {
+		t.Errorf("LockSessionForHints() after the first lock ended = %v", err)
 	}
 }
