@@ -337,6 +337,27 @@ A catch at the cast adds `:cast` to the mark and one at the end of a turn adds `
 `def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's twelve, whose definition is the code's.
 A zone is not a lasting effect: it has no single target, it carries squares, and its clock and its end are three places in the code ([Spell zones](../architecture/play/spell-zones.md)).
 
+## `readied_actions`
+
+`readied_actions` are the actions combatants readied (SRD 5.1, "Ready"; migration 00334).
+A row belongs to the combat (`encounter_id`) and to the readier (`combatant_id`), and goes away with either.
+The end of the combat deletes the rows.
+`round` is when it was readied, and `trigger_text` the player's own words, 1 to 200 characters.
+`kind` is `attack`, `spell`, `move` or `other`.
+`action_key` is the attack's, the standard action's or the spell's key, and `action_name_pt` its name when it was readied.
+`move_ft` is the most speed of a move on any surface at Ready, as at the start of a turn.
+`spell_cast_id` is the held cast of a spell, `NULL` for a spell attack cantrip (released as an attack).
+`slot_level` is the level of the slot a readied spell spent at Ready, 0 for a cantrip and for every other kind (`readied_actions_slot_valid`).
+`target_id` is the creature the player named, set to `NULL` when it leaves.
+`status` is `waiting`, `fired`, `ignored`, `lost`, `broken` or `canceled`.
+A combatant has at most one `waiting` row (`readied_actions_one_waiting_idx`).
+A row is `lost` when the readier's next turn starts.
+It is also `lost` as soon as the readier is defeated or dismissed (its turns are skipped); a revived readier does not get it back.
+A spell row is `broken` when the concentration that holds it ends.
+While a spell row waits, the readier's `concentration_spell` is `readied`.
+The master and the readier's player read a row.
+No other player does (RN-10).
+
 ## Contest, hold, hide, help, surprise (RN-34)
 
 - **`combat_contests`**: a grapple, shove or escape.

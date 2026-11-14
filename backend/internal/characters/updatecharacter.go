@@ -146,6 +146,9 @@ func (s *Service) saveSheetIn(ctx context.Context, tx pgx.Tx, u *sheetSave, t se
 	if err := s.carryHitPoints(ctx, q, u.content, u.id, current.Sheet, sheetDoc); err != nil {
 		return row, err
 	}
+	if err := dropRemovedItemCharges(ctx, q, u.id, u.sheet.GetFull()); err != nil {
+		return row, err
+	}
 	t.Touch() // the sheet changed, for the master and the table alike: the number moves once
 	return row, s.tellGearChange(ctx, tx, u.m.CampaignID, u.id, stored.GetFull(), u.sheet.GetFull(), t)
 }

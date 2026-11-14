@@ -30,6 +30,15 @@ export const bonusSheet = {
   ],
 };
 
+/** The character of the sheet and combat boards: a marked longsword, the longbow carried, a shield and chain mail, each with its bonus. */
+export const bonusCombatSheet = {
+  ...bonusSheet,
+  weaponKeys: ["equipment:longsword", "equipment:longbow"],
+  itemBonuses: bonusSheet.itemBonuses.filter(
+    (b) => b.key !== "equipment:dagger",
+  ),
+};
+
 /** Saves the viewport as `564-<screen>-<width>-<claro|escuro>.png`, scrolled to `at` first (or the top). */
 export async function shootBonus(
   page: Page,
@@ -86,12 +95,13 @@ export async function armorClassOf(equipment: Locator): Promise<number> {
   return Number(n![1]);
 }
 
-/** The master changes the shield's bonus on the stored sheet, behind the owner's open page: the owner's next save is stale. */
-export async function masterSetsShieldBonus(
+/** The master rewrites the bonuses on the stored sheet, behind the owner's open page: the owner's next save is stale. */
+export async function masterSetsBonuses(
   master: Page,
   campaignId: string,
   characterId: string,
-  bonus: number,
+  change: (bonuses: { key: string; bonus: number }[]) => { key: string; bonus: number }[],
+  weaponMarks?: { weaponKey: string; silvered?: boolean }[],
 ): Promise<void> {
   const got = await callRPC(
     master,
@@ -105,9 +115,6 @@ export async function masterSetsShieldBonus(
     sheet: { full: { itemBonuses: { key: string; bonus: number }[] } };
   };
   const full = character.sheet.full;
-  const itemBonuses = full.itemBonuses.map((b) =>
-    b.key === "equipment:shield" ? { ...b, bonus } : b,
-  );
   const put = await callRPC(
     master,
     "meurpg.characters.v1.CharacterService/UpdateCharacter",
@@ -116,11 +123,28 @@ export async function masterSetsShieldBonus(
       characterId,
       revision: character.revision,
       name: character.name,
-      sheet: { full: { ...full, itemBonuses } },
+      sheet: {
+        full: {
+          ...full,
+          itemBonuses: change(full.itemBonuses),
+          ...(weaponMarks ? { weaponMarks } : {}),
+        },
+      },
     },
   );
   expect(put.ok(), await put.text()).toBeTruthy();
 }
+
+/** The master changes the shield's bonus on the stored sheet. */
+export const masterSetsShieldBonus = (
+  master: Page,
+  campaignId: string,
+  characterId: string,
+  bonus: number,
+) =>
+  masterSetsBonuses(master, campaignId, characterId, (bonuses) =>
+    bonuses.map((b) => (b.key === "equipment:shield" ? { ...b, bonus } : b)),
+  );
 
 /**
  * Makes the page read the dagger twice: the server refuses a sheet that repeats a weapon key, so the "Adaga ×2" row comes from

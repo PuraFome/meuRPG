@@ -622,6 +622,16 @@ func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
 	}
 	// The reaction windows that stopped being valid close, and what the ones
 	// that are all answered held goes on.
+	if err := s.settleReactions(ctx, c); err != nil {
+		return err
+	}
+	// A readier the change defeated (or that a replayed action defeated) loses its readied action, and a held spell goes
+	// with its concentration, and the concentration with the held spell. The windows of the rows that stopped waiting
+	// close now (readiedGone), so the table does not wait for them.
+	ended, err := settleReadied(ctx, c)
+	if err != nil || !ended {
+		return err
+	}
 	return s.settleReactions(ctx, c)
 }
 

@@ -38,8 +38,13 @@ func (b *overlayBuilder) addFeat(tf *TableFeat, path string) error {
 		Minimums: abilityStrings(tf.Prerequisite.Minimums), AnyOf: abilityStrings(tf.Prerequisite.AnyOf),
 		Proficiency: tf.Prerequisite.Proficiency, Spellcasting: tf.Prerequisite.Spellcasting, Race: tf.Prerequisite.Race, Level: tf.Prerequisite.Level,
 		Races: slices.Clone(tf.Prerequisite.Races), Size: tf.Prerequisite.Size, LacksFeature: tf.Prerequisite.LacksFeature,
+		ClassKey: tf.Prerequisite.ClassKey, ClassLevel: tf.Prerequisite.ClassLevel, RequiresPact: tf.Prerequisite.RequiresPact,
+		RequiresSpell: tf.Prerequisite.RequiresSpell, RequiresOptions: slices.Clone(tf.Prerequisite.RequiresOptions),
 	}
 	b.checkFeatPrerequisite(&c, feat, key, path)
+	b.checkPrerequisiteFields(&c, key, path, TableOptionPrerequisite{
+		ClassKey: feat.ClassKey, ClassLevel: feat.ClassLevel, RequiresOptions: feat.RequiresOptions, RequiresPact: feat.RequiresPact, RequiresSpell: feat.RequiresSpell,
+	})
 	increases := 0
 	for i := range tf.Effects {
 		if tf.Effects[i].Type == "ability_increase" {

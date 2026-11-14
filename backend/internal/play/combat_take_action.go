@@ -198,6 +198,9 @@ func (f *takeActionFlow) run(ctx context.Context) (any, error) {
 	if err := f.locate(ctx); err != nil {
 		return nil, err
 	}
+	if f.call.actionKey == actionReady { // after locate, whose mount limit refuses every action of a mount but three
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("standard:ready is taken with ReadyService.ReadyAction, which names the trigger"))
+	}
 	if err := f.choose(); err != nil {
 		return nil, err
 	}

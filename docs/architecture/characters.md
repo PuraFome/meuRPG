@@ -212,6 +212,12 @@ Removing an attuned entry from the sheet ends its attunement with it.
 A character that is dead keeps its attunements until the master ends them.
 Another player never reaches the character: `not_found`, as for `SetEquipped`, and never reads the magic items or their state.
 The app leaves out the automatic end of an attunement (distance, another attuner, death): the master ends it by hand.
+The charges of an item come from the catalog (`rules.ItemCharges`) and what an entry spent from `character_item_charges`, one row for each entry id (see [Characters data](../data/characters.md#character_item_charges)).
+`SheetMagicItem` carries `charges_max`, `charges_left` and `lost`, filled by the server on every read and ignored on a save; an item with no charges reads 0 and 0.
+An item whose charges the SRD rolls reads `charges_left` -1 until the master sets them, which writes its row.
+`lost` is `ItemLoss`: gone, a plain item or partly magic.
+A save that removes an entry deletes its row in the same transaction, so a new entry that takes the freed id starts full.
+The counts are read only where the sheet is: the player of the character and the master.
 `ContentService.ListMagicItems` lists the items the picker offers: items and families with their variants, never the +N armor and weapon families, found by name, in pages like `ListSpells`.
 
 ## Class and race choices

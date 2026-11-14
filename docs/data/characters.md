@@ -33,6 +33,10 @@ erDiagram
         uuid character_id PK,FK
         uuid familiar_sight_creature_id FK
     }
+    character_item_charges {
+        uuid character_id PK,FK
+        text entry_id PK
+    }
     character_wild_shapes {
         uuid character_id PK,FK
     }
@@ -92,6 +96,7 @@ erDiagram
     characters ||--o| character_reviews : "character_id"
     users ||--o{ character_reviews : "player_user_id"
     characters ||--o| character_vitals : "character_id"
+    characters ||--o{ character_item_charges : "character_id"
     character_creatures |o--o{ character_vitals : "familiar_sight_creature_id"
     characters ||--o| character_wild_shapes : "character_id"
     campaigns |o--o{ characters : "campaign_id"
@@ -205,6 +210,17 @@ The name is "vitals" because a character's *state* already means the lifecycle.
 **Maximums are not stored.** `rules.Derive` computes max HP, slots, pact slots and hit dice on each read, and the server cuts the stored usage to today's maximum on read only: a correction writes back the stored usage, changing just what it sets, so a sheet that loses a level for a while gets its usage back with it.
 So there is no maximum `CHECK`, only a minimum of 0.
 
+## `character_item_charges`
+
+What a character's magic items spent.
+The primary key is `(character_id, entry_id)` and the character is `CASCADE`.
+`entry_id` is the id of the entry on the sheet (`m<n>`).
+A row holds `charges_used` (0 or more), `lost` (`gone`, `plain` or `partly` once the item was lost when its last charge went, empty otherwise) and `dawns_waited` (the dawns an item that waits for them has counted since its last charge).
+An item whose charges the SRD rolls has no row until the master sets them.
+**The maximum is not stored**: it comes from the catalog, and the server reads a count above it as an empty item.
+A character with no row for an entry has the item full.
+A save of the sheet deletes the rows of the entries it removed.
+
 ## `character_wild_shapes`
 
 The druid's Wild Shape (MR-037): one row per character in beast form.
@@ -277,4 +293,5 @@ Only names and texts the master writes; no personal data (see [Privacy](../priva
 - A reserved character is read by the master only until it is claimed.
 - `character_ability_rolls` is read by its player only.
 - Table content (`campaign_content`) is read by the whole campaign through the rules overlay, minus what `campaign_content_off` switched off, which never reaches a player in any read; the import records are not read by players.
+- `character_item_charges` is read with the sheet: by the owner and the master.
 - `character_creatures` are read by the owner and the master; the creature's name is free text.
