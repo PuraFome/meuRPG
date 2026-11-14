@@ -145,7 +145,9 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
 
   it('says what the combination of properties is as soon as it is on the form', async () => {
     const { fixture, el } = setup(false);
-    const picker = field(el, 'table_weapon.properties') as HTMLSelectElement;
+    const picker = el.querySelector<HTMLSelectElement>(
+      '[data-field="table_weapon.properties"] select',
+    )!;
     picker.value = P('ammunition');
     picker.dispatchEvent(new Event('change'));
     await settle(fixture, 2);

@@ -41,6 +41,7 @@ import { LiveSessionSourceLive } from '../../../core/play/live-session-source.li
 import { mediaQuery, PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { ArchiveQuestion } from '../archive/archive-question';
 import { BackgroundEditor } from '../background-editor/background-editor';
+import { WeaponEditor } from '../weapon-editor/weapon-editor';
 import { EntryRead } from '../entry-read/entry-read';
 import { FeatEditor } from '../feat-editor/feat-editor';
 import { ClassFeatureEditor } from '../class-feature-editor/class-feature-editor';
@@ -96,6 +97,7 @@ type PageState =
   imports: [
     ArchiveQuestion,
     BackgroundEditor,
+    WeaponEditor,
     ClassEditor,
     EntryRead,
     FeatEditor,

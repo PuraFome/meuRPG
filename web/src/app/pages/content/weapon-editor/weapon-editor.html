@@ -1,0 +1,64 @@
+@let d = draft();
+<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<div class="editor">
+  <div class="editor__main">
+    <section class="mr-panel block" aria-labelledby="data-t">
+      <h2 class="mr-panel__title" id="data-t">Dados da arma</h2>
+      <div class="grid grid--2">
+        <app-text-field label="Nome" [value]="d.name" [maxlength]="nameMax" path="table_weapon.name_pt" [issues]="issuesOf('table_weapon.name_pt')" (valueChange)="patch({ name: $event })" />
+      </div>
+      <div class="grid grid--2">
+        <app-radio-cards label="Categoria" [options]="categories" [value]="d.category === martial ? 'martial' : 'simple'" path="table_weapon.category" [issues]="issuesOf('table_weapon.category')" (valueChange)="setCategory($event)" />
+        <app-radio-cards label="Uso" [options]="uses" [value]="d.ranged ? 'ranged' : 'melee'" (valueChange)="setUse($event)" />
+      </div>
+      <div class="grid grid--2">
+        <app-text-field label="Dano" [value]="d.damage" path="table_weapon.damage" [issues]="issuesOf('table_weapon.damage')" hint="Como 1d8 ou 2d6." (valueChange)="patch({ damage: $event })" />
+        <app-select-field label="Tipo de dano" [options]="damageTypeOptions()" [value]="d.damageType" placeholder="Escolha…" path="table_weapon.damage_type" [issues]="issuesOf('table_weapon.damage_type')" (valueChange)="patch({ damageType: $event })" />
+      </div>
+      @if (versatile()) {
+        <div class="grid grid--2">
+          <app-text-field label="Dano com duas mãos" [value]="d.twoHandedDamage" path="table_weapon.two_handed_damage" [issues]="issuesOf('table_weapon.two_handed_damage')" hint="O dano de uma arma Versátil usada com as duas mãos." (valueChange)="patch({ twoHandedDamage: $event })" />
+        </div>
+      }
+    </section>
+
+    <section class="mr-panel block" aria-labelledby="props-t">
+      <h2 class="mr-panel__title" id="props-t">Propriedades</h2>
+      <app-pick-list label="Propriedades" addLabel="Adicionar propriedade" [options]="propertyOptions()" [values]="d.properties" path="table_weapon.properties" [issues]="issuesOf('table_weapon.properties')" hint="Da lista do SRD. As que o uso da arma não aceita ficam fechadas." (added)="patch({ properties: [...d.properties, $event] })" (removed)="patch({ properties: d.properties.filter((k) => k !== $event) })" />
+      @if (rangeShown()) {
+        <div class="grid grid--2">
+          <app-text-field label="Distância normal" suffix="m" [value]="d.normalRange" inputmode="decimal" path="table_weapon.normal_range_ft" [issues]="issuesOf('table_weapon.normal_range_ft')" (valueChange)="patch({ normalRange: $event })" />
+          <app-text-field label="Distância longa" suffix="m" [value]="d.longRange" inputmode="decimal" path="table_weapon.long_range_ft" [issues]="issuesOf('table_weapon.long_range_ft')" (valueChange)="patch({ longRange: $event })" />
+        </div>
+      }
+    </section>
+
+    <section class="mr-panel block" aria-labelledby="goods-t">
+      <h2 class="mr-panel__title" id="goods-t">Peso e preço</h2>
+      <div class="grid grid--2">
+        <app-text-field label="Peso" suffix="kg" [value]="d.weightKg" inputmode="decimal" path="table_weapon.weight_oz" [issues]="issuesOf('table_weapon.weight_oz')" [hint]="inBook()" (valueChange)="patch({ weightKg: $event })" />
+        <div class="grid grid--2">
+          <app-text-field label="Preço" [value]="d.price" inputmode="numeric" path="table_weapon.price_cp" [issues]="issuesOf('table_weapon.price_cp')" (valueChange)="patch({ price: $event })" />
+          <app-select-field label="Moeda" [options]="coins" [value]="d.coin" (valueChange)="patch({ coin: $event })" />
+        </div>
+      </div>
+      <app-text-field label="Descrição" [value]="d.description" [rows]="3" path="table_weapon.desc_pt" [issues]="issuesOf('table_weapon.desc_pt')" hint="Em texto, com as suas palavras. Opcional." (valueChange)="patch({ description: $event })" />
+    </section>
+
+    <app-editor-bar saveLabel="Salvar arma" [saving]="saver.saving()" [blocked]="saveBlocked()" (save)="save()" (cancel)="cancelled.emit()" />
+  </div>
+
+  <aside class="editor__side" aria-label="Como os jogadores veem">
+    <section class="mr-panel preview" aria-labelledby="preview-t">
+      <h2 class="mr-panel__title" id="preview-t">Como os jogadores veem</h2>
+      <p class="preview__name">
+        <span>{{ d.name.trim() || 'Nova arma' }}</span>
+        <span class="mr-tag"><mat-icon aria-hidden="true">swords</mat-icon>Da mesa</span>
+      </p>
+      <app-entry-read [read]="preview()" [plain]="true" />
+    </section>
+    @if (entry(); as saved) {
+      <app-players-switch [campaignId]="campaignId()" [entry]="saved" (switched)="switched.emit($event)" />
+    }
+  </aside>
+</div>

@@ -83,6 +83,7 @@ export const EDITABLE = new Set<TableContentKind>([
   TableContentKind.OPTION,
   TableContentKind.CLASS_FEATURE,
   TableContentKind.CREATURE,
+  TableContentKind.WEAPON,
 ]);
 
 /** The entries a read-again brings, with the one being edited kept as it is typed: when another write changed its body and
