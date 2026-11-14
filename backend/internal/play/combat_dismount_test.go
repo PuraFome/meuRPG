@@ -199,3 +199,60 @@ func TestMountedCombat_ADismountOfAHiddenMountNamesNothing(t *testing.T) {
 		t.Logf("end turn: %v", err)
 	}
 }
+
+// A shove that knocks the mount prone asks its NPC rider for the dismount: the master answers, and the shover's player is not asked.
+func TestMountedCombat_AShoveThatKnocksTheMountProneAsksTheRidersDismount(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	c := a.arena(t, arenaPlan{})
+	c.seat(t, "Goblin", c.hob)
+	started := c.mustStart(t, a.caio, func(r *playv1.StartContestRequest) {
+		c.h.roller.queue(18)
+		r.InitiatorId, r.TargetId, r.Purpose = c.id(t, "Toren"), c.id(t, c.hob), playv1.ContestPurpose_CONTEST_PURPOSE_SHOVE
+	})
+	view := c.mustRespond(t, a.master, started.GetContest().GetId(), playv1.ContestSkill_CONTEST_SKILL_ATHLETICS, 2).GetContest()
+	c.mustShove(t, a.caio, view.GetId(), playv1.ShoveOutcome_SHOVE_OUTCOME_PRONE)
+	w := a.windowOf(t, a.master, reactionDismount)
+	if w == nil {
+		t.Fatal("the master reads no dismount window of the rider")
+	}
+	if a.windowOf(t, a.caio, reactionDismount) != nil {
+		t.Error("the shover's player reads the NPC rider's window")
+	}
+	a.mustAnswer(t, a.master, a.get(t, a.master), w.GetId(), useAnswer(0))
+	var on *string
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT mounted_on_id::text FROM combatants WHERE id = $1`, a.id(t, "Goblin")).Scan(&on); err != nil || on != nil {
+		t.Errorf("the rider after the master's answer rides %v (%v), want it landed", on, err)
+	}
+}
+
+// A rider that is paralyzed while its window is open cannot spend the reaction: the window closes and the rider falls.
+func TestMountedCombat_ARiderThatCannotReactAnyMoreFalls(t *testing.T) {
+	t.Parallel()
+	c, _ := defeatedMount(t)
+	if c.windowOf(t, c.caio, reactionDismount) == nil {
+		t.Fatal("the positive control failed: no window")
+	}
+	c.execSQL(t, `UPDATE combatants SET conditions = ARRAY['condition:paralyzed'] WHERE id = $1`, c.id(t, "Toren"))
+	c.touchCombat(t)
+	if c.windowOf(t, c.master, reactionDismount) != nil {
+		t.Error("the window stays open for a paralyzed rider")
+	}
+	if got := c.rideRowOf(t, "Toren"); got.MountedOn != "" {
+		t.Errorf("Toren = %+v, want thrown off the mount", got)
+	}
+}
+
+// The wait of the others: a player that sees the pair reads the rider's player as the one the turn waits for, and a hidden mount makes it
+// the master's, with no name.
+func TestMountedCombat_TheWaitForADismountNamesOnlyWhatThePlayerSees(t *testing.T) {
+	t.Parallel()
+	c, _ := defeatedMount(t)
+	if w := c.get(t, c.ana).GetReactionWait(); w == nil || !strings.Contains(w.GetTitlePt(), "Toren") {
+		t.Fatalf("another player reads the wait %v, want Toren named (the positive control)", w)
+	}
+	c.execSQL(t, `UPDATE combatants SET hidden = true WHERE id = $1`, c.id(t, "Ogro"))
+	if w := c.get(t, c.ana).GetReactionWait(); w == nil || strings.Contains(w.GetTitlePt(), "Toren") {
+		t.Errorf("another player reads the wait %v, want the master's with a hidden mount", w)
+	}
+}

@@ -1,6 +1,7 @@
 package play
 
 import (
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -353,5 +354,17 @@ func TestMountedCombat_ADismissedMountTakesTheWindowWithIt(t *testing.T) {
 	}
 	if got := a.mountSaveOf(t, a.master); got != nil {
 		t.Errorf("the window after the steed was dismissed = %v, want it cleared", got)
+	}
+	// A steed the caster dismisses lets the rider land on its feet with no window (the Find Steed caller is the slice that follows).
+	var on *string
+	var conds string
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT mounted_on_id::text, COALESCE(array_to_string(conditions, ','), '') FROM combatants WHERE id = $1`, a.id(t, "Toren")).Scan(&on, &conds); err != nil {
+		t.Fatalf("read the rider: %v", err)
+	}
+	if on != nil || strings.Contains(conds, "prone") {
+		t.Errorf("the rider after the dismissal rides %v with conditions %q, want landed on its feet", on, conds)
+	}
+	if a.windowOf(t, a.master, reactionDismount) != nil {
+		t.Error("the dismissal opened a dismount window, want none")
 	}
 }
