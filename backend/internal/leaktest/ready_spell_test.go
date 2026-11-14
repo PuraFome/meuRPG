@@ -114,3 +114,43 @@ func TestTheConcentrationSaveOnAReadiedSpellIsTheOwnersAndTheMasters(t *testing.
 	w.inspectPlayers(t, w.ana, w.pending)
 	w.readScreen(t, "while Toren's save on the held spell waits", w.tvReader(), nil)
 }
+
+// A Ready that ends the readier's earlier concentration (RN-10): the master's and Caio's ACTION_READIED line names the
+// concentration it ended; Ana's and the TV's line names nothing, so it does not say the Ready was a spell. Ana still
+// reads Toren's concentration indicator go blank, as for any concentration that ends.
+func TestTheConcentrationAReadiedSpellEndedIsTheOwnersAndTheMasters(t *testing.T) {
+	w := newWorld(t)
+	w.onTorenTurnAsWizard()
+	toren := w.combatant(w.toren)
+	if _, err := w.pool.Exec(t.Context(), `UPDATE combatants SET concentration_spell = 'spell:detect-magic' WHERE id = $1`, toren.GetId()); err != nil {
+		t.Fatalf("set Toren's concentration: %v", err)
+	}
+	must(w.caio.ready.ReadyAction(t.Context(), rq(&playv1.ReadyActionRequest{
+		CampaignId: w.campaign, EncounterId: w.encounter.GetId(), CombatantId: toren.GetId(), IdempotencyKey: newKey(),
+		TriggerText: "quando o goblin se mexer", Kind: playv1.ReadiedKind_READIED_KIND_SPELL, SpellKey: "spell:hold-person", SlotLevel: 2,
+	})))
+	for _, c := range []struct {
+		p    *person
+		want string
+	}{{w.master, "spell:detect-magic"}, {w.caio, "spell:detect-magic"}, {w.ana, ""}} {
+		n := 0
+		for _, e := range w.logOfPerson(c.p) {
+			if e.GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED || e.GetActorId() != toren.GetId() {
+				continue
+			}
+			n++
+			if got := e.GetConcentrationEndedKey(); got != c.want {
+				t.Errorf("%s's ACTION_READIED line ended concentration %q, want %q", c.p.name, got, c.want)
+			}
+			if c.want == "" && e.GetSpell() != nil {
+				t.Errorf("%s's ACTION_READIED line carries a spell: %v", c.p.name, e.GetSpell())
+			}
+		}
+		if n != 1 {
+			t.Errorf("%s reads %d ACTION_READIED lines of Toren, want 1", c.p.name, n)
+		}
+	}
+	if got := w.combatantOf(must(w.ana.combat.GetEncounter(t.Context(), rq(&playv1.GetEncounterRequest{CampaignId: w.campaign}))).GetEncounter(), w.toren.GetId()).GetConcentrationSpell(); got != "" {
+		t.Errorf("Ana reads Toren's concentration %q after the Ready, want it blank", got)
+	}
+}

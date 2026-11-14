@@ -1105,9 +1105,9 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   A creature whose reaction is spent, or that cannot react, is not asked, and the readied action waits until it is lost.
   It is lost at the start of the creature's next turn, or when the creature is defeated or leaves the fight.
   The spent action does not come back.
-  The players who are not the readier's read only that it readied an action, never which spell or its level.
-  They may still read that the creature's earlier concentration ended at Ready (the line's `concentration_ended_key`), and its concentration reads blank to them.
-  So they may guess that it holds a spell; the game never says so.
+  The players who are not the readier's read only that it readied an action, never which spell, its level or that it is a spell.
+  Their line of the Ready names no concentration that ended.
+  They still see what any ended concentration does: the creature's concentration indicator goes blank and the effects of its earlier concentration spell end.
   The concentration save of a held spell is the readier's player's and the master's: the other players read only that the table waits for the master.
   A hidden creature's readied action is the master's alone.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.

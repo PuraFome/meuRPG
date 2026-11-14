@@ -147,13 +147,13 @@ func readiedLine(kind playv1.CombatLogKind) logHandler {
 }
 
 // fillReadied writes the readied action of the line for the master and the readier's player; any other player reads the
-// kind and the actor alone (RN-10).
+// kind and the actor alone (RN-10), with no concentration ended.
 func (e *logEntry) fillReadied(c *logViewing, out *playv1.CombatLogEntry) bool {
-	out.ConcentrationEndedKey = e.ev.ConcEnded // the concentration a readied spell ended, as a cast's line says it
-	if !c.v.master && !c.v.owns(c.actor) {
-		out.Key = ""
+	if !c.v.master && !c.v.owns(c.actor) { // nor the concentration it ended: that would say the Ready was a spell
+		out.Key, out.ConcentrationEndedKey = "", ""
 		return true
 	}
+	out.ConcentrationEndedKey = e.ev.ConcEnded // the concentration a readied spell ended, as a cast's line says it
 	if e.ev.Readied.holdsSpell() && e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED { // the slot it spent
 		out.Spell = &playv1.CombatLogSpell{Slot: slotProto(e.ev.Slot, c.v, c.actor), Concentrating: true, ConcentrationEndedKey: e.ev.ConcEnded}
 	}

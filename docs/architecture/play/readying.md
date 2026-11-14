@@ -131,6 +131,8 @@ The trigger and the held action are the master's and the readier's player's: on 
 The window carries no prompt; the master's `ReactionTrigger` names the readier, the target and the held action.
 Another player reads only `reaction_wait`: "Esperando a reação de <name>" for a player character they see, else "Esperando o mestre".
 Another player reads the lines (`ACTION_READIED`, `READIED_FIRED`, `READIED_LOST`) with the actor alone.
+Their `ACTION_READIED` line has no `concentration_ended_key` and no `spell` (`fillReadied`).
+They still see the readier's earlier concentration end: its `concentration_spell` goes blank and the effects of that spell end.
 A hidden readier's window and lines are the master's alone.
 `internal/leaktest` (`ready_test.go`, `ready_fire_test.go`, `ready_spell_test.go`) checks each of these with canaries and positive controls.
 
