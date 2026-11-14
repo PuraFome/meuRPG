@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
@@ -78,47 +79,82 @@ func auraAsleep(mods []rules.EffectModifier, asleep bool) ([]rules.EffectModifie
 	return out, changed
 }
 
+// carriedToCombat brings in what the characters that joined carry: their inspiration die and the auras of their features.
+func (s *Service) carriedToCombat(ctx context.Context, c *combatTx, all, added []playdb.Combatant) error {
+	if err := s.dieToCombat(ctx, c, all, added); err != nil {
+		return err
+	}
+	return s.featureAurasToCombat(ctx, c, all, added)
+}
+
+// giveBackOrDrop gives an effect back to its character when the combat ends, or drops it when it is the aura of a feature:
+// the sheet makes it again in the next combat.
+func (s *Service) giveBackOrDrop(ctx context.Context, c *combatTx, cs []playdb.Combatant, who playdb.Combatant, st playdb.CombatantState) error {
+	if !isFeatureAura(st) {
+		return s.giveEffectBack(ctx, c, cs, who, st)
+	}
+	if err := c.q.DeleteLastingEffect(ctx, st.ID); err != nil {
+		return fmt.Errorf("end the aura of a feature: %w", err)
+	}
+	return nil
+}
+
 // featureAurasToCombat makes the auras of the features of the characters that joined, on each of them, once.
 func (s *Service) featureAurasToCombat(ctx context.Context, c *combatTx, all, added []playdb.Combatant) error {
 	for _, a := range added {
 		if !backedByCharacter(a) {
 			continue
 		}
-		sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, a)
-		if err != nil {
-			return fmt.Errorf("read the sheet for its auras: %w", err)
-		}
-		if len(sheet.Traits.Auras) == 0 {
-			continue
-		}
-		rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
-		if err != nil {
-			return fmt.Errorf("list the effects: %w", err)
-		}
-		for _, fa := range sheet.Traits.Auras {
-			if slices.ContainsFunc(rows, func(st playdb.CombatantState) bool {
-				return st.CombatantID == a.ID && isFeatureAura(st) && conv.OrZero(st.SourceKey) == fa.Source
-			}) {
-				continue
-			}
-			var mods []rules.EffectModifier
-			if err := json.Unmarshal(fa.Modifiers, &mods); err != nil {
-				return fmt.Errorf("read the modifiers of an aura: %w", err)
-			}
-			if down, err := s.isDown(ctx, c.tx, c.session.CampaignID, a); err != nil {
-				return err
-			} else if down { // joins at 0 hit points: the aura waits for it to stand
-				mods, _ = auraAsleep(mods, true)
-			}
-			caster := a
-			spec := effectSpec{
-				key: fa.Source, sourceKind: sourceKindFeature, caster: &caster, targets: []playdb.Combatant{a},
-				dur: durationSpec{Kind: rules.EffectDurationUntilDismissed}, audience: fa.Visibility, label: fa.LabelPT, modifiers: mods,
-			}
-			if _, err := s.addEffects(ctx, c, all, spec); err != nil {
-				return err
-			}
+		if err := s.featureAurasOn(ctx, c, all, a); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+// featureAurasOn makes the auras of the sheet of one character that joined, the ones it has not yet.
+func (s *Service) featureAurasOn(ctx context.Context, c *combatTx, all []playdb.Combatant, a playdb.Combatant) error {
+	sheet, err := s.sheetOf(ctx, c.tx, c.session.CampaignID, a)
+	if err != nil {
+		return fmt.Errorf("read the sheet for its auras: %w", err)
+	}
+	if len(sheet.Traits.Auras) == 0 {
+		return nil
+	}
+	rows, err := c.q.ListLastingEffects(ctx, c.enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the effects: %w", err)
+	}
+	down, err := s.isDown(ctx, c.tx, c.session.CampaignID, a)
+	if err != nil {
+		return err
+	}
+	for _, fa := range sheet.Traits.Auras {
+		if slices.ContainsFunc(rows, func(st playdb.CombatantState) bool {
+			return st.CombatantID == a.ID && isFeatureAura(st) && conv.OrZero(st.SourceKey) == fa.Source
+		}) {
+			continue
+		}
+		if err := s.addFeatureAura(ctx, c, all, a, fa, down); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// addFeatureAura writes the row of one aura on its bearer; one that joins at 0 hit points waits asleep for it to stand.
+func (s *Service) addFeatureAura(ctx context.Context, c *combatTx, all []playdb.Combatant, bearer playdb.Combatant, fa link.FeatureAura, down bool) error {
+	var mods []rules.EffectModifier
+	if err := json.Unmarshal(fa.Modifiers, &mods); err != nil {
+		return fmt.Errorf("read the modifiers of an aura: %w", err)
+	}
+	if down {
+		mods, _ = auraAsleep(mods, true)
+	}
+	spec := effectSpec{
+		key: fa.Source, sourceKind: sourceKindFeature, caster: &bearer, targets: []playdb.Combatant{bearer},
+		dur: durationSpec{Kind: rules.EffectDurationUntilDismissed}, audience: fa.Visibility, label: fa.LabelPT, modifiers: mods,
+	}
+	_, err := s.addEffects(ctx, c, all, spec)
+	return err
 }

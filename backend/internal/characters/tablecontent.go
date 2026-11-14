@@ -682,7 +682,7 @@ func tableSpellEffectOf(m *rulesv1.TableSpellEffect) *rules.TableSpellEffect {
 			Trigger: enumOrUnknown(hitTriggerOf, x.GetTrigger()), Dice: int(x.GetDice()), PerSlotDice: int(x.GetPerSlotDice()),
 			MaxDice: int(x.GetMaxDice()), DamageType: x.GetDamageType(), Save: x.GetSave(), OnFailConditions: x.GetOnFailConditions(),
 			ConditionDuration: enumOrUnknown(hitConditionDurationOf, x.GetConditionDuration()),
-			ValueAbility: x.GetValueAbility(), ValueMin: int(x.GetValueMin()),
+			ValueAbility:      x.GetValueAbility(), ValueMin: int(x.GetValueMin()),
 		}
 		for _, r := range x.GetAppliesTo() {
 			w := enumOrUnknown(effectRollOf, r)
