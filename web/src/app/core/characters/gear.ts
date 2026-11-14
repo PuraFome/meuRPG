@@ -37,6 +37,8 @@ export interface GearVm {
   readonly bonus?: number;
   /** Whether the bonus is added to the numbers now: every modifier the piece gives counts. */
   readonly bonusCounts?: boolean;
+  /** Why the bonus does not count now, in the server's words; absent when it counts or the piece has no bonus. */
+  readonly bonusReason?: string;
 }
 
 /** The accessible name of the magic bonus chip; `withWords` gives the words the attack sheet shows. */
@@ -64,11 +66,14 @@ function withMarks(
 ): GearVm {
   const base = toGearVm(g);
   const stored = itemBonuses.find((b) => b.key === g.key)?.bonus;
+  const own = itemModifiers.filter((m) => m.sourceKey === g.key);
+  const reason = own.find((m) => !m.counts)?.reasonPt;
   const vm: GearVm = stored
     ? {
         ...base,
         bonus: stored,
-        bonusCounts: itemModifiers.filter((m) => m.sourceKey === g.key).every((m) => m.counts),
+        bonusCounts: own.every((m) => m.counts),
+        ...(reason ? { bonusReason: reason } : {}),
       }
     : base;
   if (vm.kind !== 'weapon') {

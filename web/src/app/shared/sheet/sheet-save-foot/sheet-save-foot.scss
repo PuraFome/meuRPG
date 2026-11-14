@@ -1,0 +1,45 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+}
+
+// "Salvar" and "Cancelar" have the same width and height; on a phone "Salvar" is alone and full width.
+.pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--mr-space-3);
+}
+
+.pair--one {
+  grid-template-columns: 1fr;
+}
+
+.pair__btn {
+  min-height: 48px;
+  width: 100%;
+}
+
+// Saving: a plain muted button, never the dashed "cannot" one.
+.pair__btn--busy {
+  --mat-button-filled-disabled-container-color: var(--mr-surface-2, rgba(128, 128, 128, 0.15));
+  --mat-button-filled-disabled-label-text-color: var(--mr-muted, inherit);
+  gap: var(--mr-space-2);
+}
+
+.lock {
+  display: flex;
+  align-items: flex-start;
+  line-height: 1.4;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: var(--mr-font-14);
+  color: var(--mr-muted, inherit);
+
+  .mat-icon {
+    flex: none;
+    width: var(--mr-font-18);
+    height: var(--mr-font-18);
+    font-size: var(--mr-font-18);
+  }
+}

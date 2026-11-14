@@ -1,0 +1,17 @@
+<app-sheet-frame [title]="'Bônus · ' + data.pieceName" titleId="sheet-t" [phone]="inSheet" (closed)="cancel()">
+  <p class="bonus__intro">{{ description() }}</p>
+  <app-bonus-group [value]="bonus()" [disabled]="busy()" (valueChange)="bonus.set($event)" />
+  @if (data.reason) {
+    <p class="bonus__reason">
+      <mat-icon aria-hidden="true">block</mat-icon>
+      <span>{{ data.reason }}</span>
+    </p>
+  }
+  @if (error()) {
+    <p class="mr-notice mr-notice--danger" role="alert">
+      <mat-icon aria-hidden="true">error</mat-icon>
+      <span>{{ error() }}</span>
+    </p>
+  }
+  <app-sheet-save-foot foot [inSheet]="inSheet" [busy]="busy()" [lock]="lock()" (saved)="save()" (cancelled)="cancel()" />
+</app-sheet-frame>

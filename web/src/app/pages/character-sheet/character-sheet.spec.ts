@@ -38,8 +38,10 @@ import {
   FullSheetVm,
   ReviewVm,
   WeaponMarkVm,
+  GearChange,
 } from './character-sheet.types';
 import type { GearVm } from '../../core/characters/gear';
+import type { PieceBonusData } from './piece-bonus/piece-bonus-sheet';
 import type { WeaponMarksData } from './weapon-marks/weapon-marks-sheet';
 import { nextTurn } from '../../../test-settle';
 
@@ -54,6 +56,7 @@ class FakeCharacterSheetSource {
   updateMasterNotesFn: (campaignId: string, characterId: string, notes: string) => Promise<void> =
     () => Promise.resolve();
   setEquippedFn: (key: string, equipped: boolean) => Promise<void> = () => Promise.resolve();
+  gearChanges: GearChange[] = [];
   setWeaponMarksFn: (
     revision: number,
     name: string,
@@ -66,8 +69,9 @@ class FakeCharacterSheetSource {
     revision: number,
     name: string,
     sheet: unknown,
-    change: { readonly marks?: readonly WeaponMarkVm[] },
+    change: GearChange,
   ): Promise<CharacterSheetVm> {
+    this.gearChanges.push(change);
     return this.setWeaponMarksFn(revision, name, sheet, change.marks ?? []);
   }
   markCharacterDeadFn: (campaignId: string, characterId: string) => Promise<CharacterSheetVm> =
@@ -1589,18 +1593,25 @@ describe('CharacterSheetPage', () => {
         fullSheet: body,
       };
     }
-    const more = (el: HTMLElement, name: string) =>
-      el.querySelector<HTMLButtonElement>(`button[aria-label="Marcas · ${name}"]`);
+    const more = (el: HTMLElement, name: string, word = 'Marcas') =>
+      el.querySelector<HTMLButtonElement>(`button[aria-label="${word} · ${name}"]`);
     let opened: WeaponMarksData[] = [];
+    let openedPiece: PieceBonusData[] = [];
     /** The sheet of the marks is a dialog here (no phone): record what it was opened with and close it as `result`. */
     function configureMarks(result: boolean | undefined = undefined): void {
       opened = [];
+      openedPiece = [];
       configure();
       vi.spyOn(TestBed.inject(MatDialog), 'open').mockImplementation(((
         _c: unknown,
         cfg: unknown,
       ) => {
-        opened.push((cfg as { data: WeaponMarksData }).data);
+        const data = (cfg as { data: WeaponMarksData | PieceBonusData }).data;
+        if ('pieceName' in data) {
+          openedPiece.push(data);
+        } else {
+          opened.push(data);
+        }
         return { afterClosed: () => of(result) };
       }) as never);
     }
@@ -1650,7 +1661,12 @@ describe('CharacterSheetPage', () => {
       expect(opened[0].weaponName).toBe('Maça');
       expect(opened[0].marks).toMatchObject({ adamantine: true });
 
-      expect(await opened[0].save({ silvered: true, adamantine: true, magical: false })).toBe('');
+      expect(
+        await opened[0].save({
+          marks: { silvered: true, adamantine: true, magical: false },
+          bonus: 0,
+        }),
+      ).toBe('');
       expect(calls).toHaveLength(1);
       expect(calls[0].revision).toBe(7);
       expect(calls[0].name).toBe('Pensantus');
@@ -1670,7 +1686,10 @@ describe('CharacterSheetPage', () => {
       fake.getCharacterSheetFn = () => Promise.resolve(withWeapons());
       const el = await render();
       more(el, 'Adaga')!.click();
-      await opened[0].save({ silvered: false, adamantine: false, magical: false });
+      await opened[0].save({
+        marks: { silvered: false, adamantine: false, magical: false },
+        bonus: 0,
+      });
       expect(sent).toEqual([
         { weaponKey: 'equipment:mace', silvered: false, adamantine: true, magical: false },
       ]);
@@ -1682,12 +1701,92 @@ describe('CharacterSheetPage', () => {
       fake.getCharacterSheetFn = () => Promise.resolve(withWeapons());
       const el = await render();
       more(el, 'Adaga')!.click();
-      expect(await opened[0].save({ silvered: true, adamantine: false, magical: false })).toContain(
-        'A ficha mudou enquanto você editava.',
-      );
+      expect(
+        await opened[0].save({
+          marks: { silvered: true, adamantine: false, magical: false },
+          bonus: 0,
+        }),
+      ).toContain('A ficha mudou enquanto você editava.');
     });
 
-    it('says "Marcas salvas." once the sheet closed saved', async () => {
+    it('saves marks and bonus together in one change, "Nenhum" being 0', async () => {
+      configureMarks();
+      fake.setWeaponMarksFn = () => Promise.resolve(withWeapons());
+      fake.getCharacterSheetFn = () => Promise.resolve(withWeapons());
+      const el = await render();
+      more(el, 'Adaga')!.click();
+      await opened[0].save({
+        marks: { silvered: true, adamantine: false, magical: false },
+        bonus: 2,
+      });
+      expect(fake.gearChanges.at(-1)).toEqual({
+        marks: [
+          { weaponKey: 'equipment:mace', silvered: false, adamantine: true, magical: false },
+          { weaponKey: 'equipment:dagger', silvered: true, adamantine: false, magical: false },
+        ],
+        bonus: { key: 'equipment:dagger', bonus: 2 },
+      });
+    });
+
+    it('opens the weapon sheet with its bonus, copies and reason', async () => {
+      configureMarks();
+      const rows = withWeapons();
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve({
+          ...rows,
+          sheet: fullSheet({
+            gear: [
+              {
+                ...dagger,
+                count: 2,
+                bonus: 1,
+                bonusCounts: false,
+                bonusReason: 'Pede sintonização.',
+              },
+            ],
+          }),
+        });
+      const el = await render();
+      more(el, 'Adaga')!.click();
+      expect(opened[0]).toMatchObject({ bonus: 1, copies: 2, reason: 'Pede sintonização.' });
+    });
+
+    it('opens the bonus sheet of an armor and a shield, saving only the bonus', async () => {
+      configureMarks();
+      fake.setWeaponMarksFn = () => Promise.resolve(withWeapons());
+      const armor = gearPiece({
+        key: 'equipment:chain',
+        namePt: 'Cota de malha',
+        kind: 'armor',
+        bonus: 2,
+      });
+      const shield = gearPiece({ key: 'equipment:shield', namePt: 'Escudo', kind: 'shield' });
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve({ ...withWeapons(), sheet: fullSheet({ gear: [armor, shield] }) });
+      const el = await render();
+      more(el, 'Cota de malha', 'Bônus')!.click();
+      more(el, 'Escudo', 'Bônus')!.click();
+      expect(opened).toEqual([]);
+      expect(openedPiece.map((d) => [d.pieceName, d.kind, d.bonus])).toEqual([
+        ['Cota de malha', 'armor', 2],
+        ['Escudo', 'shield', 0],
+      ]);
+      expect(await openedPiece[0].save(0)).toBe('');
+      expect(fake.gearChanges.at(-1)).toEqual({ bonus: { key: 'equipment:chain', bonus: 0 } });
+    });
+
+    it('says "Bônus salvo." once an armor’s sheet closed saved', async () => {
+      configureMarks(true);
+      const armor = gearPiece({ key: 'equipment:chain', namePt: 'Cota de malha', kind: 'armor' });
+      fake.getCharacterSheetFn = () =>
+        Promise.resolve({ ...withWeapons(), sheet: fullSheet({ gear: [armor] }) });
+      const el = await render();
+      more(el, 'Cota de malha', 'Bônus')!.click();
+      await nextTurn();
+      expect(sectionTitled(el, 'Equipamento').textContent).toContain('Bônus salvo.');
+    });
+
+    it('says "Marcas e bônus salvos." once the sheet closed saved', async () => {
       configureMarks(true);
       fake.getCharacterSheetFn = () => Promise.resolve(withWeapons());
       const el = await render();
@@ -1697,7 +1796,7 @@ describe('CharacterSheetPage', () => {
         Array.from(sectionTitled(el, 'Equipamento').querySelectorAll('[role="status"]'))
           .map((s) => s.textContent)
           .join(' ');
-      expect(statuses()).toContain('Marcas salvas.');
+      expect(statuses()).toContain('Marcas e bônus salvos.');
     });
   });
 

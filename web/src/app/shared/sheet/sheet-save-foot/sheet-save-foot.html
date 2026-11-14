@@ -1,0 +1,25 @@
+<div class="pair" [class.pair--one]="inSheet()" data-equal-width=".pair__btn">
+  <button
+    matButton="filled"
+    type="button"
+    class="pair__btn"
+    [class.pair__btn--busy]="busy()"
+    [disabled]="busy()"
+    disabledInteractive
+    (click)="saved.emit()"
+  >
+    @if (busy()) {
+      <mat-progress-spinner mode="indeterminate" diameter="18" aria-hidden="true" />
+    } @else {
+      <mat-icon aria-hidden="true">save</mat-icon>
+    }
+    {{ busy() ? 'Salvando…' : 'Salvar' }}
+  </button>
+  @if (!inSheet()) {
+    <button matButton="outlined" type="button" class="pair__btn" [disabled]="busy()" (click)="cancelled.emit()">Cancelar</button>
+  }
+</div>
+<p class="lock">
+  <mat-icon aria-hidden="true">lock</mat-icon>
+  <span>{{ lock() }}</span>
+</p>

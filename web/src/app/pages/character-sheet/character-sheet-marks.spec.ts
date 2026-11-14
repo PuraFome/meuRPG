@@ -158,8 +158,8 @@ describe('saving the marks goes over the whole sheet and its revision', () => {
 
 describe('the magic bonus of a piece of gear', () => {
   const bonuses = [create(ItemBonusSchema, { key: 'equipment:mace', bonus: 2 })];
-  const mod = (sourceKey: string, counts: boolean) =>
-    create(ItemModifierSchema, { sourceKey, counts, target: 'attack', value: 2 });
+  const mod = (sourceKey: string, counts: boolean, reasonPt = '') =>
+    create(ItemModifierSchema, { sourceKey, counts, target: 'attack', value: 2, reasonPt });
   const rowsWith = (mods: ReturnType<typeof mod>[]) =>
     sheetGear(
       create(DerivedSheetSchema, { gear, itemModifiers: mods }),
@@ -174,6 +174,17 @@ describe('the magic bonus of a piece of gear', () => {
   it('does not count when one modifier of the piece does not', () => {
     const row = rowsWith([mod('equipment:mace', true), mod('equipment:mace', false)]);
     expect([row.bonus, row.bonusCounts]).toEqual([2, false]);
+  });
+
+  it('gives the reason of the first modifier that does not count, and none when all count', () => {
+    const row = rowsWith([
+      mod('equipment:mace', true),
+      mod('equipment:mace', false, 'Pede sintonização.'),
+      mod('equipment:mace', false, 'Outro motivo.'),
+    ]);
+    expect(row.bonusReason).toBe('Pede sintonização.');
+    expect(rowsWith([mod('equipment:mace', true)]).bonusReason).toBeUndefined();
+    expect(rowsWith([mod('equipment:dagger', false, 'x')]).bonusReason).toBeUndefined();
   });
 
   it('counts when the piece has a bonus but no modifier, and ignores other pieces’ modifiers', () => {

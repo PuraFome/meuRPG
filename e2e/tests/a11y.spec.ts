@@ -8842,21 +8842,21 @@ async function scanWeaponMarksScreens(browser: Browser, colorScheme: 'light' | '
     await openLive(m, `/campaigns/${campaignId}/characters/${table.characterId}`);
     const masterEquipment = m.getByRole('region', { name: 'Equipamento' });
     await masterEquipment.getByRole('button', { name: 'Marcas · Espada longa' }).click();
-    const sheet = m.getByRole('dialog', { name: 'Marcas da Espada longa' });
+    const sheet = m.getByRole('dialog', { name: 'Marcas · Espada longa' });
     await expect(sheet.getByRole('checkbox', { name: /^Prateada/ })).toBeChecked();
     await expect(sheet.getByRole('checkbox', { name: /^Adamantina/ })).not.toBeChecked();
     await expectScreenPasses(m, `Ficha do mestre, Marcas da arma ${where}`);
     await sheet.getByRole('checkbox', { name: /^Adamantina/ }).check();
-    await sheet.getByRole('button', { name: 'Salvar marcas' }).click();
+    await sheet.getByRole('button', { name: 'Salvar', exact: true }).click();
     await expect(sheet).toHaveCount(0);
-    await expect(masterEquipment.getByRole('status').filter({ hasText: 'Marcas salvas.' })).toBeVisible();
+    await expect(masterEquipment.getByRole('status').filter({ hasText: 'Marcas e bônus salvos.' })).toBeVisible();
     await expect(masterEquipment.getByRole('button', { name: 'Marcas · Espada longa' })).toBeFocused();
 
     // Another player never sees the grid, nor the marks.
     outsider = await secondPlayer(browser, m, campaignId, toren, {}, { storageState: authStatePath('E-mail Não Verificado'), colorScheme, viewport });
     await openLive(outsider.page, `/campaigns/${campaignId}/characters/${table.characterId}`);
     await expect(outsider.page.getByRole('button', { name: /^Marcas · / })).toHaveCount(0);
-    await expect(outsider.page.getByRole('dialog', { name: /^Marcas da / })).toHaveCount(0);
+    await expect(outsider.page.getByRole('dialog', { name: /^Marcas · / })).toHaveCount(0);
     await expect(outsider.page.getByText('Prateada')).toHaveCount(0);
     await expectScreenPasses(outsider.page, `Ficha de outro jogador, sem as marcas ${where}`);
 
