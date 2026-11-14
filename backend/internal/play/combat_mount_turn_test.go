@@ -72,29 +72,34 @@ func TestMountedCombat_AnotherPlayerEndsNoPartOfThePair(t *testing.T) {
 	}
 }
 
-// TestMountedCombat_ADefeatedMountDoesNotHoldTheTurn: the Ogro falls to 0 while it carries Toren. The pair's order stays, and the turn passes when
-// Toren's part ends: a defeated member has no part to end. When Toren gets off the Ogro goes back to its own place.
-func TestMountedCombat_ADefeatedMountDoesNotHoldTheTurn(t *testing.T) {
+// TestMountedCombat_ADefeatedMountHoldsTheTurnThroughItsRidersWindow: the Ogro falls to 0 while it carries Toren, through the damage
+// of the master (the change's own settle). The pair's order stays and Toren's reaction window holds the turn (REACTION_PENDING); once he
+// lands, his part ends and the turn passes, and the mount that is not carried goes back to its own place.
+func TestMountedCombat_ADefeatedMountHoldsTheTurnThroughItsRidersWindow(t *testing.T) {
 	t.Parallel()
 	c := newCave(t)
 	c.fight(t)
 	c.steed(t)
 	base := c.orderNow(t)
 	c.mustMount(t, c.caio, "Toren", "Ogro")
-	c.execSQL(t, `UPDATE combatants SET defeated = true, hp_current = 0 WHERE id = $1`, c.id(t, "Ogro"))
+	e := c.get(t, c.master)
+	if _, err := c.adjustHP(t, e, "Ogro", damageHP(500)); err != nil {
+		t.Fatalf("AdjustCombatantHitPoints(Ogro) error = %v", err)
+	}
 	if got := c.orderNow(t); !slices.Equal(got, orderWith(base, "Toren", "Ogro")) {
 		t.Errorf("order with the mount defeated = %v, want the pair's", got)
 	}
-	e := c.mustEndPart(t, c.caio, c.get(t, c.caio), "Toren")
-	if current(e) != "Pensantus" {
-		t.Errorf("after Toren's part the turn is %q's, want Pensantus's: the defeated mount holds nothing", current(e))
-	}
-	// The defeated mount asks Toren for his dismount: it is his reaction, and it holds the turn as any reaction does.
+	_, err := c.endPart(t, c.caio, c.get(t, c.caio), "Toren")
+	wantBlockedBy(t, "Toren's part while the window waits", err, reasonReactionPending)
 	w := c.windowOf(t, c.caio, reactionDismount)
 	if w == nil {
 		t.Fatal("Toren reads no dismount window for the defeated mount")
 	}
 	c.mustAnswer(t, c.caio, e, w.GetId(), useAnswer(0))
+	e = c.mustEndPart(t, c.caio, c.get(t, c.caio), "Toren")
+	if current(e) != "Pensantus" {
+		t.Errorf("after Toren's part the turn is %q's, want Pensantus's: the defeated mount holds nothing now", current(e))
+	}
 	c.passTo(t, c.get(t, c.master), "Toren")
 	if got := c.orderNow(t); !slices.Equal(got, base) {
 		t.Errorf("order after getting off a defeated mount = %v, want %v", got, base)

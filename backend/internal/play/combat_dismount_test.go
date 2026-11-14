@@ -4,8 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"connectrpc.com/connect"
-
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 )
@@ -105,8 +103,8 @@ func TestMountedCombat_TheReactionLandsTheRiderOnItsFeet(t *testing.T) {
 	if got := c.linesOfKind(t, c.caio, playv1.CombatLogKind_COMBAT_LOG_KIND_RIDER_THROWN); len(got) != 0 {
 		t.Errorf("rider thrown lines = %d, want none for a landing on the feet", len(got))
 	}
-	if err := c.undo(t, c.master, e, c.log(t, c.master, e).GetUndoableEventId()); err == nil && c.rideRowOf(t, "Toren").MountedOn != "" {
-		t.Error("the undo put Toren back on the mount: the answer must close the chain")
+	if id := c.log(t, c.master, e).GetUndoableEventId(); id != "" {
+		t.Errorf("the log still offers %s to undo after the landing: the answer must close the chain", id)
 	}
 }
 
@@ -186,17 +184,42 @@ func TestMountedCombat_ADismountOfAHiddenMountNamesNothing(t *testing.T) {
 		t.Fatal("the positive control failed: Toren's player does not read the mount while it is shown")
 	}
 	c.execSQL(t, `UPDATE combatants SET hidden = true WHERE id = $1`, c.id(t, saveCanary))
-	if c.windowOf(t, c.master, reactionDismount) == nil {
+	w := c.windowOf(t, c.master, reactionDismount)
+	if w == nil {
 		t.Fatal("the positive control failed: the master reads no dismount window")
 	}
+	c.mustAnswer(t, c.caio, e, w.GetId(), useAnswer(0))
 	for who, u := range map[string]*user{"Toren's player": c.caio, "another player": c.ana} {
 		if strings.Contains(c.copyOf(t, u)+c.logOf(t, u), saveCanary) {
 			t.Errorf("%s reads the hidden mount", who)
 		}
 	}
-	_, err := c.endTurn(t, c.ana, c.get(t, c.ana), false)
-	if err != nil && connect.CodeOf(err) != connect.CodeFailedPrecondition {
-		t.Logf("end turn: %v", err)
+	if got := c.linesOfKind(t, c.ana, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW); len(got) != 0 {
+		t.Errorf("another player reads %d reaction lines of a hidden pair's landing, want none", len(got))
+	}
+	if got := c.linesOfKind(t, c.master, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW); len(got) != 1 || !strings.Contains(got[0].GetReactionTextPt(), "desmontar de pé") {
+		t.Errorf("the master reads %v, want the landing line", got)
+	}
+}
+
+// The line of a landing: the players who see the pair read it, and the master's alone when the rider or the mount is hidden.
+func TestMountedCombat_TheLandingLineIsForWhoSeesThePair(t *testing.T) {
+	t.Parallel()
+	c, e := defeatedMount(t)
+	w := c.windowOf(t, c.caio, reactionDismount)
+	if w == nil {
+		t.Fatal("no dismount window")
+	}
+	c.mustAnswer(t, c.caio, e, w.GetId(), useAnswer(0))
+	for who, u := range map[string]*user{"the master": c.master, "Toren's player": c.caio, "another player": c.ana} {
+		got := c.linesOfKind(t, u, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW)
+		if len(got) != 1 || !strings.Contains(got[0].GetReactionTextPt(), "Toren usou a reação para desmontar de pé") {
+			t.Errorf("%s reads %v, want the landing line of Toren", who, got)
+		}
+	}
+	c.execSQL(t, `UPDATE combatants SET hidden = true WHERE id = $1`, c.id(t, "Toren"))
+	if got := c.linesOfKind(t, c.ana, playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION_WINDOW); len(got) != 0 {
+		t.Errorf("another player reads %v once the rider is hidden, want nothing", got)
 	}
 }
 
