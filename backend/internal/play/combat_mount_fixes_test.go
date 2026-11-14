@@ -7,6 +7,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
 // A mount that stops sharing its rider's total in the middle of the rider's turn (the rider removed or dismissed, the mount marked
@@ -204,5 +205,33 @@ func TestMountedCombat_TheTieOrderKeepsAMountRightAfterItsRider(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestMountedCombat_AMountWhoseNeighbourLeftComesBackFirstAmongItsTie: mount_prior_init.after names who stood right before the mount among
+// the combatants it ties with. When that combatant is gone, the mount comes back first among them: the order stays deterministic and the
+// rest keep theirs.
+func TestMountedCombat_AMountWhoseNeighbourLeftComesBackFirstAmongItsTie(t *testing.T) {
+	t.Parallel()
+	total := func(n int32) *int32 { return &n }
+	row := func(id string, i int32) playdb.Combatant {
+		return playdb.Combatant{ID: id, OrderIndex: i, Initiative: total(8)}
+	}
+	cs := []playdb.Combatant{row("a", 0), row("b", 1), row("mount", 2)} // "gone" stood before the mount and left the combat
+	order := func(after string) []string {
+		var ids []string
+		for _, c := range orderCombatants(placedAfter(cs, map[int]string{2: after})) {
+			ids = append(ids, c.ID)
+		}
+		return ids
+	}
+	if got, want := order("a"), []string{"a", "mount", "b"}; !slices.Equal(got, want) {
+		t.Errorf("order with its neighbour there = %v, want %v (the positive control)", got, want)
+	}
+	if got, want := order("gone"), []string{"mount", "a", "b"}; !slices.Equal(got, want) {
+		t.Errorf("order with its neighbour gone = %v, want %v", got, want)
+	}
+	if got, want := order(""), []string{"mount", "a", "b"}; !slices.Equal(got, want) {
+		t.Errorf("order of a mount that stood first = %v, want %v", got, want)
 	}
 }
