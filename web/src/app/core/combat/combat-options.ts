@@ -326,6 +326,11 @@ export function attackTagsOf(o: AttackOption): string[] {
   return o.attack && isCantrip(o.attack) ? ['Truque'] : [];
 }
 
+/** The counting magic bonus (0 to 3) the server says is inside an attack option's numbers; 0 when it says none. */
+export function magicBonusOf(o: AttackOption | undefined): number {
+  return o?.magicBonus ?? 0;
+}
+
 /** The marks of a weapon attack, for its chip beside the name; none for a spell or a creature's attack.
  * A counting +N (`bonus`) takes the place of "Mágica". */
 export function attackMarksOf(a: Attack | undefined, bonus = 0): MarksVm | null {

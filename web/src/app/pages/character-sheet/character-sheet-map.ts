@@ -121,6 +121,7 @@ function toAttackVm(attack: GenAttack): AttackVm {
     saveDc: attack.saveDc,
     saveAbility: attack.saveDc > 0 ? ABILITY_FROM_GEN[attack.saveAbility] : null,
     beams: attack.beams,
+    magicBonus: attack.magicBonus,
     marks: attack.kind === GenAttackKind.SPELL ? undefined : marksOf(attack),
   };
 }
@@ -392,14 +393,9 @@ const EMPTY_BASIC_SHEET_VM: BasicSheetVm = {
   description: '',
 };
 
-function basicRating(character: Character): string {
-  return character.sheet?.content.case === 'basic'
-    ? character.sheet.content.value.challengeRating
-    : '';
-}
-
-function basicXp(character: Character): number {
-  return character.sheet?.content.case === 'basic' ? character.sheet.content.value.xpValue : 0;
+/** The basic sheet of the character, or none for a full one. */
+function basicOf(character: Character) {
+  return character.sheet?.content.case === 'basic' ? character.sheet.content.value : undefined;
 }
 
 /** The sheet the character carries: the full one with its derived numbers, the basic one, or the empty one. */
@@ -434,8 +430,8 @@ function storedIdentityOf(character: Character) {
   return {
     alignmentLabel: full ? ALIGNMENT_LABEL_FROM_GEN[full.alignment] : '',
     experiencePoints: full ? full.experiencePoints : null,
-    challengeRating: full ? full.challengeRating : basicRating(character),
-    xpValue: full ? full.xpValue : basicXp(character),
+    challengeRating: full ? full.challengeRating : (basicOf(character)?.challengeRating ?? ''),
+    xpValue: full ? full.xpValue : (basicOf(character)?.xpValue ?? 0),
   };
 }
 

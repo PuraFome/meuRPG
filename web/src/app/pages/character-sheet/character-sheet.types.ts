@@ -68,6 +68,8 @@ export interface AttackVm {
   /** How many attack rolls it makes in one action (Eldritch Blast: 1 to 4
    * beams); 0 for a weapon. */
   readonly beams: number;
+  /** The counting magic bonus (0 to 3) inside `attackBonus` and the damage: 0 or absent for a spell and for a weapon whose bonus does not count. */
+  readonly magicBonus?: number;
   /** A weapon's marks as the engine derived them (the sheet's mark or a table rule); absent for a spell. */
   readonly marks?: MarksVm;
 }

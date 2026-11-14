@@ -84,7 +84,7 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	}
 	a := Attack{
 		Key: key, Name: eq.Name, NamePT: c.namePT(key), Kind: "weapon", Ability: t.attackAbility,
-		AttackBonus: x.modifiers("attack.weapon."+kind, bonus) + t.attackBonus + magic, Proficient: proficient,
+		AttackBonus: x.modifiers("attack.weapon."+kind, bonus) + t.attackBonus + magic, Proficient: proficient, MagicBonus: magic,
 		DamageType: w.DamageType, DamageTypeNamePT: c.namePT(w.DamageType),
 		Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[t.damageAbility],
 		Light:        kind == "melee" && has("light"),

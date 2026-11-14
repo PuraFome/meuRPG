@@ -6676,7 +6676,13 @@ type Attack struct {
 	Adamantine bool `protobuf:"varint,23,opt,name=adamantine,proto3" json:"adamantine,omitempty"`
 	// The attack counts as magical for those resistances: a spell, the mark, a weapon_rule or a creature's
 	// Magic Weapons. Display only: the engine decides from the derived value, never from this field.
-	Magical       bool `protobuf:"varint,24,opt,name=magical,proto3" json:"magical,omitempty"`
+	Magical bool `protobuf:"varint,24,opt,name=magical,proto3" json:"magical,omitempty"`
+	// How much of `attack_bonus` and of the damage modifier is the weapon's magic bonus, from 0 to 3:
+	// the same +N that the sheet's item modifiers list for `attack:<key>` and `damage:<key>`.
+	// It counts only while the weapon is equipped and, when the piece needs attunement, attuned.
+	// 0 for a weapon with no counting bonus, for a spell, an unarmed strike and a creature's attack.
+	// Display only: `attack_bonus` and `damage` already include it, so the app never adds it again.
+	MagicBonus    int32 `protobuf:"varint,25,opt,name=magic_bonus,json=magicBonus,proto3" json:"magic_bonus,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6877,6 +6883,13 @@ func (x *Attack) GetMagical() bool {
 		return x.Magical
 	}
 	return false
+}
+
+func (x *Attack) GetMagicBonus() int32 {
+	if x != nil {
+		return x.MagicBonus
+	}
+	return 0
 }
 
 // Feature is a class feature, racial trait or background feature.
@@ -11035,7 +11048,12 @@ type AttackOption struct {
 	// beams are still to fire after the ones this cast made, while at least one
 	// beam was fired. The option stays enabled while this is above 0, though the
 	// action is spent. 0 for every other attack, and before the first beam.
-	BeamsLeft     int32 `protobuf:"varint,7,opt,name=beams_left,json=beamsLeft,proto3" json:"beams_left,omitempty"`
+	BeamsLeft int32 `protobuf:"varint,7,opt,name=beams_left,json=beamsLeft,proto3" json:"beams_left,omitempty"`
+	// The magic bonus of the character's weapon in `attack`, from 0 to 3, the same value as
+	// `attack.magic_bonus`: the part of the attack bonus and the damage that is a counting +N.
+	// 0 for a cantrip, an unarmed strike, a creature's, an NPC's and an opportunity attack.
+	// Display only: the server rolls with the numbers already in `attack`.
+	MagicBonus    int32 `protobuf:"varint,9,opt,name=magic_bonus,json=magicBonus,proto3" json:"magic_bonus,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -11115,6 +11133,13 @@ func (x *AttackOption) GetBonusDropsModifier() bool {
 func (x *AttackOption) GetBeamsLeft() int32 {
 	if x != nil {
 		return x.BeamsLeft
+	}
+	return 0
+}
+
+func (x *AttackOption) GetMagicBonus() int32 {
+	if x != nil {
+		return x.MagicBonus
 	}
 	return 0
 }
@@ -14072,7 +14097,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"from_level\x18\r \x01(\x05R\tfromLevel\x124\n" +
 	"\x16no_material_components\x18\x0e \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
-	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\xca\x06\n" +
+	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\xeb\x06\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -14102,7 +14127,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"adamantine\x18\x17 \x01(\bR\n" +
 	"adamantine\x12\x18\n" +
-	"\amagical\x18\x18 \x01(\bR\amagical\"\xb3\x02\n" +
+	"\amagical\x18\x18 \x01(\bR\amagical\x12\x1f\n" +
+	"\vmagic_bonus\x18\x19 \x01(\x05R\n" +
+	"magicBonus\"\xb3\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -14457,7 +14484,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\tmin_level\x18\x02 \x01(\x05R\bminLevel\x125\n" +
 	"\brecharge\x18\x03 \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\x12\x17\n" +
 	"\atext_pt\x18d \x01(\tR\x06textPt\x12$\n" +
-	"\x0etext_master_pt\x18e \x01(\tR\ftextMasterPt\"\xd2\x02\n" +
+	"\x0etext_master_pt\x18e \x01(\tR\ftextMasterPt\"\xf3\x02\n" +
 	"\fAttackOption\x12/\n" +
 	"\x06attack\x18\x01 \x01(\v2\x17.meurpg.rules.v1.AttackR\x06attack\x12\x18\n" +
 	"\aenabled\x18\x02 \x01(\bR\aenabled\x127\n" +
@@ -14467,7 +14494,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x12bonus_attacks_left\x18\x05 \x01(\x05R\x10bonusAttacksLeft\x120\n" +
 	"\x14bonus_drops_modifier\x18\x06 \x01(\bR\x12bonusDropsModifier\x12\x1d\n" +
 	"\n" +
-	"beams_left\x18\a \x01(\x05R\tbeamsLeft\"\xf0\x03\n" +
+	"beams_left\x18\a \x01(\x05R\tbeamsLeft\x12\x1f\n" +
+	"\vmagic_bonus\x18\t \x01(\x05R\n" +
+	"magicBonus\"\xf0\x03\n" +
 	"\vSpellOption\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x128\n" +
 	"\aeconomy\x18\x02 \x01(\x0e2\x1e.meurpg.rules.v1.ActionEconomyR\aeconomy\x12\x18\n" +
