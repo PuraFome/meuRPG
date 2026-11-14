@@ -100,14 +100,6 @@
   }
 }
 
-.gear-row__main > .gear-row__icon {
-  // From a tablet to a wide desktop the sheet (and the combat's side) hold the list in a column of 190 to 330px: the icon,
-  // decoration only, gives its room to the name and the chips there (it goes from every row, so the names stay aligned).
-  @media (min-width: 768px) and (max-width: 1599.98px) {
-    display: none;
-  }
-}
-
 .gear-row__main > app-weapon-tags {
   display: flex;
 }
