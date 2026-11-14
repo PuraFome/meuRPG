@@ -201,6 +201,18 @@ stateDiagram-v2
     acting --> [*]: the member leaves, dies or is removed
 ```
 
+- **A mount in the group.** A `controlled` mount takes the rider's total (and d20 and tie) and sits right after it in the order, so `groupRuns` makes the pair one group with no change of its own (`syncMounts`, `combat_mount_join.go`).
+  The mount's own initiative, d20, bonus, tie and the id of the combatant that came before it are kept in `mount_prior_init`; a dismount, or anything that unseats the rider (the rider removed or defeated and the mount dismissed), gives them back.
+  An `independent` mount keeps its own turn.
+  Mounting in the middle of a round: a mount whose turn already passed keeps its economy spent and has no second turn; a mount whose turn is still to come gets the rider's part, with its economy reset.
+  The start of turn effects do not run again for a mount that joins in the middle of a turn.
+  A mount that leaves the rider's group before its own turn has come is idle, so it takes that turn later in the round.
+  The pair's tie is not a tie for the master to resolve (`unresolvedTies`).
+  The undo of a mount or a dismount gives back the initiative, the order and each `turn_state`.
+- **Who ends a part.** The master ends either part; the rider's player ends the rider's part and, for a `controlled` mount, the mount's too (`endingMember` reads `mayMove`).
+  The turn passes when both parts have ended; a defeated or removed mount holds nothing.
+- **A hidden mount.** A player never receives a hidden mount in `turn_group_ids`, `turn_part_ended`, `npc_only_groups` or the order; the order row of the rider does not change when the mount hides.
+  The part of a hidden mount is the master's to end, and the player sees `master_turn` while it waits (the rule of a hidden member above).
 - **Who still acts.** `othersActing` counts members whose part has not ended and who are not defeated; a member that dies or is taken to 0 HP (an NPC) never holds the group, and the current member is the first living one (`turnFor`).
 - **Start of the turn.** `startTurn` ends what ends at the start of effects, resets for each living member the movement, action, bonus action, Dash, reaction, Shield bonus and the death save due (`ResetCombatantTurn`), and points `current_combatant_id` at the first.
 - **"Is it their turn"** is always `actsNow` (in the turn and the part not ended): `MoveCombatant`, `RollAttack`, `RollDamage`, `TakeAction`, `CastSpell`, the death saves, the reactions and `GetTurnOptions`.
