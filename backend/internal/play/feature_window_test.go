@@ -365,3 +365,44 @@ func TestAHiddenCreaturesFeatureWindowIsTheMastersAlone(t *testing.T) {
 		t.Errorf("the master reads %d lines of the use, want 1", len(lines))
 	}
 }
+
+// glowTable is a table where Pensantus has "Brilho", a reaction that is aimed at no creature (it gives her temporary hit points):
+// 2 uses a combat, triggered by an enemy that starts its turn or moves to within 10 ft of her.
+func glowTable(t *testing.T) *featureTable {
+	t.Helper()
+	u := useOf(rulesv1.UseScope_USE_SCOPE_COMBAT, "2", nil, &rulesv1.FeatureApplies{TempHp: "4"})
+	u.Trigger = &rulesv1.FeatureTrigger{Kinds: []rulesv1.FeatureTriggerKind{whenItStarts, whenItMoves}, RangeFt: 10}
+	return newFeatureTableOf(t, []*rulesv1.TableFeature{grantFeature("Brilho", "reaction", "", u)})
+}
+
+// A feature aimed at no creature has no hidden target to make its event secret: answering the window of a hidden goblin with
+// USE is secret all the same, so no player hears that a creature came near. The owner reads that the use is spent in its own
+// character (the reaction, the uses left), not in the log.
+func TestAnUnaimedFeatureUsedOnAHiddenCreaturesWindowIsSecret(t *testing.T) {
+	t.Parallel()
+	m := glowTable(t)
+	e := m.fightHalo(t)
+	hideAgain(t, m.armed, e, "Goblin")
+	e = m.passTo(t, e, "Goblin")
+	w := m.windowOf(t, m.master, kindFeature)
+	if w == nil {
+		t.Fatalf("the master reads no FEATURE window of the hidden goblin: %v", m.windows(t, m.master))
+	}
+	if _, err := m.answerReaction(t, m.master, e, w.GetId(), useAnswer(0)); err != nil {
+		t.Fatalf("the master's USE: %v", err)
+	}
+	for name, u := range map[string]*user{"Ana (the owner)": m.ana, "Caio": m.caio} {
+		if lines := logLinesOf(t, m.armed, u, e, playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED); len(lines) != 0 {
+			t.Errorf("%s reads %v: the use came out in the log of a creature the master hid", name, lines)
+		}
+	}
+	if lines := logLinesOf(t, m.armed, m.master, e, playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED); len(lines) != 1 {
+		t.Errorf("the master reads %d lines of the use, want 1", len(lines))
+	}
+	if !m.pensantus(t).GetReactionUsed() {
+		t.Errorf("Pensantus's reaction is free after the use")
+	}
+	if left := m.row(t, m.ana, m.get(t, m.ana), "Pensantus", "Brilho").GetUseLeft(); left != 1 {
+		t.Errorf("Ana reads %d uses of Brilho left, want 1: the owner learns of the spent use there", left)
+	}
+}

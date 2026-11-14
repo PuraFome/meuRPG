@@ -197,6 +197,9 @@ The undo of the use reopens the window (`reopenWindowOf`), and so does the undo 
 It opens for any reactor without a sight check.
 No player is told: not the stream, not `reaction_wait` (the wait reads "Esperando o mestre"), not `GetTurnOptions`, not the combat read.
 The reactor's player cannot answer it (`windowToAnswer` reads it as an invented window).
+The master's "Usar" and "Deixar passar" on it write a secret event (`featureFlow.begin` marks the use secret whoever it is aimed at, so an unaimed feature tells no player that a creature came near).
+No player reads the line of the use, the reactor's player included.
+The reactor's player learns of the spent use from the character: the reaction is used, the feature's row has one use less, the resource is spent.
 The leaktest has one row for each moment.
 
 ## The settle step and the gate

@@ -345,6 +345,11 @@ func (f *featureFlow) begin(ctx context.Context) error {
 	for _, t := range f.targets {
 		f.made.Secret = f.made.Secret || t.Hidden
 	}
+	// The window of a hidden creature is the master's: the use that answers it is secret whoever it is aimed at, as the pass is,
+	// or an unaimed feature would tell every player that a creature came near.
+	if f.win != nil && windowTriggerOf(*f.win).Hidden {
+		f.made.Secret = true
+	}
 	if len(f.call.targets) == 1 && f.call.targets[0] != who.ID {
 		f.made.Target = f.call.targets[0]
 	}

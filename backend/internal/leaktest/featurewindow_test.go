@@ -32,6 +32,17 @@ func (w *world) haloFight(kinds []rulesv1.FeatureTriggerKind, goblinAt [2]int32)
 // haloFightOf is haloFight with the goblin hidden or in view.
 func (w *world) haloFightOf(kinds []rulesv1.FeatureTriggerKind, goblinAt [2]int32, hidden bool) *playv1.Combatant {
 	w.t.Helper()
+	halo := &rulesv1.FeatureUse{
+		LimitScope: rulesv1.UseScope_USE_SCOPE_COMBAT, LimitUses: "2",
+		Targets: &rulesv1.FeatureTargets{Min: 1, Max: 1, Who: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ENEMY, RangeFt: haloRangeFt},
+		Trigger: &rulesv1.FeatureTrigger{Kinds: kinds, RangeFt: haloRangeFt},
+	}
+	return w.haloFightWith(halo, goblinAt, hidden)
+}
+
+// haloFightWith is haloFightOf with the use Toren's reaction declares.
+func (w *world) haloFightWith(halo *rulesv1.FeatureUse, goblinAt [2]int32, hidden bool) *playv1.Combatant {
+	w.t.Helper()
 	ctx := w.t.Context()
 	m := w.master
 	w.imgMap = w.image("halo-map-image", 240, 160)
@@ -42,11 +53,6 @@ func (w *world) haloFightOf(kinds []rulesv1.FeatureTriggerKind, goblinAt [2]int3
 	w.session = must(m.play.StartGameSession(ctx, rq(&playv1.StartGameSessionRequest{CampaignId: w.campaign}))).GetGameSession().GetId()
 	must(m.play.SetCurrentMap(ctx, rq(&playv1.SetCurrentMapRequest{CampaignId: w.campaign, MapId: w.fogMap})))
 
-	halo := &rulesv1.FeatureUse{
-		LimitScope: rulesv1.UseScope_USE_SCOPE_COMBAT, LimitUses: "2",
-		Targets: &rulesv1.FeatureTargets{Min: 1, Max: 1, Who: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ENEMY, RangeFt: haloRangeFt},
-		Trigger: &rulesv1.FeatureTrigger{Kinds: kinds, RangeFt: haloRangeFt},
-	}
 	sub := must(m.table.CreateTableEntry(ctx, rq(&rulesv1.CreateTableEntryRequest{
 		CampaignId: w.campaign, Body: &rulesv1.CreateTableEntryRequest_TableSubclass{TableSubclass: &rulesv1.TableSubclass{
 			NamePt: "Guardião do Halo", ClassKey: "class:fighter", DescPt: []string{"Um guardião."},
@@ -293,4 +299,33 @@ func TestHidingTheCreatureOfAnOpenFeatureWindowTakesItFromThePlayer(t *testing.T
 	for _, f := range w.inspect(w.caio, asked, nil) {
 		t.Errorf("Caio's refusal: %s", f)
 	}
+}
+
+// Toren's reaction here is aimed at no creature (it gives him temporary hit points), so no hidden target makes its event secret:
+// the master answers the hidden goblin's window with USE and no player reads a line of the use, or the kind of the line. The master reads it (the positive control).
+func TestAnUnaimedFeatureUsedOnAHiddenCreaturesWindowLeavesNoLineForThePlayers(t *testing.T) {
+	w := haloWorld(t)
+	glow := &rulesv1.FeatureUse{
+		LimitScope: rulesv1.UseScope_USE_SCOPE_COMBAT, LimitUses: "2", Applies: &rulesv1.FeatureApplies{TempHp: "4"},
+		Trigger: &rulesv1.FeatureTrigger{Kinds: []rulesv1.FeatureTriggerKind{rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_STARTS_TURN_WITHIN}, RangeFt: haloRangeFt},
+	}
+	goblin := w.haloFightWith(glow, [2]int32{5, 3}, true)
+	var window *playv1.ReactionWindow
+	got := w.hiddenOnlyEvents(func() {
+		w.passToGoblin(goblin)
+		window = w.thenTheMasterAnswers(t, goblin, playv1.ReactionChoice_REACTION_CHOICE_USE)
+		w.secrets.add(&canary{needle: "COMBAT_LOG_KIND_FEATURE_USED", kind: "feature-use-line-kind"})
+		w.secrets.add(&canary{needle: "featureUsed", kind: "feature-use-line-body"})
+		if body := w.master.call(playv1connect.CombatServiceListCombatLogProcedure, &playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}).body; !strings.Contains(string(body), "COMBAT_LOG_KIND_FEATURE_USED") || !strings.Contains(string(body), "featureUsed") {
+			t.Fatalf("the master's log does not hold the line of the use: the needles are unreachable (%s)", body)
+		}
+		for _, p := range []*person{w.ana, w.caio} {
+			for _, r := range w.reads(p) {
+				for _, f := range w.inspect(p, r, nil) {
+					t.Errorf("%s: %s", p.name, f)
+				}
+			}
+		}
+	})
+	w.requireWindowHeardByTheMasterAlone(t, got, window)
 }
