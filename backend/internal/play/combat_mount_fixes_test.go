@@ -120,3 +120,25 @@ func TestMountedCombat_TheDriverDoesNotRollTheMountsReactionAttack(t *testing.T)
 		t.Errorf("the master's reaction attack for the mount error = %v, want it made", err)
 	}
 }
+
+// TestMountedCombat_ALegendaryActionOfARiddenMountIsLimited: Draco carries Toren (a controlled mount), so its legendary text option and
+// its legendary attack are actions it does not take; its legendary move is a move, which stays. A refusal spends nothing.
+func TestMountedCombat_ALegendaryActionOfARiddenMountIsLimited(t *testing.T) {
+	t.Parallel()
+	a, e := onToren(t)
+	a.execSQL(t, `UPDATE combatants SET mount_kind = 'controlled' WHERE id = $1`, a.id(t, "Draco"))
+	a.execSQL(t, `UPDATE combatants SET mounted_on_id = $1 WHERE id = $2`, a.id(t, "Draco"), a.id(t, "Toren"))
+
+	_, err := a.spendLegendary(t, a.master, e, "Draco", "detect")
+	wantBlockedBy(t, "the legendary text option of a ridden mount", err, reasonMountActionLimited)
+	_, err = a.legendaryAttack(t, e, "Draco", "tail-attack", dragonTail, "Toren", 20)
+	wantBlockedBy(t, "the legendary attack of a ridden mount", err, reasonMountActionLimited)
+	if got := a.spentOn(t, "Draco"); got != 0 {
+		t.Errorf("the refused options spent %d legendary actions, want none", got)
+	}
+
+	a.execSQL(t, `UPDATE combatants SET mounted_on_id = NULL WHERE id = $1`, a.id(t, "Toren"))
+	if _, err := a.spendLegendary(t, a.master, e, "Draco", "detect"); err != nil {
+		t.Errorf("the positive control: Detect by Draco with nobody on it error = %v, want it spent", err)
+	}
+}
