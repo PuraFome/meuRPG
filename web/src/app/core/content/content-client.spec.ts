@@ -112,6 +112,9 @@ describe('the errors of the table content calls', () => {
       'não existe mais',
     );
     expect(contentErrorText(new Error('network'), 'salvar a raça')).toBe(
+      'Não deu para salvar a raça agora. Nada mudou. Tente de novo.',
+    );
+    expect(contentErrorText(new ConnectError('x', Code.Internal), 'salvar a raça')).toBe(
       'Não foi possível salvar a raça. Confira a conexão e tente de novo.',
     );
   });

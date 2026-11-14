@@ -48,7 +48,7 @@ describe('the typed damage of a power attack', () => {
 
   it('says the app adds the weapon bonus and the trade: "Sem o + 13"', () => {
     expect(dmg.flat()).toBe(13);
-    expect(dmg.bonusLine()).toBe('Sem o + 13: o app soma o bônus.');
+    expect(dmg.bonusLine()).toBe('Sem o + 13: o app soma o bônus e o Golpe Pesado.');
   });
 
   it('sums the fields plus both on the button: 7 typed is "Aplicar 20 de dano"', () => {
@@ -66,7 +66,7 @@ describe('the typed damage of a power attack', () => {
       ['Montante, cortante: 4d6', 4, 24],
     ]);
     expect(crit.flat()).toBe(13);
-    expect(crit.bonusLine()).toBe('Sem o + 13: o app soma o bônus.');
+    expect(crit.bonusLine()).toBe('Sem o + 13: o app soma o bônus e o Golpe Pesado.');
     expect(crit.partsLabel()).toBe('Rolar 4d6 + 13 no app');
   });
 });

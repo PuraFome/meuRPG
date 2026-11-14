@@ -42,7 +42,7 @@ import type { EntrySaver } from '../../../core/content/entry-saver';
     </div>
     @if (saver().error(); as error) {
       <div class="mr-notice mr-notice--danger" role="alert">
-        <mat-icon aria-hidden="true">error</mat-icon>
+        <mat-icon aria-hidden="true">{{ saver().offline() ? 'cloud_off' : 'error' }}</mat-icon>
         <p>{{ error }}</p>
       </div>
     }
@@ -93,11 +93,11 @@ export class EditorAlerts {
           <mat-icon aria-hidden="true">block</mat-icon>{{ saveLabel() }}
         </button>
       } @else {
-        <button matButton="filled" type="button" [attr.aria-disabled]="saving()" (click)="!saving() && save.emit()">
+        <button matButton="filled" type="button" [class.mr-button--off]="saving()" [disabled]="saving()" disabledInteractive [attr.aria-disabled]="saving()" (click)="!saving() && save.emit()">
           <mat-icon aria-hidden="true">save</mat-icon>{{ saving() ? 'Salvando...' : saveLabel() }}
         </button>
       }
-      <button matButton="outlined" type="button" (click)="cancel.emit()">Cancelar</button>
+      <button matButton="outlined" type="button" [class.mr-button--off]="saving()" [disabled]="saving()" disabledInteractive (click)="cancel.emit()">Cancelar</button>
       <p class="bar__note" id="bar-reason">{{ blocked() || hint() }}</p>
     </div>
   `,

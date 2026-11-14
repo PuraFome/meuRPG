@@ -7184,6 +7184,26 @@ async function scanPowerAttackEditor(browser: Browser, colorScheme: 'light' | 'd
       await expect(m.getByLabel('Nome do talento')).toHaveValue('Golpe Exagerado');
       await expect(m.getByText('De 1 a 10.', { exact: true })).toHaveCount(1);
       await expectScreenPasses(m, `Editor de talento, "Ataque poderoso" recusado ao salvar ${where}`);
+
+      // The server out of the air: both buttons are dashed and off while the save is on its way, then the notice says nothing changed.
+      await open(m, `/campaigns/${campaignId}/content/new/feat`);
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Ataque poderoso' });
+      await m.getByLabel('Nome do talento').fill('Golpe Fora do Ar');
+      await m.getByLabel('Tira do ataque', { exact: true }).fill('5');
+      await m.getByLabel('Soma no dano', { exact: true }).fill('10');
+      let release: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      await m.route(/TableContentService\/(Create|Update)TableEntry/, async (route) => {
+        await gate;
+        await route.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"down"}' });
+      });
+      await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByRole('button', { name: 'Salvando...' })).toHaveAttribute('aria-disabled', 'true');
+      await expect(m.getByRole('button', { name: 'Cancelar' })).toHaveAttribute('aria-disabled', 'true');
+      await expectScreenPasses(m, `Editor de talento, salvando ${where}`);
+      release();
+      await expect(m.getByText('Não deu para salvar o talento agora. Nada mudou. Tente de novo.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, o servidor fora do ar ${where}`);
     } else {
       await open(m, entryRoute(campaignId, heavy));
       await expect(m.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.')).toBeVisible();
