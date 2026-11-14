@@ -24,7 +24,7 @@ func (s *Service) sayNow(campaignID string, ev live.Event) { s.send(campaignID, 
 
 // sayWith is the say that stamps each event with seq (WatchGameSessionResponse.session_seq) and sends it; seq 0 sends it unstamped.
 // It stamps a copy and never the caller's message: a publisher may send one message to several audiences, and a stream may be
-// marshalling an earlier send of it.
+// marshaling an earlier send of it.
 func (s *Service) sayWith(seq int64) sayFn {
 	return func(campaignID string, ev live.Event) {
 		if seq > 0 && ev.Message != nil {

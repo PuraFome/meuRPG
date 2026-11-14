@@ -10,7 +10,7 @@ import (
 )
 
 // sayWith stamps what it sends, never the caller's message: a publisher may send one message to several audiences, and a stream
-// may already be marshalling an earlier send of it (#735).
+// may already be marshaling an earlier send of it (#735).
 func TestSayWithStampsACopyAndLeavesTheCallersMessageAlone(t *testing.T) {
 	t.Parallel()
 	svc := &Service{}
@@ -38,7 +38,7 @@ func TestSayWithStampsACopyAndLeavesTheCallersMessageAlone(t *testing.T) {
 	}
 }
 
-// A message sent to two audiences while the stream of the first is marshalling it: the race detector fails the test if sayWith stamps
+// A message sent to two audiences while the stream of the first is marshaling it: the race detector fails the test if sayWith stamps
 // the message the stream holds.
 func TestSayWithOfOneMessageToTwoAudiencesDoesNotRaceWithAStreamMarshallingIt(t *testing.T) {
 	t.Parallel()
@@ -54,7 +54,7 @@ func TestSayWithOfOneMessageToTwoAudiencesDoesNotRaceWithAStreamMarshallingIt(t 
 		subs[i] = sub
 		go func() {
 			defer func() { done <- struct{}{} }()
-			for n := 0; n < rounds; n++ {
+			for range rounds {
 				ev := <-sub.Events()
 				if _, err := proto.Marshal(ev.Message); err != nil { // what a stream does with it
 					t.Errorf("Marshal() error = %v", err)
@@ -63,7 +63,7 @@ func TestSayWithOfOneMessageToTwoAudiencesDoesNotRaceWithAStreamMarshallingIt(t 
 		}()
 	}
 	say := svc.sayWith(5)
-	for n := 0; n < rounds; n++ {
+	for range rounds {
 		msg := &playv1.WatchGameSessionResponse{}
 		say("c1", live.Event{Audience: live.Audience{UserID: "a"}, Message: msg})
 		say("c1", live.Event{Audience: live.Audience{UserID: "b"}, Message: msg})
