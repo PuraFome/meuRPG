@@ -673,6 +673,13 @@ Members read the campaign's content, except creatures (below); only the master w
   A player reads the creatures as for any summon.
   A player who holds none does not read the creatures of the feature in the table's list or on a creature's page.
   A player who holds the feature reads the names of its creatures (no numbers) when choosing which to bring.
+- **A table feature's action can be used from the "Usar" sheet.**
+  The feature may offer options, and the table may write the question over them ("Qual forma"); without one the sheet asks "Qual opção".
+  A use spends the part of the turn the feature costs and, when it has one, a use of its resource.
+  The log line of a use says what it cost: "gastou a reação", "gastou 1 uso de Forma Selvagem (restam 2 de 2)".
+  The master and the user's player read the cost, the other players read only that the feature was used.
+  The master may use a feature whose part of the turn is already spent: his sheet says so and asks "Usar mesmo assim".
+  That is the only thing he overrides: no use of the feature left, no creature to aim at, another creature's turn for an action and a question that waits for him still stop him.
 - **Open screens follow.** When the master changes content or a switch, the players' open screens read the lists again, each with the role of its reader.
 - **An entry the rules refuse is left out, and the master sees which and why.**
   The rest of the campaign keeps working.

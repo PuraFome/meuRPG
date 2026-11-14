@@ -673,6 +673,13 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   O jogador lê as criaturas como em qualquer invocação.
   O jogador que não tem nenhuma não lê as criaturas da habilidade na lista da mesa nem na página de uma criatura.
   Quem tem a habilidade lê os nomes das criaturas (sem números) ao escolher quais trazer.
+- **A ação de uma característica da mesa pode ser usada na ficha "Usar".**
+  A característica pode oferecer opções, e a mesa pode escrever a pergunta sobre elas ("Qual forma"); sem ela, a ficha pergunta "Qual opção".
+  Um uso gasta a parte do turno que a característica custa e, quando ela tem um, um uso do seu recurso.
+  A linha do registro de um uso diz o que ele custou: "gastou a reação", "gastou 1 uso de Forma Selvagem (restam 2 de 2)".
+  O mestre e o jogador de quem usou leem o custo; os outros jogadores leem só que a característica foi usada.
+  O mestre pode usar uma característica cuja parte do turno já foi gasta: a ficha dele avisa e pergunta "Usar mesmo assim".
+  Só isso ele passa por cima: continuam impedindo-o a característica sem usos, a falta de criatura para mirar, o turno de outra criatura (para uma ação) e uma pergunta que espera por ele.
 - **As telas abertas acompanham.** Quando o mestre muda o conteúdo ou um interruptor, as telas abertas dos jogadores leem as listas de novo, cada uma com o papel de quem a lê.
 - **Uma entrada que as regras recusam fica de fora, e o mestre vê qual e por quê.**
   O resto da campanha continua funcionando.

@@ -93,4 +93,11 @@ See [The feature window](reactions.md#the-feature-window).
 
 **Undo.** `feature_used` is in `undoableKinds` (it writes hit points, so it keeps holds): the economy, the resource, each target's hit points (`castHitTargetBack`), the effect rows (and the temporary hit points they gave), and the feature state are put back, and the line goes with the undo.
 
-**Log.** `COMBAT_LOG_KIND_FEATURE_USED`, the audience of an action (the table, unless the user or a target is hidden: `hitsVisible`), the numbers (`healed`, `temp_hp`) only for the master and the user's player; the choice's text and the feature's name are read from the sheet.
+**Log.** `COMBAT_LOG_KIND_FEATURE_USED`, the audience of an action (the table, unless the user or a target is hidden: `hitsVisible`), the numbers (`healed`, `temp_hp`) and the cost (`economy`, `resource_name_pt`, `resource_left`) only for the master and the user's player; the choice's text and the feature's name are read from the sheet.
+The event keeps the cost (`featureUseEvent.Economy`, `ResourceName`, `ResourceLeft`), written by `spend` for every use: a use from the Usar sheet and the use that answers a FEATURE window are the same steps.
+`economy` is `ACTION`, `BONUS_ACTION`, `REACTION` or `NONE` (a free action or movement); `resource_name_pt` is empty when the use spent no resource of its own (a pool, or none), and then `resource_left` is 0.
+The web writes the sentence from these fields; an older event, which kept none, reads `UNSPECIFIED`, "" and 0.
+
+**Options, the question and the override.** `ActionOption.use_question_pt` is the feature's `use.choice_label` (empty: the web asks "Qual opção").
+`ActionOption.master_may_override` is true only in the master's own read, for a row that `masterMayOverride` allows (the rules' reason is one of the economy: the action, the bonus action or the reaction spent, a use of the turn spent, the Attack action first), that no stop holds (`featureStopNow` is nil: the turn, a question for the master, an answer) and that the uses of the scope and the targets allow (`featureScene.reason` with `master` true is nil).
+It is the same test `UseFeature` runs, so a marked row is a call the master may make; the web offers "Usar mesmo assim" for it.
