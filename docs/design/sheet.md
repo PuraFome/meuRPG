@@ -29,6 +29,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
   The combat's fold has no hidden text there: its own warning line says it.
   A row with a blocked reason under it is not one line by design.
   A legend line under the list names the marks present, the attunement chips and the bonus chip.
+  The legend is the shared `app-chip-legend`, the same piece the combat's "Ataques" tab uses.
   "Carregados (n)" folds from five pieces.
   A change says "Guardado: Espada longa. Classe de armadura 14." in a live region and puts the focus on the moved piece's button.
   A refusal is an alert, and when the sheet could not be read again it offers "Tentar de novo".

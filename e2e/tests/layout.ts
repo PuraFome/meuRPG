@@ -40,13 +40,15 @@ import { expect, type Page } from '@playwright/test';
 //    (`data-chip-row`), within 2px; a chip on the second line, under the name, has no capitals to line up with.
 // 12. A name marked `data-chip-ref` in a `data-one-line` row does not end in an ellipsis while its own line has room:
 //    the space between two items of the name's line, or after the last one, is at most 4px beyond the box's own gap.
+// 13. A line marked `data-chip-legend` wraps by whole items: each item (a chip and its words) is one line tall, and none
+//    reaches past the legend's box, so a word never drops away from its chip and no item is cut.
 //
 // None of these asks for things to be centred in general: a button's own
 // line is centred because a button is a fixed-height control, and an icon
 // lines up with its own words. Everything else follows the approved design.
 
 export interface LayoutIssue {
-  kind: 'icon-text' | 'one-line' | 'unequal-width' | 'chip-baseline' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch' | 'cut' | 'name-cut-with-room';
+  kind: 'icon-text' | 'one-line' | 'unequal-width' | 'chip-baseline' | 'chip-alone' | 'head-baseline' | 'off-centre' | 'overlap' | 'tile' | 'outside-card' | 'label-touch' | 'cut' | 'name-cut-with-room' | 'legend-broken';
   where: string;
   detail: string;
 }
@@ -428,6 +430,24 @@ function auditLayout(): LayoutIssue[] {
         where: describeEl(row),
         detail: `the name "${cut.textContent!.trim().slice(0, 30)}" is cut with an ellipsis while its row has ${free.toFixed(1)}px free (at most 4px)`,
       });
+    }
+  }
+
+  // 13. A chip legend wraps by whole items.
+  for (const legend of document.querySelectorAll('[data-chip-legend]')) {
+    if (!visible(legend)) continue;
+    const box = legend.getBoundingClientRect();
+    for (const item of legend.children) {
+      const r = item.getBoundingClientRect();
+      const chip = item.querySelector('.legend__chip, .bonus-chip, [data-legend-chip]');
+      const oneLine = chip ? chip.getBoundingClientRect().height + 4 : 28;
+      if (r.height > oneLine || r.right > box.right + 1 || r.left < box.left - 1) {
+        issues.push({
+          kind: 'legend-broken',
+          where: describeEl(item),
+          detail: `the legend's item is ${r.height.toFixed(1)}px tall (at most ${oneLine.toFixed(1)}px) and spans ${r.left.toFixed(1)}-${r.right.toFixed(1)}px in a legend that spans ${box.left.toFixed(1)}-${box.right.toFixed(1)}px: a legend wraps by whole items`,
+        });
+      }
     }
   }
 

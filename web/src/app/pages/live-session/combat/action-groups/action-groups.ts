@@ -67,6 +67,7 @@ import { standUpRow } from '../../../../core/combat/stand-up';
 import { type ListedDie, maneuverLine } from '../../../../core/effects/roll-die';
 import type { GearFlow } from '../../../../core/combat/gear-flow';
 import { GearFold } from './gear-fold';
+import { AttackLegend } from './attack-legend';
 import { Fold } from '../../../../shared/fold/fold';
 import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
@@ -102,6 +103,7 @@ import { offersWeaponAttack } from './weapon-offer';
   imports: [
     EconomyShapes,
     ActionRow,
+    AttackLegend,
     Fold,
     GearFold,
     GroupState,

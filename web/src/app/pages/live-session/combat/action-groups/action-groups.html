@@ -134,6 +134,7 @@
         <app-gear-fold [flow]="flow" [own]="own()" [extra]="extraAction()" [locked]="locked()" />
         }
       }
+      <app-attack-legend [parts]="attackParts()" [flow]="beast() ? null : gearFlow()" />
     </div>
 
     @if (hasSpells()) {

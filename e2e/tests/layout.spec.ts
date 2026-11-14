@@ -83,3 +83,15 @@ test('o nome de um modificador de itens fica com 96px ao lado do alvo, que desce
   expect(short.y, 'the target stays beside the name').toBeLessThan(shortName.y + shortName.height);
   await expectAligned(page, 'Modificador, o alvo ao lado do nome');
 });
+
+test('a legenda dos chips quebra por itens inteiros: uma palavra solta do seu chip é achado das conferências de layout', async ({ page }) => {
+  const legend = (itemWidth: string) => `
+    <ul class="legend" data-chip-legend style="display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0; padding: 0; list-style: none; width: 300px; font-size: 14px">
+      <li style="display: inline-flex; align-items: center; gap: 8px"><span class="chip legend__chip"></span>Prateada</li>
+      <li style="display: inline-flex; align-items: center; gap: 8px; ${itemWidth}"><span class="chip legend__chip"></span>Bônus mágico, já somado</li>
+    </ul>`;
+  await page.setContent(`<style>${css}</style>${legend('')}`);
+  await expectAligned(page, 'Legenda dos chips, itens inteiros');
+  await page.setContent(`<style>${css}</style>${legend('width: 90px')}`);
+  expect((await layoutIssues(page, 'Legenda quebrada')).join('\n')).toMatch(/legend-broken .*a legend wraps by whole items/);
+});

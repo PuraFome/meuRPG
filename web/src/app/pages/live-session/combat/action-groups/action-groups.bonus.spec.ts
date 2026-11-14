@@ -129,4 +129,64 @@ describe('ActionGroups: the magic bonus chip on an attack row', () => {
     expect(head.querySelector('app-bonus-chip')!.hasAttribute('data-chip')).toBe(true);
     expect(head.querySelectorAll('.weapon-tags__chip[data-chip]')).toHaveLength(1);
   });
+
+  describe('the legend under the tab', () => {
+    let host: HTMLElement;
+    const legendOf = () => host.querySelector('app-chip-legend ul');
+    const render = async (opts: ReturnType<typeof attack>[], gear: GearVm[] | null = null) => {
+      const els = await rows(opts, gear);
+      host = els[0]?.closest('app-action-groups') ?? document.body;
+      return els;
+    };
+    const items = () =>
+      Array.from(legendOf()?.querySelectorAll('li') ?? []).map((li) =>
+        (li.textContent ?? '')
+          .replace(/auto_awesome|dark_mode|diamond|\+\d/g, '')
+          .replace(/\s+/g, ' ')
+          .trim(),
+      );
+
+    it('is not drawn when no row carries a mark or a +N', async () => {
+      await render([attack()]);
+      expect(legendOf()).toBeNull();
+    });
+
+    it('lists what the rows show, in the sheet legend order: the mark, then the bonus words', async () => {
+      await render([attack({ silvered: true, magical: true, magicBonus: 1 })]);
+      expect(items()).toEqual(['Prateada', 'Bônus mágico, já somado']);
+    });
+
+    it('lists "Mágica" only for a weapon whose +N does not take its place', async () => {
+      await render([attack({ magical: true })]);
+      expect(items()).toEqual(['Mágica']);
+    });
+
+    it('adds what the fold draws: a carried weapon with its bonus dashed', async () => {
+      await render(
+        [attack()],
+        [
+          {
+            ...sword,
+            equipped: false,
+            bonus: 1,
+            bonusCounts: false,
+            marks: { silvered: false, adamantine: true, magical: false },
+          },
+        ],
+      );
+      expect(items()).toEqual(['Adamantina', 'Bônus mágico, não conta agora']);
+    });
+
+    it('is hidden from a screen reader, which already hears each chip', async () => {
+      await render([attack({ magicBonus: 1 })]);
+      expect(legendOf()!.getAttribute('aria-hidden')).toBe('true');
+      expect(legendOf()!.hasAttribute('aria-label')).toBe(false);
+    });
+
+    it('is the last thing in the "Ataques" panel, after the fold', async () => {
+      await render([attack({ magicBonus: 1 })], [sword]);
+      const panel = host.querySelector('[role="tabpanel"]')!;
+      expect(panel.lastElementChild!.tagName.toLowerCase()).toBe('app-attack-legend');
+    });
+  });
 });
