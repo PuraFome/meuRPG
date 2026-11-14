@@ -600,6 +600,10 @@ func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
 	if err := s.syncCreatures(ctx, c); err != nil {
 		return err
 	}
+	// A mount at 0 hit points under its rider asks the rider for its dismount.
+	if err := s.openDefeatedMounts(ctx, c); err != nil {
+		return err
+	}
 	// The offers nobody can answer any more stop holding the mover's turn.
 	if err := s.pruneOffers(ctx, c); err != nil {
 		return err

@@ -325,6 +325,8 @@ func (s *Service) kindTriggerGone(ctx context.Context, c *combatTx, w playdb.Rea
 		return concentrationGone(w, t, byID), true, nil
 	case reaction.MountSave:
 		return mountSaveGone(w, t, byID), true, nil
+	case reaction.Dismount:
+		return dismountGone(w, t, byID), true, nil
 	case reaction.FeatherFall, reaction.SlowFall:
 		gone, err = fallGone(ctx, c, t)
 		return gone, true, err
@@ -506,6 +508,9 @@ func (s *Service) closeInvalidWindows(ctx context.Context, c *combatTx, st settl
 		}
 		if reason, closes := reaction.Closure(reaction.Kind(w.Kind), f); closes {
 			if _, err := s.closeWindow(ctx, c, w, windowClosed, reason, windowOutcome{}, c.lastAnswered); err != nil {
+				return false, err
+			}
+			if err := s.fallWithWindow(ctx, c, w, f, st.byID); err != nil {
 				return false, err
 			}
 			changed = true

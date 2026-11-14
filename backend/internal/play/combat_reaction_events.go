@@ -103,6 +103,7 @@ var reactionNames = map[reaction.Kind]string{
 	reaction.SlowFall:            "Queda Lenta",
 	reaction.Concentration:       "Teste de concentração",
 	reaction.MountSave:           "Teste para ficar na montaria",
+	reaction.Dismount:            "Desmontar de pé",
 	reaction.MasterCheck:         "Verificação do mestre",
 	reaction.LegendaryResistance: "Resistência Lendária",
 	reaction.ParryKind:           "Aparar",

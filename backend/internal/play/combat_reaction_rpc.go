@@ -322,6 +322,8 @@ func (s *Service) answerMore(ctx context.Context, c *combatTx, m authz.Membershi
 		return s.answerFeatherFall(ctx, c, w, reactor, use, req, got)
 	case reaction.SlowFall:
 		return s.answerSlowFall(ctx, c, w, reactor, use, got)
+	case reaction.Dismount:
+		return s.answerDismount(ctx, c, w, reactor, use, got)
 	}
 	return connect.NewError(connect.CodeUnimplemented, fmt.Errorf("the reaction %s is not built yet", w.Kind))
 }

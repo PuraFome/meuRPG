@@ -37,6 +37,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.EffectSave:          playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
 	reaction.LegendaryResistance: playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE,
 	reaction.ParryKind:           playv1.ReactionKind_REACTION_KIND_PARRY,
+	reaction.Dismount:            playv1.ReactionKind_REACTION_KIND_DISMOUNT,
 }
 
 // reactionKindOf is the kind of a reaction a combatant spent, as it is recorded: a window's key or "opportunity";
@@ -136,7 +137,7 @@ func (wv *windowView) openWindows(open []playdb.ReactionWindow, line *waitLine) 
 // part in the line the caller reads.
 func (wv *windowView) openOne(w playdb.ReactionWindow, order []reaction.Window, line *waitLine) (*playv1.ReactionWindow, error) {
 	reactor := wv.reactorOf(w)
-	answers := wv.v.master || (reactor != nil && wv.v.owns(*reactor))
+	answers := wv.v.master || (reactor != nil && wv.v.owns(*reactor) && !(reaction.Kind(w.Kind) == reaction.Dismount && isCreature(*reactor))) // a creature's reaction is the master's
 	now := reaction.AnswerNow(order, w.ID)
 	var pw *playv1.ReactionWindow
 	if answers && reaction.Kind(w.Kind) != reaction.MountSave && wv.shownNow(w, now) { // a rider's save reads as Encounter.mount_save
@@ -257,6 +258,8 @@ func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		wv.effectSaveWait(w, reactor, answers, wait)
 	case reaction.MountSave:
 		wv.mountSaveWait(w, reactor, answers, wait)
+	case reaction.Dismount:
+		wv.dismountWait(w, reactor, answers, wait)
 	default:
 		wv.reactionWait(reaction.Kind(w.Kind) == reaction.Concentration, reactor, answers, wait)
 	}

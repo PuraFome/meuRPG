@@ -148,7 +148,7 @@ func TestMountedCombat_ARiderWithNoReactionFallsAtOnce(t *testing.T) {
 func TestMountedCombat_AProneMountOpensTheDismountWindow(t *testing.T) {
 	t.Parallel()
 	c := riddenCave(t)
-	c.execSQL(t, `UPDATE combatants SET conditions = ARRAY['prone'] WHERE id = $1`, c.id(t, "Ogro"))
+	c.execSQL(t, `UPDATE combatants SET conditions = ARRAY['condition:prone'] WHERE id = $1`, c.id(t, "Ogro"))
 	c.askDismount(t, "Toren", mountCauseMountProne)
 	if c.windowOf(t, c.caio, reactionDismount) == nil {
 		t.Fatal("Toren's player reads no dismount window")

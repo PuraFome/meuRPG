@@ -52,10 +52,13 @@ func mountCauseKey(cause playv1.MountSaveCause) string {
 
 // mountCauseOf is the cause a stored word says.
 func mountCauseOf(key string) playv1.MountSaveCause {
-	if key == mountCauseProne {
+	switch key {
+	case mountCauseProne:
 		return playv1.MountSaveCause_MOUNT_SAVE_CAUSE_PRONE
+	case mountCausePushed:
+		return playv1.MountSaveCause_MOUNT_SAVE_CAUSE_PUSHED
 	}
-	return playv1.MountSaveCause_MOUNT_SAVE_CAUSE_PUSHED
+	return playv1.MountSaveCause_MOUNT_SAVE_CAUSE_UNSPECIFIED // the fall of a dismount: no save was asked
 }
 
 // openMountSave opens the save of a rider that sits on the mount, unless it owes one already (one pending save for each rider, whatever
@@ -120,7 +123,10 @@ func (s *Service) riderProne(ctx context.Context, c *combatTx, riderID string) e
 		return err
 	}
 	rider, ok := combatantByID(cs, riderID)
-	if !ok || rider.MountedOnID == nil {
+	if ok && rider.MountedOnID == nil { // the combatant knocked prone may be the mount: its rider owes a dismount
+		return s.mountKnockedProne(ctx, c, cs, rider)
+	}
+	if !ok {
 		return nil
 	}
 	mount := ridingOn(cs, rider)

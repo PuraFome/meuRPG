@@ -333,6 +333,12 @@ func recordMountRoll(ev *actionEvent, gate gateResult, bonus, delta int) bool {
 // throwRider is the fall of a rider that failed its save: Prone (unless it is immune), on the square landingOf picks, off the mount,
 // which gets its own initiative back. The line of the fall is written before the save's own event.
 func (s *Service) throwRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, ev *actionEvent, run *mountSaveRun) error {
+	return s.dropRiderOf(ctx, c, rider, mount, ev, run, true)
+}
+
+// dropRiderOf takes the rider off the mount, on the square landingOf picks. A rider that falls is prone (unless it is immune) and has
+// the line of a thrown rider; one that lands on its feet (prone false) has neither.
+func (s *Service) dropRiderOf(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, ev *actionEvent, run *mountSaveRun, prone bool) error {
 	cs, err := listCombatants(ctx, c)
 	if err != nil {
 		return err
@@ -357,7 +363,7 @@ func (s *Service) throwRider(ctx context.Context, c *combatTx, rider, mount play
 	after.MountedOnID, after.GridCol, after.GridRow, after.CoverMark = nil, &col, &row, cover
 	if immune, err := c.immuneToCondition(ctx, rider, condProne); err != nil {
 		return err
-	} else if !immune && !slices.Contains(rider.Conditions, condProne) && len(rider.Conditions) < maxConditions {
+	} else if prone && !immune && !slices.Contains(rider.Conditions, condProne) && len(rider.Conditions) < maxConditions {
 		after.Conditions = withCondition(rider.Conditions, condProne)
 		if err := setConditionsOf(ctx, c, rider, after.Conditions); err != nil {
 			return err
@@ -368,9 +374,11 @@ func (s *Service) throwRider(ctx context.Context, c *combatTx, rider, mount play
 	if err := settleMounts(ctx, c); err != nil {
 		return err
 	}
-	thrown := *ev
-	if err := insertEvent(ctx, c, eventRiderThrown, &c.actorUserID, nil, thrown); err != nil {
-		return err
+	if prone {
+		thrown := *ev
+		if err := insertEvent(ctx, c, eventRiderThrown, &c.actorUserID, nil, thrown); err != nil {
+			return err
+		}
 	}
 	run.fell, run.from = &after, &from
 	return nil

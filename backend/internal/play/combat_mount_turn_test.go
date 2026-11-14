@@ -89,11 +89,13 @@ func TestMountedCombat_ADefeatedMountDoesNotHoldTheTurn(t *testing.T) {
 	if current(e) != "Pensantus" {
 		t.Errorf("after Toren's part the turn is %q's, want Pensantus's: the defeated mount holds nothing", current(e))
 	}
-	c.passTo(t, e, "Toren")
-	c.freeTheRide(t, "Toren")
-	if _, err := c.dismountAs(t, c.caio, "Toren", 6, 7); err != nil {
-		t.Fatalf("DismountCombatant() of a defeated mount error = %v", err)
+	// The defeated mount asks Toren for his dismount: it is his reaction, and it holds the turn as any reaction does.
+	w := c.windowOf(t, c.caio, reactionDismount)
+	if w == nil {
+		t.Fatal("Toren reads no dismount window for the defeated mount")
 	}
+	c.mustAnswer(t, c.caio, e, w.GetId(), useAnswer(0))
+	c.passTo(t, c.get(t, c.master), "Toren")
 	if got := c.orderNow(t); !slices.Equal(got, base) {
 		t.Errorf("order after getting off a defeated mount = %v, want %v", got, base)
 	}
