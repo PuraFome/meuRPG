@@ -321,6 +321,20 @@ The master alone reads what the row holds, as it reads the combatant's (RN-20, R
 ## `spell_zones`
 
 `spell_zones` are the areas spells keep on the map while they last (RN-37): Spirit Guardians, Moonbeam, Cloudkill, Web, Grease, Entangle, Fog Cloud, Darkness, Stinking Cloud, Silence, Spike Growth and Wall of Fire.
+A row belongs to the combat (`encounter_id`) and to its caster (`owner_id`), and goes away with either.
+`spell_key` and `cast_id` (the id of the cast that made it, which the undo of the cast finds it by); `slot_level`; `origin_col`, `origin_row` and `squares` (JSON, `[[col,row],...]`, at most 4,096: where it stands now, after the walls cut it).
+The limit is 4,096 because Fog Cloud cast with a 9th-level slot is a sphere of 180 feet of radius, 4,053 squares (migration 00296).
+The cast keeps what a trigger needs, so none reads the caster's sheet: `save_ability`, `save_dc`, `damage_dice` (at the slot level, such as `3d8`) and `damage_type` (the one the caster picked).
+A wall (Wall of Fire) keeps how it was laid: `wall_side` (`left`, `right`, `inner`, `outer`, or empty for a zone that is no wall), `wall_dx` and `wall_dy` (the way a straight wall runs, each -1, 0 or 1; 0 for a ring) and `wall_length_ft` (the length or the ring's diameter, a multiple of 5 up to 60; 0 for a zone that is no wall), so the squares the damage reaches are worked out again from them (migration 00311).
+`concentration` says the owner's concentration holds the zone; `started_round` and `ends_round` (the round whose start of the owner's turn ends it; `NULL` for one with no time).
+`hit_marks` is JSON, `{combatant id: "<round>:<first combatant of the turn>"}`: the turn each creature was last caught on, so that a zone catches a creature once on a turn.
+A catch at the cast adds `:cast` to the mark and one at the end of a turn adds `:end`, so each kind of catch asks once.
+`def` is JSON, `{shape, size_ft, placement, movement, save, on_enter, on_start, corners}`: the definition of a zone the table's own spell keeps, kept at cast time (migration 00268); `NULL` for the SRD's twelve, whose definition is the code's.
+A zone is not a lasting effect: it has no single target, it carries squares, and its clock and its end are three places in the code ([Spell zones](../architecture/play/spell-zones.md)).
+
+## `readied_actions`
+
+`readied_actions` are the actions combatants readied (SRD 5.1, "Ready"; migration 00334).
 A row belongs to the combat (`encounter_id`) and to the readier (`combatant_id`), and goes away with either.
 The end of the combat deletes the rows.
 `round` is when it was readied, and `trigger_text` the player's own words, 1 to 200 characters.
