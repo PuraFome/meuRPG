@@ -944,3 +944,11 @@ VALUES (sqlc.arg(campaign_id)::UUID, sqlc.arg(content_key), sqlc.arg(kind), sqlc
 -- players until one claims it, MR-049), with the id chosen before.
 INSERT INTO characters (id, campaign_id, kind, status, name, sheet, story, reserved, created_at, updated_at)
 VALUES (sqlc.arg(id), sqlc.arg(campaign_id)::UUID, 'player', 'active', sqlc.arg(name), sqlc.arg(sheet), sqlc.arg(story), true, sqlc.arg(now), sqlc.arg(now));
+
+-- name: SetRestState :exec
+-- A rest ended what the sheet's daily picks and short-rest proficiencies last until (#580): the whole list of picks and the
+-- "short rest taken" flag are written into the stored sheet, and the revision goes up so a stale editor is told.
+UPDATE characters
+SET sheet = jsonb_set(jsonb_set(sheet, '{full,daily_picks}', sqlc.arg(picks)::JSONB), '{full,short_rested}', sqlc.arg(short_rested)::JSONB),
+    revision = revision + 1, updated_at = sqlc.arg(now)
+WHERE id = sqlc.arg(id) AND sheet ? 'full';

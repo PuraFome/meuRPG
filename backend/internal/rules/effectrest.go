@@ -23,6 +23,8 @@ func checkRestFields(site effectSite, e *Effect) error {
 		return site.fail(".daily_choice", ReasonValue, "a daily choice is a choice of a skill or a tool")
 	case e.DailyChoice && e.Duration != DurationShortRest && e.Duration != DurationLongRest:
 		return site.fail(".duration", ReasonValue, "%s", dailyChoiceRefusal)
+	case e.DailyChoice && e.Count > 1:
+		return site.fail(".count", ReasonValue, "a daily choice picks one")
 	case e.Duration == "" || e.DailyChoice:
 		return nil
 	case e.Type == "proficiency" && e.Duration == DurationShortRest:
