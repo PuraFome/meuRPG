@@ -72,7 +72,7 @@ func TestMountSaveMigration(t *testing.T) {
 		if version() != 1 {
 			t.Fatalf("round %d: 00339 is not applied", round)
 		}
-		for _, k := range []string{"mount_save", "dismount"} {
+		for _, k := range []string{"mount_save", "dismount", "readied"} { // readied came with 00334: widening must keep it
 			if err := window(k); err != nil {
 				t.Errorf("round %d: window of kind %s after Up = %v", round, k, err)
 			}
