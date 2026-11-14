@@ -140,6 +140,8 @@
     height: 18px;
     margin-top: 1px;
     font-size: var(--mr-font-18);
+    // The glyph is drawn on the diagonal; the boards draw the dumbbell flat.
+    transform: rotate(-45deg);
   }
 }
 
