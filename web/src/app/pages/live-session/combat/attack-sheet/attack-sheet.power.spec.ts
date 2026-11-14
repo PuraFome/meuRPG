@@ -442,6 +442,23 @@ describe('AttackSheet: the power attack trade ("Troca do talento")', () => {
       expect(s.el.querySelector<HTMLInputElement>('app-roll-die-offer input')!.checked).toBe(true);
     });
 
+    it('says on both cards of a shared pool with one use what they spend and what is left (586-05 #4)', () => {
+      const pooled = create(PowerAttackOptionSchema, {
+        ...heavy,
+        resourceNamePt: 'Reserva de Golpes',
+        usesLeft: 1,
+      });
+      const s = setup({ trades: [pooled], dice: [certeiro] });
+      const die = plain(s.el.querySelector('app-roll-die-offer')?.textContent);
+      expect(die).toContain('Usar Golpe Certeiro');
+      expect(die).toContain('d8 somado ao ataque · gasta 1 de Reserva de Golpes · resta 1');
+      const trade = plain(s.el.querySelector('app-power-trade-offer')?.textContent);
+      expect(trade).toContain(
+        '−5 no ataque, +10 no dano se acertar · gasta 1 de Reserva de Golpes',
+      );
+      expect(trade).not.toContain('resta');
+    });
+
     it('names the pool and the uses the trade lists when the die names none (586-05 #4)', async () => {
       api.rollAttack.mockRejectedValue(noUses());
       const pooled = create(PowerAttackOptionSchema, {
