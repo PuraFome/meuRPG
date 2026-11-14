@@ -92,17 +92,20 @@ The attack's pinned request keeps `spend_favor`, so a retry that changes it is a
 
 ## A reaction window
 
-A window that holds an attack or a cast checks the spend without making it: the row stays, and a refusal drops the hold.
+A window that would hold an attack or a cast checks the spend without making it: the row stays.
+A spend the replay would refuse (no Inspiration, nothing to add, a worse `roll_mode`) is refused at hold time: the call errors and nothing is held.
 The replay is the real roll and spends the row.
-A replay whose Inspiration is gone fails with a client error, the attack is dropped and nothing is spent.
-The same holds for a replay whose sources changed so that the Inspiration adds nothing.
+A replay whose Inspiration is gone, or whose sources changed so that it adds nothing, fails with a client error: the attack is dropped and nothing is spent.
+The typed faces are checked only at the replay.
 
 ## The log and the undo
 
 The log entry of a roll made with the Inspiration carries `favor_text_pt`: "<name> usou a Inspiração."
 The master and the roller's own player read it; another player and someone outside the campaign read the roll as any other.
-The undo of an attack or a cast puts the row back, in its own transaction, and the master's undo does not stack: a character that was granted another since keeps the one.
-A concentration save and an effect save are not undoable kinds, so they have no undo.
+A zone's save names the creature that rolled it, not the zone's owner.
+The undo of an attack or a cast puts the row back in the undo's transaction, and the master's undo does not stack: a character that was granted another since keeps the one.
+A concentration save and an effect save are not undoable kinds, so they have no undo, except the save of a zone at its cast: the undo of the cast gives its Inspiration back.
+`keep` and `hand_to_master` on a concentration save, and a skipped effect save, ignore `spend_favor` without refusing it.
 Each roll that spends moves the session's hint number once, as the roll already does, and a refusal moves none.
 
 ## Who hears and who reads

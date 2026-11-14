@@ -5869,7 +5869,7 @@ message CombatLogEntry {
   // ATTACK, SPELL_CAST, REACTION_WINDOW (the concentration save) and EFFECT (the save of an effect): "<name> usou a Inspiração." when
   // the roll was made with the roller's Inspiration. Only the master and the roller's own player get it, like the roll's dice; empty for
   // anyone else and when the roll used none.
-  string favor_text_pt = 119;
+  string favor_text_pt = 129;
   // The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
   // A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
   // sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and

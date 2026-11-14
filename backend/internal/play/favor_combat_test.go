@@ -198,7 +198,6 @@ func TestFavorRefusalsOnACombatRoll(t *testing.T) {
 		name   string
 		setup  func(t *testing.T, f *favorFight, p favorPath)
 		master bool
-		edit   func(any)
 		reason playv1.FavorBlockedReason
 	}
 	refusals := []refusal{
@@ -227,7 +226,7 @@ func TestFavorRefusalsOnACombatRoll(t *testing.T) {
 				}
 				f.h.roller.queue(9, 11)
 				before, rows := f.seq(t), f.rows(t)
-				_, err := p.send(t, f, u, newKey(), true, r.edit)
+				_, err := p.send(t, f, u, newKey(), true, nil)
 				wantFavorBlocked(t, p.name, err, r.reason)
 				if f.rows(t) != rows || f.seq(t) != before {
 					t.Errorf("the refusal left %d rows (had %d) and moved the number from %d to %d", f.rows(t), rows, before, f.seq(t))
@@ -324,9 +323,8 @@ func TestFavorLineOfACombatRoll(t *testing.T) {
 				}
 			}
 			outsider := f.h.newUser("Fora")
-			if _, err := outsider.combat.ListCombatLog(t.Context(), connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: f.campaignID, EncounterId: f.e.GetId()})); err == nil {
-				t.Error("a user outside the campaign read the combat log")
-			}
+			_, err := outsider.combat.ListCombatLog(t.Context(), connect.NewRequest(&playv1.ListCombatLogRequest{CampaignId: f.campaignID, EncounterId: f.e.GetId()}))
+			wantCode(t, "a user outside the campaign reads the combat log", err, connect.CodeNotFound)
 		})
 	}
 }
@@ -500,6 +498,9 @@ func TestFavorGoneAtTheReplayDropsTheAction(t *testing.T) {
 				}
 				states = append(states, st)
 			}
+			if err := rows.Err(); err != nil {
+				t.Fatalf("read the holds: %v", err)
+			}
 			if len(states) != 1 || states[0] != "dropped" {
 				t.Errorf("the holds are %v, want the one dropped", states)
 			}
@@ -656,13 +657,13 @@ func TestFavorOnACombatSave(t *testing.T) {
 				key := newKey()
 				f.h.roller.queue(4, 20)
 				first, err := p.send(t, f, w, u, key, true)
-				if err != nil {
-					t.Fatalf("the spend error = %v", err)
+				if err != nil || f.favorHolds(t) {
+					t.Fatalf("the spend error = %v (Inspiration there %v), want it spent", err, f.favorHolds(t))
 				}
 				f.give(t, who)
 				before := f.seq(t)
 				again, err := p.send(t, f, w, u, key, true)
-				if err != nil || len(first.faces) != 2 || !f.favorHolds(t) || f.seq(t) != before {
+				if err != nil || len(first.faces) != 2 || len(again.faces) > 0 && again.faces[0] != first.faces[0] || !f.favorHolds(t) || f.seq(t) != before {
 					t.Errorf("the retry = %+v, %v (Inspiration there %v, number %d -> %d), want a settled save and nothing spent", again, err, f.favorHolds(t), before, f.seq(t))
 				}
 			})
@@ -723,5 +724,139 @@ func TestFavorOnASaveWithAdvantageAddsNothing(t *testing.T) {
 	wantFavorBlocked(t, "the spend with advantage", err, playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_ADDS_NOTHING)
 	if !f.favorHolds(t) || f.seq(t) != before {
 		t.Errorf("the refusal left the Inspiration there = %v, the number %d -> %d, want it there and no step", f.favorHolds(t), before, f.seq(t))
+	}
+}
+
+// A spend on a roll with no source gives advantage: two dice, the source, the row gone, the event and one step.
+func TestFavorSpendMakesAnAdvantage(t *testing.T) {
+	t.Parallel()
+	for _, p := range favorPaths {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFavorFight(t)
+			p.ready(t, f)
+			u, who := p.roller(f)
+			f.give(t, who)
+			f.h.roller.queue(4, 17)
+			before := f.seq(t)
+			got, err := p.send(t, f, u, newKey(), true, nil)
+			if err != nil || len(got.faces) != 2 || got.mode != playv1.RollMode_ROLL_MODE_ADVANTAGE || !got.hasFavorSource() {
+				t.Fatalf("the spend = %+v, %v, want two dice, an advantage and the source", got, err)
+			}
+			if f.favorHolds(t) || f.eventFavor(t, p.kind) != "true" || f.seq(t) != before+1 {
+				t.Errorf("the Inspiration is there = %v, the event says %q, the number went %d -> %d, want it spent, said and one step", f.favorHolds(t), f.eventFavor(t, p.kind), before, f.seq(t))
+			}
+		})
+	}
+}
+
+// A window that would hold the roll refuses at once a spend its replay would refuse (a worse roll_mode than the spend gives): nothing
+// is held and the Inspiration stays.
+func TestFavorWorseModeIsRefusedAtTheHold(t *testing.T) {
+	t.Parallel()
+	for _, p := range favorPaths {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFavorFight(t)
+			f.setRules(t, enemyReactionsAlways)
+			p.ready(t, f)
+			u, who := p.roller(f)
+			f.give(t, who)
+			_, err := p.send(t, f, u, newKey(), true, func(r any) { setRollMode(r, playv1.RollMode_ROLL_MODE_NORMAL, "sem pressa") })
+			wantCode(t, "a spend with a worse roll_mode at the hold", err, connect.CodeInvalidArgument)
+			if !f.favorHolds(t) || f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK) != nil {
+				t.Errorf("the refusal left the Inspiration = %v and a window = %v, want it there and nothing held", f.favorHolds(t), f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK))
+			}
+		})
+	}
+}
+
+// A replay whose sources changed so that the Inspiration adds nothing is refused as the spend would be: the action is dropped.
+func TestFavorThatAddsNothingAtTheReplayDropsTheAction(t *testing.T) {
+	t.Parallel()
+	for _, p := range favorPaths {
+		t.Run(p.name, func(t *testing.T) {
+			t.Parallel()
+			f := newFavorFight(t)
+			f.setRules(t, enemyReactionsAlways)
+			p.ready(t, f)
+			u, who := p.roller(f)
+			f.give(t, who)
+			if held, err := p.send(t, f, u, newKey(), true, nil); err != nil || !held.heldByWindow {
+				t.Fatalf("the spend on a roll a window holds = %+v, %v, want it held", held, err)
+			}
+			f.setConditions(t, f.e, "Goblin", "condition:restrained") // an advantage of its own meanwhile
+			w := f.windowOf(t, f.master, playv1.ReactionKind_REACTION_KIND_MASTER_CHECK)
+			f.mustAnswer(t, f.master, f.e, w.GetId(), passAnswer)
+			if !f.favorHolds(t) || f.eventFavor(t, p.kind) == "true" || f.eventCount(t, p.kind) != 1 {
+				t.Errorf("the Inspiration is there = %v, the roll says %q and the events are %d, want it kept and only the hold written", f.favorHolds(t), f.eventFavor(t, p.kind), f.eventCount(t, p.kind))
+			}
+		})
+	}
+}
+
+// With physical dice a cast under a spend takes the pair of faces: one face is refused with the Inspiration left.
+func TestFavorTypedFacesOnACast(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.e = f.passTo(t, f.e, "Brisa")
+	f.setPhysical(t, f.bia)
+	f.give(t, f.bri)
+	typed := func(faces ...int32) func(*playv1.CastSpellRequest) {
+		return func(r *playv1.CastSpellRequest) {
+			r.Roll, r.D20Faces, r.SpendFavor = nil, faces, true
+		}
+	}
+	_, err := f.castKey(t, f.bia, f.e, "Brisa", guidingBolt, slotOfLevel(1), f.at(t, "Goblin"), typed(10), newKey())
+	wantCode(t, "one face under a spend", err, connect.CodeInvalidArgument)
+	if !f.favorHolds(t) {
+		t.Fatal("the refusal took the Inspiration")
+	}
+	res, err := f.castKey(t, f.bia, f.e, "Brisa", guidingBolt, slotOfLevel(1), f.at(t, "Goblin"), typed(10, 15), newKey())
+	got := castRolledOf(res)
+	if err != nil || len(got.faces) != 2 || got.mode != playv1.RollMode_ROLL_MODE_ADVANTAGE || f.favorHolds(t) {
+		t.Errorf("the pair under a spend = %+v, %v (Inspiration there %v), want the advantage written and the Inspiration spent", got, err, f.favorHolds(t))
+	}
+}
+
+// A player's character that rolls the save of a zone at the cast spends the Inspiration there: the line names the roller, not the
+// zone's owner, for the master and for the roller's own player only, and the undo of the cast gives the row back.
+func TestFavorOnTheSaveOfAZoneAtTheCast(t *testing.T) {
+	t.Parallel()
+	c := wallCave(t)
+	c.wallFight(t)
+	e := c.get(t, c.master)
+	f := favorFightOf(t, c.armed, e)
+	c.mustCastArea(t, c.ana, "Pensantus", wallOfFireKey, slotOfLevel(4), at(5, 8), nil, northWall(playv1.WallSide_WALL_SIDE_LEFT))
+	w := c.windowOf(t, c.caio, playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE)
+	if w == nil {
+		t.Fatal("Toren's player has no question: the wall caught his character at the cast")
+	}
+	f.give(t, c.toren)
+	c.h.roller.queue(4, 4, 4, 4, 4, 4, 4)
+	res, err := c.rollEffectSave(t, c.caio, e, w.GetId(), func(r *playv1.RollEffectSaveRequest) {
+		r.Roll, r.SpendFavor = &playv1.RollEffectSaveRequest_RollInApp{RollInApp: true}, true
+	})
+	if err != nil || len(res.GetResult().GetD20Faces()) != 2 || f.favorHolds(t) || f.eventFavor(t, eventLastingSaved) != "true" {
+		t.Fatalf("the spend on the zone's save = %v, %v (Inspiration there %v), want the pair of dice and the row gone", res.GetResult(), err, f.favorHolds(t))
+	}
+	want := "Toren usou a Inspiração."
+	for name, reader := range map[string]*user{"the master": c.master, "the roller's player": c.caio} {
+		if line := f.lineOf(t, reader, playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT); line == nil || line.GetFavorTextPt() != want {
+			t.Errorf("%s reads %q, want %q", name, line.GetFavorTextPt(), want)
+		}
+	}
+	if line := f.lineOf(t, c.ana, playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT); line != nil && line.GetFavorTextPt() != "" {
+		t.Errorf("another player reads %q, want no line of the Inspiration", line.GetFavorTextPt())
+	}
+	id := f.log(t, f.master, e).GetUndoableEventId()
+	if id == "" {
+		t.Fatal("the cast is not undoable")
+	}
+	if err := f.undo(t, f.master, e, id); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if !f.favorHolds(t) {
+		t.Error("the undo of the cast did not give the Inspiration of the zone's save back")
 	}
 }

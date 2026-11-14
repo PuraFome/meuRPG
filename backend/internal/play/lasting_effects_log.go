@@ -114,7 +114,7 @@ func (s *Service) effectLogView(ctx context.Context, e *logEntry, out *playv1.Co
 	}
 	effectLogRoll(le, e, v, byID)
 	if le.D20 != nil { // the Inspiration is told with the roll's dice: to the master and the roller's own player
-		out.FavorTextPt = favorLine(e.ev, v, byID[e.ev.Actor])
+		out.FavorTextPt = favorLine(e.ev, v, byID[saveReactorID(e.ev, l)])
 	}
 	if v.master && e.ev.Resisted {
 		le.Resisted, le.ResistedLeft = true, e.ev.ResistLeft
@@ -148,4 +148,13 @@ func effectLogRoll(le *playv1.CombatLogEffect, e *logEntry, v combatViewer, byID
 		dc := l.DC
 		le.Dc = &dc
 	}
+}
+
+// saveReactorID is the combatant that rolled the saving throw of a lasting-effect line: the effect's one target. A zone's save has the
+// zone's owner as the actor, so the actor is the roller only when the line names no one else.
+func saveReactorID(ev actionEvent, l *lastingEvent) string {
+	if len(l.Targets) == 1 {
+		return l.Targets[0]
+	}
+	return ev.Actor
 }

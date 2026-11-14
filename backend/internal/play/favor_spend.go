@@ -49,6 +49,8 @@ type favorUse struct {
 	Used bool
 	// Spent says it was spent in this call, so a hold the roll makes must remember it (favor_spent).
 	Spent bool
+	// Checked says the call only validated a spend a reaction window will make at its replay: nothing was taken.
+	Checked bool
 }
 
 // favorMode is the mode a roll has once the Inspiration counts.
@@ -161,7 +163,7 @@ func checkFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 	if !has {
 		return favorUse{}, favorBlocked(playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_HAS_NONE, "the character has no inspiration")
 	}
-	return favorUse{Mode: favorMode(a.Sources)}, nil
+	return favorUse{Mode: favorMode(a.Sources), Checked: true}, nil
 }
 
 // favorAgainst refuses a request that spends the Inspiration and asks for a mode worse than the one it gives (the roll
@@ -169,7 +171,7 @@ func checkFavor(ctx context.Context, q *playdb.Queries, a favorAsk) (favorUse, e
 // decision (requestID) is the master's to settle.
 func favorAgainst(fv favorUse, want playv1.RollMode, requestID string) error {
 	asked, ok := modeFromProto(want)
-	if !fv.Spent || !ok || requestID != "" || !fv.Mode.Better(asked) {
+	if (!fv.Spent && !fv.Checked) || !ok || requestID != "" || !fv.Mode.Better(asked) {
 		return nil
 	}
 	return connect.NewError(connect.CodeInvalidArgument, errors.New("spend_favor gives a better mode than the roll_mode asked: leave the Inspiration for another roll"))

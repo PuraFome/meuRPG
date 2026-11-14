@@ -663,8 +663,11 @@ func (f *attackFlow) checkFavor(ctx context.Context) error {
 	}
 	a := f.favorAsk()
 	a.Check = true
-	_, err := f.s.useFavor(ctx, combatGate(f.c), a)
-	return err
+	fv, err := f.s.useFavor(ctx, combatGate(f.c), a)
+	if err != nil {
+		return err
+	}
+	return favorAgainst(fv, f.req.GetRollMode(), f.req.GetRollModeRequestId())
 }
 
 // resolve is what the roll did against the target's armor class (with the +5 of an active Escudo and the

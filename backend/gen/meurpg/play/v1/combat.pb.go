@@ -19698,7 +19698,7 @@ type CombatLogEntry struct {
 	// ATTACK, SPELL_CAST, REACTION_WINDOW (the concentration save) and EFFECT (the save of an effect): "<name> usou a Inspiração." when
 	// the roll was made with the roller's Inspiration. Only the master and the roller's own player get it, like the roll's dice; empty for
 	// anyone else and when the roll used none.
-	FavorTextPt string `protobuf:"bytes,119,opt,name=favor_text_pt,json=favorTextPt,proto3" json:"favor_text_pt,omitempty"`
+	FavorTextPt string `protobuf:"bytes,129,opt,name=favor_text_pt,json=favorTextPt,proto3" json:"favor_text_pt,omitempty"`
 	// The master's alone (0 in a player's entries): the highest event number (session_events.seq) among the events the entry shows.
 	// A player's entry carries none because the numbers of the entries a player reads have gaps where an event they may not see
 	// sits. A later event that joins the entry (the damage of an attack) raises it, so the entry comes again after a since_seq and
@@ -28870,7 +28870,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\astarted\x18\x03 \x01(\bR\astarted\x12A\n" +
 	"\n" +
 	"end_reason\x18\x04 \x01(\x0e2\".meurpg.play.v1.WildShapeEndReasonR\tendReason\x12%\n" +
-	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\x92\x17\n" +
+	"\x0ecarried_damage\x18\x05 \x01(\x05R\rcarriedDamage\"\x93\x17\n" +
 	"\x0eCombatLogEntry\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x121\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x1d.meurpg.play.v1.CombatLogKindR\x04kind\x12*\n" +
@@ -28945,8 +28945,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x0flegendary_spent\x18r \x01(\v2'.meurpg.play.v1.CombatLogLegendarySpentR\x0elegendarySpent\x12=\n" +
 	"\brecharge\x18s \x01(\v2!.meurpg.play.v1.CombatLogRechargeR\brecharge\x12G\n" +
 	"\fgear_swapped\x18u \x01(\v2$.meurpg.play.v1.CombatLogGearSwappedR\vgearSwapped\x12G\n" +
-	"\ffeature_used\x18v \x01(\v2$.meurpg.play.v1.CombatLogFeatureUsedR\vfeatureUsed\x12\"\n" +
-	"\rfavor_text_pt\x18w \x01(\tR\vfavorTextPt\x12\x10\n" +
+	"\ffeature_used\x18v \x01(\v2$.meurpg.play.v1.CombatLogFeatureUsedR\vfeatureUsed\x12#\n" +
+	"\rfavor_text_pt\x18\x81\x01 \x01(\tR\vfavorTextPt\x12\x10\n" +
 	"\x03seq\x18t \x01(\x03R\x03seqB\x13\n" +
 	"\x11_hit_points_afterB\x15\n" +
 	"\x13_target_armor_class\"\x84\x02\n" +
