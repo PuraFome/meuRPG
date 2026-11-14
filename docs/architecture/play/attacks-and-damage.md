@@ -289,6 +289,7 @@ The caster's player and the master read it true, and so do the other players whe
   The effect is used when the damage is rolled and counted, not when the hit is made (`useHitEffects`, called from `damageFlow.landAll`).
   A `next_hit` or `next_melee_hit` row gets `combatant_states.spent_at` and its id goes in `EffectsSpent` of the damage event; the row stays until its clock ends it.
   Two hits of one turn can both wait for their damage: the effect goes to the earlier attack, whichever damage is rolled first: `liveHitParts` takes the part out of a damage while an earlier attack of the same attacker still waits to roll it (it also drops a part whose effect was used or ended in between).
+  An earlier attack whose damage is never rolled holds the effect until it closes: the master's undo of the attack, the end of the attacker's turn (the master passes it over and the damage is discarded) or the end of the combat, which leaves nothing held for the next one.
   A replay of a held roll never spends it twice.
   `each_hit` and `marked_target` are never spent.
 - **The save.**
