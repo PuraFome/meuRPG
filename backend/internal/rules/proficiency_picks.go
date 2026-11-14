@@ -136,13 +136,14 @@ func (x *deriver) checkProficiencyPicks() {
 		languages += bg.LanguageChoices
 	}
 	for _, a := range x.active {
-		if a.effect.Type == "choice" && a.effect.Choice == "tool" {
+		if a.effect.Type == "choice" && a.effect.Choice == "tool" && !a.effect.DailyChoice {
 			tools += max(a.effect.Count, 1)
 		}
 	}
 	if n := tools - len(x.pickedTools) - len(x.b.ToolProficiencies); n > 0 {
 		x.openProficiencyPick(OpenChoiceTools, n, "ferramenta", "ferramentas")
 	}
+	x.checkBackgroundGroupPicks()
 	if n := languages - len(x.pickedLanguages) - len(x.b.Languages); n > 0 {
 		x.openProficiencyPick(OpenChoiceLanguages, n, "idioma", "idiomas")
 	}

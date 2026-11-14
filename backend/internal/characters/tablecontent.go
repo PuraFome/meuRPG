@@ -252,7 +252,7 @@ func overlayFromEntries(entries []entryRow, revision int) (rules.Overlay, overla
 		case *rulesv1.TableBackground:
 			o.Backgrounds = append(o.Backgrounds, rules.TableBackground{
 				TableEntry: te, Skills: b.GetSkills(), Tools: b.GetTools(), LanguageChoices: int(b.GetLanguageChoices()),
-				EquipmentPT: b.GetEquipmentPt(), Feature: tableFeatureOf(b.GetFeature()),
+				EquipmentPT: b.GetEquipmentPt(), Feature: tableFeatureOf(b.GetFeature()), Groups: backgroundGroupsOf(b.GetGroups()),
 			})
 			idx["backgrounds"] = append(idx["backgrounds"], e)
 		case *rulesv1.TableSpell:
@@ -463,7 +463,7 @@ func tableEffectsOf(in []*rulesv1.TableEffect) []rules.Effect {
 			IgnoreCover: e.GetIgnoreCover(), RangeMultiplier: int(e.GetRangeMultiplier()), NoLongRangeDisadvantage: e.GetNoLongRangeDisadvantage(),
 			Except: e.GetExcept(), While: e.GetWhile(), OnlyProficient: e.GetOnlyProficient(),
 			Spell: e.GetSpell(), FromLevel: e.GetFromLevel(), Uses: e.GetUses(), AlsoWithSlot: e.GetAlsoWithSlot(), RitualOnly: e.GetRitualOnly(), CountsAsKnown: e.GetCountsAsKnown(),
-			NoMaterialComponents: e.GetNoMaterialComponents(), UsesCost: int(e.GetUsesCost()),
+			NoMaterialComponents: e.GetNoMaterialComponents(), UsesCost: int(e.GetUsesCost()), Duration: e.GetDuration(), DailyChoice: e.GetDailyChoice(),
 			Cost: e.GetCost(), CostMax: e.GetCostMax(), ValuePerPoint: e.GetValuePerPoint(), Heal: e.GetHeal(), TempHP: e.GetTempHp(),
 			Event: e.GetEvent(), Restore: e.GetRestore(), HealPercentMax: int(e.GetHealPercentMax()),
 			StateName: e.GetStateName(), DurationRounds: e.GetDurationRounds(), EndsOn: e.GetEndsOn(),
@@ -1473,6 +1473,20 @@ func intsOf(in []int32) []int {
 	out := make([]int, len(in))
 	for i, n := range in {
 		out[i] = int(n)
+	}
+	return out
+}
+
+// backgroundGroupsOf reads the "this or that" groups of a table background.
+func backgroundGroupsOf(in []*rulesv1.TableBackgroundGroup) []rules.BackgroundGroup {
+	kinds := map[rulesv1.TableBackgroundGroupKind]string{
+		rulesv1.TableBackgroundGroupKind_TABLE_BACKGROUND_GROUP_KIND_SKILL:     rules.GroupSkill,
+		rulesv1.TableBackgroundGroupKind_TABLE_BACKGROUND_GROUP_KIND_TOOL:      rules.GroupTool,
+		rulesv1.TableBackgroundGroupKind_TABLE_BACKGROUND_GROUP_KIND_EQUIPMENT: rules.GroupEquipment,
+	}
+	out := make([]rules.BackgroundGroup, 0, len(in))
+	for _, g := range in {
+		out = append(out, rules.BackgroundGroup{Kind: kinds[g.GetKind()], Choose: int(g.GetChoose()), Options: g.GetOptions(), SetNames: g.GetGamingSetNames()})
 	}
 	return out
 }
