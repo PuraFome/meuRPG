@@ -91,7 +91,7 @@ func TestMountedCombat_ASpellThatPushesTheMountAsksTheRidersSave(t *testing.T) {
 	wantSquare(t, c, "Ogro", [2]int32{20, 7})
 	wantSquare(t, c, "Toren", [2]int32{20, 7})
 	wantSave(t, "after the push", c.mountSaveOf(t, c.master), c.id(t, "Toren"), c.id(t, "Ogro"), causePushed)
-	if got := c.mountSaveOf(t, c.caio); got.GetRiderId() != c.id(t, "Toren") || got.GetDc() != 10 {
+	if got := c.mountSaveOf(t, c.caio); got.GetRiderId() != c.id(t, "Toren") {
 		t.Errorf("Toren's player reads %v, want the save of Toren", got)
 	}
 	if got := c.mountSaveOf(t, c.ana); got != nil {

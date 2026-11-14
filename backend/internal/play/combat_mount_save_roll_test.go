@@ -153,7 +153,7 @@ func TestMountedCombat_TheSaveIsADexteritySavingThrowAgainstDC10(t *testing.T) {
 			if got := c.mountSaveOf(t, c.caio); got.GetAutoFail() != tt.auto {
 				t.Errorf("the prompt auto_fail = %v, want %v", got.GetAutoFail(), tt.auto)
 			}
-			res := c.mustRollSave(t, c.caio, "Toren", tt.roll)
+			res := c.mustRollSave(t, c.master, "Toren", tt.roll) // the master reads the DC whatever the table shows
 			got := res.GetResult()
 			if got.GetHeld() != tt.held || got.GetAutoFail() != tt.auto || got.GetDc() != 10 {
 				t.Fatalf("result = %v, want held %v, auto_fail %v and DC 10", got, tt.held, tt.auto)
@@ -206,8 +206,8 @@ func TestMountedCombat_AHeldSaveOnlyWritesALogLine(t *testing.T) {
 	}
 	for who, u := range map[string]*user{"the master": c.master, "Toren's player": c.caio} {
 		ls := c.linesOfKind(t, u, playv1.CombatLogKind_COMBAT_LOG_KIND_MOUNT_SAVE)
-		if len(ls) != 1 || ls[0].GetMountSave().GetD20() != 15 || ls[0].GetMountSave().GetTotal() != 17 || ls[0].GetMountSave().GetDc() != 10 {
-			t.Errorf("%s reads %v, want the d20 15, the total 17 and the DC 10", who, ls)
+		if len(ls) != 1 || ls[0].GetMountSave().GetD20() != 15 || ls[0].GetMountSave().GetTotal() != 17 {
+			t.Errorf("%s reads %v, want the d20 15 and the total 17", who, ls)
 		}
 	}
 	again := c.mustRollSave(t, c.caio, "Toren", set)
@@ -291,7 +291,7 @@ func TestMountedCombat_TheLandingSquare(t *testing.T) {
 				c.execSQL(t, `UPDATE combatants SET hidden = true WHERE id = $1`, c.id(t, blockers[0]))
 			}
 			c.askSave(t, "Toren", causePushed)
-			got := c.mustRollSave(t, c.caio, "Toren", saveFace(1)).GetResult()
+			got := c.mustRollSave(t, c.master, "Toren", saveFace(1)).GetResult() // the note is the master's
 			if got.GetHeld() || [2]int32{got.GetLandedCol(), got.GetLandedRow()} != tt.want || got.GetNoRoomNextToMount() != tt.noRoom {
 				t.Errorf("result = %v, want a fall to %v (no room %v)", got, tt.want, tt.noRoom)
 			}

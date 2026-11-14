@@ -40,10 +40,11 @@ func (s *Service) mustNotBeLimited(ctx context.Context, c *combatTx, who playdb.
 	return mountLimit(cs, who, key)
 }
 
-// mustBeDirected refuses the player who takes an action for a controlled mount whose rider is down: a rider at 0 hit points directs
-// nothing (COMBATANT_DOWN, as its move gives). The master takes the action for the mount, which keeps the pair's turn.
-func (s *Service) mustBeDirected(ctx context.Context, c *combatTx, v combatViewer, who playdb.Combatant) error {
-	if v.master || who.MountKind != mountKindControlled {
+// mustBeDirected refuses the player who takes Dash, Disengage or Dodge (the key) for a controlled mount whose rider is down: a rider at
+// 0 hit points directs nothing (COMBATANT_DOWN, as its move gives). The master takes the action for the mount, which keeps the pair's
+// turn. Any other action of a mount that carries a rider is refused by its own limit, whoever asks.
+func (s *Service) mustBeDirected(ctx context.Context, c *combatTx, v combatViewer, who playdb.Combatant, key string) error {
+	if v.master || who.MountKind != mountKindControlled || !mountActionAllowed(key) {
 		return nil
 	}
 	cs, err := listCombatants(ctx, c)
@@ -57,6 +58,15 @@ func (s *Service) mustBeDirected(ctx context.Context, c *combatTx, v combatViewe
 	return s.mustNotBeDown(ctx, c.tx, c.session.CampaignID, *rider)
 }
 
+// riderIsDown says the rider of a controlled mount is at 0 hit points, for the player who reads its options: the three actions its
+// rider directs are not the player's to take then. It is false for the master and for a mount that carries nobody.
+func (s *Service) riderIsDown(ctx context.Context, campaignID string, cs []playdb.Combatant, v combatViewer, who playdb.Combatant) (bool, error) {
+	if v.master || !carriesRider(cs, who) {
+		return false, nil
+	}
+	return s.isDown(ctx, nil, campaignID, *riderOf(cs, who.ID))
+}
+
 // mountLimit is mustNotBeLimited for a caller that has the combatants (cs) in hand.
 func mountLimit(cs []playdb.Combatant, who playdb.Combatant, key string) error {
 	if mountActionAllowed(key) || !carriesRider(cs, who) {
@@ -67,10 +77,10 @@ func mountLimit(cs []playdb.Combatant, who playdb.Combatant, key string) error {
 }
 
 // limitMountOptions shows the turn options of a mount that carries a rider as it takes them: Dash, Disengage and Dodge stay as they were,
-// and every other row is disabled with the words that say why. The player who directs the mount without owning it (the rider's, for a
+// and every other row is disabled with the words that say why (the three too, for a rider that is down, to its player). The player who directs the mount without owning it (the rider's, for a
 // creature of the master's) reads the three actions and the mount's economy, and nothing else: the rest of an NPC's stat block is not
 // theirs to read (RN-20).
-func limitMountOptions(res *playv1.GetTurnOptionsResponse, cs []playdb.Combatant, v combatViewer, who playdb.Combatant) {
+func limitMountOptions(res *playv1.GetTurnOptionsResponse, cs []playdb.Combatant, v combatViewer, who playdb.Combatant, riderDown bool) {
 	o := res.GetOptions()
 	if o == nil || !carriesRider(cs, who) {
 		return
@@ -87,6 +97,11 @@ func limitMountOptions(res *playv1.GetTurnOptionsResponse, cs []playdb.Combatant
 		// What is left is the mount's economy and the three actions: the dice of its pending damage, the rolls of its contests, its notes and
 		// its jumps are the master's (RN-20).
 		res.PendingDamages, res.ContestState, res.EffectNotes, o.Jumps = nil, nil, nil, nil
+		if riderDown {
+			for _, a := range o.GetStandardActions() {
+				a.Enabled, a.Reason = false, &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN}
+			}
+		}
 		return
 	}
 	for _, a := range o.GetAttacks() {
@@ -96,8 +111,11 @@ func limitMountOptions(res *playv1.GetTurnOptionsResponse, cs []playdb.Combatant
 		sp.Enabled, sp.Reason = false, no()
 	}
 	for _, a := range slices.Concat(o.GetStandardActions(), o.GetFeatureActions()) {
-		if !keep(a) {
+		switch {
+		case !keep(a):
 			a.Enabled, a.Reason = false, no()
+		case riderDown: // the rider directs the three actions, and it is down
+			a.Enabled, a.Reason = false, &rulesv1.DisabledReason{Code: rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN}
 		}
 	}
 	for _, co := range res.GetContestAttackOptions() {

@@ -109,6 +109,9 @@ func (s *Service) RollMountSave(ctx context.Context, req *connect.Request[playv1
 	result := run.result
 	if result == nil && res.repeated {
 		result = mountSaveResultOfRetry(res.payload)
+		if err := s.hideRetryMountResult(ctx, call.m, result); err != nil {
+			return nil, err
+		}
 	}
 	return connect.NewResponse(&playv1.RollMountSaveResponse{Encounter: out, Result: result}), nil
 }
@@ -120,6 +123,31 @@ func mountSaveResultOfRetry(payload []byte) *playv1.MountSaveResult {
 		return nil
 	}
 	return mountSaveResultOf(ev)
+}
+
+// hideMountResult takes out of a player's result what the player does not read: the master's note that no square next to the mount was
+// free, and the DC when the table does not show it (RN-24).
+func hideMountResult(res *playv1.MountSaveResult, showDC bool) {
+	if res == nil {
+		return
+	}
+	res.NoRoomNextToMount = false
+	if !showDC {
+		res.Dc = 0
+	}
+}
+
+// hideRetryMountResult is hideMountResult for the result of a retry, which reads the table's rule now.
+func (s *Service) hideRetryMountResult(ctx context.Context, m authz.Membership, result *playv1.MountSaveResult) error {
+	if result == nil || heldViewerIsMaster(ctx, m) {
+		return nil
+	}
+	rules, err := s.tableRules(ctx, nil, m.CampaignID)
+	if err != nil {
+		return s.dbError(ctx, "read the table's rules", err)
+	}
+	hideMountResult(result, rules.ShowSaveDC)
+	return nil
 }
 
 // mountSaveResultOf is the result a written save's event tells.
@@ -183,7 +211,10 @@ func (s *Service) writeMountSave(ctx context.Context, c *combatTx, call mountSav
 	}
 	t := windowTriggerOf(w)
 	master := call.m.Role == authz.RoleMaster
-	mount, _ := s.mountOfWindow(ctx, c, t)
+	mount, err := s.mountOfWindow(ctx, c, t)
+	if err != nil {
+		return nil, err
+	}
 	ev := actionEvent{Round: c.enc.Round, Secret: rider.Hidden || mount.Hidden, Actor: rider.ID, Target: mount.ID}
 	ev.Reaction = &reactionEvent{Kind: string(reaction.MountSave), Window: w.ID, ByMaster: master, SaveDC: mountSaveDC, Cause: t.Cause}
 	held, err := s.mountSaveOutcome(ctx, c, call, rider, &ev, run)
@@ -208,6 +239,9 @@ func (s *Service) writeMountSave(ctx context.Context, c *combatTx, call mountSav
 	c.characterID = &rider.CharacterID
 	run.made = ev
 	run.result = mountSaveResultOf(ev)
+	if !master {
+		hideMountResult(run.result, c.rules.ShowSaveDC)
+	}
 	return ev, nil
 }
 
@@ -217,7 +251,10 @@ func (s *Service) mountOfWindow(ctx context.Context, c *combatTx, t windowTrigge
 	if err != nil {
 		return playdb.Combatant{}, err
 	}
-	mount, _ := combatantByID(cs, t.Target)
+	mount, ok := combatantByID(cs, t.Target)
+	if !ok { // the window is closed with the mount before an answer gets here
+		return mount, errNotYourTurnToAnswer()
+	}
 	return mount, nil
 }
 
@@ -248,7 +285,7 @@ func (s *Service) mountSaveOutcome(ctx context.Context, c *combatTx, call mountS
 	save = withRollBonus(save, states, rider.ID, rules.RollAppliesSave)
 	spec := saveSpec(call.m, heldMountSave, rider, call.key, call.msg, call.in, save.Bonus, facts.mode, facts.traits)
 	extras := len(effectDiceFor(states, rider.ID, rules.RollAppliesSave)) > 0
-	spec.Save = &saveRule{DC: mountSaveDC, Blind: extras}
+	spec.Save = &saveRule{DC: mountSaveDC, Blind: !c.rules.ShowSaveDC || extras}
 	gate, err := s.heldGate(ctx, s.inspirationGate(c), spec)
 	if err != nil {
 		return false, err
@@ -343,10 +380,10 @@ func (s *Service) throwRider(ctx context.Context, c *combatTx, rider, mount play
 // of distance, then row, then column. A creature holds a square whether the players see it or not (a fall never stops at one, and
 // nobody is told why). With no free neighbor it is the nearest free square, and noRoom says so.
 func (s *Service) landingOf(ctx context.Context, c *combatTx, cs []playdb.Combatant, rider, mount playdb.Combatant) (to grid.Square, noRoom bool, err error) {
-	at := squareOfCombatant(mount)
 	if !placed(mount) {
-		return at, true, nil
+		return squareOfCombatant(mount), true, nil
 	}
+	at := squareOfCombatant(mount)
 	terrain, err := s.terrainOf(ctx, c.tx, c.session.CampaignID, c.enc)
 	if err != nil {
 		return at, true, err

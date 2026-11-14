@@ -93,7 +93,11 @@ func (s *Service) GetTurnOptions(
 	if err := s.markUnseenTargets(ctx, m, res, d, v, sight, who); err != nil {
 		return nil, err
 	}
-	limitMountOptions(res, d.cs, v, who) // last: nothing above turns a row of a mount back on
+	riderDown, err := s.riderIsDown(ctx, m.CampaignID, d.cs, v, who)
+	if err != nil {
+		return nil, err
+	}
+	limitMountOptions(res, d.cs, v, who, riderDown) // last: nothing above turns a row of a mount back on
 	return connect.NewResponse(res), nil
 }
 

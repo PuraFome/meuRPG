@@ -59,11 +59,19 @@ func mountCauseOf(key string) playv1.MountSaveCause {
 }
 
 // openMountSave opens the save of a rider that sits on the mount, unless it owes one already (one pending save for each rider, whatever
-// asks) or it is defeated (the fall of a rider at 0 hit points belongs to another rule). The window keeps the square the mount was
-// pushed to, so that the undo of the push, which puts the mount back, closes it.
+// asks) or it is defeated (a dead rider is no rider's fall). A rider at 0 hit points that is alive is unconscious and auto-fails a
+// Dexterity saving throw (SRD 5.1, Conditions): it is thrown at once, with no window and no d20. The window keeps the square the mount
+// was pushed to, so that the undo of the push, which puts the mount back, closes it.
 func (s *Service) openMountSave(ctx context.Context, c *combatTx, _ []playdb.Combatant, rider, mount playdb.Combatant, cause playv1.MountSaveCause) error {
 	if rider.Defeated {
 		return nil
+	}
+	down, err := s.isDown(ctx, c.tx, c.session.CampaignID, rider)
+	if err != nil {
+		return err
+	}
+	if down {
+		return s.throwDownRider(ctx, c, rider, mount, cause)
 	}
 	open, err := openWindowsOf(ctx, c)
 	if err != nil {
@@ -80,6 +88,14 @@ func (s *Service) openMountSave(ctx context.Context, c *combatTx, _ []playdb.Com
 	}
 	_, err = s.openWindows(ctx, c, newGroup(), nil, []windowSpec{{kind: reaction.MountSave, reactor: &rider, trigger: trigger}})
 	return err
+}
+
+// throwDownRider is the fall of a rider at 0 hit points: the same fall and landing as a failed save, written as an automatic failure
+// with no d20 and no window.
+func (s *Service) throwDownRider(ctx context.Context, c *combatTx, rider, mount playdb.Combatant, cause playv1.MountSaveCause) error {
+	ev := actionEvent{Round: c.enc.Round, Secret: rider.Hidden || mount.Hidden, Actor: rider.ID, Target: mount.ID}
+	ev.Reaction = &reactionEvent{Kind: string(reaction.MountSave), SaveDC: mountSaveDC, Cause: mountCauseKey(cause), AutoFail: true}
+	return s.throwRider(ctx, c, rider, mount, &ev, &mountSaveRun{})
 }
 
 // mountPushed asks the rider's save when the mount an effect moved against its will carries one: it runs after the square of the mount
@@ -140,7 +156,7 @@ func (wv *windowView) mountSaveWait(w playdb.ReactionWindow, reactor *playdb.Com
 		}
 		return
 	}
-	if answers {
+	if answers && !isCreature(*reactor) { // a creature's owner waits for the master
 		return
 	}
 	mount, known := wv.byID[windowTriggerOf(w).Target]
@@ -151,7 +167,8 @@ func (wv *windowView) mountSaveWait(w playdb.ReactionWindow, reactor *playdb.Com
 	wait.Master = true
 }
 
-// mountSaveView builds Encounter.mount_save for the caller: the rider's player and the master read it, nobody else.
+// mountSaveView builds Encounter.mount_save for the caller: the master and the player of a character that rides read it, nobody else (a
+// creature's save is the master's).
 func (s *Service) mountSaveView(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer) (*playv1.MountSavePrompt, error) {
 	if d.enc.Status != statusActive || !slices.ContainsFunc(d.cs, func(c playdb.Combatant) bool { return c.MountedOnID != nil }) {
 		return nil, nil
@@ -166,7 +183,7 @@ func (s *Service) mountSaveView(ctx context.Context, m authz.Membership, d *enco
 			continue
 		}
 		rider, ok := byID[conv.OrZero(w.ReactorID)]
-		if !ok || (!v.master && !v.owns(rider)) {
+		if !ok || (!v.master && !(v.owns(rider) && !isCreature(rider))) { // a creature's save is the master's to answer
 			continue
 		}
 		return s.mountSavePrompt(ctx, m, d, v, w, rider)
@@ -177,7 +194,10 @@ func (s *Service) mountSaveView(ctx context.Context, m authz.Membership, d *enco
 // mountSavePrompt is the prompt of an open window: the rider, the mount when the caller sees it, the DC and the circumstances of the d20.
 func (s *Service) mountSavePrompt(ctx context.Context, m authz.Membership, d *encounterData, v combatViewer, w playdb.ReactionWindow, rider playdb.Combatant) (*playv1.MountSavePrompt, error) {
 	t := windowTriggerOf(w)
-	out := &playv1.MountSavePrompt{RiderId: rider.ID, Dc: mountSaveDC, Cause: mountCauseOf(t.Cause)}
+	out := &playv1.MountSavePrompt{RiderId: rider.ID, Cause: mountCauseOf(t.Cause)}
+	if v.master || v.showSaveDC { // the table's rule (RN-24): the player reads the DC only when it shows it
+		out.Dc = mountSaveDC
+	}
 	if mount, ok := combatantByID(d.cs, t.Target); ok && v.sees(mount) {
 		out.MountId = mount.ID
 	}
@@ -213,8 +233,8 @@ func (s *Service) mountSaveFacts(ctx context.Context, tx pgx.Tx, q *playdb.Queri
 	return mountSaveFacts{mode: combat.Resolve(sources), autoFail: combat.AutoFailsSave(creature, "dex"), creature: creature, traits: sheet.Traits}, nil
 }
 
-// mountSaveHidden says a player who asks is not to be told whose save holds the turn: the rider or its mount is hidden from the
-// players. The master is told whatever the window.
+// mountSaveHidden says a player who asks is not to be told whose save holds the turn: the rider or its mount is hidden from them (the
+// master hid it, or the fog of the map does). The master is told whatever the window.
 func mountSaveHidden(ctx context.Context, c *combatTx, w playdb.ReactionWindow) (bool, error) {
 	if c.master {
 		return false, nil
@@ -225,7 +245,11 @@ func mountSaveHidden(ctx context.Context, c *combatTx, w playdb.ReactionWindow) 
 	}
 	rider, ok := combatantByID(cs, conv.OrZero(w.ReactorID))
 	mount, there := combatantByID(cs, windowTriggerOf(w).Target)
-	return !ok || !there || rider.Hidden || mount.Hidden, nil
+	if !ok || !there {
+		return true, nil
+	}
+	v := c.viewer(authz.Membership{UserID: c.actorUserID, Role: authz.RolePlayer}, cs)
+	return !v.sees(rider) || !v.sees(mount), nil
 }
 
 // mountSaveLine is the handler of a rider's roll: a line when the rider held ("Toren se segurou"). A rider that fell has the line of its
@@ -249,8 +273,11 @@ func (e *logEntry) fillMountSave(c *logViewing, out *playv1.CombatLogEntry) bool
 	ms := &playv1.CombatLogMountSave{
 		Cause: mountCauseOf(re.Cause), Held: re.Kept, AutoFail: re.AutoFail, LandedCol: re.LandCol, LandedRow: re.LandRow,
 	}
-	if c.v.master || c.v.owns(c.actor) {
-		ms.D20, ms.Total, ms.Dc = e.ev.D20, e.ev.Total, re.SaveDC
+	if c.v.master || (c.v.owns(c.actor) && !isCreature(c.actor)) {
+		ms.D20, ms.Total = e.ev.D20, e.ev.Total
+		if c.v.master || c.v.showSaveDC { // the table's rule (RN-24): the player reads the DC only when it shows it
+			ms.Dc = re.SaveDC
+		}
 	}
 	ms.NoRoomNextToMount = c.v.master && re.NoRoom
 	out.MountSave = ms
