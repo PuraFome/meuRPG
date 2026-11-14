@@ -493,10 +493,15 @@ func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (ga
 	case a.question != askLucky:
 		return s.gateSettle(ctx, ae, h, a)
 	}
-	// The Lucky answer writes the new d20 in the roll first; a roller that holds a die is asked about it
-	// next, on the new roll, and nothing else is settled.
+	return s.gateLuckyAnswer(ctx, ae, h, a)
+}
+
+// gateLuckyAnswer applies the Lucky answer: it writes the new d20 in the roll first; a roller that holds a die is
+// asked about it next, on the new roll, and nothing else is settled.
+func (s *Service) gateLuckyAnswer(ctx context.Context, ae answering, h heldRoll, a heldReply) (gateResult, error) {
 	again := h.LuckyAnswerKey != nil && *h.LuckyAnswerKey == a.key // the same answer a second time: the row is as the first left it
-	if h, err = (luckyQuestion{}).apply(ctx, ae, h, a); err != nil {
+	h, err := (luckyQuestion{}).apply(ctx, ae, h, a)
+	if err != nil {
 		return gateResult{}, err
 	}
 	if !(dieQuestion{}).pending(h, ae.st) {
@@ -505,7 +510,7 @@ func (s *Service) gateAnswer(ctx context.Context, ae answering, a heldReply) (ga
 	if again {
 		return gateResult{Held: new(askedBy(h, ae.st))}, ae.heldRowReplayed(ctx, h)
 	}
-	if err := stores.asked(ctx, ae.gateEnv, h); err != nil {
+	if err := ae.stores().asked(ctx, ae.gateEnv, h); err != nil {
 		return gateResult{}, err
 	}
 	return gateResult{Held: new(askedBy(h, ae.st))}, nil
