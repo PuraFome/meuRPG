@@ -47,8 +47,8 @@ func (f *castFlow) checkTeleport(context.Context) error {
 	switch {
 	case !teleports:
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("destination is for a teleport spell"))
-	case f.caster.MountedOnID != nil:
-		return mountedFor(f.v, f.cs, f.caster, errUnavailable()) // a rider does not teleport alone: it gets off first
+	case unseenMountOf(f.cs, f.v, f.caster) == nil && f.caster.MountedOnID != nil:
+		return mountedError(f.caster.ID) // a rider does not teleport alone: it gets off first
 	case isTheatre(f.c.enc):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this combat has no map: there is no square to teleport to"))
 	case !inGrid(f.c.enc, dest.GetCol(), dest.GetRow()):
@@ -62,6 +62,9 @@ func (f *castFlow) checkTeleport(context.Context) error {
 	}
 	if err := f.squareFree(to); err != nil {
 		return err
+	}
+	if unseenMountOf(f.cs, f.v, f.caster) != nil {
+		return errUnavailable() // the rider of a mount the caller does not see is refused as for a square it may not use, after the checks of a caster on foot
 	}
 	f.landing = &to
 	return nil
@@ -181,4 +184,13 @@ func (s *Service) publishTeleport(ctx context.Context, campaignID string, d *enc
 	s.positionChanged(ctx, campaignID, d.enc, moved, squareOfState(ev.Teleport.From))
 	s.publishRideAlong(ctx, campaignID, d, moved, squareOfState(ev.Teleport.From))
 	s.noticeAfterMove(ctx, campaignID, d.enc, moved) // a trap near where the caster landed may be noticed, as after a move
+}
+
+// unseenMountOf is the mount a rider sits on when the viewer does not see it, or nil: a rider that is not on one, or whose mount the
+// viewer sees.
+func unseenMountOf(cs []playdb.Combatant, v combatViewer, rider playdb.Combatant) *playdb.Combatant {
+	if mount := ridingOn(cs, rider); mount != nil && !v.sees(*mount) {
+		return mount
+	}
+	return nil
 }
