@@ -653,6 +653,13 @@ An archived or switched-off spell has no effect.
   Refused at `.effect.aura.radius_ft`, `.effect.aura.affects` or `.effect.aura`.
   `EffectTagsPT` writes "Aura de 9 m: aliados".
   How the play module reads it is in [Lasting effects](play/lasting-effects.md#auras).
+- **A feature's aura.**
+  `aura` is an effect type of a feature (`effectaura.go`): its own field `aura` is a `TableSpellEffect` that goes through the checks of a spell's effect (`checkLastingEffect(..., fromFeature)`), with the target the bearer and the duration the whole combat.
+  Its refusals are at `effects[i].aura...` (the spell's `.effect` step is dropped).
+  `roll_bonus` there may take its number from the bearer's ability: `value_ability` (an ability key) and `value_min` (1 to 5, default 1), instead of `value`; both only on `roll_bonus`, and never together with `value`.
+  A spell refuses them, and a feature's aura refuses `weapon_hit_damage`.
+  The first aura effect of a feature whose `when` holds is the one that applies, so a level that widens the aura is a second effect with its own `when`.
+  `EffectTagsPT` writes "Modificador de CAR (mín. +1) em resistências".
 - **Tags.**
   `EffectTagsPT` writes the short Portuguese tags of the owner's card ("CA +2", "PV temporários: 5").
   `player_label_pt` is the label the other players read.

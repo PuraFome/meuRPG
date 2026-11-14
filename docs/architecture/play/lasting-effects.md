@@ -119,7 +119,14 @@ Code in `lasting_effects_aura.go`.
 - **Who reads what.** A player reads an aura's bonus on their own roll as the source's name, or "Outra fonte" when the bearer is hidden from them or the effect is for its owner only (`PlayerVisible` false on the view row).
   The radius is never sent to a player who does not own the aura.
   The leak rows plant a radius and a bonus and read them as every player, with the master and the bearer's owner as positive controls.
-- **Not built.** A feature's aura (Paladin's Aura of Protection): table features have no lasting row, so an aura of a feature has nowhere to hang.
+- **A feature's aura.** Aura of Protection is the effect type `aura` of a table feature (`effectaura.go`, `Derived.Auras`, `link.Traits.Auras`).
+  It is written once, when the character joins a combat, as one row on the combatant (`source_kind` `feature`, duration `until_dismissed`; `lasting_effects_aura_feature.go`), and it is never saved on the character, so ending the combat drops it (`giveBackOrDrop`).
+  Joining twice writes it once (`featureAurasOn`).
+  The bonus can be an ability modifier of the bearer, at least `value_min`: the number is worked out at the join from the sheet (`featureAurasOf`: `max(modifier, value_min)`), so a CHA 8 paladin still gives +1.
+  The bearer is reached by their own aura (`allies` includes them, SRD), and the no-double test guards that it counts once.
+  An aura needs its bearer up and conscious: a negative `radius_ft` marks it asleep (`auraAsleep`), `auraReaches` gives nothing for it, and `restAurasOnFlip` in `changeVitals` (the one place every change of hit points passes through) puts it to sleep at 0 and wakes it when healed.
+  A character that joins at 0 hit points gets it asleep.
+  A feature's aura gives no next-hit damage (`weapon_hit_damage`) and no `value_ability` outside a feature (`spellModifierRefusal`).
 
 Who reads what:
 
