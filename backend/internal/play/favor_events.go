@@ -6,7 +6,8 @@ const (
 	eventFavorSpent   = "favor_spent"
 	eventFavorPassed  = "favor_passed"
 
-	eventFavorPassAsked      = "favor_pass_asked"
+	eventFavorPassAsked = "favor_pass_asked"
+	// eventFavorAskRefused is the master's refusal of a pass (event "favor_pass_refused"): gosec G101 reads a constant named ...PassRefused as a credential.
 	eventFavorAskRefused     = "favor_pass_refused"
 	eventFavorPassCanceled   = "favor_pass_canceled"
 	eventFavorRefundPrompted = "favor_refund_prompted"

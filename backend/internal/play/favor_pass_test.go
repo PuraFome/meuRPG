@@ -1090,7 +1090,27 @@ func TestTheEndOfASessionCancelsPendingPasses(t *testing.T) {
 	wantFavorBlocked(t, "a cancel after the session ended", err, blockedPassClosed)
 	_, err = f.askPass(f.toren.GetId(), f.pens.GetId())
 	wantFavorBlocked(t, "an ask after the session ended", err, blockedNoSession)
-	_ = ws
+	f.wantEndHints(t, hintsUntilTheEnd(t, ws))
+}
+
+// hintsUntilTheEnd reads each stream up to the end of the session and gives the characters of the vitals hints it heard on the way (every
+// reader is in the map, the ones that heard nothing with an empty list).
+func hintsUntilTheEnd(t *testing.T, ws map[string]*watcher) map[string][]string {
+	t.Helper()
+	heard := map[string][]string{}
+	for name, w := range ws {
+		heard[name] = nil
+		for {
+			ev := w.nextChange(t)
+			if ev.GetSessionEnded() != nil {
+				break
+			}
+			if v := ev.GetVitalsChanged().GetVitals().GetCharacterId(); v != "" {
+				heard[name] = append(heard[name], v)
+			}
+		}
+	}
+	return heard
 }
 
 func TestTheEndOfASessionTellsTheGiverAndTheMasterOnly(t *testing.T) {
@@ -1102,23 +1122,13 @@ func TestTheEndOfASessionTellsTheGiverAndTheMasterOnly(t *testing.T) {
 	f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
 	ws := f.passWatchers(t)
 	f.master.end(t, f.master.liveSession(t, f.campaignID).GetGameSession())
-	heard := map[string][]*playv1.WatchGameSessionResponse{}
-	for name, w := range ws {
-		for {
-			ev := w.nextChange(t)
-			if ev.GetSessionEnded() != nil {
-				break
-			}
-			heard[name] = append(heard[name], ev)
-		}
-	}
-	for name, evs := range heard {
-		var ids []string
-		for _, ev := range evs {
-			if v := ev.GetVitalsChanged().GetVitals().GetCharacterId(); v != "" {
-				ids = append(ids, v)
-			}
-		}
+	f.wantEndHints(t, hintsUntilTheEnd(t, ws))
+}
+
+// wantEndHints checks the end of a session that canceled Toren's ask told Toren's vitals to the master and Caio, and told Ana and Bia nothing.
+func (f *favorParty) wantEndHints(t *testing.T, heard map[string][]string) {
+	t.Helper()
+	for name, ids := range heard {
 		want := []string(nil)
 		if name == "master" || name == "caio" {
 			want = []string{f.toren.GetId()}

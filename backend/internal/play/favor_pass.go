@@ -88,16 +88,27 @@ func (s *Service) PassFavor(ctx context.Context, req *connect.Request[playv1.Pas
 	if err != nil {
 		return nil, err
 	}
-	open, err := s.queries.GetOpenGameSession(ctx, m.CampaignID)
-	if errors.Is(err, pgx.ErrNoRows) {
+	openID, err := s.openSessionID(ctx, m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	old, err := s.askOfAnotherSession(ctx, call, openID)
+	if err != nil {
+		return nil, err
+	}
+	if old != nil { // the retry of an ask made in a session that ended: it answers the stored pass
+		view, err := s.passView(ctx, m, *old)
+		if err != nil {
+			return nil, s.dbError(ctx, "name the ask", err)
+		}
+		return connect.NewResponse(&playv1.PassFavorResponse{Pass: view}), nil
+	}
+	if openID == "" {
 		return nil, errFavorNoSession()
 	}
-	if err != nil {
-		return nil, s.dbError(ctx, "find the open session", err)
-	}
-	call.sessionID = open.ID
+	call.sessionID = openID
 	var pass playdb.FavorPass
-	err = s.tx(ctx, open.ID, func(tx pgx.Tx, h *hints) (err error) {
+	err = s.tx(ctx, openID, func(tx pgx.Tx, h *hints) (err error) {
 		pass, err = s.askPassIn(ctx, tx, h, call)
 		return err
 	})
@@ -109,6 +120,50 @@ func (s *Service) PassFavor(ctx context.Context, req *connect.Request[playv1.Pas
 		return nil, s.dbError(ctx, "name the ask", err)
 	}
 	return connect.NewResponse(&playv1.PassFavorResponse{Pass: view}), nil
+}
+
+// openSessionID is the campaign's open session, "" when it has none.
+func (s *Service) openSessionID(ctx context.Context, campaignID string) (string, error) {
+	open, err := s.queries.GetOpenGameSession(ctx, campaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", s.dbError(ctx, "find the open session", err)
+	}
+	return open.ID, nil
+}
+
+// askOfAnotherSession finds the ask a key made in a session other than the open one (none open: openID is ""), so that the retry of an
+// ask whose session ended answers the stored pass and not NO_SESSION. It is sound because the key of an ask is unique in the campaign
+// (favor_passes_ask_key_unique), not only in its session: the pass the key names is the one the first call made. The retry must be the
+// asker's own and the same request (the giver and the receiver), or the key is refused as one used for another change. An ask of the open
+// session is left to the transaction, which also tells the hints again.
+func (s *Service) askOfAnotherSession(ctx context.Context, c favorPassCall, openID string) (*playdb.FavorPass, error) {
+	pass, err := s.queries.GetFavorPassByAskKey(ctx, playdb.GetFavorPassByAskKeyParams{CampaignID: c.m.CampaignID, AskKey: c.key})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && pass.GameSessionID == openID) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, s.dbError(ctx, "find the ask of the key", err)
+	}
+	if pass.AskedByUserID != c.m.UserID || pass.FromCharacterID != c.from || pass.ToCharacterID != c.to {
+		return nil, errKeyReused()
+	}
+	return &pass, nil
+}
+
+// passKeyRetry is eventByKey for a pass call: a retry is the same actor's. The key of another user's call, with the same body, is refused
+// as a key used for another change (errKeyReused), the answer eventByKey gives a key of another request; it never answers the pass.
+func passKeyRetry(ctx context.Context, q *playdb.Queries, c favorPassCall, kind string) (payload []byte, again bool, err error) {
+	done, again, err := eventByKey(ctx, q, c.sessionID, c.key, kind, c.hash)
+	if err != nil || !again {
+		return nil, false, err
+	}
+	if done.ActorUserID == nil || *done.ActorUserID != c.m.UserID {
+		return nil, false, errKeyReused()
+	}
+	return done.Payload, true, nil
 }
 
 // readAsk checks what PassFavor reads before any state: the key, the two ids, and the one refusal that needs no read (SELF).
@@ -136,12 +191,12 @@ func (s *Service) askPassIn(ctx context.Context, tx pgx.Tx, h *hints, c favorPas
 	if err != nil {
 		return playdb.FavorPass{}, err
 	}
-	done, again, err := eventByKey(ctx, q, session.ID, c.key, eventFavorPassAsked, c.hash)
+	payload, again, err := passKeyRetry(ctx, q, c, eventFavorPassAsked)
 	if err != nil {
 		return playdb.FavorPass{}, err
 	}
 	if again {
-		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, done.Payload)
+		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, payload)
 	}
 	giver, err := s.favorGiver(ctx, tx, c)
 	if err != nil {
@@ -336,12 +391,12 @@ func (s *Service) answerPassIn(ctx context.Context, tx pgx.Tx, h *hints, c favor
 	if c.accept {
 		kind = eventFavorPassed
 	}
-	done, again, err := eventByKey(ctx, q, c.sessionID, c.key, kind, c.hash)
+	payload, again, err := passKeyRetry(ctx, q, c, kind)
 	if err != nil {
 		return playdb.FavorPass{}, err
 	}
 	if again {
-		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, done.Payload)
+		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, payload)
 	}
 	pass, err := q.GetFavorPass(ctx, playdb.GetFavorPassParams{ID: c.passID, CampaignID: c.m.CampaignID})
 	if err != nil {
@@ -359,12 +414,12 @@ func (s *Service) answerPassIn(ctx context.Context, tx pgx.Tx, h *hints, c favor
 // cancelPassIn is the transaction of CancelFavorPass.
 func (s *Service) cancelPassIn(ctx context.Context, tx pgx.Tx, h *hints, c favorPassCall) (playdb.FavorPass, error) {
 	q := s.queries.WithTx(tx)
-	done, again, err := eventByKey(ctx, q, c.sessionID, c.key, eventFavorPassCanceled, c.hash)
+	payload, again, err := passKeyRetry(ctx, q, c, eventFavorPassCanceled)
 	if err != nil {
 		return playdb.FavorPass{}, err
 	}
 	if again {
-		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, done.Payload)
+		return s.tellPassAgain(ctx, tx, h, c.m.CampaignID, payload)
 	}
 	pass, err := q.GetFavorPass(ctx, playdb.GetFavorPassParams{ID: c.passID, CampaignID: c.m.CampaignID})
 	if err != nil {
@@ -426,7 +481,10 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 		return playdb.FavorPass{}, fmt.Errorf("close the ask: %w", err)
 	}
 	if _, err := s.favorReceiver(ctx, tx, closed.CampaignID, closed.ToCharacterID); err != nil {
-		return playdb.FavorPass{}, errCannotReceive()
+		if favorReasonOf(err) == playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_A_PLAYER_CHARACTER {
+			return playdb.FavorPass{}, errCannotReceive() // it left the table
+		}
+		return playdb.FavorPass{}, err // a failed read is not the receiver's state
 	}
 	if _, err := q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: closed.FromCharacterID, CampaignID: closed.CampaignID}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -444,6 +502,20 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 		return playdb.FavorPass{}, err
 	}
 	return closed, s.tellPassOf(ctx, tx, h, closed, true)
+}
+
+// favorReasonOf is the FavorBlocked reason of an error, unspecified for any other error.
+func favorReasonOf(err error) playv1.FavorBlockedReason {
+	if ce, ok := errors.AsType[*connect.Error](err); ok {
+		for _, d := range ce.Details() {
+			if v, derr := d.Value(); derr == nil {
+				if b, isBlocked := v.(*playv1.FavorBlocked); isBlocked {
+					return b.GetReason()
+				}
+			}
+		}
+	}
+	return playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_UNSPECIFIED
 }
 
 // errCannotReceive is the master's alone: the receiver already has the Inspiration (or is no player character of the table any more).
