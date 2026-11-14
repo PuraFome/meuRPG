@@ -284,3 +284,72 @@ func TestMountedCombat_ADismountReplaysByItsKey(t *testing.T) {
 		t.Errorf("Toren after the replay = %+v, want on (8,7) with 150 spent once", got)
 	}
 }
+
+// TestMountedCombat_ADismountOntoAHiddenCreatureStopsEarlyLikeAMove: the landing a player picks that a creature they do not see holds
+// behaves as a move into that square (movement.md): the rider is offered the square, stays on the mount, spends nothing and the answer
+// says stopped_early, with no refusal that names a creature. The master sees the occupant and is refused; once the creature is
+// revealed the player is refused the same way.
+func TestMountedCombat_ADismountOntoAHiddenCreatureStopsEarlyLikeAMove(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.steed(t)
+	c.mustMount(t, c.caio, "Toren", "Ogro")
+	c.nextTurnOf(t, "Toren")
+	c.mustMove(t, c.master, "Goblin 1", 8, 7)
+	c.hide(t, "Goblin 1")
+
+	landing := func(o *rulesv1.MountOptions) bool {
+		for _, sq := range o.GetLanding() {
+			if sq.GetCol() == 8 && sq.GetRow() == 7 {
+				return true
+			}
+		}
+		return false
+	}
+	if landing(c.mountOptionsOf(t, c.master, "Toren")) {
+		t.Fatalf("the positive control failed: the master's options offer the square the hidden goblin holds")
+	}
+	if !landing(c.mountOptionsOf(t, c.caio, "Toren")) {
+		t.Fatalf("the player's options do not offer the square a hidden creature holds, want it offered as any free square")
+	}
+
+	_, err := c.dismountAs(t, c.master, "Toren", 8, 7)
+	wantBlockedBy(t, "the master dismounting onto the hidden goblin", err, reasonNoRoom)
+
+	res, err := c.dismountAs(t, c.caio, "Toren", 8, 7)
+	if err != nil {
+		t.Fatalf("a player's dismount onto a square a hidden creature holds = %v, want it answered as a move cut short", err)
+	}
+	if !res.GetStoppedEarly() || res.GetMovementLeftDft() != 300 {
+		t.Errorf("the answer = stopped early %v, %d left; want stopped early with the whole 300 left", res.GetStoppedEarly(), res.GetMovementLeftDft())
+	}
+	if got := c.rideRowOf(t, "Toren"); got.MountedOn == "" || got.UsedDft != 0 || got.MoveUsed || got.Col != 7 || got.Row != 7 {
+		t.Errorf("Toren after the stopped dismount = %+v, want still on the Ogro, nothing spent and the move free", got)
+	}
+	for _, p := range []*user{c.caio, c.ana} {
+		if lines := c.linesOfKind(t, p, playv1.CombatLogKind_COMBAT_LOG_KIND_DISMOUNTED); len(lines) != 0 {
+			t.Errorf("a player reads the dismounted lines %v, want none: nobody got off", lines)
+		}
+	}
+
+	// Another square works as ever, with the cost of a dismount.
+	res, err = c.dismountAs(t, c.caio, "Toren", 6, 7)
+	if err != nil || res.GetStoppedEarly() || res.GetMovementLeftDft() != 150 {
+		t.Fatalf("the dismount on a free square = %v (stopped %v, left %d), want it made for half the speed", err, res.GetStoppedEarly(), res.GetMovementLeftDft())
+	}
+}
+
+// TestMountedCombat_ADismountOntoARevealedCreatureIsRefused: the creature the player sees is refused as a taken square, in the rider's
+// own words, as before.
+func TestMountedCombat_ADismountOntoARevealedCreatureIsRefused(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.fight(t)
+	c.steed(t)
+	c.mustMount(t, c.caio, "Toren", "Ogro")
+	c.nextTurnOf(t, "Toren")
+	c.mustMove(t, c.master, "Goblin 1", 8, 7)
+	_, err := c.dismountAs(t, c.caio, "Toren", 8, 7)
+	wantBlockedBy(t, "a dismount onto a creature the player sees", err, reasonNoRoom)
+}
