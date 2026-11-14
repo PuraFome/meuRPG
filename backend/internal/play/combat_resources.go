@@ -285,6 +285,16 @@ func poolName(v *playv1.CharacterVitals, key string) string {
 	return ""
 }
 
+// poolRecharge is when the resource pool key comes back, RECHARGE_UNSPECIFIED for a pool the character does not have.
+func poolRecharge(v *playv1.CharacterVitals, key string) rulesv1.Recharge {
+	for _, r := range v.GetResources() {
+		if r.GetKey() == key {
+			return r.GetRecharge()
+		}
+	}
+	return rulesv1.Recharge_RECHARGE_UNSPECIFIED
+}
+
 // layCall is what UseLayOnHands reads from its request before the change.
 type layCall struct {
 	fr     flowRequest
