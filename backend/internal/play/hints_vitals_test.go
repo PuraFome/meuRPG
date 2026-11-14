@@ -48,7 +48,7 @@ func newHintRig(t *testing.T, h *harness, campaignID string, master *user, playe
 		g.listeners[name] = listen(t, h, campaignID, u.id, false)
 	}
 	g.dropped = map[string]bool{}
-	h.svc.dropSend = func(_ string, ev live.Event) bool {
+	h.svc.setDropSend(func(_ string, ev live.Event) bool {
 		if !g.dropping.Load() {
 			return false
 		}
@@ -56,7 +56,7 @@ func newHintRig(t *testing.T, h *harness, campaignID string, master *user, playe
 		g.dropped[fmt.Sprintf("%T", ev.Message.GetEvent())] = true
 		g.mu.Unlock()
 		return true
-	}
+	})
 	h.hints.Settle(t)
 	g.drain() // what the fixture's own writes sent
 	return g

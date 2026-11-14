@@ -154,13 +154,13 @@ func TestEndGameSessionTellsTheFogBeforeTheStreamsEnd(t *testing.T) {
 	c.mustCastArea(t, c.ana, "Pensantus", fogCloudKey, slotOfLevel(1), at(7, 7), nil)
 	g := newHintRig(t, c.h, c.campaignID, c.master, map[string]*user{"Ana": c.ana, "Caio": c.caio})
 	fogAtEnd := int32(-1)
-	sent := c.h.svc.dropSend
-	c.h.svc.dropSend = func(campaignID string, ev live.Event) bool {
+	sent := c.h.svc.dropSend.Load()
+	c.h.svc.setDropSend(func(campaignID string, ev live.Event) bool {
 		if ev.Message.GetSessionEnded() != nil && fogAtEnd < 0 {
 			fogAtEnd = c.h.vision.n.Load()
 		}
-		return sent(campaignID, ev)
-	}
+		return (*sent)(campaignID, ev)
+	})
 	fog, before := c.h.vision.n.Load(), g.seq()
 	do(t, func() error {
 		_, err := c.master.play.EndGameSession(t.Context(), connect.NewRequest(&playv1.EndGameSessionRequest{CampaignId: c.campaignID, GameSessionId: g.session}))
