@@ -1,6 +1,7 @@
 package play
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/json"
@@ -202,7 +203,7 @@ func newHarness(t *testing.T, live ...LiveConfig) *harness {
 	h := &harness{t: t, pool: pool, users: identity.NewPostgresStore(pool), roller: &scriptedRoller{}}
 	clock := &fakeClock{now: time.Now().Truncate(time.Microsecond)}
 	h.clock = clock
-	logger := slog.New(slog.DiscardHandler)
+	logger := failureLog(t)
 	var liveConfig LiveConfig
 	if len(live) > 0 {
 		liveConfig = live[0]
@@ -751,3 +752,29 @@ func diffLines(base, cur map[string]string) string {
 	}
 	return "\n" + strings.Join(out, "\n")
 }
+
+// failureLog is the logger of the services under test: it keeps the warnings and errors the server logs (the wrapped error
+// under an "internal error", its statement and SQLSTATE) and prints them only if the test fails, so a red test says what
+// the server saw and a green one stays quiet.
+func failureLog(t *testing.T) *slog.Logger {
+	t.Helper()
+	var mu sync.Mutex
+	var kept bytes.Buffer
+	t.Cleanup(func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if t.Failed() && kept.Len() > 0 {
+			t.Logf("what the server logged (warnings and errors):\n%s", kept.String())
+		}
+	})
+	return slog.New(slog.NewTextHandler(writerFunc(func(b []byte) (int, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		return kept.Write(b)
+	}), &slog.HandlerOptions{Level: slog.LevelWarn}))
+}
+
+// writerFunc is an io.Writer made of a function.
+type writerFunc func([]byte) (int, error)
+
+func (f writerFunc) Write(b []byte) (int, error) { return f(b) }
