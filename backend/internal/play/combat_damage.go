@@ -32,7 +32,7 @@ import (
 type damageCall struct {
 	key, encounterID, pendingID string
 	in                          rollInput
-	typedParts                  map[string]int
+	typedParts                  typedSums
 }
 
 // readDamageCall reads the request, in the order the answers are given: the ids, the roll, the typed parts.

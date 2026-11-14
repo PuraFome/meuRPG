@@ -1518,12 +1518,24 @@ func (x *SelectedExtra) GetPact() bool {
 	return false
 }
 
-// TypedPart is the sum a player typed for a group of dice (physical dice, one field
-// for each group).
+// TypedPart is the sum a player typed for dice (physical dice). It names exactly one
+// of `part_key` and `damage_type`, never both and never neither (INVALID_ARGUMENT).
 type TypedPart struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PartKey       string                 `protobuf:"bytes,1,opt,name=part_key,json=partKey,proto3" json:"part_key,omitempty"`
-	Sum           int32                  `protobuf:"varint,2,opt,name=sum,proto3" json:"sum,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// One group of dice: the weapon, a hit effect or an extra that rolls dice. The sum is
+	// between the part's dice (doubled on a critical hit as the table's rule says) and
+	// those dice times their faces.
+	PartKey string `protobuf:"bytes,1,opt,name=part_key,json=partKey,proto3" json:"part_key,omitempty"`
+	Sum     int32  `protobuf:"varint,2,opt,name=sum,proto3" json:"sum,omitempty"`
+	// A `damage-type:` key (for example `damage-type:piercing`). The sum covers every dice
+	// part of that damage type in the attack (the weapon, a hit effect, the extras that
+	// roll dice and count) and is between the combined dice of those parts and the
+	// combined dice times their faces, doubled on a critical hit as the rule says. The
+	// damage type must have a dice part in the attack and may appear once, and no
+	// `part_key` of a part of that type may be in the same request. The group's total
+	// counts for the type: a resistance, vulnerability or immunity to it acts on the sum,
+	// and the parts of the group keep no faces.
+	DamageType    string `protobuf:"bytes,3,opt,name=damage_type,json=damageType,proto3" json:"damage_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1570,6 +1582,13 @@ func (x *TypedPart) GetSum() int32 {
 		return x.Sum
 	}
 	return 0
+}
+
+func (x *TypedPart) GetDamageType() string {
+	if x != nil {
+		return x.DamageType
+	}
+	return ""
 }
 
 // CombatantEffect is a state of a combatant, with where it comes from and when it ends.
@@ -1894,10 +1913,12 @@ const file_meurpg_play_v1_combat_rolls_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x1d\n" +
 	"\n" +
 	"slot_level\x18\x02 \x01(\x05R\tslotLevel\x12\x12\n" +
-	"\x04pact\x18\x03 \x01(\bR\x04pact\"8\n" +
+	"\x04pact\x18\x03 \x01(\bR\x04pact\"Y\n" +
 	"\tTypedPart\x12\x19\n" +
 	"\bpart_key\x18\x01 \x01(\tR\apartKey\x12\x10\n" +
-	"\x03sum\x18\x02 \x01(\x05R\x03sum\"\xef\x02\n" +
+	"\x03sum\x18\x02 \x01(\x05R\x03sum\x12\x1f\n" +
+	"\vdamage_type\x18\x03 \x01(\tR\n" +
+	"damageType\"\xef\x02\n" +
 	"\x0fCombatantEffect\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x126\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\".meurpg.play.v1.CombatantStateKindR\x04kind\x12\x1b\n" +

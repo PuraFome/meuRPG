@@ -314,11 +314,23 @@ message SelectedExtra {
   bool pact = 3;
 }
 
-// TypedPart is the sum a player typed for a group of dice (physical dice, one field
-// for each group).
+// TypedPart is the sum a player typed for dice (physical dice). It names exactly one
+// of `part_key` and `damage_type`, never both and never neither (INVALID_ARGUMENT).
 message TypedPart {
+  // One group of dice: the weapon, a hit effect or an extra that rolls dice. The sum is
+  // between the part's dice (doubled on a critical hit as the table's rule says) and
+  // those dice times their faces.
   string part_key = 1;
   int32 sum = 2;
+  // A `damage-type:` key (for example `damage-type:piercing`). The sum covers every dice
+  // part of that damage type in the attack (the weapon, a hit effect, the extras that
+  // roll dice and count) and is between the combined dice of those parts and the
+  // combined dice times their faces, doubled on a critical hit as the rule says. The
+  // damage type must have a dice part in the attack and may appear once, and no
+  // `part_key` of a part of that type may be in the same request. The group's total
+  // counts for the type: a resistance, vulnerability or immunity to it acts on the sum,
+  // and the parts of the group keep no faces.
+  string damage_type = 3;
 }
 
 // CombatantStateKind is a state a combatant is in for a while (PM-07).

@@ -10,6 +10,7 @@ import (
 	"math"
 	"reflect"
 	"slices"
+	"strings"
 
 	"connectrpc.com/connect"
 
@@ -794,8 +795,9 @@ type rollPartsInput struct {
 	rule     combat.CriticalRule
 	choice   extraChoice
 	in       rollInput
-	typed    map[string]int
-	target   link.Traits // the target's traits: its creature type
+	typed    typedSums
+	cover    map[string]*typeGroup // by part key: the group a typed damage type covers
+	target   link.Traits           // the target's traits: its creature type
 	selectOK func(part partRecord, mark *playv1.SelectedExtra) error
 }
 
@@ -809,6 +811,11 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 		return partsRoll{}, err
 	}
 	linkDivineSmite(final)
+	if !r.in.inApp {
+		if r.cover, err = r.typedGroups(final); err != nil {
+			return partsRoll{}, err
+		}
+	}
 	diceParts := 0
 	for _, sp := range final {
 		if r.counts(sp) && sp.Count > 0 && sp.Sides > 0 {
@@ -973,7 +980,14 @@ func (s *Service) rollPartDice(pr *partRoll, sp partRecord, r rollPartsInput, di
 	if r.in.inApp {
 		return s.rollInApp(pr, sp, expr)
 	}
-	typed, ok := r.typed[sp.Key]
+	if g := r.cover[sp.Key]; g != nil {
+		// The group's total sits on its first part; the other parts of the group add no dice of their own and keep no faces.
+		if sp.Key == g.holder {
+			pr.Sum = clamp32(g.sum, 0, 100000)
+		}
+		return nil
+	}
+	typed, ok := r.typed.byPart[sp.Key]
 	if !ok && diceParts == 1 {
 		typed, ok = r.in.typed, true // typed_sum: a damage of one group of dice
 	}
@@ -1012,16 +1026,83 @@ func (s *Service) rollInApp(pr *partRoll, sp partRecord, expr dice.Expr) error {
 	return nil
 }
 
-// typedPartsOf reads the typed sums by part key, refusing a key twice.
-func typedPartsOf(raw []*playv1.TypedPart) (map[string]int, error) {
-	out := map[string]int{}
+// typedSums are the sums typed for the dice: by part key, and by damage type for every dice part of that type.
+type typedSums struct {
+	byPart map[string]int
+	byType map[string]int
+}
+
+// typeGroup is a damage type whose dice parts share one typed sum; the sum is kept on the first of them.
+type typeGroup struct {
+	sum    int
+	holder string
+}
+
+// typedPartsOf reads the typed sums: each entry names one part key or one damage type, once.
+func typedPartsOf(raw []*playv1.TypedPart) (typedSums, error) {
+	out := typedSums{byPart: map[string]int{}, byType: map[string]int{}}
 	for _, t := range raw {
-		if _, dup := out[t.GetPartKey()]; dup || t.GetPartKey() == "" {
-			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts must name each part once"))
+		key, typ := t.GetPartKey(), t.GetDamageType()
+		if (key == "") == (typ == "") {
+			return out, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts must name each part once"))
 		}
-		out[t.GetPartKey()] = int(t.GetSum())
+		seen := out.byPart
+		name := key
+		if typ != "" {
+			seen, name = out.byType, typ
+			if !strings.HasPrefix(typ, "damage-type:") {
+				return out, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts damage_type must be a damage-type: key"))
+			}
+		}
+		if _, dup := seen[name]; dup {
+			return out, connect.NewError(connect.CodeInvalidArgument, errors.New("typed_parts must name each part once"))
+		}
+		seen[name] = int(t.GetSum())
 	}
 	return out, nil
+}
+
+// typedGroups checks the sum typed for each damage type against the combined dice of its parts and says which
+// parts it covers. The extra die of Divine Smite stays out of every group: whether it counts depends on the target,
+// so it keeps its own part_key.
+func (r rollPartsInput) typedGroups(final []partRecord) (map[string]*typeGroup, error) {
+	cover := map[string]*typeGroup{}
+	for typ, sum := range r.typed.byType {
+		g := &typeGroup{sum: sum}
+		lo, hi := 0, 0
+		for _, sp := range final {
+			count, _ := r.diceOf(sp)
+			if !r.inGroup(sp, typ, count) {
+				continue
+			}
+			if _, both := r.typed.byPart[sp.Key]; both {
+				return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("typed_parts names %s and a part of it (%s)", typ, sp.Key))
+			}
+			g.holder = cmp.Or(g.holder, sp.Key)
+			cover[sp.Key] = g
+			lo, hi = lo+count, hi+count*int(sp.Sides)
+		}
+		if err := g.check(typ, lo, hi); err != nil {
+			return nil, err
+		}
+	}
+	return cover, nil
+}
+
+// inGroup says whether a part is one of the dice parts a typed damage type covers.
+func (r rollPartsInput) inGroup(sp partRecord, typ string, count int) bool {
+	return r.counts(sp) && sp.DamageType == typ && count > 0 && sp.Sides > 0 && sp.Key != combat.ExtraDivineSmiteExtra
+}
+
+// check refuses a group with no dice part and a sum outside the combined range of its parts.
+func (g *typeGroup) check(typ string, lo, hi int) error {
+	if g.holder == "" {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("typed_parts names %s, which has no dice in this attack", typ))
+	}
+	if g.sum < lo || g.sum > hi {
+		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("the sum of %s must be %d to %d", typ, lo, hi))
+	}
+	return nil
 }
 
 // storePartsRoll writes what a roll left on the pending damage.
@@ -1517,7 +1598,7 @@ func (r *partsRoll) legacy() dice.Result {
 // rollPendingParts checks and rolls the parts of a pending damage: the extras the player
 // marked, with their conditions checked again, and the dice of the counted parts.
 func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID string, p playdb.PendingDamage, attacker, target playdb.Combatant,
-	in rollInput, typed map[string]int, choice extraChoice,
+	in rollInput, typed typedSums, choice extraChoice,
 ) (*partsRoll, error) {
 	tsheet, err := s.sheetOf(ctx, c.tx, campaignID, target)
 	if err != nil {
