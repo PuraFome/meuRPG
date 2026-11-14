@@ -136,9 +136,9 @@ The master can also correct hit points, temporary hit points, spell slots (and p
 - **Charges of magic items (SRD 5.1, "Magic Items": the entry of each wand, staff, ring and other item that has charges).**
   A magic item that has charges holds a fixed number, and the sheet shows how many are left.
   The catalog says, for each such item, how many charges it holds, whether some come back at dawn and how many, and what its last charge does.
-  A charge that returns at dawn returns in a number the item names: a fixed count, all of them, or dice such as 1d6 + 1.
+  The charges that return at dawn are all of them or dice such as 1d6 + 1, as the item says.
   The last charge may do nothing, destroy the item at once, or ask for a d20 where a 1 loses the item and a 20 gives some charges back.
-  An item that never recharges (a talisman, a scarab) keeps what is left until the master corrects it.
+  An item that does not recharge at dawn (a talisman, a scarab) keeps what is left until the master corrects it.
   A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
   A player reads the charges of their own characters only, and the master reads all of them.
 - **Wholeness of Body of the Open Hand monk (level 6).**

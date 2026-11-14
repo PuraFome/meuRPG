@@ -126,9 +126,9 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
 - **Cargas de itens mágicos (SRD 5.1, "Magic Items": a entrada de cada varinha, cajado, anel e outro item que tem cargas).**
   Um item mágico que tem cargas guarda um número fixo, e a ficha mostra quantas restam.
   O catálogo diz, para cada item assim, quantas cargas ele guarda, se algumas voltam ao amanhecer e quantas, e o que a última carga faz.
-  As cargas que voltam ao amanhecer voltam no número que o item nomeia: uma quantidade fixa, todas, ou dados como 1d6 + 1.
+  As cargas que voltam ao amanhecer são todas ou dados como 1d6 + 1, como o item diz.
   A última carga pode não fazer nada, destruir o item na hora, ou pedir um d20 em que 1 perde o item e 20 devolve algumas cargas.
-  Um item que nunca recarrega (um talismã, um escaravelho) guarda o que sobrou até o mestre corrigir.
+  Um item que não recarrega ao amanhecer (um talismã, um escaravelho) guarda o que sobrou até o mestre corrigir.
   Salvar a ficha nunca muda as cargas, e tirar um item da ficha descarta o que ele gastou.
   Um jogador lê as cargas só dos próprios personagens, e o mestre lê todas.
 - **Sintonização.**

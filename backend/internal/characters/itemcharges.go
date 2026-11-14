@@ -8,7 +8,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
-// Charges (#563, SRD 5.1): the maximum of an item comes from the catalog (rules.ItemCharges) and what a character
+// Charges (SRD 5.1): the maximum of an item comes from the catalog (rules.ItemCharges) and what a character
 // spent from character_item_charges, one row for each entry of the sheet's magic items. A read fills
 // charges_max, charges_left and destroyed on the entries; a save never changes them.
 
