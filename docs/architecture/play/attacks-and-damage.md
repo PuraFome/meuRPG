@@ -46,7 +46,8 @@ The effect's attack penalty comes off the roll's bonus, so the roll's modifier, 
 A natural 20 still hits and a natural 1 still misses.
 A held roll keeps the bonus it was made with, so the answer's replay counts the penalty once.
 A request the server keeps for a roll that waits (a Lucky, Bardic Inspiration or Stroke of Luck question, a reaction window) also keeps the trade's name, penalty, flat damage and resource (`power_attack_pin`).
-The replay and the answer use those numbers for the roll, the event's marker and the damage part, whatever the master edits in the feature meanwhile.
+The replay and the answer use those numbers for the roll, the event's marker and the damage part, whatever the master edits in the feature's penalty, damage or resource meanwhile.
+The feature itself and its weapon filter are read from the sheet again on the replay, so a feature removed or a filter changed between the hold and the answer refuses the answer (a window's replay is dropped).
 A caller's own `power_attack_pin` is cleared.
 The checks, the resource's included, run again on the replay of a held roll, and a replay they refuse (the pool was spent meanwhile) is dropped.
 One use of the effect's resource is spent when the attack is written, and a held roll spends it on the replay.
@@ -54,7 +55,7 @@ The master's undo gives the use back.
 The attack's event keeps the trade (`key`, `name`, `penalty`, `damage_bonus`), so a resend finds the same and applies nothing twice.
 `AttackOption.power_attacks` lists, on each weapon line of a player's character, the trades whose filter accepts that line (`key`, `name`, `penalty`, `damage_bonus`).
 A spell line, a line the filter refuses and an NPC list none.
-A feature lists one trade, whatever its content holds: the first `power_attack` effect of a key stands.
+A feature lists one trade, whatever its content holds: the first `power_attack` effect of a key that is listed stands (an effect left out for a resource the character lacks does not count).
 A trade whose resource has no use left is listed with `disabled` and `disabled_reason_pt`; the roll refuses it with `NO_USES_LEFT`.
 A druid in a beast form keeps her power attacks, and the filter reads the beast's attack lines: natural attack lines of the stat block, melee or ranged, with no weapon property, and proficient.
 A trade that asks only for melee fits a melee line of the beast, one that names a weapon property (as heavy) fits none, and `only_proficient` does not exclude a beast's line.

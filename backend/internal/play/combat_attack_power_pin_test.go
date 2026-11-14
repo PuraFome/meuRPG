@@ -2,6 +2,7 @@ package play
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -210,5 +211,64 @@ func TestAManeuverDieAndATradeOnOnePoolNeedTwoUses(t *testing.T) {
 	}
 	if got := g2.usesLeft(t); got != 0 {
 		t.Errorf("uses left = %d, want 0: the die and the trade spent one each", got)
+	}
+}
+
+// The client's retry of the request that made a power attack's roll wait (same key, no pin) is the request the answer wrote
+// the attack from: it gives the written attack back and spends nothing more.
+func TestARetryOfAHeldPowerAttackAfterItsAnswerGivesTheWrittenAttack(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	e := g.fight(t)
+	key := newKey()
+	send := func() (*playv1.RollAttackResponse, error) {
+		return g.swing(t, e, g.heavyKey, 1, func(r *playv1.RollAttackRequest) { r.IdempotencyKey = key })
+	}
+	held, err := send()
+	if err != nil || held.GetHeldRollOffer().GetLucky() == nil {
+		t.Fatalf("RollAttack() = %v, %v; want Lucky's question", held, err)
+	}
+	answer, err := g.answerLucky(t, g.caio, e, held.GetHeldRollOffer().GetHoldId(), rerollTyped(15))
+	if err != nil {
+		t.Fatalf("AnswerLucky() error = %v", err)
+	}
+	again, err := send()
+	if err != nil || again.GetRoll().GetD20().GetTotal() != answer.GetAttack().GetRoll().GetD20().GetTotal() || again.GetRoll().GetD20().GetTotal() != 15+pipoToHit-heavyPenalty {
+		t.Errorf("the request again = %v, %v; want the attack the answer wrote", again.GetRoll().GetD20(), err)
+	}
+	if got := g.usesLeft(t); got != 1 {
+		t.Errorf("uses left = %d, want 1", got)
+	}
+}
+
+// The feature itself is read from the sheet again on the answer: one removed while the roll waits refuses the answer, and
+// nothing is written or spent.
+func TestAHeldPowerAttackWhoseFeatureWasRemovedBeforeTheAnswerIsRefused(t *testing.T) {
+	t.Parallel()
+	g := newPowerTable(t)
+	e := g.fight(t)
+	held, err := g.swing(t, e, g.heavyKey, 1)
+	if err != nil || held.GetHeldRollOffer().GetLucky() == nil {
+		t.Fatalf("RollAttack() = %v, %v; want Lucky's question", held, err)
+	}
+	sub, _ := proto.Clone(g.entry.GetTableSubclass()).(*rulesv1.TableSubclass)
+	level := sub.GetLevels()[0]
+	level.Features = slices.DeleteFunc(level.Features, func(f *rulesv1.TableFeature) bool { return f.GetNamePt() == powerHeavyName })
+	if _, err := g.master.table.UpdateTableEntry(t.Context(), connect.NewRequest(&rulesv1.UpdateTableEntryRequest{
+		CampaignId: g.campaignID, Key: g.subKey, ExpectedRevision: g.entry.GetRevision(),
+		Body: &rulesv1.UpdateTableEntryRequest_TableSubclass{TableSubclass: sub},
+	})); err != nil {
+		t.Fatalf("UpdateTableEntry() error = %v", err)
+	}
+	events := g.eventCount(t)
+	_, err = g.answerLucky(t, g.caio, e, held.GetHeldRollOffer().GetHoldId(), rerollTyped(15))
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("AnswerLucky() error = %v, want invalid_argument: the feature is gone", err)
+	}
+	if got := g.eventCount(t); got != events {
+		t.Errorf("events = %d, want %d: the refused answer wrote one", got, events)
+	}
+	if got := g.usesLeft(t); got != 2 {
+		t.Errorf("uses left = %d, want 2", got)
 	}
 }
