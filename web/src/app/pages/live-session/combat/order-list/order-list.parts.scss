@@ -2,9 +2,11 @@
   display: block;
 }
 
-// One line always. With the sun note the subline is a row: the leading part ellipsizes, "· Na luz do sol" stays whole at the end.
+// One line, but the "Preparada" mark: it takes a line of its own when it does not fit beside the leading part, so the initiative is
+// never the one cut. With the sun note the subline is a row: the leading part ellipsizes, "· Na luz do sol" stays whole at the end.
 .row__sub {
   display: flex;
+  flex-wrap: wrap;
   overflow: hidden;
   white-space: nowrap;
 }
@@ -16,17 +18,19 @@
   text-overflow: ellipsis;
 }
 
+// A row with the mark has a line to spare: the leading part wraps instead of ending in an ellipsis, so the initiative stays whole.
+.row__sub:has(.row__ready) .row__lead {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .row__ready {
   display: inline-flex;
-  flex: none;
+  flex: 0 0 100%;
   align-items: center;
   gap: 2px;
   white-space: nowrap;
-
-  &::before {
-    content: '·';
-    margin-right: 4px;
-  }
 
   .mat-icon {
     width: 14px;
