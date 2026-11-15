@@ -96,8 +96,8 @@ type templateDB struct {
 	// RESTORE of it. Empty on PostgreSQL.
 	backup string
 	// reference are the tables (in the order of tables) that the migrations
-	// leave with rows: data the game reads and never writes, copied with its
-	// rows, and left alone when a database is emptied. Read from the migrated
+	// leave with rows: data the game reads and never writes, which a copy has
+	// with its rows and which is left alone when a database is emptied. Read from the migrated
 	// template, so a migration that seeds another table needs no change here.
 	reference []string
 	// postgres says the server is PostgreSQL: the copy is CREATE DATABASE ...
@@ -242,7 +242,7 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 	made = append(made, name)
 	freeMu.Unlock()
 	if _, err := admin.ExecContext(t.Context(), restoreSQL(template, name)); err != nil {
-		t.Fatalf("copy the template by RESTORE: %v", err)
+		t.Fatalf("copy the template by RESTORE of %s: %v\nA backup written by another CockroachDB version, or left partial, is read from the server's external-io-dir (%s under it): delete that directory (docs/testing.md)", template.backup, err, strings.TrimPrefix(template.backup, "nodelocal://1/"))
 	}
 
 	return poolFor(t, prefix, name, dsn, conns)
@@ -254,17 +254,18 @@ func restoreSQL(tpl templateDB, name string) string {
 }
 
 // ensureBackup keeps one backup of the migrated template in the server's nodelocal storage, named after the template (so after the
-// migrations' fingerprint), unless the server has one: a copy of the template is a RESTORE of it. A server that refuses nodelocal
-// (it was started without --external-io-dir) fails the run with the line that says how to start it.
+// migrations' fingerprint), unless the server already has a finished one: a copy of the template is a RESTORE of it. Whether a backup
+// is finished is what the server says of its latest one (SHOW BACKUP LATEST), which a backup that is still running or was killed
+// midway does not answer; the processes that find none back up the template themselves, and the latest finished backup is the one a
+// RESTORE reads.
 func ensureBackup(ctx context.Context, admin *sql.DB, name string) (string, error) {
 	uri := "nodelocal://1/" + name
-	var n int
-	// SHOW BACKUPS answers an error for a collection that does not exist yet.
-	if err := admin.QueryRowContext(ctx, fmt.Sprintf("SELECT count(*) FROM [SHOW BACKUPS IN '%s']", uri)).Scan(&n); err == nil && n > 0 {
+	if rows, err := admin.QueryContext(ctx, fmt.Sprintf("SHOW BACKUP LATEST IN '%s'", uri)); err == nil {
+		_ = rows.Close()
 		return uri, nil
 	}
 	if _, err := admin.ExecContext(ctx, fmt.Sprintf("BACKUP DATABASE %s INTO '%s'", name, uri)); err != nil {
-		return "", fmt.Errorf("back up the template: %w\nThe test CockroachDB must be started with --external-io-dir (make db-test-cockroach-start does; docs/testing.md)", err)
+		return "", fmt.Errorf("back up the template into %s: %w\nA test CockroachDB that refuses nodelocal ('local file access is disabled') was started without --external-io-dir (make db-test-cockroach-start and .github/scripts/start-cockroach.sh start it with the flag, docs/testing.md); any other error is the server's own, a full disk or a full tmpfs for one", uri, err)
 	}
 	return uri, nil
 }
@@ -636,8 +637,8 @@ func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Prov
 }
 
 // seededTables are the tables of the freshly migrated template that have rows:
-// nothing but the migrations has written to it. goose's own table is left out,
-// it is copied apart.
+// nothing but the migrations has written to it. goose's own table is left out:
+// a copy keeps its rows whatever they are.
 func seededTables(ctx context.Context, tpl *sql.DB, tables []string) ([]string, error) {
 	var seeded []string
 	for _, table := range tables {
@@ -692,10 +693,9 @@ var references = regexp.MustCompile(`REFERENCES public\.(\w+)`)
 
 // schemaDDL returns the statements that recreate the template's sequences
 // and tables, with their indexes, CHECKs, foreign keys and options inline,
-// as CockroachDB writes them (SHOW CREATE). A table comes after the ones it
-// references, so every foreign key finds its table: creating a table with
-// its foreign keys inline is quick, where adding them afterwards, as a
-// migration does, costs a schema change job each.
+// as CockroachDB writes them (SHOW CREATE), and the tables in the order each
+// comes after the ones it references. The template's table order, which the
+// emptying of a database follows, is what the code reads from it.
 func schemaDDL(ctx context.Context, tpl *sql.DB) ([]string, []string, error) {
 	sequences, err := names(ctx, tpl, `SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'public' ORDER BY 1`)
 	if err != nil {

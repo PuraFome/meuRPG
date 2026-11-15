@@ -254,7 +254,7 @@ db-test-cockroach-start: ## Start an in-memory test CockroachDB on localhost:262
 	fi
 	@echo "Test CockroachDB on localhost:$(TEST_DB_PORT) (console: http://localhost:$(TEST_DB_HTTP_PORT)). Run the integration tests with:"
 	@echo "  MEURPG_TEST_DATABASE_URL='$(TEST_DATABASE_URL)' make test"
-	@echo "Stop it (and throw its data away) with: make db-test-cockroach-stop TEST_DB_PORT=$(TEST_DB_PORT)"
+	@echo "Stop it (its data goes with it, but the template's backup stays in $(TEST_DB_DIR)/io) with: make db-test-cockroach-stop TEST_DB_PORT=$(TEST_DB_PORT)"
 
 db-test-cockroach-stop: ## Stop an in-memory test CockroachDB started by db-test-cockroach-start (TEST_DB_PORT, 26258 by default)
 	@if [ -f "$(TEST_DB_DIR)/cockroach.pid" ] && kill -0 $$(cat "$(TEST_DB_DIR)/cockroach.pid") 2>/dev/null; then \
