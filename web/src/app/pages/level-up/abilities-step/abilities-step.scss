@@ -205,9 +205,10 @@
   box-shadow: 0 0 0 1px var(--mr-warning-ink);
 }
 
-// The title and, at the right end, the chip that says the feat is still to pick (board 580-04).
+// The title and, at the right end, the chip that says the feat is still to pick (board 580-04): 12 px from the control under it.
 .asi-head {
   display: flex;
+  margin-bottom: var(--mr-space-3);
   align-items: center;
   justify-content: space-between;
   gap: var(--mr-space-3);
