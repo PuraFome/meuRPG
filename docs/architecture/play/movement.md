@@ -155,25 +155,91 @@ A mount carries one rider, and a combatant that rides is not a mount.
 | Events | `mount_kind_set` is a session event the undo does not take back, like `side_set` |
 | Mounting | `MountCombatant` puts the rider on a mount within 5 ft (a diagonal square included) that is at least one size larger. `DismountCombatant` puts it on a free square next to the mount that the request names, a square the server lists in `TurnOptions.mount.landing` |
 | Landing on a hidden creature | A player plans the landing on the creatures they see, so `TurnOptions.mount.landing` offers a square only a hidden creature holds like any free one, and the master's does not. The real dismount runs on everyone and does what a move into that square does: the rider stays on the mount, nothing is spent, `mount_move_used` stays clear, no line is written and the answer says `stopped_early` (`DismountCombatantResponse`), never why. The rider may choose another square at once. A square a creature the caller sees holds is `NO_ROOM_TO_DISMOUNT`, and the master sees every creature, so it is refused that way for him |
-| A rider at 0 hit points | A down rider stays on its mount and the pair keeps its order and its group. The mount keeps its Dash, Disengage and Dodge limit; its rider's player does not move it (`COMBATANT_DOWN`: a down rider directs nothing) and the master does. Nothing throws the rider off yet; the fall of a rider that drops to 0 belongs to the forced dismount, which is not built |
+| A rider at 0 hit points | A down rider stays on its mount and the pair keeps its order and its group. The mount keeps its Dash, Disengage and Dodge limit; its rider's player does not move it or take its Dash, Disengage or Dodge (`COMBATANT_DOWN`: a down rider directs nothing, for those three actions only; `GetTurnOptions` shows them disabled with that reason to the rider's player) and the master does. A rider that drops to 0 stays on its mount until a push or a prone asks its save: a rider at 0 hit points that is alive is unconscious and falls at once, with no prompt and no d20 (see [the rider's save](#the-riders-save)) |
 | Who may mount | The master mounts any combatant that is not a player's character. A player mounts their own creatures and the combatants of the party that the master marked as mounts. `NOT_A_MOUNT` otherwise, `MOUNT_TOO_SMALL`, `MOUNT_TOO_FAR`, `ALREADY_MOUNTED` and `MOUNT_TAKEN` for the rest |
 | Cost | Half the rider's speed on the surface it stands on, without the Dash (`mountCostDFt`, next to `standUpCostDFt`), charged to its one `movement_used_dft`. A speed of 0 or too little movement left is `TOO_FAR` with `missing_dft` |
-| Prone and defeated | Mounting asks nothing of the rider's or the mount's posture: a prone rider mounts for half its speed without standing up. A mount at 0 hit points keeps its rider linked, and the rider dismounts with `DismountCombatant` like any rider |
-| When | A ride is made only in a running combat (`NOT_ACTIVE` in SETUP, for the master too), so no initiative is written while a rider exists: a total that changes later is the order's (`SetInitiativeOrder` and a join keep every controlled mount right after its rider) |
+| Prone and defeated | Mounting asks nothing of the rider's or the mount's posture: a prone rider mounts for half its speed without standing up. A mount at 0 hit points or prone opens the rider's dismount window (see [the rider's dismount](#the-riders-dismount)): the rider stays linked until it is answered, and `DismountCombatant` is refused with `REACTION_PENDING` meanwhile |
+| When | A ride is made only in a running combat (`NOT_ACTIVE` in SETUP, for the master too), so no initiative is written while a rider exists: a total that changes later is the order's (`SetInitiativeOrder` and a join keep every controlled mount right after its rider). `SubmitInitiative` runs `syncMounts` only as a defensive step, for a pair written outside the calls |
 | Once per move | A rider mounts or dismounts once in a move: `mount_move_used` is set by either and the start of its turn clears it (`MOUNT_MOVE_USED`) |
 | One square | The rider's square becomes the mount's, and the pair is one occupant: `samePair` keeps the two rows out of each other's way in the occupants of a move, a push, a drag, a teleport and a return to reach |
 | Moving | A rider's own `MoveCombatant` or teleport spell is refused with `MOUNTED` (`MOVE_BLOCKED` when the mount is hidden from the caller, which names nothing; for a teleport spell a hidden mount changes nothing before the last check: the destination is checked as for a caster on foot, `DESTINATION_UNAVAILABLE` stands for a square that would be free, as for a wall or a hidden creature). The mount's move is the mount's: its own counter and its own `speedsOf`, with the rider's player acting for a `controlled` mount while both the rider's part of the joint turn and the mount's own are running (`NOT_YOUR_TURN` once either ended; the master moves it at any time). `carryRider` puts the rider on the mount's square after every write that moves the mount: a move, a push, a shove, a drag, a teleport, the return to reach and the undo |
 | Undo | A mount, a dismount and the mount's move are undoable: the event keeps the rider's square, `movement_used_dft`, `mount_move_used` and the cover mark the master put on the rider, and the undo writes both rows back. A mount that carried a rider and is dismissed puts the rider on foot where it stands; the undo of the dismissal seats it again |
 | Chain | A mount that carries a rider does not ride another mount: the carry is one level, so `ALREADY_MOUNTED` |
-| Shove | A shove can knock a rider prone but never pushes it: the push is refused as `PUSH_BLOCKED` for a viewer who sees the mount, and offered and resolved as `STAYS` for one who does not |
+| Shove | A shove can knock a rider prone (which asks its save, below) but never pushes it: the push is refused as `PUSH_BLOCKED` for a viewer who sees the mount, and offered and resolved as `STAYS` for one who does not |
 | Grapple | A grappler cannot drag a mounted creature on foot: the drag is refused with `MOUNTED` (`MOVE_BLOCKED` when the mount is hidden from the caller). A grappler that drags a mount takes its rider along |
 | Zones and traps | A rider enters what its mount's move, push, shove, drag or teleport brings it into, and what its own mount or dismount brings it into: `zonesAfterSteps` adds a step for the rider of every creature that stepped, and the trap of the square it lands on fires as for a move. A trap's area also catches the rider of a mount that fired it |
-| Opportunity attacks | A rider and its mount are not foes of each other: `couldReactTo` leaves the pair out whatever side each fights on |
+| Opportunity attacks | A rider and its mount are not foes of each other: `couldReactTo` leaves the pair out whatever side each fights on. When the mount provokes, the reactor's `RollAttack` may name the mount or its rider (`offerTargets`); any other target is `INVALID_ARGUMENT`. A player who does not see the mount reads the offer as the rider's, and a hidden mount that carries a seen rider still provokes (`carriesSeenRider`). A hit on the rider does not take the mount back to the square it left. The offer's window and the wait line read the rider as the mover for a reactor that does not see the mount (`offerMoverFor`), and a player who names the hidden mount is refused as for any combatant they do not see |
 | Turn | A `controlled` mount that carries a rider takes the rider's initiative and sits right after it, so the two are one joint group; an `independent` mount keeps its own turn. A mount the master marks `controlled` while its rider's turn runs joins the rider's part of that turn at once, whatever made it join (`joinTurn`). See [Joint turn](combat.md#joint-turn) |
 | Actions | A `controlled` mount that carries a rider takes only Dash, Disengage and Dodge. Every other action of the combat is refused with `MOUNT_ACTION_LIMITED` (`mustActNow`; `TakeAction` lets the three through). The legendary attack and text options are refused too; a legendary move is a move and stays. `UseFeature` does not ask. Its reactions stay free: an opportunity attack, and a feature action of the reaction economy taken with `TakeAction`. The master answers for the mount's reaction attacks and rolls their damage, as for any creature of his. `GetTurnOptions` of the mount lists the other rows disabled, with the reason in Portuguese. A player who only drives the mount reads the three actions and the mount's economy, and none of its pending damage, contest state, effect notes or jump limits. A mount that carries nobody, or an independent one, acts as any creature |
 | Log | `combatant_mounted` and `combatant_dismounted` write the lines "Toren montou em Pônei" and "Toren desmontou de Pônei" (`COMBAT_LOG_KIND_MOUNTED`, `COMBAT_LOG_KIND_DISMOUNTED`). The line is the master's alone when either row is hidden |
 | Options | `GetTurnOptions` carries `mount`: the mounts the viewer sees with the cost and why not, or, when mounted, the mount, the cost of getting off, the refusal and the landing squares. `GetMoveOptions` answers as `MoveCombatant` does: the rider's player asks for the controlled mount they drive, in the rider's turn, and a rider gets `MOUNTED` |
 | Audience | The master reads every field. A player reads `mounted_on_id` and `rider_id` only when both rows are visible to them, so a hidden mount leaves its rider plain. A mount with a hidden rider, or a mount that rides a hidden mount, is answered to a player as no mount (`NOT_A_MOUNT`) and left out of the options, so no refusal names the hidden creature. `mount_kind` goes to the master and to the player who controls the combatant, and `mount_move_used` to whoever reads the combatant's economy |
+
+### The rider's save
+
+SRD 5.1, "Mounted Combat": a rider whose mount is moved against its will, or that is knocked prone while mounted, makes a DC 10 Dexterity saving throw or falls.
+The question is a reaction window of kind `mount_save` that uses nobody's reaction and holds the turn like a concentration save.
+It reads as `Encounter.mount_save` for the master and for the player of a character that rides, and for nobody else.
+The save of a creature that rides is the master's: its owner is not prompted and cannot roll.
+`MOUNT_SAVE_PENDING` refuses a mount, a dismount, a move, an action and the end of the turn, for the master too, while it waits.
+A player who does not see the rider or its mount, because the master hid it or the fog hides it, is refused with `REACTION_PENDING`, which names nobody.
+There is one window for each rider, whatever opens it a second time.
+`Encounter.mount_save` is one field, so it shows the first of two windows that are open for two riders.
+`RollMountSave` answers it: the rider's player rolls, or the master, who rolls for an NPC rider or a creature.
+The roll is the rider's Dexterity saving throw through the save machinery (proficiency, advantage and disadvantage, auto-failure of a paralyzed, stunned, unconscious or petrified rider), and it goes through the held-roll gate (Lucky and a Bardic Inspiration die).
+The circumstances of the d20 take the effect as seen (`SaveScene.EffectVisible` is always true), because the window does not keep what the rider sees of the cause.
+The DC is the fixed 10, but a player reads it only when the table shows the DC of saves (`show_save_dc`, RN-24), in the prompt, the result, a retry and the log; the master always reads it.
+A save that holds writes a log line and nothing else.
+A save that fails gives the rider the Prone condition, clears `mounted_on_id` and gives the mount its own initiative back (`settleMounts`).
+A rider at 0 hit points that is alive is unconscious and auto-fails the save, so it falls at once with no window, no prompt and no d20, and the log has the line of the fall.
+A rider that is defeated is not asked and does not fall.
+The rider lands on the nearest free neighbor of the mount, ordered by distance, then row, then column.
+With no free neighbor it lands on the nearest free square, and only the master's line and result say so.
+With no free square at all within `mountSearchReach`, the rider stays on the mount's square, and the master's line and result say so the same way.
+A mount with no square on the grid leaves the rider with none either.
+A creature holds a square whether the players see it or not, so a fall never lands on a hidden creature and nobody is told why.
+The window closes by itself when the rider is defeated, when the rider or the mount leaves, is removed or dismissed, when the rider is not on that mount any more, when the pushed mount is back on its square (the undo of the push) or when the prone is taken off.
+
+### The rider's dismount
+
+SRD 5.1, "Mounted Combat": a mount knocked prone, or killed, under its rider lets the rider use its reaction to land on its feet within 5 feet, or it falls prone.
+The question is a reaction window of kind `dismount` (`REACTION_KIND_DISMOUNT`), answered with `AnswerReaction` like any reaction of the rules (RN-31).
+It opens when the writers that knock a combatant prone (`riderProne`: a shove, a spell's condition, a trap) knock a mount that carries a rider, and after every change for a mount at 0 hit points, a creature steed too (`openDefeatedMounts`, in `settleChange`, after a cheap check that the combat has a rider).
+The window keeps the mount and the cause (`mount_prone` or `mount_defeated`).
+"Usar" spends the rider's reaction and lands it on the square `landingOf` picks (the same rule as the fall), on its feet, with the line of the reaction and no `rider_thrown` line.
+"Deixar passar" throws it as a failed save does: Prone, the same landing, the line of the fall.
+A rider that has no reaction left, is incapacitated or is at 0 hit points falls at once with no window (`dropRider`).
+A window whose rider becomes incapacitated, or spends the reaction elsewhere, closes by itself and the rider falls (`fallWithWindow`).
+The master answers for an NPC rider and for a creature, whose owner is not asked.
+The wait line names the rider's player only to a player who sees both the rider and the mount, and it is the master's otherwise.
+The master's window and `trigger` name the mount, the player's window does not.
+The reaction line (`reaction.Dismount`, "usou a reação para desmontar de pé") is the master's alone when the rider or the mount is hidden.
+The window holds the turn with `REACTION_PENDING`; a rider's save window is refused first when both are open (`MOUNT_SAVE_PENDING`).
+The answer is a closing event (`reaction_answered`): it cannot be undone and nothing before it can.
+The window closes by itself when the rider or the mount leaves, the rider is defeated or not on that mount any more, and when the mount stands up (cause `mount_prone`) or is healed (cause `mount_defeated`).
+A defeated creature steed is a defeated mount first: the window opens, the steed stays linked to its rider, and it disappears from the combat once the window is answered or closes by itself (`goneSteed`).
+A steed the caster dismisses (the concentration of its spell ends, or a later cast replaces it) lets the rider land on its feet with no window: `dismissCombatant` takes the rider off.
+A mount that was knocked prone and is then defeated keeps the window, and a mount marked prone after it was defeated keeps it too.
+The landing and the fall are told to the streams and the fog after the commit, as the fall of a failed save is (`riderLanded`).
+A fall from the window writes no save: its log line has cause unspecified, no d20, no DC and no automatic failure, and reads "caiu da montaria" for everyone who gets it.
+A surprised rider has no reaction (as an opportunity attack's reactor) and falls at once.
+The web has no prompt for this window: the master answers it, for a player's character too.
+The master's manual edit of a mount's conditions opens no window, like the rider's save.
+
+| Path | Asks the save |
+|---|---|
+| A spell or a feature that pushes the mount (Thunderwave, the Open Hand technique) | Yes, when the mount really moves (`pusher.push`); a push that moves nobody asks nothing |
+| A shove that pushes the mount | Yes (`shovePushes`); a shove of a rider stays `PUSH_BLOCKED` |
+| A grappler's drag of the mount | Yes (`dragTo`) |
+| A teleport | No: the spell moves its caster, so the teleport of a mount or a rider by themselves is voluntary, and a rider's own is refused |
+| The mount's own move, the rider's player driving it, the master's token or drag | No |
+| The return of a mover to the square it left the reach at | No |
+| Prone by a shove, a hit's rider, a spell, a zone or a trap | Yes (`riderProne`) |
+| The master's edit of the conditions, an undo | No: they are corrections |
+
+The cause (the push or the prone) is undoable only before the window is answered, and the roll is a closing event.
+The push or the prone that threw a rider at 0 hit points at once is not undoable either (`chainForcedFall`).
+A fall does not step into the zones or the traps of the square it lands on.
 
 ## On screen
 

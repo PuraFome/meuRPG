@@ -359,7 +359,11 @@ func giveTrapConditions(ctx context.Context, c *combatTx, cc *trapCaughtEvent, w
 		return fmt.Errorf("give the trap's conditions: %w", err)
 	}
 	cc.CondSet, cc.CondBefore = true, who.Conditions
+	wasProne := slices.Contains(who.Conditions, condProne)
 	who.Conditions = merged
+	if !wasProne && slices.Contains(merged, condProne) { // a rider knocked prone owes a save (combat_mount_save.go)
+		return c.svc.riderProne(ctx, c, who.ID)
+	}
 	return nil
 }
 

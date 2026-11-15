@@ -89,6 +89,9 @@ func (s *Service) dragTo(ctx context.Context, c *combatTx, v combatViewer, cs []
 	if err := carryRider(ctx, c.q, dragged.ID); err != nil {
 		return dragged, err
 	}
+	if err := s.mountPushed(ctx, c, dragged.ID); err != nil { // a mount a grappler drags owes its rider a save (combat_mount_save.go)
+		return dragged, err
+	}
 	dragged.GridCol, dragged.GridRow, dragged.CoverMark = &col, &row, "none"
 	return dragged, nil
 }
