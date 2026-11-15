@@ -449,7 +449,8 @@ export function featureUsedText(e: CombatLogEntry, ctx: LogContext): string {
   const details = f ? featureUsedDetails(f) : [];
   const name = f?.namePt || e.keyNamePt || 'uma característica';
   const cost = f ? featureCostText(f) : '';
-  return ` usou ${name}${target}${details.length > 0 ? `: ${details.join(', ')}` : ''}${cost ? ` · ${cost}` : ''}`;
+  const past = f?.overridden ? ' · o mestre usou mesmo assim' : '';
+  return ` usou ${name}${target}${details.length > 0 ? `: ${details.join(', ')}` : ''}${cost ? ` · ${cost}` : ''}${past}`;
 }
 
 /** The choice, and what the use healed and gave, in the order the line reads them. */

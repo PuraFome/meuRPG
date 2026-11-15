@@ -621,6 +621,22 @@ describe('a use of a feature (UseFeature): the line of each audience, as the ser
       );
     });
 
+    it('says the master let the use past a spent economy, after the cost', () => {
+      const spent = { economy: FeatureEconomy.BONUS_ACTION, namePt: 'Marca de Teste' };
+      expect(text(used({ ...spent, overridden: true }), MASTER)).toBe(
+        ' usou Marca de Teste · gastou a ação bônus · o mestre usou mesmo assim',
+      );
+      expect(text(used({ ...spent, overridden: false }), MASTER)).toBe(
+        ' usou Marca de Teste · gastou a ação bônus',
+      );
+    });
+
+    it('is the plain line when the entry says nothing (another player, or an older entry)', () => {
+      expect(text(used({ economy: FeatureEconomy.UNSPECIFIED, overridden: false }), PLAYER)).toBe(
+        ' usou Halo de esporos',
+      );
+    });
+
     it('says nothing of a use that cost no part of the turn', () => {
       expect(text(used({ economy: FeatureEconomy.NONE }), MASTER)).toBe(' usou Halo de esporos');
     });
