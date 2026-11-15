@@ -108,6 +108,18 @@ func TestTheOptionsListTheTargetsOfAHeldSpellWhileItWaits(t *testing.T) {
 	}
 }
 
+// On its readier's own turn the options list no held spell: the window opens off that turn, and a second action (Action
+// Surge) could list an ordinary entry of the same spell beside it, which nothing would tell apart.
+func TestTheOptionsOfTheReadierOnItsTurnListNoHeldSpell(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.castersFight(t, 1)
+	a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", magicMissileSpell, 1, "Capitão Goblin"))
+	if got := a.mustOptions(t, a.ana, e, "Pensantus").GetSpellTargets(); len(got) != 0 {
+		t.Errorf("the options on the readier's own turn list %v, want none", got)
+	}
+}
+
 // A readied attack, a weapon's or a held spell attack cantrip's (Fire Bolt), is released as an attack: targets are for a
 // spell that is cast, so an answer that carries them is refused, and the window stays open with its row waiting.
 func TestTargetsOnAReadiedAttackAreRefusedAndTheWindowStaysOpen(t *testing.T) {

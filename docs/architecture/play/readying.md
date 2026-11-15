@@ -176,6 +176,7 @@ The readier releases it with `CastSpell`, which carries the point, while the REA
 In a combat with no map the area is released with the creatures the answer picks, or with nobody.
 The Ready sheet offers the spells the window releases with darts, creatures or nothing.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldSpellTargets`), with the darts of its slot, so the window can show them.
+It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
 The list is the owner's and the master's, as the options are (RN-10).
 The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).

@@ -351,25 +351,20 @@ func (re *reactionEvent) concentrationSpell() string {
 
 // heldSpellTargets lists the targets of the spell a combatant holds readied, as the options list those of a spell it can
 // cast now: the release is a cast at the slot spent at Ready, so the window can pick its targets and split its darts
-// with the rows of the cast screens. A held spell attack lists none: its release is a roll, not a pick.
-func (sc *spellTargetScene) heldSpellTargets(ctx context.Context, s *Service, campaignID, encID string) ([]*playv1.SpellTargets, error) {
-	rows, err := s.queries.ListWaitingReadiedActions(ctx, encID)
+// with the rows of the cast screens. A held spell attack lists none: its release is a roll, not a pick. waiting are the
+// combat's waiting rows, of which a combatant has at most one.
+func (sc *spellTargetScene) heldSpellTargets(ctx context.Context, s *Service, campaignID string, waiting []playdb.ReadiedAction) ([]*playv1.SpellTargets, error) {
+	i := slices.IndexFunc(waiting, func(r playdb.ReadiedAction) bool { return r.CombatantID == sc.who.ID })
+	if i < 0 || waiting[i].Kind != readiedSpell || heldSpellAttackRow(waiting[i]) {
+		return nil, nil
+	}
+	row := waiting[i]
+	e := spellTargetEntry{key: conv.OrZero(row.ActionKey), level: int(row.SlotLevel), slots: []*rulesv1.SlotChoice{{Level: row.SlotLevel}}}
+	sp, err := s.roster.CombatSpell(ctx, nil, campaignID, sc.who.CharacterID, e.key, e.level, "")
 	if err != nil {
-		return nil, fmt.Errorf("list the readied actions: %w", err)
+		return nil, err
 	}
-	var out []*playv1.SpellTargets
-	for _, row := range rows {
-		if row.CombatantID != sc.who.ID || row.Kind != readiedSpell || heldSpellAttackRow(row) {
-			continue
-		}
-		e := spellTargetEntry{key: conv.OrZero(row.ActionKey), level: int(row.SlotLevel), slots: []*rulesv1.SlotChoice{{Level: row.SlotLevel}}}
-		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, sc.who.CharacterID, e.key, e.level, "")
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, sc.targetsOf(e, sp))
-	}
-	return out, nil
+	return []*playv1.SpellTargets{sc.targetsOf(e, sp)}, nil
 }
 
 // namedAtReady is the creature named at Ready as the target of a release that names none, for a spell that takes named
@@ -385,8 +380,11 @@ func (s *Service) namedAtReady(ctx context.Context, campaignID, encID string, ro
 		return nil, nil
 	}
 	sp, err := s.roster.CombatSpell(ctx, nil, campaignID, cs[i].CharacterID, conv.OrZero(row.ActionKey), int(row.SlotLevel), "")
-	if err != nil || selfOnly(sp) || sp.Area {
-		return nil, err
+	if err != nil {
+		return nil, s.dbError(ctx, "read the spell", err)
+	}
+	if selfOnly(sp) || sp.Area {
+		return nil, nil
 	}
 	return []*playv1.SpellTarget{{CombatantId: *row.TargetID}}, nil
 }

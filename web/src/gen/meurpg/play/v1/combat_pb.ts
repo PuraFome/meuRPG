@@ -5483,7 +5483,10 @@ export type GetTurnOptionsResponse = Message<"meurpg.play.v1.GetTurnOptionsRespo
    * For each spell of options.spells, and each save cantrip of options.attacks,
    * who it can target, as the caller sees them: the caster itself and the other
    * combatants that are not defeated (a combatant at 0 hit points can be
-   * healed), with the distance and whether the spell cannot reach it.
+   * healed), with the distance and whether the spell cannot reach it. Off the combatant's turn,
+   * while it holds a readied spell (not a spell attack cantrip), the list also has that spell,
+   * with the targets it is released on and the darts of the slot it was held with (the only
+   * slot listed). On its own turn the list has no held spell, so a key is listed once.
    *
    * @generated from field: repeated meurpg.play.v1.SpellTargets spell_targets = 5;
    */
@@ -13689,7 +13692,9 @@ export type AnswerReactionRequest = Message<"meurpg.play.v1.AnswerReactionReques
   /**
    * Feather Fall: the falling creatures to save, at most the prompt's max_targets.
    * READIED: the one target of a readied attack, when it is not the creature named
-   * at Ready.
+   * at Ready; for a readied spell, the creatures it is released on, with no darts (as
+   * `targets` with each darts left out). `targets` and creature_ids together are
+   * `invalid_argument`.
    *
    * @generated from field: repeated string creature_ids = 7;
    */

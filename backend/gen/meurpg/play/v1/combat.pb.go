@@ -12989,7 +12989,10 @@ type GetTurnOptionsResponse struct {
 	// For each spell of options.spells, and each save cantrip of options.attacks,
 	// who it can target, as the caller sees them: the caster itself and the other
 	// combatants that are not defeated (a combatant at 0 hit points can be
-	// healed), with the distance and whether the spell cannot reach it.
+	// healed), with the distance and whether the spell cannot reach it. Off the combatant's turn,
+	// while it holds a readied spell (not a spell attack cantrip), the list also has that spell,
+	// with the targets it is released on and the darts of the slot it was held with (the only
+	// slot listed). On its own turn the list has no held spell, so a key is listed once.
 	SpellTargets []*SpellTargets `protobuf:"bytes,5,rep,name=spell_targets,json=spellTargets,proto3" json:"spell_targets,omitempty"`
 	// The table's critical rule (RN-24), read now: what a critical hit of this
 	// combatant's attacks and spells will do to the damage dice, so the screen can
@@ -26974,7 +26977,9 @@ type AnswerReactionRequest struct {
 	UseRacial bool `protobuf:"varint,6,opt,name=use_racial,json=useRacial,proto3" json:"use_racial,omitempty"`
 	// Feather Fall: the falling creatures to save, at most the prompt's max_targets.
 	// READIED: the one target of a readied attack, when it is not the creature named
-	// at Ready.
+	// at Ready; for a readied spell, the creatures it is released on, with no darts (as
+	// `targets` with each darts left out). `targets` and creature_ids together are
+	// `invalid_argument`.
 	CreatureIds []string `protobuf:"bytes,7,rep,name=creature_ids,json=creatureIds,proto3" json:"creature_ids,omitempty"`
 	// The die the answer needs, when it needs one (Counterspell's check, Cutting
 	// Words' die, Deflect Missiles' die, the saving throw of Hellish Rebuke): exactly

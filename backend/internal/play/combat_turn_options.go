@@ -258,11 +258,13 @@ func (s *Service) listSpellTargets(ctx context.Context, m authz.Membership, res 
 	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, scene, res.GetOptions()); err != nil {
 		return s.dbError(ctx, "work out the spell targets", err)
 	}
-	held, err := scene.heldSpellTargets(ctx, s, m.CampaignID, d.enc.ID)
-	if err != nil {
-		return s.dbError(ctx, "work out the targets of a held spell", err)
+	if !actsNow(d.enc, who) { // the window opens off the turn, and on it an ordinary entry of the same spell could be listed too
+		held, err := scene.heldSpellTargets(ctx, s, m.CampaignID, d.readied)
+		if err != nil {
+			return s.dbError(ctx, "work out the targets of a held spell", err)
+		}
+		res.SpellTargets = append(res.SpellTargets, held...)
 	}
-	res.SpellTargets = append(res.SpellTargets, held...)
 	res.ResourceTargets = resourceTargetsFor(terrain, d.cs, who, v, res.GetOptions(), d.enc)
 	return nil
 }

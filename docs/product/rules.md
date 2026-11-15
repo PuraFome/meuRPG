@@ -1162,6 +1162,8 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   Holding it takes concentration, which ends any other concentration of the creature.
   A cantrip with an attack roll is held this way too.
   Released, the spell takes effect as a reaction and spends no slot again; Counterspell can still stop it.
+  The targets and the split of the darts are chosen when the spell is released, not at Ready.
+  The creature named at Ready is only a suggestion for the release.
   The spell is lost, with its slot, if the concentration ends first, if the creature lets it pass, or when the readied action is lost.
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
