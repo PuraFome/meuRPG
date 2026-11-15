@@ -43,7 +43,7 @@ export interface ToggleChip {
       }
     </div>
     @if (lockNote()) {
-      <p class="tchips__note" [id]="noteId">{{ lockNote() }}</p>
+      <p class="tchips__note" [id]="noteId"><mat-icon aria-hidden="true">lock</mat-icon>{{ lockNote() }}</p>
     }
     <app-field-note [issues]="issues()" [hint]="hint()" />
   `,
@@ -97,7 +97,17 @@ export interface ToggleChip {
       cursor: not-allowed;
     }
 
+    .tchips__note mat-icon {
+      flex: none;
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
+
     .tchips__note {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       margin: var(--mr-space-2) 0 0;
       font-size: var(--mr-font-14);
       color: var(--mr-ink-muted);
