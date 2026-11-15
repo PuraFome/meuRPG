@@ -100,7 +100,7 @@ func (a Audience) includes(s Subscriber) bool {
 	if a.NoScreens && s.Screen {
 		return false
 	}
-	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master && !slices.Contains(a.Except, s.UserID)) || (a.UserID != "" && a.UserID == s.UserID && !(a.NotMaster && s.Master))
+	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master && !slices.Contains(a.Except, s.UserID)) || (a.UserID != "" && a.UserID == s.UserID && (!a.NotMaster || !s.Master))
 }
 
 // Event is one live change, and who may receive it.
