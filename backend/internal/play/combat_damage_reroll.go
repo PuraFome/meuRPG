@@ -39,6 +39,19 @@ func (f *damageFlow) mayCountDice() bool {
 	return f.pr != nil || f.expr.Count > 0
 }
 
+// rerollKept rolls again the dice the first roll rerolled, which stay as they were, and spends the rule's use again
+// (done is false when the damage keeps none).
+func (f *damageFlow) rerollKept(ctx context.Context, rs []link.RerollRule, left map[string]int32) (bool, error) {
+	r, ok := f.keptRerollRule(rs, left)
+	if !ok {
+		return false, nil
+	}
+	if _, err := f.rerollLowDice(r.AtMost, r.Source); err != nil {
+		return true, err
+	}
+	return true, f.spendReroll(ctx, r)
+}
+
 // rerollDamage rolls again the low dice of the damage just rolled when the attacker has a reroll rule that covers
 // it, and spends the rule's use. It runs after the reaction windows were decided (a held roll is replayed as it was
 // rolled) and before the adjustments and the event. One rule serves the roll: the first that has the uses and
@@ -60,12 +73,14 @@ func (f *damageFlow) rerollDamage(ctx context.Context) error {
 		return err
 	}
 	left := usesLeftOf(vit)
-	if r, ok := f.keptRerollRule(rs, left); ok { // the dice the first roll rerolled stay as they are: their use is spent again
-		if _, err := f.rerollLowDice(r.AtMost, r.Source); err != nil {
-			return err
-		}
-		return f.spendReroll(ctx, r)
+	if done, err := f.rerollKept(ctx, rs, left); done || err != nil {
+		return err
 	}
+	return f.rerollFirst(ctx, rs, left)
+}
+
+// rerollFirst serves the roll with the first rule that has the uses and changes a die.
+func (f *damageFlow) rerollFirst(ctx context.Context, rs []link.RerollRule, left map[string]int32) error {
 	for _, r := range rs {
 		if r.Resource != "" && int(left[r.Resource]) < r.Cost {
 			continue

@@ -915,12 +915,7 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 			return partsRoll{}, err
 		}
 	}
-	diceParts := 0
-	for _, sp := range final {
-		if r.rolledNow(sp) && sp.Count > 0 && sp.Sides > 0 {
-			diceParts++
-		}
-	}
+	diceParts := r.diceParts(final)
 	for _, sp := range final {
 		if kept, ok, err := r.keptRoll(sp); err != nil {
 			return partsRoll{}, err
@@ -941,6 +936,17 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 	}
 	out.sumUp()
 	return out, nil
+}
+
+// diceParts counts the parts whose dice the roll makes now.
+func (r rollPartsInput) diceParts(final []partRecord) int {
+	n := 0
+	for _, sp := range final {
+		if r.rolledNow(sp) && sp.Count > 0 && sp.Sides > 0 {
+			n++
+		}
+	}
+	return n
 }
 
 // finalParts are the parts the roll goes by: with the player's marks applied, or, for the roll of a group's sum, as the first
