@@ -3,7 +3,7 @@ import { test } from './diagnostics';
 
 import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 import { callRPC } from './support';
-import { aloneFlow, damageCard, pendingIdOf, rolledFlow, sneakHit, takeOutTable, twoPartsFlow } from './take-out-support';
+import { aloneFlow, damageCard, otherPlayerLogFlow, pendingIdOf, rolledFlow, sneakHit, takeOutTable, twoPartsFlow } from './take-out-support';
 
 // #835: the master takes an extra out of a typed group. The damage was applied to an NPC: the app undoes it, the roller
 // types the sum of that damage type again, and the damage is applied anew. The table comes through the API; what is under test
@@ -147,6 +147,20 @@ test(
     const t = await takeOutTable(browser, {}, { ally: true });
     try {
       await rolledFlow(t);
+    } finally {
+      await t.done().catch(() => undefined);
+    }
+  },
+);
+
+test(
+  'tirar uma parte: outra jogadora lê no registro que o mestre tirou o Ataque Furtivo, sem o motivo',
+  { tag: ['@MR-012'] },
+  async ({ browser }) => {
+    test.setTimeout(180_000);
+    const t = await takeOutTable(browser, {}, { ally: true });
+    try {
+      await otherPlayerLogFlow(t);
     } finally {
       await t.done().catch(() => undefined);
     }

@@ -6,7 +6,7 @@ import { brisa, combatRPC, getEncounterRPC } from './combat-support';
 import { rollsTable, vex, type RollsTable } from './combat-rolls-support';
 import { openSessionPage } from './live-session-support';
 import { createEntryRPC, giveFeatRPC } from './content-support';
-import { callRPC, viaTargetList } from './support';
+import { callRPC, openCombatLog, viaTargetList } from './support';
 
 // The table of the take-out specs (#835): Vex, a rogue with a rapier and Sneak Attack, against a held goblin. The rapier and
 // Sneak Attack are both piercing, so the player types ONE sum for the type: a typed group.
@@ -258,4 +258,23 @@ export async function rolledFlow(t: TakeOutTable, v: View = {}): Promise<void> {
   await panel.getByRole('button', { name: 'Tirar e pedir a soma' }).click();
   await expect(damageCard(m).getByText('Esperando Vex')).toBeVisible();
   await expect(p.getByText('Falta digitar de novo a soma do dano do seu ataque.')).toBeVisible();
+}
+
+/** The log of another player (not the master, not the attacker's): the line says what the master took out and never why. */
+export async function otherPlayerLogFlow(t: TakeOutTable, v: View = {}): Promise<void> {
+  const { ally, campaignId } = t;
+  const reason = 'Sem aliado perto do alvo';
+  await sneakHit(t);
+  await takeOutRPC(t, reason);
+  const other = ally!.page;
+  await openSessionPage(other, campaignId);
+  const log = await openCombatLog(other);
+  const line = log.getByText('O mestre tirou o Ataque Furtivo', { exact: true });
+  await expect(line).toBeVisible();
+  // The reason is only for the master and the attacker's player: nowhere on this page, not even hidden.
+  await expect(other.getByText(/Sem aliado perto do alvo/)).toHaveCount(0);
+  expect(await other.content()).not.toContain(reason);
+  // The attack line is back to waiting for the damage, as the server sends it.
+  await expect(log.getByText(/Vex ataca o Goblin 1 com a Rapieira: acertou, falta rolar o dano/)).toBeVisible();
+  await see(v, other, 'other-player-log', 'Tirar parte, o registro de outra jogadora', log);
 }

@@ -85,7 +85,7 @@ export async function rollsTable(
   await m.goto('/');
   await p.goto('/');
   const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, { build: who, sheet, before: extras.before });
-  const ally = extras.ally ? await thirdPlayer(browser, { m, p, table, campaignId: table.campaignId, done: async () => undefined }, extras.ally.build) : undefined;
+  const ally = extras.ally ? await thirdPlayer(browser, { m, p, table, campaignId: table.campaignId, done: async () => undefined }, extras.ally.build, {}, { colorScheme: look.colorScheme, width: look.playerWidth, deviceScaleFactor: look.deviceScaleFactor }) : undefined;
   if (ally && extras.ally) {
     const at = sq20(extras.ally.col, extras.ally.row);
     await placeTokenRPC(m, table.campaignId, table.mapId, ally.characterId, at.xBp, at.yBp);

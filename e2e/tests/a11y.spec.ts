@@ -78,7 +78,7 @@ import { beginCrowdedCombatRPC, boxIn, callFeatBody, chamadosFeatBody, elementFe
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
 import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, heavyBlowFeatBody, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, steadyShotFeatBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
-import { aloneFlow, damageCard, expectDashed, expectFits, rolledFlow, shootTakeOut, sneakHit, takeOutRPC, takeOutShotScale, takeOutTable, twoPartsFlow, type TakeOutOptions } from './take-out-support';
+import { aloneFlow, damageCard, expectDashed, expectFits, otherPlayerLogFlow, rolledFlow, shootTakeOut, sneakHit, takeOutRPC, takeOutShotScale, takeOutTable, twoPartsFlow, type TakeOutOptions } from './take-out-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
 import { classBody, createClassRPC, createSubclassRPC, halfCasterBody, listEntries } from './classes-support';
@@ -14975,6 +14975,7 @@ async function scanTakeOutStates(browser: Browser, colorScheme: 'light' | 'dark'
     [{ feats: ['radiant'] }, aloneFlow],
     [{ feats: ['pierce'] }, twoPartsFlow],
     [{ ally: true }, rolledFlow],
+    [{ ally: true }, otherPlayerLogFlow],
   ];
   for (const [options, flow] of states) {
     const t = await takeOutTable(browser, { colorScheme, masterWidth: width, playerWidth: width, ...takeOutShotScale }, options);
