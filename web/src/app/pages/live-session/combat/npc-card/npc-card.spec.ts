@@ -4,6 +4,7 @@ import {
   AreaPlacement,
   CombatantKind,
   CombatantSide,
+  PendingDamageStatus,
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { AdvantageSourceKind, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { CombatUndone } from '../../../../core/combat/combat-undone';
@@ -157,7 +158,10 @@ describe('NpcCard: the idempotency key follows the target', () => {
     );
     fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Goblin' }));
     fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
-    const open = { ...(opts(['t1']) as object), pendingDamages: [{ id: 'p1' }] } as never;
+    const open = {
+      ...(opts(['t1']) as object),
+      pendingDamages: [{ id: 'p1', status: PendingDamageStatus.AWAITING_ROLL }],
+    } as never;
     fixture.componentRef.setInput('options', open);
     fixture.detectChanges();
     await fixture.whenStable();
@@ -175,6 +179,40 @@ describe('NpcCard: the idempotency key follows the target', () => {
     await card.rollApp();
     expect(rollAttack).toHaveBeenCalledTimes(1);
     expect((fixture.nativeElement as HTMLElement).querySelector('#roll-why')).toBeNull();
+  });
+
+  it('rolls the next attack while the options list the applied damage a take-out could undo', async () => {
+    TestBed.resetTestingModule();
+    const rollAttack = vi.fn().mockRejectedValue(new Error('stop'));
+    TestBed.configureTestingModule({
+      providers: [{ provide: CombatClient, useValue: fakeCombatClient({ rollAttack }) }],
+    });
+    const fixture = TestBed.createComponent(NpcCard);
+    fixture.componentRef.setInput('campaignId', 'c');
+    fixture.componentRef.setInput(
+      'encounter',
+      encounter({ combatants: [combatant({ id: 'npc', label: 'Goblin' })] }),
+    );
+    fixture.componentRef.setInput('subject', combatant({ id: 'npc', label: 'Goblin' }));
+    fixture.componentRef.setInput('state', { apply: vi.fn() } as unknown as CombatState);
+    const listed = {
+      ...(opts(['t1']) as object),
+      pendingDamages: [{ id: 'p1', status: PendingDamageStatus.APPLIED, amount: 4 }],
+    } as never;
+    fixture.componentRef.setInput('options', listed);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('#roll-why')).toBeNull();
+    expect(el.textContent).not.toContain('dano do ataque anterior');
+    const card = fixture.componentInstance as unknown as {
+      rollApp(): Promise<void>;
+      pendings(): unknown[];
+    };
+    expect(card.pendings()).toHaveLength(0);
+    await card.rollApp();
+    expect(rollAttack).toHaveBeenCalledTimes(1);
   });
 
   it('clears the result card of the last roll when the master undoes an action (R4)', async () => {

@@ -102,6 +102,7 @@ The browser draws what the server sends and computes no rule: multiclass prerequ
 - **Creatures** (`creatures-panel`, `creature-card`, `creature-page`): a "Criaturas" panel after "Combate" and "Magias", only for whoever can have a creature; HP numbers reach the owner and the master only (RN-20), and for others the panel does not exist.
   Renaming, dismissing and fixing HP are questions in place (`creature-edit`), never dialogs; a dismissal is a warning `alertdialog` with focus on "Voltar" that states what it costs.
 - **XP and level up:** `xp-block` shows XP; `level-up-banner` shows "Pode subir de nível"; the steps page is `pages/level-up`. "A classe mudou" (`changed-content`) lists what a master's change did to this character.
+- **Level-up steps bar:** `pages/level-up/steps-bar` draws one segment per step on a phone. From 768 px it draws numbered circles with a line between them, 56 px long and down to 16 px as the row narrows, so the last step is always inside the page. Between 768 and 1023 px only the current step keeps its label on screen; the others keep theirs for screen readers, and the line under the title says the step.
 
 ## Editors
 

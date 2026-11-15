@@ -45,7 +45,7 @@ import {
 } from '../../../../core/combat/combat-view';
 import { joinDots } from '../../../../core/format/text';
 import type { RechargeRoll } from '../../../../core/combat/combat-derived';
-import { defaultTarget, isHostile } from '../../../../core/combat/attack-flow';
+import { defaultTarget, isHostile, openPendingDamages } from '../../../../core/combat/attack-flow';
 import { isCreature } from '../../../../core/combat/creature-names';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { Portrait } from '../../../../shared/portrait/portrait';
@@ -214,7 +214,10 @@ export class NpcCard {
   protected readonly targetLabel = computed(
     () => this.targets().find((t) => t.combatantId === this.targetId())?.label ?? '',
   );
-  protected readonly pendings = computed(() => this.options()?.pendingDamages ?? []);
+  /** The damages that wait: the master's options also list the applied one a take-out could undo, which holds nothing back. */
+  protected readonly pendings = computed(() =>
+    openPendingDamages(this.options()?.pendingDamages ?? []),
+  );
   /** The NPC's spells whose area is placed on the map (none without a map): each one a "Conjurar" for the master's picker. */
   protected readonly areaSpells = computed(() => areaSpellsOf(this.options(), this.theatre()));
   /** A hit whose damage is still to roll or to apply holds the attacker's next attack: the server refuses it too. */

@@ -52,6 +52,13 @@ describe('LiveNotice', () => {
     expect(el.querySelector('button[aria-label="Fechar aviso"]')).not.toBeNull();
   });
 
+  it('keeps the link text in one flex item, so the space between "Entrar" and "na sessão" is drawn', () => {
+    // The link is a flex container: each child is an item, and an item drops the space at the start of its line.
+    const link = render('/campaigns').querySelector('a')!;
+    expect(link.children.length).toBe(1);
+    expect(link.firstElementChild?.textContent).toBe('Entrar na sessão');
+  });
+
   it('"Fechar aviso" hides it for this tab', () => {
     const fixture = TestBed.createComponent(LiveNotice);
     fixture.componentRef.setInput('url', '/');

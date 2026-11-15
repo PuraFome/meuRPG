@@ -189,7 +189,7 @@ elk-down: ## Stop the ELK stack (the logs stay in the esdata volume; `docker com
 elk-logs: ## Follow the ELK stack's own logs (not the API's: use deploy/elk/logs.sh tail)
 	$(ELK_COMPOSE) logs -f
 
-db-native-start: ## Start CockroachDB on this machine (brew cockroach@26.2) for LOCAL_DB=native and the integration tests
+db-native-start: ## Start CockroachDB on this machine (brew cockroach@26.2) for LOCAL_DB=native (the integration tests use db-test-cockroach-start)
 	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (docs/development.md, \"Native CockroachDB (Mac, optional)\")"; exit 1; }
 	@cockroach version | grep -q 'Build Tag: *$(COCKROACH_VERSION)$$' || echo "warning: cockroach is not $(COCKROACH_VERSION), the version CI and the container use"
 	@mkdir -p "$(COCKROACH_STORE)"
@@ -237,12 +237,12 @@ db-test-stop: ## Stop the test PostgreSQL started by db-test-start (TEST_PG_PORT
 
 db-test-cockroach-start: ## Start an in-memory test CockroachDB on localhost:26258 (TEST_DB_PORT=26259 for a second one), for the tests that need it and for the e2e
 	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (docs/development.md, \"Native CockroachDB (Mac, optional)\")"; exit 1; }
-	@mkdir -p "$(TEST_DB_DIR)"
+	@mkdir -p "$(TEST_DB_DIR)/io"
 	@if cockroach sql --insecure --host=localhost:$(TEST_DB_PORT) -e 'SELECT 1' >/dev/null 2>&1; then \
 		echo "The test CockroachDB is already running on localhost:$(TEST_DB_PORT)"; \
 	else \
 		cockroach start-single-node --insecure --listen-addr=localhost:$(TEST_DB_PORT) --http-addr=localhost:$(TEST_DB_HTTP_PORT) \
-			--store=type=mem,size=2GiB --cache=256MiB --max-sql-memory=512MiB \
+			--store=type=mem,size=2GiB --cache=256MiB --max-sql-memory=512MiB --external-io-dir="$(TEST_DB_DIR)/io" \
 			--log-dir="$(TEST_DB_DIR)/logs" --pid-file="$(TEST_DB_DIR)/cockroach.pid" --background \
 			>"$(TEST_DB_DIR)/start.log" 2>&1 || { cat "$(TEST_DB_DIR)/start.log"; exit 1; }; \
 		cockroach sql --insecure --host=localhost:$(TEST_DB_PORT) \
@@ -254,7 +254,7 @@ db-test-cockroach-start: ## Start an in-memory test CockroachDB on localhost:262
 	fi
 	@echo "Test CockroachDB on localhost:$(TEST_DB_PORT) (console: http://localhost:$(TEST_DB_HTTP_PORT)). Run the integration tests with:"
 	@echo "  MEURPG_TEST_DATABASE_URL='$(TEST_DATABASE_URL)' make test"
-	@echo "Stop it (and throw its data away) with: make db-test-cockroach-stop TEST_DB_PORT=$(TEST_DB_PORT)"
+	@echo "Stop it (its data goes with it, but the template's backup stays in $(TEST_DB_DIR)/io) with: make db-test-cockroach-stop TEST_DB_PORT=$(TEST_DB_PORT)"
 
 db-test-cockroach-stop: ## Stop an in-memory test CockroachDB started by db-test-cockroach-start (TEST_DB_PORT, 26258 by default)
 	@if [ -f "$(TEST_DB_DIR)/cockroach.pid" ] && kill -0 $$(cat "$(TEST_DB_DIR)/cockroach.pid") 2>/dev/null; then \

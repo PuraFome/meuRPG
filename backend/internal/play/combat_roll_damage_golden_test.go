@@ -44,7 +44,7 @@ func (a *armed) damageReport(t *testing.T, after int, res *playv1.RollDamageResp
 	for _, r := range a.rowsOf(t, `SELECT c.name, v.hit_points_current, v.hit_points_temporary, v.spell_slots_used::TEXT, v.pact_slots_used, v.resources_used::TEXT FROM character_vitals v JOIN characters c ON c.id = v.character_id`) {
 		state = append(state, "vitals "+r)
 	}
-	for _, r := range a.rowsOf(t, `SELECT attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces::TEXT, physical, COALESCE(amount, -1), COALESCE(applied_amount, -1), COALESCE(roll_total, -1), half, healing, COALESCE(taken, -1), critical_max, critical_max_rule, savage_dice, parts::TEXT, part_rolls::TEXT, steps::TEXT, COALESCE(after_steps, -1), COALESCE(landed_before::TEXT, '-'), resolved_at IS NOT NULL FROM pending_damages`) {
+	for _, r := range a.rowsOf(t, `SELECT attack_key, status, critical, dice_count, dice_sides, dice_bonus, damage_type, faces::TEXT, physical, COALESCE(amount, -1), COALESCE(applied_amount, -1), COALESCE(roll_total, -1), half, healing, COALESCE(taken, -1), critical_max, critical_max_rule, savage_dice, parts::TEXT, part_rolls::TEXT, steps::TEXT, COALESCE(after_steps, -1), COALESCE(landed_before::TEXT, '-'), resolved_at IS NOT NULL, COALESCE(NULLIF(awaited_damage_type_key, ''), '-') FROM pending_damages`) {
 		state = append(state, "damage "+r)
 	}
 	for _, r := range a.rowsOf(t, `SELECT kind, status, COALESCE(closed_reason, '-'), step, trigger::TEXT, COALESCE(outcome::TEXT, '-') FROM reaction_windows`) {
@@ -197,6 +197,7 @@ func refusedDamages() []goldenScenario {
 func damageScenarios() []goldenScenario {
 	out := refusedDamages()
 	out = append(out, plainDamages()...)
+	out = append(out, groupSumDamages()...)
 	out = append(out, rogueAndBarbarianDamages()...)
 	out = append(out, paladinDamages()...)
 	out = append(out, maneuverDamages()...)
