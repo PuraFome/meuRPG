@@ -25,6 +25,7 @@ import (
 const (
 	pendingAwaitingReaction = "awaiting_reaction"
 	pendingAwaitingRoll     = "awaiting_roll"
+	pendingAwaitingGroupSum = "awaiting_group_sum"
 	pendingRolled           = "rolled"
 	pendingApplied          = "applied"
 	pendingDiscarded        = "discarded"
@@ -766,6 +767,14 @@ type actionEvent struct {
 	// marks of the attacker before the roll (an undo puts them back) and the steps
 	// that resistance took the damage through.
 	Parts []partRoll `json:"parts,omitempty"`
+	// AwaitsSum is the damage type whose sum a removal of a part of a typed group left the damage waiting for
+	// (RemoveDamagePart), and PartLabel the name of the part taken out, for the line of the removal. The removal
+	// takes the damage roll back as an undo does: Undone and UndoneAlso name the events it took back. On the event of a damage
+	// roll it is the damage type whose sum the roll took, when the damage waited for it: the undo of the roll puts the wait back.
+	AwaitsSum string `json:"awaits_sum,omitempty"`
+	PartLabel string `json:"part_label,omitempty"`
+	// PartHidden says the part taken out is one the other players could not read in the roll line: they read "Outra fonte" for it.
+	PartHidden bool `json:"part_hidden,omitempty"`
 	// PartsBefore is the list of parts the hit offered, which the roll rewrote with the choice
 	// made: the undo of the roll puts it back, so the damage is offered as it was.
 	PartsBefore json.RawMessage `json:"parts_before,omitempty"`

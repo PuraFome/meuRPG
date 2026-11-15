@@ -796,10 +796,8 @@ func insertEventID(ctx context.Context, c *combatTx, kind string, actor, key *st
 	if ev, ok := payload.(actionEvent); ok {
 		var err error
 		ev = c.keepUnseated(ev)
-		if kind != eventActionUndone { // an undo keeps the stamp of the action it takes back
-			if ev, err = c.stamp(ctx, kind, ev); err != nil { // who could see it, on a fog map
-				return "", err
-			}
+		if ev, err = c.stampLine(ctx, kind, ev); err != nil { // who could see it, on a fog map
+			return "", err
 		}
 		c.stamped = &ev
 		c.lines = append(c.lines, ev)

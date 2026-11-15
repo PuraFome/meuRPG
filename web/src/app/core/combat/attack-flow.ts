@@ -229,6 +229,28 @@ export function hitPointsLine(label: string, current: number, max: number, after
   return `${label}: ${current} de ${max} PV, depois ${after}`;
 }
 
+/** Whether a damage waits for something: a reaction, its roll (or the sum of one damage type after the master took an
+ * extra out of its group), or the master's apply. The master's turn options also list, with the status APPLIED, the damage a
+ * take-out could still undo: that one is done, it holds nothing back. */
+export function waitsForSomething(p: PendingDamage): boolean {
+  switch (p.status) {
+    case PendingDamageStatus.AWAITING_REACTION:
+    case PendingDamageStatus.AWAITING_ROLL:
+    case PendingDamageStatus.AWAITING_GROUP_SUM:
+    case PendingDamageStatus.ROLLED:
+      return true;
+    case PendingDamageStatus.APPLIED:
+    case PendingDamageStatus.DISCARDED:
+    case PendingDamageStatus.UNSPECIFIED:
+      return false;
+  }
+}
+
+/** The damages of the attacker's turn options that wait: what a screen counts, shows or blocks the next attack for. */
+export function openPendingDamages(pendings: readonly PendingDamage[]): PendingDamage[] {
+  return pendings.filter(waitsForSomething);
+}
+
 /** What the master still owes a hit: the damage waiting for "Aplicar", or
  * waiting to be rolled. `null` when nothing is pending. */
 export function pendingNote(pendings: readonly PendingDamage[]): string | null {
@@ -240,17 +262,11 @@ export function pendingNote(pendings: readonly PendingDamage[]): string | null {
   if (pendings.some((p) => p.status === PendingDamageStatus.AWAITING_REACTION)) {
     return 'Falta a reação do alvo';
   }
-  return pendings.some((p) => p.status === PendingDamageStatus.AWAITING_ROLL)
+  return pendings.some(
+    (p) =>
+      p.status === PendingDamageStatus.AWAITING_ROLL ||
+      p.status === PendingDamageStatus.AWAITING_GROUP_SUM,
+  )
     ? 'Falta rolar o dano'
     : null;
-}
-
-/** The damages that still stand in the way of passing the turn. */
-export function openDamages(pendings: readonly PendingDamage[]): PendingDamage[] {
-  return pendings.filter(
-    (p) =>
-      p.status === PendingDamageStatus.ROLLED ||
-      p.status === PendingDamageStatus.AWAITING_ROLL ||
-      p.status === PendingDamageStatus.AWAITING_REACTION,
-  );
 }

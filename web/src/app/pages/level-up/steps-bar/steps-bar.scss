@@ -75,11 +75,11 @@
       font-weight: 700;
     }
 
-    // The line between two steps.
+    // The line between two steps: 56 px when the row has room, shorter as it narrows, so the last step stays inside the page.
     &:not(:last-child)::after {
       content: '';
-      flex: none;
-      width: 56px;
+      flex: 0 1 56px;
+      min-width: var(--mr-space-4);
       height: 1px;
       margin: 0 var(--mr-space-3);
       background: var(--mr-line);
@@ -97,6 +97,7 @@
 
   .step__num {
     display: inline-flex;
+    flex: none;
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
@@ -124,5 +125,18 @@
     border-color: var(--mr-accent);
     background: var(--mr-accent);
     color: var(--mr-on-accent);
+  }
+}
+
+// A tablet: six numbered steps and their labels do not fit in the page's width, so only the current step keeps its label on
+// the screen (the others stay in the reading order, and the line under the title says the step).
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  .step:not(.step--now) .step__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 }

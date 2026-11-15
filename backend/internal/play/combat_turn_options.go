@@ -273,6 +273,16 @@ func (s *Service) listPendingDamage(ctx context.Context, m authz.Membership, res
 			res.PendingDamages = append(res.PendingDamages, s.pendingView(ctx, m.CampaignID, p, d.cs, v))
 		}
 	}
+	if !v.master {
+		return nil // the attacker's player gets the open ones alone (RN-10)
+	}
+	p, listed, err := s.takeOutListing(ctx, d, who)
+	if err != nil {
+		return s.dbError(ctx, "list the damage a take-out could undo", err)
+	}
+	if listed {
+		res.PendingDamages = append(res.PendingDamages, s.pendingView(ctx, m.CampaignID, p, d.cs, v))
+	}
 	return nil
 }
 

@@ -345,6 +345,16 @@ func (c *combatTx) stamp(ctx context.Context, kind string, ev actionEvent) (acti
 	return ev, nil
 }
 
+// stampLine is stamp for the event being written: the line of an event is stamped with who could see it, except one that takes
+// back an earlier action, which keeps the audience of the line it takes back (an undo, and the take-out of a group part, which
+// takes the damage back as an undo does), so the two follow one rule.
+func (c *combatTx) stampLine(ctx context.Context, kind string, ev actionEvent) (actionEvent, error) {
+	if kind == eventActionUndone || (kind == eventDamagePartRemoved && ev.AwaitsSum != "") {
+		return ev, nil
+	}
+	return c.stamp(ctx, kind, ev)
+}
+
 // npcSquaresOf lists, for each NPC in the event, the squares where it could have
 // been seen.
 func npcSquaresOf(kind string, ev actionEvent, cs []playdb.Combatant) [][]grid.Square {

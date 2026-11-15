@@ -288,7 +288,7 @@ They last from session to session until dismissed; the app never counts a spell'
 `stat_block` (`JSONB`, `NULL` by default; migration 00297) is the numbers of a table creature whose entry has formulas, worked out for its owner when the creature is created (a `rules.ResolvedCreature`).
 It is a snapshot: a later level of the owner or an edit of the formulas does not change it.
 It is `NULL` for an SRD creature and for a table creature with no formula, whose numbers are read from the content.
-`creature_type` (migration 00348) is the type the player picked for a steed (`celestial`, `fey` or `fiend`, `CHECK`); it is empty for every other creature.
+`creature_type` (migration 00351) is the type the player picked for a steed (`celestial`, `fey` or `fiend`, `CHECK`); it is empty for every other creature.
 `bonded` marks the character's one steed: a unique partial index allows one bonded row for each character, and a new casting of Find Steed brings that row back at full hit points.
 A dismissed creature is not deleted: it keeps `dismissed_at` and `dismissed_reason` (`owner`, `master`, `defeated`, `concentration`, `replaced`, `undone`, `disappeared`, `dismissed`; both set or both NULL, `CHECK`), so the master's undo can bring it back.
 Partial index on the living ones of a character; indexes on the summon group and the campaign.
