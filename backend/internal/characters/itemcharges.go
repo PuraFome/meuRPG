@@ -34,6 +34,7 @@ func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c
 		}
 		r, set := state[it.GetId()]
 		applyItemCharges(it, ic, r, set)
+		it.Recharge = itemRechargeOf(ic)
 	}
 	return nil
 }
@@ -80,4 +81,28 @@ func itemLossOf(lost string) charactersv1.ItemLoss {
 		return charactersv1.ItemLoss_ITEM_LOSS_PARTLY_MAGIC
 	}
 	return charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED
+}
+
+// itemRechargeOf is the catalog's recharge rules of an item, which the sheet draws its lines from.
+func itemRechargeOf(ic rules.ItemCharges) *charactersv1.ItemRecharge {
+	out := &charactersv1.ItemRecharge{
+		WaitDawns:      ic.WaitDawns,
+		RegainDice:     ic.Regain.Text(),
+		StartDice:      ic.Start.Text(),
+		OnLoss:         itemLossOf(ic.Lost),
+		RegainOnTwenty: ic.EmptyHighRegain.Text(),
+	}
+	switch ic.Recharge {
+	case rules.RechargeDawn:
+		out.Kind = charactersv1.ItemRechargeKind_ITEM_RECHARGE_KIND_DAWN
+	case rules.RechargeDawnsAfterEmpty:
+		out.Kind = charactersv1.ItemRechargeKind_ITEM_RECHARGE_KIND_DAWNS_AFTER_EMPTY
+	}
+	switch ic.Empty {
+	case rules.ChargesEmptyD20:
+		out.Empty = charactersv1.ItemEmptyRule_ITEM_EMPTY_RULE_D20
+	case rules.ChargesEmptyAlways:
+		out.Empty = charactersv1.ItemEmptyRule_ITEM_EMPTY_RULE_ALWAYS
+	}
+	return out
 }
