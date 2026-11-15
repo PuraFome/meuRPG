@@ -162,29 +162,39 @@ func (s *Service) takeOutListing(ctx context.Context, d *encounterData, attacker
 		return playdb.PendingDamage{}, false, fmt.Errorf("read the latest events: %w", err)
 	}
 	row, ok := lastAction(recent, d.enc.ID)
-	if !ok || row.Kind != eventDamageRolled {
+	pending, byAttacker := damageRolledBy(row, attacker)
+	if !ok || !byAttacker {
 		return playdb.PendingDamage{}, false, nil
 	}
-	ev, err := readEvent(row.Payload)
-	if err != nil || ev.Pending == "" || ev.Actor != attacker.ID {
-		return playdb.PendingDamage{}, false, nil
-	}
-	p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: d.enc.ID, ID: ev.Pending})
+	p, err := s.queries.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: d.enc.ID, ID: pending})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return p, false, nil
 	}
 	if err != nil {
 		return p, false, fmt.Errorf("find the pending damage: %w", err)
 	}
+	rolled, _, found := rollEventOf(recent, p.ID)
+	return p, found && rolled.ID == row.ID && takeOutMayApply(d, p, attacker), nil
+}
+
+// damageRolledBy is the pending damage an event rolled, when the event is a damage roll of the attacker's.
+func damageRolledBy(row playdb.ListRecentSessionEventsRow, attacker playdb.Combatant) (string, bool) {
+	ev, err := readEvent(row.Payload)
+	if err != nil || row.Kind != eventDamageRolled || ev.Pending == "" || ev.Actor != attacker.ID {
+		return "", false
+	}
+	return ev.Pending, true
+}
+
+// takeOutMayApply says the pending damage is one a take-out could take back: the attacker's applied damage, not a cast's, on a
+// target that holds hit points, with a part that can come out.
+func takeOutMayApply(d *encounterData, p playdb.PendingDamage, attacker playdb.Combatant) bool {
 	target, err := findCombatant(d.cs, p.TargetID, combatViewer{master: true})
 	if err != nil || p.Status != pendingApplied || p.CastID != nil || conv.OrZero(p.AttackerID) != attacker.ID || !holdsHP(target) {
-		return p, false, nil
-	}
-	if rolled, _, ok := rollEventOf(recent, p.ID); !ok || rolled.ID != row.ID {
-		return p, false, nil
+		return false
 	}
 	parts, rolls := readParts(p.Parts), readPartRolls(p.PartRolls)
-	return p, slices.ContainsFunc(parts, func(x partRecord) bool { return mayComeOut(parts, rolls, x.Key) }), nil
+	return slices.ContainsFunc(parts, func(x partRecord) bool { return mayComeOut(parts, rolls, x.Key) })
 }
 
 // rollEventOf finds the event of a pending damage's roll that no undo took back, newest first.
