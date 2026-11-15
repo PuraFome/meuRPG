@@ -1817,8 +1817,9 @@ func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID 
 
 // settleParts does what a roll with parts leaves besides the damage: the slot a Divine
 // Smite spent, the once-per-turn marks of Sneak Attack and Colossus Slayer, and the
-// parts for the event (the log, the undo).
-func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.Combatant, pr *partsRoll, ev *actionEvent) (*playv1.CharacterVitals, error) {
+// parts for the event (the log, the undo). paid says the costs of the parts were paid by an earlier roll (the roll of a group's
+// sum, after a take-out): nothing is spent again.
+func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.Combatant, pr *partsRoll, ev *actionEvent, paid bool) (*playv1.CharacterVitals, error) {
 	ev.Parts = pr.rolls
 	var vit *playv1.CharacterVitals
 	once := onceTurn{now: stateNowOf(c.enc), state: readFeatureState(attacker.FeatureState), before: map[string]*featureEntry{}}
@@ -1826,12 +1827,14 @@ func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.
 		if !r.Counted && !r.Conditional {
 			continue
 		}
-		v, spent, err := s.spendForPart(ctx, c, attacker, pr.parts[i], r.Key, ev)
-		if err != nil {
-			return nil, err
-		}
-		if spent {
-			vit = v
+		if !paid { // the roll of a group's sum spends nothing: the first roll paid for the parts, and the take-out kept it paid
+			v, spent, err := s.spendForPart(ctx, c, attacker, pr.parts[i], r.Key, ev)
+			if err != nil {
+				return nil, err
+			}
+			if spent {
+				vit = v
+			}
 		}
 		// A table's extra that spends a use is once per turn too: the mark does not wait for a part that spends nothing.
 		once.mark(r.Key)

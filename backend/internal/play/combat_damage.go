@@ -412,7 +412,7 @@ func (f *damageFlow) settlePartsOfRoll(ctx context.Context) error {
 	if f.pr == nil {
 		return nil
 	}
-	vit, err := f.s.settleParts(ctx, f.c, f.attacker, f.pr, &f.out.made)
+	vit, err := f.s.settleParts(ctx, f.c, f.attacker, f.pr, &f.out.made, f.p.Status == pendingAwaitingGroupSum)
 	if err != nil {
 		return err
 	}

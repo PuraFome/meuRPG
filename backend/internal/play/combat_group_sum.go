@@ -47,7 +47,7 @@ func (s *Service) takeOutOfGroup(ctx context.Context, c *combatTx, run *undoRun,
 		return actionEvent{}, err
 	}
 	*run = undoRun{}
-	if err := s.takeBackAction(ctx, c, run, recent, row, rolled); err != nil {
+	if err := s.takeBackAction(ctx, c, run, recent, row, onlyWhatComesOut(rolled, parts[pi])); err != nil {
 		return actionEvent{}, err
 	}
 	label := parts[pi].Label
@@ -62,6 +62,40 @@ func (s *Service) takeOutOfGroup(ctx context.Context, c *combatTx, run *undoRun,
 		Pending: p.ID, Key: r.partKey, PartLabel: label, PartHidden: parts[pi].Hide || rolls[ri].Hide, AwaitsSum: awaited, DamageType: p.DamageType,
 		Undone: row.ID, UndoneKind: row.Kind, UndoneAlso: run.alsoUndone,
 	}, nil
+}
+
+// onlyWhatComesOut is the roll's event as the take-out takes it back: what the roll spent stays spent, and the extra that
+// comes out gives back its once-per-turn use alone (Sneak Attack, Colossus Slayer, a table's once-per-turn extra), as the removal of
+// an extra from an ordinary damage does. The slot of a Divine Smite and the uses of a maneuver were paid once, when the first roll
+// declared them, and the roll of the new sum spends nothing (settleParts), so the part that stays never pays twice. The use of a
+// reroll rule stays the undo's: it is the roll's, and a new roll spends its own.
+func onlyWhatComesOut(ev actionEvent, removed partRecord) actionEvent {
+	ev.Slot, ev.ManeuverSpent = nil, nil
+	if ev.FeatureBefore == nil {
+		return ev
+	}
+	kept := map[string]*featureEntry{}
+	if feature := onceFeatureOf(removed); feature != "" {
+		if entry, ok := ev.FeatureBefore[feature]; ok {
+			kept[feature] = entry
+		}
+	}
+	ev.FeatureBefore = kept
+	return ev
+}
+
+// onceFeatureOf is the feature whose once-per-turn use the part marked when it counted: Sneak Attack's, Colossus Slayer's, or
+// the table's own for a part that is once per turn (settleParts); none for a part that marks nothing.
+func onceFeatureOf(part partRecord) string {
+	switch {
+	case part.Key == combat.ExtraSneakAttack:
+		return featureSneakAttack
+	case part.Key == combat.ExtraColossusSlayer:
+		return featureColossusSlayer
+	case part.Once:
+		return part.Key
+	}
+	return ""
 }
 
 // mayComeOut says the part is an extra that counts and is none the app keeps (the weapon, an automatic line, a smite whose slot is

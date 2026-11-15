@@ -160,7 +160,10 @@ type sumSmiteHit struct {
 
 func newSumSmiteHit(t *testing.T, target string, smite bool) *sumSmiteHit {
 	t.Helper()
-	a, _, _ := partsFight(t, func(a *armed) { a.toren = a.caio.paladinRogue(t, a.campaignID, "Toren") }, "monster:awakened-shrub")
+	a, _, shrub := partsFight(t, func(a *armed) { a.toren = a.caio.paladinRogue(t, a.campaignID, "Toren") }, "monster:awakened-shrub")
+	if target == "" { // the awakened shrub: an NPC, so the damage lands at once
+		target = shrub
+	}
 	e := a.passTo(t, a.get(t, a.master), "Toren")
 	a.setConditions(t, e, target, "condition:restrained")
 	hit := a.mustAttack(t, a.caio, e, "Toren", rapier, target, func(r *playv1.RollAttackRequest) { r.D20Faces = []int32{5, 18} })
@@ -180,9 +183,20 @@ func (h *sumSmiteHit) slotsUsed(t *testing.T) int32 {
 	return usedSlots(h.a.vitals(t, h.a.toren), 1)
 }
 
-// A damage that is only rolled (a player's character waits for the master) has no hit points to put back: the take-out gives the
-// spent slot back, the damage waits for the sum, and the roll that follows keeps the smite's dice and spends the slot again.
-func TestTakingAPartOutOfARolledDamageGivesTheSmiteSlotBackAndTheNextRollSpendsItAgain(t *testing.T) {
+func (h *sumSmiteHit) slotsTotal(t *testing.T) int32 {
+	t.Helper()
+	for _, s := range h.a.vitals(t, h.a.toren).GetSpellSlots() {
+		if s.GetLevel() == 1 {
+			return s.GetTotal()
+		}
+	}
+	return 0
+}
+
+// A damage that is only rolled (a player's character waits for the master) has no hit points to put back. The smite's slot was
+// spent once, when the smite was declared (the first roll): the take-out of another part keeps it spent, and the roll that follows
+// re-rolls dice and spends nothing.
+func TestTakingAPartOutOfARolledDamageKeepsTheSmiteSlotSpentAndTheNextRollSpendsNothing(t *testing.T) {
 	t.Parallel()
 	h := newSumSmiteHit(t, "Brisa", true)
 	if status, _ := h.a.pendingOf(t, h.id); status != pendingRolled {
@@ -199,8 +213,8 @@ func TestTakingAPartOutOfARolledDamageGivesTheSmiteSlotBackAndTheNextRollSpendsI
 	if p := res.GetPendingDamage(); p.GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM || p.GetAwaitedDamageTypeKey() != groupPiercing {
 		t.Fatalf("pending damage = %v awaiting %q, want AWAITING_GROUP_SUM awaiting piercing", p.GetStatus(), p.GetAwaitedDamageTypeKey())
 	}
-	if got := h.slotsUsed(t); got != 0 {
-		t.Errorf("slots used = %d after the take-out, want 0: the smite's slot is given back with the roll", got)
+	if got := h.slotsUsed(t); got != 1 {
+		t.Errorf("slots used = %d after the take-out, want 1: the kept smite keeps its slot spent", got)
 	}
 	if now, _, _ := h.a.hp(t, "Brisa"); now != hp {
 		t.Errorf("Brisa's hit points = %d, want %d: a damage only rolled changed none", now, hp)
@@ -218,16 +232,16 @@ func TestTakingAPartOutOfARolledDamageGivesTheSmiteSlotBackAndTheNextRollSpendsI
 		t.Errorf("the smite = %v after the second roll, want the 5 the first roll left, counted", smite)
 	}
 	if got := h.slotsUsed(t); got != 1 {
-		t.Errorf("slots used = %d after the second roll, want 1: the kept smite spends its slot again", got)
+		t.Errorf("slots used = %d after the second roll, want 1: the second roll spends nothing", got)
 	}
 	if want := h.rolled.GetAmount() - 9 + 4; p.GetAmount() != want {
 		t.Errorf("amount = %d, want %d: the first roll's with the group's 9 replaced by the new sum 4", p.GetAmount(), want)
 	}
 }
 
-// A slot spent elsewhere between the two rolls makes the second roll fail the way a first roll with no slot does: nothing is written,
-// the damage stays awaiting the sum, the master can give the slot back by a correction (and the roll goes through) or discard the damage.
-func TestTheSecondRollFailsWhenTheKeptSmiteSlotWasSpentElsewhereAndTheMasterHasAWayOut(t *testing.T) {
+// With no slot left after the take-out (all spent elsewhere), the second roll goes through all the same and spends nothing: the
+// smite's slot was paid for by the first roll.
+func TestTheSecondRollGoesThroughWhenNoSlotIsLeftAndSpendsNothing(t *testing.T) {
 	t.Parallel()
 	h := newSumSmiteHit(t, "Brisa", true)
 	if _, err := h.takeOut(t, "sneak-attack", "x"); err != nil {
@@ -238,17 +252,15 @@ func TestTheSecondRollFailsWhenTheKeptSmiteSlotWasSpentElsewhereAndTheMasterHasA
 		all = append(all, &playv1.SpellSlotsUsed{Level: s.GetLevel(), Used: s.GetTotal()})
 	}
 	h.a.correct(t, h.a.toren, func(r *playv1.AdjustCharacterVitalsRequest) { r.SpellSlotsUsed = all })
-	_, err := h.a.damage(t, h.a.caio, h.e, h.id, typedDamage(4))
-	wantBlockedBy(t, "RollDamage(the kept smite has no slot)", err, blockedNoSlot)
-	if status, _ := h.a.pendingOf(t, h.id); status != pendingAwaitingGroupSum {
-		t.Errorf("status = %q after the refused roll, want it still waiting for the sum", status)
+	res, err := h.a.damage(t, h.a.caio, h.e, h.id, typedDamage(4))
+	if err != nil {
+		t.Fatalf("RollDamage(no slot left) error = %v", err)
 	}
-	for _, s := range all {
-		s.Used = 0
+	if got := res.GetPendingDamage().GetStatus(); got != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED {
+		t.Errorf("status = %v, want ROLLED", got)
 	}
-	h.a.correct(t, h.a.toren, func(r *playv1.AdjustCharacterVitalsRequest) { r.SpellSlotsUsed = all })
-	if _, err := h.a.damage(t, h.a.caio, h.e, h.id, typedDamage(4)); err != nil {
-		t.Fatalf("RollDamage(after the slot came back) error = %v", err)
+	if h.slotsUsed(t) != h.slotsTotal(t) {
+		t.Errorf("slots used = %d of %d, want every slot still spent: the roll spent nothing and gave nothing back", h.slotsUsed(t), h.slotsTotal(t))
 	}
 }
 
@@ -302,7 +314,7 @@ func TestTheWeaponAndAPartOfACastDamageAreNotTakenOutOfAGroup(t *testing.T) {
 func TestTakingAPartOutOfARolledDamageIsRefusedWhenAHitRiderWasUsed(t *testing.T) {
 	t.Parallel()
 	for _, used := range []bool{true, false} {
-		h := newSumSmiteHit(t, "Brisa", false)
+		h := newSumSmiteHit(t, "Brisa", true)
 		if _, err := h.a.h.pool.Exec(t.Context(), `
 			INSERT INTO hit_riders (encounter_id, attacker_id, target_id, kind, round, created_at, used, pending_id)
 			VALUES ($1, $2, $3, 'stunning_strike', 1, now(), $4, $5)`,
@@ -316,13 +328,13 @@ func TestTakingAPartOutOfARolledDamageIsRefusedWhenAHitRiderWasUsed(t *testing.T
 		}
 		if used {
 			wantBlockedBy(t, "RemoveDamagePart(a rider was used)", err, blockedNothingToUndo)
-			if status, _ := h.a.pendingOf(t, h.id); status != pendingRolled || left != 1 {
-				t.Errorf("used: status %q, riders %d, want it untouched", status, left)
+			if status, _ := h.a.pendingOf(t, h.id); status != pendingRolled || left != 1 || h.slotsUsed(t) != 1 {
+				t.Errorf("used: status %q, riders %d, slots used %d, want it untouched", status, left, h.slotsUsed(t))
 			}
 			continue
 		}
-		if err != nil || left != 0 {
-			t.Errorf("an open offer: error = %v, riders left %d, want the take-out and the offer gone", err, left)
+		if err != nil || left != 0 || h.slotsUsed(t) != 1 {
+			t.Errorf("an open offer: error = %v, riders left %d, slots used %d, want the take-out, the offer gone and the slot still spent", err, left, h.slotsUsed(t))
 		}
 	}
 }
@@ -460,6 +472,9 @@ func TestTheSecondRollOfAGroupSumIsHeldForAReactionAndLandsAsAReplay(t *testing.
 	}
 	if reator := byLabel(t, a.get(t, a.master), "Reator"); !reator.GetReactionUsed() {
 		t.Error("the rogue's reaction is not used after it answered")
+	}
+	if got := usedSlots(a.vitals(t, a.toren), 1); got != 1 {
+		t.Errorf("slots used = %d after the replay, want 1: the smite's slot was paid by the first roll, and the replay spends nothing", got)
 	}
 	p := a.pendingView(t, id)
 	if p.GetAwaitedDamageTypeKey() != "" {
