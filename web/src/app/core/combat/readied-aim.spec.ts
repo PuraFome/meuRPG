@@ -80,6 +80,18 @@ describe('readiedAim (#582: who a readied attack or spell is aimed at)', () => {
       ['z1', 'Zumbi 1'],
     ]);
     expect(a.legend).toBe('Em quem (opcional)');
+    expect(a.rows.map((r) => r.sub)).toEqual([
+      'Você mesmo · Ileso',
+      'O alvo que você disse · Ferido',
+    ]);
+    // The player's own combatant has no state word: its card says only that it is the readier, with no dangling dot.
+    const own = encounter({
+      combatants: [combatant({ id: 'tor', label: 'Tor', state: CombatantState.UNSPECIFIED })],
+    } as never);
+    expect(
+      readiedAim(options(AttackKind.WEAPON, 'other'), row({ kind: ReadiedKind.SPELL }), own, 'tor')
+        .rows[0].sub,
+    ).toBe('Você mesmo');
   });
 
   it('takes a cantrip that asks for a saving throw as a spell: it has no attack roll to aim', () => {

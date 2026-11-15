@@ -43,9 +43,12 @@ function spellRows(e: Encounter | null, reactorId: string, named: string): Readi
   return (e?.combatants ?? []).map((c) => ({
     id: c.id,
     title: c.label,
-    sub: [c.id === reactorId ? 'Você mesmo' : '', c.id === named ? 'O alvo que você disse' : '']
+    sub: [
+      c.id === reactorId ? 'Você mesmo' : '',
+      c.id === named ? 'O alvo que você disse' : '',
+      stateWord(c.state, c.label),
+    ]
       .filter(Boolean)
-      .concat(stateWord(c.state, c.label))
       .join(' · '),
     blocked: '',
   }));
