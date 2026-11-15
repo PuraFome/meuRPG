@@ -492,9 +492,12 @@ export class CharacterSheetPage {
 
   /** The sheet's own issues: the ones "A classe mudou" tells (code `table_content_changed`) are not repeated in the list. */
   protected ownIssues(full: FullSheetVm): readonly IssueVm[] {
-    return full.changedContent.length > 0
-      ? full.issues.filter((i) => i.code !== 'table_content_changed')
-      : full.issues;
+    if (full.changedContent.length === 0) {
+      return full.issues;
+    }
+    // A sentence the changed entry already tells above is not told again here (580-05).
+    const told = new Set(full.changedContent.flatMap((c) => c.messages));
+    return full.issues.filter((i) => i.code !== 'table_content_changed' && !told.has(i.message));
   }
 
   protected asFullSheet(sheet: FullSheetVm | BasicSheetVm): FullSheetVm {
