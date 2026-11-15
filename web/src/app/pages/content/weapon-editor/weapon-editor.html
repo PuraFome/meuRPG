@@ -67,7 +67,11 @@
       @if (used.charactersUsing > 0) {
         <section class="mr-panel card-note" aria-labelledby="usage-t">
           <h2 class="card-note__title" id="usage-t"><mat-icon aria-hidden="true">open_in_full</mat-icon>Em uso por {{ used.charactersUsing }} {{ used.charactersUsing === 1 ? 'ficha' : 'fichas' }}</h2>
-          <p class="hint">Mudar o dano ou as propriedades vale na hora, também nos ataques das fichas travadas.</p>
+          @if (d.ranged) {
+            <p class="hint">Os jogadores a escolhem no editor da ficha, na lista de armas, com as do SRD.</p>
+          } @else {
+            <p class="hint">Mudar o dano ou as propriedades vale na hora, também nos ataques das fichas travadas.</p>
+          }
         </section>
       }
     }

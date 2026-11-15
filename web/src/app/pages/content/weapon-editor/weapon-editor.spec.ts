@@ -263,9 +263,10 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
     const e = stored();
     e.charactersUsing = 1;
     fixture.componentRef.setInput('entry', e);
-    Array.from(el.querySelectorAll<HTMLButtonElement>('button'))
-      .find((b) => text(b).includes('À distância'))!
-      .click();
+    const ranged = Array.from(el.querySelectorAll<HTMLLabelElement>('label.seg__item')).find((l) =>
+      text(l).includes('À distância'),
+    )!;
+    ranged.querySelector('input')!.click();
     fixture.detectChanges();
     expect(text(el.querySelector('.card-note')!)).toContain(
       'Os jogadores a escolhem no editor da ficha, na lista de armas, com as do SRD.',
