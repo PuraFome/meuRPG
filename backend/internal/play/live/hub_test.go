@@ -312,6 +312,76 @@ func TestSubscribePastTheCapReplacesTheUsersOldestStream(t *testing.T) {
 	}
 }
 
+// The total across campaigns replaces the user's oldest stream, whichever campaign it is in.
+func TestSubscribePastTheTotalReplacesTheUsersOldestStreamInAnotherCampaign(t *testing.T) {
+	t.Parallel()
+	h := New(0)
+	h.SetMaxPerUserTotal(3)
+	a1 := subscribe(t, h, campaignA, ana)
+	a2 := subscribe(t, h, campaignB, ana)
+	a3 := subscribe(t, h, campaignB, ana)
+	b1 := subscribe(t, h, campaignA, bruno)
+
+	a4 := subscribe(t, h, campaignB, ana)
+	if _, ok := <-a1.Events(); ok {
+		t.Fatal("the oldest stream, in another campaign, is still open past the total")
+	}
+	if !errors.Is(a1.Err(), ErrReplaced) {
+		t.Errorf("oldest stream Err() = %v, want ErrReplaced", a1.Err())
+	}
+	if a2.Err() != nil || a3.Err() != nil || a4.Err() != nil || b1.Err() != nil {
+		t.Errorf("a stream that was not ana's oldest ended: %v %v %v, bruno %v", a2.Err(), a3.Err(), a4.Err(), b1.Err())
+	}
+	if got := h.Count(campaignA) + h.Count(campaignB); got != 4 {
+		t.Errorf("streams held = %d, want 4: ana's three newest and bruno's", got)
+	}
+}
+
+// At the instance's cap a new stream is refused, and no stream ends.
+func TestSubscribeAtTheInstanceCapIsRefusedAndReplacesNobody(t *testing.T) {
+	t.Parallel()
+	h := New(0)
+	h.SetMaxStreams(3)
+	a1 := subscribe(t, h, campaignA, ana)
+	b1 := subscribe(t, h, campaignB, bruno)
+	m1 := subscribe(t, h, campaignA, master)
+
+	if _, err := h.Subscribe(campaignA, ana); !errors.Is(err, ErrFull) {
+		t.Fatalf("Subscribe() at the cap error = %v, want ErrFull", err)
+	}
+	if _, err := h.Subscribe(campaignB, Subscriber{UserID: "carla"}); !errors.Is(err, ErrFull) {
+		t.Fatalf("Subscribe() of another user at the cap error = %v, want ErrFull", err)
+	}
+	if a1.Err() != nil || b1.Err() != nil || m1.Err() != nil {
+		t.Errorf("a stream ended: %v %v %v", a1.Err(), b1.Err(), m1.Err())
+	}
+	if got := h.Count(campaignA) + h.Count(campaignB); got != 3 {
+		t.Errorf("streams held = %d, want 3", got)
+	}
+
+	// Room made by a close is taken again.
+	b1.Close()
+	subscribe(t, h, campaignB, Subscriber{UserID: "carla"})
+	if _, err := h.Subscribe(campaignA, bruno); !errors.Is(err, ErrFull) {
+		t.Errorf("Subscribe() after refilling error = %v, want ErrFull", err)
+	}
+}
+
+// Replacing a stream makes room for the new one, so a user at the per-campaign cap is not refused at the
+// instance's cap.
+func TestSubscribeReplacingAtTheInstanceCapIsServed(t *testing.T) {
+	t.Parallel()
+	h := New(0)
+	h.SetMaxPerUser(1)
+	h.SetMaxStreams(2)
+	a1 := subscribe(t, h, campaignA, ana)
+	subscribe(t, h, campaignA, bruno)
+	subscribe(t, h, campaignA, ana)
+	if !errors.Is(a1.Err(), ErrReplaced) {
+		t.Errorf("oldest stream Err() = %v, want ErrReplaced", a1.Err())
+	}
+}
+
 func TestDefaultMaxPerUser(t *testing.T) {
 	t.Parallel()
 	h := New(0)
