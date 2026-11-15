@@ -106,7 +106,25 @@ func TestFindSteedDismissInACombatSpendsTheOwnersAction(t *testing.T) {
 	}
 }
 
-func TestFindSteedDismissOffTurnOrWithTheActionSpentIsRefused(t *testing.T) {
+// steedUntouched asserts a refused dismissal changed nothing: the rider still rides, the steed combatant is there, the action is as it was.
+func (a *armed) steedUntouched(t *testing.T, what, id string, events int, actionUsed bool) {
+	t.Helper()
+	if bonded, reason := a.steedBondOf(t, id); !bonded || reason != "" {
+		t.Errorf("%s: the steed's creature is bonded = %v, reason %q, want live", what, bonded, reason)
+	}
+	if got := a.steedRowOf(t, "Aurélio"); got.MountedOn != a.id(t, "Trovão") {
+		t.Errorf("%s: Aurélio rides %q, want the steed", what, got.MountedOn)
+	}
+	var present int
+	if err := a.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM combatants WHERE label = 'Trovão' AND NOT dismissed`).Scan(&present); err != nil || present != 1 {
+		t.Errorf("%s: the steed's combatants = %d (%v), want 1", what, present, err)
+	}
+	if got := byLabel(t, a.get(t, a.master), "Aurélio").GetActionUsed(); got != actionUsed || a.events(t) != events {
+		t.Errorf("%s: action used %v (was %v), events %d (was %d)", what, got, actionUsed, a.events(t), events)
+	}
+}
+
+func TestFindSteedDismissOffTurnIsRefusedAndTheMasterDismissesFree(t *testing.T) {
 	t.Parallel()
 	a, e := riderInFight(t)
 	id := a.steedCreatureID(t)
@@ -114,13 +132,24 @@ func TestFindSteedDismissOffTurnOrWithTheActionSpentIsRefused(t *testing.T) {
 	a.passTo(t, e, "Toren")
 	events := a.events(t)
 	wantBlockedBy(t, "the dismissal off turn", a.dismissSteedAs(t, a.ana, id, dismiss), blockedNotYourTurn)
-	if bonded, reason := a.steedBondOf(t, id); !bonded || reason != "" || a.events(t) != events {
-		t.Errorf("the refusal changed something: reason %q, events %d (was %d)", reason, a.events(t), events)
-	}
+	a.steedUntouched(t, "off turn", id, events, false)
 	if err := a.dismissSteedAs(t, a.master, id, dismiss); err != nil {
 		t.Errorf("the master's dismissal off turn = %v, want free", err)
 	}
 	if byLabel(t, a.get(t, a.master), "Aurélio").GetActionUsed() {
 		t.Error("the master's dismissal spent Aurélio's action")
 	}
+}
+
+// TestFindSteedDismissWithTheActionSpentIsRefused: on the owner's turn with the action already spent, the dismissal is refused with ACTION_USED.
+func TestFindSteedDismissWithTheActionSpentIsRefused(t *testing.T) {
+	t.Parallel()
+	a, e := riderInFight(t)
+	id := a.steedCreatureID(t)
+	if _, err := a.action(t, a.ana, e, "Aurélio", "standard:dodge"); err != nil {
+		t.Fatalf("Dodge error = %v", err)
+	}
+	events := a.events(t)
+	wantBlockedBy(t, "the dismissal with the action spent", a.dismissSteedAs(t, a.ana, id, charactersv1.CreatureDismissal_CREATURE_DISMISSAL_DISMISS), blockedActionUsed)
+	a.steedUntouched(t, "action spent", id, events, true)
 }

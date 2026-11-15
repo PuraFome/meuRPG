@@ -56,8 +56,11 @@ At 0 hit points its creature is dismissed at once with the reason `disappeared` 
 Its combatant stays under the rider until the rider answers the dismount window, and then `goneSteed` takes it out.
 The bond stays, so a new casting brings the same steed back.
 A dismissal of the steed puts the rider on foot with no window (`unseatRider`).
-`DismissCreatureRequest.dismissal` says how a steed goes: `DISMISS` (and unspecified) keeps the bond with the reason `dismissed`, and `RELEASE` ends it (`bonded` false, the reason `owner` or `master`).
-`RELEASE` of a creature that is not a bonded steed is `INVALID_ARGUMENT`, and releasing a dismissed steed ends its bond.
+`DismissCreatureRequest.dismissal` says how a steed goes.
+`DISMISS` and unspecified keep the bond, with the reason `dismissed`.
+`RELEASE` ends it: `bonded` is false and the reason is `owner` or `master`.
+`RELEASE` of a creature that is not a bonded steed is `INVALID_ARGUMENT`, and it also ends the bond of a steed that was dismissed already.
+Releasing a dismissed steed tells its owner (`creatures_changed`).
 In a running combat that holds the steed, the owner's player spends the action of its turn (`CreatureHost.SpendDismissal`: `NOT_YOUR_TURN`, `ACTION_USED` and the gate's other refusals), and the master dismisses for free.
 Out of a combat a dismissal costs nothing.
 `CastSpellRequest.also_steed` makes a spell that reaches only the caster reach the bonded steed the caster rides too (`SpellOption.also_steed` offers it).
