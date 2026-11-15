@@ -1425,6 +1425,8 @@ message Attack {
   // long_range_ft are then its throwing range. A weapon of ammunition has the same two numbers and is not thrown.
   // False for a spell, an unarmed strike and a creature's attack.
   bool thrown = 28;
+  // For a weapon that fires ammunition, the catalog key of the kind it fires ("equipment:arrow"), which names the pieces on the attack line; empty when the weapon fires none, and on its improvised melee line. It does not say how many pieces the character has: ammunition_left does.
+  string ammunition_key = 29;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

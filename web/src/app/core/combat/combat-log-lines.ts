@@ -33,6 +33,7 @@ import { effectEndedText, effectLine, exhaustionLogText } from './combat-log-eff
 import { LogContext, LogLine, NO_CONTEXT } from './combat-log-types';
 import { removedName } from './combat-log-words';
 import { MOUNT_LINES } from './combat-log-mount';
+import { ITEM_USE_LINES } from './combat-log-item-use';
 
 /** What a line builder is given: the entry, the fields every line shares, the combat's name and who is reading. */
 interface LineArgs {
@@ -222,6 +223,7 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
     },
   ],
   ...MOUNT_LINES,
+  ...ITEM_USE_LINES,
   [
     CombatLogKind.EFFECT_ENDED,
     ({ e, base, ctx }) => {

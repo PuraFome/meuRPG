@@ -22,6 +22,7 @@ import {
 import { itemModifiersOf, marksOf, sheetGear, weaponMarksOf } from './character-sheet-marks';
 import { speedExtrasOf } from './character-sheet-speeds';
 import { attunementOf } from '../../core/characters/attunement';
+import { ammunitionOf } from '../../core/characters/charges';
 import { KIND_FROM_GEN } from '../../core/characters/character-kind-gen';
 import { ABILITY_FROM_GEN } from '../../core/characters/ability-gen';
 import { SkillProficiency } from '../../core/characters/character-labels';
@@ -299,6 +300,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     languages: derived.languages,
     proficiencies: proficienciesVm(derived.proficiencies),
     equipment: full.equipment.map((item) => ({ name: item.name, quantity: item.quantity || 1 })),
+    ammunition: ammunitionOf(full.ammunition),
     backgroundEquipment: derived.backgroundEquipmentPt,
     coins: coinsVm(full.coins),
     customFeaturesText: full.customFeaturesText,

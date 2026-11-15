@@ -80,6 +80,71 @@
         />
       }
 
+      @if (dawnRow()) {
+        <div class="question__dawn">
+          <div class="dawn__head">
+            <app-check-box label="Amanhecer" [checked]="dawnOn()" (toggle)="dawnOn.set(!dawnOn())" />
+            <span class="dawn__text">
+              <b class="dawn__title">Amanhecer</b>
+              <span class="dawn__hint">Os itens do amanhecer recebem as cargas.</span>
+            </span>
+            <button
+              type="button"
+              class="dawn__info"
+              aria-label="O que é o Amanhecer"
+              aria-controls="rest-dawn-info"
+              [attr.aria-expanded]="dawnInfo()"
+              (click)="dawnInfo.set(!dawnInfo())"
+            >
+              <mat-icon aria-hidden="true">info</mat-icon>
+            </button>
+          </div>
+          @if (dawnInfo()) {
+            <div class="dawn__explain">
+              <mat-icon aria-hidden="true">wb_twilight</mat-icon>
+              <p id="rest-dawn-info">
+                <b>Amanhecer:</b> os itens que dizem “ao amanhecer” recebem as cargas de volta, com o dado que o item diz e
+                até o máximo. Deixe ligado se o descanso atravessou a noite; desligue num descanso de dia. Sem descanso, use
+                “Amanhecer” em Cargas e munição.
+              </p>
+            </div>
+          }
+          @if (dawnRead() === 'error') {
+            <p class="dawn__problem" role="status">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <span>Não foi possível ler os itens do amanhecer. O servidor decide quais recebem as cargas.</span>
+            </p>
+          } @else if (dawnRead() !== 'ready') {
+            <p class="dawn__problem" role="status">
+              <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+              <span>Lendo os itens do amanhecer…</span>
+            </p>
+          }
+          @if (dawnOn()) {
+            @if (dawnItems().length > 0) {
+              <ul class="dawn__lines">
+                @for (line of dawnItems(); track $index) {
+                  <li class="dawn__line">
+                    <mat-icon aria-hidden="true">wb_twilight</mat-icon>
+                    <span><b>{{ line.characterName }}</b> · {{ line.text }}</span>
+                  </li>
+                }
+              </ul>
+            }
+            <p class="dawn__rule">O app rola cada dado do amanhecer por você, também numa mesa de dados físicos.</p>
+          } @else {
+            <p class="dawn__off">
+              <mat-icon aria-hidden="true">block</mat-icon>
+              @if (dawnRead() === 'ready') {
+                <span>As cargas do amanhecer ficam como estão: {{ dawnItems().length }} {{ dawnItems().length === 1 ? 'item espera' : 'itens esperam' }}.</span>
+              } @else {
+                <span>As cargas do amanhecer ficam como estão.</span>
+              }
+            </p>
+          }
+        </div>
+      }
+
       @for (c of choices(); track c.characterId) {
         <div class="choice" role="group" [attr.aria-label]="'Dados de vida que voltam de ' + c.name">
           <p class="choice__title">

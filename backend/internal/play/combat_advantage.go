@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
@@ -14,6 +13,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -34,104 +34,6 @@ const (
 	stateDodging  = "dodging"
 	stateReckless = "reckless"
 )
-
-// The values of a roll mode as the database keeps them.
-const (
-	modeNormalKey       = "normal"
-	modeAdvantageKey    = "advantage"
-	modeDisadvantageKey = "disadvantage"
-)
-
-// modeKey is a mode as the database keeps it.
-func modeKey(m combat.RollMode) string {
-	switch m {
-	case combat.ModeAdvantage:
-		return modeAdvantageKey
-	case combat.ModeDisadvantage:
-		return modeDisadvantageKey
-	case combat.ModeNormal:
-	}
-	return modeNormalKey
-}
-
-// modeOfKey reads a stored mode; normal for anything else.
-func modeOfKey(k string) combat.RollMode {
-	switch k {
-	case modeAdvantageKey:
-		return combat.ModeAdvantage
-	case modeDisadvantageKey:
-		return combat.ModeDisadvantage
-	}
-	return combat.ModeNormal
-}
-
-var modeToProto = map[combat.RollMode]playv1.RollMode{
-	combat.ModeNormal:       playv1.RollMode_ROLL_MODE_NORMAL,
-	combat.ModeAdvantage:    playv1.RollMode_ROLL_MODE_ADVANTAGE,
-	combat.ModeDisadvantage: playv1.RollMode_ROLL_MODE_DISADVANTAGE,
-}
-
-// modeFromProto reads a requested mode; ok is false for UNSPECIFIED.
-func modeFromProto(m playv1.RollMode) (combat.RollMode, bool) {
-	switch m {
-	case playv1.RollMode_ROLL_MODE_NORMAL:
-		return combat.ModeNormal, true
-	case playv1.RollMode_ROLL_MODE_ADVANTAGE:
-		return combat.ModeAdvantage, true
-	case playv1.RollMode_ROLL_MODE_DISADVANTAGE:
-		return combat.ModeDisadvantage, true
-	case playv1.RollMode_ROLL_MODE_UNSPECIFIED:
-	}
-	return combat.ModeNormal, false
-}
-
-var sourceKindToProto = map[string]playv1.AdvantageSourceKind{
-	combat.SourceProneTarget:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PRONE_TARGET,
-	combat.SourceProneAttacker:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PRONE_ATTACKER,
-	combat.SourceRestrainedTarget:   playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_TARGET,
-	combat.SourceRestrainedAttacker: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_ATTACKER,
-	combat.SourceBlindedTarget:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_BLINDED_TARGET,
-	combat.SourceBlindedAttacker:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_BLINDED_ATTACKER,
-	combat.SourcePoisonedAttacker:   playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_POISONED_ATTACKER,
-	combat.SourceFrightenedAttacker: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_ATTACKER,
-	combat.SourceInvisibleTarget:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_INVISIBLE_TARGET,
-	combat.SourceInvisibleAttacker:  playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_INVISIBLE_ATTACKER,
-	combat.SourceStunnedTarget:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_STUNNED_TARGET,
-	combat.SourceParalyzedTarget:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PARALYZED_TARGET,
-	combat.SourceUnconsciousTarget:  playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_UNCONSCIOUS_TARGET,
-	combat.SourcePetrifiedTarget:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PETRIFIED_TARGET,
-	combat.SourceRecklessAttacker:   playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RECKLESS_ATTACKER,
-	combat.SourceRecklessTarget:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RECKLESS_TARGET,
-	combat.SourceDodgingTarget:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_DODGING_TARGET,
-	combat.SourcePackTactics:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PACK_TACTICS,
-	combat.SourceUnseenAttacker:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_UNSEEN_ATTACKER,
-	combat.SourceUnseenTarget:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_UNSEEN_TARGET,
-	combat.SourceLongRange:          playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_LONG_RANGE,
-	combat.SourceHostileNearby:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HOSTILE_NEARBY,
-	combat.SourceDodgingSave:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_DODGING_SAVE,
-	combat.SourceDangerSense:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_DANGER_SENSE,
-	combat.SourceRageStrength:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RAGE_STRENGTH,
-	combat.SourceExhaustionAttack:   playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_ATTACK,
-	combat.SourceExhaustionSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_SAVE,
-	combat.SourceExhaustionCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EXHAUSTION_CHECK,
-	combat.SourceOutlinedTarget:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OUTLINED_TARGET,
-	combat.SourceEffectSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_SAVE,
-	combat.SourceTaggedSave:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_TAGGED_SAVE,
-	combat.SourceEffectCheck:        playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_CHECK,
-	combat.SourceEffectAttack:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_EFFECT_ATTACK,
-	combat.SourceRestrainedSave:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_RESTRAINED_SAVE,
-	combat.SourcePoisonedCheck:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_POISONED_CHECK,
-	combat.SourceFrightenedCheck:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FRIGHTENED_CHECK,
-	combat.SourcePerceptionDim:      playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PERCEPTION_DIM,
-	combat.SourceHelp:               playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_HELP,
-	combat.SourceArmorUntrained:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_ARMOR_NOT_PROFICIENT,
-	combat.SourceProtection:         playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_PROTECTION,
-	combat.SourceMagicResistance:    playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_MAGIC_RESISTANCE,
-	combat.SourceFavor:              playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FAVOR,
-	combat.SourceSunlightAttack:     playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_ATTACK,
-	combat.SourceSunlightPerception: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_PERCEPTION,
-	combat.SourceSunlightSave:       playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_SUNLIGHT_SAVE,
-}
 
 // statesOf groups the states of a combat by the combatant that has them.
 func statesOf(states []playdb.CombatantState) map[string][]playdb.CombatantState {
@@ -296,15 +198,15 @@ func (f modeFacts) attackMode(attacker, target playdb.Combatant, attackerTraits 
 	// of a paralyzed or unconscious target is a condition they see on a target they
 	// picked.
 	self := v.master || v.owns(attacker)
-	ctx := textContext{self: self, names: names, attacker: attacker.Label, target: target.Label, allyLabel: f.allyLabelNear(attacker, target)}
+	ctx := advantage.TextContext{Self: self, Names: names, Attacker: attacker.Label, Target: target.Label, AllyLabel: f.allyLabelNear(attacker, target)}
 	if h := f.helperOf(attacker, target); h != nil && (self || v.sees(*h)) {
-		ctx.helper = h.Label
+		ctx.Helper = h.Label
 	}
 	// What an effect the master hides gives is "Outra fonte" to a player (RN-10).
 	hide := f.hiddenFrom(v, attacker, target)
 	out.Hide = hide
 	for _, src := range shown.Sources {
-		out.Shown = append(out.Shown, sourceProto(src, ctx, hide))
+		out.Shown = append(out.Shown, advantage.SourceProto(src, ctx, hide))
 	}
 	out.Shown = append(out.Shown, bonusSources(rollBonusesOf(f.states, attacker.ID, rules.RollAppliesAttack), names, v.master, true)...)
 	return out
@@ -437,232 +339,6 @@ func (f modeFacts) hostileNear(attacker playdb.Combatant, view *combatViewer) bo
 		}
 	}
 	return false
-}
-
-// textContext is who reads a sentence and what it names.
-type textContext struct {
-	// self says the reader plays the roller ("Você está Envenenado"); else a third
-	// person ("Atacante Envenenado").
-	self  bool
-	names func(string) string
-	// attacker, target and allyLabel are the labels a sentence may name; the master
-	// reads them, a player only the target they chose.
-	attacker, target, allyLabel string
-	// helper is the label of the creature whose Help holds.
-	helper string
-}
-
-// subject is "Você" or "O atacante".
-func (c textContext) subject() string {
-	if c.self {
-		return "Você está"
-	}
-	return "O atacante está"
-}
-
-func (c textContext) cond(key string) string { return c.names(key) }
-
-// conditionSentence names a condition source as "<subject> <condition>: <effect>".
-func (c textContext) conditionSentence(key, effect string) string {
-	return fmt.Sprintf("%s %s: %s", c.subject(), c.cond(key), effect)
-}
-
-// ---- the sentences ----
-
-// sentence writes a source in Portuguese: an attack roll's here, the others in otherSentence.
-func (c textContext) sentence(src combat.Source) string {
-	if text, ok := sunlightSentence(src); ok {
-		return text
-	}
-	if text, ok := c.attackerSentence(src); ok {
-		return text
-	}
-	if text, ok := c.targetSentence(src); ok {
-		return text
-	}
-	if text, ok := c.situationSentence(src); ok {
-		return text
-	}
-	return c.otherSentence(src)
-}
-
-// The sunlight's sources are the master's (RN-20, RN-29): the sentence names the sun and the trait that makes it
-// count, and a player is never given it (hidesSunlight).
-const (
-	sunlightSensitivityName = "Sensibilidade à Luz do Sol"
-	sunlightWeaknessName    = "Fraqueza à Luz do Sol"
-)
-
-// sunlightSentence writes a sunlight source, false for any other kind.
-func sunlightSentence(src combat.Source) (string, bool) {
-	trait := sunlightSensitivityName
-	if src.Condition == combat.TraitSunlightWeakness {
-		trait = sunlightWeaknessName
-	}
-	switch src.Kind {
-	case combat.SourceSunlightAttack, combat.SourceSunlightSave:
-		return fmt.Sprintf("Luz do sol (%s)", trait), true
-	case combat.SourceSunlightPerception:
-		if src.Condition == combat.TraitSunlightWeakness {
-			return fmt.Sprintf("Luz do sol (%s)", trait), true
-		}
-		return fmt.Sprintf("Luz do sol, nos testes que dependem da visão (%s)", trait), true
-	}
-	return "", false
-}
-
-// isSunlight says the source is one of the sun's.
-func isSunlight(src combat.Source) bool {
-	switch src.Kind {
-	case combat.SourceSunlightAttack, combat.SourceSunlightPerception, combat.SourceSunlightSave:
-		return true
-	}
-	return false
-}
-
-// hidesSunlight is the hide of whoever is not the master: the sun and the trait behind it are the master's, so a
-// player reads "Outra fonte" for them, on their own roll too.
-func hidesSunlight(src combat.Source) bool { return isSunlight(src) }
-
-// hideUnlessMaster is hidesSunlight for a viewer: nil for the master, who reads everything.
-func hideUnlessMaster(master bool) func(combat.Source) bool {
-	if master {
-		return nil
-	}
-	return hidesSunlight
-}
-
-// attackerSentence writes a source that comes from the one who attacks.
-func (c textContext) attackerSentence(src combat.Source) (string, bool) {
-	switch src.Kind {
-	case combat.SourceProneAttacker, combat.SourceRestrainedAttacker, combat.SourceBlindedAttacker, combat.SourcePoisonedAttacker:
-		return c.conditionSentence(src.Condition, "desvantagem"), true
-	case combat.SourceFrightenedAttacker:
-		return c.conditionSentence(src.Condition, "desvantagem enquanto a fonte do medo está à vista"), true
-	case combat.SourceInvisibleAttacker:
-		return c.conditionSentence(src.Condition, "vantagem"), true
-	case combat.SourceRecklessAttacker:
-		return fmt.Sprintf("%s: vantagem nos ataques corpo a corpo com Força neste turno", c.names("feature:reckless-attack")), true
-	}
-	return "", false
-}
-
-// targetSentence writes a source that comes from the one who is attacked.
-func (c textContext) targetSentence(src combat.Source) (string, bool) {
-	switch src.Kind {
-	case combat.SourceProneTarget:
-		if src.Effect == combat.ModeAdvantage {
-			return fmt.Sprintf("Alvo %s a 1,5 m: vantagem", c.cond(src.Condition)), true
-		}
-		return fmt.Sprintf("Alvo %s a mais de 1,5 m: desvantagem", c.cond(src.Condition)), true
-	case combat.SourceRestrainedTarget, combat.SourceBlindedTarget, combat.SourceStunnedTarget,
-		combat.SourceParalyzedTarget, combat.SourceUnconsciousTarget, combat.SourcePetrifiedTarget:
-		return fmt.Sprintf("Alvo %s: vantagem", c.cond(src.Condition)), true
-	case combat.SourceInvisibleTarget:
-		return fmt.Sprintf("Alvo %s: desvantagem", c.cond(src.Condition)), true
-	case combat.SourceRecklessTarget:
-		return fmt.Sprintf("Alvo em %s: vantagem nos ataques contra ele", c.names("feature:reckless-attack")), true
-	case combat.SourceDodgingTarget:
-		return "Alvo Esquivando e vendo o atacante: desvantagem", true
-	}
-	return "", false
-}
-
-// situationSentence writes a source that comes from the place of the attack: allies, sight,
-// range and enemies nearby.
-func (c textContext) situationSentence(src combat.Source) (string, bool) {
-	switch src.Kind {
-	case combat.SourcePackTactics:
-		if c.allyLabel != "" && !c.self {
-			return fmt.Sprintf("Táticas de Matilha: um aliado (%s) está a 1,5 m de %s e não está incapacitado", c.allyLabel, c.target), true
-		}
-		return "Táticas de Matilha: um aliado está a 1,5 m do alvo e não está incapacitado", true
-	case combat.SourceHelp:
-		if c.helper != "" {
-			return fmt.Sprintf("Ajuda de %s: vantagem", c.helper), true
-		}
-		return "Ajuda de um aliado: vantagem", true
-	case combat.SourceUnseenAttacker:
-		return "Atacante que o alvo não vê: vantagem", true
-	case combat.SourceUnseenTarget:
-		return "Alvo que o atacante não vê: desvantagem", true
-	case combat.SourceLongRange:
-		return "Além do alcance normal: desvantagem", true
-	case combat.SourceHostileNearby:
-		return "Um inimigo a 1,5 m de quem ataca à distância: desvantagem", true
-	case combat.SourceEffectAttack:
-		if src.Effect == combat.ModeAdvantage {
-			return fmt.Sprintf("%s: vantagem neste ataque", c.names(src.Condition)), true
-		}
-		return fmt.Sprintf("%s: desvantagem neste ataque", c.names(src.Condition)), true
-	}
-	return "", false
-}
-
-// staticSentences are the sources of a saving throw, a check or an effect whose sentence names nothing.
-var staticSentences = map[string]string{
-	combat.SourceDodgingSave:      "Esquivando: vantagem em testes de resistência de Destreza",
-	combat.SourceRageStrength:     "Em fúria: vantagem em testes e testes de resistência de Força",
-	combat.SourceMagicResistance:  "Resistência à Magia: vantagem em testes de resistência contra magias e outros efeitos mágicos",
-	combat.SourcePerceptionDim:    "Você vê o chão em penumbra: desvantagem na Percepção",
-	combat.SourceExhaustionAttack: "Exaustão: desvantagem em jogadas de ataque",
-	combat.SourceExhaustionSave:   "Exaustão: desvantagem em testes de resistência",
-	combat.SourceExhaustionCheck:  "Exaustão: desvantagem em testes de habilidade",
-	combat.SourceStealthArmor:     "Armadura: desvantagem em Furtividade",
-	combat.SourceArmorUntrained:   labelArmorUntrained + ": desvantagem em testes, ataques e testes de resistência de Força e Destreza",
-	combat.SourceOutlinedTarget:   "Alvo delineado: vantagem se o atacante o vê",
-	combat.SourceFavor:            labelFavor,
-}
-
-// otherSentence writes, in Portuguese, a source of a saving throw or an ability check, or one an
-// effect that lasts gives.
-func (c textContext) otherSentence(src combat.Source) string {
-	if text, ok := staticSentences[src.Kind]; ok {
-		return text
-	}
-	switch src.Kind {
-	case combat.SourceDangerSense:
-		return fmt.Sprintf("%s: vantagem em testes de resistência de Destreza contra efeitos que você vê", c.names("feature:danger-sense"))
-	case combat.SourceEffectSave:
-		return "Efeito ativo: " + modeWord(src.Effect) + " no teste de resistência"
-	case combat.SourceEffectCheck:
-		return "Efeito ativo: " + modeWord(src.Effect) + " em testes de habilidade"
-	case combat.SourceRestrainedSave:
-		return fmt.Sprintf("%s: desvantagem em testes de resistência de Destreza", c.cond(src.Condition))
-	case combat.SourcePoisonedCheck, combat.SourceFrightenedCheck:
-		return fmt.Sprintf("%s: desvantagem em testes de habilidade", c.cond(src.Condition))
-	case combat.SourceTaggedSave:
-		mode := "vantagem"
-		if src.Effect == combat.ModeDisadvantage {
-			mode = "desvantagem"
-		}
-		return fmt.Sprintf("%s: %s no teste de resistência %s", c.names(src.Condition), mode, c.againstSentence(src.Against))
-	}
-	return ""
-}
-
-// modeWord is "vantagem" or "desvantagem".
-func modeWord(m combat.RollMode) string {
-	if m == combat.ModeDisadvantage {
-		return "desvantagem"
-	}
-	return "vantagem"
-}
-
-// againstSentence is what a saving throw with a racial advantage is against, in Portuguese.
-func (c textContext) againstSentence(against string) string {
-	if strings.HasPrefix(against, "condition:") {
-		return "contra ficar " + strings.ToLower(c.cond(against))
-	}
-	switch against {
-	case combat.AgainstFrightened:
-		return "contra ficar amedrontado"
-	case combat.AgainstCharmed:
-		return "contra ficar enfeitiçado"
-	case combat.AgainstPoison:
-		return "contra veneno"
-	}
-	return "contra magia"
 }
 
 // ---- reading the combat ----
@@ -866,7 +542,7 @@ func (t turnModes) annotateShape(shape *attackShape, targets []*playv1.TargetInR
 			continue
 		}
 		r := t.facts.attackMode(t.who, t.facts.cs[j], t.sheet.Traits, *shape, t.ownTurn, t.viewer, t.names)
-		tg.RollMode, tg.Sources, tg.CriticalOnHit = modeToProto[r.Mode], r.Shown, r.CriticalOnHit
+		tg.RollMode, tg.Sources, tg.CriticalOnHit = advantage.ModeToProto[r.Mode], r.Shown, r.CriticalOnHit
 	}
 }
 
@@ -915,36 +591,6 @@ func (s *Service) spellModes(ctx context.Context, c *combatTx, m authz.Membershi
 		spend: req.GetSpendFavor(), key: req.GetIdempotencyKey(),
 		attack: map[string][]*playv1.AdvantageSource{}, save: map[string][]*playv1.AdvantageSource{},
 	}, nil
-}
-
-// shownSources writes the sources of a saving throw or an ability check. The master reads the sun as itself; a player reads
-// "Outra fonte" for it.
-func shownSources(sources []combat.Source, names func(string) string, master bool) []*playv1.AdvantageSource {
-	return shownSourcesHiding(sources, names, hideUnlessMaster(master))
-}
-
-// shownSourcesHiding is shownSources with the sources of an effect the master hides turned
-// into "Outra fonte" (RN-10): hide says which.
-func shownSourcesHiding(sources []combat.Source, names func(string) string, hide func(combat.Source) bool) []*playv1.AdvantageSource {
-	ctx := textContext{self: true, names: names}
-	var out []*playv1.AdvantageSource
-	for _, src := range sources {
-		out = append(out, sourceProto(src, ctx, hide))
-	}
-	return out
-}
-
-// sourceProto writes one source; one the viewer may not know the origin of reads
-// "Outra fonte" with the effect and no key.
-func sourceProto(src combat.Source, ctx textContext, hide func(combat.Source) bool) *playv1.AdvantageSource {
-	if hide != nil && hide(src) {
-		text := "Outra fonte: vantagem"
-		if src.Effect == combat.ModeDisadvantage {
-			text = "Outra fonte: desvantagem"
-		}
-		return &playv1.AdvantageSource{Kind: playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_OTHER_SOURCE, Effect: modeToProto[src.Effect], TextPt: text}
-	}
-	return &playv1.AdvantageSource{Kind: sourceKindToProto[src.Kind], Effect: modeToProto[src.Effect], TextPt: ctx.sentence(src)}
 }
 
 // attach puts the circumstances of each roll in the answer to the cast. A retry of a

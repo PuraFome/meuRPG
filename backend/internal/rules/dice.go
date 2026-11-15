@@ -19,6 +19,21 @@ type DiceFormula struct {
 	AddsModifier bool
 }
 
+// Text is the formula as the sheet writes it ("1d6+1", "1d4-1", "2d8"); empty for a formula with no dice.
+func (d DiceFormula) Text() string {
+	if d.Count == 0 {
+		return ""
+	}
+	t := strconv.Itoa(d.Count) + "d" + strconv.Itoa(d.Sides)
+	switch {
+	case d.Bonus > 0:
+		t += "+" + strconv.Itoa(d.Bonus)
+	case d.Bonus < 0:
+		t += strconv.Itoa(d.Bonus)
+	}
+	return t
+}
+
 // ParseDice reads the forms the SRD and the sheet use: "1d10", "1d8+3",
 // "1d6-1", "1d8 + MOD", "7d8 + 30" and "5". ok is false for anything else,
 // such as Flame Strike's "4d6 OR 5d6".

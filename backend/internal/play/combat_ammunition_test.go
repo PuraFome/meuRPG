@@ -560,3 +560,30 @@ func TestAnNPCsBowTakesNoAmmunition(t *testing.T) {
 		}
 	}
 }
+
+// An attack line of a weapon that fires ammunition names the kind it fires, whether or not the character has a count for it.
+func TestTheAttackLineNamesTheAmmunitionItFires(t *testing.T) {
+	t.Parallel()
+	s := &archery{newArmedWith(t, func(a *armed) {
+		scores := &rulesv1.AbilityScores{Strength: 14, Dexterity: 16, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5, scores, []string{"equipment:longbow", "equipment:sling", handaxeKey}, nil)
+		a.pens = a.ana.hero(t, a.campaignID, "Pensantus", "class:wizard", "race:gnome", 1, scores, nil, []string{fireBolt})
+		a.bri = a.bia.hero(t, a.campaignID, "Brisa", "class:fighter", "race:human", 2, scores, []string{rapier}, nil)
+	})}
+	e := s.fight(t, 8)
+	got := map[string]string{}
+	for _, o := range s.mustOptions(t, s.caio, e, "Toren").GetOptions().GetAttacks() {
+		got[o.GetAttack().GetKey()] = o.GetAttack().GetAmmunitionKey()
+	}
+	want := map[string]string{
+		"equipment:longbow":       "equipment:arrow",
+		"equipment:sling":         "equipment:sling-bullet",
+		handaxeKey:                "",
+		"equipment:longbow:melee": "",
+	}
+	for key, ammo := range want {
+		if g, ok := got[key]; !ok || g != ammo {
+			t.Errorf("%s fires %q (listed %v), want %q", key, g, ok, ammo)
+		}
+	}
+}
