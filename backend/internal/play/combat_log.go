@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"slices"
 	"strings"
 	"time"
@@ -1305,7 +1306,7 @@ func (e *logEntry) fillGearSwapped(_ *logViewing, out *playv1.CombatLogEntry) bo
 func (e *logEntry) fillItemUse(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	use := e.item
 	out.ItemUse = &playv1.ItemUseLogLine{
-		ItemNamePt: use.Name, Amount: use.Amount, Left: use.Left, Max: use.Max, D20: use.D20, Outcome: itemOutcomeOf(use.Outcome), AmmunitionNamePt: use.Ammo,
+		ItemNamePt: use.Name, Amount: use.Amount, Left: use.Left, Max: use.Max, D20: use.D20, Outcome: itemOutcomeOf(use.Outcome), AmmunitionNamePt: use.Ammo, Lost: charactersv1.ItemLoss(use.Lost),
 	}
 	return true
 }

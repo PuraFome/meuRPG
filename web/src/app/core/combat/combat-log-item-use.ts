@@ -1,3 +1,4 @@
+import { ItemLoss } from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   type CombatLogEntry,
   CombatLogKind,
@@ -44,6 +45,18 @@ function chargeSpent({ e, base }: ItemUseArgs): LogLine | null {
   return { ...base, icon: 'bolt', text: ` ${text}` };
 }
 
+/** What became of an item that was lost: ashes for a destroyed one, else what is left of it. */
+function lossText(lost: ItemLoss): string {
+  switch (lost) {
+    case ItemLoss.PLAIN_ITEM:
+      return 'virou um item comum';
+    case ItemLoss.PARTLY_MAGIC:
+      return 'perdeu a magia e ficou só com o bônus';
+    default:
+      return 'virou cinzas';
+  }
+}
+
 /** "ITEM_LAST_CHARGE_ROLLED": "rolou 1 no d20 da última carga: a Varinha de teia virou cinzas". */
 function lastChargeRolled({ e, base }: ItemUseArgs): LogLine | null {
   const use = e.itemUse;
@@ -53,7 +66,7 @@ function lastChargeRolled({ e, base }: ItemUseArgs): LogLine | null {
   const item = the(use.itemNamePt);
   const result =
     use.outcome === ItemUseOutcome.LOST
-      ? `${item} virou cinzas`
+      ? `${item} ${lossText(use.lost)}`
       : use.outcome === ItemUseOutcome.REGAINED
         ? `${item} recuperou ${cargas(use.amount)}`
         : `${item} fica, sem cargas`;

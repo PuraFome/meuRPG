@@ -7,6 +7,7 @@ import {
   ItemUseOutcome,
   ItemUseLogLineSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
+import { ItemLoss } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { logGroups, logLine } from './combat-log';
 
 const entry = (
@@ -103,8 +104,19 @@ describe('the lines of charges and ammunition in the log (the master and the own
       });
 
     it('says the d20 and that the item turned to ashes, as the board has it', () => {
-      expect(said(rolled({ d20: 1, outcome: ItemUseOutcome.LOST }))).toBe(
+      expect(said(rolled({ d20: 1, outcome: ItemUseOutcome.LOST, lost: ItemLoss.GONE }))).toBe(
         'Pensantus rolou 1 no d20 da última carga: a Varinha de teia virou cinzas',
+      );
+    });
+
+    it('says what is left of an item that was not destroyed', () => {
+      expect(
+        said(rolled({ d20: 1, outcome: ItemUseOutcome.LOST, lost: ItemLoss.PLAIN_ITEM })),
+      ).toBe('Pensantus rolou 1 no d20 da última carga: a Varinha de teia virou um item comum');
+      expect(
+        said(rolled({ d20: 1, outcome: ItemUseOutcome.LOST, lost: ItemLoss.PARTLY_MAGIC })),
+      ).toBe(
+        'Pensantus rolou 1 no d20 da última carga: a Varinha de teia perdeu a magia e ficou só com o bônus',
       );
     });
 
