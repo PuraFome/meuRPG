@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/names"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -76,7 +77,7 @@ func (s *Service) chooseMode(ctx context.Context, c *combatTx, v combatViewer, a
 	if ask.requestID != "" {
 		return useModeRequest(ctx, c, attacker, target, attackKey, ask.requestID, out)
 	}
-	want, asked := modeFromProto(ask.want)
+	want, asked := advantage.ModeFromProto(ask.want)
 	if !asked || want == truth {
 		return out, nil
 	}
@@ -113,7 +114,7 @@ func useModeRequest(ctx context.Context, c *combatTx, attacker, target playdb.Co
 	case "closed":
 		return out, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
 	}
-	out.Mode, out.Reason, out.RequestID, out.ByMaster = modeOfKey(conv.OrZero(req.DecidedMode)), req.Reason, req.ID, true
+	out.Mode, out.Reason, out.RequestID, out.ByMaster = advantage.ModeOfKey(conv.OrZero(req.DecidedMode)), req.Reason, req.ID, true
 	// The master decided: the mode may differ from today's suggestion (a condition
 	// changed meanwhile), and the player rolls what he answered.
 	return out, nil
@@ -206,7 +207,7 @@ func parseRollModeAsk(msg *playv1.RequestRollModeRequest) (rollModeAsk, error) {
 		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("attack_key must name one of the attacker's attacks"))
 	}
 	var ok bool
-	if in.want, ok = modeFromProto(msg.GetRollMode()); !ok {
+	if in.want, ok = advantage.ModeFromProto(msg.GetRollMode()); !ok {
 		return in, connect.NewError(connect.CodeInvalidArgument, errors.New("roll_mode must be set"))
 	}
 	in.reason, err = cleanReason(msg.GetReason())
@@ -329,7 +330,7 @@ func (s *Service) storeRollModeRequest(ctx context.Context, c *combatTx, m authz
 	}
 	row, err := c.q.InsertRollModeRequest(ctx, playdb.InsertRollModeRequestParams{
 		EncounterID: c.enc.ID, CombatantID: ask.attacker.ID, TargetID: ask.target.ID, AttackKey: in.attackKey,
-		SuggestedMode: modeKey(truth.Mode), RequestedMode: modeKey(in.want), Reason: in.reason, CreatedAt: c.now,
+		SuggestedMode: advantage.ModeKey(truth.Mode), RequestedMode: advantage.ModeKey(in.want), Reason: in.reason, CreatedAt: c.now,
 	})
 	if err != nil {
 		return zero, fmt.Errorf("keep the request: %w", err)
@@ -340,7 +341,7 @@ func (s *Service) storeRollModeRequest(ctx context.Context, c *combatTx, m authz
 	c.characterID = &ask.attacker.CharacterID
 	return actionEvent{
 		Round: c.enc.Round, Secret: secretOf(ask.attacker, ask.target), Actor: ask.attacker.ID, Target: ask.target.ID, Key: in.attackKey,
-		RequestID: row.ID, RollMode: modeKey(in.want), SuggestedMode: modeKey(truth.Mode),
+		RequestID: row.ID, RollMode: advantage.ModeKey(in.want), SuggestedMode: advantage.ModeKey(truth.Mode),
 	}, nil
 }
 
@@ -369,7 +370,7 @@ func (s *Service) AnswerRollModeRequest(
 	if err != nil {
 		return nil, err
 	}
-	decided, ok := modeFromProto(req.Msg.GetDecidedMode())
+	decided, ok := advantage.ModeFromProto(req.Msg.GetDecidedMode())
 	if !ok {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("decided_mode must be set"))
 	}
@@ -400,12 +401,12 @@ func (s *Service) answerRollMode(ctx context.Context, c *combatTx, reqID string,
 	switch {
 	case row.Status == "closed":
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is closed")
-	case row.Status == "answered" && modeOfKey(conv.OrZero(row.DecidedMode)) != decided:
+	case row.Status == "answered" && advantage.ModeOfKey(conv.OrZero(row.DecidedMode)) != decided:
 		return nil, errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ROLL_MODE_REQUEST_CLOSED, "the request is answered already")
 	case row.Status == "answered":
 		return nil, nil // the same answer again: nothing differs
 	}
-	mode := modeKey(decided)
+	mode := advantage.ModeKey(decided)
 	if _, err := c.q.AnswerRollModeRequest(ctx, playdb.AnswerRollModeRequestParams{ID: row.ID, DecidedMode: &mode, AnsweredAt: &c.now}); err != nil {
 		return nil, fmt.Errorf("answer the roll mode request: %w", err)
 	}
@@ -508,11 +509,11 @@ func rollModeRequestProto(r playdb.RollModeRequest, attackName string) *playv1.R
 	}
 	out := &playv1.RollModeRequest{
 		Id: r.ID, CombatantId: r.CombatantID, TargetId: r.TargetID, AttackKey: r.AttackKey, AttackNamePt: attackName,
-		SuggestedMode: modeToProto[modeOfKey(r.SuggestedMode)], RequestedMode: modeToProto[modeOfKey(r.RequestedMode)],
+		SuggestedMode: advantage.ModeToProto[advantage.ModeOfKey(r.SuggestedMode)], RequestedMode: advantage.ModeToProto[advantage.ModeOfKey(r.RequestedMode)],
 		Status: status, Reason: r.Reason, CreatedAt: timestampOrNil(&r.CreatedAt),
 	}
 	if r.DecidedMode != nil {
-		out.DecidedMode = modeToProto[modeOfKey(*r.DecidedMode)]
+		out.DecidedMode = advantage.ModeToProto[advantage.ModeOfKey(*r.DecidedMode)]
 	}
 	return out
 }

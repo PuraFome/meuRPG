@@ -63,7 +63,7 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
   ],
   [
     EncounterBlockedReason.AMMUNITION_EMPTY,
-    'Sem munição: o tiro não sai. Use o ataque corpo a corpo ou reponha a munição. Nada foi gasto.',
+    'Sem munição. Não sobrou munição desse tipo: o tiro não sai. Nada foi gasto.',
   ],
   [EncounterBlockedReason.FEATURE_TARGET, 'O alvo saiu do alcance. Escolha outro alvo.'],
   [EncounterBlockedReason.FEATURE_CHOICE, 'Essa opção não vale mais. Escolha outra.'],

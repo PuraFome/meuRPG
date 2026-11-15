@@ -11,6 +11,7 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "google/protobuf/timestamp.proto";
+import "meurpg/characters/v1/characters.proto";
 import "meurpg/play/v1/combat_rolls.proto";
 import "meurpg/play/v1/contest_types.proto";
 import "meurpg/play/v1/lasting_effects.proto";
@@ -6553,6 +6554,9 @@ message ItemUseLogLine {
   ItemUseOutcome outcome = 6;
   // AMMUNITION_SPENT: the name of the kind fired ("flecha").
   string ammunition_name_pt = 7;
+  // How the item was lost on a LOST line (the line says "virou cinzas" only for GONE, and a plain or partly magic
+  // item says what is left of it); UNSPECIFIED on the other outcomes.
+  meurpg.characters.v1.ItemLoss lost = 8;
 }
 
 // CombatLogReadied is a readied action in a line of the log, for the master and the readier's owner.

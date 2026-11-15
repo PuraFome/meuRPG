@@ -615,6 +615,8 @@
     [conditions]="partyConditions()"
     (adjust)="sheets.adjust($event)"
   />
+  <!-- The charges and the ammunition of the party, with the master's corrections and the dawn. -->
+  <app-party-charges [campaignId]="state.campaignId()" [party]="state.vitals()" />
   <!-- The master's short and long rests (PM-07b 9). -->
   <app-rest-card
     [campaignId]="state.campaignId()"

@@ -154,4 +154,27 @@ describe('CombatColumn "Ataques" +N chip', () => {
     const el = setup({ attacks: [{ ...attack('fire-bolt'), kind: 'spell' }] });
     expect(el.querySelector('.attacks .bonus-chip')).toBeNull();
   });
+
+  it('lists the improvised melee line of a bow as a weapon row of its own, with no ammunition count', () => {
+    const el = setup({
+      attacks: [
+        { ...attack('equipment:longbow'), namePt: 'Arco longo' },
+        {
+          ...attack('equipment:longbow:melee'),
+          namePt: 'Arco longo, corpo a corpo',
+          attackBonus: 3,
+          damage: '1d4+3',
+          damageTypePt: 'concussão',
+        },
+      ],
+    });
+    const rows = Array.from(el.querySelectorAll('.attacks tbody tr')).map((r) =>
+      (r.textContent ?? '').replace(/\s+/g, ' ').trim(),
+    );
+    expect(rows).toEqual([
+      'Arco longo +5 1d8 cortante',
+      'Arco longo, corpo a corpo +3 1d4+3 concussão',
+    ]);
+    expect(el.textContent).not.toMatch(/flecha|munição/i);
+  });
 });

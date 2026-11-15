@@ -222,6 +222,9 @@ A save that removes an entry deletes its row in the same transaction, so a new e
 The counts are read only where the sheet is: the player of the character and the master.
 `last_roll_pending` says the last charge went from an item that rolls a d20 and the roll waits.
 It is read and ignored on a save like the other fields.
+`recharge` (`ItemRecharge`) is the catalog's rule for the item, filled on the same read for the same readers.
+It carries when the charges return, the dice of what returns and of a rolled start, what the last charge does, how the item is lost and the dice a natural 20 gives back.
+The dice are text such as `1d6+1`, and an item the catalog gives no charges has no `recharge`.
 The charge keeper (`itemchargeskeeper.go`) is what play calls inside its own transaction.
 Its methods are `SpendItemCharges`, `ResolveLastCharge`, `SetItemCharges` and `RestoreDawn`.
 Each locks the character's row, asks nothing of the caller (play authorizes first) and takes and returns proto values.

@@ -15,6 +15,7 @@ import (
 	maplink "github.com/PuraFome/meuRPG/backend/internal/maps/link"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -134,7 +135,7 @@ func shownRecs(recs []sourceRec, names func(string) string, master bool) []*play
 	for _, r := range recs {
 		sources = append(sources, combat.Source{Kind: r.Kind, Effect: combat.RollMode(r.Effect), Condition: r.Condition})
 	}
-	return shownSources(sources, names, master)
+	return advantage.ShownSources(sources, names, master)
 }
 
 // trapDamageEvent is one damage part rolled for a creature: the roll, and what it
@@ -387,7 +388,7 @@ func trapAttackEventOf(a trapAttackRoll) trapAttackEvent {
 // disadvantage, which of the two came first, the mode and the circumstances.
 func trapAttackEventInCombat(a trapAttackRoll, sources []combat.Source) trapAttackEvent {
 	ev := trapAttackEventOf(a)
-	ev.D20B, ev.Counted, ev.Mode, ev.Sources = conv.Int32(a.other), conv.Int32(a.counted), modeKey(a.mode), sourceRecs(sources)
+	ev.D20B, ev.Counted, ev.Mode, ev.Sources = conv.Int32(a.other), conv.Int32(a.counted), advantage.ModeKey(a.mode), sourceRecs(sources)
 	return ev
 }
 
@@ -405,7 +406,7 @@ func savesEventOf(rs []trapSaveRoll) []saveRoll {
 	for _, r := range rs {
 		out = append(out, saveRoll{
 			D20: conv.Int32(r.d20), Bonus: conv.Int32(r.bonus), Total: conv.Int32(r.total), DC: conv.Int32(r.dc), Saved: r.saved, Unknown: !r.known, Extra: r.extra,
-			D20B: conv.Int32(r.other), Counted: conv.Int32(r.counted), RollMode: modeKey(r.mode), Auto: r.auto, Lucky: r.lucky, countedRoll: r.countedRoll,
+			D20B: conv.Int32(r.other), Counted: conv.Int32(r.counted), RollMode: advantage.ModeKey(r.mode), Auto: r.auto, Lucky: r.lucky, countedRoll: r.countedRoll,
 		})
 	}
 	return out
@@ -844,7 +845,7 @@ func (v trapView) attackProto(a trapAttackEvent, mine bool) *playv1.TrapAttackRo
 	r := &playv1.TrapAttackRoll{Outcome: outcomeToProto[a.Outcome]}
 	if mine {
 		r.Roll = trapD20Roll(a.D20, a.D20B, a.Counted, a.Modifier, a.Total)
-		r.Mode, r.Sources = modeToProto[modeOfKey(a.Mode)], shownRecs(a.Sources, v.names, v.master)
+		r.Mode, r.Sources = advantage.ModeToProto[advantage.ModeOfKey(a.Mode)], shownRecs(a.Sources, v.names, v.master)
 	}
 	if v.master {
 		r.TargetArmorClass = a.TargetAC
@@ -865,7 +866,7 @@ func (v trapView) saveProto(sv saveRoll, sources []sourceRec, mine bool) *playv1
 			r.Roll.Rerolled = sv.Lucky.proto() // "Sortudo: 1 → 14": the d20 the app rolled again, with the dice
 			sv.mark(r.Roll)
 		}
-		r.Mode, r.AutoFailed, r.Sources = modeToProto[modeOfKey(sv.RollMode)], sv.Auto, shownRecs(sources, v.names, v.master)
+		r.Mode, r.AutoFailed, r.Sources = advantage.ModeToProto[advantage.ModeOfKey(sv.RollMode)], sv.Auto, shownRecs(sources, v.names, v.master)
 		r.Sources = append(r.Sources, effectDieSources(sv.Extra, v.names, v.master)...)
 	}
 	if v.master {

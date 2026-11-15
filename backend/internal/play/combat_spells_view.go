@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -54,7 +55,7 @@ func saveView(sr *saveRoll, v combatViewer, caster, target playdb.Combatant) *pl
 			}
 			sr.mark(out.Roll)
 		}
-		out.Mode, out.AutoFailed = modeToProto[modeOfKey(sr.RollMode)], sr.Auto
+		out.Mode, out.AutoFailed = advantage.ModeToProto[advantage.ModeOfKey(sr.RollMode)], sr.Auto
 		if out.Roll != nil {
 			out.Roll.ExtraDice = extraDiceProto(sr.Extra, v.master, nil)
 			out.Roll.Rerolled = sr.Lucky.proto() // "Sortudo: 1 → 14": the d20 the app rolled again, with the dice
@@ -236,7 +237,7 @@ func targetResultProto(ev actionEvent, h castHit, v combatViewer, caster, target
 		AttackRoll: attackRollView(h, v, caster), Save: creatureSaveView(ev, h, v, caster, target),
 		Effect: effectView(h, v, target),
 	}
-	r.AttackMode = modeToProto[modeOfKey(h.RollMode)]
+	r.AttackMode = advantage.ModeToProto[advantage.ModeOfKey(h.RollMode)]
 	if h.BonusFace != 0 && r.AttackRoll != nil { // only who reads the roll reads the die added to it
 		r.BonusDice = []*playv1.BonusDie{{SourceKey: bardicInspirationFt, Sides: h.BonusSides, Face: h.BonusFace, Used: true}}
 	}

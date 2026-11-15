@@ -11,6 +11,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -112,18 +113,18 @@ func TestFavorSentenceIsNeverHidden(t *testing.T) {
 	t.Parallel()
 	names := func(k string) string { return k }
 	hides := map[string]func(combat.Source) bool{
-		"no hide":          nil,
-		"hideUnlessMaster": hideUnlessMaster(false),
-		"hidesSunlight":    hidesSunlight,
-		"hiddenFrom":       modeFacts{}.hiddenFrom(combatViewer{}, playdb.Combatant{}, playdb.Combatant{}),
-		"hideFor":          hideFor([]string{"condition:poisoned"}, true),
+		"no hide":                    nil,
+		"advantage.HideUnlessMaster": advantage.HideUnlessMaster(false),
+		"advantage.HidesSunlight":    advantage.HidesSunlight,
+		"hiddenFrom":                 modeFacts{}.hiddenFrom(combatViewer{}, playdb.Combatant{}, playdb.Combatant{}),
+		"hideFor":                    hideFor([]string{"condition:poisoned"}, true),
 	}
 	for name, hide := range hides {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			shown := sourceProto(favorSource, textContext{self: true, names: names}, hide)
+			shown := advantage.SourceProto(favorSource, advantage.TextContext{Self: true, Names: names}, hide)
 			if shown.GetTextPt() != "Inspiração" || shown.GetKind() != playv1.AdvantageSourceKind_ADVANTAGE_SOURCE_KIND_FAVOR || shown.GetEffect() != playv1.RollMode_ROLL_MODE_ADVANTAGE {
-				t.Errorf("sourceProto = %v, want the sentence Inspiração of kind FAVOR with advantage", shown)
+				t.Errorf("advantage.SourceProto = %v, want the sentence Inspiração of kind FAVOR with advantage", shown)
 			}
 			notes := notesOfSources([]combat.Source{favorSource}, hide)
 			if len(notes) != 1 || notes[0].Label != "Inspiração" || notes[0].Kind != combat.SourceFavor || !notes[0].Adv {
@@ -141,8 +142,8 @@ func TestFavorSentenceIsNeverHidden(t *testing.T) {
 	if hideEffects(favorSource) {
 		t.Error("hiddenFrom with a hidden effect hides the Inspiration")
 	}
-	if shown := sourceProto(favorSource, textContext{self: true, names: names}, hideEffects); shown.GetTextPt() != "Inspiração" {
-		t.Errorf("sourceProto of the Inspiration beside a hidden effect = %v, want the sentence Inspiração", shown)
+	if shown := advantage.SourceProto(favorSource, advantage.TextContext{Self: true, Names: names}, hideEffects); shown.GetTextPt() != "Inspiração" {
+		t.Errorf("advantage.SourceProto of the Inspiration beside a hidden effect = %v, want the sentence Inspiração", shown)
 	}
 	note := rollNote{Kind: noteFavor, Label: labelFavor, Adv: true}
 	for _, master := range []bool{true, false} {

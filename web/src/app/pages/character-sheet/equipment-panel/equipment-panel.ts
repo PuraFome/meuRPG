@@ -3,10 +3,20 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { type AttunementEntryVm, MagicCategories } from '../../../core/characters/attunement';
+import {
+  type AmmunitionHint,
+  type AmmunitionVm,
+  type ChargesLine,
+  type ItemChargesVm,
+  ammunitionHint,
+  chargesLine,
+  recoverOf,
+} from '../../../core/characters/charges';
 import type { GearVm } from '../../../core/characters/gear';
 
 import { reasonOf } from '../../../shared/attunement-section/attunement-rows';
 import { ChipLegend } from '../../../shared/chip-legend/chip-legend';
+import { CountPips } from '../../../shared/count-pips/count-pips';
 import {
   type AttunementChip,
   GearList,
@@ -23,7 +33,7 @@ import { coinEntries, keepUnitsTogether } from '../sheet-format';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-equipment-panel',
-  imports: [ChipLegend, GearList, MatButtonModule, MatIconModule],
+  imports: [ChipLegend, CountPips, GearList, MatButtonModule, MatIconModule],
   templateUrl: './equipment-panel.html',
   styleUrl: './equipment-panel.scss',
 })
@@ -68,9 +78,73 @@ export class EquipmentPanel {
   readonly magicAdding = output<void>();
   readonly magicRemoving = output<AttunementEntryVm>();
 
+  /** What the last use of charges said, in the live region under the list: good (gastou) or bad (a refusal, a destroyed item). */
+  readonly chargesResult = input<{ readonly text: string; readonly tone: 'good' | 'bad' } | null>(
+    null,
+  );
+  /** A refusal of a charges call, in words. */
+  readonly chargesError = input('');
+  /** "Usar": the page opens the use sheet of the item. Works on a locked sheet. */
+  readonly chargesUsed = output<AttunementEntryVm>();
+  /** "Rolar": the page opens the d20 of the item's last charge. */
+  readonly lastChargeRolled = output<AttunementEntryVm>();
+
+  /** "Adicionar munição" (the owner while the sheet is open to editing, the master always). */
+  readonly canAddAmmunition = input(false);
+  /** The latest combat of the character is still running: "Recuperar a metade" waits for it to end. */
+  readonly combatRunning = input(false);
+  readonly ammunitionNotice = input('');
+  readonly ammunitionError = input('');
+  /** A tap on "Adicionar munição" (`null`) or on the hint's "Adicionar" (the kind and count the free text names). */
+  readonly ammunitionAdding = output<AmmunitionHint | null>();
+  readonly ammunitionRecovered = output<void>();
+
+  protected readonly ammunition = computed((): readonly AmmunitionVm[] => this.sheet().ammunition);
+  protected readonly recover = computed(() => recoverOf(this.ammunition()));
+  protected readonly recoverOff = computed(
+    () => this.combatRunning() || this.recover().state !== 'ready',
+  );
+  /** The free-text items look like ammunition while the app counts none. */
+  protected readonly hint = computed(() =>
+    this.ammunition().length === 0 ? ammunitionHint(this.sheet().equipment) : null,
+  );
+  /** The section shows with a list, with the hint, or for who can add the first kind. */
+  protected readonly ammunitionShown = computed(
+    () => this.ammunition().length > 0 || this.hint() !== null || this.canAddAmmunition(),
+  );
+
+  protected spentWords(a: AmmunitionVm): string {
+    const fired = `${a.spent} ${a.spent === 1 ? 'gasta' : 'gastas'} no último combate`;
+    if (a.back === 0) {
+      return fired;
+    }
+    return a.recovered
+      ? `${fired} · ${a.back} ${a.back === 1 ? 'voltou' : 'voltaram'}`
+      : `${fired} · voltam ${a.back}`;
+  }
+
+  protected isLost(c: ItemChargesVm): boolean {
+    return c.state === 'destroyed' || c.state === 'plain' || c.state === 'partly';
+  }
+
+  /** The dashed tag of a lost item: "Destruída", or "Sem magia" when it became a plain item or kept only its bonus. */
+  protected tagOf(c: ItemChargesVm): string {
+    return c.state === 'destroyed'
+      ? 'Destruída'
+      : c.state === 'plain' || c.state === 'partly'
+        ? 'Sem magia'
+        : '';
+  }
+
+  protected lineOf(e: AttunementEntryVm): ChargesLine | null {
+    return e.charges ? chargesLine(e.charges, e.namePt) : null;
+  }
+
   protected readonly magicItems = computed(() =>
     this.sheet().attunement.entries.filter((e) => e.kind === 'magic'),
   );
+  /** Some magic item holds charges: the lock line then names what still works on a locked sheet. */
+  protected readonly hasCharges = computed(() => this.magicItems().some((e) => e.charges));
   /** The header "Sintonizados: N de 3" shows when anything on the sheet asks for attunement or is attuned. */
   protected readonly hasAttunement = computed(() =>
     this.sheet().attunement.entries.some((e) => e.asks || e.attuned),
