@@ -153,3 +153,21 @@ func TestFindSteedDismissWithTheActionSpentIsRefused(t *testing.T) {
 	wantBlockedBy(t, "the dismissal with the action spent", a.dismissSteedAs(t, a.ana, id, charactersv1.CreatureDismissal_CREATURE_DISMISSAL_DISMISS), blockedActionUsed)
 	a.steedUntouched(t, "action spent", id, events, true)
 }
+
+// TestFindSteedNothingInACombatCanUndoItsCastingAway pins why the creatures' delete (DeleteCreatures, the undo of a casting) never reaches a bonded
+// steed: the spell takes 10 minutes, so a cast in a combat is refused, and the cast out of one is a creature_summoned event that
+// chainCreatures skips, so a combat has no undo that points at it. The steed is still there, bonded, after an undo is tried.
+func TestFindSteedNothingInACombatCanUndoItsCastingAway(t *testing.T) {
+	t.Parallel()
+	a, e := steedFight(t, false)
+	id := a.steedCreatureID(t)
+	if got := a.log(t, a.master, e).GetUndoableEventId(); got != "" {
+		t.Errorf("the log offers to undo %q at the start of a combat, want nothing: the steed's casting is not undoable there", got)
+	}
+	if err := a.undo(t, a.master, e, ""); err == nil {
+		t.Error("UndoLastAction() = nil, want it refused with nothing to undo")
+	}
+	if bonded, reason := a.steedBondOf(t, id); !bonded || reason != "" {
+		t.Errorf("the steed after the undo: bonded %v, reason %q, want it bonded and live", bonded, reason)
+	}
+}
