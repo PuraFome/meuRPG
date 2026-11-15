@@ -25,7 +25,7 @@ import (
 // the stat block or the vitals of an NPC. tx is the open transaction, or nil for a
 // read.
 func (s *Service) opportunityReactors(ctx context.Context, tx pgx.Tx, campaignID string, cs []playdb.Combatant, mover playdb.Combatant, v *combatViewer, draggedID string) ([]candidate, error) {
-	if mover.Hidden || mover.Disengaged || !placed(mover) {
+	if (mover.Hidden && !carriesSeenRider(cs, mover)) || mover.Disengaged || !placed(mover) {
 		return nil, nil
 	}
 	exact := v == nil || v.master
@@ -103,4 +103,11 @@ func (s *Service) awakeToReact(ctx context.Context, tx pgx.Tx, campaignID string
 		return false, err
 	}
 	return !surprised, nil
+}
+
+// carriesSeenRider says a hidden mount carries a rider that is not hidden: the pair is seen, and it provokes (the offer reads as the
+// rider's to a player that does not see the mount).
+func carriesSeenRider(cs []playdb.Combatant, mount playdb.Combatant) bool {
+	rider := riderOf(cs, mount.ID)
+	return rider != nil && !rider.Hidden
 }

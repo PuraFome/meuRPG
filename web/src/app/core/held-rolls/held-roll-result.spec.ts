@@ -3,7 +3,9 @@ import { create } from '@bufbuild/protobuf';
 import {
   AttackRollSchema,
   DiceRollSchema,
+  MountSaveResultSchema,
   RollAttackResponseSchema,
+  RollMountSaveResponseSchema,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { answeredText, settledRoll } from './held-roll-result';
 import { heldAnswer, heldDie, heldLucky, heldStroke } from './held-roll-testing';
@@ -34,6 +36,19 @@ describe('the roll a held answer settled', () => {
     expect(settledRoll(attackAnswer())?.rerolled).toHaveLength(1);
     expect(settledRoll(heldAnswer({ next: heldDie(14, 5, 8, {}, 1) }))?.rerolled).toHaveLength(1);
     expect(settledRoll(heldAnswer())).toBeUndefined();
+  });
+
+  it('reads the d20 of a rider’s save to stay on its mount', () => {
+    const res = heldAnswer({
+      result: {
+        case: 'mountSave',
+        value: create(RollMountSaveResponseSchema, {
+          result: create(MountSaveResultSchema, { save: rerolled, held: true }),
+        }),
+      },
+    });
+    expect(settledRoll(res)?.rerolled).toHaveLength(1);
+    expect(settledRoll(res)?.total).toBe(19);
   });
 });
 

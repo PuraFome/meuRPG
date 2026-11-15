@@ -141,6 +141,9 @@ const ROW_FACTS: {
   [ReactionKind.HELLISH_REBUKE]: (_w, t) => (t ? [`o dano veio ${ofThe([t.actorLabel])}`] : []),
   [ReactionKind.FEATHER_FALL]: (_w, t) => (t?.actorLabel ? [`${t.actorLabel} cai`] : []),
   [ReactionKind.SLOW_FALL]: (w) => [`${w.reactorLabel} cai`],
+  [ReactionKind.DISMOUNT]: (_w, t) => [
+    t?.targetLabel ? `a montaria (${t.targetLabel}) caiu ou morreu` : 'a montaria caiu ou morreu',
+  ],
   [ReactionKind.CUTTING_WORDS]: (_w, t, far) => [
     ...(t ? [`rolagem ${ofThe([t.actorLabel])}`] : []),
     ...(far ? [far] : []),
@@ -166,6 +169,8 @@ function groupTitle(first: ReactionWindow): string {
       return 'Reações a uma queda';
     case ReactionKind.HELLISH_REBUKE:
       return 'Reações a um dano';
+    case ReactionKind.DISMOUNT:
+      return 'Reações a uma montaria';
     default:
       return 'Reações a um ataque';
   }
@@ -190,6 +195,8 @@ function groupSubtitle(first: ReactionWindow): string {
     case ReactionKind.FEATHER_FALL:
     case ReactionKind.SLOW_FALL:
       return joinDots(['Queda num fosso', 'na ordem da iniciativa']);
+    case ReactionKind.DISMOUNT:
+      return joinDots(['Montaria derrubada ou morta', 'na ordem da iniciativa']);
     case ReactionKind.PROTECTION:
       return joinDots([
         `Ataque ${ofThe([t.actorLabel])}${t.targetLabel ? ` contra ${t.targetLabel}` : ''}`,
