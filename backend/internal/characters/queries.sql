@@ -662,6 +662,12 @@ SET dismissed_at = NULL, dismissed_reason = NULL, hp_current = hp_max
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND bonded
 RETURNING id;
 
+-- name: EndBond :exec
+-- A release ends the bond of a steed: the row stays as the history of the dismissal, and the character may bond another.
+UPDATE character_creatures
+SET bonded = false
+WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND id = sqlc.arg(id)::UUID AND bonded;
+
 -- name: CountLiveCreaturesOfCharacter :one
 SELECT count(*)::INT4 FROM character_creatures
 WHERE campaign_id = sqlc.arg(campaign_id)::UUID AND character_id = sqlc.arg(character_id)::UUID AND dismissed_at IS NULL;

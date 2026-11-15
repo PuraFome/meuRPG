@@ -56,6 +56,10 @@ At 0 hit points its creature is dismissed at once with the reason `disappeared` 
 Its combatant stays under the rider until the rider answers the dismount window, and then `goneSteed` takes it out.
 The bond stays, so a new casting brings the same steed back.
 A dismissal of the steed puts the rider on foot with no window (`unseatRider`).
+`DismissCreatureRequest.dismissal` says how a steed goes: `DISMISS` (and unspecified) keeps the bond with the reason `dismissed`, and `RELEASE` ends it (`bonded` false, the reason `owner` or `master`).
+`RELEASE` of a creature that is not a bonded steed is `INVALID_ARGUMENT`, and releasing a dismissed steed ends its bond.
+In a running combat that holds the steed, the owner's player spends the action of its turn (`CreatureHost.SpendDismissal`: `NOT_YOUR_TURN`, `ACTION_USED` and the gate's other refusals), and the master dismisses for free.
+Out of a combat a dismissal costs nothing.
 
 **Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's key, `feature:...@mesa`) in place of a slot.
 `CastSummon`, `CastSpell` and `CastSpellOutsideCombat` take `granted_by`; each one needs the summon choice, as a spell's summon does.

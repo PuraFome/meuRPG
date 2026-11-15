@@ -58,6 +58,11 @@ func (s *creatureHostSpy) CreaturesLeaving(_ context.Context, _ pgx.Tx, _, actor
 	return s.encounter, s.fail
 }
 
+func (s *creatureHostSpy) SpendDismissal(_ context.Context, _ pgx.Tx, _, _, _, creatureID string, _ time.Time) error {
+	s.record("spend the action for %s", creatureID)
+	return s.fail
+}
+
 func (s *creatureHostSpy) LockSession(context.Context, pgx.Tx, string) error {
 	s.record("lock")
 	return nil

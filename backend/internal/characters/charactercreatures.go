@@ -81,6 +81,10 @@ type CreatureHost interface {
 	// campaign's combat that is not ended, inside tx, and writes the combat's
 	// event. It returns the combat's ID, empty when none of them was in one.
 	CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, actorUserID string, creatureIDs []string, at time.Time) (encounterID string, err error)
+	// SpendDismissal spends the action of the owner's combatant for sending a steed away, inside tx: in a running combat that holds the
+	// steed it must be the owner's turn with the action unspent, or it answers the combat's refusal. It does nothing when the combat is
+	// not running or the steed is not in it.
+	SpendDismissal(ctx context.Context, tx pgx.Tx, campaignID, actorUserID, characterID, creatureID string, at time.Time) error
 	// LockSession takes the campaign's open session's row inside tx, if there is
 	// one. A change to a creature calls it first, as a combat's writes lock the
 	// session before the creatures: one lock order, no deadlock.
@@ -209,6 +213,7 @@ func (v creatureView) live() bool { return v.DismissedAt == nil }
 const (
 	dismissedDefeated    = "defeated"
 	dismissedDisappeared = "disappeared"
+	dismissedKeepsBond   = "dismissed"
 )
 
 // fallenReason is the reason a creature at 0 hit points is dismissed with.
@@ -616,13 +621,13 @@ func (s *Service) DismissCreature(
 	if err != nil {
 		return nil, err
 	}
-	reason := creatureDismissal(m)
+	reason, how := creatureDismissal(m), req.Msg.GetDismissal()
 	var v creatureView
 	var encounterID string
 	gone := false
 	err = s.inSession(ctx, m.CampaignID, func(tx pgx.Tx, t sessiontell.Tell) error {
 		var err error
-		v, encounterID, gone, err = s.dismissCreatureInTx(ctx, tx, m, req.Msg.GetCreatureId(), reason)
+		v, encounterID, gone, err = s.dismissCreatureInTx(ctx, tx, m, req.Msg.GetCreatureId(), reason, how)
 		if err == nil && !gone {
 			t.CreaturesChanged(conv.OrZero(v.ownerUserID))
 			t.EncounterChanged(encounterID)
@@ -638,7 +643,7 @@ func (s *Service) DismissCreature(
 // dismissCreatureInTx takes the creature out of its combat and away from its
 // owner, with its event; it returns the creature and the combat it left ("" for
 // none). gone says it was dismissed already, which changes nothing.
-func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, rawID, reason string) (v creatureView, encounterID string, gone bool, err error) {
+func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Membership, rawID, reason string, how charactersv1.CreatureDismissal) (v creatureView, encounterID string, gone bool, err error) {
 	q := s.queries.WithTx(tx)
 	if err := s.lockSession(ctx, tx, m.CampaignID); err != nil {
 		return v, "", false, err
@@ -647,21 +652,65 @@ func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Me
 		// A creature that is gone already changes nothing, for the master and
 		// the owner alike; one the caller may not see is not found.
 		if connect.CodeOf(err) == connect.CodeNotFound && s.dismissedAlready(ctx, q, m, rawID) {
-			return v, "", true, nil
+			return v, "", true, s.releaseDismissed(ctx, q, m, rawID, how)
 		}
 		return v, "", false, err
 	}
-	if s.creatureHost != nil {
-		if encounterID, err = s.creatureHost.CreaturesLeaving(ctx, tx, m.CampaignID, m.UserID, []string{v.ID}, s.now()); err != nil {
-			return v, "", false, err
-		}
+	if reason, encounterID, err = s.leaveCombat(ctx, tx, m, v, reason, how); err != nil {
+		return v, "", false, err
 	}
 	if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: m.CampaignID, Ids: []string{v.ID}, Reason: reason, At: s.now()}); err != nil {
 		return v, encounterID, false, wrap("dismiss a creature", err)
 	}
+	if how == charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE {
+		if err := q.EndBond(ctx, charactersdb.EndBondParams{CampaignID: m.CampaignID, ID: v.ID}); err != nil {
+			return v, encounterID, false, wrap("end the bond of a steed", err)
+		}
+	}
 	return v, encounterID, false, s.logCreatureEvent(ctx, tx, m, "creature_dismissed", map[string]any{
 		"character_id": v.CharacterID, "creature_ids": []string{v.ID}, "reason": reason,
 	})
+}
+
+// leaveCombat takes the creature out of its combat and answers the reason it is dismissed with and the combat it left: a steed's
+// dismissal costs the owner's player the action of its turn in a combat that holds it.
+func (s *Service) leaveCombat(ctx context.Context, tx pgx.Tx, m authz.Membership, v creatureView, reason string, how charactersv1.CreatureDismissal) (string, string, error) {
+	reason, err := steedDismissal(v, reason, how)
+	if err != nil || s.creatureHost == nil {
+		return reason, "", err
+	}
+	if v.Source == creatureSourceSteed && !isMaster(m) {
+		if err := s.creatureHost.SpendDismissal(ctx, tx, m.CampaignID, m.UserID, v.CharacterID, v.ID, s.now()); err != nil {
+			return reason, "", err
+		}
+	}
+	encounterID, err := s.creatureHost.CreaturesLeaving(ctx, tx, m.CampaignID, m.UserID, []string{v.ID}, s.now())
+	return reason, encounterID, err
+}
+
+// steedDismissal is the reason a creature is dismissed with: a steed that is dismissed (not released) keeps its bond, and its reason
+// says so ("dismissed"). Releasing a creature that is not a bonded steed is refused.
+func steedDismissal(v creatureView, reason string, how charactersv1.CreatureDismissal) (string, error) {
+	switch {
+	case how == charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE && !v.Bonded:
+		return "", connect.NewError(connect.CodeInvalidArgument, errors.New("only a bonded steed can be released"))
+	case how != charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE && v.Bonded:
+		return dismissedKeepsBond, nil
+	}
+	return reason, nil
+}
+
+// releaseDismissed ends the bond of a steed that was dismissed already, when the request releases it: a dismissed steed keeps its bond
+// until it is released. Any other request changes nothing.
+func (s *Service) releaseDismissed(ctx context.Context, q *charactersdb.Queries, m authz.Membership, rawID string, how charactersv1.CreatureDismissal) error {
+	id, ok := uid.Canonical(rawID)
+	if !ok || how != charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE {
+		return nil
+	}
+	if err := q.EndBond(ctx, charactersdb.EndBondParams{CampaignID: m.CampaignID, ID: id}); err != nil {
+		return wrap("end the bond of a steed", err)
+	}
+	return nil
 }
 
 // dismissedAlready says whether the creature exists, belongs to someone the
