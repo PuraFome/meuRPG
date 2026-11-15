@@ -272,7 +272,7 @@ func (cb *choiceBuilder) cantripChoice(g *groupBuild, fk string, e *Effect) {
 	c := cb.c
 	var keys []string
 	for _, entry := range c.spellEntries {
-		if entry.Level == 0 && !entry.Archived && slices.ContainsFunc(e.From, func(list string) bool { return c.onList(c.spells[entry.Key], list) }) {
+		if entry.Level == 0 && !cb.retiredPick(fk, entry) && slices.ContainsFunc(e.From, func(list string) bool { return c.onList(c.spells[entry.Key], list) }) {
 			keys = append(keys, entry.Key)
 		}
 	}
@@ -364,7 +364,7 @@ func (cb *choiceBuilder) tomeCantrips(g *groupBuild) {
 	})
 	var keys []string
 	for _, e := range c.spellEntries {
-		if e.Level == 0 && !e.Archived {
+		if e.Level == 0 && !cb.retiredPick(key, e) {
 			keys = append(keys, e.Key)
 		}
 	}
@@ -404,7 +404,7 @@ func (cb *choiceBuilder) arcanum(g *groupBuild, fk string) {
 	})
 	var keys []string
 	for _, e := range c.spellEntries {
-		if e.Level == level && !e.Archived && cb.onWarlockList(e) {
+		if e.Level == level && !cb.retiredPick(fk, e) && cb.onWarlockList(e) {
 			keys = append(keys, e.Key)
 		}
 	}
