@@ -7441,6 +7441,13 @@ message AnswerReactionRequest {
   // A maneuver reduction (ManeuverReducePrompt.options[].key): the one the player uses. Needed
   // to answer USE a REACTION_KIND_MANEUVER_REDUCE window; the roll is the maneuver's die.
   string maneuver_key = 11;
+  // READIED, a readied spell: the targets with the darts of each (Magic Missile,
+  // Scorching Ray), as CastSpellRequest.targets. It replaces creature_ids; the two
+  // together are `invalid_argument`. The server checks them as CastSpell does.
+  repeated SpellTarget targets = 14;
+  // READIED, a readied spell: the point an area or a wall is placed on, as
+  // CastSpellRequest.origin.
+  SpellOrigin origin = 15;
 }
 
 // MarkReactionRollingRequest marks a window as being rolled.
