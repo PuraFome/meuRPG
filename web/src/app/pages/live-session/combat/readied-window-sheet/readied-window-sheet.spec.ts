@@ -346,13 +346,49 @@ describe('ReadiedWindowSheet (#582, boards 582-06 to 582-08)', () => {
     expect(close).not.toHaveBeenCalled();
   });
 
-  it('says it passed by itself when the window closed, and only closes', async () => {
+  it('says only that the window closed when it did before the clock ran out, and only closes', async () => {
     const { el, settle, button } = setup({ gone: true });
     await settle();
-    expect(flat(el.querySelector('.what'))).toBe('Passou sozinho: você não respondeu em 30 s.');
+    expect(flat(el.querySelector('.what'))).toBe('A janela fechou.');
     expect(el.querySelector('.pair')).toBeNull();
     button('Fechar').click();
     expect(close).toHaveBeenCalled();
+  });
+
+  it('says it passed by itself when the clock ran out before the window closed', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    try {
+      const { el, settle, state } = setup();
+      await settle();
+      vi.advanceTimersByTime(31_000);
+      state.apply(
+        encounter({
+          revision: 9,
+          combatants: [combatant({ id: 'tor', label: 'Tor', mine: true })],
+          reactionWindows: [],
+        } as never),
+      );
+      await settle();
+      expect(flat(el.querySelector('.what'))).toBe('Passou sozinho: você não respondeu em 30 s.');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('moves the focus to "Fechar" when the window goes away under the prompt', async () => {
+    const { el, settle, button, state } = setup();
+    await settle();
+    expect(document.activeElement).toBe(button('Deixar passar'));
+    state.apply(
+      encounter({
+        revision: 9,
+        combatants: [combatant({ id: 'tor', label: 'Tor', mine: true })],
+        reactionWindows: [],
+      } as never),
+    );
+    await settle();
+    expect(el.querySelector('.pair')).toBeNull();
+    expect(document.activeElement).toBe(button('Fechar'));
   });
 
   it('can still pass when the list of creatures cannot be read', async () => {

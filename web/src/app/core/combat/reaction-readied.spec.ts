@@ -125,14 +125,17 @@ describe('who an attack of the window can be aimed at', () => {
 });
 
 describe('a window that closed without the player', () => {
-  it('says it passed by itself, or why the reaction is gone', () => {
-    expect(readiedGoneText({ reactionUsed: false, down: false })).toBe(
+  it('says it passed by itself only when the clock ran out, and otherwise only that it closed', () => {
+    const base = { reactionUsed: false, down: false };
+    expect(readiedGoneText({ ...base, timedOut: true })).toBe(
       'Passou sozinho: você não respondeu em 30 s.',
     );
-    expect(readiedGoneText({ reactionUsed: true, down: false })).toBe(
+    // The master may have passed or answered it by hand: nothing on the wire says which.
+    expect(readiedGoneText({ ...base, timedOut: false })).toBe('A janela fechou.');
+    expect(readiedGoneText({ ...base, reactionUsed: true, timedOut: false })).toBe(
       'A janela fechou e a sua reação foi usada.',
     );
-    expect(readiedGoneText({ reactionUsed: false, down: true })).toBe('Você ficou Caído.');
+    expect(readiedGoneText({ ...base, down: true, timedOut: true })).toBe('Você ficou Caído.');
   });
 });
 

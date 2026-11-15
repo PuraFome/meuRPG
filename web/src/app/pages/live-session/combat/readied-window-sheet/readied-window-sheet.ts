@@ -221,25 +221,41 @@ export class ReadiedWindowSheet {
       untracked(() => this.sheet.close());
     }
   });
+  /** When the window was seen gone: the countdown stops there, so the text does not change as the clock goes on. */
+  private readonly goneAt = signal<number | null>(null);
+  protected readonly markGone = effect(() => {
+    if (this.gone() && untracked(this.goneAt) === null) {
+      this.goneAt.set(Date.now());
+    }
+  });
+  /** The window going away takes the focus to "Fechar", so it does not fall to the page behind. */
+  protected readonly focusClose = effect(() => {
+    if (this.gone()) {
+      untracked(() => afterNextRender(() => this.focusInitial(), { injector: this.injector }));
+    }
+  });
   protected readonly goneText = computed(() => {
     const e = this.data.state.encounter();
     const own = e ? ownCombatant(e) : null;
+    const at = this.goneAt();
     return readiedGoneText({
       reactionUsed: own?.reactionUsed ?? false,
       down: own?.state === CombatantState.DOWN,
+      // This screen's own clock (the wire has no time for the window): it started when the prompt opened.
+      timedOut: at !== null && playerSecondsLeft(this.openedAt, at) === 0,
     });
   });
 
   constructor() {
     inject(DestroyRef).onDestroy(() => clearInterval(this.clockTimer));
     // The safe answer has the focus, and its ring: the sheet opens for a keyboard-style answer.
-    afterNextRender(
-      () =>
-        (
-          this.host.nativeElement.querySelector('[data-initial-focus]') as HTMLButtonElement | null
-        )?.focus({ focusVisible: true } as FocusOptions),
-      { injector: this.injector },
-    );
+    afterNextRender(() => this.focusInitial(), { injector: this.injector });
+  }
+
+  private focusInitial(): void {
+    (
+      this.host.nativeElement.querySelector('[data-initial-focus]') as HTMLButtonElement | null
+    )?.focus({ focusVisible: true } as FocusOptions);
   }
 
   /** "Atacar o Zumbi 1" or "Deixar passar": the answer to the window. */

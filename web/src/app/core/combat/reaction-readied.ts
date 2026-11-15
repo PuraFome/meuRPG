@@ -179,17 +179,22 @@ export function readiedLegend(rows: readonly ReadiedTargetRow[]): string {
   return `Em quem · ${n === 0 ? 'ninguém' : `${n} ${n === 1 ? 'criatura' : 'criaturas'}`} ao alcance`;
 }
 
-/** What the readier reads when the window closed with no answer from them. */
+/**
+ * What the readier reads when the window closed with no answer from them. Nothing on the wire says who closed it (the time, or the
+ * master passing or answering it by hand): the 30 s are said only when this screen's own clock ran out (`timedOut`).
+ */
 export function readiedGoneText(o: {
   readonly reactionUsed: boolean;
   readonly down: boolean;
+  readonly timedOut: boolean;
 }): string {
   if (o.down) {
     return 'Você ficou Caído.';
   }
-  return o.reactionUsed
-    ? 'A janela fechou e a sua reação foi usada.'
-    : 'Passou sozinho: você não respondeu em 30 s.';
+  if (o.reactionUsed) {
+    return 'A janela fechou e a sua reação foi usada.';
+  }
+  return o.timedOut ? 'Passou sozinho: você não respondeu em 30 s.' : 'A janela fechou.';
 }
 
 /** What the master's row of the window says (the fields of `QueueRow` a readied action fills). */
