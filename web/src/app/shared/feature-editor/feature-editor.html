@@ -9,10 +9,10 @@
       @if ((index() >= 0 && count() > 1) || rowMenu()) {
         <span class="feature__move">
           @if (index() >= 0 && count() > 1) {
-            <button type="button" class="icon" aria-label="Subir {{ feature().name || nameLabel() }}" [disabled]="index() === 0" (click)="moved.emit(-1)">
+            <button type="button" class="icon" aria-label="Subir {{ moveName() }}" [disabled]="index() === 0" (click)="moved.emit(-1)">
               <mat-icon aria-hidden="true">arrow_upward</mat-icon>
             </button>
-            <button type="button" class="icon" aria-label="Descer {{ feature().name || nameLabel() }}" [disabled]="index() === count() - 1" (click)="moved.emit(1)">
+            <button type="button" class="icon" aria-label="Descer {{ moveName() }}" [disabled]="index() === count() - 1" (click)="moved.emit(1)">
               <mat-icon aria-hidden="true">arrow_downward</mat-icon>
             </button>
           }
@@ -166,6 +166,9 @@
           textLabel="Texto da opção"
           removeLabel="Remover opção"
           [heading]="'Opção ' + (k + 1)"
+          [index]="k"
+          [count]="feature().options.length"
+          (moved)="moveOption(k, $event)"
           (featureChange)="setOption(k, $event)"
           (removed)="removeOption(k)"
         />

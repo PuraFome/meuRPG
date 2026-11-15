@@ -1,4 +1,14 @@
-import { Component, TemplateRef, computed, input, output } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  Injector,
+  TemplateRef,
+  afterNextRender,
+  computed,
+  inject,
+  input,
+  output,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -148,6 +158,8 @@ export class FeatureEditor {
     );
   });
 
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   readonly featureChange = output<FeatureDraft>();
   private readonly latest = latestInput(this.feature);
   readonly removed = output<void>();
@@ -171,6 +183,11 @@ export class FeatureEditor {
   /** The group's own name, never the name field's label (two things with one name confuse a screen reader and a test). */
   protected readonly groupLabel = computed(
     () => this.heading() || (this.index() >= 0 ? `Traço ${this.index() + 1}` : 'Característica'),
+  );
+
+  /** What the arrows name: the feature, else its place ("Opção 3"), else the field's label. */
+  protected readonly moveName = computed(
+    () => this.feature().name.trim() || this.heading() || this.nameLabel(),
   );
 
   protected path(field: string): string {
@@ -214,6 +231,36 @@ export class FeatureEditor {
 
   protected addOption(): void {
     this.patch({ options: [...this.latest.current().options, emptyFeature()] });
+  }
+
+  /**
+   * "Subir" and "Descer" on an option row: the option goes with its key (a pick keeps its option). The row is drawn again at its
+   * new place, so the focus goes back to the arrow that was pressed there (to the other one when that is now disabled).
+   */
+  protected moveOption(i: number, by: -1 | 1): void {
+    const options = [...this.latest.current().options];
+    const j = i + by;
+    if (j < 0 || j >= options.length) {
+      return;
+    }
+    [options[i], options[j]] = [options[j], options[i]];
+    this.patch({ options });
+    afterNextRender(
+      () => {
+        const row = this.host.nativeElement.querySelector(
+          `section.options [role="group"][aria-label="Opção ${j + 1}"]`,
+        );
+        const verbs = by === 1 ? ['Descer', 'Subir'] : ['Subir', 'Descer'];
+        for (const verb of verbs) {
+          const button = row?.querySelector<HTMLButtonElement>(`button[aria-label^="${verb} "]`);
+          if (button && !button.disabled) {
+            button.focus();
+            return;
+          }
+        }
+      },
+      { injector: this.injector },
+    );
   }
 
   protected removeOption(i: number): void {
