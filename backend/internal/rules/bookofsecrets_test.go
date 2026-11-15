@@ -223,3 +223,27 @@ func TestSwappingTheBookAwayTakesItsRitualsWithIt(t *testing.T) {
 		})
 	}
 }
+
+// TestASwitchedOffRitualIsNotOfferedToAPlayerInTheBook: what the master switched off never reaches a
+// player (RN-23), so the book does not offer it, and a sheet that already picked it keeps the pick. The
+// master reads it all the same.
+func TestASwitchedOffRitualIsNotOfferedToAPlayerInTheBook(t *testing.T) {
+	t.Parallel()
+	const off = "spell:detect-magic"
+	c := withOverlayOn(t, loadForTest(t), Overlay{Revision: 1, Off: []string{off}})
+	offered := func(c *Content, b Build) bool { return slices.Contains(optionKeys(choiceOf(t, c.Choices(b), bookKey)), off) }
+	if offered(c.ForPlayer(), bookWarlock()) {
+		t.Errorf("a player is offered %s, which the master switched off", off)
+	}
+	if !offered(c, bookWarlock()) {
+		t.Errorf("the master is not offered %s", off)
+	}
+	held := bookWarlock(ScopedChoice(bookKey, off))
+	ch := choiceOf(t, c.ForPlayer().Choices(held), bookKey)
+	if !slices.Contains(ch.Picked, off) || ch.Missing() != 1 {
+		t.Errorf("a sheet that picked %s: picked %v, missing %d; want the pick kept and one missing", off, ch.Picked, ch.Missing())
+	}
+	if !slices.Contains(optionKeys(choiceOf(t, c.ForPlayer().Choices(bookWarlock()), bookKey)), "spell:find-familiar") {
+		t.Error("a ritual that is not switched off is missing")
+	}
+}

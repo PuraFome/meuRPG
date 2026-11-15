@@ -180,3 +180,29 @@ func TestTheHiddenSpellOfAFeatureSummonCannotBeProbedWithARitual(t *testing.T) {
 		t.Errorf("the ritual probe of the hidden spell reads differently from one of an unknown key:\n\thidden:  HTTP %d %s\n\tunknown: HTTP %d %s", hidden.status, shorten(hidden.body), missing.status, shorten(missing.body))
 	}
 }
+
+// A ritual the master switched off never reaches a player in the Book of Ancient Secrets' choice: Caio's preview of
+// a warlock's choices offers it before the switch (the control) and names it nowhere after.
+func TestASwitchedOffRitualIsNotOfferedInTheBookChoice(t *testing.T) {
+	p := newSummonProbe(t)
+	w := p.w
+	const off = "spell:detect-magic"
+	book := "feature:eldritch-invocation-book-of-ancient-secrets"
+	preview := func(who *person) reply {
+		return who.call(charactersv1connect.CharacterServicePreviewChoicesProcedure, &charactersv1.PreviewChoicesRequest{
+			CampaignId: w.campaign, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER,
+			Sheet: &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+				BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 12, Intelligence: 16, Wisdom: 10, Charisma: 8},
+				RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{{ClassKey: "class:warlock", Level: 5}},
+				FeatureChoiceKeys: []string{"feature:pact-of-the-tome", book, "feature:eldritch-invocation-devils-sight"},
+			}}},
+		})
+	}
+	if r := preview(w.caio); !r.ok() || !strings.Contains(string(r.body), off) {
+		t.Fatalf("before the switch Caio's choices lack %s (the control): HTTP %d %s", off, r.status, shorten(r.body))
+	}
+	must(w.master.table.SetOptionSwitches(t.Context(), rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: off, Off: true}}})))
+	if r := preview(w.caio); !r.ok() || strings.Contains(string(r.body), off) || strings.Contains(string(r.body), "Detectar Magia") {
+		t.Errorf("after the switch Caio's choices name the spell: HTTP %d %s", r.status, shorten(r.body))
+	}
+}
