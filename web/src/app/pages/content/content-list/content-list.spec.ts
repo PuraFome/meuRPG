@@ -120,6 +120,35 @@ describe('ContentList', () => {
     expect(head).toContain('Nova sub-raça');
   });
 
+  it('fades the edge of the kinds strip where more kinds follow, and only there (board 580-12 at 768)', async () => {
+    const proto = HTMLElement.prototype;
+    const widths = { scrollWidth: 700, clientWidth: 300 };
+    for (const [k, v] of Object.entries(widths)) {
+      Object.defineProperty(proto, k, { configurable: true, get: () => v });
+    }
+    try {
+      const { fixture, el, settle } = await setup(Role.MASTER);
+      const strip = el.querySelector<HTMLElement>('.menu__list')!;
+      expect(strip.classList).toContain('menu__list--fade-end');
+      expect(strip.classList).not.toContain('menu__list--fade-start');
+      strip.scrollLeft = 150;
+      strip.dispatchEvent(new Event('scroll'));
+      await settle();
+      expect(strip.classList).toContain('menu__list--fade-start');
+      expect(strip.classList).toContain('menu__list--fade-end');
+      strip.scrollLeft = 400;
+      strip.dispatchEvent(new Event('scroll'));
+      await settle();
+      expect(strip.classList).toContain('menu__list--fade-start');
+      expect(strip.classList).not.toContain('menu__list--fade-end');
+      fixture.destroy();
+    } finally {
+      for (const k of Object.keys(widths)) {
+        delete (proto as unknown as Record<string, unknown>)[k];
+      }
+    }
+  });
+
   it('shows the limit line under the tabs too, below 1100 px (it is not hidden by size)', async () => {
     const { el } = await setup(Role.MASTER);
     expect(text(el.querySelector('.menu__limit')!)).toContain('7 de 1000 entradas');
