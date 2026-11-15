@@ -325,6 +325,12 @@ describe('the two blocks of a spell effect (#579 and #577) side by side', () => 
     ],
   });
 
+  it('names the condition in Portuguese in the line a reader sees, even when the catalog has no name for its key', () => {
+    const item = effectReadItem(stored, (k) => k)!;
+    expect(item.text).toContain('Cego');
+    expect(item.text).not.toContain('condition:');
+  });
+
   it('keeps the weapon hit out of the rows, and sends it last', () => {
     const d = effectToDraft(stored);
     expect(d.on).toBe(true);

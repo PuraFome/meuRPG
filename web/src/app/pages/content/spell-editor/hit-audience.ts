@@ -56,8 +56,10 @@ export function audienceCards(marked: boolean): RadioCard[] {
     </section>
   `,
   styles: `
+    // Under the preview card, spaced as the players switch below is.
     :host {
       display: block;
+      margin-top: var(--mr-space-4);
     }
 
     .panel {

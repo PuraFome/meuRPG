@@ -6447,6 +6447,54 @@ async function expectHeadNotStranded(block: Locator, where: string): Promise<voi
 }
 
 /**
+ * The next-hit block and the audience card hold at a narrow width (#577): the four "Quando vale" cards, the audience cards and
+ * "Como funciona" stay inside the viewport, none is cut by its container, the page does not scroll sideways, and each is a hit area
+ * of at least 44 px (the card is a label, so its whole box is the target).
+ */
+async function expectNextHitTouchable(page: Page, where: string): Promise<void> {
+  const block = page.locator('app-hit-effect-block');
+  const targets = [
+    ...(await block.locator('.when .card').all()),
+    ...(await page.locator('app-hit-audience app-radio-cards .card').all()),
+    block.getByRole('button', { name: 'Como funciona' }),
+  ];
+  expect(targets.length, `os cartões e o botão do efeito ${where}`).toBeGreaterThanOrEqual(5);
+  const view = await page.evaluate(() => ({ width: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+  expect.soft(view.scroll, `a página não rola de lado ${where}`).toBeLessThanOrEqual(view.width);
+  for (const target of targets) {
+    const box = await boxOf(target);
+    const label = (await target.textContent())?.trim().replace(/\s+/g, ' ').slice(0, 40);
+    expect.soft(box.height, `"${label}" tem pelo menos 44 px de altura ${where}`).toBeGreaterThanOrEqual(44);
+    expect.soft(box.x, `"${label}" não passa da borda esquerda ${where}`).toBeGreaterThanOrEqual(-0.5);
+    expect.soft(box.x + box.width, `"${label}" não passa da borda direita ${where}`).toBeLessThanOrEqual(view.width + 0.5);
+  }
+  const cut = await page.locator('app-hit-effect-block .when .card, app-hit-audience .card').evaluateAll((cards) =>
+    cards.filter((c) => c.scrollWidth > c.clientWidth + 1 || c.scrollHeight > c.clientHeight + 1).map((c) => c.textContent?.trim().replace(/\s+/g, ' ')),
+  );
+  expect.soft(cut, `cartões cujo conteúdo é cortado ${where}`).toEqual([]);
+}
+
+/** From 1100 px the audience card sits under the preview card with the gap the cards of the side column have, no less (#577). */
+async function expectAudienceGap(page: Page, where: string): Promise<void> {
+  // Scrolled into the form, the sticky column stays inside the window: what does not fit scrolls in it, no card is cut off.
+  await page.evaluate(() => window.scrollTo(0, 400));
+  const side = await boxOf(page.locator('.editor__side'));
+  const innerHeight = await page.evaluate(() => window.innerHeight);
+  expect.soft(side.y + side.height, `a coluna do lado cabe na janela ao rolar ${where}`).toBeLessThanOrEqual(innerHeight + 0.5);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const preview = await boxOf(page.locator('.editor__side .preview'));
+  const audience = await boxOf(page.locator('app-hit-audience .panel'));
+  expect.soft(audience.y - (preview.y + preview.height), `"Quem vê o efeito" não encosta no cartão de cima ${where}`).toBeGreaterThanOrEqual(15);
+  const next = page.locator('app-players-switch .panel');
+  if (await next.count()) {
+    const below = await boxOf(next);
+    const gapAbove = audience.y - (preview.y + preview.height);
+    const gapBelow = below.y - (audience.y + audience.height);
+    expect.soft(Math.abs(gapAbove - gapBelow), `o espaço acima e abaixo de "Quem vê o efeito" é o mesmo ${where}`).toBeLessThanOrEqual(1);
+  }
+}
+
+/**
  * "Efeito no próximo golpe" of a table spell (#577): the editor's block with each of the four triggers picked, the marked target's card
  * locked (a spell of the caster alone), the switch off with the reason of a spell that does not last, a refusal and a missing cap at
  * their fields, "Como funciona" open, and what a player reads of the spell. The editor is judged from 768 px up (a phone only reads).
@@ -6461,38 +6509,71 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
     await Promise.all([m.goto('/'), p.goto('/')]);
     const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade próximo golpe ${Date.now()}`);
     const where = `(${colorScheme}, ${width}px)`;
+    const editorOn = width >= 390;
+    if (editorOn && width < 768) {
+      // The editor is not offered under 768 (the master reads there); only the script's own phone query is forced off, so the
+      // CSS that runs at this width is the one judged, as the feature aura block's check does.
+      await mContext.addInitScript(() => {
+        const real = window.matchMedia.bind(window);
+        window.matchMedia = (q: string) => real(q === '(max-width: 767.98px)' ? 'not all' : q);
+      });
+    }
     const fist = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Geada no Punho'));
     const mark = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Marca do Caçador', { trigger: 'TABLE_HIT_TRIGGER_MARKED_TARGET', save: '', onFailConditions: [], conditionDuration: '' }, { target: { kind: 'TABLE_SPELL_TARGET_KIND_CREATURE' }, range: { kind: 'SPELL_RANGE_KIND_RANGED', distanceFt: 60 } }));
 
-    if (width >= 768) {
+    const twinMod = { save: '', onFailConditions: [], conditionDuration: '', damageType: 'damage-type:radiant', die: 6, dice: 1, maxDice: 6 };
+    const twin = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Chama Gêmea', twinMod, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_OWNER', conditions: ['condition:blinded'], modifiers: [hitModifier(twinMod)] } }));
+
+    if (editorOn) {
       await open(m, entryRoute(campaignId, fist));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
       const block = m.locator('app-hit-effect-block');
       await expect(block.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
       await expect(m.locator('app-hit-audience').getByRole('heading', { name: 'Quem vê o efeito' })).toBeVisible();
       await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe ligado, o alvo marcado travado ${where}`);
-      await expectHeadNotStranded(block, where);
+      if (width >= 768) {
+        await expectHeadNotStranded(block, where);
+      }
+      await expectNextHitTouchable(m, where);
+      if (width >= 1100) {
+        await expectAudienceGap(m, where);
+      }
       for (const card of ['Próximo golpe com arma', 'Cada golpe enquanto durar', 'Próximo golpe corpo a corpo']) {
         await pickRadio(block, card);
         await expect(block.getByRole('radio', { name: new RegExp(`^${card}`) })).toBeChecked();
         await expectScreenPasses(m, `Editor de magia, o gatilho "${card}" ${where}`);
       }
+      const audience = m.locator('app-hit-audience');
+      await pickRadio(audience, 'Todos na mesa');
+      await expect(audience.getByRole('radio', { name: /^Todos na mesa/ })).toBeChecked();
+      await expect(audience.getByLabel('O que os outros jogadores leem')).toBeVisible();
+      await expectNextHitTouchable(m, `${where}, com a escolha "Todos na mesa"`);
+      await expectScreenPasses(m, `Editor de magia, a escolha de quem vê o efeito ${where}`);
+      await block.getByLabel('No máximo').fill('');
+      await expect(block.getByText('Sem limite')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, o limite de dados vazio ("Sem limite") ${where}`);
       await block.getByRole('button', { name: 'Como funciona' }).click();
       await expect(block.getByRole('button', { name: 'Como funciona' })).toHaveAttribute('aria-expanded', 'true');
+      await expectNextHitTouchable(m, `${where}, com "Como funciona" aberto`);
       await expectScreenPasses(m, `Editor de magia, "Como funciona" aberto ${where}`);
 
       await open(m, entryRoute(campaignId, mark));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Marca do Caçador');
       await expect(block.getByRole('radio', { name: /^Cada golpe no alvo marcado/ })).toBeChecked();
       await expectScreenPasses(m, `Editor de magia, o gatilho "Cada golpe no alvo marcado" ${where}`);
-      await expectHeadNotStranded(block, where);
+      if (width >= 768) {
+        await expectHeadNotStranded(block, where);
+      }
 
       // The two blocks that write one effect, both on: each head sums itself up and one line says the concentration ends both.
-      const twinMod = { save: '', onFailConditions: [], conditionDuration: '', damageType: 'damage-type:radiant', die: 6, dice: 1, maxDice: 6 };
-      const twin = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Chama Gêmea', twinMod, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_OWNER', conditions: ['condition:blinded'], modifiers: [hitModifier(twinMod)] } }));
       await open(m, entryRoute(campaignId, twin));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Chama Gêmea');
       await expect(block.getByText('Uma concentração: quando acaba, os dois efeitos acabam juntos.')).toBeVisible();
+      // The condition is named in Portuguese in the preview, never by its key.
+      const preview = m.locator('.editor__side .preview');
+      await expect(preview).toContainText('Nos alvos: Cego');
+      await expect(preview).not.toContainText('condition:');
+      await expectNextHitTouchable(m, `${where}, com os dois blocos`);
       await expectScreenPasses(m, `Editor de magia, os dois blocos ligados ${where}`);
 
       // A spell that does not last keeps no effect: the switch is off and says why.
@@ -6513,17 +6594,40 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
       await expect(block.getByLabel('Dados', { exact: true })).toHaveAttribute('aria-invalid', 'true');
       await expect(block.getByLabel('A mais por nível')).toHaveAttribute('aria-invalid', 'true');
       await expect(block.getByLabel('Dados', { exact: true }).locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
+      await expectNextHitTouchable(m, `${where}, com as recusas`);
       await expectScreenPasses(m, `Editor de magia, as recusas dos números no campo ${where}`);
+    }
+
+    if (width < 768) {
+      // What the app really shows a master on a phone: the read and the banner, no editor.
+      const real = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+      try {
+        const r = await real.newPage();
+        await open(r, entryRoute(campaignId, fist));
+        await expect(r.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.')).toBeVisible();
+        await expect(r.getByRole('heading', { name: 'Efeito no próximo golpe' })).toBeVisible();
+        await expect(r.getByRole('button', { name: 'Salvar magia' })).toHaveCount(0);
+        await expectScreenPasses(r, `Magia com efeito no próximo golpe, lida pelo mestre no celular ${where}`);
+      } finally {
+        await real.close();
+      }
     }
 
     await open(p, entryRoute(campaignId, fist));
     await expect(p.getByRole('heading', { name: 'Efeito no próximo golpe' })).toBeVisible();
     await expect(p.getByText('Só quem conjura e você')).toBeVisible();
     expect.soft((await boxOf(p.getByText('Quem vê o efeito'))).height, `"Quem vê o efeito" numa linha só ${where}`).toBeLessThan(26);
+    await expect(p.locator('.hit__who dt mat-icon')).toHaveText('visibility_off');
     await expectScreenPasses(p, `Magia com efeito no próximo golpe, vista por um jogador ${where}`);
     await open(p, entryRoute(campaignId, mark));
     await expect(p.getByText('Em quem conjura: cada golpe com arma no alvo marcado, por até 1 minuto.')).toBeVisible();
     await expectScreenPasses(p, `Magia do alvo marcado, vista por um jogador ${where}`);
+    // The condition of the effect on the targets is read by its name, never by its key.
+    const shown = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Chama Aberta', twinMod, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_PUBLIC', playerLabelPt: 'Chama Aberta', conditions: ['condition:blinded'], modifiers: [hitModifier(twinMod)] } }));
+    await open(p, entryRoute(campaignId, shown));
+    await expect(p.locator('body')).toContainText('Nos alvos: Cego, enquanto durar.');
+    await expect(p.locator('.hit__who dt mat-icon')).toHaveText('visibility');
+    await expect(p.locator('body')).not.toContainText('condition:');
   } finally {
     await Promise.all([mContext.close(), pContext.close()]);
   }
@@ -6531,6 +6635,14 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
 
 test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
   await scanNextHit(browser, 'light', 1280);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema escuro, no tablet de 768', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'dark', 768);
+});
+
+test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no celular de 390', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  await scanNextHit(browser, 'light', 390);
 });
 
 test('o efeito no próximo golpe passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
