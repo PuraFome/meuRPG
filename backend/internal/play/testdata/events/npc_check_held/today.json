@@ -1,0 +1,23 @@
+{
+  "character_id": "x",
+  "name": "x",
+  "monster_key": "x",
+  "check": "x",
+  "d20": 1,
+  "modifier": 1,
+  "known": true,
+  "physical": true,
+  "hold_id": "x",
+  "total": 1,
+  "cut": 1,
+  "asked": [
+    {
+      "bard": "x",
+      "name": "x",
+      "state": "x",
+      "sides": 1,
+      "face": 1
+    }
+  ],
+  "skipped": true
+}
