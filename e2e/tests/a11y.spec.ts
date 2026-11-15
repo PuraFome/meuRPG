@@ -6185,6 +6185,14 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
 
     await open(m, `/campaigns/${campaignId}/content?kind=spells`);
     await expectScreenPasses(m, `Conteúdo da mesa, as magias ${where}`);
+    // On a phone the button of the players' options takes the full width of the page content (580-15).
+    if (width < 768) {
+      const [button, title] = await m.evaluate(() => [
+        document.querySelector('a.head__action')!.getBoundingClientRect().width,
+        document.querySelector('h1.mr-page-title')!.getBoundingClientRect().width,
+      ]);
+      expect(button, `"Opções para os jogadores" com a largura toda ${where}`).toBeGreaterThanOrEqual(title - 1);
+    }
     if (width >= 768) {
       await open(m, `/campaigns/${campaignId}/content`);
       await expectScreenPasses(m, `Conteúdo da mesa, a lista inicial ${where}`);
