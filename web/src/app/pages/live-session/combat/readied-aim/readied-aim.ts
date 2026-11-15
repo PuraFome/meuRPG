@@ -27,6 +27,7 @@ import { ResourcePick } from '../resource-pick/resource-pick';
   selector: 'app-readied-aim',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [ResourcePick],
+  styleUrls: ['../resource-pick/resource-sheet.scss'],
   template: `
     @if (need() === 'failed') {
       <p class="small" role="status">Não deu para ler quem está ao alcance. {{ failedText() }}</p>

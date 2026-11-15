@@ -16,7 +16,7 @@ export class ReadiedAimState {
 
   constructor(private readonly encounter: () => Encounter) {}
 
-  held(row: QueueRow) {
+  held(row: Pick<QueueRow, 'window'>) {
     return readiedOfWindow(this.encounter(), row.window);
   }
 

@@ -35,7 +35,10 @@ function attackReachFt(a: Attack): number {
   return a.melee ? Math.max(MELEE_REACH_FT, a.reachFt) : a.rangeFt;
 }
 
-/** The creatures a spell that is not an attack may name: everyone in the combat, the readier last of its own words. */
+/**
+ * The creatures a spell that is not an attack may name: everyone in the combat. The readier is off its turn while the window is
+ * open, and the server lists the targets of the spells it can cast now only, so it has no list (or darts, or placement) for a held spell.
+ */
 function spellRows(e: Encounter | null, reactorId: string, named: string): ReadiedTargetRow[] {
   return (e?.combatants ?? []).map((c) => ({
     id: c.id,
@@ -56,10 +59,15 @@ export function readiedAim(
   reactorId: string,
 ): ReadiedAim {
   const named = r.targetCombatantId;
-  const attack = res.options?.attacks.find((a) => a.attack?.key === r.actionKey)?.attack;
-  if (r.kind === ReadiedKind.ATTACK || attack) {
-    const list = res.attackTargets.find((x) => x.attackKey === r.actionKey)?.targets ?? [];
-    const rows = readiedTargetRows(list, named, attack ? attackReachFt(attack) : MELEE_REACH_FT);
+  // Only an attack that rolls to hit has a list of targets: a cantrip with a saving throw is released as a spell.
+  const aimed = res.attackTargets.find((x) => x.attackKey === r.actionKey);
+  if (r.kind === ReadiedKind.ATTACK || aimed) {
+    const attack = res.options?.attacks.find((a) => a.attack?.key === r.actionKey)?.attack;
+    const rows = readiedTargetRows(
+      aimed?.targets ?? [],
+      named,
+      attack ? attackReachFt(attack) : MELEE_REACH_FT,
+    );
     const mine = rows.find((x) => x.id === named && !x.blocked);
     return {
       need: 'required',
@@ -69,10 +77,6 @@ export function readiedAim(
     };
   }
   const rows = spellRows(e, reactorId, named);
-  return {
-    need: 'optional',
-    rows,
-    legend: 'Em quem (opcional)',
-    chosen: rows.some((x) => x.id === named) ? named : null,
-  };
+  const mine = rows.find((x) => x.id === named);
+  return { need: 'optional', rows, legend: 'Em quem (opcional)', chosen: mine ? named : null };
 }

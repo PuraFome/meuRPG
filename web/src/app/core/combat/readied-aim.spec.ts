@@ -81,4 +81,11 @@ describe('readiedAim (#582: who a readied attack or spell is aimed at)', () => {
     ]);
     expect(a.legend).toBe('Em quem (opcional)');
   });
+
+  it('takes a cantrip that asks for a saving throw as a spell: it has no attack roll to aim', () => {
+    const res = options(AttackKind.SPELL);
+    res.attackTargets = [];
+    const a = readiedAim(res, row({ kind: ReadiedKind.SPELL }), e, 'tor');
+    expect(a.need).toBe('optional');
+  });
 });

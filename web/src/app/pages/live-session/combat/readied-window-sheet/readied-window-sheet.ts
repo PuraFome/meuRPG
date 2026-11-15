@@ -18,10 +18,10 @@ import type { ReactionWindow, ReadiedAction } from '../../../../../gen/meurpg/pl
 import { CombatantState, ReadiedKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../../../../core/format/article';
 import { CombatClient } from '../../../../core/combat/combat-client';
-import { combatErrorMessage } from '../../../../core/combat/combat-errors';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { ownCombatant } from '../../../../core/combat/combat-view';
 import { playerAutoPassText, playerSecondsLeft } from '../../../../core/combat/reaction-autopass';
+import { readiedRefusalText } from '../../../../core/combat/readied-refusal';
 import type { AimNeed } from '../../../../core/combat/readied-aim';
 import { readiedGoneText, readiedPrompt } from '../../../../core/combat/reaction-readied';
 import { ActionKey } from '../../../../core/connect/idempotency';
@@ -73,11 +73,12 @@ export interface ReadiedWindowSheetData {
         }
         @if (gone()) {
           <p class="what" role="status">{{ goneText() }}</p>
-        } @else if (held()) {
-          <p class="what" role="status">
-            A sua jogada espera as reações de outros. Assim que responderem, ela acontece.
-          </p>
         } @else {
+          @if (useHeld()) {
+            <p class="what" role="status">
+              A sua jogada espera as reações de outros. Assim que responderem, ela acontece.
+            </p>
+          }
           <p class="what">
             <b>{{ view.lead }}</b> {{ view.quote }}. {{ view.question }}
           </p>
@@ -113,7 +114,7 @@ export interface ReadiedWindowSheetData {
               type="button"
               class="pair__btn"
               data-initial-focus
-              [disabled]="busy() || held()"
+              [disabled]="busy()"
               (click)="answer(false)"
             >
               {{ view.declineLabel }}
@@ -123,7 +124,7 @@ export interface ReadiedWindowSheetData {
                 matButton="filled"
                 type="button"
                 class="pair__btn"
-                [disabled]="!ready() || busy() || held()"
+                [disabled]="!ready() || busy()"
                 disabledInteractive
                 (click)="answer(true)"
               >
@@ -220,14 +221,12 @@ export class ReadiedWindowSheet {
         (w) => w.id === this.data.window.id,
       ),
   );
-  /** The window is still open but takes no answer: the roll of its attack or spell waits for the other windows (`answer_now` false). */
-  protected readonly held = computed(() =>
-    (this.data.state.encounter()?.reactionWindows ?? []).some(
-      (w) => w.id === this.data.window.id && !w.answerNow,
-    ),
-  );
-  /** The use was sent and its roll was held: the window leaving the combat is then the use, not a time out. */
-  private readonly useHeld = signal(false);
+  /**
+   * The use was sent and its roll was held for other windows: the window leaving the combat is then the use, not a time out. The
+   * window's `answer_now` is the master's alone, so the readier is not told when the hold ends: both answers stay and the server
+   * refuses them (`REACTION_PENDING`) for as long as it holds.
+   */
+  protected readonly useHeld = signal(false);
   /** Closes by itself when a held use went through. */
   protected readonly closeWhenDone = effect(() => {
     if (this.useHeld() && this.gone()) {
@@ -302,7 +301,7 @@ export class ReadiedWindowSheet {
       }
       this.sheet.close();
     } catch (err) {
-      this.error.set(combatErrorMessage(err, 'responder à reação'));
+      this.error.set(readiedRefusalText(err, this.data.readied, 'responder à reação'));
       this.busy.set(false);
     }
   }
