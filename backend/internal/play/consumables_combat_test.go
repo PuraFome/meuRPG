@@ -318,6 +318,23 @@ func TestAHealingPotionDoesNotReviveACreatureWithThreeFailedDeathSaves(t *testin
 	}
 }
 
+// A creature with three failed death saves is dead whatever the item: a scroll given by a character that does not fight to a
+// combatant in that state is refused too, with the scroll still on the giver's sheet and no line in the log.
+func TestAScrollGivenByAUserOutsideTheCombatIsRefusedForADeadCombatant(t *testing.T) {
+	t.Parallel()
+	f := fightWithout(t, []string{scrollFirst}, "Brisa")
+	f.hurt(t, f.pens, 0)
+	f.execSQL(t, `UPDATE combatants SET death_failures = 3 WHERE id = $1`, f.id(t, "Pensantus"))
+	_, err := f.use(t, f.bia, f.bri, scrollFirst, giveTo(f.pens))
+	wantBlockedBy(t, "a scroll to the dead", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+	if !f.holds(t, f.bri, scrollFirst) {
+		t.Error("the refused scroll was spent")
+	}
+	if f.line(t, f.master) != nil {
+		t.Error("the refused scroll wrote a line in the combat's log")
+	}
+}
+
 // A combat in setup has its combatants but no turn: a resistance potion is their effect (the record lives on the combatant, as for
 // any character that joined), and nothing is gated.
 func TestAResistancePotionInACombatInSetupIsAnEffectOfTheCombatantWithNoTurnAndNoAction(t *testing.T) {

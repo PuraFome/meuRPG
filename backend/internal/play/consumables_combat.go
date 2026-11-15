@@ -62,8 +62,8 @@ func (s *Service) openFight(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h
 		return nil, err
 	}
 	giver, recv := wearerIn(cs, use.charText), wearerIn(cs, use.target)
-	if giver == nil && (recv == nil || !potion) { // the combat has no part in it: no effect on a combatant and no line of the user's
-		return nil, nil
+	if giver == nil && (recv == nil || !potion) { // the combat has no part in it: no effect on a combatant and no line of the user's, but a dead receiver is refused
+		return nil, s.refuseTheDeadReceiver(ctx, tx, session, recv)
 	}
 	acts := potion && enc.Status == statusActive
 	if acts && (giver == nil || recv == nil) {
@@ -91,15 +91,22 @@ func (s *Service) gateConsumable(ctx context.Context, f *consumableFight, acts b
 			return errNotAdjacent()
 		}
 	}
-	if f.recv != nil {
-		if err := s.refuseTheDead(ctx, f.c, []playdb.Combatant{*f.recv}); err != nil { // a creature that failed three death saves is dead: no item reaches it
-			return err
-		}
+	if err := s.refuseTheDeadReceiver(ctx, f.c.tx, f.c.session, f.recv); err != nil {
+		return err
 	}
 	if acts {
 		return s.payConsumableAction(ctx, f.c, *f.giver)
 	}
 	return nil
+}
+
+// refuseTheDeadReceiver refuses a receiver that is a combatant and dead (three failed death saves): no item reaches it, whether or not
+// the user fights in the combat. A nil receiver is no combatant of it, and nothing is refused.
+func (s *Service) refuseTheDeadReceiver(ctx context.Context, tx pgx.Tx, session playdb.GameSession, recv *playdb.Combatant) error {
+	if recv == nil {
+		return nil
+	}
+	return s.refuseTheDead(ctx, &combatTx{tx: tx, session: session}, []playdb.Combatant{*recv})
 }
 
 // payConsumableAction spends the action of the turn for a potion. Activating a potion is an action, not the object interaction
