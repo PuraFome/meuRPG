@@ -80,7 +80,7 @@ func (s *Service) settleNpcCheck(ctx context.Context, tc *combatTx, hold playdb.
 	if err != nil {
 		return ev, err
 	}
-	if _, err := tc.q.CloseNpcCheckAsks(ctx, playdb.CloseNpcCheckAsksParams{HoldID: hold.ID, AnsweredAt: &tc.now}); err != nil {
+	if err := tc.q.CloseNpcCheckAsks(ctx, playdb.CloseNpcCheckAsksParams{HoldID: hold.ID, AnsweredAt: &tc.now}); err != nil {
 		return ev, fmt.Errorf("close the asks of the check: %w", err)
 	}
 	asks, err := tc.q.ListNpcCheckAsks(ctx, hold.ID)

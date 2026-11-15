@@ -55,11 +55,10 @@ func (q *Queries) AnswerNpcCheckAsk(ctx context.Context, arg AnswerNpcCheckAskPa
 	return i, err
 }
 
-const closeNpcCheckAsks = `-- name: CloseNpcCheckAsks :many
+const closeNpcCheckAsks = `-- name: CloseNpcCheckAsks :exec
 UPDATE npc_check_asks
 SET state = 'closed', answered_at = $2
 WHERE hold_id = $1 AND state = 'asked'
-RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, created_at, answered_at
 `
 
 type CloseNpcCheckAsksParams struct {
@@ -69,37 +68,9 @@ type CloseNpcCheckAsksParams struct {
 
 // The questions of a held check that still wait close with no answer (the master went on without the bard, or the bard could
 // not answer any more).
-func (q *Queries) CloseNpcCheckAsks(ctx context.Context, arg CloseNpcCheckAsksParams) ([]NpcCheckAsk, error) {
-	rows, err := q.db.Query(ctx, closeNpcCheckAsks, arg.HoldID, arg.AnsweredAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []NpcCheckAsk
-	for rows.Next() {
-		var i NpcCheckAsk
-		if err := rows.Scan(
-			&i.ID,
-			&i.HoldID,
-			&i.BardCharacterID,
-			&i.Position,
-			&i.State,
-			&i.Sides,
-			&i.CreatureSeen,
-			&i.DieFace,
-			&i.Physical,
-			&i.AnswerKey,
-			&i.CreatedAt,
-			&i.AnsweredAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) CloseNpcCheckAsks(ctx context.Context, arg CloseNpcCheckAsksParams) error {
+	_, err := q.db.Exec(ctx, closeNpcCheckAsks, arg.HoldID, arg.AnsweredAt)
+	return err
 }
 
 const getNpcCheckAskByAnswerKey = `-- name: GetNpcCheckAskByAnswerKey :one

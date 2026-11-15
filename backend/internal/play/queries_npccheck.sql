@@ -23,10 +23,9 @@ SET state = $2, die_face = $3, physical = $4, answer_key = $5, answered_at = $6
 WHERE id = $1 AND state = 'asked'
 RETURNING *;
 
--- name: CloseNpcCheckAsks :many
+-- name: CloseNpcCheckAsks :exec
 -- The questions of a held check that still wait close with no answer (the master went on without the bard, or the bard could
 -- not answer any more).
 UPDATE npc_check_asks
 SET state = 'closed', answered_at = $2
-WHERE hold_id = $1 AND state = 'asked'
-RETURNING *;
+WHERE hold_id = $1 AND state = 'asked';
