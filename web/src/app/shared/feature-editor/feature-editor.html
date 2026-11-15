@@ -1,19 +1,29 @@
-<div class="feature" [class.feature--flat]="flat()" role="group" [attr.aria-label]="groupLabel()">
-  @if (heading() || index() >= 0) {
+<div class="feature" [class.feature--flat]="flat()" [class.feature--framed]="framed()" role="group" [attr.aria-label]="groupLabel()">
+  @if (heading() || index() >= 0 || rowMenu()) {
     <div class="feature__head">
       @if (heading()) {
         <h3 class="feature__title">{{ heading() }}</h3>
       } @else {
         <span class="feature__title feature__title--n">{{ index() + 1 }}</span>
       }
-      @if (index() >= 0 && count() > 1) {
+      @if ((index() >= 0 && count() > 1) || rowMenu()) {
         <span class="feature__move">
-          <button type="button" class="icon" aria-label="Subir {{ feature().name || nameLabel() }}" [disabled]="index() === 0" (click)="moved.emit(-1)">
-            <mat-icon aria-hidden="true">arrow_upward</mat-icon>
-          </button>
-          <button type="button" class="icon" aria-label="Descer {{ feature().name || nameLabel() }}" [disabled]="index() === count() - 1" (click)="moved.emit(1)">
-            <mat-icon aria-hidden="true">arrow_downward</mat-icon>
-          </button>
+          @if (index() >= 0 && count() > 1) {
+            <button type="button" class="icon" aria-label="Subir {{ feature().name || nameLabel() }}" [disabled]="index() === 0" (click)="moved.emit(-1)">
+              <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+            </button>
+            <button type="button" class="icon" aria-label="Descer {{ feature().name || nameLabel() }}" [disabled]="index() === count() - 1" (click)="moved.emit(1)">
+              <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+            </button>
+          }
+          @if (rowMenu()) {
+            <button type="button" class="icon" aria-label="Mais ações de {{ feature().name || heading() || nameLabel() }}" [matMenuTriggerFor]="rowActions">
+              <mat-icon aria-hidden="true">more_vert</mat-icon>
+            </button>
+            <mat-menu #rowActions="matMenu">
+              <button mat-menu-item type="button" (click)="removed.emit()"><mat-icon aria-hidden="true">delete</mat-icon>{{ removeLabel() }}</button>
+            </mat-menu>
+          }
         </span>
       }
     </div>
@@ -148,6 +158,7 @@
           [catalog]="catalog()"
           [entries]="entries()"
           [isOption]="true"
+          [framed]="flat()"
           [allowAsks]="!oneOf() && !featEditor() && !featOption()"
           [featOption]="featEditor() || featOption()"
           nameLabel="Nome da opção"
@@ -175,7 +186,7 @@
     @if (canAddEffect()) {
       <button type="button" class="link" (click)="addEffect()"><mat-icon aria-hidden="true">add</mat-icon>Adicionar um efeito</button>
     }
-    @if (removeLabel()) {
+    @if (removeLabel() && !rowMenu()) {
       <button matButton="outlined" type="button" class="remove" (click)="removed.emit()">{{ removeLabel() }}</button>
     }
   </div>

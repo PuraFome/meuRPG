@@ -11,7 +11,6 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type { Asks } from '../../core/content/asks';
@@ -85,7 +84,7 @@ function filled(kind: AskKind, d: Asks): boolean {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-ask-rows',
-  imports: [MatButtonModule, MatIconModule, PickList, SearchPick, SelectField, TextField],
+  imports: [MatIconModule, PickList, SearchPick, SelectField, TextField],
   template: `
     @if (head()) {
       <div class="asks-head">
@@ -99,7 +98,7 @@ function filled(kind: AskKind, d: Asks): boolean {
         <div class="ask__body">
           @switch (a.kind) {
             @case ('class') {
-              <div class="grid grid--2">
+              <div class="grid grid--level">
                 <app-select-field label="Classe" [options]="classOptions()" [value]="value().classKey" [path]="at('class_level.class_key')" [issues]="issues(at('class_level.class_key'))" (valueChange)="asksChange.emit({ classKey: $event })" />
                 <app-text-field label="Nível mínimo" suffix="de 20" [value]="value().classLevel" inputmode="numeric" [path]="at('class_level.level')" [issues]="issues(at('class_level.level'))" (valueChange)="asksChange.emit({ classLevel: $event })" />
               </div>
@@ -114,7 +113,7 @@ function filled(kind: AskKind, d: Asks): boolean {
               <app-search-pick label="Magia" placeholder="Procurar magia" emptyText="Nenhuma magia com esse nome." [single]="true" [options]="spellSearch()" [chips]="spellChips()" [path]="at('requires_spell_key')" [issues]="issues(at('requires_spell_key'))" (added)="asksChange.emit({ requiresSpell: $event })" (removed)="asksChange.emit({ requiresSpell: '' })" />
             }
             @default {
-              <app-pick-list label="Outras opções" addLabel="Adicionar opção" [options]="requirable()" [values]="value().requiresOptions" [max]="optionsMax" [path]="at('requires_option_keys')" [issues]="issues(at('requires_option_keys'))" hint="{{ value().requiresOptions.length }} de 10. Opções que o personagem já escolheu, do SRD ou da mesa." (added)="asksChange.emit({ requiresOptions: [...value().requiresOptions, $event] })" (removed)="asksChange.emit({ requiresOptions: value().requiresOptions.filter((k) => k !== $event) })" />
+              <app-pick-list label="Outras opções" addLabel="Adicionar opção" [options]="requirable()" [values]="value().requiresOptions" [max]="optionsMax" [path]="at('requires_option_keys')" [issues]="issues(at('requires_option_keys'))" hint="{{ value().requiresOptions.length }} de 10. Opções que o personagem já escolheu, do SRD ou da mesa. Nunca a própria opção." (added)="asksChange.emit({ requiresOptions: [...value().requiresOptions, $event] })" (removed)="asksChange.emit({ requiresOptions: value().requiresOptions.filter((k) => k !== $event) })" />
             }
           }
         </div>
@@ -124,7 +123,7 @@ function filled(kind: AskKind, d: Asks): boolean {
     <div class="asks-add">
       @if (missing().length > 0) {
         <div class="asks-add__menu">
-          <button matButton="outlined" type="button" aria-haspopup="menu" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())"><mat-icon aria-hidden="true">add</mat-icon>Adicionar pré-requisito<mat-icon aria-hidden="true">arrow_drop_down</mat-icon></button>
+          <button type="button" class="asks-add__link" aria-haspopup="menu" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())"><mat-icon aria-hidden="true">add</mat-icon>Adicionar pré-requisito<mat-icon aria-hidden="true">arrow_drop_down</mat-icon></button>
           @if (menuOpen()) {
             <div class="asks-add__list" role="menu">
               @for (a of all; track a.kind) {

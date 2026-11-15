@@ -16,22 +16,9 @@
   gap: var(--mr-space-3);
   align-items: start;
 
-  @media (min-width: 768px) {
-    &--2 {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    &--3 {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    &--4 {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
-    .span-2 {
-      grid-column: span 2;
-    }
+  // "Classe" and "Nível mínimo": a level from 1 to 20 takes 140 px, the class the rest (board 580-03).
+  &--level {
+    grid-template-columns: minmax(0, 1fr) 140px;
   }
 }
 
@@ -119,12 +106,35 @@
     position: relative;
   }
 
+  // A text action with a caret, in the accent as the other links of the editors (board 580-03).
+  &__link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--mr-space-1);
+    min-height: 44px;
+    margin-left: -8px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: var(--mr-radius-sm);
+    background: transparent;
+    color: var(--mr-accent-text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+
+    .mat-icon {
+      width: 20px;
+      height: 20px;
+      font-size: var(--mr-font-20);
+    }
+  }
+
   &__list {
     display: flex;
     flex-direction: column;
     min-width: 14rem;
     margin-top: var(--mr-space-1);
-    background: var(--mr-surface, #fff);
+    background: var(--mr-surface);
     border: 1px solid var(--mr-rule);
     border-radius: var(--mr-radius-md);
 
