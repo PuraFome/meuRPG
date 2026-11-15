@@ -122,6 +122,30 @@ func TestGeminiFailuresAreTypedAndNeverQuoteTheTextOrTheKey(t *testing.T) {
 	}
 }
 
+func TestGeminiATransportFailureIsTheSentinelAndLogsTheCauseNotTheTextOrTheKey(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	url := srv.URL + "/"
+	srv.Close() // nothing listens at url any more: the call itself fails
+	var log strings.Builder
+	g := &Gemini{Key: "secret-key", ModelName: "m", URL: url, Logger: slog.New(slog.NewTextHandler(&log, nil))}
+	_, err := g.Speak(t.Context(), "TEXTO-SECRETO", "Kore")
+	if !isSentinel(err, ErrUnavailable) {
+		t.Errorf("error = %v (%T), want the sentinel ErrUnavailable itself, as on every other path; log: %s", err, err, log.String())
+	}
+	if !strings.Contains(log.String(), "the call failed") || !strings.Contains(log.String(), "cause=") {
+		t.Errorf("the log does not say the call failed and why: %s", log.String())
+	}
+	if strings.Contains(log.String(), "secret-key") || strings.Contains(log.String(), "TEXTO-SECRETO") {
+		t.Errorf("the log holds the key or the text: %s", log.String())
+	}
+}
+
+// isSentinel says err is the sentinel itself: it is, or wraps, want, and it wraps nothing on top.
+func isSentinel(err, want error) bool {
+	return errors.Is(err, want) && errors.Unwrap(err) == nil
+}
+
 func TestGeminiWithoutAModelOrTextAsksNothing(t *testing.T) {
 	t.Parallel()
 	called := false
