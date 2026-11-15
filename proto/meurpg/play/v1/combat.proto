@@ -7098,15 +7098,21 @@ message ReactionWindow {
   // an answer that asks one more thing (Hellish Rebuke's saving throw, the
   // monk's throw back). A second step is answered like the first.
   bool second_step = 12;
-  // The reactor's player said they are using the reaction and rolling now
-  // (MarkReactionRolling). The master reads "Rolando…" and the automatic pass waits
-  // longer; the player reads their own mark back. Never sent for a window nobody
-  // marked.
+  // The reactor's player is on the map now: they set the mark on entering it and
+  // cleared it on going back (MarkReactionRolling, with `clear`). The master reads
+  // "Rolando…"; the player reads their own mark back (a second device shows it).
+  // False when nobody marked the window or the mark was cleared; read by the master
+  // and the reactor's player only.
   bool rolling = 13;
   // Only the master: the reactor is a player's character and nobody answered in the first 10 s, so the question has come
   // to the master ("10 s sem resposta"). The player may still answer; the first answer wins and the other reads
   // REACTION_ALREADY_ANSWERED.
   bool unanswered = 14;
+  // When the reactor's player first marked the window (entered the map): the wait of
+  // 120 s began then, once, and no later mark or clear changes it. Unset before that.
+  // Read by the master and the reactor's player only. The master's screen passes the
+  // window when the 120 s end.
+  google.protobuf.Timestamp wait_began_at = 15;
   // Only whoever answers: the question, by kind.
   oneof prompt {
     ShieldPrompt shield = 20;

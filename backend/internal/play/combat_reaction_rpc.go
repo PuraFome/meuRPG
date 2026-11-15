@@ -229,10 +229,14 @@ func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membersh
 		return err
 	}
 	t := windowTriggerOf(w)
-	if t.Rolling == !off {
+	if t.Rolling == !off && (off || t.WaitBegan != nil) {
 		return nil
 	}
 	t.Rolling = !off
+	if !off && t.WaitBegan == nil {
+		now := c.now // the transaction's clock; the first mark starts the wait and nothing after it moves it
+		t.WaitBegan = &now
+	}
 	body, err := json.Marshal(t)
 	if err != nil {
 		return fmt.Errorf("encode the window's trigger: %w", err)
