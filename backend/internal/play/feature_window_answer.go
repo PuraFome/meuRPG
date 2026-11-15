@@ -37,8 +37,8 @@ func (s *Service) answerFeature(ctx context.Context, m authz.Membership, in answ
 	if err := s.mayAnswerFeature(ctx, m, in.encID, w); err != nil {
 		return nil, true, err
 	}
-	if err := refuseTargets(msg); err != nil {
-		return nil, true, err
+	if len(msg.GetTargets()) > 0 {
+		return nil, true, badTargets(targetsNotUsed)
 	}
 	out := &useFeatureOut{}
 	kind := eventFeatureUsed

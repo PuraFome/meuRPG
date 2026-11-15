@@ -49,8 +49,7 @@ type castCall struct {
 	// grantedBy is the source of the granted_spell effect that casts the spell; "" for the character's classes.
 	grantedBy string
 	targets   []castAim
-	// release is the READIED window an answer casts the spell for; "" for a cast that is no answer. The window must be open.
-	release string
+	release   string // the READIED window an answer casts for, which must be open; "" for a cast that is no answer
 	// in is how the dice come; rolled says the request sets them at all.
 	in     rollInput
 	rolled bool

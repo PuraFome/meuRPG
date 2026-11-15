@@ -255,15 +255,12 @@ func listAttackTargets(res *playv1.GetTurnOptionsResponse, d *encounterData, v c
 func (s *Service) listSpellTargets(ctx context.Context, m authz.Membership, res *playv1.GetTurnOptionsResponse, d *encounterData, v combatViewer, who playdb.Combatant, terrain grid.Terrain, modes turnModes) error {
 	scene := spellTargetScene{terrain: terrain, who: who, cs: d.cs, v: v, theatre: isTheatre(d.enc), modes: modes}
 	var err error
-	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, scene, res.GetOptions()); err != nil {
-		return s.dbError(ctx, "work out the spell targets", err)
-	}
+	entries := spellsToList(res.GetOptions())
 	if !actsNow(d.enc, who) { // the window opens off the turn, and on it an ordinary entry of the same spell could be listed too
-		held, err := scene.heldSpellTargets(ctx, s, m.CampaignID, d.readied)
-		if err != nil {
-			return s.dbError(ctx, "work out the targets of a held spell", err)
-		}
-		res.SpellTargets = append(res.SpellTargets, held...)
+		entries = append(entries, heldEntry(d.readied, who)...)
+	}
+	if res.SpellTargets, err = s.spellTargetsFor(ctx, m.CampaignID, scene, entries); err != nil {
+		return s.dbError(ctx, "work out the spell targets", err)
 	}
 	res.ResourceTargets = resourceTargetsFor(terrain, d.cs, who, v, res.GetOptions(), d.enc)
 	return nil

@@ -122,9 +122,6 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 		return nil, true, err
 	}
 	if in.choice == playv1.ReactionChoice_REACTION_CHOICE_PASS {
-		if err := refuseTargets(msg); err != nil {
-			return nil, true, err
-		}
 		out, err := s.answerReadiedWrite(ctx, m, in, msg, eventReadiedFired, s.passReadiedTx)
 		return out, true, err
 	}
@@ -135,8 +132,8 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 	if err != nil {
 		return nil, true, s.dbError(ctx, "read the readied action", err)
 	}
-	if err := castOnly(msg, row); err != nil {
-		return nil, true, err
+	if usedAs(row) != readiedSpell && len(msg.GetTargets()) > 0 { // not released as a cast
+		return nil, true, badTargets(targetsNotUsed)
 	}
 	switch row.Kind {
 	case readiedAttack:
@@ -175,22 +172,8 @@ func (s *Service) mayAnswerReadied(ctx context.Context, m authz.Membership, encI
 	return nil
 }
 
-// castOnly refuses targets on a row that is not released as a cast: another kind, or a held spell attack.
-func castOnly(msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction) error {
-	if row.Kind != readiedSpell || heldSpellAttackRow(row) {
-		return refuseTargets(msg)
-	}
-	return nil
-}
-
-// refuseTargets refuses an answer that carries targets where they are not used: only the use of a readied spell casts
-// with them, and an answer never drops what it was given.
-func refuseTargets(msg *playv1.AnswerReactionRequest) error {
-	if len(msg.GetTargets()) > 0 {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("targets are for the use of a readied spell"))
-	}
-	return nil
-}
+// targetsNotUsed refuses targets where the answer does not cast with them: only the use of a readied spell does.
+const targetsNotUsed = "targets are for the use of a readied spell"
 
 // answerReadiedWrite runs an answer of a READIED window in its own change of the kind, and answers as AnswerReaction does.
 func (s *Service) answerReadiedWrite(ctx context.Context, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest, kind string,

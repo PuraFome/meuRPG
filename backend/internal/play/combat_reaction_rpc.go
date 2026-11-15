@@ -58,6 +58,9 @@ func parseAnswerInput(ctx context.Context, msg *playv1.AnswerReactionRequest) (a
 	if choice != playv1.ReactionChoice_REACTION_CHOICE_USE && choice != playv1.ReactionChoice_REACTION_CHOICE_PASS {
 		return m, answerInput{}, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be USE or PASS"))
 	}
+	if choice == playv1.ReactionChoice_REACTION_CHOICE_PASS && len(msg.GetTargets()) > 0 { // whatever the window
+		return m, answerInput{}, badTargets(targetsNotUsed)
+	}
 	return m, answerInput{key: key, encID: encID, winID: winID, choice: choice}, nil
 }
 
@@ -127,9 +130,6 @@ func (s *Service) answerOpportunityOffer(ctx context.Context, m authz.Membership
 	if in.choice == playv1.ReactionChoice_REACTION_CHOICE_USE {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made with RollAttack and opportunity_offer_id"))
 	}
-	if err := refuseTargets(msg); err != nil {
-		return nil, err
-	}
 	out, err := s.answerOffer(ctx, m, msg.GetEncounterId(), in.winID, msg.GetIdempotencyKey(), offerDeclined)
 	if err != nil {
 		return nil, err
@@ -146,8 +146,8 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	if err != nil {
 		return nil, err
 	}
-	if err := refuseTargets(msg); err != nil { // a READIED window never gets here
-		return nil, err
+	if len(msg.GetTargets()) > 0 { // a READIED window never gets here
+		return nil, badTargets(targetsNotUsed)
 	}
 	use := in.choice == playv1.ReactionChoice_REACTION_CHOICE_USE
 	switch reaction.Kind(w.Kind) {
