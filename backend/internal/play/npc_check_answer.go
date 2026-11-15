@@ -8,6 +8,7 @@ import (
 	"slices"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
@@ -67,8 +68,12 @@ func npcCheckEventOf(ctx context.Context, q *playdb.Queries, session playdb.Game
 }
 
 // settleNpcCheck closes the check: the asks still open close with no answer, the hold takes the key and the resolved event is written
-// under it. It answers the bards whose question changed.
-func (s *Service) settleNpcCheck(ctx context.Context, tc *combatTx, hold playdb.InspirationHold, key string, actor *string, skipped bool) (npcCheckEvent, error) {
+// under it, for the creature and in the master's name, however the check settled (the last answer, the skip, a combat that opens, the
+// end of the session).
+func (s *Service) settleNpcCheck(ctx context.Context, tc *combatTx, hold playdb.InspirationHold, key string, skipped bool) (npcCheckEvent, error) {
+	own := *tc
+	tc, actor := &own, hold.UserID
+	tc.characterID = &hold.CharacterID
 	ev, err := npcCheckEventOf(ctx, tc.q, tc.session, hold)
 	if err != nil {
 		return ev, err
@@ -85,8 +90,69 @@ func (s *Service) settleNpcCheck(ctx context.Context, tc *combatTx, hold playdb.
 	if err := tc.q.AnswerInspirationHold(ctx, playdb.AnswerInspirationHoldParams{ID: hold.ID, AnswerKey: &key}); err != nil {
 		return ev, fmt.Errorf("settle the held check: %w", err)
 	}
-	_, err = insertSceneEvent(ctx, tc, eventNpcCheckResolved, actor, &key, ev)
+	_, err = insertSceneEvent(ctx, tc, eventNpcCheckResolved, &actor, &key, ev)
 	return ev, err
+}
+
+// skipNpcCheck settles the check without the bards that still wait: the history says it was skipped, and the master and the bard asked
+// now hear that the question is gone.
+func (s *Service) skipNpcCheck(ctx context.Context, tc *combatTx, h *hints, hold playdb.InspirationHold, asks []playdb.NpcCheckAsk, key string) (npcCheckEvent, error) {
+	var told []string
+	if cur := cutting.Current(askStates(asks)); cur >= 0 {
+		told = append(told, s.bardUser(ctx, tc.tx, tc.session.CampaignID, asks[cur].BardCharacterID))
+	}
+	settled, err := s.settleNpcCheck(ctx, tc, hold, key, true)
+	if err != nil {
+		return settled, err
+	}
+	tellNpcCheck(h, tc.session.CampaignID, told...)
+	return settled, nil
+}
+
+// settleOpenNpcChecks settles, as a skip, every check of the session that still waits for its bards: a combat that opens leaves no one
+// to answer it (the bards' questions are out of combat), and the session that ends leaves no one at all. With forget the holds go too,
+// asks and all: nothing can read them afterwards. A hold of an earlier session is forgotten without a word: its events are not this
+// session's.
+func (s *Service) settleOpenNpcChecks(ctx context.Context, tc *combatTx, h *hints, forget bool) error {
+	holds, err := tc.q.ListOpenNpcCheckHolds(ctx, tc.session.CampaignID)
+	if err != nil {
+		return fmt.Errorf("list the checks held for the bards: %w", err)
+	}
+	for _, hold := range holds {
+		if !hold.CreatedAt.Before(tc.session.StartedAt) {
+			asks, err := tc.q.ListNpcCheckAsks(ctx, hold.ID)
+			if err != nil {
+				return fmt.Errorf("list the asks of the check: %w", err)
+			}
+			if _, err := s.skipNpcCheck(ctx, tc, h, hold, asks, uuid.NewString()); err != nil {
+				return err
+			}
+		}
+		if forget {
+			if err := forgetHold(ctx, tc.q, hold.ID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// errCombatOpenForCheck refuses a check, or its answer, while a combat is open (set up or running): there the dice are the combat's.
+func errCombatOpenForCheck() error {
+	return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_COMBAT_OPEN, "a combat is open: a check outside a combat is neither rolled nor answered in it")
+}
+
+// requireNoOpenCombat refuses the check while the session has a combat that is not over. A combat that opens settles the checks held
+// before it (settleOpenNpcChecks), so no check waits while one is open.
+func requireNoOpenCombat(ctx context.Context, q *playdb.Queries, sessionID string) error {
+	_, err := q.GetOpenEncounter(ctx, sessionID)
+	if err == nil {
+		return errCombatOpenForCheck()
+	}
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("find the open encounter: %w", err)
+	}
+	return nil
 }
 
 // bardUser is the player of a bard's character.
@@ -98,14 +164,46 @@ func (s *Service) bardUser(ctx context.Context, tx pgx.Tx, campaignID, character
 	return cs[0].PlayerUserID
 }
 
-// forgetNpcCheck drops a held check that can never be answered (its session is over), in a transaction of its own.
-func (s *Service) forgetNpcCheck(ctx context.Context, campaignID, holdID string) {
-	err := s.txOrNone(ctx, campaignID, func(tx pgx.Tx, _ *hints, _ string) error {
-		return forgetHold(ctx, s.queries.WithTx(tx), holdID)
+// forgetNpcCheck drops a held check that can never be answered, in a transaction of its own: the master's, or one of a bard it asks,
+// finding that its session is over (none is open) or that it came from an earlier one. Anything else (a hold of another kind, of another
+// campaign, a check of this session, or of somebody else) is left as it is: the caller reads "not found" either way.
+func (s *Service) forgetNpcCheck(ctx context.Context, m authz.Membership, holdID string) {
+	err := s.txOrNone(ctx, m.CampaignID, func(tx pgx.Tx, _ *hints, _ string) error {
+		q := s.queries.WithTx(tx)
+		hold, err := q.GetInspirationHold(ctx, playdb.GetInspirationHoldParams{CampaignID: m.CampaignID, ID: holdID})
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && hold.Kind != string(heldNpcCheck)) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("find the held check: %w", err)
+		}
+		session, err := q.GetOpenGameSession(ctx, m.CampaignID)
+		if err == nil && !hold.CreatedAt.Before(session.StartedAt) {
+			return nil // this session's: it is no stale check
+		}
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("find the open session: %w", err)
+		}
+		if mine, err := s.mayForgetNpcCheck(ctx, tx, q, m, hold); err != nil || !mine {
+			return err
+		}
+		return forgetHold(ctx, q, hold.ID)
 	})
 	if err != nil {
 		s.logger.WarnContext(ctx, "play: cannot forget a held check whose session ended", "error", err)
 	}
+}
+
+// mayForgetNpcCheck says the caller is the master or a bard the check asks.
+func (s *Service) mayForgetNpcCheck(ctx context.Context, tx pgx.Tx, q *playdb.Queries, m authz.Membership, hold playdb.InspirationHold) (bool, error) {
+	if m.Role == authz.RoleMaster {
+		return true, nil
+	}
+	asks, err := q.ListNpcCheckAsks(ctx, hold.ID)
+	if err != nil {
+		return false, fmt.Errorf("list the asks of the check: %w", err)
+	}
+	return slices.ContainsFunc(asks, func(k playdb.NpcCheckAsk) bool { return s.bardUser(ctx, tx, m.CampaignID, k.BardCharacterID) == m.UserID }), nil
 }
 
 // answerNpcCheck is the cutting_words arm of AnswerHeldRoll.
@@ -134,7 +232,7 @@ func (s *Service) answerNpcCheck(ctx context.Context, m authz.Membership, req *p
 		return err
 	})
 	if errors.Is(err, errStaleNpcCheck) || (connect.CodeOf(err) == connect.CodeFailedPrecondition && heldClosed(err)) {
-		s.forgetNpcCheck(ctx, m.CampaignID, holdID)
+		s.forgetNpcCheck(ctx, m, holdID)
 		return nil, errHeldNotFound()
 	}
 	if err != nil {
@@ -183,7 +281,7 @@ func (a *npcAnswer) run(ctx context.Context, holdID string) (*playv1.CuttingWord
 	if cutting.Current(askStates(asks)) != mine {
 		return nil, errHeldNotFound() // their turn has not come: they are not told there is a check
 	}
-	if err := requireNoActiveCombat(ctx, a.q, a.session.ID); err != nil {
+	if err := requireNoOpenCombat(ctx, a.q, a.session.ID); err != nil {
 		return nil, err
 	}
 	return a.write(ctx, hold, asks, mine, who.ID)
@@ -206,6 +304,7 @@ func (a *npcAnswer) write(ctx context.Context, hold playdb.InspirationHold, asks
 			return nil, err
 		}
 		state = askCut
+		a.h.tell(a.m.CampaignID, vitalsHint(vit)) // the use is spent: the bard's screen and the master's read it now
 	}
 	var dieFace *int32
 	if a.cut {
@@ -213,7 +312,7 @@ func (a *npcAnswer) write(ctx context.Context, hold playdb.InspirationHold, asks
 		dieFace = &f
 	}
 	if _, err := a.q.AnswerNpcCheckAsk(ctx, playdb.AnswerNpcCheckAskParams{
-		ID: ask.ID, State: state, DieFace: dieFace, Physical: physical, AnswerKey: &a.key, AnsweredAt: &tc.now,
+		ID: ask.ID, State: state, DieFace: dieFace, Physical: physical, AnswerKey: &a.key, AnsweredAt: &tc.now, AnswerHash: a.hash,
 	}); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, errAnsweredAlready()
@@ -223,7 +322,7 @@ func (a *npcAnswer) write(ctx context.Context, hold playdb.InspirationHold, asks
 	told := []string{a.m.UserID}
 	if mine+1 < len(asks) {
 		told = append(told, s.bardUser(ctx, a.tx, a.m.CampaignID, asks[mine+1].BardCharacterID))
-	} else if _, err := s.settleNpcCheck(ctx, tc, hold, a.key, &a.m.UserID, false); err != nil {
+	} else if _, err := s.settleNpcCheck(ctx, tc, hold, a.key, false); err != nil {
 		return nil, err
 	}
 	tellNpcCheck(a.h, a.m.CampaignID, told...)
@@ -234,8 +333,24 @@ func (a *npcAnswer) write(ctx context.Context, hold playdb.InspirationHold, asks
 	return out, nil
 }
 
+// mayCut says the bard may cut now: she has Cutting Words with the setting "todos" and is awake. She was asked when she was, and the
+// setting or her hit points may have changed since; passing is always allowed.
+func (a *npcAnswer) mayCut(ctx context.Context, bardID string, vit *playv1.CharacterVitals) error {
+	rs, err := a.s.roster.ReactionStats(ctx, a.tx, a.m.CampaignID, bardID)
+	if err != nil {
+		return fmt.Errorf("read the bard's reactions: %w", err)
+	}
+	if !(cutting.Bard{Feature: rs.CuttingWords, Ask: rs.CuttingAsk, HitPoints: int(vit.GetHitPointsCurrent())}).MayCut() {
+		return resourceBlocked(playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_NOT_AVAILABLE, "the bard cannot cut this check now")
+	}
+	return nil
+}
+
 // spendDie rolls the bard's die the way the campaign has the bard roll (RN-18) and spends the use of Bardic Inspiration.
 func (a *npcAnswer) spendDie(ctx context.Context, tc *combatTx, bardID string, sides int, vit *playv1.CharacterVitals) (int, bool, *playv1.CharacterVitals, error) {
+	if err := a.mayCut(ctx, bardID, vit); err != nil {
+		return 0, false, nil, err
+	}
 	if err := a.s.mustRollThisWay(ctx, a.tx, a.m, a.in); err != nil {
 		return 0, false, nil, err
 	}
@@ -260,6 +375,9 @@ func bardUsesLeft(v *playv1.CharacterVitals) int32 {
 
 // answered is the answer of a key the bard already used: what it said, and nothing written.
 func (a *npcAnswer) answered(ctx context.Context, k playdb.NpcCheckAsk) (*playv1.CuttingWordsAnswered, error) {
+	if hashDiffers(k.AnswerHash, a.hash) {
+		return nil, errKeyReused() // the key answered another cut, or a pass
+	}
 	vit, err := a.s.vitals.GetVitalsTx(ctx, a.tx, a.m.CampaignID, k.BardCharacterID)
 	if err != nil {
 		return nil, err
@@ -295,7 +413,7 @@ func (s *Service) SkipNpcCheckAsks(ctx context.Context, req *connect.Request[pla
 		return err
 	})
 	if errors.Is(err, errStaleNpcCheck) {
-		s.forgetNpcCheck(ctx, m.CampaignID, holdID)
+		s.forgetNpcCheck(ctx, m, holdID)
 		return nil, errHeldNotFound()
 	}
 	if err != nil {
@@ -315,7 +433,8 @@ func (s *Service) skipAsks(ctx context.Context, tx pgx.Tx, h *hints, session pla
 		}
 		h.replay()
 		tellNpcCheck(h, m.CampaignID)
-		return s.npcCheckLive(ctx, q, m.CampaignID, ev)
+		read, _, err := s.npcCheckLive(ctx, q, m.CampaignID, ev, true)
+		return read, err
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("find the event of this idempotency key: %w", err)
@@ -329,20 +448,16 @@ func (s *Service) skipAsks(ctx context.Context, tx pgx.Tx, h *hints, session pla
 		return nil, err
 	}
 	if hold.AnswerKey != nil {
-		return s.npcCheckLive(ctx, q, m.CampaignID, ev) // settled already: it reads as it settled
-	}
-	told := []string{}
-	if cur := cutting.Current(askStates(asks)); cur >= 0 {
-		told = append(told, s.bardUser(ctx, tx, m.CampaignID, asks[cur].BardCharacterID))
+		read, _, err := s.npcCheckLive(ctx, q, m.CampaignID, ev, false) // settled already: it reads as it settled
+		return read, err
 	}
 	tc, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, now: s.now(), characterID: &hold.CharacterID, hash: hash})
 	if err != nil {
 		return nil, err
 	}
-	settled, err := s.settleNpcCheck(ctx, tc, hold, key, &m.UserID, true)
+	settled, err := s.skipNpcCheck(ctx, tc, h, hold, asks, key)
 	if err != nil {
 		return nil, err
 	}
-	tellNpcCheck(h, m.CampaignID, told...)
 	return settled.read(s, true), nil
 }

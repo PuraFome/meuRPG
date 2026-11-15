@@ -191,7 +191,7 @@ func answerOfHeldRoll(msg *playv1.AnswerHeldRollRequest) (answerRequest, error) 
 		ans.question, ans.yes = askReroll, a.Reroll.GetReroll()
 		return ans, nil // the server rolls the new d20 itself: no way of rolling to read
 	default:
-		return ans, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be set to a lucky, a die, an indomitable, a stroke of luck or a reroll answer"))
+		return ans, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be set to a lucky, a die, an indomitable, a stroke of luck, a reroll or a cutting words answer"))
 	}
 	if !ans.yes {
 		return ans, nil

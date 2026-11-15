@@ -1639,8 +1639,9 @@ func (q *Queries) DeleteInspirationHold(ctx context.Context, id string) ([]Delet
 const deleteInspirationHoldsOf = `-- name: DeleteInspirationHoldsOf :many
 WITH changed AS (
 DELETE FROM inspiration_holds
-WHERE (encounter_id = $1 AND combatant_id = $2)
-   OR (combatant_id IS NULL AND character_id = $3)
+WHERE kind <> 'npc_check'
+  AND ((encounter_id = $1 AND combatant_id = $2)
+    OR (combatant_id IS NULL AND character_id = $3))
 RETURNING id, campaign_id, character_id, favor_spent, answer_key
 )
 SELECT campaign_id, character_id, (favor_spent AND answer_key IS NULL)::boolean AS unsettled_favor FROM changed ORDER BY id
@@ -1661,7 +1662,8 @@ type DeleteInspirationHoldsOfRow struct {
 // Every hold a roller owns, answered or not (ListOpenInspirationHolds says who owns what). Says which of them spent the
 // character's Inspiration and never got the roll (no answer yet): that spend goes back. Only hold_forget.go calls it.
 // It also drops the character's holds outside a combat (combatant_id IS NULL) when its combatant leaves or the combat ends, and those are
-// refunded too.
+// refunded too. Not the master's check of an NPC (npc_check): it names the NPC's character, not a roll of its combatant, and the bards
+// still answer it.
 func (q *Queries) DeleteInspirationHoldsOf(ctx context.Context, arg DeleteInspirationHoldsOfParams) ([]DeleteInspirationHoldsOfRow, error) {
 	rows, err := q.db.Query(ctx, deleteInspirationHoldsOf, arg.EncounterID, arg.CombatantID, arg.CharacterID)
 	if err != nil {
@@ -7746,6 +7748,7 @@ func (q *Queries) ListOpenGameSessions(ctx context.Context, campaignIds []string
 const listOpenInspirationHolds = `-- name: ListOpenInspirationHolds :many
 SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent FROM inspiration_holds
 WHERE answer_key IS NULL
+  AND kind <> 'npc_check'
   AND ((encounter_id = $1 AND combatant_id = $2)
     OR (combatant_id IS NULL AND character_id = $3))
 ORDER BY created_at
@@ -7761,7 +7764,8 @@ type ListOpenInspirationHoldsParams struct {
 // (combatant_id), and, when a character backs it, the holds made before the column was written
 // (combatant_id NULL, found by the character); a roller out of a combat owns the holds that name
 // no combatant. The creatures and the copies of an NPC share a character_id with the one they
-// came from, so they pass no character: only the combatant owns. A NULL parameter matches nothing.
+// came from, so they pass no character: only the combatant owns. A NULL parameter matches nothing. The master's check of an NPC
+// (npc_check) is the NPC's character_id and nobody's roll to answer: it is never one of a roller's holds.
 func (q *Queries) ListOpenInspirationHolds(ctx context.Context, arg ListOpenInspirationHoldsParams) ([]InspirationHold, error) {
 	rows, err := q.db.Query(ctx, listOpenInspirationHolds, arg.EncounterID, arg.CombatantID, arg.CharacterID)
 	if err != nil {

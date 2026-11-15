@@ -19,7 +19,7 @@ import (
 
 // npcCheckOffer is the question of a held NPC check as the caller reads it: the master reads his roll and the bards asked; a player reads
 // only the question of the bard asked now, if it is their own, with no number of the creature's and no name the bard's player may not
-// know. Nobody else reads anything. A check whose session is over, or while a combat runs, is not listed.
+// know. Nobody else reads anything. A check whose session is over, or while a combat is open, is not listed.
 func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldRollOffer, error) {
 	s := l.s
 	session, err := s.queries.GetOpenGameSession(ctx, h.CampaignID)
@@ -32,7 +32,7 @@ func (l *heldList) npcCheckOffer(ctx context.Context, h heldRoll) (*playv1.HeldR
 	if h.CreatedAt.Before(session.StartedAt) {
 		return nil, nil
 	}
-	if enc, err := s.openEncounterOf(ctx, h.CampaignID); err != nil || (enc != nil && enc.Status == statusActive) {
+	if enc, err := s.openEncounterOf(ctx, h.CampaignID); err != nil || enc != nil {
 		return nil, err
 	}
 	asks, err := s.queries.ListNpcCheckAsks(ctx, h.ID)

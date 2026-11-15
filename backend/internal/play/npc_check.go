@@ -206,7 +206,7 @@ func (c *npcCheckCall) run(ctx context.Context, tx pgx.Tx, h *hints, session pla
 	if again, err := c.replay(ctx, q, h, session); again || err != nil {
 		return err
 	}
-	if err := requireNoActiveCombat(ctx, q, session.ID); err != nil {
+	if err := requireNoOpenCombat(ctx, q, session.ID); err != nil {
 		return err
 	}
 	npc, err := c.creature(ctx, tx)
@@ -292,37 +292,37 @@ func (c *npcCheckCall) replay(ctx context.Context, q *playdb.Queries, h *hints, 
 		return false, fmt.Errorf("decode the check of event %s: %w", done.ID, err)
 	}
 	h.replay()
-	c.out.held = done.Kind == eventNpcCheckHeld
-	view, err := c.s.npcCheckLive(ctx, q, c.m.CampaignID, ev)
+	view, held, err := c.s.npcCheckLive(ctx, q, c.m.CampaignID, ev, done.Kind == eventNpcCheckResolved)
 	if err != nil {
 		return false, err
 	}
-	c.out.read = view
-	if c.out.held {
+	c.out.read, c.out.held = view, held
+	if held {
 		tellNpcCheck(h, c.m.CampaignID)
 	}
 	return true, nil
 }
 
 // npcCheckLive is the read of a check as it stands now: the payload of its event with the answers of the bards so far, from the
-// hold; as the event kept it when the hold is gone.
-func (s *Service) npcCheckLive(ctx context.Context, q *playdb.Queries, campaignID string, ev npcCheckEvent) (*playv1.NpcCheckRead, error) {
+// hold; as the event kept it when the hold is gone. It says too whether the check is still held: its hold is there and nobody has
+// settled it. A held event whose hold is gone (forgotten, never settled) reads as neither held nor settled: its total is not an outcome.
+func (s *Service) npcCheckLive(ctx context.Context, q *playdb.Queries, campaignID string, ev npcCheckEvent, resolved bool) (*playv1.NpcCheckRead, bool, error) {
 	if ev.HoldID == "" {
-		return ev.read(s, true), nil
+		return ev.read(s, resolved), false, nil
 	}
 	hold, err := q.GetInspirationHold(ctx, playdb.GetInspirationHoldParams{CampaignID: campaignID, ID: ev.HoldID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ev.read(s, true), nil
+		return ev.read(s, resolved), false, nil // the hold is gone: the resolved event kept what was settled, or the skip
 	}
 	if err != nil {
-		return nil, fmt.Errorf("find the held check: %w", err)
+		return nil, false, fmt.Errorf("find the held check: %w", err)
 	}
 	asks, err := q.ListNpcCheckAsks(ctx, hold.ID)
 	if err != nil {
-		return nil, fmt.Errorf("list the asks of the check: %w", err)
+		return nil, false, fmt.Errorf("list the asks of the check: %w", err)
 	}
 	settled := hold.AnswerKey != nil
-	return ev.withAsks(asks, settled).read(s, settled), nil
+	return ev.withAsks(asks, settled).read(s, settled), !settled, nil
 }
 
 // withAsks is the event as the asks stand: each bard's state and die, and, once settled, the total with the dice taken off.

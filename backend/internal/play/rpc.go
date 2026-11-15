@@ -234,6 +234,14 @@ func (s *Service) endSessionIn(ctx context.Context, tx pgx.Tx, m authz.Membershi
 	if out.fought, out.told, out.visionMap, err = s.endOpenEncounter(ctx, tx, q, current, m.UserID); err != nil {
 		return err
 	}
+	// The checks held for the bards go with it: each settles as a skip, in the history, and the hold is forgotten.
+	tc, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: current, now: s.now()})
+	if err != nil {
+		return err
+	}
+	if err := s.settleOpenNpcChecks(ctx, tc, &hints{}, true); err != nil {
+		return err
+	}
 	if current.ShownImageKeep && current.ShownImageID != nil {
 		// The image left with the players outlives the session (MR-028).
 		who, err := shownViewersOf(ctx, q, current)

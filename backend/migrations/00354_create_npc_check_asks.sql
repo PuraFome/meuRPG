@@ -15,7 +15,8 @@ ALTER TABLE inspiration_holds
 -- position is the order the bards are asked in (0 first); state is where the question stands: 'asked' (open, or waiting for the
 -- bards before it), 'cut' (the die was taken off: die_face is its face), 'passed' (the bard let it go) or 'closed' (no answer: the
 -- master went on without the bard, or it could not answer any more). creature_seen says the bard's player sees the creature, so
--- its question names it ('uma criatura' otherwise). answer_key is the key of the answer that closed the question.
+-- its question names it ('uma criatura' otherwise). answer_key is the key of the answer that closed the question and answer_hash the
+-- hash of the request that gave it, so a retry with the same key and another body is told from a true retry.
 CREATE TABLE IF NOT EXISTS npc_check_asks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     hold_id UUID NOT NULL REFERENCES inspiration_holds (id) ON DELETE CASCADE,
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS npc_check_asks (
     die_face INT4 NULL CHECK (die_face >= 1),
     physical BOOL NOT NULL DEFAULT false,
     answer_key UUID NULL,
+    answer_hash TEXT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     answered_at TIMESTAMPTZ NULL,
     UNIQUE (hold_id, bard_character_id),

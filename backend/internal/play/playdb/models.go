@@ -423,6 +423,7 @@ type NpcCheckAsk struct {
 	DieFace         *int32
 	Physical        bool
 	AnswerKey       *string
+	AnswerHash      *string
 	CreatedAt       time.Time
 	AnsweredAt      *time.Time
 }

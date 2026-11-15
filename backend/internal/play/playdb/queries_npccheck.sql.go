@@ -12,9 +12,9 @@ import (
 
 const answerNpcCheckAsk = `-- name: AnswerNpcCheckAsk :one
 UPDATE npc_check_asks
-SET state = $2, die_face = $3, physical = $4, answer_key = $5, answered_at = $6
+SET state = $2, die_face = $3, physical = $4, answer_key = $5, answered_at = $6, answer_hash = $7
 WHERE id = $1 AND state = 'asked'
-RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, created_at, answered_at
+RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
 `
 
 type AnswerNpcCheckAskParams struct {
@@ -24,10 +24,12 @@ type AnswerNpcCheckAskParams struct {
 	Physical   bool
 	AnswerKey  *string
 	AnsweredAt *time.Time
+	AnswerHash *string
 }
 
-// The bard's answer: cut (with the face of the die) or passed. Only a question that is still open takes it (no row: it
-// was closed meanwhile).
+// The bard's answer: cut (with the face of the die) or passed, with the key and the hash of the request that gave it (a retry
+// with the same key and another body is told apart). Only a question that is still open takes it (no row: it was closed
+// meanwhile).
 func (q *Queries) AnswerNpcCheckAsk(ctx context.Context, arg AnswerNpcCheckAskParams) (NpcCheckAsk, error) {
 	row := q.db.QueryRow(ctx, answerNpcCheckAsk,
 		arg.ID,
@@ -36,6 +38,7 @@ func (q *Queries) AnswerNpcCheckAsk(ctx context.Context, arg AnswerNpcCheckAskPa
 		arg.Physical,
 		arg.AnswerKey,
 		arg.AnsweredAt,
+		arg.AnswerHash,
 	)
 	var i NpcCheckAsk
 	err := row.Scan(
@@ -49,6 +52,7 @@ func (q *Queries) AnswerNpcCheckAsk(ctx context.Context, arg AnswerNpcCheckAskPa
 		&i.DieFace,
 		&i.Physical,
 		&i.AnswerKey,
+		&i.AnswerHash,
 		&i.CreatedAt,
 		&i.AnsweredAt,
 	)
@@ -74,7 +78,7 @@ func (q *Queries) CloseNpcCheckAsks(ctx context.Context, arg CloseNpcCheckAsksPa
 }
 
 const getNpcCheckAskByAnswerKey = `-- name: GetNpcCheckAskByAnswerKey :one
-SELECT a.id, a.hold_id, a.bard_character_id, a.position, a.state, a.sides, a.creature_seen, a.die_face, a.physical, a.answer_key, a.created_at, a.answered_at FROM npc_check_asks AS a
+SELECT a.id, a.hold_id, a.bard_character_id, a.position, a.state, a.sides, a.creature_seen, a.die_face, a.physical, a.answer_key, a.answer_hash, a.created_at, a.answered_at FROM npc_check_asks AS a
 JOIN inspiration_holds AS h ON h.id = a.hold_id
 WHERE h.campaign_id = $1 AND a.answer_key = $2
 `
@@ -99,6 +103,7 @@ func (q *Queries) GetNpcCheckAskByAnswerKey(ctx context.Context, arg GetNpcCheck
 		&i.DieFace,
 		&i.Physical,
 		&i.AnswerKey,
+		&i.AnswerHash,
 		&i.CreatedAt,
 		&i.AnsweredAt,
 	)
@@ -109,7 +114,7 @@ const insertNpcCheckAsk = `-- name: InsertNpcCheckAsk :one
 
 INSERT INTO npc_check_asks (hold_id, bard_character_id, position, sides, creature_seen, physical, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, created_at, answered_at
+RETURNING id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at
 `
 
 type InsertNpcCheckAskParams struct {
@@ -145,6 +150,7 @@ func (q *Queries) InsertNpcCheckAsk(ctx context.Context, arg InsertNpcCheckAskPa
 		&i.DieFace,
 		&i.Physical,
 		&i.AnswerKey,
+		&i.AnswerHash,
 		&i.CreatedAt,
 		&i.AnsweredAt,
 	)
@@ -152,7 +158,7 @@ func (q *Queries) InsertNpcCheckAsk(ctx context.Context, arg InsertNpcCheckAskPa
 }
 
 const listNpcCheckAsks = `-- name: ListNpcCheckAsks :many
-SELECT id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, created_at, answered_at FROM npc_check_asks WHERE hold_id = $1 ORDER BY position
+SELECT id, hold_id, bard_character_id, position, state, sides, creature_seen, die_face, physical, answer_key, answer_hash, created_at, answered_at FROM npc_check_asks WHERE hold_id = $1 ORDER BY position
 `
 
 // The questions of one held check, in the order the bards are asked.
@@ -176,8 +182,78 @@ func (q *Queries) ListNpcCheckAsks(ctx context.Context, holdID string) ([]NpcChe
 			&i.DieFace,
 			&i.Physical,
 			&i.AnswerKey,
+			&i.AnswerHash,
 			&i.CreatedAt,
 			&i.AnsweredAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenNpcCheckHolds = `-- name: ListOpenNpcCheckHolds :many
+SELECT id, campaign_id, character_id, user_id, kind, idempotency_key, request, faces, modifier, total, counted, physical, answer_key, created_at, round, lucky_index, lucky_answer_key, lucky_to, combatant_id, encounter_id, window_hold, indomitable_ask, indomitable_failed, indomitable_answer_key, indomitable_from, indomitable_to, die_answer_key, die_used, stroke_ask, stroke_failed, stroke_answer_key, stroke_from, reroll_ask, reroll_index, reroll_at_most, reroll_resource, reroll_cost, reroll_source, reroll_answer_key, reroll_from, reroll_to, counted_by, favor_spent FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' AND answer_key IS NULL ORDER BY created_at, id
+`
+
+// The master's checks of the campaign that still wait for the bards: a combat that opens and a session that ends settle them.
+func (q *Queries) ListOpenNpcCheckHolds(ctx context.Context, campaignID string) ([]InspirationHold, error) {
+	rows, err := q.db.Query(ctx, listOpenNpcCheckHolds, campaignID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []InspirationHold
+	for rows.Next() {
+		var i InspirationHold
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.CharacterID,
+			&i.UserID,
+			&i.Kind,
+			&i.IdempotencyKey,
+			&i.Request,
+			&i.Faces,
+			&i.Modifier,
+			&i.Total,
+			&i.Counted,
+			&i.Physical,
+			&i.AnswerKey,
+			&i.CreatedAt,
+			&i.Round,
+			&i.LuckyIndex,
+			&i.LuckyAnswerKey,
+			&i.LuckyTo,
+			&i.CombatantID,
+			&i.EncounterID,
+			&i.WindowHold,
+			&i.IndomitableAsk,
+			&i.IndomitableFailed,
+			&i.IndomitableAnswerKey,
+			&i.IndomitableFrom,
+			&i.IndomitableTo,
+			&i.DieAnswerKey,
+			&i.DieUsed,
+			&i.StrokeAsk,
+			&i.StrokeFailed,
+			&i.StrokeAnswerKey,
+			&i.StrokeFrom,
+			&i.RerollAsk,
+			&i.RerollIndex,
+			&i.RerollAtMost,
+			&i.RerollResource,
+			&i.RerollCost,
+			&i.RerollSource,
+			&i.RerollAnswerKey,
+			&i.RerollFrom,
+			&i.RerollTo,
+			&i.CountedBy,
+			&i.FavorSpent,
 		); err != nil {
 			return nil, err
 		}

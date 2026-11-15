@@ -26,11 +26,17 @@ type Bard struct {
 	UsesLeft int
 }
 
-// Asks says the bard is asked about a check: it is the setting "todos" that asks about checks (the default asks about attacks only),
-// and the bard must be awake and have a use of Bardic Inspiration left. Outside a combat no reaction is spent, so none is asked
-// about.
+// MayCut says the bard may cut a check at all: it is the setting "todos" that takes part in checks (the default asks about attacks
+// only), and the bard must be awake. It holds at the answer as it holds at the question, so a bard who fell, or who changed the
+// setting, since the question was asked cuts nothing; only the pass is left.
+func (b Bard) MayCut() bool {
+	return b.Feature && b.Ask == "all" && b.HitPoints > 0
+}
+
+// Asks says the bard is asked about a check: the bard may cut it and has a use of Bardic Inspiration left. Outside a combat no
+// reaction is spent, so none is asked about.
 func (b Bard) Asks() bool {
-	return b.Feature && b.Ask == "all" && b.HitPoints > 0 && b.UsesLeft > 0
+	return b.MayCut() && b.UsesLeft > 0
 }
 
 // Die is the size of the bard's die at the bard level (the Bardic Inspiration die).

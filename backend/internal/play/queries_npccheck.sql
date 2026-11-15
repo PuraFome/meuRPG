@@ -16,10 +16,11 @@ JOIN inspiration_holds AS h ON h.id = a.hold_id
 WHERE h.campaign_id = $1 AND a.answer_key = $2;
 
 -- name: AnswerNpcCheckAsk :one
--- The bard's answer: cut (with the face of the die) or passed. Only a question that is still open takes it (no row: it
--- was closed meanwhile).
+-- The bard's answer: cut (with the face of the die) or passed, with the key and the hash of the request that gave it (a retry
+-- with the same key and another body is told apart). Only a question that is still open takes it (no row: it was closed
+-- meanwhile).
 UPDATE npc_check_asks
-SET state = $2, die_face = $3, physical = $4, answer_key = $5, answered_at = $6
+SET state = $2, die_face = $3, physical = $4, answer_key = $5, answered_at = $6, answer_hash = $7
 WHERE id = $1 AND state = 'asked'
 RETURNING *;
 
@@ -29,3 +30,7 @@ RETURNING *;
 UPDATE npc_check_asks
 SET state = 'closed', answered_at = $2
 WHERE hold_id = $1 AND state = 'asked';
+
+-- name: ListOpenNpcCheckHolds :many
+-- The master's checks of the campaign that still wait for the bards: a combat that opens and a session that ends settle them.
+SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' AND answer_key IS NULL ORDER BY created_at, id;
