@@ -114,6 +114,7 @@ const KIND_TEXT: Readonly<Record<HeldRollKind, string>> = {
   [HeldRollKind.HIDE]: 'Esconder-se',
   [HeldRollKind.COUNTERSPELL_CHECK]: 'Teste da Contramágica',
   [HeldRollKind.INITIATIVE]: 'Iniciativa',
+  [HeldRollKind.MOUNT_SAVE]: 'Teste de Destreza para ficar na montaria',
 };
 
 /** What was rolled: "Ataque com arma contra Goblin chefe." when the target is known (an attack only), else the kind of the

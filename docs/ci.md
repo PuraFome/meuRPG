@@ -59,10 +59,10 @@ A pull request that touches no file of a workflow still starts it, and its jobs 
 | `go (integration tests against CockroachDB)` | Waits for every group, the group check and the list check; the stable check for a branch protection rule. The name is stable for a branch protection rule; a preflight runs it on PostgreSQL |
 | `go (coverage)` | Merges the groups' profiles and enforces the [coverage floor](#coverage-floors) |
 
-**The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-6`, `maps`, `characters`, `rules-1` to `rules-3`, `dungeon` (with `rules/puzzle`), `leak-1` to `leak-4`, and `rest`.
+**The groups** are defined in `.github/scripts/go-db-shard.sh`: `play-1` to `play-6`, `maps`, `characters`, `migrations-1` to `migrations-3`, `rules-1` to `rules-3`, `dungeon` (with `rules/puzzle`), `leak-1` to `leak-4`, and `rest`.
 The heavy packages are named by hand and `rest` holds everything else, so a new package lands in `rest` and is never skipped.
-The `play`, `leaktest` and `rules` packages are split by test: each part runs the tests whose name hashes (`cksum`) to it, so a new test lands in a part by itself and adding one never moves the others.
-A test that takes more than about a third of the 25-minute `-timeout` on CockroachDB is pinned: `pinned_tests` in the script lists "test part" lines per split package, a pinned test runs alone in its part, and the other tests are hashed over the parts that are not pinned. `leak-4` holds `TestAHiddenWriteMovesThePlayersNumberAndNothingElse` alone. To pin another test, give its package a part of its own (raise `split_parts`, add the part to the matrices of `backend.yml` and `nightly-hunt.yml`) and add its line to `pinned_tests`; `--check` fails for a pinned test that does not exist, a part outside the package's parts, and a package with every part pinned.
+The `play`, `leaktest`, `rules` and `migrations` packages are split by test: each part runs the tests whose name hashes (`cksum`) to it, so a new test lands in a part by itself and adding one never moves the others.
+A test that takes more than about a third of the 25-minute `-timeout` on CockroachDB is pinned: `pinned_tests` in the script lists "test part" lines per split package, a pinned test runs alone in its part, and the other tests are hashed over the parts that are not pinned. `leak-4` holds `TestAHiddenWriteMovesThePlayersNumberAndNothingElse` alone, and `migrations-1` holds `TestMigrationsUpDownUp`, which migrates a database up, down and up again through every migration. To pin another test, give its package a part of its own (raise `split_parts`, add the part to the matrices of `backend.yml` and `nightly-hunt.yml`) and add its line to `pinned_tests`; `--check` fails for a pinned test that does not exist, a part outside the package's parts, and a package with every part pinned.
 The tests of a split package are independent (each builds its own world, or reads nothing but its own input), so any split of them is sound.
 A group reads those tests from the `func` lines of the package's `_test.go` files, so it needs no compile to get its `-run`.
 `go-db-shard.sh --check` fails unless the groups together are exactly `go list ./...` and the parts of each split package together are exactly the tests read from the source.
@@ -95,6 +95,19 @@ Two checks keep the list true (`.github/scripts/cockroach-only.sh`):
 - `check-names` runs in the job `go-db cockroach-only list`: each entry is a top-level test of its package, and no other package has a test with that name.
 - `check-list` runs in the job `go-db cockroach-only list` on PostgreSQL: every listed test must fail there.
   A test that passes on PostgreSQL does not need CockroachDB, and leaves the list.
+
+### How the test database image reaches the jobs
+
+The `go-db` groups and the list check do not pull the database image themselves: registries refuse an anonymous pull once a runner pool has used its data limit ("Data limit exceeded"), and seventeen jobs pulling the same image multiply it.
+The job `go-db database image` pulls the image the run needs (PostgreSQL in a preflight, CockroachDB in a train, as `test-database` decides) once, tags it `meurpg-test-db:<engine>`, and keeps it as the artifact `database-image` for one day.
+Every group and the list check download it with the action `.github/actions/load-database-image`, which loads it and gives the tag as its `image` output (it writes no environment file). The step that starts the database passes the tag as `TEST_POSTGRES_IMAGE` or `TEST_COCKROACH_IMAGE` (through the `image` input of `test-database`, or the step's `env:`); `test-database` refuses a tag that is not the picked database's.
+`start-postgres.sh` and `start-cockroach.sh` then run that local image with `--pull=never`: the "Start the test database" step of a group prints the image and says it is not pulled, and the only job of the run that touches a registry for it is `go-db database image`.
+A registry that refuses the pull fails that job with its own message, once: nothing retries, and the groups are skipped, so `go (integration tests against CockroachDB)` fails and says the image job did not succeed.
+The scripts' `ref` mode, `database-image.sh ref postgres|cockroach`, prints the pin.
+
+Both images are pinned by digest in the `env:` of `.github/workflows/backend.yml`, one place each: `COCKROACH_IMAGE` (the digest also in `deploy/local/compose.yaml` and `compose.ci.yaml`, kept in sync as above) and `POSTGRES_IMAGE` (the mirror of the official image on Amazon's public registry, the major line 17).
+`flake-check` and `nightly-hunt` start CockroachDB through the same script and pull the pinned image themselves; so does `repeat-changed`, which starts the database through `test-database`.
+To move the PostgreSQL pin, take the digest the registry gives for the tag (`docker buildx imagetools inspect public.ecr.aws/docker/library/postgres:17`) and change `POSTGRES_IMAGE`.
 
 A test that needs CockroachDB and is not on the list fails in the PostgreSQL run: add it with its reason, or write it so it runs on both databases.
 `repeat-changed` leaves the listed tests out of its repeats on PostgreSQL.
