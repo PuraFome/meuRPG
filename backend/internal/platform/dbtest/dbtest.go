@@ -253,20 +253,35 @@ func restoreSQL(tpl templateDB, name string) string {
 	return fmt.Sprintf("RESTORE DATABASE %s FROM LATEST IN '%s' WITH new_db_name = '%s'", tpl.name, tpl.backup, name)
 }
 
-// ensureBackup keeps one backup of the migrated template in the server's nodelocal storage, named after the template (so after the
-// migrations' fingerprint), unless the server already has a finished one: a copy of the template is a RESTORE of it. Whether a backup
-// is finished is what the server says of its latest one (SHOW BACKUP LATEST), which a backup that is still running or was killed
-// midway does not answer; the processes that find none back up the template themselves, and the latest finished backup is the one a
-// RESTORE reads.
-func ensureBackup(ctx context.Context, admin *sql.DB, name string) (string, error) {
-	uri := "nodelocal://1/" + name
-	if backupFinished(ctx, admin, uri) {
-		return uri, nil
-	}
+// backupURI is where the backup of the template called name is kept: the server's nodelocal storage, under the template's name.
+func backupURI(name string) string { return "nodelocal://1/" + name }
+
+// backUpTemplate takes the one backup of the migrated template that a copy of it RESTOREs. The process that migrates the template takes
+// it, so one BACKUP runs however many processes start together; the others wait for it (waitForBackup).
+func backUpTemplate(ctx context.Context, admin *sql.DB, name string) error {
+	uri := backupURI(name)
 	if _, err := admin.ExecContext(ctx, fmt.Sprintf("BACKUP DATABASE %s INTO '%s'", name, uri)); err != nil {
-		return "", fmt.Errorf("back up the template into %s: %w\nA test CockroachDB that refuses nodelocal ('local file access is disabled') was started without --external-io-dir (make db-test-cockroach-start and .github/scripts/start-cockroach.sh start it with the flag, docs/testing.md); any other error is the server's own, a full disk or a full tmpfs for one", uri, err)
+		return fmt.Errorf("back up the template into %s: %w\nA test CockroachDB that refuses nodelocal ('local file access is disabled') was started without --external-io-dir (make db-test-cockroach-start and .github/scripts/start-cockroach.sh start it with the flag, docs/testing.md); any other error is the server's own, a full disk or a full tmpfs for one", uri, err)
 	}
-	return uri, nil
+	return nil
+}
+
+// waitForBackup waits until the template's backup is finished, which is when the server answers SHOW BACKUP LATEST for it. It returns
+// errStalled when none finishes in a minute and a half after the template got its last migration (a backup of the template takes
+// seconds), so a creator that died between its migrations and its backup does not leave the next ones waiting forever.
+func waitForBackup(ctx context.Context, admin *sql.DB, name string) error {
+	start := time.Now()
+	for !backupFinished(ctx, admin, backupURI(name)) {
+		if time.Since(start) > 90*time.Second {
+			return errStalled
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+	return nil
 }
 
 // backupFinished reports whether the server answers SHOW BACKUP LATEST for the location, which only a finished backup does.
@@ -549,14 +564,18 @@ var errStalled = errors.New("the template stopped getting migrations")
 // buildTemplate makes sure the template for these migrations exists and is
 // complete, and reads the statements that copy it.
 func buildTemplate(rawURL string) (templateDB, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
 	fingerprint, err := migrations.Fingerprint()
 	if err != nil {
 		return templateDB{}, fmt.Errorf("fingerprint the migrations: %w", err)
 	}
-	name := "meurpg_tpl_" + fingerprint
+	return buildTemplateNamed(rawURL, "meurpg_tpl_"+fingerprint)
+}
+
+// buildTemplateNamed is buildTemplate for the template called name.
+func buildTemplateNamed(rawURL, name string) (templateDB, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+	defer cancel()
+
 	dsn, err := withDatabase(rawURL, name)
 	if err != nil {
 		return templateDB{}, err
@@ -594,11 +613,7 @@ func buildTemplate(rawURL string) (templateDB, error) {
 	if err != nil {
 		return templateDB{}, err
 	}
-	backup, err := ensureBackup(ctx, admin, name)
-	if err != nil {
-		return templateDB{}, err
-	}
-	return templateDB{name: name, tables: tables, reference: reference, backup: backup}, nil
+	return templateDB{name: name, tables: tables, reference: reference, backup: backupURI(name)}, nil
 }
 
 // ensureMigrated returns once the template name has every migration: made
@@ -628,7 +643,10 @@ func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Prov
 		if _, err := provider.Up(ctx); err != nil {
 			return false, fmt.Errorf("migrate the template: %w", err)
 		}
-		return false, nil
+		if postgres {
+			return false, nil
+		}
+		return false, backUpTemplate(ctx, admin, name)
 	}
 	// Two processes that create the same database at the same instant: PostgreSQL answers the second with
 	// 42P04 (duplicate_database) or, from the unique index of its catalog, 23505.
@@ -637,6 +655,9 @@ func createOrAwait(ctx context.Context, admin, tpl *sql.DB, provider *goose.Prov
 	}
 	// Another process made it: wait until it is complete.
 	err = waitForVersion(ctx, tpl, latest)
+	if err == nil && !postgres {
+		err = waitForBackup(ctx, admin, name)
+	}
 	if !errors.Is(err, errStalled) {
 		return false, err
 	}

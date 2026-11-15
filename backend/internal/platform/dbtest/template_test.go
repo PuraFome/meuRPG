@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"sync"
 	"strings"
 	"testing"
 	"time"
@@ -279,4 +280,50 @@ func only(a, b []string) []string {
 		}
 	}
 	return out
+}
+
+// TestConcurrentTemplateBuildsTakeOneBackup starts several builds of one new template at once, as the packages of a shard do on a
+// server that has none: the process that migrates the template takes its one backup, and the others return once it is finished, so
+// the collection holds one backup and a copy of the template restores from it.
+func TestConcurrentTemplateBuildsTakeOneBackup(t *testing.T) {
+	rawURL := testenv.DatabaseURL(t)
+	admin := open(t, rawURL)
+	postgres, err := migrations.IsPostgres(t.Context(), admin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if postgres {
+		t.Skip("PostgreSQL copies the template natively, with no backup")
+	}
+	name := fmt.Sprintf("meurpg_tpl_concurrent_%d", time.Now().UnixNano())
+	t.Cleanup(func() { mustExec(t, admin, migrations.DropDatabaseSQL(false, name)) })
+
+	const builders = 4
+	built := make([]templateDB, builders)
+	errs := make([]error, builders)
+	var wg sync.WaitGroup
+	for i := range builders {
+		wg.Go(func() { built[i], errs[i] = buildTemplateNamed(rawURL, name) })
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("builder %d: %v", i, err)
+		}
+	}
+
+	var backups int
+	if err := admin.QueryRowContext(t.Context(), fmt.Sprintf("SELECT count(*) FROM [SHOW BACKUPS IN '%s']", backupURI(name))).Scan(&backups); err != nil {
+		t.Fatalf("list the backups: %v", err)
+	}
+	if backups != 1 {
+		t.Errorf("the collection holds %d backups, want 1", backups)
+	}
+	for i, tpl := range built {
+		copyName := fmt.Sprintf("%s_copy%d", name, i)
+		t.Cleanup(func() { mustExec(t, admin, migrations.DropDatabaseSQL(false, copyName)) })
+		if _, err := admin.ExecContext(t.Context(), restoreSQL(tpl, copyName)); err != nil {
+			t.Errorf("restore for builder %d: %v", i, err)
+		}
+	}
 }

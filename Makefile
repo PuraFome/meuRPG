@@ -189,7 +189,7 @@ elk-down: ## Stop the ELK stack (the logs stay in the esdata volume; `docker com
 elk-logs: ## Follow the ELK stack's own logs (not the API's: use deploy/elk/logs.sh tail)
 	$(ELK_COMPOSE) logs -f
 
-db-native-start: ## Start CockroachDB on this machine (brew cockroach@26.2) for LOCAL_DB=native and the integration tests
+db-native-start: ## Start CockroachDB on this machine (brew cockroach@26.2) for LOCAL_DB=native (the integration tests use db-test-cockroach-start)
 	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (docs/development.md, \"Native CockroachDB (Mac, optional)\")"; exit 1; }
 	@cockroach version | grep -q 'Build Tag: *$(COCKROACH_VERSION)$$' || echo "warning: cockroach is not $(COCKROACH_VERSION), the version CI and the container use"
 	@mkdir -p "$(COCKROACH_STORE)"
