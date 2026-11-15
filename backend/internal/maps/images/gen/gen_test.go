@@ -682,6 +682,24 @@ func TestGeminiErrorMessageIsNotLogged(t *testing.T) {
 	}
 }
 
+// A free-text code or status is not an enum word, so it is left out too.
+func TestGeminiFreeTextReasonIsNotLogged(t *testing.T) {
+	t.Parallel()
+	const canary = "CANARY-xyz"
+	s := newServer(t, func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = fmt.Fprintf(w, `{"error":{"code":"bad value %s","message":"m"}}`, canary)
+	})
+	var logs bytes.Buffer
+	_, err := geminiFor(s, &logs).Generate(t.Context(), sceneRequest())
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("error = %v, want ErrUnavailable", err)
+	}
+	if strings.Contains(err.Error(), canary) || strings.Contains(logs.String(), canary) {
+		t.Errorf("the free text is in the error %q or the log %q", err, logs.String())
+	}
+}
+
 // A key refusal in the Interactions style (string code) is still a key error.
 func TestGeminiKeyRefusalWithAStringCode(t *testing.T) {
 	t.Parallel()

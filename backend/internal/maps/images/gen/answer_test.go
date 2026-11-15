@@ -99,6 +99,7 @@ func TestParseAnswerSentences(t *testing.T) {
 		{"recitation", 400, `{"error":{"message":"Recitation"}}`, "the image service refused the request: policy", nil},
 		{"policy", 400, `{"error":{"message":"against the policy"}}`, "the image service refused the request: policy", nil},
 		{"a key refused beats a refusal word", 401, `{"error":{"message":"blocked","status":"UNAUTHENTICATED"}}`, "the image service did not accept the key: status 401, UNAUTHENTICATED", ErrNotAuthorized},
+		{"a free-text code is left out", 400, `{"error":{"code":"bad value CANARY-xyz","message":"m"}}`, "the image service is unavailable\nstatus 400", ErrUnavailable},
 		{"a 403 with the code as reason", 403, `{"error":{"code":"denied"}}`, "the image service did not accept the key: status 403, denied", ErrNotAuthorized},
 		{"a 401 with no error object", 401, `{}`, "the image service did not accept the key: status 401, ", ErrNotAuthorized},
 		{"a safety stop in the errors", 200, `{"status":"failed","errors":[{"code":"X","message":"x"},{"code":"BLOCKED_REASON","message":"x"}]}`, "the image service refused the request: blocked", nil},
