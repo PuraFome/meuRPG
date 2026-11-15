@@ -116,7 +116,7 @@
         <li><mat-icon aria-hidden="true">{{ l.icon }}</mat-icon><span>@if (l.lead) {<b>{{ l.lead }}</b>}{{ (l.lead ? ' ' : '') + l.text }}</span></li>
       }
     </ul>
-    @if (missing() && !busy() && touched()) {
+    @if (missing() && !busy() && touched() && !kindBlocked()) {
       <p class="missing" id="ready-missing"><mat-icon aria-hidden="true">block</mat-icon>{{ missing() }}</p>
     }
   </div>
@@ -129,7 +129,7 @@
         class="pair__btn"
         [disabled]="!!missing() || busy()"
         disabledInteractive
-        [attr.aria-describedby]="missing() && touched() ? 'ready-missing' : null"
+        [attr.aria-describedby]="kindBlocked() ? 'ready-kind-why' : missing() && touched() ? 'ready-missing' : null"
         (click)="ready()"
       >
         <mat-icon aria-hidden="true">alarm</mat-icon>{{ busy() ? 'Preparando…' : doLabel() }}

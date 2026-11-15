@@ -252,6 +252,8 @@ describe('ReadySheet (#582)', () => {
       expect(flat(r.el.querySelector('#ready-kind-why'))).toContain(why);
       r.type('Quando Tor recuar, corro até a porta');
       expect(r.button('Preparar').getAttribute('aria-disabled')).toBe('true');
+      expect(r.button('Preparar').getAttribute('aria-describedby')).toBe('ready-kind-why');
+      expect(r.el.querySelector('#ready-missing')).toBeNull(); // the reason is written once
       r.click(r.button('Preparar'));
       expect(readyAction).not.toHaveBeenCalled();
     }
