@@ -351,10 +351,10 @@ func answerError(status int, e *apiErrorBody) error {
 	if status == http.StatusUnauthorized || status == http.StatusForbidden {
 		return &NotAuthorizedError{Status: status, Reason: reason}
 	}
-	// Google's own words go up for the log only (the caller logs the error and
-	// shows the master a fixed reason), cut short: it can quote part of the request.
-	if e != nil && e.Message != "" {
-		return errors.Join(ErrUnavailable, fmt.Errorf("status %d: %s: %s", status, reason, truncate(e.Message, maxLoggedMessage)))
+	// Only the status and Google's reason word go up: its message can quote part
+	// of the request, so it is never put in the error, and the error is logged.
+	if reason != "" {
+		return errors.Join(ErrUnavailable, fmt.Errorf("status %d: %s", status, reason))
 	}
 	return errors.Join(ErrUnavailable, fmt.Errorf("status %d", status))
 }
@@ -408,16 +408,6 @@ func lastImage(doc interaction) (Image, error) {
 		mime = "image/jpeg" // what writeBody asks for
 	}
 	return Image{MimeType: mime, Data: data}, nil
-}
-
-// maxLoggedMessage is the most of Google's error message that is logged.
-const maxLoggedMessage = 300
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return strings.ToValidUTF8(s[:n], "") + "..."
 }
 
 func safetyWord(s string) string {
