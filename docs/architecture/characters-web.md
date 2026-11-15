@@ -161,6 +161,7 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The audience and the label of the other players ("Quem vê o efeito", `pages/content/spell-editor/hit-audience`) are a card of the side column while the hit is the spell's only effect; with "Deixa um efeito nos alvos" on, the same question is asked inside that block.
   A new effect starts at "Só quem conjura e você", the server's own default (`hitShell` writes the audience when the effect is new or the person changed it, and leaves a stored unset audience unset).
   A server refusal of the audience lands on the card, and a save the form stops (`EntrySaver.blockOn` with its count) says "N campos precisam de ajuste" for every field it names.
+  With "Deixa um efeito nos alvos" on too, each head is a summary (the rows' chips beside "nos 3 alvos"; the hit's "+1d6 radiante no próximo golpe" beside "em quem conjura") and one line under the hit's head says that one concentration (or duration) ends both.
   A refusal of the server lands at the field, and the read view and the editor's preview share `readHit`.
   "Salvar magia" stops and lands on the first of them.
   A refusal at `table_spell.summon.*` sits under its own field (`SPELL_SUMMON_TEXTS`).

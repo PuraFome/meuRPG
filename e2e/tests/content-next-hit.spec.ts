@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
 
-import { createEntryRPC, entryRoute, hitSpellBody, listEntriesJSON } from './content-support';
+import { createEntryRPC, entryRoute, hitModifier, hitSpellBody, listEntriesJSON } from './content-support';
 import { pickRadio } from './move-support';
 import { campaignWithEmptyPlayer } from './table-rules-support';
 import { newSignedInContext } from './support';
@@ -189,6 +189,39 @@ test('o mestre escolhe quem vê o efeito do próximo golpe e o que os outros lee
     await m.reload();
     await expect(card.getByRole('radio', { name: /^Todos na mesa/ })).toBeChecked();
     await expect(card.getByLabel('O que os outros jogadores leem')).toHaveValue('Sinal da Presa');
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+});
+
+test('com os dois blocos ligados, cada cabeçalho se resume e uma concentração acaba os dois, e a leitura começa pelo nível @MR-025', { tag: ['@MR-025', '@RN-23'] }, async ({ browser }) => {
+  const master = await newSignedInContext(browser, 'Mestre Teste');
+  const player = await newSignedInContext(browser, 'Jogador Teste');
+  try {
+    const m = await master.newPage();
+    const p = await player.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Próximo golpe dois blocos ${Date.now()}`);
+    const key = await createEntryRPC(
+      m,
+      campaignId,
+      'tableSpell',
+      hitSpellBody('Chama Gêmea', { save: '', onFailConditions: [], conditionDuration: '', damageType: 'damage-type:radiant', die: 6, dice: 1, maxDice: 6 }, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_OWNER', conditions: ['condition:blinded'], modifiers: [hitModifier({ save: '', onFailConditions: [], conditionDuration: '', damageType: 'damage-type:radiant', die: 6, dice: 1, maxDice: 6 })] } }),
+    );
+    await m.goto(entryRoute(campaignId, key));
+    const block = m.locator('app-hit-effect-block');
+    await expect(block.getByRole('switch', { name: 'Efeito no próximo golpe' })).toHaveAttribute('aria-checked', 'true');
+    await expect(block.locator('.head .mr-tag')).toHaveText('+1d6 radiante no próximo golpe corpo a corpo');
+    await expect(block.getByText('Uma concentração: quando acaba, os dois efeitos acabam juntos.')).toBeVisible();
+    await expect(m.locator('app-spell-effect .summary')).toContainText('em quem conjura');
+    // The audience is asked once, inside the targets' block: no second card beside the preview.
+    await expect(m.locator('app-hit-audience')).toHaveCount(0);
+    // What a player reads starts with the level and the school.
+    const preview = m.getByRole('complementary', { name: 'Como os jogadores veem' });
+    await expect(preview.getByText('Nível', { exact: true })).toBeVisible();
+    await expect(preview.getByText('2º círculo, evocação')).toBeVisible();
+    await p.goto(m.url());
+    await expect(p.getByText('2º círculo, evocação')).toBeVisible();
   } finally {
     await Promise.all([master.close(), player.close()]);
   }

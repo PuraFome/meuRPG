@@ -111,6 +111,7 @@ export function catalogVm(content: Content, entries: readonly TableEntry[] = [])
   const subclassLevels = new Map(content.classes.map((c) => [c.key, c.subclassLevel]));
 
   const schools = schoolNames(content.spells);
+  for (const [key, name] of schools) if (!names.has(key)) names.set(key, name);
   const byName = (a: { label: string }, b: { label: string }) =>
     a.label.localeCompare(b.label, 'pt-BR');
   const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);

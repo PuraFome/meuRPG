@@ -6487,6 +6487,14 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
       await expectScreenPasses(m, `Editor de magia, o gatilho "Cada golpe no alvo marcado" ${where}`);
       await expectHeadNotStranded(block, where);
 
+      // The two blocks that write one effect, both on: each head sums itself up and one line says the concentration ends both.
+      const twinMod = { save: '', onFailConditions: [], conditionDuration: '', damageType: 'damage-type:radiant', die: 6, dice: 1, maxDice: 6 };
+      const twin = await createEntryRPC(m, campaignId, 'tableSpell', hitSpellBody('Chama Gêmea', twinMod, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_OWNER', conditions: ['condition:blinded'], modifiers: [hitModifier(twinMod)] } }));
+      await open(m, entryRoute(campaignId, twin));
+      await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Chama Gêmea');
+      await expect(block.getByText('Uma concentração: quando acaba, os dois efeitos acabam juntos.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de magia, os dois blocos ligados ${where}`);
+
       // A spell that does not last keeps no effect: the switch is off and says why.
       await open(m, `/campaigns/${campaignId}/content/new/spell`);
       const fresh = m.locator('app-hit-effect-block');
@@ -6511,6 +6519,7 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
     await open(p, entryRoute(campaignId, fist));
     await expect(p.getByRole('heading', { name: 'Efeito no próximo golpe' })).toBeVisible();
     await expect(p.getByText('Só quem conjura e você')).toBeVisible();
+    expect.soft((await boxOf(p.getByText('Quem vê o efeito'))).height, `"Quem vê o efeito" numa linha só ${where}`).toBeLessThan(26);
     await expectScreenPasses(p, `Magia com efeito no próximo golpe, vista por um jogador ${where}`);
     await open(p, entryRoute(campaignId, mark));
     await expect(p.getByText('Em quem conjura: cada golpe com arma no alvo marcado, por até 1 minuto.')).toBeVisible();

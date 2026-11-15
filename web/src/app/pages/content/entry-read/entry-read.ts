@@ -276,15 +276,19 @@ import type { EntryRead as Read } from '../../../core/content/content-read-parts
 
     .hit__who {
       display: flex;
+      align-items: center;
       justify-content: space-between;
       gap: var(--mr-space-4);
       margin: var(--mr-space-3) 0 0;
       padding: var(--mr-space-3);
       border-radius: 8px;
       background: var(--mr-ground);
+      font-size: var(--mr-font-14);
 
       dt {
         display: flex;
+        flex: none;
+        white-space: nowrap;
         align-items: center;
         gap: var(--mr-space-2);
         color: var(--mr-ink-muted);

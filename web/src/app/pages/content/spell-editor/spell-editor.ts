@@ -215,6 +215,15 @@ export class SpellEditor {
       hasAttack: d.mechanic === 'attack',
       saveName: this.catalog().abilities.find((a) => a.ability === d.saveAbility)?.name ?? '',
       self: d.target === 'self',
+      alsoHit: d.hit.enabled && hitAvailable(d),
+      where:
+        d.target === 'self'
+          ? 'em quem conjura'
+          : d.target === 'creatures'
+            ? `nos ${n} alvos`
+            : d.target === 'area'
+              ? 'nas criaturas da área'
+              : 'no alvo',
       targets:
         d.target === 'self'
           ? 'Quem conjura.'

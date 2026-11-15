@@ -328,6 +328,7 @@ const EXPECTED: Record<string, unknown> = {
   },
   'spell with classes': {
     rows: [
+      { label: 'Nível', value: 'Truque' },
       { label: 'Tempo', value: '1 ação' },
       { label: 'Alcance', value: '—' },
       { label: 'Alvo', value: 'Uma criatura' },
@@ -340,6 +341,7 @@ const EXPECTED: Record<string, unknown> = {
   },
   'spell with no classes': {
     rows: [
+      { label: 'Nível', value: '2º círculo' },
       { label: 'Tempo', value: '1 ação' },
       { label: 'Alcance', value: '—' },
       { label: 'Alvo', value: 'Uma criatura' },
