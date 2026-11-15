@@ -72,19 +72,33 @@ func healsHitPoints(sp link.Spell) bool {
 // dead. A dead creature can't regain hit points, so nothing is spent.
 func (s *Service) refuseTheDead(ctx context.Context, c *combatTx, targs []playdb.Combatant) error {
 	for _, t := range targs {
-		if t.Kind != kindPlayer {
-			continue
-		}
-		dead := t.Defeated || t.DeathFailures >= 3
-		if !dead {
-			_, err := s.vitals.GetVitalsTx(ctx, c.tx, c.session.CampaignID, t.CharacterID)
-			dead = connect.CodeOf(err) == connect.CodeNotFound // marked dead: no longer an active character
+		dead, err := s.isDead(ctx, c.tx, c.session.CampaignID, t)
+		if err != nil {
+			return err
 		}
 		if dead {
 			return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD, "the target is dead and regains no hit points")
 		}
 	}
 	return nil
+}
+
+// isDead says whether a player's combatant is dead for a healing: the master confirmed its death, it failed three death
+// saves, or its character was marked dead (no longer an active character). A write passes its transaction; a read passes nil.
+func (s *Service) isDead(ctx context.Context, tx pgx.Tx, campaignID string, t playdb.Combatant) (bool, error) {
+	if t.Kind != kindPlayer {
+		return false, nil
+	}
+	if t.Defeated || t.DeathFailures >= 3 {
+		return true, nil
+	}
+	var err error
+	if tx != nil {
+		_, err = s.vitals.GetVitalsTx(ctx, tx, campaignID, t.CharacterID)
+	} else {
+		_, err = s.vitals.GetVitals(ctx, campaignID, t.CharacterID)
+	}
+	return connect.CodeOf(err) == connect.CodeNotFound, nil // marked dead: no longer an active character
 }
 
 // poolRoll rolls the dice of a pool: the server rolls them, or the player types

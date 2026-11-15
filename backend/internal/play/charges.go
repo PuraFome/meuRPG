@@ -62,6 +62,9 @@ type ItemKeeper interface {
 	// (key and name), and deletes its stored charge state. `not_found` for a character or an entry that is not there,
 	// `invalid_argument` for an item that is not a consumable.
 	RemoveConsumable(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string) (*charactersv1.SheetMagicItem, error)
+	// ConsumableItem reads a consumable entry of the character's sheet (key and name) and writes and locks nothing. `not_found`
+	// for a character or an entry that is not there, `invalid_argument` for an item that is not a consumable.
+	ConsumableItem(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string) (*charactersv1.SheetMagicItem, error)
 	// RestoreDawn gives every magic item of the campaign's characters its dawn, with the dice rolled by roll, and
 	// returns the items that regained charges.
 	RestoreDawn(ctx context.Context, tx pgx.Tx, campaignID string, roll link.DawnRoll) ([]link.DawnItem, error)

@@ -1,18 +1,21 @@
 package play
 
 import (
+	"slices"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
 
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
 // A consumable used in a running combat (ChargesService.UseConsumable, ListConsumableTargets): drinking or giving costs the
-// user's action on its turn, a gift reaches only a creature within 5 feet that the giver sees, and the line of the log tells the
+// user's action on its turn, a gift reaches only a player's character within 5 feet of the giver, and the line of the log tells the
 // table the item and the owners the numbers. These tests need the database.
 
-var blockedNotAdjacent = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN
+var blockedNotAdjacent = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT
 
 // potionFight is Toren (Caio's, first on the turn), Pensantus (Ana's, next to Toren) and Brisa (Bia's, far) in a combat
 // with a goblin far away; each of the three holds the potions.
@@ -48,12 +51,27 @@ func (f *potionFight) line(t *testing.T, u *user) *playv1.CombatLogEntry {
 	return nil
 }
 
+// targets is the list of receivers u reads for the potion of who's sheet.
+func (s *stocked) targets(t *testing.T, u *user, who *charactersv1.Character, key string) []*playv1.ConsumableTarget {
+	t.Helper()
+	res, err := u.charges.ListConsumableTargets(t.Context(), connect.NewRequest(&playv1.ListConsumableTargetsRequest{
+		CampaignId: s.campaignID, CharacterId: who.GetId(), EntryId: s.entryOf(t, who, key),
+	}))
+	if err != nil {
+		t.Fatalf("ListConsumableTargets() error = %v", err)
+	}
+	return res.Msg.GetTargets()
+}
+
 func TestDrinkingInACombatCostsTheActionOnYourTurn(t *testing.T) {
 	t.Parallel()
 	f := newPotionFight(t, potionCommon, potionGreater)
 	f.hurt(t, f.toren, 1)
 	_, err := f.use(t, f.ana, f.pens, potionCommon)
 	wantBlockedBy(t, "a drink off turn", err, blockedNotYourTurn)
+	if !f.holds(t, f.pens, potionCommon) {
+		t.Error("the refused drink off turn spent the potion")
+	}
 	res := f.mustUse(t, f.caio, f.toren, potionCommon)
 	if res.GetHealed() == 0 || f.holds(t, f.toren, potionCommon) {
 		t.Errorf("the drink = %v, want the unit spent and a heal", res)
@@ -212,18 +230,22 @@ func TestTheTargetsOfAGiftAreTheAdjacentCharacters(t *testing.T) {
 func TestTheTargetsOutOfACombatAreTheOtherCharactersOfTheParty(t *testing.T) {
 	t.Parallel()
 	s := newStocked(t, potionCommon)
+	s.hurt(t, s.pens, 0)
 	res, err := s.caio.charges.ListConsumableTargets(t.Context(), connect.NewRequest(&playv1.ListConsumableTargetsRequest{
 		CampaignId: s.campaignID, CharacterId: s.toren.GetId(), EntryId: s.entryOf(t, s.toren, potionCommon),
 	}))
 	if err != nil {
 		t.Fatalf("ListConsumableTargets() error = %v", err)
 	}
-	if len(res.Msg.GetTargets()) != 2 {
-		t.Fatalf("targets = %v; want Pensantus and Brisa", res.Msg.GetTargets())
+	if got := targetIDs(res.Msg.GetTargets()); !sameIDs(got, s.pens.GetId(), s.bri.GetId()) {
+		t.Fatalf("targets = %v; want Pensantus %s and Brisa %s", got, s.pens.GetId(), s.bri.GetId())
 	}
 	for _, g := range res.Msg.GetTargets() {
 		if g.GetCharacterId() == s.toren.GetId() || g.GetDistanceFt() != 0 || !g.GetMayReceive() {
 			t.Errorf("target %v: want another character, no distance", g)
+		}
+		if g.GetState() != playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED {
+			t.Errorf("target %v: the hit points of another character are no one's to read outside a combat (RN-20)", g)
 		}
 	}
 	_, err = s.caio.charges.ListConsumableTargets(t.Context(), connect.NewRequest(&playv1.ListConsumableTargetsRequest{
@@ -232,28 +254,23 @@ func TestTheTargetsOutOfACombatAreTheOtherCharactersOfTheParty(t *testing.T) {
 	wantBlockedBy(t, "an entry that is gone", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ITEM_GONE)
 }
 
-// Haste's extra action pays for a potion when the action of the turn is used, once; the action stays as it was.
-func TestAPotionUnderHasteIsPaidByTheExtraActionOnceWhenTheActionIsUsed(t *testing.T) {
+// Activating a potion takes an action, which is not the Use an Object of Haste's extra action: with the action used a hasted
+// creature is refused, and the extra action stays free.
+func TestAPotionUnderHasteIsNotPaidByTheExtraAction(t *testing.T) {
 	t.Parallel()
-	f := newPotionFight(t, potionCommon, potionGreater, potionSuperior)
+	f := newPotionFight(t, potionCommon, potionGreater)
 	f.mustAddEffect(t, f.e, "spell:haste", []string{"Toren"}, f.rounds(t, 3, "Toren"))
 	f.mustUse(t, f.caio, f.toren, potionCommon) // the action
-	spent := func() (action, extra bool) {
-		if err := f.h.pool.QueryRow(t.Context(), `SELECT action_used, extra_action_used FROM combatants WHERE id = $1`, f.id(t, "Toren")).Scan(&action, &extra); err != nil {
-			t.Fatalf("read the economy of Toren: %v", err)
-		}
-		return action, extra
+	_, err := f.use(t, f.caio, f.toren, potionGreater, giveTo(f.pens))
+	wantBlockedBy(t, "a second potion under Haste", err, blockedActionUsed)
+	var action, extra bool
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT action_used, extra_action_used FROM combatants WHERE id = $1`, f.id(t, "Toren")).Scan(&action, &extra); err != nil {
+		t.Fatalf("read the economy of Toren: %v", err)
 	}
-	if action, extra := spent(); !action || extra {
-		t.Fatalf("after the first drink action used = %v, extra = %v; want the action spent and the extra one free", action, extra)
+	if !action || extra {
+		t.Errorf("action used = %v, extra = %v; want the action spent and the extra one free", action, extra)
 	}
-	f.mustUse(t, f.caio, f.toren, potionGreater, giveTo(f.pens)) // the extra action
-	if action, extra := spent(); !action || !extra {
-		t.Fatalf("after the second potion action used = %v, extra = %v; want both spent", action, extra)
-	}
-	_, err := f.use(t, f.caio, f.toren, potionSuperior)
-	wantBlockedBy(t, "a third potion with both spent", err, blockedActionUsed)
-	if !f.holds(t, f.toren, potionSuperior) {
+	if !f.holds(t, f.toren, potionGreater) {
 		t.Error("the refused potion was spent")
 	}
 }
@@ -286,4 +303,216 @@ func TestAPotionIsNotGivenToACharacterThatDoesNotFightInTheCombat(t *testing.T) 
 		t.Error("the refused gift spent the potion")
 	}
 	f.mustUse(t, f.caio, f.toren, potionCommon, giveTo(f.pens)) // the refusal spent no action
+}
+
+// A creature with three failed death saves is dead, whether or not the master confirmed it: a healing potion does not raise it, the
+// refusal spends nothing, and the list of receivers leaves it out.
+func TestAHealingPotionDoesNotReviveACreatureWithThreeFailedDeathSaves(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionCommon)
+	f.hurt(t, f.pens, 0)
+	f.execSQL(t, `UPDATE combatants SET death_failures = 3 WHERE id = $1`, f.id(t, "Pensantus"))
+	_, err := f.use(t, f.caio, f.toren, potionCommon, giveTo(f.pens))
+	wantBlockedBy(t, "a potion to the dead", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+	if !f.holds(t, f.toren, potionCommon) || f.vitals(t, f.pens).GetHitPointsCurrent() != 0 || byLabel(t, f.get(t, f.master), "Toren").GetActionUsed() {
+		t.Error("the refused potion was spent, healed the dead or used the action")
+	}
+	if got := f.targets(t, f.caio, f.toren, potionCommon); len(got) != 0 {
+		t.Errorf("targets = %v, want the dead one left out", got)
+	}
+}
+
+// A creature with three failed death saves is dead whatever the item: a scroll given by a character that does not fight to a
+// combatant in that state is refused too, with the scroll still on the giver's sheet and no line in the log.
+func TestAScrollGivenByAUserOutsideTheCombatIsRefusedForADeadCombatant(t *testing.T) {
+	t.Parallel()
+	f := fightWithout(t, []string{scrollFirst}, "Brisa")
+	f.hurt(t, f.pens, 0)
+	f.execSQL(t, `UPDATE combatants SET death_failures = 3 WHERE id = $1`, f.id(t, "Pensantus"))
+	_, err := f.use(t, f.bia, f.bri, scrollFirst, giveTo(f.pens))
+	wantBlockedBy(t, "a scroll to the dead", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_TARGET_DEAD)
+	if !f.holds(t, f.bri, scrollFirst) {
+		t.Error("the refused scroll was spent")
+	}
+	if f.line(t, f.master) != nil {
+		t.Error("the refused scroll wrote a line in the combat's log")
+	}
+}
+
+// A combat in setup has its combatants but no turn: a resistance potion is their effect (the record lives on the combatant, as for
+// any character that joined), and nothing is gated.
+func TestAResistancePotionInACombatInSetupIsAnEffectOfTheCombatantWithNoTurnAndNoAction(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionFire)
+	e := s.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Pensantus": {4, 4}, "Brisa": {9, 8}, "Goblin": {12, 8}},
+		setup:    true,
+	})
+	f := &potionFight{stocked: s, e: e}
+	f.mustUse(t, f.caio, f.toren, potionFire)                   // the drinker's own
+	f.mustUse(t, f.master, f.pens, potionFire, giveTo(f.toren)) // a gift, the master giving Pensantus's potion to Toren
+	var onCombatants, onCharacters int
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM combatant_states WHERE source_key = $1`, potionFire).Scan(&onCombatants); err != nil {
+		t.Fatalf("read the effects of the combatants: %v", err)
+	}
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM character_effects WHERE source_key = $1`, potionFire).Scan(&onCharacters); err != nil {
+		t.Fatalf("read the effects of the characters: %v", err)
+	}
+	if onCombatants != 1 || onCharacters != 0 { // the second potion of the same kind on Toren ends the first
+		t.Errorf("effects on combatants = %d, on characters = %d; want 1 and 0", onCombatants, onCharacters)
+	}
+	var spent bool
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT action_used FROM combatants WHERE id = $1`, f.id(t, "Toren")).Scan(&spent); err != nil || spent {
+		t.Errorf("the action of Toren is used = %v (%v) in a combat that has not begun", spent, err)
+	}
+}
+
+// Only the potions the app applies (the items of effects/potions.json) cost the turn and the action: any other consumable is spent
+// and logged on any turn, with the action used or not. potionClimb is a potion that is only text, which the app does not apply,
+// and scrollFirst is a scroll: both are such consumables.
+func TestAConsumableTheAppDoesNotApplyNeedsNeitherTheTurnNorTheAction(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionCommon, potionClimb, scrollFirst)
+	f.mustUse(t, f.caio, f.toren, potionCommon) // the action of Toren's turn
+	// the action of the turn is used now, and a text-only potion is still spent and logged
+	if text := f.mustUse(t, f.caio, f.toren, potionClimb); text.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(text.GetText()) == 0 {
+		t.Errorf("the text-only potion with the action used = %v, want its text", text)
+	}
+	res := f.mustUse(t, f.ana, f.pens, scrollFirst, giveTo(f.toren)) // not Pensantus's turn, and Toren is another's
+	if res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(res.GetText()) == 0 {
+		t.Errorf("the scroll = %v, want its text", res)
+	}
+	if f.holds(t, f.toren, potionClimb) || f.holds(t, f.pens, scrollFirst) {
+		t.Error("a unit was not spent")
+	}
+	if byLabel(t, f.get(t, f.master), "Pensantus").GetActionUsed() {
+		t.Error("the scroll used Pensantus's action")
+	}
+	l := f.line(t, f.bia).GetConsumableUse()
+	if l == nil || l.GetItemNamePt() == "" {
+		t.Errorf("the table reads %v, want the line of the use", l)
+	}
+}
+
+// The effect of a potion is the item's, not the master's: the record says so, and the card its player reads names the potion.
+func TestThePotionsResistanceIsAnEffectOfTheItemWhoseCardNamesThePotion(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionFire)
+	f.mustUse(t, f.caio, f.toren, potionFire, giveTo(f.pens))
+	var kind string
+	if err := f.h.pool.QueryRow(t.Context(), `SELECT source_kind FROM combatant_states WHERE combatant_id = $1 AND source_key = $2`, f.id(t, "Pensantus"), potionFire).Scan(&kind); err != nil || kind != "item" {
+		t.Errorf("the effect on the combatant is of the kind %q (%v), want item", kind, err)
+	}
+	for name, u := range map[string]*user{"the receiver's owner": f.ana, "the master": f.master} {
+		cards := byLabel(t, f.get(t, u), "Pensantus").GetEffects()
+		if len(cards) != 1 || cards[0].GetSourceKind() != playv1.EffectSourceKind_EFFECT_SOURCE_KIND_ITEM || !strings.Contains(cards[0].GetOriginPt(), cards[0].GetSourceNamePt()) || cards[0].GetSourceNamePt() == "" {
+			t.Errorf("%s reads %v, want one card of an item whose origin names the potion", name, cards)
+		}
+		if len(cards) == 1 && strings.Contains(cards[0].GetOriginPt(), "mestre") {
+			t.Errorf("%s reads the origin %q, want the potion's, not the master's", name, cards[0].GetOriginPt())
+		}
+	}
+}
+
+// fightWithout starts a combat of the three players and a goblin, in setup, takes the named characters out of it and begins it:
+// they stay characters of the campaign that do not fight.
+func fightWithout(t *testing.T, keys []string, out ...string) *potionFight {
+	t.Helper()
+	s := newStocked(t, keys...)
+	s.bri = s.withItems(t, s.bri, keys...)
+	e := s.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Pensantus": {4, 4}, "Brisa": {9, 8}, "Goblin": {12, 8}},
+		setup:    true,
+	})
+	for _, label := range out {
+		if _, err := s.master.combat.RemoveCombatant(t.Context(), connect.NewRequest(&playv1.RemoveCombatantRequest{
+			CampaignId: s.campaignID, EncounterId: e.GetId(), CombatantId: s.id(t, label), IdempotencyKey: newKey(),
+		})); err != nil {
+			t.Fatalf("RemoveCombatant(%s) error = %v", label, err)
+		}
+	}
+	if _, err := s.master.combat.BeginCombat(t.Context(), connect.NewRequest(&playv1.BeginCombatRequest{CampaignId: s.campaignID, EncounterId: e.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("BeginCombat() error = %v", err)
+	}
+	return &potionFight{stocked: s, e: e}
+}
+
+// sameIDs says whether got holds exactly the wanted ids, in any order.
+func sameIDs(got []string, want ...string) bool {
+	return slices.Equal(slices.Sorted(slices.Values(got)), slices.Sorted(slices.Values(want)))
+}
+
+func targetIDs(ts []*playv1.ConsumableTarget) []string {
+	var out []string
+	for _, g := range ts {
+		out = append(out, g.GetCharacterId())
+	}
+	return out
+}
+
+// A user that does not fight in the running combat may give a potion only to a character that does not fight either (the
+// combat's receivers are out of its reach), and any other consumable to the whole party: the list offers who the use accepts.
+func TestTheTargetsOfAUserOutsideTheRunningCombatAreTheCharactersOutsideIt(t *testing.T) {
+	t.Parallel()
+	f := fightWithout(t, []string{potionCommon, scrollFirst}, "Brisa")
+	for _, u := range []*user{f.bia, f.master} {
+		if got := f.targets(t, u, f.bri, potionCommon); len(got) != 0 {
+			t.Errorf("targets of a potion = %v, want none: Toren and Pensantus fight", got)
+		}
+	}
+	_, err := f.use(t, f.bia, f.bri, potionCommon, giveTo(f.pens))
+	wantBlockedBy(t, "a potion to a fighter", err, blockedNotAdjacent)
+	if got := targetIDs(f.targets(t, f.bia, f.bri, scrollFirst)); !sameIDs(got, f.toren.GetId(), f.pens.GetId()) {
+		t.Errorf("targets of a scroll = %v, want Toren %s and Pensantus %s: no gate for a text-only consumable", got, f.toren.GetId(), f.pens.GetId())
+	}
+	f.mustUse(t, f.bia, f.bri, scrollFirst, giveTo(f.pens))
+}
+
+func TestTheTargetsOfAPotionFromOutsideTheCombatIncludeWhoDoesNotFightEither(t *testing.T) {
+	t.Parallel()
+	f := fightWithout(t, []string{potionCommon}, "Pensantus", "Brisa")
+	if got := targetIDs(f.targets(t, f.bia, f.bri, potionCommon)); len(got) != 1 || got[0] != f.pens.GetId() {
+		t.Errorf("targets = %v, want Pensantus only", got)
+	}
+	if got := f.targets(t, f.caio, f.toren, potionCommon); len(got) != 0 {
+		t.Errorf("Toren's targets = %v, want none: the others do not fight, out of his reach", got)
+	}
+	f.mustUse(t, f.bia, f.bri, potionCommon, giveTo(f.pens))
+}
+
+// An NPC is no player's combatant, so the turn and the action of the combat gate no use of an NPC's potion: the master's own use
+// of it is spent and logged on any turn with no effect, and a potion of an NPC given to a player's character in a running combat
+// is refused as out of reach. The combat's line and its action economy are the player characters'.
+func TestAnNPCsPotionInARunningCombatIsNotGatedByTheTurnNorTheAction(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	mage := s.withItems(t, s.master.npcWizard(t, s.campaignID, "Mago Rival"), potionCommon, potionCommon)
+	e := s.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: mage.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 18, "Pensantus": 10, "Brisa": 1},
+		reveal:   []string{"Mago Rival"},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Pensantus": {4, 4}, "Brisa": {9, 8}, "Mago Rival": {3, 4}},
+	})
+	f := &potionFight{stocked: s, e: e}
+	res, err := f.use(t, f.master, mage, potionCommon)
+	if err != nil || res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY {
+		t.Fatalf("the NPC's own potion off its turn = %v, %v; want it spent with no effect", res, err)
+	}
+	if byLabel(t, f.get(t, f.master), "Mago Rival").GetActionUsed() || f.line(t, f.master) != nil {
+		t.Error("the NPC's potion used the NPC's action or wrote a line in the combat's log")
+	}
+	_, err = f.use(t, f.master, mage, potionCommon, giveTo(f.toren))
+	wantBlockedBy(t, "an NPC's potion given to a combatant", err, blockedNotAdjacent)
+	if !f.holds(t, mage, potionCommon) {
+		t.Error("the refused gift spent the potion")
+	}
 }

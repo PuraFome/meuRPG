@@ -94,29 +94,35 @@ service ChargesService {
   // `consumable_used` and, in a running combat, as the log line CONSUMABLE_USED, and the response says what happened. A
   // healing potion restores hit points with the dice of its text, and a resistance potion gives one hour of resistance
   // to its damage type; every other consumable only spends the unit and returns its SRD text, with no automatic effect
-  // (a spell scroll is not cast). The receiver is the user, or `target_character_id` for a potion given to another
-  // character. In a combat the use costs the user's action (an adjacent receiver, 5 feet, when it is given) and needs
-  // the user's turn; out of combat it costs no turn and needs no adjacency. A consumable event ends the undo chain.
-  // The user's player (or the master, for any character) may use it. The dice follow the table's rule (RN-18).
+  // (a spell scroll is not cast). The receiver is the user, or `target_character_id` for an item given to another
+  // character. Only a potion is an action: in a running combat it costs the user's action (the extra action of Haste
+  // does not pay for it) and needs the user's turn and, when it is given, a receiver within 5 feet; out of a combat and
+  // in one that has not begun it costs no turn and needs no adjacency, and any other consumable never does. A creature
+  // with three failed death saves is dead and receives nothing. A consumable event ends the undo chain. The user's
+  // player (or the master, for any character) may use it. The dice follow the table's rule (RN-18). A character with no
+  // hit points of its own outside a combat (an NPC) spends the unit and tells nothing automatic: the master narrates it.
   //
   // Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or a
   // receiver that is not there (an NPC, a reserved character or one of another campaign is not a receiver);
   // `invalid_argument` for an entry that is not a consumable, an idempotency key that is not a UUID or one reused for
   // another request, and a roll the request does not carry; `failed_precondition` with NO_OPEN_SESSION, CharacterBlocked
   // CHARACTER_DEAD, and EncounterBlocked: ITEM_GONE for an entry that is no longer on the sheet, COMBATANT_DOWN for a
-  // user at 0 hit points (it may still receive), and in a combat NOT_YOUR_TURN, ACTION_USED and the other reasons of an
-  // action, and TARGET_NOT_ADJACENT_OR_SEEN for a receiver beyond 5 feet or out of the combat. The response carries the
-  // receiver's vitals to the master and to the receiver's own player only.
+  // user at 0 hit points (it may still receive), TARGET_DEAD for a receiver with three failed death saves, and for a
+  // potion in a running combat NOT_YOUR_TURN, ACTION_USED and the other reasons of an action, and TARGET_NOT_ADJACENT
+  // for a receiver beyond 5 feet or out of the combat. The response carries the receiver's vitals to the master and to
+  // the receiver's own player only.
   rpc UseConsumable(UseConsumableRequest) returns (UseConsumableResponse);
 
-  // ListConsumableTargets lists who the character may give a consumable to: in a running combat, the player's
-  // characters that are adjacent (5 feet) to the user's combatant, with the distance (a creature that is not a player's
-  // character is never listed, so a hidden one never is); out of a combat, the other living characters of the party. The master reads it for the
-  // character it acts for, and the list is the one that character's player would get. Read only.
+  // ListConsumableTargets lists who the character may give the consumable to, which is who the use would accept: for a
+  // potion in a running combat, the player's characters of the combat that are adjacent (5 feet) to the user's combatant,
+  // with the distance (a creature that is not a player's character is never listed, so a hidden one never is), and, when the
+  // user does not fight in it, the characters that do not fight either; for any other consumable, or with no running
+  // combat, the other living characters of the party. A creature with three failed death saves is never listed. The master
+  // reads it for the character it acts for, and the list is the one that character's player would get. Read only.
   //
   // Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
-  // is not there; `failed_precondition` with EncounterBlocked ITEM_GONE for an entry that is no longer on the sheet and
-  // CharacterBlocked CHARACTER_DEAD for a dead user.
+  // is not there; `invalid_argument` for an entry that is no consumable; `failed_precondition` with EncounterBlocked
+  // ITEM_GONE for an entry that is no longer on the sheet and CharacterBlocked CHARACTER_DEAD for a dead user.
   rpc ListConsumableTargets(ListConsumableTargetsRequest) returns (ListConsumableTargetsResponse);
 }
 
@@ -297,15 +303,19 @@ message ListConsumableTargetsResponse {
 message ConsumableTarget {
   string character_id = 1;
   string name = 2;
-  // The distance from the user's combatant, in feet; 0 when there is no running combat.
+  // The distance from the user's combatant, in feet; 0 when the list has no distance (no running combat, or a user that
+  // does not fight in it).
   int32 distance_ft = 3;
+  // How the character stands: set for a combatant of a running combat, UNSPECIFIED for a character outside one (the hit
+  // points of a player's character are no other player's to read there).
   ConsumableTargetState state = 4;
-  // Whether the character may receive it now (always true for a listed character today).
+  // Whether the character may receive it (true for every listed character).
   bool may_receive = 5;
 }
 
 // ConsumableTargetState is how a possible receiver stands, as every player at the table may see it.
 enum ConsumableTargetState {
+  // Not told: the character is outside a running combat.
   CONSUMABLE_TARGET_STATE_UNSPECIFIED = 0;
   // On its feet: above 0 hit points.
   CONSUMABLE_TARGET_STATE_OK = 1;

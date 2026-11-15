@@ -122,7 +122,7 @@ export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext
   const encounter = encounterBlocked(err);
   if (encounter) {
     switch (encounter.reason) {
-      case EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN:
+      case EncounterBlockedReason.TARGET_NOT_ADJACENT:
         return `${ctx.targetName ?? 'Quem ia receber'} não está mais ao seu lado. Nada foi gasto.`;
       case EncounterBlockedReason.ITEM_GONE:
         return `${words.demonstrative} A ficha foi atualizada.`;

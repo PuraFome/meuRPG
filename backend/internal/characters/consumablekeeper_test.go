@@ -104,3 +104,38 @@ func TestRemoveConsumableRefuses(t *testing.T) {
 		t.Errorf("the same unit twice: %v", err)
 	}
 }
+
+// Reading a consumable entry returns its key and name and changes nothing: no revision, no entry taken, and a refusal for what is
+// no consumable of the sheet.
+func TestConsumableItemReadsTheEntryAndWritesNothing(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t, potionKey, wandKey)
+	potion, wand := magicItemOf(pc, potionKey).GetId(), magicItemOf(pc, wandKey).GetId()
+	read := func(character, entry string) (item *charactersv1.SheetMagicItem, err error) {
+		err = et.inTx(t, func(tx pgx.Tx) error {
+			item, err = et.h.svc.ConsumableItem(t.Context(), tx, et.campaign, character, entry)
+			return err
+		})
+		return item, err
+	}
+	item, err := read(pc.GetId(), potion)
+	if err != nil || item.GetKey() != potionKey || item.GetId() != potion || item.GetNamePt() == "" {
+		t.Fatalf("ConsumableItem = %+v, %v; want the potion with its name", item, err)
+	}
+	for name, c := range map[string]struct {
+		character, entry string
+		code             connect.Code
+	}{
+		"a wand, which is no consumable": {pc.GetId(), wand, connect.CodeInvalidArgument},
+		"an entry that is not there":     {pc.GetId(), "5b2f5d1c-0000-4000-8000-000000000000", connect.CodeNotFound},
+		"a character that is not there":  {"5b2f5d1c-0000-4000-8000-000000000000", potion, connect.CodeNotFound},
+	} {
+		if _, err := read(c.character, c.entry); connect.CodeOf(err) != c.code {
+			t.Errorf("%s: want %v, got %v", name, c.code, err)
+		}
+	}
+	after := et.read(t, et.master, pc.GetId())
+	if got := sheetItemKeys(after); len(got) != 2 || after.GetRevision() != pc.GetRevision() {
+		t.Errorf("the reads wrote: %v at revision %d, was %d", got, after.GetRevision(), pc.GetRevision())
+	}
+}

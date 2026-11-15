@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -32,17 +33,6 @@ func TestTotalAddsTheFacesAndTheBonus(t *testing.T) {
 	}
 }
 
-func TestHealedStopsAtTheMaximum(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct{ cur, max, total, want int32 }{
-		{3, 20, 7, 7}, {18, 20, 7, 2}, {20, 20, 7, 0}, {0, 20, 0, 0}, {25, 20, 7, 0},
-	} {
-		if got := Healed(tc.cur, tc.max, tc.total); got != tc.want {
-			t.Errorf("Healed(%d, %d, %d) = %d, want %d", tc.cur, tc.max, tc.total, got, tc.want)
-		}
-	}
-}
-
 func TestResistanceIsOneHourOfResistanceToTheType(t *testing.T) {
 	t.Parallel()
 	p := rules.PotionEffect{Kind: rules.PotionResistance, DamageType: "damage-type:fire", Rounds: rules.PotionResistanceRounds}
@@ -62,5 +52,27 @@ func TestTextPrefersThePortugueseOne(t *testing.T) {
 	}
 	if got := Text(rules.MagicItem{Desc: []string{"en"}}); len(got) != 1 || got[0] != "en" {
 		t.Errorf("Text() = %v, want en", got)
+	}
+}
+
+// The line of a use in the log names the item, the outcome and the receiver to the table; the dice, the roll and the hit
+// points regained are told only when the reader may read the numbers.
+func TestLineTellsTheNumbersOnlyToWhoMayRead(t *testing.T) {
+	t.Parallel()
+	use := Used{
+		Item: "item:potion-of-healing-common", Name: "Poção de Cura", Outcome: OutcomeHealed,
+		Dice: "2d4+2", Faces: []int32{3, 4}, Total: 9, Healed: 7, DamageType: "damage-type:fire",
+	}
+	table := Line(use, "Fogo", "Pensantus", false)
+	if table.GetItemNamePt() != "Poção de Cura" || table.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_HEALED ||
+		table.GetTargetLabel() != "Pensantus" || table.GetDamageTypeKey() != "damage-type:fire" || table.GetDamageTypeNamePt() != "Fogo" {
+		t.Errorf("the table's line = %v, want the item, the outcome, the receiver and the damage type", table)
+	}
+	if table.GetDiceText() != "" || len(table.GetFaces()) != 0 || table.GetRollTotal() != 0 || table.GetHealed() != 0 {
+		t.Errorf("the table's line holds numbers: %v", table)
+	}
+	owner := Line(use, "Fogo", "Pensantus", true)
+	if owner.GetDiceText() != "2d4+2" || len(owner.GetFaces()) != 2 || owner.GetRollTotal() != 9 || owner.GetHealed() != 7 {
+		t.Errorf("the owner's line = %v, want the dice, the faces, the total and the hit points regained", owner)
 	}
 }

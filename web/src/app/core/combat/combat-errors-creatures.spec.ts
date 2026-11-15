@@ -80,7 +80,7 @@ describe('the refusals of the creatures and Wild Shape, by reason (MR-037)', () 
       'Essa magia leva mais tempo do que um combate dá. Conjure fora do combate.',
     ],
     [
-      EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN,
+      EncounterBlockedReason.TARGET_NOT_ADJACENT,
       'Esse personagem não está ao seu lado: precisa estar a 1,5 m e no combate. Nada foi gasto.',
     ],
     [

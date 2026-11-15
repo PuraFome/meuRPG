@@ -123,13 +123,13 @@ describe('consumableErrorMessage', () => {
 
   it('says the receiver is not at the giver side any more, with their name, and that nothing was spent', () => {
     expect(
-      consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN), potion),
+      consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_NOT_ADJACENT), potion),
     ).toBe('Brisa não está mais ao seu lado. Nada foi gasto.');
   });
 
   it('says it for a receiver the sheet did not name', () => {
     expect(
-      consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN), {
+      consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_NOT_ADJACENT), {
         kind: 'potion',
       }),
     ).toBe('Quem ia receber não está mais ao seu lado. Nada foi gasto.');

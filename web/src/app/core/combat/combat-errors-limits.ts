@@ -66,12 +66,12 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
     'Sem munição. Não sobrou munição desse tipo: o tiro não sai. Nada foi gasto.',
   ],
   [
-    EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN,
-    'Esse personagem não está ao seu lado: precisa estar a 1,5 m e no combate. Nada foi gasto.',
+    EncounterBlockedReason.TARGET_NOT_ADJACENT,
+    'Quem recebe o item precisa estar a até 1,5 m de quem o dá, e os dois na luta ou os dois fora dela. Nada foi gasto.',
   ],
   [
     EncounterBlockedReason.ITEM_GONE,
-    'Esse item já foi usado. A ficha foi atualizada. Nada foi gasto.',
+    'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
   ],
   [EncounterBlockedReason.FEATURE_TARGET, 'O alvo saiu do alcance. Escolha outro alvo.'],
   [EncounterBlockedReason.FEATURE_CHOICE, 'Essa opção não vale mais. Escolha outra.'],

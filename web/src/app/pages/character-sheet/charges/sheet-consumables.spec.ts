@@ -215,7 +215,7 @@ describe('SheetConsumables', () => {
 
   it('names the receiver when they are not at the giver side any more', async () => {
     client.useConsumable.mockRejectedValue(
-      gone(EncounterBlockedReason.TARGET_NOT_ADJACENT_OR_SEEN),
+      gone(EncounterBlockedReason.TARGET_NOT_ADJACENT),
     );
     const data = await open();
     const why = await data.use(

@@ -2203,11 +2203,12 @@ enum EncounterBlockedReason {
   // (a row, even at 0) with none left. Nothing is written. A kind with no count is not counted and the shot goes. The melee line of the weapon, and a thrown weapon, spend no ammunition.
   ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY = 145;
 
-  // UseConsumable: a consumable given in a combat to a creature that is not within 5 feet of the giver or that does not fight
-  // in the combat (a player's character is never hidden from its party, so no gift is refused for what the giver sees). The refusal names nobody. Nothing is written.
-  ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT_OR_SEEN = 146;
+  // UseConsumable: a potion used in a running combat between two characters of which one does not fight in it, or given to a
+  // creature that is not within 5 feet of the giver (a player's character is never hidden from its party, so no gift is
+  // refused for what the giver sees). The refusal names nobody. Nothing is written.
+  ENCOUNTER_BLOCKED_REASON_TARGET_NOT_ADJACENT = 146;
 
-  // UseConsumable and ListConsumableTargets: the entry is no longer on the sheet (used or taken off since the player read it). Nothing is written.
+  // UseConsumable and ListConsumableTargets: the entry is not on the sheet (it was used or taken off). Nothing is written.
   ENCOUNTER_BLOCKED_REASON_ITEM_GONE = 147;
 }
 
