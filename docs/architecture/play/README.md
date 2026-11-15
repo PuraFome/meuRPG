@@ -80,6 +80,26 @@ A pending member (RN-15) gets `not_found` on everything that names a campaign, l
 `TestAuthorizationMatrix` has a column for them.
 The combat, casting, wild shape, familiar sight, trap and puzzle calls are described on their own pages.
 
+## Subpackages
+
+The package `play` itself is capped in size (`.github/play-cap`, [CI](../../ci.md#the-play-size-cap)). Logic that needs no store, no transport and no `Service` lives in a subpackage:
+
+| Package | Holds |
+| --- | --- |
+| `play/link` | The plain types that cross to other modules (the seam below) |
+| `play/live` | The live stream's hub |
+| `play/playdb` | The sqlc queries (generated) |
+| `play/voice` | The voice generator and its fake |
+
+A function of `play` that takes no `context.Context`, reads no query and is no `Service` method (a rule, a text builder, a calculation over plain values) moves with its tests when a change edits it, or the PR says why it cannot. The candidates are advantage, the log's text, the contests' calculations and the pure part of the undo kinds. A move lowers the cap by the lines that left `play`.
+
+A new subpackage is listed in `playSubpackages` of `backend/internal/archtest/boundaries_test.go` with the subpackages of `play` it may import, and it:
+
+- never imports `play`, `play/playdb`, `pgx` or Connect, and imports the other `play` subpackages only as its row lists (`play/link` always);
+- imports no other module's packages beyond what [the module boundaries](../overview.md#module-boundaries-are-a-test) allow.
+
+`TestPlaySubpackagesStayBelowPlay` fails for a subpackage that is not listed, that is listed but missing, or that imports more than its row allows.
+
 ## Seams to other modules
 
 `play` never imports another module.

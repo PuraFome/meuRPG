@@ -361,3 +361,108 @@ func reachable(edges map[string]map[string]string, from string) map[string]bool 
 	}
 	return seen
 }
+
+// playSubpackages are the subpackages of play that hold logic moved out of it (docs/architecture/play/README.md#subpackages): each
+// with the other play subpackages it may import. A subpackage that is not here, and is not one of
+// playSeamPackages, fails the test, so a new one is added on purpose with its place in the order.
+var playSubpackages = map[string][]string{}
+
+// playSeamPackages are the subpackages of play that are not moved logic: the seam to other modules, the live hub, the
+// sqlc queries and the voice generator. They are not held to playSubpackages.
+var playSeamPackages = []string{"link", "live", "playdb", "voice"}
+
+// playSubpackageForbidden are the imports a play subpackage never has: play itself, its queries, the database driver and the
+// transport (play itself is checked on its own). Other modules' packages are refused by the module rules above.
+var playSubpackageForbidden = []string{"internal/play/playdb", "github.com/jackc/pgx", "connectrpc.com/connect"}
+
+// TestPlaySubpackagesStayBelowPlay reads every non-test file of every directory under internal/play that is not a seam package:
+// it must be listed in playSubpackages, and its imports are the ones its row allows and none of playSubpackageForbidden.
+func TestPlaySubpackagesStayBelowPlay(t *testing.T) {
+	root := os.DirFS(backendRoot)
+	module := modulePath(t, root)
+	entries, err := fs.ReadDir(root, "internal/play")
+	if err != nil {
+		t.Fatalf("read internal/play: %v", err)
+	}
+	seen := map[string]bool{}
+	for _, e := range entries {
+		name := e.Name()
+		if !e.IsDir() || name == "testdata" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") || slices.Contains(playSeamPackages, name) {
+			continue
+		}
+		if goFiles, _ := fs.Glob(root, "internal/play/"+name+"/*.go"); len(goFiles) == 0 {
+			continue // a directory with no Go file is no package
+		}
+		seen[name] = true
+		allowed, listed := playSubpackages[name]
+		if !listed {
+			t.Errorf("internal/play/%s is a new subpackage of play: add it to playSubpackages in boundaries_test.go with the play subpackages it may import", name)
+			continue
+		}
+		for _, imp := range playSubpackageImports(t, root, "internal/play/"+name) {
+			rel, own := strings.CutPrefix(imp.path, module+"/")
+			if !own {
+				rel = imp.path
+			}
+			for _, bad := range playSubpackageForbidden {
+				if rel == bad || strings.HasPrefix(rel, bad+"/") {
+					t.Errorf("%s imports %s: a play subpackage never imports it (docs/architecture/play/README.md#subpackages)", imp.file, rel)
+				}
+			}
+			if sub, ok := strings.CutPrefix(rel, "internal/play/"); ok && !slices.Contains(allowed, sub) && sub != "link" && sub != name && !strings.HasPrefix(sub, name+"/") {
+				t.Errorf("%s imports play/%s, which the row of play/%s in playSubpackages does not list", imp.file, sub, name)
+			}
+			if rel == "internal/play" {
+				t.Errorf("%s imports play itself: a subpackage stays below play", imp.file)
+			}
+		}
+	}
+	for name := range playSubpackages {
+		if !seen[name] {
+			t.Errorf("playSubpackages lists play/%s, which is no directory of internal/play: remove the row", name)
+		}
+	}
+}
+
+type playImport struct{ file, path string }
+
+// playSubpackageImports returns the imports of the non-test Go files of dir and of every directory under it.
+func playSubpackageImports(t *testing.T, root fs.FS, dir string) []playImport {
+	t.Helper()
+	fset := token.NewFileSet()
+	var imports []playImport
+	err := fs.WalkDir(root, dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if name := d.Name(); name == "testdata" || strings.HasPrefix(name, ".") || strings.HasPrefix(name, "_") {
+				return fs.SkipDir // the go tool ignores these directories too
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		src, err := fs.ReadFile(root, path)
+		if err != nil {
+			return err
+		}
+		f, err := parser.ParseFile(fset, path, src, parser.ImportsOnly)
+		if err != nil {
+			return err
+		}
+		for _, imp := range f.Imports {
+			p, err := strconv.Unquote(imp.Path.Value)
+			if err != nil {
+				return fmt.Errorf("%s: %w", path, err)
+			}
+			imports = append(imports, playImport{file: path, path: p})
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("read %s: %v", dir, err)
+	}
+	return imports
+}

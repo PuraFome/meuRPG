@@ -80,6 +80,7 @@ fi
 if grep -q '^backend/' <<<"$changed"; then
   check "complexity limits" bash -c 'cd backend && ../.github/scripts/go-complexity.sh'
   check "nolint cap" bash -c 'cd backend && ../.github/scripts/nolint-cap.sh'
+  check "play cap" bash -c 'cd backend && ../.github/scripts/play-cap.sh'
 fi
 if grep -qE '^(web|proto)/' <<<"$changed" && needs_modules web; then
   check "web lint" bash -c 'cd web && npm run -s lint'
