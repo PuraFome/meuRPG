@@ -264,6 +264,7 @@ describe('the feats and options a sheet keeps but that do not apply now (board 5
         ...lostKeys(full, [
           issue('feat_prerequisite', 'full.feat_keys[1]'),
           issue('option_prerequisite', 'full.feature_choice_keys[1]'),
+          // A feat taken through a choice: the server names the pick's index (choiceFeats in rules/feat_choices.go).
           issue('feat_prerequisite', 'full.feature_choice_keys[2]'),
           issue('skill_count', 'full.feat_keys[0]'),
           issue('option_prerequisite', 'full.feature_choice_keys[9]'),
