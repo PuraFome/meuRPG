@@ -131,6 +131,8 @@ func TestSightWithoutAMap(t *testing.T) {
 		{"the box is on, the creature is off the stage", cutting.Sight{Box: true}, true, false},
 		{"the box is on, the creature is on the stage for the bard", cutting.Sight{Box: true, OnStage: true}, true, true},
 		{"the box is off, the creature is on the stage", cutting.Sight{OnStage: true}, false, false},
+		{"the box is on but the creature's token is hidden", cutting.Sight{Box: true, TokenHidden: true}, false, false},
+		{"the box is on, the creature is on the stage, its token is hidden", cutting.Sight{Box: true, OnStage: true, TokenHidden: true}, false, false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -247,5 +249,37 @@ func TestPlaceSightOf(t *testing.T) {
 	}
 	if got := (cutting.Place{NPC: "npc"}).SightOf("bard", false, yes, false); got != (cutting.Sight{}) {
 		t.Errorf("no map = %+v, want nothing seen", got)
+	}
+}
+
+// TestPlaceSightOfAHiddenCreatureWithNoBardToken: the creature's own token is read first: hidden, nobody sees it, whatever the box and
+// the stage say and whether or not the bard has a token (and whether or not the map has a grid).
+func TestPlaceSightOfAHiddenCreatureWithNoBardToken(t *testing.T) {
+	t.Parallel()
+	yes := func(grid.Square) bool { return true }
+	for name, place := range map[string]cutting.Place{
+		"the bard has no token": {NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Hidden: true}}},
+		"a map with no grid":    {NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Hidden: true, Unmeasured: true}, "bard": {Unmeasured: true}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			got := place.SightOf("bard", true, yes, true)
+			if got.Sees() || got.Named() || !got.TokenHidden {
+				t.Errorf("SightOf() = %+v, want a creature nobody sees, whatever the box says", got)
+			}
+		})
+	}
+	shown := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Unmeasured: true}, "bard": {Unmeasured: true}}}
+	if got := shown.SightOf("bard", true, yes, true); got.Mapped || !got.Sees() || !got.Named() {
+		t.Errorf("a shown creature on a map with no grid = %+v, want the box and the stage to decide", got)
+	}
+}
+
+// TestPlaceMeasuresNeedsAGrid: the tokens of a map with no grid are on it but have no square: the map measures nothing.
+func TestPlaceMeasuresNeedsAGrid(t *testing.T) {
+	t.Parallel()
+	place := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {Unmeasured: true}, "bard": {Unmeasured: true}}}
+	if place.Measures("bard") {
+		t.Error("Measures() = true on a map with no grid, want false")
 	}
 }

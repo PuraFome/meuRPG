@@ -488,14 +488,15 @@ func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 	return p, nil
 }
 
-// mapTokensOf reads the tokens of the session's current map, none when there is no map or it has no grid.
+// mapTokensOf reads the tokens of the session's current map, none when there is no map. On a map with no grid the tokens are still read
+// (a hidden one stays hidden) but stand on no square: they are marked Unmeasured.
 func (s *Service) mapTokensOf(ctx context.Context, tx pgx.Tx, session playdb.GameSession) (map[string]cutting.Token, error) {
 	out := map[string]cutting.Token{}
 	if session.CurrentMapID == nil {
 		return out, nil
 	}
 	g, err := s.maps.MapGrid(ctx, tx, session.CampaignID, *session.CurrentMapID)
-	if connect.CodeOf(err) == connect.CodeNotFound || (err == nil && !g.OK()) {
+	if connect.CodeOf(err) == connect.CodeNotFound {
 		return out, nil
 	}
 	if err != nil {
@@ -507,9 +508,14 @@ func (s *Service) mapTokensOf(ctx context.Context, tx pgx.Tx, session playdb.Gam
 	}
 	cells := grid.Grid{Columns: int(g.Columns), Rows: int(g.Rows)}
 	for _, t := range tokens {
-		if t.CharacterID != "" {
-			out[t.CharacterID] = cutting.Token{Sq: cells.SquareOf(int(t.XBP), int(t.YBP)), Hidden: t.Hidden}
+		if t.CharacterID == "" {
+			continue
 		}
+		tok := cutting.Token{Hidden: t.Hidden, Unmeasured: !g.OK()}
+		if g.OK() {
+			tok.Sq = cells.SquareOf(int(t.XBP), int(t.YBP))
+		}
+		out[t.CharacterID] = tok
 	}
 	return out, nil
 }

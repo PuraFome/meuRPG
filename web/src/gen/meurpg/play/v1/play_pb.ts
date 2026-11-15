@@ -4502,9 +4502,10 @@ export const PlayService: GenService<{
    * (HeldRollKind NPC_CHECK: ListHeldRolls, HeldRollsChanged, AnswerHeldRoll with a CuttingWordsAnswer). A bard is asked
    * when its character is alive, above 0 hit points, in the campaign's party, a College of Lore bard with Cutting Words,
    * its setting "Perguntar" is "todos" (checks are asked only then), it has a Bardic Inspiration use left, the creature
-   * is not immune to being charmed, and it sees the creature within 60 feet: with a token of the creature and one of the
-   * bard on the session's map, by the distance and, on a fog map, by what the bard's player sees (a creature hidden on
-   * the map is not seen); with no such pair, `bard_sees` says it for every bard. The server has no source for a creature
+   * is not immune to being charmed, and it sees the creature within 60 feet: a creature whose token the master hid on the
+   * map is seen by no bard, whatever `bard_sees` says (the bard needs no token for that, and the map no grid); otherwise,
+   * with a token of the creature and one of the bard on the grid of the session's map, by the distance and, on a fog map,
+   * by what the bard's player sees; with no such pair, `bard_sees` says it for every bard. The server has no source for a creature
    * that cannot hear the bard outside a combat, so the master's `bard_sees` (the box "Os bardos veem a criatura e ela os
    * ouve": Cutting Words needs the bard to see the creature and the creature to hear the bard) is what it relies on. Nobody
    * is asked when no bard qualifies, and the check settles at once. Only the use of Bardic Inspiration is spent.

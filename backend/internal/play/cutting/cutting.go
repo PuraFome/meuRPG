@@ -45,13 +45,14 @@ func Die(bardLevel int) int { return reaction.CuttingWordsDie(bardLevel) }
 // Sight is what decides whether the bard sees the creature and the creature hears the bard (Cutting Words needs both), and whether the
 // bard's question may name it.
 type Sight struct {
-	// Mapped says the creature and the bard both have a token on the session's current map: the map decides, and Box is not read.
+	// Mapped says the creature and the bard both have a token on the grid of the session's current map: the map decides, and Box is not read.
 	Mapped bool
 	// DistanceFt is the distance between the two tokens, in feet.
 	DistanceFt int
 	// Seen says the bard's player sees the creature's square (the fog of the map; true on a map with no fog).
 	Seen bool
-	// TokenHidden says the master hid the creature's token: no player sees it.
+	// TokenHidden says the master hid the creature's token on the map: no player sees it, whatever the box says and whether or not the
+	// bard has a token too.
 	TokenHidden bool
 	// Box is the master's "Os bardos veem a criatura e ela os ouve" for a table with no placement of both.
 	Box bool
@@ -59,11 +60,15 @@ type Sight struct {
 	OnStage bool
 }
 
-// Sees says the bard sees the creature within the 60 feet of the reactions and the creature hears it. Outside a combat nothing says a creature
-// is deafened, so it is the master's box that answers when there is no map.
+// Sees says the bard sees the creature within the 60 feet of the reactions and the creature hears it. A creature whose token the master
+// hid is seen by nobody, first of all. Outside a combat nothing says a creature is deafened, so it is the master's box that answers
+// when the map does not measure it.
 func (s Sight) Sees() bool {
-	if s.Mapped {
-		return s.DistanceFt <= reaction.RangeFt && s.Seen && !s.TokenHidden
+	switch {
+	case s.TokenHidden:
+		return false
+	case s.Mapped:
+		return s.DistanceFt <= reaction.RangeFt && s.Seen
 	}
 	return s.Box
 }
@@ -74,7 +79,7 @@ func (s Sight) Named() bool {
 	if s.Mapped {
 		return s.Sees()
 	}
-	return s.Box && s.OnStage
+	return s.Sees() && s.OnStage
 }
 
 // Label is what a bard's question calls the creature.
@@ -153,6 +158,8 @@ func CheckKeys() []string {
 type Token struct {
 	Sq     grid.Square
 	Hidden bool
+	// Unmeasured says the map has no grid: the token is on the map (and may be hidden) but stands on no square.
+	Unmeasured bool
 }
 
 // Place is where the creature stands for the question of a check: the tokens of the session's current map (none with no map or no
@@ -162,19 +169,21 @@ type Place struct {
 	NPC    string
 }
 
-// Measures says the map places both the creature and the bard: the map decides what the bard sees, and the master's box is not read.
+// Measures says the map places both the creature and the bard on its grid: the map decides what the bard sees, and the master's box is
+// not read. The tokens of a map with no grid place nobody.
 func (p Place) Measures(bard string) bool {
-	_, okN := p.Tokens[p.NPC]
-	_, okB := p.Tokens[bard]
-	return okN && okB
+	npc, okN := p.Tokens[p.NPC]
+	b, okB := p.Tokens[bard]
+	return okN && okB && !npc.Unmeasured && !b.Unmeasured
 }
 
-// SightOf is what a bard's question reads of the creature: the map when both tokens are on it (seen says the bard's player sees the
-// creature's square), the master's box otherwise, and whether the creature is on the stage the bard's player sees (onStage).
+// SightOf is what a bard's question reads of the creature. Its own token comes first: hidden, nobody sees it (the bard needs no token
+// for that, and the map needs no grid). Then the map when it measures both (seen says the bard's player sees the creature's square),
+// the master's box otherwise, and whether the creature is on the stage the bard's player sees (onStage).
 func (p Place) SightOf(bard string, box bool, seen func(grid.Square) bool, onStage bool) Sight {
 	npcTok, bardTok := p.Tokens[p.NPC], p.Tokens[bard]
 	if p.Measures(bard) {
 		return Sight{Mapped: true, DistanceFt: grid.RangeFt(bardTok.Sq, npcTok.Sq), Seen: seen(npcTok.Sq), TokenHidden: npcTok.Hidden}
 	}
-	return Sight{Box: box, OnStage: onStage}
+	return Sight{Box: box, OnStage: onStage, TokenHidden: npcTok.Hidden}
 }

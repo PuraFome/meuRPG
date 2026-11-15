@@ -167,3 +167,49 @@ func TestNpcCheckOfACreatureHiddenOnTheMapAsksNoBard(t *testing.T) {
 		}
 	}
 }
+
+// TestNpcCheckOfACreatureHiddenOnTheMapAsksNoBardWithNoTokenOfTheirs: the creature's own token is read first. Hidden, it opens no question
+// to any bard, whatever the box says: not to a bard with no token on the map, and not on a map with no grid, where nothing is measured.
+// The positive control of each table is the same creature with its token shown: the box then asks the bards.
+func TestNpcCheckOfACreatureHiddenOnTheMapAsksNoBardWithNoTokenOfTheirs(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		columns int
+		bards   bool // the bards have a token too
+	}{
+		"a gridded map, the bards have no token":      {gridColumns, false},
+		"a map with no grid, the bards have no token": {0, false},
+		"a map with no grid, the bards have a token":  {0, true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+			mapID := n.h.newMap(n.campaignID, tc.columns)
+			if _, err := n.master.play.SetCurrentMap(t.Context(), connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: n.campaignID, MapId: mapID})); err != nil {
+				t.Fatalf("SetCurrentMap() error = %v", err)
+			}
+			n.h.placeToken(mapID, n.npcID, 1750, 250)
+			if tc.bards {
+				n.h.placeToken(mapID, n.bri.GetId(), 250, 250)
+				n.h.placeToken(mapID, n.lia.GetId(), 250, 750)
+			}
+			shown, err := n.roll(t, 15, true)
+			if err != nil || !shown.GetHeld() || len(shown.GetCheck().GetAsks()) != 2 {
+				t.Fatalf("the creature with its token shown = %v, %v; want the box to ask both bards", shown, err)
+			}
+			if _, err := n.skip(n.master, shown.GetCheck().GetHoldId(), newKey()); err != nil {
+				t.Fatalf("SkipNpcCheckAsks() error = %v", err)
+			}
+			n.hideToken(t, mapID, n.npcID)
+			res, err := n.roll(t, 15, true)
+			if err != nil || res.GetHeld() || len(res.GetCheck().GetAsks()) != 0 || !res.GetCheck().GetSettled() || res.GetCheck().GetTotal() != 15 {
+				t.Fatalf("the creature with its token hidden = %v, %v; want a check settled at once with nobody asked", res, err)
+			}
+			for _, u := range []*user{n.bia, n.ana} {
+				if got := n.listHeldRolls(t, u); len(got) != 0 {
+					t.Errorf("a bard reads %v, want nothing", got)
+				}
+			}
+		})
+	}
+}
