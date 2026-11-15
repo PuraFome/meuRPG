@@ -73,18 +73,8 @@ func windowKindCheck(t *testing.T, db *sql.DB) string {
 	return clause
 }
 
-// mountWindowsDDL is what the migration of the mounted combat (00339, another branch) does to the kinds of the windows; the
-// test runs it by hand, so that 00340 is tried over a database where it is already there.
-const mountWindowsDDL = `ALTER TABLE reaction_windows
-    DROP CONSTRAINT IF EXISTS reaction_windows_kind_valid,
-    ADD CONSTRAINT reaction_windows_kind_valid CHECK (kind IN (
-        'shield', 'uncanny_dodge', 'hellish_rebuke', 'counterspell', 'cutting_words',
-        'deflect_missiles', 'feather_fall', 'concentration_save', 'master_check', 'effect_save', 'contest',
-        'maneuver_reduce', 'protection', 'legendary_resistance', 'parry', 'slow_fall', 'readied', 'mount_save', 'dismount'
-    ))`
-
-// TestFeatureWindowMigrationKeepsTheMountWindows: a database that already holds the kinds 'mount_save' and 'dismount' (00339)
-// and a window of each keeps both through the Up and the Down of 00340: the Up lists them, and the Down puts back the list of
+// TestFeatureWindowMigrationKeepsTheMountWindows: a database at 00339, which adds the kinds 'mount_save' and 'dismount',
+// with a window of each keeps both through the Up and the Down of 00340: the Up lists them, and the Down puts back the list of
 // 00339 (without 'feature'), so no kind is dropped and no stored window breaks the CHECK.
 func TestFeatureWindowMigrationKeepsTheMountWindows(t *testing.T) {
 	t.Parallel()
@@ -97,7 +87,6 @@ func TestFeatureWindowMigrationKeepsTheMountWindows(t *testing.T) {
 	if _, err := provider.UpTo(ctx, featureWindowMigration-1); err != nil {
 		t.Fatalf("UpTo(%d) error = %v", featureWindowMigration-1, err)
 	}
-	exec(t, db, mountWindowsDDL)
 	scan := func(query string, dest ...any) {
 		t.Helper()
 		if err := db.QueryRowContext(ctx, query).Scan(dest...); err != nil {

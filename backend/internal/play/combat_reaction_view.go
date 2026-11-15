@@ -37,6 +37,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.EffectSave:          playv1.ReactionKind_REACTION_KIND_EFFECT_SAVE,
 	reaction.LegendaryResistance: playv1.ReactionKind_REACTION_KIND_LEGENDARY_RESISTANCE,
 	reaction.ParryKind:           playv1.ReactionKind_REACTION_KIND_PARRY,
+	reaction.Dismount:            playv1.ReactionKind_REACTION_KIND_DISMOUNT,
 	reaction.Readied:             playv1.ReactionKind_REACTION_KIND_READIED,
 	reaction.Feature:             playv1.ReactionKind_REACTION_KIND_FEATURE,
 }
@@ -144,10 +145,10 @@ func (wv *windowView) openWindows(open []playdb.ReactionWindow, line *waitLine) 
 // part in the line the caller reads.
 func (wv *windowView) openOne(w playdb.ReactionWindow, order []reaction.Window, line *waitLine) (*playv1.ReactionWindow, error) {
 	reactor := wv.reactorOf(w)
-	answers := wv.v.master || (reactor != nil && wv.v.owns(*reactor) && !windowTriggerOf(w).Hidden)
+	answers := wv.v.master || (wv.ownerAnswers(w, reactor) && !windowTriggerOf(w).Hidden)
 	now := reaction.AnswerNow(order, w.ID)
 	var pw *playv1.ReactionWindow
-	if answers && wv.shownNow(w, now) {
+	if answers && reaction.Kind(w.Kind) != reaction.MountSave && wv.shownNow(w, now) { // a rider's save reads as Encounter.mount_save
 		var err error
 		if pw, err = wv.window(w, reactor, now); err != nil {
 			return nil, err
@@ -202,6 +203,9 @@ func (wv *windowView) offerWindows(offers []playdb.OpportunityOffer, windows []*
 	for _, o := range offers {
 		mover, ok1 := wv.byID[o.MoverID]
 		reactor, ok2 := wv.byID[o.ReactorID]
+		if ok1 {
+			mover = offerMoverFor(wv.d.cs, wv.v, mover, o)
+		}
 		if !ok1 || !ok2 || !wv.v.seesAtOffer(mover, o) {
 			continue
 		}
@@ -267,6 +271,10 @@ func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant,
 		wv.contestWait(reactor, answers, wait)
 	case reaction.EffectSave:
 		wv.effectSaveWait(w, reactor, answers, wait)
+	case reaction.MountSave:
+		wv.mountSaveWait(w, reactor, answers, wait)
+	case reaction.Dismount:
+		wv.dismountWait(w, reactor, answers, wait)
 	case reaction.Concentration:
 		if windowTriggerOf(w).Spell == concentrationReadied && !wv.v.master && !answers { // a held spell's save is the readier's secret (RN-10)
 			wait.Master = true
@@ -569,4 +577,9 @@ func (wv *windowView) concentrationMode(reactor *playdb.Combatant, p *playv1.Con
 // statesAtRoll are the combat's states as the roll the window asks reads them: with the auras where everyone stands now.
 func (wv *windowView) statesAtRoll() map[string][]playdb.CombatantState {
 	return withAuras(statesOf(wv.d.states), wv.d.cs, &wv.v, wv.asleep)
+}
+
+// ownerAnswers says the viewer's player answers the window of the reactor they own: not the dismount of a creature, which is the master's.
+func (wv *windowView) ownerAnswers(w playdb.ReactionWindow, reactor *playdb.Combatant) bool {
+	return reactor != nil && wv.v.owns(*reactor) && (reaction.Kind(w.Kind) != reaction.Dismount || !isCreature(*reactor))
 }

@@ -142,9 +142,9 @@ func (s *Service) takeActionResponse(ctx context.Context, m authz.Membership, re
 	enc, err := s.finish(ctx, m, res, func(ctx context.Context, d *encounterData) {
 		s.publishEncounterChanged(ctx, m.CampaignID, d.enc)
 		s.publishLogChanged(ctx, m.CampaignID, d.enc.ID, !ev.Secret)
-		s.publishVitals(m.CampaignID, out.vitals)
+		s.publishVitals(ctx, m.CampaignID, out.vitals)
 		for _, v := range out.extra {
-			s.publishVitals(m.CampaignID, v)
+			s.publishVitals(ctx, m.CampaignID, v)
 		}
 	})
 	if err != nil {
@@ -307,6 +307,13 @@ func (f *takeActionFlow) mayTake(ctx context.Context) error {
 			return err
 		}
 	} else if err := f.s.mustBeOnTurn(ctx, f.c, f.who); err != nil {
+		return err
+	}
+	key := f.call.actionKey
+	if f.feature {
+		key = ""
+	}
+	if err := f.s.mustBeDirected(ctx, f.c, f.v, f.who, key); err != nil {
 		return err
 	}
 	// The master has the last word: he may act again with the action used.
