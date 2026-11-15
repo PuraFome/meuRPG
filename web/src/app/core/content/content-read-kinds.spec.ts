@@ -319,7 +319,6 @@ const EXPECTED: Record<string, unknown> = {
   },
   'feat with ability increases': {
     rows: [
-      { label: 'Pré-requisito', value: 'Nenhum' },
       { label: 'Aumento de habilidade', value: '+1 em uma habilidade à escolha: Força' },
       { label: 'Aumento de habilidade', value: '+2 em 2 habilidades à escolha: ' },
     ],

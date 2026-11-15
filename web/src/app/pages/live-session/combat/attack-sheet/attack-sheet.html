@@ -91,12 +91,14 @@
         }
       </div>
       @if (mode.hasMode()) {
+        <app-favor-spend [control]="fav" [busy]="s.busy()" />
         <app-roll-mode-picker
           [suggested]="mode.suggested()"
           [sources]="mode.sources()"
           [approval]="mode.approval"
           [request]="modes.request()"
           [mode]="mode.chosen()"
+          [lock]="fav.lock()"
           (modeChange)="mode.set($event)"
           [(reason)]="modes.reason"
           [busy]="s.busy()"
@@ -122,6 +124,23 @@
             (pickedChange)="useDie($event)"
           />
         }
+        @if (trade.options().length > 0) {
+          <!-- The trade of a power attack feature (Golpe Pesado): off at the start of every attack. -->
+          <app-power-trade-offer
+            [trades]="trade.options()"
+            [pickedKey]="trade.pickedKey()"
+            [box]="trade.box(mode.rollMode())"
+            (chosen)="pickTrade($event)"
+          >
+            @if (s.poolNotice(); as note) {
+              <!-- Two checks on one pool with one use: said right under them, above the before-and-after box. -->
+              <div class="mr-notice mr-notice--danger" role="alert">
+                <mat-icon aria-hidden="true">error</mat-icon>
+                <p>{{ note }}</p>
+              </div>
+            }
+          </app-power-trade-offer>
+        }
         <!-- The d4 an effect adds (Bênção, Perdição) with physical dice: typed before the d20 is confirmed. -->
         @if (typedFields().length > 0 && (s.typing() || !canApp)) {
           <app-extra-dice class="sheet__extra" [fields]="typedFields()" [(faces)]="extraFaces" />
@@ -134,12 +153,14 @@
             [label]="rollLabel()"
             hint="Role o seu dado e digite o número que saiu (1 a 20)."
             totalNote="Total do ataque"
-            [modifier]="attack.attackBonus"
+            [modifier]="trade.bonus()"
+            [appLabel]="trade.rollLabel(mode.rollMode()) ?? trade.offLabel()"
             [typedFormula]="hasExtras() ? typedFormula : null"
             [confirmTotal]="hasExtras()"
             [waiting]="extrasPending()"
             [busy]="s.busy()"
             [sticky]="true"
+            [typeOutlined]="true"
             [(typing)]="s.typing"
             (app)="rollAttack({ inApp: true })"
             (typed)="rollAttackTyped($event)"
@@ -154,7 +175,7 @@
             [modifier]="pairModifier()"
             [waiting]="extrasPending()"
             totalNote="Total do ataque"
-            [appLabel]="'Rolar 2d20 no app'"
+            [appLabel]="trade.rollLabel(mode.rollMode()) ?? 'Rolar 2d20 no app'"
             [hint]="'Role os dois d20 e digite os dois números, na ordem em que saíram (1 a 20 cada). Conta o ' + (mode.combine() === 'lower' ? 'menor' : 'maior') + '.'"
             [busy]="s.busy()"
             [(typing)]="s.typing"
@@ -169,6 +190,7 @@
         [targetLabel]="targetLabel()"
         [roll]="s.roll()"
         [d20Formula]="d20Formula()"
+        [tradeLine]="tradeLine()"
         [outcome]="outcome()"
         [held]="held()"
         [showDamage]="s.stage() === 'done'"
@@ -245,6 +267,7 @@
               [busy]="s.busy()"
               [appLabel]="dmg.appLabel()"
               [sticky]="true"
+              [typeOutlined]="true"
               [(typing)]="s.typing"
               (app)="rollDamage({ inApp: true })"
               (typed)="rollDamageTyped($event)"

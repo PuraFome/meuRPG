@@ -7105,6 +7105,54 @@ func (q *Queries) ListEncounterRollModeRequests(ctx context.Context, encounterID
 	return items, nil
 }
 
+const listEncountersOfCharacter = `-- name: ListEncountersOfCharacter :many
+SELECT e.id, e.game_session_id, e.map_id, e.map_point_id, e.name, e.status, e.round, e.current_combatant_id, e.grid_columns, e.grid_rows, e.revision, e.created_at, e.started_at, e.ended_at, e.mode, e.sunlight_on, e.sunlight_scope, e.sunlight_squares FROM encounters e
+WHERE EXISTS (SELECT 1 FROM combatants c WHERE c.encounter_id = e.id AND c.character_id = $1)
+ORDER BY e.created_at DESC, e.id DESC
+LIMIT 10
+`
+
+// The combats the character is a combatant of, the latest first, ended or not: the search for the ammunition of its
+// last combat reads the latest few.
+func (q *Queries) ListEncountersOfCharacter(ctx context.Context, characterID string) ([]Encounter, error) {
+	rows, err := q.db.Query(ctx, listEncountersOfCharacter, characterID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Encounter
+	for rows.Next() {
+		var i Encounter
+		if err := rows.Scan(
+			&i.ID,
+			&i.GameSessionID,
+			&i.MapID,
+			&i.MapPointID,
+			&i.Name,
+			&i.Status,
+			&i.Round,
+			&i.CurrentCombatantID,
+			&i.GridColumns,
+			&i.GridRows,
+			&i.Revision,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.EndedAt,
+			&i.Mode,
+			&i.SunlightOn,
+			&i.SunlightScope,
+			&i.SunlightSquares,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFreeRollEvents = `-- name: ListFreeRollEvents :many
 SELECT id, actor_user_id, payload, created_at FROM session_events
 WHERE game_session_id = $1 AND kind = 'free_roll_rolled'

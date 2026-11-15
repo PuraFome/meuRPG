@@ -98,6 +98,8 @@ describe('sheet-format', () => {
         'score_above_20',
         'level',
         'formula',
+        'feat_prerequisite',
+        'option_prerequisite',
       ].map(title),
     ).toEqual([
       'Magias a revisar.',
@@ -110,6 +112,8 @@ describe('sheet-format', () => {
       'Habilidade acima de 20.',
       'Nível acima do máximo.',
       'Efeito ignorado.',
+      'Talento que não vale agora.',
+      'Opção que não vale agora.',
     ]);
   });
 

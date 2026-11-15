@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -351,24 +352,33 @@ func answerError(status int, e *apiErrorBody) error {
 	if status == http.StatusUnauthorized || status == http.StatusForbidden {
 		return &NotAuthorizedError{Status: status, Reason: reason}
 	}
-	// Google's own words go up for the log only (the caller logs the error and
-	// shows the master a fixed reason), cut short: it can quote part of the request.
-	if e != nil && e.Message != "" {
-		return errors.Join(ErrUnavailable, fmt.Errorf("status %d: %s: %s", status, reason, truncate(e.Message, maxLoggedMessage)))
+	// Only the status and Google's reason word go up: its message can quote part
+	// of the request, so it is never put in the error, and the error is logged.
+	if reason != "" {
+		return errors.Join(ErrUnavailable, fmt.Errorf("status %d: %s", status, reason))
 	}
 	return errors.Join(ErrUnavailable, fmt.Errorf("status %d", status))
 }
 
+// reasonWord is what a reason may look like to be logged: an enum token such as
+// RESOURCE_EXHAUSTED or invalid_request. Free text is never accepted, since it
+// can quote the request.
+var reasonWord = regexp.MustCompile(`^[A-Za-z0-9_.]{1,64}$`)
+
 // errorReason is Google's reason for an error, for the log: the first detail's, else the
-// status word, else the code.
+// status word, else the code. It is empty when that word is not an enum-like token.
 func errorReason(e *apiErrorBody) string {
-	if len(e.Details) > 0 && e.Details[0].Reason != "" {
-		return e.Details[0].Reason
-	}
+	reason := strings.Trim(string(e.Code), `"`)
 	if e.Status != "" {
-		return e.Status
+		reason = e.Status
 	}
-	return strings.Trim(string(e.Code), `"`)
+	if len(e.Details) > 0 && e.Details[0].Reason != "" {
+		reason = e.Details[0].Reason
+	}
+	if !reasonWord.MatchString(reason) {
+		return ""
+	}
+	return reason
 }
 
 // incompleteError is the error of an interaction that is not completed (incomplete,
@@ -408,16 +418,6 @@ func lastImage(doc interaction) (Image, error) {
 		mime = "image/jpeg" // what writeBody asks for
 	}
 	return Image{MimeType: mime, Data: data}, nil
-}
-
-// maxLoggedMessage is the most of Google's error message that is logged.
-const maxLoggedMessage = 300
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return strings.ToValidUTF8(s[:n], "") + "..."
 }
 
 func safetyWord(s string) string {

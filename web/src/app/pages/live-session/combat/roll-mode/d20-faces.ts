@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 
 import type { DiceRoll } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import { type AdvantageSource, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { d20Faces, extraDieLines, modeWord, sourceLine } from '../../../../core/combat/roll-mode';
+import { d20Faces, extraDieLines, modeWord, sourceLines } from '../../../../core/combat/roll-mode';
 
 /**
  * The two d20 of a roll with advantage or disadvantage: the one that counts is
@@ -33,8 +33,8 @@ import { d20Faces, extraDieLines, modeWord, sourceLine } from '../../../../core/
     @if (reason()) {
       <span class="d20__reason">Motivo: “{{ reason() }}”</span>
     }
-    @for (s of sources(); track $index) {
-      <span class="d20__src">{{ sourceLine(s) }}</span>
+    @for (line of sourceTexts(); track $index) {
+      <span class="d20__src">{{ line }}</span>
     }
     @for (line of extraLines(); track $index) {
       <span class="d20__src">{{ line }}</span>
@@ -68,5 +68,5 @@ export class D20Faces {
       .join(', '),
   );
   protected readonly extraLines = computed(() => extraDieLines(this.roll(), this.sources()));
-  protected sourceLine = sourceLine;
+  protected readonly sourceTexts = computed(() => sourceLines(this.sources()));
 }

@@ -253,13 +253,7 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 		return err
 	}
 	if who, ok := u.find(ev.Actor); ok {
-		if err := u.attackerBack(ctx, who, ev); err != nil {
-			return err
-		}
-		if err := u.rollSpentBack(ctx, who, ev); err != nil {
-			return err
-		}
-		if err := u.meleeHitBack(ctx, who, ev); err != nil {
+		if err := u.attackSpentBack(ctx, who, ev); err != nil {
 			return err
 		}
 	}
@@ -271,6 +265,17 @@ func (u *undoer) attackRolled(ctx context.Context, ev actionEvent) error {
 	if ev.Pending != "" {
 		if err := u.c.q.DeletePendingDamage(ctx, ev.Pending); err != nil {
 			return fmt.Errorf("delete the pending damage: %w", err)
+		}
+	}
+	return nil
+}
+
+// attackSpentBack gives the attacker back what the attack spent: its economy and die, the d20's uses and Inspiration, the
+// melee hit's effects and the piece of ammunition.
+func (u *undoer) attackSpentBack(ctx context.Context, who playdb.Combatant, ev actionEvent) error {
+	for _, back := range []func(context.Context, playdb.Combatant, actionEvent) error{u.attackerBack, u.rollSpentBack, u.meleeHitBack, u.ammunitionBack} {
+		if err := back(ctx, who, ev); err != nil {
+			return err
 		}
 	}
 	return nil

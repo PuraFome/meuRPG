@@ -111,6 +111,8 @@ The limits are not a defence against a volume attack: that is the job of the [ed
 | Idle limit of the instance | 3 minutes without a unary call; the next re-check ends its streams with `unavailable` (`instance_idle`) and the app reconnects to the active revision | `instanceIdleLimit` in `cmd/api/main.go` |
 | Deadline of each message sent | 30 s; then the stream ends (`client_gone`) | `streamSendTimeout` in `cmd/api/main.go` |
 | Streams per person per campaign | 4; a fifth replaces the oldest, which ends with `unavailable` | `live.DefaultMaxPerUser` |
+| Streams per person across campaigns | 8; a ninth replaces the person's oldest in any campaign, which ends with `unavailable` | `live.DefaultMaxPerUserTotal` |
+| Streams per instance | 40, so that 10 of the 50 concurrent requests stay free for ordinary calls; a new one is refused with `unavailable` (`instance_full`) and no stream ends | `live.DefaultMaxStreams` |
 | Dead stream, app side | The app reconnects after about 60 s of silence, with a growing wait (1 s up to 30 s, jittered), only with the tab visible | App |
 | Hidden tab | The app closes the stream after 2 minutes hidden and reads the snapshot again on return | App |
 | Shutdown | Streams end as soon as the graceful shutdown starts (8 s by default) | `httpserver` |

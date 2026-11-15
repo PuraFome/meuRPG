@@ -1,8 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
-import { type AdvantageSource, RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
+import {
+  type AdvantageSource,
+  AdvantageSourceKind,
+  RollMode,
+} from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import type { CheckFace } from '../../../../core/play/check-roll';
-import { modeWord, orNormal } from '../../../../core/combat/roll-mode';
+import { modeWord, orNormal, sourceLines } from '../../../../core/combat/roll-mode';
 
 /**
  * How a check's d20 was rolled: the mode in words ("Vantagem"), the two dice with the one that counts marked
@@ -30,8 +34,8 @@ import { modeWord, orNormal } from '../../../../core/combat/roll-mode';
         }
         @if (sources().length) {
           <ul class="mode__sources" aria-label="Por que">
-            @for (s of sources(); track $index) {
-              <li>{{ s.textPt }}</li>
+            @for (line of lines(); track $index) {
+              <li>{{ line }}</li>
             }
           </ul>
         }
@@ -103,6 +107,12 @@ export class CheckMode {
   readonly sources = input<readonly AdvantageSource[]>([]);
   readonly faces = input<readonly CheckFace[]>([]);
 
+  /** Each source as the server wrote it; a roll made with the Inspiração reads "Vantagem: Inspiração, Outra fonte". */
+  protected readonly lines = computed(() =>
+    this.sources().some((s) => s.kind === AdvantageSourceKind.FAVOR)
+      ? sourceLines(this.sources())
+      : this.sources().map((s) => s.textPt),
+  );
   protected readonly word = computed(() => modeWord(orNormal(this.mode())));
   protected readonly pair = computed(() => this.faces().length > 1);
   protected readonly shown = computed(

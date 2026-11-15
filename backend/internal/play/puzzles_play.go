@@ -222,9 +222,10 @@ func (s *Service) replayRevealAfter(campaignID, userID string, res *moveResult) 
 }
 
 // recallFiring reads the firing of the puzzle's trap from the session's stored trap_triggered event, for the retry of a wrong move:
-// the retry tells it again (the trap, and the combat it fired in with its log). A trap that never fired, or whose event is gone,
-// tells nothing; the event is the trap's latest firing, which may be another move's, so the retry may tell more than the first call.
-func (s *Service) recallFiring(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, d puzzleDef, res *moveResult) error {
+// the retry tells it again (the trap, and the combat it fired in with its log). The event is the move's own: it was written with the
+// move's key, so a later firing of the same trap (the master armed it again) is not told. A move that fired nothing, or whose event
+// is gone, tells nothing.
+func (s *Service) recallFiring(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, d puzzleDef, key string, res *moveResult) error {
 	target := d.onWrong.GetTrap()
 	if target == nil || s.traps == nil {
 		return nil
@@ -233,8 +234,8 @@ func (s *Service) recallFiring(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 	var payload []byte
 	err := tx.QueryRow(ctx, `
 		SELECT encounter_id, payload FROM session_events
-		WHERE game_session_id = $1 AND kind = 'trap_triggered' AND payload->'trap'->>'point_id' = $2
-		ORDER BY seq DESC LIMIT 1`, session.ID, target.GetPointId()).Scan(&encID, &payload)
+		WHERE game_session_id = $1 AND kind = 'trap_triggered' AND idempotency_key = $2 AND payload->'trap'->>'point_id' = $3
+		ORDER BY seq LIMIT 1`, session.ID, key, target.GetPointId()).Scan(&encID, &payload)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}
@@ -333,7 +334,7 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, session playdb.GameS
 		return nil, err
 	}
 	if replayed {
-		return s.replayedMove(ctx, tx, q, session, m.CampaignID, d, run, res)
+		return s.replayedMove(ctx, tx, q, session, m.CampaignID, key, d, run, res)
 	}
 	if run.SolvedAt != nil {
 		return nil, puzzleBlocked(playv1.PuzzleBlockedReason_PUZZLE_BLOCKED_REASON_SOLVED, "the puzzle is solved: nothing moves any more")
@@ -356,7 +357,7 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, session playdb.GameS
 	if out.wrong {
 		// "Ao errar": the trap fires in this transaction, with the move; the attempt is
 		// the move itself, marked wrong below, and so is its count toward the limits.
-		if last.TrapName, err = s.fireWrongTrap(ctx, tx, q, session, m, who, d, now, res); err != nil {
+		if last.TrapName, err = s.fireWrongTrap(ctx, tx, q, session, m, who, d, key, now, res); err != nil {
 			return nil, err
 		}
 	}
@@ -365,9 +366,9 @@ func (s *Service) applyMove(ctx context.Context, tx pgx.Tx, session playdb.GameS
 
 // replayedMove answers a retry: a wrong move's trap firing is read back from storage, and the
 // names of the run's players are the current ones.
-func (s *Service) replayedMove(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, campaignID string, d puzzleDef, run playdb.PuzzleRun, res *moveResult) (runNames, error) {
+func (s *Service) replayedMove(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, campaignID, key string, d puzzleDef, run playdb.PuzzleRun, res *moveResult) (runNames, error) {
 	if res.wrong {
-		if err := s.recallFiring(ctx, tx, q, session, d, res); err != nil {
+		if err := s.recallFiring(ctx, tx, q, session, d, key, res); err != nil {
 			return nil, err
 		}
 	}
@@ -528,7 +529,7 @@ func (s *Service) savePuzzleMove(ctx context.Context, tx pgx.Tx, q *playdb.Queri
 // the move goes on. It returns the name the master gave the point, which the players who
 // see it read once it fired, and nothing for a trap that did not fire. res keeps the firing,
 // so the watchers hear of it after the commit.
-func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, who link.Character, d puzzleDef, now time.Time, res *moveResult) (string, error) {
+func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, m authz.Membership, who link.Character, d puzzleDef, key string, now time.Time, res *moveResult) (string, error) {
 	target := d.onWrong.GetTrap()
 	if target == nil || s.traps == nil {
 		return "", nil
@@ -545,7 +546,7 @@ func (s *Service) fireWrongTrap(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 	if err != nil {
 		return "", err
 	}
-	fired, err := s.fireAndRecordTrap(ctx, q, c, m, trap, res)
+	fired, err := s.fireAndRecordTrap(ctx, q, c, m, trap, key, res)
 	if errors.Is(err, maplink.ErrTrapNotArmed) {
 		return "", nil
 	}
@@ -574,9 +575,9 @@ func (s *Service) armedWrongTrap(ctx context.Context, tx pgx.Tx, campaignID stri
 }
 
 // fireAndRecordTrap fires the trap, in the combat running on its map or outside a combat, and
-// writes the firing's event (a combat running on the trap's map is read in this transaction,
+// writes the firing's event under the move's key (a combat running on the trap's map is read in this transaction,
 // never through the pool). The combat it fired in is left in res.
-func (s *Service) fireAndRecordTrap(ctx context.Context, q *playdb.Queries, c *combatTx, m authz.Membership, trap maplink.Trap, res *moveResult) (*trapFireEvent, error) {
+func (s *Service) fireAndRecordTrap(ctx context.Context, q *playdb.Queries, c *combatTx, m authz.Membership, trap maplink.Trap, key string, res *moveResult) (*trapFireEvent, error) {
 	enc, err := q.GetLatestEncounter(ctx, c.session.ID)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, fmt.Errorf("find the session's combat: %w", err)
@@ -600,7 +601,7 @@ func (s *Service) fireAndRecordTrap(ctx context.Context, q *playdb.Queries, c *c
 		ev.Round = c.enc.Round
 		res.firedEnc = c.enc
 	}
-	if err := insertEvent(ctx, c, eventTrapTriggered, &m.UserID, nil, ev); err != nil {
+	if err := insertEvent(ctx, c, eventTrapTriggered, &m.UserID, &key, ev); err != nil {
 		return nil, err
 	}
 	return fired, nil

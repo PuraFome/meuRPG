@@ -33,15 +33,24 @@ func (s *Service) fillItemCharges(ctx context.Context, content *rules.Content, c
 			continue
 		}
 		r, set := state[it.GetId()]
-		it.ChargesMax, it.ChargesLeft = ic.Max, ic.Left(r.ChargesUsed)
-		switch {
-		case r.Lost != "":
-			it.Lost, it.ChargesLeft = itemLossOf(r.Lost), 0
-		case !set && ic.HasStart():
-			it.ChargesLeft = -1 // the SRD rolls its charges: the master sets them
-		}
+		applyItemCharges(it, ic, r, set)
 	}
 	return nil
+}
+
+// applyItemCharges fills the charge fields of an entry from the catalog's numbers and the stored row (set says the
+// row exists).
+func applyItemCharges(it *charactersv1.SheetMagicItem, ic rules.ItemCharges, r charactersdb.ListItemChargesRow, set bool) {
+	it.ChargesMax, it.ChargesLeft = ic.Max, ic.Left(r.ChargesUsed)
+	it.Lost, it.LastRollPending = charactersv1.ItemLoss_ITEM_LOSS_UNSPECIFIED, false
+	switch {
+	case r.Lost != "":
+		it.Lost, it.ChargesLeft = itemLossOf(r.Lost), 0
+	case !set && ic.HasStart():
+		it.ChargesLeft = -1 // the SRD rolls its charges: the master sets them
+	default:
+		it.LastRollPending = r.LastRollPending
+	}
 }
 
 // dropRemovedItemCharges deletes the spent charges of the entries a saved sheet no longer has, so an entry that

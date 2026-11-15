@@ -1,3 +1,8 @@
+@if (campaignId()) {
+  <!-- The master's Inspiração (RN-43, 581-04): reads who has it itself, and again on each new copy of the live numbers. -->
+  <app-favor-panel [campaignId]="campaignId()" [characterId]="vitals().characterId" [viewer]="viewer()" [vitals]="vitals()" />
+}
+
 @if (boxes().length > 0) {
   <section class="block" aria-labelledby="resources-heading">
     <h2 class="block__title" id="resources-heading">Recursos</h2>

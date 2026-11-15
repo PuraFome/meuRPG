@@ -130,6 +130,11 @@
       }
 
       @if (!state.isMaster()) {
+        <!-- The master gave this player's character the Inspiração (RN-43, 581 states 3): a polite status; no other player reads anything (RN-10). -->
+        <app-favor-notice [on]="favor.gained() !== ''" (dismissed)="favor.dismissGained()" />
+      }
+
+      @if (!state.isMaster()) {
         <!-- A trap noticed, a treasure found: over the page under the app bar, in a combat too (E9-08 G, E9-09 4). -->
         <app-live-toast [toasts]="toasts.toasts()" (dismissed)="toasts.dismiss($event)" />
       }

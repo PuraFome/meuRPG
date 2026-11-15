@@ -175,6 +175,7 @@ func readOffRow(t *testing.T, visibility rulesv1.TableEffectAudience, cast bool)
 	if cast {
 		a.castMark(t, e, 1)
 	}
+	a.stockArrows(t, a.pens)
 	hit := a.strike(t, e, shortbowKey, "Toren", d20(20))
 	read := func() string {
 		p, err := playdb.New(a.h.pool).GetPendingDamage(t.Context(), playdb.GetPendingDamageParams{EncounterID: e.GetId(), ID: hit.GetId()})
@@ -226,6 +227,7 @@ func TestAHitSpellNextMeleeHitIsListedOffOnARangedWeapon(t *testing.T) {
 	a := newHitCasters(t, nil, hitMod(trigMelee, func(m *tableMod) { m.Dice = 2 }))
 	e := a.hitFight(t)
 	a.castMark(t, e, 1)
+	a.stockArrows(t, a.pens)
 	ranged := a.strike(t, e, shortbowKey, "Capitão Goblin", d20(19))
 	part := hitPart(ranged)
 	if part == nil || part.GetAvailable() || part.GetAuto() || part.GetChoosable() || part.GetSelected() || part.GetReasonPt() != "só num golpe corpo a corpo. Continua esperando." || part.GetDiceCount() != 2 {
@@ -269,6 +271,7 @@ func TestRN10_AnOffHitPartReachesOnlyItsCastersPlayerAndTheMaster(t *testing.T) 
 		hitMod(trigMelee, func(m *tableMod) { m.Die, m.Dice, m.MaxDice = 12, 7, 13 }))
 	e := a.hitFight(t)
 	a.castMark(t, e, 1)
+	a.stockArrows(t, a.pens)
 	hit := a.strike(t, e, shortbowKey, "Capitão Goblin", d20(19))
 	canaries := []*regexp.Regexp{regexp.MustCompile(`corpo a corpo\. Continua esperando`), regexp.MustCompile(`"diceSides":\s*12`), regexp.MustCompile(`"diceCount":\s*7\b`)}
 	for name, u := range map[string]*user{"Ana": a.ana, "the master": a.master} {

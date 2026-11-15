@@ -154,6 +154,7 @@
         [diceMode]="data.diceMode"
         [preference]="data.preference"
         [busy]="busy()"
+        [favor]="fav"
         (roll)="roll($event)"
       />
       }
@@ -181,28 +182,28 @@
       @if (stage() === 'choice') {
         <div class="mr-notice mr-notice--success note" role="status">
           <mat-icon aria-hidden="true">check_circle</mat-icon>
-          <p><b>Você venceu a disputa.</b> {{ choiceLead() }}</p>
+          <p><b>Você venceu a disputa.</b> {{ shove().lead }}</p>
         </div>
         <div class="list" role="radiogroup" aria-label="O que fazer">
           <label class="card" [class.card--on]="outcome() === Outcome.PRONE">
             <input type="radio" class="mr-check-input" name="shove" [checked]="outcome() === Outcome.PRONE" (change)="setOutcome(Outcome.PRONE)" />
             <span class="card__text">
               <span class="card__name">Derrubar</span>
-              <span class="card__sub">{{ proneText() }}</span>
+              <span class="card__sub">{{ shove().prone }}</span>
             </span>
           </label>
-          <label class="card" [class.card--on]="outcome() === Outcome.PUSH" [class.card--off]="pushOff()">
+          <label class="card" [class.card--on]="outcome() === Outcome.PUSH" [class.card--off]="shove().pushOff">
             <input
               type="radio"
               class="mr-check-input"
               name="shove"
-              [disabled]="pushOff()"
+              [disabled]="shove().pushOff"
               [checked]="outcome() === Outcome.PUSH"
               (change)="setOutcome(Outcome.PUSH)"
             />
             <span class="card__text">
               <span class="card__name">Empurrar 1,5 m</span>
-              <span class="card__sub">{{ pushText() }}</span>
+              <span class="card__sub">{{ shove().push }}</span>
             </span>
           </label>
         </div>

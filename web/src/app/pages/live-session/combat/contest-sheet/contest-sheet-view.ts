@@ -159,6 +159,7 @@ export function startInputOf(
   die: CheckDie,
   maneuverKey: string,
   maneuverFace: number,
+  spendFavor = false,
 ): StartContestInput {
   return {
     campaignId: data.campaignId,
@@ -170,5 +171,6 @@ export function startInputOf(
     skill,
     die,
     ...(maneuverKey ? { maneuverKey, maneuverFace } : {}),
+    ...(spendFavor ? { spendFavor } : {}),
   };
 }

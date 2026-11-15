@@ -44,6 +44,9 @@ import { CheckRollForm } from '../check-roll-form/check-roll-form';
 import { ContestRoll } from '../contest-roll/contest-roll';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../../shared/sheet/sheet-host';
+import { FavorSpend, circumstancesOfNotes } from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
+import { isPlayer } from '../../../../core/combat/combat-view';
 
 /** What the page hands the Hide sheet. */
 export interface HideSheetData {
@@ -149,6 +152,15 @@ export class HideSheet {
     const id = this.started();
     return id ? this.data.contests.attempt(id) : undefined;
   });
+  /** The master's Inspiração (RN-43) for the Dexterity (Stealth) d20. */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => {
+      const me = this.own();
+      return me && isPlayer(me) ? { characterId: me.characterId, name: me.label } : null;
+    },
+    circumstances: () => circumstancesOfNotes(this.mode, this.notes),
+  });
   protected readonly mode = this.data.option?.mode ?? RollModeKind.NORMAL;
   protected readonly notes = this.data.option?.notes ?? [];
   protected readonly modifier = this.data.option?.modifier ?? 0;
@@ -178,6 +190,7 @@ export class HideSheet {
     }
     this.busy.set(true);
     this.error.set('');
+    const spend = this.fav.spend();
     try {
       const res = await this.api.hide(
         this.data.campaignId,
@@ -185,8 +198,15 @@ export class HideSheet {
         this.data.combatantId,
         this.data.actionKey,
         die,
-        this.keys.keyFor({ who: this.data.combatantId, action: this.data.actionKey, die }),
+        this.keys.keyFor({
+          who: this.data.combatantId,
+          action: this.data.actionKey,
+          die,
+          favor: spend,
+        }),
+        spend,
       );
+      this.fav.spent();
       this.data.state.apply(res.encounter);
       if (!res.attempt) {
         // The d20 is kept for a question (a halfling's 1, a Bardic Inspiration die): the player decides before the attempt is made.
@@ -195,7 +215,7 @@ export class HideSheet {
       }
       this.attempted(res.attempt);
     } catch (err) {
-      this.error.set(combatErrorMessage(err, 'se esconder'));
+      this.error.set(this.fav.refused(err) ?? combatErrorMessage(err, 'se esconder'));
     } finally {
       this.busy.set(false);
     }

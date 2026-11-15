@@ -324,6 +324,7 @@ type person struct {
 	xp         progressionv1connect.ProgressionServiceClient
 	notes      notesv1connect.NotesServiceClient
 	resources  playv1connect.ResourceServiceClient
+	charges    playv1connect.ChargesServiceClient
 	screen     playv1connect.TableScreenServiceClient
 	ready      playv1connect.ReadyServiceClient
 	// reads, when set, replaces the rule of who may read a canary (see canary.mayRead). Only the table
@@ -372,6 +373,7 @@ func (s *stack) personWith(name, id string) *person {
 		xp:         progressionv1connect.NewProgressionServiceClient(c, url),
 		notes:      notesv1connect.NewNotesServiceClient(c, url),
 		resources:  playv1connect.NewResourceServiceClient(c, url),
+		charges:    playv1connect.NewChargesServiceClient(c, url),
 		screen:     playv1connect.NewTableScreenServiceClient(c, url),
 	}
 }

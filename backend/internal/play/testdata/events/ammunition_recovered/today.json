@@ -1,0 +1,11 @@
+{
+  "encounter_id": "x",
+  "kinds": [
+    {
+      "key": "x",
+      "name_pt": "x",
+      "quantity": 1,
+      "spent": 1
+    }
+  ]
+}

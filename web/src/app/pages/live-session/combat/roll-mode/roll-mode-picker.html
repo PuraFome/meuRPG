@@ -1,5 +1,11 @@
 <section class="mode" [attr.aria-labelledby]="id + '-t'">
-  <h3 class="mode__title" [id]="id + '-t'">Como rolar o d20</h3>
+  <div class="mode__head">
+    <h3 class="mode__title" [id]="id + '-t'">Como rolar o d20</h3>
+    @if (lock(); as l) {
+      <!-- The Inspiração is ticked: the segment only reads the mode it gives (581-03, 581-07 item 8). -->
+      <span class="mode__lock"><mat-icon aria-hidden="true">lock</mat-icon>{{ l.word }}</span>
+    }
+  </div>
 
   @if (sources().length) {
     <ul class="sources" [attr.aria-label]="'Por que o app sugere ' + word(suggested())">
@@ -30,14 +36,19 @@
         />
         <mat-icon class="radio__mark" aria-hidden="true">{{ checked(m) ? 'radio_button_checked' : 'radio_button_unchecked' }}</mat-icon>
         <span class="radio__word">{{ word(m) }}</span>
-        @if (!mixed() && m === suggestedMode()) {
+        @if (!mixed() && !lock() && m === suggestedMode()) {
           <span class="radio__sug">sugerido</span>
         }
       </label>
     }
   </div>
 
-  @if (answered(); as a) {
+  @if (lock(); as l) {
+    <p class="note note--lock" role="status">
+      <mat-icon aria-hidden="true">info</mat-icon>
+      <span>{{ l.line }}</span>
+    </p>
+  } @else if (answered(); as a) {
     <p class="notice notice--ok" role="status">
       <mat-icon aria-hidden="true">check_circle</mat-icon>
       <span>O mestre decidiu: <b>{{ word(a.decidedMode) }}</b>.</span>
