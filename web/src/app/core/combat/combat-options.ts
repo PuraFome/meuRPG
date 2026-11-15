@@ -197,7 +197,7 @@ export function flurryLeftText(left: number): string {
 /** "corpo a corpo" for a close attack, "alcance 36 m" for the rest. With
  * `reach`, a close attack says its reach too ("corpo a corpo, 1,5 m"). */
 export function rangeText(attack: Attack, reach = false): string {
-  if (isThrow(attack)) {
+  if (isRangedThrow(attack)) {
     return tight(
       `${metersText(attack.rangeFt)}; até ${metersText(attack.longRangeFt)} com desvantagem`,
     );
@@ -220,9 +220,15 @@ export function throwLine(attack: Attack): string {
     : '';
 }
 
-/** "Arremesso: não gasta munição.": the note under a thrown weapon in combat; empty for any other attack. */
+/** A weapon whose range IS the throw (the Boleadeira, a dart): board 580-16 card 10 draws its row with the distances and the
+ * note. A thrown melee weapon (a dagger) keeps its short row: the throw is a side use of it. */
+function isRangedThrow(attack: Attack): boolean {
+  return isThrow(attack) && !attack.melee;
+}
+
+/** "Arremesso: não gasta munição.": the note under a ranged thrown weapon in combat; empty for any other attack. */
 export function throwNote(attack: Attack): string {
-  return isThrow(attack) ? 'Arremesso: não gasta munição.' : '';
+  return isRangedThrow(attack) ? 'Arremesso: não gasta munição.' : '';
 }
 
 /** A melee attack (a weapon with no range of its own): the only kind an
