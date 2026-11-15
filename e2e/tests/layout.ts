@@ -62,6 +62,9 @@ function auditLayout(): LayoutIssue[] {
     const r = el.getBoundingClientRect();
     // 1px or less: a visually hidden label (clipped), for screen readers.
     if (r.width <= 1 || r.height <= 1) return false;
+    // The content of a closed <details> is not shown (its summary is).
+    const closed = el.closest('details:not([open])');
+    if (closed && !el.closest('summary')) return false;
     const cs = getComputedStyle(el);
     return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) !== 0;
   };

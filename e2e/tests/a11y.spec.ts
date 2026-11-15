@@ -7318,7 +7318,7 @@ async function scanPowerAttackSheet(browser: Browser, colorScheme: 'light' | 'da
     await spendBreathRPC(m, table);
     await p.reload();
     await openActionTab(p, 'Ataques');
-    sheet = await openSheet(/^Atacar com Arco longo/);
+    sheet = await openSheet(/^Atacar com Arco longo$/);
     await expect(sheet.getByRole('checkbox', { name: /Usar Disparo Firme/ })).toBeDisabled();
     // The pool is named by the feature that defines it (a table content resource has no other display name), and says when it
     // comes back (a short-rest pool: a long rest brings it back too).

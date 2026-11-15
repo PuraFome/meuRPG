@@ -23,7 +23,7 @@ func (p *puzzleTable) firingOfMove(t *testing.T, puzzleID, key string) *trapFire
 	if err != nil {
 		t.Fatalf("Begin() error = %v", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck // a read
+	defer func() { _ = tx.Rollback(ctx) }() // a read: nothing to undo
 	q := p.h.svc.queriesIn(tx)
 	d, _, err := p.h.svc.shownRun(ctx, q, session, p.campaignID, puzzleID)
 	if err != nil {
