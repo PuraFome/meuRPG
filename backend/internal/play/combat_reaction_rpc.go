@@ -179,9 +179,9 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 }
 
 // MarkReactionRolling implements playv1connect.CombatServiceHandler. It sets the
-// window's `rolling` mark for the master's clock and writes nothing else: no session
-// event, no log line (the closure returns no payload), so a retry or a second tab
-// only sets the same mark again.
+// window's `rolling` mark for the master's clock, or takes it off with `clear`, and writes
+// nothing else: no session event, no log line (the closure returns no payload), so a
+// retry or a second tab only sets or clears the same mark again.
 func (s *Service) MarkReactionRolling(
 	ctx context.Context,
 	req *connect.Request[playv1.MarkReactionRollingRequest],
@@ -200,7 +200,7 @@ func (s *Service) MarkReactionRolling(
 	}
 	// The window's own id is the key: no event is written, so it is never looked up as one.
 	res, err := s.write(ctx, combatWrite{m: m, key: winID, kind: eventReactionAnswered, encounterID: encID}, func(c *combatTx) (any, error) {
-		return nil, s.markRolling(ctx, c, m, winID)
+		return nil, s.markRolling(ctx, c, m, winID, req.Msg.GetClear())
 	})
 	if err != nil {
 		return nil, s.dbError(ctx, "mark a reaction as being rolled", err)
@@ -214,10 +214,10 @@ func (s *Service) MarkReactionRolling(
 	return connect.NewResponse(&playv1.MarkReactionRollingResponse{Encounter: out}), nil
 }
 
-// markRolling is the write of MarkReactionRolling. The mark is the reactor player's own:
-// the master reads it, never sets it. It returns no payload: the change is kept and
+// markRolling is the write of MarkReactionRolling: the mark on, or off when asked to. The mark is the reactor
+// player's own: the master reads it, never sets it or takes it off. It returns no payload: the change is kept and
 // nothing is written to the log.
-func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membership, winID string) error {
+func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membership, winID string, off bool) error {
 	if err := notEnded(c.enc); err != nil {
 		return err
 	}
@@ -229,10 +229,10 @@ func (s *Service) markRolling(ctx context.Context, c *combatTx, m authz.Membersh
 		return err
 	}
 	t := windowTriggerOf(w)
-	if t.Rolling {
+	if t.Rolling == !off {
 		return nil
 	}
-	t.Rolling = true
+	t.Rolling = !off
 	body, err := json.Marshal(t)
 	if err != nil {
 		return fmt.Errorf("encode the window's trigger: %w", err)

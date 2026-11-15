@@ -1477,8 +1477,9 @@ type CombatServiceClient interface {
 	// is rolling its die now (a physical die takes a while to type). It sets
 	// `ReactionWindow.rolling`, which the master's screen reads: the 30 s automatic
 	// pass then waits a longer, still bounded time (the screen's clock; the master can
-	// always pass it by hand). It changes nothing else, writes no log line, and is
-	// idempotent: marking a window twice is the same as once.
+	// always pass it by hand). With `clear` it takes the mark off, when the player came
+	// back from the map. It changes nothing else, writes no log line, and is idempotent:
+	// marking or clearing a window twice is the same as once.
 	//
 	// Only the reactor's player may call it: the master is refused (`permission_denied`),
 	// and so is a player for a window that is not theirs, the same answer for a real
@@ -3721,8 +3722,9 @@ type CombatServiceHandler interface {
 	// is rolling its die now (a physical die takes a while to type). It sets
 	// `ReactionWindow.rolling`, which the master's screen reads: the 30 s automatic
 	// pass then waits a longer, still bounded time (the screen's clock; the master can
-	// always pass it by hand). It changes nothing else, writes no log line, and is
-	// idempotent: marking a window twice is the same as once.
+	// always pass it by hand). With `clear` it takes the mark off, when the player came
+	// back from the map. It changes nothing else, writes no log line, and is idempotent:
+	// marking or clearing a window twice is the same as once.
 	//
 	// Only the reactor's player may call it: the master is refused (`permission_denied`),
 	// and so is a player for a window that is not theirs, the same answer for a real

@@ -1410,8 +1410,9 @@ service CombatService {
   // is rolling its die now (a physical die takes a while to type). It sets
   // `ReactionWindow.rolling`, which the master's screen reads: the 30 s automatic
   // pass then waits a longer, still bounded time (the screen's clock; the master can
-  // always pass it by hand). It changes nothing else, writes no log line, and is
-  // idempotent: marking a window twice is the same as once.
+  // always pass it by hand). With `clear` it takes the mark off, when the player came
+  // back from the map. It changes nothing else, writes no log line, and is idempotent:
+  // marking or clearing a window twice is the same as once.
   //
   // Only the reactor's player may call it: the master is refused (`permission_denied`),
   // and so is a player for a window that is not theirs, the same answer for a real
@@ -7457,6 +7458,9 @@ message MarkReactionRollingRequest {
   string campaign_id = 1;
   string encounter_id = 2;
   string window_id = 3;
+  // The player came back from the map: it takes the mark off. It does not restart the
+  // wait: the wait began at the first mark and no later mark or clear changes that.
+  bool clear = 4;
 }
 
 message MarkReactionRollingResponse {
