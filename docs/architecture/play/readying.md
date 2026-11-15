@@ -172,19 +172,27 @@ In the window, a creature named at Ready that cannot be aimed at now is not chos
 `origin` is the point of the cast.
 `castSpell` checks them as a cast on the caster's turn: the darts of the slot, the number of targets and the point.
 `targets` and `origin` on another kind of row, or on a held spell attack, are `invalid_argument`.
-The Ready sheet offers the spells the window releases with darts, creatures or nothing; the point and the direction are released with `CastSpell` by the readier while the READIED window is open.
+The Ready sheet offers the spells the window releases with darts, creatures or nothing.
+A spell that needs the map (a point, a direction, a wall) is released with `CastSpell` by the readier's player, or the master, while the READIED window is open.
+`PreviewSpellArea` reads the held spell at the slot level of the row while the caster's READIED window holds it (`heldByWindow`).
+That preview takes no free slot of that level and reads no slot from the request; any other preview is checked against the free slots as before.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldSpellTargets`), with the darts of its slot, so the window can show them.
 A held spell attack lists none.
 The list is the owner's and the master's, as the options are (RN-10).
 The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).
+`ReadiedAction.slot_level` carries that level to the master and the readier's player, 0 for a cantrip.
+A release that names a slot of another level than the held one is `invalid_argument` (`chosenSlot`): it names no slot, or that level.
 The release is checked as a cast: a spell the caster no longer has prepared is refused, and can only be let pass.
 `CastSpell` is a release only off the caster's turn, for the spell its own open READIED window holds (`findReadied`); any other cast is an ordinary one.
 Metamagic at the release is `invalid_argument`.
+A cast of another spell while the window is open is refused as a cast off the caster's turn (`NOT_YOUR_TURN`).
 A concentration spell keeps the concentration, now with its own key; another spell ends it.
 The cast waits for the windows any cast opens (Counterspell), with the READIED window open and `REACTION_PENDING` (`readiedHeld`).
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
+The readier's player marks the window with `MarkReactionRolling` while it chooses on the map, and takes the mark off with `clear` when it comes back without using the reaction.
+Both are idempotent and the reactor's player's alone, and the window stays open and answerable.
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.
@@ -200,7 +208,7 @@ The slot stays spent in every case.
 
 ### Who reads it
 
-The held spell's key and name, its level and that it is a spell are the master's and the readier's player's (RN-10).
+The held spell's key and name, its level (`slot_level`) and that it is a spell are the master's and the readier's player's (RN-10).
 `Combatant.concentration_spell` carries the held key for them and nothing for the others (`heldSpellView`).
 The `ACTION_READIED` line carries the slot (`spell.slot`) for them alone.
 The end of the previous concentration (`concentration_ended_key`) is public on that line, as on a cast line.
