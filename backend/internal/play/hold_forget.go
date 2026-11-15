@@ -68,27 +68,6 @@ func forgetHold(ctx context.Context, q *playdb.Queries, id string) error {
 	return nil
 }
 
-// forgetHoldsOfKind drops the questions of one kind a combatant keeps open in a combat (the one a window kept for its roller, when the
-// window closes by itself), giving back the Inspiration the unanswered ones spent.
-func forgetHoldsOfKind(ctx context.Context, q *playdb.Queries, encounterID string, combatantID *string, kind string) error {
-	if combatantID == nil {
-		return nil
-	}
-	holds, err := q.ListOpenInspirationHolds(ctx, playdb.ListOpenInspirationHoldsParams{EncounterID: &encounterID, CombatantID: combatantID})
-	if err != nil {
-		return fmt.Errorf("list the held rolls of a combatant: %w", err)
-	}
-	for _, h := range holds {
-		if h.Kind != kind {
-			continue
-		}
-		if err := forgetHold(ctx, q, h.ID); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // forgetHoldsOfWindow drops the questions kept for one window that closed by itself, giving back the Inspiration the unanswered ones
 // spent. A hold has no column that names its window: the request it stores does (window_id), and a reactor can have two windows of one
 // kind open, so only the holds whose request names this window go. A kind that keeps no question forgets nothing.
