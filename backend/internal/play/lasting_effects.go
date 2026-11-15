@@ -400,7 +400,13 @@ func (s *Service) refreshOne(ctx context.Context, c *combatTx, cs []playdb.Comba
 	if err := s.dropStatesIfIncapacitated(ctx, c, cs[i]); err != nil {
 		return err
 	}
-	return s.dropConcentrationIfIncapacitated(ctx, c, cs[i])
+	if err := s.dropConcentrationIfIncapacitated(ctx, c, cs[i]); err != nil {
+		return err
+	}
+	if slices.Contains(st.conds, condProne) && !slices.Contains(cb.Conditions, condProne) {
+		return s.riderProne(ctx, c, cb.ID) // a rider or a mount an effect knocked prone owes its save or its dismount
+	}
+	return nil
 }
 
 // exhaustionOfCombatant is the level of exhaustion a combatant carries: a character's is its
