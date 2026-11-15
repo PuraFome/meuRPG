@@ -96,6 +96,7 @@ func TestPassAnsweredInACombatWritesALinePerReader(t *testing.T) {
 		want func(f *favorFight) map[*user][]string
 	}{
 		{"accepted", func(t *testing.T, f *favorFight, id string) {
+			t.Helper()
 			if _, err := f.answer(id, true); err != nil {
 				t.Fatalf("accept: %v", err)
 			}
@@ -107,6 +108,7 @@ func TestPassAnsweredInACombatWritesALinePerReader(t *testing.T) {
 			}
 		}},
 		{"refused", func(t *testing.T, f *favorFight, id string) {
+			t.Helper()
 			if _, err := f.answer(id, false); err != nil {
 				t.Fatalf("refuse: %v", err)
 			}
@@ -117,6 +119,7 @@ func TestPassAnsweredInACombatWritesALinePerReader(t *testing.T) {
 			}
 		}},
 		{"canceled", func(t *testing.T, f *favorFight, id string) {
+			t.Helper()
 			if _, err := f.cancelAs(f.caio, id, newKey()); err != nil {
 				t.Fatalf("cancel: %v", err)
 			}
@@ -253,11 +256,13 @@ func TestUndoOfAnAcceptedPassRefusals(t *testing.T) {
 		check  func(t *testing.T, err error)
 	}{
 		{"the receiver spent it", `DELETE FROM character_favor WHERE character_id = $1`, func(t *testing.T, err error) {
+			t.Helper()
 			if got := blockedOf(t, err).GetReason(); got != playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED {
 				t.Errorf("reason = %v, want UNDO_TARGET_CHANGED", got)
 			}
 		}},
 		{"the giver has another", `INSERT INTO character_favor (character_id, campaign_id) SELECT $1, campaign_id FROM characters WHERE id = $1`, func(t *testing.T, err error) {
+			t.Helper()
 			wantFavorBlocked(t, "the undo", err, playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_ALREADY_HAS)
 		}},
 	} {
@@ -377,16 +382,19 @@ func TestPassAnswerLogHintsInACombat(t *testing.T) {
 		ana    int
 	}{
 		{"accepted", func(t *testing.T, f *favorFight, id string) {
+			t.Helper()
 			if _, err := f.answer(id, true); err != nil {
 				t.Fatal(err)
 			}
 		}, 1},
 		{"refused", func(t *testing.T, f *favorFight, id string) {
+			t.Helper()
 			if _, err := f.answer(id, false); err != nil {
 				t.Fatal(err)
 			}
 		}, 0},
 		{"canceled", func(t *testing.T, f *favorFight, id string) {
+			t.Helper()
 			if _, err := f.cancelAs(f.caio, id, newKey()); err != nil {
 				t.Fatal(err)
 			}

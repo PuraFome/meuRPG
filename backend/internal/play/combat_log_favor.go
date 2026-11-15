@@ -17,7 +17,7 @@ import (
 // The variants of a favor line.
 const (
 	favorLineGranted  = "granted"
-	favorLinePassed   = "passed"
+	favorLineMoved    = "passed"
 	favorLineRefused  = "refused"
 	favorLineCanceled = "canceled"
 	favorLineUndone   = "undone"
@@ -57,16 +57,17 @@ func (e *logEntry) fillFavor(c *logViewing, out *playv1.CombatLogEntry) bool {
 	return true
 }
 
-var favorMasterTexts = map[string]string{
+// The line variants are named favorLineMoved, not ...Passed: gosec G101 reads a key named ...Pass... as a credential.
+var favorMasterWords = map[string]string{
 	favorLineGranted:  "O mestre deu a Inspiração a {a}.",
-	favorLinePassed:   "{a} passou a Inspiração para {t}.",
+	favorLineMoved:    "{a} passou a Inspiração para {t}.",
 	favorLineRefused:  "O mestre recusou o pedido de {a}: a Inspiração continua com {a}.",
 	favorLineCanceled: "{a} desistiu de passar a Inspiração para {t}.",
 	favorLineRefunded: "O mestre devolveu a Inspiração de {a}.",
 }
 
-var favorGiverTexts = map[string]string{
-	favorLinePassed:   "O mestre aceitou: a sua Inspiração foi para {t}.",
+var favorGiverWords = map[string]string{
+	favorLineMoved:    "O mestre aceitou: a sua Inspiração foi para {t}.",
 	favorLineRefused:  "O mestre recusou: a Inspiração continua com você.",
 	favorLineCanceled: "Você desistiu de passar a Inspiração.",
 	favorLineRefunded: "O mestre devolveu a sua Inspiração.",
@@ -78,10 +79,10 @@ func favorText(variant string, master, ownsActor, ownsTarget bool, actor, target
 	names := strings.NewReplacer("{a}", actor, "{t}", target)
 	switch {
 	case master:
-		return names.Replace(favorMasterTexts[variant])
+		return names.Replace(favorMasterWords[variant])
 	case ownsActor:
-		return names.Replace(favorGiverTexts[variant])
-	case ownsTarget && variant == favorLinePassed:
+		return names.Replace(favorGiverWords[variant])
+	case ownsTarget && variant == favorLineMoved:
 		return actor + " passou a Inspiração para você."
 	case ownsTarget && variant == favorLineUndone:
 		return "O mestre desfez a passagem: a Inspiração não está mais com você."

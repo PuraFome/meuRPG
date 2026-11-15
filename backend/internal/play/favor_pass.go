@@ -271,17 +271,17 @@ type passEvent struct {
 func (s *Service) writePassEvent(ctx context.Context, q *playdb.Queries, e passEvent) error {
 	from := e.pass.FromCharacterID
 	ev := keyedEvent{sessionID: e.session, kind: e.kind, userID: e.userID, key: e.key, hash: e.hash, characterID: &from}
-	var payload any = favorPassEvent{PassID: e.pass.ID, FromCharacterID: e.pass.FromCharacterID, ToCharacterID: e.pass.ToCharacterID}
-	if e.kind == eventFavorPassed {
-		payload = favorPassedEvent{PassID: e.pass.ID, FromCharacterID: e.pass.FromCharacterID, ToCharacterID: e.pass.ToCharacterID}
-	}
-	if e.log && e.stage != nil {
+	ids := favorPassEvent{PassID: e.pass.ID, FromCharacterID: e.pass.FromCharacterID, ToCharacterID: e.pass.ToCharacterID}
+	var payload any = ids
+	switch {
+	case e.log && e.stage != nil && e.kind == eventFavorPassed:
 		ev.encounterID = &e.stage.EncounterID
-		if e.kind == eventFavorPassed {
-			payload = favorPassedCombatEvent{payload.(favorPassedEvent), *e.stage}
-		} else {
-			payload = favorPassCombatEvent{payload.(favorPassEvent), *e.stage}
-		}
+		payload = favorPassedCombatEvent{favorPassedEvent(ids), *e.stage}
+	case e.log && e.stage != nil:
+		ev.encounterID = &e.stage.EncounterID
+		payload = favorPassCombatEvent{ids, *e.stage}
+	case e.kind == eventFavorPassed:
+		payload = favorPassedEvent(ids)
 	}
 	return s.appendKeyedEvent(ctx, q, ev, payload)
 }
