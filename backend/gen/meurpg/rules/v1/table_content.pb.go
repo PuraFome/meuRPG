@@ -5677,7 +5677,8 @@ type TableSpellEffect struct {
 	Modifiers  []*TableEffectModifier `protobuf:"bytes,3,rep,name=modifiers,proto3" json:"modifiers,omitempty"`
 	// The short label the other players read, at most 30 characters.
 	PlayerLabelPt string `protobuf:"bytes,4,opt,name=player_label_pt,json=playerLabelPt,proto3" json:"player_label_pt,omitempty"`
-	// Who sees the effect on the creature. Unset is OWNER.
+	// Who sees the effect on the creature. Unset is OWNER. A player who reads the spell reads this too (PUBLIC or
+	// OWNER names nobody); the label above and the aura stay the master's.
 	Visibility TableEffectAudience `protobuf:"varint,5,opt,name=visibility,proto3,enum=meurpg.rules.v1.TableEffectAudience" json:"visibility,omitempty"`
 	// Makes the effect an aura around the caster: it is not put on the targets, it reaches at the roll or the damage
 	// the creatures within the radius on the chosen side. The spell then targets the caster and lasts (not

@@ -1226,7 +1226,8 @@ message TableSpellEffect {
   repeated TableEffectModifier modifiers = 3;
   // The short label the other players read, at most 30 characters.
   string player_label_pt = 4 [(meurpg.options.v1.max_len) = 120];
-  // Who sees the effect on the creature. Unset is OWNER.
+  // Who sees the effect on the creature. Unset is OWNER. A player who reads the spell reads this too (PUBLIC or
+  // OWNER names nobody); the label above and the aura stay the master's.
   TableEffectAudience visibility = 5;
   // Makes the effect an aura around the caster: it is not put on the targets, it reaches at the roll or the damage
   // the creatures within the radius on the chosen side. The spell then targets the caster and lasts (not

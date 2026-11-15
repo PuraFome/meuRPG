@@ -189,6 +189,13 @@ test('o mestre escolhe quem vê o efeito do próximo golpe e o que os outros lee
     await m.reload();
     await expect(card.getByRole('radio', { name: /^Todos na mesa/ })).toBeChecked();
     await expect(card.getByLabel('O que os outros jogadores leem')).toHaveValue('Sinal da Presa');
+
+    // A player reads who sees the effect (the table), never the label the master wrote for the others.
+    await p.goto(entryRoute(campaignId, key));
+    await expect(p.getByText('Quem vê o efeito')).toBeVisible();
+    await expect(p.getByText('Todos na mesa')).toBeVisible();
+    await expect(p.getByText('Só quem conjura e você')).toHaveCount(0);
+    await expect(p.getByText('Sinal da Presa', { exact: true })).toHaveCount(1); // the title only
   } finally {
     await Promise.all([master.close(), player.close()]);
   }

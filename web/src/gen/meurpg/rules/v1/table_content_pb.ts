@@ -2937,7 +2937,8 @@ export type TableSpellEffect = Message<"meurpg.rules.v1.TableSpellEffect"> & {
   playerLabelPt: string;
 
   /**
-   * Who sees the effect on the creature. Unset is OWNER.
+   * Who sees the effect on the creature. Unset is OWNER. A player who reads the spell reads this too (PUBLIC or
+   * OWNER names nobody); the label above and the aura stay the master's.
    *
    * @generated from field: meurpg.rules.v1.TableEffectAudience visibility = 5;
    */
