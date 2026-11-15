@@ -1207,12 +1207,16 @@ One that takes minutes or hours is finished by the master when the game time has
 A cast that is interrupted fails and spends no slot.
 In a combat the spells are cast there.
 
-- **Ritual.** A ritual spell can be cast as a ritual without a slot, taking its casting time plus 10 minutes, and not at a higher level (SRD 5.1, "Rituals"). Only a class with Ritual Casting does it: the bard from the spells known, the cleric and the druid from the prepared ones, the wizard from the spellbook.
-  The warlock of the Pact of the Chain casts Find Familiar as a ritual without knowing it.
+- **Ritual.** A ritual spell can be cast as a ritual without a slot.
+  It takes its casting time plus 10 minutes and is not cast at a higher level (SRD 5.1, "Rituals").
+  A class with Ritual Casting does it: the bard from the spells known, the cleric and the druid from the prepared ones, the wizard from the spellbook.
+  Two warlock features are the exceptions.
+  The Pact of the Chain casts Find Familiar as a ritual without knowing it.
   The Book of Ancient Secrets invocation (Livro de Segredos Antigos) keeps two 1st-level rituals of any class in the warlock's Book of Shadows.
   They are known and not prepared, do not count against the spells known, and are cast only as rituals, never with a slot.
-  The invocation also lets the warlock cast as a ritual any warlock spell it knows that has the ritual tag.
+  The invocation also lets the warlock cast as a ritual a spell it knows that is on the warlock list and has the ritual tag.
   The book "em mãos" is a reminder in the text: the app tracks no item.
+  A ritual the master switched off is not offered to a player in the book; a sheet that already has it keeps it.
 - **A cast that takes time has two steps.** Starting it spends nothing, and the caster concentrates on the casting from the start. When the master concludes it, the slot is spent and the spell takes effect. If the concentration breaks, the cast fails. A combat that starts does not cancel it: the caster spends the action each turn, and the cast can be concluded only outside the combat. The app keeps no clock.
 - **Duration** is game time, never the wall clock. A lasting spell ends when the master ends it, when the caster stops concentrating or casts another concentration spell, or when a rest covers the whole duration (a short rest is 1 hour, a long rest 8). After damage outside a combat, the master's hit point correction returns the concentration DC (RN-22), and 0 hit points ends the concentration.
 - **What the app applies:** healing with one roll for the whole cast (app dice or the typed sum, RN-18), plus the Life Domain features; the temporary hit points of False Life, which do not stack; Mage Armor; and summons, as in a combat. Every other effect is recorded and the master narrates it. Known gap: the maximum hit points of Aid are not raised outside a combat.

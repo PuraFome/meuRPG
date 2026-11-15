@@ -1207,12 +1207,16 @@ Uma que leva minutos ou horas é concluída pelo mestre quando o tempo de jogo p
 Uma conjuração interrompida falha e não gasta espaço de magia.
 Num combate as magias são conjuradas lá.
 
-- **Ritual.** Uma magia ritual pode ser conjurada como ritual sem espaço de magia, levando o tempo de conjuração dela mais 10 minutos, e não num nível acima (SRD 5.1, "Rituals"). Só uma classe com Conjuração Ritual faz isso: o bardo a partir das magias conhecidas, o clérigo e o druida das preparadas, o mago do grimório.
-  O bruxo do Pacto da Corrente conjura Convocar Familiar como ritual sem conhecê-la.
+- **Ritual.** Uma magia ritual pode ser conjurada como ritual sem espaço de magia.
+  Ela leva o tempo de conjuração mais 10 minutos e não é conjurada num nível acima (SRD 5.1, "Rituals").
+  Uma classe com Conjuração Ritual faz isso: o bardo a partir das magias conhecidas, o clérigo e o druida das preparadas, o mago do grimório.
+  Duas características do bruxo são as exceções.
+  O Pacto da Corrente conjura Convocar Familiar como ritual sem conhecê-la.
   A invocação Livro de Segredos Antigos guarda duas magias rituais de 1º nível de qualquer classe no Livro das Sombras do bruxo.
   Elas são conhecidas e não preparadas, não contam nas magias conhecidas e só se conjuram como ritual, nunca com espaço de magia.
-  A invocação também deixa o bruxo conjurar como ritual qualquer magia de bruxo que conheça e que tenha a etiqueta de ritual.
+  A invocação também deixa o bruxo conjurar como ritual uma magia que ele conheça, esteja na lista de bruxo e tenha a etiqueta de ritual.
   O livro "em mãos" é um lembrete no texto: o app não controla nenhum item.
+  Um ritual que o mestre desligou não é oferecido a um jogador no livro; uma ficha que já o tem o mantém.
 - **Uma conjuração que leva tempo tem dois passos.** Começá-la não gasta nada, e quem conjura se concentra na conjuração desde o início. Quando o mestre a conclui, o espaço é gasto e a magia tem efeito. Se a concentração se quebra, a conjuração falha. Um combate que começa não a cancela: quem conjura gasta a ação a cada turno, e a conjuração só pode ser concluída fora do combate. O app não guarda relógio.
 - **Duração** é tempo de jogo, nunca o relógio da parede. Uma magia duradoura termina quando o mestre a encerra, quando quem conjura deixa de se concentrar ou conjura outra magia de concentração, ou quando um descanso cobre a duração inteira (um descanso curto é 1 hora, um longo 8). Depois de dano fora de um combate, a correção de pontos de vida do mestre devolve a CD de concentração (RN-22), e 0 pontos de vida encerra a concentração.
 - **O que o app aplica:** a cura com uma só rolagem para a conjuração inteira (dados do app ou a soma digitada, RN-18), mais as características do Domínio da Vida; os pontos de vida temporários de Vitalidade Falsa, que não se acumulam; Armadura Arcana; e invocações, como num combate. Todo outro efeito é registrado e o mestre o narra. Lacuna conhecida: o máximo de pontos de vida de Ajuda não é aumentado fora de um combate.

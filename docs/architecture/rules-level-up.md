@@ -35,7 +35,8 @@ What a chosen subclass adds (the Lore College's three skills, the Circle of the 
 `LevelUpSubclass` also says whether the table archived it (`Archived`) or switched it off (`Off`, its own switch only).
 
 - The Warlock's new invocations come from the `invocations_known` column of the class table (corrected in `effects/corrections.json`).
-- A warlock that swaps an invocation away also loses the picks of the choice that belongs to it (`ownPick`): the Book of Ancient Secrets' two rituals go with the invocation, and the swap stays one removal.
+- Swapping an invocation away takes its picks with it: the Book of Ancient Secrets' two rituals go with the invocation, and the swap stays one removal.
+- Removing one of those picks alone is refused.
 - The Bard's Magical Secrets (levels 10, 14 and 18) let some of the new spells come from any class's list (`AnyClassSpells`); `Derive` stops flagging those spells as off-list.
 - `MasterAdds` lists features of the level whose choice the guided level-up does not cover and the master adds in the editor.
 - **Not covered** by the guided level-up: a custom multiclass or subclass, and **swapping a known spell for another**, which the SRD allows Bard, Ranger, Sorcerer and Warlock.
