@@ -62,7 +62,11 @@ func TestAPackageStagesTheKeyTheServerMakesForEveryTableKind(t *testing.T) {
 	t.Parallel()
 	keys := map[string]string{}
 	for _, tk := range tableKinds {
-		for _, body := range packageBodies(tk.prefix, keys) {
+		bodies := packageBodies(tk.prefix, keys)
+		if len(bodies) == 0 {
+			t.Fatalf("no body for the table kind %q", tk.prefix)
+		}
+		for _, body := range bodies {
 			key := entryKey(tk.kind, body, nil)
 			keys[tk.prefix] = key
 			if ok, problems := stageOneEntry(t, packageEntryOf(tk.kind, key, body)); !ok {
