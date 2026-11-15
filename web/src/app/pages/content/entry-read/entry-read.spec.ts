@@ -89,6 +89,14 @@ describe('EntryRead next-hit effect (#577)', () => {
     expect(el.querySelector('.hit__who dd')?.textContent).toBe('Só quem conjura e você');
   });
 
+  it('shows an open eye for the whole table and a crossed eye for the caster and the master', () => {
+    const icon = (visibility: string) =>
+      render({ ...hit, hit: { ...hit.hit!, visibility } }).querySelector('.hit__who dt mat-icon')
+        ?.textContent;
+    expect(icon('Todos na mesa')).toBe('visibility');
+    expect(icon('Só quem conjura e você')).toBe('visibility_off');
+  });
+
   it('draws one line in a preview, with the damage as a chip and no audience row', () => {
     const el = render(hit, true);
     expect(el.querySelector('.hit-line')?.textContent?.replace(/\s+/g, ' ').trim()).toBe(

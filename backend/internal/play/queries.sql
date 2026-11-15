@@ -1521,6 +1521,11 @@ WITH changed AS (
 )
 SELECT * FROM changed ORDER BY created_at, id;
 
+-- name: DeleteUnansweredFeatureWindow :execrows
+-- The undo of what opened a FEATURE window (a move, a turn): the window goes, unless it was answered (the answer is undone first).
+DELETE FROM reaction_windows
+WHERE id = sqlc.arg(id) AND encounter_id = sqlc.arg(encounter_id) AND kind = 'feature' AND status <> 'answered';
+
 -- name: ListEncounterRollModeRequests :many
 -- Every request of the combat, whatever its status, for the log.
 SELECT * FROM roll_mode_requests
@@ -1611,6 +1616,15 @@ SELECT * FROM reaction_holds WHERE encounter_id = $1 AND state = 'held' ORDER BY
 INSERT INTO reaction_windows (encounter_id, group_id, kind, reactor_id, pending_damage_id, hold_id, step, trigger, created_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING *;
+
+-- name: HasFeatureWindowAsked :one
+-- Says the reactor was asked about the feature for the creature in the turn: a FEATURE window of the same reactor, feature, creature and
+-- turn key is open or answered. A window the undo removed is not there, and one the undo opened again is.
+SELECT EXISTS (
+    SELECT 1 FROM reaction_windows
+    WHERE encounter_id = sqlc.arg(encounter_id) AND reactor_id = sqlc.arg(reactor_id)::UUID AND kind = 'feature' AND status IN ('open', 'answered')
+      AND trigger ->> 'actor' = sqlc.arg(actor)::TEXT AND trigger ->> 'key' = sqlc.arg(key)::TEXT AND trigger ->> 'turn' = sqlc.arg(turn)::TEXT
+);
 
 -- name: ListOpenReactionWindows :many
 SELECT * FROM reaction_windows WHERE encounter_id = $1 AND status = 'open' ORDER BY seq;

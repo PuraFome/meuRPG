@@ -1999,6 +1999,25 @@ func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesO
 	return items, nil
 }
 
+const deleteUnansweredFeatureWindow = `-- name: DeleteUnansweredFeatureWindow :execrows
+DELETE FROM reaction_windows
+WHERE id = $1 AND encounter_id = $2 AND kind = 'feature' AND status <> 'answered'
+`
+
+type DeleteUnansweredFeatureWindowParams struct {
+	ID          string
+	EncounterID string
+}
+
+// The undo of what opened a FEATURE window (a move, a turn): the window goes, unless it was answered (the answer is undone first).
+func (q *Queries) DeleteUnansweredFeatureWindow(ctx context.Context, arg DeleteUnansweredFeatureWindowParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUnansweredFeatureWindow, arg.ID, arg.EncounterID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const encounterHasRiders = `-- name: EncounterHasRiders :one
 SELECT EXISTS (SELECT 1 FROM combatants WHERE encounter_id = $1 AND mounted_on_id IS NOT NULL)
 `
@@ -3763,6 +3782,37 @@ type HasCharacterFavorParams struct {
 // Says the character has the Inspiration, without taking it: a roll a reaction window holds is checked against it, and the replay spends it.
 func (q *Queries) HasCharacterFavor(ctx context.Context, arg HasCharacterFavorParams) (bool, error) {
 	row := q.db.QueryRow(ctx, hasCharacterFavor, arg.CharacterID, arg.CampaignID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const hasFeatureWindowAsked = `-- name: HasFeatureWindowAsked :one
+SELECT EXISTS (
+    SELECT 1 FROM reaction_windows
+    WHERE encounter_id = $1 AND reactor_id = $2::UUID AND kind = 'feature' AND status IN ('open', 'answered')
+      AND trigger ->> 'actor' = $3::TEXT AND trigger ->> 'key' = $4::TEXT AND trigger ->> 'turn' = $5::TEXT
+)
+`
+
+type HasFeatureWindowAskedParams struct {
+	EncounterID string
+	ReactorID   string
+	Actor       string
+	Key         string
+	Turn        string
+}
+
+// Says the reactor was asked about the feature for the creature in the turn: a FEATURE window of the same reactor, feature, creature and
+// turn key is open or answered. A window the undo removed is not there, and one the undo opened again is.
+func (q *Queries) HasFeatureWindowAsked(ctx context.Context, arg HasFeatureWindowAskedParams) (bool, error) {
+	row := q.db.QueryRow(ctx, hasFeatureWindowAsked,
+		arg.EncounterID,
+		arg.ReactorID,
+		arg.Actor,
+		arg.Key,
+		arg.Turn,
+	)
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err

@@ -39,17 +39,30 @@ func (c chargedItem) view() *charactersv1.SheetMagicItem {
 // lockChargedItem locks the character and finds the entry on its sheet: `not_found` for a character that is not in
 // the campaign, an entry that is not on the sheet, and `invalid_argument` for an item that holds no charges.
 func (s *Service) lockChargedItem(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string) (chargedItem, *charactersdb.Queries, error) {
+	return s.loadChargedItem(ctx, tx, campaignID, characterID, entryID, true)
+}
+
+// characterOfItem reads the character row, locked until the transaction ends when lock is true.
+func (s *Service) characterOfItem(ctx context.Context, q *charactersdb.Queries, campaignID, id string, lock bool) (charactersdb.Character, error) {
+	if lock {
+		return q.GetCharacterForUpdate(ctx, charactersdb.GetCharacterForUpdateParams{CampaignID: campaignID, ID: id})
+	}
+	return q.GetCharacter(ctx, charactersdb.GetCharacterParams{CampaignID: campaignID, ID: id})
+}
+
+// loadChargedItem is lockChargedItem, and takes no lock when lock is false (a pure read).
+func (s *Service) loadChargedItem(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, lock bool) (chargedItem, *charactersdb.Queries, error) {
 	id, ok := uid.Canonical(characterID)
 	if !ok {
 		return chargedItem{}, nil, errCharacterNotFound()
 	}
 	q := s.queries.WithTx(tx)
-	row, err := q.GetCharacterForUpdate(ctx, charactersdb.GetCharacterForUpdateParams{CampaignID: campaignID, ID: id})
+	row, err := s.characterOfItem(ctx, q, campaignID, id, lock)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return chargedItem{}, nil, errCharacterNotFound()
 	}
 	if err != nil {
-		return chargedItem{}, nil, wrap("lock the character", err)
+		return chargedItem{}, nil, wrap("read the character", err)
 	}
 	sheet, err := loadSheet(row.ID, row.Sheet)
 	if err != nil {

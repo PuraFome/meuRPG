@@ -18,6 +18,7 @@ import {
   effectToDraft,
   emptyEffect,
   emptyRow,
+  hitShell,
   modifierIndexOf,
   readWhole,
   rowOfModifier,
@@ -324,6 +325,12 @@ describe('the two blocks of a spell effect (#579 and #577) side by side', () => 
     ],
   });
 
+  it('names the condition in Portuguese in the line a reader sees, even when the catalog has no name for its key', () => {
+    const item = effectReadItem(stored, (k) => k)!;
+    expect(item.text).toContain('Cego');
+    expect(item.text).not.toContain('condition:');
+  });
+
   it('keeps the weapon hit out of the rows, and sends it last', () => {
     const d = effectToDraft(stored);
     expect(d.on).toBe(true);
@@ -340,5 +347,23 @@ describe('the two blocks of a spell effect (#579 and #577) side by side', () => 
     expect(d.on).toBe(false);
     expect(draftToEffect(d)).toBeUndefined();
     expect(d.base).toBe(only);
+  });
+
+  it("carries the audience and the label for the hit alone: the form's when it is new or changed, the stored ones when untouched", () => {
+    const fresh = hitShell({ ...emptyEffect(), visibility: 'owner', label: ' Marca ' })!;
+    expect(fresh.visibility).toBe(TableEffectAudience.OWNER);
+    expect(fresh.playerLabelPt).toBe('Marca');
+    expect(fresh.modifiers).toEqual([]);
+    expect(hitShell({ ...emptyEffect(), visibility: 'public' })!.visibility).toBe(
+      TableEffectAudience.PUBLIC,
+    );
+    // A stored effect that left the audience unset keeps it unset until the person picks one.
+    const stored = create(TableSpellEffectSchema, {
+      modifiers: [create(TableEffectModifierSchema, { kind: K.WEAPON_HIT_DAMAGE, trigger: 1 })],
+    });
+    const same = hitShell(effectToDraft(stored))!;
+    expect(same.visibility).toBe(TableEffectAudience.UNSPECIFIED);
+    const picked = hitShell({ ...effectToDraft(stored), visibility: 'public' })!;
+    expect(picked.visibility).toBe(TableEffectAudience.PUBLIC);
   });
 });
