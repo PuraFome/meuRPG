@@ -40,7 +40,7 @@ func TestALostPrerequisiteDoesNotBlockALevelUpThatStaysShortOfIt(t *testing.T) {
 		code  string
 		field string
 	}{
-		{"an option that asks for a class level", func(b *Build) {}, IssueOptionPrerequisite, "full.feature_choice_keys[0]"},
+		{"an option that asks for a class level", func(*Build) {}, IssueOptionPrerequisite, "full.feature_choice_keys[0]"},
 		{"a feat that asks for a total level", func(b *Build) { b.Feats = []string{featKeyLevel8} }, IssueFeatPrerequisite, "full.feat_keys[0]"},
 		{"a feat that asks for a score the increase stays short of", func(b *Build) { b.Feats = []string{featKeyStr20} }, IssueFeatPrerequisite, "full.feat_keys[0]"},
 	}

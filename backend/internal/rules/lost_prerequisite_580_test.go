@@ -140,17 +140,29 @@ func TestTheListOfMissingConditions(t *testing.T) {
 		conditions     []LostCondition
 		player, master string
 	}{
-		{"three conditions", []LostCondition{score, level, spell},
-			"X pede Força 13, e Tor tem 11, nível 8, e Tor está no 4 e a magia Raio, que Tor não conhece mais" + tail, ""},
-		{"several hidden conditions are one phrase", []LostCondition{class, pact},
+		{
+			"three conditions",
+			[]LostCondition{score, level, spell},
+			"X pede Força 13, e Tor tem 11, nível 8, e Tor está no 4 e a magia Raio, que Tor não conhece mais" + tail, "",
+		},
+		{
+			"several hidden conditions are one phrase",
+			[]LostCondition{class, pact},
 			"X pede uma condição que a mesa não mostra" + tail,
-			"X pede Ordem 3, e Tor não tem nível de Ordem e a Dádiva do Pacto Elo, que Tor não tem mais" + tail},
-		{"a hidden condition among the others is told last", []LostCondition{class, score, pact, level},
+			"X pede Ordem 3, e Tor não tem nível de Ordem e a Dádiva do Pacto Elo, que Tor não tem mais" + tail,
+		},
+		{
+			"a hidden condition among the others is told last",
+			[]LostCondition{class, score, pact, level},
 			"X pede Força 13, e Tor tem 11, nível 8, e Tor está no 4 e uma condição que a mesa não mostra" + tail,
-			"X pede Ordem 3, e Tor não tem nível de Ordem, Força 13, e Tor tem 11, a Dádiva do Pacto Elo, que Tor não tem mais e nível 8, e Tor está no 4" + tail},
-		{"a list of races with a hidden one names the others, as the picker does", []LostCondition{races, score},
+			"X pede Ordem 3, e Tor não tem nível de Ordem, Força 13, e Tor tem 11, a Dádiva do Pacto Elo, que Tor não tem mais e nível 8, e Tor está no 4" + tail,
+		},
+		{
+			"a list of races with a hidden one names the others, as the picker does",
+			[]LostCondition{races, score},
 			"X pede ser Rubro, que Tor não é e Força 13, e Tor tem 11" + tail,
-			"X pede ser Oculto ou Rubro, que Tor não é e Força 13, e Tor tem 11" + tail},
+			"X pede ser Oculto ou Rubro, que Tor não é e Força 13, e Tor tem 11" + tail,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
