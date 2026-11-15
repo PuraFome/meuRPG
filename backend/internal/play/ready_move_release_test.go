@@ -123,3 +123,60 @@ func TestAReadiedMoveWalksDifficultTerrainAtItsCost(t *testing.T) {
 		t.Errorf("the turn's movement after the readied move = %d, want 0", got)
 	}
 }
+
+// The use is the first move: it spends the reaction, fires the row, closes the window and writes the readied_fired line just
+// before the move's own line. A partial walk is the whole use: the second call is an ordinary move off turn, and so is
+// GetMoveOptions.
+func TestAReadiedMoveIsOneUseEvenWhenItStopsShortOfTheBudget(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.readyMoveFrom(t, 1, 5)
+	a.mustFire(t, e, "Toren")
+	movedBefore := countKind(logKindsOf(a.log(t, a.master, e)), playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED) // the master's put of Toren on the lane is one
+	if _, err := a.frozenMove(t, a.caio, "Toren", 3, 5); err != nil { // 10 ft of 30
+		t.Fatalf("the readied move: %v", err)
+	}
+	toren := byLabel(t, a.get(t, a.caio), "Toren")
+	if !toren.GetReactionUsed() || toren.GetReactionKind() != kindReadied || toren.GetReadied() != nil || a.squareOf(t, "Toren") != [2]int32{3, 5} {
+		t.Errorf("Toren after the move: reaction %v (%v), readied %v, at %v", toren.GetReactionUsed(), toren.GetReactionKind(), toren.GetReadied(), a.squareOf(t, "Toren"))
+	}
+	if a.readiedStatus(t, "Toren") != readiedFired || a.readiedOpen(t, "Toren") || len(a.windows(t, a.master)) != 0 {
+		t.Errorf("row %q, windows %v; want fired and none", a.readiedStatus(t, "Toren"), a.windows(t, a.master))
+	}
+	for _, u := range []*user{a.master, a.caio} { // the move is a line, and the readied_fired line comes first
+		kinds := logKindsOf(a.log(t, u, e))
+		if countKind(kinds, playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED) != 1 || countKind(kinds, playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED) != movedBefore+1 {
+			t.Errorf("the log of %s = %v; want one readied_fired line and %d moved lines", u.id, kinds, movedBefore+1)
+		}
+	}
+	before := a.events(t)
+	_, err := a.frozenMove(t, a.caio, "Toren", 4, 5)
+	wantBlockedBy(t, "a second move off turn after the use", err, blockedNotYourTurn)
+	_, err = a.readiedMoveOptions(t, e)
+	wantBlockedBy(t, "GetMoveOptions off turn after the use", err, blockedNotYourTurn)
+	if n := a.events(t); n != before || a.squareOf(t, "Toren") != [2]int32{3, 5} {
+		t.Errorf("after the second move: events %d (want %d), at %v", n, before, a.squareOf(t, "Toren"))
+	}
+}
+
+// logKindsOf are the kinds of the lines of the log, in the order it reads them.
+func logKindsOf(l *playv1.ListCombatLogResponse) []playv1.CombatLogKind {
+	var out []playv1.CombatLogKind
+	for _, r := range l.GetRounds() {
+		for _, en := range r.GetEntries() {
+			out = append(out, en.GetKind())
+		}
+	}
+	return out
+}
+
+// countKind counts the lines of a kind.
+func countKind(kinds []playv1.CombatLogKind, kind playv1.CombatLogKind) int {
+	n := 0
+	for _, k := range kinds {
+		if k == kind {
+			n++
+		}
+	}
+	return n
+}
