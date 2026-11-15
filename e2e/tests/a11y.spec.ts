@@ -15438,3 +15438,152 @@ test('o chip "Falta escolher" do subir de nível e o passo a passo cabem no cart
   test.setTimeout(180_000);
   await scanLevelUpFeatChip(browser, 'light', 768);
 });
+
+// The kinds strip of "Conteúdo da mesa" on a tablet (#580, board 580-12): the open kind is in sight when the page opens and when the kind
+// changes, the fade is 40 px wide, and it follows the strip when the window is resized.
+async function scanKindsStrip(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const strip = m.locator('.menu__list');
+  const state = () =>
+    strip.evaluate((el) => {
+      const on = el.querySelector('[aria-current="page"]')!.getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      return {
+        name: el.querySelector('[aria-current="page"] span')!.textContent,
+        inside: on.left >= box.left - 1 && on.right <= box.right + 1,
+        start: el.classList.contains('menu__list--fade-start'),
+        end: el.classList.contains('menu__list--fade-end'),
+        moreBefore: el.scrollLeft > 1,
+        moreAfter: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+        mask: getComputedStyle(el).maskImage,
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+      };
+    });
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade faixa ${Date.now()}`);
+    await open(m, `/campaigns/${campaignId}/content?kind=weapons`);
+    await expect.poll(async () => (await state()).inside, { message: `Armas à vista ao abrir a página ${where}` }).toBe(true);
+    const weapons = await state();
+    expect(weapons.name, `o tipo aberto ${where}`).toBe('Armas');
+    expect(weapons.start, `a borda esquerda esmaece, há tipos antes ${where}`).toBe(true);
+    expect(weapons.end, `a borda direita não esmaece, Armas é o último ${where}`).toBe(false);
+    expect(weapons.mask, `o esmaecimento de 40 px ${where}`).toContain('40px');
+    expect(weapons.overflow, `a página sem rolagem lateral ${where}`).toBeLessThanOrEqual(0);
+
+    await strip.getByRole('link', { name: /^Magias/ }).click();
+    await expect(strip.locator('[aria-current="page"]')).toContainText('Magias');
+    await expect.poll(async () => (await state()).inside, { message: `Magias à vista depois de trocar o tipo ${where}` }).toBe(true);
+    const spells = await state();
+    expect(spells.start && spells.end, `os dois lados esmaecem com um tipo do meio ${where}`).toBe(true);
+    await expectScreenPasses(m, `Conteúdo da mesa, a faixa de tipos com um tipo do meio aberto ${where}`);
+
+    await open(m, `/campaigns/${campaignId}/content`);
+    const first = await state();
+    expect(first.name).toBe('Classes');
+    expect(first.start, `sem esmaecimento à esquerda no primeiro tipo ${where}`).toBe(false);
+    expect(first.end, `esmaecimento à direita no primeiro tipo ${where}`).toBe(true);
+
+    // The window is resized: the fade is measured again and follows what the strip really has beyond each edge.
+    await m.setViewportSize({ width: 1090, height: 900 });
+    await expect.poll(async () => {
+      const s = await state();
+      return s.start === s.moreBefore && s.end === s.moreAfter;
+    }, { message: `o esmaecimento acompanha a faixa depois de redimensionar ${where}` }).toBe(true);
+    await m.setViewportSize({ width, height: 900 });
+    await expect.poll(async () => {
+      const s = await state();
+      return s.start === s.moreBefore && s.end === s.moreAfter && s.end;
+    }, { message: `o esmaecimento volta ao tamanho da página ${where}` }).toBe(true);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a faixa de tipos do conteúdo da mesa mostra o tipo aberto e o esmaecimento no tema claro, no tablet', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanKindsStrip(browser, 'light', 768);
+});
+
+test('a faixa de tipos do conteúdo da mesa mostra o tipo aberto e o esmaecimento no tema escuro, no tablet', { tag: ['@a11y', '@MR-025'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanKindsStrip(browser, 'dark', 768);
+});
+
+// The option rows of a subclass feature ask (#580, board 580-03): "Nível mínimo" is 140 px, "Adicionar pré-requisito" is a text action with a
+// caret, "Remover opção" is in the "⋮" menu of the row, the hint says it is never the option itself, and the open feature's accent frame has
+// no second outline of the option card a few pixels inside it.
+async function scanOptionAsks(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade opções que pedem ${Date.now()}`);
+    const brasa = await createEntryRPC(m, campaignId, 'tableOption', { namePt: 'Olhar de Brasa', descPt: ['Você enxerga no escuro.'], set: 'invocation' });
+    const subclass = await createSubclassRPC(m, campaignId, {
+      namePt: 'Guarda do Corvo',
+      classKey: 'class:fighter',
+      descPt: ['Quem aprendeu a lâmina com os corvos.'],
+      levels: [{ level: 3, features: [{
+        namePt: 'Truques de lâmina',
+        descPt: ['Escolha entre as opções da lista.'],
+        effects: [{ type: 'choice', choice: 'feature', count: 1 }],
+        options: ['Golpe do Corvo', 'Asa Partida'].map((n) => ({ namePt: n, descPt: [`${n}: um truque da lista.`] })),
+      }] }],
+    });
+    const entry = (await listEntries(m, campaignId)).find((e) => e.key === subclass)!;
+    const feature = entry.tableSubclass.levels[0].features[0];
+    const asking = { ...feature.options[1], prerequisite: { classLevel: { classKey: 'class:fighter', level: 7 }, requiresOptionKeys: [brasa] } };
+    const updated = await callRPC(m, 'meurpg.rules.v1.TableContentService/UpdateTableEntry', {
+      campaignId,
+      key: subclass,
+      expectedRevision: entry.revision,
+      tableSubclass: { ...entry.tableSubclass, levels: [{ ...entry.tableSubclass.levels[0], features: [{ ...feature, options: [feature.options[0], asking] }] }] },
+    });
+    expect(updated.ok(), await updated.text()).toBeTruthy();
+
+    await open(m, entryRoute(campaignId, subclass));
+    await m.getByRole('button', { name: /Truques de lâmina/ }).first().click();
+    const option = m.getByRole('group', { name: 'Opção 2' });
+    await expect(option.getByLabel('Nome da opção')).toHaveValue('Asa Partida');
+    const add = option.getByRole('button', { name: 'Adicionar pré-requisito' });
+    await add.scrollIntoViewIfNeeded();
+    await expect(option).toContainText('Nunca a própria opção.');
+    const level = await option.locator('app-ask-rows app-text-field').first().boundingBox();
+    expect(level?.width, `"Nível mínimo" com 140 px ${where}`).toBeCloseTo(140, 0);
+    await expect(add, `"Adicionar pré-requisito" é uma ação de texto ${where}`).not.toHaveClass(/mat-mdc-outlined-button/);
+    expect(await add.evaluate((el) => getComputedStyle(el).borderTopWidth), `sem contorno em "Adicionar pré-requisito" ${where}`).toBe('0px');
+    await expect(option.getByRole('button', { name: 'Remover opção' }), `"Remover opção" só no menu ${where}`).toHaveCount(0);
+    // The accent frame of the open feature is the only outline near the edge: the option card inside it keeps none of its own.
+    expect(await option.evaluate((el) => getComputedStyle(el.querySelector('.feature') ?? el).borderRightColor), `o cartão da opção sem contorno ${where}`).toBe('rgba(0, 0, 0, 0)');
+    await m.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await expectScreenPasses(m, `Editor de subclasse, a opção que pede nível e opção ${where}`);
+
+    await option.getByRole('button', { name: /^Mais ações de/ }).click();
+    await expect(m.getByRole('menuitem', { name: 'Remover opção' })).toBeVisible();
+    await expectScreenPasses(m, `Editor de subclasse, o menu da opção ${where}`);
+    await m.keyboard.press('Escape');
+    await add.click();
+    await expect(m.getByRole('menuitem', { name: /Magia que conhece/ })).toBeVisible();
+    await expectScreenPasses(m, `Editor de subclasse, "Adicionar pré-requisito" aberto ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a opção de uma característica que pede nível e opção passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanOptionAsks(browser, 'dark', 768);
+});
+
+test('a opção de uma característica que pede nível e opção passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@MR-025', '@RN-23'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanOptionAsks(browser, 'light', 1280);
+});
