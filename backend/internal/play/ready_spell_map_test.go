@@ -202,3 +202,51 @@ func TestAReadiedWallOfFireIsReleasedWithCastSpell(t *testing.T) {
 		t.Errorf("the table reads Pensantus concentrating on %q, want the spell's own key", got)
 	}
 }
+
+// clearRolling calls MarkReactionRolling with clear as u.
+func (a *armed) clearRolling(t *testing.T, u *user, e *playv1.Encounter, windowID string) error {
+	t.Helper()
+	_, err := u.combat.MarkReactionRolling(t.Context(), connect.NewRequest(&playv1.MarkReactionRollingRequest{CampaignId: a.campaignID, EncounterId: e.GetId(), WindowId: windowID, Clear: true}))
+	return err
+}
+
+// The readier's player marks its READIED window (it is on the map), takes the mark off when it comes back without
+// using the reaction, and the master reads it each time; both are idempotent, only the reactor's player may do either,
+// and the window stays open and answerable.
+func TestTheReadiersPlayerTakesTheRollingMarkOffItsWindow(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
+	w := a.mustFire(t, e, "Pensantus")
+	rolling := func() bool { return a.windowOf(t, a.master, kindReadied).GetRolling() }
+	for range 2 {
+		if err := a.markRolling(t, a.ana, e, w.GetId()); err != nil || !rolling() {
+			t.Fatalf("marking the window: error = %v, the master reads rolling %v; want it marked", err, rolling())
+		}
+	}
+	wantCode(t, "the master taking the mark off", a.clearRolling(t, a.master, e, w.GetId()), connect.CodePermissionDenied)
+	wantCode(t, "another player taking the mark off", a.clearRolling(t, a.caio, e, w.GetId()), connect.CodePermissionDenied)
+	if !rolling() {
+		t.Error("a refused clear took the mark off")
+	}
+	logBefore := logLines(a.log(t, a.master, e))
+	for range 2 {
+		if err := a.clearRolling(t, a.ana, e, w.GetId()); err != nil || rolling() {
+			t.Fatalf("clearing the mark: error = %v, the master reads rolling %v; want it off", err, rolling())
+		}
+	}
+	if n := logLines(a.log(t, a.master, e)); n != logBefore {
+		t.Errorf("marking and clearing wrote %d log lines", n-logBefore)
+	}
+	if err := a.markRolling(t, a.ana, e, w.GetId()); err != nil || !rolling() {
+		t.Errorf("marking again: error = %v, rolling %v; want it marked", err, rolling())
+	}
+	if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting {
+		t.Fatalf("the window is not open and waiting: row %q", a.readiedStatus(t, "Pensantus"))
+	}
+	a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 3)))
+	if a.readiedStatus(t, "Pensantus") != readiedFired {
+		t.Errorf("the window answered after the mark: row %q, want fired", a.readiedStatus(t, "Pensantus"))
+	}
+	wantCode(t, "clearing an answered window", a.clearRolling(t, a.ana, e, w.GetId()), connect.CodeFailedPrecondition)
+}
