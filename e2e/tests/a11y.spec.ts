@@ -6728,7 +6728,7 @@ async function scanHitEffectSheet(browser: Browser, colorScheme: 'light' | 'dark
     await openSessionPage(p, campaignId);
     await cast(keys.frost);
     await moveTo(4, 9);
-    await hit(/^Atacar com Arco curto/, /Atacar com Arco curto/, 'Goblin 2', '18');
+    await hit(/^Atacar com Arco curto(?!, corpo a corpo)/, /Atacar com Arco curto/, 'Goblin 2', '18');
     const parts = p.getByRole('region', { name: 'O que entra no dano' });
     await expect(parts).toContainText('Geada no Punho');
     await expect(parts).toContainText('Indisponível: só num golpe corpo a corpo. Continua esperando.');

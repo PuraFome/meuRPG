@@ -19,6 +19,7 @@ import { Code, ConnectError } from '@connectrpc/connect';
 
 import {
   AttunementRestriction,
+  SheetAmmunitionSchema,
   SheetMagicItemSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { create } from '@bufbuild/protobuf';
@@ -87,7 +88,15 @@ function fullyPopulatedFullSheet(): FullSheet {
     weaponMarks: [],
     itemBonuses: [],
     magicItems: [],
-    ammunition: [],
+    ammunition: [
+      create(SheetAmmunitionSchema, {
+        key: 'equipment:arrow',
+        namePt: 'Flecha',
+        quantity: 17,
+        spentLastCombat: 3,
+        recovered: false,
+      }),
+    ],
     dailyPicks: [],
     shortRested: false,
     cantripKeys: ['spell:fire-bolt', 'spell:ray-of-frost', 'spell:minor-illusion'],
@@ -215,10 +224,15 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
           id: 'm1',
           sameItemAttuned: false,
           namePt: '',
+          chargesMax: 7,
+          chargesLeft: 3,
+          lastRollPending: true,
         }),
       ],
     };
     const form = { ...toFormFullSheet('Pensantus', loaded), armor: '', weapons: [] as string[] };
+    const kept = mergeFullSheetInit(loaded, form).magicItems?.[0];
+    expect([kept?.chargesMax, kept?.chargesLeft, kept?.lastRollPending]).toEqual([7, 3, true]);
     expect(mergeFullSheetInit(loaded, form).magicItems?.map((m) => [m.key, m.attuned])).toEqual([
       ['item:ring-of-protection', true],
     ]);
@@ -267,6 +281,7 @@ describe('FullSheet round-trips load → save unchanged (integrator fix, phase 2
       carriedKeys: loaded.carriedKeys,
       weaponMarks: loaded.weaponMarks,
       magicItems: loaded.magicItems,
+      ammunition: loaded.ammunition,
       dailyPicks: loaded.dailyPicks,
       shortRested: loaded.shortRested,
       itemBonuses: loaded.itemBonuses,

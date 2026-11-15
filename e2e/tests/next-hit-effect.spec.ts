@@ -85,7 +85,7 @@ test(
 
       // First, on the cast turn, with the short bow from afar (the goblins are never left behind, so no opportunity attack): a ranged hit cannot use a melee effect, so its part is listed off, never in the roll, and it keeps waiting.
       await moveTo(4, 9);
-      await attack(/^Atacar com Arco curto/, /Atacar com Arco curto/, 'Goblin 2', '18');
+      await attack(/^Atacar com Arco curto(?!, corpo a corpo)/, /Atacar com Arco curto/, 'Goblin 2', '18');
       await expect(parts).toContainText('Geada no Punho');
       await expect(parts).toContainText('Indisponível: só num golpe corpo a corpo. Continua esperando.');
       await expect(parts.getByRole('checkbox')).toHaveCount(0);
