@@ -84,18 +84,29 @@ The fire event (`readied_fired` with `opened`) writes no log line.
 - **move**: `MoveCombatant` off the readier's turn, while its READIED move window is open.
   Its budget is its own (`readiedSpeedsOf`): each surface's speed as at the start of a turn, held to `move_ft`.
   The movement the readier spent on its own turn does not count, and neither does its Dash.
+  `move_ft` is the whole speed at Ready, not what the turn had left.
+  A speed that fell since Ready (a condition, an effect) shrinks the budget; one that rose does not widen it.
   So a swimmer that readied in water may swim its swim speed, and walk only its walking speed.
-  It pays its way like a move on turn and spends no movement of the turn.
+  It pays its way like a move on turn, difficult terrain included, and spends no movement of the turn.
   `GetMoveOptions` reads the same budget for the readier while the window is open.
   Move's own refusals apply: a grappled readier has no speed (`TOO_FAR`).
   A refused move spends nothing and the window stays open.
+  A move to the square the readier stands on is refused for a player (`invalid_argument`) and the window stays open.
   A move that stops short (a wall, a creature in the way, a trap) is still the use, and the window ends.
+  So does a walk shorter than the budget: the first move is the whole use, and a second one is an ordinary move off turn (`NOT_YOUR_TURN`).
+  The move is a line of the log, after the `readied_fired` line.
   It offers opportunity attacks as any walk does: only a forced move or a teleport would not.
   A Disengage does not cover it: Disengage lasts only for the turn it was taken on (SRD 5.1).
   Its offers hold the end of the turn in progress, the master's too: `EndTurn` is `OPPORTUNITY_PENDING` until each is answered.
   So none of them outlives that turn (`mustNotWaitForReadiedOffers`).
   It is held by a pending hidden reveal (`mustNotHold`) as a move on turn is.
   The master's walk of the readier while the window is open is the use too, as if the player made it.
+  His other drags are not: a forced move, a placement, a jump, a walk of another token, and a drop of the readier where it stands.
+  They spend no reaction and leave the row waiting with its window open.
+  Another player's move of the readier is `permission_denied`.
+  A window the player lets pass, or the master passes, ends the move: the row is ignored, the reaction stays and no `readied_lost` line is written.
+  A move after that is `NOT_YOUR_TURN`.
+  The reactor's mark of being on the map (`MarkReactionRolling`, `clear` takes it off) changes nothing of the window.
   `AnswerReaction` "Usar" on a move window is `invalid_argument`: it carries no square.
 - **other**: the `TakeAction` path, charged to the reaction instead of the action.
 - **spell**: the `CastSpell` path as a reaction: see [Readied spells](#readied-spells).
