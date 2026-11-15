@@ -151,12 +151,12 @@ const (
 	pactOfTheChain = "feature:pact-of-the-chain"
 )
 
-// bookOfAncientSecrets is the warlock invocation that casts two spells of the Book of
+// bookInvocationKey is the warlock invocation that casts two spells of the Book of
 // Shadows, and the warlock spells it knows, as rituals (SRD 5.1, Warlock, Eldritch
 // Invocations: Book of Ancient Secrets). bookRitualsKey is the choice of its two spells.
 const (
-	bookOfAncientSecrets = "feature:eldritch-invocation-book-of-ancient-secrets"
-	bookRitualsKey       = bookOfAncientSecrets + textSeparator + "rituals"
+	bookInvocationKey = "feature:eldritch-invocation-book-of-ancient-secrets"
+	bookRitualsKey    = bookInvocationKey + textSeparator + "rituals"
 )
 
 // SpellStanding works out what the derived sheet says about the spell.
@@ -168,7 +168,7 @@ const (
 // Ancient Secrets adds its two spells (known, not prepared) and the warlock spells known.
 func (d Derived) SpellStanding(spellKey string, ritualTag bool) SpellStanding {
 	var out SpellStanding
-	book := slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == bookOfAncientSecrets })
+	book := slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == bookInvocationKey })
 	for _, cs := range d.Spells {
 		if cs.Spell.Key != spellKey {
 			continue
