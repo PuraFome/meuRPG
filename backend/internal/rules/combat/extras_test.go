@@ -59,6 +59,11 @@ func TestSneakAttackConditions(t *testing.T) {
 			s.Finesse = false
 			s.WeaponName = "Espada longa"
 		}, false, false, "Espada longa não é de acuidade nem à distância."},
+		{"the improvised melee line of a bow is neither finesse nor ranged", func(s *ExtraScene) {
+			s.Mode = ModeAdvantage
+			s.Finesse = false
+			s.WeaponName = "Arco curto, corpo a corpo"
+		}, false, false, "Arco curto, corpo a corpo não é de acuidade nem à distância."},
 		{"a spell attack is no weapon attack", func(s *ExtraScene) { s.Mode = ModeAdvantage; s.Weapon = false }, false, false, "Espada curta não é de acuidade nem à distância."},
 		{"already used this turn", func(s *ExtraScene) { s.Mode = ModeAdvantage; s.SneakUsed = true }, false, false, "Já usado neste turno (uma vez por turno)."},
 		{"an enemy near the target without disadvantage", func(s *ExtraScene) { s.EnemyNearTarget = true }, true, true, "Um inimigo do alvo está a 1,5 m e você não tem desvantagem · uma vez por turno"},

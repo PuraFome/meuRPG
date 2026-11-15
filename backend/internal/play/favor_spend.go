@@ -95,7 +95,7 @@ func favorMode(sources []combat.Source) combat.RollMode {
 
 // notesSources are the sources a check's notes make, for the helper: a bonus says nothing of advantage, and a note that is
 // not an advantage is a disadvantage (as notesMode reads them). hide says which of them the roller may not read: the ones whose note is
-// secret (the master hides the source, RN-10), which spendFavor leaves out of its judgement and nowhere else.
+// hidden (the master hides the source, RN-10), which spendFavor leaves out of its judgement and nowhere else.
 func notesSources(notes []rollNote) (sources []combat.Source, hide func(combat.Source) bool) {
 	var secret []combat.Source
 	for _, n := range notes {
@@ -108,7 +108,7 @@ func notesSources(notes []rollNote) (sources []combat.Source, hide func(combat.S
 		}
 		src := combat.Source{Kind: n.Kind, Effect: effect}
 		sources = append(sources, src)
-		if n.secret {
+		if n.hiddenFromOwner() {
 			secret = append(secret, src)
 		}
 	}

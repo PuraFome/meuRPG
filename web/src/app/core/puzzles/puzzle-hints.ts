@@ -8,6 +8,7 @@ import {
   type TryPuzzleHintResponse,
 } from '../../../gen/meurpg/play/v1/puzzles_pb';
 import { ExtraDiceState } from '../effects/extra-dice-state';
+import type { FavorSpend } from '../play/favor-spend';
 import { HeldRollController } from '../held-rolls/held-roll-controller';
 import { type HeldAnswer, heldOfferOf } from '../held-rolls/held-roll-offer';
 import { needsTwoD20, takesTwo } from '../play/check-roll';
@@ -27,6 +28,8 @@ export interface HintHost {
   readonly message: WritableSignal<string>;
   /** Counts the puzzles opened: an answer that began for an earlier one never touches the one on screen. */
   readonly openSeq: () => number;
+  /** The box of the master's Inspiração on the page, when it has one: ticked, the try spends it. */
+  readonly favor?: () => FavorSpend | null;
   apply(run: PuzzleRun): boolean;
   refresh(): Promise<void>;
 }
@@ -98,13 +101,15 @@ export class PuzzleHints {
     }
     const seq = host.openSeq();
     const key = host.makeKey();
+    const spend = host.favor?.()?.spend() ?? false;
     this.trying.set(true);
     host.message.set('');
     try {
       const answer = await withRetry(
-        () => host.api.tryHint(host.campaignId(), run.puzzleId, die, key, extra),
+        () => host.api.tryHint(host.campaignId(), run.puzzleId, die, key, extra, spend),
         host.wait,
       );
+      host.favor?.()?.spent();
       if (seq === host.openSeq()) {
         this.settle(answer, run);
       }
@@ -122,6 +127,11 @@ export class PuzzleHints {
   /** What a failed try says, and whether the screen is stale (then the run is read again). */
   private async failed(err: unknown, die: HintDie): Promise<void> {
     if (this.askForMore(err, die)) {
+      return;
+    }
+    const refused = this.host.favor?.()?.refused(err);
+    if (refused !== null && refused !== undefined) {
+      this.host.message.set(refused);
       return;
     }
     this.host.message.set(puzzleErrorMessage(err, 'tentar a dica', 'player'));

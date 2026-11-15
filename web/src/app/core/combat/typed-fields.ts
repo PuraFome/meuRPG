@@ -92,7 +92,11 @@ export function typedEntries(
   );
 }
 
-/** "Sem o + 3: o app soma o bônus.": the fixed number the player does not type; nothing when there is none. */
-export function typedBonusLine(flat: number): string {
-  return flat === 0 ? '' : `Sem o ${flat < 0 ? '−' : '+'} ${Math.abs(flat)}: o app soma o bônus.`;
+/** "Sem o + 3: o app soma o bônus.": the fixed number the player does not type; nothing when there is none. A power attack's
+ * name (`trade`) is said among what the app adds: "Sem o + 13: o app soma o bônus e o Golpe Pesado." */
+export function typedBonusLine(flat: number, trade = ''): string {
+  const and = trade ? ` e o ${trade}` : '';
+  return flat === 0
+    ? ''
+    : `Sem o ${flat < 0 ? '−' : '+'} ${Math.abs(flat)}: o app soma o bônus${and}.`;
 }

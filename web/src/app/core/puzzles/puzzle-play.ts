@@ -16,6 +16,7 @@ import {
 } from './puzzle-play-api';
 import { RETRY_WAITS_MS, hintLineStale, movedOn, withRetry } from './puzzle-play-support';
 import type { HintDie, MoveAnswer } from './puzzles-client';
+import type { FavorSpend } from '../play/favor-spend';
 
 // The API of the play lives in `puzzle-play-api`; the pages import it from here.
 export type { HintTry, MoveVerdict, PlayApi, Schedule };
@@ -70,6 +71,9 @@ export class PuzzlePlay {
   /** What to say when the first read of the run failed and nothing is on screen, or `''`; "Tentar de novo" reads again. */
   readonly loadError = signal('');
 
+  /** The box of the master's Inspiração of the page that shows the puzzle: a try for a hint spends it when ticked. */
+  favor: FavorSpend | null = null;
+
   constructor(
     private readonly api: PlayApi,
     private readonly campaignId: () => string,
@@ -87,6 +91,7 @@ export class PuzzlePlay {
       gone: this.gone,
       message: this.message,
       openSeq: () => this.openSeq,
+      favor: () => this.favor,
       apply: (run) => this.apply(run),
       refresh: () => this.refresh(),
     });

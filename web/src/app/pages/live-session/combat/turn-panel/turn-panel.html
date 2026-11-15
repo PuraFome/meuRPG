@@ -22,6 +22,10 @@
             <app-form-chip class="banner__chip" [beast]="f.name" [time]="formTime()" />
           }
         </p>
+        @if (hasFavor()) {
+          <!-- The master's Inspiração (RN-43, 581-03): a read-only chip, only for the owner's own character. -->
+          <app-favor-chip class="banner__favor" />
+        }
       </div>
     </div>
     <div class="banner__end">
@@ -93,6 +97,9 @@
       } @else if (!banner().mine && banner().who?.wildShapeBeastKey) {
         <!-- Another player's turn: the name of the beast, never the time (RN-20). -->
         <app-form-chip [beast]="banner().who!.wildShapeBeastNamePt" />
+      }
+      @if (banner().mine && hasFavor()) {
+        <app-favor-chip class="turn__favor" />
       }
       @if (banner().mine && own(); as me) {
         <app-combatant-tags class="turn__states" [names]="conditions(me)" [label]="me.label" [states]="me.states" [sources]="me.conditionSources" [people]="encounter().combatants" />

@@ -28,8 +28,6 @@ import {
 } from '../../../../core/combat/combat-options';
 import { combatantInitial, isPlayer } from '../../../../core/combat/combat-view';
 import { isCreature } from '../../../../core/combat/creature-names';
-import { d20Formula } from '../../../../core/combat/roll-mode';
-import { waitingHitLines } from '../../../../core/effects/hit-effect-text';
 import { isTheatre } from '../../../../core/combat/theatre';
 import { initialPicks } from '../../../../core/combat/damage-parts';
 import type { TypedEntry } from '../../../../core/combat/typed-fields';
@@ -38,6 +36,7 @@ import { heldOfferOf } from '../../../../core/held-rolls/held-roll-offer';
 import { HeldVanishWatch } from '../../../../core/held-rolls/held-vanish';
 import { ResourceClient } from '../../../../core/resources/resources-client';
 import { metersText } from '../../../../core/units';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
 import { RollDieOffer } from '../../../../shared/roll-die-offer/roll-die-offer';
@@ -49,6 +48,7 @@ import { DamageParts } from '../damage-parts/damage-parts';
 import { MultiRoll, type RollField } from '../../../../shared/multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
 import { AttackDamage } from './attack-damage';
+import { attackFavor } from './attack-favor';
 import { AttackMode } from './attack-mode';
 import { BonusChip } from '../../../../shared/bonus-chip/bonus-chip';
 import { WeaponTags } from '../../../../shared/weapon-tags/weapon-tags';
@@ -67,6 +67,10 @@ import {
 import { AttackState } from './attack-state';
 import { AttackSteps } from './attack-steps';
 import { ModeRequests } from './mode-requests';
+import { PowerTrade, dieLegend } from './power-trade';
+import { PowerTradeOffer } from './power-trade-offer';
+import { type TypedExtra, extrasSum, typedExtrasOf, typedFormulaOf } from './typed-extras';
+import { waitingEffectsOf } from './waiting-effects';
 
 /** An opportunity attack is a melee attack: it reaches 5 ft, whatever range the weapon has when thrown. */
 const REACTION_REACH_FT = 5;
@@ -95,12 +99,14 @@ export type { AttackSheetData } from './attack-sheet-types';
     CombatantToken,
     DamageParts,
     ExtraDice,
+    FavorSpendBox,
     MatButtonModule,
     MatIconModule,
     MultiRoll,
     RollDieOffer,
     RollModePicker,
     HeldRollPrompt,
+    PowerTradeOffer,
     RollPicker,
   ],
   templateUrl: './attack-sheet.html',
@@ -140,15 +146,17 @@ export class AttackSheet {
     busy: this.s.busy,
     error: this.s.error,
   });
-  protected readonly mode = new AttackMode(this.s, this.modes);
+  protected readonly fav = attackFavor(
+    this.data,
+    () => this.mode,
+    () => this.modes,
+  );
+  protected readonly mode: AttackMode = new AttackMode(this.s, this.modes, this.fav);
   protected readonly outcome = computed(() => outcomeOf(this.s.roll(), this.s.asking()));
-  /** After a miss: the caster's own hit effects that still wait for a weapon hit, one sentence each (#577). */
-  protected readonly waitingEffects = computed(() => {
-    const attacker = this.data.state
-      .encounter()
-      ?.combatants.find((c) => c.id === this.data.attackerId);
-    return this.outcome()?.hit === false && attacker ? waitingHitLines(attacker) : [];
-  });
+  /** After a miss: the caster's own hit effects that still wait for a weapon hit. */
+  protected readonly waitingEffects = computed(() =>
+    waitingEffectsOf(this.data.state.encounter(), this.data.attackerId, this.outcome()?.hit),
+  );
   protected readonly dmg = new AttackDamage(
     this.s,
     this.name,
@@ -156,12 +164,16 @@ export class AttackSheet {
     computed(() => this.outcome()?.crit),
     computed(() => this.targetLabel()),
   );
+  /** "Troca do talento": the power attack trades the weapon lists, off at the start of every attack. */
+  protected readonly trade = new PowerTrade(this.attack, this.data.powerAttacks ?? []);
   private readonly rolls: AttackRolls = new AttackRolls(this.s, this.dmg, this.question, {
     api: this.api,
+    trade: this.trade,
     animator: this.animator,
     attack: this.attack,
     name: this.name,
     modeChoice: () => this.mode.choice(),
+    fav: this.fav,
   });
   protected readonly extraFields = this.rolls.extraFields;
   /** What the player types with physical dice besides the d20: the effects' d4, then the table die ticked. */
@@ -173,31 +185,18 @@ export class AttackSheet {
   );
   protected readonly maneuverUses = this.rolls.maneuverUses;
   protected readonly maneuverKey = computed(() => this.rolls.maneuver()?.key ?? '');
+  /** With a trade of the talent beside it the die has no heading of its own (586-05 #4): the group is read from its checks. */
   protected readonly maneuverLegend = computed(() =>
-    this.maneuverDice().length > 1
-      ? 'Dado da manobra neste ataque'
-      : 'Dados das suas características',
+    dieLegend(this.maneuverDice().length, this.trade.options().length > 0),
   );
   /** The extra dice typed beside the d20 (the effects' d4, then the table die), each with its sign. */
-  private typedExtras(): readonly { face: number; sign: number }[] | null {
-    const fields = this.typedFields();
-    const faces = this.extraFaces();
-    if (fields.length === 0 || faces.length !== fields.length || faces.some((f) => f === null)) {
-      return null;
-    }
-    return fields.map((f, i) => ({ face: faces[i] as number, sign: f.sign }));
+  private typedExtras(): readonly TypedExtra[] | null {
+    return typedExtrasOf(this.typedFields(), this.extraFaces());
   }
   /** With extra dice typed and all their faces there, the total adds them: "12 + 6 + 5 = 23". */
   protected readonly typedFormula = (d20: number): { text: string; total: number } | null => {
     const extras = this.typedExtras();
-    if (!extras) {
-      return null;
-    }
-    const bonus = this.attack.attackBonus;
-    const total = d20 + bonus + extras.reduce((n, e) => n + e.sign * e.face, 0);
-    const mod = bonus === 0 ? '' : ` ${bonus < 0 ? '−' : '+'} ${Math.abs(bonus)}`;
-    const text = extras.map((e) => ` ${e.sign < 0 ? '−' : '+'} ${e.face}`).join('');
-    return { text: `${d20}${mod}${text} = ${total}`, total };
+    return extras ? typedFormulaOf(d20, this.trade.bonus(), extras) : null;
   };
   /** Any extra die is asked beside the d20: the total and the confirm button read it. */
   protected readonly hasExtras = computed(() => this.typedFields().length > 0);
@@ -206,10 +205,9 @@ export class AttackSheet {
     () => this.hasExtras() && this.typedExtras() === null,
   );
   /** The attack bonus with the typed extra dice, for the total of the two d20. */
-  protected readonly pairModifier = computed(() => {
-    const extras = this.typedExtras();
-    return this.attack.attackBonus + (extras?.reduce((n, e) => n + e.sign * e.face, 0) ?? 0);
-  });
+  protected readonly pairModifier = computed(
+    () => this.trade.bonus() + extrasSum(this.typedExtras()),
+  );
   private readonly body = viewChild<ElementRef<HTMLElement>>('body');
   private readonly back = viewChild('back', { read: ElementRef<HTMLButtonElement> });
 
@@ -263,7 +261,12 @@ export class AttackSheet {
     effectivePreference(this.data.diceMode, this.data.preference) === DicePreference.APP;
   protected readonly d20Formula = computed(() => {
     const r = this.s.roll()?.d20;
-    return r ? d20Formula(r, true) : '';
+    return r ? this.trade.formula(r, this.targetLabel()) : '';
+  });
+  /** "Golpe Pesado: −5 no ataque", and for a miss that the +10 does not come in; empty for an attack that made no trade. */
+  protected readonly tradeLine = computed(() => {
+    const o = this.outcome();
+    return this.trade.rollLine(o ? (o.hit ? 'hit' : 'miss') : 'unknown');
   });
   /** The d20 is rolled but a reaction holds the result: "Esperando o mestre. O resultado do seu ataque sai quando ele responder." */
   protected readonly held = computed(() => heldWait(this.s.roll(), this.data.state.encounter()));
@@ -317,7 +320,7 @@ export class AttackSheet {
     this.s.typing() || this.data.opportunity || this.data.legendary ? 0 : (this.data.bonus ?? 0),
   );
   protected readonly rollLabel = computed(
-    () => `Role 1d20 para ${this.name} (${signedBonus(this.attack.attackBonus)})`,
+    () => `Role 1d20 para ${this.name} (${signedBonus(this.trade.bonus())})`,
   );
   /** A combat without a map: the master judges the reach, and the list says so instead of "Longe demais". */
   protected readonly theatre = computed(() => isTheatre(this.data.state.encounter()));
@@ -433,6 +436,12 @@ export class AttackSheet {
 
   protected useDie(key: string): void {
     this.rolls.useDie(key);
+  }
+
+  /** The check of a trade: ticks it, or takes it off; the refusal of the last roll no longer holds. */
+  protected pickTrade(key: string): void {
+    this.trade.choose(key);
+    this.s.clearRefusals();
   }
 
   protected rollAttackTyped(face: number): Promise<void> {

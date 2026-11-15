@@ -51,6 +51,31 @@ describe('CombatClient: roll modes, damage parts and requests', () => {
     expect(req.d20Faces).toEqual([]);
   });
 
+  it('sends the power attack key the trade names, and never the server-only pin', async () => {
+    const rollAttack = vi.fn().mockResolvedValue({ encounter: {}, roll: {} });
+    const client = clientWith({ rollAttack });
+    await client.attacks.rollAttack(
+      'c',
+      'e',
+      'a',
+      'attack:x',
+      't',
+      { inApp: true },
+      'k',
+      false,
+      '',
+      undefined,
+      '',
+      { powerAttackKey: 'feat:golpe-pesado@mesa' },
+    );
+    const req = rollAttack.mock.calls[0][0];
+    expect(req.powerAttackKey).toBe('feat:golpe-pesado@mesa');
+    expect(req.powerAttackPin).toBeUndefined();
+    await client.attacks.rollAttack('c', 'e', 'a', 'attack:x', 't', { inApp: true }, 'k2');
+    expect(rollAttack.mock.calls[1][0].powerAttackKey).toBeUndefined();
+    expect(rollAttack.mock.calls[1][0].powerAttackPin).toBeUndefined();
+  });
+
   it('answers the extras as the whole choice, even none, and sends the typed parts', async () => {
     const rollDamage = vi.fn().mockResolvedValue({ encounter: {}, pendingDamage: {} });
     const client = clientWith({ rollDamage });

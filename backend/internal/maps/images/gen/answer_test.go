@@ -77,7 +77,6 @@ func TestValidateAnswersTheFirstBrokenRule(t *testing.T) {
 func TestParseAnswerSentences(t *testing.T) {
 	t.Parallel()
 	b64 := base64.StdEncoding.EncodeToString(onePixel)
-	long := strings.Repeat("é", maxLoggedMessage) // 2 bytes each: cut in the middle of a character
 	tests := []struct {
 		name   string
 		status int
@@ -86,20 +85,21 @@ func TestParseAnswerSentences(t *testing.T) {
 		is     error
 	}{
 		{"a 500 with no error object", 500, `{}`, "the image service is unavailable\nstatus 500", ErrUnavailable},
-		{"a 400 with an error object and no message", 400, `{"error":{"code":"invalid_request"}}`, "the image service is unavailable\nstatus 400", ErrUnavailable},
-		{"a message with the string code", 400, `{"error":{"message":"bad value","code":"invalid_request"}}`, "the image service is unavailable\nstatus 400: invalid_request: bad value", ErrUnavailable},
-		{"a message with the numeric code", 400, `{"error":{"message":"bad value","code":400}}`, "the image service is unavailable\nstatus 400: 400: bad value", ErrUnavailable},
-		{"the status word over the code", 429, `{"error":{"message":"slow down","code":429,"status":"RESOURCE_EXHAUSTED"}}`, "the image service is unavailable\nstatus 429: RESOURCE_EXHAUSTED: slow down", ErrUnavailable},
-		{"the detail over the status word", 500, `{"error":{"message":"m","status":"INTERNAL","details":[{"reason":"WHY"}]}}`, "the image service is unavailable\nstatus 500: WHY: m", ErrUnavailable},
-		{"an error object in a 200", 200, `{"error":{"message":"m","status":"S"}}`, "the image service is unavailable\nstatus 200: S: m", ErrUnavailable},
-		{"the message is cut short", 500, `{"error":{"message":"` + long + `","status":"S"}}`, "the image service is unavailable\nstatus 500: S: " + strings.Repeat("é", maxLoggedMessage/2) + "...", ErrUnavailable},
-		{"a refusal word needs a 400", 500, `{"error":{"message":"blocked for safety"}}`, "the image service is unavailable\nstatus 500: : blocked for safety", ErrUnavailable},
+		{"a 400 with an error object and no message keeps the reason word", 400, `{"error":{"code":"invalid_request"}}`, "the image service is unavailable\nstatus 400: invalid_request", ErrUnavailable},
+		{"a message with the string code", 400, `{"error":{"message":"bad value","code":"invalid_request"}}`, "the image service is unavailable\nstatus 400: invalid_request", ErrUnavailable},
+		{"a message with the numeric code", 400, `{"error":{"message":"bad value","code":400}}`, "the image service is unavailable\nstatus 400: 400", ErrUnavailable},
+		{"the status word over the code", 429, `{"error":{"message":"slow down","code":429,"status":"RESOURCE_EXHAUSTED"}}`, "the image service is unavailable\nstatus 429: RESOURCE_EXHAUSTED", ErrUnavailable},
+		{"the detail over the status word", 500, `{"error":{"message":"m","status":"INTERNAL","details":[{"reason":"WHY"}]}}`, "the image service is unavailable\nstatus 500: WHY", ErrUnavailable},
+		{"an error object in a 200", 200, `{"error":{"message":"m","status":"S"}}`, "the image service is unavailable\nstatus 200: S", ErrUnavailable},
+		{"the message is not in the error", 500, `{"error":{"message":"quoted prompt text","status":"S"}}`, "the image service is unavailable\nstatus 500: S", ErrUnavailable},
+		{"a refusal word needs a 400", 500, `{"error":{"message":"blocked for safety"}}`, "the image service is unavailable\nstatus 500", ErrUnavailable},
 		{"safety is the first word", 400, `{"error":{"message":"safety and blocked"}}`, "the image service refused the request: safety", nil},
 		{"prohibited", 400, `{"error":{"message":"PROHIBITED content"}}`, "the image service refused the request: prohibited", nil},
 		{"blocked", 400, `{"error":{"message":"it was blocked"}}`, "the image service refused the request: blocked", nil},
 		{"recitation", 400, `{"error":{"message":"Recitation"}}`, "the image service refused the request: policy", nil},
 		{"policy", 400, `{"error":{"message":"against the policy"}}`, "the image service refused the request: policy", nil},
 		{"a key refused beats a refusal word", 401, `{"error":{"message":"blocked","status":"UNAUTHENTICATED"}}`, "the image service did not accept the key: status 401, UNAUTHENTICATED", ErrNotAuthorized},
+		{"a free-text code is left out", 400, `{"error":{"code":"bad value CANARY-xyz","message":"m"}}`, "the image service is unavailable\nstatus 400", ErrUnavailable},
 		{"a 403 with the code as reason", 403, `{"error":{"code":"denied"}}`, "the image service did not accept the key: status 403, denied", ErrNotAuthorized},
 		{"a 401 with no error object", 401, `{}`, "the image service did not accept the key: status 401, ", ErrNotAuthorized},
 		{"a safety stop in the errors", 200, `{"status":"failed","errors":[{"code":"X","message":"x"},{"code":"BLOCKED_REASON","message":"x"}]}`, "the image service refused the request: blocked", nil},

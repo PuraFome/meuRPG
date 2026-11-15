@@ -61,6 +61,9 @@ import {
   totalOf,
   typedLineOf,
 } from './trap-search-view';
+import { FavorSpend } from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 
 /** What the page hands "Procurar armadilhas". */
 export interface TrapSearchData {
@@ -105,7 +108,15 @@ export function openTrapSearch(
  */
 @Component({
   selector: 'app-trap-search-sheet',
-  imports: [CheckMode, ExtraDice, HeldRollPrompt, MatButtonModule, MatIconModule, SheetFrame],
+  imports: [
+    CheckMode,
+    ExtraDice,
+    FavorSpendBox,
+    HeldRollPrompt,
+    MatButtonModule,
+    MatIconModule,
+    SheetFrame,
+  ],
   templateUrl: './trap-search-sheet.html',
   styleUrl: './trap-search-sheet.scss',
 })
@@ -143,6 +154,12 @@ export class TrapSearchSheet {
     () => this.skill() !== 'other' || this.otherPicked() !== null,
   );
   protected readonly typing = signal(false);
+  /** The master's Inspiração (RN-43) for the player's own search: ticked, the roll spends it. Under it the dim squares keep
+   * their own disadvantage rule, so the server judges what it adds (a refusal says so). */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => ({ characterId: '', name: '' }),
+  });
   /** The server asked for a second die: the first face typed waits here. */
   protected readonly firstFace = signal<number | null>(null);
   protected readonly busy = signal(false);
@@ -320,14 +337,17 @@ export class TrapSearchSheet {
       const sent: SearchDie =
         'face' in die && first !== null ? { face: first, face2: die.face } : die;
       const other = this.skill() === 'other' ? (this.otherKey() ?? '') : '';
+      const spend = this.fav.spend();
       const res = await this.api.search(
         this.data.campaignId,
         this.skill(),
         sent,
-        this.key.keyFor({ skill: this.skill(), other, die: sent, extra }),
+        this.key.keyFor({ skill: this.skill(), other, die: sent, extra, favor: spend }),
         other,
         extra,
+        spend,
       );
+      this.fav.spent();
       const asked = heldOfferOf(res);
       if (asked) {
         this.hold(asked);
@@ -335,15 +355,23 @@ export class TrapSearchSheet {
       }
       await this.showResult(res);
     } catch (err) {
-      if ((needsTwoDice(err) || needsTwoD20(err)) && 'face' in die && this.firstFace() === null) {
-        this.firstFace.set(die.face);
-        // Not an error: the step's own heading and text ask for the second die and say why.
-        this.error.set('');
-      } else {
-        this.error.set(this.extra.fromRefusal(err) || trapErrorMessage(err, 'procurar armadilhas'));
-      }
+      this.failed(err, die);
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /** A refused search: the first of two dice is kept and the second asked for, or the refusal is told. */
+  private failed(err: unknown, die: SearchDie): void {
+    if ((needsTwoDice(err) || needsTwoD20(err)) && 'face' in die && this.firstFace() === null) {
+      this.firstFace.set(die.face);
+      // Not an error: the step's own heading and text ask for the second die and say why.
+      this.error.set('');
+    } else {
+      this.error.set(
+        this.extra.fromRefusal(err) ||
+          (this.fav.refused(err) ?? trapErrorMessage(err, 'procurar armadilhas')),
+      );
     }
   }
 

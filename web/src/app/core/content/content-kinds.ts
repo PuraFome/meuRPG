@@ -5,6 +5,7 @@ import { classFeatureSupport } from './class-feature-text';
 import { creatureSupport } from './creature-text';
 import { type OfferedByName, optionSupport } from './option-text';
 import { metersText } from '../units';
+import { weaponSupport } from './weapon-text';
 
 /**
  * "Conteúdo da mesa" (MR-025, RN-23, E10-01): what the list says about the table's entries, as pure
@@ -26,7 +27,8 @@ export interface ContentNavKind {
     | 'feats'
     | 'options'
     | 'classfeatures'
-    | 'creatures';
+    | 'creatures'
+    | 'weapons';
   /** Plural, the nav item and the panel title. */
   readonly plural: string;
   /** Singular with its article, for "Nova raça" and "Voltar para Raças". */
@@ -141,6 +143,21 @@ export const CONTENT_NAV: readonly ContentNavKind[] = [
       text: 'Uma criatura da mesa parte de uma do SRD, com os seus números e ataques; uma característica ou magia da mesa pode trazê-la.',
     },
   },
+  {
+    slug: 'weapons',
+    plural: 'Armas',
+    singular: 'arma',
+    kinds: [TableContentKind.WEAPON],
+    newLabel: 'Nova arma',
+    aOne: 'uma arma',
+    editable: true,
+    createSegment: 'weapon',
+    empty: {
+      icon: 'swords',
+      title: 'Nenhuma arma da mesa ainda.',
+      text: 'Uma arma da mesa entra nas fichas e nos ataques como uma do SRD.',
+    },
+  },
 ];
 
 export function navOfKind(kind: TableContentKind): ContentNavKind | undefined {
@@ -163,6 +180,7 @@ export const KIND_WORDS: Readonly<Record<number, string>> = {
   [TableContentKind.OPTION]: 'Opção',
   [TableContentKind.CLASS_FEATURE]: 'Característica de classe',
   [TableContentKind.CREATURE]: 'Criatura',
+  [TableContentKind.WEAPON]: 'Arma',
 };
 
 /** The noun of a kind with its article and the words that agree with it: "A magia … foi salva", "O antecedente … foi salvo". */
@@ -209,6 +227,7 @@ export const KIND_NOUNS: Readonly<Record<number, KindNoun>> = {
     saved: 'salva',
     archived: 'arquivada',
   },
+  [TableContentKind.WEAPON]: { article: 'A', noun: 'arma', saved: 'salva', archived: 'arquivada' },
 };
 
 /** "A magia Lâmina de Nanquim foi salva." */
@@ -426,6 +445,8 @@ function supportParts(
       );
     case 'tableCreature':
       return [creatureSupport(body.value, nameOf)];
+    case 'tableWeapon':
+      return [weaponSupport(body.value, nameOf)];
     default:
       return [];
   }

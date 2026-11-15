@@ -290,6 +290,7 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		Key:                 a.Key,
 		Name:                a.Name,
 		NamePt:              a.NamePT,
+		Improvised:          a.Improvised,
 		AttackBonus:         i32(a.AttackBonus),
 		Damage:              a.Damage,
 		DamageTypePt:        a.DamageTypeNamePT,
@@ -300,6 +301,7 @@ func attackToProto(a rules.Attack) *rulesv1.Attack {
 		RangeFt:             i32(max(a.RangeFt, a.ReachFt)), // the proto promises a range_ft of at least the reach of a melee attack
 		LongRangeFt:         i32(a.LongRangeFt),
 		Melee:               a.Melee,
+		Thrown:              a.Thrown,
 		Notes:               a.Notes,
 		Beams:               i32(a.Beams),
 		DamageNotePt:        a.DamageNotePT,

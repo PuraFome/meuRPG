@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/progression/progressiondb"
 )
 
@@ -16,7 +17,7 @@ type emptyParty struct{ partyAPI }
 
 type emptyProfiles struct{ Profiles }
 
-func (emptyParty) Names(context.Context, string, []string) (map[string]string, error) {
+func (emptyParty) Names(context.Context, string, []string, bool) (map[string]string, error) {
 	return map[string]string{}, nil
 }
 
@@ -45,7 +46,7 @@ func TestReadHistoryNamesAsksCombatsOnlyForCombatAwards(t *testing.T) {
 	t.Run("no award has a combat", func(t *testing.T) {
 		combats := &failingCombats{}
 		s := &Service{party: emptyParty{}, profiles: emptyProfiles{}, combats: combats}
-		if _, err := s.readHistoryNames(t.Context(), "camp", noCombat, nil); err != nil {
+		if _, err := s.readHistoryNames(t.Context(), authz.Membership{CampaignID: "camp"}, noCombat, nil); err != nil {
 			t.Fatalf("readHistoryNames: %v", err)
 		}
 		if combats.calls != 0 {
@@ -56,7 +57,7 @@ func TestReadHistoryNamesAsksCombatsOnlyForCombatAwards(t *testing.T) {
 	t.Run("an award has a combat", func(t *testing.T) {
 		combats := &failingCombats{}
 		s := &Service{party: emptyParty{}, profiles: emptyProfiles{}, combats: combats}
-		if _, err := s.readHistoryNames(t.Context(), "camp", withCombat, nil); err == nil {
+		if _, err := s.readHistoryNames(t.Context(), authz.Membership{CampaignID: "camp"}, withCombat, nil); err == nil {
 			t.Fatal("readHistoryNames: want the combats' error")
 		}
 		if combats.calls != 1 || !slices.Equal(combats.ids, []string{enc1, enc2}) {

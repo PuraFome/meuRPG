@@ -1207,8 +1207,10 @@ var appendEventDirs = []string{"internal/characters", "internal/maps", "internal
 
 // appendEventProblems returns a problem for each function of the sources that calls a method named AppendEvent and takes no pgx.Tx
 // parameter: the call must run in the transaction of the caller (a funnel closure's, through inSession), never in one of its own.
-// Limit: whether that transaction took the session's row first is the seam rows' to prove (the lock-order tests); the rule sees
-// only the parameter.
+// It also returns a problem for each closure given to db.InTx that calls a method that locks sheets (sheetLockCalls) before the call
+// to AppendEvent in source order: the sheets would be held while AppendEvent waits for the session's row.
+// Limit: it reads names in the order of the source. A sheet lock taken in a helper the closure calls is not seen, nor is a lock
+// taken by a call under another name; whether a transaction took the session's row first is the lock-order tests' to prove.
 func appendEventProblems(srcs map[string][]byte) ([]string, error) {
 	decls, err := funcDeclsByKey(srcs)
 	if err != nil {
@@ -1230,8 +1232,52 @@ func appendEventProblems(srcs map[string][]byte) ([]string, error) {
 			problems = append(problems, fmt.Sprintf("%q calls AppendEvent but takes no pgx.Tx: it must run in its caller's transaction, the funnel's (inSession)", key))
 		}
 	}
+	for key, d := range decls {
+		if d.Body != nil && lockedSheetsBeforeAppendEvent(d.Body) {
+			problems = append(problems, fmt.Sprintf("%q locks sheets in a db.InTx closure before it calls AppendEvent: the session's row comes first", key))
+		}
+	}
 	slices.Sort(problems)
 	return problems, nil
+}
+
+// sheetLockCalls are the names of the calls that lock sheets, by name alone: the characters query that locks the campaign's living
+// player characters, and the one that locks a character.
+var sheetLockCalls = []string{"LockSheets", "GetCharacterForUpdate"}
+
+// lockedSheetsBeforeAppendEvent says whether a function literal given to a call named InTx in the body calls AppendEvent after a
+// call that locks sheets.
+func lockedSheetsBeforeAppendEvent(body *ast.BlockStmt) bool {
+	found := false
+	ast.Inspect(body, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok || callName(call) != "InTx" {
+			return !found
+		}
+		for _, arg := range call.Args {
+			lit, ok := arg.(*ast.FuncLit)
+			if !ok {
+				continue
+			}
+			lock, appended := token.NoPos, token.NoPos
+			ast.Inspect(lit.Body, func(n ast.Node) bool {
+				if c, ok := n.(*ast.CallExpr); ok {
+					switch name := callName(c); {
+					case name == "AppendEvent" && appended == token.NoPos:
+						appended = c.Pos()
+					case slices.Contains(sheetLockCalls, name) && lock == token.NoPos:
+						lock = c.Pos()
+					}
+				}
+				return true
+			})
+			if lock != token.NoPos && appended != token.NoPos && lock < appended {
+				found = true
+			}
+		}
+		return !found
+	})
+	return found
 }
 
 func TestAppendEventCallersRunInTheirCallersTransaction(t *testing.T) {
@@ -1263,12 +1309,28 @@ func TestAppendEventProblems(t *testing.T) {
 	srcs := map[string][]byte{"internal/maps/a.go": []byte("package maps\n" +
 		"func (s *Service) InTheCallersTx(c C, tx pgx.Tx) error { _, err := s.live.AppendEvent(c, tx, id); return err }\n" +
 		"func (s *Service) InOwnTx(c C) error { return db.InTx(c, s.pool, func(tx pgx.Tx) error { _, err := s.live.AppendEvent(c, tx, id); return err }) }\n" +
-		"func (s *Service) NoCall(c C) error { return nil }")}
+		"func (s *Service) NoCall(c C) error { return nil }\n" +
+		"func (s *Service) SessionFirst(c C, pool P) error { return db.InTx(c, pool, func(tx pgx.Tx) error { _, err := s.live.AppendEvent(c, tx, id); if err != nil { return err }; _, err = q.LockSheets(c, p); return err }) }\n" +
+		"func (s *Service) SheetsFirst(c C, pool P) error { return db.InTx(c, pool, func(tx pgx.Tx) error { if _, err := q.LockSheets(c, p); err != nil { return err }; _, err := s.live.AppendEvent(c, tx, id); return err }) }\n" +
+		"func (s *Service) CharacterFirst(c C, pool P) error { return db.InTx(c, pool, func(tx pgx.Tx) error { if _, err := q.GetCharacterForUpdate(c, p); err != nil { return err }; _, err := s.live.AppendEvent(c, tx, id); return err }) }\n" +
+		"func (s *Service) LockInAHelper(c C, pool P) error { return db.InTx(c, pool, func(tx pgx.Tx) error { if err := s.lockThem(c, tx); err != nil { return err }; _, err := s.live.AppendEvent(c, tx, id); return err }) }")}
 	got, err := appendEventProblems(srcs)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || !strings.Contains(got[0], "(*Service).InOwnTx") {
-		t.Errorf("appendEventProblems() = %q, want only (*Service).InOwnTx", got)
+	// Every function that calls AppendEvent with no pgx.Tx of its own is a problem of the first rule (all but NoCall and
+	// InTheCallersTx here); of those, the ones that lock sheets before AppendEvent in the closure are a problem of the second.
+	// SessionFirst is right, and LockInAHelper is the rule's limit: the lock is in a helper the closure calls.
+	var locks []string
+	for _, p := range got {
+		if strings.Contains(p, "locks sheets") {
+			locks = append(locks, p)
+		}
+	}
+	if len(locks) != 2 || !strings.Contains(locks[0], "(*Service).CharacterFirst") || !strings.Contains(locks[1], "(*Service).SheetsFirst") {
+		t.Errorf("the sheet-lock problems = %q, want (*Service).CharacterFirst and (*Service).SheetsFirst", locks)
+	}
+	if len(got) != 7 {
+		t.Errorf("appendEventProblems() = %q, want 7 problems (5 without a pgx.Tx, 2 that lock sheets first)", got)
 	}
 }

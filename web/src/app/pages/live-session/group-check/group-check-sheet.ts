@@ -41,6 +41,8 @@ import { ContestRoll } from '../combat/contest-roll/contest-roll';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../shared/sheet/sheet-host';
 import { HeldRollPrompt } from '../../../shared/held-roll-prompt/held-roll-prompt';
+import { FavorSpend, circumstancesOfNotes } from '../../../core/play/favor-spend';
+import { FavorState } from '../../../core/play/favor-state';
 
 /** What the card hands the group check's sheet. */
 export interface GroupCheckSheetData {
@@ -154,6 +156,12 @@ export class GroupCheckSheet {
   protected readonly modifier = computed(() => this.option()?.modifier ?? 0);
   protected readonly notes = computed(() => this.option()?.notes ?? []);
   protected readonly modifierText = computed(() => signed(this.modifier()));
+  /** The master's Inspiração (RN-43) for the player's own roll of the check (SRD 5.1, Group Checks). */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => ({ characterId: '', name: '' }),
+    circumstances: () => circumstancesOfNotes(this.mode(), this.notes()),
+  });
   /** "Passou" or "Falhou", only when the master shows the DC. */
   protected readonly ownPass = computed(() => {
     const m = this.own();
@@ -194,13 +202,16 @@ export class GroupCheckSheet {
     }
     this.busy.set(true);
     this.error.set('');
+    const spend = this.fav.spend();
     try {
       const made = await this.api.rollGroupCheck(
         this.data.campaignId,
         check.id,
         die,
-        this.keys.keyFor({ check: check.id, die }),
+        this.keys.keyFor({ check: check.id, die, favor: spend }),
+        spend,
       );
+      this.fav.spent();
       if (made.$typeName === 'meurpg.play.v1.HeldRollOffer') {
         // Held for the Lucky question: the d20 alone tumbles, nothing is written yet.
         this.held.ask(made);
@@ -218,7 +229,7 @@ export class GroupCheckSheet {
         this.sheet.close(true);
         return;
       }
-      this.error.set(combatErrorMessage(err, 'rolar o teste'));
+      this.error.set(this.fav.refused(err) ?? combatErrorMessage(err, 'rolar o teste'));
       // The check changed under the sheet (the master closed it): read it again.
       void this.data.state.load(this.api, this.data.campaignId);
     } finally {

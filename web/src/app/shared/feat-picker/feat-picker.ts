@@ -11,7 +11,7 @@ import {
   type KeyName,
   abilityName,
   prerequisiteSupport,
-  unmetText,
+  unmetLines,
 } from '../../core/content/feat-text';
 
 /** One feat of the list, with what the card says about it. */
@@ -42,6 +42,20 @@ interface FeatCard {
   imports: [MatIconModule, TextField, RuleText, DescriptionLangButton],
   template: `
     <app-text-field label="Procurar talento" [value]="query()" (valueChange)="query.set($event)" />
+    <div class="filter" role="group" aria-label="Mostrar">
+      <button type="button" class="filter__btn" [attr.aria-pressed]="!onlyMine()" (click)="onlyMine.set(false)">
+        @if (!onlyMine()) {
+          <mat-icon aria-hidden="true">check</mat-icon>
+        }
+        <span>Todos</span>
+      </button>
+      <button type="button" class="filter__btn" [attr.aria-pressed]="onlyMine()" (click)="onlyMine.set(true)">
+        @if (onlyMine()) {
+          <mat-icon aria-hidden="true">check</mat-icon>
+        }
+        <span>Só os que posso ({{ availableCount() }})</span>
+      </button>
+    </div>
     <p class="mr-visually-hidden" role="status" aria-live="polite">{{ announce() }}</p>
     <fieldset class="picker">
       <legend class="mr-visually-hidden">{{ label() }}</legend>
@@ -66,7 +80,9 @@ interface FeatCard {
                     <span class="mr-tag"><mat-icon aria-hidden="true">menu_book</mat-icon>Da mesa</span>
                   }
                 </label>
-                <p class="card__line">{{ c.asks ? 'Pede: ' + c.asks + '.' : 'Não pede nada.' }}</p>
+                @if (c.why.length === 0) {
+                  <p class="card__line">{{ c.asks ? 'Pede ' + c.asks + '.' : 'Não pede nada.' }}</p>
+                }
                 @if (c.increase) {
                   <p class="card__line">{{ c.increase }}</p>
                 }
@@ -141,6 +157,10 @@ export class FeatPicker {
   readonly abilityToggled = output<Ability>();
 
   protected readonly query = signal('');
+  protected readonly onlyMine = signal(false);
+  protected readonly availableCount = computed(
+    () => this.feats().filter((f) => f.qualifies).length,
+  );
 
   private readonly all = computed<FeatCard[]>(() =>
     this.feats().map((feat) => {
@@ -158,7 +178,7 @@ export class FeatPicker {
           name: feat.lacksFeatureNamePt,
           hidden: feat.lacksFeatureHidden,
         }),
-        why: feat.qualifies ? [] : feat.unmet.map((u) => unmetText(u, this.nameOf())),
+        why: feat.qualifies ? [] : unmetLines(feat.unmet, this.nameOf()),
         increase: inc ? increaseText(inc.count, inc.from, inc.value) : '',
         capNote:
           fixed && capped.length > 0
@@ -188,7 +208,11 @@ export class FeatPicker {
     const shown = this.all().filter((c) => q === '' || plain(c.feat.namePt).includes(q));
     return [
       { id: 'on', title: 'Disponíveis', cards: shown.filter((c) => c.feat.qualifies) },
-      { id: 'off', title: 'Ainda não cumpre', cards: shown.filter((c) => !c.feat.qualifies) },
+      {
+        id: 'off',
+        title: 'Ainda não disponíveis',
+        cards: this.onlyMine() ? [] : shown.filter((c) => !c.feat.qualifies),
+      },
     ].filter((g) => g.cards.length > 0);
   });
   protected readonly announce = computed(() => {

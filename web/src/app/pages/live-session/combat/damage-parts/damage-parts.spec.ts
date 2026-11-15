@@ -244,3 +244,48 @@ describe('DamageParts maneuvers', () => {
     expect(text).toContain('Gasta 1 dado de superioridade (não restam).');
   });
 });
+
+describe('DamageParts with a power attack', () => {
+  const lines = (doubled: boolean) => {
+    const fixture = TestBed.createComponent(DamageParts);
+    fixture.componentRef.setInput('parts', [
+      {
+        key: 'weapon',
+        labelPt: 'Montante',
+        diceCount: 2,
+        diceSides: 6,
+        flat: 3,
+        damageTypePt: 'cortante',
+        doubled,
+      },
+      {
+        key: 'power_attack',
+        labelPt: 'Golpe Pesado',
+        diceCount: 0,
+        diceSides: 0,
+        flat: 10,
+        auto: true,
+        available: true,
+        damageTypePt: 'cortante',
+        reasonPt: 'Ataque poderoso (automático)',
+      },
+    ] as never[]);
+    fixture.detectChanges();
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.fixed .line')).map(
+      (l) => l.textContent!.replace(/\s+/g, ' ').trim(),
+    );
+  };
+
+  it('writes the +10 as an automatic part with its sign, and says it never doubles', () => {
+    const [weapon, trade] = lines(true);
+    expect(weapon).toBe('Montante 2d6 + 3 de cortante dados dobrados');
+    expect(trade).toBe(
+      'Golpe Pesado +10 de cortante automáticoSó porque acertou; num crítico, os dados dobram e o +10 não.',
+    );
+    expect(trade).not.toContain('dobrados');
+  });
+
+  it('keeps the part and its note on a hit that is not a critical', () => {
+    expect(lines(false)[1]).toContain('Golpe Pesado +10 de cortante automático');
+  });
+});

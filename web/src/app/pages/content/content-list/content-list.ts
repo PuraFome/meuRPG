@@ -395,6 +395,20 @@ export class ContentList {
     }
   }
 
+  /** Phone: "Ligar/Desligar para os jogadores" (RN-23) saves at once, the same switch as the editor's. */
+  protected async toggleSwitch(e: TableEntry): Promise<void> {
+    this.actionError.set('');
+    this.busyKey.set(e.key);
+    try {
+      await this.client.setSwitches(this.campaignId(), [{ key: e.key, off: !e.off }]);
+      this.replace({ ...e, off: !e.off } as TableEntry);
+    } catch (err) {
+      this.actionError.set(contentErrorText(err, 'alterar'));
+    } finally {
+      this.busyKey.set('');
+    }
+  }
+
   private replace(entry: TableEntry): void {
     const s = this.state();
     if (s.status !== 'ready') {

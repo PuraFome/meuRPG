@@ -136,6 +136,27 @@ describe('the words of the contests (W7-X)', () => {
       expect(noteLines(roll)).toEqual(['Vantagem: Ajuda de Orla', 'Desvantagem: Envenenado']);
     });
 
+    it('says the Inspiração and a hidden source on one line: "Vantagem: Inspiração, Outra fonte"', () => {
+      const roll = checkRoll({
+        notes: [
+          create(RollNoteSchema, { kind: 'favor', labelPt: 'Inspiração', advantage: true }),
+          create(RollNoteSchema, { kind: 'help', labelPt: 'Ajuda de Orla', advantage: true }),
+          create(RollNoteSchema, { kind: 'other', labelPt: 'Outra fonte', advantage: true }),
+        ],
+      });
+      expect(noteLines(roll)).toEqual([
+        'Vantagem: Inspiração, Outra fonte',
+        'Vantagem: Ajuda de Orla',
+      ]);
+    });
+
+    it('says a hidden source alone as it is, never as an active effect', () => {
+      const roll = checkRoll({
+        notes: [create(RollNoteSchema, { kind: 'other', labelPt: 'Outra fonte', advantage: true })],
+      });
+      expect(noteLines(roll)).toEqual(['Vantagem: Outra fonte']);
+    });
+
     it('says a bonus an effect adds by its label alone, never as a disadvantage', () => {
       const roll = checkRoll({
         notes: [

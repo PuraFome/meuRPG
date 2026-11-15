@@ -105,6 +105,7 @@ func TestBrutalCriticalIsOnlyForAMeleeCritical(t *testing.T) {
 	t.Run("a ranged attack", func(t *testing.T) {
 		t.Parallel()
 		a, e := brutalFight(t, 9)
+		a.stockArrows(t, a.toren)
 		if p := a.mustAttack(t, a.caio, e, "Ragna", shortbowKey, "Goblin", disadvantage(20)).GetPendingDamage(); !p.GetCritical() || p.GetExtraDiceCount() != 0 || p.GetExtraDiceNamePt() != "" {
 			t.Errorf("a ranged critical = %d extra dice named %q, want none", p.GetExtraDiceCount(), p.GetExtraDiceNamePt())
 		}
