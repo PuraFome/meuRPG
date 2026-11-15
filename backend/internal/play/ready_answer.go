@@ -122,6 +122,9 @@ func (s *Service) answerReadied(ctx context.Context, m authz.Membership, in answ
 		return nil, true, err
 	}
 	if in.choice == playv1.ReactionChoice_REACTION_CHOICE_PASS {
+		if err := refuseTargets(msg); err != nil {
+			return nil, true, err
+		}
 		out, err := s.answerReadiedWrite(ctx, m, in, msg, eventReadiedFired, s.passReadiedTx)
 		return out, true, err
 	}
@@ -174,8 +177,17 @@ func (s *Service) mayAnswerReadied(ctx context.Context, m authz.Membership, encI
 
 // castOnly refuses targets on a row that is not released as a cast: another kind, or a held spell attack.
 func castOnly(msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction) error {
-	if len(msg.GetTargets()) > 0 && (row.Kind != readiedSpell || heldSpellAttackRow(row)) {
-		return connect.NewError(connect.CodeInvalidArgument, errors.New("targets are for a readied spell"))
+	if row.Kind != readiedSpell || heldSpellAttackRow(row) {
+		return refuseTargets(msg)
+	}
+	return nil
+}
+
+// refuseTargets refuses an answer that carries targets where they are not used: only the use of a readied spell casts
+// with them, and an answer never drops what it was given.
+func refuseTargets(msg *playv1.AnswerReactionRequest) error {
+	if len(msg.GetTargets()) > 0 {
+		return connect.NewError(connect.CodeInvalidArgument, errors.New("targets are for the use of a readied spell"))
 	}
 	return nil
 }

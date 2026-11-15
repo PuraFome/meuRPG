@@ -19,18 +19,27 @@ func (a *armed) readyForRelease(t *testing.T, spell string, slot int32, target s
 	return a.mustEndTurn(t, a.master, e)
 }
 
-// castLine is the cast line of the spell in the log, nil when there is none.
-func (a *armed) castLine(t *testing.T, e *playv1.Encounter, spell string) *playv1.CombatLogEntry {
+// castLines are the cast lines of the spell in the log.
+func (a *armed) castLines(t *testing.T, e *playv1.Encounter, spell string) []*playv1.CombatLogEntry {
 	t.Helper()
-	var found *playv1.CombatLogEntry
+	var found []*playv1.CombatLogEntry
 	for _, r := range a.log(t, a.master, e).GetRounds() {
 		for _, en := range r.GetEntries() {
 			if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST && en.GetKey() == spell {
-				found = en
+				found = append(found, en)
 			}
 		}
 	}
 	return found
+}
+
+// castLine is the last cast line of the spell in the log, nil when there is none.
+func (a *armed) castLine(t *testing.T, e *playv1.Encounter, spell string) *playv1.CombatLogEntry {
+	t.Helper()
+	if lines := a.castLines(t, e, spell); len(lines) > 0 {
+		return lines[len(lines)-1]
+	}
+	return nil
 }
 
 func withTargets(targets ...*playv1.SpellTarget) func(*playv1.AnswerReactionRequest) {

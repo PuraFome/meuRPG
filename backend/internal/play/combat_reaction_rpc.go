@@ -127,6 +127,9 @@ func (s *Service) answerOpportunityOffer(ctx context.Context, m authz.Membership
 	if in.choice == playv1.ReactionChoice_REACTION_CHOICE_USE {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("an opportunity attack is made with RollAttack and opportunity_offer_id"))
 	}
+	if err := refuseTargets(msg); err != nil {
+		return nil, err
+	}
 	out, err := s.answerOffer(ctx, m, msg.GetEncounterId(), in.winID, msg.GetIdempotencyKey(), offerDeclined)
 	if err != nil {
 		return nil, err
@@ -141,6 +144,9 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	}
 	w, reactor, err := s.windowToAnswer(ctx, c, m, in.winID)
 	if err != nil {
+		return nil, err
+	}
+	if err := refuseTargets(msg); err != nil { // a READIED window never gets here
 		return nil, err
 	}
 	use := in.choice == playv1.ReactionChoice_REACTION_CHOICE_USE

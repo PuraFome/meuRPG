@@ -170,7 +170,7 @@ The targets are `targets` (each with its darts), or `creature_ids`, or the targe
 The target named at Ready is used only for a spell that takes named targets (`namedAtReady`): a spell that reaches its caster alone, or an area, released with no targets is cast with none.
 In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
 `castSpell` checks them as a cast on the caster's turn: the darts of the slot and the number of targets.
-`targets` on another kind of row, or on a held spell attack, are `invalid_argument`.
+`targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`refuseTargets`): an answer never drops what it carries.
 The answer carries no point and no direction: a spell placed on a map (a sphere at a point, a cone, a wall) is refused by the answer, with targets or without, and the window stays open.
 The readier releases it with `CastSpell`, which carries the point, while the READIED window is open.
 In a combat with no map the area is released with the creatures the answer picks, or with nobody.
@@ -188,7 +188,7 @@ The cast waits for the windows any cast opens (Counterspell), with the READIED w
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
-"Usar" on a window that was answered or closed is `NOT_YOUR_TURN_TO_ANSWER`, even on the readier's own turn: only an open window releases the spell (`CastSpellRequest` from an answer names its window).
+"Usar" on a window that was answered or closed is `NOT_YOUR_TURN_TO_ANSWER`, even on the readier's own turn: only an open window releases the spell, and the cast an answer makes names its window.
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.
