@@ -450,6 +450,9 @@ describe("the sheet maps the background equipment and a versatile weapon's two-h
           damage: '1d6',
           damageTypePt: 'concussão',
           versatileDamage: '1d8',
+          rangeFt: 20,
+          longRangeFt: 60,
+          thrown: true,
           saveDc: 0,
         } as Attack,
       ],
@@ -460,6 +463,7 @@ describe("the sheet maps the background equipment and a versatile weapon's two-h
     }).sheet as FullSheetVm;
     expect(sheet.backgroundEquipment).toBe('Uma capa e 10 po');
     expect(sheet.attacks[0].versatileDamage).toBe('1d8');
+    expect(sheet.attacks[0].throwText.replace(/\u00a0/g, ' ')).toBe('Arremesso: 6 m, até 18 m');
     const bare = toCharacterSheetVm(characterWithFullSheet(minimalFullSheet()))
       .sheet as FullSheetVm;
     expect(bare.backgroundEquipment).toBe('');
