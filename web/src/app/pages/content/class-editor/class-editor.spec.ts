@@ -96,15 +96,23 @@ describe('ClassEditor', () => {
       },
     ]);
 
-  it('shows "Como os jogadores veem" for the open feature in the side column, and nothing while all are closed (#580, board 580-03)', async () => {
+  it('shows "Como os jogadores veem" for the open feature, and nothing while all are closed (#580, board 580-03)', async () => {
     const { fixture, el } = setup();
     const preview = () => el.querySelector('aside app-feature-preview');
+    const row = () =>
+      Array.from(
+        el.querySelectorAll<HTMLButtonElement>('app-class-features button[aria-expanded]'),
+      ).find((b) => text(b).includes('Vigília'))!;
+    if (row().getAttribute('aria-expanded') === 'true') {
+      row().click();
+      await settle(fixture, 3);
+    }
     expect(preview()?.querySelector('section')).toBeNull();
-    click(el, 'Vigília');
+    row().click();
     await settle(fixture, 3);
     expect(text(preview()!)).toContain('Como os jogadores veem');
     expect(text(preview()!)).toContain('Vigília');
-    click(el, 'Vigília');
+    row().click();
     await settle(fixture, 3);
     expect(preview()?.querySelector('section')).toBeNull();
   });

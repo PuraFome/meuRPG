@@ -8,6 +8,7 @@ import { tight } from '../format/text';
 import { feetToMeters, formatMeters } from '../units';
 import type { CatalogAbility } from './catalog';
 import { ABILITY_FIELDS, type Bonuses, noBonuses } from './feature-draft';
+import { optionAsksPhrase } from './option-text';
 import { summonLine } from './summon-names';
 import { rollEffectItem } from './content-read-rolls';
 import type { ReadHit } from './hit-effect-read';
@@ -139,7 +140,8 @@ export function featureItem(f: TableFeature, nameOf: NameOf, prefix = ''): ReadI
     .filter((l) => l !== '')
     .map(ensureStop)
     .join(' ');
-  const item = { title: `${prefix}${f.namePt}`, text };
+  const asks = optionAsksPhrase(f.prerequisite, nameOf);
+  const item = { title: `${prefix}${f.namePt}`, text, ...(asks ? { asks } : {}) };
   return f.options.length > 0
     ? { ...item, options: f.options.map((o) => featureItem(o, nameOf)) }
     : item;

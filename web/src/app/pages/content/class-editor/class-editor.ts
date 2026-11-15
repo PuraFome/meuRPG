@@ -59,6 +59,7 @@ import { TextField } from '../../../shared/form-fields/text-field';
 import { type GridEdit, type GridRowVm, LevelGrid } from '../../../shared/level-grid/level-grid';
 import { CastingFields } from '../class-parts/casting-fields';
 import { ClassFeatures } from '../class-parts/class-features';
+import { FeaturePreview } from '../class-parts/feature-preview';
 import { type NavSection, SectionNav } from '../class-parts/section-nav';
 import { TableQuestion } from '../class-parts/table-question';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
@@ -108,6 +109,7 @@ import {
     CastingFields,
     CheckRow,
     ClassFeatures,
+    FeaturePreview,
     EditorAlerts,
     EditorBar,
     FieldNote,
@@ -150,6 +152,10 @@ export class ClassEditor {
   protected readonly nameMax = NAME_MAX;
   protected readonly draft = signal<ClassDraft>(emptyClass(emptyDefaults()));
   protected readonly openFeature = signal('');
+  /** The feature that is open, as the preview of "Como os jogadores veem" reads it. */
+  protected readonly openDraft = computed(
+    () => this.draft().features.find((f) => f.id === this.openFeature())?.feature ?? null,
+  );
   protected readonly question = signal<TableAsk | null>(null);
   protected readonly allCircles = signal(false);
   protected readonly status = signal('');

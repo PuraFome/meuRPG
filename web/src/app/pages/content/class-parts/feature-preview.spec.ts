@@ -49,8 +49,14 @@ describe('"Como os jogadores veem" for the open feature (#580, board 580-03)', (
     setup(feature());
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('h2')?.textContent).toBe('Como os jogadores veem');
-    expect(text()).toContain('Truques de lâmina Da mesa');
-    expect(text()).toContain('Escolha 2 de 2 opções');
+    expect(el.querySelector('.preview__name span')?.textContent).toBe('Truques de lâmina');
+    expect(el.querySelector('.preview__name .mr-tag')?.textContent).toContain('Da mesa');
+    expect(
+      Array.from(el.querySelectorAll('dl div')).map((r) => [
+        r.querySelector('dt')?.textContent,
+        r.querySelector('dd')?.textContent,
+      ]),
+    ).toEqual([['Escolha', '2 de 2 opções']]);
     expect(text()).toContain('Golpe do Corvo. Soma o dado ao dano.');
     expect(text()).toContain(
       'Asa Partida. Soma o dado ao ataque. Pede Paladino 7 e Golpe do Corvo.',

@@ -27,9 +27,9 @@ import {
   NAME_MAX,
   withAsks,
 } from '../../core/content/feature-draft';
+import { askKeyNamer } from '../../core/content/ask-names';
 import { focusAfterRender } from '../../core/content/entry-saver';
 import { optionSummary } from '../../core/content/feat-options';
-import type { KeyName } from '../../core/content/key-name';
 import { optionAsksPhrase } from '../../core/content/option-text';
 import { followResource, resourcesOf, type SummonDraft } from '../../core/content/summon-draft';
 import type { Asks } from '../../core/content/asks';
@@ -267,21 +267,10 @@ export class FeatureEditor {
       };
     });
   });
-  /** The names of the keys an option asks for: its siblings (as they are named now), the catalog's classes, spells and entries, the options of the lists. */
-  private readonly askName = computed<KeyName>(() => {
-    const peers = this.feature().options;
-    const requirable = this.requirableAll();
-    const catalog = this.catalog();
-    return (key) => {
-      const peer = peers.find((o) => o.key === key && o.name.trim() !== '');
-      if (peer) {
-        return peer.name.trim();
-      }
-      const table = requirable.find((o) => o.value === key)?.label;
-      const named = catalog?.nameOf(key) ?? key;
-      return named !== key ? named : (table?.replace(/ \(da mesa\)$/, '') ?? key);
-    };
-  });
+  /** The names of the keys an option asks for: its siblings (as they are named now), the catalog, the options of the lists. */
+  private readonly askName = computed(() =>
+    askKeyNamer(this.feature().options, this.catalog(), this.requirableAll()),
+  );
   private readonly requirableAll = computed(() =>
     this.allowOptions() ? requirableOptions(this.menu(), this.entries(), '') : [],
   );

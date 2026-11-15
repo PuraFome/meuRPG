@@ -17,7 +17,7 @@ function optionsAsked(e: TableEffect, own: number): string {
 }
 
 /** The "Escolha" row of each choice of the feat that the player makes when taking it. */
-export function featChoiceRows(f: TableFeat): ReadRow[] {
+export function featChoiceRows(f: Pick<TableFeat, 'effects' | 'options'>): ReadRow[] {
   return f.effects.flatMap((e): ReadRow[] => {
     if (e.type !== 'choice') {
       return [];
