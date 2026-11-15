@@ -487,4 +487,65 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(text(row)).not.toContain('depois de salvar a característica');
     });
   });
+
+  describe('the arrows of an option row (#580, board 580-03)', () => {
+    const named = (key: string, name: string): FeatureDraft => ({ ...emptyFeature(), key, name });
+    const three = (): FeatureDraft => ({
+      ...emptyFeature(),
+      name: 'Truques de lâmina',
+      options: [named('k1', 'Golpe do Corvo'), named('k2', 'Asa Partida'), named('', '')],
+    });
+    const arrow = (verb: 'Subir' | 'Descer', name: string) =>
+      el.querySelector<HTMLButtonElement>(`button[aria-label="${verb} ${name}"]`)!;
+
+    it('draws up and down on each row, disabled at the ends, named by the option (or by its place when it has no name)', () => {
+      setup(three(), { allowOptions: true, index: -1, count: 0 });
+      expect(arrow('Subir', 'Golpe do Corvo').disabled).toBe(true);
+      expect(arrow('Descer', 'Golpe do Corvo').disabled).toBe(false);
+      expect(arrow('Subir', 'Asa Partida').disabled).toBe(false);
+      expect(arrow('Descer', 'Asa Partida').disabled).toBe(false);
+      expect(arrow('Subir', 'Opção 3').disabled).toBe(false);
+      expect(arrow('Descer', 'Opção 3').disabled).toBe(true);
+      expect(arrow('Subir', 'Golpe do Corvo').querySelector('mat-icon')?.textContent).toBe(
+        'arrow_upward',
+      );
+    });
+
+    it('draws no arrows for a feature with one option', () => {
+      setup(
+        { ...three(), options: [named('k1', 'Golpe')] },
+        { allowOptions: true, index: -1, count: 0 },
+      );
+      expect(el.querySelector('button[aria-label^="Subir"]')).toBeNull();
+    });
+
+    it('moves an option down or up and keeps the keys with their options, so a pick keeps its option', () => {
+      setup(three(), { allowOptions: true, index: -1, count: 0 });
+      arrow('Descer', 'Golpe do Corvo').click();
+      expect(emitted.at(-1)?.options.map((o) => [o.key, o.name])).toEqual([
+        ['k2', 'Asa Partida'],
+        ['k1', 'Golpe do Corvo'],
+        ['', ''],
+      ]);
+      setup(three(), { allowOptions: true, index: -1, count: 0 });
+      arrow('Subir', 'Asa Partida').click();
+      expect(emitted.at(-1)?.options.map((o) => o.key)).toEqual(['k2', 'k1', '']);
+    });
+
+    it('keeps the focus on the arrow that was pressed, in the row at its new place', async () => {
+      setup(three(), { allowOptions: true, index: -1, count: 0 });
+      arrow('Descer', 'Golpe do Corvo').focus();
+      arrow('Descer', 'Golpe do Corvo').click();
+      fixture.componentRef.setInput('feature', emitted.at(-1));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(arrow('Descer', 'Golpe do Corvo'));
+      // At the last place "Descer" is disabled: the focus goes to "Subir" of the same row, not to the page.
+      arrow('Descer', 'Golpe do Corvo').click();
+      fixture.componentRef.setInput('feature', emitted.at(-1));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(document.activeElement).toBe(arrow('Subir', 'Golpe do Corvo'));
+    });
+  });
 });
