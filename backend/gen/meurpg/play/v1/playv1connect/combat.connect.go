@@ -941,13 +941,22 @@ type CombatServiceClient interface {
 	// gets up and its death saves reset). Magic Missile's pending damages are
 	// one for each target, with its darts.
 	//
+	// A pending damage AWAITING_GROUP_SUM (RemoveDamagePart took a part out of a group) rolls
+	// only the dice of PendingDamage.awaited_damage_type_key: roll_in_app rolls those parts,
+	// typed_sum is the sum of those parts alone (between their dice and their dice times their
+	// faces, without any modifier), and typed_parts may name that damage type or its parts.
+	// What the other damage types rolled stays as it was; selected_extras and extras_chosen
+	// are ignored (the choice was made on the first roll). The damage is then worked out,
+	// applied and its riders asked as for a first roll.
+	//
 	// Errors:
 	//   - `not_found`: the pending damage is not in this combat, or the caller
 	//     is a player and may not see the attacker.
 	//   - `permission_denied`: the caller is a player and the attacker is not
 	//     their character.
 	//   - `invalid_argument`: neither roll_in_app nor typed_sum is set, or the
-	//     sum is out of range for the dice.
+	//     sum is out of range for the dice (AWAITING_GROUP_SUM: or it names another
+	//     damage type than the one awaited).
 	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
 	//     DAMAGE_ALREADY_ROLLED, DAMAGE_RESOLVED, REACTION_PENDING (the hit still
 	//     waits for the target's reaction) and WRONG_DICE_MODE.
@@ -1574,17 +1583,46 @@ type CombatServiceClient interface {
 	CancelRollModeRequest(context.Context, *connect.Request[v1.CancelRollModeRequestRequest]) (*connect.Response[v1.CancelRollModeRequestResponse], error)
 	// RemoveDamagePart takes an extra out of a damage that was rolled, with a reason
 	// (1 to 120 characters): the master's correction, when an extra does not hold
-	// (Sneak Attack without an ally near the target in a combat with no map). The total
-	// drops by that part; for an NPC that already took the damage the difference is given
-	// back, up to its maximum. It cannot be undone: the damage would have to be rolled
-	// again. Only the master, only for an extra (never the weapon or an automatic line),
-	// and only while the damage is ROLLED or APPLIED.
+	// (Sneak Attack without an ally near the target in a combat with no map). Only the master,
+	// only for an extra (never the weapon or an automatic line), and only while the damage is
+	// ROLLED or APPLIED.
+	//
+	// An extra that is alone in its damage type comes out and the total drops by that part; for
+	// an NPC that already took the damage the difference is given back, up to its maximum.
+	//
+	// An extra inside a group of two or more parts that share a damage type (the sum of the
+	// group was typed or rolled as one) comes out another way: the app undoes what the damage
+	// did (the hit points of an NPC or a creature, the temporary hit points, the rider offers
+	// and the effects the roll put on the target, the spent extras and uses, the windows and
+	// holds the damage opened), marks the part taken out with the reason, and the damage goes
+	// to AWAITING_GROUP_SUM, awaiting the sum of that damage type alone
+	// (PendingDamage.awaited_damage_type_key). RollDamage takes it, keeps what the other
+	// damage types rolled, works the damage out again, applies it (an NPC at once; a player's
+	// character waits for the master) and asks its riders again. A group left with one part is a
+	// group of one: the new sum covers that part's dice. Taking out another part while the
+	// damage is AWAITING_GROUP_SUM is refused (DAMAGE_NOT_ROLLED).
+	//
+	// The undo follows UndoLastAction's rule for what depends on the damage. A damage already
+	// APPLIED to an NPC or a creature is undone only while its roll is still the last action
+	// the master could undo in the session, and while the hit points, temporary hit points,
+	// Wild Shape pool and defeat of its target are as the roll left them: otherwise nothing is
+	// written and the call is refused with NOTHING_TO_UNDO or UNDO_TARGET_CHANGED
+	// (combatant_ids names who changed). A damage still ROLLED (a player's character that
+	// waits for the master) has no hit points to put back, but its roll must still be found in
+	// the session's latest events and its rider offers still open, or NOTHING_TO_UNDO. A damage
+	// applied to a player's character is DAMAGE_RESOLVED: the master corrects the vitals.
+	//
+	// The take-out cannot be undone by UndoLastAction (it is no undoable action, and ends the
+	// chain, as a correction of the hit points does); the roll that follows it can, and puts
+	// the damage back to AWAITING_ROLL with the part still out.
 	//
 	// Errors:
 	//   - `not_found`: no such pending damage or part.
 	//   - `permission_denied`: the caller is not the master.
 	//   - `invalid_argument`: the reason is not 1 to 120 characters on one line.
-	//   - `failed_precondition` (EncounterBlocked): DAMAGE_NOT_ROLLED, DAMAGE_PART_NOT_REMOVABLE.
+	//   - `failed_precondition` (EncounterBlocked): DAMAGE_NOT_ROLLED, DAMAGE_PART_NOT_REMOVABLE
+	//     (the weapon, an automatic line, a smite, the last part of a group, a part of a spell's
+	//     damage), DAMAGE_RESOLVED, NOTHING_TO_UNDO and UNDO_TARGET_CHANGED (a group part).
 	RemoveDamagePart(context.Context, *connect.Request[v1.RemoveDamagePartRequest]) (*connect.Response[v1.RemoveDamagePartResponse], error)
 	// AnswerRageEnd answers the question EndTurn asks a raging barbarian whose turn
 	// ends without an attack on a hostile creature and without damage taken (SRD 5.1,
@@ -3142,13 +3180,22 @@ type CombatServiceHandler interface {
 	// gets up and its death saves reset). Magic Missile's pending damages are
 	// one for each target, with its darts.
 	//
+	// A pending damage AWAITING_GROUP_SUM (RemoveDamagePart took a part out of a group) rolls
+	// only the dice of PendingDamage.awaited_damage_type_key: roll_in_app rolls those parts,
+	// typed_sum is the sum of those parts alone (between their dice and their dice times their
+	// faces, without any modifier), and typed_parts may name that damage type or its parts.
+	// What the other damage types rolled stays as it was; selected_extras and extras_chosen
+	// are ignored (the choice was made on the first roll). The damage is then worked out,
+	// applied and its riders asked as for a first roll.
+	//
 	// Errors:
 	//   - `not_found`: the pending damage is not in this combat, or the caller
 	//     is a player and may not see the attacker.
 	//   - `permission_denied`: the caller is a player and the attacker is not
 	//     their character.
 	//   - `invalid_argument`: neither roll_in_app nor typed_sum is set, or the
-	//     sum is out of range for the dice.
+	//     sum is out of range for the dice (AWAITING_GROUP_SUM: or it names another
+	//     damage type than the one awaited).
 	//   - `failed_precondition` (EncounterBlocked): ENCOUNTER_ENDED,
 	//     DAMAGE_ALREADY_ROLLED, DAMAGE_RESOLVED, REACTION_PENDING (the hit still
 	//     waits for the target's reaction) and WRONG_DICE_MODE.
@@ -3775,17 +3822,46 @@ type CombatServiceHandler interface {
 	CancelRollModeRequest(context.Context, *connect.Request[v1.CancelRollModeRequestRequest]) (*connect.Response[v1.CancelRollModeRequestResponse], error)
 	// RemoveDamagePart takes an extra out of a damage that was rolled, with a reason
 	// (1 to 120 characters): the master's correction, when an extra does not hold
-	// (Sneak Attack without an ally near the target in a combat with no map). The total
-	// drops by that part; for an NPC that already took the damage the difference is given
-	// back, up to its maximum. It cannot be undone: the damage would have to be rolled
-	// again. Only the master, only for an extra (never the weapon or an automatic line),
-	// and only while the damage is ROLLED or APPLIED.
+	// (Sneak Attack without an ally near the target in a combat with no map). Only the master,
+	// only for an extra (never the weapon or an automatic line), and only while the damage is
+	// ROLLED or APPLIED.
+	//
+	// An extra that is alone in its damage type comes out and the total drops by that part; for
+	// an NPC that already took the damage the difference is given back, up to its maximum.
+	//
+	// An extra inside a group of two or more parts that share a damage type (the sum of the
+	// group was typed or rolled as one) comes out another way: the app undoes what the damage
+	// did (the hit points of an NPC or a creature, the temporary hit points, the rider offers
+	// and the effects the roll put on the target, the spent extras and uses, the windows and
+	// holds the damage opened), marks the part taken out with the reason, and the damage goes
+	// to AWAITING_GROUP_SUM, awaiting the sum of that damage type alone
+	// (PendingDamage.awaited_damage_type_key). RollDamage takes it, keeps what the other
+	// damage types rolled, works the damage out again, applies it (an NPC at once; a player's
+	// character waits for the master) and asks its riders again. A group left with one part is a
+	// group of one: the new sum covers that part's dice. Taking out another part while the
+	// damage is AWAITING_GROUP_SUM is refused (DAMAGE_NOT_ROLLED).
+	//
+	// The undo follows UndoLastAction's rule for what depends on the damage. A damage already
+	// APPLIED to an NPC or a creature is undone only while its roll is still the last action
+	// the master could undo in the session, and while the hit points, temporary hit points,
+	// Wild Shape pool and defeat of its target are as the roll left them: otherwise nothing is
+	// written and the call is refused with NOTHING_TO_UNDO or UNDO_TARGET_CHANGED
+	// (combatant_ids names who changed). A damage still ROLLED (a player's character that
+	// waits for the master) has no hit points to put back, but its roll must still be found in
+	// the session's latest events and its rider offers still open, or NOTHING_TO_UNDO. A damage
+	// applied to a player's character is DAMAGE_RESOLVED: the master corrects the vitals.
+	//
+	// The take-out cannot be undone by UndoLastAction (it is no undoable action, and ends the
+	// chain, as a correction of the hit points does); the roll that follows it can, and puts
+	// the damage back to AWAITING_ROLL with the part still out.
 	//
 	// Errors:
 	//   - `not_found`: no such pending damage or part.
 	//   - `permission_denied`: the caller is not the master.
 	//   - `invalid_argument`: the reason is not 1 to 120 characters on one line.
-	//   - `failed_precondition` (EncounterBlocked): DAMAGE_NOT_ROLLED, DAMAGE_PART_NOT_REMOVABLE.
+	//   - `failed_precondition` (EncounterBlocked): DAMAGE_NOT_ROLLED, DAMAGE_PART_NOT_REMOVABLE
+	//     (the weapon, an automatic line, a smite, the last part of a group, a part of a spell's
+	//     damage), DAMAGE_RESOLVED, NOTHING_TO_UNDO and UNDO_TARGET_CHANGED (a group part).
 	RemoveDamagePart(context.Context, *connect.Request[v1.RemoveDamagePartRequest]) (*connect.Response[v1.RemoveDamagePartResponse], error)
 	// AnswerRageEnd answers the question EndTurn asks a raging barbarian whose turn
 	// ends without an attack on a hostile creature and without damage taken (SRD 5.1,
