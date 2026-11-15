@@ -8,6 +8,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 )
 
 var reasonCombatantDown = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_COMBATANT_DOWN
@@ -46,5 +47,51 @@ func TestMountedCombat_ADownRiderKeepsItsMountsTurnAndLimit(t *testing.T) {
 	}
 	if got := c.rideRowOf(t, "Toren"); got.Col != 8 || got.Row != 8 || got.MountedOn == "" {
 		t.Errorf("the down rider after its mount moved = %+v, want carried to (8,8) and still on it", got)
+	}
+}
+
+// A down rider directs nothing: its player gets COMBATANT_DOWN on the mount's Dash, Disengage and Dodge as on its move, and the master
+// still takes them for the mount (it keeps the pair's turn).
+func TestMountedCombat_ADownRiderDirectsNoDashDisengageOrDodge(t *testing.T) {
+	t.Parallel()
+	for _, key := range []string{"standard:dash", "standard:disengage", "standard:dodge"} {
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+			c := newCave(t)
+			c.ridden(t)
+			c.downToren(t)
+			enc := c.get(t, c.master)
+			_, err := c.action(t, c.caio, enc, "Ogro", key)
+			wantBlockedBy(t, "the down rider's player taking "+key+" for the mount", err, reasonCombatantDown)
+			if _, err := c.action(t, c.master, enc, "Ogro", key); err != nil {
+				t.Errorf("the master taking %s for the mount error = %v, want it taken", key, err)
+			}
+		})
+	}
+}
+
+// A down rider's player is refused only the three actions the mount takes (COMBATANT_DOWN); the others stay what they were for any
+// mount that carries a rider (MOUNT_ACTION_LIMITED), and the turn options show the three disabled with the same reason.
+func TestMountedCombat_TheDownRiderRefusalIsLimitedToTheThreeActions(t *testing.T) {
+	t.Parallel()
+	c := newCave(t)
+	c.ridden(t)
+	c.downToren(t)
+	enc := c.get(t, c.master)
+	_, err := c.action(t, c.caio, enc, "Ogro", "standard:search")
+	wantBlockedBy(t, "the down rider's player taking Search for the mount", err, reasonMountActionLimited)
+	opts := c.mustOptions(t, c.caio, enc, "Ogro")
+	seen := 0
+	for _, a := range opts.GetOptions().GetStandardActions() {
+		switch a.GetAction().GetKey() {
+		case "standard:dash", "standard:disengage", "standard:dodge":
+			seen++
+			if a.GetEnabled() || a.GetReason().GetCode() != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_COMBATANT_DOWN {
+				t.Errorf("%s for the down rider's player = enabled %v, reason %v, want disabled with COMBATANT_DOWN", a.GetAction().GetKey(), a.GetEnabled(), a.GetReason())
+			}
+		}
+	}
+	if seen != 3 {
+		t.Errorf("the options list %d of the three actions, want 3", seen)
 	}
 }

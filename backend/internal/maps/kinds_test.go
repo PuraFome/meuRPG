@@ -937,32 +937,22 @@ func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), time.Minute)
 	defer cancel()
 	probe := dbtest.SideConnection(t, s.h.pool)
-	// The sessions of the two sides, to tell their statements from other tests' on the same server.
-	var masterSession, playSession string
-	masterConn, err := s.h.pool.Acquire(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if masterSession, err = dbtest.BackendID(ctx, masterConn); err != nil {
-		t.Fatal(err)
-	}
-	masterConn.Release()
 	// The open session's id, read before the master's call holds its row (a read of a locked row waits).
 	var openSession string
 	if err := probe.QueryRow(ctx, `SELECT id FROM game_sessions WHERE campaign_id = $1 AND ended_at IS NULL`, s.campaign).Scan(&openSession); err != nil {
 		t.Fatal(err)
 	}
-	// waiting counts the statements of the given sides that wait for the lock of the rows a pattern names right now.
-	waiting := func(pattern string, sessions ...string) int {
-		n, err := dbtest.WaitingStatements(ctx, probe, pattern, sessions...)
+	// waiting counts the transactions that wait right now for a lock on a row of the table; each has one waiting at a time here.
+	waiting := func(table string) int {
+		n, err := dbtest.WaitingForTable(ctx, probe, table)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return n
 	}
-	waitFor := func(what, pattern string, sessions ...string) {
+	waitFor := func(what, table string) {
 		t.Helper()
-		for waiting(pattern, sessions...) < 1 {
+		for waiting(table) < 1 {
 			if ctx.Err() != nil {
 				t.Fatalf("%s never waited", what)
 			}
@@ -983,7 +973,7 @@ func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 		_, err := s.master.maps.RevealTrap(ctx, connect.NewRequest(&mapsv1.RevealTrapRequest{CampaignId: s.campaign, MapId: s.mapID, PointId: trap.GetId(), All: true}))
 		revealed <- err
 	}()
-	waitFor("the master's call", `%FROM map_points%FOR UPDATE%`, masterSession)
+	waitFor("the master's call", "map_points")
 	// The play module's transaction: the session row first, as every change in play does. It queues behind the master's call,
 	// which holds the row, and does not reach the point.
 	play, err := dbtest.SideConnection(t, s.h.pool).Begin(ctx)
@@ -991,9 +981,6 @@ func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer play.Rollback(ctx) //nolint:errcheck // rolled back unless it was committed
-	if playSession, err = dbtest.BackendID(ctx, play); err != nil {
-		t.Fatal(err)
-	}
 	fired := make(chan error, 1)
 	go func() {
 		// The funnel's first statement (play.LockSessionForHints): the row by its id.
@@ -1007,7 +994,7 @@ func TestMR035_ARevealCrossingATriggerInPlayTakesTurns(t *testing.T) {
 		}
 		fired <- err
 	}()
-	waitFor("the move", `%FROM game_sessions%FOR UPDATE%`, playSession)
+	waitFor("the move", "game_sessions")
 	if err := holder.Rollback(ctx); err != nil {
 		t.Fatal(err)
 	}
