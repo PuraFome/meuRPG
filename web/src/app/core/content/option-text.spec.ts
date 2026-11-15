@@ -131,7 +131,10 @@ describe('the prerequisite of an option is said as the feat says it (board 580-0
   const line = 'Bruxo 5, Pacto da Lâmina, Rajada Mística e Olhar de Brasa';
 
   it('lists the class level, the pact, the spell and the options in the order of the board', () => {
-    expect(optionSupport('invocation', asks, nameOf)).toEqual(['Invocação mística', `Exige ${line}`]);
+    expect(optionSupport('invocation', asks, nameOf)).toEqual([
+      'Invocação mística',
+      `Exige ${line}`,
+    ]);
   });
 
   it('is the same words the feat uses for the same conditions', () => {

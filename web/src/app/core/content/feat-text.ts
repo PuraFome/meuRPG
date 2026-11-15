@@ -50,7 +50,7 @@ function scoreList(scores: AbilityScores | undefined): string[] {
   });
 }
 
-function listWith(items: readonly string[], word: 'e' | 'ou'): string {
+export function listWith(items: readonly string[], word: 'e' | 'ou'): string {
   return items.length <= 1
     ? (items[0] ?? '')
     : `${items.slice(0, -1).join(', ')} ${word} ${items[items.length - 1]}`;

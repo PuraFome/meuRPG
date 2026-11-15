@@ -41,7 +41,7 @@ import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
 import { readCreature } from './content-read-creature';
-import { type OfferedByName, optionPrerequisiteParts, optionSetName } from './option-text';
+import { type OfferedByName, optionPrerequisiteSupport, optionSetName } from './option-text';
 import { parentTraitsOf, replacedNames } from './subrace-traits';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
@@ -172,13 +172,13 @@ function readFeat(
 }
 
 function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName): EntryRead {
-  const asks = optionPrerequisiteParts(o.prerequisite, nameOf);
+  const asks = optionPrerequisiteSupport(o.prerequisite, nameOf);
   const rows: ReadRow[] = [
     { label: 'Conjunto', value: optionSetName(o.set) },
     ...(o.offeredBy === '' ? [] : [{ label: 'Oferecida por', value: offeredByName(o.offeredBy) }]),
     {
-      label: asks.length > 0 ? 'Pede' : 'Pré-requisito',
-      value: asks.length > 0 ? asks.join(', ') : 'Nenhum',
+      label: asks ? 'Pede' : 'Pré-requisito',
+      value: asks || 'Nenhum',
     },
   ];
   return { rows, sections: [], text: o.descPt, ...entryEffectsPart(o.effects, nameOf) };
