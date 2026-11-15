@@ -9468,6 +9468,26 @@ async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'd
   }
 }
 
+/** Judges a screen of the charges and the ammunition like every other and, when `E2E_SHOTS_DIR` names a folder, saves its viewport as `563-<screen>-<width>-<scheme>.png`. */
+async function expectChargesScreen(page: Page, screen: string): Promise<void> {
+  await expectScreenPasses(page, screen);
+  const dir = process.env.E2E_SHOTS_DIR;
+  if (!dir) {
+    return;
+  }
+  mkdirSync(dir, { recursive: true });
+  const width = page.viewportSize()?.width ?? 0;
+  const dark = await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
+  const slug = screen
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 70);
+  await page.screenshot({ path: join(dir, `563-${slug}-${width}-${dark ? 'dark' : 'light'}.png`) });
+}
+
 /**
  * The charges of magic items and the ammunition (#563), through the real stack: the owner's locked sheet with its item rows
  * (normal, at 0, destroyed, a ring that never recharges, an item with no charge data), the use sheet, the d20 of the last
@@ -9535,13 +9555,13 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(rowOf(/Anel de evasão/).getByRole('button', { name: /^Usar / })).toHaveAttribute('aria-disabled', 'true');
     await expect(rowOf(/Escaravelho/).getByText('Destruída')).toBeVisible();
     await expect(rowOf(/Anel de proteção/).getByText('Pede sintonização')).toBeVisible();
-    await expectScreenPasses(p, `Ficha, itens com cargas ${where}`);
+    await expectChargesScreen(p, `Ficha, itens com cargas ${where}`);
 
     // The use sheet.
     await rowOf(/Anel de estrelas cadentes/).getByRole('button', { name: /^Usar / }).click();
     const use = p.getByRole('dialog', { name: /^Usar · / });
     await expect(use.getByText('Restam 5 de 6 cargas')).toBeVisible();
-    await expectScreenPasses(p, `Usar cargas ${where}`);
+    await expectChargesScreen(p, `Usar cargas ${where}`);
     await use.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(use).toBeHidden();
     // The focus goes back to the item's "Usar".
@@ -9552,7 +9572,7 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
     await p.getByRole('dialog', { name: /^Usar · / }).getByRole('button', { name: /^Gastar 1 carga/ }).click();
     const last = p.getByRole('alertdialog', { name: 'A última carga se foi' });
     await expect(last).toBeVisible();
-    await expectScreenPasses(p, `A última carga se foi ${where}`);
+    await expectChargesScreen(p, `A última carga se foi ${where}`);
     // Esc and the close button both close it, and neither skips the die; the backdrop does not. The focus goes back to the row.
     if (colorScheme === 'dark') {
       await p.keyboard.press('Escape');
@@ -9563,11 +9583,11 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expect(rowOf(/Cajado do fogo/).getByRole('button', { name: /^Rolar/ })).toBeFocused();
     await expect(rowOf(/Cajado do fogo/).getByText('Falta rolar o d20 da última carga.')).toBeVisible();
     await expect(rowOf(/Cajado do fogo/).getByRole('button', { name: /^Rolar/ })).toBeVisible();
-    await expectScreenPasses(p, `Ficha, o d20 da última carga espera ${where}`);
+    await expectChargesScreen(p, `Ficha, o d20 da última carga espera ${where}`);
 
     // The ammunition: no kind counted, the free text looks like ammunition.
     await expect(gear.getByText('“Flechas (20)” parece munição: para o app contar, adicione em Munição.')).toBeVisible();
-    await expectScreenPasses(p, `Ficha, munição vazia com a dica ${where}`);
+    await expectChargesScreen(p, `Ficha, munição vazia com a dica ${where}`);
 
     // The master adds a kind; the list shows, with nothing to recover yet.
     await openLive(m, route);
@@ -9575,13 +9595,13 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
     await masterGear.getByRole('button', { name: 'Adicionar', exact: true }).click();
     const add = m.getByRole('dialog', { name: 'Adicionar munição' });
     await expect(add).toBeVisible();
-    await expectScreenPasses(m, `Adicionar munição ${where}`);
+    await expectChargesScreen(m, `Adicionar munição ${where}`);
     await add.getByRole('button', { name: /^Adicionar 20 flechas/ }).click();
     await expect(add).toBeHidden();
     await expect(masterGear.getByRole('heading', { name: 'Munição contada pelo app' })).toBeVisible();
     await expect(masterGear.getByRole('button', { name: 'Recuperar a metade' })).toHaveAttribute('aria-disabled', 'true');
     await expect(masterGear.getByText('Nada gasto no último combate: não há o que recuperar.')).toBeVisible();
-    await expectScreenPasses(m, `Ficha, munição contada, nada a recuperar ${where}`);
+    await expectChargesScreen(m, `Ficha, munição contada, nada a recuperar ${where}`);
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);
@@ -9637,19 +9657,19 @@ async function scanAmmunitionAttackScreens(browser: Browser, colorScheme: 'light
     await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
     await expect(melee).toBeVisible();
     await expect(p.getByText('Improvisado: não gasta flecha.')).toBeVisible();
-    await expectScreenPasses(p, `Ataques, arco sem munição contada e a linha corpo a corpo ${where}`);
+    await expectChargesScreen(p, `Ataques, arco sem munição contada e a linha corpo a corpo ${where}`);
 
     await setArrows(7);
     await reread();
     await expect(tag).toHaveText('7 flechas');
     await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
-    await expectScreenPasses(p, `Ataques, 7 flechas ${where}`);
+    await expectChargesScreen(p, `Ataques, 7 flechas ${where}`);
 
     await setArrows(3);
     await reread();
     await expect(tag).toContainText('3 flechas');
     await expect(bow).not.toHaveAttribute('aria-disabled', 'true');
-    await expectScreenPasses(p, `Ataques, 3 flechas em aviso ${where}`);
+    await expectChargesScreen(p, `Ataques, 3 flechas em aviso ${where}`);
 
     await setArrows(0);
     await reread();
@@ -9659,7 +9679,7 @@ async function scanAmmunitionAttackScreens(browser: Browser, colorScheme: 'light
     await expect(bow).toHaveAccessibleDescription('Sem flechas: o tiro não sai.');
     await expect(melee).not.toHaveAttribute('aria-disabled', 'true');
     await expect(tag).toHaveCount(1);
-    await expectScreenPasses(p, `Ataques, sem flechas e a linha corpo a corpo aberta ${where}`);
+    await expectChargesScreen(p, `Ataques, sem flechas e a linha corpo a corpo aberta ${where}`);
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);
@@ -9718,14 +9738,14 @@ async function scanChargesLogScreens(browser: Browser, colorScheme: 'light' | 'd
     for (const line of lines) {
       await expect(mlog).toContainText(line);
     }
-    await expectScreenPasses(m, `Registro do combate, cargas e munição, visto pelo mestre ${where}`);
+    await expectChargesScreen(m, `Registro do combate, cargas e munição, visto pelo mestre ${where}`);
 
     await openSessionPage(p, campaignId);
     const ownerLog = await openCombatLog(p);
     for (const line of lines) {
       await expect(ownerLog).toContainText(line);
     }
-    await expectScreenPasses(p, `Registro do combate, cargas e munição, visto pelo dono ${where}`);
+    await expectChargesScreen(p, `Registro do combate, cargas e munição, visto pelo dono ${where}`);
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);
@@ -9805,29 +9825,29 @@ async function scanChargesMasterScreens(browser: Browser, colorScheme: 'light' |
     await expect(panel.getByText('4 de 6')).toBeVisible();
     await expect(panel.getByText('Destruída')).toBeVisible();
     await expect(panel.getByText('Flechas')).toBeVisible();
-    await expectScreenPasses(m, `Cargas e munição, o painel do mestre ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, o painel do mestre ${where}`);
 
     // "Corrigir" on an item: the stepper says what it was; a step and "Salvar".
     await panel.getByRole('button', { name: /^Corrigir Anel de estrelas cadentes/ }).click();
     const editor = panel.getByRole('group', { name: 'Corrigir Anel de estrelas cadentes' });
     await expect(editor).toContainText('eram 4');
-    await expectScreenPasses(m, `Cargas e munição, corrigir um item ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, corrigir um item ${where}`);
     await editor.getByRole('button', { name: /^Mais uma carga/ }).click();
     await editor.getByRole('switch', { name: 'Destruída' }).click();
     await expect(editor.getByRole('switch', { name: 'Destruída' })).toHaveAttribute('aria-checked', 'true');
-    await expectScreenPasses(m, `Cargas e munição, "Destruída" ligada ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, "Destruída" ligada ${where}`);
     await editor.getByRole('switch', { name: 'Destruída' }).click();
     await editor.getByRole('button', { name: 'Salvar' }).click();
     await expect(editor).toBeHidden();
     await expect(panel.getByText('5 de 6')).toBeVisible();
-    await expectScreenPasses(m, `Cargas e munição, depois de corrigir ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, depois de corrigir ${where}`);
 
     // The ammunition has its own stepper, without the switch.
     await panel.getByRole('button', { name: /^Corrigir Flechas/ }).click();
     const ammoEditor = panel.getByRole('group', { name: 'Corrigir Flechas' });
     await expect(ammoEditor).toContainText('eram 15');
     await expect(ammoEditor.getByRole('switch')).toHaveCount(0);
-    await expectScreenPasses(m, `Cargas e munição, corrigir a munição ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, corrigir a munição ${where}`);
     await ammoEditor.getByRole('button', { name: 'Cancelar' }).click();
     await expect(ammoEditor).toBeHidden();
 
@@ -9838,23 +9858,23 @@ async function scanChargesMasterScreens(browser: Browser, colorScheme: 'light' |
     const dawn = question.getByRole('checkbox', { name: 'Amanhecer' });
     await expect(dawn).toBeChecked();
     await expect(question.getByText('Anel de evasão: ', { exact: false })).toBeVisible();
-    await expectScreenPasses(m, `Descanso longo, com o Amanhecer ${where}`);
+    await expectChargesScreen(m, `Descanso longo, com o Amanhecer ${where}`);
     await dawn.click();
     await expect(question.getByText('As cargas do amanhecer ficam como estão:', { exact: false })).toBeVisible();
-    await expectScreenPasses(m, `Descanso longo, Amanhecer desmarcado ${where}`);
+    await expectChargesScreen(m, `Descanso longo, Amanhecer desmarcado ${where}`);
     const info = question.getByRole('button', { name: 'O que é o Amanhecer' });
     await expect(info).toHaveAttribute('aria-expanded', 'false');
     await info.click();
     await expect(info).toHaveAttribute('aria-expanded', 'true');
     await expect(question.getByText('os itens que dizem “ao amanhecer” recebem as cargas de volta', { exact: false })).toBeVisible();
-    await expectScreenPasses(m, `Descanso longo, a explicação do Amanhecer ${where}`);
+    await expectChargesScreen(m, `Descanso longo, a explicação do Amanhecer ${where}`);
     await rest.getByRole('button', { name: 'Cancelar' }).click();
     await expect(rest.getByRole('alertdialog')).toHaveCount(0);
 
     // The panel's "Amanhecer": the table's dawn, with what each item got back.
     await panel.getByRole('button', { name: 'Amanhecer' }).click();
     await expect(panel.getByText('Amanhecer. 2 itens receberam cargas:')).toBeVisible();
-    await expectScreenPasses(m, `Cargas e munição, o Amanhecer feito ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, o Amanhecer feito ${where}`);
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);
@@ -9949,10 +9969,10 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     });
     await use.getByRole('button', { name: /^Gastar 1 carga/ }).click();
     await expect(use.getByRole('button', { name: 'Gastando...' })).toBeVisible();
-    await expectScreenPasses(p, `Usar cargas, gastando ${where}`);
+    await expectChargesScreen(p, `Usar cargas, gastando ${where}`);
     answer();
     await expect(use.getByRole('alert')).toContainText('Nada mudou');
-    await expectScreenPasses(p, `Usar cargas, o servidor não respondeu ${where}`);
+    await expectChargesScreen(p, `Usar cargas, o servidor não respondeu ${where}`);
     await p.unroute(spend);
 
     // The master takes the charges away while the sheet is open: the owner asks for three and the server says why not.
@@ -9961,7 +9981,7 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     await use.getByRole('button', { name: 'Mais uma carga' }).click();
     await use.getByRole('button', { name: /^Gastar 3 cargas/ }).click();
     await expect(use.getByRole('alert')).toContainText('Cargas a menos');
-    await expectScreenPasses(p, `Usar cargas, o servidor recusou ${where}`);
+    await expectChargesScreen(p, `Usar cargas, o servidor recusou ${where}`);
     await use.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(use).toBeHidden();
 
@@ -9971,12 +9991,12 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     await expect(last).toBeVisible();
     await expect(last.getByLabel('Face do d20')).toBeVisible();
     await expect(last.getByRole('button', { name: 'Rolar no app' })).toBeVisible();
-    await expectScreenPasses(p, `A última carga se foi, dados físicos ${where}`);
+    await expectChargesScreen(p, `A última carga se foi, dados físicos ${where}`);
     await last.getByLabel('Face do d20').fill('14');
     await last.getByRole('button', { name: 'Confirmar' }).click();
     await expect(last).toBeHidden();
     await expect(gear.getByText(/^Tirou 14\./)).toBeVisible();
-    await expectScreenPasses(p, `Resultado do d20, Tirou 14 ${where}`);
+    await expectChargesScreen(p, `Resultado do d20, Tirou 14 ${where}`);
 
     // A 1: the staff stays on the sheet as a plain one, with the tag "Sem magia".
     await rowOf(/Cajado de ataque/).getByRole('button', { name: /^Usar / }).click();
@@ -9988,12 +10008,12 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     await expect(gear.getByText(/^Tirou 1\./)).toBeVisible();
     await expect(rowOf(/Cajado de ataque/).getByText('Sem magia')).toBeVisible();
     await expect(rowOf(/Cajado de ataque/).getByText('Virou um cajado comum.')).toBeVisible();
-    await expectScreenPasses(p, `Resultado do d20, Tirou 1 e o item sem magia ${where}`);
+    await expectChargesScreen(p, `Resultado do d20, Tirou 1 e o item sem magia ${where}`);
 
     // The item that keeps only its bonus, as the master marked it.
     await expect(rowOf(/Cajado do poder/).getByText('Sem magia')).toBeVisible();
     await expect(rowOf(/Cajado do poder/).getByText('Ficou só o +2 no ataque e no dano.')).toBeVisible();
-    await expectScreenPasses(p, `Ficha, o item que ficou só com o bônus ${where}`);
+    await expectChargesScreen(p, `Ficha, o item que ficou só com o bônus ${where}`);
 
     // A typed 20 on an item that regains charges asks for the face of the die that counts them.
     await rowOf(/Cajado do arcano/).getByRole('button', { name: /^Usar / }).click();
@@ -10002,12 +10022,12 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     await last.getByLabel('Face do d20').fill('20');
     await last.getByRole('button', { name: 'Confirmar' }).click();
     await expect(last.getByLabel('Face do d12')).toBeVisible();
-    await expectScreenPasses(p, `A última carga se foi, a face do dado das cargas ${where}`);
+    await expectChargesScreen(p, `A última carga se foi, a face do dado das cargas ${where}`);
     await last.getByLabel('Face do d12').fill('7');
     await last.getByRole('button', { name: 'Confirmar' }).click();
     await expect(last).toBeHidden();
     await expect(gear.getByText(/^Tirou 20\./)).toBeVisible();
-    await expectScreenPasses(p, `Resultado do d20, Tirou 20 e as cargas de volta ${where}`);
+    await expectChargesScreen(p, `Resultado do d20, Tirou 20 e as cargas de volta ${where}`);
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);
@@ -10062,11 +10082,11 @@ async function scanChargesRecoverScreens(browser: Browser, colorScheme: 'light' 
     const recover = gear.getByRole('button', { name: /^Recuperar a metade/ });
     await expect(recover).toBeVisible();
     await expect(recover).not.toHaveAttribute('aria-disabled', 'true');
-    await expectScreenPasses(m, `Ficha, Recuperar a metade ligado ${where}`);
+    await expectChargesScreen(m, `Ficha, Recuperar a metade ligado ${where}`);
     await recover.click();
     await expect(gear.getByText(/Recuperou 1 peça deste combate/)).toBeVisible();
     await expect(recover).toHaveAttribute('aria-disabled', 'true');
-    await expectScreenPasses(m, `Ficha, Recuperar a metade feito ${where}`);
+    await expectChargesScreen(m, `Ficha, Recuperar a metade feito ${where}`);
   } finally {
     if (campaignId) {
       await endOpenSessionRPC(m, campaignId);
@@ -10108,20 +10128,20 @@ async function scanChargesPanelStates(browser: Browser, colorScheme: 'light' | '
     await expect(panel.getByText('Nenhum personagem do grupo tem itens com cargas nem munição.')).toBeVisible();
     await expect(panel.getByText('Nenhum item espera o amanhecer.')).toBeVisible();
     await expect(panel.getByRole('button', { name: 'Amanhecer' })).toHaveAttribute('aria-disabled', 'true');
-    await expectScreenPasses(m, `Cargas e munição, lista vazia e nenhum item espera o amanhecer ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, lista vazia e nenhum item espera o amanhecer ${where}`);
 
     // The sheets cannot be read: the panel says so, and the long rest asks "Amanhecer" without saying that no item waits.
     const read = '**/meurpg.characters.v1.CharacterService/GetCharacter';
     await m.route(read, (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
     await openSessionPage(m, empty.campaignId, 'grupo');
     await expect(panel.getByText('Não foi possível ler as cargas do grupo.')).toBeVisible();
-    await expectScreenPasses(m, `Cargas e munição, não foi possível ler ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, não foi possível ler ${where}`);
     const rest = m.getByRole('region', { name: 'Descanso' });
     await rest.getByRole('button', { name: 'Descanso longo' }).click();
     const question = rest.getByRole('alertdialog', { name: 'Começar o descanso longo?' });
     await expect(question.getByRole('checkbox', { name: 'Amanhecer' })).toBeChecked();
     await expect(question.getByText('Não foi possível ler os itens do amanhecer.', { exact: false })).toBeVisible();
-    await expectScreenPasses(m, `Descanso longo, o Amanhecer sem a leitura das cargas ${where}`);
+    await expectChargesScreen(m, `Descanso longo, o Amanhecer sem a leitura das cargas ${where}`);
     await rest.getByRole('button', { name: 'Cancelar' }).click();
     await m.unroute(read);
 
@@ -10135,7 +10155,7 @@ async function scanChargesPanelStates(browser: Browser, colorScheme: 'light' | '
     await expect(panel.getByText('6 de 6')).toBeVisible();
     await expect(panel.getByText('Nenhum item espera o amanhecer.')).toBeVisible();
     await expect(panel.getByRole('button', { name: 'Amanhecer' })).toHaveAttribute('aria-disabled', 'true');
-    await expectScreenPasses(m, `Cargas e munição, nenhum item espera o amanhecer ${where}`);
+    await expectChargesScreen(m, `Cargas e munição, nenhum item espera o amanhecer ${where}`);
   } finally {
     for (const campaignId of campaigns) {
       await endOpenSessionRPC(m, campaignId);
