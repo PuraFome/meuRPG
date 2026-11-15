@@ -379,13 +379,13 @@ func TestAnOptionWhoseLevelIsLostStopsWorkingUntilItIsBack(t *testing.T) {
 	}
 }
 
-// The sentence of the issue reads as one: "…pré-requisito de X: precisa de nível 5 de Y.".
+// The sentence of the issue reads as one, naming nobody: "X pede Y 5, e o personagem está no 3: …".
 func TestTheOptionPrerequisiteIssueReadsAsOneSentence(t *testing.T) {
 	t.Parallel()
 	c := withOverlay(t, gatedPostureOverlay())
 	d := Derive(postureBuild(3, postureBull), c)
 	i := slices.IndexFunc(d.Issues, func(i Issue) bool { return i.Code == IssueOptionPrerequisite })
-	const want = "O personagem não cumpre mais o pré-requisito de Postura do Touro: precisa de nível 5 de Guerreiro."
+	const want = "Postura do Touro pede Guerreiro 5, e o personagem está no 3: a opção só vale de novo quando o personagem cumprir."
 	if i < 0 || d.Issues[i].Message != want {
 		t.Errorf("issue = %+v, want %q", d.Issues, want)
 	}
