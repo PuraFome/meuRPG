@@ -361,6 +361,14 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(button('Adicionar pré-requisito')).toBeDefined();
     });
 
+    it('heads "O que a opção pede" with "O jogador precisa de todos" at its right, as the board has it (580-03)', () => {
+      setup({ ...emptyFeature(), name: 'Golpe' }, { isOption: true, allowAsks: true });
+      const head = el.querySelector('.asks .asks__head')!;
+      expect(head.querySelector('h4')?.textContent).toContain('O que a opção pede');
+      expect(text(head.querySelector('.asks__all')!)).toBe('O jogador precisa de todos');
+      expect(text(el.querySelector('.asks')!)).not.toContain('Vale só para quem vai escolher');
+    });
+
     it('offers "Adicionar pré-requisito" as a text action with a caret, not as an outlined button (board 580-03)', () => {
       setup({ ...emptyFeature(), name: 'Golpe' }, { isOption: true, allowAsks: true });
       const add = button('Adicionar pré-requisito');
