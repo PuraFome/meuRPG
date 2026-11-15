@@ -95,3 +95,90 @@ func TestAnActionThatDeclaresAUseReachesTheTurnOptions(t *testing.T) {
 		t.Errorf("an action without a use changed: %v", plain)
 	}
 }
+
+// TestAFeatureTriggerSurvivesTheJSONOfAPackageAndReachesTheCombat: a reaction's trigger goes through the JSON of the package
+// (export and import), becomes the engine's trigger, and reaches the combat on the action the character gets.
+func TestAFeatureTriggerSurvivesTheJSONOfAPackageAndReachesTheCombat(t *testing.T) {
+	t.Parallel()
+	in := &rulesv1.TableEffect{Type: "grant_action", Economy: "reaction", Use: &rulesv1.FeatureUse{
+		LimitScope: rulesv1.UseScope_USE_SCOPE_COMBAT, LimitUses: "2",
+		Targets: &rulesv1.FeatureTargets{Min: 1, Max: 1, Who: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ENEMY, RangeFt: 10},
+		Trigger: &rulesv1.FeatureTrigger{
+			Kinds:   []rulesv1.FeatureTriggerKind{rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_STARTS_TURN_WITHIN, rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_MOVES_WITHIN},
+			RangeFt: 10,
+		},
+	}}
+	raw, err := protojson.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := &rulesv1.TableEffect{}
+	if err := protojson.Unmarshal(raw, out); err != nil {
+		t.Fatal(err)
+	}
+	if !proto.Equal(in, out) {
+		t.Fatalf("round trip = %v, want %v", out, in)
+	}
+	got := tableEffectsOf([]*rulesv1.TableEffect{out})[0].Use.Trigger
+	want := &rules.FeatureTrigger{Kinds: []string{rules.FeatureTriggerStartsTurn, rules.FeatureTriggerMoves}, RangeFt: 10}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("trigger = %+v, want %+v", got, want)
+	}
+	act := rules.Action{Key: "feature:halo@mesa", Economy: rules.EconomyReaction, Use: &rules.ActionUse{Scope: rules.UseScopeCombat, Uses: 2, Trigger: want}}
+	fa := featureActionOf(rules.Derived{}, act)
+	if fa.Use == nil || fa.Use.Trigger == nil || fa.Use.Trigger.RangeFt != 10 || !reflect.DeepEqual(fa.Use.Trigger.Kinds, want.Kinds) {
+		t.Errorf("link use = %+v, want the trigger %+v", fa.Use, want)
+	}
+	if plain := featureActionOf(rules.Derived{}, rules.Action{Key: "feature:y@mesa", Use: &rules.ActionUse{Scope: "turn", Uses: 1}}); plain.Use.Trigger != nil {
+		t.Errorf("a use without a trigger got %+v", plain.Use.Trigger)
+	}
+}
+
+// TestAnUnknownTriggerKindReachesTheRulesToBeRefused: a number this build does not know is "unknown", not a default.
+func TestAnUnknownTriggerKindReachesTheRulesToBeRefused(t *testing.T) {
+	t.Parallel()
+	u := featureUseOf(&rulesv1.FeatureUse{Trigger: &rulesv1.FeatureTrigger{
+		Kinds: []rulesv1.FeatureTriggerKind{rulesv1.FeatureTriggerKind_FEATURE_TRIGGER_KIND_ENEMY_MOVES_WITHIN, 99, 0}, RangeFt: 10,
+	}})
+	if u.Trigger == nil || !reflect.DeepEqual(u.Trigger.Kinds, []string{rules.FeatureTriggerMoves, "unknown", "unknown"}) {
+		t.Errorf("trigger = %+v, want the known kind and two unknown words (the unspecified one is no moment)", u.Trigger)
+	}
+}
+
+// TestAChoiceLabelSurvivesTheJSONOfAPackage: the question over a use's choices goes through the JSON of the package and becomes
+// the engine's `choice_label`.
+func TestAChoiceLabelSurvivesTheJSONOfAPackage(t *testing.T) {
+	t.Parallel()
+	in := &rulesv1.TableEffect{Type: "grant_action", Economy: "bonus_action", Use: &rulesv1.FeatureUse{
+		Choices: []*rulesv1.FeatureChoice{{Key: "lobo", TextPt: "Lobo"}}, ChoiceLabel: "Qual forma",
+	}}
+	raw, err := protojson.Marshal(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := &rulesv1.TableEffect{}
+	if err := protojson.Unmarshal(raw, out); err != nil {
+		t.Fatal(err)
+	}
+	if !proto.Equal(in, out) {
+		t.Fatalf("round trip = %v, want %v", out, in)
+	}
+	if got := tableEffectsOf([]*rulesv1.TableEffect{out})[0].Use.ChoiceLabel; got != "Qual forma" {
+		t.Errorf("choice_label = %q, want the table's", got)
+	}
+}
+
+// TestTheChoiceQuestionReachesTheTurnOptions: the option carries the question of the feature's choices as use_question_pt,
+// and an action that gave none carries "" (the app asks "Qual opção").
+func TestTheChoiceQuestionReachesTheTurnOptions(t *testing.T) {
+	t.Parallel()
+	choices := []rules.FeatureChoice{{Key: "a", TextPT: "A"}}
+	asked := rules.Action{Key: "feature:x@mesa", Economy: rules.EconomyBonusAction, Use: &rules.ActionUse{Choices: choices, ChoiceLabel: "Qual forma"}}
+	if got := actionOptionToProto(combat.ActionOption{Action: asked}).GetUseQuestionPt(); got != "Qual forma" {
+		t.Errorf("use_question_pt = %q, want the feature's question", got)
+	}
+	plain := rules.Action{Key: "feature:y@mesa", Economy: rules.EconomyBonusAction, Use: &rules.ActionUse{Choices: choices}}
+	if got := actionOptionToProto(combat.ActionOption{Action: plain}).GetUseQuestionPt(); got != "" {
+		t.Errorf("use_question_pt = %q, want none", got)
+	}
+}

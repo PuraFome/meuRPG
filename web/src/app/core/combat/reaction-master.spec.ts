@@ -1,4 +1,5 @@
 import { CombatantKind, ReactionKind } from '../../../gen/meurpg/play/v1/combat_pb';
+import { FeatureTriggerKind } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { combatant, encounter, reactionWindow } from './combat-testing';
 import { slotTitle } from './combat-grid';
 import {
@@ -548,6 +549,71 @@ describe("the master's card for an effect's saving throw (RN-22)", () => {
     const card = reactionCards(e)[0];
     expect(card.type === 'unanswered' && plain(card.cost)).toContain(
       'um espaço de 1º nível (3 livres)',
+    );
+  });
+});
+
+describe("the master's cards for a feature window (#743)", () => {
+  const halo = (over: object = {}, trigger: object = {}) =>
+    reactionWindow({
+      id: 'h',
+      kind: ReactionKind.FEATURE,
+      reactorId: 'pen',
+      reactorLabel: 'Pensantus',
+      reactorIsPlayer: true,
+      trigger: {
+        actorId: 'hob',
+        actorLabel: 'Hobgoblin',
+        actionKey: 'feature:halo',
+        actionNamePt: 'Halo de esporos',
+        distanceFt: 5,
+        featureTrigger: FeatureTriggerKind.ENEMY_STARTS_TURN_WITHIN,
+        ...trigger,
+      } as never,
+      ...over,
+    } as never);
+
+  it('names the window by the feature and says who came near and how far', () => {
+    const w = halo();
+    expect(reactionName(w)).toBe('Halo de esporos');
+    expect(plain(describeRow(w))).toBe(
+      'Halo de esporos · o Hobgoblin começou a vez a 1,5 m de Pensantus',
+    );
+  });
+
+  it('is a queue row answered for the player, titled by the creature', () => {
+    const card = reactionCards(encounter({ combatants, reactionWindows: [halo()] } as never))[0];
+    expect(card.type).toBe('queue');
+    if (card.type !== 'queue') {
+      return;
+    }
+    expect(plain(card.title)).toBe('Reações a uma criatura');
+    expect(plain(card.subtitle)).toBe('Hobgoblin começou a vez · na ordem da iniciativa');
+    expect(card.rows[0].useLabel).toBe('Usar pelo jogador');
+  });
+
+  it('is the question that came to the master when the creature is hidden, and says why', () => {
+    const e = encounter({
+      combatants: combatants.map((c) => (c.id === 'hob' ? { ...c, hidden: true } : c)),
+      reactionWindows: [halo({ unanswered: true })],
+    } as never);
+    const card = reactionCards(e)[0];
+    expect(card.type).toBe('unanswered');
+    if (card.type !== 'unanswered') {
+      return;
+    }
+    expect(card.title).toBe('Pensantus pode usar Halo de esporos');
+    expect(plain(card.cost)).toBe(
+      'Gasta a reação e um uso. O Hobgoblin está escondido: o jogador de Pensantus não o vê, e você responde por ele.',
+    );
+  });
+
+  it('says the player did not answer in 10 s for a creature that is not hidden', () => {
+    const card = reactionCards(
+      encounter({ combatants, reactionWindows: [halo({ unanswered: true })] } as never),
+    )[0];
+    expect(card.type === 'unanswered' && plain(card.cost)).toBe(
+      'Gasta a reação e um uso. O jogador não respondeu em 10 s; você responde por ele.',
     );
   });
 });

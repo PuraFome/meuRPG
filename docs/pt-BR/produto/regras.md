@@ -711,6 +711,13 @@ Os membros leem o conteúdo da campanha, menos as criaturas; só o mestre escrev
   O jogador lê as criaturas como em qualquer invocação.
   O jogador que não tem nenhuma não lê as criaturas da habilidade na lista da mesa nem na página de uma criatura.
   Quem tem a habilidade lê os nomes das criaturas (sem números) ao escolher quais trazer.
+- **A ação de uma característica da mesa pode ser usada na ficha "Usar".**
+  A característica pode oferecer opções, e a mesa pode escrever a pergunta sobre elas ("Qual forma"); sem ela, a ficha pergunta "Qual opção".
+  Um uso gasta a parte do turno que a característica custa e, quando ela tem um, um uso do seu recurso.
+  A linha do registro de um uso diz o que ele custou: "gastou a reação", "gastou 1 uso de Forma Selvagem (restam 2 de 2)".
+  O mestre e o jogador de quem usou leem o custo; os outros jogadores leem só que a característica foi usada.
+  O mestre pode usar uma característica cuja parte do turno já foi gasta: a ficha dele avisa e pergunta "Usar mesmo assim".
+  Só isso ele passa por cima: continuam impedindo-o a característica sem usos, a falta de criatura para mirar, o turno de outra criatura (para uma ação) e uma pergunta que espera por ele.
 - **As telas abertas acompanham.** Quando o mestre muda o conteúdo ou um interruptor, as telas abertas dos jogadores leem as listas de novo, cada uma com o papel de quem a lê.
 - **Uma entrada que as regras recusam fica de fora, e o mestre vê qual e por quê.**
   O resto da campanha continua funcionando.
@@ -1122,6 +1129,7 @@ Não existe "Pular": toda janela é respondida com "Usar" ou "Deixar passar", ou
 | Queda Lenta (monge 4) | O monge em queda tira 5 vezes o nível dele do próprio dano de queda. |
 | Ataque de oportunidade | Veja a RN-21. |
 | Ação preparada | O mestre diz que o gatilho de uma ação preparada aconteceu: quem a preparou pode usar a reação para tomar a ação guardada (um ataque, um movimento até a velocidade, uma magia, outra ação) ou deixá-la passar. Só o jogador de quem preparou e o mestre leem o gatilho e a ação; os outros leem "Esperando a reação de <nome>" ou "Esperando o mestre". |
+| Característica com reação | Uma característica da mesa cuja ação é uma reação e que tem um gatilho: um inimigo começa o turno a até certa distância de quem a tem, ou se move para dentro dessa distância. O jogador pode usar a característica sobre essa criatura ou deixar passar; deixar passar não gasta nada. |
 | Teste de concentração | O dano a uma criatura concentrada pede Constituição contra CD 10 ou metade do dano; 0 PV encerra a concentração sem teste (RN-22). |
 | Aparar (monstro) | Um ataque corpo a corpo com arma acerta uma criatura cuja ficha tem a reação: +2 a +5 de CA contra esse ataque, decidido pelo servidor sem janela (uma janela só para o mestre em "Perguntar"). |
 | Resistência Lendária | A magia de um jogador com teste de resistência, ou um efeito de acerto que rola um teste, alcança uma criatura com a característica e um uso sobrando, quer o teste de resistência dela tenha passado, quer tenha falhado: o lançamento ou a resposta ao efeito espera só o mestre (RN-29). A área de uma magia que pega essa criatura pede o teste dela só ao mestre. |
@@ -1135,7 +1143,7 @@ A ação em espera aguarda até a janela ser respondida, e é descartada se não
 O turno espera pelas janelas abertas.
 Um jogador lê só as próprias janelas, e os números do gatilho (um total de ataque, uma classe de armadura, um dano) são do mestre.
 
-- **Uma reação opcional que o jogador não responde passa depois de 30 segundos** (Escudo Arcano, Esquiva Sobrenatural, a conjuração da Repreensão Infernal, Contramágica, Palavras de Interrupção, Defletir Projéteis, Proteção, Queda Suave, Queda Lenta, uma ação preparada que o mestre disparou e um ataque de oportunidade oferecido a um jogador). A tela do mestre a conta ("Passa sozinho em N s"), o aviso do jogador diz "Se você não responder, passa sozinho em N s.". Nunca um teste de resistência, uma disputa nem o teste do mestre.
+- **Uma reação opcional que o jogador não responde passa depois de 30 segundos** (Escudo Arcano, Esquiva Sobrenatural, a conjuração da Repreensão Infernal, Contramágica, Palavras de Interrupção, Defletir Projéteis, Proteção, Queda Suave, Queda Lenta, uma ação preparada que o mestre disparou, uma característica com reação cujo gatilho aconteceu e um ataque de oportunidade oferecido a um jogador). A tela do mestre a conta ("Passa sozinho em N s"), o aviso do jogador diz "Se você não responder, passa sozinho em N s.". Nunca um teste de resistência, uma disputa nem o teste do mestre.
 - **Um jogador que está rolando ganha mais tempo.** Enquanto o jogador rola um dado físico, a janela espera até 2 minutos: "Você está rolando: a mesa espera 2 min", e o mestre lê "Rolando… passa sozinho em N s". O mestre pode passá-la antes.
 - **Preparar** (SRD 5.1, "Ready").
   No próprio turno, uma criatura gasta a ação para guardar outra até um gatilho que o jogador dela escreve.
@@ -1165,6 +1173,19 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Eles ainda veem o que qualquer concentração encerrada faz: o indicador de concentração da criatura fica em branco e os efeitos da magia de concentração anterior terminam.
   O teste de concentração de uma magia guardada é do jogador de quem preparou e do mestre: os outros jogadores leem só que a mesa espera o mestre.
   A ação preparada de uma criatura escondida é só do mestre.
+- **Uma característica com reação e gatilho** (a janela da característica).
+  A mesa escreve o gatilho na característica: os momentos (um inimigo começa o turno a até certa distância, um inimigo se move para dentro dela) e a distância.
+  O app abre a janela para o jogador de quem tem a característica quando uma criatura do outro lado começa o turno dentro da distância, ou sai de fora e entra nela, e quem a tem pode reagir.
+  Uma criatura que já estava dentro da distância e se move dentro dela não dispara o gatilho de novo.
+  O movimento conta da casa de onde a criatura saiu até a casa onde chegou: uma criatura que atravessa a distância e para fora dela não dispara nada.
+  Quem tem a característica é perguntado uma vez sobre cada criatura em cada turno, seja qual for a resposta: uma criatura que sai da distância e volta no mesmo turno não pergunta de novo, e o começo do turno dela e o movimento são uma pergunta só.
+  O turno seguinte da criatura pergunta de novo.
+  A pergunta não aparece se a reação já foi gasta, se quem a tem não pode reagir, se não enxerga a criatura, se a característica não tem mais usos ou se não dá para mirá-la nessa criatura.
+  "Usar" executa a característica como reação sobre essa criatura: gasta a reação, um uso e o recurso da característica, e a linha do uso diz isso.
+  "Deixar passar" não gasta nada.
+  O turno espera pela janela, e o movimento que a abriu pode ser desfeito até a janela ser respondida.
+  Uma característica com gatilho não oferece escolha, porque a janela só pergunta se usa ou não.
+  Uma criatura que o mestre escondeu nunca abre a janela para o jogador: ela é só do mestre, que a lê e responde pelo jogador, e nenhum jogador a lê, ouve falar dela ou a responde.
 - **Regra da mesa "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (padrão) abre uma janela só quando um inimigo pode reagir; "Sempre" abre a conferência de um toque do mestre em todo ataque, conjuração e dano de um jogador contra um inimigo, de modo que a pausa não diz nada aos jogadores.
 
 Como é construído: [Arquitetura](../../architecture/play/reactions.md).

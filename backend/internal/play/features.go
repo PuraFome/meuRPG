@@ -145,6 +145,8 @@ type featureFlow struct {
 	hits    []castHit
 	made    actionEvent
 	fe      *featureUseEvent
+	// win is the FEATURE window the use answers (feature_window_answer.go), nil for a use UseFeature is called for.
+	win *playdb.ReactionWindow
 }
 
 func newFeatureFlow(s *Service, c *combatTx, m authz.Membership, call useFeatureCall, out *useFeatureOut) *featureFlow {
@@ -154,10 +156,7 @@ func newFeatureFlow(s *Service, c *combatTx, m authz.Membership, call useFeature
 // run is the transaction: the checks, then what the use costs and does. It answers the event the write stores.
 func (f *featureFlow) run(ctx context.Context) (any, error) {
 	f.out.vitals = nil
-	steps := []func(context.Context) error{
-		f.locate, f.findFeature, f.gate, f.mayUse, f.aim, f.pick, f.begin, f.spend, f.apply, f.remember,
-	}
-	for _, step := range steps {
+	for _, step := range f.steps() {
 		if err := step(ctx); err != nil {
 			return nil, err
 		}
@@ -254,7 +253,12 @@ func (f *featureFlow) mayUse(ctx context.Context) error {
 	}
 	// The resource is read in this transaction: the options of the rules read it too, but the row of the use is the
 	// one this transaction would spend from.
-	return featureRefusal(f.scene.reason(f.fa, f.row, f.v.master), f.v.master)
+	if err := featureRefusal(f.scene.reason(f.fa, f.row, f.v.master), f.v.master); err != nil {
+		return err
+	}
+	// The use got past a spent economy only because the master said so: the line keeps it.
+	f.fe.Overridden = f.v.master && !f.row.GetEnabled() && masterMayOverride(f.row.GetReason().GetCode())
+	return nil
 }
 
 // featureRefusal is the refusal of a reason the checks found, nil when there is none. It fails closed: a disabled row whose
@@ -346,6 +350,11 @@ func (f *featureFlow) begin(ctx context.Context) error {
 	for _, t := range f.targets {
 		f.made.Secret = f.made.Secret || t.Hidden
 	}
+	// The window of a hidden creature is the master's: the use that answers it is secret whoever it is aimed at, as the pass is,
+	// or an unaimed feature would tell every player that a creature came near.
+	if f.win != nil && windowTriggerOf(*f.win).Hidden {
+		f.made.Secret = true
+	}
 	if len(f.call.targets) == 1 && f.call.targets[0] != who.ID {
 		f.made.Target = f.call.targets[0]
 	}
@@ -355,6 +364,7 @@ func (f *featureFlow) begin(ctx context.Context) error {
 // spend writes what the use costs: the economy and the use of the feature's resource.
 func (f *featureFlow) spend(ctx context.Context) error {
 	economy := featureEconomy(f.row)
+	f.fe.Economy = economyWordOf(economy)
 	if err := spendFeatureEconomy(ctx, f.c, spentEconomy(f.who, economy), f.call.actionKey, economy); err != nil {
 		return err
 	}
@@ -369,7 +379,18 @@ func (f *featureFlow) spend(ctx context.Context) error {
 	}
 	f.out.vitals = append(f.out.vitals, vitals)
 	f.made.Resource, f.made.PointsSpent = fa.Resource, n
+	f.fe.ResourceName, f.fe.ResourceLeft, f.fe.ResourceMax = resourceLeftOf(vitals, fa.Resource)
 	return nil
+}
+
+// resourceLeftOf is the name of the resource in the character's vitals, the uses of it left and its total, "" and 0 when the vitals do not have it.
+func resourceLeftOf(v *playv1.CharacterVitals, key string) (name string, left, total int32) {
+	for _, r := range v.GetResources() {
+		if r.GetKey() == key {
+			return r.GetNamePt(), max(r.GetTotal()-r.GetUsed(), 0), r.GetTotal()
+		}
+	}
+	return "", 0, 0
 }
 
 // apply gives each target what the use applies: the hit points healed (the dice rolled by the server, once, for every
@@ -543,6 +564,7 @@ func (f *featureFlow) remember(ctx context.Context) error {
 		return nil
 	}
 	key, now := useStateKey(f.call.actionKey), f.scene.now
+	f.countScope(*f.fa.Use)
 	state := readFeatureState(f.who.FeatureState)
 	var before *featureEntry
 	n := int32(1)
@@ -559,6 +581,14 @@ func (f *featureFlow) remember(ctx context.Context) error {
 		return connect.NewError(connect.CodeFailedPrecondition, err)
 	}
 	return nil
+}
+
+// countScope gives the line the uses of the scope, left after this one and allowed, when the use has no resource of its own.
+func (f *featureFlow) countScope(u link.FeatureUse) {
+	if f.fe.ResourceName != "" {
+		return
+	}
+	f.fe.ResourceLeft, f.fe.ResourceMax = clamp32(f.scene.left(f.call.actionKey, u)-1, 0, math.MaxInt32), clamp32(u.Uses, 0, math.MaxInt32)
 }
 
 // spentEconomy is the combatant with the economy the action spends marked used: the free and the movement cost none.

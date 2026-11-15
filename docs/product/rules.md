@@ -711,6 +711,13 @@ Members read the campaign's content, except creatures (below); only the master w
   A player reads the creatures as for any summon.
   A player who holds none does not read the creatures of the feature in the table's list or on a creature's page.
   A player who holds the feature reads the names of its creatures (no numbers) when choosing which to bring.
+- **A table feature's action can be used from the "Usar" sheet.**
+  The feature may offer options, and the table may write the question over them ("Qual forma"); without one the sheet asks "Qual opção".
+  A use spends the part of the turn the feature costs and, when it has one, a use of its resource.
+  The log line of a use says what it cost: "gastou a reação", "gastou 1 uso de Forma Selvagem (restam 2 de 2)".
+  The master and the user's player read the cost, the other players read only that the feature was used.
+  The master may use a feature whose part of the turn is already spent: his sheet says so and asks "Usar mesmo assim".
+  That is the only thing he overrides: no use of the feature left, no creature to aim at, another creature's turn for an action and a question that waits for him still stop him.
 - **Open screens follow.** When the master changes content or a switch, the players' open screens read the lists again, each with the role of its reader.
 - **An entry the rules refuse is left out, and the master sees which and why.**
   The rest of the campaign keeps working.
@@ -1122,6 +1129,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Slow Fall (monk 4) | The falling monk takes 5 times its level off its own falling damage. |
 | Opportunity attack | See RN-21. |
 | Readied action | The master says the trigger of a readied action happened: the readier may use its reaction to take the held action (an attack, a move up to its speed, a spell, another action) or let it pass. Only the readier's player and the master read the trigger and the action; the others read "Esperando a reação de <nome>" or "Esperando o mestre". |
+| Reaction feature | A feature of the table whose action is a reaction and that names a trigger: an enemy starts its turn within a distance of the owner, or moves to within it. Its player may use the feature on that creature or let it pass; nothing is spent by letting it pass. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
 | Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, decided by the server with no window (a window for the master only in "Perguntar"). |
 | Legendary Resistance | A player's spell with a saving throw, or a hit rider that rolls a save, reaches a creature with the trait and a use left, whether its save passed or failed: the cast or the rider's answer waits for the master alone (RN-29). A spell's area that catches such a creature asks its save of the master alone. |
@@ -1135,7 +1143,7 @@ The held action waits until the window is answered, and is dropped if it can no 
 The turn waits for open windows.
 A player reads only their own windows, and the numbers of the trigger (an attack total, an armor class, a damage) are the master's.
 
-- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
+- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired, a reaction feature whose trigger happened and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
 - **Ready** (SRD 5.1, "Ready").
   On its turn a creature spends its action to hold another until a trigger its player writes.
@@ -1165,6 +1173,19 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   They still see what any ended concentration does: the creature's concentration indicator goes blank and the effects of its earlier concentration spell end.
   The concentration save of a held spell is the readier's player's and the master's: the other players read only that the table waits for the master.
   A hidden creature's readied action is the master's alone.
+- **A reaction feature with a trigger** (the feature window).
+  The table writes the trigger on the feature: the moments (an enemy starts its turn within a distance, an enemy moves to within it) and the distance.
+  The app opens the window for the owner's player when a creature of the other side starts its turn within the distance, or moves from outside it to inside it, and the owner can react.
+  A creature that was already within the distance and moves within it does not trigger it again.
+  The move counts from the square it left to the square it reached: a creature that crosses the distance and stops outside it triggers nothing.
+  The owner is asked once about each creature in each turn, whatever the answer: a creature that goes out of the distance and in again in the same turn does not ask again, and the start of its turn and its move are one question.
+  The creature's next turn asks again.
+  The owner is not asked when its reaction is spent, it cannot react, it sees nothing of the creature, the feature has no use left or it cannot be aimed at the creature.
+  "Usar" runs the feature as a reaction on that creature: the reaction, one use and the feature's resource are spent, and the line of the use says so.
+  "Deixar passar" spends nothing.
+  The turn waits for the window, and the move that opened it can be undone until the window is answered.
+  A feature with a trigger offers no choice, because the window only asks to use it or not.
+  A creature the master hid never opens the window for the player: it is the master's alone, who reads it and answers for the player, and no player reads, hears of or answers it.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.
 
 How it is built: [Architecture](../architecture/play/reactions.md).

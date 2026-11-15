@@ -37,15 +37,24 @@ func useOf(scope rulesv1.UseScope, uses string, targets *rulesv1.FeatureTargets,
 	return u
 }
 
+// grantFeature is a table feature whose grant_action declares the use.
+func grantFeature(name, economy, resource string, u *rulesv1.FeatureUse) *rulesv1.TableFeature {
+	return &rulesv1.TableFeature{NamePt: name, DescPt: []string{name + "."}, Effects: []*rulesv1.TableEffect{{Type: "grant_action", Economy: economy, Resource: resource, TextPt: name + ".", Use: u}}}
+}
+
 func newFeatureTable(t *testing.T) *featureTable {
+	t.Helper()
+	return newFeatureTableOf(t, nil)
+}
+
+// newFeatureTableOf is newFeatureTable with only the given features on Pensantus's subclass (nil: the usual ones).
+func newFeatureTableOf(t *testing.T, only []*rulesv1.TableFeature) *featureTable {
 	t.Helper()
 	m := &featureTable{keys: map[string]string{}}
 	tempHP := func(v int32) *rulesv1.TableSpellEffect {
 		return &rulesv1.TableSpellEffect{Modifiers: []*rulesv1.TableEffectModifier{{Kind: rulesv1.TableEffectModifierKind_TABLE_EFFECT_MODIFIER_KIND_TEMP_HP, Value: v}}}
 	}
-	grant := func(name, economy, resource string, u *rulesv1.FeatureUse) *rulesv1.TableFeature {
-		return &rulesv1.TableFeature{NamePt: name, DescPt: []string{name + "."}, Effects: []*rulesv1.TableEffect{{Type: "grant_action", Economy: economy, Resource: resource, TextPt: name + ".", Use: u}}}
-	}
+	grant := grantFeature
 	ally := &rulesv1.FeatureTargets{Min: 1, Max: 2, Who: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ALLY, RangeFt: 30}
 	enemy := &rulesv1.FeatureTargets{Min: 1, Max: 1, Who: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_ENEMY, RangeFt: 10}
 	self := &rulesv1.FeatureTargets{Who: rulesv1.FeatureTargetWho_FEATURE_TARGET_WHO_SELF}
@@ -57,6 +66,9 @@ func newFeatureTable(t *testing.T) *featureTable {
 			grant("Marca", "free", "", useOf(rulesv1.UseScope_USE_SCOPE_COMBAT, "1", enemy, nil)),
 			grant("Chamado", "bonus_action", callsKey, useOf(rulesv1.UseScope_USE_SCOPE_UNSPECIFIED, "", self, &rulesv1.FeatureApplies{TempHp: "1"})),
 			{NamePt: "Chamados", DescPt: []string{"Uma reserva."}, Effects: []*rulesv1.TableEffect{{Type: "resource", Resource: callsKey, Max: "2", Recharge: "short_rest"}}},
+		}
+		if only != nil {
+			features = only
 		}
 		sub := &rulesv1.TableSubclass{
 			NamePt: "Mestre dos Brados", ClassKey: "class:fighter", DescPt: []string{"Brados."},

@@ -2178,6 +2178,20 @@ message FeatureUse {
   repeated FeatureChoice choices = 4 [(meurpg.options.v1.max_items) = 8];
   // What the use does besides spending. Unset only spends and goes to the log.
   FeatureApplies applies = 5;
+  // When the app asks the player to use the feature without being asked for it: a reaction window opens for the owner.
+  // Unset: the player uses the feature from the Usar sheet only. It needs the economy `reaction`.
+  FeatureTrigger trigger = 6;
+  // The question over the options, as the player reads it ("Qual forma"), at most 80 characters. Empty: the app asks
+  // "Qual opção". It needs `choices`.
+  string choice_label = 7 [(meurpg.options.v1.max_len) = 80];
+}
+
+// FeatureTrigger is what a reaction feature waits for. Refusals are at `use.trigger.kinds[i]` and `use.trigger.range_ft`.
+message FeatureTrigger {
+  // The moments that open the window, one to two, no repeats.
+  repeated FeatureTriggerKind kinds = 1 [(meurpg.options.v1.max_items) = 2];
+  // The reach in feet from the owner, 1 to 300.
+  int32 range_ft = 2;
 }
 
 // FeatureTargets are the creatures a feature's use is aimed at.

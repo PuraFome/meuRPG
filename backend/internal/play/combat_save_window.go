@@ -73,7 +73,7 @@ func (s *Service) windowToAnswer(ctx context.Context, c *combatTx, m authz.Membe
 			reactor = r
 		}
 	}
-	if !master && (w.ReactorID == nil || reactor.ID == "" || reactor.UserID == nil || *reactor.UserID != m.UserID || isCreature(reactor)) {
+	if !master && notTheirs(m, w, reactor) {
 		return none, reactor, errWindowDenied()
 	}
 	if err := mustBeOpen(w); err != nil {
@@ -83,6 +83,12 @@ func (s *Service) windowToAnswer(ctx context.Context, c *combatTx, m authz.Membe
 		return none, reactor, err
 	}
 	return w, reactor, nil
+}
+
+// notTheirs says the player is not the one who answers the window: it is not the reactor's player, the reactor is a creature, or
+// the window is a hidden creature's, which is the master's alone (RN-10).
+func notTheirs(m authz.Membership, w playdb.ReactionWindow, reactor playdb.Combatant) bool {
+	return w.ReactorID == nil || reactor.ID == "" || reactor.UserID == nil || *reactor.UserID != m.UserID || isCreature(reactor) || windowTriggerOf(w).Hidden
 }
 
 // mustBeOpen refuses an answer to a window that is not open: one answered already lost the race

@@ -26,6 +26,7 @@ import { dcLabel } from '../format/save-dc';
 import { inThe, pushText, subject, the } from './combat-log-words';
 import { upFirst } from '../format/text';
 import { durationPt } from './creature-action';
+import { featureCostText } from './combat-log-feature-cost';
 
 /** What a class resource did (Cura pelas Mãos, Conjuração Flexível, Inspiração de Bardo). The hit points a touch gave back
  * are only in the entry for the master and the target's player; why a touch did nothing is the master's alone. */
@@ -447,7 +448,9 @@ export function featureUsedText(e: CombatLogEntry, ctx: LogContext): string {
     who && who !== e.actorLabel ? ` ${ctx.players.has(who) ? `em ${who}` : inThe(who)}` : '';
   const details = f ? featureUsedDetails(f) : [];
   const name = f?.namePt || e.keyNamePt || 'uma característica';
-  return ` usou ${name}${target}${details.length > 0 ? `: ${details.join(', ')}` : ''}`;
+  const cost = f ? featureCostText(f) : '';
+  const past = f?.overridden ? ' · o mestre usou mesmo assim' : '';
+  return ` usou ${name}${target}${details.length > 0 ? `: ${details.join(', ')}` : ''}${cost ? ` · ${cost}` : ''}${past}`;
 }
 
 /** The choice, and what the use healed and gave, in the order the line reads them. */

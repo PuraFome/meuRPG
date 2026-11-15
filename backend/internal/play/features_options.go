@@ -111,6 +111,7 @@ func (a *featureAnnotator) annotate(ctx context.Context, row *rulesv1.ActionOpti
 	}
 	u := *fa.Use
 	a.fillTotals(row, fa, u)
+	row.MasterMayOverride = a.masterMayOverride(fa, row, stop)
 	if row.GetEnabled() {
 		if r := a.scene.reason(fa, row, false); r != nil {
 			row.Enabled, row.Reason = false, r
@@ -120,6 +121,16 @@ func (a *featureAnnotator) annotate(ctx context.Context, row *rulesv1.ActionOpti
 		return &playv1.ResourceTargets{ActionKey: fa.Key, Targets: a.scene.candidates(u)}, nil
 	}
 	return nil, nil
+}
+
+// masterMayOverride says the master's row is blocked by the economy of the turn alone: nothing holds the feature (stop), the
+// rules' reason is one UseFeature lets the master override, and the uses of the scope and the targets, which stop him too, allow
+// it. It is false in every player's read.
+func (a *featureAnnotator) masterMayOverride(fa link.FeatureAction, row *rulesv1.ActionOption, stop *featureStop) bool {
+	if !a.scene.v.master || stop != nil || row.GetEnabled() || !masterMayOverride(row.GetReason().GetCode()) {
+		return false
+	}
+	return a.scene.reason(fa, row, true) == nil
 }
 
 // fillTotals gives the row the uses of its scope and the total of its rest resource.
