@@ -563,3 +563,42 @@ func TestAnAmmunitionWeaponHasAnImprovisedMeleeLine(t *testing.T) {
 		}
 	}
 }
+
+// A versatile weapon is held with both hands only when no shield and no other weapon is equipped (the grip
+// follows the gear); a carried piece does not count as in hand.
+func TestVersatileGripFollowsTheGear(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	cases := []struct {
+		name    string
+		weapons []string
+		shield  bool
+		carried []string
+		want    Grip
+	}{
+		{"alone", []string{"equipment:longsword"}, false, nil, GripTwoHands},
+		{"with a shield", []string{"equipment:longsword"}, true, nil, GripOneHandShield},
+		{"with the shield carried", []string{"equipment:longsword"}, true, []string{ShieldKey}, GripTwoHands},
+		{"with a second weapon", []string{"equipment:longsword", "equipment:dagger"}, false, nil, GripOneHandWeapon},
+		{"with the second weapon carried", []string{"equipment:longsword", "equipment:dagger"}, false, []string{"equipment:dagger"}, GripTwoHands},
+		{"with a shield and a second weapon", []string{"equipment:longsword", "equipment:dagger"}, true, nil, GripOneHandShield},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			b := duelist(tc.weapons...)
+			b.Shield, b.Carried = tc.shield, tc.carried
+			d := Derive(b, c)
+			sword, ok := attackOf(d, "equipment:longsword")
+			if !ok {
+				t.Fatalf("no longsword in %+v", d.Attacks)
+			}
+			if sword.Grip != tc.want {
+				t.Errorf("longsword grip = %q, want %q", sword.Grip, tc.want)
+			}
+			if dagger, ok := attackOf(d, "equipment:dagger"); ok && dagger.Grip != GripNone {
+				t.Errorf("a weapon that is not versatile has grip %q, want none", dagger.Grip)
+			}
+		})
+	}
+}

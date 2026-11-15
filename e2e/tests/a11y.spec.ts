@@ -9435,6 +9435,79 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
   await scanGearScreens(browser, 'dark', 390);
 });
 
+/**
+ * A versatile weapon on the combat rail (#849, board 580-14): with the shield equipped the stats keep the one-handed dice and a second
+ * line says what two hands need; with the shield stowed the stats show the two-handed dice and the second line says the one-handed ones. Pictures are saved when `E2E_SHOTS_DIR` names a folder.
+ */
+async function scanVersatileRail(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, deviceScaleFactor: 2 });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, deviceScaleFactor: 2 });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  const shotsDir = process.env.E2E_SHOTS_DIR;
+  const shoot = async (at: Locator, name: string) => {
+    if (shotsDir) {
+      await at.scrollIntoViewIfNeeded();
+      await at.screenshot({ path: `${shotsDir}/849-${name}-${width}-${colorScheme === 'light' ? 'claro' : 'escuro'}.png` });
+    }
+  };
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const gear = { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', shield: true };
+    const table = await tableForCombat(m, p, `Acessibilidade empunhadura ${Date.now()}`, true, true, { build: toren, sheet: gear });
+    campaignId = table.campaignId;
+    await beginAttackCombatRPC(m, table, { Toren: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    await openSessionPage(p, campaignId);
+    const tab = await openActionTab(p, 'Ataques');
+    const row = tab.locator('app-action-row').filter({ has: p.getByRole('button', { name: 'Atacar com Espada longa' }) });
+    const line = row.getByTestId('versatile-line');
+    const checkLayout = async () => {
+      // The line wraps inside the row: it never makes the row wider than the screen, and it sits under the stats.
+      const rowBox = await boxOf(row);
+      const lineBox = await boxOf(line);
+      expect(lineBox.x).toBeGreaterThanOrEqual(rowBox.x);
+      expect(lineBox.x + lineBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
+      expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(width);
+      const stats = await boxOf(row.locator('.row__detail').first());
+      expect(lineBox.y).toBeGreaterThanOrEqual(stats.y + stats.height - 1);
+      expect(await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    };
+
+    // The shield is equipped: the one-handed dice on the stats, and what two hands need on the second line.
+    await expect(row.locator('.row__detail').first()).toContainText('1d8 + 3 cortante');
+    await expect(line).toHaveText('Com duas mãos, sem o escudo: 1d10 + 3');
+    await checkLayout();
+    await expectScreenPasses(p, `Combate, espada longa com o escudo ${where}`);
+    await shoot(row, 'trilho-com-escudo');
+
+    // The shield stowed (the action): both hands, so the stats show the two-handed dice and the line the one-handed ones.
+    const fold = tab.locator('app-fold').filter({ has: p.getByRole('heading', { name: 'Sacar ou guardar' }) });
+    await fold.getByRole('button', { name: /^Guardar .*Escudo$/ }).click();
+    await expect(line).toHaveText('Com duas mãos; com uma: 1d8 + 3');
+    await expect(row.locator('.row__detail').first()).toContainText('1d10 + 3 cortante');
+    await checkLayout();
+    await expectScreenPasses(p, `Combate, espada longa com as duas mãos ${where}`);
+    await shoot(row, 'trilho-duas-maos');
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [width, colorScheme] of [[390, 'light'], [768, 'dark'], [1280, 'light'], [390, 'dark'], [768, 'light'], [1280, 'dark']] as const) {
+  test(`a linha de duas mãos da arma versátil no trilho de ações cabe e passa no axe, ${width}px, tema ${colorScheme === 'light' ? 'claro' : 'escuro'}`, { tag: ['@a11y', '@849'] }, async ({ browser }) => {
+    test.setTimeout(240_000);
+    await scanVersatileRail(browser, colorScheme, width);
+  });
+}
+
 /** The attunement (#561): the sheet's "Itens mágicos" and "Sintonização" for the owner (window closed) and the master (open), the picker and "Remover item". */
 async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };

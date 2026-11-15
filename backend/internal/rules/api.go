@@ -1043,8 +1043,21 @@ type ItemModifier struct {
 	ReasonPT     string
 }
 
+// Grip says how a versatile weapon is held, from the gear on the sheet.
+type Grip string
+
+// The grips of a versatile weapon. A line of any other weapon has no grip.
+const (
+	GripNone          Grip = ""
+	GripOneHandShield Grip = "one_hand_shield" // a shield is equipped
+	GripOneHandWeapon Grip = "one_hand_weapon" // another weapon is equipped
+	GripTwoHands      Grip = "two_hands"       // nothing else is in hand
+)
+
 // Attack is one line of the sheet's attacks: a weapon or an attack cantrip.
 type Attack struct {
+	// Grip is how a versatile weapon is held; the attack rolls the dice of its grip.
+	Grip Grip
 	// Key is the weapon or spell key; Name is the SRD's English name and
 	// NamePT ours.
 	Key, Name, NamePT string

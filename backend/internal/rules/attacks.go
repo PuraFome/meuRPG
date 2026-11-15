@@ -96,6 +96,9 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	}
 	a.Magical, a.Silvered, a.Adamantine = x.weaponMarks(key, facts)
 	fillWeaponDamage(&a, w, monkWeapon, martialDie, oneHanded, dmg)
+	if a.VersatileDamage != "" {
+		a.Grip = x.versatileGrip(i)
+	}
 	if a.Melee && t.reachFt > 0 {
 		a.ReachFt = t.reachFt // the weapon keeps its own range: a reach is not a throwing range
 	}
@@ -105,6 +108,28 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 	if fires {
 		x.d.Attacks = append(x.d.Attacks, x.improvisedMelee(a))
 	}
+}
+
+// versatileGrip is how the i-th weapon of the sheet is held: with one hand while a shield or another
+// weapon is equipped, with both otherwise.
+func (x *deriver) versatileGrip(i int) Grip {
+	switch {
+	case x.shieldWielded():
+		return GripOneHandShield
+	case x.otherWeaponOn(i):
+		return GripOneHandWeapon
+	}
+	return GripTwoHands
+}
+
+// otherWeaponOn says a weapon other than the i-th is equipped.
+func (x *deriver) otherWeaponOn(i int) bool {
+	for j, key := range x.b.Weapons {
+		if j != i && !x.b.IsCarried(key) {
+			return true
+		}
+	}
+	return false
 }
 
 // fillWeaponDamage writes the damage lines, the dice and the ranges of a weapon's attack.

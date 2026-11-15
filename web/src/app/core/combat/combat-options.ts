@@ -9,6 +9,7 @@ import {
   type SpellGrantOption,
   type SpellOption,
   type TurnOptions,
+  VersatileGrip,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ActionEconomy } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { type MarksVm, attackMarksFor, markWords } from '../characters/gear';
@@ -92,12 +93,17 @@ export function isReactionHint(reason: DisabledReason | undefined): boolean {
   );
 }
 
+/** "1d8 + 3": the dice as the sheet writes them, with the sign spaced and a real minus. */
+function spacedDice(dice: string): string {
+  return dice.replace(/\s*([+-])\s*/g, (_, sign: string) => ` ${sign === '-' ? '−' : '+'} `);
+}
+
 /** "1d4 + 2 perfurante" for a weapon, "1d10 de fogo" for a cantrip: the dice
  * as the sheet writes them, spaced, and the damage type. */
 export function damageText(attack: Attack): string {
-  const dice = attack.damage.replace(
-    /\s*([+-])\s*/g,
-    (_, sign: string) => ` ${sign === '-' ? '−' : '+'} `,
+  // The server says how a versatile weapon is held, and the attack rolls the dice of that grip.
+  const dice = spacedDice(
+    attack.grip === VersatileGrip.TWO_HANDS ? attack.versatileDamage : attack.damage,
   );
   const type = attack.damageTypePt;
   const adjective = /^(cortante|perfurante|contundente)$/.test(type);
@@ -245,6 +251,25 @@ export function attackDetail(attack: Attack, reach = false): string {
       ? `CD ${attack.saveDc}`
       : `${attack.attackBonus < 0 ? '−' : '+'}${Math.abs(attack.attackBonus)} para acertar`;
   return tight(joinDots([bonus, damageText(attack), rangeText(attack, reach)]));
+}
+
+/**
+ * The second line under the stats of a versatile weapon (board 580-14, canvas H), by the grip the server worked out
+ * from the gear. One hand, because a shield or another weapon is in hand: "Com duas mãos, sem o escudo: 1d8 + 3" (the
+ * stats line keeps the one-handed dice). Both hands: "Com duas mãos; com uma: 1d6 + 3" (the stats line shows the
+ * two-handed dice). Empty for any other attack.
+ */
+export function versatileLine(attack: Attack): string {
+  switch (attack.grip) {
+    case VersatileGrip.ONE_HAND_SHIELD:
+      return `Com duas mãos, sem o escudo: ${spacedDice(attack.versatileDamage)}`;
+    case VersatileGrip.ONE_HAND_WEAPON:
+      return `Com duas mãos, sem a outra arma: ${spacedDice(attack.versatileDamage)}`;
+    case VersatileGrip.TWO_HANDS:
+      return `Com duas mãos; com uma: ${spacedDice(attack.damage)}`;
+    default:
+      return '';
+  }
 }
 
 /** "Cimitarra +5": the master's radio rows. */
