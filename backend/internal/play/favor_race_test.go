@@ -5,7 +5,10 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -25,7 +28,7 @@ func TestASpendAndTheAnswerOfARefundPromptRace(t *testing.T) {
 		start.Add(1)
 		wg.Go(func() { start.Wait(); _, ansErr = f.answerRefund(f.master, p.GetId(), true, newKey()) })
 		for i := range spenders {
-			wg.Go(func() { start.Wait(); spent[i] = f.tryFavor(context.Background(), f.ask(combat.ModeNormal)) })
+			wg.Go(func() { start.Wait(); spent[i] = f.tryFavorRetrying(f.ask(combat.ModeNormal)) })
 		}
 		start.Done()
 		wg.Wait()
@@ -95,4 +98,23 @@ func spendsThatWon(t *testing.T, spent []spendTry) int {
 		}
 	}
 	return won
+}
+
+// tryFavorRetrying is tryFavor for a race: CockroachDB may answer a commit with a rollback it did not retry (a spend that raced a write on the
+// same row), and the call is made again, as its caller would, up to ten times. What the spend answered in the attempt that committed is its answer.
+func (f *favorParty) tryFavorRetrying(a favorAsk) spendTry {
+	var out spendTry
+	var err error
+	for range 10 {
+		out = spendTry{}
+		err = db.InTx(context.Background(), f.h.pool, func(tx pgx.Tx) error {
+			out.use, out.err = f.h.svc.useFavor(context.Background(), f.h.svc.outsideGate(tx, f.h.svc.queries.WithTx(tx), nil), a)
+			return nil
+		})
+		if err == nil {
+			return out
+		}
+	}
+	f.h.t.Errorf("the transaction of the spend failed ten times: %v", err)
+	return out
 }
