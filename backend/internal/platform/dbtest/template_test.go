@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
-	"sync"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
