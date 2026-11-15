@@ -360,6 +360,26 @@ describe("what the master's held actions say", () => {
       'Proteção',
     );
   });
+
+  it('a dismount names the mount the master reads, and the group is about a mount', () => {
+    const w = reactionWindow({
+      id: 'd',
+      kind: ReactionKind.DISMOUNT,
+      reactorId: 't',
+      reactorLabel: 'Toren',
+      reactorIsPlayer: true,
+      groupId: 'g',
+      trigger: { actorLabel: '', actionNamePt: '', targetLabel: 'Pônei' } as never,
+    } as never);
+    expect(reactionName(w)).toBe('Desmontar');
+    expect(plain(describeRow(w))).toBe('Desmontar · a montaria (Pônei) caiu ou morreu');
+    const bare = reactionWindow({ id: 'e', kind: ReactionKind.DISMOUNT } as never);
+    expect(plain(describeRow(bare))).toBe('Desmontar · a montaria caiu ou morreu');
+    const card = reactionCards(encounter({ combatants, reactionWindows: [w] })).find(
+      (c) => c.type === 'queue' || c.type === 'single',
+    );
+    expect(JSON.stringify(card)).toContain('Reações a uma montaria');
+  });
 });
 
 describe("the master's card for an effect's saving throw (RN-22)", () => {
