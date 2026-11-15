@@ -132,7 +132,11 @@ func TestTheHiddenSpellOfAFeatureSummonCannotBeProbedWithASheet(t *testing.T) {
 		{"known spells", warlock(func(f *charactersv1.FullSheet, k string) { f.KnownSpellKeys = []string{k} })},
 		{"prepared spells", warlock(func(f *charactersv1.FullSheet, k string) { f.PreparedSpellKeys = []string{k} })},
 		{"picks", warlock(func(f *charactersv1.FullSheet, k string) {
-			f.FeatureChoiceKeys = append(f.FeatureChoiceKeys, "feature:pact-of-the-tome#cantrips|"+k)
+			f.FeatureChoiceKeys = append(f.FeatureChoiceKeys, "feature:pact-of-the-tome#cantrips="+k)
+		})},
+		{"book rituals picks", warlock(func(f *charactersv1.FullSheet, k string) {
+			book := "feature:eldritch-invocation-book-of-ancient-secrets"
+			f.FeatureChoiceKeys = append(f.FeatureChoiceKeys, book, book+"#rituals="+k)
 		})},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
