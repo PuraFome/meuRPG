@@ -169,10 +169,12 @@ The targets are `targets` (each with its darts), or `creature_ids`, or the targe
 `targets` and `creature_ids` together are `invalid_argument`.
 The target named at Ready is used only for a spell that takes named targets (`namedAtReady`): a spell that reaches its caster alone, or an area, released with no targets is cast with none.
 In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
-`origin` is the point of the cast.
-`castSpell` checks them as a cast on the caster's turn: the darts of the slot, the number of targets and the point.
-`targets` and `origin` on another kind of row, or on a held spell attack, are `invalid_argument`.
-The Ready sheet offers the spells the window releases with darts, creatures or nothing; the point and the direction are released with `CastSpell` by the readier while the READIED window is open.
+`castSpell` checks them as a cast on the caster's turn: the darts of the slot and the number of targets.
+`targets` on another kind of row, or on a held spell attack, are `invalid_argument`.
+The answer carries no point and no direction: a spell placed on a map (a sphere at a point, a cone, a wall) is refused by the answer, with targets or without, and the window stays open.
+The readier releases it with `CastSpell`, which carries the point, while the READIED window is open.
+In a combat with no map the area is released with the creatures the answer picks, or with nobody.
+The Ready sheet offers the spells the window releases with darts, creatures or nothing.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldSpellTargets`), with the darts of its slot, so the window can show them.
 A held spell attack lists none.
 The list is the owner's and the master's, as the options are (RN-10).

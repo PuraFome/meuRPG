@@ -4,6 +4,8 @@ import (
 	"slices"
 	"testing"
 
+	"connectrpc.com/connect"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -76,22 +78,6 @@ func TestAReadiedMagicMissileRefusesWrongDarts(t *testing.T) {
 	a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Goblin", 3)))
 }
 
-// A readied Sleep is released on the point of the answer.
-func TestAReadiedSleepIsReleasedOnThePointOfTheAnswer(t *testing.T) {
-	t.Parallel()
-	a := newCasters(t)
-	e := a.readyForRelease(t, sleepSpell, 1, "")
-	w := a.mustFire(t, e, "Pensantus")
-	a.h.roller.queue(8, 8)
-	a.mustAnswer(t, a.ana, e, w.GetId(), func(r *playv1.AnswerReactionRequest) {
-		useSpellAnswer(r)
-		r.Origin = &playv1.SpellOrigin{Col: 7, Row: 5}
-	})
-	if a.castLine(t, e, sleepSpell) == nil {
-		t.Error("Sleep was not cast")
-	}
-}
-
 // targets and creature_ids together are refused: the answer names the targets one way.
 func TestAReadiedSpellRefusesTargetsAndCreatureIDsTogether(t *testing.T) {
 	t.Parallel()
@@ -122,24 +108,36 @@ func TestTheOptionsListTheTargetsOfAHeldSpellWhileItWaits(t *testing.T) {
 	}
 }
 
-// A held spell attack is released as an attack: it takes no targets and no point, which are for a spell that is cast.
-func TestAHeldSpellAttackRefusesTargetsAndOrigin(t *testing.T) {
+// A readied attack, a weapon's or a held spell attack cantrip's (Fire Bolt), is released as an attack: targets are for a
+// spell that is cast, so an answer that carries them is refused, and the window stays open with its row waiting.
+func TestTargetsOnAReadiedAttackAreRefusedAndTheWindowStaysOpen(t *testing.T) {
 	t.Parallel()
-	a := newCasters(t)
-	e := a.castersFight(t, 1)
-	e = a.passTo(t, e, "Brisa")
-	a.mustReady(t, a.bia, a.readySpell(t, e, "Brisa", guidingBolt, 1, "Capitão Goblin"))
-	e = a.mustEndTurn(t, a.master, e)
-	w := a.mustFire(t, e, "Brisa")
-	if _, err := a.answerReaction(t, a.bia, e, w.GetId(), withTargets(darts(a, t, "Goblin", 1))); err == nil {
-		t.Error("a held spell attack took targets")
+	cases := []struct {
+		name  string
+		label string
+		ready func(t *testing.T) (*armed, *playv1.Encounter, *user)
+	}{
+		{"a held Fire Bolt", "Pensantus", func(t *testing.T) (*armed, *playv1.Encounter, *user) {
+			a := newCasters(t)
+			e := a.readyForRelease(t, fireBolt, 0, "Goblin")
+			return a, e, a.ana
+		}},
+		{"a readied weapon attack", "Toren", func(t *testing.T) (*armed, *playv1.Encounter, *user) {
+			a := newArmed(t)
+			return a, a.readyThenPass(t, nil), a.caio
+		}},
 	}
-	withOrigin := func(r *playv1.AnswerReactionRequest) {
-		useSpellAnswer(r)
-		r.Origin = &playv1.SpellOrigin{Col: 7, Row: 5}
-	}
-	if _, err := a.answerReaction(t, a.bia, e, w.GetId(), withOrigin); err == nil {
-		t.Error("a held spell attack took a point")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			a, e, u := tc.ready(t)
+			w := a.mustFire(t, e, tc.label)
+			_, err := a.answerReaction(t, u, e, w.GetId(), withTargets(darts(a, t, "Goblin", 0)))
+			wantCode(t, "targets on "+tc.name, err, connect.CodeInvalidArgument)
+			if !a.readiedOpen(t, tc.label) || a.readiedStatus(t, tc.label) != readiedWaiting {
+				t.Errorf("the refused answer left the window open %v and rows %q", a.readiedOpen(t, tc.label), a.readiedStatus(t, tc.label))
+			}
+		})
 	}
 }
 
@@ -159,5 +157,29 @@ func TestAReadiedAreaReleasedWithNoTargetsIsNotAimedAtTheCreatureNamedAtReady(t 
 	a.mustAnswer(t, a.ana, e, w.GetId(), useSpellAnswer)
 	if cast := a.castLine(t, e, sleepSpell); cast == nil || len(cast.GetSpell().GetTargets()) != 0 {
 		t.Errorf("the release's line = %v, want Sleep on nobody", cast)
+	}
+}
+
+// A readied Sleep on a map is placed at a point, which the answer never carries (CastSpell does): the answer is
+// refused, with targets or without, and the window stays open. The targets are never dropped for the creatures in the area.
+func TestAReadiedAreaOnAMapIsNotReleasedByTheAnswer(t *testing.T) {
+	t.Parallel()
+	for name, set := range map[string]func(*armed, *testing.T) func(*playv1.AnswerReactionRequest){
+		"with targets": func(a *armed, t *testing.T) func(*playv1.AnswerReactionRequest) {
+			return withTargets(darts(a, t, "Goblin", 0))
+		},
+		"without targets": func(*armed, *testing.T) func(*playv1.AnswerReactionRequest) { return useSpellAnswer },
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			a := newCasters(t)
+			e := a.readyForRelease(t, sleepSpell, 1, "")
+			w := a.mustFire(t, e, "Pensantus")
+			_, err := a.answerReaction(t, a.ana, e, w.GetId(), set(a, t))
+			wantCode(t, "Sleep placed on a map, answered "+name, err, connect.CodeInvalidArgument)
+			if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting {
+				t.Errorf("the refused answer left the window open %v and rows %q", a.readiedOpen(t, "Pensantus"), a.readiedStatus(t, "Pensantus"))
+			}
+		})
 	}
 }

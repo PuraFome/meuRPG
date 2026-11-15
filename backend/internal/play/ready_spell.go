@@ -205,9 +205,10 @@ func heldRelease(ctx context.Context, q *playdb.Queries, encID, windowID string,
 }
 
 // useReadiedSpell is "Usar" on a readied spell: CastSpell by the readier, under the answer's key, with the targets the
-// answer names in targets (with their darts) or in creature_ids, else the creature named at Ready (for a spell that takes named targets), the point in origin and
-// the answer's die. CastSpell checks them all as it does on the caster's turn. The use is spent once the spell is cast: a cast
-// held by a Counterspell is used when it happens.
+// answer names in targets (with their darts) or in creature_ids, else the creature named at Ready (for a spell that
+// takes named targets), and the answer's die. CastSpell checks them as it does on the caster's turn. A spell placed on
+// the map (an area, a wall) is released with CastSpell itself, which carries its point. The use is spent once the spell
+// is cast: a cast held by a Counterspell is used when it happens.
 func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction) (*connect.Response[playv1.AnswerReactionResponse], error) {
 	req := &playv1.CastSpellRequest{
 		CampaignId: msg.GetCampaignId(), EncounterId: in.encID, CasterId: row.CombatantID, SpellKey: conv.OrZero(row.ActionKey),
@@ -229,9 +230,6 @@ func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in an
 			return nil, err
 		}
 		req.Targets = named
-	}
-	if o := msg.GetOrigin(); o != nil {
-		req.Area = &playv1.CastSpellRequest_Origin{Origin: o}
 	}
 	if typed, ok := msg.GetRoll().(*playv1.AnswerReactionRequest_Typed); ok {
 		req.Roll = &playv1.CastSpellRequest_D20Face{D20Face: typed.Typed}

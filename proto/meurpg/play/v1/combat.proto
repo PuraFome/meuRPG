@@ -7445,9 +7445,7 @@ message AnswerReactionRequest {
   // Scorching Ray), as CastSpellRequest.targets. It replaces creature_ids; the two
   // together are `invalid_argument`. The server checks them as CastSpell does.
   repeated SpellTarget targets = 14;
-  // READIED, a readied spell: the point an area or a wall is placed on, as
-  // CastSpellRequest.origin.
-  SpellOrigin origin = 15;
+  // Field numbers 12, 13, 15 and 16 are held by the orchestrator's number ledger.
 }
 
 // MarkReactionRollingRequest marks a window as being rolled.
