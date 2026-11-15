@@ -120,7 +120,9 @@ func TestAPackageOfEveryKindOfTableContentImportsAsItWasExported(t *testing.T) {
 		}
 		mismatched = append(mismatched, e)
 	}
-	if got := stage(mismatched); len(got.Problems.List) == 0 {
-		t.Error("an option whose set is not the one in its key was accepted")
+	got := stage(mismatched)
+	if len(got.Problems.List) != 1 || got.Problems.List[0].GetName() != "Olhar do Corvo" ||
+		got.Problems.List[0].GetReason() != pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_INVALID {
+		t.Errorf("an option whose set is not the one in its key: problems = %v, want one INVALID problem for it", got.Problems.List)
 	}
 }
