@@ -138,12 +138,26 @@ export function healingDice(effectPt: string): HealingDice | null {
 }
 
 /**
- * Whether using the item costs the turn and the action in a combat: only the potions the app applies (a healing, a
- * resistance: the ones with a line of effect). Any other consumable is spent with no turn and no action, and the master
- * rules on its time.
+ * The SRD's oils, by catalog key: the potions that are spent as text with no gate (the master judges the time they take).
+ * The server names them by key too; this is the one list of them in the web.
  */
-export function costsAction(kind: ConsumableKind, effectPt: string): boolean {
-  return kind === 'potion' && effectPt !== '';
+export const OILS: readonly string[] = [
+  'item:oil-of-etherealness',
+  'item:oil-of-sharpness',
+  'item:oil-of-slipperiness',
+];
+
+/** Whether the catalog key is one of the SRD's oils. */
+export function isOil(key: string): boolean {
+  return OILS.includes(key);
+}
+
+/**
+ * Whether using the item costs the turn and the action in a combat: every potion does, a text-only one included, except the
+ * oils. A scroll and any other consumable costs no turn and no action (slice 1: the master rules on what it takes).
+ */
+export function costsAction(kind: ConsumableKind, key: string): boolean {
+  return kind === 'potion' && !isOil(key);
 }
 
 /** "resta 1" / "restam 2": how many units are left, in lower case for a line that goes on. */
@@ -248,7 +262,7 @@ function leftSentence(itemName: string, left: number): string {
 }
 
 /** The roll written out: "3 + 2 + 2" for the faces and the number added (the total less the faces). */
-function rollSum(faces: readonly number[], total: number): string {
+export function rollSum(faces: readonly number[], total: number): string {
   const modifier = total - faces.reduce((a, n) => a + n, 0);
   const sum = faces.join(' + ');
   return modifier === 0 ? sum : `${sum} ${modifier < 0 ? '−' : '+'} ${Math.abs(modifier)}`;

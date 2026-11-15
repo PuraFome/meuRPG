@@ -132,6 +132,17 @@ describe('consumableErrorMessage', () => {
     );
   });
 
+  it('says a creature at three failed death saves, still listed as down, cannot receive it', () => {
+    expect(consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_DEAD), potion)).toBe(
+      'Brisa já morreu: não dá para dar a poção a quem morreu. Nada foi gasto.',
+    );
+    expect(
+      consumableErrorMessage(encounter(EncounterBlockedReason.TARGET_DEAD), {
+        kind: 'potion',
+      }),
+    ).toBe('Quem ia receber já morreu: não dá para dar a poção a quem morreu. Nada foi gasto.');
+  });
+
   it('says it is not the turn of who uses it, for the player and for the master', () => {
     const turn = encounter(EncounterBlockedReason.NOT_YOUR_TURN);
     expect(consumableErrorMessage(turn, potion)).toBe('Só na sua vez: beber ou dar gasta a ação.');

@@ -124,6 +124,9 @@ export function consumableErrorMessage(err: unknown, ctx: ConsumableErrorContext
         return `${ctx.actingFor ?? 'Você'} já usou a ação desta vez.`;
       case EncounterBlockedReason.COMBATANT_DOWN:
         return 'Quem está caído não age, mas ainda pode receber uma poção.';
+      // A creature at three failed death saves still reads "Caída" in the list of a player, and the server refuses it.
+      case EncounterBlockedReason.TARGET_DEAD:
+        return `${ctx.targetName ?? 'Quem ia receber'} já morreu: não dá para dar ${words.use} a quem morreu. Nada foi gasto.`;
     }
     return blockedMessage(encounter);
   }

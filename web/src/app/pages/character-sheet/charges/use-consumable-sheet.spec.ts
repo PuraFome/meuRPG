@@ -47,6 +47,7 @@ describe('UseConsumableSheet', () => {
   function render(over: Partial<UseConsumableData> = {}) {
     const data: UseConsumableData = {
       itemName: 'Poção de cura',
+      itemKey: 'item:potion-of-healing',
       kind: 'potion',
       effectPt: 'Cura 2d4 + 2',
       left: 2,
@@ -96,6 +97,7 @@ describe('UseConsumableSheet', () => {
     const { el, settle } = render({
       actingFor: 'Tor',
       itemName: 'Poção de resistência',
+      itemKey: 'item:potion-of-resistance-fire',
       effectPt: 'Resistência a fogo por 1 hora',
       left: 1,
       inCombat: false,
@@ -226,8 +228,25 @@ describe('UseConsumableSheet', () => {
     );
   });
 
-  it('says an item the app applies nothing of costs no action, and leaves the cost out of the line under the title', async () => {
-    const { el, settle } = render({ effectPt: '', itemName: 'Poção de escalada', left: 1 });
+  it('says a potion the app applies nothing of costs the action as well, in a combat', async () => {
+    const { el, settle } = render({
+      effectPt: '',
+      itemName: 'Poção de escalada',
+      itemKey: 'item:potion-of-climbing',
+      left: 1,
+    });
+    await settle();
+    expect(flat(el.querySelector('.frame__sub'))).toBe('Resta 1 · em combate, gasta a ação');
+    expect(flat(el.querySelector('.cost'))).toBe('Gasta a sua ação.');
+  });
+
+  it('says an oil costs no action: the master judges the time', async () => {
+    const { el, settle } = render({
+      effectPt: '',
+      itemName: 'Óleo de afiar',
+      itemKey: 'item:oil-of-sharpness',
+      left: 1,
+    });
     await settle();
     expect(flat(el.querySelector('.frame__sub'))).toBe('Resta 1');
     expect(flat(el.querySelector('.cost'))).toBe(
@@ -247,6 +266,7 @@ describe('UseConsumableSheet', () => {
       kind: 'scroll',
       effectPt: '',
       itemName: 'Pergaminho de magia',
+      itemKey: 'item:spell-scroll-1st',
     });
     await settle();
     const labels = Array.from(el.querySelectorAll('button')).map(label);

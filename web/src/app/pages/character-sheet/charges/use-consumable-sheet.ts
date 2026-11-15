@@ -45,6 +45,8 @@ export interface UseConsumableRequest {
 
 export interface UseConsumableData {
   readonly itemName: string;
+  /** The catalog key of the item: which ones cost the action in a combat depends on it (`costsAction`). */
+  readonly itemKey: string;
   readonly kind: ConsumableKind;
   /** What "Usar" does, as the server words it ("Cura 2d4 + 2"); empty for an item with no automatic effect. */
   readonly effectPt: string;
@@ -268,8 +270,8 @@ export class UseConsumableSheet {
   protected readonly title = this.data.actingFor
     ? `Usar por ${this.data.actingFor}`
     : `Usar · ${this.data.itemName}`;
-  /** Only the potions the app applies cost the action; any other item is spent at no cost and the master rules on its time. */
-  private readonly costs = costsAction(this.data.kind, this.data.effectPt);
+  /** Every potion costs the action in a combat but the oils; any other item is spent at no cost and the master rules on its time. */
+  private readonly costs = costsAction(this.data.kind, this.data.itemKey);
   protected readonly subtitle = subtitleOf({ ...this.data, costsAction: this.costs });
   protected readonly effectText = effectLine(this.data.effectPt);
   protected readonly effectIconName = effectIcon(this.data.effectPt);

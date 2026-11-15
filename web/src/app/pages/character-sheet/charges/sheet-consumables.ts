@@ -71,6 +71,7 @@ export class SheetConsumables {
       this.host
         .openUse({
           itemName: entry.namePt,
+          itemKey: entry.key,
           kind,
           effectPt: entry.effectPt ?? '',
           left,

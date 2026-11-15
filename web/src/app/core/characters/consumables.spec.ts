@@ -13,8 +13,10 @@ import {
   effectIcon,
   effectLine,
   healingDice,
+  isOil,
   leftWords,
   magicRows,
+  OILS,
   subtitleOf,
   targetRows,
   useNotice,
@@ -140,11 +142,32 @@ describe('healingDice', () => {
 });
 
 describe('costsAction', () => {
-  it('is only for the potions the app applies, the healing and the resistance', () => {
-    expect(costsAction('potion', 'Cura 2d4 + 2')).toBe(true);
-    expect(costsAction('potion', 'Resistência a fogo por 1 hora')).toBe(true);
-    expect(costsAction('potion', '')).toBe(false);
-    expect(costsAction('scroll', '')).toBe(false);
+  it('is every potion in a combat, a text-only one included', () => {
+    expect(costsAction('potion', 'item:potion-of-healing')).toBe(true);
+    expect(costsAction('potion', 'item:potion-of-resistance-fire')).toBe(true);
+    expect(costsAction('potion', 'item:potion-of-climbing')).toBe(true);
+  });
+
+  it('is not an oil, which is spent as text and whose time the master judges', () => {
+    expect(costsAction('potion', 'item:oil-of-sharpness')).toBe(false);
+    expect(costsAction('potion', 'item:oil-of-etherealness')).toBe(false);
+    expect(costsAction('potion', 'item:oil-of-slipperiness')).toBe(false);
+  });
+
+  it('is not a scroll, which costs no turn and no action', () => {
+    expect(costsAction('scroll', 'item:spell-scroll-3rd')).toBe(false);
+  });
+});
+
+describe('isOil', () => {
+  it('names the oils of the SRD by key, in one place', () => {
+    expect(OILS).toEqual([
+      'item:oil-of-etherealness',
+      'item:oil-of-sharpness',
+      'item:oil-of-slipperiness',
+    ]);
+    expect(isOil('item:oil-of-sharpness')).toBe(true);
+    expect(isOil('item:potion-of-healing')).toBe(false);
   });
 });
 

@@ -91,6 +91,7 @@ describe('SheetConsumables', () => {
     const data = await open();
     expect(data).toMatchObject({
       itemName: 'Poção de cura',
+      itemKey: 'item:potion-of-healing',
       kind: 'potion',
       effectPt: 'Cura 2d4 + 2',
       left: 2,
