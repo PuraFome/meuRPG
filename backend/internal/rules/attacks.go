@@ -221,7 +221,7 @@ func (x *deriver) weaponAbility(kind string, either bool) Ability {
 // heavyWeaponHint reminds a Small character of the disadvantage with a heavy
 // weapon.
 func (x *deriver) heavyWeaponHint(key, kind string) {
-	if x.d.Size != "Small" {
+	if x.d.Size != sizeSmall {
 		return
 	}
 	x.d.Hints = append(x.d.Hints, Hint{

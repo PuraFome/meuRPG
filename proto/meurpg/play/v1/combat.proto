@@ -5254,6 +5254,13 @@ message CastSpellRequest {
   // It is refused with NOT_THE_HOLDER, HAS_NONE, ADDS_NOTHING, NOTHING_TO_ROLL, or AFTER_THE_ROLL (a retry that adds the spend after the d20 was rolled).
   // A refusal spends nothing: the Inspiration is spent only when the roll is made, in the same transaction as its write.
   bool spend_favor = 36;
+
+  // Find Steed (SRD 5.1): a spell that targets only the caster also targets the bonded steed the caster rides.
+  // The spell must reach only the caster (`SpellOption.also_steed`), else `invalid_argument`, and the caster must ride its bonded steed in this combat,
+  // else `failed_precondition`.
+  // A spell with a lasting effect puts it on the steed's combatant as it does on the caster's.
+  // Any other spell leaves the steed to the table, and the cast says so in `SpellCast.steed_note`.
+  bool also_steed = 37;
 }
 
 // SpellOptionChoice is a table cast option ticked on a casting.
@@ -5468,6 +5475,9 @@ message SummonChoice {
   // blank name takes the creature's Portuguese name, numbered when several
   // share it.
   repeated string names = 3;
+  // The creature type the spell lets the player pick ("celestial", "fey" or "fiend" for Convocar Montaria): one of
+  // SummonSpellOptions.type_choices. Empty for a spell that picks none.
+  string creature_type = 4;
 }
 
 // SaveOutcome is what a target's saving throw did.
@@ -5733,6 +5743,8 @@ message SpellCast {
   // secret).
   repeated string metamagic_keys = 30;
   int32 sorcery_points_spent = 31;
+  // The line a cast with `also_steed` says about the steed: it is a target too, or the table applies the spell to it. Empty for any other cast.
+  string steed_note = 32;
 }
 
 // UseReactionRequest casts Escudo against a hit.

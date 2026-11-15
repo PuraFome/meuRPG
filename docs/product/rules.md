@@ -626,6 +626,14 @@ The pair is one occupant of the mount's square, and the mount's turn is its own.
 - **A mount knocked prone or defeated** opens a reaction window for its rider (RN-31): the rider spends its reaction to land on its feet, or falls prone within 1.5 m.
   A steed the caster dismisses lets the rider land on its feet with no window.
 - **An opportunity attack** against a mounted pair may target the mount or the rider.
+- **Find Steed** (SRD 5.1) gives a character one bonded steed.
+  A recast revives the same steed at full hit points, with its form, name and type, and refuses another form or type.
+  "Dispensar" sends the steed away and keeps the bond, and "Libertar" ends the bond.
+  In a combat that holds the steed, either one costs the owner's action; the master and a dismissal outside combat are free.
+  At 0 hit points the steed disappears and the bond stays, so a recast brings it back.
+  The steed's Intelligence is at least 6, and no effect reads a lower one.
+  The caster picks celestial, fey or fiend; only the owner and the master read the choice.
+  A spell that targets only the caster can also reach the steed (`also_steed`) while the caster rides it: a lasting effect lands on both, and any other spell leaves a text note.
 - A player reads the link between two creatures only when they see both of them; a hidden mount leaves its rider plain, and no player reads the master's mark or another player's save roll.
 
 **Sculpt Spells** (SRD 5.1, School of Evocation).

@@ -71,6 +71,8 @@ type CharacterCreature struct {
 	CreateHash          *string
 	StatBlock           []byte
 	SummonKey           *string
+	CreatureType        string
+	Bonded              bool
 }
 
 type CharacterLevelUp struct {
