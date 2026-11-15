@@ -118,10 +118,10 @@ func TestCancelOfAnAskReadsTheOwnerUnderTheSessionLock(t *testing.T) {
 	if _, err := holder.Exec(ctx, `SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE`, f.sessionID); err != nil {
 		t.Fatalf("lock the session: %v", err)
 	}
-	cancelled := make(chan error, 1)
+	canceled := make(chan error, 1)
 	go func() {
 		_, err := f.cancelAs(f.caio, pass.GetId(), newKey())
-		cancelled <- err
+		canceled <- err
 	}()
 	observer := dbtest.SideConnection(t, f.h.pool)
 	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(5 * time.Millisecond) {
@@ -133,7 +133,7 @@ func TestCancelOfAnAskReadsTheOwnerUnderTheSessionLock(t *testing.T) {
 			break
 		}
 		select {
-		case err := <-cancelled:
+		case err := <-canceled:
 			t.Fatalf("the cancel ended (%v) while the session's row was held", err)
 		default:
 		}
@@ -159,7 +159,7 @@ func TestCancelOfAnAskReadsTheOwnerUnderTheSessionLock(t *testing.T) {
 	if err := holder.Commit(ctx); err != nil {
 		t.Fatalf("Commit() error = %v", err)
 	}
-	wantCode(t, "the old owner's cancel, which waited for the session", <-cancelled, connect.CodeNotFound)
+	wantCode(t, "the old owner's cancel, which waited for the session", <-canceled, connect.CodeNotFound)
 	if status := f.passStatus(t, pass.GetId()); status != "pending" {
 		t.Errorf("the ask is %q after the old owner's cancel, want pending: it is the new owner's to cancel", status)
 	}

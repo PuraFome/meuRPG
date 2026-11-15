@@ -454,29 +454,29 @@ func TestFavorPassBetweenOnePlayersCharactersReachesHimAlone(t *testing.T) {
 	toCaio := func(allow, need []string) stepSpec {
 		return stepSpec{allow: map[*person][]string{caio: allow}, need: map[*person][]string{caio: need}}
 	}
-	tId, pId := w.toren.GetId(), w.pens.GetId()
+	tID, pID := w.toren.GetId(), w.pens.GetId()
 
-	r.step("the grant", r.grant(tId), stepSpec{want: map[*canary][]*person{grantT: nil}, allow: map[*person][]string{caio: vitalsOnly}, need: map[*person][]string{caio: vitalsOnly}})
+	r.step("the grant", r.grant(tID), stepSpec{want: map[*canary][]*person{grantT: nil}, allow: map[*person][]string{caio: vitalsOnly}, need: map[*person][]string{caio: vitalsOnly}})
 	r.step("the ask", r.ask, toCaio(vitalsOnly, vitalsOnly))
-	r.wantFavorReads("the ask", []string{tId}, []bool{false}, []bool{false})
+	r.wantFavorReads("the ask", []string{tID}, []bool{false}, []bool{false})
 	spec := toCaio(vitalsLog, vitalsLog)
 	spec.want = map[*canary][]*person{passedM: nil, passedG: {caio}}
 	r.step("the accept", r.answerPass(true), spec)
-	r.wantFavorReads("the accept", []string{pId}, nil, nil)
+	r.wantFavorReads("the accept", []string{pID}, nil, nil)
 	spec = toCaio(vitalsLog, vitalsOnly)
 	spec.gone = []*canary{passedM, passedG}
 	r.step("the undo of the pass", r.undo, spec)
-	r.wantFavorReads("the undo of the pass", []string{tId}, nil, nil)
+	r.wantFavorReads("the undo of the pass", []string{tID}, nil, nil)
 
 	// The receiver holds one too: the master reads receiver_has, the owner of both does not.
 	// Pensantus is dead (a player owns one living character), and the vitals of a dead character tell nobody anything.
-	r.step("the grant to the receiver", r.grant(pId), stepSpec{want: map[*canary][]*person{grantP: nil}, allow: map[*person][]string{caio: vitalsOnly}})
+	r.step("the grant to the receiver", r.grant(pID), stepSpec{want: map[*canary][]*person{grantP: nil}, allow: map[*person][]string{caio: vitalsOnly}})
 	r.step("the second ask", r.ask, toCaio(vitalsOnly, vitalsOnly))
-	r.wantFavorReads("the second ask", []string{tId, pId}, []bool{true}, []bool{false})
+	r.wantFavorReads("the second ask", []string{tID, pID}, []bool{true}, []bool{false})
 	spec = toCaio(vitalsLog, vitalsLog)
 	spec.want = map[*canary][]*person{canceledM: nil, canceledG: {caio}}
 	r.step("the cancel", r.cancel, spec)
-	r.wantFavorReads("the cancel", []string{tId, pId}, nil, nil)
+	r.wantFavorReads("the cancel", []string{tID, pID}, nil, nil)
 }
 
 // blockedReason is the FavorBlocked reason a refusal carries, unspecified when it carries none.

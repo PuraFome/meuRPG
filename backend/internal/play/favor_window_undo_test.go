@@ -149,6 +149,7 @@ func eachWindowQuestion(t *testing.T, run func(t *testing.T, q windowQuestion)) 
 func TestUndoOfAWindowHeldRollNeverGivesBackAReturnedRefund(t *testing.T) {
 	t.Parallel()
 	eachWindowQuestion(t, func(t *testing.T, q windowQuestion) {
+		t.Helper()
 		r := newWindowRefund(t, q).answered(t)
 		if _, err := r.f.answerRefund(r.f.master, r.prompt.GetId(), true, newKey()); err != nil {
 			t.Fatalf("AnswerFavorRefund(Devolver) error = %v", err)
@@ -169,6 +170,7 @@ func TestUndoOfAWindowHeldRollNeverGivesBackAReturnedRefund(t *testing.T) {
 func TestUndoOfAWindowHeldRollKeepsItsRefundPrompt(t *testing.T) {
 	t.Parallel()
 	eachWindowQuestion(t, func(t *testing.T, q windowQuestion) {
+		t.Helper()
 		r := newWindowRefund(t, q).answered(t)
 		r.undoTheRoll(t)
 		if !r.f.favorHolds(t) {
@@ -194,6 +196,7 @@ func TestUndoOfAWindowHeldRollKeepsItsRefundPrompt(t *testing.T) {
 func TestForgottenWindowHeldRollKeepsItsRefundPrompt(t *testing.T) {
 	t.Parallel()
 	eachWindowQuestion(t, func(t *testing.T, q windowQuestion) {
+		t.Helper()
 		r := newWindowRefund(t, q)
 		r.forget(t)
 		if !r.f.favorHolds(t) {
@@ -215,6 +218,7 @@ func TestForgottenWindowHeldRollKeepsItsRefundPrompt(t *testing.T) {
 func TestForgottenWindowHeldRollNeverGivesBackAReturnedRefund(t *testing.T) {
 	t.Parallel()
 	eachWindowQuestion(t, func(t *testing.T, q windowQuestion) {
+		t.Helper()
 		r := newWindowRefund(t, q)
 		if _, err := r.f.answerRefund(r.f.master, r.prompt.GetId(), true, newKey()); err != nil {
 			t.Fatalf("AnswerFavorRefund(Devolver) error = %v", err)
