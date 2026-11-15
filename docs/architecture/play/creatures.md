@@ -29,6 +29,7 @@ The group's bonus is the first creature's of the summon, whichever member the pl
 
 **Table spells.** A table spell with a `summon` goes through `GetSummonOptions`, `CastSummon` and `CastSpell.summon` with the SRD's checks: the slot, concentration, the dismissal of the previous concentration and the undo.
 The creatures have `source` `table` and `summon_key` the spell's key.
+
 The count is the spell's formula with `slot()` the cast slot, plus the creatures added for each circle above the spell's own.
 A formula creature resolves with `slot()` the cast slot, and its numbers are kept in `character_creatures.stat_block`.
 A summon with its own initiative gives each creature its own `summon_group_id` and its own roll; one with the owner's group roll shares the casting's group.
@@ -43,6 +44,28 @@ The line of a dismissal carries the reason the creature was dismissed for.
 In a campaign that forces physical dice, a player cannot cast a spell whose creatures each roll their own initiative (the app's roller is refused and a typed die is one face): the master casts it, who is exempt from the forced mode.
 The owner plays the creatures in the same tabs as any summon.
 The undo gives the slot back and removes the creatures.
+
+**Find Steed.** `CastSummon` takes the spell outside a combat (10 minutes), with a form of the five and a `SummonChoice.creature_type` of `celestial`, `fey` or `fiend`.
+The steed has `source` `find_steed`, `bonded` and the type, and its stat block snapshot keeps the Intelligence floor of 6 (`rules.Content.MonsterDerivedMinInt`).
+A character has one bonded steed.
+A new casting brings the same row back at full hit points, with its form, name and type, and refuses another form or type (`SUMMON_CHOICE_INVALID`).
+Only the owner and the master read the type.
+The spell takes 10 minutes, so the steed joins a combat when the combat starts, with `mount_kind` `controlled`.
+The rider mounts it with `MountCombatant`, and the pair then shares the steed's square and initiative.
+At 0 hit points its creature is dismissed at once with the reason `disappeared` and 0 hit points, and a heal in the combat brings it back.
+Its combatant stays under the rider until the rider answers the dismount window, and then `goneSteed` takes it out.
+The bond stays, so a new casting brings the same steed back.
+A dismissal of the steed puts the rider on foot with no window (`unseatRider`).
+`DismissCreatureRequest.dismissal` says how a steed goes.
+`DISMISS` and unspecified keep the bond, with the reason `dismissed`.
+`RELEASE` ends it: `bonded` is false and the reason is `owner` or `master`.
+`RELEASE` of a creature that is not a bonded steed is `INVALID_ARGUMENT`, and it also ends the bond of a steed that was dismissed already.
+Releasing a dismissed steed tells its owner (`creatures_changed`).
+In a running combat that holds the steed, the owner's player spends the action of its turn (`CreatureHost.SpendDismissal`: `NOT_YOUR_TURN`, `ACTION_USED` and the gate's other refusals), and the master dismisses for free.
+Out of a combat a dismissal costs nothing.
+`CastSpellRequest.also_steed` makes a spell that reaches only the caster reach the bonded steed the caster rides too (`SpellOption.also_steed` offers it).
+A spell with a lasting effect puts it on the steed's combatant, and any other spell leaves the steed to the table with a line in `SpellCast.steed_note`.
+`SummonSpellOptions.notes` carries the telepathic bond, where the steed appears and its language.
 
 **Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's key, `feature:...@mesa`) in place of a slot.
 `CastSummon`, `CastSpell` and `CastSpellOutsideCombat` take `granted_by`; each one needs the summon choice, as a spell's summon does.

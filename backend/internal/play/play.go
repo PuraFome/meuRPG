@@ -346,7 +346,7 @@ type CombatRoster interface {
 	// casting (circle 0 is the spell's own) and returns the creatures of the
 	// choice, or one of rules.ErrNotSummonSpell, ErrSummonCircle,
 	// ErrSummonOption, ErrSummonCount, ErrSummonCreature.
-	CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle, option int, keys []string) (link.SummonSpell, error)
+	CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle, option int, keys []string, creatureType string) (link.SummonSpell, error)
 	// SummonCreatures records a casting: it creates the creatures, and a new
 	// familiar dismisses the old one.
 	SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon) (link.SummonResult, error)

@@ -705,6 +705,30 @@ func (c *Content) MonsterDerived(key string) (Derived, bool) {
 	return c.c.monsterDerived(m), true
 }
 
+// MonsterDerivedMinInt is MonsterDerived for a creature whose Intelligence is at least min (Find Steed: the steed has 6 or
+// more): a lower score is raised, with its modifier and its saving throw (the stat block's bonus stays when the creature is
+// proficient in it). The rest of the stat block is the creature's own.
+func (c *Content) MonsterDerivedMinInt(key string, minInt int) (Derived, bool) {
+	d, ok := c.MonsterDerived(key)
+	if !ok {
+		return d, false
+	}
+	d.Abilities = slices.Clone(d.Abilities)
+	d.SavingThrows = slices.Clone(d.SavingThrows)
+	for i, a := range d.Abilities {
+		if a.Ability != INT || a.Score >= minInt {
+			continue
+		}
+		d.Abilities[i].Score, d.Abilities[i].Modifier = minInt, modifier(minInt)
+		for j, st := range d.SavingThrows {
+			if st.Ability == INT && !st.Proficient {
+				d.SavingThrows[j].Bonus = modifier(minInt)
+			}
+		}
+	}
+	return d, true
+}
+
 // passiveBase is what a passive check adds the bonus to.
 const passiveBase = 10
 
@@ -877,4 +901,20 @@ func (c *content) monsterAttack(m *srd51.Monster, a srd51.MonsterAction, key str
 		at.DamageDice, _ = ParseDice(at.Damage)
 	}
 	return at
+}
+
+// CreatureWithMinInt is the entry of an SRD creature whose Intelligence is at least minInt (a steed's page): a lower score is
+// raised with its modifier, the rest is the entry's own.
+func (c *Content) CreatureWithMinInt(key string, minInt int) (Creature, bool) {
+	base, ok := c.CreatureByKey(key)
+	if !ok {
+		return Creature{}, false
+	}
+	base.Abilities = slices.Clone(base.Abilities)
+	for i, a := range base.Abilities {
+		if a.Ability == INT && a.Score < minInt {
+			base.Abilities[i].Score, base.Abilities[i].Modifier = minInt, modifier(minInt)
+		}
+	}
+	return base, true
 }

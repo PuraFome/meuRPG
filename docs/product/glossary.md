@@ -239,6 +239,7 @@ Where a spell level could be confused with the character's level, the text says 
 | Iniciativa | Initiative | The roll that sets turn order. Each combatant rolls its own, even identical NPCs. A tie is decided by the master (RN-19). |
 | Levantar-se | Stand up | The action of a prone combatant: costs half the turn's speed (RN-34). |
 | Montaria, montado | Mount, mounted | A creature a rider sits on, and the state of that rider. Mounting and dismounting cost half the rider's speed, a controlled mount acts right after its rider, and a rider thrown from the mount falls prone (RN-21). |
+| Montaria vinculada | Bonded steed | The one steed of Find Steed. "Dispensar" sends it away and keeps the bond, "Libertar" ends the bond, and a recast revives the same steed (RN-21). |
 | Derrubado | Prone | The SRD condition of lying on the ground. Not "Caído". |
 | Ações lendárias | Legendary actions | What a legendary creature does at the end of another creature's turn, up to its points (3 in the SRD), each option with its cost; the points come back at the start of its own turn. Only the master sees the offer; the players see what happens (RN-20, RN-29). |
 | Ajudar | Help | Gives an ally advantage on the next check or attack until used or the helper's next turn (RN-34). |
