@@ -55,6 +55,8 @@ const (
 const (
 	kindRequestReason = "roll-mode-request-reason"
 	kindRemovalReason = "part-removal-reason"
+	kindHiddenPart    = "hidden-part-name"
+	kindHiddenPartKey = "hidden-part-key"
 	kindModeReason    = "mode-change-reason"
 	kindNPCModeReason = "npc-mode-reason"
 )
@@ -416,8 +418,17 @@ func TestAttackRollsReachOnlyWhoMayReadThem(t *testing.T) {
 	}
 	onHuman := rollSmite(strike.GetPendingDamage().GetId(), "sneak-attack")
 	removal := w.secrets.marker(kindRemovalReason, caio)
+	// The extra is one the roll line hides from the other players (#835): its name and key are the master's and Caio's, and the
+	// removal line reads "Outra fonte" to Ana, with no key and no reason.
+	hiddenName, hiddenKey := w.secrets.marker(kindHiddenPart, caio), w.secrets.marker(kindHiddenPartKey, caio)
+	hide := `jsonb_agg(CASE WHEN p->>'key' = 'sneak-attack' THEN p || jsonb_build_object('hide', true, 'label', $2::text, 'key', $3::text) ELSE p END)`
+	if _, err := rt.pool.Exec(ctx, `UPDATE pending_damages SET
+		parts = (SELECT `+hide+` FROM jsonb_array_elements(parts) p),
+		part_rolls = (SELECT `+hide+` FROM jsonb_array_elements(part_rolls) p) WHERE id = $1`, strike.GetPendingDamage().GetId(), hiddenName, hiddenKey); err != nil {
+		t.Fatalf("hide the extra from the other players: %v", err)
+	}
 	must(m.combat.RemoveDamagePart(ctx, rq(&playv1.RemoveDamagePartRequest{
-		CampaignId: w.campaign, EncounterId: rt.encounter.GetId(), PendingDamageId: strike.GetPendingDamage().GetId(), PartKey: "sneak-attack", Reason: removal, IdempotencyKey: newKey(),
+		CampaignId: w.campaign, EncounterId: rt.encounter.GetId(), PendingDamageId: strike.GetPendingDamage().GetId(), PartKey: hiddenKey, Reason: removal, IdempotencyKey: newKey(),
 	})))
 	rt.ask(t, "an extra of a group is taken out and the damage waits for the sum of its type")
 	rt.damage(caio, strike.GetPendingDamage().GetId(), func(r *playv1.RollDamageRequest) {

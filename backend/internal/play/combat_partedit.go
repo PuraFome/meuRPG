@@ -175,6 +175,7 @@ func workOutRemoval(ctx context.Context, c *combatTx, p playdb.PendingDamage, at
 	rem.ev = actionEvent{
 		Round: c.enc.Round, Secret: secretOf(attacker, target), Actor: attacker.ID, Target: target.ID, Pending: p.ID, Key: partKey,
 		DamageType: p.DamageType, Rolled: conv.OrZero(p.Amount), Total: amount,
+		PartHidden: slices.ContainsFunc(rolls, func(x partRoll) bool { return x.Key == partKey && x.Hide }),
 	}
 	landed := amount
 	if land.changed {

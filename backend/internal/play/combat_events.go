@@ -771,6 +771,8 @@ type actionEvent struct {
 	// takes the damage roll back as an undo does: Undone and UndoneAlso name the events it took back.
 	AwaitsSum string `json:"awaits_sum,omitempty"`
 	PartLabel string `json:"part_label,omitempty"`
+	// PartHidden says the part taken out is one the other players could not read in the roll line: they read "Outra fonte" for it.
+	PartHidden bool `json:"part_hidden,omitempty"`
 	// PartsBefore is the list of parts the hit offered, which the roll rewrote with the choice
 	// made: the undo of the roll puts it back, so the damage is offered as it was.
 	PartsBefore json.RawMessage `json:"parts_before,omitempty"`

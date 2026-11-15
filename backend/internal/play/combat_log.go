@@ -88,7 +88,9 @@ type logEntry struct {
 	// name on a line of the removal, rolls what the log reads of the combat's own tables.
 	removed   *actionEvent
 	partLabel string
-	rolls     *logRolls
+	// partHidden says the part is one the other players read as "Outra fonte".
+	partHidden bool
+	rolls      *logRolls
 }
 
 // damageLog is what became of one pending damage of a spell: where it is, the
@@ -862,14 +864,14 @@ func (b *logBuilder) partRemoved(e playdb.ListEncounterEventsRow, entry *logEntr
 	}
 	host.hosts = append(host.hosts, e.ID)
 	if ev.AwaitsSum != "" { // the damage was taken back and awaits a new sum: its roll is no line, the part's name is the event's
-		entry.partLabel = ev.PartLabel
+		entry.partLabel, entry.partHidden = ev.PartLabel, ev.PartHidden
 		return true
 	}
 	host.removed = &ev
 	if host.dmg != nil {
 		for _, r := range host.dmg.Parts {
 			if r.Key == ev.Key {
-				entry.partLabel = r.Label
+				entry.partLabel, entry.partHidden = r.Label, ev.PartHidden || r.Hide
 			}
 		}
 		if ev.After != nil {

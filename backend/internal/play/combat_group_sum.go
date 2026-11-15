@@ -59,7 +59,7 @@ func (s *Service) takeOutOfGroup(ctx context.Context, c *combatTx, run *undoRun,
 	}
 	return actionEvent{
 		Round: c.enc.Round, Secret: secretOf(attacker, target), Fogged: rolled.Fogged, SeenBy: rolled.SeenBy, Actor: attacker.ID, Target: target.ID,
-		Pending: p.ID, Key: r.partKey, PartLabel: label, AwaitsSum: awaited, DamageType: p.DamageType,
+		Pending: p.ID, Key: r.partKey, PartLabel: label, PartHidden: parts[pi].Hide || rolls[ri].Hide, AwaitsSum: awaited, DamageType: p.DamageType,
 		Undone: row.ID, UndoneKind: row.Kind, UndoneAlso: run.alsoUndone,
 	}, nil
 }
