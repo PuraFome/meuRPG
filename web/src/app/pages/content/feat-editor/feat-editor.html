@@ -1,5 +1,5 @@
 @let d = draft();
-<app-editor-alerts [saver]="saver" (reload)="reload.emit()" />
+<app-editor-alerts [saver]="saver" [errorAtFoot]="true" (reload)="reload.emit()" />
 <div class="editor">
   <div class="editor__main">
     <section class="mr-panel block" aria-labelledby="feat-data-t">
@@ -92,4 +92,4 @@
     <app-feat-choices [uses]="uses()" />
   </aside>
 </div>
-<app-editor-bar [sticky]="true" saveLabel="Salvar talento" [saving]="saver.saving()" [blocked]="blockReason()" (save)="save()" (cancel)="cancelled.emit()" />
+<app-editor-bar [sticky]="true" saveLabel="Salvar talento" [saving]="saver.saving()" [error]="saver.error()" [offline]="saver.offline()" [blocked]="blockReason()" (save)="save()" (cancel)="cancelled.emit()" />

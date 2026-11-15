@@ -71,3 +71,40 @@ describe('EditorBar: while the save is on its way', () => {
     expect(notice.querySelector('mat-icon')?.textContent).toBe('cloud_off');
   });
 });
+
+describe('EditorBar: the failed save', () => {
+  it('draws the notice directly above the buttons, with the cloud when the server is out of the air', () => {
+    const fixture = TestBed.createComponent(EditorBar);
+    fixture.componentRef.setInput('saveLabel', 'Salvar talento');
+    fixture.componentRef.setInput('error', 'Não deu para salvar o talento agora. Nada mudou. Tente de novo.');
+    fixture.componentRef.setInput('offline', true);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const notice = el.querySelector('.mr-notice--danger')!;
+    expect(notice.textContent).toContain('Não deu para salvar o talento agora.');
+    expect(notice.querySelector('mat-icon')?.textContent).toBe('cloud_off');
+    expect(notice.nextElementSibling?.classList.contains('bar')).toBe(true);
+  });
+
+  it('draws no notice when nothing failed', () => {
+    const fixture = TestBed.createComponent(EditorBar);
+    fixture.componentRef.setInput('saveLabel', 'Salvar talento');
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.mr-notice--danger')).toBeNull();
+  });
+});
+
+describe('EditorAlerts: the notice at the foot', () => {
+  it('leaves the failure to the bar when the editor asks', async () => {
+    const saver = new EntrySaver({ aOne: 'um talento' }, 'o talento');
+    await saver.run(
+      () => Promise.reject(new ConnectError('down', Code.Unavailable)),
+      () => true,
+    );
+    const alerts = TestBed.createComponent(EditorAlerts);
+    alerts.componentRef.setInput('saver', saver);
+    alerts.componentRef.setInput('errorAtFoot', true);
+    alerts.detectChanges();
+    expect((alerts.nativeElement as HTMLElement).querySelector('.mr-notice--danger')).toBeNull();
+  });
+});
