@@ -272,7 +272,11 @@ test('o mestre usa mesmo assim uma característica cuja ação bônus já foi ga
     await expect(
       log.getByText(/Pensantus usou Chamados de Teste: 1 PV temporários · gastou a ação bônus e 1 uso de Chamados de Teste \(restam 1 de 2\)/),
     ).toBeVisible();
-    await expect(log.getByText(/Pensantus usou Chamado de Teste no Goblin 1: 1 PV temporários · gastou a ação bônus/)).toBeVisible();
+    await expect(
+      log.getByText(/Pensantus usou Chamado de Teste no Goblin 1: 1 PV temporários · gastou a ação bônus · o mestre usou mesmo assim/),
+    ).toBeVisible();
+    // Only the use the master let past is marked: the first one, made within the turn's economy, is not.
+    await expect(log.getByText(/o mestre usou mesmo assim/)).toHaveCount(1);
   } finally {
     await endSessionOf(m, campaignId);
     await master.close();
