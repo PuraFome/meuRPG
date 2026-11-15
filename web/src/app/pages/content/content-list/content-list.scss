@@ -341,13 +341,9 @@
 }
 
 @media (max-width: 767.98px) {
-  .head {
-    flex-direction: column;
-
-    &__actions {
-      grid-template-columns: minmax(0, 1fr);
-      align-self: stretch;
-    }
+  // On a phone each action takes the whole row (580-15).
+  .head__actions > * {
+    flex: 1 1 100%;
   }
 
   .filters {
