@@ -118,6 +118,28 @@ type rollNote struct {
 	// so every read of the roll follows the rule: only the master reads what the source is (proto). The Inspiração's judgement
 	// leaves these sources out as well (notesSources).
 	Hidden bool `json:"hidden,omitempty"`
+	// Shown says the source was judged readable by the roller when the note was stored. A note with neither flag has no
+	// judgement stored, and its source reads as hidden unless the note is the roller's own act (hiddenFromOwner).
+	Shown bool `json:"shown,omitempty"`
+}
+
+// judged is the note with the hiding rule's answer for its source stored.
+func (n rollNote) judged(hidden bool) rollNote {
+	n.Hidden, n.Shown = hidden, !hidden
+	return n
+}
+
+// hiddenFromOwner says the source behind the note is not the roller's to read: the master hid it, or no judgement was stored
+// and the source is one the master can hide (a condition, an effect, a creature).
+func (n rollNote) hiddenFromOwner() bool {
+	if n.Hidden || n.Shown {
+		return n.Hidden
+	}
+	switch n.Kind {
+	case noteFavor, noteFavorLost, noteCutting:
+		return false
+	}
+	return true
 }
 
 // givesMode says the note is a circumstance of the roll's mode: a bonus and the note of an Inspiração that was not spent are not.
@@ -128,7 +150,7 @@ func (n rollNote) givesMode() bool { return n.Kind != noteEffectBonus && n.Kind 
 // circumstance keeps its advantage or disadvantage), and a player's own effect of the owner's audience keeps its name.
 func (n rollNote) proto(master bool) *playv1.RollNote {
 	kind, label := n.Kind, n.Label
-	if n.Hidden && !master {
+	if n.hiddenFromOwner() && !master {
 		kind, label = n.maskedKind(), otherSourceTx
 	}
 	if n.Kind == noteEffectBonus {
@@ -462,7 +484,7 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 	var out []rollNote
 	for _, src := range combat.SaveMode(scene) {
 		if note, ok := checkSourceNotes[src.Kind]; ok {
-			note.Hidden = hide(src)
+			note = note.judged(hide(src))
 			if src.Kind == combat.SourceEffectCheck {
 				note.Adv = src.Effect == combat.ModeAdvantage // a table spell's effect may give the disadvantage
 			}
@@ -487,7 +509,7 @@ func (s *Service) checkSources(ctx context.Context, tx pgx.Tx, campaignID string
 	}
 	for _, h := range helps {
 		if h.Kind == helpCheck && helpsAlly(h, who) && conv.OrZero(h.Task) == skill {
-			out = append(out, rollNote{Kind: noteHelp, Label: "Ajuda de " + helperLabel(cs, h), Adv: true})
+			out = append(out, rollNote{Kind: noteHelp, Label: "Ajuda de " + helperLabel(cs, h), Adv: true}.judged(false))
 		}
 	}
 	return out, nil
@@ -696,7 +718,7 @@ func (s *Service) withCheckBonus(ctx context.Context, tx pgx.Tx, campaignID stri
 	notes = slices.Clone(notes)
 	for _, b := range bonuses {
 		n.Bonus += b.Value
-		notes = append(notes, rollNote{Kind: noteEffectBonus, Label: names(b.Key), Value: b.Value, Hidden: b.Hidden})
+		notes = append(notes, rollNote{Kind: noteEffectBonus, Label: names(b.Key), Value: b.Value}.judged(b.Hidden))
 	}
 	return n, notes, nil
 }

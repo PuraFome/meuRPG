@@ -102,35 +102,45 @@ func TestTheNotesOfAContestRollFollowTheHidingRule(t *testing.T) {
 			}
 		}},
 	}
-	for _, p := range paths {
-		t.Run(p.name, func(t *testing.T) {
-			w := newWorld(t)
-			word := w.secrets.add(&canary{needle: hiddenEffectNoteWord, kind: "hidden-effect-note"})
-			roller := p.roller(w)
-			w.putHiddenCheckEffect(p.target(w))
-			w.hints.Settle(t)
-			procedure, req := p.call(w, newKey())
-			own := roller.call(procedure, req)
-			if !own.ok() {
-				t.Fatalf("%s's call on %s was refused: HTTP %d %s", roller.name, p.name, own.status, own.body)
+	// A roll stored with no judgement of its notes' sources (the notes carry neither flag) reads as the rule says too.
+	for _, unjudged := range []bool{false, true} {
+		for _, p := range paths {
+			if unjudged && p.only == nil {
+				continue // the Hide's stored notes are not rewritten here
 			}
-			got := newAnswers()
-			got.keep(roller, own)
-			w.hints.Settle(t)
-			for _, r := range reads {
-				if len(p.only) == 0 || slices.ContainsFunc(p.only, func(prefix string) bool { return strings.HasPrefix(r.procedure, prefix) }) {
-					w.runRead(t, r, got)
+			name := p.name
+			if unjudged {
+				name += " stored with no judgement"
+			}
+			t.Run(name, func(t *testing.T) {
+				w := newWorld(t)
+				word := w.secrets.add(&canary{needle: hiddenEffectNoteWord, kind: "hidden-effect-note"})
+				roller := p.roller(w)
+				w.putHiddenCheckEffect(p.target(w))
+				w.hints.Settle(t)
+				procedure, req := p.call(w, newKey())
+				own := roller.call(procedure, req)
+				if !own.ok() {
+					t.Fatalf("%s's call on %s was refused: HTTP %d %s", roller.name, p.name, own.status, own.body)
 				}
-			}
-			// The positive control: the master reads the note in full, in some read.
-			if !got.holds(w.master, word) {
-				t.Errorf("the master reads no %q of %s in any read: the control that it shows to the master is missing", hiddenEffectNoteWord, p.name)
-			}
-			for _, other := range []*person{w.caio, w.ana, w.pending, w.stranger} {
-				if got.holds(other, word) {
-					t.Errorf("%s reads %q of %s", other.name, hiddenEffectNoteWord, p.name)
+				got := newAnswers()
+				got.keep(roller, own)
+				w.hints.Settle(t)
+				for _, r := range reads {
+					if len(p.only) == 0 || slices.ContainsFunc(p.only, func(prefix string) bool { return strings.HasPrefix(r.procedure, prefix) }) {
+						w.runRead(t, r, got)
+					}
 				}
-			}
-		})
+				// The positive control: the master reads the note in full, in some read.
+				if !got.holds(w.master, word) {
+					t.Errorf("the master reads no %q of %s in any read: the control that it shows to the master is missing", hiddenEffectNoteWord, p.name)
+				}
+				for _, other := range []*person{w.caio, w.ana, w.pending, w.stranger} {
+					if got.holds(other, word) {
+						t.Errorf("%s reads %q of %s", other.name, hiddenEffectNoteWord, p.name)
+					}
+				}
+			})
+		}
 	}
 }

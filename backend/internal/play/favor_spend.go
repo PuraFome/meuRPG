@@ -98,7 +98,7 @@ func notesSources(notes []rollNote) (sources []combat.Source, hide func(combat.S
 		}
 		src := combat.Source{Kind: n.Kind, Effect: effect}
 		sources = append(sources, src)
-		if n.Hidden {
+		if n.hiddenFromOwner() {
 			secret = append(secret, src)
 		}
 	}
