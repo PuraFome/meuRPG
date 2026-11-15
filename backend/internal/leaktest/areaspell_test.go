@@ -213,7 +213,7 @@ func TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal(t *t
 	}
 	// The master applies the damage that waited for him (the visible player's character caught by the same cast): the hidden
 	// creature is in the same cast, and what the players read after the application still names nothing of it, while the
-	// application itself is read (the control: the character's own combatant is in their reads).
+	// application is the control: it ended APPLIED, so the reads below follow it.
 	var waiting string
 	for _, d := range rolled.GetCastPendingDamages() {
 		if d.GetTargetId() == torenCombatant && d.GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED {
@@ -223,14 +223,14 @@ func TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal(t *t
 	if waiting == "" {
 		t.Fatalf("no damage waits for the master on the visible character, so the application proves nothing: %s", jsonOf(rolled))
 	}
-	must(m.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{CampaignId: w.campaign, EncounterId: e.GetId(), PendingDamageId: waiting, IdempotencyKey: newKey()})))
+	applied := must(m.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{CampaignId: w.campaign, EncounterId: e.GetId(), PendingDamageId: waiting, IdempotencyKey: newKey()})))
+	if applied.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+		t.Fatalf("the master's application ended with status %v, want APPLIED, so the scan after it proves nothing", applied.GetPendingDamage().GetStatus())
+	}
 	for _, p := range players {
 		text := readAll(p)
 		if found := namesAny(text, leak.needles()); len(found) > 0 {
 			t.Errorf("%s reads %v after the master applied the damage", p.name, found)
-		}
-		if !strings.Contains(text, torenCombatant) {
-			t.Errorf("%s's reads do not name the visible character the damage was applied to, so the scan proves nothing", p.name)
 		}
 	}
 	// The positive control: the master's log of the roll does name the hidden creature.

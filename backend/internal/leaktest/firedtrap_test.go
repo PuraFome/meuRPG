@@ -82,8 +82,9 @@ func TestFiredTrapLogHoldsNoNPCCharacterID(t *testing.T) {
 }
 
 // The master settles the damage a firing did to the players' characters, one applied and one discarded, after a firing that also
-// caught a creature the players are not given: nothing the players read after either call names that creature. The control is
-// that the master's combat names it before the firing's damage is settled, and that the settled damage is one they read.
+// caught a creature the players are not given: nothing the players read after either call names that creature. The controls are
+// that the master's combat names it before the firing, that each call ends with the damage in the status it asked for, and that
+// the players read the trap that went off.
 func TestSettlingTheDamageOfAFiringNamesNoCreatureThePlayersAreNotGiven(t *testing.T) {
 	w := newWorld(t)
 	hidden := w.combatantOf(w.encounter, w.hiddenNPC.GetId()).GetId()
@@ -120,9 +121,13 @@ func TestSettlingTheDamageOfAFiringNamesNoCreatureThePlayersAreNotGiven(t *testi
 		t.Fatalf("the master reads %d trap damages and not one for each caught character, so the settling proves nothing: %s", len(waiting), jsonOf(&playv1.ListTrapDamagesResponse{Damages: waiting}))
 	}
 	noHidden("before any call")
-	must(w.master.play.ApplyTrapDamage(t.Context(), rq(&playv1.ApplyTrapDamageRequest{CampaignId: w.campaign, TrapDamageId: ofPens.GetId(), IdempotencyKey: newKey()})))
+	if got := must(w.master.play.ApplyTrapDamage(t.Context(), rq(&playv1.ApplyTrapDamageRequest{CampaignId: w.campaign, TrapDamageId: ofPens.GetId(), IdempotencyKey: newKey()}))).GetDamage().GetStatus(); got != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+		t.Fatalf("the apply ended with status %v, want APPLIED", got)
+	}
 	noHidden("after the apply")
-	must(w.master.play.DiscardTrapDamage(t.Context(), rq(&playv1.DiscardTrapDamageRequest{CampaignId: w.campaign, TrapDamageId: ofToren.GetId(), IdempotencyKey: newKey()})))
+	if got := must(w.master.play.DiscardTrapDamage(t.Context(), rq(&playv1.DiscardTrapDamageRequest{CampaignId: w.campaign, TrapDamageId: ofToren.GetId(), IdempotencyKey: newKey()}))).GetDamage().GetStatus(); got != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED {
+		t.Fatalf("the discard ended with status %v, want DISCARDED", got)
+	}
 	noHidden("after the discard")
 	if !w.readsHold(w.ana, w.pts["trap-guardroom"].GetId()) {
 		t.Errorf("Ana reads nothing of the trap that went off, so the scan proves nothing")
