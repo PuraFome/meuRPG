@@ -9441,6 +9441,9 @@ test('o equipamento passa no axe e nas conferências de layout no tema escuro, n
  * A versatile weapon on the combat rail (#849, board 580-14): with the shield equipped the stats keep the one-handed dice and a second
  * line says what two hands need; with the shield stowed the stats show the two-handed dice and the second line says the one-handed ones. Pictures are saved when `E2E_SHOTS_DIR` names a folder.
  */
+/** The fighter's Dueling style: its +2 needs the weapon in one hand. */
+const duelingStyle = 'feature:fighter-fighting-style-dueling';
+
 async function scanVersatileRail(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
   const viewport = { width, height: 900 };
   const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, deviceScaleFactor: 2 });
@@ -9493,6 +9496,15 @@ async function scanVersatileRail(browser: Browser, colorScheme: 'light' | 'dark'
     await fold.getByRole('button', { name: /^Guardar .*Escudo$/ }).click();
     const spent = await openSpentGroup(p, 'Ação');
     await expect(spent.getByTestId('versatile-line')).toHaveText('Com duas mãos; com uma: 1d8 + 3');
+    await endOpenSessionRPC(m, campaignId);
+
+    // The Dueling style keeps the lone sword in one hand: the one-handed dice with the +2, and the two-handed dice without it on the line.
+    const dueling = await begin('Duelismo', { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', featureChoiceKeys: [duelingStyle] });
+    await expect(dueling.stats).toContainText('1d8 + 5 cortante');
+    await expect(dueling.line).toHaveText('Com duas mãos, sem o Duelismo: 1d10 + 3');
+    await checkLayout(dueling.row, dueling.line);
+    await expectScreenPasses(p, `Combate, espada longa sozinha com Duelismo ${where}`);
+    await shoot(dueling.row, 'trilho-duelismo');
     await endOpenSessionRPC(m, campaignId);
 
     // The shield stowed before the combat: both hands, so the stats show the two-handed dice and the line the one-handed ones.
@@ -9580,6 +9592,13 @@ async function scanVersatileSheet(browser: Browser, colorScheme: 'light' | 'dark
     await expect(bothHands.damage).toContainText('1d10 + 3 cortante');
     await expect(bothHands.line).toHaveText('Com duas mãos; com uma: 1d8 + 3');
     await check(bothHands.row, bothHands.line, 'Ficha, espada longa com as duas mãos', 'ficha-duas-maos');
+
+    // The Dueling style keeps the lone sword in one hand: the one-handed dice with the +2 and its note, and the two-handed dice without it on the line.
+    const dueling = await open('Duelismo', { weaponKeys: ['equipment:longsword'], armorKey: 'equipment:chain-mail', featureChoiceKeys: [duelingStyle] });
+    await expect(dueling.damage).toContainText('1d8 + 5 cortante');
+    await expect(dueling.line).toHaveText('Com duas mãos, sem o Duelismo: 1d10 + 3');
+    await expect(dueling.row).toContainText('Inclui +2 de Estilo de Luta: Duelismo (sem outra arma na mão)');
+    await check(dueling.row, dueling.line, 'Ficha, espada longa sozinha com Duelismo', 'ficha-duelismo');
   } finally {
     for (const id of campaigns) {
       await endOpenSessionRPC(m, id).catch(() => undefined);

@@ -1052,7 +1052,7 @@ const (
 	GripOneHandShield  Grip = "one_hand_shield"  // a shield is equipped
 	GripOneHandWeapon  Grip = "one_hand_weapon"  // another weapon is equipped
 	GripOneHandDueling Grip = "one_hand_dueling" // nothing else is in hand, and the Dueling style keeps it in one
-	GripTwoHands       Grip = "two_hands"        // nothing else is in hand
+	GripTwoHands       Grip = "two_hands"        // nothing else is in hand, and no style asks for one hand
 )
 
 // InBothHands says the weapon is wielded with two hands: a two-handed weapon, or a versatile one held
