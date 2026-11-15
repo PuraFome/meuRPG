@@ -14,8 +14,11 @@
       <p class="move__lead">Quadrados de 1,5 m. Role de lado para ver o resto do mapa.</p>
     } @else {
       <h1 class="mr-page-title move__title">{{ title() }}</h1>
+      @if (release(); as r) {
+        <app-release-band [band]="r.band" />
+      }
       <p class="move__lead">{{ lead() }}</p>
-      @if (jumps()) {
+      @if (jumps() && !release()) {
         <app-segmented class="move__seg" label="Como se mover" [segments]="modes" [value]="mode()" (choose)="setMode($event)" />
         @if (jumping()) {
           <app-segmented class="move__seg" label="Tipo de salto" [segments]="kinds" [value]="kind()" (choose)="setKind($event)" />
@@ -104,6 +107,12 @@
       </button>
     } @else {
       <div class="move__body">
+        @if (goneView(); as g) {
+          <div class="mr-notice mr-notice--neutral" role="status" data-testid="release-gone">
+            <mat-icon aria-hidden="true">info</mat-icon>
+            <p><b>{{ g.lead }}</b> {{ g.rest }}</p>
+          </div>
+        }
         @if (jumping() && jumps(); as limits) {
           <app-jump-panel [limits]="limits" [kind]="kind()" [height]="height()" [atMin]="atMin()" [atMax]="atMax()" (step)="step($event)" />
         }
@@ -137,6 +146,9 @@
             (undo)="takeBackDisengage()"
           />
         }
+        @if (release(); as r) {
+          <p class="move__release-note" data-testid="release-note">{{ r.note }}</p>
+        }
         @if (optionsFailed()) {
           <div class="mr-notice mr-notice--warning" role="status">
             <mat-icon aria-hidden="true">warning</mat-icon>
@@ -150,8 +162,17 @@
     }
   </div>
 
-  @if (!readOnly()) {
+  @if (goneView()) {
     <div class="move__foot">
+      <div class="move__buttons">
+        <button matButton="filled" type="button" class="move__go" data-testid="release-done" (click)="back.emit()">{{ doneLabel }}</button>
+      </div>
+    </div>
+  } @else if (!readOnly()) {
+    <div class="move__foot">
+      @if (release()?.foot; as foot) {
+        <p class="move__release-foot" role="status" data-testid="release-foot">{{ foot }}</p>
+      }
       @if (trapAsk()) {
         <p class="move__ask" role="alert">{{ trapText() }}</p>
         <div class="move__buttons">
@@ -175,7 +196,11 @@
             <mat-icon aria-hidden="true">{{ goIcon() }}</mat-icon>{{ goLabel() }}
           </button>
           <button matButton="outlined" type="button" class="move__cancel" (click)="back.emit()">
-            Cancelar
+            @if (release()) {
+              <mat-icon aria-hidden="true">arrow_back</mat-icon>{{ backLabel }}
+            } @else {
+              Cancelar
+            }
           </button>
         </div>
       }

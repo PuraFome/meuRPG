@@ -42,6 +42,9 @@ import {
 import { LivePill } from '../../../../shared/live-pill/live-pill';
 import { MapLayersLegend } from '../../../../shared/map-layers/map-layers-legend';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
+import type { MoveReleaseView } from '../../../../core/combat/move-release';
+import { RELEASE_BACK, RELEASE_DONE } from '../../../../core/combat/release-text';
+import { ReleaseBandView } from '../release-band/release-band';
 import { JumpPanel } from './jump-panel';
 import { MoveAdjust } from './move-adjust';
 import {
@@ -102,6 +105,7 @@ export type { JumpRequest } from './move-page-view';
     MatIconModule,
     MoveAdjust,
     MoveStatus,
+    ReleaseBandView,
     Segmented,
   ],
   templateUrl: './move-page.html',
@@ -134,6 +138,8 @@ export class MovePage {
   readonly canDisengage = input(false);
   /** Who moves: one of the player's creatures (E9-12); empty for the player's own character. */
   readonly moverId = input('');
+  /** A readied move released off the readier's turn (#856): the band, the note, the master's footer and what became of the window. */
+  readonly release = input<MoveReleaseView | null>(null);
   /** A square to start with: where the player dropped their token on the main map (the drop never moves, the page asks). */
   readonly start = input<Square | null>(null);
 
@@ -181,10 +187,21 @@ export class MovePage {
   /** The server's answer for this origin, but never more than the combatant's live movement: after a move the options
    * are the old ones until they are fetched again, and the sheet would keep saying the distance from before. */
   protected readonly leftDft = computed(() =>
-    cappedMovement(this.options()?.movementLeftDft, this.own()?.movementLeftDft),
+    this.release()
+      ? // The budget of a readied move is the server's own: the movement of the turn that ended is not what it spends.
+        (this.options()?.movementLeftDft ?? 0)
+      : cappedMovement(this.options()?.movementLeftDft, this.own()?.movementLeftDft),
   );
-  protected readonly totalDft = computed(() => this.own()?.speedDft ?? 0);
-  protected readonly usedDft = computed(() => this.own()?.movementUsedDft ?? 0);
+  protected readonly totalDft = computed(() =>
+    this.release() ? this.leftDft() : (this.own()?.speedDft ?? 0),
+  );
+  protected readonly usedDft = computed(() =>
+    this.release() ? 0 : (this.own()?.movementUsedDft ?? 0),
+  );
+  /** The window went away under the page: nothing can be moved, and "Voltar à sessão" is the one button. */
+  protected readonly goneView = computed(() => this.release()?.gone ?? null);
+  protected readonly backLabel = RELEASE_BACK;
+  protected readonly doneLabel = RELEASE_DONE;
   protected readonly jumping = computed(() => this.mode() === 'jump' && !!this.jumps());
   protected readonly modes = MODES;
   protected readonly kinds = KINDS;
@@ -278,6 +295,7 @@ export class MovePage {
     () => this.disengageChoice() && this.jumpProvokes() && this.canDisengage(),
   );
   protected readonly canMove = computed(() =>
+    !this.goneView() &&
     canMoveOf(
       this.busy(),
       this.jumping(),

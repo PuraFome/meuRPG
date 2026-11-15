@@ -1,4 +1,4 @@
-import { computed, effect, signal, untracked } from '@angular/core';
+import { Injector, computed, effect, inject, signal, untracked } from '@angular/core';
 
 import {
   type Combatant,
@@ -24,10 +24,11 @@ import { MoveSaves } from '../../../core/maps/move-saves';
 import { metersFixed } from '../../../core/units';
 import type { Reach, TokenDrop } from '../../../shared/combat-map/combat-map';
 import type { JumpRequest } from './move-page/move-page';
+import { MoveReleaseFlow } from './move-release-flow';
 
 /** What `MoveFlow` reads from the screen it serves. */
 export interface MoveFlowContext {
-  readonly api: Pick<CombatClient, 'moves'>;
+  readonly api: Pick<CombatClient, 'moves'> & Partial<Pick<CombatClient, 'attacks'>>;
   readonly calls: Pick<CombatCalls, 'busy' | 'error' | 'refreshAfter'>;
   readonly campaignId: () => string;
   readonly encounter: () => Encounter | null;
@@ -44,6 +45,8 @@ export interface MoveFlowContext {
   readonly takeAction: (id: string, key: string) => Promise<boolean>;
   /** "Gastar movimento": the sheet for the player's character (no id) or one of their creatures. */
   readonly openSpend: (id?: string) => void;
+  /** Shows the readied window again (the player went back from the map of a release). */
+  readonly reopenWindow?: (windowId: string) => void;
 }
 
 /**
@@ -91,15 +94,18 @@ export class MoveFlow {
     // A creature that left the combat is not the character: nothing moves, and the page closes (the effect below says so).
     return e ? (id ? (e.combatants.find((c) => c.id === id) ?? null) : this.ctx.own()) : null;
   });
+  /** The page of a readied move, off the readier's turn (#856): the window it releases, the wait mark and the words (`MoveReleaseFlow`). */
+  readonly release: MoveReleaseFlow;
   private readonly moverActs = computed(() => {
     const e = this.ctx.encounter();
     const who = this.mover();
-    return !!e && !!who && acts(e, who);
+    // A readied move is made off the turn: the page stays for the release, whatever the turn says.
+    return !!e && !!who && (acts(e, who) || this.release.current()?.reactorId === who.id);
   });
-  /** "Desengajar" can still be taken here: the action is free and it was not. */
+  /** "Desengajar" can still be taken here: the action is free and it was not (a readied move is a walk: no Disengage). */
   readonly canDisengage = computed(() => {
     const who = this.mover();
-    return !!who && !who.actionUsed && !who.disengaged;
+    return !!who && !who.actionUsed && !who.disengaged && !this.release.current();
   });
   /** How far and how high the mover can jump: the creature's own options, or the character's. */
   readonly jumps = computed(() => {
@@ -149,6 +155,18 @@ export class MoveFlow {
   private readonly jumpKey = new ActionKey();
 
   constructor(private readonly ctx: MoveFlowContext) {
+    this.release = new MoveReleaseFlow(
+      {
+        api: ctx.api,
+        campaignId: () => ctx.campaignId(),
+        encounter: () => ctx.encounter(),
+        state: () => ctx.state(),
+        isMaster: () => ctx.isMaster(),
+        own: () => ctx.own(),
+        reopenWindow: (id) => ctx.reopenWindow?.(id),
+      },
+      inject(Injector),
+    );
     // "Mover" belongs to the player's turn: when it ends, the page closes.
     effect(() => {
       if (!this.moverActs() || !this.ctx.active()) {
@@ -409,6 +427,7 @@ export class MoveFlow {
     }
     if (ok) {
       this.ctx.state().moving.set(false);
+      this.release.finish();
     } else {
       // The refusal's own words, next to the map where the person looks.
       this.moveError.set(this.ctx.calls.error());
@@ -453,11 +472,37 @@ export class MoveFlow {
   }
 
   closeFullPage(): void {
+    if (this.release.current()) {
+      // "Voltar" on the page of a readied move: the mark comes off and the window shows again.
+      void this.release.back().then(() => this.reset());
+      return;
+    }
+    this.reset();
+  }
+
+  private reset(): void {
     this.lockedDoor.set(false);
     this.moverId.set('');
     this.dropStart.set(null);
     this.ctx.state().moving.set(false);
     this.ctx.state().mapOpen.set(false);
+  }
+
+  /** "Mover agora" and "Mover por Tor": the page of the readied move the window holds, for the reactor (the master moves for the player). */
+  openRelease(windowId: string): void {
+    const release = this.release.open(windowId);
+    if (!release) {
+      return;
+    }
+    this.lockedDoor.set(false);
+    // The player's own page is the character's (no id); the master's is told whose it is.
+    this.moverId.set(
+      this.ctx.isMaster() || release.reactorId !== this.ctx.own()?.id ? release.reactorId : '',
+    );
+    this.dropStart.set(null);
+    this.moveError.set('');
+    this.jump.set(null);
+    this.ctx.state().moving.set(true);
   }
 
   /** "Mover": the page of the player's character, or "Gastar movimento" in a combat without a map. */

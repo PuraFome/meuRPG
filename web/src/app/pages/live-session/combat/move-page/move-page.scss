@@ -316,3 +316,12 @@
   font-size: var(--mr-font-16);
   line-height: 22px;
 }
+
+/* The note under the cost card of a readied move, and the master's line over the buttons. */
+.move__release-note,
+.move__release-foot {
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 20px;
+  color: var(--mr-ink-muted);
+}
