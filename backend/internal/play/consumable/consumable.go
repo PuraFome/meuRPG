@@ -1,0 +1,84 @@
+// Package consumable holds what the play module knows about using a consumable (a potion, a scroll) that needs no
+// store, no transport and no Service: the healing dice that are rolled or typed, the hit points a potion gives back, the
+// resistance a potion gives and the text a consumable with no automatic effect returns. play reads the sheet and the
+// character, and calls here.
+package consumable
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+
+	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/rules"
+)
+
+// ErrFaces is a list of typed faces that is not the potion's dice: the wrong number, or a face off its die.
+var ErrFaces = errors.New("typed_faces must hold one face for each die of the potion, each a face of the die")
+
+// Total is the potion's healing for the faces of its dice: their sum and the potion's fixed bonus, never below 0. It
+// refuses a list that is not one face for each die, each from 1 to the die's sides (faces typed from real dice).
+func Total(f rules.DiceFormula, faces []int32) (int32, error) {
+	if len(faces) != f.Count {
+		return 0, fmt.Errorf("%w (%d dice)", ErrFaces, f.Count)
+	}
+	sum := f.Bonus
+	for _, face := range faces {
+		if int(face) < 1 || int(face) > f.Sides {
+			return 0, fmt.Errorf("%w (d%d)", ErrFaces, f.Sides)
+		}
+		sum += int(face)
+	}
+	return conv.Int32(max(min(sum, 1<<20), 0)), nil
+}
+
+// Healed is the hit points a heal of total really gives back: the room up to the maximum, never negative.
+func Healed(current, maximum, total int32) int32 {
+	return max(min(total, maximum-current), 0)
+}
+
+// Resistance is the modifier a resistance potion puts on its drinker: resistance to the damage type.
+func Resistance(p rules.PotionEffect) rules.EffectModifier {
+	return rules.EffectModifier{Kind: rules.ModifierResistance, ResistanceKind: rules.ResistanceKindResist, DamageTypes: []string{p.DamageType}}
+}
+
+// Seconds is the time a resistance potion lasts, in the seconds game time counts (a round is six).
+func Seconds(p rules.PotionEffect) int32 {
+	return conv.Int32(p.Rounds * rules.SecondsPerRound)
+}
+
+// Text is what a consumable says it does: the Portuguese text when the content has it, else the SRD's English.
+func Text(m rules.MagicItem) []string {
+	if len(m.DescPT) > 0 {
+		return m.DescPT
+	}
+	return m.Desc
+}
+
+// Roll is the faces of the potion's dice: rolled with r when inApp, else the faces typed from real dice, and the healing
+// they make (Total). A typed list that is not the potion's dice is ErrFaces.
+func Roll(r dice.Roller, f rules.DiceFormula, inApp bool, typed []int32) (faces []int32, total int32, err error) {
+	faces = typed
+	if inApp {
+		rolled, err := dice.Roll(r, dice.Expr{Count: f.Count, Sides: f.Sides})
+		if err != nil {
+			return nil, 0, fmt.Errorf("roll the potion's dice: %w", err)
+		}
+		faces = nil
+		for _, face := range rolled.Faces {
+			faces = append(faces, conv.Int32(face))
+		}
+	}
+	total, err = Total(f, faces)
+	return faces, total, err
+}
+
+// ResistanceJSON is the modifiers of the record a potion's resistance is kept in outside a combat: the one resistance.
+func ResistanceJSON(p rules.PotionEffect) ([]byte, error) {
+	body, err := json.Marshal([]rules.EffectModifier{Resistance(p)})
+	if err != nil {
+		return nil, fmt.Errorf("encode the resistance: %w", err)
+	}
+	return body, nil
+}

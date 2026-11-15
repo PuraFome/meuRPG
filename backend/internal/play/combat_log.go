@@ -17,6 +17,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/db"
+	"github.com/PuraFome/meuRPG/backend/internal/play/consumable"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -78,6 +79,8 @@ type logEntry struct {
 	gear gearSwapEvent
 	// item is the use of an item of an ITEM_* or AMMUNITION_SPENT line: its payload is its own type (charges.go).
 	item itemUseEvent
+	// consumable is the use of a consumable of a CONSUMABLE_USED line (consumables.go).
+	consumable consumableUsedEvent
 	// shapeStarted: a Wild Shape line is the druid becoming the beast, not leaving it.
 	shapeStarted bool
 	// seq is the highest session_events.seq among the events in hosts: a later event that joins the entry raises it.
@@ -584,6 +587,7 @@ var logHandlers = map[string]logHandler{
 	eventItemChargesRestored:     itemUseLine,
 	eventItemDestroyed:           itemUseLine,
 	eventAmmunitionSpent:         itemUseLine,
+	eventConsumableUsed:          consumableUsedLine,
 	eventActionReadied:           readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED),
 	eventReadiedFired:            readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED),
 	eventReadiedLost:             readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST),
@@ -696,6 +700,16 @@ func itemUseLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry
 	return true
 }
 
+// consumableUsedLine is the handler of consumable_used: the master's line and the lines of the user's and the receiver's owners.
+func consumableUsedLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry) bool {
+	var use consumableUsedEvent
+	if json.Unmarshal(e.Payload, &use) != nil {
+		return false
+	}
+	entry.kind, entry.masterOnly, entry.consumable = playv1.CombatLogKind_COMBAT_LOG_KIND_CONSUMABLE_USED, true, use
+	return true
+}
+
 // itemUseKind is the kind of the line of an item's use.
 func itemUseKind(eventKind string, use itemUseEvent) playv1.CombatLogKind {
 	switch {
@@ -715,6 +729,7 @@ var ownerLineKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT:       true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED: true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT:        true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_CONSUMABLE_USED:         true,
 }
 
 // effectLine is the handler of the events of the effects that last.
@@ -1100,7 +1115,7 @@ func (e *logEntry) visibility(v combatViewer, byID map[string]playdb.Combatant, 
 	}
 	// The roll of a Recharge is the line of the master and of the player who controls the creature (RN-29), on
 	// any map: the row is secret and fogged for everybody else.
-	if ownerLineKinds[e.kind] && v.owns(actor) {
+	if ownerLineKinds[e.kind] && (v.owns(actor) || (e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_CONSUMABLE_USED && v.owns(target))) {
 		return true, true
 	}
 	return visible && e.hitsVisible(byID), seen
@@ -1185,6 +1200,7 @@ var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT:       true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED: true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT:        true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_CONSUMABLE_USED:         true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:            true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:                true,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:              true,
@@ -1261,6 +1277,7 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT:       (*logEntry).fillItemUse,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED: (*logEntry).fillItemUse,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT:        (*logEntry).fillItemUse,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_CONSUMABLE_USED:         (*logEntry).fillConsumableUse,
 }
 
 // fill writes the fields of the entry's kind.
@@ -1314,6 +1331,20 @@ func (e *logEntry) fillItemUse(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	use := e.item
 	out.ItemUse = &playv1.ItemUseLogLine{
 		ItemNamePt: use.Name, Amount: use.Amount, Left: use.Left, Max: use.Max, D20: use.D20, Outcome: itemOutcomeOf(use.Outcome), AmmunitionNamePt: use.Ammo, Lost: charactersv1.ItemLoss(use.Lost),
+	}
+	return true
+}
+
+// fillConsumableUse writes the line of a consumable used in the combat. The receiver is named to the master and to whoever owns it or
+// the user; a hidden receiver is nobody else's to read.
+func (e *logEntry) fillConsumableUse(c *logViewing, out *playv1.CombatLogEntry) bool {
+	use := e.consumable
+	out.ConsumableUse = &playv1.ConsumableUseLogLine{
+		ItemNamePt: use.Name, Outcome: consumable.OutcomeOf(use.Outcome), DiceText: use.Dice, Faces: use.Faces, RollTotal: use.Total, Healed: use.Healed,
+		DamageTypeKey: use.DamageType, DamageTypeNamePt: c.names.contentName(c.ctx, use.DamageType), TargetLabel: c.target.Label,
+	}
+	if !c.v.master && c.target.Hidden && !c.v.owns(c.target) {
+		out.TargetId, out.TargetLabel, out.ConsumableUse.TargetLabel = "", "", ""
 	}
 	return true
 }

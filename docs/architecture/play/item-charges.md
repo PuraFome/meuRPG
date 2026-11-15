@@ -98,11 +98,33 @@ An event of `ammunition_spent` reads as `COMBAT_LOG_KIND_AMMUNITION_SPENT`.
 The web words the three lines in `core/combat/combat-log-item-use.ts` ("gastou a última carga da Varinha de teia", "rolou 1 no d20 da última carga: ...", "atirou com o Arco longo: 1 flecha, restam 3").
 `SetCharges`, `RecoverAmmunition` and any call outside a combat write the session event only, and no line.
 
+## Consumables
+
+`UseConsumable` uses up one unit of a consumable of the sheet: a potion, a scroll or another item of `effects/consumables.json`.
+One entry of `FullSheet.magic_items` is one unit, and the keeper's `RemoveConsumable` takes it off the sheet in the call's transaction.
+The code is `consumables.go`, and the dice, the healing, the resistance and the payload are in `play/consumable`.
+The character's player and the master may call it, a dead user or a dead receiver is refused with `CHARACTER_DEAD`, and it needs an open game session.
+The receiver is the user, or `target_character_id` for a gift: the user's entry is the one spent, and the effect is the receiver's.
+Out of a combat there is no turn and no adjacency.
+A user or a receiver that fights in the running combat is refused with `ChargesBlocked` `COMBAT_RUNNING` (`canUseConsumable` is the seam for the combat's own rules, and the combat's line is `COMBAT_LOG_KIND_CONSUMABLE_USED`).
+`rules.Content.PotionEffect` says what a potion does (`effects/potions.json`).
+A healing potion rolls its dice and heals the receiver up to the maximum, and the response says the hit points really regained.
+The dice follow the table's dice mode like the d20 of the last charge: the app rolls them, or `typed_faces` holds one face for each die, each a face of the die.
+A resistance potion puts a record of `character_effects` on the receiver with the damage type and 3600 seconds of game time, the master's and the owner's to read.
+The record counts down with `AdvanceGameTime` like any effect outside a combat, and a second potion of the same kind starts the hour again.
+Any other consumable only spends the unit, and the response returns the item's text.
+`consumable_used` is written with the key of the call, so a retry returns the first answer and spends nothing again.
+Two calls with different keys on one entry give one use: the second finds no entry and is refused with `not_found`.
+`consumable_used` is not an undoable kind, so it closes the undo chain ([Undo](undo.md)).
+The sheet's `effect_pt` says what a potion does ("Cura 2d4 + 2"), and `spell_key` and `spell_name_pt` are for the spell of a scroll, empty until scrolls are cast.
+
 ## Privacy
 
 Charges, ammunition and these lines are the master's and the owning player's alone (RN-10).
 No other player reads the line, the event (secret) or the hint that the stream carries.
-The leak test is `internal/leaktest/itemuse_test.go`.
+The use of a consumable and the resistance it leaves are the same: the master and the owner read them.
+In a combat the line is also the receiver's owner's, and a hidden receiver is not named to a player who is not its owner.
+The leak tests are `internal/leaktest/itemuse_test.go` and `internal/leaktest/consumables_test.go`.
 
 ## Refusals
 

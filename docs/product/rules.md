@@ -153,6 +153,17 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   An item that does not recharge (a talisman, a scarab) keeps what is left until the master corrects it.
   A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
   A player reads the charges of their own characters only, and the master reads all of them.
+- **Using a potion or another consumable (SRD 5.1, "Magic Items": potions and scrolls).**
+  "Usar" spends one unit of a consumable of the sheet: each entry is one unit, and the entry leaves the sheet while the history keeps the use.
+  A potion of healing restores hit points with the dice of its entry (2d4 + 2, 4d4 + 4, 8d4 + 8, 10d4 + 20), never past the maximum, and the answer says what was really regained.
+  A potion of resistance gives one hour of resistance to its damage type, counted in game time like the other effects out of a combat, and only its owner and the master read it.
+  Drinking out of a combat costs no turn.
+  In a combat, drinking costs the action of the user's turn, and giving a potion to a creature within 5 feet costs the giver's action; the potion then acts on the receiver.
+  A potion may be given to another character: the giver's entry is the one spent, the receiver is healed or resists, and a creature that is dead is not given one.
+  The master may use or give a potion for any character.
+  At a table of real dice the player types the faces of the healing dice, one for each die.
+  Slice 1 applies the healing and the resistance potions by itself.
+  Every other potion, and every scroll, is spent and logged, and the answer shows its text for the table to apply; a spell scroll is not cast.
 - **Ammunition (SRD 5.1, "Weapons": the ammunition property).**
   Arrows, bolts, sling bullets and blowgun needles are counted on the sheet, one number for each kind.
   The owner sets the count while the sheet is open to editing, and the master at any time.

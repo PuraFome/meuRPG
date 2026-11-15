@@ -3849,7 +3849,16 @@ type SheetMagicItem struct {
 	// ("Volta 1d6 + 1 ao amanhecer", "Não volta", the d20 of the last charge). Absent for an item with no
 	// charges. Filled by the server on every read from the catalog; a save ignores it. Read by the same
 	// people as the charges: the character's player and the master.
-	Recharge      *ItemRecharge `protobuf:"bytes,13,opt,name=recharge,proto3" json:"recharge,omitempty"`
+	Recharge *ItemRecharge `protobuf:"bytes,13,opt,name=recharge,proto3" json:"recharge,omitempty"`
+	// The effect "Usar" carries out for this consumable, as the sheet shows it ("Cura 2d4 + 2", "Resistência a fogo por 1
+	// hora"); empty for an item with no automatic effect (its text is all there is). Filled by the server from the
+	// catalog on every read; a save ignores it. Read by the same people as the charges: the character's player and the
+	// master.
+	EffectPt string `protobuf:"bytes,14,opt,name=effect_pt,json=effectPt,proto3" json:"effect_pt,omitempty"`
+	// The spell of a spell scroll (the catalog's key, "spell:fireball") and its name in Portuguese. Declared for the scrolls
+	// that cast their spell; empty for every item until then. Filled by the server on every read; a save ignores them.
+	SpellKey      string `protobuf:"bytes,15,opt,name=spell_key,json=spellKey,proto3" json:"spell_key,omitempty"`
+	SpellNamePt   string `protobuf:"bytes,16,opt,name=spell_name_pt,json=spellNamePt,proto3" json:"spell_name_pt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3973,6 +3982,27 @@ func (x *SheetMagicItem) GetRecharge() *ItemRecharge {
 		return x.Recharge
 	}
 	return nil
+}
+
+func (x *SheetMagicItem) GetEffectPt() string {
+	if x != nil {
+		return x.EffectPt
+	}
+	return ""
+}
+
+func (x *SheetMagicItem) GetSpellKey() string {
+	if x != nil {
+		return x.SpellKey
+	}
+	return ""
+}
+
+func (x *SheetMagicItem) GetSpellNamePt() string {
+	if x != nil {
+		return x.SpellNamePt
+	}
+	return ""
 }
 
 // ItemRecharge is the catalog's charge rules of one item (SRD 5.1: each wand, staff, ring and
@@ -14349,7 +14379,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x129\n" +
 	"\n" +
 	"until_rest\x18\x03 \x01(\x0e2\x1a.meurpg.rules.v1.RestBoundR\tuntilRest\x12\x1c\n" +
-	"\tsignature\x18\x04 \x01(\tR\tsignature\"\x9c\x04\n" +
+	"\tsignature\x18\x04 \x01(\tR\tsignature\"\xfa\x04\n" +
 	"\x0eSheetMagicItem\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
 	"\aattuned\x18\x02 \x01(\bR\aattuned\x12/\n" +
@@ -14365,7 +14395,10 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	" \x01(\x05R\vchargesLeft\x122\n" +
 	"\x04lost\x18\v \x01(\x0e2\x1e.meurpg.characters.v1.ItemLossR\x04lost\x12*\n" +
 	"\x11last_roll_pending\x18\f \x01(\bR\x0flastRollPending\x12>\n" +
-	"\brecharge\x18\r \x01(\v2\".meurpg.characters.v1.ItemRechargeR\brecharge\"\xc7\x02\n" +
+	"\brecharge\x18\r \x01(\v2\".meurpg.characters.v1.ItemRechargeR\brecharge\x12\x1b\n" +
+	"\teffect_pt\x18\x0e \x01(\tR\beffectPt\x12\x1b\n" +
+	"\tspell_key\x18\x0f \x01(\tR\bspellKey\x12\"\n" +
+	"\rspell_name_pt\x18\x10 \x01(\tR\vspellNamePt\"\xc7\x02\n" +
 	"\fItemRecharge\x12:\n" +
 	"\x04kind\x18\x01 \x01(\x0e2&.meurpg.characters.v1.ItemRechargeKindR\x04kind\x12\x1f\n" +
 	"\vregain_dice\x18\x02 \x01(\tR\n" +

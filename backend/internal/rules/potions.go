@@ -3,6 +3,8 @@ package rules
 import (
 	"fmt"
 	"io/fs"
+	"strconv"
+	"strings"
 )
 
 // Potions (SRD 5.1, "Potions"): the potions whose drinking the app carries out. A potion that is not in
@@ -102,4 +104,38 @@ func (c *content) potionResistance(e potionFile) (PotionEffect, error) {
 func (c *Content) PotionEffect(key string) (PotionEffect, bool) {
 	e, ok := c.c.potions[key]
 	return e, ok
+}
+
+// PotionEffectLinePT is the line the sheet shows for what the potion does ("Cura 2d4 + 2", "Resistência a fogo por 1
+// hora"), and "" for an item the app carries out nothing for.
+func (c *Content) PotionEffectLinePT(key string) string {
+	e, ok := c.PotionEffect(key)
+	switch {
+	case !ok:
+		return ""
+	case e.Kind == PotionHeal:
+		dice := strconv.Itoa(e.Heal.Count) + "d" + strconv.Itoa(e.Heal.Sides)
+		if e.Heal.Bonus > 0 {
+			dice += " + " + strconv.Itoa(e.Heal.Bonus)
+		}
+		return "Cura " + dice
+	}
+	return "Resistência a " + strings.ToLower(c.NamePT(e.DamageType)) + " por " + durationPT(e.Rounds*SecondsPerRound)
+}
+
+// durationPT is a time in seconds as the line says it: whole hours, else whole minutes, else seconds.
+func durationPT(seconds int) string {
+	unit := func(n int, one, many string) string {
+		if n == 1 {
+			return "1 " + one
+		}
+		return strconv.Itoa(n) + " " + many
+	}
+	switch {
+	case seconds%3600 == 0:
+		return unit(seconds/3600, "hora", "horas")
+	case seconds%60 == 0:
+		return unit(seconds/60, "minuto", "minutos")
+	}
+	return unit(seconds, "segundo", "segundos")
 }

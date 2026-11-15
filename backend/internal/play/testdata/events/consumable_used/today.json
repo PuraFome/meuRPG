@@ -7,7 +7,7 @@
   "use_name_pt": "x",
   "use_outcome": "x",
   "use_target": "x",
-  "use_target_combatant": "x",
+  "target_id": "x",
   "use_dice": "x",
   "use_faces": [
     1

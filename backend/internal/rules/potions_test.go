@@ -95,7 +95,7 @@ func TestPotionEffectsMatchTheCatalog(t *testing.T) {
 		switch e.Kind {
 		case PotionHeal:
 			got := potionHeals.FindStringSubmatch(text)
-			if got == nil || got[1]+"+"+got[2] != e.Heal.Text() {
+			if len(got) < 3 || got[1]+"+"+got[2] != e.Heal.Text() {
 				t.Errorf("%s heals %s, its text says %v", key, e.Heal.Text(), got)
 			}
 		case PotionResistance:
@@ -111,6 +111,26 @@ func TestPotionEffectsMatchTheCatalog(t *testing.T) {
 	for _, key := range []string{"item:potion-of-healing", "item:potion-of-resistance"} {
 		if _, ok := c.PotionEffect(key); ok {
 			t.Errorf("%s is a family with no effect of its own", key)
+		}
+	}
+}
+
+// The line the sheet shows for a potion: its dice or its resistance and the hour, in Portuguese; none for an item with no
+// automatic effect.
+func TestPotionEffectLinePT(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]string{
+		"item:potion-of-healing-common":   "Cura 2d4 + 2",
+		"item:potion-of-healing-supreme":  "Cura 10d4 + 20",
+		"item:potion-of-resistance-fire":  "Resistência a fogo por 1 hora",
+		"item:potion-of-resistance-force": "Resistência a energia por 1 hora",
+		"item:potion-of-healing":          "",
+		"item:potion-of-climbing":         "",
+		"item:bag-of-holding":             "",
+	} {
+		if got := c.PotionEffectLinePT(key); got != want {
+			t.Errorf("%s: line = %q, want %q", key, got, want)
 		}
 	}
 }

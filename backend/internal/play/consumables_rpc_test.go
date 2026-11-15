@@ -1,0 +1,442 @@
+package play
+
+import (
+	"slices"
+	"testing"
+
+	"connectrpc.com/connect"
+
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
+	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+)
+
+// Using a consumable outside a combat (ChargesService.UseConsumable): the unit is spent and the effect of the healing and
+// the resistance potions happens, any other consumable only returns its text, the receiver may be another character, and
+// a retry of a key answers the first call.
+
+const (
+	potionCommon   = "item:potion-of-healing-common"   // 2d4+2
+	potionGreater  = "item:potion-of-healing-greater"  // 4d4+4
+	potionSuperior = "item:potion-of-healing-superior" // 8d4+8
+	potionSupreme  = "item:potion-of-healing-supreme"  // 10d4+20
+	potionFire     = "item:potion-of-resistance-fire"
+	potionClimb    = "item:potion-of-climbing" // no automatic effect
+	scrollFirst    = "item:spell-scroll-1st"   // no automatic effect: it is not cast
+)
+
+// stocked is newArmed with the potions on the sheets of Toren (a fighter, 20 hit points or so) and Pensantus.
+type stocked struct{ *armed }
+
+func newStocked(t *testing.T, keys ...string) *stocked {
+	t.Helper()
+	a := newArmed(t)
+	a.toren = a.withItems(t, a.toren, keys...)
+	a.pens = a.withItems(t, a.pens, keys...)
+	return &stocked{a}
+}
+
+// entryOf is the id of the item on the character's sheet.
+func (s *stocked) entryOf(t *testing.T, c *charactersv1.Character, key string) string {
+	t.Helper()
+	cur, err := s.master.characters.GetCharacter(t.Context(), connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: s.campaignID, CharacterId: c.GetId()}))
+	if err != nil {
+		t.Fatalf("GetCharacter() error = %v", err)
+	}
+	for _, it := range cur.Msg.GetCharacter().GetSheet().GetFull().GetMagicItems() {
+		if it.GetKey() == key {
+			return it.GetId()
+		}
+	}
+	t.Fatalf("%s is not on %s's sheet", key, c.GetName())
+	return ""
+}
+
+func (s *stocked) holds(t *testing.T, c *charactersv1.Character, key string) bool {
+	t.Helper()
+	cur, err := s.master.characters.GetCharacter(t.Context(), connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: s.campaignID, CharacterId: c.GetId()}))
+	if err != nil {
+		t.Fatalf("GetCharacter() error = %v", err)
+	}
+	return slices.ContainsFunc(cur.Msg.GetCharacter().GetSheet().GetFull().GetMagicItems(), func(it *charactersv1.SheetMagicItem) bool { return it.GetKey() == key })
+}
+
+// use is u using the potion of who's sheet, app-rolled, with a new key.
+func (s *stocked) use(t *testing.T, u *user, who *charactersv1.Character, key string, edit ...func(*playv1.UseConsumableRequest)) (*playv1.UseConsumableResponse, error) {
+	t.Helper()
+	req := &playv1.UseConsumableRequest{
+		CampaignId: s.campaignID, CharacterId: who.GetId(), IdempotencyKey: newKey(), RollInApp: true,
+	}
+	for _, e := range edit {
+		e(req)
+	}
+	if req.EntryId == "" { // a test that names the entry (one already used, one that is not there) says so
+		req.EntryId = s.entryOf(t, who, key)
+	}
+	res, err := u.charges.UseConsumable(t.Context(), connect.NewRequest(req))
+	if err != nil {
+		return nil, err
+	}
+	return res.Msg, nil
+}
+
+func (s *stocked) mustUse(t *testing.T, u *user, who *charactersv1.Character, key string, edit ...func(*playv1.UseConsumableRequest)) *playv1.UseConsumableResponse {
+	t.Helper()
+	res, err := s.use(t, u, who, key, edit...)
+	if err != nil {
+		t.Fatalf("UseConsumable(%s) error = %v", key, err)
+	}
+	return res
+}
+
+func giveTo(c *charactersv1.Character) func(*playv1.UseConsumableRequest) {
+	return func(r *playv1.UseConsumableRequest) { r.TargetCharacterId = c.GetId() }
+}
+
+func typedDice(faces ...int32) func(*playv1.UseConsumableRequest) {
+	return func(r *playv1.UseConsumableRequest) { r.RollInApp, r.TypedFaces = false, faces }
+}
+
+func (s *stocked) maxHP(t *testing.T, c *charactersv1.Character) int32 {
+	t.Helper()
+	return s.vitals(t, c).GetHitPointsMax()
+}
+
+func TestAHealingPotionHealsWithItsDiceAtEveryRarity(t *testing.T) {
+	t.Parallel()
+	for name, tc := range map[string]struct {
+		key   string
+		faces []int
+		text  string
+		total int32
+	}{
+		"common":   {potionCommon, []int{3, 4}, "2d4+2", 9},
+		"greater":  {potionGreater, []int{1, 2, 3, 4}, "4d4+4", 14},
+		"superior": {potionSuperior, []int{1, 1, 1, 1, 1, 1, 1, 1}, "8d4+8", 16},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			s := newStocked(t, tc.key)
+			maxHP := s.maxHP(t, s.toren)
+			s.hurt(t, s.toren, 1)
+			s.h.roller.queue(tc.faces...)
+			res := s.mustUse(t, s.caio, s.toren, tc.key)
+			if want := min(tc.total, maxHP-1); res.GetHealed() != want {
+				t.Errorf("healed = %d, want %d", res.GetHealed(), want)
+			}
+			if res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_HEALED || res.GetDiceText() != tc.text || res.GetRollTotal() != tc.total || len(res.GetFaces()) != len(tc.faces) {
+				t.Errorf("response = %v, want HEALED %s rolled to %d", res, tc.text, tc.total)
+			}
+			if got := s.vitals(t, s.toren).GetHitPointsCurrent(); got != 1+res.GetHealed() {
+				t.Errorf("hit points = %d, want %d", got, 1+res.GetHealed())
+			}
+			if res.GetItemKey() != tc.key || res.GetItemNamePt() == "" || res.GetEntryId() == "" || res.GetTargetCharacterId() != s.toren.GetId() {
+				t.Errorf("response = %v, want the item, its name, the entry and Toren as the receiver", res)
+			}
+			if s.holds(t, s.toren, tc.key) {
+				t.Error("the potion is still on the sheet")
+			}
+			if len(res.GetVitals()) != 1 || res.GetVitals()[0].GetCharacterId() != s.toren.GetId() || res.GetVitals()[0].GetHitPointsCurrent() != 1+res.GetHealed() {
+				t.Errorf("vitals = %v, want Toren's as they stand", res.GetVitals())
+			}
+		})
+	}
+}
+
+func TestASupremePotionIsCutAtTheMaximumAndHealedIsWhatWasRegained(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionSupreme)
+	maxHP := s.maxHP(t, s.toren)
+	s.hurt(t, s.toren, maxHP-3)
+	s.h.roller.queue(4, 4, 4, 4, 4, 4, 4, 4, 4, 4) // 40 + 20
+	res := s.mustUse(t, s.caio, s.toren, potionSupreme)
+	if res.GetHealed() != 3 || res.GetRollTotal() != 60 {
+		t.Errorf("healed %d of a roll of %d, want 3 of 60", res.GetHealed(), res.GetRollTotal())
+	}
+	if got := s.vitals(t, s.toren).GetHitPointsCurrent(); got != maxHP {
+		t.Errorf("hit points = %d, want the maximum %d", got, maxHP)
+	}
+}
+
+func TestAHealingPotionAtFullHealthIsSpentAllTheSame(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	s.h.roller.queue(2, 2)
+	res := s.mustUse(t, s.caio, s.toren, potionCommon)
+	if res.GetHealed() != 0 || res.GetRollTotal() != 6 || s.holds(t, s.toren, potionCommon) {
+		t.Errorf("response = %v, want 0 healed of a 6 and the potion gone", res)
+	}
+}
+
+func TestAResistancePotionLastsOneHourOfGameTimeAndIsTheOwnersAlone(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionFire)
+	res := s.mustUse(t, s.ana, s.pens, potionFire)
+	if res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_RESISTANCE || res.GetDamageTypeKey() != "damage-type:fire" {
+		t.Errorf("response = %v, want RESISTANCE to fire", res)
+	}
+	if seconds, found := s.potionEffectSeconds(t, s.pens.GetId(), potionFire); !found || seconds != 3600 {
+		t.Errorf("the effect = %d seconds, %v; want 3600", seconds, found)
+	}
+	if got := s.seenBy(t, s.ana, s.bia, s.pens.GetId()); got != "1/1/0" {
+		t.Errorf("effects read by master/owner/other = %s, want 1/1/0", got)
+	}
+	s.advanceGameTimeKeyed(t, newKey(), 3599)
+	if seconds, found := s.potionEffectSeconds(t, s.pens.GetId(), potionFire); !found || seconds != 1 {
+		t.Errorf("after 3599 seconds the effect = %d, %v; want 1 second left", seconds, found)
+	}
+	s.advanceGameTimeKeyed(t, newKey(), 1)
+	if _, found := s.potionEffectSeconds(t, s.pens.GetId(), potionFire); found {
+		t.Error("the effect is still there after the hour")
+	}
+}
+
+func (s *stocked) potionEffectSeconds(t *testing.T, characterID, key string) (seconds int32, found bool) {
+	t.Helper()
+	rows, err := s.h.pool.Query(t.Context(), `SELECT seconds_left FROM character_effects WHERE character_id = $1 AND source_key = $2`, characterID, key)
+	if err != nil {
+		t.Fatalf("read the effect: %v", err)
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.Scan(&seconds); err != nil {
+			t.Fatalf("read the effect: %v", err)
+		}
+		return seconds, true
+	}
+	return 0, false
+}
+
+func TestAConsumableWithNoAutomaticEffectIsSpentAndReturnsItsText(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionClimb, scrollFirst)
+	for _, key := range []string{potionClimb, scrollFirst} {
+		before := s.vitals(t, s.pens).GetHitPointsCurrent()
+		res := s.mustUse(t, s.ana, s.pens, key)
+		if res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(res.GetText()) == 0 || res.GetItemKey() != key {
+			t.Errorf("%s: response = %v, want TEXT_ONLY with the item's text", key, res)
+		}
+		if res.GetHealed() != 0 || res.GetDiceText() != "" || s.holds(t, s.pens, key) || s.vitals(t, s.pens).GetHitPointsCurrent() != before {
+			t.Errorf("%s: it healed, rolled or stayed on the sheet: %v", key, res)
+		}
+	}
+	if n := s.countEvents(t, eventConsumableUsed); n != 2 {
+		t.Errorf("the session has %d consumable_used events, want 2", n)
+	}
+}
+
+func TestAPotionGivenHealsTheReceiverAndTheGiversEntryIsTheOneSpent(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	s.hurt(t, s.toren, 2)
+	s.h.roller.queue(4, 4)
+	res := s.mustUse(t, s.ana, s.pens, potionCommon, giveTo(s.toren))
+	if res.GetHealed() != 10 || res.GetTargetCharacterId() != s.toren.GetId() {
+		t.Errorf("response = %v, want Toren healed by 10", res)
+	}
+	if got := s.vitals(t, s.toren).GetHitPointsCurrent(); got != 12 {
+		t.Errorf("Toren's hit points = %d, want 12", got)
+	}
+	if s.holds(t, s.pens, potionCommon) || !s.holds(t, s.toren, potionCommon) {
+		t.Error("the giver's potion must be the one spent, the receiver's own stays")
+	}
+	var got string
+	if err := s.h.pool.QueryRow(t.Context(), `SELECT character_id::text FROM session_events WHERE kind = $1`, eventConsumableUsed).Scan(&got); err != nil || got != s.pens.GetId() {
+		t.Errorf("the event is the giver's: %q, %v", got, err)
+	}
+}
+
+func TestAResistancePotionGivenIsTheReceiversEffect(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionFire)
+	s.mustUse(t, s.ana, s.pens, potionFire, giveTo(s.toren))
+	if _, found := s.potionEffectSeconds(t, s.toren.GetId(), potionFire); !found {
+		t.Error("Toren has no resistance")
+	}
+	if _, found := s.potionEffectSeconds(t, s.pens.GetId(), potionFire); found {
+		t.Error("the giver got the resistance")
+	}
+}
+
+func TestTheMasterUsesAndGivesForAnyCharacter(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	s.hurt(t, s.toren, 1)
+	s.h.roller.queue(1, 1)
+	if res := s.mustUse(t, s.master, s.pens, potionCommon, giveTo(s.toren)); res.GetHealed() != 4 {
+		t.Errorf("the master's gift healed %d, want 4", res.GetHealed())
+	}
+	s.h.roller.queue(2, 2)
+	if res := s.mustUse(t, s.master, s.toren, potionCommon); res.GetHealed() != 6 {
+		t.Errorf("the master's use for Toren healed %d, want 6", res.GetHealed())
+	}
+}
+
+func TestUsingAConsumableIsRefused(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon, "item:bag-of-holding")
+	_, err := s.use(t, s.bia, s.pens, potionCommon)
+	wantCode(t, "a stranger's use", err, connect.CodePermissionDenied)
+	_, err = s.use(t, s.caio, s.pens, potionCommon)
+	wantCode(t, "another player's character", err, connect.CodePermissionDenied)
+	_, err = s.use(t, s.ana, s.pens, "item:bag-of-holding")
+	wantCode(t, "an item that is no consumable", err, connect.CodeInvalidArgument)
+	_, err = s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.EntryId = "m99" })
+	wantCode(t, "an entry that is not there", err, connect.CodeNotFound)
+	_, err = s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.CharacterId = newKey() })
+	wantCode(t, "a character that is not there", err, connect.CodeNotFound)
+	_, err = s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.TargetCharacterId = newKey() })
+	wantCode(t, "a receiver that is not there", err, connect.CodeNotFound)
+	_, err = s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.IdempotencyKey = "no" })
+	wantCode(t, "a key that is no UUID", err, connect.CodeInvalidArgument)
+	_, err = s.use(t, s.ana, s.pens, potionCommon, func(r *playv1.UseConsumableRequest) { r.IdempotencyKey = "" })
+	wantCode(t, "no key", err, connect.CodeInvalidArgument)
+	if !s.holds(t, s.pens, potionCommon) || s.countEvents(t, eventConsumableUsed) != 0 {
+		t.Error("a refused use spent the potion or wrote an event")
+	}
+}
+
+func TestADeadCharacterNeitherUsesNorReceivesAPotion(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	if _, err := s.master.characters.MarkCharacterDead(t.Context(), connect.NewRequest(&charactersv1.MarkCharacterDeadRequest{CampaignId: s.campaignID, CharacterId: s.toren.GetId()})); err != nil {
+		t.Fatalf("MarkCharacterDead() error = %v", err)
+	}
+	for _, u := range []*user{s.caio, s.master} {
+		_, err := s.use(t, u, s.toren, potionCommon)
+		wantChargeBlock(t, "the dead user", err, charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD)
+	}
+	_, err := s.use(t, s.ana, s.pens, potionCommon, giveTo(s.toren))
+	wantChargeBlock(t, "the dead receiver", err, charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_CHARACTER_DEAD)
+	if !s.holds(t, s.pens, potionCommon) {
+		t.Error("a potion given to the dead was spent")
+	}
+}
+
+func TestUsingAConsumableIsIdempotent(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	s.hurt(t, s.toren, 1)
+	key := newKey()
+	withKey := func(r *playv1.UseConsumableRequest) { r.IdempotencyKey = key }
+	entry := s.entryOf(t, s.toren, potionCommon)
+	withEntry := func(r *playv1.UseConsumableRequest) { r.EntryId = entry }
+	s.h.roller.queue(3, 3)
+	first := s.mustUse(t, s.caio, s.toren, potionCommon, withKey, withEntry)
+	s.h.roller.queue(4, 4) // a second roll would show
+	again := s.mustUse(t, s.caio, s.toren, potionCommon, withKey, withEntry)
+	if first.GetHealed() != 8 || again.GetHealed() != 8 || again.GetRollTotal() != first.GetRollTotal() || again.GetEntryId() != first.GetEntryId() || again.GetItemKey() != potionCommon {
+		t.Errorf("the retry answered %v after %v, want the first answer", again, first)
+	}
+	if got := s.vitals(t, s.toren).GetHitPointsCurrent(); got != 9 || len(again.GetVitals()) != 1 || again.GetVitals()[0].GetHitPointsCurrent() != 9 {
+		t.Errorf("hit points = %d and the retry's vitals %v, want 9", got, again.GetVitals())
+	}
+	if n := s.countEvents(t, eventConsumableUsed); n != 1 {
+		t.Errorf("the session has %d consumable_used events, want 1", n)
+	}
+	_, err := s.use(t, s.caio, s.toren, potionCommon, withKey, withEntry, func(r *playv1.UseConsumableRequest) { r.TargetCharacterId = s.pens.GetId() })
+	wantCode(t, "the key reused for another request", err, connect.CodeInvalidArgument)
+}
+
+func TestTwoKeysOnOneEntryGiveOneUse(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	entry := s.entryOf(t, s.toren, potionCommon)
+	withEntry := func(r *playv1.UseConsumableRequest) { r.EntryId = entry }
+	s.mustUse(t, s.caio, s.toren, potionCommon, withEntry)
+	_, err := s.use(t, s.master, s.toren, potionCommon, withEntry) // another key: no retry, the entry is gone
+	wantCode(t, "a second key on the used entry", err, connect.CodeNotFound)
+	if n := s.countEvents(t, eventConsumableUsed); n != 1 {
+		t.Errorf("the session has %d consumable_used events, want 1", n)
+	}
+}
+
+func TestTheDiceOfAPotionFollowTheTablesDiceMode(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	s.hurt(t, s.toren, 1)
+	s.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
+	_, err := s.use(t, s.caio, s.toren, potionCommon)
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE)
+	for name, faces := range map[string][]int32{"too few faces": {3}, "too many faces": {1, 1, 1}, "a face off the die": {5, 1}, "a zero": {0, 2}, "no faces": nil} {
+		_, err = s.use(t, s.caio, s.toren, potionCommon, typedDice(faces...))
+		wantCode(t, name, err, connect.CodeInvalidArgument)
+	}
+	res := s.mustUse(t, s.caio, s.toren, potionCommon, typedDice(3, 2))
+	if res.GetRollTotal() != 7 || res.GetHealed() != 7 || len(res.GetFaces()) != 2 || res.GetFaces()[0] != 3 {
+		t.Errorf("typed faces 3 and 2 = %v, want a 7 healed", res)
+	}
+
+	d := newStocked(t, potionCommon)
+	d.forceDice(t, campaignsv1.DiceMode_DICE_MODE_APP)
+	_, err = d.use(t, d.caio, d.toren, potionCommon, typedDice(3, 2))
+	wantEncounterBlocked(t, err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_WRONG_DICE_MODE)
+	d.h.roller.queue(2, 2)
+	if _, err := d.use(t, d.caio, d.toren, potionCommon); err != nil {
+		t.Errorf("an app roll at an app table = %v", err)
+	}
+}
+
+func TestAPotionWithNoDiceNeedsNoRollWhateverTheTableRolls(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionFire, potionClimb)
+	s.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
+	for _, key := range []string{potionFire, potionClimb} {
+		if _, err := s.use(t, s.ana, s.pens, key, typedDice()); err != nil {
+			t.Errorf("%s at a table of real dice = %v, want it spent with no roll", key, err)
+		}
+	}
+}
+
+func TestUsingAConsumableWorksOnALockedSheet(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionClimb) // the session started: the sheet is locked for the player
+	if res := s.mustUse(t, s.ana, s.pens, potionClimb); len(res.GetText()) == 0 {
+		t.Errorf("response = %v, want the text", res)
+	}
+}
+
+// A character that fights in the running combat uses its potion there (the combat's own rules): outside a combat is
+// the only place this call carries out.
+func TestAConsumableOfACombatantIsRefusedWhileTheCombatRuns(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	s.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: s.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Toren": 10, "Pensantus": 18, "Brisa": 1},
+		at:       map[string][2]int32{"Toren": {3, 3}, "Goblin": {4, 3}, "Pensantus": {10, 3}, "Brisa": {8, 8}},
+	})
+	_, err := s.use(t, s.ana, s.pens, potionCommon)
+	wantChargesBlocked(t, "a combatant's use", err, playv1.ChargesBlockedReason_CHARGES_BLOCKED_REASON_COMBAT_RUNNING)
+	if !s.holds(t, s.pens, potionCommon) {
+		t.Error("the refused use spent the potion")
+	}
+}
+
+// The receiver's player and the master hear of the change; another player hears nothing.
+func TestUsingAConsumableTellsTheOwnersAndTheMasterAlone(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	s.hurt(t, s.toren, 1)
+	master, ana, caio, bia := s.master.watch(t, s.campaignID), s.ana.watch(t, s.campaignID), s.caio.watch(t, s.campaignID), s.bia.watch(t, s.campaignID)
+	for _, w := range []*watcher{master, ana, caio, bia} {
+		w.ready(t)
+	}
+	s.mustUse(t, s.ana, s.pens, potionCommon, giveTo(s.toren))
+	s.master.markCurrentMap(t, s.campaignID, s.mapID, master, ana, caio, bia)
+	heard := func(w *watcher, id string) bool {
+		for _, ev := range w.beforeMarker(t) {
+			if ev.GetVitalsChanged().GetVitals().GetCharacterId() == id {
+				return true
+			}
+		}
+		return false
+	}
+	if !heard(master, s.toren.GetId()) || !heard(caio, s.toren.GetId()) {
+		t.Error("the master and the receiver's player were not told of the receiver's vitals")
+	}
+	if evs := bia.beforeMarker(t); len(evs) != 0 {
+		t.Errorf("another player received %v", evs)
+	}
+}

@@ -143,6 +143,17 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   Um item que não recarrega (um talismã, um escaravelho) guarda o que sobrou até o mestre corrigir.
   Salvar a ficha nunca muda as cargas, e tirar um item da ficha descarta o que ele gastou.
   Um jogador lê as cargas só dos próprios personagens, e o mestre lê todas.
+- **Usar uma poção ou outro consumível (SRD 5.1, "Magic Items": poções e pergaminhos).**
+  "Usar" gasta uma unidade de um consumível da ficha: cada entrada é uma unidade, e a entrada sai da ficha enquanto o histórico guarda o uso.
+  Uma poção de cura devolve pontos de vida com os dados da sua entrada (2d4 + 2, 4d4 + 4, 8d4 + 8, 10d4 + 20), nunca acima do máximo, e a resposta diz o que foi de fato recuperado.
+  Uma poção de resistência dá uma hora de resistência ao tipo de dano dela, contada em tempo de jogo como os outros efeitos fora de combate, e só o dono e o mestre a leem.
+  Beber fora de combate não custa turno.
+  Em combate, beber custa a ação do turno de quem usa, e dar uma poção a uma criatura a até 1,5 metro (5 pés) custa a ação de quem dá; a poção age então em quem a recebe.
+  Uma poção pode ser dada a outro personagem: a entrada de quem dá é a gasta, quem recebe é curado ou resiste, e uma criatura morta não recebe poção.
+  O mestre pode usar ou dar uma poção por qualquer personagem.
+  Numa mesa de dados físicos o jogador digita as faces dos dados de cura, uma para cada dado.
+  A primeira fase aplica sozinha as poções de cura e de resistência.
+  Toda outra poção, e todo pergaminho, é gasta e registrada, e a resposta mostra o texto dela para a mesa aplicar; um pergaminho de magia não é conjurado.
 - **Munição (SRD 5.1, "Weapons": a propriedade de munição).**
   Flechas, virotes, balas de funda e dardos de zarabatana são contados na ficha, um número para cada tipo.
   O dono define a quantidade enquanto a ficha está aberta para edição, e o mestre a qualquer momento.
