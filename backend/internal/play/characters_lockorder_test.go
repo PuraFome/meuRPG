@@ -87,6 +87,7 @@ func TestClaimCharacterTakesTheSessionBeforeTheCharacter(t *testing.T) {
 		_, err := a.bia.characters.ClaimCharacter(t.Context(), connect.NewRequest(&charactersv1.ClaimCharacterRequest{Token: token}))
 		return err
 	}, func(t *testing.T) {
+		t.Helper()
 		a.notLocked(t, "the character", `SELECT id FROM characters WHERE id = $1 FOR UPDATE NOWAIT`, reserved.GetId())
 		a.notLocked(t, "the claim link", `SELECT id FROM claim_links WHERE character_id = $1 FOR UPDATE NOWAIT`, reserved.GetId())
 	})
@@ -104,6 +105,7 @@ func TestReturnCharacterToReserveTakesTheSessionBeforeTheCharacter(t *testing.T)
 		_, err := a.master.characters.ReturnCharacterToReserve(t.Context(), connect.NewRequest(&charactersv1.ReturnCharacterToReserveRequest{CampaignId: a.campaignID, CharacterId: reserved.GetId()}))
 		return err
 	}, func(t *testing.T) {
+		t.Helper()
 		a.notLocked(t, "the character", `SELECT id FROM characters WHERE id = $1 FOR UPDATE NOWAIT`, reserved.GetId())
 	})
 }
