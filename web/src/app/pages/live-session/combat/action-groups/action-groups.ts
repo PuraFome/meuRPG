@@ -439,7 +439,7 @@ export class ActionGroups {
     return (
       bonusAttackLine(o) ||
       beamsLeftLine(o) ||
-      (o.attack ? throwNote(o.attack) || AMMUNITION.note(o.attack) : '')
+      (o.attack ? throwNote(o.attack) || AMMUNITION.note(o.attack, this.options().attacks) : '')
     );
   }
 

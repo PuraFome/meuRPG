@@ -94,7 +94,7 @@ export function chargesLine(c: ItemChargesVm, name = ''): ChargesLine | null {
   }
 }
 
-/** One of the four kinds of ammunition of the SRD, the bundle it comes in and the weapons that fire it. */
+/** One of the four kinds of ammunition of the SRD, and the bundle it comes in. */
 export interface AmmunitionKind {
   readonly key: string;
   /** The heading of the kind: "Flechas". */
@@ -105,8 +105,6 @@ export interface AmmunitionKind {
   /** One piece and several, in lower case: "flecha", "flechas". */
   readonly one: string;
   readonly many: string;
-  /** The catalog keys of the weapons that fire it (the attack row names its kind by the weapon). */
-  readonly weapons: readonly string[];
 }
 
 export const AMMUNITION_KINDS: readonly AmmunitionKind[] = [
@@ -117,7 +115,6 @@ export const AMMUNITION_KINDS: readonly AmmunitionKind[] = [
     bundle: 20,
     one: 'flecha',
     many: 'flechas',
-    weapons: ['equipment:shortbow', 'equipment:longbow'],
   },
   {
     key: 'equipment:crossbow-bolt',
@@ -126,7 +123,6 @@ export const AMMUNITION_KINDS: readonly AmmunitionKind[] = [
     bundle: 20,
     one: 'virote',
     many: 'virotes',
-    weapons: ['equipment:crossbow-light', 'equipment:crossbow-hand', 'equipment:crossbow-heavy'],
   },
   {
     key: 'equipment:sling-bullet',
@@ -135,7 +131,6 @@ export const AMMUNITION_KINDS: readonly AmmunitionKind[] = [
     bundle: 20,
     one: 'bala de funda',
     many: 'balas de funda',
-    weapons: ['equipment:sling'],
   },
   {
     key: 'equipment:blowgun-needle',
@@ -144,13 +139,12 @@ export const AMMUNITION_KINDS: readonly AmmunitionKind[] = [
     bundle: 50,
     one: 'agulha de zarabatana',
     many: 'agulhas de zarabatana',
-    weapons: ['equipment:blowgun'],
   },
 ];
 
-/** The kind a weapon fires, from its catalog key; `undefined` for a weapon that fires none. */
-export function ammunitionKindOfWeapon(weaponKey: string): AmmunitionKind | undefined {
-  return AMMUNITION_KINDS.find((k) => k.weapons.includes(weaponKey));
+/** The kind of an ammunition catalog key (`Attack.ammunition_key`); `undefined` for a key the table does not know. */
+export function ammunitionKindOfKey(ammunitionKey: string): AmmunitionKind | undefined {
+  return AMMUNITION_KINDS.find((k) => k.key === ammunitionKey);
 }
 
 /** What the character holds of one kind of ammunition and what the last combat did to it. */

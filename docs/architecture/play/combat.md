@@ -303,8 +303,9 @@ Each action carries its own `idempotency_key`, made once and resent on the retry
 
 The attack row of a weapon that fires ammunition (`core/combat/ammunition-line.ts`) shows a count tag only when `ammunition_left` is present.
 The tag warns at 3 or fewer; at 0 it is dashed and the "Atacar" button is off with "Sem flechas: o tiro não sai." as its described reason.
-The attack does not carry the kind, so the word comes from the weapon key (bow, crossbow, sling, blowgun) and falls back to "munição".
+The word comes from `Attack.ammunition_key` (arrow, bolt, bullet, needle) and falls back to "munição".
 The improvised melee line (`improvised`, key `<weapon>:melee`) is a row of its own with a note that it spends no piece and never carries the tag.
+Its note takes the kind from the ranged line of the same weapon in the same options (key without `:melee`), and falls back to "munição".
 The sheet's attack table lists that line as a plain weapon row.
 
 A feature action with a use (`ActionOption.via_use_feature`) is taken through `ActionSheets.takeFeature` and `FeatureService.UseFeature` (`CombatClient.features`).

@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { type MessageInitShape, create } from '@bufbuild/protobuf';
 
 import {
@@ -142,24 +145,17 @@ describe('ammunition', () => {
     ]);
   });
 
-  it('names the weapons of the catalog that fire each kind (effects/ammunition.json of the SRD content)', () => {
-    // The keys the server uses: a weapon whose key is not here never gets a count tag.
-    const catalog: Record<string, string> = {
-      'equipment:blowgun': 'equipment:blowgun-needle',
-      'equipment:crossbow-hand': 'equipment:crossbow-bolt',
-      'equipment:crossbow-heavy': 'equipment:crossbow-bolt',
-      'equipment:crossbow-light': 'equipment:crossbow-bolt',
-      'equipment:longbow': 'equipment:arrow',
-      'equipment:shortbow': 'equipment:arrow',
-      'equipment:sling': 'equipment:sling-bullet',
-    };
-    const ours: Record<string, string> = {};
-    for (const kind of AMMUNITION_KINDS) {
-      for (const weapon of kind.weapons) {
-        ours[weapon] = kind.key;
-      }
-    }
-    expect(ours).toEqual(catalog);
+  it('keys the kinds by the ammunition values of effects/ammunition.json of the SRD content', () => {
+    // The keys the server sends in Attack.ammunition_key: a kind not here never gets its word.
+    const catalog = JSON.parse(
+      readFileSync(
+        resolve(process.cwd(), '../backend/internal/rules/srd51/effects/ammunition.json'),
+        'utf8',
+      ),
+    ) as Record<string, string>;
+    expect(AMMUNITION_KINDS.map((k) => k.key).sort()).toEqual(
+      [...new Set(Object.values(catalog))].sort(),
+    );
   });
 
   it('says the kind in the one and the many, in lower case', () => {

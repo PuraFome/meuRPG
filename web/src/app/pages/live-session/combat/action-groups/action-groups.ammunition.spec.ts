@@ -17,6 +17,7 @@ function bow(extra: Record<string, unknown> = {}, key = 'equipment:longbow') {
     enabled: true,
     attack: {
       key,
+      ammunitionKey: 'equipment:arrow',
       name: 'Longbow',
       namePt: 'Arco longo',
       kind: AttackKind.WEAPON,

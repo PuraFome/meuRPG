@@ -1,5 +1,5 @@
 import type { Attack } from '../../../gen/meurpg/rules/v1/rules_pb';
-import { type AmmunitionKind, ammunitionKindOfWeapon } from '../characters/charges';
+import { type AmmunitionKind, ammunitionKindOfKey } from '../characters/charges';
 
 /** The tag of a counted kind on an attack row: "3 flechas"; `warning` at 3 or fewer, `empty` at 0 (the shot does not go). */
 export interface AmmunitionTag {
@@ -12,12 +12,9 @@ const LOW_AMMUNITION = 3;
 
 const MELEE_SUFFIX = ':melee';
 
-/** The kind a weapon fires, from its key (the improvised melee line carries the weapon's key and ":melee"); `null` for a weapon that fires none of the table. */
+/** The kind a line fires, from the ammunition key the server sends on it; `null` for a line without one or with a key the table does not know. */
 function kindOf(attack: Attack): AmmunitionKind | null {
-  const weapon = attack.key.endsWith(MELEE_SUFFIX)
-    ? attack.key.slice(0, -MELEE_SUFFIX.length)
-    : attack.key;
-  return ammunitionKindOfWeapon(weapon) ?? null;
+  return ammunitionKindOfKey(attack.ammunitionKey) ?? null;
 }
 
 /** The count tag of a ranged line whose kind the app counts; `null` for every other line (no `ammunition_left`: not counted). */
@@ -41,9 +38,20 @@ export function ammunitionEmptyLine(attack: Attack): string {
   return `Sem ${kindOf(attack)?.many ?? 'munição'}: o tiro não sai.`;
 }
 
-/** "Improvisado: não gasta flecha." under the improvised melee line of a weapon of ammunition; `''` for any other line. */
-export function ammunitionNote(attack: Attack): string {
-  return attack.improvised ? `Improvisado: não gasta ${kindOf(attack)?.one ?? 'munição'}.` : '';
+/** The kind of the ranged line of the same weapon as an improvised melee line (its key without ":melee"), among the lines of the options. */
+function siblingKind(melee: Attack, lines: readonly { attack?: Attack }[]): AmmunitionKind | null {
+  const weapon = melee.key.endsWith(MELEE_SUFFIX)
+    ? melee.key.slice(0, -MELEE_SUFFIX.length)
+    : melee.key;
+  const ranged = lines.find((l) => l.attack?.key === weapon)?.attack;
+  return ranged ? kindOf(ranged) : null;
+}
+
+/** "Improvisado: não gasta flecha." under the improvised melee line of a weapon of ammunition (the kind comes from its ranged sibling in `lines`); `''` for any other line. */
+export function ammunitionNote(attack: Attack, lines: readonly { attack?: Attack }[]): string {
+  return attack.improvised
+    ? `Improvisado: não gasta ${siblingKind(attack, lines)?.one ?? 'munição'}.`
+    : '';
 }
 
 /** What spends ammunition, under the attack list while a kind is counted. */
