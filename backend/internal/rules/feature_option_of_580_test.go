@@ -66,7 +66,7 @@ func TestTwoFeaturesWithOneNameAreToldApartByKey(t *testing.T) {
 	d := Derive(b, c)
 	for option, parent := range map[string]string{
 		"feature:fighter-fighting-style-defense": "feature:fighter-fighting-style",
-		"feature:fighting-style-dueling": "feature:paladin-fighting-style",
+		"feature:fighting-style-dueling":         "feature:paladin-fighting-style",
 	} {
 		f := featureOf(t, d, option)
 		if f.OptionOfPT != "Estilo de Luta" || f.OptionOfKey != parent {

@@ -221,6 +221,7 @@ func featureToProto(f rules.Feature) *rulesv1.Feature {
 		DescriptionPtMissing: f.DescriptionPTMissing,
 		DescriptionPtOnly:    f.DescriptionPTOnly,
 		OptionOfPt:           f.OptionOfPT,
+		OptionOfKey:          f.OptionOfKey,
 	}
 }
 

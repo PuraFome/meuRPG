@@ -765,6 +765,7 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 func (col *collector) offeredBy(parent string) {
 	last := &col.x.d.Features[len(col.x.d.Features)-1]
 	last.OptionOfPT = col.x.c.namePT(parent)
+	last.OptionOfKey = parent
 }
 
 // optionNotOffered is the issue of a pick that nothing on the sheet offers, tied
