@@ -359,6 +359,8 @@ type Traits struct {
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string
+	// Intelligence is the Intelligence score of a creature, with the floor a steed has; 0 for a character, whose sheet is read elsewhere.
+	Intelligence int `json:",omitempty"`
 	// SpellAttackIgnoresCover says half and three-quarters cover give the target no AC
 	// bonus against the character's ranged spell attacks, and RangedWeaponIgnoresCover
 	// the same against its ranged weapon attacks (a thrown weapon used at range too);

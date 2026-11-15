@@ -642,6 +642,7 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, crea
 		return link.Sheet{}, false, nil
 	}
 	out := link.Sheet{ArmorClass: d.ArmorClass, AttacksPerAction: max(d.AttacksPerAction, 1), Senses: senseRanges(d.Senses), Traits: traitsOf(content, d)}
+	out.Traits.Intelligence = intelligenceOf(d)
 	for _, a := range d.Attacks {
 		name := a.NamePT
 		if name == "" {
@@ -820,4 +821,13 @@ func (s *Service) CreatureEyes(ctx context.Context, tx pgx.Tx, campaignID, monst
 		return maplink.Eyes{}, false, nil
 	}
 	return maplink.Eyes{Passive: d.PassivePerception, Senses: sensesOf(d.Senses)}, true, nil
+}
+
+// intelligenceOf is the Intelligence score of the creature, 0 when its page has none.
+func intelligenceOf(d rules.Derived) int {
+	i := slices.IndexFunc(d.Abilities, func(a rules.AbilityScore) bool { return a.Ability == rules.INT })
+	if i < 0 {
+		return 0
+	}
+	return d.Abilities[i].Score
 }
