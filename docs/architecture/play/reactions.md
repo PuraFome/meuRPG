@@ -167,6 +167,48 @@ A damage roll opens its window in `damageWindows`, for every damage that is not 
 The window is the same for a player's creature and for an NPC.
 The log line of the cut names the die, what it came off (the attack, the test or the damage) and the roll before and after; a player's line says only whether the attack still hit.
 
+## The feature window
+
+A table feature whose `use` has a `trigger` and the economy `reaction` opens a window of kind `feature` (`feature_window.go`).
+Two moments open it: a creature of the other side starts its turn (`startTurn`, `openStartFeatures`), and a creature ends a move (`openMoveFeatures`, beside the opportunity offers).
+The turn-start window needs the creature within `range_ft` of the owner.
+The move window needs it within `range_ft` at the end and outside it at the start of the move.
+Only the start and the end square of one `MoveCombatant` count: a creature that crosses the range in one call triggers nothing.
+The reactor is asked once about each feature for each creature in each turn (`askedThisTurn`): the window's own row is the mark, and `windowTrigger.turn` keeps the turn key (round and whose turn) it opened in.
+A row that is open or answered counts, whatever the answer, so a creature that goes out of the range and in again does not ask again, and the turn-start and the move are one question.
+The undo that deletes the window deletes the mark, and the undo of a pass or a use reopens the row, so the mark follows.
+The creature's next turn has a new turn key and asks again.
+One window opens for each triggered feature of each reactor, all in one new group.
+The reactor is a player's character on the map, of the other side, with its reaction free, not incapacitated and not blinded, and the feature has a use left.
+The reactor must see the creature (`watches`), and the creature must be a target the feature can aim at.
+An invisible creature opens no window.
+`windowTrigger` keeps `key` (the feature), `actor` (the creature), `distance`, `moment` and `hidden`.
+The reactor's player reads the creature, the feature, the distance and the moment in `ReactionWindow.trigger`.
+The window holds the gate (`REACTION_PENDING`) and the turn waits, as for any window.
+
+**Answering.** `AnswerReaction` "Usar" runs `UseFeature`'s steps with the window (`featureFlow.win`), as a reaction on the creature.
+The reaction, one use and the feature's resource are spent, the window closes as answered and the line is the feature's own.
+"Deixar passar" writes `reaction_declined` and spends nothing.
+The reactor's player or the master answers (`ByMaster`); another player gets `permission_denied`.
+A feature with a trigger takes no choice, because the answer carries none (`.use.trigger` is refused at save when the feature has choices).
+The web auto-passes the window at 30 s, as the other optional reactions.
+
+**Closing.** The window is checked again at every settle (`featureGone`): it closes as `trigger_gone`, with the other kinds' quiet path, when the creature is defeated, dismissed, on the reactor's side or hidden since the window opened for the player, or when the feature is not ready (no use or resource left, the reaction spent, nothing to aim at).
+A creature hidden after its window opened to the player closes it, so the player reads nothing more of the creature (RN-10).
+
+**Undo.** Only the undo of the move that opened the window removes it while it is unanswered (`DeleteUnansweredFeatureWindow`; the move event keeps the ids in `feature_windows`).
+The end of a turn is not undoable, so a window the start of a turn opened is answered or closed, never undone.
+The undo of the use reopens the window (`reopenWindowOf`), and so does the undo of the pass.
+
+**RN-10.** A window of a creature the master hid is the master's alone (`windowTrigger.Hidden`).
+It opens for any reactor without a sight check.
+No player is told: not the stream, not `reaction_wait` (the wait reads "Esperando o mestre"), not `GetTurnOptions`, not the combat read.
+The reactor's player cannot answer it (`windowToAnswer` reads it as an invented window).
+The master's "Usar" and "Deixar passar" on it write a secret event (`featureFlow.begin` marks the use secret whoever it is aimed at, so an unaimed feature tells no player that a creature came near).
+No player reads the line of the use, the reactor's player included.
+The reactor's player learns of the spent use from the character: the reaction is used, the feature's row has one use less, the resource is spent.
+The leaktest has one row for each moment.
+
 ## The settle step and the gate
 
 After every write of a combat, `settleReactions` runs:
@@ -189,9 +231,10 @@ An optional reaction a player does not answer passes after 30 seconds.
 The server keeps no timer.
 The master's screen (`core/combat/reaction-autopass.ts`, driven by `combat-view`) keeps the clock.
 It remembers when it first saw each open window waiting for its player (`reactor_is_player`, `answer_now`).
-The kinds are Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall and Readied action.
+The kinds are Shield, Uncanny Dodge, Hellish Rebuke (the cast), Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, Readied action and Reaction feature.
 After `AUTO_PASS_SECONDS` (30) it sends the same `AnswerReaction` "Deixar passar" the master can tap.
-Its idempotency key is `auto-pass:<window id>`, so two tabs or a retry never answer twice.
+Its idempotency key is the window's id with every hex digit flipped but the version and the variant ones (`autoPassKey`: the server takes only a UUID), so two tabs or a retry never answer twice.
+The same pass and a player's "Usar" can reach the server together: the first answer wins, the other is refused (`failed_precondition`) and nothing is spent twice.
 A refusal because it was answered meanwhile is ignored.
 Saving throws (`CONCENTRATION_SAVE`, `EFFECT_SAVE`, the Hellish Rebuke second step), contests and the master's check never auto-pass.
 An NPC's window never auto-passes, a READIED one included.

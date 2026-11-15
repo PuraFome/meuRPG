@@ -141,6 +141,15 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   The loss has three outcomes, as the item says: it is gone (the wands, and the staffs of fire, frost, healing and swarming insects), it becomes a plain nonmagical item that stays on the sheet as what it is made of (the staffs of charming, striking and the woodlands), or it keeps only its bonus to attack and damage rolls (the staff of power).
   An item whose charges the SRD rolls (the luck blade, the nine lives stealer) has none set when it is new: the master sets them, from 0 to the maximum.
   The figurine of the ivory goats regains all its charges on the seventh dawn after the last one was spent.
+  The dawn is the master's: "Amanhecer" gives every character's items their dawn, and a long rest does the same as part of the rest when its request asks for it, and it does not by default.
+  A short rest never recharges items.
+  At a dawn an item that regains charges gets them back as its entry says (all of them, or its dice), up to the maximum, and an item that is full is left as it is.
+  The app rolls the dice of a dawn, also at a table of real dice, because the master rolls them for the table.
+  A master who rolled the dice at the table corrects the item's charges by hand, as the sheet allows.
+  The figurines count the dawn only while they have no charge left, and regain them all on the seventh.
+  A figurine with a charge left counts no dawn.
+  An item that is lost never recharges, and an item that waits for the d20 of its last charge waits for the roll first.
+  Every item that regained charges is recorded in the session history, and only the master and the owner read it.
   An item that does not recharge (a talisman, a scarab) keeps what is left until the master corrects it.
   A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
   A player reads the charges of their own characters only, and the master reads all of them.
@@ -172,6 +181,8 @@ The master takes a short or a long rest for the table, after a confirmation that
 | Short | Resources that recharge on a short or a long rest, and the warlock's pact slots. Each player spends hit dice one at a time, rolled in the app or typed from a real die (RN-18), and heals the roll plus the Constitution modifier. |
 | Long | Every resource that does not recharge at dawn or never, all spell slots, all hit points, and half of the total hit dice (at least one). Temporary hit points end. A character at 0 hit points gains nothing. |
 
+- The long rest can also be the dawn of the magic items: when the request asks for it, the items that recharge at dawn recharge in the same step, and a rest sent twice recharges once.
+  The request does not ask for it by default, and it means nothing on a short rest.
 - The app does not count hours: the master is warned when the session already had a long rest. A rest is refused while a combat runs.
 - Hit dice are kept by die size (SRD, "Multiclassing").
 - **Arcane Recovery** (Wizard): once per long rest, after a short rest, the player chooses expended slots whose combined level is at most half the wizard level, rounded up, none of the 6th level or higher. Only the wizard level counts, and never pact slots. The short rest sheet has a "Recuperação Arcana" section, and afterwards it reads "Recuperação Arcana: usada; volta no descanso longo." A refusal changes nothing.
@@ -463,6 +474,7 @@ If it does not, everyone uses the type the master picks.
 - A change applies from the next roll. NPCs always roll in the app, and the master can type a value.
 - With a physical die the player types the sum of the dice without the modifier (the d20 face, 1 to 20), and the app adds the modifier. The sum must fit between the minimum and the maximum of the dice.
 - The rule covers initiative, attack and damage rolls, spell attacks, spell damage and healing, Second Wind, death saves, the d20 of an RP scene action, searching for traps, puzzle hints, the group check, both sides of a contest, Hide, the ability check of Counterspell and the 4d6 ability scores of a new sheet. A mode the master forced refuses the other way with "A campanha mudou a forma de rolar os dados. Recarregue a página.".
+- The dice of the magic items' dawn, rolled by the master for the whole table, are always rolled by the app, like the reroll exceptions above.
 - A spell target's saving throw is always rolled by the app with the sheet's bonus.
 - A table feature's reroll ("rolar de novo?", RN-23) is rolled by the app even when the master forces physical dice: it is the one d20 the player cannot type.
 - The hit points rolled when a character is created are not part of this rule.
@@ -699,6 +711,13 @@ Members read the campaign's content, except creatures (below); only the master w
   A player reads the creatures as for any summon.
   A player who holds none does not read the creatures of the feature in the table's list or on a creature's page.
   A player who holds the feature reads the names of its creatures (no numbers) when choosing which to bring.
+- **A table feature's action can be used from the "Usar" sheet.**
+  The feature may offer options, and the table may write the question over them ("Qual forma"); without one the sheet asks "Qual opção".
+  A use spends the part of the turn the feature costs and, when it has one, a use of its resource.
+  The log line of a use says what it cost: "gastou a reação", "gastou 1 uso de Forma Selvagem (restam 2 de 2)".
+  The master and the user's player read the cost, the other players read only that the feature was used.
+  The master may use a feature whose part of the turn is already spent: his sheet says so and asks "Usar mesmo assim".
+  That is the only thing he overrides: no use of the feature left, no creature to aim at, another creature's turn for an action and a question that waits for him still stop him.
 - **Open screens follow.** When the master changes content or a switch, the players' open screens read the lists again, each with the role of its reader.
 - **An entry the rules refuse is left out, and the master sees which and why.**
   The rest of the campaign keeps working.
@@ -728,7 +747,7 @@ Members read the campaign's content, except creatures (below); only the master w
   A spell on its caster alone may make the effect an aura: it reaches, at each roll, the creatures within its radius on the chosen side ("allies" includes its bearer, as the SRD's allied auras do), gives only what a roll reads, and a player reads its bonus as the source's name or "Outra fonte", never the radius of an aura they do not own.
   The lasting effect of a class or a feature is a state of its owner.
   A spell may also write a next-hit effect on its caster: extra weapon damage on the caster's next hit, next melee hit, every hit while concentrating, or every hit on the creature the spell marked.
-  The master picks the die, the dice (more per slot level above, up to a cap) and the damage type (the weapon's if none).
+  The master picks the die, the dice (more per slot level above, up to a cap the master may leave out) and the damage type (the weapon's if none).
   It may add a saving throw for the target of the hit, with the conditions a fail gives, until the end of its next turn or as long as the spell lasts.
   So a table spell writes a lasting effect on its targets, a next-hit effect on its caster, or both, and never code.
   The damage is offered automatically after a weapon hit, doubled on a critical hit, and a miss keeps the effect.
@@ -1110,6 +1129,7 @@ There is no "Pular": every window is answered with "Usar" or "Deixar passar", or
 | Slow Fall (monk 4) | The falling monk takes 5 times its level off its own falling damage. |
 | Opportunity attack | See RN-21. |
 | Readied action | The master says the trigger of a readied action happened: the readier may use its reaction to take the held action (an attack, a move up to its speed, a spell, another action) or let it pass. Only the readier's player and the master read the trigger and the action; the others read "Esperando a reação de <nome>" or "Esperando o mestre". |
+| Reaction feature | A feature of the table whose action is a reaction and that names a trigger: an enemy starts its turn within a distance of the owner, or moves to within it. Its player may use the feature on that creature or let it pass; nothing is spent by letting it pass. |
 | Concentration save | Damage to a concentrating creature asks Constitution against DC 10 or half the damage; 0 HP ends the concentration with no save (RN-22). |
 | Parry (monster) | A melee weapon hit on a creature whose stat block has the reaction: +2 to +5 AC against that attack, decided by the server with no window (a window for the master only in "Perguntar"). |
 | Legendary Resistance | A player's spell with a saving throw, or a hit rider that rolls a save, reaches a creature with the trait and a use left, whether its save passed or failed: the cast or the rider's answer waits for the master alone (RN-29). A spell's area that catches such a creature asks its save of the master alone. |
@@ -1123,7 +1143,7 @@ The held action waits until the window is answered, and is dropped if it can no 
 The turn waits for open windows.
 A player reads only their own windows, and the numbers of the trigger (an attack total, an armor class, a damage) are the master's.
 
-- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
+- **An optional reaction a player does not answer passes after 30 seconds** (Shield, Uncanny Dodge, Hellish Rebuke's cast, Counterspell, Cutting Words, Deflect Missiles, Protection, Feather Fall, Slow Fall, a readied action the master fired, a reaction feature whose trigger happened and an opportunity attack offered to a player). The master's screen counts it ("Passa sozinho em N s"), the player's prompt reads "Se você não responder, passa sozinho em N s.". Never a saving throw, a contest or the master's check.
 - **A player who is rolling gets longer.** While the player rolls a physical die, the window waits up to 2 minutes: "Você está rolando: a mesa espera 2 min", and the master reads "Rolando… passa sozinho em N s". The master can pass it sooner.
 - **Ready** (SRD 5.1, "Ready").
   On its turn a creature spends its action to hold another until a trigger its player writes.
@@ -1153,6 +1173,19 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   They still see what any ended concentration does: the creature's concentration indicator goes blank and the effects of its earlier concentration spell end.
   The concentration save of a held spell is the readier's player's and the master's: the other players read only that the table waits for the master.
   A hidden creature's readied action is the master's alone.
+- **A reaction feature with a trigger** (the feature window).
+  The table writes the trigger on the feature: the moments (an enemy starts its turn within a distance, an enemy moves to within it) and the distance.
+  The app opens the window for the owner's player when a creature of the other side starts its turn within the distance, or moves from outside it to inside it, and the owner can react.
+  A creature that was already within the distance and moves within it does not trigger it again.
+  The move counts from the square it left to the square it reached: a creature that crosses the distance and stops outside it triggers nothing.
+  The owner is asked once about each creature in each turn, whatever the answer: a creature that goes out of the distance and in again in the same turn does not ask again, and the start of its turn and its move are one question.
+  The creature's next turn asks again.
+  The owner is not asked when its reaction is spent, it cannot react, it sees nothing of the creature, the feature has no use left or it cannot be aimed at the creature.
+  "Usar" runs the feature as a reaction on that creature: the reaction, one use and the feature's resource are spent, and the line of the use says so.
+  "Deixar passar" spends nothing.
+  The turn waits for the window, and the move that opened it can be undone until the window is answered.
+  A feature with a trigger offers no choice, because the window only asks to use it or not.
+  A creature the master hid never opens the window for the player: it is the master's alone, who reads it and answers for the player, and no player reads, hears of or answers it.
 - **Table rule "Reações dos inimigos"** (RN-24): "Só quando um inimigo pode reagir" (default) opens a window only when an enemy can react; "Sempre" opens the master's one-tap check on every attack, cast and damage of a player against an enemy, so the pause tells the players nothing.
 
 How it is built: [Architecture](../architecture/play/reactions.md).

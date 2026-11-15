@@ -56,6 +56,8 @@ const (
 	// ChargesServiceRecoverAmmunitionProcedure is the fully-qualified name of the ChargesService's
 	// RecoverAmmunition RPC.
 	ChargesServiceRecoverAmmunitionProcedure = "/meurpg.play.v1.ChargesService/RecoverAmmunition"
+	// ChargesServiceDawnProcedure is the fully-qualified name of the ChargesService's Dawn RPC.
+	ChargesServiceDawnProcedure = "/meurpg.play.v1.ChargesService/Dawn"
 )
 
 // ChargesServiceClient is a client for the meurpg.play.v1.ChargesService service.
@@ -110,6 +112,17 @@ type ChargesServiceClient interface {
 	// combat (or fought none); `failed_precondition` with ChargesBlocked COMBAT_RUNNING while the character's
 	// latest combat is not ended, and ALREADY_RECOVERED once the pieces were taken back.
 	RecoverAmmunition(context.Context, *connect.Request[v1.RecoverAmmunitionRequest]) (*connect.Response[v1.RecoverAmmunitionResponse], error)
+	// Dawn is the master's "Amanhecer": a new day dawns for the table and the magic items of every character of the
+	// campaign recharge as their text says (SRD 5.1). Items that regain charges at dawn regain them (all, or the dice
+	// the item rolls, up to the maximum; the app rolls the dice, also on a table of real dice), and an item that
+	// waits for a number of dawns after its last charge counts this one and regains them all on the last. An item
+	// that is lost or waits for its last d20 is left as it is. One `item_charges_restored` event is written for each
+	// item that regained charges, and an item at its maximum writes nothing. A long rest with
+	// TakeRestRequest.restore_dawn does the same in the rest's transaction. Master only; needs an open game session.
+	//
+	// Errors: `permission_denied` for a player; `failed_precondition` with NO_OPEN_SESSION; `invalid_argument` for an
+	// idempotency key that is not a UUID or one reused for another request.
+	Dawn(context.Context, *connect.Request[v1.DawnRequest]) (*connect.Response[v1.DawnResponse], error)
 }
 
 // NewChargesServiceClient constructs a client for the meurpg.play.v1.ChargesService service. By
@@ -153,6 +166,12 @@ func NewChargesServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(chargesServiceMethods.ByName("RecoverAmmunition")),
 			connect.WithClientOptions(opts...),
 		),
+		dawn: connect.NewClient[v1.DawnRequest, v1.DawnResponse](
+			httpClient,
+			baseURL+ChargesServiceDawnProcedure,
+			connect.WithSchema(chargesServiceMethods.ByName("Dawn")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -163,6 +182,7 @@ type chargesServiceClient struct {
 	setCharges        *connect.Client[v1.SetChargesRequest, v1.SetChargesResponse]
 	setAmmunition     *connect.Client[v1.SetAmmunitionRequest, v1.SetAmmunitionResponse]
 	recoverAmmunition *connect.Client[v1.RecoverAmmunitionRequest, v1.RecoverAmmunitionResponse]
+	dawn              *connect.Client[v1.DawnRequest, v1.DawnResponse]
 }
 
 // SpendCharges calls meurpg.play.v1.ChargesService.SpendCharges.
@@ -188,6 +208,11 @@ func (c *chargesServiceClient) SetAmmunition(ctx context.Context, req *connect.R
 // RecoverAmmunition calls meurpg.play.v1.ChargesService.RecoverAmmunition.
 func (c *chargesServiceClient) RecoverAmmunition(ctx context.Context, req *connect.Request[v1.RecoverAmmunitionRequest]) (*connect.Response[v1.RecoverAmmunitionResponse], error) {
 	return c.recoverAmmunition.CallUnary(ctx, req)
+}
+
+// Dawn calls meurpg.play.v1.ChargesService.Dawn.
+func (c *chargesServiceClient) Dawn(ctx context.Context, req *connect.Request[v1.DawnRequest]) (*connect.Response[v1.DawnResponse], error) {
+	return c.dawn.CallUnary(ctx, req)
 }
 
 // ChargesServiceHandler is an implementation of the meurpg.play.v1.ChargesService service.
@@ -242,6 +267,17 @@ type ChargesServiceHandler interface {
 	// combat (or fought none); `failed_precondition` with ChargesBlocked COMBAT_RUNNING while the character's
 	// latest combat is not ended, and ALREADY_RECOVERED once the pieces were taken back.
 	RecoverAmmunition(context.Context, *connect.Request[v1.RecoverAmmunitionRequest]) (*connect.Response[v1.RecoverAmmunitionResponse], error)
+	// Dawn is the master's "Amanhecer": a new day dawns for the table and the magic items of every character of the
+	// campaign recharge as their text says (SRD 5.1). Items that regain charges at dawn regain them (all, or the dice
+	// the item rolls, up to the maximum; the app rolls the dice, also on a table of real dice), and an item that
+	// waits for a number of dawns after its last charge counts this one and regains them all on the last. An item
+	// that is lost or waits for its last d20 is left as it is. One `item_charges_restored` event is written for each
+	// item that regained charges, and an item at its maximum writes nothing. A long rest with
+	// TakeRestRequest.restore_dawn does the same in the rest's transaction. Master only; needs an open game session.
+	//
+	// Errors: `permission_denied` for a player; `failed_precondition` with NO_OPEN_SESSION; `invalid_argument` for an
+	// idempotency key that is not a UUID or one reused for another request.
+	Dawn(context.Context, *connect.Request[v1.DawnRequest]) (*connect.Response[v1.DawnResponse], error)
 }
 
 // NewChargesServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -281,6 +317,12 @@ func NewChargesServiceHandler(svc ChargesServiceHandler, opts ...connect.Handler
 		connect.WithSchema(chargesServiceMethods.ByName("RecoverAmmunition")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chargesServiceDawnHandler := connect.NewUnaryHandler(
+		ChargesServiceDawnProcedure,
+		svc.Dawn,
+		connect.WithSchema(chargesServiceMethods.ByName("Dawn")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.ChargesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChargesServiceSpendChargesProcedure:
@@ -293,6 +335,8 @@ func NewChargesServiceHandler(svc ChargesServiceHandler, opts ...connect.Handler
 			chargesServiceSetAmmunitionHandler.ServeHTTP(w, r)
 		case ChargesServiceRecoverAmmunitionProcedure:
 			chargesServiceRecoverAmmunitionHandler.ServeHTTP(w, r)
+		case ChargesServiceDawnProcedure:
+			chargesServiceDawnHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -320,4 +364,8 @@ func (UnimplementedChargesServiceHandler) SetAmmunition(context.Context, *connec
 
 func (UnimplementedChargesServiceHandler) RecoverAmmunition(context.Context, *connect.Request[v1.RecoverAmmunitionRequest]) (*connect.Response[v1.RecoverAmmunitionResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ChargesService.RecoverAmmunition is not implemented"))
+}
+
+func (UnimplementedChargesServiceHandler) Dawn(context.Context, *connect.Request[v1.DawnRequest]) (*connect.Response[v1.DawnResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ChargesService.Dawn is not implemented"))
 }

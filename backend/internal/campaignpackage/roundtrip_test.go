@@ -55,6 +55,18 @@ func TestExportThenImportMakesTheSameCampaign(t *testing.T) {
 	if !strings.Contains(before, "Taverna do Corvo") || !strings.Contains(before, "Gruk") || !strings.Contains(before, "Charada da lareira") {
 		t.Fatalf("the fixture is missing what the test is about:\n%.400s", before)
 	}
+	// What the character's items spent and the arrows it holds come with it: the dump reads them with the sheet.
+	for _, want := range []string{`"charges_left": 3`, `"last_roll_pending": true`, `"quantity": 17`} {
+		if !strings.Contains(before, want) || !strings.Contains(after, want) {
+			t.Fatalf("the dumps are missing %s:\n%.600s", want, before)
+		}
+	}
+	// The count of dawns the goats waited is no part of a read: it is in the row.
+	var dawns int32
+	err := h.pool.QueryRow(t.Context(), `SELECT ic.dawns_waited FROM character_item_charges ic JOIN characters c ON c.id = ic.character_id WHERE c.campaign_id = $1 AND ic.entry_id = 'm2'`, got.GetCampaign().GetId()).Scan(&dawns)
+	if err != nil || dawns != 3 {
+		t.Fatalf("the imported goats have counted %d dawns (%v), want 3", dawns, err)
+	}
 	// A scene action the master hid comes back hidden: a package never shows the players what the master kept from them.
 	if hidden := regexp.MustCompile(`"hidden":\s*true`); !hidden.MatchString(before) || !hidden.MatchString(after) {
 		t.Fatalf("the hidden scene action is missing from the dumps:\n%.400s", before)

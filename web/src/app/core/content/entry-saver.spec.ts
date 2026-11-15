@@ -67,6 +67,20 @@ describe('EntrySaver.blockOn', () => {
     expect(saver.placement().fields).toEqual([]);
   });
 
+  it("counts the fields of the client in the summary when asked, with the server's that are left", async () => {
+    const saver = new EntrySaver({ aOne: 'uma raça' }, 'a raça');
+    expect(saver.blockOn(['a.b', 'c.d', 'a.b'], () => undefined, true)).toBe(true);
+    expect(saver.summary()).toBe(
+      'Não foi possível salvar a raça. 2 campos precisam de ajuste. Nada foi salvo; o que você digitou continua aqui.',
+    );
+    await saver.run(
+      () => Promise.reject(refusal('x.y')),
+      () => true,
+    );
+    saver.blockOn(['a.b'], () => undefined, true);
+    expect(saver.summary()).toContain('2 campos');
+  });
+
   it("keeps the server's refusal of a field the client has nothing to say about, and counts it", async () => {
     const saver = new EntrySaver({ aOne: 'uma raça' }, 'a raça');
     await saver.run(

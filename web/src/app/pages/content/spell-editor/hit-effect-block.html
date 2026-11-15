@@ -15,6 +15,9 @@
       @if (showWhere()) {
         <span class="where">{{ whereText() }}</span>
       }
+      @if (alsoEffect()) {
+        <span class="mr-tag mr-tag--success">{{ summary() }}</span>
+      } @else {
       <span class="chips">
         @if (durationText()) {
           <span class="chip"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>{{ durationText() }}</span>
@@ -23,6 +26,7 @@
           <span class="chip"><mat-icon aria-hidden="true">adjust</mat-icon>Concentração · em quem conjura</span>
         }
       </span>
+      }
     </span>
     <button type="button" class="how-button" [attr.aria-expanded]="open()" [attr.aria-controls]="howId" (click)="setOpen()">
       <mat-icon aria-hidden="true">info</mat-icon>Como funciona<mat-icon aria-hidden="true">{{ open() ? 'expand_less' : 'expand_more' }}</mat-icon>
@@ -33,6 +37,9 @@
   <p class="lock" [id]="reasonId" role="note"><mat-icon aria-hidden="true">lock</mat-icon>{{ instantLock }}</p>
 }
 @if (on()) {
+  @if (alsoEffect()) {
+    <p class="note together"><mat-icon aria-hidden="true">adjust</mat-icon><span>{{ concentration() ? 'Uma concentração' : 'Uma duração' }}: quando acaba, <strong>os dois efeitos acabam juntos</strong>.</span></p>
+  }
   <p class="how" [id]="howId" [hidden]="!open()">{{ how }}</p>
   <div role="status">
     @if (movedText()) {
@@ -85,7 +92,7 @@
       </div>
       <div class="pair">
         <app-text-field label="A mais por nível" inputmode="numeric" [value]="h.perSlot" [path]="path('per_slot_dice')" [issues]="issues('per_slot_dice')" [hint]="'0 a ' + perSlotMax + ' por nível acima'" (valueChange)="patch({ perSlot: $event })" />
-        <app-text-field label="No máximo" [suffix]="capSuffix()" inputmode="numeric" [value]="h.cap" [path]="path('max_dice')" [issues]="issues('max_dice')" [hint]="'1 a ' + capMax + ' dados.'" (valueChange)="patch({ cap: $event })" />
+        <app-text-field label="No máximo" [suffix]="capSuffix()" inputmode="numeric" [value]="h.cap" [path]="path('max_dice')" [issues]="issues('max_dice')" placeholder="Sem limite" [hint]="'1 a ' + capMax + '; vazio: sem limite'" (valueChange)="patch({ cap: $event })" />
       </div>
       <app-select-field label="Tipo de dano" [options]="damageOptions()" [value]="h.damageType" [path]="path('damage_type')" [issues]="issues('damage_type')" (valueChange)="patch({ damageType: '' + $event })" />
     </fieldset>

@@ -61,6 +61,18 @@ describe("the automatic pass of a player's optional reaction", () => {
     expect(clock.due(Date.now())).toEqual(['w1']);
   });
 
+  it("passes a player's reaction feature at 30 s, never a hidden creature's window (the master's from the start)", () => {
+    const clock = new AutoPassClock();
+    const mine = win('w1', ReactionKind.FEATURE);
+    const hidden = win('w2', ReactionKind.FEATURE, { unanswered: true });
+    expect(autoPasses(mine)).toBe(true);
+    expect(autoPasses(hidden)).toBe(false);
+    clock.sync([mine, hidden], Date.now());
+    vi.advanceTimersByTime(AUTO_PASS_SECONDS * MS);
+    clock.sync([mine, hidden], Date.now());
+    expect(clock.due(Date.now())).toEqual(['w1']);
+  });
+
   it('never passes a readied attack whose roll is held for other reactions (answerNow false)', () => {
     const clock = new AutoPassClock();
     const held = win('w1', ReactionKind.READIED, { answerNow: false });
