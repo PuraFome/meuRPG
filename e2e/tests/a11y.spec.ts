@@ -13184,7 +13184,7 @@ async function scanFavorScreens(browser: Browser, colorScheme: 'light' | 'dark')
       timeout: 30_000,
     });
     await expect(panel).toContainText(
-      'Do mestre. Vantagem num d20 seu: marque "Usar a Inspiração" antes de rolar.',
+      'Do mestre. Vantagem num d20 seu: marque “Usar a Inspiração” antes de rolar.',
     );
     await expect(panel.getByRole('button')).toHaveCount(0);
     await expectLoaded(p);
@@ -13503,11 +13503,20 @@ async function scanFavorSpend(browser: Browser, colorScheme: 'light' | 'dark'): 
     await tickFavor(sheet);
     await sheet.getByRole('button', { name: /^Rolar 2d20 no app/ }).click();
     await expect(sheet.getByText(/Acertou|Errou|Crítico/).first()).toBeVisible();
-    await expect(sheet.getByText('Vantagem: Inspiração')).toBeVisible();
+    // The dice animation covers the sheet until it is dismissed (a tap on its veil, or 10 s): the shot is of the result the player reads under it,
+    // with the two d20 ("vale" / "descartado") and the line "Vantagem: Inspiração".
+    await expect(async () => {
+      if (await p.locator('app-roll-overlay .scrim').count()) {
+        await p.locator('app-roll-overlay .veil').dispatchEvent('click');
+      }
+      await expect(p.locator('app-roll-overlay .scrim')).toHaveCount(0, { timeout: 1_500 });
+    }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
+    const result = sheet.locator('app-attack-result');
+    await expect(result.getByText('Vantagem: Inspiração')).toBeVisible();
+    await expect(result.getByText('vale')).toBeVisible();
+    await expect(result.getByText('descartado')).toBeVisible();
     expect(await holdersRPC(m, campaignId)).toEqual([]);
-    await everyWidth(p, 'gasto-resultado', 'Atacar, o resultado com "Vantagem: Inspiração"', () =>
-      sheet.locator('app-attack-result'),
-    );
+    await everyWidth(p, 'gasto-resultado', 'Atacar, o resultado com "Vantagem: Inspiração"', () => result);
     await p.setViewportSize(favorViewport(1280));
     await closeSheet(p);
     await expect(p.locator('app-favor-chip')).toHaveCount(0);

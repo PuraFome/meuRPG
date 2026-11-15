@@ -34,7 +34,7 @@ describe('FavorPanel', () => {
     await settle(fixture);
     expect(flat(el.querySelector('h2'))).toBe('starInspiração');
     expect(flat(el.querySelector('.favor__text'))).toBe(
-      'Do mestre. Vantagem num d20 seu: marque "Usar a Inspiração" antes de rolar.',
+      'Do mestre. Vantagem num d20 seu: marque “Usar a Inspiração” antes de rolar.',
     );
     expect(el.querySelector('button')).toBeNull();
   });

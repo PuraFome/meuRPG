@@ -18,6 +18,12 @@ describe('FavorChip', () => {
     expect(el.querySelector('mat-icon')?.getAttribute('aria-hidden')).toBe('true');
   });
 
+  it('reads "Tem Inspiração" in the order row, where it sits beside the name', () => {
+    const el = render('inline');
+    expect(el.textContent?.replace(/\s+/g, ' ').trim()).toBe('starTem Inspiração');
+    expect(el.querySelector('.mr-visually-hidden')?.textContent).toBe('Tem ');
+  });
+
   it('is a pill by default and a line of the row when asked', () => {
     expect(render().classList.contains('favor--pill')).toBe(true);
     TestBed.resetTestingModule();

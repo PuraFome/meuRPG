@@ -354,6 +354,11 @@ a.mr-list__row:hover .mr-list__name {
   }
 }
 
+// A Material Symbols icon drawn filled (the "★" of the master's Inspiração, 581): the font's FILL axis.
+.mr-icon-filled {
+  font-variation-settings: 'FILL' 1;
+}
+
 // Screen-reader-only text.
 .mr-visually-hidden {
   position: absolute;
@@ -778,6 +783,10 @@ a.mr-list__row:hover .mr-list__name {
   padding-block: var(--mr-space-2);
 
   &[aria-disabled='true'] {
+    // Inset like the other items: the dashed box never touches the menu's edge (581-07, item 12).
+    box-sizing: border-box;
+    width: calc(100% - 2 * var(--mr-space-2));
+    margin-inline: var(--mr-space-2);
     border: 1px dashed var(--mr-control-line);
     border-radius: var(--mr-radius-sm);
     color: var(--mr-ink-muted);

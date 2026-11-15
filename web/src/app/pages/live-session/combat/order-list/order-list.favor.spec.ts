@@ -109,13 +109,38 @@ describe("OrderList: the master's Inspiração", () => {
     openAllRows(fixture);
     const badges = Array.from(el.querySelectorAll('[data-testid="order-favor"]'));
     expect(badges).toHaveLength(1);
-    expect(flat(badges[0])).toBe('starInspiração');
+    expect(flat(badges[0])).toBe('starTem Inspiração');
     expect(badges[0].closest('li')?.textContent).toContain('Pensantus');
   });
 
   it('shows no badge when nobody is known to have it (a read that failed)', () => {
     const { el } = mount({});
     expect(el.querySelector('[data-testid="order-favor"]')).toBeNull();
+  });
+
+  it('puts the badge beside the name, never in the line of initiative and class', () => {
+    const { fixture, el } = mount({ 'pen-c': 'Pensantus' });
+    openAllRows(fixture);
+    const badge = el.querySelector('[data-testid="order-favor"]');
+    expect(badge?.closest('.row__name')).not.toBeNull();
+    expect(badge?.closest('.row__sub')).toBeNull();
+  });
+
+  it('keeps the success sentence for a screen reader only and draws a refusal', () => {
+    const { fixture, favor, el } = mount({});
+    openAllRows(fixture);
+    favor.note.set({ characterId: 'bri-c', text: 'Brisa ganhou Inspiração.', refused: false });
+    fixture.detectChanges();
+    expect(el.querySelector('.js-favor-note')?.classList.contains('mr-visually-hidden')).toBe(true);
+    favor.note.set({
+      characterId: 'bri-c',
+      text: 'Essa personagem já tem Inspiração.',
+      refused: true,
+    });
+    fixture.detectChanges();
+    expect(el.querySelector('.js-favor-note')?.classList.contains('mr-visually-hidden')).toBe(
+      false,
+    );
   });
 
   it('says in the row what the grant answered, in a live region', () => {

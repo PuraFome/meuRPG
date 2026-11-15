@@ -14,7 +14,7 @@ import type { VitalsVm } from '../../../core/play/live-session.types';
 /**
  * "Inspiração" on the character sheet (RN-43, board 581-04): drawn only while the character has the master's Inspiração, for the
  * master and for the owner (nobody else reads the sheet of a character, RN-10). The owner reads what it is for: "Do mestre.
- * Vantagem num d20 seu: marque "Usar a Inspiração" antes de rolar."; the master reads the title alone, since those words are
+ * Vantagem num d20 seu: marque “Usar a Inspiração” antes de rolar."; the master reads the title alone, since those words are
  * the player's. There is no "Passar a…" yet: the pass is not built.
  *
  * The page draws it only while the campaign has an open session, and gives it the live numbers (`vitals`): each `vitals_changed`
@@ -30,11 +30,11 @@ import type { VitalsVm } from '../../../core/play/live-session.types';
     @if (favor.has(characterId())) {
       <section class="mr-panel favor" aria-labelledby="favor-heading">
         <h2 class="favor__title" id="favor-heading">
-          <mat-icon aria-hidden="true">star</mat-icon>Inspiração
+          <mat-icon class="mr-icon-filled" aria-hidden="true">star</mat-icon>Inspiração
         </h2>
         @if (viewer() === 'owner') {
           <p class="favor__text">
-            Do mestre. Vantagem num d20 seu: marque "Usar a Inspiração" antes de rolar.
+            Do mestre. Vantagem num d20 seu: marque “Usar a Inspiração” antes de rolar.
           </p>
         }
       </section>

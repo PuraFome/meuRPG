@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
     <div class="live" role="status" aria-live="polite">
       @if (on()) {
         <div class="mr-notice mr-notice--success">
-          <mat-icon aria-hidden="true">star</mat-icon>
+          <mat-icon class="mr-icon-filled" aria-hidden="true">star</mat-icon>
           <p class="text">O mestre deu Inspiração a você. Use antes de rolar um d20 seu.</p>
           <button type="button" class="close" aria-label="Dispensar o aviso" (click)="dismissed.emit()">
             <mat-icon aria-hidden="true">close</mat-icon>

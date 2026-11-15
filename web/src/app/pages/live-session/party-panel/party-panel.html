@@ -5,7 +5,7 @@
     @if (favor.count() > 0) {
       <!-- How many characters have the master's Inspiração (RN-43, 581-02); the master reads every one of the campaign. -->
       <p class="party__favor js-favor-count">
-        <mat-icon aria-hidden="true">star</mat-icon>{{ favor.count() }} com Inspiração
+        <mat-icon class="mr-icon-filled" aria-hidden="true">star</mat-icon>{{ favor.count() }} com Inspiração
       </p>
     }
   </div>
@@ -45,7 +45,7 @@
             <span role="status">
               @if (favor.note(); as n) {
                 @if (n.characterId === v.characterId) {
-                  <span class="member__said js-favor-note">{{ n.text }}</span>
+                  <span class="member__said js-favor-note" [class.mr-visually-hidden]="!n.refused">{{ n.text }}</span>
                 }
               }
             </span>

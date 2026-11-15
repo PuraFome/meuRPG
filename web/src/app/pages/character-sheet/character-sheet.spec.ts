@@ -3202,7 +3202,7 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
         fixture.detectChanges();
         expect(flat(title(el))).toBe('starInspiração');
         expect(flat(el.querySelector('app-favor-panel .favor__text'))).toBe(
-          'Do mestre. Vantagem num d20 seu: marque "Usar a Inspiração" antes de rolar.',
+          'Do mestre. Vantagem num d20 seu: marque “Usar a Inspiração” antes de rolar.',
         );
         expect(el.querySelector('app-favor-panel button')).toBeNull();
       });

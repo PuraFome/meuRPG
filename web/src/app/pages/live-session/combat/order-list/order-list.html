@@ -115,12 +115,15 @@
             @if (current(c)) {
               <span class="row__turn">Vez</span>
             }
+            @if (favor.holds(c)) {
+              <app-favor-chip variant="inline" data-testid="order-favor" />
+            }
             @if (inTurn(c)) {
               <app-part-state [ended]="c.turnPartEnded" />
             }
           </span>
           <span class="row__meta">
-            <span class="row__sub"><span class="row__lead">{{ compactSub(c, inGroup) }}@if (shield(c) > 0) {{{ compactSub(c, inGroup) ? ' · ' : '' }}<b>CA {{ c.armorClass }} + {{ shield(c) }}</b>}</span>@if (c.inSunlight && c.sunlightTrait !== NoSunTrait) {<span class="row__sun" data-testid="order-sun">{{ compactSub(c, inGroup) || shield(c) > 0 ? ' · ' : '' }}Na luz do sol</span>}@if (favor.holds(c)) {<app-favor-chip variant="inline" data-testid="order-favor" />}</span>
+            <span class="row__sub"><span class="row__lead">{{ compactSub(c, inGroup) }}@if (shield(c) > 0) {{{ compactSub(c, inGroup) ? ' · ' : '' }}<b>CA {{ c.armorClass }} + {{ shield(c) }}</b>}</span>@if (c.inSunlight && c.sunlightTrait !== NoSunTrait) {<span class="row__sun" data-testid="order-sun">{{ compactSub(c, inGroup) || shield(c) > 0 ? ' · ' : '' }}Na luz do sol</span>}</span>
           </span>
         </span>
         <span class="row__hp">
@@ -189,7 +192,7 @@
             <div role="status">
               @if (favor.state.note(); as n) {
                 @if (n.characterId === c.characterId) {
-                  <p class="row__hidden-note js-favor-note">{{ n.text }}</p>
+                  <p class="row__hidden-note js-favor-note" [class.mr-visually-hidden]="!n.refused">{{ n.text }}</p>
                 }
               }
             </div>
