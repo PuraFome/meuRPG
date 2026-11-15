@@ -13432,7 +13432,10 @@ async function scanFavorSpend(browser: Browser, colorScheme: 'light' | 'dark'): 
     await expect(favorBox(sheet)).toContainText(
       'A Inspiração não mudaria esta rolagem: ela já tem vantagem',
     );
-    await favorCheck(sheet).click();
+    await expect(favorCheck(sheet)).toBeDisabled();
+    await expect(favorCheck(sheet)).not.toBeChecked();
+    // Playwright never clicks a control that is not enabled, so the click is sent to the element itself: it must do nothing.
+    await favorCheck(sheet).dispatchEvent('click');
     await expect(favorCheck(sheet)).not.toBeChecked();
     await everyWidth(
       p,
