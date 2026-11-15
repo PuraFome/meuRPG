@@ -211,7 +211,9 @@ The end of the previous concentration (`concentration_ended_key`) is public on t
 The concentration save of a held spell is the master's and the owner's: its window, its result and its line name the held spell (`HeldSpell` on the trigger, `Held` on the event).
 Another player reads none of it: no window, no line, and the wait reads "Esperando o mestre", never the readier's Constitution save.
 A line whose held spell is unknown names it "a magia preparada".
-`internal/leaktest` (`ready_spell_test.go`) checks these, the save's wait included, with canaries and positive controls.
+The targets the held spell lists leave out an NPC the player does not see, and an answer that picks one is refused as one that picks an id that is nowhere.
+Another player's answer to the window, with targets or without, is denied as an answer to a window that does not exist.
+`internal/leaktest` (`ready_spell_test.go`, `ready_spell_release_test.go`) checks these, the save's wait included, with canaries and positive controls.
 
 ## Undo
 
