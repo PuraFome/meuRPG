@@ -561,7 +561,7 @@ func (u *undoer) ridersBack(ctx context.Context, pending string) error {
 // go on.
 func (u *undoer) damageDiscarded(ctx context.Context, ev actionEvent) error {
 	prev := ev.PrevStatus
-	if prev != pendingAwaitingReaction && prev != pendingAwaitingRoll && prev != pendingRolled {
+	if prev != pendingAwaitingReaction && prev != pendingAwaitingRoll && prev != pendingAwaitingGroupSum && prev != pendingRolled {
 		prev = pendingRolled // never: only these can be discarded
 	}
 	if err := u.setStatus(ctx, ev.Pending, prev); err != nil {

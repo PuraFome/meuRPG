@@ -60,6 +60,12 @@ func (f *damageFlow) rerollDamage(ctx context.Context) error {
 		return err
 	}
 	left := usesLeftOf(vit)
+	if r, ok := f.keptRerollRule(rs, left); ok { // the dice the first roll rerolled stay as they are: their use is spent again
+		if _, err := f.rerollLowDice(r.AtMost, r.Source); err != nil {
+			return err
+		}
+		return f.spendReroll(ctx, r)
+	}
 	for _, r := range rs {
 		if r.Resource != "" && int(left[r.Resource]) < r.Cost {
 			continue
@@ -152,4 +158,27 @@ func (s *Service) rerollPartDice(pr *partRoll, atMost int, source string) (bool,
 		pr.Faces[j], changed = to, true
 	}
 	return changed, nil
+}
+
+// keptRerollRule is the reroll rule that rolled again a die the roll of a group's sum keeps (the dice of the other damage types stay as
+// the first roll left them), when the rule still has its uses: the master's take-out gave the use back with the rest of what the first
+// roll spent, and the dice it rerolled stay, so the roll spends it again. A die rerolled by Great Weapon Fighting costs nothing.
+func (f *damageFlow) keptRerollRule(rs []link.RerollRule, left map[string]int32) (link.RerollRule, bool) {
+	if f.p.Status != pendingAwaitingGroupSum || f.pr == nil {
+		return link.RerollRule{}, false
+	}
+	for _, roll := range f.pr.rolls {
+		if roll.DamageType == f.p.AwaitedDamageTypeKey {
+			continue
+		}
+		for _, again := range roll.Rerolled {
+			i := slices.IndexFunc(rs, func(r link.RerollRule) bool {
+				return r.Source == again.SourceKey && again.SourceKey != "" && (r.Resource == "" || int(left[r.Resource]) >= r.Cost)
+			})
+			if i >= 0 {
+				return rs[i], true
+			}
+		}
+	}
+	return link.RerollRule{}, false
 }

@@ -536,7 +536,8 @@ func buildLog(events []playdb.ListEncounterEventsRow) []*logEntry {
 func undoneEvents(events []playdb.ListEncounterEventsRow) map[string]bool {
 	undone := map[string]bool{}
 	for _, e := range events {
-		if e.Kind != eventActionUndone {
+		// The take-out of a part of a group takes the damage's roll back, as an undo does (combat_group_sum.go).
+		if e.Kind != eventActionUndone && e.Kind != eventDamagePartRemoved {
 			continue
 		}
 		markUndone(undone, e.Payload)
@@ -822,6 +823,10 @@ func (b *logBuilder) partRemoved(e playdb.ListEncounterEventsRow, entry *logEntr
 		return true
 	}
 	host.hosts = append(host.hosts, e.ID)
+	if ev.AwaitsSum != "" { // the damage was taken back and awaits a new sum: its roll is no line, the part's name is the event's
+		entry.partLabel = ev.PartLabel
+		return true
+	}
 	host.removed = &ev
 	if host.dmg != nil {
 		for _, r := range host.dmg.Parts {

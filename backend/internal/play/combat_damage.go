@@ -280,7 +280,7 @@ func (f *damageFlow) checkStatus() error {
 // cast: the pending damages of the cast still to be rolled are settled by this roll.
 func (f *damageFlow) openGroup(ctx context.Context) error {
 	f.group = []playdb.PendingDamage{f.p}
-	if f.p.CastID == nil {
+	if f.p.CastID == nil || f.p.Status == pendingAwaitingGroupSum { // the sum of one group is the roll of this damage alone
 		return nil
 	}
 	p := f.p

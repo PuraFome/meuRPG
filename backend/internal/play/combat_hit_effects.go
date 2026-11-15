@@ -234,7 +234,7 @@ func (s *Service) hitPartGone(ctx context.Context, c *combatTx, p playdb.Pending
 func waitsForEarlierAttack(open []playdb.PendingDamage, p playdb.PendingDamage, effect string) bool {
 	return slices.ContainsFunc(open, func(o playdb.PendingDamage) bool {
 		before := o.CreatedAt.Before(p.CreatedAt) || o.CreatedAt.Equal(p.CreatedAt) && o.ID < p.ID
-		waiting := o.Status == pendingAwaitingRoll || o.Status == pendingAwaitingReaction
+		waiting := o.Status == pendingAwaitingRoll || o.Status == pendingAwaitingGroupSum || o.Status == pendingAwaitingReaction
 		return o.ID != p.ID && before && waiting && conv.OrZero(o.AttackerID) == conv.OrZero(p.AttackerID) &&
 			slices.ContainsFunc(readParts(o.Parts), func(sp partRecord) bool {
 				return sp.Table == tableHitEffect && sp.Effect == effect && !sp.Removed && !isOffHitPart(sp)
