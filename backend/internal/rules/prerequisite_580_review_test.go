@@ -340,7 +340,7 @@ func TestALostOptionPrerequisiteIsAnIssueOfTheSheet(t *testing.T) {
 	if i < 0 {
 		t.Fatalf("issues = %+v, want %q", lost.Issues, IssueOptionPrerequisite)
 	}
-	if got := lost.Issues[i]; got.Field != "full.feature_choice_keys[0]" || !strings.Contains(got.Message, "Postura do Touro") || !strings.Contains(got.Message, "nível 5") {
+	if got := lost.Issues[i]; got.Field != "full.feature_choice_keys[0]" || !strings.Contains(got.Message, "Postura do Touro") || !strings.Contains(got.Message, "Guerreiro 5, e o personagem está no 3") {
 		t.Errorf("issue = %+v, want the option and what is missing", got)
 	}
 	if kept := Derive(postureBuild(5, postureBull), c); slices.ContainsFunc(kept.Issues, func(i Issue) bool { return i.Code == IssueOptionPrerequisite }) {

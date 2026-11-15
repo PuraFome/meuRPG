@@ -157,8 +157,10 @@ func (s *Service) characterToProto(content *rules.Content, row charactersdb.Char
 		build := buildWithStates(full, stateKeysOf(row.ActiveStates))
 		der := rules.Derive(build, content)
 		c.Derived = derivedToProto(der)
+		r := reader{name: row.Name, master: master}
+		r.tell(c.Derived, der.Issues)
 		c.Derived.Gear = mapToProto(rules.DeriveGear(build, content, der), gearToProto)
-		addChangedContent(c.Derived, der.Issues, content, build, full)
+		addChangedContent(c.Derived, der.Issues, content, build, full, r)
 		fillMagicItems(content, c.Sheet.GetFull(), build, der)
 	}
 	return c, nil

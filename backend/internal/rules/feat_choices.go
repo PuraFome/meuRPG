@@ -129,7 +129,7 @@ func (x *deriver) choiceFeats(owned map[string]bool, add func(string), feature f
 	for _, cf := range c.pickedChoiceFeats(x.b, func(k string) bool { return owned[k] }) {
 		f := c.feats[cf.Feat]
 		if x.inactiveFeats[cf.Feat] {
-			x.issue(IssueFeatPrerequisite, choiceKeysField, "O personagem não cumpre mais o pré-requisito de %s: o talento só vale de novo quando cumprir.", c.namePT(cf.Feat))
+			x.lostIssue(IssueFeatPrerequisite, choiceKeysField, x.lost[cf.Feat])
 		} else {
 			add(cf.Feat)
 		}

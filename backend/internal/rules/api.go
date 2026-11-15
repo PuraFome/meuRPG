@@ -1265,6 +1265,12 @@ type Issue struct {
 	// is the entry that changed; for any other it is told without a name. Empty
 	// when ChangeMessage is not about one entry.
 	ChangeSubject string `json:",omitempty"`
+	// Lost is what a lost feat or option asks and the character lacks (IssueFeatPrerequisite,
+	// IssueOptionPrerequisite): the sentence a reader gets is Lost.SentencePT, with the character's
+	// name and, for the master, the hidden conditions named. Message is that sentence for nobody in
+	// particular, with no hidden name, which is what the sheet stores (known issues). Never in JSON:
+	// it may name a hidden entry.
+	Lost *LostPrerequisite `json:"-"`
 }
 
 // Issue codes.

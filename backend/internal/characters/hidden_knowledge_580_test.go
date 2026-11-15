@@ -220,3 +220,47 @@ func TestALostPrerequisiteIsToldToEachReaderWithoutHiddenNames(t *testing.T) {
 		})
 	}
 }
+
+// After the master's edit, the lost line is told in "A mudança na mesa" (changed content) the same way: masked for the
+// owner, named for the master.
+func TestALostPrerequisiteAfterAnEditIsToldInTheChangedEntryPerReader(t *testing.T) {
+	t.Parallel()
+	hk := newHiddenKnowledge(t)
+	m := hk.master
+	feat := m.addEntry(t, hk.campaign, &rulesv1.TableFeat{NamePt: "Pede depois", DescPt: []string{"Texto."}})
+	current := m.get(t, hk.campaign, hk.pc.GetId())
+	sheet := proto.CloneOf(current.GetSheet())
+	sheet.GetFull().FeatKeys = []string{feat.GetKey()}
+	if _, err := m.update(t, current, current.GetName(), sheet); err != nil {
+		t.Fatalf("the master's save of the feat: %v", err)
+	}
+	edited := proto.CloneOf(bodyMessage(feat).(*rulesv1.TableFeat))
+	edited.Prerequisite = &rulesv1.FeatPrerequisite{ClassLevel: &rulesv1.FeatClassLevel{ClassKey: hk.class, Level: 3}}
+	if _, err := m.table.UpdateTableEntry(t.Context(), connect.NewRequest(updateReq(hk.campaign, feat.GetKey(), feat.GetRevision(), edited))); err != nil {
+		t.Fatalf("UpdateTableEntry() error = %v", err)
+	}
+	name := current.GetName()
+	tail := ": o talento só vale de novo quando " + name + " cumprir."
+	for _, r := range []struct {
+		who  string
+		u    *user
+		want string
+	}{
+		{"the owner", hk.owner, "Pede depois pede uma condição que a mesa não mostra" + tail},
+		{"the master", m, "Pede depois pede " + forgottenClass + " 3, e " + name + " não tem nível de " + forgottenClass + tail},
+	} {
+		read := r.u.get(t, hk.campaign, hk.pc.GetId())
+		var got []string
+		for _, ch := range read.GetDerived().GetChangedContent() {
+			if ch.GetKey() == feat.GetKey() {
+				got = ch.GetMessages()
+			}
+		}
+		if len(got) != 1 || got[0] != r.want {
+			t.Errorf("%s reads the changed feat as %q, want [%q]", r.who, got, r.want)
+		}
+		if r.u != m {
+			wantNames(t, r.who+"'s sheet", read, false, forgottenClass, hk.class)
+		}
+	}
+}

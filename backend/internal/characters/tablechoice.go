@@ -202,13 +202,17 @@ func carryFlags(content *rules.Content, stored, next *charactersv1.FullSheet) {
 // away by itself when none remains. A save does not clear it either (carryFlags).
 // It is never a Validate error, so it blocks nothing. issues are what Derive found
 // (with their keys); d is the same, as the message.
-func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *rules.Content, build rules.Build, full *charactersv1.FullSheet) {
+func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *rules.Content, build rules.Build, full *charactersv1.FullSheet, r reader) {
 	for _, f := range flags(content, full, build, issues) {
 		name := content.NamePT(f.entry.Key)
 		var messages []string
 		for _, is := range f.issues {
 			// The sentence as a change reads it ("agora dá 2 perícias"), when the
 			// engine has one for this issue; otherwise the issue's own.
+			if is.Lost != nil {
+				messages = append(messages, r.say(is))
+				continue
+			}
 			messages = append(messages, changeSentence(is, f.entry.Key, name))
 		}
 		d.ChangedContent = append(d.ChangedContent, &rulesv1.ChangedContent{
@@ -219,6 +223,32 @@ func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *r
 			Code: IssueTableContentChanged, Field: f.entry.Field,
 			Message: changedKinds[keyKind(f.entry.Key)] + " " + name + " mudou: a ficha ficou com avisos que não tinha. Os números já usam as regras novas.",
 		})
+	}
+}
+
+// reader is who reads a sheet's issues: the sentence of a lost prerequisite names the character and, for the
+// campaign's master alone, a condition on an entry the players may not read (board 580-05, RN-23). It is built on
+// each read; the sheet stores only the message that names nobody (known issues).
+type reader struct {
+	name   string
+	master bool
+}
+
+// say is the issue's sentence for the reader.
+func (r reader) say(is rules.Issue) string {
+	if is.Lost == nil {
+		return is.Message
+	}
+	return is.Lost.SentencePT(r.name, r.master)
+}
+
+// tell rewrites, in the sheet's derived issues (made from issues, in its order), the message of each lost
+// prerequisite to the reader's sentence.
+func (r reader) tell(d *rulesv1.DerivedSheet, issues []rules.Issue) {
+	for i, is := range issues {
+		if is.Lost != nil && i < len(d.GetIssues()) {
+			d.Issues[i].Message = r.say(is)
+		}
 	}
 }
 
