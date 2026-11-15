@@ -197,10 +197,32 @@ export function flurryLeftText(left: number): string {
 /** "corpo a corpo" for a close attack, "alcance 36 m" for the rest. With
  * `reach`, a close attack says its reach too ("corpo a corpo, 1,5 m"). */
 export function rangeText(attack: Attack, reach = false): string {
+  if (isThrow(attack)) {
+    return tight(
+      `${metersText(attack.rangeFt)}; até ${metersText(attack.longRangeFt)} com desvantagem`,
+    );
+  }
   if (isMelee(attack)) {
     return reach ? `corpo a corpo, ${metersText(attack.rangeFt || 5)}` : 'corpo a corpo';
   }
   return `alcance ${metersText(attack.rangeFt)}`;
+}
+
+/** A thrown weapon with its two distances (the server says it is thrown; a bow has the same two numbers and is not). */
+function isThrow(attack: Attack): boolean {
+  return attack.thrown && attack.kind !== AttackKind.SPELL && attack.longRangeFt > 0;
+}
+
+/** "Arremesso: 6 m, até 18 m": the line under a thrown weapon on the sheet; empty for any other attack. */
+export function throwLine(attack: Attack): string {
+  return isThrow(attack)
+    ? tight(`Arremesso: ${metersText(attack.rangeFt)}, até ${metersText(attack.longRangeFt)}`)
+    : '';
+}
+
+/** "Arremesso: não gasta munição.": the note under a thrown weapon in combat; empty for any other attack. */
+export function throwNote(attack: Attack): string {
+  return isThrow(attack) ? 'Arremesso: não gasta munição.' : '';
 }
 
 /** A melee attack (a weapon with no range of its own): the only kind an

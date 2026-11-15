@@ -26,6 +26,7 @@ import { KIND_FROM_GEN } from '../../core/characters/character-kind-gen';
 import { ABILITY_FROM_GEN } from '../../core/characters/ability-gen';
 import { SkillProficiency } from '../../core/characters/character-labels';
 import { metersWithFeet } from '../../core/units';
+import { throwLine } from '../../core/combat/combat-options';
 import { AbilityKey, CharacterState, ReviewStatus } from '../../core/characters/characters.types';
 import { damageTypeFromGen } from '../../core/characters/damage-type-gen';
 import {
@@ -117,6 +118,7 @@ function toAttackVm(attack: GenAttack): AttackVm {
     damage: attack.damage,
     damageTypePt: attack.damageTypePt,
     versatileDamage: attack.versatileDamage,
+    throwText: throwLine(attack),
     damageNotePt: attack.damageNotePt,
     saveDc: attack.saveDc,
     saveAbility: attack.saveDc > 0 ? ABILITY_FROM_GEN[attack.saveAbility] : null,
