@@ -11,6 +11,7 @@ import type {
   PendingDamage,
 } from '../../../../gen/meurpg/play/v1/combat_pb';
 import type { CombatClient } from '../../../core/combat/combat-client';
+import type { CombatCalls } from '../../../core/combat/combat-calls';
 import type { CombatState } from '../../../core/combat/combat-state';
 import type { SpellCatalog } from '../../../core/combat/spell-catalog';
 import type { CreaturesClient } from '../../../core/creatures/creatures-client';
@@ -44,7 +45,7 @@ export interface AttackOpen {
 export interface CombatSheetsContext {
   readonly dialog: MatDialog;
   readonly bottomSheet: MatBottomSheet;
-  readonly api: Pick<CombatClient, 'attacks' | 'moves'>;
+  readonly api: Pick<CombatClient, 'attacks' | 'moves' | 'features'>;
   readonly creatures: Pick<CreaturesClient, 'summonOptions'>;
   readonly catalog: Pick<SpellCatalog, 'details'>;
   readonly campaignId: () => string;
@@ -74,4 +75,7 @@ export interface CombatSheetsContext {
   readonly target?: () => TargetFlow;
   /** The "Gastar movimento" sheet closed: the move note it replaced goes. */
   readonly spendClosed: () => void;
+  /** The calls that answer with the combat (a use of a feature that asks nothing is made at once) and the note of the turn it leaves. */
+  readonly calls: Pick<CombatCalls, 'run'>;
+  readonly note: (text: string) => void;
 }

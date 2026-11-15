@@ -48,7 +48,7 @@ A service is separate when its contract grows large enough to deserve its own `.
 | `ContestService` | `contests.proto`, `contest_types.proto` | Grapple, shove, hide, help, group check, surprise |
 | `RevivifyService` | `revivify.proto` | Revivify requests outside combat (see [Death and revival](death-and-revival.md)) |
 | `LastingEffectService` | `lasting_effects_service.proto` | Effects that last, exhaustion |
-| `FavorService` | `favor.proto` | The master's Inspiration: grant and read (see [The master's Inspiration](favor.md)) |
+| `FavorService` | `favor.proto` | The master's Inspiration: grant, read and spend (see [The master's Inspiration](favor.md)) |
 | `CastingService` | `casting.proto` | Spells cast outside combat |
 | `FeatureService` | `features.proto` | `UseFeature`: a table feature that declares a use (limit per turn, round or combat, targets, a choice, an effect; see [Feature state](feature-state.md#using-a-feature)) |
 | `EncounterService` | `encounters.proto` | The encounter builder and stored battle encounters |

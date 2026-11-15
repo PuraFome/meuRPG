@@ -187,6 +187,8 @@ type rollSpec struct {
 	// MayAsk is the path's policy: false for the rolls that never wait for anybody (the master's rolls
 	// out of a combat, an NPC's saves). E4-10 changes it.
 	MayAsk bool
+	// FavorSpent says the roll was made with the roller's Inspiration (favor_spend.go), which the hold remembers.
+	FavorSpent bool
 }
 
 // gateResult is what the gate gives back.
@@ -455,7 +457,7 @@ func (ae answering) newRoll(body []byte, roll d20Roll, luckyAt *int32) heldRoll 
 	h := heldRoll{
 		CampaignID: r.CampaignID, CharacterID: r.CharacterID, UserID: r.UserID, Key: spec.Key, Kind: spec.Kind, Window: spec.Window,
 		Physical: roll.Physical, Request: body, Faces: roll.Faces, Counted: roll.Index, Modifier: spec.Modifier, Total: roll.Total, CountedBy: roll.CountedBy,
-		LuckyIndex: luckyAt,
+		LuckyIndex: luckyAt, FavorSpent: spec.FavorSpent,
 	}
 	h.IndomAsk, h.IndomFailed = ae.asksAtOnce(roll, luckyAt)
 	h.StrokeAsk, h.StrokeFailed = ae.asksStrokeAtOnce(roll, luckyAt)

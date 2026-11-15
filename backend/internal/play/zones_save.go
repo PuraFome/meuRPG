@@ -167,15 +167,33 @@ func (s *Service) zoneResistsBack(ctx context.Context, c *combatTx, recent []pla
 			continue
 		}
 		ev, err := readEvent(newer.Payload)
-		if err != nil || ev.CastID != castID || !ev.Resisted {
+		if err != nil || ev.CastID != castID {
 			continue
 		}
-		if _, here := combatantByID(cs, ev.Target); !here {
-			continue // a creature that left the combat has nothing to put back
+		if err := s.zoneAnswerBack(ctx, c, cs, ev); err != nil {
+			return err
 		}
-		if _, err := bumpCreatureSpent(ctx, c.q, ev.Target, spentLegendaryResistance, -1); err != nil {
-			return fmt.Errorf("give the Legendary Resistance back: %w", err)
+	}
+	return nil
+}
+
+// zoneAnswerBack gives back what one answer to a catch of the cast spent: the master's Legendary Resistance, or the Inspiration of
+// the player's character that rolled the save. The undo's transaction puts the row back; it does not stack on a newer grant.
+func (s *Service) zoneAnswerBack(ctx context.Context, c *combatTx, cs []playdb.Combatant, ev actionEvent) error {
+	reactor, here := combatantByID(cs, ev.Target)
+	if !here {
+		return nil // a creature that left the combat has nothing to put back
+	}
+	if ev.Favor && reactor.CharacterID != "" {
+		if err := favorGiveBack(ctx, c.q, c.session.CampaignID, reactor.CharacterID); err != nil {
+			return err
 		}
+	}
+	if !ev.Resisted {
+		return nil
+	}
+	if _, err := bumpCreatureSpent(ctx, c.q, ev.Target, spentLegendaryResistance, -1); err != nil {
+		return fmt.Errorf("give the Legendary Resistance back: %w", err)
 	}
 	return nil
 }

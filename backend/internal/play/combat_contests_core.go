@@ -93,11 +93,14 @@ const maxContestsListed = 20
 // conditions' names).
 const (
 	noteHelp         = "help"
+	noteFavor        = "favor"
+	noteFavorLost    = "favor_lost"
 	noteEffectBonus  = "effect_bonus"
 	noteUnseen       = "unseen_attacker"
 	notePoisoned     = "poisoned"
 	labelUnseen      = "Atacante não visto"
 	labelPoisoned    = "Envenenado"
+	labelFavor       = "Inspiração"
 	defaultHideRefus = "Alguém vê você claramente: não dá para se esconder agora."
 )
 
@@ -113,7 +116,13 @@ type rollNote struct {
 	// whether the master hides the effect, which only the master reads by name (RN-10).
 	Value  int  `json:"value,omitempty"`
 	Hidden bool `json:"hidden,omitempty"`
+	// secret says the roller may not read the source behind the note (the master hides it, RN-10). Never stored: it is read once, from
+	// the note the roll is prepared with, to judge what the Inspiração adds (notesSources).
+	secret bool
 }
+
+// givesMode says the note is a circumstance of the roll's mode: a bonus and the note of an Inspiração that was not spent are not.
+func (n rollNote) givesMode() bool { return n.Kind != noteEffectBonus && n.Kind != noteFavorLost }
 
 // proto is the note as the reader gets it. A roll is read by the master and by its roller's own player alone, so any
 // reader but the master is the owner: a hidden effect's bonus reads "Outra fonte +2" to them, and a player's own
@@ -154,6 +163,8 @@ type contestRoll struct {
 	// Deferred says the player left the roll to the master: Skill is their choice and
 	// there are no faces.
 	Deferred bool `json:"deferred,omitempty"`
+	// Favor says the roll was made with the roller's Inspiration (favor_spend.go); its note is among Notes.
+	Favor bool `json:"favor,omitempty"`
 	// The Bardic Inspiration die the player added after the d20 (already in Total).
 	BonusSides int32 `json:"bonus_sides,omitempty"`
 	BonusFace  int32 `json:"bonus_face,omitempty"`
@@ -263,6 +274,8 @@ func errNotAwaiting() error {
 type checkInput struct {
 	inApp bool
 	faces []int
+	// spend is the request's spend_favor: the roller's Inspiration on this check (favor_spend.go).
+	spend bool
 }
 
 // parseCheckInput reads a request's CheckRollInput: exactly one way, the faces 1 to 20.
@@ -436,9 +449,12 @@ func (s *Service) stateNotes(ctx context.Context, tx pgx.Tx, campaignID string, 
 		Creature: sun.facts(creatureFacts(who, states, sheet.Traits), who), Ability: checkAbilityOf(skill), Check: true,
 		StealthArmor: skill == skillStealth && sheet.Traits.StealthDisadvantage, Perception: skill == skillPercept,
 	}
+	// What the roller may not read is told by the rule the other checks use (an effect the master hides, a condition it gives, the sun).
+	hide := hideFor(hiddenConditionsOf(states, who), hasHiddenEffect(states, who.ID))
 	var out []rollNote
 	for _, src := range combat.SaveMode(scene) {
 		if note, ok := checkSourceNotes[src.Kind]; ok {
+			note.secret = hide(src)
 			if src.Kind == combat.SourceEffectCheck {
 				note.Adv = src.Effect == combat.ModeAdvantage // a table spell's effect may give the disadvantage
 			}
@@ -477,8 +493,8 @@ func (s *Service) checkSourcesRead(ctx context.Context, campaignID string, enc p
 func notesMode(notes []rollNote) combat.CheckMode {
 	sources := make([]combat.CheckSource, 0, len(notes))
 	for _, n := range notes {
-		if n.Kind == noteEffectBonus {
-			continue // a bonus says nothing of advantage
+		if !n.givesMode() {
+			continue // a bonus says nothing of advantage, nor does the note of an Inspiração that was not spent
 		}
 		sources = append(sources, combat.CheckSource{Kind: n.Kind, Advantage: n.Adv})
 	}

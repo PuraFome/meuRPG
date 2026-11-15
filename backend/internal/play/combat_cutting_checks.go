@@ -89,7 +89,12 @@ func (s *Service) holdContestRoll(ctx context.Context, r *contestRun) (actionEve
 	if r.st.byAttack {
 		return actionEvent{}, false, nil // the attack was rolled already: nobody rolls
 	}
-	return s.holdCheck(ctx, r.c, r.st.m, holdContest, r.st.req, r.cs, r.initiator, &r.defender, r.st.in)
+	ev, held, err := s.holdCheck(ctx, r.c, r.st.m, holdContest, r.st.req, r.cs, r.initiator, &r.defender, r.st.in)
+	if err != nil || !held {
+		return ev, held, err
+	}
+	// The Inspiration is spent by the replay, the roll that is made: one that could not take it then is refused now.
+	return ev, true, s.checkFavorOfCheck(ctx, r.c, r.initiator, skillKeyOf(r.st.skill), r.cs, r.initiatorFavor())
 }
 
 // holdContestAnswer holds the defender's roll of a contest. A roll the player leaves to the master
@@ -98,7 +103,11 @@ func (s *Service) holdContestAnswer(ctx context.Context, r *answerRun) (actionEv
 	if r.ans.leave {
 		return actionEvent{}, false, nil
 	}
-	return s.holdCheck(ctx, r.c, r.ans.m, holdContestAnswer, r.ans.req, r.cs, r.defender, &r.initiator, r.ans.in)
+	ev, held, err := s.holdCheck(ctx, r.c, r.ans.m, holdContestAnswer, r.ans.req, r.cs, r.defender, &r.initiator, r.ans.in)
+	if err != nil || !held {
+		return ev, held, err
+	}
+	return ev, true, s.checkFavorOfCheck(ctx, r.c, r.defender, r.skillKey, r.cs, r.defenderFavor())
 }
 
 // replayHeldCheck runs the request of a held check again, as the one who made it.
