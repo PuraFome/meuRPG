@@ -13,6 +13,9 @@ import { entrySupport } from './content-kinds';
 import { readEntry } from './content-read';
 import { featureKeyName } from './class-feature-text';
 import { optionSetLine, optionSupport } from './option-text';
+import { OptionPrerequisiteSchema } from '../../../gen/meurpg/rules/v1/table_content_pb';
+import { FeatPrerequisiteSchema } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { prerequisiteSupport } from './feat-text';
 import { offeringFeatures } from './offering-features';
 
 const crow = 'feature:class-guardiao-3f9a1c--truques-de-lamina@mesa';
@@ -108,5 +111,40 @@ describe('the feature that offers a table option (MR-025)', () => {
 describe('the support line of an option list row', () => {
   it('names the set and nothing more when the option asks nothing', () => {
     expect(optionSupport('invocation', undefined, (key) => key)).toEqual(['Invocação mística']);
+  });
+});
+
+describe('the prerequisite of an option is said as the feat says it (board 580-02)', () => {
+  const names: Record<string, string> = {
+    'class:warlock': 'Bruxo',
+    'feature:pact-of-the-blade': 'Pacto da Lâmina',
+    'spell:eldritch-blast': 'Rajada Mística',
+    'feature:devils-sight': 'Olhar de Brasa',
+  };
+  const nameOf = (key: string) => names[key] ?? key;
+  const asks = create(OptionPrerequisiteSchema, {
+    classLevel: { classKey: 'class:warlock', level: 5 },
+    requiresPact: 'feature:pact-of-the-blade',
+    requiresSpellKey: 'spell:eldritch-blast',
+    requiresOptionKeys: ['feature:devils-sight'],
+  });
+  const line = 'Bruxo 5, Pacto da Lâmina, Rajada Mística e Olhar de Brasa';
+
+  it('lists the class level, the pact, the spell and the options in the order of the board', () => {
+    expect(optionSupport('invocation', asks, nameOf)).toEqual(['Invocação mística', `Exige ${line}`]);
+  });
+
+  it('is the same words the feat uses for the same conditions', () => {
+    expect(
+      prerequisiteSupport(
+        create(FeatPrerequisiteSchema, {
+          classLevel: { classKey: 'class:warlock', level: 5 },
+          requiresPact: asks.requiresPact,
+          requiresSpellKey: asks.requiresSpellKey,
+          requiresOptionKeys: asks.requiresOptionKeys,
+        }),
+        nameOf,
+      ),
+    ).toBe(line);
   });
 });
