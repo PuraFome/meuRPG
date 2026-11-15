@@ -96,6 +96,19 @@ describe('ClassEditor', () => {
       },
     ]);
 
+  it('shows "Como os jogadores veem" for the open feature in the side column, and nothing while all are closed (#580, board 580-03)', async () => {
+    const { fixture, el } = setup();
+    const preview = () => el.querySelector('aside app-feature-preview');
+    expect(preview()?.querySelector('section')).toBeNull();
+    click(el, 'Vigília');
+    await settle(fixture, 3);
+    expect(text(preview()!)).toContain('Como os jogadores veem');
+    expect(text(preview()!)).toContain('Vigília');
+    click(el, 'Vigília');
+    await settle(fixture, 3);
+    expect(preview()?.querySelector('section')).toBeNull();
+  });
+
   it('draws the class of the artboard from the entry: the basics, the skills pressed, the table from the server', () => {
     const { el } = setup();
     expect((field(el, 'table_class.name_pt') as HTMLInputElement).value).toBe('Guardião do Vale');

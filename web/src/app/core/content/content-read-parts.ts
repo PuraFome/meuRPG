@@ -31,6 +31,8 @@ export interface ReadItem {
   readonly tag?: string;
   /** What the item does in a few words, at the right of its title (a feat's option, for the master). */
   readonly side?: string;
+  /** What an option of a list asks of who picks it, worded as "Pede Guerreiro 7 e Golpe do Corvo" (no stop); absent when it asks nothing. */
+  readonly asks?: string;
   /** The options of a trait that is a choice of one, each an item of its own. */
   readonly options?: readonly ReadItem[];
 }
