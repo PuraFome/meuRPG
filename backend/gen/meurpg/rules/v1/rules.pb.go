@@ -7407,7 +7407,10 @@ type Feature struct {
 	DescriptionPtOnly bool `protobuf:"varint,9,opt,name=description_pt_only,json=descriptionPtOnly,proto3" json:"description_pt_only,omitempty"`
 	// For an option the character picked (a fighting style, an invocation, a feat's option), the Portuguese name
 	// of the feature, trait or feat that offers it; empty for every other feature. The sheet reads "Opção de <it>".
-	OptionOfPt    string `protobuf:"bytes,10,opt,name=option_of_pt,json=optionOfPt,proto3" json:"option_of_pt,omitempty"`
+	OptionOfPt string `protobuf:"bytes,10,opt,name=option_of_pt,json=optionOfPt,proto3" json:"option_of_pt,omitempty"`
+	// The key of that feature, trait or feat (the sheet puts the option under the row with this key: two features can
+	// have the same name, as the Fighter's and the Paladin's "Estilo de Luta"); empty for every other feature.
+	OptionOfKey   string `protobuf:"bytes,11,opt,name=option_of_key,json=optionOfKey,proto3" json:"option_of_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7508,6 +7511,13 @@ func (x *Feature) GetDescriptionPtOnly() bool {
 func (x *Feature) GetOptionOfPt() string {
 	if x != nil {
 		return x.OptionOfPt
+	}
+	return ""
+}
+
+func (x *Feature) GetOptionOfKey() string {
+	if x != nil {
+		return x.OptionOfKey
 	}
 	return ""
 }
@@ -15089,7 +15099,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"improvised\x12\x16\n" +
 	"\x06thrown\x18\x1c \x01(\bR\x06thrown\x12%\n" +
 	"\x0eammunition_key\x18\x1d \x01(\tR\rammunitionKeyB\x12\n" +
-	"\x10_ammunition_left\"\xd5\x02\n" +
+	"\x10_ammunition_left\"\xf9\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -15103,7 +15113,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x13description_pt_only\x18\t \x01(\bR\x11descriptionPtOnly\x12 \n" +
 	"\foption_of_pt\x18\n" +
 	" \x01(\tR\n" +
-	"optionOfPt\"U\n" +
+	"optionOfPt\x12\"\n" +
+	"\roption_of_key\x18\v \x01(\tR\voptionOfKey\"U\n" +
 	"\rProficiencies\x12\x14\n" +
 	"\x05armor\x18\x01 \x03(\tR\x05armor\x12\x18\n" +
 	"\aweapons\x18\x02 \x03(\tR\aweapons\x12\x14\n" +

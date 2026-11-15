@@ -1467,6 +1467,9 @@ message Feature {
   // For an option the character picked (a fighting style, an invocation, a feat's option), the Portuguese name
   // of the feature, trait or feat that offers it; empty for every other feature. The sheet reads "Opção de <it>".
   string option_of_pt = 10;
+  // The key of that feature, trait or feat (the sheet puts the option under the row with this key: two features can
+  // have the same name, as the Fighter's and the Paladin's "Estilo de Luta"); empty for every other feature.
+  string option_of_key = 11;
 }
 
 // Proficiencies lists armor, weapon and tool proficiencies, as Portuguese

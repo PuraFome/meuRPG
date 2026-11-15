@@ -3342,8 +3342,9 @@ type FullSheet struct {
 	// (DerivedSheet.changed_content). 0 when the table had no content.
 	ContentRevision int32 `protobuf:"varint,29,opt,name=content_revision,json=contentRevision,proto3" json:"content_revision,omitempty"`
 	// The issues the sheet had when it was last saved (the identity of each, sorted:
-	// "code|field|message", or "code|field|lost:<entry key>" for a feat or an option that
-	// lost its prerequisite, whose message changes with the reader and the character),
+	// "code|field|message", or "code|<list>|lost:<entry key>" for a feat or an option that
+	// lost its prerequisite, whose sentence changes with the reader and the character, and
+	// whose pick's place in <list> ("full.feat_keys", "full.feature_choice_keys") changes with the picks before it),
 	// set by the server and ignored from the client: what "A classe mudou"
 	// compares against, so an issue the sheet already had is never blamed on a change.
 	// An issue that was flagged and still stands is left out, so a save never clears
@@ -3358,7 +3359,9 @@ type FullSheet struct {
 	// fit it at. Set by the server and ignored from the client; an entry not here
 	// uses `content_revision`.
 	// The server clears it on every save and sets it again from the stored sheet (checkFullSheet in backend/internal/characters/sheet.go).
-	// Only the campaign's master receives it; any other reader gets it empty. The editor sends back what it read
+	// Every reader receives it as stored: its keys are entries the sheet itself uses (the keys of its build and the
+	// class features of its classes), which the owner reads, and nothing in the web reads it, so no reader is told
+	// anything it was not already. Only known_issues is the master's alone. The editor sends back what it read
 	// (web/src/app/pages/character-editor/character-editor-sheet-map.ts:211-232), which the server ignores.
 	// The request limit is 1000 entries, the table's most entries (backend/internal/rules/overlay.go).
 	ContentBaselines map[string]int32 `protobuf:"bytes,31,rep,name=content_baselines,json=contentBaselines,proto3" json:"content_baselines,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
