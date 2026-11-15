@@ -345,7 +345,7 @@ The grant is the session event `favor_granted`, keyed by the request's idempoten
 In a combat the die is the combatant's (`combatants.inspiration_*`) and this row is gone.
 
 `inspiration_holds` keeps a roll that waits for the player's answer about the die, or about the halfling's Lucky.
-`kind` is `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save` or `concentration_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
+`kind` is `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save`, `concentration_save` or `mount_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
 `request` is the request that made it (protobuf), `faces`, `modifier`, `total`, `counted` and `physical` the d20 it rolled, `answer_key` is set once answered, unique on `(campaign_id, idempotency_key)`.
 `counted_by` (`TEXT NOT NULL DEFAULT ''`) is the content key of the feature whose floor the total counts, a table's `roll_minimum` or Reliable Talent; it is empty when the die counts as it came up.
 `round` is the combat's round for a roll held in a combat and `NULL` out of one.
