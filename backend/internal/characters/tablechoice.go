@@ -156,7 +156,7 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 // "Fichas com aviso".
 func issuesTiedTo(content *rules.Content, full *charactersv1.FullSheet, key string) []rules.Issue {
 	var out []rules.Issue
-	issues := rules.Derive(buildOf(full), content).Issues
+	issues := rules.Derive(buildOf(full), content).AllIssues()
 	known := rules.KnownIssues(full.GetKnownIssues(), issues)
 	for i, is := range issues {
 		if slices.Contains(is.Keys, key) && !known[i] {
@@ -178,7 +178,7 @@ func carryFlags(content *rules.Content, stored, next *charactersv1.FullSheet) {
 		return
 	}
 	nextBuild := buildOf(next)
-	issues := rules.Derive(nextBuild, content).Issues
+	issues := rules.Derive(nextBuild, content).AllIssues()
 	// The flags are worked out against what stored knew, with next's own build and issues.
 	fl := flags(content, stored, nextBuild, issues)
 	if len(fl) == 0 {
@@ -212,7 +212,7 @@ func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *r
 		for _, is := range f.issues {
 			// The sentence as a change reads it ("agora dá 2 perícias"), when the
 			// engine has one for this issue; otherwise the issue's own.
-			if is.Lost != nil {
+			if is.Lost != nil || is.Idle != nil {
 				messages = append(messages, r.say(is))
 				continue
 			}
@@ -237,16 +237,20 @@ type reader struct {
 	master bool
 }
 
-// say is the issue's sentence for the reader.
+// say is the issue's sentence for the reader: a lost prerequisite and a notice are built for the reader, any other is as stored.
 func (r reader) say(is rules.Issue) string {
-	if is.Lost == nil {
-		return is.Message
+	switch {
+	case is.Lost != nil:
+		return is.Lost.SentencePT(r.name, r.master)
+	case is.Idle != nil:
+		return is.Idle.SentencePT(r.name)
 	}
-	return is.Lost.SentencePT(r.name, r.master)
+	return is.Message
 }
 
 // tell rewrites, in the sheet's derived issues (made from issues, in its order), the message of each lost
-// prerequisite to the reader's sentence.
+// prerequisite to the reader's sentence. issues are Derived.Issues alone: the notices (Derived.Notices) are no part of
+// the derived sheet's issues, so the two lists stay aligned.
 func (r reader) tell(d *rulesv1.DerivedSheet, issues []rules.Issue) {
 	for i, is := range issues {
 		if is.Lost != nil && i < len(d.GetIssues()) {

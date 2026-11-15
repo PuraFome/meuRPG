@@ -189,8 +189,8 @@ func (s *Service) refreshKnownIssues(ctx context.Context, tx pgx.Tx, campaignID 
 	if err != nil {
 		return wrap("read rules content", err)
 	}
-	beforeIssues := rules.Derive(buildOf(was), content).Issues
-	afterIssues := rules.Derive(buildOf(next), content).Issues
+	beforeIssues := rules.Derive(buildOf(was), content).AllIssues()
+	afterIssues := rules.Derive(buildOf(next), content).AllIssues()
 	before, after := issueIDs(beforeIssues), issueIDs(afterIssues)
 	// A stored sentence is read as the issue it holds, so the issue that ends takes its row with it.
 	known := rules.IdentitiesOf(rules.IdentitiesOf(next.KnownIssues, beforeIssues), afterIssues)

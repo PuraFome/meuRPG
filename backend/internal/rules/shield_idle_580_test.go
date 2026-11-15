@@ -12,7 +12,11 @@ import (
 
 func shieldIdleContent(t *testing.T) *Content {
 	t.Helper()
-	return withOverlay(t, Overlay{Revision: 1, Weapons: append(ruleWeapons(), tableWeapons()...)})
+	ws := append(ruleWeapons(), tableWeapons()...)
+	for i := range ws {
+		ws[i].Revision = 1
+	}
+	return withOverlay(t, Overlay{Revision: 1, Weapons: ws})
 }
 
 func noticeOf(d Derived, code string) (Issue, bool) {
@@ -149,6 +153,7 @@ func TestTheShieldIdleNoticeBlocksNothing(t *testing.T) {
 	t.Parallel()
 	c := shieldIdleContent(t)
 	before := withShieldOn(ruleSheet(12, 14, wHeavy))
+	before.FeatureChoices = []string{"feature:fighter-fighting-style-defense"}
 	if err := Validate(before, c); err != nil {
 		t.Errorf("Validate() = %v, want none", err)
 	}

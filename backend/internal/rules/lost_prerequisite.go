@@ -123,6 +123,10 @@ const lostIDPrefix = "lost:"
 // see, and the place moves when a swap or a rule takes an earlier pick out, while the issue is the same one. The sheet
 // stores these (known issues), so a stored lost prerequisite holds no sentence and no name.
 func (is Issue) ID() string {
+	if is.Idle != nil {
+		field, _, _ := strings.Cut(is.Field, "[") // the weapon's place in the list is not what the notice is about
+		return is.Code + "|" + field + "|" + idleIDPrefix + is.Idle.Key
+	}
 	if is.Lost != nil {
 		return is.Code + "|" + listOf(is.Field) + "|" + lostIDPrefix + is.Lost.Key
 	}

@@ -100,6 +100,7 @@ type activeEffect struct {
 
 func derive(b Build, c *content) Derived {
 	d, _ := deriveRounds(b, c)
+	d.Notices = c.shieldIdleNotices(b, d)
 	return d
 }
 
