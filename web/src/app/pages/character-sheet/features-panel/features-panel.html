@@ -15,6 +15,9 @@
           <details class="feature">
             <summary class="feature__summary">
               <span class="feature__name">{{ f.name }}</span>
+              @if (f.lost) {
+                <span class="mr-tag feature__lost">Não vale agora</span>
+              }
               <span class="feature__source">{{ f.sourcePt }}</span>
               <mat-icon class="feature__chevron" aria-hidden="true">expand_more</mat-icon>
             </summary>

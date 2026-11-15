@@ -425,6 +425,7 @@ describe('the sheet maps armor_class_description, features and hints (integrator
         descriptionPtMissing: false,
         descriptionPtOnly: false,
         summaryPt: '',
+        lost: false,
       },
     ]);
     expect(sheet.hints).toEqual([
@@ -700,7 +701,18 @@ describe('the sheet lists the feats a character took with the features (MR-025)'
         descriptionPtMissing: false,
         descriptionPtOnly: true,
         summaryPt: '',
+        lost: false,
       },
     ]);
+    // The feat's prerequisite is lost: the row says so (board 580-05).
+    const lostIssue = {
+      $typeName: 'meurpg.rules.v1.Issue' as const,
+      code: 'feat_prerequisite',
+      field: 'full.feat_keys[0]',
+      message: 'Atleta pede Força 13, e Tor tem 12: o talento só vale de novo quando Tor cumprir.',
+    };
+    const lost = toCharacterSheetVm({ ...character, derived: { ...derived, issues: [lostIssue] } })
+      .sheet as FullSheetVm;
+    expect(lost.features.map((f) => f.lost)).toEqual([true]);
   });
 });

@@ -158,3 +158,19 @@
     margin: 0;
   }
 }
+
+// A feat or an option the sheet keeps whose prerequisite it lost (board 580-05): a dashed tag in the warning colour.
+.feature__lost {
+  border-style: dashed;
+  border-color: var(--mr-warning-ink);
+  color: var(--mr-warning-ink);
+}
+
+// The tag sits right after the name; the source keeps the right end.
+.feature__summary:has(.feature__lost) .feature__name {
+  flex-grow: 0;
+}
+
+.feature__lost {
+  margin-right: auto;
+}

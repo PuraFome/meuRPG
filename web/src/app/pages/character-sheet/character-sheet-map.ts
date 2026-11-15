@@ -38,6 +38,7 @@ import {
   FullSheetVm,
   ReviewVm,
 } from './character-sheet.types';
+import { lostKeys } from './sheet-format';
 import { hitDiceWords } from '../../core/resources/hit-dice-text';
 
 const STATE_FROM_GEN: Record<GenCharacterState, CharacterState> = {
@@ -169,7 +170,13 @@ function spellVm(cs: GenDerivedSheet['spells'][number]) {
   };
 }
 
-function featureVm(f: GenDerivedSheet['features'][number]) {
+/** The features of the sheet; a feat or an option it keeps whose prerequisite it lost is marked (board 580-05). */
+function featuresVm(full: GenFullSheet, derived: GenDerivedSheet) {
+  const lost = lostKeys(full, derived.issues);
+  return derived.features.map((f) => featureVm(f, lost));
+}
+
+function featureVm(f: GenDerivedSheet['features'][number], lost: ReadonlySet<string>) {
   return {
     name: f.namePt,
     sourcePt: f.sourcePt,
@@ -178,6 +185,7 @@ function featureVm(f: GenDerivedSheet['features'][number]) {
     descriptionPtMissing: f.descriptionPtMissing,
     descriptionPtOnly: f.descriptionPtOnly,
     summaryPt: f.summaryPt,
+    lost: lost.has(f.key),
   };
 }
 
@@ -294,7 +302,7 @@ function toFullSheetVm(full: GenFullSheet, derived: GenDerivedSheet): FullSheetV
     senses: derived.senses.map((s) => `${s.namePt}: ${metersWithFeet(s.rangeFt)}`),
     attacks: derived.attacks.map(toAttackVm),
     ...castingVm(derived),
-    features: derived.features.map(featureVm),
+    features: featuresVm(full, derived),
     breathWeapon: derived.breathWeapon?.textPt ?? '',
     resistances: derived.resistances.map((r) => capitalized(r.damageTypeNamePt)),
     languages: derived.languages,
