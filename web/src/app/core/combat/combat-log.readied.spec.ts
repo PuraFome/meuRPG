@@ -4,10 +4,11 @@ import {
   type CombatLogEntry,
   CombatLogEntrySchema,
   CombatLogKind,
+  CombatLogRoundSchema,
   ReadiedKind,
   ReadiedStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { logLine } from './combat-log';
+import { logGroups, logLine } from './combat-log';
 
 type Over = MessageInitShape<typeof CombatLogEntrySchema>;
 const entry = (over: Over): CombatLogEntry =>
@@ -95,5 +96,34 @@ describe('the lines of a readied action (#582, board 582-08)', () => {
     );
     const others = said({ kind: CombatLogKind.ACTION_READIED });
     expect(others).not.toMatch(/Mísseis|magia|círculo|nível/i);
+  });
+
+  it("does not call the readied attack's own line an opportunity attack: it comes right after the fired line of the same actor", () => {
+    const attack = (id: string, asReaction: boolean) =>
+      entry({
+        id,
+        kind: CombatLogKind.ATTACK,
+        targetLabel: 'Zumbi 1',
+        key: 'equipment:dagger',
+        keyNamePt: 'Adaga',
+        asReaction,
+      });
+    const fired = entry({
+      id: 'f1',
+      kind: CombatLogKind.READIED_FIRED,
+      readied: held({ status: ReadiedStatus.FIRED }),
+    });
+    const texts = (entries: CombatLogEntry[]) =>
+      logGroups([create(CombatLogRoundSchema, { round: 1, entries })], 1, '', {
+        master: true,
+        players: new Set(['Tor']),
+      })[0].lines.map((l) => l.text);
+    // The entries of a round are the latest first: the attack, then the line that fired it.
+    expect(texts([attack('a1', true), fired])[0]).toBe(' ataca o Zumbi 1 com a Adaga: acertou');
+    // An opportunity attack, or one of another actor right after the fired line, keeps its words.
+    expect(texts([attack('a2', true)])[0]).toContain('(ataque de oportunidade)');
+    expect(
+      texts([{ ...attack('a3', true), actorLabel: 'Brisa' } as CombatLogEntry, fired])[0],
+    ).toContain('(ataque de oportunidade)');
   });
 });

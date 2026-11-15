@@ -1,5 +1,6 @@
 import {
   type CombatLogEntry,
+  CombatLogKind,
   type CombatLogReadied,
   ReadiedStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -61,4 +62,17 @@ export function readiedLostLine(
     actor: '',
     text: `A ${r.actionNamePt || 'ação'} preparada ${ofSubject(e.actorLabel, ctx)} se perdeu`,
   };
+}
+
+/**
+ * Whether an attack's line is the use of a readied attack: the server writes the fired line of the same actor just before the
+ * attack's own (`older` is the entry before it in time; a round lists the latest first). The attack carries `as_reaction` like an
+ * opportunity attack does (its window is a catch window), and the wire has nothing else to tell them apart.
+ */
+export function followsReadiedFire(e: CombatLogEntry, older: CombatLogEntry | undefined): boolean {
+  return (
+    older?.kind === CombatLogKind.READIED_FIRED &&
+    older.actorLabel === e.actorLabel &&
+    older.readied?.status !== ReadiedStatus.IGNORED
+  );
 }

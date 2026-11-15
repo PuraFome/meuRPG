@@ -33,7 +33,12 @@ import { effectEndedText, effectLine, exhaustionLogText } from './combat-log-eff
 import { LogContext, LogLine, NO_CONTEXT } from './combat-log-types';
 import { the } from './combat-log-words';
 import { MOUNT_LINES } from './combat-log-mount';
-import { readiedFiredText, readiedLostLine, readiedText } from './combat-log-readied';
+import {
+  followsReadiedFire,
+  readiedFiredText,
+  readiedLostLine,
+  readiedText,
+} from './combat-log-readied';
 
 /** What a line builder is given: the entry, the fields every line shares, the combat's name and who is reading. */
 interface LineArgs {
@@ -41,6 +46,8 @@ interface LineArgs {
   readonly base: { id: string; actor: string; hidden: boolean; undoable: boolean };
   readonly encounterName: string;
   readonly ctx: LogContext;
+  /** The entry just before this one in time, when the caller has it. */
+  readonly older?: CombatLogEntry;
 }
 
 /** One builder per kind of entry, so a new kind is one more row and no function grows with it. A builder answers `null` for an
@@ -65,11 +72,11 @@ const LINE_BUILDERS: ReadonlyMap<CombatLogKind, (args: LineArgs) => LogLine | nu
   // A spell attack (Raio de Fogo) has the sparkles E6-15 draws for spells.
   [
     CombatLogKind.ATTACK,
-    ({ e, base }) => {
+    ({ e, base, older }) => {
       return {
         ...base,
         icon: e.key.startsWith('spell:') ? 'auto_awesome' : 'swords',
-        text: attackText(e),
+        text: attackText(e, followsReadiedFire(e, older)),
         roll: pairOf(e.attackRoll, 'd20 do ataque'),
         notes: [modeNote(e.modeChange), rerollNote(e.attackRoll), ...damageNotes(e.damage)].filter(
           Boolean,
@@ -391,9 +398,10 @@ export function logLine(
   e: CombatLogEntry,
   encounterName = '',
   ctx: LogContext = NO_CONTEXT,
+  older?: CombatLogEntry,
 ): LogLine | null {
   const base = { id: e.id, actor: e.actorLabel, hidden: e.hidden, undoable: e.undoable };
-  const line = LINE_BUILDERS.get(e.kind)?.({ e, base, encounterName, ctx }) ?? null;
+  const line = LINE_BUILDERS.get(e.kind)?.({ e, base, encounterName, ctx, older }) ?? null;
   // "<nome> usou a Inspiração.": the server sends it only to the master and the roller's player, so a line that has it shows it.
   return line && e.favorTextPt ? { ...line, notes: [...(line.notes ?? []), e.favorTextPt] } : line;
 }
