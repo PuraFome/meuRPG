@@ -18057,8 +18057,8 @@ export enum CombatLogKind {
   /**
    * A character drank a potion, read a scroll or used up another consumable (ChargesService.UseConsumable: "Pensantus
    * bebeu a Poção de cura e recuperou 9 pontos de vida"): the actor, the receiver as `target_id` when it is another
-   * character, and `consumable_use`. The audience of ITEM_CHARGE_SPENT, and the receiving character's owner too; no other
-   * player's log shows it or counts it (RN-10).
+   * character, and `consumable_use`. The master, the user's owner and the receiving character's owner read the dice and the
+   * hit points; any other player reads who used which item and on whom, without a number (RN-10).
    *
    * @generated from enum value: COMBAT_LOG_KIND_CONSUMABLE_USED = 119;
    */
