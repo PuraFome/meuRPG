@@ -29,6 +29,7 @@ var heldRequestTypes = map[heldKind][]proto.Message{
 	heldCounterspell:      {&playv1.AnswerReactionRequest{}},
 	heldContest:           {&playv1.StartContestRequest{}, &playv1.RespondContestRequest{}},
 	heldInitiative:        {&playv1.SubmitInitiativeRequest{}},
+	heldMountSave:         {&playv1.RollMountSaveRequest{}},
 }
 
 // TestEveryHeldKindKeepsARequestWithAnIdempotencyKey: heldRequestTypes has a row for every kind of heldRegistry (and no other), and
