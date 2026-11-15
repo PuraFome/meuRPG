@@ -422,6 +422,10 @@ var reads = []read{
 		req: func(w *world) proto.Message { return &playv1.GetOutsideInspirationRequest{CampaignId: w.campaign} },
 	},
 	{
+		procedure: playv1connect.PlayServiceListNpcCheckPickerProcedure, allow: masterOnlyRead, why: "the picker lists the NPCs of the stage, their hidden ones included, and what each can roll",
+		req: func(w *world) proto.Message { return &playv1.ListNpcCheckPickerRequest{CampaignId: w.campaign} },
+	},
+	{
 		procedure: playv1connect.ResourceServiceListHeldRollsProcedure, allow: members, why: "a player reads the questions of their own rolls that wait; the master reads every one of the campaign",
 		req: func(w *world) proto.Message { return &playv1.ListHeldRollsRequest{CampaignId: w.campaign} },
 	},
