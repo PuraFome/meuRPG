@@ -227,3 +227,33 @@ func TestAWeaponsPropertiesFollowTheSRDsCombinations(t *testing.T) {
 		})
 	}
 }
+
+// #580 round 3 (boards 580-16 cards 9 and 10): an attack says it is a thrown one, from the weapon's Arremesso property alone.
+// A thrown melee weapon, a thrown ranged one and a table's ranged thrown weapon all say so; a bow, which has the same two ranges, does not.
+func TestAnAttackSaysItIsThrownFromTheThrownProperty(t *testing.T) {
+	t.Parallel()
+	boleadeira := "weapon:boleadeira" + tableSuffix
+	weapons := append(tableWeapons(), TableWeapon{
+		TableEntry: TableEntry{Key: boleadeira, NamePT: "Boleadeira"}, Category: "simple", Ranged: true, Damage: "1d4",
+		DamageType: "damage-type:bludgeoning", Properties: []string{"weapon-property:thrown"}, NormalRangeFt: 20, LongRangeFt: 60,
+	})
+	c := withOverlay(t, Overlay{Revision: 1, Weapons: weapons})
+	d := Derive(weaponBuild("class:fighter", "equipment:dagger", "equipment:dart", "equipment:longbow", weaponSpear, boleadeira, weaponHalberd), c)
+	for key, want := range map[string]bool{
+		"equipment:dagger":  true,  // a thrown melee weapon
+		"equipment:dart":    true,  // a thrown ranged weapon
+		"equipment:longbow": false, // ammunition, with a long range of its own
+		weaponSpear:         true,
+		boleadeira:          true,
+		weaponHalberd:       false,
+	} {
+		a, ok := attackOf(d, key)
+		if !ok {
+			t.Errorf("%s: no attack line", key)
+			continue
+		}
+		if a.Thrown != want {
+			t.Errorf("%s: Thrown = %v, want %v", key, a.Thrown, want)
+		}
+	}
+}
