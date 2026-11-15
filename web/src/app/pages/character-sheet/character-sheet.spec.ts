@@ -2134,6 +2134,46 @@ describe('CharacterSheetPage', () => {
     expect(issues.textContent).not.toContain(sentence);
   });
 
+  it('a lost prerequisite after the master\'s edit is told in the changed entry, not again in "Pendências de regra" (580-05)', async () => {
+    configure();
+    const sentence =
+      'Pede depois pede Guerreiro 7, e Tor está no 5: o talento só vale de novo quando Tor cumprir.';
+    fake.getCharacterSheetFn = () =>
+      Promise.resolve(
+        vm({
+          sheet: fullSheet({
+            changedContent: [
+              {
+                key: 'feat:pede-depois@mesa',
+                namePt: 'Pede depois',
+                changedAt: new Date(2026, 9, 5),
+                messages: [sentence],
+              },
+            ],
+            issues: [
+              { code: 'feat_prerequisite', field: 'full.feat_keys[0]', message: sentence },
+              {
+                code: 'table_content_changed',
+                field: 'full.feat_keys[0]',
+                message: 'O talento Pede depois mudou.',
+              },
+              {
+                code: 'unknown_key',
+                field: 'full.armor_key',
+                message: 'A armadura escolhida não existe no conteúdo srd51@test.',
+              },
+            ],
+          }),
+        }),
+      );
+
+    const el = await render();
+    expect(el.querySelector('app-changed-content')!.textContent).toContain(sentence);
+    const issues = el.querySelector('[aria-label="Pendências de regra"]')!;
+    expect(issues.textContent).toContain('A armadura escolhida não existe');
+    expect(issues.textContent).not.toContain(sentence);
+  });
+
   it('shows no "A classe mudou" notice for a sheet nothing changed under', async () => {
     configure();
     fake.getCharacterSheetFn = () => Promise.resolve(vm());
