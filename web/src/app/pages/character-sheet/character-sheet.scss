@@ -215,6 +215,13 @@ app-revive-blocked {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
     gap: 20px;
+
+    // The wrapper is its own grid here: the names of the sheet's areas are not its own, and
+    // two children placed by them would land on the same cell, one over the other.
+    > .sheet__features,
+    > .sheet__tstory {
+      grid-area: auto;
+    }
   }
 }
 
