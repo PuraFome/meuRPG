@@ -634,15 +634,13 @@ func TestGeminiAcceptsAJPEGAnswer(t *testing.T) {
 }
 
 // The error body of the Interactions API has a string code; the old Google
-// style has a number. Both are read, and Google's message reaches the error
-// (which only the log sees), cut short.
+// style has a number. Both are read, and only Google's reason word reaches the
+// error, never its message.
 func TestGeminiReadsBothErrorStyles(t *testing.T) {
 	t.Parallel()
-	long := strings.Repeat("x", 1000)
 	tests := []struct{ name, body, want string }{
-		{"string code", `{"error":{"message":"The value 'image/png' is not supported for 'response_format.mime_type'.","code":"invalid_request"}}`, "invalid_request: The value 'image/png' is not supported"},
-		{"number code", `{"error":{"code":400,"message":"bad field","status":"INVALID_ARGUMENT"}}`, "INVALID_ARGUMENT: bad field"},
-		{"long message", `{"error":{"message":"` + long + `","code":"invalid_request"}}`, "invalid_request: " + strings.Repeat("x", maxLoggedMessage) + "..."},
+		{"string code", `{"error":{"message":"The value 'image/png' is not supported.","code":"invalid_request"}}`, "status 400: invalid_request"},
+		{"number code", `{"error":{"code":400,"message":"bad field","status":"INVALID_ARGUMENT"}}`, "status 400: INVALID_ARGUMENT"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -652,13 +650,54 @@ func TestGeminiReadsBothErrorStyles(t *testing.T) {
 				_, _ = fmt.Fprint(w, tc.body)
 			})
 			_, err := geminiFor(s, io.Discard).Generate(t.Context(), sceneRequest())
-			if !errors.Is(err, ErrUnavailable) || !strings.Contains(err.Error(), "status 400: "+tc.want) {
+			if !errors.Is(err, ErrUnavailable) || !strings.Contains(err.Error(), tc.want) {
 				t.Errorf("error = %v, want it to carry %q", err, tc.want)
 			}
-			if strings.Contains(err.Error(), long+"x") || s.calls.Load() != 1 {
-				t.Errorf("message not cut or retried: calls = %d", s.calls.Load())
+			if strings.Contains(err.Error(), "bad field") || strings.Contains(err.Error(), "not supported") || s.calls.Load() != 1 {
+				t.Errorf("message in the error or retried: calls = %d", s.calls.Load())
 			}
 		})
+	}
+}
+
+// Google's message can quote the request. A 400 is not retried, so the client
+// logs nothing and returns the error, which the job's log line prints: the
+// error carries the status and never the message.
+func TestGeminiErrorMessageIsNotLogged(t *testing.T) {
+	t.Parallel()
+	const canary = "CANARY-prompt-text-7f3a"
+	s := newServer(t, func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = fmt.Fprintf(w, `{"error":{"code":400,"message":"invalid request: %s","status":"INVALID_ARGUMENT"}}`, canary)
+	})
+	var logs bytes.Buffer
+	_, err := geminiFor(s, &logs).Generate(t.Context(), sceneRequest())
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("error = %v, want ErrUnavailable", err)
+	}
+	if strings.Contains(err.Error(), canary) || strings.Contains(logs.String(), canary) {
+		t.Errorf("the provider's message is in the error %q or the log %q", err, logs.String())
+	}
+	if !strings.Contains(err.Error(), "status 400") {
+		t.Errorf("error = %q, want the status", err)
+	}
+}
+
+// A free-text code or status is not an enum word, so it is left out too.
+func TestGeminiFreeTextReasonIsNotLogged(t *testing.T) {
+	t.Parallel()
+	const canary = "CANARY-xyz"
+	s := newServer(t, func(w http.ResponseWriter) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = fmt.Fprintf(w, `{"error":{"code":"bad value %s","message":"m"}}`, canary)
+	})
+	var logs bytes.Buffer
+	_, err := geminiFor(s, &logs).Generate(t.Context(), sceneRequest())
+	if !errors.Is(err, ErrUnavailable) {
+		t.Fatalf("error = %v, want ErrUnavailable", err)
+	}
+	if strings.Contains(err.Error(), canary) || strings.Contains(logs.String(), canary) {
+		t.Errorf("the free text is in the error %q or the log %q", err, logs.String())
 	}
 }
 
