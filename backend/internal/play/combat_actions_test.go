@@ -59,7 +59,7 @@ func (u *user) hero(t *testing.T, campaignID, name, class, race string, level in
 	t.Helper()
 	sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
 		BaseScores: scores, RaceKey: race, Classes: []*charactersv1.ClassLevel{{ClassKey: class, Level: level}},
-		WeaponKeys: weapons, CantripKeys: cantrips, FeatureChoiceKeys: styleOf(class, nil),
+		WeaponKeys: weapons, CantripKeys: cantrips, FeatureChoiceKeys: styleOf(class, level, nil),
 	}}}
 	res, err := u.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
 		CampaignId: campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: name, Sheet: sheet,
@@ -70,16 +70,20 @@ func (u *user) hero(t *testing.T, campaignID, name, class, race string, level in
 	return res.Msg.GetCharacter()
 }
 
-// defenseStyle is the fighting style a test fighter gets when the test names none: without armor it adds
-// nothing. Great Weapon Fighting, the sheet's default, would reroll a versatile weapon held in both hands.
-const defenseStyle = "feature:fighter-fighting-style-defense"
+// defenseStyles is the fighting style a test fighter or paladin gets when the test names none: without armor
+// it adds nothing. Great Weapon Fighting, the sheet's default, would reroll a versatile weapon held in both hands.
+var defenseStyles = map[string]string{
+	"class:fighter": "feature:fighter-fighting-style-defense",
+	"class:paladin": "feature:fighting-style-defense",
+}
 
-// styleOf adds Defense to the choices of a fighter that names no fighting style.
-func styleOf(class string, choices []string) []string {
-	if class != "class:fighter" || slices.ContainsFunc(choices, func(k string) bool { return strings.Contains(k, "fighting-style") }) {
+// styleOf adds Defense to the choices of a fighter, or of a paladin that has a style (level 2), that names none.
+func styleOf(class string, level int32, choices []string) []string {
+	style, ok := defenseStyles[class]
+	if !ok || (class == "class:paladin" && level < 2) || slices.ContainsFunc(choices, func(k string) bool { return strings.Contains(k, "fighting-style") }) {
 		return choices
 	}
-	return append(slices.Clone(choices), defenseStyle)
+	return append(slices.Clone(choices), style)
 }
 
 // npc creates a basic NPC with a sword at +4 (1d6+2, "basic:0") and a short
