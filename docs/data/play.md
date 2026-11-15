@@ -365,13 +365,14 @@ Reroll rule (migration 00306): `reroll_ask` marks the question asked as soon as 
 The check `inspiration_holds_reroll_face_valid` keeps the faces between 1 and 20, the index at 0 or 1 and the cost at 0 or more.
 `die_answer_key` and `die_used` keep the Bardic Inspiration die answered while this question follows, since the row stays open.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.
+A hold of kind `npc_check` is neither: it waits for the bards' dice, so the sweep of orphans, the forget of an actor's holds and the list of open holds leave it alone; it is settled as a skip when a combat starts, and forgotten when its session ends.
 
 ## `npc_check_asks`
 
 One row per Lore bard asked about an NPC's check outside a combat (migration 00354); the check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
 `hold_id` (`CASCADE`) and `bard_character_id` are unique together, and so are `hold_id` and `position` (the order the bards are asked in).
 `state` is `asked`, `cut`, `passed` or `closed`; the one asked now is the first with `asked`.
-`sides` is the die of the bard's Bardic Inspiration, `creature_seen` whether the bard's player may read the creature's name, `die_face` the face that came off (`NULL` until she cuts), `physical` whether she typed it, `answer_key` and `answered_at` the answer, which a retry finds by key.
+`sides` is the die of the bard's Bardic Inspiration, `creature_seen` whether the bard's player may read the creature's name, `die_face` the face that came off (`NULL` until she cuts), `physical` whether she typed it, `answer_key`, `answer_hash` and `answered_at` the answer, which a retry finds by key and whose body must be the same (another body under the key is a reused key; `answer_hash` is `NULL` until she answers).
 
 ## `trap_damages`
 
