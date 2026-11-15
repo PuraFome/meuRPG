@@ -27,6 +27,7 @@ import {
 import { ReadySheet, type ReadySheetData } from './ready-sheet/ready-sheet';
 import type { Observable } from 'rxjs';
 import { needsSheet, resourceOf, usedNote } from '../../../core/combat/feature-use';
+import { readySpeed } from '../../../core/combat/ready';
 import { ActionKey } from '../../../core/connect/idempotency';
 import { openBardicInspiration, openFlexibleCasting, openLayOnHands } from './resource-sheets';
 import { SpendSheet, type SpendSheetData } from './theatre/spend-sheet';
@@ -270,8 +271,7 @@ export class ActionSheets {
       options: options.options,
       summaries: new Map(),
       theatre: this.ctx.theatre(),
-      noSpeed: own.speedFt <= 0 || options.contestState?.grappled === true,
-      speedFt: own.speedFt,
+      ...readySpeed(own.speedFt, options),
       concentrating: own.concentrationSpell ? own.concentrationSpellNamePt : '',
       combatants: e.combatants,
       state: this.ctx.state(),

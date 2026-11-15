@@ -1,6 +1,6 @@
 import { create } from '@bufbuild/protobuf';
 
-import { ReadiedKind } from '../../../gen/meurpg/play/v1/combat_pb';
+import { GetTurnOptionsResponseSchema, ReadiedKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
   ActionOptionSchema,
@@ -17,6 +17,7 @@ import {
   readyKinds,
   readyMissing,
   readyOtherRows,
+  readySpeed,
   readySpellRows,
   triggerState,
 } from './ready';
@@ -302,5 +303,29 @@ describe('Ready (#582): the name of a held action', () => {
   it('counts characters like the server (runes, not UTF-16 units): 200 emoji are allowed, 201 are not', () => {
     expect(triggerState('😀'.repeat(200), false)).toEqual({ count: 200, error: '' });
     expect(triggerState(` ${'😀'.repeat(201)} `, false).error).toBe('Até 200 caracteres.');
+  });
+});
+
+describe('Ready (#582): the speed a readied move may have', () => {
+  const turn = (movementFt: number | null, grappled = false) =>
+    create(GetTurnOptionsResponseSchema, {
+      options: create(TurnOptionsSchema, {
+        economy: movementFt === null ? undefined : { movement: { speedFt: movementFt } },
+      }),
+      contestState: grappled ? { grappled: true } : undefined,
+    } as never);
+
+  it('does not block a swimmer or a flier with no walking speed: the server takes the most of the speeds on any surface', () => {
+    expect(readySpeed(0, turn(30))).toEqual({ noSpeed: false, speedFt: 0 });
+    expect(readySpeed(30, turn(30))).toEqual({ noSpeed: false, speedFt: 30 });
+  });
+
+  it('blocks it only for a grappled readier or a speed of 0 the server says', () => {
+    expect(readySpeed(30, turn(30, true)).noSpeed).toBe(true);
+    expect(readySpeed(30, turn(0)).noSpeed).toBe(true);
+  });
+
+  it('derives nothing from the walking speed when the options carry no movement: the server refuses', () => {
+    expect(readySpeed(0, turn(null))).toEqual({ noSpeed: false, speedFt: 0 });
   });
 });

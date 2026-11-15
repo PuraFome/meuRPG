@@ -1,4 +1,4 @@
-import { ReadiedKind } from '../../../gen/meurpg/play/v1/combat_pb';
+import { type GetTurnOptionsResponse, ReadiedKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
   AttackKind,
@@ -109,6 +109,21 @@ export interface ReadyContext {
   readonly theatre: boolean;
   /** The combatant has no speed now (grappled, for one). */
   readonly noSpeed: boolean;
+}
+
+/**
+ * Whether Mover is off for lack of speed, and how far the sheet says it goes. The walking speed is not the readier's speed: the
+ * server holds the most of the speeds on any surface (`readyMoveFt`), so a swimmer or a flier with 0 to walk can ready a move. Only
+ * what the turn options say blocks it (a grapple, a movement of 0); with no movement in them nothing is derived and the server
+ * refuses. The distance is written only when it is the walking speed (a Dash or another surface changes it: "até o seu deslocamento").
+ */
+export function readySpeed(
+  walkFt: number,
+  res: GetTurnOptionsResponse,
+): { readonly noSpeed: boolean; readonly speedFt: number } {
+  const best = res.options?.economy?.movement?.speedFt;
+  const noSpeed = res.contestState?.grappled === true || best === 0;
+  return { noSpeed, speedFt: best === undefined || best === walkFt ? walkFt : 0 };
 }
 
 /** The kind buttons, in the board's order: "Magia" only for a combatant with spells, "Mover" off with its reason when it cannot walk. */
