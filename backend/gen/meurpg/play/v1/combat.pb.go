@@ -2236,6 +2236,12 @@ const (
 	// the target's reaction (UseReaction or DeclineReaction) before its damage
 	// can be rolled.
 	PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION PendingDamageStatus = 5
+	// The master took an extra out of a group of two or more parts that share a damage type
+	// (RemoveDamagePart): what the damage did was undone, and the damage waits for the sum of
+	// that damage type alone (awaited_damage_type_key). The other groups keep what they rolled.
+	// RollDamage settles it as it settles AWAITING_ROLL, and DiscardPendingDamage drops it the
+	// same way; ApplyPendingDamage refuses it (DAMAGE_NOT_ROLLED).
+	PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM PendingDamageStatus = 6
 )
 
 // Enum value maps for PendingDamageStatus.
@@ -2247,14 +2253,16 @@ var (
 		3: "PENDING_DAMAGE_STATUS_APPLIED",
 		4: "PENDING_DAMAGE_STATUS_DISCARDED",
 		5: "PENDING_DAMAGE_STATUS_AWAITING_REACTION",
+		6: "PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM",
 	}
 	PendingDamageStatus_value = map[string]int32{
-		"PENDING_DAMAGE_STATUS_UNSPECIFIED":       0,
-		"PENDING_DAMAGE_STATUS_AWAITING_ROLL":     1,
-		"PENDING_DAMAGE_STATUS_ROLLED":            2,
-		"PENDING_DAMAGE_STATUS_APPLIED":           3,
-		"PENDING_DAMAGE_STATUS_DISCARDED":         4,
-		"PENDING_DAMAGE_STATUS_AWAITING_REACTION": 5,
+		"PENDING_DAMAGE_STATUS_UNSPECIFIED":        0,
+		"PENDING_DAMAGE_STATUS_AWAITING_ROLL":      1,
+		"PENDING_DAMAGE_STATUS_ROLLED":             2,
+		"PENDING_DAMAGE_STATUS_APPLIED":            3,
+		"PENDING_DAMAGE_STATUS_DISCARDED":          4,
+		"PENDING_DAMAGE_STATUS_AWAITING_REACTION":  5,
+		"PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM": 6,
 	}
 )
 
@@ -3047,7 +3055,9 @@ const (
 	// The master took an extra out of a damage with a reason ("o mestre tirou o
 	// Ataque Furtivo"): the actor is the attacker, the target the target, `key` the
 	// part's key and `key_name_pt` its name; the reason is `reason`, for the master
-	// and the attacker's player.
+	// and the attacker's player. Another player reads the line with `key_name_pt`
+	// only (the name the roll line gave the part, "Outra fonte" for one hidden from
+	// them), no `key` and no `reason`.
 	CombatLogKind_COMBAT_LOG_KIND_DAMAGE_PART_REMOVED CombatLogKind = 31
 	// A state began or ended (a rage, a dodge): `state`.
 	CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED CombatLogKind = 32
@@ -12628,6 +12638,11 @@ type PendingDamage struct {
 	// The feature's Portuguese name for those dice ("Crítico Brutal"); empty when
 	// `extra_dice_count` is 0.
 	ExtraDiceNamePt string `protobuf:"bytes,26,opt,name=extra_dice_name_pt,json=extraDiceNamePt,proto3" json:"extra_dice_name_pt,omitempty"`
+	// AWAITING_GROUP_SUM: the damage-type key (such as "damage-type:piercing") whose sum is
+	// awaited; the parts of that type left (parts, those not removed) are the dice the sum
+	// covers, and part_rolls keeps what the other damage types rolled. Empty in any other
+	// status. Same audience as the rest of the message.
+	AwaitedDamageTypeKey string `protobuf:"bytes,31,opt,name=awaited_damage_type_key,json=awaitedDamageTypeKey,proto3" json:"awaited_damage_type_key,omitempty"`
 	// The damage an effect dealt to who started the turn under it (the web that burns): the
 	// effect's Portuguese name ("Teia em chamas"). It has no attacker.
 	EffectSourceNamePt string `protobuf:"bytes,100,opt,name=effect_source_name_pt,json=effectSourceNamePt,proto3" json:"effect_source_name_pt,omitempty"`
@@ -12875,6 +12890,13 @@ func (x *PendingDamage) GetExtraDiceNamePt() string {
 	return ""
 }
 
+func (x *PendingDamage) GetAwaitedDamageTypeKey() string {
+	if x != nil {
+		return x.AwaitedDamageTypeKey
+	}
+	return ""
+}
+
 func (x *PendingDamage) GetEffectSourceNamePt() string {
 	if x != nil {
 		return x.EffectSourceNamePt
@@ -12956,6 +12978,12 @@ type GetTurnOptionsResponse struct {
 	AttackTargets []*AttackTargets `protobuf:"bytes,3,rep,name=attack_targets,json=attackTargets,proto3" json:"attack_targets,omitempty"`
 	// The damage this combatant still has to roll, or that waits for the
 	// master to apply. Only the master and the combatant's player get it.
+	// The master also gets, with the status APPLIED, the damage a
+	// RemoveDamagePart could still undo: the combatant's last action applied it
+	// to an NPC or a creature and nothing was done after it (the limit of the
+	// take-out; the target's hit points are checked when it is taken out). It
+	// is not waiting for anything: only the master's "Tirar" works on it. The
+	// combatant's player never gets it.
 	PendingDamages []*PendingDamage `protobuf:"bytes,4,rep,name=pending_damages,json=pendingDamages,proto3" json:"pending_damages,omitempty"`
 	// For each spell of options.spells, and each save cantrip of options.attacks,
 	// who it can target, as the caller sees them: the caster itself and the other
@@ -30332,7 +30360,7 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\fcounted_dice\x18\v \x03(\v2\x1a.meurpg.play.v1.CountedDieR\vcountedDice\x127\n" +
 	"\n" +
 	"extra_dice\x18d \x03(\v2\x18.meurpg.play.v1.ExtraDieR\textraDiceB\r\n" +
-	"\v_treated_as\"\x87\n" +
+	"\v_treated_as\"\xbe\n" +
 	"\n" +
 	"\rPendingDamage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
@@ -30370,7 +30398,8 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"part_rolls\x18\x1d \x03(\v2\x1e.meurpg.play.v1.DamagePartRollR\tpartRolls\x121\n" +
 	"\x12amount_after_steps\x18\x1e \x01(\x05H\x02R\x10amountAfterSteps\x88\x01\x01\x12(\n" +
 	"\x10extra_dice_count\x18\x19 \x01(\x05R\x0eextraDiceCount\x12+\n" +
-	"\x12extra_dice_name_pt\x18\x1a \x01(\tR\x0fextraDiceNamePt\x121\n" +
+	"\x12extra_dice_name_pt\x18\x1a \x01(\tR\x0fextraDiceNamePt\x125\n" +
+	"\x17awaited_damage_type_key\x18\x1f \x01(\tR\x14awaitedDamageTypeKey\x121\n" +
 	"\x15effect_source_name_pt\x18d \x01(\tR\x12effectSourceNamePtB\x11\n" +
 	"\x0f_applied_amountB\x13\n" +
 	"\x11_concentration_dcB\x15\n" +
@@ -32104,14 +32133,15 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x1aATTACK_OUTCOME_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12ATTACK_OUTCOME_HIT\x10\x01\x12\x1f\n" +
 	"\x1bATTACK_OUTCOME_CRITICAL_HIT\x10\x02\x12\x17\n" +
-	"\x13ATTACK_OUTCOME_MISS\x10\x03*\xfc\x01\n" +
+	"\x13ATTACK_OUTCOME_MISS\x10\x03*\xaa\x02\n" +
 	"\x13PendingDamageStatus\x12%\n" +
 	"!PENDING_DAMAGE_STATUS_UNSPECIFIED\x10\x00\x12'\n" +
 	"#PENDING_DAMAGE_STATUS_AWAITING_ROLL\x10\x01\x12 \n" +
 	"\x1cPENDING_DAMAGE_STATUS_ROLLED\x10\x02\x12!\n" +
 	"\x1dPENDING_DAMAGE_STATUS_APPLIED\x10\x03\x12#\n" +
 	"\x1fPENDING_DAMAGE_STATUS_DISCARDED\x10\x04\x12+\n" +
-	"'PENDING_DAMAGE_STATUS_AWAITING_REACTION\x10\x05*\x82\x01\n" +
+	"'PENDING_DAMAGE_STATUS_AWAITING_REACTION\x10\x05\x12,\n" +
+	"(PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM\x10\x06*\x82\x01\n" +
 	"\rAreaPlacement\x12\x1e\n" +
 	"\x1aAREA_PLACEMENT_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14AREA_PLACEMENT_POINT\x10\x01\x12\x1c\n" +

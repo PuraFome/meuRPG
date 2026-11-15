@@ -142,9 +142,10 @@ func TestATypedGroupRangeCountsTheDiceEachPartRolls(t *testing.T) {
 	wantRange(t, "a critical hit with a part that keeps its dice", g, groupPiercing, 3, 22) // 2d8 doubled and 1d6 as it is
 }
 
-// The master cannot take out a part a typed damage-type sum covers: the sum sits on the group's first part, so taking
-// out that one would drop the group and taking out another would take nothing. A part of no group comes out as before.
-func TestAPartOfATypedGroupCannotBeTakenOut(t *testing.T) {
+// The master cannot take out a part of a typed group the way a part of no group comes out: the sum sits on the group's first
+// part, so takeOut leaves a part of a group to the take-out that asks for a new sum (combat_group_sum.go). A part of no group
+// comes out as before.
+func TestAPartOfATypedGroupIsNotTakenOutLikeAPartOfNoGroup(t *testing.T) {
 	t.Parallel()
 	parts := []partRecord{
 		{Key: partWeapon, Kind: partWeapon, Count: 1, Sides: 8, DamageType: "damage-type:slashing", Available: true},
@@ -171,6 +172,10 @@ func TestAPartOfATypedGroupCannotBeTakenOut(t *testing.T) {
 		{"a part of no group", "fire-edge", true},
 	} {
 		got := roll()
+		inGroup := tt.key != "fire-edge"
+		if inTypedGroup(got.rolls, tt.key) != inGroup || !mayComeOut(got.parts, got.rolls, tt.key) {
+			t.Errorf("%s: inTypedGroup = %v, mayComeOut = %v, want %v and true", tt.name, inTypedGroup(got.rolls, tt.key), mayComeOut(got.parts, got.rolls, tt.key), inGroup)
+		}
 		if ok := takeOut(got.parts, got.rolls, tt.key); ok != tt.want {
 			t.Errorf("%s: takeOut = %v, want %v", tt.name, ok, tt.want)
 		}
@@ -182,18 +187,17 @@ func TestAPartOfATypedGroupCannotBeTakenOut(t *testing.T) {
 	}
 }
 
-// The master takes Sneak Attack out of a damage rolled with a damage-type sum that covers it: refused with the reason
-// of a part that cannot come out, and the damage, the log and the target are as they were. The same Sneak Attack rolled
-// with a sum of its own comes out as always.
-func TestTheMasterCannotTakeSneakAttackOutOfATypedGroupButCanOutOfItsOwnSum(t *testing.T) {
+// The master takes Sneak Attack out of a damage rolled with a damage-type sum that covers it: the damage is taken back and waits
+// for a new sum (combat_group_sum_test.go). The same Sneak Attack rolled with a sum of its own comes out as always, with no new sum.
+func TestTheMasterTakesSneakAttackOutOfATypedGroupOrOutOfItsOwnSum(t *testing.T) {
 	t.Parallel()
 	for _, tt := range []struct {
-		name  string
-		typed []*playv1.TypedPart
-		ok    bool
+		name   string
+		typed  []*playv1.TypedPart
+		status playv1.PendingDamageStatus
 	}{
-		{"covered by the piercing group", []*playv1.TypedPart{{DamageType: groupPiercing, Sum: 7}}, false},
-		{"with a sum of its own", []*playv1.TypedPart{{PartKey: "weapon", Sum: 3}, {PartKey: "sneak-attack", Sum: 4}}, true},
+		{"covered by the piercing group", []*playv1.TypedPart{{DamageType: groupPiercing, Sum: 7}}, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM},
+		{"with a sum of its own", []*playv1.TypedPart{{PartKey: "weapon", Sum: 3}, {PartKey: "sneak-attack", Sum: 4}}, playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
@@ -209,21 +213,14 @@ func TestTheMasterCannotTakeSneakAttackOutOfATypedGroupButCanOutOfItsOwnSum(t *t
 			res, err := a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(&playv1.RemoveDamagePartRequest{
 				CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: rolled.GetPendingDamage().GetId(), PartKey: "sneak-attack", Reason: "motivo", IdempotencyKey: newKey(),
 			}))
-			if tt.ok {
-				if err != nil {
-					t.Fatalf("RemoveDamagePart() error = %v", err)
-				}
-				if hp() <= before || res.Msg.GetPendingDamage().GetAmount() >= rolled.GetPendingDamage().GetAmount() {
-					t.Errorf("the removal left hit points %d (were %d) and the damage %d (was %d), want less damage", hp(), before, res.Msg.GetPendingDamage().GetAmount(), rolled.GetPendingDamage().GetAmount())
-				}
-				return
+			if err != nil {
+				t.Fatalf("RemoveDamagePart() error = %v", err)
 			}
-			blocked := wantBlockedBy(t, "RemoveDamagePart(a part of a group)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE)
-			if !strings.Contains(err.Error(), "damage-type sum") || blocked == nil {
-				t.Errorf("error = %v, want it to say a damage-type sum covers the part", err)
+			if got := res.Msg.GetPendingDamage().GetStatus(); got != tt.status {
+				t.Errorf("status = %v, want %v", got, tt.status)
 			}
-			if hp() != before {
-				t.Errorf("hit points = %d after the refusal, want %d", hp(), before)
+			if hp() <= before {
+				t.Errorf("the removal left hit points %d (were %d), want the damage taken back or cut", hp(), before)
 			}
 		})
 	}
@@ -424,7 +421,7 @@ func TestTwoCastersOfOneSpellAreTwoPartsOfOneGroup(t *testing.T) {
 	}
 }
 
-// The master's way out of a Sneak Attack marked by mistake in a typed group is the undo of the damage roll: the damage
+// The other way out of a Sneak Attack marked by mistake in a typed group is the undo of the damage roll: the damage
 // goes back to the roller, who chooses the extras again and types a new sum, and the target has its hit points back.
 func TestUndoOfTheDamageOfATypedGroupSendsTheRollBackToTheRoller(t *testing.T) {
 	t.Parallel()
@@ -443,11 +440,6 @@ func TestUndoOfTheDamageOfATypedGroupSendsTheRollBackToTheRoller(t *testing.T) {
 	if hp() >= before {
 		t.Fatalf("hit points = %d after the roll, want fewer than %d", hp(), before)
 	}
-	_, err := a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(&playv1.RemoveDamagePartRequest{
-		CampaignId: a.campaignID, EncounterId: e.GetId(), PendingDamageId: id, PartKey: "sneak-attack", Reason: "motivo", IdempotencyKey: newKey(),
-	}))
-	wantBlockedBy(t, "RemoveDamagePart(a part of a group)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE)
-
 	a.undoLast(t, a.get(t, a.master))
 	if hp() != before {
 		t.Errorf("hit points = %d after the undo, want %d", hp(), before)

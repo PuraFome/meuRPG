@@ -69,19 +69,20 @@ make db-test-start        # a PostgreSQL on port 5433
 make test-postgres
 make db-test-stop
 
-make db-test-cockroach-start   # an in-memory CockroachDB on port 26258
+make db-test-cockroach-start   # an in-memory CockroachDB on port 26258, with --external-io-dir for the template's backup
 MEURPG_TEST_DATABASE_URL='postgresql://root@localhost:26258/defaultdb?sslmode=disable' make test
 make db-test-cockroach-stop
 ```
 
-Port 26257 (the `make up` or native database) also works, but the in-memory test database is faster and does not fill the development database.
+The CockroachDB of `make up` and of `make db-native-start` (port 26257) is not a test database: it is started without `--external-io-dir`, which the template's backup needs, and it holds the development data. The tests run on `make db-test-cockroach-start`.
 More than one test database can run at once on different ports; see [Development](development.md#test-databases).
 
 How `backend/internal/platform/dbtest` shapes the tests:
 
-- **Databases are reused.** Migrations run once into a template database named after a hash of the migration files (`meurpg_tpl_<hash>`). A package copies the template's tables into as many test databases as it runs tests at once, and between tests only empties them with `DELETE`, child tables first. Parallel tests never share a database. Templates of old migration sets stay on the test server, empty, and can be dropped with `DROP DATABASE meurpg_tpl_... CASCADE`.
+- **Databases are reused.** Migrations run once into a template database named after a hash of the migration files (`meurpg_tpl_<hash>`). On PostgreSQL a package copies the template with `CREATE DATABASE ... TEMPLATE`; on CockroachDB the process that migrates the template backs it up once (the others wait until the backup is finished) into the server's `nodelocal` storage (`nodelocal://1/meurpg_tpl_<hash>`) and each copy is a `RESTORE DATABASE ... WITH new_db_name`. A package makes as many test databases as it runs tests at once, and between tests only empties them with `DELETE`, child tables first. A CockroachDB started without `--external-io-dir` refuses the backup and the run fails with the line that says so; `make db-test-cockroach-start` and `.github/scripts/start-cockroach.sh` start it with the flag. Parallel tests never share a database. Templates of old migration sets stay on the test server, empty, and can be dropped with `DROP DATABASE meurpg_tpl_... CASCADE`.
+- **The cost of a copy** is measured by `BenchmarkCopyOfTheTemplate`, which takes a database no test gave back and reports the seconds it took: `cd backend && MEURPG_TEST_DATABASE_URL=... go test ./internal/platform/dbtest -run '^$' -bench CopyOfTheTemplate -benchtime 5x`. Run it on a quiet machine, against the server the tests use.
 - **Seeded tables survive.** Rows a migration inserts into a reference table (listed in `referenceTables`) are in the template and never emptied. A new table of that kind goes into that list.
-- **Every package that uses a database has a `TestMain` calling `dbtest.Main(m)`**, which drops the databases the package created. An interrupted run leaves `meurpg_<package>_test_...` databases to drop by hand; stopping the test CockroachDB (`make db-test-cockroach-stop`) deletes everything.
+- **Every package that uses a database has a `TestMain` calling `dbtest.Main(m)`**, which drops the databases the package created. An interrupted run leaves `meurpg_<package>_test_...` databases to drop by hand; stopping the test CockroachDB (`make db-test-cockroach-stop`) deletes every database, and the template's backup stays in `~/.meurpg/cockroach-test/io` (one folder per migration set, `meurpg_tpl_<hash>`): delete that folder to drop the backups, and when a RESTORE fails on a backup that another CockroachDB version wrote or that was left partial.
 - **Each test pool has one connection** (`MaxConns = 1`) and tracks `Acquire`. A read through the pool from inside a `db.InTx` fails the test at once, with the stack, and a wait longer than 90 s for a connection brings down the package's test binary. So the suite proves that no write takes a second connection (see [Architecture](architecture/transactions.md#transactions-and-the-connection-pool)).
   - A test that races transactions asks for a bigger pool before building the harness, `dbtest.PoolSize(t, n)` with `n` at least the number of runners, and starts them together with `start := dbtest.NewBarrier(n)` and `start.Wait()` first thing in each goroutine.
   - A test that holds a transaction open while the service works uses `dbtest.SideConnection(t, pool).Begin(...)`.

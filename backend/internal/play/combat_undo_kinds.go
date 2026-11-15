@@ -379,10 +379,32 @@ func (u *undoer) damageRolled(ctx context.Context, ev actionEvent) error {
 	if err := u.partsOfferedBack(ctx, ev); err != nil {
 		return err
 	}
+	if err := u.sumWaitBack(ctx, ev); err != nil {
+		return err
+	}
 	if err := u.effectsAddedBack(ctx, ev); err != nil {
 		return err
 	}
 	return u.partsSpentBack(ctx, ev)
+}
+
+// sumWaitBack puts the damage back to waiting for the sum of its damage type when the roll was that sum (combat_group_sum.go):
+// the other damage types keep what they rolled, and the first roll's costs stay paid, so the damage is not offered again as a
+// first roll (which would spend them twice).
+func (u *undoer) sumWaitBack(ctx context.Context, ev actionEvent) error {
+	if ev.AwaitsSum == "" || ev.Pending == "" {
+		return nil
+	}
+	p, err := u.c.q.GetPendingDamage(ctx, playdb.GetPendingDamageParams{EncounterID: u.c.enc.ID, ID: ev.Pending})
+	if err != nil {
+		return fmt.Errorf("find the pending damage: %w", err)
+	}
+	if _, err := u.c.q.SetPendingDamageGroupSum(ctx, playdb.SetPendingDamageGroupSumParams{
+		ID: p.ID, AwaitedDamageTypeKey: ev.AwaitsSum, Parts: p.Parts, PartRolls: mustJSON(keptRolls(ev.Parts, ev.AwaitsSum)),
+	}); err != nil {
+		return fmt.Errorf("put the wait for the sum back: %w", err)
+	}
+	return nil
 }
 
 // effectsAddedBack takes away the effects the roll put on its target (the conditions of a spell's failed save).
@@ -566,7 +588,7 @@ func (u *undoer) ridersBack(ctx context.Context, pending string) error {
 // go on.
 func (u *undoer) damageDiscarded(ctx context.Context, ev actionEvent) error {
 	prev := ev.PrevStatus
-	if prev != pendingAwaitingReaction && prev != pendingAwaitingRoll && prev != pendingRolled {
+	if prev != pendingAwaitingReaction && prev != pendingAwaitingRoll && prev != pendingAwaitingGroupSum && prev != pendingRolled {
 		prev = pendingRolled // never: only these can be discarded
 	}
 	if err := u.setStatus(ctx, ev.Pending, prev); err != nil {

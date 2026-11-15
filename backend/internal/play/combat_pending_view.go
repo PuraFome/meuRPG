@@ -43,7 +43,8 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 		ExtraDiceCount: p.ExtraDice, ExtraDiceNamePt: extraDiceName(p.ExtraDice, p.SavageDice),
 		DamageTypeKey: p.DamageType, DamageTypePt: damageTypePT[p.DamageType],
 		CastId: conv.OrZero(p.CastID), Healing: p.Healing, Half: p.Half, AppliedAmount: p.AppliedAmount,
-		TrapPointId: conv.OrZero(p.TrapPointID), // a trap's damage has no attacker (MR-035)
+		TrapPointId:          conv.OrZero(p.TrapPointID), // a trap's damage has no attacker (MR-035)
+		AwaitedDamageTypeKey: p.AwaitedDamageTypeKey,
 	}
 	if p.Amount != nil {
 		out.Amount = *p.Amount
@@ -63,6 +64,7 @@ func pendingProto(p playdb.PendingDamage, cs []playdb.Combatant) *playv1.Pending
 var pendingStatusToProto = map[string]playv1.PendingDamageStatus{
 	pendingAwaitingReaction: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_REACTION,
 	pendingAwaitingRoll:     playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_ROLL,
+	pendingAwaitingGroupSum: playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM,
 	pendingRolled:           playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED,
 	pendingApplied:          playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED,
 	pendingDiscarded:        playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED,

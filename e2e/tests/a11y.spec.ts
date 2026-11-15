@@ -3413,6 +3413,20 @@ test('o resumo da sessão passa no axe e nas conferências de layout no tema cla
   await scanSessionSummaryScreens(browser, 'light', 320);
 });
 
+// Every step of the level-up's stepper is inside the viewport, the last one included: the row is not cut at the page's edge.
+async function expectStepperInViewport(p: Page, where: string): Promise<void> {
+  const width = p.viewportSize()?.width ?? 0;
+  const steps = p.locator('app-steps-bar .step');
+  const count = await steps.count();
+  expect(count, `o passo a passo tem passos ${where}`).toBeGreaterThan(1);
+  for (let i = 0; i < count; i++) {
+    const box = await steps.nth(i).boundingBox();
+    expect(box, `o passo ${i + 1} tem caixa ${where}`).not.toBeNull();
+    expect(box!.x, `o passo ${i + 1} começa dentro da tela ${where}`).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width, `o passo ${i + 1} termina dentro da tela ${where}`).toBeLessThanOrEqual(width);
+  }
+}
+
 // The guided level-up (MR-040, E8-15): the sheet's block, every step and state of the page, the question
 // before discarding, the blocked route, and the master's "O que mudou". Pensantus goes from Mago 3 to 4.
 async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
@@ -3438,6 +3452,7 @@ async function scanLevelUpScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     await p.getByRole('link', { name: 'Subir para o nível 4' }).click();
     await expect(p.getByText('Passo 1 de 5 · Classe')).toBeVisible();
+    await expectStepperInViewport(p, where);
     await expectScreenPasses(p, `Subir em qual classe?, a classe que ele tem ${where}`);
     await classCard(p, /^Uma classe nova/).click();
     await expect(p.getByRole('heading', { name: 'Qual classe nova?' })).toBeVisible();
@@ -3548,6 +3563,11 @@ test('o subir de nível passa no axe e nas conferências de layout no tema claro
 test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
   test.setTimeout(900_000);
   await scanLevelUpScreens(browser, 'dark', 390);
+});
+
+test('o subir de nível passa no axe e nas conferências de layout no tema claro, no tablet de 768', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(900_000);
+  await scanLevelUpScreens(browser, 'light', 768);
 });
 
 test('o subir de nível passa no axe e nas conferências de layout no tema escuro, no desktop de 1024', { tag: ['@a11y', '@MR-040'] }, async ({ browser }) => {
