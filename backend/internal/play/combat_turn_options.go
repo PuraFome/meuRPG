@@ -72,6 +72,9 @@ func (s *Service) GetTurnOptions(
 	if err := s.fillTurnLists(ctx, m, res, d, v, sight, who, opts, reads, code, terrain); err != nil {
 		return nil, err
 	}
+	if err := s.attachAlsoSteed(ctx, m.CampaignID, d, who, res.GetOptions()); err != nil {
+		return nil, err
+	}
 	riderDown, err := s.riderIsDown(ctx, m.CampaignID, d.cs, v, who)
 	if err != nil {
 		return nil, err

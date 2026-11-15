@@ -700,6 +700,7 @@ type actionEvent struct {
 	// keys only.
 	OwnerCharacter string     `json:"character_id,omitempty"`
 	Created        []string   `json:"creature_ids,omitempty"`
+	SteedNote      string     `json:"steed_note,omitempty"` // the line a cast with also_steed says about the steed
 	MonsterKeys    []string   `json:"monster_keys,omitempty"`
 	Dismissed      []string   `json:"dismissed_ids,omitempty"`
 	Unseated       []unseat   `json:"unseated,omitempty"` // the riders a dismissal took off their mounts, for the undo to seat again

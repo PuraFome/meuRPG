@@ -222,6 +222,7 @@ func castHeaderProto(ev actionEvent, v combatViewer, caster playdb.Combatant) *p
 		ConcentrationEndedSpellKey: concentrationEndedFor(ev.ConcEnded, v, caster),
 	}
 	out.EffectKind, out.PoolRoll, out.EffectConditionKey, out.EffectThreshold = effectHeader(ev, v, caster)
+	out.SteedNote = ev.SteedNote
 	if ev.Res != nil && ev.Res.Kind == resMetamagic {
 		out.MetamagicKeys, out.SorceryPointsSpent = ev.Res.Keys, ev.Res.Spent
 	}

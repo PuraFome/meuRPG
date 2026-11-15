@@ -60,6 +60,9 @@ A dismissal of the steed puts the rider on foot with no window (`unseatRider`).
 `RELEASE` of a creature that is not a bonded steed is `INVALID_ARGUMENT`, and releasing a dismissed steed ends its bond.
 In a running combat that holds the steed, the owner's player spends the action of its turn (`CreatureHost.SpendDismissal`: `NOT_YOUR_TURN`, `ACTION_USED` and the gate's other refusals), and the master dismisses for free.
 Out of a combat a dismissal costs nothing.
+`CastSpellRequest.also_steed` makes a spell that reaches only the caster reach the bonded steed the caster rides too (`SpellOption.also_steed` offers it).
+A spell with a lasting effect puts it on the steed's combatant, and any other spell leaves the steed to the table with a line in `SpellCast.steed_note`.
+`SummonSpellOptions.notes` carries the telepathic bond, where the steed appears and its language.
 
 **Table features.** A table feature with a `summon` goes through the same three paths, with `granted_by` (the feature's key, `feature:...@mesa`) in place of a slot.
 `CastSummon`, `CastSpell` and `CastSpellOutsideCombat` take `granted_by`; each one needs the summon choice, as a spell's summon does.

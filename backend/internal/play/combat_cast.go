@@ -203,6 +203,10 @@ type castFlow struct {
 	placedArea bool
 	plan       areaPlan
 	summon     *summoning
+	// steed is the bonded steed the caster rides when the cast asks for it (also_steed), and steedTarget says its lasting effect reaches it.
+	steed       *playdb.Combatant
+	steedTarget bool
+	steedNote   string
 	// wall is the wall the request lays, for a spell that lays one.
 	wall *wallSpec
 	// hidden says the cast shows a hidden creature: the caster or a target.
@@ -267,13 +271,14 @@ func (f *castFlow) resolve(ctx context.Context) (any, error) {
 func (f *castFlow) prepare(ctx context.Context) error {
 	for _, phase := range []func(context.Context) error{
 		f.findCaster, f.findTargets, f.pickSpell, f.checkEnabled, f.pickSlot, f.checkSilence, f.applyTableOptions, f.checkTargetsAlive,
-		f.applyMetamagic, f.readMap, f.checkTeleport, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon,
+		f.applyMetamagic, f.readMap, f.checkTeleport, f.placeArea, f.checkMembers, f.checkTargetList, f.planSummon, f.checkAlsoSteed,
 	} {
 		if err := phase(ctx); err != nil {
 			return err
 		}
 	}
 	f.aimAtCaster()
+	f.aimAtSteed()
 	for _, phase := range []func(context.Context) error{f.checkHitTargets, f.checkPool, f.readModes, f.checkSpellAttack, f.checkFavor} {
 		if err := phase(ctx); err != nil {
 			return err
@@ -896,6 +901,7 @@ func (f *castFlow) seal(ctx context.Context) error {
 	made.D20Reroll = rerollUse(f.out.modes.luckyUsed())
 	made.Stroke = f.out.modes.strokeUsed() // the miss the caster turned into a hit: the undo gives the use back
 	made.Secret = f.hidden
+	made.SteedNote = f.steedNote
 	if f.placedArea {
 		if err := f.sealPlaced(ctx); err != nil {
 			return err

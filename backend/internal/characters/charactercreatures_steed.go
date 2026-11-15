@@ -74,6 +74,7 @@ func (s *Service) steedOptions(ctx context.Context, q *charactersdb.Queries, con
 		return nil
 	}
 	out.TypeChoices, out.MinInt = own.Options[0].TypeChoices, i32(own.Options[0].MinInt)
+	out.Notes = steedNotes()
 	row, err := q.GetBondedCreature(ctx, charactersdb.GetBondedCreatureParams{CampaignID: campaignID, CharacterID: characterID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
@@ -83,4 +84,13 @@ func (s *Service) steedOptions(ctx context.Context, q *charactersdb.Queries, con
 	}
 	out.BondedSteed = characterCreatureToProto(content, row.CharacterCreature)
 	return nil
+}
+
+// steedNotes are the rules of Find Steed the server only says (SRD 5.1): the bond, where the steed appears and what it understands.
+func steedNotes() []string {
+	return []string{
+		"Enquanto estiver a até 1,6 km do corcel, você pode se comunicar com ele telepaticamente.",
+		"O corcel aparece em um espaço desocupado ao alcance da magia.",
+		"O corcel entende o seu idioma e responde a você nele.",
+	}
 }
