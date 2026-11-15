@@ -9,7 +9,7 @@ import (
 )
 
 // #580, board 580-05: a lost prerequisite reads "X pede A, e Tor está no 5: a opção só vale de novo quando Tor cumprir.",
-// saying of each missing condition what the character has. The stored message names nobody and nothing hidden; the
+// saying of each missing condition what the character has. The issue's own Message names nobody and nothing hidden; the
 // sentence a reader gets (LostPrerequisite.SentencePT) is built for that reader.
 
 func lostIssue(t *testing.T, d Derived, code string) Issue {
@@ -94,7 +94,7 @@ func TestALostFeatSaysTheScoreAndTheProficiency(t *testing.T) {
 }
 
 // RN-23: a hidden missing condition reads "uma condição que a mesa não mostra" for a player and is named for the master;
-// the stored message never names it, and a player's view of the content holds no name to give.
+// the issue's own Message never names it, and a player's view of the content holds no name to give.
 func TestALostOptionWithAHiddenConditionIsMaskedForAPlayerAndNamedForTheMaster(t *testing.T) {
 	t.Parallel()
 	o, words := hiddenAskOverlay(t)
@@ -106,7 +106,7 @@ func TestALostOptionWithAHiddenConditionIsMaskedForAPlayerAndNamedForTheMaster(t
 	}
 	for _, w := range words {
 		if strings.Contains(player, w) || strings.Contains(is.Message, w) {
-			t.Errorf("the player's sentence or the stored message names %q: %q / %q", w, player, is.Message)
+			t.Errorf("the player's sentence or the issue's Message names %q: %q / %q", w, player, is.Message)
 		}
 	}
 	for _, w := range words[:4] {

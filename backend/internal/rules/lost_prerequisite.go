@@ -10,8 +10,8 @@ import (
 // issue's sentence is built from it for each reader (SentencePT), as the character's name is not in the Build and a
 // condition the players may not read is named for the master alone (RN-23).
 type LostPrerequisite struct {
-	// Key is the feat's or the option's key: with the issue's code and field, what the issue is told apart by
-	// (Issue.ID), whatever its sentence says now.
+	// Key is the feat's or the option's key: with the issue's code and the list its pick is in, what the issue is
+	// told apart by (Issue.ID), whatever its sentence says now.
 	Key string
 	// EntryPT is the name of the feat or the option.
 	EntryPT string
@@ -37,7 +37,7 @@ type LostCondition struct {
 	ShownPT string
 }
 
-// lostNobody stands for the character in the stored message, which is the same for every reader.
+// lostNobody stands for the character in an issue's own Message, which names no reader and is the same for all.
 const lostNobody = "o personagem"
 
 // SentencePT is the sentence a reader gets: "Asa Partida pede Guerreiro 7, e Tor está no 5: a opção só vale de novo
@@ -104,26 +104,44 @@ func (c *content) lost(key string, option bool, unmet []FeatUnmet, b Build, d De
 const lostIDPrefix = "lost:"
 
 // ID is what an issue is told apart by, among the issues of a sheet and over time: its code, its field and its
-// sentence; for a lost prerequisite the entry's key in the sentence's place, because the sentence says what the
-// character has now and what the reader may see, and both change while the issue is the same one. The sheet stores
-// these (known issues), so a stored lost prerequisite holds no sentence.
+// sentence. A lost prerequisite is told apart by the entry's key in the sentence's place, and by the name of the
+// list its pick is in without the pick's place: the sentence says what the character has now and what the reader may
+// see, and the place moves when a swap or a rule takes an earlier pick out, while the issue is the same one. The sheet
+// stores these (known issues), so a stored lost prerequisite holds no sentence and no name.
 func (is Issue) ID() string {
 	if is.Lost != nil {
-		return is.Code + "|" + is.Field + "|" + lostIDPrefix + is.Lost.Key
+		return is.Code + "|" + listOf(is.Field) + "|" + lostIDPrefix + is.Lost.Key
 	}
 	return is.Code + "|" + is.Field + "|" + is.Message
 }
 
+// listOf is the name of the sheet's list a field is in, without the place in it: "full.feat_keys[2]" is in
+// "full.feat_keys", and a field with no place is its own.
+func listOf(field string) string {
+	list, _, _ := strings.Cut(field, "[")
+	return list
+}
+
+// legacyLostStart is how every sentence of a lost feat or option began before issues held identities: it named the
+// entry after it, and the rest was the sentence's own.
+const legacyLostStart = "O personagem não cumpre mais o pré-requisito de "
+
 // LegacyLostID says a stored identity is this lost prerequisite as the code before Issue.ID wrote it: the code, the
-// field (without the pick's index for a feat taken through a choice) and the old sentence, which began the same for
-// every reader and named the entry.
+// field and the old sentence, which began the same for every reader and named the entry. It is matched by the code,
+// the list the field is in and the fixed start of the sentence, not by the entry's name, which the master may have
+// changed before the sheet was saved again, nor by the pick's place, which a swap may have moved (a feat taken
+// through a choice was stored without one). A sheet that holds two such rows of one code in one list takes either
+// row for any lost prerequisite of that list: it can hide the notice of a second one, and never shows a false one.
 func (is Issue) LegacyLostID(stored string) bool {
 	if is.Lost == nil {
 		return false
 	}
-	sentence := "|O personagem não cumpre mais o pré-requisito de " + is.Lost.EntryPT + ":"
-	field, _, _ := strings.Cut(is.Field, "[")
-	return strings.HasPrefix(stored, is.Code+"|"+is.Field+sentence) || field == choiceKeysField && strings.HasPrefix(stored, is.Code+"|"+field+sentence)
+	code, rest, ok := strings.Cut(stored, "|")
+	if !ok || code != is.Code {
+		return false
+	}
+	field, sentence, ok := strings.Cut(rest, "|")
+	return ok && listOf(field) == listOf(is.Field) && strings.HasPrefix(sentence, legacyLostStart)
 }
 
 // retold is the lost prerequisite said over the sheet d: the same conditions, with what the character has there.

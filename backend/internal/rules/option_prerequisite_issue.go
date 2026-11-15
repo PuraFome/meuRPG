@@ -7,7 +7,7 @@ import (
 
 // checkOptionPrerequisites raises IssueOptionPrerequisite for each option the sheet picked and owns whose prerequisite
 // it no longer meets (a lost class level, Pact Boon, spell or option). The pick stays on the sheet; the issue says what
-// is missing (LostPrerequisite), and its stored message names no hidden entry.
+// is missing (LostPrerequisite), and its Message names no hidden entry.
 func (x *deriver) checkOptionPrerequisites() {
 	if len(x.c.optionPrereq) == 0 {
 		return

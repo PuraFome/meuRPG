@@ -97,13 +97,15 @@ var changedKinds = map[string]string{
 // after the sheet was last saved and that has issues it did not have then.
 const IssueTableContentChanged = "table_content_changed"
 
-// issueID is an issue by its whole identity: the code, the field and the exact
+// issueID is an issue by its whole identity (rules.Issue.ID): the code, the field and the exact
 // sentence ("Faltam 1 perícias" that becomes "Há 3 perícias; escolhe 2" is another
-// issue, and two formula issues on different features do not collide).
+// issue, and two formula issues on different features do not collide); for a lost prerequisite
+// the code, the list its pick is in and the entry's key.
 func issueID(is rules.Issue) string { return is.ID() }
 
-// knows says the stored identities known hold the issue: its identity, or the one the code before rules.Issue.ID
-// wrote for a lost prerequisite, so a row saved then is not read as having a new issue.
+// knows says the stored identities known hold the issue: its identity, or a row in the wording the code before
+// rules.Issue.ID wrote for a lost prerequisite (rules.Issue.LegacyLostID), so a row saved then is not read as having
+// a new issue.
 func knows(known []string, is rules.Issue) bool {
 	return slices.Contains(known, issueID(is)) || is.Lost != nil && slices.ContainsFunc(known, is.LegacyLostID)
 }
@@ -234,7 +236,7 @@ func addChangedContent(d *rulesv1.DerivedSheet, issues []rules.Issue, content *r
 
 // reader is who reads a sheet's issues: the sentence of a lost prerequisite names the character and, for the
 // campaign's master alone, a condition on an entry the players may not read (board 580-05, RN-23). It is built on
-// each read; the sheet stores only the message that names nobody (known issues).
+// each read; the sheet stores no sentence of it, only the issue's identity (known issues).
 type reader struct {
 	name   string
 	master bool

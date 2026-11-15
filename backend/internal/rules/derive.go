@@ -199,8 +199,8 @@ func (x *deriver) issue(code, field, format string, args ...any) {
 	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: fmt.Sprintf(format, args...), Keys: x.issueKeys(code, field)})
 }
 
-// lostIssue records the issue of a lost feat or option: the stored message names nobody and no hidden entry, and
-// Issue.Lost tells it to each reader.
+// lostIssue records the issue of a lost feat or option: its Message names nobody and no hidden entry, and Issue.Lost
+// tells the sentence to each reader.
 func (x *deriver) lostIssue(code, field string, l *LostPrerequisite) {
 	x.d.Issues = append(x.d.Issues, Issue{Code: code, Field: field, Message: l.SentencePT("", false), Keys: x.issueKeys(code, field), Lost: l})
 }
