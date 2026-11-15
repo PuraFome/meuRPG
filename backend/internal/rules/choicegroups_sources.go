@@ -381,7 +381,7 @@ func (cb *choiceBuilder) bookRituals(g *groupBuild) {
 	})
 	var keys []string
 	for _, e := range cb.c.spellEntries {
-		if e.Level == 1 && e.Ritual && !e.Archived {
+		if e.Level == 1 && e.Ritual && !cb.retiredPick(bookRitualsKey, e) {
 			keys = append(keys, e.Key)
 		}
 	}

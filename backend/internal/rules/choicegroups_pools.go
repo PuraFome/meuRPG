@@ -384,6 +384,15 @@ func (cb *choiceBuilder) retired(key string) bool {
 	return (cb.c.archived[key] || cb.c.off[key]) && !slices.Contains(cb.plain, key)
 }
 
+// retiredPick says a spell is archived, or switched off for the player reading, and the sheet has not
+// picked it for the choice: it is not offered (a sheet that has it keeps it, and the master reads it).
+func (cb *choiceBuilder) retiredPick(choiceKey string, e SpellEntry) bool {
+	if slices.Contains(cb.scoped[choiceKey], e.Key) {
+		return false
+	}
+	return e.Archived || (cb.c.player && cb.c.off[e.Key])
+}
+
 // hiddenPrerequisite is a condition on an entry the player may not read: it keeps its kind and whether the sheet meets it,
 // and names nothing (no key, no name, no number).
 func hiddenPrerequisite(kind string, met bool) OptionPrerequisite {
