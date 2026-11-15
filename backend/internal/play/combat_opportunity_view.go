@@ -40,6 +40,9 @@ func (s *Service) offerForViewer(ctx context.Context, m authz.Membership, d *enc
 	reactor, ok2 := combatantByID(d.cs, o.ReactorID)
 	// The mover is judged on the square it left: a retreating NPC the player saw
 	// leave still has the offer for their reactor, though they do not see it now.
+	if ok1 {
+		mover = offerMoverFor(d.cs, v, mover, o)
+	}
 	if !ok1 || !ok2 || !v.seesAtOffer(mover, o) {
 		return nil, false
 	}
@@ -143,4 +146,16 @@ func (ps *provokeSight) provokedAt(ctx context.Context, reactors []candidate, to
 		}
 	}
 	return ids, nil
+}
+
+// offerMoverFor is the mover of an offer as the viewer reads it: a mount the player does not see leaves them its rider, when they see that
+// (RN-10), so the offer is the rider's.
+func offerMoverFor(cs []playdb.Combatant, v combatViewer, mover playdb.Combatant, o playdb.OpportunityOffer) playdb.Combatant {
+	if v.seesAtOffer(mover, o) {
+		return mover
+	}
+	if rider := riderOf(cs, mover.ID); rider != nil && v.seesAtOffer(*rider, o) {
+		return *rider
+	}
+	return mover
 }

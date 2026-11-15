@@ -429,32 +429,47 @@ func (s *Service) rollRiderOutcome(ctx context.Context, c *combatTx, m authz.Mem
 func (s *Service) riderConsequence(ctx context.Context, c *combatTx, cs []playdb.Combatant, attacker, target playdb.Combatant, choice string, re *riderEvent) error {
 	switch choice {
 	case choiceProne:
-		if immune, err := c.immuneToCondition(ctx, target, condProne); err != nil || immune {
-			return err
-		}
-		if !slices.Contains(target.Conditions, condProne) && len(target.Conditions) < maxConditions {
-			return setConditionsOf(ctx, c, target, withCondition(target.Conditions, condProne))
-		}
+		return s.riderKnocksProne(ctx, c, target)
 	case choicePush:
 		return s.pushByRider(ctx, c, cs, attacker, target, re)
 	case choiceNoReactions:
 		return s.riderEffect(ctx, c, cs, attacker, target, effectNoReactions)
 	case choiceStun:
-		states, err := s.readStates(ctx, c.tx, c.enc.ID)
-		if err != nil {
-			return err
-		}
-		sheetImmune, err := c.immuneToCondition(ctx, target, conditionStunned)
-		if err != nil {
-			return err
-		}
-		if sheetImmune || combat.ImmuneTo(effectModsOf(states, target.ID), conditionStunned) {
-			re.Result = riderSaved
-			return nil
-		}
-		return s.riderEffect(ctx, c, cs, attacker, target, effectStunningStrike)
+		return s.riderStuns(ctx, c, cs, attacker, target, re)
 	}
 	return nil
+}
+
+// riderKnocksProne gives the target the Prone condition unless it is immune or already has it; a rider knocked prone
+// owes a save (combat_mount_save.go).
+func (s *Service) riderKnocksProne(ctx context.Context, c *combatTx, target playdb.Combatant) error {
+	if immune, err := c.immuneToCondition(ctx, target, condProne); err != nil || immune {
+		return err
+	}
+	if slices.Contains(target.Conditions, condProne) || len(target.Conditions) >= maxConditions {
+		return nil
+	}
+	if err := setConditionsOf(ctx, c, target, withCondition(target.Conditions, condProne)); err != nil {
+		return err
+	}
+	return s.riderProne(ctx, c, target.ID)
+}
+
+// riderStuns puts the stunning effect on the target unless it is immune to Stunned, by its sheet or an effect.
+func (s *Service) riderStuns(ctx context.Context, c *combatTx, cs []playdb.Combatant, attacker, target playdb.Combatant, re *riderEvent) error {
+	states, err := s.readStates(ctx, c.tx, c.enc.ID)
+	if err != nil {
+		return err
+	}
+	sheetImmune, err := c.immuneToCondition(ctx, target, conditionStunned)
+	if err != nil {
+		return err
+	}
+	if sheetImmune || combat.ImmuneTo(effectModsOf(states, target.ID), conditionStunned) {
+		re.Result = riderSaved
+		return nil
+	}
+	return s.riderEffect(ctx, c, cs, attacker, target, effectStunningStrike)
 }
 
 // riderEffect puts a lasting effect of the catalog on the target that ends with the monk's next turn.

@@ -1136,8 +1136,13 @@ func shoveKnocksProne(ctx context.Context, r *shoveRun) (stored, line string, er
 	if immune, err := r.c.immuneToCondition(ctx, r.target, condProne); err != nil || immune {
 		return shoveStays, contestLineShoveStays, err // a target that cannot be knocked prone stays on its feet
 	}
-	err = setConditionsOf(ctx, r.c, r.target, withCondition(r.target.Conditions, condProne))
-	return shoveProne, contestLineShoveProne, err
+	if err := setConditionsOf(ctx, r.c, r.target, withCondition(r.target.Conditions, condProne)); err != nil {
+		return shoveProne, contestLineShoveProne, err
+	}
+	if !slices.Contains(r.target.Conditions, condProne) { // a rider knocked prone owes a save (combat_mount_save.go)
+		return shoveProne, contestLineShoveProne, r.c.svc.riderProne(ctx, r.c, r.target.ID)
+	}
+	return shoveProne, contestLineShoveProne, nil
 }
 
 // shovePushes is the outcome PUSH: the target goes to the square behind it, unless something
@@ -1159,6 +1164,9 @@ func shovePushes(ctx context.Context, r *shoveRun) (stored, line string, err err
 		return "", "", fmt.Errorf("push the target: %w", err)
 	}
 	if err := carryRider(ctx, r.c.q, r.target.ID); err != nil {
+		return "", "", err
+	}
+	if err := r.c.svc.mountPushed(ctx, r.c, r.target.ID); err != nil { // a mount that carries a rider owes it a save (combat_mount_save.go)
 		return "", "", err
 	}
 	from := squareOfCombatant(r.target)

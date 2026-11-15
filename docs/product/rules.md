@@ -29,7 +29,7 @@ How the code does it lives in the [architecture docs](../architecture/README.md)
 | RN-18 | **Physical or app dice.** The master chooses whether the campaign lets players choose the dice. If it does, each player chooses between rolling in the app or rolling the physical die and typing the result. | [Detail](#rn-18-physical-or-app-dice) |
 | RN-19 | **Initiative.** In a battle with several identical NPCs, each rolls its own initiative; the group does not roll together. | [Detail](#rn-19-initiative) |
 | RN-20 | **What players see of enemies in combat.** Players do not see enemy hit points as a number. They see one word: "Ileso", "Ferido", "Muito ferido" or "Derrotado". | [Detail](#rn-20-what-players-see-of-enemies-in-combat) |
-| RN-21 | **Grid movement.** On the map grid, each square is 1.5 m and movement is a **circle**: the distance between two squares is the straight line between their centres, and what a combatant can reach is the circle of its remaining movement. | [Detail](#rn-21-grid-movement) |
+| RN-21 | **Grid movement.** On the map grid, each square is 1.5 m and movement is a **circle**: the distance between two squares is the straight line between their centres, and what a combatant can reach is the circle of its remaining movement. A rider mounts and dismounts at half speed, and a mount knocked from under it can throw it (DC 10 Dexterity save). | [Detail](#rn-21-grid-movement) |
 | RN-22 | **Conditions and concentration.** The app marks conditions (prone, poisoned...) and concentration, and reminds: when a concentrating character takes damage, the game asks its owner for the concentration save (RN-31). | [Detail](#rn-22-conditions-and-concentration) |
 | RN-23 | **Table content.** The master registers classes, subclasses, races, subraces, backgrounds, spells, feats, options, class features, weapons and creatures that hold only in their campaign, next to the SRD 5.1. Members read the campaign's content, except creatures; only the master writes. | [Detail](#rn-23-table-content) |
 | RN-24 | **Table rules.** At the top of the "Regras da mesa" page is the **table style**: "Tudo no app" (dice in the app, combat with a map, fog on in new maps), "Mesa física" (physical dice, combat without a map by default, fog off) or "Teatro da mente" (each player picks the dice, combat without a map, no fog), and "Personalizado" when the choices match none. | [Detail](#rn-24-table-rules) |
@@ -589,6 +589,25 @@ Leaving an enemy's reach provokes an opportunity attack, which the app offers to
 - A player reads a warning before a move that may provoke ("Sair do alcance do Goblin 2 pode provocar um ataque de oportunidade"), built only from what they see, so it may err on the side of excess. A hidden reactor provokes all the same, and the mover reads only "Esperando o mestre". Other players see nothing.
 - A move that enters a trap the character knows asks "Isso entra no Fosso escondido. Mover assim mesmo?".
 - "Desfazer última ação" undoes moves, jumps and the Disengage flag. A move whose offer was answered can be undone only after undoing the answer.
+
+**Mounted combat** (SRD 5.1, "Mounted Combat").
+A rider mounts or dismounts a willing mount one size larger than itself (a Medium rider needs a Large mount; the pony and the mastiff of Find Steed are too small for it).
+Mounting needs the mount within 1.5 m and costs half the rider's speed on the surface it stands on, the Dash not counted; dismounting costs the same and lands on a free neighbouring square.
+A move holds one mount or one dismount.
+A player mounts their own creatures and the mounts the master marked "Montaria" on the party's side, and the master mounts any creature.
+A creature the master marked nothing acts on its own.
+The pair is one occupant of the mount's square, and the mount's turn is its own.
+
+- **A controlled mount** (the Find Steed steed, or a mount marked "adestrada") takes the rider's initiative and acts right after the rider, in one joint turn that ends when both parts have ended.
+  It can only Dash, Disengage and Dodge, and the rider's player moves it, with its speed and its movement.
+  The rider does not move on its own while mounted.
+- **An independent mount** keeps its own initiative and its own turn, and carries the rider along.
+- **Forced dismount.** When the mount is moved against its will (a shove or a push) or the rider is knocked prone, the rider's player makes a Dexterity saving throw against DC 10 (a window like the concentration save of RN-31): on a failure the rider falls prone within 1.5 m of the mount.
+  The master rolls for an NPC rider.
+- **A mount knocked prone or defeated** opens a reaction window for its rider (RN-31): the rider spends its reaction to land on its feet, or falls prone within 1.5 m.
+  A steed the caster dismisses lets the rider land on its feet with no window.
+- **An opportunity attack** against a mounted pair may target the mount or the rider.
+- A player reads the link between two creatures only when they see both of them; a hidden mount leaves its rider plain, and no player reads the master's mark or another player's save roll.
 
 **Sculpt Spells** (SRD 5.1, School of Evocation).
 An evocation wizard from level 2, casting an evocation spell that affects other creatures it can see, spares up to 1 + the spell's level of them (the level it is cast at). A spared creature succeeds on its saving throw with no roll and takes no damage when the spell would deal half; the save line says "Esculpir Magias".

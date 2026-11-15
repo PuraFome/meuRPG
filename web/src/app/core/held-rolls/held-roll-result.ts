@@ -38,6 +38,7 @@ export function settledRoll(res: AnswerHeldRollResponse): SettledRoll | undefine
     case 'effectSave':
       return r.value.result;
     case 'concentrationSave':
+    case 'mountSave':
       return r.value.result?.save;
     default:
       return undefined;
