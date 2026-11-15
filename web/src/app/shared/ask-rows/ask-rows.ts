@@ -14,25 +14,14 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { focusAfterRender } from '../../../core/content/entry-saver';
-import { PickList } from '../../../shared/form-fields/pick-list';
-import {
-  SearchPick,
-  type SearchChip,
-  type SearchOption,
-} from '../../../shared/form-fields/search-pick';
-import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
-import { TextField } from '../../../shared/form-fields/text-field';
+import type { Asks } from '../../core/content/asks';
+import { focusAfterRender } from '../../core/content/entry-saver';
+import { PickList } from '../form-fields/pick-list';
+import { SearchPick, type SearchChip, type SearchOption } from '../form-fields/search-pick';
+import { SelectField, type SelectOption } from '../form-fields/select-field';
+import { TextField } from '../form-fields/text-field';
 
-/** What a feat or an option asks of the one who takes it, besides the older fields (#580): the same five values in both drafts. */
-export interface Asks {
-  classKey: string;
-  classLevel: string;
-  requiresPact: string;
-  requiresSpell: string;
-  requiresOptions: string[];
-}
-
+export type { Asks };
 export type AskKind = 'class' | 'pact' | 'spell' | 'options';
 
 interface Ask {
@@ -154,7 +143,7 @@ function filled(kind: AskKind, d: Asks): boolean {
       }
     </div>
   `,
-  styleUrl: '../editor.scss',
+  styleUrl: './ask-rows.scss',
 })
 export class AskRows {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
