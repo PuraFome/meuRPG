@@ -391,6 +391,94 @@ func TestFavorPassAndRefundReachOnlyWhoTheyAreFor(t *testing.T) {
 	r.step("the keep", r.answerRefund(false), stepSpec{need: map[*person][]string{w.master: vitalsOnly}})
 }
 
+// readsFavor is what a player's GetFavor says: the characters it names as holding the Inspiração and the receiver_has of each pass.
+func (r *passRun) readsFavor(p *person) (holders []string, receiverHas []bool) {
+	res := must(p.favor.GetFavor(r.t.Context(), rq(&playv1.GetFavorRequest{CampaignId: r.w.campaign})))
+	for _, h := range res.GetHolders() {
+		holders = append(holders, h.GetCharacterId())
+	}
+	slices.Sort(holders)
+	for _, ps := range res.GetPasses() {
+		receiverHas = append(receiverHas, ps.GetReceiverHas())
+	}
+	return holders, receiverHas
+}
+
+// wantFavorReads checks the structural control of the one-owner table: who reads which holder and which pass, and that the receiver_has of
+// a pass is the master's alone, whoever owns the receiver.
+func (r *passRun) wantFavorReads(step string, holders []string, masterHas, ownerHas []bool) {
+	r.t.Helper()
+	w := r.w
+	want := slices.Clone(holders)
+	slices.Sort(want)
+	gotHolders, gotHas := r.readsFavor(w.caio)
+	if !slices.Equal(gotHolders, want) || !slices.Equal(gotHas, ownerHas) {
+		r.t.Errorf("%s: Caio reads holders %v and receiver_has %v, want %v and %v", step, gotHolders, gotHas, want, ownerHas)
+	}
+	if _, has := r.readsFavor(w.master); !slices.Equal(has, masterHas) {
+		r.t.Errorf("%s: the master reads receiver_has %v, want %v", step, has, masterHas)
+	}
+	if gotHolders, gotHas = r.readsFavor(w.ana); len(gotHolders) != 0 || len(gotHas) != 0 {
+		r.t.Errorf("%s: Ana, who owns neither character now, reads holders %v and passes %v, want nothing", step, gotHolders, gotHas)
+	}
+}
+
+// One player owns the giver and the receiver of a pass (Caio plays Pensantus now, and Ana owns neither character): the accept is the giver's
+// line for him and the receiver's sentence is nobody's, the undo of the pass writes no line for him, the receiver_has of the pass is the
+// master's alone even when the receiver holds one already, and Ana, who owned the receiver, hears and reads nothing of it.
+func TestFavorPassBetweenOnePlayersCharactersReachesHimAlone(t *testing.T) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			t.Fatalf("the test: %v", rec)
+		}
+	}()
+	r := newPassRun(t)
+	r.receiverChecked = true
+	w, caio := r.w, r.w.caio
+	for _, q := range []string{`UPDATE characters SET status = 'dead', died_at = now(), player_user_id = $2 WHERE id = $1`, `UPDATE combatants SET user_id = $2 WHERE character_id = $1`} {
+		if _, err := w.pool.Exec(t.Context(), q, w.pens.GetId(), caio.id); err != nil {
+			t.Fatalf("hand Pensantus to Caio: %v", err)
+		}
+	}
+	r.settle()
+	toren, pens := labelToren, labelPens
+	grantT := r.add("favor-line-grant", "O mestre deu a Inspiração a "+toren+".")
+	grantP := r.add("favor-line-grant-receiver", "O mestre deu a Inspiração a "+pens+".")
+	passedM := r.add("favor-line-passed-master", toren+" passou a Inspiração para "+pens+".")
+	passedG := r.add("favor-line-passed-giver", "O mestre aceitou: a sua Inspiração foi para "+pens+".", caio)
+	// The receiver's sentences are written for a receiver who is another player: with one owner nobody reads them but the master's log.
+	r.add("favor-line-passed-receiver", toren+" passou a Inspiração para você.")
+	r.add("favor-line-undone-receiver", "O mestre desfez a passagem: a Inspiração não está mais com você.")
+	canceledM := r.add("favor-line-canceled-master", toren+" desistiu de passar a Inspiração para "+pens+".")
+	canceledG := r.add("favor-line-canceled-giver", "Você desistiu de passar a Inspiração.", caio)
+	toCaio := func(allow, need []string) stepSpec {
+		return stepSpec{allow: map[*person][]string{caio: allow}, need: map[*person][]string{caio: need}}
+	}
+	tId, pId := w.toren.GetId(), w.pens.GetId()
+
+	r.step("the grant", r.grant(tId), stepSpec{want: map[*canary][]*person{grantT: nil}, allow: map[*person][]string{caio: vitalsOnly}, need: map[*person][]string{caio: vitalsOnly}})
+	r.step("the ask", r.ask, toCaio(vitalsOnly, vitalsOnly))
+	r.wantFavorReads("the ask", []string{tId}, []bool{false}, []bool{false})
+	spec := toCaio(vitalsLog, vitalsLog)
+	spec.want = map[*canary][]*person{passedM: nil, passedG: {caio}}
+	r.step("the accept", r.answerPass(true), spec)
+	r.wantFavorReads("the accept", []string{pId}, nil, nil)
+	spec = toCaio(vitalsLog, vitalsOnly)
+	spec.gone = []*canary{passedM, passedG}
+	r.step("the undo of the pass", r.undo, spec)
+	r.wantFavorReads("the undo of the pass", []string{tId}, nil, nil)
+
+	// The receiver holds one too: the master reads receiver_has, the owner of both does not.
+	// Pensantus is dead (a player owns one living character), and the vitals of a dead character tell nobody anything.
+	r.step("the grant to the receiver", r.grant(pId), stepSpec{want: map[*canary][]*person{grantP: nil}, allow: map[*person][]string{caio: vitalsOnly}})
+	r.step("the second ask", r.ask, toCaio(vitalsOnly, vitalsOnly))
+	r.wantFavorReads("the second ask", []string{tId, pId}, []bool{true}, []bool{false})
+	spec = toCaio(vitalsLog, vitalsLog)
+	spec.want = map[*canary][]*person{canceledM: nil, canceledG: {caio}}
+	r.step("the cancel", r.cancel, spec)
+	r.wantFavorReads("the cancel", []string{tId, pId}, nil, nil)
+}
+
 // blockedReason is the FavorBlocked reason a refusal carries, unspecified when it carries none.
 func blockedReason(err error) playv1.FavorBlockedReason {
 	if ce, ok := errors.AsType[*connect.Error](err); ok {

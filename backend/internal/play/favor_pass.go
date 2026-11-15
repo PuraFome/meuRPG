@@ -62,7 +62,7 @@ type favorPassCall struct {
 	passID    string // the pass an answer or a cancel is about
 	from, to  string // the characters of an ask
 	accept    bool
-	// owner says only the pass's asker may close it (a cancel); the master's answer needs no such check.
+	// owner says only the owner of the pass's giver, now, may close it (a cancel): read under the session's lock. The master's answer needs no such check.
 	owner bool
 	key   string
 	hash  *string
@@ -413,9 +413,10 @@ func (s *Service) CancelFavorPass(ctx context.Context, req *connect.Request[play
 
 // ownsGiver says the caller is, now, the owner of the giver of the ask: the ask follows the character, so a character that changed hands
 // while it waited is canceled by its new owner (the one who reads it, favor_read.go) and not by the one who asked. A giver sent to the
-// reserve has no owner.
-func (s *Service) ownsGiver(ctx context.Context, m authz.Membership, pass playdb.FavorPass) (bool, error) {
-	found, err := s.roster.SessionCharacters(ctx, nil, m.CampaignID, []string{pass.FromCharacterID})
+// reserve has no owner. It is read in the transaction of the cancel, under the session's lock, so a character that changes hands while the
+// cancel waits for the lock is the old owner's no more.
+func (s *Service) ownsGiver(ctx context.Context, tx pgx.Tx, m authz.Membership, pass playdb.FavorPass) (bool, error) {
+	found, err := s.roster.SessionCharacters(ctx, tx, m.CampaignID, []string{pass.FromCharacterID})
 	if err != nil {
 		return false, err
 	}
@@ -428,7 +429,7 @@ func (s *Service) ownsGiver(ctx context.Context, m authz.Membership, pass playdb
 }
 
 // closePass finds the pass the call is about and runs the transaction of the answer on the session it was asked in. A pass that is not
-// the caller's to close (a cancel by anyone but the asker, the master included): it is never told apart from one that does not exist.
+// the caller's to close (a cancel by anyone but the giver's owner, the master included): it is never told apart from one that does not exist.
 func (s *Service) closePass(ctx context.Context, c favorPassCall, run func(context.Context, pgx.Tx, *hints, favorPassCall) (playdb.FavorPass, error)) (playdb.FavorPass, error) {
 	pass, err := s.queries.GetFavorPass(ctx, playdb.GetFavorPassParams{ID: c.passID, CampaignID: c.m.CampaignID})
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -437,18 +438,19 @@ func (s *Service) closePass(ctx context.Context, c favorPassCall, run func(conte
 	if err != nil {
 		return playdb.FavorPass{}, s.dbError(ctx, "find the ask", err)
 	}
-	if c.owner {
-		owns, err := s.ownsGiver(ctx, c.m, pass)
-		if err != nil {
-			return playdb.FavorPass{}, s.dbError(ctx, "find the ask's giver", err)
-		}
-		if !owns {
-			return playdb.FavorPass{}, errFavorPassNotFound()
-		}
-	}
 	c.sessionID = pass.GameSessionID
 	var out playdb.FavorPass
-	err = s.tx(ctx, c.sessionID, func(tx pgx.Tx, h *hints) (err error) {
+	err = s.tx(ctx, c.sessionID, func(tx pgx.Tx, h *hints) error {
+		if c.owner { // under the lock: the character may have changed hands while the call waited for it
+			owns, err := s.ownsGiver(ctx, tx, c.m, pass)
+			if err != nil {
+				return fmt.Errorf("find the ask's giver: %w", err)
+			}
+			if !owns {
+				return errFavorPassNotFound()
+			}
+		}
+		var err error
 		out, err = run(ctx, tx, h, c)
 		return err
 	})

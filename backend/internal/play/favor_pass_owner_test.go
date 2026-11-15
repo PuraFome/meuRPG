@@ -2,10 +2,12 @@ package play
 
 import (
 	"testing"
+	"time"
 
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/platform/dbtest"
 )
 
 // The ask follows the character: when Toren changes hands while his ask waits, the new owner reads it and cancels it, and the old owner
@@ -95,5 +97,73 @@ func TestRefundAnswerKeyUsedInAnotherSessionIsRefusedAsReused(t *testing.T) {
 				t.Errorf("rows %d, number %d (want %d), want the refusal to change nothing", f.rows(t), f.seq(t), seq)
 			}
 		})
+	}
+}
+
+// The owner is read again under the session's lock: a cancel that passed the owner's check and then waited for the session while another
+// write took it (and the character changed hands) is the old owner's no more, and cancels nothing. The waiting write retries on a fresh
+// snapshot once the session's row has been written, and reads the new owner.
+func TestCancelOfAnAskReadsTheOwnerUnderTheSessionLock(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.give(t, f.toren)
+	pass := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+	ctx := t.Context()
+	side := dbtest.SideConnection(t, f.h.pool)
+	holder, err := side.Begin(ctx)
+	if err != nil {
+		t.Fatalf("Begin() error = %v", err)
+	}
+	defer func() { _ = holder.Rollback(t.Context()) }()
+	if _, err := holder.Exec(ctx, `SELECT id FROM game_sessions WHERE id = $1 FOR UPDATE`, f.sessionID); err != nil {
+		t.Fatalf("lock the session: %v", err)
+	}
+	cancelled := make(chan error, 1)
+	go func() {
+		_, err := f.cancelAs(f.caio, pass.GetId(), newKey())
+		cancelled <- err
+	}()
+	observer := dbtest.SideConnection(t, f.h.pool)
+	for deadline := time.Now().Add(30 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+		n, err := dbtest.WaitingForTable(ctx, observer, "game_sessions")
+		if err != nil {
+			t.Fatalf("look for the waiting cancel: %v", err)
+		}
+		if n > 0 {
+			break
+		}
+		select {
+		case err := <-cancelled:
+			t.Fatalf("the cancel ended (%v) while the session's row was held", err)
+		default:
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the cancel never waited for the session's row")
+		}
+	}
+	// Bia gives up Brisa (she may own one living character) and takes Toren over from Caio, and the write that held the session commits.
+	for _, q := range []struct {
+		sql  string
+		args []any
+	}{
+		{`UPDATE characters SET reserved = true, player_user_id = NULL WHERE id = $1`, []any{f.bri.GetId()}},
+		{`UPDATE characters SET player_user_id = $2 WHERE id = $1`, []any{f.toren.GetId(), f.bia.id}},
+	} {
+		if _, err := side.Exec(ctx, q.sql, q.args...); err != nil {
+			t.Fatalf("change hands: %v", err)
+		}
+	}
+	if _, err := holder.Exec(ctx, `UPDATE game_sessions SET hint_seq = hint_seq + 1 WHERE id = $1`, f.sessionID); err != nil {
+		t.Fatalf("write the session: %v", err)
+	}
+	if err := holder.Commit(ctx); err != nil {
+		t.Fatalf("Commit() error = %v", err)
+	}
+	wantCode(t, "the old owner's cancel, which waited for the session", <-cancelled, connect.CodeNotFound)
+	if status := f.passStatus(t, pass.GetId()); status != "pending" {
+		t.Errorf("the ask is %q after the old owner's cancel, want pending: it is the new owner's to cancel", status)
+	}
+	if _, err := f.cancelAs(f.bia, pass.GetId(), newKey()); err != nil {
+		t.Errorf("the new owner's cancel error = %v", err)
 	}
 }
