@@ -250,7 +250,8 @@ export class FeatureEditor {
     return this.feature().options.map((option, index) => {
       const place = `Opção ${index + 1}`;
       const asks = optionAsksPhrase(option.prerequisite, nameOf);
-      const lead = optionSummary(option, this.menu());
+      // The text of an option ends in a stop; the line is a label, so the stop goes before the " · " (board 580-03).
+      const lead = optionSummary(option, this.menu()).replace(/\.$/, '');
       const tail = !asking ? '' : asks ? asks.replace(/^P/, 'p') : 'não pede nada';
       const summary =
         lead && tail ? `${lead} · ${tail}` : lead || tail.replace(/^./, (c) => c.toUpperCase());
