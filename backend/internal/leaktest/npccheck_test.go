@@ -116,6 +116,19 @@ func TestNpcCheckReachesOnlyTheBardAsked(t *testing.T) {
 	if want := (&playv1.AnswerHeldRollResponse{Result: &playv1.AnswerHeldRollResponse_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswered{UsesLeft: 3}}}); !proto.Equal(answered, want) {
 		t.Errorf("Ana's answer = %s, want only %s", protojson.Format(answered), protojson.Format(want))
 	}
+	// The check settled (Ana was the only bard asked): the master reads it again, with its numbers; no player does, and the refusal holds
+	// none of them.
+	if settled := must(m.play.GetNpcCheck(ctx, rq(&playv1.GetNpcCheckRequest{CampaignId: w.campaign}))).GetCheck(); !settled.GetSettled() || settled.GetTotal() != secret.total || settled.GetD20().GetFaces()[0] != 17 {
+		t.Errorf("the master's latest check = %v, want the settled check with its numbers (the positive control)", settled)
+	}
+	for _, p := range []*person{ana, caio} {
+		res, err := p.play.GetNpcCheck(ctx, rq(&playv1.GetNpcCheckRequest{CampaignId: w.campaign}))
+		if connect.CodeOf(err) != connect.CodePermissionDenied || res != nil {
+			t.Errorf("%s reads the latest check: %v, %v, want permission_denied and no answer", p.name, res, err)
+		} else if msg := err.Error(); strings.Contains(msg, secret.name) || strings.Contains(msg, "17") || strings.Contains(msg, hold) {
+			t.Errorf("the refusal of %s = %q, want no word of the check", p.name, msg)
+		}
+	}
 	must(m.play.EndGameSession(ctx, rq(&playv1.EndGameSessionRequest{CampaignId: w.campaign, GameSessionId: w.session})))
 	for p, sw := range watchers {
 		<-sw.done

@@ -889,6 +889,19 @@ service PlayService {
   // player.
   rpc ListNpcCheckPicker(ListNpcCheckPickerRequest) returns (ListNpcCheckPickerResponse);
 
+  // GetNpcCheck is the latest NPC check of the open session, as the master reads it: the check that waits for the bards (not
+  // settled yet, the asks as they stand) or the one that settled last, with the creature, the check, the d20 with its bonus
+  // and `modifier_known`, what each bard did (cut with the die, let it pass, or was not waited for) and the total. It answers
+  // until the next check is rolled or the session ends, so the master reads the settled card again after reopening the table
+  // (GetGroupCheck's way of answering the latest group check of the open session). `check` is unset when the session has had no
+  // NPC check. Master only: no player reads a check of the master's side (RN-10), and nothing of it is sent to one. IDEMPOTENT.
+  //
+  // Errors: `permission_denied` for a player; `not_found` for a caller who is not a member; `failed_precondition` with no open
+  // session (GameSessionBlocked, NO_OPEN_SESSION).
+  rpc GetNpcCheck(GetNpcCheckRequest) returns (GetNpcCheckResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+
   // GrantSceneAttempt gives one character one more attempt at one action of
   // the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
   // campaign's master may call it, and only while a scene is open. The

@@ -315,6 +315,10 @@ func TestAuthorizationMatrix(t *testing.T) {
 			_, err := c.ListNpcCheckPicker(ctx, connect.NewRequest(&playv1.ListNpcCheckPickerRequest{CampaignId: campaign}))
 			return err
 		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
+		{"GetNpcCheck", func(ctx context.Context, c client) error {
+			_, err := c.GetNpcCheck(ctx, connect.NewRequest(&playv1.GetNpcCheckRequest{CampaignId: campaign}))
+			return err
+		}, [5]connect.Code{allowed, connect.CodePermissionDenied, connect.CodeNotFound, connect.CodeNotFound, connect.CodeUnauthenticated}},
 		{"DiscardTrapDamage", func(ctx context.Context, c client) error {
 			_, err := c.DiscardTrapDamage(ctx, connect.NewRequest(&playv1.DiscardTrapDamageRequest{CampaignId: campaign, TrapDamageId: campaign, IdempotencyKey: newKey()}))
 			return err
@@ -959,6 +963,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, calls["RollNpcCheck"] = c.RollNpcCheck(ctx, connect.NewRequest(&playv1.RollNpcCheckRequest{CampaignId: id, Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: id}, CheckKey: "skill:deception", Roll: &playv1.RollNpcCheckRequest_RollInApp{RollInApp: true}, IdempotencyKey: id}))
 	_, calls["SkipNpcCheckAsks"] = c.SkipNpcCheckAsks(ctx, connect.NewRequest(&playv1.SkipNpcCheckAsksRequest{CampaignId: id, HoldId: id, IdempotencyKey: id}))
 	_, calls["ListNpcCheckPicker"] = c.ListNpcCheckPicker(ctx, connect.NewRequest(&playv1.ListNpcCheckPickerRequest{CampaignId: id}))
+	_, calls["GetNpcCheck"] = c.GetNpcCheck(ctx, connect.NewRequest(&playv1.GetNpcCheckRequest{CampaignId: id}))
 	_, calls["DiscardTrapDamage"] = c.DiscardTrapDamage(ctx, connect.NewRequest(&playv1.DiscardTrapDamageRequest{CampaignId: id, TrapDamageId: id, IdempotencyKey: id}))
 	_, calls["CastSummon"] = c.CastSummon(ctx, connect.NewRequest(&playv1.CastSummonRequest{CampaignId: id, CharacterId: id, IdempotencyKey: id}))
 	_, calls["AssumeWildShape"] = c.AssumeWildShape(ctx, connect.NewRequest(&playv1.AssumeWildShapeRequest{CampaignId: id, CharacterId: id, BeastKey: "monster:wolf", IdempotencyKey: id}))

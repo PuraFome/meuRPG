@@ -145,6 +145,8 @@ const (
 	// PlayServiceListNpcCheckPickerProcedure is the fully-qualified name of the PlayService's
 	// ListNpcCheckPicker RPC.
 	PlayServiceListNpcCheckPickerProcedure = "/meurpg.play.v1.PlayService/ListNpcCheckPicker"
+	// PlayServiceGetNpcCheckProcedure is the fully-qualified name of the PlayService's GetNpcCheck RPC.
+	PlayServiceGetNpcCheckProcedure = "/meurpg.play.v1.PlayService/GetNpcCheck"
 	// PlayServiceGrantSceneAttemptProcedure is the fully-qualified name of the PlayService's
 	// GrantSceneAttempt RPC.
 	PlayServiceGrantSceneAttemptProcedure = "/meurpg.play.v1.PlayService/GrantSceneAttempt"
@@ -959,6 +961,16 @@ type PlayServiceClient interface {
 	// Errors: `not_found` for a creature that is not an SRD one or a caller who is not a member; `permission_denied` for a
 	// player.
 	ListNpcCheckPicker(context.Context, *connect.Request[v1.ListNpcCheckPickerRequest]) (*connect.Response[v1.ListNpcCheckPickerResponse], error)
+	// GetNpcCheck is the latest NPC check of the open session, as the master reads it: the check that waits for the bards (not
+	// settled yet, the asks as they stand) or the one that settled last, with the creature, the check, the d20 with its bonus
+	// and `modifier_known`, what each bard did (cut with the die, let it pass, or was not waited for) and the total. It answers
+	// until the next check is rolled or the session ends, so the master reads the settled card again after reopening the table
+	// (GetGroupCheck's way of answering the latest group check of the open session). `check` is unset when the session has had no
+	// NPC check. Master only: no player reads a check of the master's side (RN-10), and nothing of it is sent to one. IDEMPOTENT.
+	//
+	// Errors: `permission_denied` for a player; `not_found` for a caller who is not a member; `failed_precondition` with no open
+	// session (GameSessionBlocked, NO_OPEN_SESSION).
+	GetNpcCheck(context.Context, *connect.Request[v1.GetNpcCheckRequest]) (*connect.Response[v1.GetNpcCheckResponse], error)
 	// GrantSceneAttempt gives one character one more attempt at one action of
 	// the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
 	// campaign's master may call it, and only while a scene is open. The
@@ -1391,6 +1403,13 @@ func NewPlayServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(playServiceMethods.ByName("ListNpcCheckPicker")),
 			connect.WithClientOptions(opts...),
 		),
+		getNpcCheck: connect.NewClient[v1.GetNpcCheckRequest, v1.GetNpcCheckResponse](
+			httpClient,
+			baseURL+PlayServiceGetNpcCheckProcedure,
+			connect.WithSchema(playServiceMethods.ByName("GetNpcCheck")),
+			connect.WithIdempotency(connect.IdempotencyIdempotent),
+			connect.WithClientOptions(opts...),
+		),
 		grantSceneAttempt: connect.NewClient[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse](
 			httpClient,
 			baseURL+PlayServiceGrantSceneAttemptProcedure,
@@ -1492,6 +1511,7 @@ type playServiceClient struct {
 	rollNpcCheck           *connect.Client[v1.RollNpcCheckRequest, v1.RollNpcCheckResponse]
 	skipNpcCheckAsks       *connect.Client[v1.SkipNpcCheckAsksRequest, v1.SkipNpcCheckAsksResponse]
 	listNpcCheckPicker     *connect.Client[v1.ListNpcCheckPickerRequest, v1.ListNpcCheckPickerResponse]
+	getNpcCheck            *connect.Client[v1.GetNpcCheckRequest, v1.GetNpcCheckResponse]
 	grantSceneAttempt      *connect.Client[v1.GrantSceneAttemptRequest, v1.GrantSceneAttemptResponse]
 	putOnStage             *connect.Client[v1.PutOnStageRequest, v1.PutOnStageResponse]
 	takeOffStage           *connect.Client[v1.TakeOffStageRequest, v1.TakeOffStageResponse]
@@ -1682,6 +1702,11 @@ func (c *playServiceClient) SkipNpcCheckAsks(ctx context.Context, req *connect.R
 // ListNpcCheckPicker calls meurpg.play.v1.PlayService.ListNpcCheckPicker.
 func (c *playServiceClient) ListNpcCheckPicker(ctx context.Context, req *connect.Request[v1.ListNpcCheckPickerRequest]) (*connect.Response[v1.ListNpcCheckPickerResponse], error) {
 	return c.listNpcCheckPicker.CallUnary(ctx, req)
+}
+
+// GetNpcCheck calls meurpg.play.v1.PlayService.GetNpcCheck.
+func (c *playServiceClient) GetNpcCheck(ctx context.Context, req *connect.Request[v1.GetNpcCheckRequest]) (*connect.Response[v1.GetNpcCheckResponse], error) {
+	return c.getNpcCheck.CallUnary(ctx, req)
 }
 
 // GrantSceneAttempt calls meurpg.play.v1.PlayService.GrantSceneAttempt.
@@ -2519,6 +2544,16 @@ type PlayServiceHandler interface {
 	// Errors: `not_found` for a creature that is not an SRD one or a caller who is not a member; `permission_denied` for a
 	// player.
 	ListNpcCheckPicker(context.Context, *connect.Request[v1.ListNpcCheckPickerRequest]) (*connect.Response[v1.ListNpcCheckPickerResponse], error)
+	// GetNpcCheck is the latest NPC check of the open session, as the master reads it: the check that waits for the bards (not
+	// settled yet, the asks as they stand) or the one that settled last, with the creature, the check, the d20 with its bonus
+	// and `modifier_known`, what each bard did (cut with the die, let it pass, or was not waited for) and the total. It answers
+	// until the next check is rolled or the session ends, so the master reads the settled card again after reopening the table
+	// (GetGroupCheck's way of answering the latest group check of the open session). `check` is unset when the session has had no
+	// NPC check. Master only: no player reads a check of the master's side (RN-10), and nothing of it is sent to one. IDEMPOTENT.
+	//
+	// Errors: `permission_denied` for a player; `not_found` for a caller who is not a member; `failed_precondition` with no open
+	// session (GameSessionBlocked, NO_OPEN_SESSION).
+	GetNpcCheck(context.Context, *connect.Request[v1.GetNpcCheckRequest]) (*connect.Response[v1.GetNpcCheckResponse], error)
 	// GrantSceneAttempt gives one character one more attempt at one action of
 	// the open scene: "Dar mais uma tentativa" (MR-015, question 55). Only the
 	// campaign's master may call it, and only while a scene is open. The
@@ -2947,6 +2982,13 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(playServiceMethods.ByName("ListNpcCheckPicker")),
 		connect.WithHandlerOptions(opts...),
 	)
+	playServiceGetNpcCheckHandler := connect.NewUnaryHandler(
+		PlayServiceGetNpcCheckProcedure,
+		svc.GetNpcCheck,
+		connect.WithSchema(playServiceMethods.ByName("GetNpcCheck")),
+		connect.WithIdempotency(connect.IdempotencyIdempotent),
+		connect.WithHandlerOptions(opts...),
+	)
 	playServiceGrantSceneAttemptHandler := connect.NewUnaryHandler(
 		PlayServiceGrantSceneAttemptProcedure,
 		svc.GrantSceneAttempt,
@@ -3081,6 +3123,8 @@ func NewPlayServiceHandler(svc PlayServiceHandler, opts ...connect.HandlerOption
 			playServiceSkipNpcCheckAsksHandler.ServeHTTP(w, r)
 		case PlayServiceListNpcCheckPickerProcedure:
 			playServiceListNpcCheckPickerHandler.ServeHTTP(w, r)
+		case PlayServiceGetNpcCheckProcedure:
+			playServiceGetNpcCheckHandler.ServeHTTP(w, r)
 		case PlayServiceGrantSceneAttemptProcedure:
 			playServiceGrantSceneAttemptHandler.ServeHTTP(w, r)
 		case PlayServicePutOnStageProcedure:
@@ -3252,6 +3296,10 @@ func (UnimplementedPlayServiceHandler) SkipNpcCheckAsks(context.Context, *connec
 
 func (UnimplementedPlayServiceHandler) ListNpcCheckPicker(context.Context, *connect.Request[v1.ListNpcCheckPickerRequest]) (*connect.Response[v1.ListNpcCheckPickerResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.ListNpcCheckPicker is not implemented"))
+}
+
+func (UnimplementedPlayServiceHandler) GetNpcCheck(context.Context, *connect.Request[v1.GetNpcCheckRequest]) (*connect.Response[v1.GetNpcCheckResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.PlayService.GetNpcCheck is not implemented"))
 }
 
 func (UnimplementedPlayServiceHandler) GrantSceneAttempt(context.Context, *connect.Request[v1.GrantSceneAttemptRequest]) (*connect.Response[v1.GrantSceneAttemptResponse], error) {

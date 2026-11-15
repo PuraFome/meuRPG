@@ -34,3 +34,11 @@ WHERE hold_id = $1 AND state = 'asked';
 -- name: ListOpenNpcCheckHolds :many
 -- The master's checks of the campaign that still wait for the bards: a combat that opens and a session that ends settle them.
 SELECT * FROM inspiration_holds WHERE campaign_id = $1 AND kind = 'npc_check' AND answer_key IS NULL ORDER BY created_at, id;
+
+-- name: GetLatestNpcCheckEvent :one
+-- The event of the latest NPC check of the session, held or resolved: the master's read of the check answers with it until the next
+-- check is rolled (GetNpcCheck).
+SELECT * FROM session_events
+WHERE game_session_id = $1 AND kind IN ('npc_check_held', 'npc_check_resolved')
+ORDER BY seq DESC
+LIMIT 1;

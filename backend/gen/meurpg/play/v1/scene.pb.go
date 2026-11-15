@@ -2653,6 +2653,96 @@ func (x *NpcCheckCandidate) GetMapMeasures() bool {
 	return false
 }
 
+// GetNpcCheckRequest names the campaign.
+type GetNpcCheckRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetNpcCheckRequest) Reset() {
+	*x = GetNpcCheckRequest{}
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetNpcCheckRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetNpcCheckRequest) ProtoMessage() {}
+
+func (x *GetNpcCheckRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetNpcCheckRequest.ProtoReflect.Descriptor instead.
+func (*GetNpcCheckRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *GetNpcCheckRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+// GetNpcCheckResponse is the latest NPC check of the open session, unset when there was none.
+type GetNpcCheckResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Check         *NpcCheckRead          `protobuf:"bytes,1,opt,name=check,proto3" json:"check,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetNpcCheckResponse) Reset() {
+	*x = GetNpcCheckResponse{}
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetNpcCheckResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetNpcCheckResponse) ProtoMessage() {}
+
+func (x *GetNpcCheckResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetNpcCheckResponse.ProtoReflect.Descriptor instead.
+func (*GetNpcCheckResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *GetNpcCheckResponse) GetCheck() *NpcCheckRead {
+	if x != nil {
+		return x.Check
+	}
+	return nil
+}
+
 // NpcCheckOption is one check of a creature.
 type NpcCheckOption struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -2668,7 +2758,7 @@ type NpcCheckOption struct {
 
 func (x *NpcCheckOption) Reset() {
 	*x = NpcCheckOption{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[32]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2680,7 +2770,7 @@ func (x *NpcCheckOption) String() string {
 func (*NpcCheckOption) ProtoMessage() {}
 
 func (x *NpcCheckOption) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[32]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2693,7 +2783,7 @@ func (x *NpcCheckOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NpcCheckOption.ProtoReflect.Descriptor instead.
 func (*NpcCheckOption) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{32}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *NpcCheckOption) GetKey() string {
@@ -2742,7 +2832,7 @@ type GrantSceneAttemptRequest struct {
 
 func (x *GrantSceneAttemptRequest) Reset() {
 	*x = GrantSceneAttemptRequest{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[33]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2754,7 +2844,7 @@ func (x *GrantSceneAttemptRequest) String() string {
 func (*GrantSceneAttemptRequest) ProtoMessage() {}
 
 func (x *GrantSceneAttemptRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[33]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2767,7 +2857,7 @@ func (x *GrantSceneAttemptRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantSceneAttemptRequest.ProtoReflect.Descriptor instead.
 func (*GrantSceneAttemptRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{33}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *GrantSceneAttemptRequest) GetCampaignId() string {
@@ -2808,7 +2898,7 @@ type GrantSceneAttemptResponse struct {
 
 func (x *GrantSceneAttemptResponse) Reset() {
 	*x = GrantSceneAttemptResponse{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[34]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2820,7 +2910,7 @@ func (x *GrantSceneAttemptResponse) String() string {
 func (*GrantSceneAttemptResponse) ProtoMessage() {}
 
 func (x *GrantSceneAttemptResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[34]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2833,7 +2923,7 @@ func (x *GrantSceneAttemptResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GrantSceneAttemptResponse.ProtoReflect.Descriptor instead.
 func (*GrantSceneAttemptResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{34}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *GrantSceneAttemptResponse) GetScene() *OpenSceneInfo {
@@ -2855,7 +2945,7 @@ type SetSceneAudienceRequest struct {
 
 func (x *SetSceneAudienceRequest) Reset() {
 	*x = SetSceneAudienceRequest{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[35]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2867,7 +2957,7 @@ func (x *SetSceneAudienceRequest) String() string {
 func (*SetSceneAudienceRequest) ProtoMessage() {}
 
 func (x *SetSceneAudienceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[35]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2880,7 +2970,7 @@ func (x *SetSceneAudienceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSceneAudienceRequest.ProtoReflect.Descriptor instead.
 func (*SetSceneAudienceRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{35}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *SetSceneAudienceRequest) GetCampaignId() string {
@@ -2907,7 +2997,7 @@ type SetSceneAudienceResponse struct {
 
 func (x *SetSceneAudienceResponse) Reset() {
 	*x = SetSceneAudienceResponse{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[36]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2919,7 +3009,7 @@ func (x *SetSceneAudienceResponse) String() string {
 func (*SetSceneAudienceResponse) ProtoMessage() {}
 
 func (x *SetSceneAudienceResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[36]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2932,7 +3022,7 @@ func (x *SetSceneAudienceResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSceneAudienceResponse.ProtoReflect.Descriptor instead.
 func (*SetSceneAudienceResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{36}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *SetSceneAudienceResponse) GetScene() *OpenSceneInfo {
@@ -2953,7 +3043,7 @@ type SetScenePlayersMayJoinRequest struct {
 
 func (x *SetScenePlayersMayJoinRequest) Reset() {
 	*x = SetScenePlayersMayJoinRequest{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[37]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2965,7 +3055,7 @@ func (x *SetScenePlayersMayJoinRequest) String() string {
 func (*SetScenePlayersMayJoinRequest) ProtoMessage() {}
 
 func (x *SetScenePlayersMayJoinRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[37]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2978,7 +3068,7 @@ func (x *SetScenePlayersMayJoinRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetScenePlayersMayJoinRequest.ProtoReflect.Descriptor instead.
 func (*SetScenePlayersMayJoinRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{37}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *SetScenePlayersMayJoinRequest) GetCampaignId() string {
@@ -3005,7 +3095,7 @@ type SetScenePlayersMayJoinResponse struct {
 
 func (x *SetScenePlayersMayJoinResponse) Reset() {
 	*x = SetScenePlayersMayJoinResponse{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[38]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3017,7 +3107,7 @@ func (x *SetScenePlayersMayJoinResponse) String() string {
 func (*SetScenePlayersMayJoinResponse) ProtoMessage() {}
 
 func (x *SetScenePlayersMayJoinResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[38]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3030,7 +3120,7 @@ func (x *SetScenePlayersMayJoinResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetScenePlayersMayJoinResponse.ProtoReflect.Descriptor instead.
 func (*SetScenePlayersMayJoinResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{38}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *SetScenePlayersMayJoinResponse) GetScene() *OpenSceneInfo {
@@ -3050,7 +3140,7 @@ type JoinSceneRequest struct {
 
 func (x *JoinSceneRequest) Reset() {
 	*x = JoinSceneRequest{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[39]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3062,7 +3152,7 @@ func (x *JoinSceneRequest) String() string {
 func (*JoinSceneRequest) ProtoMessage() {}
 
 func (x *JoinSceneRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[39]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3075,7 +3165,7 @@ func (x *JoinSceneRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JoinSceneRequest.ProtoReflect.Descriptor instead.
 func (*JoinSceneRequest) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{39}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *JoinSceneRequest) GetCampaignId() string {
@@ -3095,7 +3185,7 @@ type JoinSceneResponse struct {
 
 func (x *JoinSceneResponse) Reset() {
 	*x = JoinSceneResponse{}
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[40]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3107,7 +3197,7 @@ func (x *JoinSceneResponse) String() string {
 func (*JoinSceneResponse) ProtoMessage() {}
 
 func (x *JoinSceneResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_play_v1_scene_proto_msgTypes[40]
+	mi := &file_meurpg_play_v1_scene_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3120,7 +3210,7 @@ func (x *JoinSceneResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use JoinSceneResponse.ProtoReflect.Descriptor instead.
 func (*JoinSceneResponse) Descriptor() ([]byte, []int) {
-	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{40}
+	return file_meurpg_play_v1_scene_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *JoinSceneResponse) GetScene() *OpenSceneInfo {
@@ -3321,7 +3411,12 @@ const file_meurpg_play_v1_scene_proto_rawDesc = "" +
 	"\x06source\x18\x05 \x01(\x0e2\x1e.meurpg.play.v1.NpcCheckSourceR\x06source\x12\x16\n" +
 	"\x06hidden\x18\x06 \x01(\bR\x06hidden\x126\n" +
 	"\x06checks\x18\a \x03(\v2\x1e.meurpg.play.v1.NpcCheckOptionR\x06checks\x12!\n" +
-	"\fmap_measures\x18\b \x01(\bR\vmapMeasures\"b\n" +
+	"\fmap_measures\x18\b \x01(\bR\vmapMeasures\"5\n" +
+	"\x12GetNpcCheckRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\"I\n" +
+	"\x13GetNpcCheckResponse\x122\n" +
+	"\x05check\x18\x01 \x01(\v2\x1c.meurpg.play.v1.NpcCheckReadR\x05check\"b\n" +
 	"\x0eNpcCheckOption\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
@@ -3382,7 +3477,7 @@ func file_meurpg_play_v1_scene_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_scene_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_meurpg_play_v1_scene_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
+var file_meurpg_play_v1_scene_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
 var file_meurpg_play_v1_scene_proto_goTypes = []any{
 	(SceneBlockedReason)(0),                // 0: meurpg.play.v1.SceneBlockedReason
 	(NpcCheckSource)(0),                    // 1: meurpg.play.v1.NpcCheckSource
@@ -3418,35 +3513,37 @@ var file_meurpg_play_v1_scene_proto_goTypes = []any{
 	(*ListNpcCheckPickerRequest)(nil),      // 31: meurpg.play.v1.ListNpcCheckPickerRequest
 	(*ListNpcCheckPickerResponse)(nil),     // 32: meurpg.play.v1.ListNpcCheckPickerResponse
 	(*NpcCheckCandidate)(nil),              // 33: meurpg.play.v1.NpcCheckCandidate
-	(*NpcCheckOption)(nil),                 // 34: meurpg.play.v1.NpcCheckOption
-	(*GrantSceneAttemptRequest)(nil),       // 35: meurpg.play.v1.GrantSceneAttemptRequest
-	(*GrantSceneAttemptResponse)(nil),      // 36: meurpg.play.v1.GrantSceneAttemptResponse
-	(*SetSceneAudienceRequest)(nil),        // 37: meurpg.play.v1.SetSceneAudienceRequest
-	(*SetSceneAudienceResponse)(nil),       // 38: meurpg.play.v1.SetSceneAudienceResponse
-	(*SetScenePlayersMayJoinRequest)(nil),  // 39: meurpg.play.v1.SetScenePlayersMayJoinRequest
-	(*SetScenePlayersMayJoinResponse)(nil), // 40: meurpg.play.v1.SetScenePlayersMayJoinResponse
-	(*JoinSceneRequest)(nil),               // 41: meurpg.play.v1.JoinSceneRequest
-	(*JoinSceneResponse)(nil),              // 42: meurpg.play.v1.JoinSceneResponse
-	(*timestamppb.Timestamp)(nil),          // 43: google.protobuf.Timestamp
-	(*v1.SceneClue)(nil),                   // 44: meurpg.maps.v1.SceneClue
-	(*v1.SceneImage)(nil),                  // 45: meurpg.maps.v1.SceneImage
-	(*DiceRoll)(nil),                       // 46: meurpg.play.v1.DiceRoll
-	(RollMode)(0),                          // 47: meurpg.play.v1.RollMode
-	(*AdvantageSource)(nil),                // 48: meurpg.play.v1.AdvantageSource
-	(*BonusDie)(nil),                       // 49: meurpg.play.v1.BonusDie
-	(*OutsideInspirationOffer)(nil),        // 50: meurpg.play.v1.OutsideInspirationOffer
-	(*LuckyOffer)(nil),                     // 51: meurpg.play.v1.LuckyOffer
-	(*HeldRollOffer)(nil),                  // 52: meurpg.play.v1.HeldRollOffer
-	(*NpcCheckAsk)(nil),                    // 53: meurpg.play.v1.NpcCheckAsk
+	(*GetNpcCheckRequest)(nil),             // 34: meurpg.play.v1.GetNpcCheckRequest
+	(*GetNpcCheckResponse)(nil),            // 35: meurpg.play.v1.GetNpcCheckResponse
+	(*NpcCheckOption)(nil),                 // 36: meurpg.play.v1.NpcCheckOption
+	(*GrantSceneAttemptRequest)(nil),       // 37: meurpg.play.v1.GrantSceneAttemptRequest
+	(*GrantSceneAttemptResponse)(nil),      // 38: meurpg.play.v1.GrantSceneAttemptResponse
+	(*SetSceneAudienceRequest)(nil),        // 39: meurpg.play.v1.SetSceneAudienceRequest
+	(*SetSceneAudienceResponse)(nil),       // 40: meurpg.play.v1.SetSceneAudienceResponse
+	(*SetScenePlayersMayJoinRequest)(nil),  // 41: meurpg.play.v1.SetScenePlayersMayJoinRequest
+	(*SetScenePlayersMayJoinResponse)(nil), // 42: meurpg.play.v1.SetScenePlayersMayJoinResponse
+	(*JoinSceneRequest)(nil),               // 43: meurpg.play.v1.JoinSceneRequest
+	(*JoinSceneResponse)(nil),              // 44: meurpg.play.v1.JoinSceneResponse
+	(*timestamppb.Timestamp)(nil),          // 45: google.protobuf.Timestamp
+	(*v1.SceneClue)(nil),                   // 46: meurpg.maps.v1.SceneClue
+	(*v1.SceneImage)(nil),                  // 47: meurpg.maps.v1.SceneImage
+	(*DiceRoll)(nil),                       // 48: meurpg.play.v1.DiceRoll
+	(RollMode)(0),                          // 49: meurpg.play.v1.RollMode
+	(*AdvantageSource)(nil),                // 50: meurpg.play.v1.AdvantageSource
+	(*BonusDie)(nil),                       // 51: meurpg.play.v1.BonusDie
+	(*OutsideInspirationOffer)(nil),        // 52: meurpg.play.v1.OutsideInspirationOffer
+	(*LuckyOffer)(nil),                     // 53: meurpg.play.v1.LuckyOffer
+	(*HeldRollOffer)(nil),                  // 54: meurpg.play.v1.HeldRollOffer
+	(*NpcCheckAsk)(nil),                    // 55: meurpg.play.v1.NpcCheckAsk
 }
 var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.SceneBlocked.reason:type_name -> meurpg.play.v1.SceneBlockedReason
 	16, // 1: meurpg.play.v1.OpenSceneInfo.actions:type_name -> meurpg.play.v1.SceneActionView
 	17, // 2: meurpg.play.v1.OpenSceneInfo.rolls:type_name -> meurpg.play.v1.SceneRoll
-	43, // 3: meurpg.play.v1.OpenSceneInfo.opened_at:type_name -> google.protobuf.Timestamp
-	44, // 4: meurpg.play.v1.OpenSceneInfo.clues:type_name -> meurpg.maps.v1.SceneClue
+	45, // 3: meurpg.play.v1.OpenSceneInfo.opened_at:type_name -> google.protobuf.Timestamp
+	46, // 4: meurpg.play.v1.OpenSceneInfo.clues:type_name -> meurpg.maps.v1.SceneClue
 	7,  // 5: meurpg.play.v1.OpenSceneInfo.stage:type_name -> meurpg.play.v1.StageNpc
-	45, // 6: meurpg.play.v1.OpenSceneInfo.images:type_name -> meurpg.maps.v1.SceneImage
+	47, // 6: meurpg.play.v1.OpenSceneInfo.images:type_name -> meurpg.maps.v1.SceneImage
 	6,  // 7: meurpg.play.v1.OpenSceneInfo.audience:type_name -> meurpg.play.v1.SceneAudienceView
 	5,  // 8: meurpg.play.v1.SceneAudienceView.inside:type_name -> meurpg.play.v1.ScenePlayer
 	5,  // 9: meurpg.play.v1.SceneAudienceView.outside:type_name -> meurpg.play.v1.ScenePlayer
@@ -3454,35 +3551,36 @@ var file_meurpg_play_v1_scene_proto_depIdxs = []int32{
 	7,  // 11: meurpg.play.v1.TakeOffStageResponse.stage:type_name -> meurpg.play.v1.StageNpc
 	7,  // 12: meurpg.play.v1.SetStageNpcHiddenResponse.stage:type_name -> meurpg.play.v1.StageNpc
 	7,  // 13: meurpg.play.v1.SetSpeakerResponse.stage:type_name -> meurpg.play.v1.StageNpc
-	46, // 14: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
-	43, // 15: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
-	47, // 16: meurpg.play.v1.SceneRoll.mode:type_name -> meurpg.play.v1.RollMode
-	48, // 17: meurpg.play.v1.SceneRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
-	49, // 18: meurpg.play.v1.SceneRoll.bonus_dice:type_name -> meurpg.play.v1.BonusDie
+	48, // 14: meurpg.play.v1.SceneRoll.roll:type_name -> meurpg.play.v1.DiceRoll
+	45, // 15: meurpg.play.v1.SceneRoll.rolled_at:type_name -> google.protobuf.Timestamp
+	49, // 16: meurpg.play.v1.SceneRoll.mode:type_name -> meurpg.play.v1.RollMode
+	50, // 17: meurpg.play.v1.SceneRoll.sources:type_name -> meurpg.play.v1.AdvantageSource
+	51, // 18: meurpg.play.v1.SceneRoll.bonus_dice:type_name -> meurpg.play.v1.BonusDie
 	4,  // 19: meurpg.play.v1.OpenSceneRequest.audience:type_name -> meurpg.play.v1.SceneAudience
 	3,  // 20: meurpg.play.v1.OpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
 	3,  // 21: meurpg.play.v1.GetOpenSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
 	17, // 22: meurpg.play.v1.RollSceneCheckResponse.roll:type_name -> meurpg.play.v1.SceneRoll
-	50, // 23: meurpg.play.v1.RollSceneCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
-	51, // 24: meurpg.play.v1.RollSceneCheckResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
-	52, // 25: meurpg.play.v1.RollSceneCheckResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
+	52, // 23: meurpg.play.v1.RollSceneCheckResponse.inspiration_offer:type_name -> meurpg.play.v1.OutsideInspirationOffer
+	53, // 24: meurpg.play.v1.RollSceneCheckResponse.lucky_offer:type_name -> meurpg.play.v1.LuckyOffer
+	54, // 25: meurpg.play.v1.RollSceneCheckResponse.held_roll_offer:type_name -> meurpg.play.v1.HeldRollOffer
 	28, // 26: meurpg.play.v1.RollNpcCheckResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
-	46, // 27: meurpg.play.v1.NpcCheckRead.d20:type_name -> meurpg.play.v1.DiceRoll
-	53, // 28: meurpg.play.v1.NpcCheckRead.asks:type_name -> meurpg.play.v1.NpcCheckAsk
+	48, // 27: meurpg.play.v1.NpcCheckRead.d20:type_name -> meurpg.play.v1.DiceRoll
+	55, // 28: meurpg.play.v1.NpcCheckRead.asks:type_name -> meurpg.play.v1.NpcCheckAsk
 	28, // 29: meurpg.play.v1.SkipNpcCheckAsksResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
 	33, // 30: meurpg.play.v1.ListNpcCheckPickerResponse.candidates:type_name -> meurpg.play.v1.NpcCheckCandidate
 	1,  // 31: meurpg.play.v1.NpcCheckCandidate.source:type_name -> meurpg.play.v1.NpcCheckSource
-	34, // 32: meurpg.play.v1.NpcCheckCandidate.checks:type_name -> meurpg.play.v1.NpcCheckOption
-	3,  // 33: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	4,  // 34: meurpg.play.v1.SetSceneAudienceRequest.audience:type_name -> meurpg.play.v1.SceneAudience
-	3,  // 35: meurpg.play.v1.SetSceneAudienceResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	3,  // 36: meurpg.play.v1.SetScenePlayersMayJoinResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	3,  // 37: meurpg.play.v1.JoinSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
-	38, // [38:38] is the sub-list for method output_type
-	38, // [38:38] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	36, // 32: meurpg.play.v1.NpcCheckCandidate.checks:type_name -> meurpg.play.v1.NpcCheckOption
+	28, // 33: meurpg.play.v1.GetNpcCheckResponse.check:type_name -> meurpg.play.v1.NpcCheckRead
+	3,  // 34: meurpg.play.v1.GrantSceneAttemptResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	4,  // 35: meurpg.play.v1.SetSceneAudienceRequest.audience:type_name -> meurpg.play.v1.SceneAudience
+	3,  // 36: meurpg.play.v1.SetSceneAudienceResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	3,  // 37: meurpg.play.v1.SetScenePlayersMayJoinResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	3,  // 38: meurpg.play.v1.JoinSceneResponse.scene:type_name -> meurpg.play.v1.OpenSceneInfo
+	39, // [39:39] is the sub-list for method output_type
+	39, // [39:39] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_scene_proto_init() }
@@ -3510,7 +3608,7 @@ func file_meurpg_play_v1_scene_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_scene_proto_rawDesc), len(file_meurpg_play_v1_scene_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   41,
+			NumMessages:   43,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

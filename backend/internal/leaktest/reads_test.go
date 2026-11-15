@@ -426,6 +426,10 @@ var reads = []read{
 		req: func(w *world) proto.Message { return &playv1.ListNpcCheckPickerRequest{CampaignId: w.campaign} },
 	},
 	{
+		procedure: playv1connect.PlayServiceGetNpcCheckProcedure, allow: masterOnlyRead, why: "the latest NPC check holds the creature's d20, its bonus and the total with what each bard cut: nothing of it is a player's to read",
+		req: func(w *world) proto.Message { return &playv1.GetNpcCheckRequest{CampaignId: w.campaign} },
+	},
+	{
 		procedure: playv1connect.ResourceServiceListHeldRollsProcedure, allow: members, why: "a player reads the questions of their own rolls that wait; the master reads every one of the campaign",
 		req: func(w *world) proto.Message { return &playv1.ListHeldRollsRequest{CampaignId: w.campaign} },
 	},

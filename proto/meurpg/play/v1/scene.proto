@@ -535,6 +535,16 @@ message NpcCheckCandidate {
   bool map_measures = 8;
 }
 
+// GetNpcCheckRequest names the campaign.
+message GetNpcCheckRequest {
+  string campaign_id = 1;
+}
+
+// GetNpcCheckResponse is the latest NPC check of the open session, unset when there was none.
+message GetNpcCheckResponse {
+  NpcCheckRead check = 1;
+}
+
 // NpcCheckSource is where the picker found a creature.
 enum NpcCheckSource {
   NPC_CHECK_SOURCE_UNSPECIFIED = 0;

@@ -77,6 +77,34 @@ func (q *Queries) CloseNpcCheckAsks(ctx context.Context, arg CloseNpcCheckAsksPa
 	return err
 }
 
+const getLatestNpcCheckEvent = `-- name: GetLatestNpcCheckEvent :one
+SELECT id, game_session_id, seq, kind, actor_user_id, character_id, payload, idempotency_key, created_at, encounter_id, idempotency_hash FROM session_events
+WHERE game_session_id = $1 AND kind IN ('npc_check_held', 'npc_check_resolved')
+ORDER BY seq DESC
+LIMIT 1
+`
+
+// The event of the latest NPC check of the session, held or resolved: the master's read of the check answers with it until the next
+// check is rolled (GetNpcCheck).
+func (q *Queries) GetLatestNpcCheckEvent(ctx context.Context, gameSessionID string) (SessionEvent, error) {
+	row := q.db.QueryRow(ctx, getLatestNpcCheckEvent, gameSessionID)
+	var i SessionEvent
+	err := row.Scan(
+		&i.ID,
+		&i.GameSessionID,
+		&i.Seq,
+		&i.Kind,
+		&i.ActorUserID,
+		&i.CharacterID,
+		&i.Payload,
+		&i.IdempotencyKey,
+		&i.CreatedAt,
+		&i.EncounterID,
+		&i.IdempotencyHash,
+	)
+	return i, err
+}
+
 const getNpcCheckAskByAnswerKey = `-- name: GetNpcCheckAskByAnswerKey :one
 SELECT a.id, a.hold_id, a.bard_character_id, a.position, a.state, a.sides, a.creature_seen, a.die_face, a.physical, a.answer_key, a.answer_hash, a.created_at, a.answered_at FROM npc_check_asks AS a
 JOIN inspiration_holds AS h ON h.id = a.hold_id

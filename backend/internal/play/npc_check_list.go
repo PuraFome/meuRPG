@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -105,6 +106,39 @@ func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[p
 		return nil, err
 	}
 	return connect.NewResponse(out), nil
+}
+
+// GetNpcCheck implements playv1connect.PlayServiceHandler.
+func (s *Service) GetNpcCheck(ctx context.Context, req *connect.Request[playv1.GetNpcCheckRequest]) (*connect.Response[playv1.GetNpcCheckResponse], error) {
+	m, err := authz.RequireCampaignRole(ctx, req.Msg.GetCampaignId(), authz.RoleMaster)
+	if err != nil {
+		return nil, err
+	}
+	var read *playv1.NpcCheckRead
+	err = db.ReadTx(ctx, s.pool, func(tx pgx.Tx) error {
+		q := s.queries.WithTx(tx)
+		session, err := openSessionWith(ctx, q, m.CampaignID)
+		if err != nil {
+			return err
+		}
+		row, err := q.GetLatestNpcCheckEvent(ctx, session.ID)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("find the latest NPC check: %w", err)
+		}
+		var ev npcCheckEvent
+		if err := json.Unmarshal(row.Payload, &ev); err != nil {
+			return fmt.Errorf("decode the NPC check of event %s: %w", row.ID, err)
+		}
+		read, _, err = s.npcCheckLive(ctx, q, m.CampaignID, ev, row.Kind == eventNpcCheckResolved)
+		return err
+	})
+	if err != nil {
+		return nil, s.dbError(ctx, "read the NPC check", err)
+	}
+	return connect.NewResponse(&playv1.GetNpcCheckResponse{Check: read}), nil
 }
 
 // mapMeasures says which creatures the session's current map measures against a bard: the creature has a token on it, and so has a

@@ -654,6 +654,20 @@ type RollModeRequest struct {
 	AnsweredAt    *time.Time
 }
 
+type SessionEvent struct {
+	ID              string
+	GameSessionID   string
+	Seq             int32
+	Kind            string
+	ActorUserID     *string
+	CharacterID     *string
+	Payload         []byte
+	IdempotencyKey  *string
+	CreatedAt       time.Time
+	EncounterID     *string
+	IdempotencyHash *string
+}
+
 type SessionMessage struct {
 	ID             string
 	CampaignID     string
