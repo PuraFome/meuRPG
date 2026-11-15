@@ -625,6 +625,8 @@ var logHandlers = map[string]logHandler{
 	eventReactionAnswered:        (*logBuilder).reactionAnswered,
 	eventConcentrationSaveRolled: (*logBuilder).reactionAnswered,
 	eventReactionDeclined:        (*logBuilder).reactionDeclined,
+	eventMountSaveRolled:         mountSaveLine,
+	eventRiderThrown:             plainLine(playv1.CombatLogKind_COMBAT_LOG_KIND_RIDER_THROWN),
 	eventDamageRolled:            (*logBuilder).damageEvent,
 	eventDamageApplied:           (*logBuilder).damageEvent,
 	eventDamageDiscarded:         (*logBuilder).damageEvent,
@@ -1224,9 +1226,6 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:         (*logEntry).fillLegendarySpent,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:         (*logEntry).fillRechargeRolled,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:            (*logEntry).fillGearSwapped,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT:       (*logEntry).fillItemUse,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED: (*logEntry).fillItemUse,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT:        (*logEntry).fillItemUse,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:          (*logEntry).fillReadied,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED:           (*logEntry).fillReadied,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST:            (*logEntry).fillReadied,
@@ -1249,6 +1248,11 @@ var logFillers = map[playv1.CombatLogKind]logFiller{
 	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:              (*logEntry).fillDeathSave,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:      (*logEntry).fillConditions,
 	playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:            (*logEntry).fillEffectEnd,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_MOUNT_SAVE:              (*logEntry).fillMountSave,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_RIDER_THROWN:            (*logEntry).fillMountSave,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT:       (*logEntry).fillItemUse,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED: (*logEntry).fillItemUse,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT:        (*logEntry).fillItemUse,
 }
 
 // fill writes the fields of the entry's kind.

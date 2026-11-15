@@ -221,6 +221,7 @@ var notReads = map[string]classified{
 	playv1connect.CombatServiceSetSunlightProcedure:                             {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceMountCombatantProcedure:                          {playerAction, "a player mounts their own rider on a willing mount on its turn; the master any"},
 	playv1connect.CombatServiceDismountCombatantProcedure:                       {playerAction, "a player dismounts their own rider on its turn; the master any"},
+	playv1connect.CombatServiceRollMountSaveProcedure:                           {playerAction, "a player rolls the Dexterity save of their own rider that owes it to stay on its mount, or the master rolls it for any rider; another player is refused and an unseen rider is not found (RN-10)"},
 	playv1connect.CombatServiceSetCombatantMountProcedure:                       {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceSetCombatantSideProcedure:                        {masterWrite, masterOnlyWhy},
 	playv1connect.CombatServiceSetInitiativeOrderProcedure:                      {masterWrite, masterOnlyWhy},

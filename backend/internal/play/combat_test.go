@@ -939,6 +939,10 @@ func TestMR013_CombatAuthorizationMatrix(t *testing.T) {
 			_, err := u.combat.DismountCombatant(ctx, connect.NewRequest(&playv1.DismountCombatantRequest{CampaignId: campaign, EncounterId: enc, RiderId: pens, Col: 1, Row: 1, IdempotencyKey: newKey()}))
 			return err
 		},
+		"RollMountSave": func(u *user, ctx context.Context) error {
+			_, err := u.combat.RollMountSave(ctx, connect.NewRequest(&playv1.RollMountSaveRequest{CampaignId: campaign, EncounterId: enc, RiderId: pens, Roll: &playv1.RollMountSaveRequest_D20Face{D20Face: 10}, IdempotencyKey: newKey()}))
+			return err
+		},
 		"SetCombatantCover": func(u *user, ctx context.Context) error {
 			_, err := u.combat.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: campaign, EncounterId: enc, CombatantId: gob, IdempotencyKey: newKey(), Cover: playv1.CoverDegree_COVER_DEGREE_HALF}))
 			return err
@@ -1164,7 +1168,7 @@ func TestSessionEventKindsMatchTheTable(t *testing.T) {
 		eventClueRevealed, eventStageChanged,
 		eventSceneAttemptGranted, eventTurnPartEnded,
 		eventTrapNoticed, eventTrapSearched, eventTrapTriggered, eventTrapDisarmed, eventTrapRevealed,
-		eventTreasureFound, eventTreasureUnfound, eventCoverSet, eventSideSet, eventMountKindSet, eventCombatantMounted, eventCombatantDismounted, eventOpportunityOffered,
+		eventTreasureFound, eventTreasureUnfound, eventCoverSet, eventSideSet, eventMountKindSet, eventCombatantMounted, eventCombatantDismounted, eventMountSaveRolled, eventRiderThrown, eventOpportunityOffered,
 		eventCreatureSummoned, eventCreatureDismissed, eventWildShapeStarted, eventWildShapeEnded,
 		eventFamiliarSight, eventDoorOpened, eventHiddenRevealAnswered, eventReactionAnswered, eventConcentrationSaveRolled,
 		eventPuzzleShown, eventPuzzleSolved, eventPuzzleReset, eventPuzzleClosed,
