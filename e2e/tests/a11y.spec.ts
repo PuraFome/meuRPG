@@ -95,7 +95,7 @@ import {
   icaroSheetBody,
   lockAndMilestone,
 } from './table-sheet-support';
-import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
+import { masterLog, openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
@@ -9530,6 +9530,8 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
     const gear = p.getByRole('region', { name: 'Equipamento' });
     const rowOf = (name: RegExp) => gear.locator('.magic-row').filter({ hasText: name });
     await expect(rowOf(/Anel de estrelas cadentes/).getByText('5 de 6 cargas')).toBeVisible();
+    await expect(rowOf(/Anel de estrelas cadentes/).getByText('Volta 1d6 ao amanhecer')).toBeVisible();
+    await expect(gear.getByText('Travada: usar cargas continua valendo, o resto, só o mestre muda.')).toBeVisible();
     await expect(rowOf(/Anel de evasão/).getByRole('button', { name: /^Usar / })).toHaveAttribute('aria-disabled', 'true');
     await expect(rowOf(/Escaravelho/).getByText('Destruída')).toBeVisible();
     await expect(rowOf(/Anel de proteção/).getByText('Pede sintonização')).toBeVisible();
@@ -9542,6 +9544,8 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
     await expectScreenPasses(p, `Usar cargas ${where}`);
     await use.getByRole('button', { name: 'Fechar' }).first().click();
     await expect(use).toBeHidden();
+    // The focus goes back to the item's "Usar".
+    await expect(rowOf(/Anel de estrelas cadentes/).getByRole('button', { name: /^Usar / })).toBeFocused();
 
     // The last charge of a staff that rolls a d20: the alert, then the row that asks for the roll.
     await rowOf(/Cajado do fogo/).getByRole('button', { name: /^Usar / }).click();
@@ -9549,8 +9553,14 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
     const last = p.getByRole('alertdialog', { name: 'A última carga se foi' });
     await expect(last).toBeVisible();
     await expectScreenPasses(p, `A última carga se foi ${where}`);
-    await last.getByRole('button', { name: 'Fechar' }).first().click();
+    // Esc and the close button both close it, and neither skips the die; the backdrop does not. The focus goes back to the row.
+    if (colorScheme === 'dark') {
+      await p.keyboard.press('Escape');
+    } else {
+      await last.getByRole('button', { name: 'Fechar' }).first().click();
+    }
     await expect(last).toBeHidden();
+    await expect(rowOf(/Cajado do fogo/).getByRole('button', { name: /^Rolar/ })).toBeFocused();
     await expect(rowOf(/Cajado do fogo/).getByText('Falta rolar o d20 da última carga.')).toBeVisible();
     await expect(rowOf(/Cajado do fogo/).getByRole('button', { name: /^Rolar/ })).toBeVisible();
     await expectScreenPasses(p, `Ficha, o d20 da última carga espera ${where}`);
@@ -9663,6 +9673,72 @@ for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
   test(`a munição na linha de ataque passa no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
     test.setTimeout(300_000);
     await scanAmmunitionAttackScreens(browser, colorScheme, width);
+  });
+}
+
+/**
+ * The log of charges and ammunition (#563), through the real stack: a shot with the bow, the last charge of a staff that rolls a
+ * d20 and the d20 that left it with no charges. The master and the owner read the three lines; they are the same axe states of the
+ * log as the others. The player acts through the RPCs of the owner (a shot, a use, a roll), the screens only read.
+ */
+async function scanChargesLogScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade registro de cargas ${Date.now()}`, true, true, {
+      sheet: { ...pensantusAttacks, weaponKeys: ['equipment:dagger', 'equipment:longbow'], magicItems: [{ key: 'item:staff-of-fire' }] },
+    });
+    campaignId = table.campaignId;
+    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
+    const ok = async (res: Awaited<ReturnType<typeof callRPC>>) => expect(res.ok(), await res.text()).toBeTruthy();
+
+    // Seven arrows counted and the staff at its last charge, as the master sets them.
+    await ok(await callRPC(m, 'meurpg.play.v1.ChargesService/SetAmmunition', { campaignId, characterId: table.characterId, ammoKey: 'equipment:arrow', quantity: 7 }));
+    const read = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(read.ok(), await read.text()).toBeTruthy();
+    const entries = ((await read.json()).character.sheet.full.magicItems ?? []) as { id: string; key: string }[];
+    const staff = entries.find((e) => e.key === 'item:staff-of-fire')!.id;
+    await ok(await callRPC(m, 'meurpg.play.v1.ChargesService/SetCharges', { campaignId, characterId: table.characterId, entryId: staff, chargesLeft: 1, lost: 'ITEM_LOSS_UNSPECIFIED', idempotencyKey: crypto.randomUUID() }));
+
+    // The owner shoots, spends the last charge and rolls the d20 (a 14: the staff stays, with no charges).
+    await ok(await callRPC(p, 'meurpg.play.v1.CombatService/RollAttack', { campaignId, encounterId: enc.id, attackerId: id('Pensantus'), attackKey: 'equipment:longbow', targetId: id('Goblin 1'), idempotencyKey: crypto.randomUUID(), d20Face: 12 }));
+    await ok(await callRPC(p, 'meurpg.play.v1.ChargesService/SpendCharges', { campaignId, characterId: table.characterId, entryId: staff, amount: 1, idempotencyKey: crypto.randomUUID() }));
+    await ok(await callRPC(p, 'meurpg.play.v1.ChargesService/RollLastCharge', { campaignId, characterId: table.characterId, entryId: staff, idempotencyKey: crypto.randomUUID(), d20Face: 14 }));
+
+    const lines = ['atirou com o Arco longo: 1 flecha, restam 6', 'gastou a última carga do Cajado do fogo', 'rolou 14 no d20 da última carga: o Cajado do fogo fica, sem cargas'];
+    await openSessionPage(m, campaignId);
+    const mlog = await masterLog(m);
+    for (const line of lines) {
+      await expect(mlog).toContainText(line);
+    }
+    await expectScreenPasses(m, `Registro do combate, cargas e munição, visto pelo mestre ${where}`);
+
+    await openSessionPage(p, campaignId);
+    const ownerLog = await openCombatLog(p);
+    for (const line of lines) {
+      await expect(ownerLog).toContainText(line);
+    }
+    await expectScreenPasses(p, `Registro do combate, cargas e munição, visto pelo dono ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`o registro de cargas e munição passa no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesLogScreens(browser, colorScheme, width);
   });
 }
 

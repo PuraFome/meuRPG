@@ -95,6 +95,7 @@ When the stock row counts another combat only the piece comes back, and a row le
 The events are `item_charge_spent`, `item_charges_restored`, `item_destroyed`, `dawn_taken`, `ammunition_spent` and `ammunition_recovered`.
 In a combat that has the character, `SpendCharges` writes `COMBAT_LOG_KIND_ITEM_CHARGE_SPENT` and `RollLastCharge` writes `COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED`.
 An event of `ammunition_spent` reads as `COMBAT_LOG_KIND_AMMUNITION_SPENT`.
+The web words the three lines in `core/combat/combat-log-item-use.ts` ("gastou a última carga da Varinha de teia", "rolou 1 no d20 da última carga: ...", "atirou com o Arco longo: 1 flecha, restam 3").
 `SetCharges`, `RecoverAmmunition` and any call outside a combat write the session event only, and no line.
 
 ## Privacy
@@ -119,11 +120,16 @@ A row with `charges_max` 0 is drawn as before.
 "Usar" and "Rolar" work on a locked sheet and for the master; "Adicionar munição" follows the right to edit.
 "Usar" opens `UseChargesSheet`, which sends the amount under one idempotency key and keeps it across retries.
 The last charge opens `LastChargeSheet`, an alert dialog that follows the table's dice (RN-18): the app rolls, or the player types "Face do d20", and a typed 20 may ask for the regain die's face.
-Closing it leaves the row asking "Rolar".
-`AddAmmunitionSheet` sets a kind to what the sheet holds plus the count asked.
+Its body says what a 1 and a 20 do for that item, from `SheetMagicItem.recharge` (`lastChargeBody` in `recharge-text.ts`).
+The close button and Esc close it and the backdrop does not; closing leaves the row asking "Rolar".
+The use sheet and the d20 sheet do not restore the focus themselves: `SheetCharges.focusRow` puts it, with the focus ring, on the item's "Usar" or "Rolar" (or the row itself when the item is lost) once the sheet has been drawn again.
+`AddAmmunitionSheet` sends the pieces to add, and `SheetCharges` reads the sheet again and sends the total, since `SetAmmunition` has no delta.
 "Recuperar a metade" is off with nothing fired and after the recovery, and goes off during a combat when the server refuses with `COMBAT_RUNNING`.
 The free-text hint shows only while the ammunition list is empty and the items text names an arrow, bolt, sling bullet or needle; the text is never converted.
-The "Volta ..." line of an item row is not drawn: the sheet carries no recharge data.
+An item row with `SheetMagicItem.recharge` says when its charges return ("Volta 1d6 + 1 ao amanhecer", "Não volta: ..."), the dice of a rolled start, and what a lost item became ("Virou um bordão comum.", "Ficou só o +2 no ataque e no dano.").
+The use sheet repeats the recharge line with the most the item holds, and "Sem cargas" names when the item comes back.
+A sheet with charges words its lock line as "Travada: usar cargas continua valendo, o resto, só o mestre muda."
+The ammunition kinds (`AMMUNITION_KINDS`) also name the catalog weapons that fire them, so the attack row names its kind by the weapon's key.
 
 ## The master's panel
 

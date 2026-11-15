@@ -46,7 +46,7 @@ describe('combat errors', () => {
     }
   });
 
-  it('says a shot with no ammunition does not go, as the board has it, and that nothing was spent', () => {
+  it("says a shot with no ammunition does not go and that nothing was spent, in the generic sentence (the board's names the character and the weapon, which the reason does not carry)", () => {
     expect(
       blockedMessage(
         create(EncounterBlockedSchema, { reason: EncounterBlockedReason.AMMUNITION_EMPTY }),

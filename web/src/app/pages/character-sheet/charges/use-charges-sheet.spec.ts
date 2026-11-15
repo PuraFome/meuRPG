@@ -113,4 +113,15 @@ describe('UseChargesSheet', () => {
     expect(spend).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalled();
   });
+
+  it('says when the charges come back, under the stepper', () => {
+    const { el } = render({ rechargeNote: 'Volta 1d6 + 1 ao amanhecer, até 7.' });
+    expect(flat(el.querySelector('.recharge'))).toContain('Volta 1d6 + 1 ao amanhecer, até 7.');
+    expect(el.querySelector('.recharge mat-icon')?.textContent).toBe('wb_twilight');
+  });
+
+  it('says nothing of recharging for an item with no rules', () => {
+    const { el } = render();
+    expect(el.querySelector('.recharge')).toBeNull();
+  });
 });

@@ -1,4 +1,5 @@
 import type { Attack } from '../../../gen/meurpg/rules/v1/rules_pb';
+import { type AmmunitionKind, ammunitionKindOfWeapon } from '../characters/charges';
 
 /** The tag of a counted kind on an attack row: "3 flechas"; `warning` at 3 or fewer, `empty` at 0 (the shot does not go). */
 export interface AmmunitionTag {
@@ -6,38 +7,17 @@ export interface AmmunitionTag {
   readonly level: 'ok' | 'warning' | 'empty';
 }
 
-interface Kind {
-  readonly one: string;
-  readonly many: string;
-}
-
-const ARROW: Kind = { one: 'flecha', many: 'flechas' };
-const BOLT: Kind = { one: 'virote', many: 'virotes' };
-const BULLET: Kind = { one: 'bala de funda', many: 'balas de funda' };
-const NEEDLE: Kind = { one: 'agulha de zarabatana', many: 'agulhas de zarabatana' };
-
-/** The SRD weapons that fire ammunition, by key: the attack does not carry the kind, so the weapon names it. */
-const KIND_BY_WEAPON: Readonly<Record<string, Kind>> = {
-  'equipment:shortbow': ARROW,
-  'equipment:longbow': ARROW,
-  'equipment:light-crossbow': BOLT,
-  'equipment:hand-crossbow': BOLT,
-  'equipment:heavy-crossbow': BOLT,
-  'equipment:sling': BULLET,
-  'equipment:blowgun': NEEDLE,
-};
-
 /** From this many pieces down the tag warns. */
 const LOW_AMMUNITION = 3;
 
 const MELEE_SUFFIX = ':melee';
 
-/** The kind a weapon fires, from its key (the improvised melee line carries the weapon's key and ":melee"); `null` for a weapon of the table. */
-function kindOf(attack: Attack): Kind | null {
+/** The kind a weapon fires, from its key (the improvised melee line carries the weapon's key and ":melee"); `null` for a weapon that fires none of the table. */
+function kindOf(attack: Attack): AmmunitionKind | null {
   const weapon = attack.key.endsWith(MELEE_SUFFIX)
     ? attack.key.slice(0, -MELEE_SUFFIX.length)
     : attack.key;
-  return KIND_BY_WEAPON[weapon] ?? null;
+  return ammunitionKindOfWeapon(weapon) ?? null;
 }
 
 /** The count tag of a ranged line whose kind the app counts; `null` for every other line (no `ammunition_left`: not counted). */
@@ -47,7 +27,9 @@ export function ammunitionTag(attack: Attack): AmmunitionTag | null {
     return null;
   }
   const kind = kindOf(attack);
-  const text = kind ? `${left} ${left === 1 ? kind.one : kind.many}` : `${left} de munição`;
+  const text = kind
+    ? `${left} ${left === 1 ? kind.one : kind.many}`
+    : `${left} ${left === 1 ? 'munição' : 'munições'}`;
   return { text, level: left === 0 ? 'empty' : left <= LOW_AMMUNITION ? 'warning' : 'ok' };
 }
 

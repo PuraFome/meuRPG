@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { create } from '@bufbuild/protobuf';
 
 import { CombatantSchema } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { ExtraActionOptionSchema } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
 import {
   AttackKind,
   AttackOptionSchema,
@@ -131,5 +132,52 @@ describe('ActionGroups: the ammunition on the attack row', () => {
     TestBed.resetTestingModule();
     const none = setup([bow()]);
     expect(none.el.querySelector('[data-testid="ammo-rule"]')).toBeNull();
+  });
+});
+
+describe('ActionGroups: the ammunition on the row of the extra action (Velocidade)', () => {
+  function setupExtra(attacks: ReturnType<typeof bow>[]) {
+    const fixture = TestBed.createComponent(ActionGroups);
+    fixture.componentRef.setInput('options', create(TurnOptionsSchema, { attacks }));
+    fixture.componentRef.setInput('own', create(CombatantSchema, { id: 'me', mine: true }));
+    fixture.componentRef.setInput(
+      'extraAction',
+      create(ExtraActionOptionSchema, {
+        available: true,
+        labelPt: 'Ação extra (Velocidade)',
+        allowedActions: ['attack'],
+        allowedTextPt: 'Só: Atacar (uma arma)',
+      }),
+    );
+    const pressed: string[] = [];
+    fixture.componentInstance.extraAttack.subscribe((k: string) => pressed.push(k));
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const group = el.querySelector<HTMLElement>('section[aria-labelledby="g-extra"]')!;
+    const open = group.querySelector<HTMLButtonElement>(
+      'button[aria-label="Atacar com Arco longo (Ação extra (Velocidade))"]',
+    )!;
+    return { group, open, pressed };
+  }
+
+  it('turns the extra attack off at 0 with the reason in sight, and a tap does nothing', () => {
+    const { group, open, pressed } = setupExtra([bow({ ammunitionLeft: 0 })]);
+    expect(open.getAttribute('aria-disabled')).toBe('true');
+    const why = group.querySelector<HTMLElement>('.row__why')!;
+    expect(plain(why.textContent)).toContain('Sem flechas: o tiro não sai.');
+    expect(open.getAttribute('aria-describedby')).toBe(why.id);
+    open.click();
+    expect(pressed).toEqual([]);
+  });
+
+  it('keeps the extra attack open while a piece is left, or when the kind is not counted', () => {
+    const counted = setupExtra([bow({ ammunitionLeft: 1 })]);
+    expect(counted.open.getAttribute('aria-disabled')).not.toBe('true');
+    counted.open.click();
+    expect(counted.pressed).toEqual(['equipment:longbow']);
+    TestBed.resetTestingModule();
+    const none = setupExtra([bow()]);
+    expect(none.open.getAttribute('aria-disabled')).not.toBe('true');
+    expect(none.group.querySelector('.row__why')).toBeNull();
   });
 });

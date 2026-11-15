@@ -7,6 +7,8 @@ import {
   CharacterBlockedReason,
   CharacterBlockedSchema,
   ItemLoss,
+  ItemRechargeKind,
+  ItemRechargeSchema,
   SheetAmmunitionSchema,
   SheetMagicItemSchema,
 } from '../../../../gen/meurpg/characters/v1/characters_pb';
@@ -55,9 +57,11 @@ describe('SheetCharges', () => {
     recoverAmmunition: vi.fn(),
     diceOf: vi.fn(),
   };
+  let held = 15;
   let opened: { use?: UseChargesData; roll?: LastChargeData; add?: AddAmmunitionData };
   let rollOpened: number;
   const reload = vi.fn();
+  const focusRow = vi.fn();
   let charges: SheetCharges;
 
   function make(over: Partial<SheetChargesHost> = {}) {
@@ -71,10 +75,11 @@ describe('SheetCharges', () => {
           id: 'c1',
           name: 'Pensantus',
           fullSheet: {
-            ammunition: [create(SheetAmmunitionSchema, { key: 'equipment:arrow', quantity: 15 })],
+            ammunition: [create(SheetAmmunitionSchema, { key: 'equipment:arrow', quantity: held })],
           },
         }) as unknown as CharacterSheetVm,
       reload,
+      focusRow,
       openUse: (data) => {
         opened.use = data;
         return of(true);
@@ -93,6 +98,8 @@ describe('SheetCharges', () => {
   }
 
   beforeEach(() => {
+    held = 15;
+    focusRow.mockReset();
     Object.values(client).forEach((f) => f.mockReset());
     reload.mockReset().mockResolvedValue(true);
     client.diceOf.mockResolvedValue({
@@ -100,6 +107,81 @@ describe('SheetCharges', () => {
       preference: DicePreference.APP,
     });
     make();
+  });
+
+  describe('the focus after a sheet closes', () => {
+    it('goes back to the row of the item when the use sheet closes', () => {
+      charges.openUse(entry());
+      expect(focusRow).toHaveBeenCalledWith('w1');
+    });
+
+    it('goes back to the row of the item when the d20 sheet closes, and not before', async () => {
+      charges.openRoll(entry({ charges: { max: 7, left: 0, state: 'pending' } }));
+      await vi.waitFor(() => expect(focusRow).toHaveBeenCalledWith('w1'));
+      expect(focusRow).toHaveBeenCalledTimes(1);
+    });
+
+    it('waits for the d20 that the last charge opens, and returns once, after it', async () => {
+      client.spendCharges.mockResolvedValue(
+        create(SpendChargesResponseSchema, {
+          item: create(SheetMagicItemSchema, {
+            chargesMax: 7,
+            chargesLeft: 0,
+            lastRollPending: true,
+          }),
+        }),
+      );
+      const order: string[] = [];
+      const closed = new Subject<boolean>();
+      make({
+        openUse: (data) => {
+          opened.use = data;
+          return closed;
+        },
+        openRoll: (data) => {
+          opened.roll = data;
+          order.push('roll');
+          return of(true);
+        },
+      });
+      focusRow.mockImplementation(() => order.push('focus'));
+      charges.openUse(entry());
+      await opened.use!.spend(1, 'k1');
+      expect(order).toEqual([]);
+      closed.next(true);
+      closed.complete();
+      await vi.waitFor(() => expect(order).toEqual(['roll', 'focus']));
+    });
+  });
+
+  describe('the recharge rules', () => {
+    const dawn = create(ItemRechargeSchema, { kind: ItemRechargeKind.DAWN, regainDice: '1d6+1' });
+
+    it('hand the use sheet the line that says when the charges come back', () => {
+      charges.openUse(entry({ charges: { max: 7, left: 5, state: 'ready', recharge: dawn } }));
+      expect(opened.use?.rechargeNote).toBe('Volta 1d6 + 1 ao amanhecer, até 7.');
+      charges.openUse(entry());
+      expect(opened.use?.rechargeNote).toBeUndefined();
+    });
+
+    it('hand the d20 sheet the rules of the item', async () => {
+      charges.openRoll(entry({ charges: { max: 7, left: 0, state: 'pending', recharge: dawn } }));
+      await vi.waitFor(() => expect(opened.roll).toBeDefined());
+      expect(opened.roll?.recharge).toBe(dawn);
+    });
+
+    it('say in a refusal that the item comes back at dawn', async () => {
+      client.spendCharges.mockRejectedValue(refusal(CharacterBlockedReason.ITEM_NO_CHARGES));
+      charges.openUse(
+        entry({
+          namePt: 'Varinha de segredos',
+          charges: { max: 3, left: 5, state: 'ready', recharge: dawn },
+        }),
+      );
+      expect(await opened.use!.spend(1, 'k')).toBe(
+        'Sem cargas. A Varinha de segredos volta ao amanhecer.',
+      );
+    });
   });
 
   describe('using charges', () => {
@@ -230,6 +312,28 @@ describe('SheetCharges', () => {
       });
     });
 
+    it('tells a stay that the item comes back at dawn, when its rules say so', async () => {
+      client.rollLastCharge.mockResolvedValue(create(RollLastChargeResponseSchema, { d20: 14 }));
+      charges.openRoll(
+        entry({
+          charges: {
+            max: 7,
+            left: 0,
+            state: 'pending',
+            recharge: create(ItemRechargeSchema, {
+              kind: ItemRechargeKind.DAWN,
+              regainDice: '1d6+1',
+            }),
+          },
+        }),
+      );
+      await vi.waitFor(() => expect(opened.roll).toBeDefined());
+      await opened.roll!.roll({ inApp: true }, 'k1');
+      expect(charges.result()?.text).toBe(
+        'Tirou 14. A Varinha de teia fica, sem cargas, e volta ao amanhecer.',
+      );
+    });
+
     it('tells a 1 that lost the item', async () => {
       client.rollLastCharge.mockResolvedValue(
         create(RollLastChargeResponseSchema, { d20: 1, lost: ItemLoss.GONE }),
@@ -238,7 +342,7 @@ describe('SheetCharges', () => {
       await vi.waitFor(() => expect(opened.roll).toBeDefined());
       await opened.roll!.roll({ face: 1 }, 'k1');
       expect(charges.result()).toEqual({
-        text: 'Tirou 1. A Varinha de teia se perdeu: fica na ficha como destruída.',
+        text: 'Tirou 1. A Varinha de teia virou cinzas: fica na ficha como destruída.',
         tone: 'bad',
       });
     });
@@ -312,22 +416,50 @@ describe('SheetCharges', () => {
       expect(opened.add?.kind).toBeUndefined();
     });
 
-    it('sets the kind, reads the sheet again and says it', async () => {
+    it('adds the pieces to what the sheet holds, reads the sheet again and says it', async () => {
       client.setAmmunition.mockResolvedValue(
         create(SheetAmmunitionSchema, { key: 'equipment:arrow', namePt: 'Flechas', quantity: 35 }),
       );
       charges.openAdd(null);
-      const why = await opened.add!.add('equipment:arrow', 35);
+      const why = await opened.add!.add('equipment:arrow', 20);
       expect(why).toBe('');
       expect(client.setAmmunition).toHaveBeenCalledWith('camp', 'c1', 'equipment:arrow', 35);
       expect(reload).toHaveBeenCalled();
       await vi.waitFor(() => expect(charges.ammunitionNotice()).toBe('Flechas: 35.'));
     });
 
+    it('reads the sheet again before it adds, so a shot fired while the sheet was open is not given back', async () => {
+      client.setAmmunition.mockResolvedValue(
+        create(SheetAmmunitionSchema, { key: 'equipment:arrow', namePt: 'Flechas', quantity: 32 }),
+      );
+      charges.openAdd(null);
+      // The count the sheet opened on was 15; two shots later the character holds 13.
+      reload.mockImplementation(() => {
+        held = 13;
+        return Promise.resolve(true);
+      });
+      await opened.add!.add('equipment:arrow', 20);
+      expect(client.setAmmunition).toHaveBeenCalledWith('camp', 'c1', 'equipment:arrow', 33);
+    });
+
+    it('never asks for more than the 9999 the server takes', async () => {
+      client.setAmmunition.mockResolvedValue(
+        create(SheetAmmunitionSchema, {
+          key: 'equipment:arrow',
+          namePt: 'Flechas',
+          quantity: 9999,
+        }),
+      );
+      held = 9990;
+      charges.openAdd(null);
+      await opened.add!.add('equipment:arrow', 50);
+      expect(client.setAmmunition).toHaveBeenCalledWith('camp', 'c1', 'equipment:arrow', 9999);
+    });
+
     it('words the refusal of a locked sheet', async () => {
       client.setAmmunition.mockRejectedValue(refusal(CharacterBlockedReason.SHEET_LOCKED));
       charges.openAdd(null);
-      expect(await opened.add!.add('equipment:arrow', 35)).toContain('travada');
+      expect(await opened.add!.add('equipment:arrow', 20)).toContain('travada');
     });
 
     it('recovers half under one key and says what came back', async () => {

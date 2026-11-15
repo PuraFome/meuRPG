@@ -1,7 +1,9 @@
 import { type MessageInitShape, create } from '@bufbuild/protobuf';
 
 import {
+  ItemEmptyRule,
   ItemLoss,
+  ItemRechargeKind,
   SheetAmmunitionSchema,
   SheetMagicItemSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
@@ -12,7 +14,6 @@ import {
   articleOf,
   chargesLine,
   chargesOf,
-  chargesWords,
   recoverOf,
 } from './charges';
 
@@ -40,12 +41,7 @@ describe('chargesOf', () => {
   });
 });
 
-describe('chargesWords and chargesLine', () => {
-  it('counts "N de M cargas"', () => {
-    expect(chargesWords(chargesOf(item())!)).toBe('5 de 7 cargas');
-    expect(chargesWords(chargesOf(item({ chargesMax: 1, chargesLeft: 1 }))!)).toBe('1 de 1 carga');
-  });
-
+describe('chargesLine', () => {
   it('says the line under each state, and nothing for a ready item', () => {
     const line = (over: Parameters<typeof item>[0]) => chargesLine(chargesOf(item(over))!);
     expect(line({})).toBeNull();
@@ -64,6 +60,75 @@ describe('chargesWords and chargesLine', () => {
   });
 });
 
+describe('chargesLine of an item that carries its recharge rules', () => {
+  const dawn = { kind: ItemRechargeKind.DAWN, regainDice: '1d6+1' };
+  const line = (over: Parameters<typeof item>[0], name = 'Varinha de teia') =>
+    chargesLine(chargesOf(item(over))!, name);
+
+  it('keeps the same item the same: no rules, no recharge line', () => {
+    expect(line({})).toBeNull();
+    expect(line({ chargesLeft: 0 })?.text).toBe('Sem cargas.');
+  });
+
+  it('says when a ready item gets its charges back', () => {
+    expect(line({ recharge: dawn })).toEqual({
+      icon: 'wb_twilight',
+      text: 'Volta 1d6 + 1 ao amanhecer',
+    });
+    expect(line({ recharge: { kind: ItemRechargeKind.UNSPECIFIED } })).toEqual({
+      icon: 'info',
+      text: 'Não volta: cada carga gasta se vai.',
+    });
+  });
+
+  it('says when an empty item gets them back', () => {
+    expect(
+      line({ chargesLeft: 0, recharge: { kind: ItemRechargeKind.DAWN, regainDice: '1d3' } }),
+    ).toEqual({ icon: 'block', text: 'Sem cargas: volta 1d3 ao amanhecer.' });
+  });
+
+  it('says the dice of a rolled start', () => {
+    expect(line({ chargesLeft: -1, recharge: { startDice: '1d4-1' } })?.text).toBe(
+      'O mestre define as cargas iniciais (1d4 − 1).',
+    );
+  });
+
+  it('says what is left of an item without its magic, by the rules of the catalog', () => {
+    expect(
+      line(
+        { chargesLeft: 0, lost: ItemLoss.PLAIN_ITEM, recharge: { onLoss: ItemLoss.PLAIN_ITEM } },
+        'Bordão de encanto',
+      )?.text,
+    ).toBe('Virou um bordão comum.');
+    expect(
+      line(
+        {
+          chargesLeft: 0,
+          lost: ItemLoss.PARTLY_MAGIC,
+          recharge: { onLoss: ItemLoss.PARTLY_MAGIC },
+        },
+        'Bordão do poder',
+      )?.text,
+    ).toBe('Ficou só o +2 no ataque e no dano.');
+    expect(
+      line({
+        chargesLeft: 0,
+        lost: ItemLoss.GONE,
+        recharge: { empty: ItemEmptyRule.D20, onLoss: ItemLoss.GONE },
+      })?.text,
+    ).toBe('A última carga se foi e o d20 deu 1.');
+  });
+
+  it('keeps the d20 reminder of a pending roll', () => {
+    expect(line({ chargesLeft: 0, lastRollPending: true, recharge: dawn })?.warn).toBe(true);
+  });
+
+  it('keeps the recharge rules on the view of the item', () => {
+    expect(chargesOf(item({ recharge: dawn }))?.recharge?.regainDice).toBe('1d6+1');
+    expect(chargesOf(item())?.recharge).toBeUndefined();
+  });
+});
+
 const ammo = (key: string, over = {}) =>
   create(SheetAmmunitionSchema, { key, namePt: 'Flechas', quantity: 15, ...over });
 
@@ -74,6 +139,35 @@ describe('ammunition', () => {
       ['equipment:crossbow-bolt', 'Virotes', 20],
       ['equipment:sling-bullet', 'Balas de funda', 20],
       ['equipment:blowgun-needle', 'Agulhas de zarabatana', 50],
+    ]);
+  });
+
+  it('names the weapons of the catalog that fire each kind (effects/ammunition.json of the SRD content)', () => {
+    // The keys the server uses: a weapon whose key is not here never gets a count tag.
+    const catalog: Record<string, string> = {
+      'equipment:blowgun': 'equipment:blowgun-needle',
+      'equipment:crossbow-hand': 'equipment:crossbow-bolt',
+      'equipment:crossbow-heavy': 'equipment:crossbow-bolt',
+      'equipment:crossbow-light': 'equipment:crossbow-bolt',
+      'equipment:longbow': 'equipment:arrow',
+      'equipment:shortbow': 'equipment:arrow',
+      'equipment:sling': 'equipment:sling-bullet',
+    };
+    const ours: Record<string, string> = {};
+    for (const kind of AMMUNITION_KINDS) {
+      for (const weapon of kind.weapons) {
+        ours[weapon] = kind.key;
+      }
+    }
+    expect(ours).toEqual(catalog);
+  });
+
+  it('says the kind in the one and the many, in lower case', () => {
+    expect(AMMUNITION_KINDS.map((k) => [k.one, k.many])).toEqual([
+      ['flecha', 'flechas'],
+      ['virote', 'virotes'],
+      ['bala de funda', 'balas de funda'],
+      ['agulha de zarabatana', 'agulhas de zarabatana'],
     ]);
   });
 

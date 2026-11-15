@@ -136,13 +136,15 @@ export class EquipmentPanel {
         : '';
   }
 
-  protected lineOf(c: ItemChargesVm): ChargesLine | null {
-    return chargesLine(c);
+  protected lineOf(e: AttunementEntryVm): ChargesLine | null {
+    return e.charges ? chargesLine(e.charges, e.namePt) : null;
   }
 
   protected readonly magicItems = computed(() =>
     this.sheet().attunement.entries.filter((e) => e.kind === 'magic'),
   );
+  /** Some magic item holds charges: the lock line then names what still works on a locked sheet. */
+  protected readonly hasCharges = computed(() => this.magicItems().some((e) => e.charges));
   /** The header "Sintonizados: N de 3" shows when anything on the sheet asks for attunement or is attuned. */
   protected readonly hasAttunement = computed(() =>
     this.sheet().attunement.entries.some((e) => e.asks || e.attuned),

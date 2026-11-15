@@ -1,4 +1,13 @@
-import { type Signal, Injector, computed, effect, inject, signal } from '@angular/core';
+import {
+  type Signal,
+  ElementRef,
+  Injector,
+  afterNextRender,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import type { MatBottomSheet } from '@angular/material/bottom-sheet';
 import type { MatDialog } from '@angular/material/dialog';
 import type { Observable } from 'rxjs';
@@ -8,6 +17,7 @@ import {
   type AttunementVm,
   MagicCategories,
 } from '../../../core/characters/attunement';
+import { focusWithRing } from '../../../core/creatures/focus-ring';
 import { describeCharacterError } from '../../../core/characters/character-errors';
 import type { VitalsVm } from '../../../core/play/live-session.types';
 import type { SheetEquipHost } from '../character-sheet-equip';
@@ -187,11 +197,23 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
     openRemove: (data) => openRemoveMagicItem(d.dialog, d.bottomSheet, data),
   });
   const injector = inject(Injector);
+  const page = inject<ElementRef<HTMLElement>>(ElementRef);
   items.charges = new SheetCharges({
     client: () => injector.get(ChargesClient),
     campaignId: d.campaignId,
     vm: ready,
     reload: d.reload,
+    focusRow: (id) =>
+      afterNextRender(
+        () => {
+          const by = (attribute: string) =>
+            Array.from(page.nativeElement.querySelectorAll<HTMLElement>(`[${attribute}]`)).find(
+              (el) => el.getAttribute(attribute) === id,
+            );
+          focusWithRing(by('data-charges-action') ?? by('data-charges-row'));
+        },
+        { injector },
+      ),
     openUse: (data) => openUseCharges(d.dialog, d.bottomSheet, data),
     openRoll: (data) => openLastCharge(d.dialog, d.bottomSheet, data),
     openAdd: (data) => openAddAmmunition(d.dialog, d.bottomSheet, data),

@@ -1,8 +1,10 @@
 import type {
+  ItemRecharge,
   SheetAmmunition,
   SheetMagicItem,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ItemLoss } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { emptyLine, lostLine, rechargeLine, startLine } from './recharge-text';
 
 /** Where an item with charges stands, as the server says it: `ready` can be used; the others cannot. */
 export type ItemChargesState =
@@ -24,6 +26,8 @@ export interface ItemChargesVm {
   readonly max: number;
   readonly left: number;
   readonly state: ItemChargesState;
+  /** What the catalog says of how the item recharges and what its last charge does; absent for an item with no such rules. */
+  readonly recharge?: ItemRecharge;
 }
 
 /** The charges of an item, or `undefined` for one with no charge data (`charges_max` 0): its row stays as it is. */
@@ -33,26 +37,22 @@ export function chargesOf(m: SheetMagicItem): ItemChargesVm | undefined {
   }
   const left = Math.max(0, m.chargesLeft);
   const max = m.chargesMax;
+  const recharge = m.recharge;
   switch (m.lost) {
     case ItemLoss.GONE:
-      return { max, left: 0, state: 'destroyed' };
+      return { max, left: 0, state: 'destroyed', recharge };
     case ItemLoss.PLAIN_ITEM:
-      return { max, left: 0, state: 'plain' };
+      return { max, left: 0, state: 'plain', recharge };
     case ItemLoss.PARTLY_MAGIC:
-      return { max, left: 0, state: 'partly' };
+      return { max, left: 0, state: 'partly', recharge };
   }
   if (m.lastRollPending) {
-    return { max, left, state: 'pending' };
+    return { max, left, state: 'pending', recharge };
   }
   if (m.chargesLeft < 0) {
-    return { max, left: 0, state: 'unset' };
+    return { max, left: 0, state: 'unset', recharge };
   }
-  return { max, left, state: left === 0 ? 'empty' : 'ready' };
-}
-
-/** "5 de 7 cargas". */
-export function chargesWords(c: ItemChargesVm): string {
-  return `${c.left} de ${c.max} ${c.max === 1 ? 'carga' : 'cargas'}`;
+  return { max, left, state: left === 0 ? 'empty' : 'ready', recharge };
 }
 
 /** The line under an item row that says why it cannot be used (or what it waits for), with its icon. */
@@ -63,45 +63,95 @@ export interface ChargesLine {
   readonly warn?: boolean;
 }
 
-export function chargesLine(c: ItemChargesVm): ChargesLine | null {
+/**
+ * The line under an item row. With the item's recharge rules it says them (when the charges come back, the dice of a rolled
+ * start, what a lost item is now); without them it says only why the item cannot be used. `name` is the catalog name, which
+ * the noun of "Virou um bordão comum." comes from.
+ */
+export function chargesLine(c: ItemChargesVm, name = ''): ChargesLine | null {
+  const r = c.recharge;
   switch (c.state) {
     case 'empty':
-      return { icon: 'block', text: 'Sem cargas.' };
+      return { icon: 'block', text: r ? emptyLine(r) : 'Sem cargas.' };
     case 'unset':
-      return { icon: 'info', text: 'O mestre define as cargas iniciais.' };
+      return { icon: 'info', text: r ? startLine(r) : 'O mestre define as cargas iniciais.' };
     case 'pending':
       return { icon: 'warning', text: 'Falta rolar o d20 da última carga.', warn: true };
     case 'destroyed':
-      return { icon: 'block', text: 'A última carga se foi.' };
+      return { icon: 'block', text: r ? lostLine(name, r, 'destroyed') : 'A última carga se foi.' };
     case 'plain':
-      return { icon: 'block', text: 'Virou um item comum.' };
+      return {
+        icon: 'block',
+        text: r && name ? lostLine(name, r, 'plain') : 'Virou um item comum.',
+      };
     case 'partly':
-      return { icon: 'block', text: 'Ficou só o bônus no ataque e no dano.' };
+      return {
+        icon: 'block',
+        text: r ? lostLine(name, r, 'partly') : 'Ficou só o bônus no ataque e no dano.',
+      };
     default:
-      return null;
+      return rechargeLine(r);
   }
 }
 
-/** One of the four kinds of ammunition of the SRD and the bundle it comes in. */
+/** One of the four kinds of ammunition of the SRD, the bundle it comes in and the weapons that fire it. */
 export interface AmmunitionKind {
   readonly key: string;
+  /** The heading of the kind: "Flechas". */
   readonly namePt: string;
   /** What fires it: "Arcos". */
   readonly usedBy: string;
   readonly bundle: number;
+  /** One piece and several, in lower case: "flecha", "flechas". */
+  readonly one: string;
+  readonly many: string;
+  /** The catalog keys of the weapons that fire it (the attack row names its kind by the weapon). */
+  readonly weapons: readonly string[];
 }
 
 export const AMMUNITION_KINDS: readonly AmmunitionKind[] = [
-  { key: 'equipment:arrow', namePt: 'Flechas', usedBy: 'Arcos', bundle: 20 },
-  { key: 'equipment:crossbow-bolt', namePt: 'Virotes', usedBy: 'Bestas', bundle: 20 },
-  { key: 'equipment:sling-bullet', namePt: 'Balas de funda', usedBy: 'Funda', bundle: 20 },
+  {
+    key: 'equipment:arrow',
+    namePt: 'Flechas',
+    usedBy: 'Arcos',
+    bundle: 20,
+    one: 'flecha',
+    many: 'flechas',
+    weapons: ['equipment:shortbow', 'equipment:longbow'],
+  },
+  {
+    key: 'equipment:crossbow-bolt',
+    namePt: 'Virotes',
+    usedBy: 'Bestas',
+    bundle: 20,
+    one: 'virote',
+    many: 'virotes',
+    weapons: ['equipment:crossbow-light', 'equipment:crossbow-hand', 'equipment:crossbow-heavy'],
+  },
+  {
+    key: 'equipment:sling-bullet',
+    namePt: 'Balas de funda',
+    usedBy: 'Funda',
+    bundle: 20,
+    one: 'bala de funda',
+    many: 'balas de funda',
+    weapons: ['equipment:sling'],
+  },
   {
     key: 'equipment:blowgun-needle',
     namePt: 'Agulhas de zarabatana',
     usedBy: 'Zarabatana',
     bundle: 50,
+    one: 'agulha de zarabatana',
+    many: 'agulhas de zarabatana',
+    weapons: ['equipment:blowgun'],
   },
 ];
+
+/** The kind a weapon fires, from its catalog key; `undefined` for a weapon that fires none. */
+export function ammunitionKindOfWeapon(weaponKey: string): AmmunitionKind | undefined {
+  return AMMUNITION_KINDS.find((k) => k.weapons.includes(weaponKey));
+}
 
 /** What the character holds of one kind of ammunition and what the last combat did to it. */
 export interface AmmunitionVm {
@@ -185,10 +235,4 @@ export function ammunitionHint(
   return null;
 }
 
-const MASCULINE_IN_A = new Set(['mapa']);
-
-/** The article a catalog name takes at the start of a sentence: "A Varinha de teia", "O Bordão" (the catalog carries no gender, so the first word's ending decides). */
-export function articleOf(name: string): 'A' | 'O' {
-  const first = (name.trim().split(/\s+/)[0] ?? '').toLowerCase();
-  return first.endsWith('a') && !MASCULINE_IN_A.has(first) ? 'A' : 'O';
-}
+export { articleOf } from './article-of';

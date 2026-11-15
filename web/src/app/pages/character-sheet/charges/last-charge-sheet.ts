@@ -6,6 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ActionKey } from '../../../core/connect/idempotency';
 import { parseSum } from '../../../core/combat/combat-dice';
+import type { ItemRecharge } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import { lastChargeBody } from '../../../core/characters/recharge-text';
 import type { LastChargeRoll } from '../../../core/play/charges-client';
 import { RollAnimator, showOfDie } from '../../../shared/roll-overlay/roll-animator';
 import { SheetFrame } from '../../../shared/sheet/sheet-frame/sheet-frame';
@@ -29,6 +31,8 @@ export interface LastChargeData {
   readonly canType: boolean;
   /** Where the player rolls once the table's mode and their choice are put together (RN-18). */
   readonly preferApp: boolean;
+  /** The item's rules, which say what a 1 and a 20 do; the sheet words them. */
+  readonly recharge?: ItemRecharge;
   readonly roll: (roll: LastChargeRoll, key: string) => Promise<LastChargeOutcome>;
 }
 
@@ -43,7 +47,10 @@ export function openLastCharge(
     ariaLabel: 'A última carga se foi',
     labelledBy: 'last-charge-t',
     width: '480px',
+    // Esc and the backdrop do not close an alert dialog: the sheet answers Esc itself (it skips nothing, see below), and the
+    // backdrop stays blocked so a stray tap does not.
     alert: true,
+    // The page puts the focus back on the item's row (with the focus ring) once it has drawn it again.
     restoreFocus: false,
   });
 }
@@ -52,13 +59,15 @@ export function openLastCharge(
  * "A última carga se foi": the d20 an item with a rule for its last charge asks for. The table's dice follow RN-18 like
  * every roll of the app: "Rolar no app", or the face of a real die in "Face do d20" (which leads for a player who rolls
  * their own dice, with "Rolar no app" beside it). A typed 20 on an item that regains charges may ask for the face of the
- * die that counts them. Closing does not skip the die: the item's row asks for it ("Rolar") until it is rolled. The call
+ * die that counts them. Closing does not skip the die: the item's row asks for it ("Rolar") until it is rolled, so the close
+ * button and Esc both close it (the backdrop does not). The call
  * has one idempotency key for the roll it carries: the same roll again after a failure is a retry.
  */
 @Component({
   selector: 'app-last-charge-sheet',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule, SheetFrame],
+  host: { '(keydown.escape)': 'close()' },
   template: `
     <app-sheet-frame
       title="A última carga se foi"
@@ -68,9 +77,16 @@ export function openLastCharge(
       (closed)="close()"
     >
       <p class="sub mr-muted">{{ data.itemName }} · 0 de {{ data.max }}</p>
-      <p>
-        O item pede um d20 agora. Com 1, o item se perde como o texto dele diz; com 20, ele pode devolver
-        cargas.
+      <p class="body">
+        @if (words(); as w) {
+          {{ w.intro }}
+          @if (w.strong) {
+            <strong>{{ w.strong }}</strong>
+          }{{ w.rest }}
+        } @else {
+          O item pede um d20 agora. Com 1, o item se perde como o texto dele diz; com 20, ele pode devolver
+          cargas.
+        }
       </p>
       @if (error()) {
         <p class="mr-notice mr-notice--danger" role="alert">
@@ -218,6 +234,9 @@ export class LastChargeSheet {
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
   private readonly key = new ActionKey();
   private readonly animator = inject(RollAnimator);
+  /** What the d20 decides for this item, from its rules; `null` when the page gave none. */
+  protected readonly words = () =>
+    this.data.recharge ? lastChargeBody(this.data.itemName, this.data.recharge) : null;
 
   protected onType(event: Event): void {
     this.text.set((event.target as HTMLInputElement).value);

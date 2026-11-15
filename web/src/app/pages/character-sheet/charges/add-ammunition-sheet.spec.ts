@@ -63,6 +63,20 @@ describe('AddAmmunitionSheet', () => {
     expect(el.querySelectorAll<HTMLInputElement>('app-option-card input')[1].checked).toBe(true);
   });
 
+  it('says the one piece of every kind from the table, not from a pattern on the plural', () => {
+    const kinds: [string, string][] = [
+      ['equipment:arrow', 'flecha'],
+      ['equipment:crossbow-bolt', 'virote'],
+      ['equipment:sling-bullet', 'bala de funda'],
+      ['equipment:blowgun-needle', 'agulha de zarabatana'],
+    ];
+    for (const [kind, word] of kinds) {
+      TestBed.resetTestingModule();
+      const { button } = render({ kind, quantity: 1 });
+      expect(button('Adicionar').textContent).toContain(`Adicionar 1 ${word}`);
+    }
+  });
+
   it('steps the count and says "1 flecha" for one', () => {
     const { el, button, fixture } = render({ quantity: 2 });
     button('Menos uma').click();
@@ -71,12 +85,12 @@ describe('AddAmmunitionSheet', () => {
     expect(button('Adicionar').textContent).toContain('Adicionar 1 flecha');
   });
 
-  it('sets what the kind holds now plus the count, and says so', async () => {
+  it('sends the pieces to add, not a total: the page adds them to what the sheet holds when it sends', async () => {
     const { el, button, settle } = render({ current: { 'equipment:arrow': 15 } });
     expect(flat(el)).toContain('Já tem 15: ficam 35.');
     button('Adicionar').click();
     await settle();
-    expect(add).toHaveBeenCalledWith('equipment:arrow', 35);
+    expect(add).toHaveBeenCalledWith('equipment:arrow', 20);
     expect(close).toHaveBeenCalledWith(true);
   });
 

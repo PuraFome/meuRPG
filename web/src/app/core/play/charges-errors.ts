@@ -3,7 +3,9 @@ import { Code, ConnectError } from '@connectrpc/connect';
 import {
   CharacterBlockedReason,
   CharacterBlockedSchema,
+  type ItemRecharge,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
+import { noChargesWithRecharge } from '../characters/recharge-text';
 import { articleOf } from '../characters/charges';
 import { describeCharacterError } from '../characters/character-errors';
 import {
@@ -39,6 +41,8 @@ export function chargesBlockedMessage(blocked: ChargesBlocked): string {
 export interface ChargesErrorItem {
   readonly itemName: string;
   readonly left: number;
+  /** The item's recharge rules, when the sheet has them: "Sem cargas" then says when the item comes back. */
+  readonly recharge?: ItemRecharge;
 }
 
 const NOT_GOT_THROUGH = new Set<Code>([
@@ -74,7 +78,9 @@ export function chargesErrorMessage(
       case CharacterBlockedReason.CHARGES_NOT_ENOUGH:
         return `Cargas a menos. ${articleOf(item.itemName)} ${item.itemName} só tem ${item.left} ${item.left === 1 ? 'carga' : 'cargas'}.`;
       case CharacterBlockedReason.ITEM_NO_CHARGES:
-        return `Sem cargas. ${articleOf(item.itemName)} ${item.itemName} não tem cargas agora.`;
+        return item.recharge
+          ? noChargesWithRecharge(item.itemName, item.recharge)
+          : `Sem cargas. ${articleOf(item.itemName)} ${item.itemName} não tem cargas agora.`;
       case CharacterBlockedReason.ITEM_DESTROYED:
         return `Item destruído. ${articleOf(item.itemName)} ${item.itemName} não tem mais uso.`;
     }

@@ -8,6 +8,13 @@ import {
 } from '../../../core/characters/attunement';
 import type { FullSheetVm } from '../character-sheet.types';
 import { ItemChargesVm } from '../../../core/characters/charges';
+import {
+  ItemEmptyRule,
+  ItemLoss,
+  ItemRechargeKind,
+  ItemRechargeSchema,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
+import { create, type MessageInitShape } from '@bufbuild/protobuf';
 import { EquipmentPanel } from './equipment-panel';
 
 const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
@@ -283,6 +290,13 @@ describe('EquipmentPanel, the magic items and the attunement', () => {
     );
   });
 
+  it('says on a sheet with charges that using them goes on working: "Travada: usar cargas continua valendo, o resto, só o mestre muda."', () => {
+    const { el } = render((h) => h.sheet.set(sheetWith([charged('ready', 5)])));
+    expect(flat(el.querySelector('.gear__lock'))).toContain(
+      'Travada: usar cargas continua valendo, o resto, só o mestre muda.',
+    );
+  });
+
   it('has no lock line for whoever can manage the items', () => {
     const { el } = render((h) => h.manage.set(true));
     expect(el.querySelector('.gear__lock')).toBeNull();
@@ -494,6 +508,87 @@ describe('EquipmentPanel, the item rows with charges', () => {
     expect(el.querySelector('[role="alert"].charges__result--bad')?.textContent).toContain(
       'Cargas a menos.',
     );
+  });
+});
+
+describe('EquipmentPanel, the recharge rules on the item rows', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [{ provide: MagicCategories, useValue: { iconOf: () => 'auto_fix_high' } }],
+    }),
+  );
+
+  const rule = (init: MessageInitShape<typeof ItemRechargeSchema>) =>
+    create(ItemRechargeSchema, init);
+  const lineOf = (e: AttunementEntryVm) => {
+    const { el } = render((h) => h.sheet.set(sheetWith([e])));
+    const line = el.querySelector('.magic-row--charges .magic-row__line');
+    return { text: flat(line), icon: line?.querySelector('mat-icon')?.textContent };
+  };
+  const dawn = rule({ kind: ItemRechargeKind.DAWN, regainDice: '1d6+1' });
+
+  it('says when a ready item gets its charges back, under the count', () => {
+    const line = lineOf(
+      charged('ready', 5, { charges: { max: 7, left: 5, state: 'ready', recharge: dawn } }),
+    );
+    expect(line.text).toContain('Volta 1d6 + 1 ao amanhecer');
+    expect(line.icon).toBe('wb_twilight');
+  });
+
+  it('says an item that does not come back', () => {
+    const never = rule({ kind: ItemRechargeKind.UNSPECIFIED });
+    expect(
+      lineOf(charged('ready', 2, { charges: { max: 3, left: 2, state: 'ready', recharge: never } }))
+        .text,
+    ).toContain('Não volta: cada carga gasta se vai.');
+  });
+
+  it('says when an empty item gets them back', () => {
+    const wand = rule({ kind: ItemRechargeKind.DAWN, regainDice: '1d3' });
+    expect(
+      lineOf(charged('empty', 0, { charges: { max: 3, left: 0, state: 'empty', recharge: wand } }))
+        .text,
+    ).toContain('Sem cargas: volta 1d3 ao amanhecer.');
+  });
+
+  it('says the dice of the rolled start', () => {
+    const blade = rule({ kind: ItemRechargeKind.UNSPECIFIED, startDice: '1d4-1' });
+    expect(
+      lineOf(charged('unset', 0, { charges: { max: 3, left: 0, state: 'unset', recharge: blade } }))
+        .text,
+    ).toContain('O mestre define as cargas iniciais (1d4 − 1).');
+  });
+
+  it('says what a staff became, by its name and the rules', () => {
+    const plain = rule({ empty: ItemEmptyRule.D20, onLoss: ItemLoss.PLAIN_ITEM });
+    expect(
+      lineOf(
+        charged('plain', 0, {
+          namePt: 'Bordão de encanto',
+          charges: { max: 10, left: 0, state: 'plain', recharge: plain },
+        }),
+      ).text,
+    ).toContain('Virou um bordão comum.');
+    const partly = rule({ empty: ItemEmptyRule.D20, onLoss: ItemLoss.PARTLY_MAGIC });
+    expect(
+      lineOf(
+        charged('partly', 0, {
+          namePt: 'Bordão do poder',
+          charges: { max: 20, left: 0, state: 'partly', recharge: partly },
+        }),
+      ).text,
+    ).toContain('Ficou só o +2 no ataque e no dano.');
+  });
+
+  it('says a wand turned to ashes with the d20 that did it', () => {
+    const gone = rule({ empty: ItemEmptyRule.D20, onLoss: ItemLoss.GONE });
+    expect(
+      lineOf(
+        charged('destroyed', 0, {
+          charges: { max: 7, left: 0, state: 'destroyed', recharge: gone },
+        }),
+      ).text,
+    ).toContain('A última carga se foi e o d20 deu 1.');
   });
 });
 

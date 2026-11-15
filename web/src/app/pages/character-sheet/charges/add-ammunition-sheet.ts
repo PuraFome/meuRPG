@@ -20,8 +20,9 @@ export interface AddAmmunitionData {
   readonly quantity?: number;
   /** What the character holds of each kind now, by key. */
   readonly current: Readonly<Record<string, number>>;
-  /** Sets the kind to `total` pieces; answers the refusal in words, or '' when it is set. */
-  readonly add: (key: string, total: number) => Promise<string>;
+  /** Adds `amount` pieces to the kind (the page adds them to what the sheet holds when it sends: `SetAmmunition` takes a
+   * total and has no delta); answers the refusal in words, or '' when they are added. */
+  readonly add: (key: string, amount: number) => Promise<string>;
 }
 
 /** Opens "Adicionar munição". Answers `true` when a kind was added. */
@@ -40,8 +41,8 @@ export function openAddAmmunition(
 
 /**
  * "Adicionar munição": the four kinds of the SRD (arrows, bolts, sling bullets, blowgun needles) as radio cards, how many
- * come with them (the bundle of the kind, to change at will) and "Adicionar N flechas". `SetAmmunition` sets the count, so
- * a kind the character already holds gets the new pieces on top of what it has.
+ * come with them (the bundle of the kind, to change at will) and "Adicionar N flechas". A kind the character already holds
+ * gets the new pieces on top of what it has: the page reads the sheet again and sends the total (the server's call has no delta).
  */
 @Component({
   selector: 'app-add-ammunition-sheet',
@@ -147,11 +148,11 @@ export class AddAmmunitionSheet {
   );
   protected readonly held = computed(() => this.data.current[this.kind()] ?? 0);
   protected readonly most = computed(() => Math.max(1, MOST - this.held()));
-  protected readonly name = computed(() =>
-    (AMMUNITION_KINDS.find((k) => k.key === this.kind())?.namePt ?? '').toLowerCase(),
-  );
+  private readonly chosen = computed(() => AMMUNITION_KINDS.find((k) => k.key === this.kind()));
+  /** "flechas", "virotes", "balas de funda", "agulhas de zarabatana". */
+  protected readonly name = computed(() => this.chosen()?.many ?? '');
   /** "flecha", "virote", "bala de funda", "agulha de zarabatana": the one piece. */
-  protected readonly singular = computed(() => this.name().replace(/^(\S+?)s\b/, '$1'));
+  protected readonly singular = computed(() => this.chosen()?.one ?? '');
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
@@ -169,7 +170,7 @@ export class AddAmmunitionSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const why = await this.data.add(this.kind(), this.held() + this.amount());
+      const why = await this.data.add(this.kind(), this.amount());
       if (why) {
         this.error.set(why);
       } else {

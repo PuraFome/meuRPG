@@ -118,7 +118,7 @@
         <ul class="magic__rows">
           @for (e of magicItems(); track e.id) {
             @if (e.charges; as c) {
-              <li class="magic-row magic-row--charges" [class.magic-row--lost]="isLost(c)">
+              <li class="magic-row magic-row--charges" [class.magic-row--lost]="isLost(c)" tabindex="-1" [attr.data-charges-row]="e.id">
                 <mat-icon class="magic-row__icon" aria-hidden="true">{{ iconOf(e) }}</mat-icon>
                 <div class="magic-row__body">
                   <span class="magic-row__head">
@@ -140,7 +140,7 @@
                       <strong>{{ c.left }} de {{ c.max }}</strong> {{ c.max === 1 ? 'carga' : 'cargas' }}
                     </span>
                   }
-                  @if (lineOf(c); as line) {
+                  @if (lineOf(e); as line) {
                     <span class="magic-row__line mr-muted" [class.magic-row__line--warn]="line.warn" [id]="'charges-line-' + e.id">
                       <mat-icon aria-hidden="true">{{ line.icon }}</mat-icon>{{ line.text }}
                     </span>
@@ -156,6 +156,7 @@
                     matButton="outlined"
                     type="button"
                     class="magic-row__use"
+                    [attr.data-charges-action]="e.id"
                     [attr.aria-label]="'Rolar o d20 da última carga · ' + e.namePt"
                     (click)="lastChargeRolled.emit(e)"
                   >Rolar</button>
@@ -164,6 +165,7 @@
                     matButton="outlined"
                     type="button"
                     class="magic-row__use"
+                    [attr.data-charges-action]="e.id"
                     [class.magic-row__use--off]="c.state !== 'ready'"
                     [disabled]="c.state !== 'ready'"
                     disabledInteractive
@@ -232,7 +234,14 @@
   }
   <app-chip-legend [marks]="legendMarks()" [attunement]="showsChips()" [bonus]="legendBonus()" />
   @if (!canMark() && !canManageMagic() && canEquip()) {
-    <p class="gear__lock mr-muted"><mat-icon aria-hidden="true">lock</mat-icon>Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.</p>
+    <p class="gear__lock mr-muted">
+      <mat-icon aria-hidden="true">lock</mat-icon>
+      @if (hasCharges()) {
+        Travada: usar cargas continua valendo, o resto, só o mestre muda.
+      } @else {
+        Travada: equipar e guardar continuam valendo; marcas, bônus e itens mágicos, só o mestre muda.
+      }
+    </p>
   }
   <ul class="gear">
     @for (item of s.equipment; track $index) {

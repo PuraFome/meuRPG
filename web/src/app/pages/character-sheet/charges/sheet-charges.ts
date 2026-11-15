@@ -2,7 +2,12 @@ import { signal } from '@angular/core';
 import type { Observable } from 'rxjs';
 
 import { DiceMode, DicePreference } from '../../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import { ItemLoss, type SheetMagicItem } from '../../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  ItemLoss,
+  ItemRechargeKind,
+  type ItemRecharge,
+  type SheetMagicItem,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { ChargesBlockedReason } from '../../../../gen/meurpg/play/v1/charges_pb';
 import type { AttunementEntryVm } from '../../../core/characters/attunement';
 import { describeCharacterError } from '../../../core/characters/character-errors';
@@ -27,6 +32,7 @@ import {
   chargesErrorMessage,
 } from '../../../core/play/charges-errors';
 import type { CharacterSheetVm } from '../character-sheet.types';
+import { rechargeWithCap } from '../../../core/characters/recharge-text';
 import type { AddAmmunitionData } from './add-ammunition-sheet';
 import type { LastChargeData, LastChargeOutcome } from './last-charge-sheet';
 import type { UseChargesData } from './use-charges-sheet';
@@ -40,10 +46,16 @@ export interface SheetChargesHost {
   readonly vm: () => CharacterSheetVm | null;
   /** Reads the sheet again without the loading state; `true` when the new sheet is on screen. */
   readonly reload: () => Promise<boolean>;
+  /** Puts the focus on the row of the item (its "Usar" or "Rolar", or the row itself when it has none) once the page has drawn
+   * it again: the sheets do not restore it, since the button that opened them may be gone. */
+  readonly focusRow: (itemId: string) => void;
   readonly openUse: (data: UseChargesData) => Observable<boolean | undefined>;
   readonly openRoll: (data: LastChargeData) => Observable<boolean | undefined>;
   readonly openAdd: (data: AddAmmunitionData) => Observable<boolean | undefined>;
 }
+
+/** The most pieces of one kind the server takes. */
+const MOST_AMMUNITION = 9999;
 
 const FALLBACK_DICE: TableDice = { mode: DiceMode.PLAYERS_CHOOSE, preference: DicePreference.APP };
 
@@ -54,11 +66,12 @@ const cargas = (n: number) => `${n} ${n === 1 ? 'carga' : 'cargas'}`;
 function rollResult(
   name: string,
   res: { d20: number; regained: number; lost: ItemLoss },
+  recharge?: ItemRecharge,
 ): { text: string; tone: 'good' | 'bad' } {
   const head = `Tirou ${res.d20}. ${articleOf(name)} ${name}`;
   switch (res.lost) {
     case ItemLoss.GONE:
-      return { text: `${head} se perdeu: fica na ficha como destruída.`, tone: 'bad' };
+      return { text: `${head} virou cinzas: fica na ficha como destruída.`, tone: 'bad' };
     case ItemLoss.PLAIN_ITEM:
       return { text: `${head} perdeu a magia: virou um item comum.`, tone: 'bad' };
     case ItemLoss.PARTLY_MAGIC:
@@ -69,7 +82,10 @@ function rollResult(
   }
   return res.regained > 0
     ? { text: `${head} recuperou ${cargas(res.regained)}.`, tone: 'good' }
-    : { text: `${head} fica, sem cargas.`, tone: 'good' };
+    : {
+        text: `${head} fica, sem cargas${recharge?.kind === ItemRechargeKind.DAWN ? ', e volta ao amanhecer' : ''}.`,
+        tone: 'good',
+      };
 }
 
 /**
@@ -109,13 +125,17 @@ export class SheetCharges {
         itemName: entry.namePt,
         max: c.max,
         left: c.left,
+        rechargeNote: c.recharge ? rechargeWithCap(c.recharge, c.max) : undefined,
         spend: (amount, key) => this.spend(entry, amount, key),
       })
       .subscribe(() => {
         const asked = this.askedRoll;
         this.askedRoll = null;
         if (asked) {
+          // The d20 takes the focus back to the row when it closes.
           this.openRoll(asked);
+        } else {
+          this.host.focusRow(entry.id);
         }
       });
   }
@@ -144,7 +164,11 @@ export class SheetCharges {
       if (!chargesDidNotGetThrough(err)) {
         await this.host.reload();
       }
-      return chargesErrorMessage(err, { itemName: entry.namePt, left });
+      return chargesErrorMessage(err, {
+        itemName: entry.namePt,
+        left,
+        recharge: entry.charges?.recharge,
+      });
     }
   }
 
@@ -188,9 +212,10 @@ export class SheetCharges {
           canApp: dice.mode !== DiceMode.PHYSICAL,
           canType: dice.mode !== DiceMode.APP,
           preferApp: effectivePreference(dice.mode, dice.preference) === DicePreference.APP,
+          recharge: c.recharge,
           roll: (roll, key) => this.roll(entry, roll, key),
         })
-        .subscribe();
+        .subscribe(() => this.host.focusRow(entry.id));
     });
   }
 
@@ -223,7 +248,7 @@ export class SheetCharges {
         .client()
         .rollLastCharge(this.host.campaignId(), vm.id, entry.id, roll, key);
       await this.host.reload();
-      this.result.set(rollResult(entry.namePt, res));
+      this.result.set(rollResult(entry.namePt, res, entry.charges?.recharge));
       return { kind: 'done', d20: res.d20 };
     } catch (err) {
       const blocked = chargesBlocked(err);
@@ -253,17 +278,27 @@ export class SheetCharges {
         kind: hint?.key,
         quantity: hint?.quantity,
         current,
-        add: (key, total) => this.setAmmunition(key, total),
+        add: (key, amount) => this.addAmmunition(key, amount),
       })
       .subscribe();
   }
 
-  private async setAmmunition(key: string, total: number): Promise<string> {
-    const vm = this.host.vm();
-    if (!vm) {
+  /**
+   * Adds `amount` pieces to what the character holds. `SetAmmunition` sets a total and has no delta, so the sheet is read again
+   * first: a shot fired while the sheet was open is not given back. (Two writers within the same instant can still cross.)
+   */
+  private async addAmmunition(key: string, amount: number): Promise<string> {
+    if (!this.host.vm()) {
       return 'A ficha não está aberta.';
     }
     try {
+      await this.host.reload();
+      const vm = this.host.vm();
+      if (!vm) {
+        return 'A ficha não está aberta.';
+      }
+      const held = vm.fullSheet?.ammunition.find((a) => a.key === key)?.quantity ?? 0;
+      const total = Math.min(held + amount, MOST_AMMUNITION);
       const ammo = await this.host
         .client()
         .setAmmunition(this.host.campaignId(), vm.id, key, total);

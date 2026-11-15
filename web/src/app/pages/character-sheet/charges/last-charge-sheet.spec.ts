@@ -1,6 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 
+import { create } from '@bufbuild/protobuf';
+
+import {
+  ItemEmptyRule,
+  ItemLoss,
+  ItemRechargeKind,
+  ItemRechargeSchema,
+} from '../../../../gen/meurpg/characters/v1/characters_pb';
 import { type LastChargeData, LastChargeSheet } from './last-charge-sheet';
 
 const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
@@ -146,5 +154,40 @@ describe('LastChargeSheet', () => {
     expect(roll).not.toHaveBeenCalled();
     expect(close).toHaveBeenCalled();
     expect(close).not.toHaveBeenCalledWith(true);
+  });
+
+  it('closes on Esc too, with no roll: the dialog answers Esc itself, since the backdrop stays blocked', () => {
+    const { field, el } = render({ preferApp: false });
+    field()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(roll).not.toHaveBeenCalled();
+    expect(close).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalledWith(true);
+    expect(el.querySelector('button[aria-label="Fechar"]')).not.toBeNull();
+  });
+
+  it('does not close on Esc while a roll is in the air', async () => {
+    let finish!: (out: unknown) => void;
+    roll.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    const { button, el, settle } = render();
+    button('Rolar no app').click();
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(close).not.toHaveBeenCalled();
+    finish({ kind: 'done', d20: 3 });
+    await settle();
+    expect(close).toHaveBeenCalledWith(true);
+  });
+
+  it('says what the d20 decides for this item, as the board has it', () => {
+    const { el } = render({
+      recharge: create(ItemRechargeSchema, {
+        kind: ItemRechargeKind.DAWN,
+        empty: ItemEmptyRule.D20,
+        onLoss: ItemLoss.GONE,
+      }),
+    });
+    expect(flat(el.querySelector('.body'))).toBe(
+      'O item pede um d20 agora. Com 1, a varinha vira cinzas e fica na ficha como destruída. Com 2 ou mais, ela espera o amanhecer.',
+    );
+    expect(flat(el.querySelector('.body strong'))).toBe('Com 1, a varinha vira cinzas');
   });
 });

@@ -23,9 +23,9 @@ describe('the ammunition on an attack row', () => {
   it('names the kind by the weapon: bow, crossbow, sling and blowgun', () => {
     const word = (key: string) => ammunitionTag(line(key, { ammunitionLeft: 2 }))?.text;
     expect(word('equipment:shortbow')).toBe('2 flechas');
-    expect(word('equipment:light-crossbow')).toBe('2 virotes');
-    expect(word('equipment:hand-crossbow')).toBe('2 virotes');
-    expect(word('equipment:heavy-crossbow')).toBe('2 virotes');
+    expect(word('equipment:crossbow-light')).toBe('2 virotes');
+    expect(word('equipment:crossbow-hand')).toBe('2 virotes');
+    expect(word('equipment:crossbow-heavy')).toBe('2 virotes');
     expect(word('equipment:sling')).toBe('2 balas de funda');
     expect(word('equipment:blowgun')).toBe('2 agulhas de zarabatana');
     expect(ammunitionTag(line('equipment:blowgun', { ammunitionLeft: 1 }))?.text).toBe(
@@ -38,7 +38,10 @@ describe('the ammunition on an attack row', () => {
 
   it('says "munição" for a weapon the app cannot name the kind of', () => {
     expect(ammunitionTag(line('equipment:harpoon-gun', { ammunitionLeft: 4 }))?.text).toBe(
-      '4 de munição',
+      '4 munições',
+    );
+    expect(ammunitionTag(line('equipment:harpoon-gun', { ammunitionLeft: 1 }))?.text).toBe(
+      '1 munição',
     );
     expect(ammunitionEmptyLine(line('equipment:harpoon-gun', { ammunitionLeft: 0 }))).toBe(
       'Sem munição: o tiro não sai.',
@@ -58,7 +61,7 @@ describe('the ammunition on an attack row', () => {
     expect(ammunitionEmptyLine(line('equipment:longbow', { ammunitionLeft: 0 }))).toBe(
       'Sem flechas: o tiro não sai.',
     );
-    expect(ammunitionEmptyLine(line('equipment:light-crossbow', { ammunitionLeft: 0 }))).toBe(
+    expect(ammunitionEmptyLine(line('equipment:crossbow-light', { ammunitionLeft: 0 }))).toBe(
       'Sem virotes: o tiro não sai.',
     );
     expect(ammunitionEmptyLine(line('equipment:longbow', { ammunitionLeft: 2 }))).toBe('');
@@ -69,7 +72,7 @@ describe('the ammunition on an attack row', () => {
     expect(ammunitionNote(melee)).toBe('Improvisado: não gasta flecha.');
     expect(ammunitionTag(melee)).toBeNull();
     expect(ammunitionEmptyLine(melee)).toBe('');
-    expect(ammunitionNote(line('equipment:light-crossbow:melee', { improvised: true }))).toBe(
+    expect(ammunitionNote(line('equipment:crossbow-light:melee', { improvised: true }))).toBe(
       'Improvisado: não gasta virote.',
     );
     expect(ammunitionNote(line('equipment:harpoon-gun:melee', { improvised: true }))).toBe(

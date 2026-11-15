@@ -15,6 +15,8 @@ export interface UseChargesData {
   readonly max: number;
   /** What the item holds now: the most that can be spent. */
   readonly left: number;
+  /** When the charges come back: "Volta 1d6 + 1 ao amanhecer, até 7."; absent for an item with no rules. */
+  readonly rechargeNote?: string;
   /** Spends `amount` under `key`; answers the refusal in words, or '' when the charges are gone. */
   readonly spend: (amount: number, key: string) => Promise<string>;
 }
@@ -30,7 +32,7 @@ export function openUseCharges(
     ariaLabel: `Usar ${data.itemName}`,
     labelledBy: 'use-charges-t',
     width: '480px',
-    // The opener takes the focus back, with the focus ring.
+    // The page puts the focus back on the item's row (with the focus ring) once it has drawn it again.
     restoreFocus: false,
   });
 }
@@ -79,6 +81,11 @@ export function openUseCharges(
         />
       </div>
       <p class="mr-muted note">Quanto cada uso gasta está no texto do item.</p>
+      @if (data.rechargeNote) {
+        <p class="mr-muted recharge">
+          <mat-icon aria-hidden="true">wb_twilight</mat-icon>{{ data.rechargeNote }}
+        </p>
+      }
       <div foot class="foot">
         <button
           matButton="filled"
@@ -112,6 +119,12 @@ export function openUseCharges(
       flex-direction: column;
     }
     .note {
+      margin: var(--mr-space-3) 0 0;
+    }
+    .recharge {
+      display: flex;
+      align-items: center;
+      gap: var(--mr-space-2);
       margin: var(--mr-space-3) 0 0;
     }
     .foot {

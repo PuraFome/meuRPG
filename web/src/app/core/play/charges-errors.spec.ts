@@ -5,6 +5,8 @@ import { ChargesBlockedReason, ChargesBlockedSchema } from '../../../gen/meurpg/
 import {
   CharacterBlockedReason,
   CharacterBlockedSchema,
+  ItemRechargeKind,
+  ItemRechargeSchema,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { chargesBlocked, chargesBlockedMessage, chargesErrorMessage } from './charges-errors';
 
@@ -45,6 +47,16 @@ describe('chargesErrorMessage', () => {
     expect(
       chargesErrorMessage(blocked(CharacterBlockedReason.CHARGES_NOT_ENOUGH), { ...item, left: 3 }),
     ).toBe('Cargas a menos. A Varinha de mísseis mágicos só tem 3 cargas.');
+  });
+
+  it('says an item that comes back at dawn does so, as the board has it', () => {
+    expect(
+      chargesErrorMessage(blocked(CharacterBlockedReason.ITEM_NO_CHARGES), {
+        itemName: 'Varinha de segredos',
+        left: 0,
+        recharge: create(ItemRechargeSchema, { kind: ItemRechargeKind.DAWN, regainDice: '1d3' }),
+      }),
+    ).toBe('Sem cargas. A Varinha de segredos volta ao amanhecer.');
   });
 
   it('says an item with no charges and a destroyed item by name', () => {
