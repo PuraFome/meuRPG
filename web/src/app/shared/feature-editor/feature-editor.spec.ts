@@ -309,7 +309,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(t).toContain('O jogador escolhe uma destas opções, uma vez, ao criar o personagem');
       expect(t).not.toContain('Ponha na característica um efeito');
       expect(text(el)).toContain('Os efeitos ficam nas opções; o traço diz que há uma escolha.');
-      expect(el.querySelectorAll('.options app-feature-editor')).toHaveLength(2);
+      expect(el.querySelectorAll('.options .opt')).toHaveLength(2);
     });
 
     it('puts the refusal of an effect "Escolha" under the select, in place of the hint', () => {
@@ -378,26 +378,6 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(text(el)).toContain(
         '1 de 10. Opções que o personagem já escolheu, do SRD ou da mesa. Nunca a própria opção.',
       );
-    });
-
-    it('removes an option from the "⋮" menu of its row, and leaves no second outlined button beside "Adicionar pré-requisito" (board 580-03)', async () => {
-      setup(
-        { ...emptyFeature(), name: 'Golpe' },
-        { isOption: true, allowAsks: true, removeLabel: 'Remover opção' },
-      );
-      expect(el.querySelector('.remove')).toBeNull();
-      expect(button('Remover opção')).toBeUndefined();
-      const more = el.querySelector<HTMLButtonElement>('button[aria-label="Mais ações de Golpe"]')!;
-      expect(more.querySelector('mat-icon')?.textContent).toBe('more_vert');
-      more.click();
-      fixture.detectChanges();
-      await fixture.whenStable();
-      const item = document.querySelector<HTMLButtonElement>(
-        '.mat-mdc-menu-panel [role="menuitem"]',
-      )!;
-      expect(text(item)).toContain('Remover opção');
-      item.click();
-      expect(removed).toHaveBeenCalledTimes(1);
     });
 
     it('keeps the outlined "Remover" for a trait that is not an option row', () => {
@@ -574,7 +554,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       ],
     });
     const rows = () =>
-      Array.from(el.querySelectorAll<HTMLElement>('section.options [role="group"]'));
+      Array.from(el.querySelectorAll<HTMLElement>('section.options > [role="group"]'));
     const toggle = (n: number) =>
       rows()[n - 1].querySelector<HTMLButtonElement>('button[aria-expanded]')!;
     const render = async () => {
@@ -601,7 +581,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(text(toggle(2))).toContain(
         'Soma o dado ao ataque. · pede Paladino 7 e Golpe do Corvo',
       );
-      expect(text(toggle(3))).toContain('pede Paladino 10');
+      expect(text(toggle(3))).toContain('Pede Paladino 10');
     });
 
     it('says nothing of what it asks for an option of a feature that cannot ask', () => {
@@ -626,6 +606,7 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(toggle(2).getAttribute('aria-expanded')).toBe('false');
       expect(toggle(3).getAttribute('aria-expanded')).toBe('true');
       expect(rows()[1].querySelector('input')).toBeNull();
+      toggle(3).focus();
       toggle(3).click();
       await render();
       expect(toggle(3).getAttribute('aria-expanded')).toBe('false');

@@ -5,9 +5,12 @@ import {
   TemplateRef,
   afterNextRender,
   computed,
+  effect,
   inject,
   input,
   output,
+  signal,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,9 +23,14 @@ import {
   emptyFeature,
   type FeatureDraft,
   featureAsks,
+  optionRowPaths,
   NAME_MAX,
   withAsks,
 } from '../../core/content/feature-draft';
+import { focusAfterRender } from '../../core/content/entry-saver';
+import { optionSummary } from '../../core/content/feat-options';
+import type { KeyName } from '../../core/content/key-name';
+import { optionAsksPhrase } from '../../core/content/option-text';
 import { followResource, resourcesOf, type SummonDraft } from '../../core/content/summon-draft';
 import type { Asks } from '../../core/content/asks';
 import {
@@ -76,12 +84,8 @@ export class FeatureEditor {
   /** The place in a list, for "Subir" and "Descer": -1 when it is not in a list. */
   readonly index = input(-1);
   readonly count = input(0);
-  /** The heading above the fields, when the feature has one of its own ("Característica"). */
-  readonly heading = input('');
   /** No card of its own (no border, fill or padding): the page already frames it, as the open feature of a class does. */
   readonly flat = input(false);
-  /** The page already draws a frame around this card (an option inside the open feature of a class): the card keeps no outline of its own. */
-  readonly framed = input(false);
   /** The feat editor: its effects may be the types only a feat has. */
   readonly featEditor = input(false);
   /**
@@ -119,10 +123,10 @@ export class FeatureEditor {
   /** An option of a class or subclass feature may ask something of who picks it (a level, a pact, a spell, other options; board 580-03). */
   readonly allowAsks = input(false);
   protected readonly asks = computed(() => featureAsks(this.feature()));
+  /** The editor is the body of an option row of its parent: the row is the group and has the head, the arrows and the menu. */
+  readonly inRow = input(false);
   /** The options of the feature this one belongs to, itself among them: "Outras opções" offers the saved ones. */
   readonly peers = input<readonly FeatureDraft[]>([]);
-  /** An option row of a feature takes its removal into the "⋮" menu of its head (board 580-03); a trait keeps the button at the foot. */
-  protected readonly rowMenu = computed(() => this.isOption() && this.removeLabel() !== '');
   protected readonly classOptions = computed<SelectOption[]>(() => [
     { value: '', label: 'Nenhuma' },
     ...(this.catalog()?.classes ?? []),
@@ -160,6 +164,16 @@ export class FeatureEditor {
 
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
+
+  constructor() {
+    effect(() => {
+      const first = this.refusedIds().split(',')[0];
+      if (first) {
+        untracked(() => this.openOption.set(first));
+      }
+    });
+  }
+
   readonly featureChange = output<FeatureDraft>();
   private readonly latest = latestInput(this.feature);
   readonly removed = output<void>();
@@ -181,14 +195,12 @@ export class FeatureEditor {
   );
 
   /** The group's own name, never the name field's label (two things with one name confuse a screen reader and a test). */
-  protected readonly groupLabel = computed(
-    () => this.heading() || (this.index() >= 0 ? `Traço ${this.index() + 1}` : 'Característica'),
+  protected readonly groupLabel = computed(() =>
+    this.index() >= 0 ? `Traço ${this.index() + 1}` : 'Característica',
   );
 
-  /** What the arrows name: the feature, else its place ("Opção 3"), else the field's label. */
-  protected readonly moveName = computed(
-    () => this.feature().name.trim() || this.heading() || this.nameLabel(),
-  );
+  /** What the arrows name: the feature, else the field's label. */
+  protected readonly moveName = computed(() => this.feature().name.trim() || this.nameLabel());
 
   protected path(field: string): string {
     return `${this.basePath()}.${field}`;
@@ -229,8 +241,75 @@ export class FeatureEditor {
     this.patch({ options });
   }
 
+  /** The option whose row is open: one at a time (board 580-03). */
+  protected readonly openOption = signal('');
+  /** The rows of "Opções para escolher": the option, its title, the line under it and whether it is open or has a refusal. */
+  protected readonly rows = computed(() => {
+    const asking = !this.oneOf() && !this.featEditor() && !this.featOption();
+    const nameOf = this.askName();
+    return this.feature().options.map((option, index) => {
+      const place = `Opção ${index + 1}`;
+      const asks = optionAsksPhrase(option.prerequisite, nameOf);
+      const lead = optionSummary(option, this.menu());
+      const tail = !asking ? '' : asks ? asks.replace(/^P/, 'p') : 'não pede nada';
+      const summary =
+        lead && tail ? `${lead} · ${tail}` : lead || tail.replace(/^./, (c) => c.toUpperCase());
+      return {
+        option,
+        index,
+        place,
+        name: option.name.trim() || place,
+        title: option.name.trim() ? `${place} · ${option.name.trim()}` : place,
+        summary,
+        open: this.openOption() === option.id,
+        bodyId: `opt-${option.id}`,
+        bad: this.refused(index),
+      };
+    });
+  });
+  /** The names of the keys an option asks for: its siblings (as they are named now), the catalog's classes, spells and entries, the options of the lists. */
+  private readonly askName = computed<KeyName>(() => {
+    const peers = this.feature().options;
+    const requirable = this.requirableAll();
+    const catalog = this.catalog();
+    return (key) => {
+      const peer = peers.find((o) => o.key === key && o.name.trim() !== '');
+      if (peer) {
+        return peer.name.trim();
+      }
+      const table = requirable.find((o) => o.value === key)?.label;
+      const named = catalog?.nameOf(key) ?? key;
+      return named !== key ? named : (table?.replace(/ \(da mesa\)$/, '') ?? key);
+    };
+  });
+  private readonly requirableAll = computed(() =>
+    this.allowOptions() ? requirableOptions(this.menu(), this.entries(), '') : [],
+  );
+  /** Whether a field of option `k`, or the option, has a refusal on it. */
+  private refused(k: number): boolean {
+    const issues = this.issuesOf();
+    return optionRowPaths(this.path(`options[${k}]`), this.feature().options[k], this.menu()).some(
+      (p) => issues(p).length > 0,
+    );
+  }
+  /** The first row with a refusal opens when the set of such rows changes (a save that was refused): the field is there to be reached. */
+  private readonly refusedIds = computed(() =>
+    this.rows()
+      .filter((r) => r.bad)
+      .map((r) => r.option.id)
+      .join(','),
+  );
+
+  protected toggleOption(id: string): void {
+    this.openOption.update((open) => (open === id ? '' : id));
+  }
+
   protected addOption(): void {
-    this.patch({ options: [...this.latest.current().options, emptyFeature()] });
+    const option = emptyFeature();
+    const at = this.latest.current().options.length;
+    this.openOption.set(option.id);
+    this.patch({ options: [...this.latest.current().options, option] });
+    focusAfterRender(this.host.nativeElement, this.injector, this.path(`options[${at}].name_pt`));
   }
 
   /**
@@ -263,8 +342,25 @@ export class FeatureEditor {
     );
   }
 
+  /** Takes the option away; its row's place goes to the next row's button (the last one's to the one before, else to "Adicionar uma opção"). */
   protected removeOption(i: number): void {
+    const gone = this.latest.current().options[i];
     this.patch({ options: this.latest.current().options.filter((_, k) => k !== i) });
+    if (this.openOption() === gone?.id) {
+      this.openOption.set('');
+    }
+    afterNextRender(
+      () => {
+        const toggles = this.host.nativeElement.querySelectorAll<HTMLButtonElement>(
+          'section.options .opt__toggle',
+        );
+        const target =
+          toggles[Math.min(i, toggles.length - 1)] ??
+          this.host.nativeElement.querySelector<HTMLButtonElement>('section.options .options__add');
+        target?.focus();
+      },
+      { injector: this.injector },
+    );
   }
 
   protected removeEffect(i: number): void {
