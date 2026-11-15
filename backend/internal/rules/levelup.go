@@ -1367,20 +1367,9 @@ func checkChoiceProblems(setBefore, setAfter ChoiceSet, opened map[string]bool) 
 	for _, p := range setBefore.Pending() {
 		late[p.ChoiceKey] = true
 	}
-	asked := map[string]bool{}
-	for _, g := range setBefore.Groups {
-		for _, ch := range g.Choices {
-			asked[ch.Key] = true
-		}
-	}
-	feature := map[string]string{}
-	for _, g := range setAfter.Groups {
-		for _, ch := range g.Choices {
-			feature[ch.Key] = ch.FeatureKey
-		}
-	}
+	opens := openedChoices(setBefore, setAfter, opened)
 	for _, p := range setAfter.ChoiceProblems(true) {
-		if p.Code == ChoiceProblemMissing && !asked[p.ChoiceKey] && opened[feature[p.ChoiceKey]] {
+		if p.Code == ChoiceProblemMissing && opens[p.ChoiceKey] {
 			continue
 		}
 		if lerr := choiceProblemRefusal(p, late[p.ChoiceKey], had[p.Code+"|"+p.ChoiceKey+"|"+p.OptionKey]); lerr != nil {
@@ -1388,6 +1377,26 @@ func checkChoiceProblems(setBefore, setAfter ChoiceSet, opened map[string]bool) 
 		}
 	}
 	return nil
+}
+
+// openedChoices are the choices of the new sheet that the sheet before did not ask and that a plain option
+// picked at this level opens.
+func openedChoices(setBefore, setAfter ChoiceSet, opened map[string]bool) map[string]bool {
+	asked := map[string]bool{}
+	for _, g := range setBefore.Groups {
+		for _, ch := range g.Choices {
+			asked[ch.Key] = true
+		}
+	}
+	out := map[string]bool{}
+	for _, g := range setAfter.Groups {
+		for _, ch := range g.Choices {
+			if !asked[ch.Key] && opened[ch.FeatureKey] {
+				out[ch.Key] = true
+			}
+		}
+	}
+	return out
 }
 
 // choiceProblemRefusal is the refusal of one problem of the new sheet's choices,

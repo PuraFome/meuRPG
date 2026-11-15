@@ -314,7 +314,7 @@ func (s *spellSheet) addBook() {
 // markWarlockList marks the spells on the character's warlock list when the sheet has the Book of
 // Ancient Secrets, which casts the warlock spells the character knows as rituals.
 func (s *spellSheet) markWarlockList() {
-	if !slices.Contains(s.x.b.FeatureChoices, bookInvocationKey) {
+	if !s.x.d.holdsBook() {
 		return
 	}
 	for i := range s.x.d.Spells {

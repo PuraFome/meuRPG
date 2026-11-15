@@ -168,7 +168,7 @@ const (
 // Ancient Secrets adds its two spells (known, not prepared) and the warlock spells known.
 func (d Derived) SpellStanding(spellKey string, ritualTag bool) SpellStanding {
 	var out SpellStanding
-	book := slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == bookInvocationKey })
+	book := d.holdsBook()
 	for _, cs := range d.Spells {
 		if cs.Spell.Key != spellKey {
 			continue
@@ -182,6 +182,11 @@ func (d Derived) SpellStanding(spellKey string, ritualTag bool) SpellStanding {
 		out.Known, out.CanRitual = true, true
 	}
 	return out
+}
+
+// holdsBook says the sheet has the invocation Book of Ancient Secrets.
+func (d *Derived) holdsBook() bool {
+	return slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == bookInvocationKey })
 }
 
 // castsAsRitual says a ritual feature of the sheet casts the spell of the sheet as a ritual:
