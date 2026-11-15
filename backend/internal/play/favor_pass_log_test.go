@@ -465,3 +465,25 @@ func TestUndoOfAnAcceptedPassCancelsTheReceiversPendingAsk(t *testing.T) {
 		t.Errorf("passes: %d rows, %d pending, want 2 and none pending", all, pending)
 	}
 }
+
+// One player owns the giver and the receiver (Pensantus fell, and Caio plays her now): the accepted pass is one line for him, the giver's,
+// and the undo of the pass writes nothing for him, as the receiver's sentence of it is the receiver's alone and the giver's has none.
+func TestAGiverAndAReceiverOfOnePlayerReadTheGiversLineAlone(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.execSQL(t, `UPDATE characters SET status = 'dead', died_at = now(), player_user_id = $2 WHERE id = $1`, f.pens.GetId(), f.caio.id)
+	f.execSQL(t, `UPDATE combatants SET user_id = $2 WHERE character_id = $1`, f.pens.GetId(), f.caio.id)
+	f.give(t, f.toren)
+	pass := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+	if _, err := f.answer(pass.GetId(), true); err != nil {
+		t.Fatalf("AnswerFavorPass(Aceitar) error = %v", err)
+	}
+	f.wantTexts(t, "the accept of a pass between one player's characters", map[*user][]string{
+		f.master: {"Toren passou a Inspiração para Pensantus."},
+		f.caio:   {"O mestre aceitou: a sua Inspiração foi para Pensantus."},
+	})
+	if err := f.undo(t, f.master, f.e, f.undoableLine(t).GetId()); err != nil {
+		t.Fatalf("UndoLastAction(the pass) error = %v", err)
+	}
+	f.wantTexts(t, "the undo of that pass", map[*user][]string{})
+}
