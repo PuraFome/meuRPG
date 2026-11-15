@@ -30,6 +30,7 @@ import { LiveSessionSourceLive } from '../../core/play/live-session-source.live'
 import { isFullSheetKind } from '../../core/characters/characters.types';
 import { ChoiceGroups } from '../../shared/choice-groups/choice-groups';
 import { FictionNotice } from '../../shared/fiction-notice/fiction-notice';
+import { OpenDown } from '../../shared/form-fields/open-down';
 import { TableMark } from '../../shared/table-mark/table-mark';
 import { AbilityFields } from './ability-fields/ability-fields';
 import { AbilityScores } from './ability-scores/ability-scores';
@@ -134,6 +135,7 @@ import { EditorSpellDetails } from './editor-spell-details';
     MatProgressSpinnerModule,
     MatRadioModule,
     MatSelectModule,
+    OpenDown,
     DefeatXp,
     FeatsField,
     NpcShortForm,

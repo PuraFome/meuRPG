@@ -733,7 +733,7 @@
                   </div>
                   <mat-form-field appearance="outline" subscriptSizing="dynamic" class="span-all">
                     <mat-label>Armas</mat-label>
-                    <mat-select formControlName="weaponKeys" multiple panelClass="mr-weapons-panel">
+                    <mat-select formControlName="weaponKeys" multiple panelClass="mr-weapons-panel" appOpenDown>
                       <!-- The table's weapons first, then the SRD's; each row ends with its category and damage (board 580-16, state 4). -->
                       <mat-select-trigger>{{ views.weaponNames() }}</mat-select-trigger>
                       @if (views.weaponGroups().table.length > 0) {

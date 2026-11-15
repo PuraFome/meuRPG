@@ -374,7 +374,7 @@ html {
 .mr-weapons-panel.mat-mdc-select-panel {
   // The list opens under the field's helper line ("Escolha quantas quiser.", 20 px and a 4 px gap), not over it.
   margin-top: var(--mr-space-6);
-  // Low enough that the list under the helper line still fits a phone's screen, so it opens down and does not flip over the field.
+  // Low enough that the list under the helper line still fits a phone's screen; `appOpenDown` on the select keeps it from opening over the field when the room below is short.
   max-height: 256px;
 
   .mdc-list-item__primary-text {
