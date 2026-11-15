@@ -448,7 +448,8 @@ func (f *favorParty) holdRowOf(t *testing.T, key string) holdRow {
 	return r
 }
 
-// A window's replay of a check that spends the Inspiration and then holds a Bardic die keeps the die's question with favor_spent. What it
+// A window's replay of a check that spends the Inspiration and then holds a Bardic die keeps the die's question with favor_spent and,
+// since #837, under the window's mark (window_hold), as a window-held weapon attack does. What it
 // guards: the question's row remembers the spend (a replay that forgot it would count the roll as made without the Inspiration: the retry
 // and the answer would spend the next one or leave it out), a client's retry of the key is answered as the first call was with nothing
 // written and nothing spent, and the answer to the die counts the Inspiration once and spends no other.
@@ -475,8 +476,8 @@ func TestFavorRetryAfterAWindowReplayThatHoldsADie(t *testing.T) {
 				t.Fatal("the replay did not spend the Inspiration")
 			}
 			row := e.holdRowOf(t, key)
-			if !row.spent || row.window || !row.asked {
-				t.Fatalf("the replay's hold = %+v, want the die's question open, with the Inspiration spent and no window's mark (a check's hold is never one)", row)
+			if !row.spent || !row.window || !row.asked {
+				t.Fatalf("the replay's hold = %+v, want the die's question open, with the Inspiration spent and the window's mark (#837: a window-held contest or Hide keeps window_hold like a weapon attack)", row)
 			}
 			e.give(t, e.who) // another one: neither the retry nor the answer may take it
 			events, seq := e.eventsAll(t), e.seq(t)
@@ -484,10 +485,13 @@ func TestFavorRetryAfterAWindowReplayThatHoldsADie(t *testing.T) {
 			if err != nil || !again.heldByWindow || e.eventsAll(t) != events || e.seq(t) != seq || !e.favorHolds(t) {
 				t.Errorf("the retry = %+v, %v (events %d -> %d, number %d -> %d, Inspiration there %v), want the first answer, nothing written and nothing spent", again, err, events, e.eventsAll(t), seq, e.seq(t), e.favorHolds(t))
 			}
-			// What the answer writes for a window-replayed contest or hide is the same with or without the spend (it writes no
-			// contest row here, spend or not); this test pins what the spend adds: nothing more is taken by the answer.
+			// #837: the answer reruns the held contest or Hide under its own key, so it writes the contest or hide row now. The rerun
+			// counts the Inspiration the first call spent once (the row says the roll was made with it) and takes no other.
 			if _, err := e.answerHeldRoll(t, e.roller, row.id, dieAnswer(false)); err != nil {
 				t.Fatalf("the answer to the die's question error = %v", err)
+			}
+			if !e.stored(t) {
+				t.Error("the row the answer wrote does not say the roll was made with the Inspiration the first call spent")
 			}
 			if !e.favorHolds(t) {
 				t.Error("the answer to the die's question took the second Inspiração, want it untouched")
