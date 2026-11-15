@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/jackc/pgx/v5"
 
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -65,6 +66,39 @@ func (s *Service) CreaturesLeaving(ctx context.Context, tx pgx.Tx, campaignID, a
 		}
 	}
 	return enc.ID, nil
+}
+
+// SpendDismissal spends the action of the owner's combatant for sending a steed away: in a running combat that holds the steed it
+// must be the owner's turn with the action unspent, and the refusal is the combat's. A combat that is not running, a steed that is not
+// in it and an owner that is not either leave everything as it is.
+func (s *Service) SpendDismissal(ctx context.Context, tx pgx.Tx, campaignID, actorUserID, characterID, creatureID string, at time.Time) error {
+	q := s.queries.WithTx(tx)
+	session, enc, found, err := openCombatOf(ctx, q, campaignID)
+	if err != nil || !found || enc.Status != statusActive {
+		return err
+	}
+	cs, err := q.ListCombatants(ctx, enc.ID)
+	if err != nil {
+		return fmt.Errorf("list the combatants: %w", err)
+	}
+	if len(creatureCombatantsOf(cs, []string{creatureID})) == 0 {
+		return nil
+	}
+	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.Kind == kindPlayer && c.CharacterID == characterID })
+	if i < 0 {
+		return nil
+	}
+	if code, err := s.gate(ctx, tx, campaignID, enc, cs[i]); err != nil || code != rulesv1.DisabledReasonCode_DISABLED_REASON_CODE_UNSPECIFIED {
+		if err != nil {
+			return err
+		}
+		return gateError(code)
+	}
+	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: at, actorUserID: actorUserID, svc: s})
+	if err != nil {
+		return err
+	}
+	return spendAction(ctx, c, cs[i], false)
 }
 
 // openCombatOf is the campaign's open session, locked, and its open combat; false when

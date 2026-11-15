@@ -359,6 +359,8 @@ type Traits struct {
 	// CreatureType is the SRD type of a monster ("undead", "fiend", "beast"); empty
 	// for a character.
 	CreatureType string
+	// Intelligence is the Intelligence score of a creature, with the floor a steed has; 0 for a character, whose sheet is read elsewhere.
+	Intelligence int `json:",omitempty"`
 	// SpellAttackIgnoresCover says half and three-quarters cover give the target no AC
 	// bonus against the character's ranged spell attacks, and RangedWeaponIgnoresCover
 	// the same against its ranged weapon attacks (a thrown weapon used at range too);
@@ -960,10 +962,14 @@ type Creature struct {
 	// MonsterKey is the SRD creature, "monster:wolf", and Name what the table
 	// calls it (1 to 40 characters).
 	MonsterKey, Name string
-	// Source is "familiar", "animate_dead", "conjure_animals", "master" or "table".
+	// Source is "familiar", "animate_dead", "conjure_animals", "master", "table" or "find_steed".
 	Source string
 	// SummonKey is the table spell that made it ("spell:<slug>@mesa"), for the source "table"; "" otherwise.
 	SummonKey string
+	// CreatureType is the type the player picked for a steed ("celestial", "fey" or "fiend"); "" for every other creature.
+	// Bonded says it is the character's bonded steed.
+	CreatureType string
+	Bonded       bool
 	// Attack is "none", "reaction" or "full" (rules.SummonAttack*).
 	Attack string
 	// GroupID is shared by the creatures of one casting that take one initiative roll; a creature that
@@ -995,12 +1001,16 @@ type Creature struct {
 // player gave it ("" for the default) and what it may do on its own.
 type CreatureSpec struct {
 	MonsterKey, Name, Attack string
+	// CreatureType, Mount and MinInt come from the spell's option (rules.SummonedCreature): the type the player picked, the
+	// mount ("controlled") and the Intelligence the creature has at least.
+	CreatureType, Mount string
+	MinInt              int
 }
 
 // Summon is a casting to record: the creatures a spell made for a character.
 type Summon struct {
 	CampaignID, CharacterID string
-	// Source is "familiar", "animate_dead", "conjure_animals", "master" or "table".
+	// Source is "familiar", "animate_dead", "conjure_animals", "master", "table" or "find_steed".
 	Source string
 	// SummonKey is the table spell ("spell:<slug>@mesa") of the source "table"; "" otherwise.
 	SummonKey string
@@ -1030,6 +1040,9 @@ type SummonResult struct {
 // SummonedForm is a creature a casting may make, as the rules check it.
 type SummonedForm struct {
 	MonsterKey, Attack string
+	// CreatureType, Mount and MinInt are what rules.SummonedCreature carries: the picked type, the mount and the Intelligence floor.
+	CreatureType, Mount string
+	MinInt              int
 }
 
 // SummonSpell is what a summoning spell asks and what the character has of

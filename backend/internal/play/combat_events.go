@@ -10,6 +10,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/damagesteps"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -701,6 +702,7 @@ type actionEvent struct {
 	// keys only.
 	OwnerCharacter string     `json:"character_id,omitempty"`
 	Created        []string   `json:"creature_ids,omitempty"`
+	SteedNote      string     `json:"steed_note,omitempty"` // the line a cast with also_steed says about the steed
 	MonsterKeys    []string   `json:"monster_keys,omitempty"`
 	Dismissed      []string   `json:"dismissed_ids,omitempty"`
 	Unseated       []unseat   `json:"unseated,omitempty"` // the riders a dismissal took off their mounts, for the undo to seat again
@@ -789,7 +791,7 @@ type actionEvent struct {
 	// FeatureBefore are the entries of the attacker's feature state before the roll, one for each key it marked (nil: no entry
 	// that held); an undo puts them back.
 	FeatureBefore map[string]*featureEntry `json:"feature_before,omitempty"`
-	Steps         []stepGroup              `json:"steps,omitempty"`
+	Steps         []damagesteps.Group      `json:"steps,omitempty"`
 	// Shown is the damage as rolled, before the target's modifiers and with every die the
 	// roll made: what a player who is not the target's reads.
 	Shown int32 `json:"shown,omitempty"`

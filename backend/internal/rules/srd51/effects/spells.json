@@ -61,6 +61,16 @@
         }
       ]
     },
+    "spell:find-steed": {
+      "kind": "summon",
+      "creatures": ["monster:warhorse", "monster:pony", "monster:camel", "monster:elk", "monster:mastiff"],
+      "count": 1,
+      "attack": "full",
+      "mount": "controlled",
+      "type_choice": ["celestial", "fey", "fiend"],
+      "min_int": 6,
+      "max_live": 1
+    },
     "spell:animate-dead": {
       "kind": "summon",
       "creatures": ["monster:skeleton", "monster:zombie"],
