@@ -183,7 +183,7 @@ func (s *Service) awardViews(ctx context.Context, m authz.Membership, awards ...
 // from other modules and are read here, outside it, and so are the marks that
 // tell a player which undone reasons to hide.
 func (s *Service) viewsOf(ctx context.Context, m authz.Membership, d awardData, awards []progressiondb.XpAward) ([]*progressionv1.XPAward, error) {
-	names, err := s.readHistoryNames(ctx, m.CampaignID, awards, d.shares)
+	names, err := s.readHistoryNames(ctx, m, awards, d.shares)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,7 @@ type historyNames struct {
 
 // readHistoryNames reads the names of the characters of the shares, of who
 // gave and undid each award, and of the awards' combats, in that order.
-func (s *Service) readHistoryNames(ctx context.Context, campaignID string, awards []progressiondb.XpAward, shares []progressiondb.XpAwardShare) (historyNames, error) {
+func (s *Service) readHistoryNames(ctx context.Context, m authz.Membership, awards []progressiondb.XpAward, shares []progressiondb.XpAwardShare) (historyNames, error) {
 	var userIDs, encounterIDs []string
 	for _, a := range awards {
 		if a.GivenBy != nil {
@@ -234,7 +234,7 @@ func (s *Service) readHistoryNames(ctx context.Context, campaignID string, award
 	}
 	var n historyNames
 	var err error
-	if n.characters, err = s.party.Names(ctx, campaignID, characterIDs); err != nil {
+	if n.characters, err = s.party.Names(ctx, m.CampaignID, characterIDs, m.Role == authz.RoleMaster); err != nil {
 		return n, fmt.Errorf("read the characters' names: %w", err)
 	}
 	if n.users, err = s.profiles.DisplayNames(ctx, userIDs); err != nil {
@@ -243,7 +243,7 @@ func (s *Service) readHistoryNames(ctx context.Context, campaignID string, award
 	if len(encounterIDs) == 0 {
 		return n, nil // no award has a combat: the combats are not asked
 	}
-	if n.encounters, err = s.combats.EncounterNames(ctx, campaignID, encounterIDs); err != nil {
+	if n.encounters, err = s.combats.EncounterNames(ctx, m.CampaignID, encounterIDs); err != nil {
 		return n, fmt.Errorf("read the combats' names: %w", err)
 	}
 	return n, nil
@@ -336,6 +336,9 @@ func (h historyViews) view(a progressiondb.XpAward) *progressionv1.XPAward {
 		v.UndoneAt = timestamppb.New(*a.UndoneAt)
 	}
 	for _, sh := range h.sharesOf[a.ID] {
+		if _, named := h.names.characters[sh.CharacterID]; !named && !h.master {
+			continue // RN-10: a character given back to the reserve is not in a player's history
+		}
 		v.Shares = append(v.Shares, &progressionv1.XPShare{CharacterId: sh.CharacterID, CharacterName: h.names.characters[sh.CharacterID], Xp: sh.Xp})
 	}
 	return v

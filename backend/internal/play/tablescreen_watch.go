@@ -35,6 +35,9 @@ func (s *Service) WatchTableScreen(
 	}
 	// Subscribe before reading the session: an end after the read is then always delivered here.
 	sub, err := s.hub.Subscribe(m.CampaignID, live.Subscriber{UserID: screenUserPrefix + m.UserID, Master: true, Screen: true})
+	if errors.Is(err, live.ErrFull) {
+		return errWatchFull()
+	}
 	if err != nil {
 		return nil // the server is shutting down: the tab reconnects to the next one
 	}

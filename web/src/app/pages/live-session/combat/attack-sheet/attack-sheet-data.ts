@@ -18,6 +18,7 @@ import {
   AttackSchema,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { magicBonusOf } from '../../../../core/combat/combat-options';
+import { tradesOf } from '../../../../core/combat/power-attack-trade';
 import { isPlayer } from '../../../../core/combat/combat-view';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import type { AttackSheetData } from './attack-sheet';
@@ -147,6 +148,8 @@ export function attackSheetData(req: AttackSheetRequest): AttackSheetData | null
       found.attack,
       !req.master && isPlayer(req.attacker) && !req.thrown,
     ),
+    // The trades of the weapon line, the master's roll as the character included; the monk's throw back has no line.
+    ...(req.thrown ? {} : { powerAttacks: tradesOf(found.option) }),
     resume: req.resume
       ? { pending: req.resume, targetLabel: labelOf(e, req.resume.targetId) }
       : undefined,

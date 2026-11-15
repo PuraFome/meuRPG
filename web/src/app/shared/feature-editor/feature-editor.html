@@ -48,6 +48,7 @@
         [afterFields]="afterFieldsAt() === 0 ? afterFields() : null"
         [spellOptions]="spellOptions()"
         [siblings]="feature().effects"
+        [ownerName]="feature().name"
         (effectChange)="patch({ effects: [$event] })"
       />
     } @else {
@@ -66,6 +67,7 @@
         [afterFields]="afterFieldsAt() === 0 ? afterFields() : null"
         [spellOptions]="spellOptions()"
         [siblings]="feature().effects"
+        [ownerName]="feature().name"
         (effectChange)="setEffect(0, $event)"
       />
     }
@@ -94,6 +96,7 @@
           [issuesOf]="issuesOf()"
           [spellOptions]="spellOptions()"
           [siblings]="feature().effects"
+          [ownerName]="feature().name"
           label="Outro efeito"
           [featEditor]="featEditor()"
           [choices]="choices()"

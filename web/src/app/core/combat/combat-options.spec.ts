@@ -11,6 +11,8 @@ import {
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import {
   attackDetail,
+  throwLine,
+  throwNote,
   beamSpentText,
   beamsLeftLine,
   bonusAttackLine,
@@ -129,6 +131,47 @@ describe('the line under an attack', () => {
     expect(plain(attackDetail(dagger, true))).toBe(
       '+4 para acertar · 1d4 + 2 perfurante · corpo a corpo, 1,5 m',
     );
+  });
+});
+
+describe('a thrown weapon (boards 580-16 cards 9 and 10)', () => {
+  const boleadeira = create(AttackSchema, {
+    namePt: 'Boleadeira',
+    attackBonus: 5,
+    damage: '1d4+3',
+    damageTypePt: 'concussão',
+    kind: AttackKind.WEAPON,
+    rangeFt: 20,
+    longRangeFt: 60,
+    thrown: true,
+  });
+  const bow = create(AttackSchema, { ...boleadeira, thrown: false });
+
+  it('says the throw on the sheet row, in meters', () => {
+    expect(plain(throwLine(boleadeira))).toBe('Arremesso: 6 m, até 18 m');
+    expect(throwLine(bow)).toBe('');
+  });
+
+  it('leaves a thrown melee weapon (a dagger) as it was in combat: the throw is a side use, and the row stays short', () => {
+    const dagger = create(AttackSchema, {
+      ...boleadeira,
+      namePt: 'Adaga',
+      melee: true,
+      rangeFt: 20,
+      longRangeFt: 60,
+    });
+    expect(plain(attackDetail(dagger))).toBe('+5 para acertar · 1d4 + 3 concussão · alcance 6 m');
+    expect(throwNote(dagger)).toBe('');
+    expect(plain(throwLine(dagger))).toBe('Arremesso: 6 m, até 18 m');
+  });
+
+  it('says the distances and the disadvantage in combat, and that the throw spends no ammunition', () => {
+    expect(plain(attackDetail(boleadeira))).toBe(
+      '+5 para acertar · 1d4 + 3 concussão · 6 m; até 18 m com desvantagem',
+    );
+    expect(throwNote(boleadeira)).toBe('Arremesso: não gasta munição.');
+    expect(plain(attackDetail(bow))).toContain('alcance 6 m');
+    expect(throwNote(bow)).toBe('');
   });
 });
 

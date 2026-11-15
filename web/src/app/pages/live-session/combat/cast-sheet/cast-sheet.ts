@@ -49,6 +49,14 @@ import { AbilityPicker } from '../../effects/ability-picker/ability-picker';
 import { CheckRow } from '../../../../shared/form-fields/check-row';
 import { MultiRoll } from '../../../../shared/multi-roll/multi-roll';
 import { RollModePicker } from '../roll-mode/roll-mode-picker';
+import { isPlayer } from '../../../../core/combat/combat-view';
+import {
+  type FavorCircumstances,
+  FavorSpend,
+  circumstancesOfSources,
+} from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 import { CastArea } from './cast-area';
 import { CastCaller } from './cast-caller';
 import { CastChoices } from './cast-choices';
@@ -97,6 +105,7 @@ export type { CastMapData, CastSheetData } from './cast-sheet-types';
     AbilityPicker,
     CheckRow,
     DamageTypePicker,
+    FavorSpendBox,
     HeldRollPrompt,
     MatButtonModule,
     MetamagicPicker,
@@ -154,7 +163,22 @@ export class CastSheet {
     this.canApp,
     this.canTypeDamage,
   );
-  protected readonly md = new CastMode(this.s, this.ch, this.hooks);
+  /** The master's Inspiração (RN-43): one spell attack at one target, by a player's character; the master's own cast reads
+   * "O mestre agindo por …". */
+  protected readonly fav: FavorSpend = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => {
+      const me = this.data.state.encounter()?.combatants.find((c) => c.id === this.data.casterId);
+      return me && isPlayer(me) && this.ch.kind() === 'attack' && this.s.chosen().length === 1
+        ? { characterId: me.characterId, name: me.label }
+        : null;
+    },
+    byMaster: () => !!this.data.master,
+    circumstances: (): FavorCircumstances =>
+      circumstancesOfSources(this.md.suggested(), this.md.sources()),
+    changed: () => this.hooks.newCast(),
+  });
+  protected readonly md: CastMode = new CastMode(this.s, this.ch, this.hooks, this.fav);
   /** The cast of a spell attack held for a question (Lucky's, then the Bardic Inspiration die's): the sheet asks it before
    * the result is told (`CastQuestions`). */
   protected readonly questions = new CastQuestions({
@@ -186,7 +210,7 @@ export class CastSheet {
     this.ar,
     this.questions,
     this.damage,
-    { api: this.api, animator: this.animator },
+    { api: this.api, animator: this.animator, fav: this.fav },
   );
   /** Tells the caster that the master answered the question for them: the question goes and a line takes its place. */
   protected readonly follow = new HeldFollow(this.questions.held);

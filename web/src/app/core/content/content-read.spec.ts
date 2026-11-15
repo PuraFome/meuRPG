@@ -11,6 +11,7 @@ import {
   TableSubclassSchema,
   TableSubraceSchema,
   TableSpellSchema,
+  TableWeaponSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { readEntry } from './content-read';
 import { ensureStop } from './content-read-parts';
@@ -388,7 +389,7 @@ describe('what a player reads of a feat (MR-025)', () => {
     });
     const read = readEntry(e, nameOf);
     expect(read.rows.map((r) => `${r.label}: ${flat(r.value)}`)).toEqual([
-      'Pré-requisito: Força 13 e proficiência em Armadura média',
+      'Pede: Força 13 e proficiência em Armadura média',
       'Aumento de habilidade: +1 em uma habilidade à escolha: Força, Destreza',
     ]);
     expect(read.text).toEqual(['Você prende quem quiser.']);
@@ -531,11 +532,11 @@ describe('what a player reads of a feat (MR-025)', () => {
     expect(withSide.options?.[0].text).toBe('Você mantém a lâmina erguida.');
   });
 
-  it('says "Nenhum" for a feat that asks nothing', () => {
+  it('draws no prerequisite line for a feat that asks nothing (board 580-01)', () => {
     const e = entry(TableContentKind.FEAT, 'Livre', {
       body: { case: 'tableFeat', value: create(TableFeatSchema, { namePt: 'Livre' }) },
     });
-    expect(readEntry(e, nameOf).rows).toEqual([{ label: 'Pré-requisito', value: 'Nenhum' }]);
+    expect(readEntry(e, nameOf).rows).toEqual([]);
   });
 });
 
@@ -564,5 +565,81 @@ describe('what the master reads of a feature that summons (#578)', () => {
     expect(read.sections[0].items[0].text).toBe(
       'Um lobo do vale luta ao seu lado. Invoca: Lobo do Vale, Unheard of.',
     );
+  });
+});
+
+describe('what a player reads of a weapon (board 580-11)', () => {
+  const read = (over: Parameters<typeof create<typeof TableWeaponSchema>>[1]) =>
+    readEntry(
+      entry(TableContentKind.WEAPON, 'Boleadeira', {
+        body: { case: 'tableWeapon', value: create(TableWeaponSchema, over) },
+      }),
+      nameOf,
+    );
+
+  it('says Arremesso plain, the distance being the row of its own', () => {
+    const r = read({
+      ranged: true,
+      damage: '1d4',
+      properties: ['weapon-property:thrown'],
+      normalRangeFt: 20,
+      longRangeFt: 60,
+    });
+    const rows = Object.fromEntries(r.rows.map((x) => [x.label, flat(x.value)]));
+    expect(rows['Distância']).toBe('6 m / 18 m');
+    expect(rows['Propriedades']).toBe('Arremesso');
+  });
+
+  it('has no "Dano" row before there is a damage to say', () => {
+    expect(read({}).rows.map((x) => x.label)).not.toContain('Dano');
+  });
+});
+
+describe('what a player reads of a power attack (the board of #586)', () => {
+  const featWith = (descPt: string[], effects: object[], prerequisite: object = {}) =>
+    entry(TableContentKind.FEAT, 'Disparo Firme', {
+      body: {
+        case: 'tableFeat',
+        value: create(TableFeatSchema, { namePt: 'Disparo Firme', descPt, prerequisite, effects }),
+      },
+    });
+  const power = { type: 'power_attack', attackPenalty: 5, damageBonus: 10, weapon: 'ranged' };
+
+  it('reads "Pede: Nada" and "Ao atacar" with the true minus, then the text of the feat', () => {
+    const read = readEntry(featWith(['Antes de rolar um ataque à distância.'], [power]), nameOf);
+    expect(read.rows).toEqual([
+      { label: 'Pede', value: 'Nada' },
+      { label: 'Ao atacar', value: '−5 no ataque, +10 no dano' },
+    ]);
+    expect(read.text).toEqual(['Antes de rolar um ataque à distância.']);
+  });
+
+  it('keeps what the feat asks of the character under "Pede"', () => {
+    const read = readEntry(featWith([], [power], { minimums: { strength: 13 } }), nameOf);
+    expect(read.rows[0]).toEqual({ label: 'Pede', value: 'Força 13' });
+  });
+
+  it('adds the uses of the pool the trade spends once, as a row and not again under the text', () => {
+    const pool = {
+      type: 'resource',
+      resource: 'folego_do_atirador',
+      max: '3',
+      recharge: 'short_rest',
+    };
+    const read = readEntry(
+      featWith([], [{ ...power, resource: 'folego_do_atirador' }, pool]),
+      nameOf,
+    );
+    expect(read.rows.map((r) => `${r.label}: ${r.value}`)).toEqual([
+      'Pede: Nada',
+      'Ao atacar: −5 no ataque, +10 no dano',
+      'Usos: 3 · volta no descanso curto ou longo',
+    ]);
+    expect(read.effects).toBeUndefined();
+  });
+
+  it('draws no line for a feat that asks nothing and has no power attack', () => {
+    const read = readEntry(featWith([], [{ type: 'note', textPt: 'x' }]), nameOf);
+    expect(read.rows).toEqual([]);
   });
 });

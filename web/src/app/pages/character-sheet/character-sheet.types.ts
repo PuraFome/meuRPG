@@ -60,6 +60,8 @@ export interface AttackVm {
   readonly damageTypePt: string;
   /** The two-handed damage of a versatile weapon ("1d8+1"); empty otherwise. */
   readonly versatileDamage: string;
+  /** "Arremesso: 6 m, até 18 m" for a thrown weapon; empty otherwise. */
+  readonly throwText?: string;
   /** The condition of a bonus the damage already includes ("Inclui +2 de Estilo de Luta: Duelismo (sem outra arma na mão)"); absent or empty when there is none. */
   readonly damageNotePt?: string;
   /** > 0 only for a spell that asks for a saving throw. */

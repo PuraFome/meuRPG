@@ -95,6 +95,8 @@ const ISSUE_TITLES = new Map<string, string>([
   ['score_above_20', 'Habilidade acima de 20.'],
   ['level', 'Nível acima do máximo.'],
   ['formula', 'Efeito ignorado.'],
+  ['feat_prerequisite', 'Talento que não vale agora.'],
+  ['option_prerequisite', 'Opção que não vale agora.'],
 ]);
 
 /** The bold first phrase of a rules issue in the notice under the header:

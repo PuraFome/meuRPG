@@ -96,13 +96,15 @@ func TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal(t *t
 		CampaignId: w.campaign, IdempotencyKey: newKey(), Name: w.secrets.public("area-encounter"),
 		Participants: []*playv1.Participant{{CharacterId: seen.GetId(), Hidden: &revealed}, {CharacterId: hidden.GetId()}},
 	}))).GetEncounter()
-	var hiddenCombatant, casterCombatant string
+	var hiddenCombatant, casterCombatant, torenCombatant string
 	for _, c := range e.GetCombatants() {
 		switch c.GetCharacterId() {
 		case hidden.GetId():
 			hiddenCombatant = c.GetId()
 		case wizard.GetId():
 			casterCombatant = c.GetId()
+		case toren.GetId():
+			torenCombatant = c.GetId()
 		}
 		if c.GetKind() == playv1.CombatantKind_COMBATANT_KIND_PLAYER {
 			must(m.combat.SubmitInitiative(ctx, rq(&playv1.SubmitInitiativeRequest{
@@ -119,7 +121,7 @@ func TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal(t *t
 		}
 	}
 	place(wizard.GetId(), 3, 5)
-	place(toren.GetId(), 2, 6)
+	place(toren.GetId(), 9, 5) // inside the fireball too: a player's character, whose damage waits for the master
 	place(seen.GetId(), 10, 5)
 	place(hidden.GetId(), 11, 5)
 	e = must(m.combat.BeginCombat(ctx, rq(&playv1.BeginCombatRequest{CampaignId: w.campaign, EncounterId: e.GetId(), IdempotencyKey: newKey()}))).GetEncounter()
@@ -207,6 +209,28 @@ func TestAnAreaSpellThatHitsAHiddenCreatureNamesItToNoPlayerBeforeTheReveal(t *t
 	for _, p := range players {
 		if found := namesAny(readAll(p), leak.needles()); len(found) > 0 {
 			t.Errorf("%s reads %v after the damage was rolled", p.name, found)
+		}
+	}
+	// The master applies the damage that waited for him (the visible player's character caught by the same cast): the hidden
+	// creature is in the same cast, and what the players read after the application still names nothing of it, while the
+	// application is the control: it ended APPLIED, so the reads below follow it.
+	var waiting string
+	for _, d := range rolled.GetCastPendingDamages() {
+		if d.GetTargetId() == torenCombatant && d.GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_ROLLED {
+			waiting = d.GetId()
+		}
+	}
+	if waiting == "" {
+		t.Fatalf("no damage waits for the master on the visible character, so the application proves nothing: %s", jsonOf(rolled))
+	}
+	applied := must(m.combat.ApplyPendingDamage(ctx, rq(&playv1.ApplyPendingDamageRequest{CampaignId: w.campaign, EncounterId: e.GetId(), PendingDamageId: waiting, IdempotencyKey: newKey()})))
+	if applied.GetPendingDamage().GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED {
+		t.Fatalf("the master's application ended with status %v, want APPLIED, so the scan after it proves nothing", applied.GetPendingDamage().GetStatus())
+	}
+	for _, p := range players {
+		text := readAll(p)
+		if found := namesAny(text, leak.needles()); len(found) > 0 {
+			t.Errorf("%s reads %v after the master applied the damage", p.name, found)
 		}
 	}
 	// The positive control: the master's log of the roll does name the hidden creature.

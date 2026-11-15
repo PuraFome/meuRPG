@@ -73,6 +73,9 @@
             @if (v.note) {
               <p class="small">{{ v.note }}</p>
             }
+            @if (concentrating()) {
+              <app-favor-spend [control]="fav" [busy]="busy()" />
+            }
             @if (concentrationModeText()) {
               <p class="what" role="status">{{ concentrationModeText() }}</p>
             }

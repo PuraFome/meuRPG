@@ -216,9 +216,21 @@ export function contentErrorText(err: unknown, what: string): string {
         ? `Não foi possível ${what}. ${[...texts].join(' ')}`
         : `Não foi possível ${what}: confira os dados e tente de novo.`;
     }
+    case Code.Unavailable:
+      return unavailableText(what);
     default:
       return `Não foi possível ${what}. Confira a conexão e tente de novo.`;
   }
+}
+
+/** The server is out of the air: the write never reached it, so nothing changed ("Não deu para salvar o talento agora."). */
+function unavailableText(what: string): string {
+  return `Não deu para ${what} agora. Nada mudou. Tente de novo.`;
+}
+
+/** The failure is the server being out of the air (the notice draws its cloud icon). */
+export function isUnavailable(err: unknown): boolean {
+  return ConnectError.from(err, Code.Unavailable).code === Code.Unavailable;
 }
 
 /** The save lost to another edit: the page offers to reload. */

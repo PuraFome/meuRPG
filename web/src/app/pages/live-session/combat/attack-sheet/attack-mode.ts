@@ -6,6 +6,7 @@ import { d20Count, modeStatus, orNormal } from '../../../../core/combat/roll-mod
 import { modeChoiceOf } from './attack-sheet-view';
 import type { AttackState } from './attack-state';
 import type { ModeRequests } from './mode-requests';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
 
 /** The roll mode of the d20: what the server suggests for the target, what the player picked or the master decided. */
 export class AttackMode {
@@ -21,7 +22,9 @@ export class AttackMode {
   readonly criticalOnHit = computed(() => this.reach()?.criticalOnHit ?? false);
   readonly chosen = computed<RollMode>(() => this.requests.picked() ?? this.suggested());
   /** The mode the d20 rolls with: the master's decision on a request, else the player's choice. */
-  readonly rollMode = computed(() => this.requests.answered()?.decidedMode ?? this.chosen());
+  readonly rollMode = computed(
+    () => this.fav.mode() ?? this.requests.answered()?.decidedMode ?? this.chosen(),
+  );
   private readonly state = computed(() =>
     modeStatus(
       this.approval,
@@ -32,7 +35,9 @@ export class AttackMode {
     ),
   );
   /** The dice may be rolled: the mode is settled (or the server picks it, for an opportunity attack). */
-  readonly ready = computed(() => !this.hasMode() || this.state() === 'ready');
+  readonly ready = computed(
+    () => !this.hasMode() || this.fav.mode() !== null || this.state() === 'ready',
+  );
   readonly faceCount = computed(() => (this.hasMode() ? d20Count(this.rollMode()) : 1));
   readonly combine = computed(() =>
     this.rollMode() === RollMode.DISADVANTAGE ? 'lower' : 'higher',
@@ -41,6 +46,7 @@ export class AttackMode {
   constructor(
     private readonly s: AttackState,
     private readonly requests: ModeRequests,
+    private readonly fav: FavorSpend,
   ) {
     this.approval = s.data.master ? 'free' : 'request';
   }
@@ -52,6 +58,10 @@ export class AttackMode {
 
   /** What the roll sends about the mode: nothing when the suggestion stands, else the mode, why, and the answered request. */
   choice(): ModeChoice | undefined {
+    // The Inspiração is spent: the server gives the mode, and refuses a worse one beside it.
+    if (this.fav.spend()) {
+      return undefined;
+    }
     return modeChoiceOf({
       hasMode: this.hasMode(),
       answered: this.requests.answered(),

@@ -103,8 +103,10 @@ func (s *Service) Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]li
 }
 
 // Names returns the names of those of ids that are characters of the campaign,
-// by ID, whatever their kind or status.
-func (s *Service) Names(ctx context.Context, campaignID string, ids []string) (map[string]string, error) {
+// by ID, whatever their kind or status. A character the master gave back to the
+// reserve is named only when withReserved is true (the master's reads): no
+// player reads it (RN-10).
+func (s *Service) Names(ctx context.Context, campaignID string, ids []string, withReserved bool) (map[string]string, error) {
 	valid := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if id, ok := uid.Canonical(id); ok {
@@ -120,6 +122,9 @@ func (s *Service) Names(ctx context.Context, campaignID string, ids []string) (m
 		return nil, s.dbError(ctx, "read character names", err)
 	}
 	for _, row := range rows {
+		if row.Reserved && !withReserved {
+			continue
+		}
 		out[row.ID] = row.Name
 	}
 	return out, nil
