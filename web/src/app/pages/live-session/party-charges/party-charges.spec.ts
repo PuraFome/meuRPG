@@ -148,7 +148,46 @@ describe('PartyChargesPanel', () => {
       expect.any(String),
     );
     expect(el.querySelector('.pc__edit')).toBeNull();
+    expect(client.sheetOf).toHaveBeenCalledTimes(9);
+  });
+
+  it('reads the sheets again when "Corrigir" opens, and says "eram N" from that read', async () => {
+    const { el, settle, button } = await render();
+    expect(client.sheetOf).toHaveBeenCalledTimes(3);
+    sheets['pensantus'] = {
+      magicItems: [item('w1', 'Varinha de mísseis mágicos', 7, 2, '1d6+1')],
+      ammunition: [],
+    };
+    button('Corrigir Varinha de mísseis').click();
+    await settle();
     expect(client.sheetOf).toHaveBeenCalledTimes(6);
+    const edit = el.querySelector('.pc__edit')!;
+    expect(flat(edit)).toContain('eram 2');
+    expect(flat(edit.querySelector('app-count-stepper'))).toContain('2');
+  });
+
+  it('reads the sheets again when the ammunition "Corrigir" opens, and says "eram N" from that read', async () => {
+    const { el, settle, button } = await render();
+    sheets['tor'] = {
+      magicItems: [],
+      ammunition: [
+        create(SheetAmmunitionSchema, { key: 'equipment:arrow', namePt: 'Flechas', quantity: 4 }),
+      ],
+    };
+    button('Corrigir Flechas').click();
+    await settle();
+    expect(flat(el.querySelector('.pc__edit'))).toContain('eram 4');
+  });
+
+  it('does not open the correction when the read of the sheets fails', async () => {
+    const { el, settle, button } = await render();
+    client.sheetOf.mockRejectedValueOnce(new Error('down'));
+    button('Corrigir Varinha de mísseis').click();
+    await settle();
+    expect(el.querySelector('.pc__edit')).toBeNull();
+    expect(flat(el.querySelector('[role="alert"] p'))).toBe(
+      'Não foi possível ler as cargas do grupo.',
+    );
   });
 
   it('cancels a correction without calling the server and gives the focus back to its button', async () => {

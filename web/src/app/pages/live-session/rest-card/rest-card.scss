@@ -277,7 +277,8 @@
 }
 
 .dawn__line,
-.dawn__off {
+.dawn__off,
+.dawn__problem {
   display: flex;
   align-items: flex-start;
   gap: var(--mr-space-2);

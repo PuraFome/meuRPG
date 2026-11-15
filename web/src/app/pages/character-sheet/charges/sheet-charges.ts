@@ -62,6 +62,13 @@ const FALLBACK_DICE: TableDice = { mode: DiceMode.PLAYERS_CHOOSE, preference: Di
 /** "carga" / "cargas" with its count. */
 const cargas = (n: number) => `${n} ${n === 1 ? 'carga' : 'cargas'}`;
 
+/** An item that kept its form but lost its magic: a plain item, or only the bonus on the attack and the damage. */
+function magicLostText(head: string, lost: ItemLoss.PLAIN_ITEM | ItemLoss.PARTLY_MAGIC): string {
+  return lost === ItemLoss.PLAIN_ITEM
+    ? `${head} perdeu a magia: virou um item comum.`
+    : `${head} perdeu a magia: ficou só o bônus no ataque e no dano.`;
+}
+
 /** What the roll of the last charge came to, in words, and whether it is good news for the item. */
 function rollResult(
   name: string,
@@ -73,12 +80,8 @@ function rollResult(
     case ItemLoss.GONE:
       return { text: `${head} virou cinzas: fica na ficha como destruída.`, tone: 'bad' };
     case ItemLoss.PLAIN_ITEM:
-      return { text: `${head} perdeu a magia: virou um item comum.`, tone: 'bad' };
     case ItemLoss.PARTLY_MAGIC:
-      return {
-        text: `${head} perdeu a magia: ficou só o bônus no ataque e no dano.`,
-        tone: 'bad',
-      };
+      return { text: magicLostText(head, res.lost), tone: 'bad' };
   }
   return res.regained > 0
     ? { text: `${head} recuperou ${cargas(res.regained)}.`, tone: 'good' }
@@ -178,6 +181,12 @@ export class SheetCharges {
     item: SheetMagicItem,
   ): { text: string; tone: 'good' | 'bad' } {
     const name = entry.namePt;
+    if (item.lost === ItemLoss.PLAIN_ITEM || item.lost === ItemLoss.PARTLY_MAGIC) {
+      return {
+        text: magicLostText(`Gastou a última carga. ${articleOf(name)} ${name}`, item.lost),
+        tone: 'bad',
+      };
+    }
     if (item.lost !== ItemLoss.UNSPECIFIED) {
       return {
         text: `Gastou a última carga. ${articleOf(name)} ${name} se perdeu: fica na ficha como destruída.`,

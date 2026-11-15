@@ -74,7 +74,11 @@ describe('the lines of charges and ammunition in the log (the master and the own
       ).toBe('Pensantus gastou 1 carga do Bordão do poder: resta 1 de 7');
     });
 
-    it('says the item was lost with its last charge', () => {
+    it.each([
+      [ItemLoss.GONE, 'a Varinha de teia virou cinzas'],
+      [ItemLoss.PLAIN_ITEM, 'a Varinha de teia virou um item comum'],
+      [ItemLoss.PARTLY_MAGIC, 'a Varinha de teia perdeu a magia e ficou só com o bônus'],
+    ])('says what became of the item lost with its last charge (%s)', (lost, what) => {
       expect(
         said(
           spent({
@@ -83,9 +87,10 @@ describe('the lines of charges and ammunition in the log (the master and the own
             left: 0,
             max: 7,
             outcome: ItemUseOutcome.LOST,
+            lost,
           }),
         ),
-      ).toBe('Pensantus gastou a última carga da Varinha de teia: a Varinha de teia se perdeu');
+      ).toBe(`Pensantus gastou a última carga da Varinha de teia: ${what}`);
     });
 
     it('has an icon and writes nothing for an entry with no item_use', () => {

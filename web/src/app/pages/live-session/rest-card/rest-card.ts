@@ -86,6 +86,14 @@ export class RestCard {
 
   /** The items a dawn would touch, which the long rest's "Amanhecer" row lists. */
   protected readonly dawnItems = this.charges.waiting;
+  /** Whether the read of the sheets is done: the row says so when it is not, and never claims that no item waits. */
+  protected readonly dawnRead = this.charges.status;
+  /** The row is drawn when items wait, and also when the read failed or is not done (it cannot say none waits). */
+  protected readonly dawnRow = computed(
+    () =>
+      this.asking() === RestKind.LONG &&
+      (this.dawnItems().length > 0 || this.dawnRead() !== 'ready'),
+  );
   /** "Amanhecer": the long rest also gives the magic items their dawn. On every time the question opens. */
   protected readonly dawnOn = signal(true);
   protected readonly dawnInfo = signal(false);
@@ -148,7 +156,11 @@ export class RestCard {
     this.error.set('');
     this.done.set('');
     try {
-      const preview = await this.api.restPreview(this.campaignId(), kind);
+      // A long rest reads the sheets again first: the row and its lines come from what the items hold now.
+      const [preview] = await Promise.all([
+        this.api.restPreview(this.campaignId(), kind),
+        kind === RestKind.LONG ? this.loadCharges() : Promise.resolve(),
+      ]);
       this.preview.set(preview);
       this.counts.set({});
       this.withoutFood.set(false);
@@ -162,6 +174,13 @@ export class RestCard {
     } finally {
       this.loading.set(null);
     }
+  }
+
+  private loadCharges(): Promise<void> {
+    return this.charges.load(
+      this.campaignId(),
+      this.party().map((v) => ({ characterId: v.characterId, name: v.name })),
+    );
   }
 
   protected cancel(): void {
@@ -190,7 +209,7 @@ export class RestCard {
     const withoutFood = kind === RestKind.LONG && this.withoutFood();
     // The dawn is sent explicitly (the server's default is off): the row's answer when it is drawn, on for a long rest
     // with no row (the server gives nothing to an item that is full) and off for a short one.
-    const restoreDawn = kind === RestKind.LONG && (this.dawnItems().length === 0 || this.dawnOn());
+    const restoreDawn = kind === RestKind.LONG && (!this.dawnRow() || this.dawnOn());
     this.saving.set(true);
     this.error.set('');
     try {
@@ -204,10 +223,7 @@ export class RestCard {
       );
       this.key.renew();
       if (restoreDawn) {
-        void this.charges.load(
-          this.campaignId(),
-          this.party().map((v) => ({ characterId: v.characterId, name: v.name })),
-        );
+        void this.loadCharges();
       }
       this.restTaken.emit(vitals.map(toVitalsVm));
       this.close();

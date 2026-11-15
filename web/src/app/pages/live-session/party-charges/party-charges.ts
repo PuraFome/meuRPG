@@ -108,7 +108,17 @@ export class PartyChargesPanel {
     );
   }
 
-  protected editItem(characterId: string, item: ChargesItemRow): void {
+  /** "Corrigir" reads the sheets again first: "eram N" and the stepper start from what the item holds now. */
+  protected async editItem(characterId: string, shown: ChargesItemRow): Promise<void> {
+    await this.reload();
+    const fresh = this.store
+      .view()
+      .characters.find((c) => c.characterId === characterId)
+      ?.items.find((i) => i.entryId === shown.entryId);
+    if (this.store.status() !== 'ready' || !fresh) {
+      return;
+    }
+    const item = fresh;
     this.editing.set({
       kind: 'item',
       characterId,
@@ -122,7 +132,16 @@ export class PartyChargesPanel {
     this.opened();
   }
 
-  protected editAmmunition(characterId: string, ammo: AmmunitionRow): void {
+  protected async editAmmunition(characterId: string, shown: AmmunitionRow): Promise<void> {
+    await this.reload();
+    const fresh = this.store
+      .view()
+      .characters.find((c) => c.characterId === characterId)
+      ?.ammunition.find((a) => a.key === shown.key);
+    if (this.store.status() !== 'ready' || !fresh) {
+      return;
+    }
+    const ammo = fresh;
     this.editing.set({
       kind: 'ammo',
       characterId,

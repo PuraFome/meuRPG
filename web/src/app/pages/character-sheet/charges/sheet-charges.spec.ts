@@ -250,6 +250,29 @@ describe('SheetCharges', () => {
       expect(rollOpened).toBe(0);
     });
 
+    it.each([
+      [
+        ItemLoss.PLAIN_ITEM,
+        'Gastou a última carga. A Varinha de teia perdeu a magia: virou um item comum.',
+      ],
+      [
+        ItemLoss.PARTLY_MAGIC,
+        'Gastou a última carga. A Varinha de teia perdeu a magia: ficou só o bônus no ataque e no dano.',
+      ],
+    ])(
+      'says what is left of an item that lost its magic with its last charge (%s)',
+      async (lost, text) => {
+        client.spendCharges.mockResolvedValue(
+          create(SpendChargesResponseSchema, {
+            item: create(SheetMagicItemSchema, { chargesMax: 7, chargesLeft: 0, lost }),
+          }),
+        );
+        charges.openUse(entry({ charges: { max: 7, left: 1, state: 'ready' } }));
+        await opened.use!.spend(1, 'k1');
+        expect(charges.result()).toEqual({ text, tone: 'bad' });
+      },
+    );
+
     it('words the refusals with the item and reads the sheet again', async () => {
       client.spendCharges.mockRejectedValue(refusal(CharacterBlockedReason.CHARGES_NOT_ENOUGH));
       charges.openUse(entry());

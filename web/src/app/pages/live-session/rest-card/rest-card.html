@@ -80,7 +80,7 @@
         />
       }
 
-      @if (asking() === long && dawnItems().length > 0) {
+      @if (dawnRow()) {
         <div class="question__dawn">
           <div class="dawn__head">
             <app-check-box label="Amanhecer" [checked]="dawnOn()" (toggle)="dawnOn.set(!dawnOn())" />
@@ -109,20 +109,37 @@
               </p>
             </div>
           }
+          @if (dawnRead() === 'error') {
+            <p class="dawn__problem" role="status">
+              <mat-icon aria-hidden="true">error</mat-icon>
+              <span>Não foi possível ler os itens do amanhecer. O servidor decide quais recebem as cargas.</span>
+            </p>
+          } @else if (dawnRead() !== 'ready') {
+            <p class="dawn__problem" role="status">
+              <mat-icon aria-hidden="true">hourglass_empty</mat-icon>
+              <span>Lendo os itens do amanhecer…</span>
+            </p>
+          }
           @if (dawnOn()) {
-            <ul class="dawn__lines">
-              @for (line of dawnItems(); track $index) {
-                <li class="dawn__line">
-                  <mat-icon aria-hidden="true">wb_twilight</mat-icon>
-                  <span><b>{{ line.characterName }}</b> · {{ line.text }}</span>
-                </li>
-              }
-            </ul>
+            @if (dawnItems().length > 0) {
+              <ul class="dawn__lines">
+                @for (line of dawnItems(); track $index) {
+                  <li class="dawn__line">
+                    <mat-icon aria-hidden="true">wb_twilight</mat-icon>
+                    <span><b>{{ line.characterName }}</b> · {{ line.text }}</span>
+                  </li>
+                }
+              </ul>
+            }
             <p class="dawn__rule">O app rola cada dado do amanhecer por você, também numa mesa de dados físicos.</p>
           } @else {
             <p class="dawn__off">
               <mat-icon aria-hidden="true">block</mat-icon>
-              <span>As cargas do amanhecer ficam como estão: {{ dawnItems().length }} {{ dawnItems().length === 1 ? 'item espera' : 'itens esperam' }}.</span>
+              @if (dawnRead() === 'ready') {
+                <span>As cargas do amanhecer ficam como estão: {{ dawnItems().length }} {{ dawnItems().length === 1 ? 'item espera' : 'itens esperam' }}.</span>
+              } @else {
+                <span>As cargas do amanhecer ficam como estão.</span>
+              }
             </p>
           }
         </div>

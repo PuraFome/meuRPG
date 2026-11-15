@@ -140,3 +140,5 @@ The ammunition kinds (`AMMUNITION_KINDS`) also name the catalog weapons that fir
 The rest card asks "Amanhecer" in a long rest, on by default, and always sends `TakeRestRequest.restore_dawn` explicitly: the row's answer, true when no item waits, false for a short rest.
 `recharge-text.ts` words the recharge line ("volta 1d6 + 1") and spaces the dice with the minus sign.
 The panel reads the sheets when the party changes and after its own writes, so a charge a player spends shows after the next read.
+"Corrigir" and the long rest's question read the sheets again before they show a number, so "eram N" and the dawn's list are fresh.
+When that read fails the correction does not open, and the "Amanhecer" row stays on and says the items could not be read.

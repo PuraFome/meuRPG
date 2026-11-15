@@ -40,7 +40,7 @@ function chargeSpent({ e, base }: ItemUseArgs): LogLine | null {
     use.outcome === ItemUseOutcome.LAST_CHARGE
       ? last
       : use.outcome === ItemUseOutcome.LOST
-        ? `${last}: ${the(use.itemNamePt)} se perdeu`
+        ? `${last}: ${the(use.itemNamePt)} ${lossText(use.lost)}`
         : `gastou ${cargas(use.amount)} ${of(use.itemNamePt)}: ${use.left === 1 ? 'resta' : 'restam'} ${use.left} de ${use.max}`;
   return { ...base, icon: 'bolt', text: ` ${text}` };
 }

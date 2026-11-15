@@ -39,9 +39,11 @@ describe('RestCard (PM-07b 9)', () => {
   const restTaken = vi.fn();
   const waiting = signal<readonly DawnWaitingLine[]>([]);
   const loadCharges = vi.fn();
+  const chargesStatus = signal<'idle' | 'loading' | 'ready' | 'error'>('ready');
 
   beforeEach(() => {
     waiting.set([]);
+    chargesStatus.set('ready');
     loadCharges.mockReset();
     restPreviewFn.mockReset();
     takeRest.mockReset();
@@ -52,7 +54,7 @@ describe('RestCard (PM-07b 9)', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: ResourceClient, useValue: { restPreview: restPreviewFn, takeRest } },
-        { provide: PartyCharges, useValue: { waiting, load: loadCharges } },
+        { provide: PartyCharges, useValue: { waiting, status: chargesStatus, load: loadCharges } },
       ],
     });
   });
@@ -626,8 +628,93 @@ describe('RestCard (PM-07b 9)', () => {
       expect(takeRest.mock.calls[0][5]).toBe(true);
     });
 
+    it('reads the charges again when the long rest question opens, before the row and its lines are drawn', async () => {
+      let finish: () => void = () => undefined;
+      loadCharges.mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finish = () => {
+              waiting.set([waitingThree[2]!]);
+              resolve();
+            };
+          }),
+      );
+      restPreviewFn.mockResolvedValue(boardParty());
+      const { el, settle, button } = render([pensantusVitals()]);
+      button('Descanso longo').click();
+      await settle();
+      expect(loadCharges).toHaveBeenCalledWith('camp', [
+        { characterId: 'pensantus', name: 'Pensantus' },
+      ]);
+      expect(el.querySelector('#rest-question')).toBeNull();
+      finish();
+      await settle();
+      await settle();
+      expect(el.querySelector('#rest-question')).not.toBeNull();
+      expect(Array.from(el.querySelectorAll('.dawn__line > span'), flat)).toEqual([
+        'Tor · Anel de estrelas cadentes: 1d6, até 6 (tem 4)',
+      ]);
+    });
+
+    it('does not read the charges when a short rest opens', async () => {
+      restPreviewFn.mockResolvedValue(
+        restPreviewResponse([restPreview({ characterId: 'a', name: 'Ana' })]),
+      );
+      const { settle, button } = render();
+      button('Descanso curto').click();
+      await settle();
+      expect(loadCharges).not.toHaveBeenCalled();
+    });
+
+    it('keeps the row, on, and says the items could not be read when the read failed', async () => {
+      loadCharges.mockImplementation(() => {
+        chargesStatus.set('error');
+        return Promise.resolve();
+      });
+      const { el, settle, button } = await openLong([]);
+      expect(check(el)!.checked).toBe(true);
+      expect(flat(el.querySelector('.dawn__problem > span'))).toBe(
+        'Não foi possível ler os itens do amanhecer. O servidor decide quais recebem as cargas.',
+      );
+      expect(el.querySelector('.dawn__line')).toBeNull();
+      expect(flat(el.querySelector('.question__dawn'))).not.toContain('Nenhum item');
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][5]).toBe(true);
+    });
+
+    it('sends false from the row when the read failed and the master turned it off', async () => {
+      loadCharges.mockImplementation(() => {
+        chargesStatus.set('error');
+        return Promise.resolve();
+      });
+      const { el, settle, button } = await openLong([]);
+      check(el)!.click();
+      await settle();
+      expect(flat(el.querySelector('.dawn__off > span'))).toBe(
+        'As cargas do amanhecer ficam como estão.',
+      );
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][5]).toBe(false);
+    });
+
+    it('keeps the row, on, and says it is reading while the read is not done', async () => {
+      loadCharges.mockImplementation(() => {
+        chargesStatus.set('loading');
+        return Promise.resolve();
+      });
+      const { el, settle, button } = await openLong([]);
+      expect(check(el)!.checked).toBe(true);
+      expect(flat(el.querySelector('.dawn__problem > span'))).toBe('Lendo os itens do amanhecer…');
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][5]).toBe(true);
+    });
+
     it('reads the charges of the party again after a long rest that gave the dawn', async () => {
       const { settle, button } = await openLong();
+      loadCharges.mockClear();
       button('Descansar').click();
       await settle();
       expect(loadCharges).toHaveBeenCalledWith('camp', [
