@@ -650,20 +650,17 @@ func TestNpcCheckHoldIsFoundByNoOtherAnswer(t *testing.T) {
 				_, err := u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(held(&playv1.RerollAnswer{})))
 				return err
 			},
-			"AnswerOutsideInspiration": func() error {
-				_, err := u.resource.AnswerOutsideInspiration(t.Context(), connect.NewRequest(&playv1.AnswerOutsideInspirationRequest{CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey()}))
-				return err
-			},
+			"AnswerOutsideInspiration": func() error { _, err := n.answerOutside(t, u, hold, false, false, 0); return err },
 			"AnswerOutsideLucky": func() error {
-				_, err := u.resource.AnswerOutsideLucky(t.Context(), connect.NewRequest(&playv1.AnswerOutsideLuckyRequest{CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey()}))
+				_, err := answerOutsideLuckyKey(t, u, n.campaignID, hold, newKey(), func(*playv1.AnswerOutsideLuckyRequest) {})
 				return err
 			},
 			"AnswerBardicInspiration": func() error {
-				_, err := u.resource.AnswerBardicInspiration(t.Context(), connect.NewRequest(&playv1.AnswerBardicInspirationRequest{CampaignId: n.campaignID, EncounterId: encounter, HoldId: hold, IdempotencyKey: newKey()}))
+				_, err := n.armed.answer(t, u, &playv1.Encounter{Id: encounter}, hold, func(*playv1.AnswerBardicInspirationRequest) {})
 				return err
 			},
 			"AnswerLucky": func() error {
-				_, err := u.resource.AnswerLucky(t.Context(), connect.NewRequest(&playv1.AnswerLuckyRequest{CampaignId: n.campaignID, EncounterId: encounter, HoldId: hold, IdempotencyKey: newKey()}))
+				_, err := n.answerLucky(t, u, &playv1.Encounter{Id: encounter}, hold, func(*playv1.AnswerLuckyRequest) {})
 				return err
 			},
 		}

@@ -177,12 +177,8 @@ func (s *Service) forgetNpcCheck(ctx context.Context, m authz.Membership, holdID
 		if err != nil {
 			return fmt.Errorf("find the held check: %w", err)
 		}
-		session, err := q.GetOpenGameSession(ctx, m.CampaignID)
-		if err == nil && !hold.CreatedAt.Before(session.StartedAt) {
-			return nil // this session's: it is no stale check
-		}
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
-			return fmt.Errorf("find the open session: %w", err)
+		if stale, err := staleNpcCheck(ctx, q, hold); err != nil || !stale {
+			return err // this session's: it is no stale check
 		}
 		if mine, err := s.mayForgetNpcCheck(ctx, tx, q, m, hold); err != nil || !mine {
 			return err
@@ -192,6 +188,18 @@ func (s *Service) forgetNpcCheck(ctx context.Context, m authz.Membership, holdID
 	if err != nil {
 		s.logger.WarnContext(ctx, "play: cannot forget a held check whose session ended", "error", err)
 	}
+}
+
+// staleNpcCheck says no session is open, or the open one began after the check was held.
+func staleNpcCheck(ctx context.Context, q *playdb.Queries, hold playdb.InspirationHold) (bool, error) {
+	session, err := q.GetOpenGameSession(ctx, hold.CampaignID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find the open session: %w", err)
+	}
+	return hold.CreatedAt.Before(session.StartedAt), nil
 }
 
 // mayForgetNpcCheck says the caller is the master or a bard the check asks.
