@@ -251,7 +251,8 @@ function auditLayout(): LayoutIssue[] {
       const nearest = c.closest('.mr-panel');
       if (nearest !== card) continue;
       // A strip that scrolls sideways on purpose (the tabs of a narrow card) clips its own controls.
-      const strip = c.closest('[role="tablist"]');
+      // The same goes for the kinds list of the table's content (a nav with a list), which scrolls inside its card.
+      const strip = c.closest('[role="tablist"], .menu__list');
       if (strip && ['auto', 'scroll'].includes(getComputedStyle(strip).overflowX)) continue;
       const r = c.getBoundingClientRect();
       if (r.right > cb.right + 1 || r.left < cb.left - 1) {

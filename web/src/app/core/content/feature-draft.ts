@@ -59,6 +59,11 @@ export interface FeatureDraft {
   options: FeatureDraft[];
   /** "Invoca criaturas": the creatures the feature brings to its holder, or `null` (off). Only a class, subclass, race or background feature has it. */
   summon: SummonDraft | null;
+  /**
+   * What an option of a class or subclass feature asks of the character (#580), kept as the server wrote it: the editor draws
+   * no field for it yet, and saving the feature must not drop it. Unset for anything else.
+   */
+  prerequisite?: TableFeature['prerequisite'];
 }
 
 export function emptyFeature(): FeatureDraft {
@@ -83,6 +88,7 @@ export function featureToDraft(f: TableFeature): FeatureDraft {
     effects,
     options: f.options.map(featureToDraft),
     summon: f.summon ? summonToDraft(f.summon) : null,
+    ...(f.prerequisite ? { prerequisite: f.prerequisite } : {}),
   };
 }
 
@@ -96,6 +102,7 @@ export function draftToFeature(f: FeatureDraft, menu: EffectMenuVm): FeatureInit
     // An unnamed option is not sent, like an unnamed feature; a feature with no options sends none.
     ...optionsOf(f, menu),
     ...(f.summon ? { summon: draftToSummon(f.summon) } : {}),
+    ...(f.prerequisite ? { prerequisite: f.prerequisite } : {}),
     effects: f.effects.map((e) => {
       const effect = draftToEffect(e, menu);
       // A note's own text is the reminder the sheet shows, and it says what the trait says: left empty (folded under

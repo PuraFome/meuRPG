@@ -24,6 +24,7 @@ import {
 import { article } from '../../../../core/combat/combat-log';
 import {
   attackDetail,
+  throwNote,
   attackName,
   attackMarksOf,
   attackTagsOf,
@@ -433,7 +434,7 @@ export class ActionGroups {
 
   /** The line of why under an attack: its bonus action rule, or the beams of a cast still to fire. */
   protected attackNote(o: AttackOption): string {
-    return bonusAttackLine(o) || beamsLeftLine(o);
+    return bonusAttackLine(o) || beamsLeftLine(o) || (o.attack ? throwNote(o.attack) : '');
   }
 
   protected readonly attackTags = attackTagsOf;

@@ -216,8 +216,14 @@ function catalog(): RulesCatalogVm {
     ],
     armor: [{ key: 'equipment:leather-armor', namePt: 'Armadura de Couro' }],
     weapons: [
-      { key: 'equipment:quarterstaff', namePt: 'Bordão' },
-      { key: 'equipment:dagger', namePt: 'Adaga' },
+      {
+        key: 'equipment:quarterstaff',
+        namePt: 'Bordão',
+        fromTable: false,
+        archived: false,
+        off: false,
+      },
+      { key: 'equipment:dagger', namePt: 'Adaga', fromTable: false, archived: false, off: false },
     ],
     spells: [
       {

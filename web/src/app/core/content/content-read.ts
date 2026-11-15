@@ -1,6 +1,7 @@
 import { effectReadItem } from './spell-effect-tags';
 import type {
   TableBackground,
+  TableWeapon,
   TableClassFeature,
   TableEntry,
   TableFeat,
@@ -27,12 +28,20 @@ import { summonLine } from './summon-names';
 import { entryEffectsPart } from './content-read-rolls';
 import { spellToDraft } from './spell-draft';
 import { readHit } from './hit-effect-read';
+import {
+  priceText,
+  weaponDamage,
+  weaponProperties,
+  weaponRange,
+  weaponUse,
+  weightText,
+} from './weapon-text';
 import { previewRows } from './spell-preview';
 import { featChoiceRows, featOptionItems } from './content-read-feat';
 import { prerequisiteSupport, SIZE_WORDS } from './feat-text';
 import { featureKeyName } from './class-feature-text';
 import { readCreature } from './content-read-creature';
-import { type OfferedByName, optionPrerequisiteParts, optionSetName } from './option-text';
+import { type OfferedByName, optionPrerequisiteSupport, optionSetName } from './option-text';
 import { parentTraitsOf, replacedNames } from './subrace-traits';
 
 function raceAbilitiesRow(r: TableRace, nameOf: NameOf): ReadRow {
@@ -121,13 +130,27 @@ function readBackground(b: TableBackground, nameOf: NameOf): EntryRead {
   return { rows, sections, text: [] };
 }
 
+function readWeapon(w: TableWeapon, nameOf: NameOf): EntryRead {
+  const rows: ReadRow[] = [{ label: 'Categoria', value: weaponUse(w) }];
+  const damage = weaponDamage(w, nameOf);
+  if (damage) rows.push({ label: 'Dano', value: damage });
+  const range = weaponRange(w);
+  if (range) rows.push({ label: 'Distância', value: range });
+  if (w.properties.length > 0)
+    rows.push({ label: 'Propriedades', value: weaponProperties(w, nameOf, false).join(', ') });
+  if (w.weightOz > 0) rows.push({ label: 'Peso', value: weightText(w.weightOz) });
+  if (w.priceCp > 0) rows.push({ label: 'Preço', value: priceText(w.priceCp) });
+  return { rows, sections: [], text: w.descPt };
+}
+
 function readFeat(
   f: TableFeat,
   nameOf: NameOf,
   optionSide?: (o: TableFeature) => string,
 ): EntryRead {
   const asks = prerequisiteSupport(f.prerequisite, nameOf);
-  const rows: ReadRow[] = [{ label: 'Pré-requisito', value: asks || 'Nenhum' }];
+  // Board 580-01 draws the line only when the feat asks for something.
+  const rows: ReadRow[] = asks ? [{ label: 'Pede', value: asks }] : [];
   for (const e of f.effects) {
     if (e.type === 'ability_increase' && e.count > 0) {
       const from = e.from.map((k) => nameOf(`ability:${k}`));
@@ -149,11 +172,14 @@ function readFeat(
 }
 
 function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName): EntryRead {
-  const asks = optionPrerequisiteParts(o.prerequisite, nameOf);
+  const asks = optionPrerequisiteSupport(o.prerequisite, nameOf);
   const rows: ReadRow[] = [
     { label: 'Conjunto', value: optionSetName(o.set) },
     ...(o.offeredBy === '' ? [] : [{ label: 'Oferecida por', value: offeredByName(o.offeredBy) }]),
-    { label: 'Pré-requisito', value: asks.length > 0 ? asks.join(', ') : 'Nenhum' },
+    {
+      label: asks ? 'Pede' : 'Pré-requisito',
+      value: asks || 'Nenhum',
+    },
   ];
   return { rows, sections: [], text: o.descPt, ...entryEffectsPart(o.effects, nameOf) };
 }
@@ -209,6 +235,8 @@ export function readEntry(
       return readSubrace(body.value, nameOf, parentOf(body.value.raceKey));
     case 'tableBackground':
       return readBackground(body.value, nameOf);
+    case 'tableWeapon':
+      return readWeapon(body.value, nameOf);
     case 'tableFeat':
       return readFeat(body.value, nameOf, optionSide);
     case 'tableOption':

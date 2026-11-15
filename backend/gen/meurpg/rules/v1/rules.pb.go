@@ -7082,7 +7082,11 @@ type Attack struct {
 	AmmunitionLeft *int32 `protobuf:"varint,26,opt,name=ammunition_left,json=ammunitionLeft,proto3,oneof" json:"ammunition_left,omitempty"`
 	// The line is an improvised melee attack with a weapon that is not made for it (a bow used as a club): 1d4 plus Strength,
 	// no proficiency, and no ammunition spent.
-	Improvised    bool `protobuf:"varint,27,opt,name=improvised,proto3" json:"improvised,omitempty"`
+	Improvised bool `protobuf:"varint,27,opt,name=improvised,proto3" json:"improvised,omitempty"`
+	// True for a weapon with the Arremesso (thrown) property, melee or ranged, SRD or from the table: range_ft and
+	// long_range_ft are then its throwing range. A weapon of ammunition has the same two numbers and is not thrown.
+	// False for a spell, an unarmed strike and a creature's attack.
+	Thrown        bool `protobuf:"varint,28,opt,name=thrown,proto3" json:"thrown,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7302,6 +7306,13 @@ func (x *Attack) GetAmmunitionLeft() int32 {
 func (x *Attack) GetImprovised() bool {
 	if x != nil {
 		return x.Improvised
+	}
+	return false
+}
+
+func (x *Attack) GetThrown() bool {
+	if x != nil {
+		return x.Thrown
 	}
 	return false
 }
@@ -14893,7 +14904,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"from_level\x18\r \x01(\x05R\tfromLevel\x124\n" +
 	"\x16no_material_components\x18\x0e \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
-	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\xcd\a\n" +
+	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\xe5\a\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -14929,7 +14940,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x0fammunition_left\x18\x1a \x01(\x05H\x00R\x0eammunitionLeft\x88\x01\x01\x12\x1e\n" +
 	"\n" +
 	"improvised\x18\x1b \x01(\bR\n" +
-	"improvisedB\x12\n" +
+	"improvised\x12\x16\n" +
+	"\x06thrown\x18\x1c \x01(\bR\x06thrownB\x12\n" +
 	"\x10_ammunition_left\"\xb3\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +

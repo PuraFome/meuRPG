@@ -167,6 +167,14 @@ describe('LevelUpDraft: what the screen reads', () => {
     expect(h.names().get('')).toBeUndefined();
   });
 
+  it('names the classes a feat asks a level of, from the catalog (#580)', () => {
+    const d = new LevelUpDraft(wizardOptions(), WIZARD_KEYS, {
+      ...catalog,
+      classes: [{ key: 'class:wizard', namePt: 'Mago' }],
+    });
+    expect(d.names().get('class:wizard')).toBe('Mago');
+  });
+
   it('names a feature choice without a feature as an empty key', () => {
     const d = new LevelUpDraft(
       fighterOptions({

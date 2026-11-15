@@ -46,6 +46,7 @@ export const NEW_KINDS: Readonly<Record<string, TableContentKind>> = {
   option: TableContentKind.OPTION,
   classfeature: TableContentKind.CLASS_FEATURE,
   creature: TableContentKind.CREATURE,
+  weapon: TableContentKind.WEAPON,
 };
 
 export const NEW_TITLES: Readonly<Record<number, string>> = {
@@ -58,6 +59,7 @@ export const NEW_TITLES: Readonly<Record<number, string>> = {
   [TableContentKind.FEAT]: 'Novo talento',
   [TableContentKind.OPTION]: 'Nova opção',
   [TableContentKind.CLASS_FEATURE]: 'Nova característica de classe',
+  [TableContentKind.WEAPON]: 'Nova arma',
   [TableContentKind.CREATURE]: 'Nova criatura',
 };
 
@@ -81,6 +83,7 @@ export const EDITABLE = new Set<TableContentKind>([
   TableContentKind.OPTION,
   TableContentKind.CLASS_FEATURE,
   TableContentKind.CREATURE,
+  TableContentKind.WEAPON,
 ]);
 
 /** The entries a read-again brings, with the one being edited kept as it is typed: when another write changed its body and
@@ -184,11 +187,24 @@ export function archivedWordOf(entry: TableEntry | null): string {
 export function nameResolver(
   catalog: CatalogVm | null,
   entries: readonly TableEntry[],
+  menu: EffectMenuVm | null = null,
 ): (key: string) => string {
-  return (key) =>
-    catalog?.nameOf(key) ??
-    entries.find((e) => e.key === key)?.namePt ??
-    key.replace(/^[a-z-]+:/, '');
+  return (key) => {
+    const named = catalog?.nameOf(key);
+    return (
+      (named !== key ? named : undefined) ??
+      entries.find((e) => e.key === key)?.namePt ??
+      srdOptionName(menu, key) ??
+      (named === key ? key : undefined) ??
+      key.replace(/^[a-z-]+:/, '')
+    );
+  };
+}
+
+/** An SRD option (a Pact Boon, an invocation...) by its key, from the menu, with its set's prefix taken off. */
+function srdOptionName(menu: EffectMenuVm | null, key: string): string | undefined {
+  const found = menu?.optionSets.flatMap((s) => s.options).find((o) => o.key === key);
+  return found?.namePt.replace(/^[^:]+: /, '');
 }
 
 /** "Arquivar Guardião do Vale?" as a bottom sheet on a phone: whether the person confirmed. */

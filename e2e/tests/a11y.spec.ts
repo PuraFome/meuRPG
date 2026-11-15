@@ -70,6 +70,7 @@ import { ATT_WIDTHS, attViewport, attunementScale, cropAtt, shootAtt } from './a
 import { armorClassOf, bonusCombatSheet, bonusSheet, cropBonus, masterSetsBonuses, masterSetsShieldBonus, readDaggerTwice, shootBonus } from './bonus-support';
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
+import { createPrerequisiteFeatsRPC } from './feat-prerequisites-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { beginCrowdedCombatRPC, boxIn, callFeatBody, elementFeatBody, endSessionOf, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
@@ -6184,6 +6185,14 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
 
     await open(m, `/campaigns/${campaignId}/content?kind=spells`);
     await expectScreenPasses(m, `Conteúdo da mesa, as magias ${where}`);
+    // On a phone the button of the players' options takes the full width of the page content (580-15).
+    if (width < 768) {
+      const [button, title] = await m.evaluate(() => [
+        document.querySelector('a.head__action')!.getBoundingClientRect().width,
+        document.querySelector('h1.mr-page-title')!.getBoundingClientRect().width,
+      ]);
+      expect(button, `"Opções para os jogadores" com a largura toda ${where}`).toBeGreaterThanOrEqual(title - 1);
+    }
     if (width >= 768) {
       await open(m, `/campaigns/${campaignId}/content`);
       await expectScreenPasses(m, `Conteúdo da mesa, a lista inicial ${where}`);
@@ -6210,6 +6219,27 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await open(m, entryRoute(campaignId, background));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Cartógrafo do Vale');
       await expectScreenPasses(m, `Editor de antecedente ${where}`);
+      const weapon = await createEntryRPC(m, campaignId, 'tableWeapon', {
+        namePt: 'Boleadeira de Vale',
+        category: 'WEAPON_CATEGORY_SIMPLE',
+        damage: '1d4',
+        damageType: 'damage-type:bludgeoning',
+        properties: ['weapon-property:thrown'],
+        normalRangeFt: 20,
+        longRangeFt: 60,
+        weightOz: 32,
+        priceCp: 500,
+      });
+      await open(m, `/campaigns/${campaignId}/content?kind=weapons`);
+      await expectScreenPasses(m, `Conteúdo da mesa, as armas ${where}`);
+      // The header wraps and the kinds strip scrolls inside its card: the page never scrolls sideways (#580, 580-12).
+      expect(await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `a lista de armas sem rolagem lateral ${where}`).toBeLessThanOrEqual(0);
+      expect(await m.evaluate(() => document.querySelector('h1.mr-page-title')!.getBoundingClientRect().width), `o título da lista com largura ${where}`).toBeGreaterThan(200);
+      await open(m, entryRoute(campaignId, weapon));
+      await expect(m.getByLabel('Nome da arma', { exact: true })).toHaveValue('Boleadeira de Vale');
+      await expectScreenPasses(m, `Editor de arma ${where}`);
+      await open(m, `/campaigns/${campaignId}/content/new/weapon`);
+      await expectScreenPasses(m, `Editor de arma, nova ${where}`);
       await open(m, `/campaigns/${campaignId}/content/new/option`);
       await expectScreenPasses(m, `Editor de opção, o conjunto a escolher ${where}`);
       const option = await createEntryRPC(m, campaignId, 'tableOption', {
@@ -6360,7 +6390,8 @@ async function scanTableContent(browser: Browser, colorScheme: 'light' | 'dark',
       await expect(m.getByText('Escolha ao menos um tipo de dano.')).toBeVisible();
       await expectScreenPasses(m, `Editor de criatura, a recusa numa linha de dano ${where}`);
     } else {
-      await m.getByRole('button', { name: 'Arquivar Lâmina de Nanquim' }).click();
+      await m.getByRole('button', { name: 'Ações de Lâmina de Nanquim' }).click();
+      await m.getByRole('menuitem', { name: 'Arquivar' }).click();
       await expect(m.getByRole('heading', { name: 'Arquivar Lâmina de Nanquim?' })).toBeVisible();
       await expectScreenPasses(m, `Arquivar, a folha de baixo ${where}`);
       await m.getByRole('button', { name: 'Voltar', exact: true }).click();
@@ -12065,6 +12096,8 @@ async function scanFeatAsks(browser: Browser, colorScheme: 'light' | 'dark', wid
     const feats = await createFeatsRPC(m, campaignId);
     await open(m, entryRoute(campaignId, feats.smallAndSlippery));
     await expect(m.getByLabel('Nome do talento')).toHaveValue('Pequeno e Escorregadio');
+    // The older fields are in a block that is folded until the master opens it (board 580-01).
+    await m.getByText('Habilidades, proficiência, nível, raças, tamanho e o que não pode ter').click();
     const races = m.getByRole('list', { name: 'Escolhidas' }).first();
     await expect(races.getByRole('listitem')).toHaveCount(3);
     await expect(races).toContainText('Desligada');
@@ -12151,7 +12184,7 @@ async function scanFeatList(browser: Browser, colorScheme: 'light' | 'dark', wid
     await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/level-up`);
     await passClassStep(p);
     await pickRadio(p, 'Um talento');
-    await expect(p.getByRole('heading', { name: 'Ainda não cumpre' })).toBeVisible();
+    await expect(p.getByRole('heading', { name: 'Ainda não disponíveis' })).toBeVisible();
     await expect(p.getByText('Só para Gnomo ou Halfling.')).toBeVisible();
     await expect(p.getByText('uma condição que a mesa não mostra')).toBeVisible();
     await expectScreenPasses(p, `Subir de nível, os talentos que o personagem ainda não cumpre ${where}`);
@@ -12168,6 +12201,39 @@ test('a lista de talentos do subir de nível com o que não cumpre passa no axe 
 test('a lista de talentos do subir de nível com o que não cumpre passa no axe e nas conferências de layout no tema escuro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
   test.setTimeout(180_000);
   await scanFeatList(browser, 'dark', 390);
+});
+
+/** Pensantus goes from Mago 3 to 4 and takes a feat: the class level, the pact, the spell and the options joined into one "Exige" line (#580, board 580-04). */
+async function scanFeatAsksLine(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForLevelUp(m, p, `Acessibilidade exige ${Date.now()}`, { session: false });
+    await createPrerequisiteFeatsRPC(m, table.campaignId);
+    await open(p, `/campaigns/${table.campaignId}/characters/${table.characterId}/level-up`);
+    await passClassStep(p);
+    await pickRadio(p, 'Um talento');
+    await expect(p.getByText('Exige Bruxo 5, Pacto da Lâmina, Rajada Mística, Olhar de Brasa e Lâmina Sedenta.')).toBeVisible();
+    await expect(p.getByText('Exige a magia Identificação, que você ainda não conhece.')).toBeVisible();
+    await expect(p.getByText('Pede uma condição que a mesa não mostra.').first()).toBeVisible();
+    await expectScreenPasses(p, `Subir de nível, o talento que exige classe, pacto, magia e opções ${where}`);
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('o talento que exige classe, pacto, magia e opções no subir de nível passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanFeatAsksLine(browser, 'light', 390);
+});
+
+test('o talento que exige classe, pacto, magia e opções no subir de nível passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(180_000);
+  await scanFeatAsksLine(browser, 'dark', 1280);
 });
 
 // The feat editor's options and named choices (MR-025, RN-23): the list of options, the most it takes, a whole set offered, a named ability choice
