@@ -599,3 +599,224 @@ func TestNpcCheckOfADeletedHoldIsNotSettled(t *testing.T) {
 		t.Errorf("the retry of a check whose hold is gone = %v, want neither held nor settled", got.Msg)
 	}
 }
+
+// TestNpcCheckHoldIsFoundByNoOtherAnswer: the hold of a check is answered by the cutting_words arm alone. Every other arm of
+// AnswerHeldRoll, and the RPCs of the outside inspiration, the outside lucky, the attack roll's inspiration and lucky, read "not found",
+// for the bard whose turn it is and for the master; the check is still held and the bards still answer it.
+func TestNpcCheckHoldIsFoundByNoOtherAnswer(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	res, err := n.roll(t, 15, true)
+	if err != nil {
+		t.Fatalf("RollNpcCheck() error = %v", err)
+	}
+	hold, first := res.GetCheck().GetHoldId(), n.firstAsked(res)
+	encounter := newKey() // any UUID: the attack roll's RPCs look for a hold of an attack
+	held := func(a any) *playv1.AnswerHeldRollRequest {
+		r := &playv1.AnswerHeldRollRequest{CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey()}
+		switch a := a.(type) {
+		case *playv1.LuckyAnswer:
+			r.Answer = &playv1.AnswerHeldRollRequest_Lucky{Lucky: a}
+		case *playv1.DieAnswer:
+			r.Answer = &playv1.AnswerHeldRollRequest_Die{Die: a}
+		case *playv1.IndomitableAnswer:
+			r.Answer = &playv1.AnswerHeldRollRequest_Indomitable{Indomitable: a}
+		case *playv1.StrokeOfLuckAnswer:
+			r.Answer = &playv1.AnswerHeldRollRequest_StrokeOfLuck{StrokeOfLuck: a}
+		case *playv1.RerollAnswer:
+			r.Answer = &playv1.AnswerHeldRollRequest_Reroll{Reroll: a}
+		}
+		return r
+	}
+	for _, u := range []*user{first, n.master} {
+		calls := map[string]func() error{
+			"AnswerHeldRoll lucky": func() error {
+				_, err := u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(held(&playv1.LuckyAnswer{})))
+				return err
+			},
+			"AnswerHeldRoll die": func() error {
+				_, err := u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(held(&playv1.DieAnswer{})))
+				return err
+			},
+			"AnswerHeldRoll indomitable": func() error {
+				_, err := u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(held(&playv1.IndomitableAnswer{})))
+				return err
+			},
+			"AnswerHeldRoll stroke": func() error {
+				_, err := u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(held(&playv1.StrokeOfLuckAnswer{})))
+				return err
+			},
+			"AnswerHeldRoll reroll": func() error {
+				_, err := u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(held(&playv1.RerollAnswer{})))
+				return err
+			},
+			"AnswerOutsideInspiration": func() error {
+				_, err := u.resource.AnswerOutsideInspiration(t.Context(), connect.NewRequest(&playv1.AnswerOutsideInspirationRequest{CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey()}))
+				return err
+			},
+			"AnswerOutsideLucky": func() error {
+				_, err := u.resource.AnswerOutsideLucky(t.Context(), connect.NewRequest(&playv1.AnswerOutsideLuckyRequest{CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey()}))
+				return err
+			},
+			"AnswerBardicInspiration": func() error {
+				_, err := u.resource.AnswerBardicInspiration(t.Context(), connect.NewRequest(&playv1.AnswerBardicInspirationRequest{CampaignId: n.campaignID, EncounterId: encounter, HoldId: hold, IdempotencyKey: newKey()}))
+				return err
+			},
+			"AnswerLucky": func() error {
+				_, err := u.resource.AnswerLucky(t.Context(), connect.NewRequest(&playv1.AnswerLuckyRequest{CampaignId: n.campaignID, EncounterId: encounter, HoldId: hold, IdempotencyKey: newKey()}))
+				return err
+			},
+		}
+		for name, call := range calls {
+			want := connect.CodeNotFound
+			if u == n.master && strings.HasPrefix(name, "AnswerOutside") {
+				want = connect.CodePermissionDenied // the outside answers are the player's alone: the master is refused before any hold is read
+			}
+			wantCode(t, name, call(), want)
+		}
+	}
+	if row, ok := n.hold(t, hold); !ok || row.answered || row.kind != "npc_check" {
+		t.Fatalf("the hold = %+v, %v after the refused answers, want it still held", row, ok)
+	}
+	if _, err := n.answer(t, first, hold, false, 0); err != nil {
+		t.Fatalf("the bard's own answer error = %v", err)
+	}
+}
+
+// TestNpcCheckSettledAnswerReplays: the retry of the answer that settled the check (the last bard's) reads what the first one read and
+// writes nothing: one resolved event, one use spent.
+func TestNpcCheckSettledAnswerReplays(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	res, err := n.roll(t, 15, true)
+	if err != nil {
+		t.Fatalf("RollNpcCheck() error = %v", err)
+	}
+	hold, first := res.GetCheck().GetHoldId(), n.firstAsked(res)
+	last := n.ana
+	if first == n.ana {
+		last = n.bia
+	}
+	if _, err := n.answer(t, first, hold, false, 0); err != nil {
+		t.Fatalf("the first answer error = %v", err)
+	}
+	key, before := newKey(), n.uses(t, n.charOf(last))
+	settled, err := n.answerAs(last, hold, key, typedCut(4))
+	if err != nil || !settled.GetCuttingWords().GetCut() {
+		t.Fatalf("the settling answer = %v, %v; want a cut", settled, err)
+	}
+	again, err := n.answerAs(last, hold, key, typedCut(4))
+	if err != nil || !proto.Equal(settled, again) {
+		t.Errorf("the retry = %v, %v; want %v", again, err, settled)
+	}
+	if got := n.resolvedEvents(t); len(got) != 1 || got[0].total != 11 || got[0].cut != 4 {
+		t.Errorf("the resolved events = %+v, want the one, 11 less 4", got)
+	}
+	if left := n.uses(t, n.charOf(last)); left != before-1 {
+		t.Errorf("uses left = %d, want %d: one spent, the retry spent nothing", left, before-1)
+	}
+}
+
+// TestNpcCheckRollKeyIsForOneRollOnly: the key of a roll stands for that roll: sent again with another face, another check or another
+// creature it is a reused key, and no second check is held.
+func TestNpcCheckRollKeyIsForOneRollOnly(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	key := newKey()
+	roll := func(face int32, check string) error {
+		_, err := n.master.play.RollNpcCheck(t.Context(), connect.NewRequest(&playv1.RollNpcCheckRequest{
+			CampaignId: n.campaignID, Npc: &playv1.RollNpcCheckRequest_NpcCharacterId{NpcCharacterId: n.npcID}, CheckKey: check,
+			Roll: &playv1.RollNpcCheckRequest_D20Face{D20Face: face}, BardSees: true, IdempotencyKey: key,
+		}))
+		return err
+	}
+	if err := roll(15, deception); err != nil {
+		t.Fatalf("the roll error = %v", err)
+	}
+	for name, err := range map[string]error{"another face": roll(9, deception), "another check": roll(15, "skill:insight")} {
+		if connect.CodeOf(err) != connect.CodeInvalidArgument || !strings.Contains(err.Error(), "idempotency_key") {
+			t.Errorf("the key of the roll sent with %s = %v, want the reused key's refusal", name, err)
+		}
+	}
+	if err := roll(15, deception); err != nil {
+		t.Errorf("the same roll again error = %v", err)
+	}
+	var holds int
+	if err := n.h.pool.QueryRow(t.Context(), `SELECT count(*) FROM inspiration_holds WHERE kind = 'npc_check'`).Scan(&holds); err != nil || holds != 1 {
+		t.Errorf("holds = %d, %v; want the one", holds, err)
+	}
+}
+
+// TestNpcCheckQuestionNamesTheCreatureWhereTheBardSeesIt: the bard's question says who the creature is only when the bard's player sees
+// it: its token in the bard's sight on the map, or, with no map, its place on the stage of a scene the player is in. The master's box
+// alone asks the bard, and calls the creature "uma criatura". A token out of the 60 feet asks nobody, whatever the box says.
+func TestNpcCheckQuestionNamesTheCreatureWhereTheBardSeesIt(t *testing.T) {
+	t.Parallel()
+	label := func(n *npcTable, res *playv1.RollNpcCheckResponse) string {
+		t.Helper()
+		offers := n.listHeldRolls(t, n.firstAsked(res))
+		if len(offers) != 1 {
+			t.Fatalf("the bard asked reads %d offers, want 1", len(offers))
+		}
+		return offers[0].GetRollerLabel()
+	}
+	onMap := func(n *npcTable, col int) {
+		t.Helper()
+		mapID := n.h.newMap(n.campaignID, gridColumns)
+		if _, err := n.master.play.SetCurrentMap(t.Context(), connect.NewRequest(&playv1.SetCurrentMapRequest{CampaignId: n.campaignID, MapId: mapID})); err != nil {
+			t.Fatalf("SetCurrentMap() error = %v", err)
+		}
+		n.h.placeToken(mapID, n.bri.GetId(), 250, 250)
+		n.h.placeToken(mapID, n.lia.GetId(), 250, 750)
+		n.h.placeToken(mapID, n.npcID, col*500+250, 250)
+	}
+	stage := func(n *npcTable) {
+		t.Helper()
+		point, _ := n.h.newScene(n.h.newMap(n.campaignID, gridColumns), "A clareira", true, 1)
+		n.openScene(t, point)
+		if _, err := n.master.play.PutOnStage(t.Context(), connect.NewRequest(&playv1.PutOnStageRequest{CampaignId: n.campaignID, CharacterId: n.npcID})); err != nil {
+			t.Fatalf("PutOnStage() error = %v", err)
+		}
+	}
+	for name, tc := range map[string]struct {
+		setup func(*npcTable)
+		box   bool
+		want  string // the label, "" when nobody is asked
+	}{
+		"on the map within sight, the box off": {func(n *npcTable) { onMap(n, 6) }, false, "Barão"},
+		"on the map out of the 60 feet":        {func(n *npcTable) { onMap(n, 15) }, true, ""},
+		"on the stage, the box on":             {stage, true, "Barão"},
+		"on the stage, the box off":            {stage, false, ""},
+		"not on the stage, the box on":         {func(*npcTable) {}, true, unnamedCreature},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+			tc.setup(n)
+			res, err := n.roll(t, 15, tc.box)
+			if err != nil {
+				t.Fatalf("RollNpcCheck() error = %v", err)
+			}
+			if tc.want == "" {
+				if res.GetHeld() {
+					t.Fatalf("the check was held, want nobody asked: %v", res)
+				}
+				return
+			}
+			if !res.GetHeld() {
+				t.Fatalf("the check was not held, want the bards asked: %v", res)
+			}
+			if got := label(n, res); got != tc.want {
+				t.Errorf("the bard's question calls the creature %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+const unnamedCreature = "uma criatura"
+
+// resolvedCount is how many checks of the table settled.
+func (n *npcTable) resolvedCount(t *testing.T) int {
+	t.Helper()
+	return len(n.resolvedEvents(t))
+}

@@ -203,7 +203,9 @@ func (s *Service) mayForgetNpcCheck(ctx context.Context, tx pgx.Tx, q *playdb.Qu
 	if err != nil {
 		return false, fmt.Errorf("list the asks of the check: %w", err)
 	}
-	return slices.ContainsFunc(asks, func(k playdb.NpcCheckAsk) bool { return s.bardUser(ctx, tx, m.CampaignID, k.BardCharacterID) == m.UserID }), nil
+	return slices.ContainsFunc(asks, func(k playdb.NpcCheckAsk) bool {
+		return s.bardUser(ctx, tx, m.CampaignID, k.BardCharacterID) == m.UserID
+	}), nil
 }
 
 // answerNpcCheck is the cutting_words arm of AnswerHeldRoll.

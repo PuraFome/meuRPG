@@ -37,6 +37,34 @@ func TestAsks(t *testing.T) {
 	}
 }
 
+// TestMayCut: the use left is not asked at the answer (the ask already took it into account); the setting and the hit points are.
+func TestMayCut(t *testing.T) {
+	t.Parallel()
+	base := cutting.Bard{Feature: true, Ask: "all", HitPoints: 7}
+	tests := []struct {
+		name string
+		edit func(*cutting.Bard)
+		want bool
+	}{
+		{"a Lore bard that asks about everything", func(*cutting.Bard) {}, true},
+		{"no use left is for Asks, not for MayCut", func(b *cutting.Bard) { b.UsesLeft = 0 }, true},
+		{"the setting changed to attacks only", func(b *cutting.Bard) { b.Ask = "attacks" }, false},
+		{"the setting changed to never", func(b *cutting.Bard) { b.Ask = "never" }, false},
+		{"fell to 0 hit points", func(b *cutting.Bard) { b.HitPoints = 0 }, false},
+		{"no Cutting Words", func(b *cutting.Bard) { b.Feature = false }, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			b := base
+			tt.edit(&b)
+			if got := b.MayCut(); got != tt.want {
+				t.Errorf("MayCut() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestDie(t *testing.T) {
 	t.Parallel()
 	for level, want := range map[int]int{1: 6, 4: 6, 5: 8, 9: 8, 10: 10, 14: 10, 15: 12, 20: 12} {

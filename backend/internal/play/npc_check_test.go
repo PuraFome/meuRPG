@@ -102,9 +102,8 @@ func TestNpcCheckAsksTheBardsInOrderAndSettlesTheTotal(t *testing.T) {
 	if got := n.listHeldRolls(t, first); len(got) != 1 || got[0].GetD20() != nil {
 		t.Fatalf("the first bard reads %v, want one question with no d20", got)
 	}
-	if _, err := n.answer(t, second, hold, true, 3); err == nil {
-		t.Fatal("the bard out of turn cut the check, want an error")
-	}
+	_, err = n.answer(t, second, hold, true, 3)
+	wantCode(t, "the bard out of turn cuts the check", err, connect.CodeNotFound)
 	if a, err := n.answer(t, first, hold, true, 4); err != nil || !a.GetCut() {
 		t.Fatalf("first answer = %v, %v, want a cut", a, err)
 	}
@@ -193,6 +192,9 @@ func TestNpcCheckAnswerRetryIsIdempotent(t *testing.T) {
 	req.IdempotencyKey = newKey()
 	_, err = u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(req))
 	wantCode(t, "answer again with another key", err, connect.CodeFailedPrecondition)
+	if got := n.resolvedCount(t); got != 0 {
+		t.Errorf("%d resolved events after a pass of the first bard, want 0: the second still waits", got)
+	}
 }
 
 // TestNpcCheckWithNobodyToAskSettlesAtOnce: the bards do not see the creature, so nobody is asked.
@@ -257,9 +259,17 @@ func TestNpcCheckSkipGoesOnWithoutTheBards(t *testing.T) {
 	if _, _, count := n.resolved(t); count != 1 {
 		t.Fatalf("%d resolved events, want 1", count)
 	}
+	key = newKey() // another skip of the settled check reads it as it settled and writes nothing
+	if out, err := skip(n.master); err != nil || !out.GetCheck().GetSettled() || out.GetCheck().GetTotal() != 15 {
+		t.Fatalf("a second skip = %v, %v; want the settled 15", out, err)
+	}
+	if _, _, count := n.resolved(t); count != 1 {
+		t.Fatalf("%d resolved events after a second skip, want 1", count)
+	}
 	_, err = n.answer(t, n.bia, hold, true, 4)
-	if err == nil {
-		t.Fatal("a bard answered after the skip, want an error")
+	wantCode(t, "a bard answers after the skip", err, connect.CodeFailedPrecondition)
+	if left := n.uses(t, n.bri); left != 3 {
+		t.Errorf("Brisa has %d uses after the skip, want 3: nothing was spent", left)
 	}
 }
 
@@ -296,7 +306,7 @@ func TestNpcCheckRefusedWhileACombatRuns(t *testing.T) {
 	a.start(t, plan{npcs: []*playv1.Participant{{CharacterId: a.goblin.GetId()}}, npcRolls: []int{3}, players: map[string]int32{"Toren": 10, "Brisa": 10}})
 	n := &npcTable{armed: a, npcID: a.goblin.GetId()}
 	_, err := n.roll(t, 12, true)
-	wantCode(t, "roll in a combat", err, connect.CodeFailedPrecondition)
+	wantResourceBlocked(t, err, playv1.ResourceBlockedReason_RESOURCE_BLOCKED_REASON_COMBAT_OPEN)
 }
 
 // firstAsked is the user and the check of the bard asked first.
@@ -324,11 +334,10 @@ func TestNpcCheckPhysicalDiceTypesTheBardsFace(t *testing.T) {
 		}))
 		return err
 	}
-	if err := cut(&playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_RollInApp{RollInApp: true}}); err == nil {
-		t.Error("the app rolled a physical bard's die, want a refusal")
-	}
-	if err := cut(&playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_TypedFace{TypedFace: 9}}); err == nil {
-		t.Error("a face of 9 on a d6 was taken, want a refusal")
+	wantEncounterBlocked(t, cut(&playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_RollInApp{RollInApp: true}}), blockedWrongDice)
+	wantCode(t, "a face of 9 on a d6", cut(&playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_TypedFace{TypedFace: 9}}), connect.CodeInvalidArgument)
+	if row, ok := n.hold(t, hold); !ok || row.answered {
+		t.Errorf("the hold = %+v, %v after the refused faces, want it still held", row, ok)
 	}
 	if err := cut(&playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_TypedFace{TypedFace: 5}}); err != nil {
 		t.Fatalf("a typed face of 5 error = %v", err)
