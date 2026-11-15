@@ -81,6 +81,13 @@ export function isReadyOption(o: ActionOption): boolean {
   return o.viaReadyAction;
 }
 
+/** The standard actions that stay buttons: everything but "Preparar", which has its own row. */
+export function withoutReady(list: readonly ActionOption[]): ActionOption[] {
+  return list.filter((a) => !isReadyOption(a));
+}
+
+export { holdsReadied } from './ready-card';
+
 const KINDS: readonly Omit<ReadyKindChoice, 'blocked'>[] = [
   { key: 'attack', label: 'Ataque', icon: 'swords' },
   { key: 'spell', label: 'Magia', icon: 'auto_fix_high' },

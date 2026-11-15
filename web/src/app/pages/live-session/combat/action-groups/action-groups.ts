@@ -71,8 +71,7 @@ import { AttackLegend } from './attack-legend';
 import { Fold } from '../../../../shared/fold/fold';
 import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
-import { isReadyOption } from '../../../../core/combat/ready';
-import { holdsReadied } from '../../../../core/combat/ready-card';
+import { holdsReadied, isReadyOption, withoutReady } from '../../../../core/combat/ready';
 import { ReadiedCard } from '../readied-card/readied-card';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
@@ -395,9 +394,7 @@ export class ActionGroups {
   );
   /** "Preparar" (`via_ready_action`) is a row of its own, with its sheet; the others stay the buttons below it. */
   protected readonly readyOption = computed(() => this.standard().find((a) => isReadyOption(a)));
-  protected readonly standardButtons = computed(() =>
-    this.standard().filter((a) => !isReadyOption(a)),
-  );
+  protected readonly standardButtons = computed(() => withoutReady(this.standard()));
   protected readonly standardWhy = computed(() => {
     const first = this.standardButtons().find((a) => !a.enabled);
     return first ? reasonText(first.reason) : '';
