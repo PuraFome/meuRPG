@@ -158,7 +158,10 @@ describe('ContentEntry', () => {
       .click();
 
   it('does not say "Em uso por" in the header of a weapon: the card in the editor says it (board 580-10)', async () => {
-    const axe = entry(TableContentKind.WEAPON, 'Machado', { charactersUsing: 1, key: 'weapon:m@mesa' });
+    const axe = entry(TableContentKind.WEAPON, 'Machado', {
+      charactersUsing: 1,
+      key: 'weapon:m@mesa',
+    });
     const { el } = await setup(Role.MASTER, 'weapon:m@mesa', [axe]);
     expect(text(el.querySelector('.tags')!)).not.toContain('Em uso por');
   });
