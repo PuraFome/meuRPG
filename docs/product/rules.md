@@ -1166,6 +1166,7 @@ A player reads only their own windows, and the numbers of the trigger (an attack
   Hide and Help cannot be held: they have their own calls, which a reaction does not run.
   Dash and Disengage cannot be held either: they last only for the creature's own turn.
   A move cannot be held in a combat without a map.
+  A readied move is up to the combatant's speed, not the movement its turn had left (SRD 5.1, Ready: "move up to your speed").
   A Ready cannot fire during the readier's own turn.
   In a shared turn, that turn lasts until the readier ends its own part.
   The SRD is silent here: its tied creatures act one after the other, and it has no shared turns.

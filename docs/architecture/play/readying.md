@@ -85,6 +85,7 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   Its budget is its own (`readiedSpeedsOf`): each surface's speed as at the start of a turn, held to `move_ft`.
   The movement the readier spent on its own turn does not count, and neither does its Dash.
   `move_ft` is the whole speed at Ready, not what the turn had left.
+  A readied move is up to the combatant's speed, not the movement its turn had left (SRD 5.1, Ready: "move up to your speed").
   A speed that fell since Ready (a condition, an effect) shrinks the budget; one that rose does not widen it.
   So a swimmer that readied in water may swim its swim speed, and walk only its walking speed.
   It pays its way like a move on turn, difficult terrain included, and spends no movement of the turn.
@@ -106,7 +107,7 @@ The fire event (`readied_fired` with `opened`) writes no log line.
   Another player's move of the readier is `permission_denied`.
   A window the player lets pass, or the master passes, ends the move: the row is ignored, the reaction stays and no `readied_lost` line is written.
   A move after that is `NOT_YOUR_TURN`.
-  The reactor's mark of being on the map (`MarkReactionRolling`, `clear` takes it off) changes nothing of the window.
+  The reactor's mark of being on the map (`MarkReactionRolling`) changes nothing of the window.
   `AnswerReaction` "Usar" on a move window is `invalid_argument`: it carries no square.
 - **other**: the `TakeAction` path, charged to the reaction instead of the action.
 - **spell**: the `CastSpell` path as a reaction: see [Readied spells](#readied-spells).
@@ -202,8 +203,10 @@ The cast waits for the windows any cast opens (Counterspell), with the READIED w
 A spell attack's d20 held for a die waits the same way, and the master's window reads `answer_now` false.
 A countered release is the use: the row is `fired`, the reaction spent, the concentration ended and the slot lost.
 A refused release spends nothing and the window stays open.
-The readier's player marks the window with `MarkReactionRolling` while it chooses on the map, and takes the mark off with `clear` when it comes back without using the reaction.
-Both are idempotent and the reactor's player's alone, and the window stays open and answerable.
+The readier's player marks the window with `MarkReactionRolling` while it chooses on the map.
+The mark is one-way: nothing takes it off, and going back to the window neither restarts the wait nor brings the 30 s clock back.
+The mark is read by the master and the reactor's player only: another player and the TV read the same wait line as before it.
+It is idempotent and the reactor's player's alone, and the window stays open and answerable.
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.

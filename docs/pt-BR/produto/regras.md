@@ -1166,6 +1166,7 @@ Um jogador lê só as próprias janelas, e os números do gatilho (um total de a
   Esconder-se e Ajudar não podem ser guardados: têm chamadas próprias, que uma reação não executa.
   Correr e Desengajar também não: valem só para o turno da própria criatura.
   Um movimento não pode ser guardado num combate sem mapa.
+  Um movimento preparado vai até a velocidade da criatura, não até o deslocamento que o turno dela ainda tinha (SRD 5.1, Ready: "move up to your speed").
   Uma ação preparada não dispara durante o turno de quem a preparou.
   Num turno compartilhado, esse turno dura até quem preparou encerrar a própria parte.
   O SRD é omisso aqui: as criaturas empatadas agem uma depois da outra, e ele não tem turnos compartilhados.
