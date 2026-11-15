@@ -73,6 +73,7 @@ import { armorClassOf, bonusCombatSheet, bonusSheet, cropBonus, masterSetsBonuse
 import { combatWithTwoDown, reviveRPC, tableWithDead } from './revivify-support';
 import { brisa, brisaAidSheet, brisaSheet, dalila, dalilaSheet, ragna, ragnaSheet } from './combat-support';
 import { createPrerequisiteFeatsRPC } from './feat-prerequisites-support';
+import { lostPrerequisiteTable } from './lost-prerequisite-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { beginCrowdedCombatRPC, boxIn, callFeatBody, chamadosFeatBody, elementFeatBody, endSessionOf, haloFeatBody, haloSquares, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
@@ -15330,3 +15331,46 @@ for (const [colorScheme, theme] of [
     );
   }
 }
+
+/**
+ * The sheet that keeps a feat, then one that keeps an option, whose prerequisite is a class the master switched off (#580, board
+ * 580-05, RN-23): the owner reads "uma condição que a mesa não mostra" and the row says "Não vale agora"; the master reads the
+ * class by its name.
+ */
+async function scanLostPrerequisite(browser: Browser, colorScheme: 'light' | 'dark', width: number, reader: 'owner' | 'master'): Promise<void> {
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: sizeOf(width) });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: sizeOf(width) });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${reader === 'owner' ? 'dono' : 'mestre'}, ${colorScheme}, ${width}px)`;
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    for (const kind of ['feat', 'option'] as const) {
+      const table = await lostPrerequisiteTable(m, p, `Acessibilidade pré-requisito perdido ${Date.now()}`, kind, true);
+      const page = reader === 'owner' ? p : m;
+      await open(page, `/campaigns/${table.campaignId}/characters/${table.characterId}`);
+      const asked = reader === 'owner' ? 'uma condição que a mesa não mostra' : 'Ordem Esquecida 3, e Toren não tem nível de Ordem Esquecida';
+      await expect(page.getByText(`${table.entryName} pede ${asked}:`)).toBeVisible();
+      await expect(page.getByText('Pré-requisito perdido.').first()).toBeVisible();
+      await expect(page.getByText('Não vale agora')).toBeVisible();
+      await expectScreenPasses(page, `Ficha com ${kind === 'feat' ? 'o talento' : 'a opção'} de pré-requisito perdido ${where}`);
+    }
+  } finally {
+    await Promise.all([master.close(), player.close()]);
+  }
+}
+
+test('a ficha com o talento e a opção de pré-requisito perdido, que o dono lê sem o nome escondido, passa no axe e nas conferências de layout no tema claro, no celular', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanLostPrerequisite(browser, 'light', 390, 'owner');
+});
+
+test('a ficha com o talento e a opção de pré-requisito perdido, que o dono lê sem o nome escondido, passa no axe e nas conferências de layout no tema escuro, no desktop', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanLostPrerequisite(browser, 'dark', 1280, 'owner');
+});
+
+test('a ficha com o talento e a opção de pré-requisito perdido, que o mestre lê com o nome, passa no axe e nas conferências de layout no tema escuro, no tablet', { tag: ['@a11y', '@MR-025', '@MR-040'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  await scanLostPrerequisite(browser, 'dark', 768, 'master');
+});
