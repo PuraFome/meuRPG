@@ -95,17 +95,26 @@ func (s *Service) ListNpcCheckPicker(ctx context.Context, req *connect.Request[p
 			return nil, s.dbError(ctx, "list the creatures", err)
 		}
 	}
-	if key := req.Msg.GetMonsterKey(); key != "" {
-		cand, ok, err := s.monsterCandidate(ctx, m.CampaignID, key)
-		if err != nil {
-			return nil, s.dbError(ctx, "read the creature", err)
-		}
-		if !ok {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("creature not found"))
-		}
-		out.Candidates = append(out.Candidates, cand)
+	if err := s.pickMonster(ctx, m.CampaignID, req.Msg.GetMonsterKey(), out); err != nil {
+		return nil, err
 	}
 	return connect.NewResponse(out), nil
+}
+
+// pickMonster adds the SRD creature the master asked for, when he asked for one.
+func (s *Service) pickMonster(ctx context.Context, campaignID, key string, out *playv1.ListNpcCheckPickerResponse) error {
+	if key == "" {
+		return nil
+	}
+	cand, ok, err := s.monsterCandidate(ctx, campaignID, key)
+	if err != nil {
+		return s.dbError(ctx, "read the creature", err)
+	}
+	if !ok {
+		return connect.NewError(connect.CodeNotFound, errors.New("creature not found"))
+	}
+	out.Candidates = append(out.Candidates, cand)
+	return nil
 }
 
 // pickStageAndTokens offers the NPCs on the stage, the hidden ones marked, and those with a token on the session's current map.
@@ -128,7 +137,12 @@ func (s *Service) pickStageAndTokens(ctx context.Context, campaignID string, ses
 	if session.CurrentMapID == nil {
 		return nil
 	}
-	tokens, err := s.maps.MapTokens(ctx, nil, *session.CurrentMapID)
+	return s.pickTokens(ctx, campaignID, *session.CurrentMapID, add)
+}
+
+// pickTokens offers the NPCs with a token on the map.
+func (s *Service) pickTokens(ctx context.Context, campaignID, mapID string, add func(link.Character, playv1.NpcCheckSource, bool) error) error {
+	tokens, err := s.maps.MapTokens(ctx, nil, mapID)
 	if err != nil {
 		return fmt.Errorf("read the tokens: %w", err)
 	}

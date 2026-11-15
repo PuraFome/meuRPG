@@ -64,6 +64,7 @@ func (n *npcTable) roll(t *testing.T, face int32, sees bool) (*playv1.RollNpcChe
 }
 
 func (n *npcTable) answer(t *testing.T, u *user, holdID string, cut bool, face int32) (*playv1.CuttingWordsAnswered, error) {
+	t.Helper()
 	a := &playv1.CuttingWordsAnswer{Cut: cut}
 	if cut {
 		a.Roll = &playv1.CuttingWordsAnswer_TypedFace{TypedFace: face}
@@ -181,8 +182,8 @@ func TestNpcCheckAnswerRetryIsIdempotent(t *testing.T) {
 	if res.GetCheck().GetAsks()[0].GetCharacterName() != "Brisa" {
 		u = n.ana
 	}
-	req := &playv1.AnswerHeldRollRequest{CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey(), Answer: &playv1.AnswerHeldRollRequest_CuttingWords{
-		CuttingWords: &playv1.CuttingWordsAnswer{Cut: false}}}
+	pass := &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: &playv1.CuttingWordsAnswer{Cut: false}}
+	req := &playv1.AnswerHeldRollRequest{CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey(), Answer: pass}
 	for i := range 2 {
 		if _, err := u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(req)); err != nil {
 			t.Fatalf("answer #%d error = %v", i, err)

@@ -415,19 +415,28 @@ func (s *Service) npcCheckBards(ctx context.Context, tx pgx.Tx, q *playdb.Querie
 		if !c.Player || c.Reserved || c.PlayerUserID == "" {
 			continue
 		}
-		b, ok, err := s.bardOf(ctx, tx, campaignID, c)
-		if err != nil || !ok {
-			if err != nil {
-				return nil, err
-			}
-			continue
+		b, ok, err := s.askedBardOf(ctx, tx, campaignID, c, place, boxSees, sight)
+		if err != nil {
+			return nil, err
 		}
-		sees := place.sightOf(c, boxSees, sight)
-		if sees.Sees() {
-			out = append(out, askedBard{char: c, sides: cutting.Die(b.level), named: sees.Named()})
+		if ok {
+			out = append(out, b)
 		}
 	}
 	return out, nil
+}
+
+// askedBardOf is the bard asked about the creature, when the character is a bard that may cut it and sees it.
+func (s *Service) askedBardOf(ctx context.Context, tx pgx.Tx, campaignID string, c link.Character, place npcPlace, boxSees bool, sight maplink.CombatSight) (askedBard, bool, error) {
+	b, ok, err := s.bardOf(ctx, tx, campaignID, c)
+	if err != nil || !ok {
+		return askedBard{}, false, err
+	}
+	sees := place.sightOf(c, boxSees, sight)
+	if !sees.Sees() {
+		return askedBard{}, false, nil
+	}
+	return askedBard{char: c, sides: cutting.Die(b.level), named: sees.Named()}, true, nil
 }
 
 // bardWith is a bard of the party and its level.
@@ -467,24 +476,11 @@ type mapToken struct {
 
 // npcPlacement reads the tokens of the session's current map (with a grid) and the stage the bards' players see.
 func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries, session playdb.GameSession, npcID string) (npcPlace, error) {
-	p := npcPlace{tokens: map[string]mapToken{}, npc: npcID}
-	if session.CurrentMapID != nil {
-		g, err := s.maps.MapGrid(ctx, tx, session.CampaignID, *session.CurrentMapID)
-		if err != nil && connect.CodeOf(err) != connect.CodeNotFound {
-			return p, err
-		}
-		if err == nil && g.OK() {
-			tokens, err := s.maps.MapTokens(ctx, tx, *session.CurrentMapID)
-			if err != nil {
-				return p, fmt.Errorf("read the tokens: %w", err)
-			}
-			for _, t := range tokens {
-				if t.CharacterID != "" {
-					p.tokens[t.CharacterID] = mapToken{sq: grid.Grid{Columns: int(g.Columns), Rows: int(g.Rows)}.SquareOf(int(t.XBP), int(t.YBP)), hidden: t.Hidden}
-				}
-			}
-		}
+	tokens, err := s.mapTokensOf(ctx, tx, session)
+	if err != nil {
+		return npcPlace{}, err
 	}
+	p := npcPlace{tokens: tokens, npc: npcID}
 	rows, err := q.ListShownStage(ctx, session.ID)
 	if err != nil {
 		return p, fmt.Errorf("list the stage: %w", err)
@@ -496,6 +492,32 @@ func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 		}
 	}
 	return p, nil
+}
+
+// mapTokensOf reads the tokens of the session's current map, none when there is no map or it has no grid.
+func (s *Service) mapTokensOf(ctx context.Context, tx pgx.Tx, session playdb.GameSession) (map[string]mapToken, error) {
+	out := map[string]mapToken{}
+	if session.CurrentMapID == nil {
+		return out, nil
+	}
+	g, err := s.maps.MapGrid(ctx, tx, session.CampaignID, *session.CurrentMapID)
+	if connect.CodeOf(err) == connect.CodeNotFound || (err == nil && !g.OK()) {
+		return out, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	tokens, err := s.maps.MapTokens(ctx, tx, *session.CurrentMapID)
+	if err != nil {
+		return nil, fmt.Errorf("read the tokens: %w", err)
+	}
+	cells := grid.Grid{Columns: int(g.Columns), Rows: int(g.Rows)}
+	for _, t := range tokens {
+		if t.CharacterID != "" {
+			out[t.CharacterID] = mapToken{sq: cells.SquareOf(int(t.XBP), int(t.YBP)), hidden: t.Hidden}
+		}
+	}
+	return out, nil
 }
 
 // sightOf is what the bard's question reads of the creature: the map when both tokens are on it, the master's box otherwise.
