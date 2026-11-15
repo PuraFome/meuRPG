@@ -3412,12 +3412,25 @@ message RenameCreatureResponse {
   CharacterCreature creature = 1;
 }
 
+// CreatureDismissal says how a steed of Find Steed is sent away. Any other creature is dismissed for good, whatever the value.
+enum CreatureDismissal {
+  CREATURE_DISMISSAL_UNSPECIFIED = 0;
+  // The steed goes and the bond stays: a new casting of Find Steed brings the same steed back, at full hit points.
+  CREATURE_DISMISSAL_DISMISS = 1;
+  // The bond ends: a new casting makes a new steed, of any form and type. Only a bonded steed can be released.
+  CREATURE_DISMISSAL_RELEASE = 2;
+}
+
 // DismissCreatureRequest sends a creature away.
 message DismissCreatureRequest {
   // The campaign (a UUID).
   string campaign_id = 1;
   // The creature (a UUID).
   string creature_id = 2;
+  // How a steed of Find Steed goes: unspecified is a dismissal that keeps the bond. RELEASE of a creature that is not a bonded steed
+  // is `invalid_argument`. In a combat the owner's player spends the action of its turn for either (`failed_precondition`
+  // with an EncounterBlocked reason, NOT_YOUR_TURN or ACTION_USED, when it cannot), and the master dismisses at no cost. Out of a combat it costs nothing.
+  CreatureDismissal dismissal = 3;
 }
 
 // DismissCreatureResponse is empty: the creature is gone from the list.
