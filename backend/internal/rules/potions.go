@@ -8,7 +8,7 @@ import (
 )
 
 // Potions (SRD 5.1, "Potions"): the potions whose drinking the app carries out. A potion that is not in
-// effects/potions.json is spent and logged by the table, with its text, and has no automatic effect.
+// effects/potions.json is spent and logged by the table, with its text, and has no automatic effect; it is still a potion.
 
 // The kinds of effect of a potion.
 const (
@@ -17,6 +17,9 @@ const (
 	// PotionResistance gives the drinker resistance to one damage type for a time.
 	PotionResistance = "resistance"
 )
+
+// magicCategoryPotion is the category of the SRD magic items that are potions (the oils among them).
+const magicCategoryPotion = "potion"
 
 // PotionResistanceRounds is the hour the resistance potions last, in the rounds the lasting effects count (6 seconds).
 const PotionResistanceRounds = 600
@@ -104,6 +107,14 @@ func (c *content) potionResistance(e potionFile) (PotionEffect, error) {
 func (c *Content) PotionEffect(key string) (PotionEffect, bool) {
 	e, ok := c.c.potions[key]
 	return e, ok
+}
+
+// IsPotion says the item is a potion by its SRD category (magic-items.json), whether or not the app carries out what it does:
+// the potions of effects/potions.json and the ones that are only text are all potions. A scroll, any other item and a key that
+// is no item of the catalog are not.
+func (c *Content) IsPotion(key string) bool {
+	m, ok := c.c.magicItems[key]
+	return ok && m.Category == magicCategoryPotion
 }
 
 // PotionEffectLinePT is the line the sheet shows for what the potion does ("Cura 2d4 + 2", "Resistência a fogo por 1

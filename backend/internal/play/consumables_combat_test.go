@@ -371,22 +371,21 @@ func TestAResistancePotionInACombatInSetupIsAnEffectOfTheCombatantWithNoTurnAndN
 	}
 }
 
-// Only the potions the app applies (the items of effects/potions.json) cost the turn and the action: any other consumable is spent
-// and logged on any turn, with the action used or not. potionClimb is a potion that is only text, which the app does not apply,
-// and scrollFirst is a scroll: both are such consumables.
-func TestAConsumableTheAppDoesNotApplyNeedsNeitherTheTurnNorTheAction(t *testing.T) {
+// Only a potion costs the turn and the action: any other consumable is spent and logged on any turn, with the action used or not.
+// scrollFirst is a scroll, which the app does not cast.
+func TestAConsumableThatIsNoPotionNeedsNeitherTheTurnNorTheAction(t *testing.T) {
 	t.Parallel()
-	f := newPotionFight(t, potionCommon, potionClimb, scrollFirst)
+	f := newPotionFight(t, potionCommon, scrollFirst)
 	f.mustUse(t, f.caio, f.toren, potionCommon) // the action of Toren's turn
-	// the action of the turn is used now, and a text-only potion is still spent and logged
-	if text := f.mustUse(t, f.caio, f.toren, potionClimb); text.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(text.GetText()) == 0 {
-		t.Errorf("the text-only potion with the action used = %v, want its text", text)
+	// the action of the turn is used now, and a scroll is still spent and logged
+	if text := f.mustUse(t, f.caio, f.toren, scrollFirst); text.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(text.GetText()) == 0 {
+		t.Errorf("the scroll with the action used = %v, want its text", text)
 	}
 	res := f.mustUse(t, f.ana, f.pens, scrollFirst, giveTo(f.toren)) // not Pensantus's turn, and Toren is another's
 	if res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(res.GetText()) == 0 {
-		t.Errorf("the scroll = %v, want its text", res)
+		t.Errorf("the scroll given off turn = %v, want its text", res)
 	}
-	if f.holds(t, f.toren, potionClimb) || f.holds(t, f.pens, scrollFirst) {
+	if f.holds(t, f.toren, scrollFirst) || f.holds(t, f.pens, scrollFirst) {
 		t.Error("a unit was not spent")
 	}
 	if byLabel(t, f.get(t, f.master), "Pensantus").GetActionUsed() {
@@ -395,6 +394,55 @@ func TestAConsumableTheAppDoesNotApplyNeedsNeitherTheTurnNorTheAction(t *testing
 	l := f.line(t, f.bia).GetConsumableUse()
 	if l == nil || l.GetItemNamePt() == "" {
 		t.Errorf("the table reads %v, want the line of the use", l)
+	}
+}
+
+// A potion costs the action whether or not the app applies it: potionClimb is a potion that is only text, and it is gated like a
+// healing potion.
+func TestATextOnlyPotionIsRefusedOffTurnAndWithTheActionUsedAndSpentOnTheTurn(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionCommon, potionClimb)
+	_, err := f.use(t, f.ana, f.pens, potionClimb)
+	wantBlockedBy(t, "a text-only potion off turn", err, blockedNotYourTurn)
+	if !f.holds(t, f.pens, potionClimb) {
+		t.Error("the refused drink off turn spent the potion")
+	}
+	f.mustUse(t, f.caio, f.toren, potionCommon) // the action of Toren's turn
+	_, err = f.use(t, f.caio, f.toren, potionClimb)
+	wantBlockedBy(t, "a text-only potion with the action used", err, blockedActionUsed)
+	if !f.holds(t, f.toren, potionClimb) {
+		t.Error("the refused drink with the action used spent the potion")
+	}
+	if f.line(t, f.master).GetConsumableUse().GetOutcome() == playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY {
+		t.Error("a refused text-only potion wrote a line in the log")
+	}
+}
+
+func TestATextOnlyPotionOnTheTurnIsSpentLoggedAsTextAndPaysTheAction(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionClimb, potionCommon)
+	res := f.mustUse(t, f.caio, f.toren, potionClimb)
+	if res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || len(res.GetText()) == 0 || f.holds(t, f.toren, potionClimb) {
+		t.Errorf("the text-only drink = %v, want its text and the unit spent", res)
+	}
+	if !byLabel(t, f.get(t, f.master), "Toren").GetActionUsed() {
+		t.Error("the text-only potion left the action free")
+	}
+	l := f.line(t, f.bia).GetConsumableUse()
+	if l == nil || l.GetItemNamePt() == "" || l.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY {
+		t.Errorf("the table reads %v, want the text-only line of the use", l)
+	}
+	_, err := f.use(t, f.caio, f.toren, potionCommon)
+	wantBlockedBy(t, "a drink after the text-only one", err, blockedActionUsed)
+}
+
+// The list of receivers of a text-only potion is the one its use accepts: the characters within 5 feet of the giver.
+func TestTheTargetsOfATextOnlyPotionInACombatAreTheAdjacentCharacters(t *testing.T) {
+	t.Parallel()
+	f := newPotionFight(t, potionClimb)
+	got := f.targets(t, f.caio, f.toren, potionClimb)
+	if len(got) != 1 || got[0].GetCharacterId() != f.pens.GetId() {
+		t.Errorf("targets = %v, want Pensantus only", got)
 	}
 }
 

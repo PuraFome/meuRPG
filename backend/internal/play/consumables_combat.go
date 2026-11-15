@@ -51,9 +51,10 @@ func giftReach(enc playdb.Encounter, giver, recv playdb.Combatant) (int32, bool)
 }
 
 // openFight opens the combat the use happens in, or nil when it is none of the user's or the receiver's. Only a potion
-// (SRD 5.1, "Potions") is an action: in a running combat it needs the user's turn and an action not yet spent, a receiver
-// within 5 feet, and it spends the action; a user or a receiver that is the only one of the two in the combat, a receiver
-// out of reach, a turn that is not the user's and an action already used refuse, with nothing written. A combat in setup has
+// (SRD 5.1, "Potions", every one of them, whether or not the app applies it) is an action: in a running combat it needs the
+// user's turn and an action not yet spent, a receiver within 5 feet, and it spends the action; a user or a receiver that is the
+// only one of the two in the combat, a receiver out of reach, a turn that is not the user's and an action already used refuse,
+// with nothing written. A combat in setup has
 // no turn, and any other consumable is spent and logged on any turn: neither costs anything. A receiver that is dead
 // (three failed death saves) is refused whatever the item.
 func (s *Service) openFight(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h *hints, session playdb.GameSession, use consumableCall, potion bool) (*consumableFight, error) {
@@ -194,7 +195,7 @@ func (s *Service) ListConsumableTargets(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(&playv1.ListConsumableTargetsResponse{Targets: rows}), nil
 }
 
-// entryIsAPotion says whether the entry of the character's sheet is a potion, the one consumable that is an action. ITEM_GONE
+// entryIsAPotion says whether the entry of the character's sheet is a potion (by the SRD category of the item), the one consumable that is an action. ITEM_GONE
 // for an entry that is no longer there, invalid_argument for one that is no consumable.
 func (s *Service) entryIsAPotion(ctx context.Context, campaignID, characterID, entryID string) (bool, error) {
 	var potion bool
@@ -207,7 +208,7 @@ func (s *Service) entryIsAPotion(ctx context.Context, campaignID, characterID, e
 		if err != nil {
 			return err
 		}
-		_, potion = content.PotionEffect(item.GetKey())
+		potion = content.IsPotion(item.GetKey())
 		return nil
 	})
 	if connect.CodeOf(err) == connect.CodeNotFound {

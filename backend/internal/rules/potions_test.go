@@ -134,3 +134,30 @@ func TestPotionEffectLinePT(t *testing.T) {
 		}
 	}
 }
+
+// IsPotion follows the SRD category of the item: every potion of the catalog is one, whether or not the app applies it, and a
+// scroll, another consumable and a key that is no item are not.
+func TestIsPotionFollowsTheCategoryOfTheItem(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	for key, want := range map[string]bool{
+		"item:potion-of-healing-common":  true,
+		"item:potion-of-resistance-fire": true,
+		"item:potion-of-healing":         true,
+		"item:potion-of-climbing":        true, // text only: still a potion
+		"item:oil-of-sharpness":          true, // the SRD files the oils with the potions
+		"item:spell-scroll-1st":          false,
+		"item:bag-of-holding":            false,
+		"item:no-such-item":              false,
+		"":                               false,
+	} {
+		if got := c.IsPotion(key); got != want {
+			t.Errorf("IsPotion(%q) = %v, want %v", key, got, want)
+		}
+	}
+	for _, key := range sortedKeys(c.c.magicItems) {
+		if m, _ := c.MagicItem(key); (m.Category == "potion") != c.IsPotion(key) {
+			t.Errorf("IsPotion(%q) disagrees with the category %q", key, m.Category)
+		}
+	}
+}

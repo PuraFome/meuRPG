@@ -898,9 +898,10 @@ export const ChargesService: GenService<{
    * healing potion restores hit points with the dice of its text, and a resistance potion gives one hour of resistance
    * to its damage type; every other consumable only spends the unit and returns its SRD text, with no automatic effect
    * (a spell scroll is not cast). The receiver is the user, or `target_character_id` for an item given to another
-   * character. Only a potion is an action: in a running combat it costs the user's action (the extra action of Haste
-   * does not pay for it) and needs the user's turn and, when it is given, a receiver within 5 feet; out of a combat and
-   * in one that has not begun it costs no turn and needs no adjacency, and any other consumable never does. A creature
+   * character. Only a potion is an action, and every potion is, one that is only text included: in a running combat it
+   * costs the user's action (the extra action of Haste does not pay for it) and needs the user's turn and, when it is
+   * given, a receiver within 5 feet; out of a combat and in one that has not begun it costs no turn and needs no
+   * adjacency, and any other consumable (a scroll, for one) never does. A creature
    * with three failed death saves is dead and receives nothing. A consumable event ends the undo chain. The user's
    * player (or the master, for any character) may use it. The dice follow the table's rule (RN-18). A character with no
    * hit points of its own outside a combat (an NPC) spends the unit and tells nothing automatic: the master narrates it.
@@ -924,7 +925,7 @@ export const ChargesService: GenService<{
   },
   /**
    * ListConsumableTargets lists who the character may give the consumable to, which is who the use would accept: for a
-   * potion in a running combat, the player's characters of the combat that are adjacent (5 feet) to the user's combatant,
+   * potion (every one of them) in a running combat, the player's characters of the combat that are adjacent (5 feet) to the user's combatant,
    * with the distance (a creature that is not a player's character is never listed, so a hidden one never is), and, when the
    * user does not fight in it, the characters that do not fight either; for any other consumable, or with no running
    * combat, the other living characters of the party. A creature with three failed death saves is never listed. The master
