@@ -53,6 +53,22 @@ func (g *groupHit) hp(t *testing.T) int32 {
 	return hp
 }
 
+// pending is the damage as the master reads it in Toren's turn options.
+func (g *groupHit) pending(t *testing.T) *playv1.PendingDamage {
+	t.Helper()
+	opts, err := g.a.options(t, g.a.master, g.e, "Toren")
+	if err != nil {
+		t.Fatalf("GetTurnOptions(Toren) error = %v", err)
+	}
+	for _, p := range opts.GetPendingDamages() {
+		if p.GetId() == g.id {
+			return p
+		}
+	}
+	t.Fatalf("pending damage %s is not in the turn options", g.id)
+	return nil
+}
+
 func damagePartOf(p *playv1.PendingDamage, key string) *playv1.DamagePart {
 	for _, d := range p.GetParts() {
 		if d.GetKey() == key {
@@ -107,17 +123,175 @@ func TestTheMasterTakesAPartOutOfAGroupAndTheDamageAwaitsItsSum(t *testing.T) {
 	}
 }
 
-func TestDebugLog(t *testing.T) {
+// The limit is the undo's: another event after the damage, and the damage can no longer be taken back. Nothing changes.
+func TestTakingAPartOutIsRefusedWhenSomethingWasDoneAfterTheDamage(t *testing.T) {
+	t.Parallel()
 	g := newGroupHit(t, 12)
-	if _, err := g.takeOut(t, "sneak-attack", "sem aliado perto"); err != nil {
-		t.Fatal(err)
+	hurt := g.hp(t)
+	if _, err := g.a.adjustHP(t, g.e, g.shrub, damageHP(1)); err != nil {
+		t.Fatalf("AdjustCombatantHitPoints() error = %v", err)
 	}
-	for _, u := range []*user{g.a.master, g.a.caio, g.a.ana} {
-		l := g.a.log(t, u, g.e)
-		for _, r := range l.GetRounds() {
+	after := g.hp(t)
+	_, err := g.takeOut(t, "sneak-attack", "depois")
+	wantBlockedBy(t, "RemoveDamagePart(after another action)", err, blockedNothingToUndo)
+	if got := g.hp(t); got != after || after >= hurt {
+		t.Errorf("hit points = %d, want %d: nothing written", got, after)
+	}
+	if status, _ := g.a.pendingOf(t, g.id); status != pendingApplied {
+		t.Errorf("status = %q, want it untouched", status)
+	}
+}
+
+// The target's hit points changed with no event to close the chain: UNDO_TARGET_CHANGED names the target, nothing is written.
+func TestTakingAPartOutIsRefusedWhenTheTargetsHitPointsChanged(t *testing.T) {
+	t.Parallel()
+	g := newGroupHit(t, 12)
+	if _, err := g.a.h.pool.Exec(t.Context(), `UPDATE combatants SET hp_current = hp_current + 1 WHERE id = $1`, g.a.id(t, g.shrub)); err != nil {
+		t.Fatalf("change the hit points: %v", err)
+	}
+	changed := g.hp(t)
+	_, err := g.takeOut(t, "sneak-attack", "mudou")
+	b := wantBlockedBy(t, "RemoveDamagePart(hit points changed)", err, blockedUndoTargetChanged)
+	if want := g.a.id(t, g.shrub); len(b.GetCombatantIds()) != 1 || b.GetCombatantIds()[0] != want {
+		t.Errorf("combatant_ids = %v, want [%s]", b.GetCombatantIds(), want)
+	}
+	if got := g.hp(t); got != changed {
+		t.Errorf("hit points = %d, want %d: nothing written", got, changed)
+	}
+	if status, _ := g.a.pendingOf(t, g.id); status != pendingApplied {
+		t.Errorf("status = %q, want it untouched", status)
+	}
+}
+
+// A retry with the same key answers the same and writes nothing more.
+func TestTakingAPartOutIsIdempotent(t *testing.T) {
+	t.Parallel()
+	g := newGroupHit(t, 12)
+	req := &playv1.RemoveDamagePartRequest{CampaignId: g.a.campaignID, EncounterId: g.e.GetId(), PendingDamageId: g.id, PartKey: "sneak-attack", Reason: "igual", IdempotencyKey: newKey()}
+	first, err := g.a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("RemoveDamagePart() error = %v", err)
+	}
+	second, err := g.a.master.combat.RemoveDamagePart(t.Context(), connect.NewRequest(req))
+	if err != nil {
+		t.Fatalf("RemoveDamagePart(retry) error = %v", err)
+	}
+	if first.Msg.GetPendingDamage().GetStatus() != second.Msg.GetPendingDamage().GetStatus() || g.hp(t) != g.before {
+		t.Errorf("retry = %v, hit points %d (want %d)", second.Msg.GetPendingDamage().GetStatus(), g.hp(t), g.before)
+	}
+}
+
+// The weapon, and a part the damage waits on, stay as they are: only an extra comes out. The waiting damage cannot be applied.
+func TestAGroupPartThatIsNotAnExtraStaysAndTheWaitingDamageIsNotApplied(t *testing.T) {
+	t.Parallel()
+	g := newGroupHit(t, 12)
+	_, err := g.takeOut(t, partWeapon, "arma")
+	wantBlockedBy(t, "RemoveDamagePart(the weapon)", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_DAMAGE_PART_NOT_REMOVABLE)
+	if _, err := g.takeOut(t, "sneak-attack", "ok"); err != nil {
+		t.Fatalf("RemoveDamagePart() error = %v", err)
+	}
+	_, err = g.takeOut(t, "sneak-attack", "de novo")
+	wantBlockedBy(t, "RemoveDamagePart(while it waits for the sum)", err, blockedNotRolled)
+	_, err = g.a.settle(t, g.a.master, g.e, g.id, true)
+	wantBlockedBy(t, "ApplyPendingDamage(waiting for the sum)", err, blockedNotRolled)
+}
+
+// The master discards the waiting damage; a player cannot end the turn over it.
+func TestTheDamageWaitingForASumCanBeDiscardedAndBlocksTheTurnLikeARoll(t *testing.T) {
+	t.Parallel()
+	g := newGroupHit(t, 12)
+	if _, err := g.takeOut(t, "sneak-attack", "x"); err != nil {
+		t.Fatalf("RemoveDamagePart() error = %v", err)
+	}
+	_, err := g.a.endTurn(t, g.a.caio, g.e, false)
+	wantBlockedBy(t, "EndTurn(waiting for the sum)", err, blockedPendingDamage)
+	got, err := g.a.settle(t, g.a.master, g.e, g.id, false)
+	if err != nil {
+		t.Fatalf("DiscardPendingDamage() error = %v", err)
+	}
+	if got.GetStatus() != playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_DISCARDED {
+		t.Errorf("status = %v, want DISCARDED", got.GetStatus())
+	}
+	if hp := g.hp(t); hp != g.before {
+		t.Errorf("hit points = %d, want %d", hp, g.before)
+	}
+}
+
+// The undo of the second roll goes back to the wait for the sum, with the part still out.
+func TestTheSecondRollOfAGroupSumCanBeUndone(t *testing.T) {
+	t.Parallel()
+	g := newGroupHit(t, 12)
+	if _, err := g.takeOut(t, "sneak-attack", "x"); err != nil {
+		t.Fatalf("RemoveDamagePart() error = %v", err)
+	}
+	if _, err := g.a.damage(t, g.a.caio, g.e, g.id, typedDamage(5)); err != nil {
+		t.Fatalf("RollDamage() error = %v", err)
+	}
+	if err := g.a.undo(t, g.a.master, g.e, g.a.log(t, g.a.master, g.e).GetUndoableEventId()); err != nil {
+		t.Fatalf("UndoLastAction() error = %v", err)
+	}
+	if g.hp(t) != g.before {
+		t.Errorf("hit points = %d, want %d", g.hp(t), g.before)
+	}
+	p := g.pending(t)
+	if p.GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_APPLIED || damagePartOf(p, "sneak-attack").GetSelected() {
+		t.Errorf("pending damage = status %v, want it open with Sneak Attack still out", p.GetStatus())
+	}
+}
+
+// RN-10: the master and the attacker's player read why the extra is gone; another player reads only that it is gone.
+func TestTheReasonOfAGroupTakeOutIsReadByTheMasterAndTheAttackerOnly(t *testing.T) {
+	t.Parallel()
+	g := newGroupHit(t, 12)
+	if _, err := g.takeOut(t, "sneak-attack", "segredo do mestre"); err != nil {
+		t.Fatalf("RemoveDamagePart() error = %v", err)
+	}
+	for _, c := range []struct {
+		name string
+		u    *user
+		want bool
+	}{{"master", g.a.master, true}, {"attacker", g.a.caio, true}, {"other player", g.a.ana, false}} {
+		var removed, reason bool
+		for _, r := range g.a.log(t, c.u, g.e).GetRounds() {
 			for _, en := range r.GetEntries() {
-				t.Logf("%p kind=%v reason=%q key=%q damage=%v", u, en.GetKind(), en.GetReason(), en.GetKeyNamePt(), en.GetDamage() != nil)
+				if en.GetKind() == playv1.CombatLogKind_COMBAT_LOG_KIND_DAMAGE_PART_REMOVED {
+					removed = true
+					reason = reason || en.GetReason() != ""
+				}
+				if en.GetReason() == "segredo do mestre" && !c.want {
+					t.Errorf("%s reads the reason", c.name)
+				}
+				if d := en.GetDamage(); d != nil && d.GetStatus() == playv1.PendingDamageStatus_PENDING_DAMAGE_STATUS_AWAITING_GROUP_SUM && d.GetAmount() != 0 {
+					t.Errorf("%s reads an amount (%d) on a damage that waits for a sum", c.name, d.GetAmount())
+				}
 			}
 		}
+		if reason != c.want || (c.want && !removed) {
+			t.Errorf("%s: removed %v, reason %v, want reason %v", c.name, removed, reason, c.want)
+		}
+	}
+}
+
+var blockedUndoTargetChanged = playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_UNDO_TARGET_CHANGED
+
+// groupSumDamages are the rolls of a damage that waits for the sum of its group (the golden of the damage roll): in the app, with
+// a typed sum, and the requests the status refuses.
+func groupSumDamages() []goldenScenario {
+	waiting := func(name string, edit func(*playv1.RollDamageRequest)) goldenScenario {
+		return damageOn("a damage waiting for a group sum: "+name, func(t *testing.T) damagePlay {
+			t.Helper()
+			g := newGroupHit(t, 12)
+			if _, err := g.takeOut(t, "sneak-attack", "motivo"); err != nil {
+				t.Fatalf("RemoveDamagePart() error = %v", err)
+			}
+			g.a.h.roller.queue(6)
+			return g.a.rolled(t, g.a.caio, g.e, g.id, edit)
+		})
+	}
+	return []goldenScenario{
+		waiting("rolled in the app", inAppDamage),
+		waiting("a typed sum", typedSum(5)),
+		waiting("a typed sum out of range", typedSum(9)),
+		waiting("a typed part of another damage type", typedParts(&playv1.TypedPart{DamageType: groupRadiant, Sum: 3})),
 	}
 }

@@ -371,7 +371,8 @@ func TestAttackRollsReachOnlyWhoMayReadThem(t *testing.T) {
 		chosen := []*playv1.SelectedExtra{{Key: "divine-smite", SlotLevel: 1}}
 		for _, key := range extras {
 			chosen = append(chosen, &playv1.SelectedExtra{Key: key})
-			parts = append(parts, &playv1.TypedPart{PartKey: key, Sum: 4})
+			// the weapon and the extra share the piercing type: one sum covers both, and taking the extra out asks for a new one
+			parts = append(parts[1:], &playv1.TypedPart{DamageType: "damage-type:piercing", Sum: 6})
 		}
 		return rt.damage(caio, pending, func(r *playv1.RollDamageRequest) {
 			r.ExtrasChosen, r.SelectedExtras, r.TypedParts = true, chosen, parts
@@ -418,7 +419,11 @@ func TestAttackRollsReachOnlyWhoMayReadThem(t *testing.T) {
 	must(m.combat.RemoveDamagePart(ctx, rq(&playv1.RemoveDamagePartRequest{
 		CampaignId: w.campaign, EncounterId: rt.encounter.GetId(), PendingDamageId: strike.GetPendingDamage().GetId(), PartKey: "sneak-attack", Reason: removal, IdempotencyKey: newKey(),
 	})))
-	rt.ask(t, "an extra is taken out")
+	rt.ask(t, "an extra of a group is taken out and the damage waits for the sum of its type")
+	rt.damage(caio, strike.GetPendingDamage().GetId(), func(r *playv1.RollDamageRequest) {
+		r.Roll = &playv1.RollDamageRequest_TypedSum{TypedSum: 3}
+	})
+	rt.ask(t, "the sum of the group is rolled again")
 	rt.checkSmite(t, onUndead, onHuman)
 	rt.endTurn(caio)
 

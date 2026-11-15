@@ -20590,7 +20590,7 @@ export const CombatService: GenService<{
    *   - `permission_denied`: the caller is not the master.
    *   - `invalid_argument`: the reason is not 1 to 120 characters on one line.
    *   - `failed_precondition` (EncounterBlocked): DAMAGE_NOT_ROLLED, DAMAGE_PART_NOT_REMOVABLE
-   *     (the weapon, an automatic line, a smite, the last part of a group, a part of a spell's
+   *     (the weapon, an automatic line, a smite, a part of a spell's
    *     damage), DAMAGE_RESOLVED, NOTHING_TO_UNDO and UNDO_TARGET_CHANGED (a group part).
    *
    * @generated from rpc meurpg.play.v1.CombatService.RemoveDamagePart

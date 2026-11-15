@@ -247,7 +247,7 @@ Indexes: `(encounter_id, order_index)`, `character_id` (deleting a character rem
 ## `pending_damages`
 
 The damage of a strike that hit, from the d20 to the end (MR-012, MR-014).
-`status` is `awaiting_reaction` (the strike hit a character who can cast Shield), `awaiting_roll` (damage to roll), `rolled` (rolled on a player character, waiting for the master), `applied` or `discarded`.
+`status` is `awaiting_reaction` (the strike hit a character who can cast Shield), `awaiting_roll` (damage to roll), `awaiting_group_sum` (the master took a part out of a typed group: the sum of the type in `awaited_damage_type_key` is to be rolled; the column is empty otherwise), `rolled` (rolled on a player character, waiting for the master), `applied` or `discarded`.
 
 - Dice: `dice_count` (already doubled on a critical, or the usual dice under "max plus roll"), `dice_sides`, `dice_bonus`; `critical_max` is what a critical adds without rolling (the maximum of the dice, only under that rule), `critical_max_rule` records the rule at the hit; `extra_dice` and `savage_dice` are the weapon dice a feature adds to a melee critical (Brutal Critical, Savage Attacks), always rolled.
   All are **copied from the sheet** when the strike hits, so changing the sheet later does not touch an open roll.
