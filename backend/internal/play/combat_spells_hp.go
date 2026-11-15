@@ -84,7 +84,7 @@ func (s *Service) refuseTheDead(ctx context.Context, c *combatTx, targs []playdb
 }
 
 // isDead says whether a player's combatant is dead for a healing: the master confirmed its death, it failed three death
-// saves, or its character was marked dead (no longer an active character). A write passes its transaction; a read passes nil.
+// saves, or its character was marked dead (no longer an active character).
 func (s *Service) isDead(ctx context.Context, tx pgx.Tx, campaignID string, t playdb.Combatant) (bool, error) {
 	if t.Kind != kindPlayer {
 		return false, nil
@@ -92,12 +92,7 @@ func (s *Service) isDead(ctx context.Context, tx pgx.Tx, campaignID string, t pl
 	if t.Defeated || t.DeathFailures >= 3 {
 		return true, nil
 	}
-	var err error
-	if tx != nil {
-		_, err = s.vitals.GetVitalsTx(ctx, tx, campaignID, t.CharacterID)
-	} else {
-		_, err = s.vitals.GetVitals(ctx, campaignID, t.CharacterID)
-	}
+	_, err := s.vitals.GetVitalsTx(ctx, tx, campaignID, t.CharacterID)
 	return connect.CodeOf(err) == connect.CodeNotFound, nil // marked dead: no longer an active character
 }
 

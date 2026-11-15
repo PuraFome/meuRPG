@@ -119,9 +119,10 @@ In a combat (`consumables_combat.go`) the use follows the combat's rules, with t
 - A player's combatant is never hidden from its party, so no hidden creature can be a receiver.
 - A user or a receiver that is the only one of the two in a running combat is refused with the same reason.
 - A receiver that is dead (the master confirmed it, three failed death saves, or its character died) is refused with `TARGET_DEAD` whatever the item (`refuseTheDead`), so no potion raises it.
-- A combat in setup has no turn: nothing is gated and nothing is spent.
+- A combat in setup has no turn: the unit is spent and no turn or action is, and nothing is gated.
 - Every potion costs the turn and the action, whether or not `effects/potions.json` has an effect for it: a potion that is only text is gated, spent and logged as text, and pays the action.
-- A potion is an item of the SRD category `potion` (`rules.Content.IsPotion`), the oils included; any other consumable, a scroll for one, is spent and logged on any turn with no gate.
+- A potion is an item of the SRD category `potion` (`rules.Content.IsPotion`), except the SRD's oils, which `rules` names by key in one place (`oils`): applying an oil takes a minute or ten, so it is no action.
+- An oil, a scroll and any other consumable is spent and logged as text on any turn with no gate, and the master judges the time of an oil.
 - The heal is `healCombatant`, so temporary hit points, the dying state and the death saves follow the combat's rules, and a creature at 0 hit points gets up.
 - Out of a combat the heal is `healCharacter`, and both write the request of `healRequest`, so a druid in a beast form heals the beast first.
 - A resistance is a lasting effect of the receiver's combatant (`addEffects`, source kind `item`, owner audience) that lasts `rules.PotionResistanceRounds` rounds from the receiver's turn, and a second potion of the same kind ends the first.
@@ -132,11 +133,15 @@ An entry that is no longer on the sheet is `EncounterBlocked` `ITEM_GONE`, in a 
 `ListConsumableTargets` is the read behind "Dar a…", and it offers only who the use accepts (`consumableTargets`).
 For a potion in a running combat a user that fights gets the player's characters within 5 feet of its combatant, with the distance and the state word (down or on its feet) that the order of the combat gives every player.
 For a potion in a running combat a user that does not fight gets the characters that do not fight either, with distance 0 and no state.
-For any other consumable, a combat in setup or no combat, the list is the other living characters of the party with distance 0, and a combatant with three failed death saves is left out.
-Outside a running combat the list carries no state: the hit points of a player's character are not another player's to read there ([Privacy](../../privacy.md)).
+For any other consumable, a combat in setup or no combat, the list is the other characters of the party that are not dead, with distance 0 and no state.
+The list follows the state word a player already reads (`stateWordFor` in `combat_view.go`, and Death saves in [Rules](../../product/rules.md)): `receiverStanding` lists a creature with three failed death saves that the master has not confirmed as down for a player.
+The master's list leaves that creature out, and a death the master confirmed (the combatant defeated, or its character marked dead) is on no list.
+The use refuses such a receiver with `TARGET_DEAD` before anything is spent.
+A failed read of the open session is an error of the call, and only the absence of an open session is a campaign with no combat.
+Outside a running combat the list carries no state, so it tells a player no hit points of another character.
 An entry that is no consumable is `invalid_argument` (the keeper's `ConsumableItem`), and an entry that is gone is `ITEM_GONE`.
 It has the same authorization as the use, and the master reads the list of the character it acts for.
-`rules.Content.IsPotion` says an item is a potion by its SRD category, which is what the combat's gate and the list of receivers read.
+`rules.Content.IsPotion` says an item is a potion by its SRD category, the oils apart, which is what the combat's gate and the list of receivers read.
 `rules.Content.PotionEffect` says what a potion does (`effects/potions.json`).
 A healing potion rolls its dice and heals the receiver up to the maximum, and the response says the hit points really regained.
 The dice follow the table's dice mode like the d20 of the last charge: the app rolls them, or `typed_faces` holds one face for each die, each a face of the die.

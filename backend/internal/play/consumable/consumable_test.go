@@ -76,3 +76,38 @@ func TestLineTellsTheNumbersOnlyToWhoMayRead(t *testing.T) {
 		t.Errorf("the owner's line = %v, want the dice, the faces, the total and the hit points regained", owner)
 	}
 }
+
+// Standing is the word the order of the combat gives a player: a death the master confirmed is on no list, three failed death
+// saves read as down to a player and are left out of the master's list, and 0 hit points are down.
+func TestStandingFollowsTheStateWordOfThePlayer(t *testing.T) {
+	t.Parallel()
+	vitals := func(hp int32) *playv1.CharacterVitals {
+		return &playv1.CharacterVitals{HitPointsMax: 10, HitPointsCurrent: hp}
+	}
+	for name, tc := range map[string]struct {
+		gone             bool
+		failures         int32
+		master           bool
+		hp               int32
+		listed, wantDown bool
+	}{
+		"on its feet":                        {hp: 5, listed: true},
+		"on its feet, for the master":        {hp: 5, master: true, listed: true},
+		"at 0 hit points":                    {hp: 0, listed: true, wantDown: true},
+		"two failed saves":                   {hp: 0, failures: 2, listed: true, wantDown: true},
+		"three failed saves, for a player":   {hp: 0, failures: 3, listed: true, wantDown: true},
+		"three failed saves, for the master": {hp: 0, failures: 3, master: true},
+		"a death the master confirmed":       {hp: 0, failures: 3, gone: true},
+		"a death confirmed, for the master":  {hp: 0, gone: true, master: true},
+		"no vitals, no confirmed death":      {hp: 0, listed: true, wantDown: true},
+		"a character with no maximum is up":  {listed: true},
+	} {
+		v := vitals(tc.hp)
+		if name == "a character with no maximum is up" {
+			v = &playv1.CharacterVitals{}
+		}
+		if listed, down := Standing(tc.gone, tc.failures, tc.master, v); listed != tc.listed || down != tc.wantDown {
+			t.Errorf("%s: Standing = %v, %v; want %v, %v", name, listed, down, tc.listed, tc.wantDown)
+		}
+	}
+}

@@ -136,7 +136,8 @@ The SRD 5.2.1 value table halves a consumable, except the Spell scroll, which `S
 Loading refuses a key that is no consumable of the catalog or is a family, an unknown kind, a heal without dice or with a damage type, and a resistance without a catalog damage type or with a time out of 1 to 600 rounds.
 A test reads each healing dice and each resistance type from the item's SRD text.
 `Content.PotionEffect(key)` returns the effect; every other consumable has none, and drinking it spends it and shows its text.
-`Content.IsPotion(key)` says an item is a potion by its SRD category (`potion`, the oils included), with or without an effect.
+`Content.IsPotion(key)` says an item is a potion by its SRD category (`potion`), with or without an effect.
+The SRD's oils are in that category, and `IsPotion` is false for them: applying one takes a minute or ten, so the combat does not gate it.
 
 ## Trap and light presets
 

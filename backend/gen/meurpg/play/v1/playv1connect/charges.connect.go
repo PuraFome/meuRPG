@@ -138,8 +138,9 @@ type ChargesServiceClient interface {
 	// character. Only a potion is an action, and every potion is, one that is only text included: in a running combat it
 	// costs the user's action (the extra action of Haste does not pay for it) and needs the user's turn and, when it is
 	// given, a receiver within 5 feet; out of a combat and in one that has not begun it costs no turn and needs no
-	// adjacency, and any other consumable (a scroll, for one) never does. A creature
-	// with three failed death saves is dead and receives nothing. A consumable event ends the undo chain. The user's
+	// adjacency, and any other consumable never does: a scroll, and an oil of the SRD's potion category, which takes a
+	// minute or ten to apply and is spent and logged as text for the master to judge. A creature with three failed death
+	// saves is dead and receives nothing. A consumable event ends the undo chain. The user's
 	// player (or the master, for any character) may use it. The dice follow the table's rule (RN-18). A character with no
 	// hit points of its own outside a combat (an NPC) spends the unit and tells nothing automatic: the master narrates it.
 	//
@@ -154,11 +155,14 @@ type ChargesServiceClient interface {
 	// the receiver's own player only.
 	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
 	// ListConsumableTargets lists who the character may give the consumable to, which is who the use would accept: for a
-	// potion (every one of them) in a running combat, the player's characters of the combat that are adjacent (5 feet) to the user's combatant,
-	// with the distance (a creature that is not a player's character is never listed, so a hidden one never is), and, when the
-	// user does not fight in it, the characters that do not fight either; for any other consumable, or with no running
-	// combat, the other living characters of the party. A creature with three failed death saves is never listed. The master
-	// reads it for the character it acts for, and the list is the one that character's player would get. Read only.
+	// potion (every one of them, one that is only text included) in a running combat, the player's characters of the combat
+	// that are adjacent (5 feet) to the user's combatant, with the distance (a creature that is not a player's character is
+	// never listed, so a hidden one never is), and, when the user does not fight in it, the characters that do not fight
+	// either; for any other consumable (a scroll, an oil), or with no running combat, the other characters of the party that
+	// are not dead. The list follows the state word a player already reads: a creature with three failed death saves that the
+	// master has not confirmed is listed as down for a player, as any down ally is, and a confirmed death is never listed.
+	// The master's list leaves out a creature with three failed death saves. The master reads the list of the character it
+	// acts for, and it is the one that character's player would get, except for that creature. Read only.
 	//
 	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
 	// is not there; `invalid_argument` for an entry that is no consumable; `failed_precondition` with EncounterBlocked
@@ -352,8 +356,9 @@ type ChargesServiceHandler interface {
 	// character. Only a potion is an action, and every potion is, one that is only text included: in a running combat it
 	// costs the user's action (the extra action of Haste does not pay for it) and needs the user's turn and, when it is
 	// given, a receiver within 5 feet; out of a combat and in one that has not begun it costs no turn and needs no
-	// adjacency, and any other consumable (a scroll, for one) never does. A creature
-	// with three failed death saves is dead and receives nothing. A consumable event ends the undo chain. The user's
+	// adjacency, and any other consumable never does: a scroll, and an oil of the SRD's potion category, which takes a
+	// minute or ten to apply and is spent and logged as text for the master to judge. A creature with three failed death
+	// saves is dead and receives nothing. A consumable event ends the undo chain. The user's
 	// player (or the master, for any character) may use it. The dice follow the table's rule (RN-18). A character with no
 	// hit points of its own outside a combat (an NPC) spends the unit and tells nothing automatic: the master narrates it.
 	//
@@ -368,11 +373,14 @@ type ChargesServiceHandler interface {
 	// the receiver's own player only.
 	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
 	// ListConsumableTargets lists who the character may give the consumable to, which is who the use would accept: for a
-	// potion (every one of them) in a running combat, the player's characters of the combat that are adjacent (5 feet) to the user's combatant,
-	// with the distance (a creature that is not a player's character is never listed, so a hidden one never is), and, when the
-	// user does not fight in it, the characters that do not fight either; for any other consumable, or with no running
-	// combat, the other living characters of the party. A creature with three failed death saves is never listed. The master
-	// reads it for the character it acts for, and the list is the one that character's player would get. Read only.
+	// potion (every one of them, one that is only text included) in a running combat, the player's characters of the combat
+	// that are adjacent (5 feet) to the user's combatant, with the distance (a creature that is not a player's character is
+	// never listed, so a hidden one never is), and, when the user does not fight in it, the characters that do not fight
+	// either; for any other consumable (a scroll, an oil), or with no running combat, the other characters of the party that
+	// are not dead. The list follows the state word a player already reads: a creature with three failed death saves that the
+	// master has not confirmed is listed as down for a player, as any down ally is, and a confirmed death is never listed.
+	// The master's list leaves out a creature with three failed death saves. The master reads the list of the character it
+	// acts for, and it is the one that character's player would get, except for that creature. Read only.
 	//
 	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character that
 	// is not there; `invalid_argument` for an entry that is no consumable; `failed_precondition` with EncounterBlocked

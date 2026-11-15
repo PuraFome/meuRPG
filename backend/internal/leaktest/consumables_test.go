@@ -58,8 +58,22 @@ func (w *world) withPotions() *world {
 		return w
 	}
 	w.torenPotion, w.pensPotion = w.holds(w.toren, "item:potion-of-healing-common"), w.holds(w.pens, "item:potion-of-healing-common")
+	w.torenScroll = w.holds(w.toren, "item:spell-scroll-1st")
 	torenAt := w.combatant(w.toren)
 	w.placeForced(w.master, w.encounter.GetId(), placement{w.combatant(w.hiddenNPC).GetId(), torenAt.GetCol() + 1, torenAt.GetRow()})
+	return w
+}
+
+// withThreeFailedSaves gives Pensantus three failed death saves that the master has not confirmed, once: the players read her as
+// down ("Caído") like any down ally, and the lists of receivers must tell them no more than that word.
+func (w *world) withThreeFailedSaves() *world {
+	if w.threeFailures {
+		return w
+	}
+	w.threeFailures = true
+	if _, err := w.pool.Exec(w.t.Context(), `UPDATE combatants SET death_failures = 3 WHERE id = $1`, w.combatant(w.pens).GetId()); err != nil {
+		w.t.Fatalf("three failed death saves for Pensantus: %v", err)
+	}
 	return w
 }
 
@@ -305,5 +319,39 @@ func TestAResistancePotionInACombatTellsAThirdPlayerOnlyContentlessHints(t *test
 	}
 	for _, p := range []*person{w.master, w.caio} {
 		hears(t, p.name, got[p.name], []string{"spell_casts_changed", "vitals_changed", "encounter_changed", "combat_log_changed"}, []string{"spell_casts_changed", "vitals_changed", "combat_log_changed"})
+	}
+}
+
+// The lists of receivers of a creature with three failed death saves that the master has not confirmed: a player reads it as down
+// (the word of the order of the combat) and as a character of the party outside a potion's reach, the master's list leaves it
+// out, and the use is refused whatever the item before anything is spent.
+func TestTheListOfReceiversTellsAPlayerOnlyTheWordOfTheOrderOfTheCombat(t *testing.T) {
+	w := newWorld(t)
+	w.withPotions().withThreeFailedSaves()
+	// Pensantus stands next to Toren, in the reach of a potion (the matrix's world keeps the characters where the fog assumes them).
+	torenAt := w.combatant(w.toren)
+	w.placeForced(w.master, w.encounter.GetId(), placement{w.combatant(w.pens).GetId(), torenAt.GetCol(), torenAt.GetRow() + 1})
+	list := func(u *person, entry string) []*playv1.ConsumableTarget {
+		res := must(u.charges.ListConsumableTargets(t.Context(), rq(&playv1.ListConsumableTargetsRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId(), EntryId: entry})))
+		return res.GetTargets()
+	}
+	inList := func(ts []*playv1.ConsumableTarget) *playv1.ConsumableTarget {
+		for _, g := range ts {
+			if g.GetCharacterId() == w.pens.GetId() {
+				return g
+			}
+		}
+		return nil
+	}
+	if g := inList(list(w.caio, w.torenPotion)); g == nil || g.GetState() != playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_DOWN {
+		t.Errorf("a player's list of the potion has %v for Pensantus, want down", g)
+	}
+	if g := inList(list(w.caio, w.torenScroll)); g == nil || g.GetState() != playv1.ConsumableTargetState_CONSUMABLE_TARGET_STATE_UNSPECIFIED {
+		t.Errorf("a player's list of the scroll has %v for Pensantus, want her with no state", g)
+	}
+	for name, entry := range map[string]string{"potion": w.torenPotion, "scroll": w.torenScroll} {
+		if g := inList(list(w.master, entry)); g != nil {
+			t.Errorf("the master's list of the %s has %v, want Pensantus left out", name, g)
+		}
 	}
 }

@@ -18,7 +18,7 @@ const (
 	PotionResistance = "resistance"
 )
 
-// magicCategoryPotion is the category of the SRD magic items that are potions (the oils among them).
+// magicCategoryPotion is the category of the SRD magic items that are potions (the oils are filed with them).
 const magicCategoryPotion = "potion"
 
 // PotionResistanceRounds is the hour the resistance potions last, in the rounds the lasting effects count (6 seconds).
@@ -109,12 +109,21 @@ func (c *Content) PotionEffect(key string) (PotionEffect, bool) {
 	return e, ok
 }
 
-// IsPotion says the item is a potion by its SRD category (magic-items.json), whether or not the app carries out what it does:
-// the potions of effects/potions.json and the ones that are only text are all potions. A scroll, any other item and a key that
-// is no item of the catalog are not.
+// oils are the oils the SRD files with the potions. Applying one takes a minute or ten, not an action, so the combat does not
+// gate its use: the table spends it and the master judges the time. This is the one place that names them.
+var oils = map[string]bool{
+	"item:oil-of-etherealness": true,
+	"item:oil-of-sharpness":    true,
+	"item:oil-of-slipperiness": true,
+}
+
+// IsPotion says the item is a potion that is drunk or given, by its SRD category (magic-items.json), whether or not the app
+// carries out what it does: the potions of effects/potions.json and the ones that are only text are all potions, and the use of one
+// is an action in a combat. The oils of the same category are not (see oils), and neither are a scroll, any other item or a key
+// that is no item of the catalog.
 func (c *Content) IsPotion(key string) bool {
 	m, ok := c.c.magicItems[key]
-	return ok && m.Category == magicCategoryPotion
+	return ok && m.Category == magicCategoryPotion && !oils[key]
 }
 
 // PotionEffectLinePT is the line the sheet shows for what the potion does ("Cura 2d4 + 2", "Resistência a fogo por 1
