@@ -50,15 +50,16 @@ func feminineWeapon(name string) bool {
 	return strings.HasSuffix(first, "a") || strings.HasSuffix(first, "ã") || slices.Contains(feminineWeaponNouns, first)
 }
 
-// shieldIdleNotices are the notices of a sheet whose equipped shield does not count: one for each equipped weapon that
-// takes both hands, tied to the weapon's key, with the armor class the character would have with the shield counting.
+// shieldIdleNotices are the notices of a sheet whose equipped shield does not count: one for each equipped table weapon
+// that takes both hands (only the master's table weapons are edited, so an SRD weapon's notice would never be told),
+// tied to the weapon's key, with the armor class the character would have with the shield counting.
 func (c *content) shieldIdleNotices(b Build, d Derived) []Issue {
 	if !d.ShieldIdle {
 		return nil
 	}
 	var keys []string
 	for _, key := range b.Weapons {
-		if eq, ok := c.equipment[key]; ok && !b.IsCarried(key) && eq.Weapon != nil && slices.Contains(eq.Weapon.Properties, twoHandedProperty) {
+		if eq, ok := c.equipment[key]; ok && isTableKey(key) && !b.IsCarried(key) && eq.Weapon != nil && slices.Contains(eq.Weapon.Properties, twoHandedProperty) {
 			keys = append(keys, key)
 		}
 	}
