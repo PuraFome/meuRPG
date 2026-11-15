@@ -9,11 +9,12 @@ import (
 )
 
 // Spells that summon creatures (MR-037): the "summon" kind of
-// effects/spells.json. Four SRD spells take it: Find Familiar, Find Steed, Animate Dead,
-// Conjure Animals and the warlock's Pact of the Chain, which widens Find
-// Familiar: it adds forms, and every form of the familiar then attacks with its
-// reaction. Find Steed is the fifth: a mount of a listed form, with a type the player picks (celestial, fey or fiend) and an
-// Intelligence of at least 6. The loader checks the kind against the creatures; SummonOptions says
+// effects/spells.json. Four SRD spells take it: Find Familiar, Find Steed,
+// Animate Dead and Conjure Animals. The warlock's Pact of the Chain widens
+// Find Familiar: it adds forms, and every form of the familiar then attacks
+// with its reaction. Find Steed brings a mount of a listed form, with a type
+// the player picks (celestial, fey or fiend) and an Intelligence of at least 6.
+// The loader checks the kind against the creatures; SummonOptions says
 // what a cast can choose, and CheckSummon refuses a choice the spell does not
 // allow. The play module spends the slot and creates the creatures.
 
@@ -427,24 +428,33 @@ func (c *Content) CheckSummon(spell string, circle int, b Build, pick SummonPick
 	limit, _ := crEighths(opt.MaxCR)
 	out := make([]SummonedCreature, 0, len(pick.Creatures))
 	for _, k := range pick.Creatures {
-		if len(opt.Forms) > 0 {
-			i := slices.IndexFunc(opt.Forms, func(f SummonForm) bool { return f.Key == k })
-			if i < 0 {
-				return nil, fmt.Errorf("%w: %s", ErrSummonCreature, k)
-			}
-			out = append(out, SummonedCreature{Key: k, Attack: opt.Forms[i].Attack, Mount: opt.Mount, CreatureType: pick.CreatureType, MinInt: opt.MinInt})
-			continue
+		made, err := c.checkSummonCreature(opt, k, pick.CreatureType, limit)
+		if err != nil {
+			return nil, err
 		}
-		m, ok := c.c.monsters[k]
-		if _, table := c.c.creatureOf[k]; !ok || table || m.Type != opt.Type {
-			return nil, fmt.Errorf("%w: %s", ErrSummonCreature, k)
-		}
-		if v, _ := crEighths(m.ChallengeRating); v > limit {
-			return nil, fmt.Errorf("%w: %s has a challenge rating above %s", ErrSummonCreature, k, opt.MaxCR)
-		}
-		out = append(out, SummonedCreature{Key: k, Attack: opt.Attack})
+		out = append(out, made)
 	}
 	return out, nil
+}
+
+// checkSummonCreature checks one creature of a pick against the option: a listed form, or a creature of the option's type within its
+// challenge rating limit (in eighths).
+func (c *Content) checkSummonCreature(opt SummonOption, k, typ string, limit int) (SummonedCreature, error) {
+	if len(opt.Forms) > 0 {
+		i := slices.IndexFunc(opt.Forms, func(f SummonForm) bool { return f.Key == k })
+		if i < 0 {
+			return SummonedCreature{}, fmt.Errorf("%w: %s", ErrSummonCreature, k)
+		}
+		return SummonedCreature{Key: k, Attack: opt.Forms[i].Attack, Mount: opt.Mount, CreatureType: typ, MinInt: opt.MinInt}, nil
+	}
+	m, ok := c.c.monsters[k]
+	if _, table := c.c.creatureOf[k]; !ok || table || m.Type != opt.Type {
+		return SummonedCreature{}, fmt.Errorf("%w: %s", ErrSummonCreature, k)
+	}
+	if v, _ := crEighths(m.ChallengeRating); v > limit {
+		return SummonedCreature{}, fmt.Errorf("%w: %s has a challenge rating above %s", ErrSummonCreature, k, opt.MaxCR)
+	}
+	return SummonedCreature{Key: k, Attack: opt.Attack}, nil
 }
 
 // checkSummonType refuses a type the option does not offer: one of its TypeChoices is required when it has any, and none otherwise.

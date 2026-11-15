@@ -238,7 +238,7 @@ func TestSummonLoaderRefuses(t *testing.T) {
 		"a mount on a table of options": `{"spells":{"spell:conjure-animals":{"kind":"summon","type":"beast","options":[{"count":1,"max_cr":"1"}],"attack":"full","mount":"controlled"}}}`,
 		"a type choice that is no type": steed(`"type_choice":["celestial","angel"]`),
 		"a type choice listed twice":    steed(`"type_choice":["fey","fey"]`),
-		"an Intelligence floor of 0":    steed(`"min_int":-1`),
+		"a negative Intelligence floor": steed(`"min_int":-1`),
 		"an Intelligence floor of 31":   steed(`"min_int":31`),
 		"no live steed at all":          steed(`"max_live":-1`),
 		"hp fields on a summon":         `{"spells":{"spell:find-familiar":{"kind":"summon","creatures":["monster:raven"],"count":1,"attack":"none","dice":"1d4"}}}`,

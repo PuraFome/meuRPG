@@ -61,7 +61,6 @@ Either it lists the creatures (`creatures`, with `count`, `count_per_level` and 
 | `spell:find-familiar` | The SRD's forms, one creature, a 1-hour ritual; it does not attack. The Pact of the Chain (`feature:pact-of-the-chain`) adds Imp, Pseudodragon, Quasit and Sprite and makes every warlock familiar attack, with the reaction only. |
 | `spell:animate-dead` | Skeleton or Zombie: one creature, plus two per level above the 3rd. |
 | `spell:conjure-animals` | Beasts only: 1 of CR 2, 2 of CR 1, 4 of CR 1/2 or 8 of CR 1/4, multiplied at the 5th, 7th and 9th level; concentration. |
-
 | `spell:find-steed` | Warhorse, Pony, Camel, Elk or Mastiff: one creature, 10 minutes, no concentration; it acts as any creature. It is a controlled mount (`mount`), the player picks celestial, fey or fiend (`type_choice`), its Intelligence is at least 6 (`min_int`) and the caster keeps one at a time (`max_live`). |
 
 A form no larger than its caster comes with `TooSmall`.
