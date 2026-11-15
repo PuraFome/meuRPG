@@ -70,6 +70,7 @@ Quando um comportamento veio de uma resposta do produto, o [arquivo](../../archi
 | [MR-055](#mr-055-responder-ao-efeito-extra-de-uma-criatura) | Combate | MVP |
 | [MR-056](#mr-056-mostrar-a-mesa-em-uma-tela) | Sessão | MVP |
 | [MR-057](#mr-057-ligar-o-sol-num-combate) | Combate | MVP |
+| [MR-058](#mr-058-palavras-de-interrupção-no-teste-de-um-npc) | Sessão | MVP |
 | [MR-002](#mr-002-gerar-convite) | Campanha | MVP (pré-requisito) |
 | [MR-005](#mr-005-criar-npcs) | Personagem | MVP (pré-requisito) |
 | [MR-007](#mr-007-importar-ficha-em-pdf) | Personagem | Depois |
@@ -1961,6 +1962,23 @@ O MVP tem os três estilos prontos da página "Regras da mesa" (RN-24); o resto 
 - As palavras de estado dos inimigos ("Ferido"): mostrar ou esconder.
 - O mestre aceita uma magia fora da lista da classe ([MR-045](#mr-045-consultar-as-magias)).
 - Uma chave por recurso, com os estilos prontos como ponto de partida.
+
+### MR-058: Palavras de Interrupção no teste de um NPC
+
+**Como** jogador de um bardo do Conhecimento, **quero** ser perguntado se corto um teste que uma criatura do mestre faz fora do combate, **para** que as Palavras de Interrupção que escolhi continuem valendo quando um NPC mente ou pressiona o grupo numa cena sem mapa. **Como** mestre, **quero** rolar o teste e ver quem pode cortá-lo, **para** que os bardos da mesa respondam antes de o resultado ser dito.
+
+- Prioridade: MVP
+- Regras: RN-10, RN-20, RN-18
+- Módulos: play, characters
+
+#### Critérios de aceite
+- **Dado** uma cena sem combate e um bardo em "todos" com um uso da Inspiração de Bardo, **quando** o mestre rola "Rolar teste de um NPC" (Enganação, Persuasão, Intimidação ou outro teste) e diz que os bardos veem a criatura, **então** a rolagem espera e o bardo lê uma pergunta, "uma criatura" (ou o nome, se ele o conhece), com o seu dado, e nenhum número da criatura.
+- **Dado** dois bardos assim, **quando** o primeiro responde, **então** o segundo é perguntado em seguida; **e** só o bardo da vez lê a pergunta, e os outros da mesa não leem nada.
+- **Dado** um bardo, **quando** ele corta, **então** só o uso da Inspiração de Bardo é gasto (nenhuma reação) e o dado sai do total; **quando** ele deixa passar, **então** nada é gasto.
+- **Dado** que os bardos não responderam, **quando** o mestre toca em "continuar sem o bardo", **então** o teste fecha na rolagem e uma resposta tardia é recusada.
+- **Dado** que ninguém pode cortá-lo (a configuração, nenhum uso, uma criatura que não é vista, uma criatura imune a encantamento), **quando** o mestre rola, **então** o teste fecha na hora.
+- **Dado** um combate aberto, **quando** o mestre rola o teste de um NPC assim, **então** é recusado com o motivo.
+- **Dado** o seletor do mestre, **então** ele lista os NPCs do palco, os tokens de NPC do mapa atual e a criatura pedida do bestiário, não todo NPC vivo.
 
 ### MR-047: Mais quebra-cabeças
 

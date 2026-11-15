@@ -345,7 +345,7 @@ The grant is the session event `favor_granted`, keyed by the request's idempoten
 In a combat the die is the combatant's (`combatants.inspiration_*`) and this row is gone.
 
 `inspiration_holds` keeps a roll that waits for the player's answer about the die, or about the halfling's Lucky.
-`kind` is `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save`, `concentration_save` or `mount_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
+`kind` is `npc_check` (see `npc_check_asks`), `scene_check`, `group_check`, `trap_search`, `hint_try`, `spell_attack`, `effect_save`, `concentration_save` or `mount_save` today; the check also accepts `weapon_attack` and the kinds of the rolls that will wait next (`death_save`, `initiative`, `contest_check`, `hide_check`, `counterspell_check`), and the code refuses a kind it does not know.
 `request` is the request that made it (protobuf), `faces`, `modifier`, `total`, `counted` and `physical` the d20 it rolled, `answer_key` is set once answered, unique on `(campaign_id, idempotency_key)`.
 `counted_by` (`TEXT NOT NULL DEFAULT ''`) is the content key of the feature whose floor the total counts, a table's `roll_minimum` or Reliable Talent; it is empty when the die counts as it came up.
 `round` is the combat's round for a roll held in a combat and `NULL` out of one.
@@ -365,6 +365,13 @@ Reroll rule (migration 00306): `reroll_ask` marks the question asked as soon as 
 The check `inspiration_holds_reroll_face_valid` keeps the faces between 1 and 20, the index at 0 or 1 and the cost at 0 or more.
 `die_answer_key` and `die_used` keep the Bardic Inspiration die answered while this question follows, since the row stays open.
 A hold out of a combat is not forgotten when the dice run out; one of a combat only when the round or the combat is over.
+
+## `npc_check_asks`
+
+One row per Lore bard asked about an NPC's check outside a combat (migration 00354); the check itself is an `inspiration_holds` row of kind `npc_check` (`character_id` the NPC, `user_id` the master, `faces` the d20), and the asks cascade with it.
+`hold_id` (`CASCADE`) and `bard_character_id` are unique together, and so are `hold_id` and `position` (the order the bards are asked in).
+`state` is `asked`, `cut`, `passed` or `closed`; the one asked now is the first with `asked`.
+`sides` is the die of the bard's Bardic Inspiration, `creature_seen` whether the bard's player may read the creature's name, `die_face` the face that came off (`NULL` until she cuts), `physical` whether she typed it, `answer_key` and `answered_at` the answer, which a retry finds by key.
 
 ## `trap_damages`
 

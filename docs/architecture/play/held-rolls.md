@@ -7,6 +7,8 @@ The code is `held_gate.go`, `held_store.go`, `held_questions.go`, `held_answer.g
 
 ## The fourteen kinds
 
+A fifteenth kind, `npc_check`, is not one of the gate's: it is the master's roll of an NPC's check that a Lore bard may cut. It has no roller's gate and no replay (`rerunNpcCheck` refuses), `admits` refuses it to every other path, and its question is the `CuttingWordsQuestion` of the bard asked, answered by the `cutting_words` arm of `AnswerHeldRoll` ([Reactions](reactions.md#cutting-words-on-a-check)).
+
 Whichever path rolls the d20 asks the same gate.
 
 | Kind (`heldKind`) | Path | Where it is held |

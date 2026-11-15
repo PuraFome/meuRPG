@@ -70,6 +70,7 @@ Where a behaviour came from a product answer, the [archive](../archive/decisions
 | [MR-055](#mr-055-answer-a-creatures-rider) | Combat | MVP |
 | [MR-056](#mr-056-show-the-table-on-a-screen) | Session | MVP |
 | [MR-057](#mr-057-turn-the-sun-on-in-a-combat) | Combat | MVP |
+| [MR-058](#mr-058-cutting-words-on-an-npcs-check) | Session | MVP |
 | [MR-002](#mr-002-generate-an-invite) | Campaign | MVP (prerequisite) |
 | [MR-005](#mr-005-create-npcs) | Character | MVP (prerequisite) |
 | [MR-007](#mr-007-import-a-sheet-from-pdf) | Character | Later |
@@ -1962,6 +1963,23 @@ The MVP has the three ready-made styles of the "Regras da mesa" page (RN-24); th
 - The state words of enemies ("Ferido"): show or hide.
 - The master accepts a spell outside the class list ([MR-045](#mr-045-look-up-spells)).
 - One switch per feature, with the ready-made styles as a starting point.
+
+### MR-058: Cutting Words on an NPC's check
+
+**As a** Lore bard's player, **I want** to be asked whether I cut a check the master's creature makes outside a combat, **so that** the Cutting Words I chose keep working when an NPC lies to or presses the party in a scene with no map. **As a** master, **I want** to roll the check and see who may cut it, **so that** the table's bards answer before the result is told.
+
+- Priority: MVP
+- Rules: RN-10, RN-20, RN-18
+- Modules: play, characters
+
+#### Acceptance criteria
+- **Given** a scene with no combat and a bard set to "todos" with a Bardic Inspiration use left, **when** the master rolls "Rolar teste de um NPC" (Enganação, Persuasão, Intimidação or any check) and says the bards see the creature, **then** the roll waits and the bard reads one question, "uma criatura" (or the name, when she knows it), with her die, and no number of the creature's.
+- **Given** two such bards, **when** the first answers, **then** the second is asked next; **and** only the bard asked reads the question, and the others at the table read nothing.
+- **Given** a bard, **when** she cuts, **then** only her use of Bardic Inspiration is spent (no reaction) and the die comes off the total; **when** she lets it pass, **then** nothing is spent.
+- **Given** the bards have not answered, **when** the master taps "continuar sem o bardo", **then** the check settles at the roll and a late answer is refused.
+- **Given** nobody may cut it (the setting, no use left, a creature that is not seen, a creature immune to charm), **when** the master rolls, **then** the check settles at once.
+- **Given** a combat is open, **when** the master rolls an NPC's check this way, **then** it is refused with the reason.
+- **Given** the master's picker, **then** it lists the NPCs on the stage, the NPC tokens on the current map and the creature asked from the bestiary, not every living NPC.
 
 ### MR-047: More puzzles
 

@@ -148,6 +148,7 @@ No other player reads it, and there is no "usou a Inspiração" line.
 It applies to every roll a window holds: the weapon attack, the spell attack, the contest start, the contest answer and Hide.
 A concentration save and an effect save have no window, so they have no replay.
 The typed faces are checked only at the replay.
+An NPC's check outside a combat that a Lore bard cuts is the kind `npc_check`: the bard's Cutting Words answer spends the Bardic Inspiration use there and nothing else, and has no Inspiração of the roller to spend.
 A contest start, a contest answer and Hide are held the same way by Cutting Words and the master's check window: the hold only checks the Inspiration is there, and the replay spends it.
 
 ## The log and the undo
