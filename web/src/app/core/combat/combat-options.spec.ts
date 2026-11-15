@@ -153,7 +153,13 @@ describe('a thrown weapon (boards 580-16 cards 9 and 10)', () => {
   });
 
   it('leaves a thrown melee weapon (a dagger) as it was in combat: the throw is a side use, and the row stays short', () => {
-    const dagger = create(AttackSchema, { ...boleadeira, namePt: 'Adaga', melee: true, rangeFt: 20, longRangeFt: 60 });
+    const dagger = create(AttackSchema, {
+      ...boleadeira,
+      namePt: 'Adaga',
+      melee: true,
+      rangeFt: 20,
+      longRangeFt: 60,
+    });
     expect(plain(attackDetail(dagger))).toBe('+5 para acertar · 1d4 + 3 concussão · alcance 6 m');
     expect(throwNote(dagger)).toBe('');
     expect(plain(throwLine(dagger))).toBe('Arremesso: 6 m, até 18 m');
