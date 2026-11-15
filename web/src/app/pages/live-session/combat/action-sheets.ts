@@ -24,6 +24,7 @@ import {
   type UseFeatureSheetData,
   type UseFeatureSheetResult,
 } from './use-feature-sheet/use-feature-sheet';
+import { ReadySheet, type ReadySheetData } from './ready-sheet/ready-sheet';
 import type { Observable } from 'rxjs';
 import { needsSheet, resourceOf, usedNote } from '../../../core/combat/feature-use';
 import { ActionKey } from '../../../core/connect/idempotency';
@@ -247,6 +248,56 @@ export class ActionSheets {
       UseFeatureSheet,
       { data, ariaLabel: name, labelledBy: 'sheet-t', width: '480px' },
     );
+  }
+
+  /**
+   * "Preparar" (#582): the sheet of the Ready action. It takes what `GetTurnOptions` listed (the attacks, the spells and the standard
+   * actions), the creatures of the fight to name in the trigger and where the readier stands (no map, no speed, a concentration).
+   * The call, its refusals and the combat it answers are the sheet's own.
+   */
+  openReady(): void {
+    const own = this.ctx.own();
+    const e = this.ctx.encounter();
+    const options = this.ctx.options();
+    if (!own || !e || !options?.options) {
+      return;
+    }
+    const data: ReadySheetData = {
+      campaignId: this.ctx.campaignId(),
+      encounterId: e.id,
+      combatantId: own.id,
+      ownerLabel: own.label,
+      options: options.options,
+      summaries: new Map(),
+      theatre: this.ctx.theatre(),
+      noSpeed: own.speedFt <= 0 || options.contestState?.grappled === true,
+      speedFt: own.speedFt,
+      concentrating: own.concentrationSpell ? own.concentrationSpellNamePt : '',
+      combatants: e.combatants,
+      state: this.ctx.state(),
+    };
+    openSheet<ReadySheet, ReadySheetData, boolean>(
+      this.ctx.dialog,
+      this.ctx.bottomSheet,
+      ReadySheet,
+      { data, ariaLabel: 'Preparar uma ação', labelledBy: 'sheet-t', width: '880px' },
+    ).subscribe();
+  }
+
+  private readonly giveUpKey = new ActionKey();
+
+  /** "Desistir da ação preparada" (#582): `CancelReadied` on the readier's own turn; the action spent to ready it does not come back. */
+  giveUp(readiedId: string): Promise<boolean> {
+    return this.ctx.calls.run(async (e) => {
+      const enc = await this.ctx.api.ready.cancelReadied(
+        this.ctx.campaignId(),
+        e.id,
+        readiedId,
+        this.giveUpKey.keyFor({ readied: readiedId }),
+      );
+      this.giveUpKey.renew();
+      return enc;
+    });
   }
 
   /** A table feature's action that asks how many to spend, for whom, or the dice of its heal (MR-025). */

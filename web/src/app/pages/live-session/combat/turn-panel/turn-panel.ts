@@ -1,3 +1,5 @@
+import { holdsReadied } from '../../../../core/combat/ready-card';
+import { ReadiedCard } from '../readied-card/readied-card';
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -81,6 +83,7 @@ import { isMasterWait } from '../../../../core/combat/reactions';
     OrderStrip,
     OwnNumbers,
     RageStatus,
+    ReadiedCard,
     TurnReaction,
     FormChip,
   ],
@@ -156,6 +159,11 @@ export class TurnPanel {
   });
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly own = computed(() => ownCombatant(this.encounter()));
+  /** The action the player's character holds for its trigger, read off its turn (#582): the master decides when it happens. */
+  protected readonly readied = computed(() => {
+    const me = this.own();
+    return holdsReadied(me) ? me!.readied! : null;
+  });
   /** The beast the druid is in, with its own reserve of hit points (only the druid's player and the master get the numbers). */
   protected readonly form = computed(() => {
     const c = this.own();

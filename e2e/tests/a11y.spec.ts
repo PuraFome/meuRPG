@@ -94,6 +94,7 @@ import {
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
+import { goblinTrigger, openReadySheet, shootReady } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 import { LIT, WIDTHS as SUN_WIDTHS, sunSpot as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
@@ -13184,5 +13185,124 @@ for (const [colorScheme, theme] of [
         await scanFeatureWindowScreens(browser, colorScheme, width);
       },
     );
+  }
+}
+
+/**
+ * "Preparar" (#582, boards 582-01, 02, 03 and 09), the player's side: the row of "Outras", the sheet of each kind, the trigger refused over 200
+ * characters before anything is sent, the server's refusal in the red band and the readied card on and off the turn with its "Desistir" menu.
+ */
+async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = featViewport(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...featShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade preparar ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, attackCombatSquares);
+    const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme);
+
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    const other = await openActionTab(p, 'Outras');
+    await expect(other.getByRole('button', { name: 'Preparar uma ação' })).toBeVisible();
+    await expectScreenPasses(p, `Preparar, a linha da aba Outras ${where}`);
+    await shoot(p, 'preparar-linha');
+
+    // The sheet opens on the attack: nothing is chosen, "Preparar" waits.
+    await other.getByRole('button', { name: 'Preparar uma ação' }).click();
+    const sheet = p.getByRole('dialog', { name: 'Preparar uma ação' });
+    await expect(sheet.getByRole('button', { name: 'Preparar', exact: true })).toBeDisabled();
+    await expectScreenPasses(p, `Preparar, a folha do ataque ${where}`);
+    await shoot(p, 'preparar-ataque');
+
+    // The trigger over 200 characters is refused in the field, before anything is sent.
+    const field = sheet.getByLabel('Quando dispara, nas suas palavras');
+    await field.fill('a'.repeat(231));
+    await expect(sheet.getByText('Até 200 caracteres.')).toBeVisible();
+    await expectScreenPasses(p, `Preparar, o gatilho longo demais ${where}`);
+    await shoot(p, 'preparar-campo');
+
+    // A spell: the circle to hold it with, and the warning that it is the concentration.
+    await sheet.getByRole('button', { name: 'Magia', exact: true }).click();
+    await sheet.locator('label', { hasText: 'Mísseis Mágicos' }).click();
+    await expect(sheet.getByRole('group', { name: 'Com que espaço' })).toBeVisible();
+    await field.fill('Se o goblin sair da sombra do pilar');
+    await expectScreenPasses(p, `Preparar, a folha da magia ${where}`);
+    await shoot(p, 'preparar-magia');
+
+    await sheet.getByRole('button', { name: 'Mover', exact: true }).click();
+    await expect(sheet.getByText(/Você anda/)).toBeVisible();
+    await expectScreenPasses(p, `Preparar, a folha do movimento ${where}`);
+    await shoot(p, 'preparar-mover');
+
+    await sheet.getByRole('button', { name: 'Outra', exact: true }).click();
+    await expectScreenPasses(p, `Preparar, a folha de outra ação ${where}`);
+    await shoot(p, 'preparar-outra');
+
+    // The action is spent meanwhile: the server refuses and the sheet keeps what was typed.
+    await sheet.getByRole('button', { name: 'Ataque', exact: true }).click();
+    await sheet.locator('label', { hasText: 'Adaga' }).click();
+    await waitForEncounterRevision(p, await combatRPC(m, 'TakeAction', { campaignId, encounterId: begun.id, combatantId: begun.combatants.find((c) => c.label === 'Pensantus')!.id, actionKey: 'standard:dodge' }));
+    await sheet.getByRole('button', { name: 'Preparar', exact: true }).click();
+    await expect(sheet.getByRole('alert')).toContainText('Sua ação já foi usada neste turno.');
+    await expectScreenPasses(p, `Preparar, a recusa do servidor ${where}`);
+    await shoot(p, 'preparar-recusa');
+    await sheet.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(sheet).toHaveCount(0);
+
+    // The next round: the action is free again, the attack is held and the card sits under the economy row.
+    await endTurnOf(p, m, campaignId, 'Pensantus');
+    await passTurnsToAndWait(m, campaignId, 'Pensantus', p);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    const again = await openReadySheet(p);
+    await again.locator('label', { hasText: 'Adaga' }).click();
+    await again.getByLabel('Em quem (opcional)').selectOption({ label: 'Capitão Goblin' });
+    await again.getByLabel('Quando dispara, nas suas palavras').fill(goblinTrigger);
+    await again.getByRole('button', { name: 'Preparar', exact: true }).click();
+    await expect(again).toHaveCount(0);
+    const card = p.getByRole('region', { name: 'Ação preparada: Adaga no Capitão Goblin' });
+    await expect(card).toBeVisible();
+    await expectScreenPasses(p, `Preparar, o cartão na vez ${where}`);
+    await shoot(p, 'preparar-cartao');
+    await card.getByRole('button', { name: 'Mais ações da ação preparada' }).click();
+    await expect(p.getByRole('menuitem', { name: /Desistir da ação preparada/ })).toBeVisible();
+    await expectScreenPasses(p, `Preparar, o menu Desistir ${where}`);
+    await shoot(p, 'preparar-desistir');
+    await p.keyboard.press('Escape');
+
+    // Off the turn the card only reads.
+    await endTurnOf(p, m, campaignId, 'Pensantus');
+    const off = p.getByRole('region', { name: 'Ação preparada: Adaga no Capitão Goblin' });
+    await expect(off).toBeVisible();
+    await expect(off.getByRole('button', { name: 'Mais ações da ação preparada' })).toHaveCount(0);
+    await expectScreenPasses(p, `Preparar, o cartão fora da vez ${where}`);
+    await shoot(p, 'preparar-cartao-fora');
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`preparar uma ação passa no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
+      test.setTimeout(300_000);
+      await scanReadyScreens(browser, colorScheme, width);
+    });
   }
 }

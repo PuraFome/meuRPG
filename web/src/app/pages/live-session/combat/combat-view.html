@@ -1175,6 +1175,8 @@
               (feature)="useFeature($event)"
               (rage)="useFeature($event.key, $event.frenzy)"
               (action)="standardAction($event)"
+              (ready)="sheets.actions.openReady()"
+              (giveUp)="sheets.actions.giveUp($event)"
               (move)="moves.open()"
               (standUp)="standUp()"
               (rollDamage)="rollPendingDamage()"

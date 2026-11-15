@@ -19,6 +19,11 @@
     }
   </div>
 
+  @if (holdsReadied(own())) {
+    <!-- The readied action (#582, 582-03): under the economy row, in any tab; "Desistir" is the card's own menu. -->
+    <app-readied-card class="groups__readied" [readied]="own().readied!" [combatants]="combatants()" [ownTurn]="true" [busy]="busy()" (giveUp)="giveUp.emit(own().readied!.id)" />
+  }
+
   <div class="mr-live" role="status">
     @if (note()) {
       <p class="groups__note"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ note() }}</p>
@@ -397,11 +402,26 @@
       (press)="familiarEyes.emit()"
     />
   }
+  @if (readyOption(); as r) {
+    <!-- Preparar (#582, 582-03): its own row, the sheet names the trigger; the others are the buttons under it. -->
+    <app-action-row
+      name="Preparar"
+      economy="action"
+      detail="Guarda uma ação para quando algo acontecer."
+      button="Preparar"
+      icon="alarm"
+      buttonLabel="Preparar uma ação"
+      [off]="!r.enabled || !!locked()"
+      [reason]="locked() || reasonText(r.reason)"
+      [busy]="busy()"
+      (press)="ready.emit()"
+    />
+  }
   @if (standardReason()) {
     <p class="group__why" id="std-why"><mat-icon aria-hidden="true">block</mat-icon>{{ standardReason() }}</p>
   }
   <div class="std" role="group" aria-label="Ações padrão">
-    @for (a of standard(); track a.action?.key) {
+    @for (a of standardButtons(); track a.action?.key) {
       <button
         matButton="outlined"
         type="button"

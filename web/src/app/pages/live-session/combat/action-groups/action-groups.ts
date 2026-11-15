@@ -69,6 +69,9 @@ import { AttackLegend } from './attack-legend';
 import { Fold } from '../../../../shared/fold/fold';
 import { EconomyShapes } from '../../../../shared/economy-shapes/economy-shapes';
 import { movementOf, turnLineOf } from './turn-line';
+import { isReadyOption } from '../../../../core/combat/ready';
+import { holdsReadied } from '../../../../core/combat/ready-card';
+import { ReadiedCard } from '../readied-card/readied-card';
 import { TabList, tabId, tabPanelId } from '../../../../shared/tab-list/tab-list';
 import type { PactSlotsVm, SlotUsageVm } from '../../../../core/play/resource-usage.types';
 import { SlotDots } from '../../../../shared/slot-dots/slot-dots';
@@ -117,6 +120,7 @@ import { offersWeaponAttack } from './weapon-offer';
     MatButtonModule,
     MatIconModule,
     NgTemplateOutlet,
+    ReadiedCard,
     SlotDots,
     TabList,
   ],
@@ -209,6 +213,12 @@ export class ActionGroups {
   readonly extraStandard = output<string>();
   /** A standard action, by key ("standard:dash"). */
   readonly action = output<string>();
+  /** "Preparar" (#582): the sheet of the Ready action, which names the trigger. */
+  readonly ready = output<void>();
+  /** "Desistir da ação preparada": the id of the readied action to give up (`CancelReadied`). */
+  readonly giveUp = output<string>();
+  /** Whether the combatant holds an action for its trigger: its card sits under the economy row, in every tab. */
+  protected readonly holdsReadied = holdsReadied;
   /** "Conjurar": the key of the spell, or of a cantrip that asks for a save. */
   readonly cast = output<string>();
   /** "Usar": the key of a feature action ("feature:second-wind"). */
@@ -381,8 +391,13 @@ export class ActionGroups {
       (a) => !/^standard:(attack|cast-a-spell)$/.test(a.action?.key ?? ''),
     ),
   );
+  /** "Preparar" (`via_ready_action`) is a row of its own, with its sheet; the others stay the buttons below it. */
+  protected readonly readyOption = computed(() => this.standard().find((a) => isReadyOption(a)));
+  protected readonly standardButtons = computed(() =>
+    this.standard().filter((a) => !isReadyOption(a)),
+  );
   protected readonly standardWhy = computed(() => {
-    const first = this.standard().find((a) => !a.enabled);
+    const first = this.standardButtons().find((a) => !a.enabled);
     return first ? reasonText(first.reason) : '';
   });
   /** The first row of the panel: what is left of the turn (Ação, Bônus, Reação and the walker with the metres), and "Mover". */
