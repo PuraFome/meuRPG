@@ -99,9 +99,15 @@ type activeEffect struct {
 }
 
 func derive(b Build, c *content) Derived {
+	d, _ := deriveRounds(b, c)
+	return d
+}
+
+// deriveRounds is derive and the number of times it made the sheet: one for a sheet that loses nothing.
+func deriveRounds(b Build, c *content) (Derived, int) {
 	d := deriveWith(b, c, nil)
 	if len(b.Feats) == 0 && len(b.FeatureChoices) == 0 {
-		return d
+		return d, 1
 	}
 	// A character that loses a feat's prerequisite cannot use the feat until it has the
 	// prerequisite again (SRD 5.1, Feats). What the character has is judged with the
@@ -114,7 +120,7 @@ func derive(b Build, c *content) Derived {
 		why[k] = l
 	}
 	if len(why) == 0 {
-		return d
+		return d, 1
 	}
 	out := deriveWith(b, c, why)
 	// What the character has is said over the sheet as it ends up, without the lost entries: the numbers the reader sees.
@@ -124,7 +130,7 @@ func derive(b Build, c *content) Derived {
 			out.Issues[i].Message = out.Issues[i].Lost.SentencePT("", false)
 		}
 	}
-	return out
+	return out, 2
 }
 
 // deriveWith is derive with the feats and options in lost (by key) listed but not applied; each is told with what
