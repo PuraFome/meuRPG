@@ -5,6 +5,7 @@ import (
 
 	"connectrpc.com/connect"
 
+	campaignsv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/campaigns/v1"
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
@@ -296,4 +297,69 @@ func TestNpcCheckRefusedWhileACombatRuns(t *testing.T) {
 	n := &npcTable{armed: a, npcID: a.goblin.GetId()}
 	_, err := n.roll(t, 12, true)
 	wantCode(t, "roll in a combat", err, connect.CodeFailedPrecondition)
+}
+
+// firstAsked is the user and the check of the bard asked first.
+func (n *npcTable) firstAsked(res *playv1.RollNpcCheckResponse) *user {
+	if res.GetCheck().GetAsks()[0].GetCharacterName() == "Brisa" {
+		return n.bia
+	}
+	return n.ana
+}
+
+// TestNpcCheckPhysicalDiceTypesTheBardsFace: a table of real dice (the master's own d20 is typed or rolled either way); the bard types the face; the app's roll is refused, a typed face out
+// of the die is refused, and the master's d20 is untouched by the bard's mode.
+func TestNpcCheckPhysicalDiceTypesTheBardsFace(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	n.forceDice(t, campaignsv1.DiceMode_DICE_MODE_PHYSICAL)
+	res, err := n.roll(t, 15, true)
+	if err != nil {
+		t.Fatalf("RollNpcCheck() error = %v", err)
+	}
+	hold, u := res.GetCheck().GetHoldId(), n.firstAsked(res)
+	cut := func(r *playv1.CuttingWordsAnswer) error {
+		_, err := u.resource.AnswerHeldRoll(t.Context(), connect.NewRequest(&playv1.AnswerHeldRollRequest{
+			CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey(), Answer: &playv1.AnswerHeldRollRequest_CuttingWords{CuttingWords: r},
+		}))
+		return err
+	}
+	if err := cut(&playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_RollInApp{RollInApp: true}}); err == nil {
+		t.Error("the app rolled a physical bard's die, want a refusal")
+	}
+	if err := cut(&playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_TypedFace{TypedFace: 9}}); err == nil {
+		t.Error("a face of 9 on a d6 was taken, want a refusal")
+	}
+	if err := cut(&playv1.CuttingWordsAnswer{Cut: true, Roll: &playv1.CuttingWordsAnswer_TypedFace{TypedFace: 5}}); err != nil {
+		t.Fatalf("a typed face of 5 error = %v", err)
+	}
+}
+
+// TestNpcCheckAnswerLosesTheRaceWithTheSkip: the master goes on without the bards while the first one answers; one of them wins, the
+// check settles once and the loser reads a neutral refusal or the same answer.
+func TestNpcCheckAnswerLosesTheRaceWithTheSkip(t *testing.T) {
+	t.Parallel()
+	n := newNpcTable(t, charactersv1.CuttingWordsAsk_CUTTING_WORDS_ASK_ALL)
+	res, err := n.roll(t, 15, true)
+	if err != nil {
+		t.Fatalf("RollNpcCheck() error = %v", err)
+	}
+	hold, u := res.GetCheck().GetHoldId(), n.firstAsked(res)
+	done := make(chan error, 2)
+	go func() {
+		_, err := n.master.play.SkipNpcCheckAsks(t.Context(), connect.NewRequest(&playv1.SkipNpcCheckAsksRequest{CampaignId: n.campaignID, HoldId: hold, IdempotencyKey: newKey()}))
+		done <- err
+	}()
+	go func() {
+		_, err := n.answer(t, u, hold, true, 3)
+		done <- err
+	}()
+	for range 2 {
+		if err := <-done; err != nil && connect.CodeOf(err) != connect.CodeNotFound && connect.CodeOf(err) != connect.CodeFailedPrecondition {
+			t.Errorf("a racer failed with %v, want success or a neutral refusal", err)
+		}
+	}
+	if _, _, count := n.resolved(t); count > 1 {
+		t.Fatalf("%d resolved events, want at most 1", count)
+	}
 }
