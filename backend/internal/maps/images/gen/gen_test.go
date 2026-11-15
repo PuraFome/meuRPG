@@ -660,8 +660,9 @@ func TestGeminiReadsBothErrorStyles(t *testing.T) {
 	}
 }
 
-// Google's message can quote the request. Neither the returned error nor the
-// log line of the failed attempt carries it.
+// Google's message can quote the request. A 400 is not retried, so the client
+// logs nothing and returns the error, which the job's log line prints: the
+// error carries the status and never the message.
 func TestGeminiErrorMessageIsNotLogged(t *testing.T) {
 	t.Parallel()
 	const canary = "CANARY-prompt-text-7f3a"
@@ -677,8 +678,8 @@ func TestGeminiErrorMessageIsNotLogged(t *testing.T) {
 	if strings.Contains(err.Error(), canary) || strings.Contains(logs.String(), canary) {
 		t.Errorf("the provider's message is in the error %q or the log %q", err, logs.String())
 	}
-	if !strings.Contains(logs.String(), "status 400") {
-		t.Errorf("log = %q, want the status", logs.String())
+	if !strings.Contains(err.Error(), "status 400") {
+		t.Errorf("error = %q, want the status", err)
 	}
 }
 
