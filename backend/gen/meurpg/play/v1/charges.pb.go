@@ -823,6 +823,167 @@ func (x *RecoverAmmunitionResponse) GetAmmunition() []*v1.SheetAmmunition {
 	return nil
 }
 
+type DawnRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId     string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	IdempotencyKey string                 `protobuf:"bytes,2,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DawnRequest) Reset() {
+	*x = DawnRequest{}
+	mi := &file_meurpg_play_v1_charges_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DawnRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DawnRequest) ProtoMessage() {}
+
+func (x *DawnRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_charges_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DawnRequest.ProtoReflect.Descriptor instead.
+func (*DawnRequest) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_charges_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DawnRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *DawnRequest) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+type DawnResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The items that regained charges, in the order of the characters and of their sheets. A retry with the same
+	// key answers with the items as they stand now.
+	Restored      []*DawnRestored `protobuf:"bytes,1,rep,name=restored,proto3" json:"restored,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DawnResponse) Reset() {
+	*x = DawnResponse{}
+	mi := &file_meurpg_play_v1_charges_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DawnResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DawnResponse) ProtoMessage() {}
+
+func (x *DawnResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_charges_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DawnResponse.ProtoReflect.Descriptor instead.
+func (*DawnResponse) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_charges_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DawnResponse) GetRestored() []*DawnRestored {
+	if x != nil {
+		return x.Restored
+	}
+	return nil
+}
+
+// DawnRestored is one item a dawn gave charges back to.
+type DawnRestored struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	CharacterId string                 `protobuf:"bytes,1,opt,name=character_id,json=characterId,proto3" json:"character_id,omitempty"`
+	// The item after the dawn.
+	Item *v1.SheetMagicItem `protobuf:"bytes,2,opt,name=item,proto3" json:"item,omitempty"`
+	// The charges it regained.
+	Regained      int32 `protobuf:"varint,3,opt,name=regained,proto3" json:"regained,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DawnRestored) Reset() {
+	*x = DawnRestored{}
+	mi := &file_meurpg_play_v1_charges_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DawnRestored) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DawnRestored) ProtoMessage() {}
+
+func (x *DawnRestored) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_play_v1_charges_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DawnRestored.ProtoReflect.Descriptor instead.
+func (*DawnRestored) Descriptor() ([]byte, []int) {
+	return file_meurpg_play_v1_charges_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *DawnRestored) GetCharacterId() string {
+	if x != nil {
+		return x.CharacterId
+	}
+	return ""
+}
+
+func (x *DawnRestored) GetItem() *v1.SheetMagicItem {
+	if x != nil {
+		return x.Item
+	}
+	return nil
+}
+
+func (x *DawnRestored) GetRegained() int32 {
+	if x != nil {
+		return x.Regained
+	}
+	return 0
+}
+
 var File_meurpg_play_v1_charges_proto protoreflect.FileDescriptor
 
 const file_meurpg_play_v1_charges_proto_rawDesc = "" +
@@ -885,19 +1046,30 @@ const file_meurpg_play_v1_charges_proto_rawDesc = "" +
 	"\x19RecoverAmmunitionResponse\x12E\n" +
 	"\n" +
 	"ammunition\x18\x01 \x03(\v2%.meurpg.characters.v1.SheetAmmunitionR\n" +
-	"ammunition*\xc6\x01\n" +
+	"ammunition\"W\n" +
+	"\vDawnRequest\x12\x1f\n" +
+	"\vcampaign_id\x18\x01 \x01(\tR\n" +
+	"campaignId\x12'\n" +
+	"\x0fidempotency_key\x18\x02 \x01(\tR\x0eidempotencyKey\"H\n" +
+	"\fDawnResponse\x128\n" +
+	"\brestored\x18\x01 \x03(\v2\x1c.meurpg.play.v1.DawnRestoredR\brestored\"\x87\x01\n" +
+	"\fDawnRestored\x12!\n" +
+	"\fcharacter_id\x18\x01 \x01(\tR\vcharacterId\x128\n" +
+	"\x04item\x18\x02 \x01(\v2$.meurpg.characters.v1.SheetMagicItemR\x04item\x12\x1a\n" +
+	"\bregained\x18\x03 \x01(\x05R\bregained*\xc6\x01\n" +
 	"\x14ChargesBlockedReason\x12&\n" +
 	"\"CHARGES_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12-\n" +
 	")CHARGES_BLOCKED_REASON_REGAIN_FACE_NEEDED\x10\x01\x12)\n" +
 	"%CHARGES_BLOCKED_REASON_COMBAT_RUNNING\x10\x02\x12,\n" +
-	"(CHARGES_BLOCKED_REASON_ALREADY_RECOVERED\x10\x032\xe9\x03\n" +
+	"(CHARGES_BLOCKED_REASON_ALREADY_RECOVERED\x10\x032\xac\x04\n" +
 	"\x0eChargesService\x12Y\n" +
 	"\fSpendCharges\x12#.meurpg.play.v1.SpendChargesRequest\x1a$.meurpg.play.v1.SpendChargesResponse\x12_\n" +
 	"\x0eRollLastCharge\x12%.meurpg.play.v1.RollLastChargeRequest\x1a&.meurpg.play.v1.RollLastChargeResponse\x12S\n" +
 	"\n" +
 	"SetCharges\x12!.meurpg.play.v1.SetChargesRequest\x1a\".meurpg.play.v1.SetChargesResponse\x12\\\n" +
 	"\rSetAmmunition\x12$.meurpg.play.v1.SetAmmunitionRequest\x1a%.meurpg.play.v1.SetAmmunitionResponse\x12h\n" +
-	"\x11RecoverAmmunition\x12(.meurpg.play.v1.RecoverAmmunitionRequest\x1a).meurpg.play.v1.RecoverAmmunitionResponseB\xba\x01\n" +
+	"\x11RecoverAmmunition\x12(.meurpg.play.v1.RecoverAmmunitionRequest\x1a).meurpg.play.v1.RecoverAmmunitionResponse\x12A\n" +
+	"\x04Dawn\x12\x1b.meurpg.play.v1.DawnRequest\x1a\x1c.meurpg.play.v1.DawnResponseB\xba\x01\n" +
 	"\x12com.meurpg.play.v1B\fChargesProtoP\x01Z<github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1;playv1\xa2\x02\x03MPX\xaa\x02\x0eMeurpg.Play.V1\xca\x02\x0eMeurpg\\Play\\V1\xe2\x02\x1aMeurpg\\Play\\V1\\GPBMetadata\xea\x02\x10Meurpg::Play::V1b\x06proto3"
 
 var (
@@ -913,7 +1085,7 @@ func file_meurpg_play_v1_charges_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_play_v1_charges_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_meurpg_play_v1_charges_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_meurpg_play_v1_charges_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_meurpg_play_v1_charges_proto_goTypes = []any{
 	(ChargesBlockedReason)(0),         // 0: meurpg.play.v1.ChargesBlockedReason
 	(*ChargesBlocked)(nil),            // 1: meurpg.play.v1.ChargesBlocked
@@ -927,34 +1099,41 @@ var file_meurpg_play_v1_charges_proto_goTypes = []any{
 	(*SetAmmunitionResponse)(nil),     // 9: meurpg.play.v1.SetAmmunitionResponse
 	(*RecoverAmmunitionRequest)(nil),  // 10: meurpg.play.v1.RecoverAmmunitionRequest
 	(*RecoverAmmunitionResponse)(nil), // 11: meurpg.play.v1.RecoverAmmunitionResponse
-	(*v1.SheetMagicItem)(nil),         // 12: meurpg.characters.v1.SheetMagicItem
-	(v1.ItemLoss)(0),                  // 13: meurpg.characters.v1.ItemLoss
-	(*v1.SheetAmmunition)(nil),        // 14: meurpg.characters.v1.SheetAmmunition
+	(*DawnRequest)(nil),               // 12: meurpg.play.v1.DawnRequest
+	(*DawnResponse)(nil),              // 13: meurpg.play.v1.DawnResponse
+	(*DawnRestored)(nil),              // 14: meurpg.play.v1.DawnRestored
+	(*v1.SheetMagicItem)(nil),         // 15: meurpg.characters.v1.SheetMagicItem
+	(v1.ItemLoss)(0),                  // 16: meurpg.characters.v1.ItemLoss
+	(*v1.SheetAmmunition)(nil),        // 17: meurpg.characters.v1.SheetAmmunition
 }
 var file_meurpg_play_v1_charges_proto_depIdxs = []int32{
 	0,  // 0: meurpg.play.v1.ChargesBlocked.reason:type_name -> meurpg.play.v1.ChargesBlockedReason
-	12, // 1: meurpg.play.v1.SpendChargesResponse.item:type_name -> meurpg.characters.v1.SheetMagicItem
-	12, // 2: meurpg.play.v1.RollLastChargeResponse.item:type_name -> meurpg.characters.v1.SheetMagicItem
-	13, // 3: meurpg.play.v1.RollLastChargeResponse.lost:type_name -> meurpg.characters.v1.ItemLoss
-	13, // 4: meurpg.play.v1.SetChargesRequest.lost:type_name -> meurpg.characters.v1.ItemLoss
-	12, // 5: meurpg.play.v1.SetChargesResponse.item:type_name -> meurpg.characters.v1.SheetMagicItem
-	14, // 6: meurpg.play.v1.SetAmmunitionResponse.ammunition:type_name -> meurpg.characters.v1.SheetAmmunition
-	14, // 7: meurpg.play.v1.RecoverAmmunitionResponse.ammunition:type_name -> meurpg.characters.v1.SheetAmmunition
-	2,  // 8: meurpg.play.v1.ChargesService.SpendCharges:input_type -> meurpg.play.v1.SpendChargesRequest
-	4,  // 9: meurpg.play.v1.ChargesService.RollLastCharge:input_type -> meurpg.play.v1.RollLastChargeRequest
-	6,  // 10: meurpg.play.v1.ChargesService.SetCharges:input_type -> meurpg.play.v1.SetChargesRequest
-	8,  // 11: meurpg.play.v1.ChargesService.SetAmmunition:input_type -> meurpg.play.v1.SetAmmunitionRequest
-	10, // 12: meurpg.play.v1.ChargesService.RecoverAmmunition:input_type -> meurpg.play.v1.RecoverAmmunitionRequest
-	3,  // 13: meurpg.play.v1.ChargesService.SpendCharges:output_type -> meurpg.play.v1.SpendChargesResponse
-	5,  // 14: meurpg.play.v1.ChargesService.RollLastCharge:output_type -> meurpg.play.v1.RollLastChargeResponse
-	7,  // 15: meurpg.play.v1.ChargesService.SetCharges:output_type -> meurpg.play.v1.SetChargesResponse
-	9,  // 16: meurpg.play.v1.ChargesService.SetAmmunition:output_type -> meurpg.play.v1.SetAmmunitionResponse
-	11, // 17: meurpg.play.v1.ChargesService.RecoverAmmunition:output_type -> meurpg.play.v1.RecoverAmmunitionResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	15, // 1: meurpg.play.v1.SpendChargesResponse.item:type_name -> meurpg.characters.v1.SheetMagicItem
+	15, // 2: meurpg.play.v1.RollLastChargeResponse.item:type_name -> meurpg.characters.v1.SheetMagicItem
+	16, // 3: meurpg.play.v1.RollLastChargeResponse.lost:type_name -> meurpg.characters.v1.ItemLoss
+	16, // 4: meurpg.play.v1.SetChargesRequest.lost:type_name -> meurpg.characters.v1.ItemLoss
+	15, // 5: meurpg.play.v1.SetChargesResponse.item:type_name -> meurpg.characters.v1.SheetMagicItem
+	17, // 6: meurpg.play.v1.SetAmmunitionResponse.ammunition:type_name -> meurpg.characters.v1.SheetAmmunition
+	17, // 7: meurpg.play.v1.RecoverAmmunitionResponse.ammunition:type_name -> meurpg.characters.v1.SheetAmmunition
+	14, // 8: meurpg.play.v1.DawnResponse.restored:type_name -> meurpg.play.v1.DawnRestored
+	15, // 9: meurpg.play.v1.DawnRestored.item:type_name -> meurpg.characters.v1.SheetMagicItem
+	2,  // 10: meurpg.play.v1.ChargesService.SpendCharges:input_type -> meurpg.play.v1.SpendChargesRequest
+	4,  // 11: meurpg.play.v1.ChargesService.RollLastCharge:input_type -> meurpg.play.v1.RollLastChargeRequest
+	6,  // 12: meurpg.play.v1.ChargesService.SetCharges:input_type -> meurpg.play.v1.SetChargesRequest
+	8,  // 13: meurpg.play.v1.ChargesService.SetAmmunition:input_type -> meurpg.play.v1.SetAmmunitionRequest
+	10, // 14: meurpg.play.v1.ChargesService.RecoverAmmunition:input_type -> meurpg.play.v1.RecoverAmmunitionRequest
+	12, // 15: meurpg.play.v1.ChargesService.Dawn:input_type -> meurpg.play.v1.DawnRequest
+	3,  // 16: meurpg.play.v1.ChargesService.SpendCharges:output_type -> meurpg.play.v1.SpendChargesResponse
+	5,  // 17: meurpg.play.v1.ChargesService.RollLastCharge:output_type -> meurpg.play.v1.RollLastChargeResponse
+	7,  // 18: meurpg.play.v1.ChargesService.SetCharges:output_type -> meurpg.play.v1.SetChargesResponse
+	9,  // 19: meurpg.play.v1.ChargesService.SetAmmunition:output_type -> meurpg.play.v1.SetAmmunitionResponse
+	11, // 20: meurpg.play.v1.ChargesService.RecoverAmmunition:output_type -> meurpg.play.v1.RecoverAmmunitionResponse
+	13, // 21: meurpg.play.v1.ChargesService.Dawn:output_type -> meurpg.play.v1.DawnResponse
+	16, // [16:22] is the sub-list for method output_type
+	10, // [10:16] is the sub-list for method input_type
+	10, // [10:10] is the sub-list for extension type_name
+	10, // [10:10] is the sub-list for extension extendee
+	0,  // [0:10] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_play_v1_charges_proto_init() }
@@ -972,7 +1151,7 @@ func file_meurpg_play_v1_charges_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_play_v1_charges_proto_rawDesc), len(file_meurpg_play_v1_charges_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -39,6 +39,8 @@ What each kind restores follows SRD 5.1:
 The recharge of each resource is the effect's (`recharge`, and `recharge_if` for Bardic Inspiration), so `rules.RestRecovery` is the only rule: `short_rest` means "short or long rest", `long_rest` waits for the long one, and `dawn` and `none` are restored by no rest.
 The table's content adds `restore_one_on_short_rest` (one use on a short rest, all on a long one) and `restore_one_on_long_rest` (one use on a long rest, none on a short one): `restResources` takes one use off `used` for `RecoverOne` and sets the preview's `back` to 1.
 A rest is refused with `COMBAT_OPEN` while a combat is running.
+A long rest with `restore_dawn` also gives the magic items their dawn, in the same transaction and before the `rest_taken` event: one `item_charges_restored` event for each item that regained charges, with the dice rolled by the app ([Item charges](item-charges.md#the-dawn)).
+A short rest ignores `restore_dawn`, and a retry of the rest's key replays the stored event and restores nothing twice.
 A long rest, in the same transaction, deletes the campaign's `npc_spell_use` rows and empties the count of the persistent NPCs in a combat in setup (an ended combat is not touched), so every persistent NPC has its slots, uses, uses a day and Legendary Resistance back (see [Creatures](creatures.md#kept-until-the-long-rest)).
 A short rest, in the same transaction and before the spells, removes the `rest:` keys from the campaign's `npc_spell_use` rows and from the persistent NPCs in a combat in setup, and drops a row left with nothing spent.
 It leaves the slots, the uses a day and Legendary Resistance.

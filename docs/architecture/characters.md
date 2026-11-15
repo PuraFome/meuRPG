@@ -223,7 +223,7 @@ The counts are read only where the sheet is: the player of the character and the
 `last_roll_pending` says the last charge went from an item that rolls a d20 and the roll waits.
 It is read and ignored on a save like the other fields.
 The charge keeper (`itemchargeskeeper.go`) is what play calls inside its own transaction.
-Its methods are `SpendItemCharges`, `ResolveLastCharge` and `SetItemCharges`.
+Its methods are `SpendItemCharges`, `ResolveLastCharge`, `SetItemCharges` and `RestoreDawn`.
 Each locks the character's row, asks nothing of the caller (play authorizes first) and takes and returns proto values.
 Spending the last charge loses the item at once when the catalog says so.
 When the catalog says d20 instead, the item waits for the roll.
@@ -231,6 +231,9 @@ When the catalog says d20 instead, the item waits for the roll.
 A 1 loses the item, and a 20 regains the dice play rolled, cut to the maximum.
 `SetItemCharges` is the master's correction.
 It also sets the count of an item that rolls its start, ends a pending roll and writes or deletes the row.
+`RestoreDawn` (`dawn.go`) is the dawn of every character of the campaign: it locks each character that has a row, in the order of their ids, and gives each item its recharge as the catalog says (the rules are in [Item charges](play/item-charges.md#the-dawn)).
+It takes the dice from the caller (`link.DawnRoll`), so the module never holds the table's dice, and returns the items that regained charges.
+A campaign package carries the rows of `character_item_charges` and the pieces of `character_ammunition` with the character ([Campaign package](campaign-package.md)).
 Ammunition is `character_ammunition` (see [Characters data](../data/characters.md#character_ammunition)).
 `FullSheet.ammunition` lists every counted kind, also one at 0.
 A kind is counted once it has a row.

@@ -11,7 +11,7 @@ The rule is in [the product rules](../../product/rules.md).
 - `SpendCharges`, `RollLastCharge` and `RecoverAmmunition` are for the character's player and the master.
 - A dead character is refused with `CHARACTER_DEAD`.
 - The calls work on a locked sheet and need an open game session, in a combat and out of one.
-- `SetCharges` is the master's correction and has no player.
+- `SetCharges` and `Dawn` are the master's and have no player.
 - `SetAmmunition` needs no session and writes no event: the owner may while the sheet is open to editing, the master always.
 - Spending charges is never an action of the turn.
 
@@ -43,6 +43,31 @@ The master corrects the charges with `SetCharges`.
 `SetCharges` sets the charges left (0 to the maximum, which is also how a rolled start gets its count) and whether the item was lost.
 It ends a wait for the d20, writes `item_charges_restored` (or `item_destroyed` when the item is lost) and no line of the combat log.
 
+## The dawn
+
+`Dawn` is the master's "Amanhecer": it gives the items of every character of the campaign their dawn.
+A long rest with `TakeRestRequest.restore_dawn` does the same in the rest's own transaction, after the characters' rest and before the rest's event.
+A short rest ignores the flag.
+The numbers are the keeper's `RestoreDawn` (`characters/dawn.go`), which takes a `link.DawnRoll` and returns the `link.DawnItem`s that regained charges.
+`dawn.go` in play rolls the dice with `Service.roller` and writes the events.
+The dice are always the app's, also at a table of real dice (RN-18): the master rolls a dawn for the table, as the app rolls the NPCs' dice, and no field of the request types a face.
+For each stored row of an entry on a sheet:
+
+- A lost item, an item that waits for its last d20 and an item that never recharges are left as they are.
+  An item waiting for its d20 keeps `last_roll_pending` and regains nothing until the roll is made.
+- An item that regains charges at dawn gets all of them back or the catalog's dice, cut to the maximum, and an item at its maximum changes nothing and writes nothing.
+- An item that waits for dawns after its last charge counts one when it has no charge left, is full on the last dawn of its wait (the figurines wait 7) and starts counting again from 0.
+  An item with a charge left counts none, and a count left over is cleared.
+- An item that rolls its start and has no row has no count yet, so it is skipped.
+
+The keeper reads the campaign's rows (`ListCampaignItemCharges`), locks each character that has one in the order of their ids, like a spend does, and reads the rows again after the lock, so a spend and a dawn on one item take turns.
+Each item that regained charges writes one `item_charges_restored` session event (`regained` outcome, no key, a plain session event and never a line of a combat's log).
+The idempotency of a rest is the rest's key: a retry replays the stored `rest_taken` event and never restores again.
+`Dawn` has its own key, stored with the `dawn_taken` event, which also lists the items that regained charges, so the retry answers with them as they stand and a dawn that only counted a day for the figurines is not counted twice.
+A call that changes nothing still writes `dawn_taken`.
+The events are the master's and the owner's, as the charges are (RN-10).
+The call tells the streams that the sheets of the characters changed (`vitals_changed`, to the master and the owner), and nothing else.
+
 ## Ammunition
 
 `SetAmmunition` sets the pieces of one kind, 0 to 9999.
@@ -67,7 +92,7 @@ When the stock row counts another combat only the piece comes back, and a row le
 
 ## Events
 
-The events are `item_charge_spent`, `item_charges_restored`, `item_destroyed`, `ammunition_spent` and `ammunition_recovered`.
+The events are `item_charge_spent`, `item_charges_restored`, `item_destroyed`, `dawn_taken`, `ammunition_spent` and `ammunition_recovered`.
 In a combat that has the character, `SpendCharges` writes `COMBAT_LOG_KIND_ITEM_CHARGE_SPENT` and `RollLastCharge` writes `COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED`.
 An event of `ammunition_spent` reads as `COMBAT_LOG_KIND_AMMUNITION_SPENT`.
 `SetCharges`, `RecoverAmmunition` and any call outside a combat write the session event only, and no line.

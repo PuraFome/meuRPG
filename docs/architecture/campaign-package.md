@@ -18,7 +18,9 @@ The cleanup rules of the bucket are in [Operations](../operations/reference.md#c
 | `puzzles/<n>.json`, `encounters.json` | The puzzles, and the encounters saved on the maps' battle points. |
 | `content/<n>.json`, `content/options.json` | The table content entries and the options switched off. |
 
-A package never carries the charges the magic items spent (`character_item_charges`), so an imported character's items start full, nor the players' private notes, the session history and logs, accounts (ids, e-mails, names), owners and members, invites and claim links, or a player's fog memory.
+A package carries what a character's magic items spent (`character_item_charges`: the charges used, the loss, the dawns counted and the pending d20, one `PackageItemCharge` for each entry of the sheet) and the pieces of ammunition it holds (`character_ammunition`: one `PackageAmmunition` for each kind, the quantity only), inside the character's own entry.
+What a combat fired and the combat it belongs to do not travel.
+A package never carries the players' private notes, the session history and logs, accounts (ids, e-mails, names), owners and members, invites and claim links, or a player's fog memory.
 A package also leaves play out: traps come back armed, treasures unfound, nothing a player found out or remembers.
 Which maps and points are revealed is preparation and stays.
 
@@ -62,6 +64,7 @@ What one part finds for the next (which doors, points and player characters exis
 - **Table content** goes through the same shape, feature-key, size and name checks as `CreateTableEntry` (an entry whose name, in any case, another entry of its kind has is a `DUPLICATE` problem naming it), then the whole content is compiled at once with `Content.With`; an entry the engine refuses is a problem naming the entry.
   The campaign's content revision starts at 1.
 - **Characters** are checked with `checkNewSheet` against that compiled content, so a sheet that needs a class of the table is judged with it.
+  The items' state is checked against the sheet and the content that come with it (`stageItemState`): an entry the sheet lacks or that holds no charges, a count above the item's maximum, dawns above the item's wait, a pending d20 on an item that does not wait for one or still has charges, a kind of ammunition the rules lack, a quantity over 9,999 and a name given twice are `INVALID`.
   An NPC keeps its link to its SRD creature.
   The players' characters are inserted reserved (`characters.reserved`, MR-049): no owner, invisible to players until claimed ([Campaigns](campaigns.md#claim-links)).
 - **Puzzles** are built again by their kind, which proves they can be solved from their start; the seed is kept so the start is the same.

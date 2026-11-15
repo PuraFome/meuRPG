@@ -160,6 +160,7 @@ var notReads = map[string]classified{
 	playv1connect.CastingServiceCastSpellOutsideCombatProcedure:                 {playerAction, "a player casts for their own character; only the master casts for an NPC"},
 	playv1connect.CastingServiceConfirmCastTimePassedProcedure:                  {masterWrite, masterOnlyWhy},
 	playv1connect.CastingServiceEndActiveSpellProcedure:                         {playerAction, "a player ends a spell of their own character; the master any"},
+	playv1connect.ChargesServiceDawnProcedure:                                   {masterWrite, masterOnlyWhy},
 	playv1connect.ChargesServiceRecoverAmmunitionProcedure:                      {playerAction, "a player takes back the ammunition their own character fired in its last combat; the master any"},
 	playv1connect.ChargesServiceRollLastChargeProcedure:                         {playerAction, "a player rolls the d20 of the last charge of an item of their own character; the master any"},
 	playv1connect.ChargesServiceSetAmmunitionProcedure:                          {playerAction, "a player sets the ammunition of their own character while the sheet is open to editing; the master any time"},

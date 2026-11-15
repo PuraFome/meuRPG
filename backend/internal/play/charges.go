@@ -56,6 +56,9 @@ type ItemKeeper interface {
 	AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (left int32, counted bool, err error)
 	// RecoverAmmunition takes back half of what the character fired in the encounter.
 	RecoverAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, encounterID string) ([]*charactersv1.SheetAmmunition, error)
+	// RestoreDawn gives every magic item of the campaign's characters its dawn, with the dice rolled by roll, and
+	// returns the items that regained charges.
+	RestoreDawn(ctx context.Context, tx pgx.Tx, campaignID string, roll link.DawnRoll) ([]link.DawnItem, error)
 }
 
 // chargeCall is what a write of ChargesService reads from its request before the transaction.

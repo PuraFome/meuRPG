@@ -99,6 +99,7 @@ var otherWriters = map[string][]storedShape{
 	"item_charge_spent":         {storedShapeOf[itemUseEvent]("today.json")},
 	"item_charges_restored":     {storedShapeOf[itemUseEvent]("today.json")},
 	"item_destroyed":            {storedShapeOf[itemUseEvent]("today.json")},
+	"dawn_taken":                {storedShapeOf[dawnEvent]("today.json")},
 	"ammunition_spent":          {storedShapeOf[itemUseEvent]("today.json")},
 	"ammunition_recovered":      {storedShapeOf[ammunitionRecoveredEvent]("today.json")},
 }

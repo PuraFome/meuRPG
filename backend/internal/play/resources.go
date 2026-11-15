@@ -350,6 +350,11 @@ func (s *Service) takeRestTx(ctx context.Context, tx pgx.Tx, h *hints, session p
 	if _, run.after, err = s.vitals.TakeRest(ctx, tx, call.m.CampaignID, call.msg); err != nil {
 		return resourceError(err)
 	}
+	if call.kind == rules.RestLong && call.msg.GetRestoreDawn() { // a short rest ignores it
+		if _, err := s.restoreDawn(ctx, tx, q, h, session, call.m.UserID, call.m.CampaignID); err != nil {
+			return err
+		}
+	}
 	if err := restNPCUses(ctx, q, call); err != nil {
 		return err
 	}
@@ -702,9 +707,13 @@ func (s *Service) insertKeyedEvent(ctx context.Context, q *playdb.Queries, e key
 		return "", time.Time{}, fmt.Errorf("next event number: %w", err)
 	}
 	at = s.now()
+	var key *string // an event with no key is one a retry never looks for (the events a dawn writes for each item)
+	if e.key != "" {
+		key = &e.key
+	}
 	row, err := insertSessionEvent(ctx, q, playdb.InsertSessionEventParams{
 		GameSessionID: e.sessionID, Seq: seq, Kind: e.kind, ActorUserID: &e.userID, CharacterID: e.characterID,
-		Payload: body, IdempotencyKey: &e.key, IdempotencyHash: e.hash, CreatedAt: at,
+		Payload: body, IdempotencyKey: key, IdempotencyHash: e.hash, CreatedAt: at,
 	})
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("insert session event: %w", err)

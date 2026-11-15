@@ -226,6 +226,8 @@ An item whose charges the SRD rolls has no row until the master sets them.
 **The maximum is not stored**: it comes from the catalog, and the server reads a count above it as an empty item.
 A character with no row for an entry has the item full.
 A save of the sheet deletes the rows of the entries it removed.
+A dawn writes the row of an item that regained charges or counted a dawn, and deletes the row of an item that is full again.
+The campaign package carries every column.
 
 ## `character_ammunition`
 

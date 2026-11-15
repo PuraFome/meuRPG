@@ -131,6 +131,14 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   A perda tem três desfechos, como o item diz: ele some (as varinhas e os cajados de fogo, gelo, cura e enxame de insetos), vira um item comum sem magia que fica na ficha como aquilo de que é feito (os cajados de encantamento, de golpe e dos bosques), ou guarda só o bônus de ataque e de dano (o cajado de poder).
   Um item cujas cargas o SRD sorteia (a lâmina da sorte, o ladrão de nove vidas) não tem nenhuma definida quando é novo: o mestre as define, de 0 até o máximo.
   A estatueta das cabras de marfim recupera todas as cargas no sétimo amanhecer depois que a última foi gasta.
+  O amanhecer é do mestre: "Amanhecer" dá a vez do amanhecer aos itens de todos os personagens, e o descanso longo tem uma caixa de seleção, marcada por padrão, que faz o mesmo como parte do descanso.
+  Um descanso curto nunca recarrega itens.
+  Num amanhecer, um item que recupera cargas as recebe como a entrada dele diz (todas, ou os dados dele), até o máximo, e um item cheio fica como está.
+  O app rola os dados de um amanhecer, também numa mesa de dados físicos, porque o mestre os rola pela mesa.
+  As estatuetas só contam o amanhecer enquanto não têm nenhuma carga, e recuperam todas no sétimo.
+  Uma estatueta com carga sobrando não conta amanhecer.
+  Um item perdido nunca recarrega, e um item que espera o d20 da última carga espera a rolagem primeiro.
+  Cada item que recuperou cargas fica registrado no histórico da sessão, e só o mestre e o dono o leem.
   Um item que não recarrega (um talismã, um escaravelho) guarda o que sobrou até o mestre corrigir.
   Salvar a ficha nunca muda as cargas, e tirar um item da ficha descarta o que ele gastou.
   Um jogador lê as cargas só dos próprios personagens, e o mestre lê todas.
@@ -172,6 +180,8 @@ O mestre faz um descanso curto ou longo pela mesa, depois de uma confirmação q
 | Curto | Os recursos que recarregam em um descanso curto ou longo, e os espaços de pacto do bruxo. Cada jogador gasta dados de vida um de cada vez, rolados no app ou digitados de um dado real (RN-18), e cura a rolagem mais o modificador de Constituição. |
 | Longo | Todo recurso que não recarrega ao amanhecer ou nunca recarrega, todos os espaços de magia, todos os PV e metade do total de dados de vida (pelo menos um). Os PV temporários acabam. Um personagem em 0 PV não ganha nada. |
 
+- O descanso longo também pode ser o amanhecer dos itens mágicos: com a caixa de seleção marcada, os itens que recarregam ao amanhecer recarregam no mesmo passo, e um descanso enviado duas vezes recarrega uma vez.
+  A caixa vem marcada e não significa nada num descanso curto.
 - O app não conta horas: o mestre é avisado quando a sessão já teve um descanso longo. Um descanso é recusado enquanto um combate está em andamento.
 - Os dados de vida são guardados por tamanho de dado (SRD, "Multiclassing").
 - **Recuperação Arcana** (Mago): uma vez por descanso longo, depois de um descanso curto, o jogador escolhe espaços gastos cujo nível combinado seja no máximo metade do nível de mago, arredondado para cima, nenhum de nível 6 ou maior. Só conta o nível de mago, e nunca os espaços de pacto. A folha do descanso curto tem uma seção "Recuperação Arcana", e depois ela diz "Recuperação Arcana: usada; volta no descanso longo." Uma recusa não muda nada.

@@ -255,3 +255,64 @@ func TestAnAmmunitionShotAndItsRecoveryTellAnotherPlayerNothingOfIt(t *testing.T
 		}
 	}
 }
+
+// The dawn gives a character's items their charges back: what it restored is as private as what was spent (RN-10). The needles are
+// the words of the charges on a sheet and of the events the dawn writes; the master's and the owner's sheets hold them (the
+// positive control), no other player's read does, and the hint of the change goes to the master and the owner alone.
+var dawnWords = []string{`"chargesLeft"`, `"chargesMax"`, "item_charges_restored", "dawn_taken"}
+
+func (w *world) masterTakesTheDawn() {
+	w.t.Helper()
+	must(w.master.charges.Dawn(w.t.Context(), rq(&playv1.DawnRequest{CampaignId: w.campaign, IdempotencyKey: newKey()})))
+}
+
+func TestTheDawnOfAnItemIsTheOwnersAndTheMastersAlone(t *testing.T) {
+	w := newWorld(t)
+	w.onTorenTurn()
+	entry := w.torenHasAWand()
+	for _, n := range dawnWords {
+		w.secrets.add(&canary{needle: n, kind: "item-dawn"})
+	}
+	w.spendTorensCharge(entry)
+	w.masterTakesTheDawn()
+
+	for _, p := range []*person{w.ana, w.pending} {
+		for _, r := range w.ammunitionReads(p) {
+			for _, f := range w.inspect(p, r, nil) {
+				t.Errorf("%s: %s", p.name, f)
+			}
+		}
+	}
+	for _, p := range []*person{w.master, w.caio} {
+		sheet := p.call(charactersv1connect.CharacterServiceGetCharacterProcedure, &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()})
+		if !contains(sheet.body, `"chargesLeft":7`) && !contains(sheet.body, `"chargesLeft": 7`) {
+			t.Errorf("%s reads %s, want the wand back at 7 charges (the canary is unreachable)", p.name, sheet.body)
+		}
+	}
+}
+
+func TestTheDawnTellsAnotherPlayerNothingOfIt(t *testing.T) {
+	w := newWorld(t)
+	w.onTorenTurn()
+	entry := w.torenHasAWand()
+	w.spendTorensCharge(entry)
+	got := w.hiddenOnlyEvents(w.masterTakesTheDawn)
+	vitals := func(name string) bool {
+		return slices.ContainsFunc(got[name], func(h string) bool { return strings.HasPrefix(h, "vitals_changed") })
+	}
+	for _, name := range []string{w.master.name, w.caio.name} {
+		if !vitals(name) {
+			t.Errorf("%s hears %v, want a vitals_changed (the charges came back)", name, got[name])
+		}
+	}
+	if vitals(w.ana.name) {
+		t.Errorf("Ana hears %v, want no vitals_changed", got[w.ana.name])
+	}
+	for _, ev := range got[w.ana.name] {
+		for _, n := range dawnWords {
+			if strings.Contains(ev, n) {
+				t.Errorf("Ana hears %q: %s", n, ev)
+			}
+		}
+	}
+}

@@ -952,6 +952,15 @@ FROM character_item_charges
 WHERE character_id = sqlc.arg(character_id)
 ORDER BY entry_id;
 
+-- name: ListCampaignItemCharges :many
+-- Every row of the campaign's characters, for the dawn and the campaign package: the characters in a fixed order so two
+-- writers lock them alike.
+SELECT ic.character_id, ic.entry_id, ic.charges_used, ic.lost, ic.dawns_waited, ic.last_roll_pending
+FROM character_item_charges AS ic
+JOIN characters AS c ON c.id = ic.character_id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY ic.character_id, ic.entry_id;
+
 -- name: SetItemCharges :exec
 -- Writes what an entry spent, or restores it: a row of 0 spent that is not lost reads as a full item.
 INSERT INTO character_item_charges (character_id, entry_id, charges_used, lost, dawns_waited, last_roll_pending, updated_at)
@@ -977,6 +986,14 @@ SELECT ammo_key, quantity, spent_last_combat, recovered
 FROM character_ammunition
 WHERE character_id = sqlc.arg(character_id)
 ORDER BY ammo_key;
+
+-- name: ListCampaignAmmunition :many
+-- The pieces every character of the campaign holds of each counted kind, for the campaign package.
+SELECT a.character_id, a.ammo_key, a.quantity
+FROM character_ammunition AS a
+JOIN characters AS c ON c.id = a.character_id
+WHERE c.campaign_id = sqlc.arg(campaign_id)::UUID
+ORDER BY a.character_id, a.ammo_key;
 
 -- name: GetAmmunitionQuantity :one
 SELECT quantity FROM character_ammunition

@@ -141,6 +141,14 @@ The master can also correct hit points, temporary hit points, spell slots (and p
   The loss has three outcomes, as the item says: it is gone (the wands, and the staffs of fire, frost, healing and swarming insects), it becomes a plain nonmagical item that stays on the sheet as what it is made of (the staffs of charming, striking and the woodlands), or it keeps only its bonus to attack and damage rolls (the staff of power).
   An item whose charges the SRD rolls (the luck blade, the nine lives stealer) has none set when it is new: the master sets them, from 0 to the maximum.
   The figurine of the ivory goats regains all its charges on the seventh dawn after the last one was spent.
+  The dawn is the master's: "Amanhecer" gives every character's items their dawn, and a long rest has a checkbox, on by default, that does the same as part of the rest.
+  A short rest never recharges items.
+  At a dawn an item that regains charges gets them back as its entry says (all of them, or its dice), up to the maximum, and an item that is full is left as it is.
+  The app rolls the dice of a dawn, also at a table of real dice, because the master rolls them for the table.
+  The figurines count the dawn only while they have no charge left, and regain them all on the seventh.
+  A figurine with a charge left counts no dawn.
+  An item that is lost never recharges, and an item that waits for the d20 of its last charge waits for the roll first.
+  Every item that regained charges is recorded in the session history, and only the master and the owner read it.
   An item that does not recharge (a talisman, a scarab) keeps what is left until the master corrects it.
   A save of the sheet never changes the charges, and removing an item from the sheet drops what it spent.
   A player reads the charges of their own characters only, and the master reads all of them.
@@ -172,6 +180,8 @@ The master takes a short or a long rest for the table, after a confirmation that
 | Short | Resources that recharge on a short or a long rest, and the warlock's pact slots. Each player spends hit dice one at a time, rolled in the app or typed from a real die (RN-18), and heals the roll plus the Constitution modifier. |
 | Long | Every resource that does not recharge at dawn or never, all spell slots, all hit points, and half of the total hit dice (at least one). Temporary hit points end. A character at 0 hit points gains nothing. |
 
+- The long rest can also be the dawn of the magic items: with its checkbox checked, the items that recharge at dawn recharge in the same step, and a rest sent twice recharges once.
+  The checkbox is on by default and means nothing on a short rest.
 - The app does not count hours: the master is warned when the session already had a long rest. A rest is refused while a combat runs.
 - Hit dice are kept by die size (SRD, "Multiclassing").
 - **Arcane Recovery** (Wizard): once per long rest, after a short rest, the player chooses expended slots whose combined level is at most half the wizard level, rounded up, none of the 6th level or higher. Only the wizard level counts, and never pact slots. The short rest sheet has a "Recuperação Arcana" section, and afterwards it reads "Recuperação Arcana: usada; volta no descanso longo." A refusal changes nothing.
