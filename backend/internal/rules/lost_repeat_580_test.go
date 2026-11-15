@@ -185,3 +185,47 @@ func TestAnOptionWhoseOptionCameFromALostFeatIsLostToo(t *testing.T) {
 		t.Errorf("the sheet was made %d times, want 3", rounds)
 	}
 }
+
+// The options picked for a lost feat's own choice are lost too: they read as an option that needs its feat, not as a pick
+// nothing offers, and they give nothing.
+func TestAnOptionOfALostFeatReadsAsLostNotAsNotOffered(t *testing.T) {
+	t.Parallel()
+	const defense = "feature:ranger-fighting-style-defense"
+	feat := TableFeat{
+		TableEntry: TableEntry{Key: "feat:estilo-emprestado" + tableSuffix, NamePT: "Estilo emprestado"}, DescPT: []string{"Texto."},
+		Prerequisite: FeatPrerequisite{Level: 20},
+		Effects:      []Effect{{Type: "choice", Choice: "feature", Count: 1, From: []string{defense}}},
+	}
+	c := withOverlay(t, Overlay{Revision: 1, Feats: []TableFeat{feat}})
+	b := postureBuild(3, defense)
+	b.Classes[0].Subclass = ""
+	b.Armor, b.Feats = "equipment:chain-mail", []string{feat.Key}
+	plain := b
+	plain.FeatureChoices, plain.Feats = nil, nil
+
+	d := Derive(b, c)
+	for _, is := range d.Issues {
+		if is.Code == IssueUnknownKey {
+			t.Errorf("issue %+v: the pick of a lost feat is no pick that nothing offers", is)
+		}
+	}
+	var issue *Issue
+	for i, is := range d.Issues {
+		if is.Code == IssueOptionPrerequisite && is.Lost != nil && is.Lost.Key == defense {
+			issue = &d.Issues[i]
+		}
+	}
+	if issue == nil || issue.Field != "full.feature_choice_keys[0]" {
+		t.Fatalf("issues = %+v, want the option_prerequisite of the pick", d.Issues)
+	}
+	want := optionLabel(c.c.namePT(defense)) + " pede o talento Estilo emprestado, que Tor não aplica agora: a opção só vale de novo quando Tor cumprir."
+	if got := issue.Lost.SentencePT("Tor", false); got != want {
+		t.Errorf("sentence = %q, want %q", got, want)
+	}
+	if !slices.ContainsFunc(d.Features, func(f Feature) bool { return f.Key == defense }) {
+		t.Errorf("the lost option left the sheet's list: %v", d.Features)
+	}
+	if d.ArmorClass != Derive(plain, c).ArmorClass {
+		t.Errorf("AC %d, want %d: the lost option gives nothing", d.ArmorClass, Derive(plain, c).ArmorClass)
+	}
+}

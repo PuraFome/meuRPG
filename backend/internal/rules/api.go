@@ -871,6 +871,10 @@ type Derived struct {
 	// are missing: skills, cantrips, spells known and spells prepared. A
 	// sheet with none is complete.
 	OpenChoices []OpenChoice
+	// Notices are what the sheet tells and does not ask the player to fix: an issue that is no problem of the sheet, such as
+	// IssueShieldIdle. They are left out of Issues, so no validation, no level-up check and no list of pending problems sees
+	// them; the sheet stores their identity and a changed table entry is told with them (AllIssues).
+	Notices []Issue `json:",omitempty"`
 	// Issues are problems found while deriving: unknown keys, unusual
 	// choices, a broken formula. They never stop the sheet from opening.
 	Issues []Issue
@@ -1297,6 +1301,9 @@ type Issue struct {
 	// particular, with no hidden name; the sheet stores neither (known issues hold the issue's ID). Never
 	// in JSON: it may name a hidden entry.
 	Lost *LostPrerequisite `json:"-"`
+	// Idle is what a notice of the code IssueShieldIdle says: the weapon that takes both hands and the armor class with and
+	// without the shield. Only on a notice (Derived.Notices). Never in JSON.
+	Idle *ShieldIdle `json:"-"`
 }
 
 // Issue codes.
