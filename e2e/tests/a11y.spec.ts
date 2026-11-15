@@ -9476,6 +9476,12 @@ async function expectChargesScreen(page: Page, screen: string): Promise<void> {
     return;
   }
   mkdirSync(dir, { recursive: true });
+  // A sheet page opens on its header: bring the equipment section to the top so the shot shows the rows, unless a dialog is open over the page.
+  const gear = page.getByRole('region', { name: 'Equipamento' });
+  if ((await page.locator('[role="dialog"]:visible, [role="alertdialog"]:visible').count()) === 0 && (await gear.count()) > 0) {
+    await gear.first().evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
   const width = page.viewportSize()?.width ?? 0;
   const dark = await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
   const slug = screen
