@@ -264,14 +264,19 @@ func (c *charged) failRestEventOf(t *testing.T) (lift func()) {
 			t.Fatalf("%s: %v", sql, err)
 		}
 	}
+	var sessionID string
+	if err := c.h.pool.QueryRow(t.Context(), `SELECT id FROM game_sessions WHERE campaign_id = $1`, c.campaignID).Scan(&sessionID); err != nil {
+		t.Fatalf("read the session: %v", err)
+	}
 	run(t.Context(), `CREATE FUNCTION `+name+`() RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-	IF NEW.game_session_id IN (SELECT id FROM game_sessions WHERE campaign_id = '`+c.campaignID+`') THEN
+	-- CockroachDB reads a field of NEW only inside parentheses.
+	IF (NEW).kind = '`+eventRestTaken+`' AND (NEW).game_session_id = '`+sessionID+`' THEN
 		RAISE EXCEPTION 'the rest event is refused';
 	END IF;
 	RETURN NEW;
 END $$`)
-	run(t.Context(), `CREATE TRIGGER `+name+` BEFORE INSERT ON session_events FOR EACH ROW WHEN (NEW.kind = '`+eventRestTaken+`') EXECUTE FUNCTION `+name+`()`)
+	run(t.Context(), `CREATE TRIGGER `+name+` BEFORE INSERT ON session_events FOR EACH ROW EXECUTE FUNCTION `+name+`()`)
 	lifted := false
 	lift = func() {
 		if lifted {
