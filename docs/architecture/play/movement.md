@@ -218,7 +218,8 @@ The window holds the turn with `REACTION_PENDING`; a rider's save window is refu
 The answer is a closing event (`reaction_answered`): it cannot be undone and nothing before it can.
 The window closes by itself when the rider or the mount leaves, the rider is defeated or not on that mount any more, and when the mount stands up (cause `mount_prone`) or is healed (cause `mount_defeated`).
 A defeated creature steed is a defeated mount first: the window opens, the steed stays linked to its rider, and it disappears from the combat once the window is answered or closes by itself (`goneSteed`).
-A steed the caster dismisses (the concentration of its spell ends, or a later cast replaces it) lets the rider land on its feet with no window: `dismissCombatant` takes the rider off.
+A steed its owner or the master dismisses lets the rider land on its feet with no window: `dismissCombatant` takes the rider off.
+The steed has no concentration and no replace, and a recast revives it.
 A mount that was knocked prone and is then defeated keeps the window, and a mount marked prone after it was defeated keeps it too.
 The landing and the fall are told to the streams and the fog after the commit, as the fall of a failed save is (`riderLanded`).
 A fall from the window writes no save: its log line has cause unspecified, no d20, no DC and no automatic failure, and reads "caiu da montaria" for everyone who gets it.

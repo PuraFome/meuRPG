@@ -16,11 +16,11 @@ type (
 	spellRoster   struct{ noRoster }
 )
 
-func (spellRoster) CheckSummon(context.Context, pgx.Tx, string, string, string, int, int, []string) (link.SummonSpell, error) {
+func (spellRoster) CheckSummon(context.Context, pgx.Tx, string, string, string, int, int, []string, string) (link.SummonSpell, error) {
 	return link.SummonSpell{}, nil
 }
 
-func (featureRoster) CheckSummon(context.Context, pgx.Tx, string, string, string, int, int, []string) (link.SummonSpell, error) {
+func (featureRoster) CheckSummon(context.Context, pgx.Tx, string, string, string, int, int, []string, string) (link.SummonSpell, error) {
 	return link.SummonSpell{Feature: true}, nil
 }
 

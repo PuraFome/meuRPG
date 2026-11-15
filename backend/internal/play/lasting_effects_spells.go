@@ -12,6 +12,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
+	"github.com/PuraFome/meuRPG/backend/internal/play/steed"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -281,7 +282,7 @@ func (s *Service) markSpellHits(content *rules.Content, def *rules.EffectDef, st
 		if key == "" {
 			key = kinds[t.CharacterID]
 		}
-		if why := s.noEffectWhy(content, def, key); why != "" {
+		if why := s.noEffectWhy(content, def, key, sheets[t.ID].Intelligence); why != "" {
 			hit.Lasting, hit.NoEffectWhy = lastingNoEffect, why
 			continue
 		}
@@ -374,8 +375,9 @@ func (s *Service) spellEffectGroups(ctx context.Context, c *combatTx, def *rules
 
 // noEffectWhy says why a spell takes no hold of a target, "" when it may: a spell that picks a
 // humanoid (Imobilizar Pessoa), a condition the creature is immune to, a creature too simple for
-// Riso Histérico (SRD 5.1: an Intelligence score of 4 or less).
-func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, monsterKey string) string {
+// Riso Histérico (SRD 5.1: an Intelligence score of 4 or less). A creature's own score (a steed has at least 6) is read when the sheet
+// knows it, and the stat block's otherwise.
+func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, monsterKey string, score int) string {
 	if monsterKey == "" {
 		return ""
 	}
@@ -389,7 +391,7 @@ func (s *Service) noEffectWhy(content *rules.Content, def *rules.EffectDef, mons
 	if slices.ContainsFunc(def.Conditions, func(k string) bool { return immuneCreature(creature, k) }) {
 		return whyImmune
 	}
-	if def.Key == "spell:hideous-laughter" && slices.ContainsFunc(creature.Abilities, func(a rules.AbilityScore) bool { return string(a.Ability) == "int" && a.Base <= 4 }) {
+	if def.Key == "spell:hideous-laughter" && steed.TooSimple(score, creature.Abilities) {
 		return whyTooSimple
 	}
 	return ""
