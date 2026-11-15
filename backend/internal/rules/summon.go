@@ -481,3 +481,14 @@ const sizeSmall = "Small"
 
 // creatureSizes are the sizes of a stat block, smallest first.
 var creatureSizes = []string{"Tiny", sizeSmall, "Medium", "Large", "Huge", "Gargantuan"}
+
+// HasIntelligenceFloor says the creature is a form of a summon spell that gives it an Intelligence of at least min_int (a
+// steed): its row keeps the floor in its stat block snapshot.
+func (c *Content) HasIntelligenceFloor(key string) bool {
+	for _, d := range c.c.summons {
+		if d.minInt > 0 && slices.Contains(d.creatures, key) {
+			return true
+		}
+	}
+	return false
+}

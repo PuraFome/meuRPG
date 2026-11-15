@@ -85,6 +85,8 @@ type ResolvedCreature struct {
 	DamageMods           []TableCreatureDamageMod
 	Attacks              []ResolvedAttack
 	Failed               []string
+	// MinInt is the Intelligence the creature has at least (a steed): the snapshot of an SRD creature that has no formula.
+	MinInt int
 }
 
 // cloneDamageMods copies the entries and their damage types, as the traits are copied: no resolved value shares

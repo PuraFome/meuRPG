@@ -621,7 +621,7 @@ func summonErr(err error) error {
 	switch {
 	case errors.Is(err, rules.ErrNotSummonSpell):
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("this spell does not summon creatures"))
-	case errors.Is(err, rules.ErrSummonCircle), errors.Is(err, rules.ErrSummonOption), errors.Is(err, rules.ErrSummonCount), errors.Is(err, rules.ErrSummonCreature):
+	case errors.Is(err, rules.ErrSummonCircle), errors.Is(err, rules.ErrSummonOption), errors.Is(err, rules.ErrSummonCount), errors.Is(err, rules.ErrSummonCreature), errors.Is(err, rules.ErrSummonType):
 		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_SUMMON_CHOICE_INVALID, "that is not a choice the spell allows")
 	}
 	return err
@@ -667,6 +667,8 @@ func summonSourceOf(spellKey string, chk link.SummonSpell) string {
 		return "animate_dead"
 	case "spell:conjure-animals":
 		return "conjure_animals"
+	case "spell:find-steed":
+		return "find_steed"
 	}
 	return ""
 }
@@ -688,7 +690,7 @@ func summonOf(campaignID, characterID, spellKey, groupID string, slot int, chk l
 func summonSpecs(made []link.SummonedForm, given []string) []link.CreatureSpec {
 	out := make([]link.CreatureSpec, len(made))
 	for i, m := range made {
-		out[i] = link.CreatureSpec{MonsterKey: m.MonsterKey, Name: given[i], Attack: m.Attack}
+		out[i] = link.CreatureSpec{MonsterKey: m.MonsterKey, Name: given[i], Attack: m.Attack, CreatureType: m.CreatureType, Mount: m.Mount, MinInt: m.MinInt}
 	}
 	return out
 }
@@ -697,7 +699,7 @@ func summonSpecs(made []link.SummonedForm, given []string) []link.CreatureSpec {
 // with this slot and this choice, and returns what the spell says and the
 // creatures. viaGrant says the cast goes through a feature's grant with no slot.
 func (s *Service) checkSummonChoice(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle int, pick *playv1.SummonChoice, viaGrant bool) (link.SummonSpell, error) {
-	chk, err := s.roster.CheckSummon(ctx, tx, campaignID, characterID, spellKey, circle, int(pick.GetOption()), pick.GetCreatureKeys())
+	chk, err := s.roster.CheckSummon(ctx, tx, campaignID, characterID, spellKey, circle, int(pick.GetOption()), pick.GetCreatureKeys(), pick.GetCreatureType())
 	if err == nil && chk.Feature && !viaGrant {
 		// The summon of a feature is cast through the feature's grant, with a use: never with a slot, a ritual or as a known spell.
 		return chk, connect.NewError(connect.CodeInvalidArgument, errors.New("this summon belongs to a feature: cast it with granted_by"))

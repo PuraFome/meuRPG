@@ -18,13 +18,13 @@ const (
 	elk       = "monster:elk"
 )
 
-// newRiders is the party of this file: Aurélio, a level 5 paladin who has Find Steed prepared, and Toren.
+// newRiders is the party of this file: Aurélio, a level 9 paladin (three 2nd circle slots) who has Find Steed prepared, and Toren.
 func newRiders(t *testing.T) *armed {
 	t.Helper()
 	return newArmedWith(t, func(a *armed) {
 		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 5,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
-		a.pens = a.ana.caster(t, a.campaignID, "Aurélio", "class:paladin", "race:human", 5,
+		a.pens = a.ana.caster(t, a.campaignID, "Aurélio", "class:paladin", "race:human", 9,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 10, Constitution: 14, Intelligence: 10, Wisdom: 12, Charisma: 16}, nil, nil,
 			[]string{findSteed}, []string{findSteed})
 	})
@@ -33,8 +33,14 @@ func newRiders(t *testing.T) *armed {
 // castSteed casts Find Steed as the paladin's player with a 2nd circle slot.
 func (a *armed) castSteed(t *testing.T, form, kind string, names ...string) (*playv1.CastSummonResponse, error) {
 	t.Helper()
+	return a.castSteedAt(t, 2, form, kind, names...)
+}
+
+// castSteedAt casts it with a slot of the circle.
+func (a *armed) castSteedAt(t *testing.T, circle int32, form, kind string, names ...string) (*playv1.CastSummonResponse, error) {
+	t.Helper()
 	res, err := a.ana.play.CastSummon(t.Context(), connect.NewRequest(&playv1.CastSummonRequest{
-		CampaignId: a.campaignID, CharacterId: a.pens.GetId(), SpellKey: findSteed, Slot: slotOfLevel(2), IdempotencyKey: newKey(),
+		CampaignId: a.campaignID, CharacterId: a.pens.GetId(), SpellKey: findSteed, Slot: slotOfLevel(circle), IdempotencyKey: newKey(),
 		Summon: &playv1.SummonChoice{CreatureKeys: []string{form}, CreatureType: kind, Names: names},
 	}))
 	if err != nil {
@@ -153,9 +159,9 @@ func TestFindSteedCastAgainBringsTheSameSteedBack(t *testing.T) {
 		t.Errorf("2nd circle slots used = %d, want %d", got, used+1)
 	}
 	// A live steed is not made twice either.
-	again := a.mustCastSteed(t, warhorse, "fiend")
-	if again.GetId() != steed.GetId() || len(a.mustCreatures(t, a.ana, a.pens)) != 1 {
-		t.Errorf("a cast with the steed alive made another: %v", again)
+	res, err := a.castSteed(t, warhorse, "fiend")
+	if err != nil || len(res.GetCreatureIds()) != 1 || res.GetCreatureIds()[0] != steed.GetId() || len(a.mustCreatures(t, a.ana, a.pens)) != 1 {
+		t.Errorf("a cast with the steed alive made another: %v, %v", res, err)
 	}
 }
 

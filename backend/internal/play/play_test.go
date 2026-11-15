@@ -752,7 +752,7 @@ func (noRoster) ConcentrationCreatures(context.Context, pgx.Tx, string, string) 
 	return nil, errors.New("not in this test")
 }
 
-func (noRoster) CheckSummon(context.Context, pgx.Tx, string, string, string, int, int, []string) (link.SummonSpell, error) {
+func (noRoster) CheckSummon(context.Context, pgx.Tx, string, string, string, int, int, []string, string) (link.SummonSpell, error) {
 	return link.SummonSpell{}, errors.New("not in this test")
 }
 

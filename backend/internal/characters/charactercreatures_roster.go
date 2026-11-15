@@ -96,6 +96,12 @@ func (s *Service) SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon
 	if err != nil {
 		return res, wrap("read rules content", err)
 	}
+	if sm.Source == creatureSourceSteed {
+		if bonded, err := s.reviveBondedSteed(ctx, q, content, sm); err != nil || bonded != nil {
+			res.Created = bonded
+			return res, err
+		}
+	}
 	if res.Replaced, err = s.replaceForSummon(ctx, q, content, sm); err != nil {
 		return res, err
 	}
@@ -228,7 +234,7 @@ func (s *Service) insertSummoned(ctx context.Context, q *charactersdb.Queries, c
 	at := s.now()
 	owner := &lazyOwner{s: s, q: q, content: content, campaignID: sm.CampaignID, characterID: sm.CharacterID}
 	for i, spec := range sm.Creatures {
-		stat, hp, err := owner.numbersOf(ctx, content, spec.MonsterKey, sm.Slot)
+		stat, hp, err := owner.numbersOf(ctx, content, spec.MonsterKey, sm.Slot, spec.MinInt)
 		if err != nil {
 			return out, err
 		}
@@ -259,6 +265,9 @@ func summonedParams(sm link.Summon, spec link.CreatureSpec, name string, stat []
 	}
 	if sm.SummonKey != "" {
 		p.SummonKey = &sm.SummonKey
+	}
+	if sm.Source == creatureSourceSteed {
+		p.CreatureType, p.Bonded = spec.CreatureType, true
 	}
 	return p
 }
@@ -497,7 +506,7 @@ func (s *Service) summonCharacter(ctx context.Context, tx pgx.Tx, campaignID, ch
 // the spell does not allow comes back as one of rules.ErrSummonOption,
 // ErrSummonCount, ErrSummonCreature or ErrSummonCircle, a spell that does not
 // summon as rules.ErrNotSummonSpell, for play to turn into its own reasons.
-func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle, option int, keys []string) (link.SummonSpell, error) {
+func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle, option int, keys []string, creatureType string) (link.SummonSpell, error) {
 	b, err := s.summonCharacter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.SummonSpell{}, err
@@ -528,12 +537,15 @@ func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, charac
 	}
 	st := s.summonStanding(derived, spellKey, choices.Ritual)
 	out.Known, out.Prepared, out.CanRitual = st.known, st.prepared, st.canRitual
-	made, err := content.CheckSummon(spellKey, circle, b, rules.SummonPick{Option: option, Creatures: keys})
+	made, err := content.CheckSummon(spellKey, circle, b, rules.SummonPick{Option: option, Creatures: keys, CreatureType: creatureType})
 	if err != nil {
 		return out, err
 	}
 	for _, m := range made {
-		out.Creatures = append(out.Creatures, link.SummonedForm{MonsterKey: m.Key, Attack: m.Attack})
+		out.Creatures = append(out.Creatures, link.SummonedForm{MonsterKey: m.Key, Attack: m.Attack, CreatureType: m.CreatureType, Mount: m.Mount, MinInt: m.MinInt})
+	}
+	if err := s.checkBondedSteed(ctx, tx, campaignID, characterID, spellKey, out.Creatures); err != nil {
+		return out, err
 	}
 	if rule, table := content.SummonRule(spellKey); table {
 		out.Table, out.TurnMode, out.MaxLive, out.ReplacesSame = true, rule.TurnMode, rule.MaxLive, rule.ReplacesSame

@@ -55,6 +55,7 @@ const (
 	creatureSourceFamiliar = "familiar"
 	creatureSourceMaster   = "master"
 	creatureSourceTable    = "table"
+	creatureSourceSteed    = "find_steed"
 )
 
 var creatureSourceToProto = map[string]charactersv1.CreatureSource{
@@ -63,6 +64,7 @@ var creatureSourceToProto = map[string]charactersv1.CreatureSource{
 	"conjure_animals":    charactersv1.CreatureSource_CREATURE_SOURCE_CONJURE_ANIMALS,
 	creatureSourceMaster: charactersv1.CreatureSource_CREATURE_SOURCE_MASTER,
 	creatureSourceTable:  charactersv1.CreatureSource_CREATURE_SOURCE_TABLE,
+	creatureSourceSteed:  charactersv1.CreatureSource_CREATURE_SOURCE_FIND_STEED,
 }
 
 // creatureAttackNumber is the attack permission as the API's number
@@ -166,6 +168,7 @@ func characterCreatureToProto(content *rules.Content, c charactersdb.CharacterCr
 		Source: creatureSourceToProto[c.Source], Attack: creatureAttackNumber[c.Attack], SummonGroupId: c.SummonGroupID,
 		DependsOnConcentration: c.ConcentrationCastID != nil,
 		HitPointsCurrent:       c.HpCurrent, HitPointsMax: c.HpMax, CreatedAt: timestamppb.New(c.CreatedAt), ArmorClass: i32(d.ArmorClass),
+		CreatureType: c.CreatureType, Bonded: c.Bonded,
 	}
 }
 
@@ -175,7 +178,7 @@ func creatureOf(content *rules.Content, v creatureView) link.Creature {
 	out := link.Creature{
 		ID: v.ID, CharacterID: v.CharacterID, OwnerUserID: conv.OrZero(v.ownerUserID), MonsterKey: v.MonsterKey, Name: v.Name,
 		Source: v.Source, SummonKey: conv.OrZero(v.SummonKey), Attack: v.Attack, GroupID: v.SummonGroupID, DependsOnConcentration: v.ConcentrationCastID != nil,
-		HitPointsCurrent: int(v.HpCurrent), HitPointsMax: int(v.HpMax),
+		HitPointsCurrent: int(v.HpCurrent), HitPointsMax: int(v.HpMax), CreatureType: v.CreatureType, Bonded: v.Bonded,
 	}
 	if d, ok := content.MonsterDerived(v.MonsterKey); ok {
 		out.InitiativeBonus = d.Initiative
