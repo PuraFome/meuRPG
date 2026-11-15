@@ -220,7 +220,7 @@ export interface ReadiedWindowSheetData {
     .pair__btn--off {
       border: 1px dashed currentColor;
       background: transparent;
-      color: var(--mr-text-muted);
+      color: var(--mr-ink-muted);
     }
     .legend {
       list-style: none;
