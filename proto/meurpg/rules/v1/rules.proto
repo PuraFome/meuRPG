@@ -2629,6 +2629,8 @@ message SpellOption {
   // effects), at the spell's own level. Empty for a character with none. The cast checks
   // them again at the slot it is cast with.
   repeated SpellTableOption table_options = 33;
+  // True when the spell reaches only the caster and the caster rides its bonded steed in this combat: the cast may set `CastSpellRequest.also_steed`.
+  bool also_steed = 34;
 }
 
 // SpellGrantOption is how a granted spell is cast now.

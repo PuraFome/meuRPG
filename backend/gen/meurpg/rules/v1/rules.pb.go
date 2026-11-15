@@ -12034,7 +12034,9 @@ type SpellOption struct {
 	// The cast options the character's table features offer for this spell (spell_modifier
 	// effects), at the spell's own level. Empty for a character with none. The cast checks
 	// them again at the slot it is cast with.
-	TableOptions  []*SpellTableOption `protobuf:"bytes,33,rep,name=table_options,json=tableOptions,proto3" json:"table_options,omitempty"`
+	TableOptions []*SpellTableOption `protobuf:"bytes,33,rep,name=table_options,json=tableOptions,proto3" json:"table_options,omitempty"`
+	// True when the spell reaches only the caster and the caster rides its bonded steed in this combat: the cast may set `CastSpellRequest.also_steed`.
+	AlsoSteed     bool `protobuf:"varint,34,opt,name=also_steed,json=alsoSteed,proto3" json:"also_steed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12130,6 +12132,13 @@ func (x *SpellOption) GetTableOptions() []*SpellTableOption {
 		return x.TableOptions
 	}
 	return nil
+}
+
+func (x *SpellOption) GetAlsoSteed() bool {
+	if x != nil {
+		return x.AlsoSteed
+	}
+	return false
 }
 
 // SpellGrantOption is how a granted spell is cast now.
@@ -15445,7 +15454,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x12disabled_reason_pt\x18\x06 \x01(\tR\x10disabledReasonPt\x12(\n" +
 	"\x10resource_name_pt\x18\a \x01(\tR\x0eresourceNamePt\x12\x1b\n" +
 	"\tuses_left\x18\b \x01(\x05R\busesLeft\x125\n" +
-	"\brecharge\x18\t \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\"\xf0\x03\n" +
+	"\brecharge\x18\t \x01(\x0e2\x19.meurpg.rules.v1.RechargeR\brecharge\"\x8f\x04\n" +
 	"\vSpellOption\x12,\n" +
 	"\x05spell\x18\x01 \x01(\v2\x16.meurpg.rules.v1.SpellR\x05spell\x128\n" +
 	"\aeconomy\x18\x02 \x01(\x0e2\x1e.meurpg.rules.v1.ActionEconomyR\aeconomy\x12\x18\n" +
@@ -15455,7 +15464,9 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\x11metamagic_options\x18\x1e \x03(\v2 .meurpg.rules.v1.MetamagicOptionR\x10metamagicOptions\x12#\n" +
 	"\rsculpt_spells\x18\x1f \x01(\bR\fsculptSpells\x127\n" +
 	"\x05grant\x18  \x01(\v2!.meurpg.rules.v1.SpellGrantOptionR\x05grant\x12F\n" +
-	"\rtable_options\x18! \x03(\v2!.meurpg.rules.v1.SpellTableOptionR\ftableOptions\"\xf8\x02\n" +
+	"\rtable_options\x18! \x03(\v2!.meurpg.rules.v1.SpellTableOptionR\ftableOptions\x12\x1d\n" +
+	"\n" +
+	"also_steed\x18\" \x01(\bR\talsoSteed\"\xf8\x02\n" +
 	"\x10SpellGrantOption\x12\x1d\n" +
 	"\n" +
 	"source_key\x18\x01 \x01(\tR\tsourceKey\x12$\n" +

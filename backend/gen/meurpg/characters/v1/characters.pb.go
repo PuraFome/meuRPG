@@ -11655,9 +11655,12 @@ type DismissCreatureRequest struct {
 	CampaignId string `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
 	// The creature (a UUID).
 	CreatureId string `protobuf:"bytes,2,opt,name=creature_id,json=creatureId,proto3" json:"creature_id,omitempty"`
-	// How a steed of Find Steed goes: unspecified is a dismissal that keeps the bond. RELEASE of a creature that is not a bonded steed
-	// is `invalid_argument`. In a combat the owner's player spends the action of its turn for either (`failed_precondition`
-	// with an EncounterBlocked reason, NOT_YOUR_TURN or ACTION_USED, when it cannot), and the master dismisses at no cost. Out of a combat it costs nothing.
+	// How a steed of Find Steed goes.
+	// Unspecified is a dismissal that keeps the bond.
+	// RELEASE of a creature that is not a bonded steed is `invalid_argument`.
+	// In a combat the owner's player spends the action of its turn for either.
+	// It is `failed_precondition` with an EncounterBlocked reason (NOT_YOUR_TURN or ACTION_USED) when the player cannot.
+	// The master dismisses at no cost, and out of a combat it costs nothing.
 	Dismissal     CreatureDismissal `protobuf:"varint,3,opt,name=dismissal,proto3,enum=meurpg.characters.v1.CreatureDismissal" json:"dismissal,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -12205,7 +12208,10 @@ type SummonSpellOptions struct {
 	MinInt int32 `protobuf:"varint,16,opt,name=min_int,json=minInt,proto3" json:"min_int,omitempty"`
 	// The character's bonded steed, when there is one: a casting brings this creature back, with its form, name and type,
 	// and offers no other form. Unset for every other spell and when no steed is bonded.
-	BondedSteed   *CharacterCreature `protobuf:"bytes,17,opt,name=bonded_steed,json=bondedSteed,proto3" json:"bonded_steed,omitempty"`
+	BondedSteed *CharacterCreature `protobuf:"bytes,17,opt,name=bonded_steed,json=bondedSteed,proto3" json:"bonded_steed,omitempty"`
+	// What the spell says besides its choices, in Portuguese, one sentence each (Find Steed: the telepathic bond, where the steed appears, its language).
+	// Empty for a spell with none.
+	Notes         []string `protobuf:"bytes,18,rep,name=notes,proto3" json:"notes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12355,6 +12361,13 @@ func (x *SummonSpellOptions) GetMinInt() int32 {
 func (x *SummonSpellOptions) GetBondedSteed() *CharacterCreature {
 	if x != nil {
 		return x.BondedSteed
+	}
+	return nil
+}
+
+func (x *SummonSpellOptions) GetNotes() []string {
+	if x != nil {
+		return x.Notes
 	}
 	return nil
 }
@@ -14916,7 +14929,7 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\fcharacter_id\x18\x02 \x01(\tR\vcharacterId\"\x94\x01\n" +
 	"\x18GetSummonOptionsResponse\x12@\n" +
 	"\x06spells\x18\x01 \x03(\v2(.meurpg.characters.v1.SummonSpellOptionsR\x06spells\x126\n" +
-	"\x05slots\x18\x02 \x03(\v2 .meurpg.characters.v1.SummonSlotR\x05slots\"\xaa\x05\n" +
+	"\x05slots\x18\x02 \x03(\v2 .meurpg.characters.v1.SummonSlotR\x05slots\"\xc0\x05\n" +
 	"\x12SummonSpellOptions\x12\x1b\n" +
 	"\tspell_key\x18\x01 \x01(\tR\bspellKey\x12\x17\n" +
 	"\aname_pt\x18\x02 \x01(\tR\x06namePt\x12\x14\n" +
@@ -14937,7 +14950,8 @@ const file_meurpg_characters_v1_characters_proto_rawDesc = "" +
 	"\x13granted_by_label_pt\x18\x0e \x01(\tR\x10grantedByLabelPt\x12!\n" +
 	"\ftype_choices\x18\x0f \x03(\tR\vtypeChoices\x12\x17\n" +
 	"\amin_int\x18\x10 \x01(\x05R\x06minInt\x12J\n" +
-	"\fbonded_steed\x18\x11 \x01(\v2'.meurpg.characters.v1.CharacterCreatureR\vbondedSteed\"d\n" +
+	"\fbonded_steed\x18\x11 \x01(\v2'.meurpg.characters.v1.CharacterCreatureR\vbondedSteed\x12\x14\n" +
+	"\x05notes\x18\x12 \x03(\tR\x05notes\"d\n" +
 	"\fSummonCircle\x12\x16\n" +
 	"\x06circle\x18\x01 \x01(\x05R\x06circle\x12<\n" +
 	"\aoptions\x18\x02 \x03(\v2\".meurpg.characters.v1.SummonOptionR\aoptions\"\xe0\x01\n" +
