@@ -10223,6 +10223,162 @@ for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
   });
 }
 
+/** Judges a screen of the potions like every other and, when `E2E_SHOTS_DIR` names a folder, saves its viewport as `565-<screen>-<width>-<scheme>.png`. */
+async function expectConsumableScreen(page: Page, screen: string): Promise<void> {
+  await expectScreenPasses(page, screen);
+  const dir = process.env.E2E_SHOTS_DIR;
+  if (!dir) {
+    return;
+  }
+  mkdirSync(dir, { recursive: true });
+  // A sheet page opens on its header: bring the equipment section to the top so the shot shows the rows, unless a dialog is open over the page.
+  const gear = page.getByRole('region', { name: 'Equipamento' });
+  if ((await page.locator('[role="dialog"]:visible, [role="alertdialog"]:visible').count()) === 0 && (await gear.count()) > 0) {
+    await gear.first().evaluate((el) => el.scrollIntoView({ block: 'start' }));
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  }
+  const width = page.viewportSize()?.width ?? 0;
+  const dark = await page.evaluate(() => matchMedia('(prefers-color-scheme: dark)').matches);
+  const slug = screen
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 70);
+  await page.screenshot({ path: join(dir, `565-${slug}-${width}-${dark ? 'dark' : 'light'}.png`) });
+}
+
+/**
+ * The potions of the sheet (#565), through the real stack: the owner's locked sheet with its consumable rows (the healing potion twice
+ * as one row "×2", a greater one, a resistance, a potion with no effect of its own, next to a ring with charges), the "Usar" sheet of a
+ * healing potion, the typed dice ("Digitar os dados", a face outside the die and then the right ones), the notice of the heal, of the
+ * resistance and of the potion with only text, the refusal when the server does not answer and the master's "Usar por <personagem>".
+ * Giving to another character needs a second player in the party: its list is in the unit specs of the sheet.
+ */
+async function scanConsumableScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = {
+      weaponKeys: ['equipment:longsword'],
+      armorKey: 'equipment:chain-mail',
+      magicItems: [
+        { key: 'item:potion-of-healing-common' },
+        { key: 'item:potion-of-healing-common' },
+        { key: 'item:potion-of-healing-greater' },
+        { key: 'item:potion-of-resistance-fire' },
+        { key: 'item:potion-of-climbing' },
+        { key: 'item:ring-of-shooting-stars' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade poções ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+
+    // The owner's locked sheet: one row for the two healing potions, "Usar" on every consumable, the lock line that names them.
+    await openLive(p, route);
+    const gear = p.getByRole('region', { name: 'Equipamento' });
+    const rowOf = (key: string) => gear.locator(`[data-consumable-row="${key}"]`);
+    await expect(rowOf('item:potion-of-healing-common').getByText('×2')).toBeVisible();
+    await expect(rowOf('item:potion-of-healing-common').getByText('Cura 2d4 + 2')).toBeVisible();
+    await expect(rowOf('item:potion-of-climbing').getByText('Só mostra o texto')).toBeVisible();
+    await expect(gear.getByText('Travada: usar poções e cargas continua valendo; o resto, só o mestre muda.')).toBeVisible();
+    await expectConsumableScreen(p, `Ficha, poções ${where}`);
+
+    // The "Usar" sheet of the healing potion.
+    await rowOf('item:potion-of-healing-common').getByRole('button', { name: 'Usar Poção de cura' }).click();
+    const use = p.getByRole('dialog', { name: /^Usar / });
+    await expect(use.getByText('Restam 2')).toBeVisible();
+    await expect(use.getByText('Cura 2d4 + 2')).toBeVisible();
+    await expect(use.getByRole('button', { name: 'Beber' })).toBeVisible();
+    await expectConsumableScreen(p, `Usar poção, o primeiro estado ${where}`);
+
+    // The player types the dice: one field for each die; a face outside the d4 is said, then the right ones drink it.
+    const typeDice = use.getByRole('button', { name: 'Digitar os dados' });
+    if (await typeDice.count()) {
+      await typeDice.click();
+    }
+    await use.getByLabel('Dado 1 (d4)').fill('5');
+    await expect(use.getByText('Digite um número de 1 a 4')).toBeVisible();
+    await expect(use.getByRole('button', { name: 'Beber' })).toHaveAttribute('aria-disabled', 'true');
+    await expectConsumableScreen(p, `Usar poção, uma face fora do dado ${where}`);
+    await use.getByLabel('Dado 1 (d4)').fill('3');
+    await use.getByLabel('Dado 2 (d4)').fill('2');
+    await expectConsumableScreen(p, `Usar poção, os dados digitados ${where}`);
+    await use.getByRole('button', { name: 'Beber' }).click();
+    await expect(use).toBeHidden();
+    const notice = gear.locator('.consumable__result');
+    await expect(notice).toContainText('2d4 + 2: 3 + 2 + 2 = 7. Resta 1 Poção de cura.');
+    // The focus goes back to the potion's "Usar".
+    await expect(rowOf('item:potion-of-healing-common').getByRole('button', { name: 'Usar Poção de cura' })).toBeFocused();
+    await expectConsumableScreen(p, `Ficha, a cura feita ${where}`);
+
+    // A resistance: the sheet says it lands in "Seus efeitos"; the notice says who drank it.
+    await rowOf('item:potion-of-resistance-fire').getByRole('button', { name: /^Usar / }).click();
+    const resist = p.getByRole('dialog', { name: /^Usar / });
+    await expect(resist.getByText('Quem bebe fica com um efeito que dura 1 hora', { exact: false })).toBeVisible();
+    await expectConsumableScreen(p, `Usar poção de resistência ${where}`);
+    await resist.getByRole('button', { name: 'Beber' }).click();
+    await expect(resist).toBeHidden();
+    await expect(notice).toContainText('bebeu a Poção de resistência');
+    await expectConsumableScreen(p, `Ficha, a resistência bebida ${where}`);
+
+    // A potion with no effect of its own: a neutral notice with the item's text, and no cost of an action in the sheet's words.
+    await rowOf('item:potion-of-climbing').getByRole('button', { name: /^Usar / }).click();
+    const text = p.getByRole('dialog', { name: /^Usar / });
+    await expect(text.getByText('Resta 1', { exact: true })).toBeVisible();
+    await expectConsumableScreen(p, `Usar poção sem efeito no app ${where}`);
+    await text.getByRole('button', { name: 'Beber' }).click();
+    await expect(text).toBeHidden();
+    await expect(notice).toContainText('O app não aplica este efeito: o mestre e você seguem o texto.');
+    await expect(gear.locator('.consumable__text')).toBeVisible();
+    await expectConsumableScreen(p, `Ficha, a poção que só mostra o texto ${where}`);
+
+    // The server does not answer: the sheet says nothing was spent and keeps the potion.
+    const useCall = '**/meurpg.play.v1.ChargesService/UseConsumable';
+    await p.route(useCall, (r) => r.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"x"}' }));
+    await rowOf('item:potion-of-healing-greater').getByRole('button', { name: /^Usar / }).click();
+    const failing = p.getByRole('dialog', { name: /^Usar / });
+    await failing.getByRole('button', { name: 'Beber' }).click();
+    await expect(failing.getByRole('alert')).toContainText('Não deu para usar a poção. Nada foi gasto. Tente de novo.');
+    await expectConsumableScreen(p, `Usar poção, o servidor não respondeu ${where}`);
+    await p.unroute(useCall);
+    await failing.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(failing).toBeHidden();
+
+    // The master acts for the character: "Usar por <personagem>".
+    await openLive(m, route);
+    const masterGear = m.getByRole('region', { name: 'Equipamento' });
+    await masterGear.locator('[data-consumable-row="item:potion-of-healing-greater"]').getByRole('button', { name: /^Usar / }).click();
+    const byMaster = m.getByRole('dialog', { name: /^Usar / });
+    await expect(byMaster.getByRole('heading', { name: /^Usar por / })).toBeVisible();
+    await expectConsumableScreen(m, `Usar por personagem, visto pelo mestre ${where}`);
+    await byMaster.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(byMaster).toBeHidden();
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390], ['light', 768]] as const) {
+  test(`as poções da ficha passam no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro' : 'escuro'}, a ${width}px`, { tag: ['@a11y', '@565'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanConsumableScreens(browser, colorScheme, width);
+  });
+}
+
 test('a sintonização passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanAttunementScreens(browser, 'light', 1280);

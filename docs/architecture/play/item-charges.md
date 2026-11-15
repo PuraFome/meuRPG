@@ -184,6 +184,21 @@ The use sheet repeats the recharge line with the most the item holds, and "Sem c
 A sheet with charges words its lock line as "Travada: usar cargas continua valendo, o resto, só o mestre muda."
 The ammunition kinds (`AMMUNITION_KINDS`) also name the catalog weapons that fire them, so the attack row names its kind by the weapon's key.
 
+### Consumables on the sheet
+
+`ChargesClient.useConsumable` and `listConsumableTargets` wrap the two consumable calls, and a use sends one idempotency key for the request it carries.
+`core/characters/consumables.ts` holds the pure parts: the rows that group identical consumables, the effect line, the dice of a healing line, the receivers and the notice of a use.
+A magic item is a consumable when the catalog category (`MagicCategories.categoryOf`) is a potion or a scroll and the item holds no charges.
+`EquipmentPanel` draws one row for every key ("×2"), and "Usar" sends the id of the first unit of the group.
+"Usar" works on a locked sheet, and the lock line then says "Travada: usar poções e cargas continua valendo; o resto, só o mestre muda."
+`SheetConsumables` (`pages/character-sheet/charges/sheet-consumables.ts`) opens `UseConsumableSheet` with the character the dialog acts for (the master's title reads "Usar por <personagem>"), reads the sheet again after a use and words the result as a notice under the magic items.
+The sheet does not know whether a combat is running, so it passes no combat flag and the dialog says both costs; the combat's list of items passes it.
+Only a potion with an effect line costs the action in a combat, so any other consumable says it costs no action.
+"Beber" and "Dar a…" follow the table's dice (RN-18): the app rolls the dice of a healing potion, or the player types one face for each die.
+The receivers are the server's list: in a running combat the adjacent characters with their distance and how they stand, outside one only the names.
+`consumableErrorMessage` (`core/play/charges-errors.ts`) words the refusals of a use, and the combat's sentences (`combat-errors-limits.ts`) cover the receiver out of reach and the item gone.
+A resistance lands in "Seus efeitos" through the effect cards the server already sends.
+
 ## The master's panel
 
 `PartyChargesPanel` (`pages/live-session/party-charges`) is "Cargas e munição" in the master's Grupo tab, above the rest card.
