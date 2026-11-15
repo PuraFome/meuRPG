@@ -5298,6 +5298,9 @@ message SummonChoice {
   // blank name takes the creature's Portuguese name, numbered when several
   // share it.
   repeated string names = 3;
+  // The creature type the spell lets the player pick ("celestial", "fey" or "fiend" for Convocar Montaria): one of
+  // SummonSpellOptions.type_choices. Empty for a spell that picks none.
+  string creature_type = 4;
 }
 
 // SaveOutcome is what a target's saving throw did.

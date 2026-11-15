@@ -17900,7 +17900,10 @@ type SummonChoice struct {
 	// (free text by a player: "Nanquim"). Empty, or one for each creature; a
 	// blank name takes the creature's Portuguese name, numbered when several
 	// share it.
-	Names         []string `protobuf:"bytes,3,rep,name=names,proto3" json:"names,omitempty"`
+	Names []string `protobuf:"bytes,3,rep,name=names,proto3" json:"names,omitempty"`
+	// The creature type the spell lets the player pick ("celestial", "fey" or "fiend" for Convocar Montaria): one of
+	// SummonSpellOptions.type_choices. Empty for a spell that picks none.
+	CreatureType  string `protobuf:"bytes,4,opt,name=creature_type,json=creatureType,proto3" json:"creature_type,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -17954,6 +17957,13 @@ func (x *SummonChoice) GetNames() []string {
 		return x.Names
 	}
 	return nil
+}
+
+func (x *SummonChoice) GetCreatureType() string {
+	if x != nil {
+		return x.CreatureType
+	}
+	return ""
 }
 
 // SaveResult is a target's saving throw against a spell.
@@ -29867,11 +29877,12 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\x06reveal\x18\x04 \x01(\bR\x06reveal\x12'\n" +
 	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"V\n" +
 	"\x1bResolveHiddenRevealResponse\x127\n" +
-	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"a\n" +
+	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\x86\x01\n" +
 	"\fSummonChoice\x12\x16\n" +
 	"\x06option\x18\x01 \x01(\x05R\x06option\x12#\n" +
 	"\rcreature_keys\x18\x02 \x03(\tR\fcreatureKeys\x12\x14\n" +
-	"\x05names\x18\x03 \x03(\tR\x05names\"\xa6\x03\n" +
+	"\x05names\x18\x03 \x03(\tR\x05names\x12#\n" +
+	"\rcreature_type\x18\x04 \x01(\tR\fcreatureType\"\xa6\x03\n" +
 	"\n" +
 	"SaveResult\x125\n" +
 	"\aoutcome\x18\x01 \x01(\x0e2\x1b.meurpg.play.v1.SaveOutcomeR\aoutcome\x12,\n" +
