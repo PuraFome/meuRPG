@@ -59,6 +59,8 @@ export class LiveSessionEvents {
       // A `content_changed` missed while reconnecting leaves the spells the page read before out of date.
       services.spellCatalog.forget(campaignId);
       void parts.trapBoard.refresh();
+      // Who has the master's Inspiração (RN-43): a reconnection or a lost hint reads it again, like the rest.
+      services.favor.follow(campaignId);
       // The first `ready` reads the conversation; a reconnection reads the lines that came meanwhile.
       void parts.conversation.sync();
       return loader.readSnapshot(campaignId, generation, () => ({
@@ -80,6 +82,8 @@ export class LiveSessionEvents {
           state.vitals().find((x) => x.characterId === v.characterId)?.familiarSight?.creatureId ??
           '';
         state.vitals.update((list) => applyVitals(list, v));
+        // A grant tells nothing but this hint (the vitals carry nothing of it): read who has it again.
+        void services.favor.refresh();
         if ((v.familiarSight?.creatureId ?? '') !== before) {
           this.loader.scheduleVision();
         }

@@ -39,6 +39,8 @@ import { LimitCounters } from '../../../../shared/puzzle-boards/limit-counters';
 import { PillarsBoard } from '../../../../shared/puzzle-boards/pillars-board';
 import { PuzzleHost } from '../../../../shared/puzzle-boards/puzzle-host';
 import { sessionSince } from '../../../../shared/session-time/session-time';
+import { FavorSpend } from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
 import type { LiveSessionVm } from '../../../../core/play/live-session.types';
 import { HintTryControl } from '../hint-try/hint-try';
 import { MyPart } from '../my-part/my-part';
@@ -101,6 +103,11 @@ export class PuzzlePlayPage {
   protected readonly Kind = PuzzleKind;
   /** The puzzle's moves and run; `open` starts it over for another puzzle (going from `?puzzle=A` to `B` loads B). */
   protected readonly play = new PuzzlePlay(this.api, () => this.campaignId());
+  /** The master's Inspiração for a try for a hint (the player's own: this page is the player's). */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => ({ characterId: '', name: this.ownName() }),
+  });
   /** The last answer was wrong (the riddle and the cipher): "Não é isso." until the next one. */
   protected readonly verdict = signal<'' | 'wrong'>('');
   /** The skills' names, to write "Investigação" from "skill:investigation". */
@@ -286,6 +293,7 @@ export class PuzzlePlayPage {
   });
 
   constructor() {
+    this.play.favor = this.fav;
     // The d20 of a try for a hint, tumbling, with "Você conseguiu."/"Não deu desta vez." (never the DC); a typed die is not animated.
     effect(() => {
       const t = this.play.hintTry();

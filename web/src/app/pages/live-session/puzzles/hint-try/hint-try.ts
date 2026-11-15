@@ -20,6 +20,8 @@ import type { ExtraDieField } from '../../../../core/effects/effects';
 import type { HintTry } from '../../../../core/puzzles/puzzle-play';
 import type { HintDie } from '../../../../core/puzzles/puzzles-client';
 import { checkFaces, hasModeInfo } from '../../../../core/play/check-roll';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 import type { HeldAnswer } from '../../../../core/held-rolls/held-roll-offer';
 import { ExtraDice } from '../../effects/extra-dice/extra-dice';
 import { HeldRollPrompt } from '../../../../shared/held-roll-prompt/held-roll-prompt';
@@ -42,6 +44,7 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
   imports: [
     CheckMode,
     ExtraDice,
+    FavorSpendBox,
     HeldRollPrompt,
     MatButtonModule,
     MatIconModule,
@@ -79,6 +82,9 @@ import { CheckMode } from '../../scene/check-mode/check-mode';
         (answer)="answered.emit($event)"
       />
     } @else if (canTry()) {
+      @if (favor(); as f) {
+        <app-favor-spend [control]="f" [busy]="busy()" />
+      }
       @if (typing() && extraFields().length > 0) {
         <app-extra-dice [fields]="extraFields()" [(faces)]="extraFaces" />
       }
@@ -171,6 +177,8 @@ export class HintTryControl {
   /** The d4 an effect adds to a try with a real die (the server said the roll takes them): typed with the d20. */
   readonly extraFields = input<readonly ExtraDieField[]>([]);
   readonly extraFaces = model<readonly (number | null)[]>([]);
+  /** The box of the master's Inspiração, above the roll: the page owns it and sends `spend_favor` with a ticked try. */
+  readonly favor = input<FavorSpend | null>(null);
 
   /** A try with the d20 rolled in the app. */
   readonly rolled = output<HintDie>();

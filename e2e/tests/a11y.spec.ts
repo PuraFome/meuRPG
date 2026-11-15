@@ -29,6 +29,7 @@ import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog }
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
 import { claimRoute, linkRPC, reservedRPC, revokeLinkRPC, rowOf } from './claim-support';
 import { authStatePath, boxOf, callRPC, layoutSize, characterRpcBody, createCharacterRPC, newSignedInContext, pensantus, showAllPicks, signIn, type TestUser, openActionTab, openCombatLog, openFoldedPanel, openSpentGroup, openXpHistory, viaTargetList } from './support';
+import { FAVOR_WIDTHS, favorBox, favorCheck, favorShotScale, favorViewport, holdersRPC, setConditionsRPC, shootFavor, tickFavor, grantFavorRPC } from './favor-support';
 import { beginJointCombat, endPartRPC, jointTable } from './joint-turn-support';
 import { tableForCaster, tableForCreatures } from './creatures-support';
 import { grog, pipo, rollsTable, vex } from './combat-rolls-support';
@@ -13339,7 +13340,494 @@ async function scanCrowdedTargets(browser: Browser, colorScheme: 'light' | 'dark
   }
 }
 
+// The master grants it from the "Mais" menu of an order row and of the "Grupo" row, and reads who has it (the "★ Inspiração" mark and
+// "1 com Inspiração"); the holder's player reads the notice, the chip in the band and the panel on the sheet; another player reads
+// nothing; a read that fails draws nothing. Every state is scanned and photographed at 390, 768 and 1280 px.
+async function scanFavorScreens(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = favorViewport(1280);
+  const master = await newSignedInContext(browser, 'Mestre Teste', {
+    viewport,
+    colorScheme,
+    ...favorShotScale,
+  });
+  const player = await newSignedInContext(browser, 'Jogador Teste', {
+    viewport,
+    colorScheme,
+    ...favorShotScale,
+  });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  let close: () => Promise<void> = async () => undefined;
+  // One state at every width: `show` brings it up and says where to look; `hide` takes it down again (a menu is closed).
+  const everyWidth = async (
+    page: Page,
+    name: string,
+    what: string,
+    show: () => Promise<Locator>,
+    hide?: () => Promise<void>,
+  ) => {
+    for (const width of FAVOR_WIDTHS) {
+      await page.setViewportSize(favorViewport(width));
+      const at = await show();
+      await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+      await shootFavor(page, name, width, colorScheme, at);
+      await hide?.();
+    }
+  };
+  const menuItem = (page: Page) => page.getByRole('menuitem', { name: /^Dar Inspiração/ });
+  const closeMenu = async (page: Page) => {
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.mat-mdc-menu-panel')).toHaveCount(0);
+  };
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(m, p, `Acessibilidade Inspiração ${Date.now()}`, true, true);
+    campaignId = table.campaignId;
+    const third = await thirdPlayer(
+      browser,
+      {
+        m,
+        p,
+        table,
+        campaignId,
+        done: async () => undefined,
+      } satisfies TrapTable,
+      brisa,
+    );
+    close = third.close;
+    const square = sq20(4, 7);
+    await placeTokenRPC(m, campaignId, table.mapId, third.characterId, square.xBp, square.yBp);
+    const b = third.page;
+    await openSessionPage(p, campaignId);
+    await openSessionPage(b, campaignId);
+
+    // Outside a combat: the "Grupo" row's menu, before and after the grant.
+    await openSessionPage(m, campaignId, 'grupo');
+    const openGrupoMenu = async (name: string) => {
+      await showMasterTab(m, 'grupo');
+      await m.getByRole('button', { name: `Mais ações de ${name}` }).click();
+      await expect(menuItem(m)).toBeVisible();
+      return m.locator('.mat-mdc-menu-panel');
+    };
+    expect(await holdersRPC(m, campaignId)).toEqual([]);
+    await everyWidth(
+      m,
+      'grupo-menu-dar',
+      'O Grupo, o menu de Pensantus com "Dar Inspiração"',
+      () => openGrupoMenu('Pensantus'),
+      () => closeMenu(m),
+    );
+    await m.setViewportSize(favorViewport(1280));
+    await openGrupoMenu('Pensantus');
+    await menuItem(m).click();
+    await expect(m.locator('.js-favor-note')).toHaveText('Pensantus ganhou Inspiração.');
+    await expect(m.locator('.js-favor-count')).toContainText('1 com Inspiração');
+    // The master reads the holder; the holder's player reads their own character; another player reads nobody.
+    expect(await holdersRPC(m, campaignId)).toEqual([table.characterId]);
+    expect(await holdersRPC(p, campaignId)).toEqual([table.characterId]);
+    expect(await holdersRPC(b, campaignId)).toEqual([]);
+    await everyWidth(
+      m,
+      'grupo-com-inspiracao',
+      'O Grupo, com a marca ao lado do nome e o contador',
+      async () => {
+        await showMasterTab(m, 'grupo');
+        await expect(m.locator('.js-favor-count')).toBeVisible();
+        return m.locator('app-party-panel');
+      },
+    );
+    await everyWidth(
+      m,
+      'grupo-menu-ja-tem',
+      'O Grupo, o menu de Pensantus, que já tem a Inspiração: o item tracejado com o motivo',
+      async () => {
+        const panel = await openGrupoMenu('Pensantus');
+        await expect(menuItem(m)).toBeDisabled();
+        await expect(menuItem(m)).toContainText('Pensantus já tem Inspiração.');
+        return panel;
+      },
+      () => closeMenu(m),
+    );
+
+    // The holder's player reads the notice, on the page they had open; the other player reads nothing.
+    const notice = p.locator('app-favor-notice');
+    await expect(notice).toContainText(
+      'O mestre deu Inspiração a você. Use antes de rolar um d20 seu.',
+    );
+    await expect(b.locator('app-favor-notice .text')).toHaveCount(0);
+    await everyWidth(
+      p,
+      'aviso-do-jogador',
+      'O aviso ao jogador que ganhou a Inspiração',
+      async () => notice,
+    );
+
+    // The sheet: the panel for the owner, with no "Passar a…", and its title alone for the master.
+    const sheetRoute = `/campaigns/${campaignId}/characters/${table.characterId}`;
+    await p.goto(sheetRoute);
+    const panel = p.locator('app-favor-panel');
+    await expect(panel.getByRole('heading', { name: 'Inspiração' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(panel).toContainText(
+      'Do mestre. Vantagem num d20 seu: marque “Usar a Inspiração” antes de rolar.',
+    );
+    await expect(panel.getByRole('button')).toHaveCount(0);
+    await expectLoaded(p);
+    await everyWidth(
+      p,
+      'ficha-painel',
+      'A ficha de quem tem a Inspiração: o painel, sem "Passar a…"',
+      async () => panel,
+    );
+    await m.goto(sheetRoute);
+    const masterPanel = m.locator('app-favor-panel');
+    await expect(masterPanel.getByRole('heading', { name: 'Inspiração' })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(masterPanel.locator('.favor__text')).toHaveCount(0);
+    await expectLoaded(m);
+    await everyWidth(
+      m,
+      'ficha-painel-mestre',
+      'A ficha de quem tem a Inspiração, lida pelo mestre',
+      async () => masterPanel,
+    );
+
+    // A combat: Pensantus has the first turn.
+    await beginAttackCombatRPC(m, table, {
+      Pensantus: 20,
+      Brisa: 15,
+      'Capitão Goblin': 10,
+      'Goblin 1': 5,
+      'Goblin 2': 4,
+    });
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await openSessionPage(b, campaignId);
+    const order = m.getByRole('region', { name: 'Ordem de iniciativa' });
+    const rowMenu = async (name: string) => {
+      await openOrderRow(m, name);
+      await order.getByRole('button', { name: `Mais ações para ${name}` }).click();
+      await expect(m.getByRole('menuitem').first()).toBeVisible();
+      return m.locator('.mat-mdc-menu-panel');
+    };
+
+    // The player's band: the chip on their own turn; nothing for the other player.
+    const chip = p.locator('app-favor-chip');
+    await expect(chip).toHaveCount(1);
+    await expect(chip).toContainText('Inspiração');
+    await expect(b.locator('app-favor-chip')).toHaveCount(0);
+    await everyWidth(p, 'vez-com-chip', 'Sua vez, com "Inspiração" na faixa', async () => {
+      await openTurn(p);
+      return chip;
+    });
+
+    // The master's order: the mark in the holder's row, the item on a player's row, dashed for a holder, absent on an NPC.
+    await everyWidth(
+      m,
+      'ordem-com-selo',
+      'A ordem do mestre, com a marca da Inspiração na linha de Pensantus',
+      async () => {
+        await openOrderRow(m, 'Pensantus');
+        const mark = m.getByTestId('order-favor');
+        await expect(mark).toHaveCount(1);
+        return mark.locator('xpath=ancestor::li[1]');
+      },
+    );
+    await everyWidth(
+      m,
+      'ordem-menu-dar',
+      'A ordem, o menu de Brisa com "Dar Inspiração"',
+      async () => {
+        const menu = await rowMenu('Brisa');
+        await expect(menuItem(m)).toBeEnabled();
+        return menu;
+      },
+      () => closeMenu(m),
+    );
+    await m.setViewportSize(favorViewport(1280));
+    await rowMenu('Brisa');
+    await menuItem(m).click();
+    await expect(m.locator('.js-favor-note')).toHaveText('Brisa ganhou Inspiração.');
+    await expect(b.locator('app-favor-notice')).toContainText(
+      'O mestre deu Inspiração a você. Use antes de rolar um d20 seu.',
+    );
+    await everyWidth(
+      m,
+      'ordem-menu-ja-tem',
+      'A ordem, o menu de Brisa, que já tem a Inspiração: o item tracejado com o motivo',
+      async () => {
+        const menu = await rowMenu('Brisa');
+        await expect(menuItem(m)).toBeDisabled();
+        await expect(menuItem(m)).toContainText('Brisa já tem Inspiração.');
+        return menu;
+      },
+      () => closeMenu(m),
+    );
+    await everyWidth(
+      m,
+      'ordem-menu-npc',
+      'A ordem, o menu de um NPC: sem "Dar Inspiração"',
+      async () => {
+        const menu = await rowMenu('Goblin 2');
+        await expect(menuItem(m)).toHaveCount(0);
+        return menu;
+      },
+      () => closeMenu(m),
+    );
+
+    // A read that fails draws nothing: no chip, no notice, and the turn goes on.
+    await p.route('**/meurpg.play.v1.FavorService/GetFavor', (route) => route.abort());
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('button', { name: 'Encerrar turno' }).first()).toBeVisible();
+    await expect(chip).toHaveCount(0);
+    await expect(p.locator('app-favor-notice .text')).toHaveCount(0);
+    await everyWidth(
+      p,
+      'vez-sem-leitura',
+      'Sua vez, com a leitura da Inspiração falhando: nada a mais na faixa',
+      async () => {
+        await openTurn(p);
+        return p.getByRole('region', { name: 'Vez no combate' });
+      },
+    );
+    await p.unroute('**/meurpg.play.v1.FavorService/GetFavor');
+  } finally {
+    await close();
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+/**
+ * The spend box "Inspiração do mestre" in the attack sheet (#581, RN-43, boards 581-03 and 581-07): open and unticked; ticked, with the
+ * roll-mode segment only reading ("pela Inspiração", the other cells dashed); with a disadvantage, reading Normal; dashed when the target
+ * already gives advantage; dashed when the master acts for the player; dashed when the read fails; and, after the roll, the result's
+ * "Vantagem: Inspiração" with the log line "Pensantus usou a Inspiração.". Every state is scanned and photographed at 390, 768 and 1280.
+ * The other sheets share the one component and the one helper, and their wiring is in the specs of each sheet.
+ */
+async function scanFavorSpend(browser: Browser, colorScheme: 'light' | 'dark'): Promise<void> {
+  const viewport = favorViewport(1280);
+  const master = await newSignedInContext(browser, 'Mestre Teste', {
+    viewport,
+    colorScheme,
+    ...favorShotScale,
+  });
+  const player = await newSignedInContext(browser, 'Jogador Teste', {
+    viewport,
+    colorScheme,
+    ...favorShotScale,
+  });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  let campaignId = '';
+  const everyWidth = async (page: Page, name: string, what: string, at: () => Locator) => {
+    for (const width of FAVOR_WIDTHS) {
+      await page.setViewportSize(favorViewport(width));
+      await expectScreenPasses(page, `${what} (${colorScheme}, ${width}px)`);
+      await shootFavor(page, name, width, colorScheme, at());
+    }
+  };
+  // Pensantus attacks Goblin 1 with Raio de Fogo; the sheet is open on the "Rolar" step when this returns.
+  const openAttack = async (page: Page): Promise<Locator> => {
+    await page.getByRole('button', { name: 'Atacar com Raio de Fogo' }).click();
+    await viaTargetList(page, page.getByRole('dialog'));
+    await page.locator('label', { hasText: 'Goblin 1' }).click();
+    await expect(page.getByRole('heading', { name: 'Como rolar o d20' })).toBeVisible();
+    return page.getByRole('dialog');
+  };
+  const closeSheet = async (page: Page) => {
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+  };
+  // The sheet reads the target's circumstances from the combat options, which the page fetches again after a condition changes: a sheet
+  // opened right then can still hold the old ones (seen on the real stack: the "Envenenado" disadvantage missing from the sources). So
+  // the sheet is opened until it lists the source the state must show, and every assertion after it is as strict as before.
+  const openAttackShowing = async (page: Page, source: string): Promise<Locator> => {
+    let sheet = page.getByRole('dialog');
+    await expect(async () => {
+      if (await page.getByRole('dialog').count()) {
+        await closeSheet(page);
+      }
+      sheet = await openAttack(page);
+      await expect(sheet.getByText(source)).toBeVisible({ timeout: 1_500 });
+    }).toPass({ timeout: 30_000, intervals: [500, 1_000, 2_000] });
+    return sheet;
+  };
+  try {
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const table = await tableForCombat(
+      m,
+      p,
+      `Acessibilidade gasto da Inspiração ${Date.now()}`,
+      true,
+      true,
+      { sheet: pensantusCasting },
+    );
+    campaignId = table.campaignId;
+    let enc = await beginAttackCombatRPC(m, table, {
+      Pensantus: 20,
+      'Capitão Goblin': 15,
+      'Goblin 1': 5,
+      'Goblin 2': 4,
+    });
+    await grantFavorRPC(m, campaignId, table.characterId);
+    await openSessionPage(m, campaignId);
+    await openSessionPage(p, campaignId);
+    await expect(p.locator('app-favor-chip')).toHaveCount(1);
+
+    // Open, unticked: the box above "Como rolar o d20", the hint, and the segment as the server suggests.
+    let sheet = await openAttack(p);
+    await expect(favorBox(sheet)).toContainText('Vantagem nesta jogada · ela sai da sua ficha');
+    await expect(favorCheck(sheet)).not.toBeChecked();
+    await expect(sheet.getByText('pela Inspiração')).toHaveCount(0);
+    await everyWidth(p, 'gasto-aberta', 'Atacar, a caixa "Inspiração do mestre" desmarcada', () =>
+      favorBox(sheet),
+    );
+
+    // Ticked: the segment only reads the mode, the other cells dashed, and the reason says how to choose again.
+    await tickFavor(sheet);
+    await expect(sheet.getByText('Desmarque a caixa')).toBeVisible();
+    await expect(sheet.getByRole('radio', { name: /Normal/ })).toBeDisabled();
+    await everyWidth(
+      p,
+      'gasto-marcada',
+      'Atacar, a caixa marcada: o modo só é lido, "pela Inspiração"',
+      () => favorBox(sheet),
+    );
+    await favorCheck(sheet).uncheck();
+    await closeSheet(p);
+
+    // With a disadvantage (Envenenado), the mode reads Normal and says they cancel.
+    enc = await setConditionsRPC(m, campaignId, enc, 'Pensantus', ['condition:poisoned']);
+    await waitForEncounterRevision([m, p], enc);
+    await expect(p.getByText('Envenenado').first()).toBeVisible();
+    sheet = await openAttackShowing(p, 'Você está Envenenado: desvantagem');
+    await tickFavor(sheet);
+    await expect(
+      sheet.getByText(
+        /Desvantagem \(.*\) e Inspiração se anulam: um d20\. Desmarque a caixa para voltar a desvantagem\./,
+      ),
+    ).toBeVisible();
+    await everyWidth(
+      p,
+      'gasto-desvantagem',
+      'Atacar com desvantagem, a caixa marcada: o modo lê Normal',
+      () => favorBox(sheet),
+    );
+    await favorCheck(sheet).uncheck();
+    await closeSheet(p);
+    enc = await setConditionsRPC(m, campaignId, enc, 'Pensantus', []);
+    await waitForEncounterRevision([m, p], enc);
+
+    // Dashed with the reason when the target already gives advantage (Contido), still reachable and not ticked by a click.
+    enc = await setConditionsRPC(m, campaignId, enc, 'Goblin 1', ['condition:restrained']);
+    await waitForEncounterRevision([m, p], enc);
+    sheet = await openAttackShowing(p, 'Alvo Impedido: vantagem');
+    await expect(favorCheck(sheet)).toHaveAttribute('aria-disabled', 'true');
+    await expect(favorBox(sheet)).toContainText(
+      'A Inspiração não mudaria esta rolagem: ela já tem vantagem',
+    );
+    await expect(favorCheck(sheet)).toBeDisabled();
+    await expect(favorCheck(sheet)).not.toBeChecked();
+    // Playwright never clicks a control that is not enabled, so the click is sent to the element itself: it must do nothing.
+    await favorCheck(sheet).dispatchEvent('click');
+    await expect(favorCheck(sheet)).not.toBeChecked();
+    await everyWidth(
+      p,
+      'gasto-ja-tem-vantagem',
+      'Atacar, a caixa tracejada: o alvo já dá vantagem',
+      () => favorBox(sheet),
+    );
+    await closeSheet(p);
+    enc = await setConditionsRPC(m, campaignId, enc, 'Goblin 1', []);
+    await waitForEncounterRevision([m, p], enc);
+
+    // Dashed when the master acts for the player: only the player spends their Inspiração.
+    await m.getByRole('button', { name: 'Agir por Pensantus' }).click();
+    await expect(m.getByText('Você está agindo por Pensantus')).toBeVisible();
+    const byMaster = await openAttack(m);
+    await expect(favorBox(byMaster)).toContainText('O mestre agindo por Pensantus');
+    await expect(favorBox(byMaster)).toContainText(
+      'Só quem joga com este personagem pode usar a Inspiração dele.',
+    );
+    await expect(favorCheck(byMaster)).toHaveAttribute('aria-disabled', 'true');
+    await everyWidth(
+      m,
+      'gasto-mestre-age',
+      'Atacar pelo mestre, a caixa tracejada: só quem joga usa a Inspiração',
+      () => favorBox(byMaster),
+    );
+    await closeSheet(m);
+    await m.getByRole('button', { name: 'Voltar ao mestre' }).click();
+
+    // The read fails: the box is there, dashed, with the reason; the roll goes on without it.
+    await p.route('**/meurpg.play.v1.FavorService/GetFavor', (route) => route.abort());
+    await openSessionPage(p, campaignId);
+    sheet = await openAttack(p);
+    await expect(favorBox(sheet)).toContainText(
+      'Não deu para ler a Inspiração agora. Tente de novo em instantes.',
+    );
+    await expect(favorCheck(sheet)).toHaveAttribute('aria-disabled', 'true');
+    await everyWidth(
+      p,
+      'gasto-sem-leitura',
+      'Atacar, a caixa tracejada: a leitura da Inspiração falhou',
+      () => favorBox(sheet),
+    );
+    await closeSheet(p);
+    await p.unroute('**/meurpg.play.v1.FavorService/GetFavor');
+    await openSessionPage(p, campaignId);
+
+    // The roll: "Vantagem: Inspiração" under the result, the Inspiração leaves the sheet, and the log says so.
+    await p.setViewportSize(favorViewport(1280));
+    sheet = await openAttack(p);
+    await tickFavor(sheet);
+    await sheet.getByRole('button', { name: /^Rolar 2d20 no app/ }).click();
+    await expect(sheet.getByText(/Acertou|Errou|Crítico/).first()).toBeVisible();
+    // The dice animation covers the sheet until it is dismissed (a tap on its veil, or 10 s): the shot is of the result the player reads under it,
+    // with the two d20 ("vale" / "descartado") and the line "Vantagem: Inspiração".
+    await expect(async () => {
+      if (await p.locator('app-roll-overlay .scrim').count()) {
+        await p.locator('app-roll-overlay .veil').dispatchEvent('click');
+      }
+      await expect(p.locator('app-roll-overlay .scrim')).toHaveCount(0, { timeout: 1_500 });
+    }).toPass({ timeout: 20_000, intervals: [500, 1_000] });
+    const result = sheet.locator('app-attack-result');
+    await expect(result.getByText('Vantagem: Inspiração')).toBeVisible();
+    await expect(result.getByText('vale')).toBeVisible();
+    await expect(result.getByText('descartado')).toBeVisible();
+    expect(await holdersRPC(m, campaignId)).toEqual([]);
+    await everyWidth(p, 'gasto-resultado', 'Atacar, o resultado com "Vantagem: Inspiração"', () => result);
+    await p.setViewportSize(favorViewport(1280));
+    await closeSheet(p);
+    await expect(p.locator('app-favor-chip')).toHaveCount(0);
+    const log = await openCombatLog(p);
+    await expect(log).toContainText('Pensantus usou a Inspiração.');
+    await expectScreenPasses(p, `O registro, "Pensantus usou a Inspiração." (${colorScheme})`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
 for (const [colorScheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  test(`a Inspiração do mestre passa no axe e nas conferências de layout no tema ${theme}: o Grupo, a ordem, a faixa do jogador, o aviso, o painel da ficha e a leitura que falha, em 390, 768 e 1280`, { tag: ['@a11y', '@RN-43', '@RN-10'] }, async ({ browser }) => {
+    test.setTimeout(720_000);
+    await scanFavorScreens(browser, colorScheme);
+  });
+  test(`a caixa "Inspiração do mestre" da folha de ataque passa no axe e nas conferências de layout no tema ${theme}: aberta, marcada, com desvantagem, tracejada (vantagem já dada, o mestre age, leitura que falha) e o resultado, em 390, 768 e 1280`, { tag: ['@a11y', '@RN-43', '@RN-10'] }, async ({ browser }) => {
+    test.setTimeout(720_000);
+    await scanFavorSpend(browser, colorScheme);
+  });
   for (const width of [390, 1280]) {
     test(`usar característica com oito alvos passa no axe e mantém "Usar" à vista no tema ${theme}, em ${width}`, { tag: ['@a11y', '@MR-014'] }, async ({ browser }) => {
       test.setTimeout(300_000);

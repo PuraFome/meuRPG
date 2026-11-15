@@ -26,6 +26,8 @@ import { CharacterSheetPage } from './character-sheet';
 import { NotesClient } from '../../core/notes/notes-client';
 import { CreaturesClient } from '../../core/creatures/creatures-client';
 import { CreaturesPanel } from './creatures-panel/creatures-panel';
+import { FavorClient } from '../../core/play/favor-client';
+import { FakeFavorClient } from '../../core/play/favor-testing';
 import { XpWatcher } from '../../core/play/xp-watcher';
 import type { VitalsVm } from '../../core/play/live-session.types';
 import { pensantusVitals } from '../../core/play/live-testing';
@@ -342,6 +344,8 @@ const xpWatcher = {
       ) => void
     >(),
 };
+/** Who has the master's Inspiração: nobody, unless a test says so. */
+const favorApi = new FakeFavorClient();
 /** The player's notes panel reads this; nothing here talks to a server. */
 const notesApi = {
   list: vi.fn(() => Promise.resolve({ notes: [], noteCount: 0, maxNotes: 300 })),
@@ -361,6 +365,7 @@ function xpProviders() {
     },
     { provide: OpenSessions, useValue: { sessions: openSessions } },
     { provide: XpWatcher, useValue: xpWatcher },
+    { provide: FavorClient, useValue: favorApi.asClient() },
   ];
 }
 
@@ -3175,6 +3180,84 @@ describe('CharacterSheetPage: the XP block (MR-016, RN-12, E7-10)', () => {
       expect(
         (fixture.nativeElement as HTMLElement).querySelector('app-resource-counters'),
       ).toBeNull();
+    });
+
+    describe("the master's Inspiração (RN-43, board 581-04)", () => {
+      const title = (el: HTMLElement) => el.querySelector('app-favor-panel h2');
+      const holding = (...ids: string[]) =>
+        (favorApi.holders = ids.map((characterId) => ({ characterId, name: 'Pensantus' })));
+      afterEach(() => {
+        favorApi.holders = [];
+        favorApi.reads.length = 0;
+      });
+
+      it('shows the panel to the owner of a character that has it, with what to do and no "Passar a…" button', async () => {
+        fake.getCharacterSheetFn = () => Promise.resolve(vm());
+        holding('char-1');
+        open();
+        const fixture = await render();
+        const el = fixture.nativeElement as HTMLElement;
+        await push(fixture, rage(0));
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(flat(title(el))).toBe('starInspiração');
+        expect(flat(el.querySelector('app-favor-panel .favor__text'))).toBe(
+          'Do mestre. Vantagem num d20 seu: marque “Usar a Inspiração” antes de rolar.',
+        );
+        expect(el.querySelector('app-favor-panel button')).toBeNull();
+      });
+
+      it('shows the master the panel with the title alone', async () => {
+        fake.getCharacterSheetFn = () => Promise.resolve(vm({ isMaster: true }));
+        holding('char-1');
+        open();
+        const fixture = await render();
+        const el = fixture.nativeElement as HTMLElement;
+        await push(fixture, rage(0));
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(title(el)).not.toBeNull();
+        expect(el.querySelector('app-favor-panel .favor__text')).toBeNull();
+      });
+
+      it('shows nothing when the character has none, when the read says another one has it, or outside a session', async () => {
+        fake.getCharacterSheetFn = () => Promise.resolve(vm());
+        holding('char-2');
+        open();
+        const fixture = await render();
+        await push(fixture, rage(0));
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(title(fixture.nativeElement as HTMLElement)).toBeNull();
+      });
+
+      it('reads nothing and shows nothing without an open session', async () => {
+        fake.getCharacterSheetFn = () => Promise.resolve(vm());
+        holding('char-1');
+        const fixture = await render();
+        await fixture.whenStable();
+        expect(title(fixture.nativeElement as HTMLElement)).toBeNull();
+        expect(favorApi.reads).toEqual([]);
+      });
+
+      it('reads again on a vitals hint, and shows nothing when that read fails', async () => {
+        fake.getCharacterSheetFn = () => Promise.resolve(vm());
+        holding('char-1');
+        open();
+        const fixture = await render();
+        const el = fixture.nativeElement as HTMLElement;
+        await push(fixture, rage(0));
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(title(el)).not.toBeNull();
+        favorApi.holders = () => {
+          throw new Error('down');
+        };
+        await push(fixture, rage(1));
+        await fixture.whenStable();
+        fixture.detectChanges();
+        expect(title(el)).toBeNull();
+      });
     });
 
     it('shows no counters outside a session: the sheet has only the maximums', async () => {

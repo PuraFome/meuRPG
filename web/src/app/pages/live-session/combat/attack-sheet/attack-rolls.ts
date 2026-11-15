@@ -26,6 +26,7 @@ import type {
 import { type TypedEntry, typedEntries } from '../../../../core/combat/typed-fields';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
 import type { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import { type HeldAnswer, asksLucky } from '../../../../core/held-rolls/held-roll-offer';
 import { dieFields, genericDieFields, rollDiceOf } from '../../../../core/effects/effects';
@@ -93,6 +94,8 @@ export class AttackRolls {
       readonly modeChoice: () => ModeChoice | undefined;
       /** The power attack trade ticked on this roll. */
       readonly trade: PowerTrade;
+      /** The box of the master's Inspiração: ticked, the roll spends it and sends no mode of its own. */
+      readonly fav?: FavorSpend;
     },
   ) {
     this.maneuverDice.set(s.data.maneuverDice ?? []);
@@ -122,7 +125,8 @@ export class AttackRolls {
       this.s.busy,
       this.s.error,
       async () => {
-        const mode = this.host.modeChoice();
+        const spend = this.host.fav?.spend() ?? false;
+        const mode = spend ? undefined : this.host.modeChoice();
         const res = await this.host.api.attacks.rollAttack(
           data.campaignId,
           data.encounterId,
@@ -138,6 +142,7 @@ export class AttackRolls {
             spend: data.useExtraAction,
             maneuver: maneuverKey,
             power: trade?.key ?? '',
+            favor: spend,
           }),
           data.asReaction ?? false,
           data.opportunity?.offerId ?? '',
@@ -149,10 +154,13 @@ export class AttackRolls {
             ...(maneuverKey ? { maneuverKey } : {}),
             ...(trade ? { powerAttackKey: trade.key } : {}),
             legendaryOption: data.legendary?.option ?? '',
+            ...(spend ? { spendFavor: true } : {}),
           },
         );
         data.state.apply(res.encounter);
         this.host.trade.made.set(trade ?? null);
+        // The roll is made (or held for a question): the Inspiração is spent, so the box unticks and who has it is read again.
+        this.host.fav?.spent();
         this.settle(res);
         this.play(attackShow(this.host.name, res));
       },
@@ -293,6 +301,11 @@ export class AttackRolls {
   }
 
   private fail(err: unknown): void {
+    const refused = this.host.fav?.refused(err);
+    if (refused !== null && refused !== undefined) {
+      this.s.error.set(refused);
+      return;
+    }
     this.s.poolNotice.set('');
     const die = this.extra.maneuver();
     const trade = this.host.trade.picked();

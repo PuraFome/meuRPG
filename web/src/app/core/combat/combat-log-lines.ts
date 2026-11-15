@@ -379,5 +379,7 @@ export function logLine(
   ctx: LogContext = NO_CONTEXT,
 ): LogLine | null {
   const base = { id: e.id, actor: e.actorLabel, hidden: e.hidden, undoable: e.undoable };
-  return LINE_BUILDERS.get(e.kind)?.({ e, base, encounterName, ctx }) ?? null;
+  const line = LINE_BUILDERS.get(e.kind)?.({ e, base, encounterName, ctx }) ?? null;
+  // "<nome> usou a Inspiração.": the server sends it only to the master and the roller's player, so a line that has it shows it.
+  return line && e.favorTextPt ? { ...line, notes: [...(line.notes ?? []), e.favorTextPt] } : line;
 }

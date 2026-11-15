@@ -115,6 +115,9 @@
             @if (current(c)) {
               <span class="row__turn">Vez</span>
             }
+            @if (favor.holds(c)) {
+              <app-favor-chip variant="inline" data-testid="order-favor" />
+            }
             @if (inTurn(c)) {
               <app-part-state [ended]="c.turnPartEnded" />
             }
@@ -184,6 +187,16 @@
               }
             </span>
           }
+          @if (live() && player(c)) {
+            <!-- What the master's "Dar Inspiração" answered (RN-43): the words of the board, never a log line (the server writes none). -->
+            <div role="status">
+              @if (favor.state.note(); as n) {
+                @if (n.characterId === c.characterId) {
+                  <p class="row__hidden-note js-favor-note" [class.mr-visually-hidden]="!n.refused">{{ n.text }}</p>
+                }
+              }
+            </div>
+          }
           <app-combatant-tags [names]="tags(c)" [label]="c.label" [states]="c.states" [sources]="c.conditionSources" [people]="rows()" />
           @if (c.wildShapeBeastKey) {
             <app-form-tag [beast]="c.wildShapeBeastNamePt" [time]="formTimes().get(c.characterId) ?? ''" named />
@@ -228,7 +241,7 @@
           }
           @if (live() && c.concentrationSpell && losing() !== c.id && removing() !== c.id) {
             <div class="row__extra">
-              <p class="row__conc"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Concentração: <b>{{ concentration(c) }}</b>{{ held(c) }}</p>
+              <p class="row__conc"><mat-icon aria-hidden="true">hourglass_empty</mat-icon>Concentração: <b>{{ c.concentrationSpellNamePt }}</b>{{ held(c) }}</p>
               @if (heldBy(c).length > 0) {
                 <button matButton="outlined" type="button" class="row__lose" [disabled]="busy()" (click)="losing.set(c.id)">Perdeu a concentração</button>
               }
@@ -320,6 +333,24 @@
                   @if (npc(c)) {
                     <button mat-menu-item type="button" (click)="reveal.emit({ id: c.id, hidden: !c.hidden })">
                       <mat-icon aria-hidden="true">{{ c.hidden ? 'visibility' : 'visibility_off' }}</mat-icon>{{ c.hidden ? 'Revelar aos jogadores' : 'Esconder' }}
+                    </button>
+                  }
+                  @if (favor.canGive(c)) {
+                    <!-- The master's Inspiração (RN-43, 581-01): only on a player's row, in an open session; dashed with the reason when it already has it. -->
+                    <button
+                      mat-menu-item
+                      type="button"
+                      class="mr-favor-item js-favor"
+                      [disabled]="favor.off(c)"
+                      (click)="favor.give(c)"
+                    >
+                      <mat-icon aria-hidden="true">star_border</mat-icon>
+                      <span class="mr-favor-item__text">
+                        Dar Inspiração
+                        @if (favor.holds(c)) {
+                          <span class="mr-favor-item__sub">{{ favor.reason(c) }}</span>
+                        }
+                      </span>
                     </button>
                   }
                   <button mat-menu-item type="button" (click)="conditions.emit(c.id)">

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 
 import { CountPips } from '../../../shared/count-pips/count-pips';
+import { FavorPanel } from '../favor-panel/favor-panel';
 import type { VitalsVm } from '../../../core/play/live-session.types';
 import { resourceBoxes, slotCounterRows, slotsFootnote } from './counters';
 
@@ -10,17 +11,22 @@ import { resourceBoxes, slotCounterRows, slotsFootnote } from './counters';
  * level with its pips and "3 de 4" ("criado" beside the count of a slot Flexible Casting made), the pact slots as
  * their own row, and when they come back. Read-only: nothing here takes focus (the master adjusts from the
  * character's card on the session page). The numbers are the live ones, which the sheet page keeps current while the
- * campaign has an open session. A section with nothing to show is not drawn.
+ * campaign has an open session. A section with nothing to show is not drawn. The master's "Inspiração" panel (RN-43) comes
+ * first, only while the character has it.
  */
 @Component({
   selector: 'app-resource-counters',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CountPips],
+  imports: [CountPips, FavorPanel],
   templateUrl: './resource-counters.html',
   styleUrl: './resource-counters.scss',
 })
 export class ResourceCounters {
   readonly vitals = input.required<VitalsVm>();
+  /** The campaign, for the master's Inspiração panel (RN-43), drawn before the counters while the character has it. */
+  readonly campaignId = input('');
+  /** Who reads the sheet: the master or the owner. */
+  readonly viewer = input<'owner' | 'master'>('owner');
 
   protected readonly boxes = computed(() => resourceBoxes(this.vitals().resources));
   protected readonly slots = computed(() => slotCounterRows(this.vitals()));

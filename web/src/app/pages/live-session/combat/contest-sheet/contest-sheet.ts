@@ -77,6 +77,8 @@ import { AttackSteps } from '../attack-sheet/attack-steps';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../../shared/sheet/sheet-host';
 import { upFirst } from '../../../../core/format/text';
+import { FavorSpend, circumstancesOfNotes, favorWho } from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
 
 /** What the page hands the initiator's sheet: a grapple, a shove or an escape. */
 export interface ContestSheetData {
@@ -273,9 +275,14 @@ export class ContestSheet {
     skillLine(this.escape ? this.skill() : ContestSkill.ATHLETICS),
   );
   protected readonly modifierText = computed(() => signed(this.check().modifier));
+  /** The master's Inspiração (RN-43) for the initiator's d20 of a grapple, a shove or an escape. */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => favorWho(this.initiator()),
+    circumstances: () => circumstancesOfNotes(this.check().mode, this.check().notes),
+  });
   protected readonly rollSkill = computed(() => {
-    const c = this.contest();
-    const roll = c?.initiatorRoll;
+    const roll = this.contest()?.initiatorRoll;
     return roll ? skillName(roll.skill) : '';
   });
 
@@ -304,30 +311,24 @@ export class ContestSheet {
     const c = this.contest();
     return c ? initiatorVerdict(c, this.other(), this.initiator()?.label ?? '') : null;
   });
-  protected readonly holds = computed(() => {
-    const c = this.contest();
-    return (
-      !this.escape &&
-      this.data.purpose === ContestPurpose.GRAPPLE &&
-      !!c &&
-      this.verdict()?.won === true
-    );
-  });
+  protected readonly holds = computed(
+    () =>
+      !this.escape && this.data.purpose === ContestPurpose.GRAPPLE && this.verdict()?.won === true,
+  );
   protected readonly hold = computed(() => holdLine(this.other().label));
 
   // ---- the shove's choice ----
 
-  protected readonly choice = computed(() => this.contest()?.shoveChoice);
-  protected readonly pushBlocked = computed(
-    () => this.choice()?.pushBlocked ?? ShoveBlockedReason.UNSPECIFIED,
-  );
-  protected readonly pushOff = computed(() => {
-    const c = this.choice();
-    return !c || !c.pushAvailable;
+  /** What the won shove's choice says: the lead, the two cards' sentences and whether the push is out. */
+  protected readonly shove = computed(() => {
+    const c = this.contest()?.shoveChoice;
+    return {
+      lead: `Escolha o que fazer com ${named(this.other())}.`,
+      prone: proneLine(this.other()),
+      push: pushLine(c?.pushBlocked ?? ShoveBlockedReason.UNSPECIFIED),
+      pushOff: !c || !c.pushAvailable,
+    };
   });
-  protected readonly pushText = computed(() => pushLine(this.pushBlocked()));
-  protected readonly proneText = computed(() => proneLine(this.other()));
-  protected readonly choiceLead = computed(() => `Escolha o que fazer com ${named(this.other())}.`);
   protected readonly upFirst = upFirst;
   protected readonly ofNamed = ofNamed;
 
@@ -403,8 +404,10 @@ export class ContestSheet {
         die,
         this.maneuverKey(),
         this.maneuverFace(),
+        this.fav.spend(),
       );
       const res = await this.api.start(input, this.startKeys.keyFor(input));
+      this.fav.spent();
       this.data.state.apply(res.encounter);
       if (!res.contest) {
         // The d20 is kept for a question (a halfling's 1, a Bardic Inspiration die): the player decides before the contest opens.
@@ -414,7 +417,7 @@ export class ContestSheet {
       this.opened(res.contest, skill);
       this.startKeys.renew();
     } catch (err) {
-      this.error.set(combatErrorMessage(err, 'rolar a disputa'));
+      this.error.set(this.fav.refused(err) ?? combatErrorMessage(err, 'rolar a disputa'));
     } finally {
       this.busy.set(false);
     }
