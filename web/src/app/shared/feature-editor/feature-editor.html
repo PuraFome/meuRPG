@@ -193,8 +193,10 @@
   }
   @if (isOption() && allowAsks()) {
     <section class="asks" [attr.aria-label]="'O que ' + (feature().name || 'a opção') + ' pede'">
-      <h4 class="options__title">O que a opção pede</h4>
-      <p class="options__hint">Vale só para quem vai escolher a opção. Deixe vazio o que ela não pede: quem não cumpre vê a opção na lista, apagada, com o que falta.</p>
+      <div class="asks__head">
+        <h4 class="options__title">O que a opção pede</h4>
+        <span class="asks__all">O jogador precisa de todos</span>
+      </div>
       <app-ask-rows [base]="path('prerequisite')" [value]="asks()" [issuesOf]="issuesOf()" [classOptions]="classOptions()" [pactOptions]="pactOptions()" [requirable]="requirable()" [inList]="peers().length > 0" [unsavedPeers]="unsavedPeers()" [spellSearch]="spellSearch()" [resetKey]="feature().id" (asksChange)="setAsks($event)" />
       @for (m of issuesOf()(path('prerequisite')); track m) {
         <p class="inline-issue" role="note">{{ m }}</p>

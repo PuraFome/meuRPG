@@ -286,6 +286,19 @@
     margin: 0;
   }
 
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--mr-space-3);
+  }
+
+  &__all {
+    font-size: var(--mr-font-14);
+    font-weight: 700;
+    color: var(--mr-ink-muted);
+  }
+
   .options__title {
     font: inherit;
     font-weight: 600;
