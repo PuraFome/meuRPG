@@ -452,7 +452,7 @@ func (s *Service) rollEffectSaveD20(ctx context.Context, c *combatTx, x *effectS
 	if err != nil {
 		return false, false, err
 	}
-	f.mode, x.ev.Favor = fv.Mode, fv.Used
+	f.mode, x.ev.Favor, x.ev.FavorRoll = fv.Mode, fv.Used, fv.Key
 	// A player's character that holds a Bardic Inspiration die has the d20 kept until the player
 	// answers (no result is written yet, only the held row, which moves the number once); the answer brings it back with the die added. So
 	// has a halfling's d20 that shows a 1, for the Lucky question first.

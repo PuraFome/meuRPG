@@ -381,7 +381,7 @@ All four foreign keys cascade.
 `character_id` is the roller, `roll_label_pt` the roll's name as the log reads it, and `hidden_sources` a JSON list of the sources of advantage the roller could not read.
 `status` is `open`, `returned` (the Inspiration was given back) or `kept`; `answered_at` is set when it is not open.
 `answer_key` is the idempotency key of the answer, unique in the campaign.
-`roll_key` is the idempotency key of the roll that spent the Inspiration (without a reaction window's `#window`): the roll's undo and the forgetting of its held roll close the open prompt of that key as `kept` (an index on the open ones).
+`roll_key` is the idempotency key the spend was made under, which is the request's. The roll's event is stamped with it (`favor_roll` in the payload) and its held roll keeps it as its own key, because the key the event is written under is not always the request's: a reaction window's replay writes none, and the answer to a die's or a Lucky question writes its own. The roll's undo and the forgetting of its held roll close the open prompt of that key and that character as `kept` (an index on the open ones).
 The session's end closes every open prompt of it as `kept`.
 The foreign keys cascade.
 A favor event written in a running combat also has `session_events.encounter_id` set and the round, the combatants and the audience in its payload, which is how the combat's log and undo read it.

@@ -551,15 +551,7 @@ func (s *Service) takeBackOf(ctx context.Context, c *combatTx, run *undoRun, las
 	case last.Kind == eventGearSwapped: // the swap is the characters module's too: the sheet goes back with the economy
 		return nil, s.takeBackGearSwap(ctx, c, run, last.Payload)
 	}
-	return s.takeBack(ctx, c, last.Kind, ev, keyOf(last.IdempotencyKey))
-}
-
-// keyOf is the idempotency key an event was written under, or "" for none.
-func keyOf(key *string) string {
-	if key == nil {
-		return ""
-	}
-	return *key
+	return s.takeBack(ctx, c, last.Kind, ev)
 }
 
 // creatureToPutBack is the creature whose square the undo of ev changes behind the mover's
@@ -671,7 +663,7 @@ func (s *Service) takeBackFiring(ctx context.Context, c *combatTx, run *undoRun,
 // takeBackOlder takes back one older event that goes with the undone action, and keeps
 // the vitals it restored and the lines it wrote.
 func (s *Service) takeBackOlder(ctx context.Context, c *combatTx, run *undoRun, older playdb.ListRecentSessionEventsRow, pe actionEvent) error {
-	more, err := s.takeBack(ctx, c, older.Kind, pe, keyOf(older.IdempotencyKey))
+	more, err := s.takeBack(ctx, c, older.Kind, pe)
 	if err != nil {
 		return err
 	}
@@ -760,7 +752,7 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 // damage that is gone (its character was deleted meanwhile) is skipped: there
 // is nothing left to put back on it. Each kind of event has its own function
 // (combat_undo_kinds.go); this one reads what they all need and dispatches.
-func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev actionEvent, rollKey string) ([]*playv1.CharacterVitals, error) {
+func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev actionEvent) ([]*playv1.CharacterVitals, error) {
 	if err := closeDamageWindows(ctx, c, kind, ev); err != nil {
 		return nil, err
 	}
@@ -781,7 +773,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	if !ok {
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)
 	}
-	u := &undoer{s: s, c: c, cs: cs, holds: ev.Holds, kept: ev.HPKept, rollKey: rollKey}
+	u := &undoer{s: s, c: c, cs: cs, holds: ev.Holds, kept: ev.HPKept}
 	if err := u.undoWithTemp(ctx, kind, undo, ev); err != nil {
 		return nil, err
 	}

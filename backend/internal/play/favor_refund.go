@@ -62,7 +62,7 @@ func (s *Service) openRefundPrompt(ctx context.Context, env gateEnv, a favorAsk,
 		return fmt.Errorf("encode the hidden sources: %w", err)
 	}
 	prompt, err := env.q.InsertFavorRefundPrompt(ctx, playdb.InsertFavorRefundPromptParams{
-		CampaignID: a.CampaignID, GameSessionID: open.ID, CharacterID: a.CharacterID, RollLabelPt: refundLabels[a.Kind], HiddenSources: body, RollKey: rollKeyOf(a.Key),
+		CampaignID: a.CampaignID, GameSessionID: open.ID, CharacterID: a.CharacterID, RollLabelPt: refundLabels[a.Kind], HiddenSources: body, RollKey: a.Key,
 	})
 	if err != nil {
 		return fmt.Errorf("open the refund prompt: %w", err)

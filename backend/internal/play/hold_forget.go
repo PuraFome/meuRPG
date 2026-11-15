@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"google.golang.org/protobuf/proto"
@@ -22,7 +21,8 @@ import (
 
 // favorGiveBackIf gives the Inspiration back when it was spent on a held roll that is dropped before it was answered: no roll event
 // exists for that spend, so nothing else would put it back. A hold that was answered, or that spent nothing, gives nothing. The refund
-// prompt that roll opened (rollKey) closes as kept: the Inspiration is back, so there is nothing left to give.
+// prompt that roll opened closes as kept: the Inspiration is back, so there is nothing left to give. The hold's own key is the key the spend was
+// made under (rollKey), which is the prompt's roll_key.
 func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, campaignID, characterID, rollKey string) error {
 	if !unsettled || characterID == "" {
 		return nil
@@ -32,9 +32,10 @@ func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, cam
 
 // favorBackOfRoll gives the Inspiration a roll spent back when the roll is gone (its undo, a held roll forgotten) and closes as kept
 // the roller's refund prompt of that roll. When the master already answered that prompt "Devolver", the Inspiration was given back once:
-// it is not given again (the character may have passed it away or spent it since), and the prompt keeps its answer.
-func favorBackOfRoll(ctx context.Context, q *playdb.Queries, campaignID, characterID, rollKey string) error {
-	key := rollKeyOf(rollKey)
+// it is not given again (the character may have passed it away or spent it since), and the prompt keeps its answer. key is the one the spend was
+// made under, which the prompt keeps (roll_key): a hold's own key, or the FavorRoll the roll's event is stamped with, never the key the event
+// happens to be written under.
+func favorBackOfRoll(ctx context.Context, q *playdb.Queries, campaignID, characterID, key string) error {
 	if key != "" {
 		returned, err := q.FavorRefundReturnedForRoll(ctx, playdb.FavorRefundReturnedForRollParams{CampaignID: campaignID, CharacterID: characterID, RollKey: key})
 		if err != nil {
@@ -62,9 +63,6 @@ func keepRefundOfRoll(ctx context.Context, q *playdb.Queries, campaignID, charac
 	}
 	return nil
 }
-
-// rollKeyOf is the key the refund prompt keeps for a roll: the request's, without the suffix of a reaction window's replay.
-func rollKeyOf(key string) string { return strings.TrimSuffix(key, windowHoldSuffix) }
 
 // refundSpentFavor is the master's refund of an Inspiration a roll spent for nothing (favor_refund.go): the one other way the row is given
 // back. The roller must have none now: one that has it (the spend was given back already by the roll's undo, or the master granted another)

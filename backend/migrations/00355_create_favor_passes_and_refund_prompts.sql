@@ -19,8 +19,10 @@
 --   - status: 'open' until the master answers; 'returned' (the Inspiration was given back), 'kept' (it stays spent: the master
 --     chose so, or the session ended without an answer).
 --   - answer_key is the idempotency key of the answer.
---   - roll_key is the idempotency key of the roll that spent the Inspiration (without the reaction window's suffix): the roll's undo and
---     the forgetting of its held roll close the prompt as 'kept', because the Inspiration went back with them.
+--   - roll_key is the idempotency key the spend was made under, that is the request's: the roll's event is stamped with it (favor_roll) and
+--     so is its held roll (the hold keeps the request's key), because the key the event is written under is not always the request's
+--     (a reaction window's replay writes none, and the answer to a die's question writes its own). The roll's undo and the forgetting of
+--     its held roll close the prompt as 'kept', because the Inspiration went back with them.
 -- The rows go with the campaign, the session and the character.
 --
 -- Production is live: the migration only adds, and every statement may run twice.
