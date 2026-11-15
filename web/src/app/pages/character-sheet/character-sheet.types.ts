@@ -6,6 +6,7 @@ import {
 } from '../../core/characters/characters.types';
 import { DamageTypeKey, SkillProficiency } from '../../core/characters/character-labels';
 import type { AttunementVm } from '../../core/characters/attunement';
+import type { AmmunitionVm } from '../../core/characters/charges';
 import type { GearVm, MarksVm } from '../../core/characters/gear';
 import type { FullSheet as GenFullSheet } from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { SpellDetailsVm } from '../../shared/spell-details/spell-details.types';
@@ -288,6 +289,8 @@ export interface FullSheetVm {
   readonly languages: readonly string[];
   readonly proficiencies: readonly string[];
   readonly equipment: readonly EquipmentItemVm[];
+  /** The ammunition the app counts (`FullSheet.ammunition`); a kind with no row is not counted. */
+  readonly ammunition: readonly AmmunitionVm[];
   /** The background's equipment as text: a table background's, or what the
    * player wrote for a custom ("Outro") background; empty otherwise. */
   readonly backgroundEquipment: string;

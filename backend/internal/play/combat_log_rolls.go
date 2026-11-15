@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 )
 
@@ -69,7 +70,7 @@ func (e *logEntry) modeChange(ev actionEvent, byMaster bool) *playv1.CombatLogMo
 		return nil
 	}
 	return &playv1.CombatLogModeChange{
-		SuggestedMode: modeToProto[modeOfKey(ev.SuggestedMode)], Mode: modeToProto[modeOfKey(ev.RollMode)],
+		SuggestedMode: advantage.ModeToProto[advantage.ModeOfKey(ev.SuggestedMode)], Mode: advantage.ModeToProto[advantage.ModeOfKey(ev.RollMode)],
 		ByMaster: byMaster, Requested: ev.RequestID != "", Approved: ev.RequestID != "",
 	}
 }
@@ -77,7 +78,7 @@ func (e *logEntry) modeChange(ev actionEvent, byMaster bool) *playv1.CombatLogMo
 // answerChange is the master's answer to a player's request.
 func (e *logEntry) answerChange() *playv1.CombatLogModeChange {
 	return &playv1.CombatLogModeChange{
-		SuggestedMode: modeToProto[modeOfKey(e.ev.SuggestedMode)], Mode: modeToProto[modeOfKey(e.ev.RollMode)],
+		SuggestedMode: advantage.ModeToProto[advantage.ModeOfKey(e.ev.SuggestedMode)], Mode: advantage.ModeToProto[advantage.ModeOfKey(e.ev.RollMode)],
 		ByMaster: true, Requested: true, Approved: e.ev.RollMode == e.ev.Requested,
 	}
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/logging"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/live"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
@@ -794,7 +795,7 @@ func sceneRollToProto(id, characterID, characterName string, at time.Time, ev sc
 		Id: id, ActionId: ev.ActionID, CharacterId: characterID, CharacterName: characterName,
 		Roll:     treatedRoll(ev.D20, ev.Modifier, ev.Total-ev.BonusFace, ev.Physical, ev.CountedBy),
 		RolledAt: timestamppb.New(at),
-		Mode:     modeToProto[modeOfKey(ev.RollMode)],
+		Mode:     advantage.ModeToProto[advantage.ModeOfKey(ev.RollMode)],
 	}
 	if ev.D20B != 0 {
 		out.Roll = diceRoll(2, 20, pairOf(ev.D20, ev.D20B, ev.Counted), ev.Modifier, ev.Total, ev.Physical)
@@ -1175,7 +1176,7 @@ func (c *sceneRollCall) write(ctx context.Context, session playdb.GameSession, s
 	ev := sceneRollEvent{
 		PointID: scene.PointID, ActionID: action.ID, Key: action.Key,
 		D20: clamp32(d20.Face(), 1, d20Sides), Modifier: conv.Int32(bonus), Total: conv.Int32(d20.Total),
-		Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, d20Sides), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(cm.Mode), Favor: c.out.favor.Used,
+		Physical: d20.Physical, DCShown: scene.ShowDC, D20B: clamp32(d20.otherFace(), 0, d20Sides), Counted: clamp32(d20.Index, 0, 1), RollMode: advantage.ModeKey(cm.Mode), Favor: c.out.favor.Used,
 		Lucky: step.Lucky, Stroke: step.Stroke, CountedBy: d20.CountedBy,
 	}
 	if step.Bonus != nil {

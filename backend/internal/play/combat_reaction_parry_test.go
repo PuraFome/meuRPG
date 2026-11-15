@@ -203,10 +203,10 @@ func TestParry_NoWindowWhenTheReactionCannotBeUsed(t *testing.T) {
 		prep func(a *armed, e *playv1.Encounter)
 		roll func(*playv1.RollAttackRequest)
 	}{
-		{"the creature is stunned", func(a *armed, e *playv1.Encounter) { a.setConditions(t, e, knight, "condition:stunned") }, advantage(knightHit)},
+		{"the creature is stunned", func(a *armed, e *playv1.Encounter) { a.setConditions(t, e, knight, "condition:stunned") }, advantageRequest(knightHit)},
 		{"the creature is incapacitated", func(a *armed, e *playv1.Encounter) { a.setConditions(t, e, knight, "condition:incapacitated") }, d20(knightHit)},
-		{"the creature is blinded", func(a *armed, e *playv1.Encounter) { a.setConditions(t, e, knight, "condition:blinded") }, advantage(knightHit)},
-		{"the attacker is invisible", func(a *armed, e *playv1.Encounter) { a.setConditions(t, e, "Toren", "condition:invisible") }, advantage(knightHit)},
+		{"the creature is blinded", func(a *armed, e *playv1.Encounter) { a.setConditions(t, e, knight, "condition:blinded") }, advantageRequest(knightHit)},
+		{"the attacker is invisible", func(a *armed, e *playv1.Encounter) { a.setConditions(t, e, "Toren", "condition:invisible") }, advantageRequest(knightHit)},
 		{"the reaction is already spent", func(a *armed, _ *playv1.Encounter) {
 			a.execSQL(t, `UPDATE combatants SET reaction_used = true WHERE id = $1`, a.id(t, knight))
 		}, d20(knightHit)},

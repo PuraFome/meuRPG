@@ -14,6 +14,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/dice"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -100,12 +101,12 @@ const (
 	notePoisoned     = "poisoned"
 	labelUnseen      = "Atacante não visto"
 	labelPoisoned    = "Envenenado"
-	labelFavor       = "Inspiração"
+	labelFavor       = advantage.LabelFavor
 	defaultHideRefus = "Alguém vê você claramente: não dá para se esconder agora."
 )
 
 // labelArmorUntrained names the armor or shield the character is not proficient with, as a source of a roll.
-const labelArmorUntrained = "Armadura sem proficiência"
+const labelArmorUntrained = advantage.LabelArmorUntrained
 
 // rollNote is one circumstance behind a roll's mode, as a roll keeps it.
 type rollNote struct {

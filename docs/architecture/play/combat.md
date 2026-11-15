@@ -301,6 +301,13 @@ Sheets live in one frame (`sheet-frame`, scrolling inside with a fixed footer) a
 While a sheet's own request is in the air it cannot be dismissed, so its answer is always shown and a second sheet never starts a second spend.
 Each action carries its own `idempotency_key`, made once and resent on the retry; the key follows the request, not the sheet (`ActionKey`): the same values again are a retry and keep it, while another die, slot or target is a new request with a new key.
 
+The attack row of a weapon that fires ammunition (`core/combat/ammunition-line.ts`) shows a count tag only when `ammunition_left` is present.
+The tag warns at 3 or fewer; at 0 it is dashed and the "Atacar" button is off with "Sem flechas: o tiro não sai." as its described reason.
+The word comes from `Attack.ammunition_key` (arrow, bolt, bullet, needle) and falls back to "munição".
+The improvised melee line (`improvised`, key `<weapon>:melee`) is a row of its own with a note that it spends no piece and never carries the tag.
+Its note takes the kind from the ranged line of the same weapon in the same options (key without `:melee`), and falls back to "munição".
+The sheet's attack table lists that line as a plain weapon row.
+
 A feature action with a use (`ActionOption.via_use_feature`) is taken through `ActionSheets.takeFeature` and `FeatureService.UseFeature` (`CombatClient.features`).
 Its row (`action-groups`) shows the limit in its scope with what is left, whom it takes and what it spends (`core/combat/feature-use.ts`).
 The "Usar" sheet (`use-feature-sheet`) asks who (`feature_targets`, radio cards or check boxes) and which (buttons), and sends `target_ids` and `choice` with one idempotency key kept across retries.

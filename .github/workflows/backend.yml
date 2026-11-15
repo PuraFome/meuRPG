@@ -28,6 +28,8 @@ on:
       - ".github/scripts/go-complexity.sh"
       - ".github/scripts/nolint-cap.sh"
       - ".github/nolint-cap"
+      - ".github/scripts/play-cap.sh"
+      - ".github/play-cap"
       - ".node-version"
   # The nightly run and a manual run test everything, with no path filter
   # (03:00 in São Paulo).
@@ -95,14 +97,14 @@ jobs:
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|web/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|cockroach-only|start-(cockroach|postgres)|database-image)\.sh$|\.github/actions/(test-database|load-database-image)/|\.github/nolint-cap$|\.node-version$)'
+          pattern: '^(backend/|proto/|web/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|play-cap|cockroach-only|start-(cockroach|postgres)|database-image)\.sh$|\.github/actions/(test-database|load-database-image)/|\.github/(nolint|play)-cap$|\.node-version$)'
 
       - name: Do the Go jobs run
         id: go
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|cockroach-only|start-(cockroach|postgres)|database-image)\.sh$|\.github/actions/(test-database|load-database-image)/|\.github/nolint-cap$)'
+          pattern: '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|play-cap|cockroach-only|start-(cockroach|postgres)|database-image)\.sh$|\.github/actions/(test-database|load-database-image)/|\.github/(nolint|play)-cap$)'
 
   proto:
     name: proto (lint, breaking, generate)
@@ -254,6 +256,13 @@ jobs:
         # number is an edit the reviewer sees.
         if: ${{ !cancelled() }}
         run: ../.github/scripts/nolint-cap.sh
+
+      - name: No more lines in backend/internal/play than the committed cap
+        # The package every session edits may not grow past the number in
+        # .github/play-cap. A lower count passes; raising the number is an
+        # edit the reviewer sees.
+        if: ${{ !cancelled() }}
+        run: ../.github/scripts/play-cap.sh
 
   # The known vulnerabilities that the Go code actually calls (Dependabot and
   # osv-scan flag every vulnerable module, called or not). It runs on the same
