@@ -264,6 +264,9 @@ func closeRefundPrompt(ctx context.Context, q *playdb.Queries, c refundCall) (pl
 // answer rolls back with the question still open), then the line of the combat's log when the refund is one, the event and the hints.
 func (s *Service) returnRefund(ctx context.Context, tx pgx.Tx, h *hints, c refundCall, closed playdb.FavorRefundPrompt) error {
 	q := s.queries.WithTx(tx)
+	if err := s.mayHold(ctx, tx, closed.CampaignID, closed.CharacterID, errCannotReceive()); err != nil { // the prompt stays open for a "keep"
+		return err
+	}
 	if err := refundSpentFavor(ctx, q, closed.CampaignID, closed.CharacterID); err != nil {
 		return err
 	}

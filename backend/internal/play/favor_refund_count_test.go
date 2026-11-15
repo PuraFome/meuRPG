@@ -136,3 +136,49 @@ func TestReturnedRefundIsNotGivenBackAgainByTheUndoOfTheRoll(t *testing.T) {
 		t.Errorf("the prompt is %q, want returned", status)
 	}
 }
+
+// reserve sends a player character back to the reserve: nobody owns it any more.
+func (f *favorFight) reserve(t *testing.T, id string) {
+	t.Helper()
+	f.execSQL(t, `UPDATE characters SET reserved = true, player_user_id = NULL WHERE id = $1`, id)
+}
+
+// The master undoes an accepted pass whose giver went back to the reserve meanwhile: the Inspiração would go to a character that may not
+// hold one, so the undo is refused as an accept is (CANNOT_RECEIVE) and nothing changes.
+func TestUndoOfAPassRefusesAGiverInTheReserve(t *testing.T) {
+	t.Parallel()
+	f := newFavorFight(t)
+	f.give(t, f.toren)
+	pass := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+	if _, err := f.answer(pass.GetId(), true); err != nil {
+		t.Fatalf("AnswerFavorPass(Aceitar) error = %v", err)
+	}
+	line := f.undoableLine(t).GetId()
+	f.reserve(t, f.toren.GetId())
+	before := f.world(t)
+	err := f.undo(t, f.master, f.e, line)
+	wantFavorBlocked(t, "the undo of a pass to a giver in the reserve", err, blockedCannotReceive)
+	f.wantSame(t, "the refused undo", before)
+	if !f.has(t, f.pens.GetId()) || f.has(t, f.toren.GetId()) {
+		t.Errorf("Pensantus has it %v, Toren has it %v, want the receiver to keep it and the giver in the reserve to get none", f.has(t, f.pens.GetId()), f.has(t, f.toren.GetId()))
+	}
+}
+
+// "Devolver" to a roller that went back to the reserve is refused (CANNOT_RECEIVE) and the prompt stays open: the master may still keep it
+// spent. Nothing is given back.
+func TestRefundToARollerInTheReserveIsRefusedAndStaysOpen(t *testing.T) {
+	t.Parallel()
+	f, p := refundFight(t)
+	f.reserve(t, f.toren.GetId())
+	_, err := f.answerRefund(f.master, p.GetId(), true, newKey())
+	wantFavorBlocked(t, "Devolver to a roller in the reserve", err, blockedCannotReceive)
+	if status := f.promptStatus(t, p.GetId()); status != "open" {
+		t.Errorf("the prompt is %q, want open", status)
+	}
+	if f.rows(t) != 0 {
+		t.Errorf("character_favor has %d rows, want 0", f.rows(t))
+	}
+	if _, err := f.answerRefund(f.master, p.GetId(), false, newKey()); err != nil {
+		t.Errorf("Manter gasta after the refusal error = %v, want it to work", err)
+	}
+}

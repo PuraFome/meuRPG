@@ -69,6 +69,10 @@ func (s *Service) takeBackGrant(ctx context.Context, c *combatTx, p favorUndoPay
 
 // takeBackPass takes the Inspiration from the receiver (and the ask it may have made to pass it on) and gives it to the giver again.
 func (s *Service) takeBackPass(ctx context.Context, c *combatTx, p favorUndoPayload, ev actionEvent) ([]string, error) {
+	// The giver gets it back only if it may hold one now, as the accept asked of it: a character sent to the reserve since is refused.
+	if err := s.mayHold(ctx, c.tx, c.session.CampaignID, p.FromCharacterID, errCannotReceive()); err != nil {
+		return nil, err
+	}
 	if err := s.takeFavorFrom(ctx, c, p.ToCharacterID, ev.Target); err != nil {
 		return nil, err
 	}

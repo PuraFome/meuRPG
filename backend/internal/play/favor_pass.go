@@ -544,16 +544,10 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 	if err != nil {
 		return playdb.FavorPass{}, fmt.Errorf("close the ask: %w", err)
 	}
-	if _, err := s.favorReceiver(ctx, tx, closed.CampaignID, closed.ToCharacterID); err != nil {
-		if favorReasonOf(err) == playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_A_PLAYER_CHARACTER {
-			return playdb.FavorPass{}, errCannotReceive() // it left the table
-		}
-		return playdb.FavorPass{}, err // a failed read is not the receiver's state
+	if err := s.mayHold(ctx, tx, closed.CampaignID, closed.ToCharacterID, errCannotReceive()); err != nil { // it may have left the table
+		return playdb.FavorPass{}, err
 	}
-	if _, err := s.favorReceiver(ctx, tx, closed.CampaignID, closed.FromCharacterID); err != nil {
-		if favorReasonOf(err) == playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_A_PLAYER_CHARACTER {
-			return playdb.FavorPass{}, errNotTheHolder() // the giver is back in the reserve: it is no holder of the table any more
-		}
+	if err := s.mayHold(ctx, tx, closed.CampaignID, closed.FromCharacterID, errNotTheHolder()); err != nil { // the giver may be back in the reserve
 		return playdb.FavorPass{}, err
 	}
 	if _, err := q.SpendCharacterFavor(ctx, playdb.SpendCharacterFavorParams{CharacterID: closed.FromCharacterID, CampaignID: closed.CampaignID}); err != nil {
@@ -569,6 +563,19 @@ func (s *Service) acceptPass(ctx context.Context, tx pgx.Tx, h *hints, c favorPa
 		return playdb.FavorPass{}, fmt.Errorf("give the receiver the inspiration: %w", err)
 	}
 	return closed, s.writeAndTellPass(ctx, tx, h, c, closed, eventFavorPassed, true)
+}
+
+// mayHold says the character may hold the Inspiration now: a player character of the campaign that is out of the reserve. Every move of
+// the row to a character (the accept, the undo of an accept, the master's refund) asks it first. A character that may not is answered
+// with notAPlayer; a failed read is returned as it is, since it says nothing of the character.
+func (s *Service) mayHold(ctx context.Context, tx pgx.Tx, campaignID, characterID string, notAPlayer error) error {
+	if _, err := s.favorReceiver(ctx, tx, campaignID, characterID); err != nil {
+		if favorReasonOf(err) == playv1.FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_A_PLAYER_CHARACTER {
+			return notAPlayer
+		}
+		return err
+	}
+	return nil
 }
 
 // favorReasonOf is the FavorBlocked reason of an error, unspecified for any other error.
