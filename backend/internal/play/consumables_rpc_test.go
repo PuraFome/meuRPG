@@ -346,7 +346,7 @@ func TestTwoKeysOnOneEntryGiveOneUse(t *testing.T) {
 	withEntry := func(r *playv1.UseConsumableRequest) { r.EntryId = entry }
 	s.mustUse(t, s.caio, s.toren, potionCommon, withEntry)
 	_, err := s.use(t, s.master, s.toren, potionCommon, withEntry) // another key: no retry, the entry is gone
-	wantCode(t, "a second key on the used entry", err, connect.CodeNotFound)
+	wantBlockedBy(t, "a second key on the used entry", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ITEM_GONE)
 	if n := s.countEvents(t, eventConsumableUsed); n != 1 {
 		t.Errorf("the session has %d consumable_used events, want 1", n)
 	}
