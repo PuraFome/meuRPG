@@ -100,6 +100,8 @@ func stageItemCharge(content *rules.Content, key string, ch *pkgv1.PackageItemCh
 		return charactersdb.SetItemChargesParams{}, false
 	case ch.GetDawnsWaited() < 0 || ch.GetDawnsWaited() > ic.WaitDawns:
 		return charactersdb.SetItemChargesParams{}, false
+	case ch.GetDawnsWaited() > 0 && ch.GetChargesUsed() != ic.Max: // the dawns count only while the item is empty
+		return charactersdb.SetItemChargesParams{}, false
 	case ch.GetLastRollPending() && (ic.Empty != rules.ChargesEmptyD20 || ch.GetChargesUsed() != ic.Max || lost != ""):
 		return charactersdb.SetItemChargesParams{}, false
 	}

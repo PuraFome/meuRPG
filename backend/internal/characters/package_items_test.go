@@ -35,6 +35,7 @@ func TestAPackagesItemStateIsChecked(t *testing.T) {
 		{"a negative count", charge("m1", -1, none, 0, false), nil, false},
 		{"dawns on an item that counts none", charge("m1", 1, none, 1, false), nil, false},
 		{"more dawns than the wait", charge("m2", 24, none, 8, false), nil, false},
+		{"dawns counted by goats that still have a charge", charge("m2", 23, none, 3, false), nil, false},
 		{"a d20 awaited by an item with none", charge("m1", 5, none, 0, true), nil, false},
 		{"a d20 awaited with charges left", charge("m6", 3, none, 0, true), nil, false},
 		{"an unknown loss", charge("m1", 5, charactersv1.ItemLoss(9), 0, false), nil, false},

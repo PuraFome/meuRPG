@@ -365,7 +365,7 @@ export type TakeRestRequest = Message<"meurpg.play.v1.TakeRestRequest"> & {
   /**
    * Long rest: the dawn that ends it also restores the charges of the party's magic items, as ChargesService.Dawn
    * does, in the same transaction (one `item_charges_restored` event for each item that regained charges). The
-   * default is false; the app's checkbox starts on. A short rest ignores it.
+   * default is false. A short rest ignores it.
    *
    * @generated from field: bool restore_dawn = 101;
    */

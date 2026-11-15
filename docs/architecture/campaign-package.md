@@ -64,7 +64,7 @@ What one part finds for the next (which doors, points and player characters exis
 - **Table content** goes through the same shape, feature-key, size and name checks as `CreateTableEntry` (an entry whose name, in any case, another entry of its kind has is a `DUPLICATE` problem naming it), then the whole content is compiled at once with `Content.With`; an entry the engine refuses is a problem naming the entry.
   The campaign's content revision starts at 1.
 - **Characters** are checked with `checkNewSheet` against that compiled content, so a sheet that needs a class of the table is judged with it.
-  The items' state is checked against the sheet and the content that come with it (`stageItemState`): an entry the sheet lacks or that holds no charges, a count above the item's maximum, dawns above the item's wait, a pending d20 on an item that does not wait for one or still has charges, a kind of ammunition the rules lack, a quantity over 9,999 and a name given twice are `INVALID`.
+  The items' state is checked against the sheet and the content that come with it (`stageItemState`): an entry the sheet lacks or that holds no charges, a count above the item's maximum, dawns above the item's wait or on an item that still has charges, a pending d20 on an item that does not wait for one or still has charges, a kind of ammunition the rules lack, a quantity over 9,999 and a name given twice are `INVALID`.
   An NPC keeps its link to its SRD creature.
   The players' characters are inserted reserved (`characters.reserved`, MR-049): no owner, invisible to players until claimed ([Campaigns](campaigns.md#claim-links)).
 - **Puzzles** are built again by their kind, which proves they can be solved from their start; the seed is kept so the start is the same.

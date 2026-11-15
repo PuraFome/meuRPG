@@ -1,7 +1,9 @@
 package play
 
 import (
+	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -248,6 +250,72 @@ func TestALongRestWithTheDawnRestoresInTheSameTransactionAndOnce(t *testing.T) {
 	}
 	if c.leftOf(t, dawnEyes) != 2 || c.h.roller.given != given || len(c.dawnEvents(t)) != 2 {
 		t.Errorf("the retried rest restored again: eyes %d, %d dice more, %d events", c.leftOf(t, dawnEyes), c.h.roller.given-given, len(c.dawnEvents(t)))
+	}
+}
+
+// failRestEventOf makes the database refuse the rest_taken event of the campaign, the last write of a rest and the one that
+// comes after the dawn: a real constraint of the database on a real write, not a stand-in for the code. The returned func
+// lifts it.
+func (c *charged) failRestEventOf(t *testing.T) (lift func()) {
+	t.Helper()
+	name := "refuse_rest_" + strings.ReplaceAll(newKey(), "-", "")
+	run := func(ctx context.Context, sql string) {
+		if _, err := c.h.pool.Exec(ctx, sql); err != nil {
+			t.Fatalf("%s: %v", sql, err)
+		}
+	}
+	run(t.Context(), `CREATE FUNCTION `+name+`() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+	IF NEW.game_session_id IN (SELECT id FROM game_sessions WHERE campaign_id = '`+c.campaignID+`') THEN
+		RAISE EXCEPTION 'the rest event is refused';
+	END IF;
+	RETURN NEW;
+END $$`)
+	run(t.Context(), `CREATE TRIGGER `+name+` BEFORE INSERT ON session_events FOR EACH ROW WHEN (NEW.kind = '`+eventRestTaken+`') EXECUTE FUNCTION `+name+`()`)
+	lifted := false
+	lift = func() {
+		if lifted {
+			return
+		}
+		lifted = true
+		ctx := context.WithoutCancel(t.Context())
+		run(ctx, `DROP TRIGGER `+name+` ON session_events`)
+		run(ctx, `DROP FUNCTION `+name+`()`)
+	}
+	t.Cleanup(lift)
+	return lift
+}
+
+// The dawn of a long rest is part of its transaction: when a later write of the rest fails, the charges and the
+// item_charges_restored events the dawn wrote are rolled back with it, and the same request taken again restores them once.
+func TestALongRestThatFailsAfterTheDawnRollsTheDawnBack(t *testing.T) {
+	t.Parallel()
+	c := newCharged(t, dawnEyes, dawnHammer)
+	c.mustSpend(t, c.ana, dawnEyes, 3)
+	c.mustSpend(t, c.ana, dawnHammer, 3)
+	lift := c.failRestEventOf(t)
+	key := newKey()
+	withKey := func(r *playv1.TakeRestRequest) { r.IdempotencyKey = key }
+	c.h.roller.queue(1, 1) // 1d4+1 = 2, for each attempt
+	given := c.h.roller.given
+	if _, err := c.restLong(t, withDawn, withKey); err == nil {
+		t.Fatal("TakeRest() succeeded although the database refused the rest event")
+	}
+	if c.h.roller.given == given {
+		t.Fatal("the dawn rolled no die before the rest failed: the failure came before the step under test")
+	}
+	if eyes, hammer := c.leftOf(t, dawnEyes), c.leftOf(t, dawnHammer); eyes != 0 || hammer != 2 {
+		t.Errorf("after the failed rest the eyes have %d and the hammer %d charges, want 0 and 2", eyes, hammer)
+	}
+	if n, rests := len(c.dawnEvents(t)), c.countEvents(t, eventRestTaken); n != 0 || rests != 0 {
+		t.Errorf("the failed rest left %d item_charges_restored and %d rest_taken events, want none", n, rests)
+	}
+	lift()
+	if _, err := c.restLong(t, withDawn, withKey); err != nil {
+		t.Fatalf("TakeRest() again error = %v", err)
+	}
+	if eyes, hammer := c.leftOf(t, dawnEyes), c.leftOf(t, dawnHammer); eyes != 3 || hammer != 4 || len(c.dawnEvents(t)) != 2 {
+		t.Errorf("the rest taken again left the eyes at %d and the hammer at %d with %d events, want 3, 4 and 2", eyes, hammer, len(c.dawnEvents(t)))
 	}
 }
 

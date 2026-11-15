@@ -131,7 +131,7 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
   A perda tem três desfechos, como o item diz: ele some (as varinhas e os cajados de fogo, gelo, cura e enxame de insetos), vira um item comum sem magia que fica na ficha como aquilo de que é feito (os cajados de encantamento, de golpe e dos bosques), ou guarda só o bônus de ataque e de dano (o cajado de poder).
   Um item cujas cargas o SRD sorteia (a lâmina da sorte, o ladrão de nove vidas) não tem nenhuma definida quando é novo: o mestre as define, de 0 até o máximo.
   A estatueta das cabras de marfim recupera todas as cargas no sétimo amanhecer depois que a última foi gasta.
-  O amanhecer é do mestre: "Amanhecer" dá a vez do amanhecer aos itens de todos os personagens, e o descanso longo tem uma caixa de seleção, marcada por padrão, que faz o mesmo como parte do descanso.
+  O amanhecer é do mestre: "Amanhecer" dá a vez do amanhecer aos itens de todos os personagens, e o descanso longo faz o mesmo como parte do descanso quando o pedido pede, e por padrão não pede.
   Um descanso curto nunca recarrega itens.
   Num amanhecer, um item que recupera cargas as recebe como a entrada dele diz (todas, ou os dados dele), até o máximo, e um item cheio fica como está.
   O app rola os dados de um amanhecer, também numa mesa de dados físicos, porque o mestre os rola pela mesa.
@@ -180,8 +180,8 @@ O mestre faz um descanso curto ou longo pela mesa, depois de uma confirmação q
 | Curto | Os recursos que recarregam em um descanso curto ou longo, e os espaços de pacto do bruxo. Cada jogador gasta dados de vida um de cada vez, rolados no app ou digitados de um dado real (RN-18), e cura a rolagem mais o modificador de Constituição. |
 | Longo | Todo recurso que não recarrega ao amanhecer ou nunca recarrega, todos os espaços de magia, todos os PV e metade do total de dados de vida (pelo menos um). Os PV temporários acabam. Um personagem em 0 PV não ganha nada. |
 
-- O descanso longo também pode ser o amanhecer dos itens mágicos: com a caixa de seleção marcada, os itens que recarregam ao amanhecer recarregam no mesmo passo, e um descanso enviado duas vezes recarrega uma vez.
-  A caixa vem marcada e não significa nada num descanso curto.
+- O descanso longo também pode ser o amanhecer dos itens mágicos: quando o pedido pede, os itens que recarregam ao amanhecer recarregam no mesmo passo, e um descanso enviado duas vezes recarrega uma vez.
+  O pedido não pede por padrão, e isso não significa nada num descanso curto.
 - O app não conta horas: o mestre é avisado quando a sessão já teve um descanso longo. Um descanso é recusado enquanto um combate está em andamento.
 - Os dados de vida são guardados por tamanho de dado (SRD, "Multiclassing").
 - **Recuperação Arcana** (Mago): uma vez por descanso longo, depois de um descanso curto, o jogador escolhe espaços gastos cujo nível combinado seja no máximo metade do nível de mago, arredondado para cima, nenhum de nível 6 ou maior. Só conta o nível de mago, e nunca os espaços de pacto. A folha do descanso curto tem uma seção "Recuperação Arcana", e depois ela diz "Recuperação Arcana: usada; volta no descanso longo." Uma recusa não muda nada.
@@ -473,6 +473,7 @@ Se não deixa, todos usam o tipo que o mestre define.
 - Uma mudança vale a partir da próxima rolagem. Os NPCs sempre rolam no app, e o mestre pode digitar um valor.
 - Com um dado físico o jogador digita a soma dos dados sem o modificador (a face do d20, de 1 a 20), e o app soma o modificador. A soma precisa caber entre o mínimo e o máximo dos dados.
 - A regra cobre a iniciativa, as rolagens de ataque e de dano, os ataques de magia, o dano e a cura de magias, o Retomar o Fôlego, os testes contra a morte, o d20 de uma ação de cena de RP, a busca por armadilhas, as dicas de quebra-cabeça, o teste em grupo, os dois lados de uma disputa, o Esconder-se, o teste de habilidade da Contramágica e os valores de habilidade em 4d6 de uma ficha nova. Um modo que o mestre forçou recusa o outro jeito com "A campanha mudou a forma de rolar os dados. Recarregue a página.".
+- Os dados do amanhecer dos itens mágicos, rolados pelo mestre pela mesa toda, são sempre rolados pelo app, como as exceções de "rolar de novo" acima.
 - O teste de resistência de um alvo de magia é sempre rolado pelo app com o bônus da ficha.
 - O "rolar de novo?" de uma característica da mesa (RN-23) é rolado pelo app mesmo quando o mestre força os dados físicos: é o único d20 que o jogador não pode digitar.
 - Os PV rolados quando um personagem é criado não fazem parte desta regra.

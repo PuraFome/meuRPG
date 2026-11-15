@@ -135,7 +135,7 @@ func (s *Service) dawnTx(ctx context.Context, tx pgx.Tx, h *hints, session playd
 }
 
 // dawnAgain answers the retry of a key found stored: the items the first call restored, as they stand now, and the
-// hints the first call may have died before telling.
+// hints the first call may have died before telling. It only reads, so it locks nothing.
 func (s *Service) dawnAgain(ctx context.Context, tx pgx.Tx, h *hints, call chargeCall, payload []byte) (*playv1.DawnResponse, error) {
 	var ev dawnEvent
 	if err := json.Unmarshal(payload, &ev); err != nil {
@@ -144,9 +144,12 @@ func (s *Service) dawnAgain(ctx context.Context, tx pgx.Tx, h *hints, call charg
 	res := &playv1.DawnResponse{}
 	var told []string
 	for _, it := range ev.Items {
-		item, err := s.vitals.ChargedItem(ctx, tx, call.m.CampaignID, it.Character, it.Entry)
+		item, err := s.vitals.ChargedItemRead(ctx, tx, call.m.CampaignID, it.Character, it.Entry)
+		if connect.CodeOf(err) == connect.CodeNotFound {
+			continue // the character or the item left the sheet since
+		}
 		if err != nil {
-			continue // the item left the sheet since
+			return nil, err
 		}
 		res.Restored = append(res.Restored, &playv1.DawnRestored{CharacterId: it.Character, Item: item, Regained: it.Regained})
 		told = append(told, it.Character)

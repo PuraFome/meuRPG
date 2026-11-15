@@ -819,7 +819,7 @@ type TakeRestRequest struct {
 	WithoutFoodOrDrink bool `protobuf:"varint,100,opt,name=without_food_or_drink,json=withoutFoodOrDrink,proto3" json:"without_food_or_drink,omitempty"`
 	// Long rest: the dawn that ends it also restores the charges of the party's magic items, as ChargesService.Dawn
 	// does, in the same transaction (one `item_charges_restored` event for each item that regained charges). The
-	// default is false; the app's checkbox starts on. A short rest ignores it.
+	// default is false. A short rest ignores it.
 	RestoreDawn   bool `protobuf:"varint,101,opt,name=restore_dawn,json=restoreDawn,proto3" json:"restore_dawn,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
