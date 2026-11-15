@@ -10,6 +10,7 @@ import (
 	"connectrpc.com/connect"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -107,7 +108,7 @@ func addAbilityEffects(c *combat.Creature, mods []rules.EffectModifier) {
 // and the sun's.
 func hideFor(conds []string, anyHidden bool) func(combat.Source) bool {
 	return func(src combat.Source) bool {
-		if isSunlight(src) {
+		if advantage.IsSunlight(src) {
 			return true // the sun and its trait are the master's (RN-20, RN-29): the roller reads "Outra fonte"
 		}
 		switch src.Kind {
@@ -145,7 +146,7 @@ func (s *Service) withEffectDice(in rollInput, typed []int32, cm *checkMode, bon
 // shownCheck writes the sources of a check or a saving throw: the mode's, and each die an
 // effect added ("Bênção +1d4: 3"). What an effect the master hides gives reads "Outra fonte".
 func (cm checkMode) shownCheck(names func(string) string) []*playv1.AdvantageSource {
-	out := append(shownSourcesHiding(cm.Sources, names, cm.hide), bonusSources(cm.Bonuses, names, false, true)...)
+	out := append(advantage.ShownSourcesHiding(cm.Sources, names, cm.hide), bonusSources(cm.Bonuses, names, false, true)...)
 	return append(out, effectDieSources(cm.Rolled, names, false)...)
 }
 

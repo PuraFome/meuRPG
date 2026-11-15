@@ -95,6 +95,7 @@ When the stock row counts another combat only the piece comes back, and a row le
 The events are `item_charge_spent`, `item_charges_restored`, `item_destroyed`, `dawn_taken`, `ammunition_spent` and `ammunition_recovered`.
 In a combat that has the character, `SpendCharges` writes `COMBAT_LOG_KIND_ITEM_CHARGE_SPENT` and `RollLastCharge` writes `COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED`.
 An event of `ammunition_spent` reads as `COMBAT_LOG_KIND_AMMUNITION_SPENT`.
+The web words the three lines in `core/combat/combat-log-item-use.ts` ("gastou a última carga da Varinha de teia", "rolou 1 no d20 da última carga: ...", "atirou com o Arco longo: 1 flecha, restam 3").
 `SetCharges`, `RecoverAmmunition` and any call outside a combat write the session event only, and no line.
 
 ## Privacy
@@ -107,3 +108,37 @@ The leak test is `internal/leaktest/itemuse_test.go`.
 
 `ChargesBlocked` (`charges.proto`) carries `REGAIN_FACE_NEEDED` (with the die's size in `needed`), `COMBAT_RUNNING` and `ALREADY_RECOVERED`.
 The web reads it in `core/play/charges-errors.ts`.
+
+## The character sheet
+
+`ChargesClient` (`core/play/charges-client.ts`) wraps the six calls and reads the table's dice (`GetCampaign`).
+`charges-errors.ts` words each refusal in Portuguese, by the typed reason: the item's own refusals name the item, and a call that did not get through says nothing changed.
+`core/characters/charges.ts` holds the pure parts: an item's state, its words, the four SRD kinds of ammunition, the recovery and the free-text hint.
+`SheetCharges` (`pages/character-sheet/charges/sheet-charges.ts`) is built by `createSheetMagicItems` and reads the sheet again after each write.
+`EquipmentPanel` draws the item rows with charges, the "Munição" section and the live regions of their results.
+A row with `charges_max` 0 is drawn as before.
+"Usar" and "Rolar" work on a locked sheet and for the master; "Adicionar munição" follows the right to edit.
+"Usar" opens `UseChargesSheet`, which sends the amount under one idempotency key and keeps it across retries.
+The last charge opens `LastChargeSheet`, an alert dialog that follows the table's dice (RN-18): the app rolls, or the player types "Face do d20", and a typed 20 may ask for the regain die's face.
+Its body says what a 1 and a 20 do for that item, from `SheetMagicItem.recharge` (`lastChargeBody` in `recharge-text.ts`).
+The close button and Esc close it and the backdrop does not; closing leaves the row asking "Rolar".
+The use sheet and the d20 sheet do not restore the focus themselves: `SheetCharges.focusRow` puts it, with the focus ring, on the item's "Usar" or "Rolar" (or the row itself when the item is lost) once the sheet has been drawn again.
+`AddAmmunitionSheet` sends the pieces to add, and `SheetCharges` reads the sheet again and sends the total, since `SetAmmunition` has no delta.
+"Recuperar a metade" is off with nothing fired and after the recovery, and goes off during a combat when the server refuses with `COMBAT_RUNNING`.
+The free-text hint shows only while the ammunition list is empty and the items text names an arrow, bolt, sling bullet or needle; the text is never converted.
+An item row with `SheetMagicItem.recharge` says when its charges return ("Volta 1d6 + 1 ao amanhecer", "Não volta: ..."), the dice of a rolled start, and what a lost item became ("Virou um bordão comum.", "Ficou só o +2 no ataque e no dano.").
+The use sheet repeats the recharge line with the most the item holds, and "Sem cargas" names when the item comes back.
+A sheet with charges words its lock line as "Travada: usar cargas continua valendo, o resto, só o mestre muda."
+The ammunition kinds (`AMMUNITION_KINDS`) also name the catalog weapons that fire them, so the attack row names its kind by the weapon's key.
+
+## The master's panel
+
+`PartyChargesPanel` (`pages/live-session/party-charges`) is "Cargas e munição" in the master's Grupo tab, above the rest card.
+`PartyCharges` (`core/play/party-charges-state.ts`) reads the sheet of each character of the party through `ChargesClient.sheetOf` and derives the rows and the list of what a dawn touches.
+"Corrigir" is `SetCharges` (with the "Destruída" switch) or `SetAmmunition`, and the sheets are read again after it.
+"Amanhecer" in the panel head is `ChargesService.Dawn`, and its answer lists what each item regained.
+The rest card asks "Amanhecer" in a long rest, on by default, and always sends `TakeRestRequest.restore_dawn` explicitly: the row's answer, true when no item waits, false for a short rest.
+`recharge-text.ts` words the recharge line ("volta 1d6 + 1") and spaces the dice with the minus sign.
+The panel reads the sheets when the party changes and after its own writes, so a charge a player spends shows after the next read.
+"Corrigir" and the long rest's question read the sheets again before they show a number, so "eram N" and the dawn's list are fresh.
+When that read fails the correction does not open, and the "Amanhecer" row stays on and says the items could not be read.

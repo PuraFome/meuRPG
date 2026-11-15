@@ -76,6 +76,21 @@ describe('attunementOf', () => {
   });
 });
 
+describe('attunementOf, the charges', () => {
+  it('carries the charges of a magic item that holds some and nothing for the others', () => {
+    const a = attunementOf(
+      create(FullSheetSchema, {
+        magicItems: [
+          create(SheetMagicItemSchema, { id: 'w', chargesMax: 7, chargesLeft: 5 }),
+          create(SheetMagicItemSchema, { id: 'r' }),
+        ],
+      }),
+    );
+    expect(a.entries[0].charges).toEqual({ max: 7, left: 5, state: 'ready' });
+    expect(a.entries[1].charges).toBeUndefined();
+  });
+});
+
 describe('MagicCategories', () => {
   const page = (items: MagicItemsPage['items'], nextPageToken = ''): MagicItemsPage => ({
     items,

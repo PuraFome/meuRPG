@@ -109,6 +109,7 @@ A thrown weapon, a melee weapon, the creatures and the master's NPCs spend nothi
 A weapon that fires ammunition has a second attack line, keyed `<weapon key>:melee` and named "<weapon>, corpo a corpo" (`improvised` is true).
 It is a melee attack of 1d4 plus Strength, bludgeoning, without proficiency or the weapon's bonuses, and it spends no ammunition.
 `GetTurnOptions` fills `ammunition_left` on the ammunition line of a counted kind (0 when none is left, absent when the kind is not counted) for the character's player and the master, and leaves it absent on every other line.
+`GetTurnOptions` also fills `ammunition_key` with the catalog key of the kind on every line of a weapon that fires ammunition, counted or not, and leaves it empty on every other line, the improvised melee line included.
 A sheet's derived attacks never carry it.
 The line is a weapon attack and a melee one (`Kind` weapon), so what reads those two facts treats it as a Strength melee weapon attack: Rage, Divine Smite, Improved Divine Smite, the hit extras, the maneuvers and Hunter's Mark.
 It is not a weapon of its kind: it has no finesse, two-handed or light property, no proficiency and no magic of the bow, so Dueling, Great Weapon Fighting, Two-Weapon Fighting and Sneak Attack (which needs a finesse or ranged weapon) never apply to it.
@@ -345,7 +346,7 @@ The caster's player and the master read it true, and so do the other players whe
 ## Roll modes
 
 Every d20 the app rolls for a creature (weapon, spell and creature attacks, spell saves, traps, puzzle hints, scene checks, trap searches) goes through one rule: the server works out the sources of advantage and disadvantage (`rules/combat/advantage.go`), and the mode follows SRD 5.1 "Advantage and Disadvantage": one or more of each cancel to a normal roll, and sources of the same kind never add up.
-The pure rules are `AttackMode`, `SaveMode` and `Resolve`; the facts they read (positions, conditions, states, traits) are gathered in `combat_advantage.go`.
+The pure rules are `AttackMode`, `SaveMode` and `Resolve`; the facts they read (positions, conditions, states, traits) are gathered in `combat_advantage.go`. The modes as the database and the API spell them, the source kinds of the API and the Portuguese sentence of each source are in the subpackage `play/advantage`; a viewer who may not know a source reads "Outra fonte" in its place (`advantage.SourceProto`).
 `GetTurnOptions` and every roll answer carry `mode`, `suggested_mode` and `sources[]` (`AdvantageSource`: kind, effect, Portuguese sentence).
 Death saves and initiative are untouched.
 

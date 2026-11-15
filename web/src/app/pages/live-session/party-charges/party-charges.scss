@@ -1,0 +1,277 @@
+:host {
+  display: block;
+}
+
+.pc {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-3);
+
+  .mr-panel__title {
+    display: flex;
+    align-items: center;
+    gap: var(--mr-space-3);
+    margin: 0;
+    font-size: var(--mr-font-22);
+    line-height: 28px;
+
+    .mat-icon {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      font-size: var(--mr-font-22);
+      color: var(--mr-ink-muted);
+    }
+  }
+}
+
+.pc__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mr-space-3);
+}
+
+.pc__dawn-button {
+  min-height: 48px;
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-accent);
+
+  &[aria-disabled='true'] {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.pc__lead,
+.pc__quiet,
+.pc__empty {
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.pc__nodawn {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  margin: 0;
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}
+
+.pc__dawn {
+  display: flex;
+  gap: var(--mr-space-3);
+  padding: 12px 18px;
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-success-surface);
+  color: var(--mr-success-ink);
+
+  .mat-icon {
+    flex: none;
+  }
+}
+
+.pc__dawn-head {
+  margin: 0;
+  font-weight: 700;
+}
+
+.pc__dawn-lines {
+  margin: var(--mr-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--mr-font-14);
+  line-height: 20px;
+}
+
+.pc__character {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.pc__who {
+  display: flex;
+  align-items: center;
+  gap: var(--mr-space-3);
+  margin: 0;
+  font-size: var(--mr-font-16);
+}
+
+.pc__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--mr-radius-pill);
+  background: var(--mr-ink);
+  color: var(--mr-surface);
+  font-size: var(--mr-font-14);
+}
+
+.pc__rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pc__row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 80px minmax(0, 150px) auto;
+  align-items: center;
+  gap: var(--mr-space-3);
+  min-height: 48px;
+  border-bottom: 1px solid var(--mr-rule);
+
+  @media (max-width: 599.98px) {
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    padding: var(--mr-space-2) 0;
+  }
+
+  &--lost .pc__name {
+    color: var(--mr-ink-muted);
+  }
+}
+
+.pc__icon {
+  width: 20px;
+  height: 20px;
+  font-size: var(--mr-font-20);
+  color: var(--mr-ink-muted);
+}
+
+.pc__name {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-2);
+  font-size: var(--mr-font-16);
+}
+
+.pc__attuned {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 1px solid var(--mr-accent);
+  border-radius: var(--mr-radius-pill);
+  color: var(--mr-accent-text);
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+}
+
+.pc__value {
+  font-size: var(--mr-font-16);
+
+  &--zero {
+    color: var(--mr-danger-ink);
+  }
+}
+
+.pc__tag {
+  justify-self: start;
+  padding: 1px 10px;
+  border: 1px dashed var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-size: var(--mr-font-13);
+  color: var(--mr-ink-muted);
+}
+
+.pc__volta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
+  }
+
+  @media (max-width: 599.98px) {
+    display: none;
+  }
+}
+
+.pc__fix {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--mr-space-2);
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--mr-space-2);
+  border: 0;
+  background: none;
+  color: var(--mr-accent-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+
+  .mat-icon {
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+
+  &:focus-visible {
+    outline: 3px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+// The row being corrected: the 2px accent outline of the tab's one open editor.
+.pc__edit {
+  margin: var(--mr-space-2) 0;
+}
+
+.pc__edit-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--mr-space-3);
+  padding: var(--mr-space-3);
+  border: 2px solid var(--mr-accent);
+  border-radius: var(--mr-radius-lg);
+  background: var(--mr-ground);
+}
+
+.pc__edit-name {
+  font-weight: 700;
+}
+
+.pc__edit-switch {
+  flex: 1 1 220px;
+}
+
+.pc__was {
+  font-size: var(--mr-font-14);
+  color: var(--mr-ink-muted);
+}
+
+.pc__save {
+  --mat-button-outlined-label-text-color: var(--mr-accent-text);
+  --mat-button-outlined-outline-color: var(--mr-accent);
+}
+
+.pc__edit-error {
+  flex: 1 1 100%;
+}
