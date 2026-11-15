@@ -249,6 +249,7 @@ func (r *passRun) answerRefund(giveBack bool) func() {
 }
 
 func newPassRun(t *testing.T) *passRun {
+	t.Helper()
 	rt := newRollsTable(t)
 	w := rt.world
 	third := w.newPerson("Dani")
