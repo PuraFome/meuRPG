@@ -7,7 +7,7 @@ import {
   RollMode,
   RollModeRequestStatus,
 } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
-import { extraDiceText, rollFormula } from './combat-dice';
+import { extraDiceText, modifierText, rollFormula } from './combat-dice';
 
 /** The three modes a d20 is rolled with, in the order the radio group shows them. */
 export const ROLL_MODES: readonly RollMode[] = [
@@ -166,13 +166,13 @@ export function stepLine(step: DamageStep): string {
 }
 
 /** The formula of a d20: `14 + 5 = 19` for the face that counts of a pair, the usual one for a single d20; `named` writes the
- * source of each extra die ("Golpe Certeiro 1d8 (5)"). */
-export function d20Formula(roll: DiceRoll, named = false): string {
+ * source of each extra die ("Golpe Certeiro 1d8 (5)"). `trade` is the penalty of a power attack the modifier already
+ * counts: it is written apart, so the formula reads "+ 6 − 5" and sums to the total. */
+export function d20Formula(roll: DiceRoll, named = false, trade = 0): string {
   if (roll.diceCount > 1 && roll.faces.length > 1) {
     const kept = roll.faces[roll.countedIndex] ?? roll.faces[0];
-    const mod =
-      roll.modifier === 0 ? '' : ` ${roll.modifier < 0 ? '−' : '+'} ${Math.abs(roll.modifier)}`;
+    const mod = modifierText(roll.modifier + trade) + modifierText(-trade);
     return `${kept}${mod}${extraDiceText(roll, named).text} = ${roll.total}`;
   }
-  return rollFormula(roll, named);
+  return rollFormula(roll, named, trade);
 }

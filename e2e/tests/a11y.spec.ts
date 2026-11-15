@@ -23,6 +23,7 @@ import { classCard, passClassStep, tableForLevelUp } from './levelup-support';
 import { aurora, auroraSheet, beginPlacedCombatRPC, nael, naelSheet, orla, orlaSheet, spendForRestRPC } from './rests-support';
 import { castSheet, choiceCard, openCastOf, pickChoice, pickSlotRadio, pickTargetOf, tableForCasting } from './casting-support';
 import { movingTable, paintRPC, pickRadio, tapSquare } from './move-support';
+import { beginPowerCombatRPC, powerAttackTable, spendBreathRPC } from './power-attack-support';
 import { beginManeuverCombatRPC, maneuverTable, spendPoolRPC } from './maneuver-support';
 import { beginFogCombat, moveTo, sessionRoute, setCarriedLightRPC, tableForFog } from './fog-support';
 import { beginCreatureCombat, hitAndApply, tableForCreatureCombat } from './creatures-combat-support';
@@ -74,7 +75,7 @@ import { createPrerequisiteFeatsRPC } from './feat-prerequisites-support';
 import { createFeatsRPC, createNightRaceRPC, createSnowSubraceRPC, tor } from './editor-races-support';
 import { beginCrowdedCombatRPC, boxIn, callFeatBody, elementFeatBody, endSessionOf, markFeatBody, volleyFeatBody } from './feature-use-support';
 import { createFeatOptionsRPC, expectInViewport, featShotScale, featViewport, openSelect, shootFeat, type FeatOptionsTable } from './feat-options-support';
-import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, updateEntryRPC } from './content-support';
+import { archiveEntryRPC, checkMinimumFeatBody, costsRaceBody, createEntryRPC, creatureBody, criticalFeatureBody, damageCreatureBody, entryRoute, expectCardsHoldTheirText, giveFeatRPC, heavyBlowFeatBody, hitModifier, hitSpellBody, minimumFeatBody, raceBody, rerollFeatBody, spellBody, steadyShotFeatBody, updateEntryRPC } from './content-support';
 import { rerollTable } from './reroll-support';
 import { generateSceneRPC, mapRoute, tableForImages } from './images-support';
 import { treasureRoute } from './treasure-support';
@@ -6708,6 +6709,8 @@ async function scanHitEffectSheet(browser: Browser, colorScheme: 'light' | 'dark
     const keys: { frost: string; flare: string } = { frost: '', flare: '' };
     const table = await tableForCombat(m, p, `Acessibilidade folha golpe ${Date.now()}`, true, true, {
       sheet,
+      // The goblin lives through the critical: an NPC the hit kills rolls no save of the effect (#577), and this spec reads that line.
+      goblinHitPoints: 60,
       before: async (id, master) => {
         keys.frost = await createEntryRPC(master, id, 'tableSpell', hitSpellBody('Geada no Punho', { dice: 2, perSlotDice: 0, maxDice: 2 }));
         keys.flare = await createEntryRPC(
@@ -7130,6 +7133,224 @@ async function scanRollEffects(browser: Browser, colorScheme: 'light' | 'dark', 
     await expectScreenPasses(p, `Característica com margem de crítico, vista por um jogador ${where}`);
   } finally {
     await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+/**
+ * The master's effect editor for the power attack (#586, MR-025): the block of "Ataque poderoso" with its numbers, the three weapon cards, the
+ * properties and the proficiency switch ("Golpe Pesado"), the reading line and the resource under "Mais opções" ("Disparo Firme"), the numbers
+ * outside their ranges and a fifth property (refused by the editor, then by the server), and the second power attack dashed in the "Efeito" menu.
+ * The editor is on the wider screens only: the phone reads and archives.
+ */
+async function scanPowerAttackEditor(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  test.setTimeout(240_000);
+  const mContext = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport: { width, height: 900 } });
+  const pContext = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport: { width, height: 900 } });
+  try {
+    const m = await mContext.newPage();
+    const p = await pContext.newPage();
+    await Promise.all([m.goto('/'), p.goto('/')]);
+    const campaignId = await campaignWithEmptyPlayer(m, p, `Acessibilidade ataque poderoso ${Date.now()}`);
+    const where = `(${colorScheme}, ${width}px)`;
+    const heavy = await createEntryRPC(m, campaignId, 'tableFeat', heavyBlowFeatBody());
+    const steady = await createEntryRPC(m, campaignId, 'tableFeat', steadyShotFeatBody());
+
+    if (width >= 768) {
+      // The stored feat in the block: the numbers, the kind, a property chip and the switch, read back in words.
+      await open(m, entryRoute(campaignId, heavy));
+      await expect(m.getByLabel('Nome do talento')).toHaveValue('Golpe Pesado');
+      await expect(m.getByLabel('Tira do ataque', { exact: true })).toHaveValue('5');
+      await expect(m.getByLabel('Soma no dano', { exact: true })).toHaveValue('10');
+      await expect(m.getByRole('radio', { name: /Só corpo a corpo/ })).toBeChecked();
+      await expect(m.getByRole('checkbox', { name: 'Só armas em que o personagem tem proficiência' })).toBeChecked();
+      await expect(m.getByRole('list', { name: 'Escolhidas' }).getByText('Pesada')).toBeVisible();
+      await expect(m.getByRole('status').filter({ hasText: 'Vale para:' })).toContainText('armas corpo a corpo, com a propriedade Pesada, em que o personagem tem proficiência.');
+      await expect(m.getByRole('button', { name: /Mais opções/ })).toContainText('recurso, quando vale, texto do efeito');
+      // "Como os jogadores veem": what the trade asks and does, as the board writes it.
+      const seen = m.getByRole('complementary', { name: 'Como os jogadores veem' });
+      await expect(seen.getByText('Pede', { exact: true })).toBeVisible();
+      await expect(seen.getByText('Nada', { exact: true })).toBeVisible();
+      await expect(seen.getByText('\u22125 no ataque, +10 no dano', { exact: true })).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, "Ataque poderoso" com a propriedade e a proficiência ${where}`);
+      // The second power attack is dashed in the menu of another effect, with the reason.
+      await m.getByRole('button', { name: 'Adicionar um efeito' }).click();
+      const other = m.getByLabel('Outro efeito', { exact: true });
+      await expect(other.locator('option', { hasText: 'Ataque poderoso' })).toBeDisabled();
+      await expect(other.locator('option[data-reason]')).toHaveAttribute('data-reason', 'Este talento já tem um ataque poderoso.');
+      await expectScreenPasses(m, `Editor de talento, o segundo ataque poderoso tracejado no menu ${where}`);
+
+      // The ranged kind with a resource: "Mais opções" open, the list of the entry's resources and the use said in the reading.
+      await open(m, entryRoute(campaignId, steady));
+      await expect(m.getByLabel('Nome do talento')).toHaveValue('Disparo Firme');
+      await expect(m.getByRole('radio', { name: /Só à distância/ })).toBeChecked();
+      await expect(m.getByRole('checkbox', { name: 'Só armas em que o personagem tem proficiência' })).not.toBeChecked();
+      await expect(m.getByRole('status').filter({ hasText: 'Vale para:' })).toContainText('Cada troca gasta 1 uso de Disparo Firme.');
+      await expect(m.getByLabel('Gasta um uso de', { exact: true })).toHaveValue('folego_do_atirador');
+      await m.getByRole('button', { name: /Mais opções/ }).first().click();
+      await expect(m.getByLabel('Quando vale', { exact: true })).toHaveAttribute('placeholder', 'Sempre');
+      const steadySeen = m.getByRole('complementary', { name: 'Como os jogadores veem' });
+      await expect(steadySeen.getByText('Usos', { exact: true })).toBeVisible();
+      await expect(steadySeen.getByText('3 \u00b7 volta no descanso curto ou longo', { exact: true })).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, "Ataque poderoso" à distância com o recurso do talento ${where}`);
+
+      // The numbers outside their ranges and a fifth property: the editor says so on the fields, and so does the server on saving.
+      await open(m, `/campaigns/${campaignId}/content/new/feat`);
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Ataque poderoso' });
+      await m.getByLabel('Nome do talento').fill('Golpe Exagerado');
+      await m.getByLabel('Tira do ataque', { exact: true }).fill('12');
+      await m.getByLabel('Soma no dano', { exact: true }).fill('0');
+      const search = m.getByRole('combobox', { name: 'A arma precisa ter' });
+      for (const name of ['Pesada', 'Leve', 'Alcance', 'Acuidade', 'Versátil']) {
+        await search.fill(name);
+        await m.getByRole('listbox', { name: 'A arma precisa ter' }).getByRole('option', { name, exact: true }).click();
+      }
+      await expect(m.getByLabel('Tira do ataque', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expect(m.getByLabel('Soma no dano', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expect(m.getByText('De 1 a 10.', { exact: true })).toBeVisible();
+      await expect(m.getByText('De 1 a 20.', { exact: true })).toBeVisible();
+      await expect(m.getByText('Até 4 propriedades.', { exact: true })).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, "Ataque poderoso" com números fora da faixa e uma propriedade a mais ${where}`);
+      await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByText('Nada foi salvo; o que você digitou continua aqui.')).toBeVisible();
+      await expect(m.getByLabel('Nome do talento')).toHaveValue('Golpe Exagerado');
+      await expect(m.getByText('De 1 a 10.', { exact: true })).toHaveCount(1);
+      await expectScreenPasses(m, `Editor de talento, "Ataque poderoso" recusado ao salvar ${where}`);
+
+      // The server out of the air: both buttons are dashed and off while the save is on its way, then the notice says nothing changed.
+      await open(m, `/campaigns/${campaignId}/content/new/feat`);
+      await m.getByLabel('Efeito', { exact: true }).selectOption({ label: 'Ataque poderoso' });
+      await m.getByLabel('Nome do talento').fill('Golpe Fora do Ar');
+      await m.getByLabel('Tira do ataque', { exact: true }).fill('5');
+      await m.getByLabel('Soma no dano', { exact: true }).fill('10');
+      let release: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      await m.route(/TableContentService\/(Create|Update)TableEntry/, async (route) => {
+        await gate;
+        await route.fulfill({ status: 503, contentType: 'application/json', body: '{"code":"unavailable","message":"down"}' });
+      });
+      await m.getByRole('button', { name: 'Salvar talento' }).click();
+      await expect(m.getByRole('button', { name: 'Salvando...' })).toHaveAttribute('aria-disabled', 'true');
+      await expect(m.getByRole('button', { name: 'Cancelar' })).toHaveAttribute('aria-disabled', 'true');
+      await expectScreenPasses(m, `Editor de talento, salvando ${where}`);
+      release();
+      await expect(m.getByText('Não deu para salvar o talento agora. Nada mudou. Tente de novo.')).toBeVisible();
+      await expectScreenPasses(m, `Editor de talento, o servidor fora do ar ${where}`);
+    } else {
+      await open(m, entryRoute(campaignId, heavy));
+      await expect(m.getByText('Para criar ou editar, abra o conteúdo da mesa no notebook.')).toBeVisible();
+      await expectScreenPasses(m, `Talento com "Ataque poderoso", lido pelo mestre no celular ${where}`);
+    }
+  } finally {
+    await Promise.all([mContext.close(), pContext.close()]);
+  }
+}
+
+for (const [scheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`o editor do ataque poderoso passa no axe e nas conferências de layout no tema ${theme}, em ${width}px`, { tag: ['@a11y', '@586', '@MR-025'] }, async ({ browser }) => {
+      await scanPowerAttackEditor(browser, scheme, width);
+    });
+  }
+}
+
+/**
+ * The power attack on the player's screens (#586, MR-025): the weapon rows with the trade's line, the roll step with the trade off
+ * and on (the before and after box), the bow's trade off for lack of uses, a miss (the +10 does not come in) and a hit (the +10 is
+ * an automatic part of the damage). Toren has the feats "Golpe Pesado" and "Disparo Firme" through the content helpers.
+ */
+async function scanPowerAttackSheet(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width >= 768 ? 900 : 844 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  const openSheet = async (weapon: RegExp) => {
+    await p.getByRole('button', { name: weapon }).click();
+    const sheet = p.getByRole('dialog');
+    await viaTargetList(p, sheet);
+    await sheet.locator('label', { hasText: 'Goblin 1' }).click();
+    await expect(sheet.getByText('Troca do talento')).toBeVisible();
+    return sheet;
+  };
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await powerAttackTable(m, p, `Acessibilidade ataque poderoso ${Date.now()}`);
+    campaignId = table.campaignId;
+    await beginPowerCombatRPC(m, table);
+    await openSessionPage(p, campaignId);
+    await openActionTab(p, 'Ataques');
+
+    // The weapon rows name the trade each weapon takes, and only those.
+    const groups = p.getByRole('region', { name: 'O que você pode fazer' });
+    await expect(groups.getByText('Golpe Pesado: −5 no ataque, +10 no dano')).toBeVisible();
+    await expect(groups.getByText('Disparo Firme: −5 no ataque, +10 no dano')).toBeVisible();
+    await expectScreenPasses(p, `Ataques, as linhas do ataque poderoso ${where}`);
+
+    // The roll step: the trade is off, and the button says what it always said.
+    let sheet = await openSheet(/^Atacar com Espada grande/);
+    const check = sheet.getByRole('checkbox', { name: /Usar Golpe Pesado/ });
+    await expect(check).not.toBeChecked();
+    await expectScreenPasses(p, `Atacar, rolar com a troca do talento desligada ${where}`);
+
+    // Ticked: the box with the attack and the damage as they were and as they become.
+    await pickRadio(sheet, 'Usar Golpe Pesado');
+    await expect(check).toBeChecked();
+    await expect(sheet.getByText('1d20 + 1', { exact: true })).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Rolar 1d20 + 1 no app' })).toBeVisible();
+    await expectScreenPasses(p, `Atacar, rolar com a troca do talento ligada ${where}`);
+
+    // A 1 on the d20 typed: a miss, and the +10 does not come in.
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await expectScreenPasses(p, `Rolagem física com a troca do talento, vazia ${where}`);
+    await sheet.getByLabel(/Role 1d20/).fill('1');
+    await sheet.getByRole('button', { name: 'Confirmar 1' }).click();
+    await expect(sheet.getByText('sem dano, o +10 não entra')).toBeVisible();
+    await expect(sheet.getByText(/contra o Goblin 1/)).toBeVisible();
+    await expectScreenPasses(p, `Atacar, o erro com a troca do talento ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar' }).last().click();
+    await expect(sheet).toHaveCount(0);
+
+    // The pool of the bow's trade is empty: the check is off, with the pool named.
+    await spendBreathRPC(m, table);
+    await p.reload();
+    await openActionTab(p, 'Ataques');
+    sheet = await openSheet(/^Atacar com Arco longo/);
+    await expect(sheet.getByRole('checkbox', { name: /Usar Disparo Firme/ })).toBeDisabled();
+    // The pool is named by the feature that defines it (a table content resource has no other display name), and says when it
+    // comes back (a short-rest pool: a long rest brings it back too).
+    await expect(sheet.getByText('Sem usos de Disparo Firme: volta no descanso curto ou longo.')).toBeVisible();
+    await expect(sheet.getByText(/gasta 1 de Disparo Firme/)).toBeVisible();
+    await expectScreenPasses(p, `Atacar, a troca do talento sem usos ${where}`);
+    await sheet.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(sheet).toHaveCount(0);
+
+    // A 19 typed: a hit; the damage shows the +10 as an automatic part, then the roll with its numbers.
+    sheet = await openSheet(/^Atacar com Espada grande/);
+    await pickRadio(sheet, 'Usar Golpe Pesado');
+    await sheet.getByRole('button', { name: 'Digitar o resultado' }).click();
+    await sheet.getByLabel(/Role 1d20/).fill('19');
+    await sheet.getByRole('button', { name: 'Confirmar 19' }).click();
+    await expect(sheet.getByText('Acertou')).toBeVisible();
+    await expect(sheet.getByText('automático').first()).toBeVisible();
+    await expectScreenPasses(p, `Atacar, o acerto com a troca do talento e o dano com a parte automática ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [scheme, theme] of [['light', 'claro'], ['dark', 'escuro']] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`o ataque poderoso na ficha de ataque passa no axe e nas conferências de layout no tema ${theme}, em ${width}px`, { tag: ['@a11y', '@586', '@MR-025'] }, async ({ browser }) => {
+      test.setTimeout(300_000);
+      await scanPowerAttackSheet(browser, scheme, width);
+    });
   }
 }
 

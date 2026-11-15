@@ -1,4 +1,4 @@
-import { expect } from '@playwright/test';
+import { expect, type Browser } from '@playwright/test';
 import { test } from './diagnostics';
 
 import { beginAttackCombatRPC, combatRPC, passTurnsToAndWait, pensantusCasting, tableForCombat } from './combat-support';
@@ -14,28 +14,37 @@ import { endOpenSessionRPC, openSessionPage } from './live-session-support';
 
 test.describe.configure({ timeout: 240_000 });
 
+/** The table of the hit effect specs: Pensantus with "Geada no Punho" (public) in his list, the combat begun with him first.
+ * `goblinHitPoints` is the goblins' (the seed's default is 7). */
+async function frostTable(browser: Browser, name: string, goblinHitPoints?: number) {
+  const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
+  const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  await Promise.all([m.goto('/'), p.goto('/')]);
+  const sheet: Record<string, unknown> = { ...pensantusCasting, weaponKeys: ['equipment:dagger', 'equipment:shortbow'] };
+  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, {
+    sheet,
+    goblinHitPoints,
+    before: async (id, owner) => {
+      // Public: the save of a spell whose effect only its owner sees is a line of the master's alone (the server's effectHiddenFrom).
+      const frost = await createEntryRPC(owner, id, 'tableSpell', hitSpellBody('Geada no Punho', {}, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_PUBLIC', modifiers: [hitModifier()] } }));
+      sheet.knownSpellKeys = [...pensantusCasting.knownSpellKeys, frost];
+      sheet.preparedSpellKeys = [...pensantusCasting.preparedSpellKeys, frost];
+      return pensantus;
+    },
+  });
+  const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+  return { master, player, m, p, table, campaignId: table.campaignId, enc };
+}
+
+
 test(
   'o jogador conjura o efeito do próximo golpe, erra e ele espera, acerta de perto e o efeito entra no dano com o teste do alvo no registro',
   { tag: ['@MR-025', '@MR-048', '@RN-22', '@RN-23'] },
   async ({ browser }) => {
-    const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
-    const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
-    const m = await master.newPage();
-    const p = await player.newPage();
-    await Promise.all([m.goto('/'), p.goto('/')]);
-    const sheet: Record<string, unknown> = { ...pensantusCasting, weaponKeys: ['equipment:dagger', 'equipment:shortbow'] };
-    const table = await tableForCombat(m, p, `Próximo golpe ${Date.now()}`, true, true, {
-      sheet,
-      before: async (id, owner) => {
-        // Public: the save of a spell whose effect only its owner sees is a line of the master's alone (the server's effectHiddenFrom).
-        const frost = await createEntryRPC(owner, id, 'tableSpell', hitSpellBody('Geada no Punho', {}, { effect: { visibility: 'TABLE_EFFECT_AUDIENCE_PUBLIC', modifiers: [hitModifier()] } }));
-        sheet.knownSpellKeys = [...pensantusCasting.knownSpellKeys, frost];
-        sheet.preparedSpellKeys = [...pensantusCasting.preparedSpellKeys, frost];
-        return pensantus;
-      },
-    });
-    const campaignId = table.campaignId;
-    const enc = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 });
+    // The goblin lives through the hit: an NPC the hit kills rolls no save of the effect (#577), and this spec reads that line.
+    const { master, player, m, p, campaignId, enc } = await frostTable(browser, 'Próximo golpe', 60);
     try {
       const id = (label: string) => enc.combatants.find((c) => c.label === label)!.id;
       const moveTo = async (col: number, row: number) => {
@@ -129,6 +138,52 @@ test(
       await openSessionPage(m, campaignId);
       await openCombatPanel(m, 'Registro');
       await expect(m.getByRole('log', { name: 'Registro do combate' })).toContainText('no teste de resistência de Força contra a Geada no Punho');
+    } finally {
+      await endOpenSessionRPC(m, campaignId);
+      await master.close();
+      await player.close();
+    }
+  },
+);
+
+// The other side of the same rule: the hit that defeats the goblin (7 hit points) leaves no save of the effect to read, for the player and for the
+// master: the log says the goblin is "derrotado" and has no line of the target's saving throw.
+test(
+  'o golpe que derrota o NPC não deixa teste de resistência do efeito no registro',
+  { tag: ['@MR-025', '@MR-048', '@RN-22', '@RN-23'] },
+  async ({ browser }) => {
+    const { master, player, m, p, campaignId, enc } = await frostTable(browser, 'Próximo golpe derrota');
+    try {
+      await openSessionPage(p, campaignId);
+      await openActionTab(p, 'Magias');
+      await p.getByRole('button', { name: 'Conjurar Geada no Punho' }).click();
+      await p.getByRole('dialog', { name: 'Conjurar Geada no Punho' }).getByRole('button', { name: 'Conjurar Geada no Punho' }).click();
+      await p.getByRole('dialog', { name: 'Você conjurou Geada no Punho' }).getByRole('button', { name: 'Voltar à sua vez' }).click();
+      // Beside Goblin 1, a natural 20 with the dagger: the damage with the effect's 4d8 is far over 7.
+      const pensantusId = enc.combatants.find((c) => c.label === 'Pensantus')!.id;
+      await combatRPC(m, 'MoveCombatant', { campaignId, encounterId: enc.id, combatantId: pensantusId, col: 8, row: 9 });
+      await p.reload();
+      await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+      await openActionTab(p, 'Ataques');
+      await p.getByRole('button', { name: /^Atacar com Adaga/ }).click();
+      const dialog = p.getByRole('dialog', { name: /Atacar com Adaga/ });
+      await viaTargetList(p, dialog);
+      await dialog.locator('label', { hasText: 'Goblin 1' }).click();
+      await p.getByRole('button', { name: 'Digitar o resultado' }).click();
+      await p.getByLabel(/Role 1d20/).fill('20');
+      await p.getByRole('button', { name: 'Confirmar 20' }).click();
+      await p.getByRole('button', { name: /^Rolar .* no app$/ }).click();
+      await p.getByRole('button', { name: 'Voltar à sua vez' }).click();
+
+      // The damage of a character's hit lands at once: the goblin falls.
+      await openSessionPage(m, campaignId);
+      await openCombatPanel(m, 'Registro');
+      const masterLog = m.getByRole('log', { name: 'Registro do combate' });
+      await expect(masterLog).toContainText('derrotado');
+      await expect(masterLog).not.toContainText('teste de resistência');
+      const log = await openCombatLog(p);
+      await expect(log).toContainText('derrotado');
+      await expect(log).not.toContainText('teste de resistência');
     } finally {
       await endOpenSessionRPC(m, campaignId);
       await master.close();

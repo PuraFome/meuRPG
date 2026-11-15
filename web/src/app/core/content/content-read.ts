@@ -26,6 +26,7 @@ import {
 import { bonusText } from './feature-draft';
 import { summonLine } from './summon-names';
 import { entryEffectsPart } from './content-read-rolls';
+import { powerAttackRead } from './power-attack-rows';
 import { spellToDraft } from './spell-draft';
 import { readHit } from './hit-effect-read';
 import {
@@ -149,8 +150,11 @@ function readFeat(
   optionSide?: (o: TableFeature) => string,
 ): EntryRead {
   const asks = prerequisiteSupport(f.prerequisite, nameOf);
-  // Board 580-01 draws the line only when the feat asks for something.
-  const rows: ReadRow[] = asks ? [{ label: 'Pede', value: asks }] : [];
+  const power = powerAttackRead(f.effects);
+  // Board 580-01 draws the line only when the feat asks for something; the board of the power attack
+  // keeps it, saying "Nada", so the trade that follows reads under a line of what the feat asks.
+  const rows: ReadRow[] =
+    asks || power.rows.length > 0 ? [{ label: 'Pede', value: asks || 'Nada' }] : [];
   for (const e of f.effects) {
     if (e.type === 'ability_increase' && e.count > 0) {
       const from = e.from.map((k) => nameOf(`ability:${k}`));
@@ -160,19 +164,20 @@ function readFeat(
       });
     }
   }
-  rows.push(...featChoiceRows(f));
+  rows.push(...featChoiceRows(f), ...power.rows);
   const options = featOptionItems(f, nameOf, optionSide);
   return {
     rows,
     sections: [],
     text: f.descPt,
-    ...entryEffectsPart(f.effects, nameOf),
+    ...entryEffectsPart(power.rest, nameOf),
     ...(options.length > 0 ? { options } : {}),
   };
 }
 
 function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName): EntryRead {
   const asks = optionPrerequisiteSupport(o.prerequisite, nameOf);
+  const power = powerAttackRead(o.effects);
   const rows: ReadRow[] = [
     { label: 'Conjunto', value: optionSetName(o.set) },
     ...(o.offeredBy === '' ? [] : [{ label: 'Oferecida por', value: offeredByName(o.offeredBy) }]),
@@ -180,8 +185,9 @@ function readOption(o: TableOption, nameOf: NameOf, offeredByName: OfferedByName
       label: asks ? 'Pede' : 'Pré-requisito',
       value: asks || 'Nenhum',
     },
+    ...power.rows,
   ];
-  return { rows, sections: [], text: o.descPt, ...entryEffectsPart(o.effects, nameOf) };
+  return { rows, sections: [], text: o.descPt, ...entryEffectsPart(power.rest, nameOf) };
 }
 
 function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
@@ -194,11 +200,12 @@ function readClassFeature(f: TableClassFeature, nameOf: NameOf): EntryRead {
     },
   ];
   const summon = summonLine(f.summon, nameOf);
+  const power = powerAttackRead(f.effects);
   return {
-    rows,
+    rows: [...rows, ...power.rows],
     sections: [],
     text: summon ? [...f.descPt, summon] : f.descPt,
-    ...entryEffectsPart(f.effects, nameOf),
+    ...entryEffectsPart(power.rest, nameOf),
   };
 }
 
