@@ -9,10 +9,12 @@ import (
 )
 
 // Spells that summon creatures (MR-037): the "summon" kind of
-// effects/spells.json. Four SRD spells take it: Find Familiar, Animate Dead,
-// Conjure Animals and the warlock's Pact of the Chain, which widens Find
-// Familiar: it adds forms, and every form of the familiar then attacks with its
-// reaction. Find Steed is out (mounted combat is outside the MVP). The loader checks the kind against the creatures; SummonOptions says
+// effects/spells.json. Four SRD spells take it: Find Familiar, Find Steed,
+// Animate Dead and Conjure Animals. The warlock's Pact of the Chain widens
+// Find Familiar: it adds forms, and every form of the familiar then attacks
+// with its reaction. Find Steed brings a mount of a listed form, with a type
+// the player picks (celestial, fey or fiend) and an Intelligence of at least 6.
+// The loader checks the kind against the creatures; SummonOptions says
 // what a cast can choose, and CheckSummon refuses a choice the spell does not
 // allow. The play module spends the slot and creates the creatures.
 
@@ -42,13 +44,20 @@ var (
 	ErrSummonCount = errors.New("rules: wrong number of creatures")
 	// ErrSummonCreature: a creature the spell does not allow here.
 	ErrSummonCreature = errors.New("rules: creature not allowed")
+	// ErrSummonType: the type the cast picked is not one the spell offers, or the spell offers none.
+	ErrSummonType = errors.New("rules: creature type not allowed")
 )
+
+// SummonMountControlled is the mount a spell's creature is: the rider steers it (mounted combat).
+const SummonMountControlled = "controlled"
 
 // SummonForm is a creature a cast may choose, and what it may do.
 type SummonForm struct {
 	Key string
 	// Attack is SummonAttackNone, SummonAttackReaction or SummonAttackFull.
 	Attack string
+	// TooSmall says the spell's creature is a mount and no larger than the caster: the cast is allowed, the caster can't ride it.
+	TooSmall bool
 }
 
 // SummonOption is one thing a cast may summon: Count creatures, each one of
@@ -61,6 +70,14 @@ type SummonOption struct {
 	Type   string
 	MaxCR  string
 	Attack string
+	// Mount is SummonMountControlled when the creature is a mount, else empty.
+	Mount string
+	// TypeChoices are the creature types the cast picks one from (Find Steed: celestial, fey, fiend); empty when it picks none.
+	TypeChoices []string
+	// MinInt is the Intelligence the creature has at least; 0 leaves its stat block alone.
+	MinInt int
+	// MaxLive is how many creatures of the spell the caster keeps at once; 0 leaves it to the spell's own rules.
+	MaxLive int
 }
 
 // SummonChoices is what casting a summoning spell with a slot may choose.
@@ -84,12 +101,18 @@ type SummonChoices struct {
 type SummonPick struct {
 	Option    int
 	Creatures []string
+	// CreatureType is the type picked among the option's TypeChoices; empty when the option has none.
+	CreatureType string
 }
 
 // SummonedCreature is a creature a cast creates, with what it may do.
 type SummonedCreature struct {
 	Key    string
 	Attack string
+	// Mount, CreatureType and MinInt come from the option (see SummonOption).
+	Mount        string
+	CreatureType string
+	MinInt       int
 }
 
 // summonDef is a checked "summon" entry of effects/spells.json.
@@ -105,6 +128,11 @@ type summonDef struct {
 	options []summonBand
 	// multipliers are the circles at which the counts grow, ascending.
 	multipliers []summonMultiplier
+	// mount, typeChoices, minInt and maxLive: Find Steed.
+	mount       string
+	typeChoices []string
+	minInt      int
+	maxLive     int
 }
 
 type summonUnlock struct {
@@ -141,11 +169,16 @@ type summonJSON struct {
 	Type              string             `json:"type,omitempty"`
 	Options           []summonBandJSON   `json:"options,omitempty"`
 	MultiplierAtLevel map[string]int     `json:"multiplier_at_level,omitempty"`
+	Mount             string             `json:"mount,omitempty"`
+	TypeChoice        []string           `json:"type_choice,omitempty"`
+	MinInt            int                `json:"min_int,omitempty"`
+	MaxLive           int                `json:"max_live,omitempty"`
 }
 
 func (s *summonJSON) empty() bool {
 	return len(s.Creatures) == 0 && len(s.Unlocks) == 0 && s.Count == 0 && s.CountPerLevel == 0 &&
-		s.Attack == "" && s.Type == "" && len(s.Options) == 0 && len(s.MultiplierAtLevel) == 0
+		s.Attack == "" && s.Type == "" && len(s.Options) == 0 && len(s.MultiplierAtLevel) == 0 &&
+		s.Mount == "" && len(s.TypeChoice) == 0 && s.MinInt == 0 && s.MaxLive == 0
 }
 
 // minSummonMultiplier is the smallest number a multiplier_at_level may give.
@@ -156,7 +189,10 @@ type summonFail func(string, ...any) error
 
 // loadSummon checks a summon entry and stores it.
 func (c *content) loadSummon(key string, spellLevel int, in *summonJSON, fail func(string, ...any) error) error {
-	def := &summonDef{spellLevel: spellLevel, creatures: slices.Clone(in.Creatures), count: in.Count, perLevel: in.CountPerLevel, attack: in.Attack, typ: in.Type}
+	def := &summonDef{
+		spellLevel: spellLevel, creatures: slices.Clone(in.Creatures), count: in.Count, perLevel: in.CountPerLevel, attack: in.Attack, typ: in.Type,
+		mount: in.Mount, typeChoices: slices.Clone(in.TypeChoice), minInt: in.MinInt, maxLive: in.MaxLive,
+	}
 	if !slices.Contains(summonAttacks, in.Attack) {
 		return fail("attack must be one of %v", summonAttacks)
 	}
@@ -168,7 +204,13 @@ func (c *content) loadSummon(key string, spellLevel int, in *summonJSON, fail fu
 	var err error
 	if byList {
 		err = c.loadSummonList(def, in, fail)
+		if err == nil {
+			err = checkSteedFields(in, fail)
+		}
 	} else {
+		if in.Mount != "" || len(in.TypeChoice) != 0 || in.MinInt != 0 || in.MaxLive != 0 {
+			return fail("a summon of a creature type takes no mount, type_choice, min_int or max_live")
+		}
 		err = loadSummonBands(def, spellLevel, in, fail)
 	}
 	if err != nil {
@@ -178,6 +220,30 @@ func (c *content) loadSummon(key string, spellLevel int, in *summonJSON, fail fu
 		c.summons = map[string]*summonDef{}
 	}
 	c.summons[key] = def
+	return nil
+}
+
+// maxIntelligence is the highest ability score.
+const maxIntelligence = 30
+
+// checkSteedFields checks the fields of a mount: the mount, the types to pick from, the Intelligence floor and the live limit.
+func checkSteedFields(in *summonJSON, fail summonFail) error {
+	if in.Mount != "" && in.Mount != SummonMountControlled {
+		return fail("mount must be %q", SummonMountControlled)
+	}
+	seen := map[string]bool{}
+	for _, t := range in.TypeChoice {
+		if _, ok := creatureTypeNamePT[t]; !ok || seen[t] {
+			return fail("type_choice lists creature types, each once: %q", t)
+		}
+		seen[t] = true
+	}
+	if in.MinInt < 0 || in.MinInt > maxIntelligence {
+		return fail("min_int is an ability score, 1 to %d", maxIntelligence)
+	}
+	if in.MaxLive < 0 {
+		return fail("max_live is at least 1")
+	}
 	return nil
 }
 
@@ -300,12 +366,16 @@ func (c *Content) SummonOptions(spell string, circle int, b Build) (SummonChoice
 		}
 		return out, nil
 	}
-	opt := SummonOption{Count: c.summonCount(spell, def, circle, b)}
+	opt := SummonOption{Count: c.summonCount(spell, def, circle, b), Mount: def.mount, TypeChoices: slices.Clone(def.typeChoices), MinInt: def.minInt, MaxLive: def.maxLive}
+	riderSize := ""
+	if def.mount != "" {
+		riderSize = Derive(b, c).Size
+	}
 	for _, k := range def.creatures {
 		if c.Hidden(k) {
 			continue // an archived or switched-off creature is not offered as a new choice; the live ones keep working
 		}
-		opt.Forms = append(opt.Forms, SummonForm{Key: k, Attack: def.attack})
+		opt.Forms = append(opt.Forms, SummonForm{Key: k, Attack: def.attack, TooSmall: def.mount != "" && sizeRank(c.c.monsters[k].Size) <= sizeRank(riderSize)})
 	}
 	if len(def.unlocks) > 0 {
 		opt.Forms = c.unlockedForms(def, opt.Forms, b)
@@ -352,25 +422,73 @@ func (c *Content) CheckSummon(spell string, circle int, b Build, pick SummonPick
 	if len(pick.Creatures) != opt.Count {
 		return nil, fmt.Errorf("%w: %d chosen, the option takes %d", ErrSummonCount, len(pick.Creatures), opt.Count)
 	}
+	if err := checkSummonType(opt, pick.CreatureType); err != nil {
+		return nil, err
+	}
 	limit, _ := crEighths(opt.MaxCR)
 	out := make([]SummonedCreature, 0, len(pick.Creatures))
 	for _, k := range pick.Creatures {
-		if len(opt.Forms) > 0 {
-			i := slices.IndexFunc(opt.Forms, func(f SummonForm) bool { return f.Key == k })
-			if i < 0 {
-				return nil, fmt.Errorf("%w: %s", ErrSummonCreature, k)
-			}
-			out = append(out, SummonedCreature{Key: k, Attack: opt.Forms[i].Attack})
-			continue
+		made, err := c.checkSummonCreature(opt, k, pick.CreatureType, limit)
+		if err != nil {
+			return nil, err
 		}
-		m, ok := c.c.monsters[k]
-		if _, table := c.c.creatureOf[k]; !ok || table || m.Type != opt.Type {
-			return nil, fmt.Errorf("%w: %s", ErrSummonCreature, k)
-		}
-		if v, _ := crEighths(m.ChallengeRating); v > limit {
-			return nil, fmt.Errorf("%w: %s has a challenge rating above %s", ErrSummonCreature, k, opt.MaxCR)
-		}
-		out = append(out, SummonedCreature{Key: k, Attack: opt.Attack})
+		out = append(out, made)
 	}
 	return out, nil
+}
+
+// checkSummonCreature checks one creature of a pick against the option: a listed form, or a creature of the option's type within its
+// challenge rating limit (in eighths).
+func (c *Content) checkSummonCreature(opt SummonOption, k, typ string, limit int) (SummonedCreature, error) {
+	if len(opt.Forms) > 0 {
+		i := slices.IndexFunc(opt.Forms, func(f SummonForm) bool { return f.Key == k })
+		if i < 0 {
+			return SummonedCreature{}, fmt.Errorf("%w: %s", ErrSummonCreature, k)
+		}
+		return SummonedCreature{Key: k, Attack: opt.Forms[i].Attack, Mount: opt.Mount, CreatureType: typ, MinInt: opt.MinInt}, nil
+	}
+	m, ok := c.c.monsters[k]
+	if _, table := c.c.creatureOf[k]; !ok || table || m.Type != opt.Type {
+		return SummonedCreature{}, fmt.Errorf("%w: %s", ErrSummonCreature, k)
+	}
+	if v, _ := crEighths(m.ChallengeRating); v > limit {
+		return SummonedCreature{}, fmt.Errorf("%w: %s has a challenge rating above %s", ErrSummonCreature, k, opt.MaxCR)
+	}
+	return SummonedCreature{Key: k, Attack: opt.Attack}, nil
+}
+
+// checkSummonType refuses a type the option does not offer: one of its TypeChoices is required when it has any, and none otherwise.
+func checkSummonType(opt SummonOption, typ string) error {
+	if len(opt.TypeChoices) == 0 {
+		if typ != "" {
+			return fmt.Errorf("%w: the spell picks no type, got %q", ErrSummonType, typ)
+		}
+		return nil
+	}
+	if !slices.Contains(opt.TypeChoices, typ) {
+		return fmt.Errorf("%w: %q is not one of %v", ErrSummonType, typ, opt.TypeChoices)
+	}
+	return nil
+}
+
+// sizeRank orders the creature sizes, Tiny the smallest; an unknown size ranks below them all.
+func sizeRank(size string) int {
+	return slices.Index(creatureSizes, size)
+}
+
+// sizeSmall is the stat block's word for Small.
+const sizeSmall = "Small"
+
+// creatureSizes are the sizes of a stat block, smallest first.
+var creatureSizes = []string{"Tiny", sizeSmall, "Medium", "Large", "Huge", "Gargantuan"}
+
+// HasIntelligenceFloor says the creature is a form of a summon spell that gives it an Intelligence of at least min_int (a
+// steed): its row keeps the floor in its stat block snapshot.
+func (c *Content) HasIntelligenceFloor(key string) bool {
+	for _, d := range c.c.summons {
+		if d.minInt > 0 && slices.Contains(d.creatures, key) {
+			return true
+		}
+	}
+	return false
 }
