@@ -180,3 +180,37 @@ func TestALostOptionAfterAnEditIsToldInTheChangedEntryPerReader(t *testing.T) {
 		}
 	}
 }
+
+// A player's own preview of a sheet they may still edit (a draft) tells the lost feat as their sheet read does: the
+// character's name, and no name of the class the players may not read. The master's preview of the same sheet names it.
+func TestAPlayersSheetPreviewTellsALostPrerequisiteWithoutAHiddenName(t *testing.T) {
+	t.Parallel()
+	hk := newHiddenKnowledge(t)
+	// The fixture's character is locked (RN-01): a character made after that is a draft its player edits.
+	draft := hk.other.create(t, hk.campaign, charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, "Rascunho", pensantusSheet())
+	if !draft.GetCanEdit() {
+		t.Fatalf("the draft cannot be edited by its player: state %v", draft.GetState())
+	}
+	sheet := proto.CloneOf(draft.GetSheet())
+	sheet.GetFull().FeatKeys = []string{hk.byClass}
+	if _, err := hk.master.update(t, draft, draft.GetName(), sheet); err != nil {
+		t.Fatalf("the master's save of the feat: %v", err)
+	}
+	read := hk.other.get(t, hk.campaign, draft.GetId())
+	tail := ": o talento só vale de novo quando Rascunho cumprir."
+	masked := "Pede a ordem pede uma condição que a mesa não mostra" + tail
+	named := "Pede a ordem pede " + forgottenClass + " 3, e Rascunho não tem nível de " + forgottenClass + tail
+
+	player, err := hk.other.preview(t, hk.campaign, draft.GetId(), charactersv1.CharacterKind_CHARACTER_KIND_UNSPECIFIED, read.GetSheet())
+	if err != nil {
+		t.Fatalf("the player's PreviewCharacter() error = %v", err)
+	}
+	wantOneLost(t, "the player's sheet preview", player.GetDerived(), masked)
+	wantNames(t, "the player's sheet preview", player, false, forgottenClass, hk.class)
+
+	master, err := hk.master.preview(t, hk.campaign, draft.GetId(), charactersv1.CharacterKind_CHARACTER_KIND_UNSPECIFIED, read.GetSheet())
+	if err != nil {
+		t.Fatalf("the master's PreviewCharacter() error = %v", err)
+	}
+	wantOneLost(t, "the master's sheet preview", master.GetDerived(), named)
+}
