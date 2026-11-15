@@ -1,6 +1,7 @@
 package play
 
 import (
+	"encoding/json"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -606,5 +607,38 @@ func TestTheHighlightsCountTheSecondRollOfAGroupSumAloneAndNotTheOneTakenBack(t 
 	}
 	if dealt != lost {
 		t.Errorf("Toren's damage dealt = %d, want %d: the roll that was taken back counts for nothing", dealt, lost)
+	}
+}
+
+// ---- the roll to take back, found among the latest events ----
+
+// rollEventOf finds the newest roll of the damage that no undo took back and no reaction window still holds, among rolls of other
+// damages and events that are no roll.
+func TestTheRollToTakeBackIsTheNewestOneOfTheDamageThatWasNotTakenBack(t *testing.T) {
+	t.Parallel()
+	row := func(kind string, ev actionEvent) playdb.ListRecentSessionEventsRow {
+		payload, err := json.Marshal(ev)
+		if err != nil {
+			t.Fatalf("encode the event: %v", err)
+		}
+		return playdb.ListRecentSessionEventsRow{ID: newKey(), Kind: kind, Payload: payload}
+	}
+	older := row(eventDamageRolled, actionEvent{Pending: "p1"})
+	other := row(eventDamageRolled, actionEvent{Pending: "p2"})
+	held := row(eventDamageRolled, actionEvent{Pending: "p1", Reaction: &reactionEvent{Hold: true}})
+	newer := row(eventDamageRolled, actionEvent{Pending: "p1"})
+	moved := row(eventCombatantMoved, actionEvent{Pending: "p1"})
+	// Newest first, as ListRecentSessionEvents lists them.
+	got, _, ok := rollEventOf([]playdb.ListRecentSessionEventsRow{moved, other, held, newer, older}, "p1")
+	if !ok || got.ID != newer.ID {
+		t.Errorf("the roll = %v (found %v), want the newest roll of p1 that no window holds", got.ID, ok)
+	}
+	undo := row(eventActionUndone, actionEvent{Undone: newer.ID})
+	got, _, ok = rollEventOf([]playdb.ListRecentSessionEventsRow{undo, moved, other, held, newer, older}, "p1")
+	if !ok || got.ID != older.ID {
+		t.Errorf("the roll = %v (found %v), want the older one: the newer was taken back", got.ID, ok)
+	}
+	if _, _, ok := rollEventOf([]playdb.ListRecentSessionEventsRow{moved, other}, "p1"); ok {
+		t.Error("rollEventOf found a roll of p1 among events that hold none")
 	}
 }
