@@ -186,7 +186,8 @@ func (d Derived) SpellStanding(spellKey string, ritualTag bool) SpellStanding {
 
 // castsAsRitual says a ritual feature of the sheet casts the spell of the sheet as a
 // ritual: the class's Ritual Casting, or, with the Book of Ancient Secrets, the book's
-// two spells and the warlock spells the warlock knows.
+// two spells and the warlock spells the warlock knows. The sheet does not say which class
+// knows a spell, so on a multiclass sheet a spell on the warlock list counts whoever knows it.
 func (d Derived) castsAsRitual(cs CharacterSpell, book bool) bool {
 	for _, sc := range d.Spellcasting {
 		if sc.Ritual && (cs.Prepared || sc.Class == wizardClass) {

@@ -99,3 +99,90 @@ func TestCastingOutside_TheBookOfAncientSecretsCastsItsRitualsWithNoSlot(t *test
 		t.Errorf("Charm Person = %v, want castable with a slot and no ritual", s)
 	}
 }
+
+// bookParty is Toren the fighter and "Livro", a warlock with the book: the second ritual picks Alarm and
+// Detect Magic. The warlock is complete at level 3, with 2,700 XP for level 4.
+func bookParty(t *testing.T) *armed {
+	t.Helper()
+	return newArmedWith(t, func(a *armed) {
+		a.toren = a.caio.hero(t, a.campaignID, "Toren", "class:fighter", "race:human", 2,
+			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
+		tome := "feature:pact-of-the-tome#cantrips="
+		sheet := &charactersv1.CharacterSheet{Content: &charactersv1.CharacterSheet_Full{Full: &charactersv1.FullSheet{
+			BaseScores: &rulesv1.AbilityScores{Strength: 10, Dexterity: 14, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 16},
+			RaceKey:    "race:human", Classes: []*charactersv1.ClassLevel{classLevel("class:warlock", 3, "subclass:fiend")},
+			FeatureChoiceKeys: []string{
+				"feature:pact-of-the-tome", bookInvocation, "feature:eldritch-invocation-devils-sight", bookPicks + alarmKey, bookPicks + detectMagicKey,
+				tome + "spell:guidance", tome + "spell:shillelagh", tome + "spell:light",
+			},
+			CantripKeys:      []string{"spell:chill-touch", "spell:mage-hand"},
+			KnownSpellKeys:   []string{comprehendKey, charmPersonSpell, "spell:expeditious-retreat", "spell:hellish-rebuke"},
+			ExperiencePoints: 2700,
+		}}}
+		res, err := a.ana.characters.CreateCharacter(t.Context(), connect.NewRequest(&charactersv1.CreateCharacterRequest{
+			CampaignId: a.campaignID, Kind: charactersv1.CharacterKind_CHARACTER_KIND_PLAYER, Name: "Livro", Sheet: sheet,
+		}))
+		if err != nil {
+			t.Fatalf("CreateCharacter(Livro) error = %v", err)
+		}
+		a.pens = res.Msg.GetCharacter()
+	})
+}
+
+// TestCombat_ASpellOfTheBookIsNotCastInACombat: the book's spells are rituals and take ten more minutes, so
+// the turn's spell list does not carry them and a cast of one with a slot is refused.
+func TestCombat_ASpellOfTheBookIsNotCastInACombat(t *testing.T) {
+	t.Parallel()
+	a := bookParty(t)
+	e := a.start(t, plan{
+		npcs:     []*playv1.Participant{{CharacterId: a.goblin.GetId()}},
+		npcRolls: []int{3},
+		players:  map[string]int32{"Livro": 20, "Toren": 5},
+		reveal:   []string{"Goblin"},
+		at:       map[string][2]int32{"Livro": {3, 3}, "Toren": {4, 3}, "Goblin": {5, 3}},
+	})
+	o := a.mustOptions(t, a.ana, e, "Livro")
+	for _, k := range []string{alarmKey, detectMagicKey} {
+		if s := spellOption(o, k); s != nil {
+			t.Errorf("the turn's spells carry %s of the book: %v", k, s)
+		}
+	}
+	if spellOption(o, charmPersonSpell) == nil {
+		t.Error("the turn's spells lack Charm Person, which the warlock knows")
+	}
+	_, err := a.cast(t, a.ana, e, "Livro", alarmKey, &playv1.SpellSlot{Level: 2, Pact: true}, nil, noCastRoll)
+	if connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("a combat cast of a spell of the book: error = %v, want invalid_argument", err)
+	}
+}
+
+// TestCastingOutside_TheBookStillCastsItsRitualsAfterALevelUp: the picks stay on the sheet when the warlock
+// takes a level, and the ritual still costs no slot.
+func TestCastingOutside_TheBookStillCastsItsRitualsAfterALevelUp(t *testing.T) {
+	t.Parallel()
+	a := bookParty(t)
+	made, err := a.ana.characters.LevelUpCharacter(t.Context(), connect.NewRequest(&charactersv1.LevelUpCharacterRequest{
+		CampaignId: a.campaignID, CharacterId: a.pens.GetId(), Revision: a.pens.GetRevision(),
+		Choices: &charactersv1.LevelUpChoices{
+			ClassKey:        "class:warlock",
+			AbilityIncrease: &rulesv1.AbilityScores{Charisma: 2},
+			CantripKeys:     []string{"spell:minor-illusion"},
+			KnownSpellKeys:  []string{"spell:illusory-script"},
+			HitPoints:       &charactersv1.LevelUpHitPoints{Method: charactersv1.LevelUpHitPointsMethod_LEVEL_UP_HIT_POINTS_METHOD_AVERAGE},
+		},
+	}))
+	if err != nil {
+		t.Fatalf("LevelUpCharacter() error = %v", err)
+	}
+	if got := made.Msg.GetCharacter().GetDerived().GetTotalLevel(); got != 4 {
+		t.Fatalf("the level = %d, want 4", got)
+	}
+	a.pens = made.Msg.GetCharacter()
+	cast := a.mustCastOut(t, a.ana, a.pens, alarmKey, nil, true, nil).GetCast()
+	if !cast.GetRitual() || cast.GetCastingMinutes() != 11 {
+		t.Errorf("the ritual after the level-up = %v, want 11 minutes", cast)
+	}
+	if got := a.vitals(t, a.pens).GetPactSlots().GetUsed(); got != 0 {
+		t.Errorf("pact slots used = %d, want 0", got)
+	}
+}

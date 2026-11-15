@@ -247,3 +247,14 @@ func TestASwitchedOffRitualIsNotOfferedToAPlayerInTheBook(t *testing.T) {
 		t.Error("a ritual that is not switched off is missing")
 	}
 }
+
+// TestAPickOfTheBookIsNotRemovedAlone: only the invocation takes its picks away; dropping one pick at a level is refused.
+func TestAPickOfTheBookIsNotRemovedAlone(t *testing.T) {
+	t.Parallel()
+	c := loadForTest(t)
+	b := aBookWarlock(t, c)
+	b.FeatureChoices = append(b.FeatureChoices, ScopedChoice(bookKey, "spell:detect-magic"), ScopedChoice(bookKey, "spell:find-familiar"))
+	after := mustApply(t, c, b, satisfy(t, c, b, "class:warlock", ""))
+	after.FeatureChoices = slices.DeleteFunc(after.FeatureChoices, func(k string) bool { return k == ScopedChoice(bookKey, "spell:detect-magic") })
+	wantRefusal(t, CheckLevelUp(b, after, c), LevelUpReasonFeatureChoice, "full.feature_choice_keys")
+}
