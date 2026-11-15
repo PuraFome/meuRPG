@@ -1,9 +1,11 @@
 package rules
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The warlock's Book of Ancient Secrets (SRD 5.1, Warlock, Eldritch Invocations): two
@@ -363,4 +365,35 @@ func TestThePactOfTheTomeTakenWithoutItsCantripsIsAskedAtTheNextLevel(t *testing
 	none := next
 	none.LateChoices = without(next.LateChoices, tomeKey)
 	wantRefusal(t, CheckLevelUp(after, mustApply(t, c, after, none), c), LevelUpReasonLateChoice, "full.feature_choice_keys")
+}
+
+// TestTheOwnerOfABookRitualIsToldWhenTheTableRitualChanges: the ritual the warlock holds in the book is a key
+// of the sheet at the pick, so ChangedSince names it after the master changed it, and still does after the
+// master switched it off.
+func TestTheOwnerOfABookRitualIsToldWhenTheTableRitualChanges(t *testing.T) {
+	t.Parallel()
+	sp := tableTestSpells()[0]
+	sp.Ritual = true
+	sp.Revision, sp.ChangedAt = 3, time.Now()
+	b := bookWarlock(ScopedChoice(bookKey, "spell:detect-magic"), ScopedChoice(bookKey, sp.Key))
+	for name, o := range map[string]Overlay{
+		"a ritual of the table":   {Revision: 3, Spells: []TableSpell{sp}},
+		"switched off afterwards": {Revision: 3, Spells: []TableSpell{sp}, Off: []string{sp.Key}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			c := withOverlay(t, o)
+			want := fmt.Sprintf("full.feature_choice_keys[%d]", slices.Index(b.FeatureChoices, ScopedChoice(bookKey, sp.Key)))
+			ch := c.ChangedSince(b, 2, nil)
+			if len(ch) != 1 || ch[0].Key != sp.Key || ch[0].Field != want {
+				t.Errorf("ChangedSince = %+v, want the ritual at %s", ch, want)
+			}
+			if got := c.ChangedSince(b, 3, nil); len(got) != 0 {
+				t.Errorf("a sheet saved at the revision of the change is told of %+v", got)
+			}
+			if !c.SheetHas(b, sp.Key) {
+				t.Error("the sheet that holds the ritual does not have it")
+			}
+		})
+	}
 }
