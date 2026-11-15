@@ -19,7 +19,7 @@ A save that 5e-database leaves only in the text ("Força CD 11 ou cai Derrubado"
 | --- | --- |
 | `ListCreatures(filter)`, `CreatureByKey(key)` | The list and one creature's sheet with Portuguese labels. The filter has a name query (Portuguese or English, without accents), type, size, minimum and maximum CR, no flying and no swimming; the list is sorted by Portuguese name. It refuses a CR that is not in the SRD, a minimum above the maximum and a size that does not exist. |
 | `MonsterDerived(key)` | The creature as a `Derived` that combat already reads: abilities and modifiers, saves and skills, armor class, hit points, the walking speed in `SpeedWalkFt` and the others (`SpeedFlyFt`, `SpeedSwimFt`, `SpeedClimbFt`, `SpeedBurrowFt`, `Hover`), senses, passive Perception, the attacks (bonus and the first damage part; the full text goes in `Attack.Notes` for the master), Multiattack as `AttacksPerAction` (the largest routine) and the save actions in `SaveActions` with their DC. No spellcasting. |
-| `SummonOptions(spell, level, build)`, `CheckSummon(...)` | What a summoning spell lets the caster pick with that slot, and the check of a choice (`ErrSummonCreature`, `ErrSummonCount`, `ErrSummonOption`, `ErrSummonCircle`, `ErrNotSummonSpell`). Casting time, ritual and concentration come from the spell's data. |
+| `SummonOptions(spell, level, build)`, `CheckSummon(...)` | What a summoning spell lets the caster pick with that slot, and the check of a choice (`ErrSummonCreature`, `ErrSummonCount`, `ErrSummonOption`, `ErrSummonCircle`, `ErrSummonType`, `ErrNotSummonSpell`). Casting time, ritual and concentration come from the spell's data. |
 | `WildShapeLimitFor(build)`, `WildShapeForms(build)`, `WildShapeAllows(build, beast)`, `WildShapeDerived(sheet, beast)`, `CastsInBeastForm(derived)` | See [Wild Shape](#wild-shape). |
 
 A table creature (`creature:<slug>@mesa`) is an SRD creature with the master's adjustments and resolves through the same functions; the encounter tools, the summon choices and Wild Shape leave it out ([Table creatures](rules-table-content.md#table-creatures)).
@@ -62,7 +62,11 @@ Either it lists the creatures (`creatures`, with `count`, `count_per_level` and 
 | `spell:animate-dead` | Skeleton or Zombie: one creature, plus two per level above the 3rd. |
 | `spell:conjure-animals` | Beasts only: 1 of CR 2, 2 of CR 1, 4 of CR 1/2 or 8 of CR 1/4, multiplied at the 5th, 7th and 9th level; concentration. |
 
-Find Steed is not covered.
+| `spell:find-steed` | Warhorse, Pony, Camel, Elk or Mastiff: one creature, 10 minutes, no concentration; it acts as any creature. It is a controlled mount (`mount`), the player picks celestial, fey or fiend (`type_choice`), its Intelligence is at least 6 (`min_int`) and the caster keeps one at a time (`max_live`). |
+
+A form no larger than its caster comes with `TooSmall`.
+The cast stays allowed, and the caster cannot ride it.
+`SummonPick.CreatureType` carries the picked type, and `ErrSummonType` refuses a type the spell does not offer.
 Whoever spends the slot and creates the creatures is the [play module](play/README.md); `rules` only says what is allowed.
 
 ## Wild Shape
