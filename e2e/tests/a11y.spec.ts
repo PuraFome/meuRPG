@@ -9559,7 +9559,7 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The use sheet.
     await rowOf(/Anel de estrelas cadentes/).getByRole('button', { name: /^Usar / }).click();
-    const use = p.getByRole('dialog', { name: /^Usar · / });
+    const use = p.getByRole('dialog', { name: /^Usar / });
     await expect(use.getByText('Restam 5 de 6 cargas')).toBeVisible();
     await expectChargesScreen(p, `Usar cargas ${where}`);
     await use.getByRole('button', { name: 'Fechar' }).first().click();
@@ -9569,7 +9569,7 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
 
     // The last charge of a staff that rolls a d20: the alert, then the row that asks for the roll.
     await rowOf(/Cajado do fogo/).getByRole('button', { name: /^Usar / }).click();
-    await p.getByRole('dialog', { name: /^Usar · / }).getByRole('button', { name: /^Gastar 1 carga/ }).click();
+    await p.getByRole('dialog', { name: /^Usar / }).getByRole('button', { name: /^Gastar 1 carga/ }).click();
     const last = p.getByRole('alertdialog', { name: 'A última carga se foi' });
     await expect(last).toBeVisible();
     await expectChargesScreen(p, `A última carga se foi ${where}`);
@@ -9821,10 +9821,10 @@ async function scanChargesMasterScreens(browser: Browser, colorScheme: 'light' |
 
     await openSessionPage(m, campaignId, 'grupo');
     const panel = m.getByRole('region', { name: 'Cargas e munição' });
-    await expect(panel.getByText('Anel de estrelas cadentes')).toBeVisible();
+    await expect(panel.locator('.pc__name').filter({ hasText: 'Anel de estrelas cadentes' })).toBeVisible();
     await expect(panel.getByText('4 de 6')).toBeVisible();
     await expect(panel.getByText('Destruída')).toBeVisible();
-    await expect(panel.getByText('Flechas')).toBeVisible();
+    await expect(panel.locator('.pc__name').filter({ hasText: 'Flecha' })).toBeVisible();
     await expectChargesScreen(m, `Cargas e munição, o painel do mestre ${where}`);
 
     // "Corrigir" on an item: the stepper says what it was; a step and "Salvar".
@@ -9836,15 +9836,17 @@ async function scanChargesMasterScreens(browser: Browser, colorScheme: 'light' |
     await editor.getByRole('switch', { name: 'Destruída' }).click();
     await expect(editor.getByRole('switch', { name: 'Destruída' })).toHaveAttribute('aria-checked', 'true');
     await expectChargesScreen(m, `Cargas e munição, "Destruída" ligada ${where}`);
+    // "Destruída" zeroes the count and turning it off leaves it at 0: one step up, then the save.
     await editor.getByRole('switch', { name: 'Destruída' }).click();
+    await editor.getByRole('button', { name: /^Mais uma carga/ }).click();
     await editor.getByRole('button', { name: 'Salvar' }).click();
     await expect(editor).toBeHidden();
-    await expect(panel.getByText('5 de 6')).toBeVisible();
+    await expect(panel.getByText('1 de 6')).toBeVisible();
     await expectChargesScreen(m, `Cargas e munição, depois de corrigir ${where}`);
 
     // The ammunition has its own stepper, without the switch.
-    await panel.getByRole('button', { name: /^Corrigir Flechas/ }).click();
-    const ammoEditor = panel.getByRole('group', { name: 'Corrigir Flechas' });
+    await panel.getByRole('button', { name: 'Corrigir Flecha', exact: true }).click();
+    const ammoEditor = panel.getByRole('group', { name: 'Corrigir Flecha' });
     await expect(ammoEditor).toContainText('eram 15');
     await expect(ammoEditor.getByRole('switch')).toHaveCount(0);
     await expectChargesScreen(m, `Cargas e munição, corrigir a munição ${where}`);
@@ -9952,7 +9954,7 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     await openLive(p, route);
     const gear = p.getByRole('region', { name: 'Equipamento' });
     const rowOf = (name: RegExp) => gear.locator('.magic-row').filter({ hasText: name });
-    const use = p.getByRole('dialog', { name: /^Usar · / });
+    const use = p.getByRole('dialog', { name: /^Usar / });
     const last = p.getByRole('alertdialog', { name: 'A última carga se foi' });
     const spend = '**/meurpg.play.v1.ChargesService/SpendCharges';
 
@@ -9995,7 +9997,7 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     await last.getByLabel('Face do d20').fill('14');
     await last.getByRole('button', { name: 'Confirmar' }).click();
     await expect(last).toBeHidden();
-    await expect(gear.getByText(/^Tirou 14\./)).toBeVisible();
+    await expect(gear.getByText(/Tirou 14\./)).toBeVisible();
     await expectChargesScreen(p, `Resultado do d20, Tirou 14 ${where}`);
 
     // A 1: the staff stays on the sheet as a plain one, with the tag "Sem magia".
@@ -10005,7 +10007,7 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     await last.getByLabel('Face do d20').fill('1');
     await last.getByRole('button', { name: 'Confirmar' }).click();
     await expect(last).toBeHidden();
-    await expect(gear.getByText(/^Tirou 1\./)).toBeVisible();
+    await expect(gear.getByText(/Tirou 1\./)).toBeVisible();
     await expect(rowOf(/Cajado de ataque/).getByText('Sem magia')).toBeVisible();
     await expect(rowOf(/Cajado de ataque/).getByText('Virou um cajado comum.')).toBeVisible();
     await expectChargesScreen(p, `Resultado do d20, Tirou 1 e o item sem magia ${where}`);
@@ -10026,7 +10028,7 @@ async function scanChargesRollScreens(browser: Browser, colorScheme: 'light' | '
     await last.getByLabel('Face do d12').fill('7');
     await last.getByRole('button', { name: 'Confirmar' }).click();
     await expect(last).toBeHidden();
-    await expect(gear.getByText(/^Tirou 20\./)).toBeVisible();
+    await expect(gear.getByText(/Tirou 20\./)).toBeVisible();
     await expectChargesScreen(p, `Resultado do d20, Tirou 20 e as cargas de volta ${where}`);
   } finally {
     if (campaignId) {
@@ -10084,7 +10086,7 @@ async function scanChargesRecoverScreens(browser: Browser, colorScheme: 'light' 
     await expect(recover).not.toHaveAttribute('aria-disabled', 'true');
     await expectChargesScreen(m, `Ficha, Recuperar a metade ligado ${where}`);
     await recover.click();
-    await expect(gear.getByText(/Recuperou 1 peça deste combate/)).toBeVisible();
+    await expect(gear.getByRole('status').filter({ hasText: 'Recuperou 1 peça deste combate.' })).toBeVisible();
     await expect(recover).toHaveAttribute('aria-disabled', 'true');
     await expectChargesScreen(m, `Ficha, Recuperar a metade feito ${where}`);
   } finally {

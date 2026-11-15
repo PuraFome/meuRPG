@@ -240,12 +240,15 @@
 
 // The row being corrected: the 2px accent outline of the tab's one open editor.
 .pc__edit {
+  margin: var(--mr-space-2) 0;
+}
+
+.pc__edit-body {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--mr-space-3);
   padding: var(--mr-space-3);
-  margin: var(--mr-space-2) 0;
   border: 2px solid var(--mr-accent);
   border-radius: var(--mr-radius-lg);
   background: var(--mr-ground);

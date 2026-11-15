@@ -127,6 +127,18 @@ describe('PartyChargesPanel', () => {
     expect(el.querySelector('.pc__attuned')?.getAttribute('aria-label')).toBe('Sintonizado');
   });
 
+  it('keeps the open editor a plain list item: the group role lives on a child, so the list stays valid', async () => {
+    const { el, settle, button } = await render();
+    button('Corrigir Varinha de mísseis').click();
+    await settle();
+    const edit = el.querySelector('.pc__edit')!;
+    expect(edit.tagName).toBe('LI');
+    expect(edit.getAttribute('role')).toBeNull();
+    const group = edit.querySelector('[role="group"]')!;
+    expect(group.getAttribute('aria-label')).toBe('Corrigir Varinha de mísseis mágicos');
+    expect(group.parentElement).toBe(edit);
+  });
+
   it('corrects the charges of an item: the stepper starts at what it holds and says what it was', async () => {
     const { el, settle, button } = await render();
     button('Corrigir Varinha de mísseis').click();

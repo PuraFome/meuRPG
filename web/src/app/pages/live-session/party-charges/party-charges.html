@@ -123,36 +123,38 @@
 
 <ng-template #editor>
   @if (editing(); as e) {
-    <li class="pc__edit" role="group" [attr.aria-label]="'Corrigir ' + e.name" (keydown.escape)="cancel()">
-      <span class="pc__edit-name">{{ e.name }}</span>
-      @if (e.kind === 'item') {
-        <app-hidden-switch
-          class="pc__edit-switch"
-          label="Destruída"
-          [hint]="'Desligar devolve o item à ficha; as cargas vão de 0 a ' + e.max + '.'"
-          [checked]="e.destroyed"
-          (toggle)="setDestroyed($event)"
+    <li class="pc__edit">
+      <div class="pc__edit-body" role="group" [attr.aria-label]="'Corrigir ' + e.name" (keydown.escape)="cancel()">
+        <span class="pc__edit-name">{{ e.name }}</span>
+        @if (e.kind === 'item') {
+          <app-hidden-switch
+            class="pc__edit-switch"
+            label="Destruída"
+            [hint]="'Desligar devolve o item à ficha; as cargas vão de 0 a ' + e.max + '.'"
+            [checked]="e.destroyed"
+            (toggle)="setDestroyed($event)"
+          />
+        }
+        <app-count-stepper
+          [value]="e.count"
+          [min]="0"
+          [max]="e.max"
+          [noun]="e.kind === 'item' ? 'carga' : 'peça'"
+          [minusLabel]="(e.kind === 'item' ? 'Menos uma carga de ' : 'Menos uma peça de ') + e.name"
+          [plusLabel]="(e.kind === 'item' ? 'Mais uma carga de ' : 'Mais uma peça de ') + e.name"
+          [valueLabel]="'{n} ' + (e.kind === 'item' ? 'cargas' : 'peças') + ' de ' + e.name"
+          (valueChange)="setCount($event)"
         />
-      }
-      <app-count-stepper
-        [value]="e.count"
-        [min]="0"
-        [max]="e.max"
-        [noun]="e.kind === 'item' ? 'carga' : 'peça'"
-        [minusLabel]="(e.kind === 'item' ? 'Menos uma carga de ' : 'Menos uma peça de ') + e.name"
-        [plusLabel]="(e.kind === 'item' ? 'Mais uma carga de ' : 'Mais uma peça de ') + e.name"
-        [valueLabel]="'{n} ' + (e.kind === 'item' ? 'cargas' : 'peças') + ' de ' + e.name"
-        (valueChange)="setCount($event)"
-      />
-      <span class="pc__was">eram {{ e.was }}</span>
-      <button matButton="outlined" type="button" class="pc__save" [attr.aria-busy]="saving()" (click)="save()">Salvar</button>
-      <button matButton type="button" (click)="cancel()">Cancelar</button>
-      @if (editError()) {
-        <div class="mr-notice mr-notice--danger pc__edit-error" role="alert">
-          <mat-icon aria-hidden="true">error</mat-icon>
-          <p>{{ editError() }}</p>
-        </div>
-      }
+        <span class="pc__was">eram {{ e.was }}</span>
+        <button matButton="outlined" type="button" class="pc__save" [attr.aria-busy]="saving()" (click)="save()">Salvar</button>
+        <button matButton type="button" (click)="cancel()">Cancelar</button>
+        @if (editError()) {
+          <div class="mr-notice mr-notice--danger pc__edit-error" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ editError() }}</p>
+          </div>
+        }
+      </div>
     </li>
   }
 </ng-template>
