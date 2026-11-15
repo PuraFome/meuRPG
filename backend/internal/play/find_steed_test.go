@@ -18,6 +18,8 @@ const (
 	findSteed = "spell:find-steed"
 	warhorse  = "monster:warhorse"
 	elk       = "monster:elk"
+
+	divineFavor = "spell:divine-favor"
 )
 
 // newRiders is the party of this file: Aurélio, a level 9 paladin (three 2nd circle slots) who has Find Steed prepared, and Toren.
@@ -28,7 +30,7 @@ func newRiders(t *testing.T) *armed {
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 13, Constitution: 14, Intelligence: 10, Wisdom: 10, Charisma: 8}, []string{battleaxe}, nil)
 		a.pens = a.ana.caster(t, a.campaignID, "Aurélio", "class:paladin", "race:human", 9,
 			&rulesv1.AbilityScores{Strength: 16, Dexterity: 10, Constitution: 14, Intelligence: 10, Wisdom: 12, Charisma: 16}, nil, nil,
-			[]string{findSteed}, []string{findSteed})
+			[]string{findSteed, divineFavor, cureWounds}, []string{findSteed, divineFavor, cureWounds})
 	})
 }
 

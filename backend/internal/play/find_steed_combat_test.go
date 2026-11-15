@@ -47,6 +47,12 @@ func (a *armed) steedRowOf(t *testing.T, label string) steedRow {
 // it: the combat, after the mount.
 func riderInFight(t *testing.T) (*armed, *playv1.Encounter) {
 	t.Helper()
+	return steedFight(t, true)
+}
+
+// steedFight is riderInFight with the choice of mounting.
+func steedFight(t *testing.T, mount bool) (*armed, *playv1.Encounter) {
+	t.Helper()
 	a := newRiders(t)
 	a.mustCastSteed(t, warhorse, "celestial", "Trovão")
 	e := a.start(t, plan{
@@ -55,10 +61,12 @@ func riderInFight(t *testing.T) (*armed, *playv1.Encounter) {
 		reveal:  []string{"Goblin"},
 		at:      map[string][2]int32{"Aurélio": {3, 3}, "Toren": {6, 3}, "Goblin": {12, 3}, "Trovão": {4, 3}},
 	})
-	if _, err := a.ana.combat.MountCombatant(t.Context(), connect.NewRequest(&playv1.MountCombatantRequest{
-		CampaignId: a.campaignID, EncounterId: e.GetId(), RiderId: a.id(t, "Aurélio"), MountId: a.id(t, "Trovão"), IdempotencyKey: newKey(),
-	})); err != nil {
-		t.Fatalf("MountCombatant(Aurélio, Trovão) error = %v", err)
+	if mount {
+		if _, err := a.ana.combat.MountCombatant(t.Context(), connect.NewRequest(&playv1.MountCombatantRequest{
+			CampaignId: a.campaignID, EncounterId: e.GetId(), RiderId: a.id(t, "Aurélio"), MountId: a.id(t, "Trovão"), IdempotencyKey: newKey(),
+		})); err != nil {
+			t.Fatalf("MountCombatant(Aurélio, Trovão) error = %v", err)
+		}
 	}
 	after := a.get(t, a.master)
 	return a, after
