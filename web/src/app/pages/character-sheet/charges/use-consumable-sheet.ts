@@ -256,180 +256,7 @@ function signed(modifier: number): string {
       </div>
     </app-sheet-frame>
   `,
-  styles: `
-    .effect {
-      display: flex;
-      align-items: center;
-      gap: var(--mr-space-2);
-      margin: 0 0 var(--mr-space-2);
-    }
-    .effect .mat-icon {
-      width: var(--mr-font-18);
-      height: var(--mr-font-18);
-      font-size: var(--mr-font-18);
-    }
-    .explain {
-      margin: 0 0 var(--mr-space-3);
-    }
-    .who {
-      min-width: 0;
-      margin: 0 0 var(--mr-space-3);
-      padding: 0;
-      border: 0;
-    }
-    .who__legend {
-      margin-bottom: var(--mr-space-2);
-      padding: 0;
-      font-size: var(--mr-font-14);
-      font-weight: 600;
-    }
-    .who__row {
-      display: flex;
-      align-items: center;
-      gap: var(--mr-space-3);
-      min-height: 56px;
-      margin-bottom: var(--mr-space-2);
-      padding: var(--mr-space-2) var(--mr-space-3);
-      border: 1px solid var(--mr-rule);
-      border-radius: var(--mr-radius-md);
-      cursor: pointer;
-    }
-    .who__row--on {
-      border-color: var(--mr-accent);
-      background: var(--mr-accent-soft);
-    }
-    .who__row:has(:focus-visible) {
-      outline: 2px solid var(--mr-focus);
-      outline-offset: 2px;
-    }
-    .who__radio {
-      flex: none;
-      width: 20px;
-      height: 20px;
-      margin: 0;
-      accent-color: var(--mr-accent);
-    }
-    .who__avatar {
-      display: grid;
-      flex: none;
-      place-items: center;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--mr-ink);
-      color: var(--mr-surface);
-      font-size: var(--mr-font-14);
-      font-weight: 700;
-    }
-    .who__text {
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-      font-size: var(--mr-font-14);
-    }
-    .dice {
-      margin: 0 0 var(--mr-space-2);
-    }
-    .dice__line {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--mr-space-1) var(--mr-space-3);
-      margin: 0 0 var(--mr-space-2);
-      font-size: var(--mr-font-14);
-    }
-    .dice__switch {
-      min-height: 44px;
-      padding: 0 var(--mr-space-1);
-      border: 0;
-      background: none;
-      color: var(--mr-accent-text);
-      font: inherit;
-      font-weight: 700;
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    .dice__fields {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--mr-space-3);
-    }
-    .dice__one {
-      display: flex;
-      flex-direction: column;
-      gap: var(--mr-space-1);
-      width: 104px;
-    }
-    .dice__label {
-      font-size: var(--mr-font-14);
-    }
-    .dice__field {
-      box-sizing: border-box;
-      width: 100%;
-      min-height: 48px;
-      padding: 0 var(--mr-space-3);
-      border: 2px solid var(--mr-accent);
-      border-radius: var(--mr-radius-md);
-      background: var(--mr-surface);
-      color: var(--mr-ink);
-      font: inherit;
-      font-size: var(--mr-font-18);
-    }
-    .dice__field[aria-invalid='true'] {
-      border-color: var(--mr-danger-ink);
-    }
-    .dice__err {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--mr-space-1);
-      color: var(--mr-danger-ink);
-      font-size: var(--mr-font-13);
-    }
-    .dice__err .mat-icon {
-      flex: none;
-      width: var(--mr-font-14);
-      height: var(--mr-font-14);
-      font-size: var(--mr-font-14);
-    }
-    .none {
-      display: flex;
-      align-items: center;
-      gap: var(--mr-space-2);
-      margin: 0 0 var(--mr-space-2);
-    }
-    .none .mat-icon {
-      flex: none;
-      width: var(--mr-font-18);
-      height: var(--mr-font-18);
-      font-size: var(--mr-font-18);
-    }
-    .cost {
-      margin: 0;
-      font-size: var(--mr-font-14);
-    }
-    .foot {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-      gap: var(--mr-space-2) var(--mr-space-3);
-    }
-    .foot button {
-      min-height: 48px;
-    }
-    .give--off {
-      border-style: dashed;
-      opacity: 0.7;
-      cursor: default;
-    }
-    .go--off {
-      opacity: 0.6;
-      cursor: default;
-    }
-    .go--wide {
-      flex: 1 1 100%;
-    }
-  `,
+  styleUrl: './use-consumable-sheet.scss',
 })
 export class UseConsumableSheet {
   private readonly sheet = injectSheet<UseConsumableData, boolean>();
@@ -490,7 +317,9 @@ export class UseConsumableSheet {
     this.faces().map((text, i) => text.trim() !== '' && this.parsed()[i] === null),
   );
   /** Every die has its face (or the app rolls them). */
-  private readonly rolled = computed(() => !this.dice || !this.typing() || this.parsed().every((v) => v !== null));
+  private readonly rolled = computed(
+    () => !this.dice || !this.typing() || this.parsed().every((v) => v !== null),
+  );
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -544,9 +373,15 @@ export class UseConsumableSheet {
 
   protected openGive(): void {
     this.phase.set('give');
-    afterNextRender(() => this.radios().find((r) => r.nativeElement.checked)?.nativeElement.focus(), {
-      injector: this.injector,
-    });
+    afterNextRender(
+      () =>
+        this.radios()
+          .find((r) => r.nativeElement.checked)
+          ?.nativeElement.focus(),
+      {
+        injector: this.injector,
+      },
+    );
   }
 
   protected onFace(index: number, event: Event): void {
@@ -566,7 +401,10 @@ export class UseConsumableSheet {
     this.busy.set(true);
     this.error.set('');
     try {
-      const why = await this.data.use(request, this.key.keyFor({ target: target?.id ?? '', roll: request.roll }));
+      const why = await this.data.use(
+        request,
+        this.key.keyFor({ target: target?.id ?? '', roll: request.roll }),
+      );
       if (why) {
         this.error.set(why);
       } else {

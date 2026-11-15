@@ -17,10 +17,7 @@ import {
   type ConsumableRoll,
   type TableDice,
 } from '../../../core/play/charges-client';
-import {
-  chargesDidNotGetThrough,
-  consumableErrorMessage,
-} from '../../../core/play/charges-errors';
+import { chargesDidNotGetThrough, consumableErrorMessage } from '../../../core/play/charges-errors';
 import type { CharacterSheetVm } from '../character-sheet.types';
 import type {
   TargetsOutcome,
@@ -66,7 +63,9 @@ export class SheetConsumables {
     this.result.set(null);
     const kind: ConsumableKind = consumableKind(this.host.categoryOf(entry.key)) ?? 'potion';
     const units =
-      vm.sheet.kind === 'full' ? vm.sheet.attunement.entries.filter((e) => e.key === entry.key) : [];
+      vm.sheet.kind === 'full'
+        ? vm.sheet.attunement.entries.filter((e) => e.key === entry.key)
+        : [];
     const left = Math.max(1, units.length);
     void this.host.dice().then((dice) => {
       this.host

@@ -118,7 +118,9 @@ describe('UseConsumableSheet', () => {
   it('drinks at once with "Beber": no receiver, the app rolls, one key, and closes with true', async () => {
     const { el, settle } = render();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Beber')!
+      .click();
     await settle();
     expect(use).toHaveBeenCalledWith(
       { target: null, roll: { inApp: true } } satisfies UseConsumableRequest,
@@ -137,7 +139,9 @@ describe('UseConsumableSheet', () => {
   it('lists who may receive it as radio rows, the first one chosen, and says what the dice are', async () => {
     const { el, settle } = render();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
     await settle();
     expect(flat(el.querySelector('legend'))).toBe('Dar a quem está ao seu lado');
     const rows = Array.from(el.querySelectorAll('.who__row'));
@@ -154,7 +158,9 @@ describe('UseConsumableSheet', () => {
   it('follows the choice of another receiver in the button, the dice line and the cost line', async () => {
     const { el, settle, fixture } = render();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
     await settle();
     el.querySelectorAll<HTMLInputElement>('input[type=radio]')[1].click();
     fixture.detectChanges();
@@ -166,9 +172,13 @@ describe('UseConsumableSheet', () => {
   it('gives to the chosen character and closes with true', async () => {
     const { el, settle } = render();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a Brisa')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a Brisa')!
+      .click();
     await settle();
     expect(use).toHaveBeenCalledWith(
       { target: BRISA, roll: { inApp: true } } satisfies UseConsumableRequest,
@@ -180,9 +190,13 @@ describe('UseConsumableSheet', () => {
   it('drinks it themselves from the list with "Beber eu mesmo"', async () => {
     const { el, settle } = render();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber eu mesmo')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Beber eu mesmo')!
+      .click();
     await settle();
     expect(use).toHaveBeenCalledWith(
       { target: null, roll: { inApp: true } } satisfies UseConsumableRequest,
@@ -207,7 +221,9 @@ describe('UseConsumableSheet', () => {
     loadTargets.mockResolvedValue({ targets: [], error: '' });
     const { el, settle } = render({ inCombat: false });
     await settle();
-    expect(flat(el.querySelector('.none'))).toBe('Não há mais ninguém no grupo para receber a poção.');
+    expect(flat(el.querySelector('.none'))).toBe(
+      'Não há mais ninguém no grupo para receber a poção.',
+    );
   });
 
   it('says an item the app applies nothing of costs no action, and leaves the cost out of the line under the title', async () => {
@@ -217,7 +233,9 @@ describe('UseConsumableSheet', () => {
     expect(flat(el.querySelector('.cost'))).toBe(
       'Não gasta a ação: o mestre decide o tempo que isso leva.',
     );
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
     await settle();
     expect(flat(el.querySelector('.cost'))).toBe(
       'Não gasta a ação: o mestre decide o tempo que isso leva. A poção age em Brisa.',
@@ -225,7 +243,11 @@ describe('UseConsumableSheet', () => {
   });
 
   it('uses a scroll with one "Usar" button and no "Dar a…"', async () => {
-    const { el, settle } = render({ kind: 'scroll', effectPt: '', itemName: 'Pergaminho de magia' });
+    const { el, settle } = render({
+      kind: 'scroll',
+      effectPt: '',
+      itemName: 'Pergaminho de magia',
+    });
     await settle();
     const labels = Array.from(el.querySelectorAll('button')).map(label);
     expect(labels).toContain('Usar');
@@ -238,7 +260,9 @@ describe('UseConsumableSheet', () => {
     expect(flat(el.querySelector('.cost'))).toBe(
       'Fora de combate: não gasta a vez. “Dar a…” lista o grupo todo.',
     );
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
     await settle();
     expect(flat(el.querySelector('legend'))).toBe('Dar a alguém do grupo');
     expect(flat(el.querySelector('.cost'))).toBe(
@@ -256,14 +280,18 @@ describe('UseConsumableSheet', () => {
     expect(flat(el.querySelector('[role=alert]'))).toBe(
       'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
     );
-    expect(Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber')).toBeTruthy();
+    expect(
+      Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber'),
+    ).toBeTruthy();
   });
 
   describe('the dice (RN-18)', () => {
     it('writes one field for each die when the player types them, and sends the faces', async () => {
       const { el, settle, fixture } = render();
       await settle();
-      Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Dar a…')!
+        .click();
       await settle();
       Array.from(el.querySelectorAll('button'))
         .find((b) => label(b) === 'Digitar os dados')!
@@ -281,7 +309,9 @@ describe('UseConsumableSheet', () => {
         fields[i].dispatchEvent(new Event('input'));
       }
       fixture.detectChanges();
-      Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a Brisa')!.click();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Dar a Brisa')!
+        .click();
       await settle();
       expect(use).toHaveBeenCalledWith(
         { target: BRISA, roll: { faces: [3, 2] } } satisfies UseConsumableRequest,
@@ -316,7 +346,9 @@ describe('UseConsumableSheet', () => {
         .find((b) => label(b) === 'Digitar os dados')!
         .click();
       fixture.detectChanges();
-      Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Rolar no app')!.click();
+      Array.from(el.querySelectorAll('button'))
+        .find((b) => label(b) === 'Rolar no app')!
+        .click();
       fixture.detectChanges();
       expect(flat(el.querySelector('.dice'))).toContain('O app rola 2d4 + 2.');
     });
@@ -350,18 +382,26 @@ describe('UseConsumableSheet', () => {
   });
 
   it('keeps the dialog open and says why when the server refuses, and retries under the same key', async () => {
-    use.mockResolvedValueOnce('Quem recebe o item precisa estar a até 1,5 m de quem o dá. Nada foi gasto.');
+    use.mockResolvedValueOnce(
+      'Quem recebe o item precisa estar a até 1,5 m de quem o dá. Nada foi gasto.',
+    );
     const { el, settle } = render();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a Brisa')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a Brisa')!
+      .click();
     await settle();
     expect(flat(el.querySelector('[role=alert]'))).toBe(
       'Quem recebe o item precisa estar a até 1,5 m de quem o dá. Nada foi gasto.',
     );
     expect(close).not.toHaveBeenCalled();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a Brisa')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a Brisa')!
+      .click();
     await settle();
     expect(use.mock.calls[1][1]).toBe(use.mock.calls[0][1]);
     expect(close).toHaveBeenCalledWith(true);
@@ -371,13 +411,19 @@ describe('UseConsumableSheet', () => {
     use.mockResolvedValueOnce('Nada mudou.');
     const { el, settle, fixture } = render();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a…')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a…')!
+      .click();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a Brisa')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a Brisa')!
+      .click();
     await settle();
     el.querySelectorAll<HTMLInputElement>('input[type=radio]')[1].click();
     fixture.detectChanges();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Dar a Jabuti')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Dar a Jabuti')!
+      .click();
     await settle();
     expect(use.mock.calls[1][1]).not.toBe(use.mock.calls[0][1]);
   });
@@ -387,7 +433,9 @@ describe('UseConsumableSheet', () => {
     use.mockReturnValue(new Promise<string>((r) => (done = r)));
     const { el, settle } = render();
     await settle();
-    Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Beber')!.click();
+    Array.from(el.querySelectorAll('button'))
+      .find((b) => label(b) === 'Beber')!
+      .click();
     await settle();
     const busy = Array.from(el.querySelectorAll('button')).find((b) => label(b) === 'Usando...')!;
     expect(busy).toBeTruthy();

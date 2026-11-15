@@ -134,9 +134,7 @@ describe('consumableErrorMessage', () => {
 
   it('says it is not the turn of who uses it, for the player and for the master', () => {
     const turn = encounter(EncounterBlockedReason.NOT_YOUR_TURN);
-    expect(consumableErrorMessage(turn, potion)).toBe(
-      'Só na sua vez: beber ou dar gasta a ação.',
-    );
+    expect(consumableErrorMessage(turn, potion)).toBe('Só na sua vez: beber ou dar gasta a ação.');
     expect(consumableErrorMessage(turn, { ...potion, actingFor: 'Tor' })).toBe(
       'Só na vez de Tor: beber ou dar gasta a ação.',
     );
@@ -151,15 +149,13 @@ describe('consumableErrorMessage', () => {
   });
 
   it('says who is down does not act but may still receive', () => {
-    expect(
-      consumableErrorMessage(encounter(EncounterBlockedReason.COMBATANT_DOWN), potion),
-    ).toBe('Quem está caído não age, mas ainda pode receber uma poção.');
+    expect(consumableErrorMessage(encounter(EncounterBlockedReason.COMBATANT_DOWN), potion)).toBe(
+      'Quem está caído não age, mas ainda pode receber uma poção.',
+    );
   });
 
   it('leaves the other refusals of a combat to the words the combat has', () => {
-    expect(
-      consumableErrorMessage(encounter(EncounterBlockedReason.REACTION_PENDING), potion),
-    ).toBe(
+    expect(consumableErrorMessage(encounter(EncounterBlockedReason.REACTION_PENDING), potion)).toBe(
       'Uma reação ainda espera resposta. Espere a resposta ou responda no lugar de quem reage.',
     );
   });

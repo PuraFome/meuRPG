@@ -176,14 +176,7 @@ describe('ChargesClient', () => {
   });
 
   it('gives the consumable to another character with the faces of real dice (RN-18)', async () => {
-    await clientWith(calls).useConsumable(
-      'camp',
-      'c1',
-      'e1',
-      'c2',
-      { faces: [3, 2] },
-      'k2',
-    );
+    await clientWith(calls).useConsumable('camp', 'c1', 'e1', 'c2', { faces: [3, 2] }, 'k2');
     expect(calls['use']).toEqual([
       {
         campaignId: 'camp',

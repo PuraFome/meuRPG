@@ -67,7 +67,11 @@ describe('magicRows', () => {
       ],
       categoryOf,
     );
-    expect(rows.map((r) => r.id)).toEqual(['consumable:item:potion-of-healing', 'r1', 'consumable:item:potion-of-fire-resistance']);
+    expect(rows.map((r) => r.id)).toEqual([
+      'consumable:item:potion-of-healing',
+      'r1',
+      'consumable:item:potion-of-fire-resistance',
+    ]);
     const heal = rows[0];
     expect(heal.type === 'consumable' && heal.row.count).toBe(2);
     expect(heal.type === 'consumable' && heal.row.first.id).toBe('p1');
@@ -111,7 +115,12 @@ describe('the effect line', () => {
 
 describe('healingDice', () => {
   it('reads the dice and the number added of a healing line', () => {
-    expect(healingDice('Cura 2d4 + 2')).toEqual({ count: 2, sides: 4, modifier: 2, text: '2d4 + 2' });
+    expect(healingDice('Cura 2d4 + 2')).toEqual({
+      count: 2,
+      sides: 4,
+      modifier: 2,
+      text: '2d4 + 2',
+    });
     expect(healingDice('Cura 10d4 + 20')).toEqual({
       count: 10,
       sides: 4,
@@ -146,33 +155,63 @@ describe('the words under the title', () => {
   });
 
   it('opens the owner subtitle with the count and adds what a combat costs', () => {
-    expect(subtitleOf({ itemName: 'Poção de cura', left: 2, actingFor: null, inCombat: true, costsAction: true })).toBe(
-      'Restam 2 · em combate, gasta a ação',
-    );
+    expect(
+      subtitleOf({
+        itemName: 'Poção de cura',
+        left: 2,
+        actingFor: null,
+        inCombat: true,
+        costsAction: true,
+      }),
+    ).toBe('Restam 2 · em combate, gasta a ação');
   });
 
   it('names the item first for the master, whose title names the character', () => {
     expect(
-      subtitleOf({ itemName: 'Poção de resistência', left: 1, actingFor: 'Tor', inCombat: false, costsAction: true }),
+      subtitleOf({
+        itemName: 'Poção de resistência',
+        left: 1,
+        actingFor: 'Tor',
+        inCombat: false,
+        costsAction: true,
+      }),
     ).toBe('Poção de resistência · resta 1');
   });
 
   it('keeps the cost out of the line when the page knows there is no combat', () => {
-    expect(subtitleOf({ itemName: 'Poção de cura', left: 1, actingFor: null, inCombat: false, costsAction: true })).toBe(
-      'Resta 1',
-    );
+    expect(
+      subtitleOf({
+        itemName: 'Poção de cura',
+        left: 1,
+        actingFor: null,
+        inCombat: false,
+        costsAction: true,
+      }),
+    ).toBe('Resta 1');
   });
 
   it('says no cost for an item that costs no action, in a combat or not', () => {
     expect(
-      subtitleOf({ itemName: 'Poção de escalada', left: 1, actingFor: null, inCombat: true, costsAction: false }),
+      subtitleOf({
+        itemName: 'Poção de escalada',
+        left: 1,
+        actingFor: null,
+        inCombat: true,
+        costsAction: false,
+      }),
     ).toBe('Resta 1');
   });
 
   it('keeps the cost when the sheet does not know whether there is a combat', () => {
-    expect(subtitleOf({ itemName: 'Poção de cura', left: 3, actingFor: null, inCombat: null, costsAction: true })).toBe(
-      'Restam 3 · em combate, gasta a ação',
-    );
+    expect(
+      subtitleOf({
+        itemName: 'Poção de cura',
+        left: 3,
+        actingFor: null,
+        inCombat: null,
+        costsAction: true,
+      }),
+    ).toBe('Restam 3 · em combate, gasta a ação');
   });
 });
 
@@ -247,9 +286,9 @@ describe('useNotice', () => {
   });
 
   it('does not wake who was on their feet', () => {
-    expect(useNotice(healed(), { ...base, woke: false, receiverName: 'Tor', gift: false }).headline).toBe(
-      'Tor recebeu 7 PV.',
-    );
+    expect(
+      useNotice(healed(), { ...base, woke: false, receiverName: 'Tor', gift: false }).headline,
+    ).toBe('Tor recebeu 7 PV.');
   });
 
   it('says what is left when none is, and when there are several', () => {
@@ -327,11 +366,14 @@ describe('useNotice', () => {
   });
 
   it('says who the potion was given to when it has no effect of its own', () => {
-    const n = useNotice(create(UseConsumableResponseSchema, { outcome: ConsumableUseOutcome.TEXT_ONLY }), {
-      ...base,
-      itemName: 'Poção de escalada',
-      effectPt: '',
-    });
+    const n = useNotice(
+      create(UseConsumableResponseSchema, { outcome: ConsumableUseOutcome.TEXT_ONLY }),
+      {
+        ...base,
+        itemName: 'Poção de escalada',
+        effectPt: '',
+      },
+    );
     expect(n.headline).toBe('Tor deu a Poção de escalada a Brisa.');
   });
 });

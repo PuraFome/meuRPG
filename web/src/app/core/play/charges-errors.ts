@@ -6,11 +6,7 @@ import {
   type ItemRecharge,
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import type { ConsumableKind } from '../characters/consumables';
-import {
-  blockedMessage,
-  encounterBlocked,
-  sessionClosed,
-} from '../combat/combat-errors';
+import { blockedMessage, encounterBlocked, sessionClosed } from '../combat/combat-errors';
 import { EncounterBlockedReason } from '../../../gen/meurpg/play/v1/combat_pb';
 import { noChargesWithRecharge } from '../characters/recharge-text';
 import { articleOf } from '../characters/charges';

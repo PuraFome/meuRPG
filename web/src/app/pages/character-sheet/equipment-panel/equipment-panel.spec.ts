@@ -804,7 +804,11 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
     const { el } = render((h) =>
       h.sheet.set(
         sheetWith([
-          potion('c1', { key: 'item:potion-of-climbing', namePt: 'Poção de escalada', effectPt: '' }),
+          potion('c1', {
+            key: 'item:potion-of-climbing',
+            namePt: 'Poção de escalada',
+            effectPt: '',
+          }),
         ]),
       ),
     );
@@ -866,7 +870,12 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
       h.sheet.set(
         sheetWith([
           potion('p1'),
-          entry({ id: 'w1', key: 'item:wand', namePt: 'Varinha', charges: { max: 7, left: 5, state: 'ready' } }),
+          entry({
+            id: 'w1',
+            key: 'item:wand',
+            namePt: 'Varinha',
+            charges: { max: 7, left: 5, state: 'ready' },
+          }),
         ]),
       ),
     );
@@ -919,7 +928,9 @@ describe('EquipmentPanel, the potions and the scrolls', () => {
   });
 
   it('leaves a magic item that is no consumable as the row it was', () => {
-    const { el } = render((h) => h.sheet.set(sheetWith([entry({ key: 'item:wand', effectPt: '' })])));
+    const { el } = render((h) =>
+      h.sheet.set(sheetWith([entry({ key: 'item:wand', effectPt: '' })])),
+    );
     expect(rowsOf(el)).toHaveLength(0);
     expect(el.querySelectorAll('.magic-row')).toHaveLength(1);
   });

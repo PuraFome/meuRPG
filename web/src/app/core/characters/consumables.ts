@@ -199,11 +199,7 @@ export function targetRows(targets: readonly ConsumableTarget[]): ConsumableTarg
       const down = t.state === ConsumableTargetState.DOWN;
       const parts = [
         t.distanceFt > 0 ? `A ${metersText(t.distanceFt)}` : '',
-        down
-          ? downWord(t.name)
-          : t.state === ConsumableTargetState.OK
-            ? 'Ileso'
-            : '',
+        down ? downWord(t.name) : t.state === ConsumableTargetState.OK ? 'Ileso' : '',
       ].filter((p) => p !== '');
       return {
         id: t.characterId,

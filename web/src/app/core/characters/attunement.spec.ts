@@ -97,7 +97,11 @@ describe('attunementOf, the consumables', () => {
       create(FullSheetSchema, {
         magicItems: [
           create(SheetMagicItemSchema, { id: 'p', effectPt: 'Cura 2d4 + 2' }),
-          create(SheetMagicItemSchema, { id: 's', spellKey: 'spell:fireball', spellNamePt: 'Bola de Fogo' }),
+          create(SheetMagicItemSchema, {
+            id: 's',
+            spellKey: 'spell:fireball',
+            spellNamePt: 'Bola de Fogo',
+          }),
           create(SheetMagicItemSchema, { id: 'r' }),
         ],
       }),

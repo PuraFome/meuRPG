@@ -128,7 +128,9 @@ describe('SheetConsumables', () => {
     const out = await data.loadTargets();
     expect(client.listConsumableTargets).toHaveBeenCalledWith('camp', 'c1', 'p1');
     expect(out).toEqual({
-      targets: [{ id: 'c2', name: 'Brisa', distanceFt: 5, down: true, line: 'A 1,5\u00a0m · Caída' }],
+      targets: [
+        { id: 'c2', name: 'Brisa', distanceFt: 5, down: true, line: 'A 1,5\u00a0m · Caída' },
+      ],
       error: '',
     });
   });
@@ -155,7 +157,14 @@ describe('SheetConsumables', () => {
     const data = await open();
     const why = await data.use({ target: null, roll: { inApp: true } }, 'k1');
     expect(why).toBe('');
-    expect(client.useConsumable).toHaveBeenCalledWith('camp', 'c1', 'p1', '', { inApp: true }, 'k1');
+    expect(client.useConsumable).toHaveBeenCalledWith(
+      'camp',
+      'c1',
+      'p1',
+      '',
+      { inApp: true },
+      'k1',
+    );
     expect(reload).toHaveBeenCalled();
     expect(consumables.result()).toEqual({
       tone: 'good',
@@ -178,7 +187,13 @@ describe('SheetConsumables', () => {
     const data = await open();
     await data.use(
       {
-        target: { id: 'c2', name: 'Brisa', distanceFt: 5, down: true, line: 'A 1,5\u00a0m · Caída' },
+        target: {
+          id: 'c2',
+          name: 'Brisa',
+          distanceFt: 5,
+          down: true,
+          line: 'A 1,5\u00a0m · Caída',
+        },
         roll: { faces: [3, 2] },
       },
       'k2',
@@ -208,15 +223,15 @@ describe('SheetConsumables', () => {
     client.useConsumable.mockRejectedValue(gone(EncounterBlockedReason.ITEM_GONE));
     const data = await open();
     const why = await data.use({ target: null, roll: { inApp: true } }, 'k1');
-    expect(why).toBe('Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.');
+    expect(why).toBe(
+      'Esse item não está mais na ficha: alguém já o usou ou o tirou. Nada foi gasto.',
+    );
     expect(reload).toHaveBeenCalled();
     expect(consumables.result()).toBeNull();
   });
 
   it('says the receiver is out of reach with the sentence of the combat', async () => {
-    client.useConsumable.mockRejectedValue(
-      gone(EncounterBlockedReason.TARGET_NOT_ADJACENT),
-    );
+    client.useConsumable.mockRejectedValue(gone(EncounterBlockedReason.TARGET_NOT_ADJACENT));
     const data = await open();
     const why = await data.use(
       {
