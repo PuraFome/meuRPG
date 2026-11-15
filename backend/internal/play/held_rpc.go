@@ -393,11 +393,25 @@ func heldHintInterceptor(s *Service) connect.UnaryInterceptorFunc {
 				return res, err
 			}
 			if userID, uerr := authz.RequireSignedIn(ctx); uerr == nil {
-				s.heldRollsChangedNoSession(ctx, campaignOf(req.Any()), userID)
+				campaignID := campaignOf(req.Any())
+				s.heldRollsChangedNoSession(ctx, campaignID, userID, s.characterPlayer(ctx, campaignID, asked.GetHeldRollOffer().GetCharacterId()))
 			}
 			return res, err
 		}
 	}
+}
+
+// characterPlayer is the user who plays the character, empty for a non-player character, an unknown one or when it
+// cannot be read (the hint is only a nudge to read again).
+func (s *Service) characterPlayer(ctx context.Context, campaignID, characterID string) string {
+	if characterID == "" {
+		return ""
+	}
+	cs, err := s.roster.CombatCharacters(ctx, nil, campaignID, []string{characterID})
+	if err != nil || len(cs) != 1 {
+		return ""
+	}
+	return cs[0].PlayerUserID
 }
 
 // campaignOf is the campaign a request names.
@@ -458,6 +472,15 @@ func (env gateEnv) tellHeld(ctx context.Context, h heldRoll) error {
 		}
 		if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == h.CombatantID }); i >= 0 && cs[i].UserID != nil {
 			users = append(users, *cs[i].UserID)
+		}
+	}
+	if h.CharacterID != "" && env.roster != nil {
+		cs, err := env.roster.CombatCharacters(ctx, env.tx, h.CampaignID, []string{h.CharacterID})
+		if err != nil {
+			return fmt.Errorf("find the character of the held roll: %w", err)
+		}
+		for _, c := range cs {
+			users = append(users, c.PlayerUserID)
 		}
 	}
 	env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{Master: true}))
