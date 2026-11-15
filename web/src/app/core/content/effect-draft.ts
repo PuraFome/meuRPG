@@ -244,6 +244,8 @@ export interface MenuOption {
 }
 
 /** The menu the pickers read, from `GetEffectMenu`. */
+const NOT_SRD_PROPERTY = 'weapon-property:monk';
+
 export class EffectMenuVm {
   readonly types: readonly EffectMenuType[];
   readonly lists: ReadonlyMap<string, readonly MenuOption[]>;
@@ -305,7 +307,9 @@ export class EffectMenuVm {
 
   /** The closed list a field points at. */
   list(name: string): readonly MenuOption[] {
-    return this.lists.get(name) ?? [];
+    const all = this.lists.get(name) ?? [];
+    // `weapon-property:monk` is in the data but is not an SRD 5.1 property: no list the web shows offers it.
+    return name === 'weapon_properties' ? all.filter((v) => v.key !== NOT_SRD_PROPERTY) : all;
   }
 
   /** What a `choice` effect's `from` may hold, by the kind of choice: skills, languages, tools, an option set's options or a
