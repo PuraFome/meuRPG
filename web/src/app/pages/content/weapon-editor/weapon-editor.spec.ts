@@ -33,6 +33,7 @@ function weaponMenu(): EffectMenuVm {
         { key: P('special'), namePt: 'Especial' },
         { key: P('heavy'), namePt: 'Pesada' },
         { key: P('finesse'), namePt: 'Acuidade' },
+        { key: P('monk'), namePt: 'Monge' },
       ],
     }),
   );
@@ -184,6 +185,11 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
       'Versátil',
       'Especial',
     ]);
+  });
+
+  it('leaves the Monge property out: it is not an SRD 5.1 property (canvas H, #580 S2)', () => {
+    const { el } = setup();
+    expect(chipNames(el)).not.toContain('Monge');
   });
 
   it('labels the category and the use, and says what the category means for the attack', () => {
