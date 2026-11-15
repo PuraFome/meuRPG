@@ -3,6 +3,9 @@ package leaktest
 import (
 	"testing"
 
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
@@ -27,6 +30,40 @@ func (w *world) onTorenTurnAsWizard() {
 		CampaignId: w.campaign, CharacterId: w.toren.GetId(), Revision: w.toren.GetRevision(), Name: w.toren.GetName(), Sheet: sheet,
 	})))
 	w.onTurnOf(w.combatant(w.toren).GetId())
+}
+
+// waitRead is what a person who does not answer a window reads of the open windows: the windows themselves (none) and
+// the wait line.
+type waitRead struct {
+	windows []*playv1.ReactionWindow
+	wait    *playv1.ReactionWait
+}
+
+// waitReadOf reads the combat as p and keeps what it says of the open windows.
+func (w *world) waitReadOf(p *person) waitRead {
+	w.t.Helper()
+	e := p.currentEncounter(w)
+	return waitRead{windows: e.GetReactionWindows(), wait: e.GetReactionWait()}
+}
+
+// sameWaitAs fails unless p, who does not answer the READIED window, reads of it the same as before: no window, and the
+// wait line equal to the one read before the reactor's player marked the window. It also fails when any of p's reads,
+// or the TV's answer, holds a `rolling` field: the mark is the master's and the reactor's player's alone.
+func (w *world) sameWaitAs(t *testing.T, when string, p *person, before waitRead, title string, tv *playv1.GetTableScreenResponse) {
+	t.Helper()
+	now := w.waitReadOf(p)
+	if len(now.windows) != 0 || now.wait.GetTitlePt() != title || len(before.windows) != 0 {
+		t.Errorf("%s: %s reads the windows %v and the wait %q, want no window and %q", when, p.name, now.windows, now.wait.GetTitlePt(), title)
+	}
+	if !proto.Equal(now.wait, before.wait) {
+		t.Errorf("%s: %s reads the wait %v, want the one read before the mark, %v", when, p.name, now.wait, before.wait)
+	}
+	if w.readsHold(p, `"rolling"`) {
+		t.Errorf("%s: %s reads a `rolling` field of the window", when, p.name)
+	}
+	if body, err := protojson.Marshal(tv); err != nil || contains(body, `"rolling"`) {
+		t.Errorf("%s: the TV's answer holds a `rolling` field (marshal error %v)", when, err)
+	}
 }
 
 // readsHoldAll fails unless the person's reads hold every needle: the positive control.

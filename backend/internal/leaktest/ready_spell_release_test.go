@@ -49,8 +49,9 @@ func TestTheTargetsOfAHeldSpellAreTheOwnersAndTheMasters(t *testing.T) {
 
 // The READIED window of a held spell, marked as being rolled while its player is on the map (#857): the held spell, its
 // level and the mark are the readier's player's and the master's. Ana and the TV read the wait ("Esperando a reação de
-// Toren") and nothing of the spell, before the mark and after it is taken off; her own mark is refused as the mark of a
-// window that does not exist. The master's and Caio's reads are the positive controls.
+// Toren") and nothing of the spell; Ana's wait line is the same after the mark as before it, and no read of hers or of
+// the TV's holds `rolling`; her own mark is refused as the mark of a window that does not exist. The master's and Caio's
+// reads are the positive controls.
 func TestTheMarkedWindowOfAHeldSpellIsTheOwnersAndTheMasters(t *testing.T) {
 	w := newWorld(t)
 	w.onTorenTurnAsWizard()
@@ -70,11 +71,12 @@ func TestTheMarkedWindowOfAHeldSpellIsTheOwnersAndTheMasters(t *testing.T) {
 	}
 	id := windows[0].GetId()
 	w.secrets.add(&canary{needle: id, kind: "readied-spell-marked-window-id", readers: names([]*person{w.caio})})
-	mark := func(p *person, windowID string, clear bool) reply {
+	mark := func(p *person, windowID string) reply {
 		return p.call(playv1connect.CombatServiceMarkReactionRollingProcedure, &playv1.MarkReactionRollingRequest{
-			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: windowID, Clear: clear,
+			CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: windowID,
 		})
 	}
+	anaBefore := w.waitReadOf(w.ana)
 	readsOf := func(when string, rolling bool) {
 		t.Helper()
 		for _, p := range []*person{w.master, w.caio} {
@@ -83,27 +85,24 @@ func TestTheMarkedWindowOfAHeldSpellIsTheOwnersAndTheMasters(t *testing.T) {
 				t.Errorf("%s: %s reads rolling %v, want %v", when, p.name, got, rolling)
 			}
 		}
-		ana := w.ana.currentEncounter(w)
-		if len(ana.GetReactionWindows()) != 0 || ana.GetReactionWait().GetTitlePt() != "Esperando a reação de Toren" {
-			t.Errorf("%s: Ana reads the windows %v and the wait %q", when, ana.GetReactionWindows(), ana.GetReactionWait().GetTitlePt())
-		}
 		w.inspectPlayers(t, w.ana, w.pending)
-		w.readScreen(t, when, w.tvReader(), nil)
+		tv := w.readScreen(t, when, w.tvReader(), nil)
+		w.sameWaitAs(t, when, w.ana, anaBefore, "Esperando a reação de Toren", tv)
 	}
 	readsOf("before the mark", false)
-	if r := mark(w.caio, id, false); !r.ok() {
+	if r := mark(w.caio, id); !r.ok() {
 		t.Fatalf("Caio's mark = %d %s", r.status, r.body)
 	}
 	readsOf("while Toren's player is marked as rolling", true)
-	got, unknown := mark(w.ana, id, false), mark(w.ana, newKey(), false)
+	got, unknown := mark(w.ana, id), mark(w.ana, newKey())
 	if got.ok() || got.status != unknown.status || normalizeRead(string(got.body)) != normalizeRead(string(unknown.body)) {
 		t.Errorf("Ana's mark of Toren's window = %d %s, of no window = %d %s", got.status, got.body, unknown.status, unknown.body)
 	}
 	for _, f := range w.inspect(w.ana, got, nil) {
 		t.Errorf("Ana's refused mark: %s", f)
 	}
-	if r := mark(w.caio, id, true); !r.ok() {
-		t.Fatalf("Caio's clear = %d %s", r.status, r.body)
+	if r := mark(w.caio, id); !r.ok() {
+		t.Fatalf("Caio's second mark = %d %s", r.status, r.body)
 	}
-	readsOf("after the mark is taken off", false)
+	readsOf("after the mark is set again", true)
 }

@@ -27159,12 +27159,10 @@ func (*AnswerReactionRequest_Typed) isAnswerReactionRequest_Roll() {}
 
 // MarkReactionRollingRequest marks a window as being rolled.
 type MarkReactionRollingRequest struct {
-	state       protoimpl.MessageState `protogen:"open.v1"`
-	CampaignId  string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
-	EncounterId string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
-	WindowId    string                 `protobuf:"bytes,3,opt,name=window_id,json=windowId,proto3" json:"window_id,omitempty"`
-	// Takes the mark off: the player came back without using the reaction.
-	Clear         bool `protobuf:"varint,4,opt,name=clear,proto3" json:"clear,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CampaignId    string                 `protobuf:"bytes,1,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	EncounterId   string                 `protobuf:"bytes,2,opt,name=encounter_id,json=encounterId,proto3" json:"encounter_id,omitempty"`
+	WindowId      string                 `protobuf:"bytes,3,opt,name=window_id,json=windowId,proto3" json:"window_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -27218,13 +27216,6 @@ func (x *MarkReactionRollingRequest) GetWindowId() string {
 		return x.WindowId
 	}
 	return ""
-}
-
-func (x *MarkReactionRollingRequest) GetClear() bool {
-	if x != nil {
-		return x.Clear
-	}
-	return false
 }
 
 type MarkReactionRollingResponse struct {
@@ -31769,13 +31760,12 @@ const file_meurpg_play_v1_combat_proto_rawDesc = "" +
 	"\fmaneuver_key\x18\v \x01(\tR\vmaneuverKey\x125\n" +
 	"\atargets\x18\x0e \x03(\v2\x1b.meurpg.play.v1.SpellTargetR\atargets\x123\n" +
 	"\x06origin\x18\x0f \x01(\v2\x1b.meurpg.play.v1.SpellOriginR\x06originB\x06\n" +
-	"\x04roll\"\x93\x01\n" +
+	"\x04roll\"}\n" +
 	"\x1aMarkReactionRollingRequest\x12\x1f\n" +
 	"\vcampaign_id\x18\x01 \x01(\tR\n" +
 	"campaignId\x12!\n" +
 	"\fencounter_id\x18\x02 \x01(\tR\vencounterId\x12\x1b\n" +
-	"\twindow_id\x18\x03 \x01(\tR\bwindowId\x12\x14\n" +
-	"\x05clear\x18\x04 \x01(\bR\x05clear\"V\n" +
+	"\twindow_id\x18\x03 \x01(\tR\bwindowId\"V\n" +
 	"\x1bMarkReactionRollingResponse\x127\n" +
 	"\tencounter\x18\x01 \x01(\v2\x19.meurpg.play.v1.EncounterR\tencounter\"\xd0\x01\n" +
 	"\x16AnswerReactionResponse\x127\n" +

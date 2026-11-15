@@ -233,8 +233,8 @@ func TestAPassedReadiedMoveWindowLeavesNoMoveToMake(t *testing.T) {
 	}
 }
 
-// The reactor's mark of being on the map touches nothing of the move: with the mark on, taken off or put on again the window
-// stays open and the row waits; the move works under the mark and closes the window with it.
+// The reactor's mark of being on the map touches nothing of the move: with the mark on the window stays open and the row
+// waits; the move works under the mark and closes the window with it.
 func TestTheRollingMarkLeavesAReadiedMoveAsItWas(t *testing.T) {
 	t.Parallel()
 	a := newArmed(t)
@@ -245,20 +245,13 @@ func TestTheRollingMarkLeavesAReadiedMoveAsItWas(t *testing.T) {
 		t.Fatalf("marking the window: error = %v, rolling %v", err, rolling())
 	}
 	a.untouched(t, e, "the mark")
-	if err := a.clearRolling(t, a.caio, e, w.GetId()); err != nil || rolling() {
-		t.Fatalf("clearing the mark: error = %v, rolling %v", err, rolling())
-	}
-	a.untouched(t, e, "the mark taken off")
-	if err := a.markRolling(t, a.caio, e, w.GetId()); err != nil || !rolling() {
-		t.Fatalf("marking again: error = %v, rolling %v", err, rolling())
-	}
 	if _, err := a.frozenMove(t, a.caio, "Toren", 3, 5); err != nil {
 		t.Fatalf("the readied move under the mark: %v", err)
 	}
 	if a.readiedStatus(t, "Toren") != readiedFired || a.readiedOpen(t, "Toren") || !byLabel(t, a.get(t, a.master), "Toren").GetReactionUsed() {
 		t.Errorf("after the move under the mark: row %q, window open %v", a.readiedStatus(t, "Toren"), a.readiedOpen(t, "Toren"))
 	}
-	wantCode(t, "taking the mark off an answered window", a.clearRolling(t, a.caio, e, w.GetId()), connect.CodeFailedPrecondition)
+	wantCode(t, "marking an answered window", a.markRolling(t, a.caio, e, w.GetId()), connect.CodeFailedPrecondition)
 }
 
 // A move to the square the readier stands on travels nothing: the player's is refused as any walk to the same square is, and

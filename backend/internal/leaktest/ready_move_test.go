@@ -9,7 +9,8 @@ import (
 
 // A readied move and its release (RN-10, #856): while the READIED window of the move is open and its player is on the map
 // (marked as rolling), the trigger, the held move and the window are the readier's player's and the master's; Ana and the TV
-// read the wait and nothing of it. The move itself is a move like any other: once made, the window is gone, the token is
+// read the wait and nothing of it: the wait is the same before the mark and after it, and no read of theirs holds `rolling`.
+// The move itself is a move like any other: once made, the window is gone, the token is
 // where it went, and Ana reads the fired line with the actor alone. The master's and Caio's reads are the positive controls.
 
 // movedLinesOf counts the moved lines of a person's log whose actor is id.
@@ -44,6 +45,7 @@ func TestAReadiedMovesWindowAndReleaseAreTheOwnersAndTheMasters(t *testing.T) {
 	}
 	id := windows[0].GetId()
 	w.secrets.add(&canary{needle: id, kind: "readied-move-window-id", readers: names([]*person{w.caio})})
+	anaBefore := w.waitReadOf(w.ana)
 	if r := w.caio.call(playv1connect.CombatServiceMarkReactionRollingProcedure, &playv1.MarkReactionRollingRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), WindowId: id}); !r.ok() {
 		t.Fatalf("Caio's mark = %d %s", r.status, r.body)
 	}
@@ -54,12 +56,9 @@ func TestAReadiedMovesWindowAndReleaseAreTheOwnersAndTheMasters(t *testing.T) {
 			t.Errorf("%s reads the window %v, want it marked as rolling", p.name, got)
 		}
 	}
-	ana := w.ana.currentEncounter(w)
-	if len(ana.GetReactionWindows()) != 0 || ana.GetReactionWait().GetTitlePt() != "Esperando a reação de Toren" {
-		t.Errorf("Ana reads the windows %v and the wait %q", ana.GetReactionWindows(), ana.GetReactionWait().GetTitlePt())
-	}
 	w.inspectPlayers(t, w.ana, w.pending)
-	w.readScreen(t, "while Toren's READIED move window is marked", w.tvReader(), nil)
+	tv := w.readScreen(t, "while Toren's READIED move window is marked", w.tvReader(), nil)
+	w.sameWaitAs(t, "while Toren's READIED move window is marked", w.ana, anaBefore, "Esperando a reação de Toren", tv)
 
 	from := w.combatant(w.toren)
 	moved := w.caio.call(playv1connect.CombatServiceMoveCombatantProcedure, &playv1.MoveCombatantRequest{
