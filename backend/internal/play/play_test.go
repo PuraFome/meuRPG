@@ -963,6 +963,7 @@ func TestEveryMethodNeedsASession(t *testing.T) {
 	_, combat["SetCombatantSide"] = cc.SetCombatantSide(ctx, connect.NewRequest(&playv1.SetCombatantSideRequest{CampaignId: id}))
 	_, combat["MountCombatant"] = cc.MountCombatant(ctx, connect.NewRequest(&playv1.MountCombatantRequest{CampaignId: id}))
 	_, combat["DismountCombatant"] = cc.DismountCombatant(ctx, connect.NewRequest(&playv1.DismountCombatantRequest{CampaignId: id}))
+	_, combat["RollMountSave"] = cc.RollMountSave(ctx, connect.NewRequest(&playv1.RollMountSaveRequest{CampaignId: id}))
 	_, combat["SetCombatantMount"] = cc.SetCombatantMount(ctx, connect.NewRequest(&playv1.SetCombatantMountRequest{CampaignId: id}))
 	_, combat["SetCombatantCover"] = cc.SetCombatantCover(ctx, connect.NewRequest(&playv1.SetCombatantCoverRequest{CampaignId: id}))
 	_, combat["SetMonsterReactionMode"] = cc.SetMonsterReactionMode(ctx, connect.NewRequest(&playv1.SetMonsterReactionModeRequest{CampaignId: id}))

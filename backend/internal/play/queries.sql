@@ -1619,6 +1619,11 @@ RETURNING *;
 UPDATE reaction_windows SET step = $2, trigger = $3 WHERE id = $1 AND status = 'open'
 RETURNING *;
 
+-- name: SetReactionWindowTrigger :one
+-- The trigger of an open window changes and nothing else does: a second push of the mount a rider's save is asked for.
+UPDATE reaction_windows SET trigger = $2 WHERE id = $1 AND status = 'open'
+RETURNING *;
+
 -- name: DeleteReactionWindowsOfEncounter :exec
 DELETE FROM reaction_windows WHERE encounter_id = $1;
 
@@ -2229,3 +2234,7 @@ DELETE FROM character_favor WHERE character_id = $1 AND campaign_id = $2 RETURNI
 -- name: HasCharacterFavor :one
 -- Says the character has the Inspiration, without taking it: a roll a reaction window holds is checked against it, and the replay spends it.
 SELECT EXISTS (SELECT 1 FROM character_favor WHERE character_id = $1 AND campaign_id = $2);
+
+-- name: EncounterHasRiders :one
+-- Whether any combatant of the combat sits on a mount: the cheap check before the scans that look for a mount's rider.
+SELECT EXISTS (SELECT 1 FROM combatants WHERE encounter_id = $1 AND mounted_on_id IS NOT NULL);

@@ -1996,6 +1996,18 @@ func (q *Queries) DeleteStatesOfCombatant(ctx context.Context, arg DeleteStatesO
 	return items, nil
 }
 
+const encounterHasRiders = `-- name: EncounterHasRiders :one
+SELECT EXISTS (SELECT 1 FROM combatants WHERE encounter_id = $1 AND mounted_on_id IS NOT NULL)
+`
+
+// Whether any combatant of the combat sits on a mount: the cheap check before the scans that look for a mount's rider.
+func (q *Queries) EncounterHasRiders(ctx context.Context, encounterID string) (bool, error) {
+	row := q.db.QueryRow(ctx, encounterHasRiders, encounterID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const endCombatantTurnPart = `-- name: EndCombatantTurnPart :exec
 UPDATE combatants
 SET turn_state = 'ended'
@@ -11239,6 +11251,40 @@ type SetReactionWindowStepParams struct {
 // the new trigger.
 func (q *Queries) SetReactionWindowStep(ctx context.Context, arg SetReactionWindowStepParams) (ReactionWindow, error) {
 	row := q.db.QueryRow(ctx, setReactionWindowStep, arg.ID, arg.Step, arg.Trigger)
+	var i ReactionWindow
+	err := row.Scan(
+		&i.ID,
+		&i.EncounterID,
+		&i.Seq,
+		&i.GroupID,
+		&i.Kind,
+		&i.Status,
+		&i.ClosedReason,
+		&i.ReactorID,
+		&i.PendingDamageID,
+		&i.HoldID,
+		&i.Step,
+		&i.Trigger,
+		&i.Outcome,
+		&i.CreatedAt,
+		&i.AnsweredAt,
+	)
+	return i, err
+}
+
+const setReactionWindowTrigger = `-- name: SetReactionWindowTrigger :one
+UPDATE reaction_windows SET trigger = $2 WHERE id = $1 AND status = 'open'
+RETURNING id, encounter_id, seq, group_id, kind, status, closed_reason, reactor_id, pending_damage_id, hold_id, step, trigger, outcome, created_at, answered_at
+`
+
+type SetReactionWindowTriggerParams struct {
+	ID      string
+	Trigger []byte
+}
+
+// The trigger of an open window changes and nothing else does: a second push of the mount a rider's save is asked for.
+func (q *Queries) SetReactionWindowTrigger(ctx context.Context, arg SetReactionWindowTriggerParams) (ReactionWindow, error) {
+	row := q.db.QueryRow(ctx, setReactionWindowTrigger, arg.ID, arg.Trigger)
 	var i ReactionWindow
 	err := row.Scan(
 		&i.ID,

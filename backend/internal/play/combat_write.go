@@ -82,6 +82,10 @@ const (
 	eventMountKindSet        = "mount_kind_set"
 	eventCombatantMounted    = "combatant_mounted"
 	eventCombatantDismounted = "combatant_dismounted"
+	// A rider's saving throw to stay on its mount was rolled (RollMountSave, combat_mount_save.go): the answer of the window, a closing
+	// event; and the rider fell off, written just before it (the fall's own line).
+	eventMountSaveRolled = "mount_save_rolled"
+	eventRiderThrown     = "rider_thrown"
 )
 
 // The kinds of the XP awards (package progression writes them
@@ -267,7 +271,9 @@ type combatTx struct {
 	// change answered, for the sentence of the windows it closed; tellIDs are the
 	// combatants whose character vitals a replayed action changed.
 	reactionNotes []reactionNote
-	replay        *replayState
+	// landed are the riders a dismount or a fall of a window took off their mounts, told to the streams and the fog after the commit.
+	landed []riderLanded
+	replay *replayState
 	// pushed are the forced moves a replayed held action made, published after the commit of the answer that released it.
 	pushed       []*forcedMove
 	lastAnswered reaction.Kind
@@ -463,6 +469,14 @@ func (s *Service) tellChange(h *hints, campaignID string, c *combatTx) {
 		mapID := conv.OrZero(c.enc.MapID)
 		h.after(func(ctx context.Context, _ func(string, live.Event)) { s.maps.VisionChanged(ctx, campaignID, mapID) })
 	}
+	if landed, enc := c.landed, c.enc; len(landed) > 0 {
+		h.after(func(ctx context.Context, _ func(string, live.Event)) {
+			for _, l := range landed {
+				s.publishCombatantMoved(ctx, campaignID, enc, l.rider, l.from)
+				s.positionChanged(ctx, campaignID, enc, l.rider, l.from)
+			}
+		})
+	}
 	if notes, tellIDs, encID := c.reactionNotes, c.tellIDs, c.enc.ID; len(notes) > 0 || len(tellIDs) > 0 {
 		h.after(func(ctx context.Context, say func(string, live.Event)) {
 			s.tellReactions(ctx, say, campaignID, encID, notes, tellIDs)
@@ -599,6 +613,10 @@ func (s *Service) settleChange(ctx context.Context, c *combatTx) error {
 	// A change to a combatant's hit points may defeat a creature or give one back
 	// (MR-037): the creatures follow.
 	if err := s.syncCreatures(ctx, c); err != nil {
+		return err
+	}
+	// A mount at 0 hit points under its rider asks the rider for its dismount.
+	if err := s.openDefeatedMounts(ctx, c); err != nil {
 		return err
 	}
 	// The offers nobody can answer any more stop holding the mover's turn.

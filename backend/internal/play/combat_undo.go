@@ -134,6 +134,7 @@ var chainRules = []func(c chainEvent) chainVerdict{
 	chainHeldFall,
 	chainRevive,
 	chainHideDecision,
+	chainForcedFall,
 	chainAction,
 }
 
@@ -338,6 +339,31 @@ func chainRevive(c chainEvent) chainVerdict {
 func chainHideDecision(c chainEvent) chainVerdict {
 	if c.row.Kind == eventHideResolved && !undoableHideResolved(c.row.Payload) {
 		return chainClose
+	}
+	return chainGoOn
+}
+
+// chainForcedFall: an action whose change threw a rider at 0 hit points off its mount (the fall is written before the action's own
+// event, with no window: openMountSave) is no action an undo can take back, as the push whose save was answered is not. The change's own
+// events are the ones between the action's and the previous action's: the walk reads them all.
+func chainForcedFall(c chainEvent) chainVerdict {
+	if !slices.Contains(undoableKinds, c.row.Kind) {
+		return chainGoOn
+	}
+	i := slices.IndexFunc(c.recent, func(e playdb.ListRecentSessionEventsRow) bool { return e.ID == c.row.ID })
+	if i < 0 {
+		return chainGoOn
+	}
+	for _, e := range c.recent[i+1:] {
+		if slices.Contains(undoableKinds, e.Kind) {
+			break // the previous action's event: what is older is not this change's
+		}
+		if e.Kind != eventRiderThrown {
+			continue
+		}
+		if ev, err := readEvent(e.Payload); err == nil && ev.Reaction != nil && ev.Reaction.Window == "" {
+			return chainClose
+		}
 	}
 	return chainGoOn
 }
