@@ -894,6 +894,10 @@ type rollPartsInput struct {
 	cover    map[string]*typeGroup // by part key: the group a typed damage type covers
 	target   link.Traits           // the target's traits: its creature type
 	selectOK func(part partRecord, mark *playv1.SelectedExtra) error
+	// awaited is the damage type a damage that waits for a group's sum rolls again (combat_group_sum.go), kept the rolls
+	// the other damage types made, as they were: the parts are the ones the first roll left, with no choice to make.
+	awaited string
+	kept    []partRoll
 }
 
 // rollParts rolls the damage of a hit by parts. The extras marked are checked by
@@ -901,7 +905,7 @@ type rollPartsInput struct {
 // every die; with physical dice the player typed one sum for each group of dice.
 func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 	out := partsRoll{byType: map[string]int{}, physical: !r.in.inApp}
-	final, err := r.markedParts()
+	final, err := r.finalParts()
 	if err != nil {
 		return partsRoll{}, err
 	}
@@ -911,13 +915,15 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 			return partsRoll{}, err
 		}
 	}
-	diceParts := 0
+	diceParts := r.diceParts(final)
 	for _, sp := range final {
-		if r.counts(sp) && sp.Count > 0 && sp.Sides > 0 {
-			diceParts++
+		if kept, ok, err := r.keptRoll(sp); err != nil {
+			return partsRoll{}, err
+		} else if ok {
+			out.rolls = append(out.rolls, kept)
+			out.parts = append(out.parts, sp)
+			continue
 		}
-	}
-	for _, sp := range final {
 		if !r.counts(sp) {
 			continue
 		}
@@ -930,6 +936,52 @@ func (s *Service) rollParts(r rollPartsInput) (partsRoll, error) {
 	}
 	out.sumUp()
 	return out, nil
+}
+
+// diceParts counts the parts whose dice the roll makes now.
+func (r rollPartsInput) diceParts(final []partRecord) int {
+	n := 0
+	for _, sp := range final {
+		if r.rolledNow(sp) && sp.Count > 0 && sp.Sides > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// finalParts are the parts the roll goes by: with the player's marks applied, or, for the roll of a group's sum, as the first
+// roll left them.
+func (r rollPartsInput) finalParts() ([]partRecord, error) {
+	if r.awaited != "" {
+		return slices.Clone(r.parts), nil
+	}
+	return r.markedParts()
+}
+
+// rolledNow says the roll of a damage now makes the part's dice: every part that counts, and, for the roll of a group's
+// sum, the parts of the damage type awaited alone.
+func (r rollPartsInput) rolledNow(sp partRecord) bool {
+	return r.counts(sp) && (r.awaited == "" || sp.DamageType == r.awaited)
+}
+
+// keptRoll is what the part rolled the first time, when this roll of a group's sum keeps it: a part of another damage type,
+// and the part the master took out, which a line of the log shows as out (ok is false when the roll makes it now).
+func (r rollPartsInput) keptRoll(sp partRecord) (partRoll, bool, error) {
+	if r.awaited == "" {
+		return partRoll{}, false, nil
+	}
+	i := slices.IndexFunc(r.kept, func(x partRoll) bool { return x.Key == sp.Key && x.Effect == sp.Effect })
+	switch {
+	case i >= 0 && sp.DamageType != r.awaited:
+		return r.kept[i], true, nil
+	case sp.Removed && sp.DamageType == r.awaited:
+		return partRoll{
+			Key: sp.Key, Label: sp.Label, DamageType: sp.DamageType, Effect: sp.Effect, Hide: sp.Hide, Physical: !r.in.inApp,
+		}, true, nil
+	case r.counts(sp) && sp.DamageType != r.awaited:
+		return partRoll{}, false, fmt.Errorf("the roll of %s was not kept", sp.Key)
+	}
+	return partRoll{}, false, nil
 }
 
 // markedParts applies the player's marks to the choosable extras: the ones marked are
@@ -1744,14 +1796,19 @@ func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID 
 	if err != nil {
 		return nil, err
 	}
-	parts, err := s.liveHitParts(ctx, c, p, readParts(p.Parts))
-	if err != nil {
-		return nil, err
+	input := rollPartsInput{p: p, parts: readParts(p.Parts), rule: ruleOfPending(p), choice: choice, in: in, typed: typed, target: tsheet.Traits}
+	if p.Status == pendingAwaitingGroupSum {
+		if input.typed, err = groupSumTyped(input.parts, p.AwaitedDamageTypeKey, in, typed); err != nil {
+			return nil, err
+		}
+		input.awaited, input.kept = p.AwaitedDamageTypeKey, readPartRolls(p.PartRolls)
+	} else {
+		if input.parts, err = s.liveHitParts(ctx, c, p, input.parts); err != nil {
+			return nil, err
+		}
+		input.selectOK = s.selectionChecker(ctx, c, campaignID, attacker)
 	}
-	out, err := s.rollParts(rollPartsInput{
-		p: p, parts: parts, rule: ruleOfPending(p), choice: choice, in: in, typed: typed, target: tsheet.Traits,
-		selectOK: s.selectionChecker(ctx, c, campaignID, attacker),
-	})
+	out, err := s.rollParts(input)
 	if err != nil {
 		return nil, err
 	}
@@ -1760,8 +1817,9 @@ func (s *Service) rollPendingParts(ctx context.Context, c *combatTx, campaignID 
 
 // settleParts does what a roll with parts leaves besides the damage: the slot a Divine
 // Smite spent, the once-per-turn marks of Sneak Attack and Colossus Slayer, and the
-// parts for the event (the log, the undo).
-func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.Combatant, pr *partsRoll, ev *actionEvent) (*playv1.CharacterVitals, error) {
+// parts for the event (the log, the undo). paid says the costs of the parts were paid by an earlier roll (the roll of a group's
+// sum, after a take-out): nothing is spent again.
+func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.Combatant, pr *partsRoll, ev *actionEvent, paid bool) (*playv1.CharacterVitals, error) {
 	ev.Parts = pr.rolls
 	var vit *playv1.CharacterVitals
 	once := onceTurn{now: stateNowOf(c.enc), state: readFeatureState(attacker.FeatureState), before: map[string]*featureEntry{}}
@@ -1769,12 +1827,14 @@ func (s *Service) settleParts(ctx context.Context, c *combatTx, attacker playdb.
 		if !r.Counted && !r.Conditional {
 			continue
 		}
-		v, spent, err := s.spendForPart(ctx, c, attacker, pr.parts[i], r.Key, ev)
-		if err != nil {
-			return nil, err
-		}
-		if spent {
-			vit = v
+		if !paid { // the roll of a group's sum spends nothing: the first roll paid for the parts, and the take-out kept it paid
+			v, spent, err := s.spendForPart(ctx, c, attacker, pr.parts[i], r.Key, ev)
+			if err != nil {
+				return nil, err
+			}
+			if spent {
+				vit = v
+			}
 		}
 		// A table's extra that spends a use is once per turn too: the mark does not wait for a part that spends nothing.
 		once.mark(r.Key)

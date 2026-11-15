@@ -185,6 +185,11 @@ describe('pendingRollOf', () => {
     expect(pendingRollOf(opts, 'x')).toBeNull();
     expect(pendingRollOf(null, 't')).toBeNull();
   });
+
+  it('skips the applied damage the master’s options list for a take-out', () => {
+    const opts = turnWith({ pendingDamages: [pending('p1', 't', PendingDamageStatus.APPLIED)] });
+    expect(pendingRollOf(opts, 't')).toBeNull();
+  });
 });
 
 describe('the combat log reads', () => {

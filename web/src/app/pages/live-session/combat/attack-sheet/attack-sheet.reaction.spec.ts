@@ -312,6 +312,24 @@ describe('AttackSheet: the hit that waited for Escudo follows the server (R2-07)
     expect(text).toContain('Sem dano: o ataque errou.');
   });
 
+  it("stays a miss when the options list the damage as applied: it is the master's list for a take-out, no damage to roll", async () => {
+    let answered = false;
+    const { fixture, el, state, enc } = await mountWaiting(() => ({
+      pendingDamages: [
+        {
+          id: 'p1',
+          status: answered ? PendingDamageStatus.APPLIED : PendingDamageStatus.AWAITING_REACTION,
+        },
+      ],
+    }));
+    answered = true;
+    state.apply(encounter({ ...enc, revision: 2 } as never));
+    fixture.detectChanges();
+    await nextTurn();
+    fixture.detectChanges();
+    expect(plain(el.textContent)).toContain('Errou');
+  });
+
   it('goes on to the damage when the reaction let the hit through', async () => {
     let answered = false;
     const { fixture, el, state, enc } = await mountWaiting(() => ({

@@ -14,7 +14,12 @@ import type {
   PowerAttackOption,
   RollDie,
 } from '../../../../../gen/meurpg/rules/v1/rules_pb';
-import { awaitsReaction, stageAfterRoll, stageOfAnswer } from '../../../../core/combat/attack-flow';
+import {
+  awaitsReaction,
+  openPendingDamages,
+  stageAfterRoll,
+  stageOfAnswer,
+} from '../../../../core/combat/attack-flow';
 import type { CombatClient } from '../../../../core/combat/combat-client';
 import { attackResult } from '../../../../core/combat/combat-client-wire';
 import type {
@@ -279,7 +284,7 @@ export class AttackRolls {
         s.data.encounterId,
         s.data.attackerId,
       );
-      const now = res.pendingDamages.find((p) => p.id === waiting.id);
+      const now = openPendingDamages(res.pendingDamages).find((p) => p.id === waiting.id);
       if (s.pending()?.id !== waiting.id || awaitsReaction(now)) {
         return;
       }
