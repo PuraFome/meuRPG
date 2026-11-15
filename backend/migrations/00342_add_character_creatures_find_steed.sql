@@ -8,8 +8,6 @@
 ALTER TABLE character_creatures
     ADD COLUMN IF NOT EXISTS creature_type TEXT NOT NULL DEFAULT '',
     ADD COLUMN IF NOT EXISTS bonded BOOLEAN NOT NULL DEFAULT false,
-    DROP CONSTRAINT IF EXISTS character_creatures_creature_type_valid,
-    ADD CONSTRAINT character_creatures_creature_type_valid CHECK (creature_type IN ('', 'celestial', 'fey', 'fiend')),
     DROP CONSTRAINT IF EXISTS character_creatures_source_valid,
     ADD CONSTRAINT character_creatures_source_valid CHECK (source IN ('familiar', 'animate_dead', 'conjure_animals', 'master', 'table', 'find_steed')),
     DROP CONSTRAINT IF EXISTS character_creatures_dismissed_valid,
@@ -17,6 +15,11 @@ ALTER TABLE character_creatures
         (dismissed_at IS NULL) = (dismissed_reason IS NULL)
         AND (dismissed_reason IS NULL OR dismissed_reason IN ('owner', 'master', 'defeated', 'concentration', 'replaced', 'undone', 'disappeared', 'dismissed'))
     );
+
+-- A statement of its own, after the two above, so that a second run drops and adds the constraints in the order of the first.
+ALTER TABLE character_creatures
+    DROP CONSTRAINT IF EXISTS character_creatures_creature_type_valid,
+    ADD CONSTRAINT character_creatures_creature_type_valid CHECK (creature_type IN ('', 'celestial', 'fey', 'fiend'));
 
 CREATE UNIQUE INDEX IF NOT EXISTS character_creatures_one_bonded_idx ON character_creatures (character_id) WHERE bonded;
 
