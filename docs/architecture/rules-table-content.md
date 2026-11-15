@@ -728,7 +728,7 @@ Its fields are the modifier's own:
 | `die` | The die: d4, d6, d8, d10 or d12 | `die`: any other number |
 | `dice` | The dice at the spell's own slot level, 1 to 10 | `dice`: out of range |
 | `per_slot_dice` | The dice added for each slot level above the spell's own, 0 to 5 | `per_slot_dice`: out of range |
-| `max_dice` | The most dice there are at any slot; required, from `dice` to 20 | `max_dice`: unset, below `dice` or above 20 |
+| `max_dice` | The most dice there are at any slot, from `dice` to 20; 0 is no limit | `max_dice`: below `dice` or above 20, or negative |
 | `damage_type` | An SRD damage type key; unset is the weapon's | `damage_type`: not an SRD damage type |
 | `save` | The ability (`str` to `cha`) of the target's saving throw against the hit | `save`: not an ability |
 | `on_fail_conditions` | SRD condition keys a failed save gives, each once, 1 to 8 | `on_fail_conditions`: a save with none, a list without a `save`, more than 8, an unknown or repeated key (at `[i]`) |

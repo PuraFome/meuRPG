@@ -6493,19 +6493,18 @@ async function scanNextHit(browser: Browser, colorScheme: 'light' | 'dark', widt
       await expect(fresh.getByText('Uma magia instantânea não guarda efeito para o golpe.')).toBeVisible();
       await expectScreenPasses(m, `Editor de magia, o efeito no próximo golpe que a magia instantânea não guarda ${where}`);
 
-      // A cap left empty and dice at 0: the form says the cap, the server refuses the dice, each at its field.
+      // Dice at 0, extra dice at 7 and a cap of 30: the form refuses all three at once, each at its field.
       await open(m, entryRoute(campaignId, fist));
       await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
       await block.getByLabel('Dados', { exact: true }).fill('0');
-      await block.getByLabel('No máximo').fill('');
+      await block.getByLabel('A mais por nível').fill('7');
+      await block.getByLabel('No máximo').fill('30');
       await m.getByRole('button', { name: 'Salvar magia' }).click();
       await expect(block.getByLabel('No máximo')).toHaveAttribute('aria-invalid', 'true');
-      await expectScreenPasses(m, `Editor de magia, o máximo de dados que falta ${where}`);
-      await block.getByLabel('No máximo').fill('5');
-      await m.getByRole('button', { name: 'Salvar magia' }).click();
       await expect(block.getByLabel('Dados', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+      await expect(block.getByLabel('A mais por nível')).toHaveAttribute('aria-invalid', 'true');
       await expect(block.getByLabel('Dados', { exact: true }).locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
-      await expectScreenPasses(m, `Editor de magia, a recusa dos dados no campo ${where}`);
+      await expectScreenPasses(m, `Editor de magia, as recusas dos números no campo ${where}`);
     }
 
     await open(p, entryRoute(campaignId, fist));

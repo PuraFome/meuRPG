@@ -119,32 +119,37 @@ test('a recusa do efeito no próximo golpe volta no campo, e a magia só salva d
     const block = m.locator('app-hit-effect-block');
     await expect(m.getByLabel('Nome', { exact: true })).toHaveValue('Geada no Punho');
 
-    // The cap is the form's own refusal: it never reaches the server.
-    await block.getByLabel('No máximo').fill('');
-    await m.getByRole('button', { name: 'Salvar magia' }).click();
-    await expect(block.getByLabel('No máximo')).toHaveAttribute('aria-invalid', 'true');
-    await expect(block.getByText('Diga o máximo de dados, de 1 a 20.')).toBeVisible();
+    // An empty cap is no limit: the spell saves with it, and the field says so.
+    await expect(block.getByText('1 a 20; vazio: sem limite')).toBeVisible();
 
-    // Dice at 0 go to the server, which refuses them at their own field; what was typed stays.
-    await block.getByLabel('No máximo').fill('5');
-    await block.getByLabel('Dados', { exact: true }).fill('0');
-    await m.getByRole('button', { name: 'Salvar magia' }).click();
+    // Every number out of its range is the form's own refusal, all at once, at its field; none of them reaches the server, and what was typed stays.
     const dice = block.getByLabel('Dados', { exact: true });
+    const fieldNote = (label: string, note: string) => block.getByLabel(label, { exact: true }).locator('xpath=ancestor::app-text-field').getByText(note, { exact: true });
+    await dice.fill('0');
+    await block.getByLabel('A mais por nível').fill('7');
+    await block.getByLabel('No máximo').fill('30');
+    await m.getByRole('button', { name: 'Salvar magia' }).click();
     await expect(dice).toHaveAttribute('aria-invalid', 'true');
-    // Scoped to the field's own note: the refusal can also be read elsewhere on the screen.
-    await expect(dice.locator('xpath=ancestor::app-text-field').getByText('De 1 a 10 dados.', { exact: true })).toBeVisible();
-    await expect(m.getByRole('alert').filter({ hasText: 'Não foi possível salvar a magia.' })).toContainText('1 campo precisa de ajuste');
+    await expect(fieldNote('Dados', 'De 1 a 10 dados.')).toBeVisible();
+    await expect(fieldNote('A mais por nível', 'De 0 a 5 por nível.')).toBeVisible();
+    await expect(fieldNote('No máximo', 'De 1 a 20 dados.')).toBeVisible();
+    await expect(m.getByRole('alert').filter({ hasText: 'Não foi possível salvar a magia.' })).toContainText('3 campos precisam de ajuste');
     await expect(dice).toHaveValue('0');
 
     // The saved spell still has the old dice.
     const stored = (await listEntriesJSON(m, campaignId)).entries!.find((e) => e.namePt === 'Geada no Punho')!;
     expect(stored.tableSpell.effect.modifiers[0].dice).toBe(2);
 
-    // Fixed, it saves.
+    // Fixed, with the cap left empty, it saves with no limit.
     await dice.fill('3');
+    await block.getByLabel('A mais por nível').fill('1');
+    await block.getByLabel('No máximo').fill('');
     await m.getByRole('button', { name: 'Salvar magia' }).click();
     await expect(m.getByText('A magia Geada no Punho foi salva.')).toBeVisible();
     await expect(dice).not.toHaveAttribute('aria-invalid', 'true');
+    const saved = (await listEntriesJSON(m, campaignId)).entries!.find((e) => e.namePt === 'Geada no Punho')!;
+    expect(saved.tableSpell.effect.modifiers[0].dice).toBe(3);
+    expect(saved.tableSpell.effect.modifiers[0].maxDice ?? 0).toBe(0);
   } finally {
     await Promise.all([master.close(), player.close()]);
   }

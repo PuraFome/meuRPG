@@ -624,20 +624,21 @@ describe('SpellEditor', () => {
       expect(body.value.effect.conditions).toEqual(['condition:blinded']);
     });
 
-    it('turns on for a spell with no effect, asks for the cap, and sends an effect with only this modifier', async () => {
+    it('turns on for a spell with no effect, stops at a dice count out of range, and sends an effect with only this modifier and no cap', async () => {
       const { fixture, el } = setup(true, { duration: { kind: 2, amount: 1, unit: 2 } });
       expect(el.querySelector('app-hit-effect-block .cards')).toBeNull();
       el.querySelector<HTMLButtonElement>('app-hit-effect-block [role="switch"]')!.click();
       await settle(fixture, 3);
+      const dice = field(el, 'table_spell.effect.modifiers[0].dice') as HTMLInputElement;
+      dice.value = '0';
+      dice.dispatchEvent(new Event('input'));
+      await settle(fixture, 3);
       click(el, 'Salvar magia');
       await settle(fixture, 3);
       expect(save).not.toHaveBeenCalled();
-      expect(text(el.querySelector('app-hit-effect-block')!)).toContain(
-        'Diga o máximo de dados, de 1 a 20.',
-      );
-      const cap = field(el, 'table_spell.effect.modifiers[0].max_dice') as HTMLInputElement;
-      cap.value = '4';
-      cap.dispatchEvent(new Event('input'));
+      expect(text(el.querySelector('app-hit-effect-block')!)).toContain('De 1 a 10 dados.');
+      dice.value = '1';
+      dice.dispatchEvent(new Event('input'));
       await settle(fixture, 3);
       save.mockResolvedValue({
         entry: entry(TableContentKind.SPELL, 'Lâmina de Nanquim'),
@@ -652,7 +653,7 @@ describe('SpellEditor', () => {
         trigger: TableHitTrigger.NEXT_HIT,
         die: 6,
         dice: 1,
-        maxDice: 4,
+        maxDice: 0,
         save: '',
       });
     });

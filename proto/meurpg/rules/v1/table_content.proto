@@ -1313,7 +1313,7 @@ enum TableEffectModifierKind {
   TABLE_EFFECT_MODIFIER_KIND_CHECK_DISADVANTAGE = 19;
   // Extra weapon damage on a hit the caster makes, as `trigger` says: `die` (d4, d6, d8, d10 or d12),
   // `dice`, `per_slot_dice`, `max_dice`, `damage_type`, and optionally a `save` with the
-  // `on_fail_conditions` it puts on the target. Needs `trigger`, `die`, `dice` and `max_dice`; reads no other field. A spell has one of these. The
+  // `on_fail_conditions` it puts on the target. Needs `trigger`, `die` and `dice`; reads no other field. A spell has one of these. The
   // spell must last (not instantaneous), and EACH_HIT and MARKED_TARGET need concentration.
   TABLE_EFFECT_MODIFIER_KIND_WEAPON_HIT_DAMAGE = 20;
 }
@@ -1389,7 +1389,7 @@ message TableEffectModifier {
   int32 dice = 12;
   // WEAPON_HIT_DAMAGE only: the extra dice for each slot level above the spell's own, 0 to 5.
   int32 per_slot_dice = 13;
-  // WEAPON_HIT_DAMAGE only, required: the most dice the damage has, at least `dice` and at most 20.
+  // WEAPON_HIT_DAMAGE only: the most dice the damage has, from `dice` to 20; 0 is no limit.
   int32 max_dice = 14;
   // WEAPON_HIT_DAMAGE only: the SRD damage type key of the extra damage ("damage-type:fire"). Unset is
   // the weapon's own type.

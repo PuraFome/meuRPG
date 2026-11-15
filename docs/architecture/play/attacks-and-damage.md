@@ -279,7 +279,7 @@ The caster's player and the master read it true, and so do the other players whe
   Only the caster's player and the master read it and its reason.
   A spent row, another caster's row and a `marked_target` on an unmarked target are not listed at all.
 - **The dice.**
-  The row holds the dice already worked out for the slot of the cast: `dice` plus `per_slot_dice` for each slot level above the spell's own, never more than `max_dice` (`hitDiceAt`).
+  The row holds the dice already worked out for the slot of the cast: `dice` plus `per_slot_dice` for each slot level above the spell's own, never more than `max_dice` when it has one (`hitDiceAt`).
   The part rolls them like every other part, with the app's dice or the typed sum of the part.
   A critical hit doubles them (`partCriticalDice`, as for a maneuver's die or an extra damage), never the fixed damage.
 - **The damage type.**

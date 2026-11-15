@@ -234,13 +234,14 @@ describe('HitEffectBlock (#577)', () => {
     );
   });
 
-  it('shows the ranges under the damage fields, and the cap is 1 to 20 with no "sem limite"', () => {
+  it('shows the ranges under the damage fields, and says an empty cap is no limit', () => {
     const el = setup();
     const t = text(el);
     expect(t).toContain('1 a 10');
     expect(t).toContain('0 a 5 por nível acima');
-    expect(t).toContain('1 a 20 dados.');
-    expect(t).not.toContain('sem limite');
+    expect(t).toContain('1 a 20; vazio: sem limite');
+    const cap = field(el, 'max_dice') as HTMLInputElement;
+    expect(cap.placeholder).toBe('Sem limite');
   });
 
   it('asks for a test before the condition and the duration', () => {

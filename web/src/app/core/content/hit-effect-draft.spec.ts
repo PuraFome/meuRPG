@@ -280,11 +280,9 @@ describe('the hit effect draft (#577)', () => {
     expect(hitPath(stored, 'max_dice')).toBe('table_spell.effect.modifiers[1].max_dice');
   });
 
-  it('asks for the cap, which the server requires, and for the condition of a save', () => {
+  it('lets the cap stay empty (no limit) and asks for the condition of a save', () => {
     const on = { ...emptyHit(), enabled: true };
-    expect(hitRefusals(undefined, on, true).map((r) => r.path)).toEqual([
-      'table_spell.effect.modifiers[0].max_dice',
-    ]);
+    expect(hitRefusals(undefined, on, true)).toEqual([]);
     expect(hitRefusals(undefined, { ...on, cap: '4' }, true)).toEqual([]);
     const save = hitRefusals(undefined, { ...on, cap: '4', saveAbility: 'con' }, true);
     expect(save.map((r) => r.path)).toEqual(['table_spell.effect.modifiers[0].on_fail_conditions']);
@@ -292,6 +290,31 @@ describe('the hit effect draft (#577)', () => {
     expect(hitRefusals(undefined, { ...on, cap: 'x', dice: '1,5' }, true)).toHaveLength(2);
     expect(hitRefusals(undefined, on, false)).toEqual([]);
     expect(hitRefusals(undefined, emptyHit(), true)).toEqual([]);
+  });
+
+  it('says every number out of its range at once, each at its field, with the server words', () => {
+    const on = { ...emptyHit(), enabled: true, saveAbility: 'con' };
+    const bad = { ...on, dice: '0', perSlot: '7', cap: '30' };
+    expect(hitRefusals(undefined, bad, true)).toEqual([
+      { path: 'table_spell.effect.modifiers[0].dice', text: 'De 1 a 10 dados.' },
+      { path: 'table_spell.effect.modifiers[0].per_slot_dice', text: 'De 0 a 5 por nível.' },
+      { path: 'table_spell.effect.modifiers[0].max_dice', text: 'De 1 a 20 dados.' },
+      {
+        path: 'table_spell.effect.modifiers[0].on_fail_conditions',
+        text: 'Escolha a condição de quem falhar, ou tire o teste.',
+      },
+    ]);
+    expect(hitRefusals(undefined, { ...on, dice: '11', condition: 'condition:blinded' }, true)[0]).toEqual({
+      path: 'table_spell.effect.modifiers[0].dice',
+      text: 'De 1 a 10 dados.',
+    });
+    expect(hitRefusals(undefined, { ...on, dice: '3', cap: '2', condition: 'condition:blinded' }, true)).toEqual([
+      {
+        path: 'table_spell.effect.modifiers[0].max_dice',
+        text: 'De 1 a 20 dados, e nunca abaixo dos dados da magia.',
+      },
+    ]);
+    expect(hitRefusals(undefined, { ...on, dice: '', condition: 'condition:blinded' }, true)).toHaveLength(1);
   });
 
   it('names the ability keys of the wire', () => {

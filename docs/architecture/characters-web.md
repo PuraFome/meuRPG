@@ -152,7 +152,8 @@ The screens of MR-025 and RN-23 use only the server of [Table content](character
   The draft edits only that modifier.
   `applyHit` writes it back in its own place and leaves the rest of the stored `kept.effect` alone: the other modifiers, the conditions, `applies`, the audience and the label.
   An effect left with no modifier and no condition is not sent.
-  The cap "No máximo" is required, from 1 to 20, and the form says so before the save.
+  The cap "No máximo" is from 1 to 20 dice and may stay empty, which is no limit.
+  The form says every number out of its range at once, each at its field, before the save (`hitRefusals`).
   The block is off for an instantaneous spell, and says why.
   The marked target is locked unless the target is "Uma criatura" with no extra targets per level (a cantrip has none, so a stale count there does not lock).
   When a change locks it, the trigger moves to "Próximo golpe com arma" and the block says so in a polite live region.
