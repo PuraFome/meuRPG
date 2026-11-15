@@ -70,9 +70,9 @@ export interface ReadyRow {
 /** The window has no way yet to move the token of a readied move: the master does it (#856). */
 export const MOVE_PENDING_TEXT =
   'Mover pela janela ainda não dá: por enquanto o mestre move a ficha.';
-/** A spell whose cast needs darts, several targets or a point: `AnswerReaction` carries a creature only (#857). */
+/** A spell placed on the map: `AnswerReaction` carries no point or direction for it yet (#857, part 2). */
 export const SPELL_PENDING_TEXT =
-  'Soltar pela janela ainda não dá para esta magia: ela pede dardos, alvos ou um ponto no mapa.';
+  'Soltar pela janela ainda não dá para esta magia: ela pede um ponto ou uma direção no mapa.';
 export const NO_ATTACK_TEXT = 'Você não tem um ataque para preparar.';
 export const NO_OTHER_TEXT = 'Nenhuma outra ação pode ser preparada agora.';
 export const EMPTY_TRIGGER_TEXT = 'Escreva quando a ação dispara.';
@@ -167,6 +167,55 @@ export function readyAttackRows(options: TurnOptions): readonly ReadyRow[] {
     slots: [],
     spell: false,
   }));
+}
+
+/** "1º círculo · restam 2": a slot level and how many are free. */
+function slotText(level: number, free: number): string {
+  const word = free === 1 ? 'resta 1' : `restam ${free}`;
+  return `${level}º círculo · ${word}`;
+}
+
+/** The levels a spell can be held with, one entry each: pact and plain slots of one level count together. */
+function slotsOf(o: SpellOption): readonly ReadySlot[] {
+  const free = new Map<number, number>();
+  for (const s of o.slots) {
+    if (!s.resource) {
+      free.set(s.level, (free.get(s.level) ?? 0) + s.free);
+    }
+  }
+  return [...free.entries()]
+    .filter(([, n]) => n > 0)
+    .sort(([a], [b]) => a - b)
+    .map(([level, n]) => ({ level, text: slotText(level, n) }));
+}
+
+/** Why a spell cannot be held, in the card; `''` when it can. Only a spell of 1 action can (SRD 5.1, "Ready"). */
+function spellBlocked(o: SpellOption): string {
+  if (o.economy === ActionEconomy.REACTION) {
+    return 'É uma reação: só uma magia de 1 ação pode ser preparada.';
+  }
+  if (o.economy === ActionEconomy.BONUS_ACTION) {
+    return 'É uma ação bônus: só uma magia de 1 ação pode ser preparada.';
+  }
+  if (o.economy !== ActionEconomy.ACTION) {
+    return 'Demora mais de 1 ação: só uma magia de 1 ação pode ser preparada.';
+  }
+  if (!o.enabled) {
+    return o.reason?.code === DisabledReasonCode.NO_SLOT
+      ? `Sem espaços de ${o.spell?.level ?? 1}º círculo.`
+      : reasonText(o.reason);
+  }
+  return '';
+}
+
+/**
+ * Whether the window can release a spell today: it names darts, creatures (one or several) or nothing, as the cast screens do. A spell
+ * placed on the map (a point or a direction) cannot yet. Read from what `GetTurnOptions` says of the spell (`spell_targets`); with no
+ * entry (an attack cantrip, which is released as an attack) nothing is known against it. In a combat with no map nothing is placed.
+ */
+function releaseBlocked(all: readonly SpellTargets[], key: string): string {
+  const t = all.find((x) => x.spellKey === key);
+  return t && t.placement !== AreaPlacement.UNSPECIFIED ? SPELL_PENDING_TEXT : '';
 }
 
 /** "1º círculo · restam 2": a slot level and how many are free. */

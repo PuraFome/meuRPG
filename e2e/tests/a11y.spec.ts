@@ -14883,7 +14883,7 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
 
     // A spell: the circle to hold it with, and the warning that it is the concentration.
     await sheet.getByRole('button', { name: 'Magia', exact: true }).click();
-    await expect(sheet.locator('label', { hasText: 'Mísseis Mágicos' })).toContainText(spellOffText);
+    await expect(sheet.locator('label', { hasText: 'Sono' })).toContainText(spellOffText);
     await sheet.locator('label', { hasText: 'Enfeitiçar Pessoa' }).click();
     await expect(sheet.getByRole('group', { name: 'Com que espaço' })).toBeVisible();
     await field.fill('Se o goblin sair da sombra do pilar');

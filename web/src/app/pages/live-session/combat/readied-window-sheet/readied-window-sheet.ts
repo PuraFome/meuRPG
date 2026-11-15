@@ -23,6 +23,14 @@ import { ownCombatant } from '../../../../core/combat/combat-view';
 import { playerAutoPassText, playerSecondsLeft } from '../../../../core/combat/reaction-autopass';
 import { readiedRefusalText } from '../../../../core/combat/readied-refusal';
 import type { AimNeed } from '../../../../core/combat/readied-aim';
+import type { ReactionAnswer } from '../../../../core/combat/combat-client-types';
+import {
+  NO_PICK,
+  type ReleasePick,
+  type ReleasePlan,
+  aimedUse,
+  releaseComplete,
+} from '../../../../core/combat/readied-release';
 import { readiedGoneText, readiedPrompt } from '../../../../core/combat/reaction-readied';
 import { ActionKey } from '../../../../core/connect/idempotency';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
@@ -91,6 +99,8 @@ export interface ReadiedWindowSheetData {
               [reactorId]="data.window.reactorId"
               [(need)]="need"
               [(target)]="target"
+              [(release)]="release"
+              [(plan)]="plan"
             />
           }
           <p class="small">{{ view.note }}</p>
@@ -172,6 +182,9 @@ export class ReadiedWindowSheet {
     this.data.readied?.kind === ReadiedKind.ATTACK || this.data.readied?.kind === ReadiedKind.SPELL;
   protected readonly need = signal<AimNeed>('loading');
   protected readonly target = signal<string | null>(null);
+  /** A held spell's pick (the darts dealt, the creatures ticked) and what the options say it asks. */
+  protected readonly release = signal<ReleasePick>(NO_PICK);
+  protected readonly plan = signal<ReleasePlan | null>(null);
 
   /** "Atacar o Zumbi 1" once a creature is chosen; "Atacar" before it. */
   protected readonly useLabel = computed(() => {
@@ -190,8 +203,10 @@ export class ReadiedWindowSheet {
     switch (this.need()) {
       case 'required':
         return this.target() !== null;
-      case 'optional':
-        return true;
+      case 'optional': {
+        const plan = this.plan();
+        return !plan || releaseComplete(plan, this.release());
+      }
       case 'failed':
         return (this.data.readied?.targetCombatantId ?? '') !== '';
       default:
@@ -275,12 +290,14 @@ export class ReadiedWindowSheet {
     if (this.busy() || (use && !this.ready())) {
       return;
     }
-    const target = this.target();
-    const answer = !use
+    const answer: ReactionAnswer | null = !use
       ? { use }
       : this.aims
-        ? { use, ...(target ? { creatureIds: [target] } : {}), die: { inApp: true as const } }
+        ? aimedUse(this.plan(), this.release(), this.target())
         : { use };
+    if (!answer) {
+      return;
+    }
     this.busy.set(true);
     this.error.set('');
     try {
