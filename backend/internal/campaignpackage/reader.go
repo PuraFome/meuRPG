@@ -36,26 +36,55 @@ const (
 	zip64Marker   = 0xFFFF
 )
 
-// entryCount reads the number of entries the zip's end record claims, without
-// building the directory: archive/zip allocates a File for every entry, and a
-// file made of nothing but directory records could ask for a lot of memory.
-// ok is false when no end record is found.
-func entryCount(ra io.ReaderAt, size int64) (n int, ok bool) {
+// maxRecordBytes bounds one directory record: the fixed part, the longest
+// name an entry may have, and room for an extra field and a comment.
+const maxRecordBytes = 46 + maxNameLength + 256
+
+// maxDirectoryBytes is the most the zip's central directory may take.
+const maxDirectoryBytes = MaxEntries * maxRecordBytes
+
+// directoryOf reads the zip's end record, without building the directory:
+// archive/zip allocates a File for every record it finds, and a file made of
+// nothing but directory records could ask for a lot of memory. It returns the
+// number of entries the record claims and the size of the directory it
+// declares, and ok is false when there is no end record or the directory does
+// not end right where the end record starts.
+func directoryOf(ra io.ReaderAt, size int64) (count int, dirBytes int64, ok bool) {
 	tail := int64(eocdSize + maxZipComment)
 	if size < tail {
 		tail = size
 	}
 	buf := make([]byte, tail)
 	if _, err := ra.ReadAt(buf, size-tail); err != nil && !errors.Is(err, io.EOF) {
-		return 0, false
+		return 0, 0, false
 	}
 	for i := len(buf) - eocdSize; i >= 0; i-- {
 		if binary.LittleEndian.Uint32(buf[i:]) != eocdSignature {
 			continue
 		}
-		return int(binary.LittleEndian.Uint16(buf[i+10:])), true
+		dirSize := int64(binary.LittleEndian.Uint32(buf[i+12:]))
+		dirOffset := int64(binary.LittleEndian.Uint32(buf[i+16:]))
+		if dirOffset+dirSize != size-tail+int64(i) {
+			return 0, 0, false
+		}
+		return int(binary.LittleEndian.Uint16(buf[i+10:])), dirSize, true
 	}
-	return 0, false
+	return 0, 0, false
+}
+
+// checkDirectory refuses a zip whose directory is too big, before archive/zip
+// reads it. A zero reason means the directory is within the limits.
+func checkDirectory(ra io.ReaderAt, size int64) (pkgv1.PackageProblemReason, int64) {
+	count, dirBytes, ok := directoryOf(ra, size)
+	switch {
+	case !ok:
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_A_PACKAGE, 0
+	case count > MaxEntries || count == zip64Marker:
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_TOO_MANY_ENTRIES, int64(count)
+	case dirBytes > maxDirectoryBytes:
+		return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_TOO_MANY_ENTRIES, MaxEntries
+	}
+	return pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNSPECIFIED, 0
 }
 
 // Open checks a package: the zip, the manifest and the hash of every entry. It
@@ -69,12 +98,8 @@ func Open(ra io.ReaderAt, size int64) (*Package, []*pkgv1.PackageProblem) {
 	if size > MaxPackageBytes {
 		return fail(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_PACKAGE_TOO_BIG, "", size)
 	}
-	count, ok := entryCount(ra, size)
-	if !ok {
-		return fail(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_NOT_A_PACKAGE, "", 0)
-	}
-	if count > MaxEntries || count == zip64Marker {
-		return fail(pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_TOO_MANY_ENTRIES, "", int64(count))
+	if reason, limit := checkDirectory(ra, size); reason != pkgv1.PackageProblemReason_PACKAGE_PROBLEM_REASON_UNSPECIFIED {
+		return fail(reason, "", limit)
 	}
 	zr, err := zip.NewReader(ra, size)
 	if err != nil {

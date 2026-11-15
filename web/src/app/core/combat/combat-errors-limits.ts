@@ -61,6 +61,10 @@ export const LIMITED_ACTION_BLOCKED_TEXT: ReadonlyMap<EncounterBlockedReason, st
     EncounterBlockedReason.MOUNT_SAVE_PENDING,
     'O cavaleiro precisa do teste de Destreza para ficar na montaria. Nada foi mudado.',
   ],
+  [
+    EncounterBlockedReason.AMMUNITION_EMPTY,
+    'Sem munição: o tiro não sai. Use o ataque corpo a corpo ou reponha a munição. Nada foi gasto.',
+  ],
   [EncounterBlockedReason.FEATURE_TARGET, 'O alvo saiu do alcance. Escolha outro alvo.'],
   [EncounterBlockedReason.FEATURE_CHOICE, 'Essa opção não vale mais. Escolha outra.'],
 ]);

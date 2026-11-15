@@ -99,6 +99,7 @@
       }
       <p class="note"><mat-icon aria-hidden="true">info</mat-icon>{{ note }}</p>
     }
+    <app-favor-spend [control]="fav" [busy]="busy()" />
     @if (typing() || firstFace() !== null) {
       <div class="type">
         <label class="type__label" for="trap-face">{{ label() }}</label>

@@ -187,6 +187,15 @@ describe('typedBonusLine', () => {
     expect(typedBonusLine(-1)).toBe('Sem o − 1: o app soma o bônus.');
   });
 
+  it('names the power attack among what the app adds', () => {
+    expect(typedBonusLine(13, 'Golpe Pesado')).toBe(
+      'Sem o + 13: o app soma o bônus e o Golpe Pesado.',
+    );
+    expect(typedBonusLine(10, 'Disparo Firme')).toBe(
+      'Sem o + 10: o app soma o bônus e o Disparo Firme.',
+    );
+  });
+
   it('says nothing when there is no fixed number', () => {
     expect(typedBonusLine(0)).toBe('');
   });

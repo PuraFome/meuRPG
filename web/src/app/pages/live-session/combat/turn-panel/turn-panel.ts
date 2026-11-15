@@ -1,5 +1,14 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, ElementRef, computed, effect, input, output, viewChild } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  viewChild,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -35,6 +44,8 @@ import {
 } from '../../../../core/combat/joint-turn';
 import { keepClear } from '../../../../shared/scroll-clearance/scroll-clearance';
 import { mediaQuery } from '../../../../shared/map-view/media-query';
+import { FavorState } from '../../../../core/play/favor-state';
+import { FavorChip } from '../../../../shared/favor-chip/favor-chip';
 import { FormChip } from '../../../../shared/wild-shape/form-chip';
 import type { FallNote } from '../../../../core/traps/trap-log';
 import { CombatantToken } from '../../../../shared/combatant-token/combatant-token';
@@ -82,6 +93,7 @@ import { isMasterWait } from '../../../../core/combat/reactions';
     OwnNumbers,
     RageStatus,
     TurnReaction,
+    FavorChip,
     FormChip,
   ],
   templateUrl: './turn-panel.html',
@@ -156,6 +168,12 @@ export class TurnPanel {
   });
   protected readonly round = computed(() => roundLabel(this.encounter().round));
   protected readonly own = computed(() => ownCombatant(this.encounter()));
+  private readonly favor = inject(FavorState);
+  /** The player's own character has the master's Inspiração (RN-43): the chip in the band. The read gives a player only their own characters (RN-10). */
+  protected readonly hasFavor = computed(() => {
+    const id = this.own()?.characterId;
+    return !!id && this.favor.has(id);
+  });
   /** The beast the druid is in, with its own reserve of hit points (only the druid's player and the master get the numbers). */
   protected readonly form = computed(() => {
     const c = this.own();

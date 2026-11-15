@@ -1,0 +1,94 @@
+:host {
+  display: block;
+}
+
+.favor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--mr-space-2);
+}
+
+.favor__title {
+  margin: 0;
+  font-size: var(--mr-font-14);
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.favor__box {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-3);
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: var(--mr-space-3);
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-md);
+  background: var(--mr-surface);
+  cursor: pointer;
+
+  &:has(input:focus-visible) {
+    outline: 2px solid var(--mr-focus);
+    outline-offset: 2px;
+  }
+}
+
+.favor__box--on {
+  border: 2px solid var(--mr-accent);
+  background: var(--mr-accent-soft);
+}
+
+// Off: dashed and quiet, still reachable; the click does nothing.
+.favor__box--off {
+  cursor: default;
+  border-style: dashed;
+  color: var(--mr-ink-muted);
+
+  .favor__check {
+    cursor: default;
+    border-color: var(--mr-line);
+  }
+}
+
+.favor__box--on.favor__box--off {
+  border-style: solid;
+  color: var(--mr-ink);
+}
+
+.favor__check {
+  margin-top: 2px;
+}
+
+.favor__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.favor__label {
+  line-height: 22px;
+}
+
+.favor__hint {
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+}
+
+.favor__why {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-1);
+  margin-top: var(--mr-space-1);
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink);
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    font-size: var(--mr-font-18);
+  }
+}

@@ -78,6 +78,7 @@
             }
           </ul>
         }
+        <app-favor-spend [control]="fav" [busy]="busy()" />
         <app-roll-die-offer [dice]="dice()" [picked]="maneuver()?.key ?? ''" (pickedChange)="useDie($event)" />
         @if (typingNow()) {
           <app-extra-dice [fields]="fields()" [(faces)]="extraFaces" />

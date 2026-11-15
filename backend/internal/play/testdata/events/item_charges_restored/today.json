@@ -1,0 +1,18 @@
+{
+  "round": 1,
+  "combatant_id": "x",
+  "secret": true,
+  "use_entry": "x",
+  "use_item": "x",
+  "use_name_pt": "x",
+  "use_amount": 1,
+  "use_left": 1,
+  "use_max": 1,
+  "use_roll": true,
+  "use_d20": 1,
+  "use_regain_face": 1,
+  "use_physical": true,
+  "use_outcome": "x",
+  "use_lost": 1,
+  "use_ammo_pt": "x"
+}

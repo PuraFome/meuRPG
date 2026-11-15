@@ -68,6 +68,7 @@ export class LiveSessionLoader {
   dispose(): void {
     clearTimeout(this.visionTimer);
     this.closeStream();
+    this.services.favor.stop();
   }
 
   /** What a player sees may have changed (a hint, a move, a turn): one read of the vision and its layers for a burst of them. The master's "Ver como" and his light warning read again too. */
@@ -445,6 +446,8 @@ export class LiveSessionLoader {
 
   ended(): void {
     this.closeStream();
+    // No open session: the grant is off and nobody is known to have it.
+    this.services.favor.stop();
     // Without a snapshot, there was never a session on this page.
     this.state.phase.set(this.state.session() ? 'ended' : 'no-session');
     void this.services.openSessions.refresh();

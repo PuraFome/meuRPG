@@ -14,6 +14,7 @@ import { combatant, encounter } from '../../../../core/combat/combat-testing';
 import { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import { heldAnswer, heldAttackAnswer } from '../../../../core/held-rolls/held-roll-testing';
 import type { AttackDamage } from './attack-damage';
+import { PowerTrade } from './power-trade';
 import { AttackRolls } from './attack-rolls';
 import type { AttackSheetData } from './attack-sheet-types';
 import { AttackState } from './attack-state';
@@ -72,6 +73,7 @@ describe('the question of a held attack roll', () => {
       attack: {} as never,
       name: 'Espada',
       modeChoice: () => undefined,
+      trade: new PowerTrade({} as never, []),
     });
   });
 

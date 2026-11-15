@@ -67,6 +67,9 @@ let nextId = 0;
       @if (note()) {
         <span class="row__detail row__note">{{ note() }}</span>
       }
+      @for (line of power(); track line) {
+        <span class="row__detail row__power"><mat-icon aria-hidden="true">fitness_center</mat-icon>{{ line }}</span>
+      }
       @if (rider()) {
         <span class="row__rider" lang="en">{{ rider() }}</span>
       }
@@ -125,6 +128,8 @@ export class ActionRow {
   readonly detail = input('');
   /** A short line of why under the detail ("Golpe desarmado das Artes Marciais"). */
   readonly note = input('');
+  /** The power attack trades the weapon accepts ("Golpe Pesado: −5 no ataque, +10 no dano"), each a line of its own with an icon. */
+  readonly power = input<readonly string[]>([]);
   /** The SRD's own text of a creature's attack (its rider), under the detail; English, as the book has it, and never translated here. */
   readonly rider = input('');
   /** "Atacar", "Conjurar"; empty for a row with no button. */

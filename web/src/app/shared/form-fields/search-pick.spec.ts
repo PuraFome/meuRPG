@@ -73,6 +73,11 @@ describe('app-search-pick', () => {
     el = fixture.nativeElement;
   });
 
+  it('keeps the label floating over the placeholder, so both are read (board 586-01)', () => {
+    expect(el.querySelector('.mdc-floating-label--float-above')).not.toBeNull();
+    expect(input().placeholder).toBe('Procurar');
+  });
+
   it('opens a grouped dropdown on focus and says which group has no match', () => {
     expect(el.querySelector('[role="listbox"]')).toBeNull();
     type('agar');

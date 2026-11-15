@@ -49,6 +49,12 @@
   color: var(--mr-ink-muted);
 }
 
+.floated {
+  // A search field draws its label floated on the border from the start (it has a placeholder): the label rises above the box, so the
+  // field keeps clear of what stands over it.
+  margin-top: var(--mr-space-2);
+}
+
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

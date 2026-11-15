@@ -53,6 +53,9 @@ import { CheckRollForm } from '../check-roll-form/check-roll-form';
 import { ContestRoll } from '../contest-roll/contest-roll';
 import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
 import { injectSheet, openSheet } from '../../../../shared/sheet/sheet-host';
+import { FavorSpend, circumstancesOfNotes } from '../../../../core/play/favor-spend';
+import { FavorState } from '../../../../core/play/favor-state';
+import { isPlayer } from '../../../../core/combat/combat-view';
 
 /** What the page hands the defender's sheet. */
 export interface ContestAnswerData {
@@ -207,6 +210,15 @@ export class ContestAnswerSheet {
     const c = this.contest();
     return c ? defenderVerdict(c, whoIs(this.initiator()), this.own()?.label ?? '') : null;
   });
+  /** The master's Inspiração (RN-43) for the defender's d20; never for "Deixar o mestre rolar por mim" (no d20 is rolled). */
+  protected readonly fav = new FavorSpend({
+    favor: inject(FavorState),
+    who: () => {
+      const me = this.own();
+      return me && isPlayer(me) ? { characterId: me.characterId, name: me.label } : null;
+    },
+    circumstances: () => circumstancesOfNotes(this.mode(), this.chosen()?.notes ?? []),
+  });
   protected readonly signedText = signed;
   protected readonly skillLabel = skillLine;
   protected readonly noteLines = noteLines;
@@ -242,6 +254,7 @@ export class ContestAnswerSheet {
     this.error.set('');
     try {
       const skill = this.chosenSkill();
+      const spend = die !== null && this.fav.spend();
       const res = await this.api.respond(
         {
           campaignId: this.data.campaignId,
@@ -249,9 +262,11 @@ export class ContestAnswerSheet {
           contestId: this.data.contestId,
           skill,
           die,
+          ...(spend ? { spendFavor: true } : {}),
         },
-        this.keys.keyFor({ contest: this.data.contestId, skill, die }),
+        this.keys.keyFor({ contest: this.data.contestId, skill, die, favor: spend }),
       );
+      this.fav.spent();
       this.data.state.apply(res.encounter);
       if (!res.contest) {
         // The d20 is kept for a question (a halfling's 1, a Bardic Inspiration die): the player decides before the contest settles.
@@ -260,7 +275,7 @@ export class ContestAnswerSheet {
       }
       this.settled(res.contest, die !== null, skill);
     } catch (err) {
-      this.error.set(combatErrorMessage(err, 'responder à disputa'));
+      this.error.set(this.fav.refused(err) ?? combatErrorMessage(err, 'responder à disputa'));
     } finally {
       this.busy.set(false);
     }

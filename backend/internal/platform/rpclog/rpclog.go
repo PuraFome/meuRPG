@@ -147,6 +147,11 @@ func (c *streamConn) Send(msg any) error {
 // keeps the end below WARNING, with the close reason `instance_idle`.
 var ErrInstanceIdle = errors.New("this server no longer receives the table's calls; reconnect")
 
+// ErrInstanceFull is the cause of the error that refuses a stream because the instance already holds the most
+// streams it allows. The client gets its text with the code `unavailable` and reconnects with its backoff; the log
+// keeps the close reason `instance_full`.
+var ErrInstanceFull = errors.New("this server holds the most live streams it allows; reconnect")
+
 // closeReasonOf says why a stream ended, from what the server can see. A
 // stream the handler ended by returning nil while the client was still there
 // (session over, maximum lifetime, shutdown: it can't tell which) is the
@@ -162,6 +167,9 @@ func closeReasonOf(ctx context.Context, err error, sendFailed bool) string {
 	}
 	if errors.Is(err, ErrInstanceIdle) {
 		return "instance_idle"
+	}
+	if errors.Is(err, ErrInstanceFull) {
+		return "instance_full"
 	}
 	switch codeOf(err) {
 	case connect.CodeCanceled:

@@ -1,4 +1,5 @@
 import { ReactionChoice, type Encounter } from '../../../gen/meurpg/play/v1/combat_pb';
+import { spendFavorOf } from '../play/favor-errors';
 import { heldOfferOf } from '../held-rolls/held-roll-offer';
 import { type RollMode, type RollModeRequest } from '../../../gen/meurpg/play/v1/combat_rolls_pb';
 import {
@@ -18,6 +19,22 @@ import {
 } from './combat-client-types';
 import { attackResult, need } from './combat-client-wire';
 import { type CombatClientBase } from './combat-client-base';
+
+/** What a concentration answer rolled in the app or typed adds: the table die, the legendary resistance and the Inspiração. */
+function rolledBy(how: Extract<ConcentrationAnswer, { kind: 'app' | 'typed' }>) {
+  return {
+    maneuverKey: how.maneuverKey ?? '',
+    useLegendaryResistance: how.useLegendaryResistance ?? false,
+    ...spendFavorOf(how),
+  };
+}
+
+/** How the d20 of an attack comes: rolled in the app, typed from a physical die, or not yet. */
+function attackRollOf(die: AttackDie | PairDie) {
+  if ('inApp' in die) return { case: 'rollInApp', value: true } as const;
+  if ('face' in die) return { case: 'd20Face', value: die.face } as const;
+  return { case: undefined } as const;
+}
 
 /** The calls of attacks, damage, roll modes, reactions and concentration. */
 export class CombatAttackCalls {
@@ -46,12 +63,7 @@ export class CombatAttackCalls {
       attackKey,
       targetId,
       idempotencyKey: key,
-      roll:
-        'inApp' in die
-          ? { case: 'rollInApp', value: true }
-          : 'face' in die
-            ? { case: 'd20Face', value: die.face }
-            : { case: undefined },
+      roll: attackRollOf(die),
       d20Faces: 'faces' in die ? [...die.faces] : [],
       asReaction,
       opportunityOfferId,
@@ -69,7 +81,10 @@ export class CombatAttackCalls {
       useExtraAction: effects.useExtraAction ?? false,
       // The table die ticked on a weapon attack (Golpe Certeiro): its face is the last of `extraDieFaces`.
       ...(effects.maneuverKey ? { maneuverKey: effects.maneuverKey } : {}),
+      // The power attack trade ticked: the server checks it again. Its pin (`power_attack_pin`) is the server's alone, never sent.
+      ...(effects.powerAttackKey ? { powerAttackKey: effects.powerAttackKey } : {}),
       legendaryOption: effects.legendaryOption ?? '',
+      spendFavor: effects.spendFavor ?? false,
     });
     return attackResult(res);
   }
@@ -352,10 +367,7 @@ export class CombatAttackCalls {
               : { case: 'keep', value: true },
       extraDieFaces: how.kind === 'typed' ? [...(how.extra ?? [])] : [],
       ...(how.kind === 'typed' && how.second !== undefined ? { secondD20Face: how.second } : {}),
-      ...(how.kind === 'app' || how.kind === 'typed' ? { maneuverKey: how.maneuverKey ?? '' } : {}),
-      ...(how.kind === 'app' || how.kind === 'typed'
-        ? { useLegendaryResistance: how.useLegendaryResistance ?? false }
-        : {}),
+      ...(how.kind === 'app' || how.kind === 'typed' ? rolledBy(how) : {}),
       idempotencyKey: key,
     });
     return {

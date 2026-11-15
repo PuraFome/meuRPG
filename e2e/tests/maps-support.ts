@@ -75,6 +75,8 @@ export async function tableForMaps(
   build: CharacterBuild = pensantus,
   /** Runs once the campaign and the invite are done and before the character is made: the table entries it needs (a race) and the build to use. */
   before?: (campaignId: string, master: Page) => Promise<CharacterBuild>,
+  /** The goblin's hit points: 7 unless a spec needs the goblin to live through a big hit. */
+  npcHitPoints = 7,
 ): Promise<MapsTable> {
   const created = await callRPC(masterPage, 'meurpg.campaigns.v1.CampaignService/CreateCampaign', {
     name,
@@ -110,7 +112,7 @@ export async function tableForMaps(
       name: 'Goblin',
       sheet: {
         basic: {
-          hitPointsMax: 7,
+          hitPointsMax: npcHitPoints,
           armorClass: 15,
           speedFt: 30,
           attackBonus: 4,

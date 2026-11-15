@@ -158,10 +158,11 @@ export function headingOf(entry: TableEntry | null, newKind: TableContentKind | 
   return newKind === null ? FALLBACK_HEADING : (NEW_TITLES[newKind] ?? FALLBACK_HEADING);
 }
 
-/** "Atualizada em 12/03/2026", or empty for an entry never written. */
+/** "Atualizada em 12/03/2026" (a magia), "Atualizado em 12/03/2026" (um talento): the participle agrees with the kind; empty for an entry never written. */
 export function updatedLine(entry: TableEntry | null): string {
+  const word = KIND_NOUNS[entry?.kind ?? 0]?.article === 'O' ? 'Atualizado' : 'Atualizada';
   return entry?.updatedAt
-    ? `Atualizada em ${formatDateTime(timestampDate(entry.updatedAt)).slice(0, DAY_LENGTH)}`
+    ? `${word} em ${formatDateTime(timestampDate(entry.updatedAt)).slice(0, DAY_LENGTH)}`
     : '';
 }
 
