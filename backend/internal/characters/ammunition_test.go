@@ -31,13 +31,19 @@ func (et *editorTable) setAmmo(t *testing.T, pc *charactersv1.Character, key str
 
 func (et *editorTable) shoot(t *testing.T, pc *charactersv1.Character, key, encounter string) (int32, error) {
 	t.Helper()
-	var left int32
-	err := et.inTx(t, func(tx pgx.Tx) error {
+	left, _, err := et.shootCounted(t, pc, key, encounter)
+	return left, err
+}
+
+// shootCounted is shoot with whether the kind is counted.
+func (et *editorTable) shootCounted(t *testing.T, pc *charactersv1.Character, key, encounter string) (left int32, counted bool, err error) {
+	t.Helper()
+	err = et.inTx(t, func(tx pgx.Tx) error {
 		var err error
-		left, err = et.h.svc.SpendAmmunition(t.Context(), tx, et.campaign, pc.GetId(), key, encounter)
+		left, counted, err = et.h.svc.SpendAmmunition(t.Context(), tx, et.campaign, pc.GetId(), key, encounter)
 		return err
 	})
-	return left, err
+	return left, counted, err
 }
 
 func (et *editorTable) recover(t *testing.T, pc *charactersv1.Character, encounter string) ([]*charactersv1.SheetAmmunition, error) {
@@ -78,8 +84,8 @@ func TestSetAmmunition(t *testing.T) {
 		if a := ammoOf(read, boltKey); a.GetQuantity() != 5 || a.GetNamePt() == "" {
 			t.Errorf("bolts: %+v", read.GetSheet().GetFull().GetAmmunition())
 		}
-		if ammoOf(read, arrowKey) != nil {
-			t.Errorf("an empty kind that fired nothing is listed: %+v", read.GetSheet().GetFull().GetAmmunition())
+		if a := ammoOf(read, arrowKey); a == nil || a.GetQuantity() != 0 {
+			t.Errorf("a counted kind set to none is not listed at 0: %+v", read.GetSheet().GetFull().GetAmmunition())
 		}
 	}
 	for _, c := range []struct {
@@ -118,6 +124,21 @@ func TestReadListsTheKindsInOrderWithTheirFiredPieces(t *testing.T) {
 	}
 }
 
+func TestACountedKindAtZeroIsListedOnTheSheet(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t)
+	if got := et.read(t, et.master, pc.GetId()).GetSheet().GetFull().GetAmmunition(); len(got) != 0 {
+		t.Fatalf("a character with no count lists %+v", got)
+	}
+	if _, err := et.setAmmo(t, pc, arrowKey, 0); err != nil {
+		t.Fatal(err)
+	}
+	got := et.read(t, et.master, pc.GetId()).GetSheet().GetFull().GetAmmunition()
+	if len(got) != 1 || got[0].GetKey() != arrowKey || got[0].GetQuantity() != 0 || got[0].GetSpentLastCombat() != 0 {
+		t.Errorf("a count of 0 is listed as %+v, want the arrows at 0", got)
+	}
+}
+
 func TestSaveIgnoresAndKeepsTheAmmunition(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t)
@@ -150,8 +171,11 @@ func TestSpendAmmunition(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t)
 	encA, encB := uuid.NewString(), uuid.NewString()
-	if _, err := et.shoot(t, pc, arrowKey, encA); !errors.Is(err, ErrNoAmmunition) {
-		t.Fatalf("a kind never held: %v", err)
+	if left, counted, err := et.shootCounted(t, pc, arrowKey, encA); err != nil || counted || left != 0 {
+		t.Fatalf("a kind with no count: %d %v %v, want 0, not counted, no refusal", left, counted, err)
+	}
+	if got := et.read(t, et.master, pc.GetId()).GetSheet().GetFull().GetAmmunition(); len(got) != 0 {
+		t.Fatalf("the shot of an uncounted kind wrote a row: %+v", got)
 	}
 	if _, err := et.setAmmo(t, pc, arrowKey, 3); err != nil {
 		t.Fatal(err)
@@ -295,29 +319,34 @@ func TestRefundAmmunitionEdges(t *testing.T) {
 func TestAmmunitionLeft(t *testing.T) {
 	t.Parallel()
 	et, pc := attuneTable(t)
-	left := func(key string) int32 {
-		var n int32
+	left := func(key string) (n int32, counted bool) {
 		if err := et.inTx(t, func(tx pgx.Tx) error {
 			var err error
-			n, err = et.h.svc.AmmunitionLeft(t.Context(), tx, et.campaign, pc.GetId(), key)
+			n, counted, err = et.h.svc.AmmunitionLeft(t.Context(), tx, et.campaign, pc.GetId(), key)
 			return err
 		}); err != nil {
 			t.Fatalf("AmmunitionLeft: %v", err)
 		}
-		return n
+		return n, counted
 	}
-	if n := left(arrowKey); n != 0 {
-		t.Errorf("no row: %d", n)
+	if n, counted := left(arrowKey); n != 0 || counted {
+		t.Errorf("no row: %d counted %v, want 0 and not counted", n, counted)
 	}
 	if _, err := et.setAmmo(t, pc, arrowKey, 9); err != nil {
 		t.Fatal(err)
 	}
-	if n := left(arrowKey); n != 9 {
-		t.Errorf("held: %d", n)
+	if n, counted := left(arrowKey); n != 9 || !counted {
+		t.Errorf("held: %d counted %v", n, counted)
+	}
+	if _, err := et.setAmmo(t, pc, arrowKey, 0); err != nil {
+		t.Fatal(err)
+	}
+	if n, counted := left(arrowKey); n != 0 || !counted {
+		t.Errorf("a count of 0: %d counted %v, want 0 and counted", n, counted)
 	}
 	// The campaign is part of the question: the character of another campaign is not found.
 	err := et.inTx(t, func(tx pgx.Tx) error {
-		_, err := et.h.svc.AmmunitionLeft(t.Context(), tx, uuid.NewString(), pc.GetId(), arrowKey)
+		_, _, err := et.h.svc.AmmunitionLeft(t.Context(), tx, uuid.NewString(), pc.GetId(), arrowKey)
 		return err
 	})
 	if connect.CodeOf(err) != connect.CodeNotFound {
@@ -393,11 +422,11 @@ func TestTwoShotsAtTheLastPieceFireOnce(t *testing.T) {
 	enc := uuid.NewString()
 	first, second := et.raceTwo(t,
 		func(tx pgx.Tx) error {
-			_, err := et.h.svc.SpendAmmunition(t.Context(), tx, et.campaign, pc.GetId(), arrowKey, enc)
+			_, _, err := et.h.svc.SpendAmmunition(t.Context(), tx, et.campaign, pc.GetId(), arrowKey, enc)
 			return err
 		},
 		func(tx pgx.Tx) error {
-			_, err := et.h.svc.SpendAmmunition(t.Context(), tx, et.campaign, pc.GetId(), arrowKey, enc)
+			_, _, err := et.h.svc.SpendAmmunition(t.Context(), tx, et.campaign, pc.GetId(), arrowKey, enc)
 			return err
 		})
 	if first != nil || !errors.Is(second, ErrNoAmmunition) {

@@ -714,7 +714,7 @@ func (c *charged) fire(t *testing.T, encounterID string, pieces int) {
 	t.Helper()
 	err := db.InTx(t.Context(), c.h.pool, func(tx pgx.Tx) error {
 		for range pieces {
-			if _, err := c.h.chars.SpendAmmunition(t.Context(), tx, c.campaignID, c.pens.GetId(), arrowAmmo, encounterID); err != nil {
+			if _, _, err := c.h.chars.SpendAmmunition(t.Context(), tx, c.campaignID, c.pens.GetId(), arrowAmmo, encounterID); err != nil {
 				return err
 			}
 		}

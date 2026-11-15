@@ -12,8 +12,9 @@ import (
 )
 
 // Ammunition in the attack roll (SRD 5.1, "Weapons": the ammunition property). A player's character that makes a ranged
-// attack with a weapon that fires ammunition (the line carries the kind) takes one piece of it, in the transaction that
-// writes the attack: with none left the attack is refused before anything is written, and the piece is taken after the
+// attack with a weapon that fires ammunition (the line carries the kind) takes one piece of it when the kind is counted (the
+// character has a count for it, even 0), in the transaction that writes the attack: a kind with no count spends nothing and
+// writes nothing, and with none left the attack is refused before anything is written, and the piece is taken after the
 // roll settled, so a roll that waits for an answer takes nothing yet. The undo of the attack gives the piece back in its own
 // transaction (ammunitionBack). A thrown weapon, a melee one, the improvised melee line of a bow and the attacks of the
 // creatures and of the master's NPCs carry no kind and take nothing.
@@ -23,16 +24,16 @@ func (f *attackFlow) firesAmmunition() bool {
 	return f.attack.Ammunition != "" && !f.attack.Melee && f.attacker.Kind == kindPlayer && backedByCharacter(f.attacker)
 }
 
-// checkAmmunition refuses the attack when the character has none of the kind left.
+// checkAmmunition refuses the attack when the kind is counted and none is left.
 func (f *attackFlow) checkAmmunition(ctx context.Context) error {
 	if !f.firesAmmunition() {
 		return nil
 	}
-	left, err := f.s.vitals.AmmunitionLeft(ctx, f.c.tx, f.m.CampaignID, f.attacker.CharacterID, f.attack.Ammunition)
+	left, counted, err := f.s.vitals.AmmunitionLeft(ctx, f.c.tx, f.m.CampaignID, f.attacker.CharacterID, f.attack.Ammunition)
 	if err != nil {
 		return err
 	}
-	if left <= 0 {
+	if counted && left <= 0 {
 		return errAmmunitionEmpty()
 	}
 	return nil
@@ -51,12 +52,15 @@ func (f *attackFlow) spendAmmunition(ctx context.Context) error {
 		return nil
 	}
 	campaignID, charID := f.m.CampaignID, f.attacker.CharacterID
-	left, err := f.s.vitals.SpendAmmunition(ctx, f.c.tx, campaignID, charID, f.attack.Ammunition, f.c.enc.ID)
+	left, counted, err := f.s.vitals.SpendAmmunition(ctx, f.c.tx, campaignID, charID, f.attack.Ammunition, f.c.enc.ID)
 	if errors.Is(err, link.ErrNoAmmunition) {
 		return errAmmunitionEmpty()
 	}
 	if err != nil {
 		return err
+	}
+	if !counted {
+		return nil // the app was given no count for this kind: the shot spends nothing and leaves no line
 	}
 	names, err := f.s.roster.ContentNames(ctx, f.c.tx, campaignID)
 	if err != nil {

@@ -47,12 +47,13 @@ type ItemKeeper interface {
 	SetItemCharges(ctx context.Context, tx pgx.Tx, campaignID, characterID, entryID string, left int32, lost charactersv1.ItemLoss) (after *charactersv1.SheetMagicItem, err error)
 	// SetAmmunition sets the pieces the character holds of a kind.
 	SetAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string, quantity int32) (*charactersv1.SheetAmmunition, error)
-	// SpendAmmunition takes one piece of a kind for a shot in the encounter and returns the pieces left.
-	SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string) (left int32, err error)
+	// SpendAmmunition takes one piece of a kind for a shot in the encounter and returns the pieces left; counted is
+	// false (and nothing is spent) for a kind the character has no count for.
+	SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string) (left int32, counted bool, err error)
 	// RefundAmmunition gives back pieces that an attack of the encounter took, when the attack is undone.
 	RefundAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string, pieces int32) (left int32, err error)
-	// AmmunitionLeft is the pieces a character of the campaign holds of a kind.
-	AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (int32, error)
+	// AmmunitionLeft is the pieces a character of the campaign holds of a kind, and whether the kind is counted.
+	AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (left int32, counted bool, err error)
 	// RecoverAmmunition takes back half of what the character fired in the encounter.
 	RecoverAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, encounterID string) ([]*charactersv1.SheetAmmunition, error)
 }

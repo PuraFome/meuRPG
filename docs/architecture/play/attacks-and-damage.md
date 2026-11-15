@@ -92,7 +92,8 @@ The master has the last word on an NPC, with one exception: an NPC from a creatu
 **Ammunition.**
 A player's character that attacks at range with a weapon that fires ammunition (a bow, a crossbow, a sling, a blowgun) takes one piece of it for each attack roll, so Extra Attack takes one for each attack (`combat_ammunition.go`).
 The sheet's attack line carries the kind (`rules.Attack.AmmunitionKey`, from `effects/ammunition.json`, and `link.Attack.Ammunition`).
-`prepare` refuses with `AMMUNITION_EMPTY` when none is left, and nothing is written.
+`prepare` refuses with `AMMUNITION_EMPTY` when the kind is counted and none is left, and nothing is written.
+A kind the character has no row for is not counted: the attack goes, spends nothing and writes no `ammunition_spent` event.
 `writeAttack` takes the piece after the roll settled, in the same transaction, through the characters keeper with the combat's id.
 It writes the `ammunition_spent` event just before the attack's own event, a line that only the master and the character's player read.
 The attack's event keeps the kind and the line's id (`ammo`, `ammo_line`).
@@ -107,7 +108,7 @@ A thrown weapon, a melee weapon, the creatures and the master's NPCs spend nothi
 **The improvised line.**
 A weapon that fires ammunition has a second attack line, keyed `<weapon key>:melee` and named "<weapon>, corpo a corpo" (`improvised` is true).
 It is a melee attack of 1d4 plus Strength, bludgeoning, without proficiency or the weapon's bonuses, and it spends no ammunition.
-`GetTurnOptions` fills `ammunition_left` on the ammunition line (0 when none is left) for the character's player and the master, and leaves it absent on every other line.
+`GetTurnOptions` fills `ammunition_left` on the ammunition line of a counted kind (0 when none is left, absent when the kind is not counted) for the character's player and the master, and leaves it absent on every other line.
 A sheet's derived attacks never carry it.
 The line is a weapon attack and a melee one (`Kind` weapon), so what reads those two facts treats it as a Strength melee weapon attack: Rage, Divine Smite, Improved Divine Smite, the hit extras, the maneuvers and Hunter's Mark.
 It is not a weapon of its kind: it has no finesse, two-handed or light property, no proficiency and no magic of the bow, so Dueling, Great Weapon Fighting, Two-Weapon Fighting and Sneak Attack (which needs a finesse or ranged weapon) never apply to it.

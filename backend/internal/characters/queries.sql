@@ -972,10 +972,10 @@ WHERE character_id = sqlc.arg(character_id)
   AND NOT (entry_id = ANY (sqlc.arg(keep_ids)::TEXT[]));
 
 -- name: ListAmmunition :many
--- What the character holds of each kind of ammunition: the kinds with pieces or fired in the last combat.
+-- What the character holds of each counted kind of ammunition: every row, also one at 0.
 SELECT ammo_key, quantity, spent_last_combat, recovered
 FROM character_ammunition
-WHERE character_id = sqlc.arg(character_id) AND (quantity > 0 OR spent_last_combat > 0)
+WHERE character_id = sqlc.arg(character_id)
 ORDER BY ammo_key;
 
 -- name: GetAmmunitionQuantity :one

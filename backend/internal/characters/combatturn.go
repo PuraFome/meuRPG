@@ -379,7 +379,7 @@ func offerFrenzy(d rules.Derived, out *rulesv1.TurnOptions) {
 }
 
 // fillAmmunitionLeft says on each attack line of a weapon that fires ammunition how many pieces the character has left
-// (0 when it holds none). The options go to the character's player and the master alone, which is who may read the stock.
+// (the line has none for a kind the character has no count for). The options go to the character's player and the master alone, which is who may read the stock.
 func (s *Service) fillAmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID string, d rules.Derived, out *rulesv1.TurnOptions) error {
 	ammoOf := map[string]string{}
 	for _, a := range d.Attacks {
@@ -392,11 +392,13 @@ func (s *Service) fillAmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID,
 		if !ok {
 			continue
 		}
-		left, err := s.AmmunitionLeft(ctx, tx, campaignID, characterID, key)
+		left, counted, err := s.AmmunitionLeft(ctx, tx, campaignID, characterID, key)
 		if err != nil {
 			return err
 		}
-		o.Attack.AmmunitionLeft = &left
+		if counted {
+			o.Attack.AmmunitionLeft = &left
+		}
 	}
 	return nil
 }

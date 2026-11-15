@@ -147,6 +147,8 @@ The master can also correct hit points, temporary hit points, spell slots (and p
 - **Ammunition (SRD 5.1, "Weapons": the ammunition property).**
   Arrows, bolts, sling bullets and blowgun needles are counted on the sheet, one number for each kind.
   The owner sets the count while the sheet is open to editing, and the master at any time.
+  A kind the character has no count for is not counted: the shot spends nothing until the owner or the master sets a count.
+  A kind counted at 0 refuses the shot.
   After a combat ends, a minute spent searching the battlefield gives back half, rounded down, of the pieces of each kind the character fired in it, once for each combat.
   A player reads the ammunition of their own characters only, and the master reads all of them.
 - **Wholeness of Body of the Open Hand monk (level 6).**

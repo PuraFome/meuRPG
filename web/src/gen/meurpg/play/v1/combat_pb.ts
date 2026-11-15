@@ -16062,8 +16062,8 @@ export enum EncounterBlockedReason {
   MOUNT_ACTION_LIMITED = 142,
 
   /**
-   * RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has none of the kind
-   * left. Nothing is written. The melee line of the weapon, and a thrown weapon, spend no ammunition.
+   * RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has a count for the kind
+   * (a row, even at 0) with none left. Nothing is written. A kind with no count is not counted and the shot goes. The melee line of the weapon, and a thrown weapon, spend no ammunition.
    *
    * @generated from enum value: ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY = 145;
    */

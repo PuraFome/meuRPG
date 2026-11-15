@@ -1760,7 +1760,7 @@ func (q *Queries) InsertNpcFromCreature(ctx context.Context, arg InsertNpcFromCr
 const listAmmunition = `-- name: ListAmmunition :many
 SELECT ammo_key, quantity, spent_last_combat, recovered
 FROM character_ammunition
-WHERE character_id = $1 AND (quantity > 0 OR spent_last_combat > 0)
+WHERE character_id = $1
 ORDER BY ammo_key
 `
 
@@ -1771,7 +1771,7 @@ type ListAmmunitionRow struct {
 	Recovered       bool
 }
 
-// What the character holds of each kind of ammunition: the kinds with pieces or fired in the last combat.
+// What the character holds of each counted kind of ammunition: every row, also one at 0.
 func (q *Queries) ListAmmunition(ctx context.Context, characterID string) ([]ListAmmunitionRow, error) {
 	rows, err := q.db.Query(ctx, listAmmunition, characterID)
 	if err != nil {

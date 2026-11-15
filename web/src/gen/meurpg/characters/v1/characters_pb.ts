@@ -1075,8 +1075,8 @@ export type FullSheet = Message<"meurpg.characters.v1.FullSheet"> & {
   magicItems: SheetMagicItem[];
 
   /**
-   * The ammunition the character holds, one entry for each kind that has pieces or was fired in the
-   * last combat, sorted by key. Filled by the server on every read; a save ignores it and never
+   * The ammunition the character holds, one entry for each counted kind (one with a count, also 0),
+   * sorted by key. Filled by the server on every read; a save ignores it and never
    * touches what is held. Only the character's player and the master read it.
    *
    * @generated from field: repeated meurpg.characters.v1.SheetAmmunition ammunition = 45;

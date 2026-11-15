@@ -232,6 +232,7 @@ A save of the sheet deletes the rows of the entries it removed.
 What a character holds of each kind of ammunition.
 The primary key is `(character_id, ammo_key)` and the character is `CASCADE`.
 `ammo_key` is the catalog key of the ammunition (`equipment:arrow`).
+A kind with no row is not counted, and a shot never creates a row.
 A row holds `quantity` (0 or more, `CHECK`), `spent_last_combat` (the pieces fired in the combat `last_encounter_id`, 0 or more, `CHECK`) and `recovered` (half of them were already taken back).
 `last_encounter_id` has no foreign key: the combat can be deleted while the count stays readable.
 A shot in another combat starts the count over before it spends the piece.

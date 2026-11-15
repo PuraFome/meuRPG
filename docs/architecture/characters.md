@@ -232,14 +232,17 @@ A 1 loses the item, and a 20 regains the dice play rolled, cut to the maximum.
 `SetItemCharges` is the master's correction.
 It also sets the count of an item that rolls its start, ends a pending roll and writes or deletes the row.
 Ammunition is `character_ammunition` (see [Characters data](../data/characters.md#character_ammunition)).
-`FullSheet.ammunition` lists the kinds with pieces or fired in the last combat.
+`FullSheet.ammunition` lists every counted kind, also one at 0.
+A kind is counted once it has a row.
 It is filled on a read and ignored on a save.
 `SetAmmunition`, `SpendAmmunition`, `AmmunitionLeft` and `RecoverAmmunition` are the keeper's methods for it.
 They ask nothing of the caller either.
 `SpendAmmunition` and `SetAmmunition` refuse a key that is no kind of ammunition with `invalid_argument`.
+`AmmunitionLeft` returns the pieces and whether the kind is counted, and a kind with no row is not counted.
 `AmmunitionLeft` takes the campaign, so a character of another campaign is `not_found`.
 `SpendAmmunition` locks the kind's row and starts the count over when the combat is another.
-It returns `ErrNoAmmunition` without writing when no piece is left, so two shots at the last piece fire once.
+It returns `counted` false without writing for a kind with no row.
+It returns `ErrNoAmmunition` without writing when a counted kind has no piece left, so two shots at the last piece fire once.
 `RecoverAmmunition` returns half (rounded down) of what a combat spent, once.
 It returns `ErrAmmunitionRecovered` when it was done and `ErrNothingToRecover` when nothing was fired.
 `ContentService.ListMagicItems` lists the items the picker offers: items and families with their variants, never the +N armor and weapon families, found by name, in pages like `ListSpells`.

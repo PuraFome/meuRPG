@@ -1619,8 +1619,8 @@ message FullSheet {
   // key already on the sheet and never sets it; only SetAttunement does. Adding and removing
   // entries follows the sheet's lock, like the marks.
   repeated SheetMagicItem magic_items = 44;
-  // The ammunition the character holds, one entry for each kind that has pieces or was fired in the
-  // last combat, sorted by key. Filled by the server on every read; a save ignores it and never
+  // The ammunition the character holds, one entry for each counted kind (one with a count, also 0),
+  // sorted by key. Filled by the server on every read; a save ignores it and never
   // touches what is held. Only the character's player and the master read it.
   repeated SheetAmmunition ammunition = 45;
   // The skills and tools the player picked for today (TableEffect.daily_choice), each until a rest. Only SetDailyChoice writes it,

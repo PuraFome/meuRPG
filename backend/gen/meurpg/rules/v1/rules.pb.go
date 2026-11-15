@@ -7077,7 +7077,7 @@ type Attack struct {
 	// Display only: `attack_bonus` and `damage` already include it, so the app never adds it again.
 	MagicBonus int32 `protobuf:"varint,25,opt,name=magic_bonus,json=magicBonus,proto3" json:"magic_bonus,omitempty"`
 	// For a weapon that fires ammunition, used at range: the pieces of its kind the character has left (0: none, the shot is
-	// refused). Absent for every other line, and in a sheet's derived attacks (only the turn's options carry it, for the
+	// refused). Absent when the kind is not counted (the character has no count for it) and for every other line, and in a sheet's derived attacks (only the turn's options carry it, for the
 	// character's player and the master).
 	AmmunitionLeft *int32 `protobuf:"varint,26,opt,name=ammunition_left,json=ammunitionLeft,proto3,oneof" json:"ammunition_left,omitempty"`
 	// The line is an improvised melee attack with a weapon that is not made for it (a bow used as a club): 1d4 plus Strength,

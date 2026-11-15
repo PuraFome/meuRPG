@@ -1035,8 +1035,8 @@ const (
 	// other action of the mount (an attack, a spell, Help, Hide, Search, Ready, Use an Object, a grapple or a shove, a creature's
 	// action) is refused. A reaction is not an action and stays free. `combatant_ids` names the mount. Nothing is changed.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_MOUNT_ACTION_LIMITED EncounterBlockedReason = 142
-	// RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has none of the kind
-	// left. Nothing is written. The melee line of the weapon, and a thrown weapon, spend no ammunition.
+	// RollAttack: the attack fires ammunition (a bow, a crossbow, a sling, a blowgun) and the character has a count for the kind
+	// (a row, even at 0) with none left. Nothing is written. A kind with no count is not counted and the shot goes. The melee line of the weapon, and a thrown weapon, spend no ammunition.
 	EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY EncounterBlockedReason = 145
 )
 

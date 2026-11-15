@@ -3248,8 +3248,8 @@ type FullSheet struct {
 	// key already on the sheet and never sets it; only SetAttunement does. Adding and removing
 	// entries follows the sheet's lock, like the marks.
 	MagicItems []*SheetMagicItem `protobuf:"bytes,44,rep,name=magic_items,json=magicItems,proto3" json:"magic_items,omitempty"`
-	// The ammunition the character holds, one entry for each kind that has pieces or was fired in the
-	// last combat, sorted by key. Filled by the server on every read; a save ignores it and never
+	// The ammunition the character holds, one entry for each counted kind (one with a count, also 0),
+	// sorted by key. Filled by the server on every read; a save ignores it and never
 	// touches what is held. Only the character's player and the master read it.
 	Ammunition []*SheetAmmunition `protobuf:"bytes,45,rep,name=ammunition,proto3" json:"ammunition,omitempty"`
 	// The skills and tools the player picked for today (TableEffect.daily_choice), each until a rest. Only SetDailyChoice writes it,

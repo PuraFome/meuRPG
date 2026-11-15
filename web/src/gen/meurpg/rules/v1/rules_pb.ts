@@ -3148,7 +3148,7 @@ export type Attack = Message<"meurpg.rules.v1.Attack"> & {
 
   /**
    * For a weapon that fires ammunition, used at range: the pieces of its kind the character has left (0: none, the shot is
-   * refused). Absent for every other line, and in a sheet's derived attacks (only the turn's options carry it, for the
+   * refused). Absent when the kind is not counted (the character has no count for it) and for every other line, and in a sheet's derived attacks (only the turn's options carry it, for the
    * character's player and the master).
    *
    * @generated from field: optional int32 ammunition_left = 26;

@@ -46,6 +46,8 @@ It ends a wait for the d20, writes `item_charges_restored` (or `item_destroyed` 
 ## Ammunition
 
 `SetAmmunition` sets the pieces of one kind, 0 to 9999.
+A kind is counted once the character has a row for it, also at 0, and S2 has no way to remove a kind.
+A kind with no row is not counted.
 `RecoverAmmunition` takes back half, rounded down, of what each kind fired in the character's latest combat, once for each combat.
 It refuses with `ChargesBlocked` `COMBAT_RUNNING` while that combat is not ended, and `ALREADY_RECOVERED` after it ran.
 A combat that fired nothing is skipped, and the recovery goes to the newest earlier ended combat that fired some, among the latest ten.
@@ -55,6 +57,7 @@ It writes the session event `ammunition_recovered`.
 ## Ammunition in combat
 
 A ranged attack with a weapon that fires ammunition takes one piece in the attack's transaction ([Attacks and damage](attacks-and-damage.md#the-two-step-attack)).
+A kind with no row spends nothing: the keeper's `SpendAmmunition` answers `counted` false, and the shot writes no `ammunition_spent` event, sets no `ammo` on the attack's event and so refunds nothing on undo.
 The keeper's `SpendAmmunition` starts the count of a combat over (nothing fired, not recovered) when the combat is not the one it last counted.
 With none left the attack is refused with `EncounterBlocked` `AMMUNITION_EMPTY`.
 Each shot writes the session event `ammunition_spent` with the combat's round, which reads as the line `AMMUNITION_SPENT`.

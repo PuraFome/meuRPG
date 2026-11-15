@@ -137,6 +137,8 @@ O mestre também pode corrigir à mão, a qualquer momento da sessão, PV, PV te
 - **Munição (SRD 5.1, "Weapons": a propriedade de munição).**
   Flechas, virotes, balas de funda e dardos de zarabatana são contados na ficha, um número para cada tipo.
   O dono define a quantidade enquanto a ficha está aberta para edição, e o mestre a qualquer momento.
+  Um tipo para o qual o personagem não tem contagem não é contado: o tiro não gasta nada até o dono ou o mestre definir uma quantidade.
+  Um tipo contado em 0 recusa o tiro.
   Depois que um combate termina, um minuto procurando no campo de batalha devolve metade, arredondada para baixo, das peças de cada tipo que o personagem disparou nele, uma vez para cada combate.
   Um jogador lê a munição só dos próprios personagens, e o mestre lê toda.
 - **Sintonização.**

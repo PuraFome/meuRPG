@@ -74,6 +74,21 @@ func (s *archery) held(t *testing.T) int32 {
 	return 0
 }
 
+// listed says the sheet lists the arrows (a counted kind, also at 0).
+func (s *archery) listed(t *testing.T) bool {
+	t.Helper()
+	res, err := s.caio.characters.GetCharacter(t.Context(), connect.NewRequest(&charactersv1.GetCharacterRequest{CampaignId: s.campaignID, CharacterId: s.toren.GetId()}))
+	if err != nil {
+		t.Fatalf("GetCharacter() error = %v", err)
+	}
+	for _, am := range res.Msg.GetCharacter().GetSheet().GetFull().GetAmmunition() {
+		if am.GetKey() == arrowAmmo {
+			return true
+		}
+	}
+	return false
+}
+
 // fight starts the combat with Toren first and the goblin (revealed) at the column; Toren stands at column 3 of row 3.
 func (s *archery) fight(t *testing.T, goblinCol int32) *playv1.Encounter {
 	t.Helper()
@@ -146,31 +161,96 @@ func TestARangedAttackWithAmmunitionSpendsOnePieceAndLogsItForTheOwnerAndTheMast
 	}
 }
 
-func TestAnAttackWithNoAmmunitionLeftIsRefusedAndWritesNothing(t *testing.T) {
+func TestAnAttackWithACountedKindAtZeroIsRefusedAndWritesNothing(t *testing.T) {
 	t.Parallel()
-	for name, pieces := range map[string]int32{"none ever held": -1, "none left": 0} {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			s := newArchery(t)
-			if pieces >= 0 {
-				s.stock(t, pieces)
-			}
-			e := s.fight(t, 8)
-			_, err := s.shoot(t, e, shortbowKey)
-			wantBlockedBy(t, "a shot with no ammunition", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY)
-			if n := s.countEvents(t, eventAttackRolled); n != 0 {
-				t.Errorf("the session has %d attack events, want none", n)
-			}
-			if n := s.countEvents(t, eventAmmunitionSpent); n != 0 {
-				t.Errorf("the session has %d ammunition events, want none", n)
-			}
-			if used := s.mustOptions(t, s.caio, e, "Toren").GetOptions().GetEconomy().GetAction().GetUsed(); used {
-				t.Error("the refused shot spent the action")
-			}
-			if got := s.held(t); got != 0 {
-				t.Errorf("arrows = %d, want 0", got)
-			}
-		})
+	s := newArchery(t)
+	s.stock(t, 0)
+	e := s.fight(t, 8)
+	_, err := s.shoot(t, e, shortbowKey)
+	wantBlockedBy(t, "a shot with no ammunition left", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY)
+	if n := s.countEvents(t, eventAttackRolled); n != 0 {
+		t.Errorf("the session has %d attack events, want none", n)
+	}
+	if n := s.countEvents(t, eventAmmunitionSpent); n != 0 {
+		t.Errorf("the session has %d ammunition events, want none", n)
+	}
+	if used := s.mustOptions(t, s.caio, e, "Toren").GetOptions().GetEconomy().GetAction().GetUsed(); used {
+		t.Error("the refused shot spent the action")
+	}
+	if !s.listed(t) || s.held(t) != 0 {
+		t.Error("the counted kind at 0 is not on the sheet's list")
+	}
+}
+
+func TestTheLastPieceShootsAndTheNextShotIsRefused(t *testing.T) {
+	t.Parallel()
+	s := newArchery(t)
+	s.stock(t, 1)
+	e := s.fight(t, 8)
+	if _, err := s.shoot(t, e, shortbowKey); err != nil {
+		t.Fatalf("the shot at the last piece error = %v", err)
+	}
+	if got := s.held(t); got != 0 || !s.listed(t) {
+		t.Errorf("after the last piece: %d arrows, listed %v; want 0 and listed", got, s.listed(t))
+	}
+	_, err := s.shoot(t, e, shortbowKey)
+	wantBlockedBy(t, "the shot after the last piece", err, playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_AMMUNITION_EMPTY)
+	if n := s.countEvents(t, eventAmmunitionSpent); n != 1 {
+		t.Errorf("the session has %d ammunition events, want 1", n)
+	}
+	if n := s.countEvents(t, eventAttackRolled); n != 1 {
+		t.Errorf("the session has %d attack events, want 1", n)
+	}
+}
+
+func TestAKindWithNoCountIsNotCountedTheShotGoesAndSpendsNothing(t *testing.T) {
+	t.Parallel()
+	s := newArchery(t)
+	e := s.fight(t, 8)
+	for _, o := range s.mustOptions(t, s.caio, e, "Toren").GetOptions().GetAttacks() {
+		if o.GetAttack().GetKey() == shortbowKey && o.GetAttack().AmmunitionLeft != nil {
+			t.Errorf("the shortbow line carries ammunition_left = %d for a kind with no count", o.GetAttack().GetAmmunitionLeft())
+		}
+	}
+	for i := range 2 {
+		if _, err := s.shoot(t, e, shortbowKey); err != nil {
+			t.Fatalf("shot %d with no count error = %v", i+1, err)
+		}
+	}
+	if n := s.countEvents(t, eventAttackRolled); n != 2 {
+		t.Errorf("the session has %d attack events, want 2", n)
+	}
+	if n := s.countEvents(t, eventAmmunitionSpent); n != 0 {
+		t.Errorf("the session has %d ammunition events, want none", n)
+	}
+	for _, u := range []*user{s.master, s.caio} {
+		if lines := s.ammoLines(t, u, e); len(lines) != 0 {
+			t.Errorf("a reader sees %d ammunition lines, want none", len(lines))
+		}
+	}
+	if s.listed(t) {
+		t.Error("shooting created a count for the kind")
+	}
+	for _, o := range s.mustOptions(t, s.master, e, "Toren").GetOptions().GetAttacks() {
+		if o.GetAttack().GetKey() == shortbowKey && o.GetAttack().AmmunitionLeft != nil {
+			t.Errorf("the master reads ammunition_left = %d for a kind with no count", o.GetAttack().GetAmmunitionLeft())
+		}
+	}
+}
+
+func TestUndoingAShotOfAKindWithNoCountRefundsNothingAndCreatesNoRow(t *testing.T) {
+	t.Parallel()
+	s := newArchery(t)
+	e := s.fight(t, 8)
+	if _, err := s.shoot(t, e, shortbowKey); err != nil {
+		t.Fatalf("RollAttack() error = %v", err)
+	}
+	s.undoLast(t, e)
+	if s.listed(t) {
+		t.Error("the undo of an uncounted shot created a count for the kind")
+	}
+	if n := s.countEvents(t, eventAmmunitionSpent); n != 0 {
+		t.Errorf("the session has %d ammunition events, want none", n)
 	}
 }
 

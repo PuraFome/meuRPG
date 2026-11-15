@@ -24,7 +24,7 @@ const MaxAmmunition = 9999
 
 // The refusals are package link's, so package play tells them apart without importing this one.
 var (
-	// ErrNoAmmunition: no piece of the kind is left (or the character never held any).
+	// ErrNoAmmunition: the kind is counted and no piece of it is left.
 	ErrNoAmmunition = link.ErrNoAmmunition
 	// ErrAmmunitionRecovered: the pieces of the character's last combat were already taken back.
 	ErrAmmunitionRecovered = link.ErrAmmunitionRecovered
@@ -32,8 +32,8 @@ var (
 	ErrNothingToRecover = link.ErrNothingToRecover
 )
 
-// fillAmmunition fills FullSheet.ammunition from the stored rows: one entry per kind with pieces or fired in the
-// last combat, sorted by key. The caller is the character's player or the master, so the counts reach nobody else
+// fillAmmunition fills FullSheet.ammunition from the stored rows: one entry per counted kind (a row, even at 0),
+// sorted by key. The caller is the character's player or the master, so the counts reach nobody else
 // (RN-10).
 func (s *Service) fillAmmunition(ctx context.Context, content *rules.Content, c *charactersv1.Character) error {
 	full := c.GetSheet().GetFull()
@@ -96,35 +96,36 @@ func (s *Service) SetAmmunition(ctx context.Context, tx pgx.Tx, campaignID, char
 }
 
 // SpendAmmunition takes one piece of a kind for a shot in the encounter and returns the pieces left. A combat other
-// than the one the row last counted starts the count over (spent 0, not recovered) before the shot. ErrNoAmmunition
-// when none is left or the character never held the kind; nothing is written then. The row is locked, so two
-// shots at the last piece never both fire. invalid_argument for a key that is no kind of ammunition.
-func (s *Service) SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string) (left int32, err error) {
+// than the one the row last counted starts the count over (spent 0, not recovered) before the shot. A kind with no row
+// is not counted: nothing is spent or written and counted is false. ErrNoAmmunition when a counted kind has none left;
+// nothing is written then. The row is locked, so two shots at the last piece never both fire. invalid_argument for a key
+// that is no kind of ammunition.
+func (s *Service) SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey, encounterID string) (left int32, counted bool, err error) {
 	q := s.queries.WithTx(tx)
 	id, err := s.ammunitionCharacter(ctx, q, campaignID, characterID)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	enc, ok := uid.Canonical(encounterID)
 	if !ok {
-		return 0, invalidArgument(fieldErr("encounter_id", "is not an id"))
+		return 0, false, invalidArgument(fieldErr("encounter_id", "is not an id"))
 	}
 	content, err := s.contentFor(ctx, tx, campaignID)
 	if err != nil {
-		return 0, wrap("read rules content", err)
+		return 0, false, wrap("read rules content", err)
 	}
 	if !slices.Contains(content.AmmunitionKinds(), ammoKey) {
-		return 0, invalidArgument(fieldErr("ammo_key", "is not a kind of ammunition"))
+		return 0, false, invalidArgument(fieldErr("ammo_key", "is not a kind of ammunition"))
 	}
 	row, err := q.GetAmmunitionForUpdate(ctx, charactersdb.GetAmmunitionForUpdateParams{CharacterID: id, AmmoKey: ammoKey})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, ErrNoAmmunition
+		return 0, false, nil
 	}
 	if err != nil {
-		return 0, wrap("lock ammunition", err)
+		return 0, false, wrap("lock ammunition", err)
 	}
 	if row.Quantity <= 0 {
-		return 0, ErrNoAmmunition
+		return 0, true, ErrNoAmmunition
 	}
 	spent, recovered := row.SpentLastCombat, row.Recovered
 	if row.LastEncounterID == nil || *row.LastEncounterID != enc {
@@ -134,9 +135,9 @@ func (s *Service) SpendAmmunition(ctx context.Context, tx pgx.Tx, campaignID, ch
 		CharacterID: id, AmmoKey: ammoKey, Quantity: row.Quantity - 1, SpentLastCombat: spent + 1, LastEncounterID: enc, Recovered: recovered, Now: s.now(),
 	})
 	if err != nil {
-		return 0, wrap("spend ammunition", err)
+		return 0, false, wrap("spend ammunition", err)
 	}
-	return row.Quantity - 1, nil
+	return row.Quantity - 1, true, nil
 }
 
 // RefundAmmunition gives back pieces of a kind that an attack of the encounter took, when the attack is undone (an undone
@@ -193,22 +194,23 @@ func (s *Service) RefundAmmunition(ctx context.Context, tx pgx.Tx, campaignID, c
 	return quantity, nil
 }
 
-// AmmunitionLeft is the pieces a character of the campaign holds of a kind, 0 when it never held any. `not_found` for
+// AmmunitionLeft is the pieces a character of the campaign holds of a kind and whether the kind is counted: a kind is
+// counted once the character has a row for it, even at 0; without one it is not counted and left is 0. `not_found` for
 // a character that is not in the campaign. A nil tx reads outside a transaction (the turn's options).
-func (s *Service) AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (int32, error) {
+func (s *Service) AmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID, characterID, ammoKey string) (left int32, counted bool, err error) {
 	q := s.queriesIn(tx)
 	id, err := s.ammunitionCharacter(ctx, q, campaignID, characterID)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	n, err := q.GetAmmunitionQuantity(ctx, charactersdb.GetAmmunitionQuantityParams{CharacterID: id, AmmoKey: ammoKey})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return 0, nil
+		return 0, false, nil
 	}
 	if err != nil {
-		return 0, wrap("read ammunition", err)
+		return 0, false, wrap("read ammunition", err)
 	}
-	return n, nil
+	return n, true, nil
 }
 
 // RecoverAmmunition takes back half (rounded down) of what the character fired in the encounter, for each kind, and
