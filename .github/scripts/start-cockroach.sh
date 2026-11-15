@@ -19,9 +19,11 @@ if [ -n "${TEST_COCKROACH_IMAGE:-}" ]; then
 fi
 echo "CockroachDB image: $image (${pull[*]:-pulled by docker run})"
 
+# The tmpfs is the node's external I/O directory: a test database is a RESTORE of a backup of the template kept there (nodelocal).
 docker run ${pull[@]+"${pull[@]}"} --detach --name cockroach --publish 127.0.0.1:26257:26257 \
+  --tmpfs /cockroach-io:rw,mode=1777 \
   "$image" start-single-node --insecure \
-  --store=type=mem,size=4GiB --cache=512MiB --max-sql-memory=2GiB
+  --store=type=mem,size=4GiB --cache=512MiB --max-sql-memory=2GiB --external-io-dir=/cockroach-io
 for _ in $(seq 1 60); do
   if docker exec cockroach cockroach sql --insecure --host=localhost:26257 -e 'SELECT 1' >/dev/null 2>&1; then
     docker exec cockroach cockroach sql --insecure --host=localhost:26257 \

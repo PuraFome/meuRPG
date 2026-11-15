@@ -92,6 +92,9 @@ type templateDB struct {
 	// ddl creates the template's sequences and tables, each table after the
 	// ones it references.
 	ddl []string
+	// backup is where the template's backup is kept (a nodelocal URI of the server): on CockroachDB a copy of the template is
+	// RESTORE of it. Empty on PostgreSQL.
+	backup string
 	// reference are the tables (in the order of tables) that the migrations
 	// leave with rows: data the game reads and never writes, copied with its
 	// rows, and left alone when a database is emptied. Read from the migrated
@@ -235,13 +238,35 @@ func NewPoolConns(t testing.TB, prefix string, conns int32) *pgxpool.Pool {
 		}
 		return poolFor(t, prefix, name, dsn, conns)
 	}
-	mustExec(t, admin, "CREATE DATABASE "+name)
 	freeMu.Lock()
 	made = append(made, name)
 	freeMu.Unlock()
-	copyCockroachTemplate(t, open(t, dsn))
+	if _, err := admin.ExecContext(t.Context(), restoreSQL(template, name)); err != nil {
+		t.Fatalf("copy the template by RESTORE: %v", err)
+	}
 
 	return poolFor(t, prefix, name, dsn, conns)
+}
+
+// restoreSQL is the statement that makes the database name from the template's backup.
+func restoreSQL(tpl templateDB, name string) string {
+	return fmt.Sprintf("RESTORE DATABASE %s FROM LATEST IN '%s' WITH new_db_name = '%s'", tpl.name, tpl.backup, name)
+}
+
+// ensureBackup keeps one backup of the migrated template in the server's nodelocal storage, named after the template (so after the
+// migrations' fingerprint), unless the server has one: a copy of the template is a RESTORE of it. A server that refuses nodelocal
+// (it was started without --external-io-dir) fails the run with the line that says how to start it.
+func ensureBackup(ctx context.Context, admin *sql.DB, name string) (string, error) {
+	uri := "nodelocal://1/" + name
+	var n int
+	// SHOW BACKUPS answers an error for a collection that does not exist yet.
+	if err := admin.QueryRowContext(ctx, fmt.Sprintf("SELECT count(*) FROM [SHOW BACKUPS IN '%s']", uri)).Scan(&n); err == nil && n > 0 {
+		return uri, nil
+	}
+	if _, err := admin.ExecContext(ctx, fmt.Sprintf("BACKUP DATABASE %s INTO '%s'", name, uri)); err != nil {
+		return "", fmt.Errorf("back up the template: %w\nThe test CockroachDB must be started with --external-io-dir (make db-test-cockroach-start does; docs/testing.md)", err)
+	}
+	return uri, nil
 }
 
 // copyCockroachTemplate copies the template's schema and rows into the empty database conn is open on.
@@ -590,7 +615,11 @@ func buildTemplate(rawURL string) (templateDB, error) {
 	if err != nil {
 		return templateDB{}, err
 	}
-	return templateDB{name: name, ddl: ddl, tables: tables, reference: reference}, nil
+	backup, err := ensureBackup(ctx, admin, name)
+	if err != nil {
+		return templateDB{}, err
+	}
+	return templateDB{name: name, ddl: ddl, tables: tables, reference: reference, backup: backup}, nil
 }
 
 // ensureMigrated returns once the template name has every migration: made

@@ -237,12 +237,12 @@ db-test-stop: ## Stop the test PostgreSQL started by db-test-start (TEST_PG_PORT
 
 db-test-cockroach-start: ## Start an in-memory test CockroachDB on localhost:26258 (TEST_DB_PORT=26259 for a second one), for the tests that need it and for the e2e
 	@command -v cockroach >/dev/null || { echo "cockroach not found: brew install cockroachdb/tap/cockroach@26.2 (docs/development.md, \"Native CockroachDB (Mac, optional)\")"; exit 1; }
-	@mkdir -p "$(TEST_DB_DIR)"
+	@mkdir -p "$(TEST_DB_DIR)/io"
 	@if cockroach sql --insecure --host=localhost:$(TEST_DB_PORT) -e 'SELECT 1' >/dev/null 2>&1; then \
 		echo "The test CockroachDB is already running on localhost:$(TEST_DB_PORT)"; \
 	else \
 		cockroach start-single-node --insecure --listen-addr=localhost:$(TEST_DB_PORT) --http-addr=localhost:$(TEST_DB_HTTP_PORT) \
-			--store=type=mem,size=2GiB --cache=256MiB --max-sql-memory=512MiB \
+			--store=type=mem,size=2GiB --cache=256MiB --max-sql-memory=512MiB --external-io-dir="$(TEST_DB_DIR)/io" \
 			--log-dir="$(TEST_DB_DIR)/logs" --pid-file="$(TEST_DB_DIR)/cockroach.pid" --background \
 			>"$(TEST_DB_DIR)/start.log" 2>&1 || { cat "$(TEST_DB_DIR)/start.log"; exit 1; }; \
 		cockroach sql --insecure --host=localhost:$(TEST_DB_PORT) \

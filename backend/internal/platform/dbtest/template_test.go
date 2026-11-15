@@ -189,3 +189,109 @@ func TestGooseIDsOfACopiedDatabase(t *testing.T) {
 		t.Errorf("goose_db_version uses %q on %q: the finding changed, update this test", used, version)
 	}
 }
+
+// showAll reads what SHOW CREATE ALL <what> says of the database the connection is on, sorted, with the database's own name left out
+// (a trigger's table is written with it).
+func showAll(t *testing.T, conn *sql.DB, what string) []string {
+	t.Helper()
+	var database string
+	if err := conn.QueryRowContext(t.Context(), `SELECT current_database()`).Scan(&database); err != nil {
+		t.Fatalf("name the database: %v", err)
+	}
+	rows, err := conn.QueryContext(t.Context(), `SELECT create_statement FROM [SHOW CREATE ALL `+what+`]`)
+	if err != nil {
+		t.Fatalf("SHOW CREATE ALL %s: %v", what, err)
+	}
+	defer func() { _ = rows.Close() }()
+	var out []string
+	for rows.Next() {
+		var stmt string
+		if err := rows.Scan(&stmt); err != nil {
+			t.Fatalf("read a statement: %v", err)
+		}
+		out = append(out, strings.ReplaceAll(stmt, database, "<database>"))
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("read the statements: %v", err)
+	}
+	slices.Sort(out)
+	return out
+}
+
+// rowsDigest is a digest of the rows of a table, in a fixed order.
+func rowsDigest(t *testing.T, conn *sql.DB, table string) string {
+	t.Helper()
+	var digest sql.NullString
+	if err := conn.QueryRowContext(t.Context(), `SELECT md5(string_agg(x::text, ',' ORDER BY x::text)) FROM `+table+` x`).Scan(&digest); err != nil {
+		t.Fatalf("digest of %s: %v", table, err)
+	}
+	return digest.String
+}
+
+// TestARestoredTemplateEqualsTheReplayedOne compares a database made by RESTORE of the template's backup with the template itself
+// (the tables with their indexes, constraints and sequences, the functions, the triggers, the reference rows and goose's table), and
+// with one made by replaying the template's DDL and copying its reference rows: the rows must be the same in the three, and the
+// schema of the replayed one is logged where it differs.
+func TestARestoredTemplateEqualsTheReplayedOne(t *testing.T) {
+	rawURL := testenv.DatabaseURL(t)
+	templateOnce.Do(func() { template, errTemplate = buildTemplate(rawURL) })
+	if errTemplate != nil {
+		t.Fatalf("build the template: %v", errTemplate)
+	}
+	if template.postgres {
+		t.Skip("PostgreSQL copies the template natively")
+	}
+	restored := open(t, mustDSN(t, rawURL, NewPool(t, "meurpg_dbtest_restored").Config().ConnConfig.Database))
+	replayed := scratchDatabase(t, "replayed")
+	copyCockroachTemplate(t, replayed)
+	tpl := open(t, mustDSN(t, rawURL, template.name))
+
+	for _, what := range []string{"TABLES", "ROUTINES", "TRIGGERS"} {
+		got, want, replay := showAll(t, restored, what), showAll(t, tpl, what), showAll(t, replayed, what)
+		if len(want) == 0 && what != "TRIGGERS" {
+			t.Fatalf("the template has no %s: the comparison proves nothing", what)
+		}
+		if !slices.Equal(got, want) {
+			t.Errorf("SHOW CREATE ALL %s differs between the restored database and the template:\nonly restored: %q\nonly template: %q", what, only(got, want), only(want, got))
+		}
+		// What the replay makes that the template does not have, or lacks.
+		if extra, lacks := only(replay, want), only(want, replay); len(extra)+len(lacks) > 0 {
+			t.Logf("SHOW CREATE ALL %s: the replayed database has %q and lacks %q", what, extra, lacks)
+		}
+	}
+	for _, table := range append(slices.Clone(template.reference), "goose_db_version") {
+		if got, want, replay := rowsDigest(t, restored, table), rowsDigest(t, tpl, table), rowsDigest(t, replayed, table); got != want || replay != want {
+			t.Errorf("the rows of %s differ: restored %s, template %s, replayed %s", table, got, want, replay)
+		}
+	}
+	// Nothing but the reference rows: every other table is empty.
+	for _, table := range template.tables {
+		if slices.Contains(template.reference, table) || table == "goose_db_version" {
+			continue
+		}
+		var has bool
+		if err := restored.QueryRowContext(t.Context(), `SELECT EXISTS (SELECT 1 FROM `+table+`)`).Scan(&has); err != nil || has {
+			t.Errorf("the restored table %s has rows (%v, error %v)", table, has, err)
+		}
+	}
+}
+
+func mustDSN(t *testing.T, rawURL, database string) string {
+	t.Helper()
+	dsn, err := withDatabase(rawURL, database)
+	if err != nil {
+		t.Fatalf("parse the URL: %v", err)
+	}
+	return dsn
+}
+
+// only returns the elements of a that b lacks.
+func only(a, b []string) []string {
+	var out []string
+	for _, x := range a {
+		if !slices.Contains(b, x) {
+			out = append(out, x)
+		}
+	}
+	return out
+}
