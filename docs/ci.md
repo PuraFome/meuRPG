@@ -96,6 +96,19 @@ Two checks keep the list true (`.github/scripts/cockroach-only.sh`):
 - `check-list` runs in the job `go-db cockroach-only list` on PostgreSQL: every listed test must fail there.
   A test that passes on PostgreSQL does not need CockroachDB, and leaves the list.
 
+### How the test database image reaches the jobs
+
+The `go-db` groups and the list check do not pull the database image themselves: registries refuse an anonymous pull once a runner pool has used its data limit ("Data limit exceeded"), and seventeen jobs pulling the same image multiply it.
+The job `go-db database image` pulls the image the run needs (PostgreSQL in a preflight, CockroachDB in a train, as `test-database` decides) once, tags it `meurpg-test-db:<engine>`, and keeps it as the artifact `database-image` for one day.
+Every group and the list check download it with the action `.github/actions/load-database-image`, which loads it and gives the tag as its `image` output (it writes no environment file). The step that starts the database passes the tag as `TEST_POSTGRES_IMAGE` or `TEST_COCKROACH_IMAGE` (through the `image` input of `test-database`, or the step's `env:`); `test-database` refuses a tag that is not the picked database's.
+`start-postgres.sh` and `start-cockroach.sh` then run that local image with `--pull=never`: the "Start the test database" step of a group prints the image and says it is not pulled, and the only job of the run that touches a registry for it is `go-db database image`.
+A registry that refuses the pull fails that job with its own message, once: nothing retries, and the groups are skipped, so `go (integration tests against CockroachDB)` fails and says the image job did not succeed.
+The scripts' `ref` mode, `database-image.sh ref postgres|cockroach`, prints the pin.
+
+Both images are pinned by digest in the `env:` of `.github/workflows/backend.yml`, one place each: `COCKROACH_IMAGE` (the digest also in `deploy/local/compose.yaml` and `compose.ci.yaml`, kept in sync as above) and `POSTGRES_IMAGE` (the mirror of the official image on Amazon's public registry, the major line 17).
+`flake-check` and `nightly-hunt` start CockroachDB through the same script and pull the pinned image themselves; so does `repeat-changed`, which starts the database through `test-database`.
+To move the PostgreSQL pin, take the digest the registry gives for the tag (`docker buildx imagetools inspect public.ecr.aws/docker/library/postgres:17`) and change `POSTGRES_IMAGE`.
+
 A test that needs CockroachDB and is not on the list fails in the PostgreSQL run: add it with its reason, or write it so it runs on both databases.
 `repeat-changed` leaves the listed tests out of its repeats on PostgreSQL.
 
