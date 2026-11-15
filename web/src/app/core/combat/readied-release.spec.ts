@@ -77,6 +77,36 @@ describe('readied-release (#857: a held spell released from its window)', () => 
     ]);
   });
 
+  it('deals every dart of a high slot: Magic Missile held at the 9th level has 11, more than the 10 targets a cast lists', () => {
+    const plan = releasePlan(
+      options({
+        spellKey: 'spell:magic-missile',
+        maxTargets: 11,
+        darts: [{ slotLevel: 9, darts: 11 }],
+        targets,
+      }),
+      held('spell:magic-missile'),
+      'tor',
+    )!;
+    expect(plan.rule.kind).toBe('darts');
+    expect(plan.total).toBe(11);
+    expect(releaseStatus(plan, NO_PICK)).toBe('Distribua todos os dardos: 0 de 11.');
+    const ten = { chosen: [], dealt: new Map([['z1', 10]]) };
+    expect(releaseComplete(plan, ten)).toBe(false);
+    const all = {
+      chosen: [],
+      dealt: new Map([
+        ['z1', 10],
+        ['tor', 1],
+      ]),
+    };
+    expect(releaseComplete(plan, all)).toBe(true);
+    expect(releaseTargets(plan, all)).toEqual([
+      { combatantId: 'z1', darts: 10 },
+      { combatantId: 'tor', darts: 1 },
+    ]);
+  });
+
   it('picks several creatures (at least one) and starts with the named one when it can be aimed at', () => {
     const plan = releasePlan(
       options({ spellKey: 'spell:bless', maxTargets: 3, targets }),

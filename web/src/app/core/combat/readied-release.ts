@@ -9,6 +9,7 @@ import {
   type TargetRule,
   castTargetRows,
   dartTargets,
+  dartsAt,
   dartsPlaced,
   dartsStatus,
   targetRule,
@@ -62,7 +63,8 @@ export function releasePlan(
   }
   const slot = st.darts[0]?.slotLevel ?? 0;
   const rule = targetRule(st, reactorId, slot, slot);
-  const total = rule.kind === 'darts' ? rule.max : 0;
+  // The darts of the held slot, all of them: `rule.max` is the most creatures a list holds (10), which Magic Missile at the 9th level (11 darts) passes.
+  const total = rule.kind === 'darts' ? dartsAt(st.darts, slot) : 0;
   const reach = st.rangeFt > 0 ? st.rangeFt : null;
   return { rule, rows: castTargetRows(st.targets, reactorId, reach), total };
 }

@@ -4,10 +4,10 @@ import { type ReadiedAction, ReadiedKind } from '../../../gen/meurpg/play/v1/com
 import { combatErrorMessage } from './combat-errors';
 
 /**
- * The words of a refused answer of a readied action. A held spell is released with `AnswerReaction`, which carries creatures and the
- * d20 but no darts (Magic Missile) and no point on the map (an area): the server refuses those with `invalid_argument`, and the
- * usual words ("confira os campos") would send the player looking for a field. The readier is off its turn while the window is open,
- * so the server lists no targets or darts for the held spell and the app cannot tell beforehand.
+ * The words of a refused answer of a readied action. A held spell is released with `AnswerReaction`, which carries the targets with
+ * their darts (Magic Missile, Scorching Ray) or the creatures, and the d20. The server refuses with `invalid_argument` a choice that
+ * does not fit the spell (a dart not placed, a creature that cannot be aimed at, too many targets), and the usual words ("confira os
+ * campos") would send the player looking for a field. So the sentence points at what the window asks: the targets and the darts.
  */
 export function readiedRefusalText(
   err: unknown,
@@ -19,7 +19,7 @@ export function readiedRefusalText(
     err instanceof ConnectError &&
     err.code === Code.InvalidArgument
   ) {
-    return 'Não deu para soltar a magia por aqui: ela pede dardos ou um ponto no mapa, que este aviso ainda não envia. Dá para deixar passar.';
+    return 'Não deu para soltar a magia com essa escolha. Confira os alvos e os dardos. Dá para deixar passar.';
   }
   return combatErrorMessage(err, doing);
 }

@@ -130,8 +130,14 @@ func (f *castFlow) mayCastNow(ctx context.Context) error {
 // findReadied finds the readied spell the cast releases: the caster's open READIED window holds this spell.
 func (f *castFlow) findReadied(ctx context.Context) error {
 	w, _, found, err := heldByWindow(ctx, f.c.q, f.c.enc.ID, f.caster.ID, f.call.spellKey)
-	if err != nil || !found {
+	if err != nil {
 		return err
+	}
+	if !found {
+		if f.call.release != "" { // the answer's window is closed: the spell is not cast for it
+			return errNotYourTurnToAnswer()
+		}
+		return nil
 	}
 	f.readied, err = readiedUseOf(ctx, f.c, w.ID, f.caster, readiedSpell)
 	return err
@@ -219,9 +225,10 @@ func heldRelease(ctx context.Context, q *playdb.Queries, encID, windowID string,
 }
 
 // useReadiedSpell is "Usar" on a readied spell: CastSpell by the readier, under the answer's key, with the targets the
-// answer names in targets (with their darts) or in creature_ids, else the creature named at Ready (for a spell that takes named targets), the point in origin and
-// the answer's die. CastSpell checks them all as it does on the caster's turn. The use is spent once the spell is cast: a cast
-// held by a Counterspell is used when it happens.
+// answer names in targets (with their darts) or in creature_ids, else the creature named at Ready (for a spell that
+// takes named targets), and the answer's die, checked as on the caster's turn. A spell placed on the map is released with
+// CastSpell itself, which carries its point. The use is spent once the spell is cast: a cast held by a Counterspell is
+// used when it happens.
 func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction) (*connect.Response[playv1.AnswerReactionResponse], error) {
 	req := &playv1.CastSpellRequest{
 		CampaignId: msg.GetCampaignId(), EncounterId: in.encID, CasterId: row.CombatantID, SpellKey: conv.OrZero(row.ActionKey),
@@ -238,19 +245,15 @@ func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in an
 			req.Targets = append(req.Targets, &playv1.SpellTarget{CombatantId: id})
 		}
 	case row.TargetID != nil:
-		named, err := s.namedAtReady(ctx, msg.GetCampaignId(), in.encID, row)
-		if err != nil {
+		var err error
+		if req.Targets, err = s.namedAtReady(ctx, msg.GetCampaignId(), in.encID, row); err != nil {
 			return nil, err
 		}
-		req.Targets = named
-	}
-	if o := msg.GetOrigin(); o != nil {
-		req.Area = &playv1.CastSpellRequest_Origin{Origin: o}
 	}
 	if typed, ok := msg.GetRoll().(*playv1.AnswerReactionRequest_Typed); ok {
 		req.Roll = &playv1.CastSpellRequest_D20Face{D20Face: typed.Typed}
 	}
-	res, err := s.castSpell(ctx, m, connect.NewRequest(req))
+	res, err := s.castSpell(ctx, m, connect.NewRequest(req), in.winID)
 	if err != nil {
 		return nil, err
 	}
@@ -365,27 +368,16 @@ func (re *reactionEvent) concentrationSpell() string {
 	return re.Spell
 }
 
-// heldSpellTargets lists the targets of the spell a combatant holds readied, as the options list those of a spell it can
-// cast now: the release is a cast at the slot spent at Ready, so the window can pick its targets and split its darts
-// with the rows of the cast screens. A held spell attack lists none: its release is a roll, not a pick.
-func (sc *spellTargetScene) heldSpellTargets(ctx context.Context, s *Service, campaignID, encID string) ([]*playv1.SpellTargets, error) {
-	rows, err := s.queries.ListWaitingReadiedActions(ctx, encID)
-	if err != nil {
-		return nil, fmt.Errorf("list the readied actions: %w", err)
-	}
-	var out []*playv1.SpellTargets
-	for _, row := range rows {
-		if row.CombatantID != sc.who.ID || row.Kind != readiedSpell || heldSpellAttackRow(row) {
-			continue
+// heldEntry is the spell a combatant holds readied, as the options list a spell it can cast now: the release is a cast at the
+// slot spent at Ready, so the window can pick its targets and split its darts with the rows of the cast screens. A held
+// spell attack has none: its release is a roll, not a pick. A combatant has at most one waiting row.
+func heldEntry(waiting []playdb.ReadiedAction, who playdb.Combatant) []spellTargetEntry {
+	for _, row := range waiting {
+		if row.CombatantID == who.ID && row.Kind == readiedSpell && !heldSpellAttackRow(row) {
+			return []spellTargetEntry{{key: conv.OrZero(row.ActionKey), level: int(row.SlotLevel), slots: []*rulesv1.SlotChoice{{Level: row.SlotLevel}}}}
 		}
-		e := spellTargetEntry{key: conv.OrZero(row.ActionKey), level: int(row.SlotLevel), slots: []*rulesv1.SlotChoice{{Level: row.SlotLevel}}}
-		sp, err := s.roster.CombatSpell(ctx, nil, campaignID, sc.who.CharacterID, e.key, e.level, "")
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, sc.targetsOf(e, sp))
 	}
-	return out, nil
+	return nil
 }
 
 // namedAtReady is the creature named at Ready as the target of a release that names none, for a spell that takes named
@@ -401,8 +393,11 @@ func (s *Service) namedAtReady(ctx context.Context, campaignID, encID string, ro
 		return nil, nil
 	}
 	sp, err := s.roster.CombatSpell(ctx, nil, campaignID, cs[i].CharacterID, conv.OrZero(row.ActionKey), int(row.SlotLevel), "")
-	if err != nil || selfOnly(sp) || sp.Area {
-		return nil, err
+	if err != nil {
+		return nil, s.dbError(ctx, "read the spell", err)
+	}
+	if selfOnly(sp) || sp.Area {
+		return nil, nil
 	}
 	return []*playv1.SpellTarget{{CombatantId: *row.TargetID}}, nil
 }

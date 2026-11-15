@@ -58,6 +58,9 @@ func parseAnswerInput(ctx context.Context, msg *playv1.AnswerReactionRequest) (a
 	if choice != playv1.ReactionChoice_REACTION_CHOICE_USE && choice != playv1.ReactionChoice_REACTION_CHOICE_PASS {
 		return m, answerInput{}, connect.NewError(connect.CodeInvalidArgument, errors.New("answer must be USE or PASS"))
 	}
+	if choice == playv1.ReactionChoice_REACTION_CHOICE_PASS && len(msg.GetTargets()) > 0 { // whatever the window
+		return m, answerInput{}, badTargets(targetsNotUsed)
+	}
 	return m, answerInput{key: key, encID: encID, winID: winID, choice: choice}, nil
 }
 
@@ -142,6 +145,9 @@ func (s *Service) answerWindow(ctx context.Context, c *combatTx, m authz.Members
 	w, reactor, err := s.windowToAnswer(ctx, c, m, in.winID)
 	if err != nil {
 		return nil, err
+	}
+	if len(msg.GetTargets()) > 0 { // a READIED window never gets here
+		return nil, badTargets(targetsNotUsed)
 	}
 	use := in.choice == playv1.ReactionChoice_REACTION_CHOICE_USE
 	switch reaction.Kind(w.Kind) {

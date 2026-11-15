@@ -181,14 +181,16 @@ The targets are `targets` (each with its darts), or `creature_ids`, or the targe
 `targets` and `creature_ids` together are `invalid_argument`.
 The target named at Ready is used only for a spell that takes named targets (`namedAtReady`): a spell that reaches its caster alone, or an area, released with no targets is cast with none.
 In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
-`origin` is the point of the cast.
-`castSpell` checks them as a cast on the caster's turn: the darts of the slot, the number of targets and the point.
-`targets` and `origin` on another kind of row, or on a held spell attack, are `invalid_argument`.
-The Ready sheet offers the spells the window releases with darts, creatures or nothing.
+`castSpell` checks them as a cast on the caster's turn: the darts of the slot and the number of targets.
+`targets` on another kind of row, on a held spell attack, on a pass or on a window that is not READIED are `invalid_argument` (`refuseTargets`): an answer never drops what it carries.
+The answer carries no point and no direction: a spell placed on a map (a sphere at a point, a cone, a wall) is refused by the answer, with targets or without, and the window stays open.
 A spell that needs the map (a point, a direction, a wall) is released with `CastSpell` by the readier's player, or the master, while the READIED window is open.
 `PreviewSpellArea` reads the held spell at the slot level of the row while the caster's READIED window holds it (`heldByWindow`).
 That preview takes no free slot of that level and reads no slot from the request; any other preview is checked against the free slots as before.
+In a combat with no map the area is released with the creatures the answer picks, or with nobody.
+The Ready sheet offers the spells the window releases with darts, creatures or nothing.
 While the row waits, `GetTurnOptions.spell_targets` of its readier also lists the targets of the held spell (`heldSpellTargets`), with the darts of its slot, so the window can show them.
+It does so only off the readier's turn, where the window opens and no ordinary entry is listed: on the turn a second action (Action Surge) could list the same spell twice, with nothing to tell the entries apart.
 A held spell attack lists none.
 The list is the owner's and the master's, as the options are (RN-10).
 The release spends no slot, the reaction instead of the action, and takes the slot level of Ready (a pact slot spent at Ready counts as a slot of its level).
@@ -211,6 +213,7 @@ The master's screen passes the window when the 120 s end, with `AnswerReaction` 
 The reactor's player reads the mark back too (a second device of the same player shows it), `rolling` and `wait_began_at`.
 No other player reads either: another player and the TV read the same wait line in every moment.
 Both ways are idempotent and the reactor's player's alone (the master and another player are refused), nothing is written to the log, and the window stays open and answerable.
+"Usar" on a window that was answered or closed is `NOT_YOUR_TURN_TO_ANSWER`, even on the readier's own turn: only an open window releases the spell, and the cast an answer makes names its window.
 A held release whose spell breaks before the Counterspell windows are answered is lost: the row is `broken` and its window closes, the replay is refused as any cast off the readier's turn, and the master reads `held_dropped` in the log (`settleReplay`).
 Nothing is cast, and no write fails.
 "Deixar passar" loses the spell: the row is `ignored`, a `READIED_LOST` line names the spell, and the concentration ends.
@@ -233,7 +236,9 @@ The end of the previous concentration (`concentration_ended_key`) is public on t
 The concentration save of a held spell is the master's and the owner's: its window, its result and its line name the held spell (`HeldSpell` on the trigger, `Held` on the event).
 Another player reads none of it: no window, no line, and the wait reads "Esperando o mestre", never the readier's Constitution save.
 A line whose held spell is unknown names it "a magia preparada".
-`internal/leaktest` (`ready_spell_test.go`) checks these, the save's wait included, with canaries and positive controls.
+The targets the held spell lists leave out an NPC the player does not see, and an answer that picks one is refused as one that picks an id that is nowhere.
+Another player's answer to the window, with targets or without, is denied as an answer to a window that does not exist.
+`internal/leaktest` (`ready_spell_test.go`, `ready_spell_release_test.go`) checks these, the save's wait included, with canaries and positive controls.
 
 ## Undo
 
