@@ -134,6 +134,17 @@ func (w *twoWindows) stays(t *testing.T, what string) {
 	if w.spent && w.f.favorHolds(t) {
 		t.Errorf("%s: the Inspiration the other window's question spent came back", what)
 	}
+	answer := luckyAnswer(17)
+	if w.hasDie {
+		answer = dieAnswer(true)
+	}
+	user := w.f.ana
+	if w.kind == string(heldEffectSave) {
+		user = w.f.caio
+	}
+	if _, err := w.f.answerHeldRoll(t, user, w.id, answer); err != nil {
+		t.Errorf("%s: the question of the other window can no longer be answered: %v", what, err)
+	}
 }
 
 func TestHeldConcentrationSaveOfOneWindowSurvivesTheCloseOfAnother(t *testing.T) {

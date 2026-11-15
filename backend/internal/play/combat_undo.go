@@ -801,10 +801,8 @@ func forgetHoldsOfPending(ctx context.Context, c *combatTx, pending string) erro
 		if windowTriggerOf(w).Pending != pending { // the raw close below matches the trigger's pending, as these windows are about it
 			continue
 		}
-		if kind, ok := heldKindOfWindow(reaction.Kind(w.Kind)); ok {
-			if err := forgetHoldsOfKind(ctx, c.q, c.enc.ID, w.ReactorID, string(kind)); err != nil {
-				return fmt.Errorf("forget the question kept for a window of a damage taken back: %w", err)
-			}
+		if err := forgetHoldsOfWindow(ctx, c.q, c.enc.ID, w); err != nil {
+			return fmt.Errorf("forget the question kept for a window of a damage taken back: %w", err)
 		}
 	}
 	return nil

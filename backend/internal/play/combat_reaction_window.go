@@ -217,9 +217,9 @@ func (s *Service) closeWindow(ctx context.Context, c *combatTx, w playdb.Reactio
 	if err != nil {
 		return w, fmt.Errorf("close a reaction window: %w", err)
 	}
-	if kind, ok := heldKindOfWindow(reaction.Kind(w.Kind)); ok && status == windowClosed && w.ReactorID != nil {
-		// The Bardic die or Lucky question kept for the reactor's save has nothing to settle once the window is gone.
-		if err := forgetHoldsOfKind(ctx, c.q, c.enc.ID, w.ReactorID, string(kind)); err != nil {
+	if status == windowClosed {
+		// The Bardic die or Lucky question kept for this window's save has nothing to settle once the window is gone.
+		if err := forgetHoldsOfWindow(ctx, c.q, c.enc.ID, w); err != nil {
 			return w, fmt.Errorf("forget the question kept for a closed window: %w", err)
 		}
 	}
