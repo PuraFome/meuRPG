@@ -7,14 +7,18 @@ import { readiedRefusalText } from './readied-refusal';
 const held = (kind: ReadiedKind) => create(ReadiedActionSchema, { id: 'r', kind });
 
 describe('the refusal of the answer of a readied action (#582)', () => {
-  it('says what a refused spell most likely needs: the server takes only creatures and the d20 from the answer', () => {
+  it('tells a refused spell to check its targets and darts, which the answer does send', () => {
     const refused = new ConnectError(
       'every target of Magic Missile needs at least one dart',
       Code.InvalidArgument,
     );
-    expect(readiedRefusalText(refused, held(ReadiedKind.SPELL), 'responder à reação')).toBe(
-      'Não deu para soltar a magia por aqui: ela pede dardos ou um ponto no mapa, que este aviso ainda não envia. Dá para deixar passar.',
+    const text = readiedRefusalText(refused, held(ReadiedKind.SPELL), 'responder à reação');
+    expect(text).toBe(
+      'Não deu para soltar a magia com essa escolha. Confira os alvos e os dardos. Dá para deixar passar.',
     );
+    // The answer carries the targets and the darts now: it must not say they are not sent.
+    expect(text).not.toContain('ainda não envia');
+    expect(text).not.toContain('ponto no mapa');
   });
 
   it('leaves any other refusal, and any other action, to the usual words', () => {
