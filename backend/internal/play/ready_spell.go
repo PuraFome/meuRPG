@@ -205,7 +205,7 @@ func heldRelease(ctx context.Context, q *playdb.Queries, encID, windowID string,
 }
 
 // useReadiedSpell is "Usar" on a readied spell: CastSpell by the readier, under the answer's key, with the targets the
-// answer names in targets (with their darts) or in creature_ids, else the creature named at Ready, the point in origin and
+// answer names in targets (with their darts) or in creature_ids, else the creature named at Ready (for a spell that takes named targets), the point in origin and
 // the answer's die. CastSpell checks them all as it does on the caster's turn. The use is spent once the spell is cast: a cast
 // held by a Counterspell is used when it happens.
 func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in answerInput, msg *playv1.AnswerReactionRequest, row playdb.ReadiedAction) (*connect.Response[playv1.AnswerReactionResponse], error) {
@@ -224,7 +224,11 @@ func (s *Service) useReadiedSpell(ctx context.Context, m authz.Membership, in an
 			req.Targets = append(req.Targets, &playv1.SpellTarget{CombatantId: id})
 		}
 	case row.TargetID != nil:
-		req.Targets = []*playv1.SpellTarget{{CombatantId: *row.TargetID}}
+		named, err := s.namedAtReady(ctx, msg.GetCampaignId(), in.encID, row)
+		if err != nil {
+			return nil, err
+		}
+		req.Targets = named
 	}
 	if o := msg.GetOrigin(); o != nil {
 		req.Area = &playv1.CastSpellRequest_Origin{Origin: o}
@@ -368,4 +372,23 @@ func (sc *spellTargetScene) heldSpellTargets(ctx context.Context, s *Service, ca
 		out = append(out, sc.targetsOf(e, sp))
 	}
 	return out, nil
+}
+
+// namedAtReady is the creature named at Ready as the target of a release that names none, for a spell that takes named
+// targets. A spell that reaches its caster alone, or an area, names nobody on purpose: the creature said at Ready is not
+// put in its place.
+func (s *Service) namedAtReady(ctx context.Context, campaignID, encID string, row playdb.ReadiedAction) ([]*playv1.SpellTarget, error) {
+	cs, err := s.queries.ListCombatants(ctx, encID)
+	if err != nil {
+		return nil, s.dbError(ctx, "list the combatants", err)
+	}
+	i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == row.CombatantID })
+	if i < 0 {
+		return nil, nil
+	}
+	sp, err := s.roster.CombatSpell(ctx, nil, campaignID, cs[i].CharacterID, conv.OrZero(row.ActionKey), int(row.SlotLevel), "")
+	if err != nil || selfOnly(sp) || sp.Area {
+		return nil, err
+	}
+	return []*playv1.SpellTarget{{CombatantId: *row.TargetID}}, nil
 }

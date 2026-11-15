@@ -40,7 +40,7 @@ export const pensantusReadyKit = {
   preparedSpellKeys: [...pensantusCasting.preparedSpellKeys, 'spell:charm-person'],
 };
 
-/** Why Mover is off in the sheet, and why a spell of darts, several targets or a point is (the window answers with a creature only). */
+/** Why Mover is off in the sheet, and why a spell placed on the map (a point or a direction) is: the window does not place it yet. */
 export const moveOffText = 'Mover pela janela ainda não dá: por enquanto o mestre move a ficha.';
 export const spellOffText = 'Soltar pela janela ainda não dá para esta magia: ela pede um ponto ou uma direção no mapa.';
 

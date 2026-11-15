@@ -55,8 +55,8 @@ export interface ReadiedWindowSheetData {
  * "O mestre disse que o gatilho aconteceu: ‘Quando o zumbi passar pela porta’. Atacar com a Espada longa agora?" (#582, boards
  * 582-06 to 582-08): the `alertdialog` of a readied action's window, opened by itself for its readier and answered with
  * `AnswerReaction`. "Deixar passar" comes first and has the focus; an attack picks its target from the server's list (the one the
- * player named is chosen when it is within reach); another action has one button. A move and a spell cannot be released from here
- * yet (`releasable`): the prompt says so and only lets them pass. The master's screen passes the window after 30 s, so the footer
+ * player named is chosen when it is within reach); another action has one button. A held spell splits its darts or ticks its creatures
+ * with the cast screens' own list (#857). A move cannot be released from here yet (`releasable`): the prompt says so and only lets it pass. The master's screen passes the window after 30 s, so the footer
  * counts the seconds; if the window closed meanwhile it says so and only closes. The server decides every refusal.
  */
 @Component({

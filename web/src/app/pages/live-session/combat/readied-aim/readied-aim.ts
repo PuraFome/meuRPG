@@ -109,7 +109,7 @@ export class ReadiedAimList implements OnInit {
     () => new Set((this.encounter()?.combatants ?? []).filter(isCreature).map((c) => c.id)),
   );
   protected toggled(pick: ReleasePick, id: string): ReleasePick {
-    const plan = this.plan();
+    const plan = this.aim().plan;
     return plan ? releaseToggled(plan, pick, id) : pick;
   }
   protected readonly dealt = (pick: ReleasePick, id: string, delta: 1 | -1): ReleasePick => {

@@ -167,6 +167,8 @@ The release is the spell's cast as a reaction, through `castSpell` with `readied
 `AnswerReaction` "Usar" builds the `CastSpellRequest` from the answer and the row.
 The targets are `targets` (each with its darts), or `creature_ids`, or the target named at Ready.
 `targets` and `creature_ids` together are `invalid_argument`.
+The target named at Ready is used only for a spell that takes named targets (`namedAtReady`): a spell that reaches its caster alone, or an area, released with no targets is cast with none.
+In the window, a creature named at Ready that cannot be aimed at now is not chosen: the readier picks another or lets it pass.
 `origin` is the point of the cast.
 `castSpell` checks them as a cast on the caster's turn: the darts of the slot, the number of targets and the point.
 `targets` and `origin` on another kind of row, or on a held spell attack, are `invalid_argument`.

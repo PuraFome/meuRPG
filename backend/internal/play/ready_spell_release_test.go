@@ -114,14 +114,16 @@ func TestTheOptionsListTheTargetsOfAHeldSpellWhileItWaits(t *testing.T) {
 	a := newCasters(t)
 	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
 	got := a.mustOptions(t, a.ana, e, "Pensantus").GetSpellTargets()
-	i := slices.IndexFunc(got, func(s *playv1.SpellTargets) bool { return s.GetSpellKey() == magicMissileSpell && slices.ContainsFunc(s.GetDarts(), func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == 1 && d.GetDarts() == 3 }) })
+	i := slices.IndexFunc(got, func(s *playv1.SpellTargets) bool {
+		return s.GetSpellKey() == magicMissileSpell && slices.ContainsFunc(s.GetDarts(), func(d *playv1.DartsAtSlot) bool { return d.GetSlotLevel() == 1 && d.GetDarts() == 3 })
+	})
 	if i < 0 || len(got[i].GetTargets()) == 0 {
 		t.Errorf("the options list no held Magic Missile at 1st level: %v", got)
 	}
 }
 
-// A readied attack takes no targets and no point: they are for a spell.
-func TestAReadiedAttackRefusesTargetsAndOrigin(t *testing.T) {
+// A held spell attack is released as an attack: it takes no targets and no point, which are for a spell that is cast.
+func TestAHeldSpellAttackRefusesTargetsAndOrigin(t *testing.T) {
 	t.Parallel()
 	a := newCasters(t)
 	e := a.castersFight(t, 1)
@@ -131,5 +133,31 @@ func TestAReadiedAttackRefusesTargetsAndOrigin(t *testing.T) {
 	w := a.mustFire(t, e, "Brisa")
 	if _, err := a.answerReaction(t, a.bia, e, w.GetId(), withTargets(darts(a, t, "Goblin", 1))); err == nil {
 		t.Error("a held spell attack took targets")
+	}
+	withOrigin := func(r *playv1.AnswerReactionRequest) {
+		useSpellAnswer(r)
+		r.Origin = &playv1.SpellOrigin{Col: 7, Row: 5}
+	}
+	if _, err := a.answerReaction(t, a.bia, e, w.GetId(), withOrigin); err == nil {
+		t.Error("a held spell attack took a point")
+	}
+}
+
+// A readied area names nobody on purpose: the creature said at Ready is not put in its place. In a combat with no map
+// Sleep released with no targets is cast on nobody.
+func TestAReadiedAreaReleasedWithNoTargetsIsNotAimedAtTheCreatureNamedAtReady(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.start(t, plan{
+		npcs: []*playv1.Participant{{CharacterId: a.capitao.GetId()}}, npcRolls: []int{1}, reveal: []string{"Capitão Goblin"}, theatre: true,
+		players: map[string]int32{"Pensantus": 20, "Toren": 15, "Brisa": 10},
+	})
+	a.mustReady(t, a.ana, a.readySpell(t, e, "Pensantus", sleepSpell, 1, "Capitão Goblin"))
+	e = a.mustEndTurn(t, a.master, e)
+	w := a.mustFire(t, e, "Pensantus")
+	a.h.roller.queue(8, 8, 8, 8, 8)
+	a.mustAnswer(t, a.ana, e, w.GetId(), useSpellAnswer)
+	if cast := a.castLine(t, e, sleepSpell); cast == nil || len(cast.GetSpell().GetTargets()) != 0 {
+		t.Errorf("the release's line = %v, want Sleep on nobody", cast)
 	}
 }
