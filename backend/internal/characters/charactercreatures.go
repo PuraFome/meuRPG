@@ -651,8 +651,9 @@ func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Me
 	if v, err = s.findCreature(ctx, q, m, rawID, true); err != nil {
 		// A creature that is gone already changes nothing, for the master and
 		// the owner alike; one the caller may not see is not found.
-		if connect.CodeOf(err) == connect.CodeNotFound && s.dismissedAlready(ctx, q, m, rawID) {
-			return v, "", true, s.releaseDismissed(ctx, q, m, rawID, how)
+		if gone, ok := s.dismissedView(ctx, q, m, rawID); connect.CodeOf(err) == connect.CodeNotFound && ok {
+			ended, err := s.releaseDismissed(ctx, q, m, gone, how)
+			return gone, "", !ended, err
 		}
 		return v, "", false, err
 	}
@@ -663,7 +664,7 @@ func (s *Service) dismissCreatureInTx(ctx context.Context, tx pgx.Tx, m authz.Me
 		return v, encounterID, false, wrap("dismiss a creature", err)
 	}
 	if how == charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE {
-		if err := q.EndBond(ctx, charactersdb.EndBondParams{CampaignID: m.CampaignID, ID: v.ID}); err != nil {
+		if _, err := q.EndBond(ctx, charactersdb.EndBondParams{CampaignID: m.CampaignID, ID: v.ID}); err != nil {
 			return v, encounterID, false, wrap("end the bond of a steed", err)
 		}
 	}
@@ -701,31 +702,34 @@ func steedDismissal(v creatureView, reason string, how charactersv1.CreatureDism
 }
 
 // releaseDismissed ends the bond of a steed that was dismissed already, when the request releases it: a dismissed steed keeps its bond
-// until it is released. Any other request changes nothing.
-func (s *Service) releaseDismissed(ctx context.Context, q *charactersdb.Queries, m authz.Membership, rawID string, how charactersv1.CreatureDismissal) error {
-	id, ok := uid.Canonical(rawID)
-	if !ok || how != charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE {
-		return nil
+// until it is released. It says whether it ended one. Any other request changes nothing, and releasing what is not a bonded steed is refused.
+func (s *Service) releaseDismissed(ctx context.Context, q *charactersdb.Queries, m authz.Membership, v creatureView, how charactersv1.CreatureDismissal) (bool, error) {
+	if how != charactersv1.CreatureDismissal_CREATURE_DISMISSAL_RELEASE {
+		return false, nil
 	}
-	if err := q.EndBond(ctx, charactersdb.EndBondParams{CampaignID: m.CampaignID, ID: id}); err != nil {
-		return wrap("end the bond of a steed", err)
+	if v.Source != creatureSourceSteed {
+		return false, connect.NewError(connect.CodeInvalidArgument, errors.New("only a bonded steed can be released"))
 	}
-	return nil
+	n, err := q.EndBond(ctx, charactersdb.EndBondParams{CampaignID: m.CampaignID, ID: v.ID})
+	if err != nil {
+		return false, wrap("end the bond of a steed", err)
+	}
+	return n > 0, nil
 }
 
-// dismissedAlready says whether the creature exists, belongs to someone the
-// caller may see and was dismissed: dismissing it again is not an error.
-func (s *Service) dismissedAlready(ctx context.Context, q *charactersdb.Queries, m authz.Membership, rawID string) bool {
+// dismissedView is the creature when it exists, belongs to someone the caller may see and was dismissed: dismissing it again is not an
+// error.
+func (s *Service) dismissedView(ctx context.Context, q *charactersdb.Queries, m authz.Membership, rawID string) (creatureView, bool) {
 	id, ok := uid.Canonical(rawID)
 	if !ok {
-		return false
+		return creatureView{}, false
 	}
 	row, err := q.GetCharacterCreature(ctx, charactersdb.GetCharacterCreatureParams{CampaignID: m.CampaignID, ID: id})
 	if err != nil {
-		return false
+		return creatureView{}, false
 	}
 	v := viewOfRow(row)
-	return !v.live() && v.visibleTo(m)
+	return v, !v.live() && v.visibleTo(m)
 }
 
 // The kinds of the master's correction of a creature's hit points. Each is also

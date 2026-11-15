@@ -467,7 +467,7 @@ func (q *Queries) DismissCreatures(ctx context.Context, arg DismissCreaturesPara
 	return items, nil
 }
 
-const endBond = `-- name: EndBond :exec
+const endBond = `-- name: EndBond :execrows
 UPDATE character_creatures
 SET bonded = false
 WHERE campaign_id = $1::UUID AND id = $2::UUID AND bonded
@@ -479,9 +479,12 @@ type EndBondParams struct {
 }
 
 // A release ends the bond of a steed: the row stays as the history of the dismissal, and the character may bond another.
-func (q *Queries) EndBond(ctx context.Context, arg EndBondParams) error {
-	_, err := q.db.Exec(ctx, endBond, arg.CampaignID, arg.ID)
-	return err
+func (q *Queries) EndBond(ctx context.Context, arg EndBondParams) (int64, error) {
+	result, err := q.db.Exec(ctx, endBond, arg.CampaignID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const endStoryEditing = `-- name: EndStoryEditing :execrows
