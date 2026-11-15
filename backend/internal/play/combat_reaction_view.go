@@ -352,9 +352,10 @@ func (wv *windowView) holdsOf(w playdb.ReactionWindow) (reaction.Holds, error) {
 // window builds one window for whoever answers it.
 func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant, answerNow bool) (*playv1.ReactionWindow, error) {
 	kind := reaction.Kind(w.Kind)
+	mark := windowTriggerOf(w) // the master's and the reactor's player's alone: only they are given this window
 	out := &playv1.ReactionWindow{
 		Id: w.ID, Kind: reactionKindProto[kind], Status: playv1.ReactionWindowStatus_REACTION_WINDOW_STATUS_OPEN, GroupId: w.GroupID,
-		ForYou: true, SecondStep: w.Step == stepSecond, Rolling: windowTriggerOf(w).Rolling,
+		ForYou: true, SecondStep: w.Step == stepSecond, Rolling: mark.Rolling, WaitBeganAt: timestampOrNil(mark.WaitBegan),
 	}
 	if reactor != nil {
 		out.ReactorId, out.ReactorLabel, out.ReactorIsPlayer = reactor.ID, reactor.Label, reactor.Kind == kindPlayer

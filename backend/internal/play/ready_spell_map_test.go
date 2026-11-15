@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -273,4 +275,85 @@ func TestTheReadiersPlayerTakesTheRollingMarkOffItsWindow(t *testing.T) {
 	}
 	a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 3)))
 	wantCode(t, "clearing an answered window", a.clearRolling(t, a.ana, e, w.GetId()), connect.CodeFailedPrecondition)
+}
+
+// The wait of the READIED window begins at the first mark of the reactor's player, once: the master and the reactor's
+// player (a second device) read it with the mark, a clear and a second mark leave it as it was, a clear before any mark
+// starts nothing, and no other player reads the window at all.
+func TestTheWaitOfAReadiedWindowBeginsAtTheFirstMarkAndNeverMoves(t *testing.T) {
+	t.Parallel()
+	a := newCasters(t)
+	e := a.readyForRelease(t, magicMissileSpell, 1, "Capitão Goblin")
+	w := a.mustFire(t, e, "Pensantus")
+	reads := func(who string, u *user) *playv1.ReactionWindow {
+		t.Helper()
+		win := a.windowOf(t, u, kindReadied)
+		if win == nil {
+			t.Fatalf("%s reads no READIED window", who)
+		}
+		return win
+	}
+	both := func(step string, rolling bool) *timestamppb.Timestamp {
+		t.Helper()
+		m, p := reads("the master", a.master), reads("the reactor's player", a.ana)
+		for who, win := range map[string]*playv1.ReactionWindow{"the master": m, "the reactor's player": p} {
+			if win.GetRolling() != rolling {
+				t.Errorf("%s: %s reads rolling %v, want %v", step, who, win.GetRolling(), rolling)
+			}
+		}
+		if !proto.Equal(m.GetWaitBeganAt(), p.GetWaitBeganAt()) {
+			t.Errorf("%s: the master reads the wait began at %v, the reactor's player at %v", step, m.GetWaitBeganAt(), p.GetWaitBeganAt())
+		}
+		return m.GetWaitBeganAt()
+	}
+	if err := a.clearRolling(t, a.ana, e, w.GetId()); err != nil {
+		t.Fatalf("clearing before any mark: %v", err)
+	}
+	if began := both("a clear before any mark", false); began != nil {
+		t.Fatalf("a clear before any mark started the wait at %v", began)
+	}
+	wantCode(t, "the master marking", a.markRolling(t, a.master, e, w.GetId()), connect.CodePermissionDenied)
+	wantCode(t, "another player marking", a.markRolling(t, a.caio, e, w.GetId()), connect.CodePermissionDenied)
+	if began := both("a refused mark", false); began != nil {
+		t.Fatalf("a refused mark started the wait at %v", began)
+	}
+	logBefore := logLines(a.log(t, a.master, e))
+	if err := a.markRolling(t, a.ana, e, w.GetId()); err != nil {
+		t.Fatalf("the first mark: %v", err)
+	}
+	first := both("the first mark", true)
+	if first == nil || first.AsTime().IsZero() {
+		t.Fatalf("the first mark left the wait's beginning unset: %v", first)
+	}
+	steps := []struct {
+		name    string
+		do      func() error
+		rolling bool
+	}{
+		{"a second mark", func() error { return a.markRolling(t, a.ana, e, w.GetId()) }, true},
+		{"a clear", func() error { return a.clearRolling(t, a.ana, e, w.GetId()) }, false},
+		{"a second clear", func() error { return a.clearRolling(t, a.ana, e, w.GetId()) }, false},
+		{"a mark after the clear", func() error { return a.markRolling(t, a.ana, e, w.GetId()) }, true},
+	}
+	for _, s := range steps {
+		if err := s.do(); err != nil {
+			t.Fatalf("%s: %v", s.name, err)
+		}
+		if got := both(s.name, s.rolling); !proto.Equal(got, first) {
+			t.Errorf("after %s the wait began at %v, want the first mark's %v", s.name, got, first)
+		}
+	}
+	if n := logLines(a.log(t, a.master, e)); n != logBefore {
+		t.Errorf("marking and clearing wrote %d log lines", n-logBefore)
+	}
+	if w := a.windowOf(t, a.caio, kindReadied); w != nil {
+		t.Errorf("another player reads the window %v", w)
+	}
+	if !a.readiedOpen(t, "Pensantus") || a.readiedStatus(t, "Pensantus") != readiedWaiting {
+		t.Fatalf("the window is not open and waiting: row %q", a.readiedStatus(t, "Pensantus"))
+	}
+	a.mustAnswer(t, a.ana, e, w.GetId(), withTargets(darts(a, t, "Capitão Goblin", 3)))
+	if a.readiedStatus(t, "Pensantus") != readiedFired {
+		t.Errorf("the window answered after the marks: row %q, want fired", a.readiedStatus(t, "Pensantus"))
+	}
 }
