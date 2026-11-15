@@ -3,6 +3,7 @@ package play
 import (
 	"slices"
 
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
 )
@@ -58,7 +59,7 @@ func (f modeFacts) hiddenFrom(v combatViewer, a, b playdb.Combatant) func(combat
 		anyHidden = anyHidden || hasUnreadEffect(f.states, c, v)
 	}
 	return func(src combat.Source) bool {
-		if isSunlight(src) {
+		if advantage.IsSunlight(src) {
 			return true // the sun and its trait are the master's (RN-20, RN-29)
 		}
 		switch src.Kind {

@@ -10,6 +10,7 @@ import {
 } from '../../../gen/meurpg/characters/v1/characters_pb';
 import { ContentService, type MagicItemOption } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { CONNECT_TRANSPORT } from '../connect/transport';
+import { type ItemChargesVm, chargesOf } from './charges';
 
 /** The most items a character is attuned to at once (SRD 5.1); the server refuses a fourth. */
 export const MAX_ATTUNED = 3;
@@ -42,6 +43,8 @@ export interface AttunementEntryVm {
   readonly restriction: RestrictionState;
   /** Another copy is attuned, so this one cannot be. */
   readonly sameItemAttuned: boolean;
+  /** The charges of a magic item that holds some; absent for the others, whose row stays as it is. */
+  readonly charges?: ItemChargesVm;
 }
 
 /** The attunement of a sheet: the entries in the order the sheet lists them (pieces, then magic items). */
@@ -85,6 +88,7 @@ export function attunementOf(
       restrictionPt: m.restrictionPt,
       restriction: STATES[m.restriction] ?? 'none',
       sameItemAttuned: m.sameItemAttuned,
+      charges: chargesOf(m),
     });
   }
   return { entries, attuned: entries.filter((e) => e.asks && e.attuned).length };

@@ -7,6 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/characters/charactersdb"
@@ -194,5 +195,33 @@ func TestAPendingMemberAndTheListNeverCarryCharges(t *testing.T) {
 		if text := prototext.Format(res.Msg); strings.Contains(text, "charges") || strings.Contains(text, wandKey) {
 			t.Errorf("the list carries charges or an item: %s", text)
 		}
+	}
+}
+
+// The sheet carries the catalog's recharge rules of an item with charges, for the lines it draws, and nothing for an item
+// without charges.
+func TestSheetReadsTheRechargeRulesOfItsMagicItems(t *testing.T) {
+	t.Parallel()
+	et, pc := attuneTable(t, wandKey, bagKey, "item:staff-of-power", "item:figurine-of-wondrous-power-ivory-goats", "item:luck-blade", "item:ring-of-three-wishes")
+	got := func(key string) *charactersv1.ItemRecharge {
+		return magicItemOf(et.read(t, et.master, pc.GetId()), key).GetRecharge()
+	}
+	want := map[string]*charactersv1.ItemRecharge{
+		wandKey: {Kind: charactersv1.ItemRechargeKind_ITEM_RECHARGE_KIND_DAWN, RegainDice: "1d6+1", Empty: charactersv1.ItemEmptyRule_ITEM_EMPTY_RULE_D20, OnLoss: charactersv1.ItemLoss_ITEM_LOSS_GONE},
+		"item:staff-of-power": {
+			Kind: charactersv1.ItemRechargeKind_ITEM_RECHARGE_KIND_DAWN, RegainDice: "2d8+4", Empty: charactersv1.ItemEmptyRule_ITEM_EMPTY_RULE_D20,
+			OnLoss: charactersv1.ItemLoss_ITEM_LOSS_PARTLY_MAGIC, RegainOnTwenty: "1d8+2",
+		},
+		"item:figurine-of-wondrous-power-ivory-goats": {Kind: charactersv1.ItemRechargeKind_ITEM_RECHARGE_KIND_DAWNS_AFTER_EMPTY, WaitDawns: 7},
+		"item:luck-blade":           {StartDice: "1d4-1"},
+		"item:ring-of-three-wishes": {Empty: charactersv1.ItemEmptyRule_ITEM_EMPTY_RULE_ALWAYS, OnLoss: charactersv1.ItemLoss_ITEM_LOSS_PLAIN_ITEM},
+	}
+	for key, w := range want {
+		if r := got(key); !proto.Equal(r, w) {
+			t.Errorf("%s recharge = %v, want %v", key, r, w)
+		}
+	}
+	if r := got(bagKey); r != nil {
+		t.Errorf("a bag carries recharge rules: %v", r)
 	}
 }

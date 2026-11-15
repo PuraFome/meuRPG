@@ -143,6 +143,9 @@
         <app-gear-fold [flow]="flow" [own]="own()" [extra]="extraAction()" [locked]="locked()" />
         }
       }
+      @if (countsAmmo()) {
+        <p class="group__why" data-testid="ammo-rule"><mat-icon aria-hidden="true">info</mat-icon><span>{{ ammo.rule }}</span></p>
+      }
       <app-attack-legend [parts]="attackParts()" [flow]="beast() ? null : gearFlow()" />
     </div>
 
@@ -256,8 +259,8 @@
                 button="Atacar"
                 icon="swords"
                 [buttonLabel]="'Atacar com ' + attackName(atk) + ' (' + extra.labelPt + ')'"
-                [off]="!extra.available || !!locked()"
-                [reason]="locked() || extra.reasonPt"
+                [off]="!extra.available || !!locked() || !!ammo.empty(atk)"
+                [reason]="locked() || extra.reasonPt || ammo.empty(atk)"
                 [busy]="busy()"
                 (press)="extraAttack.emit(atk.key)"
               />
@@ -301,6 +304,7 @@
       [marks]="attackMarks(atk, bonus)"
       [bonus]="bonus"
       [oneLine]="true"
+      [ammo]="ammo.tag(atk)"
       [detail]="withTags(attackTags(a), attackDetail(atk))"
       [note]="attackNote(a)"
       [power]="powerLines(a)"
@@ -308,8 +312,8 @@
       [button]="asksSave(atk) ? 'Conjurar' : 'Atacar'"
       [icon]="asksSave(atk) ? 'auto_fix_high' : 'swords'"
       [buttonLabel]="(asksSave(atk) ? 'Conjurar ' : 'Atacar com ') + attackName(atk)"
-      [off]="!a.enabled || !!locked()"
-      [reason]="locked() || reasonText(a.reason)"
+      [off]="!a.enabled || !!locked() || !!ammo.empty(atk)"
+      [reason]="locked() || reasonText(a.reason) || ammo.empty(atk)"
       [busy]="busy()"
       [choosing]="choosing() === atk.key"
       (press)="asksSave(atk) ? cast.emit(atk.key) : attack.emit(atk.key)"

@@ -612,7 +612,7 @@ func TestACombatLogLineOfTheChargesIsTheOwnersAndTheMastersAlone(t *testing.T) {
 		if last.GetOutcome() != playv1.ItemUseOutcome_ITEM_USE_OUTCOME_LAST_CHARGE || last.GetLeft() != 0 {
 			t.Errorf("the last charge's line = %v", got[1])
 		}
-		if got[2].GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED || roll.GetD20() != 1 || roll.GetOutcome() != playv1.ItemUseOutcome_ITEM_USE_OUTCOME_LOST {
+		if got[2].GetKind() != playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED || roll.GetD20() != 1 || roll.GetOutcome() != playv1.ItemUseOutcome_ITEM_USE_OUTCOME_LOST || roll.GetLost() != charactersv1.ItemLoss_ITEM_LOSS_GONE {
 			t.Errorf("the roll's line = %v, want a 1 that lost the wand", got[2])
 		}
 		if got[0].GetActorLabel() != "Pensantus" {

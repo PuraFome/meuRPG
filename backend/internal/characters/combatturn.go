@@ -395,6 +395,7 @@ func (s *Service) fillAmmunitionLeft(ctx context.Context, tx pgx.Tx, campaignID,
 		if !ok {
 			continue
 		}
+		o.Attack.AmmunitionKey = key
 		left, counted, err := s.AmmunitionLeft(ctx, tx, campaignID, characterID, key)
 		if err != nil {
 			return err

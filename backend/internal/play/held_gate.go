@@ -13,6 +13,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -163,7 +164,7 @@ func (s *Service) rollHeldAttack(
 // reason, so that the answer settles this roll and not another.
 func pinnedAttack(raw *playv1.RollAttackRequest, choice modeChoice) *playv1.RollAttackRequest {
 	pinned, _ := proto.Clone(raw).(*playv1.RollAttackRequest)
-	pinned.RollMode, pinned.ModeReason = modeToProto[choice.Mode], choice.Reason
+	pinned.RollMode, pinned.ModeReason = advantage.ModeToProto[choice.Mode], choice.Reason
 	return pinned
 }
 
