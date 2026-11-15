@@ -32,17 +32,6 @@ func TestTotalAddsTheFacesAndTheBonus(t *testing.T) {
 	}
 }
 
-func TestHealedStopsAtTheMaximum(t *testing.T) {
-	t.Parallel()
-	for _, tc := range []struct{ cur, max, total, want int32 }{
-		{3, 20, 7, 7}, {18, 20, 7, 2}, {20, 20, 7, 0}, {0, 20, 0, 0}, {25, 20, 7, 0},
-	} {
-		if got := Healed(tc.cur, tc.max, tc.total); got != tc.want {
-			t.Errorf("Healed(%d, %d, %d) = %d, want %d", tc.cur, tc.max, tc.total, got, tc.want)
-		}
-	}
-}
-
 func TestResistanceIsOneHourOfResistanceToTheType(t *testing.T) {
 	t.Parallel()
 	p := rules.PotionEffect{Kind: rules.PotionResistance, DamageType: "damage-type:fire", Rounds: rules.PotionResistanceRounds}

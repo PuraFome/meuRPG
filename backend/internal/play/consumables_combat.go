@@ -2,6 +2,7 @@ package play
 
 import (
 	"context"
+	"fmt"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -21,11 +22,12 @@ import (
 // action). The receiver of a gift is within 5 feet of the giver (a player's character is never hidden from the party). A heal goes
 // through the combat's own heal, and a resistance is a lasting effect of the receiver's combatant that lasts the hour in rounds.
 
-// consumableFight is the combat a use happens in: its transaction, the combatants, the user's and the receiver's.
+// consumableFight is the combat a use happens in: its transaction, the combatants, and the user's and the receiver's combatant,
+// nil for a character that is not a combatant of it.
 type consumableFight struct {
 	c           *combatTx
 	cs          []playdb.Combatant
-	giver, recv playdb.Combatant
+	giver, recv *playdb.Combatant
 }
 
 func errNotAdjacentOrSeen() error {
@@ -49,42 +51,71 @@ func giftReach(enc playdb.Encounter, giver, recv playdb.Combatant) (int32, bool)
 	return d, both && d <= combat.MeleeReachFt
 }
 
-// openFight opens the combat the use happens in and spends the action it costs, or nil when neither the user nor the
-// receiver fights. A user or receiver that is the only one of the two in the combat, a receiver out of reach or unseen,
-// a turn that is not the user's and an action already used refuse, with nothing written.
-func (s *Service) openFight(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h *hints, session playdb.GameSession, use consumableCall) (*consumableFight, error) {
+// openFight opens the combat the use happens in, or nil when it is none of the user's or the receiver's. Only a potion
+// (SRD 5.1, "Potions") is an action: in a running combat it needs the user's turn and an action not yet spent, a receiver
+// within 5 feet, and it spends the action; a user or a receiver that is the only one of the two in the combat, a receiver
+// out of reach, a turn that is not the user's and an action already used refuse, with nothing written. A combat in setup has
+// no turn, and any other consumable is spent and logged on any turn: neither costs anything. A receiver that is dead
+// (three failed death saves) is refused whatever the item.
+func (s *Service) openFight(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h *hints, session playdb.GameSession, use consumableCall, potion bool) (*consumableFight, error) {
 	enc, cs, found, err := openCombatants(ctx, q, session.ID)
-	if err != nil || !found || enc.Status != statusActive {
+	if err != nil || !found {
 		return nil, err
 	}
 	giver, recv := wearerIn(cs, use.charText), wearerIn(cs, use.target)
-	if giver == nil && recv == nil {
+	if giver == nil && (recv == nil || !potion) { // the combat has no part in it: no effect on a combatant and no line of the user's
 		return nil, nil
 	}
-	if giver == nil || recv == nil {
+	acts := potion && enc.Status == statusActive
+	if acts && (giver == nil || recv == nil) {
 		return nil, errNotAdjacentOrSeen()
 	}
 	c, err := s.openTx(ctx, combatTx{tx: tx, q: q, session: session, enc: enc, now: s.now(), hints: h, actorUserID: use.m.UserID, svc: s})
 	if err != nil {
 		return nil, err
 	}
-	f := &consumableFight{c: c, cs: cs, giver: *giver, recv: *recv}
-	if err := s.mustActNow(ctx, c, f.giver); err != nil {
-		return nil, err
+	f := &consumableFight{c: c, cs: cs, giver: giver, recv: recv}
+	if acts {
+		err = s.mustActNow(ctx, c, *giver)
+		if _, ok := giftReach(enc, *giver, *recv); err == nil && !ok {
+			err = errNotAdjacentOrSeen()
+		}
 	}
-	if _, ok := giftReach(enc, f.giver, f.recv); !ok {
-		return nil, errNotAdjacentOrSeen()
+	if err == nil && recv != nil {
+		err = s.refuseTheDead(ctx, c, []playdb.Combatant{*recv}) // a creature that failed three death saves is dead: no item reaches it
 	}
-	if _, err := s.payEquipWithAction(ctx, c, f.giver); err != nil {
+	if err == nil && acts {
+		err = s.payConsumableAction(ctx, c, *giver)
+	}
+	if err != nil {
 		return nil, err
 	}
 	return f, nil
 }
 
-// name the combatants in the event: the user's combatant, and the receiver's when it is another.
+// payConsumableAction spends the action of the turn for a potion. Activating a potion is an action, not the object interaction
+// of Use an Object (SRD 5.1, "Potions"), so the extra action of Haste does not pay for it: with the action used the use is refused.
+func (s *Service) payConsumableAction(ctx context.Context, c *combatTx, who playdb.Combatant) error {
+	if who.ActionUsed {
+		return errEncounter(playv1.EncounterBlockedReason_ENCOUNTER_BLOCKED_REASON_ACTION_USED, "the action of this turn is used")
+	}
+	if err := c.q.SetCombatantEconomy(ctx, playdb.SetCombatantEconomyParams{
+		ID: who.ID, ActionUsed: true, BonusActionUsed: who.BonusActionUsed, ReactionUsed: who.ReactionUsed, Dashed: who.Dashed,
+	}); err != nil {
+		return fmt.Errorf("spend the action: %w", err)
+	}
+	return nil
+}
+
+// receives says the combat has the receiver as a combatant: the effect of the potion is the combatant's. False for no fight.
+func (f *consumableFight) receives() bool {
+	return f != nil && f.recv != nil
+}
+
+// name the combatants in the event: the user's combatant, and the receiver's when it is another. The user is a combatant.
 func (f *consumableFight) name(ev *consumableUsedEvent) {
 	ev.Round, ev.Actor = f.c.enc.Round, f.giver.ID
-	if f.recv.ID != f.giver.ID {
+	if f.recv != nil && f.recv.ID != f.giver.ID {
 		ev.TargetCombatant = f.recv.ID
 	}
 }
@@ -104,7 +135,7 @@ func (f *consumableFight) finish(ctx context.Context, s *Service, h *hints) erro
 
 // heal heals the receiver's combatant with the combat's heal and says the hit points it regained.
 func (f *consumableFight) heal(ctx context.Context, s *Service, total int32) (int32, error) {
-	hit, _, err := s.healCombatant(ctx, f.c, f.recv, total)
+	hit, _, err := s.healCombatant(ctx, f.c, *f.recv, total)
 	return hit.Amount, err
 }
 
@@ -116,7 +147,7 @@ func (f *consumableFight) resist(ctx context.Context, s *Service, potion rules.P
 		return err
 	}
 	_, err := s.addEffects(ctx, f.c, f.cs, effectSpec{
-		key: key, sourceKind: "master", group: group, targets: []playdb.Combatant{f.recv}, audience: rules.EffectVisibilityOwner,
+		key: key, sourceKind: sourceKindItem, group: group, targets: []playdb.Combatant{*f.recv}, audience: rules.EffectVisibilityOwner,
 		dur:       durationSpec{Kind: rules.EffectDurationRounds, Rounds: clamp32(potion.Rounds, 0, 1<<20), Anchor: f.recv.ID},
 		modifiers: []rules.EffectModifier{consumable.Resistance(potion)},
 	})
@@ -192,6 +223,11 @@ func (s *Service) fightTargets(ctx context.Context, campaignID string, enc playd
 		}
 		d, ok := giftReach(enc, giver, c)
 		if !ok {
+			continue
+		}
+		if dead, err := s.isDead(ctx, nil, campaignID, c); err != nil {
+			return nil, err
+		} else if dead {
 			continue
 		}
 		down, err := s.isDown(ctx, nil, campaignID, c)

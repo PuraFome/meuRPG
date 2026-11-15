@@ -192,6 +192,16 @@ func TestAResistancePotionLastsOneHourOfGameTimeAndIsTheOwnersAlone(t *testing.T
 	}
 }
 
+func TestAResistancePotionOutsideACombatIsAnEffectOfTheItem(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionFire)
+	s.mustUse(t, s.ana, s.pens, potionFire)
+	var kind string
+	if err := s.h.pool.QueryRow(t.Context(), `SELECT source_kind FROM character_effects WHERE character_id = $1 AND source_key = $2`, s.pens.GetId(), potionFire).Scan(&kind); err != nil || kind != "item" {
+		t.Errorf("the effect on the character is of the kind %q (%v), want item", kind, err)
+	}
+}
+
 func (s *stocked) potionEffectSeconds(t *testing.T, characterID, key string) (seconds int32, found bool) {
 	t.Helper()
 	rows, err := s.h.pool.Query(t.Context(), `SELECT seconds_left FROM character_effects WHERE character_id = $1 AND source_key = $2`, characterID, key)
@@ -514,5 +524,47 @@ func TestAPotionIsGivenToAPlayersCharacterOfTheCampaignOnly(t *testing.T) {
 	}
 	if !s.holds(t, s.pens, potionCommon) {
 		t.Error("a refused gift spent the potion")
+	}
+}
+
+// In a beast form the healing is the beast's (Wild Shape), in a combat as out of one.
+func TestAHealingPotionOutsideACombatHealsTheBeastFormOfADruid(t *testing.T) {
+	t.Parallel()
+	s := newShapers(t)
+	s.bri = s.withItems(t, s.bri, potionCommon)
+	st := &stocked{s.armed}
+	s.mustAssume(t, s.bia, s.bri, wolfKey)
+	s.correct(t, s.bri, func(r *playv1.AdjustCharacterVitalsRequest) { r.WildShapeHitPointsCurrent = new(int32(3)) })
+	own := s.vitals(t, s.bri).GetHitPointsCurrent()
+	s.h.roller.queue(2, 3) // 2d4 + 2 = 7
+	res := st.mustUse(t, s.bia, s.bri, potionCommon)
+	v := s.vitals(t, s.bri)
+	if res.GetHealed() != 7 || v.GetWildShape().GetHitPointsCurrent() != 10 || v.GetHitPointsCurrent() != own {
+		t.Errorf("healed %d: beast %d (want 10), own %d (want %d)", res.GetHealed(), v.GetWildShape().GetHitPointsCurrent(), v.GetHitPointsCurrent(), own)
+	}
+}
+
+// The master may use a potion of an NPC's sheet (an NPC has no hit points of its own outside a combat, so the use is spent and
+// logged and the master tells what it did) and give it to a player's character, whom it heals.
+func TestTheMasterUsesAPotionOfAnNPCsSheet(t *testing.T) {
+	t.Parallel()
+	s := newStocked(t, potionCommon)
+	boss := s.withItems(t, s.master.npcWizard(t, s.campaignID, "Mago Rival"), potionCommon, potionCommon)
+	_, err := s.use(t, s.caio, boss, potionCommon)
+	wantCode(t, "a player using an NPC's potion", err, connect.CodePermissionDenied)
+	res, err := s.use(t, s.master, boss, potionCommon)
+	if err != nil {
+		t.Fatalf("the NPC's own potion: %v", err)
+	}
+	if res.GetOutcome() != playv1.ConsumableUseOutcome_CONSUMABLE_USE_OUTCOME_TEXT_ONLY || res.GetHealed() != 0 {
+		t.Errorf("the NPC's own potion = %v, want it spent with no automatic effect", res)
+	}
+	s.hurt(t, s.toren, 1)
+	res, err = s.use(t, s.master, boss, potionCommon, giveTo(s.toren))
+	if err != nil || res.GetHealed() == 0 || s.vitals(t, s.toren).GetHitPointsCurrent() != 1+res.GetHealed() {
+		t.Errorf("the NPC's potion given to Toren = %v, %v; want Toren healed", res, err)
+	}
+	if s.holds(t, boss, potionCommon) {
+		t.Error("the NPC still holds a potion it used twice")
 	}
 }

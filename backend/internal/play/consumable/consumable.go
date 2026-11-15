@@ -1,7 +1,6 @@
 // Package consumable holds what the play module knows about using a consumable (a potion, a scroll) that needs no
-// store, no transport and no Service: the healing dice that are rolled or typed, the hit points a potion gives back, the
-// resistance a potion gives and the text a consumable with no automatic effect returns. play reads the sheet and the
-// character, and calls here.
+// store, no transport and no Service: the healing dice that are rolled or typed, the resistance a potion
+// gives and the text a consumable with no automatic effect returns. play reads the sheet and the character, and calls here.
 package consumable
 
 import (
@@ -32,11 +31,6 @@ func Total(f rules.DiceFormula, faces []int32) (int32, error) {
 		sum += int(face)
 	}
 	return conv.Int32(max(min(sum, 1<<20), 0)), nil
-}
-
-// Healed is the hit points a heal of total really gives back: the room up to the maximum, never negative.
-func Healed(current, maximum, total int32) int32 {
-	return max(min(total, maximum-current), 0)
 }
 
 // Resistance is the modifier a resistance potion puts on its drinker: resistance to the damage type.
