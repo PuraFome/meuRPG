@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/PuraFome/meuRPG/backend/internal/play/cutting"
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 )
 
 func TestAsks(t *testing.T) {
@@ -166,5 +167,40 @@ func TestChecks(t *testing.T) {
 	}
 	if keys[0] != "ability:str" || keys[5] != "ability:cha" {
 		t.Errorf("CheckKeys() starts with %v, want the abilities in sheet order", keys[:6])
+	}
+}
+
+func TestParseState(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]cutting.State{
+		cutting.StateAsked: cutting.Waiting, cutting.StateCut: cutting.Cut, cutting.StatePassed: cutting.Passed, cutting.StateClosed: cutting.Closed,
+		"": cutting.Waiting, "unknown": cutting.Waiting,
+	} {
+		if got := cutting.ParseState(in); got != want {
+			t.Errorf("ParseState(%q) = %v, want %v", in, got, want)
+		}
+	}
+}
+
+func TestPlaceSightOf(t *testing.T) {
+	t.Parallel()
+	yes := func(grid.Square) bool { return true }
+	both := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{
+		"npc":  {Sq: grid.Square{Col: 10, Row: 0}, Hidden: true},
+		"bard": {Sq: grid.Square{Col: 0, Row: 0}},
+	}}
+	got := both.SightOf("bard", true, yes, true)
+	if !got.Mapped || got.DistanceFt != 50 || !got.Seen || !got.TokenHidden || got.Sees() {
+		t.Errorf("both tokens = %+v, want the map's sight (50 ft, the hidden token unseen), whatever the box and the stage say", got)
+	}
+	if blind := both.SightOf("bard", true, func(grid.Square) bool { return false }, true); blind.Seen {
+		t.Errorf("a bard whose player does not see the square = %+v, want Seen false", blind)
+	}
+	noBard := cutting.Place{NPC: "npc", Tokens: map[string]cutting.Token{"npc": {}}}
+	if got := noBard.SightOf("bard", true, yes, true); got != (cutting.Sight{Box: true, OnStage: true}) {
+		t.Errorf("a bard with no token = %+v, want the box and the stage", got)
+	}
+	if got := (cutting.Place{NPC: "npc"}).SightOf("bard", false, yes, false); got != (cutting.Sight{}) {
+		t.Errorf("no map = %+v, want nothing seen", got)
 	}
 }

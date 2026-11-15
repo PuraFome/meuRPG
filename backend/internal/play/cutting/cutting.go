@@ -7,6 +7,7 @@ package cutting
 import (
 	"slices"
 
+	"github.com/PuraFome/meuRPG/backend/internal/rules/grid"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/reaction"
 )
 
@@ -88,6 +89,27 @@ const (
 	Closed
 )
 
+// The states of a question as the rows and the history spell them.
+const (
+	StateAsked  = "asked"
+	StateCut    = "cut"
+	StatePassed = "passed"
+	StateClosed = "closed"
+)
+
+// ParseState reads the state a row keeps: anything but cut, passed and closed is a question still waiting.
+func ParseState(s string) State {
+	switch s {
+	case StateCut:
+		return Cut
+	case StatePassed:
+		return Passed
+	case StateClosed:
+		return Closed
+	}
+	return Waiting
+}
+
 // Current is the index of the question that is open now: the first still waiting, in the order the bards are asked, -1 when none is.
 func Current(states []State) int {
 	return slices.Index(states, Waiting)
@@ -118,4 +140,28 @@ func ValidCheck(key string) bool {
 // CheckKeys are the checks a creature may be rolled for: the six abilities in the order of the sheet, then the skills in alphabetical order.
 func CheckKeys() []string {
 	return append(slices.Clone(abilities), skills...)
+}
+
+// Token is where a character stands on the session's current map.
+type Token struct {
+	Sq     grid.Square
+	Hidden bool
+}
+
+// Place is where the creature stands for the question of a check: the tokens of the session's current map (none with no map or no
+// grid), and the creature's id among them.
+type Place struct {
+	Tokens map[string]Token
+	NPC    string
+}
+
+// SightOf is what a bard's question reads of the creature: the map when both tokens are on it (seen says the bard's player sees the
+// creature's square), the master's box otherwise, and whether the creature is on the stage the bard's player sees (onStage).
+func (p Place) SightOf(bard string, box bool, seen func(grid.Square) bool, onStage bool) Sight {
+	npcTok, okN := p.Tokens[p.NPC]
+	bardTok, okB := p.Tokens[bard]
+	if okN && okB {
+		return Sight{Mapped: true, DistanceFt: grid.RangeFt(bardTok.Sq, npcTok.Sq), Seen: seen(npcTok.Sq), TokenHidden: npcTok.Hidden}
+	}
+	return Sight{Box: box, OnStage: onStage}
 }

@@ -29,14 +29,7 @@ var errStaleNpcCheck = errors.New("the held check is from an earlier session")
 func askStates(asks []playdb.NpcCheckAsk) []cutting.State {
 	out := make([]cutting.State, len(asks))
 	for i, a := range asks {
-		switch a.State {
-		case askCut:
-			out[i] = cutting.Cut
-		case askPassed:
-			out[i] = cutting.Passed
-		case askClosed:
-			out[i] = cutting.Closed
-		}
+		out[i] = cutting.ParseState(a.State)
 	}
 	return out
 }

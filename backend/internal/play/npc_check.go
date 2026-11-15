@@ -63,12 +63,12 @@ type npcCheckEvent struct {
 	Skipped     bool              `json:"skipped,omitempty"`
 }
 
-// The states of an ask as the rows and the history spell them.
+// The states of an ask as the rows and the history spell them (package cutting).
 const (
-	askAsked  = "asked"
-	askCut    = "cut"
-	askPassed = "passed"
-	askClosed = "closed"
+	askAsked  = cutting.StateAsked
+	askCut    = cutting.StateCut
+	askPassed = cutting.StatePassed
+	askClosed = cutting.StateClosed
 )
 
 var askStateProto = map[string]playv1.NpcCheckAskState{
@@ -432,7 +432,8 @@ func (s *Service) askedBardOf(ctx context.Context, tx pgx.Tx, campaignID string,
 	if err != nil || !ok {
 		return askedBard{}, false, err
 	}
-	sees := place.sightOf(c, boxSees, sight)
+	seen := func(sq grid.Square) bool { return sight == nil || sight.Sees(c.PlayerUserID, sq) }
+	sees := place.SightOf(c.ID, boxSees, seen, place.onStage && place.scene.has(c.PlayerUserID))
 	if !sees.Sees() {
 		return askedBard{}, false, nil
 	}
@@ -462,16 +463,9 @@ func (s *Service) bardOf(ctx context.Context, tx pgx.Tx, campaignID string, c li
 
 // npcPlace is where the creature stands for the question of a check: its token on the session's map, the stage and who sees the scene.
 type npcPlace struct {
-	tokens  map[string]mapToken
-	npc     string
+	cutting.Place
 	onStage bool
 	scene   viewers
-}
-
-// mapToken is a character's token on the session's current map.
-type mapToken struct {
-	sq     grid.Square
-	hidden bool
 }
 
 // npcPlacement reads the tokens of the session's current map (with a grid) and the stage the bards' players see.
@@ -480,7 +474,7 @@ func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 	if err != nil {
 		return npcPlace{}, err
 	}
-	p := npcPlace{tokens: tokens, npc: npcID}
+	p := npcPlace{Place: cutting.Place{Tokens: tokens, NPC: npcID}}
 	rows, err := q.ListShownStage(ctx, session.ID)
 	if err != nil {
 		return p, fmt.Errorf("list the stage: %w", err)
@@ -495,8 +489,8 @@ func (s *Service) npcPlacement(ctx context.Context, tx pgx.Tx, q *playdb.Queries
 }
 
 // mapTokensOf reads the tokens of the session's current map, none when there is no map or it has no grid.
-func (s *Service) mapTokensOf(ctx context.Context, tx pgx.Tx, session playdb.GameSession) (map[string]mapToken, error) {
-	out := map[string]mapToken{}
+func (s *Service) mapTokensOf(ctx context.Context, tx pgx.Tx, session playdb.GameSession) (map[string]cutting.Token, error) {
+	out := map[string]cutting.Token{}
 	if session.CurrentMapID == nil {
 		return out, nil
 	}
@@ -514,19 +508,8 @@ func (s *Service) mapTokensOf(ctx context.Context, tx pgx.Tx, session playdb.Gam
 	cells := grid.Grid{Columns: int(g.Columns), Rows: int(g.Rows)}
 	for _, t := range tokens {
 		if t.CharacterID != "" {
-			out[t.CharacterID] = mapToken{sq: cells.SquareOf(int(t.XBP), int(t.YBP)), hidden: t.Hidden}
+			out[t.CharacterID] = cutting.Token{Sq: cells.SquareOf(int(t.XBP), int(t.YBP)), Hidden: t.Hidden}
 		}
 	}
 	return out, nil
-}
-
-// sightOf is what the bard's question reads of the creature: the map when both tokens are on it, the master's box otherwise.
-func (p npcPlace) sightOf(bard link.Character, box bool, sight maplink.CombatSight) cutting.Sight {
-	npcTok, okN := p.tokens[p.npc]
-	bardTok, okB := p.tokens[bard.ID]
-	if okN && okB {
-		seen := sight == nil || sight.Sees(bard.PlayerUserID, npcTok.sq)
-		return cutting.Sight{Mapped: true, DistanceFt: grid.RangeFt(bardTok.sq, npcTok.sq), Seen: seen, TokenHidden: npcTok.hidden}
-	}
-	return cutting.Sight{Box: box, OnStage: p.onStage && p.scene.has(bard.PlayerUserID)}
 }
