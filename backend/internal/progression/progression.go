@@ -51,8 +51,9 @@ type Party interface {
 	// first, with their level and XP, read in tx (nil outside a transaction).
 	Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Member, error)
 	// Names returns the names of those of ids that are characters of the
-	// campaign, by ID, whatever their kind or status.
-	Names(ctx context.Context, campaignID string, ids []string) (map[string]string, error)
+	// campaign, by ID, whatever their kind or status. A character given back
+	// to the reserve is left out unless withReserved (the master's reads).
+	Names(ctx context.Context, campaignID string, ids []string, withReserved bool) (map[string]string, error)
 	// AddExperience adds delta (negative to take back) to a player character's
 	// sheet inside tx, keeping the XP between 0 and 1,000,000, and returns the
 	// XP before and after. `not_found` for any character but a living or dead
