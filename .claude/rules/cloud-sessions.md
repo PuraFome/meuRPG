@@ -10,6 +10,11 @@ These rules hold for every MeuRPG cloud session, on every item. They live on the
 - Never pass an effort below `high` to a subagent, and never use `max` anywhere.
 - When a task proves too hard for Sonnet at `high` (a second failed fix round on the same finding, for example), say so in a `question:` and name the task. Do not raise a subagent to `xhigh` by yourself.
 - If your Agent tool has no `effort` parameter, or you find the main agent on another model, say so in your next `progress:` line.
+- A hook refuses an Agent call that breaks these rules (`.claude/hooks/agent-effort.py`) and says why: repeat the call with the values it names.
+
+## Commits
+
+- Commit messages and PR texts carry no attribution lines: no `Co-Authored-By`, no session link. The settings turn them off; don't add them by hand.
 
 ## Nothing stays only in the container
 
