@@ -316,3 +316,77 @@ func TestTheDawnTellsAnotherPlayerNothingOfIt(t *testing.T) {
 		}
 	}
 }
+
+// The long rest that restores the dawn gives the items their charges back as the master's Amanhecer does: the same words, the
+// same readers. The combat of the world ends first (a rest is refused while one runs).
+func (w *world) torenRestsWithTheDawn() {
+	w.t.Helper()
+	must(w.master.resources.TakeRest(w.t.Context(), rq(&playv1.TakeRestRequest{
+		CampaignId: w.campaign, Kind: playv1.RestKind_REST_KIND_LONG, RestoreDawn: true, IdempotencyKey: newKey(),
+	})))
+}
+
+func (w *world) torenSpendsAChargeAndTheCombatEnds() {
+	w.t.Helper()
+	w.onTorenTurn()
+	entry := w.torenHasAWand()
+	w.spendTorensCharge(entry)
+	must(w.master.combat.EndEncounter(w.t.Context(), rq(&playv1.EndEncounterRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId(), IdempotencyKey: newKey()})))
+}
+
+// restDawnReads are the answers that could hold the dawn: the combat's log (the combat is over, so its other reads say nothing
+// of the dawn) and Toren's sheet.
+func (w *world) restDawnReads(p *person) []reply {
+	w.t.Helper()
+	return []reply{
+		p.call(playv1connect.CombatServiceListCombatLogProcedure, &playv1.ListCombatLogRequest{CampaignId: w.campaign, EncounterId: w.encounter.GetId()}),
+		p.call(charactersv1connect.CharacterServiceGetCharacterProcedure, &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()}),
+	}
+}
+
+func TestTheDawnOfALongRestIsTheOwnersAndTheMastersAlone(t *testing.T) {
+	w := newWorld(t)
+	w.torenSpendsAChargeAndTheCombatEnds()
+	for _, n := range dawnWords {
+		w.secrets.add(&canary{needle: n, kind: "item-rest-dawn"})
+	}
+	w.torenRestsWithTheDawn()
+
+	for _, p := range []*person{w.ana, w.pending} {
+		for _, r := range w.restDawnReads(p) {
+			for _, f := range w.inspect(p, r, nil) {
+				t.Errorf("%s: %s", p.name, f)
+			}
+		}
+	}
+	for _, p := range []*person{w.master, w.caio} {
+		sheet := p.call(charactersv1connect.CharacterServiceGetCharacterProcedure, &charactersv1.GetCharacterRequest{CampaignId: w.campaign, CharacterId: w.toren.GetId()})
+		if !contains(sheet.body, `"chargesLeft":7`) && !contains(sheet.body, `"chargesLeft": 7`) {
+			t.Errorf("%s reads %s, want the wand back at 7 charges (the canary is unreachable)", p.name, sheet.body)
+		}
+	}
+}
+
+func TestTheDawnOfALongRestTellsAnotherPlayerNothingOfIt(t *testing.T) {
+	w := newWorld(t)
+	w.torenSpendsAChargeAndTheCombatEnds()
+	got := w.hiddenOnlyEvents(w.torenRestsWithTheDawn)
+	vitals := func(name string) bool {
+		return slices.ContainsFunc(got[name], func(h string) bool { return strings.HasPrefix(h, "vitals_changed") })
+	}
+	for _, name := range []string{w.master.name, w.caio.name} {
+		if !vitals(name) {
+			t.Errorf("%s hears %v, want a vitals_changed (the charges came back)", name, got[name])
+		}
+	}
+	for _, ev := range got[w.ana.name] {
+		if strings.HasPrefix(ev, "vitals_changed") && strings.Contains(ev, w.toren.GetId()) {
+			t.Errorf("Ana hears Toren's sheet change: %s", ev)
+		}
+		for _, n := range dawnWords {
+			if strings.Contains(ev, n) {
+				t.Errorf("Ana hears %q: %s", n, ev)
+			}
+		}
+	}
+}

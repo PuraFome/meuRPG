@@ -136,6 +136,9 @@ func resourceError(err error) error {
 type restEvent struct {
 	Kind       string   `json:"kind"`
 	Characters []string `json:"character_ids,omitempty"`
+	// DawnCharacters are the owners of the items the dawn of a long rest recharged, whom the retry tells as the first call
+	// did; absent in a rest without the dawn and in the events stored before it existed.
+	DawnCharacters []string `json:"dawn_character_ids,omitempty"`
 }
 
 // hitDieEvent is the payload of a hit_dice_spent event: the die, the face
@@ -349,7 +352,7 @@ func (s *Service) takeRestTx(ctx context.Context, tx pgx.Tx, h *hints, session p
 			return fmt.Errorf("read the rest event: %w", err)
 		}
 		run.repeated = append([]string{}, ev.Characters...)
-		return s.tellRestAgain(ctx, q, h, session.ID, call.m.CampaignID, run.repeated)
+		return s.tellRestAgain(ctx, q, h, session.ID, call.m.CampaignID, run.repeated, ev.DawnCharacters)
 	}
 	if err := activeCombatBlocks(ctx, q, session.ID); err != nil {
 		return err
@@ -357,10 +360,9 @@ func (s *Service) takeRestTx(ctx context.Context, tx pgx.Tx, h *hints, session p
 	if _, run.after, err = s.vitals.TakeRest(ctx, tx, call.m.CampaignID, call.msg); err != nil {
 		return resourceError(err)
 	}
-	if call.kind == rules.RestLong && call.msg.GetRestoreDawn() { // a short rest ignores it
-		if _, err := s.restoreDawn(ctx, tx, q, h, session, call.m.UserID, call.m.CampaignID); err != nil {
-			return err
-		}
+	dawned, err := s.restDawn(ctx, tx, q, h, session, call)
+	if err != nil {
+		return err
 	}
 	if err := restNPCUses(ctx, q, call); err != nil {
 		return err
@@ -374,11 +376,30 @@ func (s *Service) takeRestTx(ctx context.Context, tx pgx.Tx, h *hints, session p
 	}
 	if err := s.appendKeyedEvent(ctx, q, keyedEvent{
 		sessionID: session.ID, kind: eventRestTaken, userID: call.m.UserID, key: call.keyText, hash: call.hash,
-	}, restEvent{Kind: call.kind, Characters: ids}); err != nil {
+	}, restEvent{Kind: call.kind, Characters: ids, DawnCharacters: dawned}); err != nil {
 		return err
 	}
 	s.tellRest(h, call.m.CampaignID, *run)
 	return nil
+}
+
+// restDawn gives the items their dawn when a long rest asks for it (a short rest ignores it) and returns the characters
+// whose items regained charges, each once.
+func (s *Service) restDawn(ctx context.Context, tx pgx.Tx, q *playdb.Queries, h *hints, session playdb.GameSession, call restCall) ([]string, error) {
+	if call.kind != rules.RestLong || !call.msg.GetRestoreDawn() {
+		return nil, nil
+	}
+	items, err := s.restoreDawn(ctx, tx, q, h, session, call.m.UserID, call.m.CampaignID)
+	if err != nil {
+		return nil, err
+	}
+	var owners []string
+	for _, it := range items {
+		if !slices.Contains(owners, it.CharacterID) {
+			owners = append(owners, it.CharacterID)
+		}
+	}
+	return owners, nil
 }
 
 // restNPCUses gives the hand-made NPCs what the rest returns: a long rest their spell slots, uses a day and
@@ -482,11 +503,17 @@ func (s *Service) tellRest(h *hints, campaignID string, run restRun) {
 }
 
 // tellRestAgain fills h for a rest whose key was found stored, with what the first call would have told, worked out from the
-// stored event: the vitals of the characters it changed as they stand, the casts to the master only (a rest ends spells; whether
+// stored event: the vitals of the characters it changed and of the owners of the items its dawn recharged as they stand, the casts to the master only (a rest ends spells; whether
 // the players were told is not kept) and the open combat when one of those characters is a player's combatant in it, which shows the vitals. Nothing was written, so h only replays.
-func (s *Service) tellRestAgain(ctx context.Context, q *playdb.Queries, h *hints, sessionID, campaignID string, characterIDs []string) error {
+func (s *Service) tellRestAgain(ctx context.Context, q *playdb.Queries, h *hints, sessionID, campaignID string, characterIDs, dawned []string) error {
 	h.replay()
-	s.tellVitalsAfter(h, campaignID, characterIDs...)
+	told := slices.Clone(characterIDs)
+	for _, id := range dawned {
+		if !slices.Contains(told, id) {
+			told = append(told, id)
+		}
+	}
+	s.tellVitalsAfter(h, campaignID, told...)
 	h.tell(campaignID, castsChangedEvent(true))
 	enc, cs, found, err := openCombatants(ctx, q, sessionID)
 	if err != nil {

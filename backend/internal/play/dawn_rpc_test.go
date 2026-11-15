@@ -374,3 +374,43 @@ func TestTheDawnTellsTheOwnerAndTheMasterAlone(t *testing.T) {
 		t.Errorf("another player received %v", evs)
 	}
 }
+
+// A retried long rest with the dawn tells the owners of the items the dawn recharged, as the first call did, also when the rest
+// itself changed nothing of their character (one at 0 hit points): the first call may have died before telling.
+func TestARetriedLongRestWithTheDawnTellsTheOwnerOfAnItemTheRestDidNotChangeTheCharacterOf(t *testing.T) {
+	t.Parallel()
+	c := newCharged(t, dawnEyes)
+	c.mustSpend(t, c.ana, dawnEyes, 2)
+	c.hurt(t, c.pens, 0)
+	master, ana, caio := c.master.watch(t, c.campaignID), c.ana.watch(t, c.campaignID), c.caio.watch(t, c.campaignID)
+	for _, w := range []*watcher{master, ana, caio} {
+		w.ready(t)
+	}
+	heardPens := func(w *watcher) bool {
+		for _, ev := range w.beforeMarker(t) {
+			if ev.GetVitalsChanged().GetVitals().GetCharacterId() == c.pens.GetId() {
+				return true
+			}
+		}
+		return false
+	}
+	key := newKey()
+	withKey := func(r *playv1.TakeRestRequest) { r.IdempotencyKey = key }
+	for _, call := range []string{"first call", "retry"} {
+		if _, err := c.restLong(t, withDawn, withKey); err != nil {
+			t.Fatalf("TakeRest(%s) error = %v", call, err)
+		}
+		mapID := c.h.newMap(c.campaignID, 0)
+		c.master.markCurrentMap(t, c.campaignID, mapID, master, ana, caio)
+		if got := c.leftOf(t, dawnEyes); got != 3 {
+			t.Fatalf("%s: the eyes have %d charges, want 3", call, got)
+		}
+		toldMaster, toldAna := heardPens(master), heardPens(ana)
+		if !toldMaster || !toldAna {
+			t.Errorf("%s: the master (%v) or the owner of the eyes (%v) was not told that the sheet changed", call, toldMaster, toldAna)
+		}
+		if heardPens(caio) {
+			t.Errorf("%s: another player was told of the sheet", call)
+		}
+	}
+}
