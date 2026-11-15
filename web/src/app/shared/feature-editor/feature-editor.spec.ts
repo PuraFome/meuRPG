@@ -585,9 +585,9 @@ describe('FeatureEditor (a trait, a feature)', () => {
       expect(
         el.querySelector('input[aria-label="Nome da opção"], [data-field$="options[0].name_pt"]'),
       ).toBeNull();
-      expect(text(toggle(1))).toContain('Soma o dado. · não pede nada');
+      expect(text(toggle(1))).toContain('Soma o dado · não pede nada');
       expect(text(toggle(2))).toContain(
-        'Soma o dado ao ataque. · pede Paladino 7 e Golpe do Corvo',
+        'Soma o dado ao ataque · pede Paladino 7 e Golpe do Corvo',
       );
       expect(text(toggle(3))).toContain('Pede Paladino 10');
     });
