@@ -185,10 +185,8 @@ func (s *Service) zoneAnswerBack(ctx context.Context, c *combatTx, cs []playdb.C
 		return nil // a creature that left the combat has nothing to put back
 	}
 	if ev.Favor && reactor.CharacterID != "" {
-		if err := favorGiveBack(ctx, c.q, c.session.CampaignID, reactor.CharacterID); err != nil {
-			return err
-		}
-		if err := keepRefundOfKey(ctx, c, key); err != nil { // the master's question about that spend has nothing left to refund
+		// The master's question about that spend has nothing left to refund.
+		if err := favorBackOfRoll(ctx, c.q, c.session.CampaignID, reactor.CharacterID, keyOf(key)); err != nil {
 			return err
 		}
 	}

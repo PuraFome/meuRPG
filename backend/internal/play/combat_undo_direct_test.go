@@ -25,7 +25,7 @@ func (a *armed) takeBackAs(t *testing.T, e *playv1.Encounter, kind string, ev ac
 	var vitals []*playv1.CharacterVitals
 	_, err := a.h.svc.write(t.Context(), combatWrite{m: m, key: newKey(), kind: eventActionUndone, encounterID: e.GetId()}, func(c *combatTx) (any, error) {
 		var err error
-		vitals, err = a.h.svc.takeBack(t.Context(), c, kind, ev)
+		vitals, err = a.h.svc.takeBack(t.Context(), c, kind, ev, "")
 		return actionEvent{Round: c.enc.Round}, err
 	})
 	return vitals, err

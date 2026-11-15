@@ -551,21 +551,15 @@ func (s *Service) takeBackOf(ctx context.Context, c *combatTx, run *undoRun, las
 	case last.Kind == eventGearSwapped: // the swap is the characters module's too: the sheet goes back with the economy
 		return nil, s.takeBackGearSwap(ctx, c, run, last.Payload)
 	}
-	vitals, err := s.takeBack(ctx, c, last.Kind, ev)
-	if err != nil || !ev.Favor {
-		return vitals, err
-	}
-	// The Inspiration the roll spent is back (favorBack): the master's question about it closes as kept.
-	return vitals, keepRefundOfKey(ctx, c, last.IdempotencyKey)
+	return s.takeBack(ctx, c, last.Kind, ev, keyOf(last.IdempotencyKey))
 }
 
-// keepRefundOfKey closes as kept the refund prompt of the roll written under the key, when the undo gave its Inspiration back: every path
-// of the undo that gives one back goes through it (the undone roll, an older event that goes with it, an answer to a zone's catch).
-func keepRefundOfKey(ctx context.Context, c *combatTx, key *string) error {
+// keyOf is the idempotency key an event was written under, or "" for none.
+func keyOf(key *string) string {
 	if key == nil {
-		return nil
+		return ""
 	}
-	return keepRefundOfRoll(ctx, c.q, c.session.CampaignID, *key)
+	return *key
 }
 
 // creatureToPutBack is the creature whose square the undo of ev changes behind the mover's
@@ -677,14 +671,9 @@ func (s *Service) takeBackFiring(ctx context.Context, c *combatTx, run *undoRun,
 // takeBackOlder takes back one older event that goes with the undone action, and keeps
 // the vitals it restored and the lines it wrote.
 func (s *Service) takeBackOlder(ctx context.Context, c *combatTx, run *undoRun, older playdb.ListRecentSessionEventsRow, pe actionEvent) error {
-	more, err := s.takeBack(ctx, c, older.Kind, pe)
+	more, err := s.takeBack(ctx, c, older.Kind, pe, keyOf(older.IdempotencyKey))
 	if err != nil {
 		return err
-	}
-	if pe.Favor {
-		if err := keepRefundOfKey(ctx, c, older.IdempotencyKey); err != nil {
-			return err
-		}
 	}
 	run.vitals = append(run.vitals, more...)
 	run.alsoUndone = append(append(run.alsoUndone, older.ID), pe.linesBefore()...)
@@ -771,7 +760,7 @@ func (s *Service) publishUndone(ctx context.Context, campaignID string, d *encou
 // damage that is gone (its character was deleted meanwhile) is skipped: there
 // is nothing left to put back on it. Each kind of event has its own function
 // (combat_undo_kinds.go); this one reads what they all need and dispatches.
-func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev actionEvent) ([]*playv1.CharacterVitals, error) {
+func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev actionEvent, rollKey string) ([]*playv1.CharacterVitals, error) {
 	if err := closeDamageWindows(ctx, c, kind, ev); err != nil {
 		return nil, err
 	}
@@ -792,7 +781,7 @@ func (s *Service) takeBack(ctx context.Context, c *combatTx, kind string, ev act
 	if !ok {
 		return nil, fmt.Errorf("event kind %q cannot be undone", kind)
 	}
-	u := &undoer{s: s, c: c, cs: cs, holds: ev.Holds, kept: ev.HPKept}
+	u := &undoer{s: s, c: c, cs: cs, holds: ev.Holds, kept: ev.HPKept, rollKey: rollKey}
 	if err := u.undoWithTemp(ctx, kind, undo, ev); err != nil {
 		return nil, err
 	}

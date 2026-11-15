@@ -307,7 +307,7 @@ func (u *undoer) favorBack(ctx context.Context, who playdb.Combatant, ev actionE
 	if !ev.Favor || who.CharacterID == "" {
 		return nil
 	}
-	return favorGiveBack(ctx, u.c.q, u.c.session.CampaignID, who.CharacterID)
+	return favorBackOfRoll(ctx, u.c.q, u.c.session.CampaignID, who.CharacterID, u.rollKey)
 }
 
 // withFavor is the attack roll's mode with the Inspiration counted: the source joins the list the roller reads, and the mode

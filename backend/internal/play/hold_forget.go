@@ -27,21 +27,37 @@ func favorGiveBackIf(ctx context.Context, q *playdb.Queries, unsettled bool, cam
 	if !unsettled || characterID == "" {
 		return nil
 	}
+	return favorBackOfRoll(ctx, q, campaignID, characterID, rollKey)
+}
+
+// favorBackOfRoll gives the Inspiration a roll spent back when the roll is gone (its undo, a held roll forgotten) and closes as kept
+// the roller's refund prompt of that roll. When the master already answered that prompt "Devolver", the Inspiration was given back once:
+// it is not given again (the character may have passed it away or spent it since), and the prompt keeps its answer.
+func favorBackOfRoll(ctx context.Context, q *playdb.Queries, campaignID, characterID, rollKey string) error {
+	key := rollKeyOf(rollKey)
+	if key != "" {
+		returned, err := q.FavorRefundReturnedForRoll(ctx, playdb.FavorRefundReturnedForRollParams{CampaignID: campaignID, CharacterID: characterID, RollKey: key})
+		if err != nil {
+			return fmt.Errorf("read the refund of the roll: %w", err)
+		}
+		if returned {
+			return nil
+		}
+	}
 	if err := favorGiveBack(ctx, q, campaignID, characterID); err != nil {
 		return err
 	}
-	return keepRefundOfRoll(ctx, q, campaignID, rollKey)
+	return keepRefundOfRoll(ctx, q, campaignID, characterID, key)
 }
 
-// keepRefundOfRoll closes as kept the refund prompt of a roll that is gone (its undo, or its held roll forgotten): the Inspiration went back
-// with the roll, so the master's question has no spend left to refund. No event is written for it: the roll's own undo is the record, and the
-// transaction that drops the roll moves the session's number.
-func keepRefundOfRoll(ctx context.Context, q *playdb.Queries, campaignID, rollKey string) error {
-	key := rollKeyOf(rollKey)
+// keepRefundOfRoll closes as kept the roller's refund prompt of a roll that is gone: the Inspiration went back with the roll, so the master's
+// question has no spend left to refund. No event is written for it: the roll's own undo is the record, and the transaction that drops the
+// roll moves the session's number. A group check's members share the roll key, so only the roller's own prompt closes.
+func keepRefundOfRoll(ctx context.Context, q *playdb.Queries, campaignID, characterID, key string) error {
 	if key == "" {
 		return nil
 	}
-	if _, err := q.CloseFavorRefundPromptsOfRoll(ctx, playdb.CloseFavorRefundPromptsOfRollParams{CampaignID: campaignID, RollKey: key}); err != nil {
+	if _, err := q.CloseFavorRefundPromptsOfRoll(ctx, playdb.CloseFavorRefundPromptsOfRollParams{CampaignID: campaignID, RollKey: key, CharacterID: characterID}); err != nil {
 		return fmt.Errorf("keep the refund question of the roll: %w", err)
 	}
 	return nil

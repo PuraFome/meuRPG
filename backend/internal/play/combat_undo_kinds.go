@@ -28,6 +28,8 @@ type undoer struct {
 	// holds and kept are the event's: see leavesHP.
 	holds map[string]hpState
 	kept  bool
+	// rollKey is the key the undone event was written under: the refund prompt of its roll is found by it (favorBack).
+	rollKey string
 }
 
 // undoDFtPerFt is the tenths of a foot in a foot, the unit a move keeps its distances in.

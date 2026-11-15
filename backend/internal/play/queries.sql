@@ -2336,12 +2336,19 @@ RETURNING *;
 
 -- name: CloseFavorRefundPromptsOfRoll :many
 -- The roll a prompt belongs to is gone (undone, or its held roll forgotten): the Inspiration it spent went back, so the prompt closes as kept.
+-- Only the roller's own prompt: a group check's roll key is shared by its members.
 WITH changed AS (
     UPDATE favor_refund_prompts SET status = 'kept', answered_at = now()
-    WHERE campaign_id = $1 AND roll_key = $2 AND status = 'open'
+    WHERE campaign_id = $1 AND roll_key = $2 AND character_id = $3 AND status = 'open'
     RETURNING *
 )
 SELECT * FROM changed ORDER BY created_at, id;
+
+-- name: FavorRefundReturnedForRoll :one
+-- The master already gave the Inspiration of this roll back ("Devolver"): the roll's undo or its forgotten hold must not give it again.
+SELECT EXISTS (
+    SELECT 1 FROM favor_refund_prompts WHERE campaign_id = $1 AND character_id = $2 AND roll_key = $3 AND status = 'returned'
+) AS returned;
 
 -- name: CloseFavorRefundPromptsOfSession :many
 -- The end of a session keeps spent the Inspiration of every prompt still open in it.
