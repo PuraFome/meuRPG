@@ -254,6 +254,7 @@ describe('ReadySheet (#582)', () => {
       expect(r.button('Preparar').getAttribute('aria-disabled')).toBe('true');
       expect(r.button('Preparar').getAttribute('aria-describedby')).toBe('ready-kind-why');
       expect(r.el.querySelector('#ready-missing')).toBeNull(); // the reason is written once
+      expect(r.el.querySelector('#ready-move')).toBeNull(); // and the move's own text is not under it
       r.click(r.button('Preparar'));
       expect(readyAction).not.toHaveBeenCalled();
     }

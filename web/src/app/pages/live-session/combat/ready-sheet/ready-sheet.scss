@@ -21,6 +21,24 @@
   min-width: 0;
 }
 
+// Why a kind or "Preparar" is off: written with an icon, never colour alone.
+.missing {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--mr-space-1);
+  margin: 0;
+  font-size: var(--mr-font-15);
+  line-height: 20px;
+
+  .mat-icon {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+    font-size: var(--mr-font-18);
+  }
+}
+
 .kinds {
   margin: 0;
   padding: 0;

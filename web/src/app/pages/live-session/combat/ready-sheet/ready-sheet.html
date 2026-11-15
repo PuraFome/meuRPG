@@ -43,7 +43,9 @@
           }
         </fieldset>
         @if (kind() === 'move') {
-          <p class="what" id="ready-move">{{ moveText }}</p>
+          @if (!kindBlocked()) {
+            <p class="what" id="ready-move">{{ moveText }}</p>
+          }
         } @else if (!kindBlocked()) {
           <app-resource-pick
             [label]="listLabel()"
