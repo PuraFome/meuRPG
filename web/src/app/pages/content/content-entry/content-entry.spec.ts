@@ -157,6 +157,12 @@ describe('ContentEntry', () => {
       .find((b) => text(b).includes(label))!
       .click();
 
+  it('does not say "Em uso por" in the header of a weapon: the card in the editor says it (board 580-10)', async () => {
+    const axe = entry(TableContentKind.WEAPON, 'Machado', { charactersUsing: 1, key: 'weapon:m@mesa' });
+    const { el } = await setup(Role.MASTER, 'weapon:m@mesa', [axe]);
+    expect(text(el.querySelector('.tags')!)).not.toContain('Em uso por');
+  });
+
   it('shows an archived weapon as board 580-16 card 3: one line, and "Desarquivar" in the header', async () => {
     const lance = entry(TableContentKind.WEAPON, 'Lança-arpão', {
       archived: true,

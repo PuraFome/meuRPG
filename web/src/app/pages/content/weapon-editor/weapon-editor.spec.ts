@@ -108,7 +108,7 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
     expect((field(el, 'table_weapon.long_range_ft') as HTMLInputElement).value).toBe('18');
     expect((field(el, 'table_weapon.weight_oz') as HTMLInputElement).value).toBe('2');
     expect((field(el, 'table_weapon.price_cp') as HTMLInputElement).value).toBe('5');
-    expect(text(el)).toContain('No livro: 4 lb');
+    expect(text(el)).toContain('No livro: 4 lb.');
   });
 
   it('asks for the two-handed damage only while the weapon is Versátil', async () => {
@@ -251,6 +251,8 @@ describe('WeaponEditor (#580 S2, board 580-10)', () => {
     fixture.componentRef.setInput('entry', e);
     fixture.detectChanges();
     expect(text(el)).toContain('Em uso por 1 ficha');
+    expect(el.querySelector('.card-note mat-icon')!.textContent).toBe('open_in_full');
+    expect(el.querySelector('.preview__name mat-icon')!.textContent).toBe('menu_book');
     expect(text(el)).toContain(
       'Mudar o dano ou as propriedades vale na hora, também nos ataques das fichas travadas.',
     );
