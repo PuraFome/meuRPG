@@ -92,3 +92,49 @@ func TestMigrationFindSteedCreature(t *testing.T) {
 		t.Errorf("after Down then Up: %d of the 2 columns", left)
 	}
 }
+
+// TestMigrationFindSteedBondedIndex: the unique index of one bonded creature per character is the migration of its own (00352), after the
+// columns and CHECKs of 00351. Its Down drops the index and leaves the columns; the Down of 00351 after it takes the columns and the steeds.
+func TestMigrationFindSteedBondedIndex(t *testing.T) {
+	t.Parallel()
+	db := freshDatabase(t)
+	ctx := t.Context()
+	provider, err := NewTestProvider(ctx, db)
+	if err != nil {
+		t.Fatalf("NewProvider() error = %v", err)
+	}
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatalf("Up() error = %v", err)
+	}
+	count := func(query string) int {
+		t.Helper()
+		var n int
+		if err := db.QueryRowContext(ctx, query).Scan(&n); err != nil {
+			t.Fatalf("%s: %v", query, err)
+		}
+		return n
+	}
+	const index = `SELECT count(*) FROM pg_indexes WHERE tablename = 'character_creatures' AND indexname = 'character_creatures_one_bonded_idx'`
+	const columns = `SELECT count(*) FROM information_schema.columns WHERE table_name = 'character_creatures' AND column_name IN ('creature_type', 'bonded')`
+	if got := count(index); got != 1 {
+		t.Errorf("after Up: %d bonded indexes, want 1", got)
+	}
+	if _, err := provider.DownTo(ctx, 351); err != nil {
+		t.Fatalf("DownTo(351) error = %v", err)
+	}
+	if got, cols := count(index), count(columns); got != 0 || cols != 2 {
+		t.Errorf("after the Down of 00352: %d indexes and %d of the 2 columns, want none and both", got, cols)
+	}
+	if _, err := provider.DownTo(ctx, 349); err != nil {
+		t.Fatalf("DownTo(349) error = %v", err)
+	}
+	if got, cols := count(index), count(columns); got != 0 || cols != 0 {
+		t.Errorf("after the Down of 00351: %d indexes and %d columns, want none", got, cols)
+	}
+	if _, err := provider.Up(ctx); err != nil {
+		t.Fatalf("Up() after the Downs error = %v", err)
+	}
+	if got, cols := count(index), count(columns); got != 1 || cols != 2 {
+		t.Errorf("after Up again: %d indexes and %d of the 2 columns, want 1 and 2", got, cols)
+	}
+}
