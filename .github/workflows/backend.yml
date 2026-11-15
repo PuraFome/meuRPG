@@ -21,6 +21,8 @@ on:
       - ".github/scripts/cockroach-only.sh"
       - ".github/scripts/start-cockroach.sh"
       - ".github/scripts/start-postgres.sh"
+      - ".github/scripts/database-image.sh"
+      - ".github/actions/load-database-image/**"
       - ".github/actions/test-database/**"
       - ".github/scripts/go-coverage.sh"
       - ".github/scripts/go-complexity.sh"
@@ -44,6 +46,16 @@ concurrency:
 # comments, or touches packages/deployments.
 permissions:
   contents: read
+
+# The test database images, pinned by digest: the one place of each. `database-image` pulls the one a run needs, once, and
+# hands it to the `go-db` jobs (docs/ci.md, "How the test database image reaches the jobs").
+env:
+  # Cockroach Labs' own registry on Google Cloud instead of Docker Hub, whose anonymous pull limit GitHub's shared
+  # runners hit. The same image and digest as deploy/local/compose.yaml; a digest names the bytes, so the registry does
+  # not change the image. Keep the digest in sync with compose.yaml and compose.ci.yaml.
+  COCKROACH_IMAGE: us-docker.pkg.dev/cockroach-cloud-images/cockroachdb/cockroach:v26.2.8@sha256:1ad58b6a69928691e0c9289b847dcb35ac25108c6ead23fcabf47e37b9195e9a
+  # The official image from Amazon's public mirror, for the same reason: the major line 17.
+  POSTGRES_IMAGE: public.ecr.aws/docker/library/postgres:17@sha256:846a7ddaa67a4b354ae1d21087b683901aa6113a4ed626d3787cfbf6c85e3e07
 
 jobs:
   # Decides what runs (docs/ci.md, "What runs when"). `run`: the workflow at all, for a change to what it judges; `go`:
@@ -83,14 +95,14 @@ jobs:
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|web/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|cockroach-only|start-(cockroach|postgres))\.sh$|\.github/actions/test-database/|\.github/nolint-cap$|\.node-version$)'
+          pattern: '^(backend/|proto/|web/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|cockroach-only|start-(cockroach|postgres)|database-image)\.sh$|\.github/actions/(test-database|load-database-image)/|\.github/nolint-cap$|\.node-version$)'
 
       - name: Do the Go jobs run
         id: go
         if: env.DIFF == 'true'
         uses: ./.github/actions/select
         with:
-          pattern: '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|cockroach-only|start-(cockroach|postgres))\.sh$|\.github/actions/test-database/|\.github/nolint-cap$)'
+          pattern: '^(backend/|proto/|Makefile$|\.github/workflows/backend\.yml$|\.github/scripts/(go-(db-shard|coverage|complexity)|nolint-cap|cockroach-only|start-(cockroach|postgres)|database-image)\.sh$|\.github/actions/(test-database|load-database-image)/|\.github/nolint-cap$)'
 
   proto:
     name: proto (lint, breaking, generate)
@@ -280,29 +292,58 @@ jobs:
   # slowest group's, not the sum. 07/10/2026, one runner: 1105 s of go test.
   # 10/10/2026, four groups: 18 min for "rest" and "play", which was one
   # package of 920 s. Now play is split by test (play-1 to play-6), leaktest
-  # too (leak-1 to leak-4), and the CPU-bound pure packages (rules, and
+  # too (leak-1 to leak-4), and migrations (migrations-1 to migrations-3), and the CPU-bound pure packages (rules, and
   # dungeon with puzzle) have runners of their own, so they stop fighting for
   # four vCPUs. "rest" is still the catch-all for a new package.
+  # Pulls the test database image the run needs (PostgreSQL in a preflight, CockroachDB in a train: the action test-database
+  # decides) once, and hands it to the groups as an artifact: this is the only job of the run that touches a registry for it.
+  database-image:
+    name: go-db database image (the one pull of the run)
+    needs: changes
+    if: ${{ needs.changes.outputs.go == 'true' }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Pick the database
+        id: db
+        uses: ./.github/actions/test-database
+        with:
+          start: "false"
+
+      - name: Pull the image once and save it
+        env:
+          DATABASE: ${{ steps.db.outputs.database }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/database-image"
+          .github/scripts/database-image.sh pull "$DATABASE" "$RUNNER_TEMP/database-image/$DATABASE.tar.gz"
+
+      - name: Hand it to the groups
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: database-image
+          path: ${{ runner.temp }}/database-image
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+
   go-db-shard:
     name: go-db ${{ matrix.group }} (tests against CockroachDB)
-    needs: changes
+    needs: [changes, database-image]
     if: ${{ needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        group: [play-1, play-2, play-3, play-4, play-5, play-6, maps, characters, rules-1, rules-2, rules-3, dungeon, leak-1, leak-2, leak-3, leak-4, rest]
+        group: [play-1, play-2, play-3, play-4, play-5, play-6, maps, characters, migrations-1, migrations-2, migrations-3, rules-1, rules-2, rules-3, dungeon, leak-1, leak-2, leak-3, leak-4, rest]
     defaults:
       run:
         working-directory: backend
-    env:
-      # The same image, pinned by the same digest, as deploy/local/compose.yaml,
-      # pulled from Cockroach Labs' own registry on Google Cloud instead of
-      # Docker Hub, whose anonymous pull limit GitHub's shared runners hit.
-      # A digest names the bytes, so the registry does not change the image.
-      # Keep the digest in sync with compose.yaml and compose.ci.yaml.
-      COCKROACH_IMAGE: us-docker.pkg.dev/cockroach-cloud-images/cockroachdb/cockroach:v26.2.8@sha256:1ad58b6a69928691e0c9289b847dcb35ac25108c6ead23fcabf47e37b9195e9a
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -316,6 +357,11 @@ jobs:
           cache: true
           cache-dependency-path: backend/go.sum
 
+      - name: Load the test database image
+        # The image the `database-image` job pulled: this job does not touch the registry.
+        id: image
+        uses: ./.github/actions/load-database-image
+
       - name: Start the test database
         # PostgreSQL in a preflight, CockroachDB in a train, on main, in the nightly run and in a manual run: the action
         # decides (docs/ci.md, "Which database the tests run on"). It starts the same single node, insecure, in memory
@@ -323,6 +369,8 @@ jobs:
         # by default and durability off (.github/scripts/start-postgres.sh).
         id: db
         uses: ./.github/actions/test-database
+        with:
+          image: ${{ steps.image.outputs.image }}
 
       - name: go test -race (this group, with the database)
         # With MEURPG_TEST_DATABASE_URL set, the integration tests
@@ -409,7 +457,7 @@ jobs:
   # PostgreSQL there is something to check; in the CockroachDB runs the job ends after the names.
   cockroach-only-list:
     name: go-db cockroach-only list (the listed tests fail on PostgreSQL)
-    needs: changes
+    needs: [changes, database-image]
     if: ${{ needs.changes.outputs.go == 'true' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 20
@@ -435,8 +483,15 @@ jobs:
         with:
           start: "false"
 
+      - name: Load the PostgreSQL image
+        id: image
+        if: ${{ steps.db.outputs.database == 'postgres' }}
+        uses: ./.github/actions/load-database-image
+
       - name: Start PostgreSQL
         if: ${{ steps.db.outputs.database == 'postgres' }}
+        env:
+          TEST_POSTGRES_IMAGE: ${{ steps.image.outputs.image }}
         run: .github/scripts/start-postgres.sh
 
       - name: Run the listed tests on PostgreSQL
@@ -450,7 +505,7 @@ jobs:
   # matrix jobs' own names carry the group.
   go-db:
     name: go (integration tests against CockroachDB)
-    needs: [changes, go-db-shard, go-db-groups, cockroach-only-list]
+    needs: [changes, database-image, go-db-shard, go-db-groups, cockroach-only-list]
     # Not on a fork's push: `changes` is skipped there, and a skipped `changes` would fail the check below.
     if: ${{ always() && (github.repository == 'PuraFome/meuRPG' || github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-26.04
@@ -462,16 +517,17 @@ jobs:
         env:
           CHANGES: ${{ needs.changes.result }}
           GO: ${{ needs.changes.outputs.go }}
+          IMAGE: ${{ needs.database-image.result }}
           RESULT: ${{ needs.go-db-shard.result }}
           LIST: ${{ needs.cockroach-only-list.result }}
           GROUPS_CHECK: ${{ needs.go-db-groups.result }}
         run: |
-          echo "changes: $CHANGES, go: $GO, go-db groups: $RESULT, group check: $GROUPS_CHECK, cockroach-only list: $LIST"
+          echo "changes: $CHANGES, go: $GO, database image: $IMAGE, go-db groups: $RESULT, group check: $GROUPS_CHECK, cockroach-only list: $LIST"
           [ "$CHANGES" = success ] || exit 1
           if [ "$GO" = true ]; then
-            [ "$RESULT" = success ] && [ "$LIST" = success ] && [ "$GROUPS_CHECK" = success ]
+            [ "$IMAGE" = success ] && [ "$RESULT" = success ] && [ "$LIST" = success ] && [ "$GROUPS_CHECK" = success ]
           else
-            [ "$RESULT" = skipped ] && [ "$LIST" = skipped ] && [ "$GROUPS_CHECK" = skipped ]
+            [ "$IMAGE" = skipped ] && [ "$RESULT" = skipped ] && [ "$LIST" = skipped ] && [ "$GROUPS_CHECK" = skipped ]
           fi
 
   # Merges the groups' coverage profiles into one total and a per-package

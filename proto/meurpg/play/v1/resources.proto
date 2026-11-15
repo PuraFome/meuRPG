@@ -868,6 +868,7 @@ message AnswerHeldRollResponse {
     HideResponse hide = 13;
     AnswerReactionResponse counterspell_check = 14;
     SubmitInitiativeResponse initiative = 10;
+    RollMountSaveResponse mount_save = 15;
   }
   // The next question of the same roll, copied out of the result, when the roll still waits: the d20 Lucky
   // rolled again is asked about the die next. Unset when the roll was written.
