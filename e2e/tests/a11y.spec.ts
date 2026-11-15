@@ -97,7 +97,7 @@ import {
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { goblinTrigger, openReadySheet, readyAttackRPC, readyRPC, readySpellRPC, shootReady } from './ready-support';
+import { goblinTrigger, moveOffText, openReadySheet, pensantusReadyKit, readyAttackRPC, readyRPC, readySpellRPC, shootReady, spellOffText } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 import { LIT, WIDTHS as SUN_WIDTHS, sunSpot as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
@@ -14121,7 +14121,7 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Acessibilidade preparar ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    const table = await tableForCombat(m, p, `Acessibilidade preparar ${Date.now()}`, true, true, { sheet: pensantusReadyKit });
     campaignId = table.campaignId;
     const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, attackCombatSquares);
     const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme);
@@ -14149,15 +14149,17 @@ async function scanReadyScreens(browser: Browser, colorScheme: 'light' | 'dark',
 
     // A spell: the circle to hold it with, and the warning that it is the concentration.
     await sheet.getByRole('button', { name: 'Magia', exact: true }).click();
-    await sheet.locator('label', { hasText: 'Mísseis Mágicos' }).click();
+    await expect(sheet.locator('label', { hasText: 'Mísseis Mágicos' })).toContainText(spellOffText);
+    await sheet.locator('label', { hasText: 'Enfeitiçar Pessoa' }).click();
     await expect(sheet.getByRole('group', { name: 'Com que espaço' })).toBeVisible();
     await field.fill('Se o goblin sair da sombra do pilar');
     await expectScreenPasses(p, `Preparar, a folha da magia ${where}`);
     await shoot(p, 'preparar-magia');
 
     await sheet.getByRole('button', { name: 'Mover', exact: true }).click();
-    await expect(sheet.getByText(/Você anda/)).toBeVisible();
-    await expectScreenPasses(p, `Preparar, a folha do movimento ${where}`);
+    await expect(sheet.getByText(moveOffText)).toBeVisible();
+    await expect(sheet.getByRole('button', { name: 'Preparar', exact: true })).toBeDisabled();
+    await expectScreenPasses(p, `Preparar, a folha do movimento, desligada ${where}`);
     await shoot(p, 'preparar-mover');
 
     await sheet.getByRole('button', { name: 'Outra', exact: true }).click();
@@ -14257,6 +14259,11 @@ async function scanReadyMasterScreens(browser: Browser, colorScheme: 'light' | '
     await shoot(m, 'mestre-vez');
     await openOrderRow(m, 'Pensantus');
     await expect(m.locator('app-order-list').getByTestId('order-readied')).toHaveText(/Preparada/);
+    // The mark does not eat the initiative: the number is whole ("Inic. 20"), not cut to "Inic. 2…" by the mark beside it.
+    const lead = m.locator('app-order-list .row__sub', { has: m.getByTestId('order-readied') }).locator('.row__lead');
+    await expect(lead).toContainText(/Inic\. \d+/);
+    const cut = await lead.evaluate((el) => ({ text: el.textContent?.trim() ?? '', clipped: el.scrollWidth > el.clientWidth + 0.5, shown: el.clientWidth, wanted: el.scrollWidth }));
+    expect(cut.clipped, `"${cut.text}" cabe inteiro na linha da ordem ao lado de "Preparada" (${cut.shown}px de ${cut.wanted}px) ${where}`).toBe(false);
     await expectScreenPasses(m, `Preparar, a linha da ordem com "Preparada" ${where}`);
     await shoot(m, 'mestre-ordem');
     await openTurn(m);

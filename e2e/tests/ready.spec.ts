@@ -1,8 +1,8 @@
 import { expect } from '@playwright/test';
 import { test } from './diagnostics';
-import { attackCombatSquares, beginAttackCombatRPC, combatRPC, getEncounterRPC, pensantusCasting, tableForCombat } from './combat-support';
+import { attackCombatSquares, beginAttackCombatRPC, combatRPC, getEncounterRPC, tableForCombat } from './combat-support';
 import { endSessionOf } from './feature-use-support';
-import { goblinTrigger, openReadySheet, readiedOf } from './ready-support';
+import { goblinTrigger, moveOffText, openReadySheet, pensantusReadyKit, readiedOf, spellOffText } from './ready-support';
 import { openSessionPage } from './live-session-support';
 import { waitForEncounterRevision } from './revision-support';
 import { newSignedInContext, openSpentGroup } from './support';
@@ -22,7 +22,7 @@ test('um jogador prepara um ataque, lê o cartão e desiste dele na própria vez
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Preparar ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    const table = await tableForCombat(m, p, `Preparar ${Date.now()}`, true, true, { sheet: pensantusReadyKit });
     campaignId = table.campaignId;
     await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, attackCombatSquares);
 
@@ -87,22 +87,35 @@ test('um jogador prepara uma magia com o espaço e o servidor recusa quando a a�
   try {
     await m.goto('/');
     await p.goto('/');
-    const table = await tableForCombat(m, p, `Preparar magia ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    const table = await tableForCombat(m, p, `Preparar magia ${Date.now()}`, true, true, { sheet: pensantusReadyKit });
     campaignId = table.campaignId;
     const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, attackCombatSquares);
 
     await openSessionPage(p, campaignId);
     await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
     const sheet = await openReadySheet(p);
+    // Mover is off in the sheet for now (#856): its reason is written and nothing can be held with it.
+    await sheet.getByRole('button', { name: 'Mover', exact: true }).click();
+    await expect(sheet.getByText(moveOffText)).toBeVisible();
+    await sheet.getByLabel('Quando dispara, nas suas palavras').fill('Quando o goblin recuar, corro até a porta');
+    await expect(sheet.getByRole('button', { name: 'Preparar', exact: true })).toBeDisabled();
     await sheet.getByRole('button', { name: 'Magia', exact: true }).click();
     const shield = sheet.locator('label', { hasText: 'Escudo Arcano' });
     await expect(shield).toContainText('É uma reação: só uma magia de 1 ação pode ser preparada.');
-    await sheet.locator('label', { hasText: 'Mísseis Mágicos' }).click();
+    // What the window cannot release yet (darts, several targets, a point) is listed off with its reason, and a click on it holds nothing.
+    for (const name of ['Mísseis Mágicos', 'Sono', 'Mãos Flamejantes']) {
+      await expect(sheet.locator('label', { hasText: name })).toContainText(spellOffText);
+    }
+    await expect(sheet.getByRole('radio', { name: /Mísseis Mágicos/ })).toBeDisabled();
+    // A spell of one creature stays on: the circle to hold it with, and the warning that it is the concentration.
+    const charm = sheet.locator('label', { hasText: 'Enfeitiçar Pessoa' });
+    await expect(charm).not.toContainText('Soltar pela janela');
+    await charm.click();
     await expect(sheet.getByRole('group', { name: 'Com que espaço' })).toBeVisible();
     await expect(sheet.getByText(/Ação e espaço de 1º círculo/)).toBeVisible();
     const field = sheet.getByLabel('Quando dispara, nas suas palavras');
     await field.fill('Se o goblin sair da sombra do pilar');
-    const go = sheet.getByRole('button', { name: 'Preparar Mísseis Mágicos' });
+    const go = sheet.getByRole('button', { name: 'Preparar Enfeitiçar Pessoa' });
     await expect(go).toBeEnabled();
 
     // The action is spent meanwhile: the server refuses, the sheet says why and keeps what was typed.

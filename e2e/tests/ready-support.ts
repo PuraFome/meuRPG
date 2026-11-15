@@ -2,7 +2,7 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, type Locator, type Page } from '@playwright/test';
 import { callRPC } from './support';
-import type { Combatant, Encounter } from './combat-support';
+import { pensantusCasting, type Combatant, type Encounter } from './combat-support';
 
 /** Support of the "Preparar" screens (#582): the Ready sheet, the readied card and, for the master, the order row and the fold. */
 
@@ -29,6 +29,20 @@ export async function readyRPC(page: Page, method: 'ReadyAction' | 'FireReadied'
   expect(res.ok(), await res.text()).toBeTruthy();
   return (await res.json()).encounter as Encounter;
 }
+
+/**
+ * What Pensantus carries in the sheet specs of the Ready action: the casting list (Mísseis Mágicos, Sono, Teia, Mãos Flamejantes, which the
+ * window cannot release yet) plus Enfeitiçar Pessoa, a spell of one creature, which it can.
+ */
+export const pensantusReadyKit = {
+  ...pensantusCasting,
+  knownSpellKeys: [...pensantusCasting.knownSpellKeys, 'spell:charm-person'],
+  preparedSpellKeys: [...pensantusCasting.preparedSpellKeys, 'spell:charm-person'],
+};
+
+/** Why Mover is off in the sheet, and why a spell of darts, several targets or a point is (the window answers with a creature only). */
+export const moveOffText = 'Mover pela janela ainda não dá: por enquanto o mestre move a ficha.';
+export const spellOffText = 'Soltar pela janela ainda não dá para esta magia: ela pede dardos, alvos ou um ponto no mapa.';
 
 /** The trigger of the specs: the zombie of the boards, with the goblin of the table. */
 export const goblinTrigger = 'Quando o goblin passar pela porta';
