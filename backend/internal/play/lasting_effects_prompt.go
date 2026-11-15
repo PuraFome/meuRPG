@@ -5,6 +5,7 @@ import (
 
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 	"github.com/PuraFome/meuRPG/backend/internal/rules/combat"
@@ -88,8 +89,8 @@ func (wv *windowView) reactorSave(p *playv1.EffectSavePrompt, reactor playdb.Com
 	if onDamage {
 		sources = append(sources, combat.Source{Kind: combat.SourceEffectSave, Effect: combat.ModeAdvantage})
 	}
-	p.Mode = modeKey(combat.Resolve(sources))
-	for _, src := range shownSources(sources, wv.names, wv.v.master) {
+	p.Mode = advantage.ModeKey(combat.Resolve(sources))
+	for _, src := range advantage.ShownSources(sources, wv.names, wv.v.master) {
 		p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
 	}
 	p.AutoFail = combat.AutoFailsSave(creature, ability)

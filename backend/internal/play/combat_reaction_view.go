@@ -9,6 +9,7 @@ import (
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/authz"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -567,8 +568,8 @@ func (wv *windowView) concentrationMode(reactor *playdb.Combatant, p *playv1.Con
 		return wv.s.dbError(wv.ctx, "read the sunlight", err)
 	}
 	sources := concentrationSources(sun.facts(creatureFacts(*reactor, wv.statesAtRoll(), sheet.Traits), *reactor))
-	p.Mode = modeKey(combat.Resolve(sources))
-	for _, src := range shownSources(sources, wv.names, wv.v.master) {
+	p.Mode = advantage.ModeKey(combat.Resolve(sources))
+	for _, src := range advantage.ShownSources(sources, wv.names, wv.v.master) {
 		p.ModeSourcesPt = append(p.ModeSourcesPt, src.GetTextPt())
 	}
 	return nil

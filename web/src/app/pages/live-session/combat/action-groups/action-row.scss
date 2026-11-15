@@ -31,6 +31,45 @@
   gap: 0 8px;
 }
 
+// The count of a weapon's ammunition: a pill like the tags; the warning has its icon and the empty one a dashed red line, so the
+// state is never the color alone.
+.row__ammo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  box-sizing: border-box;
+  padding: 0 8px;
+  border: 1px solid var(--mr-control-line);
+  border-radius: var(--mr-radius-pill);
+  font-family: var(--mr-font-sans);
+  font-size: var(--mr-font-14);
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16, 16px);
+  }
+}
+
+.row__ammo--warning {
+  border-color: var(--mr-warning-line);
+  background: var(--mr-warning-surface);
+  color: var(--mr-warning-ink);
+}
+
+.row__ammo--empty {
+  border-style: dashed;
+  border-color: var(--mr-danger-ink);
+  background: var(--mr-danger-surface);
+  color: var(--mr-danger-ink);
+}
+
 // The marks and the chip are one item, so they wrap together; the name is the only thing that shrinks.
 .row__marks-group {
   display: contents;

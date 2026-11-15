@@ -14,6 +14,7 @@ import (
 	"github.com/PuraFome/meuRPG/backend/internal/platform/conv"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/idem"
 	"github.com/PuraFome/meuRPG/backend/internal/platform/tablerules"
+	"github.com/PuraFome/meuRPG/backend/internal/play/advantage"
 	"github.com/PuraFome/meuRPG/backend/internal/play/link"
 	"github.com/PuraFome/meuRPG/backend/internal/play/playdb"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
@@ -788,7 +789,7 @@ func (f *attackFlow) attackEvent(run int32) actionEvent {
 		Extra: f.extra, ExtraUsed: f.call.useExtra, ManeuverSpent: f.maneuverSpent, PowerAttack: f.powerEvent(),
 		D20: clamp32(d20.Face(), 1, 20), Modifier: conv.Int32(f.attack.ToHit + f.bonusFace), Total: conv.Int32(f.result.Total),
 		Physical: d20.Physical, Outcome: outcomeMiss, AsReaction: f.call.asReaction, CriticalMaxRule: f.c.rules.CriticalMaxPlusRoll,
-		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: modeKey(choice.Mode), SuggestedMode: modeKey(choice.Suggested),
+		D20B: clamp32(d20.otherFace(), 0, 20), Counted: clamp32(d20.Index, 0, 1), RollMode: advantage.ModeKey(choice.Mode), SuggestedMode: advantage.ModeKey(choice.Suggested),
 		ReasonID: choice.ReasonID, RequestID: choice.RequestID, CritOnHit: f.truth.CriticalOnHit && f.result.Hit,
 		ByMaster:     choice.ByMaster && choice.changed(),
 		ActionBefore: a.ActionUsed, BonusBefore: a.BonusActionUsed, ReactionBefore: a.ReactionUsed, AttacksBefore: a.AttacksMade,
@@ -1000,7 +1001,7 @@ func (s *Service) attackRollOf(ctx context.Context, m authz.Membership, ev actio
 		AttackerId: ev.Actor, TargetId: ev.Target, AttackKey: ev.Key,
 		D20: d20Proto(ev), Outcome: outcomeToProto[ev.Outcome],
 		CriticalRule: criticalRuleProto(tablerules.Rules{CriticalMaxPlusRoll: ev.CriticalMaxRule}),
-		Mode:         modeToProto[modeOfKey(ev.RollMode)], SuggestedMode: modeToProto[modeOfKey(ev.SuggestedMode)], CriticalOnHit: ev.CritOnHit,
+		Mode:         advantage.ModeToProto[advantage.ModeOfKey(ev.RollMode)], SuggestedMode: advantage.ModeToProto[advantage.ModeOfKey(ev.SuggestedMode)], CriticalOnHit: ev.CritOnHit,
 		BonusDice: bonusDiceOf(ev),
 	}
 	roll.Sources, roll.ModeReason = out.shown, out.reason
