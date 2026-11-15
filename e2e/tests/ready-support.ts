@@ -55,3 +55,17 @@ export async function shootReady(page: Page, screen: string, width: number, sche
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({ path: join(shotsDir, `582-${screen}-${width}-${scheme === 'light' ? 'claro' : 'escuro'}.png`) });
 }
+
+/** The player's own call of `ReadyAction`: the held attack, with the trigger of the boards (the spec has no need to drive the sheet again). */
+export async function readyAttackRPC(player: Page, campaignId: string, encounter: Encounter, who: string, target: string): Promise<Encounter> {
+  const id = (label: string): string => encounter.combatants.find((c) => c.label === label)!.id;
+  return readyRPC(player, 'ReadyAction', {
+    campaignId,
+    encounterId: encounter.id,
+    combatantId: id(who),
+    triggerText: goblinTrigger,
+    kind: 'READIED_KIND_ATTACK',
+    actionKey: 'equipment:dagger',
+    targetCombatantId: id(target),
+  });
+}

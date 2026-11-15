@@ -746,6 +746,8 @@
     @if (!queueFirst()) {
       <ng-container *ngTemplateOutlet="masterAfter" />
     }
+    <!-- The readied actions that wait (#582, board 582-04): "Disparar" says the trigger happened; the fold shows while the table holds one. -->
+    <app-readied-fold [encounter]="e" [campaignId]="campaignId()" [busy]="busy()" (fire)="sheets.actions.fire($event)" />
     <app-zones-panel
       [zones]="zoneFlow.views()"
       [master]="true"

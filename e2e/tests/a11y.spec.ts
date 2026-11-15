@@ -97,7 +97,7 @@ import {
 } from './table-sheet-support';
 import { openCombatPanel, openMap, openOrderRow, openTurn } from './combat-layout';
 import { waitForEncounterRevision } from './revision-support';
-import { goblinTrigger, openReadySheet, shootReady } from './ready-support';
+import { goblinTrigger, openReadySheet, readyAttackRPC, readyRPC, shootReady } from './ready-support';
 import { WIDTHS, beginVrockFight, pagesFor, shoot, useCreatureActionRPC, viewportOf } from './recharge-support';
 import { chooseRow, openTvPanel, rollForTableRPC, tvRoute } from './table-screen-support';
 import { LIT, WIDTHS as SUN_WIDTHS, sunSpot as sunBar, mapCard as sunMapCard, paintStatus as sunPaintStatus, setSunlightRPC, shoot as shootSun, sunSwitch, sunlightTable, viewportOf as sunViewport } from './sunlight-support';
@@ -14199,6 +14199,88 @@ for (const [colorScheme, theme] of [
     test(`preparar uma ação passa no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
       test.setTimeout(300_000);
       await scanReadyScreens(browser, colorScheme, width);
+    });
+  }
+}
+
+/**
+ * "Ações preparadas" (#582, boards 582-04 and 582-09), the master's side: the fold in "Turno" with a row that cannot fire on its readier's own
+ * turn (the reason in its line), a hidden creature that readied (the chip "Só você vê") beside a row that can, and the row once the fire
+ * opened the readier's window. The order row says "Preparada" in all of them.
+ */
+async function scanReadyMasterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = featViewport(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...featShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade preparar mestre ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, attackCombatSquares, ['Goblin 1']);
+    const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await readyAttackRPC(p, campaignId, begun, 'Pensantus', 'Capitão Goblin');
+
+    await openSessionPage(m, campaignId);
+    const row = m.locator('app-readied-fold li.row');
+    await expect(row).toContainText('É a vez de Pensantus: só dispara fora da vez dele.');
+    await expectScreenPasses(m, `Preparar, o mestre e a ação preparada na vez de quem preparou ${where}`);
+    await m.locator('app-readied-fold').scrollIntoViewIfNeeded();
+    await shoot(m, 'mestre-vez');
+    await openOrderRow(m, 'Pensantus');
+    await expect(m.locator('app-order-list').getByTestId('order-readied')).toHaveText(/Preparada/);
+    await expectScreenPasses(m, `Preparar, a linha da ordem com "Preparada" ${where}`);
+    await shoot(m, 'mestre-ordem');
+    await openTurn(m);
+
+    // Goblin 1 (hidden) readies a Dodge on its turn; Pensantus' row can fire.
+    const enc = await passTurnsToAndWait(m, campaignId, 'Goblin 1', m);
+    const readied = await readyRPC(m, 'ReadyAction', {
+      campaignId,
+      encounterId: enc.id,
+      combatantId: enc.combatants.find((c) => c.label === 'Goblin 1')!.id,
+      triggerText: 'Quando o guerreiro passar pela coluna',
+      kind: 'READIED_KIND_OTHER',
+      actionKey: 'standard:dodge',
+    });
+    await waitForEncounterRevision(m, readied);
+    await expect(m.locator('app-readied-fold li.row')).toHaveCount(2);
+    await expect(m.locator('app-readied-fold').getByText('Só você vê')).toBeVisible();
+    await expectScreenPasses(m, `Preparar, duas ações preparadas, uma de criatura escondida ${where}`);
+    await m.locator('app-readied-fold').scrollIntoViewIfNeeded();
+    await shoot(m, 'mestre-dois');
+
+    // The fire opens the readier's window: the row says so and "Disparar" stays off.
+    await row.filter({ hasText: 'Pensantus' }).getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    await expect(row.filter({ hasText: 'Pensantus' })).toContainText('A janela de Pensantus já está aberta: espere a resposta.');
+    await expectScreenPasses(m, `Preparar, a janela do preparado aberta ${where}`);
+    await m.locator('app-readied-fold').scrollIntoViewIfNeeded();
+    await shoot(m, 'mestre-janela');
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`as ações preparadas do mestre passam no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
+      test.setTimeout(300_000);
+      await scanReadyMasterScreens(browser, colorScheme, width);
     });
   }
 }

@@ -135,4 +135,59 @@ describe('CombatView: Preparar (#582)', () => {
     expect(m.callsOf('cancelReadied')).toHaveLength(1);
     expect(m.callsOf('cancelReadied')[0].args).toEqual(['c', 'enc', 'r1', expect.any(String)]);
   });
+
+  describe('the master', () => {
+    const held = (over: Record<string, unknown> = {}) => ({
+      id: 'r1',
+      triggerText: 'Quando o zumbi passar pela porta',
+      kind: ReadiedKind.ATTACK,
+      actionNamePt: 'Espada longa',
+      targetCombatantId: 'z1',
+      status: ReadiedStatus.WAITING,
+      ...over,
+    });
+    const table = (over: Record<string, unknown> = {}) =>
+      encounter({
+        mode: EncounterMode.THEATRE,
+        mapId: '',
+        gridColumns: 0,
+        gridRows: 0,
+        round: 2,
+        currentCombatantId: 'z1',
+        combatants: [zombie(), toren({ mine: false, readied: held(), ...over })],
+      } as never);
+
+    it('reads "Ações preparadas" in "Turno" and fires a row with FireReadied under one key', async () => {
+      const m = await setup({
+        enc: table(),
+        master: true,
+        api: { fireReadied: () => table({ readied: undefined }) },
+      });
+      const fold = m.fixture.nativeElement.querySelector('app-readied-fold') as HTMLElement;
+      expect(fold.textContent).toContain('Ações preparadas');
+      (fold.querySelector('button.row__fire') as HTMLButtonElement).click();
+      await settle(m.fixture, 2);
+      expect(m.callsOf('fireReadied')).toHaveLength(1);
+      expect(m.callsOf('fireReadied')[0].args).toEqual(['c', 'enc', 'r1', expect.any(String)]);
+    });
+
+    it('marks the order row of whoever holds one and not the others', async () => {
+      const m = await setup({ enc: table(), master: true });
+      const rows = Array.from(
+        m.fixture.nativeElement.querySelectorAll('app-order-list li.row'),
+      ) as HTMLElement[];
+      const flatText = (n: HTMLElement) => (n.textContent ?? '').replace(/\s+/g, ' ');
+      expect(
+        rows.filter((r) => flatText(r).includes('Preparada')).map((r) => r.dataset['combatant']),
+      ).toEqual(['t']);
+    });
+
+    it('shows none of it to a player', async () => {
+      const m = await setup({
+        enc: table({ mine: true, readied: undefined }),
+        matches: [PHONE_QUERY],
+      });
+      expect(m.fixture.nativeElement.querySelector('app-readied-fold')).toBeNull();
+    });
+  });
 });

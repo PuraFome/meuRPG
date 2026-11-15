@@ -16,6 +16,25 @@
   text-overflow: ellipsis;
 }
 
+.row__ready {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  white-space: nowrap;
+
+  &::before {
+    content: '·';
+    margin-right: 4px;
+  }
+
+  .mat-icon {
+    width: 14px;
+    height: 14px;
+    font-size: var(--mr-font-14);
+  }
+}
+
 .row__sun {
   flex: none;
   // pre, not nowrap: the leading " · " is kept at the start of the flex item.

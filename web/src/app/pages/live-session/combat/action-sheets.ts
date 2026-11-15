@@ -300,6 +300,22 @@ export class ActionSheets {
     });
   }
 
+  private readonly fireKey = new ActionKey();
+
+  /** "Disparar" (#582): the master says the trigger of a readied action happened; `FireReadied` opens the readier's window. */
+  fire(readiedId: string): Promise<boolean> {
+    return this.ctx.calls.run(async (e) => {
+      const enc = await this.ctx.api.ready.fireReadied(
+        this.ctx.campaignId(),
+        e.id,
+        readiedId,
+        this.fireKey.keyFor({ readied: readiedId }),
+      );
+      this.fireKey.renew();
+      return enc;
+    });
+  }
+
   /** A table feature's action that asks how many to spend, for whom, or the dice of its heal (MR-025). */
   tableAction(own: Combatant, e: Encounter, option: ActionOption): void {
     const data: TableActionSheetData = {
