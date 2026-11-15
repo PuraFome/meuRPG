@@ -20,7 +20,13 @@ import { article } from '../../../../core/format/article';
 import { CombatClient } from '../../../../core/combat/combat-client';
 import type { CombatState } from '../../../../core/combat/combat-state';
 import { ownCombatant } from '../../../../core/combat/combat-view';
-import { playerAutoPassText, playerSecondsLeft } from '../../../../core/combat/reaction-autopass';
+import {
+  isOptionalReaction,
+  playerAutoPassText,
+  playerChoosingText,
+  playerRollingSecondsLeft,
+  playerSecondsLeft,
+} from '../../../../core/combat/reaction-autopass';
 import { readiedRefusalText } from '../../../../core/combat/readied-refusal';
 import type { AimNeed } from '../../../../core/combat/readied-aim';
 import type { ReactionAnswer } from '../../../../core/combat/combat-client-types';
@@ -101,6 +107,7 @@ export interface ReadiedWindowSheetData {
               [(target)]="target"
               [(release)]="release"
               [(plan)]="plan"
+              (touched)="choosing()"
             />
           }
           <p class="small">{{ view.note }}</p>
@@ -224,9 +231,14 @@ export class ReadiedWindowSheet {
   private readonly openedAt = Date.now();
   private readonly clock = signal(this.openedAt);
   private readonly clockTimer = setInterval(() => this.clock.set(Date.now()), CLOCK_TICK_MS);
-  protected readonly autoPass = computed(() =>
-    playerAutoPassText(playerSecondsLeft(this.openedAt, this.clock())),
-  );
+  /** When the player first touched the list of targets and the master's screen was told: the table then waits the longer time. */
+  private readonly choosingAt = signal<number | null>(null);
+  protected readonly autoPass = computed(() => {
+    const since = this.choosingAt();
+    return since === null
+      ? playerAutoPassText(playerSecondsLeft(this.openedAt, this.clock()))
+      : playerChoosingText(playerRollingSecondsLeft(since, this.clock()));
+  });
 
   /** The window is no longer in the combat: the time ran out, or the master answered for the player. */
   protected readonly gone = computed(
@@ -283,6 +295,33 @@ export class ReadiedWindowSheet {
     (
       this.host.nativeElement.querySelector('[data-initial-focus]') as HTMLButtonElement | null
     )?.focus({ focusVisible: true } as FocusOptions);
+  }
+
+  /**
+   * The player's first touch on the list of targets or darts: the master's clock would pass the window at 30 s in the middle of the
+   * choice, so the server is told they are at it (`MarkReactionRolling`, as the dice step of the other reactions does) and the longer
+   * wait counts from now. Best effort: if it fails the 30 s stay.
+   */
+  protected choosing(): void {
+    if (this.choosingAt() !== null || !isOptionalReaction(this.data.window)) {
+      return;
+    }
+    this.choosingAt.set(Date.now());
+    void this.tellChoosing();
+  }
+
+  private async tellChoosing(): Promise<void> {
+    try {
+      const e = await this.api.attacks.markReactionRolling(
+        this.data.campaignId,
+        this.data.encounterId,
+        this.data.window.id,
+      );
+      this.data.state.apply(e);
+    } catch {
+      // The window may have been answered meanwhile; the stream shows the truth.
+      this.choosingAt.set(null);
+    }
   }
 
   /** "Atacar o Zumbi 1" or "Deixar passar": the answer to the window. */
