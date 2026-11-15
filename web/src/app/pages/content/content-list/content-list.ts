@@ -55,6 +55,7 @@ import { SelectField, type SelectOption } from '../../../shared/form-fields/sele
 import { mediaQuery, PHONE_QUERY } from '../../../shared/map-view/media-query';
 import { openSheet } from '../../../shared/sheet/sheet-host';
 import { ArchiveSheet, type ArchiveSheetData } from '../archive/archive-sheet';
+import { showActiveKind, stripEdges } from './kinds-strip';
 
 type PageState =
   | { status: 'loading' }
@@ -69,9 +70,6 @@ type PageState =
  * by kind: the server already left out the archived ones and the counts, so nothing here hides them. Entries open in the
  * entry page (`ContentEntry`), the editor for the master and the read view for everyone else.
  */
-/** How near an edge the strip counts as at the edge, in pixels. */
-const STRIP_SLACK = 1;
-
 @Component({
   selector: 'app-content-list',
   imports: [
@@ -84,6 +82,7 @@ const STRIP_SLACK = 1;
     TextField,
   ],
   providers: [ContentWatcher, LiveSessionSourceLive],
+  host: { '(window:resize)': 'measureStrip()' },
   templateUrl: './content-list.html',
   styleUrl: './content-list.scss',
 })
@@ -108,8 +107,9 @@ export class ContentList {
     if (!el) {
       return;
     }
-    this.fadeStart.set(el.scrollLeft > STRIP_SLACK);
-    this.fadeEnd.set(el.scrollLeft + el.clientWidth < el.scrollWidth - STRIP_SLACK);
+    const edges = stripEdges(el);
+    this.fadeStart.set(edges.start);
+    this.fadeEnd.set(edges.end);
   }
 
   protected readonly nav = CONTENT_NAV;
@@ -171,7 +171,11 @@ export class ContentList {
 
   constructor() {
     afterRenderEffect(() => {
-      this.strip();
+      this.slug();
+      const el = this.strip()?.nativeElement;
+      if (el) {
+        showActiveKind(el);
+      }
       this.measureStrip();
     });
     this.route.paramMap.pipe(takeUntilDestroyed(inject(DestroyRef))).subscribe((params) => {
