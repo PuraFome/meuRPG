@@ -385,7 +385,7 @@ func TestAnImportedTwoHandedWeaponTakesTheRevisionOfTheImport(t *testing.T) {
 }
 
 // A character without shield training has no pending issue for the shield while it stands idle: the issue is raised only for
-// a shield in use. This is the behaviour today, written down.
+// a shield in use. This is the behavior today, written down.
 func TestTheShieldTrainingIssueGoesWhileTheShieldIsIdle(t *testing.T) {
 	t.Parallel()
 	tb := newIdleTable(t, versatile)

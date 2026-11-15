@@ -140,7 +140,7 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 	for _, ch := range changed {
 		f := flag{entry: ch}
 		for i, is := range issues {
-			if slices.Contains(is.Keys, ch.Key) && !known[i] {
+			if slices.Contains(is.Keys, ch.Key) && !known[i] && told(content, is, ch.Key, ch.Since) {
 				f.issues = append(f.issues, is)
 			}
 		}
@@ -151,6 +151,23 @@ func flags(content *rules.Content, full *charactersv1.FullSheet, build rules.Bui
 	return out
 }
 
+// told says the issue is one to tell for the changed table entry key, which the sheet fits as of revision since. All are but
+// the notice that a weapon leaves the shield idle: that one only when the weapon became two-handed after since, so a sheet
+// that already had the weapon as it is (saved before the notice existed, with no identity stored) is told nothing when the
+// weapon is edited for anything else.
+func told(content *rules.Content, is rules.Issue, key string, since int) bool {
+	return is.Idle == nil || content.TwoHandedSince(key) > since
+}
+
+// sinceOf is the revision of the table's content the sheet fits key as of: the baseline it keeps for the entry, or the
+// revision it was saved at.
+func sinceOf(full *charactersv1.FullSheet, key string) int {
+	if r, ok := full.GetContentBaselines()[key]; ok {
+		return int(r)
+	}
+	return int(full.GetContentRevision())
+}
+
 // issuesTiedTo are the new issues of a sheet (not in its known issues) that depend
 // on a table entry: what a change of the entry just did to it, for the master's
 // "Fichas com aviso".
@@ -159,7 +176,7 @@ func issuesTiedTo(content *rules.Content, full *charactersv1.FullSheet, key stri
 	issues := rules.Derive(buildOf(full), content).AllIssues()
 	known := rules.KnownIssues(full.GetKnownIssues(), issues)
 	for i, is := range issues {
-		if slices.Contains(is.Keys, key) && !known[i] {
+		if slices.Contains(is.Keys, key) && !known[i] && told(content, is, key, sinceOf(full, key)) {
 			out = append(out, is)
 		}
 	}
