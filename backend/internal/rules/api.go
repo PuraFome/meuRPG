@@ -1085,6 +1085,9 @@ type Attack struct {
 	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:
 	// an opportunity attack needs a melee weapon.
 	Melee bool
+	// Thrown is true for a weapon with the Arremesso (thrown) property, melee or ranged: its RangeFt and LongRangeFt are then
+	// the throwing range. A weapon of ammunition has the same two numbers and is not thrown.
+	Thrown bool `json:",omitempty"`
 	// Beams is how many attack rolls the attack makes in one action, each with
 	// its own damage roll: 4 for Eldritch Blast at character level 17. It is 1
 	// for every other attack, and 0 for a weapon.

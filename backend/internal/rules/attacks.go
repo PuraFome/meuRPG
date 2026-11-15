@@ -89,6 +89,7 @@ func (x *deriver) weaponAttack(i int, key string, martialArts bool, martialDie i
 		Melee: kind == "melee", MartialArts: monkWeapon, AbilityMod: x.mods[t.damageAbility],
 		Light:        kind == "melee" && has("light"),
 		Finesse:      has("finesse"),
+		Thrown:       has("thrown"),
 		TwoHanded:    has("two-handed"),
 		Properties:   slices.Clone(w.Properties),
 		DamageNotePT: note,

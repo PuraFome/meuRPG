@@ -1414,6 +1414,11 @@ message Attack {
   // 0 for a weapon with no counting bonus, for a spell, an unarmed strike and a creature's attack.
   // Display only: `attack_bonus` and `damage` already include it, so the app never adds it again.
   int32 magic_bonus = 25;
+  // 26 and 27 are taken (ammunition_left and improvised, train 124).
+  // True for a weapon with the Arremesso (thrown) property, melee or ranged, SRD or from the table: range_ft and
+  // long_range_ft are then its throwing range. A weapon of ammunition has the same two numbers and is not thrown.
+  // False for a spell, an unarmed strike and a creature's attack.
+  bool thrown = 28;
 }
 
 // AttackKind says whether an attack is a weapon or a spell.

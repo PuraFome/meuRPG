@@ -7075,7 +7075,12 @@ type Attack struct {
 	// It counts only while the weapon is equipped and, when the piece needs attunement, attuned.
 	// 0 for a weapon with no counting bonus, for a spell, an unarmed strike and a creature's attack.
 	// Display only: `attack_bonus` and `damage` already include it, so the app never adds it again.
-	MagicBonus    int32 `protobuf:"varint,25,opt,name=magic_bonus,json=magicBonus,proto3" json:"magic_bonus,omitempty"`
+	MagicBonus int32 `protobuf:"varint,25,opt,name=magic_bonus,json=magicBonus,proto3" json:"magic_bonus,omitempty"`
+	// 26 and 27 are taken (ammunition_left and improvised, train 124).
+	// True for a weapon with the Arremesso (thrown) property, melee or ranged, SRD or from the table: range_ft and
+	// long_range_ft are then its throwing range. A weapon of ammunition has the same two numbers and is not thrown.
+	// False for a spell, an unarmed strike and a creature's attack.
+	Thrown        bool `protobuf:"varint,28,opt,name=thrown,proto3" json:"thrown,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -7283,6 +7288,13 @@ func (x *Attack) GetMagicBonus() int32 {
 		return x.MagicBonus
 	}
 	return 0
+}
+
+func (x *Attack) GetThrown() bool {
+	if x != nil {
+		return x.Thrown
+	}
+	return false
 }
 
 // Feature is a class feature, racial trait or background feature.
@@ -14872,7 +14884,7 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"\n" +
 	"from_level\x18\r \x01(\x05R\tfromLevel\x124\n" +
 	"\x16no_material_components\x18\x0e \x01(\bR\x14noMaterialComponents\x12\x1b\n" +
-	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\xeb\x06\n" +
+	"\tuses_cost\x18\x0f \x01(\x05R\busesCost\"\x83\a\n" +
 	"\x06Attack\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
@@ -14904,7 +14916,8 @@ const file_meurpg_rules_v1_rules_proto_rawDesc = "" +
 	"adamantine\x12\x18\n" +
 	"\amagical\x18\x18 \x01(\bR\amagical\x12\x1f\n" +
 	"\vmagic_bonus\x18\x19 \x01(\x05R\n" +
-	"magicBonus\"\xb3\x02\n" +
+	"magicBonus\x12\x16\n" +
+	"\x06thrown\x18\x1c \x01(\bR\x06thrown\"\xb3\x02\n" +
 	"\aFeature\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x17\n" +
