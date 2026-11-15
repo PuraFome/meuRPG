@@ -464,11 +464,25 @@ func (env gateEnv) tellHeld(ctx context.Context, h heldRoll) error {
 		return nil
 	}
 	env.h.heldTold = true
+	users, err := env.heldUsers(ctx, h)
+	if err != nil {
+		return err
+	}
+	env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{Master: true}))
+	for _, id := range users {
+		env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{UserID: id, NotMaster: true}))
+	}
+	return nil
+}
+
+// heldUsers is the sorted users, each once, whom a held roll's hint tells besides the master: the roller, the combatant's player
+// and the character's player.
+func (env gateEnv) heldUsers(ctx context.Context, h heldRoll) ([]string, error) {
 	users := []string{h.UserID}
 	if h.CombatantID != "" {
 		cs, err := env.q.ListCombatants(ctx, h.EncounterID)
 		if err != nil {
-			return fmt.Errorf("list the combatants of the held roll: %w", err)
+			return nil, fmt.Errorf("list the combatants of the held roll: %w", err)
 		}
 		if i := slices.IndexFunc(cs, func(c playdb.Combatant) bool { return c.ID == h.CombatantID }); i >= 0 && cs[i].UserID != nil {
 			users = append(users, *cs[i].UserID)
@@ -477,19 +491,14 @@ func (env gateEnv) tellHeld(ctx context.Context, h heldRoll) error {
 	if h.CharacterID != "" && env.roster != nil {
 		cs, err := env.roster.CombatCharacters(ctx, env.tx, h.CampaignID, []string{h.CharacterID})
 		if err != nil {
-			return fmt.Errorf("find the character of the held roll: %w", err)
+			return nil, fmt.Errorf("find the character of the held roll: %w", err)
 		}
 		for _, c := range cs {
 			users = append(users, c.PlayerUserID)
 		}
 	}
-	env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{Master: true}))
-	for _, id := range slices.Compact(slices.Sorted(slices.Values(users))) {
-		if id != "" {
-			env.h.tell(h.CampaignID, heldRollsChangedEvent(live.Audience{UserID: id}))
-		}
-	}
-	return nil
+	users = slices.DeleteFunc(users, func(id string) bool { return id == "" })
+	return slices.Compact(slices.Sorted(slices.Values(users))), nil
 }
 
 // heldRollsChangedEvent is HeldRollsChanged for an audience, in a message of its own (the session's number is written into it).
@@ -511,7 +520,7 @@ func (s *Service) publishHeldRollsChanged(campaignID string, userIDs ...string) 
 	s.send(campaignID, live.Event{Audience: live.Audience{Master: true}, Message: msg})
 	for _, id := range slices.Compact(slices.Sorted(slices.Values(userIDs))) {
 		if id != "" {
-			s.send(campaignID, live.Event{Audience: live.Audience{UserID: id}, Message: msg})
+			s.send(campaignID, live.Event{Audience: live.Audience{UserID: id, NotMaster: true}, Message: msg})
 		}
 	}
 }

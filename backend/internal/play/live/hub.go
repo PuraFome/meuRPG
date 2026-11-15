@@ -84,6 +84,9 @@ type Audience struct {
 	// One more user, such as the player of the character the event is
 	// about. Empty for none.
 	UserID string
+	// NotMaster narrows UserID to a user's stream that is not the master's: an event the master already hears through
+	// Master tells the player of a character the master rolls for, and the master's own stream hears it once.
+	NotMaster bool
 	// Except lists players Players does not reach: "the players but these". It narrows Players only.
 	Except []string
 	// NoScreens leaves out the streams of the master's TV tab (Subscriber.Screen), which hear every
@@ -97,7 +100,7 @@ func (a Audience) includes(s Subscriber) bool {
 	if a.NoScreens && s.Screen {
 		return false
 	}
-	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master && !slices.Contains(a.Except, s.UserID)) || (a.UserID != "" && a.UserID == s.UserID)
+	return a.Everyone || (a.Master && s.Master) || (a.Players && !s.Master && !slices.Contains(a.Except, s.UserID)) || (a.UserID != "" && a.UserID == s.UserID && !(a.NotMaster && s.Master))
 }
 
 // Event is one live change, and who may receive it.
