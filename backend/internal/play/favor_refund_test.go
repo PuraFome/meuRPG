@@ -10,7 +10,7 @@ import (
 )
 
 // The refund prompt (favor_refund.go): the spend that added something over what the roller reads but nothing over every source. Toren
-// attacks with a hidden advantage on him. Written under the rule that no database test runs in this task: these have not run.
+// attacks with a hidden advantage on him.
 
 // refundFight is a fight where Toren's Inspiração was spent on an attack that a hidden advantage made no better: the prompt is open.
 func refundFight(t *testing.T) (*favorFight, *playv1.FavorRefundPrompt) {

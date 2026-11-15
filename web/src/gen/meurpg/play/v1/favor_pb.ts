@@ -490,8 +490,10 @@ export enum FavorBlockedReason {
   HAS_NONE = 4,
 
   /**
-   * What a pass tells its giver when the receiver cannot take it (it has one, it is in
-   * another campaign or it is an NPC). The server never sends the receiver's state.
+   * The character that would take the Inspiration cannot hold it now. Three answers give it, always to the master: the accept of a
+   * pass whose receiver has one already or is no player character of the table any more; the undo of a pass whose giver is in the
+   * reserve or is no player character any more; the refund ("Devolver") of a roller in the reserve or no player character any more.
+   * The server never sends a player the state of the receiver.
    *
    * @generated from enum value: FAVOR_BLOCKED_REASON_CANNOT_RECEIVE = 5;
    */
@@ -687,9 +689,10 @@ export const FavorService: GenService<{
     output: typeof PassFavorResponseSchema;
   },
   /**
-   * AnswerFavorPass is the master's answer to a pending pass: accept moves the Inspiration
-   * (refused CANNOT_RECEIVE, to the master alone, when the receiver already has one),
-   * refuse keeps it with the giver. Only the master.
+   * AnswerFavorPass is the master's answer to a pending pass: accept moves the Inspiration, refuse keeps it with the giver. Only
+   * the master. The refusals (failed_precondition, FavorBlocked): PASS_CLOSED when the ask was answered or canceled already (a refuse
+   * gives no other); and, for an accept, CANNOT_RECEIVE when the receiver has one already or can no longer hold it, and
+   * NOT_THE_HOLDER when the giver is in the reserve or no longer has it. A refused accept leaves the ask pending.
    *
    * @generated from rpc meurpg.play.v1.FavorService.AnswerFavorPass
    */
@@ -709,8 +712,10 @@ export const FavorService: GenService<{
     output: typeof CancelFavorPassResponseSchema;
   },
   /**
-   * AnswerFavorRefund is the master's answer to a refund prompt: give back the Inspiration a
-   * roll spent for nothing, or keep it spent. Only the master.
+   * AnswerFavorRefund is the master's answer to a refund prompt: give back the Inspiration a roll spent for nothing, or keep it
+   * spent. Only the master. The refusals (failed_precondition, FavorBlocked): PASS_CLOSED when the question was answered or ended
+   * already (keeping gives no other); and, for a give back, ALREADY_HAS when the roller has one now and CANNOT_RECEIVE when the
+   * roller is in the reserve or no player character any more. A refused give back leaves the question open, so it can be kept.
    *
    * @generated from rpc meurpg.play.v1.FavorService.AnswerFavorRefund
    */

@@ -38,8 +38,10 @@ const (
 	FavorBlockedReason_FAVOR_BLOCKED_REASON_NOT_THE_HOLDER FavorBlockedReason = 3
 	// The caller's character has none to spend.
 	FavorBlockedReason_FAVOR_BLOCKED_REASON_HAS_NONE FavorBlockedReason = 4
-	// What a pass tells its giver when the receiver cannot take it (it has one, it is in
-	// another campaign or it is an NPC). The server never sends the receiver's state.
+	// The character that would take the Inspiration cannot hold it now. Three answers give it, always to the master: the accept of a
+	// pass whose receiver has one already or is no player character of the table any more; the undo of a pass whose giver is in the
+	// reserve or is no player character any more; the refund ("Devolver") of a roller in the reserve or no player character any more.
+	// The server never sends a player the state of the receiver.
 	FavorBlockedReason_FAVOR_BLOCKED_REASON_CANNOT_RECEIVE FavorBlockedReason = 5
 	// The pass names the giver as the receiver.
 	FavorBlockedReason_FAVOR_BLOCKED_REASON_SELF FavorBlockedReason = 6

@@ -64,14 +64,17 @@ type FavorServiceClient interface {
 	// pending pass and nothing moves until the master answers. Only in an open session. A retry
 	// with the same key answers the same pass.
 	PassFavor(context.Context, *connect.Request[v1.PassFavorRequest]) (*connect.Response[v1.PassFavorResponse], error)
-	// AnswerFavorPass is the master's answer to a pending pass: accept moves the Inspiration
-	// (refused CANNOT_RECEIVE, to the master alone, when the receiver already has one),
-	// refuse keeps it with the giver. Only the master.
+	// AnswerFavorPass is the master's answer to a pending pass: accept moves the Inspiration, refuse keeps it with the giver. Only
+	// the master. The refusals (failed_precondition, FavorBlocked): PASS_CLOSED when the ask was answered or canceled already (a refuse
+	// gives no other); and, for an accept, CANNOT_RECEIVE when the receiver has one already or can no longer hold it, and
+	// NOT_THE_HOLDER when the giver is in the reserve or no longer has it. A refused accept leaves the ask pending.
 	AnswerFavorPass(context.Context, *connect.Request[v1.AnswerFavorPassRequest]) (*connect.Response[v1.AnswerFavorPassResponse], error)
 	// CancelFavorPass gives a pending ask up. Only the giver's owner.
 	CancelFavorPass(context.Context, *connect.Request[v1.CancelFavorPassRequest]) (*connect.Response[v1.CancelFavorPassResponse], error)
-	// AnswerFavorRefund is the master's answer to a refund prompt: give back the Inspiration a
-	// roll spent for nothing, or keep it spent. Only the master.
+	// AnswerFavorRefund is the master's answer to a refund prompt: give back the Inspiration a roll spent for nothing, or keep it
+	// spent. Only the master. The refusals (failed_precondition, FavorBlocked): PASS_CLOSED when the question was answered or ended
+	// already (keeping gives no other); and, for a give back, ALREADY_HAS when the roller has one now and CANNOT_RECEIVE when the
+	// roller is in the reserve or no player character any more. A refused give back leaves the question open, so it can be kept.
 	AnswerFavorRefund(context.Context, *connect.Request[v1.AnswerFavorRefundRequest]) (*connect.Response[v1.AnswerFavorRefundResponse], error)
 }
 
@@ -177,14 +180,17 @@ type FavorServiceHandler interface {
 	// pending pass and nothing moves until the master answers. Only in an open session. A retry
 	// with the same key answers the same pass.
 	PassFavor(context.Context, *connect.Request[v1.PassFavorRequest]) (*connect.Response[v1.PassFavorResponse], error)
-	// AnswerFavorPass is the master's answer to a pending pass: accept moves the Inspiration
-	// (refused CANNOT_RECEIVE, to the master alone, when the receiver already has one),
-	// refuse keeps it with the giver. Only the master.
+	// AnswerFavorPass is the master's answer to a pending pass: accept moves the Inspiration, refuse keeps it with the giver. Only
+	// the master. The refusals (failed_precondition, FavorBlocked): PASS_CLOSED when the ask was answered or canceled already (a refuse
+	// gives no other); and, for an accept, CANNOT_RECEIVE when the receiver has one already or can no longer hold it, and
+	// NOT_THE_HOLDER when the giver is in the reserve or no longer has it. A refused accept leaves the ask pending.
 	AnswerFavorPass(context.Context, *connect.Request[v1.AnswerFavorPassRequest]) (*connect.Response[v1.AnswerFavorPassResponse], error)
 	// CancelFavorPass gives a pending ask up. Only the giver's owner.
 	CancelFavorPass(context.Context, *connect.Request[v1.CancelFavorPassRequest]) (*connect.Response[v1.CancelFavorPassResponse], error)
-	// AnswerFavorRefund is the master's answer to a refund prompt: give back the Inspiration a
-	// roll spent for nothing, or keep it spent. Only the master.
+	// AnswerFavorRefund is the master's answer to a refund prompt: give back the Inspiration a roll spent for nothing, or keep it
+	// spent. Only the master. The refusals (failed_precondition, FavorBlocked): PASS_CLOSED when the question was answered or ended
+	// already (keeping gives no other); and, for a give back, ALREADY_HAS when the roller has one now and CANNOT_RECEIVE when the
+	// roller is in the reserve or no player character any more. A refused give back leaves the question open, so it can be kept.
 	AnswerFavorRefund(context.Context, *connect.Request[v1.AnswerFavorRefundRequest]) (*connect.Response[v1.AnswerFavorRefundResponse], error)
 }
 

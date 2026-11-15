@@ -32,7 +32,7 @@ export function favorBlockedMessage(reason: FavorBlockedReason): string {
     case FavorBlockedReason.HAS_NONE:
       return 'Você não tem Inspiração.';
     case FavorBlockedReason.CANNOT_RECEIVE:
-      return 'Esse personagem já tem Inspiração: aceitar não é possível.';
+      return 'Essa personagem não pode ficar com a Inspiração agora.';
     case FavorBlockedReason.SELF:
       return 'Você não pode passar a Inspiração a si mesmo.';
     case FavorBlockedReason.ADDS_NOTHING:

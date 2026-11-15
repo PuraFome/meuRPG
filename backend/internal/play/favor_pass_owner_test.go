@@ -167,3 +167,40 @@ func TestCancelOfAnAskReadsTheOwnerUnderTheSessionLock(t *testing.T) {
 		t.Errorf("the new owner's cancel error = %v", err)
 	}
 }
+
+// A giver in the reserve has no owner: nobody cancels its ask. The master's "Recusar" closes it, and so does the session's end.
+func TestAnAskOfAGiverInTheReserveClosesByTheMastersRefusalOrTheSessionsEnd(t *testing.T) {
+	t.Parallel()
+	for _, how := range []string{"the master's refusal", "the session's end"} {
+		t.Run(how, func(t *testing.T) {
+			t.Parallel()
+			f := newFavorFight(t)
+			f.give(t, f.toren)
+			pass := f.mustAsk(t, f.toren.GetId(), f.pens.GetId())
+			f.reserve(t, f.toren.GetId())
+			if got := f.passesOf(t, f.caio); len(got) != 0 {
+				t.Errorf("the former owner reads %d asks, want none", len(got))
+			}
+			_, err := f.cancelAs(f.caio, pass.GetId(), newKey())
+			wantCode(t, "the former owner's cancel", err, connect.CodeNotFound)
+			if status := f.passStatus(t, pass.GetId()); status != "pending" {
+				t.Fatalf("the ask is %q after the cancel nobody may make, want pending", status)
+			}
+			want := "canceled"
+			if how == "the master's refusal" {
+				if _, err := f.answer(pass.GetId(), false); err != nil {
+					t.Fatalf("AnswerFavorPass(Recusar) error = %v", err)
+				}
+				want = "refused"
+			} else {
+				if _, err := f.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: f.campaignID, EncounterId: f.e.GetId(), IdempotencyKey: newKey()})); err != nil {
+					t.Fatalf("EndEncounter() error = %v", err)
+				}
+				f.master.end(t, f.master.liveSession(t, f.campaignID).GetGameSession())
+			}
+			if status := f.passStatus(t, pass.GetId()); status != want {
+				t.Errorf("the ask is %q after %s, want %s", status, how, want)
+			}
+		})
+	}
+}

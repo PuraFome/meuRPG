@@ -44,7 +44,7 @@ describe('favor errors', () => {
     );
     expect(favorBlockedMessage(FavorBlockedReason.NO_SESSION)).toBe('Só numa sessão aberta.');
     expect(favorBlockedMessage(FavorBlockedReason.CANNOT_RECEIVE)).toBe(
-      'Esse personagem já tem Inspiração: aceitar não é possível.',
+      'Essa personagem não pode ficar com a Inspiração agora.',
     );
   });
 

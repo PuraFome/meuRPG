@@ -3,6 +3,8 @@ package play
 import (
 	"testing"
 
+	"connectrpc.com/connect"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -180,5 +182,43 @@ func TestRefundToARollerInTheReserveIsRefusedAndStaysOpen(t *testing.T) {
 	}
 	if _, err := f.answerRefund(f.master, p.GetId(), false, newKey()); err != nil {
 		t.Errorf("Manter gasta after the refusal error = %v, want it to work", err)
+	}
+}
+
+// A give-back the app makes by itself restores the Inspiração to the character that spent it, also when that character went back to the
+// reserve since: it undoes a spend, and nobody is there to be told no (RN-43). The undo of the roll gives it back and keeps the prompt.
+func TestUndoOfARollGivesBackToACharacterInTheReserve(t *testing.T) {
+	t.Parallel()
+	f, p := refundFight(t)
+	line := f.undoableLine(t).GetId()
+	f.reserve(t, f.toren.GetId())
+	if err := f.undo(t, f.master, f.e, line); err != nil {
+		t.Fatalf("UndoLastAction(the roll) error = %v", err)
+	}
+	if !f.has(t, f.toren.GetId()) || f.rows(t) != 1 {
+		t.Errorf("Toren has it %v and character_favor has %d rows, want the one row back with the character in the reserve", f.has(t, f.toren.GetId()), f.rows(t))
+	}
+	if status := f.promptStatus(t, p.GetId()); status != "kept" {
+		t.Errorf("the prompt is %q, want kept", status)
+	}
+}
+
+// The same for a held roll that is dropped: the combat ends with the question unanswered and its roller in the reserve, and the
+// Inspiração the roll spent goes back to the character.
+func TestADroppedHoldGivesBackToACharacterInTheReserve(t *testing.T) {
+	t.Parallel()
+	f, holdID, p := heldRefundFight(t)
+	f.reserve(t, f.toren.GetId())
+	if _, err := f.master.combat.EndEncounter(t.Context(), connect.NewRequest(&playv1.EndEncounterRequest{CampaignId: f.campaignID, EncounterId: f.e.GetId(), IdempotencyKey: newKey()})); err != nil {
+		t.Fatalf("EndEncounter() error = %v", err)
+	}
+	if f.holdExists(t, holdID) {
+		t.Fatalf("the hold %s is still there after the combat ended: the test does not reach the drop", holdID)
+	}
+	if !f.has(t, f.toren.GetId()) || f.rows(t) != 1 {
+		t.Errorf("Toren has it %v and character_favor has %d rows, want the one row back with the character in the reserve", f.has(t, f.toren.GetId()), f.rows(t))
+	}
+	if status := f.promptStatus(t, p.GetId()); status != "kept" {
+		t.Errorf("the prompt is %q, want kept", status)
 	}
 }
