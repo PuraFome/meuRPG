@@ -8,6 +8,7 @@ import (
 	"connectrpc.com/connect"
 
 	charactersv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/characters/v1"
+	rulesv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/rules/v1"
 	"github.com/PuraFome/meuRPG/backend/internal/rules"
 )
 
@@ -22,6 +23,8 @@ type spellSwitchRow struct {
 	// that stays on. The three are on the choice's list.
 	held, fresh, allowed string
 	others               []string // the picks of the pool that stay
+	// table is a spell of the table that the choice's list has.
+	table func() *rulesv1.TableSpell
 }
 
 func warlockPicksSheet(level int32, cantrips int, picks ...string) *charactersv1.CharacterSheet {
@@ -45,7 +48,7 @@ func spellSwitchRows() []spellSwitchRow {
 	}
 	return []spellSwitchRow{
 		{
-			name: "the book's rituals", choiceKey: book + "#rituals", held: "spell:detect-magic", fresh: "spell:alarm", allowed: "spell:find-familiar",
+			name: "the book's rituals", table: func() *rulesv1.TableSpell { return choiceTableSpell(1, true, "class:wizard") }, choiceKey: book + "#rituals", held: "spell:detect-magic", fresh: "spell:alarm", allowed: "spell:find-familiar",
 			others: []string{rules.ScopedChoice(book+"#rituals", "spell:comprehend-languages")},
 			sheet: func(picks ...string) *charactersv1.CharacterSheet {
 				return warlockPicksSheet(5, 3, slices.Concat([]string{tome, book, inv + "devils-sight", inv + "beast-speech"},
@@ -53,20 +56,20 @@ func spellSwitchRows() []spellSwitchRow {
 			},
 		},
 		{
-			name: "the Tome's cantrips", choiceKey: tome + "#cantrips", held: "spell:guidance", fresh: "spell:resistance", allowed: "spell:shillelagh",
+			name: "the Tome's cantrips", table: func() *rulesv1.TableSpell { return choiceTableSpell(0, false, "class:wizard") }, choiceKey: tome + "#cantrips", held: "spell:guidance", fresh: "spell:resistance", allowed: "spell:shillelagh",
 			others: cantrips("spell:eldritch-blast", "spell:druidcraft"),
 			sheet: func(picks ...string) *charactersv1.CharacterSheet {
 				return warlockPicksSheet(3, 2, slices.Concat([]string{tome, inv + "devils-sight", inv + "beast-speech"}, picks)...)
 			},
 		},
 		{
-			name: "a Mystic Arcanum", choiceKey: "feature:mystic-arcanum-6th-level", held: "spell:eyebite", fresh: "spell:circle-of-death", allowed: "spell:true-seeing",
+			name: "a Mystic Arcanum", table: func() *rulesv1.TableSpell { return choiceTableSpell(6, false, "class:warlock") }, choiceKey: "feature:mystic-arcanum-6th-level", held: "spell:eyebite", fresh: "spell:circle-of-death", allowed: "spell:true-seeing",
 			sheet: func(picks ...string) *charactersv1.CharacterSheet {
 				return warlockPicksSheet(11, 4, slices.Concat([]string{"feature:pact-of-the-chain", inv + "devils-sight", inv + "beast-speech", inv + "armor-of-shadows", inv + "fiendish-vigor", inv + "mask-of-many-faces"}, picks)...)
 			},
 		},
 		{
-			name: "a bonus cantrip", choiceKey: "trait:high-elf-cantrip", held: "spell:fire-bolt", fresh: "spell:ray-of-frost", allowed: "spell:light",
+			name: "a bonus cantrip", table: func() *rulesv1.TableSpell { return choiceTableSpell(0, false, "class:wizard") }, choiceKey: "trait:high-elf-cantrip", held: "spell:fire-bolt", fresh: "spell:ray-of-frost", allowed: "spell:light",
 			sheet: func(picks ...string) *charactersv1.CharacterSheet {
 				s := choiceSheet("race:elf", "subrace:high-elf", "class:wizard", "", 1, picks...)
 				s.GetFull().CantripKeys = []string{"spell:mage-hand", "spell:prestidigitation", "spell:minor-illusion"}
@@ -136,8 +139,30 @@ func TestTheSwitchesApplyToEverySpellChoicePreviewsAndCompletions(t *testing.T) 
 	}
 }
 
+// tableSpellOf is a spell of the table of the level, with the ritual tag or not, on the class's list.
+func choiceTableSpell(level int32, ritual bool, class string) *rulesv1.TableSpell {
+	sp := testSpell("Magia da mesa", class)
+	sp.Level, sp.Ritual = level, ritual
+	if level == 0 {
+		sp.Damage[0].PerSlotLevel = ""
+	}
+	if ritual {
+		sp.Duration = &rulesv1.TableSpellDuration{Kind: rulesv1.SpellDurationKind_SPELL_DURATION_KIND_TIMED, Amount: 10, Unit: rulesv1.SpellDurationUnit_SPELL_DURATION_UNIT_MINUTE}
+	}
+	return sp
+}
+
 // refusedAsSwitchedOff says err is the switched-off-content refusal for the content key.
 func refusedAsSwitchedOff(err error, key string) bool {
+	return refusedAs(err, charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT, key)
+}
+
+// refusedAsArchived says err is the retired-content refusal for the content key.
+func refusedAsArchived(err error, key string) bool {
+	return refusedAs(err, charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_ARCHIVED_CONTENT, key)
+}
+
+func refusedAs(err error, reason charactersv1.CharacterBlockedReason, key string) bool {
 	ce, ok := errors.AsType[*connect.Error](err)
 	if !ok || ce.Code() != connect.CodeFailedPrecondition {
 		return false
@@ -145,7 +170,7 @@ func refusedAsSwitchedOff(err error, key string) bool {
 	for _, d := range ce.Details() {
 		if v, derr := d.Value(); derr == nil {
 			if b, ok := v.(*charactersv1.CharacterBlocked); ok {
-				return b.GetReason() == charactersv1.CharacterBlockedReason_CHARACTER_BLOCKED_REASON_SWITCHED_OFF_CONTENT && b.GetContentKey() == key
+				return b.GetReason() == reason && b.GetContentKey() == key
 			}
 		}
 	}
