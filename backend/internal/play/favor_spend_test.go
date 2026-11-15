@@ -36,7 +36,7 @@ func TestFavorModeCancelsAgainstDisadvantage(t *testing.T) {
 			t.Errorf("favorMode(%s) = %v, want %v", name, got, tt.want)
 		}
 	}
-	got, hide := notesSources([]rollNote{{Kind: noteHelp, Adv: true}, {Kind: notePoisoned, secret: true}, {Kind: noteEffectBonus, Value: 2}})
+	got, hide := notesSources([]rollNote{{Kind: noteHelp, Adv: true, Shown: true}, {Kind: notePoisoned, Hidden: true}, {Kind: noteEffectBonus, Value: 2}})
 	if len(got) != 2 || got[0].Effect != combat.ModeAdvantage || got[1].Effect != combat.ModeDisadvantage {
 		t.Errorf("notesSources = %+v, want an advantage and a disadvantage, and no bonus", got)
 	}

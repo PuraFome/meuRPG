@@ -70,6 +70,8 @@ export class RollPicker {
   readonly appLabel = input('Rolar no app');
   /** The master's NPC card has no filled button of its own ("Próximo turno" owns it). */
   readonly outlined = input(false);
+  /** "Digitar o resultado" is the outlined button beside the filled one, never the underlined link (the attack sheet). */
+  readonly typeOutlined = input(false);
   readonly busy = input(false);
   /** The buttons stick to the bottom of the sheet that scrolls (the attack sheet). */
   readonly sticky = input(false);

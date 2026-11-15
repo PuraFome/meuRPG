@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { spendFavorOf } from '../play/favor-errors';
 import { createClient } from '@connectrpc/connect';
 
 import type { Encounter, HeldRollOffer } from '../../../gen/meurpg/play/v1/combat_pb';
@@ -30,6 +31,8 @@ export type EffectSaveAnswer =
       readonly maneuverKey?: string;
       /** The master's choice: if the save fails, Legendary Resistance turns it into a success. */
       readonly useLegendaryResistance?: boolean;
+      /** The player spends the master's Inspiração on this save (`spend_favor`). */
+      readonly spendFavor?: boolean;
     }
   | {
       readonly kind: 'typed';
@@ -39,10 +42,20 @@ export type EffectSaveAnswer =
       /** A table die added to the roll: its face is the last of `extra`. */
       readonly maneuverKey?: string;
       readonly useLegendaryResistance?: boolean;
+      readonly spendFavor?: boolean;
     }
   | { readonly kind: 'hand' }
   /** The master skips the save (a table option). */
   | { readonly kind: 'skip' };
+
+/** What an answer rolled in the app or typed adds: the table die, the legendary resistance and the Inspiração. */
+function rolledBy(how: Extract<EffectSaveAnswer, { kind: 'app' | 'typed' }>) {
+  return {
+    maneuverKey: how.maneuverKey ?? '',
+    useLegendaryResistance: how.useLegendaryResistance ?? false,
+    ...spendFavorOf(how),
+  };
+}
 
 /** What `RollEffectSave` answers: the combat and the result (unset when the roll was left to the master). */
 export interface EffectSaveOutcome {
@@ -126,10 +139,7 @@ export class EffectsClient {
               ? { case: 'skip', value: true }
               : { case: 'delegateToMaster', value: true },
       extraDieFaces: typed ? [...typed.extra] : [],
-      ...(how.kind === 'app' || how.kind === 'typed' ? { maneuverKey: how.maneuverKey ?? '' } : {}),
-      ...(how.kind === 'app' || how.kind === 'typed'
-        ? { useLegendaryResistance: how.useLegendaryResistance ?? false }
-        : {}),
+      ...(how.kind === 'app' || how.kind === 'typed' ? rolledBy(how) : {}),
       ...(typed?.second !== undefined ? { secondD20Face: typed.second } : {}),
     });
     if (!res.encounter) {

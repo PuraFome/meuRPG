@@ -8,12 +8,14 @@ import {
   TableContentRefusalSchema,
   TableContentViolationSchema,
   TableFeatSchema,
+  TableOptionSchema,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
 import { ContentSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type CatalogVm, catalogVm } from '../../../core/content/catalog';
 import { TableContentClient } from '../../../core/content/content-client';
 import { catalog, entry } from '../../../core/content/content-testing';
 import { menu } from '../../../core/content/content-testing-menu';
+import { powerAttackMenu } from '../../../core/content/content-testing-menu-power';
 import { FeatEditor } from './feat-editor';
 import { settle } from '../../../../test-settle';
 
@@ -68,7 +70,11 @@ describe('FeatEditor (MR-025)', () => {
       },
     });
 
-  function setup(existing: boolean | TableEntry = true, shown: CatalogVm = catalog()) {
+  function setup(
+    existing: boolean | TableEntry = true,
+    shown: CatalogVm = catalog(),
+    more: TableEntry[] = [],
+  ) {
     save.mockReset();
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -77,7 +83,7 @@ describe('FeatEditor (MR-025)', () => {
     const fixture = TestBed.createComponent(FeatEditor);
     fixture.componentRef.setInput('campaignId', 'camp-1');
     fixture.componentRef.setInput('catalog', shown);
-    fixture.componentRef.setInput('entries', [owl()]);
+    fixture.componentRef.setInput('entries', [owl(), ...more]);
     fixture.componentRef.setInput('menu', menu());
     if (existing) fixture.componentRef.setInput('entry', existing === true ? stored() : existing);
     fixture.detectChanges();
@@ -122,7 +128,7 @@ describe('FeatEditor (MR-025)', () => {
     const rows = Array.from(el.querySelectorAll('.preview .rows__row')).map(
       (r) => `${r.querySelector('dt')!.textContent}: ${r.querySelector('dd')!.textContent}`,
     );
-    expect(rows[0]).toContain('Pré-requisito: Força 13, ser Humano e nível 4 ou mais');
+    expect(rows[0]).toContain('Pede: Força 13, ser Humano e nível 4 ou mais');
     expect(text(el.querySelector('.preview')!)).toContain('Você prende quem quiser.');
   });
 
@@ -168,6 +174,9 @@ describe('FeatEditor (MR-025)', () => {
         size: '',
         lacksFeatureKey: '',
         level: 4,
+        requiresPact: '',
+        requiresSpellKey: '',
+        requiresOptionKeys: [],
       },
       effects: [
         { type: 'ability_increase', count: 1, from: ['strength', 'dexterity'], value: '1' },
@@ -203,12 +212,52 @@ describe('FeatEditor (MR-025)', () => {
     expect(document.activeElement).toBe(field(el, 'table_feat.name_pt'));
   });
 
+  it('writes the power attack in "Como os jogadores veem" as the board has it, and follows the numbers as they are typed', () => {
+    const power = entry(TableContentKind.FEAT, 'Disparo Firme', {
+      body: {
+        case: 'tableFeat',
+        value: create(TableFeatSchema, {
+          namePt: 'Disparo Firme',
+          descPt: ['Antes de rolar um ataque à distância, você pode trocar acerto por dano.'],
+          effects: [
+            {
+              type: 'power_attack',
+              attackPenalty: 5,
+              damageBonus: 10,
+              weapon: 'ranged',
+              resource: 'folego_do_atirador',
+            },
+            { type: 'resource', resource: 'folego_do_atirador', max: '3', recharge: 'short_rest' },
+          ],
+        }),
+      },
+    });
+    const { el, fixture } = setup(power);
+    fixture.componentRef.setInput('menu', powerAttackMenu());
+    fixture.detectChanges();
+    const rows = () =>
+      Array.from(el.querySelectorAll('.preview .rows__row')).map(
+        (r) => `${r.querySelector('dt')!.textContent}: ${r.querySelector('dd')!.textContent}`,
+      );
+    expect(rows()).toEqual([
+      'Pede: Nada',
+      'Ao atacar: \u22125 no ataque, +10 no dano',
+      'Usos: 3 \u00b7 volta no descanso curto ou longo',
+    ]);
+    expect(text(el.querySelector('.preview')!)).toContain('você pode trocar acerto por dano.');
+    const penalty = field(el, 'table_feat.effects[0].attack_penalty') as HTMLInputElement;
+    penalty.value = '7';
+    penalty.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(rows()[1]).toBe('Ao atacar: \u22127 no ataque, +10 no dano');
+  });
+
   it('a new feat starts empty, asks nothing and is called "Novo talento" in the preview', () => {
     const { el } = setup(false);
     expect((field(el, 'table_feat.name_pt') as HTMLInputElement).value).toBe('');
     expect((field(el, 'table_feat.prerequisite.level') as HTMLInputElement).value).toBe('');
     expect(text(el.querySelector('.preview')!)).toContain('Novo talento');
-    expect(text(el.querySelector('.preview')!)).toContain('Pré-requisitoNenhum');
+    expect(text(el.querySelector('.preview')!)).not.toContain('Pré-requisito');
   });
 
   it('draws the races as chips, the size and the feature to lack, and writes them in the preview by name', () => {
@@ -254,6 +303,9 @@ describe('FeatEditor (MR-025)', () => {
       size: 'Small',
       lacksFeatureKey: 'feat:grappler',
       level: 0,
+      requiresPact: '',
+      requiresSpellKey: '',
+      requiresOptionKeys: [],
     });
   });
 
@@ -664,6 +716,178 @@ describe('FeatEditor (MR-025)', () => {
         'A escolha vem depois deste efeito. Suba a escolha ou desça este efeito.',
       );
       expect(bar(el).querySelector('button.mr-button--off')).not.toBeNull();
+    });
+  });
+
+  describe('what the feat asks of a class level, a pact, a spell and options (#580)', () => {
+    const add = (el: HTMLElement, fixture: { detectChanges(): void }, what: string) => {
+      click(el, 'Adicionar pré-requisito');
+      fixture.detectChanges();
+      click(el, what);
+      fixture.detectChanges();
+    };
+
+    it('starts with no row, and offers the four kinds from "Adicionar pré-requisito" (board 580-01)', () => {
+      const { fixture, el } = setup(false);
+      expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeNull();
+      click(el, 'Adicionar pré-requisito');
+      fixture.detectChanges();
+      const items = Array.from(el.querySelectorAll('[role=menuitem] .ask-menu__name')).map((b) =>
+        text(b),
+      );
+      expect(items).toEqual([
+        'Nível de classe',
+        'Dádiva do pacto',
+        'Magia que conhece',
+        'Outras opções',
+      ]);
+      expect(text(el.querySelector('[role=menu]')!)).toContain('Até 10');
+      expect(text(el.querySelector('[role=menu]')!)).toContain(
+        'Cada tipo entra uma vez; “Outras opções” leva até 10 opções.',
+      );
+    });
+
+    it('adds a row, no longer offers its kind, and clears it with its X', async () => {
+      const { fixture, el } = setup(false);
+      add(el, fixture, 'Nível de classe');
+      expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeTruthy();
+      click(el, 'Adicionar pré-requisito');
+      fixture.detectChanges();
+      const item = el.querySelector<HTMLButtonElement>('[role=menuitem]')!;
+      expect(text(item)).toContain('Nível de classe');
+      expect(text(item)).toContain('Já na lista');
+      expect(item.disabled).toBe(true);
+      const select = field(
+        el,
+        'table_feat.prerequisite.class_level.class_key',
+      ) as HTMLSelectElement;
+      select.value = 'class:wizard';
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('button[aria-label="Tirar Nível de classe"]')!.click();
+      fixture.detectChanges();
+      expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeNull();
+      save.mockResolvedValue({ entry: stored(), affected: [] });
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      expect(save.mock.calls[0][2].value.prerequisite.classLevel).toBeUndefined();
+    });
+
+    it('shows a saved row, and says so when the four kinds are all on the list', () => {
+      const body = create(TableFeatSchema, {
+        namePt: 'Lâmina Rubra',
+        prerequisite: {
+          classLevel: { classKey: 'class:wizard', level: 5 },
+          requiresPact: 'option:pact-of-the-blade',
+          requiresSpellKey: catalog().spells[0].value,
+          requiresOptionKeys: ['option:brasa@mesa'],
+        },
+      });
+      const { el } = setup(
+        entry(TableContentKind.FEAT, 'Lâmina Rubra', { body: { case: 'tableFeat', value: body } }),
+      );
+      expect(field(el, 'table_feat.prerequisite.class_level.class_key')).toBeTruthy();
+      expect(field(el, 'table_feat.prerequisite.requires_pact')).toBeTruthy();
+      expect(text(el)).toContain('Os quatro tipos já estão na lista.');
+      expect(
+        Array.from(el.querySelectorAll('button')).some((b) =>
+          text(b).includes('Adicionar pré-requisito'),
+        ),
+      ).toBe(false);
+    });
+
+    it('saves the class level, the spell and the options the master picked', async () => {
+      const { fixture, el } = setup(false);
+      add(el, fixture, 'Nível de classe');
+      add(el, fixture, 'Magia que conhece');
+      const pick = (path: string, value: string) => {
+        const select = field(el, path) as HTMLSelectElement;
+        select.value = value;
+        select.dispatchEvent(new Event('change'));
+      };
+      pick('table_feat.prerequisite.class_level.class_key', 'class:wizard');
+      const level = field(el, 'table_feat.prerequisite.class_level.level') as HTMLInputElement;
+      level.value = '5';
+      level.dispatchEvent(new Event('input'));
+      const spell = field(el, 'table_feat.prerequisite.requires_spell_key') as HTMLInputElement;
+      spell.value = 'Luz';
+      spell.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      el.querySelector<HTMLButtonElement>('[role=option]')!.click();
+      fixture.detectChanges();
+      save.mockResolvedValue({ entry: stored(), affected: [] });
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      const sent = save.mock.calls[0][2].value.prerequisite;
+      expect(sent.classLevel).toEqual({ classKey: 'class:wizard', level: 5 });
+      expect(sent.requiresSpellKey).toBe(catalog().spells[0].value);
+    });
+
+    it('puts a refusal of the class level at the class level field, in words', async () => {
+      const { fixture, el } = setup();
+      save.mockRejectedValue(refusal(['table_feat.prerequisite.class_level.level', 'bad_value']));
+      click(el, 'Salvar talento');
+      await settle(fixture, 3);
+      expect(
+        text(field(el, 'table_feat.prerequisite.class_level.level').closest('app-text-field')!),
+      ).toContain('O nível vai de 1 a 20.');
+    });
+
+    it('writes the class level as "Nível mínimo" with "de 20" at its end (board 580-01)', () => {
+      const body = create(TableFeatSchema, {
+        namePt: 'Lâmina Rubra',
+        prerequisite: { classLevel: { classKey: 'class:wizard', level: 5 } },
+      });
+      const { el } = setup(
+        entry(TableContentKind.FEAT, 'Lâmina Rubra', { body: { case: 'tableFeat', value: body } }),
+      );
+      const level = text(
+        field(el, 'table_feat.prerequisite.class_level.level').closest('app-text-field')!,
+      );
+      expect(level).toContain('Nível mínimo');
+      expect(level).toContain('de 20');
+      expect(level).not.toContain('1 a 20');
+    });
+
+    it('draws the spell as a search, names the one saved and marks a cantrip as "truque"', () => {
+      const body = create(TableFeatSchema, {
+        namePt: 'Lâmina Rubra',
+        prerequisite: { requiresSpellKey: 'spell:light' },
+      });
+      const { el } = setup(
+        entry(TableContentKind.FEAT, 'Lâmina Rubra', { body: { case: 'tableFeat', value: body } }),
+      );
+      const input = field(el, 'table_feat.prerequisite.requires_spell_key') as HTMLInputElement;
+      expect(input.getAttribute('role')).toBe('combobox');
+      expect(input.value).toBe('Luz');
+      expect(text(input.closest('app-search-pick')!)).toContain('truque');
+    });
+
+    it('shows a table option with the "Da mesa" badge, not the words "(da mesa)"', () => {
+      const body = create(TableFeatSchema, {
+        namePt: 'Lâmina Rubra',
+        prerequisite: { requiresOptionKeys: ['option:brasa@mesa'] },
+      });
+      const { el } = setup(
+        entry(TableContentKind.FEAT, 'Lâmina Rubra', { body: { case: 'tableFeat', value: body } }),
+        catalog(),
+        [
+          entry(TableContentKind.OPTION, 'Olhar de Brasa', {
+            key: 'option:brasa@mesa',
+            body: { case: 'tableOption', value: create(TableOptionSchema, { set: 'invocation' }) },
+          }),
+        ],
+      );
+      const row = field(el, 'table_feat.prerequisite.requires_option_keys');
+      expect(text(row)).not.toContain('(da mesa)');
+      expect(row.querySelector('.mr-tag')).toBeTruthy();
+    });
+
+    it('has the "Só você vê" card beside the preview', () => {
+      const { el } = setup();
+      const side = text(el.querySelector('.editor__side')!);
+      expect(side).toContain('Só você vê');
+      expect(side).toContain('uma condição que a mesa não mostra');
     });
   });
 });

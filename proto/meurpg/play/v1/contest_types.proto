@@ -293,6 +293,10 @@ enum ContestBlockedReason {
   CONTEST_BLOCKED_REASON_COMBAT_BEGUN = 16;
   // RevealHider: the combatant is not hidden from anyone.
   CONTEST_BLOCKED_REASON_NOT_HIDDEN = 17;
+  // StartContest (GRAPPLE): the combatant is a character in a beast form whose stat block has no attack that grapples, so it has
+  // no free hand (SRD 5.1, "Grappling"). A shove needs no hand and is not refused. The master's grapple that came from an attack
+  // (kind ESCAPE_DC) is not refused. Nothing is spent.
+  CONTEST_BLOCKED_REASON_NO_FREE_HAND = 18;
 }
 
 // ContestBlocked is the detail of the failed_precondition of the contest calls.

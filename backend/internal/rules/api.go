@@ -1085,6 +1085,9 @@ type Attack struct {
 	// (a dagger, a spear, a handaxe), and false for a ranged weapon and a spell:
 	// an opportunity attack needs a melee weapon.
 	Melee bool
+	// Thrown is true for a weapon with the Arremesso (thrown) property, melee or ranged: its RangeFt and LongRangeFt are then
+	// the throwing range. A weapon of ammunition has the same two numbers and is not thrown.
+	Thrown bool `json:",omitempty"`
 	// Beams is how many attack rolls the attack makes in one action, each with
 	// its own damage roll: 4 for Eldritch Blast at character level 17. It is 1
 	// for every other attack, and 0 for a weapon.
@@ -1126,6 +1129,12 @@ type Attack struct {
 	// strike from a weapon_rule; a creature's attack has neither.
 	Silvered   bool `json:",omitempty"`
 	Adamantine bool `json:",omitempty"`
+	// AmmunitionKey is the key of the ammunition a character's ranged weapon fires ("equipment:arrow"); empty for
+	// every other line. The combat spends a piece of it for each attack roll made with the line.
+	AmmunitionKey string `json:",omitempty"`
+	// Improvised says the line is the melee use of a weapon that is not made for it (a bow used as a club), keyed
+	// "<weapon key>:melee": 1d4 plus Strength with no proficiency. It spends no ammunition.
+	Improvised bool `json:",omitempty"`
 	// Notes is the rest of a creature's action, as the SRD wrote it (in
 	// English): the damage parts after the first, a saving throw, a rider.
 	// The engine rolls the to-hit and the first damage part; the master reads

@@ -1,10 +1,13 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 
+import { RollMode } from '../../../../../gen/meurpg/play/v1/combat_rolls_pb';
 import { DiceMode, DicePreference } from '../../../../../gen/meurpg/campaigns/v1/campaigns_pb';
 import { type RollNote, RollModeKind } from '../../../../../gen/meurpg/play/v1/contest_types_pb';
 import { effectivePreference } from '../../../../core/campaigns/dice-labels';
 import type { CheckDie } from '../../../../core/combat/contest-client';
 import { modeLabel, noteLines } from '../../../../core/combat/contest-view';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
+import { FavorSpendBox } from '../../../../shared/favor-spend/favor-spend';
 import { MultiRoll, type RollField } from '../../../../shared/multi-roll/multi-roll';
 import { RollPicker } from '../../../../shared/roll-picker/roll-picker';
 
@@ -23,8 +26,15 @@ const PAIR_FIELDS: readonly RollField[] = [
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-check-roll-form',
-  imports: [MultiRoll, RollPicker],
+  imports: [FavorSpendBox, MultiRoll, RollPicker],
   template: `
+    @if (favor(); as f) {
+      <!-- The master's Inspiração (RN-43): above the roll; ticked, the form reads the mode it gives. -->
+      <app-favor-spend class="favor" [control]="f" [busy]="busy()" />
+      @if (f.lock(); as l) {
+        <p class="favor__line" role="status">{{ l.line }}</p>
+      }
+    }
     @if (why().length) {
       <ul class="why" aria-label="Como o d20 é rolado">
         @for (line of why(); track $index) {
@@ -74,6 +84,17 @@ const PAIR_FIELDS: readonly RollField[] = [
   styles: `
     :host {
       display: block;
+    }
+
+    .favor {
+      margin-bottom: var(--mr-space-3);
+    }
+
+    .favor__line {
+      margin: 0 0 var(--mr-space-3);
+      font-size: var(--mr-font-14);
+      line-height: 20px;
+      color: var(--mr-ink-muted);
     }
 
     .why {
@@ -134,6 +155,9 @@ export class CheckRollForm {
   readonly appLabel = input('');
   /** "Deixar o mestre rolar por mim": the link under the buttons; empty for none. */
   readonly deferLabel = input('');
+  /** The box of the master's Inspiração, for a roll of the player's own character; none for the master's roll of an NPC. The sheet
+   * owns it, sends `spend_favor` with a ticked roll, and reads the mode the form shows from it. */
+  readonly favor = input<FavorSpend | null>(null);
 
   readonly roll = output<CheckDie>();
   readonly defer = output<void>();
@@ -145,17 +169,33 @@ export class CheckRollForm {
   protected readonly preferApp = computed(
     () => effectivePreference(this.diceMode(), this.preference()) === DicePreference.APP,
   );
+  /** The mode the d20 is rolled with: the check's own, or the one the Inspiração gives while its box is ticked. */
+  protected readonly effective = computed(() => {
+    const given = this.favor()?.mode();
+    if (given === undefined || given === null) {
+      return this.mode();
+    }
+    return given === RollMode.ADVANTAGE
+      ? RollModeKind.ADVANTAGE
+      : given === RollMode.DISADVANTAGE
+        ? RollModeKind.DISADVANTAGE
+        : RollModeKind.NORMAL;
+  });
   protected readonly pair = computed(
-    () => this.mode() === RollModeKind.ADVANTAGE || this.mode() === RollModeKind.DISADVANTAGE,
+    () =>
+      this.effective() === RollModeKind.ADVANTAGE || this.effective() === RollModeKind.DISADVANTAGE,
   );
-  /** "Vantagem" and why, so the player knows the dice they are about to roll are two. */
+  /** "Vantagem" and why, so the player knows the dice they are about to roll are two. Ticked, the box says it in its own line. */
   protected readonly why = computed(() => {
+    if (this.favor()?.lock()) {
+      return [];
+    }
     const lines = noteLines({ notes: [...this.notes()] });
     const word = modeLabel(this.mode());
     return word || lines.length ? [word, ...lines].filter(Boolean) : [];
   });
   protected readonly combine = computed(() =>
-    this.mode() === RollModeKind.DISADVANTAGE ? 'lower' : 'higher',
+    this.effective() === RollModeKind.DISADVANTAGE ? 'lower' : 'higher',
   );
   protected readonly label = computed(
     () => `Role 1d20 para ${this.checkName()} (${signedText(this.modifier())})`,

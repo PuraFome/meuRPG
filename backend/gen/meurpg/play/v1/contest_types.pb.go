@@ -572,6 +572,10 @@ const (
 	ContestBlockedReason_CONTEST_BLOCKED_REASON_COMBAT_BEGUN ContestBlockedReason = 16
 	// RevealHider: the combatant is not hidden from anyone.
 	ContestBlockedReason_CONTEST_BLOCKED_REASON_NOT_HIDDEN ContestBlockedReason = 17
+	// StartContest (GRAPPLE): the combatant is a character in a beast form whose stat block has no attack that grapples, so it has
+	// no free hand (SRD 5.1, "Grappling"). A shove needs no hand and is not refused. The master's grapple that came from an attack
+	// (kind ESCAPE_DC) is not refused. Nothing is spent.
+	ContestBlockedReason_CONTEST_BLOCKED_REASON_NO_FREE_HAND ContestBlockedReason = 18
 )
 
 // Enum value maps for ContestBlockedReason.
@@ -595,6 +599,7 @@ var (
 		15: "CONTEST_BLOCKED_REASON_ALREADY_ANSWERED",
 		16: "CONTEST_BLOCKED_REASON_COMBAT_BEGUN",
 		17: "CONTEST_BLOCKED_REASON_NOT_HIDDEN",
+		18: "CONTEST_BLOCKED_REASON_NO_FREE_HAND",
 	}
 	ContestBlockedReason_value = map[string]int32{
 		"CONTEST_BLOCKED_REASON_UNSPECIFIED":        0,
@@ -615,6 +620,7 @@ var (
 		"CONTEST_BLOCKED_REASON_ALREADY_ANSWERED":   15,
 		"CONTEST_BLOCKED_REASON_COMBAT_BEGUN":       16,
 		"CONTEST_BLOCKED_REASON_NOT_HIDDEN":         17,
+		"CONTEST_BLOCKED_REASON_NO_FREE_HAND":       18,
 	}
 )
 
@@ -3444,7 +3450,7 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	"\x12ShoveBlockedReason\x12$\n" +
 	" SHOVE_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12\x1d\n" +
 	"\x19SHOVE_BLOCKED_REASON_WALL\x10\x01\x12!\n" +
-	"\x1dSHOVE_BLOCKED_REASON_CREATURE\x10\x02*\x95\x06\n" +
+	"\x1dSHOVE_BLOCKED_REASON_CREATURE\x10\x02*\xbe\x06\n" +
 	"\x14ContestBlockedReason\x12&\n" +
 	"\"CONTEST_BLOCKED_REASON_UNSPECIFIED\x10\x00\x12)\n" +
 	"%CONTEST_BLOCKED_REASON_TARGET_TOO_BIG\x10\x01\x12'\n" +
@@ -3464,7 +3470,8 @@ const file_meurpg_play_v1_contest_types_proto_rawDesc = "" +
 	")CONTEST_BLOCKED_REASON_NOT_IN_GROUP_CHECK\x10\x0e\x12+\n" +
 	"'CONTEST_BLOCKED_REASON_ALREADY_ANSWERED\x10\x0f\x12'\n" +
 	"#CONTEST_BLOCKED_REASON_COMBAT_BEGUN\x10\x10\x12%\n" +
-	"!CONTEST_BLOCKED_REASON_NOT_HIDDEN\x10\x11*\xad\x01\n" +
+	"!CONTEST_BLOCKED_REASON_NOT_HIDDEN\x10\x11\x12'\n" +
+	"#CONTEST_BLOCKED_REASON_NO_FREE_HAND\x10\x12*\xad\x01\n" +
 	"\x13ContestTargetReason\x12%\n" +
 	"!CONTEST_TARGET_REASON_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dCONTEST_TARGET_REASON_TOO_BIG\x10\x01\x12&\n" +

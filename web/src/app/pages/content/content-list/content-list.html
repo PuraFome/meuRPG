@@ -180,7 +180,7 @@
       <!-- The master on a phone: reads and archives (E10-01 state 10). -->
       <div class="mr-notice mr-notice--neutral">
         <mat-icon aria-hidden="true">info</mat-icon>
-        <p>Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê e arquiva.</p>
+        <p>Para criar ou editar, abra o conteúdo da mesa no notebook. Aqui você lê, liga, desliga e arquiva.</p>
       </div>
       <app-select-field label="Tipo" [options]="kindOptions()" [value]="slug()" (valueChange)="pickKind($event)" />
       <section class="mr-panel" [attr.aria-label]="current().plural">
@@ -206,17 +206,30 @@
                 <button
                   type="button"
                   class="prow__btn"
-                  [attr.aria-label]="(e.archived ? 'Desarquivar ' : 'Arquivar ') + e.namePt"
+                  [attr.aria-label]="'Ações de ' + e.namePt"
                   [disabled]="busyKey() === e.key"
-                  (click)="toggleArchive(e)"
+                  [matMenuTriggerFor]="rowActions"
+                  [matMenuTriggerData]="{ entry: e }"
                 >
-                  <mat-icon aria-hidden="true">{{ e.archived ? 'unarchive' : 'archive' }}</mat-icon>
+                  <mat-icon aria-hidden="true">more_vert</mat-icon>
                 </button>
               </li>
             }
           </ul>
         }
       </section>
+      <mat-menu #rowActions="matMenu">
+        <ng-template matMenuContent let-entry="entry">
+          @if (!entry.archived) {
+            <button mat-menu-item type="button" (click)="toggleSwitch(entry)">
+              <mat-icon aria-hidden="true">{{ entry.off ? 'visibility' : 'visibility_off' }}</mat-icon>{{ entry.off ? 'Ligar para os jogadores' : 'Desligar para os jogadores' }}
+            </button>
+          }
+          <button mat-menu-item type="button" (click)="toggleArchive(entry)">
+            <mat-icon aria-hidden="true">{{ entry.archived ? 'unarchive' : 'archive' }}</mat-icon>{{ entry.archived ? 'Desarquivar' : 'Arquivar' }}
+          </button>
+        </ng-template>
+      </mat-menu>
       <p class="limit">{{ entries().length }} de 1000 entradas na campanha.</p>
     } @else {
       <!-- The master on a laptop (E10-01 states 1 and 2). -->

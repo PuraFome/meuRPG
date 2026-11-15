@@ -6,6 +6,8 @@ import {
   FeatUnmetKind,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { ABILITY_LABELS } from '../characters/character-labels';
+import { featureKeyName as optionKeyName } from './class-feature-text';
+import type { KeyName } from './key-name';
 import type { AbilityKey } from '../characters/characters.types';
 
 /**
@@ -14,7 +16,7 @@ import type { AbilityKey } from '../characters/characters.types';
  * no name for (a proficiency, a race) is named by `nameOf`, from the content catalog.
  */
 
-export type KeyName = (key: string) => string;
+export type { KeyName } from './key-name';
 
 const FIELDS: readonly { field: keyof AbilityScores & string; key: AbilityKey }[] = [
   { field: 'strength', key: 'str' },
@@ -48,7 +50,7 @@ function scoreList(scores: AbilityScores | undefined): string[] {
   });
 }
 
-function listWith(items: readonly string[], word: 'e' | 'ou'): string {
+export function listWith(items: readonly string[], word: 'e' | 'ou'): string {
   return items.length <= 1
     ? (items[0] ?? '')
     : `${items.slice(0, -1).join(', ')} ${word} ${items[items.length - 1]}`;
@@ -129,12 +131,22 @@ export function prerequisiteParts(
     parts.push(`proficiência em ${nameOf(p.proficiencyKey)}`);
   }
   if (p.spellcasting) {
-    parts.push('poder conjurar ao menos uma magia');
+    parts.push('conjurar ao menos uma magia');
   }
   parts.push(...whoParts(p, nameOf, lacks));
   if (p.level > 0) {
     parts.push(`nível ${p.level} ou mais`);
   }
+  if (p.classLevel && p.classLevel.classKey !== '') {
+    parts.push(`${nameOf(p.classLevel.classKey)} ${p.classLevel.level}`);
+  }
+  if (p.requiresPact !== '') {
+    parts.push(optionKeyName(p.requiresPact, nameOf));
+  }
+  if (p.requiresSpellKey !== '') {
+    parts.push(nameOf(p.requiresSpellKey));
+  }
+  parts.push(...p.requiresOptionKeys.map((k) => optionKeyName(k, nameOf)));
   return parts;
 }
 
@@ -169,6 +181,62 @@ export function unmetText(u: FeatUnmet, nameOf: KeyName): string {
       return u.key ? `Não pode ter ${u.namePt || nameOf(u.key)}.` : hiddenOr(u);
     case FeatUnmetKind.LEVEL:
       return `Precisa de nível ${u.value} ou mais.`;
+    default:
+      return keyedUnmet(u, nameOf);
+  }
+}
+
+const KEYED = new Set([
+  FeatUnmetKind.CLASS_LEVEL,
+  FeatUnmetKind.PACT,
+  FeatUnmetKind.SPELL,
+  FeatUnmetKind.OPTION,
+]);
+
+function keyedPart(u: FeatUnmet, nameOf: KeyName): string {
+  return u.kind === FeatUnmetKind.CLASS_LEVEL
+    ? `${nameOf(u.key)} ${u.value}`
+    : optionKeyName(u.key, nameOf);
+}
+
+/**
+ * The lines that say what a character lacks (board 580-04): what the older kinds lack, one line each, and the class level,
+ * pact, spell and options joined into one "Exige Bruxo 5, Pacto da Lâmina e Rajada Mística." A single condition keeps its
+ * own sentence, with the note of what is missing.
+ */
+export function unmetLines(unmet: readonly FeatUnmet[], nameOf: KeyName): string[] {
+  // A keyed condition with no key is one the player may not read: it is said once, apart from the line.
+  const keyed = unmet.filter((u) => KEYED.has(u.kind) && u.key !== '');
+  const unread = unmet.some((u) => KEYED.has(u.kind) && u.key === '') ? [HIDDEN_UNMET] : [];
+  const lines = [
+    ...unmet.filter((u) => !KEYED.has(u.kind)).map((u) => unmetText(u, nameOf)),
+    ...unread,
+  ];
+  if (keyed.length === 1) {
+    return [...lines, keyedUnmet(keyed[0], nameOf)];
+  }
+  return keyed.length > 1
+    ? [
+        ...lines,
+        `Exige ${listWith(
+          keyed.map((u) => keyedPart(u, nameOf)),
+          'e',
+        )}.`,
+      ]
+    : lines;
+}
+
+/** What a character lacks of a class level, a pact, a spell or an option (#580): `Exige …`. */
+function keyedUnmet(u: FeatUnmet, nameOf: KeyName): string {
+  switch (u.kind) {
+    case FeatUnmetKind.CLASS_LEVEL:
+      return `Exige ${nameOf(u.key)} ${u.value}.`;
+    case FeatUnmetKind.PACT:
+      return `Exige a dádiva ${optionKeyName(u.key, nameOf)}.`;
+    case FeatUnmetKind.SPELL:
+      return `Exige a magia ${nameOf(u.key)}, que você ainda não conhece.`;
+    case FeatUnmetKind.OPTION:
+      return `Exige a opção ${optionKeyName(u.key, nameOf)}, que você ainda não escolheu.`;
     default:
       return hiddenOr(u);
   }

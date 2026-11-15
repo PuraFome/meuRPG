@@ -11,12 +11,15 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { MatButton } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import type {
   TableContentViolation,
   TableEntry,
 } from '../../../../gen/meurpg/rules/v1/table_content_pb';
+import { create } from '@bufbuild/protobuf';
+import { FeatPrerequisiteSchema } from '../../../../gen/meurpg/rules/v1/rules_pb';
 import { type CatalogVm } from '../../../core/content/catalog';
 import { type EntryBody, TableContentClient } from '../../../core/content/content-client';
 import { EntrySaver, focusAfterRender } from '../../../core/content/entry-saver';
@@ -51,13 +54,16 @@ import {
   type FeatureDraft,
   SIZE_OPTIONS,
 } from '../../../core/content/feature-draft';
-import { askedRaces } from '../../../core/content/feat-text';
+import { askedRaces, prerequisiteParts } from '../../../core/content/feat-text';
 import { previewRead } from '../../../core/content/preview';
+import { pactChoices, requirableOptions } from '../../../core/content/requirable-options';
 import { CheckRow } from '../../../shared/form-fields/check-row';
 import { FeatureEditor } from '../../../shared/feature-editor/feature-editor';
+import { PickList } from '../../../shared/form-fields/pick-list';
 import { SearchPick } from '../../../shared/form-fields/search-pick';
 import { SelectField, type SelectOption } from '../../../shared/form-fields/select-field';
 import { TextField } from '../../../shared/form-fields/text-field';
+import { AskRows } from '../ask-rows/ask-rows';
 import { EditorAlerts, EditorBar } from '../editor-bar/editor-bar';
 import { EntryRead } from '../entry-read/entry-read';
 import { FeatChoices } from './feat-choices/feat-choices';
@@ -72,6 +78,14 @@ const LACKS = 'table_feat.prerequisite.lacks_feature_key';
 /** The sizes a feat may ask for, as the server writes them. */
 const FEAT_SIZES: SelectOption[] = [{ value: '', label: 'Qualquer' }, ...SIZE_OPTIONS];
 
+const ASK_PATH = /\.(class_level|requires_)/;
+const NO_ASKS: Partial<FeatDraft> = {
+  classKey: '',
+  classLevel: '',
+  requiresPact: '',
+  requiresSpell: '',
+  requiresOptions: [],
+};
 /**
  * The feat editor: a name, a text, what the feat asks of a character, and its effects.
  * The prerequisite has ability scores, a proficiency, spellcasting, races, a size, a feature to lack and a level.
@@ -87,12 +101,15 @@ const FEAT_SIZES: SelectOption[] = [{ value: '', label: 'Qualquer' }, ...SIZE_OP
     CheckRow,
     EditorAlerts,
     EditorBar,
+    AskRows,
     EntryRead,
     FeatChoices,
     FeatOptions,
     FeatureEditor,
+    MatButton,
     MatIconModule,
     OptionSource,
+    PickList,
     PlayersSwitch,
     SearchPick,
     SelectField,
@@ -136,6 +153,33 @@ export class FeatEditor {
     ...this.catalog().proficiencies,
   ]);
   protected readonly sizes = FEAT_SIZES;
+  protected readonly classOptions = computed<SelectOption[]>(() => [
+    { value: '', label: 'Nenhuma' },
+    ...this.catalog().classes,
+  ]);
+  protected readonly pactOptions = computed<SelectOption[]>(() =>
+    pactChoices(this.menu(), this.entries()),
+  );
+  protected readonly requirable = computed<SelectOption[]>(() =>
+    requirableOptions(this.menu(), this.entries()),
+  );
+  /** The block of the older fields opens by itself when a refusal lands inside it. */
+  protected readonly oldOpen = signal(false);
+  protected readonly oldRefused = computed(() =>
+    [...this.refused()].some((p) => p.startsWith('table_feat.prerequisite') && !p.match(ASK_PATH)),
+  );
+  protected readonly oldNote = computed(() => {
+    const parts = prerequisiteParts(
+      create(
+        FeatPrerequisiteSchema,
+        draftToFeat({ ...this.draft(), ...NO_ASKS }, this.menu()).prerequisite,
+      ),
+      this.nameOf(),
+    );
+    return parts.length === 0
+      ? 'Os campos de hoje · nada pedido'
+      : `Os campos de hoje · ${parts.join(', ')}`;
+  });
   /** The place of the feat's choice of options among its effects, or -1. */
   protected readonly choiceAt = computed(() => optionChoiceIndex(this.draft().feature.effects));
   protected readonly choice = computed<EffectDraft | null>(

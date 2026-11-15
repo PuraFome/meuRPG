@@ -189,8 +189,15 @@ func (s *Service) specialAttacks(ctx context.Context, m authz.Membership, d *enc
 	if err != nil {
 		return nil, err
 	}
+	handless, err := s.noFreeHand(ctx, nil, m.CampaignID, who)
+	if err != nil {
+		return nil, err
+	}
 	var out []*playv1.ContestAttackOption
 	for _, kind := range []playv1.ContestAttackOptionKind{playv1.ContestAttackOptionKind_CONTEST_ATTACK_OPTION_KIND_GRAPPLE, playv1.ContestAttackOptionKind_CONTEST_ATTACK_OPTION_KIND_SHOVE} {
+		if handless && kind == playv1.ContestAttackOptionKind_CONTEST_ATTACK_OPTION_KIND_GRAPPLE {
+			continue // a beast form has no free hand to grapple; the shove needs none
+		}
 		opt := &playv1.ContestAttackOption{
 			Kind: kind, ReplacesAttack: true, Enabled: reason == nil, Reason: reason, AttacksLeft: clamp32(left, 0, math.MaxInt32),
 			Targets: targets, RollOption: roll,

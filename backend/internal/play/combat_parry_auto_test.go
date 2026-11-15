@@ -212,6 +212,7 @@ func TestParryAuto_NotWhenTheReactionCannotBeUsed(t *testing.T) {
 func TestParryAuto_OnlyAMeleeWeaponAttackOnACreatureWithParry(t *testing.T) {
 	t.Parallel()
 	a, e := autoParryFight(t, knightKey, knight)
+	a.stockArrows(t, a.toren)
 	hit := a.mustAttack(t, a.caio, e, "Toren", shortbowKey, knight, disadvantage(knightHit+1)) // a ranged weapon attack at 5 ft
 	if hit.GetRoll().GetOutcome() != playv1.AttackOutcome_ATTACK_OUTCOME_HIT || a.reactionUsedBy(t, knight) {
 		t.Errorf("a shortbow hit = %v, reaction spent %v; want it to land and the reaction free", hit.GetRoll().GetOutcome(), a.reactionUsedBy(t, knight))

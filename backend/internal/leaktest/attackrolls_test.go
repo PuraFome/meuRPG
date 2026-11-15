@@ -120,6 +120,9 @@ func newRollsTableOf(t *testing.T, d20Rerolls, fog bool, afterHeroes func(rt *ro
 	w.pens = hero(w.ana, labelPens, []*charactersv1.ClassLevel{{ClassKey: "class:barbarian", Level: 3}}, nil, dagger, shortbow)
 	w.place(w.fogMap, w.toren.GetId(), 3, 5)
 	w.place(w.fogMap, w.pens.GetId(), 10, 10)
+	for _, c := range []*charactersv1.Character{w.toren, w.pens} { // the shortbow fires arrows
+		must(m.charges.SetAmmunition(ctx, rq(&playv1.SetAmmunitionRequest{CampaignId: w.campaign, CharacterId: c.GetId(), AmmoKey: "equipment:arrow", Quantity: 40})))
+	}
 	if afterHeroes != nil {
 		afterHeroes(rt)
 	}
