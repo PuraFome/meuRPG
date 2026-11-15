@@ -774,6 +774,10 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 		parent = x.offeredParent(key, col.owned)
 	}
 	if parent == "" || !col.owned[parent] {
+		if feat := x.lostOfferer(key, f); feat != "" {
+			col.lostOffered(field, key, f, feat, pickedNames)
+			return
+		}
 		col.optionNotOffered(field, key, f)
 		return
 	}
@@ -789,6 +793,28 @@ func (col *collector) featureOption(field, key string, pickedNames map[string]bo
 	}
 	col.feature(key, f.Name, parent, x.featureLevel(parent), f.Desc)
 	col.offeredBy(parent)
+}
+
+// lostOfferer is the lost feat (or option) whose choice offers the option key, or "": the pick is not one nothing offers,
+// its feat is there and does not apply.
+func (x *deriver) lostOfferer(key string, f *srd51.Feature) string {
+	for _, p := range append([]string{x.optionParent(key, f.Parent)}, x.c.offeredBy[key]...) {
+		if p != "" && x.inactiveFeats[p] {
+			return p
+		}
+	}
+	return ""
+}
+
+// lostOffered lists the option of a lost feat and says it is lost: it stays on the sheet, gives nothing, and reads as an
+// option that needs its feat (board 580-05).
+func (col *collector) lostOffered(field, key string, f *srd51.Feature, feat string, pickedNames map[string]bool) {
+	x := col.x
+	pickedNames[f.Name] = true
+	col.feature(key, f.Name, feat, 0, f.Desc)
+	col.offeredBy(feat)
+	x.lostIssue(IssueOptionPrerequisite, field, x.c.lostOffered(key, feat))
+	x.tieToOwners(&x.d.Issues[len(x.d.Issues)-1], key)
 }
 
 // offeredBy marks the feature just listed as an option of parent: its row reads "Opção de <parent>" (board 580-05).

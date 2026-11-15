@@ -218,7 +218,7 @@ func TestAnOptionOfALostFeatReadsAsLostNotAsNotOffered(t *testing.T) {
 	if issue == nil || issue.Field != "full.feature_choice_keys[0]" {
 		t.Fatalf("issues = %+v, want the option_prerequisite of the pick", d.Issues)
 	}
-	want := optionLabel(c.c.namePT(defense)) + " pede o talento Estilo emprestado, que Tor não aplica agora: a opção só vale de novo quando Tor cumprir."
+	want := c.c.namePT(defense) + " pede o talento Estilo emprestado, que Tor não aplica agora: a opção só vale de novo quando Tor cumprir."
 	if got := issue.Lost.SentencePT("Tor", false); got != want {
 		t.Errorf("sentence = %q, want %q", got, want)
 	}

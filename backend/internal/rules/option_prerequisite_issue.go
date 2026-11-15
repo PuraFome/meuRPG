@@ -14,8 +14,8 @@ func (x *deriver) checkOptionPrerequisites() {
 	}
 	owns := ownedBy(x.b, *x.d)
 	for i, key := range x.b.FeatureChoices {
-		if !owns(key) {
-			continue
+		if !owns(key) || slices.ContainsFunc(x.d.Issues, func(is Issue) bool { return is.Lost != nil && is.Lost.Key == key }) {
+			continue // not on the sheet, or already told lost (the option of a lost feat)
 		}
 		l := x.lost[key] // what it lacked with the options in place, when it was judged lost
 		if l == nil {

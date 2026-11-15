@@ -21,6 +21,8 @@ type LostPrerequisite struct {
 	Conditions []LostCondition
 	// unmet is what the conditions were made from, to say them again over the sheet as it ends up.
 	unmet []FeatUnmet
+	// offeredBy is the lost feat whose own choice offered the option, when that is what it lacks (lostOffered).
+	offeredBy string
 }
 
 // LostCondition is one missing condition: what is asked ("Guerreiro 7") and what the character has, told after the
@@ -98,6 +100,18 @@ func (c *content) lost(key string, option bool, unmet []FeatUnmet, b Build, d De
 		l.Conditions = append(l.Conditions, c.lostCondition(u, b, d))
 	}
 	return l
+}
+
+// lostOffered is the LostPrerequisite of an option the character picked from the choice of a feat that is lost: the
+// option needs its feat, and the sheet does not apply the feat now ("pede o talento X, que Tor não aplica agora").
+func (c *content) lostOffered(key, feat string) *LostPrerequisite {
+	what := "a opção "
+	if strings.HasPrefix(feat, "feat:") {
+		what = "o talento "
+	}
+	return &LostPrerequisite{Key: key, EntryPT: c.namePT(key), Option: true, offeredBy: feat, Conditions: []LostCondition{
+		{AskPT: what + c.namePT(feat), LinkPT: "que", HasPT: "não aplica agora"},
+	}}
 }
 
 // lostIDPrefix marks, in an issue's identity, the key of a lost feat or option where another issue has its sentence.
@@ -227,6 +241,9 @@ func IdentitiesOf(stored []string, issues []Issue) []string {
 
 // retold is the lost prerequisite said over the sheet d: the same conditions, with what the character has there.
 func (c *content) retold(l *LostPrerequisite, b Build, d Derived) *LostPrerequisite {
+	if l.offeredBy != "" {
+		return c.lostOffered(l.Key, l.offeredBy)
+	}
 	return c.lost(l.Key, l.Option, l.unmet, b, d)
 }
 
