@@ -2,9 +2,11 @@ package characters
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 	"uuid"
 
@@ -95,6 +97,12 @@ func (s *Service) SummonCreatures(ctx context.Context, tx pgx.Tx, sm link.Summon
 	content, err := s.contentFor(ctx, tx, sm.CampaignID)
 	if err != nil {
 		return res, wrap("read rules content", err)
+	}
+	if sm.Source == creatureSourceSteed {
+		if bonded, err := s.reviveBondedSteed(ctx, q, content, sm); err != nil || bonded != nil {
+			res.Created = bonded
+			return res, err
+		}
 	}
 	if res.Replaced, err = s.replaceForSummon(ctx, q, content, sm); err != nil {
 		return res, err
@@ -228,7 +236,7 @@ func (s *Service) insertSummoned(ctx context.Context, q *charactersdb.Queries, c
 	at := s.now()
 	owner := &lazyOwner{s: s, q: q, content: content, campaignID: sm.CampaignID, characterID: sm.CharacterID}
 	for i, spec := range sm.Creatures {
-		stat, hp, err := owner.numbersOf(ctx, content, spec.MonsterKey, sm.Slot)
+		stat, hp, err := owner.numbersOf(ctx, content, spec.MonsterKey, sm.Slot, spec.MinInt, spec.CreatureType)
 		if err != nil {
 			return out, err
 		}
@@ -259,6 +267,9 @@ func summonedParams(sm link.Summon, spec link.CreatureSpec, name string, stat []
 	}
 	if sm.SummonKey != "" {
 		p.SummonKey = &sm.SummonKey
+	}
+	if sm.Source == creatureSourceSteed {
+		p.CreatureType, p.Bonded = spec.CreatureType, true
 	}
 	return p
 }
@@ -354,7 +365,7 @@ func (s *Service) DeleteCreatures(ctx context.Context, tx pgx.Tx, campaignID str
 
 // SyncCreatures implements play.CombatRoster: it keeps the creatures in step
 // with the combat that holds them. A creature whose combatant is defeated (0
-// hit points) is dismissed with the reason "defeated" and one that was
+// hit points) is dismissed with the reason "defeated" ("disappeared" for a steed) and one that was
 // dismissed as defeated and is up again (a heal, an undo) is back, each with
 // the hit points of its combatant. It returns who changed.
 func (s *Service) SyncCreatures(ctx context.Context, tx pgx.Tx, campaignID string, states []link.CreatureState, at time.Time) (link.CreatureChanges, error) {
@@ -406,12 +417,12 @@ func creaturesOfStates(ctx context.Context, q *charactersdb.Queries, campaignID 
 func syncCreature(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID string, v creatureView, st link.CreatureState, at time.Time, out *link.CreatureChanges) error {
 	switch {
 	case st.Defeated && v.live():
-		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: "defeated", At: at}); err != nil {
+		if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: fallenReason(v.Source), At: at}); err != nil {
 			return wrap("dismiss a defeated creature", err)
 		}
 		v.HpCurrent = 0
 		out.Dismissed = append(out.Dismissed, creatureOf(content, v))
-	case !st.Defeated && !v.live() && v.DismissedReason != nil && *v.DismissedReason == "defeated":
+	case !st.Defeated && !v.live() && v.DismissedReason != nil && *v.DismissedReason == fallenReason(v.Source):
 		return reviveCreature(ctx, q, content, campaignID, v, st, out)
 	}
 	return nil
@@ -421,7 +432,7 @@ func syncCreature(ctx context.Context, q *charactersdb.Queries, content *rules.C
 // points, clamped to 0 and to its maximum.
 func reviveCreature(ctx context.Context, q *charactersdb.Queries, content *rules.Content, campaignID string, v creatureView, st link.CreatureState, out *link.CreatureChanges) error {
 	hp := int32(min(max(st.HP, 0), int(v.HpMax))) //nolint:gosec // clamped to the creature's maximum
-	if _, err := q.ReviveCreatures(ctx, charactersdb.ReviveCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: "defeated"}); err != nil {
+	if _, err := q.ReviveCreatures(ctx, charactersdb.ReviveCreaturesParams{CampaignID: campaignID, Ids: []string{v.ID}, Reason: fallenReason(v.Source)}); err != nil {
 		return wrap("revive a creature", err)
 	}
 	if err := q.SetCharacterCreatureHitPoints(ctx, charactersdb.SetCharacterCreatureHitPointsParams{CampaignID: campaignID, ID: v.ID, HpCurrent: hp}); err != nil {
@@ -434,7 +445,7 @@ func reviveCreature(ctx context.Context, q *charactersdb.Queries, content *rules
 
 // WriteBackCreatures implements play.CombatRoster: a combat's end (or a
 // creature leaving it) writes each creature's hit points back. A creature at 0
-// is dismissed ("defeated") if it is not already.
+// is dismissed ("defeated", "disappeared" for a steed) if it is not already.
 func (s *Service) WriteBackCreatures(ctx context.Context, tx pgx.Tx, campaignID string, states []link.CreatureState, at time.Time) error {
 	if len(states) == 0 {
 		return nil
@@ -454,7 +465,7 @@ func (s *Service) WriteBackCreatures(ctx context.Context, tx pgx.Tx, campaignID 
 		}
 		hp := int32(min(max(st.HP, 0), int(row.CharacterCreature.HpMax))) //nolint:gosec // clamped to the creature's maximum
 		if st.Defeated {
-			if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{id}, Reason: "defeated", At: at}); err != nil {
+			if _, err := q.DismissCreatures(ctx, charactersdb.DismissCreaturesParams{CampaignID: campaignID, Ids: []string{id}, Reason: fallenReason(row.CharacterCreature.Source), At: at}); err != nil {
 				return wrap("dismiss a defeated creature", err)
 			}
 			continue
@@ -497,7 +508,7 @@ func (s *Service) summonCharacter(ctx context.Context, tx pgx.Tx, campaignID, ch
 // the spell does not allow comes back as one of rules.ErrSummonOption,
 // ErrSummonCount, ErrSummonCreature or ErrSummonCircle, a spell that does not
 // summon as rules.ErrNotSummonSpell, for play to turn into its own reasons.
-func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle, option int, keys []string) (link.SummonSpell, error) {
+func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, characterID, spellKey string, circle, option int, keys []string, creatureType string) (link.SummonSpell, error) {
 	b, err := s.summonCharacter(ctx, tx, campaignID, characterID)
 	if err != nil {
 		return link.SummonSpell{}, err
@@ -528,12 +539,15 @@ func (s *Service) CheckSummon(ctx context.Context, tx pgx.Tx, campaignID, charac
 	}
 	st := s.summonStanding(derived, spellKey, choices.Ritual)
 	out.Known, out.Prepared, out.CanRitual = st.known, st.prepared, st.canRitual
-	made, err := content.CheckSummon(spellKey, circle, b, rules.SummonPick{Option: option, Creatures: keys})
+	made, err := content.CheckSummon(spellKey, circle, b, rules.SummonPick{Option: option, Creatures: keys, CreatureType: creatureType})
 	if err != nil {
 		return out, err
 	}
 	for _, m := range made {
-		out.Creatures = append(out.Creatures, link.SummonedForm{MonsterKey: m.Key, Attack: m.Attack})
+		out.Creatures = append(out.Creatures, link.SummonedForm{MonsterKey: m.Key, Attack: m.Attack, CreatureType: m.CreatureType, Mount: m.Mount, MinInt: m.MinInt})
+	}
+	if err := s.checkBondedSteed(ctx, tx, campaignID, characterID, spellKey, out.Creatures); err != nil {
+		return out, err
 	}
 	if rule, table := content.SummonRule(spellKey); table {
 		out.Table, out.TurnMode, out.MaxLive, out.ReplacesSame = true, rule.TurnMode, rule.MaxLive, rule.ReplacesSame
@@ -576,7 +590,20 @@ func creatureDerivedFrom(content *rules.Content, key, attack string, statBlock [
 		d.Attacks = nil
 	}
 	d.Features = withCreatureType(content, key, d.Features)
+	if kind := storedTypeOf(key, statBlock); kind != "" { // a steed: the type the player picked is the one the combat reads
+		d.Features = append(slices.DeleteFunc(slices.Clone(d.Features), func(f rules.Feature) bool { return strings.HasPrefix(f.Key, creatureTypePrefix) }),
+			rules.Feature{Key: creatureTypePrefix + kind, Name: kind, Source: key})
+	}
 	return d, true
+}
+
+// storedTypeOf is the type the snapshot of a creature says it was given, "" for none.
+func storedTypeOf(key string, statBlock []byte) string {
+	var r rules.ResolvedCreature
+	if len(statBlock) == 0 || json.Unmarshal(statBlock, &r) != nil || r.Key != key {
+		return ""
+	}
+	return r.CreatureType
 }
 
 // CreatureSheet implements play.CombatRoster: what an attack needs from a
@@ -597,6 +624,7 @@ func (s *Service) CreatureSheet(ctx context.Context, tx pgx.Tx, campaignID, crea
 		return link.Sheet{}, false, nil
 	}
 	out := link.Sheet{ArmorClass: d.ArmorClass, AttacksPerAction: max(d.AttacksPerAction, 1), Senses: senseRanges(d.Senses), Traits: traitsOf(content, d)}
+	out.Traits.Intelligence = intelligenceOf(d)
 	for _, a := range d.Attacks {
 		name := a.NamePT
 		if name == "" {
@@ -775,4 +803,13 @@ func (s *Service) CreatureEyes(ctx context.Context, tx pgx.Tx, campaignID, monst
 		return maplink.Eyes{}, false, nil
 	}
 	return maplink.Eyes{Passive: d.PassivePerception, Senses: sensesOf(d.Senses)}, true, nil
+}
+
+// intelligenceOf is the Intelligence score of the creature, 0 when its page has none.
+func intelligenceOf(d rules.Derived) int {
+	i := slices.IndexFunc(d.Abilities, func(a rules.AbilityScore) bool { return a.Ability == rules.INT })
+	if i < 0 {
+		return 0
+	}
+	return d.Abilities[i].Score
 }

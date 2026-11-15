@@ -163,6 +163,9 @@ func (s *Service) summonSpellOptions(ctx context.Context, q *charactersdb.Querie
 	if out.Replaces, err = summonReplaces(ctx, q, content, campaignID, characterID, key, own.Concentration); err != nil {
 		return nil, err
 	}
+	if err := s.steedOptions(ctx, q, content, campaignID, characterID, own, out); err != nil {
+		return nil, err
+	}
 	return out, nil
 }
 
@@ -232,6 +235,12 @@ func summonCircleOptions(content *rules.Content, key string, circle int, b rules
 		opt := &charactersv1.SummonOption{Count: int32(o.Count), Type: o.Type, MaxCr: o.MaxCR, Attack: creatureAttackNumber[o.Attack]} //nolint:gosec // a few dozen at most
 		for _, f := range o.Forms {
 			opt.Forms = append(opt.Forms, &charactersv1.SummonForm{MonsterKey: f.Key, NamePt: content.NamePT(f.Key), Attack: creatureAttackNumber[f.Attack]})
+		}
+		opt.Mount = o.Mount != ""
+		for _, f := range o.Forms {
+			if f.TooSmall {
+				opt.TooSmallForYou = append(opt.TooSmallForYou, f.Key)
+			}
 		}
 		sc.Options = append(sc.Options, opt)
 	}

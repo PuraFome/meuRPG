@@ -240,6 +240,7 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Iniciativa | Initiative | A rolagem que define a ordem dos turnos. Cada combatente rola a própria, até NPCs iguais. O mestre decide um empate (RN-19). |
 | Levantar-se | Stand up | A ação de um combatente derrubado: custa metade do deslocamento do turno (RN-34). |
 | Montaria, montado | Mount, mounted | A criatura em que um cavaleiro se senta, e o estado desse cavaleiro. Montar e desmontar custam metade do deslocamento, uma montaria adestrada age logo depois do cavaleiro e o cavaleiro lançado da montaria cai derrubado (RN-21). |
+| Montaria vinculada | Bonded steed | A única montaria de Convocar Montaria. "Dispensar" a manda embora e mantém o vínculo, "Libertar" encerra o vínculo, e uma nova conjuração revive a mesma montaria (RN-21). |
 | Derrubado | Prone | A condição do SRD de estar deitado no chão. Não é "Caído". |
 | Ações lendárias | Legendary actions | O que uma criatura lendária faz no fim da vez de outra criatura, até o total de pontos (3 no SRD), cada opção com o seu custo; os pontos voltam no começo da vez dela. Só o mestre vê a oferta; os jogadores veem o que acontece (RN-20, RN-29). |
 | Ajudar | Help | Dá a um aliado vantagem no próximo teste ou ataque, até ser usada ou até o próximo turno de quem ajuda (RN-34). |
@@ -251,6 +252,11 @@ Onde um nível da magia puder ser confundido com o nível do personagem, o texto
 | Tempo de jogo | Game time | O tempo na ficção; uma rodada tem 6 segundos. Fora do combate, só anda quando o mestre o anda. |
 | Janela de reação | Reaction window | A pergunta "você pode reagir?" que segura a ação que a abriu até ser respondida. O jogador lê só a própria; na de um NPC, "Esperando o mestre". |
 | Reação | Reaction | Uma ação uma vez por rodada, que volta no começo da vez do combatente: Escudo Arcano, Esquiva Sobrenatural, Defletir Projéteis, Repreensão Infernal, Contramágica, Palavras de Interrupção, Queda Suave, Queda Lenta e o ataque de oportunidade. |
+| Preparar | Ready | A ação que segura outra (um ataque, uma magia, um movimento ou outra ação padrão) até acontecer um gatilho que o jogador escreve. Gasta a ação do turno; a ação segurada é feita depois, com a reação (RN-31). |
+| Ação preparada | Readied action | O que um combatente segura depois de Preparar. Só o dono e o mestre leem a ação segurada e o gatilho; os outros jogadores leem apenas que alguém preparou (RN-10). Uma magia segurada é a concentração do dono, e deixá-la passar ou perder a concentração perde a magia e o espaço. Ela se perde quando a próxima vez do dono começa antes. |
+| Gatilho | Trigger | A circunstância que o jogador escreve para uma ação preparada ("Quando o zumbi passar pela porta"), até 200 caracteres. O mestre decide quando acontece. |
+| Disparar | Fire | A palavra do mestre para "o gatilho aconteceu": abre a janela de reação de quem preparou, que usa a ação ou a deixa passar, e a tela do mestre a passa depois de 30 s. |
+| Desistir | Give up | O que o dono (ou o mestre) faz com uma ação preparada na vez do dono: ela é descartada, e a ação gasta ao preparar não volta. |
 | Recarga | Recharge | Um limite da ação de uma criatura: "Recarga 5–6" quer dizer que, depois de usada, fica gasta, e no começo de cada vez da criatura o servidor rola um d6; uma face dentro da faixa deixa a ação "Pronta" de novo. É do mestre ler (e do jogador que controla a criatura); uma ação com usos por dia ("3/dia") é contada e volta no descanso longo da mesa. |
 | Resistência Lendária | Legendary Resistance | Um uso por dia que transforma um teste de resistência falho em sucesso. O mestre escolhe, uma linha para cada criatura que falhou; os jogadores veem só o resultado. |
 | Registro do combate | Combat log | O que aconteceu, da última rodada para a primeira. O jogador recebe só o que vê; o mestre recebe tudo, com "Só o mestre vê" (RN-20). |
