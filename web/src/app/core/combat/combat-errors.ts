@@ -76,6 +76,8 @@ const CONTEST_BLOCKED_TEXT: Partial<Record<ContestBlockedReason, string>> = {
   [ContestBlockedReason.ALREADY_ANSWERED]: 'Você já rolou esse teste.',
   [ContestBlockedReason.COMBAT_BEGUN]: 'O combate já começou.',
   [ContestBlockedReason.NOT_HIDDEN]: 'Ninguém está escondido aqui. A tela foi atualizada.',
+  [ContestBlockedReason.NO_FREE_HAND]:
+    'Na forma de fera não há mão livre para agarrar. Empurrar continua valendo. Nada foi gasto.',
 };
 
 export function contestBlockedMessage(blocked: ContestBlocked): string {
