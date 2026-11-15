@@ -1,4 +1,5 @@
 import { create } from '@bufbuild/protobuf';
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Code, ConnectError } from '@connectrpc/connect';
 
@@ -20,6 +21,8 @@ import {
 import { ResourceClient } from '../../../core/resources/resources-client';
 import type { VitalsVm } from '../../../core/play/live-session.types';
 import { pensantusVitals } from '../../../core/play/live-testing';
+import type { DawnWaitingLine } from '../../../core/play/party-charges';
+import { PartyCharges } from '../../../core/play/party-charges-state';
 import { RestCard } from './rest-card';
 
 const flat = (n: Element | null | undefined) => n?.textContent?.replace(/\s+/g, ' ').trim();
@@ -34,8 +37,12 @@ describe('RestCard (PM-07b 9)', () => {
   const restPreviewFn = vi.fn();
   const takeRest = vi.fn();
   const restTaken = vi.fn();
+  const waiting = signal<readonly DawnWaitingLine[]>([]);
+  const loadCharges = vi.fn();
 
   beforeEach(() => {
+    waiting.set([]);
+    loadCharges.mockReset();
     restPreviewFn.mockReset();
     takeRest.mockReset();
     restTaken.mockReset();
@@ -43,7 +50,10 @@ describe('RestCard (PM-07b 9)', () => {
       create(CharacterVitalsSchema, { characterId: 'ragna', name: 'Ragna', revision: 4 }),
     ]);
     TestBed.configureTestingModule({
-      providers: [{ provide: ResourceClient, useValue: { restPreview: restPreviewFn, takeRest } }],
+      providers: [
+        { provide: ResourceClient, useValue: { restPreview: restPreviewFn, takeRest } },
+        { provide: PartyCharges, useValue: { waiting, load: loadCharges } },
+      ],
     });
   });
 
@@ -498,6 +508,131 @@ describe('RestCard (PM-07b 9)', () => {
       button('Descanso curto').click();
       await settle();
       expect(el.querySelector('.choice')).toBeNull();
+    });
+  });
+  describe('the dawn of the magic items (a long rest)', () => {
+    const waitingThree: readonly DawnWaitingLine[] = [
+      { characterName: 'Pensantus', text: 'Varinha de mísseis mágicos: 1d6 + 1, até 7 (tem 5)' },
+      { characterName: 'Pensantus', text: 'Varinha de segredos: 1d3, até 3 (tem 0)' },
+      { characterName: 'Tor', text: 'Anel de estrelas cadentes: 1d6, até 6 (tem 4)' },
+    ];
+    const check = (el: HTMLElement) =>
+      el.querySelector<HTMLInputElement>('.question__dawn input[type="checkbox"]');
+
+    async function openLong(items: readonly DawnWaitingLine[] = waitingThree) {
+      waiting.set(items);
+      restPreviewFn.mockResolvedValue(boardParty());
+      const r = render([pensantusVitals()]);
+      r.button('Descanso longo').click();
+      await r.settle();
+      return r;
+    }
+
+    it('asks "Amanhecer", on, and lists what the dawn gives each character', async () => {
+      const { el } = await openLong();
+      expect(check(el)!.checked).toBe(true);
+      expect(flat(el.querySelector('.question__dawn'))).toContain('Amanhecer');
+      expect(flat(el.querySelector('.question__dawn'))).toContain(
+        'Os itens do amanhecer recebem as cargas.',
+      );
+      expect(Array.from(el.querySelectorAll('.dawn__line > span'), flat)).toEqual([
+        'Pensantus · Varinha de mísseis mágicos: 1d6 + 1, até 7 (tem 5)',
+        'Pensantus · Varinha de segredos: 1d3, até 3 (tem 0)',
+        'Tor · Anel de estrelas cadentes: 1d6, até 6 (tem 4)',
+      ]);
+      expect(flat(el.querySelector('.dawn__rule'))).toBe(
+        'O app rola cada dado do amanhecer por você, também numa mesa de dados físicos.',
+      );
+    });
+
+    it('sends restore_dawn true, explicitly, when it stays on', async () => {
+      const { settle, button } = await openLong();
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][5]).toBe(true);
+    });
+
+    it('sends restore_dawn false when it is off, and says the charges stay as they are', async () => {
+      const { el, settle, button } = await openLong();
+      check(el)!.click();
+      await settle();
+      expect(flat(el.querySelector('.dawn__off > span'))).toBe(
+        'As cargas do amanhecer ficam como estão: 3 itens esperam.',
+      );
+      expect(el.querySelector('.dawn__line')).toBeNull();
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][5]).toBe(false);
+    });
+
+    it('says "1 item espera" for one item', async () => {
+      const { el, settle } = await openLong([waitingThree[0]!]);
+      check(el)!.click();
+      await settle();
+      expect(flat(el.querySelector('.dawn__off > span'))).toBe(
+        'As cargas do amanhecer ficam como estão: 1 item espera.',
+      );
+    });
+
+    it('explains the dawn inline from a 44px icon button that says whether it is open', async () => {
+      const { el, settle } = await openLong();
+      const info = el.querySelector<HTMLButtonElement>('.dawn__info')!;
+      expect(info.getAttribute('aria-label')).toBe('O que é o Amanhecer');
+      expect(info.getAttribute('aria-expanded')).toBe('false');
+      expect(el.querySelector('#rest-dawn-info')).toBeNull();
+      info.click();
+      await settle();
+      expect(info.getAttribute('aria-expanded')).toBe('true');
+      expect(info.getAttribute('aria-controls')).toBe('rest-dawn-info');
+      expect(flat(el.querySelector('#rest-dawn-info'))).toBe(
+        'Amanhecer: os itens que dizem “ao amanhecer” recebem as cargas de volta, com o dado que o item diz e até o máximo. Deixe ligado se o descanso atravessou a noite; desligue num descanso de dia. Sem descanso, use “Amanhecer” em Cargas e munição.',
+      );
+      info.click();
+      await settle();
+      expect(info.getAttribute('aria-expanded')).toBe('false');
+      expect(el.querySelector('#rest-dawn-info')).toBeNull();
+    });
+
+    it('starts every long rest question with the dawn on again', async () => {
+      const { el, settle, button } = await openLong();
+      check(el)!.click();
+      await settle();
+      button('Cancelar').click();
+      await settle();
+      button('Descanso longo').click();
+      await settle();
+      expect(check(el)!.checked).toBe(true);
+    });
+
+    it('does not ask it in a short rest, and sends false', async () => {
+      waiting.set(waitingThree);
+      restPreviewFn.mockResolvedValue(
+        restPreviewResponse([restPreview({ characterId: 'a', name: 'Ana' })]),
+      );
+      const { el, settle, button } = render();
+      button('Descanso curto').click();
+      await settle();
+      expect(el.querySelector('.question__dawn')).toBeNull();
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][5]).toBe(false);
+    });
+
+    it('draws no row when no item waits for a dawn, and leaves the dawn on for the server to judge', async () => {
+      const { el, settle, button } = await openLong([]);
+      expect(el.querySelector('.question__dawn')).toBeNull();
+      button('Descansar').click();
+      await settle();
+      expect(takeRest.mock.calls[0][5]).toBe(true);
+    });
+
+    it('reads the charges of the party again after a long rest that gave the dawn', async () => {
+      const { settle, button } = await openLong();
+      button('Descansar').click();
+      await settle();
+      expect(loadCharges).toHaveBeenCalledWith('camp', [
+        { characterId: 'pensantus', name: 'Pensantus' },
+      ]);
     });
   });
 });

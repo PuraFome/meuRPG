@@ -27,6 +27,8 @@ import {
 } from '../../../core/resources/rest-preview';
 import { ResourceClient } from '../../../core/resources/resources-client';
 import { restErrorMessage } from '../../../core/resources/resources-errors';
+import { PartyCharges } from '../../../core/play/party-charges-state';
+import { CheckBox } from '../../../shared/check-box/check-box';
 import { CountStepper } from '../../../shared/count-stepper/count-stepper';
 import { HiddenSwitch } from '../../../shared/hidden-switch/hidden-switch';
 import { toVitalsVm } from '../../../core/play/live-session-source.live';
@@ -49,7 +51,7 @@ type DiceCounts = Readonly<Record<string, Readonly<Record<number, number>>>>;
 @Component({
   selector: 'app-rest-card',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CountStepper, HiddenSwitch, MatButtonModule, MatIconModule],
+  imports: [CheckBox, CountStepper, HiddenSwitch, MatButtonModule, MatIconModule],
   templateUrl: './rest-card.html',
   styleUrl: './rest-card.scss',
 })
@@ -61,6 +63,7 @@ export class RestCard {
   readonly restTaken = output<readonly VitalsVm[]>();
 
   private readonly api = inject(ResourceClient);
+  private readonly charges = inject(PartyCharges);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly injector = inject(Injector);
 
@@ -80,6 +83,12 @@ export class RestCard {
   private readonly counts = signal<DiceCounts>({});
   /** A long rest the table had no food or drink for: no level of exhaustion comes off (SRD 5.1, Resting). */
   protected readonly withoutFood = signal(false);
+
+  /** The items a dawn would touch, which the long rest's "Amanhecer" row lists. */
+  protected readonly dawnItems = this.charges.waiting;
+  /** "Amanhecer": the long rest also gives the magic items their dawn. On every time the question opens. */
+  protected readonly dawnOn = signal(true);
+  protected readonly dawnInfo = signal(false);
 
   private readonly key = new ActionKey();
 
@@ -143,6 +152,8 @@ export class RestCard {
       this.preview.set(preview);
       this.counts.set({});
       this.withoutFood.set(false);
+      this.dawnOn.set(true);
+      this.dawnInfo.set(false);
       this.asking.set(kind);
       this.focusButton(kind);
     } catch (err) {
@@ -177,17 +188,27 @@ export class RestCard {
     }));
     // Only a long rest has the question; a short one never takes a level of exhaustion off.
     const withoutFood = kind === RestKind.LONG && this.withoutFood();
+    // The dawn is sent explicitly (the server's default is off): the row's answer when it is drawn, on for a long rest
+    // with no row (the server gives nothing to an item that is full) and off for a short one.
+    const restoreDawn = kind === RestKind.LONG && (this.dawnItems().length === 0 || this.dawnOn());
     this.saving.set(true);
     this.error.set('');
     try {
       const vitals = await this.api.takeRest(
         this.campaignId(),
         kind,
-        this.key.keyFor({ kind, hitDiceChoicesSent, withoutFood }),
+        this.key.keyFor({ kind, hitDiceChoicesSent, withoutFood, restoreDawn }),
         hitDiceChoicesSent,
         withoutFood,
+        restoreDawn,
       );
       this.key.renew();
+      if (restoreDawn) {
+        void this.charges.load(
+          this.campaignId(),
+          this.party().map((v) => ({ characterId: v.characterId, name: v.name })),
+        );
+      }
       this.restTaken.emit(vitals.map(toVitalsVm));
       this.close();
       this.done.set(restDoneText(kind));
@@ -204,6 +225,8 @@ export class RestCard {
     this.preview.set(null);
     this.counts.set({});
     this.withoutFood.set(false);
+    this.dawnOn.set(true);
+    this.dawnInfo.set(false);
     this.error.set('');
   }
 

@@ -24,6 +24,21 @@ function clientWith(calls: Record<string, unknown[]>): ChargesClient {
     }),
     dawn: record('dawn', { restored: [] }),
   };
+  (client as unknown as { characters: unknown }).characters = {
+    getCharacter: record('character', {
+      character: {
+        sheet: {
+          content: {
+            case: 'full',
+            value: {
+              magicItems: [{ id: 'e1', namePt: 'Varinha', chargesMax: 7 }],
+              ammunition: [{ key: 'equipment:arrow', quantity: 15 }],
+            },
+          },
+        },
+      },
+    }),
+  };
   (client as unknown as { campaigns: unknown }).campaigns = {
     getCampaign: record('campaign', {
       campaign: { diceMode: DiceMode.PHYSICAL, myDicePreference: DicePreference.PHYSICAL },
@@ -110,6 +125,21 @@ describe('ChargesClient', () => {
   it("gives the table's dawn to the items of the campaign", async () => {
     await clientWith(calls).dawn('camp', 'k1');
     expect(calls['dawn']).toEqual([{ campaignId: 'camp', idempotencyKey: 'k1' }]);
+  });
+
+  it("reads a character's magic items and counted ammunition, whoever owns the sheet", async () => {
+    const sheet = await clientWith(calls).sheetOf('camp', 'c1');
+    expect(calls['character']).toEqual([{ campaignId: 'camp', characterId: 'c1' }]);
+    expect(sheet.magicItems.map((m) => m.id)).toEqual(['e1']);
+    expect(sheet.ammunition.map((a) => a.quantity)).toEqual([15]);
+  });
+
+  it('reads no items and no ammunition from a character with no full sheet', async () => {
+    const client = clientWith(calls);
+    (client as unknown as { characters: unknown }).characters = {
+      getCharacter: () => Promise.resolve({ character: { sheet: { content: { case: 'basic' } } } }),
+    };
+    expect(await client.sheetOf('camp', 'c1')).toEqual({ magicItems: [], ammunition: [] });
   });
 
   it("reads the table's dice setting and the player's choice", async () => {

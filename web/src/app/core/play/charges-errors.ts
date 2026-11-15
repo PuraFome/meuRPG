@@ -56,9 +56,13 @@ export function chargesDidNotGetThrough(err: unknown): boolean {
 /**
  * What a refused or failed charges call says on the sheet, by the typed reason and never by the server's message: the
  * `ChargesBlocked` sentences, then the item's own refusals (not enough charges, none, destroyed) with the item named,
- * "Nada mudou" for a call that did not get through, and the character sentences for the rest.
+ * "Nada mudou" for a call that did not get through (`doing` says what the call was: "gastar a carga", "salvar", "amanhecer"), and the character sentences for the rest.
  */
-export function chargesErrorMessage(err: unknown, item: ChargesErrorItem): string {
+export function chargesErrorMessage(
+  err: unknown,
+  item: ChargesErrorItem,
+  doing = 'gastar a carga',
+): string {
   const blocked = chargesBlocked(err);
   if (blocked) {
     return chargesBlockedMessage(blocked);
@@ -76,7 +80,7 @@ export function chargesErrorMessage(err: unknown, item: ChargesErrorItem): strin
     }
   }
   if (chargesDidNotGetThrough(err)) {
-    return 'Não foi possível gastar a carga. Nada mudou. Tente de novo.';
+    return `Não foi possível ${doing}. Nada mudou. Tente de novo.`;
   }
   return describeCharacterError(err);
 }

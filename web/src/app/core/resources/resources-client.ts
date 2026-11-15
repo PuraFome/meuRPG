@@ -102,19 +102,21 @@ export class ResourceClient {
     return this.client.getRestPreview({ campaignId, kind });
   }
 
-  /** The master's rest. Answers the new vitals of every character it touched. */
+  /** The master's rest. `restoreDawn` also gives the magic items their dawn (a long rest; a short one ignores it); the web always sends it. Answers the new vitals of every character it touched. */
   async takeRest(
     campaignId: string,
     kind: RestKind,
     idempotencyKey: string,
     hitDiceChoices: readonly HitDiceChoiceSpec[] = [],
     withoutFoodOrDrink = false,
+    restoreDawn = false,
   ): Promise<CharacterVitals[]> {
     const res = await this.client.takeRest({
       campaignId,
       kind,
       idempotencyKey,
       withoutFoodOrDrink,
+      restoreDawn,
       hitDiceChoices: hitDiceChoices.map((c) => ({
         characterId: c.characterId,
         dice: c.dice.map((d) => ({ faces: d.faces, count: d.count })),

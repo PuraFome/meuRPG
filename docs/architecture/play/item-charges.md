@@ -124,3 +124,13 @@ Closing it leaves the row asking "Rolar".
 "Recuperar a metade" is off with nothing fired and after the recovery, and goes off during a combat when the server refuses with `COMBAT_RUNNING`.
 The free-text hint shows only while the ammunition list is empty and the items text names an arrow, bolt, sling bullet or needle; the text is never converted.
 The "Volta ..." line of an item row is not drawn: the sheet carries no recharge data.
+
+## The master's panel
+
+`PartyChargesPanel` (`pages/live-session/party-charges`) is "Cargas e munição" in the master's Grupo tab, above the rest card.
+`PartyCharges` (`core/play/party-charges-state.ts`) reads the sheet of each character of the party through `ChargesClient.sheetOf` and derives the rows and the list of what a dawn touches.
+"Corrigir" is `SetCharges` (with the "Destruída" switch) or `SetAmmunition`, and the sheets are read again after it.
+"Amanhecer" in the panel head is `ChargesService.Dawn`, and its answer lists what each item regained.
+The rest card asks "Amanhecer" in a long rest, on by default, and always sends `TakeRestRequest.restore_dawn` explicitly: the row's answer, true when no item waits, false for a short rest.
+`recharge-text.ts` words the recharge line ("volta 1d6 + 1") and spaces the dice with the minus sign.
+The panel reads the sheets when the party changes and after its own writes, so a charge a player spends shows after the next read.

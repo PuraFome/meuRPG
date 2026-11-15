@@ -72,6 +72,16 @@ describe('chargesErrorMessage', () => {
     );
   });
 
+  it('words a failure to save a correction or a dawn, not a spend, when the caller says what it was doing', () => {
+    const down = new ConnectError('x', Code.Unavailable);
+    expect(chargesErrorMessage(down, item, 'salvar')).toBe(
+      'Não foi possível salvar. Nada mudou. Tente de novo.',
+    );
+    expect(chargesErrorMessage(down, item, 'amanhecer')).toBe(
+      'Não foi possível amanhecer. Nada mudou. Tente de novo.',
+    );
+  });
+
   it('falls back to the character sentences for the other refusals', () => {
     expect(chargesErrorMessage(blocked(CharacterBlockedReason.CHARACTER_DEAD), item)).toContain(
       'morto',

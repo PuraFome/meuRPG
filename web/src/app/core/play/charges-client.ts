@@ -6,7 +6,12 @@ import {
   DiceMode,
   DicePreference,
 } from '../../../gen/meurpg/campaigns/v1/campaigns_pb';
-import type { ItemLoss, SheetAmmunition } from '../../../gen/meurpg/characters/v1/characters_pb';
+import {
+  CharacterService,
+  type ItemLoss,
+  type SheetAmmunition,
+  type SheetMagicItem,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
 import {
   ChargesService,
   type DawnResponse,
@@ -36,6 +41,7 @@ export interface TableDice {
 export class ChargesClient {
   private readonly client = createClient(ChargesService, inject(CONNECT_TRANSPORT));
   private readonly campaigns = createClient(CampaignService, inject(CONNECT_TRANSPORT));
+  private readonly characters = createClient(CharacterService, inject(CONNECT_TRANSPORT));
 
   /** Charges spent from one entry of the sheet's magic items: the owner (a locked sheet too) and the master. */
   spendCharges(
@@ -112,6 +118,18 @@ export class ChargesClient {
   /** The master's "Amanhecer": the items of every character of the campaign get their dawn. */
   dawn(campaignId: string, idempotencyKey: string): Promise<DawnResponse> {
     return this.client.dawn({ campaignId, idempotencyKey });
+  }
+
+  /** The magic items and the counted ammunition of a character's sheet, for the master's panel (the master reads every sheet). */
+  async sheetOf(
+    campaignId: string,
+    characterId: string,
+  ): Promise<{ magicItems: SheetMagicItem[]; ammunition: SheetAmmunition[] }> {
+    const res = await this.characters.getCharacter({ campaignId, characterId });
+    const content = res.character?.sheet?.content;
+    return content?.case === 'full'
+      ? { magicItems: content.value.magicItems, ammunition: content.value.ammunition }
+      : { magicItems: [], ammunition: [] };
   }
 
   /** The campaign's dice mode and the caller's choice, as `GetCampaign` says them. */

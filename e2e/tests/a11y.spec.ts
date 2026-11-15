@@ -9666,6 +9666,135 @@ for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
   });
 }
 
+/**
+ * The master's "Cargas e munição" in the Grupo tab (#563), through the real stack: the panel with an item at 0, a destroyed
+ * one, a ring that never recharges and a kind of ammunition, the "Corrigir" stepper ("eram N"), the "Destruída" switch, the
+ * ammunition's own stepper, then the long rest's "Amanhecer" row (on, off, and the explanation opened by the info button) and,
+ * last, the panel's "Amanhecer" with its result. The server's refusals and the empty list are in the unit specs of the panel.
+ */
+async function scanChargesMasterScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: width <= 390 ? 700 : 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = {
+      weaponKeys: ['equipment:longbow'],
+      armorKey: 'equipment:chain-mail',
+      magicItems: [
+        { key: 'item:ring-of-shooting-stars' },
+        { key: 'item:ring-of-evasion' },
+        { key: 'item:scarab-of-protection' },
+        { key: 'item:ring-of-three-wishes' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade cargas do grupo ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+
+    // The states of the board: the stars ring at 4, the evasion ring at 0, the scarab destroyed, 15 arrows counted.
+    const read = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(read.ok(), await read.text()).toBeTruthy();
+    const entries = ((await read.json()).character.sheet.full.magicItems ?? []) as { id: string; key: string }[];
+    const setCharges = async (key: string, chargesLeft: number, lost = 'ITEM_LOSS_UNSPECIFIED') => {
+      const res = await callRPC(m, 'meurpg.play.v1.ChargesService/SetCharges', {
+        campaignId,
+        characterId: table.characterId,
+        entryId: entries.find((e) => e.key === key)!.id,
+        chargesLeft,
+        lost,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    await setCharges('item:ring-of-shooting-stars', 4);
+    await setCharges('item:ring-of-evasion', 0);
+    await setCharges('item:scarab-of-protection', 0, 'ITEM_LOSS_GONE');
+    const ammo = await callRPC(m, 'meurpg.play.v1.ChargesService/SetAmmunition', {
+      campaignId,
+      characterId: table.characterId,
+      ammoKey: 'equipment:arrow',
+      quantity: 15,
+    });
+    expect(ammo.ok(), await ammo.text()).toBeTruthy();
+
+    await openSessionPage(m, campaignId, 'grupo');
+    const panel = m.getByRole('region', { name: 'Cargas e munição' });
+    await expect(panel.getByText('Anel de estrelas cadentes')).toBeVisible();
+    await expect(panel.getByText('4 de 6')).toBeVisible();
+    await expect(panel.getByText('Destruída')).toBeVisible();
+    await expect(panel.getByText('Flechas')).toBeVisible();
+    await expectScreenPasses(m, `Cargas e munição, o painel do mestre ${where}`);
+
+    // "Corrigir" on an item: the stepper says what it was; a step and "Salvar".
+    await panel.getByRole('button', { name: /^Corrigir Anel de estrelas cadentes/ }).click();
+    const editor = panel.getByRole('group', { name: 'Corrigir Anel de estrelas cadentes' });
+    await expect(editor).toContainText('eram 4');
+    await expectScreenPasses(m, `Cargas e munição, corrigir um item ${where}`);
+    await editor.getByRole('button', { name: /^Mais uma carga/ }).click();
+    await editor.getByRole('switch', { name: 'Destruída' }).click();
+    await expect(editor.getByRole('switch', { name: 'Destruída' })).toHaveAttribute('aria-checked', 'true');
+    await expectScreenPasses(m, `Cargas e munição, "Destruída" ligada ${where}`);
+    await editor.getByRole('switch', { name: 'Destruída' }).click();
+    await editor.getByRole('button', { name: 'Salvar' }).click();
+    await expect(editor).toBeHidden();
+    await expect(panel.getByText('5 de 6')).toBeVisible();
+    await expectScreenPasses(m, `Cargas e munição, depois de corrigir ${where}`);
+
+    // The ammunition has its own stepper, without the switch.
+    await panel.getByRole('button', { name: /^Corrigir Flechas/ }).click();
+    const ammoEditor = panel.getByRole('group', { name: 'Corrigir Flechas' });
+    await expect(ammoEditor).toContainText('eram 15');
+    await expect(ammoEditor.getByRole('switch')).toHaveCount(0);
+    await expectScreenPasses(m, `Cargas e munição, corrigir a munição ${where}`);
+    await ammoEditor.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(ammoEditor).toBeHidden();
+
+    // The long rest asks the dawn: on, off, and the explanation opened by the icon button.
+    const rest = m.getByRole('region', { name: 'Descanso' });
+    await rest.getByRole('button', { name: 'Descanso longo' }).click();
+    const question = rest.getByRole('alertdialog', { name: 'Começar o descanso longo?' });
+    const dawn = question.getByRole('checkbox', { name: 'Amanhecer' });
+    await expect(dawn).toBeChecked();
+    await expect(question.getByText('Anel de evasão: ', { exact: false })).toBeVisible();
+    await expectScreenPasses(m, `Descanso longo, com o Amanhecer ${where}`);
+    await dawn.click();
+    await expect(question.getByText('As cargas do amanhecer ficam como estão:', { exact: false })).toBeVisible();
+    await expectScreenPasses(m, `Descanso longo, Amanhecer desmarcado ${where}`);
+    const info = question.getByRole('button', { name: 'O que é o Amanhecer' });
+    await expect(info).toHaveAttribute('aria-expanded', 'false');
+    await info.click();
+    await expect(info).toHaveAttribute('aria-expanded', 'true');
+    await expect(question.getByText('os itens que dizem “ao amanhecer” recebem as cargas de volta', { exact: false })).toBeVisible();
+    await expectScreenPasses(m, `Descanso longo, a explicação do Amanhecer ${where}`);
+    await rest.getByRole('button', { name: 'Cancelar' }).click();
+    await expect(rest.getByRole('alertdialog')).toHaveCount(0);
+
+    // The panel's "Amanhecer": the table's dawn, with what each item got back.
+    await panel.getByRole('button', { name: 'Amanhecer' }).click();
+    await expect(panel.getByText('Amanhecer. 2 itens receberam cargas:')).toBeVisible();
+    await expectScreenPasses(m, `Cargas e munição, o Amanhecer feito ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`as cargas e a munição do grupo passam no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesMasterScreens(browser, colorScheme, width);
+  });
+}
+
 test('a sintonização passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanAttunementScreens(browser, 'light', 1280);
