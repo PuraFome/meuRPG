@@ -411,15 +411,40 @@ func (s *Service) CancelFavorPass(ctx context.Context, req *connect.Request[play
 	return connect.NewResponse(&playv1.CancelFavorPassResponse{Pass: view}), nil
 }
 
+// ownsGiver says the caller is, now, the owner of the giver of the ask: the ask follows the character, so a character that changed hands
+// while it waited is canceled by its new owner (the one who reads it, favor_read.go) and not by the one who asked. A giver sent to the
+// reserve has no owner.
+func (s *Service) ownsGiver(ctx context.Context, m authz.Membership, pass playdb.FavorPass) (bool, error) {
+	found, err := s.roster.SessionCharacters(ctx, nil, m.CampaignID, []string{pass.FromCharacterID})
+	if err != nil {
+		return false, err
+	}
+	for _, ch := range found {
+		if ch.ID == pass.FromCharacterID && ch.Player && !ch.Reserved && ch.PlayerUserID == m.UserID {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // closePass finds the pass the call is about and runs the transaction of the answer on the session it was asked in. A pass that is not
 // the caller's to close (a cancel by anyone but the asker, the master included): it is never told apart from one that does not exist.
 func (s *Service) closePass(ctx context.Context, c favorPassCall, run func(context.Context, pgx.Tx, *hints, favorPassCall) (playdb.FavorPass, error)) (playdb.FavorPass, error) {
 	pass, err := s.queries.GetFavorPass(ctx, playdb.GetFavorPassParams{ID: c.passID, CampaignID: c.m.CampaignID})
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && c.owner && pass.AskedByUserID != c.m.UserID) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return playdb.FavorPass{}, errFavorPassNotFound()
 	}
 	if err != nil {
 		return playdb.FavorPass{}, s.dbError(ctx, "find the ask", err)
+	}
+	if c.owner {
+		owns, err := s.ownsGiver(ctx, c.m, pass)
+		if err != nil {
+			return playdb.FavorPass{}, s.dbError(ctx, "find the ask's giver", err)
+		}
+		if !owns {
+			return playdb.FavorPass{}, errFavorPassNotFound()
+		}
 	}
 	c.sessionID = pass.GameSessionID
 	var out playdb.FavorPass
