@@ -137,7 +137,7 @@
                       @if (c.max <= 20) {
                         <app-count-pips [left]="c.left" [total]="c.max" />
                       }
-                      <strong>{{ c.left }} de {{ c.max }}</strong> {{ c.max === 1 ? 'carga' : 'cargas' }}
+                      <span class="magic-row__amount"><strong>{{ c.left }} de {{ c.max }}</strong> {{ c.max === 1 ? 'carga' : 'cargas' }}</span>
                     </span>
                   }
                   @if (lineOf(e); as line) {

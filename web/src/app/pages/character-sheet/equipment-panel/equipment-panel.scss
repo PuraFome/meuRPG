@@ -153,6 +153,11 @@
   cursor: pointer;
 }
 
+.magic-row__amount {
+  // The count and its word move as one: when the line is too narrow the whole "5 de 6 cargas" goes under the pips.
+  white-space: nowrap;
+}
+
 .magic-row__line {
   grid-column: 2 / -1;
   display: flex;

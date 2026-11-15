@@ -413,6 +413,7 @@ describe('EquipmentPanel, the item rows with charges', () => {
     const r = row(el);
     expect(flat(r.querySelector('.magic-row__name'))).toBe('Varinha de mísseis mágicos');
     expect(flat(r.querySelector('.magic-row__count'))).toBe('5 de 7 cargas');
+    expect(flat(r.querySelector('.magic-row__amount'))).toBe('5 de 7 cargas');
     expect(r.querySelectorAll('app-count-pips .pip')).toHaveLength(7);
     expect(r.querySelectorAll('app-count-pips .pip--left')).toHaveLength(5);
     const use = r.querySelector<HTMLButtonElement>('.magic-row__use')!;

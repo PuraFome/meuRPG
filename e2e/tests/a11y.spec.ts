@@ -9576,6 +9576,27 @@ async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark
     const gear = p.getByRole('region', { name: 'Equipamento' });
     const rowOf = (name: RegExp) => gear.locator('.magic-row').filter({ hasText: name });
     await expect(rowOf(/Anel de estrelas cadentes/).getByText('5 de 6 cargas')).toBeVisible();
+    if (width === 390) {
+      // The count and its word are one unit: on a phone the six pips take the line, and "5 de 6 cargas" moves under them whole.
+      const lineTops = await rowOf(/Anel de estrelas cadentes/)
+        .getByText('5 de 6 cargas')
+        .evaluate((el) => {
+          const tops = new Set<number>();
+          const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (!node.textContent?.trim()) {
+              continue;
+            }
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            for (const rect of Array.from(range.getClientRects())) {
+              tops.add(Math.round(rect.top));
+            }
+          }
+          return tops.size;
+        });
+      expect(lineTops, 'the charge count and "cargas" share one line').toBe(1);
+    }
     await expect(rowOf(/Anel de estrelas cadentes/).getByText('Volta 1d6 ao amanhecer')).toBeVisible();
     await expect(gear.getByText('Travada: usar cargas continua valendo, o resto, só o mestre muda.')).toBeVisible();
     await expect(rowOf(/Anel de evasão/).getByRole('button', { name: /^Usar / })).toHaveAttribute('aria-disabled', 'true');
