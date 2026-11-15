@@ -15120,16 +15120,24 @@ async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | '
     await move.getByRole('button', { name: 'Deixar passar' }).click();
     await expect(move).toHaveCount(0);
 
-    // A readied spell is released from the prompt ("Soltar"), with the creature named at Ready chosen.
+    // A readied spell of darts is released from the prompt (#857): the darts are shared out as on the cast screen, and "Soltar agora" waits for all three.
     const round4 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
     await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, round4, 'Pensantus', 'spell:magic-missile', 1, 'Capitão Goblin'));
     await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
     await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
     const spell = p.getByRole('alertdialog', { name: 'Soltar Mísseis Mágicos' });
     await expect(spell).toBeVisible();
-    await expect(spell.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
-    await expectScreenPasses(p, `Preparar, o aviso do gatilho com uma magia ${where}`);
-    await shoot(p, 'janela-magia');
+    await expect(spell.getByText('Divida os 3 dardos entre os alvos')).toBeVisible();
+    await expect(spell.getByRole('button', { name: 'Soltar agora' })).toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Preparar, os dardos da magia ainda por repartir ${where}`);
+    await shootReady(p, 'janela-dardos', width, colorScheme, '857');
+    await spell.getByRole('button', { name: 'Pôr um dardo em Capitão Goblin' }).click();
+    await spell.getByRole('button', { name: 'Pôr um dardo em Capitão Goblin' }).click();
+    await spell.getByRole('button', { name: 'Pôr um dardo em Goblin 1' }).click();
+    await expect(spell.getByText('3 de 3 dardos distribuídos.')).toBeVisible();
+    await expect(spell.getByRole('button', { name: 'Soltar agora' })).not.toHaveAttribute('aria-disabled', 'true');
+    await expectScreenPasses(p, `Preparar, os dardos da magia repartidos ${where}`);
+    await shootReady(p, 'janela-dardos-repartidos', width, colorScheme, '857');
     await spell.getByRole('button', { name: 'Deixar passar' }).click();
     await expect(spell).toHaveCount(0);
 

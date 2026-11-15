@@ -200,33 +200,67 @@ test('um ataque de magia preparado é solto pelo jogador, na criatura que ele es
   }
 });
 
-test('uma magia de dardos preparada é recusada na soltura, e deixá-la passar não gera o aviso de perda', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
-  test.setTimeout(240_000);
+/** The table where Pensantus readied Mísseis Mágicos at the 1st level and the master fired it: the readier's prompt is open. */
+async function missilesTable(browser: Browser, name: string) {
   const master = await newSignedInContext(browser, 'Mestre Teste', { viewport: { width: 1280, height: 900 } });
   const player = await newSignedInContext(browser, 'Jogador Teste', { viewport: { width: 1280, height: 900 } });
   const m = await master.newPage();
   const p = await player.newPage();
   await m.goto('/');
   await p.goto('/');
-  const table = await tableForCombat(m, p, `Preparar magia passa ${Date.now()}`, true, true, { sheet: pensantusCasting });
+  const table = await tableForCombat(m, p, `${name} ${Date.now()}`, true, true, { sheet: pensantusCasting });
   const campaignId = table.campaignId;
+  const begun = await beginAttackCombatRPC(m, table, faces, squares);
+  await openSessionPage(p, campaignId);
+  await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+  await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, begun, 'Pensantus', 'spell:magic-missile', 1, 'Capitão Goblin'));
+  await openSessionPage(m, campaignId);
+  await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+  await fire(m);
+  return { master, player, m, p, campaignId };
+}
+
+test('uma magia de dardos preparada é solta com os dardos repartidos pelo jogador', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { master, player, m, p, campaignId } = await missilesTable(browser, 'Preparar dardos solta');
   try {
-    const begun = await beginAttackCombatRPC(m, table, faces, squares);
-    await openSessionPage(p, campaignId);
-    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
-    await waitForEncounterRevision(p, await readySpellRPC(p, campaignId, begun, 'Pensantus', 'spell:magic-missile', 1, 'Capitão Goblin'));
-    await openSessionPage(m, campaignId);
-    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
-    await fire(m);
     const prompt = p.getByRole('alertdialog', { name: 'Soltar Mísseis Mágicos' });
-    // Magic Missile shares darts among its targets, which AnswerReaction does not carry: the server refuses the release (and nothing is
-    // spent), the prompt says what it needs and the readier can still let it pass.
-    await prompt.getByRole('button', { name: 'Soltar no Capitão Goblin' }).click();
-    await expect(prompt.getByRole('alert')).toContainText('Não deu para soltar a magia por aqui: ela pede dardos ou um ponto no mapa');
-    expect((await getEncounterRPC(p, campaignId)).combatants.find((c) => c.label === 'Pensantus')?.reactionUsed ?? false).toBe(false);
+    await expect(prompt).toBeVisible();
+    // The darts are shared out as the cast screen shares them: the release waits until all three are placed.
+    await expect(prompt.getByText('Divida os 3 dardos entre os alvos')).toBeVisible();
+    await expect(prompt.getByText('Distribua todos os dardos: 0 de 3.')).toBeVisible();
+    const release = prompt.getByRole('button', { name: 'Soltar agora' });
+    await expect(release).toHaveAttribute('aria-disabled', 'true');
+    await prompt.getByRole('button', { name: 'Pôr um dardo em Capitão Goblin' }).click();
+    await prompt.getByRole('button', { name: 'Pôr um dardo em Capitão Goblin' }).click();
+    await prompt.getByRole('button', { name: 'Pôr um dardo em Goblin 1' }).click();
+    await expect(prompt.getByText('3 de 3 dardos distribuídos.')).toBeVisible();
+    await expect(release).not.toHaveAttribute('aria-disabled', 'true');
+    await release.click();
+    await expect(prompt).toHaveCount(0);
+    const after = await getEncounterRPC(p, campaignId);
+    expect(after.reactionWindows ?? []).toHaveLength(0);
+    expect(after.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed).toBe(true);
+    await waitForEncounterRevision(p, after);
+    const log = await openCombatLog(p);
+    await expect(log).toContainText('Mísseis Mágicos');
+  } finally {
+    await endSessionOf(m, campaignId);
+    await master.close();
+    await player.close();
+  }
+});
+
+test('deixar passar uma magia de dardos preparada não gera o aviso de perda', { tag: ['@RN-31', '@RN-22'] }, async ({ browser }) => {
+  test.setTimeout(240_000);
+  const { master, player, m, p, campaignId } = await missilesTable(browser, 'Preparar dardos passa');
+  try {
+    const prompt = p.getByRole('alertdialog', { name: 'Soltar Mísseis Mágicos' });
+    await expect(prompt).toBeVisible();
     await prompt.getByRole('button', { name: 'Deixar passar' }).click();
     await expect(prompt).toHaveCount(0);
     const after = await getEncounterRPC(p, campaignId);
+    expect(after.combatants.find((c) => c.label === 'Pensantus')?.reactionUsed ?? false).toBe(false);
     await waitForEncounterRevision(p, after);
     const log = await openCombatLog(p);
     await expect(log).toContainText('se perdeu');

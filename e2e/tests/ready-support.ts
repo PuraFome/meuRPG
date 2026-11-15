@@ -61,13 +61,13 @@ export async function openReadySheet(page: Page): Promise<Locator> {
 const shotsDir = process.env.E2E_SHOTS_DIR;
 
 /** Saves the viewport as `582-<screen>-<width>-<claro|escuro>.png` when `E2E_SHOTS_DIR` is set; a normal run writes nothing. */
-export async function shootReady(page: Page, screen: string, width: number, scheme: 'light' | 'dark'): Promise<void> {
+export async function shootReady(page: Page, screen: string, width: number, scheme: 'light' | 'dark', issue = '582'): Promise<void> {
   if (!shotsDir) {
     return;
   }
   mkdirSync(shotsDir, { recursive: true });
   await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: join(shotsDir, `582-${screen}-${width}-${scheme === 'light' ? 'claro' : 'escuro'}.png`) });
+  await page.screenshot({ path: join(shotsDir, `${issue}-${screen}-${width}-${scheme === 'light' ? 'claro' : 'escuro'}.png`) });
 }
 
 /** The player's own call of `ReadyAction`: the held attack, with the trigger of the boards (the spec has no need to drive the sheet again). */
