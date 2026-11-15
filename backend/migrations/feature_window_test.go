@@ -7,10 +7,10 @@ import (
 	"testing"
 )
 
-// featureWindowMigration is the version of the migration that widens reaction_windows.kind with 'feature' (00340).
-const featureWindowMigration = 340
+// featureWindowMigration is the version of the migration that widens reaction_windows.kind with 'feature' (00346).
+const featureWindowMigration = 346
 
-// TestFeatureWindowMigrationRunsTwice: 00340 runs again over itself and after its own Down, and leaves the same schema each
+// TestFeatureWindowMigrationRunsTwice: 00346 runs again over itself and after its own Down, and leaves the same schema each
 // time: the reaction window kinds of 00334 and the new 'feature', and no kind lost.
 func TestFeatureWindowMigrationRunsTwice(t *testing.T) {
 	t.Parallel()
@@ -36,13 +36,13 @@ func TestFeatureWindowMigrationRunsTwice(t *testing.T) {
 		}
 	}
 
-	// 00340 and every later migration run again: goose runs none lower than the database version.
-	exec(t, db, "DELETE FROM goose_db_version WHERE version_id >= 340")
+	// 00346 and every later migration run again: goose runs none lower than the database version.
+	exec(t, db, "DELETE FROM goose_db_version WHERE version_id >= 346")
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("second Up() error = %v", err)
 	}
 	if after := schema(t, db); after != before {
-		t.Errorf("schema changed when 00340 ran again.\nbefore:\n%s\nafter:\n%s", before, after)
+		t.Errorf("schema changed when 00346 ran again.\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 
 	if _, err := provider.DownTo(ctx, featureWindowMigration-1); err != nil {
@@ -50,16 +50,16 @@ func TestFeatureWindowMigrationRunsTwice(t *testing.T) {
 	}
 	down := windowKindCheck(t, db)
 	if strings.Contains(down, "'feature'") {
-		t.Errorf("the Down of 00340 left the kind 'feature' behind: %s", down)
+		t.Errorf("the Down of 00346 left the kind 'feature' behind: %s", down)
 	}
 	if !strings.Contains(down, "'readied'") {
-		t.Errorf("the Down of 00340 dropped the kind 'readied' of 00334: %s", down)
+		t.Errorf("the Down of 00346 dropped the kind 'readied' of 00334: %s", down)
 	}
 	if _, err := provider.Up(ctx); err != nil {
 		t.Fatalf("Up() after the Down error = %v", err)
 	}
 	if after := schema(t, db); after != before {
-		t.Errorf("schema changed after the Down and Up of 00340.\nbefore:\n%s\nafter:\n%s", before, after)
+		t.Errorf("schema changed after the Down and Up of 00346.\nbefore:\n%s\nafter:\n%s", before, after)
 	}
 }
 
@@ -74,7 +74,7 @@ func windowKindCheck(t *testing.T, db *sql.DB) string {
 }
 
 // TestFeatureWindowMigrationKeepsTheMountWindows: a database at 00339, which adds the kinds 'mount_save' and 'dismount',
-// with a window of each keeps both through the Up and the Down of 00340: the Up lists them, and the Down puts back the list of
+// with a window of each keeps both through the Up and the Down of 00346: the Up lists them, and the Down puts back the list of
 // 00339 (without 'feature'), so no kind is dropped and no stored window breaks the CHECK.
 func TestFeatureWindowMigrationKeepsTheMountWindows(t *testing.T) {
 	t.Parallel()
@@ -117,21 +117,21 @@ func TestFeatureWindowMigrationKeepsTheMountWindows(t *testing.T) {
 	}
 
 	if _, err := provider.UpTo(ctx, featureWindowMigration); err != nil {
-		t.Fatalf("Up of 00340 over the mount windows error = %v", err)
+		t.Fatalf("Up of 00346 over the mount windows error = %v", err)
 	}
-	count("after the Up of 00340")
+	count("after the Up of 00346")
 	up := windowKindCheck(t, db)
 	for _, kind := range []string{"mount_save", "dismount", "feature", "readied"} {
 		if !strings.Contains(up, "'"+kind+"'") {
-			t.Errorf("the kinds after the Up of 00340 (%s) have no %s", up, kind)
+			t.Errorf("the kinds after the Up of 00346 (%s) have no %s", up, kind)
 		}
 	}
 	if _, err := provider.DownTo(ctx, featureWindowMigration-1); err != nil {
-		t.Fatalf("Down of 00340 over the mount windows error = %v", err)
+		t.Fatalf("Down of 00346 over the mount windows error = %v", err)
 	}
-	count("after the Down of 00340")
+	count("after the Down of 00346")
 	down := windowKindCheck(t, db)
 	if strings.Contains(down, "'feature'") || !strings.Contains(down, "'mount_save'") || !strings.Contains(down, "'dismount'") {
-		t.Errorf("the kinds after the Down of 00340 (%s) must be the list of 00339: mount_save and dismount, no feature", down)
+		t.Errorf("the kinds after the Down of 00346 (%s) must be the list of 00339: mount_save and dismount, no feature", down)
 	}
 }
