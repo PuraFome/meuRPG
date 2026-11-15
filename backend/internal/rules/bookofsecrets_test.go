@@ -365,10 +365,10 @@ func TestThePactOfTheTomeTakenWithoutItsCantripsIsAskedAtTheNextLevel(t *testing
 	wantRefusal(t, CheckLevelUp(after, mustApply(t, c, after, none), c), LevelUpReasonLateChoice, "full.feature_choice_keys")
 }
 
-// TestTheOwnerOfABookRitualIsToldWhenTheTableRitualChanges: the ritual the warlock holds in the book is a key
+// TestAChangedTableRitualOfTheBookIsNamedByChangedSince: the ritual the warlock holds in the book is a key
 // of the sheet at the pick, so ChangedSince names it after the master changed it, and still does after the
 // master switched it off.
-func TestTheOwnerOfABookRitualIsToldWhenTheTableRitualChanges(t *testing.T) {
+func TestAChangedTableRitualOfTheBookIsNamedByChangedSince(t *testing.T) {
 	t.Parallel()
 	sp := tableTestSpells()[0]
 	sp.Ritual = true

@@ -266,7 +266,7 @@ func (s *spellSheet) collectGranted() {
 // The bonus cantrips take the place of the extra cantrips a sheet that predates
 // the picks keeps in its cantrip list.
 func (s *spellSheet) collectPicks() {
-	for _, k := range s.x.b.FeatureChoices {
+	for i, k := range s.x.b.FeatureChoices {
 		choiceKey, spell, ok := SplitScopedChoice(k)
 		if !ok || !strings.HasPrefix(spell, "spell:") || !s.x.grantsSpells(choiceKey) {
 			continue
@@ -275,7 +275,7 @@ func (s *spellSheet) collectPicks() {
 			continue // a pick never names the spell of a feature's summon
 		}
 		if choiceKey == bookRitualsKey {
-			s.pickBookSpell(spell)
+			s.pickBookSpell(spell, fmt.Sprintf("full.feature_choice_keys[%d]", i))
 			continue
 		}
 		s.granted[spell] = true
@@ -292,9 +292,15 @@ func (s *spellSheet) collectPicks() {
 
 // pickBookSpell keeps a pick of the Book of Ancient Secrets: a 1st-level spell with the ritual tag.
 // The spell is not marked granted, so a warlock that knows it another way counts it as usual.
-func (s *spellSheet) pickBookSpell(key string) {
-	if sp := s.c.spells[key]; sp != nil && sp.Level == 1 && sp.Ritual {
+// A pick that is no longer such a spell stays out of the book and is an issue at its field.
+func (s *spellSheet) pickBookSpell(key, field string) {
+	sp := s.c.spells[key]
+	switch {
+	case sp == nil:
+	case sp.Level == 1 && sp.Ritual:
 		s.bookSpells = append(s.bookSpells, key)
+	default:
+		s.x.issue(IssueSpellLevel, field, "%s não é um ritual de 1º nível: o Livro dos Segredos Antigos guarda só esses.", s.c.namePT(key))
 	}
 }
 
