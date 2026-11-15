@@ -3,6 +3,8 @@ package play
 import (
 	"testing"
 
+	"connectrpc.com/connect"
+
 	playv1 "github.com/PuraFome/meuRPG/backend/gen/meurpg/play/v1"
 )
 
@@ -132,7 +134,8 @@ func TestAReadiedMoveIsOneUseEvenWhenItStopsShortOfTheBudget(t *testing.T) {
 	a := newArmed(t)
 	e := a.readyMoveFrom(t, 1, 5)
 	a.mustFire(t, e, "Toren")
-	movedBefore := countKind(logKindsOf(a.log(t, a.master, e)), playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED) // the master's put of Toren on the lane is one
+	// The master's put of Toren on the lane, on his turn, is one moved line already.
+	movedBefore := countKind(logKindsOf(a.log(t, a.master, e)), playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED)
 	if _, err := a.frozenMove(t, a.caio, "Toren", 3, 5); err != nil { // 10 ft of 30
 		t.Fatalf("the readied move: %v", err)
 	}
@@ -179,4 +182,97 @@ func countKind(kinds []playv1.CombatLogKind, kind playv1.CombatLogKind) int {
 		}
 	}
 	return n
+}
+
+// A window the player lets pass, or the master passes while the player is still on the map, is the end of the readied move:
+// the row is ignored, the reaction stays free, no readied_lost line is written (only a spell lets go of its slot), and
+// the player's move that comes after is an ordinary one off turn.
+func TestAPassedReadiedMoveWindowLeavesNoMoveToMake(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name string
+		by   func(a *armed) *user
+	}{
+		{"the readier's player", func(a *armed) *user { return a.caio }},
+		{"the master", func(a *armed) *user { return a.master }},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			a := newArmed(t)
+			e := a.readyMove(t)
+			w := a.mustFire(t, e, "Toren")
+			if err := a.markRolling(t, a.caio, e, w.GetId()); err != nil { // the player is on the map
+				t.Fatalf("MarkReactionRolling: %v", err)
+			}
+			res := a.mustAnswer(t, c.by(a), e, w.GetId(), passAnswer)
+			if r := res.GetResult(); r.GetKind() != kindReadied || r.GetUsed() {
+				t.Errorf("the pass's result = %v", r)
+			}
+			toren := byLabel(t, a.get(t, a.caio), "Toren")
+			if toren.GetReactionUsed() || toren.GetReadied() != nil || a.readiedStatus(t, "Toren") != readiedIgnored || a.readiedOpen(t, "Toren") {
+				t.Errorf("after the pass: reaction used %v, readied %v, row %q, window open %v", toren.GetReactionUsed(), toren.GetReadied(), a.readiedStatus(t, "Toren"), a.readiedOpen(t, "Toren"))
+			}
+			if lines := a.firedLines(t, a.caio, e); len(lines) != 1 || lines[0].GetReadiedFired().GetStatus() != playv1.ReadiedStatus_READIED_STATUS_IGNORED {
+				t.Errorf("the pass's lines = %v", lines)
+			}
+			if lost := a.readiedLines(t, a.master, e, playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST); len(lost) != 0 {
+				t.Errorf("a readied_lost line after the pass of a move: %v", lost)
+			}
+			before := a.events(t)
+			_, err := a.frozenMove(t, a.caio, "Toren", 3, 5)
+			wantBlockedBy(t, "Toren's move after the window passed", err, blockedNotYourTurn)
+			if n := a.events(t); n != before || a.squareOf(t, "Toren") != [2]int32{3, 3} {
+				t.Errorf("after the refused move: events %d (want %d), at %v", n, before, a.squareOf(t, "Toren"))
+			}
+			a.mustUndo(t, e) // the master's undo of the pass: the move may be made again
+			a.untouched(t, e, "the undo of the pass")
+			if _, err := a.frozenMove(t, a.caio, "Toren", 3, 5); err != nil {
+				t.Errorf("the readied move after the undo of the pass: %v", err)
+			}
+		})
+	}
+}
+
+// The reactor's mark of being on the map touches nothing of the move: with the mark on, taken off or put on again the window
+// stays open and the row waits; the move works under the mark and closes the window with it.
+func TestTheRollingMarkLeavesAReadiedMoveAsItWas(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.readyMove(t)
+	w := a.mustFire(t, e, "Toren")
+	rolling := func() bool { return a.windowOf(t, a.master, kindReadied).GetRolling() }
+	if err := a.markRolling(t, a.caio, e, w.GetId()); err != nil || !rolling() {
+		t.Fatalf("marking the window: error = %v, rolling %v", err, rolling())
+	}
+	a.untouched(t, e, "the mark")
+	if err := a.clearRolling(t, a.caio, e, w.GetId()); err != nil || rolling() {
+		t.Fatalf("clearing the mark: error = %v, rolling %v", err, rolling())
+	}
+	a.untouched(t, e, "the mark taken off")
+	if err := a.markRolling(t, a.caio, e, w.GetId()); err != nil || !rolling() {
+		t.Fatalf("marking again: error = %v, rolling %v", err, rolling())
+	}
+	if _, err := a.frozenMove(t, a.caio, "Toren", 3, 5); err != nil {
+		t.Fatalf("the readied move under the mark: %v", err)
+	}
+	if a.readiedStatus(t, "Toren") != readiedFired || a.readiedOpen(t, "Toren") || !byLabel(t, a.get(t, a.master), "Toren").GetReactionUsed() {
+		t.Errorf("after the move under the mark: row %q, window open %v", a.readiedStatus(t, "Toren"), a.readiedOpen(t, "Toren"))
+	}
+	wantCode(t, "taking the mark off an answered window", a.clearRolling(t, a.caio, e, w.GetId()), connect.CodeFailedPrecondition)
+}
+
+// A move to the square the readier stands on travels nothing: the player's is refused as any walk to the same square is, and
+// the window stays open with the reaction free.
+func TestAReadiedMoveToTheSameSquareIsRefusedAndKeepsTheWindow(t *testing.T) {
+	t.Parallel()
+	a := newArmed(t)
+	e := a.readyMove(t)
+	a.mustFire(t, e, "Toren")
+	before := a.events(t)
+	_, err := a.frozenMove(t, a.caio, "Toren", 3, 3)
+	wantRefusal(t, "a readied move to the same square", err, connect.CodeInvalidArgument, "a move needs another square")
+	if n := a.events(t); n != before {
+		t.Errorf("events after the refusal = %d, want %d", n, before)
+	}
+	a.untouched(t, e, "the refusal")
 }
