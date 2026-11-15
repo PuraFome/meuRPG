@@ -107,3 +107,20 @@ The leak test is `internal/leaktest/itemuse_test.go`.
 
 `ChargesBlocked` (`charges.proto`) carries `REGAIN_FACE_NEEDED` (with the die's size in `needed`), `COMBAT_RUNNING` and `ALREADY_RECOVERED`.
 The web reads it in `core/play/charges-errors.ts`.
+
+## The character sheet
+
+`ChargesClient` (`core/play/charges-client.ts`) wraps the six calls and reads the table's dice (`GetCampaign`).
+`charges-errors.ts` words each refusal in Portuguese, by the typed reason: the item's own refusals name the item, and a call that did not get through says nothing changed.
+`core/characters/charges.ts` holds the pure parts: an item's state, its words, the four SRD kinds of ammunition, the recovery and the free-text hint.
+`SheetCharges` (`pages/character-sheet/charges/sheet-charges.ts`) is built by `createSheetMagicItems` and reads the sheet again after each write.
+`EquipmentPanel` draws the item rows with charges, the "Munição" section and the live regions of their results.
+A row with `charges_max` 0 is drawn as before.
+"Usar" and "Rolar" work on a locked sheet and for the master; "Adicionar munição" follows the right to edit.
+"Usar" opens `UseChargesSheet`, which sends the amount under one idempotency key and keeps it across retries.
+The last charge opens `LastChargeSheet`, an alert dialog that follows the table's dice (RN-18): the app rolls, or the player types "Face do d20", and a typed 20 may ask for the regain die's face.
+Closing it leaves the row asking "Rolar".
+`AddAmmunitionSheet` sets a kind to what the sheet holds plus the count asked.
+"Recuperar a metade" is off with nothing fired and after the recovery, and goes off during a combat when the server refuses with `COMBAT_RUNNING`.
+The free-text hint shows only while the ammunition list is empty and the items text names an arrow, bolt, sling bullet or needle; the text is never converted.
+The "Volta ..." line of an item row is not drawn: the sheet carries no recharge data.

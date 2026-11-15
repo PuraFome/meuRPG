@@ -9468,6 +9468,126 @@ async function scanAttunementScreens(browser: Browser, colorScheme: 'light' | 'd
   }
 }
 
+/**
+ * The charges of magic items and the ammunition (#563), through the real stack: the owner's locked sheet with its item rows
+ * (normal, at 0, destroyed, a ring that never recharges, an item with no charge data), the use sheet, the d20 of the last
+ * charge and the row that asks for it, then the ammunition list (empty with the free-text hint, "Adicionar munição", with a
+ * kind and nothing to recover). A rolled start that waits for the master needs no extra step: the sword is in the sheet. The
+ * recovery after a shot needs a combat: its other states are in the unit specs of the panel.
+ */
+async function scanChargesScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = { width, height: 900 };
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const sheet = {
+      weaponKeys: ['equipment:longsword', 'equipment:longbow'],
+      armorKey: 'equipment:chain-mail',
+      equipment: [{ name: 'Mochila', quantity: 1 }, { name: 'Flechas (20)', quantity: 1 }],
+      magicItems: [
+        { key: 'item:ring-of-shooting-stars' },
+        { key: 'item:staff-of-fire' },
+        { key: 'item:luck-blade' },
+        { key: 'item:ring-of-evasion' },
+        { key: 'item:scarab-of-protection' },
+        { key: 'item:ring-of-three-wishes' },
+        { key: 'item:ring-of-protection' },
+      ],
+    };
+    const table = await tableForCombat(m, p, `Acessibilidade cargas ${Date.now()}`, true, true, { build: toren, sheet });
+    campaignId = table.campaignId;
+    const route = `/campaigns/${campaignId}/characters/${table.characterId}`;
+
+    // The master puts the items in the states of the board: the evasion ring at 0, the scarab destroyed, the staff at its last charge.
+    const read = await callRPC(m, 'meurpg.characters.v1.CharacterService/GetCharacter', { campaignId, characterId: table.characterId });
+    expect(read.ok(), await read.text()).toBeTruthy();
+    const entries = ((await read.json()).character.sheet.full.magicItems ?? []) as { id: string; key: string }[];
+    const entryOf = (key: string) => entries.find((e) => e.key === key)!.id;
+    const setCharges = async (key: string, chargesLeft: number, lost = 'ITEM_LOSS_UNSPECIFIED') => {
+      const res = await callRPC(m, 'meurpg.play.v1.ChargesService/SetCharges', {
+        campaignId,
+        characterId: table.characterId,
+        entryId: entryOf(key),
+        chargesLeft,
+        lost,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      expect(res.ok(), await res.text()).toBeTruthy();
+    };
+    await setCharges('item:ring-of-shooting-stars', 5);
+    await setCharges('item:ring-of-evasion', 0);
+    await setCharges('item:scarab-of-protection', 0, 'ITEM_LOSS_GONE');
+    await setCharges('item:staff-of-fire', 1);
+
+    // The owner's locked sheet: "Usar" works, the rest only the master changes.
+    await openLive(p, route);
+    const gear = p.getByRole('region', { name: 'Equipamento' });
+    const rowOf = (name: RegExp) => gear.locator('.magic-row').filter({ hasText: name });
+    await expect(rowOf(/Anel de estrelas cadentes/).getByText('5 de 6 cargas')).toBeVisible();
+    await expect(rowOf(/Anel de evasão/).getByRole('button', { name: /^Usar / })).toHaveAttribute('aria-disabled', 'true');
+    await expect(rowOf(/Escaravelho/).getByText('Destruída')).toBeVisible();
+    await expect(rowOf(/Anel de proteção/).getByText('Pede sintonização')).toBeVisible();
+    await expectScreenPasses(p, `Ficha, itens com cargas ${where}`);
+
+    // The use sheet.
+    await rowOf(/Anel de estrelas cadentes/).getByRole('button', { name: /^Usar / }).click();
+    const use = p.getByRole('dialog', { name: /^Usar · / });
+    await expect(use.getByText('Restam 5 de 6 cargas')).toBeVisible();
+    await expectScreenPasses(p, `Usar cargas ${where}`);
+    await use.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(use).toBeHidden();
+
+    // The last charge of a staff that rolls a d20: the alert, then the row that asks for the roll.
+    await rowOf(/Cajado do fogo/).getByRole('button', { name: /^Usar / }).click();
+    await p.getByRole('dialog', { name: /^Usar · / }).getByRole('button', { name: /^Gastar 1 carga/ }).click();
+    const last = p.getByRole('alertdialog', { name: 'A última carga se foi' });
+    await expect(last).toBeVisible();
+    await expectScreenPasses(p, `A última carga se foi ${where}`);
+    await last.getByRole('button', { name: 'Fechar' }).first().click();
+    await expect(last).toBeHidden();
+    await expect(rowOf(/Cajado do fogo/).getByText('Falta rolar o d20 da última carga.')).toBeVisible();
+    await expect(rowOf(/Cajado do fogo/).getByRole('button', { name: /^Rolar/ })).toBeVisible();
+    await expectScreenPasses(p, `Ficha, o d20 da última carga espera ${where}`);
+
+    // The ammunition: no kind counted, the free text looks like ammunition.
+    await expect(gear.getByText('“Flechas (20)” parece munição: para o app contar, adicione em Munição.')).toBeVisible();
+    await expectScreenPasses(p, `Ficha, munição vazia com a dica ${where}`);
+
+    // The master adds a kind; the list shows, with nothing to recover yet.
+    await openLive(m, route);
+    const masterGear = m.getByRole('region', { name: 'Equipamento' });
+    await masterGear.getByRole('button', { name: 'Adicionar', exact: true }).click();
+    const add = m.getByRole('dialog', { name: 'Adicionar munição' });
+    await expect(add).toBeVisible();
+    await expectScreenPasses(m, `Adicionar munição ${where}`);
+    await add.getByRole('button', { name: /^Adicionar 20 flechas/ }).click();
+    await expect(add).toBeHidden();
+    await expect(masterGear.getByRole('heading', { name: 'Munição contada pelo app' })).toBeVisible();
+    await expect(masterGear.getByRole('button', { name: 'Recuperar a metade' })).toHaveAttribute('aria-disabled', 'true');
+    await expect(masterGear.getByText('Nada gasto no último combate: não há o que recuperar.')).toBeVisible();
+    await expectScreenPasses(m, `Ficha, munição contada, nada a recuperar ${where}`);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, width] of [['light', 1280], ['dark', 390]] as const) {
+  test(`os itens com cargas e a munição passam no axe e nas conferências de layout no tema ${colorScheme === 'light' ? 'claro, no desktop' : 'escuro, no celular'}`, { tag: ['@a11y', '@563'] }, async ({ browser }) => {
+    test.setTimeout(300_000);
+    await scanChargesScreens(browser, colorScheme, width);
+  });
+}
+
 test('a sintonização passa no axe e nas conferências de layout no tema claro, no desktop', { tag: ['@a11y', '@561'] }, async ({ browser }) => {
   test.setTimeout(240_000);
   await scanAttunementScreens(browser, 'light', 1280);

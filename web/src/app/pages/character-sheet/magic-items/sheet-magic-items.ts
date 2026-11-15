@@ -1,4 +1,4 @@
-import { type Signal, computed, effect, inject, signal } from '@angular/core';
+import { type Signal, Injector, computed, effect, inject, signal } from '@angular/core';
 import type { MatBottomSheet } from '@angular/material/bottom-sheet';
 import type { MatDialog } from '@angular/material/dialog';
 import type { Observable } from 'rxjs';
@@ -12,6 +12,11 @@ import { describeCharacterError } from '../../../core/characters/character-error
 import type { VitalsVm } from '../../../core/play/live-session.types';
 import type { SheetEquipHost } from '../character-sheet-equip';
 import type { CharacterSheetVm } from '../character-sheet.types';
+import { ChargesClient } from '../../../core/play/charges-client';
+import { SheetCharges } from '../charges/sheet-charges';
+import { openAddAmmunition } from '../charges/add-ammunition-sheet';
+import { openLastCharge } from '../charges/last-charge-sheet';
+import { openUseCharges } from '../charges/use-charges-sheet';
 import { type AttunementSheetData, openAttunementSheet } from './attunement-sheet';
 import { type MagicItemPickerData, openMagicItemPicker } from './magic-item-picker-sheet';
 import { type RemoveMagicItemData, openRemoveMagicItem } from './remove-magic-item-sheet';
@@ -38,6 +43,8 @@ export interface SheetMagicItemsHost extends Pick<
 export class SheetMagicItems {
   /** What the last add or remove said, for the live region under the list. */
   readonly notice = signal('');
+  /** "Usar" the charges of an item, its last-charge d20 and the ammunition; set by `createSheetMagicItems`. */
+  charges!: SheetCharges;
 
   constructor(private readonly host: SheetMagicItemsHost) {}
 
@@ -158,7 +165,7 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
       void categories.load(campaignId);
     }
   });
-  return new SheetMagicItems({
+  const items = new SheetMagicItems({
     source: d.source,
     campaignId: d.campaignId,
     characterId: d.characterId,
@@ -179,4 +186,20 @@ export function createSheetMagicItems(d: SheetMagicItemsDeps): SheetMagicItems {
     openPicker: (data) => openMagicItemPicker(d.dialog, d.bottomSheet, data),
     openRemove: (data) => openRemoveMagicItem(d.dialog, d.bottomSheet, data),
   });
+  const injector = inject(Injector);
+  items.charges = new SheetCharges({
+    client: () => injector.get(ChargesClient),
+    campaignId: d.campaignId,
+    vm: ready,
+    reload: d.reload,
+    openUse: (data) => openUseCharges(d.dialog, d.bottomSheet, data),
+    openRoll: (data) => openLastCharge(d.dialog, d.bottomSheet, data),
+    openAdd: (data) => openAddAmmunition(d.dialog, d.bottomSheet, data),
+  });
+  // A combat that ended changes the character's vitals: the recovery is offered again.
+  effect(() => {
+    d.vitals();
+    items.charges.combatMayHaveEnded();
+  });
+  return items;
 }

@@ -1,6 +1,12 @@
 import { Code, ConnectError } from '@connectrpc/connect';
 
 import {
+  CharacterBlockedReason,
+  CharacterBlockedSchema,
+} from '../../../gen/meurpg/characters/v1/characters_pb';
+import { articleOf } from '../characters/charges';
+import { describeCharacterError } from '../characters/character-errors';
+import {
   ChargesBlockedReason,
   type ChargesBlocked,
   ChargesBlockedSchema,
@@ -27,4 +33,50 @@ export function chargesBlockedMessage(blocked: ChargesBlocked): string {
     default:
       return 'As cargas ou a munição não podem ser usadas agora.';
   }
+}
+
+/** The item an error is about: the words of the refusal name it and say how many charges it holds. */
+export interface ChargesErrorItem {
+  readonly itemName: string;
+  readonly left: number;
+}
+
+const NOT_GOT_THROUGH = new Set<Code>([
+  Code.Unavailable,
+  Code.Unknown,
+  Code.Internal,
+  Code.DeadlineExceeded,
+]);
+
+/** The call did not reach the server or was cut off: nothing changed, so there is nothing to read again. */
+export function chargesDidNotGetThrough(err: unknown): boolean {
+  return NOT_GOT_THROUGH.has(ConnectError.from(err, Code.Unavailable).code);
+}
+
+/**
+ * What a refused or failed charges call says on the sheet, by the typed reason and never by the server's message: the
+ * `ChargesBlocked` sentences, then the item's own refusals (not enough charges, none, destroyed) with the item named,
+ * "Nada mudou" for a call that did not get through, and the character sentences for the rest.
+ */
+export function chargesErrorMessage(err: unknown, item: ChargesErrorItem): string {
+  const blocked = chargesBlocked(err);
+  if (blocked) {
+    return chargesBlockedMessage(blocked);
+  }
+  const connectErr = ConnectError.from(err, Code.Unavailable);
+  if (connectErr.code === Code.FailedPrecondition) {
+    const reason = connectErr.findDetails(CharacterBlockedSchema)[0]?.reason;
+    switch (reason) {
+      case CharacterBlockedReason.CHARGES_NOT_ENOUGH:
+        return `Cargas a menos. ${articleOf(item.itemName)} ${item.itemName} só tem ${item.left} ${item.left === 1 ? 'carga' : 'cargas'}.`;
+      case CharacterBlockedReason.ITEM_NO_CHARGES:
+        return `Sem cargas. ${articleOf(item.itemName)} ${item.itemName} não tem cargas agora.`;
+      case CharacterBlockedReason.ITEM_DESTROYED:
+        return `Item destruído. ${articleOf(item.itemName)} ${item.itemName} não tem mais uso.`;
+    }
+  }
+  if (chargesDidNotGetThrough(err)) {
+    return 'Não foi possível gastar a carga. Nada mudou. Tente de novo.';
+  }
+  return describeCharacterError(err);
 }

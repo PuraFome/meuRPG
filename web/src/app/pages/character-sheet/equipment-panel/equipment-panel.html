@@ -34,6 +34,76 @@
     </p>
   }
   <p class="gear__notice" role="status">{{ marksNotice() }}</p>
+  @if (ammunitionShown()) {
+    <section class="ammo" aria-labelledby="ammo-heading">
+      <h3 id="ammo-heading" class="magic__title">
+        <mat-icon aria-hidden="true">north_east</mat-icon>{{ ammunition().length > 0 ? 'Munição contada pelo app' : 'Munição' }}
+      </h3>
+      @if (ammunition().length === 0) {
+        <p class="mr-muted">Nenhuma munição contada.</p>
+      } @else {
+        <ul class="ammo__rows">
+          @for (a of ammunition(); track a.key) {
+            <li class="ammo-row">
+              <mat-icon class="magic-row__icon" aria-hidden="true">north_east</mat-icon>
+              <span class="ammo-row__text">
+                <span class="ammo-row__name">{{ a.namePt }}</span>
+                @if (a.spent > 0) {
+                  <span class="mr-muted ammo-row__sub">{{ spentWords(a) }}</span>
+                }
+              </span>
+              <strong class="ammo-row__qty" [attr.aria-label]="a.quantity + ' ' + a.namePt.toLowerCase()">{{ a.quantity }}</strong>
+            </li>
+          }
+        </ul>
+        @if (canEquip()) {
+          <button
+            matButton="outlined"
+            type="button"
+            class="ammo__recover"
+            [class.ammo__recover--off]="recoverOff()"
+            [disabled]="recoverOff()"
+            disabledInteractive
+            aria-describedby="ammo-recover-why"
+            (click)="!recoverOff() && ammunitionRecovered.emit()"
+          >
+            <mat-icon aria-hidden="true">refresh</mat-icon>{{ recover().state === 'ready' ? recover().label : 'Recuperar a metade' }}
+          </button>
+          <p id="ammo-recover-why" class="ammo__why mr-muted" [class.ammo__why--done]="recover().state === 'done' && !combatRunning()">
+            @if (combatRunning()) {
+              <mat-icon aria-hidden="true">block</mat-icon>Só depois do combate: ele ainda não acabou.
+            } @else if (recover().state === 'done') {
+              <mat-icon aria-hidden="true">check_circle</mat-icon>Recuperou {{ recover().pieces }} deste combate. O resto se perdeu.
+            } @else if (recover().state === 'nothing') {
+              <mat-icon aria-hidden="true">block</mat-icon>Nada gasto no último combate: não há o que recuperar.
+            } @else {
+              Uma vez por combate, depois que ele acaba. O resto se perdeu.
+            }
+          </p>
+        }
+      }
+      @if (hint(); as h) {
+        <div class="ammo__hint">
+          <mat-icon aria-hidden="true">info</mat-icon>
+          <p>“{{ h.name }}” parece munição: para o app contar, adicione em Munição.</p>
+          @if (canAddAmmunition()) {
+            <button matButton="outlined" type="button" (click)="ammunitionAdding.emit(h)">
+              <mat-icon aria-hidden="true">add</mat-icon>Adicionar
+            </button>
+          }
+        </div>
+      }
+      @if (canAddAmmunition() && !hint()) {
+        <button matButton="outlined" type="button" class="magic__add" (click)="ammunitionAdding.emit(null)">
+          <mat-icon aria-hidden="true">add</mat-icon>Adicionar munição
+        </button>
+      }
+      <p class="gear__notice" role="status">{{ ammunitionNotice() }}</p>
+      @if (ammunitionError()) {
+        <p class="charges__result charges__result--bad" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ ammunitionError() }}</p>
+      }
+    </section>
+  }
   @if (magicItems().length > 0 || canManageMagic()) {
     <section class="magic" aria-labelledby="magic-heading">
       <h3 id="magic-heading" class="magic__title">
@@ -47,6 +117,74 @@
       } @else {
         <ul class="magic__rows">
           @for (e of magicItems(); track e.id) {
+            @if (e.charges; as c) {
+              <li class="magic-row magic-row--charges" [class.magic-row--lost]="isLost(c)">
+                <mat-icon class="magic-row__icon" aria-hidden="true">{{ iconOf(e) }}</mat-icon>
+                <div class="magic-row__body">
+                  <span class="magic-row__head">
+                    <span class="magic-row__name">{{ e.namePt }}</span>
+                    @if (tagOf(c); as tag) {
+                      <span class="magic-row__tag">{{ tag }}</span>
+                    }
+                    @if (e.attuned) {
+                      <span class="magic-row__pill magic-row__pill--on"><mat-icon aria-hidden="true">link</mat-icon>Sintonizado</span>
+                    } @else if (pill(e); as word) {
+                      <span class="magic-row__pill">{{ word }}</span>
+                    }
+                  </span>
+                  @if (!isLost(c)) {
+                    <span class="magic-row__count">
+                      @if (c.max <= 20) {
+                        <app-count-pips [left]="c.left" [total]="c.max" />
+                      }
+                      <strong>{{ c.left }} de {{ c.max }}</strong> {{ c.max === 1 ? 'carga' : 'cargas' }}
+                    </span>
+                  }
+                  @if (lineOf(c); as line) {
+                    <span class="magic-row__line mr-muted" [class.magic-row__line--warn]="line.warn" [id]="'charges-line-' + e.id">
+                      <mat-icon aria-hidden="true">{{ line.icon }}</mat-icon>{{ line.text }}
+                    </span>
+                  }
+                  @if (reasonOfEntry(e); as why) {
+                    <span class="magic-row__line mr-muted">
+                      <mat-icon aria-hidden="true">{{ why.reasonIcon }}</mat-icon>{{ why.reason }}
+                    </span>
+                  }
+                </div>
+                @if (canEquip() && c.state === 'pending') {
+                  <button
+                    matButton="outlined"
+                    type="button"
+                    class="magic-row__use"
+                    [attr.aria-label]="'Rolar o d20 da última carga · ' + e.namePt"
+                    (click)="lastChargeRolled.emit(e)"
+                  >Rolar</button>
+                } @else if (canEquip() && !isLost(c)) {
+                  <button
+                    matButton="outlined"
+                    type="button"
+                    class="magic-row__use"
+                    [class.magic-row__use--off]="c.state !== 'ready'"
+                    [disabled]="c.state !== 'ready'"
+                    disabledInteractive
+                    [attr.aria-describedby]="c.state !== 'ready' ? 'charges-line-' + e.id : null"
+                    [attr.aria-label]="'Usar ' + e.namePt"
+                    (click)="c.state === 'ready' && chargesUsed.emit(e)"
+                  >Usar</button>
+                }
+                @if (canManageMagic()) {
+                  <button
+                    type="button"
+                    class="magic-row__more"
+                    aria-haspopup="dialog"
+                    [attr.aria-label]="'Remover item · ' + e.namePt"
+                    (click)="magicRemoving.emit(e)"
+                  >
+                    <mat-icon aria-hidden="true">more_vert</mat-icon>
+                  </button>
+                }
+              </li>
+            } @else {
             <li class="magic-row">
               <mat-icon class="magic-row__icon" aria-hidden="true">{{ iconOf(e) }}</mat-icon>
               <span class="magic-row__name">{{ e.namePt }}</span>
@@ -70,6 +208,7 @@
                 </span>
               }
             </li>
+            }
           }
         </ul>
       }
@@ -79,6 +218,16 @@
         </button>
       }
       <p class="gear__notice" role="status">{{ magicNotice() }}</p>
+      <div role="status">
+        @if (chargesResult(); as result) {
+          <p class="charges__result" [class.charges__result--good]="result.tone === 'good'" [class.charges__result--bad]="result.tone === 'bad'">
+            <mat-icon aria-hidden="true">{{ result.tone === 'bad' ? 'error' : 'check_circle' }}</mat-icon>{{ result.text }}
+          </p>
+        }
+      </div>
+      @if (chargesError()) {
+        <p class="charges__result charges__result--bad" role="alert"><mat-icon aria-hidden="true">error</mat-icon>{{ chargesError() }}</p>
+      }
     </section>
   }
   <app-chip-legend [marks]="legendMarks()" [attunement]="showsChips()" [bonus]="legendBonus()" />
