@@ -39,6 +39,7 @@ var reactionKindProto = map[reaction.Kind]playv1.ReactionKind{
 	reaction.ParryKind:           playv1.ReactionKind_REACTION_KIND_PARRY,
 	reaction.Dismount:            playv1.ReactionKind_REACTION_KIND_DISMOUNT,
 	reaction.Readied:             playv1.ReactionKind_REACTION_KIND_READIED,
+	reaction.Feature:             playv1.ReactionKind_REACTION_KIND_FEATURE,
 }
 
 // reactionKindOf is the kind of a reaction a combatant spent, as it is recorded: a window's key or "opportunity";
@@ -144,7 +145,7 @@ func (wv *windowView) openWindows(open []playdb.ReactionWindow, line *waitLine) 
 // part in the line the caller reads.
 func (wv *windowView) openOne(w playdb.ReactionWindow, order []reaction.Window, line *waitLine) (*playv1.ReactionWindow, error) {
 	reactor := wv.reactorOf(w)
-	answers := wv.v.master || wv.ownerAnswers(w, reactor)
+	answers := wv.v.master || (wv.ownerAnswers(w, reactor) && !windowTriggerOf(w).Hidden)
 	now := reaction.AnswerNow(order, w.ID)
 	var pw *playv1.ReactionWindow
 	if answers && reaction.Kind(w.Kind) != reaction.MountSave && wv.shownNow(w, now) { // a rider's save reads as Encounter.mount_save
@@ -261,6 +262,10 @@ func (wv *windowView) opportunityWindow(o playdb.OpportunityOffer, mover, reacto
 // or a creature the caller does not see is "o mestre"; only a player's character the
 // caller sees is named (never which NPC, never why).
 func (wv *windowView) waitOf(w playdb.ReactionWindow, reactor *playdb.Combatant, answers bool, wait *reaction.Wait) {
+	if windowTriggerOf(w).Hidden && !wv.v.master { // a hidden creature's trigger is not told to a player: it is "o mestre" (RN-10)
+		wait.Master = true
+		return
+	}
 	switch reaction.Kind(w.Kind) {
 	case reaction.Contest:
 		wv.contestWait(reactor, answers, wait)
@@ -367,6 +372,8 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 	}
 	var err error
 	switch kind {
+	case reaction.Feature:
+		out.Trigger = wv.featureTrigger(w, reactor) // the reactor reads the creature that triggered it, as the master does
 	case reaction.Shield:
 		err = wv.shieldPrompt(w, reactor, out)
 	case reaction.MasterCheck:
@@ -392,6 +399,9 @@ func (wv *windowView) window(w playdb.ReactionWindow, reactor *playdb.Combatant,
 // unanswered says the question of a player's character has waited for the player longer than
 // the player's first chance (the same 10 s as a held roll's): it comes to the master now.
 func (wv *windowView) unanswered(w playdb.ReactionWindow, reactor *playdb.Combatant) bool {
+	if windowTriggerOf(w).Hidden { // the player is never asked: the question is the master's from the start (RN-10)
+		return w.Status == windowOpen
+	}
 	return reactor != nil && reactor.Kind == kindPlayer && reactor.UserID != nil && w.Status == windowOpen &&
 		wv.s.now().Sub(w.CreatedAt) >= heldPlayerFirst
 }

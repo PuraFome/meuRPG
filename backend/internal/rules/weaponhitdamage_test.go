@@ -34,6 +34,17 @@ func TestWeaponHitDamageEveryTriggerIsAccepted(t *testing.T) {
 	}
 }
 
+// A cap left empty is no limit: the dice are the ones of the slot, as many as the levels above give.
+func TestWeaponHitDamageEmptyCapIsNoLimit(t *testing.T) {
+	t.Parallel()
+	for _, perSlot := range []int{0, 3} {
+		m := hitMod(func(m *EffectModifier) { m.PerSlotDice, m.MaxDice = perSlot, 0 })
+		if _, err := withEffectSpell(t, oneMod(m)); err != nil {
+			t.Errorf("per slot %d with no cap: %v", perSlot, err)
+		}
+	}
+}
+
 func TestWeaponHitDamageRefusalsNameTheirField(t *testing.T) {
 	t.Parallel()
 	conds9 := make([]string, 9)
@@ -61,7 +72,6 @@ func TestWeaponHitDamageRefusalsNameTheirField(t *testing.T) {
 		{"11 dice", with(func(m *EffectModifier) { m.Dice, m.MaxDice = 11, 20 }), ".dice"},
 		{"negative per slot", with(func(m *EffectModifier) { m.PerSlotDice = -1 }), ".per_slot_dice"},
 		{"6 per slot", with(func(m *EffectModifier) { m.PerSlotDice = 6 }), ".per_slot_dice"},
-		{"no max", with(func(m *EffectModifier) { m.MaxDice = 0 }), ".max_dice"},
 		{"negative max", with(func(m *EffectModifier) { m.MaxDice = -1 }), ".max_dice"},
 		{"max below dice", with(func(m *EffectModifier) { m.Dice, m.MaxDice = 3, 2 }), ".max_dice"},
 		{"max over 20", with(func(m *EffectModifier) { m.MaxDice = 21 }), ".max_dice"},

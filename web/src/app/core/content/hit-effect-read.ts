@@ -1,4 +1,4 @@
-import { draftToEffect } from './spell-effect-draft';
+import { draftToEffect, hitShell } from './spell-effect-draft';
 import { TableEffectAudience } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { conditionName } from '../combat/conditions';
 import { formatDuration } from '../../shared/spell-details/spell-details-format';
@@ -142,6 +142,6 @@ export function readHit(d: SpellDraft, nameOf: (key: string) => string): ReadHit
     damage: damageChip(h, nameOf),
     more: moreChip(h, d.level),
     save: saveSentence(h, nameOf),
-    visibility: visibilityText((draftToEffect(d.effect) ?? d.effect.base)?.visibility),
+    visibility: visibilityText((draftToEffect(d.effect) ?? hitShell(d.effect))?.visibility),
   };
 }

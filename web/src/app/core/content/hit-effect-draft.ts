@@ -10,7 +10,13 @@ import {
   type TableSpellEffect,
   TableSpellEffectSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
-import { HIT_TRIGGER_PT } from './content-violation-texts-hit';
+import {
+  HIT_CAP_BELOW_PT,
+  HIT_CAP_RANGE_PT,
+  HIT_DICE_RANGE_PT,
+  HIT_PER_SLOT_RANGE_PT,
+  HIT_TRIGGER_PT,
+} from './content-violation-texts-hit';
 import { UNREADABLE_COUNT, readWhole, wholeText } from './whole-number';
 
 /**
@@ -18,7 +24,7 @@ import { UNREADABLE_COUNT, readWhole, wholeText } from './whole-number';
  * The draft edits only that one modifier. The stored effect (its conditions, the other modifiers, who sees it) is the
  * spell's `kept` effect, and `applyHit` puts the modifier back into it without touching anything else, in the place it
  * had. The rules are the server's (`rules/weaponhitdamage.go`); the form only keeps what the person typed and says early
- * what it can: a trigger left unset, the locked card, a spell that does not last, a cap that is missing, a condition with no test.
+ * what it can: a trigger left unset, the locked card, a spell that does not last, a number out of its range, a condition with no test.
  */
 
 export type HitTriggerKey = 'next_hit' | 'next_melee_hit' | 'each_hit' | 'marked_target';
@@ -35,7 +41,7 @@ export interface HitDraft {
   die: number;
   /** The dice added for each level above the spell's own; empty is 0. */
   perSlot: string;
-  /** The most dice at any level. The server requires it (1 to 20): empty is refused before the save. */
+  /** The most dice at any level, 1 to 20; empty is no limit. */
   cap: string;
   /** The SRD damage type key; empty is the weapon's own. */
   damageType: string;
@@ -70,7 +76,6 @@ export const INSTANT_LOCK_PT =
   'Uma magia instantânea não guarda efeito para o golpe. Escolha uma duração em Dados da magia.';
 export const NEEDS_CONCENTRATION_PT =
   'Este gatilho dura enquanto você se concentra. Ligue Concentração em Dados da magia.';
-export const HIT_CAP_PROMPT_PT = 'Diga o máximo de dados, de 1 a 20.';
 export const HIT_CONDITION_PAIR_PT = 'Escolha a condição de quem falhar, ou tire o teste.';
 
 export function emptyHit(): HitDraft {
@@ -290,7 +295,7 @@ export interface HitRefusal {
 }
 
 /**
- * What the form says before the save, at the field: a number that is no whole number, the cap the server requires, and the
+ * What the form says before the save, at the field: a number that is no whole number or out of the server's range (all of them at once), and the
  * condition and the test that need each other. Nothing here when the block is off or the spell cannot keep it.
  */
 export function hitRefusals(
@@ -304,13 +309,25 @@ export function hitRefusals(
   const at = (f: string) => hitPath(effect, f);
   const out: HitRefusal[] = [];
   if (h.trigger === '') out.push({ path: at('trigger'), text: HIT_TRIGGER_PT });
-  const bad = (text: string) => Number.isNaN(readWhole(text, false));
-  if (bad(h.dice)) out.push({ path: at('dice'), text: UNREADABLE_COUNT });
-  if (bad(h.perSlot)) out.push({ path: at('per_slot_dice'), text: UNREADABLE_COUNT });
-  if (bad(h.cap)) {
+  const dice = readWhole(h.dice, false);
+  const perSlot = readWhole(h.perSlot, false);
+  const cap = readWhole(h.cap, false);
+  if (Number.isNaN(dice)) {
+    out.push({ path: at('dice'), text: UNREADABLE_COUNT });
+  } else if (dice < 1 || dice > HIT_DICE_MAX) {
+    out.push({ path: at('dice'), text: HIT_DICE_RANGE_PT });
+  }
+  if (Number.isNaN(perSlot)) {
+    out.push({ path: at('per_slot_dice'), text: UNREADABLE_COUNT });
+  } else if (perSlot > HIT_PER_SLOT_MAX) {
+    out.push({ path: at('per_slot_dice'), text: HIT_PER_SLOT_RANGE_PT });
+  }
+  if (Number.isNaN(cap)) {
     out.push({ path: at('max_dice'), text: UNREADABLE_COUNT });
-  } else if (h.cap.trim() === '') {
-    out.push({ path: at('max_dice'), text: HIT_CAP_PROMPT_PT });
+  } else if (cap > HIT_CAP_MAX) {
+    out.push({ path: at('max_dice'), text: HIT_CAP_RANGE_PT });
+  } else if (cap > 0 && cap < dice) {
+    out.push({ path: at('max_dice'), text: HIT_CAP_BELOW_PT });
   }
   if (h.saveAbility !== '' && h.condition === '') {
     out.push({ path: at('on_fail_conditions'), text: HIT_CONDITION_PAIR_PT });

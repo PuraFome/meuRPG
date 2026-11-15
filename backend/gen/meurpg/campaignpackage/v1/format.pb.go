@@ -1075,7 +1075,10 @@ type PackageNpc struct {
 	Story       *v12.CharacterStory    `protobuf:"bytes,4,opt,name=story,proto3" json:"story,omitempty"`
 	MasterNotes string                 `protobuf:"bytes,5,opt,name=master_notes,json=masterNotes,proto3" json:"master_notes,omitempty"`
 	// ENEMY, BOSS, MINION or STORY.
-	Kind          v12.CharacterKind `protobuf:"varint,6,opt,name=kind,proto3,enum=meurpg.characters.v1.CharacterKind" json:"kind,omitempty"`
+	Kind v12.CharacterKind `protobuf:"varint,6,opt,name=kind,proto3,enum=meurpg.characters.v1.CharacterKind" json:"kind,omitempty"`
+	// What the NPC's magic items spent and the pieces of ammunition it holds (see PackageCharacter).
+	ItemCharges   []*PackageItemCharge `protobuf:"bytes,7,rep,name=item_charges,json=itemCharges,proto3" json:"item_charges,omitempty"`
+	Ammunition    []*PackageAmmunition `protobuf:"bytes,8,rep,name=ammunition,proto3" json:"ammunition,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1152,16 +1155,34 @@ func (x *PackageNpc) GetKind() v12.CharacterKind {
 	return v12.CharacterKind(0)
 }
 
+func (x *PackageNpc) GetItemCharges() []*PackageItemCharge {
+	if x != nil {
+		return x.ItemCharges
+	}
+	return nil
+}
+
+func (x *PackageNpc) GetAmmunition() []*PackageAmmunition {
+	if x != nil {
+		return x.Ammunition
+	}
+	return nil
+}
+
 // PackageCharacter is `characters/<n>.json`: a player's character, which is
 // created reserved (no owner) on the new server. Its portrait is a
 // PackageImage id inside the sheet.
 type PackageCharacter struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Sheet         *v12.CharacterSheet    `protobuf:"bytes,3,opt,name=sheet,proto3" json:"sheet,omitempty"`
-	Story         *v12.CharacterStory    `protobuf:"bytes,4,opt,name=story,proto3" json:"story,omitempty"`
-	MasterNotes   string                 `protobuf:"bytes,5,opt,name=master_notes,json=masterNotes,proto3" json:"master_notes,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name        string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Sheet       *v12.CharacterSheet    `protobuf:"bytes,3,opt,name=sheet,proto3" json:"sheet,omitempty"`
+	Story       *v12.CharacterStory    `protobuf:"bytes,4,opt,name=story,proto3" json:"story,omitempty"`
+	MasterNotes string                 `protobuf:"bytes,5,opt,name=master_notes,json=masterNotes,proto3" json:"master_notes,omitempty"`
+	// What the character's magic items spent, one for each entry of the sheet that is not at its catalog state, and the
+	// pieces of ammunition it holds. They are checked against the sheet and the rules content that come with them.
+	ItemCharges   []*PackageItemCharge `protobuf:"bytes,6,rep,name=item_charges,json=itemCharges,proto3" json:"item_charges,omitempty"`
+	Ammunition    []*PackageAmmunition `protobuf:"bytes,7,rep,name=ammunition,proto3" json:"ammunition,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1231,6 +1252,154 @@ func (x *PackageCharacter) GetMasterNotes() string {
 	return ""
 }
 
+func (x *PackageCharacter) GetItemCharges() []*PackageItemCharge {
+	if x != nil {
+		return x.ItemCharges
+	}
+	return nil
+}
+
+func (x *PackageCharacter) GetAmmunition() []*PackageAmmunition {
+	if x != nil {
+		return x.Ammunition
+	}
+	return nil
+}
+
+// PackageItemCharge is the stored state of one magic item of a sheet (the characters module's
+// `character_item_charges`): the charges spent, how it was lost, the dawns an item that waits for them has counted
+// and whether it waits for the d20 of its last charge. The entry is the id of the item on the sheet
+// (SheetMagicItem.id).
+type PackageItemCharge struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	EntryId         string                 `protobuf:"bytes,1,opt,name=entry_id,json=entryId,proto3" json:"entry_id,omitempty"`
+	ChargesUsed     int32                  `protobuf:"varint,2,opt,name=charges_used,json=chargesUsed,proto3" json:"charges_used,omitempty"`
+	Lost            v12.ItemLoss           `protobuf:"varint,3,opt,name=lost,proto3,enum=meurpg.characters.v1.ItemLoss" json:"lost,omitempty"`
+	DawnsWaited     int32                  `protobuf:"varint,4,opt,name=dawns_waited,json=dawnsWaited,proto3" json:"dawns_waited,omitempty"`
+	LastRollPending bool                   `protobuf:"varint,5,opt,name=last_roll_pending,json=lastRollPending,proto3" json:"last_roll_pending,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *PackageItemCharge) Reset() {
+	*x = PackageItemCharge{}
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PackageItemCharge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PackageItemCharge) ProtoMessage() {}
+
+func (x *PackageItemCharge) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PackageItemCharge.ProtoReflect.Descriptor instead.
+func (*PackageItemCharge) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *PackageItemCharge) GetEntryId() string {
+	if x != nil {
+		return x.EntryId
+	}
+	return ""
+}
+
+func (x *PackageItemCharge) GetChargesUsed() int32 {
+	if x != nil {
+		return x.ChargesUsed
+	}
+	return 0
+}
+
+func (x *PackageItemCharge) GetLost() v12.ItemLoss {
+	if x != nil {
+		return x.Lost
+	}
+	return v12.ItemLoss(0)
+}
+
+func (x *PackageItemCharge) GetDawnsWaited() int32 {
+	if x != nil {
+		return x.DawnsWaited
+	}
+	return 0
+}
+
+func (x *PackageItemCharge) GetLastRollPending() bool {
+	if x != nil {
+		return x.LastRollPending
+	}
+	return false
+}
+
+// PackageAmmunition is the pieces a character holds of one kind of ammunition. What a combat fired is no part of it:
+// a combat does not travel with a package.
+type PackageAmmunition struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AmmoKey       string                 `protobuf:"bytes,1,opt,name=ammo_key,json=ammoKey,proto3" json:"ammo_key,omitempty"`
+	Quantity      int32                  `protobuf:"varint,2,opt,name=quantity,proto3" json:"quantity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PackageAmmunition) Reset() {
+	*x = PackageAmmunition{}
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PackageAmmunition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PackageAmmunition) ProtoMessage() {}
+
+func (x *PackageAmmunition) ProtoReflect() protoreflect.Message {
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PackageAmmunition.ProtoReflect.Descriptor instead.
+func (*PackageAmmunition) Descriptor() ([]byte, []int) {
+	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *PackageAmmunition) GetAmmoKey() string {
+	if x != nil {
+		return x.AmmoKey
+	}
+	return ""
+}
+
+func (x *PackageAmmunition) GetQuantity() int32 {
+	if x != nil {
+		return x.Quantity
+	}
+	return 0
+}
+
 // PackagePuzzle is `puzzles/<n>.json`: a puzzle as the master made it, with
 // the same fields as CreatePuzzleRequest. The ids inside (a door's map, a
 // point, a clue, the character of a part) are ids of this package.
@@ -1256,7 +1425,7 @@ type PackagePuzzle struct {
 
 func (x *PackagePuzzle) Reset() {
 	*x = PackagePuzzle{}
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[12]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1268,7 +1437,7 @@ func (x *PackagePuzzle) String() string {
 func (*PackagePuzzle) ProtoMessage() {}
 
 func (x *PackagePuzzle) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[12]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1281,7 +1450,7 @@ func (x *PackagePuzzle) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PackagePuzzle.ProtoReflect.Descriptor instead.
 func (*PackagePuzzle) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{12}
+	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *PackagePuzzle) GetId() string {
@@ -1386,7 +1555,7 @@ type PackageContent struct {
 
 func (x *PackageContent) Reset() {
 	*x = PackageContent{}
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[13]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1398,7 +1567,7 @@ func (x *PackageContent) String() string {
 func (*PackageContent) ProtoMessage() {}
 
 func (x *PackageContent) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[13]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1411,7 +1580,7 @@ func (x *PackageContent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PackageContent.ProtoReflect.Descriptor instead.
 func (*PackageContent) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{13}
+	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PackageContent) GetEntry() *v14.TableEntry {
@@ -1433,7 +1602,7 @@ type PackageContentOptions struct {
 
 func (x *PackageContentOptions) Reset() {
 	*x = PackageContentOptions{}
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[14]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1445,7 +1614,7 @@ func (x *PackageContentOptions) String() string {
 func (*PackageContentOptions) ProtoMessage() {}
 
 func (x *PackageContentOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[14]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1458,7 +1627,7 @@ func (x *PackageContentOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PackageContentOptions.ProtoReflect.Descriptor instead.
 func (*PackageContentOptions) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{14}
+	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PackageContentOptions) GetDisabled() []string {
@@ -1479,7 +1648,7 @@ type PackageEncounters struct {
 
 func (x *PackageEncounters) Reset() {
 	*x = PackageEncounters{}
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[15]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1491,7 +1660,7 @@ func (x *PackageEncounters) String() string {
 func (*PackageEncounters) ProtoMessage() {}
 
 func (x *PackageEncounters) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[15]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1504,7 +1673,7 @@ func (x *PackageEncounters) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PackageEncounters.ProtoReflect.Descriptor instead.
 func (*PackageEncounters) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{15}
+	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PackageEncounters) GetEncounters() []*PackageEncounter {
@@ -1526,7 +1695,7 @@ type PackageEncounter struct {
 
 func (x *PackageEncounter) Reset() {
 	*x = PackageEncounter{}
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[16]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1538,7 +1707,7 @@ func (x *PackageEncounter) String() string {
 func (*PackageEncounter) ProtoMessage() {}
 
 func (x *PackageEncounter) ProtoReflect() protoreflect.Message {
-	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[16]
+	mi := &file_meurpg_campaignpackage_v1_format_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1551,7 +1720,7 @@ func (x *PackageEncounter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PackageEncounter.ProtoReflect.Descriptor instead.
 func (*PackageEncounter) Descriptor() ([]byte, []int) {
-	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{16}
+	return file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *PackageEncounter) GetPointId() string {
@@ -1654,7 +1823,7 @@ const file_meurpg_campaignpackage_v1_format_proto_rawDesc = "" +
 	"\x06hidden\x18\x05 \x01(\bR\x06hidden\"1\n" +
 	"\vPackageClue\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"\x84\x02\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"\xa3\x03\n" +
 	"\n" +
 	"PackageNpc\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
@@ -1662,13 +1831,30 @@ const file_meurpg_campaignpackage_v1_format_proto_rawDesc = "" +
 	"\x05sheet\x18\x03 \x01(\v2$.meurpg.characters.v1.CharacterSheetR\x05sheet\x12:\n" +
 	"\x05story\x18\x04 \x01(\v2$.meurpg.characters.v1.CharacterStoryR\x05story\x12!\n" +
 	"\fmaster_notes\x18\x05 \x01(\tR\vmasterNotes\x127\n" +
-	"\x04kind\x18\x06 \x01(\x0e2#.meurpg.characters.v1.CharacterKindR\x04kind\"\xd1\x01\n" +
+	"\x04kind\x18\x06 \x01(\x0e2#.meurpg.characters.v1.CharacterKindR\x04kind\x12O\n" +
+	"\fitem_charges\x18\a \x03(\v2,.meurpg.campaignpackage.v1.PackageItemChargeR\vitemCharges\x12L\n" +
+	"\n" +
+	"ammunition\x18\b \x03(\v2,.meurpg.campaignpackage.v1.PackageAmmunitionR\n" +
+	"ammunition\"\xf0\x02\n" +
 	"\x10PackageCharacter\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12:\n" +
 	"\x05sheet\x18\x03 \x01(\v2$.meurpg.characters.v1.CharacterSheetR\x05sheet\x12:\n" +
 	"\x05story\x18\x04 \x01(\v2$.meurpg.characters.v1.CharacterStoryR\x05story\x12!\n" +
-	"\fmaster_notes\x18\x05 \x01(\tR\vmasterNotes\"\x98\x04\n" +
+	"\fmaster_notes\x18\x05 \x01(\tR\vmasterNotes\x12O\n" +
+	"\fitem_charges\x18\x06 \x03(\v2,.meurpg.campaignpackage.v1.PackageItemChargeR\vitemCharges\x12L\n" +
+	"\n" +
+	"ammunition\x18\a \x03(\v2,.meurpg.campaignpackage.v1.PackageAmmunitionR\n" +
+	"ammunition\"\xd4\x01\n" +
+	"\x11PackageItemCharge\x12\x19\n" +
+	"\bentry_id\x18\x01 \x01(\tR\aentryId\x12!\n" +
+	"\fcharges_used\x18\x02 \x01(\x05R\vchargesUsed\x122\n" +
+	"\x04lost\x18\x03 \x01(\x0e2\x1e.meurpg.characters.v1.ItemLossR\x04lost\x12!\n" +
+	"\fdawns_waited\x18\x04 \x01(\x05R\vdawnsWaited\x12*\n" +
+	"\x11last_roll_pending\x18\x05 \x01(\bR\x0flastRollPending\"J\n" +
+	"\x11PackageAmmunition\x12\x19\n" +
+	"\bammo_key\x18\x01 \x01(\tR\aammoKey\x12\x1a\n" +
+	"\bquantity\x18\x02 \x01(\x05R\bquantity\"\x98\x04\n" +
 	"\rPackagePuzzle\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x124\n" +
@@ -1724,7 +1910,7 @@ func file_meurpg_campaignpackage_v1_format_proto_rawDescGZIP() []byte {
 }
 
 var file_meurpg_campaignpackage_v1_format_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_meurpg_campaignpackage_v1_format_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_meurpg_campaignpackage_v1_format_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_meurpg_campaignpackage_v1_format_proto_goTypes = []any{
 	(PackageEntryKind)(0),         // 0: meurpg.campaignpackage.v1.PackageEntryKind
 	(*PackageManifest)(nil),       // 1: meurpg.campaignpackage.v1.PackageManifest
@@ -1739,64 +1925,72 @@ var file_meurpg_campaignpackage_v1_format_proto_goTypes = []any{
 	(*PackageClue)(nil),           // 10: meurpg.campaignpackage.v1.PackageClue
 	(*PackageNpc)(nil),            // 11: meurpg.campaignpackage.v1.PackageNpc
 	(*PackageCharacter)(nil),      // 12: meurpg.campaignpackage.v1.PackageCharacter
-	(*PackagePuzzle)(nil),         // 13: meurpg.campaignpackage.v1.PackagePuzzle
-	(*PackageContent)(nil),        // 14: meurpg.campaignpackage.v1.PackageContent
-	(*PackageContentOptions)(nil), // 15: meurpg.campaignpackage.v1.PackageContentOptions
-	(*PackageEncounters)(nil),     // 16: meurpg.campaignpackage.v1.PackageEncounters
-	(*PackageEncounter)(nil),      // 17: meurpg.campaignpackage.v1.PackageEncounter
-	(*timestamppb.Timestamp)(nil), // 18: google.protobuf.Timestamp
-	(v1.XpMode)(0),                // 19: meurpg.campaigns.v1.XpMode
-	(*v1.TableRules)(nil),         // 20: meurpg.campaigns.v1.TableRules
-	(v11.MapPointKind)(0),         // 21: meurpg.maps.v1.MapPointKind
-	(*v11.TrapSpec)(nil),          // 22: meurpg.maps.v1.TrapSpec
-	(*v11.LightSpec)(nil),         // 23: meurpg.maps.v1.LightSpec
-	(*v12.CharacterSheet)(nil),    // 24: meurpg.characters.v1.CharacterSheet
-	(*v12.CharacterStory)(nil),    // 25: meurpg.characters.v1.CharacterStory
-	(v12.CharacterKind)(0),        // 26: meurpg.characters.v1.CharacterKind
-	(*v13.PuzzleConfig)(nil),      // 27: meurpg.play.v1.PuzzleConfig
-	(*v13.PuzzleSolution)(nil),    // 28: meurpg.play.v1.PuzzleSolution
-	(*v13.PuzzleState)(nil),       // 29: meurpg.play.v1.PuzzleState
-	(*v13.PuzzleOnSolve)(nil),     // 30: meurpg.play.v1.PuzzleOnSolve
-	(*v13.PuzzleHintCheck)(nil),   // 31: meurpg.play.v1.PuzzleHintCheck
-	(*v13.PuzzlePart)(nil),        // 32: meurpg.play.v1.PuzzlePart
-	(*v13.PuzzleOnWrong)(nil),     // 33: meurpg.play.v1.PuzzleOnWrong
-	(*v14.TableEntry)(nil),        // 34: meurpg.rules.v1.TableEntry
-	(*v13.BattleEncounter)(nil),   // 35: meurpg.play.v1.BattleEncounter
+	(*PackageItemCharge)(nil),     // 13: meurpg.campaignpackage.v1.PackageItemCharge
+	(*PackageAmmunition)(nil),     // 14: meurpg.campaignpackage.v1.PackageAmmunition
+	(*PackagePuzzle)(nil),         // 15: meurpg.campaignpackage.v1.PackagePuzzle
+	(*PackageContent)(nil),        // 16: meurpg.campaignpackage.v1.PackageContent
+	(*PackageContentOptions)(nil), // 17: meurpg.campaignpackage.v1.PackageContentOptions
+	(*PackageEncounters)(nil),     // 18: meurpg.campaignpackage.v1.PackageEncounters
+	(*PackageEncounter)(nil),      // 19: meurpg.campaignpackage.v1.PackageEncounter
+	(*timestamppb.Timestamp)(nil), // 20: google.protobuf.Timestamp
+	(v1.XpMode)(0),                // 21: meurpg.campaigns.v1.XpMode
+	(*v1.TableRules)(nil),         // 22: meurpg.campaigns.v1.TableRules
+	(v11.MapPointKind)(0),         // 23: meurpg.maps.v1.MapPointKind
+	(*v11.TrapSpec)(nil),          // 24: meurpg.maps.v1.TrapSpec
+	(*v11.LightSpec)(nil),         // 25: meurpg.maps.v1.LightSpec
+	(*v12.CharacterSheet)(nil),    // 26: meurpg.characters.v1.CharacterSheet
+	(*v12.CharacterStory)(nil),    // 27: meurpg.characters.v1.CharacterStory
+	(v12.CharacterKind)(0),        // 28: meurpg.characters.v1.CharacterKind
+	(v12.ItemLoss)(0),             // 29: meurpg.characters.v1.ItemLoss
+	(*v13.PuzzleConfig)(nil),      // 30: meurpg.play.v1.PuzzleConfig
+	(*v13.PuzzleSolution)(nil),    // 31: meurpg.play.v1.PuzzleSolution
+	(*v13.PuzzleState)(nil),       // 32: meurpg.play.v1.PuzzleState
+	(*v13.PuzzleOnSolve)(nil),     // 33: meurpg.play.v1.PuzzleOnSolve
+	(*v13.PuzzleHintCheck)(nil),   // 34: meurpg.play.v1.PuzzleHintCheck
+	(*v13.PuzzlePart)(nil),        // 35: meurpg.play.v1.PuzzlePart
+	(*v13.PuzzleOnWrong)(nil),     // 36: meurpg.play.v1.PuzzleOnWrong
+	(*v14.TableEntry)(nil),        // 37: meurpg.rules.v1.TableEntry
+	(*v13.BattleEncounter)(nil),   // 38: meurpg.play.v1.BattleEncounter
 }
 var file_meurpg_campaignpackage_v1_format_proto_depIdxs = []int32{
-	18, // 0: meurpg.campaignpackage.v1.PackageManifest.exported_at:type_name -> google.protobuf.Timestamp
+	20, // 0: meurpg.campaignpackage.v1.PackageManifest.exported_at:type_name -> google.protobuf.Timestamp
 	2,  // 1: meurpg.campaignpackage.v1.PackageManifest.entries:type_name -> meurpg.campaignpackage.v1.PackageEntry
 	0,  // 2: meurpg.campaignpackage.v1.PackageEntry.kind:type_name -> meurpg.campaignpackage.v1.PackageEntryKind
-	19, // 3: meurpg.campaignpackage.v1.PackageCampaign.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
-	20, // 4: meurpg.campaignpackage.v1.PackageCampaign.table_rules:type_name -> meurpg.campaigns.v1.TableRules
+	21, // 3: meurpg.campaignpackage.v1.PackageCampaign.xp_mode:type_name -> meurpg.campaigns.v1.XpMode
+	22, // 4: meurpg.campaignpackage.v1.PackageCampaign.table_rules:type_name -> meurpg.campaigns.v1.TableRules
 	5,  // 5: meurpg.campaignpackage.v1.PackageImages.images:type_name -> meurpg.campaignpackage.v1.PackageImage
 	7,  // 6: meurpg.campaignpackage.v1.PackageMap.layers:type_name -> meurpg.campaignpackage.v1.PackageLayers
 	8,  // 7: meurpg.campaignpackage.v1.PackageMap.points:type_name -> meurpg.campaignpackage.v1.PackagePoint
-	21, // 8: meurpg.campaignpackage.v1.PackagePoint.kind:type_name -> meurpg.maps.v1.MapPointKind
-	22, // 9: meurpg.campaignpackage.v1.PackagePoint.trap:type_name -> meurpg.maps.v1.TrapSpec
-	23, // 10: meurpg.campaignpackage.v1.PackagePoint.light:type_name -> meurpg.maps.v1.LightSpec
+	23, // 8: meurpg.campaignpackage.v1.PackagePoint.kind:type_name -> meurpg.maps.v1.MapPointKind
+	24, // 9: meurpg.campaignpackage.v1.PackagePoint.trap:type_name -> meurpg.maps.v1.TrapSpec
+	25, // 10: meurpg.campaignpackage.v1.PackagePoint.light:type_name -> meurpg.maps.v1.LightSpec
 	9,  // 11: meurpg.campaignpackage.v1.PackagePoint.actions:type_name -> meurpg.campaignpackage.v1.PackageAction
 	10, // 12: meurpg.campaignpackage.v1.PackagePoint.clues:type_name -> meurpg.campaignpackage.v1.PackageClue
-	24, // 13: meurpg.campaignpackage.v1.PackageNpc.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	25, // 14: meurpg.campaignpackage.v1.PackageNpc.story:type_name -> meurpg.characters.v1.CharacterStory
-	26, // 15: meurpg.campaignpackage.v1.PackageNpc.kind:type_name -> meurpg.characters.v1.CharacterKind
-	24, // 16: meurpg.campaignpackage.v1.PackageCharacter.sheet:type_name -> meurpg.characters.v1.CharacterSheet
-	25, // 17: meurpg.campaignpackage.v1.PackageCharacter.story:type_name -> meurpg.characters.v1.CharacterStory
-	27, // 18: meurpg.campaignpackage.v1.PackagePuzzle.config:type_name -> meurpg.play.v1.PuzzleConfig
-	28, // 19: meurpg.campaignpackage.v1.PackagePuzzle.solution:type_name -> meurpg.play.v1.PuzzleSolution
-	29, // 20: meurpg.campaignpackage.v1.PackagePuzzle.start:type_name -> meurpg.play.v1.PuzzleState
-	30, // 21: meurpg.campaignpackage.v1.PackagePuzzle.on_solve:type_name -> meurpg.play.v1.PuzzleOnSolve
-	31, // 22: meurpg.campaignpackage.v1.PackagePuzzle.hint_check:type_name -> meurpg.play.v1.PuzzleHintCheck
-	32, // 23: meurpg.campaignpackage.v1.PackagePuzzle.parts:type_name -> meurpg.play.v1.PuzzlePart
-	33, // 24: meurpg.campaignpackage.v1.PackagePuzzle.on_wrong:type_name -> meurpg.play.v1.PuzzleOnWrong
-	34, // 25: meurpg.campaignpackage.v1.PackageContent.entry:type_name -> meurpg.rules.v1.TableEntry
-	17, // 26: meurpg.campaignpackage.v1.PackageEncounters.encounters:type_name -> meurpg.campaignpackage.v1.PackageEncounter
-	35, // 27: meurpg.campaignpackage.v1.PackageEncounter.encounter:type_name -> meurpg.play.v1.BattleEncounter
-	28, // [28:28] is the sub-list for method output_type
-	28, // [28:28] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	26, // 13: meurpg.campaignpackage.v1.PackageNpc.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	27, // 14: meurpg.campaignpackage.v1.PackageNpc.story:type_name -> meurpg.characters.v1.CharacterStory
+	28, // 15: meurpg.campaignpackage.v1.PackageNpc.kind:type_name -> meurpg.characters.v1.CharacterKind
+	13, // 16: meurpg.campaignpackage.v1.PackageNpc.item_charges:type_name -> meurpg.campaignpackage.v1.PackageItemCharge
+	14, // 17: meurpg.campaignpackage.v1.PackageNpc.ammunition:type_name -> meurpg.campaignpackage.v1.PackageAmmunition
+	26, // 18: meurpg.campaignpackage.v1.PackageCharacter.sheet:type_name -> meurpg.characters.v1.CharacterSheet
+	27, // 19: meurpg.campaignpackage.v1.PackageCharacter.story:type_name -> meurpg.characters.v1.CharacterStory
+	13, // 20: meurpg.campaignpackage.v1.PackageCharacter.item_charges:type_name -> meurpg.campaignpackage.v1.PackageItemCharge
+	14, // 21: meurpg.campaignpackage.v1.PackageCharacter.ammunition:type_name -> meurpg.campaignpackage.v1.PackageAmmunition
+	29, // 22: meurpg.campaignpackage.v1.PackageItemCharge.lost:type_name -> meurpg.characters.v1.ItemLoss
+	30, // 23: meurpg.campaignpackage.v1.PackagePuzzle.config:type_name -> meurpg.play.v1.PuzzleConfig
+	31, // 24: meurpg.campaignpackage.v1.PackagePuzzle.solution:type_name -> meurpg.play.v1.PuzzleSolution
+	32, // 25: meurpg.campaignpackage.v1.PackagePuzzle.start:type_name -> meurpg.play.v1.PuzzleState
+	33, // 26: meurpg.campaignpackage.v1.PackagePuzzle.on_solve:type_name -> meurpg.play.v1.PuzzleOnSolve
+	34, // 27: meurpg.campaignpackage.v1.PackagePuzzle.hint_check:type_name -> meurpg.play.v1.PuzzleHintCheck
+	35, // 28: meurpg.campaignpackage.v1.PackagePuzzle.parts:type_name -> meurpg.play.v1.PuzzlePart
+	36, // 29: meurpg.campaignpackage.v1.PackagePuzzle.on_wrong:type_name -> meurpg.play.v1.PuzzleOnWrong
+	37, // 30: meurpg.campaignpackage.v1.PackageContent.entry:type_name -> meurpg.rules.v1.TableEntry
+	19, // 31: meurpg.campaignpackage.v1.PackageEncounters.encounters:type_name -> meurpg.campaignpackage.v1.PackageEncounter
+	38, // 32: meurpg.campaignpackage.v1.PackageEncounter.encounter:type_name -> meurpg.play.v1.BattleEncounter
+	33, // [33:33] is the sub-list for method output_type
+	33, // [33:33] is the sub-list for method input_type
+	33, // [33:33] is the sub-list for extension type_name
+	33, // [33:33] is the sub-list for extension extendee
+	0,  // [0:33] is the sub-list for field type_name
 }
 
 func init() { file_meurpg_campaignpackage_v1_format_proto_init() }
@@ -1811,7 +2005,7 @@ func file_meurpg_campaignpackage_v1_format_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_meurpg_campaignpackage_v1_format_proto_rawDesc), len(file_meurpg_campaignpackage_v1_format_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   17,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -9,6 +9,9 @@ const (
 	eventItemChargesRestored = "item_charges_restored"
 	// eventItemDestroyed: an item was lost, with its last charge, on a 1 or by the master's correction.
 	eventItemDestroyed = "item_destroyed"
+	// eventDawnTaken: the master's Amanhecer (ChargesService.Dawn): a new day dawned for the table's items. It holds the
+	// key of the call and the items that regained charges; each of them also has its own item_charges_restored event.
+	eventDawnTaken = "dawn_taken"
 	// eventAmmunitionSpent: a ranged attack fired a piece of ammunition (written in the attack's transaction).
 	eventAmmunitionSpent = "ammunition_spent"
 	// eventAmmunitionRecovered: the pieces of a combat were searched for and half taken back.

@@ -90,8 +90,9 @@
   min-width: 0;
 }
 
-// Why "Usar" is dashed and off: written, with an icon, never colour alone.
-.missing {
+// Why "Usar" is dashed and off, and what the master is told when he overrides the economy: written, with an icon, never colour alone.
+.missing,
+.override {
   display: flex;
   align-items: flex-start;
   gap: var(--mr-space-1);

@@ -849,6 +849,9 @@ func (s *Service) writeMove(ctx context.Context, a *moveAttempt) error {
 	if err := s.offerAttacks(ctx, a); err != nil {
 		return err
 	}
+	if err := s.openMoveFeatures(ctx, a); err != nil {
+		return err
+	}
 	a.moved = a.target // the mover as it stands after the move
 	a.moved.GridCol, a.moved.GridRow, a.moved.MovementUsedFt, a.moved.MovementUsedDft = &a.newCol, &a.newRow, clamp32(a.used/10, 0, math.MaxInt32), clamp32(a.used, 0, math.MaxInt32)
 	a.moved.LastMoveDft, a.moved.CoverMark = clamp32(a.last, 0, math.MaxInt32), a.coverMark
@@ -880,7 +883,7 @@ func (s *Service) dragAlong(ctx context.Context, a *moveAttempt) error {
 // offered an attack. A high jump moves nobody; a placement out of turn, a forced
 // move and a move that stays put offer nothing.
 func (s *Service) offerAttacks(ctx context.Context, a *moveAttempt) error {
-	if a.req.jump == playv1.JumpKind_JUMP_KIND_HIGH || a.req.forced || (!a.onTurn && a.readied == nil) || !placed(a.target) || !a.squareChanged {
+	if !a.leavesAndLands() {
 		return nil
 	}
 	mover := a.target
@@ -893,6 +896,26 @@ func (s *Service) offerAttacks(ctx context.Context, a *moveAttempt) error {
 	}
 	a.offered, a.made.MoveID = offered, moveID
 	return nil
+}
+
+// leavesAndLands says the move is one that others react to: a walk or a long jump on the mover's turn or as its readied move,
+// that changes the mover's square. A high jump moves nobody; a placement out of turn, a forced move and a move that stays put
+// are not reacted to.
+func (a *moveAttempt) leavesAndLands() bool {
+	return a.req.jump != playv1.JumpKind_JUMP_KIND_HIGH && !a.req.forced && (a.onTurn || a.readied != nil) && placed(a.target) && a.squareChanged
+}
+
+// openMoveFeatures opens the windows of the features that wait for an enemy to move within their range (feature_window.go),
+// at the end of the move that brought it there.
+func (s *Service) openMoveFeatures(ctx context.Context, a *moveAttempt) error {
+	if !a.leavesAndLands() {
+		return nil
+	}
+	moved, from := a.target, a.target
+	moved.GridCol, moved.GridRow = &a.newCol, &a.newRow
+	ids, err := s.openFeatureWindows(ctx, a.c, a.cs, featureMoment{kind: rules.FeatureTriggerMoves, mover: moved, from: &from})
+	a.made.FeatureWindows = ids
+	return err
 }
 
 // describeMove fills the event the log keeps. The log tells how far a combatant

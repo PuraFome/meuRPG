@@ -177,6 +177,7 @@ export interface Encounter {
   status: string;
   round?: number;
   currentCombatantId?: string;
+  reactionWindows?: { id: string; kind: string }[];
   masterTurn?: boolean;
   gridColumns: number;
   gridRows: number;
@@ -203,6 +204,7 @@ export interface Combatant {
   hitPointsCurrent?: number;
   defeated?: boolean;
   actionUsed?: boolean;
+  reactionUsed?: boolean;
   state?: string;
   deathSuccesses?: number;
   deathFailures?: number;

@@ -497,6 +497,10 @@ export class ActionGroups {
   /** Whether a feature is off, why, and the line under its name: what a use costs and what is left (the server's reason, or "Faltam usos"). */
   protected readonly featureOff = featureIsOff;
   protected readonly featureWhy = featureWhy;
+  /** The master may use the feature although its part of the turn is spent: the server marked the row, and nothing locks it. */
+  protected overridable(a: ActionOption): boolean {
+    return a.masterMayOverride && !this.locked();
+  }
   /** The line under a feature's name: a feature taken with `UseFeature` says its scope, whom it takes and what it spends. */
   protected featureDetail(a: ActionOption): string {
     return a.viaUseFeature ? useLine(a, resourceOf(a, this.resources())) : featureLine(a);

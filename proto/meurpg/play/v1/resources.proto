@@ -446,6 +446,10 @@ message TakeRestRequest {
   // Long rest: a character with exhaustion loses one level when the rest had food and
   // drink (SRD 5.1, Resting: "Finishing a Long Rest"). True when the table had none.
   bool without_food_or_drink = 100;
+  // Long rest: the dawn that ends it also restores the charges of the party's magic items, as ChargesService.Dawn
+  // does, in the same transaction (one `item_charges_restored` event for each item that regained charges). The
+  // default is false. A short rest ignores it.
+  bool restore_dawn = 101;
 }
 
 message HitDiceChoice {

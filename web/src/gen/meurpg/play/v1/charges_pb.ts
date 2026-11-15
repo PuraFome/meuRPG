@@ -21,7 +21,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file meurpg/play/v1/charges.proto.
  */
 export const file_meurpg_play_v1_charges: GenFile = /*@__PURE__*/
-  fileDesc("ChxtZXVycGcvcGxheS92MS9jaGFyZ2VzLnByb3RvEg5tZXVycGcucGxheS52MSJWCg5DaGFyZ2VzQmxvY2tlZBI0CgZyZWFzb24YASABKA4yJC5tZXVycGcucGxheS52MS5DaGFyZ2VzQmxvY2tlZFJlYXNvbhIOCgZuZWVkZWQYAiABKAUiewoTU3BlbmRDaGFyZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSDgoGYW1vdW50GAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSJKChRTcGVuZENoYXJnZXNSZXNwb25zZRIyCgRpdGVtGAEgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRNYWdpY0l0ZW0iuwEKFVJvbGxMYXN0Q2hhcmdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASEgoIZDIwX2ZhY2UYBiABKAVIABIZChF0eXBlZF9yZWdhaW5fZmFjZRgHIAEoBUIGCgRyb2xsIq4BChZSb2xsTGFzdENoYXJnZVJlc3BvbnNlEjIKBGl0ZW0YASABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldE1hZ2ljSXRlbRILCgNkMjAYAiABKAUSEAoIcmVnYWluZWQYAyABKAUSLAoEbG9zdBgEIAEoDjIeLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkl0ZW1Mb3NzEhMKC3JlZ2Fpbl9mYWNlGAUgASgFIq0BChFTZXRDaGFyZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSFAoMY2hhcmdlc19sZWZ0GAQgASgFEiwKBGxvc3QYBSABKA4yHi5tZXVycGcuY2hhcmFjdGVycy52MS5JdGVtTG9zcxIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAkiSAoSU2V0Q2hhcmdlc1Jlc3BvbnNlEjIKBGl0ZW0YASABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldE1hZ2ljSXRlbSJlChRTZXRBbW11bml0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIYW1tb19rZXkYAyABKAkSEAoIcXVhbnRpdHkYBCABKAUiUgoVU2V0QW1tdW5pdGlvblJlc3BvbnNlEjkKCmFtbXVuaXRpb24YASABKAsyJS5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldEFtbXVuaXRpb24iXgoYUmVjb3ZlckFtbXVuaXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkiVgoZUmVjb3ZlckFtbXVuaXRpb25SZXNwb25zZRI5CgphbW11bml0aW9uGAEgAygLMiUubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRBbW11bml0aW9uKsYBChRDaGFyZ2VzQmxvY2tlZFJlYXNvbhImCiJDSEFSR0VTX0JMT0NLRURfUkVBU09OX1VOU1BFQ0lGSUVEEAASLQopQ0hBUkdFU19CTE9DS0VEX1JFQVNPTl9SRUdBSU5fRkFDRV9ORUVERUQQARIpCiVDSEFSR0VTX0JMT0NLRURfUkVBU09OX0NPTUJBVF9SVU5OSU5HEAISLAooQ0hBUkdFU19CTE9DS0VEX1JFQVNPTl9BTFJFQURZX1JFQ09WRVJFRBADMukDCg5DaGFyZ2VzU2VydmljZRJZCgxTcGVuZENoYXJnZXMSIy5tZXVycGcucGxheS52MS5TcGVuZENoYXJnZXNSZXF1ZXN0GiQubWV1cnBnLnBsYXkudjEuU3BlbmRDaGFyZ2VzUmVzcG9uc2USXwoOUm9sbExhc3RDaGFyZ2USJS5tZXVycGcucGxheS52MS5Sb2xsTGFzdENoYXJnZVJlcXVlc3QaJi5tZXVycGcucGxheS52MS5Sb2xsTGFzdENoYXJnZVJlc3BvbnNlElMKClNldENoYXJnZXMSIS5tZXVycGcucGxheS52MS5TZXRDaGFyZ2VzUmVxdWVzdBoiLm1ldXJwZy5wbGF5LnYxLlNldENoYXJnZXNSZXNwb25zZRJcCg1TZXRBbW11bml0aW9uEiQubWV1cnBnLnBsYXkudjEuU2V0QW1tdW5pdGlvblJlcXVlc3QaJS5tZXVycGcucGxheS52MS5TZXRBbW11bml0aW9uUmVzcG9uc2USaAoRUmVjb3ZlckFtbXVuaXRpb24SKC5tZXVycGcucGxheS52MS5SZWNvdmVyQW1tdW5pdGlvblJlcXVlc3QaKS5tZXVycGcucGxheS52MS5SZWNvdmVyQW1tdW5pdGlvblJlc3BvbnNlQroBChJjb20ubWV1cnBnLnBsYXkudjFCDENoYXJnZXNQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_characters_v1_characters]);
+  fileDesc("ChxtZXVycGcvcGxheS92MS9jaGFyZ2VzLnByb3RvEg5tZXVycGcucGxheS52MSJWCg5DaGFyZ2VzQmxvY2tlZBI0CgZyZWFzb24YASABKA4yJC5tZXVycGcucGxheS52MS5DaGFyZ2VzQmxvY2tlZFJlYXNvbhIOCgZuZWVkZWQYAiABKAUiewoTU3BlbmRDaGFyZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSDgoGYW1vdW50GAQgASgFEhcKD2lkZW1wb3RlbmN5X2tleRgFIAEoCSJKChRTcGVuZENoYXJnZXNSZXNwb25zZRIyCgRpdGVtGAEgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRNYWdpY0l0ZW0iuwEKFVJvbGxMYXN0Q2hhcmdlUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSFwoPaWRlbXBvdGVuY3lfa2V5GAQgASgJEhUKC3JvbGxfaW5fYXBwGAUgASgISAASEgoIZDIwX2ZhY2UYBiABKAVIABIZChF0eXBlZF9yZWdhaW5fZmFjZRgHIAEoBUIGCgRyb2xsIq4BChZSb2xsTGFzdENoYXJnZVJlc3BvbnNlEjIKBGl0ZW0YASABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldE1hZ2ljSXRlbRILCgNkMjAYAiABKAUSEAoIcmVnYWluZWQYAyABKAUSLAoEbG9zdBgEIAEoDjIeLm1ldXJwZy5jaGFyYWN0ZXJzLnYxLkl0ZW1Mb3NzEhMKC3JlZ2Fpbl9mYWNlGAUgASgFIq0BChFTZXRDaGFyZ2VzUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIZW50cnlfaWQYAyABKAkSFAoMY2hhcmdlc19sZWZ0GAQgASgFEiwKBGxvc3QYBSABKA4yHi5tZXVycGcuY2hhcmFjdGVycy52MS5JdGVtTG9zcxIXCg9pZGVtcG90ZW5jeV9rZXkYBiABKAkiSAoSU2V0Q2hhcmdlc1Jlc3BvbnNlEjIKBGl0ZW0YASABKAsyJC5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldE1hZ2ljSXRlbSJlChRTZXRBbW11bml0aW9uUmVxdWVzdBITCgtjYW1wYWlnbl9pZBgBIAEoCRIUCgxjaGFyYWN0ZXJfaWQYAiABKAkSEAoIYW1tb19rZXkYAyABKAkSEAoIcXVhbnRpdHkYBCABKAUiUgoVU2V0QW1tdW5pdGlvblJlc3BvbnNlEjkKCmFtbXVuaXRpb24YASABKAsyJS5tZXVycGcuY2hhcmFjdGVycy52MS5TaGVldEFtbXVuaXRpb24iXgoYUmVjb3ZlckFtbXVuaXRpb25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhQKDGNoYXJhY3Rlcl9pZBgCIAEoCRIXCg9pZGVtcG90ZW5jeV9rZXkYAyABKAkiVgoZUmVjb3ZlckFtbXVuaXRpb25SZXNwb25zZRI5CgphbW11bml0aW9uGAEgAygLMiUubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRBbW11bml0aW9uIjsKC0Rhd25SZXF1ZXN0EhMKC2NhbXBhaWduX2lkGAEgASgJEhcKD2lkZW1wb3RlbmN5X2tleRgCIAEoCSI+CgxEYXduUmVzcG9uc2USLgoIcmVzdG9yZWQYASADKAsyHC5tZXVycGcucGxheS52MS5EYXduUmVzdG9yZWQiagoMRGF3blJlc3RvcmVkEhQKDGNoYXJhY3Rlcl9pZBgBIAEoCRIyCgRpdGVtGAIgASgLMiQubWV1cnBnLmNoYXJhY3RlcnMudjEuU2hlZXRNYWdpY0l0ZW0SEAoIcmVnYWluZWQYAyABKAUqxgEKFENoYXJnZXNCbG9ja2VkUmVhc29uEiYKIkNIQVJHRVNfQkxPQ0tFRF9SRUFTT05fVU5TUEVDSUZJRUQQABItCilDSEFSR0VTX0JMT0NLRURfUkVBU09OX1JFR0FJTl9GQUNFX05FRURFRBABEikKJUNIQVJHRVNfQkxPQ0tFRF9SRUFTT05fQ09NQkFUX1JVTk5JTkcQAhIsCihDSEFSR0VTX0JMT0NLRURfUkVBU09OX0FMUkVBRFlfUkVDT1ZFUkVEEAMyrAQKDkNoYXJnZXNTZXJ2aWNlElkKDFNwZW5kQ2hhcmdlcxIjLm1ldXJwZy5wbGF5LnYxLlNwZW5kQ2hhcmdlc1JlcXVlc3QaJC5tZXVycGcucGxheS52MS5TcGVuZENoYXJnZXNSZXNwb25zZRJfCg5Sb2xsTGFzdENoYXJnZRIlLm1ldXJwZy5wbGF5LnYxLlJvbGxMYXN0Q2hhcmdlUmVxdWVzdBomLm1ldXJwZy5wbGF5LnYxLlJvbGxMYXN0Q2hhcmdlUmVzcG9uc2USUwoKU2V0Q2hhcmdlcxIhLm1ldXJwZy5wbGF5LnYxLlNldENoYXJnZXNSZXF1ZXN0GiIubWV1cnBnLnBsYXkudjEuU2V0Q2hhcmdlc1Jlc3BvbnNlElwKDVNldEFtbXVuaXRpb24SJC5tZXVycGcucGxheS52MS5TZXRBbW11bml0aW9uUmVxdWVzdBolLm1ldXJwZy5wbGF5LnYxLlNldEFtbXVuaXRpb25SZXNwb25zZRJoChFSZWNvdmVyQW1tdW5pdGlvbhIoLm1ldXJwZy5wbGF5LnYxLlJlY292ZXJBbW11bml0aW9uUmVxdWVzdBopLm1ldXJwZy5wbGF5LnYxLlJlY292ZXJBbW11bml0aW9uUmVzcG9uc2USQQoERGF3bhIbLm1ldXJwZy5wbGF5LnYxLkRhd25SZXF1ZXN0GhwubWV1cnBnLnBsYXkudjEuRGF3blJlc3BvbnNlQroBChJjb20ubWV1cnBnLnBsYXkudjFCDENoYXJnZXNQcm90b1ABWjxnaXRodWIuY29tL1B1cmFGb21lL21ldVJQRy9iYWNrZW5kL2dlbi9tZXVycGcvcGxheS92MTtwbGF5djGiAgNNUFiqAg5NZXVycGcuUGxheS5WMcoCDk1ldXJwZ1xQbGF5XFYx4gIaTWV1cnBnXFBsYXlcVjFcR1BCTWV0YWRhdGHqAhBNZXVycGc6OlBsYXk6OlYxYgZwcm90bzM", [file_meurpg_characters_v1_characters]);
 
 /**
  * ChargesBlocked is the detail of ChargesService's `failed_precondition` for a rule of its own.
@@ -380,6 +380,81 @@ export const RecoverAmmunitionResponseSchema: GenMessage<RecoverAmmunitionRespon
   messageDesc(file_meurpg_play_v1_charges, 10);
 
 /**
+ * @generated from message meurpg.play.v1.DawnRequest
+ */
+export type DawnRequest = Message<"meurpg.play.v1.DawnRequest"> & {
+  /**
+   * @generated from field: string campaign_id = 1;
+   */
+  campaignId: string;
+
+  /**
+   * @generated from field: string idempotency_key = 2;
+   */
+  idempotencyKey: string;
+};
+
+/**
+ * Describes the message meurpg.play.v1.DawnRequest.
+ * Use `create(DawnRequestSchema)` to create a new message.
+ */
+export const DawnRequestSchema: GenMessage<DawnRequest> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_charges, 11);
+
+/**
+ * @generated from message meurpg.play.v1.DawnResponse
+ */
+export type DawnResponse = Message<"meurpg.play.v1.DawnResponse"> & {
+  /**
+   * The items that regained charges, in the order of the characters and of their sheets. A retry with the same
+   * key answers with the items as they stand now.
+   *
+   * @generated from field: repeated meurpg.play.v1.DawnRestored restored = 1;
+   */
+  restored: DawnRestored[];
+};
+
+/**
+ * Describes the message meurpg.play.v1.DawnResponse.
+ * Use `create(DawnResponseSchema)` to create a new message.
+ */
+export const DawnResponseSchema: GenMessage<DawnResponse> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_charges, 12);
+
+/**
+ * DawnRestored is one item a dawn gave charges back to.
+ *
+ * @generated from message meurpg.play.v1.DawnRestored
+ */
+export type DawnRestored = Message<"meurpg.play.v1.DawnRestored"> & {
+  /**
+   * @generated from field: string character_id = 1;
+   */
+  characterId: string;
+
+  /**
+   * The item after the dawn.
+   *
+   * @generated from field: meurpg.characters.v1.SheetMagicItem item = 2;
+   */
+  item?: SheetMagicItem | undefined;
+
+  /**
+   * The charges it regained.
+   *
+   * @generated from field: int32 regained = 3;
+   */
+  regained: number;
+};
+
+/**
+ * Describes the message meurpg.play.v1.DawnRestored.
+ * Use `create(DawnRestoredSchema)` to create a new message.
+ */
+export const DawnRestoredSchema: GenMessage<DawnRestored> = /*@__PURE__*/
+  messageDesc(file_meurpg_play_v1_charges, 13);
+
+/**
  * ChargesBlockedReason is why a charges or ammunition call was refused with `failed_precondition`.
  *
  * @generated from enum meurpg.play.v1.ChargesBlockedReason
@@ -520,6 +595,25 @@ export const ChargesService: GenService<{
     methodKind: "unary";
     input: typeof RecoverAmmunitionRequestSchema;
     output: typeof RecoverAmmunitionResponseSchema;
+  },
+  /**
+   * Dawn is the master's "Amanhecer": a new day dawns for the table and the magic items of every character of the
+   * campaign recharge as their text says (SRD 5.1). Items that regain charges at dawn regain them (all, or the dice
+   * the item rolls, up to the maximum; the app rolls the dice, also on a table of real dice), and an item that
+   * waits for a number of dawns after its last charge counts this one and regains them all on the last. An item
+   * that is lost or waits for its last d20 is left as it is. One `item_charges_restored` event is written for each
+   * item that regained charges, and an item at its maximum writes nothing. A long rest with
+   * TakeRestRequest.restore_dawn does the same in the rest's transaction. Master only; needs an open game session.
+   *
+   * Errors: `permission_denied` for a player; `failed_precondition` with NO_OPEN_SESSION; `invalid_argument` for an
+   * idempotency key that is not a UUID or one reused for another request.
+   *
+   * @generated from rpc meurpg.play.v1.ChargesService.Dawn
+   */
+  dawn: {
+    methodKind: "unary";
+    input: typeof DawnRequestSchema;
+    output: typeof DawnResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_meurpg_play_v1_charges, 0);
