@@ -61,3 +61,39 @@ func TestAnswerKeyUsedInAnotherSessionIsRefusedAsReused(t *testing.T) {
 		t.Errorf("the second ask is %q, want pending", status)
 	}
 }
+
+// An answer's key used in an earlier session of the campaign is refused as reused, not as an internal error: the retry check reads the open
+// session's events, so the table's unique key on answer_key is what catches it, whichever answer it is.
+func TestRefundAnswerKeyUsedInAnotherSessionIsRefusedAsReused(t *testing.T) {
+	t.Parallel()
+	for _, giveBack := range []bool{true, false} {
+		name := "keep"
+		if giveBack {
+			name = "give back"
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			f, first := refundFight(t)
+			key := newKey()
+			if _, err := f.answerRefund(f.master, first.GetId(), false, key); err != nil {
+				t.Fatalf("AnswerFavorRefund(Manter gasta) error = %v", err)
+			}
+			f.master.end(t, &playv1.GameSession{CampaignId: f.campaignID, Id: f.sessionID})
+			f.sessionID = f.master.start(t, f.campaignID).GetGameSession().GetId()
+			var second string
+			if err := f.h.pool.QueryRow(t.Context(), `INSERT INTO favor_refund_prompts (campaign_id, game_session_id, character_id, roll_label_pt)
+				VALUES ($1, $2, $3, 'Ataque') RETURNING id`, f.campaignID, f.sessionID, f.toren.GetId()).Scan(&second); err != nil {
+				t.Fatalf("open the second session's prompt: %v", err)
+			}
+			seq := f.seq(t)
+			_, err := f.answerRefund(f.master, second, giveBack, key)
+			wantCode(t, "a key used by an answer of an earlier session", err, connect.CodeInvalidArgument)
+			if status := f.promptStatus(t, second); status != "open" {
+				t.Errorf("the second prompt is %q, want open", status)
+			}
+			if f.rows(t) != 0 || f.seq(t) != seq {
+				t.Errorf("rows %d, number %d (want %d), want the refusal to change nothing", f.rows(t), f.seq(t), seq)
+			}
+		})
+	}
+}

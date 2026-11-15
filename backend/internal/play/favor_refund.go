@@ -254,6 +254,9 @@ func closeRefundPrompt(ctx context.Context, q *playdb.Queries, c refundCall) (pl
 	if errors.Is(err, pgx.ErrNoRows) {
 		return playdb.FavorRefundPrompt{}, errFavorPassClosed()
 	}
+	if isUniqueViolation(err) { // the answer's key was used in another session of the campaign: the retry check reads the open session's events only
+		return playdb.FavorRefundPrompt{}, errKeyReused()
+	}
 	if err != nil {
 		return playdb.FavorRefundPrompt{}, fmt.Errorf("answer the question: %w", err)
 	}
