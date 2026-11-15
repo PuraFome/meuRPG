@@ -58,6 +58,9 @@ const (
 	ChargesServiceRecoverAmmunitionProcedure = "/meurpg.play.v1.ChargesService/RecoverAmmunition"
 	// ChargesServiceDawnProcedure is the fully-qualified name of the ChargesService's Dawn RPC.
 	ChargesServiceDawnProcedure = "/meurpg.play.v1.ChargesService/Dawn"
+	// ChargesServiceUseConsumableProcedure is the fully-qualified name of the ChargesService's
+	// UseConsumable RPC.
+	ChargesServiceUseConsumableProcedure = "/meurpg.play.v1.ChargesService/UseConsumable"
 )
 
 // ChargesServiceClient is a client for the meurpg.play.v1.ChargesService service.
@@ -123,6 +126,21 @@ type ChargesServiceClient interface {
 	// Errors: `permission_denied` for a player; `failed_precondition` with NO_OPEN_SESSION; `invalid_argument` for an
 	// idempotency key that is not a UUID or one reused for another request.
 	Dawn(context.Context, *connect.Request[v1.DawnRequest]) (*connect.Response[v1.DawnResponse], error)
+	// UseConsumable uses up one unit of a consumable of a character's sheet (a potion, a scroll or another single-use
+	// item of the catalog): the sheet entry (one entry is one unit) is removed, the use is written as the session event
+	// `consumable_used` and, in a running combat, as the log line CONSUMABLE_USED, and the response says what happened. A
+	// healing potion restores hit points with the dice of its text, and a resistance potion gives one hour of resistance
+	// to its damage type; every other consumable only spends the unit and returns its SRD text, with no automatic effect
+	// (a spell scroll is not cast). The receiver is the user, or `target_character_id` for a potion given to another
+	// character. In a combat the use costs the user's action (an adjacent receiver, 5 feet, when it is given) and needs
+	// the user's turn; out of combat it costs no turn and needs no adjacency. A consumable event ends the undo chain.
+	// The user's player (or the master, for any character) may use it. The dice follow the table's rule (RN-18).
+	//
+	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or
+	// an entry that is not there; `invalid_argument` for an entry that is not a consumable, an idempotency key that is not
+	// a UUID or one reused for another request, and a roll the request does not carry; `failed_precondition` with
+	// NO_OPEN_SESSION, CharacterBlocked CHARACTER_DEAD and the EncounterBlocked reasons of an action in a combat.
+	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
 }
 
 // NewChargesServiceClient constructs a client for the meurpg.play.v1.ChargesService service. By
@@ -172,6 +190,12 @@ func NewChargesServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(chargesServiceMethods.ByName("Dawn")),
 			connect.WithClientOptions(opts...),
 		),
+		useConsumable: connect.NewClient[v1.UseConsumableRequest, v1.UseConsumableResponse](
+			httpClient,
+			baseURL+ChargesServiceUseConsumableProcedure,
+			connect.WithSchema(chargesServiceMethods.ByName("UseConsumable")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -183,6 +207,7 @@ type chargesServiceClient struct {
 	setAmmunition     *connect.Client[v1.SetAmmunitionRequest, v1.SetAmmunitionResponse]
 	recoverAmmunition *connect.Client[v1.RecoverAmmunitionRequest, v1.RecoverAmmunitionResponse]
 	dawn              *connect.Client[v1.DawnRequest, v1.DawnResponse]
+	useConsumable     *connect.Client[v1.UseConsumableRequest, v1.UseConsumableResponse]
 }
 
 // SpendCharges calls meurpg.play.v1.ChargesService.SpendCharges.
@@ -213,6 +238,11 @@ func (c *chargesServiceClient) RecoverAmmunition(ctx context.Context, req *conne
 // Dawn calls meurpg.play.v1.ChargesService.Dawn.
 func (c *chargesServiceClient) Dawn(ctx context.Context, req *connect.Request[v1.DawnRequest]) (*connect.Response[v1.DawnResponse], error) {
 	return c.dawn.CallUnary(ctx, req)
+}
+
+// UseConsumable calls meurpg.play.v1.ChargesService.UseConsumable.
+func (c *chargesServiceClient) UseConsumable(ctx context.Context, req *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error) {
+	return c.useConsumable.CallUnary(ctx, req)
 }
 
 // ChargesServiceHandler is an implementation of the meurpg.play.v1.ChargesService service.
@@ -278,6 +308,21 @@ type ChargesServiceHandler interface {
 	// Errors: `permission_denied` for a player; `failed_precondition` with NO_OPEN_SESSION; `invalid_argument` for an
 	// idempotency key that is not a UUID or one reused for another request.
 	Dawn(context.Context, *connect.Request[v1.DawnRequest]) (*connect.Response[v1.DawnResponse], error)
+	// UseConsumable uses up one unit of a consumable of a character's sheet (a potion, a scroll or another single-use
+	// item of the catalog): the sheet entry (one entry is one unit) is removed, the use is written as the session event
+	// `consumable_used` and, in a running combat, as the log line CONSUMABLE_USED, and the response says what happened. A
+	// healing potion restores hit points with the dice of its text, and a resistance potion gives one hour of resistance
+	// to its damage type; every other consumable only spends the unit and returns its SRD text, with no automatic effect
+	// (a spell scroll is not cast). The receiver is the user, or `target_character_id` for a potion given to another
+	// character. In a combat the use costs the user's action (an adjacent receiver, 5 feet, when it is given) and needs
+	// the user's turn; out of combat it costs no turn and needs no adjacency. A consumable event ends the undo chain.
+	// The user's player (or the master, for any character) may use it. The dice follow the table's rule (RN-18).
+	//
+	// Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or
+	// an entry that is not there; `invalid_argument` for an entry that is not a consumable, an idempotency key that is not
+	// a UUID or one reused for another request, and a roll the request does not carry; `failed_precondition` with
+	// NO_OPEN_SESSION, CharacterBlocked CHARACTER_DEAD and the EncounterBlocked reasons of an action in a combat.
+	UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error)
 }
 
 // NewChargesServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -323,6 +368,12 @@ func NewChargesServiceHandler(svc ChargesServiceHandler, opts ...connect.Handler
 		connect.WithSchema(chargesServiceMethods.ByName("Dawn")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chargesServiceUseConsumableHandler := connect.NewUnaryHandler(
+		ChargesServiceUseConsumableProcedure,
+		svc.UseConsumable,
+		connect.WithSchema(chargesServiceMethods.ByName("UseConsumable")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/meurpg.play.v1.ChargesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChargesServiceSpendChargesProcedure:
@@ -337,6 +388,8 @@ func NewChargesServiceHandler(svc ChargesServiceHandler, opts ...connect.Handler
 			chargesServiceRecoverAmmunitionHandler.ServeHTTP(w, r)
 		case ChargesServiceDawnProcedure:
 			chargesServiceDawnHandler.ServeHTTP(w, r)
+		case ChargesServiceUseConsumableProcedure:
+			chargesServiceUseConsumableHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -368,4 +421,8 @@ func (UnimplementedChargesServiceHandler) RecoverAmmunition(context.Context, *co
 
 func (UnimplementedChargesServiceHandler) Dawn(context.Context, *connect.Request[v1.DawnRequest]) (*connect.Response[v1.DawnResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ChargesService.Dawn is not implemented"))
+}
+
+func (UnimplementedChargesServiceHandler) UseConsumable(context.Context, *connect.Request[v1.UseConsumableRequest]) (*connect.Response[v1.UseConsumableResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("meurpg.play.v1.ChargesService.UseConsumable is not implemented"))
 }

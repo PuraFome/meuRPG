@@ -1,0 +1,105 @@
+package rules
+
+import (
+	"fmt"
+	"io/fs"
+)
+
+// Potions (SRD 5.1, "Potions"): the potions whose drinking the app carries out. A potion that is not in
+// effects/potions.json is spent and logged by the table, with its text, and has no automatic effect.
+
+// The kinds of effect of a potion.
+const (
+	// PotionHeal restores hit points: the potion's dice, rolled once.
+	PotionHeal = "heal"
+	// PotionResistance gives the drinker resistance to one damage type for a time.
+	PotionResistance = "resistance"
+)
+
+// PotionResistanceRounds is the hour the resistance potions last, in the rounds the lasting effects count (6 seconds).
+const PotionResistanceRounds = 600
+
+// PotionEffect is what drinking a catalog potion does.
+type PotionEffect struct {
+	// Kind is PotionHeal or PotionResistance.
+	Kind string
+	// Heal is the dice of the hit points restored (PotionHeal); the potion adds no modifier.
+	Heal DiceFormula
+	// DamageType is the key ("damage-type:fire") of the damage the drinker resists, and Rounds how long it lasts, in
+	// rounds (PotionResistance).
+	DamageType string
+	Rounds     int
+}
+
+// potionFile is one entry of effects/potions.json, which maps a potion's key to it.
+type potionFile struct {
+	Kind       string `json:"kind"`
+	Dice       string `json:"dice,omitempty"`
+	DamageType string `json:"damage_type,omitempty"`
+	Rounds     int    `json:"rounds,omitempty"`
+}
+
+// loadPotions reads effects/potions.json and refuses a key that is not a consumable of the catalog, an unknown kind, a
+// heal without dice or with the fields of a resistance, and a resistance without a damage type of the catalog or without
+// a time of one hour at most.
+func (c *content) loadPotions(fsys fs.FS) error {
+	const name = "effects/potions.json"
+	var f map[string]potionFile
+	if err := readJSON(fsys, name, &f); err != nil {
+		return err
+	}
+	c.potions = map[string]PotionEffect{}
+	for _, k := range sortedKeys(f) {
+		e, err := c.potionOf(k, f[k])
+		if err != nil {
+			return fmt.Errorf("%s: %s: %w", name, k, err)
+		}
+		c.potions[k] = e
+	}
+	return nil
+}
+
+func (c *content) potionOf(key string, e potionFile) (PotionEffect, error) {
+	if m, ok := c.magicItems[key]; !ok || !c.consumables[key] || (len(m.Variants) > 0 && !m.Standalone) {
+		return PotionEffect{}, fmt.Errorf("is not a consumable the sheet holds")
+	}
+	switch e.Kind {
+	case PotionHeal:
+		return potionHeal(e)
+	case PotionResistance:
+		return c.potionResistance(e)
+	}
+	return PotionEffect{}, fmt.Errorf("kind is %q or %q", PotionHeal, PotionResistance)
+}
+
+func potionHeal(e potionFile) (PotionEffect, error) {
+	if e.DamageType != "" || e.Rounds != 0 {
+		return PotionEffect{}, fmt.Errorf("a heal has dice only")
+	}
+	var d DiceFormula
+	if err := readDice(&d, e.Dice, "dice"); err != nil {
+		return PotionEffect{}, err
+	}
+	if d.Count < 1 || d.Sides < 1 {
+		return PotionEffect{}, fmt.Errorf("dice is dice such as 2d4+2")
+	}
+	return PotionEffect{Kind: PotionHeal, Heal: d}, nil
+}
+
+func (c *content) potionResistance(e potionFile) (PotionEffect, error) {
+	switch {
+	case e.Dice != "":
+		return PotionEffect{}, fmt.Errorf("a resistance has no dice")
+	case !c.isLiveDamageType(e.DamageType):
+		return PotionEffect{}, fmt.Errorf("damage_type is a damage type of the catalog")
+	case e.Rounds < 1 || e.Rounds > PotionResistanceRounds:
+		return PotionEffect{}, fmt.Errorf("rounds is 1 to %d (one hour)", PotionResistanceRounds)
+	}
+	return PotionEffect{Kind: PotionResistance, DamageType: e.DamageType, Rounds: e.Rounds}, nil
+}
+
+// PotionEffect is what drinking the potion does, and false for a potion the app does not carry out.
+func (c *Content) PotionEffect(key string) (PotionEffect, bool) {
+	e, ok := c.c.potions[key]
+	return e, ok
+}

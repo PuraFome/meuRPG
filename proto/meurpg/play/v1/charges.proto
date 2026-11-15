@@ -11,6 +11,8 @@ syntax = "proto3";
 package meurpg.play.v1;
 
 import "meurpg/characters/v1/characters.proto";
+import "meurpg/play/v1/combat.proto";
+import "meurpg/play/v1/play.proto";
 
 // ChargesService runs the charges of the magic items and the ammunition of a campaign's characters.
 //
@@ -86,6 +88,22 @@ service ChargesService {
   // Errors: `permission_denied` for a player; `failed_precondition` with NO_OPEN_SESSION; `invalid_argument` for an
   // idempotency key that is not a UUID or one reused for another request.
   rpc Dawn(DawnRequest) returns (DawnResponse);
+
+  // UseConsumable uses up one unit of a consumable of a character's sheet (a potion, a scroll or another single-use
+  // item of the catalog): the sheet entry (one entry is one unit) is removed, the use is written as the session event
+  // `consumable_used` and, in a running combat, as the log line CONSUMABLE_USED, and the response says what happened. A
+  // healing potion restores hit points with the dice of its text, and a resistance potion gives one hour of resistance
+  // to its damage type; every other consumable only spends the unit and returns its SRD text, with no automatic effect
+  // (a spell scroll is not cast). The receiver is the user, or `target_character_id` for a potion given to another
+  // character. In a combat the use costs the user's action (an adjacent receiver, 5 feet, when it is given) and needs
+  // the user's turn; out of combat it costs no turn and needs no adjacency. A consumable event ends the undo chain.
+  // The user's player (or the master, for any character) may use it. The dice follow the table's rule (RN-18).
+  //
+  // Errors: `permission_denied` for a character that is not the caller's (a player); `not_found` for a character or
+  // an entry that is not there; `invalid_argument` for an entry that is not a consumable, an idempotency key that is not
+  // a UUID or one reused for another request, and a roll the request does not carry; `failed_precondition` with
+  // NO_OPEN_SESSION, CharacterBlocked CHARACTER_DEAD and the EncounterBlocked reasons of an action in a combat.
+  rpc UseConsumable(UseConsumableRequest) returns (UseConsumableResponse);
 }
 
 // ChargesBlockedReason is why a charges or ammunition call was refused with `failed_precondition`.
@@ -209,4 +227,42 @@ message DawnRestored {
   meurpg.characters.v1.SheetMagicItem item = 2;
   // The charges it regained.
   int32 regained = 3;
+}
+
+message UseConsumableRequest {
+  string campaign_id = 1;
+  // The character that uses the consumable: the one whose sheet holds it.
+  string character_id = 2;
+  // The id of the entry on the sheet (SheetMagicItem.id).
+  string entry_id = 3;
+  // The character that receives the effect, when it is not the user. Empty for the user.
+  string target_character_id = 4;
+  string idempotency_key = 5;
+  // How the healing dice come (RN-18), for a healing potion only: the app rolls them, or the player typed the faces of
+  // real dice, one for each die of the potion. Ignored by every other consumable.
+  bool roll_in_app = 6;
+  repeated int32 typed_faces = 7;
+}
+
+message UseConsumableResponse {
+  // The entry that was used up (SheetMagicItem.id).
+  string entry_id = 1;
+  // The catalog key and the name, in Portuguese when the content has it, of the item used.
+  string item_key = 2;
+  string item_name_pt = 3;
+  ConsumableUseOutcome outcome = 4;
+  // The item's text, in Portuguese when the content has it, else the SRD's in English: what the table applies for a
+  // consumable the app carries out no effect for (TEXT_ONLY).
+  repeated string text = 5;
+  // HEALED: the dice, the faces rolled or typed, the total and the hit points regained.
+  string dice_text = 6;
+  repeated int32 faces = 7;
+  int32 roll_total = 8;
+  int32 healed = 9;
+  // RESISTANCE: the damage type's key.
+  string damage_type_key = 10;
+  // The character that received the effect.
+  string target_character_id = 11;
+  // The vitals of the characters the use changed (the receiver).
+  repeated CharacterVitals vitals = 12;
 }
