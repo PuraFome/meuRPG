@@ -1,3 +1,4 @@
+import { menu } from '../../../core/content/content-testing-menu';
 import { create } from '@bufbuild/protobuf';
 import { timestampFromDate } from '@bufbuild/protobuf/wkt';
 import { Code, ConnectError } from '@connectrpc/connect';
@@ -64,6 +65,16 @@ describe('the content entry model', () => {
     };
     expect(updatedLine(dated)).toBe('Atualizada em 12/03/2026');
     expect(archivedDay(dated)).toBe('01/04/2026');
+  });
+
+  it('agrees "Atualizad_" with the kind: a magia, uma raça, a classe; um talento, um antecedente', () => {
+    const at = timestampFromDate(new Date(2026, 2, 12, 15));
+    const line = (kind: TableContentKind) => updatedLine({ ...race, kind, updatedAt: at });
+    expect(line(TableContentKind.SPELL)).toBe('Atualizada em 12/03/2026');
+    expect(line(TableContentKind.RACE)).toBe('Atualizada em 12/03/2026');
+    expect(line(TableContentKind.CLASS_FEATURE)).toBe('Atualizada em 12/03/2026');
+    expect(line(TableContentKind.FEAT)).toBe('Atualizado em 12/03/2026');
+    expect(line(TableContentKind.BACKGROUND)).toBe('Atualizado em 12/03/2026');
   });
 
   it('agrees the noun and the participle with the kind', () => {
@@ -140,6 +151,13 @@ describe('the content entry model', () => {
       body: { case: 'tableSubrace', value: { raceKey: 'race:own' } },
     } as never;
     expect(subraceParentOf(sub, 'race:x')).toBe('race:own');
+  });
+
+  it('names an SRD option a prerequisite asks, such as a Pact Boon, in Portuguese from the menu (#580)', () => {
+    const named = nameResolver(null, [], menu());
+    expect(named('feature:pact-of-the-tome')).toBe('Pacto do Tomo');
+    // A key nobody names keeps the old fallback.
+    expect(named('feature:pact-of-the-blade')).toBe('pact-of-the-blade');
   });
 
   it('names a key by the catalog, the table or the key itself, and wires the menu once both are there', () => {

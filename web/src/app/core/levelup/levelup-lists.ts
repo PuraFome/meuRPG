@@ -98,6 +98,7 @@ export class LevelUpLists {
   /** The Portuguese name of every key the screen may show. */
   readonly names = computed(() => {
     const names = new Map<string, string>(this.catalog.names);
+    for (const c of this.catalog.classes ?? []) names.set(c.key, c.namePt);
     for (const s of this.catalog.spells) names.set(s.key, s.namePt);
     for (const s of this.catalog.skills) names.set(s.key, s.namePt);
     for (const s of this.options.subclasses) names.set(s.key, s.namePt);

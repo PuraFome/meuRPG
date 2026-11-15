@@ -131,11 +131,11 @@ type faultParty struct {
 	f     *faults
 }
 
-func (p faultParty) Names(ctx context.Context, campaignID string, ids []string) (map[string]string, error) {
+func (p faultParty) Names(ctx context.Context, campaignID string, ids []string, withReserved bool) (map[string]string, error) {
 	if err := p.f.take("names"); err != nil {
 		return nil, err
 	}
-	return p.inner.Names(ctx, campaignID, ids)
+	return p.inner.Names(ctx, campaignID, ids, withReserved)
 }
 
 func (p faultParty) Party(ctx context.Context, tx pgx.Tx, campaignID string) ([]link.Member, error) {

@@ -76,8 +76,8 @@ func TestMigrationFindSteedCreature(t *testing.T) {
 		t.Errorf("bonded = %d and untyped = %d, want 1 and 1 (the familiar)", bonded, typed)
 	}
 
-	if _, err := provider.DownTo(ctx, 337); err != nil {
-		t.Fatalf("DownTo(337) error = %v", err)
+	if _, err := provider.DownTo(ctx, 343); err != nil {
+		t.Fatalf("DownTo(343) error = %v", err)
 	}
 	var left int
 	scan(`SELECT count(*) FROM character_creatures`, &left)

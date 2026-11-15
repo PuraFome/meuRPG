@@ -1351,6 +1351,12 @@ enum CharacterBlockedReason {
   CHARACTER_BLOCKED_REASON_ATTUNEMENT_NEEDS_REST = 26;
   // The character is already attuned to another copy of the same item (only one copy at a time).
   CHARACTER_BLOCKED_REASON_ATTUNEMENT_SAME_ITEM = 27;
+  // Spending more charges than the item has left.
+  CHARACTER_BLOCKED_REASON_CHARGES_NOT_ENOUGH = 28;
+  // Spending charges of an item that was lost when its last charge went.
+  CHARACTER_BLOCKED_REASON_ITEM_DESTROYED = 29;
+  // Spending charges of an item with none left, or whose charges the master has not set yet.
+  CHARACTER_BLOCKED_REASON_ITEM_NO_CHARGES = 30;
 }
 
 // CharacterBlocked is the error detail of CharacterService's
@@ -1613,6 +1619,10 @@ message FullSheet {
   // key already on the sheet and never sets it; only SetAttunement does. Adding and removing
   // entries follows the sheet's lock, like the marks.
   repeated SheetMagicItem magic_items = 44;
+  // The ammunition the character holds, one entry for each counted kind (one with a count, also 0),
+  // sorted by key. Filled by the server on every read; a save ignores it and never
+  // touches what is held. Only the character's player and the master read it.
+  repeated SheetAmmunition ammunition = 45;
   // The skills and tools the player picked for today (TableEffect.daily_choice), each until a rest. Only SetDailyChoice writes it,
   // and a short rest or a long rest clears what it ends; a save keeps it as it is.
   repeated DailyPick daily_picks = 46;
@@ -1671,6 +1681,25 @@ message SheetMagicItem {
   // lost item holds no charges and none can be spent. Filled by the server on every read; a save
   // ignores it.
   ItemLoss lost = 11;
+  // The last charge went from an item that rolls a d20 for it and the owner has not rolled yet: the
+  // roll is the next thing to do with the item. Filled by the server on every read; a save ignores
+  // it. Only the character's player and the master read it.
+  bool last_roll_pending = 12;
+}
+
+// SheetAmmunition is what a character holds of one kind of ammunition (SRD 5.1: arrows, bolts, sling
+// bullets, blowgun needles). A kind with no row reads as none and is left out.
+message SheetAmmunition {
+  // The catalog key of the ammunition, such as "equipment:arrow".
+  string key = 1;
+  // The Portuguese name of the kind.
+  string name_pt = 2;
+  // The pieces the character holds.
+  int32 quantity = 3;
+  // The pieces fired in the character's last combat.
+  int32 spent_last_combat = 4;
+  // Half of those pieces were already taken back after that combat.
+  bool recovered = 5;
 }
 
 // ItemLoss is how a magic item with charges was lost when its last charge went (SRD 5.1: each wand,

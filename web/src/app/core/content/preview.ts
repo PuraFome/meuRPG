@@ -11,6 +11,7 @@ import {
   TableRaceSchema,
   TableSpellSchema,
   TableSubraceSchema,
+  TableWeaponSchema,
 } from '../../../gen/meurpg/rules/v1/table_content_pb';
 import { readEntry } from './content-read';
 import { type EntryRead, type NameOf, type ParentView } from './content-read-parts';
@@ -21,6 +22,7 @@ import type { OptionInit } from './option-draft';
 import type { OfferedByName } from './option-text';
 import type { BackgroundInit, RaceInit, SubraceInit } from './feature-draft';
 import type { SpellInit } from './spell-types';
+import type { WeaponInit } from './weapon-draft';
 
 /**
  * "Como os jogadores veem" (E10-01): the editor's preview is what a player will read, so it is written by the same function
@@ -34,7 +36,8 @@ export type PreviewBody =
   | { readonly case: 'tableFeat'; readonly value: FeatInit }
   | { readonly case: 'tableOption'; readonly value: OptionInit }
   | { readonly case: 'tableClassFeature'; readonly value: ClassFeatureInit }
-  | { readonly case: 'tableCreature'; readonly value: CreatureInit };
+  | { readonly case: 'tableCreature'; readonly value: CreatureInit }
+  | { readonly case: 'tableWeapon'; readonly value: WeaponInit };
 
 /** `parent` is the race of a subrace: what its traits add to the preview. */
 export function previewRead(
@@ -113,6 +116,14 @@ export function previewRead(
         create(TableEntrySchema, {
           kind: TableContentKind.CREATURE,
           body: { case: 'tableCreature', value: create(TableCreatureSchema, body.value) },
+        }),
+        nameOf,
+      );
+    case 'tableWeapon':
+      return readEntry(
+        create(TableEntrySchema, {
+          kind: TableContentKind.WEAPON,
+          body: { case: 'tableWeapon', value: create(TableWeaponSchema, body.value) },
         }),
         nameOf,
       );

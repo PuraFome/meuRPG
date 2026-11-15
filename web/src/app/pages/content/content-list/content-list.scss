@@ -58,10 +58,25 @@
 
   // The master's four actions as a 2x2 grid of equal buttons (K1); one column on a phone.
   &__actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 232px));
-    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
     gap: var(--mr-space-2);
+  }
+
+  // Below 1100 px the four actions do not fit beside the title: the title takes the width and they go to their own row.
+  @media (max-width: 1099.98px) {
+    flex-direction: column;
+    align-items: stretch;
+
+    &__actions {
+      align-self: stretch;
+    }
+  }
+
+  @media (min-width: 1100px) {
+    &__actions {
+      flex-shrink: 0;
+    }
   }
 
   .mr-page-lead {
@@ -76,7 +91,7 @@
 
 .layout {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--mr-space-4);
   align-items: start;
 
@@ -164,8 +179,7 @@
 
   // The master's four actions as a 2x2 grid of equal buttons (K1); one column on a phone.
   &__actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 232px));
+    display: flex;
     flex-shrink: 0;
     gap: var(--mr-space-2);
   }
@@ -173,7 +187,7 @@
 
 .filters {
   display: grid;
-  grid-template-columns: minmax(0, 360px) minmax(0, 220px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 240px);
   gap: var(--mr-space-3);
 }
 
@@ -272,7 +286,7 @@
   color: var(--mr-ink-muted);
 }
 
-// The master's phone rows: the name opens the entry, the 48 px button archives it.
+// The master's phone rows: the name opens the entry, the 48 px ⋮ button opens its menu (the switch and the archive).
 .prow {
   display: flex;
   align-items: center;
@@ -299,11 +313,16 @@
     width: 48px;
     height: 48px;
     padding: 0;
-    border: 1px solid var(--mr-control-line);
+    border: 1px solid transparent;
     border-radius: var(--mr-radius-sm);
-    background: var(--mr-surface);
+    background: transparent;
     color: var(--mr-ink);
     cursor: pointer;
+
+    &:focus-visible,
+    &[aria-expanded='true'] {
+      border-color: var(--mr-accent);
+    }
 
     &:disabled {
       opacity: 0.5;
@@ -322,13 +341,9 @@
 }
 
 @media (max-width: 767.98px) {
-  .head {
-    flex-direction: column;
-
-    &__actions {
-      grid-template-columns: minmax(0, 1fr);
-      align-self: stretch;
-    }
+  // On a phone each action takes the whole row (580-15).
+  .head__actions > * {
+    flex: 1 1 100%;
   }
 
   .filters {

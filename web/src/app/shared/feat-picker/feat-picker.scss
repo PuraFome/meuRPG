@@ -207,3 +207,37 @@
   margin: var(--mr-space-3) 0 0;
   color: var(--mr-ink-muted);
 }
+
+.filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+
+  &__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid var(--mr-line);
+    border-radius: 8px;
+    background: var(--mr-surface);
+    color: var(--mr-ink);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+
+    &[aria-pressed='true'] {
+      border-color: var(--mr-accent);
+      background: var(--mr-accent-soft);
+      color: var(--mr-accent);
+    }
+  }
+}

@@ -292,7 +292,28 @@ func (s *Service) useHitEffect(ctx context.Context, c *combatTx, u hitUse, st pl
 	if mod.Save == "" {
 		return nil
 	}
+	if gone, err := s.hitTargetGone(ctx, c, u.target); gone || err != nil {
+		return err
+	}
 	return s.hitSave(ctx, c, u, st, mod, ev)
+}
+
+// hitTargetGone says the hit's damage left an NPC or a creature defeated, as the target stands now: there is nothing
+// left for the save to affect, so none is rolled. A player's character at 0 hit points is no such target: it still
+// rolls, because its conditions still apply.
+func (s *Service) hitTargetGone(ctx context.Context, c *combatTx, target playdb.Combatant) (bool, error) {
+	if !holdsHP(target) {
+		return false, nil
+	}
+	cs, err := listCombatants(ctx, c)
+	if err != nil {
+		return false, err
+	}
+	now, err := findCombatant(cs, target.ID, combatViewer{master: true})
+	if err != nil {
+		return false, err
+	}
+	return now.Defeated, nil
 }
 
 // hitSave has the target make the save of the spell against the DC kept on the row, as a rider's save is made

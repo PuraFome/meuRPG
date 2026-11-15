@@ -9,12 +9,17 @@ import {
 } from '../../../../../gen/meurpg/play/v1/combat_pb';
 import type { AnswerHeldRollResponse } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import { EffectRollKind } from '../../../../../gen/meurpg/play/v1/lasting_effects_pb';
-import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+import type {
+  Attack,
+  PowerAttackOption,
+  RollDie,
+} from '../../../../../gen/meurpg/rules/v1/rules_pb';
 import { awaitsReaction, stageAfterRoll, stageOfAnswer } from '../../../../core/combat/attack-flow';
 import type { CombatClient } from '../../../../core/combat/combat-client';
 import { attackResult } from '../../../../core/combat/combat-client-wire';
 import type {
   AttackDie,
+  AttackEffects,
   DamageDie,
   ModeChoice,
   PairDie,
@@ -22,9 +27,11 @@ import type {
 import { type TypedEntry, typedEntries } from '../../../../core/combat/typed-fields';
 import { ExtraDiceState } from '../../../../core/effects/extra-dice-state';
 import { ActionKey } from '../../../../core/connect/idempotency';
+import type { FavorSpend } from '../../../../core/play/favor-spend';
 import type { HeldRollController } from '../../../../core/held-rolls/held-roll-controller';
 import { type HeldAnswer, asksLucky } from '../../../../core/held-rolls/held-roll-offer';
 import { dieFields, genericDieFields, rollDiceOf } from '../../../../core/effects/effects';
+import { poolShortMessage, tradesOf } from '../../../../core/combat/power-attack-trade';
 import { resourceBlocked } from '../../../../core/resources/resources-errors';
 import { ResourceBlockedReason } from '../../../../../gen/meurpg/play/v1/resources_pb';
 import { rerollShow } from '../../../../shared/held-roll-prompt/held-roll-shows';
@@ -40,6 +47,7 @@ import {
   rollRefusal,
 } from './attack-sheet-view';
 import type { AttackState } from './attack-state';
+import type { PowerTrade } from './power-trade';
 
 /** The requests of the sheet that roll: the d20, the damage, and the follow-up of a hit that waited for a reaction.
  * Plain class the attack sheet builds. */
@@ -85,6 +93,10 @@ export class AttackRolls {
       readonly attack: Attack;
       readonly name: string;
       readonly modeChoice: () => ModeChoice | undefined;
+      /** The power attack trade ticked on this roll. */
+      readonly trade: PowerTrade;
+      /** The box of the master's Inspiração: ticked, the roll spends it and sends no mode of its own. */
+      readonly fav?: FavorSpend;
     },
   ) {
     this.maneuverDice.set(s.data.maneuverDice ?? []);
@@ -105,6 +117,7 @@ export class AttackRolls {
     }
     const extra = this.typedExtra(die);
     const maneuverKey = this.extra.maneuverKey();
+    const trade = this.host.trade.picked();
     if (extra === null) {
       return;
     }
@@ -113,7 +126,8 @@ export class AttackRolls {
       this.s.busy,
       this.s.error,
       async () => {
-        const mode = this.host.modeChoice();
+        const spend = this.host.fav?.spend() ?? false;
+        const mode = spend ? undefined : this.host.modeChoice();
         const res = await this.host.api.attacks.rollAttack(
           data.campaignId,
           data.encounterId,
@@ -128,24 +142,42 @@ export class AttackRolls {
             extra,
             spend: data.useExtraAction,
             maneuver: maneuverKey,
+            power: trade?.key ?? '',
+            favor: spend,
           }),
           data.asReaction ?? false,
           data.opportunity?.offerId ?? '',
           mode,
           data.catchWindowId ?? '',
-          {
-            extraDieFaces: extra,
-            useExtraAction: data.useExtraAction ?? false,
-            ...(maneuverKey ? { maneuverKey } : {}),
-            legendaryOption: data.legendary?.option ?? '',
-          },
+          this.effectsOf(extra, maneuverKey, trade, spend),
         );
         data.state.apply(res.encounter);
+        this.host.trade.made.set(trade ?? null);
+        // The roll is made (or held for a question): the Inspiração is spent, so the box unticks and who has it is read again.
+        this.host.fav?.spent();
         this.settle(res);
         this.play(attackShow(this.host.name, res));
       },
       (err) => this.fail(err),
     );
+  }
+
+  /** What rides on the attack besides the d20: the effects' dice, the table die, the power attack trade and the Inspiração. */
+  private effectsOf(
+    extra: readonly number[],
+    maneuverKey: string,
+    trade: ReturnType<PowerTrade['picked']>,
+    spend: boolean,
+  ): AttackEffects {
+    const { data } = this.s;
+    return {
+      extraDieFaces: extra,
+      useExtraAction: data.useExtraAction ?? false,
+      ...(maneuverKey ? { maneuverKey } : {}),
+      ...(trade ? { powerAttackKey: trade.key } : {}),
+      legendaryOption: data.legendary?.option ?? '',
+      ...(spend ? { spendFavor: true } : {}),
+    };
   }
 
   async rollDamage(
@@ -276,12 +308,25 @@ export class AttackRolls {
 
   /** "Usar <dado>": the die ticked joins the roll; none ticked leaves it as it is. */
   useDie(key: string): void {
+    this.s.poolNotice.set('');
     this.extra.maneuver.set(this.maneuverDice().find((o) => o.die?.key === key)?.die ?? null);
   }
 
   private fail(err: unknown): void {
+    const refused = this.host.fav?.refused(err);
+    if (refused !== null && refused !== undefined) {
+      this.s.error.set(refused);
+      return;
+    }
+    this.s.poolNotice.set('');
     const die = this.extra.maneuver();
-    if (die && resourceBlocked(err)?.reason === ResourceBlockedReason.NO_USES_LEFT) {
+    const trade = this.host.trade.picked();
+    const noUses = resourceBlocked(err)?.reason === ResourceBlockedReason.NO_USES_LEFT;
+    if (trade && noUses) {
+      void this.explainNoUses(die, trade);
+      return;
+    }
+    if (die && noUses) {
       // The sheet was older than the table: nothing was spent; the offer shows the uses as they are now.
       const pool = this.maneuverDice().find((o) => o.die?.key === die.key)?.resourceNamePt;
       this.extra.maneuver.set(null);
@@ -296,7 +341,29 @@ export class AttackRolls {
     this.s.error.set(refusal.message);
   }
 
-  /** Reads the attacker's table dice again, so the offer says how many uses are left. */
+  /** The roll was refused for want of uses with a trade ticked: read the uses again and say what is short. Two things that
+   * spend one pool, with a use left for one, ask to take one check off and keep both ticked; a trade that has none is
+   * taken off and listed as the server lists it. Nothing was spent in either case. */
+  private async explainNoUses(die: RollDie | null, trade: PowerAttackOption): Promise<void> {
+    await this.refreshUses();
+    const listed = this.host.trade.options().find((o) => o.key === trade.key);
+    const dieLeft = this.maneuverDice().find((o) => o.die?.key === die?.key)?.usesLeft ?? 0;
+    if (die && !listed?.disabled && dieLeft > 0) {
+      const pool = this.maneuverDice().find((o) => o.die?.key === die.key)?.resourceNamePt ?? '';
+      // The trade's own read of the pool is the one the roll was refused on; the die's is the fallback.
+      this.s.poolNotice.set(
+        poolShortMessage(
+          listed?.resourceNamePt || pool,
+          listed?.resourceNamePt ? listed.usesLeft : dieLeft,
+        ),
+      );
+      return;
+    }
+    this.host.trade.pickedKey.set('');
+    this.s.error.set(`${trade.name}: não há usos. Nada foi gasto.`);
+  }
+
+  /** Reads the attacker's table dice and the trades of the weapon again, so the offers say how many uses are left. */
   private async refreshUses(): Promise<void> {
     const { data } = this.s;
     try {
@@ -306,6 +373,10 @@ export class AttackRolls {
         data.attackerId,
       );
       this.maneuverDice.set(res.maneuverDice);
+      const option = res.options?.attacks.find((a) => a.attack?.key === this.host.attack.key);
+      if (option) {
+        this.host.trade.options.set(tradesOf(option));
+      }
     } catch {
       // The offer keeps what it shows; the roll without the die still works.
     }

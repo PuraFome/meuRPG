@@ -219,6 +219,7 @@ func TestIdleInstanceEndIsNotAnError(t *testing.T) {
 		wantReason   string
 	}{
 		{"instance idle", connect.NewError(connect.CodeUnavailable, ErrInstanceIdle), "INFO", "instance_idle"},
+		{"instance full", connect.NewError(connect.CodeUnavailable, ErrInstanceFull), "ERROR", "instance_full"},
 		{"fell behind", connect.NewError(connect.CodeUnavailable, errors.New("fell behind")), "ERROR", "error"},
 	}
 	for _, tt := range tests {

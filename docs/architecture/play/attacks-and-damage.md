@@ -89,6 +89,30 @@ The Attack action makes one attack, or more with Extra Attack: `combatants.attac
 Extra Attack belongs to weapon attacks only: a cantrip spends the whole action and counts no attack, and after a weapon attack a cantrip gives `ACTION_USED`, and vice versa.
 The master has the last word on an NPC, with one exception: an NPC from a creature with a Multiattack (`AttacksPerAction` above 1) is held to the count of its routine, and the attack after the last gives `ATTACKS_USED` to the master too (`routineLeft`); a creature without Multiattack, a reaction, the extra action and a player's character the master acts for are not counted. The routine itself (which attacks, in which mix) is not stored: the screen reads it from the stat block, and ending the routine early is the screen's.
 
+**Ammunition.**
+A player's character that attacks at range with a weapon that fires ammunition (a bow, a crossbow, a sling, a blowgun) takes one piece of it for each attack roll, so Extra Attack takes one for each attack (`combat_ammunition.go`).
+The sheet's attack line carries the kind (`rules.Attack.AmmunitionKey`, from `effects/ammunition.json`, and `link.Attack.Ammunition`).
+`prepare` refuses with `AMMUNITION_EMPTY` when the kind is counted and none is left, and nothing is written.
+A kind the character has no row for is not counted: the attack goes, spends nothing and writes no `ammunition_spent` event.
+`writeAttack` takes the piece after the roll settled, in the same transaction, through the characters keeper with the combat's id.
+It writes the `ammunition_spent` event just before the attack's own event, a line that only the master and the character's player read.
+The attack's event keeps the kind and the line's id (`ammo`, `ammo_line`).
+The undo of the attack means the attack did not happen, so it gives the piece back in its own transaction (`undoer.ammunitionBack`, then the keeper's `RefundAmmunition`) and takes the line out of the log with the attack.
+Extra Attack undoes one attack at a time, so each undo gives back one piece.
+The keeper lowers the combat's count of fired pieces by the refund, and a row left with nothing fired belongs to no combat again, so there is nothing to search for.
+An attack that took no piece (a thrown weapon, a melee weapon, the improvised line) gives nothing back.
+The `ammunition_spent` event still never closes the undo chain (`chainAmmunition`), so the undo of a later shot leaves the shot before it to undo.
+Two attacks at the last piece give one shot: the keeper locks the stock, and the second gets `AMMUNITION_EMPTY`.
+A thrown weapon, a melee weapon, the creatures and the master's NPCs spend nothing.
+
+**The improvised line.**
+A weapon that fires ammunition has a second attack line, keyed `<weapon key>:melee` and named "<weapon>, corpo a corpo" (`improvised` is true).
+It is a melee attack of 1d4 plus Strength, bludgeoning, without proficiency or the weapon's bonuses, and it spends no ammunition.
+`GetTurnOptions` fills `ammunition_left` on the ammunition line of a counted kind (0 when none is left, absent when the kind is not counted) for the character's player and the master, and leaves it absent on every other line.
+A sheet's derived attacks never carry it.
+The line is a weapon attack and a melee one (`Kind` weapon), so what reads those two facts treats it as a Strength melee weapon attack: Rage, Divine Smite, Improved Divine Smite, the hit extras, the maneuvers and Hunter's Mark.
+It is not a weapon of its kind: it has no finesse, two-handed or light property, no proficiency and no magic of the bow, so Dueling, Great Weapon Fighting, Two-Weapon Fighting and Sneak Attack (which needs a finesse or ranged weapon) never apply to it.
+
 **Beams and bonus action attacks.**
 A cantrip with several beams (Eldritch Blast) is one attack roll per `RollAttack`, each beam with its own damage (Agonizing Blast on each), up to `Attack.Beams`; the combatant row remembers the attack of the action (`action_attack_key`) and `attacks_made` counts the beams.
 `GetTurnOptions` offers the next beam the same way (`beams_left`).
@@ -289,6 +313,7 @@ The caster's player and the master read it true, and so do the other players whe
   The effect is used when the damage is rolled and counted, not when the hit is made (`useHitEffects`, called from `damageFlow.landAll`).
   A `next_hit` or `next_melee_hit` row gets `combatant_states.spent_at` and its id goes in `EffectsSpent` of the damage event; the row stays until its clock ends it.
   Two hits of one turn can both wait for their damage: the effect goes to the earlier attack, whichever damage is rolled first: `liveHitParts` takes the part out of a damage while an earlier attack of the same attacker still waits to roll it (it also drops a part whose effect was used or ended in between).
+  An earlier attack whose damage is never rolled holds the effect until it closes: the master's undo of the attack, the end of the attacker's turn (the master passes it over and the damage is discarded) or the end of the combat, which leaves nothing held for the next one.
   A replay of a held roll never spends it twice.
   `each_hit` and `marked_target` are never spent.
 - **The save.**
@@ -297,6 +322,8 @@ The caster's player and the master read it true, and so do the other players whe
   They last until the end of the target's next turn, or, with `condition_duration` `spell_end`, as long as the spell does (a spell that asks for concentration, lasts a set time or lasts until dispelled): the end of the concentration ends them.
   A new failed save of the same casting replaces the old conditions on that target (`endHitConditions`); the undo of that damage puts the replaced rows back with their ids and clocks (`Restore`, `effectsBack`).
   A pass leaves nothing.
+  An NPC or a creature that the hit's damage left defeated rolls no save (`hitTargetGone`): there is no line and no condition, and the effect is still used.
+  A player's character at 0 hit points, dying, still rolls it, because its conditions still apply (its damage waits for the master, so the hit never defeats it at the roll).
 - **What is logged.**
   The damage line carries the part by the spell's name.
   The save is a `hit_rider` line with the roll, the DC and the result, the master's, the attacker's player's and the target's own player's to read, no other player's (the line says the effect has a save: `riderEvent.OwnersOnly`, `viewerGets`). When the effect's lines are not the players' to read (`riderEvent.EffectHidden`: hidden by the master, a hidden target, or for its owner alone on an NPC) the line is the master's and the attacker's player's: the attacker's player reads the result and the condition, never the NPC's die, modifier or total, and the spell's name when they cast it (`riderEvent.SourceID` is theirs) or its audience is all players, and "Outra fonte" otherwise (`ownersOnly`, `spellRiderKey`); a failed save adds the line of the new effect, which follows the effect's visibility.

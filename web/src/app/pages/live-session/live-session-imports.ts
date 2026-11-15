@@ -36,6 +36,7 @@ import { PlayerVitals } from './player-vitals/player-vitals';
 import { RevivifyAsk } from './revivify-ask/revivify-ask';
 import { RevivedNotice } from './revived-notice/revived-notice';
 import { CallingNotice } from './calling-notice/calling-notice';
+import { FavorNotice } from './favor-notice/favor-notice';
 import { SessionBlocked } from './session-blocked/session-blocked';
 import { SessionEnded } from './session-ended/session-ended';
 import { SessionHeader } from './session-header/session-header';
@@ -92,6 +93,7 @@ export const LIVE_SESSION_IMPORTS = [
   RevivifyAsk,
   RevivedNotice,
   CallingNotice,
+  FavorNotice,
   SessionBlocked,
   SessionEnded,
   SessionHeader,

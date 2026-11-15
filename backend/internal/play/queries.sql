@@ -123,6 +123,14 @@ WHERE game_session_id = $1
 ORDER BY (status <> 'ended') DESC, created_at DESC, id DESC
 LIMIT 1;
 
+-- name: ListEncountersOfCharacter :many
+-- The combats the character is a combatant of, the latest first, ended or not: the search for the ammunition of its
+-- last combat reads the latest few.
+SELECT e.* FROM encounters e
+WHERE EXISTS (SELECT 1 FROM combatants c WHERE c.encounter_id = e.id AND c.character_id = $1)
+ORDER BY e.created_at DESC, e.id DESC
+LIMIT 10;
+
 -- name: GetOpenEncounter :one
 -- The session's combat that is not ended, if any. The partial unique index
 -- encounters_one_open_per_session allows at most one.

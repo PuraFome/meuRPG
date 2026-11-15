@@ -75,6 +75,8 @@ type logEntry struct {
 	masterOnly bool
 	// gear is the swap of a GEAR_SWAPPED line: its payload is its own type (equip_event.go).
 	gear gearSwapEvent
+	// item is the use of an item of an ITEM_* or AMMUNITION_SPENT line: its payload is its own type (charges.go).
+	item itemUseEvent
 	// shapeStarted: a Wild Shape line is the druid becoming the beast, not leaving it.
 	shapeStarted bool
 	// seq is the highest session_events.seq among the events in hosts: a later event that joins the entry raises it.
@@ -574,6 +576,10 @@ var logHandlers = map[string]logHandler{
 	eventLegendarySpent:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT),
 	eventRechargeRolled:          masterLine(playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED),
 	eventGearSwapped:             gearSwappedLine,
+	eventItemChargeSpent:         itemUseLine,
+	eventItemChargesRestored:     itemUseLine,
+	eventItemDestroyed:           itemUseLine,
+	eventAmmunitionSpent:         itemUseLine,
 	eventActionReadied:           readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED),
 	eventReadiedFired:            readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED),
 	eventReadiedLost:             readiedLine(playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST),
@@ -673,6 +679,38 @@ func gearSwappedLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logE
 	}
 	entry.kind, entry.masterOnly, entry.gear = playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED, true, gear
 	return true
+}
+
+// itemUseLine is the handler of the use of an item: the charges spent, the d20 of the last charge and the ammunition fired. A line of
+// the master and of the character's owner (visibility), read from the event's own payload.
+func itemUseLine(_ *logBuilder, e playdb.ListEncounterEventsRow, entry *logEntry) bool {
+	use, err := readItemUse(e.Payload)
+	if err != nil {
+		return false
+	}
+	entry.kind, entry.masterOnly, entry.item = itemUseKind(e.Kind, use), true, use
+	return true
+}
+
+// itemUseKind is the kind of the line of an item's use.
+func itemUseKind(eventKind string, use itemUseEvent) playv1.CombatLogKind {
+	switch {
+	case eventKind == eventAmmunitionSpent:
+		return playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT
+	case use.Roll:
+		return playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED
+	}
+	return playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT
+}
+
+// ownerLineKinds are the lines the master and the character's owner read and no other player does, whatever the fog says: the
+// owner's own lines (RN-10, RN-29).
+var ownerLineKinds = map[playv1.CombatLogKind]bool{
+	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:         true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:            true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT:       true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED: true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT:        true,
 }
 
 // effectLine is the handler of the events of the effects that last.
@@ -1054,7 +1092,7 @@ func (e *logEntry) visibility(v combatViewer, byID map[string]playdb.Combatant, 
 	}
 	// The roll of a Recharge is the line of the master and of the player who controls the creature (RN-29), on
 	// any map: the row is secret and fogged for everybody else.
-	if (e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED || e.kind == playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED) && v.owns(actor) {
+	if ownerLineKinds[e.kind] && v.owns(actor) {
 		return true, true
 	}
 	return visible && e.hitsVisible(byID), seen
@@ -1129,17 +1167,20 @@ func (e *logEntry) ownersOnly(v combatViewer, actor, target playdb.Combatant) bo
 // made one for a player's character, the line says so (his corrections of hit points, conditions
 // and the like are the master's own tools, not an act for the character).
 var actedForPlayerKinds = map[playv1.CombatLogKind]bool{
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK:          true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:      true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:      true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:           true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:          true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:    true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:  true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:    true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:        true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:      true,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED: true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK:                  true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:              true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:              true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:                   true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:                  true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:            true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:          true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT:       true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED: true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT:        true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:            true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:                true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:              true,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_TURN_PART_ENDED:         true,
 }
 
 // byMasterFor says the line is the master's act for the player's character that is its actor: a
@@ -1178,37 +1219,40 @@ type logFiller func(e *logEntry, c *logViewing, out *playv1.CombatLogEntry) bool
 
 // logFillers are the fillers by kind; a kind with none has only the common fields.
 var logFillers = map[playv1.CombatLogKind]logFiller{
-	playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT:              (*logEntry).fillEffect,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION:          (*logEntry).fillEffect,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:            (*logEntry).fillResource,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:      (*logEntry).fillMonsters,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:     (*logEntry).fillLegendarySpent,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:     (*logEntry).fillRechargeRolled,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:        (*logEntry).fillGearSwapped,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:      (*logEntry).fillReadied,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED:       (*logEntry).fillReadied,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST:        (*logEntry).fillReadied,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:        (*logEntry).fillFeatureUsed,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:               (*logEntry).fillMoved,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:             (*logEntry).fillContest,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:           (*logEntry).fillHitRider,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED:         (*logEntry).fillDoor,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:      (*logEntry).fillReveal,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED: (*logEntry).fillHitPoints,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK:              (*logEntry).fillAttack,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:              (*logEntry).fillAction,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_ROLL_MODE_ANSWERED:  (*logEntry).fillAnswer,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED:       (*logEntry).fillState,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_DAMAGE_PART_REMOVED: (*logEntry).fillRemoval,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:          (*logEntry).fillSpell,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_TRAP_TRIGGERED:      (*logEntry).fillTrap,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:          (*logEntry).fillWildShape,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:            (*logEntry).fillReaction,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:          (*logEntry).fillDeathSave,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:  (*logEntry).fillConditions,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:        (*logEntry).fillEffectEnd,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_MOUNT_SAVE:          (*logEntry).fillMountSave,
-	playv1.CombatLogKind_COMBAT_LOG_KIND_RIDER_THROWN:        (*logEntry).fillMountSave,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT:                  (*logEntry).fillEffect,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_EXHAUSTION:              (*logEntry).fillEffect,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_RESOURCE:                (*logEntry).fillResource,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_MONSTERS_ADDED:          (*logEntry).fillMonsters,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_LEGENDARY_SPENT:         (*logEntry).fillLegendarySpent,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_RECHARGE_ROLLED:         (*logEntry).fillRechargeRolled,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_GEAR_SWAPPED:            (*logEntry).fillGearSwapped,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION_READIED:          (*logEntry).fillReadied,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_FIRED:           (*logEntry).fillReadied,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_READIED_LOST:            (*logEntry).fillReadied,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_FEATURE_USED:            (*logEntry).fillFeatureUsed,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_MOVED:                   (*logEntry).fillMoved,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_CONTEST:                 (*logEntry).fillContest,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_RIDER:               (*logEntry).fillHitRider,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_DOOR_OPENED:             (*logEntry).fillDoor,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_REVEAL_CHANGED:          (*logEntry).fillReveal,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_HIT_POINTS_ADJUSTED:     (*logEntry).fillHitPoints,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ATTACK:                  (*logEntry).fillAttack,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ACTION:                  (*logEntry).fillAction,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ROLL_MODE_ANSWERED:      (*logEntry).fillAnswer,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_STATE_CHANGED:           (*logEntry).fillState,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_DAMAGE_PART_REMOVED:     (*logEntry).fillRemoval,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_SPELL_CAST:              (*logEntry).fillSpell,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_TRAP_TRIGGERED:          (*logEntry).fillTrap,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_WILD_SHAPE:              (*logEntry).fillWildShape,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_REACTION:                (*logEntry).fillReaction,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_DEATH_SAVE:              (*logEntry).fillDeathSave,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_CONDITIONS_CHANGED:      (*logEntry).fillConditions,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_EFFECT_ENDED:            (*logEntry).fillEffectEnd,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_MOUNT_SAVE:              (*logEntry).fillMountSave,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_RIDER_THROWN:            (*logEntry).fillMountSave,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_CHARGE_SPENT:       (*logEntry).fillItemUse,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_ITEM_LAST_CHARGE_ROLLED: (*logEntry).fillItemUse,
+	playv1.CombatLogKind_COMBAT_LOG_KIND_AMMUNITION_SPENT:        (*logEntry).fillItemUse,
 }
 
 // fill writes the fields of the entry's kind.
@@ -1255,6 +1299,32 @@ func (e *logEntry) fillRechargeRolled(_ *logViewing, out *playv1.CombatLogEntry)
 func (e *logEntry) fillGearSwapped(_ *logViewing, out *playv1.CombatLogEntry) bool {
 	out.GearSwapped = &playv1.CombatLogGearSwapped{NamePt: e.gear.Name, Kind: e.gear.Kind, Equipped: !e.gear.EquippedBefore, Cost: e.gear.Cost}
 	return true
+}
+
+// fillItemUse is the line of the use of an item, the master's and the owner's: what was spent or rolled, and what is left.
+func (e *logEntry) fillItemUse(_ *logViewing, out *playv1.CombatLogEntry) bool {
+	use := e.item
+	out.ItemUse = &playv1.ItemUseLogLine{
+		ItemNamePt: use.Name, Amount: use.Amount, Left: use.Left, Max: use.Max, D20: use.D20, Outcome: itemOutcomeOf(use.Outcome), AmmunitionNamePt: use.Ammo,
+	}
+	return true
+}
+
+// itemOutcomeOf is the outcome a payload says, as the line has it.
+func itemOutcomeOf(outcome string) playv1.ItemUseOutcome {
+	switch outcome {
+	case itemOutcomeSpent:
+		return playv1.ItemUseOutcome_ITEM_USE_OUTCOME_SPENT
+	case itemOutcomeLastCharge:
+		return playv1.ItemUseOutcome_ITEM_USE_OUTCOME_LAST_CHARGE
+	case itemOutcomeLost:
+		return playv1.ItemUseOutcome_ITEM_USE_OUTCOME_LOST
+	case itemOutcomeStays:
+		return playv1.ItemUseOutcome_ITEM_USE_OUTCOME_STAYS
+	case itemOutcomeRegained:
+		return playv1.ItemUseOutcome_ITEM_USE_OUTCOME_REGAINED
+	}
+	return playv1.ItemUseOutcome_ITEM_USE_OUTCOME_UNSPECIFIED
 }
 
 func (e *logEntry) fillMoved(c *logViewing, out *playv1.CombatLogEntry) bool {

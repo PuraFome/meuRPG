@@ -99,6 +99,10 @@ One question at a time: an open hold of the roller refuses a new roll (`INSPIRAT
 A weapon attack's Lucky answer keeps the new d20 on the row only when the die's question follows.
 A hold made in a combat records its `round`; one of an earlier round, or whose combatant no longer holds the die, is stale and forgotten by the next roll (`heldRoll.stale`).
 
+A hold made out of a combat has no round, so it never goes stale.
+When its answer finds what the roll was for closed or gone (the session ended, no scene open, the group check closed, the puzzle solved, the thing not found), the rerun's refusal goes to the player and the hold is forgotten, with the Inspiration it spent, in a transaction of its own (`forgetClosedHold`), so the character's next roll is not refused.
+Any other refusal of the rerun keeps the hold, to be answered again.
+
 ### One way to drop a hold
 
 Every delete of `inspiration_holds` goes through `hold_forget.go`: `forgetHoldsOf` (a combatant's holds and the character's holds outside a combat, both refunded), `deleteCombatant` (forgets a combatant's holds, then deletes the combatant: the one function that calls `DeleteCombatant`), `forgetHold` (the gate forgetting a stale one) and `forgetOrphanHolds` (the sweep of a die that ran out). A hold that spent the master's Inspiration (`favor_spent`) and has no answer gives it back before the row is gone ([favor](favor.md#the-spend)); an answered one gives nothing.

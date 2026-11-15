@@ -37,6 +37,11 @@ erDiagram
         uuid character_id PK,FK
         text entry_id PK
     }
+    character_ammunition {
+        uuid character_id PK,FK
+        text ammo_key PK
+        uuid last_encounter_id
+    }
     character_wild_shapes {
         uuid character_id PK,FK
     }
@@ -97,6 +102,7 @@ erDiagram
     users ||--o{ character_reviews : "player_user_id"
     characters ||--o| character_vitals : "character_id"
     characters ||--o{ character_item_charges : "character_id"
+    characters ||--o{ character_ammunition : "character_id"
     character_creatures |o--o{ character_vitals : "familiar_sight_creature_id"
     characters ||--o| character_wild_shapes : "character_id"
     campaigns |o--o{ characters : "campaign_id"
@@ -215,11 +221,22 @@ So there is no maximum `CHECK`, only a minimum of 0.
 What a character's magic items spent.
 The primary key is `(character_id, entry_id)` and the character is `CASCADE`.
 `entry_id` is the id of the entry on the sheet (`m<n>`).
-A row holds `charges_used` (0 or more), `lost` (`gone`, `plain` or `partly` once the item was lost when its last charge went, empty otherwise) and `dawns_waited` (the dawns an item that waits for them has counted since its last charge).
+A row holds `charges_used` (0 or more), `last_roll_pending` (the last charge went from an item that rolls a d20 and the roll is not made), `lost` (`gone`, `plain` or `partly` once the item was lost when its last charge went, empty otherwise) and `dawns_waited` (the dawns an item that waits for them has counted since its last charge).
 An item whose charges the SRD rolls has no row until the master sets them.
 **The maximum is not stored**: it comes from the catalog, and the server reads a count above it as an empty item.
 A character with no row for an entry has the item full.
 A save of the sheet deletes the rows of the entries it removed.
+
+## `character_ammunition`
+
+What a character holds of each kind of ammunition.
+The primary key is `(character_id, ammo_key)` and the character is `CASCADE`.
+`ammo_key` is the catalog key of the ammunition (`equipment:arrow`).
+A kind with no row is not counted, and a shot never creates a row.
+A row holds `quantity` (0 or more, `CHECK`), `spent_last_combat` (the pieces fired in the combat `last_encounter_id`, 0 or more, `CHECK`) and `recovered` (half of them were already taken back).
+`last_encounter_id` has no foreign key: the combat can be deleted while the count stays readable.
+A shot in another combat starts the count over before it spends the piece.
+A save of the sheet never touches the table.
 
 ## `character_wild_shapes`
 
@@ -258,7 +275,7 @@ They last from session to session until dismissed; the app never counts a spell'
 `stat_block` (`JSONB`, `NULL` by default; migration 00297) is the numbers of a table creature whose entry has formulas, worked out for its owner when the creature is created (a `rules.ResolvedCreature`).
 It is a snapshot: a later level of the owner or an edit of the formulas does not change it.
 It is `NULL` for an SRD creature and for a table creature with no formula, whose numbers are read from the content.
-`creature_type` (migration 00342) is the type the player picked for a steed (`celestial`, `fey` or `fiend`, `CHECK`); it is empty for every other creature.
+`creature_type` (migration 00348) is the type the player picked for a steed (`celestial`, `fey` or `fiend`, `CHECK`); it is empty for every other creature.
 `bonded` marks the character's one steed: a unique partial index allows one bonded row for each character, and a new casting of Find Steed brings that row back at full hit points.
 A dismissed creature is not deleted: it keeps `dismissed_at` and `dismissed_reason` (`owner`, `master`, `defeated`, `concentration`, `replaced`, `undone`, `disappeared`, `dismissed`; both set or both NULL, `CHECK`), so the master's undo can bring it back.
 Partial index on the living ones of a character; indexes on the summon group and the campaign.
@@ -295,5 +312,5 @@ Only names and texts the master writes; no personal data (see [Privacy](../priva
 - A reserved character is read by the master only until it is claimed.
 - `character_ability_rolls` is read by its player only.
 - Table content (`campaign_content`) is read by the whole campaign through the rules overlay, minus what `campaign_content_off` switched off, which never reaches a player in any read; the import records are not read by players.
-- `character_item_charges` is read with the sheet: by the owner and the master.
+- `character_item_charges` and `character_ammunition` are read with the sheet: by the owner and the master.
 - `character_creatures` are read by the owner and the master; the creature's name is free text.

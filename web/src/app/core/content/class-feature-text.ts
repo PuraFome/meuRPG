@@ -1,4 +1,4 @@
-import type { KeyName } from './feat-text';
+import type { KeyName } from './key-name';
 
 /**
  * What a table class feature is, in Portuguese (MR-025): the class and level it comes at and the feature it replaces, as phrases

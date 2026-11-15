@@ -36,6 +36,25 @@
   }
 }
 
+// "★ 1 com Inspiração" under the title, at the right.
+.party__favor {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--mr-space-1);
+  margin: 0;
+  font-size: var(--mr-font-14);
+  line-height: 19px;
+  color: var(--mr-ink-muted);
+
+  .mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: var(--mr-font-16);
+  }
+}
+
 .party__empty {
   margin: var(--mr-space-2) 0 var(--mr-space-3);
   color: var(--mr-ink-muted);

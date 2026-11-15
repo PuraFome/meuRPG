@@ -242,6 +242,8 @@ func TestMR025_ATableFeatLetsRangedWeaponsIgnoreCoverAndLongRange(t *testing.T) 
 		t.Errorf("Brisa's target = %v, want in reach, a normal roll and no cover", brisa)
 	}
 
+	s.stockArrows(t, s.bri)
+	s.stockArrows(t, s.toren)
 	e = s.passTo(t, e, "Brisa")
 	hit := s.mustAttack(t, s.bia, e, "Brisa", shortbowKey, "Goblin", d20(15))
 	if hit.GetRoll().GetCover() != playv1.CoverDegree_COVER_DEGREE_NONE {
