@@ -15491,7 +15491,7 @@ async function scanLevelUpFeatChip(browser: Browser, colorScheme: 'light' | 'dar
         overflow: document.documentElement.scrollWidth - window.innerWidth,
       };
     });
-    expect(geometry.steps.length, `o passo a passo tem os cinco passos ${where}`).toBe(5);
+    expect(geometry.steps, `o passo a passo tem os cinco passos ${where}`).toHaveLength(5);
     for (const [i, right] of geometry.steps.entries()) {
       expect(right, `o passo ${i + 1} termina dentro do cartão ${where}`).toBeLessThanOrEqual(Math.min(geometry.barRight, geometry.cardRight) + 0.5);
     }
