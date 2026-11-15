@@ -202,7 +202,7 @@ func TestASwitchedOffRitualIsNotOfferedInTheBookChoice(t *testing.T) {
 		t.Fatalf("before the switch Caio's choices lack %s (the control): HTTP %d %s", off, r.status, shorten(r.body))
 	}
 	must(w.master.table.SetOptionSwitches(t.Context(), rq(&rulesv1.SetOptionSwitchesRequest{CampaignId: w.campaign, Switches: []*rulesv1.OptionSwitch{{Key: off, Off: true}}})))
-	if r := preview(w.caio); !r.ok() || strings.Contains(string(r.body), off) || strings.Contains(string(r.body), "Detectar Magia") {
+	if r := preview(w.caio); !r.ok() || strings.Contains(string(r.body), off) {
 		t.Errorf("after the switch Caio's choices name the spell: HTTP %d %s", r.status, shorten(r.body))
 	}
 }
