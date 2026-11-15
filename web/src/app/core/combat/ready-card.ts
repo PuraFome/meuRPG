@@ -5,7 +5,7 @@ import {
   type ReadiedAction,
 } from '../../../gen/meurpg/play/v1/combat_pb';
 import { article } from '../format/article';
-import { heldName } from './ready';
+import { heldName } from './ready-held';
 
 /** What the readied card says (#582, board 582-03): the held action, the trigger in quotes and where it stands. */
 export interface ReadiedCardView {

@@ -14284,3 +14284,96 @@ for (const [colorScheme, theme] of [
     });
   }
 }
+
+/** The windows and prompts of a readied action (#582): the readier's notice of a loss, the prompt of an attack, the master's queue row, the window that closed without the player and the prompt of a move. */
+async function scanReadyWindowScreens(browser: Browser, colorScheme: 'light' | 'dark', width: number): Promise<void> {
+  const viewport = featViewport(width);
+  const master = await browser.newContext({ storageState: authStatePath('Mestre Teste'), colorScheme, viewport, ...featShotScale });
+  const player = await browser.newContext({ storageState: authStatePath('Jogador Teste'), colorScheme, viewport, ...featShotScale });
+  const m = await master.newPage();
+  const p = await player.newPage();
+  m.setDefaultTimeout(20_000);
+  p.setDefaultTimeout(20_000);
+  const where = `(${colorScheme}, ${width}px)`;
+  let campaignId = '';
+  try {
+    await m.goto('/');
+    await p.goto('/');
+    const table = await tableForCombat(m, p, `Acessibilidade preparar janelas ${Date.now()}`, true, true, { sheet: pensantusCasting });
+    campaignId = table.campaignId;
+    const squares: Record<string, [number, number]> = { Pensantus: [1, 1], 'Capitão Goblin': [2, 1], 'Goblin 1': [9, 9], 'Goblin 2': [14, 10] };
+    const begun = await beginAttackCombatRPC(m, table, { Pensantus: 20, 'Capitão Goblin': 15, 'Goblin 1': 5, 'Goblin 2': 4 }, squares);
+    const shoot = async (page: Page, screen: string): Promise<void> => shootReady(page, screen, width, colorScheme);
+    await openSessionPage(p, campaignId);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    await waitForEncounterRevision(p, await readyAttackRPC(p, campaignId, begun, 'Pensantus', 'Capitão Goblin'));
+    await openSessionPage(m, campaignId);
+
+    // The trigger never came: the turns go round and the readier's turn starts first; the notice opens the turn.
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    const round2 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    await expect(p.getByRole('heading', { name: 'Sua vez, Pensantus' })).toBeVisible();
+    const notice = p.getByTestId('readied-lost');
+    await expect(notice).toContainText('A sua ação preparada se perdeu.');
+    await expectScreenPasses(p, `Preparar, o aviso de que a ação preparada se perdeu ${where}`);
+    await shoot(p, 'aviso-perdida');
+    await notice.getByRole('button', { name: 'Entendi' }).click();
+
+    // A new readied attack, fired on the Capitão's turn: the readier's prompt and the master's row.
+    await waitForEncounterRevision(p, await readyAttackRPC(p, campaignId, round2, 'Pensantus', 'Capitão Goblin'));
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    const prompt = p.getByRole('alertdialog', { name: 'Ação preparada: atacar com Adaga' });
+    await expect(prompt).toBeVisible();
+    await expect(prompt.getByRole('radio', { name: /Capitão Goblin/ })).toBeChecked();
+    await expectScreenPasses(p, `Preparar, o aviso do gatilho com um ataque ${where}`);
+    await shoot(p, 'janela-ataque');
+    const queue = m.locator('app-reaction-queue[part="rest"]');
+    await expect(queue).toContainText(/Esperando Pensantus · passa sozinho em \d+ s/);
+    await queue.scrollIntoViewIfNeeded();
+    await expectScreenPasses(m, `Preparar, a janela do preparado na fila do mestre ${where}`);
+    await shoot(m, 'janela-fila');
+
+    // The master lets it pass: the readier reads that it closed without them.
+    await queue.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(prompt).toContainText('Passou sozinho: você não respondeu em 30 s.');
+    await expectScreenPasses(p, `Preparar, a janela que fechou sem resposta ${where}`);
+    await shoot(p, 'janela-acabou');
+    await prompt.getByRole('button', { name: 'Fechar' }).click();
+    await expect(prompt).toHaveCount(0);
+
+    // A readied move cannot be released from the prompt yet: it only lets it pass.
+    const round3 = await passTurnsToAndWait(m, campaignId, 'Pensantus', [m, p]);
+    await waitForEncounterRevision(
+      p,
+      await readyRPC(p, 'ReadyAction', { campaignId, encounterId: round3.id, combatantId: round3.combatants.find((c) => c.label === 'Pensantus')!.id, triggerText: 'Quando o goblin recuar, corro até a porta', kind: 'READIED_KIND_MOVE' }),
+    );
+    await passTurnsToAndWait(m, campaignId, 'Capitão Goblin', [m, p]);
+    await m.locator('app-readied-fold').getByRole('button', { name: 'Disparar a ação de Pensantus' }).click();
+    const move = p.getByRole('alertdialog', { name: 'Ação preparada: mover' });
+    await expect(move).toBeVisible();
+    await expect(move).toContainText('Mover agora, até');
+    await expectScreenPasses(p, `Preparar, o aviso do gatilho com um movimento ${where}`);
+    await shoot(p, 'janela-mover');
+    await move.getByRole('button', { name: 'Deixar passar' }).click();
+    await expect(move).toHaveCount(0);
+  } finally {
+    if (campaignId) {
+      await endOpenSessionRPC(m, campaignId);
+    }
+    await master.close();
+    await player.close();
+  }
+}
+
+for (const [colorScheme, theme] of [
+  ['light', 'claro'],
+  ['dark', 'escuro'],
+] as const) {
+  for (const width of [390, 768, 1280]) {
+    test(`as janelas e os avisos da ação preparada passam no axe e nas conferências de layout no tema ${theme}, em ${width}`, { tag: ['@a11y', '@RN-31'] }, async ({ browser }) => {
+      test.setTimeout(420_000);
+      await scanReadyWindowScreens(browser, colorScheme, width);
+    });
+  }
+}

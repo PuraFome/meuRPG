@@ -3,7 +3,7 @@ import {
   type CombatLogReadied,
   ReadiedStatus,
 } from '../../../gen/meurpg/play/v1/combat_pb';
-import { heldName } from './ready';
+import { heldName } from './ready-held';
 import { targetPhrase } from './ready-card';
 import type { LogContext } from './combat-log-types';
 import { ofSubject } from './combat-log-words';

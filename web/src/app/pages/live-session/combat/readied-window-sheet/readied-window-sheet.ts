@@ -1,0 +1,303 @@
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  Injector,
+  signal,
+} from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+
+import type { Attack } from '../../../../../gen/meurpg/rules/v1/rules_pb';
+
+import type {
+  GetTurnOptionsResponse,
+  ReactionWindow,
+  ReadiedAction,
+} from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { CombatantState, ReadiedKind } from '../../../../../gen/meurpg/play/v1/combat_pb';
+import { article } from '../../../../core/format/article';
+import { CombatClient } from '../../../../core/combat/combat-client';
+import { combatErrorMessage } from '../../../../core/combat/combat-errors';
+import type { CombatState } from '../../../../core/combat/combat-state';
+import { ownCombatant } from '../../../../core/combat/combat-view';
+import { playerAutoPassText, playerSecondsLeft } from '../../../../core/combat/reaction-autopass';
+import {
+  readiedGoneText,
+  readiedLegend,
+  readiedPrompt,
+  readiedTargetRows,
+} from '../../../../core/combat/reaction-readied';
+import { ActionKey } from '../../../../core/connect/idempotency';
+import { SheetFrame } from '../../../../shared/sheet/sheet-frame/sheet-frame';
+import { injectSheet } from '../../../../shared/sheet/sheet-host';
+import { ResourcePick } from '../resource-pick/resource-pick';
+
+/** How often the prompt's countdown redraws, in ms. */
+const CLOCK_TICK_MS = 1000;
+/** What a melee attack reaches when it says nothing, in feet. */
+const MELEE_REACH_FT = 5;
+
+/** How far the attack may be aimed: its long range when it has one (a thrown weapon, a bow), else its melee reach. */
+function attackReachFt(a: Attack): number {
+  if (a.longRangeFt > 0) {
+    return a.longRangeFt;
+  }
+  return a.melee ? Math.max(MELEE_REACH_FT, a.reachFt) : a.rangeFt;
+}
+
+/** What the page hands the prompt of a readied action's window. */
+export interface ReadiedWindowSheetData {
+  readonly campaignId: string;
+  readonly encounterId: string;
+  readonly window: ReactionWindow;
+  readonly round: number;
+  /** The row the window answers (`Combatant.readied` of its reactor); `undefined` when the caller cannot read it. */
+  readonly readied: ReadiedAction | undefined;
+  readonly reactorLabel: string;
+  /** Reads the reactor's own turn options: the held attack and the creatures it may be aimed at. */
+  readonly load: () => Promise<GetTurnOptionsResponse>;
+  readonly state: CombatState;
+}
+
+/**
+ * "O mestre disse que o gatilho aconteceu: ‘Quando o zumbi passar pela porta’. Atacar com a Espada longa agora?" (#582, boards
+ * 582-06 to 582-08): the `alertdialog` of a readied action's window, opened by itself for its readier and answered with
+ * `AnswerReaction`. "Deixar passar" comes first and has the focus; an attack picks its target from the server's list (the one the
+ * player named is chosen when it is within reach); another action has one button. A move and a spell cannot be released from here
+ * yet (`releasable`): the prompt says so and only lets them pass. The master's screen passes the window after 30 s, so the footer
+ * counts the seconds; if the window closed meanwhile it says so and only closes. The server decides every refusal.
+ */
+@Component({
+  selector: 'app-readied-window-sheet',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [MatButtonModule, MatIconModule, ResourcePick, SheetFrame],
+  template: `
+    <app-sheet-frame
+      icon="alarm"
+      [title]="view.title"
+      [subtitle]="view.subtitle"
+      [phone]="inSheet"
+      [closable]="false"
+      [focusableBody]="true"
+    >
+      <div class="body">
+        @if (error()) {
+          <div class="mr-notice mr-notice--danger" role="alert">
+            <mat-icon aria-hidden="true">error</mat-icon>
+            <p>{{ error() }}</p>
+          </div>
+        }
+        @if (gone()) {
+          <p class="what" role="status">{{ goneText() }}</p>
+        } @else {
+          <p class="what">
+            <b>{{ view.lead }}</b> {{ view.quote }}. {{ view.question }}
+          </p>
+          @if (aimsAtCreature()) {
+            @if (rows().length > 0) {
+              <app-resource-pick
+                [label]="legend()"
+                [rows]="rows()"
+                [chosen]="target()"
+                empty="Não há ninguém para escolher."
+                (pick)="pick($event)"
+              />
+            } @else if (readFailed()) {
+              <p class="small" role="status">Não deu para ler quem está ao alcance. Dá para deixar passar.</p>
+            } @else {
+              <p class="small" role="status">Lendo quem está ao alcance…</p>
+            }
+          }
+          <p class="small">{{ view.note }}</p>
+          @if (view.limit) {
+            <p class="missing" id="readied-limit">
+              <mat-icon aria-hidden="true">block</mat-icon>{{ view.limit }}
+            </p>
+          }
+        }
+      </div>
+      <div foot>
+        @if (gone()) {
+          <button matButton="outlined" type="button" class="foot__one" data-initial-focus (click)="sheet.close()">
+            Fechar
+          </button>
+        } @else {
+          <p class="small foot__clock" role="status">{{ autoPass() }}</p>
+          <div class="pair">
+            <button
+              matButton="outlined"
+              type="button"
+              class="pair__btn"
+              data-initial-focus
+              [disabled]="busy()"
+              (click)="answer(false)"
+            >
+              {{ view.declineLabel }}
+            </button>
+            @if (view.releasable) {
+              <button
+                matButton="filled"
+                type="button"
+                class="pair__btn"
+                [disabled]="!ready() || busy()"
+                disabledInteractive
+                (click)="answer(true)"
+              >
+                {{ busy() ? 'Usando…' : useLabel() }}
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </app-sheet-frame>
+  `,
+  styleUrls: [
+    '../resource-pick/resource-sheet.scss',
+    '../feature-window-sheet/feature-window-sheet.scss',
+  ],
+})
+export class ReadiedWindowSheet {
+  private readonly api = inject(CombatClient);
+  private readonly injector = inject(Injector);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  protected readonly sheet = injectSheet<ReadiedWindowSheetData, void>();
+  protected readonly data = this.sheet.data;
+  protected readonly inSheet = this.sheet.inSheet;
+
+  protected readonly view = readiedPrompt(
+    this.data.readied,
+    this.data.round,
+    this.data.reactorLabel,
+  );
+  /** An attack of the window is aimed at one creature of the list. */
+  protected readonly aimsAtCreature = signal(this.data.readied?.kind === ReadiedKind.ATTACK);
+  private readonly targets = signal<GetTurnOptionsResponse['attackTargets'][number]['targets']>([]);
+  private readonly reachFt = signal(MELEE_REACH_FT);
+  protected readonly readFailed = signal(false);
+  protected readonly target = signal<string | null>(null);
+
+  protected readonly rows = computed(() =>
+    readiedTargetRows(this.targets(), this.data.readied?.targetCombatantId ?? '', this.reachFt()),
+  );
+  protected readonly legend = computed(() => readiedLegend(this.rows()));
+  /** "Atacar o Zumbi 1" once a creature is chosen; "Atacar" before it. */
+  protected readonly useLabel = computed(() => {
+    const id = this.target();
+    const label = this.targets().find((t) => t.combatantId === id)?.label;
+    return label
+      ? `${this.view.useLabel} ${article(label) === 'a' ? 'a' : 'o'} ${label}`
+      : this.view.useLabel;
+  });
+  /** The answer may be sent: a creature is chosen for an attack, nothing is asked of another action. */
+  protected readonly ready = computed(() => !this.aimsAtCreature() || this.target() !== null);
+
+  protected readonly busy = signal(false);
+  /** A request in the air: Esc and the backdrop do not close the sheet under it. */
+  protected readonly lockWhileBusy = effect(() => this.sheet.lock(this.busy()));
+  protected readonly error = signal('');
+  private readonly key = new ActionKey();
+
+  /** The master's screen passes the window after 30 s without an answer, like any optional reaction. */
+  private readonly openedAt = Date.now();
+  private readonly clock = signal(this.openedAt);
+  private readonly clockTimer = setInterval(() => this.clock.set(Date.now()), CLOCK_TICK_MS);
+  protected readonly autoPass = computed(() =>
+    playerAutoPassText(playerSecondsLeft(this.openedAt, this.clock())),
+  );
+
+  /** The window is no longer in the combat: the time ran out, or the master answered for the player. */
+  protected readonly gone = computed(
+    () =>
+      !this.busy() &&
+      !(this.data.state.encounter()?.reactionWindows ?? []).some(
+        (w) => w.id === this.data.window.id,
+      ),
+  );
+  protected readonly goneText = computed(() => {
+    const e = this.data.state.encounter();
+    const own = e ? ownCombatant(e) : null;
+    return readiedGoneText({
+      reactionUsed: own?.reactionUsed ?? false,
+      down: own?.state === CombatantState.DOWN,
+    });
+  });
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => clearInterval(this.clockTimer));
+    if (this.aimsAtCreature()) {
+      void this.read();
+    }
+    // The safe answer has the focus, and its ring: the sheet opens for a keyboard-style answer.
+    afterNextRender(
+      () =>
+        (
+          this.host.nativeElement.querySelector('[data-initial-focus]') as HTMLButtonElement | null
+        )?.focus({ focusVisible: true } as FocusOptions),
+      { injector: this.injector },
+    );
+  }
+
+  private async read(): Promise<void> {
+    const key = this.data.readied?.actionKey ?? '';
+    try {
+      const res = await this.data.load();
+      const attack = res.options?.attacks.find((a) => a.attack?.key === key)?.attack;
+      this.reachFt.set(attack ? attackReachFt(attack) : MELEE_REACH_FT);
+      const list = res.attackTargets.find((x) => x.attackKey === key)?.targets ?? [];
+      this.targets.set(list);
+      this.chooseNamed();
+    } catch {
+      this.readFailed.set(true);
+    }
+  }
+
+  /** The creature the player named is chosen when it can be aimed at now. */
+  private chooseNamed(): void {
+    const named = this.data.readied?.targetCombatantId ?? '';
+    const mine = this.rows().find((r) => r.id === named);
+    if (mine && !mine.blocked) {
+      this.target.set(named);
+    }
+  }
+
+  protected pick(id: string): void {
+    this.error.set('');
+    this.target.set(id);
+  }
+
+  /** "Atacar o Zumbi 1" or "Deixar passar": the answer to the window. */
+  protected async answer(use: boolean): Promise<void> {
+    if (this.busy() || (use && !this.ready())) {
+      return;
+    }
+    const target = this.target();
+    const answer =
+      use && this.aimsAtCreature() && target
+        ? { use, creatureIds: [target], die: { inApp: true as const } }
+        : { use };
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const res = await this.api.attacks.answerReaction(
+        this.data.campaignId,
+        this.data.encounterId,
+        this.data.window.id,
+        answer,
+        this.key.keyFor({ window: this.data.window.id, answer }),
+      );
+      this.key.renew();
+      this.data.state.apply(res.encounter);
+      this.busy.set(false);
+      this.sheet.close();
+    } catch (err) {
+      this.error.set(combatErrorMessage(err, 'responder à reação'));
+      this.busy.set(false);
+    }
+  }
+}

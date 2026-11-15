@@ -256,8 +256,28 @@ export class ReactionQueue {
   }
 
   /** "Usar ... pelo ...": the slot an NPC spends is the chosen one (Counterspell) or the lowest free (Escudo). */
+  /** What a row's buttons point to: the reason "use" is off, the wait another window holds, or the line that says who the table waits for. */
+  protected describedBy(row: QueueRow, forUse: boolean): string | null {
+    const id = this.uid + row.window.id;
+    if (forUse && row.readied?.useOff) {
+      return `${id}-off`;
+    }
+    if (row.status) {
+      return `${id}-why`;
+    }
+    return row.readied ? `${id}-wait` : null;
+  }
+
   protected use(row: QueueRow): Promise<void> {
     const w = row.window;
+    // A readied attack: the target is the one named at Ready, and the d20 is the app's (the server's `creature_ids` and `roll`).
+    if (row.readied?.useOff) {
+      // The button is off but `disabledInteractive` still lets the click through: nothing is sent.
+      return Promise.resolve();
+    }
+    if (row.readied?.attack) {
+      return this.answer(w, { use: true, die: { inApp: true } });
+    }
     const chosen = this.slotOf(row);
     if (chosen) {
       return this.answer(w, {

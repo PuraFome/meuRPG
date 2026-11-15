@@ -238,6 +238,22 @@
                   </button>
                 </div>
               }
+              @if (notices.readiedNotice(); as lost) {
+                <div class="mr-notice mr-notice--warning notice" data-testid="readied-lost">
+                  <mat-icon aria-hidden="true">alarm</mat-icon>
+                  <p>
+                    <b>{{ lost.lead }}</b> {{ lost.rest }}
+                  </p>
+                  <button
+                    matButton
+                    type="button"
+                    class="notice__ok"
+                    (click)="notices.readiedLost.set(null)"
+                  >
+                    Entendi
+                  </button>
+                </div>
+              }
               @if (notices.lostNotice(); as text) {
                 <div class="mr-notice mr-notice--warning notice" data-testid="concentration-lost">
                   <mat-icon aria-hidden="true">hourglass_empty</mat-icon>

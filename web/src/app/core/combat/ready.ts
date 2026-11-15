@@ -1,4 +1,3 @@
-import type { ReadiedAction } from '../../../gen/meurpg/play/v1/combat_pb';
 import { ReadiedKind } from '../../../gen/meurpg/play/v1/combat_pb';
 import {
   ActionEconomy,
@@ -10,7 +9,6 @@ import {
   type TurnOptions,
 } from '../../../gen/meurpg/rules/v1/rules_pb';
 import { joinDots, tight } from '../format/text';
-import { metersText } from '../units';
 import type { ReadyArgs } from './combat-client-ready';
 import { circleLabel } from './combat-grid';
 import {
@@ -324,14 +322,4 @@ export function readyMissing(
   return t.count === 0 ? EMPTY_TRIGGER_TEXT : t.error;
 }
 
-/** The name the card and the lines give a held action: "Espada longa no Zumbi 1", "Mover, até 7,5 m", "Esquivar". */
-export function heldName(
-  r: Pick<ReadiedAction, 'kind' | 'actionNamePt' | 'moveFt'>,
-  target = '',
-): string {
-  if (r.kind === ReadiedKind.MOVE) {
-    return r.moveFt > 0 ? `Mover, até ${metersText(r.moveFt)}` : 'Mover';
-  }
-  const name = r.actionNamePt || 'ação preparada';
-  return target ? `${name} ${target}` : name;
-}
+export { heldName } from './ready-held';
